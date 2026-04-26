@@ -421,7 +421,7 @@ export async function serializeNodesToSVGElements(
         if (
           `${value}` !== '' &&
           `${(defaultAttributes[type] as Record<string, unknown>)[key]}` !==
-            `${value}`
+          `${value}`
         ) {
           if (isNumber(value)) {
             value = toFixedAndRemoveTrailingZeros(value);

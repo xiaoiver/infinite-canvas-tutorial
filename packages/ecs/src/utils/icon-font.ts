@@ -17,9 +17,53 @@ import type {
   StrokeAttributes,
 } from '../types/serialized-node';
 
-export type IconifyIconCollection = {
-  icons?: Record<string, { body?: string }>;
+/** 与 Iconify `icons[name]` 一项对齐：可有 `body`，以及**该项**的 `width` / `height` 作为该图视口。 */
+export type IconifyIconEntry = {
+  body?: string;
+  width?: number;
+  height?: number;
 };
+
+export type IconifyIconCollection = {
+  icons?: Record<string, IconifyIconEntry | { body?: string; width?: number; height?: number }>;
+  /** 集合级默认视口，与 `viewBox` 同语义（Iconify JSON 根字段，如 24 / 32） */
+  width?: number;
+  height?: number;
+};
+
+type RegisteredIconifySet = {
+  icons: Record<string, IconifyIconEntry>;
+  /** 来自 JSON 根；未给时为 0。解析单枚 icon 时，若该 icon 自带合法 width/height 则优先，否则用此处，再否则 AABB 缩放。 */
+  viewWidth: number;
+  viewHeight: number;
+};
+
+function resolveIconifyViewBoxForIcon(
+  setEntry: RegisteredIconifySet,
+  icon: IconifyIconEntry | undefined,
+): { viewW: number; viewH: number } {
+  const iw = icon?.width;
+  const ih = icon?.height;
+  if (
+    typeof iw === 'number' &&
+    Number.isFinite(iw) &&
+    iw > 0 &&
+    typeof ih === 'number' &&
+    Number.isFinite(ih) &&
+    ih > 0
+  ) {
+    return { viewW: iw, viewH: ih };
+  }
+  if (
+    setEntry.viewWidth > 0 &&
+    setEntry.viewHeight > 0 &&
+    Number.isFinite(setEntry.viewWidth) &&
+    Number.isFinite(setEntry.viewHeight)
+  ) {
+    return { viewW: setEntry.viewWidth, viewH: setEntry.viewHeight };
+  }
+  return { viewW: 0, viewH: 0 };
+}
 
 /** 传给 {@link registerIconifyIconSet} 的值：完整 iconify 包 JSON、或 `import('*.json')` 的模块（含 `default`）。 */
 export type RegisterableIconifyCollection =
@@ -101,7 +145,7 @@ const ICONIFY_STORE_KEY = Symbol.for(
   '@infinite-canvas-tutorial/ecs/iconify-icon-store',
 );
 type IconifyStore = {
-  sets: Map<string, Record<string, { body?: string }>>;
+  sets: Map<string, RegisteredIconifySet>;
   bodyCache: Map<string, string | null>;
 };
 
@@ -120,6 +164,7 @@ function getIconifyStore(): IconifyStore {
  * 注册与 {@link buildIconFontScalablePrimitives} 使用的 Iconify 风格 `icons` 表。
  * 同一 `family` 会整表覆盖（可再次调用以热更新或切换版本）。
  * 可传入完整 `lucide.json` 对象、仅 `{ icons }`、或动态 `import()` 得到的 `{ default: 完整JSON }`。
+ * 每枚 `icons[name]` 若带 **有效的** `width`+`height`，则解析该 `body` 时以其为视口，**优先于** 根上集合级 `width`/`height`；二者皆无时仍按 path 并集 AABB 缩放。
  */
 export function registerIconifyIconSet(
   family: string,
@@ -137,7 +182,24 @@ export function registerIconifyIconSet(
       ? (collection as { default: IconifyIconCollection }).default
       : (collection as IconifyIconCollection);
   const { sets, bodyCache } = getIconifyStore();
-  sets.set(f, { ...(unwrapped.icons ?? {}) });
+  const u = unwrapped as {
+    width?: number;
+    height?: number;
+    icons?: Record<string, IconifyIconEntry>;
+  };
+  const viewWidth =
+    typeof u.width === 'number' && Number.isFinite(u.width) && u.width > 0
+      ? u.width
+      : 0;
+  const viewHeight =
+    typeof u.height === 'number' && Number.isFinite(u.height) && u.height > 0
+      ? u.height
+      : 0;
+  sets.set(f, {
+    icons: { ...(u.icons ?? {}) } as Record<string, IconifyIconEntry>,
+    viewWidth,
+    viewHeight,
+  });
   for (const k of Array.from(bodyCache.keys())) {
     if (k.startsWith(`body:${f}:`)) {
       bodyCache.delete(k);
@@ -239,7 +301,8 @@ export type ScaledIconPrimitive =
   };
 
 /** 仅作后备：栈式解析失败时尝试平铺自闭合形状（与旧版一致） */
-const SELF_TAG_RE = /<(path|circle|line|ellipse)\b([^/]*?)\s*\/>/g;
+const SELF_TAG_RE =
+  /<(path|circle|line|ellipse|rect)\b([^/]*?)\s*\/>/g;
 
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
@@ -288,6 +351,65 @@ function skipSvgWs(s: string, i: number): number {
 }
 
 /**
+ * 将 &lt;rect> 转为 path 的 d（非负 rx/ry 圆角，过大时与 SVG 一致截至 min(w,h)/2；无则直角矩形）。
+ */
+function rectElementToPathD(at: Record<string, string>): string | null {
+  const x = parseFloat(String(at['x'] ?? 0)) || 0;
+  const y = parseFloat(String(at['y'] ?? 0)) || 0;
+  const w = parseFloat(String(at['width'] ?? 0)) || 0;
+  const h = parseFloat(String(at['height'] ?? 0)) || 0;
+  if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) {
+    return null;
+  }
+  let rx = 0;
+  let ry = 0;
+  if (at['rx'] != null && String(at['rx']).trim() !== '') {
+    const v = parseFloat(String(at['rx']));
+    if (Number.isFinite(v) && v > 0) {
+      rx = v;
+    }
+  }
+  if (at['ry'] != null && String(at['ry']).trim() !== '') {
+    const v = parseFloat(String(at['ry']));
+    if (Number.isFinite(v) && v > 0) {
+      ry = v;
+    }
+  } else if (rx > 0) {
+    ry = rx;
+  }
+  if (rx === 0 && at['r'] != null && String(at['r']).trim() !== '') {
+    const v = parseFloat(String(at['r']));
+    if (Number.isFinite(v) && v > 0) {
+      rx = v;
+      ry = v;
+    }
+  }
+  if (ry === 0 && rx > 0) {
+    ry = rx;
+  }
+  if (rx === 0 && ry > 0) {
+    rx = ry;
+  }
+  const cap = Math.min(w, h) * 0.5;
+  if (rx > 0) {
+    rx = Math.min(rx, cap);
+  }
+  if (ry > 0) {
+    ry = Math.min(ry, cap);
+  }
+  if (rx <= 0 || ry <= 0) {
+    return `M${x} ${y}h${w}v${h}h${-w}Z`;
+  }
+  return (
+    `M${x + rx} ${y}h${w - 2 * rx}` +
+    `a${rx} ${ry} 0 0 1 ${rx} ${ry}v${h - 2 * ry}` +
+    `a${rx} ${ry} 0 0 1 ${-rx} ${ry}h${-(w - 2 * rx)}` +
+    `a${rx} ${ry} 0 0 1 ${-rx} ${-ry}v${-(h - 2 * ry)}` +
+    `a${rx} ${ry} 0 0 1 ${rx} ${-ry}Z`
+  );
+}
+
+/**
  * 读取开始标签到第一个 `>`；`d` 等属性中不含 `>`（与 Iconify / body 常见形态一致）。
  */
 function readStartTag(
@@ -310,7 +432,7 @@ function readStartTag(
     return null;
   }
   const name = m[1]!.toLowerCase();
-  if (!/^(g|path|circle|line|ellipse)$/.test(name)) {
+  if (!/^(g|path|circle|line|ellipse|rect)$/.test(name)) {
     return null;
   }
   const oneLine = t.replace(/\s/g, '');
@@ -322,15 +444,55 @@ function readStartTag(
   return { name, attr, selfClose, end: gt + 1 };
 }
 
+function toPositiveIconFontDim(v: unknown): number {
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+    return v;
+  }
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = parseFloat(v);
+    if (Number.isFinite(n) && n > 0) {
+      return n;
+    }
+  }
+  return 0;
+}
+
+/**
+ * 与反序列化、sync、缩放矢量共用：收敛出正的目标框 (w,h)，避免一侧为 0 时与 24 混用成 24×100 等。
+ */
+export function resolveIconFontTargetDimensions(
+  targetWidth: unknown,
+  targetHeight: unknown,
+): { w: number; h: number } {
+  let w = toPositiveIconFontDim(targetWidth);
+  let h = toPositiveIconFontDim(targetHeight);
+  if (w > 0 && h <= 0) {
+    h = w;
+  } else if (h > 0 && w <= 0) {
+    w = h;
+  }
+  if (w <= 0 && h <= 0) {
+    w = 24;
+    h = 24;
+  }
+  return { w, h };
+}
+
 /**
  * 将 Iconify 的 `body`（可含一层或多层 \<g>、`fill="currentColor"` 等）解析为带合并样式后的可缩放子图元。
  * 与 SVG 一致：祖先 `g` 的展示属性与子 path/ellipse/line 自身属性合并，后者优先。
+ *
+ * @param viewBoxWidth 注册集合 JSON 根上 `width`；>0 时按视口 (0,0)–(vw,vh) 映射到目标框，与官方 viewBox 一致，不按 path 并集平移。
+ * @param viewBoxHeight 同上 `height`。
  */
 export function resolveIconifyBodyToScalablePrimitives(
   body: string,
-  targetWidth: number,
-  targetHeight: number,
+  targetWidth: unknown,
+  targetHeight: unknown,
+  viewBoxWidth = 0,
+  viewBoxHeight = 0,
 ): ScaledIconPrimitive[] | null {
+  const { w, h } = resolveIconFontTargetDimensions(targetWidth, targetHeight);
   const inner0 = body.trim();
   if (!inner0) {
     return null;
@@ -397,6 +559,19 @@ export function resolveIconifyBodyToScalablePrimitives(
           return;
         }
         items.push({ prim: { kind: 'line', x1, y1, x2, y2, style: st }, b });
+        return;
+      }
+      if (tag === 'rect') {
+        const d = rectElementToPathD(at);
+        if (!d) {
+          return;
+        }
+        const b = aabbPath(d);
+        if (!isFiniteAabb(b)) {
+          return;
+        }
+        items.push({ prim: { kind: 'path', d, style: st }, b });
+        return;
       }
     };
 
@@ -521,6 +696,16 @@ export function resolveIconifyBodyToScalablePrimitives(
           prim: { kind: 'line', x1, y1, x2, y2, style: st },
           b,
         });
+      } else if (tag === 'rect') {
+        const d = rectElementToPathD(at);
+        if (!d) {
+          continue;
+        }
+        const b = aabbPath(d);
+        if (!isFiniteAabb(b)) {
+          continue;
+        }
+        flat.push({ prim: { kind: 'path', d, style: st }, b });
       }
     }
     if (flat.length === 0) {
@@ -544,21 +729,72 @@ export function resolveIconifyBodyToScalablePrimitives(
   if (rawW <= 0 || rawH <= 0) {
     return null;
   }
-  const w = targetWidth > 0 ? targetWidth : 24;
-  const h = targetHeight > 0 ? targetHeight : 24;
-  const sx = w / rawW;
-  const sy = h / rawH;
   const { minX, minY } = combined;
-
   const dp = ICONIFY_SCALED_GEOMETRY_DECIMAL_PLACES;
+
+  const useViewBox =
+    viewBoxWidth > 0 && viewBoxHeight > 0 && Number.isFinite(viewBoxWidth) && Number.isFinite(viewBoxHeight);
+  if (useViewBox) {
+    const vw = viewBoxWidth;
+    const vh = viewBoxHeight;
+    const s = Math.min(w / vw, h / vh);
+    const tx = (w - s * vw) * 0.5;
+    const ty = (h - s * vh) * 0.5;
+    return items.map(({ prim }) => {
+      if (prim.kind === 'path') {
+        return {
+          kind: 'path' as const,
+          d: roundPathDToDecimals(
+            shiftPath(
+              transformPath(prim.d, mat3.fromScaling(mat3.create(), [s, s])),
+              tx,
+              ty,
+            ),
+            dp,
+          ),
+          style: prim.style,
+        };
+      }
+      if (prim.kind === 'ellipse') {
+        return {
+          kind: 'ellipse' as const,
+          cx: roundNumberToDecimals(prim.cx * s + tx, dp),
+          cy: roundNumberToDecimals(prim.cy * s + ty, dp),
+          rx: roundNumberToDecimals(prim.rx * s, dp),
+          ry: roundNumberToDecimals(prim.ry * s, dp),
+          style: prim.style,
+        };
+      }
+      return {
+        kind: 'line' as const,
+        x1: roundNumberToDecimals(prim.x1 * s + tx, dp),
+        y1: roundNumberToDecimals(prim.y1 * s + ty, dp),
+        x2: roundNumberToDecimals(prim.x2 * s + tx, dp),
+        y2: roundNumberToDecimals(prim.y2 * s + ty, dp),
+        style: prim.style,
+      };
+    });
+  }
+
+  /**
+   * 无集合级 viewBox 时：用 path 并集 AABB 归一化后再等比塞进目标框（与旧版一致）。
+   */
+  const s = Math.min(w / rawW, h / rawH);
+  const tx = (w - s * rawW) * 0.5;
+  const ty = (h - s * rawH) * 0.5;
+
   return items.map(({ prim }) => {
     if (prim.kind === 'path') {
       return {
         kind: 'path' as const,
         d: roundPathDToDecimals(
-          transformPath(
-            shiftPath(prim.d, -minX, -minY),
-            mat3.fromScaling(mat3.create(), [sx, sy]),
+          shiftPath(
+            transformPath(
+              shiftPath(prim.d, -minX, -minY),
+              mat3.fromScaling(mat3.create(), [s, s]),
+            ),
+            tx,
+            ty,
           ),
           dp,
         ),
@@ -568,19 +804,19 @@ export function resolveIconifyBodyToScalablePrimitives(
     if (prim.kind === 'ellipse') {
       return {
         kind: 'ellipse' as const,
-        cx: roundNumberToDecimals((prim.cx - minX) * sx, dp),
-        cy: roundNumberToDecimals((prim.cy - minY) * sy, dp),
-        rx: roundNumberToDecimals(prim.rx * sx, dp),
-        ry: roundNumberToDecimals(prim.ry * sy, dp),
+        cx: roundNumberToDecimals((prim.cx - minX) * s + tx, dp),
+        cy: roundNumberToDecimals((prim.cy - minY) * s + ty, dp),
+        rx: roundNumberToDecimals(prim.rx * s, dp),
+        ry: roundNumberToDecimals(prim.ry * s, dp),
         style: prim.style,
       };
     }
     return {
       kind: 'line' as const,
-      x1: roundNumberToDecimals((prim.x1 - minX) * sx, dp),
-      y1: roundNumberToDecimals((prim.y1 - minY) * sy, dp),
-      x2: roundNumberToDecimals((prim.x2 - minX) * sx, dp),
-      y2: roundNumberToDecimals((prim.y2 - minY) * sy, dp),
+      x1: roundNumberToDecimals((prim.x1 - minX) * s + tx, dp),
+      y1: roundNumberToDecimals((prim.y1 - minY) * s + ty, dp),
+      x2: roundNumberToDecimals((prim.x2 - minX) * s + tx, dp),
+      y2: roundNumberToDecimals((prim.y2 - minY) * s + ty, dp),
       style: prim.style,
     };
   });
@@ -614,21 +850,35 @@ export function buildIconFontScalablePrimitives(
   const normalized = normalizeIconName(
     (bareMaybe ?? rawName).trim() || rawName,
   );
+  const setEntry = sets.get(setId)!;
+  const iconEntry = setEntry.icons[normalized];
+  const { viewW, viewH } = resolveIconifyViewBoxForIcon(setEntry, iconEntry);
   const k = `body:${setId}:${normalized}`;
   if (bodyCache.has(k)) {
     const b = bodyCache.get(k);
     if (b == null) {
       return null;
     }
-    return resolveIconifyBodyToScalablePrimitives(b, targetWidth, targetHeight);
+    return resolveIconifyBodyToScalablePrimitives(
+      b,
+      targetWidth,
+      targetHeight,
+      viewW,
+      viewH,
+    );
   }
-  const icons = sets.get(setId)!;
-  const b = icons[normalized]?.body ?? null;
+  const b = iconEntry?.body ?? null;
   bodyCache.set(k, b);
   if (b == null) {
     return null;
   }
-  return resolveIconifyBodyToScalablePrimitives(b, targetWidth, targetHeight);
+  return resolveIconifyBodyToScalablePrimitives(
+    b,
+    targetWidth,
+    targetHeight,
+    viewW,
+    viewH,
+  );
 }
 
 export function strokeWidthFromIconStyle(

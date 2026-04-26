@@ -15,6 +15,7 @@ import {
   GlobalTransform,
   Group,
   HTML,
+  IconFont,
   Line,
   Marker,
   Mat3,
@@ -92,6 +93,7 @@ export class ComputeBounds extends System {
           Brush,
           VectorNetwork,
           Group,
+          IconFont,
         ).trackWrites,
   );
 
@@ -235,26 +237,38 @@ export function updateBounds(entity: Entity) {
         updateBounds(child);
       });
     }
-    const geomWorld = mergeChildrenWorldAabb(entity, 'geometryWorldBounds');
-    const renderWorld = mergeChildrenWorldAabb(entity, 'renderWorldBounds');
-    const empty = new AABB(Infinity, Infinity, -Infinity, -Infinity);
-
-    const invGl = mat3.create();
-    const invOk = mat3.invert(
-      invGl,
-      Mat3.toGLMat3(entity.read(GlobalTransform).matrix),
-    );
-    const inv = invOk ? Mat3.fromGLMat3(invGl) : null;
-
-    if (isValidAabb(geomWorld)) {
-      geometryBounds = inv ? worldAabbToLocal(geomWorld, inv) : geomWorld;
+    const useIconLayoutFrame =
+      entity.has(IconFont) &&
+      (() => {
+        const f = entity.read(IconFont);
+        return f.layoutWidth > 0 && f.layoutHeight > 0;
+      })();
+    if (useIconLayoutFrame) {
+      const f = entity.read(IconFont);
+      geometryBounds = new AABB(0, 0, f.layoutWidth, f.layoutHeight);
+      renderBounds = new AABB(0, 0, f.layoutWidth, f.layoutHeight);
     } else {
-      geometryBounds = empty;
-    }
-    if (isValidAabb(renderWorld)) {
-      renderBounds = inv ? worldAabbToLocal(renderWorld, inv) : renderWorld;
-    } else {
-      renderBounds = empty;
+      const geomWorld = mergeChildrenWorldAabb(entity, 'geometryWorldBounds');
+      const renderWorld = mergeChildrenWorldAabb(entity, 'renderWorldBounds');
+      const empty = new AABB(Infinity, Infinity, -Infinity, -Infinity);
+
+      const invGl = mat3.create();
+      const invOk = mat3.invert(
+        invGl,
+        Mat3.toGLMat3(entity.read(GlobalTransform).matrix),
+      );
+      const inv = invOk ? Mat3.fromGLMat3(invGl) : null;
+
+      if (isValidAabb(geomWorld)) {
+        geometryBounds = inv ? worldAabbToLocal(geomWorld, inv) : geomWorld;
+      } else {
+        geometryBounds = empty;
+      }
+      if (isValidAabb(renderWorld)) {
+        renderBounds = inv ? worldAabbToLocal(renderWorld, inv) : renderWorld;
+      } else {
+        renderBounds = empty;
+      }
     }
   }
 

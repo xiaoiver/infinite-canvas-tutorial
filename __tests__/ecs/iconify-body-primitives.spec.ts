@@ -26,4 +26,16 @@ describe('resolveIconifyBodyToScalablePrimitives', () => {
     expect(prims).not.toBeNull();
     expect(prims![0]!.style.fill).toBe('red');
   });
+
+  it('converts self-closing rect to path (material android-style body)', () => {
+    const body = `<rect width="4" height="10" x="2" y="12" fill="#8bc34a" rx="2"/>
+<path fill="#8bc34a" d="M8 12h16v12H8z"/>`;
+    const prims = resolveIconifyBodyToScalablePrimitives(body, 32, 32, 0, 0);
+    expect(prims).not.toBeNull();
+    expect(prims!.length).toBe(2);
+    expect(prims![0]!.kind).toBe('path');
+    expect(prims![0]!.d).toMatch(/^M/);
+    expect(prims![0]!.style.fill).toBe('#8bc34a');
+    expect(prims![1]!.kind).toBe('path');
+  });
 });

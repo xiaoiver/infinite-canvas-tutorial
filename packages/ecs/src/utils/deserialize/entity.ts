@@ -1517,6 +1517,8 @@ export function serializedNodesToEntities(
         new IconFont({
           iconFontName: String(rName ?? iconFontName ?? ''),
           iconFontFamily: String(rFamily ?? iconFontFamily ?? 'lucide'),
+          layoutWidth: absoluteWidth > 0 ? absoluteWidth : 0,
+          layoutHeight: absoluteHeight > 0 ? absoluteHeight : 0,
         }),
       );
     }

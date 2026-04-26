@@ -247,19 +247,29 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 1,
   } as const;
 
-  const icon = {
-    id: 'arrow-down-icon-pixelarticons',
+  const BlenderIcon = {
+    id: 'blender-icon-material-icon-theme',
     type: 'iconfont' as const,
-    x: 100,
-    y: 100,
+    x: 150,
+    y: 300,
     width: 32,
     height: 32,
     zIndex: 1,
-    iconFontName: 'a-arrow-down',
-    iconFontFamily: 'pixelarticons',
-    // stroke: 'red',
-    fill: 'red',
-    // strokeWidth: 2,
+    iconFontName: 'blender',
+    iconFontFamily: 'material-icon-theme',
+    lockAspectRatio: true,
+  };
+
+  const AndroidIcon = {
+    id: 'android-icon-material-icon-theme',
+    type: 'iconfont' as const,
+    x: 100,
+    y: 300,
+    width: 32,
+    height: 32,
+    zIndex: 1,
+    iconFontName: 'android',
+    iconFontFamily: 'material-icon-theme',
     lockAspectRatio: true,
   };
 
@@ -273,14 +283,14 @@ canvas.addEventListener(Event.READY, async (e) => {
   });
 
   {
-    const m = await import('@iconify/json/json/pixelarticons.json');
-    // 把 import() 整模块交给注册（内部会解包 default、读 icons），避免仅取 .default 在部分打包器下为 undefined 导致表为空
-    registerIconifyIconSet('pixelarticons', m);
+    const m = await import('@iconify/json/json/material-icon-theme.json');
+    registerIconifyIconSet('material-icon-theme', m);
   }
 
   api.runAtNextTick(() => {
     api.updateNodes([
-      icon,
+      AndroidIcon,
+      BlenderIcon,
       // image,
       // button,
       // text,

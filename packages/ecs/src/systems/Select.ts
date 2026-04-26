@@ -65,6 +65,7 @@ import {
   Theme,
   Flex,
   FlexLayoutDirty,
+  IconFont,
   DEFAULT_THEME_COLORS,
 } from '../components';
 import { Commands } from '../commands/Commands';
@@ -310,6 +311,7 @@ export class Select extends System {
             Locked,
             Marker,
             Theme,
+            IconFont,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
