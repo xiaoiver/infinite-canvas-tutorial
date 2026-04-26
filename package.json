@@ -117,7 +117,8 @@
       "defu": ">=6.1.5",
       "protobufjs": ">=7.5.5",
       "protocol-buffers-schema": ">=3.6.1",
-      "@xmldom/xmldom": ">=0.9.10"
+      "@xmldom/xmldom": ">=0.9.10",
+      "postcss": ">=8.5.10"
     }
   }
 }

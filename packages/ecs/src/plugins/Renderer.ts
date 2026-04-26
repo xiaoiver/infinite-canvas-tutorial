@@ -69,6 +69,7 @@ import {
   Flex,
   FlexLayoutDirty,
   Group,
+  IconFont,
 } from '../components';
 
 export interface RendererPluginOptions {
@@ -121,6 +122,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     /**
      * Geometry
      */
+    component(IconFont);
     component(Group);
     component(Circle);
     component(Ellipse);

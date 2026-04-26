@@ -27,6 +27,7 @@ export * from './snapping';
 export * from './embed';
 export * from './encryption';
 export * from './filter';
+export * from './icon-font';
 export * from './liquidMetalPoisson';
 export * from './heatmapPreprocess';
 export * from './postEffectEngineTime';

@@ -17,11 +17,13 @@ import {
   getRoughOptions,
   exportMarker,
   LineSerializedNode,
+  IconFontSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
 import rough from 'roughjs';
 import { RoughSVG } from 'roughjs/bin/svg';
 import { apiContext } from '../context';
+import 'iconify-icon';
 
 const THUMBNAIL_SIZE = 52;
 const THUMBNAIL_PADDING_RATIO = 0.1;
@@ -41,6 +43,14 @@ export class LayerThumbnail extends LitElement {
 
     sp-icon-text, sp-icon-code, sp-icon-crop, sp-icon-group {
       display: block;
+    }
+
+    iconify-icon {
+      display: inline-block;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      color: currentColor;
     }
   `;
 
@@ -62,6 +72,26 @@ export class LayerThumbnail extends LitElement {
     super.connectedCallback();
 
     this.#roughSvg = rough.svg(createSVGElement('svg') as SVGSVGElement);
+  }
+
+  #normalizeIconifyName(node: IconFontSerializedNode): string | null {
+    const rawName = node.iconFontName?.toString().trim();
+    if (!rawName) {
+      return null;
+    }
+
+    if (rawName.includes(':')) {
+      return rawName;
+    }
+
+    const family = (node.iconFontFamily?.toString().trim() || 'lucide').toLowerCase();
+    const normalizedName = rawName
+      .replace(/Icon$/, '')
+      .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+      .replace(/[_\s]+/g, '-')
+      .toLowerCase();
+
+    return `${family}:${normalizedName}`;
   }
 
   render() {
@@ -220,6 +250,11 @@ export class LayerThumbnail extends LitElement {
     let thumbnail;
     if (this.node.type === 'text') {
       thumbnail = html`<sp-icon-text></sp-icon-text>`;
+    } else if (this.node.type === 'iconfont') {
+      const iconName = this.#normalizeIconifyName(this.node as IconFontSerializedNode);
+      thumbnail = iconName
+        ? html`<iconify-icon icon=${iconName}></iconify-icon>`
+        : html`<sp-icon-group></sp-icon-group>`;
     } else if (this.node.type === 'embed' || this.node.type === 'html') {
       thumbnail = html`<sp-icon-code></sp-icon-code>`;
     } else if (this.node.type === 'brush') {

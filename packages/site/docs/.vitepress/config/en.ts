@@ -164,6 +164,10 @@ export const en = defineConfig({
                 text: 'Lesson 037 - GI with Radiance Cascades',
                 link: 'lesson-037',
               },
+              {
+                text: 'Lesson 038 - From design to code',
+                link: 'lesson-038',
+              },
             ],
           },
         ],

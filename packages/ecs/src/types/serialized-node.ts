@@ -161,12 +161,12 @@ export interface FlexboxLayoutAttributes {
   alignItems: 'center' | 'flex-start' | 'flex-end' | 'stretch' | 'baseline';
   /** 覆盖父容器 align-items，作为 flex 子项时生效 */
   alignSelf?:
-    | 'auto'
-    | 'center'
-    | 'flex-start'
-    | 'flex-end'
-    | 'stretch'
-    | 'baseline';
+  | 'auto'
+  | 'center'
+  | 'flex-start'
+  | 'flex-end'
+  | 'stretch'
+  | 'baseline';
   justifyContent: 'center' | 'flex-start' | 'flex-end' | 'space-between' | 'space-around' | 'space-evenly';
   flexDirection: 'row' | 'row-reverse' | 'column' | 'column-reverse';
   flexWrap: 'nowrap' | 'wrap' | 'wrap-reverse';
@@ -331,7 +331,10 @@ export interface FilterAttributes {
   filter: string;
 }
 
-export interface GSerializedNode extends BaseSerializeNode<'g'> { }
+export interface GSerializedNode
+  extends BaseSerializeNode<'g'>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes> { }
 
 export interface EllipseSerializedNode
   extends BaseSerializeNode<'ellipse'>,
@@ -540,7 +543,49 @@ export interface EmbedSerializedNode
   Partial<EmbedAttributes>,
   Partial<BindedAttributes> { }
 
-export type NodeSerializedNode = EllipseSerializedNode | RectSerializedNode | PathSerializedNode | TextSerializedNode | BrushSerializedNode | RoughRectSerializedNode | RoughEllipseSerializedNode | RoughPathSerializedNode | HtmlSerializedNode | EmbedSerializedNode;
+/**
+ * 与 Pencil 对齐：wire 上为 string/number，可写设计变量引用（如 `$token`）。
+ * @see https://docs.pencil.dev/for-developers/the-pen-format
+ */
+export type StringOrVariable = string;
+export type NumberOrVariable = number;
+
+export interface IconFontAttributes {
+  /** 图标在字体族中的名称 */
+  iconFontName?: StringOrVariable;
+  /**
+   * 字体族。例如：'lucide'、'feather'、'Material Symbols Outlined'、'phosphor' 等。
+   */
+  iconFontFamily?: StringOrVariable;
+}
+
+/**
+ * 图标字体节点（与 Pencil `IconFont` 一致，type 为 snake_case `iconfont`）
+ */
+export interface IconFontSerializedNode
+  extends BaseSerializeNode<'iconfont'>,
+  Partial<IconFontAttributes>,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<InnerShadowAttributes>,
+  Partial<DropShadowAttributes>,
+  Partial<FilterAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<BindedAttributes> { }
+
+export type NodeSerializedNode =
+  | EllipseSerializedNode
+  | RectSerializedNode
+  | PathSerializedNode
+  | TextSerializedNode
+  | BrushSerializedNode
+  | RoughRectSerializedNode
+  | RoughEllipseSerializedNode
+  | RoughPathSerializedNode
+  | HtmlSerializedNode
+  | EmbedSerializedNode
+  | IconFontSerializedNode;
 export type EdgeSerializedNode = LineSerializedNode | PolylineSerializedNode | RoughLineSerializedNode | RoughPolylineSerializedNode | PathSerializedNode | RoughPathSerializedNode;
 
 export type SerializedNode =
@@ -559,7 +604,8 @@ export type SerializedNode =
   | RoughPathSerializedNode
   | VectorNetworkSerializedNode
   | HtmlSerializedNode
-  | EmbedSerializedNode;
+  | EmbedSerializedNode
+  | IconFontSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
@@ -576,4 +622,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   RoughPathSerializedNode &
   VectorNetworkSerializedNode &
   HtmlSerializedNode &
-  EmbedSerializedNode;
+  EmbedSerializedNode &
+  IconFontSerializedNode;

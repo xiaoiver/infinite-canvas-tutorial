@@ -261,6 +261,8 @@ export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'cornerRadius',
   'letterSpacing',
   'lineHeight',
+  'iconFontName',
+  'iconFontFamily',
 ] as const;
 
 /** 变量表变更时 {@link buildDesignVariableRefreshPatch} 会从节点上抄这些键，避免 `updateNode(node, undefined)` 整表自同步误触 flex。 */

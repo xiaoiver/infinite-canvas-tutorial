@@ -19,7 +19,12 @@ import {
   resolveDesignVariableValue,
   designVariableRefKeyFromWire,
 } from '../utils/design-variables';
-import type { SerializedNode, SerializedNodeAttributes } from '../types/serialized-node';
+import type {
+  GSerializedNode,
+  IconFontSerializedNode,
+  SerializedNode,
+  SerializedNodeAttributes,
+} from '../types/serialized-node';
 import { API } from '../API';
 import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
 import {
@@ -60,9 +65,21 @@ import {
   GeometryDirty,
   Flex,
   FlexLayoutDirty,
+  Group,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
+import {
+  buildIconFontScalablePrimitives,
+  mapSvgLineCap,
+  mapSvgLineJoin,
+  pickChildFill,
+  pickStrokeColorForChild,
+  resolveIconFontWireStyle,
+  strokeWidthFromIconStyle,
+} from '../utils/icon-font';
+import { getComputedInheritGroupWireForId } from '../utils/inherit-group-wire';
+import { buildGroupWirePresentation } from '../utils/group-presentation';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -212,6 +229,115 @@ export function safeRemoveComponent<T>(
   if (entity.has(componentCtor)) {
     entity.remove(componentCtor);
   }
+}
+
+/**
+ * `iconfont` 的矢量与颜色在子 path 实体上；根节点 width/height 等变更时需重算 primitive 并写回子几何。
+ */
+function syncIconFontChildrenFromUpdatedNode(
+  rootEntity: Entity,
+  node: IconFontSerializedNode,
+  api: API,
+) {
+  if (!rootEntity.has(Parent)) {
+    return;
+  }
+  const designVariables = api.getAppState().variables;
+  const themeMode = api.getAppState().themeMode;
+  const w = node.width ?? 0;
+  const h = node.height ?? 0;
+  const scenePatched = api
+    .getNodes()
+    .map((n) => (n.id === node.id ? node : n));
+  const nodeInherit = {
+    ...node,
+    ...getComputedInheritGroupWireForId(node.id, scenePatched),
+  } as IconFontSerializedNode;
+  const groupPres = buildGroupWirePresentation(
+    nodeInherit,
+    designVariables,
+    themeMode,
+  );
+  const { userColorStroke, userColorFill, rSw } = resolveIconFontWireStyle(
+    nodeInherit,
+    designVariables,
+    themeMode,
+    groupPres,
+  );
+  const rName = resolveDesignVariableValue(
+    node.iconFontName ?? '',
+    designVariables,
+    themeMode,
+  );
+  const rFamily = resolveDesignVariableValue(
+    node.iconFontFamily ?? 'lucide',
+    designVariables,
+    themeMode,
+  );
+  const prims = buildIconFontScalablePrimitives(
+    String(rName ?? node.iconFontName ?? ''),
+    String(rFamily ?? node.iconFontFamily ?? 'lucide'),
+    w,
+    h,
+  );
+  if (!prims || prims.length === 0) {
+    return;
+  }
+  const children = rootEntity.read(Parent).children;
+  const n = Math.min(children.length, prims.length);
+  for (let i = 0; i < n; i++) {
+    const child = children[i]!;
+    const prim = prims[i]!;
+    if (prim.kind === 'path' && child.has(Path)) {
+      child.write(Path).d = prim.d;
+      safeAddComponent(child, GeometryDirty);
+    } else if (prim.kind === 'ellipse' && child.has(Ellipse)) {
+      child.write(Ellipse).cx = prim.cx;
+      child.write(Ellipse).cy = prim.cy;
+      child.write(Ellipse).rx = prim.rx;
+      child.write(Ellipse).ry = prim.ry;
+      safeAddComponent(child, GeometryDirty);
+    } else if (prim.kind === 'line' && child.has(Line)) {
+      child.write(Line).x1 = prim.x1;
+      child.write(Line).y1 = prim.y1;
+      child.write(Line).x2 = prim.x2;
+      child.write(Line).y2 = prim.y2;
+      safeAddComponent(child, GeometryDirty);
+    }
+    safeAddComponent(child, Stroke, {
+      color: pickStrokeColorForChild(
+        prim.style,
+        userColorStroke,
+        userColorFill,
+      ),
+      width: strokeWidthFromIconStyle(prim.style, rSw, {
+        primKind: prim.kind,
+      }),
+      linecap: mapSvgLineCap(prim.style.strokeLinecap),
+      linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
+    });
+    const fillPart = pickChildFill(
+      prim.style,
+      userColorFill,
+      userColorStroke,
+    );
+    if (fillPart && fillPart !== 'none') {
+      safeAddComponent(child, FillSolid, {
+        value: fillPart,
+        fillVariableRef: '',
+      });
+    } else {
+      safeRemoveComponent(child, FillSolid);
+    }
+    safeAddComponent(child, MaterialDirty);
+  }
+  safeAddComponent(rootEntity, Group, groupPres);
+  safeRemoveComponent(rootEntity, FillSolid);
+  safeRemoveComponent(rootEntity, FillGradient);
+  safeRemoveComponent(rootEntity, FillImage);
+  safeRemoveComponent(rootEntity, FillPattern);
+  safeRemoveComponent(rootEntity, Stroke);
+  safeAddComponent(rootEntity, MaterialDirty);
 }
 
 export class ElementsChange implements Change<SceneElementsMap> {
@@ -773,6 +899,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   const designVariables = api.getAppState().variables;
   const themeMode = api.getAppState().themeMode;
+  const elNode = element as SerializedNode;
+  const scenePatched = api
+    .getNodes()
+    .map((n) => (n.id === elNode.id ? elNode : n));
+  const withInheritPaint = {
+    ...elNode,
+    ...getComputedInheritGroupWireForId(elNode.id, scenePatched),
+  };
 
   const { name, visibility } = updates;
   const {
@@ -856,6 +990,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     clipMode,
   } = updates as unknown as SerializedNodeAttributes;
 
+  /** 矢量/颜色在子 path 上；若对根写 Fill/Stroke 会与 `syncIconFontChildren` 子实体冲突或渲染异常。 */
+  const t = (element as SerializedNode).type;
+  const isIconFontWireNode = t === 'iconfont' || (t as string) === 'icon_font';
+
   if ('parentId' in updates) {
     if (parentId) {
       const parentNode = api.getNodeById(parentId);
@@ -889,7 +1027,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('visibility' in updates) {
     entity.write(Visibility).value = visibility;
   }
-  if ('fill' in updates) {
+  if ('fill' in updates && !isIconFontWireNode) {
     const resolvedFill = resolveDesignVariableValue(
       fill,
       designVariables,
@@ -936,7 +1074,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(child, MaterialDirty);
     });
   }
-  if ('stroke' in updates) {
+  if ('stroke' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, {
       color: resolveDesignVariableValue(stroke, designVariables, themeMode),
       colorVariableRef: designVariableRefKeyFromWire(
@@ -944,7 +1082,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       ),
     });
   }
-  if ('strokeWidth' in updates) {
+  if ('strokeWidth' in updates && !isIconFontWireNode) {
     const w = resolveDesignVariableValue(
       strokeWidth,
       designVariables,
@@ -957,13 +1095,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
     });
   }
-  if ('strokeLinecap' in updates) {
+  if ('strokeLinecap' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { linecap: strokeLinecap });
   }
-  if ('strokeLinejoin' in updates) {
+  if ('strokeLinejoin' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { linejoin: strokeLinejoin });
   }
-  if ('strokeAlignment' in updates) {
+  if ('strokeAlignment' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
   }
   if ('opacity' in updates) {
@@ -1452,6 +1590,58 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     (entity.has(Polyline) || entity.has(Line) || entity.has(Path))
   ) {
     syncEdgeBindingForEntity(api, entity, element);
+  }
+
+  {
+    const nodeType = (element as SerializedNode).type;
+    const isIconFontNode =
+      nodeType === 'iconfont' ||
+      (nodeType as string) === 'icon_font';
+    if (
+      isIconFontNode &&
+      (('fill' in updates) ||
+        ('stroke' in updates) ||
+        ('strokeWidth' in updates) ||
+        ('strokeLinecap' in updates) ||
+        ('strokeLinejoin' in updates) ||
+        ('strokeAlignment' in updates) ||
+        ('width' in updates) ||
+        ('height' in updates) ||
+        ('iconFontName' in updates) ||
+        ('iconFontFamily' in updates))
+    ) {
+      syncIconFontChildrenFromUpdatedNode(
+        entity,
+        element as IconFontSerializedNode,
+        api,
+      );
+    }
+  }
+
+  {
+    const gType = (element as SerializedNode).type;
+    if (
+      gType === 'g' &&
+      (('fill' in updates) ||
+        ('stroke' in updates) ||
+        ('strokeWidth' in updates) ||
+        ('fillRule' in updates) ||
+        ('opacity' in updates) ||
+        ('fillOpacity' in updates) ||
+        ('strokeOpacity' in updates) ||
+        ('strokeLinecap' in updates) ||
+        ('strokeLinejoin' in updates))
+    ) {
+      safeAddComponent(
+        entity,
+        Group,
+        buildGroupWirePresentation(
+          withInheritPaint as GSerializedNode,
+          designVariables,
+          themeMode,
+        ),
+      );
+    }
   }
 
   // Object.assign(element, updates);

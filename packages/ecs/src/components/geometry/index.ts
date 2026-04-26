@@ -8,3 +8,4 @@ export * from './Text';
 export * from './Brush';
 export * from './VectorNetwork';
 export * from './Group';
+export * from './IconFont';

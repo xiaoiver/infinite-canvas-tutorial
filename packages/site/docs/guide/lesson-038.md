@@ -1,17 +1,17 @@
 ---
 outline: deep
-description: ''
+description: 'Design tokens, variables, themes, componentized generation, and icon font integration in Pencil. Export SVG, Iconify, and the path from design to code.'
 ---
 
 <script setup>
-import IconLucide from '../../components/IconLucide.vue'
+import IconLucide from '../components/IconLucide.vue'
 </script>
 
-# 课程 38 - 从设计到代码
+# Lesson 38 - From design to code
 
-## 变量与主题 {#variables-and-themes}
+## Variables and themes
 
-Pencil 支持完整的 Design Token 系统，支持多主题条件取值，详见：[Variables and Themes]。变量系统可以有效减少硬编码，AI 不需要生成具体的颜色值（减少 `#RRGGBB` 格式错误），也不需要理解设计系统的 token 映射。它只需引用语义化变量名，渲染引擎负责解析。
+Pencil supports a full design token system with multi-theme conditional values. See [Variables and Themes]. Variables reduce hard-coding: the model does not need to emit specific color values (fewer `#RRGGBB` mistakes) or learn your design-system token table—it only needs semantic variable names, and the renderer resolves them.
 
 ```ts
 api.setAppState({
@@ -35,7 +35,7 @@ api.updateNodes([
 ]);
 ```
 
-AI 为 dark mode 生成设计时，不需要输出两套颜色方案，只需引用 `$color.bg`，由节点的 `theme` 属性决定实际取值。
+When the model designs for dark mode, it does not need two full palettes—only references like `$color.bg`, while the node’s `theme` controls the resolved value.
 
 ```json
 "variables": {
@@ -49,40 +49,40 @@ AI 为 dark mode 生成设计时，不需要输出两套颜色方案，只需引
 }
 ```
 
-另外 AI 也不需要计算像素值或处理响应式断点。它用声明式语义描述意图，布局引擎自动计算几何。详见 [课程 33 - 布局引擎]
+The model also does not need to compute pixel values or wire responsive breakpoints. It states intent in a declarative way, and the layout engine computes geometry. See [Lesson 33 - Layout engine].
 
-### 解析 {#parse}
+### Variable types
 
-Figma 支持以下四种类型的变量，详见：[Guide to variables in Figma]
+Figma supports four variable kinds. See [Guide to variables in Figma]
 
--   Color `#000000`
+-   Color (`#000000`)
 -   Number
--   String 例如 `fontFamily` 或者文本内容
+-   String, e.g. `fontFamily` or text content
 -   Boolean
 
 ![source: https://help.figma.com/hc/en-us/articles/14506821864087-Overview-of-variables-collections-and-modes](https://help.figma.com/hc/article_attachments/30211233510039)
 
 ![source: https://help.figma.com/hc/en-us/articles/15145852043927-Create-and-manage-variables-and-collections](https://help.figma.com/hc/article_attachments/26964398869143)
 
-### 属性面板与变量选择器 {#property-panel-variable-picker}
+### Property panel and variable picker
 
-选中节点后，在 Spectrum 属性面板中可以为**填充 / 描边颜色 / 线宽 / 字号**绑定 `AppState.variables` 里的设计变量：通过下拉选择变量名即可写入 `$token`；已绑定时会显示紫色徽标，并可一键**解除绑定**（写回当前解析后的字面量并记入历史）。取色器与线宽滑块始终按**解析后的值**展示，避免 `$...` 直接当作 CSS 颜色无效。
+With a node selected, the Spectrum property panel can bind design variables from `AppState.variables` to **fill / stroke color / stroke width / font size**: pick a name from the dropdown to write `$token`. When bound, a purple badge appears, and you can **unbind** in one action (write back the current resolved literal and record history). The color picker and stroke width slider always show **resolved** values, so raw `$...` is never used as an invalid CSS color.
 
-### 导出 SVG {#export-svg}
+### Export SVG
 
-我们可以有多种导出策略，默认使用解析后的字面量：
+Several export strategies exist; the default is resolved literals:
 
 ```ts
 export type DesignVariablesSvgExportMode =
-    /** 解析 $ → 字面量 */
+    /** Resolve $ → literal */
     | 'resolved'
-    /** 保留 `$token` 字符串（属性可能非标准，适合再加工） */
+    /** Keep `$token` strings (attributes may be non-standard; good for post-processing) */
     | 'preserve-token'
-    /** `:root{--x:...}` + `fill="var(--x)"` 形式 */
+    /** `:root{--x:...}` + `fill="var(--x)"` */
     | 'css-var';
 ```
 
-也可以使用 CSS variables 导出策略，会在 `:root` 中声明这些全局变量，便于在浏览器开发者工具中修改。详见：[Using CSS custom properties (variables)]
+You can also use the CSS variables mode: globals are declared under `:root` so you can tweak them in devtools. See [Using CSS custom properties (variables)]
 
 ```html
 <svg>
@@ -106,9 +106,9 @@ export type DesignVariablesSvgExportMode =
 </svg>
 ```
 
-## 组件化生成 {#components-and-slots}
+## Components and slots
 
-`.pen` 的 ref + descendants 系统本质上是一种面向 AI 的组件继承机制。这样 AI 就不需要理解"圆角矩形 + 文本 + 内边距"的底层构成。它只需引用设计系统已有的 round-button 组件，并覆盖文本内容。这类似于代码中的继承+覆盖。
+The ref + descendants model in `.pen` is effectively an AI-oriented component inheritance system. The model does not have to decompose “rounded rect + text + padding.” It can reference an existing `round-button` from the design system and override the label—similar to inheritance and overrides in code.
 
 ```json
 {
@@ -118,9 +118,9 @@ export type DesignVariablesSvgExportMode =
 }
 ```
 
-## icon {#icon}
+## Icon
 
-icon 在生成 UI 时非常重要，例如 [Lucide] 已经在 React 组件生成中大规模使用了。Pencil 也支持这种内置图形：
+Icons matter when generating UIs. [Lucide] is already widely used in React code generation, and Pencil supports similar built-in graphics:
 
 ```ts
 export interface IconFont extends Entity, Size, CanHaveEffects {
@@ -135,10 +135,10 @@ export interface IconFont extends Entity, Size, CanHaveEffects {
 }
 ```
 
-OpenPencil 的 iconLookup 是可注入的函数，这意味着：
+In OpenPencil, `iconLookup` is an injectable function, which means:
 
--   灵活性：可以接入任何图标源（Iconify、Lucide、自定义）
--   AI 负担：AI 只需要输出 iconFontName: "SearchIcon"，具体路径由运行时解析
+-   **Flexibility**: any icon source (Iconify, Lucide, custom)
+-   **Model load**: the model only outputs `iconFontName: "SearchIcon"`; the runtime resolves paths
 
 ```ts
 private drawIconFont(canvas, node, x, y, w, h, opacity) {
@@ -147,18 +147,18 @@ private drawIconFont(canvas, node, x, y, w, h, opacity) {
   const iconD = iconMatch?.d ?? FALLBACK_ICON_D;  // SVG path data
   const iconStyle = iconMatch?.style ?? 'stroke';   // stroke or fill
 
-  // 解析 SVG path → Skia Path → 缩放适配 → 绘制
+  // Resolve SVG path → Skia path → scale → draw
 }
 ```
 
-我们的定义如下：
+Our definitions:
 
 ```ts
 export interface IconFontAttributes {
-  /** 图标在字体族中的名称 */
+  /** Name of the icon in the font family */
   iconFontName?: StringOrVariable;
   /**
-   * 字体族。例如：'lucide'、'feather'、'Material Symbols Outlined'、'phosphor' 等。
+   * Font family, e.g. 'lucide', 'feather', 'Material Symbols Outlined', 'phosphor', etc.
    */
   iconFontFamily?: StringOrVariable;
 }
@@ -168,9 +168,9 @@ export interface IconFontSerializedNode
   Partial<IconFontAttributes>;
 ```
 
-### 动态注册 icon 信息 {#register-icon-at-runtime}
+### Register icon metadata at runtime
 
-我们使用 [IconifyJSON] 提供的 icon 类型，可以在运行时动态引入 Lucide、Material 等图标库，它提供了包含图标 SVG 的 JSON：
+We use the icon shape from [IconifyJSON] to load Lucide, Material, and other sets at runtime via JSON that includes SVG:
 
 ```ts
 import { registerIconifyIconSet } from '@infinite-canvas-tutorial/ecs';
@@ -179,7 +179,7 @@ const m = await import('@iconify/json/json/lucide.json');
 registerIconifyIconSet('lucide', m);
 ```
 
-然后我们就可以将图标 JSON 转换成我们的场景图表示，例如下面的 Search 图标会被解析成一个 `Group` 父节点，拥有一个 `Path` 和 `Circle` 子节点，这部分和之前将 SVG 元素转换成我们的图形表示几乎一模一样：
+The icon JSON maps into our scene graph the same way as before: a Search icon becomes a `Group` with `Path` and `Circle` children, much like turning SVG into our shapes.
 
 ```json
 "search": {
@@ -187,7 +187,7 @@ registerIconifyIconSet('lucide', m);
 }
 ```
 
-当然我们需要将宽高、`strokeWidth` 映射到转换后的场景图上：
+We also map width, height, and `strokeWidth` onto the converted graph:
 
 ```ts
 function buildIconFontScalablePrimitives(
@@ -200,9 +200,9 @@ function buildIconFontScalablePrimitives(
 
 <IconLucide />
 
-### 在图层列表中展示 {#display-in-layer-panel}
+### Display in the layer panel
 
-Iconify 也提供了开箱即用的 Webcomponents 组件用于展示，详见：[Iconify Icon web component]。这样我们就可以在图层列表项目的缩略图中展示了：
+Iconify ships Web Components for display. See [Iconify Icon web component]. We use them for thumbnails in the layer list:
 
 ```ts
 import 'iconify-icon';
@@ -217,19 +217,19 @@ if (this.node.type === 'iconfont') {
 }
 ```
 
-### 导出 SVG {#export-icon-to-svg}
+### Export SVG
 
-## Design ↔ Code {#design-to-code}
+## Design ↔ code
 
 [Design ↔ Code]
 
-## 扩展阅读 {#extended-reading}
+## Extended reading
 
 [Variables and Themes]: https://docs.pencil.dev/for-developers/the-pen-format#variables-and-themes
 [Guide to variables in Figma]: https://help.figma.com/hc/en-us/articles/15339657135383-Guide-to-variables-in-Figma
 [Using CSS custom properties (variables)]: https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Cascading_variables/Using_custom_properties
 [Design ↔ Code]: https://docs.pencil.dev/design-and-code/design-to-code
-[课程 33 - 布局引擎]: /zh/guide/lesson-033
+[Lesson 33 - Layout engine]: /guide/lesson-033
 [IconifyJSON]: https://iconify.design/docs/types/iconify-json.html
 [Iconify Icon web component]: https://iconify.design/docs/iconify-icon/
 [Lucide]: https://lucide.dev/icons

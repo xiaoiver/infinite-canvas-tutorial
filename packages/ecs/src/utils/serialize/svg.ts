@@ -39,6 +39,7 @@ import {
   polygonToPathD,
   WATERCOLOR_LAYER_FILL_OPACITY,
 } from '../watercolor-rough';
+import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -58,9 +59,9 @@ export const markerDefaultAttributes = {
   markerFactor: 3,
 };
 
+/** 不设 `fill` 默认值，与线框上未写时由父链继承 / 导入 SVG 时由父 `g` 决定一致；仅保留不透明度。 */
 const fillDefaultAttributes = {
   fillOpacity: 1,
-  fill: 'black',
 };
 
 const commonDefaultAttributes = {
@@ -219,6 +220,17 @@ export const defaultAttributes: Record<
     height: 0,
     url: '',
   },
+  iconfont: {
+    x: 0,
+    y: 0,
+    width: 24,
+    height: 24,
+    iconFontName: '',
+    iconFontFamily: 'lucide',
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
 };
 
 /**
@@ -240,6 +252,10 @@ function effectiveSvgRectCornerRadius(
   return Math.min(r, cap);
 }
 
+/**
+ * 将场景节点导出为 SVG 子树。对 `fill` / `stroke` 等与 {@link getComputedInheritGroupWireMap} 一致的可继承
+ * 线框字段，按 `parentId` 链做「有效展示」再写出，使从父 `g` 继承到的颜色在导出中显式化。
+ */
 export async function serializeNodesToSVGElements(
   nodes: SerializedNode[],
 ): Promise<SVGElement[]> {
@@ -249,6 +265,7 @@ export async function serializeNodesToSVGElements(
   for (const node of nodes) {
     idSerializedNodeMap.set(node.id, node);
   }
+  const inheritGroupWireById = getComputedInheritGroupWireMap(nodes);
 
   const idSVGElementMap = new Map<string, SVGElement>();
   const svgElementIdMap = new WeakMap<SVGElement, string>();
@@ -265,7 +282,9 @@ export async function serializeNodesToSVGElements(
 
     // Use <path> for rough elements.
     const isRough = type?.startsWith('rough-');
-    const element = !isRough && createSVGElement(type);
+    const element =
+      !isRough &&
+      createSVGElement(type === 'iconfont' ? 'g' : (type as string));
 
     const {
       x = 0,
@@ -371,17 +390,26 @@ export async function serializeNodesToSVGElements(
       sourcePortConstraint,
       targetPortConstraint,
       portConstraint,
+      // iconfont：仅用于从 rest 中剥离，避免写到 <g>；导出形态由场景子 path 等表示
+      iconFontName,
+      iconFontFamily,
+      lockAspectRatio,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
+    const effWire = inheritGroupWireById.get(id) ?? {};
+    const restForExport = { ...rest, ...effWire };
+    const nodeForExport = { ...node, ...effWire } as SerializedNode;
+
     if (element) {
-      Object.entries(rest).forEach(([key, value]) => {
+      Object.entries(restForExport).forEach(([key, value]) => {
         if (key === 'hitStrokeWidth' || key === 'svgDataAttributes') {
           return;
         }
         if (
           `${value}` !== '' &&
-          `${defaultAttributes[type][key]}` !== `${value}`
+          `${(defaultAttributes[type] as Record<string, unknown>)[key]}` !==
+            `${value}`
         ) {
           if (isNumber(value)) {
             value = toFixedAndRemoveTrailingZeros(value);
@@ -392,7 +420,7 @@ export async function serializeNodesToSVGElements(
     }
 
     if (type === 'rect' || type === 'ellipse' || type === 'polyline' || type === 'path') {
-      if (!rest.fill) {
+      if (!restForExport.fill) {
         element.setAttribute('fill', 'none');
       }
     }
@@ -490,10 +518,15 @@ export async function serializeNodesToSVGElements(
       (markerStart && markerStart !== 'none') ||
       (markerEnd && markerEnd !== 'none');
     const hasFillImage =
-      rest.fill && isString(rest.fill) && (isUrl(rest.fill) || isDataUrl(rest.fill));
+      restForExport.fill &&
+      isString(restForExport.fill) &&
+      (isUrl(restForExport.fill) || isDataUrl(restForExport.fill as string));
     const hasFillGradient =
-      rest.fill && isString(rest.fill) && isGradient(rest.fill);
-    const hasFillPattern = rest.fill && isPattern(rest.fill);
+      restForExport.fill &&
+      isString(restForExport.fill) &&
+      isGradient(restForExport.fill as string);
+    const hasFillPattern =
+      restForExport.fill && isPattern(restForExport.fill);
     const hasClipMode = !!clipMode;
 
     const hasChildren = edges.some(([parentId]) => parentId === id);
@@ -549,27 +582,27 @@ export async function serializeNodesToSVGElements(
     }
 
     if (innerOrOuterStrokeAlignment) {
-      exportInnerOrOuterStrokeAlignment(node, element, $g);
+      exportInnerOrOuterStrokeAlignment(nodeForExport, element, $g);
     }
     if (innerShadowBlurRadius > 0) {
-      exportInnerShadow(node, element, $g);
+      exportInnerShadow(nodeForExport, element, $g);
     }
     if (dropShadowBlurRadius > 0) {
       // RoughRect has no element, use $g instead.
-      exportDropShadow(node, element || $g, $g);
+      exportDropShadow(nodeForExport, element || $g, $g);
     }
     // avoid `fill="[object ImageBitmap]"`
     if (hasFillImage) {
-      await exportFillImage(node, element, $g);
+      await exportFillImage(nodeForExport, element, $g);
     }
     if (hasFillGradient || hasFillPattern) {
-      exportFillGradientOrPattern(node, element, $g);
+      exportFillGradientOrPattern(nodeForExport, element, $g);
     }
     if (hasMarker && !isRough) {
-      exportMarker(node, element, $g);
+      exportMarker(nodeForExport, element, $g);
     }
     if (hasClipMode) {
-      await exportClipOrMask(node, element, $g);
+      await exportClipOrMask(nodeForExport, element, $g);
     }
 
     $g = $g || element;
@@ -595,10 +628,10 @@ export async function serializeNodesToSVGElements(
       }
     }
     if (isRough) {
-      exportRough(node, $g);
+      exportRough(nodeForExport, $g);
     }
     if (content) {
-      exportText(node as TextSerializedNode, $g, element);
+      exportText(nodeForExport as TextSerializedNode, $g, element);
     }
 
     const matrix = Mat3.from_scale_angle_translation(
