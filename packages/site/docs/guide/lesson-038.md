@@ -5,6 +5,7 @@ description: 'Design tokens, variables, themes, componentized generation, and ic
 
 <script setup>
 import IconLucide from '../components/IconLucide.vue'
+import IconButton from '../components/IconButton.vue'
 </script>
 
 # Lesson 38 - From design to code
@@ -218,6 +219,44 @@ if (this.node.type === 'iconfont') {
 ```
 
 ### Export SVG
+
+### Render with layout {#render-component-with-layout}
+
+Together with the [Lesson 33 - Layout engine], you can build a button that includes an icon:
+
+```ts
+const button1 = {
+    id: 'icon-button',
+    type: 'rect',
+    fill: 'grey',
+    display: 'flex',
+    width: 200,
+    height: 100,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    cornerRadius: 10,
+    gap: 10,
+} as const;
+
+const searchIcon = {
+    id: 'icon-button-search',
+    parentId: 'icon-button',
+    type: 'iconfont',
+    iconFontName: 'search',
+    iconFontFamily: 'lucide',
+};
+
+const text = {
+    id: 'icon-button-text',
+    parentId: 'icon-button',
+    type: 'text',
+    content: 'Button',
+};
+```
+
+<IconButton />
 
 ## Design ↔ code
 

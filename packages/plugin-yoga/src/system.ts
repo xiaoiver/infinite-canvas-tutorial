@@ -29,6 +29,12 @@ import {
   FillSolid,
   measureText,
   type SerializedNode,
+  GeometryDirty,
+  Stroke,
+  MaterialDirty,
+  Group,
+  FillImage,
+  FillPattern,
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaLayoutApplied } from './YogaLayoutApplied';
 // @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
@@ -96,8 +102,10 @@ export class YogaSystem extends System {
   private readonly cameras = this.query((q) => q.added.with(Camera));
   private readonly cameraEntities = this.query((q) => q.current.with(Camera));
 
-  private readonly bounds = this.query(
-    (q) => q.addedOrChanged.and.removed.with(ComputedBounds).trackWrites.and.with(Flex),
+  private readonly bounds = this.query((q) =>
+    q.addedOrChanged.and.removed
+      .with(ComputedBounds)
+      .trackWrites.and.with(Flex),
   );
 
   private readonly yogaLayoutApplied = this.query((q) =>
@@ -139,10 +147,28 @@ export class YogaSystem extends System {
             UI,
             FillGradient,
             FillSolid,
+            FillImage,
+            FillPattern,
             ZIndex,
           )
-          .read.and.using(GlobalTransform, Transform, Transformable, Rect, Ellipse, Polyline, Path, Text, HTML, Embed, YogaLayoutApplied, FlexLayoutDirty)
-          .write,
+          .read.and.using(
+            GlobalTransform,
+            Transform,
+            Transformable,
+            Rect,
+            Ellipse,
+            Polyline,
+            Path,
+            Text,
+            HTML,
+            Embed,
+            Group,
+            YogaLayoutApplied,
+            FlexLayoutDirty,
+            GeometryDirty,
+            MaterialDirty,
+            Stroke,
+          ).write,
     );
   }
 
@@ -188,9 +214,12 @@ export class YogaSystem extends System {
       const styleTree = this.styleTrees.get(cameraId);
 
       if (camera.has(Parent)) {
-        camera.read(Parent).children.filter((child) => !child.has(UI)).forEach((child) => {
-          addFlexSubtrees(api, child, styleTree);
-        });
+        camera
+          .read(Parent)
+          .children.filter((child) => !child.has(UI))
+          .forEach((child) => {
+            addFlexSubtrees(api, child, styleTree);
+          });
 
         process(Yoga, styleTree, (results) => {
           this.updateCameraLayout(cameraId, results);
@@ -201,7 +230,8 @@ export class YogaSystem extends System {
     const cameras = new Set<Entity>();
     this.bounds.addedOrChanged.forEach((entity) => {
       if (entity.has(YogaLayoutApplied)) return;
-      const { positionChanged, sizeChanged } = this.detectBoundsChangeKind(entity);
+      const { positionChanged, sizeChanged } =
+        this.detectBoundsChangeKind(entity);
       if (sizeChanged) {
         const camera = getSceneRoot(entity);
         cameras.add(camera);
@@ -235,7 +265,11 @@ export class YogaSystem extends System {
   private buildSubtreeForFlex(
     api: API,
     flexEntity: Entity,
-  ): { subtreeRoot: StyleTreeNode; hugWidth: boolean; hugHeight: boolean } | null {
+  ): {
+    subtreeRoot: StyleTreeNode;
+    hugWidth: boolean;
+    hugHeight: boolean;
+  } | null {
     const parentTree: StyleTreeNode = { id: '_', children: [] };
     constructStyleTree(api, flexEntity, parentTree, false);
     if (parentTree.children.length === 0) return null;
@@ -257,7 +291,8 @@ export class YogaSystem extends System {
       if (flexEntity.has(Rect)) {
         const r = flexEntity.read(Rect);
         if (w <= 0 && typeof r.width === 'number' && r.width > 0) w = r.width;
-        if (h <= 0 && typeof r.height === 'number' && r.height > 0) h = r.height;
+        if (h <= 0 && typeof r.height === 'number' && r.height > 0)
+          h = r.height;
       }
     }
     if (hugWidth) {
@@ -340,7 +375,8 @@ export class YogaSystem extends System {
                 if (Object.keys(diff).length > 0) {
                   api.updateNode(node, diff, false, []);
                   const ent = api.getEntity(node);
-                  if (ent && !ent.has(YogaLayoutApplied)) ent.add(YogaLayoutApplied);
+                  if (ent && !ent.has(YogaLayoutApplied))
+                    ent.add(YogaLayoutApplied);
                 }
               }
             }
@@ -352,21 +388,26 @@ export class YogaSystem extends System {
             const entity = api.getEntity(node);
             const diff: Partial<SerializedNode> = { x, y, width, height };
             if (entity && (node as { display?: string }).display === 'flex') {
-              const flexFlags = node as { flexHugWidth?: boolean; flexHugHeight?: boolean };
-              if (flexFlags.flexHugWidth == null && !hasExplicitSizeOnAxis(node, entity, 'width')) {
+              const flexFlags = node as {
+                flexHugWidth?: boolean;
+                flexHugHeight?: boolean;
+              };
+              if (
+                flexFlags.flexHugWidth == null &&
+                !hasExplicitSizeOnAxis(node, entity, 'width')
+              ) {
                 (diff as { flexHugWidth?: boolean }).flexHugWidth = true;
               }
-              if (flexFlags.flexHugHeight == null && !hasExplicitSizeOnAxis(node, entity, 'height')) {
+              if (
+                flexFlags.flexHugHeight == null &&
+                !hasExplicitSizeOnAxis(node, entity, 'height')
+              ) {
                 (diff as { flexHugHeight?: boolean }).flexHugHeight = true;
               }
             }
-            api.updateNode(node, diff, false, [
-              'x',
-              'y',
-              'width',
-              'height',
-            ]);
-            if (entity && !entity.has(YogaLayoutApplied)) entity.add(YogaLayoutApplied);
+            api.updateNode(node, diff, false, ['x', 'y', 'width', 'height']);
+            if (entity && !entity.has(YogaLayoutApplied))
+              entity.add(YogaLayoutApplied);
           }
         });
       }
@@ -415,20 +456,47 @@ export function constructStyleTree(
     delete treeNode.height;
   }
 
-  const isAbsolute =
-    (node as { position?: string }).position === 'absolute';
+  const isAbsolute = (node as { position?: string }).position === 'absolute';
   if (isFlexItem && !isAbsolute) {
     delete treeNode.left;
     delete treeNode.top;
   }
 
-  if ((node as SerializedNode).type === 'text' && (treeNode.width == null || treeNode.height == null)) {
+  if (
+    (node as SerializedNode).type === 'text' &&
+    (treeNode.width == null || treeNode.height == null)
+  ) {
     const m = measureText(node as Parameters<typeof measureText>[0]);
     if (treeNode.width == null && typeof m.width === 'number' && m.width > 0) {
       treeNode.width = m.width;
     }
-    if (treeNode.height == null && typeof m.height === 'number' && m.height > 0) {
+    if (
+      treeNode.height == null &&
+      typeof m.height === 'number' &&
+      m.height > 0
+    ) {
       treeNode.height = m.height;
+    }
+  }
+
+  /**
+   * iconfont：未给宽高或为 0 时上面已删为 undefined；Yoga 需要可参与计算的正尺寸。
+   * 与序列化默认、Iconify 视口一致，缺省为 24×24（仍优先用 node 上已设的正数）。
+   */
+  const nType = (node as SerializedNode).type;
+  if (
+    nType === 'iconfont' &&
+    (treeNode.width == null || treeNode.height == null)
+  ) {
+    const nw = (node as { width?: number }).width;
+    const nh = (node as { height?: number }).height;
+    if (treeNode.width == null) {
+      treeNode.width =
+        typeof nw === 'number' && Number.isFinite(nw) && nw > 0 ? nw : 24;
+    }
+    if (treeNode.height == null) {
+      treeNode.height =
+        typeof nh === 'number' && Number.isFinite(nh) && nh > 0 ? nh : 24;
     }
   }
 
@@ -442,18 +510,18 @@ export function constructStyleTree(
 
 const YOGA_VALUE_MAPPINGS = {
   align: {
-    'auto': 'ALIGN_AUTO',
-    'baseline': 'ALIGN_BASELINE',
-    'center': 'ALIGN_CENTER',
+    auto: 'ALIGN_AUTO',
+    baseline: 'ALIGN_BASELINE',
+    center: 'ALIGN_CENTER',
     'flex-end': 'ALIGN_FLEX_END',
     'flex-start': 'ALIGN_FLEX_START',
-    'stretch': 'ALIGN_STRETCH'
+    stretch: 'ALIGN_STRETCH',
   },
   direction: {
-    'column': 'FLEX_DIRECTION_COLUMN',
+    column: 'FLEX_DIRECTION_COLUMN',
     'column-reverse': 'FLEX_DIRECTION_COLUMN_REVERSE',
-    'row': 'FLEX_DIRECTION_ROW',
-    'row-reverse': 'FLEX_DIRECTION_ROW_REVERSE'
+    row: 'FLEX_DIRECTION_ROW',
+    'row-reverse': 'FLEX_DIRECTION_ROW_REVERSE',
   },
   edge: {
     top: 'EDGE_TOP',
@@ -462,97 +530,97 @@ const YOGA_VALUE_MAPPINGS = {
     left: 'EDGE_LEFT',
   },
   justify: {
-    'center': 'JUSTIFY_CENTER',
+    center: 'JUSTIFY_CENTER',
     'flex-end': 'JUSTIFY_FLEX_END',
     'flex-start': 'JUSTIFY_FLEX_START',
     'space-around': 'JUSTIFY_SPACE_AROUND',
-    'space-between': 'JUSTIFY_SPACE_BETWEEN'
+    'space-between': 'JUSTIFY_SPACE_BETWEEN',
   },
   position: {
-    'absolute': 'POSITION_TYPE_ABSOLUTE',
-    'relative': 'POSITION_TYPE_RELATIVE'
+    absolute: 'POSITION_TYPE_ABSOLUTE',
+    relative: 'POSITION_TYPE_RELATIVE',
   },
   wrap: {
-    'nowrap': 'WRAP_NO_WRAP',
-    'wrap': 'WRAP_WRAP'
-  }
-}
+    nowrap: 'WRAP_NO_WRAP',
+    wrap: 'WRAP_WRAP',
+  },
+};
 
-const sides = ['Top', 'Right', 'Bottom', 'Left']
+const sides = ['Top', 'Right', 'Bottom', 'Left'];
 
 // Create functions for setting each supported style property on a Yoga node
-const YOGA_SETTERS = Object.create(null)
-  // Simple properties
-  ;[
-    'width',
-    'height',
-    'minWidth',
-    'minHeight',
-    'maxWidth',
-    'maxHeight',
-    'aspectRatio',
-    ['flexDirection', YOGA_VALUE_MAPPINGS.direction],
-    'flex',
-    ['flexWrap', YOGA_VALUE_MAPPINGS.wrap],
-    'flexBasis',
-    'flexGrow',
-    'flexShrink',
-    ['alignContent', YOGA_VALUE_MAPPINGS.align],
-    ['alignItems', YOGA_VALUE_MAPPINGS.align],
-    ['alignSelf', YOGA_VALUE_MAPPINGS.align],
-    ['justifyContent', YOGA_VALUE_MAPPINGS.justify]
-  ].forEach(styleProp => {
-    let mapping = null
-    if (Array.isArray(styleProp)) {
-      mapping = styleProp[1]
-      // @ts-expect-error
-      styleProp = styleProp[0]
-    }
+const YOGA_SETTERS = Object.create(null);
+// Simple properties
+[
+  'width',
+  'height',
+  'minWidth',
+  'minHeight',
+  'maxWidth',
+  'maxHeight',
+  'aspectRatio',
+  ['flexDirection', YOGA_VALUE_MAPPINGS.direction],
+  'flex',
+  ['flexWrap', YOGA_VALUE_MAPPINGS.wrap],
+  'flexBasis',
+  'flexGrow',
+  'flexShrink',
+  ['alignContent', YOGA_VALUE_MAPPINGS.align],
+  ['alignItems', YOGA_VALUE_MAPPINGS.align],
+  ['alignSelf', YOGA_VALUE_MAPPINGS.align],
+  ['justifyContent', YOGA_VALUE_MAPPINGS.justify],
+].forEach((styleProp) => {
+  let mapping = null;
+  if (Array.isArray(styleProp)) {
+    mapping = styleProp[1];
     // @ts-expect-error
-    const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(1)}`
-    // @ts-expect-error
-    YOGA_SETTERS[styleProp] = mapping ?
-      (yogaNode, value) => {
-        if (mapping.hasOwnProperty(value)) {
-          value = Yoga[mapping[value]]
-          yogaNode[setter](value)
-        }
-      } :
-      (yogaNode, value) => {
-        yogaNode[setter](value)
+    styleProp = styleProp[0];
+  }
+  // @ts-expect-error
+  const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(
+    1,
+  )}`;
+  // @ts-expect-error
+  YOGA_SETTERS[styleProp] = mapping
+    ? (yogaNode, value) => {
+      if (mapping.hasOwnProperty(value)) {
+        value = Yoga[mapping[value]];
+        yogaNode[setter](value);
       }
-  })
+    }
+    : (yogaNode, value) => {
+      yogaNode[setter](value);
+    };
+});
 
 // Position-related properties
 YOGA_SETTERS.position = (yogaNode, value) => {
-  yogaNode.setPositionType(Yoga[YOGA_VALUE_MAPPINGS.position[value]])
-}
-sides.forEach(side => {
-  const edgeConst = YOGA_VALUE_MAPPINGS.edge[side.toLowerCase()]
+  yogaNode.setPositionType(Yoga[YOGA_VALUE_MAPPINGS.position[value]]);
+};
+sides.forEach((side) => {
+  const edgeConst = YOGA_VALUE_MAPPINGS.edge[side.toLowerCase()];
   YOGA_SETTERS[side.toLowerCase()] = (yogaNode, value) => {
-    yogaNode.setPosition(Yoga[edgeConst], value)
-  }
-})
+    yogaNode.setPosition(Yoga[edgeConst], value);
+  };
+});
 
-  // Multi-side properties
-  ;[
-    'margin',
-    'padding',
-    'border'
-  ].forEach(styleProp => {
-    sides.forEach(side => {
-      const edgeConst = YOGA_VALUE_MAPPINGS.edge[side.toLowerCase()]
-      const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(1)}`
-      YOGA_SETTERS[`${styleProp}${side}`] = (yogaNode, value) => {
-        yogaNode[setter](Yoga[edgeConst], value)
-      }
-    })
-  })
+// Multi-side properties
+['margin', 'padding', 'border'].forEach((styleProp) => {
+  sides.forEach((side) => {
+    const edgeConst = YOGA_VALUE_MAPPINGS.edge[side.toLowerCase()];
+    const setter = `set${styleProp.charAt(0).toUpperCase()}${styleProp.substr(
+      1,
+    )}`;
+    YOGA_SETTERS[`${styleProp}${side}`] = (yogaNode, value) => {
+      yogaNode[setter](Yoga[edgeConst], value);
+    };
+  });
+});
 
 // 简写：padding / margin 单值或数组，同 CSS
 const setPaddingOrMargin = (styleProp: 'padding' | 'margin') => {
-  const setter = styleProp === 'padding' ? 'setPadding' : 'setMargin'
-  const edgeKeys = ['top', 'right', 'bottom', 'left']
+  const setter = styleProp === 'padding' ? 'setPadding' : 'setMargin';
+  const edgeKeys = ['top', 'right', 'bottom', 'left'];
   YOGA_SETTERS[styleProp] = (yogaNode: unknown, value: number | number[]) => {
     const vals = Array.isArray(value)
       ? value.length === 1
@@ -562,28 +630,40 @@ const setPaddingOrMargin = (styleProp: 'padding' | 'margin') => {
           : value.length === 4
             ? value
             : [value[0], value[0], value[0], value[0]]
-      : [value, value, value, value]
+      : [value, value, value, value];
     edgeKeys.forEach((key, i) => {
-      const edgeConst = YOGA_VALUE_MAPPINGS.edge[key]
-      yogaNode[setter](Yoga[edgeConst], vals[i])
-    })
-  }
-}
-setPaddingOrMargin('padding')
-setPaddingOrMargin('margin')
+      const edgeConst = YOGA_VALUE_MAPPINGS.edge[key];
+      yogaNode[setter](Yoga[edgeConst], vals[i]);
+    });
+  };
+};
+setPaddingOrMargin('padding');
+setPaddingOrMargin('margin');
 
 // Gap（Yoga 2.0+）：flex 子项之间的行/列间距，需在 Yoga 加载后注册
 function registerGapSetters() {
   // GUTTER_ALL : 2, GUTTER_COLUMN: 0, GUTTER_ROW: 1
   YOGA_SETTERS.gap = (yogaNode: unknown, value: number) => {
-    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_ROW, value);
-    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_COLUMN, value);
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(
+      Yoga.GUTTER_ROW,
+      value,
+    );
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(
+      Yoga.GUTTER_COLUMN,
+      value,
+    );
   };
   YOGA_SETTERS.rowGap = (yogaNode: unknown, value: number) => {
-    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_ROW, value);
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(
+      Yoga.GUTTER_ROW,
+      value,
+    );
   };
   YOGA_SETTERS.columnGap = (yogaNode: unknown, value: number) => {
-    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(Yoga.GUTTER_COLUMN, value);
+    (yogaNode as { setGap: (g: number, v: number) => void }).setGap(
+      Yoga.GUTTER_COLUMN,
+      value,
+    );
   };
 }
 
@@ -596,7 +676,11 @@ function walkStyleTree(styleTree, callback) {
   }
 }
 
-function process(Yoga, styleTree: StyleTreeNode, callback: (results: LayoutResults) => void) {
+function process(
+  Yoga,
+  styleTree: StyleTreeNode,
+  callback: (results: LayoutResults) => void,
+) {
   // Init common node config
   const yogaConfig = Yoga.Config.create();
   yogaConfig.setPointScaleFactor(0); //disable value rounding
@@ -637,13 +721,13 @@ function process(Yoga, styleTree: StyleTreeNode, callback: (results: LayoutResul
   // Perform the layout and collect the results as a flat id-to-computed-layout map
   root.calculateLayout(undefined, undefined);
   const results = Object.create(null);
-  walkStyleTree(styleTree, styleNode => {
+  walkStyleTree(styleTree, (styleNode) => {
     const { id, yogaNode } = styleNode;
     results[id] = {
       x: yogaNode.getComputedLeft(),
       y: yogaNode.getComputedTop(),
       width: yogaNode.getComputedWidth(),
-      height: yogaNode.getComputedHeight()
+      height: yogaNode.getComputedHeight(),
     };
   });
   root.freeRecursive();

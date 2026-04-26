@@ -5,6 +5,7 @@ description: ''
 
 <script setup>
 import IconLucide from '../../components/IconLucide.vue'
+import IconButton from '../../components/IconButton.vue'
 </script>
 
 # 课程 38 - 从设计到代码
@@ -218,6 +219,44 @@ if (this.node.type === 'iconfont') {
 ```
 
 ### 导出 SVG {#export-icon-to-svg}
+
+### 结合布局渲染组件 {#render-component-with-layout}
+
+结合 [课程 33 - 布局引擎] 我们就可以实现带有 icon 的 Button 了：
+
+```ts
+const button1 = {
+    id: 'icon-button',
+    type: 'rect',
+    fill: 'grey',
+    display: 'flex',
+    width: 200,
+    height: 100,
+    padding: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    cornerRadius: 10,
+    gap: 10,
+} as const;
+
+const searchIcon = {
+    id: 'icon-button-search',
+    parentId: 'icon-button',
+    type: 'iconfont',
+    iconFontName: 'search',
+    iconFontFamily: 'lucide',
+};
+
+const text = {
+    id: 'icon-button-text',
+    parentId: 'icon-button',
+    type: 'text',
+    content: 'Button',
+};
+```
+
+<IconButton />
 
 ## Design ↔ Code {#design-to-code}
 
