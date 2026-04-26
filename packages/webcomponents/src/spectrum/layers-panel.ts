@@ -1,4 +1,4 @@
-import { html, css, LitElement, type PropertyValues } from 'lit';
+import { html, css, LitElement, type PropertyValues, type TemplateResult } from 'lit';
 import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
@@ -21,22 +21,68 @@ import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
 
 const LAYERS_PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-layers-panel-body-height';
+const LAYERS_PANEL_WIDTH_STORAGE_KEY = 'ic-spectrum-layers-panel-width';
 const DEFAULT_LAYERS_PANEL_BODY_HEIGHT = 300;
+const DEFAULT_LAYERS_PANEL_WIDTH_PX = 320;
 const MIN_LAYERS_PANEL_BODY_HEIGHT = 120;
 const MAX_LAYERS_PANEL_BODY_HEIGHT = 900;
+const MIN_LAYERS_PANEL_WIDTH_PX = 260;
+const MAX_LAYERS_PANEL_WIDTH_PX = 720;
 
 @customElement('ic-spectrum-layers-panel')
 @localized()
 export class LayersPanel extends LitElement {
   static styles = css`
+    :host {
+      display: block;
+      max-width: 100%;
+    }
+
+    .panel-root {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      box-sizing: border-box;
+      min-width: ${MIN_LAYERS_PANEL_WIDTH_PX}px;
+      max-width: 100%;
+    }
+
+    .width-resize-handle,
+    .height-resize-handle {
+      flex-shrink: 0;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: var(--spectrum-corner-radius-100);
+    }
+
+    .width-resize-handle {
+      width: 10px;
+      margin: 4px 0 4px 0;
+      cursor: ew-resize;
+    }
+
+    .panel-column {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+    }
+
     section {
       display: flex;
       flex-direction: column;
+      flex: 1;
+      min-width: 0;
       min-height: 0;
+      box-sizing: border-box;
       background: var(--spectrum-gray-100);
-      border-radius: var(--spectrum-corner-radius-200);
+      border-radius: var(--spectrum-corner-radius-200) var(--spectrum-corner-radius-200) 0
+        0;
 
-      margin: 4px;
+      margin: 4px 4px 0 4px;
 
       filter: drop-shadow(
         var(--spectrum-drop-shadow-color) 0px var(--spectrum-drop-shadow-y)
@@ -67,29 +113,34 @@ export class LayersPanel extends LitElement {
       scroll-padding: 8px;
     }
 
-    .resize-handle {
-      flex-shrink: 0;
+    .height-resize-handle {
       height: 10px;
-      margin: 0 4px 2px;
+      margin: 4px 0 4px 0;
       cursor: ns-resize;
-      touch-action: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: var(--spectrum-corner-radius-100);
     }
 
-    .resize-handle:hover,
-    .resize-handle:focus-visible {
+    .width-resize-handle:hover,
+    .width-resize-handle:focus-visible,
+    .height-resize-handle:hover,
+    .height-resize-handle:focus-visible {
       background: var(--spectrum-gray-300);
     }
 
-    .resize-handle::after {
+    .width-resize-handle::after,
+    .height-resize-handle::after {
       content: '';
-      width: 36px;
-      height: 3px;
       border-radius: 2px;
       background: var(--spectrum-gray-500);
+    }
+
+    .width-resize-handle::after {
+      width: 3px;
+      height: 36px;
+    }
+
+    .height-resize-handle::after {
+      width: 36px;
+      height: 3px;
     }
 
     .layer-siblings {
@@ -123,11 +174,20 @@ export class LayersPanel extends LitElement {
   @state()
   private panelBodyHeight = DEFAULT_LAYERS_PANEL_BODY_HEIGHT;
 
+  @state()
+  private panelWidth = DEFAULT_LAYERS_PANEL_WIDTH_PX;
+
   private resizePointerId: number | null = null;
 
   private resizeStartY = 0;
 
   private resizeStartHeight = 0;
+
+  private widthResizePointerId: number | null = null;
+
+  private widthResizeStartX = 0;
+
+  private widthResizeStartW = 0;
 
   private sortableInstances: Sortable[] = [];
 
@@ -142,6 +202,13 @@ export class LayersPanel extends LitElement {
         const n = parseInt(stored, 10);
         if (!Number.isNaN(n)) {
           this.panelBodyHeight = this.clampLayersPanelHeight(n);
+        }
+      }
+      const storedW = localStorage.getItem(LAYERS_PANEL_WIDTH_STORAGE_KEY);
+      if (storedW) {
+        const n = parseInt(storedW, 10);
+        if (!Number.isNaN(n)) {
+          this.panelWidth = this.clampLayersPanelWidth(n);
         }
       }
     }
@@ -192,6 +259,19 @@ export class LayersPanel extends LitElement {
     return Math.min(max, Math.max(MIN_LAYERS_PANEL_BODY_HEIGHT, Math.round(h)));
   }
 
+  private clampLayersPanelWidth(w: number): number {
+    const max = Math.min(
+      MAX_LAYERS_PANEL_WIDTH_PX,
+      typeof window !== 'undefined'
+        ? Math.max(
+            MIN_LAYERS_PANEL_WIDTH_PX,
+            Math.floor(window.innerWidth - 80),
+          )
+        : MAX_LAYERS_PANEL_WIDTH_PX,
+    );
+    return Math.min(max, Math.max(MIN_LAYERS_PANEL_WIDTH_PX, Math.round(w)));
+  }
+
   private handleResizePointerDown(e: PointerEvent) {
     e.preventDefault();
     this.resizePointerId = e.pointerId;
@@ -227,6 +307,99 @@ export class LayersPanel extends LitElement {
         String(this.panelBodyHeight),
       );
     }
+  }
+
+  private handleWidthResizePointerDown(e: PointerEvent) {
+    e.preventDefault();
+    this.widthResizePointerId = e.pointerId;
+    this.widthResizeStartX = e.clientX;
+    this.widthResizeStartW = this.panelWidth;
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  private handleWidthResizePointerMove(e: PointerEvent) {
+    if (this.widthResizePointerId !== e.pointerId) {
+      return;
+    }
+    const dx = e.clientX - this.widthResizeStartX;
+    // 向左拖（dx<0）加宽（与 properties-panel 一致）
+    const next = this.clampLayersPanelWidth(this.widthResizeStartW - dx);
+    if (next !== this.panelWidth) {
+      this.panelWidth = next;
+    }
+  }
+
+  private endWidthResize(e: PointerEvent) {
+    if (this.widthResizePointerId !== e.pointerId) {
+      return;
+    }
+    this.widthResizePointerId = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(
+        LAYERS_PANEL_WIDTH_STORAGE_KEY,
+        String(this.panelWidth),
+      );
+    }
+  }
+
+  private get maxLayersPanelWidthResolved(): number {
+    return typeof window !== 'undefined'
+      ? Math.max(
+          MIN_LAYERS_PANEL_WIDTH_PX,
+          Math.min(MAX_LAYERS_PANEL_WIDTH_PX, window.innerWidth - 80),
+        )
+      : MAX_LAYERS_PANEL_WIDTH_PX;
+  }
+
+  private renderWidthResizeHandle() {
+    return html`<div
+      class="width-resize-handle"
+      tabindex="0"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label=${msg(str`Resize panel width`)}
+      aria-valuenow=${this.panelWidth}
+      aria-valuemin=${MIN_LAYERS_PANEL_WIDTH_PX}
+      aria-valuemax=${this.maxLayersPanelWidthResolved}
+      @pointerdown=${this.handleWidthResizePointerDown}
+      @pointermove=${this.handleWidthResizePointerMove}
+      @pointerup=${this.endWidthResize}
+      @pointercancel=${this.endWidthResize}
+    ></div>`;
+  }
+
+  private renderPanelRoot(inner: TemplateResult) {
+    return html`
+      <div
+        class="panel-root"
+        style=${`width: ${this.panelWidth}px; max-width: 100%;`}
+      >
+        ${this.renderWidthResizeHandle()}
+        ${inner}
+      </div>
+    `;
+  }
+
+  private renderHeightResizeHandle() {
+    return html`<div
+      class="height-resize-handle"
+      tabindex="0"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label=${msg(str`Resize panel height`)}
+      aria-valuenow=${this.panelBodyHeight}
+      aria-valuemin=${MIN_LAYERS_PANEL_BODY_HEIGHT}
+      aria-valuemax=${MAX_LAYERS_PANEL_BODY_HEIGHT}
+      @pointerdown=${this.handleResizePointerDown}
+      @pointermove=${this.handleResizePointerMove}
+      @pointerup=${this.endResize}
+      @pointercancel=${this.endResize}
+    ></div>`;
   }
 
   disconnectedCallback(): void {
@@ -558,103 +731,97 @@ export class LayersPanel extends LitElement {
     }
 
     return taskbarSelected.includes(Task.SHOW_LAYERS_PANEL)
-      ? html`<section>
-          <h4>
-            ${msg(str`Layers`)}
-            <sp-action-button quiet size="s" @click=${this.handleClose}>
-              <sp-icon-close slot="icon"></sp-icon-close>
-            </sp-action-button>
-          </h4>
-          <sp-action-group class="actions">
-            <sp-action-button quiet size="s" disabled @click=${this.handleAdd}>
-              <sp-tooltip self-managed placement="bottom">
-                ${msg(str`Add new layer`)}
-              </sp-tooltip>
-              <sp-icon-add slot="icon"></sp-icon-add>
-            </sp-action-button>
+      ? this.renderPanelRoot(html`<div class="panel-column">
+          <section>
+            <h4>
+              ${msg(str`Layers`)}
+              <sp-action-button quiet size="s" @click=${this.handleClose}>
+                <sp-icon-close slot="icon"></sp-icon-close>
+              </sp-action-button>
+            </h4>
+            <sp-action-group class="actions">
+              <sp-action-button quiet size="s" disabled @click=${this.handleAdd}>
+                <sp-tooltip self-managed placement="bottom">
+                  ${msg(str`Add new layer`)}
+                </sp-tooltip>
+                <sp-icon-add slot="icon"></sp-icon-add>
+              </sp-action-button>
 
-            <sp-action-menu
-              label=${msg(str`Arrange layers`)}
-              quiet
-              size="s"
-              .disabled=${layersSelected.length === 0}
-            >
-              <sp-icon-show-all-layers slot="icon"></sp-icon-show-all-layers>
-              <sp-menu-group>
-                <span slot="header">${msg(str`Arrange layers`)}</span>
-                <sp-menu-item
-                  ?disabled=${isSelectedEmpty || bringForwardDisabled}
-                  @click=${this.handleBringToFront}
-                >
-                  <sp-icon-layers-bring-to-front
-                    slot="icon"
-                  ></sp-icon-layers-bring-to-front>
-                  ${msg(str`Bring to front`)}
-                </sp-menu-item>
-                <sp-menu-item
-                  ?disabled=${isSelectedEmpty || bringForwardDisabled}
-                  @click=${this.handleBringForward}
-                >
-                  <sp-icon-layers-forward slot="icon"></sp-icon-layers-forward>
-                  ${msg(str`Bring forward`)}
-                </sp-menu-item>
-                <sp-menu-item
-                  ?disabled=${isSelectedEmpty || sendBackwardDisabled}
-                  @click=${this.handleSendBackward}
-                >
-                  <sp-icon-layers-backward
-                    slot="icon"
-                  ></sp-icon-layers-backward>
-                  ${msg(str`Send backward`)}
-                </sp-menu-item>
-                <sp-menu-item
-                  ?disabled=${isSelectedEmpty || sendBackwardDisabled}
-                  @click=${this.handleSendToBack}
-                >
-                  <sp-icon-layers-send-to-back
-                    slot="icon"
-                  ></sp-icon-layers-send-to-back>
-                  ${msg(str`Send to back`)}
-                </sp-menu-item>
-              </sp-menu-group>
-            </sp-action-menu>
+              <sp-action-menu
+                label=${msg(str`Arrange layers`)}
+                quiet
+                size="s"
+                .disabled=${layersSelected.length === 0}
+              >
+                <sp-icon-show-all-layers
+                  slot="icon"
+                ></sp-icon-show-all-layers>
+                <sp-menu-group>
+                  <span slot="header">${msg(str`Arrange layers`)}</span>
+                  <sp-menu-item
+                    ?disabled=${isSelectedEmpty || bringForwardDisabled}
+                    @click=${this.handleBringToFront}
+                  >
+                    <sp-icon-layers-bring-to-front
+                      slot="icon"
+                    ></sp-icon-layers-bring-to-front>
+                    ${msg(str`Bring to front`)}
+                  </sp-menu-item>
+                  <sp-menu-item
+                    ?disabled=${isSelectedEmpty || bringForwardDisabled}
+                    @click=${this.handleBringForward}
+                  >
+                    <sp-icon-layers-forward
+                      slot="icon"
+                    ></sp-icon-layers-forward>
+                    ${msg(str`Bring forward`)}
+                  </sp-menu-item>
+                  <sp-menu-item
+                    ?disabled=${isSelectedEmpty || sendBackwardDisabled}
+                    @click=${this.handleSendBackward}
+                  >
+                    <sp-icon-layers-backward
+                      slot="icon"
+                    ></sp-icon-layers-backward>
+                    ${msg(str`Send backward`)}
+                  </sp-menu-item>
+                  <sp-menu-item
+                    ?disabled=${isSelectedEmpty || sendBackwardDisabled}
+                    @click=${this.handleSendToBack}
+                  >
+                    <sp-icon-layers-send-to-back
+                      slot="icon"
+                    ></sp-icon-layers-send-to-back>
+                    ${msg(str`Send to back`)}
+                  </sp-menu-item>
+                </sp-menu-group>
+              </sp-action-menu>
 
-            <sp-action-button
-              quiet
-              size="s"
-              @click=${this.handleDelete}
-              .disabled=${layersSelected.length === 0}
+              <sp-action-button
+                quiet
+                size="s"
+                @click=${this.handleDelete}
+                .disabled=${layersSelected.length === 0}
+              >
+                <sp-tooltip self-managed placement="bottom">
+                  ${msg(str`Delete`)}
+                </sp-tooltip>
+                <sp-icon-delete slot="icon"></sp-icon-delete>
+              </sp-action-button>
+            </sp-action-group>
+            <div
+              class="container"
+              style=${`height:${this.panelBodyHeight}px`}
             >
-              <sp-tooltip self-managed placement="bottom">
-                ${msg(str`Delete`)}
-              </sp-tooltip>
-              <sp-icon-delete slot="icon"></sp-icon-delete>
-            </sp-action-button>
-          </sp-action-group>
-          <div
-            class="container"
-            style=${`height:${this.panelBodyHeight}px`}
-          >
-            <div class="layer-siblings" data-layer-parent-id="">
-              ${map(sortedNodes, (node) => {
-                return this.renderLayerBranch(node, 0);
-              })}
+              <div class="layer-siblings" data-layer-parent-id="">
+                ${map(sortedNodes, (node) => {
+                  return this.renderLayerBranch(node, 0);
+                })}
+              </div>
             </div>
-          </div>
-          <div
-            class="resize-handle"
-            tabindex="0"
-            role="separator"
-            aria-orientation="horizontal"
-            aria-valuenow=${this.panelBodyHeight}
-            aria-valuemin=${MIN_LAYERS_PANEL_BODY_HEIGHT}
-            aria-valuemax=${MAX_LAYERS_PANEL_BODY_HEIGHT}
-            @pointerdown=${this.handleResizePointerDown}
-            @pointermove=${this.handleResizePointerMove}
-            @pointerup=${this.endResize}
-            @pointercancel=${this.endResize}
-          ></div>
-        </section>`
+          </section>
+          ${this.renderHeightResizeHandle()}
+        </div>`)
       : null;
   }
 

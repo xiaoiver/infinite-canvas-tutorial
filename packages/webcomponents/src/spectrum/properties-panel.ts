@@ -50,11 +50,9 @@ export class PropertiesPanel extends LitElement {
       max-width: 100%;
     }
 
-    .width-resize-handle {
+    .width-resize-handle,
+    .height-resize-handle {
       flex-shrink: 0;
-      width: 10px;
-      margin: 4px 0 4px 0;
-      cursor: ew-resize;
       touch-action: none;
       display: flex;
       align-items: center;
@@ -62,17 +60,48 @@ export class PropertiesPanel extends LitElement {
       border-radius: var(--spectrum-corner-radius-100);
     }
 
+    .width-resize-handle {
+      width: 10px;
+      margin: 4px 0 4px 0;
+      cursor: ew-resize;
+    }
+
+    .height-resize-handle {
+      height: 10px;
+      margin: 4px 0 4px 0;
+      cursor: ns-resize;
+    }
+
     .width-resize-handle:hover,
-    .width-resize-handle:focus-visible {
+    .width-resize-handle:focus-visible,
+    .height-resize-handle:hover,
+    .height-resize-handle:focus-visible {
       background: var(--spectrum-gray-300);
     }
 
-    .width-resize-handle::after {
+    .width-resize-handle::after,
+    .height-resize-handle::after {
       content: '';
-      width: 3px;
-      height: 36px;
       border-radius: 2px;
       background: var(--spectrum-gray-500);
+    }
+
+    .width-resize-handle::after {
+      width: 3px;
+      height: 36px;
+    }
+
+    .height-resize-handle::after {
+      width: 36px;
+      height: 3px;
+    }
+
+    .panel-column {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
     }
 
     section {
@@ -83,9 +112,10 @@ export class PropertiesPanel extends LitElement {
       box-sizing: border-box;
       min-height: 0;
       background: var(--spectrum-gray-100);
-      border-radius: var(--spectrum-corner-radius-200);
+      border-radius: var(--spectrum-corner-radius-200) var(--spectrum-corner-radius-200) 0
+        0;
 
-      margin: 4px;
+      margin: 4px 4px 0 4px;
 
       filter: drop-shadow(
         var(--spectrum-drop-shadow-color) 0px var(--spectrum-drop-shadow-y)
@@ -146,30 +176,6 @@ export class PropertiesPanel extends LitElement {
       margin: 0 0 var(--spectrum-global-dimension-size-50) 0;
     }
 
-    .resize-handle {
-      flex-shrink: 0;
-      height: 10px;
-      margin: 0 4px 2px;
-      cursor: ns-resize;
-      touch-action: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: var(--spectrum-corner-radius-100);
-    }
-
-    .resize-handle:hover,
-    .resize-handle:focus-visible {
-      background: var(--spectrum-gray-300);
-    }
-
-    .resize-handle::after {
-      content: '';
-      width: 36px;
-      height: 3px;
-      border-radius: 2px;
-      background: var(--spectrum-gray-500);
-    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -385,10 +391,11 @@ export class PropertiesPanel extends LitElement {
 
   private renderResizeHandle() {
     return html`<div
-      class="resize-handle"
+      class="height-resize-handle"
       tabindex="0"
       role="separator"
       aria-orientation="horizontal"
+      aria-label=${msg(str`Resize panel height`)}
       aria-valuenow=${this.panelBodyHeight}
       aria-valuemin=${MIN_PANEL_BODY_HEIGHT}
       aria-valuemax=${MAX_PANEL_BODY_HEIGHT}
@@ -415,7 +422,10 @@ export class PropertiesPanel extends LitElement {
         style=${`width: ${this.panelWidth}px; max-width: 100%;`}
       >
         ${this.renderWidthResizeHandle()}
-        ${inner}
+        <div class="panel-column">
+          ${inner}
+          ${this.renderResizeHandle()}
+        </div>
       </div>
     `;
   }
@@ -431,7 +441,6 @@ export class PropertiesPanel extends LitElement {
           ${this.renderExportAccordionItem('extra-accordion-items')}
         </ic-spectrum-document-theme-settings>
       </div>
-      ${this.renderResizeHandle()}
     `;
   }
 
@@ -615,7 +624,6 @@ export class PropertiesPanel extends LitElement {
             ${this.renderExportAccordionItem()}
           </sp-accordion>
         </div>
-        ${this.renderResizeHandle()}
       </section>`);
     }
 
@@ -652,7 +660,6 @@ export class PropertiesPanel extends LitElement {
           .node=${node}
         ></ic-spectrum-properties-panel-content>
       </div>
-      ${this.renderResizeHandle()}
     </section>`);
   }
 }

@@ -182,6 +182,47 @@ export function shiftPath(d: string, dx: number, dy: number) {
   return path2String(absoluteArray);
 }
 
+const DECIMAL_ROUND_EPS = 1e-8;
+
+/** 将单坐标量化为指定位数十进制，供 icon 缩放后的 path/ellipse/line 与 SVG 导出共用。 */
+export function roundNumberToDecimals(
+  n: number,
+  decimalPlaces: number,
+): number {
+  if (!Number.isFinite(n)) {
+    return n;
+  }
+  const f = 10 ** decimalPlaces;
+  const o = Math.round(n * f) / f;
+  if (Object.is(o, -0) || (Math.abs(o) < DECIMAL_ROUND_EPS && f >= 1)) {
+    return 0;
+  }
+  return o;
+}
+
+/**
+ * 将 `d` 中各指令的数值量化为 `decimalPlaces` 位十进制，缩短导出 SVG 长度且通常不影响视觉效果。
+ * 在 {@link path2String} 之前对 `path2Absolute` 的段内数字取整，与 {@link transformPath} / {@link shiftPath} 的段结构一致。
+ */
+export function roundPathDToDecimals(
+  d: string,
+  decimalPlaces: number,
+): string {
+  if (!d?.trim()) {
+    return d;
+  }
+  const absoluteArray = path2Absolute(d);
+  absoluteArray.forEach((segment) => {
+    for (let i = 1; i < segment.length; i++) {
+      const v = segment[i] as number;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        segment[i] = roundNumberToDecimals(v, decimalPlaces);
+      }
+    }
+  });
+  return path2String(absoluteArray);
+}
+
 /**
  * 局部路径/折线顶点在「几何 min 归一化」坐标系下，不应再叠加节点位姿里的平移（m20/m21），
  * 否则 transformPath / 点乘会与 obb 里的 x,y 重复平移。
