@@ -2284,6 +2284,16 @@ export class Select extends System {
       // Group：selection OBB 是世界子并集 AABB，与 Group 根 Transform 不一致，不能对根套用 Konva delta；
       // 只把 delta 下发到子树（与多选 resize 一致）。
       if (entity.has(Group)) {
+        const n = api.getNodeByEntity(entity) as SerializedNode | undefined;
+        if (
+          n &&
+          (n.type === 'iconfont' || (n.type as string) === 'icon_font')
+        ) {
+          // iconfont 根有 Group 与子 path 实体，但子节点无 SerializedNode；需对根调用 updateNodeOBB 以触发
+          // mutate + syncIconFontChildren（子 path 的 d 随 width/height 重算）
+          entitiesToUpdate.push(entity);
+          return;
+        }
         if (entity.has(Parent)) {
           const { children } = entity.read(Parent);
           children.forEach((child) => collectSelectedAndDescendants(child));

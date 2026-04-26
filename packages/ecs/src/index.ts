@@ -129,6 +129,8 @@ export {
   type HeatmapEffect,
   type GemSmokeEffect,
 } from './utils';
+export * from './utils/icon-font';
+export * from './utils/group-presentation';
 export * from './utils/design-variables';
 export * from './utils/entity-design-bindings';
 export * from './types/serialized-node';

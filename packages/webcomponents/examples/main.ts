@@ -1,5 +1,6 @@
 import {
   App,
+  registerIconifyIconSet,
   svgElementsToSerializedNodes,
   svgSvgElementToComputedCamera,
   DefaultPlugins,
@@ -40,6 +41,7 @@ import {
   ThemeMode,
   RectSerializedNode,
   TRANSFORMER_MASK_FILL_COLOR,
+  TesselationMethod,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -180,6 +182,21 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersLassoing: ['parent'],
   });
 
+  const path = {
+    id: 'cj03l-path',
+    type: 'path',
+    d: 'M150 0 L121 90 L198 35 L102 35 L179 90 Z',
+    fill: 'black',
+    fillRule: 'evenodd',
+    // wireframe: true,
+    tessellationMethod: TesselationMethod.LIBTESS,
+    stroke: 'none',
+    strokeWidth: 0,
+    zIndex: 0,
+    filter:
+      'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+  }
+
   /** 对齐 https://shaders.paper.design 的 `<LiquidMetal image=… fit=contain … />` 典型参数（ ecs 的 filter 串无 speed/scale/fit，由节点尺寸与 fill 位图体现）。 */
   const image = {
     id: 'cj03l-image',
@@ -230,6 +247,22 @@ canvas.addEventListener(Event.READY, async (e) => {
     zIndex: 1,
   } as const;
 
+  const icon = {
+    id: 'arrow-down-icon-pixelarticons',
+    type: 'iconfont' as const,
+    x: 100,
+    y: 100,
+    width: 32,
+    height: 32,
+    zIndex: 1,
+    iconFontName: 'a-arrow-down',
+    iconFontFamily: 'pixelarticons',
+    // stroke: 'red',
+    fill: 'red',
+    // strokeWidth: 2,
+    lockAspectRatio: true,
+  };
+
   api.setAppState({
     variables: {
       // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
@@ -238,11 +271,21 @@ canvas.addEventListener(Event.READY, async (e) => {
       '--radius-pill': { type: 'number', value: 999 },
     },
   });
-  api.updateNodes([
-    image,
-    button,
-    text,
-  ]);
+
+  {
+    const m = await import('@iconify/json/json/pixelarticons.json');
+    // 把 import() 整模块交给注册（内部会解包 default、读 icons），避免仅取 .default 在部分打包器下为 undefined 导致表为空
+    registerIconifyIconSet('pixelarticons', m);
+  }
+
+  api.runAtNextTick(() => {
+    api.updateNodes([
+      icon,
+      // image,
+      // button,
+      // text,
+    ]);
+  });
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

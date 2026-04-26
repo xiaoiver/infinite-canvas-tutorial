@@ -639,6 +639,10 @@ export abstract class Drawcall {
     builder: RGGraphBuilder,
   ) {
     if (this.geometryDirty) {
+      // CPU Poisson / heatmap preprocess are derived from the rasterized shape; `useEngineTime`
+      // otherwise skips readback assuming only time changes — invalidate when geometry changes.
+      this.#liquidMetalPoissonEngineTimeCacheValid = false;
+      this.#heatmapEngineTimeCacheValid = false;
       this.createGeometry();
     }
 

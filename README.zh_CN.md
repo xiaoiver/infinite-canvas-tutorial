@@ -472,6 +472,15 @@ pnpm run dev
 | :-------------------------------------------: | :--------------------------------------------: |
 | ![vello](./screenshots/radiance-cascades.png) |    ![mermaid](./screenshots/rc-mermaid.png)    |
 
+## 课程 38 - 从设计到代码 [🔗](https://infinitecanvas.cc/zh/guide/lesson-038)
+
+-   实现变量与主题
+-   支持 iconfont 渲染，在运行时引入 lucide、material 等图标集
+
+|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |
+| :---------------------------------------: | :------------------------------------------: |
+| ![variables](./screenshots/variables.png) |   ![variables](./screenshots/iconfont.png)   |
+
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md

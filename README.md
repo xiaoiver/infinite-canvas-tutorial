@@ -471,6 +471,15 @@ If you want to use it in your own project, you can refer to:
 | :-------------------------------------------: | :--------------------------------------------: |
 | ![vello](./screenshots/radiance-cascades.png) |    ![mermaid](./screenshots/rc-mermaid.png)    |
 
+## Lesson 38 - From design to code [🔗](https://infinitecanvas.cc/guide/lesson-038)
+
+-   Variables and themes
+-   Render iconfont, import lucide, material and other iconsets
+
+|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |
+| :---------------------------------------: | :------------------------------------------: |
+| ![variables](./screenshots/variables.png) |   ![variables](./screenshots/iconfont.png)   |
+
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [Self-Deployment Guide]: /packages/app/README.md

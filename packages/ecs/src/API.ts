@@ -44,6 +44,9 @@ import {
   mat3WithoutTranslation,
   buildDesignVariableRefreshPatch,
 } from './utils';
+import {
+  getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList,
+} from './utils/icon-font';
 import type {
   BrushSerializedNode,
   GSerializedNode,
@@ -253,6 +256,11 @@ export class API {
 
   getAppState() {
     return this.stateManagement.getAppState();
+  }
+
+  /** 当前已注册的 icon 集合 id（`registerIconifyIcons` 的 `family` 参数）。 */
+  getRegisteredIconifyIconFamilies(): string[] {
+    return getRegisteredIconifyIconFamiliesList();
   }
 
   setAppState(
@@ -742,7 +750,14 @@ export class API {
       const [x, y] = vec2.transformMat3(vec2.create(), [point.x, point.y], invMatrix);
 
       let isIntersected = false;
-      const hasFill = (entity.has(FillSolid) && entity.read(FillSolid).value !== 'none') || entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern);
+      const fillSolid = entity.has(FillSolid) ? entity.read(FillSolid).value : '';
+      const hasFill =
+        (entity.has(FillSolid) &&
+          fillSolid !== 'none' &&
+          fillSolid !== '') ||
+        entity.has(FillGradient) ||
+        entity.has(FillImage) ||
+        entity.has(FillPattern);
       const fill = hasFill ? 'black' : undefined;
       const hasStroke = entity.has(Stroke);
       const stroke = hasStroke ? entity.read(Stroke) : undefined;

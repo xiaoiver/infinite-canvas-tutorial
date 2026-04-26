@@ -2,18 +2,24 @@ import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
 import { consume } from '@lit/context';
+import * as d3 from 'd3-color';
 import {
   AppState,
+  parseColor,
   parseEffect,
   ADJUSTMENT_DEFAULTS,
   formatFilter,
   isSaturateOnlyAdjustment,
   BURN_DEFAULTS,
+  HEATMAP_DEFAULTS,
+  GEM_SMOKE_DEFAULTS,
   LIQUID_METAL_DEFAULTS,
   type Effect,
   type SerializedNode,
   type BurnEffect,
   type LiquidMetalEffect,
+  type HeatmapEffect,
+  type GemSmokeEffect,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -21,6 +27,10 @@ import { localized, msg, str } from '@lit/localize';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/switch/sp-switch.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';
+import '@spectrum-web-components/field-label/sp-field-label.js';
+import '@spectrum-web-components/overlay/sp-overlay.js';
+import '@spectrum-web-components/popover/sp-popover.js';
+import './input-solid';
 
 /** Matches ecs `HalftoneDotsEffect` (filter `halftone-dots`). */
 interface HalftoneDotsEffectRow {
@@ -71,6 +81,30 @@ function isBurnEffect(e: Effect): boolean {
 
 function isLiquidMetalEffect(e: Effect): boolean {
   return (e as { type?: string }).type === 'liquidMetal';
+}
+
+function isHeatmapEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'heatmap';
+}
+
+function isGemSmokeEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'gemSmoke';
+}
+
+type SolidColorChangeDetail = { type: string; value: string };
+
+function solidColorToPatch(
+  e: CustomEvent<SolidColorChangeDetail>,
+  apply: (value: string) => void,
+) {
+  if (e.detail.type !== 'solid' || !e.detail.value) return;
+  apply(e.detail.value);
+}
+
+/** 与 `document-theme-settings` 色块预览一致：不透明显示用 hex。 */
+function solidHexForPicker(raw: string): string {
+  const p = parseColor((raw && raw.trim()) || '#808080');
+  return d3.rgb(p.r, p.g, p.b, 1).formatHex();
 }
 
 /** Mirrors ecs `CRT_DEFAULTS`. */
@@ -199,6 +233,8 @@ type EffectKind =
   | 'glitch'
   | 'liquidGlass'
   | 'liquidMetal'
+  | 'heatmap'
+  | 'gemSmoke'
   | 'tsunami'
   | 'burn';
 
@@ -241,6 +277,12 @@ function effectKind(
   }
   if (isLiquidMetalEffect(effect)) {
     return 'liquidMetal';
+  }
+  if (isHeatmapEffect(effect)) {
+    return 'heatmap';
+  }
+  if (isGemSmokeEffect(effect)) {
+    return 'gemSmoke';
   }
   if (
     effect.type === 'brightness' ||
@@ -320,6 +362,17 @@ function createDefaultEffect(kind: EffectKind): Effect {
       return {
         type: 'liquidMetal',
         ...LIQUID_METAL_DEFAULTS,
+      } as unknown as Effect;
+    case 'heatmap':
+      return {
+        type: 'heatmap',
+        ...HEATMAP_DEFAULTS,
+        useEngineTime: true,
+      } as unknown as Effect;
+    case 'gemSmoke':
+      return {
+        type: 'gemSmoke',
+        ...GEM_SMOKE_DEFAULTS,
         useEngineTime: true,
       } as unknown as Effect;
     case 'saturate':
@@ -387,6 +440,55 @@ export class EffectsPanel extends LitElement {
       align-items: center;
       justify-content: flex-start;
     }
+
+    sp-popover {
+      padding: 0;
+    }
+
+    .effect-color-field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      margin-bottom: 4px;
+    }
+
+    .effect-color-field-row sp-field-label {
+      flex: 1 1 auto;
+      min-width: 0;
+      margin: 0;
+    }
+
+    .color-ctrl-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .effect-color-popover-wrap {
+      flex: 0 0 auto;
+    }
+
+    .color-trigger {
+      flex: 0 0 auto;
+    }
+
+    .swatch {
+      display: block;
+      width: 28px;
+      height: 22px;
+      border-radius: var(--spectrum-corner-radius-100);
+      border: 1px solid var(--spectrum-gray-400);
+      box-sizing: border-box;
+    }
+
+    .solid-popover-body {
+      padding: var(--spectrum-global-dimension-size-100);
+      box-sizing: border-box;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -439,6 +541,46 @@ export class EffectsPanel extends LitElement {
       }
     }
     this.api.record();
+  }
+
+  private renderEffectSolidPopover(
+    triggerId: string,
+    value: string,
+    onColorChange: (e: CustomEvent<SolidColorChangeDetail>) => void,
+  ) {
+    const swatchHex = solidHexForPicker(
+      value && value.trim() ? value : '#808080',
+    );
+    return html`
+      <div class="effect-color-popover-wrap">
+        <sp-action-button
+          class="color-trigger"
+          quiet
+          size="s"
+          id=${triggerId}
+        >
+          <span
+            class="swatch"
+            style=${`background-color: ${swatchHex}`}
+            slot="icon"
+          ></span>
+        </sp-action-button>
+        <sp-overlay
+          trigger=${`${triggerId}@click`}
+          placement="bottom"
+          type="auto"
+        >
+          <sp-popover dialog>
+            <div class="solid-popover-body">
+              <ic-spectrum-input-solid
+                .value=${value}
+                @color-change=${onColorChange}
+              ></ic-spectrum-input-solid>
+            </div>
+          </sp-popover>
+        </sp-overlay>
+      </div>
+    `;
   }
 
   private handleAddFilter(e: CustomEvent) {
@@ -530,6 +672,12 @@ export class EffectsPanel extends LitElement {
                   >
                   <sp-menu-item value="liquidMetal"
                     >${msg(str`Liquid metal`)}</sp-menu-item
+                  >
+                  <sp-menu-item value="heatmap"
+                    >${msg(str`Heat map`)}</sp-menu-item
+                  >
+                  <sp-menu-item value="gemSmoke"
+                    >${msg(str`Gem smoke`)}</sp-menu-item
                   >
                 </sp-picker>
               `
@@ -1364,24 +1512,33 @@ export class EffectsPanel extends LitElement {
             >${msg(str`CPU Poisson edge (WebGL; Paper-style R/G)`)}</sp-switch
             >`
           : ''}
-        <sp-textfield
-          size="s"
-          label=${msg(str`Background color`)}
-          .value=${h.colorBack}
-          @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = e.target.value.trim();
-          patch({ colorBack: v || h.colorBack });
-        }}
-        ></sp-textfield>
-        <sp-textfield
-          size="s"
-          label=${msg(str`Tint color`)}
-          .value=${h.colorTint}
-          @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = e.target.value.trim();
-          patch({ colorTint: v || h.colorTint });
-        }}
-        ></sp-textfield>
+        <div class="effect-color-field-row">
+          <sp-field-label
+            size="s"
+            for="ic-ef-lm-b-${index}"
+            side-aligned="start"
+            >${msg(str`Background`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-lm-b-${index}`,
+            h.colorBack,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ colorBack: v }));
+            },
+          )}
+        </div>
+        <div class="effect-color-field-row">
+          <sp-field-label size="s" for="ic-ef-lm-t-${index}" side-aligned="start"
+            >${msg(str`Tint`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-lm-t-${index}`,
+            h.colorTint,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ colorTint: v }));
+            },
+          )}
+        </div>
         <div class="row-head">
           <sp-switch
             size="s"
@@ -1397,6 +1554,464 @@ export class EffectsPanel extends LitElement {
           ? html`<span class="hint"
               >${msg(
                 str`Time uniform follows the app clock each frame (liquid metal).`,
+              )}</span
+            >`
+          : html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Time`)}
+          min="0"
+          max="100"
+          step="0.1"
+          .value=${h.time}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patch({ time: Number.isFinite(v) ? v : h.time });
+            }}
+        ></sp-slider>
+      `}
+      `;
+    }
+    if (isHeatmapEffect(effect)) {
+      const h = effect as unknown as HeatmapEffect;
+      const patch = (partial: Partial<HeatmapEffect>) => {
+        const next = [...this.effects];
+        next[index] = {
+          ...h,
+          ...partial,
+          type: 'heatmap',
+        } as unknown as Effect;
+        this.commit(next);
+      };
+      const palette = h.colors?.length ? h.colors : [...HEATMAP_DEFAULTS.colors];
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Contour`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.contour}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ contour: Number.isFinite(v) ? v : h.contour });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Angle (°)`)}
+          min="-180"
+          max="180"
+          step="1"
+          .value=${h.angle}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ angle: Number.isFinite(v) ? v : h.angle });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Noise`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.noise}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ noise: Number.isFinite(v) ? v : h.noise });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Inner glow`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.innerGlow}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ innerGlow: Number.isFinite(v) ? v : h.innerGlow });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Outer glow`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.outerGlow}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ outerGlow: Number.isFinite(v) ? v : h.outerGlow });
+        }}
+        ></sp-slider>
+        <sp-switch
+          size="s"
+          ?checked=${h.useImage}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as { checked?: boolean }).checked === true;
+          patch({ useImage: checked });
+        }}
+        >${msg(str`Use layer as mask`)}</sp-switch
+        >
+        ${h.useImage
+          ? html`<sp-switch
+            size="s"
+            ?checked=${h.usePreprocess !== false}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+            const checked = (e.target as { checked?: boolean }).checked === true;
+            patch({ usePreprocess: checked });
+          }}
+            >${msg(str`CPU preprocess (WebGL; RGB blur)`)}</sp-switch
+            >`
+          : ''}
+        <div class="effect-color-field-row">
+          <sp-field-label
+            size="s"
+            for="ic-ef-hm-b-${index}"
+            side-aligned="start"
+            >${msg(str`Background`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-hm-b-${index}`,
+            h.colorBack,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ colorBack: v }));
+            },
+          )}
+        </div>
+        <sp-field-label size="s" side-top
+          >${msg(str`Gradient (max 10)`)}</sp-field-label
+        >
+        ${palette.map(
+          (c, ci) => html`
+            <div class="color-ctrl-row">
+              ${this.renderEffectSolidPopover(
+                `ic-ef-hm-g-${index}-${ci}`,
+                c,
+                (e) => {
+                  solidColorToPatch(e, (v) => {
+                    const list = [...palette];
+                    list[ci] = v;
+                    patch({ colors: list });
+                  });
+                },
+              )}
+              <sp-action-button
+                quiet
+                size="s"
+                label=${msg(str`Remove`)}
+                ?disabled=${palette.length <= 1}
+                @click=${() => {
+            const list = palette.filter((_, j) => j !== ci);
+            patch({
+              colors: list.length > 0 ? list : [...HEATMAP_DEFAULTS.colors],
+            });
+          }}
+              >
+                <sp-icon-delete slot="icon"></sp-icon-delete>
+              </sp-action-button>
+            </div>
+          `,
+        )}
+        <sp-action-button
+          quiet
+          size="m"
+          label=${msg(str`Add gradient stop`)}
+          @click=${() => {
+        const list = [...palette];
+        if (list.length >= 10) return;
+        list.push('#888888');
+        patch({ colors: list });
+      }}
+          ?disabled=${palette.length >= 10}
+        >
+          <sp-icon-add slot="icon"></sp-icon-add>
+          ${msg(str`Add stop`)}
+        </sp-action-button>
+        <div class="row-head">
+          <sp-switch
+            size="s"
+            ?checked=${!!h.useEngineTime}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as HTMLInputElement).checked;
+          patch({ useEngineTime: checked });
+        }}
+            >${msg(str`Engine time (animate)`)}</sp-switch
+          >
+        </div>
+        ${h.useEngineTime
+          ? html`<span class="hint"
+              >${msg(
+                str`Time uniform follows the app clock each frame (heat map).`,
+              )}</span
+            >`
+          : html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Time`)}
+          min="0"
+          max="100"
+          step="0.1"
+          .value=${h.time}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patch({ time: Number.isFinite(v) ? v : h.time });
+            }}
+        ></sp-slider>
+      `}
+      `;
+    }
+    if (isGemSmokeEffect(effect)) {
+      const h = effect as unknown as GemSmokeEffect;
+      const patch = (partial: Partial<GemSmokeEffect>) => {
+        const next = [...this.effects];
+        next[index] = {
+          ...h,
+          ...partial,
+          type: 'gemSmoke',
+        } as unknown as Effect;
+        this.commit(next);
+      };
+      const smPalette = h.colors?.length
+        ? h.colors
+        : [...GEM_SMOKE_DEFAULTS.colors];
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Inner distortion`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.innerDistortion}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({
+            innerDistortion: Number.isFinite(v) ? v : h.innerDistortion,
+          });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Outer distortion`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.outerDistortion}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({
+            outerDistortion: Number.isFinite(v) ? v : h.outerDistortion,
+          });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Outer glow`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.outerGlow}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ outerGlow: Number.isFinite(v) ? v : h.outerGlow });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Inner glow`)}
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.innerGlow}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ innerGlow: Number.isFinite(v) ? v : h.innerGlow });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Offset`)}
+          min="-1"
+          max="1"
+          step="0.01"
+          .value=${h.offset}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ offset: Number.isFinite(v) ? v : h.offset });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Angle (°)`)}
+          min="-180"
+          max="180"
+          step="1"
+          .value=${h.angle}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ angle: Number.isFinite(v) ? v : h.angle });
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Size`)}
+          min="0"
+          max="2"
+          step="0.01"
+          .value=${h.size}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({ size: Number.isFinite(v) ? v : h.size });
+        }}
+        ></sp-slider>
+        <sp-picker
+          size="s"
+          label=${msg(str`Shape (no image)`)}
+          .value=${String(h.shape)}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseInt(e.target.value, 10);
+          patch({
+            shape: Math.max(0, Math.min(4, Number.isFinite(v) ? v : h.shape)),
+          });
+        }}
+        >
+          <sp-menu-item value="0"
+            >${msg(str`Full canvas`)}</sp-menu-item
+          >
+          <sp-menu-item value="1">${msg(str`Circle`)}</sp-menu-item>
+          <sp-menu-item value="2">${msg(str`Daisy`)}</sp-menu-item>
+          <sp-menu-item value="3">${msg(str`Diamond`)}</sp-menu-item>
+          <sp-menu-item value="4">${msg(str`Metaballs`)}</sp-menu-item>
+        </sp-picker>
+        <sp-switch
+          size="s"
+          ?checked=${h.useImage}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as { checked?: boolean }).checked === true;
+          patch({ useImage: checked });
+        }}
+        >${msg(str`Use layer as mask`)}</sp-switch
+        >
+        ${h.useImage
+          ? html`<sp-switch
+            size="s"
+            ?checked=${h.usePoisson !== false}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+            const checked = (e.target as { checked?: boolean }).checked === true;
+            patch({ usePoisson: checked });
+          }}
+            >${msg(str`CPU Poisson (WebGL; R/G like liquid metal)`)}</sp-switch
+            >`
+          : ''}
+        <div class="effect-color-field-row">
+          <sp-field-label
+            size="s"
+            for="ic-ef-gs-b-${index}"
+            side-aligned="start"
+            >${msg(str`Background`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-gs-b-${index}`,
+            h.colorBack,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ colorBack: v }));
+            },
+          )}
+        </div>
+        <div class="effect-color-field-row">
+          <sp-field-label
+            size="s"
+            for="ic-ef-gs-i-${index}"
+            side-aligned="start"
+            >${msg(str`Inner color`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-gs-i-${index}`,
+            h.colorInner,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ colorInner: v }));
+            },
+          )}
+        </div>
+        <sp-field-label size="s" side-top
+          >${msg(str`Smoke colors (max 6)`)}</sp-field-label
+        >
+        ${smPalette.map(
+          (c, ci) => html`
+            <div class="color-ctrl-row">
+              ${this.renderEffectSolidPopover(
+                `ic-ef-gs-s-${index}-${ci}`,
+                c,
+                (e) => {
+                  solidColorToPatch(e, (v) => {
+                    const list = [...smPalette];
+                    list[ci] = v;
+                    patch({ colors: list });
+                  });
+                },
+              )}
+              <sp-action-button
+                quiet
+                size="s"
+                label=${msg(str`Remove`)}
+                ?disabled=${smPalette.length <= 1}
+                @click=${() => {
+            const list = smPalette.filter((_, j) => j !== ci);
+            patch({
+              colors: list.length > 0 ? list : [...GEM_SMOKE_DEFAULTS.colors],
+            });
+          }}
+              >
+                <sp-icon-delete slot="icon"></sp-icon-delete>
+              </sp-action-button>
+            </div>
+          `,
+        )}
+        <sp-action-button
+          quiet
+          size="m"
+          label=${msg(str`Add smoke color`)}
+          @click=${() => {
+        const list = [...smPalette];
+        if (list.length >= 6) return;
+        list.push('#888888');
+        patch({ colors: list });
+      }}
+          ?disabled=${smPalette.length >= 6}
+        >
+          <sp-icon-add slot="icon"></sp-icon-add>
+          ${msg(str`Add color`)}
+        </sp-action-button>
+        <div class="row-head">
+          <sp-switch
+            size="s"
+            ?checked=${!!h.useEngineTime}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as HTMLInputElement).checked;
+          patch({ useEngineTime: checked });
+        }}
+            >${msg(str`Engine time (animate)`)}</sp-switch
+          >
+        </div>
+        ${h.useEngineTime
+          ? html`<span class="hint"
+              >${msg(
+                str`Time uniform follows the app clock each frame (gem smoke).`,
               )}</span
             >`
           : html`
@@ -1968,6 +2583,8 @@ export class EffectsPanel extends LitElement {
           <sp-menu-item value="liquidMetal"
             >${msg(str`Liquid metal`)}</sp-menu-item
           >
+          <sp-menu-item value="heatmap">${msg(str`Heat map`)}</sp-menu-item>
+          <sp-menu-item value="gemSmoke">${msg(str`Gem smoke`)}</sp-menu-item>
         </sp-action-menu>
       </div>
     `;

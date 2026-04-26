@@ -660,9 +660,11 @@ export class LayersPanel extends LitElement {
 
   private renderLayerBranch(node: SerializedNode, depth: number) {
     const children = this.api.getChildren(node);
-    const sortedNodes = children.sort(sortByFractionalIndex).map((entity) => {
-      return this.api.getNodeByEntity(entity);
-    });
+    // 仅含在场景图中有 SerializedNode 的子层（如 iconfont 拆出的 path 子实体无节点，需排除）
+    const sortedNodes = children
+      .sort(sortByFractionalIndex)
+      .map((entity) => this.api.getNodeByEntity(entity))
+      .filter((child): child is SerializedNode => child != null);
 
     const { layersSelected, layersHighlighted, layersExpanded } = this.appState;
     const hasChildren = sortedNodes.length > 0;

@@ -47,6 +47,8 @@ import {
   ClipMode,
   Flex,
   Group,
+  IconFont,
+  TesselationMethod,
 } from '../../components';
 import type {
   AttenuationAttributes,
@@ -56,7 +58,9 @@ import type {
   EmbedSerializedNode,
   FillAttributes,
   FilterAttributes,
+  GSerializedNode,
   HtmlSerializedNode,
+  IconFontSerializedNode,
   InnerShadowAttributes,
   LineSerializedNode,
   MarkerAttributes,
@@ -82,6 +86,15 @@ import {
   transformPath,
   serializeBrushPoints,
 } from '../serialize';
+import {
+  buildIconFontScalablePrimitives,
+  mapSvgLineCap,
+  mapSvgLineJoin,
+  pickChildFill,
+  pickStrokeColorForChild,
+  resolveIconFontWireStyle,
+  strokeWidthFromIconStyle,
+} from '../icon-font';
 import { Mat3 } from '../../components/math/Mat3';
 import { formatNumber } from '../serialize/points';
 import { deserializeBrushPoints, deserializePoints } from './points';
@@ -93,6 +106,8 @@ import {
   designVariableRefKeyFromWire,
   type DesignVariablesMap,
 } from '../design-variables';
+import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
+import { buildGroupWirePresentation } from '../group-presentation';
 import type { ThemeMode } from '../../components/Theme';
 import { measureText } from '../../systems/ComputeTextMetrics';
 import { DOMAdapter } from '../../environment';
@@ -124,7 +139,7 @@ export function inferXYWidthHeight(node: SerializedNode) {
   ) {
     const { type } = node;
     let bounds: AABB;
-    if (type === 'rect' || type === 'html' || type === 'embed') {
+    if (type === 'rect' || type === 'html' || type === 'embed' || type === 'iconfont') {
       bounds = Rect.getGeometryBounds(node as Partial<Rect>);
     } else if (type === 'ellipse' || type === 'rough-ellipse') {
       bounds = Ellipse.getGeometryBounds(node);
@@ -948,6 +963,7 @@ export function serializedNodesToEntities(
   idEntityMap: Map<string, EntityCommands>;
 } {
   const graph = options?.lookupNodes ?? nodes;
+  const inheritGroupWireById = getComputedInheritGroupWireMap(graph);
 
   // The old entities are already added to canvas.
   let existedVertices: string[] = [];
@@ -1012,6 +1028,11 @@ export function serializedNodesToEntities(
     const { parentId, type } = node;
     const designVariables = options?.variables;
     const themeMode = options?.themeMode;
+    const wirePaint = inheritGroupWireById.get(id) ?? {};
+    const wireMergedAttrs = { ...attributes, ...wirePaint };
+
+    /** `iconfont` 拆成子 path/circle/line 时，父级不挂 Fill/Stroke。 */
+    let skipParentFillStroke = false;
 
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);
@@ -1122,7 +1143,15 @@ export function serializedNodesToEntities(
     entityCommands.insert(new Renderable());
 
     if (type === 'g') {
-      entityCommands.insert(new Group());
+      entityCommands.insert(
+        new Group(
+          buildGroupWirePresentation(
+            wireMergedAttrs as GSerializedNode,
+            designVariables,
+            themeMode,
+          ),
+        ),
+      );
     } else if (type === 'ellipse' || type === 'rough-ellipse') {
       entityCommands.insert(
         new Ellipse({
@@ -1356,19 +1385,153 @@ export function serializedNodesToEntities(
       const { url } = attributes as EmbedSerializedNode;
       entityCommands.insert(new Embed({ x: 0, y: 0, width: absoluteWidth, height: absoluteHeight, url }));
       entityCommands.insert(new HTMLContainer());
+    } else if (type === 'iconfont') {
+      const {
+        iconFontName = '',
+        iconFontFamily = 'lucide',
+      } = attributes as IconFontSerializedNode;
+      const rName = resolveDesignVariableValue(
+        iconFontName,
+        designVariables,
+        themeMode,
+      );
+      const rFamily = resolveDesignVariableValue(
+        iconFontFamily,
+        designVariables,
+        themeMode,
+      );
+
+      const iconAttrs = wireMergedAttrs as IconFontSerializedNode;
+      const groupPres = buildGroupWirePresentation(
+        iconAttrs,
+        designVariables,
+        themeMode,
+      );
+      const { userColorStroke, userColorFill, rSw } = resolveIconFontWireStyle(
+        iconAttrs,
+        designVariables,
+        themeMode,
+        groupPres,
+      );
+
+      const prims = buildIconFontScalablePrimitives(
+        String(rName ?? iconFontName ?? ''),
+        String(rFamily ?? iconFontFamily ?? 'lucide'),
+        absoluteWidth,
+        absoluteHeight,
+      );
+      if (prims && prims.length > 0) {
+        entityCommands.insert(new Group(groupPres));
+        skipParentFillStroke = true;
+        const v = (attributes as VisibilityAttributes).visibility;
+
+        for (let i = 0; i < prims.length; i++) {
+          const prim = prims[i]!;
+          const ch = commands.spawn();
+          ch.insert(
+            new Transform({
+              translation: { x: 0, y: 0 },
+              rotation: 0,
+              scale: { x: 1, y: 1 },
+            }),
+          );
+          ch.insert(new Renderable());
+          if (prim.kind === 'path') {
+            ch.insert(
+              new Path({
+                d: prim.d,
+                tessellationMethod: TesselationMethod.LIBTESS,
+                // fillRule: 'nonzero',
+              }),
+            );
+          } else if (prim.kind === 'ellipse') {
+            ch.insert(
+              new Ellipse({
+                cx: prim.cx,
+                cy: prim.cy,
+                rx: prim.rx,
+                ry: prim.ry,
+              }),
+            );
+          } else {
+            ch.insert(
+              new Line({
+                x1: prim.x1,
+                y1: prim.y1,
+                x2: prim.x2,
+                y2: prim.y2,
+              }),
+            );
+          }
+          ch.insert(
+            new Stroke({
+              color: pickStrokeColorForChild(
+                prim.style,
+                userColorStroke,
+                userColorFill,
+              ),
+              width: strokeWidthFromIconStyle(prim.style, rSw, {
+                primKind: prim.kind,
+              }),
+              linecap: mapSvgLineCap(prim.style.strokeLinecap),
+              linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
+            }),
+          );
+          const fillPart = pickChildFill(
+            prim.style,
+            userColorFill,
+            userColorStroke,
+          );
+          if (fillPart && fillPart !== 'none') {
+            ch.insert(new FillSolid(fillPart, ''));
+          }
+          ch.insert(new ZIndex(attributes.zIndex != null ? attributes.zIndex! : 0));
+          ch.insert(
+            new Visibility(
+              (v as 'inherited' | 'hidden' | 'visible' | undefined) ?? 'inherited',
+            ),
+          );
+          ch.insert(new Name(`${id}__i${i}`));
+          entityCommands.appendChild(ch);
+        }
+      } else {
+        entityCommands.insert(
+          new Rect({
+            x: 0,
+            y: 0,
+            width: absoluteWidth,
+            height: absoluteHeight,
+            cornerRadius: 0,
+          }),
+        );
+        const fattrs = wireMergedAttrs as FillAttributes & StrokeAttributes;
+        if (fattrs.stroke == null && fattrs.fill != null) {
+          fattrs.stroke = fattrs.fill;
+        }
+        if (fattrs.strokeWidth == null) {
+          fattrs.strokeWidth = 2;
+        }
+        fattrs.fill = 'none';
+      }
+      entityCommands.insert(
+        new IconFont({
+          iconFontName: String(rName ?? iconFontName ?? ''),
+          iconFontFamily: String(rFamily ?? iconFontFamily ?? 'lucide'),
+        }),
+      );
     }
 
     if (attributes.clipMode) {
       entityCommands.insert(new ClipMode(attributes.clipMode));
     }
 
-    const { fill, fillOpacity, opacity } = attributes as FillAttributes;
+    const { fill, fillOpacity, opacity } = wireMergedAttrs as FillAttributes;
     const resolvedFill = resolveDesignVariableValue(
       fill,
       designVariables,
       themeMode,
     );
-    if (resolvedFill) {
+    if (resolvedFill && !skipParentFillStroke) {
       if (isGradient(resolvedFill)) {
         entityCommands.insert(new FillGradient(resolvedFill));
       } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
@@ -1400,7 +1563,7 @@ export function serializedNodesToEntities(
       strokeOpacity,
       strokeDashoffset,
       strokeAlignment,
-    } = attributes as StrokeAttributes;
+    } = wireMergedAttrs as StrokeAttributes;
     const resolvedStroke = resolveDesignVariableValue(
       stroke,
       designVariables,
@@ -1411,14 +1574,14 @@ export function serializedNodesToEntities(
       designVariables,
       themeMode,
     );
-    if (resolvedStroke) {
+    if (resolvedStroke && !skipParentFillStroke) {
       const rawW =
         resolvedStrokeWidth !== undefined ? resolvedStrokeWidth : strokeWidth;
       const widthInit =
         rawW !== undefined && rawW !== null
           ? {
-              width: typeof rawW === 'number' ? rawW : Number(rawW),
-            }
+            width: typeof rawW === 'number' ? rawW : Number(rawW),
+          }
           : {};
       entityCommands.insert(
         new Stroke({

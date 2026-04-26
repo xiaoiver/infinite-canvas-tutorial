@@ -750,22 +750,25 @@ export function liquidGlassUniformValues(
 
 /**
  * Paper Design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts liquid-metal} (raster). Optional CPU Poisson + R/G when `useImage`+`usePoisson` and WebGL readback.
+ * Aligned with `webcomponents/examples/main.ts` example:
+ * `liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)`.
  */
 export const LIQUID_METAL_DEFAULTS = {
-  colorBack: '#0a0a0c',
-  colorTint: '#8ab4ff',
+  colorBack: 'transparent',
+  colorTint: '#ffffff',
   /** Stripe density 1–10. */
-  repetition: 3,
-  softness: 0.5,
-  shiftRed: 10,
-  shiftBlue: -8,
-  distortion: 0.3,
-  contour: 0.5,
-  angle: 0,
+  repetition: 2,
+  softness: 0.1,
+  shiftRed: 0.3,
+  shiftBlue: 0.3,
+  distortion: 0.07,
+  contour: 0.4,
+  angle: 70,
   /** 0=none, 1=circle, 2=daisy, 3=diamond, 4=metaballs (no scene mask). */
-  shape: 0,
+  shape: 3,
   useImage: true,
   time: 0,
+  useEngineTime: true,
   /** When `useImage` and WebGL: CPU Poisson map (paper R/G). WebGPU cannot sync-readback; falls back in Drawcall. */
   usePoisson: true,
 } as const;
@@ -843,18 +846,30 @@ export function liquidMetalUniformValues(
 
 const HM_PAD = 10;
 
-/** Defaults from Paper heatmap; colors are gradient stops (max 10). */
+/**
+ * 与 Paper Design {@link https://shaders.paper.design} `<Heatmap … />` 典型参数一致
+ *（`colors` / `colorBack` / `contour` / `angle` / `noise` / `innerGlow` / `outerGlow`）；
+ * `speed` / `scale` 在 React 侧由该组件处理，本仓库 filter 中时间由 `time` + `useEngineTime` 体现。
+ */
 export const HEATMAP_DEFAULTS = {
   contour: 0.5,
   angle: 0,
-  noise: 0.05,
+  noise: 0,
   innerGlow: 0.5,
   outerGlow: 0.5,
   useImage: true,
   usePreprocess: true,
   time: 0,
-  colorBack: 'rgba(0,0,0,0)',
-  colors: ['#ff5c2e', '#ffc62e', '#2effb7', '#2e5cff'],
+  colorBack: '#000000',
+  colors: [
+    '#112069',
+    '#1f3ca3',
+    '#3265e7',
+    '#6bd8ff',
+    '#ffe77a',
+    '#ff9a1f',
+    '#ff4d00',
+  ],
 } as const;
 
 export interface HeatmapEffect {
@@ -1766,6 +1781,8 @@ export function parseEffect(filter: string): Effect[] {
           const tv = parseFloat(parts[11]!);
           time = Number.isFinite(tv) ? tv : D.time;
         }
+      } else if (D.useEngineTime) {
+        useEngineTime = true;
       }
       const shape = Math.max(0, Math.min(4, Math.floor(pf(7, D.shape))));
       let usePoisson: boolean = D.usePoisson;
