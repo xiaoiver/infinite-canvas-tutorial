@@ -2,7 +2,12 @@ import { mat3 } from 'gl-matrix';
 import { Ellipse } from '../components/geometry/Ellipse';
 import { Line } from '../components/geometry/Line';
 import { Path } from '../components/geometry/Path';
-import { transformPath, shiftPath } from './serialize';
+import {
+  roundNumberToDecimals,
+  roundPathDToDecimals,
+  transformPath,
+  shiftPath,
+} from './serialize/transform';
 import { resolveDesignVariableValue, type DesignVariablesMap } from './design-variables';
 import type { ThemeMode } from '../components/Theme';
 import type { Group } from '../components/geometry/Group';
@@ -261,6 +266,9 @@ function aabbEllipse(
 ): BoundLike {
   return Ellipse.getGeometryBounds({ cx, cy, rx, ry });
 }
+
+/** 缩放到目标框后的 path / 子图元坐标保留的小数位，减轻 d 与导出 SVG 体积。 */
+const ICONIFY_SCALED_GEOMETRY_DECIMAL_PLACES = 2;
 
 function isFiniteAabb(p: BoundLike): p is Bounds {
   return (
@@ -542,13 +550,17 @@ export function resolveIconifyBodyToScalablePrimitives(
   const sy = h / rawH;
   const { minX, minY } = combined;
 
+  const dp = ICONIFY_SCALED_GEOMETRY_DECIMAL_PLACES;
   return items.map(({ prim }) => {
     if (prim.kind === 'path') {
       return {
         kind: 'path' as const,
-        d: transformPath(
-          shiftPath(prim.d, -minX, -minY),
-          mat3.fromScaling(mat3.create(), [sx, sy]),
+        d: roundPathDToDecimals(
+          transformPath(
+            shiftPath(prim.d, -minX, -minY),
+            mat3.fromScaling(mat3.create(), [sx, sy]),
+          ),
+          dp,
         ),
         style: prim.style,
       };
@@ -556,19 +568,19 @@ export function resolveIconifyBodyToScalablePrimitives(
     if (prim.kind === 'ellipse') {
       return {
         kind: 'ellipse' as const,
-        cx: (prim.cx - minX) * sx,
-        cy: (prim.cy - minY) * sy,
-        rx: prim.rx * sx,
-        ry: prim.ry * sy,
+        cx: roundNumberToDecimals((prim.cx - minX) * sx, dp),
+        cy: roundNumberToDecimals((prim.cy - minY) * sy, dp),
+        rx: roundNumberToDecimals(prim.rx * sx, dp),
+        ry: roundNumberToDecimals(prim.ry * sy, dp),
         style: prim.style,
       };
     }
     return {
       kind: 'line' as const,
-      x1: (prim.x1 - minX) * sx,
-      y1: (prim.y1 - minY) * sy,
-      x2: (prim.x2 - minX) * sx,
-      y2: (prim.y2 - minY) * sy,
+      x1: roundNumberToDecimals((prim.x1 - minX) * sx, dp),
+      y1: roundNumberToDecimals((prim.y1 - minY) * sy, dp),
+      x2: roundNumberToDecimals((prim.x2 - minX) * sx, dp),
+      y2: roundNumberToDecimals((prim.y2 - minY) * sy, dp),
       style: prim.style,
     };
   });

@@ -10,6 +10,7 @@ import {
 } from '../../systems';
 import { createSVGElement } from '../browser';
 import {
+  IconFontSerializedNode,
   InnerShadowAttributes,
   PathSerializedNode,
   RectSerializedNode,
@@ -40,6 +41,17 @@ import {
   WATERCOLOR_LAYER_FILL_OPACITY,
 } from '../watercolor-rough';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
+import { buildGroupWirePresentation } from '../group-presentation';
+import {
+  type ScaledIconPrimitive,
+  buildIconFontScalablePrimitives,
+  mapSvgLineCap,
+  mapSvgLineJoin,
+  pickChildFill,
+  pickStrokeColorForChild,
+  resolveIconFontWireStyle,
+  strokeWidthFromIconStyle,
+} from '../icon-font';
 
 const strokeDefaultAttributes = {
   strokeOpacity: 1,
@@ -390,7 +402,7 @@ export async function serializeNodesToSVGElements(
       sourcePortConstraint,
       targetPortConstraint,
       portConstraint,
-      // iconfont：仅用于从 rest 中剥离，避免写到 <g>；导出形态由场景子 path 等表示
+      // iconfont：不写入 <g> 的 icon 元数据；子 path/ellipse/line 由 buildIconFontScalablePrimitives 在导出时生成
       iconFontName,
       iconFontFamily,
       lockAspectRatio,
@@ -632,6 +644,19 @@ export async function serializeNodesToSVGElements(
     }
     if (content) {
       exportText(nodeForExport as TextSerializedNode, $g, element);
+    }
+
+    if (type === 'iconfont' || (type as string) === 'icon_font') {
+      const iconfontHost: SVGElement =
+        $g && element && $g !== element
+          ? (element as SVGElement)
+          : ($g as SVGElement);
+      if (iconfontHost) {
+        appendIconfontVectorChildren(
+          iconfontHost,
+          nodeForExport as IconFontSerializedNode,
+        );
+      }
     }
 
     const matrix = Mat3.from_scale_angle_translation(
@@ -1579,6 +1604,120 @@ export function isUrl(url: string) {
 
 export function toFixedAndRemoveTrailingZeros(value: number) {
   return value.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function parsePositiveIconfontDim(
+  v: number | string | undefined,
+  fallback: number,
+): number {
+  if (v == null) {
+    return fallback;
+  }
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  if (!Number.isFinite(n) || n <= 0) {
+    return fallback;
+  }
+  return n;
+}
+
+function applyIconfontPrimitiveAttrs(
+  el: SVGElement,
+  prim: ScaledIconPrimitive,
+  userColorStroke: string | undefined,
+  userColorFill: string | undefined,
+  rSw: unknown,
+) {
+  const fillPart = pickChildFill(
+    prim.style,
+    userColorFill,
+    userColorStroke,
+  );
+  if (fillPart && fillPart !== 'none') {
+    el.setAttribute('fill', fillPart);
+  } else {
+    el.setAttribute('fill', 'none');
+  }
+  const sw = strokeWidthFromIconStyle(prim.style, rSw, { primKind: prim.kind });
+  const strokeC = pickStrokeColorForChild(
+    prim.style,
+    userColorStroke,
+    userColorFill,
+  );
+  if (sw > 0) {
+    el.setAttribute('stroke', strokeC);
+    el.setAttribute('stroke-width', toFixedAndRemoveTrailingZeros(sw));
+    el.setAttribute('stroke-linecap', mapSvgLineCap(prim.style.strokeLinecap));
+    el.setAttribute('stroke-linejoin', mapSvgLineJoin(prim.style.strokeLinejoin));
+  } else {
+    el.setAttribute('stroke', 'none');
+  }
+}
+
+function appendIconfontVectorChildren(
+  host: SVGElement,
+  node: IconFontSerializedNode,
+) {
+  const w = parsePositiveIconfontDim(node.width, 24);
+  const h = parsePositiveIconfontDim(node.height, 24);
+  const { iconFontName = '', iconFontFamily = 'lucide' } = node;
+  const groupPres = buildGroupWirePresentation(node, undefined, undefined);
+  const { userColorStroke, userColorFill, rSw } = resolveIconFontWireStyle(
+    node,
+    undefined,
+    undefined,
+    groupPres,
+  );
+  const prims = buildIconFontScalablePrimitives(
+    String(iconFontName),
+    String(iconFontFamily),
+    w,
+    h,
+  );
+  if (!prims || prims.length === 0) {
+    return;
+  }
+  for (const prim of prims) {
+    if (prim.kind === 'path') {
+      const p = createSVGElement('path');
+      p.setAttribute('d', prim.d);
+      applyIconfontPrimitiveAttrs(
+        p,
+        prim,
+        userColorStroke,
+        userColorFill,
+        rSw,
+      );
+      host.appendChild(p);
+    } else if (prim.kind === 'ellipse') {
+      const e = createSVGElement('ellipse');
+      e.setAttribute('cx', toFixedAndRemoveTrailingZeros(prim.cx));
+      e.setAttribute('cy', toFixedAndRemoveTrailingZeros(prim.cy));
+      e.setAttribute('rx', toFixedAndRemoveTrailingZeros(prim.rx));
+      e.setAttribute('ry', toFixedAndRemoveTrailingZeros(prim.ry));
+      applyIconfontPrimitiveAttrs(
+        e,
+        prim,
+        userColorStroke,
+        userColorFill,
+        rSw,
+      );
+      host.appendChild(e);
+    } else {
+      const l = createSVGElement('line');
+      l.setAttribute('x1', toFixedAndRemoveTrailingZeros(prim.x1));
+      l.setAttribute('y1', toFixedAndRemoveTrailingZeros(prim.y1));
+      l.setAttribute('x2', toFixedAndRemoveTrailingZeros(prim.x2));
+      l.setAttribute('y2', toFixedAndRemoveTrailingZeros(prim.y2));
+      applyIconfontPrimitiveAttrs(
+        l,
+        prim,
+        userColorStroke,
+        userColorFill,
+        rSw,
+      );
+      host.appendChild(l);
+    }
+  }
 }
 
 export function toSVG($svg: SVGElement) {

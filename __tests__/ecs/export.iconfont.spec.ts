@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,6 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  Entity,
   FillSolid,
   Grid,
   Parent,
@@ -24,21 +24,25 @@ import {
   system,
   API,
   Name,
-  Ellipse,
+  Rect,
+  DropShadow,
   ZIndex,
   ComputeZIndex,
-  Path,
+  ExportFormat,
+  Screenshot,
+  Ellipse,
   Group,
   IconFont,
-  IconFontSerializedNode,
   registerIconifyIconSet,
+  IconFontSerializedNode,
+  Path
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
-describe('Iconfont', () => {
-  it('should render iconfont correctly', async () => {
+describe('Export SVG', () => {
+  it('should export iconfont correctly', (done) => {
 
     const m = {
       "prefix": "pixelarticons",
@@ -84,9 +88,8 @@ describe('Iconfont', () => {
 
     const app = new App();
 
+    let api: API | undefined;
     let $canvas: HTMLCanvasElement;
-    let canvasEntity: Entity | undefined;
-    let cameraEntity: Entity | undefined;
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
@@ -95,6 +98,10 @@ describe('Iconfont', () => {
 
     class StartUpSystem extends System {
       private readonly commands = new Commands(this);
+
+      private readonly screenshots = this.query((q) =>
+        q.added.with(Screenshot),
+      );
 
       q = this.query(
         (q) =>
@@ -109,9 +116,11 @@ describe('Iconfont', () => {
             Renderable,
             FillSolid,
             Stroke,
+            Rect,
             Ellipse,
             Visibility,
             Name,
+            DropShadow,
             ZIndex,
             Group,
             IconFont,
@@ -122,16 +131,15 @@ describe('Iconfont', () => {
       initialize(): void {
         $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
 
-        const api = new API(new DefaultStateManagement(), this.commands);
+        api = new API(new DefaultStateManagement(), this.commands);
 
-        canvasEntity = api.createCanvas({
+        api.createCanvas({
           element: $canvas,
           width: 200,
           height: 200,
           devicePixelRatio: 1,
         });
-
-        cameraEntity = api.createCamera({
+        api.createCamera({
           zoom: 1,
         });
 
@@ -151,20 +159,29 @@ describe('Iconfont', () => {
           node1,
         ]);
       }
+
+      execute(): void {
+        this.screenshots.added.forEach(async (screenshot) => {
+          const { svg } = screenshot.read(Screenshot);
+
+          const dir = `${__dirname}/snapshots`;
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-iconfont', done);
+
+          setTimeout(() => {
+            app.exit();
+          });
+        });
+      }
     }
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
-
-    await sleep(300);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'iconfont',
-    );
-
-    await app.exit();
+    app.run().then(() => {
+      sleep(300).then(() => {
+        if (api) {
+          api.export({ format: ExportFormat.SVG, download: false });
+        }
+      });
+    });
   });
 });

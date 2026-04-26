@@ -106,8 +106,7 @@ export class DocumentThemeSettings extends LitElement {
       display: grid;
       grid-template-columns: minmax(200px, 2.2fr) minmax(80px, 1fr) minmax(80px, 1fr) 32px;
       align-items: center;
-      gap: 8px;
-      padding: 4px 0 8px;
+      gap: 4px;
       border-bottom: 1px solid var(--spectrum-gray-300);
       font-size: 12px;
       font-weight: 600;
@@ -122,15 +121,14 @@ export class DocumentThemeSettings extends LitElement {
       display: grid;
       grid-template-columns: minmax(200px, 2.2fr) minmax(80px, 1fr) minmax(80px, 1fr) 32px;
       align-items: center;
-      gap: 8px;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--spectrum-gray-200);
+      gap: 4px;
+      padding: 4px 0;
     }
 
     .var-name-block {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       min-width: 0;
     }
 
@@ -174,15 +172,11 @@ export class DocumentThemeSettings extends LitElement {
     }
 
     .var-cell sp-number-field {
-      width: 60px;
+      width: 48px;
     }
 
     .var-cell sp-textfield {
       width: 100%;
-    }
-
-    .add-block {
-      margin-top: 10px;
     }
 
     .add-row {
