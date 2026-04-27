@@ -2,6 +2,7 @@ import { D2, Shape, Text } from '@terrastruct/d2';
 import {
   EdgeStyle,
   PathSerializedNode,
+  RefSerializedNode,
   SerializedNode,
   TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
@@ -219,9 +220,9 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       bold,
       underline,
     } = shape;
-    const node: SerializedNode = {
+    const node: Exclude<SerializedNode, RefSerializedNode> = {
       id,
-      type: type === 'rectangle' ? 'rect' : (type as SerializedNode['type']),
+      type: type === 'rectangle' ? 'rect' : (type as Exclude<SerializedNode['type'], 'ref'>),
       x: pos.x,
       y: pos.y,
       width,

@@ -416,7 +416,7 @@ export interface LineSerializedNode
   Partial<MarkerAttributes>,
   Partial<BindingAttributes> { }
 
-interface PolylineAttributes {
+export interface PolylineAttributes {
   points: string;
 }
 export interface PolylineSerializedNode
@@ -447,7 +447,7 @@ export interface BrushSerializedNode
   Partial<WireframeAttributes>,
   Partial<BindedAttributes> { }
 
-interface PathAttributes {
+export interface PathAttributes {
   d: string;
   fillRule: Path['fillRule'];
   tessellationMethod: Path['tessellationMethod'];
@@ -585,6 +585,9 @@ export interface RefAttributes {
   ref: string;
 }
 
+/**
+ * 引用（`type: 'ref'`）实例上可写任意形状的可选覆盖项，与 {@link SerializedNode} 中各具体 type 的字段并集一致（`ref` 与 `reusable` 根语义除外）。
+ */
 export interface RefSerializedNode
   extends BaseSerializeNode<'ref'>,
   RefAttributes,
@@ -595,7 +598,32 @@ export interface RefSerializedNode
   Partial<FilterAttributes>,
   Partial<AttenuationAttributes>,
   Partial<WireframeAttributes>,
-  Partial<BindedAttributes> { }
+  Partial<BindedAttributes>,
+  Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
+  Partial<Pick<Rect, 'cornerRadius'>>,
+  Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
+  Partial<PolylineAttributes>,
+  Partial<PathAttributes>,
+  Partial<BrushAttributes>,
+  Partial<RoughAttributes>,
+  Partial<TextAttributes>,
+  Partial<Pick<
+    TextSerializedNode,
+    | 'fontBoundingBoxAscent'
+    | 'fontBoundingBoxDescent'
+    | 'hangingBaseline'
+    | 'ideographicBaseline'
+    | 'edgeLabelPosition'
+    | 'edgeLabelOffset'
+  >>,
+  Partial<VectorNetworkAttributes>,
+  Partial<HtmlAttributes>,
+  Partial<EmbedAttributes>,
+  Partial<IconFontAttributes>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes>,
+  Partial<TextDecorationAttributes>,
+  Partial<HitStrokeInteractionAttributes> { }
 
 export type NodeSerializedNode =
   | EllipseSerializedNode
