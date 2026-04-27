@@ -185,5 +185,32 @@
     "step3": "Chat with canvas",
     "step1Description": "Add API keys for different AI providers to enable AI capabilities. Only configure the 'Chat' and 'Image' capabilities to use most of the canvas features.",
     "step3Description": "You can upload or generate images and chat with them."
+  },
+  "tools": {
+    "metaTitle": "Tools",
+    "metaDescription": "Preset filters and small utilities. No sign-in required.",
+    "kicker": "Public tools",
+    "title": "Filter tools",
+    "comingSoon": "Coming soon",
+    "items": {
+      "photoColors": {
+        "title": "Photo colors"
+      },
+      "glitch": {
+        "title": "Glitch",
+        "description": "Overlay three filters: CRT, vignette and glitch."
+      }
+    },
+    "photoColors": {
+      "metaTitle": "Photo colors",
+      "metaDescription": "Photo color tools (coming soon).",
+      "backToTools": "Back to tools",
+      "placeholder": "Reserved for color controls and preview."
+    },
+    "glitch": {
+      "metaTitle": "Glitch",
+      "metaDescription": "Glitch-style image effects (coming soon).",
+      "placeholder": "Glitch effect controls will go here."
+    }
   }
 }

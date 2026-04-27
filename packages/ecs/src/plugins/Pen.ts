@@ -16,7 +16,9 @@ import {
   ComputeVisibility,
   DrawPencil,
   DrawBrush,
+  DrawPoint,
   RenderBindings,
+  RenderNameLabel,
 } from '../systems';
 import {
   Highlighted,
@@ -26,7 +28,6 @@ import {
   UI,
   VectorNetwork,
 } from '../components';
-import { DrawPoint } from '../systems/DrawPoint';
 
 export const PenPlugin: Plugin = () => {
   component(UI);
@@ -64,4 +65,5 @@ export const PenPlugin: Plugin = () => {
       .inAnyOrderWith(RenderTransformer)
       .before(Last),
   )(RenderHighlighter);
+  system((s) => s.after(RenderHighlighter).before(Last))(RenderNameLabel);
 };

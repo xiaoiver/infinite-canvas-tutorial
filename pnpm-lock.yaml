@@ -171,6 +171,9 @@ importers:
       '@fal-ai/client':
         specifier: ^1.9.0
         version: 1.9.0
+      '@iconify/json':
+        specifier: ^2.2.466
+        version: 2.2.466
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
@@ -1663,6 +1666,9 @@ importers:
         specifier: ^1.11.2
         version: 1.11.2
       '@spectrum-web-components/base':
+        specifier: ^1.11.2
+        version: 1.11.2
+      '@spectrum-web-components/button':
         specifier: ^1.11.2
         version: 1.11.2
       '@spectrum-web-components/color-area':

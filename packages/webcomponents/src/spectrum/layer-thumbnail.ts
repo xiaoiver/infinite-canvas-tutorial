@@ -24,6 +24,7 @@ import rough from 'roughjs';
 import { RoughSVG } from 'roughjs/bin/svg';
 import { apiContext } from '../context';
 import 'iconify-icon';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-collection-link.js';
 
 const THUMBNAIL_SIZE = 52;
 const THUMBNAIL_PADDING_RATIO = 0.1;
@@ -41,7 +42,11 @@ export class LayerThumbnail extends LitElement {
       overflow: hidden;
     }
 
-    sp-icon-text, sp-icon-code, sp-icon-crop, sp-icon-group {
+    sp-icon-text,
+    sp-icon-code,
+    sp-icon-crop,
+    sp-icon-group,
+    sp-icon-collection-link {
       display: block;
     }
 
@@ -97,8 +102,12 @@ export class LayerThumbnail extends LitElement {
   render() {
     const entity = this.api.getEntity(this.node);
     if (!entity.has(ComputedBounds)) {
+      const noBoundsIcon =
+        this.node.type === 'ref'
+          ? html`<sp-icon-collection-link></sp-icon-collection-link>`
+          : html`<sp-icon-group></sp-icon-group>`;
       return html`<sp-thumbnail size="1000" ?focused=${this.selected}>
-        <sp-icon-group></sp-icon-group>
+        ${noBoundsIcon}
       </sp-thumbnail>`;
     }
 
@@ -255,6 +264,8 @@ export class LayerThumbnail extends LitElement {
       thumbnail = iconName
         ? html`<iconify-icon icon=${iconName}></iconify-icon>`
         : html`<sp-icon-group></sp-icon-group>`;
+    } else if (this.node.type === 'ref') {
+      thumbnail = html`<sp-icon-collection-link></sp-icon-collection-link>`;
     } else if (this.node.type === 'embed' || this.node.type === 'html') {
       thumbnail = html`<sp-icon-code></sp-icon-code>`;
     } else if (this.node.type === 'brush') {

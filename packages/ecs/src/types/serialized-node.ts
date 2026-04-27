@@ -38,6 +38,12 @@ export interface BaseSerializeNode<Type extends string>
   id: string;
 
   /**
+   * 可复用组件根（与 Pencil `reusable` 一致）；实例由 `type: 'ref'` 节点引用该 id（见 `RefSerializedNode`）。
+   * @see https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances
+   */
+  reusable?: boolean;
+
+  /**
    * Parent unique identifier
    */
   parentId?: string;
@@ -574,6 +580,23 @@ export interface IconFontSerializedNode
   Partial<WireframeAttributes>,
   Partial<BindedAttributes> { }
 
+export interface RefAttributes {
+  /** The `ref` property must be another object's ID. */
+  ref: string;
+}
+
+export interface RefSerializedNode
+  extends BaseSerializeNode<'ref'>,
+  RefAttributes,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<InnerShadowAttributes>,
+  Partial<DropShadowAttributes>,
+  Partial<FilterAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<BindedAttributes> { }
+
 export type NodeSerializedNode =
   | EllipseSerializedNode
   | RectSerializedNode
@@ -585,7 +608,8 @@ export type NodeSerializedNode =
   | RoughPathSerializedNode
   | HtmlSerializedNode
   | EmbedSerializedNode
-  | IconFontSerializedNode;
+  | IconFontSerializedNode
+  | RefSerializedNode;
 export type EdgeSerializedNode = LineSerializedNode | PolylineSerializedNode | RoughLineSerializedNode | RoughPolylineSerializedNode | PathSerializedNode | RoughPathSerializedNode;
 
 export type SerializedNode =
@@ -605,7 +629,8 @@ export type SerializedNode =
   | VectorNetworkSerializedNode
   | HtmlSerializedNode
   | EmbedSerializedNode
-  | IconFontSerializedNode;
+  | IconFontSerializedNode
+  | RefSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
@@ -623,4 +648,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   VectorNetworkSerializedNode &
   HtmlSerializedNode &
   EmbedSerializedNode &
-  IconFontSerializedNode;
+  IconFontSerializedNode &
+  RefSerializedNode;

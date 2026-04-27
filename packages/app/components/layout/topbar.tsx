@@ -35,9 +35,10 @@ interface TopbarProps {
   leftMenuContent?: React.ReactNode;
   /** 中间内容，可选 */
   centerContent?: React.ReactNode;
+  hideCenterContent?: boolean;
 }
 
-export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: TopbarProps) {
+export function Topbar({ leftMenuItems, leftMenuContent, centerContent, hideCenterContent }: TopbarProps) {
   const { user, loading } = useAuth();
   const authT = useTranslations('auth');
   const router = useRouter();
@@ -132,15 +133,16 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent }: Topbar
           </div>
 
           {/* 中间内容区域 */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
-            <ImageToolbar />
-            <ColorToolbar />
-            {centerContent && (
-              <div>
-                {centerContent}
-              </div>
-            )}
-          </div>
+          {!hideCenterContent && (
+            <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
+              <ImageToolbar />
+              <ColorToolbar />
+              {centerContent && (
+                <div>
+                  {centerContent}
+                </div>
+              )}
+            </div>)}
 
           {/* 右侧：主题切换、语言切换和登录按钮 */}
           <div className="flex items-center gap-1.5">

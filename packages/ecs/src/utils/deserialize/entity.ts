@@ -48,7 +48,6 @@ import {
   Flex,
   Group,
   IconFont,
-  TesselationMethod,
 } from '../../components';
 import type {
   AttenuationAttributes,
@@ -88,12 +87,7 @@ import {
 } from '../serialize';
 import {
   buildIconFontScalablePrimitives,
-  mapSvgLineCap,
-  mapSvgLineJoin,
-  pickChildFill,
-  pickStrokeColorForChild,
   resolveIconFontWireStyle,
-  strokeWidthFromIconStyle,
 } from '../icon-font';
 import { Mat3 } from '../../components/math/Mat3';
 import { formatNumber } from '../serialize/points';
@@ -125,6 +119,8 @@ import {
 } from '../path-edit';
 import { pointAndNormalAlongPolylineByT } from '../polyline-arclength';
 import simplify from 'simplify-js';
+import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './expand-ref-nodes';
+import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (node.type === 'g') {
@@ -962,7 +958,15 @@ export function serializedNodesToEntities(
   entities: Entity[];
   idEntityMap: Map<string, EntityCommands>;
 } {
-  const graph = options?.lookupNodes ?? nodes;
+  const mergedForRef = mergeSerializedNodesForRefLookup(
+    nodes,
+    options?.lookupNodes,
+  );
+  const expandedNodes = expandRefSerializedNodes(nodes, mergedForRef);
+  const graph = mergeSerializedNodesForRefLookup(
+    expandedNodes,
+    options?.lookupNodes,
+  );
   const inheritGroupWireById = getComputedInheritGroupWireMap(graph);
 
   // The old entities are already added to canvas.
@@ -972,14 +976,14 @@ export function serializedNodesToEntities(
   }
 
   const vertices = Array.from(
-    new Set([...existedVertices, ...nodes.map((node) => node.id)]),
+    new Set([...existedVertices, ...expandedNodes.map((node) => node.id)]),
   );
-  let edges = nodes
+  let edges = expandedNodes
     .filter((node) => !isNil(node.parentId))
     .map((node) => [node.parentId, node.id] as [string, string]);
 
   // bindings should also be sorted
-  nodes.forEach((node) => {
+  expandedNodes.forEach((node) => {
     if (
       node.type === 'line' ||
       node.type === 'polyline' ||
@@ -1014,7 +1018,7 @@ export function serializedNodesToEntities(
 
   const entities: Entity[] = [];
   for (const id of sorted) {
-    const node = nodes.find((n) => n.id === id);
+    const node = expandedNodes.find((n) => n.id === id);
 
     if (!node) {
       continue;
@@ -1026,6 +1030,11 @@ export function serializedNodesToEntities(
     }
 
     const { parentId, type } = node;
+    if (type === 'ref') {
+      throw new Error(
+        'ref nodes must be expanded before serializedNodesToEntities (expandRefSerializedNodes)',
+      );
+    }
     const designVariables = options?.variables;
     const themeMode = options?.themeMode;
     const wirePaint = inheritGroupWireById.get(id) ?? {};
@@ -1428,70 +1437,14 @@ export function serializedNodesToEntities(
         for (let i = 0; i < prims.length; i++) {
           const prim = prims[i]!;
           const ch = commands.spawn();
-          ch.insert(
-            new Transform({
-              translation: { x: 0, y: 0 },
-              rotation: 0,
-              scale: { x: 1, y: 1 },
-            }),
-          );
-          ch.insert(new Renderable());
-          if (prim.kind === 'path') {
-            ch.insert(
-              new Path({
-                d: prim.d,
-                tessellationMethod: TesselationMethod.LIBTESS,
-                // fillRule: 'nonzero',
-              }),
-            );
-          } else if (prim.kind === 'ellipse') {
-            ch.insert(
-              new Ellipse({
-                cx: prim.cx,
-                cy: prim.cy,
-                rx: prim.rx,
-                ry: prim.ry,
-              }),
-            );
-          } else {
-            ch.insert(
-              new Line({
-                x1: prim.x1,
-                y1: prim.y1,
-                x2: prim.x2,
-                y2: prim.y2,
-              }),
-            );
-          }
-          ch.insert(
-            new Stroke({
-              color: pickStrokeColorForChild(
-                prim.style,
-                userColorStroke,
-                userColorFill,
-              ),
-              width: strokeWidthFromIconStyle(prim.style, rSw, {
-                primKind: prim.kind,
-              }),
-              linecap: mapSvgLineCap(prim.style.strokeLinecap),
-              linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
-            }),
-          );
-          const fillPart = pickChildFill(
-            prim.style,
-            userColorFill,
+          insertIconFontChildFromPrimitive(ch, prim, {
             userColorStroke,
-          );
-          if (fillPart && fillPart !== 'none') {
-            ch.insert(new FillSolid(fillPart, ''));
-          }
-          ch.insert(new ZIndex(attributes.zIndex != null ? attributes.zIndex! : 0));
-          ch.insert(
-            new Visibility(
-              (v as 'inherited' | 'hidden' | 'visible' | undefined) ?? 'inherited',
-            ),
-          );
-          ch.insert(new Name(`${id}__i${i}`));
+            userColorFill,
+            rSw,
+            zIndex: attributes.zIndex != null ? attributes.zIndex! : 0,
+            visibility: (v as 'inherited' | 'hidden' | 'visible' | undefined) ?? 'inherited',
+            name: `${id}__i${i}`,
+          });
           entityCommands.appendChild(ch);
         }
       } else {

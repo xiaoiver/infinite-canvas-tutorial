@@ -243,6 +243,16 @@ export const defaultAttributes: Record<
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
   },
+  ref: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    ref: '',
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
 };
 
 /**

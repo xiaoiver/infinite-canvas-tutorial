@@ -42,6 +42,7 @@ import {
   RectSerializedNode,
   TRANSFORMER_MASK_FILL_COLOR,
   TesselationMethod,
+  SerializedNode,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -117,6 +118,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       Pen.DRAW_ARROW,
       Pen.DRAW_ROUGH_RECT,
       Pen.DRAW_ROUGH_ELLIPSE,
+      Pen.DRAW_ICONFONT,
       Pen.IMAGE,
       Pen.LASSO,
       Pen.TEXT,
@@ -158,6 +160,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       multiSelectAlignment: true,
       multiSelectEffects: true,
       exportSection: true,
+      iconFont: true,
     },
     penbarVisible: true,
     taskbarVisible: true,
@@ -255,7 +258,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     width: 32,
     height: 32,
     zIndex: 1,
-    iconFontName: 'blender',
+    iconFontName: 'android',
     iconFontFamily: 'material-icon-theme',
     lockAspectRatio: true,
   };
@@ -263,17 +266,19 @@ canvas.addEventListener(Event.READY, async (e) => {
   const AndroidIcon = {
     id: 'android-icon-material-icon-theme',
     type: 'iconfont' as const,
-    x: 100,
+    x: 300,
     y: 300,
-    width: 32,
-    height: 32,
+    width: 100,
+    height: 100,
     zIndex: 1,
-    iconFontName: 'android',
-    iconFontFamily: 'material-icon-theme',
+    iconFontName: 'atom',
+    iconFontFamily: 'lucide',
     lockAspectRatio: true,
   };
 
+
   api.setAppState({
+    penbarNameLabelVisible: true,
     variables: {
       // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
       '--primary': { type: 'color', value: '#FF8400' },
@@ -283,6 +288,10 @@ canvas.addEventListener(Event.READY, async (e) => {
   });
 
   {
+    const m = await import('@iconify/json/json/lucide.json');
+    registerIconifyIconSet('lucide', m);
+  }
+  {
     const m = await import('@iconify/json/json/material-icon-theme.json');
     registerIconifyIconSet('material-icon-theme', m);
   }
@@ -291,6 +300,27 @@ canvas.addEventListener(Event.READY, async (e) => {
     api.updateNodes([
       AndroidIcon,
       BlenderIcon,
+      // {
+      //   id: 'foo',
+      //   type: 'rect',
+      //   name: 'foo',
+      //   reusable: true,
+      //   x: 0,
+      //   y: 0,
+      //   width: 100,
+      //   height: 100,
+      //   zIndex: 0,
+      //   fill: '#FF0000',
+      // } as SerializedNode,
+      // {
+      //   id: 'bar',
+      //   type: 'ref',
+      //   name: 'bar',
+      //   ref: 'foo',
+      //   x: 120,
+      //   y: 0,
+      //   zIndex: 0,
+      // } as SerializedNode,
       // image,
       // button,
       // text,

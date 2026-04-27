@@ -9,10 +9,14 @@ import {
   RoughAttributes,
   Marker,
   MarkerAttributes,
+  type IconFontAttributes,
+  type StrokeAttributes,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { msg, str, localized } from '@lit/localize';
+import './icon-font-controls.js';
+import type { IconFontControlsPatch } from './icon-font-controls';
 
 @customElement('ic-spectrum-penbar-draw-settings')
 @localized()
@@ -63,7 +67,10 @@ export class PenbarDrawSettings extends LitElement {
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
     | Pen.DRAW_ARROW
-    | Pen.DRAW_ROUGH_RECT;
+    | Pen.DRAW_ROUGH_RECT
+    | Pen.DRAW_ROUGH_ELLIPSE
+    | Pen.DRAW_ROUGH_LINE
+    | Pen.DRAW_ICONFONT;
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
     const strokeWidth = parseInt(e.target.value);
@@ -181,6 +188,23 @@ export class PenbarDrawSettings extends LitElement {
     this.api.record();
   }
 
+  private handlePenbarIconFontControlsPatch(
+    e: CustomEvent<IconFontControlsPatch>,
+  ) {
+    if (this.pen !== Pen.DRAW_ICONFONT) {
+      return;
+    }
+    const prev = this.api.getAppState().penbarDrawIconfont;
+    this.api.setAppState({
+      penbarDrawIconfont: {
+        ...prev,
+        ...e.detail,
+      },
+    });
+    this.api.record();
+    this.requestUpdate();
+  }
+
   get penbarDrawKey() {
     return this.pen === Pen.DRAW_RECT
       ? 'penbarDrawRect'
@@ -196,7 +220,13 @@ export class PenbarDrawSettings extends LitElement {
                 ? 'penbarDrawLine'
                 : this.pen === Pen.DRAW_ARROW
                   ? 'penbarDrawArrow'
-                  : 'penbarDrawRoughRect';
+                  : this.pen === Pen.DRAW_ROUGH_RECT
+                    ? 'penbarDrawRoughRect'
+                    : this.pen === Pen.DRAW_ROUGH_ELLIPSE
+                      ? 'penbarDrawRoughEllipse'
+                      : this.pen === Pen.DRAW_ROUGH_LINE
+                        ? 'penbarDrawRoughLine'
+                        : 'penbarDrawIconfont';
   }
 
   get penbarDraw() {
@@ -209,6 +239,9 @@ export class PenbarDrawSettings extends LitElement {
       penbarDrawLine,
       penbarDrawArrow,
       penbarDrawRoughRect,
+      penbarDrawRoughEllipse,
+      penbarDrawRoughLine,
+      penbarDrawIconfont,
     } = this.appState;
     return this.pen === Pen.DRAW_RECT
       ? penbarDrawRect
@@ -224,7 +257,13 @@ export class PenbarDrawSettings extends LitElement {
                 ? penbarDrawLine
                 : this.pen === Pen.DRAW_ARROW
                   ? penbarDrawArrow
-                  : penbarDrawRoughRect;
+                  : this.pen === Pen.DRAW_ROUGH_RECT
+                    ? penbarDrawRoughRect
+                    : this.pen === Pen.DRAW_ROUGH_ELLIPSE
+                      ? penbarDrawRoughEllipse
+                      : this.pen === Pen.DRAW_ROUGH_LINE
+                        ? penbarDrawRoughLine
+                        : penbarDrawIconfont;
   }
 
   render() {
@@ -240,7 +279,10 @@ export class PenbarDrawSettings extends LitElement {
       this.pen === Pen.DRAW_PENTAGON ||
       this.pen === Pen.DRAW_HEXAGON ||
       this.pen === Pen.DRAW_ELLIPSE ||
-      this.pen === Pen.DRAW_ROUGH_RECT,
+      this.pen === Pen.DRAW_ROUGH_RECT ||
+      this.pen === Pen.DRAW_ROUGH_ELLIPSE ||
+      this.pen === Pen.DRAW_ROUGH_LINE ||
+      this.pen === Pen.DRAW_ICONFONT,
       () => html`
             <div>
               <sp-field-label for="fill">${msg(str`Fill`)}</sp-field-label>
@@ -359,6 +401,28 @@ export class PenbarDrawSettings extends LitElement {
               </sp-picker>
             </div>
           `,
+    )}
+        ${when(
+      this.pen === Pen.DRAW_ICONFONT,
+      () => {
+        const p = this.penbarDraw as Partial<
+          FillAttributes & StrokeAttributes & IconFontAttributes
+        >;
+        return html`
+            <div>
+              <h4 style="margin: 8px 0 4px; font-size: var(--spectrum-font-size-100);">
+                ${msg(str`Icon font`)}
+              </h4>
+              <ic-spectrum-icon-font-controls
+                .iconFontFamily=${p.iconFontFamily}
+                .iconFontName=${p.iconFontName}
+                instanceId="penbar-draw-iconfont"
+                @ic-iconfont-controls-change=${this
+            .handlePenbarIconFontControlsPatch}
+              ></ic-spectrum-icon-font-controls>
+            </div>
+          `;
+      },
     )}
         ${when(
       this.pen === Pen.DRAW_ROUGH_RECT,

@@ -58,7 +58,8 @@ export class Penbar extends LitElement {
     | Pen.DRAW_LINE
     | Pen.DRAW_ROUGH_RECT
     | Pen.DRAW_ROUGH_ELLIPSE
-    | Pen.DRAW_ROUGH_LINE;
+    | Pen.DRAW_ROUGH_LINE
+    | Pen.DRAW_ICONFONT;
 
   private binded = false;
 
@@ -101,7 +102,8 @@ export class Penbar extends LitElement {
       pen === Pen.DRAW_LINE ||
       pen === Pen.DRAW_ROUGH_RECT ||
       pen === Pen.DRAW_ROUGH_ELLIPSE ||
-      pen === Pen.DRAW_ROUGH_LINE
+      pen === Pen.DRAW_ROUGH_LINE ||
+      pen === Pen.DRAW_ICONFONT
     ) {
       this.lastDrawPen = pen;
     } else if (pen === Pen.IMAGE) {
@@ -139,7 +141,8 @@ export class Penbar extends LitElement {
       | Pen.DRAW_HEXAGON
       | Pen.DRAW_ELLIPSE
       | Pen.DRAW_LINE
-      | Pen.DRAW_ARROW,
+      | Pen.DRAW_ARROW
+      | Pen.DRAW_ICONFONT,
     targetKey: string,
     shiftKey: boolean = false,
   ) {
@@ -254,7 +257,8 @@ export class Penbar extends LitElement {
         penbarAll.includes(Pen.DRAW_LINE) ||
         penbarAll.includes(Pen.DRAW_ROUGH_RECT) ||
         penbarAll.includes(Pen.DRAW_ROUGH_ELLIPSE) ||
-        penbarAll.includes(Pen.DRAW_ROUGH_LINE),
+        penbarAll.includes(Pen.DRAW_ROUGH_LINE) ||
+        penbarAll.includes(Pen.DRAW_ICONFONT),
         () => html`
               <overlay-trigger placement="right">
                 <sp-action-button
@@ -302,8 +306,15 @@ export class Penbar extends LitElement {
           this.lastDrawPen === Pen.DRAW_ROUGH_LINE,
           () => html`<sp-icon-line slot="icon"></sp-icon-line>`,
         )}
+                  ${when(
+          this.lastDrawPen === Pen.DRAW_ICONFONT,
+          () => html`<sp-icon-asterisk slot="icon"></sp-icon-asterisk>`,
+        )}
                 </sp-action-button>
-                <sp-popover slot="hover-content" style="padding: 8px;">
+                <sp-popover
+                  slot="hover-content"
+                  style="padding: 8px; min-width: min(100vw - 32px, 360px); max-width: min(100vw - 32px, 420px); box-sizing: border-box;"
+                >
                   <ic-spectrum-penbar-draw-settings
                     .pen=${this.lastDrawPen}
                   ></ic-spectrum-penbar-draw-settings>
@@ -383,6 +394,13 @@ export class Penbar extends LitElement {
           () => html` <sp-menu-item value="${Pen.DRAW_ROUGH_LINE}">
                         <sp-icon-line slot="icon"></sp-icon-line>
                         ${msg(str`Rough Line`)}
+                      </sp-menu-item>`,
+        )}
+                      ${when(
+          penbarAll.includes(Pen.DRAW_ICONFONT),
+          () => html` <sp-menu-item value="${Pen.DRAW_ICONFONT}">
+                        <sp-icon-asterisk slot="icon"></sp-icon-asterisk>
+                        ${msg(str`Iconfont`)}
                       </sp-menu-item>`,
         )}
                   </sp-menu>
