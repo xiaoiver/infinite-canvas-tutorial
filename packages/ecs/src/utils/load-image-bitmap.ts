@@ -1,6 +1,22 @@
 import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
-import heic2any from 'heic2any';
+
+/** 动态加载，避免 SSR/Node（如 VitePress build）执行 heic2any 顶层对 `window` 的访问。 */
+type Heic2Any = (options: {
+  blob: Blob;
+  toType?: 'image/jpeg' | 'image/png' | 'image/gif';
+  quality?: number;
+}) => Promise<Blob | Blob[]>;
+
+let heic2anyModule: Heic2Any | undefined;
+
+async function getHeic2any(): Promise<Heic2Any> {
+  if (!heic2anyModule) {
+    const m = await import('heic2any');
+    heic2anyModule = m.default;
+  }
+  return heic2anyModule;
+}
 
 function isHeicMime(mime: string): boolean {
   return /^image\/hei[cf](?:-sequence)?$/i.test(mime.trim());
@@ -40,6 +56,7 @@ async function blobLooksHeic(blob: Blob): Promise<boolean> {
  * JPEG is a common fallback.
  */
 async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
+  const heic2any = await getHeic2any();
   const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
     heic2any({
       blob,
