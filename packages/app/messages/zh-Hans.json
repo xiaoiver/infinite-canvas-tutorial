@@ -198,7 +198,8 @@
       },
       "glitch": {
         "title": "故障效果",
-        "description": "叠加三个滤镜：CRT、晕影和故障。"
+        "description": "叠加三个滤镜：CRT、晕影和故障",
+        "description2": "尝试在右侧导出面板下载 GIF"
       }
     },
     "photoColors": {

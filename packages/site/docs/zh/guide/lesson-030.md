@@ -251,6 +251,8 @@ export class PostEffectTime extends System {
 }
 ```
 
+[课程 10 - 导出 GIF]
+
 ## 渲染图 {#render-graph}
 
 Render Graph（有时称为 FrameGraph）是一种将渲染过程抽象为有向无环图（DAG）的现代渲染架构。在这一架构下，每个渲染 Pass 以及它们使用的资源都被视为图节点与边，通过图结构自动管理资源状态转换、同步和生命周期。
@@ -384,3 +386,4 @@ api.setAppState({
 [unityglitch]: https://github.com/staffantan/unityglitch/blob/master/GlitchShader.shader
 [reveals.cool]: https://reveals.cool/
 [Liquid Metal Logo]: https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts
+[课程 10 - 导出 GIF]: /zh/guide/lesson-010#to-gif

@@ -602,10 +602,6 @@
   <source>Engine time (animate)</source>
   <target>引擎时间 (动画)</target>
 </trans-unit>
-<trans-unit id="sade05f284771d6a6">
-  <source>Time uniform follows the app clock each frame.</source>
-  <target>时间均匀跟随应用时钟每帧。</target>
-</trans-unit>
 <trans-unit id="s48e186fb300e5464">
   <source>Time</source>
   <target>时间</target>
@@ -1223,6 +1219,30 @@
 <trans-unit id="s0fa5ab7499420a69">
   <source>Fill &amp; stroke color</source>
   <target>填充和描边颜色</target>
+</trans-unit>
+<trans-unit id="s094748f07458f069">
+  <source>Duration (s)</source>
+  <target>时长 (秒)</target>
+</trans-unit>
+<trans-unit id="sf2fbc9199cc91e28">
+  <source>FPS</source>
+  <target>帧率</target>
+</trans-unit>
+<trans-unit id="sf675f879b1c892c6">
+  <source>Quality</source>
+  <target>质量</target>
+</trans-unit>
+<trans-unit id="s9deeefd89ca8a81d">
+  <source>High</source>
+  <target>高</target>
+</trans-unit>
+<trans-unit id="sac6bdc71f750ac96">
+  <source>Medium</source>
+  <target>中</target>
+</trans-unit>
+<trans-unit id="s24f3a319b88552c1">
+  <source>Low</source>
+  <target>低</target>
 </trans-unit>
 </body>
 </file>

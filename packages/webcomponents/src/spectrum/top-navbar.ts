@@ -10,16 +10,11 @@ import {
   effectiveThemePreference,
   resolveThemeModeFromPreference,
   type ThemePreference,
+  ExportFormat,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { executeCopy, executeCut, executePaste } from './context-menu';
-
-export enum ExportFormat {
-  SVG = 'svg',
-  PNG = 'png',
-  JPEG = 'jpeg',
-}
 
 @customElement('ic-spectrum-top-navbar')
 @localized()
@@ -315,6 +310,8 @@ export class TopNavbar extends LitElement {
                   <sp-menu-item value=${ExportFormat.SVG}>SVG</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.PNG}>PNG</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
+                  <sp-menu-item value=${ExportFormat.WEBM}>WebM</sp-menu-item>
+                  <sp-menu-item value=${ExportFormat.GIF}>GIF</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
             </sp-action-menu>

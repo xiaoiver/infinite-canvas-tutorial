@@ -16,6 +16,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,
+  DownloadAnimationExport,
   DownloadScreenshot,
   InitCanvas,
   ListenTransformableStatus,
@@ -37,6 +38,9 @@ export const UIPlugin: Plugin = () => {
   });
   Object.defineProperty(DownloadScreenshot, 'name', {
     value: 'DownloadScreenshot',
+  });
+  Object.defineProperty(DownloadAnimationExport, 'name', {
+    value: 'DownloadAnimationExport',
   });
   Object.defineProperty(ListenTransformableStatus, 'name', {
     value: 'ListenTransformableStatus',
@@ -63,6 +67,7 @@ export const UIPlugin: Plugin = () => {
       )
       .before(Last),
   )(ZoomLevel);
+  system((s) => s.before(PreStartUp))(DownloadAnimationExport);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
   system(PreStartUp)(ListenTransformableStatus);
   system(PreStartUp)(Comment);

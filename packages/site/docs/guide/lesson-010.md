@@ -15,7 +15,7 @@ head:
 
 Image import and export is a very important feature in Infinite Canvas, and through the exported image it can be interfaced with other tools. So while our canvas drawing capabilities are currently limited, it's good to think ahead about issues related to images. In this lesson you will learn the following:
 
--   Exporting canvas content to PNG, JPEG and SVG formats
+-   Exporting canvas content to PNG, JPEG, and SVG, and exporting time-based effects to GIF
 -   Rendering images in the canvas
 -   Extending the capabilities of SVG, using `stroke-alignment` as an example.
 
@@ -516,6 +516,31 @@ When exporting to SVG, if web fonts are used, we aim to inline them within the f
 
 ![source: https://link.excalidraw.com/readonly/MbbnWPSWXgadXdtmzgeO](https://github.com/user-attachments/assets/e255df0a-13de-4cb6-ae2e-9e885b643c63)
 
+### Export GIF {#to-gif}
+
+In a later [Lesson 30 - Time-based animation], we cover effects driven by post-processing and a time uniform. To **export** that motion you need formats such as GIF or MOV; here we outline the former.
+
+1. The render path must accept the current **frame index** (or engine time) so each step shows the right moment of the effect.
+2. **Snapshot the canvas to a raster**, e.g. PNG — the previous section already covered that.
+3. **Read pixels and quantize** to a palette (e.g. 256 colors per frame). If you can accept a small quality hit, 128 or 64 colors usually shrinks the file a lot; gradients and photo-like content will show more banding or noise.
+4. **Per-frame palettes:** the straightforward approach is one `quantize` per frame and one `palette` per `writeFrame`, which works well for flat UI. For short loops with little change between frames, a **single global palette** or **fewer keyframes** can save more space, at a notably higher implementation cost.
+
+```ts
+import { GIFEncoder, applyPalette, quantize } from 'gifenc';
+
+const gif = GIFEncoder();
+for (let i = 0; i < frameCount; i++) {
+    renderFrame(i); // (1) drive time / frame
+    const dataUrl = el.toDataURL('image/png', pngQuality); // (2) raster snapshot
+    const imageData = await imageDataFromPngDataUrl(dataUrl, w, h, ctx!);
+    const palette = quantize(imageData.data, 256); // (3) build palette
+    const index = applyPalette(imageData.data, palette); // (4) map to indices
+    gif.writeFrame(index, w, h, { palette, delay });
+}
+gif.finish();
+return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
+```
+
 ### Export PDF {#to-pdf}
 
 Now that pixels and vectors are available, if you still want to export to PDF you can use [jsPDF], which provides an API for adding images, which I won't cover here for lack of space.
@@ -987,3 +1012,4 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
 [viewBox]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/viewBox
 [Font subsetting in excalidraw]: https://github.com/excalidraw/excalidraw/issues/1972#issuecomment-2417744618
+[Lesson 30 - Time-based animation]: /guide/lesson-030#time-animation

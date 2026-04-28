@@ -252,6 +252,8 @@ export class PostEffectTime extends System {
 }
 ```
 
+[Lesson 10 - Export GIF]
+
 ## Render graph {#render-graph}
 
 A Render Graph (sometimes called a FrameGraph) is a modern rendering architecture that models the rendering process as a directed acyclic graph (DAG). In this model, each rendering pass and the resources it uses are treated as nodes and edges; the graph structure automatically manages resource state transitions, synchronization, and lifetimes.
@@ -360,6 +362,8 @@ api.setAppState({
 ## Extended reading {#extended-reading}
 
 -   [Blob Tracking]
+-   [reveals.cool]
+-   [Liquid Metal Logo]
 
 [Paper Shaders]: https://shaders.paper.design/
 [Pixi.js filters]: https://github.com/pixijs/filters
@@ -381,3 +385,6 @@ api.setAppState({
 [Optimizing Triangles for a Full-screen Pass]: https://wallisc.github.io/rendering/2021/04/18/Fullscreen-Pass.html
 [CSSGlitchEffect]: https://tympanus.net/Tutorials/CSSGlitchEffect/
 [unityglitch]: https://github.com/staffantan/unityglitch/blob/master/GlitchShader.shader
+[reveals.cool]: https://reveals.cool/
+[Liquid Metal Logo]: https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/liquid-metal.ts
+[Lesson 10 - Export GIF]: /guide/lesson-010#to-gif
