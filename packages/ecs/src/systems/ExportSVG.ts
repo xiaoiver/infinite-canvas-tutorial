@@ -44,6 +44,7 @@ import {
 import { DOMAdapter } from '../environment';
 import {
   createSVGElement,
+  expandSerializedNodesForSvgExport,
   serializeNodesToSVGElements,
   toFixedAndRemoveTrailingZeros,
   toSVGDataURL,
@@ -188,6 +189,10 @@ export async function toSVGElement(
     api.getAppState().themeMode,
   );
   const layoutNodes = api.readLayoutFromECS(prep.nodes);
+  const exportNodes = expandSerializedNodesForSvgExport(
+    layoutNodes,
+    api.getNodes(),
+  );
 
   if (prep.cssRootStyle) {
     const $defs = createSVGElement('defs');
@@ -199,7 +204,7 @@ export async function toSVGElement(
     $namespace.insertBefore($defs, $namespace.firstChild);
   }
 
-  (await serializeNodesToSVGElements(layoutNodes)).forEach((element) => {
+  (await serializeNodesToSVGElements(exportNodes)).forEach((element) => {
     $namespace.appendChild(element);
   });
   return $namespace;
