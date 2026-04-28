@@ -263,9 +263,19 @@ export function transformPath(d: string, transform: mat3) {
       );
       segment[1] = newY;
     } else if (command === 'A') {
+      // SVG 弧的 rx、ry 在用户坐标系中的长度；仅变换终点会导致曲率与线段不一致。
+      // 用 2×2 线性部分的列范数作为各轴缩放因子（与均匀 scale(s,s)、axis-aligned scale(sx,sy) 一致）。
+      const a = transform[0]!;
+      const b = transform[1]!;
+      const c = transform[3]!;
+      const d = transform[4]!;
+      const scaleX = Math.hypot(a, b);
+      const scaleY = Math.hypot(c, d);
+      segment[1] = (segment[1] as number) * scaleX;
+      segment[2] = (segment[2] as number) * scaleY;
       const [newX, newY] = vec2.transformMat3(
         vec2.create(),
-        [segment[6], segment[7]],
+        [segment[6] as number, segment[7] as number],
         transform,
       );
       segment[6] = newX;

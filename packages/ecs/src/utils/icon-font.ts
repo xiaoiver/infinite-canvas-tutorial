@@ -230,6 +230,24 @@ export function getRegisteredIconifyIconFamilies(): string[] {
   return Array.from(getIconifyStore().sets.keys());
 }
 
+/**
+ * 已注册的某 Iconify 集合下全部图标名（`icons` 的 key），已排序。未注册时返回 `[]`。
+ * @param family 与 {@link registerIconifyIconSet} 一致，小写集合 id
+ */
+export function getRegisteredIconifyIconNames(family: string): string[] {
+  const f = (family?.trim() || 'lucide').toLowerCase();
+  if (!f) {
+    return [];
+  }
+  const set = getIconifyStore().sets.get(f);
+  if (!set?.icons) {
+    return [];
+  }
+  return Object.keys(set.icons).sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' }),
+  );
+}
+
 function normalizeIconName(name: string): string {
   return name
     .trim()
@@ -254,6 +272,8 @@ function parseTagAttrs(s: string): Record<string, string> {
 
 export type IconSvgStyle = {
   fill?: string;
+  /** 来自 `fill-rule`（`nonzero` / `evenodd`），小写。 */
+  fillRule?: string;
   stroke?: string;
   strokeWidth?: string;
   strokeLinecap?: string;
@@ -263,11 +283,23 @@ export type IconSvgStyle = {
 function pickVisualAttrs(attrs: Record<string, string>): IconSvgStyle {
   return {
     fill: attrs['fill'] ?? undefined,
+    fillRule: attrs['fill-rule']?.trim().toLowerCase() ?? undefined,
     stroke: attrs['stroke'] ?? undefined,
     strokeWidth: attrs['stroke-width'] ?? undefined,
     strokeLinecap: attrs['stroke-linecap'] ?? undefined,
     strokeLinejoin: attrs['stroke-linejoin'] ?? undefined,
   };
+}
+
+/** 与 {@link Path.fillRule} / Canvas `fillRule` 对齐；无法识别时与 SVG 默认一致为 `nonzero`。 */
+export function pathFillRuleFromIconStyle(
+  style: IconSvgStyle,
+): 'nonzero' | 'evenodd' {
+  const r = style.fillRule?.trim().toLowerCase();
+  if (r === 'evenodd' || r === 'even-odd') {
+    return 'evenodd';
+  }
+  return 'nonzero';
 }
 
 function mergeSvgStyle(a: IconSvgStyle, b: IconSvgStyle): IconSvgStyle {
@@ -943,20 +975,24 @@ export function pickChildFill(
   return f;
 }
 
+/** SVG `stroke-linecap` 默认 `butt`（未设或无法识别时）。 */
 export function mapSvgLineCap(
   s: string | undefined,
 ): 'butt' | 'round' | 'square' {
-  if (s === 'round' || s === 'square' || s === 'butt') {
-    return s;
+  const v = s?.trim().toLowerCase();
+  if (v === 'round' || v === 'square' || v === 'butt') {
+    return v;
   }
-  return 'round';
+  return 'butt';
 }
 
+/** SVG `stroke-linejoin` 默认 `miter`（未设或无法识别时）。 */
 export function mapSvgLineJoin(
   s: string | undefined,
 ): 'miter' | 'round' | 'bevel' {
-  if (s === 'round' || s === 'bevel' || s === 'miter') {
-    return s;
+  const v = s?.trim().toLowerCase();
+  if (v === 'round' || v === 'bevel' || v === 'miter') {
+    return v;
   }
-  return 'round';
+  return 'miter';
 }

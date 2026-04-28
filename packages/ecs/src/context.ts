@@ -16,6 +16,7 @@ import {
 import type {
   BrushAttributes,
   FillAttributes,
+  IconFontAttributes,
   MarkerAttributes,
   RoughAttributes,
   SerializedNode,
@@ -47,6 +48,8 @@ export interface PropertiesPanelSectionsOpen {
   multiSelectEffects: boolean;
   /** 属性面板「Export」手风琴 */
   exportSection: boolean;
+  /** 属性面板 `iconfont` 节点的「图标」手风琴 */
+  iconFont: boolean;
 }
 
 /**
@@ -78,6 +81,10 @@ export interface AppState {
   penbarAll: Pen[];
   penbarSelected: Pen;
   penbarDrawSizeLabelVisible: boolean;
+  /**
+   * 是否显示各节点 `Name` 的浮层（锚定在包围盒左上角；样式与绘图画布上的尺寸浮层同系）
+   */
+  penbarNameLabelVisible: boolean;
   penbarDrawRect: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawTriangle: Partial<StrokeAttributes & FillAttributes>;
   penbarDrawPentagon: Partial<StrokeAttributes & FillAttributes>;
@@ -100,7 +107,12 @@ export interface AppState {
   penbarBrush: Partial<
     BrushAttributes &
     StrokeAttributes & {
-      stamps: { src: string; name: string; preview: string; active?: boolean }[];
+      stamps: {
+        src: string;
+        name: string;
+        preview: string;
+        active?: boolean;
+      }[];
     }
   >;
   penbarText: Partial<
@@ -109,7 +121,8 @@ export interface AppState {
     }
   >;
   penbarLasso: Partial<
-    FillAttributes & StrokeAttributes & {
+    FillAttributes &
+    StrokeAttributes & {
       mode: 'draw' | 'select';
       trailStroke: string;
       trailFill: string;
@@ -117,6 +130,9 @@ export interface AppState {
       trailStrokeDasharray: string;
       trailStrokeDashoffset: string;
     }
+  >;
+  penbarDrawIconfont: Partial<
+    FillAttributes & StrokeAttributes & IconFontAttributes
   >;
   taskbarVisible: boolean;
   taskbarAll: Task[];
@@ -249,6 +265,7 @@ export const getDefaultAppState: () => AppState = () => {
       Pen.DRAW_ROUGH_RECT,
       Pen.DRAW_ROUGH_ELLIPSE,
       Pen.DRAW_ROUGH_LINE,
+      Pen.DRAW_ICONFONT,
       Pen.IMAGE,
       Pen.TEXT,
       Pen.PENCIL,
@@ -260,6 +277,7 @@ export const getDefaultAppState: () => AppState = () => {
     ],
     penbarSelected: Pen.HAND,
     penbarDrawSizeLabelVisible: true,
+    penbarNameLabelVisible: false,
     penbarDrawRect: {
       fill: TRANSFORMER_MASK_FILL_COLOR,
       fillOpacity: 0.5,
@@ -387,6 +405,13 @@ export const getDefaultAppState: () => AppState = () => {
       strokeWidth: 1,
       strokeOpacity: 1,
     },
+    penbarDrawIconfont: {
+      fill: 'black',
+      stroke: 'black',
+      strokeWidth: 1,
+      iconFontFamily: 'lucide',
+      iconFontName: 'search',
+    },
     taskbarVisible: true,
     taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
     taskbarSelected: [],
@@ -405,6 +430,7 @@ export const getDefaultAppState: () => AppState = () => {
       multiSelectAlignment: true,
       multiSelectEffects: true,
       exportSection: true,
+      iconFont: true,
     },
     layersExpanded: [],
     rotateEnabled: true,

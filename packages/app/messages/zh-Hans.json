@@ -185,5 +185,32 @@
     "step3": "与画布对话",
     "step1Description": "添加不同的 AI 提供商的 API Keys 以启用 AI 能力。只需要配置“对话”和“图像”能力即可使用画布的绝大部分功能。Vercel AI Gateway 提供了 $5 的免费使用额度。",
     "step3Description": "您可以上传或生成图像并与它们对话。"
+  },
+  "tools": {
+    "metaTitle": "工具",
+    "metaDescription": "预设滤镜与实用小工具，无需登录。",
+    "kicker": "公开工具",
+    "title": "滤镜与工具",
+    "comingSoon": "即将推出",
+    "items": {
+      "photoColors": {
+        "title": "照片色彩"
+      },
+      "glitch": {
+        "title": "故障效果",
+        "description": "叠加三个滤镜：CRT、晕影和故障。"
+      }
+    },
+    "photoColors": {
+      "metaTitle": "照片色彩",
+      "metaDescription": "照片色彩类工具（待完善）。",
+      "backToTools": "返回工具列表",
+      "placeholder": "此处预留给色彩参数与预览区域。"
+    },
+    "glitch": {
+      "metaTitle": "故障艺术",
+      "metaDescription": "故障风 / Glitch 图像效果（待完善）。",
+      "placeholder": "预留给 Glitch 参数与预览。"
+    }
   }
 }

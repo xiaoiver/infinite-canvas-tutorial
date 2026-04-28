@@ -153,6 +153,14 @@ describe('transformPath', () => {
     expect(result).toContain('55');
   });
 
+  it('should scale elliptical arc radii with linear transform (icon path scaling)', () => {
+    const matrix = mat3.create();
+    mat3.scale(matrix, matrix, [2, 2]);
+    const result = transformPath('M 0 0 A 10 10 0 0 0 50 50', matrix);
+    expect(result).toContain('A20 20');
+    expect(result).toContain('100 100');
+  });
+
   it('should transform C command (cubic bezier)', () => {
     const matrix = mat3.create();
     mat3.translate(matrix, matrix, [5, 5]);

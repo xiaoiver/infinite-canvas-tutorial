@@ -38,6 +38,12 @@ export interface BaseSerializeNode<Type extends string>
   id: string;
 
   /**
+   * 可复用组件根（与 Pencil `reusable` 一致）；实例由 `type: 'ref'` 节点引用该 id（见 `RefSerializedNode`）。
+   * @see https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances
+   */
+  reusable?: boolean;
+
+  /**
    * Parent unique identifier
    */
   parentId?: string;
@@ -410,7 +416,7 @@ export interface LineSerializedNode
   Partial<MarkerAttributes>,
   Partial<BindingAttributes> { }
 
-interface PolylineAttributes {
+export interface PolylineAttributes {
   points: string;
 }
 export interface PolylineSerializedNode
@@ -441,7 +447,7 @@ export interface BrushSerializedNode
   Partial<WireframeAttributes>,
   Partial<BindedAttributes> { }
 
-interface PathAttributes {
+export interface PathAttributes {
   d: string;
   fillRule: Path['fillRule'];
   tessellationMethod: Path['tessellationMethod'];
@@ -574,6 +580,51 @@ export interface IconFontSerializedNode
   Partial<WireframeAttributes>,
   Partial<BindedAttributes> { }
 
+export interface RefAttributes {
+  /** The `ref` property must be another object's ID. */
+  ref: string;
+}
+
+/**
+ * 引用（`type: 'ref'`）实例上可写任意形状的可选覆盖项，与 {@link SerializedNode} 中各具体 type 的字段并集一致（`ref` 与 `reusable` 根语义除外）。
+ */
+export interface RefSerializedNode
+  extends BaseSerializeNode<'ref'>,
+  RefAttributes,
+  Partial<FillAttributes>,
+  Partial<StrokeAttributes>,
+  Partial<InnerShadowAttributes>,
+  Partial<DropShadowAttributes>,
+  Partial<FilterAttributes>,
+  Partial<AttenuationAttributes>,
+  Partial<WireframeAttributes>,
+  Partial<BindedAttributes>,
+  Partial<Pick<Ellipse, 'rx' | 'ry' | 'cx' | 'cy'>>,
+  Partial<Pick<Rect, 'cornerRadius'>>,
+  Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
+  Partial<PolylineAttributes>,
+  Partial<PathAttributes>,
+  Partial<BrushAttributes>,
+  Partial<RoughAttributes>,
+  Partial<TextAttributes>,
+  Partial<Pick<
+    TextSerializedNode,
+    | 'fontBoundingBoxAscent'
+    | 'fontBoundingBoxDescent'
+    | 'hangingBaseline'
+    | 'ideographicBaseline'
+    | 'edgeLabelPosition'
+    | 'edgeLabelOffset'
+  >>,
+  Partial<VectorNetworkAttributes>,
+  Partial<HtmlAttributes>,
+  Partial<EmbedAttributes>,
+  Partial<IconFontAttributes>,
+  Partial<MarkerAttributes>,
+  Partial<BindingAttributes>,
+  Partial<TextDecorationAttributes>,
+  Partial<HitStrokeInteractionAttributes> { }
+
 export type NodeSerializedNode =
   | EllipseSerializedNode
   | RectSerializedNode
@@ -585,7 +636,8 @@ export type NodeSerializedNode =
   | RoughPathSerializedNode
   | HtmlSerializedNode
   | EmbedSerializedNode
-  | IconFontSerializedNode;
+  | IconFontSerializedNode
+  | RefSerializedNode;
 export type EdgeSerializedNode = LineSerializedNode | PolylineSerializedNode | RoughLineSerializedNode | RoughPolylineSerializedNode | PathSerializedNode | RoughPathSerializedNode;
 
 export type SerializedNode =
@@ -605,7 +657,8 @@ export type SerializedNode =
   | VectorNetworkSerializedNode
   | HtmlSerializedNode
   | EmbedSerializedNode
-  | IconFontSerializedNode;
+  | IconFontSerializedNode
+  | RefSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
   EllipseSerializedNode &
@@ -623,4 +676,5 @@ export type SerializedNodeAttributes = GSerializedNode &
   VectorNetworkSerializedNode &
   HtmlSerializedNode &
   EmbedSerializedNode &
-  IconFontSerializedNode;
+  IconFontSerializedNode &
+  RefSerializedNode;

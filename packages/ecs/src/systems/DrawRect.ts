@@ -42,7 +42,7 @@ import {
   regularPolygonPathInRect,
   snapToGrid,
 } from '../utils';
-import type { EllipseSerializedNode, FillAttributes, PathSerializedNode, PolylineSerializedNode, RectSerializedNode, RoughAttributes, RoughEllipseSerializedNode, RoughPolylineSerializedNode, RoughRectSerializedNode, StrokeAttributes } from '../types/serialized-node';
+import type { EllipseSerializedNode, FillAttributes, IconFontSerializedNode, PathSerializedNode, PolylineSerializedNode, RectSerializedNode, RoughAttributes, RoughEllipseSerializedNode, RoughPolylineSerializedNode, RoughRectSerializedNode, StrokeAttributes } from '../types/serialized-node';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { DOMAdapter, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
 
@@ -57,6 +57,7 @@ const PEN_TO_TYPE = {
   [Pen.DRAW_ROUGH_RECT]: 'rough-rect',
   [Pen.DRAW_ROUGH_ELLIPSE]: 'rough-ellipse',
   [Pen.DRAW_ROUGH_LINE]: 'rough-polyline',
+  [Pen.DRAW_ICONFONT]: 'iconfont',
 } as const;
 
 interface DrawRectSelection {
@@ -70,6 +71,7 @@ interface DrawRectSelection {
   roughRectBrush: RoughRectSerializedNode;
   roughEllipseBrush: RoughEllipseSerializedNode;
   roughLineBrush: RoughPolylineSerializedNode;
+  iconFontBrush: RectSerializedNode;
   label: HTMLDivElement;
   x: number;
   y: number;
@@ -147,7 +149,8 @@ export class DrawRect extends System {
         | Pen.DRAW_LINE
         | Pen.DRAW_ROUGH_RECT
         | Pen.DRAW_ROUGH_ELLIPSE
-        | Pen.DRAW_ROUGH_LINE,
+        | Pen.DRAW_ROUGH_LINE
+        | Pen.DRAW_ICONFONT,
         Partial<RoughAttributes & StrokeAttributes & FillAttributes>
       > = {
         [Pen.DRAW_RECT]: appState.penbarDrawRect,
@@ -159,6 +162,7 @@ export class DrawRect extends System {
         [Pen.DRAW_ROUGH_RECT]: appState.penbarDrawRoughRect,
         [Pen.DRAW_ROUGH_ELLIPSE]: appState.penbarDrawRoughEllipse,
         [Pen.DRAW_ROUGH_LINE]: appState.penbarDrawRoughLine,
+        [Pen.DRAW_ICONFONT]: appState.penbarDrawIconfont,
       };
 
       if (pen === Pen.DRAW_ARROW) {
@@ -174,7 +178,8 @@ export class DrawRect extends System {
         pen !== Pen.DRAW_LINE &&
         pen !== Pen.DRAW_ROUGH_RECT &&
         pen !== Pen.DRAW_ROUGH_ELLIPSE &&
-        pen !== Pen.DRAW_ROUGH_LINE
+        pen !== Pen.DRAW_ROUGH_LINE &&
+        pen !== Pen.DRAW_ICONFONT
       ) {
         return;
       }
@@ -197,6 +202,7 @@ export class DrawRect extends System {
           roughRectBrush: undefined,
           roughEllipseBrush: undefined,
           roughLineBrush: undefined,
+          iconFontBrush: undefined,
           label: DOMAdapter.get().getDocument().createElement('div'),
           x: 0,
           y: 0,
@@ -225,9 +231,9 @@ export class DrawRect extends System {
           return;
         }
 
-        const isSquare = input.shiftKey;
+        const isSquare = input.shiftKey || pen === Pen.DRAW_ICONFONT;
         api.runAtNextTick(() => {
-          this.handleBrushing(api, pen, x, y, defaultDrawParams[pen], isSquare);
+          this.handleBrushing(api, pen, x, y, defaultDrawParams[pen === Pen.DRAW_ICONFONT ? Pen.DRAW_RECT : pen], isSquare);
         });
       });
 
@@ -261,7 +267,8 @@ export class DrawRect extends System {
             | PolylineSerializedNode
             | RoughEllipseSerializedNode
             | RoughRectSerializedNode
-            | RoughPolylineSerializedNode = Object.assign(
+            | RoughPolylineSerializedNode
+            | IconFontSerializedNode = Object.assign(
               {
                 id: uuidv4(),
                 type: PEN_TO_TYPE[pen],
@@ -274,8 +281,8 @@ export class DrawRect extends System {
                   points: `${x},${y} ${x + width},${y + height}`,
                 }
                 : pen === Pen.DRAW_TRIANGLE ||
-                    pen === Pen.DRAW_PENTAGON ||
-                    pen === Pen.DRAW_HEXAGON
+                  pen === Pen.DRAW_PENTAGON ||
+                  pen === Pen.DRAW_HEXAGON
                   ? {
                     x,
                     y,
@@ -291,12 +298,20 @@ export class DrawRect extends System {
                       height,
                     ),
                   }
-                : {
-                  x,
-                  y,
-                  width,
-                  height,
-                },
+                  : pen === Pen.DRAW_ICONFONT
+                    ? {
+                      x,
+                      y,
+                      width,
+                      height,
+                      lockAspectRatio: true,
+                    }
+                    : {
+                      x,
+                      y,
+                      width,
+                      height,
+                    },
             );
           api.setAppState({
             penbarSelected: Pen.SELECT,
@@ -368,23 +383,25 @@ export class DrawRect extends System {
               ? selection.pentagonBrush
               : pen === Pen.DRAW_HEXAGON
                 ? selection.hexagonBrush
-          : pen === Pen.DRAW_ROUGH_RECT
-            ? selection.roughRectBrush
-            : pen === Pen.DRAW_ELLIPSE
-              ? selection.ellipseBrush
-              : pen === Pen.DRAW_LINE
-                ? selection.lineBrush
-                : pen === Pen.DRAW_ROUGH_ELLIPSE
-                  ? selection.roughEllipseBrush
-                  : pen === Pen.DRAW_ROUGH_LINE
-                    ? selection.roughLineBrush
-                    : selection.arrowBrush;
+                : pen === Pen.DRAW_ROUGH_RECT
+                  ? selection.roughRectBrush
+                  : pen === Pen.DRAW_ELLIPSE
+                    ? selection.ellipseBrush
+                    : pen === Pen.DRAW_LINE
+                      ? selection.lineBrush
+                      : pen === Pen.DRAW_ROUGH_ELLIPSE
+                        ? selection.roughEllipseBrush
+                        : pen === Pen.DRAW_ROUGH_LINE
+                          ? selection.roughLineBrush
+                          : pen === Pen.DRAW_ICONFONT
+                            ? selection.iconFontBrush
+                            : selection.arrowBrush;
       if (!brush) {
         // @ts-expect-error
         brush = Object.assign(
           {
             id: uuidv4(),
-            type: PEN_TO_TYPE[pen],
+            type: PEN_TO_TYPE[pen === Pen.DRAW_ICONFONT ? Pen.DRAW_RECT : pen],
             visibility: 'hidden',
             zIndex: DRAW_RECT_Z_INDEX,
             strokeAttenuation: true,
@@ -394,8 +411,8 @@ export class DrawRect extends System {
               points: '0,0 0,0',
             }
             : pen === Pen.DRAW_TRIANGLE ||
-                pen === Pen.DRAW_PENTAGON ||
-                pen === Pen.DRAW_HEXAGON
+              pen === Pen.DRAW_PENTAGON ||
+              pen === Pen.DRAW_HEXAGON
               ? {
                 x: 0,
                 y: 0,
@@ -403,12 +420,12 @@ export class DrawRect extends System {
                 height: 0,
                 d: '',
               }
-            : {
-              x: 0,
-              y: 0,
-              width: 0,
-              height: 0,
-            },
+              : {
+                x: 0,
+                y: 0,
+                width: 0,
+                height: 0,
+              },
         );
         api.updateNode(brush, undefined, false);
         if (pen === Pen.DRAW_RECT) {
@@ -429,6 +446,8 @@ export class DrawRect extends System {
           selection.roughEllipseBrush = brush as RoughEllipseSerializedNode;
         } else if (pen === Pen.DRAW_ROUGH_LINE) {
           selection.roughLineBrush = brush as RoughPolylineSerializedNode;
+        } else if (pen === Pen.DRAW_ICONFONT) {
+          selection.iconFontBrush = brush as RectSerializedNode;
         } else {
           selection.arrowBrush = brush as PolylineSerializedNode;
         }
@@ -459,9 +478,10 @@ export class DrawRect extends System {
         pen === Pen.DRAW_TRIANGLE ||
         pen === Pen.DRAW_PENTAGON ||
         pen === Pen.DRAW_HEXAGON;
+      const isIconFont = pen === Pen.DRAW_ICONFONT;
 
       if (!isLine) {
-        if (isSquare) {
+        if (isSquare || isIconFont) {
           if (Math.abs(width) > Math.abs(height)) {
             width = Math.sign(width) * Math.abs(height);
           } else {
@@ -501,14 +521,14 @@ export class DrawRect extends System {
                 height,
               ),
             }
-          : {
-            ...defaultDrawParams,
-            visibility: 'visible',
-            x,
-            y,
-            width,
-            height,
-          },
+            : {
+              ...defaultDrawParams,
+              visibility: 'visible',
+              x,
+              y,
+              width,
+              height,
+            },
         false,
       );
 
@@ -545,6 +565,7 @@ export class DrawRect extends System {
       lineBrush,
       roughLineBrush,
       arrowBrush,
+      iconFontBrush,
     } = selection;
     const brush =
       pen === Pen.DRAW_RECT
@@ -555,22 +576,24 @@ export class DrawRect extends System {
             ? pentagonBrush
             : pen === Pen.DRAW_HEXAGON
               ? hexagonBrush
-        : pen === Pen.DRAW_ROUGH_RECT
-          ? roughRectBrush
-          : pen === Pen.DRAW_ROUGH_ELLIPSE
-            ? roughEllipseBrush
-            : pen === Pen.DRAW_ELLIPSE
-              ? ellipseBrush
-              : pen === Pen.DRAW_LINE
-                ? lineBrush
-                : pen === Pen.DRAW_ROUGH_LINE
-                  ? roughLineBrush
-                  : arrowBrush;
+              : pen === Pen.DRAW_ROUGH_RECT
+                ? roughRectBrush
+                : pen === Pen.DRAW_ROUGH_ELLIPSE
+                  ? roughEllipseBrush
+                  : pen === Pen.DRAW_ELLIPSE
+                    ? ellipseBrush
+                    : pen === Pen.DRAW_LINE
+                      ? lineBrush
+                      : pen === Pen.DRAW_ROUGH_LINE
+                        ? roughLineBrush
+                        : pen === Pen.DRAW_ICONFONT
+                          ? iconFontBrush
+                          : arrowBrush;
     return brush;
   }
 }
 
-export function initLabel(label: HTMLDivElement) {
+export function initLabel(label: HTMLDivElement, style: Partial<CSSStyleDeclaration> = {}) {
   if (isBrowser) {
     label.style.position = 'absolute';
     label.style.top = '0';
@@ -583,6 +606,7 @@ export function initLabel(label: HTMLDivElement) {
     label.style.backgroundColor = TRANSFORMER_ANCHOR_STROKE_COLOR;
     label.style.color = 'white';
     label.style.visibility = 'hidden';
+    Object.assign(label.style, style);
   }
 }
 
@@ -637,5 +661,28 @@ export function showLabel(
       label.style.left = `${viewportX2}px`;
       label.style.transform = 'translate(-50%, 8px)';
     }
+  }
+}
+
+/**
+ * 在包围盒左上角（画布坐标 (x,y) 对应 OBB 锚点，略作内边距）显示 {@link Name} 文本，样式与 {@link initLabel} 一致。
+ */
+export function showNameLabel(
+  label: HTMLDivElement,
+  api: API,
+  { x, y, text, viewportYOffset = 0 }: { x: number; y: number; text: string; viewportYOffset?: number },
+) {
+  if (isBrowser) {
+    if (!api.getAppState().penbarNameLabelVisible) {
+      label.style.visibility = 'hidden';
+      return;
+    }
+    label.style.visibility = 'visible';
+    label.style.pointerEvents = 'none';
+    label.innerText = text;
+    const { x: viewportX, y: viewportY } = api.canvas2Viewport({ x, y });
+    label.style.top = `${viewportY + viewportYOffset}px`;
+    label.style.left = `${viewportX}px`;
+    label.style.transform = 'translate(4px, 4px)';
   }
 }

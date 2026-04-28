@@ -9,6 +9,7 @@ import {
   isDesignVariableReference,
   resolveDesignVariableValue,
   type FlexboxLayoutAttributes,
+  type IconFontSerializedNode,
   type RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
@@ -16,9 +17,11 @@ import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
+import '@spectrum-web-components/field-label/sp-field-label.js';
 import '@spectrum-web-components/picker/sp-picker.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/overlay/sp-overlay.js';
+import '@spectrum-web-components/overlay/overlay-trigger.js';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-left.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-top.js';
@@ -31,9 +34,14 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-bottom.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-link.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
+import '@spectrum-web-components/textfield/sp-textfield.js';
+import '@spectrum-web-components/accordion/sp-accordion.js';
+import '@spectrum-web-components/accordion/sp-accordion-item.js';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import './design-variable-picker.js';
 import './export-panel';
+import './icon-font-controls.js';
+import type { IconFontControlsPatch } from './icon-font-controls';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
 
@@ -232,14 +240,13 @@ export class PropertiesPanelContent extends LitElement {
         margin-bottom: 0;
       }
 
-      .layout-inset-sides-popover sp-field-label {
-        width: 72px;
-        flex-shrink: 0;
-      }
+    .layout-inset-sides-popover sp-field-label {
+      width: 72px;
+      flex-shrink: 0;
+    }
 
-      .layout-inset-sides-popover sp-number-field {
-        width: 70px;
-      }
+    .layout-inset-sides-popover sp-number-field {
+      width: 70px;
     }
   `;
 
@@ -262,6 +269,7 @@ export class PropertiesPanelContent extends LitElement {
     flexItem: boolean;
     effects: boolean;
     exportSection: boolean;
+    iconFont: boolean;
   } {
     const s = (
       this.appState as AppState & {
@@ -272,6 +280,7 @@ export class PropertiesPanelContent extends LitElement {
           flexItem: boolean;
           effects: boolean;
           exportSection: boolean;
+          iconFont: boolean;
         }>;
       }
     )?.propertiesPanelSectionsOpen;
@@ -282,6 +291,7 @@ export class PropertiesPanelContent extends LitElement {
       flexItem: s?.flexItem ?? true,
       effects: s?.effects ?? true,
       exportSection: s?.exportSection ?? true,
+      iconFont: s?.iconFont ?? true,
     };
   }
 
@@ -422,6 +432,20 @@ export class PropertiesPanelContent extends LitElement {
 
   private handleLockAspectRatioChanged() {
     this.lockAspectRatio = !this.lockAspectRatio;
+  }
+
+  private handleIconFontControlsPatch(
+    e: CustomEvent<IconFontControlsPatch>,
+  ) {
+    if (
+      this.node.type !== 'iconfont' &&
+      (this.node.type as string) !== 'icon_font'
+    ) {
+      return;
+    }
+    this.api.updateNode(this.node, e.detail as Partial<IconFontSerializedNode>);
+    this.api.record();
+    this.requestUpdate();
   }
 
   private handleLayoutPaddingChanged(e: Event) {
@@ -1448,6 +1472,21 @@ export class PropertiesPanelContent extends LitElement {
     </sp-accordion-item>`;
   }
 
+  private iconFontTemplate() {
+    const n = this.node as IconFontSerializedNode;
+    return html`<sp-accordion-item
+      label=${msg(str`Icon font`)}
+      ?open=${this.propertiesPanelSectionsOpenResolved.iconFont}
+    >
+      <ic-spectrum-icon-font-controls
+        .iconFontFamily=${n.iconFontFamily}
+        .iconFontName=${n.iconFontName}
+        .instanceId=${this.node.id}
+        @ic-iconfont-controls-change=${this.handleIconFontControlsPatch}
+      ></ic-spectrum-icon-font-controls>
+    </sp-accordion-item>`;
+  }
+
   render() {
     if (!this.node) {
       return;
@@ -1457,6 +1496,7 @@ export class PropertiesPanelContent extends LitElement {
     const isGroup = type === 'g';
     const isText = type === 'text';
     const isRect = type === 'rect';
+    const isIconFont = type === 'iconfont' || (type as string) === 'icon_font';
 
     const fillOpRaw = (this.node as FillAttributes).fillOpacity ?? 1;
     const fillOpacityResolved = resolveDesignVariableValue(
@@ -1693,6 +1733,7 @@ export class PropertiesPanelContent extends LitElement {
             `
         : ''}
         ${this.transformTemplate()}
+        ${when(isIconFont, () => this.iconFontTemplate())}
         ${when(
           this.node.display === 'flex',
           () => this.layoutTemplate(),

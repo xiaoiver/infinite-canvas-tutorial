@@ -74,13 +74,17 @@ import {
   buildIconFontScalablePrimitives,
   mapSvgLineCap,
   mapSvgLineJoin,
+  pathFillRuleFromIconStyle,
   pickChildFill,
   pickStrokeColorForChild,
   resolveIconFontWireStyle,
   strokeWidthFromIconStyle,
+  type ScaledIconPrimitive,
 } from '../utils/icon-font';
+import { insertIconFontChildFromPrimitive } from '../utils/insert-icon-font-child-entity';
 import { getComputedInheritGroupWireForId } from '../utils/inherit-group-wire';
 import { buildGroupWirePresentation } from '../utils/group-presentation';
+import { TesselationMethod } from '../components/geometry/Path';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -232,6 +236,62 @@ export function safeRemoveComponent<T>(
   }
 }
 
+function syncIconFontChildGeometryToPrim(
+  child: Entity,
+  prim: ScaledIconPrimitive,
+) {
+  const sameKind =
+    (prim.kind === 'path' && child.has(Path)) ||
+    (prim.kind === 'ellipse' && child.has(Ellipse)) ||
+    (prim.kind === 'line' && child.has(Line));
+  if (sameKind) {
+    if (prim.kind === 'path') {
+      const p = child.write(Path);
+      p.d = prim.d;
+      p.fillRule = pathFillRuleFromIconStyle(prim.style);
+    } else if (prim.kind === 'ellipse') {
+      const e = child.write(Ellipse);
+      e.cx = prim.cx;
+      e.cy = prim.cy;
+      e.rx = prim.rx;
+      e.ry = prim.ry;
+    } else {
+      const ln = child.write(Line);
+      ln.x1 = prim.x1;
+      ln.y1 = prim.y1;
+      ln.x2 = prim.x2;
+      ln.y2 = prim.y2;
+    }
+    safeAddComponent(child, GeometryDirty);
+    return;
+  }
+  safeRemoveComponent(child, Path);
+  safeRemoveComponent(child, Ellipse);
+  safeRemoveComponent(child, Line);
+  if (prim.kind === 'path') {
+    safeAddComponent(child, Path, {
+      d: prim.d,
+      tessellationMethod: TesselationMethod.LIBTESS,
+      fillRule: pathFillRuleFromIconStyle(prim.style),
+    });
+  } else if (prim.kind === 'ellipse') {
+    safeAddComponent(child, Ellipse, {
+      cx: prim.cx,
+      cy: prim.cy,
+      rx: prim.rx,
+      ry: prim.ry,
+    });
+  } else {
+    safeAddComponent(child, Line, {
+      x1: prim.x1,
+      y1: prim.y1,
+      x2: prim.x2,
+      y2: prim.y2,
+    });
+  }
+  safeAddComponent(child, GeometryDirty);
+}
+
 /**
  * `iconfont` 的矢量与颜色在子 path 实体上；根节点 width/height 等变更时需重算 primitive 并写回子几何。
  */
@@ -281,29 +341,55 @@ function syncIconFontChildrenFromUpdatedNode(
     w,
     h,
   );
+  const initialChildren = rootEntity.read(Parent).children;
+
+  const hideIconFontChild = (child: Entity) => {
+    safeAddComponent(child, Visibility, { value: 'hidden' });
+    safeAddComponent(child, MaterialDirty);
+  };
+
   if (!prims || prims.length === 0) {
+    for (const child of initialChildren) {
+      hideIconFontChild(child);
+    }
+    if (rootEntity.has(IconFont) && w > 0 && h > 0) {
+      const iw = rootEntity.write(IconFont);
+      iw.layoutWidth = w;
+      iw.layoutHeight = h;
+    }
+    safeAddComponent(rootEntity, Group, groupPres);
+    safeRemoveComponent(rootEntity, FillSolid);
+    safeRemoveComponent(rootEntity, FillGradient);
+    safeRemoveComponent(rootEntity, FillImage);
+    safeRemoveComponent(rootEntity, FillPattern);
+    safeRemoveComponent(rootEntity, Stroke);
+    safeAddComponent(rootEntity, MaterialDirty);
     return;
   }
-  const children = rootEntity.read(Parent).children;
-  const n = Math.min(children.length, prims.length);
-  for (let i = 0; i < n; i++) {
-    const child = children[i]!;
+
+  const zForChild = node.zIndex != null ? node.zIndex : 0;
+  const childVisibility =
+    (node.visibility as 'inherited' | 'hidden' | 'visible' | undefined) ?? 'inherited';
+
+  for (let i = 0; i < prims.length; i++) {
     const prim = prims[i]!;
-    if (prim.kind === 'path' && child.has(Path)) {
-      child.write(Path).d = prim.d;
-      safeAddComponent(child, GeometryDirty);
-    } else if (prim.kind === 'ellipse' && child.has(Ellipse)) {
-      child.write(Ellipse).cx = prim.cx;
-      child.write(Ellipse).cy = prim.cy;
-      child.write(Ellipse).rx = prim.rx;
-      child.write(Ellipse).ry = prim.ry;
-      safeAddComponent(child, GeometryDirty);
-    } else if (prim.kind === 'line' && child.has(Line)) {
-      child.write(Line).x1 = prim.x1;
-      child.write(Line).y1 = prim.y1;
-      child.write(Line).x2 = prim.x2;
-      child.write(Line).y2 = prim.y2;
-      safeAddComponent(child, GeometryDirty);
+    let child: Entity;
+    if (i < initialChildren.length) {
+      child = initialChildren[i]!;
+      safeAddComponent(child, Visibility, { value: 'inherited' });
+      syncIconFontChildGeometryToPrim(child, prim);
+    } else {
+      const ch = api.spawnEntityCommands();
+      insertIconFontChildFromPrimitive(ch, prim, {
+        userColorStroke,
+        userColorFill,
+        rSw,
+        zIndex: zForChild,
+        visibility: childVisibility,
+        name: `${node.id}__i${i}`,
+      });
+      api.appendEntityChild(rootEntity, ch);
+      child = ch.id();
     }
     safeAddComponent(child, Stroke, {
       color: pickStrokeColorForChild(
@@ -331,6 +417,9 @@ function syncIconFontChildrenFromUpdatedNode(
       safeRemoveComponent(child, FillSolid);
     }
     safeAddComponent(child, MaterialDirty);
+  }
+  for (let i = prims.length; i < initialChildren.length; i++) {
+    hideIconFontChild(initialChildren[i]!);
   }
   if (rootEntity.has(IconFont) && w > 0 && h > 0) {
     const iw = rootEntity.write(IconFont);

@@ -107,18 +107,6 @@ export type DesignVariablesSvgExportMode =
 </svg>
 ```
 
-## 组件化生成 {#components-and-slots}
-
-`.pen` 的 ref + descendants 系统本质上是一种面向 AI 的组件继承机制。这样 AI 就不需要理解"圆角矩形 + 文本 + 内边距"的底层构成。它只需引用设计系统已有的 round-button 组件，并覆盖文本内容。这类似于代码中的继承+覆盖。
-
-```json
-{
-    "type": "ref",
-    "ref": "round-button",
-    "descendants": { "label": { "content": "Save" } }
-}
-```
-
 ## icon {#icon}
 
 icon 在生成 UI 时非常重要，例如 [Lucide] 已经在 React 组件生成中大规模使用了。Pencil 也支持这种内置图形：
@@ -258,9 +246,51 @@ const text = {
 
 <IconButton />
 
+我们想像 [Shadcn UI] 一样支持不同变体的 Button 组件，可以减少大量样板代码：
+
+```tsx
+<Button variant="secondary">Secondary</Button>
+<Button variant="ghost">Ghost</Button>
+<Button variant="destructive">Destructive</Button>
+```
+
+## 组件化生成 {#components-and-slots}
+
+`.pen` 的 ref + descendants 系统本质上是一种面向 AI 的组件继承机制。这样 AI 就不需要理解"圆角矩形 + 文本 + 内边距"的底层构成。它只需引用设计系统已有的 round-button 组件，并覆盖文本内容。这类似于代码中的继承+覆盖。详见：[Components and Instances]
+
+```json
+{
+    "id": "round-button",
+    "type": "g",
+    "reusable": true,
+    "cornerRadius": 9999,
+    "children": [
+        {
+            "id": "label",
+            "type": "text",
+            "content": "Submit",
+            "fill": "#000000"
+            ...
+        }
+    ]
+}
+
+{
+    "id": "save-round-button",
+    "type": "ref",
+    "ref": "round-button",
+    "descendants": { "label": { "content": "Save" } }
+}
+```
+
 ## Design ↔ Code {#design-to-code}
 
 [Design ↔ Code]
+
+| 产品           | 核心策略               | 工程实现                                                                        |
+| -------------- | ---------------------- | ------------------------------------------------------------------------------- |
+| **OpenPencil** | 规则引擎 + 增量管道    | `pen-codegen` 包提供确定性转换，`codegen_plan/submit/assemble/clean` 处理大文件 |
+| **Pencil.dev** | AI 自由生成 + 双向同步 | `.pen` 文件作为上下文，AI 直接输出代码，支持 Code → Design 反向导入             |
 
 ## 扩展阅读 {#extended-reading}
 
@@ -272,3 +302,5 @@ const text = {
 [IconifyJSON]: https://iconify.design/docs/types/iconify-json.html
 [Iconify Icon web component]: https://iconify.design/docs/iconify-icon/
 [Lucide]: https://lucide.dev/icons
+[Shadcn UI]: https://ui.shadcn.com/docs/components/radix/button
+[Components and Instances]: https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances

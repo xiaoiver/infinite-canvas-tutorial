@@ -10,6 +10,7 @@ export * from './penbar';
 export * from './penbar-pencil-settings';
 export * from './penbar-brush-settings';
 export * from './penbar-draw-settings';
+export * from './icon-font-controls';
 export * from './penbar-text-settings';
 export * from './penbar-crop';
 export * from './properties-panel-content';

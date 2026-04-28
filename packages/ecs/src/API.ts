@@ -444,6 +444,17 @@ export class API {
     return this.#idEntityMap;
   }
 
+  /**
+   * 与反序列化相同：`spawn` 出子实体。供 `mutateElement` 中 iconfont 子 path 数量增加时补全。
+   */
+  spawnEntityCommands(): EntityCommands {
+    return this.commands.spawn();
+  }
+
+  appendEntityChild(parent: Entity, child: EntityCommands) {
+    this.commands.entity(parent).appendChild(child);
+  }
+
   getEntity(node: SerializedNode) {
     return this.#idEntityMap.get(node.id)?.id();
   }

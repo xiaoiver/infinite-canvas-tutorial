@@ -40,6 +40,7 @@
     "@infinite-canvas-tutorial/lasso": "workspace:*",
     "@infinite-canvas-tutorial/webcomponents": "workspace:*",
     "@infinite-canvas-tutorial/yoga": "workspace:*",
+    "@iconify/json": "^2.2.466",
     "@loaders.gl/core": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
     "@neplex/vectorizer": "^0.0.5",

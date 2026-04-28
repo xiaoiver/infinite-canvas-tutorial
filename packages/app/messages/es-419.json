@@ -185,5 +185,32 @@
     "step3": "Chatear con el canvas",
     "step1Description": "Agrega API Keys para diferentes proveedores de IA para habilitar capacidades de IA. Solo configura las capacidades 'Chat' y 'Imagen' para usar la mayoría de las funciones del canvas. Vercel AI Gateway ofrece $5 de uso gratuito cuando te registras en una nueva cuenta.",
     "step3Description": "Puedes cargar o generar imágenes y chatear con ellas."
+  },
+  "tools": {
+    "metaTitle": "Herramientas",
+    "metaDescription": "Filtros y utilidades. No hace falta iniciar sesión.",
+    "kicker": "Herramientas públicas",
+    "title": "Filtros y utilidades",
+    "comingSoon": "Próximamente",
+    "items": {
+      "photoColors": {
+        "title": "Color de la foto"
+      },
+      "glitch": {
+        "title": "Efecto Glitch",
+        "description": "Superposición de tres filtros: CRT, vignette y glitch."
+      }
+    },
+    "photoColors": {
+      "metaTitle": "Color de la foto",
+      "metaDescription": "Herramientas de color (próximamente).",
+      "backToTools": "Volver a herramientas",
+      "placeholder": "Zona reservada para controles y vista previa."
+    },
+    "glitch": {
+      "metaTitle": "Glitch",
+      "metaDescription": "Efectos tipo glitch (próximamente).",
+      "placeholder": "Zona reservada para el efecto Glitch."
+    }
   }
 }

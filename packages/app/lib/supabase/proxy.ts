@@ -40,11 +40,17 @@ export async function updateSession(request: NextRequest) {
     // 支持 locale 路径（如 /zh-Hans/login, /en/login）
     const pathname = request.nextUrl.pathname;
     const localePattern = routing.locales.join('|');
+    // 带 locale 前缀的 /tools 及子路径：公开，无需登录（预设滤镜等）
+    const isPublicToolsRoute = !!pathname.match(
+        new RegExp(`^/(${localePattern})/tools(?:/|$)`)
+    )
+
     const isAuthRoute =
         pathname.includes('/login') ||
         pathname.startsWith('/auth/callback') ||
         pathname.startsWith('/auth/v1/callback') ||
-        pathname.match(new RegExp(`^/(${localePattern})/?$`)) // 匹配根路径或带 locale 的根路径
+        pathname.match(new RegExp(`^/(${localePattern})/?$`)) || // 匹配根路径或带 locale 的根路径
+        isPublicToolsRoute
 
     if (!user && !isAuthRoute) {
         // 未登录用户重定向到登录页
