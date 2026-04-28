@@ -385,6 +385,7 @@ pnpm run dev
 
 -   图像后处理，例如噪声、亮度调整、halftone、液态玻璃、CRT、Glitch、Ascii 等效果
 -   配套的可叠加的滤镜效果编辑面板
+-   将时间动画导出成 GIF 和 WebM 格式动画
 -   渲染图的设计思路与实现
 -   使用 FXAA 进行快速抗锯齿
 

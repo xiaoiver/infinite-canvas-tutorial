@@ -384,6 +384,7 @@ If you want to use it in your own project, you can refer to:
 
 -   Image processing, including brightness, noise, liquid glass, CRT, Glitch, Ascii etc.
 -   Effects panel
+-   Export time-based shader animation in GIF or WebM format
 -   The design concept and implementation of Render graph
 -   Use FXAA render pass
 

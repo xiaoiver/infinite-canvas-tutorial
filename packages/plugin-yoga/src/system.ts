@@ -36,6 +36,7 @@ import {
   FillImage,
   FillPattern,
   IconFont,
+  Visibility
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaLayoutApplied } from './YogaLayoutApplied';
 // @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
@@ -170,6 +171,7 @@ export class YogaSystem extends System {
             GeometryDirty,
             MaterialDirty,
             Stroke,
+            Visibility,
           ).write,
     );
   }
