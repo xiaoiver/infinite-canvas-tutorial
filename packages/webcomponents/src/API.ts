@@ -12,11 +12,10 @@ import {
   deserializePoints,
   RectSerializedNode,
   AppState,
+  type Adapter,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
-import { ImageLoader } from '@loaders.gl/images';
-import { load } from '@loaders.gl/core';
 import { getDataURL, updateAndSelectNodes } from './utils';
 import { isString, path2Absolute } from '@antv/util';
 import { persistThemePreference } from './theme-preference-storage';
@@ -256,7 +255,9 @@ export class ExtendedAPI extends API {
     };
 
     const [image, dataURL] = await Promise.all([
-      load(file, ImageLoader),
+      DOMAdapter.get().createImage(
+        file as Parameters<Adapter['createImage']>[0],
+      ) as Promise<ImageBitmap>,
       isString(file) ? Promise.resolve(file) : getDataURL(file),
     ]);
 

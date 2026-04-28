@@ -109,7 +109,7 @@ export class Penbar extends LitElement {
     } else if (pen === Pen.IMAGE) {
       try {
         const file = await fileOpen({
-          extensions: ['jpg', 'png', 'svg', 'webp'],
+          extensions: ['jpg', 'png', 'svg', 'webp', 'heic', 'heif'],
           description: 'Image to upload',
         });
 

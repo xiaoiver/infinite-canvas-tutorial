@@ -10,6 +10,7 @@ head:
           },
       ]
 ---
+
 # Lesson 10 - Importing and Exporting Images
 
 Image import and export is a very important feature in Infinite Canvas, and through the exported image it can be interfaced with other tools. So while our canvas drawing capabilities are currently limited, it's good to think ahead about issues related to images. In this lesson you will learn the following:
@@ -756,6 +757,28 @@ export class RenderCache {
         }
         return sampler;
     }
+}
+```
+
+### iOS Live Photo {#ios-live-photo}
+
+At the file level, an iOS Live Photo is usually a HEIC still image plus a companion MOV. Neither the browser's native `<img>` path nor `@loaders.gl/images` can decode HEIC directly.
+
+We aim to treat it like a normal image: decode a single still frame into a bitmap, then upload it to a texture. Playing the Live Photo's embedded video in the canvas would be a follow-up, with a dedicated component (e.g. tap to play) built separately.
+
+```ts
+import heic2any from 'heic2any';
+
+async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
+    const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
+        heic2any({
+            blob,
+            toType,
+            quality: toType === 'image/jpeg' ? quality ?? 0.92 : 1,
+        });
+
+    const converted = await run('image/png');
+    return createImageBitmap(converted);
 }
 ```
 

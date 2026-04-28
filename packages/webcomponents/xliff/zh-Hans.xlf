@@ -418,10 +418,6 @@
   <source>Right align</source>
   <target>右对齐</target>
 </trans-unit>
-<trans-unit id="s9508c3b595b0ccc9">
-  <source>Select a color</source>
-  <target>选择颜色</target>
-</trans-unit>
 <trans-unit id="s98b1cb8fb62909ec">
   <source>Group</source>
   <target>成组</target>
@@ -433,18 +429,6 @@
 <trans-unit id="s5959334e292647e4">
   <source>Arrow (⇧L)</source>
   <target>箭头 (⇧L)</target>
-</trans-unit>
-<trans-unit id="s3de321c88c79c73f">
-  <source>Canvas background</source>
-  <target>画布背景</target>
-</trans-unit>
-<trans-unit id="s310941c6a4577116">
-  <source>Selection fill</source>
-  <target>框选填充</target>
-</trans-unit>
-<trans-unit id="s27a71df63873a0ef">
-  <source>Selection stroke</source>
-  <target>框选描边</target>
 </trans-unit>
 <trans-unit id="sbb922fb7db16d35d">
   <source>Filter type</source>
@@ -665,10 +649,6 @@
   <source>Hexagon</source>
   <target>六边形</target>
 </trans-unit>
-<trans-unit id="s408c49e886847982">
-  <source>No layer selected.</source>
-  <target>未选中图层。</target>
-</trans-unit>
 <trans-unit id="s60f96e59025b5e75">
   <source>Liquid glass</source>
   <target>液态玻璃</target>
@@ -841,6 +821,396 @@
 </trans-unit>
 <trans-unit id="se935f4fce5fafa2b">
   <source>Wrap reverse</source>
+</trans-unit>
+<trans-unit id="sca83f41c7d4589b9">
+  <source>No design variables</source>
+</trans-unit>
+<trans-unit id="s80cdcae785c5bdb5">
+  <source>Attach a variable</source>
+</trans-unit>
+<trans-unit id="s77f5c18e246c6638">
+  <source>color</source>
+</trans-unit>
+<trans-unit id="sbc07816d6f670ae8">
+  <source>color variable</source>
+</trans-unit>
+<trans-unit id="s704be0d8faaffc58">
+  <source>string</source>
+</trans-unit>
+<trans-unit id="s2017380f75700808">
+  <source>string variable</source>
+</trans-unit>
+<trans-unit id="s8031a80d73f6ebe0">
+  <source>number</source>
+</trans-unit>
+<trans-unit id="s6ca5bba6ffb95ee0">
+  <source>number variable</source>
+</trans-unit>
+<trans-unit id="sd2223afb7d6b100d">
+  <source>Type</source>
+</trans-unit>
+<trans-unit id="s7ce4fd9430e80cea">
+  <source>value</source>
+</trans-unit>
+<trans-unit id="s94d9feb29f2a4e55">
+  <source>Variable name; use $ in nodes, e.g. $color.background</source>
+</trans-unit>
+<trans-unit id="sc4bcadba8e631b86">
+  <source>name</source>
+</trans-unit>
+<trans-unit id="s18b247f70df1543b">
+  <source>Remove variable</source>
+</trans-unit>
+<trans-unit id="sb39940945f8f7122">
+  <source>Variables</source>
+</trans-unit>
+<trans-unit id="sef49aec68fd1dc66">
+  <source>Name</source>
+</trans-unit>
+<trans-unit id="s0734e535bfa13b74">
+  <source>Add variable</source>
+</trans-unit>
+<trans-unit id="sb59a9ea6ab1822ab">
+  <source>e.g. --primary</source>
+</trans-unit>
+<trans-unit id="s45639242eac947f9">
+  <source>Default for Light &amp; Dark</source>
+</trans-unit>
+<trans-unit id="sf9aee319a006c9b4">
+  <source>Add</source>
+</trans-unit>
+<trans-unit id="sf971293125278ee8">
+  <source>Tsunami</source>
+</trans-unit>
+<trans-unit id="s29ffc7a7e41b1e78">
+  <source>Burn</source>
+</trans-unit>
+<trans-unit id="s4d1fb19bfe713712">
+  <source>Liquid metal</source>
+</trans-unit>
+<trans-unit id="s7a2996dcc89ab045">
+  <source>Heat map</source>
+</trans-unit>
+<trans-unit id="s8b377708f8e5da8d">
+  <source>Gem smoke</source>
+</trans-unit>
+<trans-unit id="s4b641223682bd42b">
+  <source>Stripe count</source>
+</trans-unit>
+<trans-unit id="sc03e7e19043dfc6f">
+  <source>Stripe angle</source>
+</trans-unit>
+<trans-unit id="sc3aa6f478f411744">
+  <source>Reflection</source>
+</trans-unit>
+<trans-unit id="sf5a0cb40762fc01b">
+  <source>Disturbance</source>
+</trans-unit>
+<trans-unit id="s2ce392a58aed817e">
+  <source>Contortion</source>
+</trans-unit>
+<trans-unit id="s03cf111991e2270b">
+  <source>Dispersion</source>
+</trans-unit>
+<trans-unit id="s1a72e12fa6330b64">
+  <source>Drift</source>
+</trans-unit>
+<trans-unit id="s310242825565f001">
+  <source>Shadow</source>
+</trans-unit>
+<trans-unit id="sf0257bb5b7130aaa">
+  <source>Offset</source>
+</trans-unit>
+<trans-unit id="sc793b8057bc684f6">
+  <source>Luminance blend (reflection)</source>
+</trans-unit>
+<trans-unit id="seee966137d475634">
+  <source>Burn amount</source>
+</trans-unit>
+<trans-unit id="s812b30a6166ff13b">
+  <source>Density</source>
+</trans-unit>
+<trans-unit id="sb06b81d320df487a">
+  <source>Softness</source>
+</trans-unit>
+<trans-unit id="s6cafdcc2365f29b9">
+  <source>UV distortion</source>
+</trans-unit>
+<trans-unit id="s3fbf6ec179ad5d7b">
+  <source>Edge color</source>
+</trans-unit>
+<trans-unit id="s6241fcebc2a324ea">
+  <source>Mask color</source>
+</trans-unit>
+<trans-unit id="s2bfae383a30213c7">
+  <source>Invert mask</source>
+</trans-unit>
+<trans-unit id="s3bebea81093fe972">
+  <source>Transparent blend</source>
+</trans-unit>
+<trans-unit id="s1e74be11d65290c2">
+  <source>Repetition</source>
+</trans-unit>
+<trans-unit id="s045d2bc7e5f1e11c">
+  <source>Shift red</source>
+</trans-unit>
+<trans-unit id="sd50f3227bcf9534d">
+  <source>Shift blue</source>
+</trans-unit>
+<trans-unit id="s313e5670da31f6a1">
+  <source>Contour</source>
+</trans-unit>
+<trans-unit id="s0c7287f85dd5ff5b">
+  <source>Angle (°)</source>
+</trans-unit>
+<trans-unit id="s48f230bed1be8eef">
+  <source>Shape (no image)</source>
+</trans-unit>
+<trans-unit id="s0dc982caf06150fa">
+  <source>None (canvas border)</source>
+</trans-unit>
+<trans-unit id="s14c54ca33d0f3ea9">
+  <source>Circle</source>
+</trans-unit>
+<trans-unit id="s4d7722b9bc9187d9">
+  <source>Daisy</source>
+</trans-unit>
+<trans-unit id="s469d5c53c3a49087">
+  <source>Diamond</source>
+</trans-unit>
+<trans-unit id="s9d1a9b55aa40302a">
+  <source>Metaballs</source>
+</trans-unit>
+<trans-unit id="s2d1b8cebd3eb0969">
+  <source>Use layer as mask</source>
+</trans-unit>
+<trans-unit id="s1e77c146bc38c226">
+  <source>CPU Poisson edge (WebGL; Paper-style R/G)</source>
+</trans-unit>
+<trans-unit id="s1efbfc3937d565bd">
+  <source>Background</source>
+</trans-unit>
+<trans-unit id="s48d785fb3005fe2c">
+  <source>Tint</source>
+</trans-unit>
+<trans-unit id="sf872117754fc95ac">
+  <source>Time uniform follows the app clock each frame (liquid metal).</source>
+</trans-unit>
+<trans-unit id="sa2dc20e2aa203abc">
+  <source>Inner glow</source>
+</trans-unit>
+<trans-unit id="s4bbf04c0d1ff6d2d">
+  <source>Outer glow</source>
+</trans-unit>
+<trans-unit id="se64ab5d1c6fdd26c">
+  <source>CPU preprocess (WebGL; RGB blur)</source>
+</trans-unit>
+<trans-unit id="s12afc66dedfa3589">
+  <source>Gradient (max 10)</source>
+</trans-unit>
+<trans-unit id="s475918e882255d64">
+  <source>Add gradient stop</source>
+</trans-unit>
+<trans-unit id="sbe1e1a6a3c524354">
+  <source>Add stop</source>
+</trans-unit>
+<trans-unit id="sb3dfa93a2615d213">
+  <source>Time uniform follows the app clock each frame (heat map).</source>
+</trans-unit>
+<trans-unit id="s79824ae12d7f9b0a">
+  <source>Inner distortion</source>
+</trans-unit>
+<trans-unit id="s26bc542fe6324bcb">
+  <source>Outer distortion</source>
+</trans-unit>
+<trans-unit id="sbdbb61805b8eec60">
+  <source>Full canvas</source>
+</trans-unit>
+<trans-unit id="sf6342bf387c5069d">
+  <source>CPU Poisson (WebGL; R/G like liquid metal)</source>
+</trans-unit>
+<trans-unit id="sdb357adf64b15738">
+  <source>Inner color</source>
+</trans-unit>
+<trans-unit id="s1f7c47fadc2411fd">
+  <source>Smoke colors (max 6)</source>
+</trans-unit>
+<trans-unit id="s468e34b14d7a5c1e">
+  <source>Add smoke color</source>
+</trans-unit>
+<trans-unit id="s50c322a3e7252623">
+  <source>Add color</source>
+</trans-unit>
+<trans-unit id="s380aaadb78c6a22d">
+  <source>Time uniform follows the app clock each frame (gem smoke).</source>
+</trans-unit>
+<trans-unit id="sff77289e9ce38465">
+  <source>Export canvas</source>
+  <target>导出画布</target>
+</trans-unit>
+<trans-unit id="s911238ec3d7f59a8">
+  <source>Export layer (1)</source>
+  <target>导出图层 (1)</target>
+</trans-unit>
+<trans-unit id="s3b83b4a2bbfdf11a">
+  <source>Export layers (<x id="0" equiv-text="${n}"/>)</source>
+  <target>导出图层 (<x id="0" equiv-text="${n}"/>)</target>
+</trans-unit>
+<trans-unit id="sa3c9339de23c1752">
+  <source>Format</source>
+  <target>格式</target>
+</trans-unit>
+<trans-unit id="sfac4d631c9ceea22">
+  <source>Detach variable</source>
+  <target>解绑变量</target>
+</trans-unit>
+<trans-unit id="s1c5c19167672848a">
+  <source>Select a registered set</source>
+  <target>选择已注册的图标集</target>
+</trans-unit>
+<trans-unit id="s55111b858dfbe870">
+  <source>No sets registered (use registerIconifyIconSet)</source>
+  <target>未注册图标集 (使用 registerIconifyIconSet)</target>
+</trans-unit>
+<trans-unit id="sab8b4cbbb1fa71fa">
+  <source>Current</source>
+  <target>当前</target>
+</trans-unit>
+<trans-unit id="sd6d11b8c4bd5be81">
+  <source>Choose icon</source>
+  <target>选择图标</target>
+</trans-unit>
+<trans-unit id="s52d81506be796d67">
+  <source>Filter by name</source>
+  <target>按名称过滤</target>
+</trans-unit>
+<trans-unit id="sa89f03b117ec6483">
+  <source>Filter…</source>
+  <target>过滤…</target>
+</trans-unit>
+<trans-unit id="saff10b1024bf992f">
+  <source>No icon set is registered for this family. Use registerIconifyIconSet in your app to load a JSON, then set Icon font family to the same id.</source>
+  <target>未注册图标集。在应用中使用 registerIconifyIconSet 加载 JSON，然后将图标字体设置为相同的 ID。</target>
+</trans-unit>
+<trans-unit id="s3f80a2d93981bab4">
+  <source>No icon names match the current filter.</source>
+  <target>没有图标名称与当前过滤器匹配。</target>
+</trans-unit>
+<trans-unit id="s47e24833a1146b20">
+  <source>Icon names</source>
+  <target>图标名称</target>
+</trans-unit>
+<trans-unit id="s0202c4015979ad20">
+  <source>Custom icon id</source>
+  <target>自定义图标 ID</target>
+</trans-unit>
+<trans-unit id="s8dcd3bba51570021">
+  <source>Short name or full collection:name override</source>
+  <target>短名称或完整集合:名称覆盖</target>
+</trans-unit>
+<trans-unit id="s882a452e1868eacb">
+  <source>Resize panel width</source>
+  <target>调整面板宽度</target>
+</trans-unit>
+<trans-unit id="s835464032ce06ce6">
+  <source>Resize panel height</source>
+  <target>调整面板高度</target>
+</trans-unit>
+<trans-unit id="se473f3069677e37d">
+  <source>Icon font</source>
+  <target>图标字体</target>
+</trans-unit>
+<trans-unit id="saff8ce0cafa8707d">
+  <source>Iconfont</source>
+  <target>图标字体</target>
+</trans-unit>
+<trans-unit id="saa7faf27fab389ef">
+  <source>Min width</source>
+  <target>最小宽度</target>
+</trans-unit>
+<trans-unit id="scbc6a8704ba7b17d">
+  <source>Max width</source>
+  <target>最大宽度</target>
+</trans-unit>
+<trans-unit id="sbe66251de4af2b52">
+  <source>Min height</source>
+  <target>最小高度</target>
+</trans-unit>
+<trans-unit id="s5c793198e6404bd4">
+  <source>Max height</source>
+  <target>最大高度</target>
+</trans-unit>
+<trans-unit id="s78407bd240dbd596">
+  <source>Corner radius</source>
+  <target>圆角</target>
+</trans-unit>
+<trans-unit id="s293aa6a6446fb153">
+  <source>Export</source>
+  <target>导出</target>
+</trans-unit>
+<trans-unit id="sf244a133077de80e">
+  <source> selected</source>
+  <target> 选中</target>
+</trans-unit>
+<trans-unit id="sdf9bc5d9b7f3e3de">
+  <source>Alignment</source>
+  <target>对齐</target>
+</trans-unit>
+<trans-unit id="s626daf42b1ab7df7">
+  <source>Align left</source>
+  <target>左对齐</target>
+</trans-unit>
+<trans-unit id="s070abf751b52befa">
+  <source>Align center horizontally</source>
+  <target>水平居中对齐</target>
+</trans-unit>
+<trans-unit id="sac687b8649989de8">
+  <source>Align right</source>
+  <target>右对齐</target>
+</trans-unit>
+<trans-unit id="s680ad94beb6c931d">
+  <source>Align top</source>
+  <target>顶部对齐</target>
+</trans-unit>
+<trans-unit id="s4b8264a93888f7bc">
+  <source>Align middle vertically</source>
+  <target>垂直居中对齐</target>
+</trans-unit>
+<trans-unit id="sf42ae02416c19699">
+  <source>Align bottom</source>
+  <target>底部对齐</target>
+</trans-unit>
+<trans-unit id="sff2b6bef7bb2d83f">
+  <source>Distribute horizontal spacing</source>
+  <target>分布水平间距</target>
+</trans-unit>
+<trans-unit id="s6cfc4251d1780cc1">
+  <source>Distribute vertical spacing</source>
+  <target>分布垂直间距</target>
+</trans-unit>
+<trans-unit id="s98ce2d07f7859949">
+  <source>Edits apply to all selected items.</source>
+  <target>编辑适用于所有选定项。</target>
+</trans-unit>
+<trans-unit id="sb91c0221632e6510">
+  <source>Selected items have different filters. Nothing is listed; add a filter to set the same chain for all.</source>
+  <target>选定项具有不同的过滤器。未列出任何内容；添加一个过滤器以设置所有项的相同链。</target>
+</trans-unit>
+<trans-unit id="s789ff24c8f03f1a4">
+  <source>Letter spacing</source>
+  <target>字母间距</target>
+</trans-unit>
+<trans-unit id="s4b2c143acf931122">
+  <source>Line height</source>
+  <target>行高</target>
+</trans-unit>
+<trans-unit id="sec2557a35b702525">
+  <source>Variable</source>
+  <target>变量</target>
+</trans-unit>
+<trans-unit id="sa1f56f4e1dd76718">
+  <source>Stroke alignment</source>
+  <target>描边对齐</target>
 </trans-unit>
 </body>
 </file>

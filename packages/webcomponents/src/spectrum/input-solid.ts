@@ -816,7 +816,7 @@ export class InputSolid extends LitElement {
             >
               <sp-icon-link slot="icon"></sp-icon-link>
               <sp-tooltip self-managed placement="bottom">
-                ${msg(str`绑定透明度变量`)}
+                ${msg(str`Attach a variable`)}
               </sp-tooltip>
             </sp-action-button>
             <sp-overlay
@@ -840,7 +840,7 @@ export class InputSolid extends LitElement {
                         >
                           <sp-icon-unlink slot="icon"></sp-icon-unlink>
                           <sp-tooltip self-managed placement="right">
-                            ${msg(str`解除绑定`)}
+                            ${msg(str`Detach variable`)}
                           </sp-tooltip>
                         </sp-action-button>
                       </div>`,

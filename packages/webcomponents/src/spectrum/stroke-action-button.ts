@@ -286,30 +286,30 @@ export class StrokeActionButton extends LitElement {
                 role="tab"
                 aria-selected=${tab === 'color' ? 'true' : 'false'}
                 @click=${() => {
-                  this.strokePanelTab = 'color';
-                }}
+        this.strokePanelTab = 'color';
+      }}
               >
-                ${msg(str`颜色`)}
+                ${msg(str`Color`)}
               </button>
               <button
                 type="button"
                 role="tab"
                 aria-selected=${tab === 'variable' ? 'true' : 'false'}
                 @click=${() => {
-                  this.strokePanelTab = 'variable';
-                }}
+        this.strokePanelTab = 'variable';
+      }}
               >
-                ${msg(str`变量`)}
+                ${msg(str`Variable`)}
               </button>
             </div>
             <div class="tab-panel" role="tabpanel">
               ${choose(
-                tab,
-                [
-                  [
-                    'color',
-                    () =>
-                      html`<ic-spectrum-color-picker
+        tab,
+        [
+          [
+            'color',
+            () =>
+              html`<ic-spectrum-color-picker
                         value=${strokeResolved}
                         .strokeOpacity=${strokeOpacity}
                         .types=${[ColorType.None, ColorType.Solid]}
@@ -317,19 +317,19 @@ export class StrokeActionButton extends LitElement {
                         @color-change=${this.handleStrokeChanged}
                         @opacity-change=${this.handleStrokeOpacityChanged}
                         @opacity-variable-pick=${this
-                          .handleStrokeOpacityVariablePick}
+                  .handleStrokeOpacityVariablePick}
                         @opacity-variable-unbind=${this
-                          .handleStrokeOpacityVariableUnbind}
+                  .handleStrokeOpacityVariableUnbind}
                       ></ic-spectrum-color-picker>`,
-                  ],
-                  [
-                    'variable',
-                    () =>
-                      html`<div class="variable-tab">
+          ],
+          [
+            'variable',
+            () =>
+              html`<div class="variable-tab">
                         ${when(
-                          bound,
-                          () =>
-                            html`<div class="dv-row">
+                bound,
+                () =>
+                  html`<div class="dv-row">
                               <span class="dv-badge" title=${stroke}
                                 >${stroke}</span
                               >
@@ -344,17 +344,17 @@ export class StrokeActionButton extends LitElement {
                                 </sp-tooltip>
                               </sp-action-button>
                             </div>`,
-                        )}
+              )}
                         <ic-spectrum-design-variable-picker
                           match-type="color"
                           selected-key=${designVariableRefKeyFromWire(stroke)}
                           @ic-variable-pick=${this.handleVariablePick}
                         ></ic-spectrum-design-variable-picker>
                       </div>`,
-                  ],
-                ],
-                () => html``,
-              )}
+          ],
+        ],
+        () => html``,
+      )}
             </div>
           </div>
         </sp-popover>

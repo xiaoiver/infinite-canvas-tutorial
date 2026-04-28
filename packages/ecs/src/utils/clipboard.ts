@@ -14,6 +14,8 @@ export const IMAGE_MIME_TYPES = {
   ico: 'image/x-icon',
   avif: 'image/avif',
   jfif: 'image/jfif',
+  heic: 'image/heic',
+  heif: 'image/heif',
 } as const;
 
 export const MIME_TYPES = {
