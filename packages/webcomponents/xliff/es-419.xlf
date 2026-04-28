@@ -1286,6 +1286,14 @@
   <source>Stroke alignment</source>
   <target>Alineación de trazo</target>
 </trans-unit>
+<trans-unit id="sc8d6855822afde83">
+  <source>No image</source>
+  <target>Sin imagen</target>
+</trans-unit>
+<trans-unit id="s96668830629e0dfc">
+  <source>Upload</source>
+  <target>Subir</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

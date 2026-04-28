@@ -22,6 +22,7 @@ export * from './stroke-icon';
 export * from './color-picker';
 export * from './input-solid';
 export * from './input-gradient';
+export * from './input-image';
 export * from './effects-panel';
 export * from './export-panel';
 export * from './context-bar';

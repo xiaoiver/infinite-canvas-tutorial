@@ -1212,6 +1212,14 @@
   <source>Stroke alignment</source>
   <target>描边对齐</target>
 </trans-unit>
+<trans-unit id="sc8d6855822afde83">
+  <source>No image</source>
+  <target>无图片</target>
+</trans-unit>
+<trans-unit id="s96668830629e0dfc">
+  <source>Upload</source>
+  <target>上传</target>
+</trans-unit>
 </body>
 </file>
 </xliff>
