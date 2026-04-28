@@ -264,9 +264,9 @@ export class LayersPanel extends LitElement {
       MAX_LAYERS_PANEL_WIDTH_PX,
       typeof window !== 'undefined'
         ? Math.max(
-            MIN_LAYERS_PANEL_WIDTH_PX,
-            Math.floor(window.innerWidth - 80),
-          )
+          MIN_LAYERS_PANEL_WIDTH_PX,
+          Math.floor(window.innerWidth - 80),
+        )
         : MAX_LAYERS_PANEL_WIDTH_PX,
     );
     return Math.min(max, Math.max(MIN_LAYERS_PANEL_WIDTH_PX, Math.round(w)));
@@ -350,9 +350,9 @@ export class LayersPanel extends LitElement {
   private get maxLayersPanelWidthResolved(): number {
     return typeof window !== 'undefined'
       ? Math.max(
-          MIN_LAYERS_PANEL_WIDTH_PX,
-          Math.min(MAX_LAYERS_PANEL_WIDTH_PX, window.innerWidth - 80),
-        )
+        MIN_LAYERS_PANEL_WIDTH_PX,
+        Math.min(MAX_LAYERS_PANEL_WIDTH_PX, window.innerWidth - 80),
+      )
       : MAX_LAYERS_PANEL_WIDTH_PX;
   }
 
@@ -815,8 +815,8 @@ export class LayersPanel extends LitElement {
             >
               <div class="layer-siblings" data-layer-parent-id="">
                 ${map(sortedNodes, (node) => {
-                  return this.renderLayerBranch(node, 0);
-                })}
+        return this.renderLayerBranch(node, 0);
+      })}
               </div>
             </div>
           </section>
@@ -839,9 +839,9 @@ export class LayersPanel extends LitElement {
 
     return html`<div
         class=${classMap({
-          'layer-branch': true,
-          'layer-branch--locked': !!node.locked,
-        })}
+      'layer-branch': true,
+      'layer-branch--locked': !!node.locked,
+    })}
         data-node-id=${node.id}
       >
         <ic-spectrum-layers-panel-item
@@ -854,15 +854,15 @@ export class LayersPanel extends LitElement {
           ?highlighted=${layersHighlighted.includes(node.id)}
         ></ic-spectrum-layers-panel-item>
         ${when(
-          hasChildren && isExpanded,
-          () => html`
+      hasChildren && isExpanded,
+      () => html`
             <div class="layer-siblings" data-layer-parent-id=${node.id}>
               ${map(sortedNodes, (child) => {
-                return this.renderLayerBranch(child, depth + 1);
-              })}
+        return this.renderLayerBranch(child, depth + 1);
+      })}
             </div>
           `,
-        )}
+    )}
       </div>`;
   }
 }

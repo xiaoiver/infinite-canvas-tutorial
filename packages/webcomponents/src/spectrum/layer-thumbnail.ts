@@ -258,20 +258,20 @@ export class LayerThumbnail extends LitElement {
 
     let thumbnail;
     if (this.node.type === 'text') {
-      thumbnail = html`<sp-icon-text></sp-icon-text>`;
+      thumbnail = html`<sp-icon-text style="color: black;"></sp-icon-text>`;
     } else if (this.node.type === 'iconfont') {
       const iconName = this.#normalizeIconifyName(this.node as IconFontSerializedNode);
       thumbnail = iconName
         ? html`<iconify-icon icon=${iconName}></iconify-icon>`
         : html`<sp-icon-group></sp-icon-group>`;
     } else if (this.node.type === 'ref') {
-      thumbnail = html`<sp-icon-collection-link></sp-icon-collection-link>`;
+      thumbnail = html`<sp-icon-collection-link style="color: black;"></sp-icon-collection-link>`;
     } else if (this.node.type === 'embed' || this.node.type === 'html') {
-      thumbnail = html`<sp-icon-code></sp-icon-code>`;
+      thumbnail = html`<sp-icon-code style="color: black;"></sp-icon-code>`;
     } else if (this.node.type === 'brush') {
       thumbnail = html`<img src="${this.node.brushStamp}" />`;
     } else if (this.node.clipMode) {
-      thumbnail = html`<sp-icon-crop></sp-icon-crop>`;
+      thumbnail = html`<sp-icon-crop style="color: black;"></sp-icon-crop>`;
     } else {
       thumbnail = $el && html`<svg
         viewBox="${-paddedWidth / 2} ${-paddedHeight /

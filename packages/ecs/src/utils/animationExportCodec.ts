@@ -47,51 +47,108 @@ type CanvasCaptureTrack = {
 };
 
 /**
- * 在单任务内逐帧调用 `renderFrame`，用 `canvas.captureStream(0)` + `requestFrame` 产出 WebM。
- *
- * @param getExportCanvas 与 `MeshPipeline` 栅格导出一致：整幅读主 `swapChain` 画布，局部选区读离屏 `SetupDevice` 的 canvas。首帧 `renderFrame(0)` 后再建流。
+ * 等一帧，让 WebGPU 把一帧画呈现到可 `toDataURL` 的位图；与 {@link encodeGifFromCanvas} 前同步。
+ */
+function nextAnimationFrame(): Promise<void> {
+  return new Promise((r) => requestAnimationFrame(() => r()));
+}
+
+/**
+ * 在单任务内逐帧 `render` 后，用与 GIF 相同的 `toDataURL` 将像素画到 2D 画布，再对 **2D** `canvas.captureStream(0)` 使用 `MediaRecorder`。
+ * 对 WebGPU 的「直接」`captureStream`+`requestFrame` 在多数环境会整段采黑，故不再走该路径。
  */
 export function recordWebMFromCanvas(
   getExportCanvas: () => HTMLCanvasElement,
   frameCount: number,
   renderFrame: (frameIndex: number) => void,
+  pngQuality = 0.92,
+): Promise<Blob> {
+  return recordWebMFromCanvasVia2D(getExportCanvas, frameCount, renderFrame, pngQuality);
+}
+
+async function recordWebMFromCanvasVia2D(
+  getExportCanvas: () => HTMLCanvasElement,
+  frameCount: number,
+  renderFrame: (frameIndex: number) => void,
+  pngQuality: number,
 ): Promise<Blob> {
   const mime = pickWebmMimeType();
   if (!mime) {
-    return Promise.reject(new Error('WebM encoding is not supported'));
+    throw new Error('WebM encoding is not supported');
   }
   const chunks: Blob[] = [];
+
+  renderFrame(0);
+  await nextAnimationFrame();
+  let source = getExportCanvas();
+  const w = source.width;
+  const h = source.height;
+  if (w < 1 || h < 1) {
+    return new Blob([], { type: 'video/webm' });
+  }
+  const d2d = document.createElement('canvas');
+  d2d.width = w;
+  d2d.height = h;
+  const c2 = d2d.getContext('2d', { willReadFrequently: true });
+  if (!c2) {
+    return new Blob([], { type: 'video/webm' });
+  }
+
+  const drawDataUrl = (dataUrl: string) =>
+    new Promise<void>((res, rej) => {
+      const im = new Image();
+      im.onload = () => {
+        c2.clearRect(0, 0, w, h);
+        c2.drawImage(im, 0, 0, w, h);
+        res();
+      };
+      im.onerror = () => rej(new Error('WebM: frame PNG decode failed'));
+      im.src = dataUrl;
+    });
+
+  await drawDataUrl(source.toDataURL('image/png', pngQuality));
+  const stream = d2d.captureStream(0);
+  const track = stream.getVideoTracks()[0] as CanvasCaptureTrack;
+
   return new Promise((resolve, reject) => {
-    renderFrame(0);
-    const htmlCanvas = getExportCanvas();
-    const stream = htmlCanvas.captureStream(0);
-    const track = stream.getVideoTracks()[0] as CanvasCaptureTrack;
-    const recorder = new MediaRecorder(stream, {
+    const rec = new MediaRecorder(stream, {
       mimeType: mime,
       videoBitsPerSecond: 8_000_000,
     });
-    recorder.ondataavailable = (e) => {
+    rec.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
         chunks.push(e.data);
       }
     };
-    recorder.onerror = () => reject(new Error('MediaRecorder error'));
-    recorder.onstop = () => {
+    rec.onerror = () => reject(new Error('MediaRecorder error'));
+    rec.onstop = () => {
       const base = mime.split(';')[0] ?? 'video/webm';
       resolve(new Blob(chunks, { type: base }));
     };
-    try {
-      recorder.start();
-    } catch (e) {
-      reject(e);
-      return;
-    }
-    track.requestFrame?.();
-    for (let i = 1; i < frameCount; i++) {
-      renderFrame(i);
-      track.requestFrame?.();
-    }
-    recorder.stop();
+    void (async () => {
+      try {
+        if (!track.requestFrame) {
+          throw new Error('Canvas capture track has no requestFrame()');
+        }
+        rec.start(100);
+        track.requestFrame();
+        for (let i = 1; i < frameCount; i++) {
+          renderFrame(i);
+          await nextAnimationFrame();
+          source = getExportCanvas();
+          if (source.width !== w || source.height !== h) {
+            reject(new Error('WebM: export size changed between frames'));
+            return;
+          }
+          await drawDataUrl(source.toDataURL('image/png', pngQuality));
+          track.requestFrame();
+        }
+        await new Promise((r) => setTimeout(r, 0));
+        rec.stop();
+      } catch (e) {
+        reject(e);
+      }
+    })();
   });
 }
 
