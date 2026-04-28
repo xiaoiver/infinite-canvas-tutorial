@@ -1,5 +1,8 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { query } from 'lit/decorators/query.js';
+import type { LayerName } from './layer-name';
+import './layer-name.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import {
@@ -37,6 +40,8 @@ export class LayersPanelItem extends LitElement {
 
     ic-spectrum-layer-name {
       flex: 1;
+      margin-left: 8px;
+      min-width: 0;
     }
 
     :host([selected]) {
@@ -64,6 +69,13 @@ export class LayersPanelItem extends LitElement {
       justify-content: space-between;
       margin: 0;
     }
+
+    .layer-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
   `;
 
   @property()
@@ -86,6 +98,23 @@ export class LayersPanelItem extends LitElement {
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  @query('ic-spectrum-layer-name')
+  private layerNameEl?: LayerName;
+
+  private handleItemDblClick(e: MouseEvent) {
+    if (this.node.locked) {
+      return;
+    }
+    const t = e.target;
+    if (!(t instanceof Element)) {
+      return;
+    }
+    if (t.closest('sp-action-button')) {
+      return;
+    }
+    this.layerNameEl?.beginEditing();
+  }
 
   private handleToggleExpand(e: Event) {
     e.stopPropagation();
@@ -169,6 +198,7 @@ export class LayersPanelItem extends LitElement {
       !this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
     return html`
+      <div class="layer-row" @dblclick=${this.handleItemDblClick}>
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
       isVisible,
@@ -245,8 +275,8 @@ export class LayersPanelItem extends LitElement {
         () => html``,
       )}
       </span>
-      
-    </span>`;
+      </div>
+    `;
   }
 }
 

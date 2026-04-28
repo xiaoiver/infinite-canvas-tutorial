@@ -24,6 +24,7 @@
 's0bc31719aa7a8f43': str`Cortar`,
 's0c7287f85dd5ff5b': str`Ángulo (°)`,
 's0dc982caf06150fa': str`Ninguno (borde del lienzo)`,
+'s0fa5ab7499420a69': str`Color de relleno y trazo`,
 's12afc66dedfa3589': str`Gradiente (máx. 10)`,
 's14c54ca33d0f3ea9': str`Círculo`,
 's154ae0b0d29de3b3': str`Vignette`,

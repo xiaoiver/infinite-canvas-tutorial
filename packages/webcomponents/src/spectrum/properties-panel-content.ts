@@ -94,8 +94,8 @@ export class PropertiesPanelContent extends LitElement {
       min-height: 0;
       max-height: 400px;
 
-      --system-accordion-size-s-item-header-font-size: 14px;
-      --mod-accordion-item-header-font-size: 14px;
+      --system-accordion-size-s-item-header-font-size: 13px;
+      --mod-accordion-item-header-font-size: 13px;
     }
 
     :host(.fills-panel) {
@@ -1543,13 +1543,13 @@ export class PropertiesPanelContent extends LitElement {
         ${!isGroup
         ? html`
               <sp-accordion-item
-                label=${'Shape ' + this.node.type}
+                label=${msg(str`Style`)}
                 ?open=${this.propertiesPanelSectionsOpenResolved.shape}
               >
                 <div class="content style-group">
                   <div class="line">
                     <sp-field-label for="style" side-aligned="start"
-                      >${msg(str`Style`)}</sp-field-label
+                      >${msg(str`Fill & stroke color`)}</sp-field-label
                     >
                     <div>
                       <ic-spectrum-fill-action-button

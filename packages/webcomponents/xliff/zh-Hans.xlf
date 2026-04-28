@@ -1220,6 +1220,10 @@
   <source>Upload</source>
   <target>上传</target>
 </trans-unit>
+<trans-unit id="s0fa5ab7499420a69">
+  <source>Fill &amp; stroke color</source>
+  <target>填充和描边颜色</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

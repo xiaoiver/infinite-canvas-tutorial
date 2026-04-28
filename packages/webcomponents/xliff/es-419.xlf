@@ -1294,6 +1294,10 @@
   <source>Upload</source>
   <target>Subir</target>
 </trans-unit>
+<trans-unit id="s0fa5ab7499420a69">
+  <source>Fill &amp; stroke color</source>
+  <target>Color de relleno y trazo</target>
+</trans-unit>
 </body>
 </file>
 </xliff>

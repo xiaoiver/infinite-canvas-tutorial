@@ -19,6 +19,7 @@
 's0a742747a1d9e913': str`线对比度`,
 's0b3ef519aa0aa4bc': str`CRT`,
 's0bc31719aa7a8f43': str`剪切`,
+'s0fa5ab7499420a69': str`填充和描边颜色`,
 's154ae0b0d29de3b3': str`晕影`,
 's16d7f19d81e4bfb3': str`抖动`,
 's187fa1d813d0b3b0': str`ASCII`,
