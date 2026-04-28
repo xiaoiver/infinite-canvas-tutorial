@@ -2,7 +2,7 @@
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts#L80
  */
 
-import { MIME_TYPES } from '@infinite-canvas-tutorial/ecs';
+import { IMAGE_MIME_TYPES, MIME_TYPES } from '@infinite-canvas-tutorial/ecs';
 import {
   fileOpen as _fileOpen,
   fileSave as _fileSave,
@@ -41,18 +41,38 @@ export const debounce = <T extends any[]>(
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts
  */
 type FILE_EXTENSION = Exclude<keyof typeof MIME_TYPES, 'binary'>;
+/**
+ * Image extensions for the native file picker. `heic` / `heif` are listed
+ * explicitly so typings stay valid if ecs `lib` lags behind `clipboard.ts`.
+ */
+export type ImageFileExtension =
+  | keyof typeof IMAGE_MIME_TYPES
+  | 'heic'
+  | 'heif';
 const INPUT_CHANGE_INTERVAL_MS = 500;
 export const fileOpen = <M extends boolean | undefined = false>(opts: {
-  extensions?: FILE_EXTENSION[];
+  extensions?: ImageFileExtension[];
   description: string;
   multiple?: M;
 }): Promise<M extends false | undefined ? File : File[]> => {
   // an unsafe TS hack, alas not much we can do AFAIK
   type RetType = M extends false | undefined ? File : File[];
 
-  const mimeTypes = opts.extensions?.reduce((mimeTypes, type) => {
-    mimeTypes.push(MIME_TYPES[type]);
+  const mimeForImageExt = (type: ImageFileExtension): string => {
+    if (type in IMAGE_MIME_TYPES) {
+      return IMAGE_MIME_TYPES[type as keyof typeof IMAGE_MIME_TYPES];
+    }
+    if (type === 'heic') {
+      return 'image/heic';
+    }
+    if (type === 'heif') {
+      return 'image/heif';
+    }
+    return 'application/octet-stream';
+  };
 
+  const mimeTypes = opts.extensions?.reduce((mimeTypes, type) => {
+    mimeTypes.push(mimeForImageExt(type));
     return mimeTypes;
   }, [] as string[]);
 

@@ -1,3 +1,4 @@
+export * from './load-image-bitmap';
 export * from './browser';
 export * from './converter';
 export * from './matrix';

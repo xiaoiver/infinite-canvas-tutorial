@@ -1143,11 +1143,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(entity, MaterialDirty);
       loadImage(resolvedFill, entity);
     } else {
-      if (entity.has(FillGradient)) {
+      if (entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern)) {
         safeAddComponent(entity, MaterialDirty);
       }
 
       safeRemoveComponent(entity, FillGradient);
+      safeRemoveComponent(entity, FillImage);
+      safeRemoveComponent(entity, FillPattern);
       safeAddComponent(entity, FillSolid, {
         value: resolvedFill as string,
         fillVariableRef: designVariableRefKeyFromWire(

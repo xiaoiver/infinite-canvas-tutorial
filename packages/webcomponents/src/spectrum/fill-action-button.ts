@@ -287,7 +287,7 @@ export class FillActionButton extends LitElement {
         this.fillPanelTab = 'color';
       }}
               >
-                ${msg(str`颜色`)}
+                ${msg(str`Color`)}
               </button>
               <button
                 type="button"
@@ -297,7 +297,7 @@ export class FillActionButton extends LitElement {
         this.fillPanelTab = 'variable';
       }}
               >
-                ${msg(str`变量`)}
+                ${msg(str`Variable`)}
               </button>
             </div>
             <div class="tab-panel" role="tabpanel">
@@ -315,7 +315,7 @@ export class FillActionButton extends LitElement {
                         @opacity-change=${this.handleFillOpacityChanged}
                         @opacity-variable-pick=${this.handleFillOpacityVariablePick}
                         @opacity-variable-unbind=${this
-                          .handleFillOpacityVariableUnbind}
+                  .handleFillOpacityVariableUnbind}
                       ></ic-spectrum-color-picker>`,
           ],
           [

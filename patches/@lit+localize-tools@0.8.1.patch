@@ -1,0 +1,33 @@
+diff --git a/lib/formatters/xlb.js b/lib/formatters/xlb.js
+--- a/lib/formatters/xlb.js
++++ b/lib/formatters/xlb.js
+@@ -47,7 +47,7 @@
+      * Parse the given XLB XML string and return its translations.
+      */
+     parseXmb(xmlStr) {
+-        const doc = new xmldom.DOMParser().parseFromString(xmlStr);
++        const doc = new xmldom.DOMParser().parseFromString(xmlStr, 'application/xml');
+         const bundle = getOneElementByTagNameOrThrow(doc, 'localizationbundle');
+         const locale = getNonEmptyAttributeOrThrow(bundle, 'locale');
+         const msgNodes = doc.getElementsByTagName('msg');
+diff --git a/lib/formatters/xliff.js b/lib/formatters/xliff.js
+--- a/lib/formatters/xliff.js
++++ b/lib/formatters/xliff.js
+@@ -47,7 +47,7 @@
+      * Parse the given XLIFF XML string and return its translations.
+      */
+     parseXliff(xmlStr) {
+-        const doc = new xmldom.DOMParser().parseFromString(xmlStr);
++        const doc = new xmldom.DOMParser().parseFromString(xmlStr, 'application/xml');
+         const file = getOneElementByTagNameOrThrow(doc, 'file');
+         const locale = getNonEmptyAttributeOrThrow(file, 'target-language');
+         const messages = [];
+@@ -114,7 +114,7 @@
+         for (const targetLocale of this.config.targetLocales) {
+             const existingTargetXmlStr = this.readTranslationFile(targetLocale);
+             const xmlStr = this.encodeLocale(sourceMessages, targetLocale, translations.get(targetLocale) || [], existingTargetXmlStr
+-                ? new xmldom.DOMParser().parseFromString(existingTargetXmlStr)
++                ? new xmldom.DOMParser().parseFromString(existingTargetXmlStr, 'application/xml')
+                 : undefined);
+             const path = pathLib.join(xliffDir, `${targetLocale}.xlf`);
+             writes.push(fsExtra.writeFile(path, xmlStr, 'utf8').catch((e) => {

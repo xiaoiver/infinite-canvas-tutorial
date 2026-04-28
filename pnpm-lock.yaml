@@ -572,6 +572,9 @@ importers:
       gl-matrix:
         specifier: ^3.4.3
         version: 3.4.3
+      heic2any:
+        specifier: ^0.0.4
+        version: 0.0.4
       libtess:
         specifier: ^1.2.2
         version: 1.2.2
@@ -1325,10 +1328,10 @@ importers:
         version: 4.11.0(encoding@0.1.13)(seedrandom@3.0.5)
       '@upscalerjs/esrgan-medium':
         specifier: latest
-        version: 1.0.0-beta.13(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
+        version: 1.0.0(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
       upscaler:
         specifier: latest
-        version: 1.0.0-beta.19(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
+        version: 1.0.0(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
 
   packages/plugin-vello:
     dependencies:
@@ -5663,13 +5666,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@upscalerjs/default-model@1.0.0-beta.17':
-    resolution: {integrity: sha512-bURogpfEo25enFIWQQF3/+oTvuSUKapd/bum/H0f9HZzA6ncufJC4llneAjoJ0FZWl6bnB32gIiJylIsTtTD3A==}
+  '@upscalerjs/default-model@1.0.0':
+    resolution: {integrity: sha512-D17cokQBpciTBrlFuY5WtS7TH0WE3h5m44PYiPPCSq1jlWjG9BvH5/rnm9AhQPV6TT3Bqbg5GAPV8/qpR47/hQ==}
     peerDependencies:
       '@tensorflow/tfjs': ~4.11.0
 
-  '@upscalerjs/esrgan-medium@1.0.0-beta.13':
-    resolution: {integrity: sha512-p5QU+pFktEUWo5sHnAleMM6LkcxOtnhfhRbv0I5Kq4fmRHGjpJOdEz1p14CDsRokUH1GbC2EOi8V5kgOt4exdA==}
+  '@upscalerjs/esrgan-medium@1.0.0':
+    resolution: {integrity: sha512-Z8JnR87sgetPABKevasXST3FdnXhaoTu9zpXnu3KLaHYpYStVt0FD1VZS9c6jhSGMBC0H929gN9RbWl+MeisKA==}
     peerDependencies:
       '@tensorflow/tfjs': ~4.11.0
 
@@ -8342,6 +8345,9 @@ packages:
 
   headers-polyfill@4.0.3:
     resolution: {integrity: sha512-IScLbePpkvO846sIwOtOTDjutRMWdXdJmXdMvk6gCBHxFO8d+QKOQedyZSxFTTFYRSmlgSTDtXqqq4pcenBXLQ==}
+
+  heic2any@0.0.4:
+    resolution: {integrity: sha512-3lLnZiDELfabVH87htnRolZ2iehX9zwpRyGNz22GKXIu0fznlblf0/ftppXKNqS26dqFSeqfIBhAmAj/uSp0cA==}
 
   hermes-estree@0.25.1:
     resolution: {integrity: sha512-0wUoCcLp+5Ev5pDW2OriHC2MJCbwLwuRx+gAqMTOkGKJJiBCLjtrvy4PWUGn6MIVefecRpzoOZ/UV6iGdOr+Cw==}
@@ -11786,8 +11792,8 @@ packages:
     peerDependencies:
       browserslist: '>= 4.21.0'
 
-  upscaler@1.0.0-beta.19:
-    resolution: {integrity: sha512-CY4HMDXTwy67iGyfrhNYhjCFtctsMPCXAHTbLo9WhmyXuyLqfoE/JXF96Wi6rdzo11V3Txe7zr+dYBxXSbC3sg==}
+  upscaler@1.0.0:
+    resolution: {integrity: sha512-oQcxcShLj+HDHCtQBbdqQnFYwwgKeaU2wPNj4QL+Q/Gr05Vm9kXFU7TNl7ZpTR9ic0u4tOl70ZcQcUFODMUV/g==}
     engines: {node: '>=16.0'}
     peerDependencies:
       '@tensorflow/tfjs': ~4.11.0
@@ -16848,11 +16854,11 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@upscalerjs/default-model@1.0.0-beta.17(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))':
+  '@upscalerjs/default-model@1.0.0(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))':
     dependencies:
       '@tensorflow/tfjs': 4.11.0(encoding@0.1.13)(seedrandom@3.0.5)
 
-  '@upscalerjs/esrgan-medium@1.0.0-beta.13(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))':
+  '@upscalerjs/esrgan-medium@1.0.0(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))':
     dependencies:
       '@tensorflow/tfjs': 4.11.0(encoding@0.1.13)(seedrandom@3.0.5)
 
@@ -20149,6 +20155,8 @@ snapshots:
   he@1.2.0: {}
 
   headers-polyfill@4.0.3: {}
+
+  heic2any@0.0.4: {}
 
   hermes-estree@0.25.1: {}
 
@@ -24413,10 +24421,10 @@ snapshots:
       escalade: 3.2.0
       picocolors: 1.1.1
 
-  upscaler@1.0.0-beta.19(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5)):
+  upscaler@1.0.0(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5)):
     dependencies:
       '@tensorflow/tfjs': 4.11.0(encoding@0.1.13)(seedrandom@3.0.5)
-      '@upscalerjs/default-model': 1.0.0-beta.17(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
+      '@upscalerjs/default-model': 1.0.0(@tensorflow/tfjs@4.11.0(encoding@0.1.13)(seedrandom@3.0.5))
       wireit: 0.14.12
 
   uri-js@4.4.1:

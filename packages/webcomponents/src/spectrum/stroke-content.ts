@@ -371,7 +371,7 @@ export class StrokeContent extends LitElement {
 
       <div class="line">
         <sp-field-label for="stroke-alignment" side-aligned="start"
-          >Stroke alignment</sp-field-label
+          >${msg(str`Stroke alignment`)}</sp-field-label
         >
         <sp-action-group
           id="stroke-alignment"

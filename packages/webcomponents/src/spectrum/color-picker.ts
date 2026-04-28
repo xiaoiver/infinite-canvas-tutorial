@@ -1,13 +1,15 @@
 import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
-import { cssColorToHex, isGradient } from '@infinite-canvas-tutorial/ecs';
+import { cssColorToHex, isGradient, isUrl, isDataUrl } from '@infinite-canvas-tutorial/ecs';
 import { localized, msg, str } from '@lit/localize';
+import './input-image.js';
 
 export enum ColorType {
   None = 'none',
   Solid = 'solid',
   Gradient = 'gradient',
+  Image = 'image',
 }
 
 export type ColorPickerChangeDetail = {
@@ -60,7 +62,12 @@ export class ColorPicker extends LitElement {
   value: string | undefined;
 
   @property()
-  types: ColorType[] = [ColorType.None, ColorType.Solid, ColorType.Gradient];
+  types: ColorType[] = [
+    ColorType.None,
+    ColorType.Solid,
+    ColorType.Gradient,
+    ColorType.Image,
+  ];
 
   /** 传给 `ic-spectrum-input-solid`（例如编辑 fill 时）；可为 `$token`。 */
   @property()
@@ -82,6 +89,7 @@ export class ColorPicker extends LitElement {
     [ColorType.None]: 'none',
     [ColorType.Solid]: '#000',
     [ColorType.Gradient]: 'linear-gradient(to right, #000, #fff)',
+    [ColorType.Image]: '',
   };
 
   willUpdate(changedProperties: PropertyValues<this>) {
@@ -92,7 +100,9 @@ export class ColorPicker extends LitElement {
           ? ColorType.None
           : isGradient(v)
             ? ColorType.Gradient
-            : ColorType.Solid;
+            : isUrl(v) || isDataUrl(v)
+              ? ColorType.Image
+              : ColorType.Solid;
 
       this.prevColors = {
         ...this.prevColors,
@@ -134,6 +144,7 @@ export class ColorPicker extends LitElement {
       () => html`<sp-action-group
           quiet
           compact
+          emphasized
           size="m"
           selects="single"
           aria-labelledby=${headingId}
@@ -180,6 +191,15 @@ export class ColorPicker extends LitElement {
               </sp-action-button>
             `,
       )}
+          ${when(
+        this.types.includes(ColorType.Image),
+        () => html`
+              <sp-action-button value=${ColorType.Image}>
+                <sp-tooltip self-managed placement="bottom"> Image </sp-tooltip>
+                <sp-icon-image slot="icon"></sp-icon-image>
+              </sp-action-button>
+            `,
+      )}
         </sp-action-group>`,
     )}
       ${when(
@@ -190,7 +210,7 @@ export class ColorPicker extends LitElement {
             .fillOpacity=${this.fillOpacity}
             .strokeOpacity=${this.strokeOpacity}
             ?enable-opacity-variable-binding=${this
-              .enableOpacityVariableBinding}
+          .enableOpacityVariableBinding}
             @color-change=${this.handleColorChanged}
           ></ic-spectrum-input-solid>
         `,
@@ -202,6 +222,12 @@ export class ColorPicker extends LitElement {
           @color-change=${this.handleColorChanged}
         ></ic-spectrum-input-gradient>`,
     )}
+      ${when(this.type === ColorType.Image, () => html`
+        <ic-spectrum-input-image
+          value=${this.prevColors[ColorType.Image]}
+          @color-change=${this.handleColorChanged}
+        ></ic-spectrum-input-image>
+      `)}
     `;
   }
 }

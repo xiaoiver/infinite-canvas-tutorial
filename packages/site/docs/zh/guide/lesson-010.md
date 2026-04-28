@@ -2,6 +2,7 @@
 outline: deep
 description: '学习将画布内容导出为PNG、JPEG和SVG格式图片。实现图片在画布中的渲染，并扩展SVG能力以支持更多设计工具特性。'
 ---
+
 # 课程 10 - 图片导入导出
 
 图片导入导出在无限画布中是一个非常重要的功能，通过图片产物可以和其他工具打通。因此虽然目前我们的画布绘制能力还很有限，但不妨提前考虑和图片相关的问题。在这节课中你将学习到以下内容：
@@ -752,6 +753,28 @@ export class RenderCache {
         }
         return sampler;
     }
+}
+```
+
+### iOS Live Photo {#ios-live-photo}
+
+iOS Live Photo 在文件层面通常是 HEIC 静态图 + 配套 MOV。浏览器里的 `<img>` 或者 `@loaders.gl/images` 都不能直接解码 HEIC。
+
+我们想将尽量与普通图片一样处理，先解出一帧静态位图再写入纹理。至于在画布里播 Live Photo 视频，需要后续再单独实现组件，提供点按播放等功能。
+
+```ts
+import heic2any from 'heic2any';
+
+async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
+    const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
+        heic2any({
+            blob,
+            toType,
+            quality: toType === 'image/jpeg' ? quality ?? 0.92 : 1,
+        });
+
+    const converted = await run('image/png');
+    return createImageBitmap(converted);
 }
 ```
 
