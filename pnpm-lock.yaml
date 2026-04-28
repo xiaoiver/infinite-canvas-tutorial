@@ -28,11 +28,6 @@ overrides:
   '@xmldom/xmldom': '>=0.9.10'
   postcss: '>=8.5.10'
 
-patchedDependencies:
-  '@lit/localize-tools@0.8.1':
-    hash: 6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167
-    path: patches/@lit+localize-tools@0.8.1.patch
-
 importers:
 
   .:
@@ -1039,7 +1034,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
 
   packages/plugin-d2:
     dependencies:
@@ -1076,7 +1071,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
 
   packages/plugin-drawio:
     dependencies:
@@ -1113,7 +1108,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
 
   packages/plugin-eraser:
     dependencies:
@@ -1144,7 +1139,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
 
   packages/plugin-fal-ai:
     dependencies:
@@ -1202,7 +1197,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
 
   packages/plugin-lasso:
     dependencies:
@@ -1245,7 +1240,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
 
   packages/plugin-lottie:
     dependencies:
@@ -1303,7 +1298,7 @@ importers:
     devDependencies:
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
       '@types/mermaid':
         specifier: 9.2.0
         version: 9.2.0
@@ -1778,7 +1773,7 @@ importers:
         version: 2.2.466
       '@lit/localize-tools':
         specifier: ^0.8.1
-        version: 0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)
+        version: 0.8.1
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
@@ -14039,7 +14034,7 @@ snapshots:
     dependencies:
       '@lit/reactive-element': 2.0.4
 
-  '@lit/localize-tools@0.8.1(patch_hash=6160300241f60b1ca9a4df4a3a5aab2fafa284de39f57faf55f29b21b1acd167)':
+  '@lit/localize-tools@0.8.1':
     dependencies:
       '@lit/localize': 0.12.2
       '@parse5/tools': 0.3.0
