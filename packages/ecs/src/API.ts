@@ -43,6 +43,7 @@ import {
   transformPath,
   mat3WithoutTranslation,
   buildDesignVariableRefreshPatch,
+  expandSerializedNodesForSvgExport,
 } from './utils';
 import {
   getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList,
@@ -2339,6 +2340,10 @@ export class API {
       designVariablesExport,
       api.getAppState().themeMode,
     );
+    const exportNodes = expandSerializedNodesForSvgExport(
+      prep.nodes,
+      api.getNodes(),
+    );
     if (prep.cssRootStyle) {
       const $defs = createSVGElement('defs');
       const $style = DOMAdapter.get()
@@ -2348,7 +2353,7 @@ export class API {
       $defs.appendChild($style);
       $namespace.insertBefore($defs, $namespace.firstChild);
     }
-    (await serializeNodesToSVGElements(prep.nodes)).forEach((element) => {
+    (await serializeNodesToSVGElements(exportNodes)).forEach((element) => {
       $namespace.appendChild(element);
     });
     return $namespace;

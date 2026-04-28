@@ -58,7 +58,9 @@ export function expandRefSerializedNodes(
 
   for (const node of batch) {
     if (node.type !== 'ref') {
-      out.push({ ...node } as SerializedNode);
+      // 必须为入参引用本身：{@link serializedNodesToEntities} 会在展开结果上调用
+      // `inferXYWidthHeight` 等就地写 wire 几何；浅拷贝会使 state 中的节点与 ECS 不一致。
+      out.push(node);
       continue;
     }
     const refn = node as RefSerializedNode;
@@ -114,4 +116,18 @@ export function expandRefSerializedNodes(
   }
 
   return out;
+}
+
+/**
+ * 在 `serializeNodesToSVGElements` 之前调用：将 `type: 'ref'` 展开为与 {@link serializedNodesToEntities} 相同语义的具体图元。
+ *
+ * @param batch 要写入 SVG 的节点，顺序保留（宜为 {@link API.readLayoutFromECS} 等之后的列表）。
+ * @param fullScene 全场景节点表，供解析 `ref` 所指向的模板；**仅导出选区**时务必传入如 `api.getNodes()`，否则可能找不到 `reusable` 模板。
+ */
+export function expandSerializedNodesForSvgExport(
+  batch: readonly SerializedNode[],
+  fullScene: readonly SerializedNode[] | undefined,
+): SerializedNode[] {
+  const graph = mergeSerializedNodesForRefLookup(batch, fullScene);
+  return expandRefSerializedNodes(batch, graph);
 }

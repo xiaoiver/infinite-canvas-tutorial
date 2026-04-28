@@ -179,6 +179,15 @@ export function shiftPath(d: string, dx: number, dy: number) {
     }
   });
 
+  absoluteArray.forEach((segment) => {
+    for (let i = 1; i < segment.length; i++) {
+      const v = segment[i] as number;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        segment[i] = roundNumberToDecimals(v, 2);
+      }
+    }
+  });
+
   return path2String(absoluteArray);
 }
 
@@ -198,29 +207,6 @@ export function roundNumberToDecimals(
     return 0;
   }
   return o;
-}
-
-/**
- * 将 `d` 中各指令的数值量化为 `decimalPlaces` 位十进制，缩短导出 SVG 长度且通常不影响视觉效果。
- * 在 {@link path2String} 之前对 `path2Absolute` 的段内数字取整，与 {@link transformPath} / {@link shiftPath} 的段结构一致。
- */
-export function roundPathDToDecimals(
-  d: string,
-  decimalPlaces: number,
-): string {
-  if (!d?.trim()) {
-    return d;
-  }
-  const absoluteArray = path2Absolute(d);
-  absoluteArray.forEach((segment) => {
-    for (let i = 1; i < segment.length; i++) {
-      const v = segment[i] as number;
-      if (typeof v === 'number' && Number.isFinite(v)) {
-        segment[i] = roundNumberToDecimals(v, decimalPlaces);
-      }
-    }
-  });
-  return path2String(absoluteArray);
 }
 
 /**
@@ -317,6 +303,15 @@ export function transformPath(d: string, transform: mat3) {
       );
       segment[3] = newX2;
       segment[4] = newY2;
+    }
+  });
+
+  absoluteArray.forEach((segment) => {
+    for (let i = 1; i < segment.length; i++) {
+      const v = segment[i] as number;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        segment[i] = roundNumberToDecimals(v, 2);
+      }
     }
   });
 

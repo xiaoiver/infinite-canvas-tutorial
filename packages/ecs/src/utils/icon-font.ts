@@ -3,8 +3,6 @@ import { Ellipse } from '../components/geometry/Ellipse';
 import { Line } from '../components/geometry/Line';
 import { Path } from '../components/geometry/Path';
 import {
-  roundNumberToDecimals,
-  roundPathDToDecimals,
   transformPath,
   shiftPath,
 } from './serialize/transform';
@@ -361,9 +359,6 @@ function aabbEllipse(
 ): BoundLike {
   return Ellipse.getGeometryBounds({ cx, cy, rx, ry });
 }
-
-/** 缩放到目标框后的 path / 子图元坐标保留的小数位，减轻 d 与导出 SVG 体积。 */
-const ICONIFY_SCALED_GEOMETRY_DECIMAL_PLACES = 2;
 
 function isFiniteAabb(p: BoundLike): p is Bounds {
   return (
@@ -762,7 +757,6 @@ export function resolveIconifyBodyToScalablePrimitives(
     return null;
   }
   const { minX, minY } = combined;
-  const dp = ICONIFY_SCALED_GEOMETRY_DECIMAL_PLACES;
 
   const useViewBox =
     viewBoxWidth > 0 && viewBoxHeight > 0 && Number.isFinite(viewBoxWidth) && Number.isFinite(viewBoxHeight);
@@ -776,13 +770,10 @@ export function resolveIconifyBodyToScalablePrimitives(
       if (prim.kind === 'path') {
         return {
           kind: 'path' as const,
-          d: roundPathDToDecimals(
-            shiftPath(
-              transformPath(prim.d, mat3.fromScaling(mat3.create(), [s, s])),
-              tx,
-              ty,
-            ),
-            dp,
+          d: shiftPath(
+            transformPath(prim.d, mat3.fromScaling(mat3.create(), [s, s])),
+            tx,
+            ty,
           ),
           style: prim.style,
         };
@@ -790,19 +781,19 @@ export function resolveIconifyBodyToScalablePrimitives(
       if (prim.kind === 'ellipse') {
         return {
           kind: 'ellipse' as const,
-          cx: roundNumberToDecimals(prim.cx * s + tx, dp),
-          cy: roundNumberToDecimals(prim.cy * s + ty, dp),
-          rx: roundNumberToDecimals(prim.rx * s, dp),
-          ry: roundNumberToDecimals(prim.ry * s, dp),
+          cx: prim.cx * s + tx,
+          cy: prim.cy * s + ty,
+          rx: prim.rx * s,
+          ry: prim.ry * s,
           style: prim.style,
         };
       }
       return {
         kind: 'line' as const,
-        x1: roundNumberToDecimals(prim.x1 * s + tx, dp),
-        y1: roundNumberToDecimals(prim.y1 * s + ty, dp),
-        x2: roundNumberToDecimals(prim.x2 * s + tx, dp),
-        y2: roundNumberToDecimals(prim.y2 * s + ty, dp),
+        x1: prim.x1 * s + tx,
+        y1: prim.y1 * s + ty,
+        x2: prim.x2 * s + tx,
+        y2: prim.y2 * s + ty,
         style: prim.style,
       };
     });
@@ -819,16 +810,13 @@ export function resolveIconifyBodyToScalablePrimitives(
     if (prim.kind === 'path') {
       return {
         kind: 'path' as const,
-        d: roundPathDToDecimals(
-          shiftPath(
-            transformPath(
-              shiftPath(prim.d, -minX, -minY),
-              mat3.fromScaling(mat3.create(), [s, s]),
-            ),
-            tx,
-            ty,
+        d: shiftPath(
+          transformPath(
+            shiftPath(prim.d, -minX, -minY),
+            mat3.fromScaling(mat3.create(), [s, s]),
           ),
-          dp,
+          tx,
+          ty,
         ),
         style: prim.style,
       };
@@ -836,19 +824,19 @@ export function resolveIconifyBodyToScalablePrimitives(
     if (prim.kind === 'ellipse') {
       return {
         kind: 'ellipse' as const,
-        cx: roundNumberToDecimals((prim.cx - minX) * s + tx, dp),
-        cy: roundNumberToDecimals((prim.cy - minY) * s + ty, dp),
-        rx: roundNumberToDecimals(prim.rx * s, dp),
-        ry: roundNumberToDecimals(prim.ry * s, dp),
+        cx: (prim.cx - minX) * s + tx,
+        cy: (prim.cy - minY) * s + ty,
+        rx: prim.rx * s,
+        ry: prim.ry * s,
         style: prim.style,
       };
     }
     return {
       kind: 'line' as const,
-      x1: roundNumberToDecimals((prim.x1 - minX) * s + tx, dp),
-      y1: roundNumberToDecimals((prim.y1 - minY) * s + ty, dp),
-      x2: roundNumberToDecimals((prim.x2 - minX) * s + tx, dp),
-      y2: roundNumberToDecimals((prim.y2 - minY) * s + ty, dp),
+      x1: (prim.x1 - minX) * s + tx,
+      y1: (prim.y1 - minY) * s + ty,
+      x2: (prim.x2 - minX) * s + tx,
+      y2: (prim.y2 - minY) * s + ty,
       style: prim.style,
     };
   });

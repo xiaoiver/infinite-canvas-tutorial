@@ -277,6 +277,9 @@ function effectiveSvgRectCornerRadius(
 /**
  * 将场景节点导出为 SVG 子树。对 `fill` / `stroke` 等与 {@link getComputedInheritGroupWireMap} 一致的可继承
  * 线框字段，按 `parentId` 链做「有效展示」再写出，使从父 `g` 继承到的颜色在导出中显式化。
+ *
+ * 入参**不应**含 `type: 'ref'`（无对应 SVG 图元）。请在外层用
+ * {@link expandSerializedNodesForSvgExport} 展开，或使用 `toSVGElement` / `API#renderToSVG` 已接好的路径。
  */
 export async function serializeNodesToSVGElements(
   nodes: SerializedNode[],
