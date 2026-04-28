@@ -126,6 +126,12 @@ const Canvas = ({ id = 'default', initialData, initialAppState }: CanvasProps) =
     api.setAppState({
       language: locale,
       themeMode: resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
+      // variables: {
+      //   // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
+      //   '--primary': { type: 'color', value: '#FF8400' },
+      //   '--primary-foreground': { type: 'color', value: '#111111' },
+      //   '--radius-pill': { type: 'number', value: 999 },
+      // },
       cameraZoom: 0.35,
       topbarVisible: false,
       penbarSelected: Pen.SELECT,

@@ -162,7 +162,7 @@ export class PropertiesPanel extends LitElement {
       flex: 1 1 auto;
       min-height: 0;
       --system-accordion-size-s-item-header-font-size: 14px;
-      --mod-accordion-item-header-font-size: 14px;
+      --mod-accordion-item-header-font-size: 13px;
     }
 
     .multi-select-accordion .content {

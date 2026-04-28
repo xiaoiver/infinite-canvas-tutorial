@@ -74,6 +74,17 @@ export function GlitchTool() {
       zIndex: 1,
     },
     {
+      id: 'glitch-description2',
+      type: 'text',
+      anchorX: 50,
+      anchorY: 1200,
+      content: tItem('description2'),
+      fontFamily: 'system-ui',
+      fontSize: 48,
+      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      zIndex: 1,
+    },
+    {
       id: 'glitch-icon',
       type: 'iconfont',
       x: 380,
@@ -106,6 +117,7 @@ export function GlitchTool() {
                 Pen.DRAW_HEXAGON,
                 Pen.DRAW_ROUGH_RECT,
                 Pen.DRAW_ROUGH_ELLIPSE,
+                Pen.DRAW_ICONFONT,
                 Pen.IMAGE,
                 Pen.LASER_POINTER,
                 Pen.ERASER

@@ -45,6 +45,8 @@ import {
   buildDesignVariableRefreshPatch,
   expandSerializedNodesForSvgExport,
 } from './utils';
+import type { AnimationGifQuality } from './utils/animationExportCodec';
+export type { AnimationGifQuality } from './utils/animationExportCodec';
 import {
   getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList,
 } from './utils/icon-font';
@@ -89,6 +91,7 @@ import {
   Parent,
   Path,
   Polyline,
+  RasterAnimationExportRequest,
   RasterScreenshotRequest,
   RBush,
   Rect,
@@ -145,6 +148,9 @@ export enum ExportFormat {
   SVG = 'svg',
   PNG = 'png',
   JPEG = 'jpeg',
+  /** WebM（VP8/VP9），适合带引擎时间动画的滤镜 */
+  WEBM = 'webm',
+  GIF = 'gif',
 }
 
 /** {@link API.export} 的选项：格式、下载行为、目标节点、栅格倍率等。 */
@@ -159,6 +165,24 @@ export interface ExportOptions {
    * @see RasterScreenshotRequest.scale
    */
   scale?: number;
+  /**
+   * 动画导出时长（秒），仅 WEBM / GIF；默认 `3`，上限约 `15`。
+   */
+  durationSec?: number;
+  /**
+   * 动画导出帧率，仅 WEBM / GIF；默认 `24`，上限约 `30`。
+   */
+  fps?: number;
+  /**
+   * 第一帧引擎时间（秒），仅 WEBM / GIF；默认 `0`。
+   * @see RasterAnimationExportRequest.timeStart
+   */
+  timeStart?: number;
+  /**
+   * GIF 导出质量（每帧 palette 色数档）：仅 `ExportFormat.GIF`；默认 `high`（256 色）。
+   * @see RasterAnimationExportRequest.gifQuality
+   */
+  gifQuality?: AnimationGifQuality;
 }
 
 export class DefaultStateManagement implements StateManagement {
@@ -2276,6 +2300,42 @@ export class API {
         download,
         nodes,
         scale,
+      });
+    } else if (format === ExportFormat.WEBM || format === ExportFormat.GIF) {
+      const scale =
+        options.scale != null && Number.isFinite(options.scale)
+          ? Math.max(0.25, Math.min(8, options.scale))
+          : 1;
+      const durationRaw = options.durationSec;
+      const durationSec = Math.max(
+        0.2,
+        Math.min(
+          15,
+          durationRaw != null && Number.isFinite(durationRaw) ? durationRaw : 3,
+        ),
+      );
+      const fpsRaw = options.fps;
+      const fps = Math.max(
+        1,
+        Math.min(30, fpsRaw != null && Number.isFinite(fpsRaw) ? fpsRaw : 24),
+      );
+      const timeStartRaw = options.timeStart;
+      const timeStart =
+        timeStartRaw != null && Number.isFinite(timeStartRaw) ? timeStartRaw : 0;
+      const gq = options.gifQuality;
+      const gifQuality: AnimationGifQuality =
+        gq === 'medium' || gq === 'low' || gq === 'high' ? gq : 'high';
+      safeAddComponent(this.#canvas, RasterAnimationExportRequest, {
+        canvas: this.#canvas,
+        download,
+        format: format === ExportFormat.WEBM ? 'webm' : 'gif',
+        durationSec,
+        fps,
+        grid: false,
+        nodes,
+        scale,
+        timeStart,
+        gifQuality: format === ExportFormat.GIF ? gifQuality : 'high',
       });
     }
 

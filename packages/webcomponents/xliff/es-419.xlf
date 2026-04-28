@@ -602,10 +602,6 @@
   <source>Engine time (animate)</source>
   <target>Tiempo del motor (animar)</target>
 </trans-unit>
-<trans-unit id="sade05f284771d6a6">
-  <source>Time uniform follows the app clock each frame.</source>
-  <target>El tiempo uniforme sigue el reloj de la aplicación cada fotograma.</target>
-</trans-unit>
 <trans-unit id="s48e186fb300e5464">
   <source>Time</source>
   <target>Tiempo</target>
@@ -1293,6 +1289,34 @@
 <trans-unit id="s96668830629e0dfc">
   <source>Upload</source>
   <target>Subir</target>
+</trans-unit>
+<trans-unit id="s0fa5ab7499420a69">
+  <source>Fill &amp; stroke color</source>
+  <target>Color de relleno y trazo</target>
+</trans-unit>
+<trans-unit id="s094748f07458f069">
+  <source>Duration (s)</source>
+  <target>Duración (s)</target>
+</trans-unit>
+<trans-unit id="sf2fbc9199cc91e28">
+  <source>FPS</source>
+  <target>FPS</target>
+</trans-unit>
+<trans-unit id="sf675f879b1c892c6">
+  <source>Quality</source>
+  <target>Calidad</target>
+</trans-unit>
+<trans-unit id="s9deeefd89ca8a81d">
+  <source>High</source>
+  <target>Alta</target>
+</trans-unit>
+<trans-unit id="sac6bdc71f750ac96">
+  <source>Medium</source>
+  <target>Media</target>
+</trans-unit>
+<trans-unit id="s24f3a319b88552c1">
+  <source>Low</source>
+  <target>Baja</target>
 </trans-unit>
 </body>
 </file>

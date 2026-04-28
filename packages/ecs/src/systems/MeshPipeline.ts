@@ -19,6 +19,7 @@ import {
   ComputedPoints,
   ComputedRough,
   ComputedTextMetrics,
+  AnimationExportOutput,
   Culled,
   DropShadow,
   Ellipse,
@@ -37,6 +38,7 @@ import {
   Opacity,
   Path,
   Polyline,
+  RasterAnimationExportRequest,
   RasterScreenshotRequest,
   Rect,
   Renderable,
@@ -76,6 +78,13 @@ import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
 import { getSceneRoot } from './Transform';
+import {
+  pickWebmMimeType,
+  recordWebMFromCanvas,
+  encodeGifFromCanvas,
+  maxColorsForAnimationGifQuality,
+} from '../utils/animationExportCodec';
+import { setPostEffectEngineTimeSeconds } from '../utils/postEffectEngineTime';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
 import { API } from '../API';
@@ -96,6 +105,18 @@ type GPURenderer = {
   batchManager: BatchManager;
   filters: Record<Effect['type'], PostProcessingRenderer>;
   renderGraph: RenderGraph;
+};
+
+/**
+ * 动画栅格导出或覆盖引擎时间时传入 {@link MeshPipeline.renderCamera}。
+ */
+export type MeshRenderCameraOptions = {
+  postEffectTimeSec?: number;
+  rasterForExport?: {
+    grid: boolean;
+    nodes: SerializedNode[];
+    scale: number;
+  };
 };
 
 export class MeshPipeline extends System {
@@ -149,6 +170,10 @@ export class MeshPipeline extends System {
 
   private rasterScreenshotRequests = this.query(
     (q) => q.addedChangedOrRemoved.with(RasterScreenshotRequest).trackWrites,
+  );
+
+  private rasterAnimationExportRequests = this.query(
+    (q) => q.addedChangedOrRemoved.with(RasterAnimationExportRequest).trackWrites,
   );
 
   private fillSolids = this.query(
@@ -268,6 +293,8 @@ export class MeshPipeline extends System {
           )
           .read.and.using(
             RasterScreenshotRequest,
+            RasterAnimationExportRequest,
+            AnimationExportOutput,
             Screenshot,
             GeometryDirty,
             MaterialDirty,
@@ -313,9 +340,18 @@ export class MeshPipeline extends System {
     };
   }
 
-  private renderCamera(canvas: Entity, camera: Entity, sort = false) {
+  private renderCamera(
+    canvas: Entity,
+    camera: Entity,
+    sort = false,
+    renderOpts?: MeshRenderCameraOptions,
+  ) {
     if (!canvas.has(GPUResource)) {
       return;
+    }
+
+    if (renderOpts?.postEffectTimeSec != null) {
+      setPostEffectEngineTimeSeconds(renderOpts.postEffectTimeSec);
     }
 
     let renderer: GPURenderer;
@@ -327,15 +363,27 @@ export class MeshPipeline extends System {
     const request = canvas.has(RasterScreenshotRequest)
       ? canvas.read(RasterScreenshotRequest)
       : null;
+    const raster = request
+      ? request
+      : renderOpts?.rasterForExport
+        ? {
+          type: 'image/png' as const,
+          encoderOptions: 0.92,
+          grid: renderOpts.rasterForExport.grid,
+          download: false,
+          nodes: renderOpts.rasterForExport.nodes,
+          scale: renderOpts.rasterForExport.scale,
+        }
+        : null;
     const { type, encoderOptions, grid, download, nodes, scale: rasterScale = 1 } =
-      request ?? {
-        type: 'image/png',
+      raster ?? {
+        type: 'image/png' as const,
         encoderOptions: 1,
         grid: false,
         nodes: [],
         scale: 1,
       };
-    const shouldRenderGrid = !request || grid;
+    const shouldRenderGrid = !raster || grid;
     const shouldRenderPartially = nodes.length > 0;
 
     const PADDING = 0;
@@ -416,7 +464,7 @@ export class MeshPipeline extends System {
     const { width, height } = swapChain.getCanvas();
     const onscreenTexture = swapChain.getOnscreenTexture();
 
-    if (request) {
+    if (raster) {
       batchManager.hideUIs();
     }
 
@@ -544,6 +592,85 @@ export class MeshPipeline extends System {
     }
   }
 
+  private async runRasterAnimationExport(
+    canvas: Entity,
+    camera: Entity,
+    req: {
+      download: boolean;
+      format: 'webm' | 'gif';
+      durationSec: number;
+      fps: number;
+      grid: boolean;
+      nodes: SerializedNode[];
+      scale: number;
+      timeStart: number;
+      gifQuality: 'high' | 'medium' | 'low';
+    },
+  ): Promise<void> {
+    const { durationSec, fps, timeStart, download } = req;
+    let { format } = req;
+    const totalFrames = Math.max(
+      1,
+      Math.min(450, Math.ceil(Math.max(0, durationSec) * Math.max(1, fps))),
+    );
+    const invFps = 1 / Math.max(1, fps);
+    const renderFrame = (frameIndex: number) => {
+      this.renderCamera(canvas, camera, true, {
+        postEffectTimeSec: timeStart + frameIndex * invFps,
+        rasterForExport: {
+          grid: req.grid,
+          nodes: req.nodes,
+          scale: req.scale,
+        },
+      });
+    };
+    if (!canvas.has(GPUResource)) {
+      return;
+    }
+    if (format === 'webm' && !pickWebmMimeType()) {
+      format = 'gif';
+    }
+    const usePartial = req.nodes.length > 0;
+    const getExportCanvas = (): HTMLCanvasElement => {
+      if (usePartial) {
+        return this.setupDevice
+          .getOffscreenGPUResource()
+          .swapChain.getCanvas() as HTMLCanvasElement;
+      }
+      return canvas
+        .read(GPUResource)
+        .swapChain.getCanvas() as HTMLCanvasElement;
+    };
+    try {
+      let blob: Blob;
+      if (format === 'webm') {
+        blob = await recordWebMFromCanvas(
+          getExportCanvas,
+          totalFrames,
+          renderFrame,
+        );
+      } else {
+        blob = await encodeGifFromCanvas(
+          getExportCanvas,
+          totalFrames,
+          fps,
+          renderFrame,
+          0.92,
+          maxColorsForAnimationGifQuality(req.gifQuality),
+        );
+      }
+      const ext = format === 'webm' ? 'webm' : 'gif';
+      safeAddComponent(canvas, AnimationExportOutput, {
+        canvas,
+        download,
+        blob,
+        fileName: `infinite-canvas-animation.${ext}`,
+      });
+    } catch (e) {
+      console.error('Raster animation export failed', e);
+    }
+  }
+
   private anyFilterUsesEngineTimePost(): boolean {
     for (const entity of this.filtersCurrent.current) {
       const { value } = entity.read(Filter);
@@ -637,6 +764,32 @@ export class MeshPipeline extends System {
     const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
 
     this.canvases.current.forEach((canvas) => {
+      if (
+        this.rasterAnimationExportRequests.addedChangedOrRemoved.includes(
+          canvas,
+        ) &&
+        canvas.has(RasterAnimationExportRequest)
+      ) {
+        const r = canvas.read(RasterAnimationExportRequest);
+        const snapshot = {
+          download: r.download,
+          format: r.format,
+          durationSec: r.durationSec,
+          fps: r.fps,
+          grid: r.grid,
+          nodes: r.nodes,
+          scale: r.scale,
+          timeStart: r.timeStart,
+          gifQuality: r.gifQuality,
+        };
+        safeRemoveComponent(canvas, RasterAnimationExportRequest);
+        const { cameras } = canvas.read(Canvas);
+        const firstCamera = cameras[0];
+        if (firstCamera) {
+          void this.runRasterAnimationExport(canvas, firstCamera, snapshot);
+        }
+        return;
+      }
       let toRender =
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||

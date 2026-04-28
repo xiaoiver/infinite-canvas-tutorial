@@ -30,6 +30,7 @@ import {
   Opacity,
   Path,
   Polyline,
+  RasterAnimationExportRequest,
   RasterScreenshotRequest,
   Rect,
   Renderable,
@@ -337,6 +338,10 @@ export class VelloPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(RasterScreenshotRequest).trackWrites,
   );
 
+  private rasterAnimationExportRequests = this.query(
+    (q) => q.addedChangedOrRemoved.with(RasterAnimationExportRequest).trackWrites,
+  );
+
   private fillSolids = this.query(
     (q) => q.addedChangedOrRemoved.with(FillSolid).trackWrites,
   );
@@ -453,6 +458,7 @@ export class VelloPipeline extends System {
           )
           .read.and.using(
             RasterScreenshotRequest,
+            RasterAnimationExportRequest,
             Screenshot,
             GeometryDirty,
             MaterialDirty,
@@ -1197,6 +1203,18 @@ export class VelloPipeline extends System {
     });
 
     this.canvases.current.forEach((canvas) => {
+      if (
+        this.rasterAnimationExportRequests.addedChangedOrRemoved.includes(
+          canvas,
+        ) &&
+        canvas.has(RasterAnimationExportRequest)
+      ) {
+        safeRemoveComponent(canvas, RasterAnimationExportRequest);
+        console.warn(
+          'Raster animation export (WebM/GIF) requires the WebGPU MeshPipeline renderer, not Vello.',
+        );
+        return;
+      }
       let toRender =
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||

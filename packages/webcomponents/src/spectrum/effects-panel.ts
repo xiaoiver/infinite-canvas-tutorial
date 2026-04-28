@@ -1506,9 +1506,9 @@ export class EffectsPanel extends LitElement {
             size="s"
             ?checked=${h.usePoisson !== false}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-            const checked = (e.target as { checked?: boolean }).checked === true;
-            patch({ usePoisson: checked });
-          }}
+              const checked = (e.target as { checked?: boolean }).checked === true;
+              patch({ usePoisson: checked });
+            }}
             >${msg(str`CPU Poisson edge (WebGL; Paper-style R/G)`)}</sp-switch
             >`
           : ''}
@@ -1553,8 +1553,8 @@ export class EffectsPanel extends LitElement {
         ${h.useEngineTime
           ? html`<span class="hint"
               >${msg(
-                str`Time uniform follows the app clock each frame (liquid metal).`,
-              )}</span
+            str`Time uniform follows the app clock each frame (liquid metal).`,
+          )}</span
             >`
           : html`
         <sp-slider
@@ -1665,9 +1665,9 @@ export class EffectsPanel extends LitElement {
             size="s"
             ?checked=${h.usePreprocess !== false}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-            const checked = (e.target as { checked?: boolean }).checked === true;
-            patch({ usePreprocess: checked });
-          }}
+              const checked = (e.target as { checked?: boolean }).checked === true;
+              patch({ usePreprocess: checked });
+            }}
             >${msg(str`CPU preprocess (WebGL; RGB blur)`)}</sp-switch
             >`
           : ''}
@@ -1690,46 +1690,46 @@ export class EffectsPanel extends LitElement {
           >${msg(str`Gradient (max 10)`)}</sp-field-label
         >
         ${palette.map(
-          (c, ci) => html`
+            (c, ci) => html`
             <div class="color-ctrl-row">
               ${this.renderEffectSolidPopover(
-                `ic-ef-hm-g-${index}-${ci}`,
-                c,
-                (e) => {
-                  solidColorToPatch(e, (v) => {
-                    const list = [...palette];
-                    list[ci] = v;
-                    patch({ colors: list });
-                  });
-                },
-              )}
+              `ic-ef-hm-g-${index}-${ci}`,
+              c,
+              (e) => {
+                solidColorToPatch(e, (v) => {
+                  const list = [...palette];
+                  list[ci] = v;
+                  patch({ colors: list });
+                });
+              },
+            )}
               <sp-action-button
                 quiet
                 size="s"
                 label=${msg(str`Remove`)}
                 ?disabled=${palette.length <= 1}
                 @click=${() => {
-            const list = palette.filter((_, j) => j !== ci);
-            patch({
-              colors: list.length > 0 ? list : [...HEATMAP_DEFAULTS.colors],
-            });
-          }}
+                const list = palette.filter((_, j) => j !== ci);
+                patch({
+                  colors: list.length > 0 ? list : [...HEATMAP_DEFAULTS.colors],
+                });
+              }}
               >
                 <sp-icon-delete slot="icon"></sp-icon-delete>
               </sp-action-button>
             </div>
           `,
-        )}
+          )}
         <sp-action-button
           quiet
           size="m"
           label=${msg(str`Add gradient stop`)}
           @click=${() => {
-        const list = [...palette];
-        if (list.length >= 10) return;
-        list.push('#888888');
-        patch({ colors: list });
-      }}
+          const list = [...palette];
+          if (list.length >= 10) return;
+          list.push('#888888');
+          patch({ colors: list });
+        }}
           ?disabled=${palette.length >= 10}
         >
           <sp-icon-add slot="icon"></sp-icon-add>
@@ -1749,8 +1749,8 @@ export class EffectsPanel extends LitElement {
         ${h.useEngineTime
           ? html`<span class="hint"
               >${msg(
-                str`Time uniform follows the app clock each frame (heat map).`,
-              )}</span
+            str`Time uniform follows the app clock each frame (heat map).`,
+          )}</span
             >`
           : html`
         <sp-slider
@@ -1912,9 +1912,9 @@ export class EffectsPanel extends LitElement {
             size="s"
             ?checked=${h.usePoisson !== false}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-            const checked = (e.target as { checked?: boolean }).checked === true;
-            patch({ usePoisson: checked });
-          }}
+              const checked = (e.target as { checked?: boolean }).checked === true;
+              patch({ usePoisson: checked });
+            }}
             >${msg(str`CPU Poisson (WebGL; R/G like liquid metal)`)}</sp-switch
             >`
           : ''}
@@ -1952,46 +1952,46 @@ export class EffectsPanel extends LitElement {
           >${msg(str`Smoke colors (max 6)`)}</sp-field-label
         >
         ${smPalette.map(
-          (c, ci) => html`
+            (c, ci) => html`
             <div class="color-ctrl-row">
               ${this.renderEffectSolidPopover(
-                `ic-ef-gs-s-${index}-${ci}`,
-                c,
-                (e) => {
-                  solidColorToPatch(e, (v) => {
-                    const list = [...smPalette];
-                    list[ci] = v;
-                    patch({ colors: list });
-                  });
-                },
-              )}
+              `ic-ef-gs-s-${index}-${ci}`,
+              c,
+              (e) => {
+                solidColorToPatch(e, (v) => {
+                  const list = [...smPalette];
+                  list[ci] = v;
+                  patch({ colors: list });
+                });
+              },
+            )}
               <sp-action-button
                 quiet
                 size="s"
                 label=${msg(str`Remove`)}
                 ?disabled=${smPalette.length <= 1}
                 @click=${() => {
-            const list = smPalette.filter((_, j) => j !== ci);
-            patch({
-              colors: list.length > 0 ? list : [...GEM_SMOKE_DEFAULTS.colors],
-            });
-          }}
+                const list = smPalette.filter((_, j) => j !== ci);
+                patch({
+                  colors: list.length > 0 ? list : [...GEM_SMOKE_DEFAULTS.colors],
+                });
+              }}
               >
                 <sp-icon-delete slot="icon"></sp-icon-delete>
               </sp-action-button>
             </div>
           `,
-        )}
+          )}
         <sp-action-button
           quiet
           size="m"
           label=${msg(str`Add smoke color`)}
           @click=${() => {
-        const list = [...smPalette];
-        if (list.length >= 6) return;
-        list.push('#888888');
-        patch({ colors: list });
-      }}
+          const list = [...smPalette];
+          if (list.length >= 6) return;
+          list.push('#888888');
+          patch({ colors: list });
+        }}
           ?disabled=${smPalette.length >= 6}
         >
           <sp-icon-add slot="icon"></sp-icon-add>
@@ -2011,8 +2011,8 @@ export class EffectsPanel extends LitElement {
         ${h.useEngineTime
           ? html`<span class="hint"
               >${msg(
-                str`Time uniform follows the app clock each frame (gem smoke).`,
-              )}</span
+            str`Time uniform follows the app clock each frame (gem smoke).`,
+          )}</span
             >`
           : html`
         <sp-slider
@@ -2123,7 +2123,7 @@ export class EffectsPanel extends LitElement {
           >
         </div>
         ${h.useEngineTime
-          ? html`<span class="hint">${msg(str`Time uniform follows the app clock each frame.`)}</span>`
+          ? html``
           : html`
         <sp-slider
           size="s"
@@ -2220,7 +2220,7 @@ export class EffectsPanel extends LitElement {
           >
         </div>
         ${h.useEngineTime
-          ? html`<span class="hint">${msg(str`Time uniform follows the app clock each frame.`)}</span>`
+          ? html``
           : html`
         <sp-slider
           size="s"

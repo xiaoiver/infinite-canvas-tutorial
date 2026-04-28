@@ -198,7 +198,8 @@
       },
       "glitch": {
         "title": "Glitch",
-        "description": "Overlay three filters: CRT, vignette and glitch."
+        "description": "Overlay three filters: CRT, vignette and glitch.",
+        "description2": "Try to download the GIF in the export panel on the right."
       }
     },
     "photoColors": {

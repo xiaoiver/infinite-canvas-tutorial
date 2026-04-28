@@ -198,7 +198,8 @@
       },
       "glitch": {
         "title": "Efecto Glitch",
-        "description": "Superposición de tres filtros: CRT, vignette y glitch."
+        "description": "Superposición de tres filtros: CRT, vignette y glitch.",
+        "description2": "Intenta descargar el GIF en el panel de exportación a la derecha."
       }
     },
     "photoColors": {
