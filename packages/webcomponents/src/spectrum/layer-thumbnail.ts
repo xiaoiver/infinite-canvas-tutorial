@@ -18,6 +18,7 @@ import {
   exportMarker,
   LineSerializedNode,
   IconFontSerializedNode,
+  RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
 import rough from 'roughjs';
@@ -132,6 +133,11 @@ export class LayerThumbnail extends LitElement {
       $el.setAttribute('y', `${minY}`);
       $el.setAttribute('width', `${width}`);
       $el.setAttribute('height', `${height}`);
+      const cornerRadius = (this.node as RectSerializedNode).cornerRadius;
+      if (cornerRadius) {
+        $el.setAttribute('rx', `${cornerRadius}`);
+        $el.setAttribute('ry', `${cornerRadius}`);
+      }
     } else if (type === 'path') {
       $el = createSVGElement('path') as SVGElement;
       $el.setAttribute('d', (this.node as PathSerializedNode).d);
@@ -177,6 +183,7 @@ export class LayerThumbnail extends LitElement {
       opacity,
       markerStart,
       markerEnd,
+
     } = this.node as PathSerializedNode;
 
     if ($el) {

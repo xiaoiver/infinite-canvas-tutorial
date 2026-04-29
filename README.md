@@ -476,10 +476,11 @@ If you want to use it in your own project, you can refer to:
 
 -   Variables and themes
 -   Render iconfont, import lucide, material and other iconsets
+-   引用与继承已声明的组件
 
-|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |
-| :---------------------------------------: | :------------------------------------------: |
-| ![variables](./screenshots/variables.png) |   ![variables](./screenshots/iconfont.png)   |
+|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |         Components and instances          |
+| :---------------------------------------: | :------------------------------------------: | :---------------------------------------: |
+| ![variables](./screenshots/variables.png) |   ![iconfont](./screenshots/iconfont.png)    | ![iconfont](./screenshots/components.png) |
 
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

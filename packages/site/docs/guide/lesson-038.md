@@ -6,11 +6,12 @@ description: 'Design tokens, variables, themes, componentized generation, and ic
 <script setup>
 import IconLucide from '../components/IconLucide.vue'
 import IconButton from '../components/IconButton.vue'
+import ComponentsInstances from '../components/ComponentsInstances.vue'
 </script>
 
 # Lesson 38 - From design to code
 
-## Variables and themes
+## Variables and themes {#variables-and-themes}
 
 Pencil supports a full design token system with multi-theme conditional values. See [Variables and Themes]. Variables reduce hard-coding: the model does not need to emit specific color values (fewer `#RRGGBB` mistakes) or learn your design-system token table—it only needs semantic variable names, and the renderer resolves them.
 
@@ -52,7 +53,7 @@ When the model designs for dark mode, it does not need two full palettes—only 
 
 The model also does not need to compute pixel values or wire responsive breakpoints. It states intent in a declarative way, and the layout engine computes geometry. See [Lesson 33 - Layout engine].
 
-### Variable types
+### Variable types {#variable-types}
 
 Figma supports four variable kinds. See [Guide to variables in Figma]
 
@@ -107,18 +108,6 @@ You can also use the CSS variables mode: globals are declared under `:root` so y
 </svg>
 ```
 
-## Components and slots
-
-The ref + descendants model in `.pen` is effectively an AI-oriented component inheritance system. The model does not have to decompose “rounded rect + text + padding.” It can reference an existing `round-button` from the design system and override the label—similar to inheritance and overrides in code.
-
-```json
-{
-    "type": "ref",
-    "ref": "round-button",
-    "descendants": { "label": { "content": "Save" } }
-}
-```
-
 ## Icon
 
 Icons matter when generating UIs. [Lucide] is already widely used in React code generation, and Pencil supports similar built-in graphics:
@@ -169,7 +158,7 @@ export interface IconFontSerializedNode
   Partial<IconFontAttributes>;
 ```
 
-### Register icon metadata at runtime
+### Register icon at runtime {#register-icon-at-runtime}
 
 We use the icon shape from [IconifyJSON] to load Lucide, Material, and other sets at runtime via JSON that includes SVG:
 
@@ -258,11 +247,50 @@ const text = {
 
 <IconButton />
 
-## Design ↔ code
+We want a `Button` with multiple **variants**—in the same spirit as [Shadcn UI]—so we do not have to write the same structure over and over:
+
+```tsx
+<Button variant="secondary">Secondary</Button>
+<Button variant="ghost">Ghost</Button>
+<Button variant="destructive">Destructive</Button>
+```
+
+## Components and slots {#components-and-slots}
+
+In `.pen` files, the `ref` + `descendants` system is, in effect, a component-inheritance model aimed at AI: the model does not have to understand the low-level stack (rounded rect + text + padding). It can point at an existing `round-button` in the design system and override the label. That is the same “inherit, then override” idea as in code. See [Components and Instances].
+
+```json
+{
+    "id": "round-button",
+    "type": "g",
+    "reusable": true,
+    "cornerRadius": 9999,
+    "children": [
+        {
+            "id": "label",
+            "type": "text",
+            "content": "Submit",
+            "fill": "#000000"
+            ...
+        }
+    ]
+}
+
+{
+    "id": "save-round-button",
+    "type": "ref",
+    "ref": "round-button",
+    "descendants": { "label": { "content": "Save" } }
+}
+```
+
+<ComponentsInstances />
+
+## Design ↔ code {#design-to-code}
 
 [Design ↔ Code]
 
-## Extended reading
+## Extended reading {#extended-reading}
 
 [Variables and Themes]: https://docs.pencil.dev/for-developers/the-pen-format#variables-and-themes
 [Guide to variables in Figma]: https://help.figma.com/hc/en-us/articles/15339657135383-Guide-to-variables-in-Figma
@@ -272,3 +300,5 @@ const text = {
 [IconifyJSON]: https://iconify.design/docs/types/iconify-json.html
 [Iconify Icon web component]: https://iconify.design/docs/iconify-icon/
 [Lucide]: https://lucide.dev/icons
+[Shadcn UI]: https://ui.shadcn.com/docs/components/radix/button
+[Components and Instances]: https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances

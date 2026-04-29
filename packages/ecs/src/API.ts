@@ -37,6 +37,8 @@ import {
   strokeWidthForHitTest,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
+  expandRefSerializedNodes,
+  mergeSerializedNodesForRefLookup,
   prepareSerializedNodesForSvgExport,
   type DesignVariablesSvgExportMode,
   decompose,
@@ -459,6 +461,20 @@ export class API {
       merged.set(n.id, n);
     }
     return [...merged.values()];
+  }
+
+  /**
+   * 与 {@link serializedNodesToEntities} 中一致：将 `ref` 解析为可渲染 wire（含子树 id 重映射）。
+   * 须用于 `setNodes`，否则 {@link getNodeByEntity} / Yoga 会拿到 `type: 'ref'`，子节点 id 也不存在于场景图中。
+   */
+  #refExpandedWireForBatch(batch: SerializedNode[]): SerializedNode[] {
+    return expandRefSerializedNodes(
+      batch,
+      mergeSerializedNodesForRefLookup(
+        batch,
+        this.#mergeSceneWithBatchForEdgeLookup(batch),
+      ),
+    );
   }
 
   setNodes(nodes: SerializedNode[]) {
@@ -1461,7 +1477,7 @@ export class API {
       this.commands.execute();
 
       if (updateAppState) {
-        this.setNodes([...nodes, node]);
+        this.setNodes([...nodes, ...this.#refExpandedWireForBatch([node])]);
       }
     } else {
       const updated = mutateElement(entity, node, diff ?? node, skipOverrideKeys, this);
@@ -1524,7 +1540,10 @@ export class API {
       this.commands.execute();
 
       if (updateAppState) {
-        this.setNodes([...this.getNodes(), ...nonExistentNodes]);
+        this.setNodes([
+          ...this.getNodes(),
+          ...this.#refExpandedWireForBatch(nonExistentNodes),
+        ]);
       }
     }
 

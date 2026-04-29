@@ -71,4 +71,86 @@ describe('ref + reusable (Pencil-style components)', () => {
     expect(ch.type).toBe('rect');
     expect(ch.parentId).toBe('gbar');
   });
+
+  it('expanded root carries template flex props for Yoga getNodeByEntity', () => {
+    const graph: SerializedNode[] = [
+      {
+        id: 'tpl',
+        type: 'rect',
+        reusable: true,
+        display: 'flex',
+        width: 200,
+        height: 100,
+        x: 0,
+        y: 0,
+        zIndex: 0,
+      } as SerializedNode,
+      {
+        id: 'inst',
+        type: 'ref',
+        ref: 'tpl',
+        x: 10,
+        y: 20,
+        fill: 'red',
+        zIndex: 0,
+      } as SerializedNode,
+    ];
+    const merged = mergeSerializedNodesForRefLookup(graph, undefined);
+    const out = expandRefSerializedNodes(graph, merged);
+    const root = out.find((n) => n.id === 'inst')!;
+    expect((root as { display?: string }).display).toBe('flex');
+    expect((root as { width?: number }).width).toBe(200);
+  });
+
+  it('applies Pencil-style descendants by template id for nested nodes', () => {
+    const graph: SerializedNode[] = [
+      {
+        id: 'round-button',
+        type: 'rect',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 200,
+        height: 100,
+        zIndex: 0,
+        fill: 'grey',
+      } as SerializedNode,
+      {
+        id: 'label',
+        type: 'text',
+        parentId: 'round-button',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 40,
+        zIndex: 0,
+        content: 'OK',
+        fill: 'black',
+        fontSize: 16,
+      } as SerializedNode,
+      {
+        id: 'red-round-button',
+        type: 'ref',
+        ref: 'round-button',
+        fill: '#FF0000',
+        zIndex: 0,
+        x: 0,
+        y: 0,
+        descendants: {
+          label: { content: 'Cancel', fill: '#FFFFFF' },
+        },
+      } as SerializedNode,
+    ];
+    const merged = mergeSerializedNodesForRefLookup(graph, undefined);
+    const out = expandRefSerializedNodes(graph, merged);
+    const t = out.find(
+      (n) => n.id === 'red-round-button__label',
+    )! as { content: string; fill: string; type: string };
+    expect(t.type).toBe('text');
+    expect(t.content).toBe('Cancel');
+    expect(t.fill).toBe('#FFFFFF');
+    const root = out.find((n) => n.id === 'red-round-button')! as { fill: string; descendants?: unknown };
+    expect(root.fill).toBe('#FF0000');
+    expect(root.descendants).toBeUndefined();
+  });
 });

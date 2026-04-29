@@ -186,7 +186,9 @@ const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
 ];
 
 /**
- * 见 {@link flexLayoutKeysChanged} 与 `previous` 比较。整表自同步（updates===element）不标父级，免变量表式全量 `updateNode` 误伤。
+ * 与 {@link shouldMarkFlexContainerForLayout} 对称：部分 patch 用 `previous` 与 `updates` 比是否真变；
+ * 整表自同步（`updates === element`）时若按 `flexLayoutKeysChanged` 且入参已先被就地改过，会漏标父级（如只改 `content` 后 `updateNode(node)`）。
+ * 此时按「键在」即可标父级 flex 重算，与容器侧对 `FLEX_LAYOUT_MUTATION_KEYS` 的处理一致。
  */
 function updatesAffectFlexItemInParentTree(
   updates: object,
@@ -195,7 +197,9 @@ function updatesAffectFlexItemInParentTree(
   previous: Record<string, unknown>,
 ): boolean {
   if (Object.is(updates, element)) {
-    return false;
+    return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some(
+      (k) => k in updates && !skipOverrideKeys.includes(k),
+    );
   }
   return flexLayoutKeysChanged(
     updates,
@@ -1532,6 +1536,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         entity.write(Embed).height = height;
       }
     }
+  }
+  if (
+    ('width' in updates || 'height' in updates) &&
+    entity.has(Filter)
+  ) {
+    api.runAtNextTick(() => {
+      safeAddComponent(entity, MaterialDirty);
+    });
   }
   if ('cornerRadius' in updates && cornerRadius !== undefined && entity.has(Rect)) {
     const resolved = resolveDesignVariableValue(

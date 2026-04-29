@@ -1,6 +1,26 @@
-import type { RefSerializedNode, SerializedNode } from '../../types/serialized-node';
+import type { RefDescendantPatch, RefSerializedNode, SerializedNode } from '../../types/serialized-node';
 
 const REF_SEP = '__';
+
+/**
+ * 合并 Pencil 式 `descendants` 补丁，禁止覆盖会破坏实例子树的结构字段。
+ */
+function applyRefDescendantPatch(
+  target: SerializedNode,
+  patch: RefDescendantPatch | undefined,
+): void {
+  if (patch == null || typeof patch !== 'object') {
+    return;
+  }
+  const rest = { ...(patch as object) } as Record<string, unknown>;
+  delete rest.id;
+  delete rest.type;
+  delete rest.parentId;
+  delete rest.ref;
+  delete rest.reusable;
+  delete rest.descendants;
+  Object.assign(target, rest);
+}
 
 /**
  * 合并 `lookup` 与 `batch`（后写覆盖前），供解析 `ref` 时查找可复用模板。
@@ -47,6 +67,8 @@ function mapTemplateId(
  * 式组件实例化：以 `ref` 为模板根 id 深拷被子树，根 id 为实例 id，子节点 `id`/`parentId` 重映射，并将实例 wire 上除 `type`/`ref` 外字段与模板根合并（覆盖位姿等）。
  * 不删除或隐藏 `reusable: true` 的模板节点；实例根会去掉 `reusable` 标记。
  *
+ * 若实例上提供 `descendants[templateId]`，在克隆对应模板子节点（或根）时做属性覆盖；键为模板图上的 id，而非实例子 id 前缀。
+ *
  * 当前仅支持模板根为非 `ref` 节点；不处理模板内的嵌套 `ref`。
  */
 export function expandRefSerializedNodes(
@@ -85,7 +107,8 @@ export function expandRefSerializedNodes(
 
     const instanceId = refn.id;
     const subtree = collectSubtreeNodeIds(refKey, graph);
-    const { type: _ignoreType, ref: _ignoreRef, ...instanceOverrides } = refn;
+    const { type: _ignoreType, ref: _ignoreRef, descendants, ...instanceOverrides } =
+      refn as RefSerializedNode;
 
     for (const sid of subtree) {
       const src = byId.get(sid);
@@ -109,6 +132,18 @@ export function expandRefSerializedNodes(
         if ('reusable' in clone) {
           delete (clone as { reusable?: boolean }).reusable;
         }
+        if (descendants) {
+          applyRefDescendantPatch(
+            clone,
+            descendants[refKey] as RefDescendantPatch | undefined,
+          );
+        }
+        delete (clone as { descendants?: unknown }).descendants;
+      } else if (descendants) {
+        applyRefDescendantPatch(
+          clone,
+          descendants[sid] as RefDescendantPatch | undefined,
+        );
       }
 
       out.push(clone);

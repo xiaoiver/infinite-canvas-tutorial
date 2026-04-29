@@ -6,6 +6,7 @@ description: ''
 <script setup>
 import IconLucide from '../../components/IconLucide.vue'
 import IconButton from '../../components/IconButton.vue'
+import ComponentsInstances from '../../components/ComponentsInstances.vue'
 </script>
 
 # 课程 38 - 从设计到代码
@@ -282,6 +283,8 @@ const text = {
     "descendants": { "label": { "content": "Save" } }
 }
 ```
+
+<ComponentsInstances />
 
 ## Design ↔ Code {#design-to-code}
 
