@@ -623,7 +623,13 @@ export interface RefSerializedNode
   Partial<MarkerAttributes>,
   Partial<BindingAttributes>,
   Partial<TextDecorationAttributes>,
-  Partial<HitStrokeInteractionAttributes> { }
+  Partial<HitStrokeInteractionAttributes> {
+  /**
+   * 按**模板子树**中的节点 `id` 覆盖该后代在实例中的属性（与 Pencil `descendants` 一致）；键为 reusable 定义里该节点的 id，非实例子 id 前缀。
+   * @see https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances
+   */
+  descendants?: Record<string, RefDescendantPatch>;
+}
 
 export type NodeSerializedNode =
   | EllipseSerializedNode
@@ -678,3 +684,10 @@ export type SerializedNodeAttributes = GSerializedNode &
   EmbedSerializedNode &
   IconFontSerializedNode &
   RefSerializedNode;
+
+/**
+ * `ref.descendants` 中单个后代节点的属性覆盖；故意排除会破坏实例子树结构的字段。
+ */
+export type RefDescendantPatch = Partial<
+  Omit<SerializedNodeAttributes, 'id' | 'type' | 'parentId' | 'ref' | 'reusable' | 'descendants'>
+>;

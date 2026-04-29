@@ -35,6 +35,7 @@ import {
   Group,
   FillImage,
   FillPattern,
+  Filter,
   IconFont,
   Visibility
 } from '@infinite-canvas-tutorial/ecs';
@@ -68,7 +69,10 @@ interface LayoutResults {
   [nodeId: string]: { x: number; y: number; width: number; height: number };
 }
 
-/** 节点该轴是否在数据/几何上显式指定了正尺寸（与「由子级撑开」相对） */
+/**
+ * 节点该轴是否在数据/几何上显式指定了正尺寸（与「由子级撑开」相对）。
+ * 会读 `Rect` 等组件，用于无 wire 的兜底等场景。
+ */
 function hasExplicitSizeOnAxis(
   node: SerializedNode | undefined,
   entity: Entity,
@@ -84,6 +88,19 @@ function hasExplicitSizeOnAxis(
   return false;
 }
 
+/**
+ * 仅看序列化 wire 上是否该轴有正数尺寸；**不**看 ECS `Rect`。
+ * Yoga 写回布局时用 `updateNode(..., ['x','y','width','height'])` 可能不把 width/height 合入 scene 图，
+ * 但 `entity.write(Rect)` 会更新；若把上帧算出的 Rect 当「显式」会卡住 flex hug，OBB/子树会一直被旧宽撑死。
+ */
+function hasExplicitSizeOnWire(
+  node: SerializedNode | undefined,
+  axis: 'width' | 'height',
+): boolean {
+  const v = node?.[axis];
+  return typeof v === 'number' && v > 0;
+}
+
 /** 是否在该轴上让 Yoga 用子项算根盒并回写；由 flexHug* 与显式尺寸共同决定 */
 function shouldHugAxis(
   node: SerializedNode | undefined,
@@ -97,7 +114,7 @@ function shouldHugAxis(
   const flag = (node as unknown as Record<string, boolean | undefined>)[key];
   if (flag === true) return true;
   if (flag === false) return false;
-  return !hasExplicitSizeOnAxis(node, entity, axis);
+  return !hasExplicitSizeOnWire(node, axis);
 }
 
 export class YogaSystem extends System {
@@ -152,6 +169,7 @@ export class YogaSystem extends System {
             FillImage,
             FillPattern,
             ZIndex,
+            Filter,
           )
           .read.and.using(
             GlobalTransform,
@@ -398,18 +416,30 @@ export class YogaSystem extends System {
               };
               if (
                 flexFlags.flexHugWidth == null &&
-                !hasExplicitSizeOnAxis(node, entity, 'width')
+                !hasExplicitSizeOnWire(node, 'width')
               ) {
                 (diff as { flexHugWidth?: boolean }).flexHugWidth = true;
               }
               if (
                 flexFlags.flexHugHeight == null &&
-                !hasExplicitSizeOnAxis(node, entity, 'height')
+                !hasExplicitSizeOnWire(node, 'height')
               ) {
                 (diff as { flexHugHeight?: boolean }).flexHugHeight = true;
               }
             }
-            api.updateNode(node, diff, false, ['x', 'y', 'width', 'height']);
+            const hasFilterForWire =
+              (entity?.has(Filter) ?? false) ||
+              !!String(
+                (node as { filter?: string | undefined }).filter ?? '',
+              ).trim();
+            // 仅跳过 x/y：后处理（liquid-metal 等）与工具链会读 getNodes() 的宽高；子级撑开时 wire 上若无 width/height
+            // 与 ECS Rect 易不一致。带 filter 时让 layout 的 width/height 与 diff 中 flexHug* 写回 wire。
+            api.updateNode(
+              node,
+              diff,
+              false,
+              hasFilterForWire ? ['x', 'y'] : ['x', 'y', 'width', 'height'],
+            );
             if (entity && !entity.has(YogaLayoutApplied))
               entity.add(YogaLayoutApplied);
           }
@@ -466,20 +496,31 @@ export function constructStyleTree(
     delete treeNode.top;
   }
 
-  if (
-    (node as SerializedNode).type === 'text' &&
-    (treeNode.width == null || treeNode.height == null)
-  ) {
+  /**
+   * 文本在 flex 子项中需要**当前** `content` 量出的尺寸参与 Yoga；wire 上若已有 width/height（如首帧 `inferXYWidthHeight` 或历史值），
+   * 仅 `width == null` 才量测会长期沿用旧数，`content` 变长后父级 flex 无法撑开。
+   * 非 flex 子项仍仅在缺省时补量，避免覆盖有意的 wire 尺寸。
+   */
+  if ((node as SerializedNode).type === 'text') {
     const m = measureText(node as Parameters<typeof measureText>[0]);
-    if (treeNode.width == null && typeof m.width === 'number' && m.width > 0) {
-      treeNode.width = m.width;
-    }
-    if (
-      treeNode.height == null &&
-      typeof m.height === 'number' &&
-      m.height > 0
-    ) {
-      treeNode.height = m.height;
+    if (isFlexItem) {
+      if (typeof m.width === 'number' && m.width > 0) {
+        treeNode.width = m.width;
+      }
+      if (typeof m.height === 'number' && m.height > 0) {
+        treeNode.height = m.height;
+      }
+    } else if (treeNode.width == null || treeNode.height == null) {
+      if (treeNode.width == null && typeof m.width === 'number' && m.width > 0) {
+        treeNode.width = m.width;
+      }
+      if (
+        treeNode.height == null &&
+        typeof m.height === 'number' &&
+        m.height > 0
+      ) {
+        treeNode.height = m.height;
+      }
     }
   }
 

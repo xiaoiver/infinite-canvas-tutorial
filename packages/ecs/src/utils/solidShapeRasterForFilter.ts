@@ -145,7 +145,7 @@ export function createSolidFillMaskRasterForFilter(
   } else {
     canvas = new OffscreenCanvas(tw, th);
   }
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   if (!ctx) {
     throw new Error('Canvas 2D required for solid fill + filter mask');
   }

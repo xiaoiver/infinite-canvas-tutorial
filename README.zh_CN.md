@@ -477,10 +477,11 @@ pnpm run dev
 
 -   实现变量与主题
 -   支持 iconfont 渲染，在运行时引入 lucide、material 等图标集
+-   引用与继承已声明的组件
 
-|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |
-| :---------------------------------------: | :------------------------------------------: |
-| ![variables](./screenshots/variables.png) |   ![variables](./screenshots/iconfont.png)   |
+|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |         Components and instances          |
+| :---------------------------------------: | :------------------------------------------: | :---------------------------------------: |
+| ![variables](./screenshots/variables.png) |   ![iconfont](./screenshots/iconfont.png)    | ![iconfont](./screenshots/components.png) |
 
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

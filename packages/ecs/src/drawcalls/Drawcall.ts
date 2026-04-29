@@ -1662,40 +1662,6 @@ export abstract class Drawcall {
     return { resized, texture: outTexture };
   }
 
-  protected renderPostProcessing(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    widthInCanvasCoords: number,
-    heightInCanvasCoords: number,
-    zoomScale: number,
-  ) {
-    const { width: canvasWidth, height: canvasHeight } =
-      this.swapChain.getCanvas();
-
-    return this.#runPostProcessingWithUniforms(width, height, () => {
-      const inputSize: number[] = [];
-      const outputFrame: number[] = [];
-      const outputTexture: number[] = [];
-      inputSize[0] = canvasWidth / 2;
-      inputSize[1] = canvasHeight / 2;
-      inputSize[2] = 1 / inputSize[0];
-      inputSize[3] = 1 / inputSize[1];
-
-      outputFrame[0] = x;
-      outputFrame[1] = y;
-      outputFrame[2] = width;
-      outputFrame[3] = height;
-
-      outputTexture[0] = widthInCanvasCoords;
-      outputTexture[1] = heightInCanvasCoords;
-      outputTexture[2] = zoomScale;
-      outputTexture[3] = 1;
-      return { inputSize, outputFrame, outputTexture };
-    });
-  }
-
   protected createSampler() {
     return this.renderCache.createSampler({
       addressModeU: AddressMode.CLAMP_TO_EDGE,

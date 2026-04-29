@@ -111,24 +111,70 @@ export class Mesh extends Drawcall {
   }
 
   /**
+   * `createMaterial` 在 `BatchManager.flush`（渲染）里同步执行，可能早于同帧 `ComputeBounds` 对
+   * `Rect` 尺寸变更的刷新，此时 `geometryBounds` 仍为零面积 → `tw/th` 被压成 1，后处理链用 1×1。
+   * 若 `Rect` 已反映布局（Yoga / mutateElement），用其本地盒作为后备。
+   */
+  private getSolidFillFilterGeometry(instance: Entity): {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    tw: number;
+    th: number;
+  } {
+    const g = instance.read(ComputedBounds).geometryBounds;
+    const gw = g.maxX - g.minX;
+    const gh = g.maxY - g.minY;
+    if (instance.has(Rect)) {
+      const aabb = Rect.getGeometryBounds(instance.read(Rect));
+      const rw = aabb.maxX - aabb.minX;
+      const rh = aabb.maxY - aabb.minY;
+      if ((gw < 0.5 || gh < 0.5) && rw >= 0.5 && rh >= 0.5) {
+        return {
+          minX: aabb.minX,
+          minY: aabb.minY,
+          maxX: aabb.maxX,
+          maxY: aabb.maxY,
+          tw: Math.max(1, Math.ceil(rw)),
+          th: Math.max(1, Math.ceil(rh)),
+        };
+      }
+    }
+    return {
+      minX: g.minX,
+      minY: g.minY,
+      maxX: g.maxX,
+      maxY: g.maxY,
+      tw: Math.max(1, Math.ceil(gw)),
+      th: Math.max(1, Math.ceil(gh)),
+    };
+  }
+
+  /**
    * Rasterize {@link FillSolid} geometry to a mask bitmap for texture-space filters
    * (vector silhouette + premultiplied-ish RGBA, same bounds as {@link ComputedBounds} used for `u_FillUVRect`).
    */
   private createSolidFillRasterCanvas(
     shape: Entity,
-    tw: number,
-    th: number,
+    box: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+      tw: number;
+      th: number;
+    },
   ): HTMLCanvasElement | OffscreenCanvas {
     const fill = shape.read(FillSolid).value;
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
     const fillRgba = `rgba(${fr},${fg},${fb},${fo})`;
-    const { minX, minY, maxX, maxY } = shape.read(ComputedBounds).geometryBounds;
     return createSolidFillMaskRasterForFilter(
       shape,
       fillRgba,
-      { minX, minY, maxX, maxY },
-      tw,
-      th,
+      { minX: box.minX, minY: box.minY, maxX: box.maxX, maxY: box.maxY },
+      box.tw,
+      box.th,
     );
   }
 
@@ -482,23 +528,20 @@ export class Mesh extends Drawcall {
           th,
         );
       } else if (instance.has(FillSolid)) {
-        const { minX, minY, maxX, maxY } =
-          instance.read(ComputedBounds).geometryBounds;
-        const tw = Math.max(1, Math.ceil(maxX - minX));
-        const th = Math.max(1, Math.ceil(maxY - minY));
-        const canvas = this.createSolidFillRasterCanvas(instance, tw, th);
+        const geom = this.getSolidFillFilterGeometry(instance);
+        const canvas = this.createSolidFillRasterCanvas(instance, geom);
         const raw = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
-          width: tw,
-          height: th,
+          width: geom.tw,
+          height: geom.th,
           usage: TextureUsage.SAMPLED,
         });
         raw.setImageData([canvas as HTMLCanvasElement]);
         this.#texture = this.applyRasterFilterChainIfNeeded(
           instance,
           raw,
-          tw,
-          th,
+          geom.tw,
+          geom.th,
         );
       }
 
