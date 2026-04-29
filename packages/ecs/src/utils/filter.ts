@@ -1,6 +1,8 @@
 /**
  * CSS Filter / Effect
  */
+import type { Entity } from '@lastolivegames/becsy';
+import { Children, Filter, IconFont } from '../components';
 import { cssColorToHex, parseColor } from './color';
 import { getPostEffectEngineTimeSeconds } from './postEffectEngineTime';
 
@@ -1209,6 +1211,34 @@ export function hasRasterPostEffects(filterValue: string | undefined): boolean {
     return false;
   }
   return filterRasterPostEffects(parseEffect(filterValue)).length > 0;
+}
+
+/**
+ * 自身或 `iconfont` 根上的 {@link Filter} 字符串。子 path/ellipse/line 未挂 `Filter` 时沿父链取
+ * 带 `IconFont` 且带 `Filter` 的节点（与反序列化一致：滤镜写在 icon 根上）。
+ */
+export function getRasterFilterValueForShape(instance: Entity): string | undefined {
+  if (instance.has(Filter)) {
+    const v = instance.read(Filter).value;
+    if (v) {
+      return v;
+    }
+  }
+  let e: Entity | undefined = instance;
+  for (let d = 0; d < 64; d++) {
+    if (!e.has(Children)) {
+      return undefined;
+    }
+    const p = e.read(Children).parent;
+    if (!p) {
+      return undefined;
+    }
+    if (p.has(IconFont) && p.has(Filter)) {
+      return p.read(Filter).value || undefined;
+    }
+    e = p;
+  }
+  return undefined;
 }
 
 function parseCssFilterScalar(params: string): number {

@@ -58,12 +58,12 @@ import {
   FillPattern,
   FillSolid,
   FillTexture,
-  Filter,
   ClipMode,
   Wireframe,
 } from '../components';
 import {
   filterStringUsesEngineTimePost,
+  getRasterFilterValueForShape,
   hasRasterPostEffects,
 } from '../utils/filter';
 import { API } from '../API';
@@ -671,10 +671,8 @@ export abstract class Drawcall {
       this.#filterChainReady
     ) {
       const shape = this.shapes[0];
-      if (
-        shape.has(Filter) &&
-        filterStringUsesEngineTimePost(shape.read(Filter).value)
-      ) {
+      const fv = getRasterFilterValueForShape(shape);
+      if (fv && filterStringUsesEngineTimePost(fv)) {
         this.renderPostProcessingTextureSpace(this.#filterWidth, this.#filterHeight);
         const { width, height } = this.swapChain.getCanvas();
         renderPass.setViewport(0, 0, width, height);
@@ -791,8 +789,7 @@ export abstract class Drawcall {
     }
     return (
       s.has(FillSolid) &&
-      s.has(Filter) &&
-      hasRasterPostEffects(s.read(Filter).value)
+      hasRasterPostEffects(getRasterFilterValueForShape(s))
     );
   }
 

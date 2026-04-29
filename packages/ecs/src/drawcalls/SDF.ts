@@ -28,7 +28,17 @@ import {
   isMeshGradientGradient,
   parseEffect,
 } from '../utils';
-import { filterRasterPostEffects } from '../utils/filter';
+import {
+  getRasterFilterValueForShape,
+  filterRasterPostEffects,
+} from '../utils/filter';
+import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
+import {
+  blitImageBitmapToPixelSize,
+  getDevicePixelRatioForRaster,
+  getShapePixelBoundsForFillImage,
+  resolveFillImageTexturePixelSize,
+} from '../utils/fillImageTextureSize';
 import {
   Circle,
   ComputedBounds,
@@ -47,7 +57,6 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   Stroke,
-  Filter,
 } from '../components';
 
 const strokeAlignmentMap = {
@@ -83,16 +92,11 @@ export class SDF extends Drawcall {
     tw: number,
     th: number,
   ): Texture {
-    if (
-      this.instanced ||
-      !instance.has(Filter) ||
-      !instance.read(Filter).value
-    ) {
+    const filterValue = getRasterFilterValueForShape(instance);
+    if (this.instanced || !filterValue) {
       return raw;
     }
-    const effects = filterRasterPostEffects(
-      parseEffect(instance.read(Filter).value),
-    );
+    const effects = filterRasterPostEffects(parseEffect(filterValue));
     if (effects.length === 0) {
       return raw;
     }
@@ -163,7 +167,9 @@ export class SDF extends Drawcall {
       return false;
     }
 
-    if (this.shapes[0].has(Filter) || shape.has(Filter)) {
+    const fa = getRasterFilterValueForShape(this.shapes[0]);
+    const fb = getRasterFilterValueForShape(shape);
+    if (Boolean(fa) !== Boolean(fb) || (fa && fb && fa !== fb)) {
       return false;
     }
 
@@ -361,7 +367,7 @@ export class SDF extends Drawcall {
       const instance = this.shapes[0];
 
       this.#fillTextureFromPostChain = false;
-      if (!instance.has(Filter)) {
+      if (!getRasterFilterValueForShape(instance)) {
         this.destroyFullPostProcessingChain();
       }
       if (this.#rawFillImageTexture) {
@@ -434,21 +440,43 @@ export class SDF extends Drawcall {
         this.#texture = instance.read(FillTexture).value;
       } else if (instance.has(FillImage)) {
         const src = instance.read(FillImage).src as ImageBitmap;
-        const tw = Math.max(1, src.width);
-        const th = Math.max(1, src.height);
+        const sw = Math.max(1, src.width);
+        const sh = Math.max(1, src.height);
+        const { geomW, geomH } = getShapePixelBoundsForFillImage(instance);
+        const { width: tw, height: th } = resolveFillImageTexturePixelSize(
+          sw,
+          sh,
+          geomW,
+          geomH,
+          getDevicePixelRatioForRaster(),
+        );
+
         const raw = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
           width: tw,
           height: th,
           usage: TextureUsage.SAMPLED,
         });
-        raw.setImageData([src]);
+        if (tw === sw && th === sh) {
+          raw.setImageData([src]);
+        } else {
+          const canvas = blitImageBitmapToPixelSize(src, tw, th);
+          raw.setImageData([canvas as HTMLCanvasElement]);
+        }
         this.#texture = this.applyRasterFilterChainIfNeeded(
           instance,
           raw,
           tw,
           th,
         );
+        scheduleFillImageSvgRerasterIfNeeded({
+          entity: instance,
+          url: instance.read(FillImage).url,
+          targetW: tw,
+          targetH: th,
+          sourceW: sw,
+          sourceH: sh,
+        });
       } else if (instance.has(FillSolid)) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;

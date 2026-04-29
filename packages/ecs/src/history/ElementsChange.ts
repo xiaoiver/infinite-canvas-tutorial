@@ -1633,6 +1633,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('filter' in updates) {
     safeAddComponent(entity, Filter, { value: filter });
     safeAddComponent(entity, MaterialDirty);
+    if (entity.has(IconFont)) {
+      getDescendants(entity).forEach((child) => {
+        safeAddComponent(child, MaterialDirty);
+      });
+    }
   }
 
   if ('display' in updates) {

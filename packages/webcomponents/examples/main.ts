@@ -403,11 +403,42 @@ canvas.addEventListener(Event.READY, async (e) => {
     filter: 'heat-map(0.5, 0, 0, 0.5, 0.5, 1, 1, auto, #000000, #112069, #1f3ca3, #3265e7, #6bd8ff, #ffe77a, #ff9a1f, #ff4d00)',
   };
 
+  const logo = {
+    id: 'logo',
+    type: 'rect',
+    fill: '/youmind.svg',
+    width: 990,
+    height: 140,
+    x: 100,
+    y: 100,
+    zIndex: 0,
+    lockAspectRatio: true,
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+  }
+
+  const icon = {
+    id: 'icon',
+    type: 'iconfont',
+    iconFontName: 'search',
+    iconFontFamily: 'lucide',
+    width: 320,
+    height: 320,
+    x: 100,
+    y: 100,
+    zIndex: 1,
+    strokeWidth: 40,
+    lockAspectRatio: true,
+    filter: 'noise(0.5)',
+  }
+
   api.runAtNextTick(() => {
-    api.updateNodes([button1, SearchIcon, text1,
-      button2,
-      button3,
-      button4
+    api.updateNodes([
+      logo,
+      icon
+      // button1, SearchIcon, text1,
+      // button2,
+      // button3,
+      // button4
     ]);
   });
 

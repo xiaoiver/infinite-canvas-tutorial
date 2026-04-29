@@ -121,6 +121,7 @@ import { pointAndNormalAlongPolylineByT } from '../polyline-arclength';
 import simplify from 'simplify-js';
 import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './expand-ref-nodes';
 import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
+import { resetFillImageSvgRerasterSchedule } from '../fillImageSvgReraster';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (node.type === 'g') {
@@ -883,6 +884,7 @@ function layoutSerializedEdgeLabelChildren(
 
 export async function loadImage(url: string, entity: Entity) {
   const image = await DOMAdapter.get().createImage(url);
+  resetFillImageSvgRerasterSchedule(entity);
   safeAddComponent(entity, FillImage, {
     src: image as ImageBitmap,
     url,
@@ -1042,6 +1044,11 @@ export function serializedNodesToEntities(
 
     /** `iconfont` 拆成子 path/circle/line 时，父级不挂 Fill/Stroke。 */
     let skipParentFillStroke = false;
+    /**
+     * 子 path/ellipse/line 的 `EntityCommands`；`execute` 前用 `hold()`+`getDescendants` 不可靠，带
+     * `filter` 时直接 `insert(MaterialDirty)`。
+     */
+    const iconfontChildCommands: EntityCommands[] = [];
 
     const entityCommands = commands.spawn();
     idEntityMap.set(id, entityCommands);
@@ -1446,6 +1453,7 @@ export function serializedNodesToEntities(
             name: `${id}__i${i}`,
           });
           entityCommands.appendChild(ch);
+          iconfontChildCommands.push(ch);
         }
       } else {
         entityCommands.insert(
@@ -1679,6 +1687,11 @@ export function serializedNodesToEntities(
     if (filter) {
       entityCommands.insert(new Filter({ value: filter }));
       entityCommands.insert(new MaterialDirty());
+      if (type === 'iconfont' || (type as string) === 'icon_font') {
+        for (const ch of iconfontChildCommands) {
+          ch.insert(new MaterialDirty());
+        }
+      }
     }
 
     const { display } = attributes as FlexboxLayoutAttributes;

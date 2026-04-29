@@ -66,6 +66,7 @@ import {
   Locked,
   ClipMode,
   Flex,
+  IconFont,
 } from '../components';
 import {
   Effect,
@@ -327,6 +328,7 @@ export class MeshPipeline extends System {
             Locked,
             ClipMode,
             Flex,
+            IconFont
           )
           .read.and.using(
             RasterScreenshotRequest,

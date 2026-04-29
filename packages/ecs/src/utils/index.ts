@@ -33,6 +33,7 @@ export * from './liquidMetalPoisson';
 export * from './heatmapPreprocess';
 export * from './postEffectEngineTime';
 export * from './solidShapeRasterForFilter';
+export * from './fillImageTextureSize';
 export * from './binding';
 export * from './edge-label';
 export * from './rebase-edge-geometry';
