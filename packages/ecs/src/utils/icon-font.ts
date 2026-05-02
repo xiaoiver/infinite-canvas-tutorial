@@ -951,16 +951,25 @@ export function pickChildFill(
   elStyle: IconSvgStyle,
   userColorFill: string | undefined,
   userColorStroke: string | undefined,
-  /** 用于 stroke-only 时是否在 ECS 侧补 `FillSolid`（path/line 无 Mesh 填充，仅 ellipse 等可走 SDF）。 */
   primKind?: ScaledIconPrimitive['kind'],
+  /**
+   * 仅在为 true 且图元为 `ellipse` 时，在 SVG `fill="none"` 下用描边色补 `FillSolid`，供父级栅格类 `filter`
+   * 采样；否则保持 `none`，避免无滤镜时整圆被填成描边色。
+   */
+  strokeAsPlaceholderFillForRasterFilter?: boolean,
 ): string {
   const f = (elStyle.fill ?? 'none').trim();
   if (f === 'none' || f === 'transparent') {
     if (primKind === 'path' || primKind === 'line') {
       return 'none';
     }
-    // ellipse：与描边同色填充圆盘，使父级 `filter`（纹理空间后处理）有栅格可采；视觉上与实心圆+描边接近。
-    return userColorStroke ?? userColorFill ?? '#000';
+    if (
+      primKind === 'ellipse' &&
+      strokeAsPlaceholderFillForRasterFilter === true
+    ) {
+      return userColorStroke ?? userColorFill ?? '#000';
+    }
+    return 'none';
   }
   if (f === 'currentColor') {
     // 与 `pickStrokeColorForChild` 一致：SVG 的 currentColor 在画布上由节点 fill/stroke 决定，未设时默认可见色

@@ -476,7 +476,7 @@ If you want to use it in your own project, you can refer to:
 
 -   Variables and themes
 -   Render iconfont, import lucide, material and other iconsets
--   引用与继承已声明的组件
+-   Use components and instances with ref and descendants
 
 |           Variables and themes            | Iconfont(lucide, material and pixelarticons) |         Components and instances          |
 | :---------------------------------------: | :------------------------------------------: | :---------------------------------------: |

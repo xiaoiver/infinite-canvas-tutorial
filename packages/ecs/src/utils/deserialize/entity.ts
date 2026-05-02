@@ -122,6 +122,7 @@ import simplify from 'simplify-js';
 import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './expand-ref-nodes';
 import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
 import { resetFillImageSvgRerasterSchedule } from '../fillImageSvgReraster';
+import { hasRasterPostEffects } from '../filter';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (node.type === 'g') {
@@ -1440,6 +1441,18 @@ export function serializedNodesToEntities(
         entityCommands.insert(new Group(groupPres));
         skipParentFillStroke = true;
         const v = (attributes as VisibilityAttributes).visibility;
+        const filterWire = (wireMergedAttrs as FilterAttributes).filter;
+        const resolvedFilterForPrim =
+          filterWire != null && `${filterWire}`.trim() !== ''
+            ? resolveDesignVariableValue(
+                filterWire,
+                designVariables,
+                themeMode,
+              )
+            : undefined;
+        const strokeAsPlaceholderFillForRasterFilter =
+          typeof resolvedFilterForPrim === 'string' &&
+          hasRasterPostEffects(resolvedFilterForPrim);
 
         for (let i = 0; i < prims.length; i++) {
           const prim = prims[i]!;
@@ -1451,6 +1464,7 @@ export function serializedNodesToEntities(
             zIndex: attributes.zIndex != null ? attributes.zIndex! : 0,
             visibility: (v as 'inherited' | 'hidden' | 'visible' | undefined) ?? 'inherited',
             name: `${id}__i${i}`,
+            strokeAsPlaceholderFillForRasterFilter,
           });
           entityCommands.appendChild(ch);
           iconfontChildCommands.push(ch);

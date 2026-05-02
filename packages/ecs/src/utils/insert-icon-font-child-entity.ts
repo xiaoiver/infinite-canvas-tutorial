@@ -29,6 +29,8 @@ export type IconFontChildInsertOptions = {
   zIndex: number;
   visibility: 'inherited' | 'hidden' | 'visible';
   name: string;
+  /** 根节点带栅格类 `filter` 时置 true，ellipse 才补 `FillSolid` 以便后处理。 */
+  strokeAsPlaceholderFillForRasterFilter?: boolean;
 };
 
 /**
@@ -94,6 +96,7 @@ export function insertIconFontChildFromPrimitive(
     opts.userColorFill,
     opts.userColorStroke,
     prim.kind,
+    opts.strokeAsPlaceholderFillForRasterFilter === true,
   );
   if (fillPart && fillPart !== 'none') {
     ch.insert(new FillSolid(fillPart, ''));

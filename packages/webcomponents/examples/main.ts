@@ -390,16 +390,17 @@ canvas.addEventListener(Event.READY, async (e) => {
   const icon = {
     id: 'icon',
     type: 'iconfont',
-    iconFontName: 'claude',
-    iconFontFamily: 'material-icon-theme',
+    iconFontName: 'search',
+    iconFontFamily: 'lucide',
     width: 320,
     height: 320,
     x: 100,
     y: 100,
     zIndex: 1,
-    strokeWidth: 0,
+    strokeWidth: 10,
+    stroke: 'red',
     lockAspectRatio: true,
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   }
 
   const rect = {
@@ -417,47 +418,56 @@ canvas.addEventListener(Event.READY, async (e) => {
     filter: 'lut(fuji-classic-neg, 0.2)',
   }
 
-  const device = api.getCanvas().read(GPUResource).device;
-  {
-    const lutFileUrl = './FLog2C_to_CLASSIC-Neg_VLog.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'fuji-classic-neg', text, {
-      atlasFormat: 'f16',
-    });
-  }
-  {
-    const lutFileUrl = './FLog2C_to_CLASSIC-CHROME_VLog.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
-      atlasFormat: 'f16',
-    });
-  }
-  {
-    const lutFileUrl = './L-Log_to_Classic_VLog.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'leica-classic', text, {
-      atlasFormat: 'f16',
-    });
-  }
-  {
-    const lutFileUrl = './L-Log_to_Natural_VLog.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'leica-natural', text, {
-      atlasFormat: 'f16',
-    });
-  }
+  setTimeout(async () => {
+    const device = api.getCanvas().read(GPUResource).device;
+    {
+      const lutFileUrl = './FLog2C_to_CLASSIC-Neg_VLog.cube';
+      const text = await (await fetch(lutFileUrl)).text()
+      registerCubeLutFromText(device, 'fuji-classic-neg', text, {
+        atlasFormat: 'f16',
+      });
+    }
+    // {
+    //   const lutFileUrl = './FLog2C_to_CLASSIC-CHROME_VLog.cube';
+    //   const text = await (await fetch(lutFileUrl)).text()
+    //   registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
+    //     atlasFormat: 'f16',
+    //   });
+    // }
+    // {
+    //   const lutFileUrl = './L-Log_to_Classic_VLog.cube';
+    //   const text = await (await fetch(lutFileUrl)).text()
+    //   registerCubeLutFromText(device, 'leica-classic', text, {
+    //     atlasFormat: 'f16',
+    //   });
+    // }
+    // {
+    //   const lutFileUrl = './L-Log_to_Natural_VLog.cube';
+    //   const text = await (await fetch(lutFileUrl)).text()
+    //   registerCubeLutFromText(device, 'leica-natural', text, {
+    //     atlasFormat: 'f16',
+    //   });
+    // }
+    // {
+    //   const lutFileUrl = './FLog2C_to_ACROS_VLog.cube';
+    //   const text = await (await fetch(lutFileUrl)).text()
+    //   registerCubeLutFromText(device, 'fuji-acros', text, {
+    //     atlasFormat: 'f16',
+    //   });
+    // }
 
-  api.runAtNextTick(() => {
-    api.updateNodes([
-      rect
-      // logo,
-      // icon
-      // button1, SearchIcon, text1,
-      // button2,
-      // button3,
-      // button4
-    ]);
-  });
+    api.runAtNextTick(() => {
+      api.updateNodes([
+        rect,
+        // logo,
+        // icon
+        // button1, SearchIcon, text1,
+        // button2,
+        // button3,
+        // button4
+      ]);
+    });
+  }, 300);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {
