@@ -28,6 +28,8 @@ export * from './snapping';
 export * from './embed';
 export * from './encryption';
 export * from './filter';
+export * from './parse-adobe-cube';
+export * from './cube-lut-cache';
 export * from './icon-font';
 export * from './liquidMetalPoisson';
 export * from './heatmapPreprocess';

@@ -93,6 +93,7 @@ export function insertIconFontChildFromPrimitive(
     prim.style,
     opts.userColorFill,
     opts.userColorStroke,
+    prim.kind,
   );
   if (fillPart && fillPart !== 'none') {
     ch.insert(new FillSolid(fillPart, ''));

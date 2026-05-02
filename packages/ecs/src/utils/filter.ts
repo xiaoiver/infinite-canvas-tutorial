@@ -30,6 +30,7 @@ export type Effect =
   | LiquidMetalEffect
   | HeatmapEffect
   | GemSmokeEffect
+  | LutEffect
   | AdjustmentEffect
   | DropShadowEffect
   | BlurEffect
@@ -136,6 +137,16 @@ export interface HalftoneDotsEffect {
   originalColors?: boolean;
 }
 
+/** Defaults for {@link HalftoneDotsEffect} / `halftone-dots()` when params are omitted. */
+export const HALFTONE_DOTS_DEFAULTS = {
+  size: 0.5,
+  radius: 0.5,
+  contrast: 0.5,
+  grid: 0,
+  dotStyle: 0,
+  originalColors: true,
+} as const;
+
 /** Uniform packing for {@link HalftoneDotsEffect} (5 × vec4, std140). */
 export function halftoneDotsUniformValues(
   effect: HalftoneDotsEffect,
@@ -144,15 +155,16 @@ export function halftoneDotsUniformValues(
 ): number[] {
   const tw = Math.max(1, textureWidth);
   const th = Math.max(1, textureHeight);
-  let size = Number.isFinite(effect.size) ? effect.size : 0.5;
+  const d = HALFTONE_DOTS_DEFAULTS;
+  let size = Number.isFinite(effect.size) ? effect.size : d.size;
   size = Math.max(0, Math.min(1, size));
-  let radius = Number.isFinite(effect.radius) ? effect.radius : 0.5;
+  let radius = Number.isFinite(effect.radius) ? effect.radius : d.radius;
   radius = Math.max(0, Math.min(2, radius));
-  let contrast = Number.isFinite(effect.contrast) ? effect.contrast : 0.5;
+  let contrast = Number.isFinite(effect.contrast) ? effect.contrast : d.contrast;
   contrast = Math.max(0, Math.min(1, contrast));
-  let grid = Number.isFinite(effect.grid) ? effect.grid : 0;
+  let grid = Number.isFinite(effect.grid) ? effect.grid : d.grid;
   grid = grid > 0.5 ? 1 : 0;
-  let dotStyle = Number.isFinite(effect.dotStyle) ? effect.dotStyle : 0;
+  let dotStyle = Number.isFinite(effect.dotStyle) ? effect.dotStyle : d.dotStyle;
   dotStyle = Math.max(0, Math.min(3, Math.floor(dotStyle)));
   const aspect = tw / th;
   const originalColors = effect.originalColors === false ? 0 : 1;
@@ -319,16 +331,16 @@ export function flutedGlassUniformValues(
 
 /** Defaults for {@link TsunamiEffect} (ribbed refraction pass). */
 export const TSUNAMI_DEFAULTS = {
-  stripeCount: 32,
+  stripeCount: 45,
   /** Degrees; converted to radians for the GPU. */
   stripeAngle: 0,
-  distortion: 1,
-  reflection: 0.2,
-  disturbance: 0.15,
-  contortion: 0.1,
+  distortion: 0.32,
+  reflection: 0.17,
+  disturbance: 0.03,
+  contortion: 0.13,
   /** 0/1 — modulate highlight with luminance when 1. */
   blend: 0,
-  dispersion: 0.15,
+  dispersion: 0.22,
   drift: 0,
   shadowIntensity: 0.5,
   offset: 0,
@@ -618,12 +630,12 @@ export interface NoiseEffect {
   value: number;
 }
 
-/** Digital block glitch + RGB split; `filter` e.g. `glitch(0.45, 0.004, auto, 0.35)` — jitter, rgbSplit, time, blocks. */
+/** Digital block glitch + RGB split; `filter` e.g. `glitch(0.17, 0.24, auto, 0.2)` — jitter, rgbSplit, time, blocks. */
 export const GLITCH_DEFAULTS = {
-  jitter: 0.45,
+  jitter: 0.17,
   /** 0–1 digital block glitch strength (independent of {@link jitter}). */
-  blocks: 0,
-  rgbSplit: 0.004,
+  blocks: 0.2,
+  rgbSplit: 0.24,
   time: 0,
 } as const;
 
@@ -978,6 +990,27 @@ export const GEM_SMOKE_DEFAULTS = {
   ],
 } as const;
 
+/**
+ * Per-shape raster LUT (see {@link registerCubeLutFromText}).
+ * Filter examples (strength ∈ [0, 1], default 1):
+ * - Named: `lut(fuji, 1)` — key must match `registerCubeLutFromText(device, "fuji", text)`.
+ * - URL path: `lut(url("./grade.cube"), 1)` — key is the string inside `url("…")`.
+ * - Explicit name: `lut(name("my-grade"), 1)`.
+ */
+export interface LutEffect {
+  type: 'lut';
+  /** Cache key: logical name (e.g. `fuji`) or same string as in `url("…")`. */
+  lutKey: string;
+  strength: number;
+}
+
+/** New LUT row in UI before a cube file is registered (`lutKey` placeholder). */
+export const LUT_EFFECT_DEFAULTS = {
+  type: 'lut' as const,
+  lutKey: 'custom',
+  strength: 1,
+} as const;
+
 export interface GemSmokeEffect {
   type: 'gemSmoke';
   innerDistortion: number;
@@ -1086,6 +1119,7 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'liquidMetal',
   'heatmap',
   'gemSmoke',
+  'lut',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -1277,6 +1311,73 @@ function makeAdjustment(
     ...ADJUSTMENT_DEFAULTS,
     ...partial,
   };
+}
+
+function parseLutStrengthSuffix(rest: string): number {
+  const t = rest.trim();
+  if (!t.length) {
+    return 1;
+  }
+  const part = t.split(',')[0]!.trim();
+  const sv = parseFloat(part);
+  return Number.isFinite(sv) ? Math.max(0, Math.min(1, sv)) : 1;
+}
+
+function parseLutFilterParams(
+  params: string,
+): { lutKey: string; strength: number } | undefined {
+  const raw = params.trim();
+  if (!raw) {
+    return undefined;
+  }
+
+  const urlLead = raw.match(/^\s*url\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (urlLead) {
+    const lutKey = urlLead[2]!.trim();
+    if (!lutKey) {
+      return undefined;
+    }
+    const rest = raw
+      .slice(urlLead.index! + urlLead[0].length)
+      .replace(/^\s*,\s*/, '');
+    return { lutKey, strength: parseLutStrengthSuffix(rest) };
+  }
+
+  const nameLead = raw.match(/^\s*name\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (nameLead) {
+    const lutKey = nameLead[2]!.trim();
+    if (!lutKey) {
+      return undefined;
+    }
+    const rest = raw
+      .slice(nameLead.index! + nameLead[0].length)
+      .replace(/^\s*,\s*/, '');
+    return { lutKey, strength: parseLutStrengthSuffix(rest) };
+  }
+
+  const comma = raw.indexOf(',');
+  const first = (comma >= 0 ? raw.slice(0, comma) : raw).trim();
+  const rest = comma >= 0 ? raw.slice(comma + 1) : '';
+  let lutKey: string | undefined;
+  const quoted = first.match(/^(['"])(.*)\1$/);
+  if (quoted && quoted[2]!.length > 0) {
+    lutKey = quoted[2]!;
+  } else if (/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(first)) {
+    lutKey = first;
+  }
+  if (!lutKey) {
+    return undefined;
+  }
+  return { lutKey, strength: parseLutStrengthSuffix(rest) };
+}
+
+/** Serialize {@link LutEffect.lutKey} for a filter string (name vs `url("…")`). */
+export function formatLutFilterSegment(lutKey: string, strength: number): string {
+  if (/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(lutKey)) {
+    return `lut(${lutKey}, ${strength})`;
+  }
+  const u = lutKey.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `lut(url("${u}"), ${strength})`;
 }
 
 /**
@@ -1502,9 +1603,11 @@ export function parseEffect(filter: string): Effect[] {
       const parts = raw.length
         ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
         : [];
-      const size = parts[0] !== undefined ? parseFloat(parts[0]) : 0.5;
-      const radius = parts[1] !== undefined ? parseFloat(parts[1]) : 0.5;
-      const contrast = parts[2] !== undefined ? parseFloat(parts[2]) : 0.5;
+      const HD = HALFTONE_DOTS_DEFAULTS;
+      const size = parts[0] !== undefined ? parseFloat(parts[0]) : HD.size;
+      const radius = parts[1] !== undefined ? parseFloat(parts[1]) : HD.radius;
+      const contrast =
+        parts[2] !== undefined ? parseFloat(parts[2]) : HD.contrast;
       let grid = 0;
       if (parts[3] !== undefined) {
         const g = parts[3].toLowerCase();
@@ -1551,9 +1654,9 @@ export function parseEffect(filter: string): Effect[] {
       }
       effects.push({
         type: 'halftoneDots',
-        size: Number.isFinite(size) ? size : 0.5,
-        radius: Number.isFinite(radius) ? radius : 0.5,
-        contrast: Number.isFinite(contrast) ? contrast : 0.5,
+        size: Number.isFinite(size) ? size : HD.size,
+        radius: Number.isFinite(radius) ? radius : HD.radius,
+        contrast: Number.isFinite(contrast) ? contrast : HD.contrast,
         grid,
         dotStyle,
         ...(originalColors !== undefined ? { originalColors } : {}),
@@ -1728,7 +1831,8 @@ export function parseEffect(filter: string): Effect[] {
         const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
         return Number.isFinite(v) ? v : def;
       };
-      let useEngineTime = false;
+      /** Omitted time arg → engine time (animated), per {@link GLITCH_DEFAULTS}. */
+      let useEngineTime = parts.length < 3;
       let time: number = D.time;
       if (parts.length >= 3) {
         const rawT = parts[2]!.trim().toLowerCase();
@@ -1736,7 +1840,10 @@ export function parseEffect(filter: string): Effect[] {
           useEngineTime = true;
         } else {
           const tv = parseFloat(parts[2]!);
-          time = Number.isFinite(tv) ? tv : D.time;
+          if (Number.isFinite(tv)) {
+            useEngineTime = false;
+            time = tv;
+          }
         }
       }
       const blocks =
@@ -1946,6 +2053,15 @@ export function parseEffect(filter: string): Effect[] {
         colors: gradColors.length > 0 ? gradColors : [...D.colors],
         ...(useEngineTime ? { useEngineTime: true } : {}),
       });
+    } else if (filter.name === 'lut' || filter.name === 'LUT') {
+      const parsed = parseLutFilterParams(filter.params);
+      if (parsed && parsed.lutKey.length > 0) {
+        effects.push({
+          type: 'lut',
+          lutKey: parsed.lutKey,
+          strength: parsed.strength,
+        });
+      }
     } else if (filter.name === 'fxaa') {
       effects.push({ type: 'fxaa' });
     }
@@ -2154,6 +2270,10 @@ export function formatFilter(effects: Effect[]): string {
         );
         break;
       }
+      case 'lut': {
+        parts.push(formatLutFilterSegment(effect.lutKey, effect.strength));
+        break;
+      }
       case 'fxaa':
         parts.push('fxaa()');
         break;
@@ -2198,4 +2318,113 @@ export function formatFilter(effects: Effect[]): string {
     }
   }
   return parts.join(' ');
+}
+
+/** Pixi-style saturation multiplier for a new saturate-only `adjustment` row. */
+export const SATURATE_ADJUSTMENT_SATURATION = 1.25;
+
+/**
+ * Picker value when adding an effect row in UI (`saturate` maps to `adjustment` with only
+ * {@link SATURATE_ADJUSTMENT_SATURATION} changed).
+ */
+export type DefaultEffectKind =
+  | 'brightness'
+  | 'contrast'
+  | 'saturate'
+  | 'noise'
+  | 'fxaa'
+  | 'blur'
+  | 'pixelate'
+  | 'dot'
+  | 'colorHalftone'
+  | 'halftoneDots'
+  | 'flutedGlass'
+  | 'crt'
+  | 'vignette'
+  | 'ascii'
+  | 'glitch'
+  | 'liquidGlass'
+  | 'liquidMetal'
+  | 'heatmap'
+  | 'gemSmoke'
+  | 'lut'
+  | 'tsunami'
+  | 'burn';
+
+/** Default {@link Effect} for a new row (effects panel / authoring). */
+export function createDefaultEffect(kind: DefaultEffectKind): Effect {
+  switch (kind) {
+    case 'brightness':
+      return { type: 'brightness', value: 0 };
+    case 'contrast':
+      return { type: 'contrast', value: 0 };
+    case 'noise':
+      return { type: 'noise', value: 0.1 };
+    case 'fxaa':
+      return { type: 'fxaa' };
+    case 'blur':
+      return { type: 'blur', value: 4 };
+    case 'pixelate':
+      return { type: 'pixelate', size: 8 };
+    case 'dot':
+      return { type: 'dot', scale: 1, angle: 5, grayscale: 1 };
+    case 'colorHalftone':
+      return { type: 'colorHalftone', angle: 0, size: 5 };
+    case 'halftoneDots':
+      return {
+        type: 'halftoneDots',
+        size: HALFTONE_DOTS_DEFAULTS.size,
+        radius: HALFTONE_DOTS_DEFAULTS.radius,
+        contrast: HALFTONE_DOTS_DEFAULTS.contrast,
+        grid: HALFTONE_DOTS_DEFAULTS.grid,
+        dotStyle: HALFTONE_DOTS_DEFAULTS.dotStyle,
+        originalColors: HALFTONE_DOTS_DEFAULTS.originalColors,
+      };
+    case 'flutedGlass':
+      return { type: 'flutedGlass', ...FLUTED_GLASS_DEFAULTS };
+    case 'crt':
+      return { type: 'crt', ...CRT_DEFAULTS, useEngineTime: false };
+    case 'vignette':
+      return { type: 'vignette', ...VIGNETTE_DEFAULTS };
+    case 'ascii':
+      return { type: 'ascii', ...ASCII_DEFAULTS };
+    case 'glitch':
+      return {
+        type: 'glitch',
+        ...GLITCH_DEFAULTS,
+        useEngineTime: true,
+      };
+    case 'liquidGlass':
+      return { type: 'liquidGlass', ...LIQUID_GLASS_DEFAULTS };
+    case 'tsunami':
+      return { type: 'tsunami', ...TSUNAMI_DEFAULTS };
+    case 'burn':
+      return { type: 'burn', ...BURN_DEFAULTS };
+    case 'liquidMetal':
+      return { type: 'liquidMetal', ...LIQUID_METAL_DEFAULTS };
+    case 'heatmap':
+      return {
+        type: 'heatmap',
+        ...HEATMAP_DEFAULTS,
+        colors: [...HEATMAP_DEFAULTS.colors],
+        useEngineTime: true,
+      };
+    case 'gemSmoke':
+      return {
+        type: 'gemSmoke',
+        ...GEM_SMOKE_DEFAULTS,
+        colors: [...GEM_SMOKE_DEFAULTS.colors],
+        useEngineTime: true,
+      };
+    case 'lut':
+      return { ...LUT_EFFECT_DEFAULTS };
+    case 'saturate':
+      return {
+        type: 'adjustment',
+        ...ADJUSTMENT_DEFAULTS,
+        saturation: SATURATE_ADJUSTMENT_SATURATION,
+      };
+    default:
+      return { type: 'brightness', value: 0 };
+  }
 }

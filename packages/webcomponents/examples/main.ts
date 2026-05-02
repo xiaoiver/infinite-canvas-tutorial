@@ -43,6 +43,8 @@ import {
   TRANSFORMER_MASK_FILL_COLOR,
   TesselationMethod,
   SerializedNode,
+  registerCubeLutFromText,
+  GPUResource,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -212,37 +214,6 @@ canvas.addEventListener(Event.READY, async (e) => {
     fill: "/soundboard.heic",
     // fill: 'black',
     zIndex: 2,
-  } as const;
-
-  const button = {
-    "id": "cj03l",
-    type: 'rect',
-    display: 'flex',
-    "x": 100,
-    "y": 100,
-    "name": "Button/Default",
-    "height": 40,
-    "fill": "$--primary",
-    "cornerRadius": "$--radius-pill",
-    "gap": 6,
-    "padding": [10, 16],
-    "justifyContent": "center",
-    "alignItems": "center",
-    zIndex: 0,
-  } as const;
-
-  const text = {
-    id: 'cj03l-text',
-    parentId: 'cj03l',
-    type: 'text',
-    content: 'Button',
-    fontFamily: 'sans-serif',
-    fontSize: 14,
-    lineHeight: 20,
-    "fill": "$--primary-foreground",
-    textAlign: 'center',
-    textBaseline: 'middle',
-    zIndex: 1,
   } as const;
 
   const BlenderIcon = {
@@ -419,22 +390,68 @@ canvas.addEventListener(Event.READY, async (e) => {
   const icon = {
     id: 'icon',
     type: 'iconfont',
-    iconFontName: 'search',
-    iconFontFamily: 'lucide',
+    iconFontName: 'claude',
+    iconFontFamily: 'material-icon-theme',
     width: 320,
     height: 320,
     x: 100,
     y: 100,
     zIndex: 1,
-    strokeWidth: 40,
+    strokeWidth: 0,
     lockAspectRatio: true,
-    filter: 'noise(0.5)',
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+  }
+
+  const rect = {
+    id: 'rect',
+    type: 'rect',
+    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+    width: 400,
+    height: 400,
+    // stroke: 'linear-gradient(to right, red, blue)',
+    strokeWidth: 10,
+    x: 100,
+    y: 100,
+    zIndex: 1,
+    // 逻辑名 `fuji` 需在下方 `registerCubeLutFromText(device, "fuji", …)` 中注册
+    filter: 'lut(fuji-classic-neg, 0.2)',
+  }
+
+  const device = api.getCanvas().read(GPUResource).device;
+  {
+    const lutFileUrl = './FLog2C_to_CLASSIC-Neg_VLog.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'fuji-classic-neg', text, {
+      atlasFormat: 'f16',
+    });
+  }
+  {
+    const lutFileUrl = './FLog2C_to_CLASSIC-CHROME_VLog.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
+      atlasFormat: 'f16',
+    });
+  }
+  {
+    const lutFileUrl = './L-Log_to_Classic_VLog.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'leica-classic', text, {
+      atlasFormat: 'f16',
+    });
+  }
+  {
+    const lutFileUrl = './L-Log_to_Natural_VLog.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'leica-natural', text, {
+      atlasFormat: 'f16',
+    });
   }
 
   api.runAtNextTick(() => {
     api.updateNodes([
-      logo,
-      icon
+      rect
+      // logo,
+      // icon
       // button1, SearchIcon, text1,
       // button2,
       // button3,

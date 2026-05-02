@@ -164,12 +164,7 @@ export class YogaSystem extends System {
             Parent,
             Children,
             UI,
-            FillGradient,
-            FillSolid,
-            FillImage,
-            FillPattern,
             ZIndex,
-            Filter,
           )
           .read.and.using(
             GlobalTransform,
@@ -190,6 +185,11 @@ export class YogaSystem extends System {
             MaterialDirty,
             Stroke,
             Visibility,
+            FillGradient,
+            FillSolid,
+            FillImage,
+            FillPattern,
+            Filter,
           ).write,
     );
   }

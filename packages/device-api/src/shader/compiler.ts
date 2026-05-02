@@ -218,8 +218,8 @@ export function preprocessShader_GLSL(
 
     assert(vendorInfo.separateSamplerTextures);
     rest = rest.replace(
-      /^\s*(layout\((.*)\))?\s*uniform sampler(\w+) (.*);/gm,
-      (substr, cap, layout, combinedSamplerType, samplerName) => {
+      /^\s*(layout\((.*)\))?\s*uniform\s+(?:(highp|mediump|lowp)\s+)?sampler(\w+)\s+(\w+)\s*;/gm,
+      (substr, cap, layout, _precisionQual, combinedSamplerType, samplerName) => {
         let binding = parseBinding(layout);
         if (binding === null) binding = implicitBinding++;
 
@@ -256,12 +256,13 @@ layout(set = ${set}, binding = ${
   } else {
     let implicitBinding = 0;
     rest = rest.replace(
-      /^\s*(layout\((.*)\))?\s*uniform sampler(\w+) (.*);/gm,
-      (substr, cap, layout, combinedSamplerType, samplerName) => {
+      /^\s*(layout\((.*)\))?\s*uniform\s+(?:(highp|mediump|lowp)\s+)?sampler(\w+)\s+(\w+)\s*;/gm,
+      (substr, cap, layout, precisionQual, combinedSamplerType, samplerName) => {
         let binding = parseBinding(layout);
         if (binding === null) binding = implicitBinding++;
 
-        return `uniform sampler${combinedSamplerType} ${samplerName}; // BINDING=${binding}`;
+        const pq = precisionQual ? `${precisionQual} ` : '';
+        return `uniform ${pq}sampler${combinedSamplerType} ${samplerName}; // BINDING=${binding}`;
       },
     );
   }

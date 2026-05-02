@@ -1644,6 +1644,7 @@ function applyIconfontPrimitiveAttrs(
     prim.style,
     userColorFill,
     userColorStroke,
+    prim.kind,
   );
   if (fillPart && fillPart !== 'none') {
     el.setAttribute('fill', fillPart);

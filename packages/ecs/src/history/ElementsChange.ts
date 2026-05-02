@@ -411,6 +411,7 @@ function syncIconFontChildrenFromUpdatedNode(
       prim.style,
       userColorFill,
       userColorStroke,
+      prim.kind,
     );
     if (fillPart && fillPart !== 'none') {
       safeAddComponent(child, FillSolid, {
