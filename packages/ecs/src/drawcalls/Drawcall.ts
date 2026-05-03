@@ -472,7 +472,10 @@ function setPostEffectUniformData(
       if (!g) {
         break;
       }
-      const str = Math.max(0, Math.min(1, effect.strength));
+      const str = Math.max(
+        0,
+        Math.min(1, Number.isFinite(effect.strength) ? effect.strength : 1),
+      );
       data[i++] = g.size;
       data[i++] = str;
       data[i++] = 0;

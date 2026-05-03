@@ -53,20 +53,14 @@ export const pendingCanvases: {
   camera: Partial<ComputedCamera>;
 }[] = [];
 
-// const PenMap = {
-//   [Pen.BRUSH]: {
-//     icon: html`<sp-icon-brush slot="icon"></sp-icon-brush>`,
-//     label: msg(str`Brush`),
-//   },
-//   [Pen.VECTOR_NETWORK]: {
-//     icon: html`<sp-icon-vector-draw slot="icon"></sp-icon-vector-draw>`,
-//     label: msg(str`Vector Network`),
-//   },
-//   [Pen.COMMENT]: {
-//     icon: html`<sp-icon-comment slot="icon"></sp-icon-comment>`,
-//     label: msg(str`Comment`),
-//   },
-// };
+/**
+ * Canvas containers waiting for {@link GPUResource} before {@link Event.READY}.
+ * Filled in InitCanvas, drained in EmitCanvasReady.
+ */
+export const pendingGpuReadyDispatch: {
+  container: LitElement;
+  api: API;
+}[] = [];
 
 export type MermaidPasteStyleFn = (nodes: SerializedNode[]) => void;
 

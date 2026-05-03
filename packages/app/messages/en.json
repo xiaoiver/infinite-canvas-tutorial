@@ -200,6 +200,10 @@
         "title": "Glitch",
         "description": "Overlay three filters: CRT, vignette and glitch.",
         "description2": "Try to download the GIF in the export panel on the right."
+      },
+      "fujifilmLuts": {
+        "title": "Fujifilm LUTs",
+        "description": ".cube LUTs from Fujifilm. sRGB conversion from <repo>github.com/abpy/FujifilmCameraProfiles</repo>."
       }
     },
     "photoColors": {
@@ -212,6 +216,10 @@
       "metaTitle": "Glitch",
       "metaDescription": "Glitch-style image effects (coming soon).",
       "placeholder": "Glitch effect controls will go here."
+    },
+    "fujifilmLuts": {
+      "metaTitle": "Fujifilm LUTs",
+      "metaDescription": "Try Fujifilm-style film emulation LUTs on your photos."
     }
   }
 }

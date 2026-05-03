@@ -64,9 +64,10 @@ export const config = {
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          * - api routes
-         * Feel free to modify this pattern to include more paths.
+         * - public/luts/*（.cube 等须绕过 next-intl，否则会走 locale 重定向导致 404）
+         * - 常见静态资源扩展名
          */
-        '/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        '/((?!_next/static|_next/image|favicon.ico|api|luts/|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|cube)$).*)',
     ],
 };
 

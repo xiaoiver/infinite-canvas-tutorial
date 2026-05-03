@@ -24,6 +24,7 @@ import {
   Polyline,
   Path,
   Flex,
+  Filter,
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import type {
@@ -92,7 +93,8 @@ export class RenderBindings extends System {
             Binded,
             Binding,
             PartialBinding,
-            Flex
+            Flex,
+            Filter
           )
           .write,
     );

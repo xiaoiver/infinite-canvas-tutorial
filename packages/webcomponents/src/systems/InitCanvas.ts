@@ -56,8 +56,7 @@ import {
   MaterialDirty,
   IconFont,
 } from '@infinite-canvas-tutorial/ecs';
-import { Event } from '../event';
-import { ExtendedAPI, pendingCanvases } from '../API';
+import { ExtendedAPI, pendingCanvases, pendingGpuReadyDispatch } from '../API';
 import { LitStateManagement } from '../context';
 import { InfiniteCanvas } from '../spectrum/infinite-canvas';
 import { localizedTemplates } from '../i18n';
@@ -167,7 +166,7 @@ export class InitCanvas extends System {
           themePreference: initialAppState.themePreference,
         });
 
-        container.dispatchEvent(new CustomEvent(Event.READY, { detail: api }));
+        pendingGpuReadyDispatch.push({ container, api });
       });
       pendingCanvases.length = 0;
     }

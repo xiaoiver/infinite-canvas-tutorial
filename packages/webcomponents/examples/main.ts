@@ -185,6 +185,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // themeMode: ThemeMode.DARK,
     // filter: 'noise(0.5)',
     // layersLassoing: ['parent'],
+    // filter: 'fxaa() brightness(0.8) noise(0.1)',
   });
 
   const path = {
@@ -414,60 +415,46 @@ canvas.addEventListener(Event.READY, async (e) => {
     x: 100,
     y: 100,
     zIndex: 1,
-    // 逻辑名 `fuji` 需在下方 `registerCubeLutFromText(device, "fuji", …)` 中注册
-    filter: 'lut(fuji-classic-neg, 0.2)',
+    // 逻辑名需在下方 `registerCubeLutFromText` 中注册；省略强度时默认为 1
+    filter: 'lut(fuji-classic-neg)',
   }
 
-  setTimeout(async () => {
-    const device = api.getCanvas().read(GPUResource).device;
-    {
-      const lutFileUrl = './FLog2C_to_CLASSIC-Neg_VLog.cube';
-      const text = await (await fetch(lutFileUrl)).text()
-      registerCubeLutFromText(device, 'fuji-classic-neg', text, {
-        atlasFormat: 'f16',
-      });
-    }
-    // {
-    //   const lutFileUrl = './FLog2C_to_CLASSIC-CHROME_VLog.cube';
-    //   const text = await (await fetch(lutFileUrl)).text()
-    //   registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
-    //     atlasFormat: 'f16',
-    //   });
-    // }
-    // {
-    //   const lutFileUrl = './L-Log_to_Classic_VLog.cube';
-    //   const text = await (await fetch(lutFileUrl)).text()
-    //   registerCubeLutFromText(device, 'leica-classic', text, {
-    //     atlasFormat: 'f16',
-    //   });
-    // }
-    // {
-    //   const lutFileUrl = './L-Log_to_Natural_VLog.cube';
-    //   const text = await (await fetch(lutFileUrl)).text()
-    //   registerCubeLutFromText(device, 'leica-natural', text, {
-    //     atlasFormat: 'f16',
-    //   });
-    // }
-    // {
-    //   const lutFileUrl = './FLog2C_to_ACROS_VLog.cube';
-    //   const text = await (await fetch(lutFileUrl)).text()
-    //   registerCubeLutFromText(device, 'fuji-acros', text, {
-    //     atlasFormat: 'f16',
-    //   });
-    // }
-
-    api.runAtNextTick(() => {
-      api.updateNodes([
-        rect,
-        // logo,
-        // icon
-        // button1, SearchIcon, text1,
-        // button2,
-        // button3,
-        // button4
-      ]);
+  const device = api.getCanvas().read(GPUResource).device;
+  {
+    // 街拍神级色彩，高对比，红橘色偏暖，强调硬调
+    const lutFileUrl = './classic neg_sRGB.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'fuji-classic-neg', text, {
+      atlasFormat: 'f32',
     });
-  }, 300);
+  }
+  {
+    // 低饱和度，强对比度，模仿老式纪实杂志风格
+    const lutFileUrl = './classic chrome_sRGB.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
+      atlasFormat: 'f32',
+    });
+  }
+  {
+    const lutFileUrl = './velvia_sRGB.cube';
+    const text = await (await fetch(lutFileUrl)).text()
+    registerCubeLutFromText(device, 'fuji-velvia', text, {
+      atlasFormat: 'f32',
+    });
+  }
+
+  api.runAtNextTick(() => {
+    api.updateNodes([
+      rect,
+      // logo,
+      // icon
+      // button1, SearchIcon, text1,
+      // button2,
+      // button3,
+      // button4
+    ]);
+  });
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

@@ -200,6 +200,10 @@
         "title": "Efecto Glitch",
         "description": "Superposición de tres filtros: CRT, vignette y glitch.",
         "description2": "Intenta descargar el GIF en el panel de exportación a la derecha."
+      },
+      "fujifilmLuts": {
+        "title": "LUT estilo Fujifilm",
+        "description": "LUT .cube de Fujifilm. Conversión sRGB desde <repo>github.com/abpy/FujifilmCameraProfiles</repo>."
       }
     },
     "photoColors": {
@@ -212,6 +216,10 @@
       "metaTitle": "Glitch",
       "metaDescription": "Efectos tipo glitch (próximamente).",
       "placeholder": "Zona reservada para el efecto Glitch."
+    },
+    "fujifilmLuts": {
+      "metaTitle": "LUT Fujifilm",
+      "metaDescription": "Prueba LUT de emulación tipo película Fujifilm en tus fotos."
     }
   }
 }
