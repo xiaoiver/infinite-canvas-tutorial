@@ -1,6 +1,5 @@
 export async function checkWebGPUSupport() {
   if ('gpu' in navigator) {
-    // @ts-expect-error - navigator.gpu is not typed
     const gpu = await navigator.gpu.requestAdapter();
     if (!gpu) {
       throw new Error('No WebGPU adapter available.');

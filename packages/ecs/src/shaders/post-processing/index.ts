@@ -18,3 +18,4 @@ export { frag as liquidGlass } from './liquidGlass';
 export { frag as liquidMetal } from './liquidMetal';
 export { frag as heatmap } from './heatmap';
 export { frag as gemSmoke } from './gemSmoke';
+export { frag as lut } from './lut';

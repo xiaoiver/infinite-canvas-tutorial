@@ -951,9 +951,24 @@ export function pickChildFill(
   elStyle: IconSvgStyle,
   userColorFill: string | undefined,
   userColorStroke: string | undefined,
+  primKind?: ScaledIconPrimitive['kind'],
+  /**
+   * 仅在为 true 且图元为 `ellipse` 时，在 SVG `fill="none"` 下用描边色补 `FillSolid`，供父级栅格类 `filter`
+   * 采样；否则保持 `none`，避免无滤镜时整圆被填成描边色。
+   */
+  strokeAsPlaceholderFillForRasterFilter?: boolean,
 ): string {
   const f = (elStyle.fill ?? 'none').trim();
   if (f === 'none' || f === 'transparent') {
+    if (primKind === 'path' || primKind === 'line') {
+      return 'none';
+    }
+    if (
+      primKind === 'ellipse' &&
+      strokeAsPlaceholderFillForRasterFilter === true
+    ) {
+      return userColorStroke ?? userColorFill ?? '#000';
+    }
     return 'none';
   }
   if (f === 'currentColor') {

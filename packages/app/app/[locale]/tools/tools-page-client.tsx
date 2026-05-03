@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Topbar } from '@/components/layout/topbar';
@@ -14,15 +15,28 @@ function ToolCard({ entry }: { entry: ToolEntry }) {
   const title = t(`items.${entry.id}.title`);
   const href = entry.path ? `/tools${entry.path}` : undefined;
   const isReady = entry.status === 'ready' && href;
+  const hasShot = Boolean(entry.screenshot);
   const cardInner = (
     <Card
       className={cn(
-        'h-full transition-colors',
+        'h-full overflow-hidden transition-colors',
+        hasShot && 'gap-0 py-0 pb-6',
         isReady && 'hover:border-primary/50 hover:bg-muted/30',
         !isReady && 'opacity-90',
       )}
     >
-      <CardHeader className="space-y-2">
+      {entry.screenshot ? (
+        <div className="relative aspect-video w-full bg-muted">
+          <Image
+            src={entry.screenshot}
+            alt={title}
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 42rem"
+          />
+        </div>
+      ) : null}
+      <CardHeader className={cn('space-y-2', hasShot && 'pt-6')}>
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-snug">{title}</CardTitle>
           {entry.status === 'comingSoon' && (

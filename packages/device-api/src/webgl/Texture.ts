@@ -265,8 +265,12 @@ export class Texture_GL extends ResourceBase_GL implements Texture {
 
     this.preprocessImage();
 
-    for (let z = 0; z < this.depthOrArrayLayers; z++) {
-      const levelData = levelDatas[z];
+    const upload3DVolumeOnce =
+      isWebGL2(gl) && is3D && !isCube && !this.immutable && isTA;
+    const layerIterations = upload3DVolumeOnce ? 1 : this.depthOrArrayLayers;
+
+    for (let z = 0; z < layerIterations; z++) {
+      const levelData = upload3DVolumeOnce ? levelDatas[0]! : levelDatas[z];
       let gl_target = this.gl_target;
 
       if (isCube) {

@@ -15,6 +15,7 @@ import {
   loadImage,
   deserializeBrushPoints,
 } from '../utils';
+import { hasRasterPostEffects } from '../utils/filter';
 import {
   resolveDesignVariableValue,
   designVariableRefKeyFromWire,
@@ -347,6 +348,24 @@ function syncIconFontChildrenFromUpdatedNode(
   );
   const initialChildren = rootEntity.read(Parent).children;
 
+  const filterWire = (nodeInherit as { filter?: string }).filter;
+  let strokeAsPlaceholderFillForRasterFilter = false;
+  if (filterWire != null && `${filterWire}`.trim() !== '') {
+    const rv = resolveDesignVariableValue(
+      filterWire,
+      designVariables,
+      themeMode,
+    );
+    if (typeof rv === 'string' && hasRasterPostEffects(rv)) {
+      strokeAsPlaceholderFillForRasterFilter = true;
+    }
+  } else if (rootEntity.has(Filter)) {
+    const v = rootEntity.read(Filter).value;
+    if (hasRasterPostEffects(v)) {
+      strokeAsPlaceholderFillForRasterFilter = true;
+    }
+  }
+
   const hideIconFontChild = (child: Entity) => {
     safeAddComponent(child, Visibility, { value: 'hidden' });
     safeAddComponent(child, MaterialDirty);
@@ -391,6 +410,7 @@ function syncIconFontChildrenFromUpdatedNode(
         zIndex: zForChild,
         visibility: childVisibility,
         name: `${node.id}__i${i}`,
+        strokeAsPlaceholderFillForRasterFilter,
       });
       api.appendEntityChild(rootEntity, ch);
       child = ch.id();
@@ -411,6 +431,8 @@ function syncIconFontChildrenFromUpdatedNode(
       prim.style,
       userColorFill,
       userColorStroke,
+      prim.kind,
+      strokeAsPlaceholderFillForRasterFilter,
     );
     if (fillPart && fillPart !== 'none') {
       safeAddComponent(child, FillSolid, {

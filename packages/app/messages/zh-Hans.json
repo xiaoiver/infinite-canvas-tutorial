@@ -200,6 +200,10 @@
         "title": "故障效果",
         "description": "叠加三个滤镜：CRT、晕影和故障",
         "description2": "尝试在右侧导出面板下载 GIF"
+      },
+      "fujifilmLuts": {
+        "title": "富士胶片 LUT",
+        "description": "富士胶片官方的 .cube LUTs。sRGB 转换参考 <repo>github.com/abpy/FujifilmCameraProfiles</repo>。"
       }
     },
     "photoColors": {
@@ -212,6 +216,10 @@
       "metaTitle": "故障艺术",
       "metaDescription": "故障风 / Glitch 图像效果（待完善）。",
       "placeholder": "预留给 Glitch 参数与预览。"
+    },
+    "fujifilmLuts": {
+      "metaTitle": "富士胶片 LUT",
+      "metaDescription": "在画布上试用富士风格胶片模拟 LUT。"
     }
   }
 }

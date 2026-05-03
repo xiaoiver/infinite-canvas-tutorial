@@ -16,7 +16,7 @@ import {
 import {
   Event,
   UIPlugin,
-  ExtendedAPI,
+  type ExtendedAPI,
 } from '@infinite-canvas-tutorial/webcomponents';
 // import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
@@ -38,12 +38,21 @@ interface CanvasProps {
   id?: string;
   initialData?: SerializedNode[];
   initialAppState?: Partial<AppState>;
+  /** 在首帧写入节点之前执行（例如注册 LUT），须在此完成异步准备 */
+  prepareCanvas?: (api: ExtendedAPI) => void | Promise<void>;
 }
 
-const Canvas = ({ id = 'default', initialData, initialAppState }: CanvasProps) => {
+const Canvas = ({
+  id = 'default',
+  initialData,
+  initialAppState,
+  prepareCanvas,
+}: CanvasProps) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const projectIdRef = useRef<string>(id);
   const yjsManagerRef = useRef<CanvasYjsManager | null>(null);
+  const prepareCanvasRef = useRef(prepareCanvas);
+  prepareCanvasRef.current = prepareCanvas;
   const { resolvedTheme } = useTheme();
   const params = useParams();
   const locale = params.locale as string;
@@ -186,6 +195,8 @@ const Canvas = ({ id = 'default', initialData, initialAppState }: CanvasProps) =
     });
 
     registerIconifyIconSet('lucide', lucide);
+
+    await prepareCanvasRef.current?.(api);
 
     api.runAtNextTick(() => {
       api.updateNodes(nodes);

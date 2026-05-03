@@ -1,4 +1,9 @@
-import { Format, Texture, TextureDescriptor, TextureDimension } from '../api';
+import {
+  Format,
+  Texture,
+  TextureDescriptor,
+  TextureDimension,
+} from '../api';
 import { ResourceType } from '../api';
 import type { IDevice_WebGPU, TextureShared_WebGPU } from './interfaces';
 import { ResourceBase_WebGPU } from './ResourceBase';
@@ -144,6 +149,8 @@ export class Texture_WebGPU
       texture = device.importExternalTexture({
         source: datas[0],
       }) as unknown as GPUTexture;
+      width = this.width;
+      height = this.height;
     } else {
       const blockInformation = getBlockInformationFromFormat(
         this.gpuTextureformat,
@@ -151,20 +158,38 @@ export class Texture_WebGPU
       const bytesPerRow =
         Math.ceil(this.width / blockInformation.width) *
         blockInformation.length;
-      // TODO: support ArrayBufferView[]
-      datas.forEach((data) => {
+      const data = datas[0] as BufferSource;
+      if (this.dimension === TextureDimension.TEXTURE_3D) {
         device.queue.writeTexture(
           { texture: this.gpuTexture },
-          data as BufferSource,
+          data,
           {
             bytesPerRow,
+            rowsPerImage: this.height,
           },
           {
             width: this.width,
             height: this.height,
+            depthOrArrayLayers: this.depthOrArrayLayers,
           },
         );
-      });
+      } else {
+        datas.forEach((d) => {
+          device.queue.writeTexture(
+            { texture: this.gpuTexture },
+            d as BufferSource,
+            {
+              bytesPerRow,
+            },
+            {
+              width: this.width,
+              height: this.height,
+            },
+          );
+        });
+      }
+      width = this.width;
+      height = this.height;
     }
 
     this.width = width;

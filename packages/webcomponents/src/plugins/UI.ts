@@ -12,12 +12,12 @@ import {
   Last,
   RenderTransformer,
   RenderHighlighter,
-  StartUp,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,
   DownloadAnimationExport,
   DownloadScreenshot,
+  EmitCanvasReady,
   InitCanvas,
   ListenTransformableStatus,
   ZoomLevel,
@@ -48,9 +48,15 @@ export const UIPlugin: Plugin = () => {
   Object.defineProperty(Comment, 'name', {
     value: 'Comment',
   });
+  Object.defineProperty(EmitCanvasReady, 'name', {
+    value: 'EmitCanvasReady',
+  });
 
   system((s) => s.after(PreStartUp).before(ZoomLevel).beforeWritersOf(Canvas))(
     InitCanvas,
+  );
+  system((s) => s.after(PreStartUp, InitCanvas).before(ZoomLevel).beforeWritersOf(Canvas))(
+    EmitCanvasReady,
   );
   system((s) =>
     s

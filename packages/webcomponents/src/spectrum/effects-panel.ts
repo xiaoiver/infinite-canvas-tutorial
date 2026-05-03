@@ -7,19 +7,28 @@ import {
   AppState,
   parseColor,
   parseEffect,
-  ADJUSTMENT_DEFAULTS,
   formatFilter,
   isSaturateOnlyAdjustment,
-  BURN_DEFAULTS,
+  createDefaultEffect,
   HEATMAP_DEFAULTS,
   GEM_SMOKE_DEFAULTS,
-  LIQUID_METAL_DEFAULTS,
+  GPUResource,
+  listRegisteredCubeLutKeys,
   type Effect,
+  type DefaultEffectKind,
   type SerializedNode,
   type BurnEffect,
   type LiquidMetalEffect,
   type HeatmapEffect,
   type GemSmokeEffect,
+  type HalftoneDotsEffect,
+  type CrtEffect,
+  type VignetteEffect,
+  type AsciiEffect,
+  type GlitchEffect,
+  type LiquidGlassEffect,
+  type FlutedGlassEffect,
+  type TsunamiEffect,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -27,21 +36,12 @@ import { localized, msg, str } from '@lit/localize';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/switch/sp-switch.js';
 import '@spectrum-web-components/textfield/sp-textfield.js';
+import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/field-label/sp-field-label.js';
 import '@spectrum-web-components/overlay/sp-overlay.js';
 import '@spectrum-web-components/popover/sp-popover.js';
 import './input-solid';
-
-/** Matches ecs `HalftoneDotsEffect` (filter `halftone-dots`). */
-interface HalftoneDotsEffectRow {
-  type: 'halftoneDots';
-  size: number;
-  radius: number;
-  contrast: number;
-  grid: number;
-  dotStyle: number;
-  originalColors?: boolean;
-}
 
 function isHalftoneDotsEffect(e: Effect): boolean {
   return (e as { type?: string }).type === 'halftoneDots';
@@ -91,6 +91,10 @@ function isGemSmokeEffect(e: Effect): boolean {
   return (e as { type?: string }).type === 'gemSmoke';
 }
 
+function isLutEffect(e: Effect): boolean {
+  return (e as { type?: string }).type === 'lut';
+}
+
 type SolidColorChangeDetail = { type: string; value: string };
 
 function solidColorToPatch(
@@ -107,136 +111,8 @@ function solidHexForPicker(raw: string): string {
   return d3.rgb(p.r, p.g, p.b, 1).formatHex();
 }
 
-/** Mirrors ecs `CRT_DEFAULTS`. */
-const CRT_PANEL_DEFAULTS = {
-  curvature: 1,
-  lineWidth: 1,
-  lineContrast: 0.25,
-  verticalLine: 0,
-  time: 0,
-  useEngineTime: false,
-} as const;
-
-type CrtEffectRow = { type: 'crt' } & typeof CRT_PANEL_DEFAULTS;
-
-/** Matches ecs `VIGNETTE_DEFAULTS`. */
-const VIGNETTE_PANEL_DEFAULTS = {
-  type: 'vignette' as const,
-  size: 0.5,
-  amount: 0.5,
-};
-
-type VignetteEffectRow = typeof VIGNETTE_PANEL_DEFAULTS;
-
-/** Matches ecs `ASCII_DEFAULTS` / Pixi ASCIIFilter. */
-const ASCII_PANEL_DEFAULTS = {
-  type: 'ascii' as const,
-  size: 8,
-  replaceColor: false,
-  color: '#ffffff',
-};
-
-type AsciiEffectRow = typeof ASCII_PANEL_DEFAULTS;
-
-/** Mirrors ecs `GLITCH_DEFAULTS`; `useEngineTime` defaults on so the effect animates. */
-const GLITCH_PANEL_DEFAULTS = {
-  type: 'glitch' as const,
-  jitter: 0.45,
-  blocks: 0,
-  rgbSplit: 0.004,
-  time: 0,
-  useEngineTime: true,
-} as const;
-
-type GlitchEffectRow = typeof GLITCH_PANEL_DEFAULTS;
-
-/** Mirrors ecs `LIQUID_GLASS_DEFAULTS` / `LiquidGlassEffect`. */
-const LIQUID_GLASS_PANEL_DEFAULTS = {
-  type: 'liquidGlass' as const,
-  powerFactor: 4,
-  fPower: 3,
-  noise: 0.1,
-  glowWeight: 0.3,
-  glowBias: 0,
-  glowEdge0: 0.06,
-  glowEdge1: 0,
-  a: 0.7,
-  b: 2.3,
-  c: 5.2,
-  d: 6.9,
-  centerX: 0.5,
-  centerY: 0.5,
-  scaleX: 1,
-  scaleY: 1,
-  ellipseSizeX: 1,
-  ellipseSizeY: 1,
-};
-
-type LiquidGlassEffectRow = typeof LIQUID_GLASS_PANEL_DEFAULTS;
-
-/** Mirrors ecs `FlutedGlassEffect` / {@link FLUTED_GLASS_DEFAULTS} for panel defaults. */
-const FLUTED_GLASS_PANEL_DEFAULTS = {
-  size: 0.5,
-  shadows: 0.6,
-  angle: 45,
-  stretch: 0.2,
-  shape: 1,
-  distortion: 0.5,
-  highlights: 0.4,
-  distortionShape: 1,
-  shift: 0,
-  blur: 0.15,
-  edges: 0.3,
-  marginLeft: 0,
-  marginRight: 0,
-  marginTop: 0,
-  marginBottom: 0,
-  grainMixer: 0,
-  grainOverlay: 0,
-} as const;
-
-type FlutedGlassEffectRow = { type: 'flutedGlass' } & typeof FLUTED_GLASS_PANEL_DEFAULTS;
-
-/** Mirrors ecs `TSUNAMI_DEFAULTS` / `TsunamiEffect`. */
-const TSUNAMI_PANEL_DEFAULTS = {
-  stripeCount: 32,
-  stripeAngle: 0,
-  distortion: 1,
-  reflection: 0.2,
-  disturbance: 0.15,
-  contortion: 0.1,
-  blend: 0,
-  dispersion: 0.15,
-  drift: 0,
-  shadowIntensity: 0.5,
-  offset: 0,
-} as const;
-
-type TsunamiEffectRow = { type: 'tsunami' } & typeof TSUNAMI_PANEL_DEFAULTS;
-
 /** Picker / menu value for an effect row (maps `adjustment` from saturate to `saturate`). */
-type EffectKind =
-  | 'brightness'
-  | 'contrast'
-  | 'saturate'
-  | 'noise'
-  | 'fxaa'
-  | 'blur'
-  | 'pixelate'
-  | 'dot'
-  | 'colorHalftone'
-  | 'halftoneDots'
-  | 'flutedGlass'
-  | 'crt'
-  | 'vignette'
-  | 'ascii'
-  | 'glitch'
-  | 'liquidGlass'
-  | 'liquidMetal'
-  | 'heatmap'
-  | 'gemSmoke'
-  | 'tsunami'
-  | 'burn';
+type EffectKind = DefaultEffectKind;
 
 function effectKind(
   effect: Effect,
@@ -284,6 +160,9 @@ function effectKind(
   if (isGemSmokeEffect(effect)) {
     return 'gemSmoke';
   }
+  if (isLutEffect(effect)) {
+    return 'lut';
+  }
   if (
     effect.type === 'brightness' ||
     effect.type === 'contrast' ||
@@ -300,90 +179,6 @@ function effectKind(
     return 'drop-shadow';
   }
   return 'unknown';
-}
-
-function createDefaultEffect(kind: EffectKind): Effect {
-  switch (kind) {
-    case 'brightness':
-      return { type: 'brightness', value: 0 };
-    case 'contrast':
-      return { type: 'contrast', value: 0 };
-    case 'noise':
-      return { type: 'noise', value: 0.1 };
-    case 'fxaa':
-      return { type: 'fxaa' };
-    case 'blur':
-      return { type: 'blur', value: 4 };
-    case 'pixelate':
-      return { type: 'pixelate', size: 8 };
-    case 'dot':
-      return { type: 'dot', scale: 1, angle: 5, grayscale: 1 };
-    case 'colorHalftone':
-      return { type: 'colorHalftone', angle: 0, size: 5 };
-    case 'halftoneDots':
-      return {
-        type: 'halftoneDots',
-        size: 0.5,
-        radius: 0.5,
-        contrast: 0.5,
-        grid: 0,
-        dotStyle: 0,
-        originalColors: true,
-      } as unknown as Effect;
-    case 'flutedGlass':
-      return {
-        type: 'flutedGlass',
-        ...FLUTED_GLASS_PANEL_DEFAULTS,
-      } as unknown as Effect;
-    case 'crt':
-      return {
-        type: 'crt',
-        ...CRT_PANEL_DEFAULTS,
-      } as unknown as Effect;
-    case 'vignette':
-      return { ...VIGNETTE_PANEL_DEFAULTS } as unknown as Effect;
-    case 'ascii':
-      return { ...ASCII_PANEL_DEFAULTS } as unknown as Effect;
-    case 'glitch':
-      return { ...GLITCH_PANEL_DEFAULTS } as unknown as Effect;
-    case 'liquidGlass':
-      return { ...LIQUID_GLASS_PANEL_DEFAULTS } as unknown as Effect;
-    case 'tsunami':
-      return {
-        type: 'tsunami',
-        ...TSUNAMI_PANEL_DEFAULTS,
-      } as unknown as Effect;
-    case 'burn':
-      return {
-        type: 'burn',
-        ...BURN_DEFAULTS,
-      } as unknown as Effect;
-    case 'liquidMetal':
-      return {
-        type: 'liquidMetal',
-        ...LIQUID_METAL_DEFAULTS,
-      } as unknown as Effect;
-    case 'heatmap':
-      return {
-        type: 'heatmap',
-        ...HEATMAP_DEFAULTS,
-        useEngineTime: true,
-      } as unknown as Effect;
-    case 'gemSmoke':
-      return {
-        type: 'gemSmoke',
-        ...GEM_SMOKE_DEFAULTS,
-        useEngineTime: true,
-      } as unknown as Effect;
-    case 'saturate':
-      return {
-        type: 'adjustment',
-        ...ADJUSTMENT_DEFAULTS,
-        saturation: 1.25,
-      };
-    default:
-      return { type: 'brightness', value: 0 };
-  }
 }
 
 @customElement('ic-spectrum-effects-panel')
@@ -511,8 +306,37 @@ export class EffectsPanel extends LitElement {
   @property({ type: Boolean, attribute: false })
   filtersMixed = false;
 
+  /**
+   * 额外 LUT 逻辑名（在 `custom` 与 {@link listRegisteredCubeLutKeys} 结果之后合并去重）。
+   * 与 `registerCubeLutFromText(device, key, …)` 的 `key` 一致；画布 GPU 上已注册的 key 会自动出现在下拉中。
+   */
+  @property({ type: Array, attribute: false })
+  lutKeys: string[] = ['custom'];
+
   @state()
   private effects: Effect[] = [];
+
+  private lutKeyPickerOptions(currentKey: string): string[] {
+    const fromProp =
+      Array.isArray(this.lutKeys) && this.lutKeys.length > 0
+        ? this.lutKeys
+        : ['custom'];
+    let fromGpu: string[] = [];
+    try {
+      const device = this.api?.getCanvas?.()?.read(GPUResource)?.device;
+      if (device) {
+        fromGpu = listRegisteredCubeLutKeys(device);
+      }
+    } catch {
+      // 画布 / GPU 尚未就绪
+    }
+    const base = [...new Set(['custom', ...fromGpu, ...fromProp])];
+    const k = (currentKey && currentKey.trim()) || 'custom';
+    if (base.includes(k)) {
+      return base;
+    }
+    return [...base, k];
+  }
 
   protected willUpdate(changed: PropertyValues<this>): void {
     if (changed.has('filtersMixed') || (changed.has('node') && this.node)) {
@@ -679,6 +503,7 @@ export class EffectsPanel extends LitElement {
                   <sp-menu-item value="gemSmoke"
                     >${msg(str`Gem smoke`)}</sp-menu-item
                   >
+                  <sp-menu-item value="lut">${msg(str`LUT`)}</sp-menu-item>
                 </sp-picker>
               `
         : html`
@@ -899,7 +724,7 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isHalftoneDotsEffect(effect)) {
-      const h = effect as unknown as HalftoneDotsEffectRow;
+      const h = effect as unknown as HalftoneDotsEffect;
       return html`
         <sp-slider
           size="s"
@@ -1007,7 +832,7 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isFlutedGlassEffect(effect)) {
-      const h = effect as unknown as FlutedGlassEffectRow;
+      const h = effect as unknown as FlutedGlassEffect;
       return html`
         <sp-slider
           size="s"
@@ -1102,9 +927,9 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isTsunamiEffect(effect)) {
-      const h = effect as unknown as TsunamiEffectRow;
+      const h = effect as unknown as TsunamiEffect;
       const num = (
-        key: keyof Omit<TsunamiEffectRow, 'type'>,
+        key: keyof Omit<TsunamiEffect, 'type'>,
         v: number,
       ) => {
         const next = [...this.effects];
@@ -1334,24 +1159,36 @@ export class EffectsPanel extends LitElement {
           patch({ distortion: Number.isFinite(v) ? v : h.distortion });
         }}
         ></sp-slider>
-        <sp-textfield
-          size="s"
-          label=${msg(str`Edge color`)}
-          .value=${h.edgeColor}
-          @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = e.target.value.trim();
-          patch({ edgeColor: v || h.edgeColor });
-        }}
-        ></sp-textfield>
-        <sp-textfield
-          size="s"
-          label=${msg(str`Mask color`)}
-          .value=${h.maskColor}
-          @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = e.target.value.trim();
-          patch({ maskColor: v || h.maskColor });
-        }}
-        ></sp-textfield>
+        <div class="effect-color-field-row">
+          <sp-field-label
+            size="s"
+            for="ic-ef-burn-edge-${index}"
+            side-aligned="start"
+            >${msg(str`Edge color`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-burn-edge-${index}`,
+            h.edgeColor,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ edgeColor: v }));
+            },
+          )}
+        </div>
+        <div class="effect-color-field-row">
+          <sp-field-label
+            size="s"
+            for="ic-ef-burn-mask-${index}"
+            side-aligned="start"
+            >${msg(str`Mask color`)}</sp-field-label
+          >
+          ${this.renderEffectSolidPopover(
+            `ic-ef-burn-mask-${index}`,
+            h.maskColor,
+            (e) => {
+              solidColorToPatch(e, (v) => patch({ maskColor: v }));
+            },
+          )}
+        </div>
         <sp-switch
           size="s"
           ?checked=${h.invertMask}
@@ -2032,7 +1869,7 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isCrtEffect(effect)) {
-      const h = effect as unknown as CrtEffectRow;
+      const h = effect as unknown as CrtEffect;
       return html`
         <sp-slider
           size="s"
@@ -2147,7 +1984,7 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isGlitchEffect(effect)) {
-      const h = effect as unknown as GlitchEffectRow;
+      const h = effect as unknown as GlitchEffect;
       return html`
         <sp-slider
           size="s"
@@ -2244,8 +2081,8 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isLiquidGlassEffect(effect)) {
-      const h = effect as unknown as LiquidGlassEffectRow;
-      const patch = (partial: Partial<LiquidGlassEffectRow>) => {
+      const h = effect as unknown as LiquidGlassEffect;
+      const patch = (partial: Partial<LiquidGlassEffect>) => {
         const next = [...this.effects];
         next[index] = { ...h, ...partial } as unknown as Effect;
         this.commit(next);
@@ -2253,7 +2090,7 @@ export class EffectsPanel extends LitElement {
       const num = (
         e: Event & { target: HTMLInputElement },
         cur: number,
-        fn: (v: number) => Partial<LiquidGlassEffectRow>,
+        fn: (v: number) => Partial<LiquidGlassEffect>,
       ) => {
         const v = parseFloat(e.target.value);
         patch(Number.isFinite(v) ? fn(v) : fn(cur));
@@ -2410,7 +2247,7 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isVignetteEffect(effect)) {
-      const h = effect as unknown as VignetteEffectRow;
+      const h = effect as unknown as VignetteEffect;
       return html`
         <sp-slider
           size="s"
@@ -2451,7 +2288,7 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (isAsciiEffect(effect)) {
-      const h = effect as unknown as AsciiEffectRow;
+      const h = effect as unknown as AsciiEffect;
       return html`
         <sp-slider
           size="s"
@@ -2500,6 +2337,59 @@ export class EffectsPanel extends LitElement {
             }}
             ></sp-textfield>`
           : null}
+      `;
+    }
+    if (isLutEffect(effect)) {
+      const h = effect as unknown as {
+        type: 'lut';
+        lutKey: string;
+        strength: number;
+      };
+      const patch = (partial: Partial<{ lutKey: string; strength: number }>) => {
+        const next = [...this.effects];
+        next[index] = { ...h, ...partial, type: 'lut' } as unknown as Effect;
+        this.commit(next);
+      };
+      const keyOptions = this.lutKeyPickerOptions(h.lutKey);
+      const pickerValue = keyOptions.includes(h.lutKey)
+        ? h.lutKey
+        : keyOptions[0]!;
+      return html`
+        <sp-picker
+          size="s"
+          label=${msg(str`LUT key`)}
+          .value=${pickerValue}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = e.target.value.trim();
+          if (v.length) {
+            patch({ lutKey: v });
+          }
+        }}
+        >
+          ${map(
+        keyOptions,
+        (key) =>
+          html`<sp-menu-item value=${key}>${key}</sp-menu-item>`,
+      )}
+        </sp-picker>
+        <sp-slider
+          size="s"
+          label=${msg(str`Strength`)}
+          label-visibility="none"
+          min="0"
+          max="1"
+          step="0.01"
+          .value=${h.strength}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({
+            strength: Number.isFinite(v)
+              ? Math.max(0, Math.min(1, v))
+              : h.strength,
+          });
+        }}
+        ></sp-slider>
       `;
     }
     if (effect.type === 'adjustment') {
@@ -2585,6 +2475,7 @@ export class EffectsPanel extends LitElement {
           >
           <sp-menu-item value="heatmap">${msg(str`Heat map`)}</sp-menu-item>
           <sp-menu-item value="gemSmoke">${msg(str`Gem smoke`)}</sp-menu-item>
+          <sp-menu-item value="lut">${msg(str`LUT`)}</sp-menu-item>
         </sp-action-menu>
       </div>
     `;
