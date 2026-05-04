@@ -257,7 +257,11 @@ export class ExtendedAPI extends API {
 
     let cdnUrl = dataURL;
     if (!isString(file) && this.upload) {
-      cdnUrl = await this.upload(file);
+      try {
+        cdnUrl = await this.upload(file);
+      } catch {
+        cdnUrl = dataURL;
+      }
     }
 
     let height = image.height;

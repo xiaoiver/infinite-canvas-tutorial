@@ -407,7 +407,8 @@ canvas.addEventListener(Event.READY, async (e) => {
   const rect = {
     id: 'rect',
     type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+    fill: 'red',
+    // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     width: 400,
     height: 400,
     // stroke: 'linear-gradient(to right, red, blue)',
@@ -416,7 +417,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 100,
     zIndex: 1,
     // 逻辑名需在下方 `registerCubeLutFromText` 中注册；省略强度时默认为 1
-    filter: 'lut(fuji-classic-neg)',
+    // filter: 'lut(fuji-classic-neg)',
   }
 
   const device = api.getCanvas().read(GPUResource).device;

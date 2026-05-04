@@ -130,6 +130,15 @@ export const zh = defineConfig({
             ],
           },
           {
+            text: '滤镜',
+            items: [
+              {
+                text: '效果与 LUT',
+                link: 'filter',
+              },
+            ],
+          },
+          {
             text: '插件',
             items: [
               { text: 'Chat', link: 'chat' },
