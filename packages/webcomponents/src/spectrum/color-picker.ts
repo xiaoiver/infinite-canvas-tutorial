@@ -14,6 +14,7 @@ export enum ColorType {
 
 export type ColorPickerChangeDetail = {
   type: ColorType;
+  /** 纯色 / 渐变 / 图片 URL 等；用于 fill 或 stroke（如 `linear-gradient(...)` 写入描边）。 */
   value: string;
   /** 与 `ic-spectrum-input-solid` 一致：由父组件传入并回传。 */
   fillOpacity?: number;

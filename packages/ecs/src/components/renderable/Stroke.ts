@@ -99,3 +99,16 @@ export class Stroke {
     Object.assign(this, props);
   }
 }
+
+/**
+ * 描边渐变（CSS 渐变字符串），与 {@link FillGradient} 语义对称，用于 {@link SmoothPolyline} 等路径描边。
+ * 存在时应将 {@link Stroke#color} 设为 `'none'`，宽度与线型仍由 {@link Stroke} 提供。
+ */
+export class StrokeGradient {
+  @field.dynamicString(300) declare value: string;
+  constructor(value?: string) {
+    if (value !== undefined) {
+      this.value = value;
+    }
+  }
+}

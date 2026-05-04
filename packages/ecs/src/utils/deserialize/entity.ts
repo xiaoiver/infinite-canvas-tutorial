@@ -14,6 +14,7 @@ import {
   Rect,
   Renderable,
   Stroke,
+  StrokeGradient,
   Text,
   Transform,
   Visibility,
@@ -1560,27 +1561,42 @@ export function serializedNodesToEntities(
             width: typeof rawW === 'number' ? rawW : Number(rawW),
           }
           : {};
-      entityCommands.insert(
-        new Stroke({
-          color: resolvedStroke,
-          ...widthInit,
-          colorVariableRef: designVariableRefKeyFromWire(stroke),
-          widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
-          // comma and/or white space separated
-          dasharray:
-            strokeDasharray === 'none'
-              ? [0, 0]
-              : ((strokeDasharray?.includes(',')
-                ? strokeDasharray?.split(',')
-                : strokeDasharray?.split(' ')
-              )?.map(Number) as [number, number]),
-          linecap: strokeLinecap,
-          linejoin: strokeLinejoin,
-          miterlimit: strokeMiterlimit,
-          dashoffset: strokeDashoffset,
-          alignment: strokeAlignment,
-        }),
-      );
+      const dashPair =
+        strokeDasharray === 'none'
+          ? ([0, 0] as [number, number])
+          : (((strokeDasharray?.includes(',')
+            ? strokeDasharray?.split(',')
+            : strokeDasharray?.split(' ')
+          )?.map(Number) ?? [0, 0]) as [number, number]);
+      const strokeCommon = {
+        ...widthInit,
+        colorVariableRef: designVariableRefKeyFromWire(stroke),
+        widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
+        dasharray: dashPair,
+        linecap: strokeLinecap,
+        linejoin: strokeLinejoin,
+        miterlimit: strokeMiterlimit,
+        dashoffset: strokeDashoffset,
+        alignment: strokeAlignment,
+      };
+      if (isGradient(resolvedStroke as string)) {
+        entityCommands.insert(
+          new Stroke({
+            color: 'none',
+            ...strokeCommon,
+          }),
+        );
+        entityCommands.insert(
+          new StrokeGradient(resolvedStroke as string),
+        );
+      } else {
+        entityCommands.insert(
+          new Stroke({
+            color: resolvedStroke,
+            ...strokeCommon,
+          }),
+        );
+      }
     }
 
     const { markerStart, markerEnd, markerFactor } =

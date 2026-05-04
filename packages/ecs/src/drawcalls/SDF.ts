@@ -57,6 +57,7 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   Stroke,
+  StrokeGradient,
 } from '../components';
 
 const strokeAlignmentMap = {
@@ -161,6 +162,15 @@ export class SDF extends Drawcall {
 
     if (isInstanceFillGradient && isShapeFillGradient) {
       return this.shapes[0].read(FillGradient) === shape.read(FillGradient);
+    }
+
+    const isInstanceStrokeGradient = this.shapes[0].has(StrokeGradient);
+    const isShapeStrokeGradient = shape.has(StrokeGradient);
+    if (isInstanceStrokeGradient !== isShapeStrokeGradient) {
+      return false;
+    }
+    if (isInstanceStrokeGradient && isShapeStrokeGradient) {
+      return this.shapes[0].read(StrokeGradient) === shape.read(StrokeGradient);
     }
 
     if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
@@ -769,9 +779,13 @@ export class SDF extends Drawcall {
     const u_Size = size;
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    let strokeWidthForSdf = SDF.useDash(shape) ? 0 : width;
+    if (shape.has(StrokeGradient)) {
+      strokeWidthForSdf = 0;
+    }
     const u_ZIndexStrokeWidth = [
       globalRenderOrder / ZINDEX_FACTOR,
-      SDF.useDash(shape) ? 0 : width,
+      strokeWidthForSdf,
       cornerRadius,
       strokeAlignmentMap[alignment],
     ];

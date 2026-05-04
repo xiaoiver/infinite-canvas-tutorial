@@ -24,6 +24,7 @@ import {
   Rect,
   Screenshot,
   Stroke,
+  StrokeGradient,
   Text,
   Theme,
   Transform,

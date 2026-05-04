@@ -691,6 +691,7 @@ export abstract class Drawcall {
       if (this.useStencil) {
         defines += '#define USE_STENCIL\n';
       }
+      defines += this.extraShaderDefines;
       this.createMaterial(defines, uniformBuffer);
       // Nested texture-space filter passes set the viewport to the texture size; restore the
       // main pass viewport so subsequent draws use the full backbuffer (WebGL may not restore).
@@ -822,6 +823,11 @@ export abstract class Drawcall {
       s.has(FillSolid) &&
       hasRasterPostEffects(getRasterFilterValueForShape(s))
     );
+  }
+
+  /** Subclasses (e.g. {@link SmoothPolyline}) append shader `#define`s beyond {@link useFillImage}. */
+  protected get extraShaderDefines(): string {
+    return '';
   }
 
   protected createProgram(vert: string, frag: string, defines: string) {
