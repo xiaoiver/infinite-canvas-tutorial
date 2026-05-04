@@ -47,6 +47,7 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   Stroke,
+  StrokeGradient,
   Text,
   Theme,
   ToBeDeleted,
@@ -232,6 +233,9 @@ export class MeshPipeline extends System {
   private strokes = this.query(
     (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
   );
+  private strokeGradients = this.query(
+    (q) => q.addedChangedOrRemoved.with(StrokeGradient).trackWrites,
+  );
   private opacities = this.query(
     (q) => q.addedChangedOrRemoved.with(Opacity).trackWrites,
   );
@@ -305,6 +309,7 @@ export class MeshPipeline extends System {
             GlobalTransform,
             Opacity,
             Stroke,
+            StrokeGradient,
             InnerShadow,
             DropShadow,
             Wireframe,
@@ -762,7 +767,7 @@ export class MeshPipeline extends System {
         }
       }
 
-      if (entity.has(FillGradient)) {
+      if (entity.has(FillGradient) || entity.has(StrokeGradient)) {
         safeAddComponent(entity, MaterialDirty);
       }
 
@@ -857,6 +862,7 @@ export class MeshPipeline extends System {
           !toRender &&
           (!!this.fillSolids.addedChangedOrRemoved.length ||
             !!this.fillGradients.addedChangedOrRemoved.length ||
+            !!this.strokeGradients.addedChangedOrRemoved.length ||
             !!this.fillPatterns.addedChangedOrRemoved.length ||
             !!this.fillTextures.addedChangedOrRemoved.length ||
             !!this.fillImages.addedChangedOrRemoved.length ||

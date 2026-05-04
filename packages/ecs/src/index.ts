@@ -63,6 +63,7 @@ export {
   deserializePoints,
   createSVGElement,
   exportFillGradientOrPattern,
+  exportStrokeGradientOrPattern,
   exportFillImage,
   exportMarker,
   toSVG,

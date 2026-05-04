@@ -33,6 +33,7 @@ import {
   FillSolid,
   FillGradient,
   Stroke,
+  StrokeGradient,
   Visibility,
   Ellipse,
   Rect,
@@ -385,6 +386,7 @@ function syncIconFontChildrenFromUpdatedNode(
     safeRemoveComponent(rootEntity, FillGradient);
     safeRemoveComponent(rootEntity, FillImage);
     safeRemoveComponent(rootEntity, FillPattern);
+    safeRemoveComponent(rootEntity, StrokeGradient);
     safeRemoveComponent(rootEntity, Stroke);
     safeAddComponent(rootEntity, MaterialDirty);
     return;
@@ -457,6 +459,7 @@ function syncIconFontChildrenFromUpdatedNode(
   safeRemoveComponent(rootEntity, FillGradient);
   safeRemoveComponent(rootEntity, FillImage);
   safeRemoveComponent(rootEntity, FillPattern);
+  safeRemoveComponent(rootEntity, StrokeGradient);
   safeRemoveComponent(rootEntity, Stroke);
   safeAddComponent(rootEntity, MaterialDirty);
 }
@@ -1198,12 +1201,66 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     });
   }
   if ('stroke' in updates && !isIconFontWireNode) {
-    safeAddComponent(entity, Stroke, {
-      color: resolveDesignVariableValue(stroke, designVariables, themeMode),
-      colorVariableRef: designVariableRefKeyFromWire(
-        typeof stroke === 'string' ? stroke : undefined,
-      ),
-    });
+    const resolvedStroke = resolveDesignVariableValue(
+      stroke,
+      designVariables,
+      themeMode,
+    );
+    const strokeRef = designVariableRefKeyFromWire(
+      typeof stroke === 'string' ? stroke : undefined,
+    );
+    if (isGradient(resolvedStroke as string)) {
+      if (entity.has(Stroke)) {
+        const s = entity.read(Stroke);
+        safeAddComponent(entity, Stroke, {
+          color: 'none',
+          colorVariableRef: strokeRef,
+          width: s.width,
+          linecap: s.linecap,
+          linejoin: s.linejoin,
+          miterlimit: s.miterlimit,
+          dasharray: s.dasharray,
+          dashoffset: s.dashoffset,
+          alignment: s.alignment,
+          widthVariableRef: s.widthVariableRef,
+        });
+      } else {
+        safeAddComponent(entity, Stroke, {
+          color: 'none',
+          colorVariableRef: strokeRef,
+        });
+      }
+      safeRemoveComponent(entity, StrokeGradient);
+      safeAddComponent(entity, StrokeGradient, {
+        value: resolvedStroke as string,
+      });
+      safeAddComponent(entity, MaterialDirty);
+    } else {
+      if (entity.has(StrokeGradient)) {
+        safeRemoveComponent(entity, StrokeGradient);
+        safeAddComponent(entity, MaterialDirty);
+      }
+      if (entity.has(Stroke)) {
+        const s = entity.read(Stroke);
+        safeAddComponent(entity, Stroke, {
+          color: resolvedStroke as string,
+          colorVariableRef: strokeRef,
+          width: s.width,
+          linecap: s.linecap,
+          linejoin: s.linejoin,
+          miterlimit: s.miterlimit,
+          dasharray: s.dasharray,
+          dashoffset: s.dashoffset,
+          alignment: s.alignment,
+          widthVariableRef: s.widthVariableRef,
+        });
+      } else {
+        safeAddComponent(entity, Stroke, {
+          color: resolvedStroke as string,
+          colorVariableRef: strokeRef,
+        });
+      }
+    }
   }
   if ('strokeWidth' in updates && !isIconFontWireNode) {
     const w = resolveDesignVariableValue(

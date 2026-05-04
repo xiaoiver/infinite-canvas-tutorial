@@ -33,6 +33,8 @@ export enum JointType {
   CAP_BUTT2 = 4 << 5,
 }
 
+/** WebGPU / naga 转 WGSL 不支持 inverse(mat3)，用手写伴随矩阵求逆。 */
+
 export const vert = /* wgsl */ `
 layout(std140) uniform SceneUniforms {
   mat3 u_ProjectionMatrix;
@@ -60,6 +62,7 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_ZIndexStrokeWidth;
   vec4 u_Opacity;
   vec4 u_StrokeDash;
+  vec4 u_StrokeUVRect;
 };
 
 const float FILL = ${JointType.FILL}.0;
@@ -83,6 +86,9 @@ out vec4 v_Arc;
 out float v_Type;
 out float v_Travel;
 out float v_ScalingFactor;
+#ifdef USE_STROKE_GRADIENT
+out vec2 v_StrokeUv;
+#endif
 #ifdef USE_INSTANCES
   out vec4 v_StrokeColor;
   out vec4 v_Opacity;
@@ -107,6 +113,26 @@ vec2 doBisect(
     }
   }
   return dy * bisect;
+}
+
+mat3 inverseMat3(mat3 m) {
+  float a00 = m[0][0], a01 = m[0][1], a02 = m[0][2];
+  float a10 = m[1][0], a11 = m[1][1], a12 = m[1][2];
+  float a20 = m[2][0], a21 = m[2][1], a22 = m[2][2];
+
+  float b01 = a22 * a11 - a12 * a21;
+  float b11 = -a22 * a10 + a12 * a20;
+  float b21 = a21 * a10 - a11 * a20;
+
+  float det = a00 * b01 + a01 * b11 + a02 * b21;
+  if (abs(det) < 1e-12) {
+    return mat3(1.0);
+  }
+  return mat3(
+    b01, (-a22 * a01 + a02 * a21), (a12 * a01 - a02 * a11),
+    b11, (a22 * a00 - a02 * a20), (-a12 * a00 + a02 * a10),
+    b21, (-a21 * a00 + a01 * a20), (a11 * a00 - a01 * a10)
+  ) / det;
 }
 
 // vec2 clip2ScreenSpace(vec4 clip) {
@@ -414,6 +440,11 @@ void main() {
   // v_ScalingFactor = sqrt(model[0][0] * model[0][0] + model[0][1] * model[0][1] + model[0][2] * model[0][2]);
   v_ScalingFactor = 1.0;
 
+#ifdef USE_STROKE_GRADIENT
+  vec3 localH = inverseMat3(model) * vec3(pos, 1.0);
+  v_StrokeUv = (localH.xy - u_StrokeUVRect.xy) * u_StrokeUVRect.zw;
+#endif
+
   // if (sizeAttenuation) {
   //   vec4 clip = mix(clip0, clip1, 0.5);
   //   gl_Position = vec4(clip.w * (2.0 * pos / u_Viewport - 1.0), clip.z, clip.w);
@@ -443,6 +474,7 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_ZIndexStrokeWidth;
   vec4 u_Opacity;
   vec4 u_StrokeDash;
+  vec4 u_StrokeUVRect;
 };
 
 out vec4 outputColor;
@@ -453,6 +485,10 @@ in vec4 v_Arc;
 in float v_Type;
 in float v_Travel;
 in float v_ScalingFactor;
+#ifdef USE_STROKE_GRADIENT
+in vec2 v_StrokeUv;
+uniform sampler2D u_Texture;
+#endif
 
 float epsilon = 0.000001;
 
@@ -475,7 +511,11 @@ float pixelLine(float x) {
 // }
 
 void main() {
+#ifdef USE_STROKE_GRADIENT
+  vec4 strokeColor = texture(SAMPLER_2D(u_Texture), v_StrokeUv);
+#else
   vec4 strokeColor = u_StrokeColor;
+#endif
   float opacity = u_Opacity.x;
   float strokeOpacity = u_Opacity.z;
   bool strokeAttenuation = u_Opacity.w > 0.5;

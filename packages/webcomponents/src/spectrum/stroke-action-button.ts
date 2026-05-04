@@ -11,7 +11,6 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { ColorType } from './color-picker';
 import { normalizeSolidCssValue } from './normalize-solid-css';
 import { localized, msg, str } from '@lit/localize';
 import { when } from 'lit/directives/when.js';
@@ -272,6 +271,7 @@ export class StrokeActionButton extends LitElement {
         @click=${this.handleStrokeTriggerClick}
       >
         <ic-spectrum-stroke-icon
+          .node=${this.node}
           value=${stroke}
           slot="icon"
         ></ic-spectrum-stroke-icon>
@@ -312,7 +312,6 @@ export class StrokeActionButton extends LitElement {
               html`<ic-spectrum-color-picker
                         value=${strokeResolved}
                         .strokeOpacity=${strokeOpacity}
-                        .types=${[ColorType.None, ColorType.Solid]}
                         enable-opacity-variable-binding
                         @color-change=${this.handleStrokeChanged}
                         @opacity-change=${this.handleStrokeOpacityChanged}

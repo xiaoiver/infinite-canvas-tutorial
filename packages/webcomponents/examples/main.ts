@@ -406,13 +406,13 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const rect = {
     id: 'rect',
-    type: 'rect',
+    type: 'ellipse',
     fill: 'red',
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     width: 400,
     height: 400,
-    // stroke: 'linear-gradient(to right, red, blue)',
-    strokeWidth: 10,
+    stroke: 'linear-gradient(90deg, red, blue)',
+    strokeWidth: 20,
     x: 100,
     y: 100,
     zIndex: 1,
