@@ -181,6 +181,15 @@ export const ko = defineConfig({
             ],
           },
           {
+            text: '필터',
+            items: [
+              {
+                text: '효과 및 LUT',
+                link: 'filter',
+              },
+            ],
+          },
+          {
             text: '플러그인',
             items: [
               { text: '채팅', link: 'chat' },

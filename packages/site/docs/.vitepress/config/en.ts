@@ -209,6 +209,15 @@ export const en = defineConfig({
             ],
           },
           {
+            text: 'Filter',
+            items: [
+              {
+                text: 'Effects & LUT',
+                link: 'filter',
+              },
+            ],
+          },
+          {
             text: 'Plugins',
             items: [
               { text: 'Chat', link: 'chat' },
