@@ -1,7 +1,8 @@
 ---
 outline: deep
-description: '使用CanvasGradient API实现渐变和图案，通过着色器创建包含噪声效果的网格渐变，构建渐变编辑器面板。支持CSS渐变语法和重复图案。'
+description: '使用CanvasGradient API实现渐变和图案，通过着色器创建包含噪声效果的网格渐变，构建渐变编辑器面板。支持CSS渐变语法和重复图案；补充描边渐变 StrokeGradient 在 ECS 中的渲染路径与着色器要点。'
 ---
+
 <script setup>
 import Gradient from '../../components/Gradient.vue';
 import MeshGradient from '../../components/MeshGradient.vue';
@@ -20,6 +21,7 @@ import DomainWarping from '../../components/DomainWarping.vue';
     -   命令式。使用 Device API 创建纹理
     -   声明式。支持 CSS 渐变语法：`linear-gradient`、`radial-gradient`、`conic-gradient`
     -   使用 Shoelace 实现渐变配置面板
+    -   描边渐变 `StrokeGradient`：组件职责、与 SDF / SmoothPolyline 分工、纹理 UV 与 WebGPU 注意点
 -   使用 Shader 实现 Mesh 渐变
     -   模拟随机
     -   Value Noise 和 Gradient Noise
@@ -132,6 +134,18 @@ rect.fill = `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
 参考 Figma 的渐变编辑面板，我们也实现了一套类似的编辑器，你可以在上面的例子中选中图形后触发编辑面板。
 
 ![Figma gradient panel](/figma-gradient-panel.png)
+
+## 在填充与描边中应用渐变 {#applying-gradients-to-fill-and-stroke}
+
+填充渐变由 `SDF` / `Mesh` 等 drawcall 消费，而描边渐变由 `SmoothPolyline` 消费。现在我们已经有了渐变纹理，接下来我们来看如何在 vertex shader 中计算 uv。
+
+Mesh 填充在顶点里用 **`u_FillUVRect`**（`minX, minY, 1/width, 1/height`）把 **局部几何坐标** 映射到纹理。
+
+描边在顶点着色器里已得到 **模型矩阵变换后的世界坐标 `pos`**（展开带宽边上的点），要与 **`ComputedBounds.geometryBounds`** 一致，需先变回 **局部坐标** 再减 `min`、乘逆尺寸：
+
+`local = inverse(model) * vec3(pos, 1.0)`，然后 `v_StrokeUv = (local.xy - u_StrokeUVRect.xy) * u_StrokeUVRect.zw`。
+
+在 **WebGPU** 路径下，GLSL 经 **naga** 转成 WGSL 时 **`inverse(mat3)` 不可用**，因此实现里用手写的 **`inverseMat3`**（伴随矩阵 / 行列式）替代内置 `inverse`。
 
 ## 使用 Mesh 实现渐变 {#mesh-gradient}
 

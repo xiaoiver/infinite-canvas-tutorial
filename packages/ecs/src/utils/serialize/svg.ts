@@ -552,6 +552,12 @@ export async function serializeNodesToSVGElements(
       isGradient(restForExport.fill as string);
     const hasFillPattern =
       restForExport.fill && isPattern(restForExport.fill);
+    const hasStrokeGradient =
+      restForExport.stroke &&
+      isString(restForExport.stroke) &&
+      isGradient(restForExport.stroke as string);
+    const hasStrokePattern =
+      restForExport.stroke && isPattern(restForExport.stroke);
     const hasClipMode = !!clipMode;
 
     const hasChildren = edges.some(([parentId]) => parentId === id);
@@ -597,6 +603,8 @@ export async function serializeNodesToSVGElements(
       hasFillImage ||
       hasFillGradient ||
       hasFillPattern ||
+      hasStrokeGradient ||
+      hasStrokePattern ||
       hasMarker ||
       hasClipMode
     ) {
@@ -606,8 +614,13 @@ export async function serializeNodesToSVGElements(
       }
     }
 
+    let strokePaintLayer: SVGElement | undefined;
     if (innerOrOuterStrokeAlignment) {
-      exportInnerOrOuterStrokeAlignment(nodeForExport, element, $g);
+      strokePaintLayer = exportInnerOrOuterStrokeAlignment(
+        nodeForExport,
+        element,
+        $g,
+      );
     }
     if (innerShadowBlurRadius > 0) {
       exportInnerShadow(nodeForExport, element, $g);
@@ -622,6 +635,13 @@ export async function serializeNodesToSVGElements(
     }
     if (hasFillGradient || hasFillPattern) {
       exportFillGradientOrPattern(nodeForExport, element, $g);
+    }
+    if ((hasStrokeGradient || hasStrokePattern) && element) {
+      exportStrokeGradientOrPattern(
+        nodeForExport,
+        strokePaintLayer ?? element,
+        ($g ?? element) as SVGElement,
+      );
     }
     if (hasMarker && !isRough) {
       exportMarker(nodeForExport, element, $g);
@@ -779,7 +799,7 @@ function exportInnerOrOuterStrokeAlignment(
   attributes: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
-) {
+): SVGElement | undefined {
   const { type } = attributes;
   const { strokeWidth, strokeAlignment } = attributes as StrokeAttributes;
   const innerStrokeAlignment = strokeAlignment === 'inner';
@@ -799,6 +819,7 @@ function exportInnerOrOuterStrokeAlignment(
     );
 
     element.setAttribute('points', serializePoints(shiftedPoints));
+    return undefined;
   } else {
     const $stroke = element.cloneNode() as SVGElement;
     element.setAttribute('stroke', 'none');
@@ -851,6 +872,7 @@ function exportInnerOrOuterStrokeAlignment(
     }
 
     $g.appendChild($stroke);
+    return $stroke;
   }
 }
 
@@ -1078,8 +1100,12 @@ export function createOrUpdateMultiGradient(
   node: SerializedNode,
   $def: SVGDefsElement,
   gradients: Gradient[],
+  paint: 'fill' | 'stroke' = 'fill',
 ) {
-  const filterId = `filter-${node.id}-gradient`;
+  const filterId =
+    paint === 'stroke'
+      ? `filter-${node.id}-stroke-gradient`
+      : `filter-${node.id}-gradient`;
   let $existed = $def.querySelector(`#${filterId}`);
   if (!$existed) {
     $existed = createSVGElement('filter') as SVGFilterElement;
@@ -1223,8 +1249,7 @@ export function exportFillGradientOrPattern(
   $el: SVGElement,
   $g: SVGElement,
 ) {
-  const $defs = createSVGElement('defs') as SVGDefsElement;
-  $g.prepend($defs);
+  const $defs = ensureGroupDefs($g);
 
   const fill = (node as TextSerializedNode).fill;
 
@@ -1241,6 +1266,49 @@ export function exportFillGradientOrPattern(
       const filterId = createOrUpdateMultiGradient(node, $defs, gradients);
       $el?.setAttribute('filter', `url(#${filterId})`);
       $el?.setAttribute('fill', 'black');
+    }
+  }
+}
+
+function ensureGroupDefs($g: SVGElement): SVGDefsElement {
+  const first = $g.firstElementChild;
+  if (first?.localName === 'defs') {
+    return first as SVGDefsElement;
+  }
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.prepend($defs);
+  return $defs;
+}
+
+export function exportStrokeGradientOrPattern(
+  node: SerializedNode,
+  $el: SVGElement,
+  $g: SVGElement,
+) {
+  const $defs = ensureGroupDefs($g);
+  const stroke = (node as PathSerializedNode).stroke;
+
+  if (isPattern(stroke)) {
+    const patternId = createOrUpdatePattern(node, $defs, stroke);
+    $el?.setAttribute('stroke', `url(#${patternId})`);
+  } else {
+    const gradients = parseGradient(stroke as string);
+    if (gradients.length === 1) {
+      const gradientId = createOrUpdateGradient(node, $defs, gradients[0]);
+      $el?.setAttribute('stroke', `url(#${gradientId})`);
+    } else if (gradients.length > 1) {
+      const filterId = createOrUpdateMultiGradient(
+        node,
+        $defs,
+        gradients,
+        'stroke',
+      );
+      const existedFilter = $el?.getAttribute('filter') || '';
+      $el?.setAttribute(
+        'filter',
+        `${existedFilter} url(#${filterId})`.trim(),
+      );
+      $el?.setAttribute('stroke', 'black');
     }
   }
 }

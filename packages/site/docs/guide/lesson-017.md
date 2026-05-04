@@ -7,6 +7,7 @@ head:
           { property: 'og:title', content: 'Lesson 17 - Gradient and pattern' },
       ]
 ---
+
 <script setup>
 import Gradient from '../components/Gradient.vue';
 import MeshGradient from '../components/MeshGradient.vue';
@@ -137,6 +138,18 @@ rect.fill = `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%),
 Inspired by Figma's gradient editing panel, we've implemented a similar editor. You can trigger the editing panel by selecting a shape in the example above.
 
 ![Figma gradient panel](/figma-gradient-panel.png)
+
+## Applying gradients to fill and stroke {#applying-gradients-to-fill-and-stroke}
+
+Fill gradients are consumed by drawcalls such as `SDF` and `Mesh`, while stroke gradients are consumed by `SmoothPolyline`. Once the gradient has been rasterized to a texture, the remaining question is how to compute UVs in the vertex shader.
+
+For mesh fills, the vertex shader uses **`u_FillUVRect`** (`minX`, `minY`, `1/width`, `1/height`) to map **local geometry coordinates** into texture space.
+
+For strokes, the vertex shader already has **`pos`** in **world space** after the model matrix—the expanded point on the stroke ribbon. To align with **`ComputedBounds.geometryBounds`**, we transform back to **local space**, then subtract `min` and multiply by the inverse extent:
+
+`local = inverse(model) * vec3(pos, 1.0)`, then `v_StrokeUv = (local.xy - u_StrokeUVRect.xy) * u_StrokeUVRect.zw`.
+
+On the **WebGPU** path, when GLSL is lowered to WGSL through **naga**, **`inverse(mat3)` is not supported**, so the implementation uses a hand-written **`inverseMat3`** (adjugate / determinant) instead of the built-in `inverse`.
 
 ## Implementing Gradients with Mesh {#mesh-gradient}
 

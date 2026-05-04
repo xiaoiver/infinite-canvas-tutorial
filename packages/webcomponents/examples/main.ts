@@ -406,7 +406,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   const rect = {
     id: 'rect',
-    type: 'rect',
+    type: 'ellipse',
     fill: 'red',
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     width: 400,
