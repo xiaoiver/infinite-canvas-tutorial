@@ -523,6 +523,7 @@ export interface TextSerializedNode
   Partial<TextDecorationAttributes>,
   Partial<AttenuationAttributes>,
   Partial<WireframeAttributes>,
+  Partial<FilterAttributes>,
   Partial<BindedAttributes> { }
 
 export interface VectorNetworkAttributes {
