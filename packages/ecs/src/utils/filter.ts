@@ -2,8 +2,21 @@
  * CSS Filter / Effect
  */
 import type { Entity } from '@lastolivegames/becsy';
-import { Children, Filter, IconFont } from '../components';
+import {
+  Children,
+  Circle,
+  Ellipse,
+  Filter,
+  IconFont,
+  Line,
+  Path,
+  Polyline,
+  Rough,
+  Stroke,
+  StrokeGradient,
+} from '../components';
 import { cssColorToHex, parseColor } from './color';
+import { hasValidStroke } from './style';
 import { getPostEffectEngineTimeSeconds } from './postEffectEngineTime';
 
 export interface FilterObject {
@@ -1273,6 +1286,61 @@ export function getRasterFilterValueForShape(instance: Entity): string | undefin
     e = p;
   }
   return undefined;
+}
+
+function isUnderIconFontEntity(entity: Entity): boolean {
+  let e: Entity | undefined = entity;
+  for (let d = 0; d < 64; d++) {
+    if (!e.has(Children)) {
+      return false;
+    }
+    const p = e.read(Children).parent;
+    if (!p) {
+      return false;
+    }
+    if (p.has(IconFont)) {
+      return true;
+    }
+    e = p;
+  }
+  return false;
+}
+
+/**
+ * {@link SmoothPolyline} 纯色描边 + 栅格类 filter：将描边栅格进纹理再采样（与 {@link StrokeGradient} 同路径）。
+ * - Icon 子 path/ellipse/line 等（父级带 IconFont）
+ * - 独立的 polyline / line / path（圆角矩形等实体描边由 SDF 处理，不经过此分支）
+ *
+ * Canvas 描边为居中；独立折线需 `stroke.alignment === 'center'`。
+ */
+export function shouldRasterizeStrokeForFilterTexture(shape: Entity): boolean {
+  if (shape.has(StrokeGradient)) {
+    return false;
+  }
+  const fv = getRasterFilterValueForShape(shape);
+  if (!fv || !hasRasterPostEffects(fv)) {
+    return false;
+  }
+  if (!shape.has(Stroke) || !hasValidStroke(shape.read(Stroke))) {
+    return false;
+  }
+  const st = shape.read(Stroke);
+  const [da, db] = st.dasharray;
+  if (da > 0 && db > 0) {
+    return false;
+  }
+  if (shape.has(Rough)) {
+    return false;
+  }
+
+  if (isUnderIconFontEntity(shape)) {
+    return shape.hasSomeOf(Path, Line, Ellipse, Polyline, Circle);
+  }
+
+  if (!shape.hasSomeOf(Polyline, Line, Path)) {
+    return false;
+  }
+  return st.alignment === 'center';
 }
 
 function parseCssFilterScalar(params: string): number {

@@ -35,6 +35,7 @@ features:
     - title: 可交互
       details: 基于 <a href="https://genji-md.dev">genji</a> 实现的可交互代码块
 ---
+
 这份教程包含基于 WebGL / WebGPU 的基础 2D 图形渲染实现：
 
 -   [课程 2 - 绘制圆]：学习 WebGL 基础，使用 SDF（有向距离场）技术绘制抗锯齿圆形，理解片元着色器中的坐标变换和颜色混合
@@ -83,3 +84,52 @@ features:
 [课程 30 - 后处理与渲染图]: /zh/guide/lesson-030
 [课程 34 - Frame 与裁切]: /zh/guide/lesson-034
 [课程 35 - 基于瓦片的渲染]: /zh/guide/lesson-035
+
+## 图库
+
+以下为项目与应用中的部分效果与功能展示（后处理、渲染、工具与集成等）。
+
+<div class="home-gallery-section">
+  <div class="home-gallery" role="list">
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/halftone.png" alt="半色调后处理效果" width="1492" height="906" loading="lazy" decoding="async" />
+      <figcaption>半色调</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/liquid-metal.png" alt="液态金属文字与材质" width="1974" height="990" loading="lazy" decoding="async" />
+      <figcaption>液态金属</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/watercolor.png" alt="水彩风格渲染" width="1062" height="582" loading="lazy" decoding="async" />
+      <figcaption>水彩</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/pixelate.png" alt="像素化效果" width="1042" height="480" loading="lazy" decoding="async" />
+      <figcaption>像素化</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/radiance-cascades.png" alt="辐射级联光照" width="1370" height="798" loading="lazy" decoding="async" />
+      <figcaption>辐射级联</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/vello.png" alt="Vello GPU 渲染" width="1532" height="782" loading="lazy" decoding="async" />
+      <figcaption>Vello</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/iconfont.png" alt="画布上的图标字体" width="1272" height="662" loading="lazy" decoding="async" />
+      <figcaption>图标字体</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/mermaid.png" alt="Mermaid 图表" width="730" height="696" loading="lazy" decoding="async" />
+      <figcaption>Mermaid</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/brush-with-eraser.png" alt="笔刷与橡皮工具" width="980" height="454" loading="lazy" decoding="async" />
+      <figcaption>笔刷与橡皮</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/orth-connector.png" alt="正交连线" width="872" height="510" loading="lazy" decoding="async" />
+      <figcaption>连线</figcaption>
+    </figure>
+  </div>
+</div>

@@ -70,6 +70,7 @@ import {
   getRasterFilterValueForShape,
   hasRasterPostEffects,
 } from '../utils/filter';
+import { shouldBakeStrokeIntoRasterFilterTexture } from '../utils/solidShapeRasterForFilter';
 import { API } from '../API';
 import { MeshGradientPass } from '../render-graph/MeshGradientPass';
 import type { MeshGradient } from '../utils/gradient';
@@ -639,6 +640,12 @@ export abstract class Drawcall {
     uniformLegacyObject: Record<string, unknown>,
   ): void;
 
+  /**
+   * Scene `u_ZoomScale` from the current frame's {@link submit} (set before `createMaterial`).
+   * Used by off-screen raster bakes so glyph size attenuation matches the main pass.
+   */
+  protected sceneZoomScale = 1;
+
   destroy() {
     if (this.program) {
       this.indexBuffer?.destroy();
@@ -669,6 +676,10 @@ export abstract class Drawcall {
     uniformLegacyObject: Record<string, unknown>,
     builder: RGGraphBuilder,
   ) {
+    const zs = uniformLegacyObject['u_ZoomScale'];
+    this.sceneZoomScale =
+      typeof zs === 'number' && Number.isFinite(zs) && zs > 0 ? zs : 1;
+
     if (this.geometryDirty) {
       // CPU Poisson / heatmap preprocess are derived from the rasterized shape; `useEngineTime`
       // otherwise skips readback assuming only time changes — invalidate when geometry changes.
@@ -698,7 +709,7 @@ export abstract class Drawcall {
       const { width, height } = this.swapChain.getCanvas();
       renderPass.setViewport(0, 0, width, height);
     } else if (
-      this.useFillImage &&
+      (this.useFillImage || this.useRasterFilterEngineTimeRefresh) &&
       this.shapes.length > 0 &&
       this.#filterChainReady
     ) {
@@ -819,10 +830,22 @@ export abstract class Drawcall {
     ) {
       return true;
     }
-    return (
+    if (
       s.has(FillSolid) &&
       hasRasterPostEffects(getRasterFilterValueForShape(s))
-    );
+    ) {
+      return true;
+    }
+    return !this.instanced && shouldBakeStrokeIntoRasterFilterTexture(s);
+  }
+
+  /**
+   * When true (and filter chain is ready), re-run texture-space post passes each frame for
+   * `useEngineTime` filters — same branch as {@link useFillImage}. {@link SmoothPolyline} stroke
+   * textures use this for animated liquid-metal, etc.
+   */
+  protected get useRasterFilterEngineTimeRefresh(): boolean {
+    return false;
   }
 
   /** Subclasses (e.g. {@link SmoothPolyline}) append shader `#define`s beyond {@link useFillImage}. */
@@ -1496,37 +1519,37 @@ export abstract class Drawcall {
       const bindings =
         effect.type === 'lut' && lutAtlasTexture
           ? this.renderCache.createBindings({
-              pipeline,
-              samplerBindings: [
-                {
-                  texture: srcTexture,
-                  sampler: this.createLutPassInputSampler(),
-                },
-                {
-                  texture: lutAtlasTexture,
-                  sampler: this.createLutSampler(),
-                },
-              ],
-              uniformBufferBindings: [
-                {
-                  buffer: uniformBuffer,
-                },
-              ],
-            })
+            pipeline,
+            samplerBindings: [
+              {
+                texture: srcTexture,
+                sampler: this.createLutPassInputSampler(),
+              },
+              {
+                texture: lutAtlasTexture,
+                sampler: this.createLutSampler(),
+              },
+            ],
+            uniformBufferBindings: [
+              {
+                buffer: uniformBuffer,
+              },
+            ],
+          })
           : this.renderCache.createBindings({
-              pipeline,
-              samplerBindings: [
-                {
-                  texture: srcTexture,
-                  sampler: this.createSampler(),
-                },
-              ],
-              uniformBufferBindings: [
-                {
-                  buffer: uniformBuffer,
-                },
-              ],
-            });
+            pipeline,
+            samplerBindings: [
+              {
+                texture: srcTexture,
+                sampler: this.createSampler(),
+              },
+            ],
+            uniformBufferBindings: [
+              {
+                buffer: uniformBuffer,
+              },
+            ],
+          });
 
       this.#postEffectPasses.push({
         program,

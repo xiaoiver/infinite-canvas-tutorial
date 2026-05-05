@@ -71,6 +71,7 @@ import {
   FlexLayoutDirty,
   Group,
   IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
 
 export interface RendererPluginOptions {
@@ -125,6 +126,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
      * Geometry
      */
     component(IconFont);
+    component(IconFontEllipseStrokeRasterPlaceholder);
     component(Group);
     component(Circle);
     component(Ellipse);

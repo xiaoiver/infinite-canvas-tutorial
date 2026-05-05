@@ -853,18 +853,23 @@
 </trans-unit>
 <trans-unit id="sc4bcadba8e631b86">
   <source>name</source>
+  <target>名称</target>
 </trans-unit>
 <trans-unit id="s18b247f70df1543b">
   <source>Remove variable</source>
+  <target>删除变量</target>
 </trans-unit>
 <trans-unit id="sb39940945f8f7122">
   <source>Variables</source>
+  <target>变量</target>
 </trans-unit>
 <trans-unit id="sef49aec68fd1dc66">
   <source>Name</source>
+  <target>名称</target>
 </trans-unit>
 <trans-unit id="s0734e535bfa13b74">
   <source>Add variable</source>
+  <target>添加变量</target>
 </trans-unit>
 <trans-unit id="sb59a9ea6ab1822ab">
   <source>e.g. --primary</source>
@@ -989,9 +994,6 @@
 <trans-unit id="s48d785fb3005fe2c">
   <source>Tint</source>
 </trans-unit>
-<trans-unit id="sf872117754fc95ac">
-  <source>Time uniform follows the app clock each frame (liquid metal).</source>
-</trans-unit>
 <trans-unit id="sa2dc20e2aa203abc">
   <source>Inner glow</source>
 </trans-unit>
@@ -1009,9 +1011,6 @@
 </trans-unit>
 <trans-unit id="sbe1e1a6a3c524354">
   <source>Add stop</source>
-</trans-unit>
-<trans-unit id="sb3dfa93a2615d213">
-  <source>Time uniform follows the app clock each frame (heat map).</source>
 </trans-unit>
 <trans-unit id="s79824ae12d7f9b0a">
   <source>Inner distortion</source>
@@ -1036,9 +1035,6 @@
 </trans-unit>
 <trans-unit id="s50c322a3e7252623">
   <source>Add color</source>
-</trans-unit>
-<trans-unit id="s380aaadb78c6a22d">
-  <source>Time uniform follows the app clock each frame (gem smoke).</source>
 </trans-unit>
 <trans-unit id="sff77289e9ce38465">
   <source>Export canvas</source>
@@ -1243,6 +1239,18 @@
 <trans-unit id="s24f3a319b88552c1">
   <source>Low</source>
   <target>低</target>
+</trans-unit>
+<trans-unit id="s25b88419b92c65ca">
+  <source>LUT</source>
+  <target>LUT</target>
+</trans-unit>
+<trans-unit id="s4789364ddcdbeb45">
+  <source>LUT key</source>
+  <target>LUT 键</target>
+</trans-unit>
+<trans-unit id="s82c21acdbcd6e830">
+  <source>Strength</source>
+  <target>强度</target>
 </trans-unit>
 </body>
 </file>

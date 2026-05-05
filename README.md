@@ -478,9 +478,13 @@ If you want to use it in your own project, you can refer to:
 -   Render iconfont, import lucide, material and other iconsets
 -   Use components and instances with ref and descendants
 
-|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |         Components and instances          |
-| :---------------------------------------: | :------------------------------------------: | :---------------------------------------: |
-| ![variables](./screenshots/variables.png) |   ![iconfont](./screenshots/iconfont.png)    | ![iconfont](./screenshots/components.png) |
+|           Variables and themes            |         Components and instances          |
+| :---------------------------------------: | :---------------------------------------: |
+| ![variables](./screenshots/variables.png) | ![iconfont](./screenshots/components.png) |
+
+| Iconfont(lucide, material and pixelarticons) |                  Iconfont with filters                   |
+| :------------------------------------------: | :------------------------------------------------------: |
+|   ![iconfont](./screenshots/iconfont.png)    | ![iconfont with filters](./screenshots/liquid-metal.png) |
 
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

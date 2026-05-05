@@ -69,6 +69,7 @@ import {
   FlexLayoutDirty,
   Group,
   IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
@@ -80,6 +81,7 @@ import {
   pickChildFill,
   pickStrokeColorForChild,
   resolveIconFontWireStyle,
+  shouldUseIconFontEllipseStrokeRasterPlaceholder,
   strokeWidthFromIconStyle,
   type ScaledIconPrimitive,
 } from '../utils/icon-font';
@@ -347,7 +349,6 @@ function syncIconFontChildrenFromUpdatedNode(
     w,
     h,
   );
-  const initialChildren = rootEntity.read(Parent).children;
 
   const filterWire = (nodeInherit as { filter?: string }).filter;
   let strokeAsPlaceholderFillForRasterFilter = false;
@@ -373,8 +374,9 @@ function syncIconFontChildrenFromUpdatedNode(
   };
 
   if (!prims || prims.length === 0) {
-    for (const child of initialChildren) {
-      hideIconFontChild(child);
+    const pathChildren = rootEntity.read(Parent).children;
+    for (let ci = 0; ci < pathChildren.length; ci++) {
+      hideIconFontChild(pathChildren[ci]!);
     }
     if (rootEntity.has(IconFont) && w > 0 && h > 0) {
       const iw = rootEntity.write(IconFont);
@@ -399,8 +401,9 @@ function syncIconFontChildrenFromUpdatedNode(
   for (let i = 0; i < prims.length; i++) {
     const prim = prims[i]!;
     let child: Entity;
-    if (i < initialChildren.length) {
-      child = initialChildren[i]!;
+    const childrenNow = rootEntity.read(Parent).children;
+    if (i < childrenNow.length) {
+      child = childrenNow[i]!;
       safeAddComponent(child, Visibility, { value: 'inherited' });
       syncIconFontChildGeometryToPrim(child, prim);
     } else {
@@ -441,13 +444,26 @@ function syncIconFontChildrenFromUpdatedNode(
         value: fillPart,
         fillVariableRef: '',
       });
+      if (
+        shouldUseIconFontEllipseStrokeRasterPlaceholder(
+          prim,
+          strokeAsPlaceholderFillForRasterFilter,
+          fillPart,
+        )
+      ) {
+        safeAddComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+      } else {
+        safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+      }
     } else {
       safeRemoveComponent(child, FillSolid);
+      safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
     }
     safeAddComponent(child, MaterialDirty);
   }
-  for (let i = prims.length; i < initialChildren.length; i++) {
-    hideIconFontChild(initialChildren[i]!);
+  const childrenAfterSync = rootEntity.read(Parent).children;
+  for (let i = prims.length; i < childrenAfterSync.length; i++) {
+    hideIconFontChild(childrenAfterSync[i]!);
   }
   if (rootEntity.has(IconFont) && w > 0 && h > 0) {
     const iw = rootEntity.write(IconFont);

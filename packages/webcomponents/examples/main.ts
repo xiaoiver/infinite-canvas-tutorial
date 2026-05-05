@@ -263,54 +263,18 @@ canvas.addEventListener(Event.READY, async (e) => {
     registerIconifyIconSet('material-icon-theme', m);
   }
 
-  const button1 = {
-    id: 'icon-button',
-    type: 'rect',
-    name: 'Button/Default',
-    x: 100,
-    y: 100,
-    fill: 'grey',
-    display: 'flex',
-    padding: [16, 16],
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    cornerRadius: 30,
-    gap: 4,
-    zIndex: 0,
-    reusable: true,
-  } as const;
-
-  const SearchIcon = {
-    id: 'icon-button-icon',
-    parentId: 'icon-button',
-    type: 'iconfont' as const,
-    zIndex: 1,
-    iconFontName: 'search',
-    iconFontFamily: 'lucide',
-    stroke: 'white',
-    strokeWidth: 2,
-    width: 32,
-    height: 32,
-    lockAspectRatio: true,
-  };
-
   const text1 = {
     id: 'icon-button-text',
-    parentId: 'icon-button',
+    // parentId: 'icon-button',
     type: 'text',
     content: 'Button',
     fontFamily: 'system-ui',
-    fontSize: 24,
-    lineHeight: 32,
-    fill: 'white',
+    fontSize: 120,
+    fill: 'black',
     zIndex: 1,
-    textAlign: 'center',
-    textBaseline: 'middle',
-    // wordWrap: true,
-    // wordWrapWidth: 100,
-    // maxLines: 1,
-    // textOverflow: 'ellipsis',
+    anchorX: 100,
+    anchorY: 100,
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   };
 
   const button2 = {
@@ -391,33 +355,47 @@ canvas.addEventListener(Event.READY, async (e) => {
   const icon = {
     id: 'icon',
     type: 'iconfont',
-    iconFontName: 'search',
-    iconFontFamily: 'lucide',
+    iconFontName: 'blender',
+    iconFontFamily: 'material-icon-theme',
     width: 320,
     height: 320,
     x: 100,
     y: 100,
     zIndex: 1,
-    strokeWidth: 10,
-    stroke: 'red',
+    strokeWidth: 2,
+    stroke: 'black',
     lockAspectRatio: true,
-    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   }
 
   const rect = {
     id: 'rect',
     type: 'ellipse',
-    fill: 'red',
+    // fill: 'black',
     // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
     width: 400,
     height: 400,
-    stroke: 'linear-gradient(90deg, red, blue)',
+    stroke: 'black',
     strokeWidth: 20,
     x: 100,
     y: 100,
     zIndex: 1,
-    // 逻辑名需在下方 `registerCubeLutFromText` 中注册；省略强度时默认为 1
-    // filter: 'lut(fuji-classic-neg)',
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+  }
+
+  const polyline = {
+    id: 'polyline',
+    type: 'polyline',
+    points: '100,100 200,200 300,100',
+    stroke: 'black',
+    strokeWidth: 20,
+    strokeLinecap: 'round',
+    // strokeLinejoin: 'round',
+    x: 100,
+    y: 100,
+    zIndex: 1,
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    // filter: 'noise(0.2)'
   }
 
   const device = api.getCanvas().read(GPUResource).device;
@@ -447,10 +425,12 @@ canvas.addEventListener(Event.READY, async (e) => {
 
   api.runAtNextTick(() => {
     api.updateNodes([
-      rect,
+      // rect,
       // logo,
-      // icon
-      // button1, SearchIcon, text1,
+      icon,
+      // polyline,
+      // button1, SearchIcon, 
+      // text1,
       // button2,
       // button3,
       // button4

@@ -35,6 +35,7 @@ features:
     - title: Interactive
       details: Executable code blocks via <a href="https://genji-md.dev">genji</a>
 ---
+
 This tutorial covers a basic 2D graphics rendering implementation based on WebGL / WebGPU:
 
 -   [Lesson 2 - Draw a circle]: Learn WebGL basics, use SDF (Signed Distance Field) to render anti-aliased circles, understand coordinate transformation and color blending in fragment shaders
@@ -83,3 +84,52 @@ The most important thing:
 [Lesson 30 - Post-processing and render graph]: /guide/lesson-030
 [Lesson 34 - Frame and clip]: /guide/lesson-034
 [Lesson 35 - Tile-based rendering]: /guide/lesson-035
+
+## Gallery
+
+A few effects and features from the project and app (post-processing, rendering, tools, and integrations).
+
+<div class="home-gallery-section">
+  <div class="home-gallery" role="list">
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/halftone.png" alt="Halftone post-processing" width="1492" height="906" loading="lazy" decoding="async" />
+      <figcaption>Halftone</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/liquid-metal.png" alt="Liquid metal text and materials" width="1974" height="990" loading="lazy" decoding="async" />
+      <figcaption>Liquid metal</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/watercolor.png" alt="Watercolor-style rendering" width="1062" height="582" loading="lazy" decoding="async" />
+      <figcaption>Watercolor</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/pixelate.png" alt="Pixelate effect" width="1042" height="480" loading="lazy" decoding="async" />
+      <figcaption>Pixelate</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/radiance-cascades.png" alt="Radiance cascades lighting" width="1370" height="798" loading="lazy" decoding="async" />
+      <figcaption>Radiance cascades</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/vello.png" alt="Vello GPU rendering" width="1532" height="782" loading="lazy" decoding="async" />
+      <figcaption>Vello</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/iconfont.png" alt="Icon font on canvas" width="1272" height="662" loading="lazy" decoding="async" />
+      <figcaption>Icon fonts</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/mermaid.png" alt="Mermaid diagrams" width="730" height="696" loading="lazy" decoding="async" />
+      <figcaption>Mermaid</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/brush-with-eraser.png" alt="Brush and eraser tools" width="980" height="454" loading="lazy" decoding="async" />
+      <figcaption>Brush &amp; eraser</figcaption>
+    </figure>
+    <figure class="home-gallery__item" role="listitem">
+      <img src="/gallery/orth-connector.png" alt="Orthogonal connectors" width="872" height="510" loading="lazy" decoding="async" />
+      <figcaption>Connectors</figcaption>
+    </figure>
+  </div>
+</div>

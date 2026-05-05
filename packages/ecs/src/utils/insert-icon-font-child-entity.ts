@@ -1,6 +1,7 @@
 import { EntityCommands } from '../commands/EntityCommands';
 import {
   Ellipse,
+  IconFontEllipseStrokeRasterPlaceholder,
   Line,
   Name,
   Path,
@@ -19,6 +20,7 @@ import {
   pathFillRuleFromIconStyle,
   pickChildFill,
   pickStrokeColorForChild,
+  shouldUseIconFontEllipseStrokeRasterPlaceholder,
   strokeWidthFromIconStyle,
 } from './icon-font';
 
@@ -100,6 +102,15 @@ export function insertIconFontChildFromPrimitive(
   );
   if (fillPart && fillPart !== 'none') {
     ch.insert(new FillSolid(fillPart, ''));
+    if (
+      shouldUseIconFontEllipseStrokeRasterPlaceholder(
+        prim,
+        opts.strokeAsPlaceholderFillForRasterFilter,
+        fillPart,
+      )
+    ) {
+      ch.insert(new IconFontEllipseStrokeRasterPlaceholder());
+    }
   }
   ch.insert(new ZIndex(opts.zIndex));
   ch.insert(new Visibility(opts.visibility));

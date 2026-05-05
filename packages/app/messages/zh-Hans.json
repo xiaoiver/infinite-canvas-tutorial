@@ -104,6 +104,7 @@
   "toolbar": {
     "home": "首页",
     "myProjects": "我的项目",
+    "tools": "工具",
     "editArea": "编辑区域",
     "drawRectMask": "矩形遮罩",
     "drawPencilFreehandMask": "铅笔自由绘制遮罩",
@@ -204,6 +205,10 @@
       "fujifilmLuts": {
         "title": "富士胶片 LUT",
         "description": "富士胶片官方的 .cube LUTs。sRGB 转换参考 <repo>github.com/abpy/FujifilmCameraProfiles</repo>。"
+      },
+      "liquidMetal": {
+        "title": "液态金属",
+        "description": "为 Lucide 图标与文字套用 liquid-metal 滤镜；可在右侧属性面板继续添加图层或调整效果参数。"
       }
     },
     "photoColors": {
@@ -220,6 +225,10 @@
     "fujifilmLuts": {
       "metaTitle": "富士胶片 LUT",
       "metaDescription": "在画布上试用富士风格胶片模拟 LUT。"
+    },
+    "liquidMetal": {
+      "metaTitle": "液态金属",
+      "metaDescription": "在图标字体与文字上预览 liquid-metal 滤镜效果。"
     }
   }
 }

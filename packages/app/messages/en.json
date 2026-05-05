@@ -104,6 +104,7 @@
   "toolbar": {
     "home": "Home",
     "myProjects": "My Projects",
+    "tools": "Tools",
     "editArea": "Edit Area",
     "drawRectMask": "Draw Rect Mask",
     "drawPencilFreehandMask": "Draw Pencil Freehand Mask",
@@ -204,6 +205,10 @@
       "fujifilmLuts": {
         "title": "Fujifilm LUTs",
         "description": ".cube LUTs from Fujifilm. sRGB conversion from <repo>github.com/abpy/FujifilmCameraProfiles</repo>."
+      },
+      "liquidMetal": {
+        "title": "Liquid metal",
+        "description": "Lucide icons and text with the liquid-metal filter. Add layers or tweak the effect in the properties panel."
       }
     },
     "photoColors": {
@@ -220,6 +225,10 @@
     "fujifilmLuts": {
       "metaTitle": "Fujifilm LUTs",
       "metaDescription": "Try Fujifilm-style film emulation LUTs on your photos."
+    },
+    "liquidMetal": {
+      "metaTitle": "Liquid metal",
+      "metaDescription": "Preview the liquid-metal filter on icon-font layers and text (Lucide and more)."
     }
   }
 }

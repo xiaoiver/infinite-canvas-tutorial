@@ -476,12 +476,16 @@ pnpm run dev
 ## 课程 38 - 从设计到代码 [🔗](https://infinitecanvas.cc/zh/guide/lesson-038)
 
 -   实现变量与主题
--   支持 iconfont 渲染，在运行时引入 lucide、material 等图标集
+-   支持 iconfont 渲染，在运行时引入 lucide、material 等图标集，支持应用 filter
 -   引用与继承已声明的组件
 
-|           Variables and themes            | Iconfont(lucide, material and pixelarticons) |         Components and instances          |
-| :---------------------------------------: | :------------------------------------------: | :---------------------------------------: |
-| ![variables](./screenshots/variables.png) |   ![iconfont](./screenshots/iconfont.png)    | ![iconfont](./screenshots/components.png) |
+|           Variables and themes            |         Components and instances          |
+| :---------------------------------------: | :---------------------------------------: |
+| ![variables](./screenshots/variables.png) | ![iconfont](./screenshots/components.png) |
+
+| Iconfont(lucide, material and pixelarticons) |                  Iconfont with filters                   |
+| :------------------------------------------: | :------------------------------------------------------: |
+|   ![iconfont](./screenshots/iconfont.png)    | ![iconfont with filters](./screenshots/liquid-metal.png) |
 
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
