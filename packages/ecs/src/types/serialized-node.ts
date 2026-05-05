@@ -331,10 +331,11 @@ export interface RoughAttributes {
 
 export interface FilterAttributes {
   /**
-   * The filter CSS property applies graphical effects like blur or color shift to an element. Filters are commonly used to adjust the rendering of images.
+   * CSS `filter` string (blur, drop-shadow, …), aligned with Figma layer effects: applies to the **whole shape** (fill + stroke) in SVG export via `style="filter: …"` on the exported wrapper.
+   * Runtime uses the same string for GPU post-effects via {@link Filter}.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/filter
    */
-  filter: string;
+  filter?: string;
 }
 
 export interface GSerializedNode
@@ -414,6 +415,7 @@ export interface LineSerializedNode
   Partial<HitStrokeInteractionAttributes>,
   Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
   Partial<MarkerAttributes>,
+  Partial<FilterAttributes>,
   Partial<BindingAttributes> { }
 
 export interface PolylineAttributes {
@@ -427,6 +429,7 @@ export interface PolylineSerializedNode
   Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
   Partial<WireframeAttributes>,
   Partial<MarkerAttributes>,
+  Partial<FilterAttributes>,
   Partial<BindingAttributes> { }
 
 export interface BrushAttributes {

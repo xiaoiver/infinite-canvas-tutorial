@@ -31,6 +31,7 @@ import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
 import { CanvasYjsManager } from '@/lib/yjs/canvas-yjs-manager';
 import ZoomToolbar from './zoom-toolbar';
 import lucide from '@iconify/json/json/lucide.json';
+import materialIconTheme from '@iconify/json/json/material-icon-theme.json';
 
 let appRunning = false;
 
@@ -195,6 +196,7 @@ const Canvas = ({
     });
 
     registerIconifyIconSet('lucide', lucide);
+    registerIconifyIconSet('material-icon-theme', materialIconTheme);
 
     await prepareCanvasRef.current?.(api);
 

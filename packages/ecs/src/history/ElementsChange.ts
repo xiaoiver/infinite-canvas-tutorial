@@ -69,6 +69,7 @@ import {
   FlexLayoutDirty,
   Group,
   IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
@@ -80,6 +81,7 @@ import {
   pickChildFill,
   pickStrokeColorForChild,
   resolveIconFontWireStyle,
+  shouldUseIconFontEllipseStrokeRasterPlaceholder,
   strokeWidthFromIconStyle,
   type ScaledIconPrimitive,
 } from '../utils/icon-font';
@@ -441,8 +443,20 @@ function syncIconFontChildrenFromUpdatedNode(
         value: fillPart,
         fillVariableRef: '',
       });
+      if (
+        shouldUseIconFontEllipseStrokeRasterPlaceholder(
+          prim,
+          strokeAsPlaceholderFillForRasterFilter,
+          fillPart,
+        )
+      ) {
+        safeAddComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+      } else {
+        safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+      }
     } else {
       safeRemoveComponent(child, FillSolid);
+      safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
     }
     safeAddComponent(child, MaterialDirty);
   }

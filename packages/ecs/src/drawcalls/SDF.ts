@@ -40,6 +40,12 @@ import {
   resolveFillImageTexturePixelSize,
 } from '../utils/fillImageTextureSize';
 import {
+  createFillAndStrokeRgbaRasterForFilter,
+  expandBoundsForCenterCanvasStroke,
+  getSdfGeometryBoundsForFilter,
+  shouldBakeStrokeIntoRasterFilterTexture,
+} from '../utils/solidShapeRasterForFilter';
+import {
   Circle,
   ComputedBounds,
   Ellipse,
@@ -75,6 +81,19 @@ export class SDF extends Drawcall {
   #rawFillImageTexture: Texture | null = null;
   /** True when {@link #texture} references the post-process chain output (do not `destroy` in SDF.destroy). */
   #fillTextureFromPostChain = false;
+  /** Fill+stroke were rasterized for raster filters; GPU stroke width must be zero to avoid double draw. */
+  #bakedStrokeIntoFilterTexture = false;
+
+  protected override get extraShaderDefines(): string {
+    const s = this.shapes[0];
+    if (!s || this.instanced) {
+      return super.extraShaderDefines;
+    }
+    if (shouldBakeStrokeIntoRasterFilterTexture(s)) {
+      return `${super.extraShaderDefines}#define USE_FILLIMAGE_BAKED_STROKE\n`;
+    }
+    return super.extraShaderDefines;
+  }
 
   static useDash(shape: Entity) {
     const { dasharray } = shape.has(Stroke)
@@ -319,7 +338,7 @@ export class SDF extends Drawcall {
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 * 8),
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (12 + 36),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -377,6 +396,7 @@ export class SDF extends Drawcall {
       const instance = this.shapes[0];
 
       this.#fillTextureFromPostChain = false;
+      this.#bakedStrokeIntoFilterTexture = false;
       if (!getRasterFilterValueForShape(instance)) {
         this.destroyFullPostProcessingChain();
       }
@@ -487,6 +507,37 @@ export class SDF extends Drawcall {
           sourceW: sw,
           sourceH: sh,
         });
+      } else if (
+        !this.instanced &&
+        shouldBakeStrokeIntoRasterFilterTexture(instance)
+      ) {
+        const geom = getSdfGeometryBoundsForFilter(instance);
+        const sw = instance.read(Stroke).width;
+        const bounds = expandBoundsForCenterCanvasStroke(geom, sw);
+        const bw = bounds.maxX - bounds.minX;
+        const bh = bounds.maxY - bounds.minY;
+        const tw = Math.max(1, Math.ceil(bw));
+        const th = Math.max(1, Math.ceil(bh));
+        const canvas = createFillAndStrokeRgbaRasterForFilter(
+          instance,
+          bounds,
+          tw,
+          th,
+        );
+        const raw = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.SAMPLED,
+        });
+        raw.setImageData([canvas as HTMLCanvasElement]);
+        this.#texture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          raw,
+          tw,
+          th,
+        );
+        this.#bakedStrokeIntoFilterTexture = true;
       } else if (instance.has(FillSolid)) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;
@@ -698,6 +749,7 @@ export class SDF extends Drawcall {
     }
     this.#texture = null;
     this.#fillTextureFromPostChain = false;
+    this.#bakedStrokeIntoFilterTexture = false;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
@@ -741,7 +793,9 @@ export class SDF extends Drawcall {
     const { value: fill } = shape.has(FillSolid)
       ? shape.read(FillSolid)
       : { value: null };
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+      fill != null && fill !== '' ? fill : 'transparent',
+    );
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)
@@ -783,6 +837,12 @@ export class SDF extends Drawcall {
     if (shape.has(StrokeGradient)) {
       strokeWidthForSdf = 0;
     }
+    let filterExtras: [number, number, number, number] = [0, 0, 0, 0];
+    if (this.#bakedStrokeIntoFilterTexture && !shape.has(StrokeGradient)) {
+      strokeWidthForSdf = 0;
+      const sw = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+      filterExtras = [sw * 0.5, sw, 0, 0];
+    }
     const u_ZIndexStrokeWidth = [
       globalRenderOrder / ZINDEX_FACTOR,
       strokeWidthForSdf,
@@ -800,17 +860,22 @@ export class SDF extends Drawcall {
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
     const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];
 
+    const flat: number[] = [
+      ...u_Position,
+      ...u_Size,
+      ...u_FillColor,
+      ...u_StrokeColor,
+      ...u_ZIndexStrokeWidth,
+      ...u_Opacity,
+      ...u_InnerShadowColor,
+      ...u_InnerShadow,
+    ];
+    if (!this.instanced) {
+      flat.push(...filterExtras);
+    }
+
     return [
-      [
-        ...u_Position,
-        ...u_Size,
-        ...u_FillColor,
-        ...u_StrokeColor,
-        ...u_ZIndexStrokeWidth,
-        ...u_Opacity,
-        ...u_InnerShadowColor,
-        ...u_InnerShadow,
-      ],
+      flat,
       {
         u_Position,
         u_Size,
@@ -820,6 +885,7 @@ export class SDF extends Drawcall {
         u_Opacity,
         u_InnerShadowColor,
         u_InnerShadow,
+        u_FilterExtras: filterExtras,
       },
     ];
   }

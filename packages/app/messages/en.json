@@ -204,6 +204,10 @@
       "fujifilmLuts": {
         "title": "Fujifilm LUTs",
         "description": ".cube LUTs from Fujifilm. sRGB conversion from <repo>github.com/abpy/FujifilmCameraProfiles</repo>."
+      },
+      "liquidMetalIconfonts": {
+        "title": "Liquid metal + icon fonts",
+        "description": "Lucide icons with the liquid-metal filter. Add more icon-font layers or tweak the effect in the properties panel."
       }
     },
     "photoColors": {
@@ -220,6 +224,10 @@
     "fujifilmLuts": {
       "metaTitle": "Fujifilm LUTs",
       "metaDescription": "Try Fujifilm-style film emulation LUTs on your photos."
+    },
+    "liquidMetalIconfonts": {
+      "metaTitle": "Liquid metal icon fonts",
+      "metaDescription": "Preview liquid-metal on vector icon-font layers (Lucide)."
     }
   }
 }

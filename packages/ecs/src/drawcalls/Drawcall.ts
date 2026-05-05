@@ -70,6 +70,7 @@ import {
   getRasterFilterValueForShape,
   hasRasterPostEffects,
 } from '../utils/filter';
+import { shouldBakeStrokeIntoRasterFilterTexture } from '../utils/solidShapeRasterForFilter';
 import { API } from '../API';
 import { MeshGradientPass } from '../render-graph/MeshGradientPass';
 import type { MeshGradient } from '../utils/gradient';
@@ -698,7 +699,7 @@ export abstract class Drawcall {
       const { width, height } = this.swapChain.getCanvas();
       renderPass.setViewport(0, 0, width, height);
     } else if (
-      this.useFillImage &&
+      (this.useFillImage || this.useRasterFilterEngineTimeRefresh) &&
       this.shapes.length > 0 &&
       this.#filterChainReady
     ) {
@@ -819,10 +820,22 @@ export abstract class Drawcall {
     ) {
       return true;
     }
-    return (
+    if (
       s.has(FillSolid) &&
       hasRasterPostEffects(getRasterFilterValueForShape(s))
-    );
+    ) {
+      return true;
+    }
+    return !this.instanced && shouldBakeStrokeIntoRasterFilterTexture(s);
+  }
+
+  /**
+   * When true (and filter chain is ready), re-run texture-space post passes each frame for
+   * `useEngineTime` filters — same branch as {@link useFillImage}. {@link SmoothPolyline} stroke
+   * textures use this for animated liquid-metal, etc.
+   */
+  protected get useRasterFilterEngineTimeRefresh(): boolean {
+    return false;
   }
 
   /** Subclasses (e.g. {@link SmoothPolyline}) append shader `#define`s beyond {@link useFillImage}. */

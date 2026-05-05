@@ -62,6 +62,7 @@ layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
     vec4 u_Opacity;
     vec4 u_InnerShadowColor;
     vec4 u_InnerShadow;
+    vec4 u_FilterExtras;
   };
 #endif
 
@@ -140,6 +141,15 @@ void main() {
     strokeWidth = strokeWidth / u_ZoomScale;
   }
 
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+  float bakedHalfStroke = u_FilterExtras.y * 0.5;
+  vec2 radius = size + vec2(bakedHalfStroke);
+  v_FragCoord = vec2(a_FragCoord * radius);
+  v_Radius = abs(radius);
+  #ifdef USE_FILLIMAGE
+    v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
+  #endif
+#else
   float strokeOffset;
   if (strokeAlignment < 0.5) {
     strokeOffset = strokeWidth / 2.0;
@@ -156,6 +166,7 @@ void main() {
   #ifdef USE_FILLIMAGE
     v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
   #endif
+#endif
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -192,6 +203,7 @@ layout(std140) uniform SceneUniforms {
     vec4 u_Opacity;
     vec4 u_InnerShadowColor;
     vec4 u_InnerShadow;
+    vec4 u_FilterExtras;
   };
 #endif
 
@@ -341,13 +353,28 @@ void main() {
   }
 
   float distance;
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+  vec2 sdfHalfSize = u_Size.xy;
+#endif
   // 'circle', 'ellipse', 'rect'
   if (shape < 0.5) {
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+    distance = sdf_circle(v_FragCoord, sdfHalfSize.x);
+#else
     distance = sdf_circle(v_FragCoord, v_Radius.x);
+#endif
   } else if (shape < 1.5) {
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+    distance = sdf_ellipse(v_FragCoord, sdfHalfSize);
+#else
     distance = sdf_ellipse(v_FragCoord, v_Radius);
+#endif
   } else if (shape < 2.5) {
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+    distance = sdf_rounded_box(v_FragCoord, sdfHalfSize, effective_round_rect_radius(sdfHalfSize, cornerRadius));
+#else
     distance = sdf_rounded_box(v_FragCoord, v_Radius, effective_round_rect_radius(v_Radius, cornerRadius));
+#endif
     // TODO: Fast path when the quad is not rounded and doesn't have any border.
   }
 
@@ -390,7 +417,12 @@ void main() {
 
   float antialiasedBlur = -fwidth(length(v_FragCoord));
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+  float distForAlpha = distance - u_FilterExtras.x;
+  outputColor.a *= clamp(1.0 - distForAlpha, 0.0, 1.0) * opacity * opacity_t;
+#else
   outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
+#endif
 
   ${wireframe_frag}
 

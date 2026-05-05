@@ -14,12 +14,12 @@ export type ToolEntry = {
 };
 
 export const toolEntries: ToolEntry[] = [
-    {
-        id: 'photoColors',
-        path: '/photo-colors',
-        status: 'ready',
-        screenshot: '/photo-colors-1.png',
-    },
+    // {
+    //     id: 'photoColors',
+    //     path: '/photo-colors',
+    //     status: 'ready',
+    //     screenshot: '/photo-colors-1.png',
+    // },
     {
         id: 'glitch',
         path: '/glitch',
@@ -31,5 +31,10 @@ export const toolEntries: ToolEntry[] = [
         path: '/fujifilm-luts',
         status: 'ready',
         screenshot: '/screenshot-luts.png',
+    },
+    {
+        id: 'liquidMetalIconfonts',
+        path: '/liquid-metal-iconfonts',
+        status: 'ready',
     },
 ];

@@ -204,6 +204,10 @@
       "fujifilmLuts": {
         "title": "富士胶片 LUT",
         "description": "富士胶片官方的 .cube LUTs。sRGB 转换参考 <repo>github.com/abpy/FujifilmCameraProfiles</repo>。"
+      },
+      "liquidMetalIconfonts": {
+        "title": "液态金属 + 图标字体",
+        "description": "为 Lucide 图标字形套用 liquid-metal 滤镜；可在右侧属性面板继续添加图标或调整效果参数。"
       }
     },
     "photoColors": {
@@ -220,6 +224,10 @@
     "fujifilmLuts": {
       "metaTitle": "富士胶片 LUT",
       "metaDescription": "在画布上试用富士风格胶片模拟 LUT。"
+    },
+    "liquidMetalIconfonts": {
+      "metaTitle": "液态金属图标字",
+      "metaDescription": "在矢量图标（Lucide）上预览 liquid-metal 效果。"
     }
   }
 }

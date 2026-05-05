@@ -274,6 +274,18 @@ function effectiveSvgRectCornerRadius(
   return Math.min(r, cap);
 }
 
+/** Append `propertyName: value` to SVG `style`, escaping double quotes for XML attribute safety. */
+function appendSvgStyleProperty(
+  el: SVGElement,
+  propertyName: string,
+  value: string,
+) {
+  const safe = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const decl = `${propertyName}: ${safe}`;
+  const prev = el.getAttribute('style');
+  el.setAttribute('style', prev?.trim() ? `${prev.trim()}; ${decl}` : decl);
+}
+
 /**
  * 将场景节点导出为 SVG 子树。对 `fill` / `stroke` 等与 {@link getComputedInheritGroupWireMap} 一致的可继承
  * 线框字段，按 `parentId` 链做「有效展示」再写出，使从父 `g` 继承到的颜色在导出中显式化。
@@ -367,7 +379,7 @@ export async function serializeNodesToSVGElements(
       markerStart,
       markerEnd,
       markerFactor,
-      filter,
+      filter: _filterWireOmitFromAttrs,
       sizeAttenuation,
       strokeAttenuation,
       hitStrokeWidth,
@@ -428,7 +440,11 @@ export async function serializeNodesToSVGElements(
 
     if (element) {
       Object.entries(restForExport).forEach(([key, value]) => {
-        if (key === 'hitStrokeWidth' || key === 'svgDataAttributes') {
+        if (
+          key === 'hitStrokeWidth' ||
+          key === 'svgDataAttributes' ||
+          key === 'filter'
+        ) {
           return;
         }
         if (
@@ -622,6 +638,7 @@ export async function serializeNodesToSVGElements(
         $g,
       );
     }
+    const strokeDecorationsTarget = strokePaintLayer ?? element;
     if (innerShadowBlurRadius > 0) {
       exportInnerShadow(nodeForExport, element, $g);
     }
@@ -636,15 +653,15 @@ export async function serializeNodesToSVGElements(
     if (hasFillGradient || hasFillPattern) {
       exportFillGradientOrPattern(nodeForExport, element, $g);
     }
-    if ((hasStrokeGradient || hasStrokePattern) && element) {
+    if ((hasStrokeGradient || hasStrokePattern) && strokeDecorationsTarget) {
       exportStrokeGradientOrPattern(
         nodeForExport,
-        strokePaintLayer ?? element,
+        strokeDecorationsTarget,
         ($g ?? element) as SVGElement,
       );
     }
-    if (hasMarker && !isRough) {
-      exportMarker(nodeForExport, element, $g);
+    if (hasMarker && !isRough && strokeDecorationsTarget) {
+      exportMarker(nodeForExport, strokeDecorationsTarget, $g);
     }
     if (hasClipMode) {
       await exportClipOrMask(nodeForExport, element, $g);
@@ -652,6 +669,11 @@ export async function serializeNodesToSVGElements(
 
     $g = $g || element;
     $g.id = `node-${id}`;
+
+    const wireFilter = (nodeForExport as { filter?: string }).filter;
+    if (typeof wireFilter === 'string' && wireFilter.trim() !== '') {
+      appendSvgStyleProperty($g, 'filter', wireFilter.trim());
+    }
 
     applySvgDataAttributesToElement($g, {
       hitStrokeWidth,

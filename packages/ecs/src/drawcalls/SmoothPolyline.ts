@@ -31,8 +31,14 @@ import {
 import {
   getRasterFilterValueForShape,
   filterRasterPostEffects,
+  filterStringUsesEngineTimePost,
   parseEffect,
+  shouldRasterizeStrokeForFilterTexture,
 } from '../utils/filter';
+import {
+  createStrokeSilhouetteRasterForFilter,
+  getStrokeSilhouetteRasterBounds,
+} from '../utils/solidShapeRasterForFilter';
 import {
   Circle,
   ComputedBounds,
@@ -62,6 +68,37 @@ import { lineArrow } from '../utils';
 
 const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
+
+/**
+ * Stroke gradient raster and fragment `u_StrokeUVRect` must match the shape's local box.
+ * Mirrors {@link Mesh.getSolidFillFilterGeometry}: `createMaterial` can run before
+ * {@link ComputedBounds} catches up after Rect/Ellipse/Circle size changes.
+ */
+function geometryBoxForStrokeGradient(instance: Entity): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  if (instance.has(ComputedBounds)) {
+    const g = instance.read(ComputedBounds).geometryBounds;
+    const gw = g.maxX - g.minX;
+    const gh = g.maxY - g.minY;
+    if (gw >= 0.5 && gh >= 0.5) {
+      return { minX: g.minX, minY: g.minY, maxX: g.maxX, maxY: g.maxY };
+    }
+  }
+  if (instance.has(Rect)) {
+    return Rect.getGeometryBounds(instance.read(Rect));
+  }
+  if (instance.has(Ellipse)) {
+    return Ellipse.getGeometryBounds(instance.read(Ellipse));
+  }
+  if (instance.has(Circle)) {
+    return Circle.getGeometryBounds(instance.read(Circle));
+  }
+  return { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+}
 const stridePoints = 2;
 const strideFloats = 3;
 const strokeAlignmentMap = {
@@ -100,8 +137,35 @@ export class SmoothPolyline extends Drawcall {
     return false;
   }
 
+  protected override get useRasterFilterEngineTimeRefresh(): boolean {
+    const s = this.shapes[0];
+    if (!s || this.instanced) {
+      return false;
+    }
+    const usesStrokeTex =
+      shouldRasterizeStrokeForFilterTexture(s) ||
+      (s.has(StrokeGradient) &&
+        !(
+          s.has(Rough) &&
+          ((s.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||
+            (s.has(Rect) && this.index === 2))
+        ));
+    if (!usesStrokeTex) {
+      return false;
+    }
+    const fv = getRasterFilterValueForShape(s);
+    return !!(fv && filterStringUsesEngineTimePost(fv));
+  }
+
   protected get extraShaderDefines(): string {
     const s = this.shapes[0];
+    if (
+      !this.instanced &&
+      s &&
+      shouldRasterizeStrokeForFilterTexture(s)
+    ) {
+      return '#define USE_STROKE_GRADIENT\n';
+    }
     if (!s?.has(StrokeGradient)) {
       return '';
     }
@@ -404,45 +468,74 @@ export class SmoothPolyline extends Drawcall {
       this.#strokeGradientTexture = null;
       this.#strokeGradientFromPostChain = false;
 
-      const gb = instance.has(ComputedBounds)
-        ? instance.read(ComputedBounds).geometryBounds
-        : { minX: 0, minY: 0, maxX: 1, maxY: 1 };
-      const { minX, minY, maxX, maxY } = gb;
-      const width = maxX - minX;
-      const height = maxY - minY;
-
-      const strokeGradients = parseGradient(instance.read(StrokeGradient).value);
-      const meshStroke =
-        strokeGradients?.length === 1 ? strokeGradients[0] : undefined;
-
-      if (meshStroke && isMeshGradientGradient(meshStroke)) {
-        const raw = this.renderMeshGradientTexture(meshStroke, 128, 128);
-        this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
-          instance,
-          raw,
-          128,
-          128,
+      if (shouldRasterizeStrokeForFilterTexture(instance)) {
+        const bounds = getStrokeSilhouetteRasterBounds(instance, () =>
+          geometryBoxForStrokeGradient(instance),
         );
-      } else {
-        const canvas = this.texturePool.getOrCreateGradient({
-          gradients: strokeGradients ?? [],
-          min: [minX, minY],
-          width,
-          height,
-        });
+        const bw = bounds.maxX - bounds.minX;
+        const bh = bounds.maxY - bounds.minY;
+        const tw = Math.max(1, Math.ceil(bw));
+        const th = Math.max(1, Math.ceil(bh));
+        const canvas = createStrokeSilhouetteRasterForFilter(
+          instance,
+          bounds,
+          tw,
+          th,
+        );
         const texture = this.device.createTexture({
           format: Format.U8_RGBA_NORM,
-          width: 128,
-          height: 128,
+          width: tw,
+          height: th,
           usage: TextureUsage.SAMPLED,
         });
-        texture.setImageData([canvas]);
+        texture.setImageData([canvas as HTMLCanvasElement]);
         this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
           instance,
           texture,
-          128,
-          128,
+          tw,
+          th,
         );
+      } else {
+        const gb = geometryBoxForStrokeGradient(instance);
+        const { minX, minY, maxX, maxY } = gb;
+        const width = maxX - minX;
+        const height = maxY - minY;
+
+        const strokeGradients = parseGradient(
+          instance.read(StrokeGradient).value,
+        );
+        const meshStroke =
+          strokeGradients?.length === 1 ? strokeGradients[0] : undefined;
+
+        if (meshStroke && isMeshGradientGradient(meshStroke)) {
+          const raw = this.renderMeshGradientTexture(meshStroke, 128, 128);
+          this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            raw,
+            128,
+            128,
+          );
+        } else {
+          const canvas = this.texturePool.getOrCreateGradient({
+            gradients: strokeGradients ?? [],
+            min: [minX, minY],
+            width,
+            height,
+          });
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: 128,
+            height: 128,
+            usage: TextureUsage.SAMPLED,
+          });
+          texture.setImageData([canvas]);
+          this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            texture,
+            128,
+            128,
+          );
+        }
       }
 
       bindings.samplerBindings = [
@@ -663,17 +756,27 @@ export class SmoothPolyline extends Drawcall {
     }
 
     let u_StrokeUVRect = [0, 0, 0, 0];
-    if (
+    if (shouldRasterizeStrokeForFilterTexture(shape)) {
+      const b = getStrokeSilhouetteRasterBounds(shape, () =>
+        geometryBoxForStrokeGradient(shape),
+      );
+      const gw = b.maxX - b.minX;
+      const gh = b.maxY - b.minY;
+      u_StrokeUVRect = [
+        b.minX,
+        b.minY,
+        gw === 0 ? 0 : 1 / gw,
+        gh === 0 ? 0 : 1 / gh,
+      ];
+    } else if (
       shape.has(StrokeGradient) &&
-      shape.has(ComputedBounds) &&
       !(
         shape.has(Rough) &&
         ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||
           (shape.has(Rect) && this.index === 2))
       )
     ) {
-      const { minX, minY, maxX, maxY } =
-        shape.read(ComputedBounds).geometryBounds;
+      const { minX, minY, maxX, maxY } = geometryBoxForStrokeGradient(shape);
       const gw = maxX - minX;
       const gh = maxY - minY;
       u_StrokeUVRect = [

@@ -947,6 +947,30 @@ export function pickStrokeColorForChild(
   return s;
 }
 
+/** SVG 上椭圆是否为「仅描边」语义（无实填），与 {@link pickChildFill} 中占位 `FillSolid` 一致。 */
+export function iconFontSvgFillIsNoneOrTransparent(style: IconSvgStyle): boolean {
+  const f = (style.fill ?? 'none').trim();
+  return f === 'none' || f === 'transparent';
+}
+
+/**
+ * 是否应对子实体打 {@link IconFontEllipseStrokeRasterPlaceholder}：
+ * 椭圆 + 根上栅格滤镜占位 fill + 源 SVG 无实填。
+ */
+export function shouldUseIconFontEllipseStrokeRasterPlaceholder(
+  prim: ScaledIconPrimitive,
+  strokeAsPlaceholderFillForRasterFilter: boolean | undefined,
+  fillPart: string | null | undefined,
+): boolean {
+  return (
+    strokeAsPlaceholderFillForRasterFilter === true &&
+    prim.kind === 'ellipse' &&
+    iconFontSvgFillIsNoneOrTransparent(prim.style) &&
+    !!fillPart &&
+    fillPart !== 'none'
+  );
+}
+
 export function pickChildFill(
   elStyle: IconSvgStyle,
   userColorFill: string | undefined,

@@ -68,6 +68,7 @@ import {
   ClipMode,
   Flex,
   IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
 import {
   Effect,
@@ -236,6 +237,15 @@ export class MeshPipeline extends System {
   private strokeGradients = this.query(
     (q) => q.addedChangedOrRemoved.with(StrokeGradient).trackWrites,
   );
+  private rectsStrokeGradientBounds = this.query(
+    (q) => q.addedChangedOrRemoved.with(Rect).trackWrites,
+  );
+  private ellipsesStrokeGradientBounds = this.query(
+    (q) => q.addedChangedOrRemoved.with(Ellipse).trackWrites,
+  );
+  private circlesStrokeGradientBounds = this.query(
+    (q) => q.addedChangedOrRemoved.with(Circle).trackWrites,
+  );
   private opacities = this.query(
     (q) => q.addedChangedOrRemoved.with(Opacity).trackWrites,
   );
@@ -333,7 +343,8 @@ export class MeshPipeline extends System {
             Locked,
             ClipMode,
             Flex,
-            IconFont
+            IconFont,
+            IconFontEllipseStrokeRasterPlaceholder,
           )
           .read.and.using(
             RasterScreenshotRequest,
@@ -808,6 +819,17 @@ export class MeshPipeline extends System {
       ...this.markers.addedChangedOrRemoved,
     ].forEach((entity) => {
       if (entity.has(Polyline) || entity.has(Path) || entity.has(Line)) {
+        safeAddComponent(entity, GeometryDirty);
+      }
+    });
+
+    new Set([
+      ...this.rectsStrokeGradientBounds.addedChangedOrRemoved,
+      ...this.ellipsesStrokeGradientBounds.addedChangedOrRemoved,
+      ...this.circlesStrokeGradientBounds.addedChangedOrRemoved,
+    ]).forEach((entity) => {
+      if (entity.has(StrokeGradient)) {
+        safeAddComponent(entity, MaterialDirty);
         safeAddComponent(entity, GeometryDirty);
       }
     });
