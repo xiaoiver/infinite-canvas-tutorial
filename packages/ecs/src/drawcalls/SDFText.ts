@@ -41,6 +41,7 @@ import {
   ComputedBounds,
   ComputedTextMetrics,
   DropShadow,
+  FillGradient,
   FillSolid,
   GlobalRenderOrder,
   GlobalTransform,
@@ -57,9 +58,78 @@ import {
   filterStringUsesEngineTimePost,
 } from '../utils/filter';
 import {
+  parseGradient,
+  isMeshGradientGradient,
+  type Gradient,
+} from '../utils/gradient';
+import {
+  applyTextGlyphMaskToFilterRasterCanvas,
+  createGradientFillTextRasterForFilter,
+  fillCssGradientsStackedInBounds,
+  setWorldToCanvasTransform,
+  type SolidShapeRasterBounds,
+} from '../utils/solidShapeRasterForFilter';
+import {
   getDevicePixelRatioForRaster,
   resolveFillImageTexturePixelSize,
 } from '../utils/fillImageTextureSize';
+import { measureText } from '../systems/ComputeTextMetrics';
+import { safeAddComponent } from '../history';
+
+function firstStopColorFromGradients(grads: Gradient[] | undefined): string | null {
+  if (!grads?.length) {
+    return null;
+  }
+  for (const g of grads) {
+    if (isMeshGradientGradient(g)) {
+      const c = g.colors[0] ?? g.backgroundColor;
+      if (c) {
+        return c;
+      }
+    } else if ('steps' in g && g.steps.length > 0) {
+      return g.steps[0]!.color;
+    }
+  }
+  return null;
+}
+
+/** WebGL readPixels：缓冲区首行对应纹理底边；转为自上而下以便与 Canvas 字形遮罩对齐。 */
+function flipUint8RgbaRowsVertical(data: Uint8Array, width: number, height: number): void {
+  const rowStride = width * 4;
+  const half = Math.floor(height / 2);
+  const tmp = new Uint8Array(rowStride);
+  for (let y = 0; y < half; y++) {
+    const top = y * rowStride;
+    const bot = (height - 1 - y) * rowStride;
+    tmp.set(data.subarray(top, top + rowStride));
+    data.copyWithin(top, bot, bot + rowStride);
+    data.set(tmp, bot);
+  }
+}
+
+/**
+ * Canvas 2D 自上而下存储；GPU fill 纹理需与 `sdf_text` 顶点中 `v_FillUv.y` 翻转及 RT bake 行序一致。
+ */
+function flipCanvasForGpuFillTextureUpload(
+  src: HTMLCanvasElement | OffscreenCanvas,
+): HTMLCanvasElement | OffscreenCanvas {
+  const w = src.width;
+  const h = src.height;
+  let dst: HTMLCanvasElement | OffscreenCanvas;
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    dst = c;
+  } else {
+    dst = new OffscreenCanvas(w, h);
+  }
+  const ctx = dst.getContext('2d') as CanvasRenderingContext2D;
+  ctx.translate(0, h);
+  ctx.scale(1, -1);
+  ctx.drawImage(src as CanvasImageSource, 0, 0);
+  return dst;
+}
 
 export class SDFText extends Drawcall {
   #glyphManager = new GlyphManager();
@@ -110,7 +180,10 @@ export class SDFText extends Drawcall {
       ? shape.read(DropShadow).blurRadius
       : 0;
     const fv = getRasterFilterValueForShape(shape) ?? '';
-    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}-${fv}`;
+    const fillGradient = shape.has(FillGradient)
+      ? shape.read(FillGradient).value
+      : '';
+    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}-${fillGradient}-${fv}`;
   }
 
   protected override get useRasterFilterEngineTimeRefresh(): boolean {
@@ -313,186 +386,331 @@ export class SDFText extends Drawcall {
       : '';
 
     if (useFillImage) {
-      const rb = shape.read(ComputedBounds).renderBounds;
-      const gw = rb.maxX - rb.minX;
-      const gh = rb.maxY - rb.minY;
-      const { width: tw, height: th } = resolveFillImageTexturePixelSize(
-        1,
-        1,
-        gw,
-        gh,
-        getDevicePixelRatioForRaster(),
-      );
+      let didGradientRaster = false;
+      const fillGradients = shape.has(FillGradient)
+        ? parseGradient(shape.read(FillGradient).value)
+        : undefined;
 
-      this.#bakeProgram = this.renderCache.createProgram({
-        vertex: { glsl: definesBake + vert },
-        fragment: {
-          glsl: definesBake + (physical ? physical_frag : frag),
-          postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
-        },
-      });
-      this.#bakeInputLayout = this.renderCache.createInputLayout({
-        vertexBufferDescriptors: this.vertexBufferDescriptors,
-        indexBufferFormat: Format.U32_R,
-        program: this.#bakeProgram,
-      });
-      this.#bakePipeline = this.renderCache.createRenderPipeline({
-        inputLayout: this.#bakeInputLayout,
-        program: this.#bakeProgram,
-        colorAttachmentFormats: [Format.U8_RGBA_RT],
-        depthStencilAttachmentFormat: Format.D24_S8,
-        megaStateDescriptor: {
-          attachmentsState: [
+      if (fillGradients && fillGradients.length > 0 && !this.useBitmapFont) {
+        // 必须与 `generateBuffer` 中 `u_FillUVRect`（`ComputedBounds.renderBounds`）同源，与 GPU bake 一致，否则 fill 采样与离屏栅格错位。
+        let bounds: SolidShapeRasterBounds;
+        if (shape.has(ComputedBounds)) {
+          const rb = shape.read(ComputedBounds).renderBounds;
+          bounds = {
+            minX: rb.minX,
+            minY: rb.minY,
+            maxX: rb.maxX,
+            maxY: rb.maxY,
+          };
+        } else {
+          safeAddComponent(shape, ComputedTextMetrics);
+          Object.assign(
+            shape.write(ComputedTextMetrics),
+            measureText(shape.read(Text)),
+          );
+          const text = shape.read(Text);
+          const metrics = shape.read(ComputedTextMetrics);
+          const stroke = shape.has(Stroke) ? shape.read(Stroke) : undefined;
+          const dropShadow = shape.has(DropShadow)
+            ? shape.read(DropShadow)
+            : undefined;
+          const grb = Text.getRenderBounds(text, metrics, stroke, dropShadow);
+          bounds = {
+            minX: grb.minX,
+            minY: grb.minY,
+            maxX: grb.maxX,
+            maxY: grb.maxY,
+          };
+        }
+        const ggw = bounds.maxX - bounds.minX;
+        const ggh = bounds.maxY - bounds.minY;
+
+        if (ggw > 1e-6 && ggh > 1e-6) {
+          const { width: gtw, height: gth } = resolveFillImageTexturePixelSize(
+            1,
+            1,
+            ggw,
+            ggh,
+            getDevicePixelRatioForRaster(),
+          );
+
+          const meshLayers = fillGradients.filter(isMeshGradientGradient);
+          const cssLayers = fillGradients.filter((g) => !isMeshGradientGradient(g));
+          const fillOpacityMul = shape.has(Opacity)
+            ? shape.read(Opacity).fillOpacity
+            : 1;
+
+          let rasterCanvas: HTMLCanvasElement | OffscreenCanvas | null = null;
+
+          if (meshLayers.length === 0 && cssLayers.length > 0) {
+            rasterCanvas = createGradientFillTextRasterForFilter(
+              shape,
+              bounds,
+              gtw,
+              gth,
+              cssLayers,
+              fillOpacityMul,
+            );
+            didGradientRaster = true;
+          } else if (meshLayers.length > 0) {
+            const meshFill = meshLayers[0]!;
+            const rawMesh = this.renderMeshGradientTexture(meshFill, gtw, gth);
+            const rgba = this.readTextureRgba8Sync(rawMesh, gtw, gth);
+            rawMesh.destroy();
+
+            flipUint8RgbaRowsVertical(rgba, gtw, gth);
+
+            if (fillOpacityMul < 0.999 || fillOpacityMul > 1.001) {
+              for (let i = 3; i < rgba.length; i += 4) {
+                rgba[i] = Math.round(rgba[i]! * fillOpacityMul);
+              }
+            }
+
+            let canvas: HTMLCanvasElement | OffscreenCanvas;
+            if (typeof document !== 'undefined') {
+              const c = document.createElement('canvas');
+              c.width = gtw;
+              c.height = gth;
+              canvas = c;
+            } else {
+              canvas = new OffscreenCanvas(gtw, gth);
+            }
+            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+            const img = new ImageData(
+              new Uint8ClampedArray(
+                rgba.buffer,
+                rgba.byteOffset,
+                rgba.byteLength,
+              ),
+              gtw,
+              gth,
+            );
+            ctx.putImageData(img, 0, 0);
+
+            if (cssLayers.length > 0) {
+              ctx.globalCompositeOperation = 'source-atop';
+              setWorldToCanvasTransform(ctx, bounds, gtw, gth);
+              fillCssGradientsStackedInBounds(ctx, cssLayers, bounds);
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.globalCompositeOperation = 'source-over';
+            }
+
+            applyTextGlyphMaskToFilterRasterCanvas(
+              canvas,
+              shape,
+              bounds,
+              gtw,
+              gth,
+            );
+            rasterCanvas = canvas;
+            didGradientRaster = true;
+          }
+
+          if (didGradientRaster && rasterCanvas) {
+            const colorTex = this.device.createTexture({
+              format: Format.U8_RGBA_NORM,
+              width: gtw,
+              height: gth,
+              usage: TextureUsage.SAMPLED,
+            });
+            const uploadCanvas =
+              flipCanvasForGpuFillTextureUpload(rasterCanvas);
+            colorTex.setImageData([uploadCanvas as HTMLCanvasElement]);
+            this.#rawFillImageTexture = colorTex;
+            const filtered = this.#applyRasterFilterChainIfNeeded(
+              shape,
+              colorTex,
+              gtw,
+              gth,
+            );
+            this.#fillTextureFromPostChain = filtered !== colorTex;
+            this.#texture = filtered;
+          }
+        }
+      }
+
+      if (!didGradientRaster) {
+        const rb = shape.read(ComputedBounds).renderBounds;
+        const gw = rb.maxX - rb.minX;
+        const gh = rb.maxY - rb.minY;
+        const { width: tw, height: th } = resolveFillImageTexturePixelSize(
+          1,
+          1,
+          gw,
+          gh,
+          getDevicePixelRatioForRaster(),
+        );
+
+        this.#bakeProgram = this.renderCache.createProgram({
+          vertex: { glsl: definesBake + vert },
+          fragment: {
+            glsl: definesBake + (physical ? physical_frag : frag),
+            postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+          },
+        });
+        this.#bakeInputLayout = this.renderCache.createInputLayout({
+          vertexBufferDescriptors: this.vertexBufferDescriptors,
+          indexBufferFormat: Format.U32_R,
+          program: this.#bakeProgram,
+        });
+        this.#bakePipeline = this.renderCache.createRenderPipeline({
+          inputLayout: this.#bakeInputLayout,
+          program: this.#bakeProgram,
+          colorAttachmentFormats: [Format.U8_RGBA_RT],
+          depthStencilAttachmentFormat: Format.D24_S8,
+          megaStateDescriptor: {
+            attachmentsState: [
+              {
+                channelWriteMask: ChannelWriteMask.ALL,
+                rgbBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.SRC_ALPHA,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+                alphaBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.ONE,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+              },
+            ],
+            blendConstant: TransparentBlack,
+            depthWrite: true,
+            depthCompare: CompareFunction.GREATER,
+            stencilWrite: false,
+            stencilFront: {
+              compare: CompareFunction.ALWAYS,
+              passOp: StencilOp.KEEP,
+              failOp: StencilOp.KEEP,
+              depthFailOp: StencilOp.KEEP,
+            },
+            stencilBack: {
+              compare: CompareFunction.ALWAYS,
+              passOp: StencilOp.KEEP,
+              failOp: StencilOp.KEEP,
+              depthFailOp: StencilOp.KEEP,
+            },
+          },
+        });
+        this.device.setResourceName(this.#bakePipeline, 'SDFTextBakePipeline');
+
+        if (!this.#bakeSceneUniformBuffer) {
+          this.#bakeSceneUniformBuffer = this.device.createBuffer({
+            viewOrSize: 48 * Float32Array.BYTES_PER_ELEMENT,
+            usage: BufferUsage.UNIFORM,
+            hint: BufferFrequencyHint.DYNAMIC,
+          });
+        }
+        // Projection must use logical bounds (gw×gh): vertices live in layout space, while
+        // tw×th is only the RT pixel resolution (DPR). projection(tw,th) shrinks content to
+        // ~1/dpr² of the texture (e.g. 1/4 at devicePixelRatio=2).
+        this.#writeBakeSceneUniforms(gw, gh, tw, th);
+
+        if (!this.#uniformBuffer) {
+          this.#uniformBuffer = this.device.createBuffer({
+            viewOrSize: Float32Array.BYTES_PER_ELEMENT * 60,
+            usage: BufferUsage.UNIFORM,
+            hint: BufferFrequencyHint.DYNAMIC,
+          });
+        }
+
+        const translate = mat3.create();
+        mat3.identity(translate);
+        mat3.translate(translate, translate, [-rb.minX, -rb.minY]);
+        const bakeModel = Mat3.fromGLMat3(translate);
+        const atlasImage = this.useBitmapFont
+          ? shape.read(Text).bitmapFont.pages[0]
+          : this.#glyphManager.getAtlas().image;
+        const [bakeBuf, bakeLegacy] = this.generateBuffer(shape, atlasImage);
+        this.#uniformBuffer.setSubData(
+          0,
+          new Uint8Array(
+            new Float32Array([
+              ...paddingMat3(bakeModel),
+              ...bakeBuf,
+            ]).buffer,
+          ),
+        );
+        this.#bakeProgram.setUniformsLegacy({
+          u_ModelMatrix: Mat3.toGLMat3(bakeModel),
+          ...bakeLegacy,
+        });
+
+        const bakeSampler = this.renderCache.createSampler({
+          addressModeU: AddressMode.CLAMP_TO_EDGE,
+          addressModeV: AddressMode.CLAMP_TO_EDGE,
+          minFilter: FilterMode.POINT,
+          magFilter: FilterMode.BILINEAR,
+          mipmapFilter: MipmapFilterMode.LINEAR,
+          lodMinClamp: 0,
+          lodMaxClamp: 0,
+        });
+
+        this.#bakeBindings?.destroy();
+        this.#bakeBindings = this.renderCache.createBindings({
+          pipeline: this.#bakePipeline,
+          uniformBufferBindings: [
+            { buffer: this.#bakeSceneUniformBuffer },
+            { buffer: this.#uniformBuffer },
+          ],
+          samplerBindings: [
             {
-              channelWriteMask: ChannelWriteMask.ALL,
-              rgbBlendState: {
-                blendMode: BlendMode.ADD,
-                blendSrcFactor: BlendFactor.SRC_ALPHA,
-                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
-              },
-              alphaBlendState: {
-                blendMode: BlendMode.ADD,
-                blendSrcFactor: BlendFactor.ONE,
-                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
-              },
+              texture: glyphAtlasTexture,
+              sampler: bakeSampler,
             },
           ],
-          blendConstant: TransparentBlack,
-          depthWrite: true,
-          depthCompare: CompareFunction.GREATER,
-          stencilWrite: false,
-          stencilFront: {
-            compare: CompareFunction.ALWAYS,
-            passOp: StencilOp.KEEP,
-            failOp: StencilOp.KEEP,
-            depthFailOp: StencilOp.KEEP,
-          },
-          stencilBack: {
-            compare: CompareFunction.ALWAYS,
-            passOp: StencilOp.KEEP,
-            failOp: StencilOp.KEEP,
-            depthFailOp: StencilOp.KEEP,
-          },
-        },
-      });
-      this.device.setResourceName(this.#bakePipeline, 'SDFTextBakePipeline');
-
-      if (!this.#bakeSceneUniformBuffer) {
-        this.#bakeSceneUniformBuffer = this.device.createBuffer({
-          viewOrSize: 48 * Float32Array.BYTES_PER_ELEMENT,
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
         });
-      }
-      // Projection must use logical bounds (gw×gh): vertices live in layout space, while
-      // tw×th is only the RT pixel resolution (DPR). projection(tw,th) shrinks content to
-      // ~1/dpr² of the texture (e.g. 1/4 at devicePixelRatio=2).
-      this.#writeBakeSceneUniforms(gw, gh, tw, th);
 
-      if (!this.#uniformBuffer) {
-        this.#uniformBuffer = this.device.createBuffer({
-          viewOrSize: Float32Array.BYTES_PER_ELEMENT * 60,
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
+        const colorTex = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED,
         });
+        const depthTex = this.device.createTexture({
+          format: Format.D24_S8,
+          width: tw,
+          height: th,
+          usage: TextureUsage.RENDER_TARGET,
+        });
+        const colorRT = this.device.createRenderTargetFromTexture(colorTex);
+        const depthRT = this.device.createRenderTargetFromTexture(depthTex);
+
+        const bakePass = this.device.createRenderPass({
+          colorAttachment: [colorRT],
+          colorClearColor: [TransparentBlack],
+          colorResolveTo: [null],
+          colorStore: [true],
+          depthStencilAttachment: depthRT,
+          depthClearValue: 0,
+        });
+        bakePass.setViewport(0, 0, tw, th);
+        bakePass.setPipeline(this.#bakePipeline);
+        bakePass.setBindings(this.#bakeBindings);
+        bakePass.setVertexInput(
+          this.#bakeInputLayout,
+          this.vertexBuffers.map((buffer) => ({ buffer })),
+          { buffer: this.indexBuffer },
+        );
+        bakePass.drawIndexed(this.indexBufferData.length);
+        this.device.submitPass(bakePass);
+
+        // Do not call colorRT.destroy(): WebGL {@link RenderTarget_GL.destroy} also destroys
+        // the wrapped texture; `colorTex` must stay valid for {@link createPostProcessing}.
+        // Same lifetime pattern as {@link MeshGradientPass.render}.
+        depthRT.destroy();
+        depthTex.destroy();
+
+        this.#rawFillImageTexture = colorTex;
+        const filtered = this.#applyRasterFilterChainIfNeeded(
+          shape,
+          colorTex,
+          tw,
+          th,
+        );
+        this.#fillTextureFromPostChain = filtered !== colorTex;
+        this.#texture = filtered;
       }
-
-      const translate = mat3.create();
-      mat3.identity(translate);
-      mat3.translate(translate, translate, [-rb.minX, -rb.minY]);
-      const bakeModel = Mat3.fromGLMat3(translate);
-      const atlasImage = this.useBitmapFont
-        ? shape.read(Text).bitmapFont.pages[0]
-        : this.#glyphManager.getAtlas().image;
-      const [bakeBuf, bakeLegacy] = this.generateBuffer(shape, atlasImage);
-      this.#uniformBuffer.setSubData(
-        0,
-        new Uint8Array(
-          new Float32Array([
-            ...paddingMat3(bakeModel),
-            ...bakeBuf,
-          ]).buffer,
-        ),
-      );
-      this.#bakeProgram.setUniformsLegacy({
-        u_ModelMatrix: Mat3.toGLMat3(bakeModel),
-        ...bakeLegacy,
-      });
-
-      const bakeSampler = this.renderCache.createSampler({
-        addressModeU: AddressMode.CLAMP_TO_EDGE,
-        addressModeV: AddressMode.CLAMP_TO_EDGE,
-        minFilter: FilterMode.POINT,
-        magFilter: FilterMode.BILINEAR,
-        mipmapFilter: MipmapFilterMode.LINEAR,
-        lodMinClamp: 0,
-        lodMaxClamp: 0,
-      });
-
-      this.#bakeBindings?.destroy();
-      this.#bakeBindings = this.renderCache.createBindings({
-        pipeline: this.#bakePipeline,
-        uniformBufferBindings: [
-          { buffer: this.#bakeSceneUniformBuffer },
-          { buffer: this.#uniformBuffer },
-        ],
-        samplerBindings: [
-          {
-            texture: glyphAtlasTexture,
-            sampler: bakeSampler,
-          },
-        ],
-      });
-
-      const colorTex = this.device.createTexture({
-        format: Format.U8_RGBA_NORM,
-        width: tw,
-        height: th,
-        usage: TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED,
-      });
-      const depthTex = this.device.createTexture({
-        format: Format.D24_S8,
-        width: tw,
-        height: th,
-        usage: TextureUsage.RENDER_TARGET,
-      });
-      const colorRT = this.device.createRenderTargetFromTexture(colorTex);
-      const depthRT = this.device.createRenderTargetFromTexture(depthTex);
-
-      const bakePass = this.device.createRenderPass({
-        colorAttachment: [colorRT],
-        colorClearColor: [TransparentBlack],
-        colorResolveTo: [null],
-        colorStore: [true],
-        depthStencilAttachment: depthRT,
-        depthClearValue: 0,
-      });
-      bakePass.setViewport(0, 0, tw, th);
-      bakePass.setPipeline(this.#bakePipeline);
-      bakePass.setBindings(this.#bakeBindings);
-      bakePass.setVertexInput(
-        this.#bakeInputLayout,
-        this.vertexBuffers.map((buffer) => ({ buffer })),
-        { buffer: this.indexBuffer },
-      );
-      bakePass.drawIndexed(this.indexBufferData.length);
-      this.device.submitPass(bakePass);
-
-      // Do not call colorRT.destroy(): WebGL {@link RenderTarget_GL.destroy} also destroys
-      // the wrapped texture; `colorTex` must stay valid for {@link createPostProcessing}.
-      // Same lifetime pattern as {@link MeshGradientPass.render}.
-      depthRT.destroy();
-      depthTex.destroy();
-
-      this.#rawFillImageTexture = colorTex;
-      const filtered = this.#applyRasterFilterChainIfNeeded(
-        shape,
-        colorTex,
-        tw,
-        th,
-      );
-      this.#fillTextureFromPostChain = filtered !== colorTex;
-      this.#texture = filtered;
     }
 
     this.createProgram(vert, physical ? physical_frag : frag, defines);
@@ -748,10 +966,18 @@ export class SDFText extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
     const zIndex = globalRenderOrder / ZINDEX_FACTOR;
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: null };
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    let fill: string | null = shape.has(FillSolid)
+      ? shape.read(FillSolid).value
+      : null;
+    if (fill == null && shape.has(FillGradient)) {
+      fill =
+        firstStopColorFromGradients(
+          parseGradient(shape.read(FillGradient).value),
+        ) ?? 'transparent';
+    }
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+      fill && fill !== 'none' ? fill : 'transparent',
+    );
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)

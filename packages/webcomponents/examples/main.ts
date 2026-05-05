@@ -270,11 +270,13 @@ canvas.addEventListener(Event.READY, async (e) => {
     content: 'Button',
     fontFamily: 'system-ui',
     fontSize: 120,
-    fill: 'black',
+    // fill: 'grey',
+    fill: 'linear-gradient(to right, #ff0000, #0000ff)',
     zIndex: 1,
     anchorX: 100,
     anchorY: 100,
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    // filter: 'noise(0.2)'
   };
 
   const button2 = {
@@ -430,7 +432,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       icon,
       // polyline,
       // button1, SearchIcon, 
-      // text1,
+      text1,
       // button2,
       // button3,
       // button4
