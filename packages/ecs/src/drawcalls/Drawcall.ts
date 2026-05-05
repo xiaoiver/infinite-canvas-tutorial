@@ -640,6 +640,12 @@ export abstract class Drawcall {
     uniformLegacyObject: Record<string, unknown>,
   ): void;
 
+  /**
+   * Scene `u_ZoomScale` from the current frame's {@link submit} (set before `createMaterial`).
+   * Used by off-screen raster bakes so glyph size attenuation matches the main pass.
+   */
+  protected sceneZoomScale = 1;
+
   destroy() {
     if (this.program) {
       this.indexBuffer?.destroy();
@@ -670,6 +676,10 @@ export abstract class Drawcall {
     uniformLegacyObject: Record<string, unknown>,
     builder: RGGraphBuilder,
   ) {
+    const zs = uniformLegacyObject['u_ZoomScale'];
+    this.sceneZoomScale =
+      typeof zs === 'number' && Number.isFinite(zs) && zs > 0 ? zs : 1;
+
     if (this.geometryDirty) {
       // CPU Poisson / heatmap preprocess are derived from the rasterized shape; `useEngineTime`
       // otherwise skips readback assuming only time changes — invalidate when geometry changes.
@@ -1509,37 +1519,37 @@ export abstract class Drawcall {
       const bindings =
         effect.type === 'lut' && lutAtlasTexture
           ? this.renderCache.createBindings({
-              pipeline,
-              samplerBindings: [
-                {
-                  texture: srcTexture,
-                  sampler: this.createLutPassInputSampler(),
-                },
-                {
-                  texture: lutAtlasTexture,
-                  sampler: this.createLutSampler(),
-                },
-              ],
-              uniformBufferBindings: [
-                {
-                  buffer: uniformBuffer,
-                },
-              ],
-            })
+            pipeline,
+            samplerBindings: [
+              {
+                texture: srcTexture,
+                sampler: this.createLutPassInputSampler(),
+              },
+              {
+                texture: lutAtlasTexture,
+                sampler: this.createLutSampler(),
+              },
+            ],
+            uniformBufferBindings: [
+              {
+                buffer: uniformBuffer,
+              },
+            ],
+          })
           : this.renderCache.createBindings({
-              pipeline,
-              samplerBindings: [
-                {
-                  texture: srcTexture,
-                  sampler: this.createSampler(),
-                },
-              ],
-              uniformBufferBindings: [
-                {
-                  buffer: uniformBuffer,
-                },
-              ],
-            });
+            pipeline,
+            samplerBindings: [
+              {
+                texture: srcTexture,
+                sampler: this.createSampler(),
+              },
+            ],
+            uniformBufferBindings: [
+              {
+                buffer: uniformBuffer,
+              },
+            ],
+          });
 
       this.#postEffectPasses.push({
         program,

@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { LiquidMetalIconfontsTool } from './liquid-metal-iconfonts-tool';
+import { LiquidMetalTool } from './liquid-metal-tool';
 
 export async function generateMetadata({
   params,
@@ -9,11 +9,11 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'tools' });
   return {
-    title: t('liquidMetalIconfonts.metaTitle'),
-    description: t('liquidMetalIconfonts.metaDescription'),
+    title: t('liquidMetal.metaTitle'),
+    description: t('liquidMetal.metaDescription'),
   };
 }
 
-export default function LiquidMetalIconfontsPage() {
-  return <LiquidMetalIconfontsTool />;
+export default function LiquidMetalPage() {
+  return <LiquidMetalTool />;
 }

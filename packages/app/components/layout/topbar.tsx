@@ -70,6 +70,13 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent, hideCent
       },
     },
     {
+      label: t('tools'),
+      onClick: () => {
+        const locale = pathname?.split('/')[1] || 'zh-Hans';
+        router.push(`/${locale}/tools`);
+      },
+    },
+    {
       label: 'GitHub',
       href: 'https://github.com/xiaoiver/infinite-canvas-tutorial',
       icon: Github,

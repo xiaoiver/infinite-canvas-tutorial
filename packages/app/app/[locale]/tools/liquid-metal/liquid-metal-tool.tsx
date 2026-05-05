@@ -264,10 +264,24 @@ const DEFAULT_NODES: SerializedNode[] = [
     lockAspectRatio: true,
     filter: HEATMAP_FILTER,
   } as const,
+  {
+    id: 'lm-icon-text',
+    type: 'text',
+    name: 'Text',
+    anchorX: 200,
+    anchorY: 1400,
+    zIndex: 1,
+    version: 0,
+    content: 'Hello, world! 你好，世界！',
+    fontFamily: 'system-ui',
+    fontSize: 120,
+    fill: 'black',
+    filter: LIQUID_METAL_FILTER,
+  } as const,
 ];
 
-export function LiquidMetalIconfontsTool() {
-  const tItem = useTranslations('tools.items.liquidMetalIconfonts');
+export function LiquidMetalTool() {
+  const tItem = useTranslations('tools.items.liquidMetal');
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -282,7 +296,7 @@ export function LiquidMetalIconfontsTool() {
         <div className="flex min-h-0 flex-1">
           <div className="h-[720px] w-full flex-1">
             <Canvas
-              id="liquid-metal-iconfonts"
+              id="liquid-metal"
               initialData={DEFAULT_NODES}
               initialAppState={{
                 penbarAll: [

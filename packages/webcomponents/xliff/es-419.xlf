@@ -1047,10 +1047,6 @@
   <source>Tint</source>
   <target>Tint</target>
 </trans-unit>
-<trans-unit id="sf872117754fc95ac">
-  <source>Time uniform follows the app clock each frame (liquid metal).</source>
-  <target>Tiempo uniforme sigue el reloj de la aplicación cada fotograma (metal líquido).</target>
-</trans-unit>
 <trans-unit id="sa2dc20e2aa203abc">
   <source>Inner glow</source>
   <target>Glow interior</target>
@@ -1074,10 +1070,6 @@
 <trans-unit id="sbe1e1a6a3c524354">
   <source>Add stop</source>
   <target>Agregar punto</target>
-</trans-unit>
-<trans-unit id="sb3dfa93a2615d213">
-  <source>Time uniform follows the app clock each frame (heat map).</source>
-  <target>Tiempo uniforme sigue el reloj de la aplicación cada fotograma (mapa de calor).</target>
 </trans-unit>
 <trans-unit id="s79824ae12d7f9b0a">
   <source>Inner distortion</source>
@@ -1110,10 +1102,6 @@
 <trans-unit id="s50c322a3e7252623">
   <source>Add color</source>
   <target>Agregar color</target>
-</trans-unit>
-<trans-unit id="s380aaadb78c6a22d">
-  <source>Time uniform follows the app clock each frame (gem smoke).</source>
-  <target>Tiempo uniforme sigue el reloj de la aplicación cada fotograma (humo de gemas).</target>
 </trans-unit>
 <trans-unit id="sff77289e9ce38465">
   <source>Export canvas</source>
@@ -1241,6 +1229,7 @@
 </trans-unit>
 <trans-unit id="s680ad94beb6c931d">
   <source>Align top</source>
+  <target>Alinear arriba</target>
 </trans-unit>
 <trans-unit id="s4b8264a93888f7bc">
   <source>Align middle vertically</source>
@@ -1317,6 +1306,18 @@
 <trans-unit id="s24f3a319b88552c1">
   <source>Low</source>
   <target>Baja</target>
+</trans-unit>
+<trans-unit id="s25b88419b92c65ca">
+  <source>LUT</source>
+  <target>LUT</target>
+</trans-unit>
+<trans-unit id="s4789364ddcdbeb45">
+  <source>LUT key</source>
+  <target>Clave LUT</target>
+</trans-unit>
+<trans-unit id="s82c21acdbcd6e830">
+  <source>Strength</source>
+  <target>Intensidad</target>
 </trans-unit>
 </body>
 </file>

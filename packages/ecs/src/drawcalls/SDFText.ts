@@ -16,6 +16,11 @@ import {
   TransparentBlack,
   Texture,
   StencilOp,
+  type Program,
+  type RenderPipeline,
+  type InputLayout,
+  type Bindings,
+  TextureUsage,
 } from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
@@ -33,6 +38,7 @@ import {
   parseColor,
 } from '../utils';
 import {
+  ComputedBounds,
   ComputedTextMetrics,
   DropShadow,
   FillSolid,
@@ -44,11 +50,32 @@ import {
   Stroke,
   Text,
 } from '../components';
+import {
+  getRasterFilterValueForShape,
+  parseEffect,
+  filterRasterPostEffects,
+  filterStringUsesEngineTimePost,
+} from '../utils/filter';
+import {
+  getDevicePixelRatioForRaster,
+  resolveFillImageTexturePixelSize,
+} from '../utils/fillImageTextureSize';
 
 export class SDFText extends Drawcall {
   #glyphManager = new GlyphManager();
   #uniformBuffer: Buffer;
-  #texture: Texture;
+  /** Display texture: glyph atlas, or filtered raster when {@link Drawcall.useFillImage}. */
+  #texture: Texture | null = null;
+  /** Unfiltered RGBA from GPU SDF bake (post chain input). */
+  #rawFillImageTexture: Texture | null = null;
+  /** True when {@link #texture} is owned by {@link destroyFullPostProcessingChain}. */
+  #fillTextureFromPostChain = false;
+
+  #bakeProgram: Program | null = null;
+  #bakePipeline: RenderPipeline | null = null;
+  #bakeInputLayout: InputLayout | null = null;
+  #bakeBindings: Bindings | null = null;
+  #bakeSceneUniformBuffer: Buffer | null = null;
 
   validate(shape: Entity) {
     const result = super.validate(shape);
@@ -82,7 +109,20 @@ export class SDFText extends Drawcall {
     const blurRadius = shape.has(DropShadow)
       ? shape.read(DropShadow).blurRadius
       : 0;
-    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}`;
+    const fv = getRasterFilterValueForShape(shape) ?? '';
+    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}-${fv}`;
+  }
+
+  protected override get useRasterFilterEngineTimeRefresh(): boolean {
+    const s = this.shapes[0];
+    if (!s) {
+      return false;
+    }
+    if (!this.useFillImage) {
+      return false;
+    }
+    const fv = getRasterFilterValueForShape(s);
+    return !!(fv && filterStringUsesEngineTimePost(fv));
   }
 
   private get useBitmapFont() {
@@ -218,14 +258,15 @@ export class SDFText extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
-    const { content, physical } = this.shapes[0].read(Text);
-    const { blurRadius } = this.shapes[0].has(DropShadow)
-      ? this.shapes[0].read(DropShadow)
+    const shape = this.shapes[0];
+    const { content, physical } = shape.read(Text);
+    const { blurRadius } = shape.has(DropShadow)
+      ? shape.read(DropShadow)
       : { blurRadius: 0 };
 
     let glyphAtlasTexture: Texture;
     if (this.useBitmapFont) {
-      const { bitmapFont } = this.shapes[0].read(Text);
+      const { bitmapFont } = shape.read(Text);
       bitmapFont.createTexture(this.device);
       glyphAtlasTexture = bitmapFont.pages[0].texture;
 
@@ -253,12 +294,212 @@ export class SDFText extends Drawcall {
 
     this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
 
+    const useFillImage = defines.includes('USE_FILLIMAGE');
+    this.destroyFullPostProcessingChain();
+    this.#teardownFillImageGpu();
+    if (!useFillImage) {
+      this.#bakeBindings?.destroy();
+      this.#bakeBindings = null;
+    }
+
+    const definesBake = defines
+      .replace('#define USE_FILLIMAGE\n', '')
+      .replace('#define USE_WIREFRAME\n', '')
+      .replace('#define USE_STENCIL\n', '');
+
+    const isWebGPU = this.device.queryVendorInfo().platformString === 'WebGPU';
+    const diagnosticDerivativeUniformityHeader = isWebGPU
+      ? 'diagnostic(off,derivative_uniformity);\n'
+      : '';
+
+    if (useFillImage) {
+      const rb = shape.read(ComputedBounds).renderBounds;
+      const gw = rb.maxX - rb.minX;
+      const gh = rb.maxY - rb.minY;
+      const { width: tw, height: th } = resolveFillImageTexturePixelSize(
+        1,
+        1,
+        gw,
+        gh,
+        getDevicePixelRatioForRaster(),
+      );
+
+      this.#bakeProgram = this.renderCache.createProgram({
+        vertex: { glsl: definesBake + vert },
+        fragment: {
+          glsl: definesBake + (physical ? physical_frag : frag),
+          postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+        },
+      });
+      this.#bakeInputLayout = this.renderCache.createInputLayout({
+        vertexBufferDescriptors: this.vertexBufferDescriptors,
+        indexBufferFormat: Format.U32_R,
+        program: this.#bakeProgram,
+      });
+      this.#bakePipeline = this.renderCache.createRenderPipeline({
+        inputLayout: this.#bakeInputLayout,
+        program: this.#bakeProgram,
+        colorAttachmentFormats: [Format.U8_RGBA_RT],
+        depthStencilAttachmentFormat: Format.D24_S8,
+        megaStateDescriptor: {
+          attachmentsState: [
+            {
+              channelWriteMask: ChannelWriteMask.ALL,
+              rgbBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.SRC_ALPHA,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+              alphaBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.ONE,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+            },
+          ],
+          blendConstant: TransparentBlack,
+          depthWrite: true,
+          depthCompare: CompareFunction.GREATER,
+          stencilWrite: false,
+          stencilFront: {
+            compare: CompareFunction.ALWAYS,
+            passOp: StencilOp.KEEP,
+            failOp: StencilOp.KEEP,
+            depthFailOp: StencilOp.KEEP,
+          },
+          stencilBack: {
+            compare: CompareFunction.ALWAYS,
+            passOp: StencilOp.KEEP,
+            failOp: StencilOp.KEEP,
+            depthFailOp: StencilOp.KEEP,
+          },
+        },
+      });
+      this.device.setResourceName(this.#bakePipeline, 'SDFTextBakePipeline');
+
+      if (!this.#bakeSceneUniformBuffer) {
+        this.#bakeSceneUniformBuffer = this.device.createBuffer({
+          viewOrSize: 48 * Float32Array.BYTES_PER_ELEMENT,
+          usage: BufferUsage.UNIFORM,
+          hint: BufferFrequencyHint.DYNAMIC,
+        });
+      }
+      // Projection must use logical bounds (gw×gh): vertices live in layout space, while
+      // tw×th is only the RT pixel resolution (DPR). projection(tw,th) shrinks content to
+      // ~1/dpr² of the texture (e.g. 1/4 at devicePixelRatio=2).
+      this.#writeBakeSceneUniforms(gw, gh, tw, th);
+
+      if (!this.#uniformBuffer) {
+        this.#uniformBuffer = this.device.createBuffer({
+          viewOrSize: Float32Array.BYTES_PER_ELEMENT * 60,
+          usage: BufferUsage.UNIFORM,
+          hint: BufferFrequencyHint.DYNAMIC,
+        });
+      }
+
+      const translate = mat3.create();
+      mat3.identity(translate);
+      mat3.translate(translate, translate, [-rb.minX, -rb.minY]);
+      const bakeModel = Mat3.fromGLMat3(translate);
+      const atlasImage = this.useBitmapFont
+        ? shape.read(Text).bitmapFont.pages[0]
+        : this.#glyphManager.getAtlas().image;
+      const [bakeBuf, bakeLegacy] = this.generateBuffer(shape, atlasImage);
+      this.#uniformBuffer.setSubData(
+        0,
+        new Uint8Array(
+          new Float32Array([
+            ...paddingMat3(bakeModel),
+            ...bakeBuf,
+          ]).buffer,
+        ),
+      );
+      this.#bakeProgram.setUniformsLegacy({
+        u_ModelMatrix: Mat3.toGLMat3(bakeModel),
+        ...bakeLegacy,
+      });
+
+      const bakeSampler = this.renderCache.createSampler({
+        addressModeU: AddressMode.CLAMP_TO_EDGE,
+        addressModeV: AddressMode.CLAMP_TO_EDGE,
+        minFilter: FilterMode.POINT,
+        magFilter: FilterMode.BILINEAR,
+        mipmapFilter: MipmapFilterMode.LINEAR,
+        lodMinClamp: 0,
+        lodMaxClamp: 0,
+      });
+
+      this.#bakeBindings?.destroy();
+      this.#bakeBindings = this.renderCache.createBindings({
+        pipeline: this.#bakePipeline,
+        uniformBufferBindings: [
+          { buffer: this.#bakeSceneUniformBuffer },
+          { buffer: this.#uniformBuffer },
+        ],
+        samplerBindings: [
+          {
+            texture: glyphAtlasTexture,
+            sampler: bakeSampler,
+          },
+        ],
+      });
+
+      const colorTex = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: tw,
+        height: th,
+        usage: TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED,
+      });
+      const depthTex = this.device.createTexture({
+        format: Format.D24_S8,
+        width: tw,
+        height: th,
+        usage: TextureUsage.RENDER_TARGET,
+      });
+      const colorRT = this.device.createRenderTargetFromTexture(colorTex);
+      const depthRT = this.device.createRenderTargetFromTexture(depthTex);
+
+      const bakePass = this.device.createRenderPass({
+        colorAttachment: [colorRT],
+        colorClearColor: [TransparentBlack],
+        colorResolveTo: [null],
+        colorStore: [true],
+        depthStencilAttachment: depthRT,
+        depthClearValue: 0,
+      });
+      bakePass.setViewport(0, 0, tw, th);
+      bakePass.setPipeline(this.#bakePipeline);
+      bakePass.setBindings(this.#bakeBindings);
+      bakePass.setVertexInput(
+        this.#bakeInputLayout,
+        this.vertexBuffers.map((buffer) => ({ buffer })),
+        { buffer: this.indexBuffer },
+      );
+      bakePass.drawIndexed(this.indexBufferData.length);
+      this.device.submitPass(bakePass);
+
+      // Do not call colorRT.destroy(): WebGL {@link RenderTarget_GL.destroy} also destroys
+      // the wrapped texture; `colorTex` must stay valid for {@link createPostProcessing}.
+      // Same lifetime pattern as {@link MeshGradientPass.render}.
+      depthRT.destroy();
+      depthTex.destroy();
+
+      this.#rawFillImageTexture = colorTex;
+      const filtered = this.#applyRasterFilterChainIfNeeded(
+        shape,
+        colorTex,
+        tw,
+        th,
+      );
+      this.#fillTextureFromPostChain = filtered !== colorTex;
+      this.#texture = filtered;
+    }
+
     this.createProgram(vert, physical ? physical_frag : frag, defines);
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize:
-          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4),
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 60,
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -315,6 +556,9 @@ export class SDFText extends Drawcall {
       lodMaxClamp: 0,
     });
 
+    const sampledTexture =
+      useFillImage && this.#texture ? this.#texture : glyphAtlasTexture;
+
     const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
@@ -327,13 +571,90 @@ export class SDFText extends Drawcall {
       ],
       samplerBindings: [
         {
-          texture: glyphAtlasTexture,
+          texture: sampledTexture,
           sampler,
         },
       ],
     };
 
     this.bindings = this.renderCache.createBindings(bindings);
+  }
+
+  #teardownFillImageGpu(): void {
+    if (this.#rawFillImageTexture) {
+      this.#rawFillImageTexture.destroy();
+      this.#rawFillImageTexture = null;
+    }
+    if (!this.#fillTextureFromPostChain && this.#texture) {
+      this.#texture.destroy();
+    }
+    this.#texture = null;
+    this.#fillTextureFromPostChain = false;
+  }
+
+  /**
+   * @param logicW logic width/height of the bake (matches vertex coords after translate)
+   * @param logicH see logicW
+   * @param viewportW RT size in pixels (setViewport / u_Viewport)
+   * @param viewportH see viewportW
+   */
+  #writeBakeSceneUniforms(
+    logicW: number,
+    logicH: number,
+    viewportW: number,
+    viewportH: number,
+  ): void {
+    const proj = mat3.projection(mat3.create(), logicW, logicH);
+    const view = mat3.identity(mat3.create());
+    const vp = mat3.multiply(mat3.create(), proj, view);
+    const inv = mat3.invert(mat3.create(), vp) ?? mat3.identity(mat3.create());
+    const buf = new Float32Array([
+      ...paddingMat3(Mat3.fromGLMat3(proj)),
+      ...paddingMat3(Mat3.fromGLMat3(view)),
+      ...paddingMat3(Mat3.fromGLMat3(inv)),
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      this.sceneZoomScale,
+      0,
+      viewportW,
+      viewportH,
+    ]);
+    this.#bakeSceneUniformBuffer!.setSubData(0, new Uint8Array(buf.buffer));
+    this.#bakeProgram?.setUniformsLegacy({
+      u_ProjectionMatrix: proj,
+      u_ViewMatrix: view,
+      u_ViewProjectionInvMatrix: inv,
+      u_BackgroundColor: [0, 0, 0, 0],
+      u_GridColor: [0, 0, 0, 0],
+      u_ZoomScale: this.sceneZoomScale,
+      u_CheckboardStyle: 0,
+      u_Viewport: [viewportW, viewportH],
+    });
+  }
+
+  #applyRasterFilterChainIfNeeded(
+    instance: Entity,
+    raw: Texture,
+    tw: number,
+    th: number,
+  ): Texture {
+    const filterValue = getRasterFilterValueForShape(instance);
+    if (!filterValue) {
+      return raw;
+    }
+    const effects = filterRasterPostEffects(parseEffect(filterValue));
+    if (effects.length === 0) {
+      return raw;
+    }
+    this.createPostProcessing(effects, raw, tw, th);
+    const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
+    return filtered;
   }
 
   render(
@@ -379,6 +700,10 @@ export class SDFText extends Drawcall {
       ...legacyObject,
     });
 
+    if (this.useFillImage && this.#texture) {
+      this.program.setUniformsLegacy({ u_Texture: this.#texture });
+    }
+
     if (this.useWireframe && this.geometryDirty) {
       this.generateWireframe();
     }
@@ -401,12 +726,16 @@ export class SDFText extends Drawcall {
   }
 
   destroy(): void {
+    this.destroyFullPostProcessingChain();
+    this.#bakeBindings?.destroy();
+    this.#bakeBindings = null;
+    this.#teardownFillImageGpu();
+    this.#bakeSceneUniformBuffer?.destroy();
+    this.#bakeSceneUniformBuffer = null;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
-      this.#texture?.destroy();
     }
-
     this.#glyphManager.destroy();
   }
 
@@ -464,6 +793,21 @@ export class SDFText extends Drawcall {
 
     const u_AtlasSize = [atlasWidth, atlasHeight];
 
+    let u_FillUVRect: number[];
+    if (shape.has(ComputedBounds)) {
+      const rb = shape.read(ComputedBounds).renderBounds;
+      const rw = rb.maxX - rb.minX;
+      const rh = rb.maxY - rb.minY;
+      u_FillUVRect = [
+        rb.minX,
+        rb.minY,
+        rw > 0 ? 1 / rw : 0,
+        rh > 0 ? 1 / rh : 0,
+      ];
+    } else {
+      u_FillUVRect = [0, 0, 1, 1];
+    }
+
     return [
       [
         ...u_FillColor,
@@ -473,6 +817,9 @@ export class SDFText extends Drawcall {
         ...u_DropShadowColor,
         ...u_DropShadow,
         ...u_AtlasSize,
+        0,
+        0,
+        ...u_FillUVRect,
       ],
       {
         u_FillColor,
@@ -482,6 +829,7 @@ export class SDFText extends Drawcall {
         u_DropShadowColor,
         u_DropShadow,
         u_AtlasSize,
+        u_FillUVRect,
       },
     ];
   }

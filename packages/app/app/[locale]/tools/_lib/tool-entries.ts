@@ -33,8 +33,9 @@ export const toolEntries: ToolEntry[] = [
         screenshot: '/screenshot-luts.png',
     },
     {
-        id: 'liquidMetalIconfonts',
-        path: '/liquid-metal-iconfonts',
+        id: 'liquidMetal',
+        path: '/liquid-metal',
         status: 'ready',
+        screenshot: '/screenshot-liquid-metal.png',
     },
 ];

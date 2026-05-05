@@ -68,6 +68,7 @@ import {
   FlexLayoutDirty,
   IconFont,
   Filter,
+  IconFontEllipseStrokeRasterPlaceholder,
   DEFAULT_THEME_COLORS,
 } from '../components';
 import { Commands } from '../commands/Commands';
@@ -315,6 +316,7 @@ export class Select extends System {
             Marker,
             Theme,
             IconFont,
+            IconFontEllipseStrokeRasterPlaceholder,
             Filter,
           ).write,
     );

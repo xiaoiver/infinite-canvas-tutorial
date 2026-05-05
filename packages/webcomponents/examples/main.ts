@@ -263,54 +263,18 @@ canvas.addEventListener(Event.READY, async (e) => {
     registerIconifyIconSet('material-icon-theme', m);
   }
 
-  const button1 = {
-    id: 'icon-button',
-    type: 'rect',
-    name: 'Button/Default',
-    x: 100,
-    y: 100,
-    fill: 'grey',
-    display: 'flex',
-    padding: [16, 16],
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    cornerRadius: 30,
-    gap: 4,
-    zIndex: 0,
-    reusable: true,
-  } as const;
-
-  const SearchIcon = {
-    id: 'icon-button-icon',
-    parentId: 'icon-button',
-    type: 'iconfont' as const,
-    zIndex: 1,
-    iconFontName: 'search',
-    iconFontFamily: 'lucide',
-    stroke: 'white',
-    strokeWidth: 2,
-    width: 32,
-    height: 32,
-    lockAspectRatio: true,
-  };
-
   const text1 = {
     id: 'icon-button-text',
-    parentId: 'icon-button',
+    // parentId: 'icon-button',
     type: 'text',
     content: 'Button',
     fontFamily: 'system-ui',
-    fontSize: 24,
-    lineHeight: 32,
-    fill: 'white',
+    fontSize: 120,
+    fill: 'black',
     zIndex: 1,
-    textAlign: 'center',
-    textBaseline: 'middle',
-    // wordWrap: true,
-    // wordWrapWidth: 100,
-    // maxLines: 1,
-    // textOverflow: 'ellipsis',
+    anchorX: 100,
+    anchorY: 100,
+    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   };
 
   const button2 = {
@@ -391,7 +355,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   const icon = {
     id: 'icon',
     type: 'iconfont',
-    iconFontName: 'copilot',
+    iconFontName: 'blender',
     iconFontFamily: 'material-icon-theme',
     width: 320,
     height: 320,
@@ -465,7 +429,8 @@ canvas.addEventListener(Event.READY, async (e) => {
       // logo,
       icon,
       // polyline,
-      // button1, SearchIcon, text1,
+      // button1, SearchIcon, 
+      // text1,
       // button2,
       // button3,
       // button4

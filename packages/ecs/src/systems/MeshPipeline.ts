@@ -834,6 +834,12 @@ export class MeshPipeline extends System {
       }
     });
 
+    this.filters.addedChangedOrRemoved.forEach((entity) => {
+      if (entity.has(Text)) {
+        safeAddComponent(entity, MaterialDirty);
+      }
+    });
+
     const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
 
     this.canvases.current.forEach((canvas) => {
