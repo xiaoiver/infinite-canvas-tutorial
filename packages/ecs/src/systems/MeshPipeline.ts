@@ -353,6 +353,7 @@ export class MeshPipeline extends System {
             Screenshot,
             GeometryDirty,
             MaterialDirty,
+            ComputedTextMetrics,
           ).write,
     );
   }

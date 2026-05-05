@@ -1035,6 +1035,19 @@ export abstract class Drawcall {
     return this.#readback;
   }
 
+  /**
+   * Sync readback RGBA8（如 mesh-gradient GPU 纹理）以便与 Canvas 文字遮罩做 CPU 合成。
+   */
+  protected readTextureRgba8Sync(
+    texture: Texture,
+    width: number,
+    height: number,
+  ): Uint8Array {
+    const data = new Uint8Array(width * height * 4);
+    this.#getReadback().readTextureSync(texture, 0, 0, width, height, data);
+    return data;
+  }
+
   #ensureLiquidMetalPoissonTexture(width: number, height: number): Texture {
     if (
       this.#liquidMetalPoissonTexture &&

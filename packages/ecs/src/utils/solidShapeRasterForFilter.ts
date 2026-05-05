@@ -29,6 +29,15 @@ import {
 import { buildVectorNetworkFillMesh } from './vector-network-fill';
 import { parseColor } from './color';
 import { getRasterFilterValueForShape, hasRasterPostEffects } from './filter';
+import {
+  computeLinearGradient,
+  computeRadialGradient,
+  computeConicGradient,
+  type Gradient,
+  type MeshGradient,
+  isMeshGradientGradient,
+} from './gradient';
+import { yOffsetFromTextBaseline } from '../systems/ComputeTextMetrics';
 
 export interface SolidShapeRasterBounds {
   minX: number;
@@ -42,7 +51,7 @@ type BitmapCanvas2D =
   | CanvasRenderingContext2D
   | OffscreenCanvasRenderingContext2D;
 
-function setWorldToCanvasTransform(
+export function setWorldToCanvasTransform(
   ctx: BitmapCanvas2D,
   bounds: SolidShapeRasterBounds,
   tw: number,
@@ -88,8 +97,9 @@ function drawFillPathContours(
 }
 
 /**
- * System-font text: rasterize with the same `ComputedTextMetrics.lineMetrics` / anchor
- * convention as `measureText` + `SDFText` (bitmapFont is not supported here).
+ * System-font text: 与 `Text.getGeometryBounds` / `SDFText` 字形盒顶对齐；
+ * 水平位置仍用 `lineMetrics[i].x`（含 textAlign 偏移）。勿用 `anchorY + m.y` 配 `textBaseline: top`：
+ * `measureText` 的 `offsetY`（如 alphabetic 时 `-height`）与几何顶边公式不一致，会导致渐变遮罩整体上下错位。
  */
 function tryDrawSolidFillTextMask(
   ctx: BitmapCanvas2D,
@@ -104,8 +114,9 @@ function tryDrawSolidFillTextMask(
     return false;
   }
   const metrics = shape.read(ComputedTextMetrics);
-  const { lines, lineMetrics, font } = metrics;
-  if (!font || !lines?.length || !lineMetrics?.length) {
+  const { lines, lineMetrics, font, fontMetrics, lineHeight: lineHeightStep } =
+    metrics;
+  if (!font || !lines?.length || !lineMetrics?.length || !fontMetrics) {
     return false;
   }
 
@@ -128,14 +139,42 @@ function tryDrawSolidFillTextMask(
   }
 
   const { anchorX, anchorY } = text;
+  const lhVal = text.lineHeight || fontMetrics.fontSize;
+  const lineTop0 =
+    anchorY +
+    yOffsetFromTextBaseline(text.textBaseline, fontMetrics) -
+    (lhVal - fontMetrics.fontSize) / 2;
+
   for (let i = 0; i < lines.length; i++) {
     const m = lineMetrics[i];
     if (!m) {
       continue;
     }
-    ctx.fillText(lines[i] ?? '', anchorX, anchorY + m.y);
+    ctx.fillText(lines[i] ?? '', anchorX + m.x, lineTop0 + i * lineHeightStep);
   }
   return true;
+}
+
+/**
+ * 将已有像素内容（mesh/CSS 渐变叠层）按字形 alpha 裁剪，供 Text + filter 离屏纹理上传。
+ */
+export function applyTextGlyphMaskToFilterRasterCanvas(
+  canvas: HTMLCanvasElement | OffscreenCanvas,
+  shape: Entity,
+  bounds: SolidShapeRasterBounds,
+  tw: number,
+  th: number,
+): void {
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (!ctx) {
+    return;
+  }
+  ctx.globalCompositeOperation = 'destination-in';
+  setWorldToCanvasTransform(ctx, bounds, tw, th);
+  tryDrawSolidFillTextMask(ctx, shape, 'rgba(255,255,255,1)');
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
 }
 
 /**
@@ -574,5 +613,119 @@ export function createFillAndStrokeRgbaRasterForFilter(
     return canvas;
   }
 
+  return canvas;
+}
+
+function applyStepsToCanvasGradient(
+  gradient: CanvasGradient,
+  steps: {
+    offset: { type: string; value: number };
+    color: string;
+  }[],
+): void {
+  for (const step of steps) {
+    const t =
+      step.offset.type === '%'
+        ? step.offset.value / 100
+        : Math.max(0, Math.min(1, step.offset.value));
+    gradient.addColorStop(t, step.color);
+  }
+}
+
+/**
+ * 在布局坐标系下生成与 {@link TexturePool.getOrCreateGradientInternal} 一致的 Canvas 渐变，
+ * 用于文字等多边形裁剪前的铺满矩形绘制。
+ */
+export function createCanvasGradientForBounds(
+  ctx: BitmapCanvas2D,
+  g: Exclude<Gradient, MeshGradient>,
+  bounds: SolidShapeRasterBounds,
+): CanvasGradient | null {
+  const min: [number, number] = [bounds.minX, bounds.minY];
+  const w = bounds.maxX - bounds.minX;
+  const h = bounds.maxY - bounds.minY;
+  if (w <= 1e-8 || h <= 1e-8) {
+    return null;
+  }
+
+  if (g.type === 'linear-gradient') {
+    const { x1, y1, x2, y2 } = computeLinearGradient(min, w, h, g.angle);
+    const cg = ctx.createLinearGradient(x1, y1, x2, y2);
+    applyStepsToCanvasGradient(cg, g.steps);
+    return cg;
+  }
+  if (g.type === 'radial-gradient') {
+    const { x, y, r } = computeRadialGradient(min, w, h, g.cx, g.cy, g.size);
+    const cg = ctx.createRadialGradient(x, y, 0, x, y, r);
+    applyStepsToCanvasGradient(cg, g.steps);
+    return cg;
+  }
+  if (g.type === 'conic-gradient') {
+    const { x, y } = computeConicGradient(min, w, h, g.cx, g.cy);
+    const cg = ctx.createConicGradient(
+      (g.angle * Math.PI) / 180,
+      x,
+      y,
+    );
+    applyStepsToCanvasGradient(cg, g.steps);
+    return cg;
+  }
+  return null;
+}
+
+/** 与 TexturePool 一致：从下至上叠多层 CSS 渐变（铺满几何盒）。 */
+export function fillCssGradientsStackedInBounds(
+  ctx: BitmapCanvas2D,
+  gradients: Gradient[],
+  bounds: SolidShapeRasterBounds,
+): void {
+  const gw = bounds.maxX - bounds.minX;
+  const gh = bounds.maxY - bounds.minY;
+  for (const g of gradients) {
+    if (isMeshGradientGradient(g)) {
+      continue;
+    }
+    const cg = createCanvasGradientForBounds(ctx, g, bounds);
+    if (!cg) {
+      continue;
+    }
+    ctx.fillStyle = cg;
+    ctx.fillRect(bounds.minX, bounds.minY, gw, gh);
+  }
+}
+
+/**
+ * 系统字体文字：CSS 渐变铺满盒 → 再用字形 alpha 裁剪（与纯色 {@link createSolidFillMaskRaster} 同源）。
+ */
+export function createGradientFillTextRasterForFilter(
+  shape: Entity,
+  bounds: SolidShapeRasterBounds,
+  tw: number,
+  th: number,
+  cssGradients: Gradient[],
+  fillOpacityMul: number,
+): HTMLCanvasElement | OffscreenCanvas {
+  let canvas: HTMLCanvasElement | OffscreenCanvas;
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = tw;
+    c.height = th;
+    canvas = c;
+  } else {
+    canvas = new OffscreenCanvas(tw, th);
+  }
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  if (!ctx) {
+    throw new Error('Canvas 2D required for gradient text + filter');
+  }
+  ctx.clearRect(0, 0, tw, th);
+  ctx.globalAlpha = Math.max(0, Math.min(1, fillOpacityMul));
+  setWorldToCanvasTransform(ctx, bounds, tw, th);
+  fillCssGradientsStackedInBounds(ctx, cssGradients, bounds);
+  ctx.globalCompositeOperation = 'destination-in';
+  tryDrawSolidFillTextMask(ctx, shape, 'rgba(255,255,255,1)');
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
   return canvas;
 }
