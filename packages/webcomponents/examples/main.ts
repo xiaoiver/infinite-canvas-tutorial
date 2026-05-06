@@ -357,17 +357,17 @@ canvas.addEventListener(Event.READY, async (e) => {
   const icon = {
     id: 'icon',
     type: 'iconfont',
-    iconFontName: 'blender',
+    iconFontName: 'bun-light',
     iconFontFamily: 'material-icon-theme',
     width: 320,
     height: 320,
     x: 100,
     y: 100,
     zIndex: 1,
-    strokeWidth: 2,
+    strokeWidth: 10,
     stroke: 'black',
     lockAspectRatio: true,
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   }
 
   const rect = {
@@ -432,7 +432,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       icon,
       // polyline,
       // button1, SearchIcon, 
-      text1,
+      // text1,
       // button2,
       // button3,
       // button4
