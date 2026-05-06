@@ -125,6 +125,11 @@ import {
 } from './systems';
 import { DOMAdapter } from './environment';
 import { SIBLINGS_MAX_Z_INDEX, SIBLINGS_MIN_Z_INDEX } from './context';
+import {
+  applyIcDocumentToApi,
+  buildIcDocumentFromState,
+  parseIcDocumentJson,
+} from './format/ic-document';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -231,6 +236,12 @@ export const arrayToMap = <T extends { id: string } | string>(
 };
 
 export const pendingAPICallings: (() => any)[] = [];
+
+/**
+ * 在 {@link Deleter} 完成本帧 `ToBeDeleted` 实体移除后执行（晚于 `pendingAPICallings`）。
+ * 用于导入场景等需在「旧实体已删除」后再 `updateNodes` 的逻辑。
+ */
+export const pendingAPICallingsAfterDelete: (() => any)[] = [];
 
 /**
  * Expose the API to the outside world.
@@ -2569,6 +2580,31 @@ export class API {
 
   runAtNextTick(fn: () => any) {
     pendingAPICallings.push(fn);
+  }
+
+  /**
+   * 在当前帧实体删除（`ToBeDeleted` → `entity.delete()`）完成之后执行回调。
+   */
+  runAfterDeletedEntities(fn: () => any) {
+    pendingAPICallingsAfterDelete.push(fn);
+  }
+
+  /**
+   * 导出为 `.ic` 互换文档（含 variables / themes / elements / appState）。
+   * @see https://docs.excalidraw.com/docs/codebase/json-schema
+   */
+  exportIcDocument(source?: string) {
+    return buildIcDocumentFromState(this.getAppState(), this.getNodes(), source);
+  }
+
+  /**
+   * 自 `.ic` 文档或 JSON 字符串恢复场景（会先清空当前场景根节点）。
+   */
+  importIcDocument(
+    doc: unknown,
+    options?: { recordHistory?: boolean },
+  ) {
+    applyIcDocumentToApi(this, parseIcDocumentJson(doc), options);
   }
 
   // AI APIs

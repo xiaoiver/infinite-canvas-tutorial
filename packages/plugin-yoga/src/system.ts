@@ -38,6 +38,7 @@ import {
   FillPattern,
   Filter,
   IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
   Visibility
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaLayoutApplied } from './YogaLayoutApplied';
@@ -192,6 +193,7 @@ export class YogaSystem extends System {
             FillImage,
             FillPattern,
             Filter,
+            IconFontEllipseStrokeRasterPlaceholder,
           ).write,
     );
   }

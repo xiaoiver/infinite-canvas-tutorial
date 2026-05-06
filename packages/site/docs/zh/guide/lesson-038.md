@@ -295,7 +295,49 @@ const text = {
 | **OpenPencil** | 规则引擎 + 增量管道    | `pen-codegen` 包提供确定性转换，`codegen_plan/submit/assemble/clean` 处理大文件 |
 | **Pencil.dev** | AI 自由生成 + 双向同步 | `.pen` 文件作为上下文，AI 直接输出代码，支持 Code → Design 反向导入             |
 
+### JSON 格式文件 {#json-file}
+
+在 [课程 10 - 图片导入导出] 中我们介绍了如何将图形导出成各种图片格式。在与 AI 交互的过程中，我们需要始终将场景持久化到文件中。
+
+参考 excalidraw 与 pencil 的自定义文件格式，我们也可以设计自己的 JSON 文件，格式为 `.ic`：
+
+```json
+{
+    "type": "infinite-canvas",
+    "version": 1,
+    "source": "https://infinitecanvas.cc",
+    "variables": {},
+    "themes": {},
+    "elements": [],
+    "appState": {}
+}
+```
+
+导入时会：删掉当前相机下所有场景根节点，再合并默认 AppState 与文件中的 appState，写入 variables / themes，并在删除完成后 updateNodes(elements)；选区里指向不存在节点的 id 会被过滤掉。
+
+```ts
+import {
+    downloadIcDocument,
+    stringifyIcDocument,
+} from '@infinite-canvas-tutorial/ecs';
+
+// 导出
+const doc = api.exportIcDocument(window.location.origin);
+downloadIcDocument(doc, 'my-scene.ic'); // 浏览器里触发下载
+
+// 或自管字符串 / 文件
+const text = stringifyIcDocument(doc);
+// …写入 .ic 文件或上传
+
+// 导入（可传入对象或 JSON 字符串）
+api.importIcDocument(await (await fetch('/scene.ic')).text());
+```
+
+### 命令行 {#cli}
+
 ## 扩展阅读 {#extended-reading}
+
+-   [pencil-design-skill]
 
 [Variables and Themes]: https://docs.pencil.dev/for-developers/the-pen-format#variables-and-themes
 [Guide to variables in Figma]: https://help.figma.com/hc/en-us/articles/15339657135383-Guide-to-variables-in-Figma
@@ -307,3 +349,5 @@ const text = {
 [Lucide]: https://lucide.dev/icons
 [Shadcn UI]: https://ui.shadcn.com/docs/components/radix/button
 [Components and Instances]: https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances
+[pencil-design-skill]: https://github.com/chiroro-jr/pencil-design-skill
+[课程 10 - 图片导入导出]: /zh/guide/lesson-010

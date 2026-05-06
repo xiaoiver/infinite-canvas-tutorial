@@ -485,6 +485,16 @@ export class ContextMenu extends LitElement {
                   ?disabled=${isSelectedEmpty}
                   >JPEG</sp-menu-item
                 >
+                <sp-menu-item
+                  value=${ExportFormat.WEBM}
+                  ?disabled=${isSelectedEmpty}
+                  >WebM</sp-menu-item
+                >
+                <sp-menu-item
+                  value=${ExportFormat.GIF}
+                  ?disabled=${isSelectedEmpty}
+                  >GIF</sp-menu-item
+                >
               </sp-menu>
             </sp-menu-item>
           </sp-menu>

@@ -14,6 +14,7 @@ import {
 } from './plugins';
 
 export * from './API';
+export * from './format/ic-document';
 export * from './App';
 export * from './commands';
 export * from './components';

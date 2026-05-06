@@ -1,7 +1,7 @@
 import { System } from '@lastolivegames/becsy';
 import { ToBeDeleted } from '../components';
 import { ViewportCulling } from './ViewportCulling';
-import { pendingAPICallings } from '..';
+import { pendingAPICallings, pendingAPICallingsAfterDelete } from '..';
 /**
  * Deletes entities with the {@link ToBeDeleted} component.
  * @see https://lastolivegames.github.io/becsy/guide/architecture/entities#deleting-entities
@@ -25,6 +25,11 @@ export class Deleter extends System {
       this.viewportCulling.remove(entity);
 
       entity.delete();
+    }
+
+    if (pendingAPICallingsAfterDelete.length) {
+      pendingAPICallingsAfterDelete.forEach((fn) => fn());
+      pendingAPICallingsAfterDelete.length = 0;
     }
   }
 }
