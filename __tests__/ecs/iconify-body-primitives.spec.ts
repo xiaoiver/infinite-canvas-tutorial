@@ -38,4 +38,13 @@ describe('resolveIconifyBodyToScalablePrimitives', () => {
     expect(prims![0]!.style.fill).toBe('#8bc34a');
     expect(prims![1]!.kind).toBe('path');
   });
+
+  it('applies Iconify viewBox left/top (min-x/min-y) when width/height are set', () => {
+    const body = '<path d="M0 0H100V100H0Z"/>';
+    const origin = resolveIconifyBodyToScalablePrimitives(body, 100, 100, 200, 200, 0, 0);
+    const shifted = resolveIconifyBodyToScalablePrimitives(body, 100, 100, 200, 200, -50, -25);
+    expect(origin).not.toBeNull();
+    expect(shifted).not.toBeNull();
+    expect(origin![0]!.d).not.toEqual(shifted![0]!.d);
+  });
 });

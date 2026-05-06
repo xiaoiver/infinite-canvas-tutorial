@@ -407,7 +407,7 @@ function syncIconFontChildrenFromUpdatedNode(
       safeAddComponent(child, Visibility, { value: 'inherited' });
       syncIconFontChildGeometryToPrim(child, prim);
     } else {
-      const ch = api.spawnEntityCommands();
+      const ch = api.getCommands().spawn();
       insertIconFontChildFromPrimitive(ch, prim, {
         userColorStroke,
         userColorFill,
@@ -417,9 +417,11 @@ function syncIconFontChildrenFromUpdatedNode(
         name: `${node.id}__i${i}`,
         strokeAsPlaceholderFillForRasterFilter,
       });
-      api.appendEntityChild(rootEntity, ch);
+      api.getCommands().entity(rootEntity).appendChild(ch);
+      api.getCommands().execute();
       child = ch.id();
     }
+
     safeAddComponent(child, Stroke, {
       color: pickStrokeColorForChild(
         prim.style,
@@ -432,6 +434,7 @@ function syncIconFontChildrenFromUpdatedNode(
       linecap: mapSvgLineCap(prim.style.strokeLinecap),
       linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
     });
+
     const fillPart = pickChildFill(
       prim.style,
       userColorFill,
@@ -439,6 +442,7 @@ function syncIconFontChildrenFromUpdatedNode(
       prim.kind,
       strokeAsPlaceholderFillForRasterFilter,
     );
+
     if (fillPart && fillPart !== 'none') {
       safeAddComponent(child, FillSolid, {
         value: fillPart,

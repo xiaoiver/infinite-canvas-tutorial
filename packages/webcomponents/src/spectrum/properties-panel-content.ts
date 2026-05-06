@@ -443,9 +443,12 @@ export class PropertiesPanelContent extends LitElement {
     ) {
       return;
     }
-    this.api.updateNode(this.node, e.detail as Partial<IconFontSerializedNode>);
-    this.api.record();
-    this.requestUpdate();
+
+    this.api.runAtNextTick(() => {
+      this.api.updateNode(this.node, e.detail as Partial<IconFontSerializedNode>);
+      this.api.record();
+      this.requestUpdate();
+    });
   }
 
   private handleLayoutPaddingChanged(e: Event) {
