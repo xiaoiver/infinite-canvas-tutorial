@@ -7,6 +7,7 @@ export * from './Input';
 export * from './Cursor';
 export * from './Screenshot';
 export * from './GPUResource';
+export * from './VelloCanvasSurface';
 export * from './Name';
 export * from './Culled';
 export * from './Font';

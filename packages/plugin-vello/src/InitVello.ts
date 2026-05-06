@@ -9,6 +9,7 @@ import {
   ComputedCamera,
   Camera,
   Path,
+  VelloCanvasSurface,
   createRenderBoundsProviderFromComputePathBounds,
   createGeometryBoundsProviderFromComputePathBounds,
   Polyline,
@@ -23,7 +24,7 @@ import {
   setMeasureFontFn,
   setMeasureLineFn,
   fontWeightMap,
-  filterUndefined
+  filterUndefined,
 } from '@infinite-canvas-tutorial/ecs';
 import { velloCanvasGridColors } from './velloGridTheme';
 import init, {
@@ -43,8 +44,7 @@ export function registerFont(fontUrl: string) {
 }
 
 /**
- * InitVello System 基类，包含 canvasIds 用于 VelloPipeline 访问。
- * 实际的 System 实现通过 InitVelloSystemImpl 创建。
+ * InitVello：注册 HTML Canvas 到 Vello WASM，并挂上 {@link VelloCanvasSurface} 以便派发 `ic-ready`。
  */
 export class InitVello extends System {
   canvasIds: WeakMap<HTMLCanvasElement, number> = new WeakMap();
@@ -61,7 +61,9 @@ export class InitVello extends System {
     super();
     this.query(
       (q) =>
-        q.using(GPUResource, Canvas, Theme, Grid).write.and.using(Camera).read,
+        q
+          .using(GPUResource, Canvas, Theme, Grid, VelloCanvasSurface)
+          .write.and.using(Camera).read,
     );
   }
 
@@ -81,7 +83,21 @@ export class InitVello extends System {
         fontWeightValue = `${typeof fontWeight === 'string' ? fontWeightMap[fontWeight] : fontWeight}`;
       }
 
-      const { fontSize, fontFamily, fontStyle, fontVariant, anchorX, anchorY, textAlign, textBaseline, lineHeight, letterSpacing, fontKerning, wordWrap, wordWrapWidth } = style;
+      const {
+        fontSize,
+        fontFamily,
+        fontStyle,
+        fontVariant,
+        anchorX,
+        anchorY,
+        textAlign,
+        textBaseline,
+        lineHeight,
+        letterSpacing,
+        fontKerning,
+        wordWrap,
+        wordWrapWidth,
+      } = style;
 
       const opts = {
         id: '',
@@ -188,6 +204,9 @@ export class InitVello extends System {
           giStrength,
           ...velloCanvasGridColors(canvas),
         });
+        if (!canvas.has(VelloCanvasSurface)) {
+          canvas.add(VelloCanvasSurface);
+        }
       });
     });
 
@@ -218,5 +237,5 @@ export class InitVello extends System {
     });
   }
 
-  private destroyCanvas(canvas: Entity) { }
+  private destroyCanvas(canvas: Entity) {}
 }
