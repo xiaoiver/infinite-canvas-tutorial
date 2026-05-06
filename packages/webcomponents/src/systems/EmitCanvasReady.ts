@@ -36,6 +36,13 @@ import {
   VectorNetwork,
   Locked,
   Marker,
+  Binded,
+  Binding,
+  PartialBinding,
+  AnimationPlayer,
+  Embed,
+  HTML,
+  HTMLContainer,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { pendingGpuReadyDispatch } from '../API';
@@ -86,6 +93,13 @@ export class EmitCanvasReady extends System {
           VectorNetwork,
           Locked,
           Marker,
+          Binded,
+          Binding,
+          PartialBinding,
+          AnimationPlayer,
+          Embed,
+          HTML,
+          HTMLContainer,
         ).write,
     );
   }

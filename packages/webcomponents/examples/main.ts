@@ -171,7 +171,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
-    // snapToObjectsEnabled: true,
+    snapToObjectsEnabled: true,
     // filter: 'brightness(0.8) noise(0.1)',
     // penbarDrawSizeLabelVisible: true,
     // penbarSelected: Pen.SELECT,
@@ -188,259 +188,48 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'fxaa() brightness(0.8) noise(0.1)',
   });
 
-  const path = {
-    id: 'cj03l-path',
-    type: 'path',
-    d: 'M150 0 L121 90 L198 35 L102 35 L179 90 Z',
-    fill: 'black',
-    fillRule: 'evenodd',
-    // wireframe: true,
-    tessellationMethod: TesselationMethod.LIBTESS,
-    stroke: 'none',
-    strokeWidth: 0,
-    zIndex: 0,
-    filter:
-      'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-  }
-
-  /** 对齐 https://shaders.paper.design 的 `<LiquidMetal image=… fit=contain … />` 典型参数（ ecs 的 filter 串无 speed/scale/fit，由节点尺寸与 fill 位图体现）。 */
-  const image = {
-    id: 'cj03l-image',
+  const node1: RectSerializedNode = {
+    id: 'snap-to-objects-1',
     type: 'rect',
-    width: 400,
-    height: 300,
-    x: 0,
-    y: 0,
-    // fill: 'https://shaders.paper.design/images/logos/diamond.svg',
-    fill: "/soundboard.heic",
-    // fill: 'black',
-    zIndex: 2,
-  } as const;
-
-  const BlenderIcon = {
-    id: 'blender-icon-material-icon-theme',
-    type: 'iconfont' as const,
-    x: 50,
-    y: 50,
-    width: 32,
-    height: 32,
-    zIndex: 1,
-    iconFontName: 'android',
-    iconFontFamily: 'material-icon-theme',
-    lockAspectRatio: true,
-  };
-
-  const AndroidIcon = {
-    id: 'android-icon-material-icon-theme',
-    type: 'iconfont' as const,
-    x: 300,
-    y: 300,
+    x: 100,
+    y: 100,
     width: 100,
     height: 100,
-    zIndex: 1,
-    iconFontName: 'atom',
-    iconFontFamily: 'lucide',
-    lockAspectRatio: true,
-  };
-
-
-  api.setAppState({
-    penbarNameLabelVisible: true,
-    variables: {
-      // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
-      '--primary': { type: 'color', value: '#FF8400' },
-      '--primary-foreground': { type: 'color', value: '#111111' },
-      '--radius-pill': { type: 'number', value: 999 },
-    },
-  });
-
-  {
-    const m = await import('@iconify/json/json/lucide.json');
-    registerIconifyIconSet('lucide', m);
-  }
-  {
-    const m = await import('@iconify/json/json/material-icon-theme.json');
-    registerIconifyIconSet('material-icon-theme', m);
-  }
-
-  const text1 = {
-    id: 'icon-button-text',
-    // parentId: 'icon-button',
-    type: 'text',
-    content: 'Button',
-    fontFamily: 'system-ui',
-    fontSize: 120,
-    // fill: 'grey',
-    fill: 'linear-gradient(to right, #ff0000, #0000ff)',
-    zIndex: 1,
-    anchorX: 100,
-    anchorY: 100,
-    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-    // filter: 'noise(0.2)'
-  };
-
-  const button2 = {
-    id: 'icon-button-variant-destructive',
-    type: 'ref',
-    ref: 'icon-button',
-    name: 'Button/Destructive',
-    x: 100,
-    y: 250,
-    fill: 'red',
+    fill: '#e0f2ff',
+    fillOpacity: 0.5,
+    stroke: '#147af3',
+    strokeWidth: 1,
     zIndex: 0,
-    descendants: {
-      'icon-button-icon': {
-        iconFontName: 'circle-alert',
-      },
-      'icon-button-text': {
-        content: 'Destructive',
-      },
-    },
   };
-
-  const button3 = {
-    id: 'icon-button-variant-liquid-metal',
-    type: 'ref',
-    ref: 'icon-button',
-    name: 'Button/LiquidMetal',
-    x: 100,
-    y: 350,
-    fill: 'black',
-    zIndex: 0,
-    descendants: {
-      'icon-button-icon': {
-        iconFontName: 'sparkles',
-      },
-      'icon-button-text': {
-        fill: 'white',
-        content: 'Liquid Metal',
-      },
-    },
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-  };
-
-  const button4 = {
-    id: 'icon-button-variant-liquid-heatmap',
-    type: 'ref',
-    ref: 'icon-button',
-    name: 'Button/Heatmap',
-    x: 100,
-    y: 450,
-    fill: 'black',
-    zIndex: 0,
-    descendants: {
-      'icon-button-icon': {
-        iconFontName: 'sparkles',
-      },
-      'icon-button-text': {
-        fill: 'white',
-        content: 'Heatmap',
-        wordWrap: false,
-      },
-    },
-    filter: 'heat-map(0.5, 0, 0, 0.5, 0.5, 1, 1, auto, #000000, #112069, #1f3ca3, #3265e7, #6bd8ff, #ffe77a, #ff9a1f, #ff4d00)',
-  };
-
-  const logo = {
-    id: 'logo',
+  const node2: RectSerializedNode = {
+    id: 'snap-to-objects-2',
     type: 'rect',
-    fill: '/youmind.svg',
-    width: 990,
-    height: 140,
-    x: 100,
-    y: 100,
+    x: 400,
+    y: 50,
+    width: 100,
+    height: 100,
+    fill: '#e0f2ff',
+    fillOpacity: 0.5,
+    stroke: '#147af3',
+    strokeWidth: 1,
     zIndex: 0,
-    lockAspectRatio: true,
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-  }
-
-  const icon = {
-    id: 'icon',
-    type: 'iconfont',
-    iconFontName: 'umi',
-    iconFontFamily: 'material-icon-theme',
-    width: 320,
-    height: 320,
-    x: 100,
+  };
+  const node3: RectSerializedNode = {
+    id: 'snap-to-objects-3',
+    type: 'rect',
+    x: 250,
     y: 100,
-    zIndex: 1,
-    strokeWidth: 10,
-    stroke: 'black',
-    lockAspectRatio: true,
-    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-  }
+    width: 100,
+    height: 100,
+    fill: '#e0f2ff',
+    fillOpacity: 0.5,
+    stroke: '#147af3',
+    strokeWidth: 1,
+    zIndex: 0,
+  };
 
-  const rect = {
-    id: 'rect',
-    type: 'ellipse',
-    // fill: 'black',
-    // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-    width: 400,
-    height: 400,
-    stroke: 'black',
-    strokeWidth: 20,
-    x: 100,
-    y: 100,
-    zIndex: 1,
-    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-  }
-
-  const polyline = {
-    id: 'polyline',
-    type: 'polyline',
-    points: '100,100 200,200 300,100',
-    stroke: 'black',
-    strokeWidth: 20,
-    strokeLinecap: 'round',
-    // strokeLinejoin: 'round',
-    x: 100,
-    y: 100,
-    zIndex: 1,
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
-    // filter: 'noise(0.2)'
-  }
-
-  // registerCubeLutFromText 依赖 Mesh 管线的 ECS GPUResource；纯 Vello 无该组件
-  if (api.getCanvas().has(GPUResource)) {
-    const device = api.getCanvas().read(GPUResource).device;
-    {
-      // 街拍神级色彩，高对比，红橘色偏暖，强调硬调
-      const lutFileUrl = './classic neg_sRGB.cube';
-      const text = await (await fetch(lutFileUrl)).text();
-      registerCubeLutFromText(device, 'fuji-classic-neg', text, {
-        atlasFormat: 'f32',
-      });
-    }
-    {
-      // 低饱和度，强对比度，模仿老式纪实杂志风格
-      const lutFileUrl = './classic chrome_sRGB.cube';
-      const text = await (await fetch(lutFileUrl)).text();
-      registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
-        atlasFormat: 'f32',
-      });
-    }
-    {
-      const lutFileUrl = './velvia_sRGB.cube';
-      const text = await (await fetch(lutFileUrl)).text();
-      registerCubeLutFromText(device, 'fuji-velvia', text, {
-        atlasFormat: 'f32',
-      });
-    }
-  }
-
-  api.runAtNextTick(() => {
-    api.updateNodes([
-      // rect,
-      // logo,
-      icon,
-      // polyline,
-      // button1, SearchIcon, 
-      // text1,
-      // button2,
-      // button3,
-      // button4
-    ]);
-  });
+  api.updateNodes([node1, node2, node3]);
+  api.selectNodes([node3]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

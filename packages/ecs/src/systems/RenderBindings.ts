@@ -25,6 +25,8 @@ import {
   Path,
   Flex,
   Filter,
+  GeometryDirty,
+  Rough
 } from '../components';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import type {
@@ -80,6 +82,7 @@ export class RenderBindings extends System {
             ZIndex,
             HTML,
             Embed,
+            Rough,
           )
           .read.and.using(
             GlobalTransform,
@@ -94,7 +97,8 @@ export class RenderBindings extends System {
             Binding,
             PartialBinding,
             Flex,
-            Filter
+            Filter,
+            GeometryDirty
           )
           .write,
     );
