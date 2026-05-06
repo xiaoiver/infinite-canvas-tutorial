@@ -11,6 +11,7 @@ import {
   resolveThemeModeFromPreference,
   type ThemePreference,
   ExportFormat,
+  downloadIcDocument,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -89,9 +90,13 @@ export class TopNavbar extends LitElement {
   };
 
   private handleExport(event: CustomEvent) {
-    const format = (event.target as any).value as ExportFormat;
-
-    this.api.export({ format });
+    const format = (event.target as any).value as ExportFormat | 'ic';
+    if (format === 'ic') {
+      const doc = this.api.exportIcDocument(window.location.origin);
+      downloadIcDocument(doc, 'my-scene.ic');
+    } else {
+      this.api.export({ format });
+    }
   }
 
   private handleEdit(event: CustomEvent) {
@@ -273,8 +278,8 @@ export class TopNavbar extends LitElement {
                       slot="submenu"
                       selects="single"
                       .selected=${[
-                        effectiveThemePreference(this.appState),
-                      ]}
+            effectiveThemePreference(this.appState),
+          ]}
                       @change=${this.handleConfigTheme}
                     >
                       <sp-menu-item value="light">
@@ -312,6 +317,7 @@ export class TopNavbar extends LitElement {
                   <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.WEBM}>WebM</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.GIF}>GIF</sp-menu-item>
+                  <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
             </sp-action-menu>
