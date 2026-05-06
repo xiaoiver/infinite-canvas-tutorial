@@ -357,7 +357,7 @@ canvas.addEventListener(Event.READY, async (e) => {
   const icon = {
     id: 'icon',
     type: 'iconfont',
-    iconFontName: 'bun-light',
+    iconFontName: 'umi',
     iconFontFamily: 'material-icon-theme',
     width: 320,
     height: 320,
