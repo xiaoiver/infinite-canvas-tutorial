@@ -382,7 +382,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     x: 100,
     y: 100,
     zIndex: 1,
-    filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
+    // filter: 'liquid-metal(2, 0.1, 0.3, 0.3, 0.07, 0.4, 70, 3, 1, transparent, #ffffff, auto, 1)',
   }
 
   const polyline = {
@@ -400,36 +400,41 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.2)'
   }
 
-  const device = api.getCanvas().read(GPUResource).device;
-  {
-    // 街拍神级色彩，高对比，红橘色偏暖，强调硬调
-    const lutFileUrl = './classic neg_sRGB.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'fuji-classic-neg', text, {
-      atlasFormat: 'f32',
-    });
+  // registerCubeLutFromText 依赖 Mesh 管线的 ECS GPUResource；纯 Vello 无该组件
+  if (api.getCanvas().has(GPUResource)) {
+    const device = api.getCanvas().read(GPUResource).device;
+    {
+      // 街拍神级色彩，高对比，红橘色偏暖，强调硬调
+      const lutFileUrl = './classic neg_sRGB.cube';
+      const text = await (await fetch(lutFileUrl)).text();
+      registerCubeLutFromText(device, 'fuji-classic-neg', text, {
+        atlasFormat: 'f32',
+      });
+    }
+    {
+      // 低饱和度，强对比度，模仿老式纪实杂志风格
+      const lutFileUrl = './classic chrome_sRGB.cube';
+      const text = await (await fetch(lutFileUrl)).text();
+      registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
+        atlasFormat: 'f32',
+      });
+    }
+    {
+      const lutFileUrl = './velvia_sRGB.cube';
+      const text = await (await fetch(lutFileUrl)).text();
+      registerCubeLutFromText(device, 'fuji-velvia', text, {
+        atlasFormat: 'f32',
+      });
+    }
   }
-  {
-    // 低饱和度，强对比度，模仿老式纪实杂志风格
-    const lutFileUrl = './classic chrome_sRGB.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'fuji-classic-chrome', text, {
-      atlasFormat: 'f32',
-    });
-  }
-  {
-    const lutFileUrl = './velvia_sRGB.cube';
-    const text = await (await fetch(lutFileUrl)).text()
-    registerCubeLutFromText(device, 'fuji-velvia', text, {
-      atlasFormat: 'f32',
-    });
-  }
+
+  console.log('ready....')
 
   api.runAtNextTick(() => {
     api.updateNodes([
-      // rect,
+      rect,
       // logo,
-      icon,
+      // icon,
       // polyline,
       // button1, SearchIcon, 
       // text1,
@@ -452,12 +457,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   // });
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
-// // registerFont('/Gaegu-Regular.ttf');
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
 // registerFont('/NotoSans-Bold.ttf');

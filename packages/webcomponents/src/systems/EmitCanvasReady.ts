@@ -5,6 +5,7 @@ import {
   FillSolid,
   Filter,
   GPUResource,
+  VelloCanvasSurface,
   LockAspectRatio,
   MaterialDirty,
   Name,
@@ -18,13 +19,24 @@ import {
   Transformable,
   Visibility,
   ZIndex,
+  Flex,
+  ComputedCamera,
+  Grid,
+  Ellipse,
+  Line,
+  Polyline,
+  Path,
+  Text,
+  Opacity,
+  StrokeGradient,
+  Stroke,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { pendingGpuReadyDispatch } from '../API';
 
 /**
- * Dispatches {@link Event.READY} only after the canvas entity has {@link GPUResource}
- * (async device creation in the renderer SetupDevice path).
+ * Dispatches {@link Event.READY} after the canvas has {@link GPUResource} (Mesh / SetupDevice)
+ * or {@link VelloCanvasSurface}（纯 Vello 路径无 ECS GPUResource）。
  */
 export class EmitCanvasReady extends System {
   constructor() {
@@ -33,11 +45,15 @@ export class EmitCanvasReady extends System {
       (q) =>
         q.using(
           Canvas,
+          ComputedCamera,
+          Grid,
           GPUResource,
+          VelloCanvasSurface,
           Theme,
           Transform,
           Renderable,
           Rect,
+          Ellipse,
           Visibility,
           Name,
           LockAspectRatio,
@@ -50,6 +66,14 @@ export class EmitCanvasReady extends System {
           Transformable,
           FillGradient,
           FillSolid,
+          Flex,
+          Line,
+          Polyline,
+          Path,
+          Text,
+          Opacity,
+          Stroke,
+          StrokeGradient
         ).write,
     );
   }
@@ -61,7 +85,10 @@ export class EmitCanvasReady extends System {
     let i = 0;
     while (i < pendingGpuReadyDispatch.length) {
       const { container, api } = pendingGpuReadyDispatch[i]!;
-      if (api.getCanvas().has(GPUResource)) {
+      if (
+        api.getCanvas().has(GPUResource) ||
+        api.getCanvas().has(VelloCanvasSurface)
+      ) {
         container.dispatchEvent(new CustomEvent(Event.READY, { detail: api }));
         pendingGpuReadyDispatch.splice(i, 1);
       } else {

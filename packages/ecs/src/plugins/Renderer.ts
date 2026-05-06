@@ -50,6 +50,7 @@ import {
   Wireframe,
   Visibility,
   GPUResource,
+  VelloCanvasSurface,
   Name,
   ToBeDeleted,
   SizeAttenuation,
@@ -85,6 +86,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
      * Components
      */
     component(GPUResource);
+    component(VelloCanvasSurface);
     component(Renderable);
     component(Name);
     component(LockAspectRatio);
