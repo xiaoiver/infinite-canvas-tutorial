@@ -30,6 +30,12 @@ import {
   Opacity,
   StrokeGradient,
   Stroke,
+  Group,
+  ClipMode,
+  Brush,
+  VectorNetwork,
+  Locked,
+  Marker,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { pendingGpuReadyDispatch } from '../API';
@@ -71,9 +77,15 @@ export class EmitCanvasReady extends System {
           Polyline,
           Path,
           Text,
+          Group,
           Opacity,
           Stroke,
-          StrokeGradient
+          StrokeGradient,
+          ClipMode,
+          Brush,
+          VectorNetwork,
+          Locked,
+          Marker,
         ).write,
     );
   }

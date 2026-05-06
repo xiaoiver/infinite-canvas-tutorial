@@ -63,6 +63,7 @@ import {
   FillSolid,
   FillTexture,
   ClipMode,
+  type ClipModeValue,
   Wireframe,
 } from '../components';
 import {
@@ -505,6 +506,31 @@ export const ZINDEX_FACTOR = 100000;
 /** Stencil reference value for clipChildren: write (useStencil) and test (parentAsStencil) must use the same value. 0–255 for 8-bit stencil. */
 export const STENCIL_CLIP_REF = 1;
 
+/**
+ * 沿 ECS 父链查找最近的 {@link ClipMode}（例如裁剪 rect → iconfont 根 → path，path 应对 rect 做 stencil 测试）。
+ */
+function nearestAncestorClipMode(shape: Entity): ClipModeValue | null {
+  let ancestor = shape.has(Children) ? shape.read(Children).parent : null;
+  while (ancestor) {
+    if (ancestor.has(ClipMode)) {
+      return ancestor.read(ClipMode).value;
+    }
+    ancestor = ancestor.has(Children) ? ancestor.read(Children).parent : null;
+  }
+  return null;
+}
+
+function nearestAncestorClipOutsideAlpha(shape: Entity): number {
+  let ancestor = shape.has(Children) ? shape.read(Children).parent : null;
+  while (ancestor) {
+    if (ancestor.has(ClipMode)) {
+      return ancestor.read(ClipMode).outsideAlpha;
+    }
+    ancestor = ancestor.has(Children) ? ancestor.read(Children).parent : null;
+  }
+  return 0.5;
+}
+
 export abstract class Drawcall {
   uid = uid();
 
@@ -804,14 +830,14 @@ export abstract class Drawcall {
   }
 
   protected get parentClipMode() {
-    const parent = this.shapes[0].has(Children) ? this.shapes[0].read(Children).parent : null;
-    return parent?.has(ClipMode) ? parent.read(ClipMode).value : null;
+    const s = this.shapes[0];
+    return s ? nearestAncestorClipMode(s) : null;
   }
 
   /** When parent ClipMode is 'soft', alpha for content outside the mask (0–1). */
   protected get parentOutsideAlpha() {
-    const parent = this.shapes[0].has(Children) ? this.shapes[0].read(Children).parent : null;
-    return parent?.has(ClipMode) ? parent.read(ClipMode).outsideAlpha : 0.5;
+    const s = this.shapes[0];
+    return s ? nearestAncestorClipOutsideAlpha(s) : 0.5;
   }
 
   protected get useWireframe() {

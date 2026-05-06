@@ -297,7 +297,7 @@ const text = {
 
 ### JSON 格式文件 {#json-file}
 
-在 [课程 10 - 图片导入导出] 中我们介绍了如何将图形导出成各种图片格式。在与 AI 交互的过程中，我们需要始终将场景持久化到文件中。
+在 [课程 10 - 图片导入导出] 中我们介绍了如何将图形导出成各种图片格式。在与 AI 交互的过程中，我们需要始终将场景持久化到文件中。在 Figma 中我们可以导入导出 `.fig` 文件，详见：[Import files to the file browser] 与 [Save a local copy of files]
 
 参考 excalidraw 与 pencil 的自定义文件格式，我们也可以设计自己的 JSON 文件，格式为 `.ic`：
 
@@ -351,3 +351,5 @@ api.importIcDocument(await (await fetch('/scene.ic')).text());
 [Components and Instances]: https://docs.pencil.dev/for-developers/the-pen-format#components-and-instances
 [pencil-design-skill]: https://github.com/chiroro-jr/pencil-design-skill
 [课程 10 - 图片导入导出]: /zh/guide/lesson-010
+[Import files to the file browser]: https://help.figma.com/hc/en-us/articles/360041003114-Import-files-to-the-file-browser
+[Save a local copy of files]: https://help.figma.com/hc/en-us/articles/8403626871063-Save-a-local-copy-of-files
