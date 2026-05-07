@@ -5,10 +5,15 @@ We use WebGPU WGSL compute shader with @antv/g-device-api. For more information:
 ```
 
 <script setup>
-import GPUParticlesSine from '../components/audio-visualizer/GPUParticlesSine.vue'
+import SpectrumParticlesSine from '../components/audio-visualizer/SpectrumParticlesSine.vue'
+import SpectrumParticlesMesh from '../components/audio-visualizer/SpectrumParticlesMesh.vue'
 </script>
 
-<GPUParticlesSine />
+<SpectrumParticlesSine />
+
+Upload **.glb / .gltf / .obj** (via [loaders.gl](https://loaders.gl)): triangles are **area-weighted** surface samples; particles are driven the same way as the Sine demo (audio optional). Prefer **GLB** for single-file models; separate `.gltf` + `.bin` may need a hosted base URL for buffer fetch.
+
+<SpectrumParticlesMesh />
 
 Let me briefly describe the implementation. The whole process inside compute shaders can be divided into four stages:
 

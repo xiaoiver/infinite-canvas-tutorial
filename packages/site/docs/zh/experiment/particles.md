@@ -5,10 +5,15 @@
 ```
 
 <script setup>
-import GPUParticlesSine from '../../components/audio-visualizer/GPUParticlesSine.vue'
+import SpectrumParticlesSine from '../../components/audio-visualizer/SpectrumParticlesSine.vue'
+import SpectrumParticlesMesh from '../../components/audio-visualizer/SpectrumParticlesMesh.vue'
 </script>
 
-<GPUParticlesSine />
+<SpectrumParticlesSine />
+
+上传 **.glb / .gltf / .obj**（[loaders.gl](https://loaders.gl)）：在三角面上做**面积加权**的均匀采样，粒子管线与上方 Sine 一致（音频可选）。单文件模型建议用 **GLB**；拆开的 `.gltf` + `.bin` 在本地文件场景下可能无法拉取外链 buffer。
+
+<SpectrumParticlesMesh />
 
 下面我们简要介绍下 Compute Shader 中的流程，可以分成以下几个阶段：
 

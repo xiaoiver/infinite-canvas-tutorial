@@ -237,11 +237,17 @@ export class GPUParticle implements Effect {
   }
 
   destroy() {
+    if (this.canvas && this.custom) {
+      this.canvas.removeChild(this.custom);
+    }
+    if (!this.inited) {
+      return;
+    }
     this.screen.destroy();
+    this.texture.destroy();
     this.renderTarget.destroy();
     this.timeBuffer.destroy();
     this.mouseBuffer.destroy();
     this.blitPipeline.destroy();
-    this.device.destroy();
   }
 }

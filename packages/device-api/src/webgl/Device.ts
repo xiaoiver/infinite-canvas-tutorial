@@ -1078,6 +1078,17 @@ export class Device_GL implements SwapChain, Device {
     }
   }
 
+  submitComputeImmediate(_draw: (pass: ComputePass) => void): void {
+    throw new Error('submitComputeImmediate requires WebGPU');
+  }
+
+  submitRenderPassImmediate(
+    _descriptor: RenderPassDescriptor,
+    _draw: (pass: RenderPass) => void,
+  ): void {
+    throw new Error('submitRenderPassImmediate requires WebGPU');
+  }
+
   copySubTexture2D(
     dst_: Texture,
     dstX: number,

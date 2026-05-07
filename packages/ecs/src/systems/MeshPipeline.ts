@@ -28,6 +28,7 @@ import {
   FillPattern,
   FillSolid,
   FillTexture,
+  FillTextureLive,
   FractionalIndex,
   GlobalRenderOrder,
   GlobalTransform,
@@ -281,6 +282,10 @@ export class MeshPipeline extends System {
   );
   /** Used to force continuous frames when CRT `useEngineTime` animates without component churn. */
   private filtersCurrent = this.query((q) => q.current.with(Filter).read);
+  /** External GPU fills (e.g. spectrum particles) update every frame; keep compositing. */
+  private fillTextureLiveCurrent = this.query((q) =>
+    q.current.with(FillTextureLive).read,
+  );
   private clipModes = this.query(
     (q) => q.addedChangedOrRemoved.with(ClipMode).trackWrites,
   );
@@ -842,6 +847,8 @@ export class MeshPipeline extends System {
     });
 
     const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
+    const fillTextureLiveNeedsContinuousRender =
+      this.fillTextureLiveCurrent.current.length > 0;
 
     this.canvases.current.forEach((canvas) => {
       if (
@@ -874,7 +881,8 @@ export class MeshPipeline extends System {
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||
         this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas) ||
-        engineTimeNeedsContinuousRender;
+        engineTimeNeedsContinuousRender ||
+        fillTextureLiveNeedsContinuousRender;
 
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {

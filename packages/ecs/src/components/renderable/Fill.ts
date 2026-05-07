@@ -76,6 +76,12 @@ export class FillTexture {
   }
 }
 
+/**
+ * GPU 上的 {@link FillTexture} 每帧由外部（如 compute pass）更新内容时挂上此标记，
+ * 否则 {@link MeshPipeline} 在场景无其它变更时会跳过 `renderCamera`，画布看不到动画。
+ */
+export class FillTextureLive {}
+
 export class FillImage {
   @field.object declare src: TexImageSource;
 

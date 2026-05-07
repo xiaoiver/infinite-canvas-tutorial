@@ -825,6 +825,20 @@ export interface Device {
   beginFrame(): void;
   endFrame(): void;
   submitPass: (pass: RenderPass | ComputePass) => void;
+  /**
+   * Encode one compute pass on a fresh command buffer and submit it to the GPU queue immediately.
+   * Does not participate in {@link beginFrame}/{@link endFrame} encoder pooling — use when driving
+   * GPU work outside the main render graph (e.g. standalone rAF). WebGPU only; WebGL throws.
+   */
+  submitComputeImmediate: (draw: (pass: ComputePass) => void) => void;
+  /**
+   * Encode one render pass on a fresh command buffer and submit immediately.
+   * Same pooling semantics as {@link submitComputeImmediate}.
+   */
+  submitRenderPassImmediate: (
+    descriptor: RenderPassDescriptor,
+    draw: (pass: RenderPass) => void,
+  ) => void;
   destroy(): void;
 
   // Render pipeline compilation control.

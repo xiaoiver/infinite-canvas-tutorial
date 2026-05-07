@@ -12,6 +12,10 @@ import opentype from 'opentype.js';
 import { svgPathProperties } from 'svg-path-properties';
 import ClipperLib from 'clipper-lib';
 import { Pane } from 'tweakpane';
+import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
+import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: ExtendedAPI | undefined;
