@@ -202,9 +202,9 @@
         "description": "Superposición de tres filtros: CRT, vignette y glitch.",
         "description2": "Intenta descargar el GIF en el panel de exportación a la derecha."
       },
-      "fujifilmLuts": {
-        "title": "LUT estilo Fujifilm",
-        "description": "LUT .cube de Fujifilm. Conversión sRGB desde <repo>github.com/abpy/FujifilmCameraProfiles</repo>."
+      "luts": {
+        "title": "Vista previa de LUT",
+        "description": "LUT .cube estilo película (Fujifilm, Ricoh y más). LUT Fujifilm desde <fujiRepo>github.com/abpy/FujifilmCameraProfiles</fujiRepo>. LUT Ricoh desde <ricohRepo>reddit.com/r/Lumix (LUT ingeniería inversa GR)</ricohRepo>."
       },
       "liquidMetal": {
         "title": "Metal líquido",
@@ -222,9 +222,9 @@
       "metaDescription": "Efectos tipo glitch (próximamente).",
       "placeholder": "Zona reservada para el efecto Glitch."
     },
-    "fujifilmLuts": {
-      "metaTitle": "LUT Fujifilm",
-      "metaDescription": "Prueba LUT de emulación tipo película Fujifilm en tus fotos."
+    "luts": {
+      "metaTitle": "Vista previa de LUT",
+      "metaDescription": "Prueba LUT .cube de emulación en el lienzo (Fujifilm, Ricoh y más)."
     },
     "liquidMetal": {
       "metaTitle": "Metal líquido",

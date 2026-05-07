@@ -20,6 +20,8 @@ const LUT_SOURCES = [
   { url: '/luts/astia_sRGB.cube', key: 'fuji-astia' },
   { url: '/luts/eterna_sRGB.cube', key: 'fuji-eterna' },
   { url: '/luts/bleach bypass_sRGB.cube', key: 'fuji-bleach' },
+  { url: '/luts/Ricoh_GR2_POSI_33_Rec709.cube', key: 'ricoh-positive-film' },
+  { url: '/luts/Ricoh_GR2_VIVID_33_Rec709.cube', key: 'ricoh-gr2-vivid' },
 ] as const;
 
 const DEMO_IMAGE =
@@ -27,6 +29,12 @@ const DEMO_IMAGE =
 
 const FUJIFILM_PROFILES_REPO_HREF =
   'https://github.com/abpy/FujifilmCameraProfiles';
+
+const RICOH_LUTS_REDDIT_HREF =
+  'https://www.reddit.com/r/Lumix/comments/1s5sxbv/i_reverseengineered_ricoh_gr_iis_positive_film/';
+
+const linkClass =
+  'text-foreground underline underline-offset-2 hover:text-primary';
 
 const DEFAULT_NODES: SerializedNode[] = [
   {
@@ -112,9 +120,37 @@ const DEFAULT_NODES: SerializedNode[] = [
     version: 0,
     filter: 'lut(fuji-bleach)',
   } as const,
+  {
+    id: 'ricoh-lut-positive-film',
+    type: 'rect',
+    name: 'Positive Film',
+    x: 200,
+    y: 2800,
+    width: 800,
+    height: 800,
+    lockAspectRatio: true,
+    fill: DEMO_IMAGE,
+    zIndex: 0,
+    version: 0,
+    filter: 'lut(ricoh-positive-film)',
+  } as const,
+  {
+    id: 'ricoh-lut-gr2-vivid',
+    type: 'rect',
+    name: 'GR2 Vivid',
+    x: 1100,
+    y: 2800,
+    width: 800,
+    height: 800,
+    lockAspectRatio: true,
+    fill: DEMO_IMAGE,
+    zIndex: 0,
+    version: 0,
+    filter: 'lut(ricoh-gr2-vivid)',
+  } as const,
 ];
 
-async function registerFujiCubeLuts(api: ExtendedAPI) {
+async function registerCubeLuts(api: ExtendedAPI) {
   const device = api.getCanvas().read(GPUResource).device;
   await Promise.all(
     LUT_SOURCES.map(async ({ url, key }) => {
@@ -128,10 +164,10 @@ async function registerFujiCubeLuts(api: ExtendedAPI) {
   );
 }
 
-export function FujifilmLutsTool() {
-  const tItem = useTranslations('tools.items.fujifilmLuts');
+export function Luts() {
+  const tItem = useTranslations('tools.items.luts');
   const prepareCanvas = useCallback(async (api: ExtendedAPI) => {
-    await registerFujiCubeLuts(api);
+    await registerCubeLuts(api);
   }, []);
 
   return (
@@ -144,12 +180,22 @@ export function FujifilmLutsTool() {
           </h1>
           <p className="text-muted-foreground text-sm">
             {tItem.rich('description', {
-              repo: (chunks) => (
+              fujiRepo: (chunks) => (
                 <a
                   href={FUJIFILM_PROFILES_REPO_HREF}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-foreground underline underline-offset-2 hover:text-primary"
+                  className={linkClass}
+                >
+                  {chunks}
+                </a>
+              ),
+              ricohRepo: (chunks) => (
+                <a
+                  href={RICOH_LUTS_REDDIT_HREF}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={linkClass}
                 >
                   {chunks}
                 </a>
@@ -160,7 +206,7 @@ export function FujifilmLutsTool() {
         <div className="flex min-h-0 flex-1">
           <div className="h-[720px] w-full flex-1">
             <Canvas
-              id="fujifilm-luts"
+              id="luts"
               initialData={DEFAULT_NODES}
               prepareCanvas={prepareCanvas}
               initialAppState={{
