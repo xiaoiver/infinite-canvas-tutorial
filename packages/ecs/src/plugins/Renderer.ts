@@ -36,6 +36,7 @@ import {
   FillPattern,
   FillSolid,
   FillTexture,
+  FillTextureLive,
   GlobalRenderOrder,
   InnerShadow,
   Opacity,
@@ -112,6 +113,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(FillPattern);
     component(FillImage);
     component(FillTexture);
+    component(FillTextureLive);
     component(Stroke);
     component(StrokeGradient);
     component(Opacity);

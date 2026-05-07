@@ -2,13 +2,14 @@ import {
   Bindings,
   Buffer,
   BufferUsage,
+  ComputePass,
   ComputePipeline,
-} from '@antv/g-device-api';
-import { createProgram, registerShaderModule } from './utils';
-import { modulate } from '../utils';
-import { GPUParticle } from './GPUParticle';
+} from '@infinite-canvas-tutorial/device-api';
+import { modulate } from '../../utils';
+import { flattenParticleComputeWgsl } from './flattenParticleWgsl';
+import { EcsGPUParticle } from './EcsGPUParticle';
 
-export interface SineOptions {
+export interface EcsSineParticleOptions {
   radius: number;
   sinea: number;
   sineb: number;
@@ -21,19 +22,19 @@ export interface SineOptions {
 /**
  * @see https://compute.toys/view/21
  */
-export class Sine extends GPUParticle {
-  private options: SineOptions;
-  private customUniformBuffer: Buffer;
-  private clearPipeline: ComputePipeline;
-  private clearBindings: Bindings;
-  private rasterizePipeline: ComputePipeline;
-  private rasterizeBindings: Bindings;
-  private mainImagePipeline: ComputePipeline;
-  private mainImageBindings: Bindings;
+export class EcsSineParticle extends EcsGPUParticle {
+  private options: EcsSineParticleOptions;
+  private customUniformBuffer!: Buffer;
+  private storageBuffer!: Buffer;
+  private clearPipeline!: ComputePipeline;
+  private clearBindings!: Bindings;
+  private rasterizePipeline!: ComputePipeline;
+  private rasterizeBindings!: Bindings;
+  private mainImagePipeline!: ComputePipeline;
+  private mainImageBindings!: Bindings;
 
-  constructor(options: Partial<SineOptions> = {}) {
+  constructor(options: Partial<EcsSineParticleOptions> = {}) {
     super();
-
     this.options = {
       radius: 6,
       sinea: 1,
@@ -46,9 +47,26 @@ export class Sine extends GPUParticle {
     };
   }
 
-  registerShaderModule() {
+  private destroyComputeOnly(): void {
+    if (!this.customUniformBuffer) {
+      return;
+    }
+    this.customUniformBuffer.destroy();
+    this.storageBuffer.destroy();
+    this.clearPipeline.destroy();
+    this.rasterizePipeline.destroy();
+    this.mainImagePipeline.destroy();
+  }
+
+  protected onAfterResize(): void {
+    this.destroyComputeOnly();
+    this.buildComputePipelines();
+  }
+
+  private buildComputePipelines(): void {
     const { device, screen, canvas } = this;
-    const $canvas = canvas.getDOM() as HTMLCanvasElement;
+    const $canvas = canvas;
+
     const custom = /* wgsl */ `
   #define_import_path custom
   
@@ -63,7 +81,6 @@ export class Sine extends GPUParticle {
   }
   @group(0) @binding(2) var<uniform> custom: Custom;
     `;
-    registerShaderModule(device, custom);
 
     const computeWgsl = /* wgsl */ `
   #import prelude::{screen, time, mouse};
@@ -72,10 +89,6 @@ export class Sine extends GPUParticle {
   #import custom::{custom};
   
     @group(2) @binding(0) var<storage, read_write> atomic_storage : array<atomic<i32>>;
-  
-    //Check Uniforms
-    //Mode 0 - additive blending (atomicAdd)
-    //Mode 1 - closest sample (atomicMax)
   
     const MaxSamples = 64.0;
     const FOV = 1.2;
@@ -147,7 +160,6 @@ export class Sine extends GPUParticle {
         let projectedPos = Project(camera, pos);
         let screenCoord = int2(projectedPos.xy);
   
-        //outside of our view
         if(screenCoord.x < 0 || screenCoord.x >= screen_size.x ||
             screenCoord.y < 0 || screenCoord.y >= screen_size.y || projectedPos.z < 0.0)
         {
@@ -168,7 +180,6 @@ export class Sine extends GPUParticle {
   
     @compute @workgroup_size(16, 16)
     fn Rasterize(@builtin(global_invocation_id) id: uint3) {
-        // Viewport resolution (in pixels)
         let screen_size = int2(textureDimensions(screen));
         let screen_size_f = float2(screen_size);
   
@@ -176,7 +187,6 @@ export class Sine extends GPUParticle {
   
         SetCamera(ang, FOV);
   
-        //RNG state
         state = uint4(id.x, id.y, id.z, 0u*time.frame);
   
         for(var i: i32 = 0; i < int(custom.Samples*MaxSamples + 1.0); i++)
@@ -186,7 +196,6 @@ export class Sine extends GPUParticle {
             let col = float3(0.5 + 0.5*sin(10.0*pos));
   
             let sec = 5.0+custom.Speed*time.elapsed;
-            //move points along sines
             pos += sin(float3(2.0,1.0,1.5)*sec)*0.1*sin(30.0*custom.Sinea*pos);
             pos += sin(float3(2.0,1.0,1.5)*sec)*0.02*sin(30.0*custom.Sineb*pos.zxy);
   
@@ -220,32 +229,32 @@ export class Sine extends GPUParticle {
   fn main_image(@builtin(global_invocation_id) id: uint3) {
     let screen_size = uint2(textureDimensions(screen));
   
-    // Prevent overdraw for workgroups on the edge of the viewport
     if (id.x >= screen_size.x || id.y >= screen_size.y) { return; }
   
     let color = float4(Sample(int2(id.xy)),1.0);
   
-    // Output to screen (linear colour space)
     textureStore(screen, int2(id.xy), color);
   }
   `;
 
-    const clearProgram = createProgram(device, {
+    const flatWgsl = flattenParticleComputeWgsl(custom, computeWgsl);
+
+    const clearProgram = device.createProgram({
       compute: {
         entryPoint: 'Clear',
-        wgsl: computeWgsl,
+        wgsl: flatWgsl,
       },
     });
-    const rasterizeProgram = createProgram(device, {
+    const rasterizeProgram = device.createProgram({
       compute: {
         entryPoint: 'Rasterize',
-        wgsl: computeWgsl,
+        wgsl: flatWgsl,
       },
     });
-    const mainImageProgram = createProgram(device, {
+    const mainImageProgram = device.createProgram({
       compute: {
         entryPoint: 'main_image',
-        wgsl: computeWgsl,
+        wgsl: flatWgsl,
       },
     });
 
@@ -331,6 +340,7 @@ export class Sine extends GPUParticle {
     });
 
     this.customUniformBuffer = customUniformBuffer;
+    this.storageBuffer = storageBuffer;
     this.clearPipeline = clearPipeline;
     this.clearBindings = clearBindings;
     this.rasterizePipeline = rasterizePipeline;
@@ -339,20 +349,22 @@ export class Sine extends GPUParticle {
     this.mainImageBindings = mainImageBindings;
   }
 
-  compute({ overallAvg, upperAvgFr, lowerAvgFr }) {
-    const {
-      options,
-      customUniformBuffer,
-      device,
-      canvas,
-      clearPipeline,
-      clearBindings,
-      rasterizePipeline,
-      rasterizeBindings,
-      mainImagePipeline,
-      mainImageBindings,
-    } = this;
-    const $canvas = canvas.getDOM() as HTMLCanvasElement;
+  registerShaderModule(): void {
+    this.buildComputePipelines();
+  }
+
+  protected prepareCompute({
+    overallAvg,
+    upperAvgFr,
+    lowerAvgFr,
+  }: {
+    overallAvg: number;
+    upperAvgFr: number;
+    lowerAvgFr: number;
+    lowerMaxFr: number;
+    upperMaxFr: number;
+  }): void {
+    const { options, customUniformBuffer } = this;
 
     customUniformBuffer.setSubData(
       0,
@@ -368,11 +380,23 @@ export class Sine extends GPUParticle {
         ]).buffer,
       ),
     );
+  }
+
+  protected encodeComputePasses(computePass: ComputePass): void {
+    const {
+      canvas,
+      clearPipeline,
+      clearBindings,
+      rasterizePipeline,
+      rasterizeBindings,
+      mainImagePipeline,
+      mainImageBindings,
+    } = this;
+    const $canvas = canvas;
 
     const x = Math.ceil($canvas.width / 16);
     const y = Math.ceil($canvas.height / 16);
 
-    const computePass = device.createComputePass();
     computePass.setPipeline(clearPipeline);
     computePass.setBindings(clearBindings);
     computePass.dispatchWorkgroups(x, y);
@@ -384,10 +408,9 @@ export class Sine extends GPUParticle {
     computePass.setPipeline(mainImagePipeline);
     computePass.setBindings(mainImageBindings);
     computePass.dispatchWorkgroups(x, y);
-    device.submitPass(computePass);
   }
 
-  update(options: Partial<SineOptions>) {
+  update(options: Partial<EcsSineParticleOptions>) {
     this.options = {
       ...this.options,
       ...options,
@@ -395,11 +418,7 @@ export class Sine extends GPUParticle {
   }
 
   destroy(): void {
-    this.customUniformBuffer.destroy();
-    this.clearPipeline.destroy();
-    this.rasterizePipeline.destroy();
-    this.mainImagePipeline.destroy();
-
+    this.destroyComputeOnly();
     super.destroy();
   }
 }

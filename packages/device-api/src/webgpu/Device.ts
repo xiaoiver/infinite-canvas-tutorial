@@ -730,6 +730,35 @@ export class Device_WebGPU implements SwapChain, IDevice_WebGPU {
     }
   }
 
+  submitComputeImmediate(draw: (pass: ComputePass) => void): void {
+    let pass = this.computePassPool.pop();
+    if (pass === undefined) {
+      pass = new ComputePass_WebGPU();
+    }
+    const encoder = this.device.createCommandEncoder();
+    pass.beginComputePass(encoder);
+    draw(pass);
+    pass.finish();
+    this.computePassPool.push(pass);
+    this.device.queue.submit([encoder.finish()]);
+  }
+
+  submitRenderPassImmediate(
+    descriptor: RenderPassDescriptor,
+    draw: (pass: RenderPass) => void,
+  ): void {
+    let pass = this.renderPassPool.pop();
+    if (pass === undefined) {
+      pass = new RenderPass_WebGPU(this);
+    }
+    const encoder = this.device.createCommandEncoder();
+    pass.beginRenderPass(encoder, descriptor);
+    draw(pass);
+    pass.finish();
+    this.renderPassPool.push(pass);
+    this.device.queue.submit([encoder.finish()]);
+  }
+
   copySubTexture2D(
     dst_: Texture,
     dstX: number,
