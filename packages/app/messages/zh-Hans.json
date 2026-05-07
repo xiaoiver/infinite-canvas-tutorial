@@ -202,9 +202,9 @@
         "description": "叠加三个滤镜：CRT、晕影和故障",
         "description2": "尝试在右侧导出面板下载 GIF"
       },
-      "fujifilmLuts": {
-        "title": "富士胶片 LUT",
-        "description": "富士胶片官方的 .cube LUTs。sRGB 转换参考 <repo>github.com/abpy/FujifilmCameraProfiles</repo>。"
+      "luts": {
+        "title": "LUT 预览",
+        "description": "多种 .cube 胶片风格 LUT（富士、理光等）。富士 LUT 来源：<fujiRepo>github.com/abpy/FujifilmCameraProfiles</fujiRepo>。理光 LUT 来源：<ricohRepo>reddit.com/r/Lumix（GR 正向片等 LUT 逆向）</ricohRepo>。"
       },
       "liquidMetal": {
         "title": "液态金属",
@@ -222,9 +222,9 @@
       "metaDescription": "故障风 / Glitch 图像效果（待完善）。",
       "placeholder": "预留给 Glitch 参数与预览。"
     },
-    "fujifilmLuts": {
-      "metaTitle": "富士胶片 LUT",
-      "metaDescription": "在画布上试用富士风格胶片模拟 LUT。"
+    "luts": {
+      "metaTitle": "LUT 预览",
+      "metaDescription": "在画布上试用 .cube 胶片模拟 LUT（富士、理光等）。"
     },
     "liquidMetal": {
       "metaTitle": "液态金属",

@@ -27,8 +27,8 @@ export const toolEntries: ToolEntry[] = [
         screenshot: '/screenshot-glitch.png',
     },
     {
-        id: 'fujifilmLuts',
-        path: '/fujifilm-luts',
+        id: 'luts',
+        path: '/luts',
         status: 'ready',
         screenshot: '/screenshot-luts.png',
     },

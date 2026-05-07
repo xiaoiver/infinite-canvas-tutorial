@@ -1,5 +1,5 @@
 import { getTranslations } from 'next-intl/server';
-import { FujifilmLutsTool } from './fujifilm-luts-tool';
+import { Luts } from './luts';
 
 export async function generateMetadata({
   params,
@@ -9,11 +9,11 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'tools' });
   return {
-    title: t('fujifilmLuts.metaTitle'),
-    description: t('fujifilmLuts.metaDescription'),
+    title: t('luts.metaTitle'),
+    description: t('luts.metaDescription'),
   };
 }
 
-export default function FujifilmLutsPage() {
-  return <FujifilmLutsTool />;
+export default function LutsPage() {
+  return <Luts />;
 }
