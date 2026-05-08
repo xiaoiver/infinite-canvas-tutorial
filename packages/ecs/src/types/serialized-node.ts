@@ -136,6 +136,11 @@ export interface VisibilityAttributes {
   visibility: Visibility['value'];
 }
 
+/** 多层填充的一层，与 ECS {@link FillLayers} 中条目同构 */
+export type SerializedFillLayerItem =
+  | { type: 'solid'; value: string; opacity?: number; enabled?: boolean }
+  | { type: 'gradient'; value: string; opacity?: number; enabled?: boolean };
+
 export interface FillAttributes {
   /**
    * Solid color, gradient, stringified pattern, image data-uri, etc.
@@ -143,6 +148,12 @@ export interface FillAttributes {
   fill: string;
   fillOpacity: Opacity['fillOpacity'];
   opacity: Opacity['opacity'];
+  /**
+   * 与单一 `fill` 二选一；反序列化优先采用此项。
+   * 至少两项时挂 ECS `FillLayers` 做多层 Normal 叠加；仅一项时退化为单 `FillSolid` / `FillGradient`。
+   * 每层 `type`：`solid` | `gradient`；`opacity` 为 0–1，缺省为 1，并与 `fillOpacity` 相乘；`enabled: false` 跳过该层。
+   */
+  fillLayers?: SerializedFillLayerItem[];
 }
 
 export interface StrokeAttributes {

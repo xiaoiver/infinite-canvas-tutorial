@@ -25,6 +25,7 @@ import {
   TextDecoration,
   FillImage,
   FillPattern,
+  FillLayers,
   MaterialDirty,
   SizeAttenuation,
   StrokeAttenuation,
@@ -124,6 +125,7 @@ import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './ex
 import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
 import { resetFillImageSvgRerasterSchedule } from '../fillImageSvgReraster';
 import { hasRasterPostEffects } from '../filter';
+import { fillLayerOpacity, isFillLayerEnabled } from '../fillLayers';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (node.type === 'g') {
@@ -1503,13 +1505,53 @@ export function serializedNodesToEntities(
       entityCommands.insert(new ClipMode(attributes.clipMode));
     }
 
-    const { fill, fillOpacity, opacity } = wireMergedAttrs as FillAttributes;
+    const {
+      fill,
+      fillOpacity,
+      opacity,
+      fillLayers: fillLayersWire,
+    } = wireMergedAttrs as FillAttributes;
+    const fillLayersWireArr = Array.isArray(fillLayersWire)
+      ? fillLayersWire
+      : null;
+    const fillLayersMulti =
+      fillLayersWireArr && fillLayersWireArr.length >= 2
+        ? fillLayersWireArr
+        : null;
+    const fillLayersSingle =
+      fillLayersWireArr && fillLayersWireArr.length === 1
+        ? fillLayersWireArr[0]
+        : null;
+    let singleFillLayerOpacityMul = 1;
+    if (fillLayersMulti && !skipParentFillStroke) {
+      entityCommands.insert(new FillLayers(fillLayersMulti));
+    } else if (fillLayersSingle && !skipParentFillStroke) {
+      const L = fillLayersSingle;
+      if (isFillLayerEnabled(L)) {
+        if (L.type === 'gradient') {
+          entityCommands.insert(new FillGradient(L.value));
+        } else {
+          entityCommands.insert(
+            new FillSolid(
+              L.value,
+              designVariableRefKeyFromWire(fill),
+            ),
+          );
+        }
+        singleFillLayerOpacityMul = fillLayerOpacity(L.opacity);
+      }
+    }
     const resolvedFill = resolveDesignVariableValue(
       fill,
       designVariables,
       themeMode,
     );
-    if (resolvedFill && !skipParentFillStroke) {
+    if (
+      !fillLayersMulti &&
+      !fillLayersSingle &&
+      resolvedFill &&
+      !skipParentFillStroke
+    ) {
       if (isGradient(resolvedFill)) {
         entityCommands.insert(new FillGradient(resolvedFill));
       } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
@@ -1611,7 +1653,12 @@ export function serializedNodesToEntities(
       );
     }
 
-    if (opacity || fillOpacity || strokeOpacity) {
+    if (
+      opacity ||
+      fillOpacity ||
+      strokeOpacity ||
+      (fillLayersSingle && isFillLayerEnabled(fillLayersSingle))
+    ) {
       const rfo = resolveDesignVariableValue(
         fillOpacity,
         designVariables,
@@ -1629,10 +1676,11 @@ export function serializedNodesToEntities(
         const n = typeof v === 'number' ? v : parseFloat(String(v));
         return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
       };
+      const baseFillOp = to01(rfo);
       entityCommands.insert(
         new Opacity({
           opacity,
-          fillOpacity: to01(rfo),
+          fillOpacity: baseFillOp * singleFillLayerOpacityMul,
           strokeOpacity: to01(rso),
         }),
       );

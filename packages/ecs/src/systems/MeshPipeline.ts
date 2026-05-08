@@ -26,6 +26,7 @@ import {
   FillGradient,
   FillImage,
   FillPattern,
+  FillLayers,
   FillSolid,
   FillTexture,
   FillTextureLive,
@@ -220,6 +221,9 @@ export class MeshPipeline extends System {
   private fillSolids = this.query(
     (q) => q.addedChangedOrRemoved.with(FillSolid).trackWrites,
   );
+  private fillLayers = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
+  );
   private fillGradients = this.query(
     (q) => q.addedChangedOrRemoved.with(FillGradient).trackWrites,
   );
@@ -336,6 +340,7 @@ export class MeshPipeline extends System {
             FillImage,
             FillPattern,
             FillGradient,
+            FillLayers,
             FillSolid,
             FillTexture,
             FractionalIndex,
@@ -898,6 +903,7 @@ export class MeshPipeline extends System {
         if (
           !toRender &&
           (!!this.fillSolids.addedChangedOrRemoved.length ||
+            !!this.fillLayers.addedChangedOrRemoved.length ||
             !!this.fillGradients.addedChangedOrRemoved.length ||
             !!this.strokeGradients.addedChangedOrRemoved.length ||
             !!this.fillPatterns.addedChangedOrRemoved.length ||

@@ -2,6 +2,39 @@ import { field, Type } from '@lastolivegames/becsy';
 import { Texture } from '@infinite-canvas-tutorial/device-api';
 import { type Pattern } from '../../utils';
 
+/**
+ * 单层填充描述，多条按顺序从底到顶以 Normal（source-over）叠加。
+ * 仅当 {@link FillLayers.layers} 长度 ≥ 2 时参与渲染；单条请继续使用 {@link FillSolid} 等。
+ */
+/**
+ * `opacity` 为 0–1，缺省 1；与实体 {@link Opacity.fillOpacity} 相乘。
+ * `enabled` 为 false 时跳过该层（缺省为启用）。
+ */
+export type FillLayerItem =
+  | {
+      type: 'solid';
+      value: string;
+      opacity?: number;
+      enabled?: boolean;
+    }
+  | {
+      type: 'gradient';
+      value: string;
+      opacity?: number;
+      enabled?: boolean;
+    };
+
+export class FillLayers {
+  @field({ type: Type.object, default: () => [] })
+  declare layers: FillLayerItem[];
+
+  constructor(layers?: FillLayerItem[]) {
+    if (layers) {
+      this.layers = layers;
+    }
+  }
+}
+
 export class FillSolid {
   /**
    * 实体上的填色。空串表示「本组件上未设具体颜色」，与线框/父 `g` 上未写 `fill` 的继承语义一致；`utils/color` 的 `parseColor` 对空串按透明处理。

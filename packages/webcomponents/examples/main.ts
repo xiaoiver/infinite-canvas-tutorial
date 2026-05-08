@@ -214,6 +214,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     strokeWidth: 1,
     zIndex: 0,
   };
+  /** 多层填充示例：底层实色 + 顶层渐变，Normal 叠加（需至少 2 项，见 {@link FillAttributes.fillLayers}） */
   const node3: RectSerializedNode = {
     id: 'snap-to-objects-3',
     type: 'rect',
@@ -221,15 +222,23 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 100,
     width: 100,
     height: 100,
-    fill: '#e0f2ff',
+    fillLayers: [
+      { type: 'solid', value: 'yellow', opacity: 0.5 },
+      {
+        type: 'gradient',
+        value:
+          'linear-gradient(180deg, red 0%, blue 100%)',
+        opacity: 0.85,
+      },
+    ],
     fillOpacity: 0.5,
     stroke: '#147af3',
     strokeWidth: 1,
     zIndex: 0,
   };
 
-  api.updateNodes([node1, node2, node3]);
-  api.selectNodes([node3]);
+  api.updateNodes([node3]);
+  // api.selectNodes([node3]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {
