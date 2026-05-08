@@ -1,6 +1,9 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { Texture } from '@infinite-canvas-tutorial/device-api';
 import { type Pattern } from '../../utils';
+import type { FillLayerBlendMode } from '../../types/fill-layer-blend';
+
+export type { FillLayerBlendMode };
 
 /**
  * 单层填充描述，多条按顺序从底到顶以 Normal（source-over）叠加。
@@ -16,12 +19,18 @@ export type FillLayerItem =
       value: string;
       opacity?: number;
       enabled?: boolean;
+      /**
+       * 与同层下方已绘制内容的混合模式；缺省为 `normal`（source-over 栈上的下一层）。
+       * 非 `normal` 时在 GPU 上预合成到单层纹理再参与形状渲染。
+       */
+      blendMode?: FillLayerBlendMode;
     }
   | {
       type: 'gradient';
       value: string;
       opacity?: number;
       enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
     };
 
 export class FillLayers {

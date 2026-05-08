@@ -34,11 +34,13 @@ import {
 import {
   fillLayerOpacity,
   fillLayersNeedFillImage,
+  fillLayersShouldPrecompose,
   getEnabledFillLayers,
   getMultiFillLayers,
   getSingleEnabledFillLayer,
   type FillLayerItem,
 } from '../utils/fillLayers';
+import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import {
   getRasterFilterValueForShape,
   parseEffect,
@@ -96,6 +98,7 @@ export class Mesh extends Drawcall {
   #pipelineMultiFillMidPass: RenderPipeline | null = null;
   #fillLayerBindingsMidPass: Bindings[] = [];
   #bindingsMultiFillMidPass: Bindings | null = null;
+  #usePrecomposedMultiFill = false;
 
   points: number[] = [];
 
@@ -175,6 +178,7 @@ export class Mesh extends Drawcall {
   }
 
   private disposeMeshFillLayerResources(): void {
+    this.#usePrecomposedMultiFill = false;
     for (const b of this.#fillLayerBindings) {
       b.destroy();
     }
@@ -618,7 +622,11 @@ export class Mesh extends Drawcall {
       }
 
       const multiForTex = getMultiFillLayers(instance);
-      if (multiForTex && fillLayersNeedFillImage(multiForTex)) {
+      const needsFillLayerRaster =
+        multiForTex &&
+        (fillLayersNeedFillImage(multiForTex) ||
+          fillLayersShouldPrecompose(multiForTex));
+      if (needsFillLayerRaster && multiForTex) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;
         const width = maxX - minX;
@@ -633,7 +641,28 @@ export class Mesh extends Drawcall {
             height,
           ),
         );
-        this.#texture = this.#fillLayerTextures[0];
+        if (fillLayersShouldPrecompose(multiForTex)) {
+          const w = Math.max(1, Math.ceil(width));
+          const h = Math.max(1, Math.ceil(height));
+          const composed = composeFillLayerTexturesOnGpu(
+            this.device,
+            this.renderCache,
+            multiForTex,
+            this.#fillLayerTextures,
+            w,
+            h,
+            () => this.createSampler(),
+          );
+          for (const t of this.#fillLayerTextures) {
+            t.destroy?.();
+          }
+          this.#fillLayerTextures = [];
+          this.#texture = composed;
+          this.#usePrecomposedMultiFill = true;
+        } else {
+          this.#texture = this.#fillLayerTextures[0]!;
+          this.#usePrecomposedMultiFill = false;
+        }
       } else if (instance.has(FillLayers)) {
         const one = getSingleEnabledFillLayer(instance);
         if (one) {
@@ -852,7 +881,7 @@ export class Mesh extends Drawcall {
     // ) {
     const shape = this.shapes[0];
     const multi = getMultiFillLayers(shape);
-    if (multi) {
+    if (multi && !this.#usePrecomposedMultiFill) {
       if (this.useWireframe && this.geometryDirty) {
         this.generateWireframe();
       }
@@ -1020,6 +1049,8 @@ export class Mesh extends Drawcall {
     ) {
       const L = enabledFill[0];
       fill = L.type === 'solid' ? L.value : '#ffffff';
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      fill = '#ffffff';
     }
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
       fill != null && fill !== '' ? fill : 'transparent',
@@ -1046,7 +1077,8 @@ export class Mesh extends Drawcall {
       shape.has(FillGradient) ||
       shape.has(FillPattern) ||
       (multiLayers != null && fillLayersNeedFillImage(multiLayers)) ||
-      (shape.has(FillLayers) && fillLayersNeedFillImage(enabledFill))
+      (shape.has(FillLayers) &&
+        (fillLayersNeedFillImage(enabledFill) || this.#usePrecomposedMultiFill))
     ) {
       const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
       const geometryWidth = gMaxX - gMinX;
@@ -1102,6 +1134,11 @@ export class Mesh extends Drawcall {
       } else {
         fa = fo * lo;
       }
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      frN = 1;
+      fgN = 1;
+      fbN = 1;
+      fa = 1;
     }
     const u_FillColor = [frN, fgN, fbN, fa];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];

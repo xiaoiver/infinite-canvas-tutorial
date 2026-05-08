@@ -33,11 +33,13 @@ import {
 import {
   fillLayerOpacity,
   fillLayersNeedFillImage,
+  fillLayersShouldPrecompose,
   getEnabledFillLayers,
   getMultiFillLayers,
   getSingleEnabledFillLayer,
   type FillLayerItem,
 } from '../utils/fillLayers';
+import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import {
   getRasterFilterValueForShape,
   filterRasterPostEffects,
@@ -108,6 +110,10 @@ export class SDF extends Drawcall {
   #pipelineSoftClipOutsideMidPass: RenderPipeline | null = null;
   #fillLayerBindingsSoftClipOutsideMidPass: Bindings[] = [];
   #bindingsSoftClipOutsideMidPass: Bindings | null = null;
+  /**
+   * 含 `blendMode` 时已把多层预合成到 {@link Drawcall} 的 `#texture`，形状走单次填充绘制。
+   */
+  #usePrecomposedMultiFill = false;
 
   protected override get extraShaderDefines(): string {
     const s = this.shapes[0];
@@ -153,6 +159,7 @@ export class SDF extends Drawcall {
   }
 
   private disposeFillLayerResources(): void {
+    this.#usePrecomposedMultiFill = false;
     for (const b of this.#fillLayerBindings) {
       b.destroy();
     }
@@ -593,7 +600,11 @@ export class SDF extends Drawcall {
       }
 
       const multiForTex = getMultiFillLayers(instance);
-      if (multiForTex && fillLayersNeedFillImage(multiForTex)) {
+      const needsFillLayerRaster =
+        multiForTex &&
+        (fillLayersNeedFillImage(multiForTex) ||
+          fillLayersShouldPrecompose(multiForTex));
+      if (needsFillLayerRaster && multiForTex) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;
         const width = maxX - minX;
@@ -608,7 +619,28 @@ export class SDF extends Drawcall {
             height,
           ),
         );
-        this.#texture = this.#fillLayerTextures[0];
+        if (fillLayersShouldPrecompose(multiForTex)) {
+          const w = Math.max(1, Math.ceil(width));
+          const h = Math.max(1, Math.ceil(height));
+          const composed = composeFillLayerTexturesOnGpu(
+            this.device,
+            this.renderCache,
+            multiForTex,
+            this.#fillLayerTextures,
+            w,
+            h,
+            () => this.createSampler(),
+          );
+          for (const t of this.#fillLayerTextures) {
+            t.destroy?.();
+          }
+          this.#fillLayerTextures = [];
+          this.#texture = composed;
+          this.#usePrecomposedMultiFill = true;
+        } else {
+          this.#texture = this.#fillLayerTextures[0]!;
+          this.#usePrecomposedMultiFill = false;
+        }
       } else if (instance.has(FillLayers)) {
         const one = getSingleEnabledFillLayer(instance);
         if (one) {
@@ -1015,7 +1047,7 @@ export class SDF extends Drawcall {
     } else {
       const shape = this.shapes[0];
       const multi = getMultiFillLayers(shape);
-      if (multi) {
+      if (multi && !this.#usePrecomposedMultiFill) {
         const { matrix } = shape.read(GlobalTransform);
         const u_ModelMatrix = [
           matrix.m00,
@@ -1340,6 +1372,8 @@ export class SDF extends Drawcall {
     ) {
       const L = enabledFill[0];
       fill = L.type === 'solid' ? L.value : '#ffffff';
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      fill = '#ffffff';
     }
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
       fill != null && fill !== '' ? fill : 'transparent',
@@ -1411,6 +1445,11 @@ export class SDF extends Drawcall {
       } else {
         fa = fo * lo;
       }
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      frN = 1;
+      fgN = 1;
+      fbN = 1;
+      fa = 1;
     }
     const u_FillColor = [frN, fgN, fbN, fa];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];

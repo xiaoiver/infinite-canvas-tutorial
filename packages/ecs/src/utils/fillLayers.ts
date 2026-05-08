@@ -54,6 +54,16 @@ export function fillLayersNeedFillImage(layers: FillLayerItem[]): boolean {
   return layers.some((l) => l.type === 'gradient');
 }
 
+export type { FillLayerBlendMode } from '../types/fill-layer-blend';
+
+/** 含非 `normal` 的 `blendMode` 时需 GPU 预合成（见 {@link composeFillLayerTexturesOnGpu}） */
+export function fillLayersShouldPrecompose(layers: FillLayerItem[]): boolean {
+  return layers.some((l) => {
+    const b = l.blendMode;
+    return b != null && b !== 'normal';
+  });
+}
+
 /** 单层不透明度，缺省为 1 */
 export function fillLayerOpacity(o?: number): number {
   if (o == null || Number.isNaN(o)) {

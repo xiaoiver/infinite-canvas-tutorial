@@ -34,6 +34,7 @@ import {
   RenderCache,
   Effect,
   fillLayersNeedFillImage,
+  fillLayersShouldPrecompose,
   getEnabledFillLayers,
   uid,
   halftoneDotsUniformValues,
@@ -863,6 +864,9 @@ export abstract class Drawcall {
     if (s.has(FillLayers)) {
       const enabled = getEnabledFillLayers(s);
       if (enabled.length >= 2 && fillLayersNeedFillImage(enabled)) {
+        return true;
+      }
+      if (enabled.length >= 2 && fillLayersShouldPrecompose(enabled)) {
         return true;
       }
       if (enabled.length === 1) {

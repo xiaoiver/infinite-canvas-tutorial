@@ -17,6 +17,7 @@ import {
   VectorNetwork,
   Visibility,
 } from '../components';
+import type { FillLayerBlendMode } from './fill-layer-blend';
 import { EdgeStyle } from '../utils/binding';
 import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from '../utils/binding/constants';
 
@@ -138,8 +139,20 @@ export interface VisibilityAttributes {
 
 /** 多层填充的一层，与 ECS {@link FillLayers} 中条目同构 */
 export type SerializedFillLayerItem =
-  | { type: 'solid'; value: string; opacity?: number; enabled?: boolean }
-  | { type: 'gradient'; value: string; opacity?: number; enabled?: boolean };
+  | {
+      type: 'solid';
+      value: string;
+      opacity?: number;
+      enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
+    }
+  | {
+      type: 'gradient';
+      value: string;
+      opacity?: number;
+      enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
+    };
 
 export interface FillAttributes {
   /**
@@ -151,7 +164,8 @@ export interface FillAttributes {
   /**
    * 与单一 `fill` 二选一；反序列化优先采用此项。
    * 至少两项时挂 ECS `FillLayers` 做多层 Normal 叠加；仅一项时退化为单 `FillSolid` / `FillGradient`。
-   * 每层 `type`：`solid` | `gradient`；`opacity` 为 0–1，缺省为 1，并与 `fillOpacity` 相乘；`enabled: false` 跳过该层。
+   * 每层 `type`：`solid` | `gradient`；`opacity` 为 0–1，缺省为 1，并与 `fillOpacity` 相乘；`enabled: false` 跳过该层；
+   * `blendMode` 见 {@link FillLayerBlendMode}，缺省 `normal`；非 `normal` 时引擎在 GPU 上预合成再绘制形状。
    */
   fillLayers?: SerializedFillLayerItem[];
 }
