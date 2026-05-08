@@ -13,19 +13,17 @@ import {
   UIPlugin,
   type ExtendedAPI,
 } from '@infinite-canvas-tutorial/webcomponents';
-import { App as AntApp, Button, Flex, Upload, message } from 'ant-design-vue';
-import { CloudUploadOutlined } from '@ant-design/icons-vue';
+import { App as AntApp, Flex, message } from 'ant-design-vue';
 import { onMounted, onUnmounted, ref } from 'vue';
 import {
   EcsSineParticle,
   EcsSpectrumParticleAudio,
   SPECTRUM_PARTICLE_RECT_ID,
-} from './effects/ecs';
+} from './index';
 
 defineOptions({ name: 'SpectrumParticlesSine' });
 
 const wrapper = ref<HTMLElement | null>(null);
-const loading = ref(false);
 
 let api: ExtendedAPI | undefined;
 let audioDriver: EcsSpectrumParticleAudio | undefined;
@@ -43,6 +41,7 @@ const particleRect = (): RectSerializedNode => ({
   stroke: '#64748b',
   strokeWidth: 1,
   opacity: 1,
+  zIndex: 0,
 });
 
 onMounted(async () => {
@@ -116,33 +115,12 @@ onUnmounted(() => {
   api?.destroy();
 });
 
-const handleUpload = (file: File) => {
-  if (!audioDriver) {
-    message.error('画布未就绪');
-    return false;
-  }
-
-  loading.value = true;
-  const $audio = document.createElement('audio');
-  $audio.controls = true;
-  $audio.src = URL.createObjectURL(file);
-  $audio.load();
-  $audio.play().finally(() => {
-    loading.value = false;
-  });
-  audioDriver.data($audio);
-  return false;
-};
 </script>
 
 <template>
   <AntApp>
     <Flex vertical gap="small" style="width: 100%">
-      <ic-spectrum-canvas
-        ref="wrapper"
-        renderer="webgpu"
-        style="width: 100%; height: 420px"
-      />
+      <ic-spectrum-canvas ref="wrapper" renderer="webgpu" style="width: 100%; height: 420px" />
     </Flex>
   </AntApp>
 </template>

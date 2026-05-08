@@ -3,8 +3,8 @@
  * “Composable module identifiers must not require substitution … `int`”）。
  * 可组合片段需展开成标准 WGSL；根着色器仍用 `alias + …` 再 `wgsl_compile`。
  */
-import { alias, camera, math, prelude } from '../utils';
-import { WGSLComposer } from '../../../../../../../rust/glsl-wgsl-compiler/pkg/glsl_wgsl_compiler';
+import { alias, camera, math, prelude } from '../wgslUtils';
+import { WGSLComposer } from '../../../../rust/glsl-wgsl-compiler/pkg/glsl_wgsl_compiler';
 
 /** 将 utils 里 prelude/math/camera 等使用的别名换成 naga 可组合模块接受的写法。 */
 export function expandComputeToyAliasesForComposable(src: string): string {

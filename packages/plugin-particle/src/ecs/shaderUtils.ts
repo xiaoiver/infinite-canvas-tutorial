@@ -14,7 +14,7 @@ import {
   math,
   prelude,
   registerShaderModule as gRegisterShaderModule,
-} from '../utils';
+} from '../wgslUtils';
 
 export { prelude, math, camera };
 

@@ -5,6 +5,18 @@ import init, {
 import { DeviceContribution } from '../api';
 import { Device_WebGPU } from './Device';
 
+/**
+ * 浏览器内只允许把属于**同一原生 `GPUDevice`** 的纹理绑到该设备上的管线。
+ * `SetupDevice` 会为可见画布各建一个 `SwapChain`，再为**导出用离屏画布**额外
+ * `requestDevice()` 一次 → 两个 `GPUDevice`，出现
+ * “TextureView … is associated with [Device], and cannot be used with [Device]”。
+ * 同一标签页内复用**首次** `requestDevice()` 的结果，使主画布与离屏导出共享设备。
+ */
+let sharedWebGpuSingleton: {
+  adapter: GPUAdapter;
+  device: GPUDevice;
+} | null = null;
+
 export interface WebGPUDeviceOptions {
   shaderCompilerPath: string;
   xrCompatible: boolean;
@@ -41,19 +53,33 @@ export class WebGPUDeviceContribution implements DeviceContribution {
     const requiredFeatures = optionalFeatures.filter((feature) =>
       adapter.features.has(feature),
     );
-    const device = await adapter.requestDevice({ requiredFeatures });
 
-    if (device) {
-      // @see https://github.com/gpuweb/gpuweb/blob/main/design/ErrorHandling.md#fatal-errors-requestadapter-requestdevice-and-devicelost
-      const { onContextLost } = this.pluginOptions;
-      device.lost.then(() => {
-        if (onContextLost) {
-          onContextLost();
-        }
-      });
+    let nativeDevice: GPUDevice;
+    let boundAdapter: GPUAdapter;
+
+    if (sharedWebGpuSingleton !== null) {
+      boundAdapter = sharedWebGpuSingleton.adapter;
+      nativeDevice = sharedWebGpuSingleton.device;
+    } else {
+      const device = await adapter.requestDevice({ requiredFeatures });
+
+      if (device === null) return null;
+
+      boundAdapter = adapter;
+      nativeDevice = device;
+      sharedWebGpuSingleton = { adapter: boundAdapter, device: nativeDevice };
+
+      {
+        // @see https://github.com/gpuweb/gpuweb/blob/main/design/ErrorHandling.md#fatal-errors-requestadapter-requestdevice-and-devicelost
+        const { onContextLost } = this.pluginOptions;
+        nativeDevice.lost.then(() => {
+          sharedWebGpuSingleton = null;
+          if (onContextLost) {
+            onContextLost();
+          }
+        });
+      }
     }
-
-    if (device === null) return null;
 
     const context = $canvas.getContext('webgpu');
 
@@ -64,8 +90,8 @@ export class WebGPUDeviceContribution implements DeviceContribution {
     } catch (e) { }
 
     return new Device_WebGPU(
-      adapter,
-      device,
+      boundAdapter,
+      nativeDevice,
       $canvas,
       context,
       glsl_compile,
