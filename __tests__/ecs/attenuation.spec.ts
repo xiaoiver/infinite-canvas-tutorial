@@ -30,6 +30,7 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   UI,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,6 +71,7 @@ describe('Attenuation', () => {
             StrokeAttenuation,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

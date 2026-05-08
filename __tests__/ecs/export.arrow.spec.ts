@@ -32,6 +32,7 @@ import {
   Screenshot,
   Polyline,
   Marker,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +77,7 @@ describe('Export SVG', () => {
             ZIndex,
             Polyline,
             Marker,
+            Opacity,
           ).write,
       );
 

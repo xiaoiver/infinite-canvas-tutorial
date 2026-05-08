@@ -35,6 +35,7 @@ import {
   ToBeDeleted,
   Transformable,
   Highlighted,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -83,6 +84,7 @@ describe('Transformer', () => {
             ToBeDeleted,
             Transformable,
             Highlighted,
+            Opacity,
           ).write,
       );
 

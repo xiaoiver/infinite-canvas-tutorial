@@ -33,6 +33,7 @@ import {
   Binded,
   Line,
   Marker,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +77,7 @@ describe('Bindings', () => {
             Binding,
             Line,
             Marker,
+            Opacity,
           ).write,
       );
 

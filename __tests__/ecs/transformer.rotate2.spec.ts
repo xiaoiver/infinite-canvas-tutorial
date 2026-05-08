@@ -31,6 +31,7 @@ import {
   RectSerializedNode,
   Selected,
   Rect,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -72,6 +73,7 @@ describe('Transformer', () => {
             ZIndex,
             Selected,
             Ellipse,
+            Opacity,
           ).write,
       );
 

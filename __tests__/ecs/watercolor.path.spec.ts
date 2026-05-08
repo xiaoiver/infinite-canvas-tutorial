@@ -30,6 +30,7 @@ import {
   ComputeZIndex,
   Rough,
   RoughPathSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,6 +71,7 @@ describe('Watercolor', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

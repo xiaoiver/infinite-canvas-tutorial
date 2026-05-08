@@ -29,6 +29,7 @@ import {
   ComputeZIndex,
   UI,
   EllipseSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -69,6 +70,7 @@ describe('Variables', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

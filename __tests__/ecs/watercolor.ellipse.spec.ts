@@ -29,6 +29,7 @@ import {
   ComputeZIndex,
   RoughEllipseSerializedNode,
   Rough,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -68,6 +69,7 @@ describe('Watercolor', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

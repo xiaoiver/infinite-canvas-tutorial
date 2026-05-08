@@ -29,9 +29,9 @@ import {
   ZIndex,
   ComputeZIndex,
   ExportFormat,
-  Opacity,
   Screenshot,
   InnerShadow,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +76,7 @@ describe('Export SVG', () => {
             DropShadow,
             Opacity,
             ZIndex,
+            Opacity,
           ).write,
       );
 

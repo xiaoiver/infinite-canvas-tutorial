@@ -32,6 +32,7 @@ import {
   Selected,
   Rect,
   Locked,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Locked', () => {
             Selected,
             Ellipse,
             Locked,
+            Opacity,
           ).write,
       );
 

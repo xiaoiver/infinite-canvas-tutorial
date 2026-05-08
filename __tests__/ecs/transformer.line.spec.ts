@@ -32,7 +32,8 @@ import {
   Pen,
   Polyline,
   Line,
-  LineSerializedNode
+  LineSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +77,7 @@ describe('Transformer', () => {
             Selected,
             Polyline,
             Line,
+            Opacity,
           ).write,
       );
 

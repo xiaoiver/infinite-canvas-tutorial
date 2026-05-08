@@ -31,6 +31,7 @@ import {
   EllipseSerializedNode,
   Group,
   GSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -72,6 +73,7 @@ describe('Group', () => {
             Name,
             ZIndex,
             Group,
+            Opacity,
           ).write,
       );
 

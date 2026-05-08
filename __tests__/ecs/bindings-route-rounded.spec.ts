@@ -34,6 +34,7 @@ import {
   Marker,
   EdgeStyle,
   Path,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -46,7 +47,7 @@ describe('Bindings', () => {
     let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
-  
+
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
       system((s) => s.before(ComputeZIndex))(StartUpSystem);
@@ -78,6 +79,7 @@ describe('Bindings', () => {
             Line,
             Path,
             Marker,
+            Opacity,
           ).write,
       );
 

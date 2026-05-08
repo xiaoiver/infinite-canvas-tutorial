@@ -33,6 +33,7 @@ import {
   Binded,
   Line,
   Marker,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -45,7 +46,7 @@ describe('Bindings', () => {
     let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
-  
+
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
       system((s) => s.before(ComputeZIndex))(StartUpSystem);
@@ -76,6 +77,7 @@ describe('Bindings', () => {
             Binding,
             Line,
             Marker,
+            Opacity,
           ).write,
       );
 

@@ -30,6 +30,7 @@ import {
   ComputeZIndex,
   VectorNetwork,
   VectorNetworkSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,6 +71,7 @@ describe('Rect', () => {
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
           ).write,
       );
 

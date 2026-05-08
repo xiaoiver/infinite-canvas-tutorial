@@ -31,6 +31,7 @@ import {
   ComputedVisibility,
   UI,
   EllipseSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -71,6 +72,7 @@ describe('Visibility', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

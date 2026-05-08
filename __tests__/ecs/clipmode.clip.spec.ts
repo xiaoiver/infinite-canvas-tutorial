@@ -31,6 +31,7 @@ import {
   UI,
   ClipMode,
   RectSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -72,7 +73,8 @@ describe('ClipMode', () => {
             Name,
             DropShadow,
             ZIndex,
-            ClipMode
+            ClipMode,
+            Opacity,
           ).write,
       );
 

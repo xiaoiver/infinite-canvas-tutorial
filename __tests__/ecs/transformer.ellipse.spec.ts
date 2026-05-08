@@ -32,6 +32,7 @@ import {
   Pen,
   Ellipse,
   EllipseSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Transformer', () => {
             ZIndex,
             Selected,
             Ellipse,
+            Opacity,
           ).write,
       );
 

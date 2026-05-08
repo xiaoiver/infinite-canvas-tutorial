@@ -26,6 +26,7 @@ import {
   Name,
   ZIndex,
   ComputeZIndex,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -63,6 +64,7 @@ describe('Coordinates', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

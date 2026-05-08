@@ -33,6 +33,7 @@ import {
   Screenshot,
   ClipMode,
   RectSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -78,6 +79,7 @@ describe('Export SVG', () => {
             DropShadow,
             ZIndex,
             ClipMode,
+            Opacity,
           ).write,
       );
 

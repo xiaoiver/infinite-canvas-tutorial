@@ -30,7 +30,8 @@ import {
   ComputeZIndex,
   UI,
   RectSerializedNode,
-  Flex
+  Flex,
+  Opacity
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -73,6 +74,7 @@ describe('ZIndex', () => {
             ZIndex,
             UI,
             Flex,
+            Opacity,
           ).write,
       );
 

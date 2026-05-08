@@ -34,6 +34,7 @@ import {
   EllipseSerializedNode,
   GSerializedNode,
   Group,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,7 +77,8 @@ describe('Transformer', () => {
             ZIndex,
             Selected,
             Ellipse,
-            Group
+            Group,
+            Opacity,
           ).write,
       );
 

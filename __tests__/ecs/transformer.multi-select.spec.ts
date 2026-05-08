@@ -31,6 +31,7 @@ import {
   Selected,
   Pen,
   RectSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -71,6 +72,7 @@ describe('Transformer', () => {
             DropShadow,
             ZIndex,
             Selected,
+            Opacity,
           ).write,
       );
 
