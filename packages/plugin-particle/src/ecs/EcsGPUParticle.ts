@@ -13,7 +13,7 @@ import {
   TransparentWhite,
 } from '@infinite-canvas-tutorial/device-api';
 import { createBlitPipelineAndBindings } from './shaderUtils';
-import { avg, max } from '../../utils';
+import { avg, max } from '../math';
 
 export interface EcsGPUParticleInit {
   device: Device;
@@ -172,25 +172,24 @@ export abstract class EcsGPUParticle {
       this.resized = false;
     }
 
-    const lowerHalfArray = this.#buffer.slice(
-      0,
-      this.#buffer.length / 2 - 1,
-    );
-    const upperHalfArray = this.#buffer.slice(
-      this.#buffer.length / 2 - 1,
-      this.#buffer.length - 1,
-    );
+    /** Split FFT bins once; avoids empty halves (crash in {@link avg}/{@link max}) on tiny lengths. */
+    const n = this.#buffer.length;
+    const mid = Math.max(1, Math.ceil(n / 2));
+    const lowerHalfArray = this.#buffer.slice(0, mid);
+    const upperHalfArray = this.#buffer.slice(mid);
+    const lowerLen = Math.max(1, lowerHalfArray.length);
+    const upperLen = Math.max(1, upperHalfArray.length);
 
     const overallAvg = avg(this.#buffer);
-    const lowerMax = max(lowerHalfArray);
-    const lowerAvg = avg(lowerHalfArray);
-    const upperMax = max(upperHalfArray);
-    const upperAvg = avg(upperHalfArray);
+    const lowerMax = lowerHalfArray.length ? max(lowerHalfArray) : 0;
+    const lowerAvg = lowerHalfArray.length ? avg(lowerHalfArray) : 0;
+    const upperMax = upperHalfArray.length ? max(upperHalfArray) : 0;
+    const upperAvg = upperHalfArray.length ? avg(upperHalfArray) : 0;
 
-    const lowerMaxFr = lowerMax / lowerHalfArray.length;
-    const lowerAvgFr = lowerAvg / lowerHalfArray.length;
-    const upperMaxFr = upperMax / upperHalfArray.length;
-    const upperAvgFr = upperAvg / upperHalfArray.length;
+    const lowerMaxFr = lowerMax / lowerLen;
+    const lowerAvgFr = lowerAvg / lowerLen;
+    const upperMaxFr = upperMax / upperLen;
+    const upperAvgFr = upperAvg / upperLen;
 
     this.timeBuffer.setSubData(
       0,

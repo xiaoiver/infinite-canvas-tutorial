@@ -1,10 +1,19 @@
 /**
- * glTF / OBJ → 三角网格 → 面积加权表面采样 → vec4 点云（xyzw，w=1）
+ * glTF / OBJ → 三角网格 → 表面采样（面积加权 / 按三角个数均分）→ vec4 点云（xyzw，w=1）
  */
+import { parse } from '@loaders.gl/core';
+import { DracoLoader } from '@loaders.gl/draco';
 import { GLTFLoader } from '@loaders.gl/gltf';
 import { OBJLoader } from '@loaders.gl/obj';
 
 export const DEFAULT_MESH_SAMPLE_COUNT = 12_000;
+
+/**
+ * 表面粒子 CPU 采样策略。
+ * - **area**：按三角面积加权选三角，再三角内均匀（默认；大面粒子多）。
+ * - **perTriangle**：总粒子按三角**个数**均分，每三角约 `N/T` 个，再三角内随机（小脸与大脸粒子数接近）。
+ */
+export type MeshSurfaceSampleStrategy = 'area' | 'perTriangle';
 
 /** 并集网格：有 indices 则为索引三角；无则为每 9 个 float 一个三角形（三个顶点 xyz） */
 export interface MeshTriangleSoup {
@@ -13,6 +22,23 @@ export interface MeshTriangleSoup {
   /** 与 positions 同顶点序，每顶点 RGBA（线性），无顶点色时为 null */
   colors: Float32Array | null;
   hasVertexColor: boolean;
+  /** 与 positions 同顶点序，每顶点 UV（glTF TEXCOORD_0）；无则 null */
+  uvs: Float32Array | null;
+  /** 是否至少有一个 primitive 提供了 TEXCOORD_0（其余缺省补 0） */
+  hasTexCoord0: boolean;
+  /**
+   * 首个带 `baseColorTexture` 的材质之 `baseColorFactor`（线性 RGBA），无则 [1,1,1,1]。
+   * GPU 采样路径下与贴图相乘。
+   */
+  baseColorFactor: readonly [number, number, number, number];
+  /**
+   * 解码后的首张 baseColor 贴图（由 {@link loadMeshTriangleSoupFromFile} 在 `loadImages` 下填充）。
+   * **`EcsMeshParticle` 多次 `setMeshSoup` 会复用同一指针，勿在上传中间 `close()`；**
+   * 换模型、永久丢弃 soup 时再 `close()` 以释内存。
+   */
+  baseColorImage?: ImageBitmap;
+  /** 解析 glTF 时临时写入，指向 `gltf.images` 下标；loader 解码后可忽略 */
+  baseColorImageIndex?: number;
 }
 
 /** {@link sampleMeshSurfaceUniform} 的输出 */
@@ -20,6 +46,10 @@ export interface MeshSurfaceSampleResult {
   positions: Float32Array;
   colors: Float32Array;
   hasVertexColor: boolean;
+  /** 每粒子 2D UV（重心插值）；无网格 UV 时为全 0 */
+  uvs: Float32Array;
+  /** 网格是否提供可用 UV（长度与顶点一致） */
+  hasMeshUvs: boolean;
 }
 
 function whiteColors(vertexCount: number): Float32Array {
@@ -33,11 +63,180 @@ function whiteColors(vertexCount: number): Float32Array {
   return c;
 }
 
+/** 与 glTF `materials[].pbrMetallicRoughness.baseColorFactor` 对齐（线性 RGBA） */
+function solidVertexColors(
+  vertexCount: number,
+  rgba: readonly [number, number, number, number],
+): Float32Array {
+  const c = new Float32Array(vertexCount * 4);
+  for (let i = 0; i < vertexCount; i++) {
+    c[i * 4] = rgba[0];
+    c[i * 4 + 1] = rgba[1];
+    c[i * 4 + 2] = rgba[2];
+    c[i * 4 + 3] = rgba[3];
+  }
+  return c;
+}
+
+/** 仅当 JSON 中显式写了 `baseColorFactor` 时返回（未写则走默认 PBR，不当作顶点色） */
+function readMaterialBaseColorFactor(
+  json: {
+    materials?: {
+      pbrMetallicRoughness?: {
+        baseColorFactor?: number[];
+      };
+    }[];
+  },
+  materialIndex: number | undefined,
+): [number, number, number, number] | null {
+  if (materialIndex === undefined) {
+    return null;
+  }
+  const mat = json.materials?.[materialIndex];
+  const pbr = mat?.pbrMetallicRoughness;
+  if (!pbr || !Object.prototype.hasOwnProperty.call(pbr, 'baseColorFactor')) {
+    return null;
+  }
+  const f = pbr.baseColorFactor;
+  if (!f || f.length < 3) {
+    return null;
+  }
+  const a = f.length >= 4 ? f[3]! : 1;
+  return [f[0]!, f[1]!, f[2]!, a];
+}
+
+/** glTF 材质 `baseColorFactor`（未写则视为 [1,1,1,1]） */
+function materialBaseColorTintLinear(
+  json: {
+    materials?: {
+      pbrMetallicRoughness?: { baseColorFactor?: number[] };
+    }[];
+  },
+  materialIndex: number | undefined,
+): readonly [number, number, number, number] {
+  if (materialIndex === undefined) {
+    return [1, 1, 1, 1];
+  }
+  const f = json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorFactor;
+  if (!f || f.length < 3) {
+    return [1, 1, 1, 1];
+  }
+  return [f[0]!, f[1]!, f[2]!, f.length >= 4 ? f[3]! : 1];
+}
+
+function baseColorTextureImageIndex(
+  json: {
+    materials?: {
+      pbrMetallicRoughness?: { baseColorTexture?: { index?: number } };
+    }[];
+    textures?: { source?: number }[];
+  },
+  materialIndex: number | undefined,
+): number | undefined {
+  if (materialIndex === undefined) {
+    return undefined;
+  }
+  const ti =
+    json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorTexture
+      ?.index;
+  if (ti === undefined) {
+    return undefined;
+  }
+  return json.textures?.[ti]?.source;
+}
+
+/**
+ * 共用 glTF 解析选项（Draco + 解码 JSON 内 data: base64 buffer）。
+ * 使用 `parse(file, GLTFLoader, …)`（`@loaders.gl/core`）而非仅 `GLTFLoader.parse(string)`，
+ * 以便单文件 **glTF Embedded**（无外链 .bin）与 **GLB** 走完整异步解码路径。
+ */
+const GLTF_LOAD_OPTIONS = {
+  gltf: {
+    loadImages: true,
+    decompressMeshes: true,
+    loadBuffers: true,
+  },
+  DracoLoader,
+} as const;
+
 function triangleCount(mesh: MeshTriangleSoup): number {
   if (mesh.indices) {
     return Math.floor(mesh.indices.length / 3);
   }
   return Math.floor(mesh.positions.length / 9);
+}
+
+/**
+ * 开发时在控制台打印三角数、顶点坐标范围。若 `triangleCount === 0` 且文件是 glTF，
+ * 常见于 **Draco / KHR_draco_mesh_compression**：当前示例未注册 Draco 解码器，需换未压缩 GLB 或 OBJ。
+ */
+export function logMeshTriangleSoupDiagnostics(
+  soup: MeshTriangleSoup,
+  label = '[MeshTriangleSoup]',
+): void {
+  const nt = triangleCount(soup);
+  const p = soup.positions;
+  let minX = Infinity;
+  let minY = Infinity;
+  let minZ = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let maxZ = -Infinity;
+  for (let i = 0; i < p.length; i += 3) {
+    const x = p[i];
+    const y = p[i + 1];
+    const z = p[i + 2];
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) {
+      continue;
+    }
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    minZ = Math.min(minZ, z);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+    maxZ = Math.max(maxZ, z);
+  }
+  const hasBounds = p.length >= 3 && Number.isFinite(minX);
+  console.info(label, {
+    triangleCount: nt,
+    positionFloats: p.length,
+    indexCount: soup.indices?.length ?? 0,
+    vertexBounds: hasBounds
+      ? { min: [minX, minY, minZ], max: [maxX, maxY, maxZ] }
+      : null,
+    hasVertexColor: soup.hasVertexColor,
+    hasTexCoord0: soup.hasTexCoord0,
+    hasBaseColorTexture: !!soup.baseColorImage,
+    hint:
+      nt === 0
+        ? 'No triangles parsed — try another GLB/OBJ, or ensure Draco extension can load (WASM).'
+        : undefined,
+  });
+}
+
+/** loaders.gl `gltf.images[i]` → `ImageBitmap`（浏览器） */
+export async function gltfImageEntryToBitmap(
+  img: unknown,
+): Promise<ImageBitmap | undefined> {
+  if (img == null) {
+    return undefined;
+  }
+  if (typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) {
+    return img;
+  }
+  if (typeof HTMLImageElement !== 'undefined' && img instanceof HTMLImageElement) {
+    if (!img.complete || img.naturalWidth === 0) {
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('glTF image decode failed'));
+      });
+    }
+    return createImageBitmap(img);
+  }
+  if (typeof ImageBitmap !== 'undefined' && img instanceof Blob) {
+    return createImageBitmap(img);
+  }
+  return undefined;
 }
 
 /** 三角形三个顶点的 RGBA，写入 out[0..11] */
@@ -70,6 +269,40 @@ function triangleCornerColors(
     out.set(c.subarray(i0 * 4, i0 * 4 + 4), 0);
     out.set(c.subarray(i1 * 4, i1 * 4 + 4), 4);
     out.set(c.subarray(i2 * 4, i2 * 4 + 4), 8);
+  }
+}
+
+/** 三角形三个顶点的 UV，写入 out[0..5]（u0,v0,u1,v1,u2,v2） */
+function triangleCornerUVs(
+  mesh: MeshTriangleSoup,
+  triIndex: number,
+  out: Float32Array,
+): void {
+  if (!mesh.uvs) {
+    out.fill(0);
+    return;
+  }
+  const u = mesh.uvs;
+  if (mesh.indices) {
+    const i0 = mesh.indices[triIndex * 3];
+    const i1 = mesh.indices[triIndex * 3 + 1];
+    const i2 = mesh.indices[triIndex * 3 + 2];
+    out[0] = u[i0 * 2];
+    out[1] = u[i0 * 2 + 1];
+    out[2] = u[i1 * 2];
+    out[3] = u[i1 * 2 + 1];
+    out[4] = u[i2 * 2];
+    out[5] = u[i2 * 2 + 1];
+  } else {
+    const i0 = triIndex * 3;
+    const i1 = triIndex * 3 + 1;
+    const i2 = triIndex * 3 + 2;
+    out[0] = u[i0 * 2];
+    out[1] = u[i0 * 2 + 1];
+    out[2] = u[i1 * 2];
+    out[3] = u[i1 * 2 + 1];
+    out[4] = u[i2 * 2];
+    out[5] = u[i2 * 2 + 1];
   }
 }
 
@@ -110,6 +343,76 @@ function randomBarycentric(r1: number, r2: number, out: Float32Array): void {
   out[0] = 1 - sr;
   out[1] = sr * (1 - r2);
   out[2] = sr * r2;
+}
+
+/** 在三角 `triIndex` 内随机一点，写入第 `outIndex` 个粒子 */
+function writeOneMeshSurfaceSample(
+  mesh: MeshTriangleSoup,
+  triIndex: number,
+  outIndex: number,
+  out: Float32Array,
+  outC: Float32Array,
+  outUv: Float32Array,
+  corner: Float32Array,
+  bary: Float32Array,
+  cornerC: Float32Array,
+  cornerUv: Float32Array,
+  useVc: boolean,
+  hasMeshUvs: boolean,
+  rng: () => number,
+): void {
+  trianglePositions(mesh, triIndex, corner);
+  randomBarycentric(rng(), rng(), bary);
+  const x =
+    bary[0] * corner[0] + bary[1] * corner[3] + bary[2] * corner[6];
+  const y =
+    bary[0] * corner[1] + bary[1] * corner[4] + bary[2] * corner[7];
+  const z =
+    bary[0] * corner[2] + bary[1] * corner[5] + bary[2] * corner[8];
+  const i = outIndex;
+  out[i * 4] = x;
+  out[i * 4 + 1] = y;
+  out[i * 4 + 2] = z;
+  out[i * 4 + 3] = 1;
+
+  if (hasMeshUvs) {
+    triangleCornerUVs(mesh, triIndex, cornerUv);
+    const u =
+      bary[0] * cornerUv[0] +
+      bary[1] * cornerUv[2] +
+      bary[2] * cornerUv[4];
+    const v =
+      bary[0] * cornerUv[1] +
+      bary[1] * cornerUv[3] +
+      bary[2] * cornerUv[5];
+    outUv[i * 2] = u;
+    outUv[i * 2 + 1] = v;
+  }
+
+  if (useVc) {
+    triangleCornerColors(mesh, triIndex, cornerC);
+    const r =
+      bary[0] * cornerC[0] +
+      bary[1] * cornerC[4] +
+      bary[2] * cornerC[8];
+    const g =
+      bary[0] * cornerC[1] +
+      bary[1] * cornerC[5] +
+      bary[2] * cornerC[9];
+    const b =
+      bary[0] * cornerC[2] +
+      bary[1] * cornerC[6] +
+      bary[2] * cornerC[10];
+    outC[i * 4] = clamp01(r);
+    outC[i * 4 + 1] = clamp01(g);
+    outC[i * 4 + 2] = clamp01(b);
+    outC[i * 4 + 3] = 1;
+  } else {
+    outC[i * 4] = 1;
+    outC[i * 4 + 1] = 1;
+    outC[i * 4 + 2] = 1;
+    outC[i * 4 + 3] = 1;
+  }
 }
 
 /** 将点集归一化到以原点为中心、最大半轴约 0.35 的包围盒内 */
@@ -167,11 +470,14 @@ export function sampleMeshSurfaceUniform(
 ): MeshSurfaceSampleResult {
   const nt = triangleCount(mesh);
   const useVc = !!(mesh.hasVertexColor && mesh.colors);
+  const hasMeshUvs = !!(mesh.uvs && mesh.uvs.length >= (mesh.positions.length / 3) * 2);
   if (nt <= 0 || sampleCount <= 0) {
     return {
       positions: new Float32Array(0),
       colors: new Float32Array(0),
       hasVertexColor: false,
+      uvs: new Float32Array(0),
+      hasMeshUvs: false,
     };
   }
 
@@ -201,8 +507,10 @@ export function sampleMeshSurfaceUniform(
 
   const out = new Float32Array(sampleCount * 4);
   const outC = new Float32Array(sampleCount * 4);
+  const outUv = new Float32Array(sampleCount * 2);
   const bary = new Float32Array(3);
   const cornerC = new Float32Array(12);
+  const cornerUv = new Float32Array(6);
   for (let i = 0; i < sampleCount; i++) {
     const rTri = rng();
     let lo = 0;
@@ -216,46 +524,126 @@ export function sampleMeshSurfaceUniform(
       }
     }
     const t = lo;
-    trianglePositions(mesh, t, corner);
-    randomBarycentric(rng(), rng(), bary);
-    const x =
-      bary[0] * corner[0] + bary[1] * corner[3] + bary[2] * corner[6];
-    const y =
-      bary[0] * corner[1] + bary[1] * corner[4] + bary[2] * corner[7];
-    const z =
-      bary[0] * corner[2] + bary[1] * corner[5] + bary[2] * corner[8];
-    out[i * 4] = x;
-    out[i * 4 + 1] = y;
-    out[i * 4 + 2] = z;
-    out[i * 4 + 3] = 1;
-
-    if (useVc) {
-      triangleCornerColors(mesh, t, cornerC);
-      const r =
-        bary[0] * cornerC[0] +
-        bary[1] * cornerC[4] +
-        bary[2] * cornerC[8];
-      const g =
-        bary[0] * cornerC[1] +
-        bary[1] * cornerC[5] +
-        bary[2] * cornerC[9];
-      const b =
-        bary[0] * cornerC[2] +
-        bary[1] * cornerC[6] +
-        bary[2] * cornerC[10];
-      outC[i * 4] = clamp01(r);
-      outC[i * 4 + 1] = clamp01(g);
-      outC[i * 4 + 2] = clamp01(b);
-      outC[i * 4 + 3] = 1;
-    } else {
-      outC[i * 4] = 1;
-      outC[i * 4 + 1] = 1;
-      outC[i * 4 + 2] = 1;
-      outC[i * 4 + 3] = 1;
-    }
+    writeOneMeshSurfaceSample(
+      mesh,
+      t,
+      i,
+      out,
+      outC,
+      outUv,
+      corner,
+      bary,
+      cornerC,
+      cornerUv,
+      useVc,
+      hasMeshUvs,
+      rng,
+    );
   }
   normalizeSamplesToUnit(out, 4);
-  return { positions: out, colors: outC, hasVertexColor: useVc };
+  return {
+    positions: out,
+    colors: outC,
+    hasVertexColor: useVc,
+    uvs: outUv,
+    hasMeshUvs,
+  };
+}
+
+/**
+ * 按三角**个数**均分粒子：每个三角分得 `⌊N/T⌋` 或 `⌊N/T⌋+1` 个（余数随机摊到若干三角），
+ * 再在各自三角内重心均匀随机。**小脸、大脸的期望粒子数相同**（但总表面密度仍会因面积而异）。
+ */
+export function sampleMeshSurfacePerTriangleUniform(
+  mesh: MeshTriangleSoup,
+  sampleCount: number,
+  rng: () => number = Math.random,
+): MeshSurfaceSampleResult {
+  const nt = triangleCount(mesh);
+  const useVc = !!(mesh.hasVertexColor && mesh.colors);
+  const hasMeshUvs = !!(
+    mesh.uvs &&
+    mesh.uvs.length >= (mesh.positions.length / 3) * 2
+  );
+  if (nt <= 0 || sampleCount <= 0) {
+    return {
+      positions: new Float32Array(0),
+      colors: new Float32Array(0),
+      hasVertexColor: false,
+      uvs: new Float32Array(0),
+      hasMeshUvs: false,
+    };
+  }
+
+  const base = Math.floor(sampleCount / nt);
+  const rem = sampleCount % nt;
+  const counts = new Uint32Array(nt);
+  counts.fill(base);
+  const perm = new Uint32Array(nt);
+  for (let i = 0; i < nt; i++) {
+    perm[i] = i;
+  }
+  for (let i = nt - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    const tmp = perm[i]!;
+    perm[i] = perm[j]!;
+    perm[j] = tmp;
+  }
+  for (let k = 0; k < rem; k++) {
+    counts[perm[k]!]++;
+  }
+
+  const out = new Float32Array(sampleCount * 4);
+  const outC = new Float32Array(sampleCount * 4);
+  const outUv = new Float32Array(sampleCount * 2);
+  const corner = new Float32Array(9);
+  const bary = new Float32Array(3);
+  const cornerC = new Float32Array(12);
+  const cornerUv = new Float32Array(6);
+
+  let idx = 0;
+  for (let t = 0; t < nt; t++) {
+    const c = counts[t]!;
+    for (let k = 0; k < c; k++) {
+      writeOneMeshSurfaceSample(
+        mesh,
+        t,
+        idx,
+        out,
+        outC,
+        outUv,
+        corner,
+        bary,
+        cornerC,
+        cornerUv,
+        useVc,
+        hasMeshUvs,
+        rng,
+      );
+      idx++;
+    }
+  }
+
+  normalizeSamplesToUnit(out, 4);
+  return {
+    positions: out,
+    colors: outC,
+    hasVertexColor: useVc,
+    uvs: outUv,
+    hasMeshUvs,
+  };
+}
+
+export function sampleMeshSurface(
+  mesh: MeshTriangleSoup,
+  sampleCount: number,
+  strategy: MeshSurfaceSampleStrategy = 'area',
+  rng: () => number = Math.random,
+): MeshSurfaceSampleResult {
+  if (strategy === 'perTriangle') {
+    return sampleMeshSurfacePerTriangleUniform(mesh, sampleCount, rng);
+  }
+  return sampleMeshSurfaceUniform(mesh, sampleCount, rng);
 }
 
 function clamp01(x: number): number {
@@ -351,6 +739,30 @@ function readVertexColorAccessor(
     }
     return out;
   }
+  if (acc.componentType === 5123 && acc.normalized && acc.type === 'VEC3') {
+    const stride = bv.byteStride ?? 6;
+    let off = base;
+    for (let i = 0; i < count; i++) {
+      out[i * 4] = view.getUint16(off, true) / 65535;
+      out[i * 4 + 1] = view.getUint16(off + 2, true) / 65535;
+      out[i * 4 + 2] = view.getUint16(off + 4, true) / 65535;
+      out[i * 4 + 3] = 1;
+      off += stride;
+    }
+    return out;
+  }
+  if (acc.componentType === 5123 && acc.normalized && acc.type === 'VEC4') {
+    const stride = bv.byteStride ?? 8;
+    let off = base;
+    for (let i = 0; i < count; i++) {
+      out[i * 4] = view.getUint16(off, true) / 65535;
+      out[i * 4 + 1] = view.getUint16(off + 2, true) / 65535;
+      out[i * 4 + 2] = view.getUint16(off + 4, true) / 65535;
+      out[i * 4 + 3] = view.getUint16(off + 6, true) / 65535;
+      off += stride;
+    }
+    return out;
+  }
   throw new Error(
     `Unsupported COLOR_0 accessor type ${acc.type} / component ${acc.componentType}`,
   );
@@ -399,6 +811,27 @@ function readAccessor(
           : acc.type === 'VEC4'
             ? 4
             : 3;
+
+  // glTF 常见交错顶点：byteStride≠8 时不能用连续 Float32Array 视图。
+  if (acc.componentType === 5126 && acc.type === 'VEC2') {
+    const count = acc.count;
+    const stride = bv.byteStride ?? 8;
+    if (stride === 8) {
+      return {
+        array: new Float32Array(ab, base, count * 2),
+        components: 2,
+      };
+    }
+    const out = new Float32Array(count * 2);
+    const view = new DataView(ab);
+    let off = base;
+    for (let i = 0; i < count; i++) {
+      out[i * 2] = view.getFloat32(off, true);
+      out[i * 2 + 1] = view.getFloat32(off + 4, true);
+      off += stride;
+    }
+    return { array: out, components: 2 };
+  }
 
   // glTF 常见交错顶点：byteStride≠12 时不能用连续 Float32Array 视图。
   if (acc.componentType === 5126 && acc.type === 'VEC3') {
@@ -482,22 +915,42 @@ export function meshTriangleSoupFromGLTF(gltf: {
   json: {
     accessors: Record<string, unknown>[];
     bufferViews: Record<string, unknown>[];
+    materials?: {
+      pbrMetallicRoughness?: {
+        baseColorFactor?: number[];
+        baseColorTexture?: { index?: number };
+      };
+    }[];
+    textures?: { source?: number }[];
     meshes?: {
       primitives: {
-        attributes: { POSITION: number; COLOR_0?: number };
+        attributes: {
+          POSITION: number;
+          COLOR_0?: number;
+          TEXCOORD_0?: number;
+        };
         indices?: number;
         mode?: number;
+        material?: number;
       }[];
     }[];
   };
   buffers: { arrayBuffer: ArrayBuffer; byteOffset?: number }[];
+  images?: unknown[];
 }): MeshTriangleSoup {
   const meshes = gltf.json.meshes || [];
+  const json = gltf.json;
   const posChunks: Float32Array[] = [];
   const colorChunks: Float32Array[] = [];
+  const uvChunks: Float32Array[] = [];
   const idxChunks: number[] = [];
   let vertexOffset = 0;
   let anyVertexColor = false;
+  let anyTexCoord = false;
+  let baseColorImageIndex: number | undefined;
+  let baseColorFactor: readonly [number, number, number, number] = [
+    1, 1, 1, 1,
+  ];
 
   for (const mesh of meshes) {
     for (const prim of mesh.primitives || []) {
@@ -517,20 +970,56 @@ export function meshTriangleSoupFromGLTF(gltf: {
       const vCount = posArr.length / 3;
       posChunks.push(new Float32Array(posArr));
 
+      if (baseColorImageIndex === undefined && prim.material !== undefined) {
+        const imgIx = baseColorTextureImageIndex(json, prim.material);
+        if (imgIx !== undefined) {
+          baseColorImageIndex = imgIx;
+          baseColorFactor = materialBaseColorTintLinear(json, prim.material);
+        }
+      }
+
       let colChunk = whiteColors(vCount);
+      let primHasColor = false;
       const c0 = prim.attributes.COLOR_0;
       if (c0 !== undefined) {
         try {
           const parsed = readVertexColorAccessor(gltf as never, c0);
           if (parsed.length === vCount * 4) {
             colChunk = parsed;
+            primHasColor = true;
             anyVertexColor = true;
           }
         } catch {
           /* 忽略不支持的顶点色格式 */
         }
       }
+      if (!primHasColor) {
+        const factor = readMaterialBaseColorFactor(json, prim.material);
+        if (factor) {
+          colChunk = solidVertexColors(vCount, factor);
+          anyVertexColor = true;
+        }
+      }
       colorChunks.push(colChunk);
+
+      let uvChunk = new Float32Array(vCount * 2);
+      const tc0 = prim.attributes.TEXCOORD_0;
+      if (tc0 !== undefined) {
+        try {
+          const uvAcc = readAccessor(gltf as never, tc0);
+          if (
+            uvAcc.components === 2 &&
+            uvAcc.array instanceof Float32Array &&
+            uvAcc.array.length === vCount * 2
+          ) {
+            uvChunk = new Float32Array(uvAcc.array);
+            anyTexCoord = true;
+          }
+        } catch {
+          /* 忽略不支持的 UV 格式 */
+        }
+      }
+      uvChunks.push(uvChunk);
 
       if (prim.indices !== undefined) {
         const idxAcc = readAccessor(gltf as never, prim.indices);
@@ -567,6 +1056,9 @@ export function meshTriangleSoupFromGLTF(gltf: {
       indices: null,
       colors: null,
       hasVertexColor: false,
+      uvs: null,
+      hasTexCoord0: false,
+      baseColorFactor: [1, 1, 1, 1],
     };
   }
   const totalFloats = posChunks.reduce((s, c) => s + c.length, 0);
@@ -587,12 +1079,32 @@ export function meshTriangleSoupFromGLTF(gltf: {
     }
   }
 
-  return {
+  let uvs: Float32Array | null = null;
+  if (anyTexCoord) {
+    uvs = new Float32Array((totalFloats / 3) * 2);
+    let uo = 0;
+    for (const c of uvChunks) {
+      uvs.set(c, uo);
+      uo += c.length;
+    }
+  }
+
+  const out: MeshTriangleSoup = {
     positions,
     indices: new Uint32Array(idxChunks),
     colors,
     hasVertexColor: anyVertexColor,
+    uvs,
+    hasTexCoord0: anyTexCoord,
+    baseColorFactor,
   };
+  if (
+    baseColorImageIndex !== undefined &&
+    gltf.images?.[baseColorImageIndex] != null
+  ) {
+    out.baseColorImageIndex = baseColorImageIndex;
+  }
+  return out;
 }
 
 /** OBJ（loaders.gl 归一化几何）→ 三角汤 */
@@ -631,34 +1143,40 @@ export function meshTriangleSoupFromOBJ(data: {
     indices: null,
     colors,
     hasVertexColor,
+    uvs: null,
+    hasTexCoord0: false,
+    baseColorFactor: [1, 1, 1, 1],
   };
 }
 
 export async function loadMeshTriangleSoupFromFile(
   file: File,
 ): Promise<MeshTriangleSoup> {
-  const buf = await file.arrayBuffer();
   const name = file.name.toLowerCase();
 
   if (name.endsWith('.obj')) {
+    const buf = await file.arrayBuffer();
     const data = await OBJLoader.parse(buf, {});
     return meshTriangleSoupFromOBJ(
-      data as { attributes: { POSITION: { value: Float32Array; size: number } } },
+      data as unknown as {
+        attributes: { POSITION: { value: Float32Array; size: number } };
+      },
     );
   }
 
-  if (name.endsWith('.gltf')) {
-    const text = new TextDecoder().decode(buf);
-    const gltf = await GLTFLoader.parse(text, {
-      gltf: { loadImages: false, decompressMeshes: true, loadBuffers: true },
-    });
-    return meshTriangleSoupFromGLTF(gltf as never);
+  const gltf = await parse(file, GLTFLoader, GLTF_LOAD_OPTIONS as never);
+  const soup = meshTriangleSoupFromGLTF(gltf as never);
+  const ix = soup.baseColorImageIndex;
+  if (ix !== undefined) {
+    const bmp = await gltfImageEntryToBitmap(
+      (gltf as { images?: unknown[] }).images?.[ix],
+    );
+    if (bmp) {
+      soup.baseColorImage = bmp;
+    }
+    delete soup.baseColorImageIndex;
   }
-
-  const gltf = await GLTFLoader.parse(buf, {
-    gltf: { loadImages: false, decompressMeshes: true, loadBuffers: true },
-  });
-  return meshTriangleSoupFromGLTF(gltf as never);
+  return soup;
 }
 
 /** 默认球面 Fibonacci 点，用于尚未加载文件时 */

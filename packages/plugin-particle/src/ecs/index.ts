@@ -8,10 +8,16 @@ export type { EcsSineParticleOptions } from './EcsSineParticle';
 export { EcsMeshParticle } from './EcsMeshParticle';
 export type { EcsMeshParticleOptions } from './EcsMeshParticle';
 export {
+  gltfImageEntryToBitmap,
   loadMeshTriangleSoupFromFile,
+  logMeshTriangleSoupDiagnostics,
+  sampleMeshSurface,
+  sampleMeshSurfacePerTriangleUniform,
+  sampleMeshSurfaceUniform,
   DEFAULT_MESH_SAMPLE_COUNT,
 } from './meshSurfaceSample';
 export type {
+  MeshSurfaceSampleStrategy,
   MeshTriangleSoup,
   MeshSurfaceSampleResult,
 } from './meshSurfaceSample';

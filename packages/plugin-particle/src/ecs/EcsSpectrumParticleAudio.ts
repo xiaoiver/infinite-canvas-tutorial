@@ -8,11 +8,12 @@ export interface EcsSpectrumParticleAudioOptions {
 }
 
 /**
- * Drives {@link EcsGPUParticle} with Web Audio analyser data (same role as {@link Audio} for core canvas).
+ * Drives {@link EcsGPUParticle} with Web Audio analyser frequency data each frame.
  */
 export class EcsSpectrumParticleAudio {
   private analyser?: AnalyserNode;
-  private dataArray: Uint8Array = new Uint8Array(512).fill(0);
+  /** Backed by `ArrayBuffer` so `AnalyserNode#getByteFrequencyData` typings accept it. */
+  private dataArray: Uint8Array<ArrayBuffer> = new Uint8Array(new ArrayBuffer(512));
   private timer: number | undefined;
   private mouse = { pos: { x: 0, y: 0 }, click: 0 };
   private device: Device | undefined;
@@ -38,7 +39,7 @@ export class EcsSpectrumParticleAudio {
     analyser.connect(context.destination);
     analyser.fftSize = 512;
     const bufferLength = analyser.frequencyBinCount;
-    this.dataArray = new Uint8Array(bufferLength);
+    this.dataArray = new Uint8Array(new ArrayBuffer(bufferLength));
   }
 
   private initMouseListener() {
