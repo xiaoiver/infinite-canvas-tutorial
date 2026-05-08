@@ -1699,6 +1699,14 @@ export async function exportFillImage(
   element: SVGElement,
   $g: SVGElement,
 ) {
+  const wire = { ...(node as unknown as Record<string, unknown>) };
+  migrateLegacyFillWireInPlace(wire);
+  let fill = getPrimaryFillValue(wire as FillAttributes) ?? '';
+  if (!fill) {
+    element.setAttribute('fill', 'none');
+    return;
+  }
+
   const $defs = createSVGElement('defs');
   const $pattern = createSVGElement('pattern');
   $pattern.id = `image-fill_${node.id}`;
@@ -1708,7 +1716,6 @@ export async function exportFillImage(
   $pattern.setAttribute('height', '1');
   const $image = createSVGElement('image');
 
-  let fill = (node as any).fill as string;
   if (isUrl(fill)) {
     // Convert url to dataURL
     fill = (await imageToCanvas(fill)).toDataURL();
