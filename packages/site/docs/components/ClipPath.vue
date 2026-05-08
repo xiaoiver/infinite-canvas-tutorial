@@ -38,7 +38,7 @@ onMounted(async () => {
       y: 100,
       width: 100,
       height: 100,
-      fill: 'grey',
+      fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
     };
     const child = {
       id: 'rect-1',
@@ -48,7 +48,7 @@ onMounted(async () => {
       y: -50,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
     };
 
     api.updateNodes([

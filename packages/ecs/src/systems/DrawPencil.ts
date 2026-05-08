@@ -201,7 +201,13 @@ export class DrawPencil extends System {
             const d = getFlatSvgPathFromStroke(getStroke(points));
             node.type = 'path';
             (node as PathSerializedNode).d = d;
-            (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
+            (node as PathSerializedNode).fills = [
+              {
+                type: 'solid',
+                value: String(appState.penbarPencil.stroke ?? '#000'),
+                opacity: 1,
+              },
+            ];
             (node as PathSerializedNode).strokeWidth = 0;
             (node as PathSerializedNode).tessellationMethod =
               TesselationMethod.LIBTESS;
@@ -319,7 +325,13 @@ export class DrawPencil extends System {
               d: getFlatSvgPathFromStroke(getStroke(points)),
               ...defaultDrawParams,
               strokeWidth: 0,
-              fill: defaultDrawParams.stroke,
+              fills: [
+                {
+                  type: 'solid',
+                  value: String(defaultDrawParams.stroke ?? '#000'),
+                  opacity: 1,
+                },
+              ],
               tessellationMethod: TesselationMethod.LIBTESS,
             }
             : {

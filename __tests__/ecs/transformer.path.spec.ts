@@ -99,7 +99,7 @@ describe('Transformer', () => {
           d: 'M 0 0 L 100 100 L 100 50 Z',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,

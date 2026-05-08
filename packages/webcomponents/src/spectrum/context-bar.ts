@@ -6,6 +6,8 @@ import {
   AppState,
   Canvas,
   ComputedBounds,
+  FillAttributes,
+  getPrimaryFillValue,
   TransformableStatus,
   SerializedNode,
   isDataUrl,
@@ -131,12 +133,14 @@ export class ContextBar extends LitElement {
           return html``;
         }
 
+        const fillVal = getPrimaryFillValue(node as FillAttributes);
         const isImage =
           node.type === 'rect' &&
-          (node.fill?.endsWith('.jpg') ||
-            node.fill?.endsWith('.jpeg') ||
-            node.fill?.endsWith('.png') ||
-            isDataUrl(node.fill));
+          fillVal != null &&
+          (fillVal.endsWith('.jpg') ||
+            fillVal.endsWith('.jpeg') ||
+            fillVal.endsWith('.png') ||
+            isDataUrl(fillVal));
 
         const isHTML = node.type === 'html';
         const isEmbed = node.type === 'embed';

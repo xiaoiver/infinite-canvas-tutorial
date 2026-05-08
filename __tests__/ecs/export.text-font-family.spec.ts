@@ -98,7 +98,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Test',
             anchorX: 50,
             anchorY: 50,

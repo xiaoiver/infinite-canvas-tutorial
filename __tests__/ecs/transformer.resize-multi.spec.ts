@@ -98,7 +98,7 @@ describe('Transformer', () => {
           type: 'rect',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,
@@ -109,7 +109,7 @@ describe('Transformer', () => {
         const node2: RectSerializedNode = {
           id: '2',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 50,
           y: 50,
           width: 50,

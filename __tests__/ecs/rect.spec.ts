@@ -93,7 +93,7 @@ describe('Rect', () => {
         const node1: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,
@@ -105,7 +105,7 @@ describe('Rect', () => {
           id: '2',
           parentId: '1',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 50,
           y: 50,
           width: 50,

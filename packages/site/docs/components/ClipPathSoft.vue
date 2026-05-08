@@ -39,7 +39,7 @@ onMounted(async () => {
       y: 100,
       width: 100,
       height: 100,
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
     };
@@ -51,7 +51,7 @@ onMounted(async () => {
       y: -50,
       width: 100,
       height: 100,
-      fill: '/canvas.png',
+      fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
     };
 
     api.updateNodes([

@@ -47,7 +47,7 @@ onMounted(async () => {
         {
           id: 'text-1',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (top)',
           anchorX: 50,
           anchorY: 50,
@@ -70,7 +70,7 @@ onMounted(async () => {
         {
           id: 'text-2',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (hanging)',
           anchorX: 50,
           anchorY: 100,
@@ -93,7 +93,7 @@ onMounted(async () => {
         {
           id: 'text-3',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (middle)',
           anchorX: 50,
           anchorY: 150,
@@ -116,7 +116,7 @@ onMounted(async () => {
         {
           id: 'text-4',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (alphabetic)',
           anchorX: 50,
           anchorY: 200,
@@ -139,7 +139,7 @@ onMounted(async () => {
         {
           id: 'text-5',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (ideographic)',
           anchorX: 50,
           anchorY: 250,
@@ -162,7 +162,7 @@ onMounted(async () => {
         {
           id: 'text-6',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (bottom)',
           anchorX: 50,
           anchorY: 300,
@@ -185,7 +185,7 @@ onMounted(async () => {
         {
           id: 'text-7',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (bottom)',
           anchorX: 50,
           anchorY: 350,
@@ -201,7 +201,7 @@ onMounted(async () => {
         {
           id: 'text-8',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'سلام ABC גבא DEF 😁🚀',
           anchorX: 120,
           anchorY: 350,

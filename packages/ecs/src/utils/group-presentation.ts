@@ -1,9 +1,14 @@
 import type { Group } from '../components/geometry/Group';
 import type { ThemeMode } from '../components/Theme';
+import type { SerializedFillLayerItem } from '../types/serialized-node';
 import {
   resolveDesignVariableValue,
   type DesignVariablesMap,
 } from './design-variables';
+import {
+  firstEnabledFillPresentation,
+  migrateLegacyFillWireInPlace,
+} from './normalize-fill-wire';
 
 type Wire = unknown;
 
@@ -76,17 +81,16 @@ function wireOpacity01(
 }
 
 /**
- * 从与 SVG 线框节点兼容的 `attributes` 解出可写入 {@link Group} 的展示属性（与 wire 上 `fill` / `stroke` 等一致，已做设计变量解析）。
+ * 从与 SVG 线框节点兼容的 `attributes` 解出可写入 {@link Group} 的展示属性（与 wire 上 `fills` / `stroke` 等一致，已做设计变量解析）。
  * 空串、`-1` 表示本层未设置，与 `Group` 字段默认一致。
  */
 export function buildGroupWirePresentation(
   attributes: {
-    fill?: Wire;
+    fills?: SerializedFillLayerItem[];
     stroke?: Wire;
     strokeWidth?: Wire;
     fillRule?: Wire;
     opacity?: Wire;
-    fillOpacity?: Wire;
     strokeOpacity?: Wire;
     strokeLinecap?: Wire;
     strokeLinejoin?: Wire;
@@ -94,8 +98,15 @@ export function buildGroupWirePresentation(
   designVariables: DesignVariablesMap | undefined,
   themeMode: ThemeMode | undefined,
 ): Partial<Group> {
+  const attrs = attributes as Record<string, unknown>;
+  migrateLegacyFillWireInPlace(attrs);
+  const pres = firstEnabledFillPresentation(
+    attrs.fills as SerializedFillLayerItem[] | undefined,
+  );
   return {
-    fill: wireString(attributes.fill, designVariables, themeMode),
+    fill: pres
+      ? wireString(pres.fill, designVariables, themeMode)
+      : '',
     stroke: wireString(attributes.stroke, designVariables, themeMode),
     strokeWidth: wireStrokeWidth(
       attributes.strokeWidth,
@@ -104,11 +115,9 @@ export function buildGroupWirePresentation(
     ),
     fillRule: wireString(attributes.fillRule, designVariables, themeMode),
     opacity: wireOpacity01(attributes.opacity, designVariables, themeMode),
-    fillOpacity: wireOpacity01(
-      attributes.fillOpacity,
-      designVariables,
-      themeMode,
-    ),
+    fillOpacity: pres
+      ? wireOpacity01(pres.fillOpacity, designVariables, themeMode)
+      : -1,
     strokeOpacity: wireOpacity01(
       attributes.strokeOpacity,
       designVariables,

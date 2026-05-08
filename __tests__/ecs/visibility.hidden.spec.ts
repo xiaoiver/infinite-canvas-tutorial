@@ -93,7 +93,7 @@ describe('Visibility', () => {
         const node1: EllipseSerializedNode = {
           id: '1',
           type: 'ellipse',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 0,
           y: 0,
           width: 200,
@@ -104,7 +104,7 @@ describe('Visibility', () => {
           id: '2',
           parentId: '1',
           type: 'ellipse',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,

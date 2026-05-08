@@ -95,7 +95,7 @@ describe('ClipMode', () => {
         const node1: RectSerializedNode = {
           id: 'clip-parent',
           type: 'rect',
-          fill: 'none',
+          fills: [{ type: 'solid', value: 'none', opacity: 1 }],
           clipMode: 'soft',
           x: 50,
           y: 50,
@@ -107,7 +107,7 @@ describe('ClipMode', () => {
           id: 'clip-child',
           parentId: 'clip-parent',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 50,
           y: 50,
           width: 200,

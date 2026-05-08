@@ -45,8 +45,8 @@ function startAnimation() {
   animation = api.animate(
     demoNode,
     [
-      { x: 100, fill: 'green' },
-      { x: 200, fill: 'red' },
+      { x: 100, fills: [{ type: 'solid', value: 'green', opacity: 1 }] },
+      { x: 200, fills: [{ type: 'solid', value: 'red', opacity: 1 }] },
     ],
     {
       duration: 1000,
@@ -112,7 +112,7 @@ onMounted(async () => {
       y: 80,
       width: 100,
       height: 100,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
       stroke: '#1a1a1a',
       strokeWidth: 2,
       zIndex: 10,

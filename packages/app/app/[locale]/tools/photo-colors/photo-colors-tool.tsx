@@ -14,7 +14,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     width: 1024,
     height: 1536,
     lockAspectRatio: true,
-    fill: '/photo-colors-1.png',
+    fills: [{ type: 'image', value: '/photo-colors-1.png', opacity: 1 }],
     zIndex: 0,
     version: 0,
     filter: 'liquid-glass(4, 3, 0.1, 0.3, 0, 0.06, 0, 0.7, 2.3, 5.2, 6.9, 0.5, 0.75, 1, 1, 1, 0.5)'

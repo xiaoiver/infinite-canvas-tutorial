@@ -33,7 +33,7 @@ onMounted(async () => {
     const image = {
       id: 'pixelate-1',
       type: 'rect',
-      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
       x: 50,
       y: 50,
       width: 200,
@@ -45,7 +45,7 @@ onMounted(async () => {
     const image2 = {
       id: 'pixelate-2',
       type: 'rect',
-      fill: 'linear-gradient(to right, red, blue)',
+      fills: [{ type: 'gradient', value: 'linear-gradient(to right, red, blue)', opacity: 1 }],
       x: 300,
       y: 50,
       width: 200,

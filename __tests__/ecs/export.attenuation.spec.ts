@@ -98,7 +98,7 @@ describe('Export Attenuation', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             stroke: 'blue',
             strokeWidth: 10,
             sizeAttenuation: true,

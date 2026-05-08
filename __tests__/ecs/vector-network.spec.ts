@@ -95,7 +95,7 @@ describe('Rect', () => {
           zIndex: 3,
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
 
           // The vertices of the triangle
           vertices: [

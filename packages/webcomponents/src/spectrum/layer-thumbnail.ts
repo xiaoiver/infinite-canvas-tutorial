@@ -19,6 +19,9 @@ import {
   LineSerializedNode,
   IconFontSerializedNode,
   RectSerializedNode,
+  FillAttributes,
+  firstEnabledFillPresentation,
+  migrateLegacyFillWireInPlace,
 } from '@infinite-canvas-tutorial/ecs';
 import { consume } from '@lit/context';
 import rough from 'roughjs';
@@ -170,8 +173,6 @@ export class LayerThumbnail extends LitElement {
     }
 
     const {
-      fill,
-      fillOpacity,
       stroke,
       strokeOpacity,
       strokeWidth,
@@ -186,6 +187,17 @@ export class LayerThumbnail extends LitElement {
 
     } = this.node as PathSerializedNode;
 
+    migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
+    const fp = firstEnabledFillPresentation(
+      (this.node as FillAttributes).fills,
+    );
+    const fill = fp?.fill;
+    const rawFo = fp?.fillOpacity ?? 1;
+    const fillOpacity =
+      typeof rawFo === 'number' && Number.isFinite(rawFo)
+        ? rawFo
+        : parseFloat(String(rawFo)) || 1;
+
     if ($el) {
       $el.setAttribute('transform', transform);
       if (opacity) {
@@ -196,8 +208,8 @@ export class LayerThumbnail extends LitElement {
       } else {
         $el.setAttribute('fill', 'none');
       }
-      if (fillOpacity) {
-        $el.setAttribute('fill-opacity', fillOpacity.toString());
+      if (fillOpacity != null && fillOpacity !== 1) {
+        $el.setAttribute('fill-opacity', String(fillOpacity));
       }
       if (stroke) {
         $el.setAttribute('stroke', stroke);

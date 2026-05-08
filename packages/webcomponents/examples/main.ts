@@ -154,6 +154,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       Task.SHOW_PROPERTIES_PANEL,
     ],
     propertiesPanelSectionsOpen: {
+      fillSection: true,
       shape: false,
       transform: false,
       layout: false,
@@ -195,8 +196,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 100,
     width: 100,
     height: 100,
-    fill: '#e0f2ff',
-    fillOpacity: 0.5,
+    fills: [{ type: 'solid', value: '#e0f2ff', opacity: 0.5 }],
     stroke: '#147af3',
     strokeWidth: 1,
     zIndex: 0,
@@ -208,13 +208,12 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 50,
     width: 100,
     height: 100,
-    fill: '#e0f2ff',
-    fillOpacity: 0.5,
+    fills: [{ type: 'solid', value: '#e0f2ff', opacity: 0.5 }],
     stroke: '#147af3',
     strokeWidth: 1,
     zIndex: 0,
   };
-  /** 多层填充示例：底层实色 + 顶层渐变，Normal 叠加（需至少 2 项，见 {@link FillAttributes.fillLayers}） */
+  /** 多层填充示例：底层实色 + 顶层渐变，Normal 叠加（至少 2 项） */
   const node3: RectSerializedNode = {
     id: 'snap-to-objects-3',
     type: 'rect',
@@ -222,7 +221,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 100,
     width: 100,
     height: 100,
-    fillLayers: [
+    fills: [
       { type: 'solid', value: 'yellow', opacity: 0.5 },
       {
         type: 'gradient',
@@ -231,7 +230,6 @@ canvas.addEventListener(Event.READY, async (e) => {
         opacity: 0.85,
       },
     ],
-    fillOpacity: 0.5,
     stroke: '#147af3',
     strokeWidth: 1,
     zIndex: 0,

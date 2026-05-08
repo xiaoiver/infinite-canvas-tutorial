@@ -18,7 +18,28 @@ export const drawElementTool = tool({
     y1: z.number().describe('The y1 coordinate of line or rough-line.').optional(),
     x2: z.number().describe('The x2 coordinate of line or rough-line.').optional(),
     y2: z.number().describe('The y2 coordinate of line or rough-line.').optional(),
-    fill: z.string().describe('The fill.').optional(),
+    fills: z
+      .array(
+        z.discriminatedUnion('type', [
+          z.object({
+            type: z.literal('solid'),
+            value: z.string(),
+            opacity: z.number().optional(),
+          }),
+          z.object({
+            type: z.literal('gradient'),
+            value: z.string(),
+            opacity: z.number().optional(),
+          }),
+          z.object({
+            type: z.literal('image'),
+            value: z.string(),
+            opacity: z.number().optional(),
+          }),
+        ]),
+      )
+      .describe('Fill stack, e.g. [{ type: "solid", value: "#000000", opacity: 1 }].')
+      .optional(),
     stroke: z.string().describe('The stroke.').optional(),
     strokeWidth: z.number().describe('The stroke width.').optional(),
     strokeOpacity: z.number().describe('The stroke opacity.').optional(),

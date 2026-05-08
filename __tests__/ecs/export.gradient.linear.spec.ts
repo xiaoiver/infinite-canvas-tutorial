@@ -96,7 +96,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'linear-gradient(to right, red, blue)',
+            fills: [{ type: 'gradient', value: 'linear-gradient(to right, red, blue)', opacity: 1 }],
             x: 50,
             y: 50,
             width: 100,

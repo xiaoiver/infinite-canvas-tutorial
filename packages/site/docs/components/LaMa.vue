@@ -43,7 +43,7 @@ onMounted(async () => {
       y: 50,
       width: 200,
       height: 200,
-      fill: 'https://v3b.fal.media/files/b/0a86d421/6xSMYtyW-fm2ciM6dHEgB.png',
+      fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/0a86d421/6xSMYtyW-fm2ciM6dHEgB.png', opacity: 1 }],
     };
 
     api.updateNode(node);

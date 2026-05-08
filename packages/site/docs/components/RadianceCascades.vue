@@ -147,14 +147,12 @@ onMounted(async () => {
       themeMode: ThemeMode.DARK,
       penbarDrawRect: {
         ...api.getAppState().penbarDrawRect,
-        fill: 'yellow',
-        fillOpacity: 1,
+        fills: [{ type: 'solid', value: 'yellow', opacity: 1 }],
         strokeWidth: 0,
       },
       penbarDrawEllipse: {
         ...api.getAppState().penbarDrawEllipse,
-        fill: 'yellow',
-        fillOpacity: 1,
+        fills: [{ type: 'solid', value: 'yellow', opacity: 1 }],
         strokeWidth: 0,
       },
       penbarDrawLine: {
@@ -173,7 +171,7 @@ onMounted(async () => {
       y: 120,
       width: 100,
       height: 100,
-      fill: 'black',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
     };
     const node2 = {
       id: 'radiance-rect-2',
@@ -182,7 +180,7 @@ onMounted(async () => {
       y: 0,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
     };
     const node3 = {
       id: 'radiance-rect-3',
@@ -192,7 +190,7 @@ onMounted(async () => {
       width: 100,
       height: 200,
       rotation: Math.PI / 6,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
     };
 
     const line = {

@@ -47,7 +47,7 @@ onMounted(async () => {
       y: 100,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       stroke: 'black',
       strokeWidth: 10,
     };
@@ -60,7 +60,7 @@ onMounted(async () => {
       y: 100,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       stroke: 'black',
       strokeWidth: 10,
     };

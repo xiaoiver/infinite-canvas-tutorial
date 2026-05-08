@@ -29,7 +29,7 @@ onMounted(async () => {
       y: 20,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       zIndex: 1,
     },
     {
@@ -39,7 +39,7 @@ onMounted(async () => {
       y: 70,
       width: 100,
       height: 100,
-      fill: 'blue',
+      fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
       zIndex: 2,
     },
     {
@@ -49,7 +49,7 @@ onMounted(async () => {
       y: 120,
       width: 100,
       height: 100,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
       zIndex: 3,
     },
   ];

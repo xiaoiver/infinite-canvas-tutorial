@@ -7,7 +7,7 @@ import { Lasso, Layers, Loader2, MousePointerClick, Pencil, PenTool, SquareDashe
 import { useAtomValue } from 'jotai';
 import { isSingleImageAtom, selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
 import { sendMessageAtom, chatIdAtom } from '@/atoms/chat';
-import { PathSerializedNode, Pen, RectSerializedNode, SerializedNode, TRANSFORMER_MASK_FILL_COLOR, HtmlSerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { getPrimaryFillValue, PathSerializedNode, Pen, RectSerializedNode, SerializedNode, TRANSFORMER_MASK_FILL_COLOR, HtmlSerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { Button } from './ui/button';
@@ -277,7 +277,9 @@ export function ImageToolbar() {
       if (type == 'pong') {
         const { success } = data;
         if (success) {
-          const canvas = await image2Canvas(targetImage!.fill!);
+          const imgUrl = getPrimaryFillValue(targetImage!);
+          if (!imgUrl) return;
+          const canvas = await image2Canvas(imgUrl);
           worker.postMessage({
             type: 'encodeImage',
             data: canvasToFloat32Array(resizeCanvas(canvas, imageSize)),

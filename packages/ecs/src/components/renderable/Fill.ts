@@ -17,7 +17,8 @@ export type FillLayerItem =
   | {
       type: 'solid';
       value: string;
-      opacity?: number;
+      /** 0–1；线框上可为设计变量引用字符串 */
+      opacity?: number | string;
       enabled?: boolean;
       /**
        * 与同层下方已绘制内容的混合模式；缺省为 `normal`（source-over 栈上的下一层）。
@@ -28,7 +29,14 @@ export type FillLayerItem =
   | {
       type: 'gradient';
       value: string;
-      opacity?: number;
+      opacity?: number | string;
+      enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
+    }
+  | {
+      type: 'image';
+      value: string;
+      opacity?: number | string;
       enabled?: boolean;
       blendMode?: FillLayerBlendMode;
     };

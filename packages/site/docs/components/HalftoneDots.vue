@@ -33,7 +33,7 @@ onMounted(async () => {
     const image = {
       id: 'halftone-1',
       type: 'rect',
-      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
       x: 50,
       y: 50,
       width: 200,
@@ -45,7 +45,7 @@ onMounted(async () => {
     const image2 = {
       id: 'halftone-dots-1',
       type: 'rect',
-      fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+      fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
       x: 300,
       y: 50,
       width: 200,

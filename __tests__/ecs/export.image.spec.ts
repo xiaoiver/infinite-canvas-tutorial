@@ -96,7 +96,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'data:image/png;base64,iVBOR',
+            fills: [{ type: 'image', value: 'data:image/png;base64,iVBOR', opacity: 1 }],
             x: 50,
             y: 50,
             width: 100,

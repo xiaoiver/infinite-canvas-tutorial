@@ -50,7 +50,7 @@ export class FillIcon extends LitElement {
       exportFillGradientOrPattern(
         {
           ...this.node,
-          fill: displayValue,
+          fills: [{ type: 'solid', value: displayValue, opacity: 1 }],
           type: 'ellipse',
           x: 0,
           y: 0,

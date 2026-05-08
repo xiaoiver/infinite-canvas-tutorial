@@ -28,7 +28,7 @@ onMounted(async () => {
     const node = {
       type: 'rect',
       id: '0',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       stroke: 'black',
       x: 100,
       y: 100,
@@ -45,7 +45,7 @@ onMounted(async () => {
     api.record();
 
     api.updateNode(node, {
-      fill: 'blue',
+      fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
     });
     api.record();
   };

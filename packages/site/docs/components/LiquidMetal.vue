@@ -48,7 +48,7 @@ onMounted(async () => {
       type: 'rect',
       width: 400,
       height: 300,
-      fill: 'https://shaders.paper.design/images/logos/diamond.svg',
+      fills: [{ type: 'image', value: 'https://shaders.paper.design/images/logos/diamond.svg', opacity: 1 }],
       x: 50,
       y: 50,
       lockAspectRatio: true,

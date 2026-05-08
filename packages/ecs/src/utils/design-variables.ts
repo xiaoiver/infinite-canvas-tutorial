@@ -248,7 +248,7 @@ export function setDesignVariableLightDarkColumn(
 }
 
 export const SERIALIZED_NODE_VARIABLE_KEYS = [
-  'fill',
+  'fills',
   'stroke',
   'fontSize',
   'decorationColor',
@@ -256,7 +256,6 @@ export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'innerShadowColor',
   'strokeWidth',
   'cornerRadius',
-  'fillOpacity',
   'strokeOpacity',
   'cornerRadius',
   'letterSpacing',
@@ -334,6 +333,69 @@ export type DesignVariablesSvgExportMode =
   /** `:root{--x:...}` + `fill="var(--x)"` 形式 */
   | 'css-var';
 
+function resolveFillsVariableReferences(
+  fills: unknown,
+  variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
+): { next: unknown; changed: boolean } {
+  if (!Array.isArray(fills)) {
+    return { next: fills, changed: false };
+  }
+  let changed = false;
+  const next = fills.map((layer) => {
+    if (!layer || typeof layer !== 'object') {
+      return layer;
+    }
+    const L = { ...(layer as Record<string, unknown>) };
+    if (typeof L.value === 'string') {
+      const v = resolveDesignVariableValue(L.value, variables, themeMode);
+      if (v !== L.value) {
+        L.value = v;
+        changed = true;
+      }
+    }
+    if (typeof L.opacity === 'string') {
+      const o = resolveDesignVariableValue(L.opacity, variables, themeMode);
+      if (o !== L.opacity) {
+        L.opacity = o;
+        changed = true;
+      }
+    }
+    return L;
+  });
+  return { next, changed };
+}
+
+function mapFillsToCssVarPlaceholders(fills: unknown): {
+  next: unknown;
+  changed: boolean;
+} {
+  if (!Array.isArray(fills)) {
+    return { next: fills, changed: false };
+  }
+  let changed = false;
+  const next = fills.map((layer) => {
+    if (!layer || typeof layer !== 'object') {
+      return layer;
+    }
+    const L = { ...(layer as Record<string, unknown>) };
+    let layerChanged = false;
+    if (typeof L.value === 'string' && isDesignVariableReference(L.value)) {
+      L.value = `var(${designTokenKeyToCssCustomProperty(L.value.slice(1))})`;
+      layerChanged = true;
+    }
+    if (typeof L.opacity === 'string' && isDesignVariableReference(L.opacity)) {
+      L.opacity = `var(${designTokenKeyToCssCustomProperty(L.opacity.slice(1))})`;
+      layerChanged = true;
+    }
+    if (layerChanged) {
+      changed = true;
+    }
+    return L;
+  });
+  return { next, changed };
+}
+
 function mapSerializedNodeToCssVarPlaceholders(
   node: SerializedNode,
 ): SerializedNode {
@@ -345,6 +407,14 @@ function mapSerializedNodeToCssVarPlaceholders(
       continue;
     }
     const raw = nodeRec[key];
+    if (key === 'fills') {
+      const { next: nf, changed: cf } = mapFillsToCssVarPlaceholders(raw);
+      if (cf) {
+        next[key] = nf;
+        changed = true;
+      }
+      continue;
+    }
     if (typeof raw === 'string' && isDesignVariableReference(raw)) {
       next[key] = `var(${designTokenKeyToCssCustomProperty(raw.slice(1))})`;
       changed = true;
@@ -434,6 +504,18 @@ export function resolveSerializedNodesDesignVariables(
         continue;
       }
       const raw = nodeRec[key];
+      if (key === 'fills') {
+        const { next: nf, changed: cf } = resolveFillsVariableReferences(
+          raw,
+          variables,
+          themeMode,
+        );
+        if (cf) {
+          next[key] = nf;
+          changed = true;
+        }
+        continue;
+      }
       const resolved = resolveDesignVariableValue(
         raw as string | number,
         variables,

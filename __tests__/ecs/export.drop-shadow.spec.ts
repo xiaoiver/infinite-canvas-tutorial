@@ -98,7 +98,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             dropShadowBlurRadius: 10,
             dropShadowColor: 'black',
             dropShadowOffsetX: 10,

@@ -44,7 +44,7 @@ onMounted(async () => {
       name: 'Button/Default',
       x: 100,
       y: 100,
-      fill: 'grey',
+      fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
       display: 'flex',
       padding: [16, 16],
       alignItems: 'center',
@@ -78,7 +78,7 @@ onMounted(async () => {
       fontFamily: 'system-ui',
       fontSize: 24,
       lineHeight: 32,
-      fill: 'white',
+      fills: [{ type: 'solid', value: 'white', opacity: 1 }],
       zIndex: 1,
       textAlign: 'center',
       textBaseline: 'middle',
@@ -95,7 +95,7 @@ onMounted(async () => {
       name: 'Button/Destructive',
       x: 100,
       y: 200,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       zIndex: 0,
       descendants: {
         'icon-button-icon': {
@@ -114,14 +114,14 @@ onMounted(async () => {
       name: 'Button/LiquidMetal',
       x: 100,
       y: 300,
-      fill: 'black',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
       zIndex: 0,
       descendants: {
         'icon-button-icon': {
           iconFontName: 'sparkles',
         },
         'icon-button-text': {
-          fill: 'white',
+          fills: [{ type: 'solid', value: 'white', opacity: 1 }],
           content: 'Liquid Metal',
         },
       },
@@ -135,14 +135,14 @@ onMounted(async () => {
       name: 'Button/Heatmap',
       x: 100,
       y: 400,
-      fill: 'black',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
       zIndex: 0,
       descendants: {
         'icon-button-icon': {
           iconFontName: 'sparkles',
         },
         'icon-button-text': {
-          fill: 'white',
+          fills: [{ type: 'solid', value: 'white', opacity: 1 }],
           content: 'Heatmap',
           wordWrap: false,
         },

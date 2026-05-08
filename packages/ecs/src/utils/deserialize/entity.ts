@@ -103,6 +103,10 @@ import {
   type DesignVariablesMap,
 } from '../design-variables';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
+import {
+  getPrimaryFillValue,
+  migrateLegacyFillWireInPlace,
+} from '../normalize-fill-wire';
 import { buildGroupWirePresentation } from '../group-presentation';
 import type { ThemeMode } from '../../components/Theme';
 import { measureText } from '../../systems/ComputeTextMetrics';
@@ -125,7 +129,7 @@ import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './ex
 import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
 import { resetFillImageSvgRerasterSchedule } from '../fillImageSvgReraster';
 import { hasRasterPostEffects } from '../filter';
-import { fillLayerOpacity, isFillLayerEnabled } from '../fillLayers';
+import { isFillLayerEnabled } from '../fillLayers';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (node.type === 'g') {
@@ -973,6 +977,9 @@ export function serializedNodesToEntities(
     expandedNodes,
     options?.lookupNodes,
   );
+  for (const n of graph) {
+    migrateLegacyFillWireInPlace(n as unknown as Record<string, unknown>);
+  }
   const inheritGroupWireById = getComputedInheritGroupWireMap(graph);
 
   // The old entities are already added to canvas.
@@ -1483,13 +1490,14 @@ export function serializedNodesToEntities(
           }),
         );
         const fattrs = wireMergedAttrs as FillAttributes & StrokeAttributes;
-        if (fattrs.stroke == null && fattrs.fill != null) {
-          fattrs.stroke = fattrs.fill;
+        const primaryFill = getPrimaryFillValue(fattrs);
+        if (fattrs.stroke == null && primaryFill != null) {
+          fattrs.stroke = primaryFill;
         }
         if (fattrs.strokeWidth == null) {
           fattrs.strokeWidth = 2;
         }
-        fattrs.fill = 'none';
+        fattrs.fills = [{ type: 'solid', value: 'none', opacity: 1 }];
       }
       entityCommands.insert(
         new IconFont({
@@ -1505,71 +1513,65 @@ export function serializedNodesToEntities(
       entityCommands.insert(new ClipMode(attributes.clipMode));
     }
 
-    const {
-      fill,
-      fillOpacity,
-      opacity,
-      fillLayers: fillLayersWire,
-    } = wireMergedAttrs as FillAttributes;
-    const fillLayersWireArr = Array.isArray(fillLayersWire)
-      ? fillLayersWire
-      : null;
-    const fillLayersMulti =
-      fillLayersWireArr && fillLayersWireArr.length >= 2
-        ? fillLayersWireArr
-        : null;
-    const fillLayersSingle =
-      fillLayersWireArr && fillLayersWireArr.length === 1
-        ? fillLayersWireArr[0]
-        : null;
+    const { opacity } = wireMergedAttrs as FillAttributes;
+    const fa = wireMergedAttrs as FillAttributes;
+    const fillsWireArr = Array.isArray(fa.fills) ? fa.fills : null;
+    const fillsMulti =
+      fillsWireArr && fillsWireArr.length >= 2 ? fillsWireArr : null;
+    const fillsSingle =
+      fillsWireArr && fillsWireArr.length === 1 ? fillsWireArr[0]! : null;
     let singleFillLayerOpacityMul = 1;
-    if (fillLayersMulti && !skipParentFillStroke) {
-      entityCommands.insert(new FillLayers(fillLayersMulti));
-    } else if (fillLayersSingle && !skipParentFillStroke) {
-      const L = fillLayersSingle;
+    if (fillsMulti && !skipParentFillStroke) {
+      entityCommands.insert(new FillLayers(fillsMulti));
+    } else if (fillsSingle && !skipParentFillStroke) {
+      const L = fillsSingle;
       if (isFillLayerEnabled(L)) {
-        if (L.type === 'gradient') {
-          entityCommands.insert(new FillGradient(L.value));
+        const resolvedVal = resolveDesignVariableValue(
+          L.value,
+          designVariables,
+          themeMode,
+        );
+        const rv = String(resolvedVal ?? '');
+        if (L.type === 'gradient' || isGradient(rv)) {
+          entityCommands.insert(new FillGradient(rv));
+        } else if (L.type === 'image' || isDataUrl(rv) || isUrl(rv)) {
+          loadImage(rv, entityCommands.id());
         } else {
-          entityCommands.insert(
-            new FillSolid(
-              L.value,
-              designVariableRefKeyFromWire(fill),
-            ),
-          );
-        }
-        singleFillLayerOpacityMul = fillLayerOpacity(L.opacity);
-      }
-    }
-    const resolvedFill = resolveDesignVariableValue(
-      fill,
-      designVariables,
-      themeMode,
-    );
-    if (
-      !fillLayersMulti &&
-      !fillLayersSingle &&
-      resolvedFill &&
-      !skipParentFillStroke
-    ) {
-      if (isGradient(resolvedFill)) {
-        entityCommands.insert(new FillGradient(resolvedFill));
-      } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
-        loadImage(resolvedFill, entityCommands.id());
-      } else {
-        try {
-          const parsed = JSON.parse(resolvedFill as string) as FillPattern;
-          if (isPattern(parsed)) {
-            entityCommands.insert(new FillPattern(parsed));
+          try {
+            const parsed = JSON.parse(rv) as FillPattern;
+            if (isPattern(parsed)) {
+              entityCommands.insert(new FillPattern(parsed));
+            } else {
+              entityCommands.insert(
+                new FillSolid(
+                  rv,
+                  designVariableRefKeyFromWire(
+                    typeof L.value === 'string' ? L.value : undefined,
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            entityCommands.insert(
+              new FillSolid(
+                rv,
+                designVariableRefKeyFromWire(
+                  typeof L.value === 'string' ? L.value : undefined,
+                ),
+              ),
+            );
           }
-        } catch (e) {
-          entityCommands.insert(
-            new FillSolid(
-              resolvedFill as string,
-              designVariableRefKeyFromWire(fill),
-            ),
-          );
         }
+        const rOp = resolveDesignVariableValue(
+          L.opacity ?? 1,
+          designVariables,
+          themeMode,
+        );
+        const n =
+          typeof rOp === 'number' ? rOp : parseFloat(String(rOp ?? ''));
+        singleFillLayerOpacityMul = Number.isFinite(n)
+          ? Math.max(0, Math.min(1, n))
+          : 1;
       }
     }
 
@@ -1654,16 +1656,11 @@ export function serializedNodesToEntities(
     }
 
     if (
-      opacity ||
-      fillOpacity ||
-      strokeOpacity ||
-      (fillLayersSingle && isFillLayerEnabled(fillLayersSingle))
+      opacity != null ||
+      strokeOpacity != null ||
+      (fillsWireArr && fillsWireArr.length >= 1) ||
+      (fillsSingle && isFillLayerEnabled(fillsSingle))
     ) {
-      const rfo = resolveDesignVariableValue(
-        fillOpacity,
-        designVariables,
-        themeMode,
-      );
       const rso = resolveDesignVariableValue(
         strokeOpacity,
         designVariables,
@@ -1676,11 +1673,11 @@ export function serializedNodesToEntities(
         const n = typeof v === 'number' ? v : parseFloat(String(v));
         return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
       };
-      const baseFillOp = to01(rfo);
+      const fillOpForWire = fillsMulti != null ? 1 : singleFillLayerOpacityMul;
       entityCommands.insert(
         new Opacity({
           opacity,
-          fillOpacity: baseFillOp * singleFillLayerOpacityMul,
+          fillOpacity: fillOpForWire,
           strokeOpacity: to01(rso),
         }),
       );

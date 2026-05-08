@@ -539,7 +539,8 @@ export class LottieAnimation {
         y: 0,
         width,
         height,
-        fill: src,
+        fills: [{ type: 'image', value: src, opacity: 1 }],
+        zIndex: 0,
       } as RectSerializedNode;
     }
 
@@ -888,7 +889,7 @@ export class LottieAnimation {
               // format interpolated properties, e.g. scaleX -> transform
               const formatted = this.formatKeyframes(merged, child, element);
 
-              console.log('formatted', formatted, options, child);
+              // console.log('formatted', formatted, options, child);
 
               if (formatted.length) {
                 // @ts-expect-error 

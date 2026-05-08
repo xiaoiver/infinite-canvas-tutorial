@@ -35,8 +35,7 @@ onMounted(async () => {
       y: 100,
       width: 100,
       height: 100,
-      fill: '#e0f2ff',
-      fillOpacity: 0.5,
+      fills: [{ type: 'solid', value: '#e0f2ff', opacity: 0.5 }],
       stroke: '#147af3',
       strokeWidth: 1,
     });

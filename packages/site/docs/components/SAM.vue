@@ -43,8 +43,8 @@ onMounted(async () => {
       y: 50,
       width: 200,
       height: 200,
-      // fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
-      fill: '/image_in.png',
+      // fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
+      fills: [{ type: 'image', value: '/image_in.png', opacity: 1 }],
       zIndex: 0,
     };
 

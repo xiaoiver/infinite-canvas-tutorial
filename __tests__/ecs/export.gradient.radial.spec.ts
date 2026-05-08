@@ -96,7 +96,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'radial-gradient(circle at center, red, blue)',
+            fills: [{ type: 'gradient', value: 'radial-gradient(circle at center, red, blue)', opacity: 1 }],
             x: 50,
             y: 50,
             width: 100,

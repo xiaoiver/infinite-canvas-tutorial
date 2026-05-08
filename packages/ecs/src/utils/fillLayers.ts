@@ -51,7 +51,7 @@ export function getSingleEnabledFillLayer(
 }
 
 export function fillLayersNeedFillImage(layers: FillLayerItem[]): boolean {
-  return layers.some((l) => l.type === 'gradient');
+  return layers.some((l) => l.type === 'gradient' || l.type === 'image');
 }
 
 export type { FillLayerBlendMode } from '../types/fill-layer-blend';
@@ -64,10 +64,14 @@ export function fillLayersShouldPrecompose(layers: FillLayerItem[]): boolean {
   });
 }
 
-/** 单层不透明度，缺省为 1 */
-export function fillLayerOpacity(o?: number): number {
-  if (o == null || Number.isNaN(o)) {
+/** 单层不透明度，缺省为 1（线框上可为数字或已解析的字符串） */
+export function fillLayerOpacity(o?: number | string): number {
+  if (o == null || o === '') {
     return 1;
   }
-  return Math.min(1, Math.max(0, o));
+  if (typeof o === 'number') {
+    return Number.isNaN(o) ? 1 : Math.min(1, Math.max(0, o));
+  }
+  const n = parseFloat(String(o));
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
 }

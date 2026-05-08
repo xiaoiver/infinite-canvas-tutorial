@@ -137,37 +137,39 @@ export interface VisibilityAttributes {
   visibility: Visibility['value'];
 }
 
-/** 多层填充的一层，与 ECS {@link FillLayers} 中条目同构 */
+/** 多层填充的一层，与 ECS {@link FillLayers} 中条目同构（Figma `Paint` 子集） */
 export type SerializedFillLayerItem =
   | {
       type: 'solid';
       value: string;
-      opacity?: number;
+      /** 0–1；可为设计变量引用字符串（如 `$token`） */
+      opacity?: number | string;
       enabled?: boolean;
       blendMode?: FillLayerBlendMode;
     }
   | {
       type: 'gradient';
       value: string;
-      opacity?: number;
+      opacity?: number | string;
+      enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
+    }
+  | {
+      /** 位图 / SVG 等资源 URL（与历史 `fill` 为 URL 时语义一致） */
+      type: 'image';
+      value: string;
+      opacity?: number | string;
       enabled?: boolean;
       blendMode?: FillLayerBlendMode;
     };
 
 export interface FillAttributes {
+  /** 节点整体不透明度（SVG `opacity`），与单层 `fills[].opacity` 不同 */
+  opacity?: Opacity['opacity'];
   /**
-   * Solid color, gradient, stringified pattern, image data-uri, etc.
+   * 填充栈（对齐 Figma `fills`）。历史 `fill` / `fillOpacity` / `fillLayers` 在加载时归一化为此字段。
    */
-  fill: string;
-  fillOpacity: Opacity['fillOpacity'];
-  opacity: Opacity['opacity'];
-  /**
-   * 与单一 `fill` 二选一；反序列化优先采用此项。
-   * 至少两项时挂 ECS `FillLayers` 做多层 Normal 叠加；仅一项时退化为单 `FillSolid` / `FillGradient`。
-   * 每层 `type`：`solid` | `gradient`；`opacity` 为 0–1，缺省为 1，并与 `fillOpacity` 相乘；`enabled: false` 跳过该层；
-   * `blendMode` 见 {@link FillLayerBlendMode}，缺省 `normal`；非 `normal` 时引擎在 GPU 上预合成再绘制形状。
-   */
-  fillLayers?: SerializedFillLayerItem[];
+  fills?: SerializedFillLayerItem[];
 }
 
 export interface StrokeAttributes {

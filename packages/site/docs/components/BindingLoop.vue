@@ -38,7 +38,7 @@ onMounted(async () => {
       y: 50,
       width: 100,
       height: 100,
-      fill: 'grey',
+      fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
     };
     const node2 = {
       id: 'binding-loop-rect-2',
@@ -47,7 +47,7 @@ onMounted(async () => {
       y: 120,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
     };
     const node3 = {
       id: 'binding-loop-rect-3',
@@ -56,7 +56,7 @@ onMounted(async () => {
       y: 150,
       width: 100,
       height: 100,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
       rotation: Math.PI / 4,
     };
     const edge1 = {

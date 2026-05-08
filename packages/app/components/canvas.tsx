@@ -182,6 +182,7 @@ const Canvas = ({
       rotateEnabled: true,
       flipEnabled: false,
       propertiesPanelSectionsOpen: {
+        fillSection: true,
         shape: false,
         transform: false,
         layout: false,

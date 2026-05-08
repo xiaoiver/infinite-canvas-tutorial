@@ -96,7 +96,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'ellipse',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             x: 50,
             y: 50,
             width: 100,

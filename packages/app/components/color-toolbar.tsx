@@ -3,7 +3,11 @@
 import { useTranslations } from 'next-intl';
 import { useAtomValue } from 'jotai';
 import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
-import { RectSerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  FillAttributes,
+  getPrimaryFillValue,
+  RectSerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
 import InputColor from './input-color';
 
 export function ColorToolbar() {
@@ -21,12 +25,16 @@ export function ColorToolbar() {
     return null;
   }
 
-  const fill = (selectedNode as RectSerializedNode)?.fill as string;
+  const fill = getPrimaryFillValue(selectedNode as FillAttributes) as
+    | string
+    | undefined;
   const stroke = (selectedNode as RectSerializedNode)?.stroke as string;
 
   const handleFillChange = (value: string) => {
     if (canvasApi) {
-      canvasApi.updateNode(selectedNode, { fill: value });
+      canvasApi.updateNode(selectedNode, {
+        fills: [{ type: 'solid', value, opacity: 1 }],
+      });
       canvasApi.record();
     }
   };

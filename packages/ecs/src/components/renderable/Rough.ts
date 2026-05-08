@@ -2,6 +2,7 @@ import { field, Type } from '@lastolivegames/becsy';
 import { Drawable, Options } from 'roughjs/bin/core';
 import { deserializePoints, filterUndefined } from '../../utils';
 import { FillAttributes, RoughAttributes, SerializedNode, StrokeAttributes } from '../../types/serialized-node';
+import { getPrimaryFillValue } from '../../utils/normalize-fill-wire';
 
 export class Rough {
   /**
@@ -192,8 +193,9 @@ export class ComputedRough {
 export function getRoughOptions(
   node: Omit<SerializedNode, 'id' | 'zIndex'> & Partial<Pick<SerializedNode, 'id' | 'zIndex'>>,
 ): Options {
+  const wire = node as RoughAttributes & StrokeAttributes & FillAttributes;
   const {
-    stroke, strokeWidth, fill, strokeDasharray: strokeDasharrayString, strokeDashoffset,
+    stroke, strokeWidth, strokeDasharray: strokeDasharrayString, strokeDashoffset,
     roughSeed,
     roughBowing,
     roughRoughness,
@@ -212,7 +214,8 @@ export function getRoughOptions(
     roughPreserveVertices,
     roughFillLineDash,
     roughFillLineDashOffset,
-  } = node as RoughAttributes & StrokeAttributes & FillAttributes;
+  } = wire;
+  const fill = getPrimaryFillValue(wire) ?? '';
 
   const strokeDasharray = strokeDasharrayString ? deserializePoints(strokeDasharrayString) : [0, 0];
 

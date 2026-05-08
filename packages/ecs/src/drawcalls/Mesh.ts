@@ -53,6 +53,10 @@ import {
   getShapePixelBoundsForFillImage,
   resolveFillImageTexturePixelSize,
 } from '../utils/fillImageTextureSize';
+import {
+  transparentFillLayerCanvas,
+  trySyncRasterizeImageUrlToCanvas,
+} from '../utils/fill-layer-image-url-raster';
 import { createSolidFillMaskRasterForFilter } from '../utils/solidShapeRasterForFilter';
 import {
   ComputedPoints,
@@ -210,6 +214,20 @@ export class Mesh extends Drawcall {
     width: number,
     height: number,
   ): Texture {
+    if (layer.type === 'image') {
+      const tw = Math.max(1, Math.ceil(width));
+      const th = Math.max(1, Math.ceil(height));
+      const fromUrl = trySyncRasterizeImageUrlToCanvas(layer.value, tw, th);
+      const canvas = fromUrl ?? transparentFillLayerCanvas(width, height);
+      const raw = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: tw,
+        height: th,
+        usage: TextureUsage.SAMPLED,
+      });
+      raw.setImageData([canvas as HTMLCanvasElement]);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+    }
     if (layer.type === 'solid') {
       const tw = Math.max(1, Math.ceil(width));
       const th = Math.max(1, Math.ceil(height));

@@ -11,6 +11,7 @@ import {
   Text,
   TextSerializedNode,
   UI,
+  getPrimaryFillValue,
   inferXYWidthHeight,
 } from '@infinite-canvas-tutorial/ecs';
 import { v4 as uuidv4 } from 'uuid';
@@ -330,13 +331,13 @@ export class TextEditor extends LitElement {
       fontWeight,
       fontStyle,
       fontVariant,
-      fill,
       opacity,
       textAlign,
       textBaseline,
       letterSpacing,
       lineHeight,
     } = node;
+    const fill = getPrimaryFillValue(node);
 
     if (fontFamily) {
       this.editable.style.fontFamily = fontFamily;

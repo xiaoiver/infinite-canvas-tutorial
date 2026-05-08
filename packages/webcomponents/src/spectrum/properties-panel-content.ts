@@ -7,10 +7,12 @@ import {
   FillAttributes,
   designVariableRefKeyFromWire,
   isDesignVariableReference,
+  migrateLegacyFillWireInPlace,
   resolveDesignVariableValue,
   type FlexboxLayoutAttributes,
   type IconFontSerializedNode,
   type RectSerializedNode,
+  type SerializedFillLayerItem,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
@@ -42,6 +44,7 @@ import './design-variable-picker.js';
 import './export-panel';
 import './icon-font-controls.js';
 import type { IconFontControlsPatch } from './icon-font-controls';
+import './fill-section.js';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
 
@@ -263,6 +266,7 @@ export class PropertiesPanelContent extends LitElement {
   lockAspectRatio: boolean = true;
 
   private get propertiesPanelSectionsOpenResolved(): {
+    fillSection: boolean;
     shape: boolean;
     transform: boolean;
     layout: boolean;
@@ -274,6 +278,7 @@ export class PropertiesPanelContent extends LitElement {
     const s = (
       this.appState as AppState & {
         propertiesPanelSectionsOpen?: Partial<{
+          fillSection: boolean;
           shape: boolean;
           transform: boolean;
           layout: boolean;
@@ -285,6 +290,7 @@ export class PropertiesPanelContent extends LitElement {
       }
     )?.propertiesPanelSectionsOpen;
     return {
+      fillSection: s?.fillSection ?? true,
       shape: s?.shape ?? true,
       transform: s?.transform ?? true,
       layout: s?.layout ?? true,
@@ -305,9 +311,27 @@ export class PropertiesPanelContent extends LitElement {
     return parent?.display === 'flex';
   }
 
+  private firstFillLayerForOpacity(): SerializedFillLayerItem {
+    migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
+    const fl = (this.node as FillAttributes).fills;
+    if (Array.isArray(fl) && fl[0]) {
+      return { ...fl[0] };
+    }
+    return { type: 'solid', value: '#000000', opacity: 1 };
+  }
+
   private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
+    const v = parseFloat(e.target.value);
+    if (!Number.isFinite(v)) {
+      return;
+    }
+    const fills = (this.node as FillAttributes).fills;
+    if (Array.isArray(fills) && fills.length >= 2) {
+      return;
+    }
+    const base = this.firstFillLayerForOpacity();
     this.api.updateNode(this.node, {
-      fillOpacity: parseFloat(e.target.value),
+      fills: [{ ...base, opacity: Math.max(0, Math.min(1, v)) }],
     });
     this.api.record();
   }
@@ -315,14 +339,24 @@ export class PropertiesPanelContent extends LitElement {
   private handleFillOpacityVariablePick(
     e: CustomEvent<DesignVariablePickDetail>,
   ) {
+    const fills = (this.node as FillAttributes).fills;
+    if (Array.isArray(fills) && fills.length >= 2) {
+      return;
+    }
+    const base = this.firstFillLayerForOpacity();
     this.api.updateNode(this.node, {
-      fillOpacity: `$${e.detail.key}` as unknown as number,
+      fills: [{ ...base, opacity: `$${e.detail.key}` }],
     });
     this.api.record();
   }
 
   private handleFillOpacityVariableUnbind() {
-    const raw = (this.node as FillAttributes).fillOpacity;
+    const fills = (this.node as FillAttributes).fills;
+    if (Array.isArray(fills) && fills.length >= 2) {
+      return;
+    }
+    const base = this.firstFillLayerForOpacity();
+    const raw = base.opacity ?? 1;
     const resolved = resolveDesignVariableValue(
       raw,
       this.appState.variables,
@@ -334,7 +368,7 @@ export class PropertiesPanelContent extends LitElement {
         : parseFloat(String(resolved ?? ''));
     if (Number.isFinite(n)) {
       this.api.updateNode(this.node, {
-        fillOpacity: Math.max(0, Math.min(1, n)),
+        fills: [{ ...base, opacity: Math.max(0, Math.min(1, n)) }],
       });
       this.api.record();
     }
@@ -1501,7 +1535,13 @@ export class PropertiesPanelContent extends LitElement {
     const isRect = type === 'rect';
     const isIconFont = type === 'iconfont' || (type as string) === 'icon_font';
 
-    const fillOpRaw = (this.node as FillAttributes).fillOpacity ?? 1;
+    migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
+    const fillsArr = (this.node as FillAttributes).fills;
+    const showStyleFillOpacity =
+      isText || !Array.isArray(fillsArr) || fillsArr.length <= 1;
+    const L0 =
+      Array.isArray(fillsArr) && fillsArr[0] ? fillsArr[0] : null;
+    const fillOpRaw = L0?.opacity ?? 1;
     const fillOpacityResolved = resolveDesignVariableValue(
       fillOpRaw,
       this.appState.variables,
@@ -1546,6 +1586,16 @@ export class PropertiesPanelContent extends LitElement {
         ${!isGroup
         ? html`
               <sp-accordion-item
+                label=${msg(str`Fill`)}
+                ?open=${this.propertiesPanelSectionsOpenResolved.fillSection}
+              >
+                <div class="content style-group">
+                  <ic-spectrum-fill-section
+                    .node=${this.node}
+                  ></ic-spectrum-fill-section>
+                </div>
+              </sp-accordion-item>
+              <sp-accordion-item
                 label=${msg(str`Style`)}
                 ?open=${this.propertiesPanelSectionsOpenResolved.shape}
               >
@@ -1567,6 +1617,9 @@ export class PropertiesPanelContent extends LitElement {
                     </div>
                   </div>
 
+                  ${when(
+        showStyleFillOpacity,
+        () => html`
                   <div class="line">
                     <sp-field-label for="fill-opacity" side-aligned="start"
                       >${msg(str`Fill opacity`)}</sp-field-label
@@ -1637,6 +1690,8 @@ export class PropertiesPanelContent extends LitElement {
                       </sp-overlay>
                     </div>
                   </div>
+        `,
+      )}
 
                   ${when(
               isRect,

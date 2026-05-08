@@ -90,7 +90,7 @@ describe('Watercolor', () => {
         const node1: RoughEllipseSerializedNode = {
           id: '1',
           type: 'rough-ellipse',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 0,
           y: 50,
           width: 200,
