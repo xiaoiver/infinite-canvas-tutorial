@@ -16,7 +16,14 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '1',
     name: 'A swimming dog',
     type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+    fills: [
+      {
+        type: 'solid',
+        value:
+          'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
+        opacity: 1,
+      },
+    ],
     x: 200,
     y: 150,
     width: 1024,
@@ -29,7 +36,14 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '2',
     name: 'A swimming cat',
     type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/koala/0RQAsrw5rRX015XQUd4HX.jpg',
+    fills: [
+      {
+        type: 'solid',
+        value:
+          'https://v3b.fal.media/files/b/koala/0RQAsrw5rRX015XQUd4HX.jpg',
+        opacity: 1,
+      },
+    ],
     x: 200 + 1200,
     y: 150,
     width: 1024,
@@ -42,7 +56,14 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '3',
     name: 'A swimming dog without background',
     type: 'rect',
-    fill: 'https://v3b.fal.media/files/b/panda/Xo61xntJdsl8_txn9WC-5.jpg',
+    fills: [
+      {
+        type: 'solid',
+        value:
+          'https://v3b.fal.media/files/b/panda/Xo61xntJdsl8_txn9WC-5.jpg',
+        opacity: 1,
+      },
+    ],
     x: 200 + 2400,
     y: 150,
     width: 1024,
@@ -55,7 +76,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '4',
     type: 'text',
     name: 'Enter your desired modifications in Chat.',
-    fill: 'black',
+    fills: [{ type: 'solid', value: 'black', opacity: 1 }],
     content: 'Enter your desired modifications in Chat.',
     fontSize: 66,
     fontFamily: 'Gaegu',
@@ -68,7 +89,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '5',
     type: 'text',
     name: 'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
-    fill: 'black',
+    fills: [{ type: 'solid', value: 'black', opacity: 1 }],
     content:
       'Or select multiple images(😂 even my hand-drawn fish!) \nat once and combine them.',
     fontSize: 66,
@@ -92,7 +113,14 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '7',
     type: 'rect',
     name: 'A dog with a hand-drawn fish',
-    fill: 'https://v3.fal.media/files/penguin/9UH5Fgin7zc1u6NGGItGB.jpeg',
+    fills: [
+      {
+        type: 'solid',
+        value:
+          'https://v3.fal.media/files/penguin/9UH5Fgin7zc1u6NGGItGB.jpeg',
+        opacity: 1,
+      },
+    ],
     x: 1400,
     y: 1400,
     width: 1408,
@@ -116,7 +144,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     id: '9',
     type: 'text',
     name: 'Smart inpainting & outpainting are on the way.',
-    fill: 'black',
+    fills: [{ type: 'solid', value: 'black', opacity: 1 }],
     content:
       "Smart inpainting & outpainting are on the way.\nYou can easily select the tennis ball in dog's mouth and replace it with a golf ball.\nAlternatively, you can resize the image by dragging it and add more content inside.",
     fontSize: 66,

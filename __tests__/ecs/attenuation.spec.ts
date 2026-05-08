@@ -30,6 +30,7 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   UI,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,6 +71,7 @@ describe('Attenuation', () => {
             StrokeAttenuation,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -93,7 +95,7 @@ describe('Attenuation', () => {
           {
             id: '1',
             type: 'ellipse',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             stroke: 'blue',
             strokeWidth: 10,
             x: 0,

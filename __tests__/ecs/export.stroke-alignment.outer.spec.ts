@@ -96,8 +96,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
-            fillOpacity: 0.5,
+            fills: [{ type: 'solid', value: 'red', opacity: 0.5 }],
             stroke: 'blue',
             strokeWidth: 10,
             strokeOpacity: 0.5,

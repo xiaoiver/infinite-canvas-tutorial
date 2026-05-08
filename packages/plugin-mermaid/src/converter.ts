@@ -47,6 +47,10 @@ import { applyAntvMindmapLayout } from './mindmapAntvLayout';
 /** 与 {@link BindingAttributes#sourcePortConstraint} 一致 */
 type MindmapPortDir = 'north' | 'south' | 'east' | 'west';
 
+function solidFills(color: string): NonNullable<RectSerializedNode['fills']> {
+  return [{ type: 'solid', value: color, opacity: 1 }];
+}
+
 /**
  * 按两端节点中心相对位置选择正交边的出口/入口侧，与 Mindmap.vue 中左右子树连线思路一致。
  */
@@ -161,7 +165,7 @@ function convertMindmapToSerializedNodes(
     const nodeId = n.id;
     const stroke = n.stroke ?? '#555';
     const strokeW = n.strokeWidth ?? 2;
-    const fill = n.fill ?? 'rgba(200,220,255,0.35)';
+    const shapeFill = n.fill ?? 'rgba(200,220,255,0.35)';
 
     if (n.shape === 'ellipse') {
       const ell: EllipseSerializedNode = {
@@ -174,7 +178,7 @@ function convertMindmapToSerializedNodes(
         height: n.height,
         stroke,
         strokeWidth: strokeW,
-        fill,
+        fills: solidFills(shapeFill),
         zIndex: 1,
         version: 0,
       };
@@ -190,7 +194,7 @@ function convertMindmapToSerializedNodes(
         height: n.height,
         stroke,
         strokeWidth: strokeW,
-        fill,
+        fills: solidFills(shapeFill),
         zIndex: 1,
         cornerRadius: 6,
         version: 0,
@@ -208,7 +212,7 @@ function convertMindmapToSerializedNodes(
       content: normalizeText(label),
       fontSize,
       fontFamily: 'sans-serif',
-      fill: '#111',
+      fills: solidFills('#111'),
       textAlign: 'center',
       textBaseline: 'middle',
       zIndex: 2,
@@ -372,7 +376,7 @@ function convertFlowchartToSerializedNodes(
       height: vertex.height,
       stroke: 'black',
       strokeWidth: 2,
-      fill: 'transparent',
+      fills: solidFills('transparent'),
       zIndex: 0,
     };
 
@@ -415,7 +419,7 @@ function convertFlowchartToSerializedNodes(
       content: text,
       fontSize,
       fontFamily: 'sans-serif',
-      fill: 'black',
+      fills: solidFills('black'),
       textAlign: 'center',
       textBaseline: 'middle',
       zIndex: 0,
@@ -469,7 +473,7 @@ function convertFlowchartToSerializedNodes(
       content: labelText,
       fontSize,
       fontFamily: 'sans-serif',
-      fill: 'black',
+      fills: solidFills('black'),
       stroke: 'white',
       strokeWidth: 4,
       textAlign: 'center',
@@ -661,10 +665,10 @@ const transformToContainer = (
   rootId: string,
   bindingIdRemap?: Map<string, string>,
 ) => {
-  let extraProps = {};
+  let extraProps: Partial<RectSerializedNode | EllipseSerializedNode> = {};
   if (element.type === "rectangle" && element.subtype === "activation") {
     extraProps = {
-      fill: "#e9ecef",
+      fills: solidFills('#e9ecef'),
     };
   }
   /** 有 groupId 时以组 id 作为节点 id（即「自己就是 group」），不再额外挂一层空 g；无 groupId 时用 element.id */
@@ -676,6 +680,7 @@ const transformToContainer = (
   const strokeDasharray =
     element.strokeStyle === 'dashed' ? '10 4' : undefined;
 
+  const bgColor = (element as Container)?.bgColor;
   const container: RectSerializedNode | EllipseSerializedNode = {
     id: containerId,
     type: element.type === "rectangle" ? "rect" : "ellipse",
@@ -686,7 +691,9 @@ const transformToContainer = (
     strokeWidth: Number.isFinite(element.strokeWidth) ? element.strokeWidth : 1,
     stroke: (element as Container)?.strokeColor ?? '#000',
     strokeDasharray,
-    fill: (element as Container)?.bgColor,
+    ...(bgColor != null && String(bgColor).trim() !== ''
+      ? { fills: solidFills(String(bgColor)) }
+      : {}),
     zIndex: 0,
     ...extraProps,
   };
@@ -722,7 +729,7 @@ const transformToContainer = (
       fontSize: c.label?.fontSize,
       textAlign: c.label?.textAlign || 'center',
       textBaseline,
-      fill: c.label?.color || '#000',
+      fills: solidFills(c.label?.color || '#000'),
       anchorX: element.width / 2,
       anchorY,
       zIndex: 0,
@@ -743,7 +750,7 @@ const transformToText = (
     content: normalizeText(element.text) || "",
     fontSize: element.fontSize,
     textBaseline: 'top',
-    fill: element.color || "#000",
+    fills: solidFills(element.color || '#000'),
     anchorX: element.x,
     anchorY: element.y,
     zIndex: 0,
@@ -803,7 +810,7 @@ const transformToArrow = (
         fontSize: arrow.label.fontSize ?? 16,
         textAlign: arrow.label.textAlign || 'center',
         textBaseline: arrow.label.verticalAlign || 'bottom',
-        fill: '#000',
+        fills: solidFills('#000'),
         zIndex: 1,
         stroke: 'white',
         strokeWidth: 4,
@@ -889,7 +896,7 @@ const transformToArrow = (
       fontSize: arrow.label.fontSize ?? 16,
       textAlign: arrow.label.textAlign || 'center',
       textBaseline: arrow.label.verticalAlign || 'bottom',
-      fill: '#000',
+      fills: solidFills('#000'),
       zIndex: 0,
       anchorX: Math.abs(arrowElement.x2 - arrowElement.x1) / 2,
       anchorY: Math.abs(arrowElement.y2 - arrowElement.y1) / 2,
@@ -950,7 +957,7 @@ function convertStateToSerializedNodes(
       return;
     }
 
-    const fill = node.containerStyle.fill ?? 'transparent';
+    const stateFill = node.containerStyle.fill ?? 'transparent';
     const startFill = node.containerStyle.fill ?? 'black';
     const stroke = node.containerStyle.stroke ?? 'black';
     const strokeWidth = strokeWidthFromStateContainer(node.containerStyle);
@@ -971,7 +978,7 @@ function convertStateToSerializedNodes(
           height: h,
           stroke,
           strokeWidth,
-          fill: startFill,
+          fills: solidFills(startFill),
           zIndex: 0,
           version: 0,
         };
@@ -989,7 +996,7 @@ function convertStateToSerializedNodes(
           height: h,
           stroke,
           strokeWidth,
-          fill: 'transparent',
+          fills: solidFills('transparent'),
           zIndex: 0,
           version: 0,
         };
@@ -1006,7 +1013,7 @@ function convertStateToSerializedNodes(
             height: h - inset * 2,
             stroke: 'transparent',
             strokeWidth: 0,
-            fill: node.endInnerColor,
+            fills: solidFills(node.endInnerColor),
             zIndex: 1,
             version: 0,
           };
@@ -1026,7 +1033,7 @@ function convertStateToSerializedNodes(
           d: `M ${w / 2} 0 L ${w} ${h / 2} L ${w / 2} ${h} L 0 ${h / 2} Z`,
           stroke,
           strokeWidth,
-          fill,
+          fills: solidFills(stateFill),
           zIndex: 0,
           version: 0,
         };
@@ -1050,7 +1057,7 @@ function convertStateToSerializedNodes(
           height: h,
           stroke,
           strokeWidth,
-          fill,
+          fills: solidFills(stateFill),
           zIndex: 0,
           version: 0,
         };
@@ -1082,7 +1089,7 @@ function convertStateToSerializedNodes(
         content: getText({ text: display, labelType: 'text' } as Vertex),
         fontSize,
         fontFamily: 'sans-serif',
-        fill: labelColor,
+        fills: solidFills(labelColor),
         textAlign: 'center',
         textBaseline,
         zIndex: 1,
@@ -1155,7 +1162,7 @@ function convertStateToSerializedNodes(
       content: labelText,
       fontSize,
       fontFamily: 'sans-serif',
-      fill: 'black',
+      fills: solidFills('black'),
       stroke: 'white',
       strokeWidth: 4,
       textAlign: 'center',

@@ -21,7 +21,7 @@ describe('IC document', () => {
           y: 0,
           width: 10,
           height: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         } as RectSerializedNode,
       ],
       'https://example.com',

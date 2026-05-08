@@ -16,7 +16,7 @@ describe('ref + reusable (Pencil-style components)', () => {
         width: 100,
         height: 100,
         zIndex: 0,
-        fill: '#FF0000',
+        fills: [{ type: 'solid', value: '#FF0000', opacity: 1 }],
       } as SerializedNode,
       {
         id: 'bar',
@@ -34,7 +34,9 @@ describe('ref + reusable (Pencil-style components)', () => {
     expect(bar.x).toBe(120);
     expect(bar.y).toBe(0);
     expect((bar as { reusable?: boolean }).reusable).toBeUndefined();
-    expect((bar as { fill: string }).fill).toBe('#FF0000');
+    expect((bar as { fills?: { value: string }[] }).fills?.[0]?.value).toBe(
+      '#FF0000',
+    );
     expect(out.some((n) => n.id === 'foo')).toBe(true);
   });
 
@@ -91,7 +93,7 @@ describe('ref + reusable (Pencil-style components)', () => {
         ref: 'tpl',
         x: 10,
         y: 20,
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         zIndex: 0,
       } as SerializedNode,
     ];
@@ -113,7 +115,7 @@ describe('ref + reusable (Pencil-style components)', () => {
         width: 200,
         height: 100,
         zIndex: 0,
-        fill: 'grey',
+        fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
       } as SerializedNode,
       {
         id: 'label',
@@ -125,19 +127,22 @@ describe('ref + reusable (Pencil-style components)', () => {
         height: 40,
         zIndex: 0,
         content: 'OK',
-        fill: 'black',
+        fills: [{ type: 'solid', value: 'black', opacity: 1 }],
         fontSize: 16,
       } as SerializedNode,
       {
         id: 'red-round-button',
         type: 'ref',
         ref: 'round-button',
-        fill: '#FF0000',
+        fills: [{ type: 'solid', value: '#FF0000', opacity: 1 }],
         zIndex: 0,
         x: 0,
         y: 0,
         descendants: {
-          label: { content: 'Cancel', fill: '#FFFFFF' },
+          label: {
+            content: 'Cancel',
+            fills: [{ type: 'solid', value: '#FFFFFF', opacity: 1 }],
+          },
         },
       } as SerializedNode,
     ];
@@ -145,12 +150,15 @@ describe('ref + reusable (Pencil-style components)', () => {
     const out = expandRefSerializedNodes(graph, merged);
     const t = out.find(
       (n) => n.id === 'red-round-button__label',
-    )! as { content: string; fill: string; type: string };
+    )! as { content: string; fills?: { value: string }[]; type: string };
     expect(t.type).toBe('text');
     expect(t.content).toBe('Cancel');
-    expect(t.fill).toBe('#FFFFFF');
-    const root = out.find((n) => n.id === 'red-round-button')! as { fill: string; descendants?: unknown };
-    expect(root.fill).toBe('#FF0000');
+    expect(t.fills?.[0]?.value).toBe('#FFFFFF');
+    const root = out.find((n) => n.id === 'red-round-button')! as {
+      fills?: { value: string }[];
+      descendants?: unknown;
+    };
+    expect(root.fills?.[0]?.value).toBe('#FF0000');
     expect(root.descendants).toBeUndefined();
   });
 });

@@ -35,6 +35,7 @@ import {
   ToBeDeleted,
   Transformable,
   Highlighted,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -82,6 +83,7 @@ describe('Hierarchy', () => {
             ToBeDeleted,
             Transformable,
             Highlighted,
+            Opacity,
           ).write,
       );
 
@@ -106,7 +108,7 @@ describe('Hierarchy', () => {
           type: 'ellipse',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,
@@ -120,7 +122,7 @@ describe('Hierarchy', () => {
           type: 'ellipse',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           visibility: 'visible',
           x: 0,
           y: 0,

@@ -32,6 +32,7 @@ import {
   Screenshot,
   SizeAttenuation,
   StrokeAttenuation,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +77,7 @@ describe('Export Attenuation', () => {
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -98,7 +100,7 @@ describe('Export Attenuation', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             stroke: 'blue',
             strokeWidth: 10,
             sizeAttenuation: true,

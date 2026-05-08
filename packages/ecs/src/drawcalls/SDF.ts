@@ -16,6 +16,8 @@ import {
   StencilOp,
   CullMode,
   InputLayout,
+  Bindings,
+  type RenderPipeline,
 } from '@infinite-canvas-tutorial/device-api';
 import { mat3 } from 'gl-matrix';
 import { Entity } from '@lastolivegames/becsy';
@@ -29,6 +31,16 @@ import {
   parseEffect,
 } from '../utils';
 import {
+  fillLayerOpacity,
+  fillLayersNeedFillImage,
+  fillLayersShouldPrecompose,
+  getEnabledFillLayers,
+  getMultiFillLayers,
+  getSingleEnabledFillLayer,
+  type FillLayerItem,
+} from '../utils/fillLayers';
+import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
+import {
   getRasterFilterValueForShape,
   filterRasterPostEffects,
 } from '../utils/filter';
@@ -40,6 +52,10 @@ import {
   resolveFillImageTexturePixelSize,
 } from '../utils/fillImageTextureSize';
 import {
+  transparentFillLayerCanvas,
+  trySyncRasterizeImageUrlToCanvas,
+} from '../utils/fill-layer-image-url-raster';
+import {
   createFillAndStrokeRgbaRasterForFilter,
   expandBoundsForCenterCanvasStroke,
   getSdfGeometryBoundsForFilter,
@@ -49,6 +65,7 @@ import {
   Circle,
   ComputedBounds,
   Ellipse,
+  FillLayers,
   FillGradient,
   FillImage,
   FillPattern,
@@ -83,6 +100,24 @@ export class SDF extends Drawcall {
   #fillTextureFromPostChain = false;
   /** Fill+stroke were rasterized for raster filters; GPU stroke width must be zero to avoid double draw. */
   #bakedStrokeIntoFilterTexture = false;
+
+  /** Per-layer GPU textures when {@link FillLayers} contains gradients (Normal 叠加). */
+  #fillLayerTextures: Texture[] = [];
+  #fillLayerBindings: Bindings[] = [];
+  #fillLayerBindingsSoftClipOutside: Bindings[] = [];
+  /**
+   * 多层填充中非最后一遍：禁止 depthWrite，否则与底层同深度、后续 pass 全部被深度测试丢弃（矩形走 SDF，见 Mesh 水彩注释）。
+   */
+  #pipelineMultiFillMidPass: RenderPipeline | null = null;
+  #fillLayerBindingsMidPass: Bindings[] = [];
+  #bindingsMultiFillMidPass: Bindings | null = null;
+  #pipelineSoftClipOutsideMidPass: RenderPipeline | null = null;
+  #fillLayerBindingsSoftClipOutsideMidPass: Bindings[] = [];
+  #bindingsSoftClipOutsideMidPass: Bindings | null = null;
+  /**
+   * 含 `blendMode` 时已把多层预合成到 {@link Drawcall} 的 `#texture`，形状走单次填充绘制。
+   */
+  #usePrecomposedMultiFill = false;
 
   protected override get extraShaderDefines(): string {
     const s = this.shapes[0];
@@ -125,6 +160,123 @@ export class SDF extends Drawcall {
     const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
     this.#fillTextureFromPostChain = true;
     return filtered;
+  }
+
+  private disposeFillLayerResources(): void {
+    this.#usePrecomposedMultiFill = false;
+    for (const b of this.#fillLayerBindings) {
+      b.destroy();
+    }
+    this.#fillLayerBindings = [];
+    for (const b of this.#fillLayerBindingsSoftClipOutside) {
+      b.destroy();
+    }
+    this.#fillLayerBindingsSoftClipOutside = [];
+    const clearsMainTexture =
+      this.#texture != null && this.#fillLayerTextures.includes(this.#texture);
+    for (const t of this.#fillLayerTextures) {
+      t.destroy?.();
+    }
+    this.#fillLayerTextures = [];
+    if (clearsMainTexture) {
+      this.#texture = null;
+    }
+    this.disposeMultiFillDepthPassResources();
+  }
+
+  private disposeMultiFillDepthPassResources(): void {
+    this.#bindingsMultiFillMidPass?.destroy();
+    this.#bindingsMultiFillMidPass = null;
+    for (const b of this.#fillLayerBindingsMidPass) {
+      b.destroy();
+    }
+    this.#fillLayerBindingsMidPass = [];
+    this.#bindingsSoftClipOutsideMidPass?.destroy();
+    this.#bindingsSoftClipOutsideMidPass = null;
+    for (const b of this.#fillLayerBindingsSoftClipOutsideMidPass) {
+      b.destroy();
+    }
+    this.#fillLayerBindingsSoftClipOutsideMidPass = [];
+    this.#pipelineMultiFillMidPass = null;
+    this.#pipelineSoftClipOutsideMidPass = null;
+  }
+
+  /**
+   * Rasterize one entry of {@link FillLayers} to a sampled texture (solid or CSS gradient).
+   */
+  private createFillImageTextureForLayer(
+    instance: Entity,
+    layer: FillLayerItem,
+    minX: number,
+    minY: number,
+    width: number,
+    height: number,
+  ): Texture {
+    if (layer.type === 'image') {
+      const tw = Math.max(1, Math.ceil(width));
+      const th = Math.max(1, Math.ceil(height));
+      const fromUrl = trySyncRasterizeImageUrlToCanvas(layer.value, tw, th);
+      const canvas = fromUrl ?? transparentFillLayerCanvas(width, height);
+      const raw = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: tw,
+        height: th,
+        usage: TextureUsage.SAMPLED,
+      });
+      raw.setImageData([canvas as HTMLCanvasElement]);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+    }
+    if (layer.type === 'solid') {
+      const tw = Math.max(1, Math.ceil(width));
+      const th = Math.max(1, Math.ceil(height));
+      const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(layer.value);
+      let canvas: HTMLCanvasElement | OffscreenCanvas;
+      if (typeof document !== 'undefined') {
+        const c = document.createElement('canvas');
+        c.width = tw;
+        c.height = th;
+        canvas = c;
+      } else {
+        canvas = new OffscreenCanvas(tw, th);
+      }
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+      if (!ctx) {
+        throw new Error('Canvas 2D required for FillLayers solid raster');
+      }
+      ctx.fillStyle = `rgba(${fr},${fg},${fb},${fo})`;
+      ctx.fillRect(0, 0, tw, th);
+      const raw = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: tw,
+        height: th,
+        usage: TextureUsage.SAMPLED,
+      });
+      raw.setImageData([canvas as HTMLCanvasElement]);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+    }
+    const fillGradients = parseGradient(layer.value);
+    const meshFill =
+      fillGradients !== undefined && fillGradients.length === 1
+        ? fillGradients[0]
+        : undefined;
+    if (meshFill && isMeshGradientGradient(meshFill)) {
+      const raw = this.renderMeshGradientTexture(meshFill, 128, 128);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, 128, 128);
+    }
+    const canvas = this.texturePool.getOrCreateGradient({
+      gradients: fillGradients ?? [],
+      min: [minX, minY],
+      width,
+      height,
+    });
+    const texture = this.device.createTexture({
+      format: Format.U8_RGBA_NORM,
+      width: 128,
+      height: 128,
+      usage: TextureUsage.SAMPLED,
+    });
+    texture.setImageData([canvas]);
+    return this.applyRasterFilterChainIfNeeded(instance, texture, 128, 128);
   }
 
   /** Rasterize {@link FillSolid} for texture-space filters (same alpha as `u_FillColor` before `fillOpacity`). */
@@ -199,6 +351,24 @@ export class SDF extends Drawcall {
     const fa = getRasterFilterValueForShape(this.shapes[0]);
     const fb = getRasterFilterValueForShape(shape);
     if (Boolean(fa) !== Boolean(fb) || (fa && fb && fa !== fb)) {
+      return false;
+    }
+
+    const fl0 = this.shapes[0].has(FillLayers)
+      ? this.shapes[0].read(FillLayers).layers
+      : null;
+    const fl1 = shape.has(FillLayers) ? shape.read(FillLayers).layers : null;
+    if ((fl0 == null) !== (fl1 == null)) {
+      return false;
+    }
+    if (
+      fl0 &&
+      fl1 &&
+      JSON.stringify(fl0) !== JSON.stringify(fl1)
+    ) {
+      return false;
+    }
+    if (getMultiFillLayers(shape) && this.instanced) {
       return false;
     }
 
@@ -335,6 +505,7 @@ export class SDF extends Drawcall {
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
     this.createProgram(vert, frag, defines);
+    this.disposeFillLayerResources();
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -374,6 +545,47 @@ export class SDF extends Drawcall {
     });
     this.device.setResourceName(this.pipeline, 'SDFPipeline');
 
+    const multiFillForDepthPass =
+      !this.instanced && this.shapes[0]?.has(FillLayers)
+        ? getMultiFillLayers(this.shapes[0])
+        : null;
+    const useMultiFillMidDepthPipeline =
+      multiFillForDepthPass != null && multiFillForDepthPass.length > 1;
+    if (useMultiFillMidDepthPipeline) {
+      this.#pipelineMultiFillMidPass = this.renderCache.createRenderPipeline({
+        inputLayout: this.inputLayout,
+        program: this.program,
+        colorAttachmentFormats: [Format.U8_RGBA_NORM],
+        depthStencilAttachmentFormat: Format.D24_S8,
+        megaStateDescriptor: {
+          attachmentsState: [
+            {
+              channelWriteMask: ChannelWriteMask.ALL,
+              rgbBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.SRC_ALPHA,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+              alphaBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.ONE,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+            },
+          ],
+          blendConstant: TransparentBlack,
+          cullMode: CullMode.NONE,
+          depthWrite: false,
+          depthCompare: CompareFunction.GREATER,
+          ...this.stencilDescriptor,
+        },
+      });
+      this.device.setResourceName(
+        this.#pipelineMultiFillMidPass,
+        'SDFPipelineMultiFillMidPass',
+      );
+    }
+
     const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
@@ -405,7 +617,65 @@ export class SDF extends Drawcall {
         this.#rawFillImageTexture = null;
       }
 
-      if (instance.has(FillGradient) || instance.has(FillPattern)) {
+      const multiForTex = getMultiFillLayers(instance);
+      const needsFillLayerRaster =
+        multiForTex &&
+        (fillLayersNeedFillImage(multiForTex) ||
+          fillLayersShouldPrecompose(multiForTex));
+      if (needsFillLayerRaster && multiForTex) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        this.#fillLayerTextures = multiForTex.map((layer) =>
+          this.createFillImageTextureForLayer(
+            instance,
+            layer,
+            minX,
+            minY,
+            width,
+            height,
+          ),
+        );
+        if (fillLayersShouldPrecompose(multiForTex)) {
+          const w = Math.max(1, Math.ceil(width));
+          const h = Math.max(1, Math.ceil(height));
+          const composed = composeFillLayerTexturesOnGpu(
+            this.device,
+            this.renderCache,
+            multiForTex,
+            this.#fillLayerTextures,
+            w,
+            h,
+            () => this.createSampler(),
+          );
+          for (const t of this.#fillLayerTextures) {
+            t.destroy?.();
+          }
+          this.#fillLayerTextures = [];
+          this.#texture = composed;
+          this.#usePrecomposedMultiFill = true;
+        } else {
+          this.#texture = this.#fillLayerTextures[0]!;
+          this.#usePrecomposedMultiFill = false;
+        }
+      } else if (instance.has(FillLayers)) {
+        const one = getSingleEnabledFillLayer(instance);
+        if (one) {
+          const { minX, minY, maxX, maxY } =
+            instance.read(ComputedBounds).geometryBounds;
+          const width = maxX - minX;
+          const height = maxY - minY;
+          this.#texture = this.createFillImageTextureForLayer(
+            instance,
+            one,
+            minX,
+            minY,
+            width,
+            height,
+          );
+        }
+      } else if (instance.has(FillGradient) || instance.has(FillPattern)) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;
         const width = maxX - minX;
@@ -569,6 +839,50 @@ export class SDF extends Drawcall {
 
     this.bindings = this.renderCache.createBindings(bindings);
 
+    if (useMultiFillMidDepthPipeline && this.#pipelineMultiFillMidPass) {
+      const midDesc: BindingsDescriptor = {
+        pipeline: this.#pipelineMultiFillMidPass,
+        uniformBufferBindings: bindings.uniformBufferBindings!,
+      };
+      if (bindings.samplerBindings) {
+        midDesc.samplerBindings = bindings.samplerBindings;
+      }
+      this.#bindingsMultiFillMidPass =
+        this.renderCache.createBindings(midDesc);
+    }
+
+    if (this.#fillLayerTextures.length > 0 && bindings.samplerBindings) {
+      const layerSampler = this.createSampler();
+      this.#fillLayerBindings = this.#fillLayerTextures.map((tex) =>
+        this.renderCache.createBindings({
+          pipeline: this.pipeline,
+          uniformBufferBindings: bindings.uniformBufferBindings!,
+          samplerBindings: [
+            {
+              texture: tex,
+              sampler: layerSampler,
+            },
+          ],
+        }),
+      );
+      if (useMultiFillMidDepthPipeline && this.#pipelineMultiFillMidPass) {
+        const layerSamplerMid = this.createSampler();
+        this.#fillLayerBindingsMidPass = this.#fillLayerTextures.map(
+          (tex) =>
+            this.renderCache.createBindings({
+              pipeline: this.#pipelineMultiFillMidPass!,
+              uniformBufferBindings: bindings.uniformBufferBindings!,
+              samplerBindings: [
+                {
+                  texture: tex,
+                  sampler: layerSamplerMid,
+                },
+              ],
+            }),
+        );
+      }
+    }
+
     if (this.parentClipMode === 'soft') {
       const diagnosticDerivativeUniformityHeader =
         this.device.queryVendorInfo().platformString === 'WebGPU'
@@ -621,6 +935,40 @@ export class SDF extends Drawcall {
         },
       });
       this.device.setResourceName(this.pipelineSoftClipOutside, 'SDFPipelineSoftClipOutside');
+      if (useMultiFillMidDepthPipeline) {
+        this.#pipelineSoftClipOutsideMidPass = this.renderCache.createRenderPipeline({
+          inputLayout: inputLayoutOutside,
+          program: programOutside,
+          colorAttachmentFormats: [Format.U8_RGBA_RT],
+          depthStencilAttachmentFormat: Format.D24_S8,
+          megaStateDescriptor: {
+            attachmentsState: [
+              {
+                channelWriteMask: ChannelWriteMask.ALL,
+                rgbBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.SRC_ALPHA,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+                alphaBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.ONE,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+              },
+            ],
+            blendConstant: TransparentBlack,
+            cullMode: CullMode.NONE,
+            depthWrite: false,
+            depthCompare: CompareFunction.GREATER,
+            ...this.stencilDescriptorForSoftOutside,
+          },
+        });
+        this.device.setResourceName(
+          this.#pipelineSoftClipOutsideMidPass,
+          'SDFPipelineSoftClipOutsideMultiFillMidPass',
+        );
+      }
       this.programSoftClipOutside = programOutside;
       const bindingsOutside: BindingsDescriptor = {
         pipeline: this.pipelineSoftClipOutside,
@@ -630,6 +978,49 @@ export class SDF extends Drawcall {
         bindingsOutside.samplerBindings = bindings.samplerBindings;
       }
       this.bindingsSoftClipOutside = this.renderCache.createBindings(bindingsOutside);
+      if (useMultiFillMidDepthPipeline && this.#pipelineSoftClipOutsideMidPass) {
+        const bindMidOut: BindingsDescriptor = {
+          pipeline: this.#pipelineSoftClipOutsideMidPass,
+          uniformBufferBindings: [...bindings.uniformBufferBindings!],
+        };
+        if (bindings.samplerBindings) {
+          bindMidOut.samplerBindings = bindings.samplerBindings;
+        }
+        this.#bindingsSoftClipOutsideMidPass =
+          this.renderCache.createBindings(bindMidOut);
+      }
+      if (this.#fillLayerTextures.length > 0 && bindingsOutside.samplerBindings) {
+        const softSampler = this.createSampler();
+        this.#fillLayerBindingsSoftClipOutside = this.#fillLayerTextures.map(
+          (tex) =>
+            this.renderCache.createBindings({
+              pipeline: this.pipelineSoftClipOutside,
+              uniformBufferBindings: bindingsOutside.uniformBufferBindings!,
+              samplerBindings: [
+                {
+                  texture: tex,
+                  sampler: softSampler,
+                },
+              ],
+            }),
+        );
+        if (useMultiFillMidDepthPipeline && this.#pipelineSoftClipOutsideMidPass) {
+          const softSamplerMid = this.createSampler();
+          this.#fillLayerBindingsSoftClipOutsideMidPass =
+            this.#fillLayerTextures.map((tex) =>
+              this.renderCache.createBindings({
+                pipeline: this.#pipelineSoftClipOutsideMidPass!,
+                uniformBufferBindings: bindingsOutside.uniformBufferBindings!,
+                samplerBindings: [
+                  {
+                    texture: tex,
+                    sampler: softSamplerMid,
+                  },
+                ],
+              }),
+            );
+        }
+      }
     }
   }
 
@@ -672,6 +1063,192 @@ export class SDF extends Drawcall {
         new Uint8Array(this.vertexBufferDatas[2].buffer),
       );
     } else {
+      const shape = this.shapes[0];
+      const multi = getMultiFillLayers(shape);
+      if (multi && !this.#usePrecomposedMultiFill) {
+        const { matrix } = shape.read(GlobalTransform);
+        const u_ModelMatrix = [
+          matrix.m00,
+          matrix.m01,
+          matrix.m02,
+          matrix.m10,
+          matrix.m11,
+          matrix.m12,
+          matrix.m20,
+          matrix.m21,
+          matrix.m22,
+        ] as mat3;
+        const needLayerTex = fillLayersNeedFillImage(multi);
+
+        if (this.useWireframe && this.geometryDirty) {
+          this.generateWireframe();
+        }
+
+        for (let i = 0; i < multi.length; i++) {
+          const isMidFillPass = multi.length > 1 && i < multi.length - 1;
+          const fillPipeline =
+            isMidFillPass && this.#pipelineMultiFillMidPass
+              ? this.#pipelineMultiFillMidPass
+              : this.pipeline;
+          const [buffer, legacyObject] = this.generateBuffer(shape, 0, 1, {
+            kind: 'fill-layer',
+            layerIndex: i,
+          });
+          this.#uniformBuffer.setSubData(
+            0,
+            new Uint8Array(
+              new Float32Array([
+                ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
+                ...buffer,
+              ]).buffer,
+            ),
+          );
+          const uniformLegacyObject: Record<string, unknown> = {
+            u_ModelMatrix,
+            ...legacyObject,
+          };
+          if (needLayerTex) {
+            uniformLegacyObject.u_FillImage = this.#fillLayerTextures[i];
+          }
+          const merged = {
+            ...uniformLegacyObject,
+            ...sceneUniformLegacyObject,
+          };
+          drawLegacy = merged;
+          this.program.setUniformsLegacy(merged);
+          renderPass.setPipeline(fillPipeline);
+          const vertexBuffers = this.vertexBuffers.map((b) => ({ buffer: b }));
+          if (this.useWireframe) {
+            vertexBuffers.push({ buffer: this.barycentricBuffer });
+          }
+          renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+            buffer: this.indexBuffer,
+          });
+          const fillBindings = needLayerTex
+            ? isMidFillPass && this.#fillLayerBindingsMidPass.length > 0
+                ? this.#fillLayerBindingsMidPass[i]!
+                : this.#fillLayerBindings[i]!
+            : isMidFillPass && this.#bindingsMultiFillMidPass
+              ? this.#bindingsMultiFillMidPass
+              : this.bindings!;
+          renderPass.setBindings(fillBindings);
+          if (this.useStencil || this.parentClipMode) {
+            renderPass.setStencilReference(STENCIL_CLIP_REF);
+          }
+          renderPass.drawIndexed(6, this.shapes.length);
+
+          if (
+            this.parentClipMode === 'soft' &&
+            this.pipelineSoftClipOutside &&
+            this.bindingsSoftClipOutside &&
+            this.programSoftClipOutside
+          ) {
+            const outsideAlpha = this.parentOutsideAlpha;
+            const softFillPipeline =
+              isMidFillPass && this.#pipelineSoftClipOutsideMidPass
+                ? this.#pipelineSoftClipOutsideMidPass
+                : this.pipelineSoftClipOutside;
+            this.programSoftClipOutside.setUniformsLegacy({
+              ...drawLegacy,
+              u_AlphaScale: outsideAlpha,
+            });
+            renderPass.setPipeline(softFillPipeline);
+            renderPass.setVertexInput(
+              this.inputLayoutSoftClipOutside,
+              vertexBuffers,
+              {
+                buffer: this.indexBuffer,
+              },
+            );
+            const softFillBindings = needLayerTex
+              ? isMidFillPass &&
+                  this.#fillLayerBindingsSoftClipOutsideMidPass.length > 0
+                ? this.#fillLayerBindingsSoftClipOutsideMidPass[i]!
+                : this.#fillLayerBindingsSoftClipOutside[i]!
+              : isMidFillPass && this.#bindingsSoftClipOutsideMidPass
+                ? this.#bindingsSoftClipOutsideMidPass
+                : this.bindingsSoftClipOutside;
+            renderPass.setBindings(softFillBindings);
+            renderPass.setStencilReference(STENCIL_CLIP_REF);
+            renderPass.drawIndexed(6, this.shapes.length);
+          }
+        }
+
+        const strokeW = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+        if (
+          strokeW > 0 &&
+          !SDF.useDash(shape) &&
+          !shape.has(StrokeGradient)
+        ) {
+          const [buffer2, legacy2] = this.generateBuffer(shape, 0, 1, {
+            kind: 'stroke-pass',
+            skipFillImageSample: needLayerTex,
+          });
+          this.#uniformBuffer.setSubData(
+            0,
+            new Uint8Array(
+              new Float32Array([
+                ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
+                ...buffer2,
+              ]).buffer,
+            ),
+          );
+          const uniformLegacyObject2: Record<string, unknown> = {
+            u_ModelMatrix,
+            ...legacy2,
+          };
+          if (needLayerTex) {
+            uniformLegacyObject2.u_FillImage = this.#fillLayerTextures[0];
+          } else if (this.useFillImage) {
+            uniformLegacyObject2.u_FillImage = this.#texture;
+          }
+          const merged2 = {
+            ...uniformLegacyObject2,
+            ...sceneUniformLegacyObject,
+          };
+          drawLegacy = merged2;
+          this.program.setUniformsLegacy(merged2);
+          renderPass.setPipeline(this.pipeline);
+          const vertexBuffers2 = this.vertexBuffers.map((b) => ({ buffer: b }));
+          if (this.useWireframe) {
+            vertexBuffers2.push({ buffer: this.barycentricBuffer });
+          }
+          renderPass.setVertexInput(this.inputLayout, vertexBuffers2, {
+            buffer: this.indexBuffer,
+          });
+          renderPass.setBindings(this.bindings);
+          if (this.useStencil || this.parentClipMode) {
+            renderPass.setStencilReference(STENCIL_CLIP_REF);
+          }
+          renderPass.drawIndexed(6, this.shapes.length);
+
+          if (
+            this.parentClipMode === 'soft' &&
+            this.pipelineSoftClipOutside &&
+            this.bindingsSoftClipOutside &&
+            this.programSoftClipOutside
+          ) {
+            const outsideAlpha = this.parentOutsideAlpha;
+            this.programSoftClipOutside.setUniformsLegacy({
+              ...drawLegacy,
+              u_AlphaScale: outsideAlpha,
+            });
+            renderPass.setPipeline(this.pipelineSoftClipOutside);
+            renderPass.setVertexInput(
+              this.inputLayoutSoftClipOutside,
+              vertexBuffers2,
+              {
+                buffer: this.indexBuffer,
+              },
+            );
+            renderPass.setBindings(this.bindingsSoftClipOutside);
+            renderPass.setStencilReference(STENCIL_CLIP_REF);
+            renderPass.drawIndexed(6, this.shapes.length);
+          }
+        }
+        return;
+      }
+
       const { matrix } = this.shapes[0].read(GlobalTransform);
       const [buffer, legacyObject] = this.generateBuffer(this.shapes[0], 0, 1);
       const u_ModelMatrix = [
@@ -741,6 +1318,7 @@ export class SDF extends Drawcall {
   }
 
   destroy(): void {
+    this.disposeFillLayerResources();
     this.destroyFullPostProcessingChain();
     this.#rawFillImageTexture?.destroy();
     this.#rawFillImageTexture = null;
@@ -761,6 +1339,9 @@ export class SDF extends Drawcall {
     shape: Entity,
     index: number,
     total: number,
+    multiFill?:
+      | { kind: 'fill-layer'; layerIndex: number }
+      | { kind: 'stroke-pass'; skipFillImageSample: boolean },
   ): [number[], Record<string, unknown>] {
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
@@ -790,9 +1371,28 @@ export class SDF extends Drawcall {
       cornerRadius = r;
     }
 
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: null };
+    let fill: string | null = shape.has(FillSolid)
+      ? shape.read(FillSolid).value
+      : null;
+    const multiLayers = getMultiFillLayers(shape);
+    const enabledFill = getEnabledFillLayers(shape);
+    if (multiFill?.kind === 'fill-layer' && multiLayers) {
+      const L = multiLayers[multiFill.layerIndex];
+      fill = L.type === 'solid' ? L.value : '#ffffff';
+    } else if (multiFill?.kind === 'stroke-pass') {
+      fill = 'transparent';
+    } else if (
+      !multiFill &&
+      enabledFill.length === 1 &&
+      shape.has(FillLayers) &&
+      !shape.has(FillSolid) &&
+      !shape.has(FillGradient)
+    ) {
+      const L = enabledFill[0];
+      fill = L.type === 'solid' ? L.value : '#ffffff';
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      fill = '#ffffff';
+    }
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
       fill != null && fill !== '' ? fill : 'transparent',
     );
@@ -831,10 +1431,51 @@ export class SDF extends Drawcall {
 
     const u_Position = position;
     const u_Size = size;
-    const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
+    let frN = fr / 255;
+    let fgN = fg / 255;
+    let fbN = fb / 255;
+    let fa = fo;
+    if (multiFill?.kind === 'fill-layer' && multiLayers) {
+      const L = multiLayers[multiFill.layerIndex];
+      const lo = fillLayerOpacity(L.opacity);
+      if (L.type === 'gradient') {
+        frN = 1;
+        fgN = 1;
+        fbN = 1;
+        fa = lo;
+      } else {
+        fa = fo * lo;
+      }
+    } else if (
+      !multiFill &&
+      enabledFill.length === 1 &&
+      shape.has(FillLayers) &&
+      !shape.has(FillSolid) &&
+      !shape.has(FillGradient)
+    ) {
+      const L = enabledFill[0];
+      const lo = fillLayerOpacity(L.opacity);
+      if (L.type === 'gradient') {
+        frN = 1;
+        fgN = 1;
+        fbN = 1;
+        fa = lo;
+      } else {
+        fa = fo * lo;
+      }
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      frN = 1;
+      fgN = 1;
+      fbN = 1;
+      fa = 1;
+    }
+    const u_FillColor = [frN, fgN, fbN, fa];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     let strokeWidthForSdf = SDF.useDash(shape) ? 0 : width;
     if (shape.has(StrokeGradient)) {
+      strokeWidthForSdf = 0;
+    }
+    if (multiFill?.kind === 'fill-layer') {
       strokeWidthForSdf = 0;
     }
     let filterExtras: [number, number, number, number] = [0, 0, 0, 0];
@@ -842,6 +1483,14 @@ export class SDF extends Drawcall {
       strokeWidthForSdf = 0;
       const sw = shape.has(Stroke) ? shape.read(Stroke).width : 0;
       filterExtras = [sw * 0.5, sw, 0, 0];
+    }
+    if (multiFill?.kind === 'fill-layer') {
+      filterExtras[2] = 1;
+    } else if (
+      multiFill?.kind === 'stroke-pass' &&
+      multiFill.skipFillImageSample
+    ) {
+      filterExtras[3] = 1;
     }
     const u_ZIndexStrokeWidth = [
       globalRenderOrder / ZINDEX_FACTOR,

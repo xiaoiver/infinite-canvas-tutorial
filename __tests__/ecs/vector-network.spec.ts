@@ -30,6 +30,7 @@ import {
   ComputeZIndex,
   VectorNetwork,
   VectorNetworkSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,6 +71,7 @@ describe('Rect', () => {
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -95,7 +97,7 @@ describe('Rect', () => {
           zIndex: 3,
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
 
           // The vertices of the triangle
           vertices: [

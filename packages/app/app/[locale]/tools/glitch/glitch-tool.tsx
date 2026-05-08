@@ -19,7 +19,7 @@ export function GlitchTool() {
       width: 1024,
       height: 1536,
       lockAspectRatio: true,
-      fill: '/glitch.png',
+      fills: [{ type: 'image', value: '/glitch.png', opacity: 1 }],
       zIndex: 0,
       version: 0,
       filter: 'crt(1.85, 4, 0.4, 0.27, auto, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, auto, 0.29)',
@@ -32,7 +32,7 @@ export function GlitchTool() {
       width: 512,
       height: 768,
       lockAspectRatio: true,
-      fill: '/glitch.png',
+      fills: [{ type: 'image', value: '/glitch.png', opacity: 1 }],
       zIndex: 0,
       version: 0,
     } as const,
@@ -59,7 +59,9 @@ export function GlitchTool() {
       content: tItem('title'),
       fontFamily: 'system-ui',
       fontSize: 72,
-      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       zIndex: 1,
     },
     {
@@ -70,7 +72,9 @@ export function GlitchTool() {
       content: tItem('description'),
       fontFamily: 'system-ui',
       fontSize: 48,
-      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       zIndex: 1,
     },
     {
@@ -81,7 +85,9 @@ export function GlitchTool() {
       content: tItem('description2'),
       fontFamily: 'system-ui',
       fontSize: 48,
-      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       zIndex: 1,
     },
     {
@@ -93,7 +99,9 @@ export function GlitchTool() {
       height: 100,
       iconFontName: 'tv',
       iconFontFamily: 'lucide',
-      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 10,
       zIndex: 1,
     }

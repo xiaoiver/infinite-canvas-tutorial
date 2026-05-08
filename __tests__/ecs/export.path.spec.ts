@@ -31,6 +31,7 @@ import {
   ExportFormat,
   Screenshot,
   Path,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Export SVG', () => {
             DropShadow,
             ZIndex,
             Path,
+            Opacity,
           ).write,
       );
 

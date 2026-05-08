@@ -32,6 +32,7 @@ import {
   Selected,
   Rect,
   Locked,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Locked', () => {
             Selected,
             Ellipse,
             Locked,
+            Opacity,
           ).write,
       );
 
@@ -98,7 +100,7 @@ describe('Locked', () => {
           type: 'rect',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,

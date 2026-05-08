@@ -31,6 +31,7 @@ import {
   RectSerializedNode,
   Selected,
   Rect,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Select and Undo', () => {
             ZIndex,
             Selected,
             Ellipse,
+            Opacity,
           ).write,
       );
 
@@ -96,7 +98,7 @@ describe('Select and Undo', () => {
         parent = {
           id: 'parent',
           type: 'rect',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,
@@ -107,7 +109,7 @@ describe('Select and Undo', () => {
           id: 'child',
           parentId: 'parent',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 0,
           y: 0,
           width: 50,
@@ -127,7 +129,7 @@ describe('Select and Undo', () => {
 
     await app.run();
     if (api && child) {
-    await sleep(300);
+      await sleep(300);
       api.selectNodes([child]);
       api.record();
       await sleep(300);

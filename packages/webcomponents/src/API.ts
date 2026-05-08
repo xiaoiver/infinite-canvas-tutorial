@@ -287,7 +287,7 @@ export class ExtendedAPI extends API {
       y: (position?.y ?? 0) - height / 2,
       width,
       height,
-      fill: cdnUrl,
+      fills: [{ type: 'image', value: cdnUrl, opacity: 1 }],
       lockAspectRatio: true,
       zIndex: maxZIndex + 1,
     };

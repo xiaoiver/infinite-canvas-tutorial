@@ -4,14 +4,19 @@ import { consume } from '@lit/context';
 import {
   AppState,
   designVariableRefKeyFromWire,
+  FillAttributes,
+  getPrimaryFillValue,
   isDesignVariableReference,
+  migrateLegacyFillWireInPlace,
   resolveDesignVariableValue,
+  SerializedFillLayerItem,
   SerializedNode,
   TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { normalizeSolidCssValue } from './normalize-solid-css';
+import { ColorType } from './color-picker.js';
 import { localized, msg, str } from '@lit/localize';
 import { when } from 'lit/directives/when.js';
 import { choose } from 'lit/directives/choose.js';
@@ -118,11 +123,24 @@ export class FillActionButton extends LitElement {
 
   private prevFillWireBound: boolean | undefined;
 
+  private textFillLayer(): SerializedFillLayerItem {
+    if (!this.node) {
+      return { type: 'solid', value: '#000000', opacity: 1 };
+    }
+    migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
+    const fl = (this.node as FillAttributes).fills;
+    if (Array.isArray(fl) && fl[0]) {
+      return { ...fl[0] };
+    }
+    return { type: 'solid', value: '#000000', opacity: 1 };
+  }
+
   private fillWireBound(): boolean {
     if (!this.node) {
       return false;
     }
-    return isDesignVariableReference((this.node as TextSerializedNode).fill);
+    const v = getPrimaryFillValue(this.node as FillAttributes);
+    return v != null && isDesignVariableReference(v);
   }
 
   willUpdate(changed: PropertyValues) {
@@ -168,10 +186,21 @@ export class FillActionButton extends LitElement {
 
   private handleFillChanged(e: CustomEvent) {
     const { type, value, fillOpacity } = e.detail;
-    this.api.updateNode(this.node, {
-      fill: type === 'solid' ? normalizeSolidCssValue(value) : value,
-      ...(fillOpacity !== undefined && { fillOpacity }),
-    });
+    const L = this.textFillLayer();
+    const wire =
+      type === ColorType.Solid ? normalizeSolidCssValue(value) : value;
+    let next: SerializedFillLayerItem;
+    if (type === ColorType.Gradient) {
+      next = { ...L, type: 'gradient', value: wire };
+    } else if (type === ColorType.Image) {
+      next = { ...L, type: 'image', value: wire };
+    } else {
+      next = { ...L, type: 'solid', value: wire };
+    }
+    if (fillOpacity !== undefined) {
+      next.opacity = fillOpacity;
+    }
+    this.api.updateNode(this.node, { fills: [next] });
     this.api.record();
   }
 
@@ -179,33 +208,44 @@ export class FillActionButton extends LitElement {
   private handleFillOpacityChanged(e: CustomEvent<{ fillOpacity?: number }>) {
     const { fillOpacity } = e.detail;
     if (fillOpacity === undefined) return;
-    this.api.updateNode(this.node, { fillOpacity });
+    const L = this.textFillLayer();
+    this.api.updateNode(this.node, {
+      fills: [{ ...L, opacity: fillOpacity }],
+    });
     this.api.record();
   }
 
   private handleVariablePick(e: CustomEvent<DesignVariablePickDetail>) {
     const { key } = e.detail;
     this.fillPanelTab = 'variable';
-    this.api.updateNode(this.node, { fill: `$${key}` });
+    const L = this.textFillLayer();
+    this.api.updateNode(this.node, {
+      fills: [{ ...L, value: `$${key}` }],
+    });
     this.api.record();
   }
 
   private handleUnbind() {
     this.fillPanelTab = 'color';
-    const fill = (this.node as TextSerializedNode).fill;
+    const L = this.textFillLayer();
     const resolved = resolveDesignVariableValue(
-      fill,
+      L.value,
       this.appState.variables,
       this.appState.themeMode,
     );
     const next =
       typeof resolved === 'string'
         ? resolved
-        : String(resolved ?? fill ?? '#000000');
+        : String(resolved ?? L.value ?? '#000000');
     this.api.updateNode(this.node, {
-      fill: isDesignVariableReference(next)
-        ? next
-        : normalizeSolidCssValue(next),
+      fills: [
+        {
+          ...L,
+          value: isDesignVariableReference(next)
+            ? next
+            : normalizeSolidCssValue(next),
+        },
+      ],
     });
     this.api.record();
   }
@@ -216,8 +256,9 @@ export class FillActionButton extends LitElement {
     if (e.detail.mode !== 'fill') {
       return;
     }
+    const L = this.textFillLayer();
     this.api.updateNode(this.node, {
-      fillOpacity: `$${e.detail.key}` as unknown as number,
+      fills: [{ ...L, opacity: `$${e.detail.key}` }],
     });
     this.api.record();
   }
@@ -228,7 +269,8 @@ export class FillActionButton extends LitElement {
     if (e.detail.mode !== 'fill') {
       return;
     }
-    const raw = (this.node as TextSerializedNode).fillOpacity;
+    const L = this.textFillLayer();
+    const raw = L.opacity ?? 1;
     const resolved = resolveDesignVariableValue(
       raw,
       this.appState.variables,
@@ -240,7 +282,7 @@ export class FillActionButton extends LitElement {
         : parseFloat(String(resolved ?? ''));
     if (Number.isFinite(n)) {
       this.api.updateNode(this.node, {
-        fillOpacity: Math.max(0, Math.min(1, n)),
+        fills: [{ ...L, opacity: Math.max(0, Math.min(1, n)) }],
       });
       this.api.record();
     }
@@ -251,7 +293,13 @@ export class FillActionButton extends LitElement {
       return html``;
     }
 
-    const { fill, fillOpacity = 1 } = this.node as TextSerializedNode;
+    const L = this.textFillLayer();
+    const fill = L.value;
+    const fillOpacityRaw = L.opacity ?? 1;
+    const fillOpacity =
+      typeof fillOpacityRaw === 'number' && Number.isFinite(fillOpacityRaw)
+        ? fillOpacityRaw
+        : parseFloat(String(fillOpacityRaw)) || 1;
     const fillResolved = String(
       resolveDesignVariableValue(
         fill,

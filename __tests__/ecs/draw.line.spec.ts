@@ -32,6 +32,7 @@ import {
   PartialBinding,
   Binded,
   Binding,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Draw line', () => {
             ToBeDeleted,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 

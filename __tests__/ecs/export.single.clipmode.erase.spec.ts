@@ -33,6 +33,7 @@ import {
   Screenshot,
   ClipMode,
   RectSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -78,6 +79,7 @@ describe('Export SVG', () => {
             DropShadow,
             ZIndex,
             ClipMode,
+            Opacity,
           ).write,
       );
 
@@ -100,7 +102,7 @@ describe('Export SVG', () => {
           id: 'clip-child',
           parentId: 'clip-parent',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 50,
           y: 50,
           width: 200,
@@ -112,7 +114,7 @@ describe('Export SVG', () => {
           {
             id: 'clip-parent',
             type: 'rect',
-            fill: 'none',
+            fills: [{ type: 'solid', value: 'none', opacity: 1 }],
             clipMode: 'erase',
             x: 50,
             y: 50,

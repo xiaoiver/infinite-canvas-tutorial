@@ -32,6 +32,7 @@ import {
   IconFont,
   IconFontSerializedNode,
   registerIconifyIconSet,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -116,6 +117,7 @@ describe('Iconfont', () => {
             Group,
             IconFont,
             Path,
+            Opacity,
           ).write,
       );
 

@@ -61,7 +61,7 @@ onMounted(async () => {
       clipMode: 'erase',
       // vertical stripes, width 100, height 200, gap 50
       d: 'M 0 100 L 50 100 L 50 300 L 0 300 Z M 100 100 L 150 100 L 150 300 L 100 300 Z M 200 100 L 250 100 L 250 300 L 200 300 Z',
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
       zIndex: 0,
     };
 

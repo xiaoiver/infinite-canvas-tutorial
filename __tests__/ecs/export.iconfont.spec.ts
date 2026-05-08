@@ -35,7 +35,8 @@ import {
   IconFont,
   registerIconifyIconSet,
   IconFontSerializedNode,
-  Path
+  Path,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -125,6 +126,7 @@ describe('Export SVG', () => {
             Group,
             IconFont,
             Path,
+            Opacity,
           ).write,
       );
 

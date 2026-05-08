@@ -154,6 +154,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       Task.SHOW_PROPERTIES_PANEL,
     ],
     propertiesPanelSectionsOpen: {
+      fillSection: true,
       shape: false,
       transform: false,
       layout: false,
@@ -188,48 +189,48 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'fxaa() brightness(0.8) noise(0.1)',
   });
 
-  const node1: RectSerializedNode = {
-    id: 'snap-to-objects-1',
-    type: 'rect',
-    x: 100,
-    y: 100,
-    width: 100,
-    height: 100,
-    fill: '#e0f2ff',
-    fillOpacity: 0.5,
-    stroke: '#147af3',
-    strokeWidth: 1,
-    zIndex: 0,
-  };
-  const node2: RectSerializedNode = {
-    id: 'snap-to-objects-2',
-    type: 'rect',
-    x: 400,
+  api.setAppState({
+    variables: {
+      '--primary': { type: 'color', value: 'red' },
+      '--secondary': { type: 'color', value: 'green' },
+    },
+  });
+
+  const node1: EllipseSerializedNode = {
+    id: '1',
+    type: 'ellipse',
+    fills: [{ type: 'solid', value: '$--primary', opacity: 1 }],
+    x: 0,
     y: 50,
-    width: 100,
+    width: 200,
     height: 100,
-    fill: '#e0f2ff',
-    fillOpacity: 0.5,
-    stroke: '#147af3',
-    strokeWidth: 1,
+    visibility: 'visible',
     zIndex: 0,
   };
-  const node3: RectSerializedNode = {
-    id: 'snap-to-objects-3',
-    type: 'rect',
-    x: 250,
-    y: 100,
+  const node2: EllipseSerializedNode = {
+    id: '2',
+    parentId: '1',
+    type: 'ellipse',
+    fills: [{ type: 'solid', value: '$--secondary', opacity: 1 }],
+    x: 50,
+    y: -50,
     width: 100,
-    height: 100,
-    fill: '#e0f2ff',
-    fillOpacity: 0.5,
-    stroke: '#147af3',
-    strokeWidth: 1,
+    height: 200,
+    stroke: 'black',
+    strokeWidth: 10,
+    strokeAlignment: 'center',
+    strokeDasharray: '10 10',
+    visibility: 'visible',
     zIndex: 0,
   };
 
-  api.updateNodes([node1, node2, node3]);
-  api.selectNodes([node3]);
+  api.updateNodes([
+    node1,
+    node2,
+  ]);
+
+  // api.updateNodes([node3]);
+  // api.selectNodes([node3]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

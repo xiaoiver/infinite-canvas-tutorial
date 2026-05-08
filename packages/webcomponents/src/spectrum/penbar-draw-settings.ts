@@ -6,10 +6,12 @@ import {
   AppState,
   Pen,
   FillAttributes,
+  getPrimaryFillValue,
   RoughAttributes,
   Marker,
   MarkerAttributes,
   type IconFontAttributes,
+  type SerializedFillLayerItem,
   type StrokeAttributes,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
@@ -108,10 +110,16 @@ export class PenbarDrawSettings extends LitElement {
 
   private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
     const fillOpacity = parseFloat(e.target.value);
+    const cur = this.api.getAppState()[this.penbarDrawKey] as FillAttributes;
+    const prev = (cur.fills?.[0] ?? {
+      type: 'solid',
+      value: '#000000',
+      opacity: 1,
+    }) as SerializedFillLayerItem;
     this.api.setAppState({
       [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        fillOpacity,
+        ...cur,
+        fills: [{ ...prev, opacity: fillOpacity }],
       },
     });
     this.api.record();
@@ -121,10 +129,18 @@ export class PenbarDrawSettings extends LitElement {
     e.stopPropagation();
 
     const fillColor = (e.target as any).selected[0];
+    const cur = this.api.getAppState()[this.penbarDrawKey] as FillAttributes;
+    const prev = (cur.fills?.[0] ?? {
+      type: 'solid',
+      value: '#000000',
+      opacity: 1,
+    }) as SerializedFillLayerItem;
     this.api.setAppState({
       [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        fill: fillColor,
+        ...cur,
+        fills: [
+          { ...prev, type: 'solid', value: fillColor, opacity: prev.opacity ?? 1 },
+        ],
       },
     });
   }
@@ -289,7 +305,9 @@ export class PenbarDrawSettings extends LitElement {
               <sp-swatch-group
                 id="fill"
                 selects="single"
-                .selected=${[(this.penbarDraw as FillAttributes).fill]}
+                .selected=${[
+        getPrimaryFillValue(this.penbarDraw as FillAttributes) ?? '#000000',
+      ]}
                 @change=${this.handleFillColorChanged}
               >
                 ${theme.colors[theme.mode].swatches.map(
@@ -305,7 +323,12 @@ export class PenbarDrawSettings extends LitElement {
                 size="s"
                 max="1"
                 min="0"
-                value=${(this.penbarDraw as FillAttributes).fillOpacity}
+                value=${(() => {
+        const fo = (this.penbarDraw as FillAttributes).fills?.[0]?.opacity ?? 1;
+        return typeof fo === 'number' && Number.isFinite(fo)
+          ? fo
+          : parseFloat(String(fo)) || 1;
+      })()}
                 step="0.01"
                 editable
                 @change=${this.handleFillOpacityChanged}

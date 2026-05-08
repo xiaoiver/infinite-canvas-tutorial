@@ -36,6 +36,8 @@ export enum Task {
  * 可通过 `api.setAppState({ propertiesPanelSectionsOpen: { ... } })` 配置。
  */
 export interface PropertiesPanelSectionsOpen {
+  /** 填充层列表（实色 / 渐变、不透明度、显隐） */
+  fillSection: boolean;
   shape: boolean;
   transform: boolean;
   layout: boolean;
@@ -279,48 +281,73 @@ export const getDefaultAppState: () => AppState = () => {
     penbarDrawSizeLabelVisible: true,
     penbarNameLabelVisible: false,
     penbarDrawRect: {
-      fill: TRANSFORMER_MASK_FILL_COLOR,
-      fillOpacity: 0.5,
+      fills: [
+        {
+          type: 'solid',
+          value: TRANSFORMER_MASK_FILL_COLOR,
+          opacity: 0.5,
+        },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawTriangle: {
-      fill: TRANSFORMER_MASK_FILL_COLOR,
-      fillOpacity: 0.5,
+      fills: [
+        {
+          type: 'solid',
+          value: TRANSFORMER_MASK_FILL_COLOR,
+          opacity: 0.5,
+        },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawPentagon: {
-      fill: TRANSFORMER_MASK_FILL_COLOR,
-      fillOpacity: 0.5,
+      fills: [
+        {
+          type: 'solid',
+          value: TRANSFORMER_MASK_FILL_COLOR,
+          opacity: 0.5,
+        },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawHexagon: {
-      fill: TRANSFORMER_MASK_FILL_COLOR,
-      fillOpacity: 0.5,
+      fills: [
+        {
+          type: 'solid',
+          value: TRANSFORMER_MASK_FILL_COLOR,
+          opacity: 0.5,
+        },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawEllipse: {
-      fill: TRANSFORMER_MASK_FILL_COLOR,
-      fillOpacity: 0.5,
+      fills: [
+        {
+          type: 'solid',
+          value: TRANSFORMER_MASK_FILL_COLOR,
+          opacity: 0.5,
+        },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawLine: {
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawArrow: {
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
@@ -329,8 +356,9 @@ export const getDefaultAppState: () => AppState = () => {
       markerFactor: 3,
     },
     penbarDrawRoughRect: {
-      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
-      fillOpacity: 1,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 4,
       strokeOpacity: 1,
@@ -339,8 +367,9 @@ export const getDefaultAppState: () => AppState = () => {
       roughFillStyle: 'hachure',
     },
     penbarDrawRoughEllipse: {
-      fill: TRANSFORMER_ANCHOR_STROKE_COLOR,
-      fillOpacity: 1,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 4,
       strokeOpacity: 1,
@@ -349,7 +378,7 @@ export const getDefaultAppState: () => AppState = () => {
       roughFillStyle: 'hachure',
     },
     penbarDrawRoughLine: {
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
@@ -357,7 +386,7 @@ export const getDefaultAppState: () => AppState = () => {
       roughRoughness: 4,
     },
     penbarPencil: {
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
@@ -392,21 +421,22 @@ export const getDefaultAppState: () => AppState = () => {
       fontFamilies: ['system-ui', 'serif', 'monospace'],
       fontSize: 16,
       fontStyle: 'normal',
-      fill: '#000',
+      fills: [{ type: 'solid', value: '#000', opacity: 1 }],
     },
     penbarLasso: {
       mode: 'select',
       trailFill: TRANSFORMER_MASK_FILL_COLOR,
       trailFillOpacity: 0.5,
       trailStroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
-      fill: TRANSFORMER_MASK_FILL_COLOR,
-      fillOpacity: 0.5,
+      fills: [
+        { type: 'solid', value: TRANSFORMER_MASK_FILL_COLOR, opacity: 0.5 },
+      ],
       stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
       strokeWidth: 1,
       strokeOpacity: 1,
     },
     penbarDrawIconfont: {
-      fill: 'black',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
       stroke: 'black',
       strokeWidth: 1,
       iconFontFamily: 'lucide',
@@ -422,6 +452,7 @@ export const getDefaultAppState: () => AppState = () => {
     layersLassoing: [],
     propertiesOpened: [],
     propertiesPanelSectionsOpen: {
+      fillSection: true,
       shape: true,
       transform: true,
       layout: true,

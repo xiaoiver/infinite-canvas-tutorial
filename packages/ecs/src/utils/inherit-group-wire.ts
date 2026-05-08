@@ -6,12 +6,11 @@ import type { SerializedNode } from '../types/serialized-node';
  *（原始 wire，尚未做设计变量求值。）
  */
 export const INHERITABLE_GROUP_WIRE_KEYS = [
-  'fill',
+  'fills',
   'stroke',
   'strokeWidth',
   'fillRule',
   'opacity',
-  'fillOpacity',
   'strokeOpacity',
   'strokeLinecap',
   'strokeLinejoin',
@@ -32,9 +31,17 @@ export function mergeInheritGroupWire(
   node: object,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = { ...parentComputed };
+  const rec = node as Record<string, unknown>;
   for (const key of INHERITABLE_GROUP_WIRE_KEYS) {
-    if (explicitInheritableGroupWireKey(node, key)) {
-      out[key] = (node as Record<string, unknown>)[key];
+    if (!explicitInheritableGroupWireKey(node, key)) {
+      continue;
+    }
+    if (key === 'fills' && Array.isArray(rec.fills)) {
+      out.fills = (rec.fills as object[]).map((L) =>
+        typeof L === 'object' && L !== null ? { ...L } : L,
+      );
+    } else {
+      out[key] = rec[key];
     }
   }
   return out;

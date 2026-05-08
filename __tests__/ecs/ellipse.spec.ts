@@ -29,6 +29,7 @@ import {
   ComputeZIndex,
   UI,
   EllipseSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -69,6 +70,7 @@ describe('Ellipse', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -90,30 +92,30 @@ describe('Ellipse', () => {
 
         const node1: EllipseSerializedNode = {
           id: '1',
-            type: 'ellipse',
-            fill: 'red',
-            x: 0,
-            y: 50,
-            width: 200,
-            height: 100,
-            visibility: 'visible',
-            zIndex: 0,
+          type: 'ellipse',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+          x: 0,
+          y: 50,
+          width: 200,
+          height: 100,
+          visibility: 'visible',
+          zIndex: 0,
         };
         const node2: EllipseSerializedNode = {
           id: '2',
-            parentId: '1',
-            type: 'ellipse',
-            fill: 'green',
-            x: 50,
-            y: -50,
-            width: 100,
-            height: 200,
-            stroke: 'black',
-            strokeWidth: 10,
-            strokeAlignment: 'center',
-            strokeDasharray: '10 10',
-            visibility: 'visible',
-            zIndex: 0,
+          parentId: '1',
+          type: 'ellipse',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
+          x: 50,
+          y: -50,
+          width: 100,
+          height: 200,
+          stroke: 'black',
+          strokeWidth: 10,
+          strokeAlignment: 'center',
+          strokeDasharray: '10 10',
+          visibility: 'visible',
+          zIndex: 0,
         };
 
         api.updateNodes([

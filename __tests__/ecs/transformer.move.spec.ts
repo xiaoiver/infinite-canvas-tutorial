@@ -31,6 +31,7 @@ import {
   RectSerializedNode,
   Selected,
   Rect,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -72,6 +73,7 @@ describe('Transformer', () => {
             ZIndex,
             Selected,
             Ellipse,
+            Opacity,
           ).write,
       );
 
@@ -96,7 +98,7 @@ describe('Transformer', () => {
           type: 'rect',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,

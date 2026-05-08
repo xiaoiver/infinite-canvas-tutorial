@@ -32,6 +32,7 @@ import {
   Selected,
   Rect,
   Group,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Transformer', () => {
             Selected,
             Ellipse,
             Group,
+            Opacity,
           ).write,
       );
 
@@ -98,7 +100,7 @@ describe('Transformer', () => {
           type: 'rect',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,
@@ -110,7 +112,7 @@ describe('Transformer', () => {
           id: '2',
           parentId: '1',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 0,
           y: 0,
           width: 50,

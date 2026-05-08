@@ -40,7 +40,7 @@ onMounted(async () => {
             type: 'rect',
             x: 200,
             y: 20,
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             width: 100,
             height: 100,
             filter: 'blur(5px)',

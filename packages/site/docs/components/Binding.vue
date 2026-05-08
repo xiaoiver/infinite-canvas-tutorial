@@ -37,7 +37,7 @@ onMounted(async () => {
       y: 0,
       width: 100,
       height: 100,
-      fill: 'grey',
+      fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
     };
     const node2 = {
       id: 'rect-2',
@@ -46,7 +46,7 @@ onMounted(async () => {
       y: 0,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
     };
     const node3 = {
       id: 'rect-3',
@@ -55,7 +55,7 @@ onMounted(async () => {
       y: 150,
       width: 100,
       height: 100,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
     };
     const edge1 = {
       id: 'line-1',

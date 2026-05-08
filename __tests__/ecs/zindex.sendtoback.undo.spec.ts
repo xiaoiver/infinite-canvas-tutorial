@@ -30,7 +30,8 @@ import {
   ComputeZIndex,
   UI,
   RectSerializedNode,
-  Flex
+  Flex,
+  Opacity
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -73,6 +74,7 @@ describe('ZIndex', () => {
             ZIndex,
             UI,
             Flex,
+            Opacity,
           ).write,
       );
 
@@ -95,7 +97,7 @@ describe('ZIndex', () => {
         const node1: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,
@@ -106,7 +108,7 @@ describe('ZIndex', () => {
         const node2: RectSerializedNode = {
           id: '2',
           type: 'rect',
-          fill: 'green',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           x: 100,
           y: 100,
           width: 100,

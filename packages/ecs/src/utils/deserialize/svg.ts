@@ -10,6 +10,7 @@ import {
   fixTransform,
 } from '../serialize';
 import { PathSerializedNode, SerializedNode, TextSerializedNode, AttenuationAttributes } from '../../types/serialized-node';
+import { migrateLegacyFillWireInPlace } from '../normalize-fill-wire';
 import { deserializePoints } from './points';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
@@ -190,7 +191,9 @@ export function svgElementsToSerializedNodes(
             element.style.fontVariant;
         }
         if (element.style.fill) {
-          (attributes as TextSerializedNode).fill = element.style.fill;
+          (attributes as TextSerializedNode).fills = [
+            { type: 'solid', value: element.style.fill, opacity: 1 },
+          ];
         }
         if (element.style.textDecoration) {
           // e.g. text-decoration: underline 4px wavy rgb(0, 0, 0) ;
@@ -284,6 +287,7 @@ export function svgElementsToSerializedNodes(
         ...defaultAttributes[type],
         ...attributes,
       } as SerializedNode;
+      migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
       nodes.push(node);
 
       fixTransform((attributes as any).transform || '', node);

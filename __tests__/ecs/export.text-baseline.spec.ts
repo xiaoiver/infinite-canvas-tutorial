@@ -111,7 +111,7 @@ describe('Export SVG', () => {
           {
             id: 'text-1',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Abcdefghijklmnop (top)',
             anchorX: 50,
             anchorY: 50,
@@ -134,7 +134,7 @@ describe('Export SVG', () => {
           {
             id: 'text-2',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Abcdefghijklmnop (hanging)',
             anchorX: 50,
             anchorY: 100,
@@ -157,7 +157,7 @@ describe('Export SVG', () => {
           {
             id: 'text-3',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Abcdefghijklmnop (middle)',
             anchorX: 50,
             anchorY: 150,
@@ -180,7 +180,7 @@ describe('Export SVG', () => {
           {
             id: 'text-4',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Abcdefghijklmnop (alphabetic)',
             anchorX: 50,
             anchorY: 200,
@@ -203,7 +203,7 @@ describe('Export SVG', () => {
           {
             id: 'text-5',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Abcdefghijklmnop (ideographic)',
             anchorX: 50,
             anchorY: 250,
@@ -226,7 +226,7 @@ describe('Export SVG', () => {
           {
             id: 'text-6',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Abcdefghijklmnop (bottom)',
             anchorX: 50,
             anchorY: 300,

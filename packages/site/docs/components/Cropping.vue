@@ -40,7 +40,7 @@ onMounted(async () => {
       y: 50,
       width: 100,
       height: 100,
-      fill: 'none',
+      fills: [{ type: 'solid', value: 'none', opacity: 1 }],
     };
     const child = {
       id: 'rect-1',
@@ -50,7 +50,7 @@ onMounted(async () => {
       y: 0,
       width: 200,
       height: 200,
-      fill: '/canvas.png',
+      fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
       locked: true,
       lockAspectRatio: true,
     };

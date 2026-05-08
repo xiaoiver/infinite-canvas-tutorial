@@ -275,7 +275,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     content: 'Hello, world! 你好，世界！',
     fontFamily: 'system-ui',
     fontSize: 120,
-    fill: 'black',
+    fills: [{ type: 'solid', value: 'black', opacity: 1 }],
     filter: LIQUID_METAL_FILTER,
   } as const,
 ];
@@ -318,6 +318,7 @@ export function LiquidMetalTool() {
                 taskbarSelected: [Task.SHOW_PROPERTIES_PANEL],
                 penbarNameLabelVisible: true,
                 propertiesPanelSectionsOpen: {
+                  fillSection: true,
                   shape: false,
                   transform: false,
                   layout: false,

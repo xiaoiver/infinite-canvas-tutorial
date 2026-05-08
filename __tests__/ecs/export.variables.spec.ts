@@ -34,6 +34,7 @@ import {
   Group,
   EllipseSerializedNode,
   GSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -78,6 +79,7 @@ describe('Export SVG', () => {
             DropShadow,
             ZIndex,
             Group,
+            Opacity,
           ).write,
       );
 
@@ -106,7 +108,7 @@ describe('Export SVG', () => {
         const node1: EllipseSerializedNode = {
           id: '1',
           type: 'ellipse',
-          fill: '$--primary',
+          fills: [{ type: 'solid', value: '$--primary', opacity: 1 }],
           x: 0,
           y: 50,
           width: 200,
@@ -118,7 +120,7 @@ describe('Export SVG', () => {
           id: '2',
           parentId: '1',
           type: 'ellipse',
-          fill: '$--secondary',
+          fills: [{ type: 'solid', value: '$--secondary', opacity: 1 }],
           x: 50,
           y: -50,
           width: 100,

@@ -33,7 +33,7 @@ onMounted(async () => {
       {
         type: 'rough-rect',
         id: 'watercolor-rect',
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         roughFillStyle: 'watercolor',
         x: 50,
         y: 50,
@@ -43,7 +43,7 @@ onMounted(async () => {
       {
         type: 'rough-ellipse',
         id: 'watercolor-ellipse',
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         roughFillStyle: 'watercolor',
         x: 200,
         y: 50,
@@ -53,7 +53,7 @@ onMounted(async () => {
       {
         type: 'rough-path',
         id: 'watercolor-path',
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         roughFillStyle: 'watercolor',
         d: 'M 400 100 L 500 200 L 600 100 Z',
         stroke: 'red',

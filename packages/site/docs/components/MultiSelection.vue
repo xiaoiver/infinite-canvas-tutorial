@@ -37,7 +37,7 @@ onMounted(async () => {
       y: 30,
       width: 200,
       height: 100,
-      fill: 'grey',
+      fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
     };
     const node2 = {
       id: '2',
@@ -46,7 +46,7 @@ onMounted(async () => {
       y: 130,
       width: 200,
       height: 100,
-      fill: 'grey',
+      fills: [{ type: 'solid', value: 'grey', opacity: 1 }],
     };
 
     api.updateNodes([node1, node2]);

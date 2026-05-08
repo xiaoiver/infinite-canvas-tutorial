@@ -30,6 +30,7 @@ import {
   ComputeZIndex,
   Rough,
   RoughPathSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,6 +71,7 @@ describe('Watercolor', () => {
             Visibility,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -92,7 +94,7 @@ describe('Watercolor', () => {
         const node1: RoughPathSerializedNode = {
           id: '1',
           type: 'rough-path',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           d: 'M 50 50 L 150 150 L 50 150 Z',
           visibility: 'visible',
           roughFillStyle: 'watercolor',

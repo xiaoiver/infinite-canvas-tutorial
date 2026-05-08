@@ -28,7 +28,9 @@ export const parseMxgraphDataToSerializedNodes = async (definition: string) => {
 
       const { fillColor, strokeColor, rounded } = style;
       if (fillColor) {
-        (node as RectSerializedNode).fill = fillColor;
+        (node as RectSerializedNode).fills = [
+          { type: 'solid', value: fillColor, opacity: 1 },
+        ];
       }
       if (strokeColor) {
         (node as RectSerializedNode).stroke = strokeColor;
@@ -93,7 +95,7 @@ export const parseMxgraphDataToSerializedNodes = async (definition: string) => {
         content: mxCell._value.replaceAll('&#xa;', '\n'),
         fontSize: style.fontSize ?? 12,
         fontFamily: 'sans-serif',
-        fill: 'black',
+        fills: [{ type: 'solid', value: 'black', opacity: 1 }],
         textAlign: 'center',
         textBaseline: 'middle',
         zIndex: 0,

@@ -37,7 +37,7 @@ describe('design variables', () => {
       {
         id: 'a',
         type: 'rect',
-        fill: '$color.bg',
+        fills: [{ type: 'solid', value: '$color.bg', opacity: 1 }],
         stroke: '$color.bg',
         zIndex: 0,
       },
@@ -45,9 +45,9 @@ describe('design variables', () => {
     const out = resolveSerializedNodesDesignVariables(nodes as any, {
       'color.bg': { type: 'color', value: '#eee' },
     });
-    expect((out[0] as RectSerializedNode).fill).toBe('#eee');
+    expect((out[0] as RectSerializedNode).fills?.[0]?.value).toBe('#eee');
     expect((out[0] as RectSerializedNode).stroke).toBe('#eee');
-    expect(nodes[0].fill).toBe('$color.bg');
+    expect(nodes[0].fills?.[0]?.value).toBe('$color.bg');
   });
 
   it('prepareSerializedNodesForSvgExport css-var', () => {
@@ -55,7 +55,7 @@ describe('design variables', () => {
       {
         id: 'a',
         type: 'rect',
-        fill: '$color.bg',
+        fills: [{ type: 'solid', value: '$color.bg', opacity: 1 }],
         zIndex: 0,
       },
     ];
@@ -67,7 +67,9 @@ describe('design variables', () => {
       vars,
       'css-var',
     );
-    expect((out[0] as { fill: string }).fill).toBe('var(--color-bg)');
+    expect((out[0] as { fills?: { value: string }[] }).fills?.[0]?.value).toBe(
+      'var(--color-bg)',
+    );
     expect(cssRootStyle).toContain('--color-bg:#00f');
   });
 

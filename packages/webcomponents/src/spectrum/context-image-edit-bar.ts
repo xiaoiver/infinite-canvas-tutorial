@@ -1,6 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { consume } from '@lit/context';
-import { AppState, RectSerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  AppState,
+  FillAttributes,
+  getPrimaryFillValue,
+  RectSerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
 import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiContext, appStateContext } from '../context';
@@ -81,10 +86,12 @@ export class ContextImageEditBar extends LitElement {
     // 先创建一个空白元素
     let newImage: RectSerializedNode;
     this.api.runAtNextTick(() => {
+      const imgUrl =
+        getPrimaryFillValue(this.node as FillAttributes) ?? '';
       newImage = {
         id: uuidv4(),
         type: 'rect',
-        fill: this.node.fill,
+        fills: [{ type: 'image', value: imgUrl, opacity: 1 }],
         lockAspectRatio: true,
         x: (this.node.x as number) + (this.node.width as number) + 50,
         y: (this.node.y as number),
@@ -98,11 +105,13 @@ export class ContextImageEditBar extends LitElement {
     const { images } = await this.api.createOrEditImage(
       true,
       'Remove background from the image',
-      [this.node.fill],
+      [getPrimaryFillValue(this.node as FillAttributes) ?? ''],
     );
     if (images.length > 0) {
       this.api.runAtNextTick(() => {
-        this.api.updateNode(newImage, { fill: images[0].url });
+        this.api.updateNode(newImage, {
+          fills: [{ type: 'image', value: images[0].url, opacity: 1 }],
+        });
 
         this.api.record();
         this.removingBackground = false;
@@ -112,7 +121,9 @@ export class ContextImageEditBar extends LitElement {
 
   private async startSmartSelect() {
     this.encodingImage = true;
-    await this.api.encodeImage(this.node.fill);
+    await this.api.encodeImage(
+      getPrimaryFillValue(this.node as FillAttributes) ?? '',
+    );
     this.mode = ImageEditMode.POINT_SEGMENT;
     this.encodingImage = false;
   }
@@ -163,7 +174,7 @@ export class ContextImageEditBar extends LitElement {
       this.api.getAppState().layersSelected[0],
     );
     await this.api.removeByMask({
-      image_url: (selectedNode as RectSerializedNode).fill,
+      image_url: getPrimaryFillValue(selectedNode as FillAttributes) ?? '',
       mask: this.maskCanvas!,
     });
     this.removingByMask = false;
@@ -194,14 +205,16 @@ export class ContextImageEditBar extends LitElement {
           const newImage = {
             id: uuidv4(),
             type: 'rect',
-            fill: image.url,
+            fills: [{ type: 'image', value: image.url, opacity: 1 }],
             lockAspectRatio: true,
             x: (this.node.x as number) + (this.node.width as number) + 50,
             y: (this.node.y as number),
             width: this.node.width,
             height: this.node.height,
           } as RectSerializedNode;
-          this.api.updateNode(newImage, { fill: image.url });
+          this.api.updateNode(newImage, {
+            fills: [{ type: 'image', value: image.url, opacity: 1 }],
+          });
         }
         this.api.record();
       });
@@ -219,7 +232,7 @@ export class ContextImageEditBar extends LitElement {
     );
 
     const image = await this.api.upscaleImage({
-      image_url: (selectedNode as RectSerializedNode).fill,
+      image_url: getPrimaryFillValue(selectedNode as FillAttributes) ?? '',
     });
     const url = image.url ?? image.canvas?.toDataURL();
 
@@ -227,14 +240,16 @@ export class ContextImageEditBar extends LitElement {
       const newImage = {
         id: uuidv4(),
         type: 'rect',
-        fill: url,
+        fills: [{ type: 'image', value: url ?? '', opacity: 1 }],
         lockAspectRatio: true,
         x: (this.node.x as number) + (this.node.width as number) + 50,
         y: (this.node.y as number),
         width: this.node.width,
         height: this.node.height,
       } as RectSerializedNode;
-      this.api.updateNode(newImage, { fill: url });
+      this.api.updateNode(newImage, {
+        fills: [{ type: 'image', value: url ?? '', opacity: 1 }],
+      });
       this.api.record();
     });
 

@@ -121,7 +121,7 @@ function createText(
       content: text,
       fontSize: 16,
       fontFamily: 'system-ui',
-      fill: 'black',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
       zIndex: getMaxZIndex(api) + 1,
     },
   ]);

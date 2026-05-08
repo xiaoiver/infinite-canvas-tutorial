@@ -46,7 +46,7 @@ onMounted(async () => {
     const image = {
       id: 'burn-1',
       type: 'rect',
-      fill: 'https://framerusercontent.com/images/K54OdkNAJ7dNPCQlcqviSKRrXAY.jpg?width=1920&height=1282',
+      fills: [{ type: 'image', value: 'https://framerusercontent.com/images/K54OdkNAJ7dNPCQlcqviSKRrXAY.jpg?width=1920&height=1282', opacity: 1 }],
       x: 50,
       y: 50,
       width: 200 * 1920 / 1282,

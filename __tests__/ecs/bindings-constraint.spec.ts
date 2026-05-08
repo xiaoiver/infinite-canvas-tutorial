@@ -33,6 +33,7 @@ import {
   Binded,
   Line,
   Marker,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +77,7 @@ describe('Bindings', () => {
             Binding,
             Line,
             Marker,
+            Opacity,
           ).write,
       );
 
@@ -99,7 +101,7 @@ describe('Bindings', () => {
           {
             id: 'rect-1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             x: 0,
             y: 0,
             width: 50,
@@ -115,7 +117,7 @@ describe('Bindings', () => {
           {
             id: 'rect-2',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             x: 100,
             y: 100,
             width: 50,

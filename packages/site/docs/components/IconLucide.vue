@@ -128,7 +128,7 @@ onMounted(async () => {
       iconFontName: 'a-arrow-down',
       iconFontFamily: 'pixelarticons',
       // stroke: 'red',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       // strokeWidth: 2,
       lockAspectRatio: true,
     };
@@ -143,7 +143,7 @@ onMounted(async () => {
       zIndex: 1,
       iconFontName: 'algorithm',
       iconFontFamily: 'pixelarticons',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       lockAspectRatio: true,
     };
 
@@ -157,7 +157,7 @@ onMounted(async () => {
       zIndex: 1,
       iconFontName: 'annoyed',
       iconFontFamily: 'pixelarticons',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       lockAspectRatio: true,
     };
 
@@ -171,7 +171,7 @@ onMounted(async () => {
       zIndex: 1,
       iconFontName: 'gift',
       iconFontFamily: 'pixelarticons',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       lockAspectRatio: true,
     };
 

@@ -29,9 +29,9 @@ import {
   ZIndex,
   ComputeZIndex,
   ExportFormat,
-  Opacity,
   Screenshot,
   InnerShadow,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -76,6 +76,7 @@ describe('Export SVG', () => {
             DropShadow,
             Opacity,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -98,7 +99,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             innerShadowBlurRadius: 10,
             innerShadowColor: 'black',
             innerShadowOffsetX: 10,

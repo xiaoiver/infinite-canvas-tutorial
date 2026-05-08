@@ -174,7 +174,7 @@ export class LassoSystem extends System {
       if (input.pointerUpTrigger) {
         selection.lassoTrail.endPath();
 
-        const { mode, stroke, fill, fillOpacity, strokeWidth, strokeOpacity } = appState.penbarLasso;
+        const { mode, stroke, fills, strokeWidth, strokeOpacity } = appState.penbarLasso;
 
         const points = selection.lassoTrail.getPoints();
         if (mode === 'draw' && points?.length > 0) {
@@ -184,8 +184,7 @@ export class LassoSystem extends System {
               type: 'path',
               version: 0,
               d: `M${points[0][0]},${points[0][1]}L${points.slice(1).map((p) => `${p[0]},${p[1]}`).join(' ')}Z`,
-              fill,
-              fillOpacity,
+              fills,
               stroke,
               strokeWidth,
               strokeOpacity,

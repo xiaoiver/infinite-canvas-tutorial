@@ -124,6 +124,11 @@ void main() {
 
   #ifdef USE_FILLIMAGE
     fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+    float _layerAlphaMul =
+      (dot(u_FillColor.rgb, vec3(1.0)) < 0.001 && u_FillColor.a < 0.001)
+        ? 1.0
+        : u_FillColor.a;
+    fillColor.a *= _layerAlphaMul;
   #endif
 
   // based on the target alpha compositing mode.

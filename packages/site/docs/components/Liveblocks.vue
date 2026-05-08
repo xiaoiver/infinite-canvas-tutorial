@@ -120,7 +120,7 @@ onMounted(async () => {
     const node = {
       type: 'rect',
       id: '0',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       stroke: 'black',
       x: 100,
       y: 100,

@@ -31,6 +31,7 @@ import {
   ExportFormat,
   Screenshot,
   RectSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -74,6 +75,7 @@ describe('Export SVG', () => {
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -95,7 +97,7 @@ describe('Export SVG', () => {
         node = {
           id: '1',
           type: 'rect',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,

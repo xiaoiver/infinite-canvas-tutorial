@@ -31,6 +31,7 @@ import {
   Selected,
   Pen,
   RectSerializedNode,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -71,6 +72,7 @@ describe('Transformer', () => {
             DropShadow,
             ZIndex,
             Selected,
+            Opacity,
           ).write,
       );
 
@@ -95,7 +97,7 @@ describe('Transformer', () => {
           type: 'rect',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,
@@ -108,7 +110,7 @@ describe('Transformer', () => {
           type: 'rect',
           stroke: 'black',
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 150,
           y: 150,

@@ -21,8 +21,10 @@ import {
   designVariableRefKeyFromWire,
 } from '../utils/design-variables';
 import type {
+  FillAttributes,
   GSerializedNode,
   IconFontSerializedNode,
+  SerializedFillLayerItem,
   SerializedNode,
   SerializedNodeAttributes,
 } from '../types/serialized-node';
@@ -32,6 +34,7 @@ import {
   Name,
   FillSolid,
   FillGradient,
+  FillLayers,
   Stroke,
   StrokeGradient,
   Visibility,
@@ -71,6 +74,7 @@ import {
   IconFont,
   IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
+import { isFillLayerEnabled } from '../utils/fillLayers';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
 import {
@@ -88,6 +92,7 @@ import {
 import { insertIconFontChildFromPrimitive } from '../utils/insert-icon-font-child-entity';
 import { getComputedInheritGroupWireForId } from '../utils/inherit-group-wire';
 import { buildGroupWirePresentation } from '../utils/group-presentation';
+import { migrateLegacyFillWireInPlace } from '../utils/normalize-fill-wire';
 import { TesselationMethod } from '../components/geometry/Path';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -1000,6 +1005,130 @@ export class ElementsChange implements Change<SceneElementsMap> {
   }
 }
 
+/**
+ * 将 wire `fills` 同步到 ECS（与反序列化一致）。
+ */
+function applyFillsWireMutation(
+  entity: Entity,
+  elAttrs: FillAttributes,
+  designVariables: Parameters<typeof resolveDesignVariableValue>[1],
+  themeMode: Parameters<typeof resolveDesignVariableValue>[2],
+): boolean {
+  const wireArr = elAttrs.fills;
+  if (!Array.isArray(wireArr)) {
+    safeRemoveComponent(entity, FillLayers);
+    safeAddComponent(entity, MaterialDirty);
+    return false;
+  }
+
+  if (wireArr.length >= 2) {
+    safeRemoveComponent(entity, FillSolid);
+    safeRemoveComponent(entity, FillGradient);
+    safeRemoveComponent(entity, FillImage);
+    safeRemoveComponent(entity, FillPattern);
+    if (!entity.has(FillLayers)) {
+      safeAddComponent(entity, FillLayers);
+    }
+    entity.write(FillLayers).layers = (wireArr as SerializedFillLayerItem[]).map(
+      (L) => ({ ...L }),
+    );
+    safeAddComponent(entity, MaterialDirty);
+    if (entity.has(Opacity)) {
+      entity.write(Opacity).fillOpacity = 1;
+    } else {
+      safeAddComponent(entity, Opacity, { fillOpacity: 1 });
+    }
+    return true;
+  }
+
+  if (wireArr.length === 1) {
+    const L = wireArr[0]!;
+    safeRemoveComponent(entity, FillLayers);
+
+    if (L.type === 'gradient' && isFillLayerEnabled(L)) {
+      safeRemoveComponent(entity, FillSolid);
+      safeRemoveComponent(entity, FillImage);
+      safeRemoveComponent(entity, FillPattern);
+      safeAddComponent(entity, MaterialDirty);
+      safeAddComponent(entity, FillGradient, { value: L.value });
+    } else if (L.type === 'image' && isFillLayerEnabled(L)) {
+      const resolvedFill = resolveDesignVariableValue(
+        L.value,
+        designVariables,
+        themeMode,
+      );
+      safeRemoveComponent(entity, FillSolid);
+      safeRemoveComponent(entity, FillGradient);
+      safeRemoveComponent(entity, FillPattern);
+      safeAddComponent(entity, MaterialDirty);
+      loadImage(String(resolvedFill ?? ''), entity);
+    } else if (L.type === 'solid' && isFillLayerEnabled(L)) {
+      const resolvedFill = resolveDesignVariableValue(
+        L.value,
+        designVariables,
+        themeMode,
+      );
+      if (isGradient(resolvedFill)) {
+        safeRemoveComponent(entity, FillSolid);
+        safeRemoveComponent(entity, FillImage);
+        safeRemoveComponent(entity, FillPattern);
+        safeAddComponent(entity, MaterialDirty);
+        safeAddComponent(entity, FillGradient, {
+          value: resolvedFill as string,
+        });
+      } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
+        safeRemoveComponent(entity, FillSolid);
+        safeRemoveComponent(entity, FillGradient);
+        safeRemoveComponent(entity, FillPattern);
+        safeAddComponent(entity, MaterialDirty);
+        loadImage(resolvedFill, entity);
+      } else {
+        if (entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern)) {
+          safeAddComponent(entity, MaterialDirty);
+        }
+        safeRemoveComponent(entity, FillGradient);
+        safeRemoveComponent(entity, FillImage);
+        safeRemoveComponent(entity, FillPattern);
+        safeAddComponent(entity, FillSolid, {
+          value: resolvedFill as string,
+          fillVariableRef: designVariableRefKeyFromWire(
+            typeof L.value === 'string' ? L.value : undefined,
+          ),
+        });
+      }
+    } else {
+      safeRemoveComponent(entity, FillSolid);
+      safeRemoveComponent(entity, FillGradient);
+      safeRemoveComponent(entity, FillImage);
+      safeRemoveComponent(entity, FillPattern);
+      safeAddComponent(entity, MaterialDirty);
+    }
+
+    const to01 = (v: unknown): number => {
+      if (v === undefined || v === null) {
+        return 1;
+      }
+      const n = typeof v === 'number' ? v : parseFloat(String(v));
+      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    };
+    const mul = isFillLayerEnabled(L)
+      ? to01(
+        resolveDesignVariableValue(
+          L.opacity ?? 1,
+          designVariables,
+          themeMode,
+        ),
+      )
+      : 1;
+    safeAddComponent(entity, Opacity, { fillOpacity: mul });
+    return true;
+  }
+
+  safeRemoveComponent(entity, FillLayers);
+  safeAddComponent(entity, MaterialDirty);
+  return false;
+}
+
 // This function tracks updates of text elements for the purposes for collaboration.
 // The version is used to compare updates when more than one user is working in
 // the same drawing. Note: this will trigger the component to update. Make sure you
@@ -1041,6 +1170,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     return element;
   }
 
+  migrateLegacyFillWireInPlace(element as unknown as Record<string, unknown>);
+
   const designVariables = api.getAppState().variables;
   const themeMode = api.getAppState().themeMode;
   const elNode = element as SerializedNode;
@@ -1056,14 +1187,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   const {
     parentId,
     zIndex,
-    fill,
     stroke,
     strokeWidth,
     strokeLinecap,
     strokeLinejoin,
     strokeAlignment,
     opacity,
-    fillOpacity,
     strokeOpacity,
     innerShadowColor,
     innerShadowBlurRadius,
@@ -1171,41 +1300,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('visibility' in updates) {
     entity.write(Visibility).value = visibility;
   }
-  if ('fill' in updates && !isIconFontWireNode) {
-    const resolvedFill = resolveDesignVariableValue(
-      fill,
+
+  if (
+    ('fills' in updates ||
+      'fill' in updates ||
+      'fillLayers' in updates) &&
+    !isIconFontWireNode
+  ) {
+    applyFillsWireMutation(
+      entity,
+      element as FillAttributes,
       designVariables,
       themeMode,
     );
-    if (isGradient(resolvedFill)) {
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillImage);
-      safeRemoveComponent(entity, FillPattern);
-
-      safeAddComponent(entity, MaterialDirty);
-      safeAddComponent(entity, FillGradient, { value: resolvedFill });
-    } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillGradient);
-      safeRemoveComponent(entity, FillPattern);
-
-      safeAddComponent(entity, MaterialDirty);
-      loadImage(resolvedFill, entity);
-    } else {
-      if (entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern)) {
-        safeAddComponent(entity, MaterialDirty);
-      }
-
-      safeRemoveComponent(entity, FillGradient);
-      safeRemoveComponent(entity, FillImage);
-      safeRemoveComponent(entity, FillPattern);
-      safeAddComponent(entity, FillSolid, {
-        value: resolvedFill as string,
-        fillVariableRef: designVariableRefKeyFromWire(
-          typeof fill === 'string' ? fill : undefined,
-        ),
-      });
-    }
   }
   if ('brushStamp' in updates) {
     if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
@@ -1306,21 +1413,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('opacity' in updates) {
     safeAddComponent(entity, Opacity, { opacity });
-  }
-  if ('fillOpacity' in updates) {
-    const fo = resolveDesignVariableValue(
-      fillOpacity,
-      designVariables,
-      themeMode,
-    );
-    const n =
-      fo !== undefined && fo !== null
-        ? typeof fo === 'number'
-          ? fo
-          : parseFloat(String(fo))
-        : NaN;
-    const v = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-    safeAddComponent(entity, Opacity, { fillOpacity: v });
   }
   if ('strokeOpacity' in updates) {
     const so = resolveDesignVariableValue(
@@ -1812,7 +1904,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       (nodeType as string) === 'icon_font';
     if (
       isIconFontNode &&
-      (('fill' in updates) ||
+      (('fills' in updates) ||
         ('stroke' in updates) ||
         ('strokeWidth' in updates) ||
         ('strokeLinecap' in updates) ||
@@ -1835,12 +1927,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     const gType = (element as SerializedNode).type;
     if (
       gType === 'g' &&
-      (('fill' in updates) ||
+      (('fills' in updates) ||
         ('stroke' in updates) ||
         ('strokeWidth' in updates) ||
         ('fillRule' in updates) ||
         ('opacity' in updates) ||
-        ('fillOpacity' in updates) ||
         ('strokeOpacity' in updates) ||
         ('strokeLinecap' in updates) ||
         ('strokeLinejoin' in updates))

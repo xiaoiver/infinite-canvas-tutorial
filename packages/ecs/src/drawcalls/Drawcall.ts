@@ -33,6 +33,9 @@ import { Entity } from '@lastolivegames/becsy';
 import {
   RenderCache,
   Effect,
+  fillLayersNeedFillImage,
+  fillLayersShouldPrecompose,
+  getEnabledFillLayers,
   uid,
   halftoneDotsUniformValues,
   flutedGlassUniformValues,
@@ -60,11 +63,13 @@ import {
   FillGradient,
   FillImage,
   FillPattern,
+  FillLayers,
   FillSolid,
   FillTexture,
   ClipMode,
   type ClipModeValue,
   Wireframe,
+  type FillLayerItem,
 } from '../components';
 import {
   filterStringUsesEngineTimePost,
@@ -855,6 +860,18 @@ export abstract class Drawcall {
       s.hasSomeOf(FillImage, FillTexture, FillGradient, FillPattern)
     ) {
       return true;
+    }
+    if (s.has(FillLayers)) {
+      const enabled = getEnabledFillLayers(s);
+      if (enabled.length >= 2 && fillLayersNeedFillImage(enabled)) {
+        return true;
+      }
+      if (enabled.length >= 2 && fillLayersShouldPrecompose(enabled)) {
+        return true;
+      }
+      if (enabled.length === 1) {
+        return true;
+      }
     }
     if (
       s.has(FillSolid) &&

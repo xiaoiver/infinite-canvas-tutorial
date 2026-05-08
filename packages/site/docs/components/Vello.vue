@@ -56,7 +56,7 @@ onMounted(async () => {
       {
         id: 'gradient-1',
         type: 'rect',
-        fill: 'linear-gradient(to right, red, blue)',
+        fills: [{ type: 'gradient', value: 'linear-gradient(to right, red, blue)', opacity: 1 }],
         x: 300,
         y: 200,
         width: 100,
@@ -66,7 +66,7 @@ onMounted(async () => {
       {
         id: 'gradient-2',
         type: 'rect',
-        fill: 'radial-gradient(circle at center, red, blue, green 100%)',
+        fills: [{ type: 'gradient', value: 'radial-gradient(circle at center, red, blue, green 100%)', opacity: 1 }],
         x: 400,
         y: 200,
         width: 100,
@@ -76,7 +76,7 @@ onMounted(async () => {
       {
         id: 'gradient-3',
         type: 'rect',
-        fill: 'conic-gradient(#eee, black, #eee)',
+        fills: [{ type: 'gradient', value: 'conic-gradient(#eee, black, #eee)', opacity: 1 }],
         x: 500,
         y: 200,
         width: 100,
@@ -86,7 +86,7 @@ onMounted(async () => {
       {
         id: 'gradient-4',
         type: 'rect',
-        fill: `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%)`,
+        fills: [{ type: 'gradient', value: `linear-gradient(217deg, rgba(255,0,0,.8), rgba(255,0,0,0) 70.71%)`, opacity: 1 }],
         x: 600,
         y: 200,
         width: 200,
@@ -99,7 +99,7 @@ onMounted(async () => {
       {
         id: 'rough-1',
         type: 'rough-rect',
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         stroke: 'blue',
         strokeWidth: 1,
         x: 500,
@@ -110,7 +110,7 @@ onMounted(async () => {
       {
         id: 'rough-2',
         type: 'rough-ellipse',
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         stroke: 'blue',
         strokeWidth: 1,
         roughFillStyle: 'dots',
@@ -124,7 +124,7 @@ onMounted(async () => {
         id: 'rough-3',
         type: 'rough-path',
         d: 'M 700 120 L 800 200 L 900 100 Z',
-        fill: 'red',
+        fills: [{ type: 'solid', value: 'red', opacity: 1 }],
         stroke: 'blue',
         strokeWidth: 1,
         roughFillStyle: 'cross-hatch',
@@ -187,7 +187,7 @@ onMounted(async () => {
         {
           id: 'image-1',
           type: 'rect',
-          fill: '/canvas.png',
+          fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
           x: 500,
           y: 0,
           width: 100,
@@ -208,7 +208,7 @@ onMounted(async () => {
         {
           id: 'text-1',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (top)',
           anchorX: 50,
           anchorY: 50,
@@ -231,7 +231,7 @@ onMounted(async () => {
         {
           id: 'text-2',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (hanging)',
           anchorX: 50,
           anchorY: 100,
@@ -254,7 +254,7 @@ onMounted(async () => {
         {
           id: 'text-3',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (middle)',
           anchorX: 50,
           anchorY: 150,
@@ -277,7 +277,7 @@ onMounted(async () => {
         {
           id: 'text-4',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (alphabetic)',
           anchorX: 50,
           anchorY: 200,
@@ -300,7 +300,7 @@ onMounted(async () => {
         {
           id: 'text-5',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (ideographic)',
           anchorX: 50,
           anchorY: 250,
@@ -323,7 +323,7 @@ onMounted(async () => {
         {
           id: 'text-6',
           type: 'text',
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           content: 'Abcdefghijklmnop (bottom)\nAbcdefghijklmnop ',
           anchorX: 50,
           anchorY: 300,

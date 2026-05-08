@@ -339,6 +339,17 @@ void main() {
 
   #ifdef USE_FILLIMAGE
     fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+    #ifndef USE_INSTANCES
+      if (u_FilterExtras.w > 0.5) {
+        fillColor = vec4(0.0);
+      } else {
+        float _layerAlphaMul =
+          (dot(u_FillColor.rgb, vec3(1.0)) < 0.001 && u_FillColor.a < 0.001)
+            ? 1.0
+            : u_FillColor.a;
+        fillColor.a *= _layerAlphaMul;
+      }
+    #endif
   #endif
 
   float compressed = shapeSizeAttenuation;
@@ -404,7 +415,11 @@ void main() {
   outputColor = color;
 
   float innerShadowBlurRadius = innerShadow.z / 2.0;
-  if (innerShadowBlurRadius > 0.0) {
+  if (innerShadowBlurRadius > 0.0
+#if !defined(USE_INSTANCES)
+      && u_FilterExtras.z < 0.5
+#endif
+  ) {
     vec2 shadowOffset = -innerShadow.xy;
     float blurRadius = innerShadow.z;
     float distMul = -1.0;

@@ -31,6 +31,7 @@ import {
   RectSerializedNode,
   Selected,
   Pen,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -72,6 +73,7 @@ describe('Transformer when rotate', () => {
             DropShadow,
             ZIndex,
             Selected,
+            Opacity,
           ).write,
       );
 
@@ -94,7 +96,7 @@ describe('Transformer when rotate', () => {
         const node: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,

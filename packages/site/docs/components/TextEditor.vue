@@ -39,7 +39,7 @@ onMounted(async () => {
           anchorX: 200,
           anchorY: 120,
           fontSize: 48,
-          fill: 'black',
+          fills: [{ type: 'solid', value: 'black', opacity: 1 }],
           fontFamily: 'system-ui',
         }
       ]

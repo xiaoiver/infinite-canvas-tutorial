@@ -208,7 +208,7 @@ export class ChatPanel extends LitElement {
         selectedNodes
           .map(async (node) => {
             if (node.type === 'rect') {
-              return node.fill;
+              return node.fills?.[0]?.value;
             } else {
               const dataURL = toSVGDataURL(await toSVGElement(this.api, [node]));
               const pngDataURL = await svgToPng(
@@ -291,7 +291,7 @@ export class ChatPanel extends LitElement {
           const newImage: RectSerializedNode = {
             id: uuidv4(),
             type: 'rect',
-            fill: image.url,
+            fills: [{ type: 'image', value: image.url, opacity: 1 }],
             lockAspectRatio: true,
             x: minX,
             y: maxY + 30,
@@ -370,7 +370,7 @@ export class ChatPanel extends LitElement {
                         ?focused=${this.appState.layersSelected
                   .map((id) => this.api.getNodeById(id))
                   .filter((node) => node.type === 'rect')
-                  .map((node) => node.fill)
+                  .map((node) => node.fills?.[0]?.value)
                   .includes(image.url)}
                       >
                         <img src="${image.url}" alt="Demo Image" />

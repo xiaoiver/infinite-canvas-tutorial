@@ -111,7 +111,7 @@ describe('Export SVG', () => {
           {
             id: 'text-1',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Test',
             anchorX: 50,
             anchorY: 50,
@@ -122,7 +122,7 @@ describe('Export SVG', () => {
           {
             id: 'text-2',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Test',
             anchorX: 50,
             anchorY: 100,
@@ -134,7 +134,7 @@ describe('Export SVG', () => {
           {
             id: 'text-3',
             type: 'text',
-            fill: 'black',
+            fills: [{ type: 'solid', value: 'black', opacity: 1 }],
             content: 'Test',
             anchorX: 50,
             anchorY: 150,

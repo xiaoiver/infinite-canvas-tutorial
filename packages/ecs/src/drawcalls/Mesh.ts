@@ -10,10 +10,12 @@ import {
   VertexStepMode,
   CompareFunction,
   BindingsDescriptor,
+  Bindings,
   TransparentBlack,
   Texture,
   PrimitiveTopology,
   TextureUsage,
+  type RenderPipeline,
 } from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
@@ -30,6 +32,16 @@ import {
   triangulate,
 } from '../utils';
 import {
+  fillLayerOpacity,
+  fillLayersNeedFillImage,
+  fillLayersShouldPrecompose,
+  getEnabledFillLayers,
+  getMultiFillLayers,
+  getSingleEnabledFillLayer,
+  type FillLayerItem,
+} from '../utils/fillLayers';
+import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
+import {
   getRasterFilterValueForShape,
   parseEffect,
   filterRasterPostEffects,
@@ -41,11 +53,16 @@ import {
   getShapePixelBoundsForFillImage,
   resolveFillImageTexturePixelSize,
 } from '../utils/fillImageTextureSize';
+import {
+  transparentFillLayerCanvas,
+  trySyncRasterizeImageUrlToCanvas,
+} from '../utils/fill-layer-image-url-raster';
 import { createSolidFillMaskRasterForFilter } from '../utils/solidShapeRasterForFilter';
 import {
   ComputedPoints,
   ComputedBounds,
   Ellipse,
+  FillLayers,
   FillGradient,
   FillImage,
   FillPattern,
@@ -78,6 +95,14 @@ export class Mesh extends Drawcall {
   #rawFillImageTexture: Texture | null = null;
   /** True when {@link #texture} is the post-process chain output (do not `destroy` in Mesh.destroy). */
   #fillTextureFromPostChain = false;
+
+  #fillLayerTextures: Texture[] = [];
+  #fillLayerBindings: Bindings[] = [];
+  /** 多层填充中间 pass，禁用 depthWrite，避免同深度后续 pass 被遮挡（与 Rough 水彩一致）。 */
+  #pipelineMultiFillMidPass: RenderPipeline | null = null;
+  #fillLayerBindingsMidPass: Bindings[] = [];
+  #bindingsMultiFillMidPass: Bindings | null = null;
+  #usePrecomposedMultiFill = false;
 
   points: number[] = [];
 
@@ -154,6 +179,106 @@ export class Mesh extends Drawcall {
       tw: Math.max(1, Math.ceil(gw)),
       th: Math.max(1, Math.ceil(gh)),
     };
+  }
+
+  private disposeMeshFillLayerResources(): void {
+    this.#usePrecomposedMultiFill = false;
+    for (const b of this.#fillLayerBindings) {
+      b.destroy();
+    }
+    this.#fillLayerBindings = [];
+    this.#bindingsMultiFillMidPass?.destroy();
+    this.#bindingsMultiFillMidPass = null;
+    for (const b of this.#fillLayerBindingsMidPass) {
+      b.destroy();
+    }
+    this.#fillLayerBindingsMidPass = [];
+    this.#pipelineMultiFillMidPass = null;
+    const clearsMainTexture =
+      this.#texture != null && this.#fillLayerTextures.includes(this.#texture);
+    for (const t of this.#fillLayerTextures) {
+      t.destroy?.();
+    }
+    this.#fillLayerTextures = [];
+    if (clearsMainTexture) {
+      this.#texture = null;
+    }
+  }
+
+  /** Rasterize one {@link FillLayers} entry for mesh fill sampling. */
+  private createMeshFillLayerTexture(
+    instance: Entity,
+    layer: FillLayerItem,
+    minX: number,
+    minY: number,
+    width: number,
+    height: number,
+  ): Texture {
+    if (layer.type === 'image') {
+      const tw = Math.max(1, Math.ceil(width));
+      const th = Math.max(1, Math.ceil(height));
+      const fromUrl = trySyncRasterizeImageUrlToCanvas(layer.value, tw, th);
+      const canvas = fromUrl ?? transparentFillLayerCanvas(width, height);
+      const raw = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: tw,
+        height: th,
+        usage: TextureUsage.SAMPLED,
+      });
+      raw.setImageData([canvas as HTMLCanvasElement]);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+    }
+    if (layer.type === 'solid') {
+      const tw = Math.max(1, Math.ceil(width));
+      const th = Math.max(1, Math.ceil(height));
+      const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(layer.value);
+      let canvas: HTMLCanvasElement | OffscreenCanvas;
+      if (typeof document !== 'undefined') {
+        const c = document.createElement('canvas');
+        c.width = tw;
+        c.height = th;
+        canvas = c;
+      } else {
+        canvas = new OffscreenCanvas(tw, th);
+      }
+      const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+      if (!ctx) {
+        throw new Error('Canvas 2D required for FillLayers solid raster');
+      }
+      ctx.fillStyle = `rgba(${fr},${fg},${fb},${fo})`;
+      ctx.fillRect(0, 0, tw, th);
+      const raw = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: tw,
+        height: th,
+        usage: TextureUsage.SAMPLED,
+      });
+      raw.setImageData([canvas as HTMLCanvasElement]);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+    }
+    const fillGradients = parseGradient(layer.value);
+    const meshFill =
+      fillGradients !== undefined && fillGradients.length === 1
+        ? fillGradients[0]
+        : undefined;
+    if (meshFill && isMeshGradientGradient(meshFill)) {
+      const raw = this.renderMeshGradientTexture(meshFill, 128, 128);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, 128, 128);
+    }
+    const canvas = this.texturePool.getOrCreateGradient({
+      gradients: fillGradients ?? [],
+      min: [minX, minY],
+      width,
+      height,
+    });
+    const texture = this.device.createTexture({
+      format: Format.U8_RGBA_NORM,
+      width: 128,
+      height: 128,
+      usage: TextureUsage.SAMPLED,
+    });
+    texture.setImageData([canvas]);
+    return this.applyRasterFilterChainIfNeeded(instance, texture, 128, 128);
   }
 
   /**
@@ -265,6 +390,21 @@ export class Mesh extends Drawcall {
     const fa = getRasterFilterValueForShape(this.shapes[0]);
     const fb = getRasterFilterValueForShape(shape);
     if (Boolean(fa) !== Boolean(fb) || (fa && fb && fa !== fb)) {
+      return false;
+    }
+
+    const fl0 = this.shapes[0].has(FillLayers)
+      ? this.shapes[0].read(FillLayers).layers
+      : null;
+    const fl1 = shape.has(FillLayers) ? shape.read(FillLayers).layers : null;
+    if ((fl0 == null) !== (fl1 == null)) {
+      return false;
+    }
+    if (
+      fl0 &&
+      fl1 &&
+      JSON.stringify(fl0) !== JSON.stringify(fl1)
+    ) {
       return false;
     }
 
@@ -387,6 +527,7 @@ export class Mesh extends Drawcall {
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
     this.createProgram(vert, frag, defines);
+    this.disposeMeshFillLayerResources();
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize:
@@ -429,6 +570,47 @@ export class Mesh extends Drawcall {
     });
     this.device.setResourceName(this.pipeline, 'MeshPipeline');
 
+    const multiFillForDepthPass =
+      !this.instanced && this.shapes[0]?.has(FillLayers)
+        ? getMultiFillLayers(this.shapes[0])
+        : null;
+    const useMultiFillMidDepthPipeline =
+      multiFillForDepthPass != null && multiFillForDepthPass.length > 1;
+    if (useMultiFillMidDepthPipeline) {
+      this.#pipelineMultiFillMidPass = this.renderCache.createRenderPipeline({
+        inputLayout: this.inputLayout,
+        program: this.program,
+        colorAttachmentFormats: [Format.U8_RGBA_RT],
+        depthStencilAttachmentFormat: Format.D24_S8,
+        topology: PrimitiveTopology.TRIANGLES,
+        megaStateDescriptor: {
+          attachmentsState: [
+            {
+              channelWriteMask: ChannelWriteMask.ALL,
+              rgbBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.SRC_ALPHA,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+              alphaBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.ONE,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+            },
+          ],
+          blendConstant: TransparentBlack,
+          depthWrite: false,
+          depthCompare: CompareFunction.GREATER,
+          ...this.stencilDescriptor,
+        },
+      });
+      this.device.setResourceName(
+        this.#pipelineMultiFillMidPass,
+        'MeshPipelineMultiFillMidPass',
+      );
+    }
+
     const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
@@ -457,7 +639,65 @@ export class Mesh extends Drawcall {
         this.#rawFillImageTexture = null;
       }
 
-      if (instance.has(FillGradient) || instance.has(FillPattern)) {
+      const multiForTex = getMultiFillLayers(instance);
+      const needsFillLayerRaster =
+        multiForTex &&
+        (fillLayersNeedFillImage(multiForTex) ||
+          fillLayersShouldPrecompose(multiForTex));
+      if (needsFillLayerRaster && multiForTex) {
+        const { minX, minY, maxX, maxY } =
+          instance.read(ComputedBounds).geometryBounds;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        this.#fillLayerTextures = multiForTex.map((layer) =>
+          this.createMeshFillLayerTexture(
+            instance,
+            layer,
+            minX,
+            minY,
+            width,
+            height,
+          ),
+        );
+        if (fillLayersShouldPrecompose(multiForTex)) {
+          const w = Math.max(1, Math.ceil(width));
+          const h = Math.max(1, Math.ceil(height));
+          const composed = composeFillLayerTexturesOnGpu(
+            this.device,
+            this.renderCache,
+            multiForTex,
+            this.#fillLayerTextures,
+            w,
+            h,
+            () => this.createSampler(),
+          );
+          for (const t of this.#fillLayerTextures) {
+            t.destroy?.();
+          }
+          this.#fillLayerTextures = [];
+          this.#texture = composed;
+          this.#usePrecomposedMultiFill = true;
+        } else {
+          this.#texture = this.#fillLayerTextures[0]!;
+          this.#usePrecomposedMultiFill = false;
+        }
+      } else if (instance.has(FillLayers)) {
+        const one = getSingleEnabledFillLayer(instance);
+        if (one) {
+          const { minX, minY, maxX, maxY } =
+            instance.read(ComputedBounds).geometryBounds;
+          const width = maxX - minX;
+          const height = maxY - minY;
+          this.#texture = this.createMeshFillLayerTexture(
+            instance,
+            one,
+            minX,
+            minY,
+            width,
+            height,
+          );
+        }
+      } else if (instance.has(FillGradient) || instance.has(FillPattern)) {
         const { minX, minY, maxX, maxY } =
           instance.read(ComputedBounds).geometryBounds;
         const width = maxX - minX;
@@ -582,6 +822,50 @@ export class Mesh extends Drawcall {
     }
 
     this.bindings = this.renderCache.createBindings(bindings);
+
+    if (useMultiFillMidDepthPipeline && this.#pipelineMultiFillMidPass) {
+      const midDesc: BindingsDescriptor = {
+        pipeline: this.#pipelineMultiFillMidPass,
+        uniformBufferBindings: bindings.uniformBufferBindings!,
+      };
+      if (bindings.samplerBindings) {
+        midDesc.samplerBindings = bindings.samplerBindings;
+      }
+      this.#bindingsMultiFillMidPass =
+        this.renderCache.createBindings(midDesc);
+    }
+
+    if (this.#fillLayerTextures.length > 0 && bindings.samplerBindings) {
+      const layerSampler = this.createSampler();
+      this.#fillLayerBindings = this.#fillLayerTextures.map((tex) =>
+        this.renderCache.createBindings({
+          pipeline: this.pipeline,
+          uniformBufferBindings: bindings.uniformBufferBindings!,
+          samplerBindings: [
+            {
+              texture: tex,
+              sampler: layerSampler,
+            },
+          ],
+        }),
+      );
+      if (useMultiFillMidDepthPipeline && this.#pipelineMultiFillMidPass) {
+        const layerSamplerMid = this.createSampler();
+        this.#fillLayerBindingsMidPass = this.#fillLayerTextures.map(
+          (tex) =>
+            this.renderCache.createBindings({
+              pipeline: this.#pipelineMultiFillMidPass!,
+              uniformBufferBindings: bindings.uniformBufferBindings!,
+              samplerBindings: [
+                {
+                  texture: tex,
+                  sampler: layerSamplerMid,
+                },
+              ],
+            }),
+        );
+      }
+    }
   }
 
   /** Rough.js solid fill is one contour; watercolor uses many overlapping layers. */
@@ -613,6 +897,81 @@ export class Mesh extends Drawcall {
     //   this.shapes.some((shape) => shape.renderDirtyFlag) ||
     //   this.geometryDirty
     // ) {
+    const shape = this.shapes[0];
+    const multi = getMultiFillLayers(shape);
+    if (multi && !this.#usePrecomposedMultiFill) {
+      if (this.useWireframe && this.geometryDirty) {
+        this.generateWireframe();
+      }
+      const { matrix } = shape.read(GlobalTransform);
+      const u_ModelMatrix = [
+        matrix.m00,
+        matrix.m01,
+        matrix.m02,
+        matrix.m10,
+        matrix.m11,
+        matrix.m12,
+        matrix.m20,
+        matrix.m21,
+        matrix.m22,
+      ] as mat3;
+      const needLayerTex = fillLayersNeedFillImage(multi);
+      for (let i = 0; i < multi.length; i++) {
+        const isMidFillPass = multi.length > 1 && i < multi.length - 1;
+        const fillPipeline =
+          isMidFillPass && this.#pipelineMultiFillMidPass
+            ? this.#pipelineMultiFillMidPass
+            : this.pipeline;
+        const [buffer, legacyObject] = this.generateBuffer(shape, {
+          kind: 'fill-layer',
+          layerIndex: i,
+        });
+        this.#uniformBuffer.setSubData(
+          0,
+          new Uint8Array(
+            new Float32Array([
+              ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
+              ...buffer,
+            ]).buffer,
+          ),
+        );
+        const uniformLegacyObject: Record<string, unknown> = {
+          u_ModelMatrix,
+          ...legacyObject,
+        };
+        if (needLayerTex) {
+          uniformLegacyObject.u_FillImage = this.#fillLayerTextures[i];
+        }
+        const merged = {
+          ...uniformLegacyObject,
+          ...sceneUniformLegacyObject,
+        };
+        this.program.setUniformsLegacy(merged);
+
+        renderPass.setPipeline(fillPipeline);
+        const vertexBuffers = this.vertexBuffers.map((b) => ({ buffer: b }));
+        if (this.useWireframe) {
+          vertexBuffers.push({ buffer: this.barycentricBuffer });
+        }
+        renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
+          buffer: this.indexBuffer,
+        });
+        const fillBindings = needLayerTex
+          ? isMidFillPass && this.#fillLayerBindingsMidPass.length > 0
+            ? this.#fillLayerBindingsMidPass[i]!
+            : this.#fillLayerBindings[i]!
+          : isMidFillPass && this.#bindingsMultiFillMidPass
+            ? this.#bindingsMultiFillMidPass
+            : this.bindings!;
+        renderPass.setBindings(fillBindings);
+        if (this.useStencil || this.parentClipMode) {
+          renderPass.setStencilReference(STENCIL_CLIP_REF);
+        }
+        renderPass.drawIndexed(this.indexBufferData.length, this.shapes.length);
+      }
+      return;
+    }
+
     const { matrix } = this.shapes[0].read(GlobalTransform);
     const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
     const u_ModelMatrix = [
@@ -667,6 +1026,7 @@ export class Mesh extends Drawcall {
   }
 
   destroy(): void {
+    this.disposeMeshFillLayerResources();
     this.destroyFullPostProcessingChain();
     this.#rawFillImageTexture?.destroy();
     this.#rawFillImageTexture = null;
@@ -681,16 +1041,38 @@ export class Mesh extends Drawcall {
     }
   }
 
-  private generateBuffer(shape: Entity): [number[], Record<string, unknown>] {
+  private generateBuffer(
+    shape: Entity,
+    multiFill?: { kind: 'fill-layer'; layerIndex: number },
+  ): [number[], Record<string, unknown>] {
     const sizeAttenuation = 0;
     const globalRenderOrder = shape.has(GlobalRenderOrder)
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: null };
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    let fill: string | null = shape.has(FillSolid)
+      ? shape.read(FillSolid).value
+      : null;
+    const multiLayers = getMultiFillLayers(shape);
+    const enabledFill = getEnabledFillLayers(shape);
+    if (multiFill?.kind === 'fill-layer' && multiLayers) {
+      const L = multiLayers[multiFill.layerIndex];
+      fill = L.type === 'solid' ? L.value : '#ffffff';
+    } else if (
+      !multiFill &&
+      enabledFill.length === 1 &&
+      shape.has(FillLayers) &&
+      !shape.has(FillSolid) &&
+      !shape.has(FillGradient)
+    ) {
+      const L = enabledFill[0];
+      fill = L.type === 'solid' ? L.value : '#ffffff';
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      fill = '#ffffff';
+    }
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+      fill != null && fill !== '' ? fill : 'transparent',
+    );
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)
@@ -709,7 +1091,13 @@ export class Mesh extends Drawcall {
     let minY = 0;
     let invWidth = 0;
     let invHeight = 0;
-    if (shape.has(FillGradient) || shape.has(FillPattern)) {
+    if (
+      shape.has(FillGradient) ||
+      shape.has(FillPattern) ||
+      (multiLayers != null && fillLayersNeedFillImage(multiLayers)) ||
+      (shape.has(FillLayers) &&
+        (fillLayersNeedFillImage(enabledFill) || this.#usePrecomposedMultiFill))
+    ) {
       const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
       const geometryWidth = gMaxX - gMinX;
       const geometryHeight = gMaxY - gMinY;
@@ -732,7 +1120,45 @@ export class Mesh extends Drawcall {
       invHeight = 0;
     }
 
-    const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
+    let frN = fr / 255;
+    let fgN = fg / 255;
+    let fbN = fb / 255;
+    let fa = fo;
+    if (multiFill?.kind === 'fill-layer' && multiLayers) {
+      const L = multiLayers[multiFill.layerIndex];
+      const lo = fillLayerOpacity(L.opacity);
+      if (L.type === 'gradient') {
+        frN = 1;
+        fgN = 1;
+        fbN = 1;
+        fa = lo;
+      } else {
+        fa = fo * lo;
+      }
+    } else if (
+      !multiFill &&
+      enabledFill.length === 1 &&
+      shape.has(FillLayers) &&
+      !shape.has(FillSolid) &&
+      !shape.has(FillGradient)
+    ) {
+      const L = enabledFill[0];
+      const lo = fillLayerOpacity(L.opacity);
+      if (L.type === 'gradient') {
+        frN = 1;
+        fgN = 1;
+        fbN = 1;
+        fa = lo;
+      } else {
+        fa = fo * lo;
+      }
+    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+      frN = 1;
+      fgN = 1;
+      fbN = 1;
+      fa = 1;
+    }
+    const u_FillColor = [frN, fgN, fbN, fa];
     const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
     const u_ZIndexStrokeWidth = [
       globalRenderOrder / ZINDEX_FACTOR,

@@ -8,7 +8,13 @@ export const WebWorkerAdapter: Adapter = {
   createCanvas: (width?: number, height?: number) =>
     new OffscreenCanvas(width ?? 0, height ?? 0),
   createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
-  createImage: (src: string) => load(src, ImageLoader),
+  createImage: (src: string | Blob) => {
+    if (typeof src === 'string') {
+      return load(src, ImageLoader);
+    }
+    const url = URL.createObjectURL(src);
+    return load(url, ImageLoader).finally(() => URL.revokeObjectURL(url));
+  },
   getWindow: () => self,
   getDocument: () => null,
   /**

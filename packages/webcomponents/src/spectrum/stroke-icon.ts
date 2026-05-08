@@ -61,7 +61,7 @@ export class StrokeIcon extends LitElement {
       exportFillGradientOrPattern(
         {
           ...base,
-          fill: displayValue,
+          fills: [{ type: 'solid', value: displayValue, opacity: 1 }],
         } as SerializedNode,
         $path,
         $g,

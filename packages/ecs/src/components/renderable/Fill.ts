@@ -1,6 +1,56 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { Texture } from '@infinite-canvas-tutorial/device-api';
 import { type Pattern } from '../../utils';
+import type { FillLayerBlendMode } from '../../types/fill-layer-blend';
+
+export type { FillLayerBlendMode };
+
+/**
+ * 单层填充描述，多条按顺序从底到顶以 Normal（source-over）叠加。
+ * 仅当 {@link FillLayers.layers} 长度 ≥ 2 时参与渲染；单条请继续使用 {@link FillSolid} 等。
+ */
+/**
+ * `opacity` 为 0–1，缺省 1；与实体 {@link Opacity.fillOpacity} 相乘。
+ * `enabled` 为 false 时跳过该层（缺省为启用）。
+ */
+export type FillLayerItem =
+  | {
+      type: 'solid';
+      value: string;
+      /** 0–1；线框上可为设计变量引用字符串 */
+      opacity?: number | string;
+      enabled?: boolean;
+      /**
+       * 与同层下方已绘制内容的混合模式；缺省为 `normal`（source-over 栈上的下一层）。
+       * 非 `normal` 时在 GPU 上预合成到单层纹理再参与形状渲染。
+       */
+      blendMode?: FillLayerBlendMode;
+    }
+  | {
+      type: 'gradient';
+      value: string;
+      opacity?: number | string;
+      enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
+    }
+  | {
+      type: 'image';
+      value: string;
+      opacity?: number | string;
+      enabled?: boolean;
+      blendMode?: FillLayerBlendMode;
+    };
+
+export class FillLayers {
+  @field({ type: Type.object, default: () => [] })
+  declare layers: FillLayerItem[];
+
+  constructor(layers?: FillLayerItem[]) {
+    if (layers) {
+      this.layers = layers;
+    }
+  }
+}
 
 export class FillSolid {
   /**

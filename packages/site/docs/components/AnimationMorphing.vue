@@ -36,8 +36,8 @@ function startAnimation() {
   animation = api.animate(
     demoNode,
     [
-      { d: rectPath, fill: 'green' },
-      { d: starPath, fill: 'red' },
+      { d: rectPath, fills: [{ type: 'solid', value: 'green', opacity: 1 }] },
+      { d: starPath, fills: [{ type: 'solid', value: 'red', opacity: 1 }] },
     ],
     {
       duration: 1000,
@@ -96,7 +96,7 @@ onMounted(async () => {
       d: rectPath,
       stroke: 'black',
       strokeWidth: 10,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
       zIndex: 10,
     };
 

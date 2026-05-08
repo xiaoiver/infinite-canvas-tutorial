@@ -33,6 +33,7 @@ import {
   Binded,
   Binding,
   Editable,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -76,6 +77,7 @@ describe('Draw line', () => {
             Name,
             ZIndex,
             Editable,
+            Opacity,
           ).write,
       );
 

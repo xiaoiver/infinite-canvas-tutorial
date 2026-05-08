@@ -14,6 +14,7 @@ import type {
   FillAttributes,
   StrokeAttributes,
 } from '../types/serialized-node';
+import { getPrimaryFillValue } from './normalize-fill-wire';
 
 /**
  * 与 Iconify `icons[name]` 一项对齐：可有 `body`，以及该项的视口。
@@ -118,7 +119,7 @@ export function resolveIconFontWireStyle(
   rSw: unknown;
 } {
   const wireStroke = (attributes as StrokeAttributes).stroke;
-  const wireFill = (attributes as FillAttributes).fill;
+  const wireFill = getPrimaryFillValue(attributes as FillAttributes);
   const wireSw = (attributes as StrokeAttributes).strokeWidth;
   const rStrokeS =
     wireStroke != null
