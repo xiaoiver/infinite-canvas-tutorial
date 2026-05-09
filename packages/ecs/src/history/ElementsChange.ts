@@ -19,6 +19,7 @@ import { hasRasterPostEffects } from '../utils/filter';
 import {
   resolveDesignVariableValue,
   designVariableRefKeyFromWire,
+  resolveFillLayerItemsForEcs,
 } from '../utils/design-variables';
 import type {
   FillAttributes,
@@ -74,7 +75,6 @@ import {
   IconFont,
   IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
-import { isFillLayerEnabled } from '../utils/fillLayers';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
 import {
@@ -1021,112 +1021,38 @@ function applyFillsWireMutation(
     return false;
   }
 
-  if (wireArr.length >= 2) {
+  if (wireArr.length === 0) {
+    safeRemoveComponent(entity, FillLayers);
     safeRemoveComponent(entity, FillSolid);
     safeRemoveComponent(entity, FillGradient);
     safeRemoveComponent(entity, FillImage);
     safeRemoveComponent(entity, FillPattern);
-    if (!entity.has(FillLayers)) {
-      safeAddComponent(entity, FillLayers);
-    }
-    entity.write(FillLayers).layers = (wireArr as SerializedFillLayerItem[]).map(
-      (L) => ({ ...L }),
-    );
     safeAddComponent(entity, MaterialDirty);
     if (entity.has(Opacity)) {
       entity.write(Opacity).fillOpacity = 1;
-    } else {
-      safeAddComponent(entity, Opacity, { fillOpacity: 1 });
     }
     return true;
   }
 
-  if (wireArr.length === 1) {
-    const L = wireArr[0]!;
-    safeRemoveComponent(entity, FillLayers);
-
-    if (L.type === 'gradient' && isFillLayerEnabled(L)) {
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillImage);
-      safeRemoveComponent(entity, FillPattern);
-      safeAddComponent(entity, MaterialDirty);
-      safeAddComponent(entity, FillGradient, { value: L.value });
-    } else if (L.type === 'image' && isFillLayerEnabled(L)) {
-      const resolvedFill = resolveDesignVariableValue(
-        L.value,
-        designVariables,
-        themeMode,
-      );
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillGradient);
-      safeRemoveComponent(entity, FillPattern);
-      safeAddComponent(entity, MaterialDirty);
-      loadImage(String(resolvedFill ?? ''), entity);
-    } else if (L.type === 'solid' && isFillLayerEnabled(L)) {
-      const resolvedFill = resolveDesignVariableValue(
-        L.value,
-        designVariables,
-        themeMode,
-      );
-      if (isGradient(resolvedFill)) {
-        safeRemoveComponent(entity, FillSolid);
-        safeRemoveComponent(entity, FillImage);
-        safeRemoveComponent(entity, FillPattern);
-        safeAddComponent(entity, MaterialDirty);
-        safeAddComponent(entity, FillGradient, {
-          value: resolvedFill as string,
-        });
-      } else if (isDataUrl(resolvedFill) || isUrl(resolvedFill)) {
-        safeRemoveComponent(entity, FillSolid);
-        safeRemoveComponent(entity, FillGradient);
-        safeRemoveComponent(entity, FillPattern);
-        safeAddComponent(entity, MaterialDirty);
-        loadImage(resolvedFill, entity);
-      } else {
-        if (entity.has(FillGradient) || entity.has(FillImage) || entity.has(FillPattern)) {
-          safeAddComponent(entity, MaterialDirty);
-        }
-        safeRemoveComponent(entity, FillGradient);
-        safeRemoveComponent(entity, FillImage);
-        safeRemoveComponent(entity, FillPattern);
-        safeAddComponent(entity, FillSolid, {
-          value: resolvedFill as string,
-          fillVariableRef: designVariableRefKeyFromWire(
-            typeof L.value === 'string' ? L.value : undefined,
-          ),
-        });
-      }
-    } else {
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillGradient);
-      safeRemoveComponent(entity, FillImage);
-      safeRemoveComponent(entity, FillPattern);
-      safeAddComponent(entity, MaterialDirty);
-    }
-
-    const to01 = (v: unknown): number => {
-      if (v === undefined || v === null) {
-        return 1;
-      }
-      const n = typeof v === 'number' ? v : parseFloat(String(v));
-      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-    };
-    const mul = isFillLayerEnabled(L)
-      ? to01(
-        resolveDesignVariableValue(
-          L.opacity ?? 1,
-          designVariables,
-          themeMode,
-        ),
-      )
-      : 1;
-    safeAddComponent(entity, Opacity, { fillOpacity: mul });
-    return true;
+  safeRemoveComponent(entity, FillSolid);
+  safeRemoveComponent(entity, FillGradient);
+  safeRemoveComponent(entity, FillImage);
+  safeRemoveComponent(entity, FillPattern);
+  if (!entity.has(FillLayers)) {
+    safeAddComponent(entity, FillLayers);
   }
-
-  safeRemoveComponent(entity, FillLayers);
+  entity.write(FillLayers).layers = resolveFillLayerItemsForEcs(
+    wireArr as SerializedFillLayerItem[],
+    designVariables,
+    themeMode,
+  );
   safeAddComponent(entity, MaterialDirty);
-  return false;
+  if (entity.has(Opacity)) {
+    entity.write(Opacity).fillOpacity = 1;
+  } else {
+    safeAddComponent(entity, Opacity, { fillOpacity: 1 });
+  }
+  return true;
 }
 
 // This function tracks updates of text elements for the purposes for collaboration.

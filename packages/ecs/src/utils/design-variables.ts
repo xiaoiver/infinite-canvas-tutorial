@@ -3,7 +3,10 @@
  * @see https://docs.pencil.dev/for-developers/the-pen-format#variables-and-themes
  */
 
-import type { SerializedNode } from '../types/serialized-node';
+import type {
+  SerializedFillLayerItem,
+  SerializedNode,
+} from '../types/serialized-node';
 import { ThemeMode } from '../components/Theme';
 
 export type DesignVariableType = 'color' | 'number' | 'string';
@@ -482,6 +485,27 @@ export function resolveDesignVariableValue<T>(
     return value;
   }
   return resolveDesignVariableDefinitionScalar(def, themeMode) as T;
+}
+
+/**
+ * 解析各层 `value` / `opacity` 上的 `$` 引用，供写入 ECS {@link FillLayers}。
+ * GPU 侧 `parseColor` 需要字面量颜色；线框节点上的 `fills` 仍保留原始 `$` 字符串。
+ */
+export function resolveFillLayerItemsForEcs(
+  layers: SerializedFillLayerItem[],
+  variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
+): SerializedFillLayerItem[] {
+  return layers.map((layer) => {
+    const L = { ...layer } as Record<string, unknown>;
+    if (typeof L.value === 'string') {
+      L.value = resolveDesignVariableValue(L.value, variables, themeMode);
+    }
+    if (typeof L.opacity === 'string') {
+      L.opacity = resolveDesignVariableValue(L.opacity, variables, themeMode);
+    }
+    return L as SerializedFillLayerItem;
+  });
 }
 
 /**

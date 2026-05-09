@@ -14,10 +14,9 @@ import {
   Culled,
   DropShadow,
   Ellipse,
-  FillGradient,
   FillImage,
+  FillLayers,
   FillPattern,
-  FillSolid,
   FillTexture,
   FractionalIndex,
   GlobalRenderOrder,
@@ -80,7 +79,6 @@ import {
   addBrush,
   addPolyline,
   addText,
-  addImageRect,
   addGroup,
   addRoughRect,
   clearShapes,
@@ -121,6 +119,66 @@ function colorToRgba(colorStr: string): [number, number, number, number] {
   const rgb = parseColor(colorStr);
   if (!rgb) return [0, 0, 0, 1];
   return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
+}
+
+function velloFillLayerOpacity(o?: number | string): number {
+  if (o == null || o === '') {
+    return 1;
+  }
+  if (typeof o === 'number') {
+    return Number.isNaN(o) ? 1 : Math.min(1, Math.max(0, o));
+  }
+  const n = parseFloat(String(o));
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
+}
+
+function velloGetEnabledFillLayers(entity: Entity) {
+  if (!entity.has(FillLayers)) {
+    return [];
+  }
+  const raw = entity.read(FillLayers).layers;
+  if (!raw?.length) {
+    return [];
+  }
+  return raw.filter((l) => l.enabled !== false);
+}
+
+/** 与 ECS {@link fill-layer-image-url-raster.trySyncRasterizeImageUrlToCanvas} 同逻辑，避免在未重建 ecs typings 时的包环依赖。 */
+function trySyncRasterizeImageUrlForVello(
+  url: string,
+  width: number,
+  height: number,
+): HTMLCanvasElement | OffscreenCanvas | null {
+  if (typeof Image === 'undefined' || !url) {
+    return null;
+  }
+  const tw = Math.max(1, Math.ceil(width));
+  const th = Math.max(1, Math.ceil(height));
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = url;
+  if (!img.complete || img.naturalWidth === 0) {
+    return null;
+  }
+  let canvas: HTMLCanvasElement | OffscreenCanvas;
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = tw;
+    c.height = th;
+    canvas = c;
+  } else {
+    canvas = new OffscreenCanvas(tw, th);
+  }
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (!ctx) {
+    return null;
+  }
+  try {
+    ctx.drawImage(img, 0, 0, tw, th);
+  } catch {
+    return null;
+  }
+  return canvas;
 }
 
 type FillGradientSpec = {
@@ -227,6 +285,129 @@ function buildFillGradients(
     if (spec) result.push(spec);
   }
   return result;
+}
+
+/** 与 Rust `WasmFillPaint` 对齐（`kind`：solid | gradient | image）。 */
+function buildVelloWasmFills(
+  entity: Entity,
+  min: [number, number],
+  width: number,
+  height: number,
+): Record<string, unknown>[] {
+  if (!entity.has(FillLayers)) {
+    return [];
+  }
+  const layers = velloGetEnabledFillLayers(entity);
+  const opacity = entity.has(Opacity) ? entity.read(Opacity).opacity : 1;
+  const fo = entity.has(Opacity) ? entity.read(Opacity).fillOpacity : 1;
+  const out: Record<string, unknown>[] = [];
+
+  for (const layer of layers) {
+    const lo = velloFillLayerOpacity(layer.opacity);
+    if (layer.type === 'solid') {
+      const rgb = parseColor(layer.value);
+      const { r, g, b } = d3.rgb(rgb)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+      const a = (rgb.opacity ?? 1) * lo * fo;
+      if (a < 1e-8) continue;
+      const rgba: [number, number, number, number] = [
+        r / 255,
+        g / 255,
+        b / 255,
+        a,
+      ];
+      out.push({ kind: 'solid', rgba });
+    } else if (layer.type === 'gradient') {
+      let grads = buildFillGradients(layer.value, min, width, height);
+      if (!grads.length) continue;
+      const aScale = lo * fo;
+      if (aScale !== 1) {
+        grads = grads.map((g) => ({
+          ...g,
+          stops: g.stops.map((s) => ({
+            ...s,
+            color: [
+              s.color[0],
+              s.color[1],
+              s.color[2],
+              s.color[3] * aScale,
+            ] as [number, number, number, number],
+          })),
+        }));
+      }
+      out.push({ kind: 'gradient', fillGradients: grads });
+    } else if (layer.type === 'image') {
+      const tw = Math.max(1, Math.ceil(width));
+      const th = Math.max(1, Math.ceil(height));
+      const canvas = trySyncRasterizeImageUrlForVello(layer.value, tw, th);
+      if (!canvas) continue;
+      const imageData = imageToRgba(canvas as TexImageSource);
+      if (!imageData) continue;
+      const scale = lo * fo * opacity;
+      let pixels = imageData.data;
+      if (scale !== 1) {
+        const d = new Uint8Array(imageData.data);
+        for (let i = 3; i < d.length; i += 4) {
+          d[i] = Math.min(255, Math.round(d[i] * scale));
+        }
+        pixels = d;
+      }
+      out.push({
+        kind: 'image',
+        imageWidth: imageData.width,
+        imageHeight: imageData.height,
+        imageData: pixels,
+      });
+    }
+  }
+  return out;
+}
+
+/** Rough 仅支持单色填充；取首个启用层的大致颜色（渐变取首 stops，图片用灰）。 */
+function roughRepresentativeFillRgba(entity: Entity): [
+  number,
+  number,
+  number,
+  number,
+] {
+  const fillOpacity = entity.has(Opacity)
+    ? entity.read(Opacity).fillOpacity
+    : 1;
+  const opacity = entity.has(Opacity) ? entity.read(Opacity).opacity : 1;
+  if (!entity.has(FillLayers)) {
+    return [0, 0, 0, 0];
+  }
+  const enabled = velloGetEnabledFillLayers(entity);
+  for (const layer of enabled) {
+    const lo = velloFillLayerOpacity(layer.opacity);
+    if (layer.type === 'solid') {
+      const rgb = parseColor(layer.value);
+      const { r, g, b } = d3.rgb(rgb)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+      return [
+        r / 255,
+        g / 255,
+        b / 255,
+        (rgb.opacity ?? 1) * lo * fillOpacity * opacity,
+      ];
+    }
+    if (layer.type === 'gradient') {
+      const parsed = parseGradient(layer.value)?.[0] as any;
+      const step0 = parsed?.steps?.[0];
+      if (step0) {
+        const [rf, gf, bf, af] = colorToRgba(step0.color);
+        return [
+          rf,
+          gf,
+          bf,
+          af * lo * fillOpacity * opacity,
+        ];
+      }
+    }
+    if (layer.type === 'image') {
+      const a = lo * fillOpacity * opacity;
+      return [0.5, 0.5, 0.5, a];
+    }
+  }
+  return [0, 0, 0, 0];
 }
 
 /** 将 TexImageSource 转为 RGBA；支持 ImageBitmap、HTMLImageElement 等。 */
@@ -342,11 +523,8 @@ export class VelloPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(RasterAnimationExportRequest).trackWrites,
   );
 
-  private fillSolids = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillSolid).trackWrites,
-  );
-  private fillGradients = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillGradient).trackWrites,
+  private fillLayers = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
   );
   private fillPatterns = this.query(
     (q) => q.addedChangedOrRemoved.with(FillPattern).trackWrites,
@@ -441,9 +619,8 @@ export class VelloPipeline extends System {
             Text,
             ComputedTextMetrics,
             FillImage,
+            FillLayers,
             FillPattern,
-            FillGradient,
-            FillSolid,
             FillTexture,
             FractionalIndex,
             SizeAttenuation,
@@ -608,14 +785,6 @@ export class VelloPipeline extends System {
       };
 
       if (entity.has(Renderable)) {
-        if (entity.has(FillSolid)) {
-          const fillSolid = entity.read(FillSolid).value;
-          const { r, g, b, opacity } =
-            d3.rgb(fillSolid)?.rgb() || d3.rgb(0, 0, 0, 1);
-          baseOpts.fill = [r / 255, g / 255, b / 255, opacity];
-        }
-        // FillGradient 在各自 shape 分支中根据 bounds 计算 fillGradient
-
         if (entity.has(Stroke)) {
           const {
             width,
@@ -694,15 +863,13 @@ export class VelloPipeline extends System {
             rx: r,
             ry: r,
           };
-          if (entity.has(FillGradient)) {
-            const grads = buildFillGradients(
-              entity.read(FillGradient).value,
-              [cx - r, cy - r],
-              2 * r,
-              2 * r,
-            );
-            if (grads.length) opts.fillGradients = grads;
-          }
+          const fills = buildVelloWasmFills(
+            entity,
+            [cx - r, cy - r],
+            2 * r,
+            2 * r,
+          );
+          if (fills.length) opts.fills = fills;
 
           if (entity.has(Rough)) {
             const {
@@ -721,6 +888,7 @@ export class VelloPipeline extends System {
               fillStyle === 'dashed' ? 'hachure' : fillStyle;
             addRoughEllipse(canvasId, {
               ...opts,
+              fill: roughRepresentativeFillRgba(entity),
               roughness,
               bowing,
               fillStyle: fillStyleWasm,
@@ -737,15 +905,13 @@ export class VelloPipeline extends System {
         } else if (entity.has(Ellipse)) {
           const { cx, cy, rx, ry } = entity.read(Ellipse);
           const opts: Record<string, unknown> = { ...baseOpts, cx, cy, rx, ry };
-          if (entity.has(FillGradient)) {
-            const grads = buildFillGradients(
-              entity.read(FillGradient).value,
-              [cx - rx, cy - ry],
-              2 * rx,
-              2 * ry,
-            );
-            if (grads.length) opts.fillGradients = grads;
-          }
+          const fills = buildVelloWasmFills(
+            entity,
+            [cx - rx, cy - ry],
+            2 * rx,
+            2 * ry,
+          );
+          if (fills.length) opts.fills = fills;
 
           if (entity.has(Rough)) {
             const {
@@ -763,6 +929,7 @@ export class VelloPipeline extends System {
               fillStyle === 'dashed' ? 'hachure' : fillStyle;
             addRoughEllipse(canvasId, {
               ...opts,
+              fill: roughRepresentativeFillRgba(entity),
               roughness,
               bowing,
               fillStyle: fillStyleWasm,
@@ -809,27 +976,9 @@ export class VelloPipeline extends System {
             fillBlur: fillBlur ?? 0,
             dropShadow: dropShadow ?? undefined,
           };
-          if (entity.has(FillGradient)) {
-            const grads = buildFillGradients(
-              entity.read(FillGradient).value,
-              [x, y],
-              width,
-              height,
-            );
-            if (grads.length) opts.fillGradients = grads;
-          }
-          if (entity.has(FillImage)) {
-            const fillImage = entity.read(FillImage);
-            const imageData = imageToRgba(fillImage.src);
-            if (imageData) {
-              addImageRect(canvasId, {
-                ...opts,
-                imageWidth: imageData.width,
-                imageHeight: imageData.height,
-                imageData: imageData.data,
-              });
-            }
-          } else if (entity.has(Rough)) {
+          const fills = buildVelloWasmFills(entity, [x, y], width, height);
+          if (fills.length) opts.fills = fills;
+          if (entity.has(Rough)) {
             const {
               roughness,
               bowing,
@@ -845,6 +994,7 @@ export class VelloPipeline extends System {
               fillStyle === 'dashed' ? 'hachure' : fillStyle;
             addRoughRect(canvasId, {
               ...opts,
+              fill: roughRepresentativeFillRgba(entity),
               roughness,
               bowing,
               fillStyle: fillStyleWasm,
@@ -866,16 +1016,16 @@ export class VelloPipeline extends System {
               d,
               fillRule: fillRule ?? 'nonzero',
             };
-            if (entity.has(FillGradient) && entity.has(ComputedBounds)) {
+            if (entity.has(ComputedBounds)) {
               const { minX, minY, maxX, maxY } =
                 entity.read(ComputedBounds).geometryBounds;
-              const grads = buildFillGradients(
-                entity.read(FillGradient).value,
+              const fills = buildVelloWasmFills(
+                entity,
                 [minX, minY],
                 maxX - minX,
                 maxY - minY,
               );
-              if (grads.length) opts.fillGradients = grads;
+              if (fills.length) opts.fills = fills;
             }
 
             if (entity.has(Rough)) {
@@ -894,6 +1044,7 @@ export class VelloPipeline extends System {
                 fillStyle === 'dashed' ? 'hachure' : fillStyle;
               addRoughPath(canvasId, {
                 ...opts,
+                fill: roughRepresentativeFillRgba(entity),
                 roughness,
                 bowing,
                 fillStyle: fillStyleWasm,
@@ -940,16 +1091,16 @@ export class VelloPipeline extends System {
                   }),
                 ) ?? [],
             };
-            if (entity.has(FillGradient) && entity.has(ComputedBounds)) {
+            if (entity.has(ComputedBounds)) {
               const { minX, minY, maxX, maxY } =
                 entity.read(ComputedBounds).geometryBounds;
-              const grads = buildFillGradients(
-                entity.read(FillGradient).value,
+              const fills = buildVelloWasmFills(
+                entity,
                 [minX, minY],
                 maxX - minX,
                 maxY - minY,
               );
-              if (grads.length) opts.fillGradients = grads;
+              if (fills.length) opts.fills = fills;
             }
             addVectorNetwork(canvasId, opts);
           }
@@ -1010,6 +1161,7 @@ export class VelloPipeline extends System {
                 fillStyle === 'dashed' ? 'hachure' : fillStyle;
               addRoughPolyline(canvasId, {
                 ...opts,
+                fill: roughRepresentativeFillRgba(entity),
                 roughness,
                 bowing,
                 fillStyle: fillStyleWasm,
@@ -1233,8 +1385,7 @@ export class VelloPipeline extends System {
 
         if (
           !toRender &&
-          (!!this.fillSolids.addedChangedOrRemoved.length ||
-            !!this.fillGradients.addedChangedOrRemoved.length ||
+          (!!this.fillLayers.addedChangedOrRemoved.length ||
             !!this.fillPatterns.addedChangedOrRemoved.length ||
             !!this.fillTextures.addedChangedOrRemoved.length ||
             !!this.fillImages.addedChangedOrRemoved.length ||

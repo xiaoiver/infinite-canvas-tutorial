@@ -167,7 +167,7 @@ export interface FillAttributes {
   /** 节点整体不透明度（SVG `opacity`），与单层 `fills[].opacity` 不同 */
   opacity?: Opacity['opacity'];
   /**
-   * 填充栈（对齐 Figma `fills`）。历史 `fill` / `fillOpacity` / `fillLayers` 在加载时归一化为此字段。
+   * 填充栈（对齐 Figma `fills`）。可为空数组表示无填充；历史 `fill` / `fillOpacity` / `fillLayers` 在加载时归一化为此字段。
    */
   fills?: SerializedFillLayerItem[];
 }

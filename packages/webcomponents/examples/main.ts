@@ -172,7 +172,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     snapToPixelGridSize: 1,
     // snapToPixelGridEnabled: false,
     // snapToPixelGridSize: 0,
-    snapToObjectsEnabled: true,
+    // snapToObjectsEnabled: true,
     // filter: 'brightness(0.8) noise(0.1)',
     // penbarDrawSizeLabelVisible: true,
     // penbarSelected: Pen.SELECT,
@@ -187,47 +187,39 @@ canvas.addEventListener(Event.READY, async (e) => {
     // filter: 'noise(0.5)',
     // layersLassoing: ['parent'],
     // filter: 'fxaa() brightness(0.8) noise(0.1)',
+    // layersCropping: ['parent-1'],
   });
 
-  api.setAppState({
-    variables: {
-      '--primary': { type: 'color', value: 'red' },
-      '--secondary': { type: 'color', value: 'green' },
-    },
-  });
-
-  const node1: EllipseSerializedNode = {
-    id: '1',
-    type: 'ellipse',
-    fills: [{ type: 'solid', value: '$--primary', opacity: 1 }],
-    x: 0,
+  const parent = {
+    id: 'parent-1',
+    type: 'rect',
+    // clipMode: 'clip',
+    x: 100,
     y: 50,
-    width: 200,
-    height: 100,
-    visibility: 'visible',
-    zIndex: 0,
-  };
-  const node2: EllipseSerializedNode = {
-    id: '2',
-    parentId: '1',
-    type: 'ellipse',
-    fills: [{ type: 'solid', value: '$--secondary', opacity: 1 }],
-    x: 50,
-    y: -50,
     width: 100,
-    height: 200,
-    stroke: 'black',
-    strokeWidth: 10,
-    strokeAlignment: 'center',
-    strokeDasharray: '10 10',
-    visibility: 'visible',
-    zIndex: 0,
+    height: 100,
+    fills: [
+      { type: 'solid', value: 'red', opacity: 0.5 },
+      { type: 'solid', value: 'blue', opacity: 0.5 },
+    ],
   };
+  // const child = {
+  //   id: 'rect-1',
+  //   type: 'rect',
+  //   parentId: 'parent-1',
+  //   x: 0,
+  //   y: 0,
+  //   width: 200,
+  //   height: 200,
+  //   fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
+  //   locked: true,
+  //   lockAspectRatio: true,
+  // };
 
   api.updateNodes([
-    node1,
-    node2,
+    parent
   ]);
+  // api.selectNodes([parent]);
 
   // api.updateNodes([node3]);
   // api.selectNodes([node3]);
@@ -245,11 +237,11 @@ canvas.addEventListener(Event.READY, async (e) => {
   // });
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');

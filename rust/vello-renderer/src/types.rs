@@ -124,6 +124,81 @@ pub struct FillGradientSpec {
     pub stops: Vec<(f32, [f32; 4])>,
 }
 
+/// 与 ECS `FillLayers` 对齐的单层绘制（自下而上叠加；颜色/渐变 stop 已在 JS 乘好全局与不透明度）。
+#[derive(Clone, Debug)]
+pub enum FillPaint {
+    Solid {
+        rgba: [f32; 4],
+    },
+    Gradient {
+        gradients: Vec<FillGradientSpec>,
+    },
+    Image {
+        image_width: u32,
+        image_height: u32,
+        image_data: Vec<u8>,
+    },
+}
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+pub enum WasmFillPaint {
+    Solid {
+        rgba: [f32; 4],
+    },
+    Gradient {
+        #[serde(rename = "fillGradients")]
+        fill_gradients: Vec<FillGradientOptions>,
+    },
+    Image {
+        #[serde(rename = "imageWidth")]
+        image_width: u32,
+        #[serde(rename = "imageHeight")]
+        image_height: u32,
+        #[serde(rename = "imageData")]
+        image_data: Vec<u8>,
+    },
+}
+
+#[cfg(target_arch = "wasm32")]
+pub fn wasm_fill_paints_to_runtime(items: Vec<WasmFillPaint>) -> Vec<FillPaint> {
+    let mut out = Vec::with_capacity(items.len());
+    for w in items {
+        match w {
+            WasmFillPaint::Solid { rgba } => {
+                out.push(FillPaint::Solid { rgba });
+            }
+            WasmFillPaint::Gradient { fill_gradients } => {
+                if fill_gradients.is_empty() {
+                    continue;
+                }
+                let gradients: Vec<FillGradientSpec> = fill_gradients
+                    .iter()
+                    .map(fill_gradient_options_to_spec)
+                    .collect();
+                out.push(FillPaint::Gradient { gradients });
+            }
+            WasmFillPaint::Image {
+                image_width,
+                image_height,
+                image_data,
+            } => {
+                let expected = image_width as usize * image_height as usize * 4;
+                if image_width == 0 || image_height == 0 || image_data.len() < expected {
+                    continue;
+                }
+                out.push(FillPaint::Image {
+                    image_width,
+                    image_height,
+                    image_data,
+                });
+            }
+        }
+    }
+    out
+}
+
 #[derive(Clone, Debug)]
 pub enum JsShape {
     Rect {
@@ -136,11 +211,9 @@ pub enum JsShape {
         width: f64,
         height: f64,
         radius: f64,
-        fill: [f32; 4],
-        fill_gradients: Option<Vec<FillGradientSpec>>,
+        fills: Vec<FillPaint>,
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
@@ -158,11 +231,9 @@ pub enum JsShape {
         cy: f64,
         rx: f64,
         ry: f64,
-        fill: [f32; 4],
-        fill_gradients: Option<Vec<FillGradientSpec>>,
+        fills: Vec<FillPaint>,
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
@@ -252,12 +323,10 @@ pub enum JsShape {
         z_index: f32,
         ui: bool,
         d: String,
-        fill: [f32; 4],
-        fill_gradients: Option<Vec<FillGradientSpec>>,
+        fills: Vec<FillPaint>,
         stroke: Option<StrokeParams>,
         fill_rule: String,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
@@ -324,7 +393,6 @@ pub enum JsShape {
         fill: [f32; 4],
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         roughness: f32,
@@ -351,7 +419,6 @@ pub enum JsShape {
         fill: [f32; 4],
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         roughness: f32,
@@ -395,7 +462,6 @@ pub enum JsShape {
         fill: [f32; 4],
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         roughness: f32,
@@ -422,7 +488,6 @@ pub enum JsShape {
         stroke: Option<StrokeParams>,
         fill_rule: String,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         roughness: f32,
@@ -447,11 +512,9 @@ pub enum JsShape {
         vertices: Vec<VnVertex>,
         segments: Vec<VnSegment>,
         regions: Vec<VnRegion>,
-        fill: [f32; 4],
-        fill_gradients: Option<Vec<FillGradientSpec>>,
+        fills: Vec<FillPaint>,
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
@@ -845,18 +908,12 @@ pub struct RectOptions {
     pub width: f64,
     pub height: f64,
     pub radius: f64,
-    #[serde(default = "default_rgba_fill")]
-    pub fill: [f32; 4],
     #[serde(default)]
-    pub fill_gradient: Option<FillGradientOptions>,
-    #[serde(default)]
-    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    pub fills: Vec<WasmFillPaint>,
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
-    #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
     #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
@@ -889,18 +946,12 @@ pub struct EllipseOptions {
     pub cy: f64,
     pub rx: f64,
     pub ry: f64,
-    #[serde(default = "default_rgba_fill")]
-    pub fill: [f32; 4],
     #[serde(default)]
-    pub fill_gradient: Option<FillGradientOptions>,
-    #[serde(default)]
-    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    pub fills: Vec<WasmFillPaint>,
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
-    #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
     #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
@@ -1005,20 +1056,14 @@ pub struct PathOptions {
     #[serde(default)]
     pub ui: bool,
     pub d: String,
-    #[serde(default = "default_rgba_fill_transparent")]
-    pub fill: [f32; 4],
     #[serde(default)]
-    pub fill_gradient: Option<FillGradientOptions>,
-    #[serde(default)]
-    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    pub fills: Vec<WasmFillPaint>,
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_fill_rule")]
     pub fill_rule: String,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
-    #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
     #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
@@ -1095,18 +1140,12 @@ pub struct VectorNetworkOptions {
     pub segments: Vec<VectorNetworkSegmentOpts>,
     #[serde(default)]
     pub regions: Option<Vec<VectorNetworkRegionOpts>>,
-    #[serde(default = "default_rgba_fill_transparent")]
-    pub fill: [f32; 4],
     #[serde(default)]
-    pub fill_gradient: Option<FillGradientOptions>,
-    #[serde(default)]
-    pub fill_gradients: Option<Vec<FillGradientOptions>>,
+    pub fills: Vec<WasmFillPaint>,
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
-    #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
     #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
@@ -1290,8 +1329,6 @@ pub struct RoughRectOptions {
     #[serde(default = "default_opacity")]
     pub opacity: f32,
     #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
-    #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
     pub local_transform: Option<Mat3Array>,
@@ -1340,8 +1377,6 @@ pub struct RoughEllipseOptions {
     #[serde(default = "default_opacity")]
     pub opacity: f32,
     #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
-    #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
     pub local_transform: Option<Mat3Array>,
@@ -1386,8 +1421,6 @@ pub struct RoughPolylineOptions {
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
-    #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
     #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]
@@ -1441,8 +1474,6 @@ pub struct RoughPathOptions {
     pub fill_rule: String,
     #[serde(default = "default_opacity")]
     pub opacity: f32,
-    #[serde(default = "default_opacity")]
-    pub fill_opacity: f32,
     #[serde(default = "default_opacity")]
     pub stroke_opacity: f32,
     #[serde(default, deserialize_with = "deserialize_mat3_opt")]

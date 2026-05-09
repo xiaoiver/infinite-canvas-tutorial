@@ -164,6 +164,7 @@ fn canvas_scale(canvas_transform: Affine, dpr: f64) -> f64 {
 }
 
 /// Builds the same fill region as [`crate::scene::add_js_shape_to_scene`] (fill only; stroke ring ignored).
+/// Rect / Ellipse: only when `fills` is non-empty (matches when Vello draws a fill).
 pub fn fill_sdf_primitive_from_js_shape(
     shape: &JsShape,
     canvas_transform: Affine,
@@ -177,11 +178,15 @@ pub fn fill_sdf_primitive_from_js_shape(
             width,
             height,
             radius,
+            fills,
             stroke,
             size_attenuation,
             stroke_attenuation,
             ..
         } => {
+            if fills.is_empty() {
+                return None;
+            }
             let (w, h, r) = if *size_attenuation {
                 (width / scale, height / scale, radius / scale)
             } else {
@@ -228,11 +233,15 @@ pub fn fill_sdf_primitive_from_js_shape(
             cy,
             rx,
             ry,
+            fills,
             stroke,
             size_attenuation,
             stroke_attenuation,
             ..
         } => {
+            if fills.is_empty() {
+                return None;
+            }
             let (rx_eff, ry_eff) = if *size_attenuation {
                 (rx / scale, ry / scale)
             } else {
@@ -497,6 +506,35 @@ mod tests {
     }
 
     #[test]
+    fn rect_no_fills_no_fill_sdf() {
+        let r = JsShape::Rect {
+            id: "r".into(),
+            parent_id: None,
+            z_index: 0.0,
+            ui: false,
+            x: 0.0,
+            y: 0.0,
+            width: 10.0,
+            height: 10.0,
+            radius: 0.0,
+            fills: vec![],
+            stroke: None,
+            opacity: 1.0,
+            stroke_opacity: 1.0,
+            local_transform: None,
+            size_attenuation: false,
+            stroke_attenuation: false,
+            fill_blur: 0.0,
+            drop_shadow: None,
+            clip_mode: None,
+        };
+        assert!(
+            fill_sdf_primitive_from_js_shape(&r, Affine::IDENTITY, 1.0).is_none(),
+            "empty fills: no Vello fill, RC must not occlude interior"
+        );
+    }
+
+    #[test]
     fn min_scene_two_rects() {
         let a = JsShape::Rect {
             id: "a".into(),
@@ -508,11 +546,11 @@ mod tests {
             width: 10.0,
             height: 10.0,
             radius: 0.0,
-            fill: [1.0, 0.0, 0.0, 1.0],
-            fill_gradients: None,
+            fills: vec![crate::types::FillPaint::Solid {
+                rgba: [1.0, 0.0, 0.0, 1.0],
+            }],
             stroke: None,
             opacity: 1.0,
-            fill_opacity: 1.0,
             stroke_opacity: 1.0,
             local_transform: None,
             size_attenuation: false,
@@ -531,11 +569,11 @@ mod tests {
             width: 10.0,
             height: 10.0,
             radius: 0.0,
-            fill: [0.0, 1.0, 0.0, 1.0],
-            fill_gradients: None,
+            fills: vec![crate::types::FillPaint::Solid {
+                rgba: [0.0, 1.0, 0.0, 1.0],
+            }],
             stroke: None,
             opacity: 1.0,
-            fill_opacity: 1.0,
             stroke_opacity: 1.0,
             local_transform: None,
             size_attenuation: false,

@@ -6,10 +6,8 @@ import type { FillLayerBlendMode } from '../../types/fill-layer-blend';
 export type { FillLayerBlendMode };
 
 /**
- * 单层填充描述，多条按顺序从底到顶以 Normal（source-over）叠加。
- * 仅当 {@link FillLayers.layers} 长度 ≥ 2 时参与渲染；单条请继续使用 {@link FillSolid} 等。
- */
-/**
+ * 单层填充描述；在 {@link FillLayers.layers} 中按顺序从底到顶叠加（线框 `fills` 可 0～n 条）。
+ *
  * `opacity` 为 0–1，缺省 1；与实体 {@link Opacity.fillOpacity} 相乘。
  * `enabled` 为 false 时跳过该层（缺省为启用）。
  */

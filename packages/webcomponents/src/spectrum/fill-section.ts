@@ -1,4 +1,4 @@
-import { html, css, LitElement, nothing, type TemplateResult } from 'lit';
+import { html, css, LitElement, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
@@ -26,6 +26,8 @@ import '@spectrum-web-components/overlay/sp-overlay.js';
 import '@spectrum-web-components/popover/sp-popover.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-remove.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-visibility-off.js';
 
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
@@ -73,23 +75,23 @@ export class FillSection extends LitElement {
     .rows {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 4px;
     }
 
     .row {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       min-width: 0;
     }
 
     .pill {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       flex: 1 1 auto;
       min-width: 0;
-      padding: 4px 8px;
+      padding: 4px;
       border-radius: var(--spectrum-corner-radius-100);
       background: var(--spectrum-gray-200);
       border: 1px solid var(--spectrum-gray-300);
@@ -113,16 +115,6 @@ export class FillSection extends LitElement {
       display: block;
     }
 
-    .swatch-btn {
-      flex-shrink: 0;
-      padding: 0;
-      min-width: 0;
-    }
-
-    .swatch-btn .swatch {
-      pointer-events: none;
-    }
-
     .value-input {
       flex: 1 1 auto;
       min-width: 0;
@@ -131,27 +123,24 @@ export class FillSection extends LitElement {
     .opacity-wrap {
       display: flex;
       align-items: center;
-      gap: 2px;
       flex-shrink: 0;
-      padding-left: 6px;
-      border-left: 1px solid var(--spectrum-gray-400);
-      margin-left: 2px;
     }
 
     .opacity-field {
-      width: 48px;
-    }
-
-    .opacity-suffix {
-      font-size: var(--spectrum-font-size-75);
-      color: var(--spectrum-gray-700);
-      white-space: nowrap;
+      width: 56px;
     }
 
     .row-actions {
       display: flex;
       flex-shrink: 0;
       gap: 0;
+    }
+
+    .add-layer-cta {
+      margin-top: 4px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
   `;
 
@@ -181,18 +170,28 @@ export class FillSection extends LitElement {
     this.fillPanelEpoch += 1;
   }
 
-  private getMultiLayers(): SerializedFillLayerItem[] | null {
+  /** 线框上已使用 `fills` 数组（可为空 `[]`）；非数组为旧数据，编辑时写入数组。 */
+  private fillsWireArray(): SerializedFillLayerItem[] | null {
     const fl = (this.node as FillAttributes).fills;
-    return Array.isArray(fl) && fl.length >= 2 ? fl : null;
+    return Array.isArray(fl) ? fl.map((L) => ({ ...L })) : null;
   }
 
-  /** 单层编辑用的当前层（无 `fills` 时给默认，首次写入时再 `commit`） */
+  /** 单层编辑用的当前层（无 `fills` 数组时给默认，首次写入时再 `commit`） */
   private singleLayerFromNode(): SerializedFillLayerItem {
     const fl = (this.node as FillAttributes).fills;
     if (Array.isArray(fl) && fl.length >= 1) {
       return { ...fl[0]! };
     }
     return { type: 'solid', value: '#000000', opacity: 1 };
+  }
+
+  /** 色盘是否带整体不透明度 / 变量绑定：仅「唯一一层」时启用（含 `fills: [L]` 与旧式无数组） */
+  private fillPickerUsesOpacityUi(index: number | null): boolean {
+    if (index === null) {
+      return true;
+    }
+    const arr = this.fillsWireArray();
+    return arr !== null && arr.length === 1 && index === 0;
   }
 
   private layerOpacityResolved01(layer: SerializedFillLayerItem): number {
@@ -225,15 +224,14 @@ export class FillSection extends LitElement {
   }
 
   private handleAdd() {
-    const multi = this.getMultiLayers();
     const defaultLayer: SerializedFillLayerItem = {
       type: 'solid',
       value: '#CCCCCC',
       opacity: 1,
     };
-    if (multi) {
-      const next = [...multi, defaultLayer];
-      this.commit({ fills: next });
+    const arr = this.fillsWireArray();
+    if (arr !== null) {
+      this.commit({ fills: [...arr, defaultLayer] });
       return;
     }
     const base = this.singleLayerFromNode();
@@ -250,44 +248,50 @@ export class FillSection extends LitElement {
         : base.type === 'image'
           ? ({ ...base, type: 'image' as const, value: resolved } as SerializedFillLayerItem)
           : ({
-              ...base,
-              type: 'solid' as const,
-              value: normalizeSolidCssValue(base.value),
-            } as SerializedFillLayerItem);
-    const next = [normalized, defaultLayer];
-    this.commit({ fills: next });
+            ...base,
+            type: 'solid' as const,
+            value: normalizeSolidCssValue(base.value),
+          } as SerializedFillLayerItem);
+    this.commit({ fills: [normalized, defaultLayer] });
   }
 
   private handleRemove(index: number) {
-    const multi = this.getMultiLayers();
-    if (!multi) {
+    const arr = this.fillsWireArray();
+    if (arr !== null) {
+      if (index < 0 || index >= arr.length) {
+        return;
+      }
+      this.commit({ fills: arr.filter((_, i) => i !== index) });
       return;
     }
-    if (multi.length <= 2) {
-      const remaining = multi[index === 0 ? 1 : 0]!;
-      this.commit({
-        fills: [{ ...remaining }],
-      });
+    if (index !== 0) {
       return;
     }
-    const next = multi.filter((_, i) => i !== index);
-    this.commit({ fills: next });
+    this.commit({ fills: [] });
   }
 
   private handleToggleLayer(index: number) {
-    const multi = this.getMultiLayers();
-    if (!multi) {
+    const arr = this.fillsWireArray();
+    if (arr !== null) {
+      const cur = arr[index];
+      if (!cur) {
+        return;
+      }
+      const visible = cur.enabled !== false;
+      const next = arr.map((L, i) =>
+        i === index ? { ...L, enabled: visible ? false : true } : L,
+      );
+      this.commit({ fills: next });
       return;
     }
-    const cur = multi[index];
-    if (!cur) {
+    if (index !== 0) {
       return;
     }
-    const visible = cur.enabled !== false;
-    const next = multi.map((L, i) =>
-      i === index ? { ...L, enabled: visible ? false : true } : L,
-    );
-    this.commit({ fills: next });
+    const base = this.singleLayerFromNode();
+    const visible = base.enabled !== false;
+    this.commit({
+      fills: [{ ...base, enabled: visible ? false : true }],
+    });
   }
 
   private handleValueChange(
@@ -295,9 +299,9 @@ export class FillSection extends LitElement {
     e: CustomEvent<{ value: string }>,
   ) {
     const raw = String((e.target as unknown as { value: string }).value).trim();
-    const multi = this.getMultiLayers();
-    if (multi && index != null) {
-      const L = multi[index];
+    const arr = this.fillsWireArray();
+    if (arr !== null && index != null) {
+      const L = arr[index];
       if (!L) {
         return;
       }
@@ -307,7 +311,7 @@ export class FillSection extends LitElement {
       } else {
         nextLayer = { ...L, value: normalizeSolidCssValue(raw) };
       }
-      const next = multi.map((x, i) => (i === index ? nextLayer : x));
+      const next = arr.map((x, i) => (i === index ? nextLayer : x));
       this.commit({ fills: next });
       return;
     }
@@ -349,20 +353,27 @@ export class FillSection extends LitElement {
       wireValue = value;
     }
 
-    const multi = this.getMultiLayers();
+    const arr = this.fillsWireArray();
 
-    if (multi && index != null) {
-      const next = multi.map((L, i) => {
+    if (arr !== null && index != null) {
+      const applyOpacity =
+        pickFillOpacity !== undefined && arr.length === 1 && index === 0;
+      const next = arr.map((L, i) => {
         if (i !== index) {
           return L;
         }
+        let nextL: SerializedFillLayerItem;
         if (layerType === 'gradient') {
-          return { ...L, type: 'gradient' as const, value: wireValue };
+          nextL = { ...L, type: 'gradient' as const, value: wireValue };
+        } else if (layerType === 'image') {
+          nextL = { ...L, type: 'image' as const, value: wireValue };
+        } else {
+          nextL = { ...L, type: 'solid' as const, value: wireValue };
         }
-        if (layerType === 'image') {
-          return { ...L, type: 'image' as const, value: wireValue };
+        if (applyOpacity) {
+          nextL = { ...nextL, opacity: pickFillOpacity };
         }
-        return { ...L, type: 'solid' as const, value: wireValue };
+        return nextL;
       });
 
       this.commit({ fills: next });
@@ -376,11 +387,7 @@ export class FillSection extends LitElement {
         : layerType === 'image'
           ? { ...base, type: 'image', value: wireValue }
           : { ...base, type: 'solid', value: wireValue };
-    if (
-      pickFillOpacity !== undefined &&
-      index == null &&
-      !multi
-    ) {
+    if (pickFillOpacity !== undefined && index == null && arr === null) {
       next0.opacity = pickFillOpacity;
     }
     this.commit({ fills: [next0] });
@@ -438,7 +445,8 @@ export class FillSection extends LitElement {
     index: number | null,
   ): TemplateResult {
     const safeId = this.node.id.replace(/[^a-zA-Z0-9_-]/g, '_');
-    const suffix = index == null ? 'single' : String(index);
+    const suffix =
+      index == null ? 'single' : `i${index}`;
     const triggerId = `ic-fill-swatch-${safeId}-${suffix}`;
     const pickerValue = this.swatchValue(layer);
     return html`
@@ -465,13 +473,17 @@ export class FillSection extends LitElement {
         type="auto"
       >
         <sp-popover dialog>
-          ${index == null
+          ${this.fillPickerUsesOpacityUi(index)
         ? html`<ic-spectrum-color-picker
                 .value=${pickerValue}
-                .fillOpacity=${this.layerOpacityResolved01(this.singleLayerFromNode())}
+                .fillOpacity=${this.layerOpacityResolved01(
+          index == null
+            ? this.singleLayerFromNode()
+            : this.fillsWireArray()![0]!,
+        )}
                 enable-opacity-variable-binding
                 @color-change=${(e: CustomEvent<ColorPickerChangeDetail>) =>
-            this.handlePickerColorChange(null, e)}
+            this.handlePickerColorChange(index, e)}
                 @opacity-change=${this.handlePickerOpacityChange}
                 @opacity-variable-pick=${this.handlePickerOpacityVariablePick}
                 @opacity-variable-unbind=${this
@@ -496,9 +508,12 @@ export class FillSection extends LitElement {
       10,
     );
     const p = Number.isFinite(n) ? clamp01(n / 100) : 1;
-    const multi = this.getMultiLayers();
-    if (multi && index != null) {
-      const next = multi.map((L, i) =>
+    const arr = this.fillsWireArray();
+    if (arr !== null) {
+      if (index == null) {
+        return;
+      }
+      const next = arr.map((L, i) =>
         i === index ? { ...L, opacity: p } : L,
       );
       this.commit({ fills: next });
@@ -533,81 +548,56 @@ export class FillSection extends LitElement {
   private renderLayerRow(
     layer: SerializedFillLayerItem,
     index: number,
-    isMulti: boolean,
+    fillsArrayMode: boolean,
   ) {
-    const pct = Math.round(layerOpacity01(layer.opacity) * 100);
-    const showEye = isMulti;
-    const showRemove = isMulti;
+    const pct = Math.round(
+      (fillsArrayMode
+        ? layerOpacity01(layer.opacity)
+        : this.layerOpacityResolved01(layer)) * 100,
+    );
     const pillClass = layer.enabled === false ? 'pill layer-off' : 'pill';
+    const valueIndex = fillsArrayMode ? index : null;
+    const pickerIndex = fillsArrayMode ? index : null;
 
     return html`
       <div class="row">
         <div class=${pillClass}>
-          ${this.renderColorSwatchPicker(layer, index)}
+          ${this.renderColorSwatchPicker(layer, pickerIndex)}
           <sp-textfield
             class="value-input"
             size="s"
             value=${this.displayValueForLayer(layer)}
             @change=${(e: CustomEvent<{ value: string }>) =>
-        this.handleValueChange(isMulti ? index : null, e)}
+        this.handleValueChange(valueIndex, e)}
           ></sp-textfield>
           <div class="opacity-wrap">
-            <sp-textfield
+            <sp-number-field
               class="opacity-field"
               size="s"
               value=${String(pct)}
               @change=${(e: CustomEvent<{ value: string }>) =>
-        this.handleOpacityChange(isMulti ? index : null, e)}
-            ></sp-textfield>
-            <span class="opacity-suffix">%</span>
+        this.handleOpacityChange(valueIndex, e)}
+              hide-stepper
+              autocomplete="off"
+              format-options='{
+                  "style": "unit",
+                  "unit": "%"
+                }'
+            ></sp-number-field>
           </div>
         </div>
-        ${showEye ? this.renderEye(layer, index) : nothing}
-        ${showRemove
-        ? html`
-              <sp-action-button
-                quiet
-                size="s"
-                label=${msg(str`Remove fill layer`)}
-                @click=${() => this.handleRemove(index)}
-              >
-                <sp-icon-remove slot="icon"></sp-icon-remove>
-                <sp-tooltip self-managed placement="bottom">
-                  ${msg(str`Remove`)}
-                </sp-tooltip>
-              </sp-action-button>
-            `
-        : nothing}
-      </div>
-    `;
-  }
-
-  private renderSingleRow(layer: SerializedFillLayerItem) {
-    const pct = Math.round(this.layerOpacityResolved01(layer) * 100);
-    const pillClass = 'pill';
-
-    return html`
-      <div class="row">
-        <div class=${pillClass}>
-          ${this.renderColorSwatchPicker(layer, null)}
-          <sp-textfield
-            class="value-input"
-            size="s"
-            value=${this.displayValueForLayer(layer)}
-            @change=${(e: CustomEvent<{ value: string }>) =>
-        this.handleValueChange(null, e)}
-          ></sp-textfield>
-          <div class="opacity-wrap">
-            <sp-textfield
-              class="opacity-field"
-              size="s"
-              value=${String(pct)}
-              @change=${(e: CustomEvent<{ value: string }>) =>
-        this.handleOpacityChange(null, e)}
-            ></sp-textfield>
-            <span class="opacity-suffix">%</span>
-          </div>
-        </div>
+        ${this.renderEye(layer, index)}
+        <sp-action-button
+          quiet
+          size="s"
+          label=${msg(str`Remove fill layer`)}
+          @click=${() => this.handleRemove(index)}
+        >
+          <sp-icon-remove slot="icon"></sp-icon-remove>
+          <sp-tooltip self-managed placement="bottom">
+            ${msg(str`Remove`)}
+          </sp-tooltip>
+        </sp-action-button>
       </div>
     `;
   }
@@ -619,41 +609,33 @@ export class FillSection extends LitElement {
     // 依赖 fillPanelEpoch，避免仅 mutate node 同引用时 Lit 合并掉更新
     void this.fillPanelEpoch;
 
-    const multi = this.getMultiLayers();
-    if (multi) {
+    const header = html`
+      <sp-action-button
+        class="add-layer-cta"
+        size="s"
+        @click=${this.handleAdd}
+      >
+        ${msg(str`Add fill layer`)}
+      </sp-action-button>
+    `;
+
+    const arr = this.fillsWireArray();
+    if (arr !== null) {
       return html`
-        <div class="header">
-          <span class="title">${msg(str`Fill`)}</span>
-          <sp-action-button
-            quiet
-            size="s"
-            label=${msg(str`Add fill layer`)}
-            @click=${this.handleAdd}
-          >
-            <sp-icon-add slot="icon"></sp-icon-add>
-          </sp-action-button>
-        </div>
         <div class="rows">
-          ${multi.map((layer, i) => this.renderLayerRow(layer, i, true))}
+          ${arr.length === 0
+          ? html``
+          : arr.map((layer, i) =>
+            this.renderLayerRow(layer, i, true))}
         </div>
+        ${header}
       `;
     }
 
     const layer = this.singleLayerFromNode();
-
     return html`
-      <div class="header">
-        <span class="title">${msg(str`Fill`)}</span>
-        <sp-action-button
-          quiet
-          size="s"
-          label=${msg(str`Add fill layer`)}
-          @click=${this.handleAdd}
-        >
-          <sp-icon-add slot="icon"></sp-icon-add>
-        </sp-action-button>
-      </div>
-      <div class="rows">${this.renderSingleRow(layer)}</div>
+      ${header}
+      <div class="rows">${this.renderLayerRow(layer, 0, false)}</div>
     `;
   }
 }
