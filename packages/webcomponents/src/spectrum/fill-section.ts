@@ -146,6 +146,11 @@ export class FillSection extends LitElement {
       max-width: 100%;
       box-sizing: border-box;
     }
+
+    /* 与 fill-action-button / stroke-content 一致：默认 dialog popover 内边距过大易挡住取色按钮点击 */
+    sp-popover {
+      padding: 0;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -235,32 +240,7 @@ export class FillSection extends LitElement {
       this.commit({ fills: [...arr, defaultLayer] });
       return;
     }
-    const base = this.singleLayerFromNode();
-    const primary = fillLayerPrimaryWire(base);
-    const resolved = String(
-      resolveDesignVariableValue(
-        primary,
-        this.appState.variables,
-        this.appState.themeMode,
-      ),
-    );
-    const normalized =
-      base.type === 'gradient' || isGradient(resolved)
-        ? ({ ...base, type: 'gradient' as const, value: resolved } as SerializedFillLayerItem)
-        : base.type === 'image'
-          ? ({ ...base, type: 'image' as const, value: resolved } as SerializedFillLayerItem)
-          : base.type === 'pattern'
-            ? ({
-              ...base,
-              type: 'pattern' as const,
-              value: resolved,
-            } as SerializedFillLayerItem)
-          : ({
-            ...base,
-            type: 'solid' as const,
-            value: normalizeSolidCssValue(resolved),
-          } as SerializedFillLayerItem);
-    this.commit({ fills: [normalized, defaultLayer] });
+    this.commit({ fills: [defaultLayer] });
   }
 
   private handleRemove(index: number) {
@@ -641,12 +621,7 @@ export class FillSection extends LitElement {
         ${header}
       `;
     }
-
-    const layer = this.singleLayerFromNode();
-    return html`
-      ${header}
-      <div class="rows">${this.renderLayerRow(layer, 0, false)}</div>
-    `;
+    return html`${header}`;
   }
 }
 

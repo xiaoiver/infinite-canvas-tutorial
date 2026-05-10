@@ -114,6 +114,9 @@ function solidHexForPicker(raw: string): string {
 /** Picker / menu value for an effect row (maps `adjustment` from saturate to `saturate`). */
 type EffectKind = DefaultEffectKind;
 
+/** 与原先菜单首项一致：一键添加时使用该类型 */
+const DEFAULT_NEW_EFFECT_KIND: DefaultEffectKind = 'brightness';
+
 function effectKind(
   effect: Effect,
 ):
@@ -230,10 +233,12 @@ export class EffectsPanel extends LitElement {
       color: var(--spectrum-gray-700);
     }
 
-    .add-row {
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
+    /* 与 ic-spectrum-fill-section「Add fill layer」一致的全宽 CTA */
+    .add-layer-cta {
+      margin-top: 4px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     sp-popover {
@@ -407,10 +412,11 @@ export class EffectsPanel extends LitElement {
     `;
   }
 
-  private handleAddFilter(e: CustomEvent) {
-    const value = (e.target as { value?: string }).value as EffectKind | undefined;
-    if (!value) return;
-    this.commit([...this.effects, createDefaultEffect(value)]);
+  private handleAddDefaultEffect() {
+    this.commit([
+      ...this.effects,
+      createDefaultEffect(DEFAULT_NEW_EFFECT_KIND),
+    ]);
   }
 
   private handleRemove(index: number) {
@@ -2417,55 +2423,13 @@ export class EffectsPanel extends LitElement {
       ${map(this.effects, (effect, index) =>
       this.renderEffectRow(effect, index),
     )}
-      <div class="add-row">
-        <sp-action-menu
-          size="s"
-          label=${msg(str`Add filter`)}
-          @change=${this.handleAddFilter}
-        >
-          <sp-icon-add slot="icon"></sp-icon-add>
-          <sp-menu-item value="brightness"
-            >${msg(str`Brightness`)}</sp-menu-item
-          >
-          <sp-menu-item value="contrast">${msg(str`Contrast`)}</sp-menu-item>
-          <sp-menu-item value="saturate"
-            >${msg(str`Saturation`)}</sp-menu-item
-          >
-          <sp-menu-item value="noise">${msg(str`Noise`)}</sp-menu-item>
-          <sp-menu-item value="fxaa"
-            >${msg(str`Smoothing (FXAA)`)}</sp-menu-item
-          >
-          <sp-menu-item value="blur">${msg(str`Blur`)}</sp-menu-item>
-          <sp-menu-item value="pixelate"
-            >${msg(str`Pixelate`)}</sp-menu-item
-          >
-          <sp-menu-item value="dot">${msg(str`Dot screen`)}</sp-menu-item>
-          <sp-menu-item value="colorHalftone"
-            >${msg(str`Color halftone`)}</sp-menu-item
-          >
-          <sp-menu-item value="halftoneDots"
-            >${msg(str`Halftone dots`)}</sp-menu-item
-          >
-          <sp-menu-item value="flutedGlass"
-            >${msg(str`Fluted glass`)}</sp-menu-item
-          >
-          <sp-menu-item value="crt">${msg(str`CRT`)}</sp-menu-item>
-          <sp-menu-item value="vignette">${msg(str`Vignette`)}</sp-menu-item>
-          <sp-menu-item value="ascii">${msg(str`ASCII`)}</sp-menu-item>
-          <sp-menu-item value="glitch">${msg(str`Glitch`)}</sp-menu-item>
-          <sp-menu-item value="liquidGlass"
-            >${msg(str`Liquid glass`)}</sp-menu-item
-          >
-          <sp-menu-item value="tsunami">${msg(str`Tsunami`)}</sp-menu-item>
-          <sp-menu-item value="burn">${msg(str`Burn`)}</sp-menu-item>
-          <sp-menu-item value="liquidMetal"
-            >${msg(str`Liquid metal`)}</sp-menu-item
-          >
-          <sp-menu-item value="heatmap">${msg(str`Heat map`)}</sp-menu-item>
-          <sp-menu-item value="gemSmoke">${msg(str`Gem smoke`)}</sp-menu-item>
-          <sp-menu-item value="lut">${msg(str`LUT`)}</sp-menu-item>
-        </sp-action-menu>
-      </div>
+      <sp-action-button
+        class="add-layer-cta"
+        size="s"
+        @click=${this.handleAddDefaultEffect}
+      >
+        ${msg(str`Add filter`)}
+      </sp-action-button>
     `;
   }
 }

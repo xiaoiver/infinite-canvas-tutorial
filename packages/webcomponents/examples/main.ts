@@ -192,11 +192,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   const parent = {
     id: 'parent-1',
     type: 'rect',
-    clipMode: 'clip',
+    // clipMode: 'clip',
     x: 100,
     y: 50,
     width: 100,
     height: 100,
+    stroke: 'black'
     // fills: [
     //   { type: 'solid', value: 'red', opacity: 0.5 },
     //   { type: 'solid', value: 'blue', opacity: 0.5 },
@@ -216,7 +217,8 @@ canvas.addEventListener(Event.READY, async (e) => {
   };
 
   api.updateNodes([
-    parent, child,
+    parent,
+    // child,
   ]);
   // api.selectNodes([parent]);
 
