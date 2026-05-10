@@ -237,11 +237,11 @@ canvas.addEventListener(Event.READY, async (e) => {
   // });
 });
 
-const VelloRendererPlugin = RendererPlugin.configure({
-  setupDeviceSystemCtor: InitVello,
-  rendererSystemCtor: VelloPipeline,
-});
-DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+// const VelloRendererPlugin = RendererPlugin.configure({
+//   setupDeviceSystemCtor: InitVello,
+//   rendererSystemCtor: VelloPipeline,
+// });
+// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');
