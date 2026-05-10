@@ -42,7 +42,7 @@ export function getMultiFillLayers(entity: Entity): FillLayerItem[] | null {
   return enabled;
 }
 
-/** 恰好一条启用层时返回该层（用于与单 FillGradient 相同的纹理路径） */
+/** 恰好一条启用层时返回该层（单层渐变/图片等与旧单组件纹理路径一致） */
 export function getSingleEnabledFillLayer(
   entity: Entity,
 ): FillLayerItem | null {
@@ -51,7 +51,10 @@ export function getSingleEnabledFillLayer(
 }
 
 export function fillLayersNeedFillImage(layers: FillLayerItem[]): boolean {
-  return layers.some((l) => l.type === 'gradient' || l.type === 'image');
+  return layers.some(
+    (l) =>
+      l.type === 'gradient' || l.type === 'image' || l.type === 'pattern',
+  );
 }
 
 export type { FillLayerBlendMode } from '../types/fill-layer-blend';
@@ -74,4 +77,39 @@ export function fillLayerOpacity(o?: number | string): number {
   }
   const n = parseFloat(String(o));
   return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
+}
+
+/** 首个启用 `solid` 层的颜色字符串（线框 `fills`）。 */
+export function getFirstSolidFillLayerValue(entity: Entity): string | null {
+  for (const L of getEnabledFillLayers(entity)) {
+    if (L.type === 'solid') {
+      return L.value;
+    }
+  }
+  return null;
+}
+
+/** 首个启用 `gradient` 层的 CSS 渐变字符串。 */
+export function getFirstGradientFillLayerValue(entity: Entity): string | null {
+  for (const L of getEnabledFillLayers(entity)) {
+    if (L.type === 'gradient') {
+      return L.value;
+    }
+  }
+  return null;
+}
+
+/** 简单栅格烘焙：仅单层纯色填充 + 描边（见 {@link shouldBakeStrokeIntoRasterFilterTexture}）。 */
+export function fillLayersEligibleForSimpleStrokeBake(entity: Entity): boolean {
+  if (!entity.has(FillLayers)) {
+    return true;
+  }
+  const en = getEnabledFillLayers(entity);
+  if (en.length === 0) {
+    return true;
+  }
+  if (en.length !== 1) {
+    return false;
+  }
+  return en[0]!.type === 'solid';
 }

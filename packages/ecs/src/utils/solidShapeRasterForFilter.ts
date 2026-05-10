@@ -9,10 +9,7 @@ import {
   ComputedRough,
   ComputedTextMetrics,
   Ellipse,
-  FillGradient,
-  FillImage,
-  FillPattern,
-  FillSolid,
+  FillLayers,
   FillTexture,
   IconFontEllipseStrokeRasterPlaceholder,
   Opacity,
@@ -26,6 +23,12 @@ import {
   Text,
   VectorNetwork,
 } from '../components';
+import {
+  fillLayersEligibleForSimpleStrokeBake,
+  fillLayersNeedFillImage,
+  getEnabledFillLayers,
+  getFirstSolidFillLayerValue,
+} from './fillLayers';
 import { buildVectorNetworkFillMesh } from './vector-network-fill';
 import { parseColor } from './color';
 import { getRasterFilterValueForShape, hasRasterPostEffects } from './filter';
@@ -483,11 +486,13 @@ export function shouldBakeStrokeIntoRasterFilterTexture(shape: Entity): boolean 
   if (!shape.hasSomeOf(Rect, Ellipse, Circle)) {
     return false;
   }
+  if (shape.has(FillTexture)) {
+    return false;
+  }
   if (
-    shape.has(FillGradient) ||
-    shape.has(FillPattern) ||
-    shape.has(FillImage) ||
-    shape.has(FillTexture)
+    shape.has(FillLayers) &&
+    (!fillLayersEligibleForSimpleStrokeBake(shape) ||
+      fillLayersNeedFillImage(getEnabledFillLayers(shape)))
   ) {
     return false;
   }
@@ -539,7 +544,7 @@ export function createFillAndStrokeRgbaRasterForFilter(
     ? shape.read(Opacity)
     : { fillOpacity: 1, strokeOpacity: 1 };
 
-  const fillStr = shape.has(FillSolid) ? shape.read(FillSolid).value : 'none';
+  const fillStr = getFirstSolidFillLayerValue(shape) ?? 'none';
   const fillRgb = parseColor(
     fillStr && fillStr !== 'none' ? fillStr : 'transparent',
   );

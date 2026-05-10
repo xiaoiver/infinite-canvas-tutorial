@@ -35,6 +35,7 @@ import {
   parseEffect,
   shouldRasterizeStrokeForFilterTexture,
 } from '../utils/filter';
+import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
 import {
   createStrokeSilhouetteRasterForFilter,
   getStrokeSilhouetteRasterBounds,
@@ -46,7 +47,7 @@ import {
   ComputedRough,
   ComputedTextMetrics,
   Ellipse,
-  FillSolid,
+  FillLayers,
   GlobalRenderOrder,
   GlobalTransform,
   Line,
@@ -661,10 +662,10 @@ export class SmoothPolyline extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: null };
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    const fill = getFirstSolidFillLayerValue(shape);
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+      fill != null ? fill : 'transparent',
+    );
 
     const {
       color: strokeColor,

@@ -87,7 +87,7 @@ export class Stroke {
    */
   @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
 
-  /** 与 {@link FillSolid.fillVariableRef} 相同语义，作用于 {@link color} */
+  /** 设计变量绑定：变量表键名（与 `$` 后一致），作用于 {@link color} */
   @field({ type: Type.dynamicString(200), default: '' })
   declare colorVariableRef: string;
 
@@ -101,7 +101,7 @@ export class Stroke {
 }
 
 /**
- * 描边渐变（CSS 渐变字符串），与 {@link FillGradient} 语义对称，用于 {@link SmoothPolyline} 等路径描边。
+ * 描边渐变（CSS 渐变字符串），与填充栈中的 `gradient` 层语义对称，用于 {@link SmoothPolyline} 等路径描边。
  * 存在时应将 {@link Stroke#color} 设为 `'none'`，宽度与线型仍由 {@link Stroke} 提供。
  */
 export class StrokeGradient {

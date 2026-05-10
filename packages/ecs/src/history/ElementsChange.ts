@@ -33,8 +33,6 @@ import { API } from '../API';
 import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
 import {
   Name,
-  FillSolid,
-  FillGradient,
   FillLayers,
   Stroke,
   StrokeGradient,
@@ -49,8 +47,6 @@ import {
   ZIndex,
   Transform,
   MaterialDirty,
-  FillImage,
-  FillPattern,
   StrokeAttenuation,
   SizeAttenuation,
   TextDecoration,
@@ -389,10 +385,6 @@ function syncIconFontChildrenFromUpdatedNode(
       iw.layoutHeight = h;
     }
     safeAddComponent(rootEntity, Group, groupPres);
-    safeRemoveComponent(rootEntity, FillSolid);
-    safeRemoveComponent(rootEntity, FillGradient);
-    safeRemoveComponent(rootEntity, FillImage);
-    safeRemoveComponent(rootEntity, FillPattern);
     safeRemoveComponent(rootEntity, StrokeGradient);
     safeRemoveComponent(rootEntity, Stroke);
     safeAddComponent(rootEntity, MaterialDirty);
@@ -449,9 +441,8 @@ function syncIconFontChildrenFromUpdatedNode(
     );
 
     if (fillPart && fillPart !== 'none') {
-      safeAddComponent(child, FillSolid, {
-        value: fillPart,
-        fillVariableRef: '',
+      safeAddComponent(child, FillLayers, {
+        layers: [{ type: 'solid', value: fillPart }],
       });
       if (
         shouldUseIconFontEllipseStrokeRasterPlaceholder(
@@ -465,7 +456,7 @@ function syncIconFontChildrenFromUpdatedNode(
         safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
       }
     } else {
-      safeRemoveComponent(child, FillSolid);
+      safeRemoveComponent(child, FillLayers);
       safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
     }
     safeAddComponent(child, MaterialDirty);
@@ -480,10 +471,6 @@ function syncIconFontChildrenFromUpdatedNode(
     iw.layoutHeight = h;
   }
   safeAddComponent(rootEntity, Group, groupPres);
-  safeRemoveComponent(rootEntity, FillSolid);
-  safeRemoveComponent(rootEntity, FillGradient);
-  safeRemoveComponent(rootEntity, FillImage);
-  safeRemoveComponent(rootEntity, FillPattern);
   safeRemoveComponent(rootEntity, StrokeGradient);
   safeRemoveComponent(rootEntity, Stroke);
   safeAddComponent(rootEntity, MaterialDirty);
@@ -1023,10 +1010,6 @@ function applyFillsWireMutation(
 
   if (wireArr.length === 0) {
     safeRemoveComponent(entity, FillLayers);
-    safeRemoveComponent(entity, FillSolid);
-    safeRemoveComponent(entity, FillGradient);
-    safeRemoveComponent(entity, FillImage);
-    safeRemoveComponent(entity, FillPattern);
     safeAddComponent(entity, MaterialDirty);
     if (entity.has(Opacity)) {
       entity.write(Opacity).fillOpacity = 1;
@@ -1034,10 +1017,6 @@ function applyFillsWireMutation(
     return true;
   }
 
-  safeRemoveComponent(entity, FillSolid);
-  safeRemoveComponent(entity, FillGradient);
-  safeRemoveComponent(entity, FillImage);
-  safeRemoveComponent(entity, FillPattern);
   if (!entity.has(FillLayers)) {
     safeAddComponent(entity, FillLayers);
   }

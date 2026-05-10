@@ -66,6 +66,7 @@ import {
   firstEnabledFillPresentation,
   migrateLegacyFillWireInPlace,
 } from './utils/normalize-fill-wire';
+import { getEnabledFillLayers } from './utils/fillLayers';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
@@ -80,10 +81,7 @@ import {
   ComputedPoints,
   Cursor,
   Ellipse,
-  FillGradient,
-  FillImage,
-  FillPattern,
-  FillSolid,
+  FillLayers,
   Font,
   GlobalTransform,
   Grid,
@@ -811,14 +809,8 @@ export class API {
       const [x, y] = vec2.transformMat3(vec2.create(), [point.x, point.y], invMatrix);
 
       let isIntersected = false;
-      const fillSolid = entity.has(FillSolid) ? entity.read(FillSolid).value : '';
       const hasFill =
-        (entity.has(FillSolid) &&
-          fillSolid !== 'none' &&
-          fillSolid !== '') ||
-        entity.has(FillGradient) ||
-        entity.has(FillImage) ||
-        entity.has(FillPattern);
+        entity.has(FillLayers) && getEnabledFillLayers(entity).length > 0;
       const fill = hasFill ? 'black' : undefined;
       const hasStroke = entity.has(Stroke);
       const stroke = hasStroke ? entity.read(Stroke) : undefined;

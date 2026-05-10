@@ -14,9 +14,7 @@ import {
   Culled,
   DropShadow,
   Ellipse,
-  FillImage,
   FillLayers,
-  FillPattern,
   FillTexture,
   FractionalIndex,
   GlobalRenderOrder,
@@ -69,6 +67,9 @@ import {
   fontWeightMap,
   parseColor,
   Group,
+  rasterizeFillLayerImageUrlForTexture,
+  resolveFillLayerImageRasterPixelSize,
+  getFillLayerDecodedBitmap,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   addRect,
@@ -141,44 +142,6 @@ function velloGetEnabledFillLayers(entity: Entity) {
     return [];
   }
   return raw.filter((l) => l.enabled !== false);
-}
-
-/** 与 ECS {@link fill-layer-image-url-raster.trySyncRasterizeImageUrlToCanvas} 同逻辑，避免在未重建 ecs typings 时的包环依赖。 */
-function trySyncRasterizeImageUrlForVello(
-  url: string,
-  width: number,
-  height: number,
-): HTMLCanvasElement | OffscreenCanvas | null {
-  if (typeof Image === 'undefined' || !url) {
-    return null;
-  }
-  const tw = Math.max(1, Math.ceil(width));
-  const th = Math.max(1, Math.ceil(height));
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = url;
-  if (!img.complete || img.naturalWidth === 0) {
-    return null;
-  }
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
-  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
-  if (!ctx) {
-    return null;
-  }
-  try {
-    ctx.drawImage(img, 0, 0, tw, th);
-  } catch {
-    return null;
-  }
-  return canvas;
 }
 
 type FillGradientSpec = {
@@ -336,9 +299,17 @@ function buildVelloWasmFills(
       }
       out.push({ kind: 'gradient', fillGradients: grads });
     } else if (layer.type === 'image') {
-      const tw = Math.max(1, Math.ceil(width));
-      const th = Math.max(1, Math.ceil(height));
-      const canvas = trySyncRasterizeImageUrlForVello(layer.value, tw, th);
+      const { width: tw, height: th } = resolveFillLayerImageRasterPixelSize(
+        layer.value,
+        width,
+        height,
+      );
+      const canvas = rasterizeFillLayerImageUrlForTexture(
+        layer.value,
+        tw,
+        th,
+        () => safeAddComponent(entity, MaterialDirty),
+      );
       if (!canvas) continue;
       const imageData = imageToRgba(canvas as TexImageSource);
       if (!imageData) continue;
@@ -362,7 +333,7 @@ function buildVelloWasmFills(
   return out;
 }
 
-/** Rough 仅支持单色填充；取首个启用层的大致颜色（渐变取首 stops，图片用灰）。 */
+/** Rough 仅支持单色填充；取首个**有可见 alpha** 的启用层（与 {@link buildVelloWasmFills} 一致跳过 none/透明层）。 */
 function roughRepresentativeFillRgba(entity: Entity): [
   number,
   number,
@@ -380,31 +351,34 @@ function roughRepresentativeFillRgba(entity: Entity): [
   for (const layer of enabled) {
     const lo = velloFillLayerOpacity(layer.opacity);
     if (layer.type === 'solid') {
+      const raw = String(layer.value ?? '').trim();
+      if (!raw || raw === 'none' || raw === 'transparent') {
+        continue;
+      }
       const rgb = parseColor(layer.value);
       const { r, g, b } = d3.rgb(rgb)?.rgb() ?? d3.rgb(0, 0, 0, 1);
-      return [
-        r / 255,
-        g / 255,
-        b / 255,
-        (rgb.opacity ?? 1) * lo * fillOpacity * opacity,
-      ];
+      const a = (rgb.opacity ?? 1) * lo * fillOpacity * opacity;
+      if (a < 1e-8) {
+        continue;
+      }
+      return [r / 255, g / 255, b / 255, a];
     }
     if (layer.type === 'gradient') {
       const parsed = parseGradient(layer.value)?.[0] as any;
       const step0 = parsed?.steps?.[0];
       if (step0) {
         const [rf, gf, bf, af] = colorToRgba(step0.color);
-        return [
-          rf,
-          gf,
-          bf,
-          af * lo * fillOpacity * opacity,
-        ];
+        const a = af * lo * fillOpacity * opacity;
+        if (a >= 1e-8) {
+          return [rf, gf, bf, a];
+        }
       }
     }
     if (layer.type === 'image') {
       const a = lo * fillOpacity * opacity;
-      return [0.5, 0.5, 0.5, a];
+      if (a >= 1e-8) {
+        return [0.5, 0.5, 0.5, a];
+      }
     }
   }
   return [0, 0, 0, 0];
@@ -526,14 +500,8 @@ export class VelloPipeline extends System {
   private fillLayers = this.query(
     (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
   );
-  private fillPatterns = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillPattern).trackWrites,
-  );
   private fillTextures = this.query(
     (q) => q.addedChangedOrRemoved.with(FillTexture).trackWrites,
-  );
-  private fillImages = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillImage).trackWrites,
   );
   private strokes = this.query(
     (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
@@ -618,9 +586,7 @@ export class VelloPipeline extends System {
             ComputedRough,
             Text,
             ComputedTextMetrics,
-            FillImage,
             FillLayers,
-            FillPattern,
             FillTexture,
             FractionalIndex,
             SizeAttenuation,
@@ -1125,15 +1091,20 @@ export class VelloPipeline extends System {
                 d3.rgb(color)?.rgb() ?? d3.rgb(0, 0, 0, 1);
               opts.stroke = [r / 255, g / 255, b / 255, opacity];
             }
-            if (entity.has(FillImage)) {
-              const { src } = entity.read(FillImage);
-              const imageData = imageToRgba(src);
-              if (imageData) {
-                opts.imageWidth = imageData.width;
-                opts.imageHeight = imageData.height;
-                opts.imageData = imageData.data;
-              } else {
-                opts.brushStamp = src;
+            const stampLayer = velloGetEnabledFillLayers(entity).find(
+              (l) => l.type === 'image',
+            );
+            if (stampLayer && stampLayer.type === 'image') {
+              const src = getFillLayerDecodedBitmap(stampLayer.value);
+              if (src) {
+                const imageData = imageToRgba(src);
+                if (imageData) {
+                  opts.imageWidth = imageData.width;
+                  opts.imageHeight = imageData.height;
+                  opts.imageData = imageData.data;
+                } else {
+                  opts.brushStamp = src;
+                }
               }
             }
             addBrush(canvasId, opts);
@@ -1192,6 +1163,12 @@ export class VelloPipeline extends System {
             lineHeight,
             wordWrap,
             wordWrapWidth,
+            whiteSpace,
+            textOverflow,
+            maxLines,
+            textAlign,
+            textBaseline,
+            leading,
           } = text;
 
           let fontWeightValue: string | undefined = undefined;
@@ -1201,6 +1178,14 @@ export class VelloPipeline extends System {
               : fontWeight
               }`;
           }
+          const fillGeom = Text.getGeometryBounds(text, metrics);
+          const fillW = Math.max(0, fillGeom.maxX - fillGeom.minX);
+          const fillH = Math.max(0, fillGeom.maxY - fillGeom.minY);
+          const fills = buildVelloWasmFills(entity, [
+            fillGeom.minX,
+            fillGeom.minY,
+          ], fillW, fillH);
+
           const opts: Record<string, unknown> = {
             ...baseOpts,
             content: metrics.lines.join('\n'),
@@ -1216,7 +1201,16 @@ export class VelloPipeline extends System {
             lineHeight,
             wordWrap,
             wordWrapWidth,
+            whiteSpace,
+            textOverflow,
+            textAlign,
+            textBaseline,
+            leading,
+            ...(Number.isFinite(maxLines)
+              ? { maxLines: maxLines as number }
+              : {}),
           };
+          if (fills.length) opts.fills = fills;
           addText(canvasId, opts);
         } else if (entity.has(Group)) {
           addGroup(canvasId, baseOpts);
@@ -1381,14 +1375,12 @@ export class VelloPipeline extends System {
 
         // 相机变换本身由 InitVello 负责：会调用 wasm 的 `setCameraTransform`
         // 并触发 request_redraw。这里避免因 camera 变化就重新 clear/add 全量 shapes，
-        // 从而减少 JS->wasm 的数据传输（尤其是 FillImage 的 image_data 像素搬运）。
+        // 从而减少 JS->wasm 的数据传输（尤其是 brush 位图 image_data 像素搬运）。
 
         if (
           !toRender &&
           (!!this.fillLayers.addedChangedOrRemoved.length ||
-            !!this.fillPatterns.addedChangedOrRemoved.length ||
             !!this.fillTextures.addedChangedOrRemoved.length ||
-            !!this.fillImages.addedChangedOrRemoved.length ||
             !!this.strokes.addedChangedOrRemoved.length ||
             !!this.opacities.addedChangedOrRemoved.length ||
             !!this.innerShadows.addedChangedOrRemoved.length ||

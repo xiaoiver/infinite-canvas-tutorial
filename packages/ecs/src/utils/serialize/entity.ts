@@ -25,8 +25,7 @@ import { Entity } from '@lastolivegames/becsy';
 //   Rect,
 //   Text,
 //   Parent,
-//   FillSolid,
-//   FillGradient,
+//   FillLayers,
 //   Stroke,
 //   Opacity,
 //   Visibility,
@@ -190,10 +189,8 @@ export function isEntity(entity: any): entity is Entity {
 //     type = 'g';
 //   }
 
-//   if (entity.has(FillSolid)) {
-//     (attributes as FillAttributes).fill = entity.read(FillSolid).value;
-//   } else if (entity.has(FillGradient)) {
-//     (attributes as FillAttributes).fill = entity.read(FillGradient).value;
+//   if (entity.has(FillLayers)) {
+//     (attributes as FillAttributes).fills = entity.read(FillLayers).layers;
 //   } else if (entity.has(FillImage)) {
 //     (attributes as FillAttributes).fill = entity.read(FillImage).url;
 //   } else if (entity.has(FillPattern)) {

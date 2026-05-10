@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 use serde::Deserialize;
 
 #[cfg(target_arch = "wasm32")]
-use vello::kurbo::{Affine, Vec2};
+use vello::kurbo::{Affine, Rect, Vec2};
 
 #[cfg(target_arch = "wasm32")]
 use crate::state::{
@@ -22,7 +22,7 @@ use crate::path_utils::{is_point_in_path_fill, is_point_in_path_stroke, path_ren
 #[cfg(target_arch = "wasm32")]
 use crate::types::{
     BrushOptions, CanvasRenderOptions, CanvasRenderOptionsInput, DropShadow, EllipseOptions, ExportViewOpts,
-    GroupOptions, ImageRectOptions, JsShape, LineOptions, PathBoundsOptions, PathHitTestOptions,
+    FillPaint, GroupOptions, ImageRectOptions, JsShape, LineOptions, PathBoundsOptions, PathHitTestOptions,
     PathOptions, PolylineOptions, RectOptions, RoughEllipseOptions, RoughLineOptions,
     VectorNetworkOptions, VectorNetworkRegionOpts,
     RoughPathOptions, RoughPolylineOptions, RoughRectOptions, StrokeAlignment, StrokeParams,
@@ -944,6 +944,18 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         }
     });
 
+    let mut fills = if !o.fills.is_empty() {
+        wasm_fill_paints_to_runtime(o.fills.clone())
+    } else {
+        vec![FillPaint::Solid { rgba: o.fill }]
+    };
+    if fills.is_empty() {
+        fills.push(FillPaint::Solid { rgba: o.fill });
+    }
+    let fills_ibox = compute_text_bounds_internal(&o)
+        .map(|b| Rect::new(b.min_x, b.min_y, b.max_x, b.max_y))
+        .unwrap_or_else(|| Rect::new(0.0, 0.0, 1.0, 1.0));
+
     push_shape(canvas_id, JsShape::Text {
         id: o.id,
         parent_id: o.parent_id,
@@ -968,10 +980,10 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
         text_align: o.text_align,
         text_baseline: o.text_baseline,
         leading: o.leading,
-        fill: o.fill,
+        fills,
+        fills_ibox,
         stroke,
         opacity: o.opacity,
-        fill_opacity: o.fill_opacity,
         stroke_opacity: o.stroke_opacity,
         local_transform: o.local_transform,
         size_attenuation: o.size_attenuation,

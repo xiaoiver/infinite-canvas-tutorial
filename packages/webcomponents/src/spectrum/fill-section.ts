@@ -33,6 +33,10 @@ function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }
 
+function fillLayerPrimaryWire(layer: SerializedFillLayerItem): string {
+  return layer.value;
+}
+
 function layerOpacity01(o?: number | string): number {
   if (o == null || o === '') {
     return 1;
@@ -206,9 +210,6 @@ export class FillSection extends LitElement {
   }
 
   private displayValueForLayer(layer: SerializedFillLayerItem): string {
-    if (layer.type === 'gradient') {
-      return layer.value;
-    }
     return layer.value;
   }
 
@@ -235,9 +236,10 @@ export class FillSection extends LitElement {
       return;
     }
     const base = this.singleLayerFromNode();
+    const primary = fillLayerPrimaryWire(base);
     const resolved = String(
       resolveDesignVariableValue(
-        base.value,
+        primary,
         this.appState.variables,
         this.appState.themeMode,
       ),
@@ -247,10 +249,16 @@ export class FillSection extends LitElement {
         ? ({ ...base, type: 'gradient' as const, value: resolved } as SerializedFillLayerItem)
         : base.type === 'image'
           ? ({ ...base, type: 'image' as const, value: resolved } as SerializedFillLayerItem)
+          : base.type === 'pattern'
+            ? ({
+              ...base,
+              type: 'pattern' as const,
+              value: resolved,
+            } as SerializedFillLayerItem)
           : ({
             ...base,
             type: 'solid' as const,
-            value: normalizeSolidCssValue(base.value),
+            value: normalizeSolidCssValue(resolved),
           } as SerializedFillLayerItem);
     this.commit({ fills: [normalized, defaultLayer] });
   }
@@ -307,6 +315,8 @@ export class FillSection extends LitElement {
       }
       let nextLayer: SerializedFillLayerItem;
       if (L.type === 'gradient' || L.type === 'image') {
+        nextLayer = { ...L, value: raw };
+      } else if (L.type === 'pattern') {
         nextLayer = { ...L, value: raw };
       } else {
         nextLayer = { ...L, value: normalizeSolidCssValue(raw) };

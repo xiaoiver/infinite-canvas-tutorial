@@ -23,8 +23,10 @@ import { mat3 } from 'gl-matrix';
 import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/brush';
 import { distanceBetweenPoints, paddingMat3, parseColor } from '../utils';
+import { getEnabledFillLayers } from '../utils/fillLayers';
+import { getFillLayerDecodedBitmap } from '../utils/fill-layer-image-url-raster';
 import {
-  FillImage,
+  FillLayers,
   GlobalRenderOrder,
   GlobalTransform,
   Opacity,
@@ -240,16 +242,23 @@ export class StampBrush extends Drawcall {
 
       const instance = this.shapes[0];
 
-      if (instance.has(FillImage)) {
-        const src = instance.read(FillImage).src as ImageBitmap;
-        const texture = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: src.width,
-          height: src.height,
-          usage: TextureUsage.SAMPLED,
-        });
-        texture.setImageData([src]);
-        this.#texture = texture;
+      if (instance.has(FillLayers)) {
+        const imgLayer = getEnabledFillLayers(instance).find(
+          (l) => l.type === 'image',
+        );
+        if (imgLayer) {
+          const src = getFillLayerDecodedBitmap(imgLayer.value);
+          if (src) {
+            const texture = this.device.createTexture({
+              format: Format.U8_RGBA_NORM,
+              width: src.width,
+              height: src.height,
+              usage: TextureUsage.SAMPLED,
+            });
+            texture.setImageData([src]);
+            this.#texture = texture;
+          }
+        }
       }
 
       const sampler = this.renderCache.createSampler({

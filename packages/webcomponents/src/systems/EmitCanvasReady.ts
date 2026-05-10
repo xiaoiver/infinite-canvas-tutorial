@@ -1,11 +1,7 @@
 import {
   Canvas,
   Children,
-  FillGradient,
-  FillSolid,
-  FillImage,
   FillLayers,
-  FillPattern,
   FillTexture,
   FillTextureLive,
   Filter,
@@ -48,6 +44,7 @@ import {
   Embed,
   HTML,
   HTMLContainer,
+  Rough
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { pendingGpuReadyDispatch } from '../API';
@@ -82,11 +79,7 @@ export class EmitCanvasReady extends System {
           Children,
           Selected,
           Transformable,
-          FillGradient,
-          FillSolid,
           FillLayers,
-          FillImage,
-          FillPattern,
           FillTexture,
           FillTextureLive,
           Flex,
@@ -110,6 +103,7 @@ export class EmitCanvasReady extends System {
           Embed,
           HTML,
           HTMLContainer,
+          Rough,
         ).write,
     );
   }

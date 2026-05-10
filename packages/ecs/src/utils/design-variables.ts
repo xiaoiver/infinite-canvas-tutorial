@@ -501,6 +501,9 @@ export function resolveFillLayerItemsForEcs(
     if (typeof L.value === 'string') {
       L.value = resolveDesignVariableValue(L.value, variables, themeMode);
     }
+    if (L.type === 'pattern' && typeof L.value === 'string') {
+      L.value = resolveDesignVariableValue(L.value, variables, themeMode);
+    }
     if (typeof L.opacity === 'string') {
       L.opacity = resolveDesignVariableValue(L.opacity, variables, themeMode);
     }

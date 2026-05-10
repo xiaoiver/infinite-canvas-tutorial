@@ -27,7 +27,6 @@ import {
   Children,
   Transform,
   Renderable,
-  FillSolid,
   Stroke,
   Rect,
   Visibility,
@@ -193,31 +192,31 @@ canvas.addEventListener(Event.READY, async (e) => {
   const parent = {
     id: 'parent-1',
     type: 'rect',
-    // clipMode: 'clip',
+    clipMode: 'clip',
     x: 100,
     y: 50,
     width: 100,
     height: 100,
-    fills: [
-      { type: 'solid', value: 'red', opacity: 0.5 },
-      { type: 'solid', value: 'blue', opacity: 0.5 },
-    ],
+    // fills: [
+    //   { type: 'solid', value: 'red', opacity: 0.5 },
+    //   { type: 'solid', value: 'blue', opacity: 0.5 },
+    // ],
   };
-  // const child = {
-  //   id: 'rect-1',
-  //   type: 'rect',
-  //   parentId: 'parent-1',
-  //   x: 0,
-  //   y: 0,
-  //   width: 200,
-  //   height: 200,
-  //   fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
-  //   locked: true,
-  //   lockAspectRatio: true,
-  // };
+  const child = {
+    id: 'rect-1',
+    type: 'rect',
+    parentId: 'parent-1',
+    x: 0,
+    y: 0,
+    width: 200,
+    height: 200,
+    fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
+    locked: true,
+    lockAspectRatio: true,
+  };
 
   api.updateNodes([
-    parent
+    parent, child,
   ]);
   // api.selectNodes([parent]);
 

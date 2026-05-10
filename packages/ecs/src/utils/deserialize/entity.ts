@@ -5,8 +5,6 @@ import { mat3, vec2 } from 'gl-matrix';
 import { IPointData } from '@pixi/math';
 import {
   Ellipse,
-  FillSolid,
-  FillGradient,
   Name,
   Opacity,
   Path,
@@ -23,8 +21,6 @@ import {
   Font,
   AABB,
   TextDecoration,
-  FillImage,
-  FillPattern,
   FillLayers,
   MaterialDirty,
   SizeAttenuation,
@@ -130,6 +126,7 @@ import simplify from 'simplify-js';
 import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './expand-ref-nodes';
 import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
 import { resetFillImageSvgRerasterSchedule } from '../fillImageSvgReraster';
+import { setFillLayerDecodedBitmapForUrl } from '../fill-layer-image-url-raster';
 import { hasRasterPostEffects } from '../filter';
 
 export function inferXYWidthHeight(node: SerializedNode) {
@@ -892,11 +889,11 @@ function layoutSerializedEdgeLabelChildren(
 }
 
 export async function loadImage(url: string, entity: Entity) {
-  const image = await DOMAdapter.get().createImage(url);
+  const image = (await DOMAdapter.get().createImage(url)) as ImageBitmap;
   resetFillImageSvgRerasterSchedule(entity);
-  safeAddComponent(entity, FillImage, {
-    src: image as ImageBitmap,
-    url,
+  setFillLayerDecodedBitmapForUrl(url, image);
+  safeAddComponent(entity, FillLayers, {
+    layers: [{ type: 'image', value: url }],
   });
   safeAddComponent(entity, MaterialDirty);
 }

@@ -7,7 +7,7 @@ import {
   Path,
   Renderable,
   Stroke,
-  FillSolid,
+  FillLayers,
   TesselationMethod,
   Transform,
   Visibility,
@@ -31,7 +31,7 @@ export type IconFontChildInsertOptions = {
   zIndex: number;
   visibility: 'inherited' | 'hidden' | 'visible';
   name: string;
-  /** 根节点带栅格类 `filter` 时置 true，ellipse 才补 `FillSolid` 以便后处理。 */
+  /** 根节点带栅格类 `filter` 时置 true，ellipse 才补 `FillLayers`（纯色层）以便后处理。 */
   strokeAsPlaceholderFillForRasterFilter?: boolean;
 };
 
@@ -101,7 +101,7 @@ export function insertIconFontChildFromPrimitive(
     opts.strokeAsPlaceholderFillForRasterFilter === true,
   );
   if (fillPart && fillPart !== 'none') {
-    ch.insert(new FillSolid(fillPart, ''));
+    ch.insert(new FillLayers([{ type: 'solid', value: fillPart }]));
     if (
       shouldUseIconFontEllipseStrokeRasterPlaceholder(
         prim,

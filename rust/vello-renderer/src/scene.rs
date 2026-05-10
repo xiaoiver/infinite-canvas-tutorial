@@ -2,7 +2,7 @@
 use std::collections::{HashMap, HashSet};
 
 use vello::kurbo::{Affine, BezPath, Ellipse, Line, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2};
-use vello::peniko::{Blob, Color, ColorStop, Fill, Gradient, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
+use vello::peniko::{Blob, Brush, Color, ColorStop, Fill, Gradient, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
 use vello::Scene;
 
 #[cfg(target_arch = "wasm32")]
@@ -545,6 +545,93 @@ fn scene_apply_fill_paints<S: Shape>(
                         Some(brush_tf),
                         geom,
                     );
+                });
+            }
+        }
+    }
+}
+
+/// 文本字形填充：`fills` 与 ECS `FillLayers` / 其它形状 `scene_apply_fill_paints` 一致（自下而上叠加）。
+#[cfg(target_arch = "wasm32")]
+fn scene_text_draw_glyphs_with_fills(
+    scene: &mut Scene,
+    shape_transform: Affine,
+    glyph_runs: &[(vello::peniko::FontData, Vec<vello::Glyph>)],
+    font_size: f32,
+    paints: &[FillPaint],
+    fills_ibox: Rect,
+    shape_id: &str,
+    opacity: f32,
+) {
+    if glyph_runs.is_empty() || paints.is_empty() {
+        return;
+    }
+    let w = fills_ibox.width();
+    let h = fills_ibox.height();
+    for (layer_i, paint) in paints.iter().enumerate() {
+        match paint {
+            FillPaint::Solid { rgba } => {
+                let c = apply_opacity_to_color(*rgba, opacity, 1.0);
+                let brush = Brush::Solid(Color::new(c));
+                for (font_data, glyphs) in glyph_runs {
+                    scene
+                        .draw_glyphs(font_data)
+                        .font_size(font_size)
+                        .transform(shape_transform)
+                        .brush(&brush)
+                        .draw(Fill::NonZero, glyphs.clone().into_iter());
+                }
+            }
+            FillPaint::Gradient { gradients } => {
+                for g in gradients.iter().rev() {
+                    let brush = Brush::Gradient(build_gradient_brush(g, opacity));
+                    for (font_data, glyphs) in glyph_runs {
+                        scene
+                            .draw_glyphs(font_data)
+                            .font_size(font_size)
+                            .transform(shape_transform)
+                            .brush(&brush)
+                            .draw(Fill::NonZero, glyphs.clone().into_iter());
+                    }
+                }
+            }
+            FillPaint::Image {
+                image_width,
+                image_height,
+                image_data,
+            } => {
+                if w <= 0.0 || h <= 0.0 {
+                    continue;
+                }
+                let expected_len = (*image_width as usize) * (*image_height as usize) * 4;
+                if image_data.len() < expected_len {
+                    continue;
+                }
+                let cache_key = format!("{}#textfl{}", shape_id, layer_i);
+                IMAGE_BRUSH_CACHE.with(|cache_cell| {
+                    let mut cache = cache_cell.borrow_mut();
+                    let brush = if let Some(cached) = cache.get(cache_key.as_str()) {
+                        cached
+                    } else {
+                        let image = ImageData {
+                            data: Blob::from(image_data.clone()),
+                            format: ImageFormat::Rgba8,
+                            alpha_type: ImageAlphaType::Alpha,
+                            width: *image_width,
+                            height: *image_height,
+                        };
+                        let nb = ImageBrush::new(image);
+                        cache.insert(cache_key.clone(), nb);
+                        cache.get(cache_key.as_str()).expect("inserted brush")
+                    };
+                    for (font_data, glyphs) in glyph_runs {
+                        scene
+                            .draw_glyphs(font_data)
+                            .font_size(font_size)
+                            .transform(shape_transform)
+                            .brush(brush.as_ref())
+                            .draw(Fill::NonZero, glyphs.clone().into_iter());
+                    }
                 });
             }
         }
@@ -1180,6 +1267,7 @@ pub fn add_js_shape_to_scene(
             }
         }
         JsShape::Text {
+            id,
             content,
             font_size,
             font_family,
@@ -1192,10 +1280,10 @@ pub fn add_js_shape_to_scene(
             word_wrap,
             word_wrap_width,
             text_align,
-            fill,
+            fills,
+            fills_ibox,
             stroke,
             opacity,
-            fill_opacity,
             stroke_opacity,
             size_attenuation,
             ..
@@ -1259,9 +1347,6 @@ pub fn add_js_shape_to_scene(
                     }
                 };
 
-                let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                let fill_brush = Color::new(fill_color);
-
                 if let Some(ref s) = stroke {
                     let stroke_width = if size_attenuation { s.width / scale } else { s.width };
                     let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
@@ -1289,14 +1374,16 @@ pub fn add_js_shape_to_scene(
                     }
                 }
 
-                for (font_data, glyphs) in &glyph_runs {
-                    scene
-                        .draw_glyphs(font_data)
-                        .font_size(size)
-                        .transform(shape_transform)
-                        .brush(fill_brush)
-                        .draw(Fill::NonZero, glyphs.clone().into_iter());
-                }
+                scene_text_draw_glyphs_with_fills(
+                    scene,
+                    shape_transform,
+                    &glyph_runs,
+                    size,
+                    &fills,
+                    fills_ibox,
+                    id.as_str(),
+                    opacity,
+                );
 
                 let emoji_render_size = ((font_size_eff * 2.0).ceil() as u32).max(48);
                 for emoji_pos in &emoji_positions {

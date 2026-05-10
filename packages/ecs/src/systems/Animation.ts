@@ -1,8 +1,7 @@
 import { System } from '@lastolivegames/becsy';
 import {
   AnimationPlayer,
-  FillSolid,
-  FillGradient,
+  FillLayers,
   Opacity,
   Path,
   Stroke,
@@ -62,7 +61,7 @@ export class AnimationSystem extends System {
     q.current
       .with(AnimationPlayer)
       .using(Canvas).read
-      .using(Transform, Opacity, FillSolid, FillGradient, Stroke, Path, AnimationPlayer).write,
+      .using(Transform, Opacity, FillLayers, Stroke, Path, AnimationPlayer).write,
   );
 
   execute(): void {
@@ -170,9 +169,13 @@ export class AnimationSystem extends System {
 
       if (typeof values.fill === 'string') {
         if (isGradient(values.fill)) {
-          safeAddComponent(entity, FillGradient, { value: values.fill });
+          safeAddComponent(entity, FillLayers, {
+            layers: [{ type: 'gradient', value: values.fill }],
+          });
         } else {
-          safeAddComponent(entity, FillSolid, { value: values.fill });
+          safeAddComponent(entity, FillLayers, {
+            layers: [{ type: 'solid', value: values.fill }],
+          });
         }
       }
 

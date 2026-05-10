@@ -6,7 +6,7 @@ import {
   ComputedPoints,
   ComputedRough,
   Ellipse,
-  FillSolid,
+  FillLayers,
   FractionalIndex,
   getRoughOptions,
   Line,
@@ -25,6 +25,7 @@ import {
 import { getWatercolorFillContoursFromEntity } from '../utils/watercolor-rough';
 import { safeAddComponent } from '../history';
 import { SerializedNode } from '../types/serialized-node';
+import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
 
 /**
  * 重算 {@link ComputedRough}（Rough 线段在仅 {@link Line} 端点变化时不会触发 `Rough` 的 changed）。
@@ -38,14 +39,11 @@ export function refreshComputedRoughForEntity(entity: Entity): void {
   let drawable: Drawable;
 
   const rough = entity.read(Rough);
-  const fillComponent = entity.has(FillSolid)
-    ? entity.read(FillSolid)
-    : { value: 'none' };
+  const fill = getFirstSolidFillLayerValue(entity) ?? 'none';
   const strokeComponent = entity.has(Stroke)
     ? entity.read(Stroke)
     : { color: 'none', width: 0, dasharray: [], dashoffset: 0 };
   const { color, width, dasharray, dashoffset } = strokeComponent;
-  const { value: fill } = fillComponent;
 
   const roughOptions = getRoughOptions({
     // @ts-ignore
@@ -138,7 +136,7 @@ export class ComputeRough extends System {
     (q) =>
       q.addedOrChanged
         .with(Rough)
-        .and.withAny(Circle, Ellipse, Rect, Line, Polyline, Path, FillSolid, Stroke)
+        .and.withAny(Circle, Ellipse, Rect, Line, Polyline, Path, FillLayers, Stroke)
         .trackWrites,
   );
 

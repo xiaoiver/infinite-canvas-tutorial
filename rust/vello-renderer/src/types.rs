@@ -1,7 +1,7 @@
 #[cfg(target_arch = "wasm32")]
 use serde::{Deserialize, Serialize};
 
-use vello::kurbo::{Affine, Point};
+use vello::kurbo::{Affine, Point, Rect};
 
 use crate::vector_network::{VnRegion, VnSegment, VnVertex};
 
@@ -285,10 +285,10 @@ pub enum JsShape {
         text_align: String,
         text_baseline: String,
         leading: f64,
-        fill: [f32; 4],
+        fills: Vec<FillPaint>,
+        fills_ibox: Rect,
         stroke: Option<StrokeParams>,
         opacity: f32,
-        fill_opacity: f32,
         stroke_opacity: f32,
         local_transform: Option<Mat3Array>,
         size_attenuation: bool,
@@ -1598,6 +1598,8 @@ pub struct TextOptions {
     pub leading: f64,
     #[serde(default = "default_rgba_fill")]
     pub fill: [f32; 4],
+    #[serde(default)]
+    pub fills: Vec<WasmFillPaint>,
     #[serde(default)]
     pub stroke: Option<StrokeOptions>,
     #[serde(default = "default_opacity")]
