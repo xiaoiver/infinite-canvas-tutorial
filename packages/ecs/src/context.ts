@@ -38,6 +38,11 @@ export enum Task {
 export interface PropertiesPanelSectionsOpen {
   /** 填充层列表（实色 / 渐变、不透明度、显隐） */
   fillSection: boolean;
+  /** 描边层列表（与 fills 对称） */
+  strokeSection: boolean;
+  /** 文本排版（字体、字号等）；仅 `text` 节点显示 */
+  typographySection: boolean;
+  /** 形状专属（如矩形圆角）；仅 `rect` 节点显示 */
   shape: boolean;
   transform: boolean;
   layout: boolean;
@@ -145,7 +150,7 @@ export interface AppState {
   layersExpanded: SerializedNode['id'][];
   propertiesOpened: SerializedNode['id'][];
   /**
-   * 属性面板 Shape / Transform / Layout / Effects / 多选对齐与效果 分区的默认展开状态
+   * 属性面板 Fill / Stroke / Typography / Shape / Transform / Layout / Effects 等分区的默认展开状态
    */
   propertiesPanelSectionsOpen: PropertiesPanelSectionsOpen;
   /**
@@ -466,6 +471,8 @@ export const getDefaultAppState: () => AppState = () => {
     propertiesOpened: [],
     propertiesPanelSectionsOpen: {
       fillSection: true,
+      strokeSection: true,
+      typographySection: true,
       shape: true,
       transform: true,
       layout: true,

@@ -198,6 +198,8 @@ export interface StrokeAttributes {
   strokeMiterlimit: Stroke['miterlimit'];
   strokeDasharray: string;
   strokeDashoffset: Stroke['dashoffset'];
+  /** 虚线端帽（Figma）；未写时等价于 `none` */
+  strokeDashCap?: Stroke['dashcap'];
   /** @deprecated 由 migrate 合并入 `strokes[].opacity` */
   strokeOpacity?: Opacity['strokeOpacity'];
 }

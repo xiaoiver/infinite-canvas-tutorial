@@ -108,6 +108,7 @@ import {
 import {
   getPrimaryStrokeValue,
   migrateLegacyStrokeWireInPlace,
+  normalizeStrokeDashCap,
 } from '../normalize-stroke-wire';
 import { isFillLayerEnabled } from '../fillLayers';
 import { buildGroupWirePresentation } from '../group-presentation';
@@ -1555,6 +1556,7 @@ export function serializedNodesToEntities(
     const {
       strokeWidth,
       strokeDasharray,
+      strokeDashCap,
       strokeLinecap,
       strokeLinejoin,
       strokeMiterlimit,
@@ -1606,6 +1608,7 @@ export function serializedNodesToEntities(
         miterlimit: strokeMiterlimit,
         dashoffset: strokeDashoffset,
         alignment: strokeAlignment,
+        dashcap: normalizeStrokeDashCap(strokeDashCap) ?? 'none',
       };
       if (isGradient(resolvedStroke as string)) {
         entityCommands.insert(

@@ -74,6 +74,7 @@ const strokeDefaultAttributes = {
   strokeMiterlimit: 4,
   strokeDasharray: '0,0',
   strokeDashoffset: 0,
+  strokeDashCap: 'none',
 };
 
 export const markerDefaultAttributes = {
@@ -305,6 +306,9 @@ function appendSvgStyleProperty(
  *
  * 入参**不应**含 `type: 'ref'`（无对应 SVG 图元）。请在外层用
  * {@link expandSerializedNodesForSvgExport} 展开，或使用 `toSVGElement` / `API#renderToSVG` 已接好的路径。
+ *
+ * 支持**仅导出子集**（例如只含某个子节点、不含其父）：父级不在 `nodes` 中时，不会向 toposort 注入未知顶点；
+ * 该子节点会作为顶层根写入返回列表；继承类属性仍由 {@link getComputedInheritGroupWireMap} 在子集内能解析的 `g` 链上尽量合并。
  */
 export async function serializeNodesToSVGElements(
   nodes: SerializedNode[],
@@ -315,6 +319,7 @@ export async function serializeNodesToSVGElements(
   for (const node of nodes) {
     idSerializedNodeMap.set(node.id, node);
   }
+  const vertexSet = new Set(idSerializedNodeMap.keys());
   for (const n of nodes) {
     migrateLegacyFillWireInPlace(n as unknown as Record<string, unknown>);
     migrateLegacyStrokeWireInPlace(n as unknown as Record<string, unknown>);
@@ -325,9 +330,13 @@ export async function serializeNodesToSVGElements(
   const svgElementIdMap = new WeakMap<SVGElement, string>();
 
   const vertices = nodes.map((node) => node.id);
+  /** 仅当父也在导出集合内时才建立边，避免 toposort 因未知父 id 抛错。 */
   const edges = nodes
-    .filter((node) => !isNil(node.parentId))
-    .map((node) => [node.parentId, node.id] as [string, string]);
+    .filter(
+      (node) =>
+        !isNil(node.parentId) && vertexSet.has(node.parentId as string),
+    )
+    .map((node) => [node.parentId as string, node.id] as [string, string]);
   const sorted = toposort.array(vertices, edges);
 
   for (const id of sorted) {
@@ -795,10 +804,14 @@ export async function serializeNodesToSVGElements(
 
     idSVGElementMap.set(id, $g);
     svgElementIdMap.set($g, id);
-    if (parentId) {
-      const parent = idSVGElementMap.get(parentId);
+    const parentInExport =
+      parentId != null && vertexSet.has(parentId as string);
+    if (parentInExport) {
+      const parent = idSVGElementMap.get(parentId as string);
       if (parent) {
         parent.appendChild($g);
+      } else {
+        elements.push($g);
       }
     } else {
       elements.push($g);

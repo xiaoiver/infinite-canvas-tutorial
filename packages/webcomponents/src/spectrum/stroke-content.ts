@@ -13,9 +13,62 @@ import {
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
+import '@spectrum-web-components/field-label/sp-field-label.js';
+import '@spectrum-web-components/number-field/sp-number-field.js';
+import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/menu/sp-menu-item.js';
 import { when } from 'lit/directives/when.js';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import './design-variable-picker.js';
+
+/** 线框 `strokeDasharray` 与 ECS `Stroke.dasharray` 的默认虚线图案（dash, gap） */
+const DASHED_STROKE_DASHARRAY_WIRE = '6,6';
+
+function strokeStyleFromDasharrayWire(
+  dash: string | undefined,
+): 'solid' | 'dashed' {
+  const raw = (dash ?? '').trim();
+  if (raw === '' || raw === 'none') {
+    return 'solid';
+  }
+  const parts = raw.includes(',')
+    ? raw.split(',')
+    : raw.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return 'solid';
+  }
+  const a = Number(String(parts[0]).trim());
+  const b = Number(String(parts[1] ?? parts[0]).trim());
+  return Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0
+    ? 'dashed'
+    : 'solid';
+}
+
+/** 解析当前虚线段的 dash / gap（px），用于展示与编辑 */
+function parseDashGapPxFromWire(
+  dash: string | undefined,
+): { dashPx: number; gapPx: number } {
+  const raw = (dash ?? '').trim();
+  if (raw === '' || raw === 'none') {
+    return { dashPx: 6, gapPx: 6 };
+  }
+  const parts = raw.includes(',')
+    ? raw.split(',')
+    : raw.split(/\s+/).filter(Boolean);
+  const a = Number(String(parts[0] ?? '').trim());
+  const b = Number(String(parts[1] ?? parts[0] ?? '').trim());
+  const dashPx = Number.isFinite(a) && a > 0 ? a : 6;
+  const gapPx = Number.isFinite(b) && b > 0 ? b : dashPx;
+  return { dashPx, gapPx };
+}
+
+function clampDashGapPx(n: number, fallback: number): number {
+  if (!Number.isFinite(n) || n <= 0) {
+    return fallback;
+  }
+  return n;
+}
+
 @customElement('ic-spectrum-stroke-content')
 @localized()
 export class StrokeContent extends LitElement {
@@ -99,11 +152,47 @@ export class StrokeContent extends LitElement {
     this.api.record();
   }
 
-  private handleStrokeOpacityChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeOpacity = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      strokeOpacity,
-    });
+  private handleStrokeStyleChanged(e: Event & { target: HTMLInputElement }) {
+    const style = e.target.value as 'solid' | 'dashed';
+    if (style === 'dashed') {
+      const wire = (this.node as PolylineSerializedNode).strokeDasharray;
+      const cur = parseDashGapPxFromWire(wire);
+      const already =
+        strokeStyleFromDasharrayWire(wire) === 'dashed';
+      this.api.updateNode(this.node, {
+        strokeDasharray: already
+          ? `${clampDashGapPx(cur.dashPx, 6)},${clampDashGapPx(cur.gapPx, 6)}`
+          : DASHED_STROKE_DASHARRAY_WIRE,
+      });
+    } else {
+      this.api.updateNode(this.node, { strokeDasharray: 'none' });
+    }
+    this.api.record();
+  }
+
+  private handleDashPxChanged(e: Event & { target: HTMLInputElement }) {
+    const nextDash = parseFloat(e.target.value);
+    const wire = (this.node as PolylineSerializedNode).strokeDasharray;
+    const { dashPx, gapPx } = parseDashGapPxFromWire(wire);
+    const d = clampDashGapPx(nextDash, dashPx);
+    const g = clampDashGapPx(gapPx, 6);
+    this.api.updateNode(this.node, { strokeDasharray: `${d},${g}` });
+    this.api.record();
+  }
+
+  private handleGapPxChanged(e: Event & { target: HTMLInputElement }) {
+    const nextGap = parseFloat(e.target.value);
+    const wire = (this.node as PolylineSerializedNode).strokeDasharray;
+    const { dashPx, gapPx } = parseDashGapPxFromWire(wire);
+    const d = clampDashGapPx(dashPx, 6);
+    const g = clampDashGapPx(nextGap, gapPx);
+    this.api.updateNode(this.node, { strokeDasharray: `${d},${g}` });
+    this.api.record();
+  }
+
+  private handleStrokeDashCapChanged(e: Event & { target: HTMLInputElement }) {
+    const dashcap = e.target.value as 'none' | 'square' | 'round';
+    this.api.updateNode(this.node, { strokeDashCap: dashcap });
     this.api.record();
   }
 
@@ -165,34 +254,6 @@ export class StrokeContent extends LitElement {
     }
   }
 
-  private handleStrokeOpacityVariablePick(
-    e: CustomEvent<DesignVariablePickDetail>,
-  ) {
-    this.api.updateNode(this.node, {
-      strokeOpacity: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
-  }
-
-  private handleStrokeOpacityUnbind() {
-    const raw = (this.node as PolylineSerializedNode).strokeOpacity;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, {
-        strokeOpacity: Math.max(0, Math.min(1, n)),
-      });
-      this.api.record();
-    }
-  }
-
   render() {
     if (!this.node) {
       return html``;
@@ -200,13 +261,17 @@ export class StrokeContent extends LitElement {
 
     const {
       strokeWidth,
-      strokeOpacity,
+      strokeDasharray,
       strokeAlignment = 'center',
       strokeLinecap = 'butt',
       strokeLinejoin = 'miter',
+      strokeDashCap = 'none',
       markerStart = 'none',
       markerEnd = 'none',
     } = this.node as PolylineSerializedNode;
+
+    const strokeStyle = strokeStyleFromDasharrayWire(strokeDasharray);
+    const { dashPx, gapPx } = parseDashGapPxFromWire(strokeDasharray);
 
     const strokeWidthResolved = resolveDesignVariableValue(
       strokeWidth,
@@ -223,22 +288,6 @@ export class StrokeContent extends LitElement {
     const strokeWidthBound =
       typeof strokeWidth === 'string' &&
       isDesignVariableReference(strokeWidth);
-
-    const strokeOpacityResolved = resolveDesignVariableValue(
-      strokeOpacity,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const strokeOpacityShow = (() => {
-      if (typeof strokeOpacityResolved === 'number') {
-        return strokeOpacityResolved;
-      }
-      const n = parseFloat(String(strokeOpacityResolved ?? ''));
-      return Number.isFinite(n) ? n : 1;
-    })();
-    const strokeOpacityBound =
-      typeof strokeOpacity === 'string' &&
-      isDesignVariableReference(strokeOpacity);
 
     return html`<div class="line">
         <sp-field-label for="stroke-width" side-aligned="start"
@@ -307,67 +356,84 @@ export class StrokeContent extends LitElement {
       </div>
 
       <div class="line">
-        <sp-field-label for="stroke-opacity" side-aligned="start"
-          >${msg(str`Stroke opacity`)}</sp-field-label
+        <sp-field-label for="stroke-style" side-aligned="start"
+          >${msg(str`Style`)}</sp-field-label
         >
-        <div class="stroke-width-controls">
-          <sp-action-button
-            quiet
-            size="s"
-            id="stroke-opacity-dv-trigger"
-          >
-            <sp-icon-link slot="icon"></sp-icon-link>
-            <sp-tooltip self-managed placement="bottom">
-              ${msg(str`Attach a variable`)}
-            </sp-tooltip>
-          </sp-action-button>
-          <sp-number-field
-            id="stroke-opacity"
-            size="s"
-            value=${strokeOpacityShow}
-            min="0"
-            max="1"
-            step="0.01"
-            hide-stepper
-            autocomplete="off"
-            @change=${this.handleStrokeOpacityChanged}
-          ></sp-number-field>
-          <sp-overlay
-            trigger="stroke-opacity-dv-trigger@click"
-            placement="bottom"
-            type="auto"
-          >
-            <sp-popover dialog>
-              <div class="dv-popover-body">
-                ${when(
-      strokeOpacityBound,
-      () =>
-        html`<div class="dv-row">
-                      <span class="dv-badge" title=${String(strokeOpacity)}
-                        >${String(strokeOpacity)}</span
-                      >
-                      <sp-action-button
-                        quiet
-                        size="s"
-                        @click=${this.handleStrokeOpacityUnbind}
-                      >
-                        <sp-icon-unlink slot="icon"></sp-icon-unlink>
-                        <sp-tooltip self-managed placement="right">
-                          ${msg(str`Detach variable`)}
-                        </sp-tooltip>
-                      </sp-action-button>
-                    </div>`,
-    )}
-                <ic-spectrum-design-variable-picker
-                  match-type="number"
-                  selected-key=${designVariableRefKeyFromWire(strokeOpacity)}
-                  @ic-variable-pick=${this.handleStrokeOpacityVariablePick}
-                ></ic-spectrum-design-variable-picker>
-              </div>
-            </sp-popover>
-          </sp-overlay>
-        </div>
+        <sp-picker
+          id="stroke-style"
+          size="s"
+          style="width: 70px;"
+          label=${msg(str`Stroke style`)}
+          value=${strokeStyle}
+          @change=${this.handleStrokeStyleChanged}
+        >
+          <sp-menu-item value="solid">${msg(str`solid`)}</sp-menu-item>
+          <sp-menu-item value="dashed">${msg(str`dashed`)}</sp-menu-item>
+        </sp-picker>
       </div>
+
+      ${when(
+      strokeStyle === 'dashed',
+      () => html`
+      <div class="line">
+        <sp-field-label for="stroke-dash-length" side-aligned="start"
+          >${msg(str`Dash`)}</sp-field-label
+        >
+        <sp-number-field
+          id="stroke-dash-length"
+          size="s"
+          value=${dashPx}
+          min="0.5"
+          step="0.5"
+          hide-stepper
+          autocomplete="off"
+          @change=${this.handleDashPxChanged}
+          format-options='{
+              "style": "unit",
+              "unit": "px"
+            }'
+        ></sp-number-field>
+      </div>
+      <div class="line">
+        <sp-field-label for="stroke-gap-length" side-aligned="start"
+          >${msg(str`Gap`)}</sp-field-label
+        >
+        <sp-number-field
+          id="stroke-gap-length"
+          size="s"
+          value=${gapPx}
+          min="0.5"
+          step="0.5"
+          hide-stepper
+          autocomplete="off"
+          @change=${this.handleGapPxChanged}
+          format-options='{
+              "style": "unit",
+              "unit": "px"
+            }'
+        ></sp-number-field>
+      </div>
+      <div class="line">
+        <sp-field-label for="stroke-dash-cap" side-aligned="start"
+          >${msg(str`Dash cap`)}</sp-field-label
+        >
+        <sp-picker
+          id="stroke-dash-cap"
+          size="s"
+          style="width: 70px;"
+          label=${msg(str`Dash cap`)}
+          value=${strokeDashCap === 'square' || strokeDashCap === 'round'
+          ? strokeDashCap
+          : 'none'}
+          @change=${this.handleStrokeDashCapChanged}
+        >
+          <sp-menu-item value="none">${msg(str`none`)}</sp-menu-item>
+          <sp-menu-item value="square">${msg(str`square`)}</sp-menu-item>
+          <sp-menu-item value="round">${msg(str`round`)}</sp-menu-item>
+        </sp-picker>
+      </div>
+    `,
+    )}
 
       <div class="line">
         <sp-field-label for="stroke-alignment" side-aligned="start"

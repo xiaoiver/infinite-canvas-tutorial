@@ -319,6 +319,8 @@ export function LiquidMetalTool() {
                 penbarNameLabelVisible: true,
                 propertiesPanelSectionsOpen: {
                   fillSection: true,
+                  strokeSection: true,
+                  typographySection: true,
                   shape: false,
                   transform: false,
                   layout: false,

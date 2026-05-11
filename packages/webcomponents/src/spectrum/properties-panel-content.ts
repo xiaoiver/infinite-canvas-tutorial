@@ -4,15 +4,14 @@ import { consume } from '@lit/context';
 import {
   SerializedNode,
   AppState,
-  FillAttributes,
   designVariableRefKeyFromWire,
   isDesignVariableReference,
   migrateLegacyFillWireInPlace,
+  migrateLegacyStrokeWireInPlace,
   resolveDesignVariableValue,
   type FlexboxLayoutAttributes,
   type IconFontSerializedNode,
   type RectSerializedNode,
-  type SerializedFillLayerItem,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
 import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
@@ -45,6 +44,9 @@ import './export-panel';
 import './icon-font-controls.js';
 import type { IconFontControlsPatch } from './icon-font-controls';
 import './fill-section.js';
+import './stroke-section.js';
+import './stroke-content.js';
+import './text-content.js';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
 
@@ -267,6 +269,8 @@ export class PropertiesPanelContent extends LitElement {
 
   private get propertiesPanelSectionsOpenResolved(): {
     fillSection: boolean;
+    strokeSection: boolean;
+    typographySection: boolean;
     shape: boolean;
     transform: boolean;
     layout: boolean;
@@ -279,6 +283,8 @@ export class PropertiesPanelContent extends LitElement {
       this.appState as AppState & {
         propertiesPanelSectionsOpen?: Partial<{
           fillSection: boolean;
+          strokeSection: boolean;
+          typographySection: boolean;
           shape: boolean;
           transform: boolean;
           layout: boolean;
@@ -291,6 +297,8 @@ export class PropertiesPanelContent extends LitElement {
     )?.propertiesPanelSectionsOpen;
     return {
       fillSection: s?.fillSection ?? true,
+      strokeSection: s?.strokeSection ?? true,
+      typographySection: s?.typographySection ?? true,
       shape: s?.shape ?? true,
       transform: s?.transform ?? true,
       layout: s?.layout ?? true,
@@ -309,69 +317,6 @@ export class PropertiesPanelContent extends LitElement {
     }
     const parent = this.api.getNodeById(pid);
     return parent?.display === 'flex';
-  }
-
-  private firstFillLayerForOpacity(): SerializedFillLayerItem {
-    migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
-    const fl = (this.node as FillAttributes).fills;
-    if (Array.isArray(fl) && fl[0]) {
-      return { ...fl[0] };
-    }
-    return { type: 'solid', value: '#000000', opacity: 1 };
-  }
-
-  private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
-    if (!Number.isFinite(v)) {
-      return;
-    }
-    const fills = (this.node as FillAttributes).fills;
-    if (Array.isArray(fills) && fills.length >= 2) {
-      return;
-    }
-    const base = this.firstFillLayerForOpacity();
-    this.api.updateNode(this.node, {
-      fills: [{ ...base, opacity: Math.max(0, Math.min(1, v)) }],
-    });
-    this.api.record();
-  }
-
-  private handleFillOpacityVariablePick(
-    e: CustomEvent<DesignVariablePickDetail>,
-  ) {
-    const fills = (this.node as FillAttributes).fills;
-    if (Array.isArray(fills) && fills.length >= 2) {
-      return;
-    }
-    const base = this.firstFillLayerForOpacity();
-    this.api.updateNode(this.node, {
-      fills: [{ ...base, opacity: `$${e.detail.key}` }],
-    });
-    this.api.record();
-  }
-
-  private handleFillOpacityVariableUnbind() {
-    const fills = (this.node as FillAttributes).fills;
-    if (Array.isArray(fills) && fills.length >= 2) {
-      return;
-    }
-    const base = this.firstFillLayerForOpacity();
-    const raw = base.opacity ?? 1;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, {
-        fills: [{ ...base, opacity: Math.max(0, Math.min(1, n)) }],
-      });
-      this.api.record();
-    }
   }
 
   private handleCornerRadiusChanged(e: Event & { target: HTMLInputElement }) {
@@ -1536,26 +1481,7 @@ export class PropertiesPanelContent extends LitElement {
     const isIconFont = type === 'iconfont' || (type as string) === 'icon_font';
 
     migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
-    const fillsArr = (this.node as FillAttributes).fills;
-    const showStyleFillOpacity =
-      isText || !Array.isArray(fillsArr) || fillsArr.length <= 1;
-    const L0 =
-      Array.isArray(fillsArr) && fillsArr[0] ? fillsArr[0] : null;
-    const fillOpRaw = L0?.opacity ?? 1;
-    const fillOpacityResolved = resolveDesignVariableValue(
-      fillOpRaw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const fillOpacityShow = (() => {
-      if (typeof fillOpacityResolved === 'number') {
-        return fillOpacityResolved;
-      }
-      const n = parseFloat(String(fillOpacityResolved ?? ''));
-      return Number.isFinite(n) ? n : 1;
-    })();
-    const fillOpacityBound =
-      typeof fillOpRaw === 'string' && isDesignVariableReference(fillOpRaw);
+    migrateLegacyStrokeWireInPlace(this.node as unknown as Record<string, unknown>);
 
     let cornerRadiusShow = 0;
     let cornerRadiusBound = false;
@@ -1595,40 +1521,58 @@ export class PropertiesPanelContent extends LitElement {
                   ></ic-spectrum-fill-section>
                 </div>
               </sp-accordion-item>
+              ${when(
+          !isText,
+          () => html`
               <sp-accordion-item
-                label=${msg(str`Style`)}
+                label=${msg(str`Stroke`)}
+                ?open=${this.propertiesPanelSectionsOpenResolved.strokeSection}
+              >
+                <div class="content style-group">
+                  <ic-spectrum-stroke-section
+                    .node=${this.node}
+                  ></ic-spectrum-stroke-section>
+                  <ic-spectrum-stroke-content
+                    .node=${this.node}
+                  ></ic-spectrum-stroke-content>
+                </div>
+              </sp-accordion-item>
+            `,
+        )}
+              ${when(
+          isText,
+          () => html`
+              <sp-accordion-item
+                label=${msg(str`Typography`)}
+                ?open=${this.propertiesPanelSectionsOpenResolved.typographySection}
+              >
+                <div class="content style-group">
+                  <ic-spectrum-text-content
+                    .node=${this.node}
+                  ></ic-spectrum-text-content>
+                </div>
+              </sp-accordion-item>
+            `,
+        )}
+              ${when(
+          isRect,
+          () => html`
+              <sp-accordion-item
+                label=${msg(str`Shape`)}
                 ?open=${this.propertiesPanelSectionsOpenResolved.shape}
               >
                 <div class="content style-group">
                   <div class="line">
-                    <sp-field-label for="style" side-aligned="start"
-                      >${msg(str`Fill & stroke color`)}</sp-field-label
-                    >
-                    <div>
-                      <ic-spectrum-fill-action-button
-                        .node=${this.node}
-                      ></ic-spectrum-fill-action-button>
-                      ${when(
-          !isText,
-          () => html` <ic-spectrum-stroke-action-button
-                          .node=${this.node}
-                        ></ic-spectrum-stroke-action-button>`,
-        )}
-                    </div>
-                  </div>
-
-                  ${when(
-        showStyleFillOpacity,
-        () => html`
-                  <div class="line">
-                    <sp-field-label for="fill-opacity" side-aligned="start"
-                      >${msg(str`Fill opacity`)}</sp-field-label
+                    <sp-field-label
+                      for="corner-radius"
+                      side-aligned="start"
+                      >${msg(str`Corner radius`)}</sp-field-label
                     >
                     <div class="fill-opacity-controls">
                       <sp-action-button
                         quiet
                         size="s"
-                        id="props-fill-opacity-dv-trigger"
+                        id="props-corner-radius-dv-trigger"
                       >
                         <sp-icon-link slot="icon"></sp-icon-link>
                         <sp-tooltip self-managed placement="bottom">
@@ -1636,38 +1580,44 @@ export class PropertiesPanelContent extends LitElement {
                         </sp-tooltip>
                       </sp-action-button>
                       <sp-number-field
-                        id="fill-opacity"
+                        id="corner-radius"
                         size="s"
-                        value=${fillOpacityShow}
+                        value=${cornerRadiusShow}
                         min="0"
-                        max="1"
-                        step="0.01"
+                        step="1"
                         hide-stepper
                         autocomplete="off"
-                        @change=${this.handleFillOpacityChanged}
+                        @change=${this.handleCornerRadiusChanged}
+                        format-options='{
+                              "style": "unit",
+                              "unit": "px"
+                            }'
                       ></sp-number-field>
                       <sp-overlay
-                        trigger="props-fill-opacity-dv-trigger@click"
+                        trigger="props-corner-radius-dv-trigger@click"
                         placement="bottom"
                         type="auto"
                       >
                         <sp-popover dialog>
                           <div class="dv-popover-body">
                             ${when(
-          fillOpacityBound,
-          () =>
-            html`<div class="dv-row">
+            cornerRadiusBound,
+            () =>
+              html`<div class="dv-row">
                                   <span
                                     class="dv-badge"
-                                    title=${String(fillOpRaw)}
-                                    >${String(fillOpRaw)}</span
+                                    title=${String(cornerRadiusRaw)}
+                                    >${String(cornerRadiusRaw)}</span
                                   >
                                   <sp-action-button
                                     quiet
                                     size="s"
-                                    @click=${this.handleFillOpacityVariableUnbind}
+                                    @click=${this
+                .handleCornerRadiusVariableUnbind}
                                   >
-                                    <sp-icon-unlink slot="icon"></sp-icon-unlink>
+                                    <sp-icon-unlink
+                                      slot="icon"
+                                    ></sp-icon-unlink>
                                     <sp-tooltip
                                       self-managed
                                       placement="right"
@@ -1676,118 +1626,24 @@ export class PropertiesPanelContent extends LitElement {
                                     </sp-tooltip>
                                   </sp-action-button>
                                 </div>`,
-        )}
+          )}
                             <ic-spectrum-design-variable-picker
                               match-type="number"
                               selected-key=${designVariableRefKeyFromWire(
-          fillOpRaw,
-        )}
+            cornerRadiusRaw,
+          )}
                               @ic-variable-pick=${this
-            .handleFillOpacityVariablePick}
+              .handleCornerRadiusVariablePick}
                             ></ic-spectrum-design-variable-picker>
                           </div>
                         </sp-popover>
                       </sp-overlay>
                     </div>
                   </div>
-        `,
-      )}
-
-                  ${when(
-              isRect,
-              () => html`
-                      <div class="line">
-                        <sp-field-label
-                          for="corner-radius"
-                          side-aligned="start"
-                          >${msg(str`Corner radius`)}</sp-field-label
-                        >
-                        <div class="fill-opacity-controls">
-                          <sp-action-button
-                            quiet
-                            size="s"
-                            id="props-corner-radius-dv-trigger"
-                          >
-                            <sp-icon-link slot="icon"></sp-icon-link>
-                            <sp-tooltip self-managed placement="bottom">
-                              ${msg(str`Attach a variable`)}
-                            </sp-tooltip>
-                          </sp-action-button>
-                          <sp-number-field
-                            id="corner-radius"
-                            size="s"
-                            value=${cornerRadiusShow}
-                            min="0"
-                            step="1"
-                            hide-stepper
-                            autocomplete="off"
-                            @change=${this.handleCornerRadiusChanged}
-                            format-options='{
-                              "style": "unit",
-                              "unit": "px"
-                            }'
-                          ></sp-number-field>
-                          <sp-overlay
-                            trigger="props-corner-radius-dv-trigger@click"
-                            placement="bottom"
-                            type="auto"
-                          >
-                            <sp-popover dialog>
-                              <div class="dv-popover-body">
-                                ${when(
-                cornerRadiusBound,
-                () =>
-                  html`<div class="dv-row">
-                                      <span
-                                        class="dv-badge"
-                                        title=${String(cornerRadiusRaw)}
-                                        >${String(cornerRadiusRaw)}</span
-                                      >
-                                      <sp-action-button
-                                        quiet
-                                        size="s"
-                                        @click=${this
-                      .handleCornerRadiusVariableUnbind}
-                                      >
-                                        <sp-icon-unlink
-                                          slot="icon"
-                                        ></sp-icon-unlink>
-                                        <sp-tooltip
-                                          self-managed
-                                          placement="right"
-                                        >
-                                          ${msg(str`Detach variable`)}
-                                        </sp-tooltip>
-                                      </sp-action-button>
-                                    </div>`,
-              )}
-                                <ic-spectrum-design-variable-picker
-                                  match-type="number"
-                                  selected-key=${designVariableRefKeyFromWire(
-                cornerRadiusRaw,
-              )}
-                                  @ic-variable-pick=${this
-                  .handleCornerRadiusVariablePick}
-                                ></ic-spectrum-design-variable-picker>
-                              </div>
-                            </sp-popover>
-                          </sp-overlay>
-                        </div>
-                      </div>
-                    `,
-            )}
-
-                  ${when(
-              !isText,
-              () => html`<ic-spectrum-stroke-content
-                      .node=${this.node}
-                    ></ic-spectrum-stroke-content>`,
-              () => html`<ic-spectrum-text-content
-                      .node=${this.node}
-                    ></ic-spectrum-text-content>`,
-            )}
                 </div>
               </sp-accordion-item>
+            `,
+        )}
             `
         : ''}
         ${this.transformTemplate()}

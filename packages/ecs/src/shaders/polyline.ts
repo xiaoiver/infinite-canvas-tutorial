@@ -582,10 +582,49 @@ void main() {
   }
 
   if (u_Dash + u_Gap > 1.0) {
-    float travel = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, u_Dash * scalingFactor + u_Gap * scalingFactor) - (u_Gap * scalingFactor * 0.5);
-    float left = max(travel - 0.5, -0.5);
-    float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
-    alpha *= antialias(max(0.0, right - left));
+    float P = u_Dash * scalingFactor + u_Gap * scalingFactor;
+    float dashLen = u_Dash * scalingFactor;
+    float dashCapMode = u_StrokeDash.w;
+
+    if (dashCapMode < 0.5) {
+      float travel = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, P) - (u_Gap * scalingFactor * 0.5);
+      float left = max(travel - 0.5, -0.5);
+      // 与 period 内「实线段」长度一致须用 u_Dash；误用 u_Gap 会在 gap < dash 时过早截断，视觉上像 dash/gap 对调
+      float right = min(travel + 0.5, u_Dash * v_ScalingFactor + 0.5);
+      alpha *= antialias(max(0.0, right - left));
+    } else {
+      float s = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, P);
+      float sw = u_ZIndexStrokeWidth.y;
+      float capExt = sw * 0.5;
+      float aa = 0.5;
+      float L1 = dashLen + capExt;
+      float L2 = P - capExt;
+      float inLeft = 1.0 - smoothstep(L1 - aa, L1 + aa, s);
+      float inRight = smoothstep(L2 - aa, L2 + aa, s);
+      alpha *= clamp(inLeft + inRight, 0.0, 1.0);
+
+      // Round dash cap：用线段胶囊 SDF（与方帽同一可见弧长区间），避免两段 min(圆,圆) 在周期坐标下错位。
+      if (dashCapMode > 1.5) {
+        float k = w / max(sw, 1.0e-4);
+        float R = w * 0.5;
+        float Lk = dashLen * k;
+        float xCell;
+        if (s >= L2) {
+          // 起点前间隙 + 起点半圆：s∈[L2,P) 映射到 x∈[-R,0)（沿路径指向 dash 方向）
+          xCell = -R + (s - L2) * k;
+        } else if (s <= L1) {
+          // dash 主体 + 终点半圆：x∈[0, Lk+R]
+          xCell = s * k;
+        } else {
+          xCell = 1.0e9;
+        }
+        vec2 pa = vec2(xCell, d1);
+        vec2 ba = vec2(max(Lk, 1.0e-6), 0.0);
+        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+        float distCap = length(pa - ba * h) - R;
+        alpha *= antialias(-distCap);
+      }
+    }
   }
 
   outputColor = strokeColor;

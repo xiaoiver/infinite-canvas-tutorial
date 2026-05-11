@@ -149,6 +149,7 @@ export {
 export * from './utils/icon-font';
 export * from './utils/group-presentation';
 export * from './utils/normalize-fill-wire';
+export * from './utils/normalize-stroke-wire';
 export * from './utils/design-variables';
 export * from './utils/entity-design-bindings';
 export * from './types/serialized-node';

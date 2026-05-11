@@ -154,6 +154,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     propertiesPanelSectionsOpen: {
       fillSection: true,
+      strokeSection: true,
+      typographySection: true,
       shape: false,
       transform: false,
       layout: false,

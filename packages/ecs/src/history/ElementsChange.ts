@@ -90,7 +90,10 @@ import { insertIconFontChildFromPrimitive } from '../utils/insert-icon-font-chil
 import { getComputedInheritGroupWireForId } from '../utils/inherit-group-wire';
 import { buildGroupWirePresentation } from '../utils/group-presentation';
 import { migrateLegacyFillWireInPlace } from '../utils/normalize-fill-wire';
-import { migrateLegacyStrokeWireInPlace } from '../utils/normalize-stroke-wire';
+import {
+  migrateLegacyStrokeWireInPlace,
+  normalizeStrokeDashCap,
+} from '../utils/normalize-stroke-wire';
 import { isFillLayerEnabled } from '../utils/fillLayers';
 import { TesselationMethod } from '../components/geometry/Path';
 
@@ -1071,6 +1074,12 @@ function applyStrokesWireMutation(
   }
   entity.write(StrokeLayers).layers = resolved;
 
+  const priorStroke = entity.has(Stroke) ? entity.read(Stroke) : undefined;
+  const dashcap =
+    normalizeStrokeDashCap(elAttrs.strokeDashCap) ??
+    priorStroke?.dashcap ??
+    'none';
+
   const firstWire = wireArr.find(isFillLayerEnabled);
   const firstRes = resolved.find(isFillLayerEnabled);
   const paint =
@@ -1095,6 +1104,7 @@ function applyStrokesWireMutation(
           miterlimit: s.miterlimit,
           dasharray: s.dasharray,
           dashoffset: s.dashoffset,
+          dashcap,
           alignment: s.alignment,
           widthVariableRef: s.widthVariableRef,
         });
@@ -1116,6 +1126,7 @@ function applyStrokesWireMutation(
           miterlimit: s.miterlimit,
           dasharray: s.dasharray,
           dashoffset: s.dashoffset,
+          dashcap,
           alignment: s.alignment,
           widthVariableRef: s.widthVariableRef,
         });
@@ -1138,6 +1149,7 @@ function applyStrokesWireMutation(
         miterlimit: s.miterlimit,
         dasharray: s.dasharray,
         dashoffset: s.dashoffset,
+        dashcap,
         alignment: s.alignment,
         widthVariableRef: s.widthVariableRef,
       });
@@ -1384,6 +1396,38 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('strokeAlignment' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
+  }
+  if ('strokeDasharray' in updates && !isIconFontWireNode) {
+    const sd = (element as StrokeAttributes).strokeDasharray;
+    const pair: [number, number] =
+      sd === 'none' || sd === undefined
+        ? [0, 0]
+        : (() => {
+          const parts = sd.includes(',')
+            ? sd.split(',')
+            : sd.trim().split(/\s+/).filter(Boolean);
+          const a = Number(parts[0]);
+          const b = Number(parts[1] ?? parts[0]);
+          return [
+            Number.isFinite(a) ? a : 0,
+            Number.isFinite(b) ? b : 0,
+          ] as [number, number];
+        })();
+    safeAddComponent(entity, Stroke, { dasharray: pair });
+  }
+  if ('strokeDashoffset' in updates && !isIconFontWireNode) {
+    const raw = (element as StrokeAttributes).strokeDashoffset;
+    const n =
+      typeof raw === 'number' ? raw : parseFloat(String(raw ?? '0'));
+    safeAddComponent(entity, Stroke, {
+      dashoffset: Number.isFinite(n) ? n : 0,
+    });
+  }
+  if ('strokeDashCap' in updates && !isIconFontWireNode) {
+    const raw = (element as StrokeAttributes).strokeDashCap;
+    safeAddComponent(entity, Stroke, {
+      dashcap: normalizeStrokeDashCap(raw) ?? 'none',
+    });
   }
   if ('opacity' in updates) {
     safeAddComponent(entity, Opacity, { opacity });
@@ -1687,6 +1731,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       }
     }
   }
+  /** 椭圆/矩形尺寸变化需重建几何；虚线描边走 SmoothPolyline，依赖 GeometryDirty。 */
+  if (
+    ('width' in updates || 'height' in updates) &&
+    (entity.has(Ellipse) || entity.has(Rect))
+  ) {
+    safeAddComponent(entity, GeometryDirty);
+    safeAddComponent(entity, MaterialDirty);
+  }
   if (
     ('width' in updates || 'height' in updates) &&
     entity.has(Filter)
@@ -1707,6 +1759,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         : parseFloat(String(resolved ?? ''));
     if (Number.isFinite(n)) {
       entity.write(Rect).cornerRadius = Math.max(0, n);
+      safeAddComponent(entity, GeometryDirty);
+      safeAddComponent(entity, MaterialDirty);
     }
   }
   if ('points' in updates) {
@@ -1871,6 +1925,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         ('strokeLinecap' in updates) ||
         ('strokeLinejoin' in updates) ||
         ('strokeAlignment' in updates) ||
+        ('strokeDasharray' in updates) ||
+        ('strokeDashoffset' in updates) ||
+        ('strokeDashCap' in updates) ||
         ('width' in updates) ||
         ('height' in updates) ||
         ('iconFontName' in updates) ||
@@ -1896,7 +1953,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         ('fillRule' in updates) ||
         ('opacity' in updates) ||
         ('strokeLinecap' in updates) ||
-        ('strokeLinejoin' in updates))
+        ('strokeLinejoin' in updates) ||
+        ('strokeDasharray' in updates) ||
+        ('strokeDashoffset' in updates) ||
+        ('strokeDashCap' in updates))
     ) {
       safeAddComponent(
         entity,
