@@ -189,41 +189,38 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  const parent = {
-    id: 'parent-1',
-    type: 'rect',
-    // clipMode: 'clip',
-    x: 100,
-    y: 50,
-    width: 100,
-    height: 100,
-    stroke: 'black'
-    // fills: [
-    //   { type: 'solid', value: 'red', opacity: 0.5 },
-    //   { type: 'solid', value: 'blue', opacity: 0.5 },
-    // ],
-  };
-  const child = {
-    id: 'rect-1',
-    type: 'rect',
-    parentId: 'parent-1',
+  const node1: EllipseSerializedNode = {
+    id: '1',
+    type: 'ellipse',
+    fills: [{ type: 'solid', value: 'red', opacity: 1 }],
     x: 0,
-    y: 0,
+    y: 50,
     width: 200,
+    height: 100,
+    visibility: 'visible',
+    zIndex: 0,
+  };
+  const node2: EllipseSerializedNode = {
+    id: '2',
+    parentId: '1',
+    type: 'ellipse',
+    fills: [{ type: 'solid', value: 'green', opacity: 1 }],
+    x: 50,
+    y: -50,
+    width: 100,
     height: 200,
-    fills: [{ type: 'image', value: '/canvas.png', opacity: 1 }],
-    locked: true,
-    lockAspectRatio: true,
+    stroke: 'black',
+    strokeWidth: 10,
+    strokeAlignment: 'center',
+    strokeDasharray: '10 10',
+    visibility: 'visible',
+    zIndex: 0,
   };
 
   api.updateNodes([
-    parent,
-    // child,
+    node1,
+    node2,
   ]);
-  // api.selectNodes([parent]);
-
-  // api.updateNodes([node3]);
-  // api.selectNodes([node3]);
 
   // fetch('/gradient-text.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {

@@ -54,6 +54,8 @@ import {
   resolveFillLayerImageRasterPixelSize,
   transparentFillLayerCanvas,
 } from '../utils/fill-layer-image-url-raster';
+import { DOMAdapter } from '../environment';
+import { upload2DRasterCanvasToTexture } from '../utils/rasterCanvasTextureUpload';
 import { safeAddComponent } from '../history';
 import { getSdfGeometryBoundsForFilter } from '../utils/solidShapeRasterForFilter';
 import {
@@ -186,7 +188,7 @@ export class Mesh extends Drawcall {
         height: th,
         usage: TextureUsage.SAMPLED,
       });
-      raw.setImageData([canvas as HTMLCanvasElement]);
+      upload2DRasterCanvasToTexture(raw, canvas);
       const cached = getFillLayerDecodedBitmap(layer.value);
       const sw = cached ? Math.max(1, cached.width) : 1;
       const sh = cached ? Math.max(1, cached.height) : 1;
@@ -225,15 +227,7 @@ export class Mesh extends Drawcall {
       const tw = Math.max(1, Math.ceil(width));
       const th = Math.max(1, Math.ceil(height));
       const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(layer.value);
-      let canvas: HTMLCanvasElement | OffscreenCanvas;
-      if (typeof document !== 'undefined') {
-        const c = document.createElement('canvas');
-        c.width = tw;
-        c.height = th;
-        canvas = c;
-      } else {
-        canvas = new OffscreenCanvas(tw, th);
-      }
+      const canvas = DOMAdapter.get().createCanvas(tw, th);
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
       if (!ctx) {
         throw new Error('Canvas 2D required for FillLayers solid raster');
@@ -246,7 +240,7 @@ export class Mesh extends Drawcall {
         height: th,
         usage: TextureUsage.SAMPLED,
       });
-      raw.setImageData([canvas as HTMLCanvasElement]);
+      upload2DRasterCanvasToTexture(raw, canvas);
       return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
     }
     const fillGradients = parseGradient(layer.value);

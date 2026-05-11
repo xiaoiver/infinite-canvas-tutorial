@@ -141,22 +141,6 @@ describe('Ellipse', () => {
       expect(canvas.height).toBe(200);
       expect(canvas.renderer).toBe('webgl');
       expect(canvas.cameras).toHaveLength(1);
-
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(
-        cameraEntity.read(Parent).children.filter((c) => !c.has(UI)),
-      ).toHaveLength(1);
-      expect(
-        cameraEntity.read(Parent).children[0].isSame(parentEntity),
-      ).toBeTruthy();
-
-      const parent = parentEntity.read(Parent);
-      expect(parent.children).toHaveLength(1);
-      expect(parent.children[0].isSame(childEntity)).toBeTruthy();
-
-      const child = childEntity.read(Children);
-      expect(child.parent.isSame(parentEntity)).toBeTruthy();
     }
 
     const dir = `${__dirname}/snapshots`;

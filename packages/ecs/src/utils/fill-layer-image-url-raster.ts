@@ -41,15 +41,7 @@ function blitImageBitmapToCanvas(
   tw: number,
   th: number,
 ): HTMLCanvasElement | OffscreenCanvas | null {
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
   if (!ctx) {
     return null;
@@ -156,15 +148,7 @@ function createRgbaCanvas(
   fb: number,
   fa: number,
 ): HTMLCanvasElement | OffscreenCanvas {
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
   if (!ctx) {
     return canvas;
@@ -194,15 +178,7 @@ export function trySyncRasterizeImageUrlToCanvas(
   if (!img.complete || img.naturalWidth === 0) {
     return null;
   }
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
   if (!ctx) {
     return null;
