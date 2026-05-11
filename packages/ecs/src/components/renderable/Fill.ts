@@ -59,6 +59,20 @@ export class FillLayers {
   }
 }
 
+/**
+ * 描边栈（线框 `strokes`），条目结构与 {@link FillLayerItem} 一致。
+ */
+export class StrokeLayers {
+  @field({ type: Type.object, default: () => [] })
+  declare layers: FillLayerItem[];
+
+  constructor(layers?: FillLayerItem[]) {
+    if (layers) {
+      this.layers = layers;
+    }
+  }
+}
+
 export class FillTexture {
   @field.object declare value: Texture;
 

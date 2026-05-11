@@ -181,8 +181,16 @@ export interface FillAttributes {
   fills?: SerializedFillLayerItem[];
 }
 
+/** 描边栈的一层，与 {@link SerializedFillLayerItem} 同构（Figma `strokes` / 线框 `strokes`） */
+export type SerializedStrokeLayerItem = SerializedFillLayerItem;
+
 export interface StrokeAttributes {
-  stroke: Stroke['color'];
+  /**
+   * 描边栈（与 `fills` 对称）。历史 `stroke` + `strokeOpacity` 在加载时归一化为此字段。
+   */
+  strokes?: SerializedStrokeLayerItem[];
+  /** @deprecated 由 migrate 合并入 `strokes` */
+  stroke?: Stroke['color'];
   strokeWidth: Stroke['width'];
   strokeAlignment: Stroke['alignment'];
   strokeLinecap: Stroke['linecap'];
@@ -190,7 +198,8 @@ export interface StrokeAttributes {
   strokeMiterlimit: Stroke['miterlimit'];
   strokeDasharray: string;
   strokeDashoffset: Stroke['dashoffset'];
-  strokeOpacity: Opacity['strokeOpacity'];
+  /** @deprecated 由 migrate 合并入 `strokes[].opacity` */
+  strokeOpacity?: Opacity['strokeOpacity'];
 }
 
 /** Wider hit target for thin stroked lines / paths (Konva `hitStrokeWidth`). */
@@ -476,8 +485,12 @@ export interface BrushAttributes {
   stampMode: StampMode;
   stampNoiseFactor: number;
   stampRotationFactor: number;
-  stroke: Stroke['color'];
-  strokeOpacity: Opacity['strokeOpacity'];
+  /** 与 {@link StrokeAttributes#strokes} 一致；历史 `stroke` / `strokeOpacity` 由 migrate 合并 */
+  strokes?: SerializedStrokeLayerItem[];
+  /** @deprecated 由 migrate 合并入 `strokes` */
+  stroke?: Stroke['color'];
+  /** @deprecated 由 migrate 合并入 `strokes[].opacity` */
+  strokeOpacity?: Opacity['strokeOpacity'];
 }
 export interface BrushSerializedNode
   extends BaseSerializeNode<'brush'>,

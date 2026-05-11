@@ -11,6 +11,7 @@ import {
   DefaultStateManagement,
   Entity,
   FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -67,6 +68,7 @@ describe('Draw arrow', () => {
             Transform,
             Renderable,
             FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
@@ -100,7 +102,7 @@ describe('Draw arrow', () => {
         api.setAppState({
           penbarSelected: Pen.DRAW_ARROW,
           penbarDrawArrow: {
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 4,
             markerStart: 'line',
             markerEnd: 'line',

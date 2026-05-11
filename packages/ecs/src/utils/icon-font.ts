@@ -14,7 +14,14 @@ import type {
   FillAttributes,
   StrokeAttributes,
 } from '../types/serialized-node';
-import { getPrimaryFillValue } from './normalize-fill-wire';
+import {
+  getPrimaryFillValue,
+  migrateLegacyFillWireInPlace,
+} from './normalize-fill-wire';
+import {
+  getPrimaryStrokeValue,
+  migrateLegacyStrokeWireInPlace,
+} from './normalize-stroke-wire';
 
 /**
  * 与 Iconify `icons[name]` 一项对齐：可有 `body`，以及该项的视口。
@@ -118,7 +125,10 @@ export function resolveIconFontWireStyle(
   userColorFill: string | undefined;
   rSw: unknown;
 } {
-  const wireStroke = (attributes as StrokeAttributes).stroke;
+  const attrsRec = attributes as unknown as Record<string, unknown>;
+  migrateLegacyFillWireInPlace(attrsRec);
+  migrateLegacyStrokeWireInPlace(attrsRec);
+  const wireStroke = getPrimaryStrokeValue(attributes as StrokeAttributes);
   const wireFill = getPrimaryFillValue(attributes as FillAttributes);
   const wireSw = (attributes as StrokeAttributes).strokeWidth;
   const rStrokeS =

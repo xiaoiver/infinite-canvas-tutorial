@@ -19,7 +19,6 @@ import {
   Rect,
   Rough,
   Stroke,
-  StrokeGradient,
   Text,
   VectorNetwork,
 } from '../components';
@@ -29,6 +28,10 @@ import {
   getEnabledFillLayers,
   getFirstSolidFillLayerValue,
 } from './fillLayers';
+import {
+  getFirstGradientStrokeLayerValue,
+  strokePaintAlphaMultipliers,
+} from './strokeLayers';
 import { buildVectorNetworkFillMesh } from './vector-network-fill';
 import { parseColor } from './color';
 import { getRasterFilterValueForShape, hasRasterPostEffects } from './filter';
@@ -499,7 +502,10 @@ export function shouldBakeStrokeIntoRasterFilterTexture(shape: Entity): boolean 
   if (shape.has(Rough)) {
     return false;
   }
-  if (!shape.has(Stroke) || shape.has(StrokeGradient)) {
+  if (
+    !shape.has(Stroke) ||
+    getFirstGradientStrokeLayerValue(shape) != null
+  ) {
     return false;
   }
   const st = shape.read(Stroke);
@@ -543,6 +549,8 @@ export function createFillAndStrokeRgbaRasterForFilter(
   const { fillOpacity, strokeOpacity } = shape.has(Opacity)
     ? shape.read(Opacity)
     : { fillOpacity: 1, strokeOpacity: 1 };
+  const { strokeColorAlphaMul, strokeUniformOpacityMul } =
+    strokePaintAlphaMultipliers(shape);
 
   const fillStr = getFirstSolidFillLayerValue(shape) ?? 'none';
   const fillRgb = parseColor(
@@ -554,7 +562,10 @@ export function createFillAndStrokeRgbaRasterForFilter(
   const strokeRgb = parseColor(
     stroke.color && stroke.color !== 'none' ? stroke.color : 'transparent',
   );
-  const strokeRgba = rgbaFromParsed(strokeRgb, strokeOpacity);
+  const strokeRgba = rgbaFromParsed(
+    strokeRgb,
+    strokeOpacity * strokeColorAlphaMul * strokeUniformOpacityMul,
+  );
 
   ctx.lineWidth = stroke.width;
   ctx.lineJoin = stroke.linejoin;

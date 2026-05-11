@@ -11,6 +11,7 @@ import {
   DefaultStateManagement,
   Entity,
   FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -67,6 +68,7 @@ describe('Group', () => {
             Transform,
             Renderable,
             FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
@@ -98,7 +100,7 @@ describe('Group', () => {
           type: 'g',
           zIndex: 0,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
         };
 

@@ -24,6 +24,7 @@ import {
   DropShadow,
   Ellipse,
   FillLayers,
+  StrokeLayers,
   FillTexture,
   FillTextureLive,
   FractionalIndex,
@@ -45,7 +46,6 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   Stroke,
-  StrokeGradient,
   Text,
   Theme,
   ToBeDeleted,
@@ -99,6 +99,7 @@ import {
 import { RenderGraph } from '../render-graph/RenderGraph';
 import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
 import { getFirstGradientFillLayerValue } from '../utils/fillLayers';
+import { getFirstGradientStrokeLayerValue } from '../utils/strokeLayers';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
@@ -218,14 +219,14 @@ export class MeshPipeline extends System {
   private fillLayers = this.query(
     (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
   );
+  private strokeLayers = this.query(
+    (q) => q.addedChangedOrRemoved.with(StrokeLayers).trackWrites,
+  );
   private fillTextures = this.query(
     (q) => q.addedChangedOrRemoved.with(FillTexture).trackWrites,
   );
   private strokes = this.query(
     (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
-  );
-  private strokeGradients = this.query(
-    (q) => q.addedChangedOrRemoved.with(StrokeGradient).trackWrites,
   );
   private rectsStrokeGradientBounds = this.query(
     (q) => q.addedChangedOrRemoved.with(Rect).trackWrites,
@@ -313,7 +314,6 @@ export class MeshPipeline extends System {
             GlobalTransform,
             Opacity,
             Stroke,
-            StrokeGradient,
             InnerShadow,
             DropShadow,
             Wireframe,
@@ -772,7 +772,7 @@ export class MeshPipeline extends System {
 
       if (
         getFirstGradientFillLayerValue(entity) != null ||
-        entity.has(StrokeGradient)
+        getFirstGradientStrokeLayerValue(entity) != null
       ) {
         safeAddComponent(entity, MaterialDirty);
       }
@@ -819,11 +819,12 @@ export class MeshPipeline extends System {
     });
 
     new Set([
+      ...this.strokeLayers.addedChangedOrRemoved,
       ...this.rectsStrokeGradientBounds.addedChangedOrRemoved,
       ...this.ellipsesStrokeGradientBounds.addedChangedOrRemoved,
       ...this.circlesStrokeGradientBounds.addedChangedOrRemoved,
     ]).forEach((entity) => {
-      if (entity.has(StrokeGradient)) {
+      if (getFirstGradientStrokeLayerValue(entity) != null) {
         safeAddComponent(entity, MaterialDirty);
         safeAddComponent(entity, GeometryDirty);
       }
@@ -887,7 +888,7 @@ export class MeshPipeline extends System {
         if (
           !toRender &&
           (!!this.fillLayers.addedChangedOrRemoved.length ||
-            !!this.strokeGradients.addedChangedOrRemoved.length ||
+            !!this.strokeLayers.addedChangedOrRemoved.length ||
             !!this.fillTextures.addedChangedOrRemoved.length ||
             !!this.strokes.addedChangedOrRemoved.length ||
             !!this.opacities.addedChangedOrRemoved.length ||

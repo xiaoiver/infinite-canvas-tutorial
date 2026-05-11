@@ -38,7 +38,7 @@ describe('design variables', () => {
         id: 'a',
         type: 'rect',
         fills: [{ type: 'solid', value: '$color.bg', opacity: 1 }],
-        stroke: '$color.bg',
+        strokes: [{ type: 'solid', value: '$color.bg', opacity: 1 }],
         zIndex: 0,
       },
     ];
@@ -46,7 +46,7 @@ describe('design variables', () => {
       'color.bg': { type: 'color', value: '#eee' },
     });
     expect((out[0] as RectSerializedNode).fills?.[0]?.value).toBe('#eee');
-    expect((out[0] as RectSerializedNode).stroke).toBe('#eee');
+    expect((out[0] as RectSerializedNode).strokes?.[0]?.value).toBe('#eee');
     expect(nodes[0].fills?.[0]?.value).toBe('$color.bg');
   });
 

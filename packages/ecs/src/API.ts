@@ -35,6 +35,7 @@ import {
   shiftPath,
   strokeOffset,
   strokeWidthForHitTest,
+  entityHasRenderableStrokePaint,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
   expandRefSerializedNodes,
@@ -60,12 +61,17 @@ import type {
   PathSerializedNode,
   PolylineSerializedNode,
   SerializedNode,
+  StrokeAttributes,
   TextSerializedNode,
 } from './types/serialized-node';
 import {
   firstEnabledFillPresentation,
   migrateLegacyFillWireInPlace,
 } from './utils/normalize-fill-wire';
+import {
+  firstEnabledStrokePresentation,
+  migrateLegacyStrokeWireInPlace,
+} from './utils/normalize-stroke-wire';
 import { getEnabledFillLayers } from './utils/fillLayers';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -2447,6 +2453,7 @@ export class API {
 
     const ctx = canvas.getContext('2d')!;
     migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+    migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
     const pres = firstEnabledFillPresentation((node as FillAttributes).fills);
     const fillFromFills = pres?.fill ?? '';
     const fillOpacity = (() => {
@@ -2457,11 +2464,22 @@ export class API {
       const n = parseFloat(String(o));
       return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
     })();
+    const spres = firstEnabledStrokePresentation(
+      (node as StrokeAttributes).strokes,
+    );
+    const strokeFromStrokes = spres?.stroke ?? '';
+    const strokeOpacity = (() => {
+      const o = spres?.strokeOpacity ?? 1;
+      if (typeof o === 'number' && Number.isFinite(o)) {
+        return Math.max(0, Math.min(1, o));
+      }
+      const n = parseFloat(String(o));
+      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    })();
     const opacity = (node as { opacity?: number }).opacity ?? 1;
-    const strokeOpacity = (node as { strokeOpacity?: number }).strokeOpacity ?? 1;
 
     if (node.type === 'rect' || node.type === 'rough-rect') {
-      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
+      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin } = node;
       const fill = fillFromFills;
       ctx.save();
       if (isDataUrl(fill) || isUrl(fill)) {
@@ -2474,14 +2492,14 @@ export class API {
         ctx.fillRect(x ?? 0, y ?? 0, width ?? 0, height ?? 0);
       }
       ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = strokeFromStrokes;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;
       ctx.stroke();
       ctx.restore();
     } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
-      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
+      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin } = node;
       const fill = fillFromFills;
       ctx.save();
       ctx.globalAlpha = opacity * fillOpacity;
@@ -2489,14 +2507,14 @@ export class API {
       ctx.ellipse((x ?? 0) + (width ?? 0) / 2, (y ?? 0) + (height ?? 0) / 2, (width ?? 0) / 2, (height ?? 0) / 2, 0, 0, 2 * Math.PI);
       ctx.fill();
       ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = strokeFromStrokes;
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = strokeLinecap;
       ctx.lineJoin = strokeLinejoin;
       ctx.stroke();
       ctx.restore();
     } else if (node.type === 'path' || node.type === 'rough-path') {
-      const { d, stroke, strokeWidth } = node;
+      const { d, strokeWidth } = node;
       const fill = fillFromFills;
       ctx.save();
       ctx.globalAlpha = opacity * fillOpacity;
@@ -2514,15 +2532,15 @@ export class API {
       ctx.closePath();
       ctx.fill();
       ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = strokeFromStrokes;
       ctx.lineWidth = strokeWidth;
       ctx.stroke();
       ctx.restore();
     } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
-      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y, stroke } = node;
+      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
       ctx.save();
       ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = strokeFromStrokes;
       deserializePoints(points).forEach((point, index) => {
         if (index === 0) {
           ctx.moveTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
@@ -2536,10 +2554,10 @@ export class API {
       ctx.stroke();
       ctx.restore();
     } else if (node.type === 'line' || node.type === 'rough-line') {
-      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin, stroke } = node;
+      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin } = node;
       ctx.save();
       ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = stroke;
+      ctx.strokeStyle = strokeFromStrokes;
       ctx.moveTo(x1 ?? 0, y1 ?? 0);
       ctx.lineTo(x2 ?? 0, y2 ?? 0);
       ctx.lineWidth = strokeWidth;

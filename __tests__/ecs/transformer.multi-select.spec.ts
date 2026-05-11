@@ -11,6 +11,7 @@ import {
   DefaultStateManagement,
   Entity,
   FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -65,6 +66,7 @@ describe('Transformer', () => {
             Transform,
             Renderable,
             FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -95,7 +97,7 @@ describe('Transformer', () => {
         const node1: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
@@ -108,7 +110,7 @@ describe('Transformer', () => {
         const node2: RectSerializedNode = {
           id: '2',
           type: 'rect',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',

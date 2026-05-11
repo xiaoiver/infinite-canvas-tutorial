@@ -11,6 +11,7 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -30,7 +31,6 @@ import {
   ExportFormat,
   Opacity,
   Screenshot,
-  StrokeGradient,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -67,8 +67,8 @@ describe('Export SVG', () => {
             Transform,
             Renderable,
             FillLayers,
+            StrokeLayers,
             Stroke,
-            StrokeGradient,
             Rect,
             Visibility,
             Name,
@@ -96,7 +96,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            stroke: 'linear-gradient(to right, red, blue)',
+            strokes: [{ type: 'gradient', value: 'linear-gradient(to right, red, blue)', opacity: 1 }],
             strokeWidth: 10,
             x: 50,
             y: 50,

@@ -34,6 +34,7 @@ import {
   FillTexture,
   FillTextureLive,
   FillLayers,
+  StrokeLayers,
   GlobalRenderOrder,
   InnerShadow,
   Opacity,
@@ -43,7 +44,6 @@ import {
   Renderable,
   Rough,
   Stroke,
-  StrokeGradient,
   Text,
   Wireframe,
   Visibility,
@@ -108,8 +108,8 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(FillTexture);
     component(FillTextureLive);
     component(FillLayers);
+    component(StrokeLayers);
     component(Stroke);
-    component(StrokeGradient);
     component(Opacity);
     component(DropShadow);
     component(InnerShadow);
