@@ -5,8 +5,6 @@ import { mat3, vec2 } from 'gl-matrix';
 import { IPointData } from '@pixi/math';
 import {
   Ellipse,
-  FillSolid,
-  FillGradient,
   Name,
   Opacity,
   Path,
@@ -23,8 +21,6 @@ import {
   Font,
   AABB,
   TextDecoration,
-  FillImage,
-  FillPattern,
   FillLayers,
   MaterialDirty,
   SizeAttenuation,
@@ -71,6 +67,7 @@ import type {
   PolylineSerializedNode,
   RectSerializedNode,
   RoughAttributes,
+  SerializedFillLayerItem,
   SerializedNode,
   TextSerializedNode,
   VectorNetworkSerializedNode,
@@ -100,6 +97,7 @@ import { isPattern } from '../pattern';
 import {
   resolveDesignVariableValue,
   designVariableRefKeyFromWire,
+  resolveFillLayerItemsForEcs,
   type DesignVariablesMap,
 } from '../design-variables';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
@@ -128,8 +126,8 @@ import simplify from 'simplify-js';
 import { expandRefSerializedNodes, mergeSerializedNodesForRefLookup } from './expand-ref-nodes';
 import { insertIconFontChildFromPrimitive } from '../insert-icon-font-child-entity';
 import { resetFillImageSvgRerasterSchedule } from '../fillImageSvgReraster';
+import { setFillLayerDecodedBitmapForUrl } from '../fill-layer-image-url-raster';
 import { hasRasterPostEffects } from '../filter';
-import { isFillLayerEnabled } from '../fillLayers';
 
 export function inferXYWidthHeight(node: SerializedNode) {
   if (node.type === 'g') {
@@ -891,11 +889,11 @@ function layoutSerializedEdgeLabelChildren(
 }
 
 export async function loadImage(url: string, entity: Entity) {
-  const image = await DOMAdapter.get().createImage(url);
+  const image = (await DOMAdapter.get().createImage(url)) as ImageBitmap;
   resetFillImageSvgRerasterSchedule(entity);
-  safeAddComponent(entity, FillImage, {
-    src: image as ImageBitmap,
-    url,
+  setFillLayerDecodedBitmapForUrl(url, image);
+  safeAddComponent(entity, FillLayers, {
+    layers: [{ type: 'image', value: url }],
   });
   safeAddComponent(entity, MaterialDirty);
 }
@@ -1516,63 +1514,20 @@ export function serializedNodesToEntities(
     const { opacity } = wireMergedAttrs as FillAttributes;
     const fa = wireMergedAttrs as FillAttributes;
     const fillsWireArr = Array.isArray(fa.fills) ? fa.fills : null;
-    const fillsMulti =
-      fillsWireArr && fillsWireArr.length >= 2 ? fillsWireArr : null;
-    const fillsSingle =
-      fillsWireArr && fillsWireArr.length === 1 ? fillsWireArr[0]! : null;
-    let singleFillLayerOpacityMul = 1;
-    if (fillsMulti && !skipParentFillStroke) {
-      entityCommands.insert(new FillLayers(fillsMulti));
-    } else if (fillsSingle && !skipParentFillStroke) {
-      const L = fillsSingle;
-      if (isFillLayerEnabled(L)) {
-        const resolvedVal = resolveDesignVariableValue(
-          L.value,
-          designVariables,
-          themeMode,
-        );
-        const rv = String(resolvedVal ?? '');
-        if (L.type === 'gradient' || isGradient(rv)) {
-          entityCommands.insert(new FillGradient(rv));
-        } else if (L.type === 'image' || isDataUrl(rv) || isUrl(rv)) {
-          loadImage(rv, entityCommands.id());
-        } else {
-          try {
-            const parsed = JSON.parse(rv) as FillPattern;
-            if (isPattern(parsed)) {
-              entityCommands.insert(new FillPattern(parsed));
-            } else {
-              entityCommands.insert(
-                new FillSolid(
-                  rv,
-                  designVariableRefKeyFromWire(
-                    typeof L.value === 'string' ? L.value : undefined,
-                  ),
-                ),
-              );
-            }
-          } catch (e) {
-            entityCommands.insert(
-              new FillSolid(
-                rv,
-                designVariableRefKeyFromWire(
-                  typeof L.value === 'string' ? L.value : undefined,
-                ),
-              ),
-            );
-          }
-        }
-        const rOp = resolveDesignVariableValue(
-          L.opacity ?? 1,
-          designVariables,
-          themeMode,
-        );
-        const n =
-          typeof rOp === 'number' ? rOp : parseFloat(String(rOp ?? ''));
-        singleFillLayerOpacityMul = Number.isFinite(n)
-          ? Math.max(0, Math.min(1, n))
-          : 1;
-      }
+    if (
+      fillsWireArr &&
+      fillsWireArr.length >= 1 &&
+      !skipParentFillStroke
+    ) {
+      entityCommands.insert(
+        new FillLayers(
+          resolveFillLayerItemsForEcs(
+            fillsWireArr as SerializedFillLayerItem[],
+            designVariables,
+            themeMode,
+          ),
+        ),
+      );
     }
 
     const {
@@ -1658,8 +1613,7 @@ export function serializedNodesToEntities(
     if (
       opacity != null ||
       strokeOpacity != null ||
-      (fillsWireArr && fillsWireArr.length >= 1) ||
-      (fillsSingle && isFillLayerEnabled(fillsSingle))
+      (fillsWireArr && fillsWireArr.length >= 1)
     ) {
       const rso = resolveDesignVariableValue(
         strokeOpacity,
@@ -1673,11 +1627,10 @@ export function serializedNodesToEntities(
         const n = typeof v === 'number' ? v : parseFloat(String(v));
         return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
       };
-      const fillOpForWire = fillsMulti != null ? 1 : singleFillLayerOpacityMul;
       entityCommands.insert(
         new Opacity({
           opacity,
-          fillOpacity: fillOpForWire,
+          fillOpacity: 1,
           strokeOpacity: to01(rso),
         }),
       );

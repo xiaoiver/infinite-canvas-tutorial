@@ -31,10 +31,6 @@ import {
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
-  FillGradient,
-  FillImage,
-  FillPattern,
-  FillSolid,
   FillTexture,
   FillTextureLive,
   FillLayers,
@@ -109,10 +105,6 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     /**
      * Style
      */
-    component(FillSolid);
-    component(FillGradient);
-    component(FillPattern);
-    component(FillImage);
     component(FillTexture);
     component(FillTextureLive);
     component(FillLayers);

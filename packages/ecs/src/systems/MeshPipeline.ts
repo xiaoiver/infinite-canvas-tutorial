@@ -23,11 +23,7 @@ import {
   Culled,
   DropShadow,
   Ellipse,
-  FillGradient,
-  FillImage,
-  FillPattern,
   FillLayers,
-  FillSolid,
   FillTexture,
   FillTextureLive,
   FractionalIndex,
@@ -102,6 +98,7 @@ import {
 } from '../render-graph/utils';
 import { RenderGraph } from '../render-graph/RenderGraph';
 import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
+import { getFirstGradientFillLayerValue } from '../utils/fillLayers';
 
 type GPURenderer = {
   uniformBuffer: Buffer;
@@ -218,23 +215,11 @@ export class MeshPipeline extends System {
     (q) => q.addedChangedOrRemoved.with(RasterAnimationExportRequest).trackWrites,
   );
 
-  private fillSolids = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillSolid).trackWrites,
-  );
   private fillLayers = this.query(
     (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
   );
-  private fillGradients = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillGradient).trackWrites,
-  );
-  private fillPatterns = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillPattern).trackWrites,
-  );
   private fillTextures = this.query(
     (q) => q.addedChangedOrRemoved.with(FillTexture).trackWrites,
-  );
-  private fillImages = this.query(
-    (q) => q.addedChangedOrRemoved.with(FillImage).trackWrites,
   );
   private strokes = this.query(
     (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
@@ -337,11 +322,7 @@ export class MeshPipeline extends System {
             ComputedRough,
             Text,
             ComputedTextMetrics,
-            FillImage,
-            FillPattern,
-            FillGradient,
             FillLayers,
-            FillSolid,
             FillTexture,
             FractionalIndex,
             SizeAttenuation,
@@ -789,7 +770,10 @@ export class MeshPipeline extends System {
         }
       }
 
-      if (entity.has(FillGradient) || entity.has(StrokeGradient)) {
+      if (
+        getFirstGradientFillLayerValue(entity) != null ||
+        entity.has(StrokeGradient)
+      ) {
         safeAddComponent(entity, MaterialDirty);
       }
 
@@ -902,13 +886,9 @@ export class MeshPipeline extends System {
 
         if (
           !toRender &&
-          (!!this.fillSolids.addedChangedOrRemoved.length ||
-            !!this.fillLayers.addedChangedOrRemoved.length ||
-            !!this.fillGradients.addedChangedOrRemoved.length ||
+          (!!this.fillLayers.addedChangedOrRemoved.length ||
             !!this.strokeGradients.addedChangedOrRemoved.length ||
-            !!this.fillPatterns.addedChangedOrRemoved.length ||
             !!this.fillTextures.addedChangedOrRemoved.length ||
-            !!this.fillImages.addedChangedOrRemoved.length ||
             !!this.strokes.addedChangedOrRemoved.length ||
             !!this.opacities.addedChangedOrRemoved.length ||
             !!this.innerShadows.addedChangedOrRemoved.length ||

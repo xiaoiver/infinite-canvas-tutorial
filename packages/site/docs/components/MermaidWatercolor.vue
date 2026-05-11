@@ -57,7 +57,7 @@ onMounted(async () => {
         node.type = 'rough-rect';
         // @ts-expect-error change type
         node.roughFillStyle = 'watercolor';
-        node.fill = 'red';
+        node.fills = [{ type: 'solid', value: 'red' }];
       } else if (node.type === 'line') {
         // @ts-expect-error change type
         node.type = 'rough-line';
@@ -73,7 +73,7 @@ onMounted(async () => {
         node.type = 'rough-path';
         // @ts-expect-error change type
         node.roughFillStyle = 'watercolor';
-        node.fill = '#0034ff';
+        node.fills = [{ type: 'solid', value: '#0034ff' }];
       }
 
       if (!node.parentId) {

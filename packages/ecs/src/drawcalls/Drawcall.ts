@@ -60,11 +60,7 @@ import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
 import {
   Children,
-  FillGradient,
-  FillImage,
-  FillPattern,
   FillLayers,
-  FillSolid,
   FillTexture,
   ClipMode,
   type ClipModeValue,
@@ -856,9 +852,7 @@ export abstract class Drawcall {
     if (!s) {
       return false;
     }
-    if (
-      s.hasSomeOf(FillImage, FillTexture, FillGradient, FillPattern)
-    ) {
+    if (s.has(FillTexture)) {
       return true;
     }
     if (s.has(FillLayers)) {
@@ -874,7 +868,8 @@ export abstract class Drawcall {
       }
     }
     if (
-      s.has(FillSolid) &&
+      s.has(FillLayers) &&
+      getEnabledFillLayers(s).length >= 1 &&
       hasRasterPostEffects(getRasterFilterValueForShape(s))
     ) {
       return true;
@@ -1687,7 +1682,7 @@ export abstract class Drawcall {
   }
 
   /**
-   * 将 `mesh-gradient` 全屏光栅化到 GPU 纹理（与 FillGradient 的 128×128 贴图策略一致）。
+   * 将 `mesh-gradient` 全屏光栅化到 GPU 纹理（与 `FillLayers` 渐变层的 128×128 贴图策略一致）。
    * `width`/`height` 若无效会在 {@link MeshGradientPass} 内夹紧，避免 WebGL 0×0 附件。
    */
   protected renderMeshGradientTexture(

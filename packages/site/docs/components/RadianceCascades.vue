@@ -29,10 +29,10 @@ let onReady: ((e: CustomEvent<any>) => void) | undefined;
 function styleRadianceMermaidNodes(nodes: SerializedNode[]) {
   nodes.forEach((node) => {
     if (node.type === 'rect') {
-      node.fill = 'black';
+      node.fills = [{ type: 'solid', value: 'black', opacity: 1 }];
       node.strokeWidth = 0;
     } else if (node.type === 'ellipse') {
-      node.fill = '#454343';
+      node.fills = [{ type: 'solid', value: '#454343', opacity: 1 }];
       node.strokeWidth = 0;
     } else if (node.type === 'line') {
       node.stroke = '#454343';
@@ -41,13 +41,13 @@ function styleRadianceMermaidNodes(nodes: SerializedNode[]) {
       node.markerFactor = 6;
     } else if (node.type === 'text') {
       node.fontFamily = 'Gaegu';
-      node.fill = 'white';
+      node.fills = [{ type: 'solid', value: 'white', opacity: 1 }];
       node.stroke = 'none';
     } else if (node.type === 'path') {
       if (node.fromId) {
         node.stroke = '#454343';
       } else {
-        node.fill = '#454343';
+        node.fills = [{ type: 'solid', value: '#454343', opacity: 1 }];
         node.strokeWidth = 0;
       }
     }

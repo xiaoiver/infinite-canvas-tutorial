@@ -36,6 +36,7 @@ import {
   fillLayersNeedFillImage,
   fillLayersShouldPrecompose,
   getEnabledFillLayers,
+  getFirstSolidFillLayerValue,
   getMultiFillLayers,
   getSingleEnabledFillLayer,
   type FillLayerItem,
@@ -48,28 +49,23 @@ import {
 } from '../utils/filter';
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
 import {
-  blitImageBitmapToPixelSize,
-  getDevicePixelRatioForRaster,
-  getShapePixelBoundsForFillImage,
-  resolveFillImageTexturePixelSize,
-} from '../utils/fillImageTextureSize';
-import {
+  getFillLayerDecodedBitmap,
+  rasterizeFillLayerImageUrlForTexture,
+  resolveFillLayerImageRasterPixelSize,
   transparentFillLayerCanvas,
-  trySyncRasterizeImageUrlToCanvas,
 } from '../utils/fill-layer-image-url-raster';
-import { createSolidFillMaskRasterForFilter } from '../utils/solidShapeRasterForFilter';
+import { DOMAdapter } from '../environment';
+import { upload2DRasterCanvasToTexture } from '../utils/rasterCanvasTextureUpload';
+import { safeAddComponent } from '../history';
+import { getSdfGeometryBoundsForFilter } from '../utils/solidShapeRasterForFilter';
 import {
   ComputedPoints,
-  ComputedBounds,
   Ellipse,
   FillLayers,
-  FillGradient,
-  FillImage,
-  FillPattern,
-  FillSolid,
   FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
+  MaterialDirty,
   Opacity,
   Path,
   Rect,
@@ -140,47 +136,6 @@ export class Mesh extends Drawcall {
     return filtered;
   }
 
-  /**
-   * `createMaterial` 在 `BatchManager.flush`（渲染）里同步执行，可能早于同帧 `ComputeBounds` 对
-   * `Rect` 尺寸变更的刷新，此时 `geometryBounds` 仍为零面积 → `tw/th` 被压成 1，后处理链用 1×1。
-   * 若 `Rect` 已反映布局（Yoga / mutateElement），用其本地盒作为后备。
-   */
-  private getSolidFillFilterGeometry(instance: Entity): {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-    tw: number;
-    th: number;
-  } {
-    const g = instance.read(ComputedBounds).geometryBounds;
-    const gw = g.maxX - g.minX;
-    const gh = g.maxY - g.minY;
-    if (instance.has(Rect)) {
-      const aabb = Rect.getGeometryBounds(instance.read(Rect));
-      const rw = aabb.maxX - aabb.minX;
-      const rh = aabb.maxY - aabb.minY;
-      if ((gw < 0.5 || gh < 0.5) && rw >= 0.5 && rh >= 0.5) {
-        return {
-          minX: aabb.minX,
-          minY: aabb.minY,
-          maxX: aabb.maxX,
-          maxY: aabb.maxY,
-          tw: Math.max(1, Math.ceil(rw)),
-          th: Math.max(1, Math.ceil(rh)),
-        };
-      }
-    }
-    return {
-      minX: g.minX,
-      minY: g.minY,
-      maxX: g.maxX,
-      maxY: g.maxY,
-      tw: Math.max(1, Math.ceil(gw)),
-      th: Math.max(1, Math.ceil(gh)),
-    };
-  }
-
   private disposeMeshFillLayerResources(): void {
     this.#usePrecomposedMultiFill = false;
     for (const b of this.#fillLayerBindings) {
@@ -215,32 +170,64 @@ export class Mesh extends Drawcall {
     height: number,
   ): Texture {
     if (layer.type === 'image') {
-      const tw = Math.max(1, Math.ceil(width));
-      const th = Math.max(1, Math.ceil(height));
-      const fromUrl = trySyncRasterizeImageUrlToCanvas(layer.value, tw, th);
-      const canvas = fromUrl ?? transparentFillLayerCanvas(width, height);
+      const { width: tw, height: th } = resolveFillLayerImageRasterPixelSize(
+        layer.value,
+        width,
+        height,
+      );
+      const fromUrl = rasterizeFillLayerImageUrlForTexture(
+        layer.value,
+        tw,
+        th,
+        () => safeAddComponent(instance, MaterialDirty),
+      );
+      const canvas = fromUrl ?? transparentFillLayerCanvas(tw, th);
       const raw = this.device.createTexture({
         format: Format.U8_RGBA_NORM,
         width: tw,
         height: th,
         usage: TextureUsage.SAMPLED,
       });
-      raw.setImageData([canvas as HTMLCanvasElement]);
+      upload2DRasterCanvasToTexture(raw, canvas);
+      const cached = getFillLayerDecodedBitmap(layer.value);
+      const sw = cached ? Math.max(1, cached.width) : 1;
+      const sh = cached ? Math.max(1, cached.height) : 1;
+      scheduleFillImageSvgRerasterIfNeeded({
+        entity: instance,
+        url: layer.value,
+        targetW: tw,
+        targetH: th,
+        sourceW: sw,
+        sourceH: sh,
+      });
       return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+    }
+    if (layer.type === 'pattern') {
+      const pw = Math.max(1, width);
+      const ph = Math.max(1, height);
+      const canvas = this.texturePool.getOrCreatePattern({
+        pattern: {
+          image: layer.value,
+          repetition: layer.repetition ?? 'repeat',
+          transform: layer.transform ?? '',
+        },
+        width: pw,
+        height: ph,
+      });
+      const texture = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: 128,
+        height: 128,
+        usage: TextureUsage.SAMPLED,
+      });
+      texture.setImageData([canvas]);
+      return this.applyRasterFilterChainIfNeeded(instance, texture, 128, 128);
     }
     if (layer.type === 'solid') {
       const tw = Math.max(1, Math.ceil(width));
       const th = Math.max(1, Math.ceil(height));
       const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(layer.value);
-      let canvas: HTMLCanvasElement | OffscreenCanvas;
-      if (typeof document !== 'undefined') {
-        const c = document.createElement('canvas');
-        c.width = tw;
-        c.height = th;
-        canvas = c;
-      } else {
-        canvas = new OffscreenCanvas(tw, th);
-      }
+      const canvas = DOMAdapter.get().createCanvas(tw, th);
       const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
       if (!ctx) {
         throw new Error('Canvas 2D required for FillLayers solid raster');
@@ -253,7 +240,7 @@ export class Mesh extends Drawcall {
         height: th,
         usage: TextureUsage.SAMPLED,
       });
-      raw.setImageData([canvas as HTMLCanvasElement]);
+      upload2DRasterCanvasToTexture(raw, canvas);
       return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
     }
     const fillGradients = parseGradient(layer.value);
@@ -279,33 +266,6 @@ export class Mesh extends Drawcall {
     });
     texture.setImageData([canvas]);
     return this.applyRasterFilterChainIfNeeded(instance, texture, 128, 128);
-  }
-
-  /**
-   * Rasterize {@link FillSolid} geometry to a mask bitmap for texture-space filters
-   * (vector silhouette + premultiplied-ish RGBA, same bounds as {@link ComputedBounds} used for `u_FillUVRect`).
-   */
-  private createSolidFillRasterCanvas(
-    shape: Entity,
-    box: {
-      minX: number;
-      minY: number;
-      maxX: number;
-      maxY: number;
-      tw: number;
-      th: number;
-    },
-  ): HTMLCanvasElement | OffscreenCanvas {
-    const fill = shape.read(FillSolid).value;
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
-    const fillRgba = `rgba(${fr},${fg},${fb},${fo})`;
-    return createSolidFillMaskRasterForFilter(
-      shape,
-      fillRgba,
-      { minX: box.minX, minY: box.minY, maxX: box.maxX, maxY: box.maxY },
-      box.tw,
-      box.th,
-    );
   }
 
   validate(shape: Entity) {
@@ -354,37 +314,11 @@ export class Mesh extends Drawcall {
       }
     }
 
-    const isInstanceFillImage = this.shapes[0].has(FillImage);
-    const isShapeFillImage = shape.has(FillImage);
-    const isInstanceFillGradient = this.shapes[0].has(FillGradient);
-    const isShapeFillGradient = shape.has(FillGradient);
-    const isInstanceFillPattern = this.shapes[0].has(FillPattern);
-    const isShapeFillPattern = shape.has(FillPattern);
     const isInstanceFillTexture = this.shapes[0].has(FillTexture);
     const isShapeFillTexture = shape.has(FillTexture);
 
-    if (isInstanceFillImage !== isShapeFillImage) {
-      return false;
-    }
-
-    if (isInstanceFillGradient !== isShapeFillGradient) {
-      return false;
-    }
-
-    if (isInstanceFillPattern !== isShapeFillPattern) {
-      return false;
-    }
-
     if (isInstanceFillTexture !== isShapeFillTexture) {
       return false;
-    }
-
-    if (isInstanceFillImage && isShapeFillImage) {
-      return this.shapes[0].read(FillImage).src === shape.read(FillImage).src;
-    }
-
-    if (isInstanceFillGradient && isShapeFillGradient) {
-      return this.shapes[0].read(FillGradient) === shape.read(FillGradient);
     }
 
     const fa = getRasterFilterValueForShape(this.shapes[0]);
@@ -646,7 +580,7 @@ export class Mesh extends Drawcall {
           fillLayersShouldPrecompose(multiForTex));
       if (needsFillLayerRaster && multiForTex) {
         const { minX, minY, maxX, maxY } =
-          instance.read(ComputedBounds).geometryBounds;
+          getSdfGeometryBoundsForFilter(instance);
         const width = maxX - minX;
         const height = maxY - minY;
         this.#fillLayerTextures = multiForTex.map((layer) =>
@@ -660,8 +594,18 @@ export class Mesh extends Drawcall {
           ),
         );
         if (fillLayersShouldPrecompose(multiForTex)) {
-          const w = Math.max(1, Math.ceil(width));
-          const h = Math.max(1, Math.ceil(height));
+          const w = Math.max(
+            1,
+            ...this.#fillLayerTextures.map(
+              (t) => (t as unknown as { width: number }).width,
+            ),
+          );
+          const h = Math.max(
+            1,
+            ...this.#fillLayerTextures.map(
+              (t) => (t as unknown as { height: number }).height,
+            ),
+          );
           const composed = composeFillLayerTexturesOnGpu(
             this.device,
             this.renderCache,
@@ -685,7 +629,7 @@ export class Mesh extends Drawcall {
         const one = getSingleEnabledFillLayer(instance);
         if (one) {
           const { minX, minY, maxX, maxY } =
-            instance.read(ComputedBounds).geometryBounds;
+            getSdfGeometryBoundsForFilter(instance);
           const width = maxX - minX;
           const height = maxY - minY;
           this.#texture = this.createMeshFillLayerTexture(
@@ -697,120 +641,8 @@ export class Mesh extends Drawcall {
             height,
           );
         }
-      } else if (instance.has(FillGradient) || instance.has(FillPattern)) {
-        const { minX, minY, maxX, maxY } =
-          instance.read(ComputedBounds).geometryBounds;
-        const width = maxX - minX;
-        const height = maxY - minY;
-        const fillGradients = instance.has(FillGradient)
-          ? parseGradient(instance.read(FillGradient).value)
-          : undefined;
-        const meshFill =
-          fillGradients?.length === 1 ? fillGradients[0] : undefined;
-        if (instance.has(FillPattern)) {
-          const canvas = this.texturePool.getOrCreatePattern({
-            pattern: instance.read(FillPattern),
-            width,
-            height,
-          });
-          const texture = this.device.createTexture({
-            format: Format.U8_RGBA_NORM,
-            width: 128,
-            height: 128,
-            usage: TextureUsage.SAMPLED,
-          });
-          texture.setImageData([canvas]);
-          this.#texture = this.applyRasterFilterChainIfNeeded(
-            instance,
-            texture,
-            128,
-            128,
-          );
-        } else if (meshFill && isMeshGradientGradient(meshFill)) {
-          const raw = this.renderMeshGradientTexture(meshFill, 128, 128);
-          this.#texture = this.applyRasterFilterChainIfNeeded(
-            instance,
-            raw,
-            128,
-            128,
-          );
-        } else {
-          const canvas = this.texturePool.getOrCreateGradient({
-            gradients: fillGradients ?? [],
-            min: [minX, minY],
-            width,
-            height,
-          });
-          const texture = this.device.createTexture({
-            format: Format.U8_RGBA_NORM,
-            width: 128,
-            height: 128,
-            usage: TextureUsage.SAMPLED,
-          });
-          texture.setImageData([canvas]);
-          this.#texture = this.applyRasterFilterChainIfNeeded(
-            instance,
-            texture,
-            128,
-            128,
-          );
-        }
       } else if (instance.has(FillTexture)) {
         this.#texture = instance.read(FillTexture).value;
-      } else if (instance.has(FillImage)) {
-        const src = instance.read(FillImage).src as ImageBitmap;
-        const sw = Math.max(1, src.width);
-        const sh = Math.max(1, src.height);
-        const { geomW, geomH } = getShapePixelBoundsForFillImage(instance);
-        const { width: tw, height: th } = resolveFillImageTexturePixelSize(
-          sw,
-          sh,
-          geomW,
-          geomH,
-          getDevicePixelRatioForRaster(),
-        );
-        const raw = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: tw,
-          height: th,
-          usage: TextureUsage.SAMPLED,
-        });
-        if (tw === sw && th === sh) {
-          raw.setImageData([src]);
-        } else {
-          const canvas = blitImageBitmapToPixelSize(src, tw, th);
-          raw.setImageData([canvas as HTMLCanvasElement]);
-        }
-        this.#texture = this.applyRasterFilterChainIfNeeded(
-          instance,
-          raw,
-          tw,
-          th,
-        );
-        scheduleFillImageSvgRerasterIfNeeded({
-          entity: instance,
-          url: instance.read(FillImage).url,
-          targetW: tw,
-          targetH: th,
-          sourceW: sw,
-          sourceH: sh,
-        });
-      } else if (instance.has(FillSolid)) {
-        const geom = this.getSolidFillFilterGeometry(instance);
-        const canvas = this.createSolidFillRasterCanvas(instance, geom);
-        const raw = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: geom.tw,
-          height: geom.th,
-          usage: TextureUsage.SAMPLED,
-        });
-        raw.setImageData([canvas as HTMLCanvasElement]);
-        this.#texture = this.applyRasterFilterChainIfNeeded(
-          instance,
-          raw,
-          geom.tw,
-          geom.th,
-        );
       }
 
       bindings.samplerBindings = [
@@ -1050,9 +882,7 @@ export class Mesh extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    let fill: string | null = shape.has(FillSolid)
-      ? shape.read(FillSolid).value
-      : null;
+    let fill: string | null = getFirstSolidFillLayerValue(shape);
     const multiLayers = getMultiFillLayers(shape);
     const enabledFill = getEnabledFillLayers(shape);
     if (multiFill?.kind === 'fill-layer' && multiLayers) {
@@ -1061,9 +891,7 @@ export class Mesh extends Drawcall {
     } else if (
       !multiFill &&
       enabledFill.length === 1 &&
-      shape.has(FillLayers) &&
-      !shape.has(FillSolid) &&
-      !shape.has(FillGradient)
+      shape.has(FillLayers)
     ) {
       const L = enabledFill[0];
       fill = L.type === 'solid' ? L.value : '#ffffff';
@@ -1092,21 +920,22 @@ export class Mesh extends Drawcall {
     let invWidth = 0;
     let invHeight = 0;
     if (
-      shape.has(FillGradient) ||
-      shape.has(FillPattern) ||
+      enabledFill.some((l) => l.type === 'pattern') ||
       (multiLayers != null && fillLayersNeedFillImage(multiLayers)) ||
       (shape.has(FillLayers) &&
         (fillLayersNeedFillImage(enabledFill) || this.#usePrecomposedMultiFill))
     ) {
-      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
+      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } =
+        getSdfGeometryBoundsForFilter(shape);
       const geometryWidth = gMaxX - gMinX;
       const geometryHeight = gMaxY - gMinY;
       minX = gMinX;
       minY = gMinY;
       invWidth = geometryWidth === 0 ? 0 : 1 / geometryWidth;
       invHeight = geometryHeight === 0 ? 0 : 1 / geometryHeight;
-    } else if (this.useFillImage && shape.has(ComputedBounds)) {
-      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } = shape.read(ComputedBounds).geometryBounds;
+    } else if (this.useFillImage) {
+      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } =
+        getSdfGeometryBoundsForFilter(shape);
       const geometryWidth = gMaxX - gMinX;
       const geometryHeight = gMaxY - gMinY;
       minX = gMinX;
@@ -1138,9 +967,7 @@ export class Mesh extends Drawcall {
     } else if (
       !multiFill &&
       enabledFill.length === 1 &&
-      shape.has(FillLayers) &&
-      !shape.has(FillSolid) &&
-      !shape.has(FillGradient)
+      shape.has(FillLayers)
     ) {
       const L = enabledFill[0];
       const lo = fillLayerOpacity(L.opacity);

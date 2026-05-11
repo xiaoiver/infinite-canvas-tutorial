@@ -1,5 +1,6 @@
 import type { FillAttributes, SerializedFillLayerItem } from '../types/serialized-node';
 import { fillLayerOpacity, isFillLayerEnabled } from './fillLayers';
+import { isPattern } from './pattern';
 
 /**
  * 将历史 wire 上的 `fill` / `fillOpacity` / `fillLayers` 合并为权威字段 `fills`，并删除旧键。
@@ -23,6 +24,30 @@ export function migrateLegacyFillWireInPlace(attrs: Record<string, unknown>): vo
   }
   const fill = attrs.fill;
   const fo = attrs.fillOpacity;
+  if (
+    fill !== undefined &&
+    fill !== null &&
+    typeof fill === 'object' &&
+    isPattern(fill)
+  ) {
+    const p = fill as import('./pattern').Pattern;
+    const img = p.image;
+    if (typeof img === 'string' && img.trim() !== '') {
+      attrs.fills = [
+        {
+          type: 'pattern',
+          value: img,
+          repetition: p.repetition ?? 'repeat',
+          transform: p.transform ?? '',
+          opacity: coalesceOpacityToOptional(fo),
+        },
+      ];
+      delete attrs.fill;
+      delete attrs.fillOpacity;
+      delete attrs.fillLayers;
+    }
+    return;
+  }
   if (fill !== undefined && fill !== null && String(fill).trim() !== '') {
     attrs.fills = [
       {

@@ -2,13 +2,13 @@
 use std::collections::{HashMap, HashSet};
 
 use vello::kurbo::{Affine, BezPath, Ellipse, Line, PathEl, Point, Rect, RoundedRect, Shape, Stroke, Vec2};
-use vello::peniko::{Blob, Color, ColorStop, Fill, Gradient, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
+use vello::peniko::{Blob, Brush, Color, ColorStop, Fill, Gradient, ImageAlphaType, ImageBrush, ImageData, ImageFormat};
 use vello::Scene;
 
 #[cfg(target_arch = "wasm32")]
 use roughr::{core::Options, generator::Generator};
 
-use crate::types::{CanvasRenderOptions, FillGradientSpec, JsShape, StrokeAlignment, StrokeParams};
+use crate::types::{CanvasRenderOptions, FillGradientSpec, FillPaint, JsShape, StrokeAlignment, StrokeParams};
 use crate::types::{apply_opacity_to_color, mat3_to_affine};
 #[cfg(target_arch = "wasm32")]
 use crate::path_utils::svg_path_first_closed_polygon;
@@ -472,6 +472,173 @@ pub fn build_gradient_brush(spec: &FillGradientSpec, fill_opacity_mult: f32) -> 
 }
 
 #[cfg(target_arch = "wasm32")]
+fn first_fill_solid_rgba(paints: &[FillPaint]) -> Option<[f32; 4]> {
+    paints.iter().find_map(|p| match p {
+        FillPaint::Solid { rgba } => Some(*rgba),
+        _ => None,
+    })
+}
+
+/// `ibox`：image/gradient 坐标系对齐用的轴对齐盒（与 ECS 中 shape 逻辑尺寸一致）。
+#[cfg(target_arch = "wasm32")]
+fn scene_apply_fill_paints<S: Shape>(
+    scene: &mut Scene,
+    shape_transform: Affine,
+    fill_rule: Fill,
+    geom: &S,
+    shape_id: &str,
+    paints: &[FillPaint],
+    ibox: Rect,
+    opacity: f32,
+) {
+    let w = ibox.width();
+    let h = ibox.height();
+    if w <= 0.0 || h <= 0.0 {
+        return;
+    }
+    for (layer_i, paint) in paints.iter().enumerate() {
+        match paint {
+            FillPaint::Solid { rgba } => {
+                let c = apply_opacity_to_color(*rgba, opacity, 1.0);
+                let brush = vello::peniko::Brush::Solid(Color::new(c));
+                scene.fill(fill_rule, shape_transform, &brush, None, geom);
+            }
+            FillPaint::Gradient { gradients } => {
+                for g in gradients.iter().rev() {
+                    let brush =
+                        vello::peniko::Brush::Gradient(build_gradient_brush(g, opacity));
+                    scene.fill(fill_rule, shape_transform, &brush, None, geom);
+                }
+            }
+            FillPaint::Image {
+                image_width,
+                image_height,
+                image_data,
+            } => {
+                let expected_len = (*image_width as usize) * (*image_height as usize) * 4;
+                if image_data.len() < expected_len {
+                    continue;
+                }
+                let brush_tf = Affine::translate(Vec2::new(ibox.x0, ibox.y0))
+                    * Affine::scale_non_uniform(w / *image_width as f64, h / *image_height as f64);
+                let cache_key = format!("{}#fl{}", shape_id, layer_i);
+                IMAGE_BRUSH_CACHE.with(|cache_cell| {
+                    let mut cache = cache_cell.borrow_mut();
+                    let brush = if let Some(cached) = cache.get(cache_key.as_str()) {
+                        cached
+                    } else {
+                        let image = ImageData {
+                            data: Blob::from(image_data.clone()),
+                            format: ImageFormat::Rgba8,
+                            alpha_type: ImageAlphaType::Alpha,
+                            width: *image_width,
+                            height: *image_height,
+                        };
+                        let nb = ImageBrush::new(image);
+                        cache.insert(cache_key.clone(), nb);
+                        cache.get(cache_key.as_str()).expect("inserted brush")
+                    };
+                    scene.fill(
+                        fill_rule,
+                        shape_transform,
+                        brush.as_ref(),
+                        Some(brush_tf),
+                        geom,
+                    );
+                });
+            }
+        }
+    }
+}
+
+/// 文本字形填充：`fills` 与 ECS `FillLayers` / 其它形状 `scene_apply_fill_paints` 一致（自下而上叠加）。
+#[cfg(target_arch = "wasm32")]
+fn scene_text_draw_glyphs_with_fills(
+    scene: &mut Scene,
+    shape_transform: Affine,
+    glyph_runs: &[(vello::peniko::FontData, Vec<vello::Glyph>)],
+    font_size: f32,
+    paints: &[FillPaint],
+    fills_ibox: Rect,
+    shape_id: &str,
+    opacity: f32,
+) {
+    if glyph_runs.is_empty() || paints.is_empty() {
+        return;
+    }
+    let w = fills_ibox.width();
+    let h = fills_ibox.height();
+    for (layer_i, paint) in paints.iter().enumerate() {
+        match paint {
+            FillPaint::Solid { rgba } => {
+                let c = apply_opacity_to_color(*rgba, opacity, 1.0);
+                let brush = Brush::Solid(Color::new(c));
+                for (font_data, glyphs) in glyph_runs {
+                    scene
+                        .draw_glyphs(font_data)
+                        .font_size(font_size)
+                        .transform(shape_transform)
+                        .brush(&brush)
+                        .draw(Fill::NonZero, glyphs.clone().into_iter());
+                }
+            }
+            FillPaint::Gradient { gradients } => {
+                for g in gradients.iter().rev() {
+                    let brush = Brush::Gradient(build_gradient_brush(g, opacity));
+                    for (font_data, glyphs) in glyph_runs {
+                        scene
+                            .draw_glyphs(font_data)
+                            .font_size(font_size)
+                            .transform(shape_transform)
+                            .brush(&brush)
+                            .draw(Fill::NonZero, glyphs.clone().into_iter());
+                    }
+                }
+            }
+            FillPaint::Image {
+                image_width,
+                image_height,
+                image_data,
+            } => {
+                if w <= 0.0 || h <= 0.0 {
+                    continue;
+                }
+                let expected_len = (*image_width as usize) * (*image_height as usize) * 4;
+                if image_data.len() < expected_len {
+                    continue;
+                }
+                let cache_key = format!("{}#textfl{}", shape_id, layer_i);
+                IMAGE_BRUSH_CACHE.with(|cache_cell| {
+                    let mut cache = cache_cell.borrow_mut();
+                    let brush = if let Some(cached) = cache.get(cache_key.as_str()) {
+                        cached
+                    } else {
+                        let image = ImageData {
+                            data: Blob::from(image_data.clone()),
+                            format: ImageFormat::Rgba8,
+                            alpha_type: ImageAlphaType::Alpha,
+                            width: *image_width,
+                            height: *image_height,
+                        };
+                        let nb = ImageBrush::new(image);
+                        cache.insert(cache_key.clone(), nb);
+                        cache.get(cache_key.as_str()).expect("inserted brush")
+                    };
+                    for (font_data, glyphs) in glyph_runs {
+                        scene
+                            .draw_glyphs(font_data)
+                            .font_size(font_size)
+                            .transform(shape_transform)
+                            .brush(brush.as_ref())
+                            .draw(Fill::NonZero, glyphs.clone().into_iter());
+                    }
+                });
+            }
+        }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
 pub fn compute_world_transforms(shapes: &[JsShape]) -> HashMap<String, Affine> {
     let mut map: HashMap<String, Affine> = HashMap::new();
     let max_passes = shapes.len().max(1);
@@ -815,16 +982,15 @@ pub fn add_js_shape_to_scene(
     };
     match shape {
         JsShape::Rect {
+            id,
             x,
             y,
             width,
             height,
             radius,
-            fill,
-            fill_gradients,
+            fills,
             stroke,
             opacity,
-            fill_opacity,
             stroke_opacity,
             size_attenuation,
             stroke_attenuation,
@@ -844,7 +1010,7 @@ pub fn add_js_shape_to_scene(
                 x.max(x + w),
                 y.max(y + h),
             );
-            let fill_mult = opacity * fill_opacity;
+            let fills_ibox = Rect::new(x0, y0, x1, y1);
 
             let stroke_config = stroke.as_ref().map(|s| {
                 let width = if stroke_attenuation { s.width / scale } else { s.width };
@@ -923,26 +1089,34 @@ pub fn add_js_shape_to_scene(
             }
 
             if let Some(ref fill_geom) = fill_geom {
-                let use_blur = blur_std_dev > 0.0 && r > 0.0 && fill_gradients.is_none();
+                let paints = fills.as_slice();
+                let use_blur = blur_std_dev > 0.0
+                    && r > 0.0
+                    && paints.len() == 1
+                    && matches!(&paints[0], FillPaint::Solid { .. });
                 if use_blur {
-                    let base_rect = Rect::new(x0, y0, x1, y1);
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    scene.draw_blurred_rounded_rect(
-                        shape_transform,
-                        base_rect,
-                        Color::new(fill_color),
-                        r,
-                        blur_std_dev
-                    );
-                } else if let Some(ref grads) = fill_gradients {
-                    for g in grads.iter().rev() {
-                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                        scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
+                    if let FillPaint::Solid { rgba } = &paints[0] {
+                        let base_rect = Rect::new(x0, y0, x1, y1);
+                        let fill_color = apply_opacity_to_color(*rgba, opacity, 1.0);
+                        scene.draw_blurred_rounded_rect(
+                            shape_transform,
+                            base_rect,
+                            Color::new(fill_color),
+                            r,
+                            blur_std_dev
+                        );
                     }
-                } else {
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                    scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
+                } else if !paints.is_empty() {
+                    scene_apply_fill_paints(
+                        scene,
+                        shape_transform,
+                        Fill::NonZero,
+                        fill_geom,
+                        id.as_str(),
+                        paints,
+                        fills_ibox,
+                        opacity,
+                    );
                 }
             }
 
@@ -954,13 +1128,25 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::Ellipse { cx, cy, rx, ry, fill, fill_gradients, stroke, opacity, fill_opacity, stroke_opacity, size_attenuation, stroke_attenuation, .. } => {
+        JsShape::Ellipse {
+            id,
+            cx,
+            cy,
+            rx,
+            ry,
+            fills,
+            stroke,
+            opacity,
+            stroke_opacity,
+            size_attenuation,
+            stroke_attenuation,
+            ..
+        } => {
             let (rx_eff, ry_eff) = if size_attenuation {
                 (rx / scale, ry / scale)
             } else {
                 (rx, ry)
             };
-            let fill_mult = opacity * fill_opacity;
 
             let stroke_config = stroke.as_ref().map(|s| {
                 let width = if stroke_attenuation { s.width / scale } else { s.width };
@@ -1003,16 +1189,22 @@ pub fn add_js_shape_to_scene(
                 (Some(fill_ellipse), None)
             };
 
+            let fills_ibox =
+                Rect::new(cx - rx_eff, cy - ry_eff, cx + rx_eff, cy + ry_eff);
+
             if let Some(ref fill_geom) = fill_geom {
-                if let Some(ref grads) = fill_gradients {
-                    for g in grads.iter().rev() {
-                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                        scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
-                    }
-                } else {
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                    scene.fill(Fill::NonZero, shape_transform, &brush, None, fill_geom);
+                let paints = fills.as_slice();
+                if !paints.is_empty() {
+                    scene_apply_fill_paints(
+                        scene,
+                        shape_transform,
+                        Fill::NonZero,
+                        fill_geom,
+                        id.as_str(),
+                        paints,
+                        fills_ibox,
+                        opacity,
+                    );
                 }
             }
 
@@ -1075,6 +1267,7 @@ pub fn add_js_shape_to_scene(
             }
         }
         JsShape::Text {
+            id,
             content,
             font_size,
             font_family,
@@ -1087,10 +1280,10 @@ pub fn add_js_shape_to_scene(
             word_wrap,
             word_wrap_width,
             text_align,
-            fill,
+            fills,
+            fills_ibox,
             stroke,
             opacity,
-            fill_opacity,
             stroke_opacity,
             size_attenuation,
             ..
@@ -1154,9 +1347,6 @@ pub fn add_js_shape_to_scene(
                     }
                 };
 
-                let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                let fill_brush = Color::new(fill_color);
-
                 if let Some(ref s) = stroke {
                     let stroke_width = if size_attenuation { s.width / scale } else { s.width };
                     let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
@@ -1184,14 +1374,16 @@ pub fn add_js_shape_to_scene(
                     }
                 }
 
-                for (font_data, glyphs) in &glyph_runs {
-                    scene
-                        .draw_glyphs(font_data)
-                        .font_size(size)
-                        .transform(shape_transform)
-                        .brush(fill_brush)
-                        .draw(Fill::NonZero, glyphs.clone().into_iter());
-                }
+                scene_text_draw_glyphs_with_fills(
+                    scene,
+                    shape_transform,
+                    &glyph_runs,
+                    size,
+                    &fills,
+                    fills_ibox,
+                    id.as_str(),
+                    opacity,
+                );
 
                 let emoji_render_size = ((font_size_eff * 2.0).ceil() as u32).max(48);
                 for emoji_pos in &emoji_positions {
@@ -1400,7 +1592,21 @@ pub fn add_js_shape_to_scene(
                     }
                 }
         }
-        JsShape::Path { d, fill, fill_gradients, stroke, fill_rule, opacity, fill_opacity, stroke_opacity, size_attenuation, stroke_attenuation, marker_start, marker_end, marker_factor, .. } => {
+        JsShape::Path {
+            id,
+            d,
+            fills,
+            stroke,
+            fill_rule,
+            opacity,
+            stroke_opacity,
+            size_attenuation,
+            stroke_attenuation,
+            marker_start,
+            marker_end,
+            marker_factor,
+            ..
+        } => {
             if let Ok(mut bez_path) = BezPath::from_svg(d.as_str()) {
                 if size_attenuation {
                     let bbox = bez_path.bounding_box();
@@ -1414,7 +1620,10 @@ pub fn add_js_shape_to_scene(
                 });
 
                 if let Some(center) = degenerate_closed_dot_center(&bez_path) {
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+                    let dot_fill_base = first_fill_solid_rgba(fills.as_slice());
+                    let fill_color = dot_fill_base
+                        .map(|c| apply_opacity_to_color(c, opacity, 1.0))
+                        .unwrap_or([0.0, 0.0, 0.0, 0.0]);
                     let dot_radius = stroke_config
                         .as_ref()
                         .map(|(sw, _, _)| (sw / 2.0).max(0.75))
@@ -1456,20 +1665,27 @@ pub fn add_js_shape_to_scene(
                 } else {
                     Fill::NonZero
                 };
-                let fill_mult = opacity * fill_opacity;
                 let stroke_bez_path = strip_redundant_closepath(&bez_path);
+                let path_ibox = bez_path.bounding_box();
+                let fills_ibox = if path_ibox.width() > 0.0 && path_ibox.height() > 0.0 {
+                    path_ibox
+                } else {
+                    Rect::new(0.0, 0.0, 1.0, 1.0)
+                };
 
                 match stroke_config {
                     Some((sw, _, StrokeAlignment::Inner)) => {
-                        if let Some(ref grads) = fill_gradients {
-                            for g in grads.iter().rev() {
-                                let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                                scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
-                            }
-                        } else {
-                            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                            let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                            scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                        if !fills.is_empty() {
+                            scene_apply_fill_paints(
+                                scene,
+                                shape_transform,
+                                fill_mode,
+                                &bez_path,
+                                id.as_str(),
+                                fills.as_slice(),
+                                fills_ibox,
+                                opacity,
+                            );
                         }
                         if let Some(ref s) = stroke {
                             let stroke_color = apply_opacity_to_color(s.color, opacity, stroke_opacity);
@@ -1485,27 +1701,31 @@ pub fn add_js_shape_to_scene(
                             let kurbo_stroke = s.to_kurbo_stroke_with_width(sw);
                             scene.stroke(&kurbo_stroke, shape_transform, Color::new(stroke_color), None, &stroke_bez_path);
                         }
-                        if let Some(ref grads) = fill_gradients {
-                            for g in grads.iter().rev() {
-                                let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                                scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
-                            }
-                        } else {
-                            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                            let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                            scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                        if !fills.is_empty() {
+                            scene_apply_fill_paints(
+                                scene,
+                                shape_transform,
+                                fill_mode,
+                                &bez_path,
+                                id.as_str(),
+                                fills.as_slice(),
+                                fills_ibox,
+                                opacity,
+                            );
                         }
                     }
                     _ => {
-                        if let Some(ref grads) = fill_gradients {
-                            for g in grads.iter().rev() {
-                                let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                                scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
-                            }
-                        } else {
-                            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                            let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                            scene.fill(fill_mode, shape_transform, &brush, None, &bez_path);
+                        if !fills.is_empty() {
+                            scene_apply_fill_paints(
+                                scene,
+                                shape_transform,
+                                fill_mode,
+                                &bez_path,
+                                id.as_str(),
+                                fills.as_slice(),
+                                fills_ibox,
+                                opacity,
+                            );
                         }
                         if let Some((sw, _, _)) = stroke_config {
                             if let Some(ref s) = stroke {
@@ -1618,14 +1838,13 @@ pub fn add_js_shape_to_scene(
             }
         }
         JsShape::VectorNetwork {
+            id,
             vertices,
             segments,
             regions,
-            fill,
-            fill_gradients,
+            fills,
             stroke,
             opacity,
-            fill_opacity,
             stroke_opacity,
             size_attenuation,
             stroke_attenuation,
@@ -1646,7 +1865,6 @@ pub fn add_js_shape_to_scene(
                 return;
             };
             let center = bounds.center();
-            let fill_mult = opacity * fill_opacity;
 
             let sw_stroke = stroke.as_ref().and_then(|s| {
                 if s.width > 0.0 {
@@ -1712,15 +1930,23 @@ pub fn add_js_shape_to_scene(
                 } else {
                     Fill::NonZero
                 };
-                if let Some(ref grads) = fill_gradients {
-                    for g in grads.iter().rev() {
-                        let brush = vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
-                        scene.fill(fill_mode, shape_transform, &brush, None, &fill_bp);
-                    }
-                } else if fill[3] > 0.0 {
-                    let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
-                    let brush = vello::peniko::Brush::Solid(Color::new(fill_color));
-                    scene.fill(fill_mode, shape_transform, &brush, None, &fill_bp);
+                let rbox = fill_bp.bounding_box();
+                let fills_ibox = if rbox.width() > 0.0 && rbox.height() > 0.0 {
+                    rbox
+                } else {
+                    Rect::new(sx0, sy0, sx1, sy1)
+                };
+                if !fills.is_empty() {
+                    scene_apply_fill_paints(
+                        scene,
+                        shape_transform,
+                        fill_mode,
+                        &fill_bp,
+                        id.as_str(),
+                        fills.as_slice(),
+                        fills_ibox,
+                        opacity,
+                    );
                 }
             }
 
@@ -1785,8 +2011,8 @@ pub fn add_js_shape_to_scene(
             // Brush is rendered by the dedicated GPU brush pass.
         }
         JsShape::Group { .. } => {}
-        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
-            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+        JsShape::RoughRect { x, y, width, height, fill, stroke, opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
+            let fill_color = apply_opacity_to_color(fill, opacity, 1.0);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let wc = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
             if wc {
@@ -1836,8 +2062,8 @@ pub fn add_js_shape_to_scene(
                 stroke_color,
             );
         }
-        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
-            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+        JsShape::RoughEllipse { cx, cy, rx, ry, fill, stroke, opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, rough_seed, .. } => {
+            let fill_color = apply_opacity_to_color(fill, opacity, 1.0);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let wc = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
             if wc {
@@ -1935,8 +2161,8 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::RoughPolyline { points, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, rough_seed, .. } => {
-            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+        JsShape::RoughPolyline { points, fill, stroke, opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, rough_seed, .. } => {
+            let fill_color = apply_opacity_to_color(fill, opacity, 1.0);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let wc_requested = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
             let mut base: Vec<[f64; 2]> = points.iter().map(|p| [p[0], p[1]]).collect();
@@ -2035,8 +2261,8 @@ pub fn add_js_shape_to_scene(
                 }
             }
         }
-        JsShape::RoughPath { d, fill, stroke, opacity, fill_opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, rough_seed, .. } => {
-            let fill_color = apply_opacity_to_color(fill, opacity, fill_opacity);
+        JsShape::RoughPath { d, fill, stroke, opacity, stroke_opacity, roughness, bowing, fill_style, hachure_angle, hachure_gap, fill_weight, curve_step_count, simplification, marker_start, marker_end, marker_factor, rough_seed, .. } => {
+            let fill_color = apply_opacity_to_color(fill, opacity, 1.0);
             let stroke_color = stroke.as_ref().map(|s| apply_opacity_to_color(s.color, opacity, stroke_opacity));
             let wc_requested = fill_style_is_watercolor(&fill_style) && fill_color[3] > 0.0;
             let wc_base = wc_requested.then(|| svg_path_first_closed_polygon(d.as_str(), 0.25)).flatten();

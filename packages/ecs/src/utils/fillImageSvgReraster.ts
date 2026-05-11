@@ -1,11 +1,13 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { FillImage, MaterialDirty } from '../components';
+import { FillLayers, MaterialDirty } from '../components';
 import { safeAddComponent } from '../history/ElementsChange';
+import { setFillLayerDecodedBitmapForUrl } from './fill-layer-image-url-raster';
+import { getEnabledFillLayers } from './fillLayers';
 
 const lastScheduledKey = new WeakMap<Entity, string>();
 
 /**
- * `FillImage` 被重新加载（如主题切换后 `loadImage`）时须清除，否则会沿用旧
+ * FillLayers 图片层或 {@link loadImage} 重新加载后须清除，否则会沿用旧
  * `url|targetW|targetH` 去重键而跳过 {@link scheduleFillImageSvgRerasterIfNeeded}，视觉上回到低分辨率插值。
  */
 export function resetFillImageSvgRerasterSchedule(entity: Entity): void {
@@ -94,8 +96,8 @@ export async function rasterizeSvgUrlToImageBitmap(
 }
 
 /**
- * 对 SVG：当前帧若仍用小 `ImageBitmap` 再插值到目标尺寸会偏糊，异步用矢量重栅格到 `targetW×targetH` 后写回
- * `FillImage.src` 并打 `MaterialDirty`；非 SVG 或已足够大时 no-op。
+ * 对 SVG：当前帧若仍用小 `ImageBitmap` 再插值到目标尺寸会偏糊，异步用矢量重栅格到 `targetW×targetH` 后写入
+ * URL 解码缓存并打 `MaterialDirty`；非 SVG 或已足够大时 no-op。
  */
 export function scheduleFillImageSvgRerasterIfNeeded(o: {
   entity: Entity;
@@ -130,26 +132,20 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
       bmp.close();
       return;
     }
-    if (!entity.has(FillImage)) {
+    if (!entity.has(FillLayers)) {
       bmp.close();
       lastScheduledKey.delete(entity);
       return;
     }
-    const fi = entity.read(FillImage);
-    if (fi.url !== url) {
+    const stillHasUrl = getEnabledFillLayers(entity).some(
+      (l) => l.type === 'image' && l.value === url,
+    );
+    if (!stillHasUrl) {
       bmp.close();
       lastScheduledKey.delete(entity);
       return;
     }
-    const prev = fi.src;
-    if (prev && prev !== bmp && 'close' in prev && typeof (prev as ImageBitmap).close === 'function') {
-      try {
-        (prev as ImageBitmap).close();
-      } catch {
-        // ignore
-      }
-    }
-    Object.assign(entity.write(FillImage), { src: bmp });
+    setFillLayerDecodedBitmapForUrl(url, bmp);
     safeAddComponent(entity, MaterialDirty);
     if (lastScheduledKey.get(entity) === key) {
       lastScheduledKey.delete(entity);

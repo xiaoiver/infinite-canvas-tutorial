@@ -1,29 +1,21 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { ComputedBounds, Rect } from '../components';
+import { getSdfGeometryBoundsForFilter } from './solidShapeRasterForFilter';
 
 /** 避免 SVG 等小 intrinsic 位图在放大后处理时糊成一片；与 {@link resolveFillImageTexturePixelSize} 配合使用。 */
 export const FILL_IMAGE_RASTER_MAX_EDGE = 4096;
 
 /**
- * 与 {@link Mesh.getSolidFillFilterGeometry} 一致：用几何盒像素尺寸，Rect 在 bounds 未刷新时作后备。
+ * 几何在画布上的像素宽高；与 {@link getSdfGeometryBoundsForFilter} 一致（`ComputedBounds` 未就绪时从 Rect 等回退）。
  */
 export function getShapePixelBoundsForFillImage(instance: Entity): {
   geomW: number;
   geomH: number;
 } {
-  const g = instance.read(ComputedBounds).geometryBounds;
-  let gw = g.maxX - g.minX;
-  let gh = g.maxY - g.minY;
-  if (instance.has(Rect)) {
-    const aabb = Rect.getGeometryBounds(instance.read(Rect));
-    const rw = aabb.maxX - aabb.minX;
-    const rh = aabb.maxY - aabb.minY;
-    if ((gw < 0.5 || gh < 0.5) && rw >= 0.5 && rh >= 0.5) {
-      gw = rw;
-      gh = rh;
-    }
-  }
-  return { geomW: gw, geomH: gh };
+  const g = getSdfGeometryBoundsForFilter(instance);
+  return {
+    geomW: g.maxX - g.minX,
+    geomH: g.maxY - g.minY,
+  };
 }
 
 export function getDevicePixelRatioForRaster(): number {

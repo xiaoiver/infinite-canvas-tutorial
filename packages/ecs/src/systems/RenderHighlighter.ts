@@ -4,7 +4,7 @@ import {
   Circle,
   ComputedBounds,
   Ellipse,
-  FillSolid,
+  FillLayers,
   GlobalTransform,
   Highlighted,
   Opacity,
@@ -90,7 +90,7 @@ export class RenderHighlighter extends System {
             Parent,
             Children,
             Renderable,
-            FillSolid,
+            FillLayers,
             Opacity,
             Stroke,
             Rect,
@@ -180,7 +180,9 @@ export class RenderHighlighter extends System {
           new UI(UIType.HIGHLIGHTER),
           new Transform(),
           new Renderable(),
-          new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
+          new FillLayers([
+            { type: 'solid', value: TRANSFORMER_ANCHOR_FILL_COLOR },
+          ]),
           new Opacity({ fillOpacity: 0 }),
           new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
           new ZIndex(HIGHLIGHTER_Z_INDEX),

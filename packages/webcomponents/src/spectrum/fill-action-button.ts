@@ -24,6 +24,17 @@ import type { DesignVariablePickDetail } from './design-variable-picker';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import './design-variable-picker.js';
 
+function serializedFillPrimaryWire(L: SerializedFillLayerItem): string {
+  return L.value;
+}
+
+function serializedFillSetPrimaryWire(
+  L: SerializedFillLayerItem,
+  wire: string,
+): SerializedFillLayerItem {
+  return { ...L, value: wire };
+}
+
 @customElement('ic-spectrum-fill-action-button')
 @localized()
 export class FillActionButton extends LitElement {
@@ -220,7 +231,7 @@ export class FillActionButton extends LitElement {
     this.fillPanelTab = 'variable';
     const L = this.textFillLayer();
     this.api.updateNode(this.node, {
-      fills: [{ ...L, value: `$${key}` }],
+      fills: [serializedFillSetPrimaryWire(L, `$${key}`)],
     });
     this.api.record();
   }
@@ -228,24 +239,24 @@ export class FillActionButton extends LitElement {
   private handleUnbind() {
     this.fillPanelTab = 'color';
     const L = this.textFillLayer();
+    const w = serializedFillPrimaryWire(L);
     const resolved = resolveDesignVariableValue(
-      L.value,
+      w,
       this.appState.variables,
       this.appState.themeMode,
     );
     const next =
       typeof resolved === 'string'
         ? resolved
-        : String(resolved ?? L.value ?? '#000000');
+        : String(resolved ?? w ?? '#000000');
+    const wire =
+      L.type === 'pattern'
+        ? next
+        : isDesignVariableReference(next)
+          ? next
+          : normalizeSolidCssValue(next);
     this.api.updateNode(this.node, {
-      fills: [
-        {
-          ...L,
-          value: isDesignVariableReference(next)
-            ? next
-            : normalizeSolidCssValue(next),
-        },
-      ],
+      fills: [serializedFillSetPrimaryWire(L, wire)],
     });
     this.api.record();
   }
@@ -294,7 +305,7 @@ export class FillActionButton extends LitElement {
     }
 
     const L = this.textFillLayer();
-    const fill = L.value;
+    const fill = serializedFillPrimaryWire(L);
     const fillOpacityRaw = L.opacity ?? 1;
     const fillOpacity =
       typeof fillOpacityRaw === 'number' && Number.isFinite(fillOpacityRaw)

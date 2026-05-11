@@ -41,8 +41,8 @@ import {
   ComputedBounds,
   ComputedTextMetrics,
   DropShadow,
-  FillGradient,
-  FillSolid,
+  FillLayers,
+  FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
   Mat3,
@@ -53,6 +53,7 @@ import {
 } from '../components';
 import {
   getRasterFilterValueForShape,
+  hasRasterPostEffects,
   parseEffect,
   filterRasterPostEffects,
   filterStringUsesEngineTimePost,
@@ -63,10 +64,16 @@ import {
   type Gradient,
 } from '../utils/gradient';
 import {
+  fillLayerOpacity,
+  getEnabledFillLayers,
+  getSingleEnabledFillLayer,
+} from '../utils/fillLayers';
+import {
   applyTextGlyphMaskToFilterRasterCanvas,
   createGradientFillTextRasterForFilter,
   fillCssGradientsStackedInBounds,
   setWorldToCanvasTransform,
+  shouldBakeStrokeIntoRasterFilterTexture,
   type SolidShapeRasterBounds,
 } from '../utils/solidShapeRasterForFilter';
 import {
@@ -91,6 +98,25 @@ function firstStopColorFromGradients(grads: Gradient[] | undefined): string | nu
     }
   }
   return null;
+}
+
+/** 仅从 wire `fills` → {@link FillLayers} 解析；供 `u_FillColor` / 字形 atlas 色键使用。 */
+function resolveSdfTextFillColorCss(shape: Entity): string {
+  if (!shape.has(FillLayers)) {
+    return 'black';
+  }
+  for (const L of getEnabledFillLayers(shape)) {
+    if (L.type === 'solid') {
+      return L.value;
+    }
+    if (L.type === 'gradient') {
+      const c = firstStopColorFromGradients(parseGradient(L.value));
+      if (c) {
+        return c;
+      }
+    }
+  }
+  return 'black';
 }
 
 /** WebGL readPixels：缓冲区首行对应纹理底边；转为自上而下以便与 Canvas 字形遮罩对齐。 */
@@ -166,9 +192,6 @@ export class SDFText extends Drawcall {
 
   private hash(shape: Entity) {
     const { bitmapFont, physical } = shape.read(Text);
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: 'none' };
     const { color: stroke } = shape.has(Stroke)
       ? shape.read(Stroke)
       : { color: 'none' };
@@ -180,10 +203,15 @@ export class SDFText extends Drawcall {
       ? shape.read(DropShadow).blurRadius
       : 0;
     const fv = getRasterFilterValueForShape(shape) ?? '';
-    const fillGradient = shape.has(FillGradient)
-      ? shape.read(FillGradient).value
+    const fillLayersKey = shape.has(FillLayers)
+      ? getEnabledFillLayers(shape)
+          .map(
+            (l) =>
+              `${l.type}:${String(l.value)}:${fillLayerOpacity(l.opacity)}`,
+          )
+          .join('|')
       : '';
-    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}-${fillGradient}-${fv}`;
+    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${stroke}-${fillLayersKey}-${fv}`;
   }
 
   protected override get useRasterFilterEngineTimeRefresh(): boolean {
@@ -196,6 +224,29 @@ export class SDFText extends Drawcall {
     }
     const fv = getRasterFilterValueForShape(s);
     return !!(fv && filterStringUsesEngineTimePost(fv));
+  }
+
+  /**
+   * {@link Drawcall.useFillImage} 在 `fills` 仅一层时也为 true，会把纯色先烤到 RT 再采样；
+   * 最终片元走 `USE_FILLIMAGE` 分支而不乘 `u_FillColor`，易糊。单层 solid 且无滤镜/描边栅格烘焙时走直接着色。
+   */
+  protected override get useFillImage() {
+    const s = this.shapes[0];
+    if (!s?.has(FillLayers)) {
+      return super.useFillImage;
+    }
+    const one = getSingleEnabledFillLayer(s);
+    const bm = one?.blendMode;
+    if (
+      one?.type === 'solid' &&
+      (bm == null || bm === 'normal') &&
+      !s.has(FillTexture) &&
+      !hasRasterPostEffects(getRasterFilterValueForShape(s)) &&
+      !shouldBakeStrokeIntoRasterFilterTexture(s)
+    ) {
+      return false;
+    }
+    return super.useFillImage;
   }
 
   private get useBitmapFont() {
@@ -213,9 +264,7 @@ export class SDFText extends Drawcall {
       fontSize,
     } = this.shapes[0].read(Text);
     const { font, fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
-    const { value: fill } = this.shapes[0].has(FillSolid)
-      ? this.shapes[0].read(FillSolid)
-      : { value: 'black' };
+    const fill = resolveSdfTextFillColorCss(this.shapes[0]);
 
     // const hasEmoji = containsEmoji(content);
     const hasEmoji = true;
@@ -387,9 +436,15 @@ export class SDFText extends Drawcall {
 
     if (useFillImage) {
       let didGradientRaster = false;
-      const fillGradients = shape.has(FillGradient)
-        ? parseGradient(shape.read(FillGradient).value)
-        : undefined;
+      let fillGradients:
+        | ReturnType<typeof parseGradient>
+        | undefined;
+      if (shape.has(FillLayers)) {
+        const one = getSingleEnabledFillLayer(shape);
+        if (one?.type === 'gradient') {
+          fillGradients = parseGradient(one.value);
+        }
+      }
 
       if (fillGradients && fillGradients.length > 0 && !this.useBitmapFont) {
         // 必须与 `generateBuffer` 中 `u_FillUVRect`（`ComputedBounds.renderBounds`）同源，与 GPU bake 一致，否则 fill 采样与离屏栅格错位。
@@ -966,17 +1021,9 @@ export class SDFText extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
     const zIndex = globalRenderOrder / ZINDEX_FACTOR;
-    let fill: string | null = shape.has(FillSolid)
-      ? shape.read(FillSolid).value
-      : null;
-    if (fill == null && shape.has(FillGradient)) {
-      fill =
-        firstStopColorFromGradients(
-          parseGradient(shape.read(FillGradient).value),
-        ) ?? 'transparent';
-    }
+    const fillCss = resolveSdfTextFillColorCss(shape);
     const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
-      fill && fill !== 'none' ? fill : 'transparent',
+      fillCss && fillCss !== 'none' ? fillCss : 'transparent',
     );
 
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)

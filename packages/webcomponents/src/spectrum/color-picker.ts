@@ -96,14 +96,17 @@ export class ColorPicker extends LitElement {
   willUpdate(changedProperties: PropertyValues<this>) {
     if (changedProperties.has('value')) {
       const v = this.value;
+      // 选 Image 后父级会先写入 `value: ''`（尚未选 URL）；`!v` 会误判为 None 导致 Tab 跳回
       this.type =
-        !v || v === 'none'
+        v === 'none' || v == null
           ? ColorType.None
-          : isGradient(v)
-            ? ColorType.Gradient
-            : isUrl(v) || isDataUrl(v)
-              ? ColorType.Image
-              : ColorType.Solid;
+          : v === ''
+            ? ColorType.Image
+            : isGradient(v)
+              ? ColorType.Gradient
+              : isUrl(v) || isDataUrl(v)
+                ? ColorType.Image
+                : ColorType.Solid;
 
       this.prevColors = {
         ...this.prevColors,

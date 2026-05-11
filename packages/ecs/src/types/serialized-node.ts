@@ -140,34 +140,43 @@ export interface VisibilityAttributes {
 /** 多层填充的一层，与 ECS {@link FillLayers} 中条目同构（Figma `Paint` 子集） */
 export type SerializedFillLayerItem =
   | {
-      type: 'solid';
-      value: string;
-      /** 0–1；可为设计变量引用字符串（如 `$token`） */
-      opacity?: number | string;
-      enabled?: boolean;
-      blendMode?: FillLayerBlendMode;
-    }
+    type: 'solid';
+    value: string;
+    /** 0–1；可为设计变量引用字符串（如 `$token`） */
+    opacity?: number | string;
+    enabled?: boolean;
+    blendMode?: FillLayerBlendMode;
+  }
   | {
-      type: 'gradient';
-      value: string;
-      opacity?: number | string;
-      enabled?: boolean;
-      blendMode?: FillLayerBlendMode;
-    }
+    type: 'gradient';
+    value: string;
+    opacity?: number | string;
+    enabled?: boolean;
+    blendMode?: FillLayerBlendMode;
+  }
   | {
-      /** 位图 / SVG 等资源 URL（与历史 `fill` 为 URL 时语义一致） */
-      type: 'image';
-      value: string;
-      opacity?: number | string;
-      enabled?: boolean;
-      blendMode?: FillLayerBlendMode;
-    };
+    /** 位图 / SVG 等资源 URL（与历史 `fill` 为 URL 时语义一致） */
+    type: 'image';
+    value: string;
+    opacity?: number | string;
+    enabled?: boolean;
+    blendMode?: FillLayerBlendMode;
+  }
+  | {
+    type: 'pattern';
+    value: string;
+    repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
+    transform?: string;
+    opacity?: number | string;
+    enabled?: boolean;
+    blendMode?: FillLayerBlendMode;
+  };
 
 export interface FillAttributes {
   /** 节点整体不透明度（SVG `opacity`），与单层 `fills[].opacity` 不同 */
   opacity?: Opacity['opacity'];
   /**
-   * 填充栈（对齐 Figma `fills`）。历史 `fill` / `fillOpacity` / `fillLayers` 在加载时归一化为此字段。
+   * 填充栈（对齐 Figma `fills`）。可为空数组表示无填充；历史 `fill` / `fillOpacity` / `fillLayers` 在加载时归一化为此字段。
    */
   fills?: SerializedFillLayerItem[];
 }

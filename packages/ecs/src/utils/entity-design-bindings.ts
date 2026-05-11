@@ -1,18 +1,13 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { FillSolid, Stroke, Text } from '../components';
+import { Stroke, Text } from '../components';
+import { getFirstSolidFillLayerValue } from './fillLayers';
 
 /**
- * 从 ECS 组件读取与序列化一致的填充字符串（优先设计变量 `$token`）。
+ * 从 ECS 组件读取与序列化一致的填充字符串（`fills` 首条启用 solid 的 `value`，可为 `$token`）。
  */
 export function readFillWireFromEntity(entity: Entity): string | undefined {
-  if (!entity.has(FillSolid)) {
-    return undefined;
-  }
-  const f = entity.read(FillSolid);
-  if (f.fillVariableRef) {
-    return `$${f.fillVariableRef}`;
-  }
-  return f.value;
+  const v = getFirstSolidFillLayerValue(entity);
+  return v ?? undefined;
 }
 
 /** 描边颜色 wire */
