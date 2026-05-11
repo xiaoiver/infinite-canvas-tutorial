@@ -37,7 +37,6 @@ import {
   FillLayers,
   StrokeLayers,
   Stroke,
-  StrokeGradient,
   Visibility,
   Ellipse,
   Rect,
@@ -389,7 +388,6 @@ function syncIconFontChildrenFromUpdatedNode(
       iw.layoutHeight = h;
     }
     safeAddComponent(rootEntity, Group, groupPres);
-    safeRemoveComponent(rootEntity, StrokeGradient);
     safeRemoveComponent(rootEntity, Stroke);
     safeAddComponent(rootEntity, MaterialDirty);
     return;
@@ -475,7 +473,6 @@ function syncIconFontChildrenFromUpdatedNode(
     iw.layoutHeight = h;
   }
   safeAddComponent(rootEntity, Group, groupPres);
-  safeRemoveComponent(rootEntity, StrokeGradient);
   safeRemoveComponent(rootEntity, Stroke);
   safeAddComponent(rootEntity, MaterialDirty);
 }
@@ -1050,14 +1047,12 @@ function applyStrokesWireMutation(
   const wireArr = elAttrs.strokes;
   if (!Array.isArray(wireArr)) {
     safeRemoveComponent(entity, StrokeLayers);
-    safeRemoveComponent(entity, StrokeGradient);
     safeAddComponent(entity, MaterialDirty);
     return false;
   }
 
   if (wireArr.length === 0) {
     safeRemoveComponent(entity, StrokeLayers);
-    safeRemoveComponent(entity, StrokeGradient);
     safeRemoveComponent(entity, Stroke);
     safeAddComponent(entity, MaterialDirty);
     if (entity.has(Opacity)) {
@@ -1109,12 +1104,7 @@ function applyStrokesWireMutation(
           colorVariableRef: strokeRef,
         });
       }
-      safeRemoveComponent(entity, StrokeGradient);
-      safeAddComponent(entity, StrokeGradient, { value: paint });
     } else {
-      if (entity.has(StrokeGradient)) {
-        safeRemoveComponent(entity, StrokeGradient);
-      }
       if (entity.has(Stroke)) {
         const s = entity.read(Stroke);
         safeAddComponent(entity, Stroke, {
@@ -1137,7 +1127,6 @@ function applyStrokesWireMutation(
       }
     }
   } else {
-    safeRemoveComponent(entity, StrokeGradient);
     if (entity.has(Stroke)) {
       const s = entity.read(Stroke);
       safeAddComponent(entity, Stroke, {

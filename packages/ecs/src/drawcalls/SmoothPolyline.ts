@@ -36,7 +36,10 @@ import {
   shouldRasterizeStrokeForFilterTexture,
 } from '../utils/filter';
 import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
-import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
+import {
+  getFirstGradientStrokeLayerValue,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
 import {
   createStrokeSilhouetteRasterForFilter,
   getStrokeSilhouetteRasterBounds,
@@ -61,7 +64,6 @@ import {
   Rough,
   Stroke,
   StrokeAttenuation,
-  StrokeGradient,
   Text,
   TextDecoration,
   VectorNetwork,
@@ -125,7 +127,8 @@ export class SmoothPolyline extends Drawcall {
         shape.has(Stroke) &&
         ((shape.read(Stroke).dasharray[0] > 0 &&
           shape.read(Stroke).dasharray[1] > 0) ||
-          (shape.has(StrokeGradient) && shape.read(Stroke).width > 0))) ||
+          (getFirstGradientStrokeLayerValue(shape) != null &&
+            shape.read(Stroke).width > 0))) ||
       (shape.has(Path) &&
         shape.has(Stroke) &&
         hasValidStroke(shape.read(Stroke))) ||
@@ -146,7 +149,7 @@ export class SmoothPolyline extends Drawcall {
     }
     const usesStrokeTex =
       shouldRasterizeStrokeForFilterTexture(s) ||
-      (s.has(StrokeGradient) &&
+      (getFirstGradientStrokeLayerValue(s) != null &&
         !(
           s.has(Rough) &&
           ((s.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||
@@ -168,7 +171,7 @@ export class SmoothPolyline extends Drawcall {
     ) {
       return '#define USE_STROKE_GRADIENT\n';
     }
-    if (!s?.has(StrokeGradient)) {
+    if (getFirstGradientStrokeLayerValue(s) == null) {
       return '';
     }
     if (
@@ -504,7 +507,7 @@ export class SmoothPolyline extends Drawcall {
         const height = maxY - minY;
 
         const strokeGradients = parseGradient(
-          instance.read(StrokeGradient).value,
+          getFirstGradientStrokeLayerValue(instance) ?? '',
         );
         const meshStroke =
           strokeGradients?.length === 1 ? strokeGradients[0] : undefined;
@@ -778,7 +781,7 @@ export class SmoothPolyline extends Drawcall {
         gh === 0 ? 0 : 1 / gh,
       ];
     } else if (
-      shape.has(StrokeGradient) &&
+      getFirstGradientStrokeLayerValue(shape) != null &&
       !(
         shape.has(Rough) &&
         ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||

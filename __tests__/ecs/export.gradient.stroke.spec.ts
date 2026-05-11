@@ -31,7 +31,6 @@ import {
   ExportFormat,
   Opacity,
   Screenshot,
-  StrokeGradient,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -70,7 +69,6 @@ describe('Export SVG', () => {
             FillLayers,
             StrokeLayers,
             Stroke,
-            StrokeGradient,
             Rect,
             Visibility,
             Name,

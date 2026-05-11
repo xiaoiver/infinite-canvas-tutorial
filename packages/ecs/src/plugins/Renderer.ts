@@ -44,7 +44,6 @@ import {
   Renderable,
   Rough,
   Stroke,
-  StrokeGradient,
   Text,
   Wireframe,
   Visibility,
@@ -111,7 +110,6 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(FillLayers);
     component(StrokeLayers);
     component(Stroke);
-    component(StrokeGradient);
     component(Opacity);
     component(DropShadow);
     component(InnerShadow);

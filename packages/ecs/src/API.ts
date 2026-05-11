@@ -35,6 +35,7 @@ import {
   shiftPath,
   strokeOffset,
   strokeWidthForHitTest,
+  entityHasRenderableStrokePaint,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
   expandRefSerializedNodes,

@@ -12,7 +12,6 @@ import {
   Rect,
   Renderable,
   Stroke,
-  StrokeGradient,
   Text,
   Transform,
   Visibility,
@@ -1614,9 +1613,6 @@ export function serializedNodesToEntities(
             color: 'none',
             ...strokeCommon,
           }),
-        );
-        entityCommands.insert(
-          new StrokeGradient(resolvedStroke as string),
         );
       } else {
         entityCommands.insert(

@@ -40,7 +40,10 @@ import {
   getSingleEnabledFillLayer,
   type FillLayerItem,
 } from '../utils/fillLayers';
-import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
+import {
+  getFirstGradientStrokeLayerValue,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import {
   getRasterFilterValueForShape,
@@ -77,7 +80,6 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   Stroke,
-  StrokeGradient,
 } from '../components';
 
 const strokeAlignmentMap = {
@@ -318,13 +320,13 @@ export class SDF extends Drawcall {
       return true;
     }
 
-    const isInstanceStrokeGradient = this.shapes[0].has(StrokeGradient);
-    const isShapeStrokeGradient = shape.has(StrokeGradient);
-    if (isInstanceStrokeGradient !== isShapeStrokeGradient) {
+    const g0 = getFirstGradientStrokeLayerValue(this.shapes[0]);
+    const g1 = getFirstGradientStrokeLayerValue(shape);
+    if ((g0 == null) !== (g1 == null)) {
       return false;
     }
-    if (isInstanceStrokeGradient && isShapeStrokeGradient) {
-      return this.shapes[0].read(StrokeGradient) === shape.read(StrokeGradient);
+    if (g0 != null && g1 != null && g0 !== g1) {
+      return false;
     }
 
     if (SDF.useDash(shape) !== SDF.useDash(this.shapes[0])) {
@@ -1053,7 +1055,7 @@ export class SDF extends Drawcall {
         if (
           strokeW > 0 &&
           !SDF.useDash(shape) &&
-          !shape.has(StrokeGradient)
+          getFirstGradientStrokeLayerValue(shape) == null
         ) {
           const [buffer2, legacy2] = this.generateBuffer(shape, 0, 1, {
             kind: 'stroke-pass',
@@ -1348,14 +1350,17 @@ export class SDF extends Drawcall {
       so * strokeColorAlphaMul,
     ];
     let strokeWidthForSdf = SDF.useDash(shape) ? 0 : width;
-    if (shape.has(StrokeGradient)) {
+    if (getFirstGradientStrokeLayerValue(shape) != null) {
       strokeWidthForSdf = 0;
     }
     if (multiFill?.kind === 'fill-layer') {
       strokeWidthForSdf = 0;
     }
     let filterExtras: [number, number, number, number] = [0, 0, 0, 0];
-    if (this.#bakedStrokeIntoFilterTexture && !shape.has(StrokeGradient)) {
+    if (
+      this.#bakedStrokeIntoFilterTexture &&
+      getFirstGradientStrokeLayerValue(shape) == null
+    ) {
       strokeWidthForSdf = 0;
       const sw = shape.has(Stroke) ? shape.read(Stroke).width : 0;
       filterExtras = [sw * 0.5, sw, 0, 0];

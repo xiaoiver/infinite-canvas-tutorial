@@ -19,7 +19,6 @@ import {
   Rect,
   Rough,
   Stroke,
-  StrokeGradient,
   Text,
   VectorNetwork,
 } from '../components';
@@ -29,7 +28,10 @@ import {
   getEnabledFillLayers,
   getFirstSolidFillLayerValue,
 } from './fillLayers';
-import { strokePaintAlphaMultipliers } from './strokeLayers';
+import {
+  getFirstGradientStrokeLayerValue,
+  strokePaintAlphaMultipliers,
+} from './strokeLayers';
 import { buildVectorNetworkFillMesh } from './vector-network-fill';
 import { parseColor } from './color';
 import { getRasterFilterValueForShape, hasRasterPostEffects } from './filter';
@@ -500,7 +502,10 @@ export function shouldBakeStrokeIntoRasterFilterTexture(shape: Entity): boolean 
   if (shape.has(Rough)) {
     return false;
   }
-  if (!shape.has(Stroke) || shape.has(StrokeGradient)) {
+  if (
+    !shape.has(Stroke) ||
+    getFirstGradientStrokeLayerValue(shape) != null
+  ) {
     return false;
   }
   const st = shape.read(Stroke);

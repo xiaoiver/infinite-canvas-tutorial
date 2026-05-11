@@ -13,11 +13,11 @@ import {
   Polyline,
   Rough,
   Stroke,
-  StrokeGradient,
 } from '../components';
 import { cssColorToHex, parseColor } from './color';
 import { hasValidStroke } from './style';
 import { getPostEffectEngineTimeSeconds } from './postEffectEngineTime';
+import { getFirstGradientStrokeLayerValue } from './strokeLayers';
 
 export interface FilterObject {
   name: string;
@@ -1307,14 +1307,14 @@ function isUnderIconFontEntity(entity: Entity): boolean {
 }
 
 /**
- * {@link SmoothPolyline} 纯色描边 + 栅格类 filter：将描边栅格进纹理再采样（与 {@link StrokeGradient} 同路径）。
+ * {@link SmoothPolyline} 纯色描边 + 栅格类 filter：将描边栅格进纹理再采样（与渐变描边纹理路径区分）。
  * - Icon 子 path/ellipse/line 等（父级带 IconFont）
  * - 独立的 polyline / line / path（圆角矩形等实体描边由 SDF 处理，不经过此分支）
  *
  * Canvas 描边为居中；独立折线需 `stroke.alignment === 'center'`。
  */
 export function shouldRasterizeStrokeForFilterTexture(shape: Entity): boolean {
-  if (shape.has(StrokeGradient)) {
+  if (getFirstGradientStrokeLayerValue(shape) != null) {
     return false;
   }
   const fv = getRasterFilterValueForShape(shape);

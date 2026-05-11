@@ -9,7 +9,6 @@ import {
   ComputedCameraControl,
   Cursor,
   Ellipse,
-  StrokeGradient,
   FillLayers,
   FractionalIndex,
   GlobalTransform,
@@ -45,6 +44,7 @@ import {
   Binded,
   Theme,
   Flex,
+  StrokeLayers,
 } from '../components';
 import { API } from '../API';
 import type { PathSerializedNode, SerializedNode } from '../types/serialized-node';
@@ -112,8 +112,8 @@ export class DrawArrowConnect extends System {
             Path,
             Ellipse,
             FillLayers,
-            StrokeGradient,
             Stroke,
+            StrokeLayers,
             MaterialDirty,
             Highlighted,
             Marker,
