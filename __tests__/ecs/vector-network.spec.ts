@@ -97,7 +97,7 @@ describe('Rect', () => {
           type: 'vector-network',
           id: 'vn-1',
           zIndex: 3,
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
 

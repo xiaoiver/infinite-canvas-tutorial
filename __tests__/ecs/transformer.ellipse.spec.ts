@@ -100,7 +100,7 @@ describe('Transformer', () => {
         const node: EllipseSerializedNode = {
           id: '1',
           type: 'ellipse',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',

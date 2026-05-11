@@ -100,7 +100,7 @@ describe('Transformer', () => {
         const node: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,

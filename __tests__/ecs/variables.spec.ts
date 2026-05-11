@@ -119,7 +119,7 @@ describe('Variables', () => {
           y: -50,
           width: 100,
           height: 200,
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           strokeAlignment: 'center',
           strokeDasharray: '10 10',

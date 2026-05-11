@@ -106,7 +106,7 @@ describe('Export SVG', () => {
             y1: 0,
             x2: 50,
             y2: 200,
-            stroke: 'red',
+            strokes: [{ type: 'solid', value: 'red', opacity: 1 }],
             strokeWidth: 1,
             zIndex: 0,
           },

@@ -98,7 +98,7 @@ describe('Attenuation', () => {
             id: '1',
             type: 'ellipse',
             fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-            stroke: 'blue',
+            strokes: [{ type: 'solid', value: 'blue', opacity: 1 }],
             strokeWidth: 10,
             x: 0,
             y: 50,

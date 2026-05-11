@@ -106,7 +106,7 @@ describe('Transformer', () => {
           y1: 50,
           x2: 100,
           y2: 100,
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           zIndex: 0,
         };

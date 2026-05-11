@@ -102,7 +102,7 @@ describe('Draw arrow', () => {
         api.setAppState({
           penbarSelected: Pen.DRAW_ARROW,
           penbarDrawArrow: {
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 4,
             markerStart: 'line',
             markerEnd: 'line',

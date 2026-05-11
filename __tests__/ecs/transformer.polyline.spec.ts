@@ -101,7 +101,7 @@ describe('Transformer', () => {
           id: '1',
           type: 'polyline',
           points: '0,0 100,100 100,50',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           visibility: 'visible',
           x: 50,

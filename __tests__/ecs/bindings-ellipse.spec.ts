@@ -127,7 +127,7 @@ describe('Bindings', () => {
             type: 'line',
             fromId: 'rect-1',
             toId: 'rect-2',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 4,
             markerEnd: 'line',
             zIndex: 2,

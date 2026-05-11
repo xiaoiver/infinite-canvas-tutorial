@@ -108,7 +108,7 @@ describe('Hierarchy', () => {
         parent = {
           id: 'parent',
           type: 'ellipse',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
@@ -122,7 +122,7 @@ describe('Hierarchy', () => {
           id: 'child',
           parentId: 'parent',
           type: 'ellipse',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'green', opacity: 1 }],
           visibility: 'visible',

@@ -101,7 +101,7 @@ describe('Transformer', () => {
           id: '1',
           type: 'path',
           d: 'M 0 0 L 100 100 L 100 50 Z',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',

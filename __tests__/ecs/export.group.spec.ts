@@ -105,7 +105,7 @@ describe('Export SVG', () => {
           type: 'g',
           zIndex: 0,
           fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
         };
 

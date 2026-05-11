@@ -100,7 +100,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'line',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             x1: 0,
             y1: 0,
             x2: 100,

@@ -102,7 +102,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'polyline',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 10,
             strokeLinejoin: 'round',
             strokeLinecap: 'round',

@@ -100,7 +100,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'polyline',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             points: '0,0 100,100 200,0',
             strokeWidth: 1,
             hitStrokeWidth: 100,

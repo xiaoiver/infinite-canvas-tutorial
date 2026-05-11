@@ -100,7 +100,7 @@ describe('Export SVG', () => {
             id: '1',
             type: 'ellipse',
             fills: [{ type: 'solid', value: 'red', opacity: 0.5 }],
-            stroke: 'blue',
+            strokes: [{ type: 'solid', value: 'blue', opacity: 1 }],
             strokeWidth: 10,
             strokeOpacity: 0.5,
             strokeAlignment: 'inner',
