@@ -28,12 +28,14 @@ import type {
   SerializedFillLayerItem,
   SerializedNode,
   SerializedNodeAttributes,
+  StrokeAttributes,
 } from '../types/serialized-node';
 import { API } from '../API';
 import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
 import {
   Name,
   FillLayers,
+  StrokeLayers,
   Stroke,
   StrokeGradient,
   Visibility,
@@ -89,6 +91,8 @@ import { insertIconFontChildFromPrimitive } from '../utils/insert-icon-font-chil
 import { getComputedInheritGroupWireForId } from '../utils/inherit-group-wire';
 import { buildGroupWirePresentation } from '../utils/group-presentation';
 import { migrateLegacyFillWireInPlace } from '../utils/normalize-fill-wire';
+import { migrateLegacyStrokeWireInPlace } from '../utils/normalize-stroke-wire';
+import { isFillLayerEnabled } from '../utils/fillLayers';
 import { TesselationMethod } from '../components/geometry/Path';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
@@ -1034,6 +1038,132 @@ function applyFillsWireMutation(
   return true;
 }
 
+/**
+ * 将 wire `strokes` 同步到 ECS（与反序列化一致）。
+ */
+function applyStrokesWireMutation(
+  entity: Entity,
+  elAttrs: StrokeAttributes,
+  designVariables: Parameters<typeof resolveDesignVariableValue>[1],
+  themeMode: Parameters<typeof resolveDesignVariableValue>[2],
+): boolean {
+  const wireArr = elAttrs.strokes;
+  if (!Array.isArray(wireArr)) {
+    safeRemoveComponent(entity, StrokeLayers);
+    safeRemoveComponent(entity, StrokeGradient);
+    safeAddComponent(entity, MaterialDirty);
+    return false;
+  }
+
+  if (wireArr.length === 0) {
+    safeRemoveComponent(entity, StrokeLayers);
+    safeRemoveComponent(entity, StrokeGradient);
+    safeRemoveComponent(entity, Stroke);
+    safeAddComponent(entity, MaterialDirty);
+    if (entity.has(Opacity)) {
+      entity.write(Opacity).strokeOpacity = 1;
+    }
+    return true;
+  }
+
+  const resolved = resolveFillLayerItemsForEcs(
+    wireArr as SerializedFillLayerItem[],
+    designVariables,
+    themeMode,
+  );
+  if (!entity.has(StrokeLayers)) {
+    safeAddComponent(entity, StrokeLayers);
+  }
+  entity.write(StrokeLayers).layers = resolved;
+
+  const firstWire = wireArr.find(isFillLayerEnabled);
+  const firstRes = resolved.find(isFillLayerEnabled);
+  const paint =
+    firstRes != null && typeof firstRes.value === 'string'
+      ? firstRes.value
+      : undefined;
+  if (paint != null && paint.trim() !== '') {
+    const strokeRef = designVariableRefKeyFromWire(
+      firstWire != null && typeof firstWire.value === 'string'
+        ? firstWire.value
+        : undefined,
+    );
+    if (isGradient(paint)) {
+      if (entity.has(Stroke)) {
+        const s = entity.read(Stroke);
+        safeAddComponent(entity, Stroke, {
+          color: 'none',
+          colorVariableRef: strokeRef,
+          width: s.width,
+          linecap: s.linecap,
+          linejoin: s.linejoin,
+          miterlimit: s.miterlimit,
+          dasharray: s.dasharray,
+          dashoffset: s.dashoffset,
+          alignment: s.alignment,
+          widthVariableRef: s.widthVariableRef,
+        });
+      } else {
+        safeAddComponent(entity, Stroke, {
+          color: 'none',
+          colorVariableRef: strokeRef,
+        });
+      }
+      safeRemoveComponent(entity, StrokeGradient);
+      safeAddComponent(entity, StrokeGradient, { value: paint });
+    } else {
+      if (entity.has(StrokeGradient)) {
+        safeRemoveComponent(entity, StrokeGradient);
+      }
+      if (entity.has(Stroke)) {
+        const s = entity.read(Stroke);
+        safeAddComponent(entity, Stroke, {
+          color: paint,
+          colorVariableRef: strokeRef,
+          width: s.width,
+          linecap: s.linecap,
+          linejoin: s.linejoin,
+          miterlimit: s.miterlimit,
+          dasharray: s.dasharray,
+          dashoffset: s.dashoffset,
+          alignment: s.alignment,
+          widthVariableRef: s.widthVariableRef,
+        });
+      } else {
+        safeAddComponent(entity, Stroke, {
+          color: paint,
+          colorVariableRef: strokeRef,
+        });
+      }
+    }
+  } else {
+    safeRemoveComponent(entity, StrokeGradient);
+    if (entity.has(Stroke)) {
+      const s = entity.read(Stroke);
+      safeAddComponent(entity, Stroke, {
+        color: 'none',
+        colorVariableRef: '',
+        width: s.width,
+        linecap: s.linecap,
+        linejoin: s.linejoin,
+        miterlimit: s.miterlimit,
+        dasharray: s.dasharray,
+        dashoffset: s.dashoffset,
+        alignment: s.alignment,
+        widthVariableRef: s.widthVariableRef,
+      });
+    }
+  }
+
+  safeAddComponent(entity, MaterialDirty);
+  if (entity.has(Opacity)) {
+    entity.write(Opacity).strokeOpacity = 1;
+  } else {
+    safeAddComponent(entity, Opacity, { strokeOpacity: 1 });
+  }
+  return true;
+}
+
 // This function tracks updates of text elements for the purposes for collaboration.
 // The version is used to compare updates when more than one user is working in
 // the same drawing. Note: this will trigger the component to update. Make sure you
@@ -1076,6 +1206,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   migrateLegacyFillWireInPlace(element as unknown as Record<string, unknown>);
+  migrateLegacyStrokeWireInPlace(element as unknown as Record<string, unknown>);
 
   const designVariables = api.getAppState().variables;
   const themeMode = api.getAppState().themeMode;
@@ -1092,13 +1223,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   const {
     parentId,
     zIndex,
-    stroke,
     strokeWidth,
     strokeLinecap,
     strokeLinejoin,
     strokeAlignment,
     opacity,
-    strokeOpacity,
     innerShadowColor,
     innerShadowBlurRadius,
     innerShadowOffsetX,
@@ -1232,67 +1361,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(child, MaterialDirty);
     });
   }
-  if ('stroke' in updates && !isIconFontWireNode) {
-    const resolvedStroke = resolveDesignVariableValue(
-      stroke,
+  if (
+    ('strokes' in updates ||
+      'stroke' in updates ||
+      'strokeOpacity' in updates) &&
+    !isIconFontWireNode
+  ) {
+    applyStrokesWireMutation(
+      entity,
+      element as StrokeAttributes,
       designVariables,
       themeMode,
     );
-    const strokeRef = designVariableRefKeyFromWire(
-      typeof stroke === 'string' ? stroke : undefined,
-    );
-    if (isGradient(resolvedStroke as string)) {
-      if (entity.has(Stroke)) {
-        const s = entity.read(Stroke);
-        safeAddComponent(entity, Stroke, {
-          color: 'none',
-          colorVariableRef: strokeRef,
-          width: s.width,
-          linecap: s.linecap,
-          linejoin: s.linejoin,
-          miterlimit: s.miterlimit,
-          dasharray: s.dasharray,
-          dashoffset: s.dashoffset,
-          alignment: s.alignment,
-          widthVariableRef: s.widthVariableRef,
-        });
-      } else {
-        safeAddComponent(entity, Stroke, {
-          color: 'none',
-          colorVariableRef: strokeRef,
-        });
-      }
-      safeRemoveComponent(entity, StrokeGradient);
-      safeAddComponent(entity, StrokeGradient, {
-        value: resolvedStroke as string,
-      });
-      safeAddComponent(entity, MaterialDirty);
-    } else {
-      if (entity.has(StrokeGradient)) {
-        safeRemoveComponent(entity, StrokeGradient);
-        safeAddComponent(entity, MaterialDirty);
-      }
-      if (entity.has(Stroke)) {
-        const s = entity.read(Stroke);
-        safeAddComponent(entity, Stroke, {
-          color: resolvedStroke as string,
-          colorVariableRef: strokeRef,
-          width: s.width,
-          linecap: s.linecap,
-          linejoin: s.linejoin,
-          miterlimit: s.miterlimit,
-          dasharray: s.dasharray,
-          dashoffset: s.dashoffset,
-          alignment: s.alignment,
-          widthVariableRef: s.widthVariableRef,
-        });
-      } else {
-        safeAddComponent(entity, Stroke, {
-          color: resolvedStroke as string,
-          colorVariableRef: strokeRef,
-        });
-      }
-    }
   }
   if ('strokeWidth' in updates && !isIconFontWireNode) {
     const w = resolveDesignVariableValue(
@@ -1318,21 +1398,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('opacity' in updates) {
     safeAddComponent(entity, Opacity, { opacity });
-  }
-  if ('strokeOpacity' in updates) {
-    const so = resolveDesignVariableValue(
-      strokeOpacity,
-      designVariables,
-      themeMode,
-    );
-    const n =
-      so !== undefined && so !== null
-        ? typeof so === 'number'
-          ? so
-          : parseFloat(String(so))
-        : NaN;
-    const v = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-    safeAddComponent(entity, Opacity, { strokeOpacity: v });
   }
   if ('dropShadowColor' in updates) {
     safeAddComponent(entity, DropShadow, {
@@ -1810,7 +1875,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     if (
       isIconFontNode &&
       (('fills' in updates) ||
+        ('strokes' in updates) ||
         ('stroke' in updates) ||
+        ('strokeOpacity' in updates) ||
         ('strokeWidth' in updates) ||
         ('strokeLinecap' in updates) ||
         ('strokeLinejoin' in updates) ||
@@ -1833,11 +1900,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     if (
       gType === 'g' &&
       (('fills' in updates) ||
+        ('strokes' in updates) ||
         ('stroke' in updates) ||
+        ('strokeOpacity' in updates) ||
         ('strokeWidth' in updates) ||
         ('fillRule' in updates) ||
         ('opacity' in updates) ||
-        ('strokeOpacity' in updates) ||
         ('strokeLinecap' in updates) ||
         ('strokeLinejoin' in updates))
     ) {

@@ -7,11 +7,10 @@ import type { SerializedNode } from '../types/serialized-node';
  */
 export const INHERITABLE_GROUP_WIRE_KEYS = [
   'fills',
-  'stroke',
+  'strokes',
   'strokeWidth',
   'fillRule',
   'opacity',
-  'strokeOpacity',
   'strokeLinecap',
   'strokeLinejoin',
 ] as const;
@@ -38,6 +37,10 @@ export function mergeInheritGroupWire(
     }
     if (key === 'fills' && Array.isArray(rec.fills)) {
       out.fills = (rec.fills as object[]).map((L) =>
+        typeof L === 'object' && L !== null ? { ...L } : L,
+      );
+    } else if (key === 'strokes' && Array.isArray(rec.strokes)) {
+      out.strokes = (rec.strokes as object[]).map((L) =>
         typeof L === 'object' && L !== null ? { ...L } : L,
       );
     } else {

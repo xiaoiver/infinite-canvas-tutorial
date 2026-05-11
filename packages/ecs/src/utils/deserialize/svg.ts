@@ -11,6 +11,7 @@ import {
 } from '../serialize';
 import { PathSerializedNode, SerializedNode, TextSerializedNode, AttenuationAttributes } from '../../types/serialized-node';
 import { migrateLegacyFillWireInPlace } from '../normalize-fill-wire';
+import { migrateLegacyStrokeWireInPlace } from '../normalize-stroke-wire';
 import { deserializePoints } from './points';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
@@ -288,6 +289,7 @@ export function svgElementsToSerializedNodes(
         ...attributes,
       } as SerializedNode;
       migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+      migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
       nodes.push(node);
 
       fixTransform((attributes as any).transform || '', node);

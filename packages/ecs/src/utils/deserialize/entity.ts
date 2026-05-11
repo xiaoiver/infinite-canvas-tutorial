@@ -22,6 +22,7 @@ import {
   AABB,
   TextDecoration,
   FillLayers,
+  StrokeLayers,
   MaterialDirty,
   SizeAttenuation,
   StrokeAttenuation,
@@ -105,6 +106,11 @@ import {
   getPrimaryFillValue,
   migrateLegacyFillWireInPlace,
 } from '../normalize-fill-wire';
+import {
+  getPrimaryStrokeValue,
+  migrateLegacyStrokeWireInPlace,
+} from '../normalize-stroke-wire';
+import { isFillLayerEnabled } from '../fillLayers';
 import { buildGroupWirePresentation } from '../group-presentation';
 import type { ThemeMode } from '../../components/Theme';
 import { measureText } from '../../systems/ComputeTextMetrics';
@@ -977,6 +983,7 @@ export function serializedNodesToEntities(
   );
   for (const n of graph) {
     migrateLegacyFillWireInPlace(n as unknown as Record<string, unknown>);
+    migrateLegacyStrokeWireInPlace(n as unknown as Record<string, unknown>);
   }
   const inheritGroupWireById = getComputedInheritGroupWireMap(graph);
 
@@ -1489,8 +1496,8 @@ export function serializedNodesToEntities(
         );
         const fattrs = wireMergedAttrs as FillAttributes & StrokeAttributes;
         const primaryFill = getPrimaryFillValue(fattrs);
-        if (fattrs.stroke == null && primaryFill != null) {
-          fattrs.stroke = primaryFill;
+        if (getPrimaryStrokeValue(fattrs) == null && primaryFill != null) {
+          fattrs.strokes = [{ type: 'solid', value: primaryFill, opacity: 1 }];
         }
         if (fattrs.strokeWidth == null) {
           fattrs.strokeWidth = 2;
@@ -1530,22 +1537,40 @@ export function serializedNodesToEntities(
       );
     }
 
+    const sa = wireMergedAttrs as StrokeAttributes;
+    const strokesWireArr = Array.isArray(sa.strokes) ? sa.strokes : null;
+    let resolvedStrokeLayerItems: SerializedFillLayerItem[] | null = null;
+    if (
+      strokesWireArr &&
+      strokesWireArr.length >= 1 &&
+      !skipParentFillStroke
+    ) {
+      resolvedStrokeLayerItems = resolveFillLayerItemsForEcs(
+        strokesWireArr as SerializedFillLayerItem[],
+        designVariables,
+        themeMode,
+      );
+      entityCommands.insert(new StrokeLayers(resolvedStrokeLayerItems));
+    }
+
     const {
-      stroke,
       strokeWidth,
       strokeDasharray,
       strokeLinecap,
       strokeLinejoin,
       strokeMiterlimit,
-      strokeOpacity,
       strokeDashoffset,
       strokeAlignment,
     } = wireMergedAttrs as StrokeAttributes;
-    const resolvedStroke = resolveDesignVariableValue(
-      stroke,
-      designVariables,
-      themeMode,
+    const firstWireStrokeLayer = strokesWireArr?.find(isFillLayerEnabled);
+    const firstResolvedStroke = resolvedStrokeLayerItems?.find(
+      isFillLayerEnabled,
     );
+    const resolvedStroke =
+      firstResolvedStroke != null &&
+      typeof firstResolvedStroke.value === 'string'
+        ? firstResolvedStroke.value
+        : undefined;
     const resolvedStrokeWidth = resolveDesignVariableValue(
       strokeWidth,
       designVariables,
@@ -1569,7 +1594,12 @@ export function serializedNodesToEntities(
           )?.map(Number) ?? [0, 0]) as [number, number]);
       const strokeCommon = {
         ...widthInit,
-        colorVariableRef: designVariableRefKeyFromWire(stroke),
+        colorVariableRef: designVariableRefKeyFromWire(
+          firstWireStrokeLayer != null &&
+            typeof firstWireStrokeLayer.value === 'string'
+            ? firstWireStrokeLayer.value
+            : undefined,
+        ),
         widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
         dasharray: dashPair,
         linecap: strokeLinecap,
@@ -1612,26 +1642,14 @@ export function serializedNodesToEntities(
 
     if (
       opacity != null ||
-      strokeOpacity != null ||
-      (fillsWireArr && fillsWireArr.length >= 1)
+      (fillsWireArr && fillsWireArr.length >= 1) ||
+      (strokesWireArr && strokesWireArr.length >= 1)
     ) {
-      const rso = resolveDesignVariableValue(
-        strokeOpacity,
-        designVariables,
-        themeMode,
-      );
-      const to01 = (v: unknown): number => {
-        if (v === undefined || v === null) {
-          return 1;
-        }
-        const n = typeof v === 'number' ? v : parseFloat(String(v));
-        return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-      };
       entityCommands.insert(
         new Opacity({
           opacity,
           fillOpacity: 1,
-          strokeOpacity: to01(rso),
+          strokeOpacity: 1,
         }),
       );
     }

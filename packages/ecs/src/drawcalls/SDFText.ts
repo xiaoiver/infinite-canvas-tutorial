@@ -68,6 +68,7 @@ import {
   getEnabledFillLayers,
   getSingleEnabledFillLayer,
 } from '../utils/fillLayers';
+import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
 import {
   applyTextGlyphMaskToFilterRasterCanvas,
   createGradientFillTextRasterForFilter,
@@ -1034,6 +1035,8 @@ export class SDFText extends Drawcall {
       ? shape.read(Stroke)
       : { color: null, width: 0 };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const { strokeColorAlphaMul, strokeUniformOpacityMul } =
+      strokePaintAlphaMultipliers(shape);
 
     const {
       color: dropShadowColor,
@@ -1055,11 +1058,21 @@ export class SDFText extends Drawcall {
     const { fontSize } = shape.read(ComputedTextMetrics).fontMetrics;
 
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
-    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_StrokeColor = [
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so * strokeColorAlphaMul,
+    ];
 
     const u_ZIndexStrokeWidth = [zIndex, width, fontSize, 0];
 
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, sizeAttenuation];
+    const u_Opacity = [
+      opacity,
+      fillOpacity,
+      strokeOpacity * strokeUniformOpacityMul,
+      sizeAttenuation,
+    ];
 
     const u_DropShadowColor = [dsR / 255, dsG / 255, dsB / 255, dsO];
     const u_DropShadow = [offsetX, offsetY, blurRadius, 0];

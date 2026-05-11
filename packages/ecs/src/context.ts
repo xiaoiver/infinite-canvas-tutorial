@@ -288,9 +288,10 @@ export const getDefaultAppState: () => AppState = () => {
           opacity: 0.5,
         },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawTriangle: {
       fills: [
@@ -300,9 +301,10 @@ export const getDefaultAppState: () => AppState = () => {
           opacity: 0.5,
         },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawPentagon: {
       fills: [
@@ -312,9 +314,10 @@ export const getDefaultAppState: () => AppState = () => {
           opacity: 0.5,
         },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawHexagon: {
       fills: [
@@ -324,9 +327,10 @@ export const getDefaultAppState: () => AppState = () => {
           opacity: 0.5,
         },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawEllipse: {
       fills: [
@@ -336,21 +340,24 @@ export const getDefaultAppState: () => AppState = () => {
           opacity: 0.5,
         },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawLine: {
       fills: [{ type: 'solid', value: 'none', opacity: 1 }],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawArrow: {
       fills: [{ type: 'solid', value: 'none', opacity: 1 }],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
       markerStart: 'none',
       markerEnd: 'line',
       markerFactor: 3,
@@ -359,9 +366,10 @@ export const getDefaultAppState: () => AppState = () => {
       fills: [
         { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 4,
-      strokeOpacity: 1,
       roughBowing: 1,
       roughRoughness: 1,
       roughFillStyle: 'hachure',
@@ -370,26 +378,29 @@ export const getDefaultAppState: () => AppState = () => {
       fills: [
         { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 4,
-      strokeOpacity: 1,
       roughBowing: 1,
       roughRoughness: 1,
       roughFillStyle: 'hachure',
     },
     penbarDrawRoughLine: {
       fills: [{ type: 'solid', value: 'none', opacity: 1 }],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
       roughBowing: 1,
       roughRoughness: 4,
     },
     penbarPencil: {
       fills: [{ type: 'solid', value: 'none', opacity: 1 }],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
       strokeLinecap: 'round',
       strokeLinejoin: 'round',
     },
@@ -412,9 +423,10 @@ export const getDefaultAppState: () => AppState = () => {
       stampMode: StampMode.RATIO_DISTANCE,
       stampNoiseFactor: 0.4,
       stampRotationFactor: 0.75,
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 20,
-      strokeOpacity: 1,
     },
     penbarText: {
       fontFamily: 'system-ui',
@@ -431,13 +443,14 @@ export const getDefaultAppState: () => AppState = () => {
       fills: [
         { type: 'solid', value: TRANSFORMER_MASK_FILL_COLOR, opacity: 0.5 },
       ],
-      stroke: TRANSFORMER_ANCHOR_STROKE_COLOR,
+      strokes: [
+        { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+      ],
       strokeWidth: 1,
-      strokeOpacity: 1,
     },
     penbarDrawIconfont: {
       fills: [{ type: 'solid', value: 'black', opacity: 1 }],
-      stroke: 'black',
+      strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
       strokeWidth: 1,
       iconFontFamily: 'lucide',
       iconFontName: 'search',

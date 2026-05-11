@@ -2,6 +2,7 @@ import { System } from '@lastolivegames/becsy';
 import {
   AnimationPlayer,
   FillLayers,
+  StrokeLayers,
   Opacity,
   Path,
   Stroke,
@@ -9,6 +10,7 @@ import {
 } from '../components';
 import { safeAddComponent } from '../history';
 import { Canvas, inferXYWidthHeight, isGradient, PathSerializedNode } from '..';
+import { isFillLayerEnabled } from '../utils/fillLayers';
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -61,7 +63,15 @@ export class AnimationSystem extends System {
     q.current
       .with(AnimationPlayer)
       .using(Canvas).read
-      .using(Transform, Opacity, FillLayers, Stroke, Path, AnimationPlayer).write,
+      .using(
+        Transform,
+        Opacity,
+        FillLayers,
+        StrokeLayers,
+        Stroke,
+        Path,
+        AnimationPlayer,
+      ).write,
   );
 
   execute(): void {
@@ -162,9 +172,24 @@ export class AnimationSystem extends System {
           opacityPatch.fillOpacity = values.fillOpacity;
         }
         if (isFiniteNumber(values.strokeOpacity)) {
-          opacityPatch.strokeOpacity = values.strokeOpacity;
+          if (entity.has(StrokeLayers)) {
+            const sl = entity.write(StrokeLayers);
+            const layers = [...sl.layers];
+            const i = layers.findIndex(isFillLayerEnabled);
+            if (i >= 0) {
+              layers[i] = {
+                ...layers[i]!,
+                opacity: values.strokeOpacity,
+              };
+              sl.layers = layers;
+            }
+          } else {
+            opacityPatch.strokeOpacity = values.strokeOpacity;
+          }
         }
-        safeAddComponent(entity, Opacity, opacityPatch);
+        if (Object.keys(opacityPatch).length > 0) {
+          safeAddComponent(entity, Opacity, opacityPatch);
+        }
       }
 
       if (typeof values.fill === 'string') {
@@ -185,6 +210,18 @@ export class AnimationSystem extends System {
 
       if (typeof values.stroke === 'string') {
         safeAddComponent(entity, Stroke, { color: values.stroke });
+        if (entity.has(StrokeLayers)) {
+          const sl = entity.write(StrokeLayers);
+          const layers = sl.layers.map((L) => ({ ...L }));
+          const i = layers.findIndex(isFillLayerEnabled);
+          if (i >= 0) {
+            const L = layers[i];
+            if (L && 'value' in L) {
+              layers[i] = { ...L, value: values.stroke };
+              sl.layers = layers;
+            }
+          }
+        }
       }
 
       if (isDasharray(values.strokeDasharray)) {

@@ -40,6 +40,7 @@ import {
   getSingleEnabledFillLayer,
   type FillLayerItem,
 } from '../utils/fillLayers';
+import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import {
   getRasterFilterValueForShape,
@@ -1292,6 +1293,8 @@ export class SDF extends Drawcall {
           blurRadius: 0,
         };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const { strokeColorAlphaMul, strokeUniformOpacityMul } =
+      strokePaintAlphaMultipliers(shape);
     const {
       r: isr,
       g: isg,
@@ -1338,7 +1341,12 @@ export class SDF extends Drawcall {
       fa = 1;
     }
     const u_FillColor = [frN, fgN, fbN, fa];
-    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_StrokeColor = [
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so * strokeColorAlphaMul,
+    ];
     let strokeWidthForSdf = SDF.useDash(shape) ? 0 : width;
     if (shape.has(StrokeGradient)) {
       strokeWidthForSdf = 0;
@@ -1373,7 +1381,12 @@ export class SDF extends Drawcall {
       (shape.has(SizeAttenuation) ? 1 : 0) * LEFT_SHIFT23 +
       (shape.has(StrokeAttenuation) ? 1 : 0) * LEFT_SHIFT22 +
       type;
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
+    const u_Opacity = [
+      opacity,
+      fillOpacity,
+      strokeOpacity * strokeUniformOpacityMul,
+      compressed,
+    ];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
     const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];
 

@@ -24,6 +24,7 @@ import {
   DropShadow,
   Ellipse,
   FillLayers,
+  StrokeLayers,
   FillTexture,
   FillTextureLive,
   FractionalIndex,
@@ -217,6 +218,9 @@ export class MeshPipeline extends System {
 
   private fillLayers = this.query(
     (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
+  );
+  private strokeLayers = this.query(
+    (q) => q.addedChangedOrRemoved.with(StrokeLayers).trackWrites,
   );
   private fillTextures = this.query(
     (q) => q.addedChangedOrRemoved.with(FillTexture).trackWrites,
@@ -887,6 +891,7 @@ export class MeshPipeline extends System {
         if (
           !toRender &&
           (!!this.fillLayers.addedChangedOrRemoved.length ||
+            !!this.strokeLayers.addedChangedOrRemoved.length ||
             !!this.strokeGradients.addedChangedOrRemoved.length ||
             !!this.fillTextures.addedChangedOrRemoved.length ||
             !!this.strokes.addedChangedOrRemoved.length ||

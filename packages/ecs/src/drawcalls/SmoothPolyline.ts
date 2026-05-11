@@ -36,6 +36,7 @@ import {
   shouldRasterizeStrokeForFilterTexture,
 } from '../utils/filter';
 import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
+import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
 import {
   createStrokeSilhouetteRasterForFilter,
   getStrokeSilhouetteRasterBounds,
@@ -696,8 +697,15 @@ export class SmoothPolyline extends Drawcall {
     const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const { strokeColorAlphaMul, strokeUniformOpacityMul } =
+      strokePaintAlphaMultipliers(shape);
 
-    let u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    let u_StrokeColor = [
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so * strokeColorAlphaMul,
+    ];
     const u_ZIndexStrokeWidth = [
       // Polyline should render after SDF
       (globalRenderOrder + 0.1) / ZINDEX_FACTOR,
@@ -708,7 +716,7 @@ export class SmoothPolyline extends Drawcall {
     const u_Opacity = [
       opacity,
       fillOpacity,
-      strokeOpacity,
+      strokeOpacity * strokeUniformOpacityMul,
       shape.has(StrokeAttenuation) ? 1 : 0,
     ];
     const u_StrokeDash = [

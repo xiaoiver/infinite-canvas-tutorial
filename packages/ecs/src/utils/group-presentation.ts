@@ -9,6 +9,10 @@ import {
   firstEnabledFillPresentation,
   migrateLegacyFillWireInPlace,
 } from './normalize-fill-wire';
+import {
+  firstEnabledStrokePresentation,
+  migrateLegacyStrokeWireInPlace,
+} from './normalize-stroke-wire';
 
 type Wire = unknown;
 
@@ -87,11 +91,10 @@ function wireOpacity01(
 export function buildGroupWirePresentation(
   attributes: {
     fills?: SerializedFillLayerItem[];
-    stroke?: Wire;
+    strokes?: SerializedFillLayerItem[];
     strokeWidth?: Wire;
     fillRule?: Wire;
     opacity?: Wire;
-    strokeOpacity?: Wire;
     strokeLinecap?: Wire;
     strokeLinejoin?: Wire;
   },
@@ -100,14 +103,20 @@ export function buildGroupWirePresentation(
 ): Partial<Group> {
   const attrs = attributes as Record<string, unknown>;
   migrateLegacyFillWireInPlace(attrs);
+  migrateLegacyStrokeWireInPlace(attrs);
   const pres = firstEnabledFillPresentation(
     attrs.fills as SerializedFillLayerItem[] | undefined,
+  );
+  const spres = firstEnabledStrokePresentation(
+    attrs.strokes as SerializedFillLayerItem[] | undefined,
   );
   return {
     fill: pres
       ? wireString(pres.fill, designVariables, themeMode)
       : '',
-    stroke: wireString(attributes.stroke, designVariables, themeMode),
+    stroke: spres
+      ? wireString(spres.stroke, designVariables, themeMode)
+      : '',
     strokeWidth: wireStrokeWidth(
       attributes.strokeWidth,
       designVariables,
@@ -118,11 +127,9 @@ export function buildGroupWirePresentation(
     fillOpacity: pres
       ? wireOpacity01(pres.fillOpacity, designVariables, themeMode)
       : -1,
-    strokeOpacity: wireOpacity01(
-      attributes.strokeOpacity,
-      designVariables,
-      themeMode,
-    ),
+    strokeOpacity: spres
+      ? wireOpacity01(spres.strokeOpacity, designVariables, themeMode)
+      : -1,
     strokeLinecap: wireString(
       attributes.strokeLinecap,
       designVariables,

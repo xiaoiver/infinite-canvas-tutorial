@@ -252,6 +252,7 @@ export function setDesignVariableLightDarkColumn(
 
 export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'fills',
+  'strokes',
   'stroke',
   'fontSize',
   'decorationColor',
@@ -259,7 +260,6 @@ export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'innerShadowColor',
   'strokeWidth',
   'cornerRadius',
-  'strokeOpacity',
   'cornerRadius',
   'letterSpacing',
   'lineHeight',
@@ -336,16 +336,16 @@ export type DesignVariablesSvgExportMode =
   /** `:root{--x:...}` + `fill="var(--x)"` 形式 */
   | 'css-var';
 
-function resolveFillsVariableReferences(
-  fills: unknown,
+function resolvePaintStackVariableReferences(
+  stack: unknown,
   variables: DesignVariablesMap | undefined,
   themeMode?: ThemeMode,
 ): { next: unknown; changed: boolean } {
-  if (!Array.isArray(fills)) {
-    return { next: fills, changed: false };
+  if (!Array.isArray(stack)) {
+    return { next: stack, changed: false };
   }
   let changed = false;
-  const next = fills.map((layer) => {
+  const next = stack.map((layer) => {
     if (!layer || typeof layer !== 'object') {
       return layer;
     }
@@ -369,15 +369,31 @@ function resolveFillsVariableReferences(
   return { next, changed };
 }
 
-function mapFillsToCssVarPlaceholders(fills: unknown): {
+function resolveFillsVariableReferences(
+  fills: unknown,
+  variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
+): { next: unknown; changed: boolean } {
+  return resolvePaintStackVariableReferences(fills, variables, themeMode);
+}
+
+function resolveStrokesVariableReferences(
+  strokes: unknown,
+  variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
+): { next: unknown; changed: boolean } {
+  return resolvePaintStackVariableReferences(strokes, variables, themeMode);
+}
+
+function mapPaintStackToCssVarPlaceholders(stack: unknown): {
   next: unknown;
   changed: boolean;
 } {
-  if (!Array.isArray(fills)) {
-    return { next: fills, changed: false };
+  if (!Array.isArray(stack)) {
+    return { next: stack, changed: false };
   }
   let changed = false;
-  const next = fills.map((layer) => {
+  const next = stack.map((layer) => {
     if (!layer || typeof layer !== 'object') {
       return layer;
     }
@@ -399,6 +415,20 @@ function mapFillsToCssVarPlaceholders(fills: unknown): {
   return { next, changed };
 }
 
+function mapFillsToCssVarPlaceholders(fills: unknown): {
+  next: unknown;
+  changed: boolean;
+} {
+  return mapPaintStackToCssVarPlaceholders(fills);
+}
+
+function mapStrokesToCssVarPlaceholders(strokes: unknown): {
+  next: unknown;
+  changed: boolean;
+} {
+  return mapPaintStackToCssVarPlaceholders(strokes);
+}
+
 function mapSerializedNodeToCssVarPlaceholders(
   node: SerializedNode,
 ): SerializedNode {
@@ -412,6 +442,14 @@ function mapSerializedNodeToCssVarPlaceholders(
     const raw = nodeRec[key];
     if (key === 'fills') {
       const { next: nf, changed: cf } = mapFillsToCssVarPlaceholders(raw);
+      if (cf) {
+        next[key] = nf;
+        changed = true;
+      }
+      continue;
+    }
+    if (key === 'strokes') {
+      const { next: nf, changed: cf } = mapStrokesToCssVarPlaceholders(raw);
       if (cf) {
         next[key] = nf;
         changed = true;
@@ -533,6 +571,18 @@ export function resolveSerializedNodesDesignVariables(
       const raw = nodeRec[key];
       if (key === 'fills') {
         const { next: nf, changed: cf } = resolveFillsVariableReferences(
+          raw,
+          variables,
+          themeMode,
+        );
+        if (cf) {
+          next[key] = nf;
+          changed = true;
+        }
+        continue;
+      }
+      if (key === 'strokes') {
+        const { next: nf, changed: cf } = resolveStrokesVariableReferences(
           raw,
           variables,
           themeMode,
