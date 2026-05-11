@@ -589,7 +589,6 @@ void main() {
     if (dashCapMode < 0.5) {
       float travel = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, P) - (u_Gap * scalingFactor * 0.5);
       float left = max(travel - 0.5, -0.5);
-      // 与 period 内「实线段」长度一致须用 u_Dash；误用 u_Gap 会在 gap < dash 时过早截断，视觉上像 dash/gap 对调
       float right = min(travel + 0.5, u_Dash * v_ScalingFactor + 0.5);
       alpha *= antialias(max(0.0, right - left));
     } else {
