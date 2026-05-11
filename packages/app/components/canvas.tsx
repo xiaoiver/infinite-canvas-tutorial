@@ -183,6 +183,8 @@ const Canvas = ({
       flipEnabled: false,
       propertiesPanelSectionsOpen: {
         fillSection: true,
+        strokeSection: true,
+        typographySection: true,
         shape: false,
         transform: false,
         layout: false,

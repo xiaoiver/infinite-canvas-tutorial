@@ -87,6 +87,16 @@ export class Stroke {
    */
   @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
 
+  /**
+   * 虚线段两端在间隙方向的延伸样式（Figma dash cap）。
+   * `none`：齐平；`square`：沿路径各延伸约半线宽；`round`：半圆端帽。
+   */
+  @field({
+    type: Type.staticString(['none', 'square', 'round']),
+    default: 'none',
+  })
+  declare dashcap: 'none' | 'square' | 'round';
+
   /** 设计变量绑定：变量表键名（与 `$` 后一致），作用于 {@link color} */
   @field({ type: Type.dynamicString(200), default: '' })
   declare colorVariableRef: string;

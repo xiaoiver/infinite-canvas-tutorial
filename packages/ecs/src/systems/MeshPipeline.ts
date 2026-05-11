@@ -813,7 +813,14 @@ export class MeshPipeline extends System {
       ...this.strokes.addedChangedOrRemoved,
       ...this.markers.addedChangedOrRemoved,
     ].forEach((entity) => {
-      if (entity.has(Polyline) || entity.has(Path) || entity.has(Line)) {
+      if (
+        entity.has(Polyline) ||
+        entity.has(Path) ||
+        entity.has(Line) ||
+        entity.has(Ellipse) ||
+        entity.has(Rect) ||
+        entity.has(Circle)
+      ) {
         safeAddComponent(entity, GeometryDirty);
       }
     });

@@ -1,6 +1,27 @@
+import type { Stroke } from '../components/renderable/Stroke';
 import type { SerializedFillLayerItem, StrokeAttributes } from '../types/serialized-node';
 import { isFillLayerEnabled } from './fillLayers';
 import { isPattern } from './pattern';
+
+/** 与 Figma「虚线端帽」一致：无额外延伸 / 方形 / 圆角（半圆帽）。 */
+export function normalizeStrokeDashCap(
+  v: unknown,
+): Stroke['dashcap'] | undefined {
+  if (v === undefined || v === null) {
+    return undefined;
+  }
+  const s = String(v).trim().toLowerCase();
+  if (s === '' || s === 'none' || s === 'butt') {
+    return 'none';
+  }
+  if (s === 'square') {
+    return 'square';
+  }
+  if (s === 'round') {
+    return 'round';
+  }
+  return undefined;
+}
 
 /**
  * 将历史 wire 上的 `stroke` + `strokeOpacity` 合并为权威字段 `strokes`，并删除旧键。

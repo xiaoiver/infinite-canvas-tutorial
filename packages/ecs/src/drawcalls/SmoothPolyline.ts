@@ -678,6 +678,7 @@ export class SmoothPolyline extends Drawcall {
       miterlimit,
       dasharray,
       dashoffset,
+      dashcap,
     } = shape.has(Stroke)
         ? shape.read(Stroke)
         : {
@@ -687,6 +688,7 @@ export class SmoothPolyline extends Drawcall {
           miterlimit: 10,
           dasharray: [],
           dashoffset: 0,
+          dashcap: 'none' as const,
         };
     const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
     let strokeWidth = width;
@@ -726,7 +728,7 @@ export class SmoothPolyline extends Drawcall {
       (dasharray && dasharray[0]) || 0, // DASH
       (dasharray && dasharray[1]) || 0, // GAP
       dashoffset || 0,
-      0,
+      dashcap === 'square' ? 1 : dashcap === 'round' ? 2 : 0,
     ];
 
     const instance = this.shapes[0];
@@ -765,6 +767,7 @@ export class SmoothPolyline extends Drawcall {
       } else if (decorationStyle === 'double') {
         // TODO: use two lines to render double decoration
       }
+      u_StrokeDash[3] = 0;
     }
 
     let u_StrokeUVRect = [0, 0, 0, 0];
