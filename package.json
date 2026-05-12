@@ -105,7 +105,7 @@
       "tar": ">=7.5.11",
       "serialize-javascript": ">=7.0.5",
       "markdown-it": ">=14.1.1",
-      "hono": ">=4.12.12",
+      "hono": ">=4.12.18",
       "express-rate-limit": ">=8.2.2",
       "undici": ">=6.24.0",
       "flatted": ">=3.4.0",
@@ -118,7 +118,9 @@
       "protobufjs": ">=7.5.5",
       "protocol-buffers-schema": ">=3.6.1",
       "@xmldom/xmldom": ">=0.9.10",
-      "postcss": ">=8.5.10"
+      "postcss": ">=8.5.10",
+      "fast-uri": ">=3.1.2",
+      "ip-address": ">=10.1.1"
     }
   }
 }
