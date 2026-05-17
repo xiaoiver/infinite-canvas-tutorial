@@ -7,7 +7,9 @@ import {
 
 describe('Kawase blur', () => {
   it('parses blur(px)', () => {
-    expect(parseEffect('blur(12px)')).toEqual([{ type: 'blur', value: 12 }]);
+    expect(parseEffect('blur(12px)')).toEqual([{
+      type: 'blur', value: 12, clamp: true, quality: 3,
+    }]);
   });
 
   it('round-trips blur via formatFilter', () => {
