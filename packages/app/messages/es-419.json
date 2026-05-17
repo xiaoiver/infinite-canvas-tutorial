@@ -209,6 +209,10 @@
       "liquidMetal": {
         "title": "Metal líquido",
         "description": "Iconos Lucide y texto con el filtro liquid-metal. Añade capas o ajusta el efecto en el panel de propiedades."
+      },
+      "rain": {
+        "title": "Lluvia",
+        "description": "Gotas estilo Codrops y refracción en agua sobre imágenes y formas. Combina con blur() o ajusta rain() en el panel de propiedades."
       }
     },
     "photoColors": {
@@ -229,6 +233,10 @@
     "liquidMetal": {
       "metaTitle": "Metal líquido",
       "metaDescription": "Vista previa del filtro liquid-metal en iconos y texto (Lucide y más)."
+    },
+    "rain": {
+      "metaTitle": "Lluvia",
+      "metaDescription": "Vista previa del filtro rain(): gotas Codrops, refracción en agua y combinación con blur en el lienzo."
     }
   }
 }

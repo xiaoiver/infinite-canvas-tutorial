@@ -209,6 +209,10 @@
       "liquidMetal": {
         "title": "Liquid metal",
         "description": "Lucide icons and text with the liquid-metal filter. Add layers or tweak the effect in the properties panel."
+      },
+      "rain": {
+        "title": "Rain",
+        "description": "Codrops-style raindrops and water refraction on images and shapes. Stack with blur() or tune rain() in the properties panel."
       }
     },
     "photoColors": {
@@ -229,6 +233,10 @@
     "liquidMetal": {
       "metaTitle": "Liquid metal",
       "metaDescription": "Preview the liquid-metal filter on icon-font layers and text (Lucide and more)."
+    },
+    "rain": {
+      "metaTitle": "Rain",
+      "metaDescription": "Preview the rain() filter: Codrops raindrops, water refraction, and stacked blur on the canvas."
     }
   }
 }
