@@ -40,6 +40,9 @@ import {
   halftoneDotsUniformValues,
   flutedGlassUniformValues,
   tsunamiUniformValues,
+  isRainCodropsRainEffect,
+  raindropsSimulatorOptionsForEffect,
+  rainUniformValues,
   burnUniformValues,
   crtUniformValues,
   vignetteUniformValues,
@@ -51,7 +54,13 @@ import {
   gemSmokeUniformValues,
   liquidMetalUniformValues,
   imageDataToLiquidMetalPoissonMap,
+  kawaseKernelsForBlurEffect,
+  kawaseBlurUniformValues,
 } from '../utils';
+import { loadRainDropTextureCached } from '../utils/rain-drop-texture-cache';
+import { upload2DRasterCanvasToTexture } from '../utils/rasterCanvasTextureUpload';
+import { RaindropsCodropsSimulator } from '../utils/raindrops-codrops/raindrops-simulator';
+import { getPostEffectEngineTimeSeconds } from '../utils/postEffectEngineTime';
 import {
   getCubeLutGpu,
   warnMissingCubeLutOnce,
@@ -73,6 +82,7 @@ import {
   hasRasterPostEffects,
 } from '../utils/filter';
 import { shouldBakeStrokeIntoRasterFilterTexture } from '../utils/solidShapeRasterForFilter';
+import { DOMAdapter } from '../environment';
 import { API } from '../API';
 import { MeshGradientPass } from '../render-graph/MeshGradientPass';
 import type { MeshGradient } from '../utils/gradient';
@@ -88,6 +98,8 @@ import { frag as colorHalftoneFrag } from '../shaders/post-processing/colorHalft
 import { frag as halftoneDotsFrag } from '../shaders/post-processing/halftoneDots';
 import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass';
 import { frag as tsunamiFrag } from '../shaders/post-processing/tsunami';
+import { frag as rainFrag } from '../shaders/post-processing/rain';
+import { frag as rainCodropsWaterFrag } from '../shaders/post-processing/rainCodropsWater';
 import { frag as burnFrag } from '../shaders/post-processing/burn';
 import { frag as crtFrag } from '../shaders/post-processing/crt';
 import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
@@ -98,7 +110,33 @@ import { frag as liquidMetalFrag } from '../shaders/post-processing/liquidMetal'
 import { frag as heatmapFrag } from '../shaders/post-processing/heatmap';
 import { frag as gemSmokeFrag } from '../shaders/post-processing/gemSmoke';
 import { frag as lutFrag } from '../shaders/post-processing/lut';
+import { frag as kawaseBlurFrag } from '../shaders/post-processing/kawaseBlur';
 import type { RGGraphBuilder } from '../render-graph/interface';
+
+/** One pass in {@link Drawcall} fullscreen post chain (copy ping-pong + effect programs). */
+type PostEffectChainPass = {
+  program: Program;
+  pipeline: RenderPipeline;
+  inputLayout: InputLayout;
+  vertexBuffer: Buffer;
+  uniformBuffer: Buffer;
+  bindings: Bindings;
+  /** Sample from #filterTexture when true, else #pingPongTexture */
+  srcIsT0: boolean;
+  effect: Effect;
+  /** Kawase sub-pass kernel (pixels); only for blur chain steps. */
+  kawaseKernel?: number;
+  liquidMetalPoissonAttempt?: boolean;
+  heatmapPreprocessAttempt?: boolean;
+  gemSmokePoissonAttempt?: boolean;
+  lutAtlasTexture?: Texture;
+  rainWaterTexture?: Texture;
+  /** GPU shine sprite for Codrops {@link rainCodropsWaterFrag} (`u_textureShine`). */
+  rainShineTexture?: Texture;
+  rainSimulator?: RaindropsCodropsSimulator | null;
+  rainDropSources?: { color: ImageBitmap; alpha: ImageBitmap };
+  rainLastEngineT?: number | null;
+};
 
 const FRAG_MAP: Record<
   string,
@@ -134,6 +172,9 @@ const FRAG_MAP: Record<
   tsunami: {
     shader: tsunamiFrag,
   },
+  rain: {
+    shader: rainFrag,
+  },
   burn: {
     shader: burnFrag,
   },
@@ -164,6 +205,9 @@ const FRAG_MAP: Record<
   lut: {
     shader: lutFrag,
   },
+  blur: {
+    shader: kawaseBlurFrag,
+  },
 };
 
 function postEffectUniformFloatCount(effect: Effect): number {
@@ -181,6 +225,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
     case 'flutedGlass':
       return 36;
     case 'tsunami':
+      return 16;
+    case 'rain':
       return 16;
     case 'burn':
       return 16;
@@ -202,6 +248,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 48;
     case 'lut':
       return 4;
+    case 'blur':
+      return 8;
     case 'drop-shadow':
       return 2;
     case 'fxaa':
@@ -260,6 +308,7 @@ function setPostEffectUniformData(
   textureWidth?: number,
   textureHeight?: number,
   device?: Device,
+  kawaseKernel?: number,
 ): void {
   const count = postEffectUniformFloatCount(effect);
   const data = new Float32Array(count);
@@ -388,6 +437,15 @@ function setPostEffectUniformData(
       }
       break;
     }
+    case 'rain': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const u = rainUniformValues(effect, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
+      break;
+    }
     case 'burn': {
       const tw = Math.max(1, textureWidth ?? 1);
       const th = Math.max(1, textureHeight ?? 1);
@@ -483,6 +541,19 @@ function setPostEffectUniformData(
       data[i++] = str;
       data[i++] = 0;
       data[i++] = 0;
+      break;
+    }
+    case 'blur': {
+      const tw = Math.max(1, textureWidth ?? 1);
+      const th = Math.max(1, textureHeight ?? 1);
+      const kernel =
+        kawaseKernel !== undefined && Number.isFinite(kawaseKernel)
+          ? kawaseKernel
+          : 0;
+      const u = kawaseBlurUniformValues(effect, kernel, tw, th);
+      for (let j = 0; j < u.length; j++) {
+        data[i++] = u[j]!;
+      }
       break;
     }
     case 'drop-shadow':
@@ -594,31 +665,9 @@ export abstract class Drawcall {
   #pingPongTexture: Texture;
   #pingPongRenderTarget: RenderTarget;
 
-  #postEffectPasses: {
-    program: Program;
-    pipeline: RenderPipeline;
-    inputLayout: InputLayout;
-    vertexBuffer: Buffer;
-    uniformBuffer: Buffer;
-    bindings: Bindings;
-    /** Sample from #filterTexture when true, else #pingPongTexture */
-    srcIsT0: boolean;
-    effect: Effect;
-    /**
-     * When true, try WebGL readback + CPU Poisson before this pass (see
-     * {@link #prepareLiquidMetalPoissonForPass}).
-     */
-    liquidMetalPoissonAttempt?: boolean;
-    /**
-     * When true, try WebGL readback + `imageDataToHeatmapProcessed` before this pass
-     * (see {@link #prepareHeatmapForPass}).
-     */
-    heatmapPreprocessAttempt?: boolean;
-    /** Same R/G CPU map as liquid metal ({@link imageDataToLiquidMetalPoissonMap}). */
-    gemSmokePoissonAttempt?: boolean;
-    /** Second sampler for `lut` pass (atlas texture). */
-    lutAtlasTexture?: Texture;
-  }[] = [];
+  #postEffectPasses: PostEffectChainPass[] = [];
+  /** 1×1 fallback for Codrops rain when no shine URL (keeps sampler layout stable). */
+  #rainCodropsShinePlaceholder?: Texture;
 
   /** GPU upload target for Poisson R/G; same size as the post chain. */
   #liquidMetalPoissonTexture: Texture | null = null;
@@ -995,6 +1044,10 @@ export abstract class Drawcall {
       // `destroy()` them or the cache will later return deleted WebGL objects.
       pass.vertexBuffer.destroy();
       pass.uniformBuffer.destroy();
+      pass.rainWaterTexture?.destroy();
+      pass.rainShineTexture?.destroy();
+      // Drop sprites are session-cached by URL — do not ImageBitmap.close() here.
+      pass.rainDropSources = undefined;
     }
     this.#postEffectPasses = [];
   }
@@ -1019,8 +1072,73 @@ export abstract class Drawcall {
     this.#filterTexture.destroy();
     this.#pingPongRenderTarget.destroy();
     this.#pingPongTexture.destroy();
+    this.#rainCodropsShinePlaceholder?.destroy();
+    this.#rainCodropsShinePlaceholder = undefined;
     this.#destroyLiquidMetalPoissonTexture();
     this.#destroyHeatmapProcessedTexture();
+  }
+
+  #getRainCodropsShinePlaceholderTexture(): Texture {
+    if (!this.#rainCodropsShinePlaceholder) {
+      const tex = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: 1,
+        height: 1,
+        usage: TextureUsage.SAMPLED,
+      });
+      const c = DOMAdapter.get().createCanvas(1, 1);
+      const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+      ctx.clearRect(0, 0, 1, 1);
+      upload2DRasterCanvasToTexture(tex, c);
+      this.#rainCodropsShinePlaceholder = tex;
+    }
+    return this.#rainCodropsShinePlaceholder;
+  }
+
+  #createRainCodropsBindings(
+    pipeline: RenderPipeline,
+    uniformBuffer: Buffer,
+    sceneTex: Texture,
+    waterTex: Texture,
+    shineTex: Texture,
+  ): Bindings {
+    return this.renderCache.createBindings({
+      pipeline,
+      samplerBindings: [
+        {
+          texture: sceneTex,
+          sampler: this.createSampler(),
+        },
+        {
+          texture: waterTex,
+          sampler: this.createSampler(),
+        },
+        {
+          texture: shineTex,
+          sampler: this.createSampler(),
+        },
+      ],
+      uniformBufferBindings: [
+        {
+          buffer: uniformBuffer,
+        },
+      ],
+    });
+  }
+
+  #createRainCodropsPassBindings(
+    pass: PostEffectChainPass,
+    sceneTex: Texture,
+  ): Bindings {
+    const shineTex =
+      pass.rainShineTexture ?? this.#getRainCodropsShinePlaceholderTexture();
+    return this.#createRainCodropsBindings(
+      pass.pipeline,
+      pass.uniformBuffer,
+      sceneTex,
+      pass.rainWaterTexture!,
+      shineTex,
+    );
   }
 
   #rebuildPostEffectPassBindings(): void {
@@ -1047,6 +1165,12 @@ export abstract class Drawcall {
             },
           ],
         });
+      } else if (
+        pass.effect.type === 'rain' &&
+        isRainCodropsRainEffect(pass.effect) &&
+        pass.rainWaterTexture
+      ) {
+        pass.bindings = this.#createRainCodropsPassBindings(pass, sceneTex);
       } else {
         pass.bindings = this.renderCache.createBindings({
           pipeline: pass.pipeline,
@@ -1363,6 +1487,68 @@ export abstract class Drawcall {
     this.#heatmapEngineTimeCacheValid = false;
   }
 
+  #resizeRainCodropsWaterMaps(width: number, height: number): void {
+    for (const pass of this.#postEffectPasses) {
+      if (pass.effect.type !== 'rain' || !isRainCodropsRainEffect(pass.effect)) {
+        continue;
+      }
+      if (!pass.rainWaterTexture) {
+        continue;
+      }
+      pass.rainWaterTexture.destroy();
+      pass.rainWaterTexture = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width,
+        height,
+        usage: TextureUsage.SAMPLED,
+      });
+      const boot = DOMAdapter.get().createCanvas(width, height);
+      const bctx = boot.getContext('2d') as CanvasRenderingContext2D;
+      bctx.fillStyle = '#000';
+      bctx.fillRect(0, 0, width, height);
+      upload2DRasterCanvasToTexture(pass.rainWaterTexture, boot);
+      const ds = pass.rainDropSources;
+      if (ds) {
+        pass.rainSimulator = new RaindropsCodropsSimulator(
+          width,
+          height,
+          pass.effect.rainSimScale ?? 1,
+          ds.color,
+          ds.alpha,
+          raindropsSimulatorOptionsForEffect(pass.effect),
+        );
+        pass.rainLastEngineT = null;
+        upload2DRasterCanvasToTexture(
+          pass.rainWaterTexture,
+          pass.rainSimulator.canvas,
+        );
+      } else {
+        pass.rainSimulator = null;
+        pass.rainLastEngineT = null;
+      }
+    }
+  }
+
+  #prepareRainCodropsForPass(pass: PostEffectChainPass): void {
+    if (pass.effect.type !== 'rain' || !isRainCodropsRainEffect(pass.effect)) {
+      return;
+    }
+    if (!pass.rainWaterTexture || !pass.rainSimulator) {
+      return;
+    }
+    const tNow = getPostEffectEngineTimeSeconds();
+    let timeScale = 1;
+    if (pass.rainLastEngineT != null && pass.rainLastEngineT >= 0) {
+      timeScale = Math.max(0, (tNow - pass.rainLastEngineT) * 60);
+    }
+    pass.rainLastEngineT = tNow;
+    pass.rainSimulator.update(timeScale);
+    upload2DRasterCanvasToTexture(
+      pass.rainWaterTexture,
+      pass.rainSimulator.canvas,
+    );
+  }
+
   protected createPostProcessing(
     effects: Effect[],
     inputTexture: Texture,
@@ -1483,8 +1669,28 @@ export abstract class Drawcall {
       }
     }
 
+    type PostEffectBuildItem = {
+      effect: Effect;
+      frag: string;
+      kawaseKernel?: number;
+    };
+    const buildItems: PostEffectBuildItem[] = [];
     for (let ei = 0; ei < usableEffects.length; ei++) {
       const effect = usableEffects[ei]!;
+      if (effect.type === 'blur') {
+        const kernels = kawaseKernelsForBlurEffect(effect);
+        if (kernels.every((k) => k <= 0)) {
+          continue;
+        }
+        for (const kernel of kernels) {
+          buildItems.push({
+            effect,
+            frag: kawaseBlurFrag,
+            kawaseKernel: kernel,
+          });
+        }
+        continue;
+      }
       const entry = FRAG_MAP[effect.type];
       if (!entry) {
         console.warn(
@@ -1492,7 +1698,15 @@ export abstract class Drawcall {
         );
         continue;
       }
-      const frag = entry.shader;
+      const frag =
+        effect.type === 'rain' && isRainCodropsRainEffect(effect)
+          ? rainCodropsWaterFrag
+          : entry.shader;
+      buildItems.push({ effect, frag });
+    }
+
+    for (const item of buildItems) {
+      const { effect, frag, kawaseKernel } = item;
       const srcIsT0 = this.#postEffectPasses.length % 2 === 0;
 
       const uniformBuffer = this.device.createBuffer({
@@ -1507,6 +1721,7 @@ export abstract class Drawcall {
         width,
         height,
         this.device,
+        kawaseKernel,
       );
 
       const program = this.renderCache.createProgram({
@@ -1567,6 +1782,20 @@ export abstract class Drawcall {
       const lutGpu =
         effect.type === 'lut' ? getCubeLutGpu(this.device, effect.lutKey) : undefined;
       const lutAtlasTexture = lutGpu?.texture;
+      let rainWaterTexture: Texture | undefined;
+      if (effect.type === 'rain' && isRainCodropsRainEffect(effect)) {
+        rainWaterTexture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width,
+          height,
+          usage: TextureUsage.SAMPLED,
+        });
+        const boot = DOMAdapter.get().createCanvas(width, height);
+        const bctx = boot.getContext('2d') as CanvasRenderingContext2D;
+        bctx.fillStyle = '#000';
+        bctx.fillRect(0, 0, width, height);
+        upload2DRasterCanvasToTexture(rainWaterTexture, boot);
+      }
       const bindings =
         effect.type === 'lut' && lutAtlasTexture
           ? this.renderCache.createBindings({
@@ -1587,21 +1816,32 @@ export abstract class Drawcall {
               },
             ],
           })
-          : this.renderCache.createBindings({
-            pipeline,
-            samplerBindings: [
-              {
-                texture: srcTexture,
-                sampler: this.createSampler(),
-              },
-            ],
-            uniformBufferBindings: [
-              {
-                buffer: uniformBuffer,
-              },
-            ],
-          });
+          : effect.type === 'rain' &&
+            isRainCodropsRainEffect(effect) &&
+            rainWaterTexture
+            ? this.#createRainCodropsBindings(
+              pipeline,
+              uniformBuffer,
+              srcTexture,
+              rainWaterTexture,
+              this.#getRainCodropsShinePlaceholderTexture(),
+            )
+            : this.renderCache.createBindings({
+              pipeline,
+              samplerBindings: [
+                {
+                  texture: srcTexture,
+                  sampler: this.createSampler(),
+                },
+              ],
+              uniformBufferBindings: [
+                {
+                  buffer: uniformBuffer,
+                },
+              ],
+            });
 
+      const passIndex = this.#postEffectPasses.length;
       this.#postEffectPasses.push({
         program,
         pipeline,
@@ -1611,11 +1851,78 @@ export abstract class Drawcall {
         bindings,
         srcIsT0,
         effect,
+        kawaseKernel,
         liquidMetalPoissonAttempt,
         heatmapPreprocessAttempt,
         gemSmokePoissonAttempt,
         lutAtlasTexture,
+        rainWaterTexture,
+        rainSimulator: null,
+        rainDropSources: undefined,
+        rainLastEngineT: null,
       });
+
+      if (
+        effect.type === 'rain' &&
+        isRainCodropsRainEffect(effect) &&
+        rainWaterTexture
+      ) {
+        const uniformBufferRef = uniformBuffer;
+        void (async () => {
+          try {
+            const eff = effect;
+            const shineUrl = eff.dropShineUrl?.trim() ?? '';
+            const loads: Promise<ImageBitmap>[] = [
+              loadRainDropTextureCached(eff.dropColorUrl),
+              loadRainDropTextureCached(eff.dropAlphaUrl),
+            ];
+            if (shineUrl) {
+              loads.push(loadRainDropTextureCached(shineUrl));
+            }
+            const bitmaps = await Promise.all(loads);
+            const cb = bitmaps[0]!;
+            const ab = bitmaps[1]!;
+            const shineBmp = shineUrl ? bitmaps[2] : undefined;
+            const p = this.#postEffectPasses[passIndex];
+            if (!p || p.uniformBuffer !== uniformBufferRef) {
+              return;
+            }
+            p.rainDropSources = { color: cb, alpha: ab };
+            const w = this.#filterWidth;
+            const h = this.#filterHeight;
+            p.rainSimulator = new RaindropsCodropsSimulator(
+              w,
+              h,
+              eff.rainSimScale ?? 1,
+              cb,
+              ab,
+              raindropsSimulatorOptionsForEffect(eff),
+            );
+            p.rainLastEngineT = null;
+            if (p.rainWaterTexture) {
+              upload2DRasterCanvasToTexture(
+                p.rainWaterTexture,
+                p.rainSimulator.canvas,
+              );
+            }
+            if (shineBmp) {
+              p.rainShineTexture?.destroy();
+              p.rainShineTexture = this.device.createTexture({
+                format: Format.U8_RGBA_NORM,
+                width: shineBmp.width,
+                height: shineBmp.height,
+                usage: TextureUsage.SAMPLED,
+              });
+              p.rainShineTexture.setImageData([shineBmp]);
+              this.#rebuildPostEffectPassBindings();
+            }
+            // Do not MaterialDirty: rain uses engine-time post refresh each frame;
+            // MaterialDirty would rebuild the chain and refetch drop textures in a loop.
+          } catch (err) {
+            console.warn('rain (codrops): failed to load drop textures', err);
+          }
+        })();
+      }
     }
 
     let nPoissonRgPass = 0;
@@ -1734,6 +2041,7 @@ export abstract class Drawcall {
           this.#pingPongTexture,
         );
 
+        this.#resizeRainCodropsWaterMaps(width, height);
         this.#rebuildPostEffectPassBindings();
         this.#destroyLiquidMetalPoissonTexture();
         this.#destroyHeatmapProcessedTexture();
@@ -1763,6 +2071,7 @@ export abstract class Drawcall {
         width,
         height,
         this.device,
+        pass.kawaseKernel,
       );
     }
 
@@ -1803,6 +2112,7 @@ export abstract class Drawcall {
         pass.srcIsT0 ? t0 : t1,
         isWebGPU,
       );
+      this.#prepareRainCodropsForPass(pass);
       const dstRT =
         pi % 2 === 0 ? this.#pingPongRenderTarget : this.#filterRenderTarget;
       const effectPass = this.device.createRenderPass({

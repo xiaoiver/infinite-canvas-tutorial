@@ -5,6 +5,8 @@ export { frag as colorHalftone } from './colorHalftone';
 export { frag as halftoneDots } from './halftoneDots';
 export { frag as flutedGlass } from './flutedGlass';
 export { frag as tsunami } from './tsunami';
+export { frag as rain } from './rain';
+export { frag as rainCodropsWater } from './rainCodropsWater';
 export { frag as burn } from './burn';
 export { frag as dot } from './dot';
 export { frag as hueSaturation } from './hueSaturation';

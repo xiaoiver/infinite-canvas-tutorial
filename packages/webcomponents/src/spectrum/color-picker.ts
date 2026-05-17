@@ -47,7 +47,6 @@ export class ColorPicker extends LitElement {
       flex-direction: column;
       gap: 8px;
       padding: 8px;
-      min-height: 200px;
     }
 
     h4 {

@@ -155,7 +155,6 @@ canvas.addEventListener(Event.READY, async (e) => {
     propertiesPanelSectionsOpen: {
       fillSection: true,
       strokeSection: true,
-      typographySection: true,
       shape: false,
       transform: false,
       layout: false,
@@ -199,28 +198,23 @@ canvas.addEventListener(Event.READY, async (e) => {
     y: 50,
     width: 200,
     height: 100,
-    visibility: 'visible',
     zIndex: 0,
+    filter: 'rain()'
   };
-  const node2: EllipseSerializedNode = {
+
+  const node2: RectSerializedNode = {
     id: '2',
-    parentId: '1',
-    type: 'ellipse',
-    fills: [{ type: 'solid', value: 'green', opacity: 1 }],
-    x: 50,
-    y: -50,
-    width: 100,
-    height: 200,
-    stroke: 'black',
-    strokeWidth: 10,
-    strokeAlignment: 'center',
-    strokeDasharray: '10 10',
-    visibility: 'visible',
-    zIndex: 0,
+    type: 'rect',
+    fills: [{ type: 'image', value: '/city.jpg', opacity: 1 }],
+    x: 100,
+    y: 100,
+    width: 400,
+    height: 400,
+    filter: 'blur()'
   };
 
   api.updateNodes([
-    node1,
+    // node1,
     node2,
   ]);
 

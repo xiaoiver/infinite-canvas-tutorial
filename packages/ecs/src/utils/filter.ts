@@ -34,6 +34,7 @@ export type Effect =
   | HalftoneDotsEffect
   | FlutedGlassEffect
   | TsunamiEffect
+  | RainEffect
   | BurnEffect
   | CrtEffect
   | VignetteEffect
@@ -425,6 +426,335 @@ export function tsunamiUniformValues(
   ];
 }
 
+/** Defaults for procedural `rain()` (no `url()` drop textures). */
+export const RAIN_DEFAULTS = {
+  minRefraction: 2.5,
+  refractionDelta: 6.5,
+  brightness: 1,
+  density: 1,
+  alphaMultiply: 1.15,
+  alphaSubtract: 0.12,
+  streakCount: 80,
+  dropScale: 1,
+  renderShadow: true,
+  renderShine: false,
+} as const;
+
+/**
+ * Codrops {@link https://github.com/codrops/RainEffect/blob/master/src/rain-renderer.js rain-renderer.js} /
+ * {@link https://github.com/codrops/RainEffect/blob/master/src/shaders/water.frag water.frag} defaults
+ * (when {@link RainEffect.dropColorUrl} + {@link RainEffect.dropAlphaUrl} drive {@link RaindropsCodropsSimulator}).
+ */
+export const RAINDROPS_WATER_DEFAULTS = {
+  minRefraction: 256,
+  maxRefraction: 512,
+  brightness: 1,
+  alphaMultiply: 20,
+  alphaSubtract: 5,
+  renderShadow: false,
+  renderShine: true,
+} as const;
+
+/** Default Codrops drop sprite URLs (webcomponents examples serve these at `/`). */
+export const RAIN_DROP_TEXTURE_DEFAULTS = {
+  dropColorUrl: '/drop-color.png',
+  dropAlphaUrl: '/drop-alpha.png',
+  dropShineUrl: '/drop-shine.png',
+} as const;
+
+export type RainCodropsWaterParams = {
+  minRefraction?: number;
+  maxRefraction?: number;
+  brightness?: number;
+  alphaMultiply?: number;
+  alphaSubtract?: number;
+  renderShadow?: boolean;
+  renderShine?: boolean;
+};
+
+/** Defaults for {@link RaindropsCodropsSimulator} spawn density (Codrops `raindrops.js`). */
+export const RAINDROPS_SIM_DEFAULTS = {
+  rainChance: 0.3,
+  rainLimit: 3,
+  maxDrops: 900,
+  dropletsRate: 50,
+} as const;
+
+export type RainCodropsSimParams = {
+  rainChance?: number;
+  rainLimit?: number;
+  maxDrops?: number;
+  dropletsRate?: number;
+};
+
+/**
+ * Default {@link RainEffect}: Codrops path with {@link RAIN_DROP_TEXTURE_DEFAULTS}.  
+ * Bare `rain()` parses/formats to this. Numeric-only `rain(…)` stays procedural.
+ */
+export function createDefaultRainEffect(): RainEffect {
+  const P = RAIN_DEFAULTS;
+  return {
+    type: 'rain',
+    ...RAIN_DROP_TEXTURE_DEFAULTS,
+    rainSimScale: 1,
+    codropsWater: { ...RAINDROPS_WATER_DEFAULTS },
+    codropsSim: { ...RAINDROPS_SIM_DEFAULTS },
+    minRefraction: P.minRefraction,
+    refractionDelta: P.refractionDelta,
+    brightness: P.brightness,
+    density: P.density,
+    alphaMultiply: P.alphaMultiply,
+    alphaSubtract: P.alphaSubtract,
+    streakCount: P.streakCount,
+    dropScale: P.dropScale,
+    renderShadow: P.renderShadow,
+    renderShine: RAINDROPS_WATER_DEFAULTS.renderShine,
+  };
+}
+
+function isDefaultRainCodropsEffect(e: RainEffect): boolean {
+  if (!isRainCodropsRainEffect(e)) {
+    return false;
+  }
+  const d = RAIN_DROP_TEXTURE_DEFAULTS;
+  if (
+    e.dropColorUrl !== d.dropColorUrl ||
+    e.dropAlphaUrl !== d.dropAlphaUrl ||
+    (e.dropShineUrl?.trim() ?? '') !== d.dropShineUrl
+  ) {
+    return false;
+  }
+  if ((e.rainSimScale ?? 1) !== 1) {
+    return false;
+  }
+  const W = { ...RAINDROPS_WATER_DEFAULTS, ...e.codropsWater };
+  const WD = RAINDROPS_WATER_DEFAULTS;
+  if (
+    W.minRefraction !== WD.minRefraction ||
+    W.maxRefraction !== WD.maxRefraction ||
+    W.brightness !== WD.brightness ||
+    W.alphaMultiply !== WD.alphaMultiply ||
+    W.alphaSubtract !== WD.alphaSubtract ||
+    (W.renderShadow ?? WD.renderShadow) !== WD.renderShadow ||
+    (W.renderShine ?? WD.renderShine) !== WD.renderShine
+  ) {
+    return false;
+  }
+  const S = { ...RAINDROPS_SIM_DEFAULTS, ...e.codropsSim };
+  const SD = RAINDROPS_SIM_DEFAULTS;
+  return (
+    S.rainChance === SD.rainChance &&
+    S.rainLimit === SD.rainLimit &&
+    S.maxDrops === SD.maxDrops &&
+    S.dropletsRate === SD.dropletsRate
+  );
+}
+
+/**
+ * `rain()` → Codrops + {@link RAIN_DROP_TEXTURE_DEFAULTS}.  
+ * `rain(url("…"), …)` or numeric-only args override (procedural when no `url()`).
+ */
+export interface RainEffect {
+  type: 'rain';
+  /** When both URLs are set, {@link RaindropsCodropsSimulator} + {@link rainCodropsWater} shader. */
+  dropColorUrl?: string;
+  dropAlphaUrl?: string;
+  /** Codrops `u_textureShine` (optional third `url("…")` in filter string). */
+  dropShineUrl?: string;
+  /** Passed to {@link RaindropsCodropsSimulator} constructor `scale` (default `1`). */
+  rainSimScale?: number;
+  /** Overrides {@link RaindropsCodropsSimulator} spawn density (see {@link RAINDROPS_SIM_DEFAULTS}). */
+  codropsSim?: RainCodropsSimParams;
+  /** Overrides {@link RAINDROPS_WATER_DEFAULTS} for the water pass. */
+  codropsWater?: RainCodropsWaterParams;
+  /** Procedural-only (ignored when Codrops URLs are set). */
+  minRefraction: number;
+  refractionDelta: number;
+  brightness: number;
+  density: number;
+  alphaMultiply: number;
+  alphaSubtract: number;
+  streakCount: number;
+  dropScale: number;
+  renderShadow: boolean;
+  renderShine: boolean;
+}
+
+/** Options for {@link RaindropsCodropsSimulator} from a {@link RainEffect} (Codrops path only). */
+export function raindropsSimulatorOptionsForEffect(
+  effect: RainEffect,
+): Pick<
+  import('./raindrops-codrops/raindrops-simulator').RaindropsCodropsOptions,
+  'rainChance' | 'rainLimit' | 'maxDrops' | 'dropletsRate'
+> {
+  const D = RAINDROPS_SIM_DEFAULTS;
+  const s = effect.codropsSim ?? {};
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  return {
+    rainChance: Math.max(0, Math.min(1, z(s.rainChance, D.rainChance))),
+    rainLimit: Math.max(0, z(s.rainLimit, D.rainLimit)),
+    maxDrops: Math.max(1, Math.round(z(s.maxDrops, D.maxDrops))),
+    dropletsRate: Math.max(0, z(s.dropletsRate, D.dropletsRate)),
+  };
+}
+
+function parseCodropsRainNumericTail(parts: string[]): {
+  codropsWater: RainCodropsWaterParams;
+  codropsSim?: RainCodropsSimParams;
+  rainSimScale: number;
+} {
+  const WD = RAINDROPS_WATER_DEFAULTS;
+  const SD = RAINDROPS_SIM_DEFAULTS;
+  const pf = (i: number, def: number) => {
+    const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+    return Number.isFinite(v) ? v : def;
+  };
+  const n = parts.length;
+  /** Legacy: parallax at 5–8, shadow 9, shine 10, sim 11. New (n≥11): shadow 5, shine 6, sim 7, density 8–10 (+ droplets 11 when n=12). */
+  const legacyParallaxLayout =
+    n >= 12 && !(n === 12 && parseFloat(parts[10] ?? '0') > 10);
+  const hasDensityTail = n >= 11 && !legacyParallaxLayout;
+  let tailShadowIdx: number;
+  let simScaleIdx: number;
+  if (legacyParallaxLayout) {
+    tailShadowIdx = 9;
+    simScaleIdx = 11;
+  } else if (hasDensityTail) {
+    tailShadowIdx = 5;
+    simScaleIdx = 7;
+  } else {
+    tailShadowIdx = n >= 10 ? 7 : 5;
+    simScaleIdx = tailShadowIdx + 2;
+  }
+  const codropsWater: RainCodropsWaterParams = {
+    minRefraction: pf(0, WD.minRefraction),
+    maxRefraction: pf(1, WD.maxRefraction),
+    brightness: pf(2, WD.brightness),
+    alphaMultiply: pf(3, WD.alphaMultiply),
+    alphaSubtract: pf(4, WD.alphaSubtract),
+    renderShadow: pf(tailShadowIdx, WD.renderShadow ? 1 : 0) > 0.5,
+    renderShine: pf(tailShadowIdx + 1, WD.renderShine ? 1 : 0) > 0.5,
+  };
+  const codropsSim: RainCodropsSimParams | undefined = hasDensityTail
+    ? {
+      rainChance: pf(8, SD.rainChance),
+      rainLimit: pf(9, SD.rainLimit),
+      maxDrops: pf(10, SD.maxDrops),
+      ...(parts[11] !== undefined
+        ? { dropletsRate: pf(11, SD.dropletsRate) }
+        : {}),
+    }
+    : undefined;
+  return {
+    codropsWater,
+    codropsSim,
+    rainSimScale: pf(simScaleIdx, 1),
+  };
+}
+
+export function isRainCodropsRainEffect(
+  e: Effect,
+): e is RainEffect & { dropColorUrl: string; dropAlphaUrl: string } {
+  if (e.type !== 'rain') {
+    return false;
+  }
+  const c = (e as RainEffect).dropColorUrl?.trim() ?? '';
+  const a = (e as RainEffect).dropAlphaUrl?.trim() ?? '';
+  return c.length > 0 && a.length > 0;
+}
+
+export function rainCodropsWaterUniformValues(
+  effect: RainEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  const D = RAINDROPS_WATER_DEFAULTS;
+  const w = { ...D, ...effect.codropsWater };
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const ratio = tw / Math.max(th, 1);
+  const minRef = Math.max(0, z(w.minRefraction, D.minRefraction));
+  const maxRef = Math.max(minRef, z(w.maxRefraction, D.maxRefraction));
+  const refDelta = maxRef - minRef;
+  const brightness = Math.max(0, z(w.brightness, D.brightness));
+  const alphaMul = Math.max(0, z(w.alphaMultiply, D.alphaMultiply));
+  const alphaSub = z(w.alphaSubtract, D.alphaSubtract);
+  const renderShadow = (w.renderShadow ?? D.renderShadow) ? 1 : 0;
+  const renderShine = (w.renderShine ?? D.renderShine) ? 1 : 0;
+  const hasShineTexture = (effect.dropShineUrl?.trim().length ?? 0) > 0 ? 1 : 0;
+  return [
+    tw,
+    th,
+    ratio,
+    0,
+    0,
+    0,
+    0,
+    0,
+    minRef,
+    refDelta,
+    brightness,
+    alphaMul,
+    alphaSub,
+    renderShadow,
+    renderShine,
+    hasShineTexture,
+  ];
+}
+
+export function rainUniformValues(
+  effect: RainEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  if (isRainCodropsRainEffect(effect)) {
+    return rainCodropsWaterUniformValues(effect, textureWidth, textureHeight);
+  }
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  const D = RAIN_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+
+  const time = getPostEffectEngineTimeSeconds();
+
+  let minRef = z(effect.minRefraction, D.minRefraction);
+  minRef = Math.max(0, minRef);
+  let refDelta = z(effect.refractionDelta, D.refractionDelta);
+  refDelta = Math.max(0, refDelta);
+  const brightness = Math.max(0, z(effect.brightness, D.brightness));
+  const density = Math.max(0.05, z(effect.density, D.density));
+  const alphaMul = Math.max(0, z(effect.alphaMultiply, D.alphaMultiply));
+  const alphaSub = z(effect.alphaSubtract, D.alphaSubtract);
+  let streakCount = z(effect.streakCount, D.streakCount);
+  streakCount = Math.max(8, Math.min(256, streakCount));
+  const dropScale = Math.max(0.1, z(effect.dropScale, D.dropScale));
+  const renderShadow = effect.renderShadow !== false ? 1 : 0;
+  const renderShine = effect.renderShine === true ? 1 : 0;
+
+  return [
+    tw,
+    th,
+    time,
+    0,
+    minRef,
+    refDelta,
+    brightness,
+    density,
+    alphaMul,
+    alphaSub,
+    streakCount,
+    dropScale,
+    0,
+    0,
+    renderShadow,
+    renderShine,
+  ];
+}
+
 /** Defaults for {@link BurnEffect} (radial burn + optional wave distortion + dispersion). */
 export const BURN_DEFAULTS = {
   burn: 0.5,
@@ -633,9 +963,24 @@ export interface DropShadowEffect {
   color: string;
 }
 
+/** Kawase blur defaults (Pixi {@link https://github.com/pixijs/filters/blob/main/src/kawase-blur/KawaseBlurFilter.ts KawaseBlurFilter}). */
+export const BLUR_DEFAULTS = {
+  value: 4,
+  quality: 3,
+  clamp: true,
+  pixelSize: 1,
+} as const;
+
 export interface BlurEffect {
   type: 'blur';
+  /** Blur strength in pixels (Pixi `strength`). */
   value: number;
+  /** Pass count / kernel steps; integer ≥ 1. */
+  quality?: number;
+  /** Clamp UVs to filter bounds (reduces edge bleed). */
+  clamp?: boolean;
+  /** Per-axis pixel scale; larger = blurrier. */
+  pixelSize?: number | { x: number; y: number };
 }
 
 export interface NoiseEffect {
@@ -1117,12 +1462,14 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'noise',
   'brightness',
   'contrast',
+  'blur',
   'pixelate',
   'dot',
   'colorHalftone',
   'halftoneDots',
   'flutedGlass',
   'tsunami',
+  'rain',
   'burn',
   'crt',
   'vignette',
@@ -1448,6 +1795,45 @@ export function formatLutFilterSegment(lutKey: string, strength: number): string
   return `lut(url("${u}"), ${strength})`;
 }
 
+function parseRainDropTextureUrls(params: string): {
+  dropColorUrl: string;
+  dropAlphaUrl: string;
+  dropShineUrl?: string;
+  numericTail: string;
+} | null {
+  const raw = params.trim();
+  if (!raw) {
+    return null;
+  }
+  const m1 = raw.match(/^\s*url\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (!m1 || m1.index === undefined) {
+    return null;
+  }
+  const after1 = raw.slice(m1.index + m1[0].length).replace(/^\s*,\s*/, '');
+  const m2 = after1.match(/^\s*url\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (!m2 || m2.index === undefined) {
+    return null;
+  }
+  let tail = after1
+    .slice(m2.index + m2[0].length)
+    .replace(/^\s*,\s*/, '');
+  const dropColorUrl = m1[2]!.trim();
+  const dropAlphaUrl = m2[2]!.trim();
+  if (!dropColorUrl || !dropAlphaUrl) {
+    return null;
+  }
+  let dropShineUrl: string | undefined;
+  const m3 = tail.match(/^\s*url\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (m3 && m3.index === 0) {
+    const u = m3[2]!.trim();
+    if (u) {
+      dropShineUrl = u;
+    }
+    tail = tail.slice(m3[0].length).replace(/^\s*,\s*/, '');
+  }
+  return { dropColorUrl, dropAlphaUrl, dropShineUrl, numericTail: tail.trim() };
+}
+
 /**
  * 从 CSS filter 字符串中解析出一个或多个 filter 对象
  *
@@ -1566,7 +1952,29 @@ export function parseEffect(filter: string): Effect[] {
   const effects: Effect[] = [];
   for (const filter of filters) {
     if (filter.name === 'blur') {
-      effects.push({ type: 'blur', value: parseFloat(filter.params) });
+      const blurParts = filter.params
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const radiusRaw = (blurParts[0] ?? '').replace(/px$/i, '');
+      const v = parseFloat(radiusRaw);
+      const qRaw =
+        blurParts[1] !== undefined ? parseFloat(blurParts[1]) : NaN;
+      const cRaw =
+        blurParts[2] !== undefined ? parseFloat(blurParts[2]) : NaN;
+      effects.push({
+        type: 'blur',
+        value: Number.isFinite(v) ? v : BLUR_DEFAULTS.value,
+        quality: Number.isFinite(qRaw)
+          ? Math.max(1, Math.round(qRaw))
+          : BLUR_DEFAULTS.quality,
+        clamp:
+          blurParts[2] !== undefined
+            ? Number.isFinite(cRaw)
+              ? cRaw > 0.5
+              : BLUR_DEFAULTS.clamp
+            : BLUR_DEFAULTS.clamp,
+      });
     } else if (filter.name === 'brightness') {
       effects.push({
         type: 'brightness',
@@ -1783,6 +2191,67 @@ export function parseEffect(filter: string): Effect[] {
         shadowIntensity: pf(9, D.shadowIntensity),
         offset: pf(10, D.offset),
       });
+    } else if (filter.name === 'rain') {
+      const raw = filter.params.trim();
+      const urlPair = parseRainDropTextureUrls(raw);
+      if (urlPair) {
+        const parts = urlPair.numericTail.length
+          ? urlPair.numericTail
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0)
+          : [];
+        const RD = RAIN_DEFAULTS;
+        const parsed = parseCodropsRainNumericTail(parts);
+        effects.push({
+          type: 'rain',
+          dropColorUrl: urlPair.dropColorUrl,
+          dropAlphaUrl: urlPair.dropAlphaUrl,
+          dropShineUrl: urlPair.dropShineUrl,
+          rainSimScale: parsed.rainSimScale,
+          codropsSim: parsed.codropsSim,
+          codropsWater: parsed.codropsWater,
+          minRefraction: RD.minRefraction,
+          refractionDelta: RD.refractionDelta,
+          brightness: RD.brightness,
+          density: RD.density,
+          alphaMultiply: RD.alphaMultiply,
+          alphaSubtract: RD.alphaSubtract,
+          streakCount: RD.streakCount,
+          dropScale: RD.dropScale,
+          renderShadow: RD.renderShadow,
+          renderShine: RD.renderShine,
+        });
+      } else {
+        const parts = raw.length
+          ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+          : [];
+        if (parts.length === 0) {
+          effects.push(createDefaultRainEffect());
+        } else {
+          const D = RAIN_DEFAULTS;
+          const pf = (i: number, def: number) => {
+            const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+            return Number.isFinite(v) ? v : def;
+          };
+          const legacyParallaxXY = parts.length >= 12;
+          effects.push({
+            type: 'rain',
+            minRefraction: pf(0, D.minRefraction),
+            refractionDelta: pf(1, D.refractionDelta),
+            brightness: pf(2, D.brightness),
+            density: pf(3, D.density),
+            alphaMultiply: pf(4, D.alphaMultiply),
+            alphaSubtract: pf(5, D.alphaSubtract),
+            streakCount: pf(6, D.streakCount),
+            dropScale: pf(7, D.dropScale),
+            renderShadow:
+              pf(legacyParallaxXY ? 10 : 8, D.renderShadow ? 1 : 0) > 0.5,
+            renderShine:
+              pf(legacyParallaxXY ? 11 : 9, D.renderShine ? 1 : 0) > 0.5,
+          });
+        }
+      }
     } else if (filter.name === 'burn') {
       const raw = filter.params.trim();
       const parts = raw.length
@@ -2188,6 +2657,9 @@ export function filterStringUsesEngineTimePost(
     if (e.type === 'gemSmoke' && e.useEngineTime) {
       return true;
     }
+    if (e.type === 'rain') {
+      return true;
+    }
   }
   return (
     filterStringUsesEngineTimeCrt(filterValue) ||
@@ -2262,6 +2734,33 @@ export function formatFilter(effects: Effect[]): string {
         parts.push(
           `tsunami(${e.stripeCount}, ${e.stripeAngle}, ${e.distortion}, ${e.reflection}, ${e.disturbance}, ${e.contortion}, ${e.blend}, ${e.dispersion}, ${e.drift}, ${e.shadowIntensity}, ${e.offset})`,
         );
+        break;
+      }
+      case 'rain': {
+        const e = effect;
+        if (isDefaultRainCodropsEffect(e)) {
+          parts.push('rain()');
+        } else if (isRainCodropsRainEffect(e)) {
+          const esc = (u: string) =>
+            `url("${u.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`;
+          const W = { ...RAINDROPS_WATER_DEFAULTS, ...e.codropsWater };
+          const S = { ...RAINDROPS_SIM_DEFAULTS, ...e.codropsSim };
+          const ss = e.rainSimScale ?? 1;
+          const urlParts = [esc(e.dropColorUrl), esc(e.dropAlphaUrl)];
+          const shine = e.dropShineUrl?.trim();
+          if (shine) {
+            urlParts.push(esc(shine));
+          }
+          parts.push(
+            `rain(${urlParts.join(', ')}, ${W.minRefraction}, ${W.maxRefraction}, ${W.brightness}, ${W.alphaMultiply}, ${W.alphaSubtract}, ${W.renderShadow ? 1 : 0}, ${W.renderShine ? 1 : 0}, ${ss}, ${S.rainChance}, ${S.rainLimit}, ${S.maxDrops}, ${S.dropletsRate})`,
+          );
+        } else {
+          const sh = e.renderShadow ? 1 : 0;
+          const shn = e.renderShine ? 1 : 0;
+          parts.push(
+            `rain(${e.minRefraction}, ${e.refractionDelta}, ${e.brightness}, ${e.density}, ${e.alphaMultiply}, ${e.alphaSubtract}, ${e.streakCount}, ${e.dropScale}, ${sh}, ${shn})`,
+          );
+        }
         break;
       }
       case 'burn': {
@@ -2345,9 +2844,20 @@ export function formatFilter(effects: Effect[]): string {
       case 'fxaa':
         parts.push('fxaa()');
         break;
-      case 'blur':
-        parts.push(`blur(${effect.value}px)`);
+      case 'blur': {
+        const q = effect.quality ?? BLUR_DEFAULTS.quality;
+        const clamp = effect.clamp !== false;
+        const qDef = q === BLUR_DEFAULTS.quality;
+        const cDef = clamp === BLUR_DEFAULTS.clamp;
+        if (qDef && cDef) {
+          parts.push(`blur(${effect.value}px)`);
+        } else if (cDef) {
+          parts.push(`blur(${effect.value}px, ${q})`);
+        } else {
+          parts.push(`blur(${effect.value}px, ${q}, ${clamp ? 1 : 0})`);
+        }
         break;
+      }
       case 'drop-shadow': {
         const { x, y, blur, spread, color } = effect;
         parts.push(
@@ -2417,6 +2927,7 @@ export type DefaultEffectKind =
   | 'gemSmoke'
   | 'lut'
   | 'tsunami'
+  | 'rain'
   | 'burn';
 
 /** Default {@link Effect} for a new row (effects panel / authoring). */
@@ -2431,7 +2942,12 @@ export function createDefaultEffect(kind: DefaultEffectKind): Effect {
     case 'fxaa':
       return { type: 'fxaa' };
     case 'blur':
-      return { type: 'blur', value: 4 };
+      return {
+        type: 'blur',
+        value: BLUR_DEFAULTS.value,
+        quality: BLUR_DEFAULTS.quality,
+        clamp: BLUR_DEFAULTS.clamp,
+      };
     case 'pixelate':
       return { type: 'pixelate', size: 8 };
     case 'dot':
@@ -2466,6 +2982,8 @@ export function createDefaultEffect(kind: DefaultEffectKind): Effect {
       return { type: 'liquidGlass', ...LIQUID_GLASS_DEFAULTS };
     case 'tsunami':
       return { type: 'tsunami', ...TSUNAMI_DEFAULTS };
+    case 'rain':
+      return createDefaultRainEffect();
     case 'burn':
       return { type: 'burn', ...BURN_DEFAULTS };
     case 'liquidMetal':
