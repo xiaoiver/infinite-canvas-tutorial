@@ -24,6 +24,7 @@ import {
   crtUniformValues,
   flutedGlassUniformValues,
   tsunamiUniformValues,
+  rainUniformValues,
   burnUniformValues,
   halftoneDotsUniformValues,
   vignetteUniformValues,
@@ -231,6 +232,11 @@ export class PostProcessingRenderer {
       const tw = Math.max(1, width);
       const th = Math.max(1, height);
       uniformBuffer.push(...tsunamiUniformValues(effect, tw, th));
+    } else if (effect.type === 'rain') {
+      const { width, height } = this.swapChain.getCanvas();
+      const tw = Math.max(1, width);
+      const th = Math.max(1, height);
+      uniformBuffer.push(...rainUniformValues(effect, tw, th));
     } else if (effect.type === 'burn') {
       const { width, height } = this.swapChain.getCanvas();
       const tw = Math.max(1, width);

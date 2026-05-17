@@ -1,8 +1,6 @@
 import { css, html, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { map } from 'lit/directives/map.js';
 import { repeat } from 'lit/directives/repeat.js';
-import type { OverlayOpenCloseDetail } from '@spectrum-web-components/overlay';
 import '@spectrum-web-components/overlay/sp-overlay.js';
 import {
   type Gradient,
@@ -17,31 +15,17 @@ import { ColorType } from './color-picker';
 @customElement('ic-spectrum-input-gradient')
 export class InputGradient extends LitElement {
   static styles = css`
-    .gradient-actions {
-      display: flex;
-      align-items: center;
-      justify-content: end;
-      gap: 8px;
-    }
     .gradient-list {
       display: flex;
       flex-direction: column;
       gap: 4px;
-      overflow-y: auto;
       overflow-x: hidden;
-      height: 114px;
     }
 
-    .gradient-item {
+    .gradient-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-
-      > div {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
+      gap: 8px;
 
       sp-picker {
         width: 100px;
@@ -56,19 +40,23 @@ export class InputGradient extends LitElement {
       transform: rotate(90deg);
     }
 
-    .gradient-settings-popover {
+    .gradient-settings {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      padding: 8px;
+      padding-top: 4px;
 
       h4 {
         margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--spectrum-gray-800, #464646);
       }
 
       .angle-field {
         display: flex;
         align-items: center;
+        justify-content: space-between;
       }
 
       sp-number-field {
@@ -182,32 +170,36 @@ export class InputGradient extends LitElement {
   @property()
   opacity: number;
 
+  /** 单层渐变；多段叠加请在 fill/stroke 面板的 layer 列表中处理。 */
   @state()
-  gradients: Gradient[] = [];
-
-  @state()
-  private gradientSettingsOpenIndex: number | null = null;
+  private gradient: Gradient = createDefaultLinearGradient();
 
   updated(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('value')) {
-      this.gradients = parseGradient(this.value) || [];
-      this.ensureAllMeshPointsNum();
+      this.syncFromValue();
     }
   }
 
   connectedCallback() {
     super.connectedCallback();
     if (this.value) {
-      this.gradients = parseGradient(this.value) || [];
-      this.ensureAllMeshPointsNum();
+      this.syncFromValue();
+    } else {
+      this.gradient = createDefaultLinearGradient();
     }
+  }
+
+  private syncFromValue() {
+    const parsed = parseGradient(this.value) || [];
+    this.gradient = parsed[0] ?? createDefaultLinearGradient();
+    this.ensureMeshPointsNum();
   }
 
   private triggerGradientChangeEvent() {
     const event = new CustomEvent('color-change', {
       detail: {
         type: 'gradient',
-        value: convertGradientsToCSSValue(this.gradients),
+        value: convertGradientToCSSValue(this.gradient),
         opacity: this.opacity,
       },
       bubbles: true,
@@ -217,50 +209,12 @@ export class InputGradient extends LitElement {
     this.dispatchEvent(event);
   }
 
-  private addGradient() {
-    this.gradients = [
-      ...this.gradients,
-      {
-        type: 'linear-gradient',
-        angle: 0,
-        steps: [
-          {
-            offset: {
-              type: '%',
-              value: 0,
-            },
-            color: '#fff',
-          },
-          {
-            offset: {
-              type: '%',
-              value: 100,
-            },
-            color: '#000',
-          },
-        ],
-      },
-    ];
-
-    this.triggerGradientChangeEvent();
+  private touchGradient() {
+    this.gradient = { ...(this.gradient as object) } as Gradient;
   }
 
-  private removeGradient(index: number) {
-    if (this.gradientSettingsOpenIndex === index) {
-      this.gradientSettingsOpenIndex = null;
-    } else if (
-      this.gradientSettingsOpenIndex != null &&
-      this.gradientSettingsOpenIndex > index
-    ) {
-      this.gradientSettingsOpenIndex -= 1;
-    }
-    this.gradients = this.gradients.filter((_, i) => i !== index);
-
-    this.triggerGradientChangeEvent();
-  }
-
-  private addStop(index: number) {
-    const g = this.gradients[index];
+  private addStop() {
+    const g = this.gradient;
     if (g.type === 'mesh-gradient') {
       return;
     }
@@ -275,8 +229,8 @@ export class InputGradient extends LitElement {
     this.triggerGradientChangeEvent();
   }
 
-  private removeStop(index: number, stopIndex: number) {
-    const g = this.gradients[index];
+  private removeStop(stopIndex: number) {
+    const g = this.gradient;
     if (g.type === 'mesh-gradient') {
       return;
     }
@@ -285,26 +239,20 @@ export class InputGradient extends LitElement {
     this.triggerGradientChangeEvent();
   }
 
-  private handleOpacityChange(e: CustomEvent) {
-    const opacity = (e.target as any).value;
-    this.opacity = opacity;
-    this.triggerGradientChangeEvent();
-  }
-
-  private handleAngleChange(index: number, e: CustomEvent) {
+  private handleAngleChange(e: CustomEvent) {
     const angle = (e.target as any).value;
-    if (this.gradients[index].type === 'linear-gradient') {
-      (this.gradients[index] as any).angle = angle;
+    if (this.gradient.type === 'linear-gradient') {
+      (this.gradient as any).angle = angle;
 
       this.triggerGradientChangeEvent();
     }
   }
 
-  private handleGradientTypeChange(index: number, e: CustomEvent) {
+  private handleGradientTypeChange(e: CustomEvent) {
     const type = (e.target as any).value;
-    const prev = this.gradients[index];
+    const prev = this.gradient;
     if (type === 'mesh-gradient') {
-      this.gradients[index] = createDefaultMeshGradient();
+      this.gradient = createDefaultMeshGradient();
     } else if (isMeshGradientGradient(prev)) {
       const steps = [
         {
@@ -318,16 +266,16 @@ export class InputGradient extends LitElement {
       ];
       const center = { value: 50, type: '%' as const };
       if (type === 'linear-gradient') {
-        this.gradients[index] = { type: 'linear-gradient', angle: 0, steps };
+        this.gradient = { type: 'linear-gradient', angle: 0, steps };
       } else if (type === 'radial-gradient') {
-        this.gradients[index] = {
+        this.gradient = {
           type: 'radial-gradient',
           cx: center,
           cy: center,
           steps,
         };
       } else if (type === 'conic-gradient') {
-        this.gradients[index] = {
+        this.gradient = {
           type: 'conic-gradient',
           angle: 0,
           cx: center,
@@ -335,19 +283,18 @@ export class InputGradient extends LitElement {
           steps,
         };
       } else {
-        this.gradients[index] = { type: 'linear-gradient', angle: 0, steps };
+        this.gradient = { type: 'linear-gradient', angle: 0, steps };
       }
     } else {
-      (prev as { type: string }).type = type;
+      this.gradient = { ...(prev as object), type } as Gradient;
     }
-    this.gradients = [...this.gradients];
     this.triggerGradientChangeEvent();
   }
 
-  private handleColorChange(index: number, stopIndex: number, e: CustomEvent) {
+  private handleColorChange(stopIndex: number, e: CustomEvent) {
     e.stopPropagation();
     const color = (e.detail as any).value;
-    const g = this.gradients[index];
+    const g = this.gradient;
     if (g.type === 'mesh-gradient') {
       return;
     }
@@ -355,29 +302,25 @@ export class InputGradient extends LitElement {
     this.triggerGradientChangeEvent();
   }
 
-  private handleMeshBackgroundChange(index: number, e: CustomEvent) {
+  private handleMeshBackgroundChange(e: CustomEvent) {
     e.stopPropagation();
-    const g = this.gradients[index];
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
     g.backgroundColor = (e.detail as { value: string }).value;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
-  private handleMeshCornerChange(
-    index: number,
-    cornerIndex: number,
-    e: CustomEvent,
-  ) {
+  private handleMeshCornerChange(cornerIndex: number, e: CustomEvent) {
     e.stopPropagation();
-    const g = this.gradients[index];
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
     g.colors[cornerIndex] = (e.detail as { value: string }).value;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
@@ -423,44 +366,41 @@ export class InputGradient extends LitElement {
   }
 
   private handleMeshMetaPicker(
-    index: number,
     key: 'gradientTypeIndex' | 'warpShapeIndex',
     e: Event,
   ) {
     const v = Number(
       (e.currentTarget as HTMLInputElement & { value: string }).value,
     );
-    const g = this.gradients[index];
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
     (g as MeshGradient)[key] = v;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
   private handleMeshNumberField(
-    index: number,
     key: 'warpSize' | 'warpRatio' | 'time',
     e: Event,
   ) {
     const raw = (e.currentTarget as unknown as { value: number }).value;
-    const g = this.gradients[index];
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
     (g as MeshGradient)[key] = raw;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
   private handleMeshPositionChange(
-    index: number,
     cornerIndex: number,
     axis: 0 | 1,
     e: Event,
   ) {
-    const g = this.gradients[index];
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
@@ -470,7 +410,7 @@ export class InputGradient extends LitElement {
     const p = pos[cornerIndex]!;
     pos[cornerIndex] = axis === 0 ? [n, p[1]!] : [p[0]!, n];
     mg.positions = pos;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
@@ -514,26 +454,21 @@ export class InputGradient extends LitElement {
    * 首屏从 `value` 解析后若未带 `pointsNum`，与当前角点色/填充规则对齐写入，
    * 使 `formatMeshGradientStringSuffix`、增删角点与 mesh 行数一致。
    */
-  private ensureAllMeshPointsNum() {
-    let changed = false;
-    for (const g of this.gradients) {
-      if (!isMeshGradientGradient(g)) {
-        continue;
-      }
-      const mg = g as MeshGradient;
-      if (mg.pointsNum != null) {
-        continue;
-      }
-      mg.pointsNum = this.inferMeshLogicalPointCount(mg);
-      changed = true;
+  private ensureMeshPointsNum() {
+    const g = this.gradient;
+    if (!isMeshGradientGradient(g)) {
+      return;
     }
-    if (changed) {
-      this.gradients = [...this.gradients];
+    const mg = g as MeshGradient;
+    if (mg.pointsNum != null) {
+      return;
     }
+    mg.pointsNum = this.inferMeshLogicalPointCount(mg);
+    this.touchGradient();
   }
 
-  private addMeshCorner(gradientIndex: number) {
-    const g = this.gradients[gradientIndex];
+  private addMeshCorner() {
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
@@ -553,12 +488,12 @@ export class InputGradient extends LitElement {
     pos[c] = [d[c]![0]!, d[c]![1]!];
     mg.positions = pos;
     mg.pointsNum = c + 1;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
-  private removeMeshCorner(gradientIndex: number, cornerIndex: number) {
-    const g = this.gradients[gradientIndex];
+  private removeMeshCorner(cornerIndex: number) {
+    const g = this.gradient;
     if (!isMeshGradientGradient(g)) {
       return;
     }
@@ -579,12 +514,12 @@ export class InputGradient extends LitElement {
     }
     mg.positions = pos;
     mg.pointsNum = n - 1;
-    this.gradients = [...this.gradients];
+    this.touchGradient();
     this.triggerGradientChangeEvent();
   }
 
-  private handleOffsetChange(index: number, stopIndex: number, e: CustomEvent) {
-    const g = this.gradients[index];
+  private handleOffsetChange(stopIndex: number, e: CustomEvent) {
+    const g = this.gradient;
     if (g.type === 'mesh-gradient') {
       return;
     }
@@ -595,407 +530,295 @@ export class InputGradient extends LitElement {
   }
 
   render() {
-    return html`
-      <sp-action-button quiet size="s" @click="${this.addGradient}">
-        <sp-tooltip self-managed placement="bottom"> Add gradient </sp-tooltip>
-        <sp-icon-add slot="icon"></sp-icon-add>
-      </sp-action-button>
-      <div class="gradient-list">
-        ${map(this.gradients, (gradient, index) => {
-      const renderMeshSettings = (mg: MeshGradient) => {
-        const o = this.meshWithDefaults(mg);
-        const uv = this.ensureMeshPositions(mg);
-        return html`
-            <div class="mesh-gradient-panel">
-              <div class="mesh-warp-grid">
-                <sp-field-label
-                  for=${`mesh-gt-${index}`}
-                  side-aligned="start"
-                  >Gradient</sp-field-label
-                >
-                <sp-picker
-                  id=${`mesh-gt-${index}`}
-                  label="Gradient"
-                  value=${String(o.gradientTypeIndex)}
-                  size="s"
-                  @change=${this.handleMeshMetaPicker.bind(
-          this,
-          index,
-          'gradientTypeIndex',
-        )}
-                >
-                  <sp-menu-item value="0">Original</sp-menu-item>
-                  <sp-menu-item value="1">Bezier</sp-menu-item>
-                  <sp-menu-item value="2">Mesh</sp-menu-item>
-                  <sp-menu-item value="3">Enhanced bezier</sp-menu-item>
-                </sp-picker>
-                <sp-field-label
-                  for=${`mesh-ws-${index}`}
-                  side-aligned="start"
-                  >Warp</sp-field-label
-                >
-                <sp-picker
-                  id=${`mesh-ws-${index}`}
-                  label="Warp"
-                  value=${String(o.warpShapeIndex)}
-                  size="s"
-                  @change=${this.handleMeshMetaPicker.bind(
-          this,
-          index,
-          'warpShapeIndex',
-        )}
-                >
-                  <sp-menu-item value="0">Snoise</sp-menu-item>
-                  <sp-menu-item value="1">Sine</sp-menu-item>
-                  <sp-menu-item value="2">Value</sp-menu-item>
-                  <sp-menu-item value="3">Worley</sp-menu-item>
-                  <sp-menu-item value="4">FBM</sp-menu-item>
-                  <sp-menu-item value="5">Voronoi</sp-menu-item>
-                  <sp-menu-item value="6">Domain warp</sp-menu-item>
-                  <sp-menu-item value="7">Waves</sp-menu-item>
-                  <sp-menu-item value="8">Smooth</sp-menu-item>
-                  <sp-menu-item value="9">Sphere</sp-menu-item>
-                  <sp-menu-item value="10">Rows</sp-menu-item>
-                  <sp-menu-item value="11">Columns</sp-menu-item>
-                  <sp-menu-item value="12">Flat</sp-menu-item>
-                  <sp-menu-item value="13">Black hole</sp-menu-item>
-                </sp-picker>
-                <sp-field-label
-                  for=${`mesh-wsize-${index}`}
-                  side-aligned="start"
-                  >Warp size</sp-field-label
-                >
-                <sp-number-field
-                  id=${`mesh-wsize-${index}`}
-                  size="s"
-                  min="0"
-                  max="4"
-                  step="0.05"
-                  .value=${o.warpSize}
-                  @input=${this.handleMeshNumberField.bind(
-          this,
-          index,
-          'warpSize',
-        )}
-                ></sp-number-field>
-                <sp-field-label
-                  for=${`mesh-wr-${index}`}
-                  side-aligned="start"
-                  >Warp mix</sp-field-label
-                >
-                <sp-number-field
-                  id=${`mesh-wr-${index}`}
-                  size="s"
-                  min="0"
-                  max="2"
-                  step="0.05"
-                  .value=${o.warpRatio}
-                  @input=${this.handleMeshNumberField.bind(
-          this,
-          index,
-          'warpRatio',
-        )}
-                ></sp-number-field>
-              </div>
-              <div class="mesh-bg-row">
-                <sp-field-label
-                  for=${`mesh-bg-${index}`}
-                  side-aligned="start"
-                  >Background</sp-field-label
-                >
-                <sp-swatch
-                  id=${`mesh-bg-${index}`}
-                  color=${mg.backgroundColor}
-                  size="s"
-                ></sp-swatch>
-                <sp-overlay
-                  type="auto"
-                  trigger=${`mesh-bg-${index}@click`}
-                  placement="bottom"
-                >
-                  <sp-popover class="stop-color-popover" dialog>
-                    <ic-spectrum-color-picker
-                      .types=${[ColorType.Solid]}
-                      value=${mg.backgroundColor}
-                      @color-change=${this.handleMeshBackgroundChange.bind(
-          this,
-          index,
-        )}
-                    ></ic-spectrum-color-picker>
-                  </sp-popover>
-                </sp-overlay>
-              </div>
-              <div class="gradient-stops-header">
-                <span class="mesh-grad-label">Corners (UV 0–1)</span>
-                <sp-action-button
-                  quiet
-                  size="s"
-                  @click=${this.addMeshCorner.bind(this, index)}
-                  ?disabled=${this.meshCornerCount(mg) >= 9}
-                >
-                  <sp-tooltip self-managed placement="bottom"
-                    >Add corner</sp-tooltip
+    const gradient = this.gradient;
+    const renderMeshSettings = (mg: MeshGradient) => {
+      const o = this.meshWithDefaults(mg);
+      const uv = this.ensureMeshPositions(mg);
+      return html`
+        <div class="mesh-gradient-panel">
+          <div class="mesh-warp-grid">
+            <sp-field-label for="mesh-gt" side-aligned="start"
+              >Gradient</sp-field-label
+            >
+            <sp-picker
+              id="mesh-gt"
+              label="Gradient"
+              value=${String(o.gradientTypeIndex)}
+              size="s"
+              @change=${this.handleMeshMetaPicker.bind(
+        this,
+        'gradientTypeIndex',
+      )}
+            >
+              <sp-menu-item value="0">Original</sp-menu-item>
+              <sp-menu-item value="1">Bezier</sp-menu-item>
+              <sp-menu-item value="2">Mesh</sp-menu-item>
+              <sp-menu-item value="3">Enhanced bezier</sp-menu-item>
+            </sp-picker>
+            <sp-field-label for="mesh-ws" side-aligned="start"
+              >Warp</sp-field-label
+            >
+            <sp-picker
+              id="mesh-ws"
+              label="Warp"
+              value=${String(o.warpShapeIndex)}
+              size="s"
+              @change=${this.handleMeshMetaPicker.bind(this, 'warpShapeIndex')}
+            >
+              <sp-menu-item value="0">Snoise</sp-menu-item>
+              <sp-menu-item value="1">Sine</sp-menu-item>
+              <sp-menu-item value="2">Value</sp-menu-item>
+              <sp-menu-item value="3">Worley</sp-menu-item>
+              <sp-menu-item value="4">FBM</sp-menu-item>
+              <sp-menu-item value="5">Voronoi</sp-menu-item>
+              <sp-menu-item value="6">Domain warp</sp-menu-item>
+              <sp-menu-item value="7">Waves</sp-menu-item>
+              <sp-menu-item value="8">Smooth</sp-menu-item>
+              <sp-menu-item value="9">Sphere</sp-menu-item>
+              <sp-menu-item value="10">Rows</sp-menu-item>
+              <sp-menu-item value="11">Columns</sp-menu-item>
+              <sp-menu-item value="12">Flat</sp-menu-item>
+              <sp-menu-item value="13">Black hole</sp-menu-item>
+            </sp-picker>
+            <sp-field-label for="mesh-wsize" side-aligned="start"
+              >Warp size</sp-field-label
+            >
+            <sp-number-field
+              id="mesh-wsize"
+              size="s"
+              min="0"
+              max="4"
+              step="0.05"
+              .value=${o.warpSize}
+              @input=${this.handleMeshNumberField.bind(this, 'warpSize')}
+            ></sp-number-field>
+            <sp-field-label for="mesh-wr" side-aligned="start"
+              >Warp mix</sp-field-label
+            >
+            <sp-number-field
+              id="mesh-wr"
+              size="s"
+              min="0"
+              max="2"
+              step="0.05"
+              .value=${o.warpRatio}
+              @input=${this.handleMeshNumberField.bind(this, 'warpRatio')}
+            ></sp-number-field>
+          </div>
+          <div class="mesh-bg-row">
+            <sp-field-label for="mesh-bg" side-aligned="start"
+              >Background</sp-field-label
+            >
+            <sp-swatch id="mesh-bg" color=${mg.backgroundColor} size="s"></sp-swatch>
+            <sp-overlay type="auto" trigger="mesh-bg@click" placement="bottom">
+              <sp-popover class="stop-color-popover" dialog>
+                <ic-spectrum-color-picker
+                  .types=${[ColorType.Solid]}
+                  value=${mg.backgroundColor}
+                  @color-change=${this.handleMeshBackgroundChange.bind(this)}
+                ></ic-spectrum-color-picker>
+              </sp-popover>
+            </sp-overlay>
+          </div>
+          <div class="gradient-stops-header">
+            <span class="mesh-grad-label">Corners (UV 0–1)</span>
+            <sp-action-button
+              quiet
+              size="s"
+              @click=${this.addMeshCorner.bind(this)}
+              ?disabled=${this.meshCornerCount(mg) >= 9}
+            >
+              <sp-tooltip self-managed placement="bottom">Add corner</sp-tooltip>
+              <sp-icon-add slot="icon"></sp-icon-add>
+            </sp-action-button>
+          </div>
+          <div class="mesh-corners-list">
+            ${repeat(
+        Array.from(
+          { length: this.meshCornerCount(mg) },
+          (_, i) => i,
+        ),
+        (cornerIndex) => cornerIndex,
+        (cornerIndex) => html`
+                <div class="mesh-corner-row">
+                  <sp-swatch
+                    id=${`mesh-c-${cornerIndex}`}
+                    color=${mg.colors[cornerIndex]!}
+                    size="s"
+                  ></sp-swatch>
+                  <sp-overlay
+                    type="auto"
+                    trigger=${`mesh-c-${cornerIndex}@click`}
+                    placement="bottom"
                   >
-                  <sp-icon-add slot="icon"></sp-icon-add>
-                </sp-action-button>
-              </div>
-              <div class="mesh-corners-list">
-                ${repeat(
-          Array.from(
-            { length: this.meshCornerCount(mg) },
-            (_, i) => i,
-          ),
-          (cornerIndex) => cornerIndex,
-          (cornerIndex) => html`
-                    <div class="mesh-corner-row">
-                      <sp-swatch
-                        id=${`mesh-c-${index}-${cornerIndex}`}
-                        color=${mg.colors[cornerIndex]!}
-                        size="s"
-                      ></sp-swatch>
-                      <sp-overlay
-                        type="auto"
-                        trigger=${`mesh-c-${index}-${cornerIndex}@click`}
-                        placement="bottom"
-                      >
-                        <sp-popover class="stop-color-popover" dialog>
-                          <ic-spectrum-color-picker
-                            .types=${[ColorType.Solid]}
-                            value=${mg.colors[cornerIndex]!}
-                            @color-change=${this.handleMeshCornerChange.bind(
-            this,
-            index,
-            cornerIndex,
-          )}
-                          ></ic-spectrum-color-picker>
-                        </sp-popover>
-                      </sp-overlay>
-                      <sp-number-field
-                        label="X"
-                        size="s"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        .value=${uv[cornerIndex]![0]!}
-                        @input=${this.handleMeshPositionChange.bind(
-            this,
-            index,
-            cornerIndex,
-            0,
-          )}
-                      ></sp-number-field>
-                      <sp-number-field
-                        label="Y"
-                        size="s"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        .value=${uv[cornerIndex]![1]!}
-                        @input=${this.handleMeshPositionChange.bind(
-            this,
-            index,
-            cornerIndex,
-            1,
-          )}
-                      ></sp-number-field>
-
-                      <sp-action-button
-                        class="mesh-corner-remove"
-                        quiet
-                        size="s"
-                        @click=${this.removeMeshCorner.bind(
-            this,
-            index,
-            cornerIndex,
-          )}
-                        ?disabled=${this.meshCornerCount(mg) <= 1}
-                      >
-                        <sp-tooltip self-managed placement="bottom"
-                          >Remove corner</sp-tooltip
-                        >
-                        <sp-icon-remove slot="icon"></sp-icon-remove>
-                      </sp-action-button>
-                    </div>
-                  `,
+                    <sp-popover class="stop-color-popover" dialog>
+                      <ic-spectrum-color-picker
+                        .types=${[ColorType.Solid]}
+                        value=${mg.colors[cornerIndex]!}
+                        @color-change=${this.handleMeshCornerChange.bind(
+          this,
+          cornerIndex,
         )}
-              </div>
-            </div>
-            `;
-      };
-
-      const renderStopsSettings = () => html`
-            ${gradient.type === 'linear-gradient'
-          ? html` <div class="angle-field">
-                  <sp-field-label for="angle-${index}" side-aligned="start"
-                    >Angle</sp-field-label
-                  >
+                      ></ic-spectrum-color-picker>
+                    </sp-popover>
+                  </sp-overlay>
                   <sp-number-field
-                    id="angle-${index}"
+                    label="X"
                     size="s"
                     min="0"
-                    max="360"
-                    step="1"
-                    .value=${gradient.angle}
-                    @input=${this.handleAngleChange.bind(this, index)}
+                    max="1"
+                    step="0.01"
+                    .value=${uv[cornerIndex]![0]!}
+                    @input=${this.handleMeshPositionChange.bind(
+          this,
+          cornerIndex,
+          0,
+        )}
                   ></sp-number-field>
-                </div>`
-          : ''}
-            <div class="gradient-stops-header">
-              Stops
-              <sp-action-button
-                quiet
-                size="s"
-                @click="${this.addStop.bind(this, index)}"
-              >
-                <sp-tooltip self-managed placement="bottom">
-                  Add stop
-                </sp-tooltip>
-                <sp-icon-add slot="icon"></sp-icon-add>
-              </sp-action-button>
-            </div>
-            <div class="gradient-stops">
-              ${'steps' in gradient
-          ? gradient.steps.map((step, stopIndex) => {
-            return html`
-                      <div class="gradient-stop">
-                        <div>
-                          <sp-number-field
-                            id="off-${index}-${stopIndex}"
-                            size="s"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            format-options='{
+                  <sp-number-field
+                    label="Y"
+                    size="s"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    .value=${uv[cornerIndex]![1]!}
+                    @input=${this.handleMeshPositionChange.bind(
+          this,
+          cornerIndex,
+          1,
+        )}
+                  ></sp-number-field>
+
+                  <sp-action-button
+                    class="mesh-corner-remove"
+                    quiet
+                    size="s"
+                    @click=${this.removeMeshCorner.bind(this, cornerIndex)}
+                    ?disabled=${this.meshCornerCount(mg) <= 1}
+                  >
+                    <sp-tooltip self-managed placement="bottom"
+                      >Remove corner</sp-tooltip
+                    >
+                    <sp-icon-remove slot="icon"></sp-icon-remove>
+                  </sp-action-button>
+                </div>
+              `,
+      )}
+          </div>
+        </div>
+      `;
+    };
+
+    const renderStopsSettings = () => html`
+      ${gradient.type === 'linear-gradient'
+        ? html` <div class="angle-field">
+            <sp-field-label for="angle-grad" side-aligned="start"
+              >Angle</sp-field-label
+            >
+            <sp-number-field
+              id="angle-grad"
+              size="s"
+              min="0"
+              max="360"
+              step="1"
+              .value=${gradient.angle}
+              @input=${this.handleAngleChange.bind(this)}
+            ></sp-number-field>
+          </div>`
+        : ''}
+      <div class="gradient-stops-header">
+        Stops
+        <sp-action-button quiet size="s" @click="${this.addStop.bind(this)}">
+          <sp-tooltip self-managed placement="bottom"> Add stop </sp-tooltip>
+          <sp-icon-add slot="icon"></sp-icon-add>
+        </sp-action-button>
+      </div>
+      <div class="gradient-stops">
+        ${'steps' in gradient
+        ? gradient.steps.map((step, stopIndex) => {
+          return html`
+                <div class="gradient-stop">
+                  <div>
+                  <sp-swatch
+                      id=${`stop-color-${stopIndex}`}
+                      color=${step.color}
+                      size="s"
+                    ></sp-swatch>
+                    <sp-overlay
+                      type="auto"
+                      trigger=${`stop-color-${stopIndex}@click`}
+                      placement="bottom"
+                    >
+                      <sp-popover class="stop-color-popover" dialog>
+                        <ic-spectrum-color-picker
+                          .types=${[ColorType.Solid]}
+                          value=${step.color}
+                          @color-change=${this.handleColorChange.bind(
+            this,
+            stopIndex,
+          )}
+                        ></ic-spectrum-color-picker>
+                      </sp-popover>
+                    </sp-overlay>
+                    <sp-number-field
+                      id=${`off-${stopIndex}`}
+                      size="s"
+                      min="0"
+                      max="1"
+                      step="0.1"
+                      format-options='{
                                 "style": "percent"
                               }'
-                            value=${step.offset.value / 100}
-                            @input=${this.handleOffsetChange.bind(
-              this,
-              index,
-              stopIndex,
-            )}
-                          ></sp-number-field>
+                      value=${step.offset.value / 100}
+                      @input=${this.handleOffsetChange.bind(this, stopIndex)}
+                    ></sp-number-field>
 
-                          <sp-swatch
-                            id=${`stop-color-${index}-${stopIndex}`}
-                            color=${step.color}
-                            size="s"
-                          ></sp-swatch>
-                          <sp-overlay
-                            type="auto"
-                            trigger=${`stop-color-${index}-${stopIndex}@click`}
-                            placement="bottom"
-                          >
-                            <sp-popover class="stop-color-popover" dialog>
-                              <ic-spectrum-color-picker
-                                .types=${[ColorType.Solid]}
-                                value=${step.color}
-                                @color-change=${this.handleColorChange.bind(
-              this,
-              index,
-              stopIndex,
-            )}
-                              ></ic-spectrum-color-picker>
-                            </sp-popover>
-                          </sp-overlay>
-                        </div>
-                        <sp-action-button
-                          quiet
-                          size="s"
-                          @click="${this.removeStop.bind(
-              this,
-              index,
-              stopIndex,
-            )}"
-                        >
-                          <sp-tooltip self-managed placement="bottom">
-                            Remove stop
-                          </sp-tooltip>
-                          <sp-icon-remove slot="icon"></sp-icon-remove>
-                        </sp-action-button>
-                      </div>
-                    `;
-          })
-          : ''}
-            </div>
-          `;
+                    
+                  </div>
+                  <sp-action-button
+                    quiet
+                    size="s"
+                    @click="${this.removeStop.bind(this, stopIndex)}"
+                  >
+                    <sp-tooltip self-managed placement="bottom">
+                      Remove stop
+                    </sp-tooltip>
+                    <sp-icon-remove slot="icon"></sp-icon-remove>
+                  </sp-action-button>
+                </div>
+              `;
+        })
+        : ''}
+      </div>
+    `;
 
-      return html`<div class="gradient-item">
-            <div>
-              <sp-swatch
-                color=${convertGradientsToCSSValue([gradient])}
-                size="s"
-              ></sp-swatch>
-              <sp-picker
-                label="Gradient type"
-                size="s"
-                value=${gradient.type}
-                @change=${this.handleGradientTypeChange.bind(this, index)}
-              >
-                <sp-menu-item value="linear-gradient">Linear</sp-menu-item>
-                <sp-menu-item value="radial-gradient">Radial</sp-menu-item>
-                <sp-menu-item value="conic-gradient">Conic</sp-menu-item>
-                <sp-menu-item value="mesh-gradient">Mesh</sp-menu-item>
-              </sp-picker>
-            </div>
-            <div>
-              <sp-action-button
-                id=${`ic-grad-settings-${index}`}
-                quiet
-                size="s"
-                ?selected=${this.gradientSettingsOpenIndex === index}
-              >
-                <sp-icon-settings slot="icon"></sp-icon-settings>
-                <sp-tooltip self-managed placement="bottom">
-                  Gradient settings
-                </sp-tooltip>
-              </sp-action-button>
-              <sp-overlay
-                trigger=${`ic-grad-settings-${index}@click`}
-                placement="bottom"
-                type="auto"
-                .offset=${6}
-              >
-                <sp-popover
-                  class="gradient-settings-popover"
-                  dialog
-                  @sp-opened=${(e: CustomEvent<OverlayOpenCloseDetail>) => {
-          if (e.target !== e.currentTarget) {
-            return;
-          }
-          this.gradientSettingsOpenIndex = index;
-        }}
-                  @sp-closed=${(e: CustomEvent<OverlayOpenCloseDetail>) => {
-          if (e.target !== e.currentTarget) {
-            return;
-          }
-          if (this.gradientSettingsOpenIndex === index) {
-            this.gradientSettingsOpenIndex = null;
-          }
-        }}
-                >
-                  <h4>Gradient settings</h4>
-                  ${isMeshGradientGradient(gradient)
-          ? renderMeshSettings(gradient as MeshGradient)
-          : renderStopsSettings()}
-                </sp-popover>
-              </sp-overlay>
-              <sp-action-button
-                quiet
-                size="s"
-                @click="${this.removeGradient.bind(this, index)}"
-              >
-                <sp-tooltip self-managed placement="bottom">
-                  Remove gradient
-                </sp-tooltip>
-                <sp-icon-remove slot="icon"></sp-icon-remove>
-              </sp-action-button>
-            </div>
-          </div>`;
-    })}
+    return html`
+      <div class="gradient-list">
+        <div class="gradient-row">
+          <sp-picker
+            label="Gradient type"
+            size="s"
+            value=${gradient.type}
+            @change=${this.handleGradientTypeChange.bind(this)}
+          >
+            <sp-menu-item value="linear-gradient">Linear</sp-menu-item>
+            <sp-menu-item value="radial-gradient">Radial</sp-menu-item>
+            <sp-menu-item value="conic-gradient">Conic</sp-menu-item>
+            <sp-menu-item value="mesh-gradient">Mesh</sp-menu-item>
+          </sp-picker>
+        </div>
+        <div class="gradient-settings">
+          ${isMeshGradientGradient(gradient)
+        ? renderMeshSettings(gradient as MeshGradient)
+        : renderStopsSettings()}
+        </div>
       </div>
     `;
   }
+}
+
+function convertGradientToCSSValue(gradient: Gradient): string {
+  return convertGradientsToCSSValue([gradient]);
 }
 
 function convertGradientsToCSSValue(gradients: Gradient[]) {
@@ -1039,6 +862,29 @@ function convertGradientsToCSSValue(gradients: Gradient[]) {
       return '';
     })
     .join(', ');
+}
+
+function createDefaultLinearGradient(): Gradient {
+  return {
+    type: 'linear-gradient',
+    angle: 0,
+    steps: [
+      {
+        offset: {
+          type: '%',
+          value: 0,
+        },
+        color: '#fff',
+      },
+      {
+        offset: {
+          type: '%',
+          value: 100,
+        },
+        color: '#000',
+      },
+    ],
+  };
 }
 
 function createDefaultMeshGradient() {

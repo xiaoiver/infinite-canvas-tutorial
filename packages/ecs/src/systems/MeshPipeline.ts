@@ -823,6 +823,22 @@ export class MeshPipeline extends System {
       ) {
         safeAddComponent(entity, GeometryDirty);
       }
+      // 圆角矩形 / 椭圆 / 圆：实色描边与渐变、虚线等会改变 `SmoothPolyline` 是否参与，
+      // 需重新走 BatchManager.add 以按 ctor 重建缓存（仅 MaterialDirty 不够）。
+      if (
+        entity.has(Renderable) &&
+        !entity.has(Rough) &&
+        (entity.has(Ellipse) || entity.has(Rect) || entity.has(Circle))
+      ) {
+        const camera = getSceneRoot(entity);
+        if (!this.pendingRenderables.has(camera)) {
+          this.pendingRenderables.set(camera, []);
+        }
+        this.pendingRenderables.get(camera)!.push({
+          type: 'add',
+          entity,
+        });
+      }
     });
 
     new Set([
@@ -831,6 +847,20 @@ export class MeshPipeline extends System {
       ...this.ellipsesStrokeGradientBounds.addedChangedOrRemoved,
       ...this.circlesStrokeGradientBounds.addedChangedOrRemoved,
     ]).forEach((entity) => {
+      if (
+        entity.has(Renderable) &&
+        !entity.has(Rough) &&
+        (entity.has(Ellipse) || entity.has(Rect) || entity.has(Circle))
+      ) {
+        const camera = getSceneRoot(entity);
+        if (!this.pendingRenderables.has(camera)) {
+          this.pendingRenderables.set(camera, []);
+        }
+        this.pendingRenderables.get(camera)!.push({
+          type: 'add',
+          entity,
+        });
+      }
       if (getFirstGradientStrokeLayerValue(entity) != null) {
         safeAddComponent(entity, MaterialDirty);
         safeAddComponent(entity, GeometryDirty);

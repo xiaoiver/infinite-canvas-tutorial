@@ -156,30 +156,38 @@ export class BatchManager {
 
   private getOrCreateNonBatchableDrawcalls(shape: Entity) {
     let existed = this.#nonBatchableDrawcallsCache.get(shape);
-    if (!existed) {
-      existed = this.createDrawcalls(shape);
-      this.#nonBatchableDrawcallsCache.set(shape, existed);
-    } else {
-      const newDrawcalls = this.createDrawcalls(shape);
-      if (
-        newDrawcalls.length !== existed.length ||
-        newDrawcalls.some((drawcall, index) => {
-          return drawcall.constructor !== existed[index].constructor;
-        })
-      ) {
-        existed = newDrawcalls;
+    const desiredCtors = this.collectDrawcallCtors(shape);
+    if (existed) {
+      const ctorMismatch =
+        existed.length !== desiredCtors.length ||
+        existed.some((d, i) => d.constructor !== desiredCtors[i]);
+      if (ctorMismatch) {
         this.remove(shape);
-        this.add(shape, existed);
+        existed = undefined;
+      } else {
+        return existed;
       }
-      this.#nonBatchableDrawcallsCache.set(shape, existed);
     }
-
+    existed = this.createDrawcalls(shape);
+    this.#nonBatchableDrawcallsCache.set(shape, existed);
     return existed;
   }
 
   private getOrCreateBatchableDrawcalls(shape: Entity) {
     let existed: Drawcall[] | undefined =
       this.#batchableDrawcallsCache.get(shape);
+    const desiredCtors = this.collectDrawcallCtors(shape);
+    if (existed) {
+      const ctorMismatch =
+        existed.length !== desiredCtors.length ||
+        existed.some((d, i) => d.constructor !== desiredCtors[i]);
+      if (ctorMismatch) {
+        this.remove(shape);
+        existed = undefined;
+      } else {
+        return existed;
+      }
+    }
     if (!existed) {
       const geometryCtor = shape.has(Circle)
         ? shape.has(Rough)

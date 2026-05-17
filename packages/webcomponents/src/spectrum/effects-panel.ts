@@ -10,6 +10,7 @@ import {
   formatFilter,
   isSaturateOnlyAdjustment,
   createDefaultEffect,
+  BLUR_DEFAULTS,
   HEATMAP_DEFAULTS,
   GEM_SMOKE_DEFAULTS,
   GPUResource,
@@ -29,6 +30,13 @@ import {
   type LiquidGlassEffect,
   type FlutedGlassEffect,
   type TsunamiEffect,
+  type RainEffect,
+  type RainCodropsWaterParams,
+  type RainCodropsSimParams,
+  type BlurEffect,
+  RAINDROPS_WATER_DEFAULTS,
+  RAINDROPS_SIM_DEFAULTS,
+  isRainCodropsRainEffect,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -150,6 +158,9 @@ function effectKind(
   }
   if (isTsunamiEffect(effect)) {
     return 'tsunami';
+  }
+  if (effect.type === 'rain') {
+    return 'rain';
   }
   if (isBurnEffect(effect)) {
     return 'burn';
@@ -443,7 +454,6 @@ export class EffectsPanel extends LitElement {
     const kind = effectKind(effect);
     const canEditKind =
       kind !== 'fxaa' &&
-      kind !== 'blur' &&
       kind !== 'drop-shadow' &&
       kind !== 'unknown' &&
       kind !== 'adjustment-full';
@@ -470,6 +480,7 @@ export class EffectsPanel extends LitElement {
                     >${msg(str`Saturation`)}</sp-menu-item
                   >
                   <sp-menu-item value="noise">${msg(str`Noise`)}</sp-menu-item>
+                  <sp-menu-item value="blur">${msg(str`Blur`)}</sp-menu-item>
                   <sp-menu-item value="pixelate"
                     >${msg(str`Pixelate`)}</sp-menu-item
                   >
@@ -496,6 +507,9 @@ export class EffectsPanel extends LitElement {
                   >
                   <sp-menu-item value="tsunami"
                     >${msg(str`Tsunami`)}</sp-menu-item
+                  >
+                  <sp-menu-item value="rain"
+                    >${msg(str`Rain`)}</sp-menu-item
                   >
                   <sp-menu-item value="burn"
                     >${msg(str`Burn`)}</sp-menu-item
@@ -606,22 +620,62 @@ export class EffectsPanel extends LitElement {
       `;
     }
     if (effect.type === 'blur') {
+      const h = effect as BlurEffect;
+      const quality =
+        h.quality !== undefined && Number.isFinite(h.quality)
+          ? h.quality
+          : BLUR_DEFAULTS.quality;
+      const clamp = h.clamp !== false;
+      const patch = (partial: Partial<BlurEffect>) => {
+        const next = [...this.effects];
+        next[index] = { ...h, ...partial, type: 'blur' };
+        this.commit(next);
+      };
       return html`
         <sp-slider
           size="s"
           label=${msg(str`Radius`)}
+          label-visibility="none"
           min="0"
           max="64"
           step="0.5"
-          .value=${effect.value}
+          .value=${h.value}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, value: v };
-          this.commit(next);
+          patch({
+            value: Number.isFinite(v)
+              ? Math.max(0, Math.min(64, v))
+              : h.value,
+          });
         }}
         ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Quality`)}
+          label-visibility="none"
+          min="1"
+          max="8"
+          step="1"
+          .value=${quality}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({
+            quality: Number.isFinite(v)
+              ? Math.max(1, Math.min(8, Math.round(v)))
+              : quality,
+          });
+        }}
+        ></sp-slider>
+        <sp-switch
+          size="s"
+          ?checked=${clamp}
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          patch({ clamp: e.target.checked });
+        }}
+          >${msg(str`Clamp edges`)}</sp-switch
+        >
       `;
     }
     if (effect.type === 'pixelate') {
@@ -1091,6 +1145,216 @@ export class EffectsPanel extends LitElement {
         >${msg(str`Luminance blend (reflection)`)}
         </sp-switch>
       `;
+    }
+    if (effect.type === 'rain') {
+      const h = effect as RainEffect;
+      const patch = (partial: Partial<RainEffect>) => {
+        const next = [...this.effects];
+        next[index] = {
+          ...h,
+          ...partial,
+          type: 'rain',
+        } as unknown as Effect;
+        this.commit(next);
+      };
+
+      const D = RAINDROPS_WATER_DEFAULTS;
+      const cw = {
+        minRefraction: h.codropsWater?.minRefraction ?? D.minRefraction,
+        maxRefraction: h.codropsWater?.maxRefraction ?? D.maxRefraction,
+        brightness: h.codropsWater?.brightness ?? D.brightness,
+        alphaMultiply: h.codropsWater?.alphaMultiply ?? D.alphaMultiply,
+        alphaSubtract: h.codropsWater?.alphaSubtract ?? D.alphaSubtract,
+        renderShadow: h.codropsWater?.renderShadow ?? D.renderShadow,
+        renderShine: h.codropsWater?.renderShine ?? D.renderShine,
+      };
+      const patchCw = (partial: RainCodropsWaterParams) => {
+        patch({ codropsWater: { ...cw, ...partial } });
+      };
+      const SD = RAINDROPS_SIM_DEFAULTS;
+      const cs = {
+        rainChance: h.codropsSim?.rainChance ?? SD.rainChance,
+        rainLimit: h.codropsSim?.rainLimit ?? SD.rainLimit,
+        maxDrops: h.codropsSim?.maxDrops ?? SD.maxDrops,
+        dropletsRate: h.codropsSim?.dropletsRate ?? SD.dropletsRate,
+      };
+      const patchCs = (partial: RainCodropsSimParams) => {
+        patch({ codropsSim: { ...cs, ...partial } });
+      };
+      return html`
+          <sp-slider
+            size="s"
+            label=${msg(str`Min refraction`)}
+            min="0"
+            max="2000"
+            step="1"
+            .value=${cw.minRefraction}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCw({
+            minRefraction: Number.isFinite(v) ? v : cw.minRefraction,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Max refraction`)}
+            min="0"
+            max="2000"
+            step="1"
+            .value=${cw.maxRefraction}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCw({
+            maxRefraction: Number.isFinite(v) ? v : cw.maxRefraction,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Brightness`)}
+            min="0"
+            max="4"
+            step="0.01"
+            .value=${cw.brightness}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCw({ brightness: Number.isFinite(v) ? v : cw.brightness });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Alpha multiply`)}
+            min="0"
+            max="80"
+            step="0.5"
+            .value=${cw.alphaMultiply}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCw({
+            alphaMultiply: Number.isFinite(v) ? v : cw.alphaMultiply,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Alpha subtract`)}
+            min="0"
+            max="40"
+            step="0.5"
+            .value=${cw.alphaSubtract}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCw({
+            alphaSubtract: Number.isFinite(v) ? v : cw.alphaSubtract,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Sim scale`)}
+            min="0.25"
+            max="4"
+            step="0.05"
+            .value=${h.rainSimScale ?? 1}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patch({
+            rainSimScale: Number.isFinite(v) ? Math.max(0.05, v) : 1,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Rain chance`)}
+            min="0"
+            max="1"
+            step="0.01"
+            .value=${cs.rainChance}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCs({
+            rainChance: Number.isFinite(v)
+              ? Math.max(0, Math.min(1, v))
+              : cs.rainChance,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Rain limit (per frame)`)}
+            min="0"
+            max="20"
+            step="1"
+            .value=${cs.rainLimit}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCs({
+            rainLimit: Number.isFinite(v) ? Math.max(0, v) : cs.rainLimit,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Max drops`)}
+            min="50"
+            max="3000"
+            step="50"
+            .value=${cs.maxDrops}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCs({
+            maxDrops: Number.isFinite(v)
+              ? Math.max(1, Math.round(v))
+              : cs.maxDrops,
+          });
+        }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Droplets rate`)}
+            min="0"
+            max="200"
+            step="1"
+            .value=${cs.dropletsRate}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          patchCs({
+            dropletsRate: Number.isFinite(v)
+              ? Math.max(0, v)
+              : cs.dropletsRate,
+          });
+        }}
+          ></sp-slider>
+          <sp-switch
+            size="s"
+            ?checked=${cw.renderShadow}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as { checked?: boolean }).checked === true;
+          patchCw({ renderShadow: checked });
+        }}
+            >${msg(str`Render shadow`)}</sp-switch
+          >
+          <sp-switch
+            size="s"
+            ?checked=${cw.renderShine}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+          const checked = (e.target as { checked?: boolean }).checked === true;
+          patchCw({ renderShine: checked });
+        }}
+            >${msg(str`Render shine`)}</sp-switch
+          >
+        `;
     }
     if (isBurnEffect(effect)) {
       const h = effect as unknown as BurnEffect;
