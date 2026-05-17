@@ -205,12 +205,12 @@ canvas.addEventListener(Event.READY, async (e) => {
   const node2: RectSerializedNode = {
     id: '2',
     type: 'rect',
-    fills: [{ type: 'image', value: '/city.jpg', opacity: 1 }],
+    fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
     x: 100,
     y: 100,
     width: 400,
     height: 400,
-    filter: 'blur()'
+    filter: 'blur() rain()'
   };
 
   api.updateNodes([

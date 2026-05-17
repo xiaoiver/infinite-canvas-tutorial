@@ -209,6 +209,10 @@
       "liquidMetal": {
         "title": "液态金属",
         "description": "为 Lucide 图标与文字套用 liquid-metal 滤镜；可在右侧属性面板继续添加图层或调整效果参数。"
+      },
+      "rain": {
+        "title": "雨滴",
+        "description": "Codrops 风格雨滴与水面折射，可叠加在图片与形状上；支持 blur() rain() 组合，并在属性面板调整 rain() 参数。"
       }
     },
     "photoColors": {
@@ -229,6 +233,10 @@
     "liquidMetal": {
       "metaTitle": "液态金属",
       "metaDescription": "在图标字体与文字上预览 liquid-metal 滤镜效果。"
+    },
+    "rain": {
+      "metaTitle": "雨滴",
+      "metaDescription": "预览 rain() 滤镜：Codrops 雨滴模拟、水面折射，以及与 blur 等效果的叠加。"
     }
   }
 }

@@ -38,4 +38,10 @@ export const toolEntries: ToolEntry[] = [
         status: 'ready',
         screenshot: '/screenshot-liquid-metal.png',
     },
+    {
+        id: 'rain',
+        path: '/rain',
+        status: 'ready',
+        screenshot: '/screenshot-rain.png',
+    },
 ];
