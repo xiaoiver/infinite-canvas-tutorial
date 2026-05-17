@@ -1,4 +1,5 @@
 import {
+  collectRainCodropsDropTextureUrlsFromFilterValue,
   createDefaultRainEffect,
   formatFilter,
   parseEffect,
@@ -85,5 +86,18 @@ describe('rain() filter parse / format', () => {
         dropletsRate: 30,
       },
     });
+  });
+
+  it('collectRainCodropsDropTextureUrlsFromFilterValue lists Codrops sprite URLs', () => {
+    expect(
+      collectRainCodropsDropTextureUrlsFromFilterValue('rain()'),
+    ).toEqual([
+      RAIN_DROP_TEXTURE_DEFAULTS.dropColorUrl,
+      RAIN_DROP_TEXTURE_DEFAULTS.dropAlphaUrl,
+      RAIN_DROP_TEXTURE_DEFAULTS.dropShineUrl,
+    ]);
+    expect(
+      collectRainCodropsDropTextureUrlsFromFilterValue('blur(4px)'),
+    ).toEqual([]);
   });
 });

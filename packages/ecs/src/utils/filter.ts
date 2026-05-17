@@ -664,6 +664,27 @@ export function isRainCodropsRainEffect(
   return c.length > 0 && a.length > 0;
 }
 
+/** Drop sprite URLs referenced by Codrops `rain()` in a filter string (for export preload). */
+export function collectRainCodropsDropTextureUrlsFromFilterValue(
+  filterValue: string | undefined | null,
+): string[] {
+  if (filterValue == null || !String(filterValue).trim()) {
+    return [];
+  }
+  const urls: string[] = [];
+  for (const e of parseEffect(filterValue)) {
+    if (!isRainCodropsRainEffect(e)) {
+      continue;
+    }
+    urls.push(e.dropColorUrl.trim(), e.dropAlphaUrl.trim());
+    const shine = e.dropShineUrl?.trim();
+    if (shine) {
+      urls.push(shine);
+    }
+  }
+  return urls;
+}
+
 export function rainCodropsWaterUniformValues(
   effect: RainEffect,
   textureWidth: number,
