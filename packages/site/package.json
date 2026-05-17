@@ -20,7 +20,7 @@
   },
   "scripts": {
     "dev": "NODE_OPTIONS='--max-http-header-size=65536' vitepress dev docs",
-    "build": "vitepress build docs",
+    "build": "NODE_OPTIONS='--max-old-space-size=6144' vitepress build docs",
     "preview": "NODE_OPTIONS='--max-http-header-size=65536' vitepress preview docs"
   },
   "dependencies": {

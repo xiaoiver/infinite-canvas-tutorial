@@ -20,20 +20,25 @@ jobs:
         with:
           version: 9  
 
-      - name: Use Node.js 18
+      - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20.14.0
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Build packages
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' --filter '!@infinite-canvas-tutorial/site' run build
+
+      - name: Build site
         env:
+          # VitePress bundles many demo deps (vello wasm, lottie, etc.) and exceeds the default ~4GB heap.
+          NODE_OPTIONS: --max-old-space-size=6144
           ADSENSE_ENABLED: ${{ vars.ADSENSE_ENABLED || secrets.ADSENSE_ENABLED }}
           ADSENSE_CLIENT: ${{ secrets.ADSENSE_CLIENT }}
-        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' run build
+        run: pnpm --filter '@infinite-canvas-tutorial/site' run build
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1
