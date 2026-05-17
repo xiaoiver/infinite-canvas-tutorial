@@ -69,12 +69,14 @@ import {
   IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
 import {
+  collectRainCodropsDropTextureUrlsFromFilterValue,
   Effect,
   filterStringUsesEngineTimePost,
   paddingMat3,
   parseColor,
   parseEffect,
 } from '../utils';
+import { preloadRainDropTextures } from '../utils/rain-drop-texture-cache';
 import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
@@ -347,6 +349,44 @@ export class MeshPipeline extends System {
             ComputedTextMetrics,
           ).write,
     );
+  }
+
+  private collectRainUrlsForRasterExport(
+    api: { getNodes: () => SerializedNode[] },
+    nodes: SerializedNode[],
+  ): string[] {
+    const set = new Set<string>();
+    const list = nodes.length > 0 ? nodes : api.getNodes();
+    for (const n of list) {
+      const filterValue =
+        'filter' in n && typeof n.filter === 'string' ? n.filter : undefined;
+      for (const u of collectRainCodropsDropTextureUrlsFromFilterValue(
+        filterValue,
+      )) {
+        set.add(u);
+      }
+    }
+    return [...set];
+  }
+
+  private async runRasterScreenshotExport(
+    canvas: Entity,
+    camera: Entity,
+  ): Promise<void> {
+    if (!canvas.has(RasterScreenshotRequest)) {
+      return;
+    }
+    const req = canvas.read(RasterScreenshotRequest);
+    const { api } = canvas.read(Canvas);
+    const rainUrls = this.collectRainUrlsForRasterExport(api, req.nodes);
+    if (rainUrls.length > 0) {
+      try {
+        await preloadRainDropTextures(rainUrls);
+      } catch (err) {
+        console.warn('rain: preload drop textures before export failed', err);
+      }
+    }
+    this.renderCamera(canvas, camera, true);
   }
 
   @co private *setScreenshotTrigger(
@@ -879,6 +919,18 @@ export class MeshPipeline extends System {
 
     this.canvases.current.forEach((canvas) => {
       if (
+        this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas) &&
+        canvas.has(RasterScreenshotRequest)
+      ) {
+        const { cameras } = canvas.read(Canvas);
+        const firstCamera = cameras[0];
+        if (firstCamera) {
+          void this.runRasterScreenshotExport(canvas, firstCamera);
+        }
+        return;
+      }
+
+      if (
         this.rasterAnimationExportRequests.addedChangedOrRemoved.includes(
           canvas,
         ) &&
@@ -907,7 +959,6 @@ export class MeshPipeline extends System {
       let toRender =
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||
-        this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas) ||
         engineTimeNeedsContinuousRender ||
         fillTextureLiveNeedsContinuousRender;
 

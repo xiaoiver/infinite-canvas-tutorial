@@ -41,6 +41,7 @@ import {
   flutedGlassUniformValues,
   tsunamiUniformValues,
   isRainCodropsRainEffect,
+  type RainEffect,
   raindropsSimulatorOptionsForEffect,
   rainUniformValues,
   burnUniformValues,
@@ -57,7 +58,10 @@ import {
   kawaseKernelsForBlurEffect,
   kawaseBlurUniformValues,
 } from '../utils';
-import { loadRainDropTextureCached } from '../utils/rain-drop-texture-cache';
+import {
+  getRainDropTextureBitmapIfReady,
+  loadRainDropTextureCached,
+} from '../utils/rain-drop-texture-cache';
 import { upload2DRasterCanvasToTexture } from '../utils/rasterCanvasTextureUpload';
 import { RaindropsCodropsSimulator } from '../utils/raindrops-codrops/raindrops-simulator';
 import { getPostEffectEngineTimeSeconds } from '../utils/postEffectEngineTime';
@@ -1487,6 +1491,58 @@ export abstract class Drawcall {
     this.#heatmapEngineTimeCacheValid = false;
   }
 
+  /** Warm the liquid map so PNG/JPEG export is not a blank first frame. */
+  #primeRainCodropsSimulator(sim: RaindropsCodropsSimulator): void {
+    sim.update(0);
+    for (let i = 0; i < 45; i++) {
+      sim.update(1);
+    }
+  }
+
+  #initRainCodropsPassFromBitmaps(
+    passIndex: number,
+    uniformBufferRef: Buffer,
+    eff: RainEffect & { dropColorUrl: string; dropAlphaUrl: string },
+    colorBmp: ImageBitmap,
+    alphaBmp: ImageBitmap,
+    shineBmp?: ImageBitmap,
+  ): void {
+    const p = this.#postEffectPasses[passIndex];
+    if (!p || p.uniformBuffer !== uniformBufferRef) {
+      return;
+    }
+    p.rainDropSources = { color: colorBmp, alpha: alphaBmp };
+    const w = this.#filterWidth;
+    const h = this.#filterHeight;
+    p.rainSimulator = new RaindropsCodropsSimulator(
+      w,
+      h,
+      eff.rainSimScale ?? 1,
+      colorBmp,
+      alphaBmp,
+      raindropsSimulatorOptionsForEffect(eff),
+    );
+    p.rainLastEngineT = null;
+    this.#primeRainCodropsSimulator(p.rainSimulator);
+    if (p.rainWaterTexture) {
+      upload2DRasterCanvasToTexture(
+        p.rainWaterTexture,
+        p.rainSimulator.canvas,
+      );
+    }
+    if (shineBmp) {
+      p.rainShineTexture?.destroy();
+      p.rainShineTexture = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: shineBmp.width,
+        height: shineBmp.height,
+        usage: TextureUsage.SAMPLED,
+      });
+      p.rainShineTexture.setImageData([shineBmp]);
+      this.#rebuildPostEffectPassBindings();
+    }
+  }
+
   #resizeRainCodropsWaterMaps(width: number, height: number): void {
     for (const pass of this.#postEffectPasses) {
       if (pass.effect.type !== 'rain' || !isRainCodropsRainEffect(pass.effect)) {
@@ -1518,6 +1574,7 @@ export abstract class Drawcall {
           raindropsSimulatorOptionsForEffect(pass.effect),
         );
         pass.rainLastEngineT = null;
+        this.#primeRainCodropsSimulator(pass.rainSimulator);
         upload2DRasterCanvasToTexture(
           pass.rainWaterTexture,
           pass.rainSimulator.canvas,
@@ -1867,61 +1924,56 @@ export abstract class Drawcall {
         isRainCodropsRainEffect(effect) &&
         rainWaterTexture
       ) {
-        const uniformBufferRef = uniformBuffer;
-        void (async () => {
-          try {
-            const eff = effect;
-            const shineUrl = eff.dropShineUrl?.trim() ?? '';
-            const loads: Promise<ImageBitmap>[] = [
-              loadRainDropTextureCached(eff.dropColorUrl),
-              loadRainDropTextureCached(eff.dropAlphaUrl),
-            ];
-            if (shineUrl) {
-              loads.push(loadRainDropTextureCached(shineUrl));
-            }
-            const bitmaps = await Promise.all(loads);
-            const cb = bitmaps[0]!;
-            const ab = bitmaps[1]!;
-            const shineBmp = shineUrl ? bitmaps[2] : undefined;
-            const p = this.#postEffectPasses[passIndex];
-            if (!p || p.uniformBuffer !== uniformBufferRef) {
-              return;
-            }
-            p.rainDropSources = { color: cb, alpha: ab };
-            const w = this.#filterWidth;
-            const h = this.#filterHeight;
-            p.rainSimulator = new RaindropsCodropsSimulator(
-              w,
-              h,
-              eff.rainSimScale ?? 1,
-              cb,
-              ab,
-              raindropsSimulatorOptionsForEffect(eff),
-            );
-            p.rainLastEngineT = null;
-            if (p.rainWaterTexture) {
-              upload2DRasterCanvasToTexture(
-                p.rainWaterTexture,
-                p.rainSimulator.canvas,
+        const eff = effect;
+        const shineUrl = eff.dropShineUrl?.trim() ?? '';
+        const colorBmp = getRainDropTextureBitmapIfReady(eff.dropColorUrl);
+        const alphaBmp = getRainDropTextureBitmapIfReady(eff.dropAlphaUrl);
+        const shineBmpReady = shineUrl
+          ? getRainDropTextureBitmapIfReady(shineUrl)
+          : undefined;
+        if (colorBmp && alphaBmp) {
+          this.#initRainCodropsPassFromBitmaps(
+            passIndex,
+            uniformBuffer,
+            eff,
+            colorBmp,
+            alphaBmp,
+            shineBmpReady,
+          );
+        } else {
+          const uniformBufferRef = uniformBuffer;
+          void (async () => {
+            try {
+              const loads: Promise<ImageBitmap>[] = [
+                loadRainDropTextureCached(eff.dropColorUrl),
+                loadRainDropTextureCached(eff.dropAlphaUrl),
+              ];
+              if (shineUrl) {
+                loads.push(loadRainDropTextureCached(shineUrl));
+              }
+              const bitmaps = await Promise.all(loads);
+              const cb = bitmaps[0]!;
+              const ab = bitmaps[1]!;
+              const shineBmp = shineUrl ? bitmaps[2] : undefined;
+              const p = this.#postEffectPasses[passIndex];
+              if (!p || p.uniformBuffer !== uniformBufferRef) {
+                return;
+              }
+              this.#initRainCodropsPassFromBitmaps(
+                passIndex,
+                uniformBufferRef,
+                eff,
+                cb,
+                ab,
+                shineBmp,
               );
+              // Do not MaterialDirty: rain uses engine-time post refresh each frame;
+              // MaterialDirty would rebuild the chain and refetch drop textures in a loop.
+            } catch (err) {
+              console.warn('rain (codrops): failed to load drop textures', err);
             }
-            if (shineBmp) {
-              p.rainShineTexture?.destroy();
-              p.rainShineTexture = this.device.createTexture({
-                format: Format.U8_RGBA_NORM,
-                width: shineBmp.width,
-                height: shineBmp.height,
-                usage: TextureUsage.SAMPLED,
-              });
-              p.rainShineTexture.setImageData([shineBmp]);
-              this.#rebuildPostEffectPassBindings();
-            }
-            // Do not MaterialDirty: rain uses engine-time post refresh each frame;
-            // MaterialDirty would rebuild the chain and refetch drop textures in a loop.
-          } catch (err) {
-            console.warn('rain (codrops): failed to load drop textures', err);
-          }
-        })();
+          })();
+        }
       }
     }
 
