@@ -59,7 +59,13 @@ export class WebGLDeviceContribution implements DeviceContribution {
         ) as WebGLRenderingContext);
     }
 
-    return new Device_GL(gl as WebGLRenderingContext | WebGL2RenderingContext, {
+    if (!gl) {
+      throw new Error(
+        'WebGL context creation failed (canvas may be invalid or the browser WebGL context limit was reached).',
+      );
+    }
+
+    return new Device_GL(gl, {
       shaderDebug,
       trackResources,
     });

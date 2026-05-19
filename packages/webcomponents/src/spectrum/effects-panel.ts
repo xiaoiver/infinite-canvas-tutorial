@@ -36,7 +36,15 @@ import {
   type BlurEffect,
   RAINDROPS_WATER_DEFAULTS,
   RAINDROPS_SIM_DEFAULTS,
+  RAINDROP_FX_RENDER_DEFAULTS,
+  RAINDROP_FX_COMPOSE_DEFAULTS,
+  RAINDROP_FX_SIM_DEFAULTS,
+  type RaindropFxBackgroundWrapMode,
+  RAIN_DROPDROP_TEXTURE_DEFAULT,
+  isRainFxEffect,
   isRainCodropsRainEffect,
+  type RainFxParams,
+  type RainFxSimParams,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -1157,6 +1165,654 @@ export class EffectsPanel extends LitElement {
         } as unknown as Effect;
         this.commit(next);
       };
+
+      if (isRainFxEffect(h)) {
+        const RD = RAINDROP_FX_RENDER_DEFAULTS;
+        const RC = RAINDROP_FX_COMPOSE_DEFAULTS;
+        const fx = {
+          backgroundBlurSteps:
+            h.rainFx?.backgroundBlurSteps ?? RD.backgroundBlurSteps,
+          mist: h.rainFx?.mist ?? RD.mist,
+          mistBlurStep: h.rainFx?.mistBlurStep ?? RD.mistBlurStep,
+          mistTime: h.rainFx?.mistTime ?? RD.mistTime,
+          dropletsPerSecond:
+            h.rainFx?.dropletsPerSecond ?? RD.dropletsPerSecond,
+          dropletSize: h.rainFx?.dropletSize ?? [...RD.dropletSize],
+          smoothRaindrop: h.rainFx?.smoothRaindrop ?? [...RC.smoothRaindrop],
+          refractBase: h.rainFx?.refractBase ?? RC.refractBase,
+          refractScale: h.rainFx?.refractScale ?? RC.refractScale,
+          raindropCompose: h.rainFx?.raindropCompose ?? RD.raindropCompose,
+          backgroundWrapMode:
+            h.rainFx?.backgroundWrapMode ?? RD.backgroundWrapMode,
+          mistColor: h.rainFx?.mistColor ?? [...RD.mistColor],
+          raindropEraserSize:
+            h.rainFx?.raindropEraserSize ?? [...RD.raindropEraserSize],
+          raindropLightPos: h.rainFx?.raindropLightPos ?? [...RC.raindropLightPos],
+          raindropDiffuseLight:
+            h.rainFx?.raindropDiffuseLight ?? [...RC.raindropDiffuseLight],
+          raindropShadowOffset:
+            h.rainFx?.raindropShadowOffset ?? RC.raindropShadowOffset,
+          raindropSpecularLight:
+            h.rainFx?.raindropSpecularLight ?? [...RC.raindropSpecularLight],
+          raindropSpecularShininess:
+            h.rainFx?.raindropSpecularShininess ?? RC.raindropSpecularShininess,
+          raindropLightBump: h.rainFx?.raindropLightBump ?? RC.raindropLightBump,
+        };
+        const RS = RAINDROP_FX_SIM_DEFAULTS;
+        const sim = {
+          trailDistance: h.rainFxSim?.trailDistance ?? [...RS.trailDistance],
+          gravity: h.rainFxSim?.gravity ?? RS.gravity,
+          spawnLimit: h.rainFxSim?.spawnLimit ?? RS.spawnLimit,
+          trailDropDensity: h.rainFxSim?.trailDropDensity ?? RS.trailDropDensity,
+          trailSpread: h.rainFxSim?.trailSpread ?? RS.trailSpread,
+          xShifting: h.rainFxSim?.xShifting ?? [...RS.xShifting],
+          slipRate: h.rainFxSim?.slipRate ?? RS.slipRate,
+        };
+        const patchFx = (partial: RainFxParams) => {
+          patch({ rainFx: { ...h.rainFx, ...partial } });
+        };
+        const patchSim = (partial: RainFxSimParams) => {
+          patch({ rainFxSim: { ...h.rainFxSim, ...partial } });
+        };
+        const dropUrl =
+          h.dropTextureUrl?.trim() || RAIN_DROPDROP_TEXTURE_DEFAULT;
+        return html`
+          <sp-textfield
+            size="s"
+            label=${msg(str`Drop sprite URL`)}
+            .value=${dropUrl}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = e.target.value.trim();
+              patch({
+                dropTextureUrl: v || RAIN_DROPDROP_TEXTURE_DEFAULT,
+              });
+            }}
+          ></sp-textfield>
+          <sp-slider
+            size="s"
+            label=${msg(str`Background blur steps`)}
+            min="0"
+            max="6"
+            step="1"
+            .value=${fx.backgroundBlurSteps}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                backgroundBlurSteps: Number.isFinite(v)
+                  ? Math.max(0, Math.round(v))
+                  : fx.backgroundBlurSteps,
+              });
+            }}
+          ></sp-slider>
+          <sp-switch
+            size="s"
+            ?checked=${fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const checked =
+                (e.target as { checked?: boolean }).checked === true;
+              patchFx({ mist: checked });
+            }}
+            >${msg(str`Mist`)}</sp-switch
+          >
+          <sp-slider
+            size="s"
+            label=${msg(str`Mist blur step`)}
+            min="1"
+            max="8"
+            step="1"
+            .value=${fx.mistBlurStep}
+            editable
+            ?disabled=${!fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                mistBlurStep: Number.isFinite(v)
+                  ? Math.max(1, Math.round(v))
+                  : fx.mistBlurStep,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Mist fade time (s)`)}
+            min="1"
+            max="30"
+            step="0.5"
+            .value=${fx.mistTime}
+            editable
+            ?disabled=${!fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                mistTime: Number.isFinite(v)
+                  ? Math.max(0.1, v)
+                  : fx.mistTime,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Mist color R`)}
+            min="0"
+            max="1"
+            step="0.001"
+            .value=${fx.mistColor[0]}
+            editable
+            ?disabled=${!fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const r = Number.isFinite(v) ? v : fx.mistColor[0];
+              patchFx({
+                mistColor: [r, fx.mistColor[1], fx.mistColor[2], fx.mistColor[3]],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Mist color G`)}
+            min="0"
+            max="1"
+            step="0.001"
+            .value=${fx.mistColor[1]}
+            editable
+            ?disabled=${!fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const g = Number.isFinite(v) ? v : fx.mistColor[1];
+              patchFx({
+                mistColor: [fx.mistColor[0], g, fx.mistColor[2], fx.mistColor[3]],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Mist color B`)}
+            min="0"
+            max="1"
+            step="0.001"
+            .value=${fx.mistColor[2]}
+            editable
+            ?disabled=${!fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const b = Number.isFinite(v) ? v : fx.mistColor[2];
+              patchFx({
+                mistColor: [fx.mistColor[0], fx.mistColor[1], b, fx.mistColor[3]],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Mist color A`)}
+            min="0"
+            max="1"
+            step="0.001"
+            .value=${fx.mistColor[3]}
+            editable
+            ?disabled=${!fx.mist}
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const a = Number.isFinite(v) ? v : fx.mistColor[3];
+              patchFx({
+                mistColor: [fx.mistColor[0], fx.mistColor[1], fx.mistColor[2], a],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Droplets per second`)}
+            min="0"
+            max="1500"
+            step="10"
+            .value=${fx.dropletsPerSecond}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                dropletsPerSecond: Number.isFinite(v)
+                  ? Math.max(0, v)
+                  : fx.dropletsPerSecond,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Droplet size min`)}
+            min="1"
+            max="60"
+            step="1"
+            .value=${fx.dropletSize[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const min = Number.isFinite(v) ? v : fx.dropletSize[0];
+              patchFx({
+                dropletSize: [min, Math.max(min, fx.dropletSize[1])],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Droplet size max`)}
+            min="1"
+            max="60"
+            step="1"
+            .value=${fx.dropletSize[1]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const max = Number.isFinite(v) ? v : fx.dropletSize[1];
+              patchFx({
+                dropletSize: [Math.min(fx.dropletSize[0], max), max],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Smooth raindrop min`)}
+            min="0.9"
+            max="1"
+            step="0.001"
+            .value=${fx.smoothRaindrop[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const min = Number.isFinite(v) ? v : fx.smoothRaindrop[0];
+              patchFx({
+                smoothRaindrop: [min, Math.max(min, fx.smoothRaindrop[1])],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Smooth raindrop max`)}
+            min="0.9"
+            max="1"
+            step="0.001"
+            .value=${fx.smoothRaindrop[1]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const max = Number.isFinite(v) ? v : fx.smoothRaindrop[1];
+              patchFx({
+                smoothRaindrop: [Math.min(fx.smoothRaindrop[0], max), max],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Refraction base`)}
+            min="0"
+            max="1"
+            step="0.01"
+            .value=${fx.refractBase}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                refractBase: Number.isFinite(v) ? v : fx.refractBase,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Refraction scale`)}
+            min="0"
+            max="2"
+            step="0.01"
+            .value=${fx.refractScale}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                refractScale: Number.isFinite(v) ? v : fx.refractScale,
+              });
+            }}
+          ></sp-slider>
+          <sp-field-label size="s">${msg(str`Background wrap`)}</sp-field-label>
+          <sp-picker
+            size="s"
+            .value=${fx.backgroundWrapMode}
+            @change=${(e: Event & { target: { value: string } }) => {
+              const mode = e.target.value;
+              if (mode === 'clamp' || mode === 'repeat' || mode === 'mirror') {
+                patchFx({ backgroundWrapMode: mode as RaindropFxBackgroundWrapMode });
+              }
+            }}
+          >
+            <sp-menu-item value="clamp">${msg(str`Clamp`)}</sp-menu-item>
+            <sp-menu-item value="repeat">${msg(str`Repeat`)}</sp-menu-item>
+            <sp-menu-item value="mirror">${msg(str`Mirror`)}</sp-menu-item>
+          </sp-picker>
+          <sp-slider
+            size="s"
+            label=${msg(str`Eraser size min`)}
+            min="0.85"
+            max="1"
+            step="0.001"
+            .value=${fx.raindropEraserSize[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const min = Number.isFinite(v) ? v : fx.raindropEraserSize[0];
+              patchFx({
+                raindropEraserSize: [
+                  min,
+                  Math.max(min, fx.raindropEraserSize[1]),
+                ],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Eraser size max`)}
+            min="0.85"
+            max="1"
+            step="0.001"
+            .value=${fx.raindropEraserSize[1]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const max = Number.isFinite(v) ? v : fx.raindropEraserSize[1];
+              patchFx({
+                raindropEraserSize: [
+                  Math.min(fx.raindropEraserSize[0], max),
+                  max,
+                ],
+              });
+            }}
+          ></sp-slider>
+          <sp-field-label size="s">${msg(str`Compose mode`)}</sp-field-label>
+          <sp-picker
+            size="s"
+            .value=${fx.raindropCompose}
+            @change=${(e: Event & { target: { value: string } }) => {
+              const mode = e.target.value;
+              if (mode === 'smoother' || mode === 'harder') {
+                patchFx({ raindropCompose: mode });
+              }
+            }}
+          >
+            <sp-menu-item value="smoother">${msg(str`Smoother`)}</sp-menu-item>
+            <sp-menu-item value="harder">${msg(str`Harder`)}</sp-menu-item>
+          </sp-picker>
+          <sp-field-label size="s">${msg(str`Lighting`)}</sp-field-label>
+          <sp-slider
+            size="s"
+            label=${msg(str`Light X`)}
+            min="-3"
+            max="3"
+            step="0.01"
+            .value=${fx.raindropLightPos[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                raindropLightPos: [
+                  Number.isFinite(v) ? v : fx.raindropLightPos[0],
+                  fx.raindropLightPos[1],
+                  fx.raindropLightPos[2],
+                  fx.raindropLightPos[3],
+                ],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Light Y`)}
+            min="-3"
+            max="3"
+            step="0.01"
+            .value=${fx.raindropLightPos[1]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                raindropLightPos: [
+                  fx.raindropLightPos[0],
+                  Number.isFinite(v) ? v : fx.raindropLightPos[1],
+                  fx.raindropLightPos[2],
+                  fx.raindropLightPos[3],
+                ],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Light Z`)}
+            min="-3"
+            max="8"
+            step="0.01"
+            .value=${fx.raindropLightPos[2]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                raindropLightPos: [
+                  fx.raindropLightPos[0],
+                  fx.raindropLightPos[1],
+                  Number.isFinite(v) ? v : fx.raindropLightPos[2],
+                  fx.raindropLightPos[3],
+                ],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Diffuse`)}
+            min="0"
+            max="1"
+            step="0.01"
+            .value=${fx.raindropDiffuseLight[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const d = Number.isFinite(v) ? v : fx.raindropDiffuseLight[0];
+              patchFx({
+                raindropDiffuseLight: [d, d, d],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Shadow offset`)}
+            min="0"
+            max="2"
+            step="0.01"
+            .value=${fx.raindropShadowOffset}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                raindropShadowOffset: Number.isFinite(v)
+                  ? v
+                  : fx.raindropShadowOffset,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Specular shininess`)}
+            min="1"
+            max="512"
+            step="1"
+            .value=${fx.raindropSpecularShininess}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                raindropSpecularShininess: Number.isFinite(v)
+                  ? Math.max(1, Math.round(v))
+                  : fx.raindropSpecularShininess,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Light bump`)}
+            min="0"
+            max="4"
+            step="0.01"
+            .value=${fx.raindropLightBump}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchFx({
+                raindropLightBump: Number.isFinite(v) ? v : fx.raindropLightBump,
+              });
+            }}
+          ></sp-slider>
+          <sp-field-label size="s">${msg(str`Simulation`)}</sp-field-label>
+          <sp-slider
+            size="s"
+            label=${msg(str`Trail distance min`)}
+            min="5"
+            max="80"
+            step="1"
+            .value=${sim.trailDistance[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const min = Number.isFinite(v) ? v : sim.trailDistance[0];
+              patchSim({
+                trailDistance: [min, Math.max(min, sim.trailDistance[1])],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Trail distance max`)}
+            min="5"
+            max="80"
+            step="1"
+            .value=${sim.trailDistance[1]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const max = Number.isFinite(v) ? v : sim.trailDistance[1];
+              patchSim({
+                trailDistance: [Math.min(sim.trailDistance[0], max), max],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Gravity`)}
+            min="500"
+            max="5000"
+            step="50"
+            .value=${sim.gravity}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchSim({
+                gravity: Number.isFinite(v) ? v : sim.gravity,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Wind drift min`)}
+            min="0"
+            max="0.5"
+            step="0.01"
+            .value=${sim.xShifting[0]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const min = Number.isFinite(v) ? v : sim.xShifting[0];
+              patchSim({
+                xShifting: [min, Math.max(min, sim.xShifting[1])],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Wind drift max`)}
+            min="0"
+            max="0.5"
+            step="0.01"
+            .value=${sim.xShifting[1]}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              const max = Number.isFinite(v) ? v : sim.xShifting[1];
+              patchSim({
+                xShifting: [Math.min(sim.xShifting[0], max), max],
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Slip rate`)}
+            min="0"
+            max="1"
+            step="0.01"
+            .value=${sim.slipRate}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchSim({
+                slipRate: Number.isFinite(v) ? v : sim.slipRate,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Spawn limit`)}
+            min="100"
+            max="5000"
+            step="50"
+            .value=${sim.spawnLimit}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchSim({
+                spawnLimit: Number.isFinite(v)
+                  ? Math.max(1, Math.round(v))
+                  : sim.spawnLimit,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Trail drop density`)}
+            min="0"
+            max="1"
+            step="0.01"
+            .value=${sim.trailDropDensity}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchSim({
+                trailDropDensity: Number.isFinite(v)
+                  ? v
+                  : sim.trailDropDensity,
+              });
+            }}
+          ></sp-slider>
+          <sp-slider
+            size="s"
+            label=${msg(str`Trail spread`)}
+            min="0"
+            max="1"
+            step="0.01"
+            .value=${sim.trailSpread}
+            editable
+            @change=${(e: Event & { target: HTMLInputElement }) => {
+              const v = parseFloat(e.target.value);
+              patchSim({
+                trailSpread: Number.isFinite(v) ? v : sim.trailSpread,
+              });
+            }}
+          ></sp-slider>
+        `;
+      }
+
+      if (!isRainCodropsRainEffect(h)) {
+        return html``;
+      }
 
       const D = RAINDROPS_WATER_DEFAULTS;
       const cw = {

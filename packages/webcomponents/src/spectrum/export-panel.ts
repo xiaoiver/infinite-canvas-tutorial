@@ -1,7 +1,13 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import { ExportFormat, SerializedNode, AppState } from '@infinite-canvas-tutorial/ecs';
+import {
+  ExportFormat,
+  SerializedNode,
+  AppState,
+  isRainFxEffect,
+  parseEffect,
+} from '@infinite-canvas-tutorial/ecs';
 
 /** 与 `ExportOptions.gifQuality` / `AnimationGifQuality` 一致 */
 type GifExportQuality = 'high' | 'medium' | 'low';
@@ -86,6 +92,10 @@ export class ExportPanel extends LitElement {
   @state()
   private exportGifQuality: GifExportQuality = 'medium';
 
+  /** raindrop-fx PNG/JPEG: simulate N seconds from t=0 before capture; 0 = preview state */
+  @state()
+  private exportRainWarmup = '30';
+
   private getNodesForExport(): SerializedNode[] {
     if (!this.api) {
       return [];
@@ -98,6 +108,25 @@ export class ExportPanel extends LitElement {
       .map((id) => this.api.getNodeById(id))
       .filter((n): n is SerializedNode => n != null);
     return nodes.flatMap((node) => [node, ...this.api.getChildrenRecursively(node)]);
+  }
+
+  private exportTargetsUseRainFx(): boolean {
+    const nodes = this.getNodesForExport();
+    const checkFilter = (filterValue?: string) => {
+      if (!filterValue?.trim()) {
+        return false;
+      }
+      return parseEffect(filterValue).some(
+        (e) => e.type === 'rain' && isRainFxEffect(e),
+      );
+    };
+    if (nodes.length > 0) {
+      return nodes.some(
+        (n) => 'filter' in n && checkFilter(n.filter as string | undefined),
+      );
+    }
+    const appFilter = this.appState?.filter;
+    return checkFilter(typeof appFilter === 'string' ? appFilter : undefined);
   }
 
   private handleExportClick = () => {
@@ -118,18 +147,32 @@ export class ExportPanel extends LitElement {
         Math.min(15, parseFloat(this.exportDuration) || 3),
       );
       const fps = Math.max(1, Math.min(30, parseFloat(this.exportFps) || 24));
+      const rainWarmupSec = Math.max(
+        0,
+        Math.min(30, parseFloat(this.exportRainWarmup) || 0),
+      );
       this.api.export({
         format: this.exportFormat,
         nodes,
         scale,
         durationSec,
         fps,
+        ...(rainWarmupSec > 0 ? { rainWarmupSec } : {}),
         ...(this.exportFormat === ExportFormat.GIF
           ? { gifQuality: this.exportGifQuality }
           : {}),
       });
     } else {
-      this.api.export({ format: this.exportFormat, nodes, scale });
+      const rainWarmupSec = Math.max(
+        0,
+        Math.min(30, parseFloat(this.exportRainWarmup) || 0),
+      );
+      this.api.export({
+        format: this.exportFormat,
+        nodes,
+        scale,
+        ...(rainWarmupSec > 0 ? { rainWarmupSec } : {}),
+      });
     }
   };
 
@@ -165,6 +208,13 @@ export class ExportPanel extends LitElement {
     const v = (e.target as HTMLInputElement).value;
     if (v === 'high' || v === 'medium' || v === 'low') {
       this.exportGifQuality = v;
+    }
+  };
+
+  private handleExportRainWarmupChange = (e: Event) => {
+    const v = (e.target as HTMLInputElement).value;
+    if (v != null) {
+      this.exportRainWarmup = String(v);
     }
   };
 
@@ -274,6 +324,30 @@ export class ExportPanel extends LitElement {
             : null}
             `
         : null}
+        ${this.exportFormat === ExportFormat.PNG ||
+        this.exportFormat === ExportFormat.JPEG ||
+        this.exportFormat === ExportFormat.WEBM ||
+        this.exportFormat === ExportFormat.GIF
+        ? this.exportTargetsUseRainFx() ? html`
+              <div class="line">
+                <sp-field-label
+                  for="export-rain-warmup"
+                  side-aligned="start"
+                  >${msg(str`Rain warmup (s)`)}</sp-field-label
+                >
+                <sp-number-field
+                  id="export-rain-warmup"
+                  size="s"
+                  label=${msg(str`Rain warmup (s)`)}
+                  min="0"
+                  max="30"
+                  step="0.5"
+                  .value=${parseFloat(this.exportRainWarmup) || 0}
+                  @change=${this.handleExportRainWarmupChange}
+                ></sp-number-field>
+              </div>
+              `
+          : null : null}
         <sp-action-button
           class="export-cta"
           size="s"
