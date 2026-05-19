@@ -15,6 +15,13 @@ export type {
   ExpressionKeyframe,
   LottieExpressionEvalContext,
 } from './expressions';
+export {
+  ellipsePerimeter,
+  getShapePerimeter,
+  hasLottieTrim,
+  lottieTrimToStrokeDash,
+  readLottieTrim,
+} from './trim-paths';
 
 /**
  * @see https://github.com/airbnb/lottie-web/wiki/loadAnimation-options

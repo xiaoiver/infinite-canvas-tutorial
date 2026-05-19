@@ -496,6 +496,18 @@ function parseValue(
       context,
       convertVal,
     );
+    const first = lottieVal.k[0]?.s;
+    if (first) {
+      for (let i = 0; i < propNames.length; i++) {
+        if (
+          typeof target[propNames[i]] !== 'number'
+          || !Number.isFinite(target[propNames[i]])
+        ) {
+          const val = getMultiDimensionValue(first, i);
+          target[propNames[i]] = convertVal ? convertVal(val) : val;
+        }
+      }
+    }
   }
 }
 
@@ -1186,6 +1198,45 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
     return ecEl;
   }
 
+  /**
+   * Shallow spread would replace `el.shape` / `el.style` entirely when modifiers or group
+   * attrs also define those keys (e.g. trim paths → `shape: { trimStart }` wiping `cx/cy/rx/ry`).
+   */
+  function mergeShapeElementAttrs(
+    el: CustomElementOption,
+    ...overlays: Record<string, any>[]
+  ): CustomElementOption {
+    const merged: Record<string, any> = { ...el };
+    const shapeParts: Record<string, any>[] = [];
+    const styleParts: Record<string, any>[] = [];
+    if (el.shape && typeof el.shape === 'object') {
+      shapeParts.push(el.shape);
+    }
+    if (el.style && typeof el.style === 'object') {
+      styleParts.push(el.style);
+    }
+    for (const overlay of overlays) {
+      if (!overlay) {
+        continue;
+      }
+      const { shape, style, ...rest } = overlay;
+      Object.assign(merged, rest);
+      if (shape && typeof shape === 'object') {
+        shapeParts.push(shape);
+      }
+      if (style && typeof style === 'object') {
+        styleParts.push(style);
+      }
+    }
+    if (shapeParts.length) {
+      merged.shape = Object.assign({}, ...shapeParts);
+    }
+    if (styleParts.length) {
+      merged.style = Object.assign({}, ...styleParts);
+    }
+    return merged as CustomElementOption;
+  }
+
   function parseModifiers(
     shapes: Lottie.ShapeElement[],
     modifiers: {
@@ -1244,6 +1295,14 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
             modifiers.keyframeAnimations,
             context,
           );
+          parseValue(
+            (shape as Lottie.TrimShape).o,
+            modifiers.attrs,
+            'shape',
+            ['trimOffset'],
+            modifiers.keyframeAnimations,
+            context,
+          );
           break;
       }
     });
@@ -1281,8 +1340,8 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
             type: 'g',
             children: parseIterations(
               (shape as Lottie.GroupShapeElement).it,
-              // Modifiers will be applied to all childrens.
-              modifiers,
+              // Trim / repeater apply within this group only (Lottie shape list scope).
+              { attrs: {}, keyframeAnimations: [] },
               true,
             ),
           };
@@ -1343,12 +1402,12 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
     }, undefined) ?? 0;
 
     ecEls.forEach((el, idx) => {
-      // Apply modifiers first
-      const merged = {
-        ...el,
-        ...filterUndefined(modifiers.attrs),
-        ...attrs,
-      };
+      // Apply modifiers first (deep-merge `shape` / `style` so geometry is not clobbered).
+      const merged = mergeShapeElementAttrs(
+        el,
+        filterUndefined(modifiers.attrs),
+        attrs,
+      );
       el = keepTransformOnGroup ? stripGroupTransformAttrs(merged) : merged;
 
       if (keyframeAnimations.length || modifiers.keyframeAnimations.length) {

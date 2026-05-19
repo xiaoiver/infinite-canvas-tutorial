@@ -8,10 +8,88 @@ import type {
 } from './parser';
 import { AnimationController, API, EllipseSerializedNode, filterUndefined, GSerializedNode, PathSerializedNode, RectSerializedNode, SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  getShapePerimeter,
+  hasLottieTrim,
+  lottieTrimToStrokeDash,
+  readLottieTrim,
+  strokeDasharrayToWireString,
+} from './trim-paths';
 
 const eps = 0.0001;
 
 const deg2rad = (deg: number) => (deg * Math.PI) / 180;
+
+function serializedNodeHasStroke(node: Record<string, unknown>): boolean {
+  const stroke = node.stroke;
+  if (typeof stroke === 'string' && stroke !== '' && stroke !== 'none') {
+    return true;
+  }
+  const strokes = node.strokes;
+  if (Array.isArray(strokes)) {
+    return strokes.some(
+      (layer) =>
+        layer
+        && typeof layer === 'object'
+        && 'value' in layer
+        && typeof (layer as { value: unknown }).value === 'string'
+        && (layer as { value: string }).value !== 'none',
+    );
+  }
+  return false;
+}
+
+function applyLottieTrimPathsToSerializedNode(
+  node: SerializedNode,
+  elementType: string | undefined,
+  shape: Record<string, unknown> | undefined,
+  pathD?: string,
+): void {
+  if (
+    !shape
+    || !hasLottieTrim(shape)
+    || !serializedNodeHasStroke(node as unknown as Record<string, unknown>)
+  ) {
+    return;
+  }
+  const { trimStart, trimEnd, trimOffset } = readLottieTrim(shape);
+  const perimeter = getShapePerimeter(elementType, shape, pathD);
+  const dash = lottieTrimToStrokeDash(perimeter, trimStart, trimEnd, trimOffset);
+  const wire = node as SerializedNode & {
+    strokeDasharray?: string;
+    strokeDashoffset?: number;
+  };
+  wire.strokeDasharray = strokeDasharrayToWireString(dash.dasharray);
+  wire.strokeDashoffset = dash.dashoffset;
+}
+
+function applyLottieTrimPathsToKeyframe(
+  keyframe: Record<string, unknown>,
+  element: CustomElementOption,
+  object: SerializedNode,
+): void {
+  const mergedShape = {
+    ...(element.shape ?? {}),
+    ...(keyframe.shape && typeof keyframe.shape === 'object'
+      ? (keyframe.shape as Record<string, unknown>)
+      : {}),
+  };
+  if (!hasLottieTrim(mergedShape)) {
+    return;
+  }
+  let pathD: string | undefined;
+  if (element.type === 'path') {
+    pathD =
+      typeof keyframe.d === 'string'
+        ? keyframe.d
+        : (object as PathSerializedNode).d;
+  }
+  const { trimStart, trimEnd, trimOffset } = readLottieTrim(mergedShape);
+  const perimeter = getShapePerimeter(element.type, mergedShape, pathD);
+  const dash = lottieTrimToStrokeDash(perimeter, trimStart, trimEnd, trimOffset);
+  keyframe.strokeDasharray = dash.dasharray;
+  keyframe.strokeDashoffset = dash.dashoffset;
+}
 
 /**
  * Lottie `p` is the parent-space position of the anchor; ECS `translation` is the parent-space
@@ -526,7 +604,7 @@ export class LottieAnimation {
         y: cy - height / 2,
         width,
         height,
-        radius: r,
+        cornerRadius: r,
         zIndex: 0,
       } as RectSerializedNode;
     } else if (type === 'image') {
@@ -590,6 +668,13 @@ export class LottieAnimation {
         displayObject[key] = style[key];
       });
     }
+
+    applyLottieTrimPathsToSerializedNode(
+      displayObject,
+      type,
+      shape,
+      type === 'path' ? (displayObject as PathSerializedNode).d : undefined,
+    );
 
     if (keyframeAnimation) {
       if (Math.abs(localAx) > eps || Math.abs(localAy) > eps) {
@@ -749,7 +834,6 @@ export class LottieAnimation {
    * render Lottie Group to canvas or a mounted display object
    */
   render(api: API) {
-    console.log(this.displayObjects);
     api.updateNodes(this.displayObjects);
 
     this.displayObjects.forEach((child) => {
@@ -932,6 +1016,10 @@ export class LottieAnimation {
     element?: CustomElementOption,
   ) {
     keyframes.forEach((keyframe) => {
+      if (element) {
+        applyLottieTrimPathsToKeyframe(keyframe, element, object);
+      }
+
       // if ('offsetPath' in keyframe) {
       //   if (!object.style.offsetPath) {
       //     const [ox, oy] = object.getOrigin();
@@ -1012,10 +1100,13 @@ export class LottieAnimation {
         && typeof keyframe.shape === 'object'
       ) {
         const s = keyframe.shape as Record<string, number>;
-        for (const k of ['x', 'y', 'width', 'height', 'r'] as const) {
+        for (const k of ['x', 'y', 'width', 'height'] as const) {
           if (typeof s[k] === 'number' && Number.isFinite(s[k])) {
             (keyframe as Record<string, number>)[k] = s[k];
           }
+        }
+        if (typeof s.r === 'number' && Number.isFinite(s.r)) {
+          (keyframe as Record<string, number>).cornerRadius = s.r;
         }
         delete keyframe.shape;
       }
