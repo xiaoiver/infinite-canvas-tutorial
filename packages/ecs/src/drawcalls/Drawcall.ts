@@ -41,7 +41,10 @@ import {
   flutedGlassUniformValues,
   tsunamiUniformValues,
   isRainCodropsRainEffect,
+  isRainFxEffect,
   type RainEffect,
+  rainFxRenderOptionsFromEffect,
+  raindropSimulatorOptionsForEffect,
   raindropsSimulatorOptionsForEffect,
   rainUniformValues,
   burnUniformValues,
@@ -62,6 +65,20 @@ import {
   getRainDropTextureBitmapIfReady,
   loadRainDropTextureCached,
 } from '../utils/rain-drop-texture-cache';
+import {
+  getRaindropSpriteBitmapIfReady,
+  loadRaindropSpriteCached,
+} from '../utils/raindrop-sim/raindrop-sprite-cache';
+import {
+  RaindropSimulator,
+  RAINDROP_FX_SIM_DT,
+} from '../utils/raindrop-sim';
+import { RainFxGpuRenderer } from '../utils/rain-fx';
+import {
+  getRainFxAnimationExportContext,
+  getRainFxPngExportContext,
+  type RainFxPngExportContext,
+} from '../utils/rain-fx/rain-fx-export-context';
 import { upload2DRasterCanvasToTexture } from '../utils/rasterCanvasTextureUpload';
 import { RaindropsCodropsSimulator } from '../utils/raindrops-codrops/raindrops-simulator';
 import { getPostEffectEngineTimeSeconds } from '../utils/postEffectEngineTime';
@@ -102,8 +119,8 @@ import { frag as colorHalftoneFrag } from '../shaders/post-processing/colorHalft
 import { frag as halftoneDotsFrag } from '../shaders/post-processing/halftoneDots';
 import { frag as flutedGlassFrag } from '../shaders/post-processing/flutedGlass';
 import { frag as tsunamiFrag } from '../shaders/post-processing/tsunami';
-import { frag as rainFrag } from '../shaders/post-processing/rain';
 import { frag as rainCodropsWaterFrag } from '../shaders/post-processing/rainCodropsWater';
+import { frag as raindropComposeFrag } from '../shaders/post-processing/raindropCompose';
 import { frag as burnFrag } from '../shaders/post-processing/burn';
 import { frag as crtFrag } from '../shaders/post-processing/crt';
 import { frag as vignetteFrag } from '../shaders/post-processing/vignette';
@@ -137,8 +154,10 @@ type PostEffectChainPass = {
   rainWaterTexture?: Texture;
   /** GPU shine sprite for Codrops {@link rainCodropsWaterFrag} (`u_textureShine`). */
   rainShineTexture?: Texture;
-  rainSimulator?: RaindropsCodropsSimulator | null;
+  rainSimulator?: RaindropsCodropsSimulator | RaindropSimulator | null;
   rainDropSources?: { color: ImageBitmap; alpha: ImageBitmap };
+  rainFxSprite?: ImageBitmap;
+  rainFxGpu?: RainFxGpuRenderer | null;
   rainLastEngineT?: number | null;
 };
 
@@ -175,9 +194,6 @@ const FRAG_MAP: Record<
   },
   tsunami: {
     shader: tsunamiFrag,
-  },
-  rain: {
-    shader: rainFrag,
   },
   burn: {
     shader: burnFrag,
@@ -672,6 +688,8 @@ export abstract class Drawcall {
   #postEffectPasses: PostEffectChainPass[] = [];
   /** 1×1 fallback for Codrops rain when no shine URL (keeps sampler layout stable). */
   #rainCodropsShinePlaceholder?: Texture;
+  /** 1×1 transparent for raindrop-fx droplet/mist samplers. */
+  #rainFxAuxPlaceholder?: Texture;
 
   /** GPU upload target for Poisson R/G; same size as the post chain. */
   #liquidMetalPoissonTexture: Texture | null = null;
@@ -699,6 +717,16 @@ export abstract class Drawcall {
 
   /** True after {@link createPostProcessing} completes; drives teardown in {@link destroyFullPostProcessingChain}. */
   #filterChainReady = false;
+
+  /** GIF/WebM: reuse post chain across frames when size unchanged. */
+  protected isPostProcessingChainReadyForSize(width: number, height: number): boolean {
+    return (
+      this.#filterChainReady &&
+      this.#filterWidth === width &&
+      this.#filterHeight === height &&
+      this.#postEffectPasses.length > 0
+    );
+  }
 
   static #meshGradientPassByDevice = new WeakMap<Device, MeshGradientPass>();
 
@@ -1050,8 +1078,10 @@ export abstract class Drawcall {
       pass.uniformBuffer.destroy();
       pass.rainWaterTexture?.destroy();
       pass.rainShineTexture?.destroy();
+      pass.rainFxGpu?.destroy();
       // Drop sprites are session-cached by URL — do not ImageBitmap.close() here.
       pass.rainDropSources = undefined;
+      pass.rainFxGpu = null;
     }
     this.#postEffectPasses = [];
   }
@@ -1078,6 +1108,8 @@ export abstract class Drawcall {
     this.#pingPongTexture.destroy();
     this.#rainCodropsShinePlaceholder?.destroy();
     this.#rainCodropsShinePlaceholder = undefined;
+    this.#rainFxAuxPlaceholder?.destroy();
+    this.#rainFxAuxPlaceholder = undefined;
     this.#destroyLiquidMetalPoissonTexture();
     this.#destroyHeatmapProcessedTexture();
   }
@@ -1145,6 +1177,54 @@ export abstract class Drawcall {
     );
   }
 
+  #getRainFxAuxPlaceholderTexture(): Texture {
+    if (!this.#rainFxAuxPlaceholder) {
+      const tex = this.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: 1,
+        height: 1,
+        usage: TextureUsage.SAMPLED,
+      });
+      const c = DOMAdapter.get().createCanvas(1, 1);
+      const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+      ctx.clearRect(0, 0, 1, 1);
+      upload2DRasterCanvasToTexture(tex, c);
+      this.#rainFxAuxPlaceholder = tex;
+    }
+    return this.#rainFxAuxPlaceholder;
+  }
+
+  #createRainFxBindings(
+    pipeline: RenderPipeline,
+    uniformBuffer: Buffer,
+    sceneTex: Texture,
+    composeTex: Texture,
+  ): Bindings {
+    const aux = this.#getRainFxAuxPlaceholderTexture();
+    return this.renderCache.createBindings({
+      pipeline,
+      samplerBindings: [
+        { texture: sceneTex, sampler: this.createSampler() },
+        { texture: composeTex, sampler: this.createSampler() },
+        { texture: aux, sampler: this.createSampler() },
+        { texture: aux, sampler: this.createSampler() },
+      ],
+      uniformBufferBindings: [{ buffer: uniformBuffer }],
+    });
+  }
+
+  #createRainFxPassBindings(
+    pass: PostEffectChainPass,
+    sceneTex: Texture,
+  ): Bindings {
+    return this.#createRainFxBindings(
+      pass.pipeline,
+      pass.uniformBuffer,
+      sceneTex,
+      pass.rainWaterTexture!,
+    );
+  }
+
   #rebuildPostEffectPassBindings(): void {
     const t0 = this.#filterTexture;
     const t1 = this.#pingPongTexture;
@@ -1169,6 +1249,12 @@ export abstract class Drawcall {
             },
           ],
         });
+      } else if (
+        pass.effect.type === 'rain' &&
+        isRainFxEffect(pass.effect) &&
+        pass.rainWaterTexture
+      ) {
+        pass.bindings = this.#createRainFxPassBindings(pass, sceneTex);
       } else if (
         pass.effect.type === 'rain' &&
         isRainCodropsRainEffect(pass.effect) &&
@@ -1499,6 +1585,105 @@ export abstract class Drawcall {
     }
   }
 
+  #primeRainFxSimulator(sim: RaindropSimulator): void {
+    sim.update({ dt: 0, total: 0 });
+    for (let i = 0; i < 45; i++) {
+      sim.update({
+        dt: RAINDROP_FX_SIM_DT,
+        total: (i + 1) * RAINDROP_FX_SIM_DT,
+      });
+    }
+  }
+
+  /** Step raindrop-fx sim by `frameDt` using fixed {@link RAINDROP_FX_SIM_DT} substeps. */
+  #advanceRainFxSimulator(
+    sim: RaindropSimulator,
+    frameDt: number,
+    totalAtEnd: number,
+  ): void {
+    const steps = Math.max(1, Math.ceil(frameDt / RAINDROP_FX_SIM_DT));
+    const totalStart = totalAtEnd - steps * RAINDROP_FX_SIM_DT;
+    for (let i = 0; i < steps; i++) {
+      const total = totalStart + (i + 1) * RAINDROP_FX_SIM_DT;
+      sim.update({ dt: RAINDROP_FX_SIM_DT, total: Math.max(0, total) });
+    }
+  }
+
+  #runRainFxWarmupOnSimulator(sim: RaindropSimulator, warmupSec: number): void {
+    sim.update({ dt: 0, total: 0 });
+    const steps = Math.max(0, Math.ceil(warmupSec / RAINDROP_FX_SIM_DT));
+    for (let i = 0; i < steps; i++) {
+      sim.update({
+        dt: RAINDROP_FX_SIM_DT,
+        total: (i + 1) * RAINDROP_FX_SIM_DT,
+      });
+    }
+  }
+
+  /** Offline sim for PNG/JPEG export ({@link RainFxPngExportContext}). */
+  #warmupRainFxSimulatorForExport(
+    pass: PostEffectChainPass,
+    ctx: RainFxPngExportContext,
+  ): void {
+    const eff = pass.effect as RainEffect;
+    const w = this.#filterWidth;
+    const h = this.#filterHeight;
+    const sim = new RaindropSimulator(
+      raindropSimulatorOptionsForEffect(eff, w, h),
+    );
+    const captureSec = Math.max(
+      ctx.warmupSec,
+      ctx.captureTimeSec ?? ctx.warmupSec,
+    );
+    this.#runRainFxWarmupOnSimulator(sim, captureSec);
+    pass.rainSimulator = sim;
+    pass.rainLastEngineT = null;
+  }
+
+  #initRainFxPassFromSprite(
+    passIndex: number,
+    uniformBufferRef: Buffer,
+    eff: RainEffect & { dropTextureUrl: string },
+    sprite: ImageBitmap,
+  ): void {
+    const p = this.#postEffectPasses[passIndex];
+    if (!p || p.uniformBuffer !== uniformBufferRef) {
+      return;
+    }
+    const w = this.#filterWidth;
+    const h = this.#filterHeight;
+    p.rainFxSprite = sprite;
+    p.rainSimulator = new RaindropSimulator(
+      raindropSimulatorOptionsForEffect(eff, w, h),
+    );
+    p.rainLastEngineT = null;
+    if (!p.rainFxGpu) {
+      p.rainFxGpu = new RainFxGpuRenderer(
+        this.device,
+        this.renderCache,
+        w,
+        h,
+      );
+    } else {
+      p.rainFxGpu.resize(w, h);
+    }
+    p.rainFxGpu.setSpriteBitmap(sprite);
+    const anim = getRainFxAnimationExportContext();
+    if (anim) {
+      if (!anim.warmupApplied) {
+        if (anim.rainWarmupSec > 0) {
+          this.#runRainFxWarmupOnSimulator(p.rainSimulator, anim.rainWarmupSec);
+        } else {
+          p.rainSimulator.update({ dt: 0, total: 0 });
+        }
+        anim.warmupApplied = true;
+        p.rainLastEngineT = anim.rainWarmupSec;
+      }
+    } else {
+      this.#primeRainFxSimulator(p.rainSimulator);
+    }
+  }
+
   #initRainCodropsPassFromBitmaps(
     passIndex: number,
     uniformBufferRef: Buffer,
@@ -1540,6 +1725,27 @@ export abstract class Drawcall {
       });
       p.rainShineTexture.setImageData([shineBmp]);
       this.#rebuildPostEffectPassBindings();
+    }
+  }
+
+  #resizeRainFxMaps(width: number, height: number): void {
+    for (const pass of this.#postEffectPasses) {
+      if (pass.effect.type !== 'rain' || !isRainFxEffect(pass.effect)) {
+        continue;
+      }
+      pass.rainFxGpu?.resize(width, height);
+      const sprite = pass.rainFxSprite;
+      if (sprite) {
+        pass.rainSimulator = new RaindropSimulator(
+          raindropSimulatorOptionsForEffect(pass.effect, width, height),
+        );
+        pass.rainLastEngineT = null;
+        this.#primeRainFxSimulator(pass.rainSimulator);
+        pass.rainFxGpu?.setSpriteBitmap(sprite);
+      } else {
+        pass.rainSimulator = null;
+        pass.rainLastEngineT = null;
+      }
     }
   }
 
@@ -1586,6 +1792,32 @@ export abstract class Drawcall {
     }
   }
 
+  #prepareRainFxForPass(pass: PostEffectChainPass): void {
+    if (pass.effect.type !== 'rain' || !isRainFxEffect(pass.effect)) {
+      return;
+    }
+    if (pass.rainFxGpu) {
+      return;
+    }
+    if (
+      !pass.rainSimulator ||
+      !(pass.rainSimulator instanceof RaindropSimulator) ||
+      !pass.rainFxSprite
+    ) {
+      return;
+    }
+    const sim = pass.rainSimulator;
+    const anim = getRainFxAnimationExportContext();
+    const tNow = getPostEffectEngineTimeSeconds();
+    const frameDt = anim
+      ? anim.invFps
+      : pass.rainLastEngineT != null && pass.rainLastEngineT >= 0
+        ? Math.max(RAINDROP_FX_SIM_DT, tNow - pass.rainLastEngineT)
+        : 1 / 60;
+    this.#advanceRainFxSimulator(sim, frameDt, tNow);
+    pass.rainLastEngineT = tNow;
+  }
+
   #prepareRainCodropsForPass(pass: PostEffectChainPass): void {
     if (pass.effect.type !== 'rain' || !isRainCodropsRainEffect(pass.effect)) {
       return;
@@ -1599,11 +1831,9 @@ export abstract class Drawcall {
       timeScale = Math.max(0, (tNow - pass.rainLastEngineT) * 60);
     }
     pass.rainLastEngineT = tNow;
-    pass.rainSimulator.update(timeScale);
-    upload2DRasterCanvasToTexture(
-      pass.rainWaterTexture,
-      pass.rainSimulator.canvas,
-    );
+    const codrops = pass.rainSimulator as RaindropsCodropsSimulator;
+    codrops.update(timeScale);
+    upload2DRasterCanvasToTexture(pass.rainWaterTexture, codrops.canvas);
   }
 
   protected createPostProcessing(
@@ -1748,6 +1978,15 @@ export abstract class Drawcall {
         }
         continue;
       }
+      if (effect.type === 'rain') {
+        const frag = isRainCodropsRainEffect(effect)
+          ? rainCodropsWaterFrag
+          : isRainFxEffect(effect)
+            ? copyFrag
+            : raindropComposeFrag;
+        buildItems.push({ effect, frag });
+        continue;
+      }
       const entry = FRAG_MAP[effect.type];
       if (!entry) {
         console.warn(
@@ -1755,11 +1994,7 @@ export abstract class Drawcall {
         );
         continue;
       }
-      const frag =
-        effect.type === 'rain' && isRainCodropsRainEffect(effect)
-          ? rainCodropsWaterFrag
-          : entry.shader;
-      buildItems.push({ effect, frag });
+      buildItems.push({ effect, frag: entry.shader });
     }
 
     for (const item of buildItems) {
@@ -1874,16 +2109,16 @@ export abstract class Drawcall {
             ],
           })
           : effect.type === 'rain' &&
-            isRainCodropsRainEffect(effect) &&
-            rainWaterTexture
-            ? this.#createRainCodropsBindings(
-              pipeline,
-              uniformBuffer,
-              srcTexture,
-              rainWaterTexture,
-              this.#getRainCodropsShinePlaceholderTexture(),
-            )
-            : this.renderCache.createBindings({
+              isRainCodropsRainEffect(effect) &&
+              rainWaterTexture
+              ? this.#createRainCodropsBindings(
+                pipeline,
+                uniformBuffer,
+                srcTexture,
+                rainWaterTexture,
+                this.#getRainCodropsShinePlaceholderTexture(),
+              )
+              : this.renderCache.createBindings({
               pipeline,
               samplerBindings: [
                 {
@@ -1914,12 +2149,51 @@ export abstract class Drawcall {
         gemSmokePoissonAttempt,
         lutAtlasTexture,
         rainWaterTexture,
+        rainFxGpu:
+          effect.type === 'rain' && isRainFxEffect(effect)
+            ? new RainFxGpuRenderer(
+              this.device,
+              this.renderCache,
+              width,
+              height,
+            )
+            : undefined,
         rainSimulator: null,
         rainDropSources: undefined,
         rainLastEngineT: null,
       });
 
-      if (
+      if (effect.type === 'rain' && isRainFxEffect(effect)) {
+        const eff = effect;
+        const spriteBmp = getRaindropSpriteBitmapIfReady(eff.dropTextureUrl);
+        if (spriteBmp) {
+          this.#initRainFxPassFromSprite(
+            passIndex,
+            uniformBuffer,
+            eff,
+            spriteBmp,
+          );
+        } else {
+          const uniformBufferRef = uniformBuffer;
+          void (async () => {
+            try {
+              const bmp = await loadRaindropSpriteCached(eff.dropTextureUrl);
+              const p = this.#postEffectPasses[passIndex];
+              if (!p || p.uniformBuffer !== uniformBufferRef) {
+                return;
+              }
+              this.#initRainFxPassFromSprite(
+                passIndex,
+                uniformBufferRef,
+                eff,
+                bmp,
+              );
+            } catch (err) {
+              console.warn('rain (raindrop-fx): failed to load drop sprite', err);
+            }
+          })();
+        }
+      } else if (
         effect.type === 'rain' &&
         isRainCodropsRainEffect(effect) &&
         rainWaterTexture
@@ -2093,6 +2367,7 @@ export abstract class Drawcall {
           this.#pingPongTexture,
         );
 
+        this.#resizeRainFxMaps(width, height);
         this.#resizeRainCodropsWaterMaps(width, height);
         this.#rebuildPostEffectPassBindings();
         this.#destroyLiquidMetalPoissonTexture();
@@ -2164,9 +2439,54 @@ export abstract class Drawcall {
         pass.srcIsT0 ? t0 : t1,
         isWebGPU,
       );
+      this.#prepareRainFxForPass(pass);
       this.#prepareRainCodropsForPass(pass);
       const dstRT =
         pi % 2 === 0 ? this.#pingPongRenderTarget : this.#filterRenderTarget;
+      if (
+        pass.effect.type === 'rain' &&
+        isRainFxEffect(pass.effect) &&
+        pass.rainFxGpu &&
+        pass.rainSimulator instanceof RaindropSimulator
+      ) {
+        const srcTex = pass.srcIsT0 ? t0 : t1;
+        const pngCtx = getRainFxPngExportContext();
+        const animCtx = getRainFxAnimationExportContext();
+        let renderDt = 1 / 60;
+        const tNow = getPostEffectEngineTimeSeconds();
+        if (pngCtx && pngCtx.warmupSec > 0) {
+          this.#warmupRainFxSimulatorForExport(pass, pngCtx);
+          const tCap =
+            pngCtx.captureTimeSec != null &&
+            Number.isFinite(pngCtx.captureTimeSec) &&
+            pngCtx.captureTimeSec > 0
+              ? pngCtx.captureTimeSec
+              : pngCtx.warmupSec;
+          pass.rainLastEngineT = Math.max(0, tCap - renderDt);
+        } else if (animCtx) {
+          renderDt = animCtx.invFps;
+          this.#advanceRainFxSimulator(
+            pass.rainSimulator,
+            renderDt,
+            tNow,
+          );
+          pass.rainLastEngineT = tNow;
+        } else {
+          if (pass.rainLastEngineT != null && pass.rainLastEngineT >= 0) {
+            renderDt = Math.max(0, tNow - pass.rainLastEngineT);
+          }
+          pass.rainSimulator.update({ dt: RAINDROP_FX_SIM_DT, total: tNow });
+          pass.rainLastEngineT = tNow;
+        }
+        pass.rainFxGpu.render(
+          srcTex,
+          dstRT,
+          pass.rainSimulator.raindrops,
+          renderDt,
+          rainFxRenderOptionsFromEffect(pass.effect),
+        );
+        continue;
+      }
       const effectPass = this.device.createRenderPass({
         colorAttachment: [dstRT],
         colorResolveTo: [null],

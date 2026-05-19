@@ -56,6 +56,19 @@ export class RasterScreenshotRequest {
    */
   @field({ type: Type.float32, default: 1 })
   declare scale: number;
+
+  /**
+   * raindrop-fx only: simulate rain physics for this many seconds before capture
+   * (resets sim, primes, then fixed-dt steps). `0` = current preview state.
+   */
+  @field({ type: Type.float32, default: 0 })
+  declare rainWarmupSec: number;
+
+  /**
+   * raindrop-fx only: engine time for the capture frame (seconds). Defaults to `rainWarmupSec`.
+   */
+  @field({ type: Type.float32, default: 0 })
+  declare rainCaptureTimeSec: number;
 }
 
 /**
@@ -98,6 +111,13 @@ export class RasterAnimationExportRequest {
     default: 'high',
   })
   declare gifQuality: 'high' | 'medium' | 'low';
+
+  /**
+   * raindrop-fx only: simulate rain for this many seconds before frame `timeStart`.
+   * Engine time for frame i is `rainWarmupSec + timeStart + i / fps`.
+   */
+  @field({ type: Type.float32, default: 0 })
+  declare rainWarmupSec: number;
 }
 
 /**

@@ -48,6 +48,7 @@ import {
   parseEffect,
   filterRasterPostEffects,
 } from '../utils/filter';
+import { getRainFxAnimationExportContext } from '../utils/rain-fx/rain-fx-export-context';
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
 import {
   getFillLayerDecodedBitmap,
@@ -131,7 +132,10 @@ export class Mesh extends Drawcall {
       return raw;
     }
     this.#rawFillImageTexture = raw;
-    this.createPostProcessing(effects, raw, tw, th);
+    const anim = getRainFxAnimationExportContext();
+    if (!anim || !this.isPostProcessingChainReadyForSize(tw, th)) {
+      this.createPostProcessing(effects, raw, tw, th);
+    }
     const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
     this.#fillTextureFromPostChain = true;
     return filtered;

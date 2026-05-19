@@ -18,6 +18,84 @@ import { cssColorToHex, parseColor } from './color';
 import { hasValidStroke } from './style';
 import { getPostEffectEngineTimeSeconds } from './postEffectEngineTime';
 import { getFirstGradientStrokeLayerValue } from './strokeLayers';
+import {
+  RAIN_DROPDROP_TEXTURE_DEFAULT,
+  RAINDROP_FX_COMPOSE_DECAY_DEFAULT,
+  RAINDROP_FX_COMPOSE_DEFAULTS,
+  RAINDROP_FX_RENDER_DEFAULTS,
+  RAINDROP_FX_SIM_DEFAULTS,
+  simulatorOptionsForViewport,
+  type RaindropFxBackgroundWrapMode,
+  type RaindropFxComposeMode,
+} from './raindrop-sim/defaults';
+import type { SimulatorOptions } from './raindrop-sim/simulator';
+import type { RainFxRenderOptions } from './rain-fx/rain-fx-gpu-renderer';
+
+export {
+  RAIN_DROPDROP_TEXTURE_DEFAULT,
+  RAINDROP_FX_RENDER_DEFAULTS,
+  RAINDROP_FX_COMPOSE_DEFAULTS,
+  RAINDROP_FX_COMPOSE_DECAY_DEFAULT,
+  RAINDROP_FX_SIM_DEFAULTS,
+  RAINDROP_FX_SIM_DT,
+  type RaindropFxBackgroundWrapMode,
+  type RaindropFxComposeMode,
+} from './raindrop-sim/defaults';
+
+/** GPU raindrop-fx render overrides stored on {@link RainEffect}. */
+export type RainFxParams = RainFxRenderOptions;
+
+/** raindrop-fx simulator overrides ({@link RAINDROP_FX_SIM_DEFAULTS} when omitted). */
+export type RainFxSimParams = Partial<
+  Pick<
+    SimulatorOptions,
+    | 'spawnInterval'
+    | 'spawnSize'
+    | 'motionInterval'
+    | 'trailDistance'
+    | 'gravity'
+    | 'spawnLimit'
+    | 'trailDropDensity'
+    | 'trailSpread'
+    | 'xShifting'
+    | 'slipRate'
+  >
+>;
+
+export function rainFxRenderOptionsFromEffect(
+  effect: RainEffect,
+): RainFxRenderOptions {
+  return effect.rainFx ? { ...effect.rainFx } : {};
+}
+
+/** Full {@link RaindropSimulator} options for a raindrop-fx {@link RainEffect}. */
+export function raindropSimulatorOptionsForEffect(
+  effect: RainEffect,
+  width: number,
+  height: number,
+): SimulatorOptions {
+  const base = simulatorOptionsForViewport(width, height);
+  const s = effect.rainFxSim;
+  if (!s) {
+    return base;
+  }
+  const D = RAINDROP_FX_SIM_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  return {
+    ...base,
+    spawnInterval: s.spawnInterval ?? base.spawnInterval,
+    spawnSize: s.spawnSize ?? base.spawnSize,
+    motionInterval: s.motionInterval ?? base.motionInterval,
+    trailDistance: s.trailDistance ?? base.trailDistance,
+    gravity: z(s.gravity, D.gravity),
+    spawnLimit: Math.max(1, Math.round(z(s.spawnLimit, D.spawnLimit))),
+    trailDropDensity: z(s.trailDropDensity, D.trailDropDensity),
+    trailSpread: z(s.trailSpread, D.trailSpread),
+    xShifting: s.xShifting ?? base.xShifting,
+    slipRate: Math.max(0, Math.min(1, z(s.slipRate, D.slipRate))),
+  };
+}
 
 export interface FilterObject {
   name: string;
@@ -492,24 +570,21 @@ export type RainCodropsSimParams = {
  * Bare `rain()` parses/formats to this. Numeric-only `rain(…)` stays procedural.
  */
 export function createDefaultRainEffect(): RainEffect {
-  const P = RAIN_DEFAULTS;
   return {
     type: 'rain',
-    ...RAIN_DROP_TEXTURE_DEFAULTS,
-    rainSimScale: 1,
-    codropsWater: { ...RAINDROPS_WATER_DEFAULTS },
-    codropsSim: { ...RAINDROPS_SIM_DEFAULTS },
-    minRefraction: P.minRefraction,
-    refractionDelta: P.refractionDelta,
-    brightness: P.brightness,
-    density: P.density,
-    alphaMultiply: P.alphaMultiply,
-    alphaSubtract: P.alphaSubtract,
-    streakCount: P.streakCount,
-    dropScale: P.dropScale,
-    renderShadow: P.renderShadow,
-    renderShine: RAINDROPS_WATER_DEFAULTS.renderShine,
+    dropTextureUrl: RAIN_DROPDROP_TEXTURE_DEFAULT,
   };
+}
+
+/** raindrop-fx path: `rain()` or `rain(url("sprite.png"))`. */
+export function isRainFxEffect(
+  e: Effect,
+): e is RainEffect & { dropTextureUrl: string } {
+  if (e.type !== 'rain') {
+    return false;
+  }
+  const u = (e as RainEffect).dropTextureUrl?.trim() ?? '';
+  return u.length > 0;
 }
 
 function isDefaultRainCodropsEffect(e: RainEffect): boolean {
@@ -551,11 +626,17 @@ function isDefaultRainCodropsEffect(e: RainEffect): boolean {
 }
 
 /**
- * `rain()` → Codrops + {@link RAIN_DROP_TEXTURE_DEFAULTS}.  
- * `rain(url("…"), …)` or numeric-only args override (procedural when no `url()`).
+ * `rain()` / `rain(url("…"))` → raindrop-fx sim + compose (default sprite `/raindrop.png`).  
+ * `rain(url(color), url(alpha), …)` → legacy Codrops path.
  */
 export interface RainEffect {
   type: 'rain';
+  /** raindrop-fx style drop normal map (single sprite). Default {@link RAIN_DROPDROP_TEXTURE_DEFAULT}. */
+  dropTextureUrl?: string;
+  /** raindrop-fx GPU pass overrides ({@link RAINDROP_FX_RENDER_DEFAULTS} / compose defaults when omitted). */
+  rainFx?: RainFxParams;
+  /** raindrop-fx {@link RaindropSimulator} overrides ({@link RAINDROP_FX_SIM_DEFAULTS} when omitted). */
+  rainFxSim?: RainFxSimParams;
   /** When both URLs are set, {@link RaindropsCodropsSimulator} + {@link rainCodropsWater} shader. */
   dropColorUrl?: string;
   dropAlphaUrl?: string;
@@ -567,17 +648,17 @@ export interface RainEffect {
   codropsSim?: RainCodropsSimParams;
   /** Overrides {@link RAINDROPS_WATER_DEFAULTS} for the water pass. */
   codropsWater?: RainCodropsWaterParams;
-  /** Procedural-only (ignored when Codrops URLs are set). */
-  minRefraction: number;
-  refractionDelta: number;
-  brightness: number;
-  density: number;
-  alphaMultiply: number;
-  alphaSubtract: number;
-  streakCount: number;
-  dropScale: number;
-  renderShadow: boolean;
-  renderShine: boolean;
+  /** Legacy procedural rain (unused when raindrop-fx or Codrops path is active). */
+  minRefraction?: number;
+  refractionDelta?: number;
+  brightness?: number;
+  density?: number;
+  alphaMultiply?: number;
+  alphaSubtract?: number;
+  streakCount?: number;
+  dropScale?: number;
+  renderShadow?: boolean;
+  renderShine?: boolean;
 }
 
 /** Options for {@link RaindropsCodropsSimulator} from a {@link RainEffect} (Codrops path only). */
@@ -656,7 +737,7 @@ function parseCodropsRainNumericTail(parts: string[]): {
 export function isRainCodropsRainEffect(
   e: Effect,
 ): e is RainEffect & { dropColorUrl: string; dropAlphaUrl: string } {
-  if (e.type !== 'rain') {
+  if (e.type !== 'rain' || isRainFxEffect(e)) {
     return false;
   }
   const c = (e as RainEffect).dropColorUrl?.trim() ?? '';
@@ -664,8 +745,8 @@ export function isRainCodropsRainEffect(
   return c.length > 0 && a.length > 0;
 }
 
-/** Drop sprite URLs referenced by Codrops `rain()` in a filter string (for export preload). */
-export function collectRainCodropsDropTextureUrlsFromFilterValue(
+/** Drop sprite URLs in filter strings (raindrop-fx + Codrops) for export preload. */
+export function collectRainDropTextureUrlsFromFilterValue(
   filterValue: string | undefined | null,
 ): string[] {
   if (filterValue == null || !String(filterValue).trim()) {
@@ -673,6 +754,13 @@ export function collectRainCodropsDropTextureUrlsFromFilterValue(
   }
   const urls: string[] = [];
   for (const e of parseEffect(filterValue)) {
+    if (e.type !== 'rain') {
+      continue;
+    }
+    if (isRainFxEffect(e)) {
+      urls.push(e.dropTextureUrl.trim());
+      continue;
+    }
     if (!isRainCodropsRainEffect(e)) {
       continue;
     }
@@ -683,6 +771,40 @@ export function collectRainCodropsDropTextureUrlsFromFilterValue(
     }
   }
   return urls;
+}
+
+/** @deprecated Use {@link collectRainDropTextureUrlsFromFilterValue} */
+export const collectRainCodropsDropTextureUrlsFromFilterValue =
+  collectRainDropTextureUrlsFromFilterValue;
+
+export function raindropComposeUniformValues(_effect: RainEffect): number[] {
+  const C = RAINDROP_FX_COMPOSE_DEFAULTS;
+  const smooth = C.smoothRaindrop;
+  const refractBase = C.refractBase;
+  const refractScale = C.refractScale;
+  const lightPos = C.raindropLightPos;
+  const diffuse = C.raindropDiffuseLight;
+  const shadow = C.raindropShadowOffset;
+  const spec = C.raindropSpecularLight;
+  const shininess = C.raindropSpecularShininess;
+  return [
+    smooth[0],
+    smooth[1],
+    refractBase,
+    refractScale,
+    lightPos[0],
+    lightPos[1],
+    lightPos[2],
+    lightPos[3],
+    diffuse[0],
+    diffuse[1],
+    diffuse[2],
+    shadow,
+    spec[0],
+    spec[1],
+    spec[2],
+    shininess,
+  ];
 }
 
 export function rainCodropsWaterUniformValues(
@@ -731,6 +853,9 @@ export function rainUniformValues(
   textureWidth: number,
   textureHeight: number,
 ): number[] {
+  if (isRainFxEffect(effect)) {
+    return raindropComposeUniformValues(effect);
+  }
   if (isRainCodropsRainEffect(effect)) {
     return rainCodropsWaterUniformValues(effect, textureWidth, textureHeight);
   }
@@ -1816,6 +1941,456 @@ export function formatLutFilterSegment(lutKey: string, strength: number): string
   return `lut(url("${u}"), ${strength})`;
 }
 
+/** Single `url("…")` for raindrop-fx sprite; returns null if Codrops multi-url tail. */
+function parseRainFxDropTextureUrl(params: string): string | null {
+  const raw = params.trim();
+  if (!raw) {
+    return null;
+  }
+  const m = raw.match(/^\s*url\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (!m || m.index === undefined) {
+    return null;
+  }
+  const after = raw.slice(m.index + m[0].length);
+  if (/^\s*,\s*url\s*\(/i.test(after)) {
+    return null;
+  }
+  const u = m[2]!.trim();
+  return u.length > 0 ? u : null;
+}
+
+function mergedRainFxParams(fx?: RainFxParams): RainFxParams {
+  const R = RAINDROP_FX_RENDER_DEFAULTS;
+  const C = RAINDROP_FX_COMPOSE_DEFAULTS;
+  return {
+    backgroundBlurSteps: fx?.backgroundBlurSteps ?? R.backgroundBlurSteps,
+    backgroundWrapMode: fx?.backgroundWrapMode ?? R.backgroundWrapMode,
+    mist: fx?.mist ?? R.mist,
+    mistTime: fx?.mistTime ?? R.mistTime,
+    mistBlurStep: fx?.mistBlurStep ?? R.mistBlurStep,
+    dropletsPerSecond: fx?.dropletsPerSecond ?? R.dropletsPerSecond,
+    dropletSize: fx?.dropletSize ?? [...R.dropletSize],
+    smoothRaindrop: fx?.smoothRaindrop ?? [...C.smoothRaindrop],
+    refractBase: fx?.refractBase ?? C.refractBase,
+    refractScale: fx?.refractScale ?? C.refractScale,
+    raindropCompose: fx?.raindropCompose ?? R.raindropCompose,
+    mistColor: fx?.mistColor ?? [...R.mistColor],
+    raindropEraserSize: fx?.raindropEraserSize ?? [...R.raindropEraserSize],
+    raindropLightPos: fx?.raindropLightPos ?? [...C.raindropLightPos],
+    raindropDiffuseLight: fx?.raindropDiffuseLight ?? [...C.raindropDiffuseLight],
+    raindropShadowOffset: fx?.raindropShadowOffset ?? C.raindropShadowOffset,
+    raindropSpecularLight: fx?.raindropSpecularLight ?? [...C.raindropSpecularLight],
+    raindropSpecularShininess:
+      fx?.raindropSpecularShininess ?? C.raindropSpecularShininess,
+    raindropLightBump: fx?.raindropLightBump ?? C.raindropLightBump,
+    composeDecay: fx?.composeDecay ?? RAINDROP_FX_COMPOSE_DECAY_DEFAULT,
+  };
+}
+
+function mergedRainFxSimParams(sim?: RainFxSimParams): Required<RainFxSimParams> {
+  const D = RAINDROP_FX_SIM_DEFAULTS;
+  return {
+    spawnInterval: sim?.spawnInterval ?? [...D.spawnInterval],
+    spawnSize: sim?.spawnSize ?? [...D.spawnSize],
+    motionInterval: sim?.motionInterval ?? [...D.motionInterval],
+    trailDistance: sim?.trailDistance ?? [...D.trailDistance],
+    gravity: sim?.gravity ?? D.gravity,
+    spawnLimit: sim?.spawnLimit ?? D.spawnLimit,
+    trailDropDensity: sim?.trailDropDensity ?? D.trailDropDensity,
+    trailSpread: sim?.trailSpread ?? D.trailSpread,
+    xShifting: sim?.xShifting ?? [...D.xShifting],
+    slipRate: sim?.slipRate ?? D.slipRate,
+  };
+}
+
+function rainFxMistColorDefault(): [number, number, number, number] {
+  return [...RAINDROP_FX_RENDER_DEFAULTS.mistColor];
+}
+
+function rainFxEraserDefault(): [number, number] {
+  return [...RAINDROP_FX_RENDER_DEFAULTS.raindropEraserSize];
+}
+
+function rainFxVec4Near(
+  a: [number, number, number, number],
+  b: [number, number, number, number],
+  eps = 0.0005,
+): boolean {
+  return (
+    Math.abs(a[0] - b[0]) <= eps &&
+    Math.abs(a[1] - b[1]) <= eps &&
+    Math.abs(a[2] - b[2]) <= eps &&
+    Math.abs(a[3] - b[3]) <= eps
+  );
+}
+
+function rainFxVec2Near(
+  a: [number, number],
+  b: [number, number],
+  eps = 0.0005,
+): boolean {
+  return Math.abs(a[0] - b[0]) <= eps && Math.abs(a[1] - b[1]) <= eps;
+}
+
+function rainFxVec3Near(
+  a: [number, number, number],
+  b: [number, number, number],
+  eps = 0.0005,
+): boolean {
+  return (
+    Math.abs(a[0] - b[0]) <= eps &&
+    Math.abs(a[1] - b[1]) <= eps &&
+    Math.abs(a[2] - b[2]) <= eps
+  );
+}
+
+function isDefaultRainFxSimParams(sim?: RainFxSimParams): boolean {
+  const m = mergedRainFxSimParams(sim);
+  const D = RAINDROP_FX_SIM_DEFAULTS;
+  return (
+    m.spawnInterval[0] === D.spawnInterval[0] &&
+    m.spawnInterval[1] === D.spawnInterval[1] &&
+    m.spawnSize[0] === D.spawnSize[0] &&
+    m.spawnSize[1] === D.spawnSize[1] &&
+    m.motionInterval[0] === D.motionInterval[0] &&
+    m.motionInterval[1] === D.motionInterval[1] &&
+    m.trailDistance[0] === D.trailDistance[0] &&
+    m.trailDistance[1] === D.trailDistance[1] &&
+    m.gravity === D.gravity &&
+    m.spawnLimit === D.spawnLimit &&
+    m.trailDropDensity === D.trailDropDensity &&
+    m.trailSpread === D.trailSpread &&
+    m.xShifting[0] === D.xShifting[0] &&
+    m.xShifting[1] === D.xShifting[1] &&
+    m.slipRate === D.slipRate
+  );
+}
+
+function isDefaultRainFxEffect(e: RainEffect): boolean {
+  return isDefaultRainFxParams(e.rainFx) && isDefaultRainFxSimParams(e.rainFxSim);
+}
+
+function rainFxParsedTailToEffectFields(parsed: {
+  rainFx: RainFxParams;
+  rainFxSim?: RainFxSimParams;
+}): Pick<RainEffect, 'rainFx' | 'rainFxSim'> {
+  return {
+    ...(!isDefaultRainFxParams(parsed.rainFx) ? { rainFx: parsed.rainFx } : {}),
+    ...(parsed.rainFxSim && !isDefaultRainFxSimParams(parsed.rainFxSim)
+      ? { rainFxSim: parsed.rainFxSim }
+      : {}),
+  };
+}
+
+function isDefaultRainFxParams(fx?: RainFxParams): boolean {
+  const m = mergedRainFxParams(fx);
+  const R = RAINDROP_FX_RENDER_DEFAULTS;
+  const C = RAINDROP_FX_COMPOSE_DEFAULTS;
+  return (
+    m.backgroundBlurSteps === R.backgroundBlurSteps &&
+    m.mist === R.mist &&
+    m.mistTime === R.mistTime &&
+    m.mistBlurStep === R.mistBlurStep &&
+    m.dropletsPerSecond === R.dropletsPerSecond &&
+    m.dropletSize![0] === R.dropletSize[0] &&
+    m.dropletSize![1] === R.dropletSize[1] &&
+    m.smoothRaindrop![0] === C.smoothRaindrop[0] &&
+    m.smoothRaindrop![1] === C.smoothRaindrop[1] &&
+    m.refractBase === C.refractBase &&
+    m.refractScale === C.refractScale &&
+    m.raindropCompose === R.raindropCompose &&
+    m.backgroundWrapMode === R.backgroundWrapMode &&
+    rainFxVec4Near(m.mistColor!, rainFxMistColorDefault()) &&
+    rainFxVec2Near(m.raindropEraserSize!, rainFxEraserDefault()) &&
+    rainFxVec4Near(m.raindropLightPos!, [...C.raindropLightPos]) &&
+    rainFxVec3Near(m.raindropDiffuseLight!, [...C.raindropDiffuseLight]) &&
+    m.raindropShadowOffset === C.raindropShadowOffset &&
+    rainFxVec3Near(m.raindropSpecularLight!, [...C.raindropSpecularLight]) &&
+    m.raindropSpecularShininess === C.raindropSpecularShininess &&
+    m.raindropLightBump === C.raindropLightBump &&
+    m.composeDecay === RAINDROP_FX_COMPOSE_DECAY_DEFAULT
+  );
+}
+
+function wrapModeFromIndex(i: number): RaindropFxBackgroundWrapMode {
+  if (i >= 1.5) {
+    return 'mirror';
+  }
+  if (i >= 0.5) {
+    return 'repeat';
+  }
+  return 'clamp';
+}
+
+function wrapModeToIndex(mode: RaindropFxBackgroundWrapMode): number {
+  if (mode === 'mirror') {
+    return 2;
+  }
+  if (mode === 'repeat') {
+    return 1;
+  }
+  return 0;
+}
+
+function parseRainFxNumericTail(tail: string):
+  | { rainFx: RainFxParams; rainFxSim?: RainFxSimParams }
+  | undefined {
+  const parts = tail
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+  if (parts.length === 0) {
+    return undefined;
+  }
+  const R = RAINDROP_FX_RENDER_DEFAULTS;
+  const C = RAINDROP_FX_COMPOSE_DEFAULTS;
+  const pf = (i: number, def: number) => {
+    const v = parts[i] !== undefined ? parseFloat(parts[i]!) : def;
+    return Number.isFinite(v) ? v : def;
+  };
+  const composeMode: RaindropFxComposeMode =
+    pf(11, 0) > 0.5 ? 'harder' : 'smoother';
+  const fx: RainFxParams = {
+    backgroundBlurSteps: Math.round(pf(0, R.backgroundBlurSteps)),
+    mist: pf(1, R.mist ? 1 : 0) > 0.5,
+    mistTime: pf(2, R.mistTime),
+    mistBlurStep: Math.round(pf(3, R.mistBlurStep)),
+    dropletsPerSecond: pf(4, R.dropletsPerSecond),
+    dropletSize: [pf(5, R.dropletSize[0]), pf(6, R.dropletSize[1])],
+    smoothRaindrop: [pf(7, C.smoothRaindrop[0]), pf(8, C.smoothRaindrop[1])],
+    refractBase: pf(9, C.refractBase),
+    refractScale: pf(10, C.refractScale),
+    raindropCompose: composeMode,
+  };
+  if (parts.length > 12) {
+    fx.composeDecay = pf(12, RAINDROP_FX_COMPOSE_DECAY_DEFAULT);
+  }
+  if (parts.length > 13) {
+    fx.backgroundWrapMode = wrapModeFromIndex(pf(13, 0));
+  }
+  if (parts.length > 17) {
+    fx.mistColor = [pf(14, R.mistColor[0]), pf(15, R.mistColor[1]), pf(16, R.mistColor[2]), pf(17, R.mistColor[3])];
+  }
+  if (parts.length > 19) {
+    fx.raindropEraserSize = [pf(18, R.raindropEraserSize[0]), pf(19, R.raindropEraserSize[1])];
+  }
+  if (parts.length > 31) {
+    fx.raindropLightPos = [
+      pf(20, C.raindropLightPos[0]),
+      pf(21, C.raindropLightPos[1]),
+      pf(22, C.raindropLightPos[2]),
+      pf(23, C.raindropLightPos[3]),
+    ];
+    fx.raindropDiffuseLight = [
+      pf(24, C.raindropDiffuseLight[0]),
+      pf(25, C.raindropDiffuseLight[1]),
+      pf(26, C.raindropDiffuseLight[2]),
+    ];
+    fx.raindropShadowOffset = pf(27, C.raindropShadowOffset);
+    fx.raindropSpecularLight = [
+      pf(28, C.raindropSpecularLight[0]),
+      pf(29, C.raindropSpecularLight[1]),
+      pf(30, C.raindropSpecularLight[2]),
+    ];
+    fx.raindropSpecularShininess = pf(31, C.raindropSpecularShininess);
+  }
+  if (parts.length > 32) {
+    fx.raindropLightBump = pf(32, C.raindropLightBump);
+  }
+  const sim: RainFxSimParams = {};
+  let hasSim = false;
+  if (parts.length > 34) {
+    sim.trailDistance = [pf(33, RAINDROP_FX_SIM_DEFAULTS.trailDistance[0]), pf(34, RAINDROP_FX_SIM_DEFAULTS.trailDistance[1])];
+    hasSim = true;
+  }
+  if (parts.length > 35) {
+    sim.gravity = pf(35, RAINDROP_FX_SIM_DEFAULTS.gravity);
+    hasSim = true;
+  }
+  if (parts.length > 36) {
+    sim.spawnLimit = Math.round(pf(36, RAINDROP_FX_SIM_DEFAULTS.spawnLimit));
+    hasSim = true;
+  }
+  if (parts.length > 37) {
+    sim.trailDropDensity = pf(37, RAINDROP_FX_SIM_DEFAULTS.trailDropDensity);
+    hasSim = true;
+  }
+  if (parts.length > 38) {
+    sim.trailSpread = pf(38, RAINDROP_FX_SIM_DEFAULTS.trailSpread);
+    hasSim = true;
+  }
+  if (parts.length > 40) {
+    sim.xShifting = [
+      pf(39, RAINDROP_FX_SIM_DEFAULTS.xShifting[0]),
+      pf(40, RAINDROP_FX_SIM_DEFAULTS.xShifting[1]),
+    ];
+    hasSim = true;
+  }
+  if (parts.length > 41) {
+    sim.slipRate = pf(41, RAINDROP_FX_SIM_DEFAULTS.slipRate);
+    hasSim = true;
+  }
+  if (parts.length > 43) {
+    sim.spawnInterval = [
+      pf(42, RAINDROP_FX_SIM_DEFAULTS.spawnInterval[0]),
+      pf(43, RAINDROP_FX_SIM_DEFAULTS.spawnInterval[1]),
+    ];
+    hasSim = true;
+  }
+  if (parts.length > 45) {
+    sim.spawnSize = [
+      pf(44, RAINDROP_FX_SIM_DEFAULTS.spawnSize[0]),
+      pf(45, RAINDROP_FX_SIM_DEFAULTS.spawnSize[1]),
+    ];
+    hasSim = true;
+  }
+  if (parts.length > 47) {
+    sim.motionInterval = [
+      pf(46, RAINDROP_FX_SIM_DEFAULTS.motionInterval[0]),
+      pf(47, RAINDROP_FX_SIM_DEFAULTS.motionInterval[1]),
+    ];
+    hasSim = true;
+  }
+  return { rainFx: fx, ...(hasSim ? { rainFxSim: sim } : {}) };
+}
+
+/** `rain()`, `rain(url("…"))`, or `rain(…numeric…)` for raindrop-fx; null → Codrops / procedural. */
+function parseRainFxFilterParams(raw: string): RainEffect | null {
+  const t = raw.trim();
+  if (!t) {
+    return null;
+  }
+  if (!/url\s*\(/i.test(t)) {
+    const parsed = parseRainFxNumericTail(t);
+    if (!parsed) {
+      return null;
+    }
+    return {
+      type: 'rain',
+      dropTextureUrl: RAIN_DROPDROP_TEXTURE_DEFAULT,
+      ...rainFxParsedTailToEffectFields(parsed),
+    };
+  }
+  const dropUrl = parseRainFxDropTextureUrl(t);
+  if (dropUrl === null) {
+    return null;
+  }
+  const m = t.match(/^\s*url\s*\(\s*(['"])(.*?)\1\s*\)/i);
+  if (!m || m.index === undefined) {
+    return null;
+  }
+  const after = t
+    .slice(m.index + m[0].length)
+    .replace(/^\s*,\s*/, '')
+    .trim();
+  const parsed = after.length > 0 ? parseRainFxNumericTail(after) : undefined;
+  return {
+    type: 'rain',
+    dropTextureUrl: dropUrl,
+    ...(parsed ? rainFxParsedTailToEffectFields(parsed) : {}),
+  };
+}
+
+function appendRainFxExtendedTail(parts: number[], m: RainFxParams): void {
+  parts.push(
+    m.composeDecay!,
+    wrapModeToIndex(m.backgroundWrapMode!),
+    m.mistColor![0],
+    m.mistColor![1],
+    m.mistColor![2],
+    m.mistColor![3],
+    m.raindropEraserSize![0],
+    m.raindropEraserSize![1],
+  );
+}
+
+function appendRainFxLightingTail(parts: number[], m: RainFxParams): void {
+  parts.push(
+    m.raindropLightPos![0],
+    m.raindropLightPos![1],
+    m.raindropLightPos![2],
+    m.raindropLightPos![3],
+    m.raindropDiffuseLight![0],
+    m.raindropDiffuseLight![1],
+    m.raindropDiffuseLight![2],
+    m.raindropShadowOffset!,
+    m.raindropSpecularLight![0],
+    m.raindropSpecularLight![1],
+    m.raindropSpecularLight![2],
+    m.raindropSpecularShininess!,
+    m.raindropLightBump!,
+  );
+}
+
+function appendRainFxSimTail(parts: number[], sm: Required<RainFxSimParams>): void {
+  parts.push(
+    sm.trailDistance[0],
+    sm.trailDistance[1],
+    sm.gravity,
+    sm.spawnLimit,
+    sm.trailDropDensity,
+    sm.trailSpread,
+    sm.xShifting[0],
+    sm.xShifting[1],
+    sm.slipRate,
+    sm.spawnInterval[0],
+    sm.spawnInterval[1],
+    sm.spawnSize[0],
+    sm.spawnSize[1],
+    sm.motionInterval[0],
+    sm.motionInterval[1],
+  );
+}
+
+function formatRainFxNumericTail(e: RainEffect): string {
+  if (!isRainFxEffect(e) || isDefaultRainFxEffect(e)) {
+    return '';
+  }
+  const m = mergedRainFxParams(e.rainFx);
+  const sm = mergedRainFxSimParams(e.rainFxSim);
+  const C = RAINDROP_FX_COMPOSE_DEFAULTS;
+  const composeFlag = m.raindropCompose === 'harder' ? 1 : 0;
+  const parts = [
+    m.backgroundBlurSteps,
+    m.mist ? 1 : 0,
+    m.mistTime,
+    m.mistBlurStep,
+    m.dropletsPerSecond,
+    m.dropletSize![0],
+    m.dropletSize![1],
+    m.smoothRaindrop![0],
+    m.smoothRaindrop![1],
+    m.refractBase,
+    m.refractScale,
+    composeFlag,
+  ];
+  const mistDef = rainFxMistColorDefault();
+  const eraserDef = rainFxEraserDefault();
+  const hasExtendedTail =
+    m.composeDecay !== RAINDROP_FX_COMPOSE_DECAY_DEFAULT ||
+    m.backgroundWrapMode !== RAINDROP_FX_RENDER_DEFAULTS.backgroundWrapMode ||
+    !rainFxVec4Near(m.mistColor!, mistDef) ||
+    !rainFxVec2Near(m.raindropEraserSize!, eraserDef);
+  const hasLighting =
+    !rainFxVec4Near(m.raindropLightPos!, [...C.raindropLightPos]) ||
+    !rainFxVec3Near(m.raindropDiffuseLight!, [...C.raindropDiffuseLight]) ||
+    m.raindropShadowOffset !== C.raindropShadowOffset ||
+    !rainFxVec3Near(m.raindropSpecularLight!, [...C.raindropSpecularLight]) ||
+    m.raindropSpecularShininess !== C.raindropSpecularShininess ||
+    m.raindropLightBump !== C.raindropLightBump;
+  const hasSim = !isDefaultRainFxSimParams(e.rainFxSim);
+  if (hasExtendedTail || hasLighting || hasSim) {
+    appendRainFxExtendedTail(parts, m);
+  }
+  if (hasLighting || hasSim) {
+    appendRainFxLightingTail(parts, m);
+  }
+  if (hasSim) {
+    appendRainFxSimTail(parts, sm);
+  }
+  return `, ${parts.join(', ')}`;
+}
+
 function parseRainDropTextureUrls(params: string): {
   dropColorUrl: string;
   dropAlphaUrl: string;
@@ -2214,63 +2789,46 @@ export function parseEffect(filter: string): Effect[] {
       });
     } else if (filter.name === 'rain') {
       const raw = filter.params.trim();
-      const urlPair = parseRainDropTextureUrls(raw);
-      if (urlPair) {
-        const parts = urlPair.numericTail.length
-          ? urlPair.numericTail
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0)
-          : [];
-        const RD = RAIN_DEFAULTS;
-        const parsed = parseCodropsRainNumericTail(parts);
-        effects.push({
-          type: 'rain',
-          dropColorUrl: urlPair.dropColorUrl,
-          dropAlphaUrl: urlPair.dropAlphaUrl,
-          dropShineUrl: urlPair.dropShineUrl,
-          rainSimScale: parsed.rainSimScale,
-          codropsSim: parsed.codropsSim,
-          codropsWater: parsed.codropsWater,
-          minRefraction: RD.minRefraction,
-          refractionDelta: RD.refractionDelta,
-          brightness: RD.brightness,
-          density: RD.density,
-          alphaMultiply: RD.alphaMultiply,
-          alphaSubtract: RD.alphaSubtract,
-          streakCount: RD.streakCount,
-          dropScale: RD.dropScale,
-          renderShadow: RD.renderShadow,
-          renderShine: RD.renderShine,
-        });
+      const fxEffect = parseRainFxFilterParams(raw);
+      if (fxEffect) {
+        effects.push(fxEffect);
+      } else if (raw.length === 0) {
+        effects.push(createDefaultRainEffect());
       } else {
-        const parts = raw.length
-          ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
-          : [];
-        if (parts.length === 0) {
-          effects.push(createDefaultRainEffect());
-        } else {
-          const D = RAIN_DEFAULTS;
-          const pf = (i: number, def: number) => {
-            const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
-            return Number.isFinite(v) ? v : def;
-          };
-          const legacyParallaxXY = parts.length >= 12;
+        const urlPair = parseRainDropTextureUrls(raw);
+        if (urlPair) {
+          const parts = urlPair.numericTail.length
+            ? urlPair.numericTail
+              .split(',')
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0)
+            : [];
+          const RD = RAIN_DEFAULTS;
+          const parsed = parseCodropsRainNumericTail(parts);
           effects.push({
             type: 'rain',
-            minRefraction: pf(0, D.minRefraction),
-            refractionDelta: pf(1, D.refractionDelta),
-            brightness: pf(2, D.brightness),
-            density: pf(3, D.density),
-            alphaMultiply: pf(4, D.alphaMultiply),
-            alphaSubtract: pf(5, D.alphaSubtract),
-            streakCount: pf(6, D.streakCount),
-            dropScale: pf(7, D.dropScale),
-            renderShadow:
-              pf(legacyParallaxXY ? 10 : 8, D.renderShadow ? 1 : 0) > 0.5,
-            renderShine:
-              pf(legacyParallaxXY ? 11 : 9, D.renderShine ? 1 : 0) > 0.5,
+            dropColorUrl: urlPair.dropColorUrl,
+            dropAlphaUrl: urlPair.dropAlphaUrl,
+            dropShineUrl: urlPair.dropShineUrl,
+            rainSimScale: parsed.rainSimScale,
+            codropsSim: parsed.codropsSim,
+            codropsWater: parsed.codropsWater,
+            minRefraction: RD.minRefraction,
+            refractionDelta: RD.refractionDelta,
+            brightness: RD.brightness,
+            density: RD.density,
+            alphaMultiply: RD.alphaMultiply,
+            alphaSubtract: RD.alphaSubtract,
+            streakCount: RD.streakCount,
+            dropScale: RD.dropScale,
+            renderShadow: RD.renderShadow,
+            renderShine: RD.renderShine,
           });
+        } else {
+          console.warn(
+            'rain(): unrecognized parameters; using default raindrop-fx rain()',
+          );
+          effects.push(createDefaultRainEffect());
         }
       }
     } else if (filter.name === 'burn') {
@@ -2759,7 +3317,19 @@ export function formatFilter(effects: Effect[]): string {
       }
       case 'rain': {
         const e = effect;
-        if (isDefaultRainCodropsEffect(e)) {
+        if (isRainFxEffect(e)) {
+          const esc = (u: string) =>
+            `url("${u.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}")`;
+          const tail = formatRainFxNumericTail(e);
+          const url = e.dropTextureUrl ?? RAIN_DROPDROP_TEXTURE_DEFAULT;
+          if (url === RAIN_DROPDROP_TEXTURE_DEFAULT && !tail) {
+            parts.push('rain()');
+          } else if (url === RAIN_DROPDROP_TEXTURE_DEFAULT) {
+            parts.push(`rain(${tail.replace(/^\s*,\s*/, '')})`);
+          } else {
+            parts.push(`rain(${esc(url)}${tail})`);
+          }
+        } else if (isDefaultRainCodropsEffect(e)) {
           parts.push('rain()');
         } else if (isRainCodropsRainEffect(e)) {
           const esc = (u: string) =>

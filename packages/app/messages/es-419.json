@@ -212,7 +212,10 @@
       },
       "rain": {
         "title": "Lluvia",
-        "description": "Gotas estilo Codrops y refracción en agua sobre imágenes y formas. Combina con blur() o ajusta rain() en el panel de propiedades."
+        "description": "Gotas raindrop-fx: compara llovizna por defecto vs preset de tormenta con viento; ajusta rain() en el panel.",
+        "originalLabel": "Original",
+        "gentleLabel": "Llovizna rain()",
+        "stormLabel": "Preset tormenta"
       }
     },
     "photoColors": {

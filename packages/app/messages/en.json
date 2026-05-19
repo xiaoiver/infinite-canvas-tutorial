@@ -212,7 +212,10 @@
       },
       "rain": {
         "title": "Rain",
-        "description": "Codrops-style raindrops and water refraction on images and shapes. Stack with blur() or tune rain() in the properties panel."
+        "description": "raindrop-fx glass raindrops: compare default drizzle vs heavy wind storm preset; tune rain() in the properties panel.",
+        "originalLabel": "Original",
+        "gentleLabel": "Drizzle rain()",
+        "stormLabel": "Storm preset"
       }
     },
     "photoColors": {

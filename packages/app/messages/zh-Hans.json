@@ -212,7 +212,10 @@
       },
       "rain": {
         "title": "雨滴",
-        "description": "Codrops 风格雨滴与水面折射，可叠加在图片与形状上；支持 blur() rain() 组合，并在属性面板调整 rain() 参数。"
+        "description": "raindrop-fx 玻璃雨滴效果：默认细雨与大风暴雨预设对比，可在属性面板微调 rain() 参数。",
+        "originalLabel": "原图",
+        "gentleLabel": "细雨 rain()",
+        "stormLabel": "暴雨 preset"
       }
     },
     "photoColors": {

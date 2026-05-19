@@ -132,6 +132,20 @@ export function GlitchTool() {
               ],
               taskbarSelected: [Task.SHOW_PROPERTIES_PANEL],
               contextBarVisible: true,
+              propertiesPanelSectionsOpen: {
+                fillSection: false,
+                strokeSection: false,
+                typographySection: false,
+                shape: false,
+                transform: false,
+                layout: false,
+                flexItem: false,
+                effects: true,
+                multiSelectAlignment: false,
+                multiSelectEffects: false,
+                exportSection: true,
+                iconFont: false,
+              },
             }} />
           </div>
         </div>
