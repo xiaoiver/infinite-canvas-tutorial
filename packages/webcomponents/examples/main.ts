@@ -64,25 +64,6 @@ WebFont.load({
   },
 });
 
-const res = await fetch('/Ghostscript_Tiger.svg');
-// const res = await fetch('/maslow-hierarchy.svg');
-// const res = await fetch('/mindmap.svg');
-// const res = await fetch('/test-camera.svg');
-// const res = await fetch(
-//   '/62f5208ddbc232ac973f53d9cfd91ba463c50b8bfd846349247709fe4a7a9053.svg',
-// );
-const svg = await res.text();
-// TODO: extract semantic groups inside comments
-const $container = document.createElement('div');
-$container.innerHTML = svg;
-const $svg = $container.children[0] as SVGSVGElement;
-
-// const camera = svgSvgElementToComputedCamera($svg);
-const nodes = svgElementsToSerializedNodes(
-  Array.from($svg.children) as SVGElement[],
-);
-nodes[0].x = 500;
-
 // const root = {
 //   id: 'root',
 //   type: 'rect',
@@ -190,48 +171,17 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  /** raindrop-fx demo defaults — bare `rain()` matches https://github.com/SardineFish/raindrop-fx (index.ts). */
-  const RAINDROP_FX_FILTER = 'rain(url("/raindrop.png"))';
+  fetch('/applecycling.json').then(res => res.json()).then(data => {
+    const animation = loadAnimation(data, {
+      loop: true,
+      autoplay: true,
+    });
 
-  const node1: EllipseSerializedNode = {
-    id: '1',
-    type: 'ellipse',
-    fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-    x: 0,
-    y: 50,
-    width: 200,
-    height: 100,
-    zIndex: 0,
-    filter: RAINDROP_FX_FILTER,
-  };
-
-  const node2: RectSerializedNode = {
-    id: '2',
-    type: 'rect',
-    fills: [{ type: 'image', value: '/city.jpg', opacity: 1 }],
-    x: 100,
-    y: 100,
-    width: 800,
-    height: 600,
-    filter: RAINDROP_FX_FILTER,
-  };
-
-  api.updateNodes([
-    // node1,
-    node2,
-  ]);
-
-  // fetch('/gradient-text.json').then(res => res.json()).then(data => {
-  //   const animation = loadAnimation(data, {
-  //     loop: true,
-  //     autoplay: true,
-  //   });
-
-  //   api.runAtNextTick(() => {
-  //     animation.render(api);
-  //     animation.play();
-  //   });
-  // });
+    api.runAtNextTick(() => {
+      animation.render(api);
+      animation.play();
+    });
+  });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({

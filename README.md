@@ -392,6 +392,10 @@ If you want to use it in your own project, you can refer to:
 | :------------------------------------------------------------------------------------------: | :------------------------------------------: |
 | ![image processing](./screenshots/lesson30.png) ![effects panel](./screenshots/pixelate.png) | ![effects panel](./screenshots/halftone.png) |
 
+|               Glitch                |              LUTs               |            Raindrops            |
+| :---------------------------------: | :-----------------------------: | :-----------------------------: |
+| ![glitch](./screenshots/glitch.png) | ![luts](./screenshots/luts.png) | ![rain](./screenshots/rain.png) |
+
 ## Lesson 31 - Bindings between shapes [🔗](https://infinitecanvas.cc/guide/lesson-031)
 
 -   Analyze the data-structure design in excalidraw, tldraw, drawio and g6

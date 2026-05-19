@@ -393,6 +393,10 @@ pnpm run dev
 | :------------------------------------------------------------------------------------------: | :------------------------------------------: |
 | ![image processing](./screenshots/lesson30.png) ![effects panel](./screenshots/pixelate.png) | ![effects panel](./screenshots/halftone.png) |
 
+|               Glitch                |              LUTs               |            Raindrops            |
+| :---------------------------------: | :-----------------------------: | :-----------------------------: |
+| ![glitch](./screenshots/glitch.png) | ![luts](./screenshots/luts.png) | ![rain](./screenshots/rain.png) |
+
 ## 课程 31 - 图形间的绑定关系 [🔗](https://infinitecanvas.cc/zh/guide/lesson-031)
 
 -   分析 excalidraw、tldraw、drawio 和 g6 中的数据结构设计
