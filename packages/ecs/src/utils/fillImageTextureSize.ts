@@ -1,4 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
+import type { FillImageObjectFit } from './fill-layer-image-object-fit';
 import { getSdfGeometryBoundsForFilter } from './solidShapeRasterForFilter';
 
 /** 避免 SVG 等小 intrinsic 位图在放大后处理时糊成一片；与 {@link resolveFillImageTexturePixelSize} 配合使用。 */
@@ -37,6 +38,7 @@ export function resolveFillImageTexturePixelSize(
   geomH: number,
   devicePixelRatio: number,
   maxEdge: number = FILL_IMAGE_RASTER_MAX_EDGE,
+  objectFit: FillImageObjectFit = 'fill',
 ): { width: number; height: number } {
   const sw = Math.max(1, Math.floor(srcW));
   const sh = Math.max(1, Math.floor(srcH));
@@ -46,8 +48,11 @@ export function resolveFillImageTexturePixelSize(
   }
   const targetW = Math.ceil(geomW * dpr);
   const targetH = Math.ceil(geomH * dpr);
-  let tw = Math.max(sw, targetW);
-  let th = Math.max(sh, targetH);
+  // `contain` / `cover` 等在「形状像素框」内烘焙留白或裁切；勿用图源 intrinsic 作画布尺寸。
+  let tw =
+    objectFit === 'fill' ? Math.max(sw, targetW) : targetW;
+  let th =
+    objectFit === 'fill' ? Math.max(sh, targetH) : targetH;
   if (tw > maxEdge || th > maxEdge) {
     const scale = Math.min(maxEdge / tw, maxEdge / th, 1);
     tw = Math.max(1, Math.floor(tw * scale));

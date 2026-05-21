@@ -134,15 +134,15 @@ canvas.addEventListener(Event.READY, async (e) => {
       Task.SHOW_PROPERTIES_PANEL,
     ],
     propertiesPanelSectionsOpen: {
-      fillSection: true,
-      strokeSection: true,
+      fillSection: false,
+      strokeSection: false,
       shape: false,
       transform: false,
       layout: false,
-      flexItem: true,
+      flexItem: false,
       effects: false,
-      multiSelectAlignment: true,
-      multiSelectEffects: true,
+      multiSelectAlignment: false,
+      multiSelectEffects: false,
       exportSection: true,
       iconFont: true,
     },
@@ -171,24 +171,87 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  fetch('/applecycling.json').then(res => res.json()).then(data => {
-    const animation = loadAnimation(data, {
-      loop: true,
-      autoplay: true,
-    });
+  const image1 = {
+    id: 'image-1',
+    type: 'rect',
+    fills: [{
+      type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
+      objectFit: 'contain',
+      // objectPosition: 'top left',
+    }],
+    x: 50,
+    y: 50,
+    width: 300,
+    height: 200,
+    lockAspectRatio: true,
+  };
 
-    api.runAtNextTick(() => {
-      animation.render(api);
-      animation.play();
-    });
-  });
+  // const image2 = {
+  //   id: 'image-2',
+  //   type: 'rect',
+  //   fills: [{
+  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
+  //     objectFit: 'contain',
+  //     // objectPosition: 'top left',
+  //   }],
+  //   x: 400,
+  //   y: 50,
+  //   width: 200,
+  //   height: 300,
+  //   lockAspectRatio: true,
+  // };
+
+  // const image3 = {
+  //   id: 'image-3',
+  //   type: 'rect',
+  //   fills: [{
+  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
+  //     objectFit: 'cover',
+  //     // objectPosition: 'top left',
+  //   }],
+  //   x: 50,
+  //   y: 550,
+  //   width: 300,
+  //   height: 200,
+  //   lockAspectRatio: true,
+  // };
+
+  // const image4 = {
+  //   id: 'image-4',
+  //   type: 'rect',
+  //   fills: [{
+  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
+  //     objectFit: 'cover',
+  //     // objectPosition: 'top left',
+  //   }],
+  //   x: 400,
+  //   y: 550,
+  //   width: 200,
+  //   height: 300,
+  //   lockAspectRatio: true,
+  // };
+
+  api.updateNodes([image1]);
+  api.selectNodes([image1]);
+
+  // fetch('/applecycling.json').then(res => res.json()).then(data => {
+  //   const animation = loadAnimation(data, {
+  //     loop: true,
+  //     autoplay: true,
+  //   });
+
+  //   api.runAtNextTick(() => {
+  //     animation.render(api);
+  //     animation.play();
+  //   });
+  // });
 });
 
-// const VelloRendererPlugin = RendererPlugin.configure({
-//   setupDeviceSystemCtor: InitVello,
-//   rendererSystemCtor: VelloPipeline,
-// });
-// DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
+const VelloRendererPlugin = RendererPlugin.configure({
+  setupDeviceSystemCtor: InitVello,
+  rendererSystemCtor: VelloPipeline,
+});
+DefaultPlugins.splice(DefaultPlugins.indexOf(DefaultRendererPlugin), 1, VelloRendererPlugin);
 // registerFont('/Gaegu-Regular.ttf');
 // registerFont('/NotoSansCJKsc-VF.ttf');
 // registerFont('/NotoSans-Regular.ttf');

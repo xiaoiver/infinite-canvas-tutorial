@@ -3,12 +3,16 @@ outline: deep
 description: '学习将画布内容导出为PNG、JPEG和SVG格式图片。实现图片在画布中的渲染，并扩展SVG能力以支持更多设计工具特性。'
 ---
 
+<script setup>
+import ObjectFit from '../../components/ObjectFit.vue';
+</script>
+
 # 课程 10 - 图片导入导出
 
 图片导入导出在无限画布中是一个非常重要的功能，通过图片产物可以和其他工具打通。因此虽然目前我们的画布绘制能力还很有限，但不妨提前考虑和图片相关的问题。在这节课中你将学习到以下内容：
 
 -   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片，对于带有时间动画的效果导出成 GIF 格式
--   在画布中渲染图片
+-   在画布中渲染图片，以及填充层的 `object-fit` / `object-position`
 -   拓展 SVG 的能力，以 `stroke-alignment` 为例
 
 ## 将画布内容导出成图片 {#export-canvas-to-image}
@@ -706,9 +710,7 @@ call(() => {
     $icCanvas3.parentElement.appendChild($stats);
 
     $icCanvas3.addEventListener('ic-ready', async (e) => {
-        const image = await Utils.loadImage(
-            'https://infinitecanvas.cc/canvas.png',
-        );
+        const image = await Utils.loadImage('/canvas.png');
 
         const canvas = e.detail;
 
@@ -780,6 +782,34 @@ export class RenderCache {
     }
 }
 ```
+
+### 对象适应 {#object-fit}
+
+矩形几何框与图片固有宽高比往往不一致。若始终使用 `drawImage(0, 0, width, height)` 拉伸绘制，图标与照片都会变形。设计工具里通常提供「适应 / 填充 / 裁切」等模式；我们沿用 CSS 的 [object-fit] 与 [object-position]，在 `FillLayers` 的 `type: 'image'` 层上声明：
+
+```ts
+fills: [
+    {
+        type: 'image',
+        value: '/canvas.png',
+        objectFit: 'contain',
+        objectPosition: 'top left',
+    },
+];
+```
+
+| `objectFit`           | 行为                                           |
+| --------------------- | ---------------------------------------------- |
+| `fill`                | 拉伸铺满几何框（**默认**，与早期栅格行为一致） |
+| `contain`             | 等比缩放，完整显示图片，框内可能留白           |
+| `cover`               | 等比缩放，铺满几何框，超出部分裁切             |
+| `none` / `scale-down` | 与 CSS 语义一致                                |
+
+与 Figma 图片缩放、Pencil `mode`（`stretch` / `fill` / `fit`）等的对应关系，见 [对象适应示例](/zh/example/object-fit)。
+
+实现上在 CPU 侧将图片栅格为纹理：按 `objectFit` 计算绘制矩形并写入画布。`contain` / `cover` 时纹理像素尺寸取**几何框 × 设备像素比**，而不是 `max(图源宽, 几何宽)`——否则整图会铺满整张纹理，贴回方框后视觉上仍像 `fill` 拉伸。
+
+<ObjectFit />
 
 ### iOS Live Photo {#ios-live-photo}
 
@@ -1016,3 +1046,5 @@ function strokeOffset(
 [viewBox]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Reference/Attribute/viewBox
 [Font subsetting in excalidraw]: https://github.com/excalidraw/excalidraw/issues/1972#issuecomment-2417744618
 [课程 30 - 时间动画]: /zh/guide/lesson-030#time-animation
+[object-fit]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/Reference/Properties/object-fit
+[object-position]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/Reference/Properties/object-position

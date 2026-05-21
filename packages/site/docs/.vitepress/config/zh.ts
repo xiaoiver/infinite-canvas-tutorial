@@ -338,6 +338,10 @@ export const zh = defineConfig({
                 link: 'image-processing',
               },
               {
+                text: '对象适应',
+                link: 'object-fit',
+              },
+              {
                 text: '思维导图和布局',
                 items: [
                   {

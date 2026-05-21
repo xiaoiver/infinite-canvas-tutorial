@@ -158,6 +158,10 @@ export type SerializedFillLayerItem =
     /** 位图 / SVG 等资源 URL（与历史 `fill` 为 URL 时语义一致） */
     type: 'image';
     value: string;
+    /** CSS `object-fit`；缺省 `fill`（铺满几何框，与历史栅格行为一致） */
+    objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+    /** CSS `object-position`；缺省 `50% 50%` */
+    objectPosition?: string;
     opacity?: number | string;
     enabled?: boolean;
     blendMode?: FillLayerBlendMode;

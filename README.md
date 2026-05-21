@@ -153,6 +153,7 @@ If you want to use it in your own project, you can refer to:
 -   Exporting canvas content to PNG, JPEG and SVG formats
 -   Rendering images in the canvas
 -   Extending the capabilities of SVG, using `stroke-alignment` as an example
+-   CSS `object-fit` and `object-position` on image fills (fill, contain, or cover)
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 

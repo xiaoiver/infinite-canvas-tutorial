@@ -90,8 +90,8 @@ export interface InitOutput {
     readonly setExportView: (a: number, b: any, c: any) => void;
     readonly clearAllCaches: () => void;
     readonly clearEmojiCache: () => void;
-    readonly clearGlyphCache: () => void;
     readonly clearShapes: (a: number) => void;
+    readonly clearGlyphCache: () => void;
     readonly wasm_bindgen__closure__destroy__h04e9e97cfba770af: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h47c892ede0aca2fd: (a: number, b: number) => void;
     readonly wasm_bindgen__closure__destroy__h38718ff86efd0046: (a: number, b: number) => void;

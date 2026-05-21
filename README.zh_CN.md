@@ -153,6 +153,7 @@ pnpm run dev
 -   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
 -   在画布中渲染图片
 -   拓展 SVG 的能力，以 `stroke-alignment` 为例
+-   支持 CSS 中的 `object-fit` 和 `object-position` 让图片以不同策略适应宽高
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 

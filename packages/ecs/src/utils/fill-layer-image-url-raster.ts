@@ -1,9 +1,60 @@
+import type { Entity } from '@lastolivegames/becsy';
+import type { API } from '../API';
+import type { FillLayerItem } from '../components/renderable/Fill';
 import { DOMAdapter } from '../environment';
 import { parseColor } from './color';
+import type { FillAttributes, SerializedFillLayerItem } from '../types/serialized-node';
+import {
+  drawCanvasImageWithObjectFit,
+  fillLayerImageRasterOptions,
+  type FillLayerImageRasterOptions,
+} from './fill-layer-image-object-fit';
 import {
   getDevicePixelRatioForRaster,
   resolveFillImageTexturePixelSize,
 } from './fillImageTextureSize';
+
+export type { FillImageObjectFit, FillLayerImageRasterOptions } from './fill-layer-image-object-fit';
+export {
+  computeObjectFitDrawRect,
+  drawCanvasImageWithObjectFit,
+  fillLayerImageRasterOptions,
+  parseObjectPosition,
+} from './fill-layer-image-object-fit';
+
+/**
+ * 优先用线框 `fills` 上的 `objectFit` / `objectPosition`（ECS {@link FillLayers} 可能未带上扩展字段），
+ * 再回退到 ECS layer。
+ */
+export function resolveImageFillRasterOptions(
+  api: API | undefined,
+  entity: Entity | undefined,
+  layer: FillLayerItem,
+): FillLayerImageRasterOptions {
+  const fromEcs =
+    layer.type === 'image' ? fillLayerImageRasterOptions(layer) : {};
+  if (layer.type !== 'image' || !api || !entity) {
+    return fromEcs;
+  }
+  const node = api.getNodeByEntity(entity) as FillAttributes | undefined;
+  const fills = node?.fills;
+  if (!Array.isArray(fills)) {
+    return fromEcs;
+  }
+  const wire =
+    (fills.find(
+      (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
+        l.type === 'image' && l.value === layer.value,
+    ) ??
+      fills.find(
+        (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
+          l.type === 'image',
+      )) as Extract<SerializedFillLayerItem, { type: 'image' }> | undefined;
+  if (!wire) {
+    return fromEcs;
+  }
+  return { ...fromEcs, ...fillLayerImageRasterOptions(wire) };
+}
 
 /** 已成功解码的 FillLayers 图片 URL，供后续帧同步栅格化。 */
 const fillLayerDecodedBitmapByUrl = new Map<string, ImageBitmap>();
@@ -40,6 +91,7 @@ function blitImageBitmapToCanvas(
   bmp: ImageBitmap,
   tw: number,
   th: number,
+  options?: FillLayerImageRasterOptions,
 ): HTMLCanvasElement | OffscreenCanvas | null {
   const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
@@ -47,7 +99,15 @@ function blitImageBitmapToCanvas(
     return null;
   }
   try {
-    ctx.drawImage(bmp, 0, 0, tw, th);
+    drawCanvasImageWithObjectFit(
+      ctx,
+      bmp,
+      bmp.width,
+      bmp.height,
+      tw,
+      th,
+      options,
+    );
   } catch {
     return null;
   }
@@ -98,6 +158,7 @@ export function rasterizeFillLayerImageUrlForTexture(
   width: number,
   height: number,
   onDecoded?: () => void,
+  options?: FillLayerImageRasterOptions,
 ): HTMLCanvasElement | OffscreenCanvas | null {
   if (!url) {
     return null;
@@ -107,10 +168,10 @@ export function rasterizeFillLayerImageUrlForTexture(
 
   const cached = fillLayerDecodedBitmapByUrl.get(url);
   if (cached) {
-    return blitImageBitmapToCanvas(cached, tw, th);
+    return blitImageBitmapToCanvas(cached, tw, th, options);
   }
 
-  const sync = trySyncRasterizeImageUrlToCanvas(url, width, height);
+  const sync = trySyncRasterizeImageUrlToCanvas(url, width, height, options);
   if (sync) {
     return sync;
   }
@@ -127,6 +188,7 @@ export function resolveFillLayerImageRasterPixelSize(
   url: string,
   geomW: number,
   geomH: number,
+  objectFit?: FillLayerImageRasterOptions['objectFit'],
 ): { width: number; height: number } {
   const src = fillLayerDecodedBitmapByUrl.get(url);
   const srcW = src ? Math.max(1, Math.floor(src.width)) : 1;
@@ -137,6 +199,8 @@ export function resolveFillLayerImageRasterPixelSize(
     geomW,
     geomH,
     getDevicePixelRatioForRaster(),
+    undefined,
+    objectFit ?? 'fill',
   );
 }
 
@@ -166,6 +230,7 @@ export function trySyncRasterizeImageUrlToCanvas(
   url: string,
   width: number,
   height: number,
+  options?: FillLayerImageRasterOptions,
 ): HTMLCanvasElement | OffscreenCanvas | null {
   if (typeof Image === 'undefined' || !url) {
     return null;
@@ -184,7 +249,15 @@ export function trySyncRasterizeImageUrlToCanvas(
     return null;
   }
   try {
-    ctx.drawImage(img, 0, 0, tw, th);
+    drawCanvasImageWithObjectFit(
+      ctx,
+      img,
+      img.naturalWidth,
+      img.naturalHeight,
+      tw,
+      th,
+      options,
+    );
   } catch {
     return null;
   }

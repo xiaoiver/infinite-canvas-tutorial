@@ -8,7 +8,10 @@ use vello::Scene;
 #[cfg(target_arch = "wasm32")]
 use roughr::{core::Options, generator::Generator};
 
-use crate::types::{CanvasRenderOptions, FillGradientSpec, FillPaint, JsShape, StrokeAlignment, StrokeParams};
+use crate::types::{
+    CanvasRenderOptions, FillGradientSpec, FillPaint, FitDrawRect, JsShape, StrokeAlignment,
+    StrokeParams,
+};
 use crate::types::{apply_opacity_to_color, mat3_to_affine};
 #[cfg(target_arch = "wasm32")]
 use crate::path_utils::svg_path_first_closed_polygon;
@@ -472,6 +475,26 @@ pub fn build_gradient_brush(spec: &FillGradientSpec, fill_opacity_mult: f32) -> 
 }
 
 #[cfg(target_arch = "wasm32")]
+/// Maps source image pixels into shape-local `ibox` (stretch or `object-fit` draw rect).
+fn image_fill_brush_affine(
+    ibox: Rect,
+    image_width: u32,
+    image_height: u32,
+    fit_draw_rect: Option<FitDrawRect>,
+) -> Affine {
+    let sw = image_width as f64;
+    let sh = image_height as f64;
+    if sw <= 0.0 || sh <= 0.0 {
+        return Affine::IDENTITY;
+    }
+    match fit_draw_rect {
+        None => Affine::translate(Vec2::new(ibox.x0, ibox.y0))
+            * Affine::scale_non_uniform(ibox.width() / sw, ibox.height() / sh),
+        Some(r) => Affine::translate(Vec2::new(ibox.x0 + r.dx, ibox.y0 + r.dy))
+            * Affine::scale_non_uniform(r.dw / sw, r.dh / sh),
+    }
+}
+
 fn first_fill_solid_rgba(paints: &[FillPaint]) -> Option<[f32; 4]> {
     paints.iter().find_map(|p| match p {
         FillPaint::Solid { rgba } => Some(*rgba),
@@ -514,14 +537,16 @@ fn scene_apply_fill_paints<S: Shape>(
                 image_width,
                 image_height,
                 image_data,
+                fit_draw_rect,
             } => {
                 let expected_len = (*image_width as usize) * (*image_height as usize) * 4;
                 if image_data.len() < expected_len {
                     continue;
                 }
-                let brush_tf = Affine::translate(Vec2::new(ibox.x0, ibox.y0))
-                    * Affine::scale_non_uniform(w / *image_width as f64, h / *image_height as f64);
-                let cache_key = format!("{}#fl{}", shape_id, layer_i);
+                let brush_tf =
+                    image_fill_brush_affine(ibox, *image_width, *image_height, *fit_draw_rect);
+                let cache_key =
+                    format!("{}#fl{}#{}x{}", shape_id, layer_i, image_width, image_height);
                 IMAGE_BRUSH_CACHE.with(|cache_cell| {
                     let mut cache = cache_cell.borrow_mut();
                     let brush = if let Some(cached) = cache.get(cache_key.as_str()) {
@@ -599,6 +624,7 @@ fn scene_text_draw_glyphs_with_fills(
                 image_width,
                 image_height,
                 image_data,
+                fit_draw_rect: _,
             } => {
                 if w <= 0.0 || h <= 0.0 {
                     continue;
@@ -607,7 +633,7 @@ fn scene_text_draw_glyphs_with_fills(
                 if image_data.len() < expected_len {
                     continue;
                 }
-                let cache_key = format!("{}#textfl{}", shape_id, layer_i);
+                let cache_key = format!("{}#textfl{}#{}x{}", shape_id, layer_i, image_width, image_height);
                 IMAGE_BRUSH_CACHE.with(|cache_cell| {
                     let mut cache = cache_cell.borrow_mut();
                     let brush = if let Some(cached) = cache.get(cache_key.as_str()) {

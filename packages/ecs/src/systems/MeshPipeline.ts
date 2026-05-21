@@ -1085,6 +1085,14 @@ export class MeshPipeline extends System {
           toRender = true;
         }
 
+        if (this.fillLayers.addedChangedOrRemoved.length > 0) {
+          for (const entity of this.fillLayers.addedChangedOrRemoved) {
+            if (entity.has(Renderable)) {
+              safeAddComponent(entity, MaterialDirty);
+            }
+          }
+        }
+
         if (
           !toRender &&
           (!!this.fillLayers.addedChangedOrRemoved.length ||

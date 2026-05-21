@@ -79,14 +79,24 @@ export function fillLayerOpacity(o?: number | string): number {
   return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
 }
 
-/** 首个启用 `solid` 层的颜色字符串（线框 `fills`）。 */
-export function getFirstSolidFillLayerValue(entity: Entity): string | null {
-  for (const L of getEnabledFillLayers(entity)) {
-    if (L.type === 'solid') {
+/** 首个启用 `solid` 层的颜色字符串（线框 `fills` 数组）。 */
+export function getFirstSolidFillLayerValueFromWire(
+  layers: FillLayerItem[] | undefined,
+): string | null {
+  if (!layers?.length) {
+    return null;
+  }
+  for (const L of layers) {
+    if (isFillLayerEnabled(L) && L.type === 'solid') {
       return L.value;
     }
   }
   return null;
+}
+
+/** 首个启用 `solid` 层的颜色字符串（ECS {@link FillLayers}）。 */
+export function getFirstSolidFillLayerValue(entity: Entity): string | null {
+  return getFirstSolidFillLayerValueFromWire(getEnabledFillLayers(entity));
 }
 
 /** 首个启用 `gradient` 层的 CSS 渐变字符串。 */
