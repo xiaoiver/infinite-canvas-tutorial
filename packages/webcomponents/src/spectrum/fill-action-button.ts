@@ -16,7 +16,11 @@ import {
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { normalizeSolidCssValue } from './normalize-solid-css';
-import { ColorType } from './color-picker.js';
+import { ColorType, type ColorPickerChangeDetail } from './color-picker.js';
+import {
+  applyImageFillChangeFields,
+  imageFillFieldsFromDetail,
+} from './image-fill-fields.js';
 import { localized, msg, str } from '@lit/localize';
 import { when } from 'lit/directives/when.js';
 import { choose } from 'lit/directives/choose.js';
@@ -195,16 +199,23 @@ export class FillActionButton extends LitElement {
     this.prevFillWireBound = bound;
   }
 
-  private handleFillChanged(e: CustomEvent) {
-    const { type, value, fillOpacity } = e.detail;
+  private handleFillChanged(e: CustomEvent<ColorPickerChangeDetail>) {
+    const { type, value, fillOpacity, objectFit, objectPosition } = e.detail;
     const L = this.textFillLayer();
     const wire =
       type === ColorType.Solid ? normalizeSolidCssValue(value) : value;
+    const imageFields = imageFillFieldsFromDetail({
+      objectFit,
+      objectPosition,
+    });
     let next: SerializedFillLayerItem;
     if (type === ColorType.Gradient) {
       next = { ...L, type: 'gradient', value: wire };
     } else if (type === ColorType.Image) {
-      next = { ...L, type: 'image', value: wire };
+      next = applyImageFillChangeFields(
+        { ...L, type: 'image', value: wire },
+        imageFields,
+      );
     } else {
       next = { ...L, type: 'solid', value: wire };
     }
@@ -369,6 +380,12 @@ export class FillActionButton extends LitElement {
               html`<ic-spectrum-color-picker
                         value=${fillResolved}
                         .fillOpacity=${fillOpacity}
+                        .objectFit=${L.type === 'image'
+                  ? (L.objectFit ?? 'fill')
+                  : 'fill'}
+                        .objectPosition=${L.type === 'image'
+                  ? (L.objectPosition ?? '')
+                  : ''}
                         enable-opacity-variable-binding
                         @color-change=${this.handleFillChanged}
                         @opacity-change=${this.handleFillOpacityChanged}

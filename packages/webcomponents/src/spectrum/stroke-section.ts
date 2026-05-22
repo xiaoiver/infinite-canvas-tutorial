@@ -18,6 +18,10 @@ import {
   ColorType,
   type ColorPickerChangeDetail,
 } from './color-picker.js';
+import {
+  applyImageFillChangeFields,
+  imageFillFieldsFromDetail,
+} from './image-fill-fields.js';
 import './color-picker.js';
 import './stroke-icon.js';
 import '@spectrum-web-components/action-button/sp-action-button.js';
@@ -318,7 +322,17 @@ export class StrokeSection extends LitElement {
     index: number | null,
     e: CustomEvent<ColorPickerChangeDetail>,
   ) {
-    const { type, value, strokeOpacity: pickStrokeOpacity } = e.detail;
+    const {
+      type,
+      value,
+      strokeOpacity: pickStrokeOpacity,
+      objectFit,
+      objectPosition,
+    } = e.detail;
+    const imageFields = imageFillFieldsFromDetail({
+      objectFit,
+      objectPosition,
+    });
     let layerType: 'solid' | 'gradient' | 'image';
     let wireValue: string;
     if (type === ColorType.Gradient) {
@@ -351,7 +365,10 @@ export class StrokeSection extends LitElement {
         if (layerType === 'gradient') {
           nextL = { ...L, type: 'gradient' as const, value: wireValue };
         } else if (layerType === 'image') {
-          nextL = { ...L, type: 'image' as const, value: wireValue };
+          nextL = applyImageFillChangeFields(
+            { ...L, type: 'image' as const, value: wireValue },
+            imageFields,
+          );
         } else {
           nextL = { ...L, type: 'solid' as const, value: wireValue };
         }
@@ -370,7 +387,10 @@ export class StrokeSection extends LitElement {
       layerType === 'gradient'
         ? { ...base, type: 'gradient', value: wireValue }
         : layerType === 'image'
-          ? { ...base, type: 'image', value: wireValue }
+          ? applyImageFillChangeFields(
+            { ...base, type: 'image', value: wireValue },
+            imageFields,
+          )
           : { ...base, type: 'solid', value: wireValue };
     if (pickStrokeOpacity !== undefined && index == null && arr === null) {
       next0.opacity = pickStrokeOpacity;
@@ -465,6 +485,12 @@ export class StrokeSection extends LitElement {
                     ? this.singleLayerFromNode()
                     : this.strokesWireArray()![0]!,
                 )}
+                .objectFit=${layer.type === 'image'
+                  ? (layer.objectFit ?? 'fill')
+                  : 'fill'}
+                .objectPosition=${layer.type === 'image'
+                  ? (layer.objectPosition ?? '')
+                  : ''}
                 enable-opacity-variable-binding
                 @color-change=${(e: CustomEvent<ColorPickerChangeDetail>) =>
                   this.handlePickerColorChange(index, e)}
@@ -475,6 +501,12 @@ export class StrokeSection extends LitElement {
               ></ic-spectrum-color-picker>`
             : html`<ic-spectrum-color-picker
                 .value=${pickerValue}
+                .objectFit=${layer.type === 'image'
+                  ? (layer.objectFit ?? 'fill')
+                  : 'fill'}
+                .objectPosition=${layer.type === 'image'
+                  ? (layer.objectPosition ?? '')
+                  : ''}
                 @color-change=${(e: CustomEvent<ColorPickerChangeDetail>) =>
                   this.handlePickerColorChange(index, e)}
               ></ic-spectrum-color-picker>`}

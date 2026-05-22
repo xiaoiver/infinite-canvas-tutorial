@@ -417,6 +417,10 @@ export const en = defineConfig({
                 link: 'image-processing',
               },
               {
+                text: 'Object fit',
+                link: 'object-fit',
+              },
+              {
                 text: 'Mindmap and layout',
                 items: [
                   {

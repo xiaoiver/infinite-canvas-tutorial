@@ -1348,6 +1348,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       designVariables,
       themeMode,
     );
+    if (entity.has(Rough)) {
+      refreshComputedRoughForEntity(entity);
+      safeAddComponent(entity, GeometryDirty);
+    }
   }
   if ('brushStamp' in updates) {
     if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
@@ -1374,6 +1378,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       designVariables,
       themeMode,
     );
+    if (entity.has(Rough)) {
+      refreshComputedRoughForEntity(entity);
+      safeAddComponent(entity, GeometryDirty);
+    }
   }
   if ('strokeWidth' in updates && !isIconFontWireNode) {
     const w = resolveDesignVariableValue(

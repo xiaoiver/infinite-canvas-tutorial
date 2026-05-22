@@ -545,6 +545,15 @@ export function resolveFillLayerItemsForEcs(
     if (typeof L.opacity === 'string') {
       L.opacity = resolveDesignVariableValue(L.opacity, variables, themeMode);
     }
+    if (L.type === 'image') {
+      const img = layer as Extract<SerializedFillLayerItem, { type: 'image' }>;
+      if (img.objectFit !== undefined) {
+        L.objectFit = img.objectFit;
+      }
+      if (img.objectPosition !== undefined) {
+        L.objectPosition = img.objectPosition;
+      }
+    }
     return L as SerializedFillLayerItem;
   });
 }

@@ -11,12 +11,16 @@ head:
       ]
 ---
 
+<script setup>
+import ObjectFit from '../components/ObjectFit.vue';
+</script>
+
 # Lesson 10 - Importing and Exporting Images
 
 Image import and export is a very important feature in Infinite Canvas, and through the exported image it can be interfaced with other tools. So while our canvas drawing capabilities are currently limited, it's good to think ahead about issues related to images. In this lesson you will learn the following:
 
 -   Exporting canvas content to PNG, JPEG, and SVG, and exporting time-based effects to GIF
--   Rendering images in the canvas
+-   Rendering images in the canvas, including `object-fit` / `object-position` on image fills
 -   Extending the capabilities of SVG, using `stroke-alignment` as an example.
 
 ## Exporting canvas contents to image {#export-canvas-to-image}
@@ -710,9 +714,7 @@ call(() => {
     $icCanvas3.parentElement.appendChild($stats);
 
     $icCanvas3.addEventListener('ic-ready', async (e) => {
-        const image = await Utils.loadImage(
-            'https://infinitecanvas.cc/canvas.png',
-        );
+        const image = await Utils.loadImage('/canvas.png');
 
         const canvas = e.detail;
 
@@ -784,6 +786,34 @@ export class RenderCache {
     }
 }
 ```
+
+### Object fit (object-fit) {#object-fit}
+
+A rectangle’s geometry often does not match the image’s intrinsic aspect ratio. Drawing with `drawImage(0, 0, width, height)` everywhere stretches icons and photos. Design tools usually offer fit / fill / crop modes; we follow CSS [object-fit] and [object-position] on `FillLayers` entries with `type: 'image'`:
+
+```ts
+fills: [
+    {
+        type: 'image',
+        value: '/canvas.png',
+        objectFit: 'contain',
+        objectPosition: 'top left',
+    },
+];
+```
+
+| `objectFit`           | Behavior                                                                  |
+| --------------------- | ------------------------------------------------------------------------- |
+| `fill`                | Stretch to fill the geometry (**default**, same as early raster behavior) |
+| `contain`             | Scale uniformly; show the whole image; letterboxing may appear            |
+| `cover`               | Scale uniformly; fill the geometry; crop overflow                         |
+| `none` / `scale-down` | Same semantics as CSS                                                     |
+
+See [Object fit example](/example/object-fit) for how this maps to Figma image scaling and Pencil `mode` (`stretch` / `fill` / `fit`).
+
+On the CPU we rasterize the image into a texture: compute the draw rectangle from `objectFit` and paint into a canvas. For `contain` / `cover`, texture size is **geometry × device pixel ratio**, not `max(source width, geometry width)`—otherwise the full image fills the bitmap and, when mapped to the shape, still looks like stretched `fill`.
+
+<ObjectFit />
 
 ### iOS Live Photo {#ios-live-photo}
 

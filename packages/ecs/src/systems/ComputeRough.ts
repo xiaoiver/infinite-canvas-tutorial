@@ -7,6 +7,7 @@ import {
   ComputedRough,
   Ellipse,
   FillLayers,
+  GeometryDirty,
   FractionalIndex,
   getRoughOptions,
   Line,
@@ -129,6 +130,7 @@ export function refreshComputedRoughForEntity(entity: Entity): void {
     fillPoints,
     fillPathPoints,
   });
+  safeAddComponent(entity, GeometryDirty);
 }
 
 export class ComputeRough extends System {
@@ -142,8 +144,7 @@ export class ComputeRough extends System {
 
   constructor() {
     super();
-    this.query((q) => q.current.with(ComputedRough).write);
-    this.query((q) => q.using(Canvas, FractionalIndex, ComputedPoints).read);
+    this.query((q) => q.using(ComputedRough, GeometryDirty).write.and.using(Canvas, FractionalIndex, ComputedPoints).read);
   }
 
   execute() {

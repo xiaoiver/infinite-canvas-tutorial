@@ -2,7 +2,8 @@ import { field, Type } from '@lastolivegames/becsy';
 import { Drawable, Options } from 'roughjs/bin/core';
 import { deserializePoints, filterUndefined } from '../../utils';
 import { FillAttributes, RoughAttributes, SerializedNode, StrokeAttributes } from '../../types/serialized-node';
-import { getPrimaryFillValue } from '../../utils/normalize-fill-wire';
+import { getFirstSolidFillLayerValueFromWire } from '../../utils/fillLayers';
+import { getPrimaryStrokeValue } from '../../utils/normalize-stroke-wire';
 
 export class Rough {
   /**
@@ -195,7 +196,10 @@ export function getRoughOptions(
 ): Options {
   const wire = node as RoughAttributes & StrokeAttributes & FillAttributes;
   const {
-    stroke, strokeWidth, strokeDasharray: strokeDasharrayString, strokeDashoffset,
+    stroke: legacyStroke,
+    strokeWidth,
+    strokeDasharray: strokeDasharrayString,
+    strokeDashoffset,
     roughSeed,
     roughBowing,
     roughRoughness,
@@ -215,7 +219,12 @@ export function getRoughOptions(
     roughFillLineDash,
     roughFillLineDashOffset,
   } = wire;
-  const fill = getPrimaryFillValue(wire) ?? '';
+  const fill =
+    getFirstSolidFillLayerValueFromWire(wire.fills) ?? 'none';
+  const stroke =
+    getPrimaryStrokeValue(wire) ?? legacyStroke ?? 'none';
+  const resolvedStrokeWidth =
+    strokeWidth !== undefined && strokeWidth !== null ? Number(strokeWidth) : 1;
 
   const strokeDasharray = strokeDasharrayString ? deserializePoints(strokeDasharrayString) : [0, 0];
 
@@ -224,14 +233,16 @@ export function getRoughOptions(
   return filterUndefined({
     fill: isWatercolor ? '' : fill,
     stroke,
-    strokeWidth,
+    strokeWidth: resolvedStrokeWidth,
     seed: roughSeed,
     bowing: roughBowing,
     roughness: roughRoughness,
     fillStyle: (isWatercolor ? 'solid' : roughFillStyle) as Options['fillStyle'],
-    fillWeight: roughFillWeight !== -1 ? roughFillWeight : strokeWidth / 2,
+    fillWeight:
+      roughFillWeight !== -1 ? roughFillWeight : resolvedStrokeWidth / 2,
     hachureAngle: roughHachureAngle,
-    hachureGap: roughHachureGap !== -1 ? roughHachureGap : strokeWidth * 4,
+    hachureGap:
+      roughHachureGap !== -1 ? roughHachureGap : resolvedStrokeWidth * 4,
     curveStepCount: roughCurveStepCount,
     curveFitting: roughCurveFitting,
     disableMultiStroke: roughDisableMultiStroke,

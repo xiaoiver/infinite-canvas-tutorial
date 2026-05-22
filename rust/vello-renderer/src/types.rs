@@ -137,7 +137,18 @@ pub enum FillPaint {
         image_width: u32,
         image_height: u32,
         image_data: Vec<u8>,
+        /// 形状局部坐标系内的绘制矩形；`None` 表示拉伸铺满（`fill`）。
+        fit_draw_rect: Option<FitDrawRect>,
     },
+}
+
+/// `object-fit` 在形状框内的绘制区域（与 ECS `computeObjectFitDrawRect` 一致）。
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct FitDrawRect {
+    pub dx: f64,
+    pub dy: f64,
+    pub dw: f64,
+    pub dh: f64,
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -158,6 +169,8 @@ pub enum WasmFillPaint {
         image_height: u32,
         #[serde(rename = "imageData")]
         image_data: Vec<u8>,
+        #[serde(rename = "fitDrawRect", default)]
+        fit_draw_rect: Option<FitDrawRect>,
     },
 }
 
@@ -183,6 +196,7 @@ pub fn wasm_fill_paints_to_runtime(items: Vec<WasmFillPaint>) -> Vec<FillPaint> 
                 image_width,
                 image_height,
                 image_data,
+                fit_draw_rect,
             } => {
                 let expected = image_width as usize * image_height as usize * 4;
                 if image_width == 0 || image_height == 0 || image_data.len() < expected {
@@ -192,6 +206,7 @@ pub fn wasm_fill_paints_to_runtime(items: Vec<WasmFillPaint>) -> Vec<FillPaint> 
                     image_width,
                     image_height,
                     image_data,
+                    fit_draw_rect,
                 });
             }
         }

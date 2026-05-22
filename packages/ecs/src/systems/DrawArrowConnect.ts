@@ -45,6 +45,7 @@ import {
   Theme,
   Flex,
   StrokeLayers,
+  Rough
 } from '../components';
 import { API } from '../API';
 import type { PathSerializedNode, SerializedNode } from '../types/serialized-node';
@@ -134,6 +135,7 @@ export class DrawArrowConnect extends System {
             ComputedPoints,
             Theme,
             Flex,
+            Rough,
           ).write,
     );
   }

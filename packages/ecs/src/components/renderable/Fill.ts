@@ -33,6 +33,10 @@ export type FillLayerItem =
   | {
       type: 'image';
       value: string;
+      /** CSS `object-fit`；缺省 `fill` */
+      objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+      /** CSS `object-position`；缺省 `50% 50%` */
+      objectPosition?: string;
       opacity?: number | string;
       enabled?: boolean;
       blendMode?: FillLayerBlendMode;

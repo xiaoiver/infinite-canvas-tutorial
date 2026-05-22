@@ -1,6 +1,10 @@
 import type { Entity } from '@lastolivegames/becsy';
 import { FillLayers, MaterialDirty } from '../components';
 import { safeAddComponent } from '../history/ElementsChange';
+import {
+  drawCanvasImageWithObjectFit,
+  type FillLayerImageRasterOptions,
+} from './fill-layer-image-object-fit';
 import { setFillLayerDecodedBitmapForUrl } from './fill-layer-image-url-raster';
 import { getEnabledFillLayers } from './fillLayers';
 
@@ -44,6 +48,7 @@ export async function rasterizeSvgUrlToImageBitmap(
   url: string,
   width: number,
   height: number,
+  options?: FillLayerImageRasterOptions,
 ): Promise<ImageBitmap | null> {
   if (typeof Image === 'undefined' || width < 1 || height < 1) {
     return null;
@@ -81,7 +86,15 @@ export async function rasterizeSvgUrlToImageBitmap(
         (ctx as CanvasRenderingContext2D).imageSmoothingQuality = 'high';
       }
       try {
-        ctx.drawImage(img, 0, 0, width, height);
+        drawCanvasImageWithObjectFit(
+          ctx,
+          img,
+          img.naturalWidth,
+          img.naturalHeight,
+          width,
+          height,
+          options,
+        );
       } catch {
         done(null);
         return;
@@ -106,8 +119,9 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
   targetH: number;
   sourceW: number;
   sourceH: number;
+  rasterOptions?: FillLayerImageRasterOptions;
 }): void {
-  const { entity, url, targetW, targetH, sourceW, sourceH } = o;
+  const { entity, url, targetW, targetH, sourceW, sourceH, rasterOptions } = o;
   if (!isLikelySvgResourceUrl(url)) {
     return;
   }
@@ -121,7 +135,12 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
   }
   lastScheduledKey.set(entity, key);
   void (async () => {
-    const bmp = await rasterizeSvgUrlToImageBitmap(url, targetW, targetH);
+    const bmp = await rasterizeSvgUrlToImageBitmap(
+      url,
+      targetW,
+      targetH,
+      rasterOptions,
+    );
     if (!bmp) {
       if (lastScheduledKey.get(entity) === key) {
         lastScheduledKey.delete(entity);

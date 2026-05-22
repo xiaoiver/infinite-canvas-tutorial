@@ -67,10 +67,12 @@ import {
   fontWeightMap,
   parseColor,
   Group,
-  rasterizeFillLayerImageUrlForTexture,
-  resolveFillLayerImageRasterPixelSize,
+  computeObjectFitDrawRect,
+  fillLayerImageRasterOptions,
   getFillLayerDecodedBitmap,
+  resolveImageFillRasterOptions,
 } from '@infinite-canvas-tutorial/ecs';
+import type { API } from '@infinite-canvas-tutorial/ecs';
 import {
   addRect,
   addEllipse,
@@ -250,8 +252,14 @@ function buildFillGradients(
   return result;
 }
 
+/** `serde_wasm_bindgen` 反序列化 `Vec<u8>` 需要普通数组，不能是 `Uint8Array`。 */
+function toWasmRgbaBytes(data: Uint8ClampedArray | Uint8Array): number[] {
+  return Array.from(data);
+}
+
 /** 与 Rust `WasmFillPaint` 对齐（`kind`：solid | gradient | image）。 */
 function buildVelloWasmFills(
+  api: API | undefined,
   entity: Entity,
   min: [number, number],
   width: number,
@@ -299,19 +307,13 @@ function buildVelloWasmFills(
       }
       out.push({ kind: 'gradient', fillGradients: grads });
     } else if (layer.type === 'image') {
-      const { width: tw, height: th } = resolveFillLayerImageRasterPixelSize(
-        layer.value,
-        width,
-        height,
-      );
-      const canvas = rasterizeFillLayerImageUrlForTexture(
-        layer.value,
-        tw,
-        th,
-        () => safeAddComponent(entity, MaterialDirty),
-      );
-      if (!canvas) continue;
-      const imageData = imageToRgba(canvas as TexImageSource);
+      const rasterOpts = resolveImageFillRasterOptions(api, entity, layer);
+      const objectFit = rasterOpts.objectFit ?? 'fill';
+      const src = getFillLayerDecodedBitmap(layer.value);
+      if (!src) {
+        continue;
+      }
+      const imageData = imageToRgba(src);
       if (!imageData) continue;
       const scale = lo * fo * opacity;
       let pixels = imageData.data;
@@ -322,12 +324,29 @@ function buildVelloWasmFills(
         }
         pixels = d;
       }
-      out.push({
+      const payload: Record<string, unknown> = {
         kind: 'image',
         imageWidth: imageData.width,
         imageHeight: imageData.height,
-        imageData: pixels,
-      });
+        imageData: toWasmRgbaBytes(pixels),
+      };
+      if (objectFit !== 'fill') {
+        const r = computeObjectFitDrawRect(
+          imageData.width,
+          imageData.height,
+          width,
+          height,
+          objectFit,
+          rasterOpts.objectPosition,
+        );
+        payload.fitDrawRect = {
+          dx: r.dx,
+          dy: r.dy,
+          dw: r.dw,
+          dh: r.dh,
+        };
+      }
+      out.push(payload);
     }
   }
   return out;
@@ -830,6 +849,7 @@ export class VelloPipeline extends System {
             ry: r,
           };
           const fills = buildVelloWasmFills(
+            api,
             entity,
             [cx - r, cy - r],
             2 * r,
@@ -872,6 +892,7 @@ export class VelloPipeline extends System {
           const { cx, cy, rx, ry } = entity.read(Ellipse);
           const opts: Record<string, unknown> = { ...baseOpts, cx, cy, rx, ry };
           const fills = buildVelloWasmFills(
+            api,
             entity,
             [cx - rx, cy - ry],
             2 * rx,
@@ -942,7 +963,7 @@ export class VelloPipeline extends System {
             fillBlur: fillBlur ?? 0,
             dropShadow: dropShadow ?? undefined,
           };
-          const fills = buildVelloWasmFills(entity, [x, y], width, height);
+          const fills = buildVelloWasmFills(api, entity, [x, y], width, height);
           if (fills.length) opts.fills = fills;
           if (entity.has(Rough)) {
             const {
@@ -986,6 +1007,7 @@ export class VelloPipeline extends System {
               const { minX, minY, maxX, maxY } =
                 entity.read(ComputedBounds).geometryBounds;
               const fills = buildVelloWasmFills(
+                api,
                 entity,
                 [minX, minY],
                 maxX - minX,
@@ -1061,6 +1083,7 @@ export class VelloPipeline extends System {
               const { minX, minY, maxX, maxY } =
                 entity.read(ComputedBounds).geometryBounds;
               const fills = buildVelloWasmFills(
+                api,
                 entity,
                 [minX, minY],
                 maxX - minX,
@@ -1101,7 +1124,7 @@ export class VelloPipeline extends System {
                 if (imageData) {
                   opts.imageWidth = imageData.width;
                   opts.imageHeight = imageData.height;
-                  opts.imageData = imageData.data;
+                  opts.imageData = toWasmRgbaBytes(imageData.data);
                 } else {
                   opts.brushStamp = src;
                 }
@@ -1181,7 +1204,7 @@ export class VelloPipeline extends System {
           const fillGeom = Text.getGeometryBounds(text, metrics);
           const fillW = Math.max(0, fillGeom.maxX - fillGeom.minX);
           const fillH = Math.max(0, fillGeom.maxY - fillGeom.minY);
-          const fills = buildVelloWasmFills(entity, [
+          const fills = buildVelloWasmFills(api, entity, [
             fillGeom.minX,
             fillGeom.minY,
           ], fillW, fillH);

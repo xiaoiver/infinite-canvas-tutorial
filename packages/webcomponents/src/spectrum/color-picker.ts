@@ -4,6 +4,7 @@ import { when } from 'lit/directives/when.js';
 import { cssColorToHex, isGradient, isUrl, isDataUrl } from '@infinite-canvas-tutorial/ecs';
 import { localized, msg, str } from '@lit/localize';
 import './input-image.js';
+import type { ImageObjectFit } from './image-fill-fields.js';
 
 export enum ColorType {
   None = 'none',
@@ -19,6 +20,8 @@ export type ColorPickerChangeDetail = {
   /** 与 `ic-spectrum-input-solid` 一致：由父组件传入并回传。 */
   fillOpacity?: number;
   strokeOpacity?: number;
+  objectFit?: ImageObjectFit;
+  objectPosition?: string;
 };
 
 /** Spectrum `sp-action-group` host exposes `selected`. */
@@ -33,6 +36,8 @@ type ChildColorChangeDetail = {
   opacity?: number;
   fillOpacity?: number;
   strokeOpacity?: number;
+  objectFit?: ImageObjectFit;
+  objectPosition?: string;
 };
 
 function isColorType(s: string): s is ColorType {
@@ -80,6 +85,14 @@ export class ColorPicker extends LitElement {
   /** 与工具条一致：透明度可绑定数字变量 */
   @property({ type: Boolean, attribute: 'enable-opacity-variable-binding' })
   enableOpacityVariableBinding = false;
+
+  /** Image fill: CSS `object-fit` (only used when type is Image). */
+  @property({ attribute: 'object-fit' })
+  objectFit: ImageObjectFit = 'fill';
+
+  /** Image fill: CSS `object-position`. */
+  @property({ attribute: 'object-position' })
+  objectPosition = '';
 
   @state()
   type: ColorType = ColorType.None;
@@ -228,6 +241,8 @@ export class ColorPicker extends LitElement {
       ${when(this.type === ColorType.Image, () => html`
         <ic-spectrum-input-image
           value=${this.prevColors[ColorType.Image]}
+          .objectFit=${this.objectFit}
+          .objectPosition=${this.objectPosition}
           @color-change=${this.handleColorChanged}
         ></ic-spectrum-input-image>
       `)}

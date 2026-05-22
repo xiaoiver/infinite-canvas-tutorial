@@ -52,6 +52,7 @@ import {
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
 import {
   getFillLayerDecodedBitmap,
+  resolveImageFillRasterOptions,
   rasterizeFillLayerImageUrlForTexture,
   resolveFillLayerImageRasterPixelSize,
   transparentFillLayerCanvas,
@@ -212,16 +213,23 @@ export class SDF extends Drawcall {
     height: number,
   ): Texture {
     if (layer.type === 'image') {
+      const rasterOpts = resolveImageFillRasterOptions(
+        this.api,
+        instance,
+        layer,
+      );
       const { width: tw, height: th } = resolveFillLayerImageRasterPixelSize(
         layer.value,
         width,
         height,
+        rasterOpts.objectFit,
       );
       const fromUrl = rasterizeFillLayerImageUrlForTexture(
         layer.value,
         tw,
         th,
         () => safeAddComponent(instance, MaterialDirty),
+        rasterOpts,
       );
       const canvas = fromUrl ?? transparentFillLayerCanvas(tw, th);
       const raw = this.device.createTexture({
@@ -241,6 +249,7 @@ export class SDF extends Drawcall {
         targetH: th,
         sourceW: sw,
         sourceH: sh,
+        rasterOptions: rasterOpts,
       });
       return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
     }
@@ -351,6 +360,19 @@ export class SDF extends Drawcall {
       fl1 &&
       JSON.stringify(fl0) !== JSON.stringify(fl1)
     ) {
+      return false;
+    }
+    const node0 = this.api.getNodeByEntity(this.shapes[0]);
+    const node1 = this.api.getNodeByEntity(shape);
+    if (
+      JSON.stringify((node0 as { fills?: unknown })?.fills ?? null) !==
+      JSON.stringify((node1 as { fills?: unknown })?.fills ?? null)
+    ) {
+      return false;
+    }
+    const hasImageFill = (layers: typeof fl0) =>
+      layers?.some((l) => l.type === 'image') ?? false;
+    if (hasImageFill(fl0) || hasImageFill(fl1)) {
       return false;
     }
     if (getMultiFillLayers(shape) && this.instanced) {

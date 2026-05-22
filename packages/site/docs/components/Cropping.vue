@@ -3,7 +3,6 @@ import {
   App,
   Pen,
   DefaultPlugins,
-  TRANSFORMER_ANCHOR_STROKE_COLOR
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
