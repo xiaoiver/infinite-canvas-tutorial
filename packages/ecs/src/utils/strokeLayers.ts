@@ -26,6 +26,46 @@ export function getEnabledStrokeLayers(entity: Entity): FillLayerItem[] {
   return getEnabledStrokeLayersFromItems(entity.read(StrokeLayers).layers);
 }
 
+/** 首个启用 `solid` 描边层的颜色字符串（线框 `strokes` 数组）。 */
+export function getFirstSolidStrokeLayerValueFromWire(
+  layers: FillLayerItem[] | undefined,
+): string | null {
+  if (!layers?.length) {
+    return null;
+  }
+  for (const L of layers) {
+    if (L.type === 'solid' && L.enabled !== false) {
+      const v = String(L.value ?? '').trim();
+      if (v !== '' && v.toLowerCase() !== 'none') {
+        return L.value;
+      }
+    }
+  }
+  return null;
+}
+
+export function getFirstSolidStrokeLayerValue(entity: Entity): string | null {
+  return getFirstSolidStrokeLayerValueFromWire(getEnabledStrokeLayers(entity));
+}
+
+/**
+ * GPU / Canvas 描边颜色：`StrokeLayers` 优先；否则 `Stroke.color`（非 `none`）。
+ */
+export function resolveGpuStrokeColor(entity: Entity): string | null {
+  const fromLayer = getFirstSolidStrokeLayerValue(entity);
+  if (fromLayer != null) {
+    return fromLayer;
+  }
+  if (!entity.has(Stroke)) {
+    return null;
+  }
+  const c = entity.read(Stroke).color;
+  if (c && c !== 'none') {
+    return c;
+  }
+  return null;
+}
+
 /** 首个启用 `gradient` 描边层的 CSS 渐变字符串（与填充栈对称）。 */
 export function getFirstGradientStrokeLayerValue(entity: Entity): string | null {
   for (const L of getEnabledStrokeLayers(entity)) {

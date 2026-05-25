@@ -31,6 +31,7 @@ import {
 import {
   getFirstGradientStrokeLayerValue,
   strokePaintAlphaMultipliers,
+  resolveGpuStrokeColor,
 } from './strokeLayers';
 import { buildVectorNetworkFillMesh } from './vector-network-fill';
 import { parseColor } from './color';
@@ -559,9 +560,7 @@ export function createFillAndStrokeRgbaRasterForFilter(
   const fillRgba = rgbaFromParsed(fillRgb, fillOpacity);
 
   const stroke = shape.read(Stroke);
-  const strokeRgb = parseColor(
-    stroke.color && stroke.color !== 'none' ? stroke.color : 'transparent',
-  );
+  const strokeRgb = parseColor(resolveGpuStrokeColor(shape) ?? 'transparent');
   const strokeRgba = rgbaFromParsed(
     strokeRgb,
     strokeOpacity * strokeColorAlphaMul * strokeUniformOpacityMul,

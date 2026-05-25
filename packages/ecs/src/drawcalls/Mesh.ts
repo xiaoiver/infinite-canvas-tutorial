@@ -41,7 +41,10 @@ import {
   getSingleEnabledFillLayer,
   type FillLayerItem,
 } from '../utils/fillLayers';
-import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
+import {
+  resolveGpuStrokeColor,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import {
   getRasterFilterValueForShape,
@@ -933,14 +936,14 @@ export class Mesh extends Drawcall {
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
 
-    const {
-      color: strokeColor,
-      width,
-      alignment,
-    } = shape.has(Stroke)
-        ? shape.read(Stroke)
-        : { color: null, width: 0, alignment: 'center' };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const strokeColor = resolveGpuStrokeColor(shape);
+    const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+    const alignment = shape.has(Stroke)
+      ? shape.read(Stroke).alignment
+      : 'center';
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 

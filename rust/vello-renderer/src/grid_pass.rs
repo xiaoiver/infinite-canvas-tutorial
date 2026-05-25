@@ -129,8 +129,8 @@ fn composite_fs(i: VsOut) -> @location(0) vec4<f32> {
     let bg = textureSample(t_bg, samp, uv);
     let fg = textureSample(t_vello, samp, uv);
     let a = clamp(fg.a, 0.0, 1.0);
-    // Vello 离屏层为预乘 RGBA；须用预乘 over，勿再用 `fg.rgb * a`（会二次乘 alpha）。
-    let rgb = fg.rgb + bg.rgb * (1.0 - a);
+    // Vello fine 写入纹理前会 unpremultiply（见 vello_shaders fine.wgsl），此处为 straight RGBA。
+    let rgb = fg.rgb * a + bg.rgb * (1.0 - a);
     return vec4(rgb, 1.0);
 }
 

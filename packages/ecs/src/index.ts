@@ -72,6 +72,7 @@ export {
   getFillLayerDecodedBitmap,
   setFillLayerDecodedBitmapForUrl,
   fillLayerImageRasterOptions,
+  resolveFillLayerOpacityFromWire,
   resolveImageFillRasterOptions,
   computeObjectFitDrawRect,
   drawCanvasImageWithObjectFit,

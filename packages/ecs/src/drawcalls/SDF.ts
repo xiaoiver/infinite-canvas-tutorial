@@ -42,6 +42,7 @@ import {
 } from '../utils/fillLayers';
 import {
   getFirstGradientStrokeLayerValue,
+  resolveGpuStrokeColor,
   strokePaintAlphaMultipliers,
 } from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
@@ -1296,13 +1297,11 @@ export class SDF extends Drawcall {
       ? shape.read(Opacity)
       : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
 
-    const {
-      color: strokeColor,
-      width,
-      alignment,
-    } = shape.has(Stroke)
-        ? shape.read(Stroke)
-        : { color: null, width: 0, alignment: 'center' };
+    const strokeColor = resolveGpuStrokeColor(shape);
+    const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+    const alignment = shape.has(Stroke)
+      ? shape.read(Stroke).alignment
+      : 'center';
     const {
       color: innerShadowColor,
       offsetX,
@@ -1316,7 +1315,9 @@ export class SDF extends Drawcall {
           offsetY: 0,
           blurRadius: 0,
         };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
     const {

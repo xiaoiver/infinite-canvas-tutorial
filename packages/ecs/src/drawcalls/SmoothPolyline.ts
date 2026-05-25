@@ -38,6 +38,7 @@ import {
 import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
 import {
   getFirstGradientStrokeLayerValue,
+  resolveGpuStrokeColor,
   strokePaintAlphaMultipliers,
 } from '../utils/strokeLayers';
 import {
@@ -671,8 +672,8 @@ export class SmoothPolyline extends Drawcall {
       fill != null ? fill : 'transparent',
     );
 
+    const strokeColor = resolveGpuStrokeColor(shape);
     const {
-      color: strokeColor,
       width,
       alignment,
       miterlimit,
@@ -682,15 +683,16 @@ export class SmoothPolyline extends Drawcall {
     } = shape.has(Stroke)
         ? shape.read(Stroke)
         : {
-          color: null,
           width: 0,
-          alignment: 'center',
+          alignment: 'center' as const,
           miterlimit: 10,
-          dasharray: [],
+          dasharray: [] as unknown as [number, number],
           dashoffset: 0,
           dashcap: 'none' as const,
         };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
     let strokeWidth = width;
     if (shape.has(Rough)) {
       const { fillWeight } = shape.read(Rough);

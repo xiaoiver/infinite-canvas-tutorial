@@ -12,7 +12,7 @@ use crate::state::{
     CAMERA_TRANSFORM_PENDING, CANVAS_RENDER_OPTIONS_PENDING, CANVAS_WINDOWS,
     EMOJI_CACHE, EXPORT_VIEW_PENDING, FONT_BYTES, GLYPH_CACHE, PENDING_CANVASES,
     RESTORE_PENDING, RUNNER_SCHEDULED,
-    clear_brush_stamp_cache, clear_image_brush_cache, clear_shapes_for_canvas, push_shape,
+    clear_brush_stamp_cache, clear_shapes_for_canvas, push_shape,
     set_brush_stamp_image,
 };
 #[cfg(target_arch = "wasm32")]
@@ -947,10 +947,16 @@ pub fn js_add_text(canvas_id: u32, opts: JsValue) {
     let mut fills = if !o.fills.is_empty() {
         wasm_fill_paints_to_runtime(o.fills.clone())
     } else {
-        vec![FillPaint::Solid { rgba: o.fill }]
+        vec![FillPaint::Solid {
+            rgba: o.fill,
+            layer_alpha: 1.0,
+        }]
     };
     if fills.is_empty() {
-        fills.push(FillPaint::Solid { rgba: o.fill });
+        fills.push(FillPaint::Solid {
+            rgba: o.fill,
+            layer_alpha: 1.0,
+        });
     }
     let fills_ibox = compute_text_bounds_internal(&o)
         .map(|b| Rect::new(b.min_x, b.min_y, b.max_x, b.max_y))
@@ -1175,9 +1181,7 @@ pub fn js_register_font(js_value: JsValue) {
 #[wasm_bindgen(js_name = clearShapes)]
 pub fn js_clear_shapes(canvas_id: u32) {
     clear_shapes_for_canvas(canvas_id);
-    // 同一帧内的 camera 重绘不应触发清理；该函数只会在 JS 重建 shapes 时调用。
-    // 清理 ImageRect 缓存可避免 shape id 复用导致的纹理过期。
-    clear_image_brush_cache();
+    // 保留 IMAGE_BRUSH_CACHE：拖拽/resize 每帧会 clearShapes 再重建，但 URL 纹理可复用。
     clear_brush_stamp_cache();
 }
 
