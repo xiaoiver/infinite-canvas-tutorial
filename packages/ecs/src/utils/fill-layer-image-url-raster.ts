@@ -3,6 +3,7 @@ import type { API } from '../API';
 import type { FillLayerItem } from '../components/renderable/Fill';
 import { DOMAdapter } from '../environment';
 import { parseColor } from './color';
+import { fillLayerOpacity, isFillLayerEnabled } from './fillLayers';
 import type { FillAttributes, SerializedFillLayerItem } from '../types/serialized-node';
 import {
   drawCanvasImageWithObjectFit,
@@ -26,6 +27,45 @@ export {
  * 优先用线框 `fills` 上的 `objectFit` / `objectPosition`（ECS {@link FillLayers} 可能未带上扩展字段），
  * 再回退到 ECS layer。
  */
+/**
+ * 优先用线框 `fills[].opacity`（ECS {@link FillLayers} 的 `Type.object` 层可能未保留该字段），
+ * 再回退到 ECS layer。
+ */
+export function resolveFillLayerOpacityFromWire(
+  api: API | undefined,
+  entity: Entity | undefined,
+  layer: FillLayerItem,
+): number {
+  const fromEcs = fillLayerOpacity(layer.opacity);
+  if (!api || !entity) {
+    return fromEcs;
+  }
+  const node = api.getNodeByEntity(entity) as FillAttributes | undefined;
+  const fills = node?.fills;
+  if (!Array.isArray(fills) || fills.length === 0) {
+    return fromEcs;
+  }
+  const wire =
+    fills.find(
+      (l) =>
+        isFillLayerEnabled(l) &&
+        l.type === layer.type &&
+        'value' in l &&
+        'value' in layer &&
+        String(l.value) === String(layer.value),
+    ) ??
+    fills.find((l) => isFillLayerEnabled(l) && l.type === layer.type);
+  if (
+    wire &&
+    'opacity' in wire &&
+    wire.opacity != null &&
+    wire.opacity !== ''
+  ) {
+    return fillLayerOpacity(wire.opacity);
+  }
+  return fromEcs;
+}
+
 export function resolveImageFillRasterOptions(
   api: API | undefined,
   entity: Entity | undefined,

@@ -7,7 +7,7 @@ export type { FillLayerBlendMode };
 /**
  * 单层填充描述；在 {@link FillLayers.layers} 中按顺序从底到顶叠加（线框 `fills` 可 0～n 条）。
  *
- * `opacity` 为 0–1，缺省 1；与实体 {@link Opacity.fillOpacity} 相乘。
+ * `opacity` 为 0–1，缺省 1；与实体 {@link Opacity.opacity} 相乘。
  * `enabled` 为 false 时跳过该层（缺省为启用）。
  */
 export type FillLayerItem =

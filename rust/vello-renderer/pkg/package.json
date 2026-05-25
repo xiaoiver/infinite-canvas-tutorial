@@ -1,7 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/vello-renderer",
   "type": "module",
-  "description": "Minimal runnable example using Vello as 2D GPU renderer (reference: Graphite)",
   "version": "0.1.0",
   "license": "MIT",
   "files": [

@@ -57,6 +57,8 @@
 pnpm i
 ```
 
+运行 ECS 单元测试（`pnpm test:ecs`）需要 Node 20 与原生模块 `canvas` / `gl`，详见 [docs/running-ecs-tests.md](./docs/running-ecs-tests.md)。
+
 进入课程目录后，启动 Vite 开发服务器
 
 ```bash

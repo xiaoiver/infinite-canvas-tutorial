@@ -66,9 +66,13 @@ import {
 import {
   fillLayerOpacity,
   getEnabledFillLayers,
+  getFirstFillLayerOpacityMul,
   getSingleEnabledFillLayer,
 } from '../utils/fillLayers';
-import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
+import {
+  resolveGpuStrokeColor,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
 import {
   applyTextGlyphMaskToFilterRasterCanvas,
   createGradientFillTextRasterForFilter,
@@ -193,9 +197,7 @@ export class SDFText extends Drawcall {
 
   private hash(shape: Entity) {
     const { bitmapFont, physical } = shape.read(Text);
-    const { color: stroke } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: 'none' };
+    const stroke = resolveGpuStrokeColor(shape) ?? 'none';
 
     const font = shape.has(ComputedTextMetrics)
       ? shape.read(ComputedTextMetrics)
@@ -492,9 +494,7 @@ export class SDFText extends Drawcall {
 
           const meshLayers = fillGradients.filter(isMeshGradientGradient);
           const cssLayers = fillGradients.filter((g) => !isMeshGradientGradient(g));
-          const fillOpacityMul = shape.has(Opacity)
-            ? shape.read(Opacity).fillOpacity
-            : 1;
+          const fillOpacityMul = getFirstFillLayerOpacityMul(shape);
 
           let rasterCanvas: HTMLCanvasElement | OffscreenCanvas | null = null;
 
@@ -1027,14 +1027,13 @@ export class SDFText extends Drawcall {
       fillCss && fillCss !== 'none' ? fillCss : 'transparent',
     );
 
-    const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
 
-    const { color: strokeColor, width } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: null, width: 0 };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const strokeColor = resolveGpuStrokeColor(shape);
+    const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
@@ -1069,8 +1068,8 @@ export class SDFText extends Drawcall {
 
     const u_Opacity = [
       opacity,
-      fillOpacity,
-      strokeOpacity * strokeUniformOpacityMul,
+      1,
+      strokeUniformOpacityMul,
       sizeAttenuation,
     ];
 

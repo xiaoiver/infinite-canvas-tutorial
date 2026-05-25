@@ -1,15 +1,9 @@
 import { field, Type } from '@lastolivegames/becsy';
 
+/**
+ * 描边几何与样式（线宽、虚线、端帽等）。颜料见 {@link StrokeLayers} / 线框 `strokes[]`。
+ */
 export class Stroke {
-  /**
-   * It is a presentation attribute defining the color used to paint the outline of the shape.
-   *
-   * Default to `none`.
-   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke
-   */
-  @field({ type: Type.object, default: 'none' })
-  declare color: string;
-
   /**
    * It is a presentation attribute defining the width of the stroke to be applied to the shape.
    *
@@ -97,7 +91,7 @@ export class Stroke {
   })
   declare dashcap: 'none' | 'square' | 'round';
 
-  /** 设计变量绑定：变量表键名（与 `$` 后一致），作用于 {@link color} */
+  /** 设计变量绑定：变量表键名（与 `$` 后一致），对应 `strokes[]` 首层 `value` */
   @field({ type: Type.dynamicString(200), default: '' })
   declare colorVariableRef: string;
 

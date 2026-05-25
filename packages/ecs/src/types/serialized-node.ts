@@ -194,7 +194,7 @@ export interface StrokeAttributes {
    */
   strokes?: SerializedStrokeLayerItem[];
   /** @deprecated 由 migrate 合并入 `strokes` */
-  stroke?: Stroke['color'];
+  stroke?: string;
   strokeWidth: Stroke['width'];
   strokeAlignment: Stroke['alignment'];
   strokeLinecap: Stroke['linecap'];
@@ -205,7 +205,7 @@ export interface StrokeAttributes {
   /** 虚线端帽（Figma）；未写时等价于 `none` */
   strokeDashCap?: Stroke['dashcap'];
   /** @deprecated 由 migrate 合并入 `strokes[].opacity` */
-  strokeOpacity?: Opacity['strokeOpacity'];
+  strokeOpacity?: number;
 }
 
 /** Wider hit target for thin stroked lines / paths (Konva `hitStrokeWidth`). */
@@ -494,9 +494,9 @@ export interface BrushAttributes {
   /** 与 {@link StrokeAttributes#strokes} 一致；历史 `stroke` / `strokeOpacity` 由 migrate 合并 */
   strokes?: SerializedStrokeLayerItem[];
   /** @deprecated 由 migrate 合并入 `strokes` */
-  stroke?: Stroke['color'];
+  stroke?: string;
   /** @deprecated 由 migrate 合并入 `strokes[].opacity` */
-  strokeOpacity?: Opacity['strokeOpacity'];
+  strokeOpacity?: number;
 }
 export interface BrushSerializedNode
   extends BaseSerializeNode<'brush'>,

@@ -548,6 +548,7 @@ mod tests {
             radius: 0.0,
             fills: vec![crate::types::FillPaint::Solid {
                 rgba: [1.0, 0.0, 0.0, 1.0],
+                layer_alpha: 1.0,
             }],
             stroke: None,
             opacity: 1.0,
@@ -571,6 +572,7 @@ mod tests {
             radius: 0.0,
             fills: vec![crate::types::FillPaint::Solid {
                 rgba: [0.0, 1.0, 0.0, 1.0],
+                layer_alpha: 1.0,
             }],
             stroke: None,
             opacity: 1.0,

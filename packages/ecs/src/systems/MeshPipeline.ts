@@ -1011,9 +1011,9 @@ export class MeshPipeline extends System {
           type: 'add',
           entity,
         });
+        safeAddComponent(entity, MaterialDirty);
       }
       if (getFirstGradientStrokeLayerValue(entity) != null) {
-        safeAddComponent(entity, MaterialDirty);
         safeAddComponent(entity, GeometryDirty);
       }
     });

@@ -7,7 +7,6 @@ import {
   FillLayers,
   GlobalTransform,
   Highlighted,
-  Opacity,
   Parent,
   Path,
   Polyline,
@@ -34,12 +33,11 @@ import {
   Visibility,
   Line,
   OBB,
+  StrokeLayers,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, updateGlobalTransform } from './Transform';
 import {
-  calculateOBBRecursive,
-  TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { HIGHLIGHTER_Z_INDEX } from '../context';
@@ -91,8 +89,8 @@ export class RenderHighlighter extends System {
             Children,
             Renderable,
             FillLayers,
-            Opacity,
             Stroke,
+            StrokeLayers,
             Rect,
             Circle,
             Ellipse,
@@ -166,9 +164,9 @@ export class RenderHighlighter extends System {
      */
     const obb =
       entity.has(Polyline) ||
-      entity.has(Path) ||
-      entity.has(Line) ||
-      entity.has(Brush)
+        entity.has(Path) ||
+        entity.has(Line) ||
+        entity.has(Brush)
         ? transformOBB
         : selectionOBB;
     const { x, y, width, height, rotation, scaleX, scaleY } = obb;
@@ -180,11 +178,10 @@ export class RenderHighlighter extends System {
           new UI(UIType.HIGHLIGHTER),
           new Transform(),
           new Renderable(),
-          new FillLayers([
-            { type: 'solid', value: TRANSFORMER_ANCHOR_FILL_COLOR },
+          new StrokeLayers([
+            { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
           ]),
-          new Opacity({ fillOpacity: 0 }),
-          new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
+          new Stroke({ width: 2 }), // --spectrum-thumbnail-border-color-selected
           new ZIndex(HIGHLIGHTER_Z_INDEX),
           new StrokeAttenuation(),
           new Visibility(),

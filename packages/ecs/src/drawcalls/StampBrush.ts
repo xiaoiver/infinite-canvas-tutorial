@@ -24,7 +24,10 @@ import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/brush';
 import { distanceBetweenPoints, paddingMat3, parseColor } from '../utils';
 import { getEnabledFillLayers } from '../utils/fillLayers';
-import { strokePaintAlphaMultipliers } from '../utils/strokeLayers';
+import {
+  resolveGpuStrokeColor,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
 import { getFillLayerDecodedBitmap } from '../utils/fill-layer-image-url-raster';
 import {
   FillLayers,
@@ -369,14 +372,13 @@ export class StampBrush extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    const { opacity, strokeOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
 
-    const { color: strokeColor, width } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: null, width: 0 };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const strokeColor = resolveGpuStrokeColor(shape);
+    const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
@@ -395,7 +397,7 @@ export class StampBrush extends Drawcall {
     const u_Opacity = [
       opacity,
       0,
-      strokeOpacity * strokeUniformOpacityMul,
+      strokeUniformOpacityMul,
       0,
     ];
     const u_Stamp = [

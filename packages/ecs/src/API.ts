@@ -36,6 +36,8 @@ import {
   strokeOffset,
   strokeWidthForHitTest,
   entityHasRenderableStrokePaint,
+  entityHasValidStrokeGeometry,
+  resolveGpuStrokeColor,
   cloneStrokeWithHitTestWidth,
   cloneSerializedNodes,
   expandRefSerializedNodes,
@@ -828,8 +830,10 @@ export class API {
       const hasFill =
         entity.has(FillLayers) && getEnabledFillLayers(entity).length > 0;
       const fill = hasFill ? 'black' : undefined;
-      const hasStroke = entity.has(Stroke);
-      const stroke = hasStroke ? entity.read(Stroke) : undefined;
+      const hasStrokeGeom = entityHasValidStrokeGeometry(entity);
+      const hasStrokePaint = entityHasRenderableStrokePaint(entity);
+      const hasStroke = hasStrokeGeom && hasStrokePaint;
+      const stroke = hasStrokeGeom ? entity.read(Stroke) : undefined;
       const halfStrokeWidth = hasStroke ? stroke.width / 2 : 0;
       const lineHitStrokeWidth = hasStroke
         ? strokeWidthForHitTest(entity, stroke)
@@ -915,7 +919,8 @@ export class API {
           const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
           const path = new Path2D(d);
           if (hasStroke) {
-            ctx.strokeStyle = stroke.color;
+            ctx.strokeStyle =
+              resolveGpuStrokeColor(entity) ?? 'transparent';
             ctx.lineWidth = lineHitStrokeWidth;
             ctx.lineCap = stroke.linecap;
             ctx.lineJoin = stroke.linejoin;

@@ -10,6 +10,9 @@ coverage
 cache
 .temp
 
+# local dev helpers (e.g. python shim for gl build, see docs/running-ecs-tests.md)
+.local-bin/
+
 # tests
 __tests__/ssr/**/*-diff.png
 __tests__/ssr/**/*-actual.png

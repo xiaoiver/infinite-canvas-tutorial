@@ -497,9 +497,20 @@ fn image_fill_brush_affine(
 
 fn first_fill_solid_rgba(paints: &[FillPaint]) -> Option<[f32; 4]> {
     paints.iter().find_map(|p| match p {
-        FillPaint::Solid { rgba } => Some(*rgba),
+        FillPaint::Solid { rgba, .. } => Some(*rgba),
         _ => None,
     })
+}
+
+/// 实体 `opacity` × 填充层 `layer_alpha`（solid/gradient 的 `layer_alpha` 缺省为 1）。
+#[cfg(target_arch = "wasm32")]
+fn vello_image_brush_for_draw(base: &ImageBrush, opacity: f32, layer_alpha: f32) -> ImageBrush {
+    let a = (opacity * layer_alpha).clamp(0.0, 1.0);
+    if (a - 1.0).abs() < 1e-6 {
+        base.clone()
+    } else {
+        base.clone().multiply_alpha(a)
+    }
 }
 
 /// `ibox`：image/gradient 坐标系对齐用的轴对齐盒（与 ECS 中 shape 逻辑尺寸一致）。
@@ -521,15 +532,19 @@ fn scene_apply_fill_paints<S: Shape>(
     }
     for (layer_i, paint) in paints.iter().enumerate() {
         match paint {
-            FillPaint::Solid { rgba } => {
-                let c = apply_opacity_to_color(*rgba, opacity, 1.0);
+            FillPaint::Solid { rgba, layer_alpha } => {
+                let c = apply_opacity_to_color(*rgba, opacity, *layer_alpha);
                 let brush = vello::peniko::Brush::Solid(Color::new(c));
                 scene.fill(fill_rule, shape_transform, &brush, None, geom);
             }
-            FillPaint::Gradient { gradients } => {
+            FillPaint::Gradient {
+                gradients,
+                layer_alpha,
+            } => {
+                let fill_mult = opacity * layer_alpha;
                 for g in gradients.iter().rev() {
                     let brush =
-                        vello::peniko::Brush::Gradient(build_gradient_brush(g, opacity));
+                        vello::peniko::Brush::Gradient(build_gradient_brush(g, fill_mult));
                     scene.fill(fill_rule, shape_transform, &brush, None, geom);
                 }
             }
@@ -537,21 +552,24 @@ fn scene_apply_fill_paints<S: Shape>(
                 image_width,
                 image_height,
                 image_data,
+                image_ref,
                 fit_draw_rect,
+                layer_alpha,
             } => {
                 let expected_len = (*image_width as usize) * (*image_height as usize) * 4;
-                if image_data.len() < expected_len {
-                    continue;
-                }
                 let brush_tf =
                     image_fill_brush_affine(ibox, *image_width, *image_height, *fit_draw_rect);
-                let cache_key =
-                    format!("{}#fl{}#{}x{}", shape_id, layer_i, image_width, image_height);
+                let cache_key = image_ref.as_ref().map(|url| url.clone()).unwrap_or_else(|| {
+                    format!("{}#fl{}#{}x{}", shape_id, layer_i, image_width, image_height)
+                });
                 IMAGE_BRUSH_CACHE.with(|cache_cell| {
                     let mut cache = cache_cell.borrow_mut();
                     let brush = if let Some(cached) = cache.get(cache_key.as_str()) {
                         cached
                     } else {
+                        if image_data.len() < expected_len {
+                            return;
+                        }
                         let image = ImageData {
                             data: Blob::from(image_data.clone()),
                             format: ImageFormat::Rgba8,
@@ -563,10 +581,11 @@ fn scene_apply_fill_paints<S: Shape>(
                         cache.insert(cache_key.clone(), nb);
                         cache.get(cache_key.as_str()).expect("inserted brush")
                     };
+                    let draw_brush = vello_image_brush_for_draw(brush, opacity, *layer_alpha);
                     scene.fill(
                         fill_rule,
                         shape_transform,
-                        brush.as_ref(),
+                        draw_brush.as_ref(),
                         Some(brush_tf),
                         geom,
                     );
@@ -595,8 +614,8 @@ fn scene_text_draw_glyphs_with_fills(
     let h = fills_ibox.height();
     for (layer_i, paint) in paints.iter().enumerate() {
         match paint {
-            FillPaint::Solid { rgba } => {
-                let c = apply_opacity_to_color(*rgba, opacity, 1.0);
+            FillPaint::Solid { rgba, layer_alpha } => {
+                let c = apply_opacity_to_color(*rgba, opacity, *layer_alpha);
                 let brush = Brush::Solid(Color::new(c));
                 for (font_data, glyphs) in glyph_runs {
                     scene
@@ -607,9 +626,13 @@ fn scene_text_draw_glyphs_with_fills(
                         .draw(Fill::NonZero, glyphs.clone().into_iter());
                 }
             }
-            FillPaint::Gradient { gradients } => {
+            FillPaint::Gradient {
+                gradients,
+                layer_alpha,
+            } => {
+                let fill_mult = opacity * layer_alpha;
                 for g in gradients.iter().rev() {
-                    let brush = Brush::Gradient(build_gradient_brush(g, opacity));
+                    let brush = Brush::Gradient(build_gradient_brush(g, fill_mult));
                     for (font_data, glyphs) in glyph_runs {
                         scene
                             .draw_glyphs(font_data)
@@ -624,7 +647,9 @@ fn scene_text_draw_glyphs_with_fills(
                 image_width,
                 image_height,
                 image_data,
+                image_ref: _,
                 fit_draw_rect: _,
+                layer_alpha,
             } => {
                 if w <= 0.0 || h <= 0.0 {
                     continue;
@@ -650,12 +675,13 @@ fn scene_text_draw_glyphs_with_fills(
                         cache.insert(cache_key.clone(), nb);
                         cache.get(cache_key.as_str()).expect("inserted brush")
                     };
+                    let draw_brush = vello_image_brush_for_draw(brush, opacity, *layer_alpha);
                     for (font_data, glyphs) in glyph_runs {
                         scene
                             .draw_glyphs(font_data)
                             .font_size(font_size)
                             .transform(shape_transform)
-                            .brush(brush.as_ref())
+                            .brush(draw_brush.as_ref())
                             .draw(Fill::NonZero, glyphs.clone().into_iter());
                     }
                 });
@@ -1121,9 +1147,9 @@ pub fn add_js_shape_to_scene(
                     && paints.len() == 1
                     && matches!(&paints[0], FillPaint::Solid { .. });
                 if use_blur {
-                    if let FillPaint::Solid { rgba } = &paints[0] {
+                    if let FillPaint::Solid { rgba, layer_alpha } = &paints[0] {
                         let base_rect = Rect::new(x0, y0, x1, y1);
-                        let fill_color = apply_opacity_to_color(*rgba, opacity, 1.0);
+                        let fill_color = apply_opacity_to_color(*rgba, opacity, *layer_alpha);
                         scene.draw_blurred_rounded_rect(
                             shape_transform,
                             base_rect,

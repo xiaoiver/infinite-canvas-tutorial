@@ -13,6 +13,7 @@ import {
   Theme,
   Renderable,
   FillLayers,
+  StrokeLayers,
   Circle,
   Rect,
   DropShadow,
@@ -115,8 +116,8 @@ class StartUpSystem extends System {
       new Transform(),
       new Renderable(),
       new FillLayers([{ type: 'solid', value: 'green' }]),
+      new StrokeLayers([{ type: 'solid', value: 'black' }]),
       new Stroke({
-        color: 'black',
         width: 10,
         alignment: 'center',
         dasharray: [10, 10],

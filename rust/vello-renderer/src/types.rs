@@ -129,16 +129,25 @@ pub struct FillGradientSpec {
 pub enum FillPaint {
     Solid {
         rgba: [f32; 4],
+        /// 保留字段，默认 `1`；层 `opacity` 已写入 `rgba[3]`，实体 `opacity` 在绘制时乘入。
+        layer_alpha: f32,
     },
     Gradient {
         gradients: Vec<FillGradientSpec>,
+        /// 保留字段，默认 `1`；渐变 stop 已乘层 `opacity`。
+        layer_alpha: f32,
     },
     Image {
         image_width: u32,
         image_height: u32,
+        /// 首次上传像素；`image_ref` 命中缓存后可为空。
         image_data: Vec<u8>,
+        /// FillLayers 图片 URL，用于跨 `clearShapes` 复用 GPU 纹理。
+        image_ref: Option<String>,
         /// 形状局部坐标系内的绘制矩形；`None` 表示拉伸铺满（`fill`）。
         fit_draw_rect: Option<FitDrawRect>,
+        /// 填充层 `fills[].opacity`；实体 `opacity` 在绘制时乘入（`multiply_alpha`）。
+        layer_alpha: f32,
     },
 }
 
@@ -157,20 +166,30 @@ pub struct FitDrawRect {
 pub enum WasmFillPaint {
     Solid {
         rgba: [f32; 4],
+        #[serde(rename = "layerAlpha", default = "default_opacity")]
+        layer_alpha: f32,
     },
     Gradient {
         #[serde(rename = "fillGradients")]
         fill_gradients: Vec<FillGradientOptions>,
+        #[serde(rename = "layerAlpha", default = "default_opacity")]
+        layer_alpha: f32,
     },
     Image {
         #[serde(rename = "imageWidth")]
         image_width: u32,
         #[serde(rename = "imageHeight")]
         image_height: u32,
-        #[serde(rename = "imageData")]
-        image_data: Vec<u8>,
+        /// 仅首次上传；之后可只传 `imageRef` 避免每帧序列化百万级像素。
+        #[serde(rename = "imageData", default)]
+        image_data: Option<Vec<u8>>,
+        #[serde(rename = "imageRef", default)]
+        image_ref: Option<String>,
         #[serde(rename = "fitDrawRect", default)]
         fit_draw_rect: Option<FitDrawRect>,
+        /// 填充层 `fills[].opacity`；实体 `opacity` 在 Rust 绘制时乘入。
+        #[serde(rename = "layerAlpha", default = "default_opacity")]
+        layer_alpha: f32,
     },
 }
 
@@ -179,10 +198,13 @@ pub fn wasm_fill_paints_to_runtime(items: Vec<WasmFillPaint>) -> Vec<FillPaint> 
     let mut out = Vec::with_capacity(items.len());
     for w in items {
         match w {
-            WasmFillPaint::Solid { rgba } => {
-                out.push(FillPaint::Solid { rgba });
+            WasmFillPaint::Solid { rgba, layer_alpha } => {
+                out.push(FillPaint::Solid { rgba, layer_alpha });
             }
-            WasmFillPaint::Gradient { fill_gradients } => {
+            WasmFillPaint::Gradient {
+                fill_gradients,
+                layer_alpha,
+            } => {
                 if fill_gradients.is_empty() {
                     continue;
                 }
@@ -190,23 +212,35 @@ pub fn wasm_fill_paints_to_runtime(items: Vec<WasmFillPaint>) -> Vec<FillPaint> 
                     .iter()
                     .map(fill_gradient_options_to_spec)
                     .collect();
-                out.push(FillPaint::Gradient { gradients });
+                out.push(FillPaint::Gradient {
+                    gradients,
+                    layer_alpha,
+                });
             }
             WasmFillPaint::Image {
                 image_width,
                 image_height,
                 image_data,
+                image_ref,
                 fit_draw_rect,
+                layer_alpha,
             } => {
+                if image_width == 0 || image_height == 0 {
+                    continue;
+                }
                 let expected = image_width as usize * image_height as usize * 4;
-                if image_width == 0 || image_height == 0 || image_data.len() < expected {
+                let pixels = image_data.unwrap_or_default();
+                let has_pixels = pixels.len() >= expected;
+                if !has_pixels && image_ref.is_none() {
                     continue;
                 }
                 out.push(FillPaint::Image {
                     image_width,
                     image_height,
-                    image_data,
+                    image_data: if has_pixels { pixels } else { Vec::new() },
+                    image_ref,
                     fit_draw_rect,
+                    layer_alpha,
                 });
             }
         }
