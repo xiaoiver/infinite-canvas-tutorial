@@ -26,6 +26,7 @@ import {
   fillLayersEligibleForSimpleStrokeBake,
   fillLayersNeedFillImage,
   getEnabledFillLayers,
+  getFirstFillLayerOpacityMul,
   getFirstSolidFillLayerValue,
 } from './fillLayers';
 import {
@@ -547,9 +548,7 @@ export function createFillAndStrokeRgbaRasterForFilter(
   ctx.clearRect(0, 0, tw, th);
   setWorldToCanvasTransform(ctx, bounds, tw, th);
 
-  const { fillOpacity, strokeOpacity } = shape.has(Opacity)
-    ? shape.read(Opacity)
-    : { fillOpacity: 1, strokeOpacity: 1 };
+  const fillLayerMul = getFirstFillLayerOpacityMul(shape);
   const { strokeColorAlphaMul, strokeUniformOpacityMul } =
     strokePaintAlphaMultipliers(shape);
 
@@ -557,13 +556,13 @@ export function createFillAndStrokeRgbaRasterForFilter(
   const fillRgb = parseColor(
     fillStr && fillStr !== 'none' ? fillStr : 'transparent',
   );
-  const fillRgba = rgbaFromParsed(fillRgb, fillOpacity);
+  const fillRgba = rgbaFromParsed(fillRgb, fillLayerMul);
 
   const stroke = shape.read(Stroke);
   const strokeRgb = parseColor(resolveGpuStrokeColor(shape) ?? 'transparent');
   const strokeRgba = rgbaFromParsed(
     strokeRgb,
-    strokeOpacity * strokeColorAlphaMul * strokeUniformOpacityMul,
+    strokeColorAlphaMul * strokeUniformOpacityMul,
   );
 
   ctx.lineWidth = stroke.width;
@@ -575,7 +574,7 @@ export function createFillAndStrokeRgbaRasterForFilter(
     shape.has(IconFontEllipseStrokeRasterPlaceholder);
   const drawFill =
     fillStr !== 'none' &&
-    fillRgb.opacity * fillOpacity > 1e-8 &&
+    fillRgb.opacity * fillLayerMul > 1e-8 &&
     !skipDiskFill;
 
   if (shape.has(Ellipse)) {

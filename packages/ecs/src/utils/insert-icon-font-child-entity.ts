@@ -7,6 +7,7 @@ import {
   Path,
   Renderable,
   Stroke,
+  StrokeLayers,
   FillLayers,
   TesselationMethod,
   Transform,
@@ -79,13 +80,13 @@ export function insertIconFontChildFromPrimitive(
       }),
     );
   }
+  const strokeColor = pickStrokeColorForChild(
+    prim.style,
+    opts.userColorStroke,
+    opts.userColorFill,
+  );
   ch.insert(
     new Stroke({
-      color: pickStrokeColorForChild(
-        prim.style,
-        opts.userColorStroke,
-        opts.userColorFill,
-      ),
       width: strokeWidthFromIconStyle(prim.style, opts.rSw, {
         primKind: prim.kind,
       }),
@@ -93,6 +94,11 @@ export function insertIconFontChildFromPrimitive(
       linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
     }),
   );
+  if (strokeColor && strokeColor !== 'none') {
+    ch.insert(
+      new StrokeLayers([{ type: 'solid', value: strokeColor }]),
+    );
+  }
   const fillPart = pickChildFill(
     prim.style,
     opts.userColorFill,

@@ -7,6 +7,7 @@ import {
   ComputedRough,
   Ellipse,
   FillLayers,
+  StrokeLayers,
   GeometryDirty,
   FractionalIndex,
   getRoughOptions,
@@ -27,6 +28,7 @@ import { getWatercolorFillContoursFromEntity } from '../utils/watercolor-rough';
 import { safeAddComponent } from '../history';
 import { SerializedNode } from '../types/serialized-node';
 import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
+import { resolveGpuStrokeColor } from '../utils/strokeLayers';
 
 /**
  * 重算 {@link ComputedRough}（Rough 线段在仅 {@link Line} 端点变化时不会触发 `Rough` 的 changed）。
@@ -43,8 +45,9 @@ export function refreshComputedRoughForEntity(entity: Entity): void {
   const fill = getFirstSolidFillLayerValue(entity) ?? 'none';
   const strokeComponent = entity.has(Stroke)
     ? entity.read(Stroke)
-    : { color: 'none', width: 0, dasharray: [], dashoffset: 0 };
-  const { color, width, dasharray, dashoffset } = strokeComponent;
+    : { width: 0, dasharray: [0, 0] as [number, number], dashoffset: 0 };
+  const { width, dasharray, dashoffset } = strokeComponent;
+  const color = resolveGpuStrokeColor(entity) ?? 'none';
 
   const roughOptions = getRoughOptions({
     // @ts-ignore
@@ -138,7 +141,7 @@ export class ComputeRough extends System {
     (q) =>
       q.addedOrChanged
         .with(Rough)
-        .and.withAny(Circle, Ellipse, Rect, Line, Polyline, Path, FillLayers, Stroke)
+        .and.withAny(Circle, Ellipse, Rect, Line, Polyline, Path, FillLayers, Stroke, StrokeLayers)
         .trackWrites,
   );
 

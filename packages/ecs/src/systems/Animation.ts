@@ -169,7 +169,18 @@ export class AnimationSystem extends System {
           opacityPatch.opacity = values.opacity;
         }
         if (isFiniteNumber(values.fillOpacity)) {
-          opacityPatch.fillOpacity = values.fillOpacity;
+          if (entity.has(FillLayers)) {
+            const fl = entity.write(FillLayers);
+            const layers = [...fl.layers];
+            const i = layers.findIndex(isFillLayerEnabled);
+            if (i >= 0) {
+              layers[i] = {
+                ...layers[i]!,
+                opacity: values.fillOpacity,
+              };
+              fl.layers = layers;
+            }
+          }
         }
         if (isFiniteNumber(values.strokeOpacity)) {
           if (entity.has(StrokeLayers)) {
@@ -183,8 +194,6 @@ export class AnimationSystem extends System {
               };
               sl.layers = layers;
             }
-          } else {
-            opacityPatch.strokeOpacity = values.strokeOpacity;
           }
         }
         if (Object.keys(opacityPatch).length > 0) {
@@ -209,7 +218,6 @@ export class AnimationSystem extends System {
       }
 
       if (typeof values.stroke === 'string') {
-        safeAddComponent(entity, Stroke, { color: values.stroke });
         if (entity.has(StrokeLayers)) {
           const sl = entity.write(StrokeLayers);
           const layers = sl.layers.map((L) => ({ ...L }));
@@ -220,7 +228,16 @@ export class AnimationSystem extends System {
               layers[i] = { ...L, value: values.stroke };
               sl.layers = layers;
             }
+          } else {
+            sl.layers = [{ type: 'solid', value: values.stroke }];
           }
+        } else {
+          safeAddComponent(entity, StrokeLayers, {
+            layers: [{ type: 'solid', value: values.stroke }],
+          });
+        }
+        if (!entity.has(Stroke)) {
+          safeAddComponent(entity, Stroke, { width: 1 });
         }
       }
 

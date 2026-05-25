@@ -1577,7 +1577,12 @@ export function serializedNodesToEntities(
       designVariables,
       themeMode,
     );
-    if (resolvedStroke && !skipParentFillStroke) {
+    const hasStrokeGeometry =
+      (resolvedStrokeLayerItems != null &&
+        resolvedStrokeLayerItems.length > 0) ||
+      (resolvedStrokeWidth !== undefined && resolvedStrokeWidth !== null) ||
+      strokeWidth !== undefined;
+    if (hasStrokeGeometry && !skipParentFillStroke) {
       const rawW =
         resolvedStrokeWidth !== undefined ? resolvedStrokeWidth : strokeWidth;
       const widthInit =
@@ -1593,38 +1598,25 @@ export function serializedNodesToEntities(
             ? strokeDasharray?.split(',')
             : strokeDasharray?.split(' ')
           )?.map(Number) ?? [0, 0]) as [number, number]);
-      const strokeCommon = {
-        ...widthInit,
-        colorVariableRef: designVariableRefKeyFromWire(
-          firstWireStrokeLayer != null &&
-            typeof firstWireStrokeLayer.value === 'string'
-            ? firstWireStrokeLayer.value
-            : undefined,
-        ),
-        widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
-        dasharray: dashPair,
-        linecap: strokeLinecap,
-        linejoin: strokeLinejoin,
-        miterlimit: strokeMiterlimit,
-        dashoffset: strokeDashoffset,
-        alignment: strokeAlignment,
-        dashcap: normalizeStrokeDashCap(strokeDashCap) ?? 'none',
-      };
-      if (isGradient(resolvedStroke as string)) {
-        entityCommands.insert(
-          new Stroke({
-            color: 'none',
-            ...strokeCommon,
-          }),
-        );
-      } else {
-        entityCommands.insert(
-          new Stroke({
-            color: resolvedStroke,
-            ...strokeCommon,
-          }),
-        );
-      }
+      entityCommands.insert(
+        new Stroke({
+          ...widthInit,
+          colorVariableRef: designVariableRefKeyFromWire(
+            firstWireStrokeLayer != null &&
+              typeof firstWireStrokeLayer.value === 'string'
+              ? firstWireStrokeLayer.value
+              : undefined,
+          ),
+          widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
+          dasharray: dashPair,
+          linecap: strokeLinecap,
+          linejoin: strokeLinejoin,
+          miterlimit: strokeMiterlimit,
+          dashoffset: strokeDashoffset,
+          alignment: strokeAlignment,
+          dashcap: normalizeStrokeDashCap(strokeDashCap) ?? 'none',
+        }),
+      );
     }
 
     const { markerStart, markerEnd, markerFactor } =
@@ -1645,11 +1637,7 @@ export function serializedNodesToEntities(
       (strokesWireArr && strokesWireArr.length >= 1)
     ) {
       entityCommands.insert(
-        new Opacity({
-          opacity,
-          fillOpacity: 1,
-          strokeOpacity: 1,
-        }),
+        new Opacity({ opacity: opacity ?? 1 }),
       );
     }
 

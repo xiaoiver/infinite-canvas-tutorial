@@ -56,8 +56,9 @@ export function strokeOffset(stroke?: Stroke) {
 //   return [hasFill, hasStroke];
 // }
 
+/** @deprecated 仅判断线宽；颜料请用 {@link hasValidStrokeEntity} */
 export function hasValidStroke(stroke: Stroke) {
-  return !!stroke.color && stroke.width > 0;
+  return stroke.width > 0;
 }
 
 export function hasValidDecoration(decoration: TextDecoration) {

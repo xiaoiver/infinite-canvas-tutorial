@@ -424,18 +424,23 @@ function syncIconFontChildrenFromUpdatedNode(
       child = ch.id();
     }
 
+    const iconStrokeColor = pickStrokeColorForChild(
+      prim.style,
+      userColorStroke,
+      userColorFill,
+    );
     safeAddComponent(child, Stroke, {
-      color: pickStrokeColorForChild(
-        prim.style,
-        userColorStroke,
-        userColorFill,
-      ),
       width: strokeWidthFromIconStyle(prim.style, rSw, {
         primKind: prim.kind,
       }),
       linecap: mapSvgLineCap(prim.style.strokeLinecap),
       linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
     });
+    if (iconStrokeColor && iconStrokeColor !== 'none') {
+      safeAddComponent(child, StrokeLayers, {
+        layers: [{ type: 'solid', value: iconStrokeColor }],
+      });
+    }
 
     const fillPart = pickChildFill(
       prim.style,
@@ -1015,9 +1020,6 @@ function applyFillsWireMutation(
   if (wireArr.length === 0) {
     safeRemoveComponent(entity, FillLayers);
     safeAddComponent(entity, MaterialDirty);
-    if (entity.has(Opacity)) {
-      entity.write(Opacity).fillOpacity = 1;
-    }
     return true;
   }
 
@@ -1030,11 +1032,6 @@ function applyFillsWireMutation(
     themeMode,
   );
   safeAddComponent(entity, MaterialDirty);
-  if (entity.has(Opacity)) {
-    entity.write(Opacity).fillOpacity = 1;
-  } else {
-    safeAddComponent(entity, Opacity, { fillOpacity: 1 });
-  }
   return true;
 }
 
@@ -1058,9 +1055,6 @@ function applyStrokesWireMutation(
     safeRemoveComponent(entity, StrokeLayers);
     safeRemoveComponent(entity, Stroke);
     safeAddComponent(entity, MaterialDirty);
-    if (entity.has(Opacity)) {
-      entity.write(Opacity).strokeOpacity = 1;
-    }
     return true;
   }
 
@@ -1086,82 +1080,33 @@ function applyStrokesWireMutation(
     firstRes != null && typeof firstRes.value === 'string'
       ? firstRes.value
       : undefined;
-  if (paint != null && paint.trim() !== '') {
-    const strokeRef = designVariableRefKeyFromWire(
-      firstWire != null && typeof firstWire.value === 'string'
-        ? firstWire.value
-        : undefined,
-    );
-    if (isGradient(paint)) {
-      if (entity.has(Stroke)) {
-        const s = entity.read(Stroke);
-        safeAddComponent(entity, Stroke, {
-          color: 'none',
-          colorVariableRef: strokeRef,
-          width: s.width,
-          linecap: s.linecap,
-          linejoin: s.linejoin,
-          miterlimit: s.miterlimit,
-          dasharray: s.dasharray,
-          dashoffset: s.dashoffset,
-          dashcap,
-          alignment: s.alignment,
-          widthVariableRef: s.widthVariableRef,
-        });
-      } else {
-        safeAddComponent(entity, Stroke, {
-          color: 'none',
-          colorVariableRef: strokeRef,
-        });
-      }
-    } else {
-      if (entity.has(Stroke)) {
-        const s = entity.read(Stroke);
-        safeAddComponent(entity, Stroke, {
-          color: paint,
-          colorVariableRef: strokeRef,
-          width: s.width,
-          linecap: s.linecap,
-          linejoin: s.linejoin,
-          miterlimit: s.miterlimit,
-          dasharray: s.dasharray,
-          dashoffset: s.dashoffset,
-          dashcap,
-          alignment: s.alignment,
-          widthVariableRef: s.widthVariableRef,
-        });
-      } else {
-        safeAddComponent(entity, Stroke, {
-          color: paint,
-          colorVariableRef: strokeRef,
-        });
-      }
-    }
-  } else {
-    if (entity.has(Stroke)) {
-      const s = entity.read(Stroke);
-      safeAddComponent(entity, Stroke, {
-        color: 'none',
-        colorVariableRef: '',
-        width: s.width,
-        linecap: s.linecap,
-        linejoin: s.linejoin,
-        miterlimit: s.miterlimit,
-        dasharray: s.dasharray,
-        dashoffset: s.dashoffset,
-        dashcap,
-        alignment: s.alignment,
-        widthVariableRef: s.widthVariableRef,
-      });
-    }
+  const strokeRef = designVariableRefKeyFromWire(
+    firstWire != null && typeof firstWire.value === 'string'
+      ? firstWire.value
+      : undefined,
+  );
+  if (entity.has(Stroke)) {
+    const s = entity.read(Stroke);
+    safeAddComponent(entity, Stroke, {
+      colorVariableRef: paint != null && paint.trim() !== '' ? strokeRef : '',
+      width: s.width,
+      linecap: s.linecap,
+      linejoin: s.linejoin,
+      miterlimit: s.miterlimit,
+      dasharray: s.dasharray,
+      dashoffset: s.dashoffset,
+      dashcap,
+      alignment: s.alignment,
+      widthVariableRef: s.widthVariableRef,
+    });
+  } else if (paint != null && paint.trim() !== '') {
+    safeAddComponent(entity, Stroke, {
+      colorVariableRef: strokeRef,
+      dashcap,
+    });
   }
 
   safeAddComponent(entity, MaterialDirty);
-  if (entity.has(Opacity)) {
-    entity.write(Opacity).strokeOpacity = 1;
-  } else {
-    safeAddComponent(entity, Opacity, { strokeOpacity: 1 });
-  }
   return true;
 }
 

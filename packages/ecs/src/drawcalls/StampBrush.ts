@@ -372,9 +372,7 @@ export class StampBrush extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    const { opacity, strokeOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
@@ -399,7 +397,7 @@ export class StampBrush extends Drawcall {
     const u_Opacity = [
       opacity,
       0,
-      strokeOpacity * strokeUniformOpacityMul,
+      strokeUniformOpacityMul,
       0,
     ];
     const u_Stamp = [

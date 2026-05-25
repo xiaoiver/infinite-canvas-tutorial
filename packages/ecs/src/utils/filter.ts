@@ -15,7 +15,7 @@ import {
   Stroke,
 } from '../components';
 import { cssColorToHex, parseColor } from './color';
-import { hasValidStroke } from './style';
+import { hasValidStrokeEntity } from './strokeLayers';
 import { getPostEffectEngineTimeSeconds } from './postEffectEngineTime';
 import { getFirstGradientStrokeLayerValue } from './strokeLayers';
 import {
@@ -1814,7 +1814,7 @@ export function shouldRasterizeStrokeForFilterTexture(shape: Entity): boolean {
   if (!fv || !hasRasterPostEffects(fv)) {
     return false;
   }
-  if (!shape.has(Stroke) || !hasValidStroke(shape.read(Stroke))) {
+  if (!hasValidStrokeEntity(shape)) {
     return false;
   }
   const st = shape.read(Stroke);

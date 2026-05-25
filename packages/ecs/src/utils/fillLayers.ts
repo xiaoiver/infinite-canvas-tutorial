@@ -99,6 +99,13 @@ export function getFirstSolidFillLayerValue(entity: Entity): string | null {
   return getFirstSolidFillLayerValueFromWire(getEnabledFillLayers(entity));
 }
 
+/** 首个启用填充层的 `opacity` 乘子（缺省 1）。 */
+export function getFirstFillLayerOpacityMul(entity: Entity): number {
+  const enabled = getEnabledFillLayers(entity);
+  const L = enabled[0];
+  return L ? fillLayerOpacity(L.opacity) : 1;
+}
+
 /** 首个启用 `gradient` 层的 CSS 渐变字符串。 */
 export function getFirstGradientFillLayerValue(entity: Entity): string | null {
   for (const L of getEnabledFillLayers(entity)) {

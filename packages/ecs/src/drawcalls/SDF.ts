@@ -1293,9 +1293,7 @@ export class SDF extends Drawcall {
       fill != null && fill !== '' ? fill : 'transparent',
     );
 
-    const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
@@ -1411,8 +1409,8 @@ export class SDF extends Drawcall {
       type;
     const u_Opacity = [
       opacity,
-      fillOpacity,
-      strokeOpacity * strokeUniformOpacityMul,
+      1,
+      strokeUniformOpacityMul,
       compressed,
     ];
     const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];

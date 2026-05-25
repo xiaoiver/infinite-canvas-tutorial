@@ -181,7 +181,6 @@ function resolveVelloStrokePaint(
   }
   const {
     width,
-    color: strokeColor,
     linecap,
     linejoin,
     miterlimit,
@@ -203,9 +202,6 @@ function resolveVelloStrokePaint(
       colorStr = solidLayer.value;
       layerAlphaMul = resolveFillLayerOpacityFromWire(api, entity, solidLayer);
     }
-  }
-  if (!colorStr && strokeColor && strokeColor !== 'none') {
-    colorStr = strokeColor;
   }
   if (!colorStr) {
     return undefined;

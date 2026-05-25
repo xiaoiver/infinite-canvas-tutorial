@@ -48,22 +48,24 @@ export function getFirstSolidStrokeLayerValue(entity: Entity): string | null {
   return getFirstSolidStrokeLayerValueFromWire(getEnabledStrokeLayers(entity));
 }
 
-/**
- * GPU / Canvas 描边颜色：`StrokeLayers` 优先；否则 `Stroke.color`（非 `none`）。
- */
-export function resolveGpuStrokeColor(entity: Entity): string | null {
-  const fromLayer = getFirstSolidStrokeLayerValue(entity);
-  if (fromLayer != null) {
-    return fromLayer;
-  }
-  if (!entity.has(Stroke)) {
+/** 首个启用描边层的 `value`（solid / gradient 字符串）。 */
+export function getFirstStrokeLayerWireValue(entity: Entity): string | null {
+  const L = getEnabledStrokeLayers(entity)[0];
+  if (!L) {
     return null;
   }
-  const c = entity.read(Stroke).color;
-  if (c && c !== 'none') {
-    return c;
+  if (L.type === 'solid' || L.type === 'gradient') {
+    const v = L.value;
+    return typeof v === 'string' ? v : null;
   }
   return null;
+}
+
+/**
+ * GPU / Canvas 纯色描边（`StrokeLayers` 首条启用 solid）。
+ */
+export function resolveGpuStrokeColor(entity: Entity): string | null {
+  return getFirstSolidStrokeLayerValue(entity);
 }
 
 /** 首个启用 `gradient` 描边层的 CSS 渐变字符串（与填充栈对称）。 */
@@ -77,27 +79,33 @@ export function getFirstGradientStrokeLayerValue(entity: Entity): string | null 
   return null;
 }
 
+/** 线宽 > 0 且存在 `Stroke` 组件。 */
+export function entityHasValidStrokeGeometry(entity: Entity): boolean {
+  return entity.has(Stroke) && entity.read(Stroke).width > 0;
+}
+
 /**
- * 是否存在「应参与命中 / 可见」的描边颜料（以 `StrokeLayers` 为准；无栈时回退 `Stroke.color`）。
+ * 是否存在「应参与命中 / 可见」的描边颜料（以 `StrokeLayers` 为准）。
  */
 export function entityHasRenderableStrokePaint(entity: Entity): boolean {
-  if (entity.has(StrokeLayers)) {
-    const en = getEnabledStrokeLayers(entity);
-    const L = en[0];
-    if (!L) {
-      return false;
-    }
-    if (L.type === 'solid') {
-      const v = String(L.value ?? '').trim().toLowerCase();
-      return v !== '' && v !== 'none';
-    }
-    return true;
-  }
-  if (!entity.has(Stroke)) {
+  const en = getEnabledStrokeLayers(entity);
+  const L = en[0];
+  if (!L) {
     return false;
   }
-  const c = String(entity.read(Stroke).color ?? '').trim().toLowerCase();
-  return c !== '' && c !== 'none';
+  if (L.type === 'solid') {
+    const v = String(L.value ?? '').trim().toLowerCase();
+    return v !== '' && v !== 'none';
+  }
+  return true;
+}
+
+/** 几何线宽有效且存在可渲染描边颜料。 */
+export function hasValidStrokeEntity(entity: Entity): boolean {
+  return (
+    entityHasValidStrokeGeometry(entity) &&
+    entityHasRenderableStrokePaint(entity)
+  );
 }
 
 /**

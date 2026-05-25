@@ -932,9 +932,7 @@ export class Mesh extends Drawcall {
       fill != null && fill !== '' ? fill : 'transparent',
     );
 
-    const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
@@ -1032,8 +1030,8 @@ export class Mesh extends Drawcall {
     ];
     const u_Opacity = [
       opacity,
-      fillOpacity,
-      strokeOpacity * strokeUniformOpacityMul,
+      1,
+      strokeUniformOpacityMul,
       sizeAttenuation ? 1 : 0,
     ];
     const u_FillUVRect = [minX, minY, invWidth, invHeight];

@@ -59,7 +59,6 @@ export function cloneStrokeWithHitTestWidth(
   stroke: Stroke,
 ): Stroke {
   return {
-    color: stroke.color,
     width: strokeWidthForHitTest(entity, stroke),
     linecap: stroke.linecap,
     linejoin: stroke.linejoin,

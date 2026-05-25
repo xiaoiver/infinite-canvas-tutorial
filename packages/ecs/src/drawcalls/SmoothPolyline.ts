@@ -20,7 +20,7 @@ import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import {
   hasValidDecoration,
-  hasValidStroke,
+  hasValidStrokeEntity,
   paddingMat3,
   parseColor,
   parseGradient,
@@ -35,7 +35,10 @@ import {
   parseEffect,
   shouldRasterizeStrokeForFilterTexture,
 } from '../utils/filter';
-import { getFirstSolidFillLayerValue } from '../utils/fillLayers';
+import {
+  getFirstFillLayerOpacityMul,
+  getFirstSolidFillLayerValue,
+} from '../utils/fillLayers';
 import {
   getFirstGradientStrokeLayerValue,
   resolveGpuStrokeColor,
@@ -132,7 +135,7 @@ export class SmoothPolyline extends Drawcall {
             shape.read(Stroke).width > 0))) ||
       (shape.has(Path) &&
         shape.has(Stroke) &&
-        hasValidStroke(shape.read(Stroke))) ||
+        hasValidStrokeEntity(shape)) ||
       (shape.has(Text) &&
         shape.has(TextDecoration) &&
         hasValidDecoration(shape.read(TextDecoration)))
@@ -701,9 +704,7 @@ export class SmoothPolyline extends Drawcall {
       }
     }
 
-    const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
@@ -722,8 +723,8 @@ export class SmoothPolyline extends Drawcall {
     ];
     const u_Opacity = [
       opacity,
-      fillOpacity,
-      strokeOpacity * strokeUniformOpacityMul,
+      1,
+      strokeUniformOpacityMul,
       shape.has(StrokeAttenuation) ? 1 : 0,
     ];
     const u_StrokeDash = [
@@ -740,7 +741,7 @@ export class SmoothPolyline extends Drawcall {
         (instance.has(Rect) && this.index === 2))
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
-      u_Opacity[2] = fillOpacity;
+      u_Opacity[2] = getFirstFillLayerOpacityMul(instance);
     } else if (instance.has(Text) && instance.has(TextDecoration)) {
       const {
         color: decorationColor,
