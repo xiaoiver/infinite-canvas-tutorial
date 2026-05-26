@@ -40,10 +40,10 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
-    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
     "build": "run-p build:*",
-    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
+    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch"
   },
   "dependencies": {
     "@fal-ai/client": "^1.6.2"

@@ -40,10 +40,10 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
-    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
     "build": "run-p build:*",
-    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch",
+    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch",
     "localize:extract": "lit-localize extract",
     "localize:build": "lit-localize build"
   },
@@ -61,6 +61,7 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
     "@types/mermaid": "9.2.0",
     "@lit/localize-tools": "^0.8.1"
   },

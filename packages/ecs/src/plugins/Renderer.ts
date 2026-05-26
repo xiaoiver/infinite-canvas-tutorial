@@ -6,7 +6,6 @@ import { Plugin, type PluginWithConfig } from './types';
 import {
   SetupDevice,
   MeshPipeline,
-  PostEffectTime,
   Sort,
   ComputePoints,
   ComputeRough,
@@ -155,7 +154,6 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     system(Last)(SetCursor);
 
     const RenderSystem = options.rendererSystemCtor ?? MeshPipeline;
-    system((s) => s.before(RenderSystem))(PostEffectTime);
     system(Last)(RenderSystem);
     system((s) => s.before(Deleter, ExportSVG))(RenderSystem);
 

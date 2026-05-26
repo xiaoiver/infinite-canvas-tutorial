@@ -1,5 +1,5 @@
-import type { BlurEffect } from './filter';
-import { BLUR_DEFAULTS } from './filter';
+import type { BlurEffect } from '../filter';
+import { BLUR_DEFAULTS } from '../filter';
 
 /** Kernel radii in pixels for each Kawase pass (Pixi {@link KawaseBlurFilter}). */
 export function generateKawaseKernels(

@@ -1,4 +1,4 @@
-import { vert as bigTriangleVert } from './post-processing/big-triangle';
+import { bigTriangleVert } from '../shaders/big-triangle';
 
 export { bigTriangleVert as vert };
 

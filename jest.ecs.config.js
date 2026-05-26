@@ -21,10 +21,14 @@ module.exports = {
   preset: 'ts-jest',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'json'],
   modulePathIgnorePatterns: ['dist', '\\.next'],
-  // Workspace package: resolve to source so tests run without a prior device-api build
+  // Workspace packages: resolve to source so tests run without a prior build
   moduleNameMapper: {
     '^@infinite-canvas-tutorial/device-api$':
       '<rootDir>/packages/device-api/src/index.ts',
+    '^@infinite-canvas-tutorial/ecs$':
+      '<rootDir>/packages/ecs/src/index.ts',
+    '^@infinite-canvas-tutorial/ecs/(.*)$':
+      '<rootDir>/packages/ecs/src/$1',
     '^heic2any$': '<rootDir>/__tests__/mocks/heic2any.ts',
   },
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],

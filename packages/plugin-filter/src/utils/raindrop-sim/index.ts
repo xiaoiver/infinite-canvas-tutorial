@@ -21,3 +21,4 @@ export {
   preloadRaindropSprites,
 } from './raindrop-sprite-cache';
 export type { Time } from './utils';
+export { randomRange } from './random';

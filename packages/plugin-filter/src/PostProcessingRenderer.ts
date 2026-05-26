@@ -1,5 +1,5 @@
-import { vert as bigTriangleVert } from '../shaders/post-processing/big-triangle';
-import * as postProcessingShaders from '../shaders/post-processing';
+import { vert as bigTriangleVert } from './shaders/post-processing/big-triangle';
+import * as postProcessingShaders from './shaders/post-processing';
 import {
   Buffer,
   Device,
@@ -34,8 +34,8 @@ import {
   liquidMetalUniformValues,
   heatmapUniformValues,
   gemSmokeUniformValues,
-  RenderCache,
-} from '../utils';
+} from './filter';
+import type { RenderCache } from '@infinite-canvas-tutorial/ecs';
 
 /**
  * Use big triangle to render post processing effects.

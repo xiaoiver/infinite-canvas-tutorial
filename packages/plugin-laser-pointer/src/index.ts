@@ -23,10 +23,10 @@ declare module '@infinite-canvas-tutorial/ecs' {
     /**
      * Laser pointer size
      */
-    laserPointerSize: number;
+    laserPointerSize?: number;
     /**
      * Laser pointer color
      */
-    laserPointerColor: string;
+    laserPointerColor?: string;
   }
 }

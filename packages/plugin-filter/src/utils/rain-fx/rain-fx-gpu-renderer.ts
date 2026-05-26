@@ -61,8 +61,8 @@ import {
   type RaindropFxBackgroundWrapMode,
   type RaindropFxComposeMode,
 } from '../raindrop-sim/defaults';
-import type { RenderCache } from '../render-cache';
 import { randomRange } from '../raindrop-sim/random';
+import type { RenderCache } from '@infinite-canvas-tutorial/ecs';
 
 const MAX_RAINDROPS = 3000;
 const INSTANCE_FLOATS = 6;

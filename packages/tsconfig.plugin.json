@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@infinite-canvas-tutorial/ecs": ["ecs/lib/index.d.ts"],
+      "@infinite-canvas-tutorial/ecs/*": ["ecs/lib/*"],
+      "@infinite-canvas-tutorial/webcomponents": [
+        "webcomponents/lib/index.d.ts"
+      ],
+      "@infinite-canvas-tutorial/webcomponents/*": ["webcomponents/lib/*"]
+    }
+  }
+}

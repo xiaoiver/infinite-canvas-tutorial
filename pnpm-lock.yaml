@@ -189,6 +189,9 @@ importers:
       '@infinite-canvas-tutorial/lasso':
         specifier: workspace:*
         version: link:../plugin-lasso
+      '@infinite-canvas-tutorial/plugin-filter':
+        specifier: workspace:*
+        version: link:../plugin-filter
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
@@ -1159,6 +1162,25 @@ importers:
         specifier: workspace:*
         version: link:../webcomponents
 
+  packages/plugin-filter:
+    dependencies:
+      '@infinite-canvas-tutorial/device-api':
+        specifier: workspace:*
+        version: link:../device-api
+      d3-color:
+        specifier: ^3.1.0
+        version: 3.1.0
+    devDependencies:
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+      '@lastolivegames/becsy':
+        specifier: ^0.16.0
+        version: 0.16.0
+      '@types/d3-color':
+        specifier: ^3.1.0
+        version: 3.1.0
+
   packages/plugin-lama:
     dependencies:
       '@infinite-canvas-tutorial/ecs':
@@ -1274,9 +1296,6 @@ importers:
       '@excalidraw/mermaid-to-excalidraw':
         specifier: ^2.2.2
         version: 2.2.2
-      '@infinite-canvas-tutorial/ecs':
-        specifier: workspace:*
-        version: link:../ecs
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2
@@ -1302,6 +1321,9 @@ importers:
         specifier: ^14.0.0
         version: 14.0.0
     devDependencies:
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
       '@lit/localize-tools':
         specifier: ^0.8.1
         version: 0.8.1
@@ -1681,6 +1703,9 @@ importers:
       '@infinite-canvas-tutorial/mermaid':
         specifier: workspace:*
         version: link:../plugin-mermaid
+      '@infinite-canvas-tutorial/plugin-filter':
+        specifier: workspace:*
+        version: link:../plugin-filter
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2

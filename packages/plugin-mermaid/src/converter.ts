@@ -94,7 +94,9 @@ function mindmapEdgePortConstraints(
 /** Mermaid FlowEdge.type：双向为 double_arrow_point / double_arrow_circle / double_arrow_cross 等 */
 function markersFromMermaidFlowEdgeType(
   edgeType: string | undefined,
-): Pick<PolylineSerializedNode, 'markerStart' | 'markerEnd' | 'markerFactor'> {
+): Partial<
+  Pick<PolylineSerializedNode, 'markerStart' | 'markerEnd' | 'markerFactor'>
+> {
   if (edgeType?.startsWith('double_arrow')) {
     return {
       markerStart: 'line',
