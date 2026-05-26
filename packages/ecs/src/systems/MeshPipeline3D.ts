@@ -166,8 +166,8 @@ export class MeshPipeline3D extends System {
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
-    // Model uniforms: mat4 (model) + mat4 (normal) + vec4 (baseColor) + vec4 (lightParams) + vec4 (lightDir) = 128 + 48 = 176 bytes
-    // Pad to 192 for alignment
+    // Model uniforms: 2 mat4 (128 bytes) + 3 vec4 (48 bytes) = 176 bytes
+    // Padded to 192 bytes for GPU alignment
     this.modelUniformBuffer = device.createBuffer({
       viewOrSize: 192,
       usage: BufferUsage.UNIFORM,
@@ -239,6 +239,8 @@ export class MeshPipeline3D extends System {
   }
 
   private updateSceneUniforms(camera: Camera3D, aspect: number) {
+    if (!this.sceneUniformBuffer) return;
+
     const projMatrix = Mat4.perspective(camera.fovy, aspect, camera.near, camera.far);
     const viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
 
@@ -253,6 +255,8 @@ export class MeshPipeline3D extends System {
   }
 
   private updateModelUniforms(entity: Entity) {
+    if (!this.modelUniformBuffer) return;
+
     const transform = entity.read(Transform3D);
     const material = entity.read(Material3D);
 
@@ -269,8 +273,9 @@ export class MeshPipeline3D extends System {
     glMat4.invert(normalMat, modelMat);
     glMat4.transpose(normalMat, normalMat);
 
-    // Pack uniforms: model(64) + normal(64) + baseColor(16) + lightParams(16) + lightDir(16) = 176 bytes
-    const buffer = new Float32Array(48); // 176 / 4 = 44, rounded to 48
+    // Pack uniforms: 2 mat4 (128 bytes) + 3 vec4 (48 bytes) = 176 bytes = 44 floats
+    // Allocate 48 floats (192 bytes) for GPU alignment padding
+    const buffer = new Float32Array(48);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
     buffer.set(material.baseColor, 32);
@@ -365,6 +370,8 @@ export class MeshPipeline3D extends System {
             mainDepthTargetID,
           );
           pass.exec((renderPass) => {
+            if (!this.pipeline) return;
+
             renderPass.setViewport(0, 0, width, height);
             renderPass.setPipeline(this.pipeline);
 

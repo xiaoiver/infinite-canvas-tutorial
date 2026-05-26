@@ -3,7 +3,7 @@
  * Uses a single directional light and per-vertex normals.
  */
 
-export const vert = /* wgsl */ `
+export const vert = /* glsl */ `
 layout(std140) uniform SceneUniforms3D {
   mat4 u_ProjectionMatrix3D;
   mat4 u_ViewMatrix3D;
@@ -32,7 +32,7 @@ void main() {
 }
 `;
 
-export const frag = /* wgsl */ `
+export const frag = /* glsl */ `
 layout(std140) uniform ModelUniforms3D {
   mat4 u_ModelMatrix3D;
   mat4 u_NormalMatrix3D;
