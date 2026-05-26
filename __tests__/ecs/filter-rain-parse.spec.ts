@@ -1,3 +1,4 @@
+import './filter-test-setup';
 import {
   collectRainDropTextureUrlsFromFilterValue,
   createDefaultRainEffect,

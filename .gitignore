@@ -23,3 +23,9 @@ playwright/.cache
 .vercel
 .env*.local
 .pnpm-store/
+
+# Accidental tsc output next to sources (lib/esm are the real build dirs)
+packages/**/src/**/*.js
+!packages/**/src/**/worker.js
+packages/**/src/**/*.d.ts
+packages/**/src/**/*.js.map

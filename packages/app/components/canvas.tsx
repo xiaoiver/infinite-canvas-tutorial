@@ -23,6 +23,7 @@ import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { FilterPlugin } from '@infinite-canvas-tutorial/plugin-filter';
 import { useEffect, useRef, useCallback } from 'react';
 import { useTheme } from 'next-themes';
 import { useParams } from 'next/navigation';
@@ -231,6 +232,7 @@ const Canvas = ({
       new App()
         .addPlugins(
           ...DefaultPlugins,
+          FilterPlugin,
           UIPlugin,
           LaserPointerPlugin,
           LassoPlugin,

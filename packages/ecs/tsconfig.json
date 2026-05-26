@@ -1,8 +1,18 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["src/**/*", "types/**/*.d.ts"],
-  "exclude": ["node_modules"],
+  "include": ["src/**/*.ts", "types/**/*.d.ts"],
+  "exclude": ["node_modules", "src/**/*.js"],
   "compilerOptions": {
-    "typeRoots": ["./types"]
+    "rootDir": "./src",
+    "typeRoots": ["./types"],
+    "baseUrl": ".",
+    "paths": {
+      "@infinite-canvas-tutorial/plugin-filter/effect-types": [
+        "../plugin-filter/effect-types.d.ts"
+      ],
+      "@infinite-canvas-tutorial/plugin-filter/filter-defaults": [
+        "../plugin-filter/lib/filter-defaults.d.ts"
+      ]
+    }
   }
 }

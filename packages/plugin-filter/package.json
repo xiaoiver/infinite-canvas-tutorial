@@ -1,0 +1,65 @@
+{
+  "name": "@infinite-canvas-tutorial/plugin-filter",
+  "version": "0.0.1",
+  "description": "CSS filter / GPU post-processing effects for infinite canvas",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    },
+    "./filter-defaults": {
+      "types": "./lib/filter-defaults.d.ts",
+      "import": "./esm/filter-defaults.js",
+      "require": "./lib/filter-defaults.js"
+    }
+  },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "README.md"
+  ],
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu",
+    "filter",
+    "post-processing"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
+    "build": "run-p build:*",
+    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch"
+  },
+  "dependencies": {
+    "@infinite-canvas-tutorial/device-api": "workspace:*",
+    "d3-color": "^3.1.0"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@lastolivegames/becsy": "^0.16.0"
+  },
+  "devDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@lastolivegames/becsy": "^0.16.0",
+    "@types/d3-color": "^3.1.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

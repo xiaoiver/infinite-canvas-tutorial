@@ -1,9 +1,10 @@
+import './filter-test-setup';
 import { parseEffect, formatFilter } from '../../packages/ecs/src/utils/filter';
 import {
   generateKawaseKernels,
   kawaseBlurUniformValues,
   kawaseKernelsForBlurEffect,
-} from '../../packages/ecs/src/utils/kawase-blur';
+} from '../../packages/plugin-filter/src/utils/kawase-blur';
 
 describe('Kawase blur', () => {
   it('parses blur(px)', () => {

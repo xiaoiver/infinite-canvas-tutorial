@@ -6,6 +6,11 @@ import * as d3 from 'd3-color';
 import {
   AppState,
   parseColor,
+  GPUResource,
+  listRegisteredCubeLutKeys,
+  type SerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
+import {
   parseEffect,
   formatFilter,
   isSaturateOnlyAdjustment,
@@ -13,11 +18,16 @@ import {
   BLUR_DEFAULTS,
   HEATMAP_DEFAULTS,
   GEM_SMOKE_DEFAULTS,
-  GPUResource,
-  listRegisteredCubeLutKeys,
+  RAINDROPS_WATER_DEFAULTS,
+  RAINDROPS_SIM_DEFAULTS,
+  RAINDROP_FX_RENDER_DEFAULTS,
+  RAINDROP_FX_COMPOSE_DEFAULTS,
+  RAINDROP_FX_SIM_DEFAULTS,
+  RAIN_DROPDROP_TEXTURE_DEFAULT,
+  isRainFxEffect,
+  isRainCodropsRainEffect,
   type Effect,
   type DefaultEffectKind,
-  type SerializedNode,
   type BurnEffect,
   type LiquidMetalEffect,
   type HeatmapEffect,
@@ -34,18 +44,10 @@ import {
   type RainCodropsWaterParams,
   type RainCodropsSimParams,
   type BlurEffect,
-  RAINDROPS_WATER_DEFAULTS,
-  RAINDROPS_SIM_DEFAULTS,
-  RAINDROP_FX_RENDER_DEFAULTS,
-  RAINDROP_FX_COMPOSE_DEFAULTS,
-  RAINDROP_FX_SIM_DEFAULTS,
   type RaindropFxBackgroundWrapMode,
-  RAIN_DROPDROP_TEXTURE_DEFAULT,
-  isRainFxEffect,
-  isRainCodropsRainEffect,
   type RainFxParams,
   type RainFxSimParams,
-} from '@infinite-canvas-tutorial/ecs';
+} from '@infinite-canvas-tutorial/plugin-filter';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';

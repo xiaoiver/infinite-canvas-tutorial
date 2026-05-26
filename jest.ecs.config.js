@@ -25,6 +25,8 @@ module.exports = {
   moduleNameMapper: {
     '^@infinite-canvas-tutorial/device-api$':
       '<rootDir>/packages/device-api/src/index.ts',
+    '^@infinite-canvas-tutorial/plugin-filter/filter-defaults$':
+      '<rootDir>/packages/plugin-filter/src/filter-defaults.ts',
     '^heic2any$': '<rootDir>/__tests__/mocks/heic2any.ts',
   },
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],

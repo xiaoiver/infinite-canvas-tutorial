@@ -76,13 +76,18 @@ import {
   paddingMat3,
   parseColor,
   parseEffect,
+  preloadRaindropSprites,
 } from '../utils';
+import {
+  createPostProcessingRenderer,
+  type PostProcessingRendererLike,
+  setPostEffectEngineTimeSeconds,
+} from '../filter/api';
 import {
   clearRainFxExportContext,
   setRainFxExportContext,
 } from '../utils/rain-fx/rain-fx-export-context';
 import { preloadRainDropTextures } from '../utils/rain-drop-texture-cache';
-import { preloadRaindropSprites } from '../utils/raindrop-sim/raindrop-sprite-cache';
 import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
@@ -93,7 +98,6 @@ import {
   encodeGifFromCanvas,
   maxColorsForAnimationGifQuality,
 } from '../utils/animationExportCodec';
-import { setPostEffectEngineTimeSeconds } from '../utils/postEffectEngineTime';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
 import { API } from '../API';
@@ -105,7 +109,6 @@ import {
   opaqueWhiteFullClearRenderPassDescriptor,
 } from '../render-graph/utils';
 import { RenderGraph } from '../render-graph/RenderGraph';
-import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
 import { getFirstGradientFillLayerValue } from '../utils/fillLayers';
 import { getFirstGradientStrokeLayerValue } from '../utils/strokeLayers';
 
@@ -114,7 +117,7 @@ type GPURenderer = {
   uniformLegacyObject: Record<string, unknown>;
   gridRenderer: GridRenderer;
   batchManager: BatchManager;
-  filters: Record<Effect['type'], PostProcessingRenderer>;
+  filters: Record<Effect['type'], PostProcessingRendererLike>;
   renderGraph: RenderGraph;
 };
 
@@ -508,7 +511,7 @@ export class MeshPipeline extends System {
       }),
       uniformLegacyObject: null,
       gridRenderer: new GridRenderer(),
-      filters: {} as Record<Effect['type'], PostProcessingRenderer>,
+      filters: {} as Record<Effect['type'], PostProcessingRendererLike>,
       batchManager: new BatchManager(
         device,
         swapChain,
@@ -748,7 +751,7 @@ export class MeshPipeline extends System {
         pass.attachResolveTexture(mainColorResolveTextureID);
         pass.exec((passRenderer, scope) => {
           if (!filters[effect.type]) {
-            filters[effect.type] = new PostProcessingRenderer(
+            filters[effect.type] = createPostProcessingRenderer(
               device,
               swapChain,
               renderCache,

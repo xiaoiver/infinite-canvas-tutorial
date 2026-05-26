@@ -1,0 +1,20 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@infinite-canvas-tutorial/ecs": ["ecs/lib/index.d.ts"],
+      "@infinite-canvas-tutorial/ecs/*": ["ecs/lib/*"],
+      "@infinite-canvas-tutorial/webcomponents": [
+        "webcomponents/lib/index.d.ts"
+      ],
+      "@infinite-canvas-tutorial/webcomponents/*": ["webcomponents/lib/*"],
+      "@infinite-canvas-tutorial/plugin-filter/effect-types": [
+        "plugin-filter/effect-types.d.ts"
+      ],
+      "@infinite-canvas-tutorial/plugin-filter/filter-defaults": [
+        "plugin-filter/src/filter-defaults.ts"
+      ]
+    }
+  }
+}

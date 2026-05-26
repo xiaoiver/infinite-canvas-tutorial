@@ -50,6 +50,7 @@ import '../src/spectrum';
 import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
+import { FilterPlugin } from '../../plugin-filter/src';
 import { YogaPlugin } from '../../plugin-yoga/src';
 import { loadAnimation } from '../../plugin-lottie/src';
 import { InitVello, VelloPipeline, registerFont } from '../../plugin-vello/src';
@@ -262,6 +263,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 try {
   const app = new App().addPlugins(
     ...DefaultPlugins,
+    FilterPlugin,
     UIPlugin,
     EraserPlugin,
     LaserPointerPlugin,

@@ -1,5 +1,5 @@
 import { System } from '@lastolivegames/becsy';
-import { setPostEffectEngineTimeSeconds } from '../utils/postEffectEngineTime';
+import { setPostEffectEngineTimeSeconds } from '../filter/api';
 
 /**
  * Updates global post-processing time (`performance.now() / 1000`) before rendering

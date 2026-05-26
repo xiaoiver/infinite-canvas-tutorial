@@ -1,3 +1,4 @@
+import './filter-test-setup';
 import { parseEffect, formatFilter } from '../../packages/ecs/src/utils/filter';
 
 describe('LUT filter parse / format', () => {

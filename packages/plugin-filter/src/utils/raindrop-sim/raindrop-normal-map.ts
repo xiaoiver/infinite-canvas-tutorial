@@ -2,18 +2,39 @@
  * Builds the raindrop normal/compose map on Canvas2D (raindrop-fx instanced pass equivalent).
  * Draws {@link RainDrop} sprites with blend modes that approximate exclusion compose.
  */
-import { DOMAdapter } from '../../environment';
 import type { RainDrop } from './raindrop';
-
-type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
-type Any2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-
-const MAX_SPRITE_PX = 512;
 
 /** Scratch canvas reads pixels every raindrop; avoids Canvas2D readback warnings. */
 const SCRATCH_2D: CanvasRenderingContext2DSettings = {
   willReadFrequently: true,
 };
+
+function createCanvas2d(w: number, h: number): {
+  canvas: HTMLCanvasElement | OffscreenCanvas;
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+} {
+  if (typeof OffscreenCanvas !== 'undefined') {
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext('2d', SCRATCH_2D);
+    if (!ctx) {
+      throw new Error('RaindropNormalMapCanvas: 2d context unavailable');
+    }
+    return { canvas, ctx };
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', SCRATCH_2D);
+  if (!ctx) {
+    throw new Error('RaindropNormalMapCanvas: 2d context unavailable');
+  }
+  return { canvas, ctx };
+}
+
+type AnyCanvas = HTMLCanvasElement | OffscreenCanvas;
+type Any2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
+
+const MAX_SPRITE_PX = 512;
 
 function finitePositive(n: number, fallback = 1): number {
   if (!Number.isFinite(n) || n <= 0) {
@@ -93,19 +114,12 @@ export class RaindropNormalMapCanvas {
   constructor(width: number, height: number) {
     this.width = width;
     this.height = height;
-    const adapter = DOMAdapter.get();
-    this.canvas = adapter.createCanvas(width, height);
-    const ctx = this.canvas.getContext('2d');
-    if (!ctx) {
-      throw new Error('RaindropNormalMapCanvas: 2d context unavailable');
-    }
-    this.ctx = ctx as Any2D;
-    this.scratch = adapter.createCanvas(64, 64);
-    const sctx = this.scratch.getContext('2d', SCRATCH_2D);
-    if (!sctx) {
-      throw new Error('RaindropNormalMapCanvas: scratch 2d context unavailable');
-    }
-    this.scratchCtx = sctx as Any2D;
+    const main = createCanvas2d(width, height);
+    this.canvas = main.canvas;
+    this.ctx = main.ctx as Any2D;
+    const scratch = createCanvas2d(64, 64);
+    this.scratch = scratch.canvas;
+    this.scratchCtx = scratch.ctx as Any2D;
   }
 
   resize(width: number, height: number): void {
