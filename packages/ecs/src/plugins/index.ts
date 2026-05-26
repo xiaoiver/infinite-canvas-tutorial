@@ -4,6 +4,7 @@ export * from './Canvas';
 export * from './Hierarchy';
 export * from './Transform';
 export * from './Renderer';
+export * from './Renderer3D';
 export * from './Camera';
 export * from './Event';
 export * from './Screenshot';

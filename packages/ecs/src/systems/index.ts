@@ -3,6 +3,7 @@ export * from './Animation';
 export * from './SetupDevice';
 export * from './Transform';
 export * from './MeshPipeline';
+export * from './MeshPipeline3D';
 export * from './PostEffectTime';
 export * from './EventWriter';
 export * from './EventDisposer';
