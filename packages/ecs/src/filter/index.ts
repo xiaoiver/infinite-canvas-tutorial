@@ -1,3 +1,5 @@
+export * from './effect-types';
+export * from './filter-defaults';
 export * from './types';
 export * from './api';
 export * from './backend';

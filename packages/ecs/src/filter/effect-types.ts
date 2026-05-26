@@ -1,23 +1,3 @@
-/**
- * Filter effect type definitions shared with `@infinite-canvas-tutorial/ecs`.
- * Source of truth for runtime: `packages/plugin-filter/src/filter.ts`.
- * Keep in sync when adding effect types.
- */
-
-export type RainFxParams = RainFxRenderOptions;
-/** raindrop-fx simulator overrides ({@link RAINDROP_FX_SIM_DEFAULTS} when omitted). */
-export type RainFxSimParams = Partial<{
-  spawnInterval: number;
-  spawnSize: number;
-  motionInterval: number;
-  trailDistance: number;
-  gravity: number;
-  spawnLimit: number;
-  trailDropDensity: number;
-  trailSpread: number;
-  xShifting: number;
-  slipRate: number;
-}>;
 export interface FilterObject {
     name: string;
     params: string;
@@ -398,3 +378,20 @@ export interface RainFxRenderOptions {
 
 export type RaindropFxBackgroundWrapMode = 'clamp' | 'repeat' | 'mirror';
 export type RaindropFxComposeMode = 'smoother' | 'harder';
+
+/** GPU raindrop-fx render overrides stored on {@link RainEffect}. */
+export type RainFxParams = RainFxRenderOptions;
+
+/** raindrop-fx simulator overrides ({@link RAINDROP_FX_SIM_DEFAULTS} when omitted). */
+export type RainFxSimParams = Partial<{
+  spawnInterval: [number, number];
+  spawnSize: [number, number];
+  motionInterval: [number, number];
+  trailDistance: [number, number];
+  gravity: number;
+  spawnLimit: number;
+  trailDropDensity: number;
+  trailSpread: number;
+  xShifting: [number, number];
+  slipRate: number;
+}>;

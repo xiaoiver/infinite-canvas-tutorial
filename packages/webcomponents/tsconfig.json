@@ -8,11 +8,6 @@
   ],
   "compilerOptions": {
     "rootDir": "./src",
-    "baseUrl": ".",
-    "paths": {
-      "@infinite-canvas-tutorial/ecs": ["../ecs/lib/index.d.ts"],
-      "@infinite-canvas-tutorial/plugin-filter": ["../plugin-filter/lib/index.d.ts"],
-      "@infinite-canvas-tutorial/mermaid": ["../plugin-mermaid/lib/index.d.ts"]
-    }
+    "baseUrl": "."
   }
 }

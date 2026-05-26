@@ -4,15 +4,6 @@
   "exclude": ["node_modules", "src/**/*.js"],
   "compilerOptions": {
     "rootDir": "./src",
-    "typeRoots": ["./types"],
-    "baseUrl": ".",
-    "paths": {
-      "@infinite-canvas-tutorial/plugin-filter/effect-types": [
-        "../plugin-filter/effect-types.d.ts"
-      ],
-      "@infinite-canvas-tutorial/plugin-filter/filter-defaults": [
-        "../plugin-filter/lib/filter-defaults.d.ts"
-      ]
-    }
+    "typeRoots": ["./types"]
   }
 }

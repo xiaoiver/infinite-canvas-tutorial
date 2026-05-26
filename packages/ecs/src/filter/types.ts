@@ -1,7 +1,4 @@
-/**
- * Filter effect types — source of truth: `packages/plugin-filter`.
- * Uses standalone `effect-types.d.ts` so `tsc` does not compile plugin-filter into `ecs` output.
- */
+/** Filter effect types — canonical definitions for ECS + optional filter plugin. */
 export type {
   Effect,
   DefaultEffectKind,
@@ -39,4 +36,4 @@ export type {
   RainFxRenderOptions,
   RaindropFxBackgroundWrapMode,
   RaindropFxComposeMode,
-} from '@infinite-canvas-tutorial/plugin-filter/effect-types';
+} from './effect-types';

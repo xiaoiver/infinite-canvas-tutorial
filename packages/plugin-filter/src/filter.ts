@@ -15,7 +15,36 @@ import {
   type RaindropFxComposeMode,
 } from './utils/raindrop-sim/defaults';
 import type { SimulatorOptions } from './utils/raindrop-sim/simulator';
-import type { RainFxRenderOptions } from './rain-fx-types';
+import type {
+  Effect,
+  FilterObject,
+  RainEffect,
+  RainFxRenderOptions,
+  RainFxParams,
+  RainFxSimParams,
+  RaindropsCodropsSimOptions,
+  BrightnessEffect,
+  ContrastEffect,
+  AdjustmentEffect,
+  BlurEffect,
+  RainCodropsWaterParams,
+  RainCodropsSimParams,
+  HalftoneDotsEffect,
+  FlutedGlassEffect,
+  TsunamiEffect,
+  BurnEffect,
+  CrtEffect,
+  VignetteEffect,
+  AsciiEffect,
+  GlitchEffect,
+  LiquidGlassEffect,
+  LiquidMetalEffect,
+  HeatmapEffect,
+  GemSmokeEffect,
+  LutEffect,
+  DefaultEffectKind,
+} from '@infinite-canvas-tutorial/ecs';
+
 
 export {
   RAIN_DROPDROP_TEXTURE_DEFAULT,
@@ -28,25 +57,42 @@ export {
   type RaindropFxComposeMode,
 } from './utils/raindrop-sim/defaults';
 
-/** GPU raindrop-fx render overrides stored on {@link RainEffect}. */
-export type RainFxParams = RainFxRenderOptions;
+export type {
+  Effect,
+  DefaultEffectKind,
+  FilterObject,
+  AdjustmentEffect,
+  BrightnessEffect,
+  ContrastEffect,
+  HueSaturationEffect,
+  PixelateEffect,
+  DotEffect,
+  ColorHalftoneEffect,
+  HalftoneDotsEffect,
+  FlutedGlassEffect,
+  TsunamiEffect,
+  RainEffect,
+  BurnEffect,
+  CrtEffect,
+  VignetteEffect,
+  AsciiEffect,
+  GlitchEffect,
+  LiquidGlassEffect,
+  LiquidMetalEffect,
+  HeatmapEffect,
+  GemSmokeEffect,
+  LutEffect,
+  DropShadowEffect,
+  BlurEffect,
+  NoiseEffect,
+  FXAA,
+  RainFxParams,
+  RainFxSimParams,
+  RainCodropsWaterParams,
+  RainCodropsSimParams,
+  RaindropsCodropsSimOptions,
+} from '@infinite-canvas-tutorial/ecs';
 
-/** raindrop-fx simulator overrides ({@link RAINDROP_FX_SIM_DEFAULTS} when omitted). */
-export type RainFxSimParams = Partial<
-  Pick<
-    SimulatorOptions,
-    | 'spawnInterval'
-    | 'spawnSize'
-    | 'motionInterval'
-    | 'trailDistance'
-    | 'gravity'
-    | 'spawnLimit'
-    | 'trailDropDensity'
-    | 'trailSpread'
-    | 'xShifting'
-    | 'slipRate'
-  >
->;
 
 export function rainFxRenderOptionsFromEffect(
   effect: RainEffect,
@@ -83,38 +129,6 @@ export function raindropSimulatorOptionsForEffect(
   };
 }
 
-export interface FilterObject {
-  name: string;
-  params: string;
-}
-
-export type Effect =
-  | BrightnessEffect
-  | ContrastEffect
-  | HueSaturationEffect
-  | PixelateEffect
-  | DotEffect
-  | ColorHalftoneEffect
-  | HalftoneDotsEffect
-  | FlutedGlassEffect
-  | TsunamiEffect
-  | RainEffect
-  | BurnEffect
-  | CrtEffect
-  | VignetteEffect
-  | AsciiEffect
-  | GlitchEffect
-  | LiquidGlassEffect
-  | LiquidMetalEffect
-  | HeatmapEffect
-  | GemSmokeEffect
-  | LutEffect
-  | AdjustmentEffect
-  | DropShadowEffect
-  | BlurEffect
-  | NoiseEffect
-  | FXAA;
-
 /** Defaults aligned with Pixi {@link https://github.com/pixijs/filters/blob/main/src/adjustment/AdjustmentFilter.ts AdjustmentFilter}. */
 export const ADJUSTMENT_DEFAULTS = {
   gamma: 1,
@@ -127,94 +141,27 @@ export const ADJUSTMENT_DEFAULTS = {
   alpha: 1,
 } as const;
 
-export interface AdjustmentEffect {
-  type: 'adjustment';
-  gamma: number;
-  contrast: number;
-  saturation: number;
-  brightness: number;
-  red: number;
-  green: number;
-  blue: number;
-  alpha: number;
-}
-
 /** `value`: glfx-style offset in [-1, 1]; 0 = no change (matches filter string number, not CSS `brightness()` multiplier). */
-export interface BrightnessEffect {
-  type: 'brightness';
-  value: number;
-}
-
 /** `value`: glfx-style offset in [-1, 1]; 0 = no change. */
-export interface ContrastEffect {
-  type: 'contrast';
-  value: number;
-}
-
 /**
  * glfx hue/saturation pass ({@link https://github.com/evanw/glfx.js/blob/master/src/filters/adjust/huesaturation.js huesaturation}).
  * `hue` ∈ [-1, 1] (±1 = ±180°), `saturation` ∈ [-1, 1] (glfx semantics; CPU clamps positive branch away from 1).
  */
-export interface HueSaturationEffect {
-  type: 'hueSaturation';
-  hue: number;
-  saturation: number;
-}
-
 /**
  * Block size in pixels (square), same semantics as Pixi {@link https://github.com/pixijs/filters/blob/main/src/pixelate/pixelate.frag pixelate} `uSize`.
  */
-export interface PixelateEffect {
-  type: 'pixelate';
-  size: number;
-}
-
 /**
  * Pixi {@link https://github.com/pixijs/filters/blob/main/src/dot/dot.frag Dot} screen (defaults: scale 1, angle 5 rad, grayscale on).
  */
-export interface DotEffect {
-  type: 'dot';
-  scale: number;
-  angle: number;
-  /** 1 = grayscale halftone, 0 = color */
-  grayscale: number;
-}
-
 /**
  * glfx {@link https://github.com/evanw/glfx.js/blob/master/src/filters/fun/colorhalftone.js colorHalftone}.
  * `angle` in radians; `size` = dot diameter in pixels (`scale = π / size` on GPU).
  * Omit `centerX` / `centerY` to use texture center at upload time.
  */
-export interface ColorHalftoneEffect {
-  type: 'colorHalftone';
-  centerX?: number;
-  centerY?: number;
-  angle: number;
-  size: number;
-}
-
 /**
  * paper-design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/halftone-dots.ts halftone-dots}
  * (minimal: no sizing transform in vertex).
  */
-export interface HalftoneDotsEffect {
-  type: 'halftoneDots';
-  /** Grid density 0–1 (`u_size`). */
-  size: number;
-  /** Max dot size vs cell 0–2 (`u_radius`). */
-  radius: number;
-  /** Luminance contrast 0–1 (`u_contrast`). */
-  contrast: number;
-  /** 0 = square, 1 = hex. */
-  grid: number;
-  /** 0 classic, 1 gooey, 2 holes, 3 soft. */
-  dotStyle: number;
-  /**
-   * When true (default), dot color comes from sampled image; when false, uses foreground/background colors (`u_H3`/`u_H4`).
-   */
-  originalColors?: boolean;
-}
-
 /** Defaults for {@link HalftoneDotsEffect} / `halftone-dots()` when params are omitted. */
 export const HALFTONE_DOTS_DEFAULTS = {
   size: 0.5,
@@ -295,29 +242,6 @@ export const FLUTED_GLASS_DEFAULTS = {
  * paper-design {@link https://github.com/paper-design/shaders/blob/main/packages/shaders/src/shaders/fluted-glass.ts fluted-glass}
  * (post-process: `v_Uv`, no vertex sizing).
  */
-export interface FlutedGlassEffect {
-  type: 'flutedGlass';
-  size: number;
-  shadows: number;
-  angle: number;
-  stretch: number;
-  /** 1 lines … 5 pattern ({@link GlassGridShapes}). */
-  shape: number;
-  distortion: number;
-  highlights: number;
-  /** 1 prism … 5 flat ({@link GlassDistortionShapes}). */
-  distortionShape: number;
-  shift: number;
-  blur: number;
-  edges: number;
-  marginLeft: number;
-  marginRight: number;
-  marginTop: number;
-  marginBottom: number;
-  grainMixer: number;
-  grainOverlay: number;
-}
-
 export const GlassGridShapes = {
   lines: 1,
   linesIrregular: 2,
@@ -428,21 +352,6 @@ export const TSUNAMI_DEFAULTS = {
  * Tsunami ribbed-glass style post-process (stripes + refraction + optional RGB split).
  * 4 × vec4 std140 → `u_TS0`…`u_TS3` (16 floats).
  */
-export interface TsunamiEffect {
-  type: 'tsunami';
-  stripeCount: number;
-  stripeAngle: number;
-  distortion: number;
-  reflection: number;
-  disturbance: number;
-  contortion: number;
-  blend: number;
-  dispersion: number;
-  drift: number;
-  shadowIntensity: number;
-  offset: number;
-}
-
 export function tsunamiUniformValues(
   effect: TsunamiEffect,
   textureWidth: number,
@@ -526,16 +435,6 @@ export const RAIN_DROP_TEXTURE_DEFAULTS = {
   dropShineUrl: '/drop-shine.png',
 } as const;
 
-export type RainCodropsWaterParams = {
-  minRefraction?: number;
-  maxRefraction?: number;
-  brightness?: number;
-  alphaMultiply?: number;
-  alphaSubtract?: number;
-  renderShadow?: boolean;
-  renderShine?: boolean;
-};
-
 /** Defaults for {@link RaindropsCodropsSimulator} spawn density (Codrops `raindrops.js`). */
 export const RAINDROPS_SIM_DEFAULTS = {
   rainChance: 0.3,
@@ -543,13 +442,6 @@ export const RAINDROPS_SIM_DEFAULTS = {
   maxDrops: 900,
   dropletsRate: 50,
 } as const;
-
-export type RainCodropsSimParams = {
-  rainChance?: number;
-  rainLimit?: number;
-  maxDrops?: number;
-  dropletsRate?: number;
-};
 
 /**
  * Default {@link RainEffect}: Codrops path with {@link RAIN_DROP_TEXTURE_DEFAULTS}.  
@@ -615,46 +507,7 @@ function isDefaultRainCodropsEffect(e: RainEffect): boolean {
  * `rain()` / `rain(url("…"))` → raindrop-fx sim + compose (default sprite `/raindrop.png`).  
  * `rain(url(color), url(alpha), …)` → legacy Codrops path.
  */
-export interface RainEffect {
-  type: 'rain';
-  /** raindrop-fx style drop normal map (single sprite). Default {@link RAIN_DROPDROP_TEXTURE_DEFAULT}. */
-  dropTextureUrl?: string;
-  /** raindrop-fx GPU pass overrides ({@link RAINDROP_FX_RENDER_DEFAULTS} / compose defaults when omitted). */
-  rainFx?: RainFxParams;
-  /** raindrop-fx {@link RaindropSimulator} overrides ({@link RAINDROP_FX_SIM_DEFAULTS} when omitted). */
-  rainFxSim?: RainFxSimParams;
-  /** When both URLs are set, {@link RaindropsCodropsSimulator} + {@link rainCodropsWater} shader. */
-  dropColorUrl?: string;
-  dropAlphaUrl?: string;
-  /** Codrops `u_textureShine` (optional third `url("…")` in filter string). */
-  dropShineUrl?: string;
-  /** Passed to {@link RaindropsCodropsSimulator} constructor `scale` (default `1`). */
-  rainSimScale?: number;
-  /** Overrides {@link RaindropsCodropsSimulator} spawn density (see {@link RAINDROPS_SIM_DEFAULTS}). */
-  codropsSim?: RainCodropsSimParams;
-  /** Overrides {@link RAINDROPS_WATER_DEFAULTS} for the water pass. */
-  codropsWater?: RainCodropsWaterParams;
-  /** Legacy procedural rain (unused when raindrop-fx or Codrops path is active). */
-  minRefraction?: number;
-  refractionDelta?: number;
-  brightness?: number;
-  density?: number;
-  alphaMultiply?: number;
-  alphaSubtract?: number;
-  streakCount?: number;
-  dropScale?: number;
-  renderShadow?: boolean;
-  renderShine?: boolean;
-}
-
 /** Codrops rain simulator tuning (see ecs `RaindropsCodropsSimulator`). */
-export type RaindropsCodropsSimOptions = {
-  rainChance: number;
-  rainLimit: number;
-  maxDrops: number;
-  dropletsRate: number;
-};
-
 /** Options for {@link RaindropsCodropsSimulator} from a {@link RainEffect} (Codrops path only). */
 export function raindropsSimulatorOptionsForEffect(
   effect: RainEffect,
@@ -910,19 +763,6 @@ export const BURN_DEFAULTS = {
 /**
  * Single-pass burn with optional pre-warp. 4 × vec4 std140 → `u_BR0`…`u_BR3` (16 floats).
  */
-export interface BurnEffect {
-  type: 'burn';
-  burn: number;
-  density: number;
-  softness: number;
-  dispersion: number;
-  distortion: number;
-  edgeColor: string;
-  maskColor: string;
-  invertMask: boolean;
-  transparent: boolean;
-}
-
 export function burnUniformValues(
   effect: BurnEffect,
   _textureWidth: number,
@@ -973,19 +813,6 @@ export const CRT_DEFAULTS = {
 /**
  * CRT-style scanlines only (see {@link crtUniformValues} / post-processing `crt` shader).
  */
-export interface CrtEffect {
-  type: 'crt';
-  curvature: number;
-  lineWidth: number;
-  lineContrast: number;
-  /** 0 = horizontal scanlines, 1 = vertical */
-  verticalLine: number;
-  /** Animates scanlines when changed over time (ignored when {@link useEngineTime} is true) */
-  time: number;
-  /** When true, GPU uses the global frame clock from `PostEffectTime` instead of `time`. */
-  useEngineTime?: boolean;
-}
-
 /** Defaults for {@link VignetteEffect} / `vignette(size, amount)`. */
 export const VIGNETTE_DEFAULTS = {
   size: 0.5,
@@ -995,14 +822,6 @@ export const VIGNETTE_DEFAULTS = {
 /**
  * Radial lens vignette (`smoothstep` on UV distance), separate pass from CRT.
  */
-export interface VignetteEffect {
-  type: 'vignette';
-  /** 0 = center of frame, 1 = edge */
-  size: number;
-  /** 0 = no darkening, 1 = max */
-  amount: number;
-}
-
 /** 3 × vec4 (`u_CRT0`…`u_CRT2`), std140. */
 export function crtUniformValues(
   effect: CrtEffect,
@@ -1059,16 +878,6 @@ export const ASCII_DEFAULTS = {
 /**
  * ASCII / bitmap-font style blocks from luminance (Pixi `ASCIIFilter`).
  */
-export interface AsciiEffect {
-  type: 'ascii';
-  /** Cell size in pixels (`uSize`) */
-  size: number;
-  /** Solid `color` for glyphs vs sampled tint (`uReplaceColor`) */
-  replaceColor: boolean;
-  /** CSS color when replacing */
-  color: string;
-}
-
 /** 3 × vec4 std140: `u_ASCII0`, `u_ASCII1`, `u_InputSizeAscii`. */
 export function asciiUniformValues(
   effect: AsciiEffect,
@@ -1091,15 +900,6 @@ export function asciiUniformValues(
   return [cell, rep, r, g, b, 0, 0, 0, w, h, 0, 0];
 }
 
-export interface DropShadowEffect {
-  type: 'drop-shadow';
-  x: number;
-  y: number;
-  blur: number;
-  spread: number;
-  color: string;
-}
-
 /** Kawase blur defaults (Pixi {@link https://github.com/pixijs/filters/blob/main/src/kawase-blur/KawaseBlurFilter.ts KawaseBlurFilter}). */
 export const BLUR_DEFAULTS = {
   value: 4,
@@ -1107,23 +907,6 @@ export const BLUR_DEFAULTS = {
   clamp: true,
   pixelSize: 1,
 } as const;
-
-export interface BlurEffect {
-  type: 'blur';
-  /** Blur strength in pixels (Pixi `strength`). */
-  value: number;
-  /** Pass count / kernel steps; integer ≥ 1. */
-  quality?: number;
-  /** Clamp UVs to filter bounds (reduces edge bleed). */
-  clamp?: boolean;
-  /** Per-axis pixel scale; larger = blurrier. */
-  pixelSize?: number | { x: number; y: number };
-}
-
-export interface NoiseEffect {
-  type: 'noise';
-  value: number;
-}
 
 /** Digital block glitch + RGB split; `filter` e.g. `glitch(0.17, 0.24, auto, 0.2)` — jitter, rgbSplit, time, blocks. */
 export const GLITCH_DEFAULTS = {
@@ -1133,20 +916,6 @@ export const GLITCH_DEFAULTS = {
   rgbSplit: 0.24,
   time: 0,
 } as const;
-
-export interface GlitchEffect {
-  type: 'glitch';
-  /** 0–1 UV jitter strength (does not affect block glitch). */
-  jitter: number;
-  /** 0–1 block / digital glitch strength (does not affect jitter). */
-  blocks: number;
-  /** Horizontal channel separation scale (shader maps to pixel offset). */
-  rgbSplit: number;
-  /** Seconds; ignored when {@link useEngineTime} is true. */
-  time: number;
-  /** When true, uses engine time from `PostEffectTime` / `setPostEffectEngineTimeSeconds`. */
-  useEngineTime?: boolean;
-}
 
 /** 2 × vec4 std140: `u_Glitch0`, `u_Glitch1`. */
 export function glitchUniformValues(
@@ -1188,38 +957,6 @@ export const LIQUID_GLASS_DEFAULTS = {
   ellipseSizeX: 1,
   ellipseSizeY: 1,
 } as const;
-
-export interface LiquidGlassEffect {
-  type: 'liquidGlass';
-  /** Superellipse exponent (higher → squarer silhouette). */
-  powerFactor: number;
-  /** Refractive fall-off power on `f(dist)`. */
-  fPower: number;
-  /** RGB grain strength. */
-  noise: number;
-  glowWeight: number;
-  glowBias: number;
-  glowEdge0: number;
-  glowEdge1: number;
-  /** `f(dist)` coefficients (see reference shader). */
-  a: number;
-  b: number;
-  c: number;
-  d: number;
-  /** Lens center X in normalized texture UV [0, 1] (same space as post-process `v_Uv`). */
-  centerX: number;
-  /** Lens center Y in normalized texture UV [0, 1]. */
-  centerY: number;
-  /** Per-axis scale on the refracted offset in NDC (reference `v_QuadNDC2ScreenNDCScale`). */
-  scaleX: number;
-  scaleY: number;
-  /**
-   * Horizontal / vertical size of the superellipse in lens space (shader: `pShape = p / vec2(ellipseSizeX, ellipseSizeY)`).
-   * Default `1` matches the old fixed shape; **larger** values stretch the lens wider/taller on that axis.
-   */
-  ellipseSizeX: number;
-  ellipseSizeY: number;
-}
 
 /** 5 × vec4 std140: `u_LG0`–`u_LG4`. */
 export function liquidGlassUniformValues(
@@ -1281,25 +1018,6 @@ export const LIQUID_METAL_DEFAULTS = {
   /** When `useImage` and WebGL: CPU Poisson map (paper R/G). WebGPU cannot sync-readback; falls back in Drawcall. */
   usePoisson: true,
 } as const;
-
-export interface LiquidMetalEffect {
-  type: 'liquidMetal';
-  colorBack: string;
-  colorTint: string;
-  repetition: number;
-  softness: number;
-  shiftRed: number;
-  shiftBlue: number;
-  distortion: number;
-  contour: number;
-  angle: number;
-  shape: number;
-  useImage: boolean;
-  time: number;
-  useEngineTime?: boolean;
-  /** Use CPU Poisson + R/G texture when `useImage` (see {@link LIQUID_METAL_DEFAULTS.usePoisson}). */
-  usePoisson?: boolean;
-}
 
 /** 6 × vec4 std140: `u_LM0`–`u_LM5` (24 floats). */
 export function liquidMetalUniformValues(
@@ -1380,23 +1098,6 @@ export const HEATMAP_DEFAULTS = {
     '#ff4d00',
   ],
 } as const;
-
-export interface HeatmapEffect {
-  type: 'heatmap';
-  contour: number;
-  angle: number;
-  noise: number;
-  innerGlow: number;
-  outerGlow: number;
-  useImage: boolean;
-  time: number;
-  useEngineTime?: boolean;
-  /** When `useImage` + WebGL: run CPU R/G/B blur pass (see {@link HEATMAP_DEFAULTS.usePreprocess}). */
-  usePreprocess?: boolean;
-  colorBack: string;
-  /** Up to 10 gradient colors (see Paper `maxColorCount: 10`). */
-  colors: string[];
-}
 
 /** 14×vec4 std140: `u_HM0`…`u_HM3` + `u_hmC[10]` (56 floats). */
 export function heatmapUniformValues(
@@ -1492,39 +1193,12 @@ export const GEM_SMOKE_DEFAULTS = {
  * - URL path: `lut(url("./grade.cube"), 1)` — key is the string inside `url("…")`.
  * - Explicit name: `lut(name("my-grade"), 1)`.
  */
-export interface LutEffect {
-  type: 'lut';
-  /** Cache key: logical name (e.g. `fuji`) or same string as in `url("…")`. */
-  lutKey: string;
-  strength: number;
-}
-
 /** New LUT row in UI before a cube file is registered (`lutKey` placeholder). */
 export const LUT_EFFECT_DEFAULTS = {
   type: 'lut' as const,
   lutKey: 'custom',
   strength: 1,
 } as const;
-
-export interface GemSmokeEffect {
-  type: 'gemSmoke';
-  innerDistortion: number;
-  outerDistortion: number;
-  outerGlow: number;
-  innerGlow: number;
-  offset: number;
-  angle: number;
-  size: number;
-  shape: number;
-  useImage: boolean;
-  time: number;
-  useEngineTime?: boolean;
-  /** WebGL + `useImage`: CPU Poisson R/G 与 liquid metal 同格式（见 {@link imageDataToLiquidMetalPoissonMap}）。 */
-  usePoisson?: boolean;
-  colorBack: string;
-  colorInner: string;
-  colors: string[];
-}
 
 /** 12×vec4 std140: `u_GS0`…`u_GS5` + `u_gsC[6]`（48 floats）。 */
 export function gemSmokeUniformValues(
@@ -1588,10 +1262,6 @@ export function gemSmokeUniformValues(
     0,
     ...uColors.flatMap((c) => [c[0]!, c[1]!, c[2]!, c[3]!]),
   ];
-}
-
-export interface FXAA {
-  type: 'fxaa';
 }
 
 /** Effect types implemented by {@link Drawcall.createPostProcessing} raster chain (see `FRAG_MAP`). */
@@ -3399,35 +3069,6 @@ export function formatFilter(effects: Effect[]): string {
 
 /** Pixi-style saturation multiplier for a new saturate-only `adjustment` row. */
 export const SATURATE_ADJUSTMENT_SATURATION = 1.25;
-
-/**
- * Picker value when adding an effect row in UI (`saturate` maps to `adjustment` with only
- * {@link SATURATE_ADJUSTMENT_SATURATION} changed).
- */
-export type DefaultEffectKind =
-  | 'brightness'
-  | 'contrast'
-  | 'saturate'
-  | 'noise'
-  | 'fxaa'
-  | 'blur'
-  | 'pixelate'
-  | 'dot'
-  | 'colorHalftone'
-  | 'halftoneDots'
-  | 'flutedGlass'
-  | 'crt'
-  | 'vignette'
-  | 'ascii'
-  | 'glitch'
-  | 'liquidGlass'
-  | 'liquidMetal'
-  | 'heatmap'
-  | 'gemSmoke'
-  | 'lut'
-  | 'tsunami'
-  | 'rain'
-  | 'burn';
 
 /** Default {@link Effect} for a new row (effects panel / authoring). */
 export function createDefaultEffect(kind: DefaultEffectKind): Effect {

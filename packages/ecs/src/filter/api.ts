@@ -72,7 +72,7 @@ export {
   RAINDROP_FX_SIM_DEFAULTS,
   RAINDROP_FX_SIM_DT,
   RAIN_DROPDROP_TEXTURE_DEFAULT,
-} from '@infinite-canvas-tutorial/plugin-filter/filter-defaults';
+} from './filter-defaults';
 
 export {
   ADJUSTMENT_DEFAULTS,

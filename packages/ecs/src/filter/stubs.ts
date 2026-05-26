@@ -67,7 +67,7 @@ export const RAINDROP_FX_SIM_DEFAULTS = {} as Record<string, unknown>;
 export const RAINDROP_FX_SIM_DT = 1 / 60;
 export const RAINDROPS_WATER_DEFAULTS = {} as Record<string, unknown>;
 export const RAINDROPS_SIM_DEFAULTS = {} as Record<string, unknown>;
-export const RAIN_DROPDROP_TEXTURE_DEFAULT = '';
+export const RAIN_DROPDROP_TEXTURE_DEFAULT = '/raindrop.png';
 export const BURN_DEFAULTS = {} as Record<string, unknown>;
 
 export function parseEffect(_filter: string): Effect[] {
