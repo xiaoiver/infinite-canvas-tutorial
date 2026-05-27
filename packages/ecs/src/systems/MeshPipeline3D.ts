@@ -1,15 +1,20 @@
 import { mat4 as glMat4 } from 'gl-matrix';
 import { Entity, System } from '@lastolivegames/becsy';
 import {
+  BlendFactor,
+  BlendMode,
   Buffer,
   BufferFrequencyHint,
   BufferUsage,
+  ChannelWriteMask,
   CompareFunction,
   CullMode,
   Format,
   InputLayout,
+  PrimitiveTopology,
   Program,
   RenderPipeline,
+  TransparentBlack,
   VertexStepMode,
   TransparentWhite,
 } from '@infinite-canvas-tutorial/device-api';
@@ -152,7 +157,26 @@ export class MeshPipeline3D extends System {
     this.pipeline = renderCache.createRenderPipeline({
       inputLayout: this.inputLayout,
       program: this.program,
+      colorAttachmentFormats: [Format.U8_RGBA_RT],
+      depthStencilAttachmentFormat: Format.D24_S8,
+      topology: PrimitiveTopology.TRIANGLES,
       megaStateDescriptor: {
+        attachmentsState: [
+          {
+            channelWriteMask: ChannelWriteMask.ALL,
+            rgbBlendState: {
+              blendMode: BlendMode.ADD,
+              blendSrcFactor: BlendFactor.ONE,
+              blendDstFactor: BlendFactor.ZERO,
+            },
+            alphaBlendState: {
+              blendMode: BlendMode.ADD,
+              blendSrcFactor: BlendFactor.ONE,
+              blendDstFactor: BlendFactor.ZERO,
+            },
+          },
+        ],
+        blendConstant: TransparentBlack,
         depthWrite: true,
         depthCompare: CompareFunction.LESS,
         cullMode: CullMode.BACK,
