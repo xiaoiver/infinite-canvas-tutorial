@@ -14,12 +14,19 @@
  *   )
  * ```
  *
+ * In **unified 3D space mode**, spawn a Camera3D with `linked: true`:
+ * ```ts
+ * commands.spawn(new Camera3D({ linked: true, projection: 'orthographic' }));
+ * ```
+ * The CameraSync system will map 2D pan/zoom to the 3D camera automatically.
+ *
  * 3D geometry is drawn in the first pass of {@link MeshPipeline}'s render graph;
  * 2D/grid/HTML overlays composite on the same target afterward.
  */
 import { system } from '@lastolivegames/becsy';
 import { Plugin, type PluginWithConfig } from './types';
-import { MeshPipeline3D } from '../systems';
+import { MeshPipeline3D, CameraSync } from '../systems';
+import { ComputeCamera } from '../systems';
 import { PreUpdate } from '../systems/stages';
 
 export interface Renderer3DPluginOptions {
@@ -37,6 +44,9 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     const RenderSystem3D = options.rendererSystemCtor ?? MeshPipeline3D;
     // GPU mesh cache only; drawing runs inside MeshPipeline via appendRenderPass.
     system(PreUpdate)(RenderSystem3D);
+
+    // CameraSync runs after ComputeCamera so it has fresh 2D camera state.
+    system((s) => s.after(ComputeCamera))(CameraSync);
   };
 }
 

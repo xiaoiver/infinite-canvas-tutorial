@@ -341,12 +341,28 @@ export class MeshPipeline3D extends System {
   private updateSceneUniforms(camera: Camera3D, aspect: number) {
     if (!this.sceneUniformBuffer) return;
 
-    const projMatrix = Mat4.perspective(
-      camera.fovy,
-      aspect,
-      camera.near,
-      camera.far,
-    );
+    let projMatrix: Mat4;
+    if (camera.projection === 'orthographic') {
+      // Orthographic: half-extents based on distance from target (eye.z)
+      const distance = Math.abs(camera.eye[2] - camera.center[2]);
+      const halfH = distance;
+      const halfW = halfH * aspect;
+      projMatrix = Mat4.ortho(
+        -halfW,
+        halfW,
+        -halfH,
+        halfH,
+        camera.near,
+        camera.far,
+      );
+    } else {
+      projMatrix = Mat4.perspective(
+        camera.fovy,
+        aspect,
+        camera.near,
+        camera.far,
+      );
+    }
     const viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
 
     const buffer = new Float32Array(32);

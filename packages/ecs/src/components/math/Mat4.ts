@@ -79,6 +79,22 @@ export class Mat4 {
   }
 
   /**
+   * Creates an orthographic projection matrix.
+   */
+  static ortho(
+    left: number,
+    right: number,
+    bottom: number,
+    top: number,
+    near: number,
+    far: number,
+  ) {
+    const out = glMat4.create();
+    glMat4.ortho(out, left, right, bottom, top, near, far);
+    return Mat4.fromGLMat4(out);
+  }
+
+  /**
    * Multiplies two 4x4 matrices.
    */
   static multiply(a: Mat4, b: Mat4) {
