@@ -10,6 +10,7 @@ import {
 } from '@infinite-canvas-tutorial/device-api';
 import {
   Camera,
+  Camera3D,
   Canvas,
   CheckboardStyle,
   Children,
@@ -67,6 +68,9 @@ import {
   Flex,
   IconFont,
   IconFontEllipseStrokeRasterPlaceholder,
+  Mesh3D,
+  Material3D,
+  Transform3D,
 } from '../components';
 import {
   collectRainDropTextureUrlsFromFilterValue,
@@ -100,6 +104,7 @@ import {
 } from '../utils/animationExportCodec';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 import { SetupDevice } from './SetupDevice';
+import { getMeshPipeline3D } from './mesh3d-bridge';
 import { API } from '../API';
 import { RGAttachmentSlot } from '../render-graph/interface';
 import {
@@ -314,6 +319,7 @@ export class MeshPipeline extends System {
             Grid,
             GPUResource,
             Camera,
+            Camera3D,
             ComputedCamera,
             Parent,
             Children,
@@ -350,6 +356,8 @@ export class MeshPipeline extends System {
             Flex,
             IconFont,
             IconFontEllipseStrokeRasterPlaceholder,
+            Mesh3D,
+            Material3D,
           )
           .read.and.using(
             RasterScreenshotRequest,
@@ -359,6 +367,7 @@ export class MeshPipeline extends System {
             GeometryDirty,
             MaterialDirty,
             ComputedTextMetrics,
+            Transform3D,
           ).write,
     );
   }
@@ -645,6 +654,9 @@ export class MeshPipeline extends System {
     const { uniformBuffer, gridRenderer, batchManager, filters } = renderer;
 
     const { width, height } = swapChain.getCanvas();
+    if (width <= 0 || height <= 0) {
+      return;
+    }
     const onscreenTexture = swapChain.getOnscreenTexture();
 
     if (raster) {
@@ -668,10 +680,16 @@ export class MeshPipeline extends System {
       antialiasingMode: AntialiasingMode.None,
     };
 
+    const mesh3d = getMeshPipeline3D();
+    const composite3D = mesh3d?.shouldComposite() ?? false;
+
     const mainColorDesc = makeBackbufferDescSimple(
       RGAttachmentSlot.Color0,
       renderInput,
-      makeAttachmentClearDescriptor(TransparentWhite),
+      composite3D
+        ? (mesh3d!.getColorClearDescriptor() ??
+          makeAttachmentClearDescriptor(TransparentWhite))
+        : makeAttachmentClearDescriptor(TransparentWhite),
     );
     const mainDepthDesc = makeBackbufferDescSimple(
       RGAttachmentSlot.DepthStencil,
@@ -690,7 +708,9 @@ export class MeshPipeline extends System {
       'Main Depth',
     );
     builder.pushPass((pass) => {
-      pass.setDebugName('Main Render Pass');
+      pass.setDebugName(
+        composite3D ? 'Main Render Pass (3D + 2D)' : 'Main Render Pass',
+      );
       pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
       pass.attachRenderTargetID(
         RGAttachmentSlot.DepthStencil,
@@ -698,6 +718,10 @@ export class MeshPipeline extends System {
       );
       pass.exec((renderPass) => {
         gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
+        // Grid fills the framebuffer with theme background; draw 3D after it.
+        if (composite3D) {
+          mesh3d!.drawMeshes(renderPass, canvas, width, height);
+        }
         if (shouldRenderPartially) {
           const { api } = canvas.read(Canvas);
           // Add clip parent if exists.

@@ -44,6 +44,11 @@ import {
   SerializedNode,
   registerCubeLutFromText,
   GPUResource,
+  DefaultRenderer3DPlugin,
+  Camera3D,
+  Mesh3D,
+  Material3D,
+  Transform3D,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -64,6 +69,42 @@ WebFont.load({
     families: ['Gaegu'],
   },
 });
+
+/** Unit cube with per-face normals (24 verts, indexed). */
+function createCubeGeometry(size = 1) {
+  const h = size / 2;
+  const faces: {
+    normal: [number, number, number];
+    verts: [number, number, number][];
+  }[] = [
+    { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
+    { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
+    { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
+    { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
+    { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
+    { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
+  ];
+
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  let base = 0;
+
+  for (const { normal, verts } of faces) {
+    for (const v of verts) {
+      positions.push(...v);
+      normals.push(...normal);
+    }
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    base += 4;
+  }
+
+  return {
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    indices: new Uint32Array(indices),
+  };
+}
 
 // const root = {
 //   id: 'root',
@@ -172,19 +213,34 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  const image1 = {
+  const image1: RectSerializedNode = {
     id: 'image-1',
     type: 'rect',
+    zIndex: 0,
     fills: [{
       type: 'image',
       value: '/mdn_logo_only_color.png',
-      opacity: 0.5,
-    },],
+      opacity: 0.85,
+    }],
     x: 50,
     y: 50,
     width: 300,
     height: 200,
     lockAspectRatio: true,
+  };
+
+  const overlayRect: RectSerializedNode = {
+    id: 'overlay-rect',
+    type: 'rect',
+    zIndex: 1,
+    fills: [{ type: 'solid', value: 'rgba(255, 120, 80, 0.45)' }],
+    stroke: '#e85d04',
+    strokeWidth: 3,
+    x: 380,
+    y: 120,
+    width: 220,
+    height: 160,
+    cornerRadius: 16,
   };
 
   // const image2 = {
@@ -232,9 +288,6 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   lockAspectRatio: true,
   // };
 
-  api.updateNodes([image1]);
-  api.selectNodes([image1]);
-
   // fetch('/applecycling.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {
   //     loop: true,
@@ -246,6 +299,52 @@ canvas.addEventListener(Event.READY, async (e) => {
   //     animation.play();
   //   });
   // });
+
+  api.runAtNextTick(() => {
+    const { positions, normals, indices } = createCubeGeometry(1);
+    const commands = api.getCommands();
+
+    commands.spawn(
+      new Camera3D({
+        eye: [3, 3, 5],
+        center: [0, 0, 0],
+        clearColor: true,
+      }),
+    );
+
+    const cubeEntity = commands
+      .spawn(
+        new Mesh3D({ positions, normals, indices }),
+        new Material3D({
+          baseColor: [0.25, 0.55, 0.95, 1],
+          ambient: 0.15,
+          diffuse: 0.75,
+          specular: 0.4,
+          shininess: 48,
+        }),
+        new Transform3D({
+          translation: [0, 0, 0],
+          rotation: [0.3, 0.6, 0],
+          scale: [1, 1, 1],
+        }),
+      )
+      .id()
+      .hold();
+
+    commands.execute();
+
+    // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
+    api.updateNodes([image1, overlayRect]);
+
+    const t0 = performance.now();
+    const spinCube = (now: number) => {
+      const t = (now - t0) / 1000;
+      const transform = cubeEntity.write(Transform3D);
+      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+      requestAnimationFrame(spinCube);
+    };
+    requestAnimationFrame(spinCube);
+  });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({
@@ -263,6 +362,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 try {
   const app = new App().addPlugins(
     ...DefaultPlugins,
+    DefaultRenderer3DPlugin,
     FilterPlugin,
     UIPlugin,
     EraserPlugin,

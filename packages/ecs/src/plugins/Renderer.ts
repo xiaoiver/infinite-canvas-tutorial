@@ -48,6 +48,10 @@ import {
   Visibility,
   GPUResource,
   VelloCanvasSurface,
+  Camera3D,
+  Mesh3D,
+  Material3D,
+  Transform3D,
   Name,
   ToBeDeleted,
   SizeAttenuation,
@@ -84,6 +88,10 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
      */
     component(GPUResource);
     component(VelloCanvasSurface);
+    component(Camera3D);
+    component(Mesh3D);
+    component(Material3D);
+    component(Transform3D);
     component(Renderable);
     component(Name);
     component(LockAspectRatio);

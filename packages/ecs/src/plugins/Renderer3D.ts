@@ -14,14 +14,13 @@
  *   )
  * ```
  *
- * The 3D pipeline renders before the 2D pipeline (Camera3D.order = -1),
- * so 2D UI/overlays can be drawn on top of the 3D scene.
+ * 3D geometry is drawn in the first pass of {@link MeshPipeline}'s render graph;
+ * 2D/grid/HTML overlays composite on the same target afterward.
  */
-import { component, system } from '@lastolivegames/becsy';
+import { system } from '@lastolivegames/becsy';
 import { Plugin, type PluginWithConfig } from './types';
-import { Camera3D, Mesh3D, Material3D, Transform3D } from '../components';
-import { MeshPipeline3D } from '../systems/MeshPipeline3D';
-import { Last } from '../systems/stages';
+import { MeshPipeline3D } from '../systems';
+import { PreUpdate } from '../systems/stages';
 
 export interface Renderer3DPluginOptions {
   /**
@@ -33,18 +32,11 @@ export interface Renderer3DPluginOptions {
 function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
   return () => {
     /**
-     * 3D Components
-     */
-    component(Camera3D);
-    component(Mesh3D);
-    component(Material3D);
-    component(Transform3D);
-
-    /**
-     * 3D Render System
+     * 3D render system (components registered in {@link DefaultRendererPlugin}).
      */
     const RenderSystem3D = options.rendererSystemCtor ?? MeshPipeline3D;
-    system(Last)(RenderSystem3D);
+    // GPU mesh cache only; drawing runs inside MeshPipeline via appendRenderPass.
+    system(PreUpdate)(RenderSystem3D);
   };
 }
 
