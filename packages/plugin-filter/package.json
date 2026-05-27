@@ -1,5 +1,5 @@
 {
-  "name": "@infinite-canvas-tutorial/plugin-filter",
+  "name": "@infinite-canvas-tutorial/filter",
   "version": "0.0.1",
   "description": "CSS filter / GPU post-processing effects for infinite canvas",
   "main": "lib/index.js",

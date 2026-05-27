@@ -183,15 +183,15 @@ importers:
       '@infinite-canvas-tutorial/eraser':
         specifier: workspace:*
         version: link:../plugin-eraser
+      '@infinite-canvas-tutorial/filter':
+        specifier: workspace:*
+        version: link:../plugin-filter
       '@infinite-canvas-tutorial/laser-pointer':
         specifier: workspace:*
         version: link:../plugin-laser-pointer
       '@infinite-canvas-tutorial/lasso':
         specifier: workspace:*
         version: link:../plugin-lasso
-      '@infinite-canvas-tutorial/plugin-filter':
-        specifier: workspace:*
-        version: link:../plugin-filter
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
@@ -1449,6 +1449,9 @@ importers:
       '@infinite-canvas-tutorial/fal-ai':
         specifier: workspace:*
         version: link:../plugin-fal-ai
+      '@infinite-canvas-tutorial/filter':
+        specifier: workspace:*
+        version: link:../plugin-filter
       '@infinite-canvas-tutorial/lama':
         specifier: workspace:*
         version: link:../plugin-lama
@@ -1700,12 +1703,12 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/filter':
+        specifier: workspace:*
+        version: link:../plugin-filter
       '@infinite-canvas-tutorial/mermaid':
         specifier: workspace:*
         version: link:../plugin-mermaid
-      '@infinite-canvas-tutorial/plugin-filter':
-        specifier: workspace:*
-        version: link:../plugin-filter
       '@lit/context':
         specifier: ^1.1.2
         version: 1.1.2

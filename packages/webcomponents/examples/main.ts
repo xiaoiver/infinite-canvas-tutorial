@@ -55,7 +55,7 @@ import '../src/spectrum';
 import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
-import { FilterPlugin } from '../../plugin-filter/src';
+import { FilterPlugin } from '@infinite-canvas-tutorial/filter';
 import { YogaPlugin } from '../../plugin-yoga/src';
 import { loadAnimation } from '../../plugin-lottie/src';
 import { InitVello, VelloPipeline, registerFont } from '../../plugin-vello/src';
@@ -213,80 +213,19 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  const image1: RectSerializedNode = {
-    id: 'image-1',
+  const image2 = {
+    id: 'glitch-2',
     type: 'rect',
-    zIndex: 0,
-    fills: [{
-      type: 'image',
-      value: '/mdn_logo_only_color.png',
-      opacity: 0.85,
-    }],
-    x: 50,
+    fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
+    x: 300,
     y: 50,
-    width: 300,
+    width: 200,
     height: 200,
     lockAspectRatio: true,
+    filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, auto, 0.29)',
   };
 
-  const overlayRect: RectSerializedNode = {
-    id: 'overlay-rect',
-    type: 'rect',
-    zIndex: 1,
-    fills: [{ type: 'solid', value: 'rgba(255, 120, 80, 0.45)' }],
-    stroke: '#e85d04',
-    strokeWidth: 3,
-    x: 380,
-    y: 120,
-    width: 220,
-    height: 160,
-    cornerRadius: 16,
-  };
-
-  // const image2 = {
-  //   id: 'image-2',
-  //   type: 'rect',
-  //   fills: [{
-  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
-  //     objectFit: 'contain',
-  //     // objectPosition: 'top left',
-  //   }],
-  //   x: 400,
-  //   y: 50,
-  //   width: 200,
-  //   height: 300,
-  //   lockAspectRatio: true,
-  // };
-
-  // const image3 = {
-  //   id: 'image-3',
-  //   type: 'rect',
-  //   fills: [{
-  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
-  //     objectFit: 'cover',
-  //     // objectPosition: 'top left',
-  //   }],
-  //   x: 50,
-  //   y: 550,
-  //   width: 300,
-  //   height: 200,
-  //   lockAspectRatio: true,
-  // };
-
-  // const image4 = {
-  //   id: 'image-4',
-  //   type: 'rect',
-  //   fills: [{
-  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
-  //     objectFit: 'cover',
-  //     // objectPosition: 'top left',
-  //   }],
-  //   x: 400,
-  //   y: 550,
-  //   width: 200,
-  //   height: 300,
-  //   lockAspectRatio: true,
-  // };
+  api.updateNodes([image2]);
 
   // fetch('/applecycling.json').then(res => res.json()).then(data => {
   //   const animation = loadAnimation(data, {
@@ -300,53 +239,53 @@ canvas.addEventListener(Event.READY, async (e) => {
   //   });
   // });
 
-  api.runAtNextTick(() => {
-    const { positions, normals, indices } = createCubeGeometry(1);
-    const commands = api.getCommands();
+  // api.runAtNextTick(() => {
+  //   const { positions, normals, indices } = createCubeGeometry(1);
+  //   const commands = api.getCommands();
 
-    commands.spawn(
-      new Camera3D({
-        eye: [3, 3, 5],
-        center: [0, 0, 0],
-        clearColor: true,
-        // linked: true,
-        // projection: 'orthographic',
-      }),
-    );
+  //   commands.spawn(
+  //     new Camera3D({
+  //       eye: [3, 3, 5],
+  //       center: [0, 0, 0],
+  //       clearColor: true,
+  //       // linked: true,
+  //       // projection: 'orthographic',
+  //     }),
+  //   );
 
-    const cubeEntity = commands
-      .spawn(
-        new Mesh3D({ positions, normals, indices }),
-        new Material3D({
-          baseColor: [0.25, 0.55, 0.95, 1],
-          ambient: 0.15,
-          diffuse: 0.75,
-          specular: 0.4,
-          shininess: 48,
-        }),
-        new Transform3D({
-          translation: [0, 0, 0],
-          rotation: [0.3, 0.6, 0],
-          scale: [1, 1, 1],
-        }),
-      )
-      .id()
-      .hold();
+  //   const cubeEntity = commands
+  //     .spawn(
+  //       new Mesh3D({ positions, normals, indices }),
+  //       new Material3D({
+  //         baseColor: [0.25, 0.55, 0.95, 1],
+  //         ambient: 0.15,
+  //         diffuse: 0.75,
+  //         specular: 0.4,
+  //         shininess: 48,
+  //       }),
+  //       new Transform3D({
+  //         translation: [0, 0, 0],
+  //         rotation: [0.3, 0.6, 0],
+  //         scale: [1, 1, 1],
+  //       }),
+  //     )
+  //     .id()
+  //     .hold();
 
-    commands.execute();
+  //   commands.execute();
 
-    // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
-    api.updateNodes([image1, overlayRect]);
+  //   // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
+  //   api.updateNodes([image1, overlayRect]);
 
-    const t0 = performance.now();
-    const spinCube = (now: number) => {
-      const t = (now - t0) / 1000;
-      const transform = cubeEntity.write(Transform3D);
-      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
-      requestAnimationFrame(spinCube);
-    };
-    requestAnimationFrame(spinCube);
-  });
+  //   const t0 = performance.now();
+  //   const spinCube = (now: number) => {
+  //     const t = (now - t0) / 1000;
+  //     const transform = cubeEntity.write(Transform3D);
+  //     transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+  //     requestAnimationFrame(spinCube);
+  //   };
+  //   requestAnimationFrame(spinCube);
+  // });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({

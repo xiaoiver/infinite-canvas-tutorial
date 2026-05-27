@@ -1,6 +1,6 @@
 /**
  * Raindrop-fx default constants for filter string protocol.
- * GPU simulator implementation lives in `@infinite-canvas-tutorial/plugin-filter`.
+ * GPU simulator implementation lives in `@infinite-canvas-tutorial/filter`.
  */
 import type {
   RaindropFxBackgroundWrapMode,

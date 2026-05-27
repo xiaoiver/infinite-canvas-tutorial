@@ -47,7 +47,7 @@ import {
   type RaindropFxBackgroundWrapMode,
   type RainFxParams,
   type RainFxSimParams,
-} from '@infinite-canvas-tutorial/plugin-filter';
+} from '@infinite-canvas-tutorial/filter';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
