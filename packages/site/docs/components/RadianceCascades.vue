@@ -1,25 +1,13 @@
 <script setup lang="ts">
 import {
-  App,
   Pen,
-  DefaultPlugins,
-  RendererPlugin,
-  DefaultRendererPlugin,
   CheckboardStyle,
   ThemeMode,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
-import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
-import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
-import {
-  InitVello,
-  VelloPipeline,
-  registerFont,
-} from '@infinite-canvas-tutorial/vello';
+import { ensureExampleWorld } from '../lib/ensure-example-world';
+import { Event } from '@infinite-canvas-tutorial/webcomponents';
 import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
 
 const wrapper = ref<HTMLElement | null>(null);
@@ -242,36 +230,10 @@ onMounted(async () => {
 
   canvas.addEventListener(Event.READY, onReady);
 
-  // App only runs once
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    await import('@infinite-canvas-tutorial/lasso/spectrum');
-    await import('@infinite-canvas-tutorial/eraser/spectrum');
-    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-
-    const VelloRendererPlugin = RendererPlugin.configure({
-      setupDeviceSystemCtor: InitVello,
-      rendererSystemCtor: VelloPipeline,
-    });
-    DefaultPlugins.splice(
-      DefaultPlugins.indexOf(DefaultRendererPlugin),
-      1,
-      VelloRendererPlugin,
-    );
-    registerFont('/fonts/Gaegu-Regular.ttf');
-
-    new App()
-      .addPlugins(
-        ...DefaultPlugins,
-        UIPlugin,
-        LaserPointerPlugin,
-        LassoPlugin,
-        EraserPlugin,
-        YogaPlugin,
-      )
-      .run();
-  }
+  await ensureExampleWorld([], {
+    vello: true,
+    velloFonts: ['/fonts/Gaegu-Regular.ttf'],
+  });
 });
 
 onUnmounted(async () => {

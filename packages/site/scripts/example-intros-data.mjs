@@ -757,6 +757,20 @@ Combine with snapping from [Lesson 27](/guide/lesson-027) for tidy screenshots.`
 可与 [第 27 课 — 吸附与对齐](/zh/guide/lesson-027) 配合获得更整齐的截图。`,
     },
   },
+  cube: {
+    en: {
+      title: 'Rotating cube (3D mesh)',
+      description:
+        'Minimal Blinn-Phong cube on the same canvas as a semi-transparent 2D rectangle.',
+      body: `Registers **DefaultRenderer3DPlugin**, spawns \`Camera3D\` + \`Mesh3D\`, and animates \`Transform3D\` each frame. See [Lesson 39 — 3D mesh rendering](/guide/lesson-039) and [PR #271](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/271).`,
+    },
+    zh: {
+      title: '旋转立方体（3D Mesh）',
+      description:
+        '在同一画布上绘制 Blinn-Phong 立方体，并叠加半透明 2D 矩形。',
+      body: `注册 **DefaultRenderer3DPlugin**，创建 \`Camera3D\` 与三角网格，每帧更新 \`Transform3D\` 旋转；再用 \`updateNodes\` 叠 2D 矩形。详见 [课程 39](/zh/guide/lesson-039)。`,
+    },
+  },
   binding: {
     en: {
       title: 'Bindings between shapes',

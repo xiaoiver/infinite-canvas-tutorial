@@ -220,7 +220,9 @@ export class InfiniteCanvas extends LitElement {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
 
-    this.apiProvider.value?.destroy();
+    // Defer so shadow-DOM children (context-menu, text-editor, …) can unbind first.
+    const api = this.apiProvider.value;
+    queueMicrotask(() => api?.destroy());
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {

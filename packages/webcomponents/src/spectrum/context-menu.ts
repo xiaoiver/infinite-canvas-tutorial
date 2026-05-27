@@ -281,6 +281,8 @@ export class ContextMenu extends LitElement {
   private isClipboardEmpty = true;
 
   private binded = false;
+  /** Cached on bind so disconnect does not read a deleted canvas entity. */
+  private boundCanvas: HTMLCanvasElement | null = null;
   private lastContextMenuPosition: { x: number; y: number } | null = null;
   private lastPointerMovePosition: { x: number; y: number } | null = null;
 
@@ -852,6 +854,7 @@ export class ContextMenu extends LitElement {
     }
 
     const $canvas = this.api.getCanvasElement();
+    this.boundCanvas = $canvas;
     $canvas.addEventListener('contextmenu', this.handleContextMenu);
     $canvas.addEventListener('pointermove', this.handlePointerMove);
     $canvas.addEventListener('dragover', this.handleDragOver);
@@ -876,11 +879,11 @@ export class ContextMenu extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
 
-    if (!this.api?.element || !this.binded) {
+    const $canvas = this.boundCanvas;
+    if (!$canvas || !this.binded) {
       return;
     }
 
-    const $canvas = this.api.getCanvasElement();
     $canvas.removeEventListener(
       'contextmenu',
       this.handleContextMenu,
@@ -896,6 +899,7 @@ export class ContextMenu extends LitElement {
     $canvas.removeEventListener('cut', this.handleCut);
     $canvas.removeEventListener('keydown', this.handleKeyDown);
 
+    this.boundCanvas = null;
     this.binded = false;
   }
 

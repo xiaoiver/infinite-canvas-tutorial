@@ -295,6 +295,16 @@ export class MeshPipeline extends System {
   private clipModes = this.query(
     (q) => q.addedChangedOrRemoved.with(ClipMode).trackWrites,
   );
+  /** 3D mesh / material / transform churn → redraw (e.g. animated Transform3D). */
+  private meshes3DChanged = this.query(
+    (q) =>
+      q.addedOrChanged.and.current
+        .with(Mesh3D, Material3D, Transform3D)
+        .trackWrites,
+  );
+  private cameras3DChanged = this.query(
+    (q) => q.addedOrChanged.and.current.with(Camera3D).trackWrites,
+  );
 
   renderers: Map<Entity, GPURenderer> = new Map();
 
@@ -1054,6 +1064,9 @@ export class MeshPipeline extends System {
     const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
     const fillTextureLiveNeedsContinuousRender =
       this.fillTextureLiveCurrent.current.length > 0;
+    const mesh3dNeedsRender =
+      this.meshes3DChanged.addedOrChanged.length > 0 ||
+      this.cameras3DChanged.addedOrChanged.length > 0;
 
     this.canvases.current.forEach((canvas) => {
       if (
@@ -1099,7 +1112,8 @@ export class MeshPipeline extends System {
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||
         engineTimeNeedsContinuousRender ||
-        fillTextureLiveNeedsContinuousRender;
+        fillTextureLiveNeedsContinuousRender ||
+        mesh3dNeedsRender;
 
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {

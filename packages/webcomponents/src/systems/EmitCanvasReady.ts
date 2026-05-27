@@ -44,7 +44,11 @@ import {
   Embed,
   HTML,
   HTMLContainer,
-  Rough
+  Rough,
+  Camera3D,
+  Transform3D,
+  Material3D,
+  Mesh3D
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { pendingGpuReadyDispatch } from '../API';
@@ -104,6 +108,10 @@ export class EmitCanvasReady extends System {
           HTML,
           HTMLContainer,
           Rough,
+          Camera3D,
+          Mesh3D,
+          Material3D,
+          Transform3D,
         ).write,
     );
   }

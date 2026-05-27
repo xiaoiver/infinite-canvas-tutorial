@@ -89,6 +89,7 @@ export const zh = defineConfig({
               { text: '课程36 - 动画', link: 'lesson-036' },
               { text: '课程37 - 基于 Radiance Cascades 的 GI', link: 'lesson-037' },
               { text: '课程38 - 从设计到代码', link: 'lesson-038' },
+              { text: '课程39 - 3D Mesh 渲染', link: 'lesson-039' },
             ],
           },
         ],
@@ -433,6 +434,15 @@ export const zh = defineConfig({
                   },
                 ],
               },
+              {
+                text: '3D Mesh 渲染',
+                items: [
+                  {
+                    text: '立方体',
+                    link: 'cube',
+                  },
+                ],
+              }
             ],
           },
         ],

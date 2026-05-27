@@ -60,9 +60,8 @@ export class MeshPipeline3D extends System {
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
-  private cameras3D = this.query(
-    (q) => q.addedOrChanged.and.current.with(Camera3D).trackWrites,
-  );
+  /** Read-only: camera uniforms are updated in {@link drawMeshes} at render time. */
+  private cameras3D = this.query((q) => q.current.with(Camera3D).read);
 
   private meshes3D = this.query(
     (q) =>
@@ -414,9 +413,7 @@ export class MeshPipeline3D extends System {
     }
 
     const hasChanges =
-      this.cameras3D.addedOrChanged.length > 0 ||
-      this.meshes3D.added.length > 0 ||
-      this.meshes3D.changed.length > 0;
+      this.meshes3D.added.length > 0 || this.meshes3D.changed.length > 0;
 
     if (!hasChanges && !this.shouldComposite()) {
       return;

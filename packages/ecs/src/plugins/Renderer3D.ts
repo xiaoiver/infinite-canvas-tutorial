@@ -25,8 +25,14 @@
  */
 import { system } from '@lastolivegames/becsy';
 import { Plugin, type PluginWithConfig } from './types';
-import { MeshPipeline3D, CameraSync } from '../systems';
-import { ComputeCamera } from '../systems';
+import {
+  CameraSync,
+  ComputeCamera,
+  MeshPipeline,
+  MeshPipeline3D,
+  RenderNameLabel,
+  ViewportCulling,
+} from '../systems';
 import { PreUpdate } from '../systems/stages';
 
 export interface Renderer3DPluginOptions {
@@ -45,8 +51,12 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     // GPU mesh cache only; drawing runs inside MeshPipeline via appendRenderPass.
     system(PreUpdate)(RenderSystem3D);
 
-    // CameraSync runs after ComputeCamera so it has fresh 2D camera state.
-    system((s) => s.after(ComputeCamera))(CameraSync);
+    // After culling + pen overlays (they read ComputedCamera), before GPU render.
+    system((s) =>
+      s
+        .after(ComputeCamera, ViewportCulling, RenderNameLabel)
+        .before(MeshPipeline),
+    )(CameraSync);
   };
 }
 

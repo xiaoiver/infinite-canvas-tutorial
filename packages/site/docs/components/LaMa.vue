@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import {
-  App,
   Pen,
-  DefaultPlugins,
   RectSerializedNode,
   Task,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
+import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
@@ -56,11 +55,7 @@ onMounted(async () => {
   // App only runs once
   if (!(window as any).worldInited) {
     (window as any).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    await import('@infinite-canvas-tutorial/lasso/spectrum');
-    await import('@infinite-canvas-tutorial/eraser/spectrum');
-    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, SAMPlugin, LaMaPlugin).run();
+    await ensureExampleWorld();
   }
 });
 

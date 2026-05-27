@@ -46,7 +46,7 @@ import {
   Editable,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot, updateGlobalTransform } from './Transform';
+import { getSceneRoot, isEntityAlive, updateGlobalTransform } from './Transform';
 import { API } from '../API';
 import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
@@ -140,10 +140,16 @@ export class RenderTransformer extends System {
   }
 
   createOrUpdate(camera: Entity) {
-    safeAddComponent(camera, Transformable);
-
+    if (!isEntityAlive(camera) || !camera.has(Camera)) {
+      return;
+    }
     const { canvas } = camera.read(Camera);
+    if (!canvas?.has(Canvas)) {
+      return;
+    }
     const { api } = canvas.read(Canvas);
+
+    safeAddComponent(camera, Transformable);
     const pen = api.getAppState().penbarSelected;
 
     const transformable = camera.write(Transformable);
@@ -532,12 +538,22 @@ export class RenderTransformer extends System {
     });
 
     this.selected.added.forEach((selected) => {
-      camerasToUpdate.add(selected.read(Selected).camera);
+      const camera = selected.read(Selected).camera;
+      if (isEntityAlive(camera)) {
+        camerasToUpdate.add(camera);
+      }
     });
 
     this.selected.removed.forEach((selected) => {
       this.accessRecentlyDeletedData();
-      camerasToUpdate.add(selected.read(Selected).camera);
+      try {
+        const camera = selected.read(Selected).camera;
+        if (isEntityAlive(camera)) {
+          camerasToUpdate.add(camera);
+        }
+      } catch {
+        /* selection entity already deleted during canvas teardown */
+      }
     });
     // Backrefs field Transformable.selecteds not configured to track recently deleted refs
     this.accessRecentlyDeletedData(false);
@@ -547,7 +563,10 @@ export class RenderTransformer extends System {
       let e: Entity | undefined = entity;
       while (e) {
         if (e.has(Selected)) {
-          camerasToUpdate.add(e.read(Selected).camera);
+          const camera = e.read(Selected).camera;
+          if (isEntityAlive(camera)) {
+            camerasToUpdate.add(camera);
+          }
           break;
         }
         if (!e.has(Children)) {
@@ -558,7 +577,13 @@ export class RenderTransformer extends System {
     });
 
     this.editable.changed.forEach((entity) => {
-      camerasToUpdate.add(getSceneRoot(entity));
+      if (!isEntityAlive(entity)) {
+        return;
+      }
+      const sceneRoot = getSceneRoot(entity);
+      if (isEntityAlive(sceneRoot) && sceneRoot.has(Camera)) {
+        camerasToUpdate.add(sceneRoot);
+      }
     });
 
     camerasToUpdate.forEach((camera) => {
