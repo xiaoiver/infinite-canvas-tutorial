@@ -27,23 +27,24 @@ export class CameraSync extends System {
 
   constructor() {
     super();
+    // Declare component access for becsy's dependency graph.
     this.query(
       (q) => q.using(Camera, ComputedCamera, Camera3D).read.write,
     );
   }
 
   execute(): void {
-    // Find the first linked Camera3D
+    // Find the first 2D camera with computed state
+    const cam2dEntity = this.cameras2D.current[0];
+    if (!cam2dEntity) return;
+
+    const computed = cam2dEntity.read(ComputedCamera);
+    const { x, y, zoom } = computed;
+
+    // Update all linked Camera3D instances
     for (const cam3dEntity of this.cameras3D.current) {
       const cam3d = cam3dEntity.read(Camera3D);
       if (!cam3d.linked) continue;
-
-      // Find the first 2D camera with computed state
-      const cam2dEntity = this.cameras2D.current[0];
-      if (!cam2dEntity) continue;
-
-      const computed = cam2dEntity.read(ComputedCamera);
-      const { x, y, zoom } = computed;
 
       // Map 2D camera state → 3D camera position
       const distance = cam3d.baseDistance / zoom;

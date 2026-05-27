@@ -94,8 +94,9 @@ export class Camera3D {
     this.up ??= [0, 1, 0];
     this.order ??= -1;
     this.clearColor ??= true;
-    this.projection ??= 'perspective';
     this.linked ??= false;
     this.baseDistance ??= 5;
+    // Default to orthographic when linked to 2D camera (unified space).
+    this.projection ??= this.linked ? 'orthographic' : 'perspective';
   }
 }
