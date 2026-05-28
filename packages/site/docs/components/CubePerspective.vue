@@ -15,7 +15,7 @@ const wrapper = ref<HTMLElement | null>(null);
 let api: any;
 let onReady: ((e: CustomEvent) => void) | undefined;
 let spinRaf = 0;
-let cubeBootstrapped = false;
+let bootstrapped = false;
 let cubeEntity: { write: (c: typeof Transform3D) => Transform3D } | undefined;
 
 onMounted(async () => {
@@ -25,20 +25,20 @@ onMounted(async () => {
   }
 
   onReady = (e) => {
-    if (cubeBootstrapped) {
+    if (bootstrapped) {
       return;
     }
-    cubeBootstrapped = true;
+    bootstrapped = true;
     api = e.detail;
 
     const rect1 = {
       id: 'rect1',
       type: 'rect',
-      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-      x: 400,
-      y: 100,
-      width: 100,
-      height: 100,
+      fills: [{ type: 'solid', value: 'rgba(255, 80, 80, 0.85)', opacity: 1 }],
+      x: 280,
+      y: 180,
+      width: 80,
+      height: 80,
     };
 
     api.setAppState({
@@ -54,7 +54,7 @@ onMounted(async () => {
     commands.spawn(
       new Camera3D({
         linked: true,
-        projection: 'orthographic',
+        projection: 'perspective',
         clearColor: false,
       }),
     );
@@ -70,7 +70,7 @@ onMounted(async () => {
           shininess: 48,
         }),
         new Transform3D({
-          translation: [200, 100, 40],
+          translation: [100, 100, 40],
           rotation: [0.3, 0.6, 0],
           scale: [100, 100, 100],
         }),

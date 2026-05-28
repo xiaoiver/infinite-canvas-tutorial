@@ -57,16 +57,22 @@ export class CameraSync extends System {
     const baseDistance = height / 2;
     const distance = baseDistance / zoom;
 
-    const [, worldY] = canvasWorldToWorld3D(x, y);
-
     for (const cam3dEntity of this.cameras3D.current) {
       const cam3d = cam3dEntity.read(Camera3D);
       if (!cam3d.linked) continue;
 
       const writeCam = cam3dEntity.write(Camera3D);
       writeCam.baseDistance = baseDistance;
-      writeCam.eye = [x, worldY, distance];
-      writeCam.center = [x, worldY, 0];
+
+      if (cam3d.projection === 'orthographic') {
+        const [, worldY] = canvasWorldToWorld3D(x, y);
+        writeCam.eye = [x, worldY, distance];
+        writeCam.center = [x, worldY, 0];
+      } else {
+        // Perspective + linked: meshes use canvas (x, y, z); keep Y down like 2D nodes.
+        writeCam.eye = [x, y, distance];
+        writeCam.center = [x, y, 0];
+      }
     }
   }
 }

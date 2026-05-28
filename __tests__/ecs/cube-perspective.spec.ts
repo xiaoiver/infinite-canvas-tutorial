@@ -29,22 +29,20 @@ import { createCubeGeometry } from './cube-geometry';
 
 DOMAdapter.set(NodeJSAdapter);
 
-// linked + perspective：见同目录 cube-perspective.spec.ts（becsy 限制：每个 spec 文件只能 App.run 一次）
-describe('Cube', () => {
-  it('should render a cube centered on the canvas', async () => {
+/** @see cube.spec.ts — linked + perspective（与 main.ts 一致） */
+describe('Cube perspective', () => {
+  it('should render a linked perspective cube at canvas (100, 100)', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;
-    let canvasEntity: Entity | undefined;
-    let cameraEntity: Entity | undefined;
     let cubeEntity: Entity | undefined;
 
     const MyPlugin: Plugin = () => {
-      system(PreStartUp)(StandaloneCubeStartUpSystem);
-      system((s) => s.before(ComputeZIndex))(StandaloneCubeStartUpSystem);
+      system(PreStartUp)(LinkedPerspectiveCubeStartUpSystem);
+      system((s) => s.before(ComputeZIndex))(LinkedPerspectiveCubeStartUpSystem);
     };
 
-    class StandaloneCubeStartUpSystem extends System {
+    class LinkedPerspectiveCubeStartUpSystem extends System {
       private readonly commands = new Commands(this);
 
       q = this.query(
@@ -67,25 +65,21 @@ describe('Cube', () => {
 
         const api = new API(new DefaultStateManagement(), this.commands);
 
-        canvasEntity = api.createCanvas({
+        api.createCanvas({
           element: $canvas,
           width: 200,
           height: 200,
           devicePixelRatio: 1,
         });
 
-        cameraEntity = api.createCamera({
-          zoom: 1,
-          x: 100,
-          y: 100,
-        });
+        api.createCamera({ zoom: 1, x: 0, y: 0 });
 
         const { positions, normals, indices } = createCubeGeometry(1);
 
         this.commands.spawn(
           new Camera3D({
-            eye: [0, 0, 3.5],
-            center: [0, 0, 0],
+            linked: true,
+            projection: 'perspective',
             clearColor: true,
           }),
         );
@@ -94,16 +88,16 @@ describe('Cube', () => {
           .spawn(
             new Mesh3D({ positions, normals, indices }),
             new Material3D({
-              baseColor: [0.25, 0.55, 0.95, 1],
-              ambient: 0.15,
+              baseColor: [1, 1, 1, 1],
+              ambient: 0.25,
               diffuse: 0.75,
               specular: 0.4,
               shininess: 48,
             }),
             new Transform3D({
-              translation: [0, 0, 0],
-              rotation: [0.4, 0.4, 0],
-              scale: [1, 1, 1],
+              translation: [100, 100, 40],
+              rotation: [0.3, 0.6, 0],
+              scale: [100, 100, 100],
             }),
           )
           .id()
@@ -119,22 +113,12 @@ describe('Cube', () => {
 
     await sleep(300);
 
-    if (canvasEntity && cameraEntity && cubeEntity) {
-      const canvas = canvasEntity.read(Canvas);
-      expect(canvas.devicePixelRatio).toBe(1);
-      expect(canvas.width).toBe(200);
-      expect(canvas.height).toBe(200);
-      expect(canvas.renderer).toBe('webgl');
-      expect(canvas.cameras).toHaveLength(1);
-      expect(cubeEntity.has(Mesh3D)).toBe(true);
-      expect(cubeEntity.has(Material3D)).toBe(true);
-      expect(cubeEntity.has(Transform3D)).toBe(true);
-    }
+    expect(cubeEntity?.read(Transform3D).translation).toEqual([100, 100, 40]);
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
       dir,
-      'cube',
+      'cube-perspective',
     );
 
     await app.exit();

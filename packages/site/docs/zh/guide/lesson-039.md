@@ -36,17 +36,22 @@ const app = new App().addPlugins(...DefaultPlugins, DefaultRenderer3DPlugin);
 app.run();
 ```
 
-示例可参考仓库内 `packages/webcomponents/examples/main.ts`，或在线交互页 [旋转立方体](/zh/example/cube)。文档站交互示例统一经 `packages/site/docs/lib/ensure-example-world.ts` 启动 ECS，默认包含 3D 插件，SPA 跳转无需刷新。
+示例可参考：
+
+-   **[立方体（透视）](/zh/example/cube-perspective)**：`linked` + `perspective`，`translation: [100, 100, 40]`（与 `packages/webcomponents/examples/main.ts` 一致）
+-   **[立方体（正交）](/zh/example/cube)**：`linked` + `orthographic`，`translation: [200, 100, 40]`
+
+文档站交互示例统一经 `packages/site/docs/lib/ensure-example-world.ts` 启动 ECS，默认注册 `DefaultRenderer3DPlugin`，SPA 跳转无需刷新。
 
 ## 核心组件 {#components}
 
-| 组件              | 作用                                                                                    |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| **`Camera3D`**    | 透视 / 正交、`eye` / `center` / `up`、近远裁剪；`linked` 时由 `CameraSync` 跟随 2D 相机 |
-| **`Mesh3D`**      | `positions`、`normals`、可选 `indices`（三角网格）                                      |
-| **`Material3D`**  | Blinn-Phong：`baseColor`、`ambient`、`diffuse`、`specular`、`shininess`                 |
-| **`Transform3D`** | 平移、欧拉角旋转、缩放                                                                  |
-| **`Mat4`**        | 4×4 矩阵工具（`perspective` / `ortho` / `lookAt`）                                      |
+| 组件              | 作用                                                                                        |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| **`Camera3D`**    | `projection: 'perspective' \| 'orthographic'`；`linked` 时由 `CameraSync` 跟随 2D 平移/缩放 |
+| **`Mesh3D`**      | `positions`、`normals`、可选 `indices`（三角网格）                                          |
+| **`Material3D`**  | Blinn-Phong：`baseColor`、`ambient`、`diffuse`、`specular`、`shininess`                     |
+| **`Transform3D`** | 平移、欧拉角旋转、缩放                                                                      |
+| **`Mat4`**        | 4×4 矩阵工具（`perspective` / `ortho` / `lookAt`）                                          |
 
 通过 ECS `commands.spawn` 创建实体，例如：
 
@@ -105,29 +110,105 @@ api.updateNodes([
 ```
 
 -   包围盒、拖拽、缩放仍由 2D rect 的 Transformer 处理。
--   首次挤出会自动创建 `linked` 的 `Camera3D`。
+-   首次挤出会自动创建 `linked` + `orthographic` 的 `Camera3D`；mesh 中心与 rect 的 `x`/`y`/`extrude3d` 对齐（画布坐标）。
 -   删除 rect 或去掉 `extrude3d` 会清理 companion mesh。
 
 ## 统一三维空间（linked 相机）{#unified-space}
 
-若希望 **拖动画布时 2D 与 3D 一起平移/缩放**，为 `Camera3D` 设置 `linked: true`（默认配合 `projection: 'orthographic'`）：
+若希望 **拖动画布时 2D 与 3D 一起平移/缩放**，为 `Camera3D` 设置 `linked: true`。`linked` 时默认 `projection: 'orthographic'`；显式设为 `'perspective'` 可获得近大远小（见下文与 `packages/webcomponents/examples/main.ts`）。
+
+`CameraSync` 每帧读取 2D `ComputedCamera` 的 `(x, y, zoom)`，并写入 3D 相机的 `eye` / `center` / `baseDistance`：
+
+-   缩放：`baseDistance = canvas.height / 2`，`eye.z = baseDistance / zoom`，与 2D `mat3.projection` 在 z=0 处的可见高度一致
+-   **正交 linked**（`projection: 'orthographic'`）：`eye = [x, -y, distance]`，`center = [x, -y, 0]`（2D 画布 Y 向下，3D 世界 Y 向上，经 `canvasWorldToWorld3D` 取反）
+-   **透视 linked**（`projection: 'perspective'`）：`eye = [x, y, distance]`，`center = [x, y, 0]`（与 2D 节点相同，**画布坐标 Y 向下**）
+
+### linked + 正交 {#linked-orthographic}
+
+`MeshPipeline3D` 直接使用 2D 的 `viewProjectionMatrix`（含 Y 翻转与平移缩放），适合 `extrude3d` 与 2D rect 严格对齐：
 
 ```ts
 commands.spawn(
     new Camera3D({
         linked: true,
         projection: 'orthographic',
+        clearColor: false,
+    }),
+);
+
+commands.spawn(
+    new Mesh3D({ positions, normals, indices }),
+    new Material3D({
+        /* … */
+    }),
+    new Transform3D({
+        // 与 2D 节点一致时可使用 canvasWorldToWorld3D(x, y, z)
+        translation: [200, 100, 40],
+        scale: [100, 100, 100],
     }),
 );
 ```
 
-`CameraSync` 每帧读取 2D `ComputedCamera` 的 `(x, y, zoom)`，并写入 3D 相机：
+文档站 [立方体（正交）](/zh/example/cube) 示例使用 **linked + orthographic**（`translation: [200, 100, 40]`）。
 
--   平移 `(x, y)` → `eye = [x, -y, baseDistance / zoom]`，`center = [x, -y, 0]`（2D 画布 Y 向下，3D Y 向上，需取反）
--   缩放 → `baseDistance = canvas.height / 2`（每帧从 2D 画布逻辑高度同步），`eye.z = baseDistance / zoom`，与 2D `mat3.projection` 可见范围一致
--   3D 物体位置：用 `canvasWorldToWorld3D(node.x, node.y)`，与 2D 节点的 `x`/`y` 一致
+### linked + 透视 {#linked-perspective}
 
-**独立 3D 相机**（例如固定观察立方体的演示）则不设 `linked`，自行指定 `eye` / `center` 即可；此时 2D 的平移缩放只影响 2D 图层。
+透视模式下，屏幕位置由 **完整 2D VP** 决定（平移、缩放、Y 翻转与 2D 一致），深度方向用透视矩阵按 `Transform3D.translation.z` 做近大远小；锚点为 `translation` 的 `(x, y, z)`，使物体落点与 2D 的 `(x, y)` 对齐。
+
+```ts
+commands.spawn(
+    new Camera3D({
+        linked: true,
+        projection: 'perspective',
+        clearColor: false,
+    }),
+);
+
+commands.spawn(
+    new Mesh3D({ positions, normals, indices }),
+    new Material3D({
+        baseColor: [1, 1, 1, 1],
+        ambient: 0.25,
+        diffuse: 0.75,
+        specular: 0.4,
+        shininess: 48,
+    }),
+    new Transform3D({
+        // 画布坐标，与 SerializedNode 的 x/y 同系，勿对 x/y 再 canvasWorldToWorld3D
+        translation: [100, 100, 40],
+        rotation: [0.3, 0.6, 0],
+        scale: [100, 100, 100],
+    }),
+);
+```
+
+在线示例 [立方体（透视）](/zh/example/cube-perspective) 使用上述 **linked + perspective** 配置；拖动画布时 cube 应与 2D 图层同向平移、同向缩放。
+
+### 独立 3D 相机 {#standalone-camera}
+
+不设 `linked` 时自行指定 `eye` / `center` / `projection`，2D 平移缩放只影响 2D 图层。适合固定机位的演示或单元测试：
+
+```ts
+commands.spawn(
+    new Camera3D({
+        eye: [0, 0, 3.5],
+        center: [0, 0, 0],
+        clearColor: true,
+    }),
+);
+
+commands.spawn(
+    new Mesh3D({ positions, normals, indices }),
+    new Material3D({
+        /* … */
+    }),
+    new Transform3D({
+        translation: [0, 0, 0],
+        rotation: [0.4, 0.4, 0],
+        scale: [1, 1, 1],
+    }),
+);
+```
 
 ## 与 2D 图层合成 {#compositing}
 
@@ -172,7 +253,23 @@ requestAnimationFrame(spin);
 
 -   静态/动态三角网格、Blinn-Phong 光照、背面剔除
 -   与 2D `MeshPipeline` 同图合成
--   `linked` 模式下的 2D/3D 相机同步
+-   `linked` + **orthographic**（2D VP 对齐）与 **perspective**（2D 平移/缩放/Y 翻转 + 透视深度）
+-   `extrude3d` 挤出盒子（linked 正交路径）
+
+## 快照测试 {#tests}
+
+ECS 回归测试（需 headless WebGL，见仓库 `docs/running-ecs-tests.md`）：
+
+| 文件                                     | 场景                                       | 金图                             |
+| ---------------------------------------- | ------------------------------------------ | -------------------------------- |
+| `__tests__/ecs/cube.spec.ts`             | 独立 `Camera3D` + 原点 cube                | `snapshots/cube.png`             |
+| `__tests__/ecs/cube-perspective.spec.ts` | `linked` + `perspective`，`(100, 100, 40)` | `snapshots/cube-perspective.png` |
+
+```bash
+pnpm exec jest -c ./jest.ecs.config.js __tests__/ecs/cube.spec.ts __tests__/ecs/cube-perspective.spec.ts
+```
+
+因 becsy / `App.run()` 限制，**每个 spec 文件只能启动一次 App**，透视用例单独放在 `cube-perspective.spec.ts`。
 
 **尚未覆盖（可结合 [#76](https://github.com/xiaoiver/infinite-canvas-tutorial/issues/76) 继续演进）：**
 
