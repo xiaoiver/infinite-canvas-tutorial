@@ -32,6 +32,7 @@ import { RenderCache } from '../utils';
 import { sortByFractionalIndex } from './Sort';
 import { safeRemoveComponent } from '../history';
 import { API } from '../API';
+import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -43,6 +44,9 @@ import { API } from '../API';
  * e.g. 3 drawcalls for a Rect with drop shadow.
  */
 function getDrawcallCtors(shape: Entity) {
+  if (shouldSuppress2DShapeRender(shape)) {
+    return [];
+  }
   const SHAPE_DRAWCALL_CTORS: (typeof Drawcall)[] = [];
   if (shape.has(Circle) || shape.has(Ellipse)) {
     if (shape.has(Rough)) {
@@ -250,12 +254,18 @@ export class BatchManager {
   }
 
   add(shape: Entity, drawcalls?: Drawcall[]) {
+    if (shouldSuppress2DShapeRender(shape)) {
+      return;
+    }
     if (!drawcalls) {
       if (shape.read(Renderable).batchable) {
         drawcalls = this.getOrCreateBatchableDrawcalls(shape);
       } else {
         drawcalls = this.getOrCreateNonBatchableDrawcalls(shape);
       }
+    }
+    if (!drawcalls.length) {
+      return;
     }
     if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
       this.#drawcallsToFlush.push(...drawcalls);

@@ -83,6 +83,31 @@ commands.spawn(
 );
 ```
 
+## Rect 挤出 `extrude3d`（Spline 式）{#extrude3d}
+
+在 rect 节点上设置 `extrude3d`，由 `SyncExtrude3D` 按 **同一套** `x` / `y` / `width` / `height` 生成 3D 盒子（无需手写 `Transform3D`）：
+
+```ts
+api.updateNodes([
+    {
+        id: 'box',
+        type: 'rect',
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 200,
+        extrude3d: 80, // 或 true（默认深度 100）
+        fills: [
+            /* … */
+        ],
+    },
+]);
+```
+
+-   包围盒、拖拽、缩放仍由 2D rect 的 Transformer 处理。
+-   首次挤出会自动创建 `linked` 的 `Camera3D`。
+-   删除 rect 或去掉 `extrude3d` 会清理 companion mesh。
+
 ## 统一三维空间（linked 相机）{#unified-space}
 
 若希望 **拖动画布时 2D 与 3D 一起平移/缩放**，为 `Camera3D` 设置 `linked: true`（默认配合 `projection: 'orthographic'`）：
@@ -98,8 +123,9 @@ commands.spawn(
 
 `CameraSync` 每帧读取 2D `ComputedCamera` 的 `(x, y, zoom)`，并写入 3D 相机：
 
--   平移 `(x, y)` → `eye = [x, y, baseDistance / zoom]`，`center = [x, y, 0]`
--   缩放 → 与 z = 0 平面的距离按 `baseDistance / zoom` 变化
+-   平移 `(x, y)` → `eye = [x, -y, baseDistance / zoom]`，`center = [x, -y, 0]`（2D 画布 Y 向下，3D Y 向上，需取反）
+-   缩放 → `baseDistance = canvas.height / 2`（每帧从 2D 画布逻辑高度同步），`eye.z = baseDistance / zoom`，与 2D `mat3.projection` 可见范围一致
+-   3D 物体位置：用 `canvasWorldToWorld3D(node.x, node.y)`，与 2D 节点的 `x`/`y` 一致
 
 **独立 3D 相机**（例如固定观察立方体的演示）则不设 `linked`，自行指定 `eye` / `center` 即可；此时 2D 的平移缩放只影响 2D 图层。
 

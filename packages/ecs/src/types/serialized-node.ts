@@ -389,6 +389,12 @@ export interface FilterAttributes {
   filter?: string;
 }
 
+/** Spline-style 3D extrusion of a rect layer (canvas x/y/width/height). */
+export interface Extrude3DAttributes {
+  /** `true` uses default depth; number sets depth in canvas world units. */
+  extrude3d?: boolean | number;
+}
+
 export interface GSerializedNode
   extends BaseSerializeNode<'g'>,
   Partial<FillAttributes>,
@@ -414,6 +420,7 @@ export interface RectSerializedNode
   Partial<AttenuationAttributes>,
   Partial<WireframeAttributes>,
   Partial<FilterAttributes>,
+  Partial<Extrude3DAttributes>,
   Partial<BindedAttributes> { }
 
 export interface RoughRectSerializedNode

@@ -21,15 +21,19 @@ import {
   makeMegaState,
 } from '@infinite-canvas-tutorial/device-api';
 import {
+  Camera,
   Camera3D,
   Canvas,
+  ComputedCamera,
+  Extrude3D,
   GPUResource,
   Mesh3D,
   Material3D,
   Transform3D,
+  mat3ViewProjectionToMat4,
 } from '../components';
+import { isEntityAlive } from './Transform';
 import { Mat4 } from '../components/math/Mat4';
-import type { IRenderGraphPass } from '../render-graph/interface';
 import { makeAttachmentClearDescriptor } from '../render-graph/utils';
 import { vert, frag } from '../shaders/mesh3d';
 import { SetupDevice } from './SetupDevice';
@@ -63,12 +67,21 @@ export class MeshPipeline3D extends System {
   /** Read-only: camera uniforms are updated in {@link drawMeshes} at render time. */
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
 
-  private meshes3D = this.query(
-    (q) =>
-      q.added.and.changed.and.removed.and.current
-        .with(Mesh3D, Material3D, Transform3D)
-        .trackWrites,
+  private cameras2D = this.query((q) =>
+    q.current.with(Camera, ComputedCamera).read,
   );
+
+  private meshes3D = this.query((q) =>
+    q.current.with(Mesh3D, Material3D, Transform3D).read,
+  );
+
+  private meshes3DDirty = this.query((q) =>
+    q.addedOrChanged.and.removed
+      .with(Mesh3D, Material3D, Transform3D)
+      .trackWrites,
+  );
+
+  private extrudeSources = this.query((q) => q.current.with(Extrude3D).read);
 
   private meshGPUCache: Map<Entity, MeshGPUData> = new Map();
 
@@ -81,24 +94,104 @@ export class MeshPipeline3D extends System {
 
   private initialized = false;
 
+  /** WebGL1 (headless-gl / jest) has no UBO binding; use {@link Program.setUniformsLegacy}. */
+  private sceneLegacyUniforms: Record<string, unknown> = {};
+
   constructor() {
     super();
     registerMeshPipeline3D(this);
     this.query(
       (q) =>
         q.current
-          .with(GPUResource, Canvas, Camera3D, Mesh3D, Material3D, Transform3D)
+          .with(
+            GPUResource,
+            Canvas,
+            Camera,
+            Camera3D,
+            ComputedCamera,
+            Extrude3D,
+            Mesh3D,
+            Material3D,
+            Transform3D,
+          )
           .read,
     );
   }
 
-  /** True when 3D should be drawn as the first pass in the 2D render graph. */
-  shouldComposite(): boolean {
+  /** Prefer linked camera when extrude meshes exist (canvas-space transforms). */
+  private resolveRenderCameraEntity(): Entity | undefined {
+    const cameras = this.cameras3D.current;
+    if (cameras.length === 0) {
+      return undefined;
+    }
+    const hasExtrudeMeshes = this.extrudeSources.current.some((e) => {
+      const mesh = e.read(Extrude3D).meshEntity;
+      return mesh && isEntityAlive(mesh);
+    });
+    if (hasExtrudeMeshes) {
+      const linked = cameras.find((c) => c.read(Camera3D).linked);
+      if (linked) {
+        return linked;
+      }
+    }
+    return cameras[0];
+  }
+
+  /** Meshes from the global query plus extrude companions (authoritative for extrude3d). */
+  private collectMeshEntities(): Entity[] {
+    const out: Entity[] = [];
+    const seen = new Set<Entity>();
+
+    const add = (entity: Entity) => {
+      if (
+        seen.has(entity) ||
+        !isEntityAlive(entity) ||
+        !entity.has(Mesh3D) ||
+        !entity.has(Material3D) ||
+        !entity.has(Transform3D)
+      ) {
+        return;
+      }
+      seen.add(entity);
+      out.push(entity);
+    };
+
+    for (const entity of this.meshes3D.current) {
+      add(entity);
+    }
+
+    for (const source of this.extrudeSources.current) {
+      const meshEntity = source.read(Extrude3D).meshEntity;
+      if (meshEntity) {
+        add(meshEntity);
+      }
+    }
+
+    return out;
+  }
+
+  /** True when 3D entities exist (pipeline may still need {@link prepareForComposite}). */
+  has3DContent(): boolean {
     return (
-      this.initialized &&
       this.cameras3D.current.length > 0 &&
-      this.meshes3D.current.length > 0
+      this.collectMeshEntities().length > 0
     );
+  }
+
+  /**
+   * Create the mesh3d pipeline when content exists. Call from {@link MeshPipeline}
+   * before building the render graph so `shouldComposite()` can be true same frame.
+   */
+  prepareForComposite(canvas: Entity): void {
+    if (!this.has3DContent() || !canvas.has(GPUResource)) {
+      return;
+    }
+    this.initPipeline(canvas);
+  }
+
+  /** True when 3D draw calls should run inside the main render pass. */
+  shouldComposite(): boolean {
+    return this.initialized && this.has3DContent();
   }
 
   /**
@@ -112,19 +205,30 @@ export class MeshPipeline3D extends System {
     width: number,
     height: number,
   ): void {
-    if (
-      !this.shouldComposite() ||
-      !this.pipeline ||
-      width <= 0 ||
-      height <= 0
-    ) {
+
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+
+    this.prepareForComposite(canvas);
+    if (!this.shouldComposite()) {
       return;
     }
 
     const { device } = canvas.read(GPUResource);
-    const camera = this.cameras3D.current[0].read(Camera3D);
-    const aspect = width / height;
-    this.updateSceneUniforms(camera, aspect);
+    const cameraEntity = this.resolveRenderCameraEntity();
+    if (!cameraEntity) {
+      return;
+    }
+    const camera = cameraEntity.read(Camera3D);
+    const cam2d = camera.linked ? this.cameras2D.current[0] : undefined;
+    const { width: logicalW, height: logicalH } = canvas.read(Canvas);
+    // Linked mode: ortho extents follow 2D logical canvas size (not DPR pixels).
+    const aspect =
+      camera.linked && logicalW > 0 && logicalH > 0
+        ? logicalW / logicalH
+        : width / height;
+    this.updateSceneUniforms(camera, aspect, cam2d);
 
     renderPass.setViewport(0, 0, width, height);
     renderPass.setPipeline(this.pipeline);
@@ -137,14 +241,17 @@ export class MeshPipeline3D extends System {
       ],
     });
 
-    for (const meshEntity of this.meshes3D.current) {
+    for (const meshEntity of this.collectMeshEntities()) {
       const forceRebuild =
-        this.meshes3D.added.includes(meshEntity) ||
-        this.meshes3D.changed.includes(meshEntity);
+        this.meshes3DDirty.addedOrChanged.includes(meshEntity);
       const gpuData = this.getOrCreateMeshGPU(meshEntity, forceRebuild);
       if (!gpuData) continue;
 
-      this.updateModelUniforms(meshEntity);
+      const modelLegacy = this.updateModelUniforms(meshEntity);
+      this.program!.setUniformsLegacy({
+        ...this.sceneLegacyUniforms,
+        ...modelLegacy,
+      });
 
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(
@@ -166,28 +273,13 @@ export class MeshPipeline3D extends System {
     bindings.destroy();
   }
 
-  /** @deprecated Use {@link drawMeshes} inside the main render pass instead. */
-  appendRenderPass(
-    pass: IRenderGraphPass,
-    canvas: Entity,
-    width: number,
-    height: number,
-  ): void {
-    if (!this.shouldComposite() || !this.pipeline || width <= 0 || height <= 0) {
-      return;
-    }
-    pass.setDebugName('3D Render Pass');
-    pass.exec((renderPass) => {
-      this.drawMeshes(renderPass, canvas, width, height);
-    });
-  }
-
   /** Color clear descriptor for the 3D pass (first pass in the shared graph). */
   getColorClearDescriptor(): ReturnType<typeof makeAttachmentClearDescriptor> | undefined {
     if (!this.shouldComposite()) {
       return undefined;
     }
-    const camera = this.cameras3D.current[0]?.read(Camera3D);
+    const cameraEntity = this.resolveRenderCameraEntity();
+    const camera = cameraEntity?.read(Camera3D);
     return camera?.clearColor
       ? makeAttachmentClearDescriptor(TransparentWhite)
       : undefined;
@@ -337,43 +429,57 @@ export class MeshPipeline3D extends System {
     return data;
   }
 
-  private updateSceneUniforms(camera: Camera3D, aspect: number) {
+  private updateSceneUniforms(
+    camera: Camera3D,
+    aspect: number,
+    cam2d?: Entity,
+  ) {
     if (!this.sceneUniformBuffer) return;
 
     let projMatrix: Mat4;
-    if (camera.projection === 'orthographic') {
-      // Orthographic: half-extents based on distance from target (eye.z)
-      const distance = Math.abs(camera.eye[2] - camera.center[2]);
-      const halfH = distance;
-      const halfW = halfH * aspect;
-      projMatrix = Mat4.ortho(
-        -halfW,
-        halfW,
-        -halfH,
-        halfH,
-        camera.near,
-        camera.far,
-      );
+    let viewMatrix: Mat4;
+
+    if (camera.linked && cam2d) {
+      const vp = cam2d.read(ComputedCamera).viewProjectionMatrix;
+      const zScale = camera.far > 0 ? -2 / camera.far : 0;
+      projMatrix = mat3ViewProjectionToMat4(vp, zScale);
+      viewMatrix = Mat4.IDENTITY;
     } else {
-      projMatrix = Mat4.perspective(
-        camera.fovy,
-        aspect,
-        camera.near,
-        camera.far,
-      );
+      if (camera.projection === 'orthographic') {
+        const distance = Math.abs(camera.eye[2] - camera.center[2]);
+        const halfH = distance;
+        const halfW = halfH * aspect;
+        projMatrix = Mat4.ortho(
+          -halfW,
+          halfW,
+          -halfH,
+          halfH,
+          camera.near,
+          camera.far,
+        );
+      } else {
+        projMatrix = Mat4.perspective(
+          camera.fovy,
+          aspect,
+          camera.near,
+          camera.far,
+        );
+      }
+      viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
     }
-    const viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
 
     const buffer = new Float32Array(32);
     buffer.set(projMatrix.toFloat32Array(), 0);
     buffer.set(viewMatrix.toFloat32Array(), 16);
 
     this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    this.sceneLegacyUniforms = {
+      u_ProjectionMatrix3D: Mat4.toGLMat4(projMatrix),
+      u_ViewMatrix3D: Mat4.toGLMat4(viewMatrix),
+    };
   }
 
-  private updateModelUniforms(entity: Entity) {
-    if (!this.modelUniformBuffer) return;
-
+  private updateModelUniforms(entity: Entity): Record<string, unknown> {
     const transform = entity.read(Transform3D);
     const material = entity.read(Material3D);
 
@@ -388,6 +494,23 @@ export class MeshPipeline3D extends System {
     glMat4.invert(normalMat, modelMat);
     glMat4.transpose(normalMat, normalMat);
 
+    const legacy = {
+      u_ModelMatrix3D: modelMat,
+      u_NormalMatrix3D: normalMat,
+      u_BaseColor: material.baseColor,
+      u_LightParams: [
+        material.ambient,
+        material.diffuse,
+        material.specular,
+        material.shininess,
+      ],
+      u_LightDirection: [-0.5, -0.7, -0.5, 0],
+    };
+
+    if (!this.modelUniformBuffer) {
+      return legacy;
+    }
+
     const buffer = new Float32Array(48);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
@@ -399,10 +522,11 @@ export class MeshPipeline3D extends System {
     buffer.set([-0.5, -0.7, -0.5, 0], 40);
 
     this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    return legacy;
   }
 
   execute() {
-    for (const entity of this.meshes3D.removed) {
+    for (const entity of this.meshes3DDirty.removed) {
       const data = this.meshGPUCache.get(entity);
       if (data) {
         data.vertexBuffer.destroy();
@@ -412,17 +536,12 @@ export class MeshPipeline3D extends System {
       }
     }
 
-    const hasChanges =
-      this.meshes3D.added.length > 0 || this.meshes3D.changed.length > 0;
-
-    if (!hasChanges && !this.shouldComposite()) {
+    if (!this.has3DContent()) {
       return;
     }
 
     for (const canvas of this.canvases.current) {
-      if (canvas.has(GPUResource)) {
-        this.initPipeline(canvas);
-      }
+      this.prepareForComposite(canvas);
     }
   }
 

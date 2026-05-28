@@ -46,6 +46,7 @@ import {
   Flex,
   Group,
   IconFont,
+  Extrude3D,
 } from '../../components';
 import type {
   AttenuationAttributes,
@@ -55,6 +56,7 @@ import type {
   EmbedSerializedNode,
   FillAttributes,
   FilterAttributes,
+  Extrude3DAttributes,
   GSerializedNode,
   HtmlSerializedNode,
   IconFontSerializedNode,
@@ -76,6 +78,7 @@ import type {
   WireframeAttributes,
   FlexboxLayoutAttributes,
 } from '../../types/serialized-node';
+import { resolveExtrude3DDepth } from '../extrude3d';
 import {
   isDataUrl,
   isUrl,
@@ -1225,6 +1228,14 @@ export function serializedNodesToEntities(
       );
       if (type === 'rough-rect') {
         serializeRough(attributes as RoughAttributes, entityCommands);
+      }
+      if (type === 'rect') {
+        const depth = resolveExtrude3DDepth(
+          (attributes as Extrude3DAttributes).extrude3d,
+        );
+        if (depth !== undefined) {
+          entityCommands.insert(new Extrude3D({ depth }));
+        }
       }
     } else if (type === 'polyline' || type === 'rough-polyline') {
       const { points, hitStrokeWidth } = attributes as PolylineSerializedNode;

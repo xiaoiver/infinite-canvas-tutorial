@@ -65,7 +65,16 @@ onMounted(async () => {
     }
     cubeBootstrapped = true;
     api = e.detail;
-    const t0 = performance.now();
+
+    const rect1 = {
+      id: 'rect1',
+      type: 'rect',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+      x: 400,
+      y: 100,
+      width: 100,
+      height: 100,
+    };
 
     api.setAppState({
       penbarSelected: Pen.SELECT,
@@ -79,26 +88,26 @@ onMounted(async () => {
 
     commands.spawn(
       new Camera3D({
-        eye: [2.8, 2.4, 4.2],
-        center: [0, 0, 0],
-        clearColor: true,
+        linked: true,
+        projection: 'orthographic',
+        clearColor: false,
       }),
     );
 
-    cubeEntity = commands
+    const cubeEntity = commands
       .spawn(
         new Mesh3D({ positions, normals, indices }),
         new Material3D({
-          baseColor: [0.25, 0.55, 0.95, 1],
-          ambient: 0.15,
+          baseColor: [1, 1, 1, 1],
+          ambient: 0.25,
           diffuse: 0.75,
           specular: 0.4,
           shininess: 48,
         }),
         new Transform3D({
-          translation: [0, 0, 0],
+          translation: [200, 100, 40],
           rotation: [0.3, 0.6, 0],
-          scale: [1, 1, 1],
+          scale: [100, 100, 100],
         }),
       )
       .id()
@@ -106,35 +115,19 @@ onMounted(async () => {
 
     commands.execute();
 
-    api.updateNodes([
-      {
-        id: 'overlay-rect',
-        type: 'rect',
-        zIndex: 1,
-        fills: [{ type: 'solid', value: 'rgba(255, 120, 80, 0.45)' }],
-        stroke: '#e85d04',
-        strokeWidth: 2,
-        x: 40,
-        y: 40,
-        width: 160,
-        height: 100,
-        cornerRadius: 12,
-      },
-    ]);
+    // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
+    api.updateNodes([rect1]);
 
-    const spin = (now: number) => {
-      if (!cubeEntity) {
-        return;
-      }
+    const t0 = performance.now();
+    const spinCube = (now: number) => {
       const t = (now - t0) / 1000;
-      cubeEntity.write(Transform3D).rotation = [
-        0.3 + t * 0.9,
-        0.6 + t * 1.2,
-        t * 0.5,
-      ];
-      spinRaf = requestAnimationFrame(spin);
+      const transform = cubeEntity.write(Transform3D);
+      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+      requestAnimationFrame(spinCube);
     };
-    spinRaf = requestAnimationFrame(spin);
+    requestAnimationFrame(spinCube);
+
+    
   };
 
   canvas.addEventListener(Event.READY, onReady as EventListener);

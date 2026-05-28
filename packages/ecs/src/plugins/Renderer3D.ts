@@ -23,17 +23,17 @@
  * 3D geometry is drawn in the first pass of {@link MeshPipeline}'s render graph;
  * 2D/grid/HTML overlays composite on the same target afterward.
  */
-import { system } from '@lastolivegames/becsy';
+import { component, system } from '@lastolivegames/becsy';
 import { Plugin, type PluginWithConfig } from './types';
 import {
   CameraSync,
+  ComputeBounds,
   ComputeCamera,
-  MeshPipeline,
+  EnsureExtrudeMeshes,
   MeshPipeline3D,
-  RenderNameLabel,
-  ViewportCulling,
+  SyncExtrude3D,
 } from '../systems';
-import { PreUpdate } from '../systems/stages';
+import { PostUpdate, PreUpdate } from '../systems/stages';
 
 export interface Renderer3DPluginOptions {
   /**
@@ -45,18 +45,22 @@ export interface Renderer3DPluginOptions {
 function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
   return () => {
     /**
-     * 3D render system (components registered in {@link DefaultRendererPlugin}).
+     * 3D render system (Extrude3D / Mesh3D components registered in {@link DefaultRendererPlugin}).
      */
     const RenderSystem3D = options.rendererSystemCtor ?? MeshPipeline3D;
     // GPU mesh cache only; drawing runs inside MeshPipeline via appendRenderPass.
     system(PreUpdate)(RenderSystem3D);
 
-    // After culling + pen overlays (they read ComputedCamera), before GPU render.
-    system((s) =>
-      s
-        .after(ComputeCamera, ViewportCulling, RenderNameLabel)
-        .before(MeshPipeline),
-    )(CameraSync);
+    // PostUpdate: mesh setup + transform/camera sync before Last render/HTML.
+    // MeshPipeline tracks Transform3D/Camera3D and runs in Last after these writers.
+    system(PostUpdate)(EnsureExtrudeMeshes);
+    system((s) => s.after(ComputeBounds))(EnsureExtrudeMeshes);
+
+    system(PostUpdate)(SyncExtrude3D);
+    system((s) => s.after(EnsureExtrudeMeshes))(SyncExtrude3D);
+
+    system(PostUpdate)(CameraSync);
+    system((s) => s.after(ComputeCamera, SyncExtrude3D))(CameraSync);
   };
 }
 

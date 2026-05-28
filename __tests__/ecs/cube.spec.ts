@@ -35,13 +35,13 @@ function createCubeGeometry(size = 1) {
     normal: [number, number, number];
     verts: [number, number, number][];
   }[] = [
-      { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
-      { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
-      { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
-      { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
-      { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
-      { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
-    ];
+    { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
+    { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
+    { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
+    { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
+    { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
+    { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
+  ];
 
   const positions: number[] = [];
   const normals: number[] = [];
@@ -116,6 +116,9 @@ describe('Cube', () => {
 
         const { positions, normals, indices } = createCubeGeometry(1);
 
+        // 独立 3D 快照：用透视相机 + 世界原点处的 cube。
+        // linked 模式要用画布坐标，且需与 2D 相机 pan 对齐（见 main.ts 的 [100,100,40]）；
+        // 此处 2D 相机在 (100,100)，若 cube 放在 (0,0) 会被 2D VP 裁到视口外。
         this.commands.spawn(
           new Camera3D({
             eye: [0, 0, 3.5],

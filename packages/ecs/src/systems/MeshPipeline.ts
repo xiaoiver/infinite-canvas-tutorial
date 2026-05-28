@@ -68,6 +68,7 @@ import {
   Flex,
   IconFont,
   IconFontEllipseStrokeRasterPlaceholder,
+  Extrude3D,
   Mesh3D,
   Material3D,
   Transform3D,
@@ -301,6 +302,9 @@ export class MeshPipeline extends System {
       q.addedOrChanged.and.current
         .with(Mesh3D, Material3D, Transform3D)
         .trackWrites,
+  );
+  private extrude3DChanged = this.query(
+    (q) => q.addedOrChanged.and.removed.with(Extrude3D).trackWrites,
   );
   private cameras3DChanged = this.query(
     (q) => q.addedOrChanged.and.current.with(Camera3D).trackWrites,
@@ -691,6 +695,7 @@ export class MeshPipeline extends System {
     };
 
     const mesh3d = getMeshPipeline3D();
+    mesh3d?.prepareForComposite(canvas);
     const composite3D = mesh3d?.shouldComposite() ?? false;
 
     const mainColorDesc = makeBackbufferDescSimple(
@@ -1061,12 +1066,33 @@ export class MeshPipeline extends System {
       }
     });
 
+    new Set([
+      ...this.extrude3DChanged.addedOrChanged,
+      ...this.extrude3DChanged.removed,
+    ]).forEach((entity) => {
+      if (!entity.has(Renderable)) {
+        return;
+      }
+      const camera = getSceneRoot(entity);
+      if (!this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.set(camera, []);
+      }
+      const pending = this.pendingRenderables.get(camera)!;
+      pending.push({ type: 'remove', entity });
+      if (!entity.has(Extrude3D)) {
+        pending.push({ type: 'add', entity });
+      }
+    });
+
     const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
     const fillTextureLiveNeedsContinuousRender =
       this.fillTextureLiveCurrent.current.length > 0;
+    const mesh3d = getMeshPipeline3D();
     const mesh3dNeedsRender =
       this.meshes3DChanged.addedOrChanged.length > 0 ||
-      this.cameras3DChanged.addedOrChanged.length > 0;
+      this.cameras3DChanged.addedOrChanged.length > 0 ||
+      this.extrude3DChanged.addedOrChanged.length > 0 ||
+      (mesh3d?.has3DContent() ?? false);
 
     this.canvases.current.forEach((canvas) => {
       if (

@@ -19,7 +19,6 @@ import {
   PreStartUp,
   ComputeZIndex,
   Screenshot,
-  Canvas,
   Theme,
   Grid,
   Camera,
@@ -69,42 +68,6 @@ WebFont.load({
     families: ['Gaegu'],
   },
 });
-
-/** Unit cube with per-face normals (24 verts, indexed). */
-function createCubeGeometry(size = 1) {
-  const h = size / 2;
-  const faces: {
-    normal: [number, number, number];
-    verts: [number, number, number][];
-  }[] = [
-      { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
-      { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
-      { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
-      { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
-      { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
-      { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
-    ];
-
-  const positions: number[] = [];
-  const normals: number[] = [];
-  const indices: number[] = [];
-  let base = 0;
-
-  for (const { normal, verts } of faces) {
-    for (const v of verts) {
-      positions.push(...v);
-      normals.push(...normal);
-    }
-    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-    base += 4;
-  }
-
-  return {
-    positions: new Float32Array(positions),
-    normals: new Float32Array(normals),
-    indices: new Uint32Array(indices),
-  };
-}
 
 // const root = {
 //   id: 'root',
@@ -187,6 +150,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       multiSelectEffects: false,
       exportSection: true,
       iconFont: true,
+      typographySection: true,
     },
     penbarVisible: true,
     taskbarVisible: true,
@@ -213,79 +177,111 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  const image2 = {
-    id: 'glitch-2',
+  const rect1 = {
+    id: 'rect1',
     type: 'rect',
-    fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg', opacity: 1 }],
-    x: 300,
-    y: 50,
+    fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+    x: 100,
+    y: 100,
     width: 200,
     height: 200,
     lockAspectRatio: true,
-    filter: 'crt(4, 4, 0.4, 0.27, 0.41, 1) vignette(0.5, 0.5) glitch(0.29, 0.15, auto, 0.29)',
+    /** Spline-style: 3D box matches this rect's x/y/width/height (canvas coords). */
+    extrude3d: 20,
   };
 
-  api.updateNodes([image2]);
+  const rect2 = {
+    id: 'rect2',
+    type: 'rect',
+    fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
+    x: 300,
+    y: 100,
+    width: 200,
+    height: 200,
+    lockAspectRatio: true,
+  };
 
-  // fetch('/applecycling.json').then(res => res.json()).then(data => {
-  //   const animation = loadAnimation(data, {
-  //     loop: true,
-  //     autoplay: true,
-  //   });
+  function createCubeGeometry(size = 1) {
+    const h = size / 2;
+    const faces: {
+      normal: [number, number, number];
+      verts: [number, number, number][];
+    }[] = [
+        { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
+        { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
+        { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
+        { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
+        { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
+        { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
+      ];
 
-  //   api.runAtNextTick(() => {
-  //     animation.render(api);
-  //     animation.play();
-  //   });
-  // });
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const indices: number[] = [];
+    let base = 0;
 
-  // api.runAtNextTick(() => {
-  //   const { positions, normals, indices } = createCubeGeometry(1);
-  //   const commands = api.getCommands();
+    for (const { normal, verts } of faces) {
+      for (const v of verts) {
+        positions.push(...v);
+        normals.push(...normal);
+      }
+      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      base += 4;
+    }
 
-  //   commands.spawn(
-  //     new Camera3D({
-  //       eye: [3, 3, 5],
-  //       center: [0, 0, 0],
-  //       clearColor: true,
-  //       // linked: true,
-  //       // projection: 'orthographic',
-  //     }),
-  //   );
+    return {
+      positions: new Float32Array(positions),
+      normals: new Float32Array(normals),
+      indices: new Uint32Array(indices),
+    };
+  }
 
-  //   const cubeEntity = commands
-  //     .spawn(
-  //       new Mesh3D({ positions, normals, indices }),
-  //       new Material3D({
-  //         baseColor: [0.25, 0.55, 0.95, 1],
-  //         ambient: 0.15,
-  //         diffuse: 0.75,
-  //         specular: 0.4,
-  //         shininess: 48,
-  //       }),
-  //       new Transform3D({
-  //         translation: [0, 0, 0],
-  //         rotation: [0.3, 0.6, 0],
-  //         scale: [1, 1, 1],
-  //       }),
-  //     )
-  //     .id()
-  //     .hold();
+  api.runAtNextTick(() => {
+    const { positions, normals, indices } = createCubeGeometry(1);
+    const commands = api.getCommands();
 
-  //   commands.execute();
+    // 与 extrude3d / 2D 图层对齐：linked + 画布坐标（勿用 lookAt(0,0,0)，否则 (0,0,0) 会画在视口正中）
+    commands.spawn(
+      new Camera3D({
+        linked: true,
+        projection: 'orthographic',
+        clearColor: false,
+      }),
+    );
 
-  //   // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
-  //   api.updateNodes([image1, overlayRect]);
+    const cubeEntity = commands
+      .spawn(
+        new Mesh3D({ positions, normals, indices }),
+        new Material3D({
+          baseColor: [1, 1, 1, 1],
+          ambient: 0.25,
+          diffuse: 0.75,
+          specular: 0.4,
+          shininess: 48,
+        }),
+        new Transform3D({
+          translation: [100, 100, 40],
+          rotation: [0.3, 0.6, 0],
+          scale: [100, 100, 100],
+        }),
+      )
+      .id()
+      .hold();
 
-  //   const t0 = performance.now();
-  //   const spinCube = (now: number) => {
-  //     const t = (now - t0) / 1000;
-  //     const transform = cubeEntity.write(Transform3D);
-  //     transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
-  //     requestAnimationFrame(spinCube);
-  //   };
-  //   requestAnimationFrame(spinCube);
-  // });
+    commands.execute();
+
+    // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
+    // api.updateNodes([rect1, rect2]);
+
+    const t0 = performance.now();
+    const spinCube = (now: number) => {
+      const t = (now - t0) / 1000;
+      const transform = cubeEntity.write(Transform3D);
+      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+      requestAnimationFrame(spinCube);
+    };
+    requestAnimationFrame(spinCube);
+  });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({

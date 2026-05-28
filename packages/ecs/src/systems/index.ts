@@ -5,6 +5,8 @@ export * from './Transform';
 export * from './MeshPipeline';
 export * from './MeshPipeline3D';
 export * from './CameraSync';
+export * from './EnsureExtrudeMeshes';
+export * from './SyncExtrude3D';
 export * from './PostEffectTime';
 export * from './EventWriter';
 export * from './EventDisposer';

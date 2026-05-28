@@ -1,4 +1,6 @@
 import { field } from '@lastolivegames/becsy';
+import { Mat3 } from '../math/Mat3';
+import { Mat4 } from '../math/Mat4';
 
 /**
  * Projection mode for Camera3D.
@@ -8,13 +10,51 @@ import { field } from '@lastolivegames/becsy';
 export type Projection3D = 'perspective' | 'orthographic';
 
 /**
+ * Map 2D canvas world coordinates (Y down, same as SerializedNode x/y) to unified 3D space (Y up).
+ */
+export function canvasWorldToWorld3D(
+  x: number,
+  y: number,
+  z = 0,
+): [number, number, number] {
+  return [x, -y, z];
+}
+
+/**
+ * Extends the 2D {@link ComputedCamera.viewProjectionMatrix} to 4×4 for mesh3d.
+ * XY/w match the 2D pipeline; optional `zScale` maps canvas-space Z into clip Z.
+ */
+export function mat3ViewProjectionToMat4(vp: Mat3, zScale = 0): Mat4 {
+  return new Mat4(
+    vp.m00,
+    vp.m01,
+    vp.m02,
+    0,
+    vp.m10,
+    vp.m11,
+    vp.m12,
+    0,
+    0,
+    0,
+    zScale,
+    0,
+    vp.m20,
+    vp.m21,
+    0,
+    vp.m22,
+  );
+}
+
+/**
  * A 3D camera component supporting both perspective and orthographic projection.
  * @see https://bevy-cheatbook.github.io/3d/camera.html
  *
  * In **unified 3D space mode** (`linked = true`), the camera automatically
  * syncs with the 2D Camera's pan/zoom so all objects live in one 3D world.
  * 2D objects sit on the z=0 plane; panning/zooming the 2D camera moves
- * this camera accordingly.
+ * this camera accordingly. In linked mode {@link MeshPipeline3D} uses the 2D
+ * view-projection matrix; place extrude meshes in canvas world coordinates
+ * `(x, y, z)` (Y down), not {@link canvasWorldToWorld3D}.
  *
  * @see https://docs.spline.design/designing-in-3-d/working-with-2d-and-3d-objects
  */
