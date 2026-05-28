@@ -46,15 +46,82 @@ export function mat3ViewProjectionToMat4(vp: Mat3, zScale = 0): Mat4 {
 }
 
 /**
+ * 2D {@link ComputedCamera.projectionMatrix} → 4×4: scales/flips clip x/y only.
+ * Do not use {@link mat3ViewToMat4} here — it couples clip.w to z and breaks perspective.
+ */
+export function mat3ProjectionToMat4(proj: Mat3): Mat4 {
+  return new Mat4(
+    proj.m00,
+    proj.m01,
+    proj.m02,
+    0,
+    proj.m10,
+    proj.m11,
+    proj.m12,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    0,
+    1,
+  );
+}
+
+/**
+ * Extends 2D {@link ComputedCamera.viewMatrix} to 4×4; Z passes through unchanged.
+ */
+export function mat3ViewToMat4(view: Mat3): Mat4 {
+  return new Mat4(
+    view.m00,
+    view.m01,
+    view.m02,
+    0,
+    view.m10,
+    view.m11,
+    view.m12,
+    0,
+    0,
+    0,
+    1,
+    0,
+    view.m20,
+    view.m21,
+    0,
+    view.m22,
+  );
+}
+
+/**
+ * At z=0, visible world height matches 2D ortho (`height / zoom`) for a given `fovy`.
+ */
+export function linkedPerspectiveEyeDistance(
+  canvasHeight: number,
+  zoom: number,
+  fovy: number,
+): number {
+  const baseDistance = canvasHeight / 2;
+  const distance = baseDistance / zoom;
+  const tanHalfFovy = Math.tan(fovy / 2);
+  if (tanHalfFovy <= 0) {
+    return distance;
+  }
+  return distance / tanHalfFovy;
+}
+
+/**
  * A 3D camera component supporting both perspective and orthographic projection.
  * @see https://bevy-cheatbook.github.io/3d/camera.html
  *
  * In **unified 3D space mode** (`linked = true`), the camera automatically
  * syncs with the 2D Camera's pan/zoom so all objects live in one 3D world.
  * 2D objects sit on the z=0 plane; panning/zooming the 2D camera moves
- * this camera accordingly. In linked mode {@link MeshPipeline3D} uses the 2D
- * view-projection matrix; place extrude meshes in canvas world coordinates
- * `(x, y, z)` (Y down), not {@link canvasWorldToWorld3D}.
+ * this camera accordingly. Linked **orthographic** uses the 2D view-projection
+ * matrix; linked **perspective** uses `P2d × P_persp × V2d × Tz` (2D Y-flip +
+ * foreshortening). Meshes
+ * use canvas `(x, y, z)` (Y down), not {@link canvasWorldToWorld3D}.
  *
  * @see https://docs.spline.design/designing-in-3-d/working-with-2d-and-3d-objects
  */

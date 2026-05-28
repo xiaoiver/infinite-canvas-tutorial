@@ -438,8 +438,12 @@ export const zh = defineConfig({
                 text: '3D Mesh 渲染',
                 items: [
                   {
-                    text: '立方体',
+                    text: '立方体（正交）',
                     link: 'cube',
+                  },
+                  {
+                    text: '立方体（透视）',
+                    link: 'cube-perspective',
                   },
                 ],
               }

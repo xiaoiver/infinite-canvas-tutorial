@@ -31,6 +31,8 @@ import {
   Material3D,
   Transform3D,
   mat3ViewProjectionToMat4,
+  mat3ViewToMat4,
+  linkedPerspectiveEyeDistance,
 } from '../components';
 import { isEntityAlive } from './Transform';
 import { Mat4 } from '../components/math/Mat4';
@@ -96,6 +98,11 @@ export class MeshPipeline3D extends System {
 
   /** WebGL1 (headless-gl / jest) has no UBO binding; use {@link Program.setUniformsLegacy}. */
   private sceneLegacyUniforms: Record<string, unknown> = {};
+
+  /** z: 1 = linked perspective shader path. */
+  private sceneParams: number[] = [0, 0, 0, 0];
+
+  private canvasViewProjection = Mat4.IDENTITY;
 
   constructor() {
     super();
@@ -356,13 +363,13 @@ export class MeshPipeline3D extends System {
     });
 
     this.sceneUniformBuffer = device.createBuffer({
-      viewOrSize: 128,
+      viewOrSize: 208,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
     this.modelUniformBuffer = device.createBuffer({
-      viewOrSize: 192,
+      viewOrSize: 208,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });
@@ -439,12 +446,49 @@ export class MeshPipeline3D extends System {
     let projMatrix: Mat4;
     let viewMatrix: Mat4;
 
-    if (camera.linked && cam2d) {
+    // linked + orthographic: share 2D view-projection (extrude3d / canvas x,y).
+    if (camera.linked && cam2d && camera.projection === 'orthographic') {
       const vp = cam2d.read(ComputedCamera).viewProjectionMatrix;
       const zScale = camera.far > 0 ? -2 / camera.far : 0;
       projMatrix = mat3ViewProjectionToMat4(vp, zScale);
       viewMatrix = Mat4.IDENTITY;
+      this.canvasViewProjection = Mat4.IDENTITY;
+      this.sceneParams = [0, 0, 0, 0];
+    } else if (camera.linked && cam2d && camera.projection === 'perspective') {
+      const computed = cam2d.read(ComputedCamera);
+      const camera2d = cam2d.read(Camera);
+      const canvasHeight = camera2d.canvas
+        ? camera2d.canvas.read(Canvas).height
+        : 0;
+      const eyeZ = linkedPerspectiveEyeDistance(
+        canvasHeight,
+        computed.zoom,
+        camera.fovy,
+      );
+      const zShift = new Mat4(
+        1, 0, 0, 0, //
+        0, 1, 0, 0, //
+        0, 0, 1, 0, //
+        0, 0, -eyeZ, 1, //
+      );
+      viewMatrix = Mat4.multiply(
+        mat3ViewToMat4(computed.viewMatrix),
+        zShift,
+      );
+      projMatrix = Mat4.perspective(
+        camera.fovy,
+        aspect,
+        camera.near,
+        camera.far,
+      );
+      this.canvasViewProjection = mat3ViewProjectionToMat4(
+        computed.viewProjectionMatrix,
+        0,
+      );
+      this.sceneParams = [0, 0, 1, 0];
     } else {
+      this.canvasViewProjection = Mat4.IDENTITY;
+      this.sceneParams = [0, 0, 0, 0];
       if (camera.projection === 'orthographic') {
         const distance = Math.abs(camera.eye[2] - camera.center[2]);
         const halfH = distance;
@@ -468,14 +512,18 @@ export class MeshPipeline3D extends System {
       viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
     }
 
-    const buffer = new Float32Array(32);
+    const buffer = new Float32Array(52);
     buffer.set(projMatrix.toFloat32Array(), 0);
     buffer.set(viewMatrix.toFloat32Array(), 16);
+    buffer.set(this.canvasViewProjection.toFloat32Array(), 32);
+    buffer.set(this.sceneParams, 48);
 
     this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     this.sceneLegacyUniforms = {
       u_ProjectionMatrix3D: Mat4.toGLMat4(projMatrix),
       u_ViewMatrix3D: Mat4.toGLMat4(viewMatrix),
+      u_CanvasViewProjection3D: Mat4.toGLMat4(this.canvasViewProjection),
+      u_SceneParams: this.sceneParams,
     };
   }
 
@@ -511,7 +559,7 @@ export class MeshPipeline3D extends System {
       return legacy;
     }
 
-    const buffer = new Float32Array(48);
+    const buffer = new Float32Array(52);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
     buffer.set(material.baseColor, 32);
@@ -520,9 +568,21 @@ export class MeshPipeline3D extends System {
       36,
     );
     buffer.set([-0.5, -0.7, -0.5, 0], 40);
+    buffer.set(
+      [transform.translation[0], transform.translation[1], 0, 0],
+      44,
+    );
 
     this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-    return legacy;
+    return {
+      ...legacy,
+      u_CanvasAnchor: [
+        transform.translation[0],
+        transform.translation[1],
+        0,
+        0,
+      ],
+    };
   }
 
   execute() {

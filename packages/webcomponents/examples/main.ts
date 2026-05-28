@@ -240,11 +240,12 @@ canvas.addEventListener(Event.READY, async (e) => {
     const { positions, normals, indices } = createCubeGeometry(1);
     const commands = api.getCommands();
 
-    // 与 extrude3d / 2D 图层对齐：linked + 画布坐标（勿用 lookAt(0,0,0)，否则 (0,0,0) 会画在视口正中）
+    // linked + orthographic：与 2D/extrude3d 共用 VP；linked + perspective：跟 2D 平移缩放 + 透视
     commands.spawn(
       new Camera3D({
         linked: true,
-        projection: 'orthographic',
+        // projection: 'orthographic',
+        projection: 'perspective',
         clearColor: false,
       }),
     );
