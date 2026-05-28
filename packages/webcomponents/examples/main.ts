@@ -19,7 +19,6 @@ import {
   PreStartUp,
   ComputeZIndex,
   Screenshot,
-  Canvas,
   Theme,
   Grid,
   Camera,
@@ -44,13 +43,18 @@ import {
   SerializedNode,
   registerCubeLutFromText,
   GPUResource,
+  DefaultRenderer3DPlugin,
+  Camera3D,
+  Mesh3D,
+  Material3D,
+  Transform3D,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
 import { LaserPointerPlugin } from '../../plugin-laser-pointer/src';
 import { EraserPlugin } from '../../plugin-eraser/src';
 import { LassoPlugin } from '../../plugin-lasso/src';
-import { FilterPlugin } from '../../plugin-filter/src';
+import { FilterPlugin } from '@infinite-canvas-tutorial/filter';
 import { YogaPlugin } from '../../plugin-yoga/src';
 import { loadAnimation } from '../../plugin-lottie/src';
 import { InitVello, VelloPipeline, registerFont } from '../../plugin-vello/src';
@@ -146,6 +150,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       multiSelectEffects: false,
       exportSection: true,
       iconFont: true,
+      typographySection: true,
     },
     penbarVisible: true,
     taskbarVisible: true,
@@ -172,80 +177,111 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  const image1 = {
-    id: 'image-1',
+  const rect1 = {
+    id: 'rect1',
     type: 'rect',
-    fills: [{
-      type: 'image',
-      value: '/mdn_logo_only_color.png',
-      opacity: 0.5,
-    },],
-    x: 50,
-    y: 50,
-    width: 300,
+    fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+    x: 100,
+    y: 100,
+    width: 200,
+    height: 200,
+    lockAspectRatio: true,
+    /** Spline-style: 3D box matches this rect's x/y/width/height (canvas coords). */
+    extrude3d: 20,
+  };
+
+  const rect2 = {
+    id: 'rect2',
+    type: 'rect',
+    fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
+    x: 300,
+    y: 100,
+    width: 200,
     height: 200,
     lockAspectRatio: true,
   };
 
-  // const image2 = {
-  //   id: 'image-2',
-  //   type: 'rect',
-  //   fills: [{
-  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
-  //     objectFit: 'contain',
-  //     // objectPosition: 'top left',
-  //   }],
-  //   x: 400,
-  //   y: 50,
-  //   width: 200,
-  //   height: 300,
-  //   lockAspectRatio: true,
-  // };
+  function createCubeGeometry(size = 1) {
+    const h = size / 2;
+    const faces: {
+      normal: [number, number, number];
+      verts: [number, number, number][];
+    }[] = [
+        { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
+        { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
+        { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
+        { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
+        { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
+        { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
+      ];
 
-  // const image3 = {
-  //   id: 'image-3',
-  //   type: 'rect',
-  //   fills: [{
-  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
-  //     objectFit: 'cover',
-  //     // objectPosition: 'top left',
-  //   }],
-  //   x: 50,
-  //   y: 550,
-  //   width: 300,
-  //   height: 200,
-  //   lockAspectRatio: true,
-  // };
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const indices: number[] = [];
+    let base = 0;
 
-  // const image4 = {
-  //   id: 'image-4',
-  //   type: 'rect',
-  //   fills: [{
-  //     type: 'image', value: '/mdn_logo_only_color.png', opacity: 1,
-  //     objectFit: 'cover',
-  //     // objectPosition: 'top left',
-  //   }],
-  //   x: 400,
-  //   y: 550,
-  //   width: 200,
-  //   height: 300,
-  //   lockAspectRatio: true,
-  // };
+    for (const { normal, verts } of faces) {
+      for (const v of verts) {
+        positions.push(...v);
+        normals.push(...normal);
+      }
+      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      base += 4;
+    }
 
-  api.updateNodes([image1]);
-  api.selectNodes([image1]);
+    return {
+      positions: new Float32Array(positions),
+      normals: new Float32Array(normals),
+      indices: new Uint32Array(indices),
+    };
+  }
 
-  // fetch('/applecycling.json').then(res => res.json()).then(data => {
-  //   const animation = loadAnimation(data, {
-  //     loop: true,
-  //     autoplay: true,
-  //   });
+  api.runAtNextTick(() => {
+    const { positions, normals, indices } = createCubeGeometry(1);
+    const commands = api.getCommands();
 
-  //   api.runAtNextTick(() => {
-  //     animation.render(api);
-  //     animation.play();
-  //   });
-  // });
+    // 与 extrude3d / 2D 图层对齐：linked + 画布坐标（勿用 lookAt(0,0,0)，否则 (0,0,0) 会画在视口正中）
+    commands.spawn(
+      new Camera3D({
+        linked: true,
+        projection: 'orthographic',
+        clearColor: false,
+      }),
+    );
+
+    const cubeEntity = commands
+      .spawn(
+        new Mesh3D({ positions, normals, indices }),
+        new Material3D({
+          baseColor: [1, 1, 1, 1],
+          ambient: 0.25,
+          diffuse: 0.75,
+          specular: 0.4,
+          shininess: 48,
+        }),
+        new Transform3D({
+          translation: [100, 100, 40],
+          rotation: [0.3, 0.6, 0],
+          scale: [100, 100, 100],
+        }),
+      )
+      .id()
+      .hold();
+
+    commands.execute();
+
+    // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
+    // api.updateNodes([rect1, rect2]);
+
+    const t0 = performance.now();
+    const spinCube = (now: number) => {
+      const t = (now - t0) / 1000;
+      const transform = cubeEntity.write(Transform3D);
+      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+      requestAnimationFrame(spinCube);
+    };
+    requestAnimationFrame(spinCube);
+  });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({
@@ -263,6 +299,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 try {
   const app = new App().addPlugins(
     ...DefaultPlugins,
+    DefaultRenderer3DPlugin,
     FilterPlugin,
     UIPlugin,
     EraserPlugin,

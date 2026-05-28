@@ -2616,10 +2616,52 @@ export class API {
   }
 
   /**
-   * Delete Canvas component
+   * Tear down this canvas instance (scene nodes, camera, and canvas entity).
    */
   destroy() {
-    this.#canvas.delete();
+    const prev = this.getAppState();
+    this.setAppState({
+      ...prev,
+      layersSelected: [],
+      layersHighlighted: [],
+      layersCropping: [],
+    });
+
+    for (const node of [...this.getNodes()]) {
+      const entity = this.getEntity(node);
+      if (entity) {
+        try {
+          if (entity.has(Selected)) {
+            entity.remove(Selected);
+          }
+          safeRemoveComponent(entity, Highlighted);
+        } catch {
+          /* entity already deleted */
+        }
+        try {
+          entity.delete();
+        } catch {
+          /* already deleted */
+        }
+      }
+      this.#idEntityMap.delete(node.id);
+    }
+    this.setNodes([]);
+
+    if (this.#camera) {
+      try {
+        this.#camera.delete();
+      } catch {
+        /* already deleted */
+      }
+    }
+    if (this.#canvas) {
+      try {
+        this.#canvas.delete();
+      } catch {
+        /* already deleted */
+      }
+    }
   }
 
   loadBitmapFont(bitmapFont: BitmapFont) {

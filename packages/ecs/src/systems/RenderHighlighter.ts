@@ -36,7 +36,7 @@ import {
   StrokeLayers,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot, updateGlobalTransform } from './Transform';
+import { getSceneRoot, isEntityAlive, updateGlobalTransform } from './Transform';
 import {
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
@@ -130,33 +130,65 @@ export class RenderHighlighter extends System {
     });
 
     this.highlighted.removed.forEach((highlighted) => {
+      if (!isEntityAlive(highlighted)) {
+        return;
+      }
       const camera = getSceneRoot(highlighted);
-      this.remove(highlighted, camera);
+      if (isEntityAlive(camera)) {
+        this.remove(highlighted, camera);
+      }
     });
 
     this.highlighted.added.forEach((highlighted) => {
+      if (!isEntityAlive(highlighted)) {
+        return;
+      }
       const camera = getSceneRoot(highlighted);
-      this.createOrUpdate(highlighted, camera);
+      if (isEntityAlive(camera) && camera.has(Camera)) {
+        this.createOrUpdate(highlighted, camera);
+      }
     });
 
     this.bounds.changed.forEach((entity) => {
+      if (!isEntityAlive(entity)) {
+        return;
+      }
       // 与 RenderTransformer 一致：hover 在 Group 上时 Highlighted 挂在 Group，子节点 bounds 变化需沿父链找到高亮目标
       let e: Entity | undefined = entity;
-      while (e) {
+      while (e && isEntityAlive(e)) {
         if (e.has(Highlighted)) {
           const camera = getSceneRoot(e);
-          this.createOrUpdate(e, camera);
+          if (isEntityAlive(camera) && camera.has(Camera)) {
+            this.createOrUpdate(e, camera);
+          }
           break;
         }
         if (!e.has(Children)) {
           break;
         }
-        e = e.read(Children).parent;
+        const parent = e.read(Children).parent;
+        if (!parent || !isEntityAlive(parent)) {
+          break;
+        }
+        e = parent;
       }
     });
   }
 
   createOrUpdate(entity: Entity, camera: Entity) {
+    if (
+      !isEntityAlive(entity) ||
+      !isEntityAlive(camera) ||
+      !camera.has(Camera) ||
+      !entity.has(ComputedBounds)
+    ) {
+      return;
+    }
+    const { canvas } = camera.read(Camera);
+    if (!canvas?.has(Canvas)) {
+      return;
+    }
+
     const { selectionOBB, transformOBB } = entity.read(ComputedBounds);
     /**
      * Polyline / Path / Line / Brush 的高亮几何是拷贝实体局部点；须与实体世界原点变换一致（transformOBB）。
@@ -284,8 +316,14 @@ export class RenderHighlighter extends System {
     updateComputedPoints(highlighter);
   }
 
-  remove(entity: Entity, camera: Entity) {
+  remove(entity: Entity, _camera: Entity) {
+    if (!isEntityAlive(entity)) {
+      return;
+    }
     const highlighter = this.#highlighters.get(entity);
+    if (!highlighter || !isEntityAlive(highlighter)) {
+      return;
+    }
     highlighter.write(Visibility).value = 'hidden';
   }
 }

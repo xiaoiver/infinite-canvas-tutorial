@@ -72,7 +72,6 @@ export class RenderBindings extends System {
           .using(
             ComputedBounds,
             Camera,
-            Canvas,
             FractionalIndex,
             Parent,
             Children,
@@ -85,6 +84,7 @@ export class RenderBindings extends System {
             Rough,
           )
           .read.and.using(
+            Canvas,
             GlobalTransform,
             Transform,
             Transformable,
@@ -114,9 +114,15 @@ export class RenderBindings extends System {
     });
 
     bindingsToUpdate.forEach((edgeEntity) => {
-      const camera = getSceneRoot(edgeEntity);
-      const { canvas } = camera.read(Camera);
-      const { api } = canvas.read(Canvas);
+      const sceneRoot = getSceneRoot(edgeEntity);
+      if (!sceneRoot.has(Camera)) {
+        return;
+      }
+      const { canvas: canvasEnt } = sceneRoot.read(Camera);
+      if (!canvasEnt?.has(Canvas)) {
+        return;
+      }
+      const { api } = canvasEnt.read(Canvas);
 
       const edge = api.getNodeByEntity(edgeEntity) as EdgeState | undefined;
       if (!edge) {

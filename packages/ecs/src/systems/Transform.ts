@@ -6,6 +6,7 @@ import {
   GlobalTransform,
   Parent,
   Transform,
+  Canvas,
 } from '../components';
 
 function syncTransform(
@@ -79,7 +80,7 @@ export class PropagateTransforms extends System {
 
   constructor() {
     super();
-    this.query((q) => q.using(Camera, Parent, Children).read);
+    this.query((q) => q.using(Canvas, Camera, Parent, Children).read);
   }
 
   execute(): void {
@@ -89,13 +90,26 @@ export class PropagateTransforms extends System {
   }
 }
 
+/** Returns false if the entity was deleted (Becsy throws on component access). */
+export function isEntityAlive(entity: Entity | undefined): entity is Entity {
+  if (!entity) {
+    return false;
+  }
+  try {
+    void entity.has(Camera);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function getSceneRoot(entity: Entity): Entity {
-  if (!entity.has(Children)) {
+  if (!isEntityAlive(entity) || !entity.has(Children)) {
     return entity;
   }
 
   const parent = entity.read(Children).parent;
-  if (parent) {
+  if (parent && isEntityAlive(parent)) {
     return getSceneRoot(parent);
   }
   return entity;
@@ -121,13 +135,22 @@ export function getDescendants(
 }
 
 export function updateGlobalTransform(entity: Entity): void {
-  const parentWorldTransform = entity.has(Children)
-    ? entity.read(Children).parent.has(Camera)
-      ? Mat3.IDENTITY
-      : entity.read(Children).parent.has(GlobalTransform)
-      ? entity.read(Children).parent.read(GlobalTransform).matrix
-      : Mat3.IDENTITY
-    : Mat3.IDENTITY;
+  if (!isEntityAlive(entity) || !entity.has(Transform)) {
+    return;
+  }
+
+  let parentWorldTransform = Mat3.IDENTITY;
+  if (entity.has(Children)) {
+    const parent = entity.read(Children).parent;
+    if (parent && isEntityAlive(parent)) {
+      parentWorldTransform = parent.has(Camera)
+        ? Mat3.IDENTITY
+        : parent.has(GlobalTransform)
+          ? parent.read(GlobalTransform).matrix
+          : Mat3.IDENTITY;
+    }
+  }
+
   const localTransform = entity.read(Transform);
   const worldTransform = parentWorldTransform.mul_mat3(
     Mat3.fromTransform(localTransform),
@@ -140,7 +163,9 @@ export function updateGlobalTransform(entity: Entity): void {
 
   if (entity.has(Parent)) {
     entity.read(Parent).children.forEach((child) => {
-      updateGlobalTransform(child);
+      if (isEntityAlive(child)) {
+        updateGlobalTransform(child);
+      }
     });
   }
 }

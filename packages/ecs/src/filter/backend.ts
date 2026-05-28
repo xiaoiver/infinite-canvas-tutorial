@@ -47,7 +47,7 @@ export function getFilterBackend(): FilterBackend | null {
 export function requireFilterBackend(): FilterBackend {
   if (!registered) {
     throw new Error(
-      'Filter plugin not registered. Import and add FilterPlugin from @infinite-canvas-tutorial/plugin-filter.',
+      'Filter plugin not registered. Import and add FilterPlugin from @infinite-canvas-tutorial/filter.',
     );
   }
   return registered;

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import {
-  App,
-  DefaultPlugins,
   FillTexture,
   FillTextureLive,
   GPUResource,
@@ -26,6 +24,7 @@ import {
 } from 'ant-design-vue';
 import { CloudUploadOutlined, FileOutlined } from '@ant-design/icons-vue';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { ensureExampleWorld } from '../../lib/ensure-example-world';
 import {
   DEFAULT_MESH_SAMPLE_COUNT,
   EcsMeshParticle,
@@ -152,10 +151,9 @@ onMounted(async () => {
     return;
   }
 
-  if (!(window as unknown as { worldInited?: boolean }).worldInited) {
-    (window as unknown as { worldInited?: boolean }).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin).run();
+  if (!(window as any).worldInited) {
+    (window as any).worldInited = true;
+    await ensureExampleWorld([UIPlugin]);
   }
 
   onReady = async (e: CustomEvent<ExtendedAPI>) => {

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import {
-  App,
-  DefaultPlugins,
   FillTexture,
   FillTextureLive,
   GPUResource,
@@ -15,6 +13,7 @@ import {
 } from '@infinite-canvas-tutorial/webcomponents';
 import { App as AntApp, Flex, message } from 'ant-design-vue';
 import { onMounted, onUnmounted, ref } from 'vue';
+import { ensureExampleWorld } from '../../lib/ensure-example-world';
 import {
   EcsSineParticle,
   EcsSpectrumParticleAudio,
@@ -50,10 +49,9 @@ onMounted(async () => {
     return;
   }
 
-  if (!(window as unknown as { worldInited?: boolean }).worldInited) {
-    (window as unknown as { worldInited?: boolean }).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin).run();
+  if (!(window as any).worldInited) {
+    (window as any).worldInited = true;
+    await ensureExampleWorld([UIPlugin]);
   }
 
   onReady = async (e: CustomEvent<ExtendedAPI>) => {

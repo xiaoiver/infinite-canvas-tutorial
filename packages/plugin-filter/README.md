@@ -1,4 +1,4 @@
-# @infinite-canvas-tutorial/plugin-filter
+# @infinite-canvas-tutorial/filter
 
 CSS `filter` / GPU post-processing — **optional plugin** for infinite canvas.
 
@@ -8,7 +8,7 @@ CSS `filter` / GPU post-processing — **optional plugin** for infinite canvas.
 
 ```ts
 import { App, DefaultPlugins } from '@infinite-canvas-tutorial/ecs';
-import { FilterPlugin } from '@infinite-canvas-tutorial/plugin-filter';
+import { FilterPlugin } from '@infinite-canvas-tutorial/filter';
 
 new App().addPlugins(...DefaultPlugins, FilterPlugin).run();
 ```
@@ -27,7 +27,7 @@ import {
     parseEffect,
     formatFilter,
     postProcessingShaders,
-} from '@infinite-canvas-tutorial/plugin-filter';
+} from '@infinite-canvas-tutorial/filter';
 ```
 
 通过 ecs 的 re-export 也可使用（需已注册 backend）：
