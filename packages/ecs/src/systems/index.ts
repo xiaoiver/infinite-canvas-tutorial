@@ -36,3 +36,5 @@ export * from './DrawBrush';
 export * from './DrawPoint';
 export * from './RenderHTML';
 export * from './RenderBindings';
+export * from './Pick3D';
+export * from './RenderGizmo3D';

@@ -47,3 +47,5 @@ export * from './hitStrokeWidth';
 export * from './polygon';
 export * from './vector-network-stroke';
 export * from './vector-network-fill';
+export * from './ray-casting';
+export * from './gizmo-geometry';

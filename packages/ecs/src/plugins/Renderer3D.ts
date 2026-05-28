@@ -32,6 +32,8 @@ import {
   EnsureExtrudeMeshes,
   MeshPipeline3D,
   SyncExtrude3D,
+  Pick3D,
+  RenderGizmo3D,
 } from '../systems';
 import { PostUpdate, PreUpdate } from '../systems/stages';
 
@@ -61,6 +63,13 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
 
     system(PostUpdate)(CameraSync);
     system((s) => s.after(ComputeCamera, SyncExtrude3D))(CameraSync);
+
+    // 3D picking: runs after camera sync so matrices are up-to-date.
+    system(PostUpdate)(Pick3D);
+    system((s) => s.after(CameraSync))(Pick3D);
+
+    // 3D gizmo rendering: runs alongside the 3D render system.
+    system(PreUpdate)(RenderGizmo3D);
   };
 }
 
