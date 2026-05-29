@@ -34,6 +34,7 @@ import {
   liquidMetalUniformValues,
   heatmapUniformValues,
   gemSmokeUniformValues,
+  colorPencilUniformValues,
 } from './filter';
 import type { RenderCache } from '@infinite-canvas-tutorial/ecs';
 
@@ -193,6 +194,12 @@ export class PostProcessingRenderer {
       uniformLegacyObject.u_Dot = [a, sc, g, 0];
       uniformLegacyObject.u_InputSize = [tw, th, 0, 0];
       uniformBuffer.push(a, sc, g, 0, tw, th, 0, 0);
+    } else if (effect.type === 'colorPencil') {
+      const { width, height } = this.swapChain.getCanvas();
+      const vals = colorPencilUniformValues(effect, width, height);
+      uniformLegacyObject.u_ColorPencil = [vals[0], vals[1], vals[2], vals[3]];
+      uniformLegacyObject.u_InputSize = [vals[4], vals[5], vals[6], vals[7]];
+      uniformBuffer.push(...vals);
     } else if (effect.type === 'colorHalftone') {
       const { width, height } = this.swapChain.getCanvas();
       const tw = Math.max(1, width);

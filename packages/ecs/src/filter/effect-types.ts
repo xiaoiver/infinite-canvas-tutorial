@@ -3,7 +3,7 @@ export interface FilterObject {
     params: string;
 }
 
-export type Effect = BrightnessEffect | ContrastEffect | HueSaturationEffect | PixelateEffect | DotEffect | ColorHalftoneEffect | HalftoneDotsEffect | FlutedGlassEffect | TsunamiEffect | RainEffect | BurnEffect | CrtEffect | VignetteEffect | AsciiEffect | GlitchEffect | LiquidGlassEffect | LiquidMetalEffect | HeatmapEffect | GemSmokeEffect | LutEffect | AdjustmentEffect | DropShadowEffect | BlurEffect | NoiseEffect | FXAA;
+export type Effect = BrightnessEffect | ContrastEffect | HueSaturationEffect | PixelateEffect | DotEffect | ColorHalftoneEffect | HalftoneDotsEffect | FlutedGlassEffect | TsunamiEffect | RainEffect | BurnEffect | CrtEffect | VignetteEffect | AsciiEffect | GlitchEffect | LiquidGlassEffect | LiquidMetalEffect | HeatmapEffect | GemSmokeEffect | LutEffect | AdjustmentEffect | DropShadowEffect | BlurEffect | NoiseEffect | ColorPencilEffect | FXAA;
 export interface AdjustmentEffect {
     type: 'adjustment';
     gamma: number;
@@ -347,11 +347,19 @@ export interface GemSmokeEffect {
     colors: string[];
 }
 
+export interface ColorPencilEffect {
+    type: 'colorPencil';
+    /** Edge detection strength 0–1. */
+    strength: number;
+    /** How much original color to blend in 0–1 (0 = grayscale sketch, 1 = full color). */
+    color: number;
+}
+
 export interface FXAA {
     type: 'fxaa';
 }
 
-export type DefaultEffectKind = 'brightness' | 'contrast' | 'saturate' | 'noise' | 'fxaa' | 'blur' | 'pixelate' | 'dot' | 'colorHalftone' | 'halftoneDots' | 'flutedGlass' | 'crt' | 'vignette' | 'ascii' | 'glitch' | 'liquidGlass' | 'liquidMetal' | 'heatmap' | 'gemSmoke' | 'lut' | 'tsunami' | 'rain' | 'burn';
+export type DefaultEffectKind = 'brightness' | 'contrast' | 'saturate' | 'noise' | 'fxaa' | 'blur' | 'pixelate' | 'dot' | 'colorHalftone' | 'halftoneDots' | 'flutedGlass' | 'crt' | 'vignette' | 'ascii' | 'glitch' | 'liquidGlass' | 'liquidMetal' | 'heatmap' | 'gemSmoke' | 'lut' | 'tsunami' | 'rain' | 'burn' | 'colorPencil';
 export interface RainFxRenderOptions {
     backgroundBlurSteps?: number;
     backgroundWrapMode?: RaindropFxBackgroundWrapMode;

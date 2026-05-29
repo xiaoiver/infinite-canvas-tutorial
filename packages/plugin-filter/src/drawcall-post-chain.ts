@@ -50,6 +50,7 @@ import {
   heatmapUniformValues,
   gemSmokeUniformValues,
   liquidMetalUniformValues,
+  colorPencilUniformValues,
   type Effect,
 } from './filter';
 import {
@@ -108,6 +109,7 @@ import { frag as liquidMetalFrag } from './shaders/post-processing/liquidMetal';
 import { frag as heatmapFrag } from './shaders/post-processing/heatmap';
 import { frag as gemSmokeFrag } from './shaders/post-processing/gemSmoke';
 import { frag as lutFrag } from './shaders/post-processing/lut';
+import { frag as colorPencilFrag } from './shaders/post-processing/colorPencil';
 import { frag as kawaseBlurFrag } from './shaders/post-processing/kawaseBlur';
 
 type PostChainState = {
@@ -274,6 +276,9 @@ const FRAG_MAP: Record<
   lut: {
     shader: lutFrag,
   },
+  colorPencil: {
+    shader: colorPencilFrag,
+  },
   blur: {
     shader: kawaseBlurFrag,
   },
@@ -288,6 +293,7 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 4;
     case 'dot':
     case 'colorHalftone':
+    case 'colorPencil':
       return 8;
     case 'halftoneDots':
       return 20;
@@ -447,6 +453,11 @@ function setPostEffectUniformData(
       data[i++] = th;
       data[i++] = 0;
       data[i++] = 0;
+      break;
+    }
+    case 'colorPencil': {
+      const vals = colorPencilUniformValues(effect, textureWidth ?? 1, textureHeight ?? 1);
+      for (const v of vals) data[i++] = v;
       break;
     }
     case 'colorHalftone': {

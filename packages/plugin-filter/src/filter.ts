@@ -42,6 +42,7 @@ import type {
   HeatmapEffect,
   GemSmokeEffect,
   LutEffect,
+  ColorPencilEffect,
   DefaultEffectKind,
 } from '@infinite-canvas-tutorial/ecs';
 
@@ -85,6 +86,7 @@ export type {
   DropShadowEffect,
   BlurEffect,
   NoiseEffect,
+  ColorPencilEffect,
   FXAA,
   RainFxParams,
   RainFxSimParams,
@@ -868,6 +870,30 @@ export function vignetteUniformValues(effect: VignetteEffect): number[] {
   return [size, amount, 0, 0];
 }
 
+export const COLOR_PENCIL_DEFAULTS = {
+  strength: 0.8,
+  color: 0.5,
+} as const;
+
+/**
+ * Color pencil sketch effect: Sobel edge detection + color tint.
+ * 2 × vec4 std140: `u_ColorPencil`, `u_InputSize`.
+ */
+export function colorPencilUniformValues(
+  effect: ColorPencilEffect,
+  textureWidth: number,
+  textureHeight: number,
+): number[] {
+  const D = COLOR_PENCIL_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const strength = Math.max(0, Math.min(1, z(effect.strength, D.strength)));
+  const color = Math.max(0, Math.min(1, z(effect.color, D.color)));
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  return [strength, color, 0, 0, tw, th, 0, 0];
+}
+
 /** Pixi {@link https://github.com/pixijs/filters/blob/main/src/ascii/ascii.frag ASCIIFilter} defaults. */
 export const ASCII_DEFAULTS = {
   size: 8,
@@ -1287,6 +1313,7 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'heatmap',
   'gemSmoke',
   'lut',
+  'colorPencil',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -2215,6 +2242,18 @@ export function parseEffect(filter: string): Effect[] {
         angle: Number.isFinite(angle) ? angle : 5,
         grayscale: Number.isFinite(g) ? (g > 0.5 ? 1 : 0) : 1,
       });
+    } else if (filter.name === 'color-pencil') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const strength = parts[0] !== undefined ? parseFloat(parts[0]) : COLOR_PENCIL_DEFAULTS.strength;
+      const color = parts[1] !== undefined ? parseFloat(parts[1]) : COLOR_PENCIL_DEFAULTS.color;
+      effects.push({
+        type: 'colorPencil',
+        strength: Number.isFinite(strength) ? Math.max(0, Math.min(1, strength)) : COLOR_PENCIL_DEFAULTS.strength,
+        color: Number.isFinite(color) ? Math.max(0, Math.min(1, color)) : COLOR_PENCIL_DEFAULTS.color,
+      });
     } else if (filter.name === 'color-halftone') {
       const raw = filter.params.trim();
       const parts = raw.length
@@ -2853,6 +2892,11 @@ export function formatFilter(effects: Effect[]): string {
           `dot(${effect.scale}, ${effect.angle}, ${effect.grayscale})`,
         );
         break;
+      case 'colorPencil':
+        parts.push(
+          `color-pencil(${effect.strength}, ${effect.color})`,
+        );
+        break;
       case 'colorHalftone':
         if (
           effect.centerX !== undefined &&
@@ -3092,6 +3136,8 @@ export function createDefaultEffect(kind: DefaultEffectKind): Effect {
       return { type: 'pixelate', size: 8 };
     case 'dot':
       return { type: 'dot', scale: 1, angle: 5, grayscale: 1 };
+    case 'colorPencil':
+      return { type: 'colorPencil', ...COLOR_PENCIL_DEFAULTS };
     case 'colorHalftone':
       return { type: 'colorHalftone', angle: 0, size: 5 };
     case 'halftoneDots':

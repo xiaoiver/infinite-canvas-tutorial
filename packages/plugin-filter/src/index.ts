@@ -28,6 +28,7 @@ export { frag as postProcessingLiquidMetalFrag } from './shaders/post-processing
 export { frag as postProcessingHeatmapFrag } from './shaders/post-processing/heatmap';
 export { frag as postProcessingGemSmokeFrag } from './shaders/post-processing/gemSmoke';
 export { frag as postProcessingLutFrag } from './shaders/post-processing/lut';
+export { frag as postProcessingColorPencilFrag } from './shaders/post-processing/colorPencil';
 export { frag as postProcessingKawaseBlurFrag } from './shaders/post-processing/kawaseBlur';
 export { DrawcallPostChain } from './drawcall-post-chain';
 export { PostProcessingRenderer } from './PostProcessingRenderer';
