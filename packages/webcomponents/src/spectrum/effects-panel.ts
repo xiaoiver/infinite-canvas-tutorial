@@ -782,7 +782,7 @@ export class EffectsPanel extends LitElement {
         ></sp-slider>
         <sp-slider
           size="s"
-          label=${msg(str`Color`)}
+          label=${msg(str`Color amount`)}
           min="0"
           max="1"
           step="0.01"
