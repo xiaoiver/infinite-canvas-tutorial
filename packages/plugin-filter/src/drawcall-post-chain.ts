@@ -50,6 +50,10 @@ import {
   heatmapUniformValues,
   gemSmokeUniformValues,
   liquidMetalUniformValues,
+  colorPencilUniformValues,
+  colorPencilDrawingParams,
+  COLOR_PENCIL_CPU_MAX_EDGE,
+  formatFilter,
   type Effect,
 } from './filter';
 import {
@@ -108,7 +112,14 @@ import { frag as liquidMetalFrag } from './shaders/post-processing/liquidMetal';
 import { frag as heatmapFrag } from './shaders/post-processing/heatmap';
 import { frag as gemSmokeFrag } from './shaders/post-processing/gemSmoke';
 import { frag as lutFrag } from './shaders/post-processing/lut';
+import { frag as colorPencilFrag } from './shaders/post-processing/colorPencil';
 import { frag as kawaseBlurFrag } from './shaders/post-processing/kawaseBlur';
+import {
+  imageDataToColorPencilProcessed,
+  getColorPencilTextureIfReady,
+  loadColorPencilTextureCached,
+  COLOR_PENCIL_TEXTURE_DEFAULT_URL,
+} from './utils/color-pencil';
 
 type PostChainState = {
   filterProgram: Program;
@@ -138,7 +149,15 @@ type PostChainState = {
   heatmapHeight: number;
   heatmapEngineTimeCacheAllowed: boolean;
   heatmapEngineTimeCacheValid: boolean;
+  colorPencilProcessedTexture: Texture | null;
+  colorPencilWidth: number;
+  colorPencilHeight: number;
+  colorPencilEngineTimeCacheAllowed: boolean;
+  colorPencilEngineTimeCacheValid: boolean;
+  colorPencilGpuPlaceholder?: Texture;
   filterChainReady: boolean;
+  /** Serialized raster effects for {@link DrawcallPostChain.syncEffects}. */
+  effectsSignature: string;
 };
 
 function createInitialState(): PostChainState {
@@ -168,7 +187,13 @@ function createInitialState(): PostChainState {
     heatmapHeight: 0,
     heatmapEngineTimeCacheAllowed: false,
     heatmapEngineTimeCacheValid: false,
+    colorPencilProcessedTexture: null,
+    colorPencilWidth: 0,
+    colorPencilHeight: 0,
+    colorPencilEngineTimeCacheAllowed: false,
+    colorPencilEngineTimeCacheValid: false,
     filterChainReady: false,
+    effectsSignature: '',
   };
 }
 
@@ -208,6 +233,8 @@ type PostEffectChainPass = {
   rainFxSprite?: ImageBitmap;
   rainFxGpu?: RainFxGpuRenderer | null;
   rainLastEngineT?: number | null;
+  colorPencilPreprocessAttempt?: boolean;
+  colorPencilGpuTexture?: Texture;
 };
 
 const FRAG_MAP: Record<
@@ -274,6 +301,9 @@ const FRAG_MAP: Record<
   lut: {
     shader: lutFrag,
   },
+  colorPencil: {
+    shader: colorPencilFrag,
+  },
   blur: {
     shader: kawaseBlurFrag,
   },
@@ -288,7 +318,8 @@ function postEffectUniformFloatCount(effect: Effect): number {
       return 4;
     case 'dot':
     case 'colorHalftone':
-      return 8;
+    case 'colorPencil':
+      return 12;
     case 'halftoneDots':
       return 20;
     case 'flutedGlass':
@@ -370,6 +401,8 @@ const LIQUID_METAL_U_LM5_Y_OFFSET_FLOATS = 21;
 const HEATMAP_U_HM2_Z_OFFSET_FLOATS = 10;
 /** `u_GS5.z` in std140 (48 floats for gem-smoke: sixth vec4, .z). */
 const GEM_SMOKE_U_GS5_Z_OFFSET_FLOATS = 22;
+/** `u_CP1.y` in std140 block (12 floats for color pencil: second vec4, .y). */
+const COLOR_PENCIL_U_CP1_Y_OFFSET_FLOATS = 5;
 
 function setPostEffectUniformData(
   effect: Effect,
@@ -447,6 +480,16 @@ function setPostEffectUniformData(
       data[i++] = th;
       data[i++] = 0;
       data[i++] = 0;
+      break;
+    }
+    case 'colorPencil': {
+      const vals = colorPencilUniformValues(
+        effect,
+        textureWidth ?? 1,
+        textureHeight ?? 1,
+        0,
+      );
+      for (const v of vals) data[i++] = v;
       break;
     }
     case 'colorHalftone': {
@@ -641,6 +684,70 @@ function setPostEffectUniformData(
   buffer.setSubData(0, new Uint8Array(data.buffer));
 }
 
+type PostEffectBuildItem = {
+  effect: Effect;
+  frag: string;
+  kawaseKernel?: number;
+};
+
+function buildPostEffectBuildItems(usableEffects: Effect[]): PostEffectBuildItem[] {
+  const buildItems: PostEffectBuildItem[] = [];
+  for (let ei = 0; ei < usableEffects.length; ei++) {
+    const effect = usableEffects[ei]!;
+    if (effect.type === 'blur') {
+      const kernels = kawaseKernelsForBlurEffect(effect);
+      if (kernels.every((k) => k <= 0)) {
+        continue;
+      }
+      for (const kernel of kernels) {
+        buildItems.push({
+          effect,
+          frag: kawaseBlurFrag,
+          kawaseKernel: kernel,
+        });
+      }
+      continue;
+    }
+    if (effect.type === 'rain') {
+      const frag = isRainCodropsRainEffect(effect)
+        ? rainCodropsWaterFrag
+        : isRainFxEffect(effect)
+          ? copyFrag
+          : raindropComposeFrag;
+      buildItems.push({ effect, frag });
+      continue;
+    }
+    const entry = FRAG_MAP[effect.type];
+    if (!entry) {
+      console.warn(
+        `Unsupported post-processing effect: ${(effect as Effect).type}`,
+      );
+      continue;
+    }
+    buildItems.push({ effect, frag: entry.shader });
+  }
+  return buildItems;
+}
+
+function filterUsableRasterEffects(
+  effects: Effect[],
+  device: Device,
+): Effect[] {
+  const usableEffects: Effect[] = [];
+  for (const e of effects) {
+    if (e.type !== 'lut') {
+      usableEffects.push(e);
+      continue;
+    }
+    if (getCubeLutGpu(device, e.lutKey)) {
+      usableEffects.push(e);
+    } else {
+      warnMissingCubeLutOnce(e.lutKey);
+    }
+  }
+  return usableEffects;
+}
+
 export class DrawcallPostChain {
   constructor(private readonly host: DrawcallFilterHost) {}
 
@@ -652,6 +759,42 @@ export class DrawcallPostChain {
     const state = this.state();
     state.liquidMetalPoissonEngineTimeCacheValid = false;
     state.heatmapEngineTimeCacheValid = false;
+    state.colorPencilEngineTimeCacheValid = false;
+  }
+
+  /**
+   * Keep pass effects in sync when the filter string changes but chain size/layout is unchanged.
+   * Returns false when a full {@link createPostProcessing} rebuild is required.
+   */
+  syncEffects(effects: Effect[]): boolean {
+    const usableEffects = filterUsableRasterEffects(effects, this.host.device);
+    const signature = formatFilter(usableEffects);
+    if (this.state().effectsSignature === signature) {
+      return true;
+    }
+    const passes = this.state().postEffectPasses;
+    const buildItems = buildPostEffectBuildItems(usableEffects);
+    if (buildItems.length !== passes.length) {
+      return false;
+    }
+    for (let i = 0; i < buildItems.length; i++) {
+      const built = buildItems[i]!;
+      const pass = passes[i]!;
+      if (built.effect.type !== pass.effect.type) {
+        return false;
+      }
+    }
+    for (let i = 0; i < buildItems.length; i++) {
+      const built = buildItems[i]!;
+      const pass = passes[i]!;
+      pass.effect = built.effect;
+      if (built.kawaseKernel != null) {
+        pass.kawaseKernel = built.kawaseKernel;
+      }
+    }
+    this.state().effectsSignature = signature;
+    this.invalidateEngineTimeCaches();
+    return true;
   }
 
   isReadyForSize(width: number, height: number): boolean {
@@ -672,6 +815,7 @@ export class DrawcallPostChain {
       pass.uniformBuffer.destroy();
       pass.rainWaterTexture?.destroy();
       pass.rainShineTexture?.destroy();
+      pass.colorPencilGpuTexture?.destroy();
       pass.rainFxGpu?.destroy();
       // Drop sprites are session-cached by URL — do not ImageBitmap.close() here.
       pass.rainDropSources = undefined;
@@ -690,6 +834,7 @@ export class DrawcallPostChain {
       return;
     }
     this.state().filterChainReady = false;
+    this.state().effectsSignature = '';
     this.destroyPostEffectPasses();
     // Copy-pass program/pipeline/layout/bindings are cached — only destroy GPU buffers
     // and non-cached textures / render targets owned by this chain.
@@ -706,6 +851,9 @@ export class DrawcallPostChain {
     this.state().rainFxAuxPlaceholder = undefined;
     this.destroyLiquidMetalPoissonTexture();
     this.destroyHeatmapProcessedTexture();
+    this.destroyColorPencilProcessedTexture();
+    this.state().colorPencilGpuPlaceholder?.destroy();
+    this.state().colorPencilGpuPlaceholder = undefined;
   }
 
   private getRainCodropsShinePlaceholderTexture(): Texture {
@@ -855,6 +1003,15 @@ export class DrawcallPostChain {
         pass.rainWaterTexture
       ) {
         pass.bindings = this.createRainCodropsPassBindings(pass, sceneTex);
+      } else if (pass.effect.type === 'colorPencil') {
+        const pencilTex =
+          pass.colorPencilGpuTexture ?? this.getColorPencilGpuPlaceholderTexture();
+        pass.bindings = this.createColorPencilBindings(
+          pass.pipeline,
+          pass.uniformBuffer,
+          sceneTex,
+          pencilTex,
+        );
       } else {
         pass.bindings = this.host.renderCache.createBindings({
           pipeline: pass.pipeline,
@@ -1159,6 +1316,198 @@ export class DrawcallPostChain {
     this.state().heatmapWidth = 0;
     this.state().heatmapHeight = 0;
     this.state().heatmapEngineTimeCacheValid = false;
+  }
+
+  private patchColorPencilPreprocessed(uniformBuffer: Buffer, preprocessed: number): void {
+    uniformBuffer.setSubData(
+      COLOR_PENCIL_U_CP1_Y_OFFSET_FLOATS * Float32Array.BYTES_PER_ELEMENT,
+      new Uint8Array(new Float32Array([preprocessed]).buffer),
+    );
+  }
+
+  private ensureColorPencilProcessedTexture(width: number, height: number): Texture {
+    if (
+      this.state().colorPencilProcessedTexture &&
+      this.state().colorPencilWidth === width &&
+      this.state().colorPencilHeight === height
+    ) {
+      return this.state().colorPencilProcessedTexture;
+    }
+    this.state().colorPencilProcessedTexture?.destroy();
+    this.state().colorPencilWidth = width;
+    this.state().colorPencilHeight = height;
+    this.state().colorPencilProcessedTexture = this.host.device.createTexture({
+      format: Format.U8_RGBA_RT,
+      width,
+      height,
+      usage: TextureUsage.RENDER_TARGET,
+    });
+    return this.state().colorPencilProcessedTexture;
+  }
+
+  private destroyColorPencilProcessedTexture(): void {
+    this.state().colorPencilProcessedTexture?.destroy();
+    this.state().colorPencilProcessedTexture = null;
+    this.state().colorPencilWidth = 0;
+    this.state().colorPencilHeight = 0;
+    this.state().colorPencilEngineTimeCacheValid = false;
+  }
+
+  private getColorPencilGpuPlaceholderTexture(): Texture {
+    if (!this.state().colorPencilGpuPlaceholder) {
+      const tex = this.host.device.createTexture({
+        format: Format.U8_RGBA_NORM,
+        width: 1,
+        height: 1,
+        usage: TextureUsage.SAMPLED,
+      });
+      const c = DOMAdapter.get().createCanvas(1, 1);
+      const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+      ctx.fillStyle = '#888';
+      ctx.fillRect(0, 0, 1, 1);
+      upload2DRasterCanvasToTexture(tex, c);
+      this.state().colorPencilGpuPlaceholder = tex;
+    }
+    return this.state().colorPencilGpuPlaceholder;
+  }
+
+  private createColorPencilBindings(
+    pipeline: RenderPipeline,
+    uniformBuffer: Buffer,
+    sceneTex: Texture,
+    pencilTex: Texture,
+  ): Bindings {
+    return this.host.renderCache.createBindings({
+      pipeline,
+      samplerBindings: [
+        { texture: sceneTex, sampler: this.host.createSampler() },
+        { texture: pencilTex, sampler: this.host.createSampler() },
+      ],
+      uniformBufferBindings: [{ buffer: uniformBuffer }],
+    });
+  }
+
+  private uploadPencilTextureFromData(data: {
+    gray: Float32Array;
+    width: number;
+    height: number;
+  }): Texture {
+    const c = DOMAdapter.get().createCanvas(data.width, data.height);
+    const ctx = c.getContext('2d') as CanvasRenderingContext2D;
+    const img = ctx.createImageData(data.width, data.height);
+    for (let i = 0; i < data.gray.length; i++) {
+      const v = Math.max(0, Math.min(255, Math.round(data.gray[i]! * 255)));
+      const px = i * 4;
+      img.data[px] = v;
+      img.data[px + 1] = v;
+      img.data[px + 2] = v;
+      img.data[px + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = this.host.device.createTexture({
+      format: Format.U8_RGBA_NORM,
+      width: data.width,
+      height: data.height,
+      usage: TextureUsage.SAMPLED,
+    });
+    upload2DRasterCanvasToTexture(tex, c);
+    return tex;
+  }
+
+  private prepareColorPencilForPass(
+    pass: PostEffectChainPass,
+    srcTex: Texture,
+  ): void {
+    if (!pass.colorPencilPreprocessAttempt || pass.effect.type !== 'colorPencil') {
+      return;
+    }
+    const eff = pass.effect;
+    const w = this.state().filterWidth;
+    const h = this.state().filterHeight;
+    const pencilUrl =
+      eff.pencilTextureUrl?.trim() || COLOR_PENCIL_TEXTURE_DEFAULT_URL;
+    const pencilData =
+      getColorPencilTextureIfReady(pencilUrl) ??
+      getColorPencilTextureIfReady(COLOR_PENCIL_TEXTURE_DEFAULT_URL);
+
+    if (!pass.colorPencilGpuTexture) {
+      if (pencilData) {
+        pass.colorPencilGpuTexture = this.uploadPencilTextureFromData(pencilData);
+      }
+    }
+
+    const pencilTex =
+      pass.colorPencilGpuTexture ?? this.getColorPencilGpuPlaceholderTexture();
+    const sceneTex = pass.srcIsT0
+      ? this.state().filterTexture
+      : this.state().pingPongTexture;
+
+    const canReuseEngineTime =
+      eff.useEngineTime === true &&
+      eff.useImage !== false &&
+      this.state().colorPencilEngineTimeCacheAllowed &&
+      this.state().colorPencilEngineTimeCacheValid &&
+      this.state().colorPencilProcessedTexture != null &&
+      this.state().colorPencilWidth === w &&
+      this.state().colorPencilHeight === h;
+
+    if (canReuseEngineTime) {
+      pass.bindings = this.createColorPencilBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        this.state().colorPencilProcessedTexture!,
+        pencilTex,
+      );
+      this.patchColorPencilPreprocessed(pass.uniformBuffer, 1);
+      return;
+    }
+
+    if (eff.useImage === false) {
+      pass.bindings = this.createColorPencilBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        sceneTex,
+        pencilTex,
+      );
+      this.patchColorPencilPreprocessed(pass.uniformBuffer, 0);
+      return;
+    }
+
+    try {
+      const data = new Uint8Array(w * h * 4);
+      this.getReadback().readTextureSync(srcTex, 0, 0, w, h, data);
+      const imageData = new ImageData(
+        new Uint8ClampedArray(data.buffer, data.byteOffset, w * h * 4),
+        w,
+        h,
+      );
+      const processed = imageDataToColorPencilProcessed(
+        imageData,
+        colorPencilDrawingParams(eff),
+        pencilData ?? undefined,
+        COLOR_PENCIL_CPU_MAX_EDGE,
+      );
+      const dest = this.ensureColorPencilProcessedTexture(w, h);
+      dest.setImageData([processed], 0);
+      pass.bindings = this.createColorPencilBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        dest,
+        pencilTex,
+      );
+      this.patchColorPencilPreprocessed(pass.uniformBuffer, 1);
+      this.state().colorPencilEngineTimeCacheValid =
+        eff.useEngineTime === true && this.state().colorPencilEngineTimeCacheAllowed;
+    } catch {
+      this.state().colorPencilEngineTimeCacheValid = false;
+      pass.bindings = this.createColorPencilBindings(
+        pass.pipeline,
+        pass.uniformBuffer,
+        sceneTex,
+        pencilTex,
+      );
+      this.patchColorPencilPreprocessed(pass.uniformBuffer, 0);
+    }
   }
 
   /** Warm the liquid map so PNG/JPEG export is not a blank first frame. */
@@ -1527,59 +1876,9 @@ export class DrawcallPostChain {
     const t0 = this.state().filterTexture;
     const t1 = this.state().pingPongTexture;
 
-    const usableEffects: Effect[] = [];
-    for (const e of effects) {
-      if (e.type !== 'lut') {
-        usableEffects.push(e);
-        continue;
-      }
-      if (getCubeLutGpu(this.host.device, e.lutKey)) {
-        usableEffects.push(e);
-      } else {
-        warnMissingCubeLutOnce(e.lutKey);
-      }
-    }
+    const usableEffects = filterUsableRasterEffects(effects, this.host.device);
 
-    type PostEffectBuildItem = {
-      effect: Effect;
-      frag: string;
-      kawaseKernel?: number;
-    };
-    const buildItems: PostEffectBuildItem[] = [];
-    for (let ei = 0; ei < usableEffects.length; ei++) {
-      const effect = usableEffects[ei]!;
-      if (effect.type === 'blur') {
-        const kernels = kawaseKernelsForBlurEffect(effect);
-        if (kernels.every((k) => k <= 0)) {
-          continue;
-        }
-        for (const kernel of kernels) {
-          buildItems.push({
-            effect,
-            frag: kawaseBlurFrag,
-            kawaseKernel: kernel,
-          });
-        }
-        continue;
-      }
-      if (effect.type === 'rain') {
-        const frag = isRainCodropsRainEffect(effect)
-          ? rainCodropsWaterFrag
-          : isRainFxEffect(effect)
-            ? copyFrag
-            : raindropComposeFrag;
-        buildItems.push({ effect, frag });
-        continue;
-      }
-      const entry = FRAG_MAP[effect.type];
-      if (!entry) {
-        console.warn(
-          `Unsupported post-processing effect: ${(effect as Effect).type}`,
-        );
-        continue;
-      }
-      buildItems.push({ effect, frag: entry.shader });
-    }
+    const buildItems = buildPostEffectBuildItems(usableEffects);
 
     for (const item of buildItems) {
       const { effect, frag, kawaseKernel } = item;
@@ -1655,6 +1954,8 @@ export class DrawcallPostChain {
         effect.type === 'gemSmoke' &&
         effect.useImage &&
         effect.usePoisson !== false;
+      const colorPencilPreprocessAttempt =
+        effect.type === 'colorPencil' && effect.useImage !== false;
       const lutGpu =
         effect.type === 'lut' ? getCubeLutGpu(this.host.device, effect.lutKey) : undefined;
       const lutAtlasTexture = lutGpu?.texture;
@@ -1702,7 +2003,14 @@ export class DrawcallPostChain {
                 rainWaterTexture,
                 this.getRainCodropsShinePlaceholderTexture(),
               )
-              : this.host.renderCache.createBindings({
+              : effect.type === 'colorPencil'
+                ? this.createColorPencilBindings(
+                  pipeline,
+                  uniformBuffer,
+                  srcTexture,
+                  this.getColorPencilGpuPlaceholderTexture(),
+                )
+                : this.host.renderCache.createBindings({
               pipeline,
               samplerBindings: [
                 {
@@ -1731,6 +2039,7 @@ export class DrawcallPostChain {
         liquidMetalPoissonAttempt,
         heatmapPreprocessAttempt,
         gemSmokePoissonAttempt,
+        colorPencilPreprocessAttempt,
         lutAtlasTexture,
         rainWaterTexture,
         rainFxGpu:
@@ -1832,6 +2141,31 @@ export class DrawcallPostChain {
             }
           })();
         }
+      } else if (effect.type === 'colorPencil') {
+        const eff = effect;
+        const pencilUrl =
+          eff.pencilTextureUrl?.trim() || COLOR_PENCIL_TEXTURE_DEFAULT_URL;
+        const ready = getColorPencilTextureIfReady(pencilUrl);
+        if (ready) {
+          const p = this.state().postEffectPasses[passIndex];
+          if (p) {
+            p.colorPencilGpuTexture?.destroy();
+            p.colorPencilGpuTexture = this.uploadPencilTextureFromData(ready);
+          }
+        } else {
+          void loadColorPencilTextureCached(pencilUrl)
+            .then((tex) => {
+              const p = this.state().postEffectPasses[passIndex];
+              if (!p || p.effect.type !== 'colorPencil') {
+                return;
+              }
+              p.colorPencilGpuTexture?.destroy();
+              p.colorPencilGpuTexture = this.uploadPencilTextureFromData(tex);
+            })
+            .catch((err) => {
+              console.warn('color-pencil: failed to load pencil texture', err);
+            });
+        }
       }
     }
 
@@ -1852,6 +2186,17 @@ export class DrawcallPostChain {
     }
     this.state().heatmapEngineTimeCacheAllowed = nHeatmap === 1;
     this.state().heatmapEngineTimeCacheValid = false;
+
+    let nColorPencil = 0;
+    for (const p of this.state().postEffectPasses) {
+      if (p.colorPencilPreprocessAttempt) {
+        nColorPencil++;
+      }
+    }
+    this.state().colorPencilEngineTimeCacheAllowed = nColorPencil === 1;
+    this.state().colorPencilEngineTimeCacheValid = false;
+
+    this.state().effectsSignature = formatFilter(usableEffects);
 
     const n = this.state().postEffectPasses.length;
     const lastTexture =
@@ -1939,6 +2284,7 @@ export class DrawcallPostChain {
         this.rebuildPostEffectPassBindings();
         this.destroyLiquidMetalPoissonTexture();
         this.destroyHeatmapProcessedTexture();
+        this.destroyColorPencilProcessedTexture();
       }
       this.state().filterWidth = width;
       this.state().filterHeight = height;
@@ -2006,6 +2352,7 @@ export class DrawcallPostChain {
         pass.srcIsT0 ? t0 : t1,
         isWebGPU,
       );
+      this.prepareColorPencilForPass(pass, pass.srcIsT0 ? t0 : t1);
       this.prepareRainFxForPass(pass);
       this.prepareRainCodropsForPass(pass);
       const dstRT =

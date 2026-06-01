@@ -42,6 +42,7 @@ import type {
   HeatmapEffect,
   GemSmokeEffect,
   LutEffect,
+  ColorPencilEffect,
   DefaultEffectKind,
 } from '@infinite-canvas-tutorial/ecs';
 
@@ -85,6 +86,7 @@ export type {
   DropShadowEffect,
   BlurEffect,
   NoiseEffect,
+  ColorPencilEffect,
   FXAA,
   RainFxParams,
   RainFxSimParams,
@@ -868,6 +870,75 @@ export function vignetteUniformValues(effect: VignetteEffect): number[] {
   return [size, amount, 0, 0];
 }
 
+export const COLOR_PENCIL_DEFAULTS = {
+  ks: 8,
+  strokeWidth: 1,
+  dirNum: 8,
+  gammaS: 1,
+  gammaI: 1,
+  pencilTextureUrl: '/pencil-texture.jpg',
+  useImage: true,
+} as const;
+
+function parseColorPencilTextureUrl(part: string | undefined): string | undefined {
+  if (!part) {
+    return undefined;
+  }
+  const m = part.trim().match(/^url\s*\(\s*(['"])(.*?)\1\s*\)$/i);
+  const u = m?.[2]?.trim();
+  return u && u.length > 0 ? u : undefined;
+}
+
+function formatColorPencilTextureUrl(url: string | undefined, defaultUrl: string): string {
+  const u = url?.trim();
+  if (!u || u === defaultUrl) {
+    return '';
+  }
+  const esc = u.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `, url("${esc}")`;
+}
+
+/** Max long edge for CPU paper pipeline (PCG cost); result is upscaled. */
+export const COLOR_PENCIL_CPU_MAX_EDGE = 1024;
+
+/**
+ * Lu et al. NPAR 2012 color pencil uniforms.
+ * `u_ColorPencil`: gammaS, gammaI, ks, dirNum
+ * `u_CP1`: strokeWidth, preprocessed(1)/gpu(0), 0, 0
+ * `u_InputSize`: tex size
+ */
+export function colorPencilUniformValues(
+  effect: ColorPencilEffect,
+  textureWidth: number,
+  textureHeight: number,
+  preprocessed = 0,
+): number[] {
+  const D = COLOR_PENCIL_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  const ks = Math.max(1, Math.min(32, Math.round(z(effect.ks, D.ks))));
+  const strokeWidth = Math.max(0, Math.min(8, Math.round(z(effect.strokeWidth, D.strokeWidth))));
+  const dirNum = Math.max(2, Math.min(16, Math.round(z(effect.dirNum, D.dirNum))));
+  const gammaS = Math.max(0.1, Math.min(4, z(effect.gammaS, D.gammaS)));
+  const gammaI = Math.max(0.1, Math.min(4, z(effect.gammaI, D.gammaI)));
+  const tw = Math.max(1, textureWidth);
+  const th = Math.max(1, textureHeight);
+  return [gammaS, gammaI, ks, dirNum, strokeWidth, preprocessed, 0, 0, tw, th, 0, 0];
+}
+
+export function colorPencilDrawingParams(effect: ColorPencilEffect) {
+  const D = COLOR_PENCIL_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  return {
+    ks: Math.max(1, Math.min(32, Math.round(z(effect.ks, D.ks)))),
+    strokeWidth: Math.max(0, Math.min(8, Math.round(z(effect.strokeWidth, D.strokeWidth)))),
+    dirNum: Math.max(2, Math.min(16, Math.round(z(effect.dirNum, D.dirNum)))),
+    gammaS: Math.max(0.1, Math.min(4, z(effect.gammaS, D.gammaS))),
+    gammaI: Math.max(0.1, Math.min(4, z(effect.gammaI, D.gammaI))),
+  };
+}
+
 /** Pixi {@link https://github.com/pixijs/filters/blob/main/src/ascii/ascii.frag ASCIIFilter} defaults. */
 export const ASCII_DEFAULTS = {
   size: 8,
@@ -1287,6 +1358,7 @@ const RASTER_POST_EFFECT_TYPES = new Set<Effect['type']>([
   'heatmap',
   'gemSmoke',
   'lut',
+  'colorPencil',
 ]);
 
 /** True when `adjustment` only changes saturation (Pixi/CSS-style `saturate()`). */
@@ -2215,6 +2287,27 @@ export function parseEffect(filter: string): Effect[] {
         angle: Number.isFinite(angle) ? angle : 5,
         grayscale: Number.isFinite(g) ? (g > 0.5 ? 1 : 0) : 1,
       });
+    } else if (filter.name === 'color-pencil') {
+      const raw = filter.params.trim();
+      const parts = raw.length
+        ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+        : [];
+      const D = COLOR_PENCIL_DEFAULTS;
+      const num = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
+      effects.push({
+        type: 'colorPencil',
+        ks: Math.max(1, Math.min(32, Math.round(num(0, D.ks)))),
+        strokeWidth: Math.max(0, Math.min(8, Math.round(num(1, D.strokeWidth)))),
+        dirNum: Math.max(2, Math.min(16, Math.round(num(2, D.dirNum)))),
+        gammaS: Math.max(0.1, Math.min(4, num(3, D.gammaS))),
+        gammaI: Math.max(0.1, Math.min(4, num(4, D.gammaI))),
+        pencilTextureUrl:
+          parseColorPencilTextureUrl(parts[5]) ?? D.pencilTextureUrl,
+        useImage: true,
+      });
     } else if (filter.name === 'color-halftone') {
       const raw = filter.params.trim();
       const parts = raw.length
@@ -2853,6 +2946,11 @@ export function formatFilter(effects: Effect[]): string {
           `dot(${effect.scale}, ${effect.angle}, ${effect.grayscale})`,
         );
         break;
+      case 'colorPencil':
+        parts.push(
+          `color-pencil(${effect.ks}, ${effect.strokeWidth}, ${effect.dirNum}, ${effect.gammaS}, ${effect.gammaI}${formatColorPencilTextureUrl(effect.pencilTextureUrl, COLOR_PENCIL_DEFAULTS.pencilTextureUrl)})`,
+        );
+        break;
       case 'colorHalftone':
         if (
           effect.centerX !== undefined &&
@@ -3092,6 +3190,8 @@ export function createDefaultEffect(kind: DefaultEffectKind): Effect {
       return { type: 'pixelate', size: 8 };
     case 'dot':
       return { type: 'dot', scale: 1, angle: 5, grayscale: 1 };
+    case 'colorPencil':
+      return { type: 'colorPencil', ...COLOR_PENCIL_DEFAULTS };
     case 'colorHalftone':
       return { type: 'colorHalftone', angle: 0, size: 5 };
     case 'halftoneDots':

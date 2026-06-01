@@ -3,7 +3,7 @@ export interface FilterObject {
     params: string;
 }
 
-export type Effect = BrightnessEffect | ContrastEffect | HueSaturationEffect | PixelateEffect | DotEffect | ColorHalftoneEffect | HalftoneDotsEffect | FlutedGlassEffect | TsunamiEffect | RainEffect | BurnEffect | CrtEffect | VignetteEffect | AsciiEffect | GlitchEffect | LiquidGlassEffect | LiquidMetalEffect | HeatmapEffect | GemSmokeEffect | LutEffect | AdjustmentEffect | DropShadowEffect | BlurEffect | NoiseEffect | FXAA;
+export type Effect = BrightnessEffect | ContrastEffect | HueSaturationEffect | PixelateEffect | DotEffect | ColorHalftoneEffect | HalftoneDotsEffect | FlutedGlassEffect | TsunamiEffect | RainEffect | BurnEffect | CrtEffect | VignetteEffect | AsciiEffect | GlitchEffect | LiquidGlassEffect | LiquidMetalEffect | HeatmapEffect | GemSmokeEffect | LutEffect | AdjustmentEffect | DropShadowEffect | BlurEffect | NoiseEffect | ColorPencilEffect | FXAA;
 export interface AdjustmentEffect {
     type: 'adjustment';
     gamma: number;
@@ -347,11 +347,31 @@ export interface GemSmokeEffect {
     colors: string[];
 }
 
+export interface ColorPencilEffect {
+    type: 'colorPencil';
+    /** Convolution line length (paper `ks`, demo default 8). */
+    ks: number;
+    /** Stroke width in pixels (paper `width`, demo default 1). */
+    strokeWidth: number;
+    /** Number of stroke directions (paper `dirNum`, demo default 8). */
+    dirNum: number;
+    /** Stroke darkness gamma (paper `gammaS`). */
+    gammaS: number;
+    /** Image darkness gamma (paper `gammaI`). */
+    gammaI: number;
+    /** Pencil scan texture URL (tiling). */
+    pencilTextureUrl?: string;
+    /** Run Lu et al. CPU pipeline from scene readback (default true). */
+    useImage?: boolean;
+    /** Cache CPU result across frames when animating other effects. */
+    useEngineTime?: boolean;
+}
+
 export interface FXAA {
     type: 'fxaa';
 }
 
-export type DefaultEffectKind = 'brightness' | 'contrast' | 'saturate' | 'noise' | 'fxaa' | 'blur' | 'pixelate' | 'dot' | 'colorHalftone' | 'halftoneDots' | 'flutedGlass' | 'crt' | 'vignette' | 'ascii' | 'glitch' | 'liquidGlass' | 'liquidMetal' | 'heatmap' | 'gemSmoke' | 'lut' | 'tsunami' | 'rain' | 'burn';
+export type DefaultEffectKind = 'brightness' | 'contrast' | 'saturate' | 'noise' | 'fxaa' | 'blur' | 'pixelate' | 'dot' | 'colorHalftone' | 'halftoneDots' | 'flutedGlass' | 'crt' | 'vignette' | 'ascii' | 'glitch' | 'liquidGlass' | 'liquidMetal' | 'heatmap' | 'gemSmoke' | 'lut' | 'tsunami' | 'rain' | 'burn' | 'colorPencil';
 export interface RainFxRenderOptions {
     backgroundBlurSteps?: number;
     backgroundWrapMode?: RaindropFxBackgroundWrapMode;

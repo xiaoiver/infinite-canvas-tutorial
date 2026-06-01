@@ -31,6 +31,7 @@ export interface DrawcallPostChain {
   isReadyForSize(width: number, height: number): boolean;
   destroy(): void;
   invalidateEngineTimeCaches(): void;
+  syncEffects(effects: import('./types').Effect[]): boolean;
   createPostProcessing(
     effects: import('./types').Effect[],
     inputTexture: import('@infinite-canvas-tutorial/device-api').Texture,

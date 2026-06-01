@@ -195,7 +195,8 @@ function effectKind(
     effect.type === 'blur' ||
     effect.type === 'pixelate' ||
     effect.type === 'dot' ||
-    effect.type === 'colorHalftone'
+    effect.type === 'colorHalftone' ||
+    effect.type === 'colorPencil'
   ) {
     return effect.type;
   }
@@ -495,6 +496,9 @@ export class EffectsPanel extends LitElement {
                     >${msg(str`Pixelate`)}</sp-menu-item
                   >
                   <sp-menu-item value="dot">${msg(str`Dot screen`)}</sp-menu-item>
+                  <sp-menu-item value="colorPencil"
+                    >${msg(str`Color pencil`)}</sp-menu-item
+                  >
                   <sp-menu-item value="colorHalftone"
                     >${msg(str`Color halftone`)}</sp-menu-item
                   >
@@ -754,6 +758,85 @@ export class EffectsPanel extends LitElement {
             ...effect,
             grayscale: v > 0.5 ? 1 : 0,
           };
+          this.commit(next);
+        }}
+        ></sp-slider>
+      `;
+    }
+    if (effect.type === 'colorPencil') {
+      return html`
+        <sp-slider
+          size="s"
+          label=${msg(str`Line length (ks)`)}
+          min="2"
+          max="16"
+          step="1"
+          .value=${effect.ks}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, ks: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Stroke width`)}
+          min="0"
+          max="4"
+          step="1"
+          .value=${effect.strokeWidth}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, strokeWidth: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Directions`)}
+          min="2"
+          max="16"
+          step="1"
+          .value=${effect.dirNum}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, dirNum: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Stroke gamma`)}
+          min="0.2"
+          max="3"
+          step="0.05"
+          .value=${effect.gammaS}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, gammaS: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Tone gamma`)}
+          min="0.2"
+          max="3"
+          step="0.05"
+          .value=${effect.gammaI}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, gammaI: v };
           this.commit(next);
         }}
         ></sp-slider>

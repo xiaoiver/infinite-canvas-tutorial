@@ -8,6 +8,9 @@ class NoopDrawcallPostChain implements DrawcallPostChain {
   }
   destroy(): void {}
   invalidateEngineTimeCaches(): void {}
+  syncEffects(): boolean {
+    return false;
+  }
   createPostProcessing(
     _effects: Effect[],
     inputTexture: import('@infinite-canvas-tutorial/device-api').Texture,

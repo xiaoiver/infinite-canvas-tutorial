@@ -137,7 +137,9 @@ export class Mesh extends Drawcall {
     }
     this.#rawFillImageTexture = raw;
     const anim = getRainFxAnimationExportContext();
-    if (!anim || !this.isPostProcessingChainReadyForSize(tw, th)) {
+    const chain = this.getPostChain();
+    const ready = chain?.isReadyForSize(tw, th) ?? false;
+    if (!anim || !ready || !chain?.syncEffects(effects)) {
       this.createPostProcessing(effects, raw, tw, th);
     }
     const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
