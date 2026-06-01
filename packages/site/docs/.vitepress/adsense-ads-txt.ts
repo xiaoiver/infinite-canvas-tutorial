@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Plugin } from 'vite';
 
@@ -13,9 +13,16 @@ function parseAdsensePubId(client: string): string | null {
   return null;
 }
 
+function adsenseBuildEnabled(): boolean {
+  return (
+    process.env.ADSENSE_ENABLED === 'true' &&
+    !!process.env.ADSENSE_CLIENT?.trim()
+  );
+}
+
 /**
  * 在构建产物根目录写入 ads.txt（与 head 里的 AdSense 使用同一 ADSENSE_CLIENT）。
- * 需在构建环境中设置 ADSENSE_CLIENT（例如 ca-pub-xxxxxxxxxxxxxxxx）。
+ * 需在构建环境中设置 ADSENSE_ENABLED=true 与 ADSENSE_CLIENT（例如 ca-pub-xxxxxxxxxxxxxxxx）。
  */
 export function adsenseAdsTxtPlugin(): Plugin {
   let outDir = '';
@@ -25,12 +32,17 @@ export function adsenseAdsTxtPlugin(): Plugin {
     configResolved(config) {
       outDir = config.build.outDir;
     },
-    closeBundle() {
-      const client = process.env.ADSENSE_CLIENT;
-      if (!client || !outDir) return;
+    buildEnd(error) {
+      if (error || !adsenseBuildEnabled() || !outDir) {
+        return;
+      }
+      const client = process.env.ADSENSE_CLIENT!;
       const pub = parseAdsensePubId(client);
-      if (!pub) return;
+      if (!pub) {
+        return;
+      }
       const line = `google.com, ${pub}, DIRECT, ${GOOGLE_ADS_TXT_ACCOUNT_TYPE}\n`;
+      mkdirSync(outDir, { recursive: true });
       writeFileSync(join(outDir, 'ads.txt'), line, 'utf8');
     },
   };
