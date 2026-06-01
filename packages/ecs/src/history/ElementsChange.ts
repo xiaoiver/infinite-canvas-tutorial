@@ -98,6 +98,10 @@ import {
 } from '../utils/normalize-stroke-wire';
 import { isFillLayerEnabled } from '../utils/fillLayers';
 import { TesselationMethod } from '../components/geometry/Path';
+import {
+  measureText,
+  yOffsetFromTextBaseline,
+} from '../systems/ComputeTextMetrics';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -1617,6 +1621,63 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         : parseFloat(String(resolved ?? ''));
     if (Number.isFinite(n) && n >= 0) {
       entity.write(Text).lineHeight = n;
+    }
+  }
+  if (
+    ('textAlign' in updates || 'textBaseline' in updates) &&
+    !('anchorX' in updates) &&
+    !('anchorY' in updates) &&
+    entity.has(Text)
+  ) {
+    const textComp = entity.read(Text);
+    const oldTextAlign = textComp.textAlign;
+    const oldTextBaseline = textComp.textBaseline;
+    const newTextAlign = 'textAlign' in updates ? textAlign : oldTextAlign;
+    const newTextBaseline =
+      'textBaseline' in updates ? textBaseline : oldTextBaseline;
+
+    const metrics = measureText(textComp);
+    const { width = 0, fontMetrics } = metrics;
+
+    if (fontMetrics) {
+      const hwidth = width / 2;
+      let oldAnchorX = textComp.anchorX;
+      let oldAnchorY = textComp.anchorY;
+
+      const xOffsetFromTextAlign = (align: CanvasTextAlign) => {
+        if (align === 'center') {
+          return -hwidth;
+        }
+        if (align === 'right' || align === 'end') {
+          return -hwidth * 2;
+        }
+        return 0;
+      };
+
+      const oldXOffset = xOffsetFromTextAlign(oldTextAlign);
+      const newXOffset = xOffsetFromTextAlign(newTextAlign);
+
+      // Adjust anchorX/Y to compensate for the offset change
+      const newAnchorX = oldAnchorX + oldXOffset - newXOffset;
+      let newAnchorY = oldAnchorY;
+      if (oldTextBaseline !== newTextBaseline) {
+        const lineHeightValue =
+          textComp.lineHeight || (textComp.fontSize as number);
+        const lineHeightAdjust =
+          (lineHeightValue - fontMetrics.fontSize) / 2;
+        const oldYOffset =
+          yOffsetFromTextBaseline(oldTextBaseline, fontMetrics) -
+          lineHeightAdjust;
+        const newYOffset =
+          yOffsetFromTextBaseline(newTextBaseline, fontMetrics) -
+          lineHeightAdjust;
+        newAnchorY = oldAnchorY + oldYOffset - newYOffset;
+      }
+      entity.write(Text).anchorX = newAnchorX;
+      entity.write(Text).anchorY = newAnchorY;
+      // Keep the serialized element in sync
+      (element as any).anchorX = newAnchorX;
+      (element as any).anchorY = newAnchorY;
     }
   }
   if ('textAlign' in updates) {
