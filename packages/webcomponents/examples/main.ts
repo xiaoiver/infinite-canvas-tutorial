@@ -177,29 +177,188 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  const rect1 = {
-    id: 'rect1',
-    type: 'rect',
-    fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-    x: 100,
-    y: 100,
-    width: 200,
-    height: 200,
-    lockAspectRatio: true,
-    /** Spline-style: 3D box matches this rect's x/y/width/height (canvas coords). */
-    extrude3d: 20,
-  };
+  const nodes = [
+    {
+      id: 'baseline-1',
+      type: 'line',
+      x1: 0,
+      y1: 50,
+      x2: 300,
+      y2: 50,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 0,
+    },
+    {
+      id: 'text-1',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (top)',
+      anchorX: 50,
+      anchorY: 50,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'top',
+      textAlign: 'center',
+      zIndex: 1,
+    },
+    {
+      id: 'baseline-2',
+      type: 'line',
+      x1: 0,
+      y1: 100,
+      x2: 300,
+      y2: 100,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 3,
+    },
+    {
+      id: 'text-2',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (hanging)',
+      anchorX: 50,
+      anchorY: 100,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'hanging',
+      zIndex: 4,
+    },
+    {
+      id: 'baseline-3',
+      type: 'line',
+      x1: 0,
+      y1: 150,
+      x2: 300,
+      y2: 150,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 5,
+    },
+    {
+      id: 'text-3',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (middle)',
+      anchorX: 50,
+      anchorY: 150,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'middle',
+      zIndex: 6,
+    },
+    {
+      id: 'baseline-4',
+      type: 'line',
+      x1: 0,
+      y1: 200,
+      x2: 300,
+      y2: 200,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 5,
+    },
+    {
+      id: 'text-4',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (alphabetic)',
+      anchorX: 50,
+      anchorY: 200,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'alphabetic',
+      zIndex: 6,
+    },
+    {
+      id: 'baseline-5',
+      type: 'line',
+      x1: 0,
+      y1: 250,
+      x2: 300,
+      y2: 250,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 5,
+    },
+    {
+      id: 'text-5',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (ideographic)',
+      anchorX: 50,
+      anchorY: 250,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'ideographic',
+      zIndex: 6,
+    },
+    {
+      id: 'baseline-6',
+      type: 'line',
+      x1: 0,
+      y1: 300,
+      x2: 300,
+      y2: 300,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 5,
+    },
+    {
+      id: 'text-6',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (bottom)',
+      anchorX: 50,
+      anchorY: 300,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'bottom',
+      zIndex: 6,
+    },
+    {
+      id: 'baseline-7',
+      type: 'line',
+      x1: 0,
+      y1: 350,
+      x2: 300,
+      y2: 350,
+      stroke: 'red',
+      strokeWidth: 1,
+      zIndex: 7,
+    },
+    {
+      id: 'text-7',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'Abcdefghijklmnop (bottom)',
+      anchorX: 50,
+      anchorY: 350,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'bottom',
+      wordWrap: true,
+      wordWrapWidth: 30,
+      maxLines: 3,
+      textOverflow: 'ellipsis',
+      zIndex: 7,
+    },
+    {
+      id: 'text-8',
+      type: 'text',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      content: 'سلام ABC גבא DEF 😁🚀',
+      anchorX: 120,
+      anchorY: 350,
+      fontSize: 16,
+      fontFamily: 'Gaegu',
+      textBaseline: 'bottom',
+      zIndex: 7,
+    }
+  ];
 
-  const rect2 = {
-    id: 'rect2',
-    type: 'rect',
-    fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
-    x: 300,
-    y: 100,
-    width: 200,
-    height: 200,
-    lockAspectRatio: true,
-  };
+  api.updateNodes(nodes);
 
   function createCubeGeometry(size = 1) {
     const h = size / 2;
@@ -236,65 +395,65 @@ canvas.addEventListener(Event.READY, async (e) => {
     };
   }
 
-  api.runAtNextTick(() => {
-    const { positions, normals, indices } = createCubeGeometry(1);
-    const commands = api.getCommands();
+  // api.runAtNextTick(() => {
+  //   const { positions, normals, indices } = createCubeGeometry(1);
+  //   const commands = api.getCommands();
 
-    // linked + orthographic：与 2D/extrude3d 共用 VP；linked + perspective：跟 2D 平移缩放 + 透视
-    commands.spawn(
-      new Camera3D({
-        linked: true,
-        // projection: 'orthographic',
-        projection: 'perspective',
-        clearColor: false,
-      }),
-    );
+  //   // linked + orthographic：与 2D/extrude3d 共用 VP；linked + perspective：跟 2D 平移缩放 + 透视
+  //   commands.spawn(
+  //     new Camera3D({
+  //       linked: true,
+  //       // projection: 'orthographic',
+  //       projection: 'perspective',
+  //       clearColor: false,
+  //     }),
+  //   );
 
-    const cubeEntity = commands
-      .spawn(
-        new Mesh3D({ positions, normals, indices }),
-        new Material3D({
-          baseColor: [1, 1, 1, 1],
-          ambient: 0.25,
-          diffuse: 0.75,
-          specular: 0.4,
-          shininess: 48,
-        }),
-        new Transform3D({
-          translation: [100, 100, 40],
-          rotation: [0.3, 0.6, 0],
-          scale: [100, 100, 100],
-        }),
-      )
-      .id()
-      .hold();
+  //   const cubeEntity = commands
+  //     .spawn(
+  //       new Mesh3D({ positions, normals, indices }),
+  //       new Material3D({
+  //         baseColor: [1, 1, 1, 1],
+  //         ambient: 0.25,
+  //         diffuse: 0.75,
+  //         specular: 0.4,
+  //         shininess: 48,
+  //       }),
+  //       new Transform3D({
+  //         translation: [100, 100, 40],
+  //         rotation: [0.3, 0.6, 0],
+  //         scale: [100, 100, 100],
+  //       }),
+  //     )
+  //     .id()
+  //     .hold();
 
-    commands.execute();
+  //   commands.execute();
 
-    // 2D 图层：彩色铅笔效果（Lu et al. NPAR 2012 / PencilDrawing 默认参数）
-    const colorPencilDemo = {
-      id: 'color-pencil-demo',
-      type: 'rect',
-      width: 480,
-      height: 480,
-      x: 40,
-      y: 40,
-      fills: [{ type: 'image', value: '/flower.png', opacity: 1 }],
-      lockAspectRatio: true,
-      filter: 'color-pencil(2, 1, 8, 1, 1, url("/pencil0.jpg"))',
-    };
-    api.updateNodes([colorPencilDemo]);
-    api.selectNodes([colorPencilDemo]);
+  //   // 2D 图层：彩色铅笔效果（Lu et al. NPAR 2012 / PencilDrawing 默认参数）
+  //   const colorPencilDemo = {
+  //     id: 'color-pencil-demo',
+  //     type: 'rect',
+  //     width: 480,
+  //     height: 480,
+  //     x: 40,
+  //     y: 40,
+  //     fills: [{ type: 'image', value: '/flower.png', opacity: 1 }],
+  //     lockAspectRatio: true,
+  //     filter: 'color-pencil(2, 1, 8, 1, 1, url("/pencil0.jpg"))',
+  //   };
+  //   api.updateNodes([colorPencilDemo]);
+  //   api.selectNodes([colorPencilDemo]);
 
-    const t0 = performance.now();
-    const spinCube = (now: number) => {
-      const t = (now - t0) / 1000;
-      const transform = cubeEntity.write(Transform3D);
-      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
-      requestAnimationFrame(spinCube);
-    };
-    requestAnimationFrame(spinCube);
-  });
+  //   const t0 = performance.now();
+  //   const spinCube = (now: number) => {
+  //     const t = (now - t0) / 1000;
+  //     const transform = cubeEntity.write(Transform3D);
+  //     transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+  //     requestAnimationFrame(spinCube);
+  //   };
+  //   requestAnimationFrame(spinCube);
+  // });
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({

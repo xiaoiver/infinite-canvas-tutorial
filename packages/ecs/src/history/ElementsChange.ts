@@ -1644,35 +1644,35 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       let oldAnchorX = textComp.anchorX;
       let oldAnchorY = textComp.anchorY;
 
-      // Compute old X offset from textAlign
-      let oldXOffset = 0;
-      if (oldTextAlign === 'center') {
-        oldXOffset = -hwidth;
-      } else if (oldTextAlign === 'right' || oldTextAlign === 'end') {
-        oldXOffset = -hwidth * 2;
-      }
+      const xOffsetFromTextAlign = (align: CanvasTextAlign) => {
+        if (align === 'center') {
+          return -hwidth;
+        }
+        if (align === 'right' || align === 'end') {
+          return -hwidth * 2;
+        }
+        return 0;
+      };
 
-      // Compute new X offset from textAlign
-      let newXOffset = 0;
-      if (newTextAlign === 'center') {
-        newXOffset = -hwidth;
-      } else if (newTextAlign === 'right' || newTextAlign === 'end') {
-        newXOffset = -hwidth * 2;
-      }
-
-      // Compute old/new Y offset from textBaseline
-      const lineHeightValue =
-        textComp.lineHeight || (textComp.fontSize as number);
-      const lineHeightAdjust =
-        (lineHeightValue - fontMetrics.fontSize) / 2;
-      const oldYOffset =
-        yOffsetFromTextBaseline(oldTextBaseline, fontMetrics) - lineHeightAdjust;
-      const newYOffset =
-        yOffsetFromTextBaseline(newTextBaseline, fontMetrics) - lineHeightAdjust;
+      const oldXOffset = xOffsetFromTextAlign(oldTextAlign);
+      const newXOffset = xOffsetFromTextAlign(newTextAlign);
 
       // Adjust anchorX/Y to compensate for the offset change
       const newAnchorX = oldAnchorX + oldXOffset - newXOffset;
-      const newAnchorY = oldAnchorY + oldYOffset - newYOffset;
+      let newAnchorY = oldAnchorY;
+      if (oldTextBaseline !== newTextBaseline) {
+        const lineHeightValue =
+          textComp.lineHeight || (textComp.fontSize as number);
+        const lineHeightAdjust =
+          (lineHeightValue - fontMetrics.fontSize) / 2;
+        const oldYOffset =
+          yOffsetFromTextBaseline(oldTextBaseline, fontMetrics) -
+          lineHeightAdjust;
+        const newYOffset =
+          yOffsetFromTextBaseline(newTextBaseline, fontMetrics) -
+          lineHeightAdjust;
+        newAnchorY = oldAnchorY + oldYOffset - newYOffset;
+      }
       entity.write(Text).anchorX = newAnchorX;
       entity.write(Text).anchorY = newAnchorY;
       // Keep the serialized element in sync

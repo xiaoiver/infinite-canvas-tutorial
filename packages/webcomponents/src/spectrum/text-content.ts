@@ -93,6 +93,10 @@ export class TextContent extends LitElement {
       width: 120px;
     }
 
+    .text-baseline-picker {
+      width: 120px;
+    }
+
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -235,16 +239,71 @@ export class TextContent extends LitElement {
     const newAnchorY = (this.node as TextSerializedNode).anchorY + this.node.y;
     const { x, y, width, height, ...rest } = this.node;
 
-    const { x: newX, y: newY, width: newWidth, height: newHeight } =
-      inferXYWidthHeight({ ...rest, anchorX: newAnchorX, anchorY: newAnchorY, textAlign: selected[0] } as TextSerializedNode);
+    const inferred = inferXYWidthHeight({
+      ...rest,
+      anchorX: newAnchorX,
+      anchorY: newAnchorY,
+      textAlign: selected[0],
+    } as TextSerializedNode) as TextSerializedNode;
 
     this.api.updateNode(this.node, {
       textAlign: selected[0],
-      anchorX: newAnchorX,
-      anchorY: newAnchorY,
-      x: newX, y: newY, width: newWidth, height: newHeight,
+      anchorX: inferred.anchorX ?? 0,
+      anchorY: inferred.anchorY ?? 0,
+      x: inferred.x,
+      y: inferred.y,
+      width: inferred.width,
+      height: inferred.height,
     });
     this.api.record();
+  }
+
+  private handleTextBaselineChanged(e: Event & { target: HTMLInputElement }) {
+    const textBaseline = e.target.value as TextSerializedNode['textBaseline'];
+    if (!textBaseline) {
+      return;
+    }
+
+    const newAnchorX = (this.node as TextSerializedNode).anchorX + this.node.x;
+    const newAnchorY = (this.node as TextSerializedNode).anchorY + this.node.y;
+    const { x, y, width, height, ...rest } = this.node;
+
+    const inferred = inferXYWidthHeight({
+      ...rest,
+      anchorX: newAnchorX,
+      anchorY: newAnchorY,
+      textBaseline,
+    } as TextSerializedNode) as TextSerializedNode;
+
+    this.api.updateNode(this.node, {
+      textBaseline,
+      anchorX: inferred.anchorX ?? 0,
+      anchorY: inferred.anchorY ?? 0,
+      x: inferred.x,
+      y: inferred.y,
+      width: inferred.width,
+      height: inferred.height,
+    });
+    this.api.record();
+  }
+
+  private textBaselineLabel(value: CanvasTextBaseline): string {
+    switch (value) {
+      case 'top':
+        return msg(str`Top`);
+      case 'hanging':
+        return msg(str`Hanging`);
+      case 'middle':
+        return msg(str`Middle`);
+      case 'alphabetic':
+        return msg(str`Alphabetic`);
+      case 'ideographic':
+        return msg(str`Ideographic`);
+      case 'bottom':
+        return msg(str`Bottom`);
+      default:
+        return value;
+    }
   }
 
   render() {
@@ -255,7 +314,7 @@ export class TextContent extends LitElement {
       fontVariant,
       fontStyle,
       textAlign = 'start',
-      textBaseline,
+      textBaseline = 'alphabetic',
       // textDecoration,
     } = this.node as TextSerializedNode;
 
@@ -270,6 +329,15 @@ export class TextContent extends LitElement {
         [fontFamilyResolved, ...baseFamilies];
 
     const formattedTextAlign = textAlign === 'left' ? 'start' : textAlign === 'center' ? 'center' : textAlign === 'right' ? 'end' : textAlign;
+
+    const textBaselineOptions: CanvasTextBaseline[] = [
+      'top',
+      'hanging',
+      'middle',
+      'alphabetic',
+      'ideographic',
+      'bottom',
+    ];
 
     const fontSizeResolved = resolveDesignVariableValue(
       fontSize,
@@ -604,6 +672,30 @@ export class TextContent extends LitElement {
             <sp-icon-text-align-right slot="icon"></sp-icon-text-align-right>
           </sp-action-button>
         </sp-action-group>
+      </div>
+      <div class="line">
+        <sp-field-label
+          for="ic-text-content-text-baseline"
+          side-aligned="start"
+          >${msg(str`Text baseline`)}</sp-field-label
+        >
+        <div class="fill-opacity-controls">
+          <sp-picker
+            class="text-baseline-picker"
+            id="ic-text-content-text-baseline"
+            size="s"
+            label=${msg(str`Text baseline`)}
+            .value=${textBaseline}
+            @change=${this.handleTextBaselineChanged}
+          >
+            ${textBaselineOptions.map(
+      (baseline) =>
+        html`<sp-menu-item value=${baseline}
+          >${this.textBaselineLabel(baseline)}</sp-menu-item
+        >`,
+    )}
+          </sp-picker>
+        </div>
       </div> `;
   }
 }
