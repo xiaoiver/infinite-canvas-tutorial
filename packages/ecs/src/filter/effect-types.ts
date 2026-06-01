@@ -349,10 +349,22 @@ export interface GemSmokeEffect {
 
 export interface ColorPencilEffect {
     type: 'colorPencil';
-    /** Edge detection strength 0–1. */
-    strength: number;
-    /** How much original color to blend in 0–1 (0 = grayscale sketch, 1 = full color). */
-    color: number;
+    /** Convolution line length (paper `ks`, demo default 8). */
+    ks: number;
+    /** Stroke width in pixels (paper `width`, demo default 1). */
+    strokeWidth: number;
+    /** Number of stroke directions (paper `dirNum`, demo default 8). */
+    dirNum: number;
+    /** Stroke darkness gamma (paper `gammaS`). */
+    gammaS: number;
+    /** Image darkness gamma (paper `gammaI`). */
+    gammaI: number;
+    /** Pencil scan texture URL (tiling). */
+    pencilTextureUrl?: string;
+    /** Run Lu et al. CPU pipeline from scene readback (default true). */
+    useImage?: boolean;
+    /** Cache CPU result across frames when animating other effects. */
+    useEngineTime?: boolean;
 }
 
 export interface FXAA {

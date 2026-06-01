@@ -871,27 +871,72 @@ export function vignetteUniformValues(effect: VignetteEffect): number[] {
 }
 
 export const COLOR_PENCIL_DEFAULTS = {
-  strength: 0.8,
-  color: 0.5,
+  ks: 8,
+  strokeWidth: 1,
+  dirNum: 8,
+  gammaS: 1,
+  gammaI: 1,
+  pencilTextureUrl: '/pencil-texture.jpg',
+  useImage: true,
 } as const;
 
+function parseColorPencilTextureUrl(part: string | undefined): string | undefined {
+  if (!part) {
+    return undefined;
+  }
+  const m = part.trim().match(/^url\s*\(\s*(['"])(.*?)\1\s*\)$/i);
+  const u = m?.[2]?.trim();
+  return u && u.length > 0 ? u : undefined;
+}
+
+function formatColorPencilTextureUrl(url: string | undefined, defaultUrl: string): string {
+  const u = url?.trim();
+  if (!u || u === defaultUrl) {
+    return '';
+  }
+  const esc = u.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return `, url("${esc}")`;
+}
+
+/** Max long edge for CPU paper pipeline (PCG cost); result is upscaled. */
+export const COLOR_PENCIL_CPU_MAX_EDGE = 1024;
+
 /**
- * Color pencil sketch effect: Sobel edge detection + color tint.
- * 2 × vec4 std140: `u_ColorPencil`, `u_InputSize`.
+ * Lu et al. NPAR 2012 color pencil uniforms.
+ * `u_ColorPencil`: gammaS, gammaI, ks, dirNum
+ * `u_CP1`: strokeWidth, preprocessed(1)/gpu(0), 0, 0
+ * `u_InputSize`: tex size
  */
 export function colorPencilUniformValues(
   effect: ColorPencilEffect,
   textureWidth: number,
   textureHeight: number,
+  preprocessed = 0,
 ): number[] {
   const D = COLOR_PENCIL_DEFAULTS;
   const z = (v: number | undefined, def: number) =>
     Number.isFinite(v as number) ? (v as number) : def;
-  const strength = Math.max(0, Math.min(1, z(effect.strength, D.strength)));
-  const color = Math.max(0, Math.min(1, z(effect.color, D.color)));
+  const ks = Math.max(1, Math.min(32, Math.round(z(effect.ks, D.ks))));
+  const strokeWidth = Math.max(0, Math.min(8, Math.round(z(effect.strokeWidth, D.strokeWidth))));
+  const dirNum = Math.max(2, Math.min(16, Math.round(z(effect.dirNum, D.dirNum))));
+  const gammaS = Math.max(0.1, Math.min(4, z(effect.gammaS, D.gammaS)));
+  const gammaI = Math.max(0.1, Math.min(4, z(effect.gammaI, D.gammaI)));
   const tw = Math.max(1, textureWidth);
   const th = Math.max(1, textureHeight);
-  return [strength, color, 0, 0, tw, th, 0, 0];
+  return [gammaS, gammaI, ks, dirNum, strokeWidth, preprocessed, 0, 0, tw, th, 0, 0];
+}
+
+export function colorPencilDrawingParams(effect: ColorPencilEffect) {
+  const D = COLOR_PENCIL_DEFAULTS;
+  const z = (v: number | undefined, def: number) =>
+    Number.isFinite(v as number) ? (v as number) : def;
+  return {
+    ks: Math.max(1, Math.min(32, Math.round(z(effect.ks, D.ks)))),
+    strokeWidth: Math.max(0, Math.min(8, Math.round(z(effect.strokeWidth, D.strokeWidth)))),
+    dirNum: Math.max(2, Math.min(16, Math.round(z(effect.dirNum, D.dirNum)))),
+    gammaS: Math.max(0.1, Math.min(4, z(effect.gammaS, D.gammaS))),
+    gammaI: Math.max(0.1, Math.min(4, z(effect.gammaI, D.gammaI))),
+  };
 }
 
 /** Pixi {@link https://github.com/pixijs/filters/blob/main/src/ascii/ascii.frag ASCIIFilter} defaults. */
@@ -2247,12 +2292,21 @@ export function parseEffect(filter: string): Effect[] {
       const parts = raw.length
         ? raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
         : [];
-      const strength = parts[0] !== undefined ? parseFloat(parts[0]) : COLOR_PENCIL_DEFAULTS.strength;
-      const color = parts[1] !== undefined ? parseFloat(parts[1]) : COLOR_PENCIL_DEFAULTS.color;
+      const D = COLOR_PENCIL_DEFAULTS;
+      const num = (i: number, def: number) => {
+        const v = parts[i] !== undefined ? parseFloat(parts[i]) : def;
+        return Number.isFinite(v) ? v : def;
+      };
       effects.push({
         type: 'colorPencil',
-        strength: Number.isFinite(strength) ? Math.max(0, Math.min(1, strength)) : COLOR_PENCIL_DEFAULTS.strength,
-        color: Number.isFinite(color) ? Math.max(0, Math.min(1, color)) : COLOR_PENCIL_DEFAULTS.color,
+        ks: Math.max(1, Math.min(32, Math.round(num(0, D.ks)))),
+        strokeWidth: Math.max(0, Math.min(8, Math.round(num(1, D.strokeWidth)))),
+        dirNum: Math.max(2, Math.min(16, Math.round(num(2, D.dirNum)))),
+        gammaS: Math.max(0.1, Math.min(4, num(3, D.gammaS))),
+        gammaI: Math.max(0.1, Math.min(4, num(4, D.gammaI))),
+        pencilTextureUrl:
+          parseColorPencilTextureUrl(parts[5]) ?? D.pencilTextureUrl,
+        useImage: true,
       });
     } else if (filter.name === 'color-halftone') {
       const raw = filter.params.trim();
@@ -2894,7 +2948,7 @@ export function formatFilter(effects: Effect[]): string {
         break;
       case 'colorPencil':
         parts.push(
-          `color-pencil(${effect.strength}, ${effect.color})`,
+          `color-pencil(${effect.ks}, ${effect.strokeWidth}, ${effect.dirNum}, ${effect.gammaS}, ${effect.gammaI}${formatColorPencilTextureUrl(effect.pencilTextureUrl, COLOR_PENCIL_DEFAULTS.pencilTextureUrl)})`,
         );
         break;
       case 'colorHalftone':

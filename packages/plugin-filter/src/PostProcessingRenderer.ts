@@ -196,9 +196,10 @@ export class PostProcessingRenderer {
       uniformBuffer.push(a, sc, g, 0, tw, th, 0, 0);
     } else if (effect.type === 'colorPencil') {
       const { width, height } = this.swapChain.getCanvas();
-      const vals = colorPencilUniformValues(effect, width, height);
+      const vals = colorPencilUniformValues(effect, width, height, 0);
       uniformLegacyObject.u_ColorPencil = [vals[0], vals[1], vals[2], vals[3]];
-      uniformLegacyObject.u_InputSize = [vals[4], vals[5], vals[6], vals[7]];
+      uniformLegacyObject.u_CP1 = [vals[4], vals[5], vals[6], vals[7]];
+      uniformLegacyObject.u_InputSize = [vals[8], vals[9], vals[10], vals[11]];
       uniformBuffer.push(...vals);
     } else if (effect.type === 'colorHalftone') {
       const { width, height } = this.swapChain.getCanvas();

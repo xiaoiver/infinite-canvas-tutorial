@@ -145,7 +145,7 @@ canvas.addEventListener(Event.READY, async (e) => {
       transform: false,
       layout: false,
       flexItem: false,
-      effects: false,
+      effects: true,
       multiSelectAlignment: false,
       multiSelectEffects: false,
       exportSection: true,
@@ -271,8 +271,20 @@ canvas.addEventListener(Event.READY, async (e) => {
 
     commands.execute();
 
-    // 2D 图层：与 3D 共用同一画布，由 2D MeshPipeline 叠在立方体之上
-    // api.updateNodes([rect1, rect2]);
+    // 2D 图层：彩色铅笔效果（Lu et al. NPAR 2012 / PencilDrawing 默认参数）
+    const colorPencilDemo = {
+      id: 'color-pencil-demo',
+      type: 'rect',
+      width: 480,
+      height: 480,
+      x: 40,
+      y: 40,
+      fills: [{ type: 'image', value: '/flower.png', opacity: 1 }],
+      lockAspectRatio: true,
+      filter: 'color-pencil(2, 1, 8, 1, 1, url("/pencil0.jpg"))',
+    };
+    api.updateNodes([colorPencilDemo]);
+    api.selectNodes([colorPencilDemo]);
 
     const t0 = performance.now();
     const spinCube = (now: number) => {

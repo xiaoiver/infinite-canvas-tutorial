@@ -767,31 +767,76 @@ export class EffectsPanel extends LitElement {
       return html`
         <sp-slider
           size="s"
-          label=${msg(str`Strength`)}
-          min="0"
-          max="1"
-          step="0.01"
-          .value=${effect.strength}
+          label=${msg(str`Line length (ks)`)}
+          min="2"
+          max="16"
+          step="1"
+          .value=${effect.ks}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const v = parseFloat(e.target.value);
           const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, strength: v };
+          (next[index] as typeof effect) = { ...effect, ks: v };
           this.commit(next);
         }}
         ></sp-slider>
         <sp-slider
           size="s"
-          label=${msg(str`Color amount`)}
+          label=${msg(str`Stroke width`)}
           min="0"
-          max="1"
-          step="0.01"
-          .value=${effect.color}
+          max="4"
+          step="1"
+          .value=${effect.strokeWidth}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const v = parseFloat(e.target.value);
           const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, color: v };
+          (next[index] as typeof effect) = { ...effect, strokeWidth: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Directions`)}
+          min="2"
+          max="16"
+          step="1"
+          .value=${effect.dirNum}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, dirNum: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Stroke gamma`)}
+          min="0.2"
+          max="3"
+          step="0.05"
+          .value=${effect.gammaS}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, gammaS: v };
+          this.commit(next);
+        }}
+        ></sp-slider>
+        <sp-slider
+          size="s"
+          label=${msg(str`Tone gamma`)}
+          min="0.2"
+          max="3"
+          step="0.05"
+          .value=${effect.gammaI}
+          editable
+          @change=${(e: Event & { target: HTMLInputElement }) => {
+          const v = parseFloat(e.target.value);
+          const next = [...this.effects];
+          (next[index] as typeof effect) = { ...effect, gammaI: v };
           this.commit(next);
         }}
         ></sp-slider>
