@@ -205,7 +205,7 @@ describe('Transformer resize with rotation', () => {
       .find((n) => n.id === '1') as PathSerializedNode;
 
     // The baked geometry must stay an axis-aligned, width-only scaled triangle:
-    // width ~2x, height unchanged, apex centred at the top (no shear / double-rotation).
+    // width ~2x, height unchanged, apex centered at the top (no shear / double-rotation).
     const pts = pathPoints(updated.d);
     const { minX, minY, maxX, maxY } = bboxOf(pts);
     const w = maxX - minX;
@@ -214,7 +214,7 @@ describe('Transformer resize with rotation', () => {
     expect(h).toBeCloseTo(75, 0);
 
     const apex = pts.find((p) => Math.abs(p[1] - minY) < 1)!;
-    // Apex x is centred -> base stays horizontal (triangle not sheared).
+    // Apex x is centered -> base stays horizontal (triangle not sheared).
     expect(apex[0] - minX).toBeCloseTo(w / 2, 0);
     // Rotation stays on the Transform, it must not have been baked twice.
     expect(updated.rotation).toBeCloseTo(Math.PI / 6, 5);
