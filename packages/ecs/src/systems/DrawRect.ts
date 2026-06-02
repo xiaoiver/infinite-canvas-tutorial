@@ -625,7 +625,8 @@ export function showLabel(
     width,
     height,
     rotate,
-  }: { x: number; y: number; width: number; height: number; rotate?: boolean },
+    rotation,
+  }: { x: number; y: number; width: number; height: number; rotate?: boolean; rotation?: number },
 ) {
   if (isBrowser) {
     if (api.getAppState().penbarDrawSizeLabelVisible) {
@@ -652,6 +653,23 @@ export function showLabel(
       }
       // Rotate the label to the direction of the line
       label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
+    } else if (rotation) {
+      // Position the label at the bottom-center of the OBB (rotated bounding box).
+      // The bottom-center in local space is (width/2, height), rotated by the OBB rotation.
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      const localX = width / 2;
+      const localY = height;
+      const canvasBottomCenterX = x + localX * cos - localY * sin;
+      const canvasBottomCenterY = y + localX * sin + localY * cos;
+      const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
+        x: canvasBottomCenterX,
+        y: canvasBottomCenterY,
+      });
+      label.style.top = `${viewportY2}px`;
+      label.style.left = `${viewportX2}px`;
+      const deg = rotation * (180 / Math.PI);
+      label.style.transform = `translate(-50%, 8px) rotate(${deg}deg)`;
     } else {
       const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
         x: x + width / 2,

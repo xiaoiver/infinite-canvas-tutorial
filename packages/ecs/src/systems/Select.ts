@@ -1032,7 +1032,7 @@ export class Select extends System {
           selection,
         );
 
-        showLabel(label, api, { x, y, width, height });
+        showLabel(label, api, { x, y, width, height, rotation });
       }
     }
   }
