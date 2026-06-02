@@ -459,7 +459,7 @@ export const snapDraggedElements = (
     number,
   ];
 
-  const selectionSnapPoints = getElementsCorners(api, selected);
+  const selectionSnapPoints = getElementsCorners(api, selected, dragOffset);
 
   // get the nearest horizontal and vertical point and gap snaps
   getPointSnaps(

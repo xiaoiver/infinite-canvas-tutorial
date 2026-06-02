@@ -155,6 +155,9 @@ export interface SelectOBB {
   /** Previous snap offset during drag; used to avoid jitter when multiple snaps are equally close. */
   lastSnapOffset?: [number, number];
 
+  /** Accumulated raw drag per axis while snapped; when it exceeds the snap distance the snap releases. */
+  snapEscapeAccum?: [number, number];
+
   /** Pointer angle (rad) vs. {@link SelectOBB.obb} center on last rotate sample; for incremental drag. */
   rotateLastPointerAngle?: number;
   /** Total rotation applied during current rotate gesture (rad), relative to saved {@link SelectOBB.obb}. */
@@ -375,11 +378,51 @@ export class Select extends System {
 
       const dragOffset: [number, number] = [gridEx - gridSx, gridEy - gridSy];
 
-      const { snapOffset, snapLines } = snapDraggedElements(
+      let { snapOffset, snapLines } = snapDraggedElements(
         api,
         dragOffset,
         selection.lastSnapOffset,
       );
+
+      // Escape accumulator: track cumulative raw drag while snapped.
+      // Once accumulated distance exceeds the snap threshold, release the snap.
+      const { snapToObjectsEnabled, snapToObjectsDistance } = api.getAppState();
+      if (snapToObjectsEnabled) {
+        if (!selection.snapEscapeAccum) {
+          selection.snapEscapeAccum = [0, 0];
+        }
+        let escaped = false;
+        // X axis
+        if (snapOffset[0] !== 0) {
+          selection.snapEscapeAccum[0] += dragOffset[0];
+          if (
+            Math.abs(selection.snapEscapeAccum[0]) > snapToObjectsDistance
+          ) {
+            snapOffset = [0, snapOffset[1]];
+            selection.snapEscapeAccum[0] = 0;
+            escaped = true;
+          }
+        } else {
+          selection.snapEscapeAccum[0] = 0;
+        }
+        // Y axis
+        if (snapOffset[1] !== 0) {
+          selection.snapEscapeAccum[1] += dragOffset[1];
+          if (
+            Math.abs(selection.snapEscapeAccum[1]) > snapToObjectsDistance
+          ) {
+            snapOffset = [snapOffset[0], 0];
+            selection.snapEscapeAccum[1] = 0;
+            escaped = true;
+          }
+        } else {
+          selection.snapEscapeAccum[1] = 0;
+        }
+        if (escaped) {
+          snapLines = [];
+        }
+      }
+
       selection.lastSnapOffset = snapOffset;
 
       const obb = getOBB(camera);
@@ -428,6 +471,7 @@ export class Select extends System {
     const camera = api.getCamera();
 
     delete selection.lastSnapOffset;
+    delete selection.snapEscapeAccum;
 
     api.setNodes(api.getNodes());
 
