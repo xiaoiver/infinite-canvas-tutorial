@@ -39,6 +39,7 @@ import { API } from '../API';
 import {
   distanceBetweenPoints,
   isBrowser,
+  regularPolygonInRect,
   regularPolygonPathInRect,
   snapToGrid,
 } from '../utils';
@@ -283,21 +284,33 @@ export class DrawRect extends System {
                 : pen === Pen.DRAW_TRIANGLE ||
                   pen === Pen.DRAW_PENTAGON ||
                   pen === Pen.DRAW_HEXAGON
-                  ? {
-                    x,
-                    y,
-                    width,
-                    height,
-                    d: regularPolygonPathInRect(
+                  ? (() => {
+                    const sides =
                       pen === Pen.DRAW_TRIANGLE
                         ? 3
                         : pen === Pen.DRAW_PENTAGON
                           ? 5
-                          : 6,
-                      width,
-                      height,
-                    ),
-                  }
+                          : 6;
+                    // Normalize the polygon geometry so its bounding box starts
+                    // at the local origin and x/y/width/height describe that box.
+                    // Otherwise the very first Transformer resize is incorrect.
+                    const polygon = regularPolygonInRect(sides, width, height);
+                    return polygon
+                      ? {
+                        x: x + polygon.offsetX,
+                        y: y + polygon.offsetY,
+                        width: polygon.width,
+                        height: polygon.height,
+                        d: polygon.d,
+                      }
+                      : {
+                        x,
+                        y,
+                        width,
+                        height,
+                        d: regularPolygonPathInRect(sides, width, height),
+                      };
+                  })()
                   : pen === Pen.DRAW_ICONFONT
                     ? {
                       x,
