@@ -3,6 +3,8 @@ node_modules
 esm
 lib
 !packages/app/lib
+!packages/site/docs/lib
+!packages/site/docs/lib/**
 dist
 examples/dist
 rust/target
