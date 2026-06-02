@@ -6,13 +6,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
-import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
-import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
-import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-
-import { LaMaPlugin } from '@infinite-canvas-tutorial/lama';
-import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
+import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -43,6 +37,7 @@ onMounted(async () => {
       width: 200,
       height: 200,
       fills: [{ type: 'image', value: 'https://v3b.fal.media/files/b/0a86d421/6xSMYtyW-fm2ciM6dHEgB.png', opacity: 1 }],
+      zIndex: 0,
     };
 
     api.updateNode(node);
@@ -51,12 +46,7 @@ onMounted(async () => {
   };
 
   canvas.addEventListener(Event.READY, onReady);
-
-  // App only runs once
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await ensureExampleWorld();
-  }
+  await ensureExampleWorld();
 });
 
 onUnmounted(async () => {
@@ -68,8 +58,6 @@ onUnmounted(async () => {
   if (onReady) {
     canvas.removeEventListener(Event.READY, onReady);
   }
-
-  api?.destroy();
 });
 </script>
 

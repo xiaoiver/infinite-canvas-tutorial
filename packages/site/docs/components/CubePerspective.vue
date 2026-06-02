@@ -97,10 +97,7 @@ onMounted(async () => {
 
   canvas.addEventListener(Event.READY, onReady as EventListener);
 
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await ensureExampleWorld();
-  }
+  await ensureExampleWorld();
 });
 
 onUnmounted(() => {
@@ -111,7 +108,6 @@ onUnmounted(() => {
   if (canvas && onReady) {
     canvas.removeEventListener(Event.READY, onReady as EventListener);
   }
-  api?.destroy();
 });
 </script>
 
