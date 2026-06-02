@@ -209,7 +209,7 @@ export class CameraControl implements Plugin {
         const second = pointers[secondKey];
 
         // Record the distance and midpoint between both fingers before moving.
-        const prev =
+        const prevGesture =
           first.last && second.last
             ? {
                 dist: Math.sqrt(
@@ -227,7 +227,7 @@ export class CameraControl implements Plugin {
           second.last = { x, y };
         }
 
-        if (prev && first.last && second.last) {
+        if (prevGesture && first.last && second.last) {
           const dist = Math.sqrt(
             Math.pow(second.last.x - first.last.x, 2) +
               Math.pow(second.last.y - first.last.y, 2),
@@ -236,11 +236,11 @@ export class CameraControl implements Plugin {
           const midY = (first.last.y + second.last.y) / 2;
 
           // Two-finger swipe pans the camera, following the fingers.
-          camera.x += (prev.x - midX) / camera.zoom;
-          camera.y += (prev.y - midY) / camera.zoom;
+          camera.x += (prevGesture.x - midX) / camera.zoom;
+          camera.y += (prevGesture.y - midY) / camera.zoom;
 
           // Changing the distance between the fingers zooms the camera.
-          zoomByPoint(midX, midY, (prev.dist / dist - 1) * PINCH_FACTOR);
+          zoomByPoint(midX, midY, (prevGesture.dist / dist - 1) * PINCH_FACTOR);
         } else if (!this.#pinching) {
           this.#pinching = true;
         }
