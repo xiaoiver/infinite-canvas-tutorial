@@ -8,11 +8,7 @@ import {
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 import Cursor from "./Cursor.vue";
-import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
-import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
-import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
 import * as Y from 'yjs';
 import deepEqual from "deep-equal";
@@ -187,11 +183,7 @@ onMounted(async () => {
   };
   canvas.addEventListener(Event.READY, onReady);
 
-  // App only runs once
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await ensureExampleWorld();
-  }
+  await ensureExampleWorld();
 });
 
 onUnmounted(() => {
@@ -212,7 +204,6 @@ onUnmounted(() => {
     pc.dispose();
   });
 
-  api?.destroy();
   yProvider?.destroy();
   doc?.destroy();
 });

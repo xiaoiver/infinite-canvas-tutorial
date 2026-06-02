@@ -151,11 +151,6 @@ onMounted(async () => {
     return;
   }
 
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await ensureExampleWorld([UIPlugin]);
-  }
-
   onReady = async (e: CustomEvent<ExtendedAPI>) => {
     if (spectrumBootstrapped) {
       return;
@@ -205,6 +200,7 @@ onMounted(async () => {
 
   el.addEventListener(Event.READY, onReady as EventListener);
   el.addEventListener(Event.RESIZED, onResized as EventListener);
+  await ensureExampleWorld([UIPlugin]);
 });
 
 onUnmounted(() => {
@@ -228,7 +224,6 @@ onUnmounted(() => {
   lastLoadedSoup = undefined;
   audioDriver?.destroy();
   meshEffect = undefined;
-  api?.destroy();
 });
 
 const handleUploadAudio = (file: File) => {

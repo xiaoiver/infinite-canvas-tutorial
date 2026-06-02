@@ -254,7 +254,6 @@ onUnmounted(async () => {
     api.unregisterMermaidPasteStyler();
   }
 
-  api?.destroy();
 });
 
 function syncGiStrengthToApi() {
