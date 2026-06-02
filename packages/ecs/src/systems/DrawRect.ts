@@ -667,21 +667,47 @@ export function showLabel(
       // Rotate the label to the direction of the line
       label.style.transform = `translate(-50%, -50%) rotate(${deg}deg)`;
     } else if (rotation) {
-      // Position the label at the bottom-center of the OBB (rotated bounding box).
-      // The bottom-center in local space is (width/2, height), rotated by the OBB rotation.
+      // Place the label near the OBB edge that is visually lowest on screen, like Figma.
+      // As the shape rotates, the originally-bottom edge may move to the side or top, so we
+      // pick the edge whose outward normal points most downward (largest screen-Y component)
+      // instead of always using the local bottom edge (width/2, height).
       const cos = Math.cos(rotation);
       const sin = Math.sin(rotation);
-      const localX = width / 2;
-      const localY = height;
-      const canvasBottomCenterX = x + localX * cos - localY * sin;
-      const canvasBottomCenterY = y + localX * sin + localY * cos;
+
+      // Candidate edges of the OBB, expressed as a local midpoint and an outward normal.
+      const edges = [
+        { mx: width / 2, my: height, nx: 0, ny: 1 }, // bottom
+        { mx: width / 2, my: 0, nx: 0, ny: -1 }, // top
+        { mx: width, my: height / 2, nx: 1, ny: 0 }, // right
+        { mx: 0, my: height / 2, nx: -1, ny: 0 }, // left
+      ];
+
+      // Rotate each outward normal into canvas space (y-down) and pick the one pointing
+      // most downward, i.e. the edge that ends up lowest on screen.
+      let best = edges[0];
+      let bestWorldNy = -Infinity;
+      for (const edge of edges) {
+        const worldNy = edge.nx * sin + edge.ny * cos;
+        if (worldNy > bestWorldNy) {
+          bestWorldNy = worldNy;
+          best = edge;
+        }
+      }
+
+      const canvasMidX = x + best.mx * cos - best.my * sin;
+      const canvasMidY = y + best.mx * sin + best.my * cos;
       const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
-        x: canvasBottomCenterX,
-        y: canvasBottomCenterY,
+        x: canvasMidX,
+        y: canvasMidY,
       });
       label.style.top = `${viewportY2}px`;
       label.style.left = `${viewportX2}px`;
-      const deg = rotation * (180 / Math.PI);
+
+      // Align the label's downward axis with the chosen edge's outward normal so the
+      // `translate(-50%, 8px)` offset always pushes the label outside the OBB.
+      const worldNx = best.nx * cos - best.ny * sin;
+      const worldNy = best.nx * sin + best.ny * cos;
+      const deg = Math.atan2(-worldNx, worldNy) * (180 / Math.PI);
       label.style.transform = `translate(-50%, 8px) rotate(${deg}deg)`;
     } else {
       const { x: viewportX2, y: viewportY2 } = api.canvas2Viewport({
