@@ -15,6 +15,7 @@ import {
   SwapChain,
   RenderTarget,
   Texture,
+  Sampler,
   MipmapFilterMode,
   AddressMode,
   FilterMode,
@@ -52,6 +53,7 @@ export class PostProcessingRenderer {
   #bigTriangleTexture: Texture;
   #bigTriangleRenderTarget: RenderTarget;
   #bigTriangleBindings: Bindings;
+  #bigTriangleSampler: Sampler;
   #bigTriangleUniformBuffer: Buffer;
 
   constructor(
@@ -123,20 +125,7 @@ export class PostProcessingRenderer {
         lodMaxClamp: 0,
       });
 
-      this.#bigTriangleBindings = this.renderCache.createBindings({
-        pipeline: this.#bigTrianglePipeline,
-        samplerBindings: [
-          {
-            texture,
-            sampler,
-          },
-        ],
-        uniformBufferBindings: [
-          {
-            buffer: this.#bigTriangleUniformBuffer,
-          },
-        ],
-      });
+      this.#bigTriangleSampler = sampler;
     }
 
     const uniformLegacyObject: Record<string, unknown> = {};
@@ -317,6 +306,26 @@ export class PostProcessingRenderer {
       new Uint8Array(new Float32Array(uniformBuffer).buffer),
     );
     this.#bigTriangleProgram.setUniformsLegacy(uniformLegacyObject);
+
+    // Recreate the bindings every frame with the *current* input texture.
+    // The render graph may hand back a different (or recycled) resolve texture
+    // each frame, so caching the bindings once would reference a stale/destroyed
+    // texture and break global filters. `renderCache.createBindings` dedupes by
+    // texture id, so this stays cheap when the texture is stable.
+    this.#bigTriangleBindings = this.renderCache.createBindings({
+      pipeline: this.#bigTrianglePipeline,
+      samplerBindings: [
+        {
+          texture,
+          sampler: this.#bigTriangleSampler,
+        },
+      ],
+      uniformBufferBindings: [
+        {
+          buffer: this.#bigTriangleUniformBuffer,
+        },
+      ],
+    });
 
     const { width, height } = this.swapChain.getCanvas();
     renderPass.setViewport(0, 0, width, height);
