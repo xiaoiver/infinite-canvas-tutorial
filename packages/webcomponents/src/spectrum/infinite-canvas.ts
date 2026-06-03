@@ -232,9 +232,11 @@ export class InfiniteCanvas extends LitElement {
 
     if (width && height) {
       const $canvas = this.shadowRoot?.querySelector('canvas');
-      $canvas.width = Math.floor(width * dpr);
-      $canvas.height = Math.floor(
-        (height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr,
+      // Avoid 0-sized backing store (e.g. tiny layout rects) — incomplete default FBO.
+      $canvas.width = Math.max(1, Math.floor(width * dpr));
+      $canvas.height = Math.max(
+        1,
+        Math.floor((height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr),
       );
 
       this.apiProvider.value?.resizeCanvas(
@@ -294,6 +296,10 @@ export class InfiniteCanvas extends LitElement {
       $svgLayer.style.pointerEvents = 'none';
 
       const { width, height } = this.getBoundingClientRect();
+      const logicalHeight = topbarVisible ? height - TOP_NAVBAR_HEIGHT : height;
+      const dpr = window.devicePixelRatio;
+      $canvas.width = Math.max(1, Math.floor(width * dpr));
+      $canvas.height = Math.max(1, Math.floor(logicalHeight * dpr));
 
       pendingCanvases.push({
         container: this,
@@ -302,8 +308,8 @@ export class InfiniteCanvas extends LitElement {
           htmlLayer: $htmlLayer,
           svgLayer: $svgLayer,
           width,
-          height: topbarVisible ? height - TOP_NAVBAR_HEIGHT : height,
-          devicePixelRatio: window.devicePixelRatio,
+          height: logicalHeight,
+          devicePixelRatio: dpr,
           renderer,
           shaderCompilerPath,
         },

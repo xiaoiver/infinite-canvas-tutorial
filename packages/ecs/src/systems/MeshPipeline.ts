@@ -780,13 +780,15 @@ export class MeshPipeline extends System {
       });
     });
 
-    parseEffect(filter).forEach((effect) => {
+    const filterEffects = parseEffect(filter);
+    filterEffects.forEach((effect) => {
       builder.pushPass((pass) => {
         pass.setDebugName(effect.type.toUpperCase());
-        pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-
+        // Resolve *before* attaching this pass as an RT user so we snapshot the
+        // previous pass output, not this pass itself.
         const mainColorResolveTextureID =
           builder.resolveRenderTarget(mainColorTargetID);
+        pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
         pass.attachResolveTexture(mainColorResolveTextureID);
         pass.exec((passRenderer, scope) => {
           if (!filters[effect.type]) {

@@ -171,7 +171,7 @@ canvas.addEventListener(Event.READY, async (e) => {
     // giEnabled: true,
     // giStrength: 0.05,
     // themeMode: ThemeMode.DARK,
-    // filter: 'noise(0.5)',
+    filter: 'noise(0.5)',
     // layersLassoing: ['parent'],
     // filter: 'fxaa() brightness(0.8) noise(0.1)',
     // layersCropping: ['parent-1'],

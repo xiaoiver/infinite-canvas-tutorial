@@ -328,7 +328,9 @@ export class PostProcessingRenderer {
     });
 
     const { width, height } = this.swapChain.getCanvas();
-    renderPass.setViewport(0, 0, width, height);
+    const vw = Math.max(1, width);
+    const vh = Math.max(1, height);
+    renderPass.setViewport(0, 0, vw, vh);
     renderPass.setPipeline(this.#bigTrianglePipeline);
     renderPass.setVertexInput(
       this.#bigTriangleInputLayout,
