@@ -567,14 +567,44 @@ export class RenderGraph implements RGGraphBuilder {
   // #endregion
 
   // #region Execution
+  /** Compact sparse color slots while keeping per-attachment metadata aligned. */
+  private compactPassColorAttachments(pass: RenderGraphPass): void {
+    const desc = pass.descriptor;
+    const attachments: (typeof desc.colorAttachment)[number][] = [];
+    const resolveTos: (typeof desc.colorResolveTo)[number][] = [];
+    const attachmentLevels: number[] = [];
+    const resolveLevels: number[] = [];
+    const clearColors: (typeof desc.colorClearColor)[number][] = [];
+    const stores: boolean[] = [];
+
+    for (
+      let slot = RGAttachmentSlot.Color0;
+      slot <= RGAttachmentSlot.ColorMax;
+      slot++
+    ) {
+      const attachment = desc.colorAttachment[slot];
+      if (!attachment) continue;
+      attachments.push(attachment);
+      resolveTos.push(desc.colorResolveTo[slot] ?? null);
+      attachmentLevels.push(desc.colorAttachmentLevel[slot] ?? 0);
+      resolveLevels.push(desc.colorResolveToLevel[slot] ?? 0);
+      clearColors.push(desc.colorClearColor[slot] ?? 'load');
+      stores.push(desc.colorStore[slot] ?? false);
+    }
+
+    desc.colorAttachment = attachments;
+    desc.colorResolveTo = resolveTos;
+    desc.colorAttachmentLevel = attachmentLevels;
+    desc.colorResolveToLevel = resolveLevels;
+    desc.colorClearColor = clearColors;
+    desc.colorStore = stores;
+  }
+
   private execPass(pass: RenderGraphPass): void {
     assert(this.currentPass === null);
     this.currentPass = pass;
 
-    pass.descriptor.colorAttachment =
-      pass.descriptor.colorAttachment.filter(Boolean);
-    pass.descriptor.colorResolveTo =
-      pass.descriptor.colorResolveTo.filter(Boolean);
+    this.compactPassColorAttachments(pass);
 
     const renderPass = this.device.createRenderPass(pass.descriptor);
     renderPass.pushDebugGroup(pass.debugName);

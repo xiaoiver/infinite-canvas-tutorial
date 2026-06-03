@@ -22,7 +22,7 @@ import LiquidMetal from '../components/LiquidMetal.vue'
 import Heatmap from '../components/Heatmap.vue'
 import GenSmoke from '../components/GenSmoke.vue'
 import Ascii from '../components/Ascii.vue'
-// import GlobalEffects from '../components/GlobalEffects.vue'
+import GlobalEffects from '../components/GlobalEffects.vue'
 </script>
 
 # Lesson 30 - Post-processing and render graph
@@ -357,7 +357,7 @@ api.setAppState({
 });
 ```
 
-<!-- <GlobalEffects /> -->
+<GlobalEffects />
 
 ## Extended reading {#extended-reading}
 

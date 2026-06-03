@@ -17,7 +17,7 @@ import Heatmap from '../../components/Heatmap.vue'
 import GenSmoke from '../../components/GenSmoke.vue'
 import Ascii from '../../components/Ascii.vue'
 import Burn from '../../components/Burn.vue'
-// import GlobalEffects from '../../components/GlobalEffects.vue'
+import GlobalEffects from '../../components/GlobalEffects.vue'
 </script>
 
 # 课程 30 - 后处理与渲染图
@@ -356,7 +356,7 @@ api.setAppState({
 });
 ```
 
-<!-- <GlobalEffects /> -->
+<GlobalEffects />
 
 ## 扩展阅读 {#extended-reading}
 
