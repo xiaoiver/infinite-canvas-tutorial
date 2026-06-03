@@ -66,7 +66,7 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     // after(ComputeCamera), which creates precedence cycles with UI/Lasso systems.
     system((s) => s.after(ComputeCamera, SyncExtrude3D).before(Last))(CameraSync);
 
-    // 3D picking: runs after camera sync so matrices are up-to-date.
+    // After Select → ZoomLevel → ComputeCamera → CameraSync (same-frame camera for picking).
     system((s) => s.after(CameraSync).before(Last))(Pick3D);
 
     // 3D gizmo rendering: runs alongside the 3D render system.

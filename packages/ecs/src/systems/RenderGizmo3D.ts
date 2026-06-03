@@ -26,18 +26,18 @@ import {
   ComputedCamera,
   GPUResource,
   Transform3D,
-  linkedPerspectiveEyeDistance,
-  mat3ViewProjectionToMat4,
-  mat3ViewToMat4,
 } from '../components';
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import { Mat4 } from '../components/math/Mat4';
-import { gizmoVert, gizmoFrag } from '../shaders/gizmo3d';
+import { vert as mesh3dVert, frag as mesh3dFrag } from '../shaders/mesh3d';
 import {
   createTranslateGizmo,
   computeGizmoScale,
-  GizmoMeshData,
 } from '../utils/gizmo-geometry';
+import {
+  buildCamera3DSceneUniforms,
+  packSceneUniformBuffer,
+} from '../utils/mesh3d-scene';
 import { SetupDevice } from './SetupDevice';
 import {
   registerGizmo3D,
@@ -102,7 +102,7 @@ export class RenderGizmo3D extends System {
 
   /** True when there are selected 3D entities to show gizmos for. */
   hasGizmoContent(): boolean {
-    return this.selected3D.current.length > 0;
+    return this.selected3D.current.some((entity) => entity.has(Selected3D));
   }
 
   /**
@@ -135,9 +135,8 @@ export class RenderGizmo3D extends System {
         ? logicalW / logicalH
         : width / height;
 
-    // Compute view-projection for gizmo rendering
-    const vpMatrix = this.computeViewProjection(camera, aspect, cam2d);
-    this.updateSceneUniforms(vpMatrix);
+    const sceneUniforms = buildCamera3DSceneUniforms(camera, aspect, cam2d);
+    this.uploadSceneUniforms(sceneUniforms);
 
     renderPass.setViewport(0, 0, width, height);
     renderPass.setPipeline(this.pipeline);
@@ -150,8 +149,10 @@ export class RenderGizmo3D extends System {
       ],
     });
 
-    // Draw gizmo for each selected entity
+    // Draw gizmo for each selected entity (Pick3D may remove Selected3D earlier this frame).
     for (const entity of this.selected3D.current) {
+      if (!entity.has(Selected3D)) continue;
+
       const transform = entity.read(Transform3D);
       const sel = entity.read(Selected3D);
       const translation = transform.translation;
@@ -161,7 +162,7 @@ export class RenderGizmo3D extends System {
         camera.eye,
         translation,
         camera.fovy,
-        height,
+        logicalH > 0 ? logicalH : height,
       );
 
       for (const part of this.gizmoParts) {
@@ -171,12 +172,15 @@ export class RenderGizmo3D extends System {
           color = [1, 1, 0, 1]; // Yellow highlight
         }
 
-        this.updateModelUniforms(translation, gizmoScale, color);
+        const modelLegacy = this.uploadModelUniforms(
+          translation,
+          gizmoScale,
+          color,
+        );
 
         this.program!.setUniformsLegacy({
           ...this.sceneLegacyUniforms,
-          u_GizmoModel: this.buildGizmoModelMat4(translation, gizmoScale),
-          u_GizmoColor: color,
+          ...modelLegacy,
         });
 
         renderPass.setBindings(bindings);
@@ -195,83 +199,51 @@ export class RenderGizmo3D extends System {
     bindings.destroy();
   }
 
-  private computeViewProjection(
-    camera: Camera3D,
-    aspect: number,
-    cam2d?: Entity,
-  ): Float32Array {
-    let projMatrix: Mat4;
-    let viewMatrix: Mat4;
-
-    if (camera.linked && cam2d && camera.projection === 'orthographic') {
-      const vp = cam2d.read(ComputedCamera).viewProjectionMatrix;
-      const zScale = camera.far > 0 ? -2 / camera.far : 0;
-      projMatrix = mat3ViewProjectionToMat4(vp, zScale);
-      viewMatrix = Mat4.IDENTITY;
-    } else if (camera.linked && cam2d && camera.projection === 'perspective') {
-      const computed = cam2d.read(ComputedCamera);
-      const camera2d = cam2d.read(Camera);
-      const canvasHeight = camera2d.canvas
-        ? camera2d.canvas.read(Canvas).height
-        : 0;
-      const eyeZ = linkedPerspectiveEyeDistance(
-        canvasHeight,
-        computed.zoom,
-        camera.fovy,
-      );
-      const zShift = new Mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, -eyeZ, 1,
-      );
-      viewMatrix = Mat4.multiply(mat3ViewToMat4(computed.viewMatrix), zShift);
-      projMatrix = Mat4.perspective(camera.fovy, aspect, camera.near, camera.far);
-    } else {
-      if (camera.projection === 'orthographic') {
-        const distance = Math.abs(camera.eye[2] - camera.center[2]);
-        const halfH = distance;
-        const halfW = halfH * aspect;
-        projMatrix = Mat4.ortho(-halfW, halfW, -halfH, halfH, camera.near, camera.far);
-      } else {
-        projMatrix = Mat4.perspective(camera.fovy, aspect, camera.near, camera.far);
-      }
-      viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
-    }
-
-    const vp = glMat4.create();
-    glMat4.multiply(
-      vp,
-      Mat4.toGLMat4(projMatrix),
-      Mat4.toGLMat4(viewMatrix),
-    );
-    return vp as unknown as Float32Array;
-  }
-
-  private updateSceneUniforms(vpMatrix: Float32Array): void {
+  private uploadSceneUniforms(
+    uniforms: ReturnType<typeof buildCamera3DSceneUniforms>,
+  ): void {
     if (!this.sceneUniformBuffer) return;
 
-    const buffer = new Float32Array(16);
-    buffer.set(vpMatrix, 0);
+    const buffer = packSceneUniformBuffer(uniforms);
     this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
     this.sceneLegacyUniforms = {
-      u_GizmoViewProjection: vpMatrix,
+      u_ProjectionMatrix3D: Mat4.toGLMat4(uniforms.projMatrix),
+      u_ViewMatrix3D: Mat4.toGLMat4(uniforms.viewMatrix),
+      u_CanvasViewProjection3D: Mat4.toGLMat4(uniforms.canvasViewProjection),
+      u_SceneParams: uniforms.sceneParams,
     };
   }
 
-  private updateModelUniforms(
+  private uploadModelUniforms(
     translation: [number, number, number],
     scale: number,
     color: [number, number, number, number],
-  ): void {
-    if (!this.modelUniformBuffer) return;
-
+  ): Record<string, unknown> {
     const modelMat = this.buildGizmoModelMat4(translation, scale);
-    const buffer = new Float32Array(20);
-    buffer.set(modelMat as unknown as Float32Array, 0);
-    buffer.set(color, 16);
-    this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    const normalMat = glMat4.create();
+    glMat4.invert(normalMat, modelMat);
+    glMat4.transpose(normalMat, normalMat);
+
+    if (this.modelUniformBuffer) {
+      const buffer = new Float32Array(52);
+      buffer.set(modelMat as unknown as Float32Array, 0);
+      buffer.set(normalMat as unknown as Float32Array, 16);
+      buffer.set(color, 32);
+      buffer.set([1, 0, 0, 0], 36);
+      buffer.set([-0.5, -0.7, -0.5, 0], 40);
+      buffer.set([translation[0], translation[1], 0, 0], 44);
+      this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    }
+
+    return {
+      u_ModelMatrix3D: modelMat,
+      u_NormalMatrix3D: normalMat,
+      u_BaseColor: color,
+      u_LightParams: [1, 0, 0, 0],
+      u_LightDirection: [-0.5, -0.7, -0.5, 0],
+      u_CanvasAnchor: [translation[0], translation[1], 0, 0],
+    };
   }
 
   private buildGizmoModelMat4(
@@ -291,8 +263,8 @@ export class RenderGizmo3D extends System {
     const { device, renderCache } = canvas.read(GPUResource);
 
     this.program = renderCache.createProgram({
-      vertex: { glsl: gizmoVert, entryPoint: 'main' },
-      fragment: { glsl: gizmoFrag, entryPoint: 'main' },
+      vertex: { glsl: mesh3dVert, entryPoint: 'main' },
+      fragment: { glsl: mesh3dFrag, entryPoint: 'main' },
     });
 
     this.inputLayout = renderCache.createInputLayout({
@@ -346,16 +318,15 @@ export class RenderGizmo3D extends System {
       }),
     });
 
-    // Scene uniform: mat4 viewProjection = 64 bytes
+    // Match mesh3d SceneUniforms3D / ModelUniforms3D (52 floats each).
     this.sceneUniformBuffer = device.createBuffer({
-      viewOrSize: 64,
+      viewOrSize: 52 * 4,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
-    // Model uniform: mat4 model (64) + vec4 color (16) = 80 bytes
     this.modelUniformBuffer = device.createBuffer({
-      viewOrSize: 80,
+      viewOrSize: 52 * 4,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });

@@ -1,5 +1,5 @@
 import { Entity, System } from '@lastolivegames/becsy';
-import { mat4 as glMat4 } from 'gl-matrix';
+import { mat4 as glMat4, vec2, vec3 as glVec3 } from 'gl-matrix';
 import {
   Camera,
   Camera3D,
@@ -8,22 +8,26 @@ import {
   Input,
   Mesh3D,
   Material3D,
+  Pen,
   Transform3D,
-  linkedPerspectiveEyeDistance,
-  mat3ViewProjectionToMat4,
-  mat3ViewToMat4,
 } from '../components';
 import { Selected3D, GizmoAxis } from '../components/geometry3d/Selected3D';
+import { Mat3 } from '../components/math/Mat3';
 import { Mat4 } from '../components/math/Mat4';
 import {
   screenToRay,
-  rayMeshIntersection,
   computeModelMatrix,
   computeInvViewProjection,
-  Ray,
-  RayHitResult,
+  pickMeshAtViewport,
+  type Mesh3DPickScene,
+  type Ray,
+  type RayHitResult,
 } from '../utils/ray-casting';
 import { createTranslateGizmo, computeGizmoScale } from '../utils/gizmo-geometry';
+import {
+  buildCamera3DSceneUniforms,
+  sceneUniformsToPickScene,
+} from '../utils/mesh3d-scene';
 
 /**
  * 3D Picking System.
@@ -40,8 +44,6 @@ import { createTranslateGizmo, computeGizmoScale } from '../utils/gizmo-geometry
  *   - Ends drag.
  */
 export class Pick3D extends System {
-  private inputs = this.query((q) => q.current.with(Input).read);
-
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
   private cameras2D = this.query((q) =>
     q.current.with(Camera, ComputedCamera).read,
@@ -81,29 +83,34 @@ export class Pick3D extends System {
   }
 
   execute(): void {
-    const inputEntity = this.inputs.current[0];
-    if (!inputEntity) return;
-
-    const input = inputEntity.read(Input);
     const cameraEntity = this.cameras3D.current[0];
     if (!cameraEntity) return;
 
     const camera = cameraEntity.read(Camera3D);
 
-    // Handle drag updates on pointer move
-    if (!input.pointerDownTrigger && !input.pointerUpTrigger) {
-      this.handleDrag(input, camera);
-      return;
-    }
+    for (const canvasEntity of this.canvases.current) {
+      if (!canvasEntity.has(Input)) continue;
 
-    if (input.pointerUpTrigger) {
-      this.handlePointerUp();
-      return;
-    }
+      const { api } = canvasEntity.read(Canvas);
+      if (api.getAppState().penbarSelected !== Pen.SELECT) continue;
 
-    // Pointer down – perform picking
-    if (input.pointerDownTrigger) {
-      this.handlePointerDown(input, camera);
+      const input = canvasEntity.read(Input);
+
+      // Handle drag updates on pointer move
+      if (!input.pointerDownTrigger && !input.pointerUpTrigger) {
+        this.handleDrag(input, camera);
+        continue;
+      }
+
+      if (input.pointerUpTrigger) {
+        this.handlePointerUp();
+        continue;
+      }
+
+      // Pointer down – perform picking
+      if (input.pointerDownTrigger) {
+        this.handlePointerDown(input, camera);
+      }
     }
   }
 
@@ -112,12 +119,20 @@ export class Pick3D extends System {
     const { width, height } = this.getViewportSize();
     if (width <= 0 || height <= 0) return;
 
-    const ray = this.buildRay(vx, vy, width, height, camera);
-    if (!ray) return;
+    const pickScene = this.buildPickScene(camera, width, height);
+    if (!pickScene) return;
 
     // First, check if clicking on gizmo handles of already-selected entity
     for (const entity of this.selected3D.current) {
-      const axis = this.hitTestGizmo(ray, entity, camera, width, height);
+      const axis = this.hitTestGizmo(
+        vx,
+        vy,
+        width,
+        height,
+        entity,
+        camera,
+        pickScene,
+      );
       if (axis !== 'none') {
         const sel = entity.write(Selected3D);
         sel.activeAxis = axis;
@@ -143,11 +158,21 @@ export class Pick3D extends System {
         transform.rotation,
         transform.scale,
       );
-      const hit = rayMeshIntersection(
-        ray,
+      const anchor: [number, number, number] = [
+        transform.translation[0],
+        transform.translation[1],
+        0,
+      ];
+      const hit = pickMeshAtViewport(
+        vx,
+        vy,
+        width,
+        height,
         mesh.positions,
         mesh.indices,
         modelMatrix,
+        anchor,
+        pickScene,
       );
       if (hit && (!closestHit || hit.t < closestHit.t)) {
         closestHit = hit;
@@ -176,6 +201,8 @@ export class Pick3D extends System {
 
   private handlePointerUp(): void {
     for (const entity of this.selected3D.current) {
+      if (!entity.has(Selected3D)) continue;
+
       const sel = entity.write(Selected3D);
       sel.dragging = false;
       sel.activeAxis = 'none';
@@ -185,6 +212,8 @@ export class Pick3D extends System {
 
   private handleDrag(input: Input, camera: Camera3D): void {
     for (const entity of this.selected3D.current) {
+      if (!entity.has(Selected3D)) continue;
+
       const sel = entity.read(Selected3D);
       if (!sel.dragging || sel.activeAxis === 'none' || !sel.initialTranslation) {
         continue;
@@ -194,11 +223,27 @@ export class Pick3D extends System {
       const { width, height } = this.getViewportSize();
       if (width <= 0 || height <= 0) continue;
 
-      const ray = this.buildRay(vx, vy, width, height, camera);
+      const pickScene = this.buildPickScene(camera, width, height);
+      if (!pickScene) continue;
+      const transformRead = entity.read(Transform3D);
+      const anchor: [number, number, number] = [
+        transformRead.translation[0],
+        transformRead.translation[1],
+        0,
+      ];
+      const ray = this.buildRay(
+        vx,
+        vy,
+        width,
+        height,
+        camera,
+        pickScene,
+        anchor,
+      );
       if (!ray) continue;
 
       // Project ray onto the constrained axis/plane to compute new position
-      const selW = entity.write(Selected3D);
+      entity.write(Selected3D);
       const transform = entity.write(Transform3D);
       const newTranslation = this.computeConstrainedTranslation(
         ray,
@@ -298,11 +343,13 @@ export class Pick3D extends System {
    * Test ray against gizmo handles around a selected entity.
    */
   private hitTestGizmo(
-    ray: Ray,
-    entity: Entity,
-    camera: Camera3D,
+    vx: number,
+    vy: number,
     viewportWidth: number,
     viewportHeight: number,
+    entity: Entity,
+    camera: Camera3D,
+    pickScene: Mesh3DPickScene,
   ): GizmoAxis {
     const transform = entity.read(Transform3D);
     const translation = transform.translation;
@@ -320,13 +367,24 @@ export class Pick3D extends System {
     glMat4.translate(gizmoModel, gizmoModel, translation);
     glMat4.scale(gizmoModel, gizmoModel, [scale, scale, scale]);
 
+    const anchor: [number, number, number] = [
+      translation[0],
+      translation[1],
+      0,
+    ];
+
     // Test each gizmo part
     for (const part of this.gizmoParts) {
-      const hit = rayMeshIntersection(
-        ray,
+      const hit = pickMeshAtViewport(
+        vx,
+        vy,
+        viewportWidth,
+        viewportHeight,
         part.positions,
         part.indices,
         gizmoModel as unknown as Float32Array,
+        anchor,
+        pickScene,
       );
       if (hit) {
         return part.axis;
@@ -336,8 +394,31 @@ export class Pick3D extends System {
     return 'none';
   }
 
+  private buildPickScene(
+    camera: Camera3D,
+    viewportWidth: number,
+    viewportHeight: number,
+  ): Mesh3DPickScene | null {
+    const cam2d = camera.linked ? this.cameras2D.current[0] : undefined;
+    const canvasEntity = this.canvases.current[0];
+    const logicalW = canvasEntity
+      ? canvasEntity.read(Canvas).width
+      : viewportWidth;
+    const logicalH = canvasEntity
+      ? canvasEntity.read(Canvas).height
+      : viewportHeight;
+    const aspect =
+      camera.linked && logicalW > 0 && logicalH > 0
+        ? logicalW / logicalH
+        : viewportWidth / viewportHeight;
+
+    return sceneUniformsToPickScene(
+      buildCamera3DSceneUniforms(camera, aspect, cam2d),
+    );
+  }
+
   /**
-   * Build a world-space ray from viewport coordinates.
+   * Build a world-space ray from viewport coordinates (standard / linked-ortho).
    */
   private buildRay(
     vx: number,
@@ -345,69 +426,39 @@ export class Pick3D extends System {
     viewportWidth: number,
     viewportHeight: number,
     camera: Camera3D,
+    pickScene: Mesh3DPickScene,
+    _anchor?: [number, number, number],
   ): Ray | null {
-    const cam2d = camera.linked ? this.cameras2D.current[0] : undefined;
-    const canvasEntity = this.canvases.current[0];
-    const logicalW = canvasEntity ? canvasEntity.read(Canvas).width : viewportWidth;
-    const logicalH = canvasEntity ? canvasEntity.read(Canvas).height : viewportHeight;
-    const aspect =
-      camera.linked && logicalW > 0 && logicalH > 0
-        ? logicalW / logicalH
-        : viewportWidth / viewportHeight;
-
-    let projMatrix: Float32Array;
-    let viewMatrix: Float32Array;
-
-    if (camera.linked && cam2d && camera.projection === 'orthographic') {
-      const vp = cam2d.read(ComputedCamera).viewProjectionMatrix;
-      const zScale = camera.far > 0 ? -2 / camera.far : 0;
-      const mat = mat3ViewProjectionToMat4(vp, zScale);
-      projMatrix = mat.toFloat32Array();
-      viewMatrix = Mat4.IDENTITY.toFloat32Array();
-    } else if (camera.linked && cam2d && camera.projection === 'perspective') {
-      const computed = cam2d.read(ComputedCamera);
-      const camera2d = cam2d.read(Camera);
-      const canvasHeight = camera2d.canvas
-        ? camera2d.canvas.read(Canvas).height
-        : 0;
-      const eyeZ = linkedPerspectiveEyeDistance(
-        canvasHeight,
-        computed.zoom,
-        camera.fovy,
+    if (pickScene.mode === 'linkedPerspective') {
+      const cam2d = this.cameras2D.current[0];
+      if (!cam2d) return null;
+      const inv = Mat3.toGLMat3(
+        cam2d.read(ComputedCamera).viewProjectionMatrixInv,
       );
-      const zShift = new Mat4(
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0,
-        0, 0, -eyeZ, 1,
+      const ndc = vec2.fromValues(
+        (vx / viewportWidth) * 2 - 1,
+        1 - (vy / viewportHeight) * 2 - 1,
       );
-      viewMatrix = Mat4.multiply(
-        mat3ViewToMat4(computed.viewMatrix),
-        zShift,
-      ).toFloat32Array();
-      projMatrix = Mat4.perspective(
-        camera.fovy,
-        aspect,
-        camera.near,
-        camera.far,
-      ).toFloat32Array();
-    } else {
-      if (camera.projection === 'orthographic') {
-        const distance = Math.abs(camera.eye[2] - camera.center[2]);
-        const halfH = distance;
-        const halfW = halfH * aspect;
-        projMatrix = Mat4.ortho(
-          -halfW, halfW, -halfH, halfH, camera.near, camera.far,
-        ).toFloat32Array();
-      } else {
-        projMatrix = Mat4.perspective(
-          camera.fovy, aspect, camera.near, camera.far,
-        ).toFloat32Array();
-      }
-      viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up).toFloat32Array();
+      const canvasPt = vec2.transformMat3(vec2.create(), ndc, inv);
+      const origin: [number, number, number] = [
+        camera.eye[0],
+        camera.eye[1],
+        camera.eye[2],
+      ];
+      const target: [number, number, number] = [canvasPt[0], canvasPt[1], 0];
+      const dir = glVec3.create();
+      glVec3.subtract(dir, target, origin);
+      if (glVec3.length(dir) < 1e-8) return null;
+      glVec3.normalize(dir, dir);
+      return {
+        origin,
+        direction: [dir[0], dir[1], dir[2]],
+      };
     }
-
-    const invVP = computeInvViewProjection(projMatrix, viewMatrix);
+    const invVP = computeInvViewProjection(
+      pickScene.projMatrix,
+      pickScene.viewMatrix,
+    );
     return screenToRay(vx, vy, viewportWidth, viewportHeight, invVP);
   }
 
