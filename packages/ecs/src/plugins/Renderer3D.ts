@@ -35,7 +35,7 @@ import {
   Pick3D,
   RenderGizmo3D,
 } from '../systems';
-import { PostUpdate, PreUpdate } from '../systems/stages';
+import { Last, PostUpdate, PreUpdate } from '../systems/stages';
 
 export interface Renderer3DPluginOptions {
   /**
@@ -61,12 +61,13 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     system(PostUpdate)(SyncExtrude3D);
     system((s) => s.after(EnsureExtrudeMeshes))(SyncExtrude3D);
 
-    system(PostUpdate)(CameraSync);
-    system((s) => s.after(ComputeCamera, SyncExtrude3D))(CameraSync);
+    // After ComputeCamera (runs after Camera writers e.g. ZoomLevel / CameraControl).
+    // Must not live in PostUpdate: that stage runs before Last and conflicts with
+    // after(ComputeCamera), which creates precedence cycles with UI/Lasso systems.
+    system((s) => s.after(ComputeCamera, SyncExtrude3D).before(Last))(CameraSync);
 
     // 3D picking: runs after camera sync so matrices are up-to-date.
-    system(PostUpdate)(Pick3D);
-    system((s) => s.after(CameraSync))(Pick3D);
+    system((s) => s.after(CameraSync).before(Last))(Pick3D);
 
     // 3D gizmo rendering: runs alongside the 3D render system.
     system(PreUpdate)(RenderGizmo3D);
