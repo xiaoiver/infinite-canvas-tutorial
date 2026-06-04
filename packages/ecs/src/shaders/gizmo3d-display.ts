@@ -1,6 +1,8 @@
 /**
  * Gizmo display shader – unlit, same projection as mesh3d (including linked perspective).
- * sceneParams.xy: extra clip-space offset per world-Z (depth axis) for linked canvas.
+ * sceneParams.xy: Z-axis screen bias (linked perspective, translate blue arrow only).
+ * u_LightParams.y: 1 = apply Z bias; 0 = mesh3d-style linked projection (rotate rings, etc.).
+ * u_SceneParams.w: 1 = active handle highlight (yellow), WebGPU-safe via scene UBO.
  */
 
 export const gizmoDisplayVert = /* glsl */ `
@@ -23,8 +25,15 @@ layout(std140) uniform ModelUniforms3D {
 
 layout(location = 0) in vec3 a_Position3D;
 layout(location = 1) in vec3 a_Normal3D;
+layout(location = 2) in vec4 a_GizmoColor;
+
+out vec4 v_GizmoColor;
 
 void main() {
+  v_GizmoColor = a_GizmoColor;
+  if (u_SceneParams.w > 0.5) {
+    v_GizmoColor = vec4(1.0, 1.0, 0.0, a_GizmoColor.a);
+  }
   vec4 worldPos = u_ModelMatrix3D * vec4(a_Position3D, 1.0);
 
   if (u_SceneParams.z > 0.5) {
@@ -42,8 +51,10 @@ void main() {
     }
     float scale = pw / clipPwRef;
     gl_Position.xy = anchor2d.xy + (clip2d.xy - anchor2d.xy) * scale;
-    float zDelta = worldPos.z - u_CanvasAnchor.z;
-    gl_Position.xy += u_SceneParams.xy * zDelta * clip2d.w;
+    if (u_LightParams.y > 0.5) {
+      float zDelta = worldPos.z - u_CanvasAnchor.z;
+      gl_Position.xy += u_SceneParams.xy * zDelta * clip2d.w;
+    }
     gl_Position.z = clipP.z * clip2d.w / pw;
     gl_Position.w = clip2d.w;
   } else {
@@ -53,18 +64,11 @@ void main() {
 `;
 
 export const gizmoDisplayFrag = /* glsl */ `
-layout(std140) uniform ModelUniforms3D {
-  mat4 u_ModelMatrix3D;
-  mat4 u_NormalMatrix3D;
-  vec4 u_BaseColor;
-  vec4 u_LightParams;
-  vec4 u_LightDirection;
-  vec4 u_CanvasAnchor;
-};
+in vec4 v_GizmoColor;
 
 out vec4 outputColor;
 
 void main() {
-  outputColor = u_BaseColor;
+  outputColor = v_GizmoColor;
 }
 `;

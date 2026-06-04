@@ -296,7 +296,7 @@ pointer up
 -   系统在 **`Renderer3DPlugin`** 里注册；几何在 `initPipeline` 时由 **`createTranslateGizmo()`** 上传 GPU（`packages/ecs/src/utils/gizmo-geometry.ts`）。
 -   实际绘制在 **`MeshPipeline3D`** 主 pass 内、**`drawMeshes` 之后** 调用 `drawGizmos()`（`gizmo3d-bridge` 持有 `RenderGizmo3D` 实例）。
 -   使用专用着色器 **`gizmo3d-display`**（`packages/ecs/src/shaders/gizmo3d-display.ts`）：
-    -   顶点：与 `mesh3d` 相同的 linked 透视投影，并对 **+Z 深度轴** 施加可计算的屏幕偏移（见下）；
+    -   顶点：与 `mesh3d` 相同的 linked 透视投影；**仅蓝平移箭头** 施加 Z 屏幕偏移（见下），**旋转圆环** 不用该偏移，避免圆环被拉变形；
     -   片元：**无光照**，直接输出 `u_BaseColor`（把手颜色固定，不受场景光影响）。
 -   **绘制顺序**：先画半透明 **平面**，再画 **箭头**，避免平面盖住轴心。
 -   **MegaState**：深度测试 `ALWAYS`、不写深度，保证 gizmo 始终叠在 3D mesh 之上。
@@ -309,7 +309,7 @@ pointer up
 
 -   比较 X 轴与 Z 轴端点在屏幕上的长度；
 -   若 Z 轴过短，则按固定屏幕方向（略向右下）偏移，使 **蓝轴屏幕长度与红轴一致**；
--   拾取使用同一套 bias（`pick3d-probe.ts` → `pickMeshAtViewport`），保证「看到哪就能点哪」。
+-   拾取仅对 **蓝平移箭头** 使用同一套 bias（`gizmoPartUsesLinkedZScreenBias`）；圆环与 mesh 一致，无 Z 偏移。
 
 逻辑深度仍为 **`translation.z`**；屏幕上的倾斜仅为 **显示与拾取辅助**，不改变世界 +Z 的定义（`mesh3d` 注释：`Canvas z+ points into the screen`）。
 

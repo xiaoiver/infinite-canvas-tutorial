@@ -99,6 +99,7 @@ export class Pick3D extends System {
 
       // Handle drag updates on pointer move
       if (!input.pointerDownTrigger && !input.pointerUpTrigger) {
+        this.updateGizmoHover(input, camera);
         this.handleDrag(input, camera);
         continue;
       }
@@ -189,8 +190,8 @@ export class Pick3D extends System {
       sel.dragging = canDrag;
       set3DGizmoDragging(canDrag);
       if (!canDrag) {
-        sel.activeAxis = 'none';
-        sel.activePartKind = null;
+        sel.dragHitStart = null;
+        sel.dragAngleStart = null;
       }
       return;
     }
@@ -215,6 +216,55 @@ export class Pick3D extends System {
     }
 
     set3DGizmoDragging(false);
+  }
+
+  /** Highlight hovered gizmo handle (activeAxis) without starting a drag. */
+  private updateGizmoHover(input: Input, camera: Camera3D): void {
+    for (const entity of this.selected3D.current) {
+      if (entity.has(Selected3D) && entity.read(Selected3D).dragging) {
+        return;
+      }
+    }
+
+    if (this.selected3D.current.length === 0) {
+      return;
+    }
+
+    const [vx, vy] = input.pointerViewport;
+    const { width, height } = this.getViewportSize();
+    if (width <= 0 || height <= 0) {
+      return;
+    }
+
+    const pickScene = this.buildPickScene(camera, width, height);
+    if (!pickScene) {
+      return;
+    }
+
+    const probe = probePick3DAtViewport(
+      vx,
+      vy,
+      width,
+      height,
+      camera,
+      pickScene,
+      this.meshes3D.current,
+      this.selected3D.current,
+    );
+
+    for (const entity of this.selected3D.current) {
+      if (!entity.has(Selected3D)) {
+        continue;
+      }
+      const sel = entity.write(Selected3D);
+      if (probe.kind === 'gizmo' && probe.entity === entity) {
+        sel.activeAxis = probe.axis;
+        sel.activePartKind = probe.partKind;
+      } else {
+        sel.activeAxis = 'none';
+        sel.activePartKind = null;
+      }
+    }
   }
 
   private handlePointerUp(): void {

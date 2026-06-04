@@ -17,6 +17,14 @@ export function isRotateGizmoAxis(axis: GizmoAxis): axis is 'x' | 'y' | 'z' {
   return axis === 'x' || axis === 'y' || axis === 'z';
 }
 
+/** Linked canvas: Z screen bias only for the blue translate arrow (not rotation rings). */
+export function gizmoPartUsesLinkedZScreenBias(
+  partKind: GizmoPartKind,
+  axis: string,
+): boolean {
+  return partKind === 'translate' && axis === 'z';
+}
+
 /** Translate handles stay world-aligned; rotate rings follow object euler. */
 export function buildGizmoModelMatrix(
   translation: [number, number, number],

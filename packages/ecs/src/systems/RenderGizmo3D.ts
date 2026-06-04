@@ -39,7 +39,10 @@ import {
   type GizmoPartKind,
 } from '../utils/gizmo-geometry';
 import { computeLinkedPerspectiveZGizmoScreenBias } from '../utils/gizmo-projection';
-import { buildGizmoModelMatrix } from '../utils/gizmo-interaction';
+import {
+  buildGizmoModelMatrix,
+  gizmoPartUsesLinkedZScreenBias,
+} from '../utils/gizmo-interaction';
 import {
   buildCamera3DSceneUniforms,
   packSceneUniformBuffer,
@@ -54,6 +57,7 @@ import {
 interface GizmoPartGPU {
   vertexBuffer: Buffer;
   normalBuffer: Buffer;
+  colorBuffer: Buffer;
   indexBuffer: Buffer;
   indexCount: number;
   color: [number, number, number, number];
@@ -180,8 +184,6 @@ export class RenderGizmo3D extends System {
         gizmoScale *
         Math.max(GIZMO_AXIS_ARROW_LENGTH, GIZMO_ROTATE_RING_RADIUS * 2);
 
-      this.uploadSceneUniforms(sceneUniforms, translation, extent);
-
       const drawOrder = [...this.gizmoParts].sort(
         (a, b) => gizmoDrawLayer(a) - gizmoDrawLayer(b),
       );
@@ -189,13 +191,15 @@ export class RenderGizmo3D extends System {
       const rotation = transform.rotation;
 
       for (const part of drawOrder) {
-        let color = part.color;
-        if (
-          sel.activeAxis === part.axis &&
-          sel.activePartKind === part.partKind
-        ) {
-          color = [1, 1, 0, 1];
-        }
+        const highlighted =
+          sel.activeAxis === part.axis && sel.activePartKind === part.partKind;
+
+        this.uploadSceneUniforms(
+          sceneUniforms,
+          translation,
+          extent,
+          highlighted,
+        );
 
         const modelMat = buildGizmoModelMatrix(
           translation,
@@ -206,7 +210,8 @@ export class RenderGizmo3D extends System {
         const modelLegacy = this.uploadModelUniforms(
           modelMat,
           translation,
-          color,
+          part.color,
+          gizmoPartUsesLinkedZScreenBias(part.partKind, part.axis),
         );
 
         this.program!.setUniformsLegacy({
@@ -220,6 +225,7 @@ export class RenderGizmo3D extends System {
           [
             { buffer: part.vertexBuffer },
             { buffer: part.normalBuffer },
+            { buffer: part.colorBuffer },
           ],
           { buffer: part.indexBuffer },
         );
@@ -234,10 +240,11 @@ export class RenderGizmo3D extends System {
     uniforms: ReturnType<typeof buildCamera3DSceneUniforms>,
     anchor: [number, number, number],
     gizmoWorldExtent: number,
+    highlighted: boolean,
   ): void {
     if (!this.sceneUniformBuffer) return;
 
-    let sceneParams = uniforms.sceneParams;
+    let sceneParams: [number, number, number, number] = [...uniforms.sceneParams];
     if (uniforms.mode === 'linkedPerspective') {
       const pickScene = sceneUniformsToPickScene(uniforms);
       if (pickScene.mode === 'linkedPerspective') {
@@ -249,6 +256,7 @@ export class RenderGizmo3D extends System {
         sceneParams = [bias[0], bias[1], 1, 0];
       }
     }
+    sceneParams[3] = highlighted ? 1 : 0;
 
     const buffer = packSceneUniformBuffer({ ...uniforms, sceneParams });
     this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
@@ -265,6 +273,7 @@ export class RenderGizmo3D extends System {
     modelMat: glMat4,
     translation: [number, number, number],
     color: [number, number, number, number],
+    applyLinkedZBias: boolean,
   ): Record<string, unknown> {
     const normalMat = glMat4.create();
     glMat4.invert(normalMat, modelMat);
@@ -275,7 +284,7 @@ export class RenderGizmo3D extends System {
       buffer.set(modelMat as unknown as Float32Array, 0);
       buffer.set(normalMat as unknown as Float32Array, 16);
       buffer.set(color, 32);
-      buffer.set([1, 0, 0, 0], 36);
+      buffer.set([1, applyLinkedZBias ? 1 : 0, 0, 0], 36);
       buffer.set([-0.5, -0.7, -0.5, 0], 40);
       buffer.set(
         [translation[0], translation[1], translation[2], 0],
@@ -288,7 +297,7 @@ export class RenderGizmo3D extends System {
       u_ModelMatrix3D: modelMat,
       u_NormalMatrix3D: normalMat,
       u_BaseColor: color,
-      u_LightParams: [1, 0, 0, 0],
+      u_LightParams: [1, applyLinkedZBias ? 1 : 0, 0, 0],
       u_LightDirection: [-0.5, -0.7, -0.5, 0],
       u_CanvasAnchor: [translation[0], translation[1], translation[2], 0],
     };
@@ -319,6 +328,13 @@ export class RenderGizmo3D extends System {
           stepMode: VertexStepMode.VERTEX,
           attributes: [
             { format: Format.F32_RGB, offset: 0, shaderLocation: 1 },
+          ],
+        },
+        {
+          arrayStride: 4 * 4,
+          stepMode: VertexStepMode.VERTEX,
+          attributes: [
+            { format: Format.F32_RGBA, offset: 0, shaderLocation: 2 },
           ],
         },
       ],
@@ -382,6 +398,15 @@ export class RenderGizmo3D extends System {
     meshes: GizmoMeshData[],
   ): GizmoPartGPU[] {
     return meshes.map((part) => {
+      const vertexCount = part.positions.length / 3;
+      const colors = new Float32Array(vertexCount * 4);
+      for (let i = 0; i < vertexCount; i++) {
+        colors[i * 4] = part.color[0];
+        colors[i * 4 + 1] = part.color[1];
+        colors[i * 4 + 2] = part.color[2];
+        colors[i * 4 + 3] = part.color[3];
+      }
+
       const vertexBuffer = device.createBuffer({
         viewOrSize: part.positions,
         usage: BufferUsage.VERTEX,
@@ -389,6 +414,11 @@ export class RenderGizmo3D extends System {
       });
       const normalBuffer = device.createBuffer({
         viewOrSize: part.normals,
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
+      const colorBuffer = device.createBuffer({
+        viewOrSize: colors,
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.STATIC,
       });
@@ -402,6 +432,7 @@ export class RenderGizmo3D extends System {
       return {
         vertexBuffer,
         normalBuffer,
+        colorBuffer,
         indexBuffer,
         indexCount: part.indices.length,
         color: part.color,

@@ -576,7 +576,12 @@ export class MeshPipeline3D extends System {
     );
     buffer.set([-0.5, -0.7, -0.5, 0], 40);
     buffer.set(
-      [transform.translation[0], transform.translation[1], 0, 0],
+      [
+        transform.translation[0],
+        transform.translation[1],
+        transform.translation[2],
+        0,
+      ],
       44,
     );
 
@@ -586,7 +591,7 @@ export class MeshPipeline3D extends System {
       u_CanvasAnchor: [
         transform.translation[0],
         transform.translation[1],
-        0,
+        transform.translation[2],
         0,
       ],
     };

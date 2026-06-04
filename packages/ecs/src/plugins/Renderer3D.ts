@@ -28,7 +28,6 @@ import { Plugin, type PluginWithConfig } from './types';
 import {
   CameraSync,
   ComputeBounds,
-  ComputeCamera,
   EnsureExtrudeMeshes,
   MeshPipeline3D,
   SyncExtrude3D,
@@ -61,11 +60,6 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
 
     system(PostUpdate)(SyncExtrude3D);
     system((s) => s.after(EnsureExtrudeMeshes))(SyncExtrude3D);
-
-    // After ComputeCamera (runs after Camera writers e.g. ZoomLevel / CameraControl).
-    // Must not live in PostUpdate: that stage runs before Last and conflicts with
-    // after(ComputeCamera), which creates precedence cycles with UI/Lasso systems.
-    system((s) => s.after(ComputeCamera, SyncExtrude3D).before(Last))(CameraSync);
 
     // Same-frame camera for picking; runs after Select (2D marquee probe is in Select).
     system((s) => s.after(CameraSync, Select).before(Last))(Pick3D);

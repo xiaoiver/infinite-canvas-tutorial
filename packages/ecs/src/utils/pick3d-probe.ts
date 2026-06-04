@@ -26,6 +26,7 @@ import {
 import {
   buildGizmoModelMatrix,
   getGizmoMeshParts,
+  gizmoPartUsesLinkedZScreenBias,
 } from './gizmo-interaction';
 
 export type Pick3DProbeResult =
@@ -156,7 +157,7 @@ function hitTestGizmoPart(
     translation[2],
   ];
 
-  const zBias =
+  const linkedZBias =
     pickScene.mode === 'linkedPerspective'
       ? computeLinkedPerspectiveZGizmoScreenBias(
         anchor,
@@ -175,6 +176,9 @@ function hitTestGizmoPart(
       scale,
       part.kind,
     );
+    const zBias = gizmoPartUsesLinkedZScreenBias(part.kind, part.axis)
+      ? linkedZBias
+      : undefined;
     const hit = pickMeshAtViewport(
       vx,
       vy,
