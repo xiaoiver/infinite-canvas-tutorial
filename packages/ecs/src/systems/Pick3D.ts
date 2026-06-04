@@ -176,14 +176,14 @@ export class Pick3D extends System {
 
   private syncMesh3DLayers(api: Canvas['api'], canvasEntity: Entity): void {
     const scopedMeshes = this.canvasMeshes(canvasEntity);
-    const layers = scopedMeshes.map((entity, index) => {
+    const layers = scopedMeshes.map((entity) => {
       const sourceNode = this.resolveMesh3DSourceNode(api, entity);
       const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;
       const mesh = entity.read(Mesh3D);
 
       return {
         id,
-        name: sourceNode?.name || `3D Mesh ${index + 1}`,
+        name: sourceNode?.name || `3D Mesh ${entity.__id}`,
         sourceNodeId: sourceNode?.id,
         vertexCount: mesh.vertexCount,
         entity,

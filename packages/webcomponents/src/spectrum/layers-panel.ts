@@ -259,7 +259,9 @@ export class LayersPanel extends LitElement {
 
       // Scroll to the selected layer
       if (selected.length > 0) {
-        this.scrollLayerIntoView(selected[0].id);
+        this.scrollLayerIntoView(
+          typeof selected[0] === 'string' ? selected[0] : selected[0].id,
+        );
       }
     });
     this.api.element.addEventListener(Event.MESH3D_LAYERS_CHANGED, () => {
