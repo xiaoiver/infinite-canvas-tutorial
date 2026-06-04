@@ -305,7 +305,8 @@ function buildPlayerNodes(
     const players = row.players;
 
     return players.flatMap((player, playerIndex) => {
-      const x = PITCH.x + ((playerIndex + 1) * PITCH.width) / (players.length + 1);
+      const x =
+        PITCH.x + ((playerIndex + 1) * PITCH.width) / (players.length + 1);
       const id = `${teamId}-${formationId}-${row.label}-${player.number}`;
       const zIndex = 10 + rowIndex * 10 + playerIndex;
 
@@ -409,12 +410,17 @@ export function FootballFormationTool() {
           <h1 className="text-2xl font-semibold tracking-tight">
             {tItem('title')}
           </h1>
-          <p className="text-muted-foreground text-sm">{tItem('description')}</p>
+          <p className="text-muted-foreground text-sm">
+            {tItem('description')}
+          </p>
         </header>
         <section className="flex flex-col gap-3 rounded-xl border bg-card p-4 sm:flex-row sm:items-end">
           <div className="grid gap-2">
             <Label htmlFor="formation-team">{tItem('teamLabel')}</Label>
-            <Select value={teamId} onValueChange={(value) => setTeamId(value as TeamId)}>
+            <Select
+              value={teamId}
+              onValueChange={(value) => setTeamId(value as TeamId)}
+            >
               <SelectTrigger id="formation-team" className="w-56">
                 <SelectValue />
               </SelectTrigger>
@@ -473,7 +479,10 @@ export function FootballFormationTool() {
                   Pen.LASER_POINTER,
                   Pen.ERASER,
                 ],
-                taskbarSelected: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
+                taskbarSelected: [
+                  Task.SHOW_LAYERS_PANEL,
+                  Task.SHOW_PROPERTIES_PANEL,
+                ],
                 penbarNameLabelVisible: true,
               }}
             />
