@@ -602,13 +602,23 @@ export class MeshPipeline3D extends System {
       addAmbient(new Light3D({ type: 'ambient' }));
       addPunctual(new Light3D({ type: 'directional' }));
     } else {
+      let hasDirectional = false;
       for (const entity of this.lights3D.current) {
         const light = entity.read(Light3D);
         if (light.type === 'ambient') {
           addAmbient(light);
         } else {
+          if (light.type === 'directional') {
+            hasDirectional = true;
+          }
           addPunctual(light);
         }
+      }
+      // Custom lights replace the default bundle; keep a directional fill unless
+      // the scene author already added one (avoids a black mesh when only
+      // ambient + mis-scaled point/spot lights are present).
+      if (!hasDirectional && count < MAX_3D_LIGHTS) {
+        addPunctual(new Light3D({ type: 'directional', intensity: 0.75 }));
       }
     }
 

@@ -72,7 +72,8 @@ import {
   Mesh3D,
   Material3D,
   Transform3D,
-  Selected3D
+  Selected3D,
+  Light3D,
 } from '../components';
 import {
   collectRainDropTextureUrlsFromFilterValue,
@@ -374,6 +375,7 @@ export class MeshPipeline extends System {
             Mesh3D,
             Material3D,
             Selected3D,
+            Light3D,
           )
           .read.and.using(
             RasterScreenshotRequest,

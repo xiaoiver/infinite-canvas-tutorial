@@ -48,6 +48,7 @@ import {
   Mesh3D,
   Material3D,
   Transform3D,
+  Light3D,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -226,6 +227,33 @@ canvas.addEventListener(Event.READY, async (e) => {
       }),
     );
 
+    // Light3D position/direction are canvas/world units (1 ≈ 1 px when linked).
+    // range <= 0 disables distance falloff. Custom Light3D replaces the default
+    // light set; keep ambient + directional (or rely on renderer directional fill).
+    const [cx, cy, cz] = [100, 100, 40];
+    const spotLift = 200;
+    const spotBack = 160;
+    commands.spawn(
+      new Light3D({ type: 'ambient', intensity: 0.35 }),
+    );
+    commands.spawn(
+      new Light3D({
+        type: 'directional',
+        direction: [-0.45, -0.65, -0.55],
+        intensity: 0.85,
+      }),
+    );
+    commands.spawn(
+      new Light3D({
+        type: 'spot',
+        position: [cx, cy - spotLift, cz + spotBack],
+        direction: [0, spotLift, -spotBack],
+        color: [1, 0.9, 0.75],
+        intensity: 1.4,
+        range: 0,
+      }),
+    );
+
     const cubeEntity = commands
       .spawn(
         new Mesh3D({ positions, normals, indices }),
@@ -237,7 +265,7 @@ canvas.addEventListener(Event.READY, async (e) => {
           shininess: 48,
         }),
         new Transform3D({
-          translation: [100, 100, 40],
+          translation: [cx, cy, cz],
           rotation: [0.3, 0, 0],
           scale: [100, 100, 100],
         }),
@@ -247,14 +275,14 @@ canvas.addEventListener(Event.READY, async (e) => {
 
     commands.execute();
 
-    // const t0 = performance.now();
-    // const spinCube = (now: number) => {
-    //   const t = (now - t0) / 1000;
-    //   const transform = cubeEntity.write(Transform3D);
-    //   transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
-    //   requestAnimationFrame(spinCube);
-    // };
-    // requestAnimationFrame(spinCube);
+    const t0 = performance.now();
+    const spinCube = (now: number) => {
+      const t = (now - t0) / 1000;
+      const transform = cubeEntity.write(Transform3D);
+      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+      requestAnimationFrame(spinCube);
+    };
+    requestAnimationFrame(spinCube);
   });
 });
 
