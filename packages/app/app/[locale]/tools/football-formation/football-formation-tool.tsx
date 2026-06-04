@@ -155,15 +155,22 @@ const colors = {
 function initials(name: string) {
   return name
     .split(' ')
-    .map((part) => Array.from(part.trim())[0])
-    .filter((letter): letter is string => Boolean(letter))
+    .map((part) => part.trim().charAt(0))
+    .filter(Boolean)
     .slice(0, 2)
     .join('')
     .toUpperCase();
 }
 
+function escapeSvgText(text: string) {
+  return text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
 function avatarDataUrl(player: Player) {
-  const text = initials(player.name);
+  const text = escapeSvgText(initials(player.name));
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
     <defs>
       <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
