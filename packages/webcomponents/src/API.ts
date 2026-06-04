@@ -12,6 +12,7 @@ import {
   deserializePoints,
   RectSerializedNode,
   AppState,
+  Mesh3DLayerRegistration,
   type Adapter,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
@@ -137,6 +138,22 @@ export class ExtendedAPI extends API {
         detail: { selected, preserveSelection },
       }),
     );
+  }
+
+  setMesh3DLayers(layers: Mesh3DLayerRegistration[]) {
+    const changed = super.setMesh3DLayers(layers);
+    if (changed) {
+      this.element.dispatchEvent(new CustomEvent(Event.MESH3D_LAYERS_CHANGED));
+    }
+    return changed;
+  }
+
+  setSelectedMesh3DLayerIds(ids: string[]) {
+    const changed = super.setSelectedMesh3DLayerIds(ids);
+    if (changed) {
+      this.element.dispatchEvent(new CustomEvent(Event.MESH3D_LAYERS_CHANGED));
+    }
+    return changed;
   }
 
   updateNodes(nodes: SerializedNode[], updateAppState = true) {

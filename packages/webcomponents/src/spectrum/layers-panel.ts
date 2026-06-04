@@ -14,6 +14,7 @@ import {
   SIBLINGS_MIN_Z_INDEX,
   UI,
   ZIndex,
+  Mesh3DLayer,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
@@ -160,6 +161,40 @@ export class LayersPanel extends LitElement {
     .layer-branch.sortable-drag {
       cursor: grabbing;
     }
+
+    .mesh3d-layer-row {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 0 4px;
+      cursor: pointer;
+    }
+
+    .mesh3d-layer-row[selected] {
+      background: var(--spectrum-blue-100);
+    }
+
+    .mesh3d-layer-row:not([selected]):hover {
+      background-color: var(
+        --spectrum-treeview-item-background-color-hover,
+        var(--spectrum-alias-background-color-hover-overlay)
+      );
+    }
+
+    .mesh3d-layer-spacer {
+      width: 64px;
+      flex: 0 0 auto;
+    }
+
+    .mesh3d-layer-name {
+      flex: 1;
+      margin-left: 8px;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -218,35 +253,42 @@ export class LayersPanel extends LitElement {
 
       // Scroll to the selected layer
       if (selected.length > 0) {
-        const scrollToId = this.generateLayersPanelItemId(selected[0]);
-        const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
-        const container = this.shadowRoot.querySelector('.container');
-
-        if (scrollToElement && container) {
-          // 计算元素相对于容器的位置
-          const elementTop = (scrollToElement as HTMLElement).offsetTop;
-          const elementHeight = (scrollToElement as HTMLElement).offsetHeight;
-          const containerHeight = container.clientHeight;
-
-          // 如果元素不在视口内，则滚动到合适位置
-          const currentScrollTop = container.scrollTop;
-          const elementBottom = elementTop + elementHeight;
-          const visibleTop = currentScrollTop;
-          const visibleBottom = currentScrollTop + containerHeight;
-
-          if (elementTop < visibleTop || elementBottom > visibleBottom) {
-            // 计算目标滚动位置，让元素在视口中央
-            const targetScrollTop =
-              elementTop - (containerHeight - elementHeight) / 2;
-
-            container.scrollTo({
-              top: Math.max(0, targetScrollTop),
-              behavior: 'smooth',
-            });
-          }
-        }
+        this.scrollLayerIntoView(selected[0].id);
       }
     });
+    this.api.element.addEventListener(Event.MESH3D_LAYERS_CHANGED, () => {
+      this.requestUpdate();
+      const selected = this.api.getSelectedMesh3DLayerIds();
+      if (selected.length > 0) {
+        this.scrollLayerIntoView(selected[0]);
+      }
+    });
+  }
+
+  private scrollLayerIntoView(id: string) {
+    const scrollToId = this.generateLayersPanelItemId(id);
+    const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
+    const container = this.shadowRoot.querySelector('.container');
+
+    if (scrollToElement && container) {
+      const elementTop = (scrollToElement as HTMLElement).offsetTop;
+      const elementHeight = (scrollToElement as HTMLElement).offsetHeight;
+      const containerHeight = container.clientHeight;
+      const currentScrollTop = container.scrollTop;
+      const elementBottom = elementTop + elementHeight;
+      const visibleTop = currentScrollTop;
+      const visibleBottom = currentScrollTop + containerHeight;
+
+      if (elementTop < visibleTop || elementBottom > visibleBottom) {
+        const targetScrollTop =
+          elementTop - (containerHeight - elementHeight) / 2;
+
+        container.scrollTo({
+          top: Math.max(0, targetScrollTop),
+          behavior: 'smooth',
+        });
+      }
+    }
   }
 
   private clampLayersPanelHeight(h: number): number {
@@ -616,8 +658,8 @@ export class LayersPanel extends LitElement {
     this.api.record();
   }
 
-  private generateLayersPanelItemId(node: SerializedNode) {
-    return `layers-panel-item-${node.id}`;
+  private generateLayersPanelItemId(node: SerializedNode | string) {
+    return `layers-panel-item-${typeof node === 'string' ? node : node.id}`;
   }
 
   private handleClose() {
@@ -702,6 +744,9 @@ export class LayersPanel extends LitElement {
       .map((entity) => {
         return this.api.getNodeByEntity(entity);
       });
+    const mesh3DLayers = this.api
+      .getMesh3DLayers()
+      .filter((layer) => !layer.sourceNodeId);
 
     const isSelectedEmpty = layersSelected.length === 0;
     let bringForwardDisabled = false;
@@ -817,6 +862,9 @@ export class LayersPanel extends LitElement {
                 ${map(sortedNodes, (node) => {
         return this.renderLayerBranch(node, 0);
       })}
+                ${map(mesh3DLayers, (layer) => {
+        return this.renderMesh3DLayerBranch(layer);
+      })}
               </div>
             </div>
           </section>
@@ -864,6 +912,32 @@ export class LayersPanel extends LitElement {
           `,
     )}
       </div>`;
+  }
+
+  private renderMesh3DLayerBranch(layer: Mesh3DLayer) {
+    const selected = this.api.getSelectedMesh3DLayerIds().includes(layer.id);
+    return html`<div
+      class=${classMap({
+      'layer-branch': true,
+      'layer-branch--locked': true,
+    })}
+      data-node-id=${layer.id}
+    >
+      <div
+        id=${this.generateLayersPanelItemId(layer.id)}
+        class="mesh3d-layer-row"
+        ?selected=${selected}
+        @click=${() => this.api.selectMesh3DLayer(layer.id)}
+      >
+        <span class="mesh3d-layer-spacer"></span>
+        <sp-thumbnail size="1000" ?focused=${selected}>
+          <sp-icon-show-all-layers></sp-icon-show-all-layers>
+        </sp-thumbnail>
+        <span class="mesh3d-layer-name" title=${layer.name}>
+          ${layer.name}
+        </span>
+      </div>
+    </div>`;
   }
 }
 

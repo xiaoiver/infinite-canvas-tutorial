@@ -269,6 +269,17 @@ export const pendingAPICallings: (() => any)[] = [];
  */
 export const pendingAPICallingsAfterDelete: (() => any)[] = [];
 
+export interface Mesh3DLayer {
+  id: string;
+  name: string;
+  sourceNodeId?: string;
+  vertexCount: number;
+}
+
+export type Mesh3DLayerRegistration = Mesh3DLayer & {
+  entity: Entity;
+};
+
 /**
  * Expose the API to the outside world.
  *
@@ -282,6 +293,9 @@ export class API {
    */
   #landmarkAnimationID: number;
   #idEntityMap: Map<string, EntityCommands> = new Map();
+  #mesh3DLayers: Mesh3DLayer[] = [];
+  #mesh3DLayerEntities: Map<string, Entity> = new Map();
+  #selectedMesh3DLayerIds: string[] = [];
   #history = new History();
   #store = new Store(this);
 
@@ -498,6 +512,116 @@ export class API {
 
   getNodes() {
     return this.stateManagement.getNodes();
+  }
+
+  getMesh3DLayers() {
+    return this.#mesh3DLayers;
+  }
+
+  getSelectedMesh3DLayerIds() {
+    return this.#selectedMesh3DLayerIds;
+  }
+
+  setMesh3DLayers(layers: Mesh3DLayerRegistration[]) {
+    const nextLayers = layers.map(({ entity: _entity, ...layer }) => layer);
+    const changed =
+      JSON.stringify(nextLayers) !== JSON.stringify(this.#mesh3DLayers);
+
+    this.#mesh3DLayers = nextLayers;
+    this.#mesh3DLayerEntities = new Map(
+      layers.map((layer) => [layer.id, layer.entity]),
+    );
+
+    const validIds = new Set(nextLayers.map((layer) => layer.id));
+    const selected = this.#selectedMesh3DLayerIds.filter((id) =>
+      validIds.has(id),
+    );
+    if (selected.length !== this.#selectedMesh3DLayerIds.length) {
+      this.setSelectedMesh3DLayerIds(selected);
+    }
+
+    return changed;
+  }
+
+  setSelectedMesh3DLayerIds(ids: string[]) {
+    const selected = ids.filter((id, index, self) => self.indexOf(id) === index);
+    const changed =
+      selected.length !== this.#selectedMesh3DLayerIds.length ||
+      selected.some((id, i) => id !== this.#selectedMesh3DLayerIds[i]);
+
+    this.#selectedMesh3DLayerIds = selected;
+    return changed;
+  }
+
+  getMesh3DLayerIdByEntity(entity: Entity) {
+    for (const [id, layerEntity] of this.#mesh3DLayerEntities.entries()) {
+      if (layerEntity === entity) {
+        return id;
+      }
+    }
+  }
+
+  private clear2DSelectionComponents(ids = this.getAppState().layersSelected) {
+    ids.forEach((id) => {
+      const entity = this.#idEntityMap.get(id)?.id();
+      if (entity && entity.has(Selected)) {
+        entity.remove(Selected);
+      }
+      if (entity) {
+        safeRemoveComponent(entity, Highlighted);
+      }
+    });
+  }
+
+  clearSelectedMesh3DLayers() {
+    this.#selectedMesh3DLayerIds.forEach((id) => {
+      const entity = this.#mesh3DLayerEntities.get(id);
+      if (entity?.has(Selected3D)) {
+        entity.remove(Selected3D);
+      }
+    });
+    return this.setSelectedMesh3DLayerIds([]);
+  }
+
+  selectMesh3DLayer(id: string) {
+    const entity = this.#mesh3DLayerEntities.get(id);
+    const layer = this.#mesh3DLayers.find((item) => item.id === id);
+    if (!entity || !layer) {
+      return false;
+    }
+
+    const prevAppState = this.getAppState();
+    this.clear2DSelectionComponents(prevAppState.layersSelected);
+
+    this.#selectedMesh3DLayerIds.forEach((selectedId) => {
+      const selectedEntity = this.#mesh3DLayerEntities.get(selectedId);
+      if (selectedEntity && selectedEntity !== entity && selectedEntity.has(Selected3D)) {
+        selectedEntity.remove(Selected3D);
+      }
+    });
+
+    if (!entity.has(Selected3D)) {
+      entity.add(Selected3D, {
+        mode: 'transform',
+        activeAxis: 'none',
+        activePartKind: null,
+        dragging: false,
+      });
+    }
+
+    const selectedChanged = this.setSelectedMesh3DLayerIds([id]);
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: layer.sourceNodeId ? [layer.sourceNodeId] : [],
+      layersHighlighted: [],
+    });
+
+    return selectedChanged;
+  }
+
+  selectMesh3DLayerByEntity(entity: Entity) {
+    const id = this.getMesh3DLayerIdByEntity(entity);
+    return id ? this.selectMesh3DLayer(id) : false;
   }
 
   /**
@@ -1367,17 +1491,15 @@ export class API {
     const prevSelectedIds = prevAppState.layersSelected;
 
     if (!preserveSelection) {
+      this.clearSelectedMesh3DLayers();
       prevSelectedIds.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
-        if (entity && entity.has(Selected)) {
-          entity.remove(Selected);
-        }
-        // 与 handleSelectedMoved 等路径写入的 Highlighted 同步清理，否则取消选中后仍残留描边高亮
         if (entity) {
-          safeRemoveComponent(entity, Highlighted);
           this.#deselectMesh3DCompanion(entity);
         }
       });
+      // 与 handleSelectedMoved 等路径写入的 Highlighted 同步清理，否则取消选中后仍残留描边高亮
+      this.clear2DSelectionComponents(prevSelectedIds);
     }
 
     // remove duplicates

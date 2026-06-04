@@ -11,6 +11,8 @@ import {
   Material3D,
   Pen,
   Transform3D,
+  Extrude3DTarget,
+  Mesh3DNodeTarget,
 } from '../components';
 import { Selected3D, type GizmoAxis } from '../components/geometry3d/Selected3D';
 import { Mat3 } from '../components/math/Mat3';
@@ -102,6 +104,7 @@ export class Pick3D extends System {
       const camera = resolved.camera;
 
       const { api } = canvasEntity.read(Canvas);
+      this.syncMesh3DLayers(api, canvasEntity);
       if (api.getAppState().penbarSelected !== Pen.SELECT) continue;
 
       const input = canvasEntity.read(Input);
@@ -155,11 +158,49 @@ export class Pick3D extends System {
     );
   }
 
+  private resolveMesh3DSourceNode(
+    api: Canvas['api'],
+    entity: Entity,
+  ) {
+    if (entity.has(Extrude3DTarget)) {
+      return api.getNodeByEntity(entity.read(Extrude3DTarget).source);
+    }
+    if (entity.has(Mesh3DNodeTarget)) {
+      return api.getNodeByEntity(entity.read(Mesh3DNodeTarget).source);
+    }
+    return undefined;
+  }
+
+  private syncMesh3DLayers(api: Canvas['api'], canvasEntity: Entity): void {
+    const scopedMeshes = this.canvasMeshes(canvasEntity);
+    const layers = scopedMeshes.map((entity, index) => {
+      const sourceNode = this.resolveMesh3DSourceNode(api, entity);
+      const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;
+      const mesh = entity.read(Mesh3D);
+
+      return {
+        id,
+        name: sourceNode?.name || `3D Mesh ${index + 1}`,
+        sourceNodeId: sourceNode?.id,
+        vertexCount: mesh.vertexCount,
+        entity,
+      };
+    });
+
+    api.setMesh3DLayers(layers);
+    api.setSelectedMesh3DLayerIds(
+      this.canvasSelected(canvasEntity)
+        .map((entity) => api.getMesh3DLayerIdByEntity(entity))
+        .filter((id): id is string => !!id),
+    );
+  }
+
   private handlePointerDown(
     input: Input,
     camera: Camera3D,
     canvasEntity: Entity,
   ): void {
+    const { api } = canvasEntity.read(Canvas);
     const [vx, vy] = input.pointerViewport;
     const { width, height } = this.getViewportSize(canvasEntity);
     if (width <= 0 || height <= 0) return;
@@ -182,6 +223,7 @@ export class Pick3D extends System {
     );
 
     if (probe.kind === 'gizmo') {
+      api.selectMesh3DLayerByEntity(probe.entity);
       const transform = probe.entity.read(Transform3D);
       const translation = transform.translation;
       const rotation = transform.rotation;
@@ -253,21 +295,10 @@ export class Pick3D extends System {
 
     const closestEntity = probe.kind === 'mesh' ? probe.entity : null;
 
-    for (const entity of scopedSelected) {
-      if (entity !== closestEntity && entity.has(Selected3D)) {
-        entity.remove(Selected3D);
-      }
-    }
-
     if (closestEntity) {
-      if (!closestEntity.has(Selected3D)) {
-        closestEntity.add(Selected3D, {
-          mode: 'transform',
-          activeAxis: 'none',
-          activePartKind: null,
-          dragging: false,
-        });
-      }
+      api.selectMesh3DLayerByEntity(closestEntity);
+    } else {
+      api.clearSelectedMesh3DLayers();
     }
 
     set3DGizmoDragging(false);
