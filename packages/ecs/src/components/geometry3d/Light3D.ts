@@ -35,7 +35,8 @@ export class Light3D {
 
   /**
    * Direction for directional and spot lights. Direction points from the light
-   * toward the illuminated scene.
+   * toward the illuminated scene. The renderer normalizes this vector; the
+   * default preserves the previous hard-coded mesh light direction.
    */
   @field.object declare direction: [number, number, number];
 

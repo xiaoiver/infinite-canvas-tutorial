@@ -139,7 +139,7 @@ vec3 shadeLight(
 
     if (lightType == LIGHT_TYPE_SPOT) {
       vec3 spotDirection = normalize(u_LightDirections[index].xyz);
-      float spotCos = dot(normalize(-lightDir), spotDirection);
+      float spotCos = dot(-lightDir, spotDirection);
       float cone = smoothstep(cosOuter, cosInner, spotCos);
       attenuation *= cone;
     }
