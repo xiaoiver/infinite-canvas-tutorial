@@ -44,6 +44,7 @@ import {
   registerMeshPipeline3D,
   unregisterMeshPipeline3D,
 } from './mesh3d-bridge';
+import { getGizmo3D } from './gizmo3d-bridge';
 
 /**
  * GPU buffers cached per Mesh3D entity.
@@ -278,6 +279,12 @@ export class MeshPipeline3D extends System {
     }
 
     bindings.destroy();
+
+    // Draw 3D gizmos on top of meshes (depth disabled, always visible)
+    const gizmo = getGizmo3D();
+    if (gizmo && gizmo.hasGizmoContent()) {
+      gizmo.drawGizmos(renderPass, canvas, width, height);
+    }
   }
 
   /** Color clear descriptor for the 3D pass (first pass in the shared graph). */
@@ -569,7 +576,12 @@ export class MeshPipeline3D extends System {
     );
     buffer.set([-0.5, -0.7, -0.5, 0], 40);
     buffer.set(
-      [transform.translation[0], transform.translation[1], 0, 0],
+      [
+        transform.translation[0],
+        transform.translation[1],
+        transform.translation[2],
+        0,
+      ],
       44,
     );
 
@@ -579,7 +591,7 @@ export class MeshPipeline3D extends System {
       u_CanvasAnchor: [
         transform.translation[0],
         transform.translation[1],
-        0,
+        transform.translation[2],
         0,
       ],
     };

@@ -12,6 +12,7 @@ import {
   DrawArrowConnect,
   CameraControl,
   ComputeCamera,
+  CameraSync,
   Last,
   ComputeVisibility,
   DrawPencil,
@@ -37,6 +38,7 @@ export const PenPlugin: Plugin = () => {
   component(Anchor);
   component(VectorNetwork);
 
+  // After CameraSync so 3D pick probe uses the same matrices as Pick3D / rendering.
   system((s) =>
     s
       .after(
@@ -47,6 +49,7 @@ export const PenPlugin: Plugin = () => {
         ComputeCamera,
         ComputeVisibility,
         CameraControl,
+        CameraSync,
       )
       .before(Last),
   )(Select);

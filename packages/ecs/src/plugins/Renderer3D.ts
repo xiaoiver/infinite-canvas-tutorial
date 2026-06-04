@@ -28,12 +28,14 @@ import { Plugin, type PluginWithConfig } from './types';
 import {
   CameraSync,
   ComputeBounds,
-  ComputeCamera,
   EnsureExtrudeMeshes,
   MeshPipeline3D,
   SyncExtrude3D,
+  Pick3D,
+  RenderGizmo3D,
+  Select,
 } from '../systems';
-import { PostUpdate, PreUpdate } from '../systems/stages';
+import { Last, PostUpdate, PreUpdate } from '../systems/stages';
 
 export interface Renderer3DPluginOptions {
   /**
@@ -59,8 +61,11 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     system(PostUpdate)(SyncExtrude3D);
     system((s) => s.after(EnsureExtrudeMeshes))(SyncExtrude3D);
 
-    system(PostUpdate)(CameraSync);
-    system((s) => s.after(ComputeCamera, SyncExtrude3D))(CameraSync);
+    // Same-frame camera for picking; runs after Select (2D marquee probe is in Select).
+    system((s) => s.after(CameraSync, Select).before(Last))(Pick3D);
+
+    // 3D gizmo rendering: runs alongside the 3D render system.
+    system(PreUpdate)(RenderGizmo3D);
   };
 }
 

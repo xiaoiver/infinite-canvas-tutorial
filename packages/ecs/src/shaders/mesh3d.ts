@@ -59,6 +59,14 @@ void main() {
 `;
 
 export const frag = /* glsl */ `
+// Order must match vert (WebGPU assigns UBO bindings by declaration order per stage).
+layout(std140) uniform SceneUniforms3D {
+  mat4 u_ProjectionMatrix3D;
+  mat4 u_ViewMatrix3D;
+  mat4 u_CanvasViewProjection3D;
+  vec4 u_SceneParams;
+};
+
 layout(std140) uniform ModelUniforms3D {
   mat4 u_ModelMatrix3D;
   mat4 u_NormalMatrix3D;
@@ -67,13 +75,6 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_LightDirection; // xyz: direction (normalized), w: unused
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
-};
-
-layout(std140) uniform SceneUniforms3D {
-  mat4 u_ProjectionMatrix3D;
-  mat4 u_ViewMatrix3D;
-  mat4 u_CanvasViewProjection3D;
-  vec4 u_SceneParams;
 };
 
 in vec3 v_Normal;
