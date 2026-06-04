@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { RefreshCcw } from 'lucide-react';
 import { Topbar } from '@/components/layout/topbar';
@@ -155,10 +155,10 @@ const colors = {
 function initials(name: string) {
   return name
     .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join('')
+    .map((part) => Array.from(part.trim())[0])
+    .filter((letter): letter is string => Boolean(letter))
     .slice(0, 2)
+    .join('')
     .toUpperCase();
 }
 
@@ -298,7 +298,8 @@ function buildPlayerNodes(
   const rows = TEAM_FORMATIONS[teamId][formationId];
   const usableTop = PITCH.y + 145;
   const usableBottom = PITCH.y + PITCH.height - 125;
-  const rowGap = (usableBottom - usableTop) / (rows.length - 1);
+  const rowGap =
+    rows.length > 1 ? (usableBottom - usableTop) / (rows.length - 1) : 0;
 
   return rows.flatMap((row, rowIndex) => {
     const y = usableTop + rowIndex * rowGap;
@@ -397,10 +398,7 @@ export function FootballFormationTool() {
   const [teamId, setTeamId] = useState<TeamId>('portugal');
   const [formationId, setFormationId] = useState<FormationId>('4-4-2');
   const [version, setVersion] = useState(0);
-  const nodes = useMemo(
-    () => buildFormationNodes(teamId, formationId, tItem),
-    [teamId, formationId, tItem],
-  );
+  const nodes = buildFormationNodes(teamId, formationId, tItem);
 
   return (
     <div className="flex min-h-screen flex-col">
