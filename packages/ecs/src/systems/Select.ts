@@ -67,7 +67,17 @@ import {
   Filter,
   IconFontEllipseStrokeRasterPlaceholder,
   DEFAULT_THEME_COLORS,
+  Camera3D,
+  Mesh3D,
+  Material3D,
+  Transform3D,
+  Selected3D,
 } from '../components';
+import { is3DGizmoDragging } from '../utils/pick3d-bridge';
+import {
+  buildPickSceneForViewport,
+  probePick3DAtViewport,
+} from '../utils/pick3d-probe';
 import { Commands } from '../commands/Commands';
 import {
   calculateOffset,
@@ -245,6 +255,20 @@ export class Select extends System {
 
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
+  private readonly cameras3D = this.query((q) => q.current.with(Camera3D).read);
+
+  private readonly cameras2DFor3D = this.query(
+    (q) => q.current.with(Camera, ComputedCamera).read,
+  );
+
+  private readonly meshes3D = this.query(
+    (q) => q.current.with(Mesh3D, Material3D, Transform3D).read,
+  );
+
+  private readonly selected3D = this.query(
+    (q) => q.current.with(Selected3D, Transform3D).read,
+  );
+
   private selections = new Map<number, SelectOBB>();
 
   constructor() {
@@ -318,6 +342,59 @@ export class Select extends System {
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
+    this.query((q) =>
+      q.using(Camera3D, Mesh3D, Material3D, Transform3D, Selected3D).read,
+    );
+  }
+
+  /**
+   * Skip 2D marquee when the pointer hits a 3D mesh or gizmo (Pick3D runs later same frame).
+   */
+  private shouldSuppress2DBrushSelection(
+    canvas: Entity,
+    viewportX: number,
+    viewportY: number,
+  ): boolean {
+    if (is3DGizmoDragging()) {
+      return true;
+    }
+
+    const cameraEntity = this.cameras3D.current[0];
+    if (!cameraEntity) {
+      return false;
+    }
+
+    const camera = cameraEntity.read(Camera3D);
+    const { width, height } = canvas.read(Canvas);
+    if (width <= 0 || height <= 0) {
+      return false;
+    }
+
+    const cam2d = camera.linked ? this.cameras2DFor3D.current[0] : undefined;
+    const pickScene = buildPickSceneForViewport(
+      camera,
+      width,
+      height,
+      width,
+      height,
+      cam2d,
+    );
+    if (!pickScene) {
+      return false;
+    }
+
+    const probe = probePick3DAtViewport(
+      viewportX,
+      viewportY,
+      width,
+      height,
+      camera,
+      pickScene,
+      this.meshes3D.current,
+      this.selected3D.current,
+    );
+
+    return probe.kind !== 'none';
   }
 
   private getTopmostEntity(
@@ -1749,8 +1826,12 @@ export class Select extends System {
         }
 
         if (selection.mode === SelectionMode.IDLE) {
-          selection.mode = SelectionMode.READY_TO_BRUSH;
-          api.selectNodes([]);
+          if (this.shouldSuppress2DBrushSelection(canvas, x, y)) {
+            // 3D pick / gizmo drag — do not start 2D marquee (Pick3D runs after Select).
+          } else {
+            selection.mode = SelectionMode.READY_TO_BRUSH;
+            api.selectNodes([]);
+          }
 
           if (layersCropping.length > 0) {
             api.applyCrop();
@@ -2058,6 +2139,11 @@ export class Select extends System {
           selection.mode === SelectionMode.READY_TO_BRUSH ||
           selection.mode === SelectionMode.BRUSH
         ) {
+          if (is3DGizmoDragging()) {
+            this.hideBrush(selection);
+            selection.mode = SelectionMode.IDLE;
+            return;
+          }
           this.handleBrushing(api, x, y);
           selection.mode = SelectionMode.BRUSH;
         } else if (selection.mode === SelectionMode.MOVE) {

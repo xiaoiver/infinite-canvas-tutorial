@@ -238,7 +238,7 @@ canvas.addEventListener(Event.READY, async (e) => {
         }),
         new Transform3D({
           translation: [100, 100, 40],
-          rotation: [0.3, 0.6, 0],
+          rotation: [0.3, 0, 0],
           scale: [100, 100, 100],
         }),
       )
@@ -247,14 +247,14 @@ canvas.addEventListener(Event.READY, async (e) => {
 
     commands.execute();
 
-    const t0 = performance.now();
-    const spinCube = (now: number) => {
-      const t = (now - t0) / 1000;
-      const transform = cubeEntity.write(Transform3D);
-      transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
-      requestAnimationFrame(spinCube);
-    };
-    requestAnimationFrame(spinCube);
+    // const t0 = performance.now();
+    // const spinCube = (now: number) => {
+    //   const t = (now - t0) / 1000;
+    //   const transform = cubeEntity.write(Transform3D);
+    //   transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
+    //   requestAnimationFrame(spinCube);
+    // };
+    // requestAnimationFrame(spinCube);
   });
 });
 

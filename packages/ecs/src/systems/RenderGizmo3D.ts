@@ -1,6 +1,6 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat4 as glMat4 } from 'gl-matrix';
-import type { RenderPass } from '@infinite-canvas-tutorial/device-api';
+import type { Device, RenderPass } from '@infinite-canvas-tutorial/device-api';
 import {
   BlendFactor,
   BlendMode,
@@ -29,14 +29,21 @@ import {
 } from '../components';
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import { Mat4 } from '../components/math/Mat4';
-import { vert as mesh3dVert, frag as mesh3dFrag } from '../shaders/mesh3d';
+import { gizmoDisplayVert, gizmoDisplayFrag } from '../shaders/gizmo3d-display';
 import {
-  createTranslateGizmo,
+  createCombinedTransformGizmo,
   computeGizmoScale,
+  GIZMO_AXIS_ARROW_LENGTH,
+  GIZMO_ROTATE_RING_RADIUS,
+  type GizmoMeshData,
+  type GizmoPartKind,
 } from '../utils/gizmo-geometry';
+import { computeLinkedPerspectiveZGizmoScreenBias } from '../utils/gizmo-projection';
+import { buildGizmoModelMatrix } from '../utils/gizmo-interaction';
 import {
   buildCamera3DSceneUniforms,
   packSceneUniformBuffer,
+  sceneUniformsToPickScene,
 } from '../utils/mesh3d-scene';
 import { SetupDevice } from './SetupDevice';
 import {
@@ -51,6 +58,9 @@ interface GizmoPartGPU {
   indexCount: number;
   color: [number, number, number, number];
   axis: string;
+  partKind: GizmoPartKind;
+  /** Plane handles drawn before rings / arrows. */
+  isPlane: boolean;
 }
 
 /**
@@ -136,7 +146,6 @@ export class RenderGizmo3D extends System {
         : width / height;
 
     const sceneUniforms = buildCamera3DSceneUniforms(camera, aspect, cam2d);
-    this.uploadSceneUniforms(sceneUniforms);
 
     renderPass.setViewport(0, 0, width, height);
     renderPass.setPipeline(this.pipeline);
@@ -163,18 +172,40 @@ export class RenderGizmo3D extends System {
         translation,
         camera.fovy,
         logicalH > 0 ? logicalH : height,
+        150,
+        camera.linked,
       );
 
-      for (const part of this.gizmoParts) {
-        // Highlight active axis
+      const extent =
+        gizmoScale *
+        Math.max(GIZMO_AXIS_ARROW_LENGTH, GIZMO_ROTATE_RING_RADIUS * 2);
+
+      this.uploadSceneUniforms(sceneUniforms, translation, extent);
+
+      const drawOrder = [...this.gizmoParts].sort(
+        (a, b) => gizmoDrawLayer(a) - gizmoDrawLayer(b),
+      );
+
+      const rotation = transform.rotation;
+
+      for (const part of drawOrder) {
         let color = part.color;
-        if (sel.activeAxis === part.axis) {
-          color = [1, 1, 0, 1]; // Yellow highlight
+        if (
+          sel.activeAxis === part.axis &&
+          sel.activePartKind === part.partKind
+        ) {
+          color = [1, 1, 0, 1];
         }
 
-        const modelLegacy = this.uploadModelUniforms(
+        const modelMat = buildGizmoModelMatrix(
           translation,
+          rotation,
           gizmoScale,
+          part.partKind,
+        );
+        const modelLegacy = this.uploadModelUniforms(
+          modelMat,
+          translation,
           color,
         );
 
@@ -201,26 +232,40 @@ export class RenderGizmo3D extends System {
 
   private uploadSceneUniforms(
     uniforms: ReturnType<typeof buildCamera3DSceneUniforms>,
+    anchor: [number, number, number],
+    gizmoWorldExtent: number,
   ): void {
     if (!this.sceneUniformBuffer) return;
 
-    const buffer = packSceneUniformBuffer(uniforms);
+    let sceneParams = uniforms.sceneParams;
+    if (uniforms.mode === 'linkedPerspective') {
+      const pickScene = sceneUniformsToPickScene(uniforms);
+      if (pickScene.mode === 'linkedPerspective') {
+        const bias = computeLinkedPerspectiveZGizmoScreenBias(
+          anchor,
+          gizmoWorldExtent,
+          pickScene,
+        );
+        sceneParams = [bias[0], bias[1], 1, 0];
+      }
+    }
+
+    const buffer = packSceneUniformBuffer({ ...uniforms, sceneParams });
     this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
     this.sceneLegacyUniforms = {
       u_ProjectionMatrix3D: Mat4.toGLMat4(uniforms.projMatrix),
       u_ViewMatrix3D: Mat4.toGLMat4(uniforms.viewMatrix),
       u_CanvasViewProjection3D: Mat4.toGLMat4(uniforms.canvasViewProjection),
-      u_SceneParams: uniforms.sceneParams,
+      u_SceneParams: sceneParams,
     };
   }
 
   private uploadModelUniforms(
+    modelMat: glMat4,
     translation: [number, number, number],
-    scale: number,
     color: [number, number, number, number],
   ): Record<string, unknown> {
-    const modelMat = this.buildGizmoModelMat4(translation, scale);
     const normalMat = glMat4.create();
     glMat4.invert(normalMat, modelMat);
     glMat4.transpose(normalMat, normalMat);
@@ -232,7 +277,10 @@ export class RenderGizmo3D extends System {
       buffer.set(color, 32);
       buffer.set([1, 0, 0, 0], 36);
       buffer.set([-0.5, -0.7, -0.5, 0], 40);
-      buffer.set([translation[0], translation[1], 0, 0], 44);
+      buffer.set(
+        [translation[0], translation[1], translation[2], 0],
+        44,
+      );
       this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     }
 
@@ -242,18 +290,8 @@ export class RenderGizmo3D extends System {
       u_BaseColor: color,
       u_LightParams: [1, 0, 0, 0],
       u_LightDirection: [-0.5, -0.7, -0.5, 0],
-      u_CanvasAnchor: [translation[0], translation[1], 0, 0],
+      u_CanvasAnchor: [translation[0], translation[1], translation[2], 0],
     };
-  }
-
-  private buildGizmoModelMat4(
-    translation: [number, number, number],
-    scale: number,
-  ): glMat4 {
-    const m = glMat4.create();
-    glMat4.translate(m, m, translation);
-    glMat4.scale(m, m, [scale, scale, scale]);
-    return m;
   }
 
   private initPipeline(canvas: Entity): void {
@@ -263,8 +301,8 @@ export class RenderGizmo3D extends System {
     const { device, renderCache } = canvas.read(GPUResource);
 
     this.program = renderCache.createProgram({
-      vertex: { glsl: mesh3dVert, entryPoint: 'main' },
-      fragment: { glsl: mesh3dFrag, entryPoint: 'main' },
+      vertex: { glsl: gizmoDisplayVert, entryPoint: 'main' },
+      fragment: { glsl: gizmoDisplayFrag, entryPoint: 'main' },
     });
 
     this.inputLayout = renderCache.createInputLayout({
@@ -331,9 +369,19 @@ export class RenderGizmo3D extends System {
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
-    // Upload gizmo geometry to GPU
-    const gizmoMeshes = createTranslateGizmo();
-    this.gizmoParts = gizmoMeshes.map((part) => {
+    this.gizmoParts = this.uploadGizmoMeshes(
+      device,
+      createCombinedTransformGizmo(),
+    );
+
+    this.initialized = true;
+  }
+
+  private uploadGizmoMeshes(
+    device: Device,
+    meshes: GizmoMeshData[],
+  ): GizmoPartGPU[] {
+    return meshes.map((part) => {
       const vertexBuffer = device.createBuffer({
         viewOrSize: part.positions,
         usage: BufferUsage.VERTEX,
@@ -349,6 +397,8 @@ export class RenderGizmo3D extends System {
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
+      const isPlane =
+        part.axis === 'xy' || part.axis === 'xz' || part.axis === 'yz';
       return {
         vertexBuffer,
         normalBuffer,
@@ -356,14 +406,21 @@ export class RenderGizmo3D extends System {
         indexCount: part.indices.length,
         color: part.color,
         axis: part.axis,
+        partKind: part.kind,
+        isPlane,
       };
     });
-
-    this.initialized = true;
   }
 
   execute(): void {
     // Rendering is driven by MeshPipeline3D calling drawGizmos.
     // No per-frame logic needed here.
   }
+}
+
+/** Planes under rings, rings under arrows (arrows win overlapping picks). */
+function gizmoDrawLayer(part: GizmoPartGPU): number {
+  if (part.isPlane) return 0;
+  if (part.partKind === 'rotate') return 1;
+  return 2;
 }

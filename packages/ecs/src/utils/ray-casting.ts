@@ -310,6 +310,8 @@ export function projectWorldToClipLinkedPerspective(
   canvasViewProjection: Float32Array | number[],
   viewMatrix: Float32Array | number[],
   projMatrix: Float32Array | number[],
+  /** Matches gizmo display shader (sceneParams.xy) for linked-canvas Z handles. */
+  zScreenBias?: [number, number],
 ): { clip: [number, number, number, number]; pickDepth: number } {
   const canvasVP = canvasViewProjection as unknown as glMat4;
   const view = viewMatrix as unknown as glMat4;
@@ -351,10 +353,15 @@ export function projectWorldToClipLinkedPerspective(
   }
   const scale = clipPwRef[3] / pw;
 
-  const clipX = anchor2d[0] + (clip2d[0] - anchor2d[0]) * scale;
-  const clipY = anchor2d[1] + (clip2d[1] - anchor2d[1]) * scale;
+  let clipX = anchor2d[0] + (clip2d[0] - anchor2d[0]) * scale;
+  let clipY = anchor2d[1] + (clip2d[1] - anchor2d[1]) * scale;
   const clipZ = (clipP[2] * clip2d[3]) / pw;
   const clipW = clip2d[3];
+  if (zScreenBias) {
+    const zDelta = world[2] - anchor[2];
+    clipX += zScreenBias[0] * zDelta * clipW;
+    clipY += zScreenBias[1] * zDelta * clipW;
+  }
 
   return {
     clip: [clipX, clipY, clipZ, clipW],
@@ -410,6 +417,7 @@ export function pickMeshLinkedPerspective(
   modelMatrix: Float32Array | number[],
   anchor: [number, number, number],
   scene: Extract<Mesh3DPickScene, { mode: 'linkedPerspective' }>,
+  zScreenBias?: [number, number],
 ): RayHitResult | null {
   const mat = modelMatrix as unknown as glMat4;
   const v0 = glVec3.create();
@@ -462,6 +470,7 @@ export function pickMeshLinkedPerspective(
       scene.canvasViewProjection,
       scene.viewMatrix,
       scene.projMatrix,
+      zScreenBias,
     );
     const proj1 = projectWorldToClipLinkedPerspective(
       world1,
@@ -469,6 +478,7 @@ export function pickMeshLinkedPerspective(
       scene.canvasViewProjection,
       scene.viewMatrix,
       scene.projMatrix,
+      zScreenBias,
     );
     const proj2 = projectWorldToClipLinkedPerspective(
       world2,
@@ -476,6 +486,7 @@ export function pickMeshLinkedPerspective(
       scene.canvasViewProjection,
       scene.viewMatrix,
       scene.projMatrix,
+      zScreenBias,
     );
 
     const p0 = clipToViewport(proj0.clip, viewportWidth, viewportHeight);
@@ -532,6 +543,7 @@ export function pickMeshAtViewport(
   modelMatrix: Float32Array | number[],
   anchor: [number, number, number],
   scene: Mesh3DPickScene,
+  zScreenBias?: [number, number],
 ): RayHitResult | null {
   if (scene.mode === 'linkedPerspective') {
     return pickMeshLinkedPerspective(
@@ -544,6 +556,7 @@ export function pickMeshAtViewport(
       modelMatrix,
       anchor,
       scene,
+      zScreenBias,
     );
   }
 

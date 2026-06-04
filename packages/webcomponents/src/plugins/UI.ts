@@ -3,15 +3,13 @@ import {
   CameraControl,
   Canvas,
   ComputeBounds,
+  ComputeCamera,
   Plugin,
   PreStartUp,
   PropagateTransforms,
   SyncSimpleTransforms,
   system,
-  Select,
   Last,
-  RenderTransformer,
-  RenderHighlighter,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,
@@ -58,6 +56,8 @@ export const UIPlugin: Plugin = () => {
   system((s) => s.after(PreStartUp, InitCanvas).before(ZoomLevel).beforeWritersOf(Canvas))(
     EmitCanvasReady,
   );
+  // React to ComputedCamera changes only — must not run after Select (that caused
+  // Select → ZoomLevel → ComputeCamera → Select precedence cycles).
   system((s) =>
     s
       .inAnyOrderWithWritersOf(Camera)
@@ -67,9 +67,7 @@ export const UIPlugin: Plugin = () => {
         PropagateTransforms,
         ComputeBounds,
         CameraControl,
-        Select,
-        RenderTransformer,
-        RenderHighlighter,
+        ComputeCamera,
       )
       .before(Last),
   )(ZoomLevel);

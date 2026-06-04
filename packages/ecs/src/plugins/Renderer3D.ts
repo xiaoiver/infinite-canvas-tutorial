@@ -34,6 +34,7 @@ import {
   SyncExtrude3D,
   Pick3D,
   RenderGizmo3D,
+  Select,
 } from '../systems';
 import { Last, PostUpdate, PreUpdate } from '../systems/stages';
 
@@ -66,8 +67,8 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     // after(ComputeCamera), which creates precedence cycles with UI/Lasso systems.
     system((s) => s.after(ComputeCamera, SyncExtrude3D).before(Last))(CameraSync);
 
-    // After Select → ZoomLevel → ComputeCamera → CameraSync (same-frame camera for picking).
-    system((s) => s.after(CameraSync).before(Last))(Pick3D);
+    // Same-frame camera for picking; runs after Select (2D marquee probe is in Select).
+    system((s) => s.after(CameraSync, Select).before(Last))(Pick3D);
 
     // 3D gizmo rendering: runs alongside the 3D render system.
     system(PreUpdate)(RenderGizmo3D);

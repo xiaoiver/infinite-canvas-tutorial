@@ -159,6 +159,9 @@ function createPlaneQuad(
   return { positions, normals, indices };
 }
 
+/** Translate arrow/plane vs rotation ring (combined gizmo uses both). */
+export type GizmoPartKind = 'translate' | 'rotate';
+
 export interface GizmoMeshData {
   positions: Float32Array;
   normals: Float32Array;
@@ -167,6 +170,12 @@ export interface GizmoMeshData {
   color: [number, number, number, number];
   /** Which axis or plane this part represents. */
   axis: 'x' | 'y' | 'z' | 'xy' | 'xz' | 'yz';
+  kind: GizmoPartKind;
+}
+
+/** Translate handles + rotation rings (Spline-style combined gizmo). */
+export function createCombinedTransformGizmo(): GizmoMeshData[] {
+  return [...createTranslateGizmo(), ...createRotateGizmo()];
 }
 
 /**
@@ -185,9 +194,9 @@ export function createTranslateGizmo(
   const parts: GizmoMeshData[] = [];
 
   const axes: Array<{ axis: 'x' | 'y' | 'z'; color: [number, number, number, number] }> = [
-    { axis: 'x', color: [0.9, 0.2, 0.2, 1] }, // Red
-    { axis: 'y', color: [0.2, 0.8, 0.2, 1] }, // Green
-    { axis: 'z', color: [0.2, 0.4, 0.9, 1] }, // Blue
+    { axis: 'x', color: [1, 0.15, 0.15, 1] },
+    { axis: 'y', color: [0.15, 1, 0.15, 1] },
+    { axis: 'z', color: [0.2, 0.45, 1, 1] },
   ];
 
   for (const { axis, color } of axes) {
@@ -211,14 +220,15 @@ export function createTranslateGizmo(
       indices: new Uint32Array(mergedIndices),
       color,
       axis,
+      kind: 'translate',
     });
   }
 
   // Plane handles
   const planes: Array<{ plane: 'xy' | 'xz' | 'yz'; color: [number, number, number, number] }> = [
-    { plane: 'xy', color: [0.2, 0.4, 0.9, 0.5] }, // Blue semi-transparent
-    { plane: 'xz', color: [0.2, 0.8, 0.2, 0.5] }, // Green semi-transparent
-    { plane: 'yz', color: [0.9, 0.2, 0.2, 0.5] }, // Red semi-transparent
+    { plane: 'xy', color: [0.2, 0.45, 1, 0.35] },
+    { plane: 'xz', color: [0.15, 1, 0.15, 0.35] },
+    { plane: 'yz', color: [1, 0.15, 0.15, 0.35] },
   ];
 
   for (const { plane, color } of planes) {
@@ -229,10 +239,83 @@ export function createTranslateGizmo(
       indices: new Uint32Array(quad.indices),
       color,
       axis: plane,
+      kind: 'translate',
     });
   }
 
   return parts;
+}
+
+/** Translate arrow length in local gizmo units (shaft + cone). */
+export const GIZMO_AXIS_ARROW_LENGTH = 0.9;
+
+/** Rotate ring radius in local gizmo units (matches arrow length order of magnitude). */
+export const GIZMO_ROTATE_RING_RADIUS = 0.85;
+
+/**
+ * Rotation rings (torus strips) in planes perpendicular to each local axis.
+ */
+export function createRotateGizmo(
+  radius = GIZMO_ROTATE_RING_RADIUS,
+  tube = 0.05,
+  segments = 48,
+): GizmoMeshData[] {
+  const axes: Array<{ axis: 'x' | 'y' | 'z'; color: [number, number, number, number] }> = [
+    { axis: 'x', color: [1, 0.15, 0.15, 1] },
+    { axis: 'y', color: [0.15, 1, 0.15, 1] },
+    { axis: 'z', color: [0.2, 0.45, 1, 1] },
+  ];
+
+  return axes.map(({ axis, color }) => {
+    const ring = createRotationRing(axis, radius, tube, segments);
+    return {
+      positions: new Float32Array(ring.positions),
+      normals: new Float32Array(ring.normals),
+      indices: new Uint32Array(ring.indices),
+      color,
+      axis,
+      kind: 'rotate',
+    };
+  });
+}
+
+/** Ring in XZ plane (Y-up cylinder default), then rotated to X / Z axis. */
+function createRotationRing(
+  axis: 'x' | 'y' | 'z',
+  radius: number,
+  tube: number,
+  segments: number,
+): { positions: number[]; normals: number[]; indices: number[] } {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const indices: number[] = [];
+  const inner = Math.max(radius - tube, radius * 0.7);
+
+  for (let i = 0; i < segments; i++) {
+    const a0 = (i / segments) * Math.PI * 2;
+    const a1 = ((i + 1) / segments) * Math.PI * 2;
+    const c0 = Math.cos(a0);
+    const s0 = Math.sin(a0);
+    const c1 = Math.cos(a1);
+    const s1 = Math.sin(a1);
+
+    const outer0 = [c0 * radius, 0, s0 * radius];
+    const outer1 = [c1 * radius, 0, s1 * radius];
+    const inner0 = [c0 * inner, 0, s0 * inner];
+    const inner1 = [c1 * inner, 0, s1 * inner];
+
+    const base = positions.length / 3;
+    for (const p of [outer0, outer1, inner1, inner0]) {
+      positions.push(p[0], p[1], p[2]);
+      normals.push(0, 1, 0);
+    }
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+
+  if (axis === 'y') {
+    return { positions, normals, indices };
+  }
+  return rotateGeometry({ positions, normals, indices }, axis);
 }
 
 /**
@@ -249,13 +332,25 @@ export function computeGizmoScale(
   referenceFov: number,
   viewportHeight: number,
   desiredPixelSize = 150,
+  /**
+   * Linked 2D canvas: eye.xy 跟随平移，屏幕尺寸只随深度 (eye.z − object.z) 变化，
+   * 不应随物体在画布 XY 上移动而变。
+   */
+  linked = false,
 ): number {
-  const dx = eyePosition[0] - objectPosition[0];
-  const dy = eyePosition[1] - objectPosition[1];
-  const dz = eyePosition[2] - objectPosition[2];
-  const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  let distance: number;
+  if (linked) {
+    distance = Math.abs(eyePosition[2] - objectPosition[2]);
+    if (distance < 1e-4) {
+      distance = 1e-4;
+    }
+  } else {
+    const dx = eyePosition[0] - objectPosition[0];
+    const dy = eyePosition[1] - objectPosition[1];
+    const dz = eyePosition[2] - objectPosition[2];
+    distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
 
-  // For perspective: world units per pixel at that distance
   const worldPerPixel =
     (2 * distance * Math.tan(referenceFov / 2)) / viewportHeight;
 
