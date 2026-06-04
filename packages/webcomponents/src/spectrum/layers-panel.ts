@@ -1,4 +1,10 @@
-import { html, css, LitElement, type PropertyValues, type TemplateResult } from 'lit';
+import {
+  html,
+  css,
+  LitElement,
+  type PropertyValues,
+  type TemplateResult,
+} from 'lit';
 import { consume } from '@lit/context';
 import { map } from 'lit/directives/map.js';
 import { when } from 'lit/directives/when.js';
@@ -80,8 +86,8 @@ export class LayersPanel extends LitElement {
       min-height: 0;
       box-sizing: border-box;
       background: var(--spectrum-gray-100);
-      border-radius: var(--spectrum-corner-radius-200) var(--spectrum-corner-radius-200) 0
-        0;
+      border-radius: var(--spectrum-corner-radius-200)
+        var(--spectrum-corner-radius-200) 0 0;
 
       margin: 4px 4px 0 4px;
 
@@ -306,9 +312,9 @@ export class LayersPanel extends LitElement {
       MAX_LAYERS_PANEL_WIDTH_PX,
       typeof window !== 'undefined'
         ? Math.max(
-          MIN_LAYERS_PANEL_WIDTH_PX,
-          Math.floor(window.innerWidth - 80),
-        )
+            MIN_LAYERS_PANEL_WIDTH_PX,
+            Math.floor(window.innerWidth - 80),
+          )
         : MAX_LAYERS_PANEL_WIDTH_PX,
     );
     return Math.min(max, Math.max(MIN_LAYERS_PANEL_WIDTH_PX, Math.round(w)));
@@ -392,9 +398,9 @@ export class LayersPanel extends LitElement {
   private get maxLayersPanelWidthResolved(): number {
     return typeof window !== 'undefined'
       ? Math.max(
-        MIN_LAYERS_PANEL_WIDTH_PX,
-        Math.min(MAX_LAYERS_PANEL_WIDTH_PX, window.innerWidth - 80),
-      )
+          MIN_LAYERS_PANEL_WIDTH_PX,
+          Math.min(MAX_LAYERS_PANEL_WIDTH_PX, window.innerWidth - 80),
+        )
       : MAX_LAYERS_PANEL_WIDTH_PX;
   }
 
@@ -421,8 +427,7 @@ export class LayersPanel extends LitElement {
         class="panel-root"
         style=${`width: ${this.panelWidth}px; max-width: 100%;`}
       >
-        ${this.renderWidthResizeHandle()}
-        ${inner}
+        ${this.renderWidthResizeHandle()} ${inner}
       </div>
     `;
   }
@@ -517,7 +522,10 @@ export class LayersPanel extends LitElement {
   /**
    * World position of parent node's local origin (0,0).
    */
-  private layerParentOriginWorld(parent: SerializedNode): { x: number; y: number } {
+  private layerParentOriginWorld(parent: SerializedNode): {
+    x: number;
+    y: number;
+  } {
     let x = parent.x ?? 0;
     let y = parent.y ?? 0;
     let id = parent.parentId;
@@ -596,8 +604,7 @@ export class LayersPanel extends LitElement {
     const orderedIds = this.collectBranchIds(to);
 
     if (from !== to) {
-      const newParent =
-        toPid === '' ? undefined : this.api.getNodeById(toPid);
+      const newParent = toPid === '' ? undefined : this.api.getNodeById(toPid);
       if (toPid !== '' && !newParent) {
         this.requestUpdate();
         return;
@@ -626,8 +633,7 @@ export class LayersPanel extends LitElement {
       return;
     }
 
-    const parentId =
-      parentIdAttr === '' ? undefined : parentIdAttr;
+    const parentId = parentIdAttr === '' ? undefined : parentIdAttr;
 
     const nodes = orderedIds
       .map((id) => this.api.getNodeById(id))
@@ -650,8 +656,7 @@ export class LayersPanel extends LitElement {
     if (n >= 2) {
       const span = SIBLINGS_MAX_Z_INDEX - SIBLINGS_MIN_Z_INDEX;
       nodes.forEach((node, i) => {
-        const z =
-          SIBLINGS_MIN_Z_INDEX + ((i + 1) / (n + 1)) * span;
+        const z = SIBLINGS_MIN_Z_INDEX + ((i + 1) / (n + 1)) * span;
         this.api.updateNode(node, { zIndex: z });
       });
     }
@@ -785,7 +790,12 @@ export class LayersPanel extends LitElement {
               </sp-action-button>
             </h4>
             <sp-action-group class="actions">
-              <sp-action-button quiet size="s" disabled @click=${this.handleAdd}>
+              <sp-action-button
+                quiet
+                size="s"
+                disabled
+                @click=${this.handleAdd}
+              >
                 <sp-tooltip self-managed placement="bottom">
                   ${msg(str`Add new layer`)}
                 </sp-tooltip>
@@ -798,9 +808,7 @@ export class LayersPanel extends LitElement {
                 size="s"
                 .disabled=${layersSelected.length === 0}
               >
-                <sp-icon-show-all-layers
-                  slot="icon"
-                ></sp-icon-show-all-layers>
+                <sp-icon-show-all-layers slot="icon"></sp-icon-show-all-layers>
                 <sp-menu-group>
                   <span slot="header">${msg(str`Arrange layers`)}</span>
                   <sp-menu-item
@@ -854,17 +862,14 @@ export class LayersPanel extends LitElement {
                 <sp-icon-delete slot="icon"></sp-icon-delete>
               </sp-action-button>
             </sp-action-group>
-            <div
-              class="container"
-              style=${`height:${this.panelBodyHeight}px`}
-            >
+            <div class="container" style=${`height:${this.panelBodyHeight}px`}>
               <div class="layer-siblings" data-layer-parent-id="">
                 ${map(sortedNodes, (node) => {
-        return this.renderLayerBranch(node, 0);
-      })}
+                  return this.renderLayerBranch(node, 0);
+                })}
                 ${map(mesh3DLayers, (layer) => {
-        return this.renderMesh3DLayerBranch(layer);
-      })}
+                  return this.renderMesh3DLayerBranch(layer);
+                })}
               </div>
             </div>
           </section>
@@ -886,41 +891,41 @@ export class LayersPanel extends LitElement {
     const isExpanded = layersExpanded.includes(node.id);
 
     return html`<div
-        class=${classMap({
-      'layer-branch': true,
-      'layer-branch--locked': !!node.locked,
-    })}
-        data-node-id=${node.id}
-      >
-        <ic-spectrum-layers-panel-item
-          id=${this.generateLayersPanelItemId(node)}
-          .node=${node}
-          .depth=${depth}
-          .hasChildren=${hasChildren}
-          @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
-          ?selected=${layersSelected.includes(node.id)}
-          ?highlighted=${layersHighlighted.includes(node.id)}
-        ></ic-spectrum-layers-panel-item>
-        ${when(
-      hasChildren && isExpanded,
-      () => html`
-            <div class="layer-siblings" data-layer-parent-id=${node.id}>
-              ${map(sortedNodes, (child) => {
-        return this.renderLayerBranch(child, depth + 1);
+      class=${classMap({
+        'layer-branch': true,
+        'layer-branch--locked': !!node.locked,
       })}
-            </div>
-          `,
-    )}
-      </div>`;
+      data-node-id=${node.id}
+    >
+      <ic-spectrum-layers-panel-item
+        id=${this.generateLayersPanelItemId(node)}
+        .node=${node}
+        .depth=${depth}
+        .hasChildren=${hasChildren}
+        @click=${(e: MouseEvent) => this.handleSelect(e, node.id)}
+        ?selected=${layersSelected.includes(node.id)}
+        ?highlighted=${layersHighlighted.includes(node.id)}
+      ></ic-spectrum-layers-panel-item>
+      ${when(
+        hasChildren && isExpanded,
+        () => html`
+          <div class="layer-siblings" data-layer-parent-id=${node.id}>
+            ${map(sortedNodes, (child) => {
+              return this.renderLayerBranch(child, depth + 1);
+            })}
+          </div>
+        `,
+      )}
+    </div>`;
   }
 
   private renderMesh3DLayerBranch(layer: Mesh3DLayer) {
     const selected = this.api.getSelectedMesh3DLayerIds().includes(layer.id);
     return html`<div
       class=${classMap({
-      'layer-branch': true,
-      'layer-branch--locked': true,
-    })}
+        'layer-branch': true,
+        'layer-branch--locked': true,
+      })}
       data-node-id=${layer.id}
     >
       <div

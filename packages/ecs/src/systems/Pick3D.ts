@@ -14,7 +14,10 @@ import {
   Extrude3DTarget,
   Mesh3DNodeTarget,
 } from '../components';
-import { Selected3D, type GizmoAxis } from '../components/geometry3d/Selected3D';
+import {
+  Selected3D,
+  type GizmoAxis,
+} from '../components/geometry3d/Selected3D';
 import { Mat3 } from '../components/math/Mat3';
 import { Mat4 } from '../components/math/Mat4';
 import {
@@ -60,38 +63,38 @@ import {
  */
 export class Pick3D extends System {
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
-  private cameras2D = this.query((q) =>
-    q.current.with(Camera, ComputedCamera).read,
+  private cameras2D = this.query(
+    (q) => q.current.with(Camera, ComputedCamera).read,
   );
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
-  private meshes3D = this.query((q) =>
-    q.current.with(Mesh3D, Material3D, Transform3D).read,
+  private meshes3D = this.query(
+    (q) => q.current.with(Mesh3D, Material3D, Transform3D).read,
   );
 
-  private selected3D = this.query((q) =>
-    q.current.with(Selected3D, Transform3D).write,
+  private selected3D = this.query(
+    (q) => q.current.with(Selected3D, Transform3D).write,
   );
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(
-          Input,
-          Camera3D,
-          Camera,
-          Canvas,
-          Canvas3DScope,
-          ComputedCamera,
-          Mesh3D,
-          Material3D,
-          Transform3D,
-          Selected3D,
-        )
-        .read.and.using(Selected3D, Transform3D)
-        .write,
+    this.query(
+      (q) =>
+        q
+          .using(
+            Input,
+            Camera3D,
+            Camera,
+            Canvas,
+            Canvas3DScope,
+            ComputedCamera,
+            Mesh3D,
+            Material3D,
+            Transform3D,
+            Selected3D,
+          )
+          .read.and.using(Selected3D, Transform3D).write,
     );
   }
 
@@ -253,11 +256,7 @@ export class Pick3D extends System {
       sel.dragAngleStart = null;
 
       let canDrag = false;
-      if (
-        probe.partKind === 'rotate' &&
-        isRotateGizmoAxis(probe.axis) &&
-        ray
-      ) {
+      if (probe.partKind === 'rotate' && isRotateGizmoAxis(probe.axis) && ray) {
         const hit = intersectRayWithPlane(
           ray,
           translation,
@@ -460,7 +459,9 @@ export class Pick3D extends System {
     set3DGizmoDragging(anyDragging);
   }
 
-  private constraintPlaneNormal(axis: GizmoAxis): [number, number, number] | null {
+  private constraintPlaneNormal(
+    axis: GizmoAxis,
+  ): [number, number, number] | null {
     if (axis === 'x' || axis === 'z' || axis === 'xz') {
       return [0, 1, 0];
     }

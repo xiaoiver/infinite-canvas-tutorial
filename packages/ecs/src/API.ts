@@ -53,9 +53,7 @@ import {
 } from './utils';
 import type { AnimationGifQuality } from './utils/animationExportCodec';
 export type { AnimationGifQuality } from './utils/animationExportCodec';
-import {
-  getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList,
-} from './utils/icon-font';
+import { getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList } from './utils/icon-font';
 import type {
   BrushSerializedNode,
   FillAttributes,
@@ -129,7 +127,12 @@ import {
   ZIndex,
 } from './components';
 import { AnimationController, AnimationOptions, Keyframe } from './animation';
-import { History, mutateElement, safeAddComponent, safeRemoveComponent } from './history';
+import {
+  History,
+  mutateElement,
+  safeAddComponent,
+  safeRemoveComponent,
+} from './history';
 import {
   drawDotsGrid,
   drawLinesGrid,
@@ -238,7 +241,7 @@ export class DefaultStateManagement implements StateManagement {
     this.#nodes = nodes;
   }
 
-  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) { }
+  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) {}
 }
 
 export const mapToArray = <T extends { id: string } | string>(
@@ -326,7 +329,10 @@ export class API {
       }
 
       // 保持向后兼容：如果设置了 onchange，当有任何变化时都会触发
-      if (this.onchange && (!event.elementsChange.isEmpty() || !event.appStateChange.isEmpty())) {
+      if (
+        this.onchange &&
+        (!event.elementsChange.isEmpty() || !event.appStateChange.isEmpty())
+      ) {
         this.onchange(snapshot);
       }
     });
@@ -392,9 +398,7 @@ export class API {
       Object.prototype.hasOwnProperty.call(patch, 'themePreference')
     ) {
       const nextThemeMode =
-        patch.themeMode !== undefined
-          ? patch.themeMode
-          : oldAppState.themeMode;
+        patch.themeMode !== undefined ? patch.themeMode : oldAppState.themeMode;
       const mergedTheme = mergeThemeState(
         { ...oldAppState.theme, mode: oldAppState.themeMode },
         {
@@ -435,9 +439,9 @@ export class API {
       const mergedVariables = options?.replaceVariables
         ? (patch.variables as NonNullable<AppState['variables']>)
         : {
-          ...prevVariables,
-          ...patch.variables,
-        };
+            ...prevVariables,
+            ...patch.variables,
+          };
       variablesPatch = { variables: mergedVariables };
     }
 
@@ -486,11 +490,12 @@ export class API {
     const variablesActuallyChanged =
       Object.prototype.hasOwnProperty.call(patch, 'variables') &&
       JSON.stringify((variablesPatch as { variables?: object }).variables) !==
-      JSON.stringify(prevVariables);
+        JSON.stringify(prevVariables);
 
     const shouldRefreshDesignVariableBindings =
       variablesActuallyChanged ||
-      (themeModeChanged && Object.keys(nextAppState.variables ?? {}).length > 0);
+      (themeModeChanged &&
+        Object.keys(nextAppState.variables ?? {}).length > 0);
 
     if (shouldRefreshDesignVariableBindings) {
       this.runAtNextTick(() => {
@@ -544,7 +549,9 @@ export class API {
   }
 
   setSelectedMesh3DLayerIds(ids: string[]) {
-    const selected = ids.filter((id, index, self) => self.indexOf(id) === index);
+    const selected = ids.filter(
+      (id, index, self) => self.indexOf(id) === index,
+    );
     const changed =
       selected.length !== this.#selectedMesh3DLayerIds.length ||
       selected.some((id, i) => id !== this.#selectedMesh3DLayerIds[i]);
@@ -595,7 +602,11 @@ export class API {
 
     this.#selectedMesh3DLayerIds.forEach((selectedId) => {
       const selectedEntity = this.#mesh3DLayerEntities.get(selectedId);
-      if (selectedEntity && selectedEntity !== entity && selectedEntity.has(Selected3D)) {
+      if (
+        selectedEntity &&
+        selectedEntity !== entity &&
+        selectedEntity.has(Selected3D)
+      ) {
         selectedEntity.remove(Selected3D);
       }
     });
@@ -758,9 +769,8 @@ export class API {
         entity.has(Rect) &&
         (node.type === 'rect' || node.type === 'rough-rect')
       ) {
-        (out as { cornerRadius?: number }).cornerRadius = entity.read(
-          Rect,
-        ).cornerRadius;
+        (out as { cornerRadius?: number }).cornerRadius =
+          entity.read(Rect).cornerRadius;
       }
       return out;
     });
@@ -930,7 +940,13 @@ export class API {
   /**
    * Search entites within a bounding box. Use rbush under the hood to accelerate the search.
    */
-  elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number, shouldFilterLocked = true) {
+  elementsFromBBox(
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+    shouldFilterLocked = true,
+  ) {
     if (!this.#camera.has(RBush)) {
       return [];
     }
@@ -946,13 +962,22 @@ export class API {
     // Sort by fractional index
     return rBushNodes
       .map((node) => node.entity)
-      .filter((entity) => entity.__valid && (!shouldFilterLocked || !entity.has(Locked)))
+      .filter(
+        (entity) =>
+          entity.__valid && (!shouldFilterLocked || !entity.has(Locked)),
+      )
       .sort(sortByFractionalIndex)
       .reverse();
   }
 
   elementsFromPoint(point: IPointData, shouldFilterLocked = true) {
-    const entities = this.elementsFromBBox(point.x, point.y, point.x, point.y, shouldFilterLocked);
+    const entities = this.elementsFromBBox(
+      point.x,
+      point.y,
+      point.x,
+      point.y,
+      shouldFilterLocked,
+    );
 
     const results: Entity[] = [];
     entities.forEach((entity) => {
@@ -963,7 +988,11 @@ export class API {
 
       const matrix = Mat3.toGLMat3(entity.read(GlobalTransform).matrix);
       const invMatrix = mat3.invert(mat3.create(), matrix);
-      const [x, y] = vec2.transformMat3(vec2.create(), [point.x, point.y], invMatrix);
+      const [x, y] = vec2.transformMat3(
+        vec2.create(),
+        [point.x, point.y],
+        invMatrix,
+      );
 
       let isIntersected = false;
       const hasFill =
@@ -981,24 +1010,31 @@ export class API {
 
       if (entity.has(Circle)) {
         const { cx, cy, r } = entity.read(Circle);
-        const distance = distanceBetweenPoints(x, y, cx, cy)
+        const distance = distanceBetweenPoints(x, y, cx, cy);
         if (hasFill && hasStroke) {
           isIntersected = distance <= r + offset;
         } else if (hasFill) {
           isIntersected = distance <= r;
         } else if (hasStroke) {
-          isIntersected = (
-            distance >= r + offset - halfStrokeWidth && distance <= r + offset + halfStrokeWidth
-          );
+          isIntersected =
+            distance >= r + offset - halfStrokeWidth &&
+            distance <= r + offset + halfStrokeWidth;
         }
       } else if (entity.has(Ellipse)) {
         const { cx, cy, rx, ry } = entity.read(Ellipse);
         if (hasFill && hasStroke) {
-          isIntersected = isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
+          isIntersected = isPointInEllipse(
+            x,
+            y,
+            cx,
+            cy,
+            rx + offset,
+            ry + offset,
+          );
         } else if (hasFill) {
           isIntersected = isPointInEllipse(x, y, cx, cy, rx, ry);
         } else if (hasStroke) {
-          isIntersected = (
+          isIntersected =
             !isPointInEllipse(
               x,
               y,
@@ -1006,8 +1042,7 @@ export class API {
               cy,
               rx + offset - halfStrokeWidth * 2,
               ry + offset - halfStrokeWidth * 2,
-            ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset)
-          );
+            ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
         }
       } else if (entity.has(Line)) {
         if (Line.hitTestProvider && hasStroke) {
@@ -1058,8 +1093,7 @@ export class API {
           const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
           const path = new Path2D(d);
           if (hasStroke) {
-            ctx.strokeStyle =
-              resolveGpuStrokeColor(entity) ?? 'transparent';
+            ctx.strokeStyle = resolveGpuStrokeColor(entity) ?? 'transparent';
             ctx.lineWidth = lineHitStrokeWidth;
             ctx.lineCap = stroke.linecap;
             ctx.lineJoin = stroke.linejoin;
@@ -1505,19 +1539,19 @@ export class API {
     // remove duplicates
     const layersSelected = preserveSelection
       ? [
-        ...prevAppState.layersSelected,
-        ...nodes.map((node) => node.id),
-      ].filter((id, index, self) => self.indexOf(id) === index)
+          ...prevAppState.layersSelected,
+          ...nodes.map((node) => node.id),
+        ].filter((id, index, self) => self.indexOf(id) === index)
       : nodes
-        .map((node) => node.id)
-        .filter((id, index, self) => self.indexOf(id) === index);
+          .map((node) => node.id)
+          .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       const layersHighlighted = preserveSelection
         ? prevAppState.layersHighlighted
         : prevAppState.layersHighlighted.filter(
-          (id) =>
-            !prevSelectedIds.includes(id) || layersSelected.includes(id),
-        );
+            (id) =>
+              !prevSelectedIds.includes(id) || layersSelected.includes(id),
+          );
       this.setAppState({
         ...prevAppState,
         layersSelected,
@@ -1587,12 +1621,12 @@ export class API {
     // remove duplicates
     const layersHighlighted = preserveSelection
       ? [
-        ...prevAppState.layersHighlighted,
-        ...nodes.map((node) => node.id),
-      ].filter((id, index, self) => self.indexOf(id) === index)
+          ...prevAppState.layersHighlighted,
+          ...nodes.map((node) => node.id),
+        ].filter((id, index, self) => self.indexOf(id) === index)
       : nodes
-        .map((node) => node.id)
-        .filter((id, index, self) => self.indexOf(id) === index);
+          .map((node) => node.id)
+          .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
         ...prevAppState,
@@ -1666,13 +1700,15 @@ export class API {
     const node = this.getNodeById(lassoingNodeId);
     // Delete all children
     const children = this.getChildren(node);
-    this.deleteNodesById(children.map((child) => this.getNodeByEntity(child).id));
+    this.deleteNodesById(
+      children.map((child) => this.getNodeByEntity(child).id),
+    );
     this.setAppState({
       layersLassoing: [],
       penbarLasso: {
         ...this.getAppState().penbarLasso,
         mode: undefined,
-      }
+      },
     });
     this.selectNodes([node]);
     this.record();
@@ -1723,7 +1759,13 @@ export class API {
         this.setNodes([...nodes, ...this.#refExpandedWireForBatch([node])]);
       }
     } else {
-      const updated = mutateElement(entity, node, diff ?? node, skipOverrideKeys, this);
+      const updated = mutateElement(
+        entity,
+        node,
+        diff ?? node,
+        skipOverrideKeys,
+        this,
+      );
       const index = nodes.findIndex((n) => n.id === updated.id);
 
       this.commands.execute();
@@ -1761,8 +1803,7 @@ export class API {
         this.commands,
         this.#idEntityMap,
         {
-          lookupNodes:
-            this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
+          lookupNodes: this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
           variables: this.getAppState().variables,
           themeMode: this.getAppState().themeMode,
           canvas: this.#canvas,
@@ -1798,7 +1839,7 @@ export class API {
     }
   }
 
-  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) { }
+  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {}
 
   updateNodeOBB(
     node: SerializedNode,
@@ -1841,8 +1882,10 @@ export class API {
     }
 
     if ((node as { display?: string }).display === 'flex') {
-      if (!isNil(width)) (diff as { flexHugWidth?: boolean }).flexHugWidth = false;
-      if (!isNil(height)) (diff as { flexHugHeight?: boolean }).flexHugHeight = false;
+      if (!isNil(width))
+        (diff as { flexHugWidth?: boolean }).flexHugWidth = false;
+      if (!isNil(height))
+        (diff as { flexHugHeight?: boolean }).flexHugHeight = false;
     }
 
     if (delta) {
@@ -1903,7 +1946,12 @@ export class API {
           [x2, y2],
           geomDelta,
         );
-        const { minX, minY } = Line.getGeometryBounds({ x1: newX1, y1: newY1, x2: newX2, y2: newY2 });
+        const { minX, minY } = Line.getGeometryBounds({
+          x1: newX1,
+          y1: newY1,
+          x2: newX2,
+          y2: newY2,
+        });
         (diff as LineSerializedNode).x1 = newX1 - minX;
         (diff as LineSerializedNode).y1 = newY1 - minY;
         (diff as LineSerializedNode).x2 = newX2 - minX;
@@ -1969,8 +2017,8 @@ export class API {
           typeof fs === 'number'
             ? fs
             : typeof fs === 'string'
-              ? parseFloat(fs) || 12
-              : 12;
+            ? parseFloat(fs) || 12
+            : 12;
         (diff as TextSerializedNode).fontSize = oldFontSize * sY;
 
         const ww = textOld.wordWrapWidth ?? 0;
@@ -1996,8 +2044,14 @@ export class API {
         const parent = this.getNodeByEntity(parentEntity);
         if (parent && parent.clipMode && parent.clipMode === 'clip') {
           // Union node's bounds with parent's clip bounds
-          const { minX, minY, maxX, maxY } = entity.read(ComputedBounds).renderWorldBounds;
-          const { minX: parentMinX, minY: parentMinY, maxX: parentMaxX, maxY: parentMaxY } = parentEntity.read(ComputedBounds).renderWorldBounds;
+          const { minX, minY, maxX, maxY } =
+            entity.read(ComputedBounds).renderWorldBounds;
+          const {
+            minX: parentMinX,
+            minY: parentMinY,
+            maxX: parentMaxX,
+            maxY: parentMaxY,
+          } = parentEntity.read(ComputedBounds).renderWorldBounds;
           const isectMinX = Math.max(minX, parentMinX);
           const isectMinY = Math.max(minY, parentMinY);
           const isectMaxX = Math.min(maxX, parentMaxX);
@@ -2033,9 +2087,7 @@ export class API {
     }
     const nodes = ids
       .map((id) => this.getNodeById(id))
-      .filter(
-        (n): n is SerializedNode => !!n && n.locked !== true,
-      );
+      .filter((n): n is SerializedNode => !!n && n.locked !== true);
     if (nodes.length < 2) {
       return;
     }
@@ -2107,9 +2159,7 @@ export class API {
     }
     const nodes = ids
       .map((id) => this.getNodeById(id))
-      .filter(
-        (n): n is SerializedNode => !!n && n.locked !== true,
-      );
+      .filter((n): n is SerializedNode => !!n && n.locked !== true);
     if (nodes.length < 2) {
       return;
     }
@@ -2236,14 +2286,8 @@ export class API {
     const obb = {
       x: translation[0],
       y: translation[1],
-      width: Math.max(
-        Math.abs((oldNode.width ?? 0) * scale[0]),
-        epsilon,
-      ),
-      height: Math.max(
-        Math.abs((oldNode.height ?? 0) * scale[1]),
-        epsilon,
-      ),
+      width: Math.max(Math.abs((oldNode.width ?? 0) * scale[0]), epsilon),
+      height: Math.max(Math.abs((oldNode.height ?? 0) * scale[1]), epsilon),
       rotation,
       scaleX: oldAttrs.scaleX * (Math.sign(wSign) || 1),
       scaleY: oldAttrs.scaleY * (Math.sign(hSign) || 1),
@@ -2254,13 +2298,7 @@ export class API {
       obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
       obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
     }
-    this.updateNodeOBB(
-      node,
-      obb,
-      node.lockAspectRatio,
-      undefined,
-      oldNode,
-    );
+    this.updateNodeOBB(node, obb, node.lockAspectRatio, undefined, oldNode);
     updateGlobalTransform(entity);
     updateComputedPoints(entity);
   }
@@ -2354,7 +2392,11 @@ export class API {
 
   reparentNode(node: SerializedNode, parent: SerializedNode) {
     // Modify x,y to be relative to the parent
-    this.updateNode(node, { parentId: parent.id, x: (node.x ?? 0) - (parent.x ?? 0), y: (node.y ?? 0) - (parent.y ?? 0) });
+    this.updateNode(node, {
+      parentId: parent.id,
+      x: (node.x ?? 0) - (parent.x ?? 0),
+      y: (node.y ?? 0) - (parent.y ?? 0),
+    });
   }
 
   /**
@@ -2445,7 +2487,7 @@ export class API {
 
     const parentIds = new Set(targets.map((n) => n.parentId ?? '__ROOT__'));
     const commonParentId =
-      parentIds.size === 1 ? (targets[0].parentId ?? undefined) : undefined;
+      parentIds.size === 1 ? targets[0].parentId ?? undefined : undefined;
 
     const zIndex = Math.max(...targets.map((n) => n.zIndex ?? 0), 0);
     const groupNode: GSerializedNode = {
@@ -2549,11 +2591,7 @@ export class API {
   }
 
   export(options: ExportOptions) {
-    const {
-      format,
-      download = true,
-      nodes = [],
-    } = options;
+    const { format, download = true, nodes = [] } = options;
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,
@@ -2609,7 +2647,9 @@ export class API {
       );
       const timeStartRaw = options.timeStart;
       const timeStart =
-        timeStartRaw != null && Number.isFinite(timeStartRaw) ? timeStartRaw : 0;
+        timeStartRaw != null && Number.isFinite(timeStartRaw)
+          ? timeStartRaw
+          : 0;
       const gq = options.gifQuality;
       const gifQuality: AnimationGifQuality =
         gq === 'medium' || gq === 'low' || gq === 'high' ? gq : 'high';
@@ -2644,12 +2684,15 @@ export class API {
   /**
    * Render nodes or the whole scene to SVG.
    */
-  async renderToSVG(nodes: SerializedNode[], options: Partial<{
-    grid: boolean;
-    padding?: number;
-    /** 默认 `resolved`；`css-var` 会注入 `:root` 变量并输出 `var(--token)` */
-    designVariablesExport?: DesignVariablesSvgExportMode;
-  }> = {}) {
+  async renderToSVG(
+    nodes: SerializedNode[],
+    options: Partial<{
+      grid: boolean;
+      padding?: number;
+      /** 默认 `resolved`；`css-var` 会注入 `:root` 变量并输出 `var(--token)` */
+      designVariablesExport?: DesignVariablesSvgExportMode;
+    }> = {},
+  ) {
     const canvas = this.#canvas;
     const {
       grid: gridEnabled,
@@ -2718,10 +2761,24 @@ export class API {
     return $namespace;
   }
 
-  async renderToCanvas(node: SerializedNode, options: { canvas?: HTMLCanvasElement, width?: number, height?: number } = {}): Promise<HTMLCanvasElement> {
-    let { canvas, width = node.width ?? 0, height = node.height ?? 0 } = options;
+  async renderToCanvas(
+    node: SerializedNode,
+    options: {
+      canvas?: HTMLCanvasElement;
+      width?: number;
+      height?: number;
+    } = {},
+  ): Promise<HTMLCanvasElement> {
+    let {
+      canvas,
+      width = node.width ?? 0,
+      height = node.height ?? 0,
+    } = options;
     if (!canvas) {
-      canvas = DOMAdapter.get().createCanvas(width, height) as HTMLCanvasElement;
+      canvas = DOMAdapter.get().createCanvas(
+        width,
+        height,
+      ) as HTMLCanvasElement;
     }
 
     const ctx = canvas.getContext('2d')!;
@@ -2752,12 +2809,20 @@ export class API {
     const opacity = (node as { opacity?: number }).opacity ?? 1;
 
     if (node.type === 'rect' || node.type === 'rough-rect') {
-      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin } = node;
+      const {
+        x,
+        y,
+        width,
+        height,
+        strokeWidth,
+        strokeLinecap,
+        strokeLinejoin,
+      } = node;
       const fill = fillFromFills;
       ctx.save();
       if (isDataUrl(fill) || isUrl(fill)) {
         ctx.globalAlpha = opacity * fillOpacity;
-        const image = await DOMAdapter.get().createImage(fill) as ImageBitmap;
+        const image = (await DOMAdapter.get().createImage(fill)) as ImageBitmap;
         ctx.drawImage(image, x ?? 0, y ?? 0, width ?? 0, height ?? 0);
       } else {
         ctx.globalAlpha = opacity * fillOpacity;
@@ -2772,12 +2837,28 @@ export class API {
       ctx.stroke();
       ctx.restore();
     } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
-      const { x, y, width, height, strokeWidth, strokeLinecap, strokeLinejoin } = node;
+      const {
+        x,
+        y,
+        width,
+        height,
+        strokeWidth,
+        strokeLinecap,
+        strokeLinejoin,
+      } = node;
       const fill = fillFromFills;
       ctx.save();
       ctx.globalAlpha = opacity * fillOpacity;
       ctx.fillStyle = fill;
-      ctx.ellipse((x ?? 0) + (width ?? 0) / 2, (y ?? 0) + (height ?? 0) / 2, (width ?? 0) / 2, (height ?? 0) / 2, 0, 0, 2 * Math.PI);
+      ctx.ellipse(
+        (x ?? 0) + (width ?? 0) / 2,
+        (y ?? 0) + (height ?? 0) / 2,
+        (width ?? 0) / 2,
+        (height ?? 0) / 2,
+        0,
+        0,
+        2 * Math.PI,
+      );
       ctx.fill();
       ctx.globalAlpha = opacity * strokeOpacity;
       ctx.strokeStyle = strokeFromStrokes;
@@ -2799,7 +2880,14 @@ export class API {
         } else if (command === 'L') {
           ctx.lineTo(data[0], data[1]);
         } else if (command === 'C') {
-          ctx.bezierCurveTo(data[0], data[1], data[2], data[3], data[4], data[5]);
+          ctx.bezierCurveTo(
+            data[0],
+            data[1],
+            data[2],
+            data[3],
+            data[4],
+            data[5],
+          );
         }
       });
       ctx.closePath();
@@ -2827,7 +2915,8 @@ export class API {
       ctx.stroke();
       ctx.restore();
     } else if (node.type === 'line' || node.type === 'rough-line') {
-      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin } = node;
+      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin } =
+        node;
       ctx.save();
       ctx.globalAlpha = opacity * strokeOpacity;
       ctx.strokeStyle = strokeFromStrokes;
@@ -2840,7 +2929,13 @@ export class API {
       ctx.restore();
     }
 
-    await Promise.all(this.getChildren(node).map(child => this.renderToCanvas(this.getNodeByEntity(child), { canvas })).filter(Boolean));
+    await Promise.all(
+      this.getChildren(node)
+        .map((child) =>
+          this.renderToCanvas(this.getNodeByEntity(child), { canvas }),
+        )
+        .filter(Boolean),
+    );
 
     return canvas;
   }
@@ -2937,16 +3032,17 @@ export class API {
    * @see https://docs.excalidraw.com/docs/codebase/json-schema
    */
   exportIcDocument(source?: string) {
-    return buildIcDocumentFromState(this.getAppState(), this.getNodes(), source);
+    return buildIcDocumentFromState(
+      this.getAppState(),
+      this.getNodes(),
+      source,
+    );
   }
 
   /**
    * 自 `.ic` 文档或 JSON 字符串恢复场景（会先清空当前场景根节点）。
    */
-  importIcDocument(
-    doc: unknown,
-    options?: { recordHistory?: boolean },
-  ) {
+  importIcDocument(doc: unknown, options?: { recordHistory?: boolean }) {
     applyIcDocumentToApi(this, parseIcDocumentJson(doc), options);
   }
 

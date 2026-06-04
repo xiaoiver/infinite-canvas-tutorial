@@ -92,9 +92,7 @@ export class ExtendedAPI extends API {
   ) {
     super(stateManagement, commands);
     if (typeof window !== 'undefined') {
-      this.#colorSchemeMql = window.matchMedia(
-        '(prefers-color-scheme: dark)',
-      );
+      this.#colorSchemeMql = window.matchMedia('(prefers-color-scheme: dark)');
       this.#colorSchemeMql.addEventListener(
         'change',
         this.#onColorSchemeChange,
@@ -252,13 +250,16 @@ export class ExtendedAPI extends API {
     }
   }
 
-  async createImageFromFile(file: File | string, {
-    position,
-    heuristicResize,
-  }: Partial<{
-    position: { x: number; y: number };
-    heuristicResize: boolean;
-  }> = {}) {
+  async createImageFromFile(
+    file: File | string,
+    {
+      position,
+      heuristicResize,
+    }: Partial<{
+      position: { x: number; y: number };
+      heuristicResize: boolean;
+    }> = {},
+  ) {
     const size = {
       width: this.element.clientWidth,
       height: this.element.clientHeight,
@@ -296,7 +297,10 @@ export class ExtendedAPI extends API {
       width = height * (image.width / image.height);
     }
 
-    const maxZIndex = this.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
+    const maxZIndex = this.getNodes().reduce(
+      (max, node) => Math.max(max, node.zIndex ?? 0),
+      0,
+    );
     const node: RectSerializedNode = {
       id: uuidv4(),
       type: 'rect',
@@ -308,17 +312,21 @@ export class ExtendedAPI extends API {
       lockAspectRatio: true,
       zIndex: maxZIndex + 1,
     };
-    updateAndSelectNodes(this, this.getAppState(), [
-      node,
-    ]);
+    updateAndSelectNodes(this, this.getAppState(), [node]);
     return node;
   }
 
   /**
    * Used by image model to edit with.
    */
-  createMask(nodes: SerializedNode[], relativeTo: { x: number; y: number; width: number; height: number }): HTMLCanvasElement {
-    const canvas = DOMAdapter.get().createCanvas(relativeTo.width, relativeTo.height) as HTMLCanvasElement;
+  createMask(
+    nodes: SerializedNode[],
+    relativeTo: { x: number; y: number; width: number; height: number },
+  ): HTMLCanvasElement {
+    const canvas = DOMAdapter.get().createCanvas(
+      relativeTo.width,
+      relativeTo.height,
+    ) as HTMLCanvasElement;
     const ctx = canvas.getContext('2d')!;
 
     // 在图像处理和 AI 掩码（Mask）中，数值通常映射在 0 到 1 之间：
@@ -329,10 +337,15 @@ export class ExtendedAPI extends API {
     ctx.fillRect(0, 0, relativeTo.width, relativeTo.height);
     ctx.fillStyle = 'white';
     ctx.strokeStyle = 'white';
-    nodes.forEach(node => {
+    nodes.forEach((node) => {
       if (node.type === 'rect') {
         const { x, y, width, height } = node;
-        ctx.fillRect(x as number, y as number, width as number, height as number);
+        ctx.fillRect(
+          x as number,
+          y as number,
+          width as number,
+          height as number,
+        );
       } else if (node.type === 'path') {
         const { d, strokeWidth, x, y } = node;
         ctx.beginPath();
@@ -342,7 +355,14 @@ export class ExtendedAPI extends API {
           } else if (command === 'L') {
             ctx.lineTo(data[0] + (x as number), data[1] + (y as number));
           } else if (command === 'C') {
-            ctx.bezierCurveTo(data[0] + (x as number), data[1] + (y as number), data[2] + (x as number), data[3] + (y as number), data[4] + (x as number), data[5] + (y as number));
+            ctx.bezierCurveTo(
+              data[0] + (x as number),
+              data[1] + (y as number),
+              data[2] + (x as number),
+              data[3] + (y as number),
+              data[4] + (x as number),
+              data[5] + (y as number),
+            );
           }
         });
         ctx.closePath();
@@ -350,7 +370,8 @@ export class ExtendedAPI extends API {
         ctx.lineWidth = strokeWidth;
         ctx.stroke();
       } else if (node.type === 'polyline') {
-        const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+        const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } =
+          node;
         deserializePoints(points).forEach((point, index) => {
           if (index === 0) {
             ctx.moveTo(point[0] + (x as number), point[1] + (y as number));
