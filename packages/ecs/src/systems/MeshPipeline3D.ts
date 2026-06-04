@@ -27,6 +27,8 @@ import {
   ComputedCamera,
   Extrude3D,
   GPUResource,
+  LIGHT_3D_TYPE,
+  Light3D,
   Mesh3D,
   Material3D,
   Transform3D,
@@ -45,6 +47,10 @@ import {
   unregisterMeshPipeline3D,
 } from './mesh3d-bridge';
 import { getGizmo3D } from './gizmo3d-bridge';
+
+const MAX_3D_LIGHTS = 8;
+const SCENE_UNIFORM_FLOATS = 188;
+const MODEL_UNIFORM_FLOATS = 52;
 
 /**
  * GPU buffers cached per Mesh3D entity.
@@ -77,6 +83,8 @@ export class MeshPipeline3D extends System {
   private meshes3D = this.query((q) =>
     q.current.with(Mesh3D, Material3D, Transform3D).read,
   );
+
+  private lights3D = this.query((q) => q.current.with(Light3D).read);
 
   private meshes3DDirty = this.query((q) =>
     q.addedOrChanged.and.removed
@@ -118,6 +126,7 @@ export class MeshPipeline3D extends System {
             Camera3D,
             ComputedCamera,
             Extrude3D,
+            Light3D,
             Mesh3D,
             Material3D,
             Transform3D,
@@ -370,13 +379,13 @@ export class MeshPipeline3D extends System {
     });
 
     this.sceneUniformBuffer = device.createBuffer({
-      viewOrSize: 208,
+      viewOrSize: SCENE_UNIFORM_FLOATS * 4,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
     this.modelUniformBuffer = device.createBuffer({
-      viewOrSize: 208,
+      viewOrSize: MODEL_UNIFORM_FLOATS * 4,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });
@@ -519,11 +528,18 @@ export class MeshPipeline3D extends System {
       viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
     }
 
-    const buffer = new Float32Array(52);
+    const lighting = this.packLightUniforms();
+    const buffer = new Float32Array(SCENE_UNIFORM_FLOATS);
     buffer.set(projMatrix.toFloat32Array(), 0);
     buffer.set(viewMatrix.toFloat32Array(), 16);
     buffer.set(this.canvasViewProjection.toFloat32Array(), 32);
     buffer.set(this.sceneParams, 48);
+    buffer.set(lighting.ambient, 52);
+    buffer.set([lighting.count, 0, 0, 0], 56);
+    buffer.set(lighting.positions, 60);
+    buffer.set(lighting.directions, 92);
+    buffer.set(lighting.colors, 124);
+    buffer.set(lighting.params, 156);
 
     this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     this.sceneLegacyUniforms = {
@@ -531,7 +547,72 @@ export class MeshPipeline3D extends System {
       u_ViewMatrix3D: Mat4.toGLMat4(viewMatrix),
       u_CanvasViewProjection3D: Mat4.toGLMat4(this.canvasViewProjection),
       u_SceneParams: this.sceneParams,
+      u_AmbientLight: lighting.ambient,
+      u_LightCount: [lighting.count, 0, 0, 0],
+      u_LightPositions: lighting.positions,
+      u_LightDirections: lighting.directions,
+      u_LightColors: lighting.colors,
+      u_LightParams3D: lighting.params,
     };
+  }
+
+  private packLightUniforms() {
+    const ambient: [number, number, number, number] = [0, 0, 0, 1];
+    const positions = new Float32Array(MAX_3D_LIGHTS * 4);
+    const directions = new Float32Array(MAX_3D_LIGHTS * 4);
+    const colors = new Float32Array(MAX_3D_LIGHTS * 4);
+    const params = new Float32Array(MAX_3D_LIGHTS * 4);
+    let count = 0;
+
+    const addAmbient = (light: Light3D) => {
+      ambient[0] += light.color[0] * light.intensity;
+      ambient[1] += light.color[1] * light.intensity;
+      ambient[2] += light.color[2] * light.intensity;
+    };
+
+    const addPunctual = (light: Light3D) => {
+      if (count >= MAX_3D_LIGHTS) {
+        return;
+      }
+
+      const offset = count * 4;
+      const type = LIGHT_3D_TYPE[light.type as keyof typeof LIGHT_3D_TYPE];
+      const inner = Math.max(0, light.innerConeAngle);
+      const outer = Math.max(inner, light.outerConeAngle);
+
+      positions.set([...light.position, 0], offset);
+      directions.set(
+        [...light.direction, light.type === 'spot' ? Math.cos(outer) : 0],
+        offset,
+      );
+      colors.set([...light.color, 0], offset);
+      params.set(
+        [
+          type,
+          light.intensity,
+          light.range,
+          light.type === 'spot' ? Math.cos(inner) : 0,
+        ],
+        offset,
+      );
+      count++;
+    };
+
+    if (this.lights3D.current.length === 0) {
+      addAmbient(new Light3D({ type: 'ambient' }));
+      addPunctual(new Light3D({ type: 'directional' }));
+    } else {
+      for (const entity of this.lights3D.current) {
+        const light = entity.read(Light3D);
+        if (light.type === 'ambient') {
+          addAmbient(light);
+        } else {
+          addPunctual(light);
+        }
+      }
+    }
+
+    return { ambient, count, positions, directions, colors, params };
   }
 
   private updateModelUniforms(entity: Entity): Record<string, unknown> {
@@ -566,7 +647,7 @@ export class MeshPipeline3D extends System {
       return legacy;
     }
 
-    const buffer = new Float32Array(52);
+    const buffer = new Float32Array(MODEL_UNIFORM_FLOATS);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
     buffer.set(material.baseColor, 32);

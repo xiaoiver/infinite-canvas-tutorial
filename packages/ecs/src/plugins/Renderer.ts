@@ -55,6 +55,7 @@ import {
   Extrude3DTarget,
   Mesh3D,
   Material3D,
+  Light3D,
   Transform3D,
   Selected3D,
   Name,
@@ -98,6 +99,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(Extrude3DTarget);
     component(Mesh3D);
     component(Material3D);
+    component(Light3D);
     component(Transform3D);
     component(Selected3D);
     component(Renderable);
