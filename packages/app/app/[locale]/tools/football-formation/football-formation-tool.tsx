@@ -399,7 +399,7 @@ export function FootballFormationTool() {
   const [version, setVersion] = useState(0);
   const nodes = useMemo(
     () => buildFormationNodes(teamId, formationId, tItem),
-    [teamId, formationId, tItem, version],
+    [teamId, formationId, tItem],
   );
 
   return (
