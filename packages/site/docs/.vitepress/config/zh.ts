@@ -445,6 +445,10 @@ export const zh = defineConfig({
                     text: '立方体（透视）',
                     link: 'cube-perspective',
                   },
+                  {
+                    text: '场景光照',
+                    link: 'lighting',
+                  },
                 ],
               }
             ],

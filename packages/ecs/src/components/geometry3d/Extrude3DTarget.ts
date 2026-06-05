@@ -4,9 +4,13 @@ import { Entity, field } from '@lastolivegames/becsy';
 export class Extrude3DTarget {
   @field.ref declare source: Entity;
 
-  constructor(props?: { source?: Entity }) {
+  /** When true, mesh translation uses canvas x/y directly (linked Camera3D). */
+  @field.boolean declare unifiedSpace: boolean;
+
+  constructor(props?: { source?: Entity; unifiedSpace?: boolean }) {
     if (props?.source) {
       this.source = props.source;
     }
+    this.unifiedSpace = props?.unifiedSpace ?? true;
   }
 }

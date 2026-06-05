@@ -68,16 +68,27 @@ import {
   IconFontEllipseStrokeRasterPlaceholder,
   DEFAULT_THEME_COLORS,
   Camera3D,
+  Canvas3DScope,
+  Extrude3D,
+  Light3D,
   Mesh3D,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
   Material3D,
   Transform3D,
   Selected3D,
 } from '../components';
 import { is3DGizmoDragging } from '../utils/pick3d-bridge';
+import { entityIsDeclarative3DNode } from '../utils/mesh3d-node';
 import {
   buildPickSceneForViewport,
   probePick3DAtViewport,
 } from '../utils/pick3d-probe';
+import {
+  filterEntitiesForCanvas,
+  findCamera2DForCanvas,
+  findCamera3DForCanvas,
+} from '../utils/canvas3d-scope';
 import { Commands } from '../commands/Commands';
 import {
   calculateOffset,
@@ -257,6 +268,8 @@ export class Select extends System {
 
   private readonly cameras3D = this.query((q) => q.current.with(Camera3D).read);
 
+  private readonly canvases = this.query((q) => q.current.with(Canvas).read);
+
   private readonly cameras2DFor3D = this.query(
     (q) => q.current.with(Camera, ComputedCamera).read,
   );
@@ -339,11 +352,15 @@ export class Select extends System {
             IconFont,
             IconFontEllipseStrokeRasterPlaceholder,
             Filter,
+            Mesh3DNode,
+            Mesh3DNodeTarget,
+            Light3D,
+            Extrude3D,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);
     this.query((q) =>
-      q.using(Camera3D, Mesh3D, Material3D, Transform3D, Selected3D).read,
+      q.using(Camera3D, Canvas3DScope, Mesh3D, Material3D, Transform3D, Selected3D).read,
     );
   }
 
@@ -359,7 +376,12 @@ export class Select extends System {
       return true;
     }
 
-    const cameraEntity = this.cameras3D.current[0];
+    const canvasCount = this.canvases.current.length || 1;
+    const cameraEntity = findCamera3DForCanvas(
+      this.cameras3D.current,
+      canvas,
+      canvasCount,
+    );
     if (!cameraEntity) {
       return false;
     }
@@ -370,7 +392,9 @@ export class Select extends System {
       return false;
     }
 
-    const cam2d = camera.linked ? this.cameras2DFor3D.current[0] : undefined;
+    const cam2d = camera.linked
+      ? findCamera2DForCanvas(this.cameras2DFor3D.current, canvas)
+      : undefined;
     const pickScene = buildPickSceneForViewport(
       camera,
       width,
@@ -390,8 +414,11 @@ export class Select extends System {
       height,
       camera,
       pickScene,
-      this.meshes3D.current,
-      this.selected3D.current,
+      filterEntitiesForCanvas(this.meshes3D.current, canvas, canvasCount),
+      this.selected3D.current.filter(
+        (entity) =>
+          filterEntitiesForCanvas([entity], canvas, canvasCount).length > 0,
+      ),
     );
 
     return probe.kind !== 'none';
@@ -558,7 +585,10 @@ export class Select extends System {
 
     const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
-      if (!selected.has(Highlighted)) {
+      if (
+        !entityIsDeclarative3DNode(selected) &&
+        !selected.has(Highlighted)
+      ) {
         selected.add(Highlighted);
       }
     });
@@ -1497,7 +1527,10 @@ export class Select extends System {
 
     const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
-      if (!selected.has(Highlighted)) {
+      if (
+        !entityIsDeclarative3DNode(selected) &&
+        !selected.has(Highlighted)
+      ) {
         selected.add(Highlighted);
       }
     });
@@ -1601,7 +1634,10 @@ export class Select extends System {
 
     const { selecteds } = camera.read(Transformable);
     selecteds.forEach((selected) => {
-      if (!selected.has(Highlighted)) {
+      if (
+        !entityIsDeclarative3DNode(selected) &&
+        !selected.has(Highlighted)
+      ) {
         selected.add(Highlighted);
       }
     });
@@ -2092,6 +2128,15 @@ export class Select extends System {
                   }
                 }
               }
+            }
+          }
+
+          if (toHighlight) {
+            if (
+              entityIsDeclarative3DNode(toHighlight) ||
+              this.shouldSuppress2DBrushSelection(canvas, x, y)
+            ) {
+              toHighlight = undefined;
             }
           }
 

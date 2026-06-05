@@ -49,6 +49,7 @@ export * from './vector-network-stroke';
 export * from './vector-network-fill';
 export * from './ray-casting';
 export * from './mesh3d-scene';
+export * from './mesh3d-companion';
 export * from './pick3d-probe';
 export * from './pick3d-bridge';
 export * from './gizmo-geometry';

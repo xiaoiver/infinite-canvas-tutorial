@@ -5,4 +5,7 @@ export * from './Light3D';
 export * from './Transform3D';
 export * from './Extrude3D';
 export * from './Extrude3DTarget';
+export * from './Mesh3DNode';
+export * from './Mesh3DNodeTarget';
+export * from './Canvas3DScope';
 export * from './Selected3D';

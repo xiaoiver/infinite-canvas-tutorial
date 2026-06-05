@@ -12,6 +12,7 @@ import {
   Camera,
   Camera3D,
   Canvas,
+  Canvas3DScope,
   CheckboardStyle,
   Children,
   Circle,
@@ -329,7 +330,9 @@ export class MeshPipeline extends System {
     super();
     this.query(
       (q) =>
-        q.current
+        q
+          .using(Canvas3DScope, Extrude3D)
+          .read.and.current
           .with(
             Theme,
             Grid,
@@ -700,13 +703,13 @@ export class MeshPipeline extends System {
 
     const mesh3d = getMeshPipeline3D();
     mesh3d?.prepareForComposite(canvas);
-    const composite3D = mesh3d?.shouldComposite() ?? false;
+    const composite3D = mesh3d?.shouldComposite(canvas) ?? false;
 
     const mainColorDesc = makeBackbufferDescSimple(
       RGAttachmentSlot.Color0,
       renderInput,
       composite3D
-        ? (mesh3d!.getColorClearDescriptor() ??
+        ? (mesh3d!.getColorClearDescriptor(canvas) ??
           makeAttachmentClearDescriptor(TransparentWhite))
         : makeAttachmentClearDescriptor(TransparentWhite),
     );

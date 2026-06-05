@@ -24,6 +24,7 @@ import {
   Camera,
   Camera3D,
   Canvas,
+  Canvas3DScope,
   ComputedCamera,
   Extrude3D,
   GPUResource,
@@ -36,8 +37,14 @@ import {
   mat3ViewToMat4,
   linkedPerspectiveEyeDistance,
 } from '../components';
+import {
+  findCamera2DForCanvas,
+  findCamera3DForCanvas,
+  filterEntitiesForCanvas,
+} from '../utils/canvas3d-scope';
 import { isEntityAlive } from './Transform';
 import { Mat4 } from '../components/math/Mat4';
+import type { RenderCache } from '../utils/render-cache';
 import { makeAttachmentClearDescriptor } from '../render-graph/utils';
 import { vert, frag } from '../shaders/mesh3d';
 import { SetupDevice } from './SetupDevice';
@@ -52,21 +59,32 @@ const MAX_3D_LIGHTS = 8;
 const SCENE_UNIFORM_FLOATS = 188;
 const MODEL_UNIFORM_FLOATS = 52;
 
-/**
- * GPU buffers cached per Mesh3D entity.
- */
 interface MeshGPUData {
   vertexBuffer: Buffer;
   normalBuffer: Buffer;
   indexBuffer: Buffer | null;
   indexCount: number;
   vertexCount: number;
+  /** Per-mesh model UBO (WebGPU: one shared buffer + multiple writes loses all but the last). */
+  modelUniformBuffer: Buffer;
+}
+
+/** Per-WebGL-context mesh3d pipeline + mesh buffer cache (multi-canvas safe). */
+interface MeshPipeline3DDeviceState {
+  program: Program;
+  pipeline: RenderPipeline;
+  inputLayout: InputLayout;
+  sceneUniformBuffer: Buffer;
+  sceneLegacyUniforms: Record<string, unknown>;
+  sceneParams: number[];
+  canvasViewProjection: Mat4;
+  meshGPUCache: Map<Entity, MeshGPUData>;
 }
 
 /**
  * 3D mesh rendering. Draw calls are injected into {@link MeshPipeline}'s render
  * graph (3D pass, then 2D/grid on the same color target) so the backbuffer is
- * composited once.
+ * composited once. GPU buffers are cached per Mesh3D entity and per WebGL device.
  */
 export class MeshPipeline3D extends System {
   private setupDevice = this.attach(SetupDevice);
@@ -94,56 +112,57 @@ export class MeshPipeline3D extends System {
 
   private extrudeSources = this.query((q) => q.current.with(Extrude3D).read);
 
-  private meshGPUCache: Map<Entity, MeshGPUData> = new Map();
-
-  private sceneUniformBuffer: Buffer | null = null;
-  private modelUniformBuffer: Buffer | null = null;
-
-  private pipeline: RenderPipeline | null = null;
-  private program: Program | null = null;
-  private inputLayout: InputLayout | null = null;
-
-  private initialized = false;
-
-  /** WebGL1 (headless-gl / jest) has no UBO binding; use {@link Program.setUniformsLegacy}. */
-  private sceneLegacyUniforms: Record<string, unknown> = {};
-
-  /** z: 1 = linked perspective shader path. */
-  private sceneParams: number[] = [0, 0, 0, 0];
-
-  private canvasViewProjection = Mat4.IDENTITY;
+  private deviceStates = new WeakMap<Device, MeshPipeline3DDeviceState>();
+  private trackedDevices = new Set<Device>();
 
   constructor() {
     super();
     registerMeshPipeline3D(this);
-    this.query(
-      (q) =>
-        q.current
-          .with(
-            GPUResource,
-            Canvas,
-            Camera,
-            Camera3D,
-            ComputedCamera,
-            Extrude3D,
-            Light3D,
-            Mesh3D,
-            Material3D,
-            Transform3D,
-          )
-          .read,
+    this.query((q) =>
+      q
+        .using(Canvas3DScope)
+        .read.and.current
+        .with(
+          GPUResource,
+          Canvas,
+          Camera,
+          Camera3D,
+          ComputedCamera,
+          Extrude3D,
+          Light3D,
+          Mesh3D,
+          Material3D,
+          Transform3D,
+        )
+        .read,
     );
   }
 
-  /** Prefer linked camera when extrude meshes exist (canvas-space transforms). */
-  private resolveRenderCameraEntity(): Entity | undefined {
+  /** Prefer linked camera for this canvas when extrude meshes exist. */
+  private resolveRenderCameraEntity(canvas: Entity): Entity | undefined {
+    const canvasCount = this.canvases.current.length || 1;
+    const scoped = findCamera3DForCanvas(
+      this.cameras3D.current,
+      canvas,
+      canvasCount,
+    );
+    if (scoped) {
+      return scoped;
+    }
+
     const cameras = this.cameras3D.current;
     if (cameras.length === 0) {
       return undefined;
     }
+
+    const canvasMeshes = this.collectMeshEntities(canvas);
     const hasExtrudeMeshes = this.extrudeSources.current.some((e) => {
       const mesh = e.read(Extrude3D).meshEntity;
-      return mesh && isEntityAlive(mesh);
+      return (
+        mesh &&
+        isEntityAlive(mesh) &&
+        canvasMeshes.includes(mesh)
+      );
     });
     if (hasExtrudeMeshes) {
       const linked = cameras.find((c) => c.read(Camera3D).linked);
@@ -154,8 +173,9 @@ export class MeshPipeline3D extends System {
     return cameras[0];
   }
 
-  /** Meshes from the global query plus extrude companions (authoritative for extrude3d). */
-  private collectMeshEntities(): Entity[] {
+  /** Meshes belonging to {@link canvas}. */
+  private collectMeshEntities(canvas: Entity): Entity[] {
+    const canvasCount = this.canvases.current.length || 1;
     const out: Entity[] = [];
     const seen = new Set<Entity>();
 
@@ -165,7 +185,8 @@ export class MeshPipeline3D extends System {
         !isEntityAlive(entity) ||
         !entity.has(Mesh3D) ||
         !entity.has(Material3D) ||
-        !entity.has(Transform3D)
+        !entity.has(Transform3D) ||
+        !filterEntitiesForCanvas([entity], canvas, canvasCount).length
       ) {
         return;
       }
@@ -187,12 +208,18 @@ export class MeshPipeline3D extends System {
     return out;
   }
 
-  /** True when 3D entities exist (pipeline may still need {@link prepareForComposite}). */
-  has3DContent(): boolean {
-    return (
-      this.cameras3D.current.length > 0 &&
-      this.collectMeshEntities().length > 0
-    );
+  /** True when {@link canvas} has 3D content to draw. */
+  has3DContent(canvas?: Entity): boolean {
+    if (canvas) {
+      return (
+        !!findCamera3DForCanvas(
+          this.cameras3D.current,
+          canvas,
+          this.canvases.current.length || 1,
+        ) && this.collectMeshEntities(canvas).length > 0
+      );
+    }
+    return this.canvases.current.some((c) => this.has3DContent(c));
   }
 
   /**
@@ -200,15 +227,19 @@ export class MeshPipeline3D extends System {
    * before building the render graph so `shouldComposite()` can be true same frame.
    */
   prepareForComposite(canvas: Entity): void {
-    if (!this.has3DContent() || !canvas.has(GPUResource)) {
+    if (!this.has3DContent(canvas) || !canvas.has(GPUResource)) {
       return;
     }
     this.initPipeline(canvas);
   }
 
-  /** True when 3D draw calls should run inside the main render pass. */
-  shouldComposite(): boolean {
-    return this.initialized && this.has3DContent();
+  /** True when 3D draw calls should run for {@link canvas}. */
+  shouldComposite(canvas: Entity): boolean {
+    if (!this.has3DContent(canvas) || !canvas.has(GPUResource)) {
+      return false;
+    }
+    const { device } = canvas.read(GPUResource);
+    return this.deviceStates.has(device);
   }
 
   /**
@@ -227,52 +258,69 @@ export class MeshPipeline3D extends System {
       return;
     }
 
-    this.prepareForComposite(canvas);
-    if (!this.shouldComposite()) {
+    const state = this.initPipeline(canvas);
+    if (!state || !this.shouldComposite(canvas)) {
       return;
     }
 
     const { device } = canvas.read(GPUResource);
-    const cameraEntity = this.resolveRenderCameraEntity();
+    const cameraEntity = this.resolveRenderCameraEntity(canvas);
     if (!cameraEntity) {
       return;
     }
     const camera = cameraEntity.read(Camera3D);
-    const cam2d = camera.linked ? this.cameras2D.current[0] : undefined;
+    const canvasCount = this.canvases.current.length || 1;
+    const cam2d = camera.linked
+      ? findCamera2DForCanvas(this.cameras2D.current, canvas)
+      : undefined;
     const { width: logicalW, height: logicalH } = canvas.read(Canvas);
     // Linked mode: ortho extents follow 2D logical canvas size (not DPR pixels).
     const aspect =
       camera.linked && logicalW > 0 && logicalH > 0
         ? logicalW / logicalH
         : width / height;
-    this.updateSceneUniforms(camera, aspect, cam2d);
+    this.updateSceneUniforms(
+      state,
+      camera,
+      aspect,
+      cam2d,
+      canvas,
+      canvasCount,
+    );
 
     renderPass.setViewport(0, 0, width, height);
-    renderPass.setPipeline(this.pipeline);
+    renderPass.setPipeline(state.pipeline);
 
-    const bindings = device.createBindings({
-      pipeline: this.pipeline,
-      uniformBufferBindings: [
-        { buffer: this.sceneUniformBuffer },
-        { buffer: this.modelUniformBuffer },
-      ],
-    });
-
-    for (const meshEntity of this.collectMeshEntities()) {
+    for (const meshEntity of this.collectMeshEntities(canvas)) {
       const forceRebuild =
         this.meshes3DDirty.addedOrChanged.includes(meshEntity);
-      const gpuData = this.getOrCreateMeshGPU(meshEntity, forceRebuild);
+      const gpuData = this.getOrCreateMeshGPU(
+        meshEntity,
+        device,
+        state,
+        forceRebuild,
+      );
       if (!gpuData) continue;
 
-      const modelLegacy = this.updateModelUniforms(meshEntity);
-      this.program!.setUniformsLegacy({
-        ...this.sceneLegacyUniforms,
+      const modelLegacy = this.updateModelUniforms(
+        meshEntity,
+        gpuData.modelUniformBuffer,
+      );
+      state.program.setUniformsLegacy({
+        ...state.sceneLegacyUniforms,
         ...modelLegacy,
       });
 
+      const bindings = device.createBindings({
+        pipeline: state.pipeline,
+        uniformBufferBindings: [
+          { buffer: state.sceneUniformBuffer },
+          { buffer: gpuData.modelUniformBuffer },
+        ],
+      });
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(
-        this.inputLayout,
+        state.inputLayout,
         [
           { buffer: gpuData.vertexBuffer },
           { buffer: gpuData.normalBuffer },
@@ -285,41 +333,53 @@ export class MeshPipeline3D extends System {
       } else {
         renderPass.draw(gpuData.vertexCount);
       }
+      bindings.destroy();
     }
-
-    bindings.destroy();
 
     // Draw 3D gizmos on top of meshes (depth disabled, always visible)
     const gizmo = getGizmo3D();
-    if (gizmo && gizmo.hasGizmoContent()) {
+    if (gizmo && gizmo.hasGizmoContent(canvas)) {
       gizmo.drawGizmos(renderPass, canvas, width, height);
     }
   }
 
   /** Color clear descriptor for the 3D pass (first pass in the shared graph). */
-  getColorClearDescriptor(): ReturnType<typeof makeAttachmentClearDescriptor> | undefined {
-    if (!this.shouldComposite()) {
+  getColorClearDescriptor(
+    canvas: Entity,
+  ): ReturnType<typeof makeAttachmentClearDescriptor> | undefined {
+    if (!this.shouldComposite(canvas)) {
       return undefined;
     }
-    const cameraEntity = this.resolveRenderCameraEntity();
+    const cameraEntity = this.resolveRenderCameraEntity(canvas);
     const camera = cameraEntity?.read(Camera3D);
     return camera?.clearColor
       ? makeAttachmentClearDescriptor(TransparentWhite)
       : undefined;
   }
 
-  private initPipeline(canvas: Entity) {
-    if (this.initialized) return;
-    if (!canvas.has(GPUResource)) return;
-
+  private initPipeline(canvas: Entity): MeshPipeline3DDeviceState | null {
+    if (!canvas.has(GPUResource)) {
+      return null;
+    }
     const { device, renderCache } = canvas.read(GPUResource);
+    return this.ensureDeviceState(device, renderCache);
+  }
 
-    this.program = renderCache.createProgram({
+  private ensureDeviceState(
+    device: Device,
+    renderCache: RenderCache,
+  ): MeshPipeline3DDeviceState {
+    const existing = this.deviceStates.get(device);
+    if (existing) {
+      return existing;
+    }
+
+    const program = renderCache.createProgram({
       vertex: { glsl: vert, entryPoint: 'main' },
       fragment: { glsl: frag, entryPoint: 'main' },
     });
 
-    this.inputLayout = renderCache.createInputLayout({
+    const inputLayout = renderCache.createInputLayout({
       vertexBufferDescriptors: [
         {
           arrayStride: 3 * 4,
@@ -345,12 +405,12 @@ export class MeshPipeline3D extends System {
         },
       ],
       indexBufferFormat: Format.U32_R,
-      program: this.program,
+      program,
     });
 
-    this.pipeline = renderCache.createRenderPipeline({
-      inputLayout: this.inputLayout,
-      program: this.program,
+    const pipeline = renderCache.createRenderPipeline({
+      inputLayout,
+      program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       topology: PrimitiveTopology.TRIANGLES,
@@ -371,51 +431,99 @@ export class MeshPipeline3D extends System {
           },
         ],
         blendConstant: TransparentBlack,
-        // Drawn after the 2D grid plane (depth ~0.5); do not clobber 2D depth.
         depthWrite: false,
         depthCompare: CompareFunction.ALWAYS,
         cullMode: CullMode.BACK,
       }),
     });
 
-    this.sceneUniformBuffer = device.createBuffer({
+    const sceneUniformBuffer = device.createBuffer({
       viewOrSize: SCENE_UNIFORM_FLOATS * 4,
       usage: BufferUsage.UNIFORM,
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
-    this.modelUniformBuffer = device.createBuffer({
-      viewOrSize: MODEL_UNIFORM_FLOATS * 4,
-      usage: BufferUsage.UNIFORM,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
+    const state: MeshPipeline3DDeviceState = {
+      program,
+      pipeline,
+      inputLayout,
+      sceneUniformBuffer,
+      sceneLegacyUniforms: {},
+      sceneParams: [0, 0, 0, 0],
+      canvasViewProjection: Mat4.IDENTITY,
+      meshGPUCache: new Map(),
+    };
+    this.deviceStates.set(device, state);
+    this.trackedDevices.add(device);
+    return state;
+  }
 
-    this.initialized = true;
+  private dropDeviceState(device: Device): void {
+    const state = this.deviceStates.get(device);
+    if (!state) {
+      return;
+    }
+    for (const data of state.meshGPUCache.values()) {
+      try {
+        data.vertexBuffer.destroy();
+        data.normalBuffer.destroy();
+        data.indexBuffer?.destroy();
+        data.modelUniformBuffer.destroy();
+      } catch {
+        /* device already destroyed */
+      }
+    }
+    try {
+      state.sceneUniformBuffer.destroy();
+    } catch {
+      /* device already destroyed */
+    }
+    this.deviceStates.delete(device);
+    this.trackedDevices.delete(device);
+  }
+
+  private resolveDeviceForMesh(entity: Entity): Device | null {
+    if (entity.has(Canvas3DScope)) {
+      const canvas = entity.read(Canvas3DScope).canvas;
+      if (isEntityAlive(canvas) && canvas.has(GPUResource)) {
+        return canvas.read(GPUResource).device;
+      }
+    }
+    return null;
+  }
+
+  private getActiveDevices(): Set<Device> {
+    const devices = new Set<Device>();
+    for (const canvas of this.canvases.current) {
+      if (canvas.has(GPUResource)) {
+        devices.add(canvas.read(GPUResource).device);
+      }
+    }
+    return devices;
   }
 
   private getOrCreateMeshGPU(
     entity: Entity,
+    device: Device,
+    state: MeshPipeline3DDeviceState,
     forceRebuild = false,
   ): MeshGPUData | null {
     const mesh = entity.read(Mesh3D);
     if (mesh.positions.length === 0) return null;
 
-    let data = this.meshGPUCache.get(entity);
-    if (data && !forceRebuild) return data;
-
-    let device: Device | null = null;
-    for (const canvas of this.canvases.current) {
-      if (canvas.has(GPUResource)) {
-        device = canvas.read(GPUResource).device;
-        break;
-      }
+    const meshDevice = this.resolveDeviceForMesh(entity) ?? device;
+    if (meshDevice !== device) {
+      return null;
     }
-    if (!device) return null;
+
+    let data = state.meshGPUCache.get(entity);
+    if (data && !forceRebuild) return data;
 
     if (data) {
       data.vertexBuffer.destroy();
       data.normalBuffer.destroy();
       data.indexBuffer?.destroy();
+      data.modelUniformBuffer.destroy();
     }
 
     const vertexBuffer = device.createBuffer({
@@ -441,23 +549,32 @@ export class MeshPipeline3D extends System {
       indexCount = mesh.indices.length;
     }
 
+    const modelUniformBuffer = device.createBuffer({
+      viewOrSize: MODEL_UNIFORM_FLOATS * 4,
+      usage: BufferUsage.UNIFORM,
+      hint: BufferFrequencyHint.DYNAMIC,
+    });
+
     data = {
       vertexBuffer,
       normalBuffer,
       indexBuffer,
       indexCount,
       vertexCount: mesh.vertexCount,
+      modelUniformBuffer,
     };
-    this.meshGPUCache.set(entity, data);
+    state.meshGPUCache.set(entity, data);
     return data;
   }
 
   private updateSceneUniforms(
+    state: MeshPipeline3DDeviceState,
     camera: Camera3D,
     aspect: number,
-    cam2d?: Entity,
+    cam2d: Entity | undefined,
+    canvas: Entity,
+    canvasCount: number,
   ) {
-    if (!this.sceneUniformBuffer) return;
 
     let projMatrix: Mat4;
     let viewMatrix: Mat4;
@@ -468,8 +585,8 @@ export class MeshPipeline3D extends System {
       const zScale = camera.far > 0 ? -2 / camera.far : 0;
       projMatrix = mat3ViewProjectionToMat4(vp, zScale);
       viewMatrix = Mat4.IDENTITY;
-      this.canvasViewProjection = Mat4.IDENTITY;
-      this.sceneParams = [0, 0, 0, 0];
+      state.canvasViewProjection = Mat4.IDENTITY;
+      state.sceneParams = [0, 0, 0, 0];
     } else if (camera.linked && cam2d && camera.projection === 'perspective') {
       const computed = cam2d.read(ComputedCamera);
       const camera2d = cam2d.read(Camera);
@@ -497,14 +614,14 @@ export class MeshPipeline3D extends System {
         camera.near,
         camera.far,
       );
-      this.canvasViewProjection = mat3ViewProjectionToMat4(
+      state.canvasViewProjection = mat3ViewProjectionToMat4(
         computed.viewProjectionMatrix,
         0,
       );
-      this.sceneParams = [0, 0, 1, 0];
+      state.sceneParams = [0, 0, 1, 0];
     } else {
-      this.canvasViewProjection = Mat4.IDENTITY;
-      this.sceneParams = [0, 0, 0, 0];
+      state.canvasViewProjection = Mat4.IDENTITY;
+      state.sceneParams = [0, 0, 0, 0];
       if (camera.projection === 'orthographic') {
         const distance = Math.abs(camera.eye[2] - camera.center[2]);
         const halfH = distance;
@@ -528,12 +645,12 @@ export class MeshPipeline3D extends System {
       viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
     }
 
-    const lighting = this.packLightUniforms();
+    const lighting = this.packLightUniforms(canvas, canvasCount);
     const buffer = new Float32Array(SCENE_UNIFORM_FLOATS);
     buffer.set(projMatrix.toFloat32Array(), 0);
     buffer.set(viewMatrix.toFloat32Array(), 16);
-    buffer.set(this.canvasViewProjection.toFloat32Array(), 32);
-    buffer.set(this.sceneParams, 48);
+    buffer.set(state.canvasViewProjection.toFloat32Array(), 32);
+    buffer.set(state.sceneParams, 48);
     buffer.set(lighting.ambient, 52);
     buffer.set([lighting.count, 0, 0, 0], 56);
     buffer.set(lighting.positions, 60);
@@ -541,12 +658,12 @@ export class MeshPipeline3D extends System {
     buffer.set(lighting.colors, 124);
     buffer.set(lighting.params, 156);
 
-    this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-    this.sceneLegacyUniforms = {
+    state.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    state.sceneLegacyUniforms = {
       u_ProjectionMatrix3D: Mat4.toGLMat4(projMatrix),
       u_ViewMatrix3D: Mat4.toGLMat4(viewMatrix),
-      u_CanvasViewProjection3D: Mat4.toGLMat4(this.canvasViewProjection),
-      u_SceneParams: this.sceneParams,
+      u_CanvasViewProjection3D: Mat4.toGLMat4(state.canvasViewProjection),
+      u_SceneParams: state.sceneParams,
       u_AmbientLight: lighting.ambient,
       u_LightCount: [lighting.count, 0, 0, 0],
       u_LightPositions: lighting.positions,
@@ -556,7 +673,12 @@ export class MeshPipeline3D extends System {
     };
   }
 
-  private packLightUniforms() {
+  private packLightUniforms(canvas: Entity, canvasCount: number) {
+    const scopedLights = filterEntitiesForCanvas(
+      this.lights3D.current,
+      canvas,
+      canvasCount,
+    );
     const ambient: [number, number, number, number] = [0, 0, 0, 1];
     const positions = new Float32Array(MAX_3D_LIGHTS * 4);
     const directions = new Float32Array(MAX_3D_LIGHTS * 4);
@@ -598,12 +720,12 @@ export class MeshPipeline3D extends System {
       count++;
     };
 
-    if (this.lights3D.current.length === 0) {
+    if (scopedLights.length === 0) {
       addAmbient(new Light3D({ type: 'ambient' }));
       addPunctual(new Light3D({ type: 'directional' }));
     } else {
       let hasDirectional = false;
-      for (const entity of this.lights3D.current) {
+      for (const entity of scopedLights) {
         const light = entity.read(Light3D);
         if (light.type === 'ambient') {
           addAmbient(light);
@@ -625,7 +747,10 @@ export class MeshPipeline3D extends System {
     return { ambient, count, positions, directions, colors, params };
   }
 
-  private updateModelUniforms(entity: Entity): Record<string, unknown> {
+  private updateModelUniforms(
+    entity: Entity,
+    modelUniformBuffer: Buffer,
+  ): Record<string, unknown> {
     const transform = entity.read(Transform3D);
     const material = entity.read(Material3D);
 
@@ -653,10 +778,6 @@ export class MeshPipeline3D extends System {
       u_LightDirection: [-0.5, -0.7, -0.5, 0],
     };
 
-    if (!this.modelUniformBuffer) {
-      return legacy;
-    }
-
     const buffer = new Float32Array(MODEL_UNIFORM_FLOATS);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
@@ -676,7 +797,7 @@ export class MeshPipeline3D extends System {
       44,
     );
 
-    this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     return {
       ...legacy,
       u_CanvasAnchor: [
@@ -690,12 +811,24 @@ export class MeshPipeline3D extends System {
 
   execute() {
     for (const entity of this.meshes3DDirty.removed) {
-      const data = this.meshGPUCache.get(entity);
-      if (data) {
+      for (const device of this.trackedDevices) {
+        const state = this.deviceStates.get(device);
+        const data = state?.meshGPUCache.get(entity);
+        if (!data) {
+          continue;
+        }
         data.vertexBuffer.destroy();
         data.normalBuffer.destroy();
         data.indexBuffer?.destroy();
-        this.meshGPUCache.delete(entity);
+        data.modelUniformBuffer.destroy();
+        state!.meshGPUCache.delete(entity);
+      }
+    }
+
+    const activeDevices = this.getActiveDevices();
+    for (const device of [...this.trackedDevices]) {
+      if (!activeDevices.has(device)) {
+        this.dropDeviceState(device);
       }
     }
 
@@ -710,14 +843,9 @@ export class MeshPipeline3D extends System {
 
   finalize() {
     unregisterMeshPipeline3D(this);
-    this.meshGPUCache.forEach((data) => {
-      data.vertexBuffer.destroy();
-      data.normalBuffer.destroy();
-      data.indexBuffer?.destroy();
-    });
-    this.meshGPUCache.clear();
-    this.sceneUniformBuffer?.destroy();
-    this.modelUniformBuffer?.destroy();
+    for (const device of [...this.trackedDevices]) {
+      this.dropDeviceState(device);
+    }
   }
 }
 

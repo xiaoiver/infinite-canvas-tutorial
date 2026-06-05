@@ -762,13 +762,27 @@ Combine with snapping from [Lesson 27](/guide/lesson-027) for tidy screenshots.`
       title: 'Rotating cube (3D mesh)',
       description:
         'Minimal Blinn-Phong cube on the same canvas as a semi-transparent 2D rectangle.',
-      body: `Registers **DefaultRenderer3DPlugin**, spawns \`Camera3D\` + \`Mesh3D\`, and animates \`Transform3D\` each frame. See [Lesson 39 — 3D mesh rendering](/guide/lesson-039) and [PR #271](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/271).`,
+      body: `Registers **DefaultRenderer3DPlugin** and uses declarative \`type: 'mesh3d'\` nodes via \`updateNodes\`; animate with \`updateNode({ rotation3d })\`. See [Lesson 39 — 3D mesh rendering](/guide/lesson-039) and [PR #271](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/271).`,
     },
     zh: {
       title: '旋转立方体（3D Mesh）',
       description:
         '在同一画布上绘制 Blinn-Phong 立方体，并叠加半透明 2D 矩形。',
-      body: `注册 **DefaultRenderer3DPlugin**，创建 \`Camera3D\` 与三角网格，每帧更新 \`Transform3D\` 旋转；再用 \`updateNodes\` 叠 2D 矩形。详见 [课程 39](/zh/guide/lesson-039)。`,
+      body: `注册 **DefaultRenderer3DPlugin**，用声明式 \`type: 'mesh3d'\` 的 \`updateNodes\` 创建立方体；\`updateNode({ rotation3d })\` 驱动旋转，并叠加 2D 矩形。详见 [课程 39](/zh/guide/lesson-039)。`,
+    },
+  },
+  lighting: {
+    en: {
+      title: '3D scene lighting (Light3D)',
+      description:
+        'Ambient, directional, and orbiting spot lights with Blinn-Phong materials.',
+      body: `Spawn \`Light3D\` entities alongside \`Mesh3D\` + \`Material3D\`. Custom lights replace the renderer default bundle. See [Lesson 39 — 3D mesh rendering](/guide/lesson-039).`,
+    },
+    zh: {
+      title: '3D 场景光照（Light3D）',
+      description:
+        '环境光、平行光与轨道聚光灯，配合 Blinn-Phong 材质对比高光。',
+      body: `与 \`Mesh3D\`、\`Material3D\` 一同 spawn \`Light3D\`；自定义光源会替换渲染器默认组合。详见 [课程 39 — 3D Mesh 渲染](/zh/guide/lesson-039)。`,
     },
   },
   binding: {

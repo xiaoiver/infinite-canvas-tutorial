@@ -491,6 +491,17 @@ If you want to use it in your own project, you can refer to:
 | :------------------------------------------: | :------------------------------------------------------: |
 |   ![iconfont](./screenshots/iconfont.png)    | ![iconfont with filters](./screenshots/liquid-metal.png) |
 
+## Lesson 39 - 3D mesh rendering [🔗](https://infinitecanvas.cc/guide/lesson-039)
+
+-   3D mesh pipeline
+-   Linked with 2D camera, orthographic and perspective
+-   3D Gizmo
+-   Lighting: ambient, spot, directional lights
+
+|               Gizmo               |     |
+| :-------------------------------: | :-: |
+| ![gizmo](./screenshots/gizmo.gif) |     |
+
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [Self-Deployment Guide]: /packages/app/README.md

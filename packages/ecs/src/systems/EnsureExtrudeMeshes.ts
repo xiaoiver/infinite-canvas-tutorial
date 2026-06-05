@@ -2,6 +2,9 @@ import { Entity, System } from '@lastolivegames/becsy';
 import { Commands } from '../commands';
 import {
   Camera3D,
+  Canvas,
+  Canvas3DScope,
+  Children,
   ComputedBounds,
   Extrude3D,
   Extrude3DTarget,
@@ -11,6 +14,10 @@ import {
   Transform3D,
 } from '../components';
 import { createUnitCubeGeometry } from '../utils/extrude3d-geometry';
+import {
+  findCamera3DForCanvas,
+  resolveCanvasFromSceneGraph,
+} from '../utils/canvas3d-scope';
 import { isEntityAlive } from './Transform';
 
 const unitCube = createUnitCubeGeometry();
@@ -32,13 +39,14 @@ export class EnsureExtrudeMeshes extends System {
   );
 
   private readonly cameras3D = this.query((q) => q.current.with(Camera3D).read);
+  private readonly canvases = this.query((q) => q.current.with(Canvas).read);
 
   constructor() {
     super();
     this.query((q) =>
       q
-        .using(ComputedBounds)
-        .read.and.using(Camera3D, Extrude3DTarget, Extrude3D, Mesh3D, Material3D, Transform3D,)
+        .using(ComputedBounds, Canvas, Camera3D, Canvas3DScope, Children)
+        .read.and.using(Extrude3D, Extrude3DTarget)
         .write,
     );
   }
@@ -86,15 +94,30 @@ export class EnsureExtrudeMeshes extends System {
     }
 
     if (pending.length > 0) {
-      const hasLinked = this.cameras3D.current.some((e) => e.read(Camera3D).linked);
-      if (!hasLinked) {
+      const canvasesNeedingCamera = new Set<Entity>();
+      for (const { source } of pending) {
+        const canvas = resolveCanvasFromSceneGraph(source);
+        if (!canvas) {
+          continue;
+        }
+        const canvasCount = this.canvases.current.length || 1;
+        if (
+          !findCamera3DForCanvas(this.cameras3D.current, canvas, canvasCount)
+        ) {
+          canvasesNeedingCamera.add(canvas);
+        }
+      }
+      for (const canvas of canvasesNeedingCamera) {
         this.commands.spawn(
           new Camera3D({
             linked: true,
             projection: 'orthographic',
             clearColor: false,
           }),
+          new Canvas3DScope({ canvas }),
         );
+      }
+      if (canvasesNeedingCamera.size > 0) {
         this.commands.execute();
       }
     }
@@ -102,23 +125,30 @@ export class EnsureExtrudeMeshes extends System {
 
   /** Queue mesh spawn; assign {@link Extrude3D.meshEntity} only after {@link Commands.execute}. */
   private queueSpawnMesh(source: Entity): Entity {
-    return this.commands
-      .spawn(
-        new Mesh3D({
-          positions: unitCube.positions,
-          normals: unitCube.normals,
-          indices: unitCube.indices,
-        }),
-        new Material3D({
-          baseColor: [0.25, 0.55, 0.95, 1],
-          ambient: 0.15,
-          diffuse: 0.75,
-          specular: 0.4,
-          shininess: 48,
-        }),
-        new Transform3D(),
-        new Extrude3DTarget({ source }),
-      )
-      .id();
+    const canvas = resolveCanvasFromSceneGraph(source);
+    const bundles = [
+      new Mesh3D({
+        positions: unitCube.positions,
+        normals: unitCube.normals,
+        indices: unitCube.indices,
+      }),
+      new Material3D({
+        baseColor: [0.25, 0.55, 0.95, 1],
+        ambient: 0.15,
+        diffuse: 0.75,
+        specular: 0.4,
+        shininess: 48,
+      }),
+      new Transform3D(),
+      new Extrude3DTarget({ source, unifiedSpace: true }),
+    ] as const;
+
+    if (canvas) {
+      return this.commands
+        .spawn(...bundles, new Canvas3DScope({ canvas }))
+        .id();
+    }
+
+    return this.commands.spawn(...bundles).id();
   }
 }

@@ -44,6 +44,8 @@ import {
   PartialBinding,
   hasFullOrPartialEdgeBinding,
   Editable,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, isEntityAlive, updateGlobalTransform } from './Transform';
@@ -52,6 +54,11 @@ import { inside } from '../utils/math';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { TRANSFORMER_Z_INDEX } from '../context';
 import { safeAddComponent } from '../history';
+import { entityIsDeclarative3DNode } from '../utils/mesh3d-node';
+import {
+  consumeTransformerRefreshForCanvas,
+  has3DMeshGizmoSelectedForCanvas,
+} from '../utils/pick3d-bridge';
 import { vec2 } from 'gl-matrix';
 import {
   collectPathControlHandles,
@@ -105,6 +112,8 @@ export class RenderTransformer extends System {
             Line,
             ComputedPoints,
             Editable,
+            Mesh3DNode,
+            Mesh3DNodeTarget,
           )
           .read.and.using(
             Canvas,
@@ -139,6 +148,32 @@ export class RenderTransformer extends System {
     );
   }
 
+  /** Hide 2D Transformer when declarative 3D or gizmo-selected mesh is active. */
+  private shouldSuppressTransformer(camera: Entity): boolean {
+    if (!camera.has(Transformable)) {
+      return false;
+    }
+    const { selecteds } = camera.read(Transformable);
+    if (selecteds.some(entityIsDeclarative3DNode)) {
+      return true;
+    }
+    const { canvas } = camera.read(Camera);
+    if (!canvas) {
+      return false;
+    }
+    return has3DMeshGizmoSelectedForCanvas(canvas);
+  }
+
+  private hideAllTransformerUi(camera: Entity, transformable: Transformable): void {
+    if (transformable.mask) {
+      transformable.mask.write(Visibility).value = 'hidden';
+    }
+    this.hideLineMaskAndEndpointAnchors(transformable);
+    if (transformable.polylineMask) {
+      transformable.polylineMask.write(Visibility).value = 'hidden';
+    }
+  }
+
   createOrUpdate(camera: Entity) {
     if (!isEntityAlive(camera) || !camera.has(Camera)) {
       return;
@@ -153,6 +188,11 @@ export class RenderTransformer extends System {
     const pen = api.getAppState().penbarSelected;
 
     const transformable = camera.write(Transformable);
+
+    if (this.shouldSuppressTransformer(camera)) {
+      this.hideAllTransformerUi(camera, transformable);
+      return;
+    }
 
     if (pen === Pen.VECTOR_NETWORK) {
       const { selecteds } = camera.read(Transformable);
@@ -555,6 +595,17 @@ export class RenderTransformer extends System {
         /* selection entity already deleted during canvas teardown */
       }
     });
+
+    this.cameras.current.forEach((camera) => {
+      if (!camera.has(Camera)) {
+        return;
+      }
+      const { canvas } = camera.read(Camera);
+      if (canvas && consumeTransformerRefreshForCanvas(canvas)) {
+        camerasToUpdate.add(camera);
+      }
+    });
+
     // Backrefs field Transformable.selecteds not configured to track recently deleted refs
     this.accessRecentlyDeletedData(false);
 

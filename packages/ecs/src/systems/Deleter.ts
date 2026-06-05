@@ -13,11 +13,6 @@ export class Deleter extends System {
   viewportCulling = this.attach(ViewportCulling);
 
   execute() {
-    if (pendingAPICallings.length) {
-      pendingAPICallings.forEach((fn) => fn());
-      pendingAPICallings.length = 0;
-    }
-
     for (const entity of this.entities.current) {
       /**
        * Execute before node removed from scenegraph.
@@ -27,9 +22,14 @@ export class Deleter extends System {
       entity.delete();
     }
 
-    if (pendingAPICallingsAfterDelete.length) {
-      pendingAPICallingsAfterDelete.forEach((fn) => fn());
-      pendingAPICallingsAfterDelete.length = 0;
+    while (pendingAPICallings.length) {
+      const batch = pendingAPICallings.splice(0);
+      batch.forEach((fn) => fn());
+    }
+
+    while (pendingAPICallingsAfterDelete.length) {
+      const batch = pendingAPICallingsAfterDelete.splice(0);
+      batch.forEach((fn) => fn());
     }
   }
 }

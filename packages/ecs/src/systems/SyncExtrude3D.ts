@@ -1,6 +1,5 @@
 import { System } from '@lastolivegames/becsy';
 import {
-  Camera3D,
   ComputedBounds,
   Extrude3D,
   Extrude3DTarget,
@@ -26,14 +25,11 @@ export class SyncExtrude3D extends System {
     q.current.with(Extrude3DTarget).read,
   );
 
-  private readonly cameras3D = this.query((q) => q.current.with(Camera3D).read);
-
   constructor() {
     super();
     this.query((q) =>
       q
         .using(
-          Camera3D,
           Extrude3D,
           Extrude3DTarget,
           ComputedBounds,
@@ -67,10 +63,10 @@ export class SyncExtrude3D extends System {
       const centerY = (bounds.minY + bounds.maxY) / 2;
       const depth = extrude.depth;
       const rotation = entity.read(ComputedBounds).transformOBB.rotation;
-      const linked3D = this.cameras3D.current.some((e) => e.read(Camera3D).linked);
+      const unifiedSpace = meshEntity.read(Extrude3DTarget).unifiedSpace;
 
       const transform = meshEntity.write(Transform3D);
-      transform.translation = linked3D
+      transform.translation = unifiedSpace
         ? [centerX, centerY, -depth / 2]
         : canvasWorldToWorld3D(centerX, centerY, -depth / 2);
       transform.rotation = [0, 0, rotation];

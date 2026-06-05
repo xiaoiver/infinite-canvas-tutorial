@@ -1,9 +1,10 @@
-import { System } from '@lastolivegames/becsy';
+import { System, type Entity } from '@lastolivegames/becsy';
 import { mat4 as glMat4, vec2, vec3 as glVec3 } from 'gl-matrix';
 import {
   Camera,
   Camera3D,
   Canvas,
+  Canvas3DScope,
   ComputedCamera,
   Input,
   Mesh3D,
@@ -20,7 +21,10 @@ import {
   type Mesh3DPickScene,
   type Ray,
 } from '../utils/ray-casting';
-import { set3DGizmoDragging } from '../utils/pick3d-bridge';
+import {
+  set3DGizmoDragging,
+  set3DMeshGizmoSelectedForCanvas,
+} from '../utils/pick3d-bridge';
 import {
   angleOnRotationPlane,
   intersectRayWithPlane,
@@ -32,6 +36,11 @@ import {
   buildPickSceneForViewport,
   probePick3DAtViewport,
 } from '../utils/pick3d-probe';
+import {
+  filterEntitiesForCanvas,
+  findCamera2DForCanvas,
+  findCamera3DForCanvas,
+} from '../utils/canvas3d-scope';
 
 /**
  * 3D Picking System.
@@ -72,6 +81,7 @@ export class Pick3D extends System {
           Camera3D,
           Camera,
           Canvas,
+          Canvas3DScope,
           ComputedCamera,
           Mesh3D,
           Material3D,
@@ -84,45 +94,81 @@ export class Pick3D extends System {
   }
 
   execute(): void {
-    const cameraEntity = this.cameras3D.current[0];
-    if (!cameraEntity) return;
-
-    const camera = cameraEntity.read(Camera3D);
-
     for (const canvasEntity of this.canvases.current) {
       if (!canvasEntity.has(Input)) continue;
+
+      const resolved = this.resolveCamera3D(canvasEntity);
+      if (!resolved) continue;
+      const camera = resolved.camera;
 
       const { api } = canvasEntity.read(Canvas);
       if (api.getAppState().penbarSelected !== Pen.SELECT) continue;
 
       const input = canvasEntity.read(Input);
 
-      // Handle drag updates on pointer move
       if (!input.pointerDownTrigger && !input.pointerUpTrigger) {
-        this.updateGizmoHover(input, camera);
-        this.handleDrag(input, camera);
+        this.updateGizmoHover(input, camera, canvasEntity);
+        this.handleDrag(input, camera, canvasEntity);
         continue;
       }
 
       if (input.pointerUpTrigger) {
-        this.handlePointerUp();
+        this.handlePointerUp(canvasEntity);
         continue;
       }
 
-      // Pointer down – perform picking
       if (input.pointerDownTrigger) {
-        this.handlePointerDown(input, camera);
+        this.handlePointerDown(input, camera, canvasEntity);
       }
     }
   }
 
-  private handlePointerDown(input: Input, camera: Camera3D): void {
+  private resolveCamera3D(
+    canvas: Entity,
+  ): { camera: Camera3D } | undefined {
+    const canvasCount = this.canvases.current.length || 1;
+    const cameraEntity = findCamera3DForCanvas(
+      this.cameras3D.current,
+      canvas,
+      canvasCount,
+    );
+    if (!cameraEntity) {
+      return undefined;
+    }
+    return { camera: cameraEntity.read(Camera3D) };
+  }
+
+  private canvasMeshes(canvas: Entity): Entity[] {
+    const canvasCount = this.canvases.current.length || 1;
+    return filterEntitiesForCanvas(
+      this.meshes3D.current,
+      canvas,
+      canvasCount,
+    );
+  }
+
+  private canvasSelected(canvas: Entity): Entity[] {
+    const canvasCount = this.canvases.current.length || 1;
+    return this.selected3D.current.filter(
+      (entity) =>
+        filterEntitiesForCanvas([entity], canvas, canvasCount).length > 0,
+    );
+  }
+
+  private handlePointerDown(
+    input: Input,
+    camera: Camera3D,
+    canvasEntity: Entity,
+  ): void {
     const [vx, vy] = input.pointerViewport;
-    const { width, height } = this.getViewportSize();
+    const { width, height } = this.getViewportSize(canvasEntity);
     if (width <= 0 || height <= 0) return;
 
-    const pickScene = this.buildPickScene(camera, width, height);
+    const pickScene = this.buildPickScene(camera, width, height, canvasEntity);
     if (!pickScene) return;
+
+    const scopedMeshes = this.canvasMeshes(canvasEntity);
+    const scopedSelected = this.canvasSelected(canvasEntity);
 
     const probe = probePick3DAtViewport(
       vx,
@@ -131,8 +177,8 @@ export class Pick3D extends System {
       height,
       camera,
       pickScene,
-      this.meshes3D.current,
-      this.selected3D.current,
+      scopedMeshes,
+      scopedSelected,
     );
 
     if (probe.kind === 'gizmo') {
@@ -144,7 +190,16 @@ export class Pick3D extends System {
         translation[1],
         translation[2],
       ];
-      const ray = this.buildRay(vx, vy, width, height, camera, pickScene, anchor);
+      const ray = this.buildRay(
+        vx,
+        vy,
+        width,
+        height,
+        camera,
+        pickScene,
+        canvasEntity,
+        anchor,
+      );
 
       const sel = probe.entity.write(Selected3D);
       sel.activeAxis = probe.axis;
@@ -198,7 +253,7 @@ export class Pick3D extends System {
 
     const closestEntity = probe.kind === 'mesh' ? probe.entity : null;
 
-    for (const entity of this.selected3D.current) {
+    for (const entity of scopedSelected) {
       if (entity !== closestEntity && entity.has(Selected3D)) {
         entity.remove(Selected3D);
       }
@@ -216,27 +271,33 @@ export class Pick3D extends System {
     }
 
     set3DGizmoDragging(false);
+    set3DMeshGizmoSelectedForCanvas(canvasEntity, closestEntity != null);
   }
 
   /** Highlight hovered gizmo handle (activeAxis) without starting a drag. */
-  private updateGizmoHover(input: Input, camera: Camera3D): void {
-    for (const entity of this.selected3D.current) {
+  private updateGizmoHover(
+    input: Input,
+    camera: Camera3D,
+    canvasEntity: Entity,
+  ): void {
+    const scopedSelected = this.canvasSelected(canvasEntity);
+    for (const entity of scopedSelected) {
       if (entity.has(Selected3D) && entity.read(Selected3D).dragging) {
         return;
       }
     }
 
-    if (this.selected3D.current.length === 0) {
+    if (scopedSelected.length === 0) {
       return;
     }
 
     const [vx, vy] = input.pointerViewport;
-    const { width, height } = this.getViewportSize();
+    const { width, height } = this.getViewportSize(canvasEntity);
     if (width <= 0 || height <= 0) {
       return;
     }
 
-    const pickScene = this.buildPickScene(camera, width, height);
+    const pickScene = this.buildPickScene(camera, width, height, canvasEntity);
     if (!pickScene) {
       return;
     }
@@ -248,11 +309,11 @@ export class Pick3D extends System {
       height,
       camera,
       pickScene,
-      this.meshes3D.current,
-      this.selected3D.current,
+      this.canvasMeshes(canvasEntity),
+      scopedSelected,
     );
 
-    for (const entity of this.selected3D.current) {
+    for (const entity of scopedSelected) {
       if (!entity.has(Selected3D)) {
         continue;
       }
@@ -267,8 +328,8 @@ export class Pick3D extends System {
     }
   }
 
-  private handlePointerUp(): void {
-    for (const entity of this.selected3D.current) {
+  private handlePointerUp(canvasEntity: Entity): void {
+    for (const entity of this.canvasSelected(canvasEntity)) {
       if (!entity.has(Selected3D)) continue;
 
       const sel = entity.write(Selected3D);
@@ -281,9 +342,13 @@ export class Pick3D extends System {
     set3DGizmoDragging(false);
   }
 
-  private handleDrag(input: Input, camera: Camera3D): void {
+  private handleDrag(
+    input: Input,
+    camera: Camera3D,
+    canvasEntity: Entity,
+  ): void {
     let anyDragging = false;
-    for (const entity of this.selected3D.current) {
+    for (const entity of this.canvasSelected(canvasEntity)) {
       if (!entity.has(Selected3D)) continue;
 
       const sel = entity.read(Selected3D);
@@ -292,10 +357,10 @@ export class Pick3D extends System {
       }
 
       const [vx, vy] = input.pointerViewport;
-      const { width, height } = this.getViewportSize();
+      const { width, height } = this.getViewportSize(canvasEntity);
       if (width <= 0 || height <= 0) continue;
 
-      const pickScene = this.buildPickScene(camera, width, height);
+      const pickScene = this.buildPickScene(camera, width, height, canvasEntity);
       if (!pickScene) continue;
       const transformRead = entity.read(Transform3D);
       const anchor: [number, number, number] = [
@@ -310,6 +375,7 @@ export class Pick3D extends System {
         height,
         camera,
         pickScene,
+        canvasEntity,
         anchor,
       );
       if (!ray) continue;
@@ -442,22 +508,19 @@ export class Pick3D extends System {
     camera: Camera3D,
     viewportWidth: number,
     viewportHeight: number,
+    canvasEntity: Entity,
   ): Mesh3DPickScene | null {
-    const cam2d = camera.linked ? this.cameras2D.current[0] : undefined;
-    const canvasEntity = this.canvases.current[0];
-    const logicalW = canvasEntity
-      ? canvasEntity.read(Canvas).width
-      : viewportWidth;
-    const logicalH = canvasEntity
-      ? canvasEntity.read(Canvas).height
-      : viewportHeight;
+    const cam2d = camera.linked
+      ? findCamera2DForCanvas(this.cameras2D.current, canvasEntity)
+      : undefined;
+    const { width: logicalW, height: logicalH } = canvasEntity.read(Canvas);
 
     return buildPickSceneForViewport(
       camera,
       viewportWidth,
       viewportHeight,
-      logicalW,
-      logicalH,
+      logicalW > 0 ? logicalW : viewportWidth,
+      logicalH > 0 ? logicalH : viewportHeight,
       cam2d,
     );
   }
@@ -472,10 +535,14 @@ export class Pick3D extends System {
     viewportHeight: number,
     camera: Camera3D,
     pickScene: Mesh3DPickScene,
+    canvasEntity: Entity,
     _anchor?: [number, number, number],
   ): Ray | null {
     if (pickScene.mode === 'linkedPerspective') {
-      const cam2d = this.cameras2D.current[0];
+      const cam2d = findCamera2DForCanvas(
+        this.cameras2D.current,
+        canvasEntity,
+      );
       if (!cam2d) return null;
       const inv = Mat3.toGLMat3(
         cam2d.read(ComputedCamera).viewProjectionMatrixInv,
@@ -507,9 +574,7 @@ export class Pick3D extends System {
     return screenToRay(vx, vy, viewportWidth, viewportHeight, invVP);
   }
 
-  private getViewportSize(): { width: number; height: number } {
-    const canvasEntity = this.canvases.current[0];
-    if (!canvasEntity) return { width: 0, height: 0 };
+  private getViewportSize(canvasEntity: Entity): { width: number; height: number } {
     const { width, height } = canvasEntity.read(Canvas);
     return { width, height };
   }

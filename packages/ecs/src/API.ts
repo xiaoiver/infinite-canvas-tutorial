@@ -1,7 +1,7 @@
-import { Entity } from '@lastolivegames/becsy';
+import { Entity, type ComponentType } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
-import { updateGlobalTransform } from './systems/Transform';
+import { isEntityAlive, updateGlobalTransform } from './systems/Transform';
 import { updateComputedPoints } from './systems/ComputePoints';
 import { isNil, path2Absolute } from '@antv/util';
 import {
@@ -11,6 +11,7 @@ import {
   StoreIncrementEvent,
 } from './history/Store';
 import { Commands, EntityCommands } from './commands';
+import type { Bundle } from './components';
 import { AppState, getDefaultAppState } from './context';
 import {
   BitmapFont,
@@ -75,12 +76,15 @@ import {
   migrateLegacyStrokeWireInPlace,
 } from './utils/normalize-stroke-wire';
 import { getEnabledFillLayers } from './utils/fillLayers';
+import { entityUses3DGizmoNotTransformer } from './utils/mesh3d-node';
+import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
   Brush,
   Camera,
   Canvas,
+  Canvas3DScope,
   CheckboardStyle,
   Children,
   Circle,
@@ -100,6 +104,7 @@ import {
   Line,
   Locked,
   Mat3,
+  Mesh3DNode,
   OBB,
   Parent,
   Path,
@@ -109,6 +114,7 @@ import {
   RBush,
   Rect,
   Selected,
+  Selected3D,
   Stroke,
   Text,
   Theme,
@@ -315,6 +321,16 @@ export class API {
 
   getCommands() {
     return this.commands;
+  }
+
+  /**
+   * Spawn 3D ECS entities scoped to this canvas (multi-canvas safe).
+   */
+  spawn3D(...bundles: (ComponentType<any> | Bundle)[]) {
+    return this.commands.spawn(
+      ...bundles,
+      new Canvas3DScope({ canvas: this.#canvas }),
+    );
   }
 
   getAppState() {
@@ -1278,6 +1294,71 @@ export class API {
   /**
    * Select nodes.
    */
+  /** Remove {@link Selected3D} from a declarative mesh3d companion mesh (deferred: runs in {@link Deleter}). */
+  #deselectMesh3DCompanion(source: Entity): void {
+    this.runAtNextTick(() => this.#deselectMesh3DCompanionDeferred(source));
+  }
+
+  #deselectMesh3DCompanionDeferred(source: Entity): void {
+    if (!source.has(Mesh3DNode)) {
+      return;
+    }
+    const mesh = source.read(Mesh3DNode).meshEntity;
+    if (!mesh || !isEntityAlive(mesh) || !mesh.has(Selected3D)) {
+      return;
+    }
+    try {
+      mesh.remove(Selected3D);
+    } catch {
+      /* companion already deleted */
+    }
+  }
+
+  /** Attach {@link Selected3D} once the companion mesh exists (after {@link EnsureMesh3DNodes}). */
+  #selectMesh3DCompanion(source: Entity): void {
+    this.runAtNextTick(() => this.#selectMesh3DCompanionDeferred(source, 0));
+  }
+
+  #selectMesh3DCompanionDeferred(source: Entity, attempt = 0): void {
+    if (!source.has(Mesh3DNode) || !source.has(Selected)) {
+      return;
+    }
+    const mesh = source.read(Mesh3DNode).meshEntity;
+    if (!mesh || !isEntityAlive(mesh)) {
+      if (attempt < 120) {
+        this.runAtNextTick(() =>
+          this.#selectMesh3DCompanionDeferred(source, attempt + 1),
+        );
+      }
+      return;
+    }
+    if (!mesh.has(Selected3D)) {
+      mesh.add(Selected3D, {
+        mode: 'transform',
+        activeAxis: 'none',
+        activePartKind: null,
+        dragging: false,
+      });
+    }
+    set3DMeshGizmoSelectedForCanvas(this.#canvas, true);
+  }
+
+  #scheduleSyncMesh3DGizmoBridge(): void {
+    this.runAtNextTick(() => this.#syncMesh3DGizmoBridge());
+  }
+
+  #syncMesh3DGizmoBridge(): void {
+    const has3DSelection = this.getAppState().layersSelected.some((id) => {
+      const entity = this.#idEntityMap.get(id)?.id();
+      if (!entity?.has(Mesh3DNode)) {
+        return false;
+      }
+      const mesh = entity.read(Mesh3DNode).meshEntity;
+      return !!(mesh && isEntityAlive(mesh) && mesh.has(Selected3D));
+    });
+    set3DMeshGizmoSelectedForCanvas(this.#canvas, has3DSelection);
+  }
+
   selectNodes(
     nodes: SerializedNode[],
     preserveSelection = false,
@@ -1295,6 +1376,7 @@ export class API {
         // 与 handleSelectedMoved 等路径写入的 Highlighted 同步清理，否则取消选中后仍残留描边高亮
         if (entity) {
           safeRemoveComponent(entity, Highlighted);
+          this.#deselectMesh3DCompanion(entity);
         }
       });
     }
@@ -1328,6 +1410,9 @@ export class API {
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
       }
+      if (entity?.has(Mesh3DNode)) {
+        this.#selectMesh3DCompanion(entity);
+      }
     });
   }
 
@@ -1340,6 +1425,7 @@ export class API {
       }
       if (entity) {
         safeRemoveComponent(entity, Highlighted);
+        this.#deselectMesh3DCompanion(entity);
       }
     });
 
@@ -1353,6 +1439,7 @@ export class API {
         (id) => !deselectIds.includes(id),
       ),
     });
+    this.#scheduleSyncMesh3DGizmoBridge();
   }
 
   highlightNodes(
@@ -1360,6 +1447,14 @@ export class API {
     preserveSelection = false,
     updateAppState = true,
   ) {
+    nodes = nodes.filter((node) => {
+      if (node.type === 'mesh3d') {
+        return false;
+      }
+      const entity = this.#idEntityMap.get(node.id)?.id();
+      return !entity || !entityUses3DGizmoNotTransformer(entity);
+    });
+
     if (!preserveSelection) {
       this.getAppState().layersHighlighted.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
@@ -1386,6 +1481,10 @@ export class API {
 
     layersHighlighted.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
+      if (!entity || entityUses3DGizmoNotTransformer(entity)) {
+        safeRemoveComponent(entity, Highlighted);
+        return;
+      }
       safeAddComponent(entity, Highlighted);
     });
   }
@@ -1483,6 +1582,7 @@ export class API {
           lookupNodes: this.#mergeSceneWithBatchForEdgeLookup([node]),
           variables: this.getAppState().variables,
           themeMode: this.getAppState().themeMode,
+          canvas: this.#canvas,
         },
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
@@ -1544,6 +1644,7 @@ export class API {
             this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
           variables: this.getAppState().variables,
           themeMode: this.getAppState().themeMode,
+          canvas: this.#canvas,
         },
       );
       nonExistentNodes.forEach((node) => {
