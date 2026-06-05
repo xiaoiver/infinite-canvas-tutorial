@@ -130,6 +130,58 @@ commands.spawn(
 
 <CubePerspective />
 
+## 基于 Raycast 的拾取 {#raycast-picking}
+
+3D 选中与 gizmo 拖拽由 **`Pick3D`** 系统负责（选择工具下 **`Select`** 也会调用同一套逻辑）。指针按下时，对光标下的视口像素做 CPU 检测，依次测试 gizmo 把手与 `Mesh3D` 三角形，**不**走 GPU picking pass。实现集中在 `ray-casting.ts` 与 `pick3d-probe.ts`。
+
+### 流程
+
+```plaintext
+视口坐标 (x, y)
+  └─ buildPickSceneForViewport(camera, …)  →  Mesh3DPickScene（与渲染同一套矩阵）
+       └─ probePick3DAtViewport(…)
+            ├─ 1. 已 Selected3D 实体的 gizmo 部件（逐 part 检测）
+            └─ 2. 本 canvas 全部 Mesh3D → 取最近命中（最小 t）
+```
+
+**优先级**：先测 **已选中** 实体上的 gizmo；未命中再测场景 mesh。多个 mesh 同时命中时，取沿射线 **距离最近** 的一个（linked 透视下为 **深度最大/最靠前**）。
+
+### 标准 Raycast（正交 / 自由相机）
+
+非 linked 透视模式时，拾取路径与常见 3D 编辑器一致：
+
+1. **`screenToRay`**：视口像素 → NDC → 用 **`inv(view × projection)`** 反投影近/远点，得到世界空间射线。
+2. **`rayMeshIntersection`**：顶点经 model 矩阵变换后：
+    - **粗测**：射线 vs 变换后的 **AABB**（slab 法）。
+    - **细测**：对每个三角形做 **Möller–Trumbore** 射线-三角形求交，保留最小 `t`。
+
+```ts
+// packages/ecs/src/utils/ray-casting.ts（示意）
+const invVP = computeInvViewProjection(projMatrix, viewMatrix);
+const ray = screenToRay(vx, vy, width, height, invVP);
+const hit = rayMeshIntersection(ray, positions, indices, modelMatrix);
+// hit: { t, point, triangleIndex } | null
+```
+
+**Linked 正交**（`linked + orthographic`）走同一路径：`MeshPipeline3D` 将 2D 的 `viewProjectionMatrix` 注入 pick scene，点击与 2D rect、`extrude3d` 严格对齐。
+
+### Linked 透视：屏幕空间三角形
+
+**Linked 透视**对 mesh **不用**世界射线。屏幕位置由完整 2D VP 决定，深度由 `translation.z` 上的透视矩阵单独处理。为与顶点着色器一致，**`pickMeshLinkedPerspective`** 用相同 uniform 把每个三角形投影到视口，再用 **`pointInTriangle2D`** 判断光标是否在 **二维投影三角形** 内，并取该像素处 **最靠前** 的深度。gizmo 部件复用同一 helper（把手可带 Z 向 screen bias）。
+
+这样在无限画布上平移/缩放时，透视 cube 仍能做到「所见即所点」。
+
+### 拖拽约束
+
+gizmo 命中后，**`Pick3D.handleDrag`** 每帧重新求射线，并与 **约束平面** 求交（`intersectRayWithPlane`）：
+
+-   **平移**（箭头 / 平面）：平面法线随当前轴或平面 widget。
+-   **旋转**（圆环）：平面法线为环轴；角度增量由 `angleOnRotationPlane` 计算。
+
+相对初始命中点（`dragHitStart`）的增量写回 **`Transform3D`**。
+
+完整指针流程与把手含义见 [3D 变换 Gizmo](#gizmo)。
+
 ## 3D 变换 Gizmo {#gizmo}
 
 在 **选择工具**（`penbarSelected === Pen.SELECT`）下点击 3D 网格，会为实体挂上 **`Selected3D`**，并在物体中心绘制 **平移（translate）** 把手：红/绿/蓝箭头 + 半透明平面块。拖拽把手会写回 **`Transform3D.translation`**；与 2D 的 `Selected` + `RenderTransformer` 类似，但走独立 3D 拾取与绘制路径。

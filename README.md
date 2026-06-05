@@ -496,6 +496,7 @@ If you want to use it in your own project, you can refer to:
 -   3D mesh pipeline
 -   Linked with 2D camera, orthographic and perspective
 -   3D Gizmo
+-   Picking with raycast
 -   Lighting: ambient, spot, directional lights
 
 |               Gizmo               |     |

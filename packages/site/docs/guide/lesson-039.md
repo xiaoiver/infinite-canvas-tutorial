@@ -130,6 +130,58 @@ In perspective mode, screen position comes from the **full 2D VP** (pan, zoom, a
 
 <CubePerspective />
 
+## Raycast picking {#raycast-picking}
+
+3D selection and gizmo interaction are handled by the **`Pick3D`** system (also used from **`Select`** when the Select tool is active). On pointer down, the viewport pixel under the cursor is tested against gizmo handles and `Mesh3D` triangles. No GPU picking pass is used—everything runs on the CPU in `ray-casting.ts` and `pick3d-probe.ts`.
+
+### Pipeline
+
+```plaintext
+viewport (x, y)
+  └─ buildPickSceneForViewport(camera, …)  →  Mesh3DPickScene (same matrices as rendering)
+       └─ probePick3DAtViewport(…)
+            ├─ 1. gizmo parts on Selected3D entities (screen-space / ray, per part)
+            └─ 2. all Mesh3D on this canvas → keep closest hit (smallest t)
+```
+
+**Priority**: already-selected entities are probed for **gizmo handles first**; only if none hit does the probe test scene meshes. Among meshes, the hit with the **smallest distance** along the ray (or largest depth in linked perspective) wins.
+
+### Standard raycast (orthographic / free camera)
+
+For non–linked-perspective modes, picking mirrors classic 3D editors:
+
+1. **`screenToRay`**: viewport pixels → NDC → unproject near/far with **`inv(view × projection)`** to get a world-space ray.
+2. **`rayMeshIntersection`**: transform mesh vertices with the entity’s model matrix, then:
+    - **Broad phase**: ray vs transformed **AABB** (slab method).
+    - **Narrow phase**: **Möller–Trumbore** ray–triangle test on each triangle; keep the closest `t`.
+
+```ts
+// packages/ecs/src/utils/ray-casting.ts (simplified)
+const invVP = computeInvViewProjection(projMatrix, viewMatrix);
+const ray = screenToRay(vx, vy, width, height, invVP);
+const hit = rayMeshIntersection(ray, positions, indices, modelMatrix);
+// hit: { t, point, triangleIndex } | null
+```
+
+**Linked orthographic** (`linked + orthographic`) reuses the same path: `MeshPipeline3D` feeds the 2D `viewProjectionMatrix` into the pick scene, so clicks stay aligned with 2D rects and `extrude3d`.
+
+### Linked perspective: screen-space triangles
+
+**Linked perspective** does **not** use a world ray for mesh hits. Screen position is driven by the full 2D VP; depth comes from a separate perspective matrix on `translation.z`. To match the vertex shader, **`pickMeshLinkedPerspective`** projects each triangle to viewport space with the same uniforms, then tests whether the cursor lies inside the **2D projected triangle** (`pointInTriangle2D`) and picks the **front-most depth** at that pixel. Gizmo parts in this mode reuse the same helper (with optional Z screen bias for handles).
+
+This keeps “what you see is what you pick” when panning/zooming the infinite canvas with a perspective cube.
+
+### Drag constraints
+
+After a gizmo hit, **`Pick3D.handleDrag`** keeps casting a ray each frame and intersects it with a **constraint plane** (`intersectRayWithPlane`):
+
+-   **Translate** (arrow / plane): plane normal follows the active axis or plane widget.
+-   **Rotate** (ring): plane normal is the ring’s rotation axis; angle delta comes from `angleOnRotationPlane`.
+
+The delta from the initial hit point (`dragHitStart`) is written back to **`Transform3D`**.
+
+See [3D transform Gizmo](#gizmo) for handle colors, axes, and the full pointer flow.
+
 ## 3D transform Gizmo {#gizmo}
 
 With the **Select tool** (`penbarSelected === Pen.SELECT`), clicking a 3D mesh adds **`Selected3D`** to the entity and draws **translate** handles at its center: red/green/blue arrows plus semi-transparent plane widgets. Dragging a handle writes back to **`Transform3D.translation`**. Similar to 2D `Selected` + `RenderTransformer`, but through a separate 3D pick and draw path.

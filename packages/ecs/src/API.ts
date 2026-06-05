@@ -76,7 +76,6 @@ import {
   migrateLegacyStrokeWireInPlace,
 } from './utils/normalize-stroke-wire';
 import { getEnabledFillLayers } from './utils/fillLayers';
-import { entityUses3DGizmoNotTransformer } from './utils/mesh3d-node';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -1410,7 +1409,8 @@ export class API {
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
       }
-      if (entity?.has(Mesh3DNode)) {
+      // Deferred in Deleter; #selectMesh3DCompanionDeferred no-ops for non-mesh3d nodes.
+      if (entity) {
         this.#selectMesh3DCompanion(entity);
       }
     });
@@ -1447,13 +1447,12 @@ export class API {
     preserveSelection = false,
     updateAppState = true,
   ) {
-    nodes = nodes.filter((node) => {
-      if (node.type === 'mesh3d') {
-        return false;
-      }
-      const entity = this.#idEntityMap.get(node.id)?.id();
-      return !entity || !entityUses3DGizmoNotTransformer(entity);
-    });
+    const isDeclarative3DNode = (id: string) => {
+      const node = this.getNodeById(id);
+      return node?.type === 'mesh3d' || node?.type === 'light3d';
+    };
+
+    nodes = nodes.filter((node) => node.type !== 'mesh3d' && node.type !== 'light3d');
 
     if (!preserveSelection) {
       this.getAppState().layersHighlighted.forEach((id) => {
@@ -1481,7 +1480,7 @@ export class API {
 
     layersHighlighted.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
-      if (!entity || entityUses3DGizmoNotTransformer(entity)) {
+      if (!entity || isDeclarative3DNode(id)) {
         safeRemoveComponent(entity, Highlighted);
         return;
       }
