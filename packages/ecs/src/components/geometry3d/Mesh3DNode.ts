@@ -1,11 +1,15 @@
 import { Entity, field } from '@lastolivegames/becsy';
 import type { Projection3D } from './Camera3D';
+import type {
+  Mesh3DGeometrySpec,
+  Mesh3DNodeGeometry,
+} from '../../utils/geometry3d/types';
 
-export type Mesh3DNodeGeometry = 'cube';
+export type { Mesh3DGeometrySpec, Mesh3DNodeGeometry };
 
 /** Declarative mesh3d node backing data (see {@link Mesh3DNodeSerializedNode}). */
 export class Mesh3DNode {
-  @field.object declare geometry: Mesh3DNodeGeometry;
+  @field.object declare geometry: Mesh3DGeometrySpec;
 
   /** Depth in canvas world units (linked mode). */
   @field.float32 declare z: number;
@@ -39,7 +43,7 @@ export class Mesh3DNode {
     if (props) {
       Object.assign(this, props);
     }
-    this.geometry ??= 'cube';
+    this.geometry ??= { type: 'cube' };
     this.z ??= 0;
     this.rotation3d ??= [0, 0, 0];
     this.scale3d ??= 100;

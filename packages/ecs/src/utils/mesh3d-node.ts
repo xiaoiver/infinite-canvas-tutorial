@@ -2,6 +2,7 @@ import type { Entity } from '@lastolivegames/becsy';
 import {
   ComputedBounds,
   Material3D,
+  Mesh3D,
   Mesh3DNode,
   Mesh3DNodeTarget,
   Rect,
@@ -10,17 +11,58 @@ import {
   Transform,
   Transform3D,
 } from '../components';
-import { createUnitCubeGeometry } from './extrude3d-geometry';
-import type { Mesh3DNodeGeometry } from '../components/geometry3d/Mesh3DNode';
+import {
+  createGeometry,
+  emptyMesh3DGeometry,
+  geometrySpecKey,
+  isGltfGeometrySpec,
+  normalizeGeometry,
+  type Mesh3DNodeGeometry,
+} from './geometry3d';
 import { set3DMeshGizmoSelectedForCanvas } from './pick3d-bridge';
 
+const companionGeometryKey = new WeakMap<Entity, string>();
+
 export function resolveMesh3DNodeGeometry(geometry: Mesh3DNodeGeometry = 'cube') {
-  switch (geometry) {
-    case 'cube':
-      return createUnitCubeGeometry();
-    default:
-      return createUnitCubeGeometry();
+  const spec = normalizeGeometry(geometry);
+  if (isGltfGeometrySpec(spec)) {
+    return emptyMesh3DGeometry();
   }
+  return createGeometry(spec);
+}
+
+export function rebuildMesh3DNodeCompanionGeometry(
+  source: Entity,
+  meshEntity: Entity,
+): boolean {
+  if (!source.has(Mesh3DNode) || !meshEntity.has(Mesh3D)) {
+    return false;
+  }
+  const spec = normalizeGeometry(source.read(Mesh3DNode).geometry);
+  const key = geometrySpecKey(spec);
+  if (companionGeometryKey.get(source) === key) {
+    return false;
+  }
+  if (isGltfGeometrySpec(spec)) {
+    companionGeometryKey.delete(source);
+    Object.assign(meshEntity.write(Mesh3D), emptyMesh3DGeometry());
+    return true;
+  }
+  companionGeometryKey.set(source, key);
+  Object.assign(meshEntity.write(Mesh3D), createGeometry(spec));
+  return true;
+}
+
+export function clearMesh3DNodeCompanionGeometryKey(source: Entity): void {
+  companionGeometryKey.delete(source);
+}
+
+export function seedMesh3DNodeCompanionGeometryKey(source: Entity): void {
+  if (!source.has(Mesh3DNode)) {
+    return;
+  }
+  const spec = normalizeGeometry(source.read(Mesh3DNode).geometry);
+  companionGeometryKey.set(source, geometrySpecKey(spec));
 }
 
 export function resolveMesh3DNodeScale(
@@ -107,6 +149,41 @@ export function syncMesh3DNodeCompanionFromSource(
   return true;
 }
 
+/** Sync declarative source from companion mesh (during gizmo drag). */
+export function syncMesh3DNodeSourceFromCompanion(
+  source: Entity,
+  meshEntity: Entity,
+): boolean {
+  if (!source.has(Mesh3DNode) || !meshEntity.has(Transform3D)) {
+    return false;
+  }
+
+  const { translation, rotation, scale } = meshEntity.read(Transform3D);
+  const node = source.write(Mesh3DNode);
+  node.z = translation[2];
+  node.rotation3d = [...rotation] as [number, number, number];
+  const [sx, sy, sz] = scale;
+  node.scale3d =
+    Math.abs(sx - sy) < 1e-4 && Math.abs(sy - sz) < 1e-4
+      ? sx
+      : ([sx, sy, sz] as [number, number, number]);
+
+  if (source.has(Transform)) {
+    let width = 0;
+    let height = 0;
+    if (source.has(Rect)) {
+      const rect = source.read(Rect);
+      width = rect.width;
+      height = rect.height;
+    }
+    Object.assign(source.write(Transform).translation, {
+      x: translation[0] - width / 2,
+      y: translation[1] - height / 2,
+    });
+  }
+  return true;
+}
+
 /** When the declarative source has 2D {@link Selected}, mirror gizmo state on the companion mesh. */
 export function ensureCompanionGizmoWhenSourceSelected(
   source: Entity,
@@ -179,3 +256,5 @@ export function parseLight3DColor(
   const rgba = parseMesh3DBaseColor(value, [...fallback, 1]);
   return [rgba[0], rgba[1], rgba[2]];
 }
+
+export { normalizeGeometry } from './geometry3d';

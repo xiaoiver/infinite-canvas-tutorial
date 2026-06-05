@@ -31,6 +31,7 @@ import {
   ComputeCamera,
   EnsureExtrudeMeshes,
   EnsureMesh3DNodes,
+  LoadMesh3DGeometry,
   MeshPipeline3D,
   SyncExtrude3D,
   SyncMesh3DNodes,
@@ -72,8 +73,13 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
       SyncExtrude3D,
     );
 
+    system(PostUpdate)(LoadMesh3DGeometry);
+    system((s) => s.after(SyncExtrude3D).before(SyncMesh3DNodes))(
+      LoadMesh3DGeometry,
+    );
+
     system(PostUpdate)(SyncMesh3DNodes);
-    system((s) => s.after(SyncExtrude3D).before(ComputeCamera))(
+    system((s) => s.after(LoadMesh3DGeometry).before(ComputeCamera))(
       SyncMesh3DNodes,
     );
 

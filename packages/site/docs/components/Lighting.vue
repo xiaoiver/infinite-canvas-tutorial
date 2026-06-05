@@ -97,15 +97,16 @@ onMounted(async () => {
         },
       },
       {
-        id: 'cube-white',
+        id: 'sphere-white',
         type: 'mesh3d',
+        geometry: { type: 'sphere', segments: [24, 16] },
         x: 180,
         y: 140,
         width: 80,
         height: 80,
         z: 40,
         zIndex: 0,
-        scale3d: 80,
+        scale3d: 70,
         rotation3d: [0.35, 0.5, 0],
         material3d: {
           baseColor: '#ebeff2',
@@ -116,15 +117,16 @@ onMounted(async () => {
         },
       },
       {
-        id: 'cube-blue',
+        id: 'cylinder-blue',
         type: 'mesh3d',
+        geometry: { type: 'cylinder', segments: 24 },
         x: 280,
         y: 140,
-        width: 80,
-        height: 80,
+        width: 70,
+        height: 90,
         z: 40,
         zIndex: 0,
-        scale3d: 80,
+        scale3d: [60, 80, 60],
         rotation3d: [0.35, 0.5, 0],
         material3d: {
           baseColor: '#478cf2',
@@ -138,10 +140,10 @@ onMounted(async () => {
 
       api.runAtNextTick(() => {
         const spot = api.getNodeById('light-spot');
-        const cubes = [
+        const meshes = [
           { node: api.getNodeById('cube-red'), phase: 0 },
-          { node: api.getNodeById('cube-white'), phase: 0.15 },
-          { node: api.getNodeById('cube-blue'), phase: 0.3 },
+          { node: api.getNodeById('sphere-white'), phase: 0.15 },
+          { node: api.getNodeById('cylinder-blue'), phase: 0.3 },
         ] as const;
         if (!spot) {
           return;
@@ -170,7 +172,7 @@ onMounted(async () => {
             false,
           );
 
-          for (const { node, phase } of cubes) {
+          for (const { node, phase } of meshes) {
             if (!node) {
               continue;
             }

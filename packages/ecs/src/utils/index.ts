@@ -53,3 +53,5 @@ export * from './mesh3d-companion';
 export * from './pick3d-probe';
 export * from './pick3d-bridge';
 export * from './gizmo-geometry';
+export * from './geometry3d';
+export * from './gltf';

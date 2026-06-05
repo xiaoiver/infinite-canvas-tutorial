@@ -18,10 +18,13 @@ import {
 import { hasRasterPostEffects } from '../utils/filter';
 import { resolveExtrude3DDepth } from '../utils/extrude3d';
 import {
+  normalizeGeometry,
   parseLight3DColor,
   parseMesh3DBaseColor,
+  rebuildMesh3DNodeCompanionGeometry,
   syncMesh3DNodeCompanionFromSource,
 } from '../utils/mesh3d-node';
+import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
 import { isEntityAlive } from '../systems/Transform';
 import {
   resolveDesignVariableValue,
@@ -1889,12 +1892,16 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       'scale3d' in updates ||
       'material3d' in updates ||
       'camera3d' in updates ||
+      'geometry' in updates ||
       'x' in updates ||
       'y' in updates ||
       'width' in updates ||
       'height' in updates;
     if (touchesMesh3DNode) {
       const meshNode = entity.write(Mesh3DNode);
+      if ('geometry' in updates && patch.geometry != null) {
+        meshNode.geometry = normalizeGeometry(patch.geometry);
+      }
       if ('z' in updates && patch.z != null) {
         meshNode.z = patch.z;
       }
@@ -1922,6 +1929,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
           'scale3d' in updates ||
           'z' in updates ||
           'material3d' in updates ||
+          'geometry' in updates ||
           'x' in updates ||
           'y' in updates ||
           'width' in updates ||
@@ -1929,6 +1937,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       if (needsCompanionSync) {
         const source = entity;
         const mesh = meshEntity;
+        const rebuildGeometry = 'geometry' in updates;
         api.runAtNextTick(() => {
           if (
             !isEntityAlive(source) ||
@@ -1938,7 +1947,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
           ) {
             return;
           }
+          if (rebuildGeometry) {
+            rebuildMesh3DNodeCompanionGeometry(source, mesh);
+          }
           syncMesh3DNodeCompanionFromSource(source, mesh);
+          requestGltfMeshLoad(source);
         });
       }
     }

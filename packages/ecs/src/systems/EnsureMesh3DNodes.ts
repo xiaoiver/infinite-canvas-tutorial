@@ -29,7 +29,8 @@ import {
   queueMesh3DCompanion,
   queueCamera3DFromMesh3DNode,
 } from '../utils/mesh3d-companion';
-import { syncMesh3DNodeCompanionFromSource, ensureCompanionGizmoWhenSourceSelected } from '../utils/mesh3d-node';
+import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
+import { syncMesh3DNodeCompanionFromSource, ensureCompanionGizmoWhenSourceSelected, rebuildMesh3DNodeCompanionGeometry } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
 
 /**
@@ -105,6 +106,18 @@ export class EnsureMesh3DNodes extends System {
     };
 
     for (const entity of this.sources.addedOrChanged) {
+      const node = entity.read(Mesh3DNode);
+      const existingMesh = node.meshEntity;
+      if (existingMesh && isEntityAlive(existingMesh)) {
+        rebuildMesh3DNodeCompanionGeometry(entity, existingMesh);
+        syncMesh3DNodeCompanionFromSource(entity, existingMesh);
+        requestGltfMeshLoad(entity);
+        const canvas = this.resolveCanvasForSource(entity);
+        if (canvas) {
+          ensureCompanionGizmoWhenSourceSelected(entity, existingMesh, canvas);
+        }
+        continue;
+      }
       trySpawn(entity);
     }
 
@@ -122,6 +135,7 @@ export class EnsureMesh3DNodes extends System {
         }
         node.meshEntity = mesh.hold();
         syncMesh3DNodeCompanionFromSource(source, mesh);
+        requestGltfMeshLoad(source);
         const canvas = this.resolveCanvasForSource(source);
         if (canvas) {
           ensureCompanionGizmoWhenSourceSelected(source, mesh, canvas);

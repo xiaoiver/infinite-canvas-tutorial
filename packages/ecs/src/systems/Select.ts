@@ -375,7 +375,28 @@ export class Select extends System {
     if (is3DGizmoDragging()) {
       return true;
     }
+    const probe = this.probePick3DAt(canvas, viewportX, viewportY);
+    return probe != null && probe.kind !== 'none';
+  }
 
+  /** Skip 2D move when a 3D gizmo handle is active (axis drag is handled by Pick3D). */
+  private shouldSuppress2DMove(
+    canvas: Entity,
+    viewportX: number,
+    viewportY: number,
+  ): boolean {
+    if (is3DGizmoDragging()) {
+      return true;
+    }
+    const probe = this.probePick3DAt(canvas, viewportX, viewportY);
+    return probe?.kind === 'gizmo';
+  }
+
+  private probePick3DAt(
+    canvas: Entity,
+    viewportX: number,
+    viewportY: number,
+  ) {
     const canvasCount = this.canvases.current.length || 1;
     const cameraEntity = findCamera3DForCanvas(
       this.cameras3D.current,
@@ -383,13 +404,13 @@ export class Select extends System {
       canvasCount,
     );
     if (!cameraEntity) {
-      return false;
+      return null;
     }
 
     const camera = cameraEntity.read(Camera3D);
     const { width, height } = canvas.read(Canvas);
     if (width <= 0 || height <= 0) {
-      return false;
+      return null;
     }
 
     const cam2d = camera.linked
@@ -404,10 +425,10 @@ export class Select extends System {
       cam2d,
     );
     if (!pickScene) {
-      return false;
+      return null;
     }
 
-    const probe = probePick3DAtViewport(
+    return probePick3DAtViewport(
       viewportX,
       viewportY,
       width,
@@ -420,8 +441,6 @@ export class Select extends System {
           filterEntitiesForCanvas([entity], canvas, canvasCount).length > 0,
       ),
     );
-
-    return probe.kind !== 'none';
   }
 
   private getTopmostEntity(
@@ -1887,7 +1906,7 @@ export class Select extends System {
           // Prioritize tap-to-select when clicking another shape.
           if (hitUnselectedTarget || input.shiftKey) {
             selection.mode = SelectionMode.SELECT;
-          } else {
+          } else if (!this.shouldSuppress2DMove(canvas, x, y)) {
             if (layersCropping.length > 0) {
               cursor.value = 'move';
             } else {
@@ -1979,7 +1998,10 @@ export class Select extends System {
             }
           }
 
-          if (api.getAppState().layersSelected.length > 0) {
+          if (
+            api.getAppState().layersSelected.length > 0 &&
+            !this.shouldSuppress2DMove(canvas, x, y)
+          ) {
             selection.mode = SelectionMode.MOVE;
           }
         }
@@ -2192,6 +2214,9 @@ export class Select extends System {
           this.handleBrushing(api, x, y);
           selection.mode = SelectionMode.BRUSH;
         } else if (selection.mode === SelectionMode.MOVE) {
+          if (is3DGizmoDragging()) {
+            return;
+          }
           if (layersCropping.length > 0) {
             cursor.value = 'move';
           } else {

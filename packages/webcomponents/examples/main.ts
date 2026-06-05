@@ -286,18 +286,19 @@ canvas.addEventListener(Event.READY, async (e) => {
     const CUBE_ID = 'cube1';
     const BASE_ROTATION: [number, number, number] = [0.3, 0.6, 0];
 
-    /** 声明式场景：`mesh3d` 节点 + 2D 矩形叠加。 */
+    /** 声明式场景：cube / sphere / cylinder / plane。 */
     const sceneNodes: SerializedNode[] = [
       {
         id: CUBE_ID,
         type: 'mesh3d',
-        x: 150,
+        geometry: 'cube',
+        x: 80,
         y: 50,
-        width: 100,
-        height: 100,
+        width: 80,
+        height: 80,
         z: 40,
         zIndex: 0,
-        scale3d: 100,
+        scale3d: 80,
         rotation3d: BASE_ROTATION,
         material3d: {
           baseColor: '#ffffff',
@@ -310,6 +311,46 @@ canvas.addEventListener(Event.READY, async (e) => {
           linked: true,
           projection: 'perspective',
           clearColor: false,
+        },
+      },
+      {
+        id: 'sphere1',
+        type: 'mesh3d',
+        geometry: { type: 'sphere', segments: [24, 16] },
+        x: 200,
+        y: 50,
+        width: 80,
+        height: 80,
+        z: 40,
+        zIndex: 0,
+        scale3d: 70,
+        rotation3d: [0.2, 0.8, 0.1],
+        material3d: {
+          baseColor: '#88ccff',
+          ambient: 0.25,
+          diffuse: 0.75,
+          specular: 0.5,
+          shininess: 64,
+        },
+      },
+      {
+        id: 'cylinder1',
+        type: 'mesh3d',
+        geometry: { type: 'cylinder', segments: 24 },
+        x: 320,
+        y: 50,
+        width: 70,
+        height: 90,
+        z: 40,
+        zIndex: 0,
+        scale3d: [60, 80, 60],
+        rotation3d: [0.5, 0.3, 0],
+        material3d: {
+          baseColor: '#ffaa66',
+          ambient: 0.2,
+          diffuse: 0.8,
+          specular: 0.35,
+          shininess: 32,
         },
       },
     ];
