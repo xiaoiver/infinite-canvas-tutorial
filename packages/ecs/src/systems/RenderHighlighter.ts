@@ -34,6 +34,8 @@ import {
   Line,
   OBB,
   StrokeLayers,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
 } from '../components';
 import { Commands } from '../commands';
 import { getSceneRoot, isEntityAlive, updateGlobalTransform } from './Transform';
@@ -43,6 +45,7 @@ import {
 import { HIGHLIGHTER_Z_INDEX } from '../context';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
+import { entityIsDeclarative3DNode } from '../utils/mesh3d-node';
 
 /**
  * Highlight objects when hovering over them like Figma
@@ -78,6 +81,8 @@ export class RenderHighlighter extends System {
             Camera,
             FractionalIndex,
             Transformable,
+            Mesh3DNode,
+            Mesh3DNodeTarget,
           )
           .read.and.using(
             Canvas,
@@ -182,6 +187,10 @@ export class RenderHighlighter extends System {
       !camera.has(Camera) ||
       !entity.has(ComputedBounds)
     ) {
+      return;
+    }
+    if (entityIsDeclarative3DNode(entity)) {
+      this.remove(entity, camera);
       return;
     }
     const { canvas } = camera.read(Camera);

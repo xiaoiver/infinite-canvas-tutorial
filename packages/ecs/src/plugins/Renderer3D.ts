@@ -28,9 +28,12 @@ import { Plugin, type PluginWithConfig } from './types';
 import {
   CameraSync,
   ComputeBounds,
+  ComputeCamera,
   EnsureExtrudeMeshes,
+  EnsureMesh3DNodes,
   MeshPipeline3D,
   SyncExtrude3D,
+  SyncMesh3DNodes,
   Pick3D,
   RenderGizmo3D,
   Select,
@@ -53,13 +56,26 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     // GPU mesh cache only; drawing runs inside MeshPipeline via appendRenderPass.
     system(PreUpdate)(RenderSystem3D);
 
-    // PostUpdate: mesh setup + transform/camera sync before Last render/HTML.
-    // MeshPipeline tracks Transform3D/Camera3D and runs in Last after these writers.
+    // PostUpdate: bounds → Ensure* → Sync*, all before 2D ComputeCamera / CameraControl.
     system(PostUpdate)(EnsureExtrudeMeshes);
-    system((s) => s.after(ComputeBounds))(EnsureExtrudeMeshes);
+    system((s) => s.after(ComputeBounds).before(ComputeCamera))(
+      EnsureExtrudeMeshes,
+    );
+
+    system(PostUpdate)(EnsureMesh3DNodes);
+    system((s) => s.after(EnsureExtrudeMeshes).before(ComputeCamera))(
+      EnsureMesh3DNodes,
+    );
 
     system(PostUpdate)(SyncExtrude3D);
-    system((s) => s.after(EnsureExtrudeMeshes))(SyncExtrude3D);
+    system((s) => s.after(EnsureMesh3DNodes).before(ComputeCamera))(
+      SyncExtrude3D,
+    );
+
+    system(PostUpdate)(SyncMesh3DNodes);
+    system((s) => s.after(SyncExtrude3D).before(ComputeCamera))(
+      SyncMesh3DNodes,
+    );
 
     // Same-frame camera for picking; runs after Select (2D marquee probe is in Select).
     system((s) => s.after(CameraSync, Select).before(Last))(Pick3D);

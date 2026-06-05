@@ -25,8 +25,8 @@ import Cube from '../../components/Cube.vue'
 
 -   **相机**：`projection: 'orthographic'`（默认 linked 模式）。
 -   **插件**：`DefaultPlugins` + `DefaultRenderer3DPlugin` + `UIPlugin`（仅需画布壳，已隐藏工具栏）。
--   **几何**：`Mesh3D` 传入 `positions` / `normals` / `indices`；示例用 procedural 立方体（每面 4 顶点、2 三角）。
--   **动画**：在 `requestAnimationFrame` 里 `cubeEntity.write(Transform3D)`；`MeshPipeline` 检测到 3D 组件变更后会重绘。
+-   **几何**：声明式 `type: 'mesh3d'`（`geometry: 'cube'` 为默认）；无需手动 spawn `Mesh3D` / `Transform3D`。
+-   **动画**：`api.updateNode({ type: 'mesh3d', rotation3d: … })` 更新节点属性；`SyncMesh3DNodes` 同步 companion mesh。
 -   **2D 叠加**：`updateNodes` 的矩形画在 3D 之后，可平移缩放画布（手型工具）观察透视与叠加关系。
 
 站点所有交互示例通过 `docs/lib/ensure-example-world.ts` 统一启动 ECS，**默认注册 `DefaultRenderer3DPlugin`**，从任意示例页 SPA 跳转到本页均可正常显示 3D。

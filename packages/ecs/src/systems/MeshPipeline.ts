@@ -12,6 +12,7 @@ import {
   Camera,
   Camera3D,
   Canvas,
+  Canvas3DScope,
   CheckboardStyle,
   Children,
   Circle,
@@ -72,7 +73,8 @@ import {
   Mesh3D,
   Material3D,
   Transform3D,
-  Selected3D
+  Selected3D,
+  Light3D,
 } from '../components';
 import {
   collectRainDropTextureUrlsFromFilterValue,
@@ -328,7 +330,9 @@ export class MeshPipeline extends System {
     super();
     this.query(
       (q) =>
-        q.current
+        q
+          .using(Canvas3DScope, Extrude3D)
+          .read.and.current
           .with(
             Theme,
             Grid,
@@ -374,6 +378,7 @@ export class MeshPipeline extends System {
             Mesh3D,
             Material3D,
             Selected3D,
+            Light3D,
           )
           .read.and.using(
             RasterScreenshotRequest,
@@ -698,13 +703,13 @@ export class MeshPipeline extends System {
 
     const mesh3d = getMeshPipeline3D();
     mesh3d?.prepareForComposite(canvas);
-    const composite3D = mesh3d?.shouldComposite() ?? false;
+    const composite3D = mesh3d?.shouldComposite(canvas) ?? false;
 
     const mainColorDesc = makeBackbufferDescSimple(
       RGAttachmentSlot.Color0,
       renderInput,
       composite3D
-        ? (mesh3d!.getColorClearDescriptor() ??
+        ? (mesh3d!.getColorClearDescriptor(canvas) ??
           makeAttachmentClearDescriptor(TransparentWhite))
         : makeAttachmentClearDescriptor(TransparentWhite),
     );

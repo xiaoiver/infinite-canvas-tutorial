@@ -45,7 +45,7 @@ import {
   Theme,
   Flex,
   StrokeLayers,
-  Rough
+  Rough,
 } from '../components';
 import { API } from '../API';
 import type { PathSerializedNode, SerializedNode } from '../types/serialized-node';

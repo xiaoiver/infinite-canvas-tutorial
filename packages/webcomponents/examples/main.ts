@@ -48,6 +48,7 @@ import {
   Mesh3D,
   Material3D,
   Transform3D,
+  Light3D,
 } from '../../ecs';
 import { Event, UIPlugin } from '../src';
 import '../src/spectrum';
@@ -216,36 +217,62 @@ canvas.addEventListener(Event.READY, async (e) => {
     const { positions, normals, indices } = createCubeGeometry(1);
     const commands = api.getCommands();
 
-    // linked + orthographic：与 2D/extrude3d 共用 VP；linked + perspective：跟 2D 平移缩放 + 透视
-    commands.spawn(
-      new Camera3D({
-        linked: true,
-        // projection: 'orthographic',
-        projection: 'perspective',
-        clearColor: false,
-      }),
-    );
+    // // linked + orthographic：与 2D/extrude3d 共用 VP；linked + perspective：跟 2D 平移缩放 + 透视
+    // api.spawn3D(
+    //   new Camera3D({
+    //     linked: true,
+    //     projection: 'perspective',
+    //     clearColor: false,
+    //   }),
+    // );
 
-    const cubeEntity = commands
-      .spawn(
-        new Mesh3D({ positions, normals, indices }),
-        new Material3D({
-          baseColor: [1, 1, 1, 1],
-          ambient: 0.25,
-          diffuse: 0.75,
-          specular: 0.4,
-          shininess: 48,
-        }),
-        new Transform3D({
-          translation: [100, 100, 40],
-          rotation: [0.3, 0, 0],
-          scale: [100, 100, 100],
-        }),
-      )
-      .id()
-      .hold();
+    // // Light3D position/direction are canvas/world units (1 ≈ 1 px when linked).
+    // // range <= 0 disables distance falloff. Custom Light3D replaces the default
+    // // light set; keep ambient + directional (or rely on renderer directional fill).
+    // const [cx, cy, cz] = [100, 100, 40];
+    // const spotLift = 200;
+    // const spotBack = 160;
+    // api.spawn3D(
+    //   new Light3D({ type: 'ambient', intensity: 0.35 }),
+    // );
+    // api.spawn3D(
+    //   new Light3D({
+    //     type: 'directional',
+    //     direction: [-0.45, -0.65, -0.55],
+    //     intensity: 0.85,
+    //   }),
+    // );
+    // api.spawn3D(
+    //   new Light3D({
+    //     type: 'spot',
+    //     position: [cx, cy - spotLift, cz + spotBack],
+    //     direction: [0, spotLift, -spotBack],
+    //     color: [1, 0.9, 0.75],
+    //     intensity: 1.4,
+    //     range: 0,
+    //   }),
+    // );
 
-    commands.execute();
+    // const cubeEntity = api
+    //   .spawn3D(
+    //     new Mesh3D({ positions, normals, indices }),
+    //     new Material3D({
+    //       baseColor: [1, 1, 1, 1],
+    //       ambient: 0.25,
+    //       diffuse: 0.75,
+    //       specular: 0.4,
+    //       shininess: 48,
+    //     }),
+    //     new Transform3D({
+    //       translation: [cx, cy, cz],
+    //       rotation: [0.3, 0, 0],
+    //       scale: [100, 100, 100],
+    //     }),
+    //   )
+    //   .id()
+    //   .hold();
+
+    // commands.execute();
 
     // const t0 = performance.now();
     // const spinCube = (now: number) => {
@@ -255,6 +282,39 @@ canvas.addEventListener(Event.READY, async (e) => {
     //   requestAnimationFrame(spinCube);
     // };
     // requestAnimationFrame(spinCube);
+
+    const CUBE_ID = 'cube1';
+    const BASE_ROTATION: [number, number, number] = [0.3, 0.6, 0];
+
+    /** 声明式场景：`mesh3d` 节点 + 2D 矩形叠加。 */
+    const sceneNodes: SerializedNode[] = [
+      {
+        id: CUBE_ID,
+        type: 'mesh3d',
+        x: 150,
+        y: 50,
+        width: 100,
+        height: 100,
+        z: 40,
+        zIndex: 0,
+        scale3d: 100,
+        rotation3d: BASE_ROTATION,
+        material3d: {
+          baseColor: '#ffffff',
+          ambient: 0.25,
+          diffuse: 0.75,
+          specular: 0.4,
+          shininess: 48,
+        },
+        camera3d: {
+          linked: true,
+          projection: 'perspective',
+          clearColor: false,
+        },
+      },
+    ];
+
+    api.updateNodes(sceneNodes);
   });
 });
 

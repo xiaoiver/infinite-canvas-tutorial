@@ -389,10 +389,56 @@ export interface FilterAttributes {
   filter?: string;
 }
 
+import type { Mesh3DNodeGeometry } from '../components/geometry3d/Mesh3DNode';
+
 /** Spline-style 3D extrusion of a rect layer (canvas x/y/width/height). */
 export interface Extrude3DAttributes {
   /** `true` uses default depth; number sets depth in canvas world units. */
   extrude3d?: boolean | number;
+}
+
+export type Camera3DNodeConfig = {
+  linked?: boolean;
+  projection?: 'perspective' | 'orthographic';
+  clearColor?: boolean;
+};
+
+export type Material3DWire = {
+  baseColor?: string | [number, number, number, number];
+  ambient?: number;
+  diffuse?: number;
+  specular?: number;
+  shininess?: number;
+};
+
+/** Declarative 3D mesh node (canvas-local coordinates). */
+export interface Mesh3DNodeSerializedNode
+  extends BaseSerializeNode<'mesh3d'>,
+  Partial<TransformAttributes> {
+  geometry?: Mesh3DNodeGeometry;
+  /** Depth in canvas world units when {@link Camera3D.linked}. */
+  z?: number;
+  rotation3d?: [number, number, number];
+  scale3d?: number | [number, number, number];
+  material3d?: Material3DWire;
+  /** Ensures a scoped {@link Camera3D} exists for this canvas. */
+  camera3d?: Camera3DNodeConfig;
+}
+
+export type Light3DNodeType = 'ambient' | 'directional' | 'point' | 'spot';
+
+/** Declarative 3D light node. */
+export interface Light3DNodeSerializedNode
+  extends BaseSerializeNode<'light3d'>,
+  Partial<Pick<TransformAttributes, 'x' | 'y'>> {
+  lightType: Light3DNodeType;
+  color?: string | [number, number, number];
+  intensity?: number;
+  direction?: [number, number, number];
+  z?: number;
+  range?: number;
+  innerConeAngle?: number;
+  outerConeAngle?: number;
 }
 
 export interface GSerializedNode
@@ -730,6 +776,8 @@ export type SerializedNode =
   | HtmlSerializedNode
   | EmbedSerializedNode
   | IconFontSerializedNode
+  | Mesh3DNodeSerializedNode
+  | Light3DNodeSerializedNode
   | RefSerializedNode;
 
 export type SerializedNodeAttributes = GSerializedNode &
@@ -749,6 +797,8 @@ export type SerializedNodeAttributes = GSerializedNode &
   HtmlSerializedNode &
   EmbedSerializedNode &
   IconFontSerializedNode &
+  Mesh3DNodeSerializedNode &
+  Light3DNodeSerializedNode &
   RefSerializedNode;
 
 /**

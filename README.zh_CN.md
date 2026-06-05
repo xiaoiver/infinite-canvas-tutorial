@@ -494,6 +494,18 @@ pnpm run dev
 | :------------------------------------------: | :------------------------------------------------------: |
 |   ![iconfont](./screenshots/iconfont.png)    | ![iconfont with filters](./screenshots/liquid-metal.png) |
 
+## 课程 39 - 渲染 3D 图形 [🔗](https://infinitecanvas.cc/zh/guide/lesson-039)
+
+-   独立的 3D 渲染管线
+-   与 2D 画布的相机同步，支持正交和透视投影
+-   使用 Gizmo 为 3D 图形添加平移、旋转交互
+-   基于 raycast 的拾取
+-   光照
+
+|               Gizmo               |     |
+| :-------------------------------: | :-: |
+| ![gizmo](./screenshots/gizmo.gif) |     |
+
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md

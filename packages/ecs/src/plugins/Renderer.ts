@@ -51,10 +51,14 @@ import {
   GPUResource,
   VelloCanvasSurface,
   Camera3D,
+  Canvas3DScope,
   Extrude3D,
   Extrude3DTarget,
   Mesh3D,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
   Material3D,
+  Light3D,
   Transform3D,
   Selected3D,
   Name,
@@ -94,10 +98,14 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(GPUResource);
     component(VelloCanvasSurface);
     component(Camera3D);
+    component(Canvas3DScope);
     component(Extrude3D);
     component(Extrude3DTarget);
     component(Mesh3D);
+    component(Mesh3DNode);
+    component(Mesh3DNodeTarget);
     component(Material3D);
+    component(Light3D);
     component(Transform3D);
     component(Selected3D);
     component(Renderable);

@@ -1,15 +1,23 @@
 /**
  * Basic 3D mesh shader with Blinn-Phong lighting.
- * Uses a single directional light and per-vertex normals.
+ * Supports multiple ambient, directional, point, and spot lights.
  */
 
 export const vert = /* glsl */ `
+#define MAX_3D_LIGHTS 8
+
 layout(std140) uniform SceneUniforms3D {
   mat4 u_ProjectionMatrix3D;
   mat4 u_ViewMatrix3D;
   mat4 u_CanvasViewProjection3D;
   // z=1: linked perspective (2D VP + depth scale from anchor)
   vec4 u_SceneParams;
+  vec4 u_AmbientLight;
+  vec4 u_LightCount;
+  vec4 u_LightPositions[MAX_3D_LIGHTS];
+  vec4 u_LightDirections[MAX_3D_LIGHTS];
+  vec4 u_LightColors[MAX_3D_LIGHTS];
+  vec4 u_LightParams3D[MAX_3D_LIGHTS];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -17,7 +25,7 @@ layout(std140) uniform ModelUniforms3D {
   mat4 u_NormalMatrix3D;
   vec4 u_BaseColor;
   vec4 u_LightParams; // x: ambient, y: diffuse, z: specular, w: shininess
-  vec4 u_LightDirection; // xyz: direction (normalized), w: unused
+  vec4 u_LightDirection; // deprecated: kept for uniform-buffer layout compatibility
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
 };
@@ -59,12 +67,23 @@ void main() {
 `;
 
 export const frag = /* glsl */ `
+#define MAX_3D_LIGHTS 8
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_POINT 2
+#define LIGHT_TYPE_SPOT 3
+
 // Order must match vert (WebGPU assigns UBO bindings by declaration order per stage).
 layout(std140) uniform SceneUniforms3D {
   mat4 u_ProjectionMatrix3D;
   mat4 u_ViewMatrix3D;
   mat4 u_CanvasViewProjection3D;
   vec4 u_SceneParams;
+  vec4 u_AmbientLight;
+  vec4 u_LightCount;
+  vec4 u_LightPositions[MAX_3D_LIGHTS];
+  vec4 u_LightDirections[MAX_3D_LIGHTS];
+  vec4 u_LightColors[MAX_3D_LIGHTS];
+  vec4 u_LightParams3D[MAX_3D_LIGHTS];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -72,7 +91,7 @@ layout(std140) uniform ModelUniforms3D {
   mat4 u_NormalMatrix3D;
   vec4 u_BaseColor;
   vec4 u_LightParams; // x: ambient, y: diffuse, z: specular, w: shininess
-  vec4 u_LightDirection; // xyz: direction (normalized), w: unused
+  vec4 u_LightDirection; // deprecated: kept for uniform-buffer layout compatibility
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
 };
@@ -82,24 +101,77 @@ in vec3 v_FragPos;
 
 out vec4 outputColor;
 
+float distanceAttenuation(float distanceToLight, float range) {
+  if (range <= 0.0) {
+    return 1.0;
+  }
+  float factor = clamp(1.0 - distanceToLight / range, 0.0, 1.0);
+  return factor * factor;
+}
+
+vec3 shadeLight(
+  int index,
+  vec3 normal,
+  vec3 viewDir,
+  float materialDiffuse,
+  float materialSpecular,
+  float shininess
+) {
+  vec4 params = u_LightParams3D[index];
+  int lightType = int(params.x);
+  float intensity = params.y;
+  float range = params.z;
+  float cosInner = params.w;
+  float cosOuter = u_LightDirections[index].w;
+  vec3 lightColor = u_LightColors[index].rgb * intensity;
+  vec3 lightDir = vec3(0.0, 0.0, 1.0);
+  float attenuation = 1.0;
+
+  if (lightType == LIGHT_TYPE_DIRECTIONAL) {
+    lightDir = normalize(-u_LightDirections[index].xyz);
+  } else {
+    vec3 toLight = u_LightPositions[index].xyz - v_FragPos;
+    float distanceToLight = length(toLight);
+    if (distanceToLight > 1e-6) {
+      lightDir = toLight / distanceToLight;
+    }
+    attenuation *= distanceAttenuation(distanceToLight, range);
+
+    if (lightType == LIGHT_TYPE_SPOT) {
+      vec3 spotDirection = normalize(u_LightDirections[index].xyz);
+      float spotCos = dot(-lightDir, spotDirection);
+      float cone = smoothstep(cosOuter, cosInner, spotCos);
+      attenuation *= cone;
+    }
+  }
+
+  float diff = max(dot(normal, lightDir), 0.0);
+  vec3 halfDir = normalize(lightDir + viewDir);
+  float spec = pow(max(dot(normal, halfDir), 0.0), shininess);
+  return lightColor * attenuation *
+    (materialDiffuse * diff + materialSpecular * spec);
+}
+
 void main() {
   vec3 normal = normalize(v_Normal);
-  vec3 lightDir = normalize(-u_LightDirection.xyz);
-
-  // Ambient
-  float ambient = u_LightParams.x;
-
-  // Diffuse
-  float diff = max(dot(normal, lightDir), 0.0);
-  float diffuse = u_LightParams.y * diff;
-
-  // Specular (Blinn-Phong)
   vec3 viewDir = normalize(-v_FragPos);
-  vec3 halfDir = normalize(lightDir + viewDir);
-  float spec = pow(max(dot(normal, halfDir), 0.0), u_LightParams.w);
-  float specular = u_LightParams.z * spec;
+  vec3 lighting = u_AmbientLight.rgb * u_LightParams.x;
 
-  vec3 result = (ambient + diffuse + specular) * u_BaseColor.rgb;
+  for (int i = 0; i < MAX_3D_LIGHTS; i++) {
+    if (i >= int(u_LightCount.x)) {
+      break;
+    }
+    lighting += shadeLight(
+      i,
+      normal,
+      viewDir,
+      u_LightParams.y,
+      u_LightParams.z,
+      u_LightParams.w
+    );
+  }
+
+  vec3 result = lighting * u_BaseColor.rgb;
   outputColor = vec4(result, u_BaseColor.a);
 }
 `;

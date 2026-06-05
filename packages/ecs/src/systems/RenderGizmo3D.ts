@@ -1,6 +1,10 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { mat4 as glMat4 } from 'gl-matrix';
-import type { Device, RenderPass } from '@infinite-canvas-tutorial/device-api';
+import type {
+  Bindings,
+  Device,
+  RenderPass,
+} from '@infinite-canvas-tutorial/device-api';
 import {
   BlendFactor,
   BlendMode,
@@ -23,6 +27,7 @@ import {
   Camera,
   Camera3D,
   Canvas,
+  Canvas3DScope,
   ComputedCamera,
   GPUResource,
   Transform3D,
@@ -44,6 +49,11 @@ import {
   gizmoPartUsesLinkedZScreenBias,
 } from '../utils/gizmo-interaction';
 import {
+  filterEntitiesForCanvas,
+  findCamera2DForCanvas,
+  findCamera3DForCanvas,
+} from '../utils/canvas3d-scope';
+import {
   buildCamera3DSceneUniforms,
   packSceneUniformBuffer,
   sceneUniformsToPickScene,
@@ -53,6 +63,19 @@ import {
   registerGizmo3D,
   unregisterGizmo3D,
 } from './gizmo3d-bridge';
+import type { RenderCache } from '../utils/render-cache';
+
+/** Per-WebGL-context gizmo pipeline (multi-canvas safe). */
+interface Gizmo3DDeviceState {
+  program: Program;
+  pipeline: RenderPipeline;
+  inputLayout: InputLayout;
+  gizmoParts: GizmoPartGPU[];
+  sceneLegacyUniforms: Record<string, unknown>;
+}
+
+/** std140 ModelUniforms3D / SceneUniforms3D pack size (floats). */
+const GIZMO_UNIFORM_FLOATS = 52;
 
 interface GizmoPartGPU {
   vertexBuffer: Buffer;
@@ -65,6 +88,10 @@ interface GizmoPartGPU {
   partKind: GizmoPartKind;
   /** Plane handles drawn before rings / arrows. */
   isPlane: boolean;
+  /** Per-part UBOs: WebGPU batches queue.writeBuffer before submit (shared buffer = last write wins). */
+  sceneUniformBuffer: Buffer;
+  modelUniformBuffer: Buffer;
+  bindings: Bindings | null;
 }
 
 /**
@@ -84,23 +111,16 @@ export class RenderGizmo3D extends System {
     q.current.with(Selected3D, Transform3D).read,
   );
 
-  private pipeline: RenderPipeline | null = null;
-  private program: Program | null = null;
-  private inputLayout: InputLayout | null = null;
-
-  private sceneUniformBuffer: Buffer | null = null;
-  private modelUniformBuffer: Buffer | null = null;
-
-  private gizmoParts: GizmoPartGPU[] = [];
-  private initialized = false;
-
-  private sceneLegacyUniforms: Record<string, unknown> = {};
+  private deviceStates = new WeakMap<Device, Gizmo3DDeviceState>();
+  private trackedDevices = new Set<Device>();
 
   constructor() {
     super();
     registerGizmo3D(this);
     this.query((q) =>
-      q.current
+      q
+        .using(Canvas3DScope)
+        .read.and.current
         .with(
           GPUResource,
           Canvas,
@@ -115,7 +135,15 @@ export class RenderGizmo3D extends System {
   }
 
   /** True when there are selected 3D entities to show gizmos for. */
-  hasGizmoContent(): boolean {
+  hasGizmoContent(canvas?: Entity): boolean {
+    if (canvas) {
+      const canvasCount = this.canvases.current.length || 1;
+      return this.selected3D.current.some(
+        (entity) =>
+          entity.has(Selected3D) &&
+          filterEntitiesForCanvas([entity], canvas, canvasCount).length > 0,
+      );
+    }
     return this.selected3D.current.some((entity) => entity.has(Selected3D));
   }
 
@@ -129,21 +157,25 @@ export class RenderGizmo3D extends System {
     width: number,
     height: number,
   ): void {
-    if (!this.hasGizmoContent()) return;
+    if (!this.hasGizmoContent(canvas)) return;
     if (width <= 0 || height <= 0) return;
 
-    this.initPipeline(canvas);
-    if (!this.initialized) return;
+    const state = this.initPipeline(canvas);
+    if (!state) return;
 
-    const { device } = canvas.read(GPUResource);
-    const cameraEntity = this.cameras3D.current[0];
+    const canvasCount = this.canvases.current.length || 1;
+    const cameraEntity = findCamera3DForCanvas(
+      this.cameras3D.current,
+      canvas,
+      canvasCount,
+    );
     if (!cameraEntity) return;
 
     const camera = cameraEntity.read(Camera3D);
-    const cam2d = camera.linked ? this.cameras2D.current[0] : undefined;
-    const canvasEntity = this.canvases.current[0];
-    const logicalW = canvasEntity ? canvasEntity.read(Canvas).width : width;
-    const logicalH = canvasEntity ? canvasEntity.read(Canvas).height : height;
+    const cam2d = camera.linked
+      ? findCamera2DForCanvas(this.cameras2D.current, canvas)
+      : undefined;
+    const { width: logicalW, height: logicalH } = canvas.read(Canvas);
     const aspect =
       camera.linked && logicalW > 0 && logicalH > 0
         ? logicalW / logicalH
@@ -152,19 +184,15 @@ export class RenderGizmo3D extends System {
     const sceneUniforms = buildCamera3DSceneUniforms(camera, aspect, cam2d);
 
     renderPass.setViewport(0, 0, width, height);
-    renderPass.setPipeline(this.pipeline);
+    renderPass.setPipeline(state.pipeline);
 
-    const bindings = device.createBindings({
-      pipeline: this.pipeline,
-      uniformBufferBindings: [
-        { buffer: this.sceneUniformBuffer },
-        { buffer: this.modelUniformBuffer },
-      ],
-    });
-
-    // Draw gizmo for each selected entity (Pick3D may remove Selected3D earlier this frame).
     for (const entity of this.selected3D.current) {
       if (!entity.has(Selected3D)) continue;
+      if (
+        !filterEntitiesForCanvas([entity], canvas, canvasCount).length
+      ) {
+        continue;
+      }
 
       const transform = entity.read(Transform3D);
       const sel = entity.read(Selected3D);
@@ -184,7 +212,7 @@ export class RenderGizmo3D extends System {
         gizmoScale *
         Math.max(GIZMO_AXIS_ARROW_LENGTH, GIZMO_ROTATE_RING_RADIUS * 2);
 
-      const drawOrder = [...this.gizmoParts].sort(
+      const drawOrder = [...state.gizmoParts].sort(
         (a, b) => gizmoDrawLayer(a) - gizmoDrawLayer(b),
       );
 
@@ -195,6 +223,8 @@ export class RenderGizmo3D extends System {
           sel.activeAxis === part.axis && sel.activePartKind === part.partKind;
 
         this.uploadSceneUniforms(
+          state,
+          part.sceneUniformBuffer,
           sceneUniforms,
           translation,
           extent,
@@ -208,20 +238,21 @@ export class RenderGizmo3D extends System {
           part.partKind,
         );
         const modelLegacy = this.uploadModelUniforms(
+          part.modelUniformBuffer,
           modelMat,
           translation,
           part.color,
           gizmoPartUsesLinkedZScreenBias(part.partKind, part.axis),
         );
 
-        this.program!.setUniformsLegacy({
-          ...this.sceneLegacyUniforms,
+        state.program.setUniformsLegacy({
+          ...state.sceneLegacyUniforms,
           ...modelLegacy,
         });
 
-        renderPass.setBindings(bindings);
+        renderPass.setBindings(part.bindings!);
         renderPass.setVertexInput(
-          this.inputLayout,
+          state.inputLayout,
           [
             { buffer: part.vertexBuffer },
             { buffer: part.normalBuffer },
@@ -232,17 +263,16 @@ export class RenderGizmo3D extends System {
         renderPass.drawIndexed(part.indexCount);
       }
     }
-
-    bindings.destroy();
   }
 
   private uploadSceneUniforms(
+    state: Gizmo3DDeviceState,
+    sceneUniformBuffer: Buffer,
     uniforms: ReturnType<typeof buildCamera3DSceneUniforms>,
     anchor: [number, number, number],
     gizmoWorldExtent: number,
     highlighted: boolean,
   ): void {
-    if (!this.sceneUniformBuffer) return;
 
     let sceneParams: [number, number, number, number] = [...uniforms.sceneParams];
     if (uniforms.mode === 'linkedPerspective') {
@@ -259,9 +289,9 @@ export class RenderGizmo3D extends System {
     sceneParams[3] = highlighted ? 1 : 0;
 
     const buffer = packSceneUniformBuffer({ ...uniforms, sceneParams });
-    this.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
+    sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
-    this.sceneLegacyUniforms = {
+    state.sceneLegacyUniforms = {
       u_ProjectionMatrix3D: Mat4.toGLMat4(uniforms.projMatrix),
       u_ViewMatrix3D: Mat4.toGLMat4(uniforms.viewMatrix),
       u_CanvasViewProjection3D: Mat4.toGLMat4(uniforms.canvasViewProjection),
@@ -270,6 +300,7 @@ export class RenderGizmo3D extends System {
   }
 
   private uploadModelUniforms(
+    modelUniformBuffer: Buffer,
     modelMat: glMat4,
     translation: [number, number, number],
     color: [number, number, number, number],
@@ -279,19 +310,14 @@ export class RenderGizmo3D extends System {
     glMat4.invert(normalMat, modelMat);
     glMat4.transpose(normalMat, normalMat);
 
-    if (this.modelUniformBuffer) {
-      const buffer = new Float32Array(52);
-      buffer.set(modelMat as unknown as Float32Array, 0);
-      buffer.set(normalMat as unknown as Float32Array, 16);
-      buffer.set(color, 32);
-      buffer.set([1, applyLinkedZBias ? 1 : 0, 0, 0], 36);
-      buffer.set([-0.5, -0.7, -0.5, 0], 40);
-      buffer.set(
-        [translation[0], translation[1], translation[2], 0],
-        44,
-      );
-      this.modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-    }
+    const buffer = new Float32Array(GIZMO_UNIFORM_FLOATS);
+    buffer.set(modelMat as unknown as Float32Array, 0);
+    buffer.set(normalMat as unknown as Float32Array, 16);
+    buffer.set(color, 32);
+    buffer.set([1, applyLinkedZBias ? 1 : 0, 0, 0], 36);
+    buffer.set([-0.5, -0.7, -0.5, 0], 40);
+    buffer.set([translation[0], translation[1], translation[2], 0], 44);
+    modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
     return {
       u_ModelMatrix3D: modelMat,
@@ -303,18 +329,28 @@ export class RenderGizmo3D extends System {
     };
   }
 
-  private initPipeline(canvas: Entity): void {
-    if (this.initialized) return;
-    if (!canvas.has(GPUResource)) return;
+  private initPipeline(canvas: Entity): Gizmo3DDeviceState | null {
+    if (!canvas.has(GPUResource)) return null;
 
     const { device, renderCache } = canvas.read(GPUResource);
+    return this.ensureDeviceState(device, renderCache);
+  }
 
-    this.program = renderCache.createProgram({
+  private ensureDeviceState(
+    device: Device,
+    renderCache: RenderCache,
+  ): Gizmo3DDeviceState {
+    const existing = this.deviceStates.get(device);
+    if (existing) {
+      return existing;
+    }
+
+    const program = renderCache.createProgram({
       vertex: { glsl: gizmoDisplayVert, entryPoint: 'main' },
       fragment: { glsl: gizmoDisplayFrag, entryPoint: 'main' },
     });
 
-    this.inputLayout = renderCache.createInputLayout({
+    const inputLayout = renderCache.createInputLayout({
       vertexBufferDescriptors: [
         {
           arrayStride: 3 * 4,
@@ -339,12 +375,12 @@ export class RenderGizmo3D extends System {
         },
       ],
       indexBufferFormat: Format.U32_R,
-      program: this.program,
+      program,
     });
 
-    this.pipeline = renderCache.createRenderPipeline({
-      inputLayout: this.inputLayout,
-      program: this.program,
+    const pipeline = renderCache.createRenderPipeline({
+      inputLayout,
+      program,
       colorAttachmentFormats: [Format.U8_RGBA_RT],
       depthStencilAttachmentFormat: Format.D24_S8,
       topology: PrimitiveTopology.TRIANGLES,
@@ -372,25 +408,63 @@ export class RenderGizmo3D extends System {
       }),
     });
 
-    // Match mesh3d SceneUniforms3D / ModelUniforms3D (52 floats each).
-    this.sceneUniformBuffer = device.createBuffer({
-      viewOrSize: 52 * 4,
-      usage: BufferUsage.UNIFORM,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
-
-    this.modelUniformBuffer = device.createBuffer({
-      viewOrSize: 52 * 4,
-      usage: BufferUsage.UNIFORM,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
-
-    this.gizmoParts = this.uploadGizmoMeshes(
+    const gizmoParts = this.uploadGizmoMeshes(
       device,
       createCombinedTransformGizmo(),
     );
 
-    this.initialized = true;
+    for (const part of gizmoParts) {
+      part.bindings = device.createBindings({
+        pipeline,
+        uniformBufferBindings: [
+          { buffer: part.sceneUniformBuffer },
+          { buffer: part.modelUniformBuffer },
+        ],
+      });
+    }
+
+    const state: Gizmo3DDeviceState = {
+      program,
+      pipeline,
+      inputLayout,
+      gizmoParts,
+      sceneLegacyUniforms: {},
+    };
+    this.deviceStates.set(device, state);
+    this.trackedDevices.add(device);
+    return state;
+  }
+
+  private getActiveDevices(): Set<Device> {
+    const devices = new Set<Device>();
+    for (const canvas of this.canvases.current) {
+      if (canvas.has(GPUResource)) {
+        devices.add(canvas.read(GPUResource).device);
+      }
+    }
+    return devices;
+  }
+
+  private dropDeviceState(device: Device): void {
+    const state = this.deviceStates.get(device);
+    if (!state) {
+      return;
+    }
+    for (const part of state.gizmoParts) {
+      try {
+        part.bindings?.destroy();
+        part.vertexBuffer.destroy();
+        part.normalBuffer.destroy();
+        part.colorBuffer.destroy();
+        part.indexBuffer.destroy();
+        part.sceneUniformBuffer.destroy();
+        part.modelUniformBuffer.destroy();
+      } catch {
+        /* device already destroyed */
+      }
+    }
+    this.deviceStates.delete(device);
+    this.trackedDevices.delete(device);
   }
 
   private uploadGizmoMeshes(
@@ -429,6 +503,16 @@ export class RenderGizmo3D extends System {
       });
       const isPlane =
         part.axis === 'xy' || part.axis === 'xz' || part.axis === 'yz';
+      const sceneUniformBuffer = device.createBuffer({
+        viewOrSize: GIZMO_UNIFORM_FLOATS * 4,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+      const modelUniformBuffer = device.createBuffer({
+        viewOrSize: GIZMO_UNIFORM_FLOATS * 4,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
       return {
         vertexBuffer,
         normalBuffer,
@@ -439,13 +523,27 @@ export class RenderGizmo3D extends System {
         axis: part.axis,
         partKind: part.kind,
         isPlane,
+        sceneUniformBuffer,
+        modelUniformBuffer,
+        bindings: null,
       };
     });
   }
 
+  finalize(): void {
+    unregisterGizmo3D(this);
+    for (const device of [...this.trackedDevices]) {
+      this.dropDeviceState(device);
+    }
+  }
+
   execute(): void {
-    // Rendering is driven by MeshPipeline3D calling drawGizmos.
-    // No per-frame logic needed here.
+    const activeDevices = this.getActiveDevices();
+    for (const device of [...this.trackedDevices]) {
+      if (!activeDevices.has(device)) {
+        this.dropDeviceState(device);
+      }
+    }
   }
 }
 

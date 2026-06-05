@@ -168,6 +168,10 @@ export const en = defineConfig({
                 text: 'Lesson 038 - From design to code',
                 link: 'lesson-038',
               },
+              {
+                text: 'Lesson 039 - 3D Mesh Rendering',
+                link: 'lesson-039',
+              },
             ],
           },
         ],
@@ -512,6 +516,23 @@ export const en = defineConfig({
                   },
                 ],
               },
+              {
+                text: '3D Mesh Rendering',
+                items: [
+                  {
+                    text: 'Cube (Orthographic)',
+                    link: 'cube',
+                  },
+                  {
+                    text: 'Cube (Perspective)',
+                    link: 'cube-perspective',
+                  },
+                  {
+                    text: 'Lighting',
+                    link: 'lighting',
+                  },
+                ],
+              }
             ],
           },
         ],
