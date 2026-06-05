@@ -20,6 +20,7 @@ export enum Event {
   NODE_DELETED = 'ic-node-deleted',
   VISIBILITY_CHANGED = 'ic-visibility-changed',
   SELECTED_NODES_CHANGED = 'ic-selected-nodes-changed',
+  MESH3D_LAYERS_CHANGED = 'ic-mesh3d-layers-changed',
   TRANSFORMABLE_STATUS_CHANGED = 'ic-transformable-status-changed',
   COMMENT_ADDED = 'ic-comment-added',
   RECT_DRAWN = 'ic-rect-drawn',
@@ -43,6 +44,7 @@ declare global {
       selected: SerializedNode[];
       preserveSelection: boolean;
     }>;
+    [Event.MESH3D_LAYERS_CHANGED]: CustomEvent<void>;
     [Event.TRANSFORMABLE_STATUS_CHANGED]: CustomEvent<{
       status: TransformableStatus;
     }>;

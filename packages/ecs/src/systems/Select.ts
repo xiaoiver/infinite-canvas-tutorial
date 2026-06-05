@@ -356,6 +356,7 @@ export class Select extends System {
             Mesh3DNodeTarget,
             Light3D,
             Extrude3D,
+            Selected3D,
           ).write,
     );
     this.query((q) => q.using(ComputedCamera, FractionalIndex, RBush).read);

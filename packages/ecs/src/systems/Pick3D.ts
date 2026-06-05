@@ -1,5 +1,6 @@
 import { System, type Entity } from '@lastolivegames/becsy';
 import { mat4 as glMat4, vec2, vec3 as glVec3 } from 'gl-matrix';
+import { pendingAPICallings } from '../API';
 import {
   Camera,
   Camera3D,
@@ -11,10 +12,14 @@ import {
   Material3D,
   Pen,
   Transform3D,
+  Extrude3DTarget,
+  Mesh3DNodeTarget,
 } from '../components';
-import { Selected3D, type GizmoAxis } from '../components/geometry3d/Selected3D';
+import {
+  Selected3D,
+  type GizmoAxis,
+} from '../components/geometry3d/Selected3D';
 import { Mat3 } from '../components/math/Mat3';
-import { Mat4 } from '../components/math/Mat4';
 import {
   screenToRay,
   computeInvViewProjection,
@@ -58,38 +63,40 @@ import {
  */
 export class Pick3D extends System {
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
-  private cameras2D = this.query((q) =>
-    q.current.with(Camera, ComputedCamera).read,
+  private cameras2D = this.query(
+    (q) => q.current.with(Camera, ComputedCamera).read,
   );
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
-  private meshes3D = this.query((q) =>
-    q.current.with(Mesh3D, Material3D, Transform3D).read,
+  private meshes3D = this.query(
+    (q) => q.current.with(Mesh3D, Material3D, Transform3D).read,
   );
 
-  private selected3D = this.query((q) =>
-    q.current.with(Selected3D, Transform3D).write,
+  private selected3D = this.query(
+    (q) => q.current.with(Selected3D, Transform3D).write,
   );
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(
-          Input,
-          Camera3D,
-          Camera,
-          Canvas,
-          Canvas3DScope,
-          ComputedCamera,
-          Mesh3D,
-          Material3D,
-          Transform3D,
-          Selected3D,
-        )
-        .read.and.using(Selected3D, Transform3D)
-        .write,
+    this.query(
+      (q) =>
+        q
+          .using(
+            Input,
+            Camera3D,
+            Camera,
+            Canvas,
+            Canvas3DScope,
+            ComputedCamera,
+            Mesh3D,
+            Material3D,
+            Transform3D,
+            Selected3D,
+            Extrude3DTarget,
+            Mesh3DNodeTarget,
+          )
+          .read.and.using(Selected3D, Transform3D).write,
     );
   }
 
@@ -102,6 +109,7 @@ export class Pick3D extends System {
       const camera = resolved.camera;
 
       const { api } = canvasEntity.read(Canvas);
+      this.syncMesh3DLayers(api, canvasEntity);
       if (api.getAppState().penbarSelected !== Pen.SELECT) continue;
 
       const input = canvasEntity.read(Input);
@@ -155,11 +163,49 @@ export class Pick3D extends System {
     );
   }
 
+  private resolveMesh3DSourceNode(
+    api: Canvas['api'],
+    entity: Entity,
+  ) {
+    if (entity.has(Extrude3DTarget)) {
+      return api.getNodeByEntity(entity.read(Extrude3DTarget).source);
+    }
+    if (entity.has(Mesh3DNodeTarget)) {
+      return api.getNodeByEntity(entity.read(Mesh3DNodeTarget).source);
+    }
+    return undefined;
+  }
+
+  private syncMesh3DLayers(api: Canvas['api'], canvasEntity: Entity): void {
+    const scopedMeshes = this.canvasMeshes(canvasEntity);
+    const layers = scopedMeshes.map((entity) => {
+      const sourceNode = this.resolveMesh3DSourceNode(api, entity);
+      const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;
+      const mesh = entity.read(Mesh3D);
+
+      return {
+        id,
+        name: sourceNode?.name || `3D Mesh ${entity.__id}`,
+        sourceNodeId: sourceNode?.id,
+        vertexCount: mesh.vertexCount,
+        entity,
+      };
+    });
+
+    api.setMesh3DLayers(layers);
+    api.setSelectedMesh3DLayerIds(
+      this.canvasSelected(canvasEntity)
+        .map((entity) => api.getMesh3DLayerIdByEntity(entity))
+        .filter((id): id is string => !!id),
+    );
+  }
+
   private handlePointerDown(
     input: Input,
     camera: Camera3D,
     canvasEntity: Entity,
   ): void {
+    const { api } = canvasEntity.read(Canvas);
     const [vx, vy] = input.pointerViewport;
     const { width, height } = this.getViewportSize(canvasEntity);
     if (width <= 0 || height <= 0) return;
@@ -211,11 +257,7 @@ export class Pick3D extends System {
       sel.dragAngleStart = null;
 
       let canDrag = false;
-      if (
-        probe.partKind === 'rotate' &&
-        isRotateGizmoAxis(probe.axis) &&
-        ray
-      ) {
+      if (probe.partKind === 'rotate' && isRotateGizmoAxis(probe.axis) && ray) {
         const hit = intersectRayWithPlane(
           ray,
           translation,
@@ -268,6 +310,11 @@ export class Pick3D extends System {
           dragging: false,
         });
       }
+      pendingAPICallings.push(() =>
+        api.syncMesh3DLayerAppState(closestEntity),
+      );
+    } else {
+      pendingAPICallings.push(() => api.clearMesh3DLayerAppState());
     }
 
     set3DGizmoDragging(false);
@@ -429,7 +476,9 @@ export class Pick3D extends System {
     set3DGizmoDragging(anyDragging);
   }
 
-  private constraintPlaneNormal(axis: GizmoAxis): [number, number, number] | null {
+  private constraintPlaneNormal(
+    axis: GizmoAxis,
+  ): [number, number, number] | null {
     if (axis === 'x' || axis === 'z' || axis === 'xz') {
       return [0, 1, 0];
     }
@@ -559,7 +608,7 @@ export class Pick3D extends System {
       );
       const ndc = vec2.fromValues(
         (vx / viewportWidth) * 2 - 1,
-        1 - (vy / viewportHeight) * 2 - 1,
+        1 - (vy / viewportHeight) * 2,
       );
       const canvasPt = vec2.transformMat3(vec2.create(), ndc, inv);
       const origin: [number, number, number] = [
