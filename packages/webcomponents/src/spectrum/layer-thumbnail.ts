@@ -19,6 +19,7 @@ import {
   LineSerializedNode,
   IconFontSerializedNode,
   RectSerializedNode,
+  Mesh3DNodeSerializedNode,
   FillAttributes,
   firstEnabledFillPresentation,
   migrateLegacyFillWireInPlace,
@@ -29,6 +30,7 @@ import { RoughSVG } from 'roughjs/bin/svg';
 import { apiContext } from '../context';
 import 'iconify-icon';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-collection-link.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-circle-filled.js';
 
 const THUMBNAIL_SIZE = 52;
 const THUMBNAIL_PADDING_RATIO = 0.1;
@@ -50,7 +52,8 @@ export class LayerThumbnail extends LitElement {
     sp-icon-code,
     sp-icon-crop,
     sp-icon-group,
-    sp-icon-collection-link {
+    sp-icon-collection-link,
+    sp-icon-circle-filled {
       display: block;
     }
 
@@ -101,6 +104,17 @@ export class LayerThumbnail extends LitElement {
       .toLowerCase();
 
     return `${family}:${normalizedName}`;
+  }
+
+  #mesh3DGeometryType(node: Mesh3DNodeSerializedNode): string {
+    const { geometry } = node;
+    if (geometry == null) {
+      return 'cube';
+    }
+    if (typeof geometry === 'string') {
+      return geometry;
+    }
+    return geometry.type;
   }
 
   render() {
@@ -289,6 +303,15 @@ export class LayerThumbnail extends LitElement {
       thumbnail = html`<sp-icon-code style="color: black;"></sp-icon-code>`;
     } else if (this.node.type === 'brush') {
       thumbnail = html`<img src="${this.node.brushStamp}" />`;
+    } else if (this.node.type === 'mesh3d') {
+      const geometryType = this.#mesh3DGeometryType(
+        this.node as Mesh3DNodeSerializedNode,
+      );
+      if (geometryType === 'sphere') {
+        thumbnail = html`<sp-icon-circle-filled style="color: black;"></sp-icon-circle-filled>`;
+      } else {
+        thumbnail = html`<sp-icon-group style="color: black;"></sp-icon-group>`;
+      }
     } else if (this.node.clipMode) {
       thumbnail = html`<sp-icon-crop style="color: black;"></sp-icon-crop>`;
     } else {

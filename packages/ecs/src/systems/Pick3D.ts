@@ -1,5 +1,6 @@
 import { System, type Entity } from '@lastolivegames/becsy';
 import { mat4 as glMat4, vec2, vec3 as glVec3 } from 'gl-matrix';
+import { pendingAPICallings } from '../API';
 import {
   Camera,
   Camera3D,
@@ -19,7 +20,6 @@ import {
   type GizmoAxis,
 } from '../components/geometry3d/Selected3D';
 import { Mat3 } from '../components/math/Mat3';
-import { Mat4 } from '../components/math/Mat4';
 import {
   screenToRay,
   computeInvViewProjection,
@@ -93,6 +93,8 @@ export class Pick3D extends System {
             Material3D,
             Transform3D,
             Selected3D,
+            Extrude3DTarget,
+            Mesh3DNodeTarget,
           )
           .read.and.using(Selected3D, Transform3D).write,
     );
@@ -226,7 +228,6 @@ export class Pick3D extends System {
     );
 
     if (probe.kind === 'gizmo') {
-      api.selectMesh3DLayerByEntity(probe.entity);
       const transform = probe.entity.read(Transform3D);
       const translation = transform.translation;
       const rotation = transform.rotation;
@@ -294,10 +295,26 @@ export class Pick3D extends System {
 
     const closestEntity = probe.kind === 'mesh' ? probe.entity : null;
 
+    for (const entity of scopedSelected) {
+      if (entity !== closestEntity && entity.has(Selected3D)) {
+        entity.remove(Selected3D);
+      }
+    }
+
     if (closestEntity) {
-      api.selectMesh3DLayerByEntity(closestEntity);
+      if (!closestEntity.has(Selected3D)) {
+        closestEntity.add(Selected3D, {
+          mode: 'transform',
+          activeAxis: 'none',
+          activePartKind: null,
+          dragging: false,
+        });
+      }
+      pendingAPICallings.push(() =>
+        api.syncMesh3DLayerAppState(closestEntity),
+      );
     } else {
-      api.clearSelectedMesh3DLayers();
+      pendingAPICallings.push(() => api.clearMesh3DLayerAppState());
     }
 
     set3DGizmoDragging(false);
@@ -591,7 +608,7 @@ export class Pick3D extends System {
       );
       const ndc = vec2.fromValues(
         (vx / viewportWidth) * 2 - 1,
-        1 - (vy / viewportHeight) * 2 - 1,
+        1 - (vy / viewportHeight) * 2,
       );
       const canvasPt = vec2.transformMat3(vec2.create(), ndc, inv);
       const origin: [number, number, number] = [

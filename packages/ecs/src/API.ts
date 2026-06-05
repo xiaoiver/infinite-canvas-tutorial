@@ -590,6 +590,41 @@ export class API {
     return this.setSelectedMesh3DLayerIds([]);
   }
 
+  /** Layer panel / app state only — no ECS {@link Selected} or {@link Selected3D} writes. */
+  syncMesh3DLayerAppState(entity: Entity) {
+    const id = this.getMesh3DLayerIdByEntity(entity);
+    const layer = this.#mesh3DLayers.find((item) => item.id === id);
+    if (!id || !layer) {
+      return false;
+    }
+
+    this.setSelectedMesh3DLayerIds([id]);
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: layer.sourceNodeId ? [layer.sourceNodeId] : [],
+      layersHighlighted: [],
+    });
+    return true;
+  }
+
+  /** Clear 3D layer panel selection in app state only (companion {@link Selected3D} is managed by Pick3D). */
+  clearMesh3DLayerAppState() {
+    this.setSelectedMesh3DLayerIds([]);
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: prevAppState.layersSelected.filter((id) => {
+        const node = this.getNodeById(id);
+        return node?.type !== 'mesh3d';
+      }),
+      layersHighlighted: prevAppState.layersHighlighted.filter((id) => {
+        const node = this.getNodeById(id);
+        return node?.type !== 'mesh3d';
+      }),
+    });
+  }
+
   selectMesh3DLayer(id: string) {
     const entity = this.#mesh3DLayerEntities.get(id);
     const layer = this.#mesh3DLayers.find((item) => item.id === id);
