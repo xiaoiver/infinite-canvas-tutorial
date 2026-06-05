@@ -7,6 +7,7 @@ description: 'Layer true 3D mesh rendering on the existing 2D infinite canvas: u
 import Cube from '../components/Cube.vue'
 import CubePerspective from '../components/CubePerspective.vue'
 import Lighting from '../components/Lighting.vue'
+import GltfDuck from '../components/GltfDuck.vue'
 </script>
 
 # Lesson 39 - 3D Mesh Rendering
@@ -222,9 +223,15 @@ Consistent with [Unified 3D space](#unified-space), the gizmo uses **canvas coor
 
 ## Lighting {#lighting}
 
-Demonstrates `Light3D` with Blinn-Phong materials: ambient fill, a cool directional light, a warm spotlight orbiting the scene center, and three cubes with different specular settings to compare highlights and shading.
+Demonstrates `Light3D` with Blinn-Phong materials: ambient fill, a cool directional light, a warm spotlight orbiting the scene center, and three meshes (cube, sphere, cylinder) with different specular settings to compare highlights and shading.
 
 <Lighting />
+
+## glTF model {#gltf}
+
+Load an external glTF/GLB via declarative `mesh3d` geometry (`geometry: { type: 'gltf', url: '…' }`). The Khronos **Duck** sample uses a `.gltf` + `.bin` pair under `/data/`; meshes are centered and normalized to unit bounds, then scaled with `scale3d`.
+
+<GltfDuck />
 
 ## Further reading {#extended-reading}
 

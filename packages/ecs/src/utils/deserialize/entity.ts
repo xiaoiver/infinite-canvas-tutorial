@@ -85,6 +85,7 @@ import type {
 } from '../../types/serialized-node';
 import { resolveExtrude3DDepth } from '../extrude3d';
 import {
+  normalizeGeometry,
   parseLight3DColor,
   parseMesh3DBaseColor,
 } from '../mesh3d-node';
@@ -1229,7 +1230,7 @@ export function serializedNodesToEntities(
       );
       entityCommands.insert(
         new Mesh3DNode({
-          geometry: attrs.geometry ?? 'cube',
+          geometry: normalizeGeometry(attrs.geometry),
           z: attrs.z ?? 0,
           rotation3d: attrs.rotation3d ?? [0, 0, 0],
           scale3d: attrs.scale3d ?? 100,

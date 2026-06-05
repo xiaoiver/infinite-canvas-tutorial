@@ -48,6 +48,8 @@
     "@antv/util": "^3.3.10",
     "@lastolivegames/becsy": "^0.16.0",
     "@loaders.gl/core": "^4.2.2",
+    "@loaders.gl/draco": "^4.2.2",
+    "@loaders.gl/gltf": "^4.2.2",
     "@loaders.gl/images": "^4.2.2",
     "@pixi/math": "^7.4.2",
     "@use-gesture/vanilla": "^10.3.1",

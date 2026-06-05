@@ -329,15 +329,25 @@ export class Pick3D extends System {
   }
 
   private handlePointerUp(canvasEntity: Entity): void {
+    let didDrag = false;
     for (const entity of this.canvasSelected(canvasEntity)) {
       if (!entity.has(Selected3D)) continue;
 
-      const sel = entity.write(Selected3D);
-      sel.dragging = false;
-      sel.activeAxis = 'none';
-      sel.activePartKind = null;
-      sel.dragHitStart = null;
-      sel.dragAngleStart = null;
+      const sel = entity.read(Selected3D);
+      if (sel.dragging) {
+        didDrag = true;
+      }
+      const node = entity.write(Selected3D);
+      node.dragging = false;
+      node.activeAxis = 'none';
+      node.activePartKind = null;
+      node.dragHitStart = null;
+      node.dragAngleStart = null;
+    }
+    if (didDrag && canvasEntity.has(Canvas)) {
+      const { api } = canvasEntity.read(Canvas);
+      api.setNodes(api.getNodes());
+      api.record();
     }
     set3DGizmoDragging(false);
   }

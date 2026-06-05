@@ -15,8 +15,10 @@ import {
   resolveMesh3DNodeCanvasCenter,
   resolveMesh3DNodeGeometry,
   resolveMesh3DNodeScale,
+  seedMesh3DNodeCompanionGeometryKey,
   syncMesh3DNodeCompanionFromSource,
 } from './mesh3d-node';
+import { isGltfGeometrySpec, normalizeGeometry } from './geometry3d';
 import { isEntityAlive } from '../systems/Transform';
 
 export type Mesh3DCameraConfig = {
@@ -43,7 +45,11 @@ export function queueMesh3DCompanion(
   const specular = node.specular;
   const shininess = node.shininess;
 
-  const { positions, normals, indices } = resolveMesh3DNodeGeometry(geometry);
+  const spec = normalizeGeometry(geometry);
+  const meshData = resolveMesh3DNodeGeometry(geometry);
+  if (!isGltfGeometrySpec(spec)) {
+    seedMesh3DNodeCompanionGeometryKey(source);
+  }
 
   const transformProps = center
     ? {
@@ -59,7 +65,7 @@ export function queueMesh3DCompanion(
 
   return commands
     .spawn(
-      new Mesh3D({ positions, normals, indices }),
+      new Mesh3D(meshData),
       new Material3D({
         baseColor,
         ambient,

@@ -14,6 +14,7 @@ import {
 import { resolveCanvasFromSceneGraph } from '../utils/canvas3d-scope';
 import {
   syncMesh3DNodeCompanionFromSource,
+  syncMesh3DNodeSourceFromCompanion,
   ensureCompanionGizmoWhenSourceSelected,
 } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
@@ -48,7 +49,14 @@ export class SyncMesh3DNodes extends System {
         continue;
       }
 
-      syncMesh3DNodeCompanionFromSource(entity, meshEntity);
+      const dragging =
+        meshEntity.has(Selected3D) && meshEntity.read(Selected3D).dragging;
+
+      if (dragging) {
+        syncMesh3DNodeSourceFromCompanion(entity, meshEntity);
+      } else {
+        syncMesh3DNodeCompanionFromSource(entity, meshEntity);
+      }
       const canvas = resolveCanvasFromSceneGraph(entity);
       if (canvas) {
         ensureCompanionGizmoWhenSourceSelected(entity, meshEntity, canvas);

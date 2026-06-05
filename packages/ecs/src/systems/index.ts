@@ -7,6 +7,7 @@ export * from './MeshPipeline3D';
 export * from './CameraSync';
 export * from './EnsureExtrudeMeshes';
 export * from './EnsureMesh3DNodes';
+export * from './LoadMesh3DGeometry';
 export * from './SyncExtrude3D';
 export * from './SyncMesh3DNodes';
 export * from './PostEffectTime';

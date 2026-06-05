@@ -449,6 +449,10 @@ export const zh = defineConfig({
                     text: '场景光照',
                     link: 'lighting',
                   },
+                  {
+                    text: 'GLTF Duck',
+                    link: 'gltf-duck',
+                  },
                 ],
               }
             ],
