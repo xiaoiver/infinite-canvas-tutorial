@@ -333,6 +333,8 @@ const text = stringifyIcDocument(doc);
 api.importIcDocument(await (await fetch('/scene.ic')).text());
 ```
 
+在 UI 中，顶部菜单提供了 `Export as... > .ic` 与 `Import from... > .ic`，后者会打开文件选择框读取 `.ic` 文件并调用 `api.importIcDocument`。
+
 ### 命令行 {#cli}
 
 ## 扩展阅读 {#extended-reading}
