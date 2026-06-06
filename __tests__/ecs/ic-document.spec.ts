@@ -40,6 +40,43 @@ describe('IC document', () => {
     expect(parsed.appState.language).toBe('zh');
   });
 
+  it('builds the four interchange sections from state', () => {
+    const base = getDefaultAppState();
+    const doc = buildIcDocumentFromState(
+      base,
+      [
+        {
+          id: 'rect-1',
+          type: 'rect',
+          x: 1,
+          y: 2,
+          width: 3,
+          height: 4,
+        } as RectSerializedNode,
+      ],
+      'https://example.com',
+    );
+
+    // The interchange format must expose variables / themes / elements / appState.
+    expect(doc).toHaveProperty('variables');
+    expect(doc).toHaveProperty('themes');
+    expect(doc).toHaveProperty('elements');
+    expect(doc).toHaveProperty('appState');
+
+    // `theme` is split out into `themes`; it must not leak back into `appState`.
+    expect(doc.themes.mode).toBe(base.theme.mode);
+    expect((doc.appState as Record<string, unknown>).theme).toBeUndefined();
+    expect((doc.appState as Record<string, unknown>).variables).toBeUndefined();
+
+    // Elements are cloned, not shared by reference.
+    expect(doc.elements[0].id).toBe('rect-1');
+
+    // Themes and elements survive a stringify/parse roundtrip.
+    const parsed = parseIcDocumentJson(stringifyIcDocument(doc));
+    expect(parsed.themes.mode).toBe(doc.themes.mode);
+    expect(parsed.elements[0].id).toBe('rect-1');
+  });
+
   it('parseIcDocumentJson rejects invalid payloads', () => {
     expect(() => parseIcDocumentJson(null)).toThrow(/JSON object/);
     expect(() => parseIcDocumentJson('[]')).toThrow(/JSON object/);
@@ -56,5 +93,29 @@ describe('IC document', () => {
         appState: {},
       }),
     ).toThrow(/Unsupported IC schema version/);
+  });
+
+  it('parseIcDocumentJson validates each required section', () => {
+    const valid = {
+      type: IC_DOCUMENT_TYPE,
+      version: IC_SCHEMA_VERSION,
+      variables: {},
+      themes: {},
+      elements: [],
+      appState: {},
+    };
+    expect(() =>
+      parseIcDocumentJson({ ...valid, variables: 1 }),
+    ).toThrow(/"variables" must be an object/);
+    expect(() =>
+      parseIcDocumentJson({ ...valid, themes: [] }),
+    ).toThrow(/"themes" must be an object/);
+    expect(() =>
+      parseIcDocumentJson({ ...valid, elements: {} }),
+    ).toThrow(/"elements" must be an array/);
+    expect(() =>
+      parseIcDocumentJson({ ...valid, appState: 'no' }),
+    ).toThrow(/"appState" must be an object/);
+    expect(() => parseIcDocumentJson(valid)).not.toThrow();
   });
 });

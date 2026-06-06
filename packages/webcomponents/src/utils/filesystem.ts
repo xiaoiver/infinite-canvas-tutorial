@@ -2,7 +2,11 @@
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts#L80
  */
 
-import { IMAGE_MIME_TYPES, MIME_TYPES } from '@infinite-canvas-tutorial/ecs';
+import {
+  IC_FILE_SUFFIX,
+  IMAGE_MIME_TYPES,
+  MIME_TYPES,
+} from '@infinite-canvas-tutorial/ecs';
 import {
   fileOpen as _fileOpen,
   fileSave as _fileSave,
@@ -163,4 +167,33 @@ export async function getDataURL(file: Blob | File): Promise<string> {
     reader.onerror = (error) => reject(error);
     reader.readAsDataURL(file);
   });
+}
+
+export async function getFileText(file: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result as string);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * Open an Infinite Canvas interchange document (`.ic`) and return its text
+ * contents along with the original file name.
+ */
+export async function openIcDocument(): Promise<{
+  name: string;
+  contents: string;
+}> {
+  const file = await _fileOpen({
+    description: 'Infinite Canvas document',
+    extensions: [IC_FILE_SUFFIX],
+    mimeTypes: ['application/json'],
+    multiple: false,
+  });
+  const contents = await getFileText(file);
+  return { name: file.name, contents };
 }

@@ -15,6 +15,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { openIcDocument } from '../utils';
 import { executeCopy, executeCut, executePaste } from './context-menu';
 
 @customElement('ic-spectrum-top-navbar')
@@ -96,6 +97,20 @@ export class TopNavbar extends LitElement {
       downloadIcDocument(doc, 'my-scene.ic');
     } else {
       this.api.export({ format });
+    }
+  }
+
+  private async handleImport(event: CustomEvent) {
+    const format = (event.target as any).value as 'ic';
+    if (format !== 'ic') {
+      return;
+    }
+    try {
+      const { contents } = await openIcDocument();
+      this.api.importIcDocument(contents);
+    } catch (e) {
+      // The user canceled the file picker or selected an invalid document.
+      console.warn(e);
     }
   }
 
@@ -317,6 +332,12 @@ export class TopNavbar extends LitElement {
                   <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.WEBM}>WebM</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.GIF}>GIF</sp-menu-item>
+                  <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
+                </sp-menu>
+              </sp-menu-item>
+              <sp-menu-item>
+                ${msg(str`Import from...`)}
+                <sp-menu slot="submenu" @change=${this.handleImport}>
                   <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
