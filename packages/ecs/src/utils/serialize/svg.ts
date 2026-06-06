@@ -39,6 +39,7 @@ import {
   parseGradient,
 } from '../gradient';
 import { isPattern, Pattern } from '../pattern';
+import { toCSSMixBlendMode } from '../blend-mode';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
@@ -477,6 +478,7 @@ export async function serializeNodesToSVGElements(
       iconFontName,
       iconFontFamily,
       lockAspectRatio,
+      blendMode,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
@@ -750,6 +752,13 @@ export async function serializeNodesToSVGElements(
     const wireFilter = (nodeForExport as { filter?: string }).filter;
     if (typeof wireFilter === 'string' && wireFilter.trim() !== '') {
       appendSvgStyleProperty($g, 'filter', wireFilter.trim());
+    }
+
+    // Layer-level blend mode ("mix mode"): how the whole node composites with the
+    // backdrop. Exported as CSS `mix-blend-mode`; `normal` / unsupported modes are omitted.
+    const mixBlendMode = toCSSMixBlendMode(blendMode);
+    if (mixBlendMode) {
+      appendSvgStyleProperty($g, 'mix-blend-mode', mixBlendMode);
     }
 
     applySvgDataAttributesToElement($g, {

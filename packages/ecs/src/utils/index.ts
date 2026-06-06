@@ -11,6 +11,7 @@ export * from './uid';
 export * from './color';
 export * from './fillLayers';
 export * from './strokeLayers';
+export * from './blend-mode';
 export * from './style';
 export * from './rough';
 export * from './curve';

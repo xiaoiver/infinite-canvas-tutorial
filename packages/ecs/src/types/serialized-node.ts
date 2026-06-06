@@ -79,6 +79,19 @@ export interface BaseSerializeNode<Type extends string>
   locked?: boolean;
 
   /**
+   * Layer-level blend mode ("mix mode"): how this whole node composites with the
+   * backdrop drawn beneath it. Exported to SVG as the CSS `mix-blend-mode` property.
+   * Defaults to `normal`.
+   *
+   * Note: per-fill blend modes are described separately on each entry of `fills`
+   * (see {@link SerializedFillLayerItem}); this field blends the entire node.
+   *
+   * @see https://help.figma.com/hc/en-us/articles/360040667874-Apply-blend-modes-to-layers-fills-and-effects
+   * @see https://developer.mozilla.org/en-US/docs/Web/CSS/mix-blend-mode
+   */
+  blendMode?: FillLayerBlendMode;
+
+  /**
    * Extra `data-*` attributes written on the exported SVG wrapper (`<g>` or primitive element).
    * Keys without a `data-` prefix become `data-` + kebab-case (e.g. `myKey` → `data-my-key`).
    * Keys that already start with `data-` are used as-is.
