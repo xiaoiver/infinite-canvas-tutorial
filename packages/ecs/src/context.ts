@@ -29,6 +29,8 @@ export enum Task {
   SHOW_LAYERS_PANEL = 'show-layers-panel',
   SHOW_PROPERTIES_PANEL = 'show-properties-panel',
   SHOW_CHAT_PANEL = 'show-chat-panel',
+  SHOW_ANIMATION_PANEL = 'show-animation-panel',
+  SHOW_TIMELINE_PANEL = 'show-timeline-panel',
 }
 
 /**
@@ -210,6 +212,22 @@ export interface AppState {
    * Global illumination strength
    */
   giStrength: number;
+
+  // --- Animation / Timeline editor state ---
+  /**
+   * When `true`, the {@link AnimationSystem} stops free-running and instead samples
+   * every controller at {@link animationCurrentTime} (deterministic scrub mode used
+   * by the Animation/Timeline panels). When `false`, animations auto-play as before.
+   */
+  animationEditing: boolean;
+  /** Global timeline playhead position in milliseconds. */
+  animationCurrentTime: number;
+  /** Whether the timeline is advancing the playhead. */
+  animationPlaying: boolean;
+  /** Whether playback loops back to 0 when reaching the scene duration. */
+  animationLoop: boolean;
+  /** Height (px) of the bottom Timeline panel. */
+  timelinePanelHeight: number;
 }
 
 export const getDefaultAppState: () => AppState = () => {
@@ -461,7 +479,12 @@ export const getDefaultAppState: () => AppState = () => {
       iconFontName: 'search',
     },
     taskbarVisible: true,
-    taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
+    taskbarAll: [
+      Task.SHOW_LAYERS_PANEL,
+      Task.SHOW_PROPERTIES_PANEL,
+      Task.SHOW_ANIMATION_PANEL,
+      Task.SHOW_TIMELINE_PANEL,
+    ],
     taskbarSelected: [],
     taskbarChatMessages: [],
     layersSelected: [],
@@ -498,6 +521,11 @@ export const getDefaultAppState: () => AppState = () => {
     filter: '',
     giEnabled: false,
     giStrength: 0.1,
+    animationEditing: false,
+    animationCurrentTime: 0,
+    animationPlaying: false,
+    animationLoop: true,
+    timelinePanelHeight: 220,
   };
 };
 

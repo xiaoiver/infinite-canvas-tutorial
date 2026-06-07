@@ -18,6 +18,7 @@ import {
   Visibility,
 } from '../components';
 import type { FillLayerBlendMode } from './fill-layer-blend';
+import type { AnimationOptions, Keyframe } from '../animation';
 import { EdgeStyle } from '../utils/binding';
 import { DIRECTION_EAST, DIRECTION_NORTH, DIRECTION_SOUTH, DIRECTION_WEST } from '../utils/binding/constants';
 
@@ -32,6 +33,7 @@ export interface BaseSerializeNode<Type extends string>
   Partial<NameAttributes>,
   ZIndexAttributes,
   Partial<EditableAttributes>,
+  Partial<AnimationAttributes>,
   Partial<FlexboxLayoutAttributes> {
   /**
    * Unique identifier
@@ -102,6 +104,18 @@ export interface BaseSerializeNode<Type extends string>
 export interface EditableAttributes {
   editable?: boolean;
   isEditing?: boolean;
+}
+
+/**
+ * Declarative, JSON-serializable keyframe animation attached to a node. Mirrors the
+ * {@link AnimationController} inputs; runtime playback state is not serialized.
+ * @see packages/site/docs/guide/lesson-036.md
+ */
+export interface AnimationAttributes {
+  animation?: {
+    keyframes: Keyframe[];
+    options: AnimationOptions;
+  };
 }
 
 export interface ZIndexAttributes {

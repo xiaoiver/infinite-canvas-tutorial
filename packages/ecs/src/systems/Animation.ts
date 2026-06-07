@@ -1,4 +1,4 @@
-import { System } from '@lastolivegames/becsy';
+import { Entity, System } from '@lastolivegames/becsy';
 import {
   AnimationPlayer,
   FillLayers,
@@ -11,6 +11,11 @@ import {
 import { safeAddComponent } from '../history';
 import { Canvas, inferXYWidthHeight, isGradient, PathSerializedNode } from '..';
 import { isFillLayerEnabled } from '../utils/fillLayers';
+import type {
+  AnimationController,
+  AnimationFrameValues,
+  AnimationSnapshot,
+} from '../animation';
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -74,10 +79,43 @@ export class AnimationSystem extends System {
       ).write,
   );
 
+  private readonly canvases = this.query((q) => q.current.with(Canvas).read);
+
+  /** Wall-clock timestamp of the previous frame, used to advance the scene playhead. */
+  #lastNow: number | undefined;
+  /** Whether the previous frame was in editing (scrub) mode, to detect transitions. */
+  #wasEditing = false;
+
   execute(): void {
     // 与 AnimationController.play/tick 默认时间基准一致（performance.now），避免与 UI 里无参
     // controller.play() 混用 Date.now 导致 pause 后 resume 时 startTime 算错、像从头播放。
     const now = performance.now();
+
+    // The Animation/Timeline editor drives a single, deterministic scene playhead
+    // instead of letting every controller free-run. We read that state from the
+    // canvas-attached API; when no editor is active we keep the legacy behavior.
+    const api = this.getApi();
+    const appState = api?.getAppState?.();
+    const editing = !!appState?.animationEditing;
+
+    if (editing) {
+      this.executeEditing(now, api!, appState!);
+      this.#wasEditing = true;
+      return;
+    }
+
+    // Leaving editing mode: resume controllers that the editor had paused so that
+    // normal autoplay continues from the current position rather than restarting.
+    if (this.#wasEditing) {
+      this.animations.current.forEach((entity) => {
+        const controller = entity.write(AnimationPlayer).controller;
+        if (controller && controller.getPlayState() === 'paused') {
+          controller.play(now);
+        }
+      });
+      this.#wasEditing = false;
+    }
+    this.#lastNow = undefined;
 
     this.animations.current.forEach((entity) => {
       const player = entity.write(AnimationPlayer);
@@ -91,11 +129,102 @@ export class AnimationSystem extends System {
       }
 
       const snapshot = controller.tick(now);
-      const values = controller.getCurrentValues(snapshot);
-      if (!values) {
+      this.applyValues(entity, controller, snapshot);
+    });
+  }
+
+  /** @returns the API attached to the first canvas, if any. */
+  private getApi():
+    | {
+        getAppState?: () => Record<string, unknown>;
+        setAppState?: (s: Record<string, unknown>) => void;
+      }
+    | undefined {
+    let api: unknown;
+    this.canvases.current.forEach((canvas) => {
+      if (!api) {
+        api = canvas.read(Canvas).api;
+      }
+    });
+    return api as
+      | {
+          getAppState?: () => Record<string, unknown>;
+          setAppState?: (s: Record<string, unknown>) => void;
+        }
+      | undefined;
+  }
+
+  /**
+   * Editor (scrub) mode: advance a single scene playhead when playing, otherwise
+   * sample every controller at the fixed `animationCurrentTime`.
+   */
+  private executeEditing(
+    now: number,
+    api: { getAppState?: () => any; setAppState?: (s: any) => void },
+    appState: any,
+  ) {
+    const playing = !!appState.animationPlaying;
+    const loop = !!appState.animationLoop;
+    let playhead = isFiniteNumber(appState.animationCurrentTime)
+      ? Math.max(0, appState.animationCurrentTime)
+      : 0;
+
+    // Scene duration = longest active track end-time across all controllers.
+    let sceneDuration = 0;
+    this.animations.current.forEach((entity) => {
+      const controller = entity.read(AnimationPlayer).controller;
+      if (controller) {
+        sceneDuration = Math.max(sceneDuration, controller.getDuration());
+      }
+    });
+
+    if (playing) {
+      const dt = this.#lastNow === undefined ? 0 : Math.max(0, now - this.#lastNow);
+      playhead += dt;
+      if (sceneDuration > 0 && playhead >= sceneDuration) {
+        if (loop) {
+          playhead = playhead % sceneDuration;
+        } else {
+          playhead = sceneDuration;
+          api.setAppState?.({ animationPlaying: false });
+        }
+      }
+      api.setAppState?.({ animationCurrentTime: playhead });
+    }
+    this.#lastNow = now;
+
+    this.animations.current.forEach((entity) => {
+      const player = entity.write(AnimationPlayer);
+      const controller = player.controller;
+      if (!controller) {
         return;
       }
+      controller.seek(playhead);
+      const snapshot = controller.getSnapshot();
+      this.applyValues(entity, controller, snapshot);
+    });
+  }
 
+  private applyValues(
+    entity: Entity,
+    controller: AnimationController,
+    snapshot: AnimationSnapshot,
+  ): void {
+    const values = controller.getCurrentValues(snapshot);
+    if (!values) {
+      return;
+    }
+    applyAnimatedValues(entity, controller, values);
+  }
+}
+
+/** Shared application of interpolated animation values onto an entity's components. */
+function applyAnimatedValues(
+  entity: Entity,
+  controller: AnimationController,
+  values: AnimationFrameValues,
+): void {
+  {
       if (entity.has(Transform)) {
         const transform = entity.write(Transform);
         const currentTranslation = {
@@ -273,6 +402,5 @@ export class AnimationSystem extends System {
 
         safeAddComponent(entity, Path, { d: inferred.d });
       }
-    });
   }
 }
