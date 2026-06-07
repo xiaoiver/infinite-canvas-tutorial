@@ -1,5 +1,13 @@
-import { Buffer, Device, RenderPass, SwapChain } from '@infinite-canvas-tutorial/device-api';
-import { type RGGraphBuilder } from '../render-graph/interface';
+import { Buffer, Device, RenderPass, SwapChain, TransparentBlack } from '@infinite-canvas-tutorial/device-api';
+import { RGAttachmentSlot, type RGGraphBuilder } from '../render-graph/interface';
+import {
+  AntialiasingMode,
+  makeAttachmentClearDescriptor,
+  makeBackbufferDescSimple,
+  makeLayerBlendSrcColorDesc,
+  layerBlendSrcDepthClearRenderPassDescriptor,
+  opaqueWhiteFullClearRenderPassDescriptor,
+} from '../render-graph/utils';
 import { Entity } from '@lastolivegames/becsy';
 import {
   Drawcall,
@@ -85,6 +93,10 @@ function getDrawcallCtors(shape: Entity) {
   return SHAPE_DRAWCALL_CTORS;
 }
 // SHAPE_DRAWCALL_CTORS.set(Custom, [CustomDrawcall]);
+
+export type BatchFlushSegment =
+  | { type: 'normal'; drawcalls: Drawcall[] }
+  | { type: 'layerBlend'; drawcall: Drawcall };
 
 export class BatchManager {
   /**
@@ -353,12 +365,27 @@ export class BatchManager {
     });
   }
 
-  flush(
-    renderPass: RenderPass,
-    uniformBuffer: Buffer,
-    uniformLegacyObject: Record<string, unknown>,
-    builder: RGGraphBuilder,
-  ) {
+  buildFlushSegments(): BatchFlushSegment[] {
+    const segments: BatchFlushSegment[] = [];
+    let normalBatch: Drawcall[] = [];
+    for (const drawcall of this.#drawcallsToFlush) {
+      if (drawcall.needsNodeLayerBlend()) {
+        if (normalBatch.length > 0) {
+          segments.push({ type: 'normal', drawcalls: [...normalBatch] });
+          normalBatch = [];
+        }
+        segments.push({ type: 'layerBlend', drawcall });
+      } else {
+        normalBatch.push(drawcall);
+      }
+    }
+    if (normalBatch.length > 0) {
+      segments.push({ type: 'normal', drawcalls: normalBatch });
+    }
+    return segments;
+  }
+
+  #prepareFlushDirtyFlags() {
     const geometryDirtyDrawcalls: Drawcall[] = [];
     const materialDirtyDrawcalls: Drawcall[] = [];
     const geometryDirtyShapes: Entity[] = [];
@@ -388,6 +415,166 @@ export class BatchManager {
     materialDirtyShapes.forEach((shape) =>
       safeRemoveComponent(shape, MaterialDirty),
     );
+  }
+
+  flushDrawcalls(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+    builder: RGGraphBuilder,
+    drawcalls: Drawcall[],
+  ) {
+    drawcalls.forEach((drawcall) => {
+      drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject, builder);
+    });
+  }
+
+  scheduleFlush(
+    builder: RGGraphBuilder,
+    mainColorTargetID: number,
+    mainDepthTargetID: number,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+    width: number,
+    height: number,
+    preamble: (renderPass: RenderPass) => void,
+    sort: boolean,
+    mainPassDebugName: string,
+  ) {
+    if (sort) {
+      this.sort();
+    }
+    this.#prepareFlushDirtyFlags();
+
+    const segments = this.buildFlushSegments();
+    const hasLayerBlend = segments.some((s) => s.type === 'layerBlend');
+
+    if (!hasLayerBlend) {
+      builder.pushPass((pass) => {
+        pass.setDebugName(mainPassDebugName);
+        pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+        pass.attachRenderTargetID(
+          RGAttachmentSlot.DepthStencil,
+          mainDepthTargetID,
+        );
+        pass.exec((renderPass) => {
+          preamble(renderPass);
+          this.flushDrawcalls(
+            renderPass,
+            uniformBuffer,
+            uniformLegacyObject,
+            builder,
+            this.#drawcallsToFlush,
+          );
+        });
+      });
+      return;
+    }
+
+    let firstNormal = true;
+    const srcRenderInput = {
+      backbufferWidth: width,
+      backbufferHeight: height,
+      antialiasingMode: AntialiasingMode.None,
+    };
+    const srcColorClear = makeAttachmentClearDescriptor(TransparentBlack);
+    const srcDepthClear = layerBlendSrcDepthClearRenderPassDescriptor;
+
+    for (const segment of segments) {
+      if (segment.type === 'normal') {
+        builder.pushPass((pass) => {
+          pass.setDebugName(
+            firstNormal ? mainPassDebugName : `${mainPassDebugName} (cont)`,
+          );
+          pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+          pass.attachRenderTargetID(
+            RGAttachmentSlot.DepthStencil,
+            mainDepthTargetID,
+          );
+          pass.exec((renderPass) => {
+            if (firstNormal) {
+              preamble(renderPass);
+              firstNormal = false;
+            }
+            this.flushDrawcalls(
+              renderPass,
+              uniformBuffer,
+              uniformLegacyObject,
+              builder,
+              segment.drawcalls,
+            );
+          });
+        });
+      } else {
+        const srcColorTargetID = builder.createRenderTargetID(
+          makeLayerBlendSrcColorDesc(srcRenderInput, srcColorClear),
+          'Node Layer Blend Src',
+        );
+        const srcDepthTargetID = builder.createRenderTargetID(
+          makeBackbufferDescSimple(
+            RGAttachmentSlot.DepthStencil,
+            srcRenderInput,
+            srcDepthClear,
+          ),
+          'Node Layer Blend Src Depth',
+        );
+
+        builder.pushPass((pass) => {
+          pass.setDebugName('Node Layer Blend Src');
+          pass.attachRenderTargetID(
+            RGAttachmentSlot.Color0,
+            srcColorTargetID,
+          );
+          pass.attachRenderTargetID(
+            RGAttachmentSlot.DepthStencil,
+            srcDepthTargetID,
+          );
+          pass.exec((renderPass) => {
+            segment.drawcall.renderNodeLayerBlendSrcInPass(
+              renderPass,
+              uniformBuffer,
+              uniformLegacyObject,
+            );
+          });
+        });
+
+        const srcResolveTextureID =
+          builder.resolveRenderTarget(srcColorTargetID);
+        const resolveTextureID = builder.resolveRenderTarget(mainColorTargetID);
+        builder.pushPass((pass) => {
+          pass.setDebugName('Node Layer Blend');
+          pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
+          pass.attachRenderTargetID(
+            RGAttachmentSlot.DepthStencil,
+            mainDepthTargetID,
+          );
+          pass.attachResolveTexture(resolveTextureID);
+          pass.attachResolveTexture(srcResolveTextureID);
+          pass.exec((renderPass, scope) => {
+            const backdrop = scope.getResolveTextureForID(resolveTextureID);
+            const src = scope.getResolveTextureForID(srcResolveTextureID);
+            segment.drawcall.submitNodeLayerBlendComposite(
+              renderPass,
+              backdrop,
+              src,
+              uniformBuffer,
+              uniformLegacyObject,
+              width,
+              height,
+            );
+          });
+        });
+      }
+    }
+  }
+
+  flush(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+    builder: RGGraphBuilder,
+  ) {
+    this.#prepareFlushDirtyFlags();
     this.#drawcallsToFlush.forEach((drawcall) => {
       drawcall.submit(renderPass, uniformBuffer, uniformLegacyObject, builder);
     });

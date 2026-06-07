@@ -12,6 +12,8 @@ export * from './color';
 export * from './fillLayers';
 export * from './strokeLayers';
 export * from './blend-mode';
+export * from './nodeLayerBlend';
+export * from './nodeLayerBlendGpu';
 export * from './style';
 export * from './rough';
 export * from './curve';

@@ -241,7 +241,7 @@ export class DefaultStateManagement implements StateManagement {
     this.#nodes = nodes;
   }
 
-  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) {}
+  onChange(snapshot: { appState: AppState; nodes: SerializedNode[] }) { }
 }
 
 export const mapToArray = <T extends { id: string } | string>(
@@ -439,9 +439,9 @@ export class API {
       const mergedVariables = options?.replaceVariables
         ? (patch.variables as NonNullable<AppState['variables']>)
         : {
-            ...prevVariables,
-            ...patch.variables,
-          };
+          ...prevVariables,
+          ...patch.variables,
+        };
       variablesPatch = { variables: mergedVariables };
     }
 
@@ -490,7 +490,7 @@ export class API {
     const variablesActuallyChanged =
       Object.prototype.hasOwnProperty.call(patch, 'variables') &&
       JSON.stringify((variablesPatch as { variables?: object }).variables) !==
-        JSON.stringify(prevVariables);
+      JSON.stringify(prevVariables);
 
     const shouldRefreshDesignVariableBindings =
       variablesActuallyChanged ||
@@ -1125,7 +1125,7 @@ export class API {
             stroke: strokeForHit,
           });
         } else {
-          const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d');
+          const ctx = DOMAdapter.get().createCanvas(100, 100).getContext('2d') as CanvasRenderingContext2D;
           const path = new Path2D(d);
           if (hasStroke) {
             ctx.strokeStyle = resolveGpuStrokeColor(entity) ?? 'transparent';
@@ -1574,19 +1574,19 @@ export class API {
     // remove duplicates
     const layersSelected = preserveSelection
       ? [
-          ...prevAppState.layersSelected,
-          ...nodes.map((node) => node.id),
-        ].filter((id, index, self) => self.indexOf(id) === index)
+        ...prevAppState.layersSelected,
+        ...nodes.map((node) => node.id),
+      ].filter((id, index, self) => self.indexOf(id) === index)
       : nodes
-          .map((node) => node.id)
-          .filter((id, index, self) => self.indexOf(id) === index);
+        .map((node) => node.id)
+        .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       const layersHighlighted = preserveSelection
         ? prevAppState.layersHighlighted
         : prevAppState.layersHighlighted.filter(
-            (id) =>
-              !prevSelectedIds.includes(id) || layersSelected.includes(id),
-          );
+          (id) =>
+            !prevSelectedIds.includes(id) || layersSelected.includes(id),
+        );
       this.setAppState({
         ...prevAppState,
         layersSelected,
@@ -1656,12 +1656,12 @@ export class API {
     // remove duplicates
     const layersHighlighted = preserveSelection
       ? [
-          ...prevAppState.layersHighlighted,
-          ...nodes.map((node) => node.id),
-        ].filter((id, index, self) => self.indexOf(id) === index)
+        ...prevAppState.layersHighlighted,
+        ...nodes.map((node) => node.id),
+      ].filter((id, index, self) => self.indexOf(id) === index)
       : nodes
-          .map((node) => node.id)
-          .filter((id, index, self) => self.indexOf(id) === index);
+        .map((node) => node.id)
+        .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
         ...prevAppState,
@@ -1874,7 +1874,7 @@ export class API {
     }
   }
 
-  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {}
+  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) { }
 
   updateNodeOBB(
     node: SerializedNode,
@@ -2052,8 +2052,8 @@ export class API {
           typeof fs === 'number'
             ? fs
             : typeof fs === 'string'
-            ? parseFloat(fs) || 12
-            : 12;
+              ? parseFloat(fs) || 12
+              : 12;
         (diff as TextSerializedNode).fontSize = oldFontSize * sY;
 
         const ww = textOld.wordWrapWidth ?? 0;

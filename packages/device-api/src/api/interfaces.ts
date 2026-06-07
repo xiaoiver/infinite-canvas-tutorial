@@ -833,7 +833,8 @@ export interface Device {
   submitComputeImmediate: (draw: (pass: ComputePass) => void) => void;
   /**
    * Encode one render pass on a fresh command buffer and submit immediately.
-   * Same pooling semantics as {@link submitComputeImmediate}.
+   * WebGPU: separate command encoder. WebGL: isolated pass with saved/restored
+   * {@link currentRenderPassDescriptor} so render-graph passes are not corrupted.
    */
   submitRenderPassImmediate: (
     descriptor: RenderPassDescriptor,

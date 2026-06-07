@@ -178,185 +178,150 @@ canvas.addEventListener(Event.READY, async (e) => {
     // layersCropping: ['parent-1'],
   });
 
-  function createCubeGeometry(size = 1) {
-    const h = size / 2;
-    const faces: {
-      normal: [number, number, number];
-      verts: [number, number, number][];
-    }[] = [
-        { normal: [0, 0, 1], verts: [[-h, -h, h], [h, -h, h], [h, h, h], [-h, h, h]] },
-        { normal: [0, 0, -1], verts: [[-h, -h, -h], [-h, h, -h], [h, h, -h], [h, -h, -h]] },
-        { normal: [0, 1, 0], verts: [[-h, h, -h], [-h, h, h], [h, h, h], [h, h, -h]] },
-        { normal: [0, -1, 0], verts: [[-h, -h, -h], [h, -h, -h], [h, -h, h], [-h, -h, h]] },
-        { normal: [1, 0, 0], verts: [[h, -h, -h], [h, h, -h], [h, h, h], [h, -h, h]] },
-        { normal: [-1, 0, 0], verts: [[-h, -h, -h], [-h, -h, h], [-h, h, h], [-h, h, -h]] },
-      ];
+  // MDN mix-blend-mode 三色椭圆演示（与 MDN 文档 SVG 结构一致）
+  const DEMO = 150;
+  const GAP = 28;
+  const ORIGIN_X = 48;
+  const ORIGIN_Y = 72;
 
-    const positions: number[] = [];
-    const normals: number[] = [];
-    const indices: number[] = [];
-    let base = 0;
+  const ELLIPSE_CX = 75;
+  const ELLIPSE_CY = 75;
+  const ELLIPSE_RX = 25;
+  const ELLIPSE_RY = 70;
 
-    for (const { normal, verts } of faces) {
-      for (const v of verts) {
-        positions.push(...v);
-        normals.push(...normal);
-      }
-      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-      base += 4;
-    }
-
+  /** ECS Transform 绕 (x,y) 旋转；补偿为 MDN `transform-origin: center`（cx,cy）效果。 */
+  const ellipseNodeForCenterRotation = (
+    ox: number,
+    oy: number,
+    rotationDeg: number,
+  ) => {
+    const rotation = (rotationDeg * Math.PI) / 180;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    const centerX = ox + ELLIPSE_CX;
+    const centerY = oy + ELLIPSE_CY;
+    const rotLocalCx = ELLIPSE_RX * cos - ELLIPSE_RY * sin;
+    const rotLocalCy = ELLIPSE_RX * sin + ELLIPSE_RY * cos;
     return {
-      positions: new Float32Array(positions),
-      normals: new Float32Array(normals),
-      indices: new Uint32Array(indices),
+      x: centerX - rotLocalCx,
+      y: centerY - rotLocalCy,
+      width: ELLIPSE_RX * 2,
+      height: ELLIPSE_RY * 2,
+      rotation,
     };
-  }
+  };
 
-  api.runAtNextTick(() => {
-    const { positions, normals, indices } = createCubeGeometry(1);
-    const commands = api.getCommands();
+  const RGB_ELLIPSES = [
+    {
+      id: 'R',
+      rotation: -30,
+      fill: 'linear-gradient(90deg, #ff0000 0%, #ffffff 100%)',
+    },
+    {
+      id: 'G',
+      rotation: 90,
+      fill: 'linear-gradient(90deg, #00ff00 0%, #ffffff 100%)',
+    },
+    {
+      id: 'B',
+      rotation: 210,
+      fill: 'linear-gradient(90deg, #0000ff 0%, #ffffff 100%)',
+    },
+  ] as const;
 
-    // // linked + orthographic：与 2D/extrude3d 共用 VP；linked + perspective：跟 2D 平移缩放 + 透视
-    // api.spawn3D(
-    //   new Camera3D({
-    //     linked: true,
-    //     projection: 'perspective',
-    //     clearColor: false,
-    //   }),
-    // );
+  const DEMO_BG_FILLS = [
+    { type: 'gradient' as const, value: 'linear-gradient(to bottom, yellow 0%, magenta 50%, cyan 100%)' },
+    {
+      type: 'gradient' as const,
+      value: 'linear-gradient(to right, black 0%, transparent 50%, white 100%)',
+    },
+  ];
 
-    // // Light3D position/direction are canvas/world units (1 ≈ 1 px when linked).
-    // // range <= 0 disables distance falloff. Custom Light3D replaces the default
-    // // light set; keep ambient + directional (or rely on renderer directional fill).
-    // const [cx, cy, cz] = [100, 100, 40];
-    // const spotLift = 200;
-    // const spotBack = 160;
-    // api.spawn3D(
-    //   new Light3D({ type: 'ambient', intensity: 0.35 }),
-    // );
-    // api.spawn3D(
-    //   new Light3D({
-    //     type: 'directional',
-    //     direction: [-0.45, -0.65, -0.55],
-    //     intensity: 0.85,
-    //   }),
-    // );
-    // api.spawn3D(
-    //   new Light3D({
-    //     type: 'spot',
-    //     position: [cx, cy - spotLift, cz + spotBack],
-    //     direction: [0, spotLift, -spotBack],
-    //     color: [1, 0.9, 0.75],
-    //     intensity: 1.4,
-    //     range: 0,
-    //   }),
-    // );
+  const blendModes = [
+    'normal',
+    'multiply',
+    'screen',
+    'overlay',
+    'difference',
+    'colorBurn',
+    'colorDodge',
+    'softLight',
+  ] as const;
 
-    // const cubeEntity = api
-    //   .spawn3D(
-    //     new Mesh3D({ positions, normals, indices }),
-    //     new Material3D({
-    //       baseColor: [1, 1, 1, 1],
-    //       ambient: 0.25,
-    //       diffuse: 0.75,
-    //       specular: 0.4,
-    //       shininess: 48,
-    //     }),
-    //     new Transform3D({
-    //       translation: [cx, cy, cz],
-    //       rotation: [0.3, 0, 0],
-    //       scale: [100, 100, 100],
-    //     }),
-    //   )
-    //   .id()
-    //   .hold();
+  const nodes: SerializedNode[] = [
+    {
+      id: 'blend-title',
+      type: 'text',
+      anchorX: ORIGIN_X,
+      anchorY: 24,
+      content: 'MDN 三色椭圆 — 每层 ellipse 使用相同 blendMode 与下方内容合成',
+      fontSize: 14,
+      fontFamily: 'system-ui',
+      textBaseline: 'top',
+      fills: [{ type: 'solid', value: '#374151' }],
+      zIndex: 100,
+    },
+  ];
 
-    // commands.execute();
+  const addRgbEllipseDemo = (
+    prefix: string,
+    ox: number,
+    oy: number,
+    blendMode: (typeof blendModes)[number],
+    label?: string,
+  ) => {
+    nodes.push({
+      id: `${prefix}-bg`,
+      type: 'rect',
+      x: ox,
+      y: oy,
+      width: DEMO,
+      height: DEMO,
+      fills: [...DEMO_BG_FILLS],
+      zIndex: 0,
+    });
 
-    // const t0 = performance.now();
-    // const spinCube = (now: number) => {
-    //   const t = (now - t0) / 1000;
-    //   const transform = cubeEntity.write(Transform3D);
-    //   transform.rotation = [0.3 + t * 0.9, 0.6 + t * 1.2, t * 0.5];
-    //   requestAnimationFrame(spinCube);
-    // };
-    // requestAnimationFrame(spinCube);
+    RGB_ELLIPSES.forEach(({ id, rotation, fill }, i) => {
+      const ellipse = ellipseNodeForCenterRotation(ox, oy, rotation);
+      nodes.push({
+        id: `${prefix}-${id}`,
+        type: 'ellipse',
+        ...ellipse,
+        fills: [{ type: 'gradient', value: fill }],
+        blendMode,
+        zIndex: i + 1,
+      });
+    });
 
-    const CUBE_ID = 'cube1';
-    const BASE_ROTATION: [number, number, number] = [0.3, 0.6, 0];
+    if (label) {
+      nodes.push({
+        id: `${prefix}-label`,
+        type: 'text',
+        anchorX: ox,
+        anchorY: oy + DEMO + 8,
+        content: label,
+        fontSize: 11,
+        fontFamily: 'system-ui',
+        textBaseline: 'top',
+        fills: [{ type: 'solid', value: '#6b7280' }],
+        zIndex: 100,
+      });
+    }
+  };
 
-    /** 声明式场景：cube / sphere / cylinder / plane。 */
-    const sceneNodes: SerializedNode[] = [
-      {
-        id: CUBE_ID,
-        type: 'mesh3d',
-        geometry: 'cube',
-        x: 80,
-        y: 50,
-        width: 80,
-        height: 80,
-        z: 40,
-        zIndex: 0,
-        scale3d: 80,
-        rotation3d: BASE_ROTATION,
-        material3d: {
-          baseColor: '#ffffff',
-          ambient: 0.25,
-          diffuse: 0.75,
-          specular: 0.4,
-          shininess: 48,
-        },
-        camera3d: {
-          linked: true,
-          projection: 'perspective',
-          clearColor: false,
-        },
-      },
-      {
-        id: 'sphere1',
-        type: 'mesh3d',
-        geometry: { type: 'sphere', segments: [24, 16] },
-        x: 200,
-        y: 50,
-        width: 80,
-        height: 80,
-        z: 40,
-        zIndex: 0,
-        scale3d: 70,
-        rotation3d: [0.2, 0.8, 0.1],
-        material3d: {
-          baseColor: '#88ccff',
-          ambient: 0.25,
-          diffuse: 0.75,
-          specular: 0.5,
-          shininess: 64,
-        },
-      },
-      {
-        id: 'cylinder1',
-        type: 'mesh3d',
-        geometry: { type: 'cylinder', segments: 24 },
-        x: 320,
-        y: 50,
-        width: 70,
-        height: 90,
-        z: 40,
-        zIndex: 0,
-        scale3d: [60, 80, 60],
-        rotation3d: [0.5, 0.3, 0],
-        material3d: {
-          baseColor: '#ffaa66',
-          ambient: 0.2,
-          diffuse: 0.8,
-          specular: 0.35,
-          shininess: 32,
-        },
-      },
-    ];
-
-    api.updateNodes(sceneNodes);
+  blendModes.forEach((mode, i) => {
+    const col = i % 4;
+    const row = Math.floor(i / 4);
+    addRgbEllipseDemo(
+      `blend-${mode}`,
+      ORIGIN_X + col * (DEMO + GAP),
+      ORIGIN_Y + row * (DEMO + GAP + 24),
+      mode,
+      mode,
+    );
   });
+
+  api.updateNodes(nodes);
 });
 
 // const VelloRendererPlugin = RendererPlugin.configure({

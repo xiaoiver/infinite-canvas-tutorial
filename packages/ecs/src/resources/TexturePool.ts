@@ -5,6 +5,7 @@ import {
   computeLinearGradient,
   computeRadialGradient,
   ConicGradient,
+  fillLinearGradientPremultiplied,
   Gradient,
   hashCode,
   LinearGradient,
@@ -98,8 +99,13 @@ export class TexturePool {
       this.#canvas.height = height;
     }
 
-    gradients.forEach((g) => {
+    // CSS `background` 列表：靠前的层在上；绘制时自下而上叠合。
+    [...gradients].reverse().forEach((g) => {
       if (!g || g.type === 'mesh-gradient') {
+        return;
+      }
+      if (g.type === 'linear-gradient') {
+        fillLinearGradientPremultiplied(this.#ctx, 0, 0, width, height, g);
         return;
       }
       const gradient = this.getOrCreateGradientInternal({

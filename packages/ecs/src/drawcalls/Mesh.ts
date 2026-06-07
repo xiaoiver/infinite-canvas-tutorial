@@ -148,6 +148,12 @@ export class Mesh extends Drawcall {
   }
 
   private disposeMeshFillLayerResources(): void {
+    const precomposedTexture =
+      this.#usePrecomposedMultiFill &&
+      !this.#fillTextureFromPostChain &&
+      this.#texture != null
+        ? this.#texture
+        : null;
     this.#usePrecomposedMultiFill = false;
     for (const b of this.#fillLayerBindings) {
       b.destroy();
@@ -169,6 +175,7 @@ export class Mesh extends Drawcall {
     if (clearsMainTexture) {
       this.#texture = null;
     }
+    precomposedTexture?.destroy?.();
   }
 
   /** Rasterize one {@link FillLayers} entry for mesh fill sampling. */
@@ -222,8 +229,8 @@ export class Mesh extends Drawcall {
       return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
     }
     if (layer.type === 'pattern') {
-      const pw = Math.max(1, width);
-      const ph = Math.max(1, height);
+      const pw = Math.max(1, Math.ceil(width));
+      const ph = Math.max(1, Math.ceil(height));
       const canvas = this.texturePool.getOrCreatePattern({
         pattern: {
           image: layer.value,
@@ -235,12 +242,12 @@ export class Mesh extends Drawcall {
       });
       const texture = this.device.createTexture({
         format: Format.U8_RGBA_NORM,
-        width: 128,
-        height: 128,
+        width: pw,
+        height: ph,
         usage: TextureUsage.SAMPLED,
       });
       texture.setImageData([canvas]);
-      return this.applyRasterFilterChainIfNeeded(instance, texture, 128, 128);
+      return this.applyRasterFilterChainIfNeeded(instance, texture, pw, ph);
     }
     if (layer.type === 'solid') {
       const tw = Math.max(1, Math.ceil(width));
@@ -262,29 +269,31 @@ export class Mesh extends Drawcall {
       upload2DRasterCanvasToTexture(raw, canvas);
       return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
     }
+    const tw = Math.max(1, Math.ceil(width));
+    const th = Math.max(1, Math.ceil(height));
     const fillGradients = parseGradient(layer.value);
     const meshFill =
       fillGradients !== undefined && fillGradients.length === 1
         ? fillGradients[0]
         : undefined;
     if (meshFill && isMeshGradientGradient(meshFill)) {
-      const raw = this.renderMeshGradientTexture(meshFill, 128, 128);
-      return this.applyRasterFilterChainIfNeeded(instance, raw, 128, 128);
+      const raw = this.renderMeshGradientTexture(meshFill, tw, th);
+      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
     }
     const canvas = this.texturePool.getOrCreateGradient({
       gradients: fillGradients ?? [],
       min: [minX, minY],
-      width,
-      height,
+      width: tw,
+      height: th,
     });
     const texture = this.device.createTexture({
       format: Format.U8_RGBA_NORM,
-      width: 128,
-      height: 128,
+      width: tw,
+      height: th,
       usage: TextureUsage.SAMPLED,
     });
     texture.setImageData([canvas]);
-    return this.applyRasterFilterChainIfNeeded(instance, texture, 128, 128);
+    return this.applyRasterFilterChainIfNeeded(instance, texture, tw, th);
   }
 
   validate(shape: Entity) {

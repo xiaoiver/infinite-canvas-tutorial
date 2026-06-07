@@ -509,6 +509,8 @@ export class SmoothPolyline extends Drawcall {
         const { minX, minY, maxX, maxY } = gb;
         const width = maxX - minX;
         const height = maxY - minY;
+        const tw = Math.max(1, Math.ceil(width));
+        const th = Math.max(1, Math.ceil(height));
 
         const strokeGradients = parseGradient(
           getFirstGradientStrokeLayerValue(instance) ?? '',
@@ -517,32 +519,32 @@ export class SmoothPolyline extends Drawcall {
           strokeGradients?.length === 1 ? strokeGradients[0] : undefined;
 
         if (meshStroke && isMeshGradientGradient(meshStroke)) {
-          const raw = this.renderMeshGradientTexture(meshStroke, 128, 128);
+          const raw = this.renderMeshGradientTexture(meshStroke, tw, th);
           this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
             instance,
             raw,
-            128,
-            128,
+            tw,
+            th,
           );
         } else {
           const canvas = this.texturePool.getOrCreateGradient({
             gradients: strokeGradients ?? [],
             min: [minX, minY],
-            width,
-            height,
+            width: tw,
+            height: th,
           });
           const texture = this.device.createTexture({
             format: Format.U8_RGBA_NORM,
-            width: 128,
-            height: 128,
+            width: tw,
+            height: th,
             usage: TextureUsage.SAMPLED,
           });
           texture.setImageData([canvas]);
           this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
             instance,
             texture,
-            128,
-            128,
+            tw,
+            th,
           );
         }
       }

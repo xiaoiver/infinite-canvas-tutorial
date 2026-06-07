@@ -117,8 +117,11 @@ function copyChannelBlendState(
 
 export function copyStencilFaceState(
   dst: Partial<StencilFaceState> | undefined,
-  src: Partial<StencilFaceState>,
-): Partial<StencilFaceState> {
+  src: Partial<StencilFaceState> | undefined,
+): Partial<StencilFaceState> | undefined {
+  if (src === undefined) {
+    return dst;
+  }
   if (dst === undefined) {
     dst = {};
   }

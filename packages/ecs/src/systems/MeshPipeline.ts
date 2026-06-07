@@ -729,63 +729,66 @@ export class MeshPipeline extends System {
       mainDepthDesc,
       'Main Depth',
     );
-    builder.pushPass((pass) => {
-      pass.setDebugName(
-        composite3D ? 'Main Render Pass (3D + 2D)' : 'Main Render Pass',
-      );
-      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-      pass.attachRenderTargetID(
-        RGAttachmentSlot.DepthStencil,
-        mainDepthTargetID,
-      );
-      pass.exec((renderPass) => {
+
+    const mainPassDebugName = composite3D
+      ? 'Main Render Pass (3D + 2D)'
+      : 'Main Render Pass';
+
+    if (shouldRenderPartially) {
+      const { api } = canvas.read(Canvas);
+      const clipParents = new Set<Entity>();
+      nodes.forEach((node: SerializedNode) => {
+        const parentNode = node.parentId && api.getNodeById(node.parentId);
+        const parentEntity = parentNode && api.getEntity(parentNode);
+        const needRenderClipParent =
+          parentNode &&
+          !nodes.includes(parentNode) &&
+          parentNode.clipMode &&
+          !clipParents.has(parentEntity);
+        if (needRenderClipParent) {
+          clipParents.add(parentEntity);
+          batchManager.add(parentEntity);
+        }
+
+        const rootEntity = api.getEntity(node);
+        const withGeometry = collectDescendantsWithPartialExportGeometry(
+          rootEntity,
+        );
+        const toBatch = withGeometry.length > 0 ? withGeometry : [rootEntity];
+        for (const e of toBatch) {
+          batchManager.add(e);
+        }
+      });
+    } else {
+      if (this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
+          if (type === 'remove') {
+            batchManager.remove(entity, !entity.has(Culled));
+          } else {
+            batchManager.add(entity);
+          }
+        });
+        this.pendingRenderables.delete(camera);
+      }
+    }
+
+    batchManager.scheduleFlush(
+      builder,
+      mainColorTargetID,
+      mainDepthTargetID,
+      uniformBuffer,
+      legacyObject,
+      width,
+      height,
+      (renderPass) => {
         gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
-        // Grid fills the framebuffer with theme background; draw 3D after it.
         if (composite3D) {
           mesh3d!.drawMeshes(renderPass, canvas, width, height);
         }
-        if (shouldRenderPartially) {
-          const { api } = canvas.read(Canvas);
-          // Add clip parent if exists.
-          const clipParents = new Set<Entity>();
-          nodes.forEach((node: SerializedNode) => {
-            const parentNode = node.parentId && api.getNodeById(node.parentId);
-            const parentEntity = parentNode && api.getEntity(parentNode);
-            const needRenderClipParent = parentNode && !nodes.includes(parentNode) && parentNode.clipMode && !clipParents.has(parentEntity);
-            if (needRenderClipParent) {
-              clipParents.add(parentEntity);
-              batchManager.add(parentEntity);
-            }
-
-            const rootEntity = api.getEntity(node);
-            const withGeometry = collectDescendantsWithPartialExportGeometry(
-              rootEntity,
-            );
-            const toBatch =
-              withGeometry.length > 0 ? withGeometry : [rootEntity];
-            for (const e of toBatch) {
-              batchManager.add(e);
-            }
-          });
-        } else {
-          if (this.pendingRenderables.has(camera)) {
-            this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-              if (type === 'remove') {
-                batchManager.remove(entity, !entity.has(Culled));
-              } else {
-                batchManager.add(entity);
-              }
-            });
-            this.pendingRenderables.delete(camera);
-          }
-        }
-
-        if (sort) {
-          batchManager.sort();
-        }
-        batchManager.flush(renderPass, uniformBuffer, legacyObject, builder);
-      });
-    });
+      },
+      sort,
+      mainPassDebugName,
+    );
 
     const filterEffects = parseEffect(filter);
     filterEffects.forEach((effect) => {
