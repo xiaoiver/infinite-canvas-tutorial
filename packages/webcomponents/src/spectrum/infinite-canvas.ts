@@ -71,6 +71,11 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-right.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-animation.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-clock.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-play.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-pause.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-refresh.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-stroke-width.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
@@ -161,6 +166,14 @@ export class InfiniteCanvas extends LitElement {
       position: absolute;
       top: 0;
       right: 0;
+    }
+
+    ic-spectrum-timeline-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
     }
 
     ic-spectrum-text-editor {
@@ -371,7 +384,8 @@ export class InfiniteCanvas extends LitElement {
               style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
             }px; left: 0;`}
             ></ic-spectrum-comments>
-            <ic-spectrum-mask></ic-spectrum-mask>`,
+            <ic-spectrum-mask></ic-spectrum-mask>
+            <ic-spectrum-timeline-panel></ic-spectrum-timeline-panel>`,
         ),
       error: (e: Error) => {
         console.error(e);
