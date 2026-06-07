@@ -630,9 +630,6 @@
   <source>Add filter</source>
   <target>添加滤镜</target>
 </trans-unit>
-<trans-unit id="s8b7ef4d2210175a8">
-  <source>Smoothing (FXAA)</source>
-</trans-unit>
 <trans-unit id="sdebf6287e31d18e5">
   <source>Triangle</source>
   <target>三角形</target>
@@ -879,6 +876,7 @@
 </trans-unit>
 <trans-unit id="sf9aee319a006c9b4">
   <source>Add</source>
+        <target>添加</target>
 </trans-unit>
 <trans-unit id="sf971293125278ee8">
   <source>Tsunami</source>
@@ -1212,10 +1210,6 @@
   <source>Upload</source>
   <target>上传</target>
 </trans-unit>
-<trans-unit id="s0fa5ab7499420a69">
-  <source>Fill &amp; stroke color</source>
-  <target>填充和描边颜色</target>
-</trans-unit>
 <trans-unit id="s094748f07458f069">
   <source>Duration (s)</source>
   <target>时长 (秒)</target>
@@ -1251,6 +1245,386 @@
 <trans-unit id="s82c21acdbcd6e830">
   <source>Strength</source>
   <target>强度</target>
+</trans-unit>
+<trans-unit id="s08a45214b37f404b">
+  <source>Add keyframe at playhead</source>
+        <target>在播放头处添加关键帧</target>
+</trans-unit>
+<trans-unit id="s7383e8b37e1ea24f">
+  <source>Remove keyframe</source>
+        <target>移除关键帧</target>
+</trans-unit>
+<trans-unit id="s4c053313f48af96e">
+  <source>This element has no animation yet.</source>
+        <target>该元素还没有动画。</target>
+</trans-unit>
+<trans-unit id="s09fefe208a0f70da">
+  <source>Add animation</source>
+        <target>添加动画</target>
+</trans-unit>
+<trans-unit id="s17da62951eca4f20">
+  <source>Duration (ms)</source>
+        <target>时长（毫秒）</target>
+</trans-unit>
+<trans-unit id="s4edd8a45741826df">
+  <source>Delay (ms)</source>
+        <target>延迟（毫秒）</target>
+</trans-unit>
+<trans-unit id="sffa67d746f6f64c8">
+  <source>Easing</source>
+        <target>缓动</target>
+</trans-unit>
+<trans-unit id="s4efee5b48a4593cb">
+  <source>Loop</source>
+        <target>循环</target>
+</trans-unit>
+<trans-unit id="s7534784c4360838d">
+  <source>Add property</source>
+        <target>添加属性</target>
+</trans-unit>
+<trans-unit id="s25e4e68bdc025fcf">
+  <source>Remove animation</source>
+        <target>移除动画</target>
+</trans-unit>
+<trans-unit id="sa602e3fd3f2d98fd">
+  <source>Animation</source>
+        <target>动画</target>
+</trans-unit>
+<trans-unit id="s1e5b17b46559c77d">
+  <source>Select a single element to edit its animation.</source>
+        <target>选择单个元素以编辑其动画。</target>
+</trans-unit>
+<trans-unit id="s7f63ce7a69a3764b">
+  <source>Stroke options</source>
+</trans-unit>
+<trans-unit id="sbe976d0d27fda10d">
+  <source>Color pencil</source>
+</trans-unit>
+<trans-unit id="s984afe2bd363c533">
+  <source>Rain</source>
+</trans-unit>
+<trans-unit id="sfe887738c9d0b2de">
+  <source>Clamp edges</source>
+</trans-unit>
+<trans-unit id="se9d9164bc7a09136">
+  <source>Line length (ks)</source>
+</trans-unit>
+<trans-unit id="s39211f8cdcd58d9b">
+  <source>Directions</source>
+</trans-unit>
+<trans-unit id="scba83293da56ecb4">
+  <source>Stroke gamma</source>
+</trans-unit>
+<trans-unit id="s10665db13fcb08f8">
+  <source>Tone gamma</source>
+</trans-unit>
+<trans-unit id="s8fa5692a59fcb100">
+  <source>Drop sprite URL</source>
+</trans-unit>
+<trans-unit id="sa4754549db2c9a55">
+  <source>Background blur steps</source>
+</trans-unit>
+<trans-unit id="s04e601aea907834c">
+  <source>Mist</source>
+</trans-unit>
+<trans-unit id="sa7e4fe738f780c95">
+  <source>Mist blur step</source>
+</trans-unit>
+<trans-unit id="sdcbaade4956defb7">
+  <source>Mist fade time (s)</source>
+</trans-unit>
+<trans-unit id="s234669fc918b3fd9">
+  <source>Mist color R</source>
+</trans-unit>
+<trans-unit id="s23467cfc918b6022">
+  <source>Mist color G</source>
+</trans-unit>
+<trans-unit id="s234679fc918b5b09">
+  <source>Mist color B</source>
+</trans-unit>
+<trans-unit id="s234676fc918b55f0">
+  <source>Mist color A</source>
+</trans-unit>
+<trans-unit id="s212bbf3c88d654eb">
+  <source>Droplets per second</source>
+</trans-unit>
+<trans-unit id="s2f2b91b3ae74b452">
+  <source>Droplet size min</source>
+</trans-unit>
+<trans-unit id="s2f0f9bb3ae5c4a98">
+  <source>Droplet size max</source>
+</trans-unit>
+<trans-unit id="s681598b65b95afe2">
+  <source>Smooth raindrop min</source>
+</trans-unit>
+<trans-unit id="s67fa82b65b7ec2c8">
+  <source>Smooth raindrop max</source>
+</trans-unit>
+<trans-unit id="saa6ab2a9830afb43">
+  <source>Refraction base</source>
+</trans-unit>
+<trans-unit id="sa387c2684c605d9c">
+  <source>Refraction scale</source>
+</trans-unit>
+<trans-unit id="s4eae92bacca0c04f">
+  <source>Background wrap</source>
+</trans-unit>
+<trans-unit id="s90c139fba1ce9cdc">
+  <source>Clamp</source>
+</trans-unit>
+<trans-unit id="s44f87c21d186fcea">
+  <source>Repeat</source>
+</trans-unit>
+<trans-unit id="s1e5ff0f50c741122">
+  <source>Mirror</source>
+</trans-unit>
+<trans-unit id="s7145bb2481819356">
+  <source>Eraser size min</source>
+</trans-unit>
+<trans-unit id="s7160ad2481984344">
+  <source>Eraser size max</source>
+</trans-unit>
+<trans-unit id="sc3bf41e17dbc7446">
+  <source>Compose mode</source>
+</trans-unit>
+<trans-unit id="sc2392852c8f20c64">
+  <source>Smoother</source>
+</trans-unit>
+<trans-unit id="s0c307eeffb64d54b">
+  <source>Harder</source>
+</trans-unit>
+<trans-unit id="sda843b18b409bfa9">
+  <source>Lighting</source>
+</trans-unit>
+<trans-unit id="s27f07779e175369f">
+  <source>Light X</source>
+</trans-unit>
+<trans-unit id="s27f07679e17534ec">
+  <source>Light Y</source>
+</trans-unit>
+<trans-unit id="s27f07979e1753a05">
+  <source>Light Z</source>
+</trans-unit>
+<trans-unit id="s1702edb3e8af841d">
+  <source>Diffuse</source>
+</trans-unit>
+<trans-unit id="s2f368df91c7d8d60">
+  <source>Shadow offset</source>
+</trans-unit>
+<trans-unit id="s1b44bf2d2b646e7c">
+  <source>Specular shininess</source>
+</trans-unit>
+<trans-unit id="sb24365870446e3dd">
+  <source>Light bump</source>
+</trans-unit>
+<trans-unit id="s7ede1c55e35ce9d6">
+  <source>Simulation</source>
+</trans-unit>
+<trans-unit id="s83f780105a266936">
+  <source>Trail distance min</source>
+</trans-unit>
+<trans-unit id="s841272105a3d1924">
+  <source>Trail distance max</source>
+</trans-unit>
+<trans-unit id="s50696e3742f689e5">
+  <source>Gravity</source>
+</trans-unit>
+<trans-unit id="scd9a8affaa959dc0">
+  <source>Wind drift min</source>
+</trans-unit>
+<trans-unit id="scd7fa0ffaa7efb6a">
+  <source>Wind drift max</source>
+</trans-unit>
+<trans-unit id="s099581075217c403">
+  <source>Slip rate</source>
+</trans-unit>
+<trans-unit id="s9fee667fdd9c615b">
+  <source>Spawn limit</source>
+</trans-unit>
+<trans-unit id="sd94aea128cc879d0">
+  <source>Trail drop density</source>
+</trans-unit>
+<trans-unit id="s534d78c378898592">
+  <source>Trail spread</source>
+</trans-unit>
+<trans-unit id="s9e4befa19375805a">
+  <source>Min refraction</source>
+</trans-unit>
+<trans-unit id="s5d68fbf64f91ecb0">
+  <source>Max refraction</source>
+</trans-unit>
+<trans-unit id="s0bb18592338b8339">
+  <source>Alpha multiply</source>
+</trans-unit>
+<trans-unit id="sf7217241fbe69685">
+  <source>Alpha subtract</source>
+</trans-unit>
+<trans-unit id="s2badc6103d5d2e76">
+  <source>Sim scale</source>
+</trans-unit>
+<trans-unit id="s6abc0be76ac3f805">
+  <source>Rain chance</source>
+</trans-unit>
+<trans-unit id="s473f9452bc1bb7dd">
+  <source>Rain limit (per frame)</source>
+</trans-unit>
+<trans-unit id="s4ceb1eb89d2f6903">
+  <source>Max drops</source>
+</trans-unit>
+<trans-unit id="sc042e25b2deb43e0">
+  <source>Droplets rate</source>
+</trans-unit>
+<trans-unit id="scb59a62d429139df">
+  <source>Render shadow</source>
+</trans-unit>
+<trans-unit id="s99507a63691b98d2">
+  <source>Render shine</source>
+</trans-unit>
+<trans-unit id="s3dd6132dffe66f5d">
+  <source>Rain warmup (s)</source>
+</trans-unit>
+<trans-unit id="s94d1b678a3ff9059">
+  <source>Edit fill color</source>
+</trans-unit>
+<trans-unit id="s67a54a4edcd37722">
+  <source>Edit color</source>
+</trans-unit>
+<trans-unit id="s7e7ea18339f5c347">
+  <source>Hide fill layer</source>
+</trans-unit>
+<trans-unit id="sf4608143e2c2a2f8">
+  <source>Show fill layer</source>
+</trans-unit>
+<trans-unit id="s9df212d89cab196d">
+  <source>Hide</source>
+</trans-unit>
+<trans-unit id="s716a6024e3fe999c">
+  <source>Show</source>
+</trans-unit>
+<trans-unit id="s8171b40132065697">
+  <source>Remove fill layer</source>
+</trans-unit>
+<trans-unit id="s89e1b2ac8f211d50">
+  <source>Add fill layer</source>
+</trans-unit>
+<trans-unit id="se0a9c2d5aed7d40c">
+  <source>Fill (stretch)</source>
+</trans-unit>
+<trans-unit id="s87cefc710b3567fb">
+  <source>Contain</source>
+</trans-unit>
+<trans-unit id="s69d88ef4b2618980">
+  <source>Cover</source>
+</trans-unit>
+<trans-unit id="s669b18c6d2d9c95b">
+  <source>None</source>
+</trans-unit>
+<trans-unit id="s29a1c26521879b9f">
+  <source>Scale down</source>
+</trans-unit>
+<trans-unit id="s0a3ddcba94027d95">
+  <source>Object fit</source>
+</trans-unit>
+<trans-unit id="s8b6caa87325370e9">
+  <source>Object position</source>
+</trans-unit>
+<trans-unit id="s075c3ce1b60076cf">
+  <source>e.g. center or top left</source>
+</trans-unit>
+<trans-unit id="s4b4afa8bcb02d5ac">
+  <source>Typography</source>
+</trans-unit>
+<trans-unit id="s2de969afacdaa7a6">
+  <source>Shape</source>
+</trans-unit>
+<trans-unit id="s822bb535ea683190">
+  <source>Stroke style</source>
+</trans-unit>
+<trans-unit id="s3e71ea6112bd4c94">
+  <source>solid</source>
+</trans-unit>
+<trans-unit id="s830ca406ff99e47c">
+  <source>dashed</source>
+</trans-unit>
+<trans-unit id="sac8c7f732f377c15">
+  <source>Dash</source>
+</trans-unit>
+<trans-unit id="s1caf53cacbfd649d">
+  <source>Dash cap</source>
+</trans-unit>
+<trans-unit id="s3c0d17bad169557b">
+  <source>none</source>
+</trans-unit>
+<trans-unit id="s7884f79b0c364646">
+  <source>square</source>
+</trans-unit>
+<trans-unit id="s311418469f09741b">
+  <source>round</source>
+</trans-unit>
+<trans-unit id="sfe7146bf88007654">
+  <source>Edit stroke color</source>
+</trans-unit>
+<trans-unit id="sef32209cd54f7f06">
+  <source>Hide stroke layer</source>
+</trans-unit>
+<trans-unit id="s07d9fe778003338d">
+  <source>Show stroke layer</source>
+</trans-unit>
+<trans-unit id="s46c6a100474bef76">
+  <source>Remove stroke layer</source>
+</trans-unit>
+<trans-unit id="s005f5c0e6ea5c235">
+  <source>Add stroke layer</source>
+</trans-unit>
+<trans-unit id="sd5b1a6a020aaa6b4">
+  <source>Show animation panel</source>
+        <target>显示动画面板</target>
+</trans-unit>
+<trans-unit id="s9d3f6a19eaa45bf5">
+  <source>Show timeline panel</source>
+        <target>显示时间轴面板</target>
+</trans-unit>
+<trans-unit id="sbf519920c2017d67">
+  <source>Hanging</source>
+</trans-unit>
+<trans-unit id="s4101ada154a1b958">
+  <source>Middle</source>
+</trans-unit>
+<trans-unit id="se8a94b4effa2033e">
+  <source>Alphabetic</source>
+</trans-unit>
+<trans-unit id="scec2be75ee985f6c">
+  <source>Ideographic</source>
+</trans-unit>
+<trans-unit id="s2372ea9818d00d65">
+  <source>Text baseline</source>
+</trans-unit>
+<trans-unit id="sd870dc93e0cb4183">
+  <source>Resize timeline height</source>
+        <target>调整时间轴高度</target>
+</trans-unit>
+<trans-unit id="s061cc20e3432dead">
+  <source>Pause</source>
+        <target>暂停</target>
+</trans-unit>
+<trans-unit id="scd105819b5a10243">
+  <source>Play</source>
+        <target>播放</target>
+</trans-unit>
+<trans-unit id="s680fc90489553ed6">
+  <source>Timeline</source>
+        <target>时间轴</target>
+</trans-unit>
+<trans-unit id="s5e8250fb85d64c23">
+  <source>Close</source>
+        <target>关闭</target>
+</trans-unit>
+<trans-unit id="s5826603a507d6364">
+  <source>No animations in this scene yet. Select an element and add an animation.</source>
+        <target>当前场景还没有动画。选择一个元素并添加动画。</target>
+</trans-unit>
+<trans-unit id="seba413ba090c81fa">
+  <source>Import from...</source>
 </trans-unit>
 </body>
 </file>
