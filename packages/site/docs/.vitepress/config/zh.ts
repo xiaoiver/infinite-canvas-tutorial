@@ -331,6 +331,10 @@ export const zh = defineConfig({
                 link: 'declarative-gradient',
               },
               {
+                text: 'mix-blend-mode',
+                link: 'blend-mode',
+              },
+              {
                 text: '重复图案',
                 link: 'pattern',
               },

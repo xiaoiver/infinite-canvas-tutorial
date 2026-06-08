@@ -72,6 +72,7 @@ import {
   Embed,
   Editable,
   Filter,
+  NodeLayerBlendMode,
   Brush,
   Children,
   Parent,
@@ -1871,6 +1872,16 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         safeAddComponent(child, MaterialDirty);
       });
     }
+  }
+
+  if ('blendMode' in updates) {
+    const mode = (element as SerializedNode).blendMode;
+    if (mode != null && mode !== 'normal') {
+      safeAddComponent(entity, NodeLayerBlendMode, { mode });
+    } else if (entity.has(NodeLayerBlendMode)) {
+      safeRemoveComponent(entity, NodeLayerBlendMode);
+    }
+    safeAddComponent(entity, MaterialDirty);
   }
 
   if ('extrude3d' in updates && entity.has(Rect)) {

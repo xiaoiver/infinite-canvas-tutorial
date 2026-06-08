@@ -62,6 +62,7 @@ import {
   Marker,
   VectorNetwork,
   Filter,
+  NodeLayerBlendMode,
   Transform,
   Mat3,
   Locked,
@@ -289,6 +290,9 @@ export class MeshPipeline extends System {
   );
   private filters = this.query(
     (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
+  );
+  private nodeLayerBlendModes = this.query(
+    (q) => q.addedChangedOrRemoved.with(NodeLayerBlendMode).trackWrites,
   );
   /** Used to force continuous frames when CRT `useEngineTime` animates without component churn. */
   private filtersCurrent = this.query((q) => q.current.with(Filter).read);
@@ -1189,6 +1193,7 @@ export class MeshPipeline extends System {
             !!this.strokeAttenuations.addedChangedOrRemoved.length ||
             !!this.markers.addedChangedOrRemoved.length ||
             !!this.filters.addedChangedOrRemoved.length ||
+            !!this.nodeLayerBlendModes.addedChangedOrRemoved.length ||
             !!this.clipModes.addedChangedOrRemoved.length)
         ) {
           toRender = true;

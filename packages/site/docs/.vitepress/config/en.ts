@@ -413,6 +413,10 @@ export const en = defineConfig({
                 link: 'declarative-gradient',
               },
               {
+                text: 'Node-level mix-blend-mode',
+                link: 'blend-mode',
+              },
+              {
                 text: 'Pattern',
                 link: 'pattern',
               },
