@@ -11,6 +11,7 @@ import AnimationDasharray from '../components/AnimationDasharray.vue';
 import AnimationDashoffset from '../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../components/AnimationMorphing.vue';
 import AnimationLottieBouncyBall from '../components/AnimationLottieBouncyBall.vue';
+import AnimationTimeline from '../components/AnimationTimeline.vue';
 </script>
 
 # Lesson 36 - Animation
@@ -350,11 +351,100 @@ Below is the official sample running in our setup: [Bouncy Ball]
 
 -   [Discussion in HN]
 
-## Animation editors
+## Animation editor
+
+Inspired by products such as [lottielab] and [Jitter], we built a lightweight animation editor in the Web Components layer: the **Animation panel** on the right edits keyframes for the selected element, and the **Timeline panel** at the bottom shows the scene-wide timeline and drives the global playhead. Both share the same serializable keyframe data and the scene clock in `AppState`.
+
+![source: https://jitter.video/](/jitter.png)
+
+### Layout {#animation-editor-layout}
+
+The taskbar exposes two independent toggles:
+
+-   `SHOW_ANIMATION_PANEL` → `ic-spectrum-animation-panel` (right side, alongside the Properties panel)
+-   `SHOW_TIMELINE_PANEL` → `ic-spectrum-timeline-panel` (bottom dock, full canvas width)
+
+Typical workflow:
+
+1. Select a single element and add an animation or edit property tracks in the Animation panel.
+2. Open the Timeline to see every animated layer in the scene and its time range.
+3. Scrub the playhead or press Play to preview the whole scene at one moment in time.
+4. Selecting a track in the Timeline also selects its element; the Animation panel on the right shows that element’s keyframes.
+
+### Scene clock and editing mode {#animation-scene-clock}
+
+The Timeline is not just UI—it drives the **global playhead in `AppState`**, decoupled from each `AnimationController`:
+
+| Field                  | Meaning                                                                                                                                             |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `animationEditing`     | When `true`, enters **deterministic scrub mode**: every controller is sampled at the same `animationCurrentTime` instead of free-running on its own |
+| `animationCurrentTime` | Global playhead position (milliseconds)                                                                                                             |
+| `animationPlaying`     | Whether the playhead advances automatically                                                                                                         |
+| `animationLoop`        | Whether playback wraps back to 0 at the end of the scene                                                                                            |
+
+When `animationEditing === true`, `AnimationSystem` runs `executeEditing`: while paused, each entity’s controller is fixed at `animationCurrentTime`; while playing, the playhead advances via `performance.now()` deltas and is written back to `animationCurrentTime`. After closing the Timeline or leaving editing mode, controllers that were paused resume autoplay from the current position rather than restarting from the beginning.
+
+Opening the Timeline automatically calls `setAnimationEditing(true)` so scrubbing and preview stay consistent.
+
+### Timeline panel design {#animation-timeline}
+
+<AnimationTimeline />
+
+#### Track data
+
+The Timeline does not read node JSON directly; it aggregates via `api.getAnimatedTracks()`:
+
+```ts
+interface Track {
+    id: string; // node id
+    name: string; // layer name; falls back to id
+    properties: string[]; // e.g. ['opacity', 'x']
+    delay: number; // ms
+    duration: number; // active animation length (total − delay)
+    totalDuration: number;
+}
+```
+
+Scene duration = the maximum `totalDuration` across all tracks. Bar `left` / `width` are computed as `delay * PX_PER_MS` and `duration * PX_PER_MS`.
+
+#### Interactions
+
+| Action            | Behavior                                                                      |
+| ----------------- | ----------------------------------------------------------------------------- |
+| Click track label | `layersSelected = [track.id]`, highlight the track, drive the Animation panel |
+| Drag lane / ruler | Scrub the playhead; canvas previews that frame live                           |
+| Play / Pause      | `toggleAnimationPlaying()` advances the global clock in editing mode          |
+| Loop              | `setAnimationLoop()` controls whether the scene wraps at the end              |
+
+### Animation panel (works with Timeline) {#animation-panel}
+
+Component: `packages/webcomponents/src/spectrum/animation-panel.ts`.
+
+-   Editable only with a **single** selection; multi-select or no selection shows a placeholder.
+-   Global options: `duration`, `delay`, default `easing`, `iterations` (Loop switch).
+-   Keyframes grouped by **property track**; each row has `offset` (0–1), value, `easing`, and a delete button.
+-   **Add keyframe at playhead**: reads `animationCurrentTime`, converts to a normalized offset, and samples the current property values via `controller.getCurrentValues()`—open the Timeline and scrub to the target time before inserting a keyframe.
+-   `fill` / `stroke` use a popover + `ic-spectrum-color-picker`; other numeric properties use `sp-number-field`.
+-   Panel width and height are resizable; sizes persist in `localStorage` (same handle interaction as the Properties panel).
+
+All edits go through `setNodeAnimation` / `updateNodeAnimationKeyframe` and participate in undo history and document serialization.
+
+### Differences from Lottie-style editors {#animation-editor-vs-lottie}
+
+The current implementation stays deliberately simple compared with full DCC tools like [lottielab]:
+
+-   The Timeline uses **one track per node**, not Lottie’s layer + property multi-track layout; property names appear as a label suffix (`Rect · opacity, x`).
+-   Keyframes and bar timing cannot be dragged on the Timeline yet; timing is edited via `offset` in the Animation panel.
+-   Expressions, text layers, clipping masks, and other advanced Lottie features still go through plugin baking—not authored directly in this editor.
+
+Possible extensions: property sub-tracks, keyframe diamond markers, dragging bar edges to change delay/duration, and more.
+
+### External references
 
 -   [lottielab]
 -   [omnilottie]
 -   [thorvg.viewer]
+-   [Jitter]
 
 ## Further reading
 
@@ -371,6 +461,7 @@ Below is the official sample running in our setup: [Bouncy Ball]
 [Magic Animator]: https://magicanimator.com/
 [Discussion in HN]: https://news.ycombinator.com/item?id=44994071
 [lottielab]: https://www.lottielab.com/
+[Jitter]: https://jitter.video/
 [omnilottie]: https://fal.ai/models/fal-ai/omnilottie/api
 [web-animations-js]: https://github.com/web-animations/web-animations-js
 [lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/

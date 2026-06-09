@@ -89,11 +89,24 @@ export class Taskbar extends LitElement {
               ${msg(str`Show properties panel`)}
             </sp-tooltip>
           </sp-action-button>
+          <sp-action-button value="${Task.SHOW_ANIMATION_PANEL}">
+            <sp-icon-animation slot="icon"></sp-icon-animation>
+            <sp-tooltip self-managed placement="left">
+              ${msg(str`Show animation panel`)}
+            </sp-tooltip>
+          </sp-action-button>
+          <sp-action-button value="${Task.SHOW_TIMELINE_PANEL}">
+            <sp-icon-clock slot="icon"></sp-icon-clock>
+            <sp-tooltip self-managed placement="left">
+              ${msg(str`Show timeline panel`)}
+            </sp-tooltip>
+          </sp-action-button>
           <slot name="taskbar-item"></slot>
         </sp-action-group>
         <div class="panels">
           <ic-spectrum-layers-panel></ic-spectrum-layers-panel>
           <ic-spectrum-properties-panel></ic-spectrum-properties-panel>
+          <ic-spectrum-animation-panel></ic-spectrum-animation-panel>
           <slot name="taskbar-panel"></slot>
         </div>
       `,

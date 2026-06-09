@@ -26,6 +26,7 @@ import {
 } from '../utils/mesh3d-node';
 import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
 import { isEntityAlive } from '../systems/Transform';
+import { AnimationController, Keyframe, AnimationOptions } from '../animation';
 import {
   resolveDesignVariableValue,
   designVariableRefKeyFromWire,
@@ -87,6 +88,7 @@ import {
   Extrude3D,
   Light3D,
   Mesh3DNode,
+  AnimationPlayer,
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
@@ -1404,6 +1406,28 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('opacity' in updates) {
     safeAddComponent(entity, Opacity, { opacity });
+  }
+  if ('animation' in updates) {
+    const animation = (updates as Record<string, unknown>).animation as
+      | { keyframes: unknown[]; options: unknown }
+      | null
+      | undefined;
+    if (
+      animation &&
+      Array.isArray(animation.keyframes) &&
+      animation.keyframes.length > 0
+    ) {
+      const controller = new AnimationController(
+        animation.keyframes as Keyframe[],
+        animation.options as AnimationOptions,
+      );
+      if (!entity.has(AnimationPlayer)) {
+        entity.add(AnimationPlayer);
+      }
+      entity.write(AnimationPlayer).controller = controller;
+    } else {
+      safeRemoveComponent(entity, AnimationPlayer);
+    }
   }
   if ('dropShadowColor' in updates) {
     safeAddComponent(entity, DropShadow, {

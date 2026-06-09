@@ -51,8 +51,10 @@ import {
   Light3D,
   Mesh3DNode,
   Canvas3DScope,
+  AnimationPlayer,
 } from '../../components';
 import type {
+  AnimationAttributes,
   AttenuationAttributes,
   BrushSerializedNode,
   DropShadowAttributes,
@@ -1805,6 +1807,16 @@ export function serializedNodesToEntities(
     const { locked } = attributes;
     if (locked) {
       entityCommands.insert(new Locked());
+    }
+
+    const { animation } = attributes as AnimationAttributes;
+    if (animation && Array.isArray(animation.keyframes) && animation.keyframes.length > 0) {
+      entityCommands.insert(
+        new AnimationPlayer({
+          keyframes: animation.keyframes,
+          options: animation.options,
+        }),
+      );
     }
 
     const { filter } = attributes as FilterAttributes;

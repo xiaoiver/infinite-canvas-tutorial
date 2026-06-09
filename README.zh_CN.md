@@ -463,10 +463,11 @@ pnpm run dev
 -   参考 Web Animation API 实现声明式 Keyframe 与控制器
 -   实现路径、笔迹、形变等动画效果
 -   支持 Lottie 等格式
+-   动画与时间线面板
 
-|               Morph               |                      Dashoffset animation                       |
-| :-------------------------------: | :-------------------------------------------------------------: |
-| ![morph](./screenshots/morph.gif) | ![animation-dashoffset](./screenshots/animation-dashoffset.gif) |
+|               Morph               |                      Dashoffset animation                       |             Timeline panel              |
+| :-------------------------------: | :-------------------------------------------------------------: | :-------------------------------------: |
+| ![morph](./screenshots/morph.gif) | ![animation-dashoffset](./screenshots/animation-dashoffset.gif) | ![timeline](./screenshots/timeline.png) |
 
 ## 课程 37 - 基于 Radiance Cascades 的 GI [🔗](https://infinitecanvas.cc/zh/guide/lesson-037)
 

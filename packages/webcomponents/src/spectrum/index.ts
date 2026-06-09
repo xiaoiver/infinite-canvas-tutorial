@@ -24,6 +24,8 @@ export * from './input-solid';
 export * from './input-gradient';
 export * from './input-image';
 export * from './effects-panel';
+export * from './animation-panel';
+export * from './timeline-panel';
 export * from './export-panel';
 export * from './context-bar';
 export * from './context-common-bar';

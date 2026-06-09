@@ -98,6 +98,113 @@ describe('Animation', () => {
     });
   });
 
+  describe('editing', () => {
+    it('should report distinct animated property names', () => {
+      const controller = new AnimationController(
+        [
+          { x: 0, opacity: 0 },
+          { x: 100, opacity: 1 },
+        ],
+        { duration: 1000 },
+      );
+      expect(controller.getAnimatedProperties().sort()).toEqual([
+        'opacity',
+        'x',
+      ]);
+    });
+
+    it('should compute total duration as delay + duration * iterations', () => {
+      const controller = new AnimationController([{ x: 0 }, { x: 1 }], {
+        duration: 500,
+        delay: 200,
+        iterations: 3,
+      });
+      expect(controller.getDuration()).toBe(200 + 500 * 3);
+    });
+
+    it('should collapse infinite iterations to a single iteration for duration', () => {
+      const controller = new AnimationController([{ x: 0 }, { x: 1 }], {
+        duration: 400,
+        delay: 100,
+        iterations: Infinity,
+      });
+      expect(controller.getDuration()).toBe(100 + 400);
+    });
+
+    it('should re-normalize keyframes on setKeyframes and preserve playback time', () => {
+      const controller = new AnimationController([{ x: 0 }, { x: 100 }], {
+        duration: 1000,
+        fill: 'both',
+      });
+      controller.seek(500);
+      controller.setKeyframes([{ x: 0 }, { x: 200 }, { x: 400 }]);
+
+      const frames = controller.getKeyframes();
+      expect(frames.map((f) => f.offset)).toEqual([0, 0.5, 1]);
+      // Position is preserved, so re-sampling at the same time still works.
+      expect(controller.getCurrentValues()?.x).toBeCloseTo(200, 6);
+    });
+
+    it('should update a single keyframe value by index', () => {
+      const controller = new AnimationController([{ x: 0 }, { x: 100 }], {
+        duration: 1000,
+        fill: 'both',
+      });
+      controller.updateKeyframe(1, { x: 50 });
+      controller.seek(1000);
+      expect(controller.getCurrentValues()?.x).toBeCloseTo(50, 6);
+    });
+
+    it('should insert and remove keyframes (keeping at least one)', () => {
+      const controller = new AnimationController([{ x: 0 }, { x: 100 }], {
+        duration: 1000,
+      });
+      controller.insertKeyframe({ offset: 0.5, x: 25 });
+      expect(controller.getKeyframes()).toHaveLength(3);
+
+      controller.removeKeyframe(1);
+      expect(controller.getKeyframes()).toHaveLength(2);
+
+      // Cannot drop below a single keyframe.
+      controller.removeKeyframe(0);
+      controller.removeKeyframe(0);
+      expect(controller.getKeyframes().length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should re-normalize options through setOptions', () => {
+      const controller = new AnimationController([{ x: 0 }, { x: 1 }], {
+        duration: 1000,
+      });
+      controller.setOptions({ duration: 2000, delay: 100 });
+      const options = controller.getOptions();
+      expect(options.duration).toBe(2000);
+      expect(options.delay).toBe(100);
+      // Untouched fields keep their normalized defaults.
+      expect(options.iterations).toBe(1);
+    });
+
+    it('should produce a JSON round-trippable serialize() snapshot', () => {
+      const controller = new AnimationController(
+        [
+          { x: 0, opacity: 0 },
+          { x: 100, opacity: 1 },
+        ],
+        { duration: 1000, delay: 50, easing: 'ease-in' },
+      );
+
+      const serialized = controller.serialize();
+      const clone = JSON.parse(JSON.stringify(serialized));
+      const restored = new AnimationController(clone.keyframes, clone.options);
+
+      expect(restored.getOptions().duration).toBe(1000);
+      expect(restored.getOptions().delay).toBe(50);
+      expect(restored.getAnimatedProperties().sort()).toEqual([
+        'opacity',
+        'x',
+      ]);
+    });
+  });
+
   describe('transform origin compensation', () => {
     it('should keep origin world position unchanged when rotating', () => {
       const result = computeTranslationWithTransformOrigin({

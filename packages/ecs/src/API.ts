@@ -1387,6 +1387,201 @@ export class API {
     return controller;
   }
 
+  // -------------------------------------------------------------------------
+  // Animation editor API
+  //
+  // Editor-facing helpers used by the Animation panel (per-element keyframes)
+  // and the Timeline panel (scene-wide tracks + scrubbable playhead). Reads are
+  // sourced from the authoritative `AnimationPlayer` controller on each entity;
+  // edits go through `updateNode({ animation })` so they participate in history,
+  // serialization, and appState propagation like any other node mutation.
+  // -------------------------------------------------------------------------
+
+  /** @returns the live {@link AnimationController} attached to a node, if any. */
+  getNodeAnimationController(id: SerializedNode['id']): AnimationController | null {
+    const node = this.getNodeById(id);
+    if (!node) {
+      return null;
+    }
+    const entity = this.getEntity(node);
+    if (!entity || !entity.has(AnimationPlayer)) {
+      return null;
+    }
+    return entity.read(AnimationPlayer).controller ?? null;
+  }
+
+  /** @returns serializable `{ keyframes, options }` for a node, or `null`. */
+  getNodeAnimation(
+    id: SerializedNode['id'],
+  ): { keyframes: Keyframe[]; options: AnimationOptions } | null {
+    const controller = this.getNodeAnimationController(id);
+    if (!controller) {
+      return null;
+    }
+    const { keyframes, options } = controller.serialize();
+    return {
+      keyframes: keyframes as Keyframe[],
+      options: options as AnimationOptions,
+    };
+  }
+
+  /**
+   * Replace (or remove, when `animation` is `null`) a node's animation. Goes
+   * through {@link updateNode} so undo/redo and serialization work.
+   */
+  setNodeAnimation(
+    id: SerializedNode['id'],
+    animation: { keyframes: Keyframe[]; options: AnimationOptions } | null,
+  ) {
+    const node = this.getNodeById(id);
+    if (!node) {
+      return;
+    }
+    this.updateNode(node, { animation: animation ?? undefined });
+  }
+
+  /** Remove a node's animation entirely. */
+  removeNodeAnimation(id: SerializedNode['id']) {
+    this.setNodeAnimation(id, null);
+  }
+
+  /** Merge a partial options patch into a node's animation (duration, delay, …). */
+  updateNodeAnimationOptions(
+    id: SerializedNode['id'],
+    patch: Partial<AnimationOptions>,
+  ) {
+    const current = this.getNodeAnimation(id);
+    if (!current) {
+      return;
+    }
+    this.setNodeAnimation(id, {
+      keyframes: current.keyframes,
+      options: { ...current.options, ...patch },
+    });
+  }
+
+  /** Replace a node's keyframes, keeping its existing options. */
+  setNodeAnimationKeyframes(id: SerializedNode['id'], keyframes: Keyframe[]) {
+    const current = this.getNodeAnimation(id);
+    if (!current) {
+      return;
+    }
+    this.setNodeAnimation(id, { keyframes, options: current.options });
+  }
+
+  /** Insert a new keyframe into a node's animation. */
+  addNodeAnimationKeyframe(id: SerializedNode['id'], keyframe: Keyframe) {
+    const current = this.getNodeAnimation(id);
+    if (!current) {
+      return;
+    }
+    this.setNodeAnimationKeyframes(id, [...current.keyframes, { ...keyframe }]);
+  }
+
+  /** Patch a keyframe (by index) of a node's animation. */
+  updateNodeAnimationKeyframe(
+    id: SerializedNode['id'],
+    index: number,
+    patch: Partial<Keyframe>,
+  ) {
+    const current = this.getNodeAnimation(id);
+    if (!current || index < 0 || index >= current.keyframes.length) {
+      return;
+    }
+    const keyframes = current.keyframes.map((kf, i) =>
+      i === index ? { ...kf, ...patch } : { ...kf },
+    );
+    this.setNodeAnimationKeyframes(id, keyframes);
+  }
+
+  /** Remove a keyframe (by index) of a node's animation. Keeps ≥1 keyframe. */
+  removeNodeAnimationKeyframe(id: SerializedNode['id'], index: number) {
+    const current = this.getNodeAnimation(id);
+    if (!current || current.keyframes.length <= 1) {
+      return;
+    }
+    const keyframes = current.keyframes.filter((_, i) => i !== index);
+    this.setNodeAnimationKeyframes(id, keyframes);
+  }
+
+  /**
+   * @returns one descriptor per animated node in the scene, for the bottom
+   * Timeline panel. `delay`/`duration`/`totalDuration` are in milliseconds.
+   */
+  getAnimatedTracks(): {
+    id: SerializedNode['id'];
+    name: string;
+    properties: string[];
+    delay: number;
+    duration: number;
+    totalDuration: number;
+  }[] {
+    const tracks: ReturnType<API['getAnimatedTracks']> = [];
+    for (const node of this.getNodes()) {
+      const controller = this.getNodeAnimationController(node.id);
+      if (!controller) {
+        continue;
+      }
+      const options = controller.getOptions();
+      tracks.push({
+        id: node.id,
+        name: (node as { name?: string }).name || node.id,
+        properties: controller.getAnimatedProperties(),
+        delay: options.delay,
+        duration: controller.getDuration() - options.delay,
+        totalDuration: controller.getDuration(),
+      });
+    }
+    return tracks;
+  }
+
+  /** @returns the longest active track end-time (ms) across the scene. */
+  getSceneAnimationDuration(): number {
+    let max = 0;
+    for (const node of this.getNodes()) {
+      const controller = this.getNodeAnimationController(node.id);
+      if (controller) {
+        max = Math.max(max, controller.getDuration());
+      }
+    }
+    return max;
+  }
+
+  // --- Timeline transport (drives the scene playhead via appState) ---
+
+  /** Enter/leave the deterministic scrub mode used by the Animation editor. */
+  setAnimationEditing(editing: boolean) {
+    this.setAppState({ animationEditing: editing });
+  }
+
+  /** Set the global playhead time (ms) and pause so the frame is sampled there. */
+  setAnimationCurrentTime(time: number) {
+    this.setAppState({
+      animationCurrentTime: Math.max(0, time),
+      animationPlaying: false,
+    });
+  }
+
+  playAnimation() {
+    this.setAppState({ animationEditing: true, animationPlaying: true });
+  }
+
+  pauseAnimation() {
+    this.setAppState({ animationPlaying: false });
+  }
+
+  toggleAnimationPlaying() {
+    if (this.getAppState().animationPlaying) {
+      this.pauseAnimation();
+    } else {
+      this.playAnimation();
+    }
+  }
+
+  setAnimationLoop(loop: boolean) {
+    this.setAppState({ animationLoop: loop });
+  }
+
   private getSceneGraphBounds() {
     const rbush = this.#camera.read(RBush).value;
 

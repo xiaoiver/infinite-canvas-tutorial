@@ -710,8 +710,8 @@ function getAnimatedProperties(keyframes: NormalizedKeyframe[]) {
 }
 
 export class AnimationController {
-  private readonly options: NormalizedAnimationOptions;
-  private readonly keyframes: NormalizedKeyframe[];
+  private options: NormalizedAnimationOptions;
+  private keyframes: NormalizedKeyframe[];
   private playState: AnimationPlayState = 'idle';
   private startTime?: number;
   private holdTime = 0;
@@ -727,8 +727,95 @@ export class AnimationController {
     return this.keyframes;
   }
 
+  /** Distinct animated property names across all keyframes (excludes offset/easing). */
+  getAnimatedProperties() {
+    return getAnimatedProperties(this.keyframes);
+  }
+
   getOptions() {
     return this.options;
+  }
+
+  /**
+   * JSON-serializable snapshot of this controller's keyframes + options.
+   * Runtime playback state (currentTime, playState, …) is intentionally excluded
+   * because it is not serializable; see lesson-036.
+   */
+  serialize(): { keyframes: NormalizedKeyframe[]; options: NormalizedAnimationOptions } {
+    return {
+      keyframes: this.keyframes.map((frame) => ({ ...frame })),
+      options: { ...this.options },
+    };
+  }
+
+  /**
+   * Total active timeline length in ms (delay + duration * iterations).
+   * Infinite iterations collapse to a single iteration so the editor can still
+   * render a finite track.
+   */
+  getDuration() {
+    const iterations = getIterationCount(this.options.iterations);
+    const activeDuration = Number.isFinite(iterations)
+      ? this.options.duration * iterations
+      : this.options.duration;
+    return this.options.delay + activeDuration;
+  }
+
+  /**
+   * Replace the keyframes, re-normalizing them while preserving the current
+   * playback position/state so that editing during playback does not restart
+   * the animation.
+   */
+  setKeyframes(keyframes: Keyframe[]) {
+    this.keyframes = normalizeKeyframes(keyframes, this.options.easing);
+  }
+
+  /**
+   * Merge a partial options patch and re-normalize. Playback position/state is
+   * preserved; callers can {@link seek} afterwards if duration changed.
+   */
+  setOptions(patch: Partial<AnimationOptions>) {
+    const next: AnimationOptions = {
+      ...this.options,
+      ...patch,
+    };
+    if ('transformOrigin' in patch) {
+      next.transformOrigin = patch.transformOrigin ?? undefined;
+    }
+    this.options = normalizeAnimationOptions(next);
+    // Re-apply global easing fallback to keyframes that had no explicit easing.
+    this.keyframes = normalizeKeyframes(this.keyframes, this.options.easing);
+  }
+
+  /**
+   * Patch a single keyframe (by index) and re-normalize. Pass `offset`,
+   * `easing`, or any animated property value.
+   */
+  updateKeyframe(index: number, patch: Partial<Keyframe>) {
+    if (index < 0 || index >= this.keyframes.length) {
+      return;
+    }
+    const next = this.keyframes.map((frame) => ({ ...frame }) as Keyframe);
+    next[index] = { ...next[index], ...patch };
+    this.setKeyframes(next);
+  }
+
+  /** Insert a new keyframe (sorted by offset on re-normalization). */
+  insertKeyframe(keyframe: Keyframe) {
+    const next = this.keyframes.map((frame) => ({ ...frame }) as Keyframe);
+    next.push({ ...keyframe });
+    this.setKeyframes(next);
+  }
+
+  /** Remove a keyframe by index. Keeps at least one keyframe. */
+  removeKeyframe(index: number) {
+    if (index < 0 || index >= this.keyframes.length || this.keyframes.length <= 1) {
+      return;
+    }
+    const next = this.keyframes
+      .filter((_, i) => i !== index)
+      .map((frame) => ({ ...frame }) as Keyframe);
+    this.setKeyframes(next);
   }
 
   getPlaybackRate() {
@@ -827,7 +914,15 @@ export class AnimationController {
     if (isActive && duration > 0) {
       const clampedLocal = isInfinite ? Math.max(0, localTime) : Math.min(localTime, activeDuration);
       currentIteration = Math.floor(clampedLocal / duration);
-      const within = clampedLocal % duration;
+      let within = clampedLocal % duration;
+      // At the exact end of a finite animation the modulo collapses to the start
+      // of the next (non-existent) iteration, which would snap the element back to
+      // its first keyframe. Clamp it to the end of the final iteration instead so
+      // the last keyframe is shown (matches the just-after fill behaviour below).
+      if (!isInfinite && within === 0 && currentIteration >= iterationCount) {
+        currentIteration = iterationCount - 1;
+        within = duration;
+      }
       progress = within / duration;
     } else if (isAfter && canApplyFillAfter(fill) && duration > 0) {
       progress = 1;

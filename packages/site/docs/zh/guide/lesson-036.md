@@ -12,6 +12,7 @@ import AnimationDashoffset from '../../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../../components/AnimationMorphing.vue';
 import AnimationLottieBouncyBall from '../../components/AnimationLottieBouncyBall.vue';
 import AnimationLottieBezier from '../../components/AnimationLottieBezier.vue';
+import AnimationTimeline from '../../components/AnimationTimeline.vue';
 </script>
 
 # 课程 36 - Animation
@@ -350,9 +351,98 @@ fetch('/bouncy_ball.json')
 
 ## 动画编辑器
 
+参考 [lottielab]、[Jitter] 等产品，我们在 Web Components 层实现了一套轻量动画编辑器：**右侧 Animation 面板**负责编辑当前选中元素的 keyframes，**底部 Timeline 面板**展示整场景的时间轴并驱动全局播放头。两者共用同一份可序列化的 Keyframes 数据与 `AppState` 里的场景时钟。
+
+![source: https://jitter.video/](/jitter.png)
+
+### 整体布局 {#animation-editor-layout}
+
+Taskbar 提供两个独立开关：
+
+-   `SHOW_ANIMATION_PANEL` → `ic-spectrum-animation-panel`（右侧，与 Properties 面板并列）
+-   `SHOW_TIMELINE_PANEL` → `ic-spectrum-timeline-panel`（底部 dock，横跨画布宽度）
+
+典型工作流：
+
+1. 选中单个元素，在 Animation 面板添加动画或编辑属性轨道。
+2. 打开 Timeline，查看场景中所有带动画的图层及其时间范围。
+3. 拖动播放头或点击播放，预览整场景在同一时刻的合成效果。
+4. 在 Timeline 选中某条轨道会同步选中对应元素，右侧 Animation 面板随即展示该元素的 keyframes。
+
+### 场景时钟与编辑模式 {#animation-scene-clock}
+
+Timeline 不只是 UI，它驱动 **`AppState` 中的全局播放头**，与每个 `AnimationController` 解耦：
+
+| 字段                   | 含义                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| `animationEditing`     | 为 `true` 时进入**确定性 scrub 模式**：所有控制器按同一 `animationCurrentTime` 采样，而非各自 free-run |
+| `animationCurrentTime` | 全局播放头位置（毫秒）                                                                                 |
+| `animationPlaying`     | 是否自动推进播放头                                                                                     |
+| `animationLoop`        | 到达场景末尾是否回到 0                                                                                 |
+
+`AnimationSystem` 在 `animationEditing === true` 时走 `executeEditing`：暂停状态下把每个 entity 的控制器固定在 `animationCurrentTime`；播放状态下用 `performance.now()` 的 delta 推进播放头，并写回 `animationCurrentTime`。关闭 Timeline 或离开编辑模式后，原先被 pause 的控制器会从当前位置继续 autoplay，而不是从头重播。
+
+打开 Timeline 时会自动 `setAnimationEditing(true)`，保证 scrub 与预览行为一致。
+
+### Timeline 面板设计 {#animation-timeline}
+
+<AnimationTimeline />
+
+#### 轨道数据
+
+Timeline 不直接读节点 JSON，而是通过 `api.getAnimatedTracks()` 聚合：
+
+```ts
+interface Track {
+    id: string; // 节点 id
+    name: string; // 图层名，缺省为 id
+    properties: string[]; // 如 ['opacity', 'x']
+    delay: number; // ms
+    duration: number; // 有效动画时长（total − delay）
+    totalDuration: number;
+}
+```
+
+场景总时长 = 所有 track 的 `totalDuration` 最大值。条形块的 `left` / `width` 分别由 `delay * PX_PER_MS` 与 `duration * PX_PER_MS` 换算。
+
+#### 交互
+
+| 操作              | 行为                                                         |
+| ----------------- | ------------------------------------------------------------ |
+| 点击轨道标签      | `layersSelected = [track.id]`，高亮轨道，驱动 Animation 面板 |
+| 拖动 lane / ruler | scrub 播放头，画布实时预览该帧                               |
+| Play / Pause      | `toggleAnimationPlaying()`，在编辑模式下推进全局时钟         |
+| Loop              | `setAnimationLoop()`，到场景末尾是否回绕                     |
+
+### Animation 面板（与 Timeline 配合） {#animation-panel}
+
+组件：`packages/webcomponents/src/spectrum/animation-panel.ts`。
+
+-   仅**单选**元素时可编辑；多选或未选显示占位提示。
+-   全局选项：`duration`、`delay`、默认 `easing`、`iterations`（Loop 开关）。
+-   按**属性轨道**分组展示 keyframes：每行包含 `offset`（0–1）、属性值、`easing`、删除按钮。
+-   **Add keyframe at playhead**：读取当前 `animationCurrentTime`，换算为 normalized offset，并调用 `controller.getCurrentValues()` 采样当前属性值——因此应先打开 Timeline 并 scrub 到目标时刻再插入 keyframe。
+-   `fill` / `stroke` 使用 popover + `ic-spectrum-color-picker`；其余数值属性用 `sp-number-field`。
+-   面板宽高可拖拽调整，尺寸持久化到 `localStorage`（与 Properties 面板相同的 handle 交互）。
+
+所有编辑经 `setNodeAnimation` / `updateNodeAnimationKeyframe` 等 API 写入，参与 undo 历史与文档序列化。
+
+### 与 Lottie 式编辑器的差异 {#animation-editor-vs-lottie}
+
+当前实现刻意保持简单，与 [lottielab] 等完整 DCC 相比：
+
+-   Timeline 以**节点**为轨道，而非 Lottie 的 layer + property 多轨展开；属性名显示在标签后缀（`Rect · opacity, x`）。
+-   暂不支持在 Timeline 上直接拖动 keyframe 或条形块改 timing；timing 在 Animation 面板通过 `offset` 编辑。
+-   表达式、Text layer、Clipping mask 等 Lottie 高级特性仍走插件烘焙路径，不由该编辑器直接创作。
+
+后续可在此基础上扩展：property 子轨、keyframe 菱形标记、条形块 edge 拖拽改 delay/duration 等。
+
+### 外部参考
+
 -   [lottielab]
 -   [omnilottie]
 -   [thorvg.viewer]
+-   [Jitter]
 
 ## 扩展阅读
 
@@ -369,6 +459,7 @@ fetch('/bouncy_ball.json')
 [Magic Animator]: https://magicanimator.com/
 [Discussion in HN]: https://news.ycombinator.com/item?id=44994071
 [lottielab]: https://www.lottielab.com/
+[Jitter]: https://jitter.video/
 [omnilottie]: https://fal.ai/models/fal-ai/omnilottie/api
 [web-animations-js]: https://github.com/web-animations/web-animations-js
 [lottie json schema]: https://lottiefiles.github.io/lottie-docs/schema/

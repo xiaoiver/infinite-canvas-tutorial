@@ -460,10 +460,11 @@ If you want to use it in your own project, you can refer to:
 -   How to implement declarative keyframes and controllers aligned with the Web Animations API
 -   How to implement path, stroke, and morphing effects
 -   How formats like Lottie fit in
+-   Timeline panel
 
-|               Morph               |                      Dashoffset animation                       |
-| :-------------------------------: | :-------------------------------------------------------------: |
-| ![morph](./screenshots/morph.gif) | ![animation-dashoffset](./screenshots/animation-dashoffset.gif) |
+|               Morph               |                      Dashoffset animation                       |             Timeline panel              |
+| :-------------------------------: | :-------------------------------------------------------------: | :-------------------------------------: |
+| ![morph](./screenshots/morph.gif) | ![animation-dashoffset](./screenshots/animation-dashoffset.gif) | ![timeline](./screenshots/timeline.png) |
 
 ## Lesson 37 - Global illumination with radiance cascades [🔗](https://infinitecanvas.cc/guide/lesson-037)
 
