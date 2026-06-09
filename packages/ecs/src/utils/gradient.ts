@@ -6,6 +6,7 @@
 import { distanceSquareRoot, isNil, isString } from '@antv/util';
 import { DEG_TO_RAD } from '@pixi/math';
 
+import { parseColor } from './color';
 import { DEFAULT_MESH_GRADIENT_CORNER_POSITIONS } from './mesh-gradient-padding';
 
 export interface LinearGradientNode {
@@ -764,6 +765,133 @@ export function computeLinearGradient(
   const y2 = min[1] + rcy + (Math.sin(rad) * length) / 2;
 
   return { x1, y1, x2, y2 };
+}
+
+type RgbaStop = { t: number; r: number; g: number; b: number; a: number };
+
+function gradientStepOffset(step: LinearGradient['steps'][number]): number {
+  const { type, value } = step.offset;
+  if (type === '%') {
+    return value / 100;
+  }
+  if (value <= 1) {
+    return value;
+  }
+  return value / 100;
+}
+
+/** 将 {@link LinearGradient} 的色标转为 0–1 位置 + 0–1 RGBA（供预乘插值）。 */
+export function normalizeLinearGradientStops(
+  steps: LinearGradient['steps'],
+): RgbaStop[] {
+  return steps
+    .map((step) => {
+      const c = parseColor(step.color);
+      return {
+        t: gradientStepOffset(step),
+        r: c.r / 255,
+        g: c.g / 255,
+        b: c.b / 255,
+        a: c.opacity,
+      };
+    })
+    .sort((a, b) => a.t - b.t);
+}
+
+/** CSS 渐变在 alpha 预乘 sRGB 下插值（与浏览器 `transparent`→`white` 等行为对齐）。 */
+export function sampleLinearGradientPremultiplied(
+  stops: RgbaStop[],
+  t: number,
+): RgbaStop {
+  const clamped = Math.max(0, Math.min(1, t));
+  if (stops.length === 0) {
+    return { t: clamped, r: 0, g: 0, b: 0, a: 0 };
+  }
+  if (clamped <= stops[0]!.t) {
+    return { ...stops[0]!, t: clamped };
+  }
+  const last = stops[stops.length - 1]!;
+  if (clamped >= last.t) {
+    return { ...last, t: clamped };
+  }
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const lo = stops[i]!;
+    const hi = stops[i + 1]!;
+    if (clamped < lo.t || clamped > hi.t) {
+      continue;
+    }
+    if (hi.t === lo.t) {
+      return { ...hi, t: clamped };
+    }
+    const u = (clamped - lo.t) / (hi.t - lo.t);
+    const loPmR = lo.r * lo.a;
+    const loPmG = lo.g * lo.a;
+    const loPmB = lo.b * lo.a;
+    const hiPmR = hi.r * hi.a;
+    const hiPmG = hi.g * hi.a;
+    const hiPmB = hi.b * hi.a;
+    const a = lo.a + (hi.a - lo.a) * u;
+    const pmR = loPmR + (hiPmR - loPmR) * u;
+    const pmG = loPmG + (hiPmG - loPmG) * u;
+    const pmB = loPmB + (hiPmB - loPmB) * u;
+    if (a <= 1e-6) {
+      return { t: clamped, r: 0, g: 0, b: 0, a: 0 };
+    }
+    return { t: clamped, r: pmR / a, g: pmG / a, b: pmB / a, a };
+  }
+
+  return { ...last, t: clamped };
+}
+
+export type GradientRasterContext =
+  | CanvasRenderingContext2D
+  | OffscreenCanvasRenderingContext2D;
+
+/**
+ * 线性渐变光栅化：预乘 alpha 插值，避免 Canvas2D `addColorStop` 在 transparent→white 时出现灰带。
+ */
+export function fillLinearGradientPremultiplied(
+  ctx: GradientRasterContext,
+  minX: number,
+  minY: number,
+  width: number,
+  height: number,
+  gradient: LinearGradient,
+): void {
+  if (width <= 0 || height <= 0) {
+    return;
+  }
+  const stops = normalizeLinearGradientStops(gradient.steps);
+  const { x1, y1, x2, y2 } = computeLinearGradient(
+    [minX, minY],
+    width,
+    height,
+    gradient.angle,
+  );
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len2 = dx * dx + dy * dy;
+  const invLen2 = len2 > 1e-10 ? 1 / len2 : 0;
+  const imageData = ctx.createImageData(width, height);
+  const data = imageData.data;
+
+  for (let py = 0; py < height; py++) {
+    for (let px = 0; px < width; px++) {
+      const gx = minX + px + 0.5;
+      const gy = minY + py + 0.5;
+      let t = ((gx - x1) * dx + (gy - y1) * dy) * invLen2;
+      t = Math.max(0, Math.min(1, t));
+      const { r, g, b, a } = sampleLinearGradientPremultiplied(stops, t);
+      const i = (py * width + px) * 4;
+      data[i] = Math.round(r * 255);
+      data[i + 1] = Math.round(g * 255);
+      data[i + 2] = Math.round(b * 255);
+      data[i + 3] = Math.round(a * 255);
+    }
+  }
+
+  ctx.putImageData(imageData, minX, minY);
 }
 
 export function computeConicGradient(

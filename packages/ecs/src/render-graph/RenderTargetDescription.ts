@@ -8,6 +8,8 @@ export class RGRenderTargetDescription {
   colorClearColor: Readonly<Color> | 'load' = 'load';
   depthClearValue: number | 'load' = 'load';
   stencilClearValue: number | 'load' = 'load';
+  /** 离屏 RT 若会在后续 pass 中作为 shader 采样源，须含 {@link TextureUsage.SAMPLED}（WebGPU）。 */
+  sampledForShaderRead = false;
 
   constructor(public format: Format) { }
 

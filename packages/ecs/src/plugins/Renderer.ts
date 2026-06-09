@@ -76,6 +76,7 @@ import {
   LockAspectRatio,
   Editable,
   Filter,
+  NodeLayerBlendMode,
   Locked,
   ClipMode,
   Flex,
@@ -141,6 +142,7 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     component(TextDecoration);
     component(Marker);
     component(Filter);
+    component(NodeLayerBlendMode);
     component(ClipMode);
 
     /**

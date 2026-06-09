@@ -37,6 +37,7 @@ import {
   HTMLContainer,
   Embed,
   Filter,
+  NodeLayerBlendMode,
   Binding,
   Binded,
   PartialBinding,
@@ -1815,6 +1816,11 @@ export function serializedNodesToEntities(
           ch.insert(new MaterialDirty());
         }
       }
+    }
+
+    const { blendMode } = attributes as SerializedNode;
+    if (blendMode != null && blendMode !== 'normal') {
+      entityCommands.insert(new NodeLayerBlendMode({ mode: blendMode }));
     }
 
     const { display } = attributes as FlexboxLayoutAttributes;

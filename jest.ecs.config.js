@@ -15,7 +15,7 @@ const esm = [
   .join('|');
 
 module.exports = {
-  testTimeout: 100000,
+  testTimeout: 30000,
   setupFiles: ['<rootDir>/__tests__/jest-pretext-canvas.js'],
   testMatch: ['**/ecs/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
@@ -25,10 +25,8 @@ module.exports = {
   moduleNameMapper: {
     '^@infinite-canvas-tutorial/device-api$':
       '<rootDir>/packages/device-api/src/index.ts',
-    '^@infinite-canvas-tutorial/ecs$':
-      '<rootDir>/packages/ecs/src/index.ts',
-    '^@infinite-canvas-tutorial/ecs/(.*)$':
-      '<rootDir>/packages/ecs/src/$1',
+    '^@infinite-canvas-tutorial/ecs$': '<rootDir>/packages/ecs/src/index.ts',
+    '^@infinite-canvas-tutorial/ecs/(.*)$': '<rootDir>/packages/ecs/src/$1',
     '^heic2any$': '<rootDir>/__tests__/mocks/heic2any.ts',
   },
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],

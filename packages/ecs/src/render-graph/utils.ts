@@ -27,6 +27,17 @@ export const opaqueBlackFullClearRenderPassDescriptor =
 export const opaqueWhiteFullClearRenderPassDescriptor =
   makeAttachmentClearDescriptor(OpaqueWhite);
 
+/**
+ * Node layer-blend 离屏 src pass 专用：无 Grid 等 LEQUAL 预写，SDF/Mesh 首遍用
+ * {@link CompareFunction.GREATER}，深度须清 0 而非主 pass 的 1，否则首遍深度测试全失败。
+ */
+export const layerBlendSrcDepthClearRenderPassDescriptor: GfxrAttachmentClearDescriptor =
+  {
+    colorClearColor: OpaqueWhite,
+    depthClearValue: 0,
+    stencilClearValue: 0,
+  };
+
 export enum AntialiasingMode {
   None,
   FXAA,
@@ -90,5 +101,19 @@ export function makeBackbufferDescSimple(
     desc.stencilClearValue = clearDescriptor.stencilClearValue;
   }
 
+  return desc;
+}
+
+/** Node layer blend 形状离屏 RT：须可在 composite pass 中采样。 */
+export function makeLayerBlendSrcColorDesc(
+  renderInput: RenderInput,
+  clearDescriptor: GfxrAttachmentClearDescriptor,
+): RGRenderTargetDescription {
+  const desc = makeBackbufferDescSimple(
+    RGAttachmentSlot.Color0,
+    renderInput,
+    clearDescriptor,
+  );
+  desc.sampledForShaderRead = true;
   return desc;
 }

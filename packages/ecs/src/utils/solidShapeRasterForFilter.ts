@@ -41,6 +41,7 @@ import {
   computeLinearGradient,
   computeRadialGradient,
   computeConicGradient,
+  fillLinearGradientPremultiplied,
   type Gradient,
   type MeshGradient,
   isMeshGradientGradient,
@@ -697,6 +698,17 @@ export function fillCssGradientsStackedInBounds(
   const gh = bounds.maxY - bounds.minY;
   for (const g of gradients) {
     if (isMeshGradientGradient(g)) {
+      continue;
+    }
+    if (g.type === 'linear-gradient') {
+      fillLinearGradientPremultiplied(
+        ctx,
+        bounds.minX,
+        bounds.minY,
+        gw,
+        gh,
+        g,
+      );
       continue;
     }
     const cg = createCanvasGradientForBounds(ctx, g, bounds);

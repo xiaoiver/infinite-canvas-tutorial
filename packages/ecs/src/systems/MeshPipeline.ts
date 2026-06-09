@@ -62,6 +62,7 @@ import {
   Marker,
   VectorNetwork,
   Filter,
+  NodeLayerBlendMode,
   Transform,
   Mat3,
   Locked,
@@ -179,10 +180,32 @@ function collectDescendantsWithPartialExportGeometry(root: Entity): Entity[] {
   return out;
 }
 
+/** Mirrors {@link MeshPipeline}'s renderables query `withAny` filter. */
+function entityMatchesRenderableQuery(entity: Entity): boolean {
+  return (
+    entity.has(Renderable) &&
+    (entity.has(Circle) ||
+      entity.has(Ellipse) ||
+      entity.has(Rect) ||
+      entity.has(Line) ||
+      entity.has(Polyline) ||
+      entity.has(Path) ||
+      entity.has(Text) ||
+      entity.has(Brush) ||
+      entity.has(VectorNetwork) ||
+      entity.has(Transform))
+  );
+}
+
 export class MeshPipeline extends System {
   private setupDevice = this.attach(SetupDevice);
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
+
+  /** Canvas gained {@link GPUResource} this frame (async SetupDevice). */
+  private gpuReadyCanvases = this.query(
+    (q) => q.added.current.with(Canvas, GPUResource).read,
+  );
 
   private cameras = this.query(
     (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
@@ -289,6 +312,9 @@ export class MeshPipeline extends System {
   );
   private filters = this.query(
     (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
+  );
+  private nodeLayerBlendModes = this.query(
+    (q) => q.addedChangedOrRemoved.with(NodeLayerBlendMode).trackWrites,
   );
   /** Used to force continuous frames when CRT `useEngineTime` animates without component churn. */
   private filtersCurrent = this.query((q) => q.current.with(Filter).read);
@@ -729,63 +755,66 @@ export class MeshPipeline extends System {
       mainDepthDesc,
       'Main Depth',
     );
-    builder.pushPass((pass) => {
-      pass.setDebugName(
-        composite3D ? 'Main Render Pass (3D + 2D)' : 'Main Render Pass',
-      );
-      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-      pass.attachRenderTargetID(
-        RGAttachmentSlot.DepthStencil,
-        mainDepthTargetID,
-      );
-      pass.exec((renderPass) => {
+
+    const mainPassDebugName = composite3D
+      ? 'Main Render Pass (3D + 2D)'
+      : 'Main Render Pass';
+
+    if (shouldRenderPartially) {
+      const { api } = canvas.read(Canvas);
+      const clipParents = new Set<Entity>();
+      nodes.forEach((node: SerializedNode) => {
+        const parentNode = node.parentId && api.getNodeById(node.parentId);
+        const parentEntity = parentNode && api.getEntity(parentNode);
+        const needRenderClipParent =
+          parentNode &&
+          !nodes.includes(parentNode) &&
+          parentNode.clipMode &&
+          !clipParents.has(parentEntity);
+        if (needRenderClipParent) {
+          clipParents.add(parentEntity);
+          batchManager.add(parentEntity);
+        }
+
+        const rootEntity = api.getEntity(node);
+        const withGeometry = collectDescendantsWithPartialExportGeometry(
+          rootEntity,
+        );
+        const toBatch = withGeometry.length > 0 ? withGeometry : [rootEntity];
+        for (const e of toBatch) {
+          batchManager.add(e);
+        }
+      });
+    } else {
+      if (this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
+          if (type === 'remove') {
+            batchManager.remove(entity, !entity.has(Culled));
+          } else {
+            batchManager.add(entity);
+          }
+        });
+        this.pendingRenderables.delete(camera);
+      }
+    }
+
+    batchManager.scheduleFlush(
+      builder,
+      mainColorTargetID,
+      mainDepthTargetID,
+      uniformBuffer,
+      legacyObject,
+      width,
+      height,
+      (renderPass) => {
         gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
-        // Grid fills the framebuffer with theme background; draw 3D after it.
         if (composite3D) {
           mesh3d!.drawMeshes(renderPass, canvas, width, height);
         }
-        if (shouldRenderPartially) {
-          const { api } = canvas.read(Canvas);
-          // Add clip parent if exists.
-          const clipParents = new Set<Entity>();
-          nodes.forEach((node: SerializedNode) => {
-            const parentNode = node.parentId && api.getNodeById(node.parentId);
-            const parentEntity = parentNode && api.getEntity(parentNode);
-            const needRenderClipParent = parentNode && !nodes.includes(parentNode) && parentNode.clipMode && !clipParents.has(parentEntity);
-            if (needRenderClipParent) {
-              clipParents.add(parentEntity);
-              batchManager.add(parentEntity);
-            }
-
-            const rootEntity = api.getEntity(node);
-            const withGeometry = collectDescendantsWithPartialExportGeometry(
-              rootEntity,
-            );
-            const toBatch =
-              withGeometry.length > 0 ? withGeometry : [rootEntity];
-            for (const e of toBatch) {
-              batchManager.add(e);
-            }
-          });
-        } else {
-          if (this.pendingRenderables.has(camera)) {
-            this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-              if (type === 'remove') {
-                batchManager.remove(entity, !entity.has(Culled));
-              } else {
-                batchManager.add(entity);
-              }
-            });
-            this.pendingRenderables.delete(camera);
-          }
-        }
-
-        if (sort) {
-          batchManager.sort();
-        }
-        batchManager.flush(renderPass, uniformBuffer, legacyObject, builder);
-      });
-    });
+      },
+      sort,
+      mainPassDebugName,
+    );
 
     const filterEffects = parseEffect(filter);
     filterEffects.forEach((effect) => {
@@ -937,7 +966,46 @@ export class MeshPipeline extends System {
     return false;
   }
 
+  /**
+   * Scene nodes may exist before {@link GPUResource} (tests, Event.READY). Re-queue so the
+   * first render after GPU init batches shapes that were added too early.
+   */
+  private queueSceneRenderable(camera: Entity, entity: Entity) {
+    if (!entityMatchesRenderableQuery(entity)) {
+      return;
+    }
+    if (!this.pendingRenderables.has(camera)) {
+      this.pendingRenderables.set(camera, []);
+    }
+    this.pendingRenderables.get(camera)!.push({ type: 'add', entity });
+    safeAddComponent(entity, GeometryDirty);
+    safeAddComponent(entity, MaterialDirty);
+  }
+
+  private queueAllSceneRenderablesUnderCamera(camera: Entity) {
+    if (!camera.has(Parent)) {
+      return;
+    }
+    const visit = (entity: Entity) => {
+      this.queueSceneRenderable(camera, entity);
+      if (entity.has(Parent)) {
+        for (const child of entity.read(Parent).children) {
+          visit(child);
+        }
+      }
+    };
+    for (const child of camera.read(Parent).children) {
+      visit(child);
+    }
+  }
+
   execute() {
+    this.gpuReadyCanvases.added.forEach((canvas) => {
+      for (const camera of canvas.read(Canvas).cameras) {
+        this.queueAllSceneRenderablesUnderCamera(camera);
+      }
+    });
+
     new Set([
       ...this.renderables.added,
       ...this.renderables.changed,
@@ -1186,6 +1254,7 @@ export class MeshPipeline extends System {
             !!this.strokeAttenuations.addedChangedOrRemoved.length ||
             !!this.markers.addedChangedOrRemoved.length ||
             !!this.filters.addedChangedOrRemoved.length ||
+            !!this.nodeLayerBlendModes.addedChangedOrRemoved.length ||
             !!this.clipModes.addedChangedOrRemoved.length)
         ) {
           toRender = true;

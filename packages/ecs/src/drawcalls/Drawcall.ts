@@ -28,6 +28,8 @@ import {
   fillLayersShouldPrecompose,
   getEnabledFillLayers,
   uid,
+  getNodeLayerBlendMode,
+  isNonNormalNodeLayerBlend,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
 import { TexturePool } from '../resources';
@@ -136,6 +138,8 @@ export abstract class Drawcall {
   #readback: Readback | null = null;
   #filterWidth = 0;
   #filterHeight = 0;
+  /** Render-graph 离屏 pass 输出的形状纹理（由 {@link setNodeLayerBlendSrcTexture} 注入，勿 destroy）。 */
+  #layerBlendSrcTexture: Texture | null = null;
 
   static #meshGradientPassByDevice = new WeakMap<Device, MeshGradientPass>();
 
@@ -191,6 +195,7 @@ export abstract class Drawcall {
     }
     this.#readback?.destroy();
     this.#readback = null;
+    this.clearNodeLayerBlendSrcTextureReference();
     this.destroyFullPostProcessingChain();
     this.destroyed = true;
   }
@@ -286,6 +291,52 @@ export abstract class Drawcall {
   count() {
     return this.shapes.length;
   }
+
+  /** 节点级 mix-blend-mode（CSS `mix-blend-mode`）；仅非 instanced 单形状 drawcall 可启用。 */
+  needsNodeLayerBlend(): boolean {
+    if (this.instanced || this.shapes.length !== 1) {
+      return false;
+    }
+    return isNonNormalNodeLayerBlend(
+      getNodeLayerBlendMode(this.api, this.shapes[0]),
+    );
+  }
+
+  setNodeLayerBlendSrcTexture(tex: Texture | null): void {
+    this.#layerBlendSrcTexture = tex;
+  }
+
+  protected getNodeLayerBlendSrcTexture(): Texture | null {
+    return this.#layerBlendSrcTexture;
+  }
+
+  protected clearNodeLayerBlendSrcTextureReference(): void {
+    this.#layerBlendSrcTexture = null;
+  }
+
+  /** 在 render graph 离屏 pass 内绘制节点 layer-blend 源形状（与 {@link submit} 相同准备逻辑）。 */
+  renderNodeLayerBlendSrcInPass(
+    renderPass: RenderPass,
+    uniformBuffer: Buffer,
+    uniformLegacyObject: Record<string, unknown>,
+  ): void {
+    const { width, height } = this.swapChain.getCanvas();
+    renderPass.setViewport(0, 0, width, height);
+    this.submit(renderPass, uniformBuffer, uniformLegacyObject, null!);
+  }
+
+  /**
+   * 将预渲染纹理与 resolve 得到的 backdrop 按节点 blendMode 合成到主 RT。
+   */
+  submitNodeLayerBlendComposite(
+    _renderPass: RenderPass,
+    _backdrop: Texture,
+    _src: Texture,
+    _uniformBuffer: Buffer,
+    _sceneUniformLegacyObject: Record<string, unknown>,
+    _width: number,
+    _height: number,
+  ): void {}
 
   protected get stencilDescriptor() {
     return {

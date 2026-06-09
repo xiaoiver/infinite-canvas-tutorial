@@ -97,6 +97,28 @@ export class ComputeBounds extends System {
         ).trackWrites,
   );
 
+  /** Spawned before the first `world.execute()` never hit `addedOrChanged`. */
+  private readonly missingBounds = this.query(
+    (q) =>
+      q.current
+        .with(Renderable, GlobalTransform)
+        .without(ComputedBounds)
+        .withAny(
+          Transform,
+          Circle,
+          Ellipse,
+          Rect,
+          Line,
+          Polyline,
+          Path,
+          Text,
+          Brush,
+          VectorNetwork,
+          Group,
+          IconFont,
+        ).read,
+  );
+
   constructor() {
     super();
     this.query((q) => q.current.with(ComputedBounds).write);
@@ -127,6 +149,18 @@ export class ComputeBounds extends System {
 
   execute() {
     const groupAncestorsToRefresh = new Set<Entity>();
+
+    this.missingBounds.current.forEach((entity) => {
+      updateBounds(entity);
+      let e: Entity | undefined = entity;
+      while (e?.has(Children)) {
+        const parent = e.read(Children).parent;
+        if (parent.has(Group)) {
+          groupAncestorsToRefresh.add(parent);
+        }
+        e = parent;
+      }
+    });
 
     this.renderables.addedOrChanged.forEach((entity) => {
       updateBounds(entity);

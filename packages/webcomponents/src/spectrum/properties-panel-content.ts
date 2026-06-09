@@ -44,6 +44,7 @@ import './export-panel';
 import './icon-font-controls.js';
 import type { IconFontControlsPatch } from './icon-font-controls';
 import './fill-section.js';
+import './layer-blend-mode-row.js';
 import './stroke-section.js';
 import './stroke-content.js';
 import './text-content.js';
@@ -1521,6 +1522,9 @@ export class PropertiesPanelContent extends LitElement {
                 ?open=${this.propertiesPanelSectionsOpenResolved.fillSection}
               >
                 <div class="content style-group">
+                  <ic-spectrum-layer-blend-mode-row
+                    .node=${this.node}
+                  ></ic-spectrum-layer-blend-mode-row>
                   <ic-spectrum-fill-section
                     .node=${this.node}
                   ></ic-spectrum-fill-section>

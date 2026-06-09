@@ -1,17 +1,17 @@
-import type { Device, RenderTarget, Texture } from '@infinite-canvas-tutorial/device-api';
+import type {
+  Device,
+  RenderPass,
+  RenderPassDescriptor,
+  Texture,
+} from '@infinite-canvas-tutorial/device-api';
 import {
   BufferFrequencyHint,
   BufferUsage,
-  ChannelWriteMask,
-  CompareFunction,
-  CullMode,
   Format,
   TextureUsage,
   VertexStepMode,
-  BlendFactor,
-  BlendMode,
   TransparentBlack,
-  type MegaStateDescriptor,
+  fullscreenMegaState,
 } from '@infinite-canvas-tutorial/device-api';
 import type { FillLayerItem } from '../components/renderable/Fill';
 import {
@@ -22,29 +22,6 @@ import {
 import type { FillLayerBlendMode } from '../types/fill-layer-blend';
 import { fillLayerOpacity } from './fillLayers';
 import type { RenderCache } from './render-cache';
-
-const POST_MEGA: MegaStateDescriptor = {
-  attachmentsState: [
-    {
-      channelWriteMask: ChannelWriteMask.ALL,
-      rgbBlendState: {
-        blendMode: BlendMode.ADD,
-        blendSrcFactor: BlendFactor.ONE,
-        blendDstFactor: BlendFactor.ZERO,
-      },
-      alphaBlendState: {
-        blendMode: BlendMode.ADD,
-        blendSrcFactor: BlendFactor.ONE,
-        blendDstFactor: BlendFactor.ZERO,
-      },
-    },
-  ],
-  blendConstant: TransparentBlack,
-  cullMode: CullMode.NONE,
-  depthWrite: false,
-  depthCompare: CompareFunction.ALWAYS,
-  stencilWrite: false,
-};
 
 /** 与 {@link fragBlitFirstLayer} / {@link fragBlendLayer} 中 mode 分支一致 */
 export function fillLayerBlendModeToIndex(
@@ -93,6 +70,14 @@ export function fillLayerBlendModeToIndex(
 }
 
 type SamplerLike = ReturnType<Device['createSampler']>;
+
+function submitOffscreenPass(
+  device: Device,
+  descriptor: RenderPassDescriptor,
+  draw: (pass: RenderPass) => void,
+): void {
+  device.submitRenderPassImmediate(descriptor, draw);
+}
 
 /**
  * 将多层纹理按 blendMode + opacity 预合成一张 premul RGBA。
@@ -165,14 +150,14 @@ export function composeFillLayerTexturesOnGpu(
     program: progBlit,
     colorAttachmentFormats: [Format.U8_RGBA_RT],
     depthStencilAttachmentFormat: null,
-    megaStateDescriptor: POST_MEGA,
+    megaStateDescriptor: fullscreenMegaState,
   });
   const pipBlend = renderCache.createRenderPipeline({
     inputLayout: ilBlend,
     program: progBlend,
     colorAttachmentFormats: [Format.U8_RGBA_RT],
     depthStencilAttachmentFormat: null,
-    megaStateDescriptor: POST_MEGA,
+    megaStateDescriptor: fullscreenMegaState,
   });
 
   const ubuf = device.createBuffer({
@@ -211,18 +196,22 @@ export function composeFillLayerTexturesOnGpu(
     uniformBufferBindings: [{ buffer: ubuf }],
     samplerBindings: [{ texture: textures[0]!, sampler: samp }],
   });
-  let rpass = device.createRenderPass({
-    colorAttachment: [rtA],
-    colorClearColor: [TransparentBlack],
-    colorResolveTo: [null],
-    colorStore: [true],
-  });
-  rpass.setViewport(0, 0, width, height);
-  rpass.setPipeline(pipBlit);
-  rpass.setBindings(bindBlit0);
-  rpass.setVertexInput(ilBlit, [{ buffer: vb }], null);
-  rpass.draw(3);
-  device.submitPass(rpass);
+  submitOffscreenPass(
+    device,
+    {
+      colorAttachment: [rtA],
+      colorClearColor: [TransparentBlack],
+      colorResolveTo: [null],
+      colorStore: [true],
+    },
+    (rpass) => {
+      rpass.setViewport(0, 0, width, height);
+      rpass.setPipeline(pipBlit);
+      rpass.setBindings(bindBlit0);
+      rpass.setVertexInput(ilBlit, [{ buffer: vb }], null);
+      rpass.draw(3);
+    },
+  );
   bindBlit0.destroy();
 
   let accTex = texA;
@@ -243,18 +232,22 @@ export function composeFillLayerTexturesOnGpu(
         { texture: textures[i]!, sampler: samp },
       ],
     });
-    rpass = device.createRenderPass({
-      colorAttachment: [targetRt],
-      colorClearColor: [TransparentBlack],
-      colorResolveTo: [null],
-      colorStore: [true],
-    });
-    rpass.setViewport(0, 0, width, height);
-    rpass.setPipeline(pipBlend);
-    rpass.setBindings(bindBlend);
-    rpass.setVertexInput(ilBlend, [{ buffer: vb }], null);
-    rpass.draw(3);
-    device.submitPass(rpass);
+    submitOffscreenPass(
+      device,
+      {
+        colorAttachment: [targetRt],
+        colorClearColor: [TransparentBlack],
+        colorResolveTo: [null],
+        colorStore: [true],
+      },
+      (rpass) => {
+        rpass.setViewport(0, 0, width, height);
+        rpass.setPipeline(pipBlend);
+        rpass.setBindings(bindBlend);
+        rpass.setVertexInput(ilBlend, [{ buffer: vb }], null);
+        rpass.draw(3);
+      },
+    );
     bindBlend.destroy();
 
     accTex = writeToB ? texB : texA;
@@ -263,8 +256,7 @@ export function composeFillLayerTexturesOnGpu(
 
   ubuf.destroy();
   vb.destroy();
-  rtA.destroy();
-  rtB.destroy();
+  // rtA/rtB wrap the same gpuTexture as texA/texB — do not destroy them here.
 
   const discardTex = accTex === texA ? texB : texA;
   discardTex.destroy?.();

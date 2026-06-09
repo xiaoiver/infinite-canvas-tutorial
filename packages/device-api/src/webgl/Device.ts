@@ -1037,7 +1037,7 @@ export class Device_GL implements SwapChain, Device {
       depthStencilResolveTo,
     } = descriptor;
 
-    const skipBlit = this.computeSkipBlit(colorResolveTo);
+    const skipBlit = this.computeSkipBlit(colorResolveTo, colorAttachment as (RenderTarget_GL | null)[]);
     this.setRenderPassParametersBegin(colorAttachment.length, skipBlit);
     for (let i = 0; i < colorAttachment.length; i++) {
       this.setRenderPassParametersColor(
@@ -1090,11 +1090,69 @@ export class Device_GL implements SwapChain, Device {
     throw new Error('submitComputeImmediate requires WebGPU');
   }
 
-  submitRenderPassImmediate(
-    _descriptor: RenderPassDescriptor,
-    _draw: (pass: RenderPass) => void,
+  /** Snapshot pass attachment bookkeeping so an immediate offscreen pass cannot leak into the render graph. */
+  private saveRenderPassAttachmentState() {
+    return {
+      descriptor: this.currentRenderPassDescriptor,
+      stack: this.currentRenderPassDescriptorStack.slice(),
+      colorAttachments: this.currentColorAttachments.slice(),
+      colorAttachmentLevels: this.currentColorAttachmentLevels.slice(),
+      colorResolveTos: this.currentColorResolveTos.slice(),
+      colorResolveToLevels: this.currentColorResolveToLevels.slice(),
+      depthStencilAttachment: this.currentDepthStencilAttachment,
+      depthStencilResolveTo: this.currentDepthStencilResolveTo,
+      sampleCount: this.currentSampleCount,
+      resolveColorAttachmentsChanged: this.resolveColorAttachmentsChanged,
+      resolveDepthStencilAttachmentsChanged:
+        this.resolveDepthStencilAttachmentsChanged,
+      currentPassToScreen: this.currentPassToScreen,
+    };
+  }
+
+  private restoreRenderPassAttachmentState(
+    state: ReturnType<Device_GL['saveRenderPassAttachmentState']>,
   ): void {
-    throw new Error('submitRenderPassImmediate requires WebGPU');
+    this.currentRenderPassDescriptor = state.descriptor;
+    this.currentRenderPassDescriptorStack = state.stack.slice();
+    this.currentColorAttachments = state.colorAttachments.slice();
+    this.currentColorAttachmentLevels = state.colorAttachmentLevels.slice();
+    this.currentColorResolveTos = state.colorResolveTos.slice();
+    this.currentColorResolveToLevels = state.colorResolveToLevels.slice();
+    this.currentDepthStencilAttachment = state.depthStencilAttachment;
+    this.currentDepthStencilResolveTo = state.depthStencilResolveTo;
+    this.currentSampleCount = state.sampleCount;
+    this.resolveColorAttachmentsChanged = state.resolveColorAttachmentsChanged;
+    this.resolveDepthStencilAttachmentsChanged =
+      state.resolveDepthStencilAttachmentsChanged;
+    this.currentPassToScreen = state.currentPassToScreen;
+
+    const gl = this.gl;
+    if (isWebGL2(gl)) {
+      gl.bindFramebuffer(GL.DRAW_FRAMEBUFFER, null);
+      gl.bindFramebuffer(GL.READ_FRAMEBUFFER, null);
+    } else {
+      gl.bindFramebuffer(GL.FRAMEBUFFER, null);
+    }
+  }
+
+  submitRenderPassImmediate(
+    descriptor: RenderPassDescriptor,
+    draw: (pass: RenderPass) => void,
+  ): void {
+    const saved = this.saveRenderPassAttachmentState();
+    this.currentRenderPassDescriptor = null;
+    this.currentRenderPassDescriptorStack = [];
+
+    const pass = this.createRenderPass(descriptor);
+    draw(pass);
+    this.submitPass(pass);
+
+    this.restoreRenderPassAttachmentState(saved);
+    // Immediate offscreen passes bind resolve read FBOs; restoring the saved
+    // `resolve*AttachmentsChanged = false` would skip rebind on the next graph
+    // endPass blit (layer-blend backdrop), yielding empty resolve → white screen.
+    this.resolveColorAttachmentsChanged = true;
+    this.resolveDepthStencilAttachmentsChanged = true;
   }
 
   copySubTexture2D(
@@ -2525,18 +2583,61 @@ export class Device_GL implements SwapChain, Device {
    * Resolve straight to the swap-chain: draw during exec on the default
    * framebuffer and skip the endPass blit. Required when antialias is enabled
    * because the canvas backbuffer is multisampled and cannot be a blit target.
+   *
+   * Single color RT passes that resolve to the swap chain should keep
+   * `skipBlit` so WebGL1 / headless-gl draw directly to the canvas instead of
+   * {@link submitBlitRenderPass} (GLES3-only blit shaders). Intermediate passes
+   * that do not resolve to the swap chain still blit/store via offscreen FBOs.
+   *
+   * MRT passes ({@link colorAttachment} length > 1) must blit when resolving to
+   * the swap chain.
    */
-  private computeSkipBlit(colorResolveTo: (Texture | null)[]): boolean {
-    return (
-      colorResolveTo.length === 1 && colorResolveTo[0] === this.scTexture
-    );
+  private computeSkipBlit(
+    colorResolveTo: (Texture | null)[],
+    colorAttachment: (RenderTarget_GL | null)[],
+  ): boolean {
+    const resolvesToScreen =
+      colorResolveTo.length === 1 && colorResolveTo[0] === this.scTexture;
+    if (!resolvesToScreen) {
+      return false;
+    }
+    const offscreenColorAttachmentCount = colorAttachment.filter(
+      (a) => a !== null,
+    ).length;
+    return offscreenColorAttachmentCount <= 1;
+  }
+
+  /**
+   * `glBlitFramebuffer` cannot resolve to the default multisampled canvas FBO
+   * ({@link contextAttributes.antialias}) or from multisampled attachments.
+   */
+  private shouldUseShaderColorBlit(
+    resolveFrom: RenderTarget_GL,
+    resolveTo: Texture_GL | null,
+  ): boolean {
+    if (resolveTo === null) {
+      return false;
+    }
+    if (!isWebGL2(this.gl)) {
+      return true;
+    }
+    if (resolveTo === this.scTexture && this.contextAttributes.antialias) {
+      return true;
+    }
+    if (resolveFrom.sampleCount > 1) {
+      return true;
+    }
+    return false;
   }
 
   private endPass(): void {
     const gl = this.gl;
     const gl2 = isWebGL2(gl);
 
-    const skipBlit = this.computeSkipBlit(this.currentColorResolveTos);
+    const skipBlit = this.computeSkipBlit(
+      this.currentColorResolveTos,
+      this.currentColorAttachments,
+    );
 
     let didUnbindDraw = false;
 
@@ -2556,7 +2657,12 @@ export class Device_GL implements SwapChain, Device {
 
           this.setScissorRectEnabled(false);
 
-          if (!skipBlit) {
+          const useShaderBlit = this.shouldUseShaderColorBlit(
+            colorResolveFrom,
+            colorResolveTo,
+          );
+
+          if (!skipBlit && !useShaderBlit) {
             if (gl2) {
               gl.bindFramebuffer(
                 gl.READ_FRAMEBUFFER,
@@ -2576,7 +2682,7 @@ export class Device_GL implements SwapChain, Device {
           }
           didBindRead = true;
 
-          if (!skipBlit) {
+          if (!skipBlit && !useShaderBlit) {
             // Special case: Blitting to the on-screen.
             if (colorResolveTo === this.scTexture) {
               gl.bindFramebuffer(
@@ -2600,7 +2706,9 @@ export class Device_GL implements SwapChain, Device {
           }
 
           if (!skipBlit) {
-            if (gl2) {
+            if (useShaderBlit) {
+              this.submitBlitRenderPass(colorResolveFrom, colorResolveTo);
+            } else if (gl2) {
               gl.blitFramebuffer(
                 0,
                 0,
@@ -2615,7 +2723,6 @@ export class Device_GL implements SwapChain, Device {
               );
               gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
             } else {
-              // need an extra render pass in WebGL1
               this.submitBlitRenderPass(colorResolveFrom, colorResolveTo);
             }
           }
