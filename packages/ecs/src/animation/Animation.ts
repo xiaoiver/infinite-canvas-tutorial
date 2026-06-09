@@ -914,7 +914,15 @@ export class AnimationController {
     if (isActive && duration > 0) {
       const clampedLocal = isInfinite ? Math.max(0, localTime) : Math.min(localTime, activeDuration);
       currentIteration = Math.floor(clampedLocal / duration);
-      const within = clampedLocal % duration;
+      let within = clampedLocal % duration;
+      // At the exact end of a finite animation the modulo collapses to the start
+      // of the next (non-existent) iteration, which would snap the element back to
+      // its first keyframe. Clamp it to the end of the final iteration instead so
+      // the last keyframe is shown (matches the just-after fill behaviour below).
+      if (!isInfinite && within === 0 && currentIteration >= iterationCount) {
+        currentIteration = iterationCount - 1;
+        within = duration;
+      }
       progress = within / duration;
     } else if (isAfter && canApplyFillAfter(fill) && duration > 0) {
       progress = 1;
