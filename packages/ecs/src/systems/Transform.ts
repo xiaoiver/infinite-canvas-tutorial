@@ -78,12 +78,33 @@ export class PropagateTransforms extends System {
         .addedOrChanged.trackWrites.using(GlobalTransform).write,
   );
 
+  /** Spawned before the first `world.execute()` never hit `addedOrChanged`. */
+  private readonly missingGlobalTransform = this.query(
+    (q) =>
+      q.current.with(Transform).without(Camera).without(GlobalTransform).read,
+  );
+
+  private readonly sceneCameras = this.query(
+    (q) => q.current.with(Camera, Parent).read,
+  );
+
   constructor() {
     super();
     this.query((q) => q.using(Canvas, Camera, Parent, Children).read);
   }
 
   execute(): void {
+    if (this.missingGlobalTransform.current.length > 0) {
+      this.sceneCameras.current.forEach((camera) => {
+        if (!camera.has(Parent)) {
+          return;
+        }
+        for (const child of camera.read(Parent).children) {
+          updateGlobalTransform(child);
+        }
+      });
+    }
+
     this.queries.addedOrChanged.forEach((entity) => {
       updateGlobalTransform(entity);
     });

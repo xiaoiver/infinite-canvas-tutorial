@@ -52,7 +52,8 @@ import {
   Extrude3D,
   Light3D,
   Mesh3DNode,
-  NodeLayerBlendMode
+  NodeLayerBlendMode,
+  DropShadow,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { pendingGpuReadyDispatch } from '../API';
@@ -119,7 +120,8 @@ export class EmitCanvasReady extends System {
           Extrude3D,
           Light3D,
           Mesh3DNode,
-          NodeLayerBlendMode
+          NodeLayerBlendMode,
+          DropShadow,
         ).write,
     );
   }

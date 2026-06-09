@@ -180,10 +180,32 @@ function collectDescendantsWithPartialExportGeometry(root: Entity): Entity[] {
   return out;
 }
 
+/** Mirrors {@link MeshPipeline}'s renderables query `withAny` filter. */
+function entityMatchesRenderableQuery(entity: Entity): boolean {
+  return (
+    entity.has(Renderable) &&
+    (entity.has(Circle) ||
+      entity.has(Ellipse) ||
+      entity.has(Rect) ||
+      entity.has(Line) ||
+      entity.has(Polyline) ||
+      entity.has(Path) ||
+      entity.has(Text) ||
+      entity.has(Brush) ||
+      entity.has(VectorNetwork) ||
+      entity.has(Transform))
+  );
+}
+
 export class MeshPipeline extends System {
   private setupDevice = this.attach(SetupDevice);
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
+
+  /** Canvas gained {@link GPUResource} this frame (async SetupDevice). */
+  private gpuReadyCanvases = this.query(
+    (q) => q.added.current.with(Canvas, GPUResource).read,
+  );
 
   private cameras = this.query(
     (q) => q.addedOrChanged.with(ComputedCamera).trackWrites,
@@ -944,7 +966,46 @@ export class MeshPipeline extends System {
     return false;
   }
 
+  /**
+   * Scene nodes may exist before {@link GPUResource} (tests, Event.READY). Re-queue so the
+   * first render after GPU init batches shapes that were added too early.
+   */
+  private queueSceneRenderable(camera: Entity, entity: Entity) {
+    if (!entityMatchesRenderableQuery(entity)) {
+      return;
+    }
+    if (!this.pendingRenderables.has(camera)) {
+      this.pendingRenderables.set(camera, []);
+    }
+    this.pendingRenderables.get(camera)!.push({ type: 'add', entity });
+    safeAddComponent(entity, GeometryDirty);
+    safeAddComponent(entity, MaterialDirty);
+  }
+
+  private queueAllSceneRenderablesUnderCamera(camera: Entity) {
+    if (!camera.has(Parent)) {
+      return;
+    }
+    const visit = (entity: Entity) => {
+      this.queueSceneRenderable(camera, entity);
+      if (entity.has(Parent)) {
+        for (const child of entity.read(Parent).children) {
+          visit(child);
+        }
+      }
+    };
+    for (const child of camera.read(Parent).children) {
+      visit(child);
+    }
+  }
+
   execute() {
+    this.gpuReadyCanvases.added.forEach((canvas) => {
+      for (const camera of canvas.read(Canvas).cameras) {
+        this.queueAllSceneRenderablesUnderCamera(camera);
+      }
+    });
+
     new Set([
       ...this.renderables.added,
       ...this.renderables.changed,

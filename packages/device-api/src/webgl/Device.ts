@@ -2584,9 +2584,13 @@ export class Device_GL implements SwapChain, Device {
    * framebuffer and skip the endPass blit. Required when antialias is enabled
    * because the canvas backbuffer is multisampled and cannot be a blit target.
    *
-   * Multi-pass render graphs (e.g. node layer blend) render to offscreen RTs first;
-   * they must end with an endPass blit even when {@link colorResolveTo} is the
-   * swap-chain texture.
+   * Single color RT passes that resolve to the swap chain should keep
+   * `skipBlit` so WebGL1 / headless-gl draw directly to the canvas instead of
+   * {@link submitBlitRenderPass} (GLES3-only blit shaders). Intermediate passes
+   * that do not resolve to the swap chain still blit/store via offscreen FBOs.
+   *
+   * MRT passes ({@link colorAttachment} length > 1) must blit when resolving to
+   * the swap chain.
    */
   private computeSkipBlit(
     colorResolveTo: (Texture | null)[],
@@ -2597,8 +2601,10 @@ export class Device_GL implements SwapChain, Device {
     if (!resolvesToScreen) {
       return false;
     }
-    const hasOffscreenColorAttachment = colorAttachment.some((a) => a !== null);
-    return !hasOffscreenColorAttachment;
+    const offscreenColorAttachmentCount = colorAttachment.filter(
+      (a) => a !== null,
+    ).length;
+    return offscreenColorAttachmentCount <= 1;
   }
 
   /**

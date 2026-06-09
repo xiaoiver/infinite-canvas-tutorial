@@ -125,10 +125,7 @@ describe('Rect', () => {
           zIndex: 0,
         };
 
-        api.updateNodes([
-          node1,
-          node2,
-        ]);
+        api.updateNodes([node1, node2]);
 
         parentEntity = api.getEntity(node1)?.hold();
         childEntity = api.getEntity(node2)?.hold();
@@ -137,41 +134,42 @@ describe('Rect', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    try {
+      await app.run();
 
-    await sleep(300);
+      await sleep(500);
 
-    if (canvasEntity && cameraEntity && parentEntity && childEntity) {
-      const canvas = canvasEntity.read(Canvas);
-      expect(canvas.devicePixelRatio).toBe(1);
-      expect(canvas.width).toBe(200);
-      expect(canvas.height).toBe(200);
-      expect(canvas.renderer).toBe('webgl');
-      expect(canvas.cameras).toHaveLength(1);
+      if (canvasEntity && cameraEntity && parentEntity && childEntity) {
+        const canvas = canvasEntity.read(Canvas);
+        expect(canvas.devicePixelRatio).toBe(1);
+        expect(canvas.width).toBe(200);
+        expect(canvas.height).toBe(200);
+        expect(canvas.renderer).toBe('webgl');
+        expect(canvas.cameras).toHaveLength(1);
 
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(
-        cameraEntity.read(Parent).children.filter((c) => !c.has(UI)),
-      ).toHaveLength(1);
-      expect(
-        cameraEntity.read(Parent).children[0].isSame(parentEntity),
-      ).toBeTruthy();
+        const camera = cameraEntity.read(Camera);
+        expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
+        const sceneChildren = cameraEntity
+          .read(Parent)
+          .children.filter((c) => !c.has(UI));
+        expect(sceneChildren).toHaveLength(1);
+        expect(sceneChildren[0].isSame(parentEntity)).toBeTruthy();
 
-      const parent = parentEntity.read(Parent);
-      expect(parent.children).toHaveLength(1);
-      expect(parent.children[0].isSame(childEntity)).toBeTruthy();
+        const parent = parentEntity.read(Parent);
+        expect(parent.children).toHaveLength(1);
+        expect(parent.children[0].isSame(childEntity)).toBeTruthy();
 
-      const child = childEntity.read(Children);
-      expect(child.parent.isSame(parentEntity)).toBeTruthy();
+        const child = childEntity.read(Children);
+        expect(child.parent.isSame(parentEntity)).toBeTruthy();
+      }
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'rect',
+      );
+    } finally {
+      await app.exit();
     }
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'rect',
-    );
-
-    await app.exit();
   });
 });

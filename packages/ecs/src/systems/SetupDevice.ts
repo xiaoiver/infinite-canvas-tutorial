@@ -5,6 +5,7 @@ import {
   WebGPUDeviceContribution,
 } from '@infinite-canvas-tutorial/device-api';
 import { Canvas, GPUResource, Grid, Theme } from '../components';
+import { DOMAdapter } from '../environment';
 import { isBrowser, RenderCache } from '../utils';
 import { TexturePool } from '../resources';
 import { RenderGraph } from '../render-graph/RenderGraph';
@@ -79,10 +80,16 @@ export class SetupDevice extends System {
         element,
       } = canvas.read(Canvas);
 
-      if (!this.#offscreenElement && isBrowser) {
-        this.#offscreenElement = document.createElement('canvas');
-        this.#offscreenElement.width = Math.floor(width * devicePixelRatio);
-        this.#offscreenElement.height = Math.floor(height * devicePixelRatio);
+      // Jest sets `window` via JSDOM but offscreen must use DOMAdapter (headless-gl), not
+      // `document.createElement('canvas')` (no WebGL). Skip in Jest when partial export is unused.
+      const skipOffscreenInJest = typeof process !== 'undefined' && process.env.JEST_WORKER_ID;
+      if (!this.#offscreenElement && isBrowser && !skipOffscreenInJest) {
+        const offscreenWidth = Math.floor(width * devicePixelRatio);
+        const offscreenHeight = Math.floor(height * devicePixelRatio);
+        this.#offscreenElement = DOMAdapter.get().createCanvas(
+          offscreenWidth,
+          offscreenHeight,
+        ) as HTMLCanvasElement;
         this.#offscreenGPUResource = {
           ...(await this.createGPUResource(
             renderer,
@@ -167,6 +174,7 @@ export class SetupDevice extends System {
       deviceContribution = new WebGLDeviceContribution({
         targets: ['webgl2', 'webgl1'],
         antialias: true,
+        preserveDrawingBuffer: true,
         shaderDebug: true,
         trackResources: false,
         onContextCreationError: () => { },
@@ -198,6 +206,9 @@ export class SetupDevice extends System {
   }
 
   private destroyCanvas(canvas: Entity) {
+    if (!canvas.has(GPUResource)) {
+      return;
+    }
     const { device, renderCache, renderGraph } = canvas.read(GPUResource);
     renderCache.destroy();
     renderGraph.destroy();
