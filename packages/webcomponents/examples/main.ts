@@ -138,6 +138,8 @@ canvas.addEventListener(Event.READY, async (e) => {
     ],
     taskbarSelected: [
       Task.SHOW_PROPERTIES_PANEL,
+      Task.SHOW_ANIMATION_PANEL,
+      Task.SHOW_TIMELINE_PANEL,
     ],
     propertiesPanelSectionsOpen: {
       fillSection: false,

@@ -136,9 +136,9 @@ export class AnimationSystem extends System {
   /** @returns the API attached to the first canvas, if any. */
   private getApi():
     | {
-        getAppState?: () => Record<string, unknown>;
-        setAppState?: (s: Record<string, unknown>) => void;
-      }
+      getAppState?: () => Record<string, unknown>;
+      setAppState?: (s: Record<string, unknown>) => void;
+    }
     | undefined {
     let api: unknown;
     this.canvases.current.forEach((canvas) => {
@@ -148,9 +148,9 @@ export class AnimationSystem extends System {
     });
     return api as
       | {
-          getAppState?: () => Record<string, unknown>;
-          setAppState?: (s: Record<string, unknown>) => void;
-        }
+        getAppState?: () => Record<string, unknown>;
+        setAppState?: (s: Record<string, unknown>) => void;
+      }
       | undefined;
   }
 
@@ -225,182 +225,182 @@ function applyAnimatedValues(
   values: AnimationFrameValues,
 ): void {
   {
-      if (entity.has(Transform)) {
-        const transform = entity.write(Transform);
-        const currentTranslation = {
-          x: transform.translation.x,
-          y: transform.translation.y,
-        };
-        const currentScale = {
-          x: transform.scale.x,
-          y: transform.scale.y,
-        };
-        const currentRotation = transform.rotation;
+    if (entity.has(Transform)) {
+      const transform = entity.write(Transform);
+      const currentTranslation = {
+        x: transform.translation.x,
+        y: transform.translation.y,
+      };
+      const currentScale = {
+        x: transform.scale.x,
+        y: transform.scale.y,
+      };
+      const currentRotation = transform.rotation;
 
-        const nextTranslation = {
-          x: isFiniteNumber(values.x) ? values.x : currentTranslation.x,
-          y: isFiniteNumber(values.y) ? values.y : currentTranslation.y,
-        };
-        const nextScale = {
-          x: isFiniteNumber(values.scaleX)
-            ? values.scaleX
-            : isFiniteNumber(values.scale)
-              ? values.scale
-              : currentScale.x,
-          y: isFiniteNumber(values.scaleY)
-            ? values.scaleY
-            : isFiniteNumber(values.scale)
-              ? values.scale
-              : currentScale.y,
-        };
-        const nextRotation = isFiniteNumber(values.rotation)
-          ? values.rotation
-          : currentRotation;
+      const nextTranslation = {
+        x: isFiniteNumber(values.x) ? values.x : currentTranslation.x,
+        y: isFiniteNumber(values.y) ? values.y : currentTranslation.y,
+      };
+      const nextScale = {
+        x: isFiniteNumber(values.scaleX)
+          ? values.scaleX
+          : isFiniteNumber(values.scale)
+            ? values.scale
+            : currentScale.x,
+        y: isFiniteNumber(values.scaleY)
+          ? values.scaleY
+          : isFiniteNumber(values.scale)
+            ? values.scale
+            : currentScale.y,
+      };
+      const nextRotation = isFiniteNumber(values.rotation)
+        ? values.rotation
+        : currentRotation;
 
-        const hasTransformOrigin = !!controller.getOptions().transformOrigin;
-        const hasTransformAnimation =
-          isFiniteNumber(values.scale)
-          || isFiniteNumber(values.scaleX)
-          || isFiniteNumber(values.scaleY)
-          || isFiniteNumber(values.rotation);
-        // Pivot compensation keeps the origin fixed in world space when only scale/rotation are
-        // keyframed. If x/y are interpolated (e.g. Lottie position + scale), must use those — do not
-        // overwrite with computeTranslationWithTransformOrigin, which ignores values.x/y.
-        const translationFromKeyframes =
-          isFiniteNumber(values.x) && isFiniteNumber(values.y);
-        if (hasTransformOrigin && hasTransformAnimation && !translationFromKeyframes) {
-          const compensated = computeTranslationWithTransformOrigin({
-            currentTranslation,
-            currentScale,
-            currentRotation,
-            nextScale,
-            nextRotation,
-            origin: controller.getOptions().transformOrigin!,
-          });
-          nextTranslation.x = compensated.x;
-          nextTranslation.y = compensated.y;
-        }
-
-        transform.translation.x = nextTranslation.x;
-        transform.translation.y = nextTranslation.y;
-        transform.scale.x = nextScale.x;
-        transform.scale.y = nextScale.y;
-        transform.rotation = nextRotation;
+      const hasTransformOrigin = !!controller.getOptions().transformOrigin;
+      const hasTransformAnimation =
+        isFiniteNumber(values.scale)
+        || isFiniteNumber(values.scaleX)
+        || isFiniteNumber(values.scaleY)
+        || isFiniteNumber(values.rotation);
+      // Pivot compensation keeps the origin fixed in world space when only scale/rotation are
+      // keyframed. If x/y are interpolated (e.g. Lottie position + scale), must use those — do not
+      // overwrite with computeTranslationWithTransformOrigin, which ignores values.x/y.
+      const translationFromKeyframes =
+        isFiniteNumber(values.x) && isFiniteNumber(values.y);
+      if (hasTransformOrigin && hasTransformAnimation && !translationFromKeyframes) {
+        const compensated = computeTranslationWithTransformOrigin({
+          currentTranslation,
+          currentScale,
+          currentRotation,
+          nextScale,
+          nextRotation,
+          origin: controller.getOptions().transformOrigin!,
+        });
+        nextTranslation.x = compensated.x;
+        nextTranslation.y = compensated.y;
       }
 
-      if (
-        isFiniteNumber(values.opacity)
-        || isFiniteNumber(values.fillOpacity)
-        || isFiniteNumber(values.strokeOpacity)
-      ) {
-        const opacityPatch: Partial<Opacity> = {};
-        if (isFiniteNumber(values.opacity)) {
-          opacityPatch.opacity = values.opacity;
-        }
-        if (isFiniteNumber(values.fillOpacity)) {
-          if (entity.has(FillLayers)) {
-            const fl = entity.write(FillLayers);
-            const layers = [...fl.layers];
-            const i = layers.findIndex(isFillLayerEnabled);
-            if (i >= 0) {
-              layers[i] = {
-                ...layers[i]!,
-                opacity: values.fillOpacity,
-              };
-              fl.layers = layers;
-            }
-          }
-        }
-        if (isFiniteNumber(values.strokeOpacity)) {
-          if (entity.has(StrokeLayers)) {
-            const sl = entity.write(StrokeLayers);
-            const layers = [...sl.layers];
-            const i = layers.findIndex(isFillLayerEnabled);
-            if (i >= 0) {
-              layers[i] = {
-                ...layers[i]!,
-                opacity: values.strokeOpacity,
-              };
-              sl.layers = layers;
-            }
-          }
-        }
-        if (Object.keys(opacityPatch).length > 0) {
-          safeAddComponent(entity, Opacity, opacityPatch);
-        }
-      }
+      transform.translation.x = nextTranslation.x;
+      transform.translation.y = nextTranslation.y;
+      transform.scale.x = nextScale.x;
+      transform.scale.y = nextScale.y;
+      transform.rotation = nextRotation;
+    }
 
-      if (typeof values.fill === 'string') {
-        if (isGradient(values.fill)) {
-          safeAddComponent(entity, FillLayers, {
-            layers: [{ type: 'gradient', value: values.fill }],
-          });
-        } else {
-          safeAddComponent(entity, FillLayers, {
-            layers: [{ type: 'solid', value: values.fill }],
-          });
-        }
+    if (
+      isFiniteNumber(values.opacity)
+      || isFiniteNumber(values.fillOpacity)
+      || isFiniteNumber(values.strokeOpacity)
+    ) {
+      const opacityPatch: Partial<Opacity> = {};
+      if (isFiniteNumber(values.opacity)) {
+        opacityPatch.opacity = values.opacity;
       }
-
-      if (isFiniteNumber(values.strokeWidth)) {
-        safeAddComponent(entity, Stroke, { width: values.strokeWidth });
-      }
-
-      if (typeof values.stroke === 'string') {
-        if (entity.has(StrokeLayers)) {
-          const sl = entity.write(StrokeLayers);
-          const layers = sl.layers.map((L) => ({ ...L }));
+      if (isFiniteNumber(values.fillOpacity)) {
+        if (entity.has(FillLayers)) {
+          const fl = entity.write(FillLayers);
+          const layers = [...fl.layers];
           const i = layers.findIndex(isFillLayerEnabled);
           if (i >= 0) {
-            const L = layers[i];
-            if (L && 'value' in L) {
-              layers[i] = { ...L, value: values.stroke };
-              sl.layers = layers;
-            }
-          } else {
-            sl.layers = [{ type: 'solid', value: values.stroke }];
+            layers[i] = {
+              ...layers[i]!,
+              opacity: values.fillOpacity,
+            };
+            fl.layers = layers;
           }
-        } else {
-          safeAddComponent(entity, StrokeLayers, {
-            layers: [{ type: 'solid', value: values.stroke }],
-          });
-        }
-        if (!entity.has(Stroke)) {
-          safeAddComponent(entity, Stroke, { width: 1 });
         }
       }
+      if (isFiniteNumber(values.strokeOpacity)) {
+        if (entity.has(StrokeLayers)) {
+          const sl = entity.write(StrokeLayers);
+          const layers = [...sl.layers];
+          const i = layers.findIndex(isFillLayerEnabled);
+          if (i >= 0) {
+            layers[i] = {
+              ...layers[i]!,
+              opacity: values.strokeOpacity,
+            };
+            sl.layers = layers;
+          }
+        }
+      }
+      if (Object.keys(opacityPatch).length > 0) {
+        safeAddComponent(entity, Opacity, opacityPatch);
+      }
+    }
 
-      if (isDasharray(values.strokeDasharray)) {
-        safeAddComponent(entity, Stroke, {
-          dasharray: [values.strokeDasharray[0], values.strokeDasharray[1]],
+    if (typeof values.fill === 'string') {
+      if (isGradient(values.fill)) {
+        safeAddComponent(entity, FillLayers, {
+          layers: [{ type: 'gradient', value: values.fill }],
+        });
+      } else {
+        safeAddComponent(entity, FillLayers, {
+          layers: [{ type: 'solid', value: values.fill }],
         });
       }
+    }
 
-      const strokeDashoffset = isFiniteNumber(values.strokeDashoffset)
-        ? values.strokeDashoffset
-        : isFiniteNumber(values.dashoffset)
-          ? values.dashoffset
-          : undefined;
-      if (strokeDashoffset !== undefined) {
-        safeAddComponent(entity, Stroke, { dashoffset: strokeDashoffset });
-      }
+    if (isFiniteNumber(values.strokeWidth)) {
+      safeAddComponent(entity, Stroke, { width: values.strokeWidth });
+    }
 
-      if (typeof values.d === 'string') {
-        const transform = entity.write(Transform);
-
-        const path = {
-          d: values.d,
+    if (typeof values.stroke === 'string') {
+      if (entity.has(StrokeLayers)) {
+        const sl = entity.write(StrokeLayers);
+        const layers = sl.layers.map((L) => ({ ...L }));
+        const i = layers.findIndex(isFillLayerEnabled);
+        if (i >= 0) {
+          const L = layers[i];
+          if (L && 'value' in L) {
+            layers[i] = { ...L, value: values.stroke };
+            sl.layers = layers;
+          }
+        } else {
+          sl.layers = [{ type: 'solid', value: values.stroke }];
         }
-        const inferred = inferXYWidthHeight({
-          ...path,
-          id: '',
-          type: 'path',
-          zIndex: 0,
-        }) as PathSerializedNode;
-        transform.translation.x = inferred.x;
-        transform.translation.y = inferred.y;
-
-        safeAddComponent(entity, Path, { d: inferred.d });
+      } else {
+        safeAddComponent(entity, StrokeLayers, {
+          layers: [{ type: 'solid', value: values.stroke }],
+        });
       }
+      if (!entity.has(Stroke)) {
+        safeAddComponent(entity, Stroke, { width: 1 });
+      }
+    }
+
+    if (isDasharray(values.strokeDasharray)) {
+      safeAddComponent(entity, Stroke, {
+        dasharray: [values.strokeDasharray[0], values.strokeDasharray[1]],
+      });
+    }
+
+    const strokeDashoffset = isFiniteNumber(values.strokeDashoffset)
+      ? values.strokeDashoffset
+      : isFiniteNumber(values.dashoffset)
+        ? values.dashoffset
+        : undefined;
+    if (strokeDashoffset !== undefined) {
+      safeAddComponent(entity, Stroke, { dashoffset: strokeDashoffset });
+    }
+
+    if (typeof values.d === 'string') {
+      const transform = entity.write(Transform);
+
+      const path = {
+        d: values.d,
+      }
+      const inferred = inferXYWidthHeight({
+        ...path,
+        id: '',
+        type: 'path',
+        zIndex: 0,
+      }) as PathSerializedNode;
+      transform.translation.x = inferred.x;
+      transform.translation.y = inferred.y;
+
+      safeAddComponent(entity, Path, { d: inferred.d });
+    }
   }
 }

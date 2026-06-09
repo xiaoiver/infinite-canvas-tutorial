@@ -155,9 +155,18 @@ export class TimelinePanel extends LitElement {
       gap: var(--spectrum-global-dimension-size-100);
       font-size: var(--spectrum-global-dimension-font-size-75);
       cursor: pointer;
-      white-space: nowrap;
+      min-width: 0;
+    }
+    .track-name {
+      flex: 1 1 auto;
+      min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .track-properties {
+      flex-shrink: 0;
+      color: var(--spectrum-gray-600);
     }
     .label-row.selected {
       background: var(--spectrum-accent-color-100, #d9d2ff);
@@ -432,8 +441,8 @@ export class TimelinePanel extends LitElement {
                   })}
                   @click=${() => this.handleSelectTrack(t.id)}
                 >
-                  ${t.name}
-                  <span style="color:var(--spectrum-gray-600)"
+                  <span class="track-name" title=${t.name}>${t.name}</span>
+                  <span class="track-properties"
                     >· ${t.properties.join(', ')}</span
                   >
                 </div>`,
