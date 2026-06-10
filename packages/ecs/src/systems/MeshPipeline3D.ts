@@ -15,6 +15,12 @@ import {
   PrimitiveTopology,
   Program,
   RenderPipeline,
+  Sampler,
+  Texture,
+  TextureUsage,
+  AddressMode,
+  FilterMode,
+  MipmapFilterMode,
   TransparentBlack,
   VertexStepMode,
   TransparentWhite,
@@ -47,6 +53,7 @@ import { Mat4 } from '../components/math/Mat4';
 import type { RenderCache } from '../utils/render-cache';
 import { makeAttachmentClearDescriptor } from '../render-graph/utils';
 import { vert, frag } from '../shaders/mesh3d';
+import { loadImageBitmapUniversal } from '../utils/load-image-bitmap';
 import { SetupDevice } from './SetupDevice';
 import {
   getMeshPipeline3D,
@@ -62,11 +69,18 @@ const MODEL_UNIFORM_FLOATS = 52;
 interface MeshGPUData {
   vertexBuffer: Buffer;
   normalBuffer: Buffer;
+  uvBuffer: Buffer;
   indexBuffer: Buffer | null;
   indexCount: number;
   vertexCount: number;
   /** Per-mesh model UBO (WebGPU: one shared buffer + multiple writes loses all but the last). */
   modelUniformBuffer: Buffer;
+}
+
+/** Async base-color texture state, cached per device + URL. */
+interface TextureCacheEntry {
+  texture: Texture;
+  status: 'loading' | 'ready' | 'error';
 }
 
 /** Per-WebGL-context mesh3d pipeline + mesh buffer cache (multi-canvas safe). */
@@ -79,6 +93,12 @@ interface MeshPipeline3DDeviceState {
   sceneParams: number[];
   canvasViewProjection: Mat4;
   meshGPUCache: Map<Entity, MeshGPUData>;
+  /** 1x1 opaque-white fallback for meshes without a base-color texture. */
+  whiteTexture: Texture;
+  /** Shared sampler for base-color textures. */
+  sampler: Sampler;
+  /** Loaded base-color textures keyed by URL. */
+  textureCache: Map<string, TextureCacheEntry>;
 }
 
 /**
@@ -302,10 +322,24 @@ export class MeshPipeline3D extends System {
       );
       if (!gpuData) continue;
 
+      const material = meshEntity.read(Material3D);
+      const { texture: baseColorTexture, ready: mapReady } =
+        this.resolveMaterialTexture(state, device, material.map);
+      const { texture: specularTexture, ready: specularMapReady } =
+        this.resolveMaterialTexture(state, device, material.specularMap);
+      const { texture: bumpTexture, ready: bumpMapReady } =
+        this.resolveMaterialTexture(state, device, material.bumpMap);
+
       const modelLegacy = this.updateModelUniforms(
         meshEntity,
         gpuData.modelUniformBuffer,
+        {
+          mapReady,
+          specularMapReady,
+          bumpMapReady,
+        },
       );
+
       state.program.setUniformsLegacy({
         ...state.sceneLegacyUniforms,
         ...modelLegacy,
@@ -317,6 +351,11 @@ export class MeshPipeline3D extends System {
           { buffer: state.sceneUniformBuffer },
           { buffer: gpuData.modelUniformBuffer },
         ],
+        samplerBindings: [
+          { texture: baseColorTexture, sampler: state.sampler },
+          { texture: specularTexture, sampler: state.sampler },
+          { texture: bumpTexture, sampler: state.sampler },
+        ],
       });
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(
@@ -324,6 +363,7 @@ export class MeshPipeline3D extends System {
         [
           { buffer: gpuData.vertexBuffer },
           { buffer: gpuData.normalBuffer },
+          { buffer: gpuData.uvBuffer },
         ],
         gpuData.indexBuffer ? { buffer: gpuData.indexBuffer } : null,
       );
@@ -403,6 +443,17 @@ export class MeshPipeline3D extends System {
             },
           ],
         },
+        {
+          arrayStride: 2 * 4,
+          stepMode: VertexStepMode.VERTEX,
+          attributes: [
+            {
+              format: Format.F32_RG,
+              offset: 0,
+              shaderLocation: 2,
+            },
+          ],
+        },
       ],
       indexBufferFormat: Format.U32_R,
       program,
@@ -443,6 +494,24 @@ export class MeshPipeline3D extends System {
       hint: BufferFrequencyHint.DYNAMIC,
     });
 
+    const whiteTexture = device.createTexture({
+      format: Format.U8_RGBA_NORM,
+      width: 1,
+      height: 1,
+      usage: TextureUsage.SAMPLED,
+    });
+    whiteTexture.setImageData([new Uint8Array([255, 255, 255, 255])]);
+
+    const sampler = renderCache.createSampler({
+      addressModeU: AddressMode.REPEAT,
+      addressModeV: AddressMode.CLAMP_TO_EDGE,
+      minFilter: FilterMode.BILINEAR,
+      magFilter: FilterMode.BILINEAR,
+      mipmapFilter: MipmapFilterMode.LINEAR,
+      lodMinClamp: 0,
+      lodMaxClamp: 0,
+    });
+
     const state: MeshPipeline3DDeviceState = {
       program,
       pipeline,
@@ -452,6 +521,9 @@ export class MeshPipeline3D extends System {
       sceneParams: [0, 0, 0, 0],
       canvasViewProjection: Mat4.IDENTITY,
       meshGPUCache: new Map(),
+      whiteTexture,
+      sampler,
+      textureCache: new Map(),
     };
     this.deviceStates.set(device, state);
     this.trackedDevices.add(device);
@@ -467,6 +539,7 @@ export class MeshPipeline3D extends System {
       try {
         data.vertexBuffer.destroy();
         data.normalBuffer.destroy();
+        data.uvBuffer.destroy();
         data.indexBuffer?.destroy();
         data.modelUniformBuffer.destroy();
       } catch {
@@ -475,6 +548,11 @@ export class MeshPipeline3D extends System {
     }
     try {
       state.sceneUniformBuffer.destroy();
+      state.whiteTexture.destroy();
+      for (const entry of state.textureCache.values()) {
+        entry.texture.destroy();
+      }
+      state.textureCache.clear();
     } catch {
       /* device already destroyed */
     }
@@ -522,6 +600,7 @@ export class MeshPipeline3D extends System {
     if (data) {
       data.vertexBuffer.destroy();
       data.normalBuffer.destroy();
+      data.uvBuffer.destroy();
       data.indexBuffer?.destroy();
       data.modelUniformBuffer.destroy();
     }
@@ -534,6 +613,19 @@ export class MeshPipeline3D extends System {
 
     const normalBuffer = device.createBuffer({
       viewOrSize: mesh.normals,
+      usage: BufferUsage.VERTEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
+
+    // UVs are optional per geometry; fall back to a zero-filled array matching
+    // the vertex count so the shared input layout always has a valid buffer for
+    // attribute location 2.
+    const uvData =
+      mesh.uvs && mesh.uvs.length === mesh.vertexCount * 2
+        ? mesh.uvs
+        : new Float32Array(mesh.vertexCount * 2);
+    const uvBuffer = device.createBuffer({
+      viewOrSize: uvData,
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
@@ -558,6 +650,7 @@ export class MeshPipeline3D extends System {
     data = {
       vertexBuffer,
       normalBuffer,
+      uvBuffer,
       indexBuffer,
       indexCount,
       vertexCount: mesh.vertexCount,
@@ -618,7 +711,7 @@ export class MeshPipeline3D extends System {
         computed.viewProjectionMatrix,
         0,
       );
-      state.sceneParams = [0, 0, 1, 0];
+      state.sceneParams = [computed.x, computed.y, 1, eyeZ];
     } else {
       state.canvasViewProjection = Mat4.IDENTITY;
       state.sceneParams = [0, 0, 0, 0];
@@ -747,9 +840,76 @@ export class MeshPipeline3D extends System {
     return { ambient, count, positions, directions, colors, params };
   }
 
+  /**
+   * Resolve a material texture URL. Returns the device white fallback (and
+   * `ready: false`) until the image has loaded.
+   */
+  private resolveMaterialTexture(
+    state: MeshPipeline3DDeviceState,
+    device: Device,
+    url: string | null,
+  ): { texture: Texture; ready: boolean } {
+    if (!url) {
+      return { texture: state.whiteTexture, ready: false };
+    }
+
+    const cached = state.textureCache.get(url);
+    if (cached) {
+      return {
+        texture:
+          cached.status === 'ready' ? cached.texture : state.whiteTexture,
+        ready: cached.status === 'ready',
+      };
+    }
+
+    const texture = device.createTexture({
+      format: Format.U8_RGBA_NORM,
+      width: 1,
+      height: 1,
+      usage: TextureUsage.SAMPLED,
+    });
+    texture.setImageData([new Uint8Array([255, 255, 255, 255])]);
+    const entry: TextureCacheEntry = { texture, status: 'loading' };
+    state.textureCache.set(url, entry);
+
+    void loadImageBitmapUniversal(url)
+      .then((bitmap) => {
+        if (state.textureCache.get(url) !== entry) {
+          return;
+        }
+        const loaded = device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: bitmap.width,
+          height: bitmap.height,
+          usage: TextureUsage.SAMPLED,
+          // Standard image row-0-at-top → GPU v=1; geometry UV uses 1-v for screen-top.
+          pixelStore: { unpackFlipY: true },
+        });
+        loaded.setImageData([bitmap]);
+        entry.texture.destroy();
+        entry.texture = loaded;
+        entry.status = 'ready';
+      })
+      .catch((err) => {
+        console.warn('[MeshPipeline3D] failed to load material map', url, err);
+        entry.status = 'error';
+      });
+
+    return { texture: state.whiteTexture, ready: false };
+  }
+
   private updateModelUniforms(
     entity: Entity,
     modelUniformBuffer: Buffer,
+    textureReady: {
+      mapReady: boolean;
+      specularMapReady: boolean;
+      bumpMapReady: boolean;
+    } = {
+      mapReady: false,
+      specularMapReady: false,
+      bumpMapReady: false,
+    },
   ): Record<string, unknown> {
     const transform = entity.read(Transform3D);
     const material = entity.read(Material3D);
@@ -778,6 +938,9 @@ export class MeshPipeline3D extends System {
       u_LightDirection: [-0.5, -0.7, -0.5, 0],
     };
 
+    const mapFlag = textureReady.mapReady ? 1 : 0;
+    const specularMapFlag = textureReady.specularMapReady ? 1 : 0;
+    const bumpMapFlag = textureReady.bumpMapReady ? 1 : 0;
     const buffer = new Float32Array(MODEL_UNIFORM_FLOATS);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
@@ -796,6 +959,10 @@ export class MeshPipeline3D extends System {
       ],
       44,
     );
+    buffer.set(
+      [mapFlag, specularMapFlag, bumpMapFlag, material.bumpScale],
+      48,
+    );
 
     modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     return {
@@ -805,6 +972,12 @@ export class MeshPipeline3D extends System {
         transform.translation[1],
         transform.translation[2],
         0,
+      ],
+      u_MaterialFlags: [
+        mapFlag,
+        specularMapFlag,
+        bumpMapFlag,
+        material.bumpScale,
       ],
     };
   }
@@ -819,6 +992,7 @@ export class MeshPipeline3D extends System {
         }
         data.vertexBuffer.destroy();
         data.normalBuffer.destroy();
+        data.uvBuffer.destroy();
         data.indexBuffer?.destroy();
         data.modelUniformBuffer.destroy();
         state!.meshGPUCache.delete(entity);

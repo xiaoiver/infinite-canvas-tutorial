@@ -503,9 +503,9 @@ pnpm run dev
 -   基于 raycast 的拾取
 -   光照
 
-|               Gizmo               |     |
-| :-------------------------------: | :-: |
-| ![gizmo](./screenshots/gizmo.gif) |     |
+|               Gizmo               |               Textured earth               |
+| :-------------------------------: | :----------------------------------------: |
+| ![gizmo](./screenshots/gizmo.gif) | ![textured earth](./screenshots/earth.png) |
 
 [在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/

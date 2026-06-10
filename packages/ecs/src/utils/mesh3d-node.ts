@@ -16,6 +16,7 @@ import {
   emptyMesh3DGeometry,
   geometrySpecKey,
   isGltfGeometrySpec,
+  mesh3DGeometryDataEquals,
   normalizeGeometry,
   type Mesh3DNodeGeometry,
 } from './geometry3d';
@@ -40,16 +41,24 @@ export function rebuildMesh3DNodeCompanionGeometry(
   }
   const spec = normalizeGeometry(source.read(Mesh3DNode).geometry);
   const key = geometrySpecKey(spec);
-  if (companionGeometryKey.get(source) === key) {
-    return false;
-  }
   if (isGltfGeometrySpec(spec)) {
+    if (companionGeometryKey.get(source) === key) {
+      return false;
+    }
     companionGeometryKey.delete(source);
     Object.assign(meshEntity.write(Mesh3D), emptyMesh3DGeometry());
     return true;
   }
+
+  const data = createGeometry(spec);
+  const mesh = meshEntity.read(Mesh3D);
+  if (mesh3DGeometryDataEquals(mesh, data)) {
+    return false;
+  }
+
   companionGeometryKey.set(source, key);
-  Object.assign(meshEntity.write(Mesh3D), createGeometry(spec));
+  Object.assign(meshEntity.write(Mesh3D), data);
+  meshEntity.write(Mesh3D).uvs = data.uvs ?? null;
   return true;
 }
 
@@ -146,6 +155,10 @@ export function syncMesh3DNodeCompanionFromSource(
   material.diffuse = node.diffuse;
   material.specular = node.specular;
   material.shininess = node.shininess;
+  material.map = node.map ?? null;
+  material.specularMap = node.specularMap ?? null;
+  material.bumpMap = node.bumpMap ?? null;
+  material.bumpScale = node.bumpScale;
   return true;
 }
 

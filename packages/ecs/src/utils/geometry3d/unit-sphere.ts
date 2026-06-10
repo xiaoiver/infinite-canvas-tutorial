@@ -8,6 +8,7 @@ export function createUnitSphereGeometry(
   const r = 0.5;
   const positions: number[] = [];
   const normals: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
 
   for (let v = 0; v <= vSeg; v++) {
@@ -19,11 +20,14 @@ export function createUnitSphereGeometry(
       const theta = (u / uSeg) * Math.PI * 2;
       const sinTheta = Math.sin(theta);
       const cosTheta = Math.cos(theta);
-      const x = r * sinPhi * cosTheta;
+      // Match Three.js SphereGeometry handedness for equirectangular maps.
+      const x = -r * sinPhi * cosTheta;
       const y = r * cosPhi;
       const z = r * sinPhi * sinTheta;
       positions.push(x, y, z);
       normals.push(x / r, y / r, z / r);
+      // Equirectangular: negated X mirrors longitude → flip U; north (Y+) → v=1 (unpackFlipY).
+      uvs.push(1 - u / uSeg, 1 - v / vSeg);
     }
   }
 
@@ -31,13 +35,15 @@ export function createUnitSphereGeometry(
     for (let u = 0; u < uSeg; u++) {
       const a = v * (uSeg + 1) + u;
       const b = a + uSeg + 1;
-      indices.push(a, b, a + 1, a + 1, b, b + 1);
+      // Negated X mirrors winding; swap corners so front faces point outward (BACK cull).
+      indices.push(a, b, a + 1, b + 1, a + 1, b);
     }
   }
 
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
+    uvs: new Float32Array(uvs),
     indices: new Uint32Array(indices),
   };
 }

@@ -454,6 +454,10 @@ export const zh = defineConfig({
                     link: 'lighting',
                   },
                   {
+                    text: '贴图地球',
+                    link: 'earth',
+                  },
+                  {
                     text: 'GLTF Duck',
                     link: 'gltf-duck',
                   },

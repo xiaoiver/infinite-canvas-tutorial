@@ -2,6 +2,8 @@ export interface Mesh3DGeometryData {
   positions: Float32Array;
   normals: Float32Array;
   indices: Uint32Array;
+  /** Optional (u, v) texture coordinates, interleaved. */
+  uvs?: Float32Array;
 }
 
 export type Mesh3DGeometrySpec =
@@ -33,6 +35,38 @@ export function emptyMesh3DGeometry(): Mesh3DGeometryData {
     normals: new Float32Array(0),
     indices: new Uint32Array(0),
   };
+}
+
+/** Compare primitive geometry buffers (used to pick up generator fixes without spec key bumps). */
+export function mesh3DGeometryDataEquals(
+  mesh: Mesh3DGeometryData,
+  data: Mesh3DGeometryData,
+): boolean {
+  if (mesh.positions.length !== data.positions.length) {
+    return false;
+  }
+  if (mesh.normals.length !== data.normals.length) {
+    return false;
+  }
+  if ((mesh.uvs?.length ?? 0) !== (data.uvs?.length ?? 0)) {
+    return false;
+  }
+  if ((mesh.indices?.length ?? 0) !== (data.indices?.length ?? 0)) {
+    return false;
+  }
+  for (let i = 0; i < mesh.positions.length; i++) {
+    if (mesh.positions[i] !== data.positions[i]) {
+      return false;
+    }
+  }
+  if (mesh.uvs && data.uvs) {
+    for (let i = 0; i < mesh.uvs.length; i++) {
+      if (mesh.uvs[i] !== data.uvs[i]) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export function normalizeGeometry(

@@ -351,7 +351,7 @@ export function projectWorldToClipLinkedPerspective(
   if (Math.abs(pw) < 1e-6) {
     pw = pw >= 0 ? 1e-6 : -1e-6;
   }
-  const scale = clipPwRef[3] / pw;
+  const scale = pw / clipPwRef[3];
 
   let clipX = anchor2d[0] + (clip2d[0] - anchor2d[0]) * scale;
   let clipY = anchor2d[1] + (clip2d[1] - anchor2d[1]) * scale;

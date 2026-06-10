@@ -436,6 +436,11 @@ export type Material3DWire = {
   diffuse?: number;
   specular?: number;
   shininess?: number;
+  /** Base-color texture (image URL or data URL). */
+  map?: string;
+  specularMap?: string;
+  bumpMap?: string;
+  bumpScale?: number;
 };
 
 /** Declarative 3D mesh node (canvas-local coordinates). */

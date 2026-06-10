@@ -1955,6 +1955,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         if (mat.diffuse != null) meshNode.diffuse = mat.diffuse;
         if (mat.specular != null) meshNode.specular = mat.specular;
         if (mat.shininess != null) meshNode.shininess = mat.shininess;
+        if ('map' in mat) meshNode.map = mat.map ?? null;
+        if ('specularMap' in mat) {
+          meshNode.specularMap = mat.specularMap ?? null;
+        }
+        if ('bumpMap' in mat) meshNode.bumpMap = mat.bumpMap ?? null;
+        if (mat.bumpScale != null) meshNode.bumpScale = mat.bumpScale;
       }
       const meshEntity = meshNode.meshEntity;
       const needsCompanionSync =
