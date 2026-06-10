@@ -268,7 +268,9 @@ void main() {
   vec3 albedo = baseColor.rgb;
 
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
-  // Clamp roughness away from 0 to keep the specular lobe numerically stable.
+  // Clamp roughness to a small minimum (0.04): at roughness 0 the GGX lobe
+  // collapses to a delta, producing fireflies / division instabilities in the
+  // analytic specular term, so we keep a tiny floor as is common in PBR shaders.
   float roughness = clamp(u_PbrParams.y, 0.04, 1.0);
 
   // Optional specular map modulates the microfacet specular response.
