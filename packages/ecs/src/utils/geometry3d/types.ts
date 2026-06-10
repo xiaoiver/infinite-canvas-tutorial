@@ -37,6 +37,38 @@ export function emptyMesh3DGeometry(): Mesh3DGeometryData {
   };
 }
 
+/** Compare primitive geometry buffers (used to pick up generator fixes without spec key bumps). */
+export function mesh3DGeometryDataEquals(
+  mesh: Mesh3DGeometryData,
+  data: Mesh3DGeometryData,
+): boolean {
+  if (mesh.positions.length !== data.positions.length) {
+    return false;
+  }
+  if (mesh.normals.length !== data.normals.length) {
+    return false;
+  }
+  if ((mesh.uvs?.length ?? 0) !== (data.uvs?.length ?? 0)) {
+    return false;
+  }
+  if ((mesh.indices?.length ?? 0) !== (data.indices?.length ?? 0)) {
+    return false;
+  }
+  for (let i = 0; i < mesh.positions.length; i++) {
+    if (mesh.positions[i] !== data.positions[i]) {
+      return false;
+    }
+  }
+  if (mesh.uvs && data.uvs) {
+    for (let i = 0; i < mesh.uvs.length; i++) {
+      if (mesh.uvs[i] !== data.uvs[i]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function normalizeGeometry(
   geometry: Mesh3DNodeGeometry | undefined,
 ): Mesh3DGeometrySpec {

@@ -70,7 +70,7 @@ export function buildCamera3DSceneUniforms(
         computed.viewProjectionMatrix,
         0,
       ),
-      sceneParams: [0, 0, 1, 0],
+      sceneParams: [computed.x, computed.y, 1, eyeZ],
     };
   }
 

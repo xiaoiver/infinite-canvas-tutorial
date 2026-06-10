@@ -32,6 +32,12 @@ export class Mesh3DNode {
   /** Optional base-color texture (image URL or data URL). */
   @field.object declare map: string | null;
 
+  @field.object declare specularMap: string | null;
+
+  @field.object declare bumpMap: string | null;
+
+  @field.float32 declare bumpScale: number;
+
   /** Spawn {@link Camera3D} for this canvas when absent (first mesh3d wins). */
   @field.object declare camera3d?: {
     linked?: boolean;
@@ -56,5 +62,8 @@ export class Mesh3DNode {
     this.specular ??= 0.4;
     this.shininess ??= 48;
     this.map ??= null;
+    this.specularMap ??= null;
+    this.bumpMap ??= null;
+    this.bumpScale ??= 1;
   }
 }

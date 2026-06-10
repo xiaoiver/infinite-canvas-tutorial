@@ -12,11 +12,19 @@ let spinRaf = 0;
 let bootstrapped = false;
 
 const EARTH_ID = 'earth1';
+const CUBE_ID = 'cube1';
 const BASE_ROTATION: [number, number, number] = [0.15, 0, 0];
 
 /** Equirectangular Earth base-color texture (same asset as the AntV G demo). */
 const EARTH_MAP =
   'https://gw.alipayobjects.com/mdn/rms_6ae20b/afts/img/A*npAsSLPX4A4AAAAAAAAAAAAAARQnAQ';
+/** AntV G sphere demo — specular / bump maps. */
+const EARTH_SPECULAR_MAP =
+  'https://gw.alipayobjects.com/mdn/rms_6ae20b/afts/img/A*8wz0QaP_bjoAAAAAAAAAAAAAARQnAQ';
+const EARTH_BUMP_MAP =
+  'https://gw.alipayobjects.com/mdn/rms_6ae20b/afts/img/A*kuUITY47ZhMAAAAAAAAAAAAAARQnAQ';
+const CUBE_MAP =
+  'https://gw.alipayobjects.com/mdn/rms_6ae20b/afts/img/A*_aqoS73Se3sAAAAAAAAAAAAAARQnAQ';
 
 /** 声明式场景：环境光 + 平行光 + 贴图球体（地球）。 */
 const sceneNodes: SerializedNode[] = [
@@ -31,7 +39,7 @@ const sceneNodes: SerializedNode[] = [
     id: 'light-sun',
     type: 'light3d',
     lightType: 'directional',
-    direction: [-0.6, -0.2, -0.55],
+    direction: [1, 0, 0], // 更偏右侧水平侧光（光从左边来，向右照）
     intensity: 0.9,
     zIndex: -3,
   },
@@ -51,9 +59,37 @@ const sceneNodes: SerializedNode[] = [
       baseColor: '#ffffff',
       ambient: 0.5,
       diffuse: 0.85,
+      specular: 1,
+      shininess: 10,
+      map: EARTH_MAP,
+      specularMap: EARTH_SPECULAR_MAP,
+      bumpMap: EARTH_BUMP_MAP,
+      bumpScale: 15,
+    },
+    camera3d: {
+      linked: true,
+      projection: 'perspective',
+      clearColor: false,
+    },
+  },
+  {
+    id: CUBE_ID,
+    type: 'mesh3d',
+    geometry: { type: 'cube' },
+    x: 500,
+    y: 120,
+    width: 120,
+    height: 120,
+    z: 40,
+    zIndex: 0,
+    scale3d: 120,
+    material3d: {
+      baseColor: '#ffffff',
+      ambient: 0.5,
+      diffuse: 0.85,
       specular: 0.15,
       shininess: 16,
-      map: EARTH_MAP,
+      map: CUBE_MAP,
     },
     camera3d: {
       linked: true,
@@ -99,7 +135,7 @@ onMounted(async () => {
           const t = (now - t0) / 1000;
           const rotation3d: [number, number, number] = [
             BASE_ROTATION[0],
-            BASE_ROTATION[1] + t * 0.4,
+            BASE_ROTATION[1] - t * 0.4,
             BASE_ROTATION[2],
           ];
           api.updateNode(earth, { rotation3d }, false);

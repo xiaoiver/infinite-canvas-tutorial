@@ -324,12 +324,20 @@ export class MeshPipeline3D extends System {
 
       const material = meshEntity.read(Material3D);
       const { texture: baseColorTexture, ready: mapReady } =
-        this.resolveBaseColorTexture(state, device, material.map);
+        this.resolveMaterialTexture(state, device, material.map);
+      const { texture: specularTexture, ready: specularMapReady } =
+        this.resolveMaterialTexture(state, device, material.specularMap);
+      const { texture: bumpTexture, ready: bumpMapReady } =
+        this.resolveMaterialTexture(state, device, material.bumpMap);
 
       const modelLegacy = this.updateModelUniforms(
         meshEntity,
         gpuData.modelUniformBuffer,
-        mapReady,
+        {
+          mapReady,
+          specularMapReady,
+          bumpMapReady,
+        },
       );
 
       state.program.setUniformsLegacy({
@@ -344,10 +352,9 @@ export class MeshPipeline3D extends System {
           { buffer: gpuData.modelUniformBuffer },
         ],
         samplerBindings: [
-          {
-            texture: baseColorTexture,
-            sampler: state.sampler,
-          },
+          { texture: baseColorTexture, sampler: state.sampler },
+          { texture: specularTexture, sampler: state.sampler },
+          { texture: bumpTexture, sampler: state.sampler },
         ],
       });
       renderPass.setBindings(bindings);
@@ -704,7 +711,7 @@ export class MeshPipeline3D extends System {
         computed.viewProjectionMatrix,
         0,
       );
-      state.sceneParams = [0, 0, 1, 0];
+      state.sceneParams = [computed.x, computed.y, 1, eyeZ];
     } else {
       state.canvasViewProjection = Mat4.IDENTITY;
       state.sceneParams = [0, 0, 0, 0];
@@ -834,11 +841,10 @@ export class MeshPipeline3D extends System {
   }
 
   /**
-   * Resolve the base-color texture for a material's `map` URL. Returns the
-   * device white fallback (and `ready: false`) until the image has loaded;
-   * the continuous render loop picks up the texture on a later frame.
+   * Resolve a material texture URL. Returns the device white fallback (and
+   * `ready: false`) until the image has loaded.
    */
-  private resolveBaseColorTexture(
+  private resolveMaterialTexture(
     state: MeshPipeline3DDeviceState,
     device: Device,
     url: string | null,
@@ -876,6 +882,8 @@ export class MeshPipeline3D extends System {
           width: bitmap.width,
           height: bitmap.height,
           usage: TextureUsage.SAMPLED,
+          // Standard image row-0-at-top → GPU v=1; geometry UV uses 1-v for screen-top.
+          pixelStore: { unpackFlipY: true },
         });
         loaded.setImageData([bitmap]);
         entry.texture.destroy();
@@ -893,7 +901,15 @@ export class MeshPipeline3D extends System {
   private updateModelUniforms(
     entity: Entity,
     modelUniformBuffer: Buffer,
-    hasMap = false,
+    textureReady: {
+      mapReady: boolean;
+      specularMapReady: boolean;
+      bumpMapReady: boolean;
+    } = {
+      mapReady: false,
+      specularMapReady: false,
+      bumpMapReady: false,
+    },
   ): Record<string, unknown> {
     const transform = entity.read(Transform3D);
     const material = entity.read(Material3D);
@@ -922,7 +938,9 @@ export class MeshPipeline3D extends System {
       u_LightDirection: [-0.5, -0.7, -0.5, 0],
     };
 
-    const mapFlag = hasMap ? 1 : 0;
+    const mapFlag = textureReady.mapReady ? 1 : 0;
+    const specularMapFlag = textureReady.specularMapReady ? 1 : 0;
+    const bumpMapFlag = textureReady.bumpMapReady ? 1 : 0;
     const buffer = new Float32Array(MODEL_UNIFORM_FLOATS);
     buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
     buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
@@ -941,7 +959,10 @@ export class MeshPipeline3D extends System {
       ],
       44,
     );
-    buffer.set([mapFlag, 0, 0, 0], 48);
+    buffer.set(
+      [mapFlag, specularMapFlag, bumpMapFlag, material.bumpScale],
+      48,
+    );
 
     modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     return {
@@ -952,7 +973,12 @@ export class MeshPipeline3D extends System {
         transform.translation[2],
         0,
       ],
-      u_MaterialFlags: [mapFlag, 0, 0, 0],
+      u_MaterialFlags: [
+        mapFlag,
+        specularMapFlag,
+        bumpMapFlag,
+        material.bumpScale,
+      ],
     };
   }
 

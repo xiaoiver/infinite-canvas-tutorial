@@ -36,6 +36,15 @@ export class Material3D {
    */
   @field.object declare map: string | null;
 
+  /** Optional specular intensity texture (grayscale), multiplied into specular. */
+  @field.object declare specularMap: string | null;
+
+  /** Optional bump / height map (grayscale) for normal perturbation. */
+  @field.object declare bumpMap: string | null;
+
+  /** Bump map strength (AntV G `bumpScale`, typically 1–10). */
+  @field.float32 declare bumpScale: number;
+
   constructor(material?: Partial<Material3D>) {
     if (material) {
       Object.assign(this, material);
@@ -46,5 +55,8 @@ export class Material3D {
     this.specular ??= 0.3;
     this.shininess ??= 32;
     this.map ??= null;
+    this.specularMap ??= null;
+    this.bumpMap ??= null;
+    this.bumpScale ??= 1;
   }
 }

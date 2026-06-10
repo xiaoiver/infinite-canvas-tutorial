@@ -10,7 +10,7 @@ layout(std140) uniform SceneUniforms3D {
   mat4 u_ProjectionMatrix3D;
   mat4 u_ViewMatrix3D;
   mat4 u_CanvasViewProjection3D;
-  // z=1: linked perspective (2D VP + depth scale from anchor)
+  // z=1: linked perspective; xyw = camera eye (canvas space) for lighting
   vec4 u_SceneParams;
   vec4 u_AmbientLight;
   vec4 u_LightCount;
@@ -28,7 +28,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_LightDirection; // deprecated: kept for uniform-buffer layout compatibility
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
-  // x: 1.0 when a base-color texture (u_Map) is bound, else 0.0
+  // x: map, y: specularMap, z: bumpMap, w: bumpScale
   vec4 u_MaterialFlags;
 };
 
@@ -99,11 +99,13 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_LightDirection; // deprecated: kept for uniform-buffer layout compatibility
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
-  // x: 1.0 when a base-color texture (u_Map) is bound, else 0.0
+  // x: map, y: specularMap, z: bumpMap, w: bumpScale
   vec4 u_MaterialFlags;
 };
 
 uniform sampler2D u_Map;
+uniform sampler2D u_SpecularMap;
+uniform sampler2D u_BumpMap;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
@@ -162,9 +164,49 @@ vec3 shadeLight(
     (materialDiffuse * diff + materialSpecular * spec);
 }
 
+vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
+  vec3 dp1 = dFdx(v_FragPos);
+  vec3 dp2 = dFdy(v_FragPos);
+  vec2 duv1 = dFdx(uv);
+  vec2 duv2 = dFdy(uv);
+  vec3 dp2perp = cross(dp2, normal);
+  vec3 dp1perp = cross(normal, dp1);
+  vec3 tangent = dp1perp * duv2.x + dp2perp * duv1.x;
+  vec3 bitangent = dp1perp * duv2.y + dp2perp * duv1.y;
+  float maxLen = max(dot(tangent, tangent), dot(bitangent, bitangent));
+  float invmax = inversesqrt(maxLen);
+  tangent *= invmax;
+  bitangent *= invmax;
+  float height = texture(SAMPLER_2D(u_BumpMap), uv).r;
+  float heightDx = texture(SAMPLER_2D(u_BumpMap), uv + duv1).r - height;
+  float heightDy = texture(SAMPLER_2D(u_BumpMap), uv + duv2).r - height;
+  return normalize(
+    tangent * (-heightDx * bumpScale) +
+    bitangent * (-heightDy * bumpScale) +
+    normal
+  );
+}
+
 void main() {
   vec3 normal = normalize(v_Normal);
-  vec3 viewDir = normalize(-v_FragPos);
+  if (u_MaterialFlags.z > 0.5) {
+    normal = perturbNormalFromBumpMap(normal, v_Uv, u_MaterialFlags.w);
+  }
+  vec3 viewDir;
+  if (u_SceneParams.z > 0.5) {
+    viewDir = normalize(
+      vec3(u_SceneParams.x, u_SceneParams.y, u_SceneParams.w) - v_FragPos
+    );
+  } else {
+    viewDir = normalize(-v_FragPos);
+  }
+  float specularStrength = u_LightParams.z;
+  if (u_MaterialFlags.y > 0.5) {
+  specularStrength *= dot(
+    texture(SAMPLER_2D(u_SpecularMap), v_Uv).rgb,
+    vec3(0.299, 0.587, 0.114)
+  );
+  }
   vec3 lighting = u_AmbientLight.rgb * u_LightParams.x;
 
   for (int i = 0; i < MAX_3D_LIGHTS; i++) {
@@ -176,7 +218,7 @@ void main() {
       normal,
       viewDir,
       u_LightParams.y,
-      u_LightParams.z,
+      specularStrength,
       u_LightParams.w
     );
   }

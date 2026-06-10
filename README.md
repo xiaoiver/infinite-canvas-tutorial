@@ -500,9 +500,9 @@ If you want to use it in your own project, you can refer to:
 -   Picking with raycast
 -   Lighting: ambient, spot, directional lights
 
-|               Gizmo               |     |
-| :-------------------------------: | :-: |
-| ![gizmo](./screenshots/gizmo.gif) |     |
+|               Gizmo               |               Textured earth               |
+| :-------------------------------: | :----------------------------------------: |
+| ![gizmo](./screenshots/gizmo.gif) | ![textured earth](./screenshots/earth.png) |
 
 [Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
