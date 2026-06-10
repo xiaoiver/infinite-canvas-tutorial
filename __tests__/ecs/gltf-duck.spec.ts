@@ -25,11 +25,15 @@ function loadDuckContainer(): GltfContainer {
 
 describe('gltf duck mesh', () => {
   it('bakes Duck.gltf with positions and indices', () => {
-    const mesh = bakeGltfMesh(loadDuckContainer());
+    const mesh = bakeGltfMesh(loadDuckContainer(), {
+      baseUrl: '/data/Duck.gltf',
+    });
     expect(mesh.positions.length).toBeGreaterThan(0);
     expect(mesh.normals.length).toBe(mesh.positions.length);
     expect(mesh.indices.length).toBeGreaterThan(0);
     expect(mesh.positions.length % 3).toBe(0);
+    expect(mesh.uvs?.length).toBe((mesh.positions.length / 3) * 2);
+    expect(mesh.map).toBe('/data/DuckCM.png');
   });
 
   it('normalizes duck bounds to roughly unit size', () => {

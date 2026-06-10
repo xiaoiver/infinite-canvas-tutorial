@@ -32,7 +32,7 @@ export async function loadGltfMeshFromUrl(
         GLTFLoader,
         GLTF_LOAD_OPTIONS,
       )) as GltfContainer;
-      return bakeGltfMesh(container, options);
+      return bakeGltfMesh(container, { ...options, baseUrl: url });
     })();
     urlCache.set(key, pending);
   }
