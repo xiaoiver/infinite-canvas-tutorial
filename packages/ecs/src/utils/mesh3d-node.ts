@@ -49,7 +49,11 @@ export function rebuildMesh3DNodeCompanionGeometry(
     return true;
   }
   companionGeometryKey.set(source, key);
-  Object.assign(meshEntity.write(Mesh3D), createGeometry(spec));
+  const data = createGeometry(spec);
+  const mesh = meshEntity.write(Mesh3D);
+  Object.assign(mesh, data);
+  // Reset stale UVs when switching to a geometry without texture coordinates.
+  mesh.uvs = data.uvs ?? null;
   return true;
 }
 
@@ -146,6 +150,7 @@ export function syncMesh3DNodeCompanionFromSource(
   material.diffuse = node.diffuse;
   material.specular = node.specular;
   material.shininess = node.shininess;
+  material.map = node.map ?? null;
   return true;
 }
 

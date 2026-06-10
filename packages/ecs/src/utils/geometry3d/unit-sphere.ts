@@ -8,6 +8,7 @@ export function createUnitSphereGeometry(
   const r = 0.5;
   const positions: number[] = [];
   const normals: number[] = [];
+  const uvs: number[] = [];
   const indices: number[] = [];
 
   for (let v = 0; v <= vSeg; v++) {
@@ -24,6 +25,8 @@ export function createUnitSphereGeometry(
       const z = r * sinPhi * sinTheta;
       positions.push(x, y, z);
       normals.push(x / r, y / r, z / r);
+      // Equirectangular mapping: longitude → u, latitude → v (top-down).
+      uvs.push(u / uSeg, v / vSeg);
     }
   }
 
@@ -38,6 +41,7 @@ export function createUnitSphereGeometry(
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
+    uvs: new Float32Array(uvs),
     indices: new Uint32Array(indices),
   };
 }

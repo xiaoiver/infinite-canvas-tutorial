@@ -27,6 +27,22 @@ describe('mesh3d geometry primitives', () => {
     expect(mesh.indices!.length).toBe(8 * 4 * 6);
   });
 
+  it('creates sphere with equirectangular UVs in [0, 1]', () => {
+    const mesh = createUnitSphereGeometry([8, 4]);
+    expect(mesh.uvs).toBeInstanceOf(Float32Array);
+    // One (u, v) pair per vertex.
+    expect(mesh.uvs!.length).toBe((mesh.positions.length / 3) * 2);
+    for (const value of mesh.uvs!) {
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(1);
+    }
+    // First vertex maps to UV origin, last to (1, 1).
+    expect(mesh.uvs![0]).toBe(0);
+    expect(mesh.uvs![1]).toBe(0);
+    expect(mesh.uvs![mesh.uvs!.length - 2]).toBe(1);
+    expect(mesh.uvs![mesh.uvs!.length - 1]).toBe(1);
+  });
+
   it('creates capped cylinder with outward-facing cap normals', () => {
     const segments = 12;
     const mesh = createUnitCylinderGeometry(segments, true);

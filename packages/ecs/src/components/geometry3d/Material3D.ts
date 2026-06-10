@@ -30,6 +30,12 @@ export class Material3D {
    */
   @field.float32 declare shininess: number;
 
+  /**
+   * Optional base-color texture (image URL or data URL). Sampled with the
+   * mesh UV coordinates and multiplied by {@link baseColor}.
+   */
+  @field.object declare map: string | null;
+
   constructor(material?: Partial<Material3D>) {
     if (material) {
       Object.assign(this, material);
@@ -39,5 +45,6 @@ export class Material3D {
     this.diffuse ??= 0.7;
     this.specular ??= 0.3;
     this.shininess ??= 32;
+    this.map ??= null;
   }
 }

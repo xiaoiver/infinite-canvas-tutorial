@@ -44,6 +44,7 @@ export function queueMesh3DCompanion(
   const diffuse = node.diffuse;
   const specular = node.specular;
   const shininess = node.shininess;
+  const map = node.map ?? null;
 
   const spec = normalizeGeometry(geometry);
   const meshData = resolveMesh3DNodeGeometry(geometry);
@@ -72,6 +73,7 @@ export function queueMesh3DCompanion(
         diffuse,
         specular,
         shininess,
+        map,
       }),
       new Transform3D(transformProps),
       new Mesh3DNodeTarget({ source: source.hold() }),

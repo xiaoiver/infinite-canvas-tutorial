@@ -1242,6 +1242,7 @@ export function serializedNodesToEntities(
           diffuse: mat.diffuse ?? 0.75,
           specular: mat.specular ?? 0.4,
           shininess: mat.shininess ?? 48,
+          map: mat.map ?? null,
           camera3d: attrs.camera3d,
         }),
       );

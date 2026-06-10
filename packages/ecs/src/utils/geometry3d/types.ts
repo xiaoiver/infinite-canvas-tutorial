@@ -2,6 +2,8 @@ export interface Mesh3DGeometryData {
   positions: Float32Array;
   normals: Float32Array;
   indices: Uint32Array;
+  /** Optional (u, v) texture coordinates, interleaved. */
+  uvs?: Float32Array;
 }
 
 export type Mesh3DGeometrySpec =

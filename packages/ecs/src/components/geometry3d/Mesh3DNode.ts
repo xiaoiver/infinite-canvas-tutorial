@@ -29,6 +29,9 @@ export class Mesh3DNode {
 
   @field.float32 declare shininess: number;
 
+  /** Optional base-color texture (image URL or data URL). */
+  @field.object declare map: string | null;
+
   /** Spawn {@link Camera3D} for this canvas when absent (first mesh3d wins). */
   @field.object declare camera3d?: {
     linked?: boolean;
@@ -52,5 +55,6 @@ export class Mesh3DNode {
     this.diffuse ??= 0.75;
     this.specular ??= 0.4;
     this.shininess ??= 48;
+    this.map ??= null;
   }
 }

@@ -28,18 +28,23 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_LightDirection; // deprecated: kept for uniform-buffer layout compatibility
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
+  // x: 1.0 when a base-color texture (u_Map) is bound, else 0.0
+  vec4 u_MaterialFlags;
 };
 
 layout(location = 0) in vec3 a_Position3D;
 layout(location = 1) in vec3 a_Normal3D;
+layout(location = 2) in vec2 a_Uv3D;
 
 out vec3 v_Normal;
 out vec3 v_FragPos;
+out vec2 v_Uv;
 
 void main() {
   vec4 worldPos = u_ModelMatrix3D * vec4(a_Position3D, 1.0);
   v_FragPos = worldPos.xyz;
   v_Normal = (u_NormalMatrix3D * vec4(a_Normal3D, 0.0)).xyz;
+  v_Uv = a_Uv3D;
 
   if (u_SceneParams.z > 0.5) {
     // 2D VP: pan / zoom / Y-flip; perspective scales offsets from placement anchor.
@@ -94,10 +99,15 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_LightDirection; // deprecated: kept for uniform-buffer layout compatibility
   // xy: Transform3D.translation (perspective anchor on canvas)
   vec4 u_CanvasAnchor;
+  // x: 1.0 when a base-color texture (u_Map) is bound, else 0.0
+  vec4 u_MaterialFlags;
 };
+
+uniform sampler2D u_Map;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
+in vec2 v_Uv;
 
 out vec4 outputColor;
 
@@ -171,7 +181,12 @@ void main() {
     );
   }
 
-  vec3 result = lighting * u_BaseColor.rgb;
-  outputColor = vec4(result, u_BaseColor.a);
+  vec4 baseColor = u_BaseColor;
+  if (u_MaterialFlags.x > 0.5) {
+    baseColor *= texture(SAMPLER_2D(u_Map), v_Uv);
+  }
+
+  vec3 result = lighting * baseColor.rgb;
+  outputColor = vec4(result, baseColor.a);
 }
 `;
