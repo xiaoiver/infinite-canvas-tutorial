@@ -58,11 +58,14 @@ export function requestGltfMeshLoad(source: Entity): void {
         if (!companion || !isEntityAlive(companion) || !companion.has(Mesh3D)) {
           return;
         }
-        Object.assign(companion.write(Mesh3D), {
+        const meshWrite = companion.write(Mesh3D);
+        Object.assign(meshWrite, {
           positions: baked.positions,
           normals: baked.normals,
           indices: baked.indices,
         });
+        meshWrite.uvs = baked.uvs ?? null;
+
         if (companion.has(Material3D)) {
           const material = companion.read(Material3D);
           const hasCustomColor =
@@ -72,6 +75,12 @@ export function requestGltfMeshLoad(source: Entity): void {
             material.baseColor[3] !== 1;
           if (!hasCustomColor) {
             companion.write(Material3D).baseColor = [...baked.baseColor];
+          }
+          if (baked.map && !material.map) {
+            companion.write(Material3D).map = baked.map;
+            if (source.has(Mesh3DNode) && !source.read(Mesh3DNode).map) {
+              source.write(Mesh3DNode).map = baked.map;
+            }
           }
         }
         seedMesh3DNodeCompanionGeometryKey(source);

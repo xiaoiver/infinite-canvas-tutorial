@@ -42,6 +42,26 @@ export function readAccessor(
             ? 4
             : 3;
 
+  if (acc.componentType === 5126 && acc.type === 'VEC2') {
+    const count = acc.count;
+    const stride = bv.byteStride ?? 8;
+    if (stride === 8) {
+      return {
+        array: new Float32Array(ab, base, count * 2),
+        components: 2,
+      };
+    }
+    const out = new Float32Array(count * 2);
+    const view = new DataView(ab);
+    let off = base;
+    for (let i = 0; i < count; i++) {
+      out[i * 2] = view.getFloat32(off, true);
+      out[i * 2 + 1] = view.getFloat32(off + 4, true);
+      off += stride;
+    }
+    return { array: out, components: 2 };
+  }
+
   if (acc.componentType === 5126 && acc.type === 'VEC3') {
     const count = acc.count;
     const stride = bv.byteStride ?? 12;

@@ -43,7 +43,7 @@ onMounted(async () => {
           id: 'light-key',
           type: 'light3d',
           lightType: 'directional',
-          direction: [-0.4, -0.6, -0.5],
+          direction: [1, 0, 0],
           intensity: 0.9,
           zIndex: -3,
         },

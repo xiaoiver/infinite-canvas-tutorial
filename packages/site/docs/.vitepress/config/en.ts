@@ -539,6 +539,10 @@ export const en = defineConfig({
                     text: 'Textured Earth',
                     link: 'earth',
                   },
+                  {
+                    text: 'glTF model',
+                    link: 'gltf-duck',
+                  },
                 ],
               }
             ],

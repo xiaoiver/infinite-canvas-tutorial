@@ -3,9 +3,12 @@ import type { Mesh3DGeometryData } from '../geometry3d/types';
 import { readAccessor, type GltfContainer } from './accessors';
 import { computeVertexNormals } from './compute-normals';
 import { normalizeMeshBoundsInPlace } from './normalize-bounds';
+import { resolveGltfAssetUrl } from './resolve-gltf-url';
 
 export type GltfMeshBakeResult = Mesh3DGeometryData & {
   baseColor: [number, number, number, number];
+  /** Resolved base-color texture URL from glTF materials, if any. */
+  map: string | null;
 };
 
 type GltfJson = GltfContainer['json'] & {
@@ -20,16 +23,47 @@ type GltfJson = GltfContainer['json'] & {
   }[];
   meshes?: {
     primitives: {
-      attributes: { POSITION: number; NORMAL?: number };
+      attributes: {
+        POSITION: number;
+        NORMAL?: number;
+        TEXCOORD_0?: number;
+      };
       indices?: number;
       mode?: number;
       material?: number;
     }[];
   }[];
   materials?: {
-    pbrMetallicRoughness?: { baseColorFactor?: number[] };
+    pbrMetallicRoughness?: {
+      baseColorFactor?: number[];
+      baseColorTexture?: { index?: number };
+    };
   }[];
+  textures?: { source?: number }[];
+  images?: { uri?: string }[];
 };
+
+function readMaterialMapUrl(
+  json: GltfJson,
+  materialIndex: number,
+  baseUrl: string,
+): string | null {
+  const texIndex =
+    json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorTexture
+      ?.index;
+  if (texIndex == null) {
+    return null;
+  }
+  const imageIndex = json.textures?.[texIndex]?.source;
+  if (imageIndex == null) {
+    return null;
+  }
+  const uri = json.images?.[imageIndex]?.uri;
+  if (!uri) {
+    return null;
+  }
+  return resolveGltfAssetUrl(baseUrl, uri);
+}
 
 function readMaterialBaseColor(
   json: GltfJson,
@@ -102,9 +136,12 @@ function appendPrimitive(
   worldMatrix: mat4,
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
+  uvChunks: Float32Array[],
   idxChunks: number[],
   vertexOffset: { value: number },
   baseColorOut: { value: [number, number, number, number] },
+  mapOut: { value: string | null },
+  baseUrl?: string,
 ): void {
   const mesh = json.meshes?.[meshIndex];
   if (!mesh) {
@@ -144,11 +181,34 @@ function appendPrimitive(
       normals = new Float32Array(positions.length);
     }
 
+    let uvs: Float32Array;
+    const uvIdx = prim.attributes.TEXCOORD_0;
+    if (uvIdx !== undefined) {
+      const uvAcc = readAccessor(gltf, uvIdx);
+      if (
+        uvAcc.components === 2 &&
+        uvAcc.array instanceof Float32Array &&
+        uvAcc.array.length === vCount * 2
+      ) {
+        uvs = new Float32Array(uvAcc.array);
+      } else {
+        uvs = new Float32Array(vCount * 2);
+      }
+    } else {
+      uvs = new Float32Array(vCount * 2);
+    }
+
     posChunks.push(positions);
     normalChunks.push(normals);
+    uvChunks.push(uvs);
 
-    if (baseColorOut.value[0] === 1 && prim.material !== undefined) {
-      baseColorOut.value = readMaterialBaseColor(json, prim.material);
+    if (prim.material !== undefined) {
+      if (baseColorOut.value[0] === 1) {
+        baseColorOut.value = readMaterialBaseColor(json, prim.material);
+      }
+      if (mapOut.value == null && baseUrl) {
+        mapOut.value = readMaterialMapUrl(json, prim.material, baseUrl);
+      }
     }
 
     if (prim.indices !== undefined) {
@@ -187,9 +247,12 @@ function traverseNode(
   parentMatrix: mat4,
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
+  uvChunks: Float32Array[],
   idxChunks: number[],
   vertexOffset: { value: number },
   baseColorOut: { value: [number, number, number, number] },
+  mapOut: { value: string | null },
+  baseUrl?: string,
   meshFilter?: number,
 ): void {
   const node = json.nodes?.[nodeIndex];
@@ -208,9 +271,12 @@ function traverseNode(
       world,
       posChunks,
       normalChunks,
+      uvChunks,
       idxChunks,
       vertexOffset,
       baseColorOut,
+      mapOut,
+      baseUrl,
     );
   }
 
@@ -222,9 +288,12 @@ function traverseNode(
       world,
       posChunks,
       normalChunks,
+      uvChunks,
       idxChunks,
       vertexOffset,
       baseColorOut,
+      mapOut,
+      baseUrl,
       meshFilter,
     );
   }
@@ -233,14 +302,16 @@ function traverseNode(
 /** Flatten glTF scene meshes into a unit-bounds {@link Mesh3D} buffer set. */
 export function bakeGltfMesh(
   gltf: GltfContainer,
-  options?: { mesh?: number; scene?: number },
+  options?: { mesh?: number; scene?: number; baseUrl?: string },
 ): GltfMeshBakeResult {
   const json = gltf.json as GltfJson;
   const posChunks: Float32Array[] = [];
   const normalChunks: Float32Array[] = [];
+  const uvChunks: Float32Array[] = [];
   const idxChunks: number[] = [];
   const vertexOffset = { value: 0 };
   const baseColorOut = { value: [1, 1, 1, 1] as [number, number, number, number] };
+  const mapOut = { value: null as string | null };
   const identity = mat4.create();
 
   const sceneIndex = options?.scene ?? 0;
@@ -254,9 +325,12 @@ export function bakeGltfMesh(
         identity,
         posChunks,
         normalChunks,
+        uvChunks,
         idxChunks,
         vertexOffset,
         baseColorOut,
+        mapOut,
+        options?.baseUrl,
         options?.mesh,
       );
     }
@@ -268,9 +342,12 @@ export function bakeGltfMesh(
       identity,
       posChunks,
       normalChunks,
+      uvChunks,
       idxChunks,
       vertexOffset,
       baseColorOut,
+      mapOut,
+      options?.baseUrl,
     );
   }
 
@@ -280,20 +357,28 @@ export function bakeGltfMesh(
       normals: new Float32Array(0),
       indices: new Uint32Array(0),
       baseColor: baseColorOut.value,
+      map: mapOut.value,
     };
   }
 
   const totalFloats = posChunks.reduce((s, c) => s + c.length, 0);
   const positions = new Float32Array(totalFloats);
   const normals = new Float32Array(totalFloats);
+  const uvs = new Float32Array((totalFloats / 3) * 2);
   let offset = 0;
+  let uvOffset = 0;
   for (let i = 0; i < posChunks.length; i++) {
     positions.set(posChunks[i], offset);
     const chunkNormals = normalChunks[i];
     if (chunkNormals.length === posChunks[i].length) {
       normals.set(chunkNormals, offset);
     }
+    const chunkUvs = uvChunks[i];
+    if (chunkUvs.length === (posChunks[i].length / 3) * 2) {
+      uvs.set(chunkUvs, uvOffset);
+    }
     offset += posChunks[i].length;
+    uvOffset += chunkUvs.length;
   }
 
   const indices = new Uint32Array(idxChunks);
@@ -318,6 +403,8 @@ export function bakeGltfMesh(
     positions,
     normals,
     indices,
+    uvs,
     baseColor: baseColorOut.value,
+    map: mapOut.value,
   };
 }

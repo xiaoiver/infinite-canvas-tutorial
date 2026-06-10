@@ -482,8 +482,8 @@ export class MeshPipeline3D extends System {
           },
         ],
         blendConstant: TransparentBlack,
-        depthWrite: false,
-        depthCompare: CompareFunction.ALWAYS,
+        depthWrite: true,
+        depthCompare: CompareFunction.GREATER,
         cullMode: CullMode.BACK,
       }),
     });
