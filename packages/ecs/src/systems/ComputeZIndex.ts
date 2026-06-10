@@ -87,33 +87,33 @@ export class ComputeZIndex extends System {
   ) {
     const n = descendants.length;
 
-    let i = 0;
-    while (i < n) {
-      if (!moved.has(descendants[i])) {
-        i++;
+    let runStart = 0;
+    while (runStart < n) {
+      if (!moved.has(descendants[runStart])) {
+        runStart++;
         continue;
       }
 
-      let j = i;
-      while (j < n && moved.has(descendants[j])) {
-        j++;
+      let runEnd = runStart;
+      while (runEnd < n && moved.has(descendants[runEnd])) {
+        runEnd++;
       }
 
-      const prev = i - 1 >= 0 ? descendants[i - 1] : null;
-      const next = j < n ? descendants[j] : null;
+      const prev = runStart - 1 >= 0 ? descendants[runStart - 1] : null;
+      const next = runEnd < n ? descendants[runEnd] : null;
       const lowerBound =
         (prev?.has(FractionalIndex) && prev.read(FractionalIndex).value) || null;
       const upperBound =
         (next?.has(FractionalIndex) && next.read(FractionalIndex).value) || null;
 
-      const keys = generateNKeysBetween(lowerBound, upperBound, j - i);
-      for (let k = i; k < j; k++) {
-        safeAddComponent(descendants[k], FractionalIndex, {
-          value: keys[k - i],
+      const keys = generateNKeysBetween(lowerBound, upperBound, runEnd - runStart);
+      for (let idx = runStart; idx < runEnd; idx++) {
+        safeAddComponent(descendants[idx], FractionalIndex, {
+          value: keys[idx - runStart],
         });
       }
 
-      i = j;
+      runStart = runEnd;
     }
   }
 }
