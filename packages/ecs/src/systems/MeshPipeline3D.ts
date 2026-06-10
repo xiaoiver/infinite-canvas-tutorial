@@ -610,8 +610,9 @@ export class MeshPipeline3D extends System {
       hint: BufferFrequencyHint.STATIC,
     });
 
-    // UVs are optional per geometry; fall back to zeros so the shared input
-    // layout always has a valid buffer for attribute location 2.
+    // UVs are optional per geometry; fall back to a zero-filled array matching
+    // the vertex count so the shared input layout always has a valid buffer for
+    // attribute location 2.
     const uvData =
       mesh.uvs && mesh.uvs.length === mesh.vertexCount * 2
         ? mesh.uvs

@@ -52,7 +52,8 @@ export function rebuildMesh3DNodeCompanionGeometry(
   const data = createGeometry(spec);
   const mesh = meshEntity.write(Mesh3D);
   Object.assign(mesh, data);
-  // Reset stale UVs when switching to a geometry without texture coordinates.
+  // Assign UVs from the new geometry data, or reset to null when the geometry
+  // has no texture coordinates (handles both geometry switches and first build).
   mesh.uvs = data.uvs ?? null;
   return true;
 }
