@@ -155,6 +155,8 @@ export function syncMesh3DNodeCompanionFromSource(
   material.diffuse = node.diffuse;
   material.specular = node.specular;
   material.shininess = node.shininess;
+  material.metallic = node.metallic;
+  material.roughness = node.roughness;
   material.map = node.map ?? null;
   material.specularMap = node.specularMap ?? null;
   material.bumpMap = node.bumpMap ?? null;

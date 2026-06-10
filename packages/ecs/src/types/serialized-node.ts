@@ -436,6 +436,10 @@ export type Material3DWire = {
   diffuse?: number;
   specular?: number;
   shininess?: number;
+  /** Metalness 0..1 (PBR metallic-roughness workflow). */
+  metallic?: number;
+  /** Perceptual roughness 0..1 (PBR metallic-roughness workflow). */
+  roughness?: number;
   /** Base-color texture (image URL or data URL). */
   map?: string;
   specularMap?: string;

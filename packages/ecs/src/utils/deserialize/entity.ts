@@ -1242,6 +1242,8 @@ export function serializedNodesToEntities(
           diffuse: mat.diffuse ?? 0.75,
           specular: mat.specular ?? 0.4,
           shininess: mat.shininess ?? 48,
+          metallic: mat.metallic ?? 0,
+          roughness: mat.roughness ?? 1,
           map: mat.map ?? null,
           specularMap: mat.specularMap ?? null,
           bumpMap: mat.bumpMap ?? null,

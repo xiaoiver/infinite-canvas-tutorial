@@ -89,6 +89,8 @@ onMounted(async () => {
           diffuse: 0.75,
           specular: 0.35,
           shininess: 32,
+          metallic: 0,
+          roughness: 0.55,
         },
         camera3d: {
           linked: true,
@@ -114,6 +116,8 @@ onMounted(async () => {
           diffuse: 0.75,
           specular: 0.65,
           shininess: 96,
+          metallic: 1,
+          roughness: 0.25,
         },
       },
       {
@@ -134,6 +138,8 @@ onMounted(async () => {
           diffuse: 0.75,
           specular: 0.45,
           shininess: 48,
+          metallic: 0,
+          roughness: 0.2,
         },
       },
     ]);

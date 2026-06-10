@@ -1,13 +1,13 @@
 ---
 title: '3D scene lighting (Light3D)'
-description: 'Ambient, directional, and spot lights with Blinn-Phong materials and an orbiting spotlight.'
+description: 'Ambient, directional, and spot lights with metallic-roughness PBR materials and an orbiting spotlight.'
 ---
 
 <!-- example-intro:en -->
 
 # 3D scene lighting
 
-This page demonstrates **`Light3D`** with **Blinn-Phong** materials: ambient light as a base, a cool directional fill, and a warm **spot light** orbiting the scene center. Three cubes with different specular settings make it easy to compare highlights and shading.
+This page demonstrates **`Light3D`** with **metallic-roughness PBR** materials (a Cook-Torrance microfacet BRDF, like three.js `MeshStandardMaterial`): ambient light as a base, a cool directional fill, and a warm **spot light** orbiting the scene center. Three objects with different `metallic` / `roughness` settings make it easy to compare a rough dielectric, a polished metal, and a smooth dielectric.
 
 Implementation references `packages/webcomponents/examples/main.ts` and [Lesson 39 — 3D mesh rendering](/guide/lesson-039).
 
@@ -25,7 +25,7 @@ import Lighting from '../components/Lighting.vue'
 -   **Custom lights**: spawning any `Light3D` **replaces** the default ambient + directional bundle; if no `directional` is provided, the renderer adds a weak directional fill so meshes are not fully black.
 -   **Coordinates**: `position` and `direction` use the same **canvas world units** as `Transform3D` (about 1 px in linked mode). `direction` points from the light toward the lit scene; the renderer normalizes it.
 -   **Spot lights**: `innerConeAngle` and `outerConeAngle` are in radians; `range <= 0` disables distance attenuation (same as the webcomponents example).
--   **Materials**: `Material3D` `ambient`, `diffuse`, `specular`, and `shininess` drive the Blinn-Phong response; the center cube uses higher `specular` and `shininess` for a brighter highlight.
+-   **Materials**: `Material3D` uses a **metallic-roughness** workflow. `metallic` (0 = dielectric, 1 = metal) and `roughness` (0 = mirror-smooth, 1 = fully rough) drive the Cook-Torrance specular response; `baseColor` is the albedo (and reflectance tint for metals). The legacy `ambient`, `diffuse`, `specular`, and `shininess` fields are kept for backward compatibility — `ambient` still scales the ambient term, but `diffuse`/`specular`/`shininess` no longer affect shading.
 -   **Animation**: each frame updates the spot via `spotLight.write(Light3D)`; `MeshPipeline3D` repacks lights when the component changes.
 
 ## Compared to the cube example {#vs-cube}
