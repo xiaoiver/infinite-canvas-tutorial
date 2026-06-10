@@ -535,6 +535,10 @@ export const en = defineConfig({
                     text: 'Lighting',
                     link: 'lighting',
                   },
+                  {
+                    text: 'Textured Earth',
+                    link: 'earth',
+                  },
                 ],
               }
             ],
