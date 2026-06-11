@@ -87,9 +87,13 @@ export class GsplatRenderer {
   private source: Float32Array = new Float32Array(0);
   /** Reused scratch for the depth-sorted instance upload. */
   private sorted: Float32Array = new Float32Array(0);
+  /** Cached byte view over {@link sorted} to avoid per-frame allocation. */
+  private sortedBytes: Uint8Array = new Uint8Array(0);
   /** Reused scratch for sorted indices. */
   private order: Uint32Array = new Uint32Array(0);
   private uniforms = new Float32Array(UNIFORM_FLOATS);
+  /** Cached byte view over {@link uniforms} to avoid per-frame allocation. */
+  private uniformBytes = new Uint8Array(this.uniforms.buffer);
 
   constructor(device: Device) {
     this.device = device;
@@ -224,6 +228,7 @@ export class GsplatRenderer {
     this.count = count;
     this.source = source;
     this.sorted = new Float32Array(count * INSTANCE_FLOATS);
+    this.sortedBytes = new Uint8Array(this.sorted.buffer);
     this.order = new Uint32Array(count);
 
     this.instanceBuffer?.destroy();
@@ -276,7 +281,10 @@ export class GsplatRenderer {
         dst[to + k] = src[from + k];
       }
     }
-    this.instanceBuffer.setSubData(0, new Uint8Array(dst.buffer, 0, this.count * INSTANCE_STRIDE));
+    this.instanceBuffer.setSubData(
+      0,
+      this.sortedBytes.subarray(0, this.count * INSTANCE_STRIDE),
+    );
   }
 
   private centersCache: Float32Array | null = null;
@@ -320,7 +328,7 @@ export class GsplatRenderer {
     this.uniforms[33] = height;
     this.uniforms[34] = 0;
     this.uniforms[35] = 0;
-    this.uniformBuffer.setSubData(0, new Uint8Array(this.uniforms.buffer));
+    this.uniformBuffer.setSubData(0, this.uniformBytes);
 
     const bindings = this.device.createBindings({
       pipeline: this.pipeline,
