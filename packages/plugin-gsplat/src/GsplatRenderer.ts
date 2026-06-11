@@ -296,16 +296,22 @@ export class GsplatRenderer {
   }
 
   /**
-   * Render the gaussian scene for {@link camera} into the owned render target.
-   * Returns the output texture (RGBA, premultiplied alpha), or `null` when there
-   * is nothing to draw.
+   * Render the gaussian scene for {@link camera}.
+   *
+   * When {@link target} is omitted the scene is drawn into the renderer's owned
+   * offscreen render target and that texture is returned (RGBA, premultiplied
+   * alpha). When {@link target} is provided (e.g. a swap-chain on-screen render
+   * target) the scene is drawn directly into it and `null` is returned.
+   * Returns `null` when there is nothing to draw.
    */
-  render(camera: GsplatCamera): Texture | null {
+  render(camera: GsplatCamera, target?: RenderTarget): Texture | null {
     const { width, height } = camera;
     if (width <= 0 || height <= 0 || this.count === 0) {
-      return this.texture;
+      return target ? null : this.texture;
     }
-    this.ensureRenderTarget(width, height);
+    if (!target) {
+      this.ensureRenderTarget(width, height);
+    }
     this.uploadSorted(camera);
 
     this.uniforms.set(camera.projectionMatrix as ArrayLike<number>, 0);
@@ -323,7 +329,7 @@ export class GsplatRenderer {
 
     this.device.submitRenderPassImmediate(
       {
-        colorAttachment: [this.renderTarget],
+        colorAttachment: [target ?? this.renderTarget],
         colorResolveTo: [null],
         colorClearColor: [TransparentBlack],
         colorStore: [true],
@@ -344,7 +350,7 @@ export class GsplatRenderer {
     );
 
     bindings.destroy();
-    return this.texture;
+    return target ? null : this.texture;
   }
 
   /** Release all GPU resources owned by this renderer. */

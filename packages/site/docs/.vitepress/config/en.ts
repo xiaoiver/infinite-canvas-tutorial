@@ -553,6 +553,7 @@ export const en = defineConfig({
         base: '/experiment/',
         items: [
           { text: 'Use WebGPU to draw particles', link: 'particles' },
+          { text: '3D Gaussian Splatting', link: 'gsplat' },
           { text: 'Programmatic Gradient', link: 'gradient' },
           { text: 'Mesh Gradient', link: 'mesh-gradient' },
           { text: 'Voronoi', link: 'voronoi' },
