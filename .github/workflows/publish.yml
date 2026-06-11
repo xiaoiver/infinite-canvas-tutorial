@@ -36,7 +36,8 @@ jobs:
         env:
           # VitePress bundles many demo deps (vello wasm, lottie, etc.) and exceeds the default ~4GB heap.
           NODE_OPTIONS: --max-old-space-size=6144
-          ADSENSE_ENABLED: ${{ vars.ADSENSE_ENABLED || secrets.ADSENSE_ENABLED }}
+          # 配置了 ADSENSE_CLIENT 时默认启用；也可通过 vars/secrets.ADSENSE_ENABLED 显式控制
+          ADSENSE_ENABLED: ${{ secrets.ADSENSE_CLIENT != '' && 'true' || vars.ADSENSE_ENABLED || secrets.ADSENSE_ENABLED }}
           ADSENSE_CLIENT: ${{ secrets.ADSENSE_CLIENT }}
         run: pnpm --filter '@infinite-canvas-tutorial/site' run build
 
