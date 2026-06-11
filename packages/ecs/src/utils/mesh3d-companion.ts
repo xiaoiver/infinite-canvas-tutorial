@@ -44,6 +44,8 @@ export function queueMesh3DCompanion(
   const diffuse = node.diffuse;
   const specular = node.specular;
   const shininess = node.shininess;
+  const metallic = node.metallic;
+  const roughness = node.roughness;
   const map = node.map ?? null;
   const specularMap = node.specularMap ?? null;
   const bumpMap = node.bumpMap ?? null;
@@ -76,6 +78,8 @@ export function queueMesh3DCompanion(
         diffuse,
         specular,
         shininess,
+        metallic,
+        roughness,
         map,
         specularMap,
         bumpMap,

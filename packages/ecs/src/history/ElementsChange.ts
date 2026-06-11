@@ -1955,6 +1955,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         if (mat.diffuse != null) meshNode.diffuse = mat.diffuse;
         if (mat.specular != null) meshNode.specular = mat.specular;
         if (mat.shininess != null) meshNode.shininess = mat.shininess;
+        if (mat.metallic != null) meshNode.metallic = mat.metallic;
+        if (mat.roughness != null) meshNode.roughness = mat.roughness;
         if ('map' in mat) meshNode.map = mat.map ?? null;
         if ('specularMap' in mat) {
           meshNode.specularMap = mat.specularMap ?? null;

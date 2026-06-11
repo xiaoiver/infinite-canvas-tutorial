@@ -27,8 +27,24 @@ export class Material3D {
 
   /**
    * Shininess exponent for specular highlights.
+   *
+   * @deprecated Retained for backward compatibility. The renderer now uses a
+   * metallic-roughness workflow ({@link metallic} / {@link roughness}); this
+   * field no longer affects shading.
    */
   @field.float32 declare shininess: number;
+
+  /**
+   * Metalness in the 0..1 range. 0 = dielectric, 1 = metal. Metals reflect the
+   * environment tinted by {@link baseColor} and have no diffuse contribution.
+   */
+  @field.float32 declare metallic: number;
+
+  /**
+   * Perceptual roughness in the 0..1 range. 0 = smooth/mirror-like, 1 = fully
+   * rough/diffuse. Drives the GGX specular lobe width.
+   */
+  @field.float32 declare roughness: number;
 
   /**
    * Optional base-color texture (image URL or data URL). Sampled with the
@@ -54,6 +70,8 @@ export class Material3D {
     this.diffuse ??= 0.7;
     this.specular ??= 0.3;
     this.shininess ??= 32;
+    this.metallic ??= 0;
+    this.roughness ??= 1;
     this.map ??= null;
     this.specularMap ??= null;
     this.bumpMap ??= null;

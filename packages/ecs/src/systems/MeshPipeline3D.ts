@@ -64,7 +64,7 @@ import { getGizmo3D } from './gizmo3d-bridge';
 
 const MAX_3D_LIGHTS = 8;
 const SCENE_UNIFORM_FLOATS = 188;
-const MODEL_UNIFORM_FLOATS = 52;
+const MODEL_UNIFORM_FLOATS = 56;
 
 interface MeshGPUData {
   vertexBuffer: Buffer;
@@ -963,6 +963,7 @@ export class MeshPipeline3D extends System {
       [mapFlag, specularMapFlag, bumpMapFlag, material.bumpScale],
       48,
     );
+    buffer.set([material.metallic, material.roughness, 0, 0], 52);
 
     modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
     return {
@@ -979,6 +980,7 @@ export class MeshPipeline3D extends System {
         bumpMapFlag,
         material.bumpScale,
       ],
+      u_PbrParams: [material.metallic, material.roughness, 0, 0],
     };
   }
 

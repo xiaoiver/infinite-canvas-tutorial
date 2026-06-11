@@ -1,5 +1,13 @@
 /**
- * Basic 3D mesh shader with Blinn-Phong lighting.
+ * 3D mesh shader with metallic-roughness physically-based lighting.
+ *
+ * Direct lighting uses a Cook-Torrance microfacet BRDF (GGX/Trowbridge-Reitz
+ * normal distribution, Smith geometry term, Schlick Fresnel) driven by the
+ * material `metallic` and `roughness` parameters, mirroring three.js
+ * `MeshStandardMaterial` / `MeshPhysicalMaterial`. The legacy
+ * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
+ * layout compatibility: `ambient` still scales the ambient term and an optional
+ * specular map still modulates the specular response.
  * Supports multiple ambient, directional, point, and spot lights.
  */
 
@@ -30,6 +38,8 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_CanvasAnchor;
   // x: map, y: specularMap, z: bumpMap, w: bumpScale
   vec4 u_MaterialFlags;
+  // x: metallic, y: roughness (PBR metallic-roughness workflow)
+  vec4 u_PbrParams;
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -101,6 +111,8 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_CanvasAnchor;
   // x: map, y: specularMap, z: bumpMap, w: bumpScale
   vec4 u_MaterialFlags;
+  // x: metallic, y: roughness (PBR metallic-roughness workflow)
+  vec4 u_PbrParams;
 };
 
 uniform sampler2D u_Map;
@@ -113,6 +125,8 @@ in vec2 v_Uv;
 
 out vec4 outputColor;
 
+#define PI 3.141592653589793
+
 float distanceAttenuation(float distanceToLight, float range) {
   if (range <= 0.0) {
     return 1.0;
@@ -121,13 +135,44 @@ float distanceAttenuation(float distanceToLight, float range) {
   return factor * factor;
 }
 
+// GGX / Trowbridge-Reitz normal distribution function.
+float distributionGGX(float NdotH, float roughness) {
+  float a = roughness * roughness;
+  float a2 = a * a;
+  float NdotH2 = NdotH * NdotH;
+  float denom = NdotH2 * (a2 - 1.0) + 1.0;
+  denom = PI * denom * denom;
+  return a2 / max(denom, 1e-6);
+}
+
+// Schlick-GGX geometry term (single direction) with direct-lighting k.
+float geometrySchlickGGX(float NdotX, float roughness) {
+  float r = roughness + 1.0;
+  float k = (r * r) / 8.0;
+  return NdotX / (NdotX * (1.0 - k) + k);
+}
+
+// Smith geometry term combining view and light occlusion.
+float geometrySmith(float NdotV, float NdotL, float roughness) {
+  return geometrySchlickGGX(NdotV, roughness) *
+    geometrySchlickGGX(NdotL, roughness);
+}
+
+// Schlick Fresnel approximation.
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+  return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// Cook-Torrance microfacet BRDF for a single analytic light.
 vec3 shadeLight(
   int index,
   vec3 normal,
   vec3 viewDir,
-  float materialDiffuse,
-  float materialSpecular,
-  float shininess
+  vec3 albedo,
+  vec3 F0,
+  float metallic,
+  float roughness,
+  float specularScale
 ) {
   vec4 params = u_LightParams3D[index];
   int lightType = int(params.x);
@@ -157,11 +202,26 @@ vec3 shadeLight(
     }
   }
 
-  float diff = max(dot(normal, lightDir), 0.0);
   vec3 halfDir = normalize(lightDir + viewDir);
-  float spec = pow(max(dot(normal, halfDir), 0.0), shininess);
-  return lightColor * attenuation *
-    (materialDiffuse * diff + materialSpecular * spec);
+  float NdotL = max(dot(normal, lightDir), 0.0);
+  float NdotV = max(dot(normal, viewDir), 0.0);
+  float NdotH = max(dot(normal, halfDir), 0.0);
+  float HdotV = max(dot(halfDir, viewDir), 0.0);
+
+  vec3 radiance = lightColor * attenuation;
+
+  float NDF = distributionGGX(NdotH, roughness);
+  float G = geometrySmith(NdotV, NdotL, roughness);
+  vec3 F = fresnelSchlick(HdotV, F0);
+
+  vec3 numerator = NDF * G * F * specularScale;
+  float denom = 4.0 * NdotV * NdotL + 1e-4;
+  vec3 specular = numerator / denom;
+
+  // Energy conservation: metals have no diffuse contribution.
+  vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
+
+  return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
 vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
@@ -200,35 +260,53 @@ void main() {
   } else {
     viewDir = normalize(-v_FragPos);
   }
-  float specularStrength = u_LightParams.z;
-  if (u_MaterialFlags.y > 0.5) {
-  specularStrength *= dot(
-    texture(SAMPLER_2D(u_SpecularMap), v_Uv).rgb,
-    vec3(0.299, 0.587, 0.114)
-  );
-  }
-  vec3 lighting = u_AmbientLight.rgb * u_LightParams.x;
-
-  for (int i = 0; i < MAX_3D_LIGHTS; i++) {
-    if (i >= int(u_LightCount.x)) {
-      break;
-    }
-    lighting += shadeLight(
-      i,
-      normal,
-      viewDir,
-      u_LightParams.y,
-      specularStrength,
-      u_LightParams.w
-    );
-  }
 
   vec4 baseColor = u_BaseColor;
   if (u_MaterialFlags.x > 0.5) {
     baseColor *= texture(SAMPLER_2D(u_Map), v_Uv);
   }
+  vec3 albedo = baseColor.rgb;
 
-  vec3 result = lighting * baseColor.rgb;
+  float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
+  // Clamp roughness to a small minimum (0.04): at roughness 0 the GGX lobe
+  // collapses to a delta, producing fireflies / division instabilities in the
+  // analytic specular term, so we keep a tiny floor as is common in PBR shaders.
+  float roughness = clamp(u_PbrParams.y, 0.04, 1.0);
+
+  // Optional specular map modulates the microfacet specular response.
+  float specularScale = 1.0;
+  if (u_MaterialFlags.y > 0.5) {
+    specularScale = dot(
+      texture(SAMPLER_2D(u_SpecularMap), v_Uv).rgb,
+      vec3(0.299, 0.587, 0.114)
+    );
+  }
+
+  // Dielectrics reflect ~4% at normal incidence; metals tint reflectance with
+  // the base color.
+  vec3 F0 = mix(vec3(0.04), albedo, metallic);
+
+  vec3 Lo = vec3(0.0);
+  for (int i = 0; i < MAX_3D_LIGHTS; i++) {
+    if (i >= int(u_LightCount.x)) {
+      break;
+    }
+    Lo += shadeLight(
+      i,
+      normal,
+      viewDir,
+      albedo,
+      F0,
+      metallic,
+      roughness,
+      specularScale
+    );
+  }
+
+  // Ambient term (legacy ambient field acts as an ambient strength).
+  vec3 ambient = u_AmbientLight.rgb * u_LightParams.x * albedo;
+
+  vec3 result = ambient + Lo;
   outputColor = vec4(result, baseColor.a);
 }
 `;

@@ -1,13 +1,13 @@
 ---
 title: '3D 场景光照（Light3D）'
-description: 'ambient / directional / spot 组合，Blinn-Phong 材质与动态聚光灯。'
+description: 'ambient / directional / spot 组合，金属-粗糙度 PBR 材质与动态聚光灯。'
 ---
 
 <!-- example-intro:zh -->
 
 # 3D 场景光照
 
-本页演示 **`Light3D`** 组件与 **Blinn-Phong** 材质配合：环境光打底、冷色平行光作填充，暖色 **聚光灯** 绕场景中心轨道运动，三个不同高光参数的立方体便于对比 specular 与明暗变化。
+本页演示 **`Light3D`** 组件与 **金属-粗糙度 PBR** 材质（Cook-Torrance 微表面 BRDF，类似 three.js `MeshStandardMaterial`）配合：环境光打底、冷色平行光作填充，暖色 **聚光灯** 绕场景中心轨道运动，三个不同 `metallic` / `roughness` 参数的物体便于对比粗糙电介质、抛光金属与光滑电介质。
 
 实现参考 `packages/webcomponents/examples/main.ts` 与 [课程 39 — 3D Mesh 渲染](/zh/guide/lesson-039)。
 
@@ -25,7 +25,7 @@ import Lighting from '../../components/Lighting.vue'
 -   **自定义光源**：spawn 任意 `Light3D` 后会 **替换** 默认环境光 + 平行光组合；若未提供 `directional`，渲染器会自动补一盏弱平行光，避免 mesh 全黑。
 -   **坐标系**：`position` / `direction` 使用与 `Transform3D` 相同的 **画布世界单位**（linked 模式下约 1 px）；`direction` 指向被照亮的场景，渲染器会归一化。
 -   **聚光灯**：`innerConeAngle` / `outerConeAngle` 为弧度；`range <= 0` 表示不做距离衰减（与 webcomponents 示例一致）。
--   **材质**：`Material3D` 的 `ambient` / `diffuse` / `specular` / `shininess` 控制 Blinn-Phong 响应；中间立方体更高 `specular` 与 `shininess`，高光斑更明显。
+-   **材质**：`Material3D` 采用 **金属-粗糙度** 工作流。`metallic`（0 为电介质，1 为金属）与 `roughness`（0 为镜面光滑，1 为完全粗糙）控制 Cook-Torrance 高光响应，`baseColor` 为反照率（金属的反射也由其着色）。旧字段 `ambient` / `diffuse` / `specular` / `shininess` 为向后兼容保留——`ambient` 仍缩放环境光项，但 `diffuse` / `specular` / `shininess` 不再影响着色。
 -   **动画**：每帧 `spotLight.write(Light3D)` 更新位置与方向；`MeshPipeline3D` 检测到组件变更后重绘。
 
 ## 与立方体示例的差异 {#vs-cube}

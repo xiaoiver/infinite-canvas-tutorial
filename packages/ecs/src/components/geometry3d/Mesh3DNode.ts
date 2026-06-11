@@ -29,6 +29,12 @@ export class Mesh3DNode {
 
   @field.float32 declare shininess: number;
 
+  /** Metalness 0..1 (PBR metallic-roughness workflow). */
+  @field.float32 declare metallic: number;
+
+  /** Perceptual roughness 0..1 (PBR metallic-roughness workflow). */
+  @field.float32 declare roughness: number;
+
   /** Optional base-color texture (image URL or data URL). */
   @field.object declare map: string | null;
 
@@ -61,6 +67,8 @@ export class Mesh3DNode {
     this.diffuse ??= 0.75;
     this.specular ??= 0.4;
     this.shininess ??= 48;
+    this.metallic ??= 0;
+    this.roughness ??= 1;
     this.map ??= null;
     this.specularMap ??= null;
     this.bumpMap ??= null;
