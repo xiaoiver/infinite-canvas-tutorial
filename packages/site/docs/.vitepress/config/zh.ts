@@ -471,6 +471,7 @@ export const zh = defineConfig({
         base: '/zh/experiment/',
         items: [
           { text: '使用 WebGPU 绘制粒子', link: 'particles' },
+          { text: '3D 高斯泼溅', link: 'gsplat' },
           { text: '命令式创建渐变', link: 'gradient' },
           { text: '网格渐变生成器', link: 'mesh-gradient' },
           { text: 'Voronoi', link: 'voronoi' },
