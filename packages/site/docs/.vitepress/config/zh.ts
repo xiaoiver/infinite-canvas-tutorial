@@ -156,6 +156,7 @@ export const zh = defineConfig({
               { text: 'Mermaid', link: 'mermaid' },
               { text: 'D2', link: 'd2' },
               { text: 'Drawio', link: 'drawio' },
+              { text: 'Figma', link: 'figma' },
               { text: 'Yoga', link: 'yoga' },
               { text: 'Vello', link: 'vello' },
             ],

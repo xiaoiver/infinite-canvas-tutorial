@@ -222,7 +222,14 @@ function applyStrokeAttributes(
     target.strokeWidth = node.strokeWeight;
   }
   if (node.strokeAlign) {
-    target.strokeAlignment = node.strokeAlign.toLowerCase();
+    // Figma uses INSIDE/OUTSIDE/CENTER; `.ic` Stroke uses inner/outer/center.
+    const align = node.strokeAlign.toUpperCase();
+    target.strokeAlignment =
+      align === 'INSIDE'
+        ? 'inner'
+        : align === 'OUTSIDE'
+          ? 'outer'
+          : 'center';
   }
   if (node.strokeCap && node.strokeCap !== 'NONE') {
     const cap = node.strokeCap.toLowerCase();

@@ -1688,6 +1688,9 @@ importers:
       '@infinite-canvas-tutorial/ecs':
         specifier: workspace:*
         version: link:../ecs
+      '@infinite-canvas-tutorial/figma':
+        specifier: workspace:*
+        version: link:../plugin-figma
       '@infinite-canvas-tutorial/filter':
         specifier: workspace:*
         version: link:../plugin-filter
