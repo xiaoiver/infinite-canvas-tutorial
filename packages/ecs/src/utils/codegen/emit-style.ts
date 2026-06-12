@@ -26,9 +26,7 @@ export function styleValueToCss(
   return String(lit ?? '');
 }
 
-function box(
-  v: [number, number, number, number],
-): string {
+function box(v: [number, number, number, number]): string {
   const [t, r, b, l] = v;
   if (t === r && r === b && b === l) {
     return `${formatNumber(t)}px`;
@@ -72,7 +70,8 @@ export function styleIRToCssDeclarations(
   if (style.padding) push('padding', box(style.padding));
   if (style.margin) push('margin', box(style.margin));
 
-  if (style.width !== undefined) push('width', `${formatNumber(style.width)}px`);
+  if (style.width !== undefined)
+    push('width', `${formatNumber(style.width)}px`);
   if (style.height !== undefined)
     push('height', `${formatNumber(style.height)}px`);
   if (style.minWidth !== undefined)
@@ -99,9 +98,9 @@ export function styleIRToCssDeclarations(
     const s = style.boxShadow;
     push(
       'box-shadow',
-      `${formatNumber(s.offsetX)}px ${formatNumber(
-        s.offsetY,
-      )}px ${formatNumber(s.blur)}px ${styleValueToCss(s.color, mode)}`,
+      `${formatNumber(s.offsetX)}px ${formatNumber(s.offsetY)}px ${formatNumber(
+        s.blur,
+      )}px ${styleValueToCss(s.color, mode)}`,
     );
   }
   if (style.opacity !== undefined) push('opacity', formatNumber(style.opacity));

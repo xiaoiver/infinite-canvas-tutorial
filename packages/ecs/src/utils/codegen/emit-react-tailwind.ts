@@ -35,7 +35,10 @@ interface TwResult {
 }
 
 /** token 在 preserve-token 模式下不能进 arbitrary 类名，需回退 inline。 */
-function needsInline(sv: StyleValue | undefined, mode: CodeVariablesMode): boolean {
+function needsInline(
+  sv: StyleValue | undefined,
+  mode: CodeVariablesMode,
+): boolean {
   return !!sv?.token && mode === 'preserve-token';
 }
 
@@ -94,7 +97,8 @@ function genTailwind(
     if (style.flexWrap === 'wrap') classes.push('flex-wrap');
     else if (style.flexWrap === 'wrap-reverse')
       classes.push('flex-wrap-reverse');
-    if (style.gap !== undefined) classes.push(`gap-[${formatNumber(style.gap)}px]`);
+    if (style.gap !== undefined)
+      classes.push(`gap-[${formatNumber(style.gap)}px]`);
     if (style.rowGap !== undefined)
       classes.push(`gap-y-[${formatNumber(style.rowGap)}px]`);
     if (style.columnGap !== undefined)
@@ -107,7 +111,8 @@ function genTailwind(
   pushBox(classes, 'p', style.padding);
   pushBox(classes, 'm', style.margin);
 
-  if (style.width !== undefined) classes.push(`w-[${formatNumber(style.width)}px]`);
+  if (style.width !== undefined)
+    classes.push(`w-[${formatNumber(style.width)}px]`);
   if (style.height !== undefined)
     classes.push(`h-[${formatNumber(style.height)}px]`);
   if (style.minWidth !== undefined)
@@ -122,7 +127,8 @@ function genTailwind(
   if (style.backgroundColor && !skip.has('backgroundColor')) {
     if (needsInline(style.backgroundColor, mode))
       addInline('backgroundColor', style.backgroundColor);
-    else classes.push(`bg-[${tw(styleValueToCss(style.backgroundColor, mode))}]`);
+    else
+      classes.push(`bg-[${tw(styleValueToCss(style.backgroundColor, mode))}]`);
   }
   if (style.borderRadius && !skip.has('borderRadius')) {
     if (needsInline(style.borderRadius, mode))
@@ -133,12 +139,16 @@ function genTailwind(
       );
   }
   if (style.borderWidth) {
-    classes.push(`border-[${tw(styleValueToCss(style.borderWidth, mode, true))}]`);
+    classes.push(
+      `border-[${tw(styleValueToCss(style.borderWidth, mode, true))}]`,
+    );
     if (style.borderColor) {
       if (needsInline(style.borderColor, mode))
         addInline('borderColor', style.borderColor);
       else
-        classes.push(`border-[${tw(styleValueToCss(style.borderColor, mode))}]`);
+        classes.push(
+          `border-[${tw(styleValueToCss(style.borderColor, mode))}]`,
+        );
     }
   }
   if (style.boxShadow) {
@@ -168,10 +178,13 @@ function genTailwind(
     else classes.push(`text-[${tw(styleValueToCss(style.color, mode))}]`);
   }
   if (style.fontSize && !skip.has('fontSize')) {
-    if (needsInline(style.fontSize, mode)) addInline('fontSize', style.fontSize);
-    else classes.push(`text-[${tw(styleValueToCss(style.fontSize, mode, true))}]`);
+    if (needsInline(style.fontSize, mode))
+      addInline('fontSize', style.fontSize);
+    else
+      classes.push(`text-[${tw(styleValueToCss(style.fontSize, mode, true))}]`);
   }
-  if (style.fontWeight !== undefined) classes.push(`font-[${style.fontWeight}]`);
+  if (style.fontWeight !== undefined)
+    classes.push(`font-[${style.fontWeight}]`);
   if (style.fontStyle === 'italic') classes.push('italic');
   if (style.fontFamily) classes.push(`font-[${tw(style.fontFamily)}]`);
   if (style.textAlign) classes.push(`text-${style.textAlign}`);
@@ -232,9 +245,7 @@ function renderAttributes(
     inline.push([TARGET_TO_CSS_KEY[b.target], b.prop]);
   }
 
-  const className = classes.length
-    ? ` className="${classes.join(' ')}"`
-    : '';
+  const className = classes.length ? ` className="${classes.join(' ')}"` : '';
   let styleExpr = '';
   if (inline.length) {
     const entries = inline.map(([k, v]) => `${k}: ${v}`).join(', ');
@@ -261,11 +272,7 @@ function escapeJsxText(s: string): string {
   return s.replace(/[{}<>]/g, (c) => `{'${c}'}`);
 }
 
-function renderNode(
-  node: CodeNode,
-  state: EmitState,
-  depth: number,
-): string {
+function renderNode(node: CodeNode, state: EmitState, depth: number): string {
   const pad = state.indent.repeat(depth);
 
   if (node.instanceOf) {
@@ -322,7 +329,8 @@ function renderIcon(
   const icon = node.icon!;
   const name = icon.name.literal ? String(icon.name.literal) : '';
   const size = node.style.width ?? node.style.height;
-  const sizeAttr = typeof size === 'number' ? ` size={${formatNumber(size)}}` : '';
+  const sizeAttr =
+    typeof size === 'number' ? ` size={${formatNumber(size)}}` : '';
   if (icon.family === 'lucide') {
     const comp = pascalCase(name) || 'HelpCircle';
     state.lucideIcons.add(comp);
@@ -334,10 +342,7 @@ function renderIcon(
   )}${className}${styleExpr} />`;
 }
 
-function renderComponent(
-  def: CodeComponentDef,
-  state: EmitState,
-): string {
+function renderComponent(def: CodeComponentDef, state: EmitState): string {
   const propsType = def.props
     .map((p) => {
       const tsType = p.target === 'fontSize' ? 'number' : 'string';
@@ -362,7 +367,11 @@ function renderComponent(
 }
 
 /** 把 Code IR 输出为 React + Tailwind 源码字符串。 */
-export function emitReactTailwind(ir: CodeIR, indent = '  ', topName = 'Design'): string {
+export function emitReactTailwind(
+  ir: CodeIR,
+  indent = '  ',
+  topName = 'Design',
+): string {
   const state: EmitState = {
     mode: ir.variablesMode,
     indent,
@@ -380,13 +389,17 @@ export function emitReactTailwind(ir: CodeIR, indent = '  ', topName = 'Design')
           .map((n) => renderNode(n, state, 3))
           .join('\n')}\n${indent.repeat(2)}</>`;
 
-  const topComponent = `export function ${pascalCase(topName) || 'Design'}() {\n${indent}return (\n${rootWrapped}\n${indent});\n}`;
+  const topComponent = `export function ${
+    pascalCase(topName) || 'Design'
+  }() {\n${indent}return (\n${rootWrapped}\n${indent});\n}`;
 
   // imports（在确定用到哪些图标后再生成）
   const imports: string[] = [];
   if (state.lucideIcons.size) {
     imports.push(
-      `import { ${[...state.lucideIcons].sort().join(', ')} } from 'lucide-react';`,
+      `import { ${[...state.lucideIcons]
+        .sort()
+        .join(', ')} } from 'lucide-react';`,
     );
   }
   if (state.usesIconify) {

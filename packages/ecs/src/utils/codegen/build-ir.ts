@@ -224,8 +224,7 @@ function buildStyle(node: AnyNode, role: CodeNodeRole): StyleIR {
       style.fontWeight = node.fontWeight as string | number;
     if (node.fontStyle && node.fontStyle !== 'normal')
       style.fontStyle = node.fontStyle as string;
-    if (typeof node.fontFamily === 'string')
-      style.fontFamily = node.fontFamily;
+    if (typeof node.fontFamily === 'string') style.fontFamily = node.fontFamily;
     if (node.textAlign) style.textAlign = node.textAlign as never;
     const ls = toStyleValue(node.letterSpacing as number);
     if (ls) style.letterSpacing = ls;
@@ -287,7 +286,8 @@ function buildCodeNode(
       if (descId !== node.id) {
         continue;
       }
-      const target = OVERRIDABLE_KEY_TO_TARGET[attr] ?? colorTargetFor(attr, role);
+      const target =
+        OVERRIDABLE_KEY_TO_TARGET[attr] ?? colorTargetFor(attr, role);
       if (!target) {
         continue;
       }
@@ -354,7 +354,9 @@ function templateDefaultValue(
     return undefined;
   }
   if (attr === 'content') {
-    return toStyleValue((desc as TextSerializedNode).content) ?? { literal: '' };
+    return (
+      toStyleValue((desc as TextSerializedNode).content) ?? { literal: '' }
+    );
   }
   if (attr === 'fills' || attr === 'fill') {
     return (
@@ -366,7 +368,10 @@ function templateDefaultValue(
   return toStyleValue(desc[attr] as string | number) ?? { literal: 0 };
 }
 
-function collectSubtree(rootId: string, byId: Map<string, AnyNode>): Set<string> {
+function collectSubtree(
+  rootId: string,
+  byId: Map<string, AnyNode>,
+): Set<string> {
   const ids = new Set<string>([rootId]);
   let changed = true;
   while (changed) {
@@ -391,8 +396,7 @@ export function buildCodeIR(
   nodes: SerializedNode[],
   options: CodegenOptions = {},
 ): CodeIR {
-  const variablesMode: CodeVariablesMode =
-    options.variablesMode ?? 'resolved';
+  const variablesMode: CodeVariablesMode = options.variablesMode ?? 'resolved';
   const componentStructure = options.componentStructure ?? 'preserve';
   const variables: DesignVariablesMap = options.variables ?? {};
   const themeMode: ThemeMode | undefined = options.themeMode;
@@ -418,7 +422,12 @@ export function buildCodeIR(
     };
   }
 
-  return buildPreserve(working as AnyNode[], variables, themeMode, variablesMode);
+  return buildPreserve(
+    working as AnyNode[],
+    variables,
+    themeMode,
+    variablesMode,
+  );
 }
 
 /** 由扁平节点表构建顶层树，跳过 `reusable` 模板根（flatten 模式仍保留实例展开结果）。 */
@@ -460,7 +469,9 @@ function buildPreserve(
     if (n.type !== 'ref') {
       continue;
     }
-    const refn = n as RefSerializedNode & { descendants?: Record<string, Record<string, unknown>> };
+    const refn = n as RefSerializedNode & {
+      descendants?: Record<string, Record<string, unknown>>;
+    };
     const templateId = refn.ref;
     if (!templateId || !byId.has(templateId)) {
       continue;
@@ -475,7 +486,11 @@ function buildPreserve(
       ) {
         continue;
       }
-      if (attr in OVERRIDABLE_KEY_TO_TARGET || attr === 'fills' || attr === 'fill') {
+      if (
+        attr in OVERRIDABLE_KEY_TO_TARGET ||
+        attr === 'fills' ||
+        attr === 'fill'
+      ) {
         set.add(`${templateId}::${attr}`);
       }
     }
@@ -546,7 +561,9 @@ function buildPreserve(
   for (const n of topLevel) {
     if (n.type === 'ref') {
       const instance = buildInstanceNode(
-        n as RefSerializedNode & { descendants?: Record<string, Record<string, unknown>> },
+        n as RefSerializedNode & {
+          descendants?: Record<string, Record<string, unknown>>;
+        },
         templateToComponentName,
         byId,
       );
