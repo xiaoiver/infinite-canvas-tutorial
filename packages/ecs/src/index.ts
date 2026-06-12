@@ -179,6 +179,21 @@ export {
   listRegisteredCubeLutKeys,
   parseAdobeCube,
 } from './utils';
+export {
+  serializedNodesToCode,
+  buildCodeIR,
+  emitReactTailwind,
+  emitHtmlCss,
+  type CodeFramework,
+  type CodeVariablesMode,
+  type CodeComponentStructure,
+  type CodegenOptions,
+  type CodeIR,
+  type CodeNode,
+  type CodeComponentDef,
+  type StyleIR,
+  type StyleValue,
+} from './utils/codegen';
 export * from './utils/icon-font';
 export * from './utils/group-presentation';
 export * from './utils/normalize-fill-wire';
