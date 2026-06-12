@@ -1,0 +1,53 @@
+{
+  "name": "@infinite-canvas-tutorial/figma",
+  "version": "0.0.10",
+  "description": "Import from / export to Figma for the Infinite Canvas `.ic` format",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    }
+  },
+  "files": [
+    "package.json",
+    "esm",
+    "lib",
+    "figma-plugin",
+    "README.md"
+  ],
+  "keywords": [
+    "whiteboard",
+    "infinite canvas",
+    "webgl",
+    "webgpu",
+    "webcomponents",
+    "figma",
+    "import",
+    "export"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "xiaoiver",
+    "url": "https://github.com/xiaoiver"
+  },
+  "scripts": {
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
+    "build": "run-p build:*",
+    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
