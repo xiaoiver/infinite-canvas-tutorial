@@ -269,7 +269,9 @@ function textExpr(node: CodeNode, state: EmitState): string {
 }
 
 function escapeJsxText(s: string): string {
-  return s.replace(/[{}<>]/g, (c) => `{'${c}'}`);
+  // 仅用于 JSX 文本子节点：`<>` 会被当作标签、`{}` 当作表达式、`&` 当作 HTML 实体，
+  // 故全部转为字符串字面量表达式。引号在 JSX 文本中是安全的。
+  return s.replace(/[{}<>&]/g, (c) => `{'${c}'}`);
 }
 
 function renderNode(node: CodeNode, state: EmitState, depth: number): string {

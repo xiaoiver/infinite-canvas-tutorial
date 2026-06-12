@@ -49,7 +49,7 @@ function asArray<T>(v: unknown): T[] {
 
 /** 把一个值包装为 {@link StyleValue}：`$token` → token，其余 → literal。 */
 function toStyleValue(
-  raw: string | number | undefined,
+  raw: string | number | null | undefined,
 ): StyleValue | undefined {
   if (raw === undefined || raw === null || raw === '') {
     return undefined;

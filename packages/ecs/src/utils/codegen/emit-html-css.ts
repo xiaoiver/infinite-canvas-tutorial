@@ -19,6 +19,7 @@ interface HtmlState {
 }
 
 function escapeHtml(s: string): string {
+  // 仅用于元素文本内容；属性值请用 escapeAttr（其额外转义引号）。
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 

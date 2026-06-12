@@ -222,8 +222,14 @@ describe('design-to-code (codegen)', () => {
       });
       expect(code).not.toContain('export function RoundButton(');
       expect(code).not.toContain('<RoundButton');
+      // 实例被展开为具体 DOM：保留 flex 容器与圆角
+      expect(code).toContain('<div');
+      expect(code).toContain('flex');
+      expect(code).toContain('rounded-[9999px]');
+      expect(code).toContain('<span');
       // overridden text rendered inline
       expect(code).toContain('Save');
+      expect(code).not.toContain('Submit');
     });
   });
 
