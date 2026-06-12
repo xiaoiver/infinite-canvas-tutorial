@@ -103,7 +103,16 @@ async function createSceneNode(node: FigmaSceneNode): Promise<SceneNode | null> 
     }
     case 'TEXT': {
       const text = figma.createText();
-      await figma.loadFontAsync(text.fontName as FontName);
+      try {
+        await figma.loadFontAsync(text.fontName as FontName);
+      } catch (e) {
+        // The node's default font may be unavailable in this Figma instance;
+        // fall back to a font that ships with Figma.
+        console.warn('[figma] falling back to Inter Regular:', e);
+        const fallback: FontName = { family: 'Inter', style: 'Regular' };
+        await figma.loadFontAsync(fallback);
+        text.fontName = fallback;
+      }
       text.characters = node.characters || '';
       if (node.fontSize != null) {
         text.fontSize = node.fontSize;

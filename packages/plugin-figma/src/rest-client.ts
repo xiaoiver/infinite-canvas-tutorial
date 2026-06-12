@@ -61,7 +61,9 @@ export class FigmaRestClient {
 
   constructor(options: FigmaRestClientOptions) {
     if (!options.token) {
-      throw new Error('A Figma personal access token is required');
+      throw new Error(
+        'A Figma personal access token is required. Get one at: https://www.figma.com/developers/api#access-tokens',
+      );
     }
     this.token = options.token;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');

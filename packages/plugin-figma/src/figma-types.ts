@@ -169,6 +169,10 @@ export interface FigmaNode {
   // Component / instance linkage
   componentId?: string;
 
+  // The Figma REST API returns many more node properties than we model here,
+  // and they vary by node type. This index signature lets the converter read
+  // such fields without enumerating every Figma property; known fields above
+  // remain strongly typed.
   [key: string]: unknown;
 }
 

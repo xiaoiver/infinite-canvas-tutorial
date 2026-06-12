@@ -227,6 +227,67 @@ describe('image fills', () => {
   });
 });
 
+describe('rotation from relativeTransform', () => {
+  function rectWithTransform(transform: number[][]) {
+    const file: FigmaFileResponse = {
+      document: {
+        id: '0:0',
+        type: 'DOCUMENT',
+        children: [
+          {
+            id: '0:1',
+            type: 'CANVAS',
+            children: [
+              {
+                id: '3:1',
+                type: 'RECTANGLE',
+                absoluteBoundingBox: { x: 0, y: 0, width: 10, height: 10 },
+                size: { x: 10, y: 10 },
+                relativeTransform: transform,
+              },
+            ],
+          },
+        ],
+      },
+    };
+    return figmaDocumentToSerializedNodes(file)[0] as any;
+  }
+
+  it('maps a +90° rotation to PI/2 radians', () => {
+    // [[cos, -sin, tx], [sin, cos, ty]] for +90°
+    const r = rectWithTransform([
+      [0, -1, 0],
+      [1, 0, 0],
+    ]);
+    expect(r.rotation).toBeCloseTo(Math.PI / 2, 6);
+  });
+
+  it('normalizes a 180° rotation into (-PI, PI]', () => {
+    const r = rectWithTransform([
+      [-1, 0, 0],
+      [0, -1, 0],
+    ]);
+    expect(r.rotation).toBeCloseTo(Math.PI, 6);
+  });
+
+  it('maps a -45° rotation to a negative angle', () => {
+    const c = Math.SQRT1_2;
+    const r = rectWithTransform([
+      [c, c, 0],
+      [-c, c, 0],
+    ]);
+    expect(r.rotation).toBeCloseTo(-Math.PI / 4, 6);
+  });
+
+  it('omits rotation for an identity transform', () => {
+    const r = rectWithTransform([
+      [1, 0, 0],
+      [0, 1, 0],
+    ]);
+    expect(r.rotation).toBeUndefined();
+  });
+});
+
 describe('serializedNodesToFigmaScene round-trip', () => {
   it('rebuilds a nested scene from .ic nodes', () => {
     const doc = parseFigmaFileToSerializedNodes(SAMPLE_FILE);

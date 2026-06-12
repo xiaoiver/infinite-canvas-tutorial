@@ -120,6 +120,11 @@ function fillLayerToPaint(
   // Gradients/patterns are not converted faithfully; fall back to a solid mid
   // gray so the layer is at least visible in Figma.
   if (layer.type === 'gradient') {
+    if (typeof console !== 'undefined') {
+      console.warn(
+        '[figma] gradient fills are not converted faithfully; falling back to a solid mid-gray paint.',
+      );
+    }
     return { type: 'SOLID', color: { r: 0.5, g: 0.5, b: 0.5, a: 1 }, opacity };
   }
   return undefined;

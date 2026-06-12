@@ -373,13 +373,17 @@ function geometryToPathD(node: FigmaNode): string | undefined {
   return geom.map((g) => g.path).join(' ');
 }
 
-let fallbackIdCounter = 0;
-function ensureId(node: FigmaNode): string {
+interface ConversionState {
+  options: FigmaToIcOptions;
+  fallbackIdCounter: number;
+}
+
+function ensureId(node: FigmaNode, state: ConversionState): string {
   if (node.id) {
     return node.id;
   }
-  fallbackIdCounter += 1;
-  return `figma-${fallbackIdCounter}`;
+  state.fallbackIdCounter += 1;
+  return `figma-${state.fallbackIdCounter}`;
 }
 
 /**
@@ -393,10 +397,10 @@ function convertNode(
   parentId: string | undefined,
   zIndex: number,
   out: SerializedNode[],
-  options: FigmaToIcOptions,
+  state: ConversionState,
 ): string | undefined {
-  const id = ensureId(node);
-  const imageRefUrls = options.imageRefUrls;
+  const id = ensureId(node, state);
+  const imageRefUrls = state.options.imageRefUrls;
 
   const base: Record<string, unknown> = {
     id,
@@ -547,7 +551,7 @@ function convertNode(
   const childParentId = produced ? id : parentId;
   if (recurseAsChildren && node.children) {
     node.children.forEach((child, index) => {
-      convertNode(child, childParentId, index, out, options);
+      convertNode(child, childParentId, index, out, state);
     });
   }
 
@@ -563,18 +567,18 @@ export function figmaDocumentToSerializedNodes(
   file: FigmaFileResponse,
   options: FigmaToIcOptions = {},
 ): SerializedNode[] {
-  fallbackIdCounter = 0;
   const out: SerializedNode[] = [];
   const document = file.document;
   if (!document) {
     return out;
   }
+  const state: ConversionState = { options, fallbackIdCounter: 0 };
   const pages = document.children ?? [];
   let zIndex = 0;
   for (const page of pages) {
     const roots = page.children ?? [];
     for (const root of roots) {
-      convertNode(root, undefined, zIndex, out, options);
+      convertNode(root, undefined, zIndex, out, state);
       zIndex += 1;
     }
   }
