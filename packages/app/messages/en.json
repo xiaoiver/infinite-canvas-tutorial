@@ -216,6 +216,19 @@
         "originalLabel": "Original",
         "gentleLabel": "Drizzle rain()",
         "stormLabel": "Storm preset"
+      },
+      "footballFormation": {
+        "title": "Football formation board",
+        "description": "Pick a team and shape to generate an editable pitch, position cards, and player avatars. Portugal public roster data is built in.",
+        "teamLabel": "Team",
+        "formationLabel": "Formation",
+        "resetCanvas": "Regenerate canvas",
+        "pitchLabel": "Football pitch",
+        "avatarLabel": "Player avatar",
+        "dataSource": "Player names, numbers, and positions are adapted from public tournament rosters; avatars are generated from initials and can be replaced with photos.",
+        "teams": {
+          "portugal": "Portugal"
+        }
       }
     },
     "photoColors": {
@@ -240,6 +253,10 @@
     "rain": {
       "metaTitle": "Rain",
       "metaDescription": "Preview the rain() filter: Codrops raindrops, water refraction, and stacked blur on the canvas."
+    },
+    "footballFormation": {
+      "metaTitle": "Football formation board",
+      "metaDescription": "Quickly generate editable football formation boards from public roster data."
     }
   }
 }
