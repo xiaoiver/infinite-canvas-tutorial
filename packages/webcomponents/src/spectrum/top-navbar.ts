@@ -15,7 +15,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { openIcDocument } from '../utils';
+import { openFigmaDocument, openIcDocument } from '../utils';
 import { executeCopy, executeCut, executePaste } from './context-menu';
 
 @customElement('ic-spectrum-top-navbar')
@@ -90,24 +90,80 @@ export class TopNavbar extends LitElement {
     }
   };
 
-  private handleExport(event: CustomEvent) {
-    const format = (event.target as any).value as ExportFormat | 'ic';
+  private async handleExport(event: CustomEvent) {
+    const format = (event.target as any).value as ExportFormat | 'ic' | 'figma';
     if (format === 'ic') {
       const doc = this.api.exportIcDocument(window.location.origin);
       downloadIcDocument(doc, 'my-scene.ic');
+    } else if (format === 'figma') {
+      await this.handleExportFigma();
     } else {
       this.api.export({ format });
     }
   }
 
+  /**
+   * Export the scene as a Figma scene payload (`.json`). The Figma REST API is
+   * read-only, so the JSON is replayed into Figma via the companion
+   * "Infinite Canvas Import" plugin (see `@infinite-canvas-tutorial/figma`).
+   */
+  private async handleExportFigma() {
+    try {
+      // Dynamic import keeps the figma plugin out of the core bundle and
+      // mirrors the mermaid integration (avoids stale build artifacts).
+      const { serializedNodesToFigmaScene } = await import(
+        '@infinite-canvas-tutorial/figma'
+      );
+      const doc = this.api.exportIcDocument(window.location.origin);
+      const scene = serializedNodesToFigmaScene(doc.elements, doc.source);
+      const json = JSON.stringify(scene, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my-scene.figma.json';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
   private async handleImport(event: CustomEvent) {
-    const format = (event.target as any).value as 'ic';
+    const format = (event.target as any).value as 'ic' | 'figma';
+    if (format === 'figma') {
+      await this.handleImportFigma();
+      return;
+    }
     if (format !== 'ic') {
       return;
     }
     try {
       const { contents } = await openIcDocument();
       this.api.importIcDocument(contents);
+    } catch (e) {
+      // The user canceled the file picker or selected an invalid document.
+      console.warn(e);
+    }
+  }
+
+  /** Import a local Figma `.fig` file and apply it as an `.ic` scene. */
+  private async handleImportFigma() {
+    try {
+      const { contents } = await openFigmaDocument();
+      const { parseFigFileToSerializedNodes } = await import(
+        '@infinite-canvas-tutorial/figma'
+      );
+      const doc = parseFigFileToSerializedNodes(contents, {
+        source: 'https://www.figma.com',
+      });
+      this.api.importIcDocument(doc);
     } catch (e) {
       // The user canceled the file picker or selected an invalid document.
       console.warn(e);
@@ -333,12 +389,14 @@ export class TopNavbar extends LitElement {
                   <sp-menu-item value=${ExportFormat.WEBM}>WebM</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.GIF}>GIF</sp-menu-item>
                   <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
+                  <sp-menu-item value=${'figma'}>Figma (.json)</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
               <sp-menu-item>
                 ${msg(str`Import from...`)}
                 <sp-menu slot="submenu" @change=${this.handleImport}>
                   <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
+                  <sp-menu-item value=${'figma'}>Figma (.fig)</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
             </sp-action-menu>

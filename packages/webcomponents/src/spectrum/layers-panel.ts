@@ -275,8 +275,8 @@ export class LayersPanel extends LitElement {
 
   private scrollLayerIntoView(id: string) {
     const scrollToId = this.generateLayersPanelItemId(id);
-    const scrollToElement = this.shadowRoot.querySelector(`#${scrollToId}`);
-    const container = this.shadowRoot.querySelector('.container');
+    const scrollToElement = this.shadowRoot?.getElementById(scrollToId);
+    const container = this.shadowRoot?.querySelector('.container');
 
     if (scrollToElement && container) {
       const elementTop = (scrollToElement as HTMLElement).offsetTop;
