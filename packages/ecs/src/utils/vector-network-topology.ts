@@ -231,7 +231,12 @@ export function pathToVectorNetwork(
             const last = segments[segments.length - 1];
             if (last && last.end === currentIndex) {
               last.end = subpathStartIndex;
-              vertices.pop();
+              // Only drop the now-orphaned vertex if it is the last one in the
+              // array; otherwise popping would shift indices referenced by
+              // other segments. Leaving an unreferenced vertex is harmless.
+              if (currentIndex === vertices.length - 1) {
+                vertices.pop();
+              }
               currentIndex = subpathStartIndex;
             } else {
               addSegment(currentIndex, subpathStartIndex);
@@ -280,6 +285,9 @@ function isStraightSegment(seg: VectorSegmentLike): boolean {
  *
  * For straight segments the split is a simple midpoint; for cubic segments the
  * tangents are reassigned so the visual curve is preserved (de Casteljau).
+ *
+ * `t` is clamped to the open interval (0, 1) (via EPS) so the split never lands
+ * exactly on an endpoint, which would create a zero-length segment.
  */
 export function splitSegmentAt(
   network: VectorNetworkData,

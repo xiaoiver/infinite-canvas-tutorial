@@ -162,6 +162,10 @@ describe('updateNodeVectorNetwork', () => {
     // The serialized scene node reflects the new vertices for round-tripping.
     const serialized = api.getNodeById('vn-1') as VectorNetworkSerializedNode;
     expect(serialized.vertices.length).toBe(3);
+    // Vertex 0 moved left by 50, becoming the new leftmost point, so after
+    // normalization it sits at local x === 0.
+    expect(serialized.vertices[0].x).toBeCloseTo(0, 3);
+    expect(Math.min(...serialized.vertices.map((v) => v.x))).toBeCloseTo(0, 3);
 
     await app.exit();
   });

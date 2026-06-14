@@ -63,6 +63,8 @@ describe('pathToVectorNetwork', () => {
     // The explicit "L 0 0" returns to start; Z must reuse vertex 0.
     expect(vertices).toHaveLength(3);
     expect(segments[segments.length - 1].end).toBe(0);
+    // Explicitly assert no duplicate vertex was created at the origin.
+    expect(vertices.filter((v) => v.x === 0 && v.y === 0)).toHaveLength(1);
   });
 
   it('supports multiple subpaths (holes) as separate loops', () => {

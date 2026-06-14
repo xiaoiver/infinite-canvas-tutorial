@@ -26,9 +26,10 @@ function pointInPolygon(
     const yi = polygon[i][1];
     const xj = polygon[j][0];
     const yj = polygon[j][1];
+    // The straddle test above guarantees yj !== yi, so the division is safe.
     const intersect =
       yi > py !== yj > py &&
-      px < ((xj - xi) * (py - yi)) / (yj - yi + EPS) + xi;
+      px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
     if (intersect) {
       inside = !inside;
     }
