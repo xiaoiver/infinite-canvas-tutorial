@@ -633,6 +633,7 @@ function buildInstanceNode(
 
   // 实例根内联覆盖 → 根 descendant 的 props
   const rootPatch: Record<string, unknown> = {};
+  const refnRecord = refn as unknown as Record<string, unknown>;
   for (const attr of Object.keys(refn)) {
     if (
       ['id', 'type', 'parentId', 'ref', 'reusable', 'descendants'].includes(
@@ -641,7 +642,7 @@ function buildInstanceNode(
     ) {
       continue;
     }
-    rootPatch[attr] = (refn as Record<string, unknown>)[attr];
+    rootPatch[attr] = refnRecord[attr];
   }
 
   const collectFrom = (descId: string, patch: Record<string, unknown>) => {
