@@ -221,6 +221,26 @@ pointer up
 -   圆环随物体当前朝向绘制；箭头仍保持画布世界轴向（X 右、Y 下、Z 深度）。
 -   拾取按屏幕空间 **最近** 命中；重叠时箭头在上层，优先拖到平移。`scale` 仍预留。
 
+### 把手结构（PlayCanvas 风格） {#gizmo-shapes}
+
+把手几何参照 PlayCanvas 的 [`extras/gizmo`](https://github.com/playcanvas/engine/tree/main/src/extras/gizmo) 组织：用一个 `gizmo/` 模块与 `GizmoShape` 类层级，替代原先单一的扁平几何函数。
+
+```plaintext
+packages/ecs/src/gizmo/
+  ├─ constants.ts   轴 / 平面 / 空间 / 拖拽模式
+  ├─ color.ts       轴色 + hover（向白插值）/ disabled / 插值工具
+  ├─ gizmos.ts      按模式装配：translate / rotate / scale / transform
+  └─ shape/
+       ├─ shape.ts        GizmoShape 基类：mesh + 各状态颜色 + hover/disabled/visible
+       ├─ arrow-shape.ts  单轴平移箭头（柱体 + 锥体）
+       ├─ plane-shape.ts  半透明平面拖拽方块
+       ├─ torus-shape.ts  旋转圆环
+       ├─ box-shape.ts    单轴缩放方块
+       └─ sphere-shape.ts 中心 / 统一缩放把手
+```
+
+每个 `GizmoShape` 自带三角网格（`positions` / `normals` / `indices`）与 `defaultColor` / `hoverColor` / `disabledColor`，并由 `hover` / `disabled` 状态驱动 `getColor()`。`utils/gizmo-geometry.ts` 现在把这些 shape 适配为 `RenderGizmo3D` / `Pick3D` 使用的扁平 `GizmoMeshData[]`，因此渲染与拾取路径保持不变。`scale` 相关 shape（`box` + 中心 `sphere`）与 `createScaleGizmo()` 为后续缩放 gizmo 提供几何；拖拽逻辑放在下一阶段。
+
 ## 光照 {#lighting}
 
 演示 Light3D 组件与 Blinn-Phong 材质配合：环境光打底、冷色平行光作填充，暖色聚光灯绕场景中心轨道运动，立方体 / 球体 / 圆柱三种几何体便于对比 specular 与明暗变化。
