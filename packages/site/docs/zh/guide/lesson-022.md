@@ -120,6 +120,18 @@ node.vectorNetwork = {
 
 ![Source: https://www.figma.com/blog/introducing-vector-networks/](https://alexharri.com/images/posts/vector-networks/40.gif)
 
+我们把 VectorNetwork 看作平面图，每条 segment 拆成两条有向半边（half-edge）。在每个顶点处把出边按极角排序，沿着「下一条半边」（相对于反向边最靠近顺时针方向的那条出边）遍历就能枚举出所有最小面（face）。包含点击位置且面积最小的那个面即为目标填充区域，把它的有序 segment 下标序列写入 `VectorRegion.loops` 即可复用上文的填充三角化。
+
+```ts
+export function findRegionLoopAtPoint(
+    vertices: VectorVertexLike[],
+    segments: VectorSegmentLike[],
+    point: [number, number],
+): number[] | null;
+```
+
+> 数值稳健性：共线、重合顶点与自环都需要 EPS 容差与退化处理；外侧无界面（outer face）在该遍历下有符号面积为正，需要跳过。
+
 ### 转换方法 {#convert-to-vector-network}
 
 参考 [figma-fill-rule-editor]，我们给出如下类型定义：
@@ -171,6 +183,8 @@ class VectorNetwork {
     }
 }
 ```
+
+[Path] 的转换更复杂一些，需要把 SVG path 命令规范化（`path2Absolute`）后逐段解析：`M/L/H/V` 生成直线 segment；`C/S/Q/T` 生成 cubic（`Q/T` 先升阶为三次），并按 Figma 约定把绝对控制点换算成相对切线 `tangentStart = P1 - P0`、`tangentEnd = P2 - P3`；`S/T` 需要维护上一段控制点做反射；`Z` 闭合时若末点与起点重合则复用起点顶点，避免重复，并为闭合子路径产出 region loop。该逻辑实现在纯函数 `pathToVectorNetwork(d, fillRule)` 中，`fromEntity` 在 `entity.has(Path)` 时调用它。
 
 ## 三角化 {#tessellatation}
 
@@ -245,7 +259,17 @@ export enum Pen {
 有别于 [课程 21 - Transformer] 中基于 OBB 的实现：
 
 -   拖拽 VectorSegment 和 OBB 一样，移动整个图形
--   拖拽 VectorVertex
+-   拖拽 VectorVertex 只移动该顶点本身，所有共享它的 segment 自然联动——这是 Vector Network 相较 Path 的核心价值。拖拽产生的新坐标通过统一写回入口 `API.updateNodeVectorNetwork(node, vectorNetwork)` 落到实体的 `VectorNetwork` 组件，并触发重新三角化与历史记录（undo/redo）。
+
+```ts
+// packages/ecs/src/systems/Select.ts
+// 在 handleControlPointMoving 中，针对 vector-network 节点：
+// 1. 读取 VectorNetwork 组件，用 GlobalTransform 的逆变换把指针坐标转回局部坐标
+// 2. 更新 vertices[activeIndex].x/y
+// 3. 调用 api.updateNodeVectorNetwork 写回
+```
+
+写回时会复用 `VectorNetwork.getGeometryBounds` 重算几何包围盒，并把左上角归一化到局部 `(0, 0)`（顶点整体平移 `-minX/-minY`，平移量加到 `node.x/y`），从而保持 `node.x == 几何左边` 这一 Transformer resize 所依赖的不变量。
 
 ## Topological operators
 
@@ -258,6 +282,27 @@ Figma 支持 [Boolean operations]，例如 union
 ### Creation & delete
 
 [Delete and Heal for Vector Networks]
+
+新增顶点：在某条 segment 的参数 `t` 处把它**分裂**成两段并插入新顶点（cubic 边用 de Casteljau 细分以保持曲线形状），而不是简单地往 points 数组里 splice：
+
+```ts
+export function splitSegmentAt(
+    network: VectorNetworkData,
+    segIdx: number,
+    t: number,
+): VectorNetworkData;
+```
+
+删除顶点：移除该顶点及其关联边后，对 degree==2 的相邻顶点执行「heal」——把它的两条边合并为一条，从而保持路径连通（对齐 Figma 的 Delete and Heal）：
+
+```ts
+export function deleteVertex(
+    network: VectorNetworkData,
+    vertexIdx: number,
+): VectorNetworkData;
+```
+
+> 上述算子均为纯函数（位于 `packages/ecs/src/utils/vector-network-topology.ts`），输入输出都是 `{ vertices, segments, regions }`，方便单测且与渲染解耦；编辑系统拿到结果后再通过 `API.updateNodeVectorNetwork` 统一写回。
 
 ### Glue & unglue
 

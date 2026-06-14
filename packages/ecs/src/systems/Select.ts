@@ -1228,12 +1228,57 @@ export class Select extends System {
     }
 
     const node = api.getNodeById(layersSelected[0]);
+    if (!node) {
+      return;
+    }
+
+    // Vector network editing: drag a vertex and let every segment that shares
+    // it follow. Writes go through updateNodeVectorNetwork so the geometry
+    // re-normalizes (node.x === geometry left) and history records the change.
+    if (node.type === 'vector-network') {
+      const selectedVN = api.getEntity(node);
+      if (!selectedVN?.has(VectorNetwork)) {
+        return;
+      }
+      const inverseVN = mat3.invert(
+        mat3.create(),
+        selectedVN.read(GlobalTransform).matrix as unknown as mat3,
+      );
+      if (!inverseVN) {
+        return;
+      }
+      const localVN = vec2.transformMat3(
+        vec2.create(),
+        [canvasX, canvasY],
+        inverseVN,
+      );
+      const vn = selectedVN.read(VectorNetwork);
+      if (activeControlPointIndex >= vn.vertices.length) {
+        return;
+      }
+      const prev = vn.vertices[activeControlPointIndex];
+      if (prev.x === localVN[0] && prev.y === localVN[1]) {
+        return;
+      }
+      const nextVertices = vn.vertices.map((v, i) =>
+        i === activeControlPointIndex
+          ? { ...v, x: localVN[0], y: localVN[1] }
+          : { ...v },
+      );
+      api.updateNodeVectorNetwork(node, {
+        vertices: nextVertices,
+        segments: vn.segments.map((s) => ({ ...s })),
+        regions: vn.regions?.map((r) => ({ ...r })),
+      } as VectorNetwork);
+      updateGlobalTransform(selectedVN);
+      return;
+    }
+
     if (
-      !node ||
-      (node.type !== 'polyline' &&
-        node.type !== 'rough-polyline' &&
-        node.type !== 'path' &&
-        node.type !== 'rough-path')
+      node.type !== 'polyline' &&
+      node.type !== 'rough-polyline' &&
+      node.type !== 'path' &&
+      node.type !== 'rough-path'
     ) {
       return;
     }

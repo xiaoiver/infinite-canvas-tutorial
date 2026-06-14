@@ -120,6 +120,18 @@ In operations like `click to fill`, we need to find the minimum loop formed by v
 
 ![Source: https://www.figma.com/blog/introducing-vector-networks/](https://alexharri.com/images/posts/vector-networks/40.gif)
 
+We treat the VectorNetwork as a planar graph and split each segment into two directed half-edges. At every vertex we sort the outgoing edges by polar angle; walking the "next half-edge" (the outgoing edge most clockwise relative to the incoming reverse edge) enumerates every minimal face. The smallest face that encloses the click position is the target region, and writing its ordered segment-index loop into `VectorRegion.loops` reuses the fill tessellation above.
+
+```ts
+export function findRegionLoopAtPoint(
+    vertices: VectorVertexLike[],
+    segments: VectorSegmentLike[],
+    point: [number, number],
+): number[] | null;
+```
+
+> Numerical robustness: collinear edges, coincident vertices, and self-loops all need an EPS tolerance and degenerate-case handling; the unbounded outer face has a positive signed area under this traversal and must be skipped.
+
 ### Convert to VectorNetwork {#convert-to-vector-network}
 
 Following [figma-fill-rule-editor], we use these type definitions:
@@ -171,6 +183,8 @@ class VectorNetwork {
     }
 }
 ```
+
+Converting a [Path] is more involved: after normalizing the SVG path commands (`path2Absolute`), each command is parsed in turn. `M/L/H/V` emit straight segments; `C/S/Q/T` emit cubics (`Q/T` are first elevated to cubic), converting the absolute control points into Figma-style relative tangents `tangentStart = P1 - P0` and `tangentEnd = P2 - P3`; `S/T` track the previous control point for reflection; on `Z`, if the last point coincides with the start it reuses the start vertex to avoid duplicates, and a closed subpath emits a region loop. This lives in the pure function `pathToVectorNetwork(d, fillRule)`, which `fromEntity` calls when `entity.has(Path)`.
 
 ## Tessellation {#tessellatation}
 
@@ -245,7 +259,18 @@ export enum Pen {
 Unlike the OBB-based approach in [Lesson 21 - Transformer]:
 
 -   Dragging a `VectorSegment` moves the whole shape, like OBB drag.
--   Dragging a `VectorVertex` adjusts that vertex.
+-   Dragging a `VectorVertex` moves only that vertex; every segment that shares it follows automatically — this is the core advantage of a Vector Network over a Path. The new coordinates are written back through a single entry point `API.updateNodeVectorNetwork(node, vectorNetwork)`, which updates the entity's `VectorNetwork` component and triggers re-tessellation plus history (undo/redo).
+
+```ts
+// packages/ecs/src/systems/Select.ts
+// In handleControlPointMoving, for a vector-network node:
+// 1. Read the VectorNetwork component and map the pointer back to local
+//    space via the inverse of GlobalTransform.
+// 2. Update vertices[activeIndex].x/y.
+// 3. Call api.updateNodeVectorNetwork to write back.
+```
+
+On write-back, `VectorNetwork.getGeometryBounds` recomputes the geometry bounds and normalizes the top-left to local `(0, 0)` (all vertices shift by `-minX/-minY`, with that offset added to `node.x/y`), preserving the `node.x == geometry left` invariant that Transformer resize relies on.
 
 ## Topological operators
 
@@ -258,6 +283,27 @@ Paper.js may be a useful reference for implementations.
 ### Creation & delete
 
 [Delete and Heal for Vector Networks]
+
+Adding a vertex: split a segment at parameter `t` into two segments and insert the new vertex (cubic edges are subdivided with de Casteljau to preserve the curve), instead of a plain splice into a points array:
+
+```ts
+export function splitSegmentAt(
+    network: VectorNetworkData,
+    segIdx: number,
+    t: number,
+): VectorNetworkData;
+```
+
+Deleting a vertex: after removing the vertex and its incident edges, a degree-2 neighbor is "healed" by merging its two edges into one, keeping the path connected (matching Figma's Delete and Heal):
+
+```ts
+export function deleteVertex(
+    network: VectorNetworkData,
+    vertexIdx: number,
+): VectorNetworkData;
+```
+
+> These operators are pure functions (in `packages/ecs/src/utils/vector-network-topology.ts`) taking and returning `{ vertices, segments, regions }`, so they are easy to unit-test and decoupled from rendering; the editing system feeds their result back through `API.updateNodeVectorNetwork`.
 
 ### Glue & unglue
 
