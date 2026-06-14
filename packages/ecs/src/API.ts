@@ -2069,7 +2069,37 @@ export class API {
     }
   }
 
-  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) { }
+  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {
+    const vertices = vectorNetwork.vertices ?? [];
+    const segments = vectorNetwork.segments ?? [];
+    const { regions } = vectorNetwork;
+
+    // Re-normalize the geometry so its bounding box top-left sits at the local
+    // origin (0,0), mirroring the deserialize convention (see
+    // utils/deserialize/entity.ts). The node translation absorbs the offset so
+    // the geometry keeps its world position, and Transformer resize math keeps
+    // relying on node.x === geometry left.
+    const { minX, minY, maxX, maxY } = VectorNetwork.getGeometryBounds({
+      vertices,
+      segments,
+    });
+
+    const normalizedVertices = vertices.map((vertex) => ({
+      ...vertex,
+      x: vertex.x - minX,
+      y: vertex.y - minY,
+    }));
+
+    this.updateNode(node, {
+      x: (node.x ?? 0) + minX,
+      y: (node.y ?? 0) + minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      vertices: normalizedVertices,
+      segments,
+      ...(regions !== undefined ? { regions } : {}),
+    } as Partial<SerializedNode>);
+  }
 
   updateNodeOBB(
     node: SerializedNode,

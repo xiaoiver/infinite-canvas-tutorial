@@ -4,11 +4,16 @@
 
 import { Entity, field } from '@lastolivegames/becsy';
 import { Polyline } from './Polyline';
+import { Path } from './Path';
 import type {
   VectorNetworkSerializedNode,
   SerializedNode,
 } from '../../types/serialized-node';
-import { expandBoundsWithVectorSegments, serializePoints } from '../../utils';
+import {
+  expandBoundsWithVectorSegments,
+  serializePoints,
+  pathToVectorNetwork,
+} from '../../utils';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
 
@@ -130,6 +135,15 @@ export class VectorNetwork {
       }));
 
       return { vertices, segments };
+    }
+
+    if (entity.has(Path)) {
+      const { d, fillRule } = entity.read(Path);
+      const { vertices, segments, regions } = pathToVectorNetwork(
+        d,
+        fillRule,
+      );
+      return { vertices, segments, regions } as VectorNetwork;
     }
   }
 

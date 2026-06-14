@@ -50,6 +50,8 @@ export * from './hitStrokeWidth';
 export * from './polygon';
 export * from './vector-network-stroke';
 export * from './vector-network-fill';
+export * from './vector-network-topology';
+export * from './vector-network-region';
 export * from './ray-casting';
 export * from './mesh3d-scene';
 export * from './mesh3d-companion';

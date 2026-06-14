@@ -58,6 +58,7 @@ import {
   DropShadow,
   Polyline,
   Path,
+  VectorNetwork,
   ZIndex,
   Transform,
   MaterialDirty,
@@ -1827,6 +1828,31 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('d' in updates) {
     if (entity.has(Path)) {
       entity.write(Path).d = d;
+    }
+  }
+  if (
+    'vertices' in updates ||
+    'segments' in updates ||
+    'regions' in updates
+  ) {
+    if (entity.has(VectorNetwork)) {
+      const vn = entity.write(VectorNetwork);
+      const vnNode = element as unknown as {
+        vertices?: VectorNetwork['vertices'];
+        segments?: VectorNetwork['segments'];
+        regions?: VectorNetwork['regions'];
+      };
+      if ('vertices' in updates && vnNode.vertices) {
+        vn.vertices = vnNode.vertices;
+      }
+      if ('segments' in updates && vnNode.segments) {
+        vn.segments = vnNode.segments;
+      }
+      if ('regions' in updates) {
+        vn.regions = vnNode.regions;
+      }
+      safeAddComponent(entity, GeometryDirty);
+      safeAddComponent(entity, MaterialDirty);
     }
   }
   if ('x1' in updates) {
