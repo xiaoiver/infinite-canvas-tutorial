@@ -295,6 +295,95 @@ const text = {
 | **OpenPencil** | 规则引擎 + 增量管道    | `pen-codegen` 包提供确定性转换，`codegen_plan/submit/assemble/clean` 处理大文件 |
 | **Pencil.dev** | AI 自由生成 + 双向同步 | `.pen` 文件作为上下文，AI 直接输出代码，支持 Code → Design 反向导入             |
 
+[Design ↔ Code] 的核心洞察是：design-to-code **不是**「像素 → 代码」的 AI 猜测。由于 `.ic` 格式已经内置了对代码友好的原语——flex 布局、设计变量、`reusable`/`ref` 组件、语义命名、图标字体——场景图本身**就是**一份为代码而设计的 IR。因此核心是一个**确定性转译器**，AI 仅在命名/结构清理这一层锦上添花。
+
+### 管线 {#design-to-code-pipeline}
+
+我们仿照 SVG 导出管线，但额外插入一层框架无关的 **Code IR**，这样新增目标框架只需再写一个 emitter：
+
+```text
+.ic SceneGraph
+  → expandRefSerializedNodes   // 复用现有的 ref/reusable 处理
+  → CodeIR                     // 元素树 + 结构化样式 + 变量引用 + 组件定义
+  → Emitter                    // react-tailwind | html-css | ...
+```
+
+Code IR 节点保留：**角色**（容器 / 文本 / 图标 / 图片 / 形状）、**解析前的 `$token` 引用**、结构化的 **flex 样式**，以及 `reusable`/`ref` 的**组件关系**。
+
+### 入口 {#design-to-code-entry}
+
+`API.exportCode` 与 `renderToSVG` 对称：不传参时转译整个场景，传入节点则转译选区。
+
+```ts
+const code = api.exportCode(undefined, {
+    framework: 'react-tailwind', // 或 'html-css'
+    variablesMode: 'css-var', // 'resolved' | 'preserve-token' | 'css-var'
+    componentStructure: 'preserve', // 'preserve' | 'flatten'
+});
+```
+
+也可以直接调用纯函数：
+
+```ts
+import { serializedNodesToCode } from '@infinite-canvas-tutorial/ecs';
+
+const code = serializedNodesToCode(nodes, {
+    framework: 'react-tailwind',
+    variables,
+});
+```
+
+### 概念映射 {#design-to-code-mapping}
+
+| `.ic` 概念                                                | 代码产物                                              |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| `rect`/`g` + `display: flex`                              | `<div>` + flex 工具类（`flex items-center …`）        |
+| `flexDirection` / `justify` / `align` / `gap` / `padding` | Tailwind flex 工具类 / CSS                            |
+| `cornerRadius` / `fills` / `strokes` / `dropShadow`       | `rounded-* / bg-* / border / shadow-*`                |
+| `text` + `content`                                        | 文本节点；`$token` 文本 → 变量                        |
+| `iconfont`（lucide）                                      | `lucide-react` `<Search />`                           |
+| `iconfont`（其他族）                                      | `@iconify/react` `<Icon icon="family:name" />`        |
+| `$color.bg` 变量                                          | `bg-[var(--color-bg)]`（css-var）/ 字面量（resolved） |
+| `reusable` 根                                             | 一个 React 组件定义                                   |
+| `ref` + `descendants` 覆盖                                | 组件实例 + props                                      |
+| `name`                                                    | 组件名 / prop 名 / class 名                           |
+
+### 变量模式 {#design-to-code-variable-modes}
+
+三种变量模式与 SVG 导出语义保持一致：
+
+-   `resolved`（默认）：把 `$token` 解析为字面量（如 `bg-[#FFFFFF]`）。
+-   `css-var`：输出 `var(--token)`（如 `bg-[var(--color-bg)]`）；HTML/CSS emitter 还会注入 `:root { … }` 块。
+-   `preserve-token`：保留 `$token`（写入 inline `style`，便于再加工）。
+
+### 组件与实例 {#design-to-code-components}
+
+在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、`fontSize`、`cornerRadius`）会被提升为 props，默认值取自模板：
+
+```tsx
+interface RoundButtonProps {
+    label?: string;
+}
+
+export function RoundButton({ label = 'Submit' }: RoundButtonProps) {
+    return (
+        <div className="flex items-center justify-center w-[120px] h-[40px] rounded-[9999px]">
+            <span>{label}</span>
+        </div>
+    );
+}
+
+export function Design() {
+    return <RoundButton label="Save" />;
+}
+```
+
+`componentStructure: 'flatten'` 是回退方案：通过 `expandRefSerializedNodes` 把每个实例展开为具体 DOM，不产出组件定义。HTML/CSS emitter 始终扁平化，因为 HTML 没有组件概念。
+
+### 反向：code → design {#design-to-code-reverse}
+
+反向（把 JSX/HTML AST 解析回 `.ic` 节点）更难、歧义也更多，故作为二期。建议先实现本转译器产出代码的**幂等回环**（design → code → design 不丢信息），再扩展到任意手写代码。
+
 ### JSON 格式文件 {#json-file}
 
 在 [课程 10 - 图片导入导出] 中我们介绍了如何将图形导出成各种图片格式。在与 AI 交互的过程中，我们需要始终将场景持久化到文件中。在 Figma 中我们可以导入导出 `.fig` 文件，详见：[Import files to the file browser] 与 [Save a local copy of files]

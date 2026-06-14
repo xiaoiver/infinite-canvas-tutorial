@@ -50,6 +50,8 @@ import {
   mat3WithoutTranslation,
   buildDesignVariableRefreshPatch,
   expandSerializedNodesForSvgExport,
+  serializedNodesToCode,
+  type CodegenOptions,
 } from './utils';
 import type { AnimationGifQuality } from './utils/animationExportCodec';
 export type { AnimationGifQuality } from './utils/animationExportCodec';
@@ -2989,6 +2991,25 @@ export class API {
       $namespace.appendChild(element);
     });
     return $namespace;
+  }
+
+  /**
+   * Transpile nodes (or the whole scene) to framework code (design-to-code).
+   *
+   * 确定性转译，对照 {@link renderToSVG}：默认 `react-tailwind` + `resolved`。变量与 `reusable`/
+   * `ref` 组件结构会被保留并映射为目标框架的 token / 组件。
+   */
+  exportCode(
+    nodes?: SerializedNode[],
+    options: CodegenOptions = {},
+  ): string {
+    const api = this.#canvas.read(Canvas).api;
+    const source = nodes && nodes.length ? nodes : api.getNodes();
+    return serializedNodesToCode(source, {
+      variables: api.getAppState().variables,
+      themeMode: api.getAppState().themeMode,
+      ...options,
+    });
   }
 
   async renderToCanvas(

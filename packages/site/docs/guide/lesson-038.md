@@ -290,6 +290,95 @@ In `.pen` files, the `ref` + `descendants` system is, in effect, a component-inh
 
 [Design ↔ Code]
 
+The key insight from [Design ↔ Code] is that design-to-code is **not** a pixel-to-code AI guess. Because the `.ic` format already encodes code-friendly primitives—flex layout, design variables, `reusable`/`ref` components, semantic names, and icon fonts—the scene graph **is** an IR built for code. So the core is a **deterministic transpiler**, and AI only helps at the naming / structure-cleanup layer.
+
+### Pipeline {#design-to-code-pipeline}
+
+We mirror the SVG export pipeline, but insert a framework-agnostic **Code IR** so that adding a new target framework is just one more emitter:
+
+```text
+.ic SceneGraph
+  → expandRefSerializedNodes   // reuse existing ref/reusable handling
+  → CodeIR                     // element tree + structured style + token refs + component defs
+  → Emitter                    // react-tailwind | html-css | ...
+```
+
+The Code IR node keeps: a **role** (container / text / icon / image / shape), **pre-resolved `$token` references**, structured **flex style**, and `reusable`/`ref` **component relations**.
+
+### Entry point {#design-to-code-entry}
+
+`API.exportCode` is the counterpart of `renderToSVG`. Without arguments it transpiles the whole scene; pass nodes to transpile a selection.
+
+```ts
+const code = api.exportCode(undefined, {
+    framework: 'react-tailwind', // or 'html-css'
+    variablesMode: 'css-var', // 'resolved' | 'preserve-token' | 'css-var'
+    componentStructure: 'preserve', // 'preserve' | 'flatten'
+});
+```
+
+You can also call the pure function directly:
+
+```ts
+import { serializedNodesToCode } from '@infinite-canvas-tutorial/ecs';
+
+const code = serializedNodesToCode(nodes, {
+    framework: 'react-tailwind',
+    variables,
+});
+```
+
+### Concept mapping {#design-to-code-mapping}
+
+| `.ic` concept                                             | Code output                                           |
+| --------------------------------------------------------- | ----------------------------------------------------- |
+| `rect`/`g` + `display: flex`                              | `<div>` + flex utilities (`flex items-center …`)      |
+| `flexDirection` / `justify` / `align` / `gap` / `padding` | Tailwind flex utilities / CSS                         |
+| `cornerRadius` / `fills` / `strokes` / `dropShadow`       | `rounded-* / bg-* / border / shadow-*`                |
+| `text` + `content`                                        | text node; `$token` content → variable                |
+| `iconfont` (lucide)                                       | `lucide-react` `<Search />`                           |
+| `iconfont` (other families)                               | `@iconify/react` `<Icon icon="family:name" />`        |
+| `$color.bg` variable                                      | `bg-[var(--color-bg)]` (css-var) / literal (resolved) |
+| `reusable` root                                           | a React component definition                          |
+| `ref` + `descendants` overrides                           | a component instance with props                       |
+| `name`                                                    | component / prop / class name                         |
+
+### Variable modes {#design-to-code-variable-modes}
+
+The three variable modes match the SVG export semantics:
+
+-   `resolved` (default): resolve `$token` to literals (e.g. `bg-[#FFFFFF]`).
+-   `css-var`: emit `var(--token)` (e.g. `bg-[var(--color-bg)]`); the HTML/CSS emitter also injects a `:root { … }` block.
+-   `preserve-token`: keep `$token` (routed to an inline `style` for post-processing).
+
+### Components and instances {#design-to-code-components}
+
+With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, `fontSize`, `cornerRadius`) seen across instances are lifted into props with the template value as default:
+
+```tsx
+interface RoundButtonProps {
+    label?: string;
+}
+
+export function RoundButton({ label = 'Submit' }: RoundButtonProps) {
+    return (
+        <div className="flex items-center justify-center w-[120px] h-[40px] rounded-[9999px]">
+            <span>{label}</span>
+        </div>
+    );
+}
+
+export function Design() {
+    return <RoundButton label="Save" />;
+}
+```
+
+`componentStructure: 'flatten'` is the fallback: it expands every instance via `expandRefSerializedNodes` into concrete DOM with no component definitions. The HTML/CSS emitter always flattens, since HTML has no component concept.
+
+### Reverse: code → design {#design-to-code-reverse}
+
+The reverse direction (parse JSX/HTML AST back into `.ic` nodes) is harder and more ambiguous, so it is left as a second phase. The recommended first milestone is an **idempotent round-trip** of code that this transpiler emits (design → code → design without information loss) before extending to arbitrary hand-written code.
+
 ## Extended reading {#extended-reading}
 
 [Variables and Themes]: https://docs.pencil.dev/for-developers/the-pen-format#variables-and-themes
