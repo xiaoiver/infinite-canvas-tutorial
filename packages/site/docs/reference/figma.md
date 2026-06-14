@@ -15,14 +15,49 @@ mapping rather than a new data model.
 Figma's `.fig` binary is proprietary and the **Figma REST API is read-only**
 for document content. Therefore:
 
--   **Import (Figma → `.ic`)** uses the REST API with a
-    [personal access token](https://www.figma.com/developers/api#access-tokens) —
-    fully headless.
+-   **Import (Figma → `.ic`)** is recommended via a local `.fig` file (Figma
+    **File → Save local copy**). The REST API with a personal access token remains
+    available for headless cloud files.
 -   **Export (`.ic` → Figma)** cannot go through REST. The plugin produces a JSON
     payload that the companion "Infinite Canvas Import" Figma plugin replays via
     the Figma Plugin API.
 
-## Import from Figma
+## Import from a `.fig` file (recommended)
+
+A `.fig` file is a ZIP archive containing Kiwi-encoded `canvas.fig` and
+`images/*` assets. The package parses it with
+[openfig-core](https://github.com/OpenFig-org/openfig-core), converts the tree
+in `fig-to-figma.ts` to the same shape as a REST file response, then runs the
+shared `figma-to-ic` mapper.
+
+```ts
+import { parseFigFileToSerializedNodes } from '@infinite-canvas-tutorial/figma';
+
+const bytes = new Uint8Array(await (await fetch('/design.fig')).arrayBuffer());
+const doc = parseFigFileToSerializedNodes(bytes);
+api.importIcDocument(doc);
+```
+
+In the app, use **Import from… → Figma (.fig)** in the top navigation bar to open
+a file picker.
+
+`fig-to-figma` conversion notes:
+
+-   **Multi-fill order**: `.fig` `fillPaints` follow the Figma UI (top to bottom);
+    `.ic` stacks bottom to top, so fills are reversed on import.
+-   **Gradients**: `stops` → `gradientStops`; paint `transform` is projected via
+    `resolveGradientGeometry` into `gradientHandlePositions` (linear / radial
+    direction matches Figma).
+-   **Image fills**: embedded `images/<sha1>` bytes become data URLs keyed by
+    `imageRef`.
+-   **Vectors**: `resolveVectorNodePaths` produces `fillGeometry` /
+    `strokeGeometry` paths.
+-   **Auto-layout**: `stackMode`, spacing, padding, alignment, and hug sizing map
+    to `display: 'flex'` and Yoga layout fields; child `stackChildPrimaryGrow`,
+    `stackChildAlignSelf`, and `stackPositioning: ABSOLUTE` map to `flexGrow`,
+    `alignSelf`, and `position: 'absolute'`. Grid auto-layout is not supported yet.
+
+## Import via REST API (optional)
 
 ```ts
 import {
@@ -38,8 +73,8 @@ const doc = parseFigmaFileToSerializedNodes(file, { imageRefUrls });
 api.importIcDocument(doc);
 ```
 
-In the app you can also use **Import from… → Figma** in the top navigation bar,
-which prompts for the file key (or URL) and a personal access token.
+Cloud files need `getImageFills` for image paint URLs; local `.fig` files use
+embedded ZIP assets.
 
 ## Export to Figma
 
@@ -57,16 +92,18 @@ and paste the JSON to recreate the nodes.
 
 ## Mapping
 
-| Figma                                                                | `.ic` `SerializedNode`                          |
-| -------------------------------------------------------------------- | ----------------------------------------------- |
-| `FRAME` / `GROUP` / `SECTION`                                        | `g` (`clipMode: 'clipBox'` for clipping frames) |
-| `COMPONENT` / `COMPONENT_SET`                                        | `g` with `reusable: true`                       |
-| `INSTANCE`                                                           | `ref` referencing the component id              |
-| `RECTANGLE`                                                          | `rect` (`cornerRadius`)                         |
-| `ELLIPSE`                                                            | `ellipse`                                       |
-| `VECTOR` / `STAR` / `LINE` / `REGULAR_POLYGON` / `BOOLEAN_OPERATION` | `path`                                          |
-| `TEXT`                                                               | `text`                                          |
-| image fills                                                          | `fills[] { type: 'image' }`                     |
+| Figma                                                                | `.ic` `SerializedNode`                     |
+| -------------------------------------------------------------------- | ------------------------------------------ |
+| `FRAME` / `SECTION` / `COMPONENT` / `COMPONENT_SET`                  | `rect` (`clipMode: 'clip'` when clipping)  |
+| `GROUP`                                                              | `g`                                        |
+| `INSTANCE`                                                           | `ref` referencing the component id         |
+| `RECTANGLE` / `ROUNDED_RECTANGLE`                                    | `rect` (`cornerRadius`)                    |
+| `ELLIPSE`                                                            | `ellipse`                                  |
+| `VECTOR` / `STAR` / `LINE` / `REGULAR_POLYGON` / `BOOLEAN_OPERATION` | `path`                                     |
+| `TEXT`                                                               | `text`                                     |
+| Auto-layout (`HORIZONTAL` / `VERTICAL`)                              | `display: 'flex'` + Yoga layout attributes |
+| image fills                                                          | `fills[] { type: 'image' }`                |
+| linear / radial gradient fills                                       | `fills[] { type: 'gradient' }`             |
 
 Paints become `fills` / `strokes`; `DROP_SHADOW` / `INNER_SHADOW` become drop /
 inner shadow attributes; `LAYER_BLUR` / `BACKGROUND_BLUR` become a CSS `filter`;
@@ -75,5 +112,5 @@ layer / paint `blendMode` map to `.ic` blend modes; `opacity` maps to the node
 
 ## Unsupported (first pass)
 
-Auto-layout nuance, prototyping / interactions, masks, gradient direction
-fidelity, and boolean operations beyond their flattened geometry.
+Auto-layout grid, prototyping / interactions, masks, faithful angular /
+diamond gradients, and boolean operations beyond their flattened geometry.

@@ -5,9 +5,17 @@ import {
   serializedNodesToFigmaScene,
   hexToFigmaColor,
   parseFigmaFileKey,
+  parseFigFileToSerializedNodes,
   FigmaRestClient,
 } from '../../packages/plugin-figma/src';
-import type { FigmaFileResponse } from '../../packages/plugin-figma/src';
+import type {
+  FigmaFileResponse,
+  FigmaTransform,
+} from '../../packages/plugin-figma/src';
+import { figDocumentToFigmaFileResponse } from '../../packages/plugin-figma/src/fig-to-figma';
+import { createEmptyFigDoc } from 'openfig-core';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const SAMPLE_FILE: FigmaFileResponse = {
   name: 'Sample',
@@ -137,10 +145,10 @@ describe('figmaDocumentToSerializedNodes', () => {
     expect(byId.has('1:5')).toBe(true);
   });
 
-  it('maps FRAME → g with clipMode', () => {
+  it('maps FRAME → rect with clipMode', () => {
     const frame = byId.get('1:2') as any;
-    expect(frame.type).toBe('g');
-    expect(frame.clipMode).toBe('clipBox');
+    expect(frame.type).toBe('rect');
+    expect(frame.clipMode).toBe('clip');
     expect(frame.parentId).toBeUndefined();
   });
 
@@ -178,6 +186,124 @@ describe('figmaDocumentToSerializedNodes', () => {
     expect(text.fontFamily).toBe('Inter');
     expect(text.fontSize).toBe(16);
     expect(text.textAlign).toBe('center');
+  });
+});
+
+const AUTO_LAYOUT_FILE: FigmaFileResponse = {
+  document: {
+    id: '0:0',
+    type: 'DOCUMENT',
+    children: [
+      {
+        id: '0:1',
+        type: 'CANVAS',
+        children: [
+          {
+            id: '3:1',
+            type: 'FRAME',
+            name: 'Auto row',
+            layoutMode: 'HORIZONTAL',
+            primaryAxisAlignItems: 'SPACE_BETWEEN',
+            counterAxisAlignItems: 'CENTER',
+            primaryAxisSizingMode: 'FIXED',
+            counterAxisSizingMode: 'AUTO',
+            paddingTop: 8,
+            paddingRight: 16,
+            paddingBottom: 8,
+            paddingLeft: 16,
+            itemSpacing: 12,
+            layoutWrap: 'WRAP',
+            counterAxisSpacing: 4,
+            absoluteBoundingBox: { x: 0, y: 0, width: 300, height: 120 },
+            size: { x: 300, y: 120 },
+            children: [
+              {
+                id: '3:2',
+                type: 'RECTANGLE',
+                name: 'Grow',
+                layoutGrow: 1,
+                layoutAlign: 'STRETCH',
+                absoluteBoundingBox: { x: 16, y: 8, width: 100, height: 40 },
+                size: { x: 100, y: 40 },
+                fills: [{ type: 'SOLID', color: { r: 1, g: 0, b: 0, a: 1 } }],
+              },
+              {
+                id: '3:3',
+                type: 'RECTANGLE',
+                name: 'Fixed',
+                layoutPositioning: 'ABSOLUTE',
+                absoluteBoundingBox: { x: 200, y: 20, width: 40, height: 40 },
+                size: { x: 40, y: 40 },
+                fills: [{ type: 'SOLID', color: { r: 0, g: 1, b: 0, a: 1 } }],
+              },
+            ],
+          },
+          {
+            id: '3:4',
+            type: 'FRAME',
+            name: 'Auto column hug',
+            layoutMode: 'VERTICAL',
+            primaryAxisAlignItems: 'MIN',
+            counterAxisAlignItems: 'MAX',
+            primaryAxisSizingMode: 'AUTO',
+            counterAxisSizingMode: 'FIXED',
+            itemSpacing: 10,
+            absoluteBoundingBox: { x: 0, y: 200, width: 80, height: 150 },
+            size: { x: 80, y: 150 },
+            children: [
+              {
+                id: '3:5',
+                type: 'RECTANGLE',
+                name: 'Child',
+                absoluteBoundingBox: { x: 0, y: 200, width: 40, height: 20 },
+                size: { x: 40, y: 20 },
+                fills: [{ type: 'SOLID', color: { r: 0, g: 0, b: 1, a: 1 } }],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
+describe('figma auto-layout import', () => {
+  const nodes = figmaDocumentToSerializedNodes(AUTO_LAYOUT_FILE);
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+
+  it('maps horizontal auto-layout frame to flex container', () => {
+    const frame = byId.get('3:1') as any;
+    expect(frame.type).toBe('rect');
+    expect(frame.display).toBe('flex');
+    expect(frame.flexDirection).toBe('row');
+    expect(frame.justifyContent).toBe('space-between');
+    expect(frame.alignItems).toBe('center');
+    expect(frame.padding).toEqual([8, 16, 8, 16]);
+    expect(frame.gap).toBe(12);
+    expect(frame.rowGap).toBe(4);
+    expect(frame.columnGap).toBe(12);
+    expect(frame.flexWrap).toBe('wrap');
+    expect(frame.flexHugWidth).toBe(false);
+    expect(frame.flexHugHeight).toBe(true);
+  });
+
+  it('maps auto-layout child grow, stretch, and absolute positioning', () => {
+    const growChild = byId.get('3:2') as any;
+    expect(growChild.flexGrow).toBe(1);
+    expect(growChild.alignSelf).toBe('stretch');
+
+    const absoluteChild = byId.get('3:3') as any;
+    expect(absoluteChild.position).toBe('absolute');
+  });
+
+  it('maps vertical auto-layout hug on primary axis', () => {
+    const frame = byId.get('3:4') as any;
+    expect(frame.flexDirection).toBe('column');
+    expect(frame.justifyContent).toBe('flex-start');
+    expect(frame.alignItems).toBe('flex-end');
+    expect(frame.flexHugHeight).toBe(true);
+    expect(frame.flexHugWidth).toBe(false);
+    expect(frame.gap).toBe(10);
   });
 });
 
@@ -228,7 +354,7 @@ describe('image fills', () => {
 });
 
 describe('rotation from relativeTransform', () => {
-  function rectWithTransform(transform: number[][]) {
+  function rectWithTransform(transform: FigmaTransform) {
     const file: FigmaFileResponse = {
       document: {
         id: '0:0',
@@ -285,6 +411,53 @@ describe('rotation from relativeTransform', () => {
       [0, 1, 0],
     ]);
     expect(r.rotation).toBeUndefined();
+  });
+});
+
+describe('parseFigFileToSerializedNodes', () => {
+  it('converts an empty openfig document envelope', () => {
+    const figDoc = createEmptyFigDoc();
+    const file = figDocumentToFigmaFileResponse(figDoc);
+    const doc = parseFigmaFileToSerializedNodes(file);
+    expect(doc.type).toBe('infinite-canvas');
+    expect(doc.version).toBe(1);
+    expect(Array.isArray(doc.elements)).toBe(true);
+  });
+
+  it('imports auto-layout fixture Untitled (2).fig with parent-local child coordinates', () => {
+    const figBytes = readFileSync(
+      join(__dirname, '..', 'Untitled (2).fig'),
+    );
+    const doc = parseFigFileToSerializedNodes(new Uint8Array(figBytes));
+    const frame = doc.elements.find((n) => n.id === '5:9');
+    const child = doc.elements.find((n) => n.id === '5:10');
+    expect(frame).toBeDefined();
+    expect(child).toBeDefined();
+    expect(frame!.type).toBe('rect');
+    expect(frame!.display).toBe('flex');
+    expect(child!.parentId).toBe('5:9');
+    expect(child!.x).toBeLessThan(frame!.width!);
+    expect(child!.y).toBeLessThan(frame!.height!);
+  });
+
+  it('preserves stacked solid + linear gradient fills on ellipses', () => {
+    const figBytes = readFileSync(
+      join(__dirname, '..', 'Untitled (2).fig'),
+    );
+    const doc = parseFigFileToSerializedNodes(new Uint8Array(figBytes));
+    const ellipse = doc.elements.find((node) => node.type === 'ellipse');
+    expect(ellipse?.fills?.length).toBe(2);
+    expect(ellipse?.fills?.[0]).toMatchObject({
+      type: 'gradient',
+    });
+    expect(ellipse?.fills?.[0]?.opacity).toBeCloseTo(0.2, 5);
+    expect(ellipse?.fills?.[0].value).toContain('linear-gradient(90deg');
+    expect(ellipse?.fills?.[0].value).toContain('#000000');
+    expect(ellipse?.fills?.[0].value).toContain('#22d9fe');
+    expect(ellipse?.fills?.[1]).toMatchObject({
+      type: 'solid',
+      value: '#f01a1a',
+    });
   });
 });
 

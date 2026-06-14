@@ -15,7 +15,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { openIcDocument } from '../utils';
+import { openFigmaDocument, openIcDocument } from '../utils';
 import { executeCopy, executeCut, executePaste } from './context-menu';
 
 @customElement('ic-spectrum-top-navbar')
@@ -153,40 +153,19 @@ export class TopNavbar extends LitElement {
     }
   }
 
-  /**
-   * Import from Figma via the read-only REST API. Prompts for the file key
-   * (or URL) and a personal access token, fetches the document, and applies it
-   * as an `.ic` scene.
-   */
+  /** Import a local Figma `.fig` file and apply it as an `.ic` scene. */
   private async handleImportFigma() {
-    const fileKey = window.prompt(
-      'Figma file key or URL (https://www.figma.com/file/<key>/…)',
-    );
-    if (!fileKey) {
-      return;
-    }
-    const token = window.prompt('Figma personal access token');
-    if (!token) {
-      return;
-    }
     try {
-      const { FigmaRestClient, parseFigmaFileToSerializedNodes } = await import(
+      const { contents } = await openFigmaDocument();
+      const { parseFigFileToSerializedNodes } = await import(
         '@infinite-canvas-tutorial/figma'
       );
-      const client = new FigmaRestClient({ token });
-      const file = await client.getFile(fileKey);
-      let imageRefUrls: Record<string, string> = {};
-      try {
-        imageRefUrls = await client.getImageFills(fileKey);
-      } catch {
-        // Image fills are optional; continue without them.
-      }
-      const doc = parseFigmaFileToSerializedNodes(file, {
-        imageRefUrls,
+      const doc = parseFigFileToSerializedNodes(contents, {
         source: 'https://www.figma.com',
       });
       this.api.importIcDocument(doc);
     } catch (e) {
+      // The user canceled the file picker or selected an invalid document.
       console.warn(e);
     }
   }
@@ -417,7 +396,7 @@ export class TopNavbar extends LitElement {
                 ${msg(str`Import from...`)}
                 <sp-menu slot="submenu" @change=${this.handleImport}>
                   <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
-                  <sp-menu-item value=${'figma'}>Figma</sp-menu-item>
+                  <sp-menu-item value=${'figma'}>Figma (.fig)</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
             </sp-action-menu>

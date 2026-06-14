@@ -197,3 +197,20 @@ export async function openIcDocument(): Promise<{
   const contents = await getFileText(file);
   return { name: file.name, contents };
 }
+
+/**
+ * Open a Figma design file (`.fig`) and return its raw bytes.
+ */
+export async function openFigmaDocument(): Promise<{
+  name: string;
+  contents: Uint8Array;
+}> {
+  const file = await _fileOpen({
+    description: 'Figma design file',
+    extensions: ['.fig'],
+    mimeTypes: ['application/octet-stream'],
+    multiple: false,
+  });
+  const contents = new Uint8Array(await file.arrayBuffer());
+  return { name: file.name, contents };
+}

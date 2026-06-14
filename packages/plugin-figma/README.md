@@ -14,13 +14,35 @@ model.
 Figma's `.fig` binary is proprietary and the Figma **REST API is read-only**
 for document content. Therefore:
 
--   **Import (Figma → `.ic`)** uses the REST API (`GET /v1/files/:key`) with a
-    personal access token — fully headless.
+-   **Import (Figma → `.ic`)** reads local `.fig` ZIP archives (recommended), or
+    fetches cloud files via the REST API (`GET /v1/files/:key`) with a personal
+    access token.
 -   **Export (`.ic` → Figma)** cannot go through REST. This package produces a
     JSON payload that the companion Figma plugin (`figma-plugin/`) replays with
     the Figma Plugin API.
 
-## Import
+## Import from `.fig`
+
+```ts
+import { parseFigFileToSerializedNodes } from '@infinite-canvas-tutorial/figma';
+
+const bytes = new Uint8Array(await (await fetch('/design.fig')).arrayBuffer());
+const doc = parseFigFileToSerializedNodes(bytes);
+api.importIcDocument(doc); // from @infinite-canvas-tutorial/ecs
+```
+
+Parsing uses [openfig-core](https://github.com/OpenFig-org/openfig-core).
+`fig-to-figma.ts` converts the decoded document into the same `FigmaFileResponse`
+tree shape as the REST API, then `figma-to-ic.ts` maps it to `.ic`:
+
+-   Multi-fill order: `.fig` paints are UI top-to-bottom; `.ic` stacks bottom-to-top
+    (reversed on import).
+-   Gradients: `stops` → `gradientStops`; paint `transform` → handle positions via
+    `resolveGradientGeometry`.
+-   Images: ZIP `images/<sha1>` → data URLs for `imageRef` fills.
+-   Vectors: `resolveVectorNodePaths` for path geometry.
+
+## Import via REST API
 
 ```ts
 import {
@@ -33,7 +55,7 @@ const file = await client.getFile('https://www.figma.com/file/<key>/<name>');
 const imageRefUrls = await client.getImageFills('<key>');
 
 const doc = parseFigmaFileToSerializedNodes(file, { imageRefUrls });
-api.importIcDocument(doc); // from @infinite-canvas-tutorial/ecs
+api.importIcDocument(doc);
 ```
 
 ## Export
@@ -51,14 +73,15 @@ const scene = serializedNodesToFigmaScene(doc.elements, doc.source);
 
 | Figma                                                                | `.ic` `SerializedNode`                                |
 | -------------------------------------------------------------------- | ----------------------------------------------------- |
-| `FRAME` / `GROUP` / `SECTION`                                        | `g` (`clipMode: 'clipBox'` for clipping frames)       |
-| `COMPONENT` / `COMPONENT_SET`                                        | `g` with `reusable: true`                             |
+| `FRAME` / `SECTION` / `COMPONENT` / `COMPONENT_SET`                  | `rect` (`clipMode: 'clip'` for clipping frames)       |
+| `GROUP`                                                              | `g`                                                   |
 | `INSTANCE`                                                           | `ref` referencing the component id                    |
-| `RECTANGLE`                                                          | `rect` (`cornerRadius`)                               |
+| `RECTANGLE` / `ROUNDED_RECTANGLE`                                    | `rect` (`cornerRadius`)                               |
 | `ELLIPSE`                                                            | `ellipse`                                             |
 | `VECTOR` / `STAR` / `LINE` / `REGULAR_POLYGON` / `BOOLEAN_OPERATION` | `path` (from `fillGeometry` / `strokeGeometry`)       |
 | `TEXT`                                                               | `text`                                                |
 | image fills                                                          | `fills[] { type: 'image' }` (resolved via `imageRef`) |
+| linear / radial gradients                                            | `fills[] { type: 'gradient' }`                        |
 
 Per-property: paints → `fills` / `strokes`; `DROP_SHADOW` / `INNER_SHADOW` →
 drop/inner shadow attributes; `LAYER_BLUR` / `BACKGROUND_BLUR` → CSS `filter`;
@@ -67,5 +90,5 @@ constraints are preserved as `data-figma-constraint-*` attributes.
 
 ## Unsupported (first pass)
 
-Auto-layout nuance, prototyping / interactions, masks, gradient direction
-fidelity, and boolean operations beyond their flattened geometry.
+Auto-layout nuance, prototyping / interactions, masks, angular / diamond
+gradient fidelity, and boolean operations beyond their flattened geometry.

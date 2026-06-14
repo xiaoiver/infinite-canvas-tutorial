@@ -12,7 +12,7 @@
  * Only `import type` is used from `@infinite-canvas-tutorial/ecs`, so this
  * module has no runtime dependency on ecs and can be unit-tested in isolation.
  *
- * Documented gaps (unsupported on first pass): auto-layout, prototyping /
+ * Documented gaps (unsupported on first pass): grid auto-layout, prototyping /
  * interactions, masks, and boolean operations beyond their flattened geometry.
  */
 
@@ -39,6 +39,10 @@ import type {
   FigmaPaint,
   FigmaBlendMode,
 } from './figma-types';
+import {
+  applyAutoLayoutChildAttributes,
+  applyAutoLayoutContainerAttributes,
+} from './figma-layout';
 
 export interface FigmaToIcOptions {
   /**
@@ -173,12 +177,13 @@ function gradientToCss(paint: FigmaPaint): string | undefined {
     return `radial-gradient(${stopStr})`;
   }
   const handles = paint.gradientHandlePositions;
-  let angleDeg = 180;
+  let angleDeg = 90;
   if (handles && handles.length >= 2) {
     const dx = handles[1].x - handles[0].x;
     const dy = handles[1].y - handles[0].y;
-    // CSS gradient angle: 0deg points up, increases clockwise.
-    angleDeg = Math.round((Math.atan2(dx, -dy) * 180) / Math.PI);
+    // ECS `parseGradient` treats the angle as math degrees on the shape
+    // (0° = east, 90° = south), not the CSS "to top" keyword convention.
+    angleDeg = Math.round((Math.atan2(dy, dx) * 180) / Math.PI);
   }
   return `linear-gradient(${angleDeg}deg, ${stopStr})`;
 }
@@ -363,6 +368,29 @@ function applyCommonNodeAttributes(
       target.svgDataAttributes = dataAttrs;
     }
   }
+
+  applyAutoLayoutChildAttributes(target, node);
+}
+
+function applyFrameContainerAttributes(
+  target: Record<string, unknown>,
+  node: FigmaNode,
+  imageRefUrls: Record<string, string> | undefined,
+): void {
+  const fills = collectFills(node, imageRefUrls);
+  if (fills && fills.length > 0) {
+    target.fills = fills;
+  }
+  const radius =
+    node.cornerRadius ??
+    (node.rectangleCornerRadii ? node.rectangleCornerRadii[0] : undefined);
+  if (typeof radius === 'number' && radius > 0) {
+    target.cornerRadius = radius;
+  }
+  if (node.clipsContent) {
+    target.clipMode = 'clip';
+  }
+  applyAutoLayoutContainerAttributes(target, node);
 }
 
 function geometryToPathD(node: FigmaNode): string | undefined {
@@ -414,10 +442,19 @@ function convertNode(
 
   switch (node.type) {
     case 'FRAME':
-    case 'GROUP':
     case 'SECTION':
     case 'COMPONENT':
     case 'COMPONENT_SET': {
+      const frame = base as unknown as RectSerializedNode;
+      frame.type = 'rect';
+      applyFrameContainerAttributes(base, node, imageRefUrls);
+      if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+        base.reusable = true;
+      }
+      produced = frame;
+      break;
+    }
+    case 'GROUP': {
       const g = base as unknown as GSerializedNode;
       g.type = 'g';
       const fills = collectFills(node, imageRefUrls);
@@ -425,11 +462,9 @@ function convertNode(
         g.fills = fills;
       }
       if (node.clipsContent) {
-        (base as Record<string, unknown>).clipMode = 'clipBox';
+        (base as Record<string, unknown>).clipMode = 'clip';
       }
-      if (node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
-        base.reusable = true;
-      }
+      applyAutoLayoutContainerAttributes(base, node);
       produced = g;
       break;
     }

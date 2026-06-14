@@ -146,6 +146,10 @@ function nodeTypeToScene(node: SerializedNode): FigmaSceneNodeType | undefined {
   switch (node.type) {
     case 'rect':
     case 'rough-rect':
+      const wire = node as { display?: string; clipMode?: string };
+      if (wire.display === 'flex' || wire.clipMode) {
+        return 'FRAME';
+      }
       return 'RECTANGLE';
     case 'ellipse':
     case 'rough-ellipse':
