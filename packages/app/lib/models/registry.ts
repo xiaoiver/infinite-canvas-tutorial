@@ -31,6 +31,16 @@ export const PROVIDERS: ProviderInfo[] = [
     models: [
       { value: 'openai/gpt-4o', label: 'GPT-4o', provider: 'gateway', capabilities: ['text', 'chat'] },
       { value: 'openai/gpt-4o-mini', label: 'GPT-4o Mini', provider: 'gateway', capabilities: ['text', 'chat'] },
+      { value: 'deepseek/deepseek-r1', label: 'DeepSeek R1', provider: 'gateway', capabilities: ['text', 'chat'] },
+      { value: 'deepseek/deepseek-v3', label: 'DeepSeek V3', provider: 'gateway', capabilities: ['text', 'chat'] },
+      { value: 'deepseek/deepseek-v3.1', label: 'DeepSeek V3.1', provider: 'gateway', capabilities: ['text', 'chat'] },
+      {
+        value: 'deepseek/deepseek-v3.1-terminus',
+        label: 'DeepSeek V3.1 Terminus',
+        provider: 'gateway',
+        capabilities: ['text', 'chat'],
+      },
+      { value: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2', provider: 'gateway', capabilities: ['text', 'chat'] },
       { value: 'google/gemini-3-pro', label: 'Gemini 3 Pro', provider: 'gateway', capabilities: ['text', 'chat'] },
       { value: 'google/gemini-3-pro-image', label: 'Gemini 3 Pro Image', provider: 'gateway', capabilities: ['image'] },
       { value: 'google/gemini-3-flash', label: 'Gemini 3 Flash', provider: 'gateway', capabilities: ['text', 'chat'] },
@@ -151,4 +161,3 @@ export function getAllProviders(): Array<{ value: string; label: string }> {
 export function findModelByValue(modelValue: string): ModelInfo | undefined {
   return getAllModels().find((m) => m.value === modelValue);
 }
-
