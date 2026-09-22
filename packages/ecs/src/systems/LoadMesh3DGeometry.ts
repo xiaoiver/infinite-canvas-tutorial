@@ -1,5 +1,7 @@
 import { System } from '@lastolivegames/becsy';
 import {
+  Canvas,
+  Canvas3DScope,
   Material3D,
   Mesh3D,
   Mesh3DNode,
@@ -13,17 +15,15 @@ import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
  * {@link SyncExtrude3D} (PostUpdate chain), before {@link SyncMesh3DNodes}.
  */
 export class LoadMesh3DGeometry extends System {
-  private readonly sources = this.query((q) =>
-    q.current.with(Mesh3DNode).read,
-  );
+  private readonly sources = this.query((q) => q.current.with(Mesh3DNode).read);
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(Mesh3DNodeTarget)
-        .read.and.using(Mesh3D, Material3D, Mesh3DNode)
-        .write,
+    this.query(
+      (q) =>
+        q
+          .using(Mesh3DNodeTarget, Canvas, Canvas3DScope)
+          .read.and.using(Mesh3D, Material3D, Mesh3DNode).write,
     );
   }
 

@@ -1,149 +1,86 @@
-import { Canvas, System } from '@infinite-canvas-tutorial/ecs';
+import { Canvas, System, WorkerClient } from '@infinite-canvas-tutorial/ecs';
 import {
   canvasToFloat32Array,
   image2Canvas,
   resizeCanvas,
   sliceTensorMask,
 } from './utils';
-// @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
+// @ts-expect-error - Vite resolves worker URLs.
 import workerUrl from './worker.js?worker&url';
 
-// resize+pad all images to 1024x1024
 const imageSize = { w: 1024, h: 1024 };
-// const maskSize = { w: 256, h: 256 };
 
 export class SAMSystem extends System {
   private readonly canvases = this.query((q) => q.added.with(Canvas));
-  private worker: Worker | null = null;
+  private cleanups = new Set<() => void>();
 
   execute() {
     this.canvases.added.forEach((canvas) => {
       const { api } = canvas.read(Canvas);
-
-      api.encodeImage = async (image: string) => {
-        api.setAppState({ loading: true, loadingMessage: 'Encoding image...' });
-        const originalOnMessage = this.worker.onmessage;
-
-        const canvas = await image2Canvas(image);
-
-        return new Promise((resolve, reject) => {
-          this.worker.onmessage = (event) => {
-            const { type, data } = event.data;
-            if (type == 'encodeImageDone') {
-              api.setAppState({ loading: false, loadingMessage: '' });
-
-              this.worker.onmessage = originalOnMessage;
-              resolve(data);
-            }
-            originalOnMessage?.call(this.worker, event);
-          };
-
-          this.worker.postMessage({
-            type: 'encodeImage',
-            data: canvasToFloat32Array(resizeCanvas(canvas, imageSize)),
-          });
-        });
-      };
-
-      api.segmentImage = async (input) => {
-        const { point_prompts } = input;
-        if (point_prompts.length === 0) {
-          return;
-        }
-
-        const selectedNode = api.getNodeById(
-          api.getAppState().layersSelected[0],
+      const client = new WorkerClient(
+        () => new Worker(workerUrl, { type: 'module' }),
+      );
+      let encodedURL: string;
+      const encode = async (url: string) => {
+        if (encodedURL === url) return;
+        const image = await image2Canvas(url);
+        await client.request(
+          'encodeImage',
+          canvasToFloat32Array(resizeCanvas(image, imageSize)),
         );
-        const { width, height } = api.getAbsoluteTransformAndSize(selectedNode);
-        const { x, y, label } = point_prompts[0];
-        // input image will be resized to 1024x1024 -> normalize mouse pos to 1024x1024
-        const point = {
-          x: (x / width) * imageSize.w,
-          y: (y / height) * imageSize.h,
-          label,
-        };
-
-        return new Promise((resolve, reject) => {
-          const originalOnMessage = this.worker.onmessage;
-          this.worker.onmessage = (event) => {
-            const { type, data } = event.data;
-            if (type == 'decodeMaskResult') {
-              // SAM2 returns 3 mask along with scores -> select best one
-              const maskTensors = data.masks;
-              const maskScores = data.iou_predictions.cpuData;
-              const bestMaskIdx = maskScores.indexOf(Math.max(...maskScores));
-              const maskCanvas = sliceTensorMask(maskTensors, bestMaskIdx);
-
-              const maskCanvasResized = resizeCanvas(maskCanvas, {
-                w: imageSize.w,
-                h: imageSize.h,
-              });
-
-              this.worker.onmessage = originalOnMessage;
-              resolve({ image: { canvas: maskCanvasResized } });
-            }
-            originalOnMessage?.call(this.worker, event);
-          };
-          this.worker.postMessage({
-            type: 'decodeMask',
-            data: {
-              points: [point],
+        encodedURL = url;
+      };
+      const unregister = [
+        api.capabilities.register('encodeImage', 'sam', (url) =>
+          client.run(() => encode(url)),
+        ),
+        api.capabilities.register('segmentImage', 'sam', (input) =>
+          client.run(async () => {
+            if (!input.point_prompts?.length)
+              throw new Error('SAM requires a point prompt');
+            const selected = api.getNodeById(
+              api.getAppState().layersSelected[0],
+            );
+            const size = selected && api.getAbsoluteTransformAndSize(selected);
+            if (!size?.width || !size?.height)
+              throw new Error('Select an image before segmenting');
+            const { x, y, label } = input.point_prompts[0];
+            // Keep encoding and decoding atomic even when callers segment different images.
+            await encode(input.image_url);
+            const data = await client.request<any>('decodeMask', {
+              points: [
+                {
+                  x: (x / size.width) * imageSize.w,
+                  y: (y / size.height) * imageSize.h,
+                  label,
+                },
+              ],
               maskArray: null,
               maskShape: null,
-            },
-          });
-        });
-      };
-
-      if (!this.worker) {
-        try {
-          // @ts-ignore - import.meta is only available in ES modules, but this code will run in ES module environments
-          // const workerUrl = new URL('./sam-worker.js', import.meta.url);
-          this.worker = new Worker(workerUrl, {
-            type: 'module',
-          });
-        } catch (error) {
-          console.error('Failed to create SAM worker:', error);
-        }
-
-        this.worker.onmessage = (event) => {
-          const { type, data } = event.data;
-
-          if (type == 'pong') {
-            const { success } = data;
-            if (success) {
-              api.setAppState({ loading: false, loadingMessage: '' });
-            } else {
-              api.setAppState({ loading: false, loadingMessage: '' });
-              console.error('Failed to load SAM model');
-            }
-          } else if (
-            type == 'downloadInProgress' ||
-            type == 'loadingInProgress'
-          ) {
-          } else if (type == 'encodeImageDone') {
-            api.setAppState({ loading: false, loadingMessage: '' });
-          }
-        };
-
-        this.worker.onerror = (error) => {
-          console.error('Worker error:', error);
-          api.setAppState({ loading: false, loadingMessage: '' });
-        };
-
-        api.setAppState({
-          loading: true,
-          loadingMessage: 'Loading SAM model...',
-        });
-        this.worker.postMessage({ type: 'ping' });
-      }
+            });
+            const scores = data.iou_predictions.cpuData;
+            const best = scores.indexOf(Math.max(...scores));
+            return {
+              image: {
+                canvas: resizeCanvas(
+                  sliceTensorMask(data.masks, best),
+                  imageSize,
+                ),
+              },
+            };
+          }),
+        ),
+      ];
+      const dispose = api.onDestroy(() => {
+        unregister.forEach((remove) => remove());
+        client.dispose();
+        this.cleanups.delete(dispose);
+      });
+      this.cleanups.add(dispose);
     });
   }
 
-  finalize(): void {
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-    }
+  finalize() {
+    this.cleanups.forEach((dispose) => dispose());
   }
 }

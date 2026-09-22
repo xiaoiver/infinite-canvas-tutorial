@@ -133,6 +133,31 @@ api.client2Viewport({ x, y }); // { x, y }
 
 ### setNodes
 
+### updateNodes
+
+Adds new nodes and updates existing nodes by ID. Nodes omitted from the batch
+remain in the document. A batch publishes the node state once; call `record()`
+after the batch to create an undo step. Passing `false` as the second argument
+updates ECS entities without publishing node state.
+
+With the Web Components API, a batch emits `ic-nodes-updated`; use
+`updateNode()` for individual `ic-node-updated` notifications.
+
+### runAtNextTick
+
+Queues a synchronous callback for the owning canvas's ECS frame boundary.
+Callbacks queued by another callback run on the following frame. Destroying
+the canvas cancels its remaining callbacks. Use this method instead of the
+previously exported global `pendingAPICallings` array, which has been removed
+to isolate canvas lifetimes.
+
+### App lifecycle
+
+Concurrent calls to `app.run()` share the same initialization. `app.exit()`
+cancels scheduled frames, waits for an active frame to finish, and terminates
+the world once. Repeated calls to `exit()` are safe. An exited App cannot be
+restarted; create a new App for a new runtime.
+
 ## Components
 
 We can read and write components of an entity. Take [Transform](#transform) as an example:
@@ -238,3 +263,41 @@ System execution order:
 [Becsy]: https://lastolivegames.github.io/becsy/
 [Spectrum]: https://opensource.adobe.com/spectrum-web-components
 [Epoch Semantic]: https://antfu.me/posts/epoch-semver
+
+### Document snapshots and history
+
+`updateNodes(nodes)` is an upsert. Use `replaceDocument(nodes, 'remote')` for a
+complete collaboration snapshot: omitted IDs are deleted. Apply asynchronous
+snapshots inside `runAtNextTick`. IDs must be unique and parent links must form a
+valid hierarchy. Structural changes and removed attributes rebuild components;
+ordinary attribute updates remain incremental. Remote snapshots update the
+history baseline without creating undo entries. Use `'local'` to record a local
+replacement. Undo/redo also notify `onchange`, allowing collaborators to observe
+them.
+
+History captures nodes, the document `filter`, design `variables`, and
+`layersSelected`. Camera,
+loading, hover, chat, and panel state remain local session state and are not
+restored by undo. The public `AppState` shape is unchanged.
+
+### Canvas capabilities
+
+Plugins register implementations with `api.capabilities.register(name, provider,
+implementation)`, which returns an unregister function. Providers are scoped to
+the canvas. Register cleanup with `api.onDestroy(cleanup)`; its return value is
+also an idempotent disposer for system finalization.
+
+A single provider is selected automatically. When providers overlap, select them
+explicitly (selection can precede plugin initialization):
+
+```ts
+api.capabilities.select('encodeImage', 'sam');
+api.capabilities.select('segmentImage', 'sam');
+api.capabilities.select('upscaleImage', 'fal-ai');
+```
+
+Available provider IDs are `fal-ai`, `sam`, `lama`, and `upscaler`. An ambiguous or
+unavailable provider produces an error instead of depending on registration
+order. Existing image method signatures are unchanged. Local model workers start
+on first use and are disposed with their canvas. The local Upscaler supports 4×;
+unsupported explicit scale factors are rejected.

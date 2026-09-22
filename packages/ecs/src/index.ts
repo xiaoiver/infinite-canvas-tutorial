@@ -23,10 +23,7 @@ export * from './animation';
 export * from './systems';
 export * from './environment';
 export * from './context';
-export {
-  safeAddComponent,
-  safeRemoveComponent,
-} from './history';
+export { safeAddComponent, safeRemoveComponent } from './history';
 export { requestTransformerRefreshForCanvas } from './utils/pick3d-bridge';
 export {
   svgSvgElementToComputedCamera,
@@ -234,3 +231,10 @@ export const DefaultPlugins: Plugin[] = [
   HTMLPlugin,
   AnimationPlugin,
 ];
+
+export {
+  CapabilityRegistry,
+  type CanvasCapabilities,
+} from './CapabilityRegistry';
+export { documentValueEqual } from './document';
+export { WorkerClient } from './WorkerClient';

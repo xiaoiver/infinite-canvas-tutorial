@@ -1,5 +1,14 @@
-import { Buffer, Device, RenderPass, SwapChain, TransparentBlack } from '@infinite-canvas-tutorial/device-api';
-import { RGAttachmentSlot, type RGGraphBuilder } from '../render-graph/interface';
+import {
+  Buffer,
+  Device,
+  RenderPass,
+  SwapChain,
+  TransparentBlack,
+} from '@infinite-canvas-tutorial/device-api';
+import {
+  RGAttachmentSlot,
+  type RGGraphBuilder,
+} from '../render-graph/interface';
 import {
   AntialiasingMode,
   makeAttachmentClearDescriptor,
@@ -103,6 +112,8 @@ export class BatchManager {
    * Drawcalls to flush in the next frame.
    */
   #drawcallsToFlush: Drawcall[] = [];
+  // WeakMap caches cannot be enumerated during teardown.
+  #ownedDrawcalls = new Set<Drawcall>();
 
   /**
    * Cache drawcalls for non batchable shape.
@@ -136,7 +147,7 @@ export class BatchManager {
     private readonly renderCache: RenderCache,
     private readonly texturePool: TexturePool,
     private readonly api: API,
-  ) { }
+  ) {}
 
   private collectDrawcallCtors(shape: Entity) {
     return getDrawcallCtors(shape)
@@ -165,6 +176,7 @@ export class BatchManager {
         index,
         this.api,
       ) as Drawcall;
+      this.#ownedDrawcalls.add(drawcall);
       drawcall.add(shape);
       return drawcall;
     });
@@ -210,32 +222,32 @@ export class BatchManager {
           ? 'rough-circle'
           : 'circle'
         : shape.has(Ellipse)
-          ? shape.has(Rough)
-            ? 'rough-ellipse'
-            : 'ellipse'
-          : shape.has(Rect)
-            ? shape.has(Rough)
-              ? 'rough-rect'
-              : 'rect'
-            : shape.has(Polyline)
-              ? shape.has(Rough)
-                ? 'rough-polyline'
-                : 'polyline'
-              : shape.has(Line)
-                ? shape.has(Rough)
-                  ? 'rough-line'
-                  : 'line'
-                : shape.has(Path)
-                  ? shape.has(Rough)
-                    ? 'rough-path'
-                    : 'path'
-                  : shape.has(Text)
-                    ? 'text'
-                    : shape.has(VectorNetwork)
-                      ? 'vector-network'
-                      : shape.has(Brush)
-                        ? 'brush'
-                        : undefined;
+        ? shape.has(Rough)
+          ? 'rough-ellipse'
+          : 'ellipse'
+        : shape.has(Rect)
+        ? shape.has(Rough)
+          ? 'rough-rect'
+          : 'rect'
+        : shape.has(Polyline)
+        ? shape.has(Rough)
+          ? 'rough-polyline'
+          : 'polyline'
+        : shape.has(Line)
+        ? shape.has(Rough)
+          ? 'rough-line'
+          : 'line'
+        : shape.has(Path)
+        ? shape.has(Rough)
+          ? 'rough-path'
+          : 'path'
+        : shape.has(Text)
+        ? 'text'
+        : shape.has(VectorNetwork)
+        ? 'vector-network'
+        : shape.has(Brush)
+        ? 'brush'
+        : undefined;
 
       let instancedDrawcalls = this.#instancesCache[geometryCtor];
       if (!instancedDrawcalls) {
@@ -300,6 +312,7 @@ export class BatchManager {
       this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
         if (destroy) {
           drawcall.destroy();
+          this.#ownedDrawcalls.delete(drawcall);
         }
 
         if (this.#drawcallsToFlush.includes(drawcall)) {
@@ -337,20 +350,15 @@ export class BatchManager {
   }
 
   destroy() {
-    for (const key in this.#nonBatchableDrawcallsCache) {
-      this.#nonBatchableDrawcallsCache[key].forEach((drawcall) => {
-        if (!drawcall.destroyed) {
-          drawcall.destroy();
-        }
-      });
-    }
-    for (const key in this.#batchableDrawcallsCache) {
-      this.#batchableDrawcallsCache[key].forEach((drawcall) => {
-        if (!drawcall.destroyed) {
-          drawcall.destroy();
-        }
-      });
-    }
+    this.#ownedDrawcalls.forEach((drawcall) => {
+      if (!drawcall.destroyed) drawcall.destroy();
+    });
+    this.#ownedDrawcalls.clear();
+    this.#nonBatchableDrawcallsCache = new WeakMap();
+    this.#batchableDrawcallsCache = new WeakMap();
+    this.#instancesCache = Object.create(null);
+    this.#hidedUIs = [];
+    this.clear();
   }
 
   clear() {
@@ -521,10 +529,7 @@ export class BatchManager {
 
         builder.pushPass((pass) => {
           pass.setDebugName('Node Layer Blend Src');
-          pass.attachRenderTargetID(
-            RGAttachmentSlot.Color0,
-            srcColorTargetID,
-          );
+          pass.attachRenderTargetID(RGAttachmentSlot.Color0, srcColorTargetID);
           pass.attachRenderTargetID(
             RGAttachmentSlot.DepthStencil,
             srcDepthTargetID,

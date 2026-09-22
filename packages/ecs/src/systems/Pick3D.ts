@@ -1,6 +1,5 @@
 import { System, type Entity } from '@lastolivegames/becsy';
 import { mat4 as glMat4, vec2, vec3 as glVec3 } from 'gl-matrix';
-import { pendingAPICallings } from '../API';
 import {
   Camera,
   Camera3D,
@@ -131,9 +130,7 @@ export class Pick3D extends System {
     }
   }
 
-  private resolveCamera3D(
-    canvas: Entity,
-  ): { camera: Camera3D } | undefined {
+  private resolveCamera3D(canvas: Entity): { camera: Camera3D } | undefined {
     const canvasCount = this.canvases.current.length || 1;
     const cameraEntity = findCamera3DForCanvas(
       this.cameras3D.current,
@@ -148,11 +145,7 @@ export class Pick3D extends System {
 
   private canvasMeshes(canvas: Entity): Entity[] {
     const canvasCount = this.canvases.current.length || 1;
-    return filterEntitiesForCanvas(
-      this.meshes3D.current,
-      canvas,
-      canvasCount,
-    );
+    return filterEntitiesForCanvas(this.meshes3D.current, canvas, canvasCount);
   }
 
   private canvasSelected(canvas: Entity): Entity[] {
@@ -163,10 +156,7 @@ export class Pick3D extends System {
     );
   }
 
-  private resolveMesh3DSourceNode(
-    api: Canvas['api'],
-    entity: Entity,
-  ) {
+  private resolveMesh3DSourceNode(api: Canvas['api'], entity: Entity) {
     if (entity.has(Extrude3DTarget)) {
       return api.getNodeByEntity(entity.read(Extrude3DTarget).source);
     }
@@ -310,11 +300,9 @@ export class Pick3D extends System {
           dragging: false,
         });
       }
-      pendingAPICallings.push(() =>
-        api.syncMesh3DLayerAppState(closestEntity),
-      );
+      api.runAtNextTick(() => api.syncMesh3DLayerAppState(closestEntity));
     } else {
-      pendingAPICallings.push(() => api.clearMesh3DLayerAppState());
+      api.runAtNextTick(() => api.clearMesh3DLayerAppState());
     }
 
     set3DGizmoDragging(false);
@@ -417,7 +405,12 @@ export class Pick3D extends System {
       const { width, height } = this.getViewportSize(canvasEntity);
       if (width <= 0 || height <= 0) continue;
 
-      const pickScene = this.buildPickScene(camera, width, height, canvasEntity);
+      const pickScene = this.buildPickScene(
+        camera,
+        width,
+        height,
+        canvasEntity,
+      );
       if (!pickScene) continue;
       const transformRead = entity.read(Transform3D);
       const anchor: [number, number, number] = [
@@ -598,10 +591,7 @@ export class Pick3D extends System {
     _anchor?: [number, number, number],
   ): Ray | null {
     if (pickScene.mode === 'linkedPerspective') {
-      const cam2d = findCamera2DForCanvas(
-        this.cameras2D.current,
-        canvasEntity,
-      );
+      const cam2d = findCamera2DForCanvas(this.cameras2D.current, canvasEntity);
       if (!cam2d) return null;
       const inv = Mat3.toGLMat3(
         cam2d.read(ComputedCamera).viewProjectionMatrixInv,
@@ -633,7 +623,10 @@ export class Pick3D extends System {
     return screenToRay(vx, vy, viewportWidth, viewportHeight, invVP);
   }
 
-  private getViewportSize(canvasEntity: Entity): { width: number; height: number } {
+  private getViewportSize(canvasEntity: Entity): {
+    width: number;
+    height: number;
+  } {
     const { width, height } = canvasEntity.read(Canvas);
     return { width, height };
   }

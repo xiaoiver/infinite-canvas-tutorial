@@ -1,6 +1,12 @@
+import type { API } from '../../API';
 import type { Entity } from '@lastolivegames/becsy';
-import { pendingAPICallings } from '../../API';
-import { Material3D, Mesh3D, Mesh3DNode } from '../../components';
+import {
+  Canvas,
+  Canvas3DScope,
+  Material3D,
+  Mesh3D,
+  Mesh3DNode,
+} from '../../components';
 import { isEntityAlive } from '../../systems/Transform';
 import {
   geometrySpecKey,
@@ -13,11 +19,11 @@ import {
 } from '../mesh3d-node';
 import { loadGltfMeshFromSpec } from './load-gltf-mesh';
 
-const pending = new Set<string>();
+const pendingByCanvas = new WeakMap<API, Set<string>>();
 
 /**
  * Kick off async glTF fetch + bake for a declarative {@link Mesh3DNode} source.
- * Mesh data is applied on the next {@link pendingAPICallings} flush (ECS-safe writes).
+ * Mesh data is applied on the next {@link API.runAtNextTick} flush (ECS-safe writes).
  */
 export function requestGltfMeshLoad(source: Entity): void {
   if (!source.has(Mesh3DNode)) {
@@ -36,6 +42,16 @@ export function requestGltfMeshLoad(source: Entity): void {
     return;
   }
 
+  if (!meshEntity.has(Canvas3DScope)) return;
+  const canvas = meshEntity.read(Canvas3DScope).canvas;
+  if (!isEntityAlive(canvas)) return;
+  const api = canvas.read(Canvas).api;
+  if (!api) return;
+  let pending = pendingByCanvas.get(api);
+  if (!pending) {
+    pending = new Set();
+    pendingByCanvas.set(api, pending);
+  }
   const key = geometrySpecKey(spec);
   const pendingKey = `${source.__id}:${key}`;
   if (pending.has(pendingKey)) {
@@ -45,12 +61,13 @@ export function requestGltfMeshLoad(source: Entity): void {
 
   void loadGltfMeshFromSpec(spec)
     .then((baked) => {
-      pendingAPICallings.push(() => {
+      api.runAtNextTick(() => {
         if (
           !isEntityAlive(source) ||
           !source.has(Mesh3DNode) ||
-          geometrySpecKey(normalizeGeometry(source.read(Mesh3DNode).geometry)) !==
-            key
+          geometrySpecKey(
+            normalizeGeometry(source.read(Mesh3DNode).geometry),
+          ) !== key
         ) {
           return;
         }

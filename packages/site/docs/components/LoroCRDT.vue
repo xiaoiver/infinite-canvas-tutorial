@@ -2,70 +2,19 @@
 /**
  * @see https://github.com/loro-dev/loro-excalidraw
  */
-import {
-  Pen,
-  SerializedNode,
-  API,
-  Task,
-} from '@infinite-canvas-tutorial/ecs';
-import { ref, onMounted, onUnmounted } from 'vue';
+import { Pen, API } from '@infinite-canvas-tutorial/ecs';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
-import { LoroDoc, LoroList, LoroMap, OpId, VersionVector } from "loro-crdt";
-import deepEqual from "deep-equal";
-
-function recordLocalOps(
-  loroList: LoroList,
-  nodes: readonly { version?: number; isDeleted?: boolean }[],
-): boolean {
-  nodes = nodes.filter((e) => !e.isDeleted);
-  let changed = false;
-  for (let i = loroList.length; i < nodes.length; i++) {
-    loroList.insertContainer(i, new LoroMap());
-    changed = true;
-  }
-  if (nodes.length < loroList.length) {
-    loroList.delete(nodes.length, loroList.length - nodes.length);
-    changed = true;
-  }
-
-  const n = nodes.length;
-  for (let i = 0; i < n; i++) {
-    const map = loroList.get(i) as LoroMap | undefined;
-    if (!map) {
-      break;
-    }
-
-    const elem = nodes[i];
-    if (map.get("version") === elem.version) {
-      continue;
-    }
-
-    for (const [key, value] of Object.entries(elem)) {
-      const src = map.get(key);
-      if (
-        (typeof src === 'object' && !deepEqual(map.get(key), value)) ||
-        src !== value
-      ) {
-        changed = true;
-        map.set(key, value);
-      }
-    }
-  }
-
-  return changed;
-}
-
-function getVersion(elems: readonly { version?: number }[]): number {
-  return elems.reduce((acc, curr) => {
-    return (curr.version ?? 0) + acc;
-  }, 0);
-}
+import { LoroDoc } from 'loro-crdt';
+import { bindDocument } from '../collaboration/document';
+import { loroDocument, createLoroDemoDocument } from '../collaboration/loro';
 
 let channel: BroadcastChannel;
 let doc: LoroDoc;
-let lastVersion: number;
+let unbindDocument: (() => void) | undefined;
+let unsubscribe: (() => void) | undefined;
 const wrapper = ref<HTMLElement | null>(null);
 let api: API;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
@@ -76,64 +25,41 @@ onMounted(async () => {
     return;
   }
 
-  channel = new BroadcastChannel('loro-crdt');
-  channel.onmessage = (e) => {
-    const bytes = new Uint8Array(e.data);
+  doc = createLoroDemoDocument();
+  const saved = localStorage.getItem('loro-canvas-v2');
+  if (saved) {
     try {
-      doc.import(bytes);
-    } catch (e) { }
+      doc.import(Uint8Array.from(atob(saved), (char) => char.charCodeAt(0)));
+    } catch (error) {
+      console.error('Failed to restore the Loro document', error);
+    }
+  }
+  channel = new BroadcastChannel('loro-crdt-v2');
+  channel.onmessage = (event) => {
+    if (event.data.type === 'sync-request') {
+      channel.postMessage({
+        type: 'update',
+        update: doc.export({ mode: 'snapshot' }),
+      });
+    } else if (event.data.type === 'update') {
+      doc.import(event.data.update);
+    }
   };
-
-  doc = new LoroDoc();
-  const data = localStorage.getItem("store");
-  const docNodes = doc.getList("nodes");
-  let lastVersion: VersionVector | undefined = undefined;
-
-  doc.subscribe((e) => {
-    const version = Object.fromEntries(doc.version().toJSON());
-    let vv = "";
-    for (const [k, v] of Object.entries(version)) {
-      vv += `${k.toString().slice(0, 4)}:${v} `;
-    }
-
-    if (e.by === "local") {
-      const bytes = doc.export({ mode: "update", from: lastVersion });
-      lastVersion = doc.version();
-      channel.postMessage(bytes);
-    }
-    if (e.by !== "checkout") {
-      const updates = doc.export({ mode: "update" });
-      let str = "";
-      for (let i = 0; i < updates.length; i++) {
-        str += String.fromCharCode(updates[i]);
-      }
-      localStorage.setItem("store", btoa(str));
-    }
-
-    if (e.by !== "local") {
-      api.updateNodes(docNodes.toJSON());
-    }
+  unsubscribe = doc.subscribe((event) => {
+    const update = doc.export({ mode: 'snapshot' });
+    if (event.by === 'local') channel.postMessage({ type: 'update', update });
+    let binary = '';
+    update.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    localStorage.setItem('loro-canvas-v2', btoa(binary));
   });
+  channel.postMessage({ type: 'sync-request' });
 
   onReady = (e) => {
     api = e.detail;
-    api.onchange = (snapshot) => {
-      const { appState, nodes } = snapshot;
-      if (recordLocalOps(docNodes, nodes)) {
-        doc.commit();
-      }
-    }
-
-    const node = {
-      type: 'rect',
-      id: '0',
-      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
-      stroke: 'black',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-    } as SerializedNode;
+    const adapter = loroDocument(doc);
+    unbindDocument = bindDocument(api, adapter);
 
     api.setAppState({
       penbarSelected: Pen.SELECT,
@@ -142,9 +68,6 @@ onMounted(async () => {
       taskbarVisible: false,
       // taskbarSelected: [Task.SHOW_LAYERS_PANEL],
     });
-
-    api.updateNodes([node]);
-    api.record();
   };
   canvas.addEventListener(Event.READY, onReady);
 
@@ -152,6 +75,8 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  unbindDocument?.();
+  unsubscribe?.();
   channel?.close();
   const canvas = wrapper.value;
 
@@ -163,11 +88,16 @@ onUnmounted(() => {
     canvas.removeEventListener(Event.READY, onReady);
   }
 
+  api?.destroy();
+  doc?.free();
 });
 </script>
 
 <template>
   <div>
-    <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 200px"></ic-spectrum-canvas>
+    <ic-spectrum-canvas
+      ref="wrapper"
+      style="width: 100%; height: 200px"
+    ></ic-spectrum-canvas>
   </div>
 </template>

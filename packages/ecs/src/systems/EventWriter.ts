@@ -24,8 +24,7 @@ export class EventWriter extends System {
 
   private readonly pointerIds = new Map<number, Set<number>>();
 
-  #onDestroyCallbacks: WeakMap<HTMLCanvasElement, (() => void)[]> =
-    new WeakMap();
+  #onDestroyCallbacks = new Map<HTMLCanvasElement, (() => void)[]>();
 
   @co private *setInputTrigger(entity: Entity, triggerKey: string): Generator {
     const input = entity.write(Input);
@@ -66,7 +65,17 @@ export class EventWriter extends System {
       this.#onDestroyCallbacks
         .get(element as HTMLCanvasElement)
         ?.forEach((callback) => callback());
+      this.#onDestroyCallbacks.delete(element as HTMLCanvasElement);
+      this.pointerIds.delete(entity.__id);
     });
+  }
+
+  finalize() {
+    this.#onDestroyCallbacks.forEach((callbacks) =>
+      callbacks.forEach((callback) => callback()),
+    );
+    this.#onDestroyCallbacks.clear();
+    this.pointerIds.clear();
   }
 
   private bindEventListeners(entity: Entity): void {

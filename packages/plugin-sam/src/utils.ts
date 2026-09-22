@@ -61,63 +61,19 @@ export function resizeCanvas(
 }
 
 export function image2Canvas(url: string): Promise<HTMLCanvasElement> {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = url;
-
   return new Promise((resolve, reject) => {
-    img.onload = function () {
-      const largestDim =
-        img.naturalWidth > img.naturalHeight
-          ? img.naturalWidth
-          : img.naturalHeight;
-      const box = resizeAndPadBox(
-        { h: img.naturalHeight, w: img.naturalWidth },
-        { h: largestDim, w: largestDim },
-      )!;
-
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = largestDim;
-      canvas.height = largestDim;
-
-      canvas
-        .getContext('2d')!
-        .drawImage(
-          img,
-          0,
-          0,
-          img.naturalWidth,
-          img.naturalHeight,
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-        );
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      canvas.getContext('2d')!.drawImage(image, 0, 0);
       resolve(canvas);
     };
+    image.onerror = () => reject(new Error('Failed to load image'));
+    image.src = url;
   });
-}
-
-// input: source and target {w, h}, output: {x,y,w,h} to fit source nicely into target preserving aspect
-function resizeAndPadBox(
-  sourceDim: { w: number; h: number },
-  targetDim: { w: number; h: number },
-): { x: number; y: number; w: number; h: number } | undefined {
-  if (sourceDim.h == sourceDim.w) {
-    return { x: 0, y: 0, w: targetDim.w, h: targetDim.h };
-  } else if (sourceDim.h > sourceDim.w) {
-    // portrait => resize and pad left
-    const newW = (sourceDim.w / sourceDim.h) * targetDim.w;
-    const padLeft = Math.floor((targetDim.w - newW) / 2);
-
-    return { x: padLeft, y: 0, w: newW, h: targetDim.h };
-  } else if (sourceDim.h < sourceDim.w) {
-    // landscape => resize and pad top
-    const newH = (sourceDim.h / sourceDim.w) * targetDim.h;
-    const padTop = Math.floor((targetDim.h - newH) / 2);
-
-    return { x: 0, y: padTop, w: targetDim.w, h: newH };
-  }
 }
 
 /**
@@ -125,7 +81,7 @@ function resizeAndPadBox(
  * output: Tensor [B, idx, W, H]
  **/
 export function sliceTensor(tensor, idx) {
-  const [bs, noMasks, width, height] = tensor.dims;
+  const [, , width, height] = tensor.dims;
   const stride = width * height;
   const start = stride * idx,
     end = start + stride;
@@ -165,7 +121,7 @@ export function float32ArrayToCanvas(
 }
 
 export function sliceTensorMask(maskTensor, maskIdx) {
-  const [bs, noMasks, width, height] = maskTensor.dims;
+  const [, , width, height] = maskTensor.dims;
   const stride = width * height;
   const start = stride * maskIdx,
     end = start + stride;

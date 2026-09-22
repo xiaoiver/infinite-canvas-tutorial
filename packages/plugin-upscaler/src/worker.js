@@ -9,8 +9,9 @@ const upscaler = new Upscaler({
 const upscaleImage = async ([data, shape]) => {
   const tensor = tf.tensor(data, shape);
 
+  let upscaledImg;
   try {
-    const upscaledImg = await upscaler.upscale(tensor, {
+    upscaledImg = await upscaler.upscale(tensor, {
       output: 'tensor',
       patchSize: 16,
       padding: 2,
@@ -18,8 +19,9 @@ const upscaleImage = async ([data, shape]) => {
     const upscaledShape = upscaledImg.shape;
     const upscaledData = await upscaledImg.data();
     return [upscaledData, upscaledShape];
-  } catch (error) {
-    console.error('Error upscale image:', error);
+  } finally {
+    tensor.dispose();
+    upscaledImg?.dispose();
   }
 };
 
@@ -28,12 +30,21 @@ async function warmUp() {
 }
 
 self.onmessage = async (e) => {
-  const { type, data } = e.data;
-  if (type === 'ping') {
-    await warmUp();
-    self.postMessage({ type: 'pong' });
-  } else if (type === 'upscaleImage') {
-    const result = await upscaleImage(data);
-    self.postMessage({ type: 'upscaleImageDone', data: result });
+  const { type, data, requestId } = e.data;
+  const reply = (message) => self.postMessage({ ...message, requestId });
+  try {
+    if (type === 'ping') {
+      await warmUp();
+      reply({ done: true, type: 'pong' });
+    } else if (type === 'upscaleImage') {
+      const result = await upscaleImage(data);
+      reply({ done: true, type: 'upscaleImageDone', data: result });
+    }
+  } catch (error) {
+    reply({
+      done: true,
+      type: 'error',
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 };

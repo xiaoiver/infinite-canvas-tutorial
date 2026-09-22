@@ -35,9 +35,14 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
+import { NodeJSAdapter, createMouseEvent } from '../utils';
 
-DOMAdapter.set(NodeJSAdapter);
+// Advance frames explicitly so pointer events cannot overtake the render loop.
+DOMAdapter.set({
+  ...NodeJSAdapter,
+  requestAnimationFrame: () => 0,
+  cancelAnimationFrame: () => {},
+});
 
 describe('Transformer', () => {
   it('should move rect correctly', async () => {
@@ -116,44 +121,48 @@ describe('Transformer', () => {
         api.updateNodes([node]);
         api.selectNodes([node]);
 
-        entity = api
-          .getEntity(node)
-          ?.hold();
+        entity = api.getEntity(node)?.hold();
       }
     }
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
     await app.run();
+    try {
+      await app.world.execute();
+      await app.world.execute();
 
-    await sleep(300);
+      if ($canvas) {
+        $canvas.dispatchEvent(
+          createMouseEvent('mousedown', { clientX: 100, clientY: 75 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 100, clientY: 75 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mouseup', { clientX: 100, clientY: 100 }),
+        );
+      }
 
-    if ($canvas) {
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 100, clientY: 75 }),
+      for (let frame = 0; frame < 6; frame++) await app.world.execute();
+
+      expect(entity!.read(Transform).translation).toMatchObject({
+        x: 50,
+        y: 75,
+      });
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'transformer-move',
       );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 100, clientY: 75 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 100, clientY: 100 }),
-      );
+    } finally {
+      await app.exit();
     }
-
-    await sleep(300);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'transformer-move',
-    );
-
-    await app.exit();
   });
 });

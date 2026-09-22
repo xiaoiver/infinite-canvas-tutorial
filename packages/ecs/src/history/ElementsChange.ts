@@ -44,6 +44,7 @@ import type {
   StrokeAttributes,
 } from '../types/serialized-node';
 import { API } from '../API';
+import { documentValueEqual } from '../document';
 import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
 import {
   Name,
@@ -345,9 +346,7 @@ function syncIconFontChildrenFromUpdatedNode(
   const themeMode = api.getAppState().themeMode;
   const w = node.width ?? 0;
   const h = node.height ?? 0;
-  const scenePatched = api
-    .getNodes()
-    .map((n) => (n.id === node.id ? node : n));
+  const scenePatched = api.getNodes().map((n) => (n.id === node.id ? node : n));
   const nodeInherit = {
     ...node,
     ...getComputedInheritGroupWireForId(node.id, scenePatched),
@@ -421,7 +420,8 @@ function syncIconFontChildrenFromUpdatedNode(
 
   const zForChild = node.zIndex != null ? node.zIndex : 0;
   const childVisibility =
-    (node.visibility as 'inherited' | 'hidden' | 'visible' | undefined) ?? 'inherited';
+    (node.visibility as 'inherited' | 'hidden' | 'visible' | undefined) ??
+    'inherited';
 
   for (let i = 0; i < prims.length; i++) {
     const prim = prims[i]!;
@@ -581,7 +581,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
         continue;
       }
 
-      if (prevElement.versionNonce !== nextElement.versionNonce) {
+      if (!documentValueEqual(prevElement, nextElement)) {
         const delta = Delta.calculate<ElementPartial>(
           prevElement,
           nextElement,
@@ -642,29 +642,29 @@ export class ElementsChange implements Change<SceneElementsMap> {
         containsZindexDifference: boolean;
       },
     ) =>
-      (id: string, partial: ElementPartial) => {
-        let element = elements.get(id);
+    (id: string, partial: ElementPartial) => {
+      let element = elements.get(id);
 
-        if (!element) {
-          // always fallback to the local snapshot, in cases when we cannot find the element in the elements array
-          element = snapshot.get(id);
+      if (!element) {
+        // always fallback to the local snapshot, in cases when we cannot find the element in the elements array
+        element = snapshot.get(id);
 
-          if (element) {
-            // as the element was brought from the snapshot, it automatically results in a possible zindex difference
-            flags.containsZindexDifference = true;
+        if (element) {
+          // as the element was brought from the snapshot, it automatically results in a possible zindex difference
+          flags.containsZindexDifference = true;
 
-            // as the element was force deleted, we need to check if adding it back results in a visible change
-            if (
-              partial.isDeleted === false ||
-              (partial.isDeleted !== true && element.isDeleted === false)
-            ) {
-              flags.containsVisibleDifference = true;
-            }
+          // as the element was force deleted, we need to check if adding it back results in a visible change
+          if (
+            partial.isDeleted === false ||
+            (partial.isDeleted !== true && element.isDeleted === false)
+          ) {
+            flags.containsVisibleDifference = true;
           }
         }
+      }
 
-        return element;
-      };
+      return element;
+    };
 
   private static createApplier = (
     nextElements: SceneElementsMap,
@@ -727,10 +727,10 @@ export class ElementsChange implements Change<SceneElementsMap> {
       containsVisibleDifference: boolean;
       containsZindexDifference: boolean;
     } = {
-        // by default we don't care about about the flags
-        containsVisibleDifference: true,
-        containsZindexDifference: true,
-      },
+      // by default we don't care about about the flags
+      containsVisibleDifference: true,
+      containsZindexDifference: true,
+    },
   ) {
     const { ...directlyApplicablePartial } = delta.inserted;
 
@@ -764,7 +764,24 @@ export class ElementsChange implements Change<SceneElementsMap> {
         delta.deleted.fractionalIndex !== delta.inserted.fractionalIndex;
     }
 
-    return newElementWith(element, directlyApplicablePartial);
+    const removedKeys = [
+      ...new Set([
+        ...Object.keys(delta.deleted),
+        ...Object.keys(delta.inserted),
+      ]),
+    ].filter((key) => delta.inserted[key] === undefined);
+    if (!element.isDeleted && removedKeys.some((key) => key in element)) {
+      flags.containsVisibleDifference = true;
+    }
+    const next = newElementWith(
+      element,
+      directlyApplicablePartial,
+      removedKeys.length > 0,
+    );
+    removedKeys.forEach((key) => {
+      delete next[key];
+    });
+    return next;
   }
 
   public static create(
@@ -806,7 +823,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
     private readonly removed: Map<string, Delta<ElementPartial>>,
     private readonly updated: Map<string, Delta<ElementPartial>>,
     private readonly api: API,
-  ) { }
+  ) {}
 
   inverse(): ElementsChange {
     const inverseInternal = (deltas: Map<string, Delta<ElementPartial>>) => {
@@ -847,7 +864,8 @@ export class ElementsChange implements Change<SceneElementsMap> {
           //   latestPartial[key] = partial[key];
           //   break;
           default:
-            latestPartial[key] = element[key];
+            latestPartial[key] =
+              key === 'isDeleted' ? !!element[key] : element[key];
         }
       }
 
@@ -905,111 +923,12 @@ export class ElementsChange implements Change<SceneElementsMap> {
       flags,
     );
 
-    const addedElements = applyDeltas(this.added);
-    const removedElements = applyDeltas(this.removed);
-    const updatedElements = applyDeltas(this.updated);
+    applyDeltas(this.added);
+    applyDeltas(this.removed);
+    applyDeltas(this.updated);
 
-    const changedElements = new Map([
-      ...addedElements,
-      ...removedElements,
-      ...updatedElements,
-    ]);
-
-    if (this.api) {
-      const touchedIds = new Set<string>();
-      const pendingAdded = Array.from(this.added.entries());
-      const processedAddedIds = new Set<string>();
-
-      // parent-first apply for batched add deltas
-      while (pendingAdded.length > 0) {
-        let progressed = false;
-
-        for (let i = 0; i < pendingAdded.length;) {
-          const [id, delta] = pendingAdded[i];
-          const parentId = delta.inserted.parentId as string | undefined;
-          const parentReady =
-            !parentId ||
-            !!this.api.getNodeById(parentId) ||
-            processedAddedIds.has(parentId);
-
-          if (!parentReady) {
-            i++;
-            continue;
-          }
-
-          const { inserted, deleted } = delta;
-          const element = addedElements.get(id);
-          if (element) {
-            Object.keys(deleted).forEach((key) => {
-              delete element[key];
-            });
-            Object.assign(element, inserted);
-            this.api.updateNode(element, delta.inserted);
-            touchedIds.add(id);
-          }
-          processedAddedIds.add(id);
-          pendingAdded.splice(i, 1);
-          progressed = true;
-        }
-
-        if (!progressed) {
-          const [id, delta] = pendingAdded.shift()!;
-          const { inserted, deleted } = delta;
-          const element = addedElements.get(id);
-          if (element) {
-            Object.keys(deleted).forEach((key) => {
-              delete element[key];
-            });
-            Object.assign(element, inserted);
-            this.api.updateNode(element, delta.inserted);
-            touchedIds.add(id);
-          }
-          processedAddedIds.add(id);
-        }
-      }
-
-      this.removed.forEach((delta, id) => {
-        const element = nextElements.get(id);
-        if (element) {
-          this.api.deleteNodesById([id]);
-        }
-      });
-
-      this.updated.forEach((delta, id) => {
-        const { inserted, deleted } = delta;
-        const element = nextElements.get(id);
-        if (element) {
-          Object.keys(deleted).forEach((key) => {
-            delete element[key];
-          });
-          Object.assign(element, inserted);
-          this.api.updateNode(element, delta.inserted);
-          touchedIds.add(id);
-        }
-      });
-
-      // Reconcile serialized parentId with ECS relation after batch apply.
-      touchedIds.forEach((id) => {
-        const node = nextElements.get(id);
-        if (!node) {
-          return;
-        }
-
-        const entity = this.api.getEntity(node);
-        safeAddComponent(entity, Children);
-
-        if (node.parentId) {
-          const parentNode = this.api.getNodeById(node.parentId);
-          if (parentNode) {
-            const parentEntity = this.api.getEntity(parentNode);
-            safeAddComponent(parentEntity, Parent);
-            entity.write(Children).parent = parentEntity;
-            return;
-          }
-        }
-
-        entity.write(Children).parent = this.api.getCamera();
-      });
+    if (this.api && !this.isEmpty()) {
+      this.api.replaceDocument([...nextElements.values()], 'remote');
     }
 
     return [nextElements, flags.containsVisibleDifference];
@@ -1305,9 +1224,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (
-    ('fills' in updates ||
-      'fill' in updates ||
-      'fillLayers' in updates) &&
+    ('fills' in updates || 'fill' in updates || 'fillLayers' in updates) &&
     !isIconFontWireNode
   ) {
     applyFillsWireMutation(
@@ -1379,22 +1296,21 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       sd === 'none' || sd === undefined
         ? [0, 0]
         : (() => {
-          const parts = sd.includes(',')
-            ? sd.split(',')
-            : sd.trim().split(/\s+/).filter(Boolean);
-          const a = Number(parts[0]);
-          const b = Number(parts[1] ?? parts[0]);
-          return [
-            Number.isFinite(a) ? a : 0,
-            Number.isFinite(b) ? b : 0,
-          ] as [number, number];
-        })();
+            const parts = sd.includes(',')
+              ? sd.split(',')
+              : sd.trim().split(/\s+/).filter(Boolean);
+            const a = Number(parts[0]);
+            const b = Number(parts[1] ?? parts[0]);
+            return [Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0] as [
+              number,
+              number,
+            ];
+          })();
     safeAddComponent(entity, Stroke, { dasharray: pair });
   }
   if ('strokeDashoffset' in updates && !isIconFontWireNode) {
     const raw = (element as StrokeAttributes).strokeDashoffset;
-    const n =
-      typeof raw === 'number' ? raw : parseFloat(String(raw ?? '0'));
+    const n = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '0'));
     safeAddComponent(entity, Stroke, {
       dashoffset: Number.isFinite(n) ? n : 0,
     });
@@ -1583,13 +1499,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Text).anchorY = anchorY;
   }
   if ('fontSize' in updates) {
-    const fs = resolveDesignVariableValue(
-      fontSize,
-      designVariables,
-      themeMode,
-    );
-    entity.write(Text).fontSize =
-      typeof fs === 'number' ? fs : Number(fs);
+    const fs = resolveDesignVariableValue(fontSize, designVariables, themeMode);
+    entity.write(Text).fontSize = typeof fs === 'number' ? fs : Number(fs);
     entity.write(Text).fontSizeVariableRef =
       designVariableRefKeyFromWire(fontSize);
   }
@@ -1702,8 +1613,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       if (oldTextBaseline !== newTextBaseline) {
         const lineHeightValue =
           textComp.lineHeight || (textComp.fontSize as number);
-        const lineHeightAdjust =
-          (lineHeightValue - fontMetrics.fontSize) / 2;
+        const lineHeightAdjust = (lineHeightValue - fontMetrics.fontSize) / 2;
         const oldYOffset =
           yOffsetFromTextBaseline(oldTextBaseline, fontMetrics) -
           lineHeightAdjust;
@@ -1794,15 +1704,16 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, GeometryDirty);
     safeAddComponent(entity, MaterialDirty);
   }
-  if (
-    ('width' in updates || 'height' in updates) &&
-    entity.has(Filter)
-  ) {
+  if (('width' in updates || 'height' in updates) && entity.has(Filter)) {
     api.runAtNextTick(() => {
       safeAddComponent(entity, MaterialDirty);
     });
   }
-  if ('cornerRadius' in updates && cornerRadius !== undefined && entity.has(Rect)) {
+  if (
+    'cornerRadius' in updates &&
+    cornerRadius !== undefined &&
+    entity.has(Rect)
+  ) {
     const resolved = resolveDesignVariableValue(
       cornerRadius,
       designVariables,
@@ -1830,11 +1741,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       entity.write(Path).d = d;
     }
   }
-  if (
-    'vertices' in updates ||
-    'segments' in updates ||
-    'regions' in updates
-  ) {
+  if ('vertices' in updates || 'segments' in updates || 'regions' in updates) {
     if (entity.has(VectorNetwork)) {
       const vn = entity.write(VectorNetwork);
       const vnNode = element as unknown as {
@@ -1868,7 +1775,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Line).y2 = y2;
   }
   if (
-    ('x1' in updates || 'y1' in updates || 'x2' in updates || 'y2' in updates)
+    'x1' in updates ||
+    'y1' in updates ||
+    'x2' in updates ||
+    'y2' in updates
   ) {
     if (entity.has(Line)) {
       safeAddComponent(entity, GeometryDirty);
@@ -1880,8 +1790,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   if ('hitStrokeWidth' in updates) {
     const v = (updates as { hitStrokeWidth?: number }).hitStrokeWidth;
-    const next =
-      v != null && Number.isFinite(v) && v >= 0 ? v : -1;
+    const next = v != null && Number.isFinite(v) && v >= 0 ? v : -1;
     if (entity.has(Line)) {
       entity.write(Line).hitStrokeWidth = next;
     } else if (entity.has(Polyline)) {
@@ -2050,7 +1959,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     if ('outerConeAngle' in updates && patch.outerConeAngle != null) {
       light.outerConeAngle = patch.outerConeAngle;
     }
-    if (('x' in updates || 'y' in updates || 'z' in updates) && entity.has(Transform)) {
+    if (
+      ('x' in updates || 'y' in updates || 'z' in updates) &&
+      entity.has(Transform)
+    ) {
       const t = entity.read(Transform).translation;
       light.position = [
         'x' in updates && patch.x != null ? patch.x : t.x,
@@ -2093,7 +2005,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     const pid = element.parentId;
     if (pid) {
       const parentNode = api.getNodeById(pid);
-      if (parentNode && (parentNode as { display?: string }).display === 'flex') {
+      if (
+        parentNode &&
+        (parentNode as { display?: string }).display === 'flex'
+      ) {
         const parentEntity = api.getEntity(parentNode);
         if (parentEntity?.has(Flex)) {
           markFlexLayoutDirty(parentEntity);
@@ -2129,25 +2044,24 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   {
     const nodeType = (element as SerializedNode).type;
     const isIconFontNode =
-      nodeType === 'iconfont' ||
-      (nodeType as string) === 'icon_font';
+      nodeType === 'iconfont' || (nodeType as string) === 'icon_font';
     if (
       isIconFontNode &&
-      (('fills' in updates) ||
-        ('strokes' in updates) ||
-        ('stroke' in updates) ||
-        ('strokeOpacity' in updates) ||
-        ('strokeWidth' in updates) ||
-        ('strokeLinecap' in updates) ||
-        ('strokeLinejoin' in updates) ||
-        ('strokeAlignment' in updates) ||
-        ('strokeDasharray' in updates) ||
-        ('strokeDashoffset' in updates) ||
-        ('strokeDashCap' in updates) ||
-        ('width' in updates) ||
-        ('height' in updates) ||
-        ('iconFontName' in updates) ||
-        ('iconFontFamily' in updates))
+      ('fills' in updates ||
+        'strokes' in updates ||
+        'stroke' in updates ||
+        'strokeOpacity' in updates ||
+        'strokeWidth' in updates ||
+        'strokeLinecap' in updates ||
+        'strokeLinejoin' in updates ||
+        'strokeAlignment' in updates ||
+        'strokeDasharray' in updates ||
+        'strokeDashoffset' in updates ||
+        'strokeDashCap' in updates ||
+        'width' in updates ||
+        'height' in updates ||
+        'iconFontName' in updates ||
+        'iconFontFamily' in updates)
     ) {
       syncIconFontChildrenFromUpdatedNode(
         entity,
@@ -2161,18 +2075,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     const gType = (element as SerializedNode).type;
     if (
       gType === 'g' &&
-      (('fills' in updates) ||
-        ('strokes' in updates) ||
-        ('stroke' in updates) ||
-        ('strokeOpacity' in updates) ||
-        ('strokeWidth' in updates) ||
-        ('fillRule' in updates) ||
-        ('opacity' in updates) ||
-        ('strokeLinecap' in updates) ||
-        ('strokeLinejoin' in updates) ||
-        ('strokeDasharray' in updates) ||
-        ('strokeDashoffset' in updates) ||
-        ('strokeDashCap' in updates))
+      ('fills' in updates ||
+        'strokes' in updates ||
+        'stroke' in updates ||
+        'strokeOpacity' in updates ||
+        'strokeWidth' in updates ||
+        'fillRule' in updates ||
+        'opacity' in updates ||
+        'strokeLinecap' in updates ||
+        'strokeLinejoin' in updates ||
+        'strokeDasharray' in updates ||
+        'strokeDashoffset' in updates ||
+        'strokeDashCap' in updates)
     ) {
       safeAddComponent(
         entity,

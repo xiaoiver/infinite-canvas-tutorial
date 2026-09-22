@@ -4,79 +4,36 @@
 
 import { AppState } from '../context';
 import { API } from '../API';
+import { documentValueEqual } from '../document';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { SceneElementsMap } from './ElementsChange';
-
-const NON_UNDOABLE_APP_STATE_KEYS = [
-  'cameraZoom',
-  'cameraX',
-  'cameraY',
-  /** 属性面板分区展开为纯 UI，不参与撤销栈 */
-  'propertiesPanelSectionsOpen',
-] as const satisfies readonly (keyof AppState)[];
-
-const stripNonUndoableAppState = <T extends Partial<AppState>>(state: T): T => {
-  const next = { ...state };
-  NON_UNDOABLE_APP_STATE_KEYS.forEach((key) => {
-    delete next[key];
-  });
-  return next;
-};
+import { observeAppState, ObservedAppState } from './ObservedAppState';
 
 export class AppStateChange implements Change<AppState> {
   private constructor(
-    private readonly delta: Delta<AppState>,
+    private readonly delta: Delta<ObservedAppState>,
     private readonly api: API,
-  ) { }
+  ) {}
 
   static empty() {
     return new AppStateChange(Delta.create({}, {}), undefined);
   }
 
-  static calculate<T extends AppState>(
+  static calculate<T extends ObservedAppState>(
     prevAppState: T,
     nextAppState: T,
     api: API,
   ): AppStateChange {
-    const prevFiltered = stripNonUndoableAppState(prevAppState);
-    const nextFiltered = stripNonUndoableAppState(nextAppState);
-
     const delta = Delta.calculate(
-      prevFiltered,
-      nextFiltered,
+      observeAppState(prevAppState),
+      observeAppState(nextAppState),
       undefined,
       // AppStateChange.postProcess,
     );
 
     return new AppStateChange(delta, api);
   }
-
-  // private static postProcess<T extends ObservedAppState>(
-  //   deleted: Partial<T>,
-  //   inserted: Partial<T>,
-  // ): [Partial<T>, Partial<T>] {
-  //   try {
-  //     Delta.diffObjects(
-  //       deleted,
-  //       inserted,
-  //       "selectedElementIds",
-  //       // ts language server has a bit trouble resolving this, so we are giving it a little push
-  //       (_) => true as ValueOf<T["selectedElementIds"]>,
-  //     );
-  //     Delta.diffObjects(
-  //       deleted,
-  //       inserted,
-  //       "selectedGroupIds",
-  //       (prevValue) => (prevValue ?? false) as ValueOf<T["selectedGroupIds"]>,
-  //     );
-  //   } catch (e) {
-  //     // if postprocessing fails it does not make sense to bubble up, but let's make sure we know about it
-  //     console.error(`Couldn't postprocess appstate change deltas.`);
-  //   } finally {
-  //     return [deleted, inserted];
-  //   }
-  // }
 
   inverse(): AppStateChange {
     const inversedDelta = Delta.create(this.delta.inserted, this.delta.deleted);
@@ -87,7 +44,7 @@ export class AppStateChange implements Change<AppState> {
     appState: AppState,
     nextElements: SceneElementsMap,
   ): [AppState, boolean] {
-    const directlyApplicablePartial = stripNonUndoableAppState(this.delta.inserted);
+    const directlyApplicablePartial = this.delta.inserted;
 
     const nextAppState = {
       ...appState,
@@ -101,7 +58,10 @@ export class AppStateChange implements Change<AppState> {
     );
 
     if (this.api) {
-      this.api.setAppState(nextAppState, { recordDesignVariableUndo: false });
+      this.api.setAppState(nextAppState, {
+        recordDesignVariableUndo: false,
+        replaceVariables: true,
+      });
 
       // reselect or rehighlight nodes
       const {
@@ -172,7 +132,18 @@ export class AppStateChange implements Change<AppState> {
     nextAppState: AppState,
     nextElements: SceneElementsMap,
   ): boolean {
-    return true;
+    nextAppState.layersSelected = nextAppState.layersSelected.filter(
+      (id) => nextElements.has(id) && !nextElements.get(id).isDeleted,
+    );
+    return (
+      prevAppState.filter !== nextAppState.filter ||
+      !documentValueEqual(prevAppState.variables, nextAppState.variables) ||
+      prevAppState.layersSelected.length !==
+        nextAppState.layersSelected.length ||
+      prevAppState.layersSelected.some(
+        (id, index) => id !== nextAppState.layersSelected[index],
+      )
+    );
   }
 
   isEmpty(): boolean {
