@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -31,6 +32,8 @@ import {
   RectSerializedNode,
   Selected,
   Pen,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -64,7 +67,8 @@ describe('Transformer', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -72,6 +76,8 @@ describe('Transformer', () => {
             DropShadow,
             ZIndex,
             Selected,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -94,12 +100,13 @@ describe('Transformer', () => {
         const node: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           x: 50,
           y: 50,
           width: 100,
           height: 100,
           visibility: 'visible',
+          zIndex: 0,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -108,9 +115,7 @@ describe('Transformer', () => {
         api.selectNodes([node]);
 
         entity = api
-          .getEntity({
-            id: '1',
-          })
+          .getEntity(node)
           ?.hold();
       }
     }
@@ -131,7 +136,7 @@ describe('Transformer', () => {
 
       const camera = cameraEntity.read(Camera);
       expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(cameraEntity.read(Parent).children).toHaveLength(3);
+      expect(cameraEntity.read(Parent).children).toHaveLength(4);
       expect(cameraEntity.read(Parent).children[0].isSame(entity)).toBeTruthy();
     }
 

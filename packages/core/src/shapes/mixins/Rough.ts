@@ -42,7 +42,9 @@ export interface IRough
     | 'cross-hatch'
     | 'dots'
     | 'dashed'
-    | 'zigzag-line';
+    | 'zigzag-line'
+    /** Generative watercolor-like fill (not a Rough.js primitive; rendered via @watercolorizer/watercolorizer). */
+    | 'watercolor';
 
   /**
    * Numeric value representing the width of the hachure lines. Default value of the fillWeight is set to half the strokeWidth of that shape.

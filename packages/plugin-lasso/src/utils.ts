@@ -39,9 +39,9 @@ export function selectByLassoPath(api: API, lassoPath: [number, number][]) {
       const { x, y, width, height } = api.getNodeByEntity(e);
       points.push(
         [x, y],
-        [x + width, y],
-        [x + width, y + height],
-        [x, y + height],
+        [(x as number) + (width as number), y],
+        [(x as number) + (width as number), (y as number) + (height as number)],
+        [(x as number), (y as number) + (height as number)],
       );
     } else if (e.has(Polyline)) {
       points.push(

@@ -3,12 +3,16 @@ outline: deep
 description: '学习将画布内容导出为PNG、JPEG和SVG格式图片。实现图片在画布中的渲染，并扩展SVG能力以支持更多设计工具特性。'
 ---
 
+<script setup>
+import ObjectFit from '../../components/ObjectFit.vue';
+</script>
+
 # 课程 10 - 图片导入导出
 
 图片导入导出在无限画布中是一个非常重要的功能，通过图片产物可以和其他工具打通。因此虽然目前我们的画布绘制能力还很有限，但不妨提前考虑和图片相关的问题。在这节课中你将学习到以下内容：
 
--   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
--   在画布中渲染图片
+-   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片，对于带有时间动画的效果导出成 GIF 格式
+-   在画布中渲染图片，以及填充层的 `object-fit` / `object-position`
 -   拓展 SVG 的能力，以 `stroke-alignment` 为例
 
 ## 将画布内容导出成图片 {#export-canvas-to-image}
@@ -506,6 +510,37 @@ Object.entries(rest).forEach(([key, value]) => {
 });
 ```
 
+#### [WIP] 内联 Web 字体 {#inlined-web-font}
+
+导出成 SVG 时，如果使用了 Web 字体，希望能将它内联在文件中。当然由于字体文件的大小，需要在运行时做一些按需裁剪。下面是 Excalidraw 的处理过程，详见：[Font subsetting in excalidraw]
+
+![source: https://link.excalidraw.com/readonly/MbbnWPSWXgadXdtmzgeO](https://github.com/user-attachments/assets/e255df0a-13de-4cb6-ae2e-9e885b643c63)
+
+### 导出 GIF {#to-gif}
+
+在后续的 [课程 30 - 时间动画] 中，我们会介绍基于后处理和时间变量实现的动画效果。如果想导出动画，就需要 GIF 或者 MOV 等格式了，我们先来看前者如何实现。
+
+1. 在渲染管线中要支持传入当前的帧序号
+2. 导出画布内容成 PNG，上一小节已经介绍过
+3. 读取像素数据进行调色，例如每帧 256 色。在允许略损的前提下，改为 128 或 64 色 通常能明显减小文件，带渐变/照片的画面会更容易起噪点
+4. 每帧独立调色板：当前是每帧一个 palette（writeFrame 里每帧都 quantize），对扁平 UI 很友好，但对帧间变化小的循环，若改为固定全局调色板或更少关键帧会更省，但实现成本明显更高
+
+```ts
+import { GIFEncoder, applyPalette, quantize } from 'gifenc';
+
+const gif = GIFEncoder();
+for (let i = 0; i < frameCount; i++) {
+    renderFrame(i); // 1.
+    const dataUrl = el.toDataURL('image/png', pngQuality); // 2.
+    const imageData = await imageDataFromPngDataUrl(dataUrl, w, h, ctx!);
+    const palette = quantize(imageData.data, 256); // 3.
+    const index = applyPalette(imageData.data, palette); // 4.
+    gif.writeFrame(index, w, h, { palette, delay });
+}
+gif.finish();
+return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
+```
+
 ### 导出 PDF {#to-pdf}
 
 现在像素和矢量图都有了，如果还想导出成 PDF 可以使用 [jsPDF]，它提供了添加图片的 API，限于篇幅这里就不介绍了。
@@ -675,9 +710,7 @@ call(() => {
     $icCanvas3.parentElement.appendChild($stats);
 
     $icCanvas3.addEventListener('ic-ready', async (e) => {
-        const image = await Utils.loadImage(
-            'https://infinitecanvas.cc/canvas.png',
-        );
+        const image = await Utils.loadImage('/canvas.png');
 
         const canvas = e.detail;
 
@@ -747,6 +780,56 @@ export class RenderCache {
         }
         return sampler;
     }
+}
+```
+
+### 对象适应 {#object-fit}
+
+矩形几何框与图片固有宽高比往往不一致。若始终使用 `drawImage(0, 0, width, height)` 拉伸绘制，图标与照片都会变形。设计工具里通常提供「适应 / 填充 / 裁切」等模式；我们沿用 CSS 的 [object-fit] 与 [object-position]，在 `FillLayers` 的 `type: 'image'` 层上声明：
+
+```ts
+fills: [
+    {
+        type: 'image',
+        value: '/canvas.png',
+        objectFit: 'contain',
+        objectPosition: 'top left',
+    },
+];
+```
+
+| `objectFit`           | 行为                                           |
+| --------------------- | ---------------------------------------------- |
+| `fill`                | 拉伸铺满几何框（**默认**，与早期栅格行为一致） |
+| `contain`             | 等比缩放，完整显示图片，框内可能留白           |
+| `cover`               | 等比缩放，铺满几何框，超出部分裁切             |
+| `none` / `scale-down` | 与 CSS 语义一致                                |
+
+与 Figma 图片缩放、Pencil `mode`（`stretch` / `fill` / `fit`）等的对应关系，见 [对象适应示例](/zh/example/object-fit)。
+
+实现上在 CPU 侧将图片栅格为纹理：按 `objectFit` 计算绘制矩形并写入画布。`contain` / `cover` 时纹理像素尺寸取**几何框 × 设备像素比**，而不是 `max(图源宽, 几何宽)`——否则整图会铺满整张纹理，贴回方框后视觉上仍像 `fill` 拉伸。
+
+<ObjectFit />
+
+### iOS Live Photo {#ios-live-photo}
+
+iOS Live Photo 在文件层面通常是 HEIC 静态图 + 配套 MOV。浏览器里的 `<img>` 或者 `@loaders.gl/images` 都不能直接解码 HEIC。
+
+我们想将尽量与普通图片一样处理，先解出一帧静态位图再写入纹理。至于在画布里播 Live Photo 视频，需要后续再单独实现组件，提供点按播放等功能。
+
+```ts
+import heic2any from 'heic2any';
+
+async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
+    const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
+        heic2any({
+            blob,
+            toType,
+            quality: toType === 'image/jpeg' ? quality ?? 0.92 : 1,
+        });
+
+    const converted = await run('image/png');
+    return createImageBitmap(converted);
 }
 ```
 
@@ -961,3 +1044,7 @@ function strokeOffset(
 [JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
 [viewBox]: https://developer.mozilla.org/zh-CN/docs/Web/SVG/Reference/Attribute/viewBox
+[Font subsetting in excalidraw]: https://github.com/excalidraw/excalidraw/issues/1972#issuecomment-2417744618
+[课程 30 - 时间动画]: /zh/guide/lesson-030#time-animation
+[object-fit]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/Reference/Properties/object-fit
+[object-position]: https://developer.mozilla.org/zh-CN/docs/Web/CSS/Reference/Properties/object-position

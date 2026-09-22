@@ -11,6 +11,7 @@ import {
 
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { pendingCanvases } from '../API';
+import { readStoredThemePreference } from '../theme-preference-storage';
 
 import '@spectrum-web-components/theme/sp-theme.js';
 import '@spectrum-web-components/theme/src/themes.js';
@@ -37,10 +38,28 @@ import '@spectrum-web-components/textfield/sp-textfield.js';
 import '@spectrum-web-components/thumbnail/sp-thumbnail.js';
 import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/popover/sp-popover.js';
 import '@spectrum-web-components/overlay/overlay-trigger.js';
+import '@spectrum-web-components/divider/sp-divider.js';
 
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-add-to.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-bottom.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-center.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-middle.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-align-top.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-horiz.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-distribute-space-vert.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-bottom.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-margin-top.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-bottom.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-left.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-padding-top.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-delete.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-remove.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
@@ -52,6 +71,11 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-down.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-chevron-right.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-layers.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-properties.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-animation.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-clock.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-play.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-pause.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-refresh.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-show-menu.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-stroke-width.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-hand.js';
@@ -80,17 +104,36 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-rectangle.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-ellipse.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-line.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-annotate-pen.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-code.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-brush.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-rect-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-image.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up-right.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-up.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-arrow-down.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-send.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-find-and-replace.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-sharpen.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-polygon-select.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-comment.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-image-auto-mode.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-vector-draw.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-region-select.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-crop.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-checkmark.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-cancel.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-group.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-ungroup.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-link.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-color-palette.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-asterisk.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-graph-profit-curve.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-move.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-draw.js';
+import './icons/sp-icon-pentagon';
+import './icons/sp-icon-triangle';
 
 export const TOP_NAVBAR_HEIGHT = 48;
 
@@ -116,10 +159,24 @@ export class InfiniteCanvas extends LitElement {
       left: 0;
     }
 
+    ic-spectrum-penbar-crop {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+    }
+
     ic-spectrum-taskbar {
       position: absolute;
       top: 0;
       right: 0;
+    }
+
+    ic-spectrum-timeline-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
     }
 
     ic-spectrum-text-editor {
@@ -171,7 +228,7 @@ export class InfiniteCanvas extends LitElement {
     this.updateComplete.then(() => this.resizeObserver.observe(this));
 
     this.addEventListener('theme-change', (e: CustomEvent) => {
-      this.theme = e.detail.isDark ? 'dark' : 'light';
+      this.theme = e.detail.themeMode;
     });
   }
 
@@ -179,7 +236,9 @@ export class InfiniteCanvas extends LitElement {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
 
-    this.apiProvider.value?.destroy();
+    // Defer so shadow-DOM children (context-menu, text-editor, …) can unbind first.
+    const api = this.apiProvider.value;
+    queueMicrotask(() => api?.destroy());
   }
 
   private handleResize(entries: ResizeObserverEntry[]) {
@@ -189,9 +248,11 @@ export class InfiniteCanvas extends LitElement {
 
     if (width && height) {
       const $canvas = this.shadowRoot?.querySelector('canvas');
-      $canvas.width = Math.round(width * dpr);
-      $canvas.height = Math.round(
-        (height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr,
+      // Avoid 0-sized backing store (e.g. tiny layout rects) — incomplete default FBO.
+      $canvas.width = Math.max(1, Math.floor(width * dpr));
+      $canvas.height = Math.max(
+        1,
+        Math.floor((height - (topbarVisible ? TOP_NAVBAR_HEIGHT : 0)) * dpr),
       );
 
       this.apiProvider.value?.resizeCanvas(
@@ -209,6 +270,7 @@ export class InfiniteCanvas extends LitElement {
 
       this.appStateProvider.value = {
         ...getDefaultAppState(),
+        ...readStoredThemePreference(),
         ...this.appState,
       };
       this.nodesProvider.value = this.nodes;
@@ -250,6 +312,10 @@ export class InfiniteCanvas extends LitElement {
       $svgLayer.style.pointerEvents = 'none';
 
       const { width, height } = this.getBoundingClientRect();
+      const logicalHeight = topbarVisible ? height - TOP_NAVBAR_HEIGHT : height;
+      const dpr = window.devicePixelRatio;
+      $canvas.width = Math.max(1, Math.floor(width * dpr));
+      $canvas.height = Math.max(1, Math.floor(logicalHeight * dpr));
 
       pendingCanvases.push({
         container: this,
@@ -257,11 +323,9 @@ export class InfiniteCanvas extends LitElement {
           element: $canvas,
           htmlLayer: $htmlLayer,
           svgLayer: $svgLayer,
-          width: Math.round(width),
-          height: Math.round(
-            topbarVisible ? height - TOP_NAVBAR_HEIGHT : height,
-          ),
-          devicePixelRatio: window.devicePixelRatio,
+          width,
+          height: logicalHeight,
+          devicePixelRatio: dpr,
           renderer,
           shaderCompilerPath,
         },
@@ -300,16 +364,15 @@ export class InfiniteCanvas extends LitElement {
           html`${$svgLayer}${$htmlLayer}<ic-spectrum-top-navbar
             ></ic-spectrum-top-navbar>${$canvas}
             <ic-spectrum-penbar
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; left: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; left: 0;`}
             >
               <slot name="penbar-item" slot="penbar-item"></slot>
             </ic-spectrum-penbar>
+            <ic-spectrum-penbar-crop></ic-spectrum-penbar-crop>
             <ic-spectrum-taskbar
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; right: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; right: 0;`}
             >
               <slot name="taskbar-item" slot="taskbar-item"></slot>
               <slot name="taskbar-panel" slot="taskbar-panel"></slot>
@@ -317,16 +380,15 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
             <ic-spectrum-context-menu></ic-spectrum-context-menu>
             <ic-spectrum-text-editor
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; left: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; left: 0;`}
             ></ic-spectrum-text-editor>
             <ic-spectrum-comments
-              style=${`top: ${
-                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-              }px; left: 0;`}
+              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+            }px; left: 0;`}
             ></ic-spectrum-comments>
-            <ic-spectrum-mask></ic-spectrum-mask>`,
+            <ic-spectrum-mask></ic-spectrum-mask>
+            <ic-spectrum-timeline-panel></ic-spectrum-timeline-panel>`,
         ),
       error: (e: Error) => {
         console.error(e);

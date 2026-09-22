@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import {
   Canvas,
   ComputedCamera,
@@ -5,9 +6,20 @@ import {
   API,
   StateManagement,
   Commands,
+  ThemePreference,
+  resolveThemeModeFromPreference,
+  DOMAdapter,
+  deserializePoints,
+  RectSerializedNode,
+  AppState,
+  Mesh3DLayerRegistration,
+  type Adapter,
 } from '@infinite-canvas-tutorial/ecs';
 import { type LitElement } from 'lit';
 import { Event } from './event';
+import { getDataURL, updateAndSelectNodes } from './utils';
+import { isString, path2Absolute } from '@antv/util';
+import { persistThemePreference } from './theme-preference-storage';
 
 export interface Comment {
   type: 'comment';
@@ -42,31 +54,66 @@ export const pendingCanvases: {
   camera: Partial<ComputedCamera>;
 }[] = [];
 
-// const PenMap = {
-//   [Pen.BRUSH]: {
-//     icon: html`<sp-icon-brush slot="icon"></sp-icon-brush>`,
-//     label: msg(str`Brush`),
-//   },
-//   [Pen.VECTOR_NETWORK]: {
-//     icon: html`<sp-icon-vector-draw slot="icon"></sp-icon-vector-draw>`,
-//     label: msg(str`Vector Network`),
-//   },
-//   [Pen.COMMENT]: {
-//     icon: html`<sp-icon-comment slot="icon"></sp-icon-comment>`,
-//     label: msg(str`Comment`),
-//   },
-// };
+/**
+ * Canvas containers waiting for {@link GPUResource} before {@link Event.READY}.
+ * Filled in InitCanvas, drained in EmitCanvasReady.
+ */
+export const pendingGpuReadyDispatch: {
+  container: LitElement;
+  api: API;
+}[] = [];
+
+export type MermaidPasteStyleFn = (nodes: SerializedNode[]) => void;
 
 /**
  * Emit CustomEvents for the canvas.
  */
 export class ExtendedAPI extends API {
+  #mermaidPasteStyler?: MermaidPasteStyleFn;
+
+  #colorSchemeMql?: MediaQueryList;
+
+  #onColorSchemeChange = () => {
+    const s = this.getAppState();
+    if (s.themePreference !== 'system') {
+      return;
+    }
+    const next = resolveThemeModeFromPreference('system');
+    if (next === s.themeMode) {
+      return;
+    }
+    this.setAppState({ themeMode: next });
+  };
+
   constructor(
     stateManagement: StateManagement,
     commands: Commands,
     public element: LitElement,
   ) {
     super(stateManagement, commands);
+    if (typeof window !== 'undefined') {
+      this.#colorSchemeMql = window.matchMedia('(prefers-color-scheme: dark)');
+      this.#colorSchemeMql.addEventListener(
+        'change',
+        this.#onColorSchemeChange,
+      );
+    }
+  }
+
+  registerMermaidPasteStyler(fn: MermaidPasteStyleFn): void {
+    this.#mermaidPasteStyler = fn;
+  }
+
+  unregisterMermaidPasteStyler(): void {
+    this.#mermaidPasteStyler = undefined;
+  }
+
+  /**
+   * Invokes the styler from {@link registerMermaidPasteStyler}, if any.
+   * Used by the Mermaid paste handler (`tryPasteMermaid` in mermaid-paste).
+   */
+  applyMermaidPasteStyler(nodes: SerializedNode[]): void {
+    this.#mermaidPasteStyler?.(nodes);
   }
 
   resizeCanvas(width: number, height: number) {
@@ -91,18 +138,20 @@ export class ExtendedAPI extends API {
     );
   }
 
-  updateNode(
-    node: SerializedNode,
-    diff?: Partial<SerializedNode>,
-    updateAppState = true,
-  ) {
-    super.updateNode(node, diff, updateAppState);
-
-    if (updateAppState) {
-      this.element.dispatchEvent(
-        new CustomEvent(Event.NODE_UPDATED, { detail: { node } }),
-      );
+  setMesh3DLayers(layers: Mesh3DLayerRegistration[]) {
+    const changed = super.setMesh3DLayers(layers);
+    if (changed) {
+      this.element.dispatchEvent(new CustomEvent(Event.MESH3D_LAYERS_CHANGED));
     }
+    return changed;
+  }
+
+  setSelectedMesh3DLayerIds(ids: string[]) {
+    const changed = super.setSelectedMesh3DLayerIds(ids);
+    if (changed) {
+      this.element.dispatchEvent(new CustomEvent(Event.MESH3D_LAYERS_CHANGED));
+    }
+    return changed;
   }
 
   updateNodes(nodes: SerializedNode[], updateAppState = true) {
@@ -139,6 +188,11 @@ export class ExtendedAPI extends API {
    * Delete Canvas component
    */
   destroy() {
+    this.#colorSchemeMql?.removeEventListener(
+      'change',
+      this.#onColorSchemeChange,
+    );
+    this.#colorSchemeMql = undefined;
     super.destroy();
     this.element.dispatchEvent(new CustomEvent(Event.DESTROY));
   }
@@ -164,5 +218,176 @@ export class ExtendedAPI extends API {
   }
   getLocale() {
     throw new Error('Method not implemented.');
+  }
+
+  setAppState(
+    appState: Partial<AppState>,
+    options?: {
+      recordDesignVariableUndo?: boolean;
+      /** 透传 ECS：为 true 时整表替换 `variables` */
+      replaceVariables?: boolean;
+    },
+  ) {
+    super.setAppState(appState, options);
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'themePreference') &&
+      appState.themePreference !== undefined
+    ) {
+      persistThemePreference(appState.themePreference as ThemePreference);
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(appState, 'themeMode') ||
+      Object.prototype.hasOwnProperty.call(appState, 'themePreference')
+    ) {
+      const { themeMode } = this.getAppState();
+      this.element.dispatchEvent(
+        new CustomEvent('theme-change', {
+          detail: {
+            themeMode,
+          },
+          bubbles: true,
+          composed: true,
+        }),
+      );
+    }
+  }
+
+  async createImageFromFile(
+    file: File | string,
+    {
+      position,
+      heuristicResize,
+    }: Partial<{
+      position: { x: number; y: number };
+      heuristicResize: boolean;
+    }> = {},
+  ) {
+    const size = {
+      width: this.element.clientWidth,
+      height: this.element.clientHeight,
+      zoom: this.getAppState().cameraZoom,
+    };
+
+    const [image, dataURL] = await Promise.all([
+      DOMAdapter.get().createImage(
+        file as Parameters<Adapter['createImage']>[0],
+      ) as Promise<ImageBitmap>,
+      isString(file) ? Promise.resolve(file) : getDataURL(file),
+    ]);
+
+    let cdnUrl = dataURL;
+    if (!isString(file) && this.upload) {
+      try {
+        cdnUrl = await this.upload(file);
+      } catch {
+        cdnUrl = dataURL;
+      }
+    }
+
+    let height = image.height;
+    let width = image.width;
+    if (heuristicResize) {
+      // Heuristic to calculate the size of the image.
+      // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
+      const minHeight = Math.max(size.height - 120, 160);
+      // max 65% of canvas height, clamped to <300px, vh - 120px>
+      const maxHeight = Math.min(
+        minHeight,
+        Math.floor(size.height * 0.5) / size.zoom,
+      );
+      height = Math.min(image.height, maxHeight);
+      width = height * (image.width / image.height);
+    }
+
+    const maxZIndex = this.getNodes().reduce(
+      (max, node) => Math.max(max, node.zIndex ?? 0),
+      0,
+    );
+    const node: RectSerializedNode = {
+      id: uuidv4(),
+      type: 'rect',
+      x: (position?.x ?? 0) - width / 2,
+      y: (position?.y ?? 0) - height / 2,
+      width,
+      height,
+      fills: [{ type: 'image', value: cdnUrl, opacity: 1 }],
+      lockAspectRatio: true,
+      zIndex: maxZIndex + 1,
+    };
+    updateAndSelectNodes(this, this.getAppState(), [node]);
+    return node;
+  }
+
+  /**
+   * Used by image model to edit with.
+   */
+  createMask(
+    nodes: SerializedNode[],
+    relativeTo: { x: number; y: number; width: number; height: number },
+  ): HTMLCanvasElement {
+    const canvas = DOMAdapter.get().createCanvas(
+      relativeTo.width,
+      relativeTo.height,
+    ) as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d')!;
+
+    // 在图像处理和 AI 掩码（Mask）中，数值通常映射在 0 到 1 之间：
+    // 白色 (White, 值为 1 或 255)： 代表“激活”或“满分”。模型会识别这个区域，并在这里进行扩散生成。
+    // 黑色 (Black, 值为 0)： 代表“屏蔽”或“零分”。模型会忽略这个区域，或者说将其锁定，保持原图不动。
+    ctx.clearRect(0, 0, relativeTo.width, relativeTo.height);
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, relativeTo.width, relativeTo.height);
+    ctx.fillStyle = 'white';
+    ctx.strokeStyle = 'white';
+    nodes.forEach((node) => {
+      if (node.type === 'rect') {
+        const { x, y, width, height } = node;
+        ctx.fillRect(
+          x as number,
+          y as number,
+          width as number,
+          height as number,
+        );
+      } else if (node.type === 'path') {
+        const { d, strokeWidth, x, y } = node;
+        ctx.beginPath();
+        path2Absolute(d).forEach(([command, ...data]) => {
+          if (command === 'M') {
+            ctx.moveTo(data[0] + (x as number), data[1] + (y as number));
+          } else if (command === 'L') {
+            ctx.lineTo(data[0] + (x as number), data[1] + (y as number));
+          } else if (command === 'C') {
+            ctx.bezierCurveTo(
+              data[0] + (x as number),
+              data[1] + (y as number),
+              data[2] + (x as number),
+              data[3] + (y as number),
+              data[4] + (x as number),
+              data[5] + (y as number),
+            );
+          }
+        });
+        ctx.closePath();
+        ctx.fill();
+        ctx.lineWidth = strokeWidth;
+        ctx.stroke();
+      } else if (node.type === 'polyline') {
+        const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } =
+          node;
+        deserializePoints(points).forEach((point, index) => {
+          if (index === 0) {
+            ctx.moveTo(point[0] + (x as number), point[1] + (y as number));
+          } else {
+            ctx.lineTo(point[0] + (x as number), point[1] + (y as number));
+          }
+        });
+        ctx.lineWidth = strokeWidth;
+        ctx.lineCap = strokeLinecap;
+        ctx.lineJoin = strokeLinejoin;
+        ctx.stroke();
+      }
+    });
+
+    return canvas;
   }
 }

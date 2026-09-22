@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "文本投影"
+description: "在复杂背景上通过模糊与偏移提升可读性。"
 ---
+<!-- example-intro:zh -->
+
+# 文本投影
+
+文本阴影可提升照片、渐变等 **对比度**；参数语义接近 CSS 阴影，在低端 GPU 上需权衡模糊与性能。
+
+可与 [第 16 课 — 文本高级特性](/zh/guide/lesson-016) 中的样式能力对照。
+
+## 交互示例
 
 <script setup>
 import TextDropShadow from '../../components/TextDropShadow.vue'

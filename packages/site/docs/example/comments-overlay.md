@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Comment threads overlaid on the canvas"
+description: "Anchor discussions to coordinates with multiplayer backends."
 ---
+<!-- example-intro:en -->
+
+# Comment threads overlaid on the canvas
+
+Comments need **anchors**, **permissions**, and **notifications**—often layered atop CRDT doc state. This demo shows overlay UI with Liveblocks; adapt auth to your tenant model.
+
+Export comments alongside geometry for audit trails.
+
+## Interactive demo
 
 <script setup>
 import CommentsOverlay from '../components/CommentsOverlay.vue'

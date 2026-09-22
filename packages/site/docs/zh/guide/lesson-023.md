@@ -4,7 +4,6 @@ description: '实现思维导图功能和树布局算法。深入研究从d3-tre
 head:
     - ['meta', { property: 'og:title', content: '课程 23 - 思维导图' }]
 ---
-
 <script setup>
 import Tree from '../../components/Tree.vue';
 import FlexTree from '../../components/FlexTree.vue';
@@ -301,6 +300,7 @@ function moveSubtree(wm, wp, shift) {
 
 ## 扩展阅读 {#extended-reading}
 
+-   [How to mind map]
 -   [HN discussion]
 -   [Drawing Presentable Trees]
 -   [A Node-Positioning Algorithm for General Trees]
@@ -331,3 +331,4 @@ function moveSubtree(wm, wp, shift) {
 [mindmap-layouts]: https://github.com/leungwensen/mindmap-layouts
 [dagre]: https://github.com/dagrejs/dagre
 [elkjs]: https://github.com/kieler/elkjs
+[How to mind map]: https://www.figma.com/resource-library/how-to-mind-map/

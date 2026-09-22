@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -35,6 +36,8 @@ import {
   ToBeDeleted,
   Transformable,
   Highlighted,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -71,7 +74,8 @@ describe('Transformer', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -83,6 +87,8 @@ describe('Transformer', () => {
             ToBeDeleted,
             Transformable,
             Highlighted,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -105,14 +111,15 @@ describe('Transformer', () => {
         node = {
           id: '100',
           type: 'ellipse',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,
           width: 100,
           height: 50,
+          zIndex: 0,
         };
 
         api.setAppState({
@@ -136,7 +143,7 @@ describe('Transformer', () => {
 
     await app.run();
 
-    await sleep(300);
+    await sleep(1000);
 
     if (canvasEntity && cameraEntity) {
       const canvas = canvasEntity.read(Canvas);

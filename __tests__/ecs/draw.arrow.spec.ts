@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -28,6 +29,13 @@ import {
   ZIndex,
   ComputeZIndex,
   Pen,
+  ToBeDeleted,
+  PartialBinding,
+  Binded,
+  Binding,
+  Flex,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -60,12 +68,20 @@ describe('Draw arrow', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
             Name,
             ZIndex,
+            Binding,
+            Binded,
+            PartialBinding,
+            ToBeDeleted,
+            Flex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -88,7 +104,7 @@ describe('Draw arrow', () => {
         api.setAppState({
           penbarSelected: Pen.DRAW_ARROW,
           penbarDrawArrow: {
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 4,
             markerStart: 'line',
             markerEnd: 'line',
@@ -110,6 +126,14 @@ describe('Draw arrow', () => {
       );
       await sleep(100);
       $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
         createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
       );
       await sleep(100);
@@ -118,7 +142,7 @@ describe('Draw arrow', () => {
       );
     }
 
-    await sleep(300);
+    await sleep(500);
 
     const dir = `${__dirname}/snapshots`;
     await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(

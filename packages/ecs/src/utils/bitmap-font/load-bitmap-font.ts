@@ -4,7 +4,7 @@ import { bitmapFontXMLStringParser } from './bitmap-font-xml-string-parser';
 import { bitmapFontJSONParser } from './bitmap-font-json-parser';
 import { DOMAdapter } from '../../environment';
 
-const validExtensions = ['.xml', '.fnt'];
+const validExtensions = ['xml', 'fnt'];
 
 export const loadBitmapFont = {
   test(url: string): boolean {

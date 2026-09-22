@@ -94,10 +94,6 @@
   <source>Line</source>
   <target>Línea</target>
 </trans-unit>
-<trans-unit id="s6b2fedc1891a9da6">
-  <source>Arrow</source>
-  <target>Flecha</target>
-</trans-unit>
 <trans-unit id="s7d3b22d8d4ef60bb">
   <source>Rough Rectangle</source>
   <target>Rectángulo aproximado</target>
@@ -330,10 +326,6 @@
   <source>Style</source>
   <target>Estilo</target>
 </trans-unit>
-<trans-unit id="sf9caa9d2834ca145">
-  <source>Add effect</source>
-  <target>Agregar efecto</target>
-</trans-unit>
 <trans-unit id="s3432f264e3842154">
   <source>Brush settings</source>
   <target>Configuración de la brocha</target>
@@ -361,6 +353,1343 @@
 <trans-unit id="sd004bbafa47097e5">
   <source>Effects</source>
   <target>Efectos</target>
+</trans-unit>
+<trans-unit id="s33ef4300ba7aa421">
+  <source>Show layer</source>
+  <target>Mostrar capa</target>
+</trans-unit>
+<trans-unit id="s090c9a788879fbe0">
+  <source>Unlock layer</source>
+  <target>Desbloquear capa</target>
+</trans-unit>
+<trans-unit id="s6002611a64140aab">
+  <source>Lock layer</source>
+  <target>Bloquear capa</target>
+</trans-unit>
+<trans-unit id="sae3b9113b7db93a4">
+  <source>Stamp</source>
+  <target>Estampa</target>
+</trans-unit>
+<trans-unit id="s399d689c8b389917">
+  <source>Crop</source>
+  <target>Recortar</target>
+</trans-unit>
+<trans-unit id="s1c1c31804e8fa7dd">
+  <source>Clip Aspect</source>
+  <target>Aspecto de recorte</target>
+</trans-unit>
+<trans-unit id="s06f6c6f99db6b552">
+  <source>Original</source>
+  <target>Original</target>
+</trans-unit>
+<trans-unit id="s3bb9ed9dd24e9172">
+  <source>Landscape</source>
+  <target>Horizontal</target>
+</trans-unit>
+<trans-unit id="safd96a5026e4555a">
+  <source>Portrait</source>
+  <target>Vertical</target>
+</trans-unit>
+<trans-unit id="sa30f1981fd1cd441">
+  <source>Font size</source>
+  <target>Tamaño de fuente</target>
+</trans-unit>
+<trans-unit id="sf7c0eba7c822e3d6">
+  <source>Bold</source>
+  <target>Negrita</target>
+</trans-unit>
+<trans-unit id="s523eb9043213ff0d">
+  <source>Italic</source>
+  <target>Cursiva</target>
+</trans-unit>
+<trans-unit id="sb206d700d26b14ff">
+  <source>Underline</source>
+  <target>Subrayado</target>
+</trans-unit>
+<trans-unit id="s2de711db9d43b41d">
+  <source>Left align</source>
+  <target>Alinear a la izquierda</target>
+</trans-unit>
+<trans-unit id="s7cb7d5626af837f9">
+  <source>Center align</source>
+  <target>Alinear al centro</target>
+</trans-unit>
+<trans-unit id="sa4cba6ffa1d5e5e4">
+  <source>Right align</source>
+  <target>Alinear a la derecha</target>
+</trans-unit>
+<trans-unit id="s98b1cb8fb62909ec">
+  <source>Group</source>
+  <target>Grupo</target>
+</trans-unit>
+<trans-unit id="s536ea6b320f9600d">
+  <source>Ungroup</source>
+  <target>Desagrupar</target>
+</trans-unit>
+<trans-unit id="s5959334e292647e4">
+  <source>Arrow (⇧L)</source>
+  <target>Flecha (⇧L)</target>
+</trans-unit>
+<trans-unit id="sbb922fb7db16d35d">
+  <source>Filter type</source>
+  <target>Tipo de filtro</target>
+</trans-unit>
+<trans-unit id="sf7ef7bd814fbaa8a">
+  <source>Brightness</source>
+  <target>Brillo</target>
+</trans-unit>
+<trans-unit id="sda9eb7b6b70799f3">
+  <source>Contrast</source>
+  <target>Contraste</target>
+</trans-unit>
+<trans-unit id="s086e6c267ade2609">
+  <source>Saturation</source>
+  <target>Saturación</target>
+</trans-unit>
+<trans-unit id="s2bc80ed8441b0831">
+  <source>Noise</source>
+  <target>Ruido</target>
+</trans-unit>
+<trans-unit id="sb722af54c0442fa5">
+  <source>Pixelate</source>
+  <target>Pixelado</target>
+</trans-unit>
+<trans-unit id="s436c264f94710784">
+  <source>Dot screen</source>
+  <target>Pantalla de puntos</target>
+</trans-unit>
+<trans-unit id="se07f367d897e680d">
+  <source>Color halftone</source>
+  <target>Halftone de color</target>
+</trans-unit>
+<trans-unit id="sd9cec6099cc165b0">
+  <source>Halftone dots</source>
+  <target>Puntos de halftone</target>
+</trans-unit>
+<trans-unit id="s226a979f3606d1e3">
+  <source>Fluted glass</source>
+  <target>Vidrio ondulado</target>
+</trans-unit>
+<trans-unit id="s0b3ef519aa0aa4bc">
+  <source>CRT</source>
+  <target>CRT</target>
+</trans-unit>
+<trans-unit id="s154ae0b0d29de3b3">
+  <source>Vignette</source>
+  <target>Vignette</target>
+</trans-unit>
+<trans-unit id="s187fa1d813d0b3b0">
+  <source>ASCII</source>
+  <target>ASCII</target>
+</trans-unit>
+<trans-unit id="s60d2e29c01b02508">
+  <source>Glitch</source>
+  <target>Glitch</target>
+</trans-unit>
+<trans-unit id="sc7a385a1886e110f">
+  <source>Drop shadow (view only — remove or edit in code)</source>
+  <target>Sombra (solo vista — eliminar o editar en código)</target>
+</trans-unit>
+<trans-unit id="sd66cf221eb6aa66e">
+  <source>Color adjustment (view only — remove or edit in code)</source>
+  <target>Ajuste de color (solo vista — eliminar o editar en código)</target>
+</trans-unit>
+<trans-unit id="sf7a820033cc74dc1">
+  <source>Unsupported effect</source>
+  <target>Efecto no soportado</target>
+</trans-unit>
+<trans-unit id="s4ea0f21fc2a338a1">
+  <source>Move up</source>
+  <target>Mover arriba</target>
+</trans-unit>
+<trans-unit id="sb233557012dcb328">
+  <source>Move down</source>
+  <target>Mover abajo</target>
+</trans-unit>
+<trans-unit id="sea4f08110bb8f15d">
+  <source>Remove</source>
+  <target>Eliminar</target>
+</trans-unit>
+<trans-unit id="sba98a7152d80b949">
+  <source>Amount</source>
+  <target>Cantidad</target>
+</trans-unit>
+<trans-unit id="s8afc8c5aafb392d3">
+  <source>Radius</source>
+  <target>Radio</target>
+</trans-unit>
+<trans-unit id="s7f543f1d6017d187">
+  <source>Block size</source>
+  <target>Tamaño de bloque</target>
+</trans-unit>
+<trans-unit id="s2706a162264c46f1">
+  <source>Scale</source>
+  <target>Escala</target>
+</trans-unit>
+<trans-unit id="s5bb297d85a6de998">
+  <source>Angle</source>
+  <target>Ángulo</target>
+</trans-unit>
+<trans-unit id="s82caaf657b01a4d0">
+  <source>Grayscale</source>
+  <target>Escala de grises</target>
+</trans-unit>
+<trans-unit id="s50644a9c7e6bb571">
+  <source>Dot size</source>
+  <target>Tamaño de punto</target>
+</trans-unit>
+<trans-unit id="s78789724e789221c">
+  <source>Size</source>
+  <target>Tamaño</target>
+</trans-unit>
+<trans-unit id="s49534419cd9c812a">
+  <source>Hex</source>
+  <target>Hex</target>
+</trans-unit>
+<trans-unit id="s604383defa6060a5">
+  <source>Dot style</source>
+  <target>Estilo de punto</target>
+</trans-unit>
+<trans-unit id="s98aa8b9481114f33">
+  <source>Classic</source>
+  <target>Clásico</target>
+</trans-unit>
+<trans-unit id="s4bb1b0305e23ebd6">
+  <source>Gooey</source>
+  <target>Gooey</target>
+</trans-unit>
+<trans-unit id="s30d40fe142b0b028">
+  <source>Holes</source>
+  <target>Huecos</target>
+</trans-unit>
+<trans-unit id="s8aa4de24f21199d5">
+  <source>Soft</source>
+  <target>Suave</target>
+</trans-unit>
+<trans-unit id="s34de4da33d70127e">
+  <source>Original colors</source>
+  <target>Colores originales</target>
+</trans-unit>
+<trans-unit id="s8588deb1eb539dea">
+  <source>Distortion</source>
+  <target>Distorsión</target>
+</trans-unit>
+<trans-unit id="secf3bca7c1691718">
+  <source>Blur</source>
+  <target>Desenfoque</target>
+</trans-unit>
+<trans-unit id="s86ccc5d1f7cb6bdd">
+  <source>Edges</source>
+  <target>Bordes</target>
+</trans-unit>
+<trans-unit id="seb351085fc33c702">
+  <source>Curvature</source>
+  <target>Curvatura</target>
+</trans-unit>
+<trans-unit id="s5cda68f59fd34ebf">
+  <source>Line width</source>
+  <target>Ancho de línea</target>
+</trans-unit>
+<trans-unit id="s0a742747a1d9e913">
+  <source>Line contrast</source>
+  <target>Contraste de línea</target>
+</trans-unit>
+<trans-unit id="s90d5c6db54e85367">
+  <source>Vertical scanlines</source>
+  <target>Líneas de escaneo vertical</target>
+</trans-unit>
+<trans-unit id="s64d7653a61ba007a">
+  <source>Engine time (animate)</source>
+  <target>Tiempo del motor (animar)</target>
+</trans-unit>
+<trans-unit id="s48e186fb300e5464">
+  <source>Time</source>
+  <target>Tiempo</target>
+</trans-unit>
+<trans-unit id="s2481d786fecc56ec">
+  <source>RGB split</source>
+  <target>Separación RGB</target>
+</trans-unit>
+<trans-unit id="s007bd0735715b53d">
+  <source>Cell size (px)</source>
+  <target>Tamaño de celda (px)</target>
+</trans-unit>
+<trans-unit id="sf093cddb281a92d9">
+  <source>Solid glyph color</source>
+  <target>Color de glifo sólido</target>
+</trans-unit>
+<trans-unit id="s344ea8f4939cdc98">
+  <source>Color</source>
+  <target>Color</target>
+</trans-unit>
+<trans-unit id="sc1126085391aff00">
+  <source>No parameters.</source>
+  <target>Sin parámetros.</target>
+</trans-unit>
+<trans-unit id="s8ba2b22eee9bb57e">
+  <source>Add filter</source>
+  <target>Agregar filtro</target>
+</trans-unit>
+<trans-unit id="sdebf6287e31d18e5">
+  <source>Triangle</source>
+  <target>Triángulo</target>
+</trans-unit>
+<trans-unit id="sfd4354bbd26740b9">
+  <source>Pentagon</source>
+  <target>Pentágono</target>
+</trans-unit>
+<trans-unit id="sc937e3c89bb3029b">
+  <source>Hexagon</source>
+  <target>Hexágono</target>
+</trans-unit>
+<trans-unit id="s60f96e59025b5e75">
+  <source>Liquid glass</source>
+  <target>Vidrio líquido</target>
+</trans-unit>
+<trans-unit id="s16d7f19d81e4bfb3">
+  <source>Jitter</source>
+  <target>Jitter</target>
+</trans-unit>
+<trans-unit id="s5168cd5936a0aac3">
+  <source>Blocks</source>
+  <target>Bloques</target>
+</trans-unit>
+<trans-unit id="s5923a17744b5193f">
+  <source>Superellipse power</source>
+  <target>Potencia de superelipse</target>
+</trans-unit>
+<trans-unit id="sd6b7d8e3b483331a">
+  <source>Ellipse size X</source>
+  <target>Tamaño de elipse X</target>
+</trans-unit>
+<trans-unit id="sd6b7d9e3b48334cd">
+  <source>Ellipse size Y</source>
+  <target>Tamaño de elipse Y</target>
+</trans-unit>
+<trans-unit id="sf2747aaf366495ef">
+  <source>Refraction power</source>
+  <target>Potencia de refracción</target>
+</trans-unit>
+<trans-unit id="sef275b8fe7158e2c">
+  <source>Grain</source>
+  <target>Granos</target>
+</trans-unit>
+<trans-unit id="s5386b74564039f44">
+  <source>Glow weight</source>
+  <target>Peso de la luz</target>
+</trans-unit>
+<trans-unit id="s5f123ba0ba0ee919">
+  <source>Glow bias</source>
+  <target>Bias de la luz</target>
+</trans-unit>
+<trans-unit id="s61b934b34daa3a39">
+  <source>Glow edge start</source>
+  <target>Inicio del borde de la luz</target>
+</trans-unit>
+<trans-unit id="s9af865ce765314a8">
+  <source>Glow edge end</source>
+  <target>Fin del borde de la luz</target>
+</trans-unit>
+<trans-unit id="sbe3eb643ceef95fc">
+  <source>Center X</source>
+  <target>Centro X</target>
+</trans-unit>
+<trans-unit id="sbe3eb743ceef97af">
+  <source>Center Y</source>
+  <target>Centro Y</target>
+</trans-unit>
+<trans-unit id="s9c98cb4652a54001">
+  <source>Scale X</source>
+  <target>Escala X</target>
+</trans-unit>
+<trans-unit id="s9c98ca4652a53e4e">
+  <source>Scale Y</source>
+  <target>Escala Y</target>
+</trans-unit>
+<trans-unit id="s235371e20fb1b261">
+  <source>f(dist) coefficients a–d use defaults; edit the filter string to tune them.</source>
+  <target>Los coeficientes f(dist) a–d usan valores por defecto; edite la cadena de filtro para ajustarlos.</target>
+</trans-unit>
+<trans-unit id="s177d1b8ad205f175">
+  <source>Flex item</source>
+</trans-unit>
+<trans-unit id="s5a053ed77fa9c1bc">
+  <source>Align self</source>
+</trans-unit>
+<trans-unit id="sdb73788b3c975f16">
+  <source>Auto</source>
+</trans-unit>
+<trans-unit id="sae1c7f13b7c0c47f">
+  <source>Start</source>
+</trans-unit>
+<trans-unit id="sd8f923198e0c5c6a">
+  <source>End</source>
+</trans-unit>
+<trans-unit id="s1749014f3f87fa6a">
+  <source>Stretch</source>
+</trans-unit>
+<trans-unit id="s0c4593d81f147042">
+  <source>Baseline</source>
+</trans-unit>
+<trans-unit id="s25daad7e4546237a">
+  <source>Grow</source>
+</trans-unit>
+<trans-unit id="s16de78e6a34998f0">
+  <source>Shrink</source>
+</trans-unit>
+<trans-unit id="sed2d55e3f811e34d">
+  <source>Basis</source>
+</trans-unit>
+<trans-unit id="s2e4818861000b13f">
+  <source>Layout</source>
+</trans-unit>
+<trans-unit id="s7d8103f6f06f83d6">
+  <source>Padding</source>
+</trans-unit>
+<trans-unit id="sf0e20b3d00cae9e8">
+  <source>Padding per side</source>
+</trans-unit>
+<trans-unit id="s6d02dc19e21eb49c">
+  <source>Top</source>
+</trans-unit>
+<trans-unit id="s366991b9c9287765">
+  <source>Right</source>
+</trans-unit>
+<trans-unit id="sc980855a000b76ea">
+  <source>Bottom</source>
+</trans-unit>
+<trans-unit id="sa5c371b4bb75e590">
+  <source>Left</source>
+</trans-unit>
+<trans-unit id="s3f1e7a3f2b283d3b">
+  <source>Margin</source>
+</trans-unit>
+<trans-unit id="sf989bd309d52876b">
+  <source>Margin per side</source>
+</trans-unit>
+<trans-unit id="seaf97719986faf4f">
+  <source>Gap</source>
+</trans-unit>
+<trans-unit id="s97881699a2b21d5b">
+  <source>Row gap</source>
+</trans-unit>
+<trans-unit id="s1aa1cb63ad44bc6f">
+  <source>Column gap</source>
+</trans-unit>
+<trans-unit id="sd23ee5e66df8400a">
+  <source>Direction</source>
+</trans-unit>
+<trans-unit id="sa013e119fec906fb">
+  <source>Row</source>
+</trans-unit>
+<trans-unit id="s69e69d90b504f889">
+  <source>Row reverse</source>
+</trans-unit>
+<trans-unit id="s9e40e59654c8ad67">
+  <source>Column</source>
+</trans-unit>
+<trans-unit id="s344a758af71a1ce5">
+  <source>Column reverse</source>
+</trans-unit>
+<trans-unit id="sb4d3986485cf1326">
+  <source>Align items</source>
+</trans-unit>
+<trans-unit id="sbe6283ffe834c65a">
+  <source>Justify content</source>
+</trans-unit>
+<trans-unit id="s1af8b67d1c85c811">
+  <source>Space between</source>
+</trans-unit>
+<trans-unit id="s456a8d744313852a">
+  <source>Space around</source>
+</trans-unit>
+<trans-unit id="s66765c420ee578e4">
+  <source>Space evenly</source>
+</trans-unit>
+<trans-unit id="se619a501d1bfe6a5">
+  <source>Wrap</source>
+</trans-unit>
+<trans-unit id="sd28b1ebf1010108a">
+  <source>No wrap</source>
+</trans-unit>
+<trans-unit id="se935f4fce5fafa2b">
+  <source>Wrap reverse</source>
+</trans-unit>
+<trans-unit id="sca83f41c7d4589b9">
+  <source>No design variables</source>
+  <target>No hay variables de diseño</target>
+</trans-unit>
+<trans-unit id="s80cdcae785c5bdb5">
+  <source>Attach a variable</source>
+  <target>Adjuntar una variable</target>
+</trans-unit>
+<trans-unit id="s77f5c18e246c6638">
+  <source>color</source>
+  <target>color</target>
+</trans-unit>
+<trans-unit id="sbc07816d6f670ae8">
+  <source>color variable</source>
+  <target>variable de color</target>
+</trans-unit>
+<trans-unit id="s704be0d8faaffc58">
+  <source>string</source>
+  <target>cadena</target>
+</trans-unit>
+<trans-unit id="s2017380f75700808">
+  <source>string variable</source>
+  <target>variable de cadena</target>
+</trans-unit>
+<trans-unit id="s8031a80d73f6ebe0">
+  <source>number</source>
+  <target>número</target>
+</trans-unit>
+<trans-unit id="s6ca5bba6ffb95ee0">
+  <source>number variable</source>
+  <target>variable de número</target>
+</trans-unit>
+<trans-unit id="sd2223afb7d6b100d">
+  <source>Type</source>
+  <target>Tipo</target>
+</trans-unit>
+<trans-unit id="s7ce4fd9430e80cea">
+  <source>value</source>
+  <target>valor</target>
+</trans-unit>
+<trans-unit id="s94d9feb29f2a4e55">
+  <source>Variable name; use $ in nodes, e.g. $color.background</source>
+  <target>Nombre de variable; use $ en nodos, ej. $color.background</target>
+</trans-unit>
+<trans-unit id="sc4bcadba8e631b86">
+  <source>name</source>
+  <target>nombre</target>
+</trans-unit>
+<trans-unit id="s18b247f70df1543b">
+  <source>Remove variable</source>
+  <target>Eliminar variable</target>
+</trans-unit>
+<trans-unit id="sb39940945f8f7122">
+  <source>Variables</source>
+  <target>Variables</target>
+</trans-unit>
+<trans-unit id="sef49aec68fd1dc66">
+  <source>Name</source>
+  <target>Nombre</target>
+</trans-unit>
+<trans-unit id="s0734e535bfa13b74">
+  <source>Add variable</source>
+  <target>Agregar variable</target>
+</trans-unit>
+<trans-unit id="sb59a9ea6ab1822ab">
+  <source>e.g. --primary</source>
+  <target>ej. --primary</target>
+</trans-unit>
+<trans-unit id="s45639242eac947f9">
+  <source>Default for Light &amp; Dark</source>
+  <target>Por defecto para Light &amp; Dark</target>
+</trans-unit>
+<trans-unit id="sf9aee319a006c9b4">
+  <source>Add</source>
+  <target>Agregar</target>
+</trans-unit>
+<trans-unit id="sf971293125278ee8">
+  <source>Tsunami</source>
+  <target>Tsunami</target>
+</trans-unit>
+<trans-unit id="s29ffc7a7e41b1e78">
+  <source>Burn</source>
+  <target>Quemadura</target>
+</trans-unit>
+<trans-unit id="s4d1fb19bfe713712">
+  <source>Liquid metal</source>
+  <target>Metal líquido</target>
+</trans-unit>
+<trans-unit id="s7a2996dcc89ab045">
+  <source>Heat map</source>
+  <target>Mapa de calor</target>
+</trans-unit>
+<trans-unit id="s8b377708f8e5da8d">
+  <source>Gem smoke</source>
+  <target>Humo de gemas</target>
+</trans-unit>
+<trans-unit id="s4b641223682bd42b">
+  <source>Stripe count</source>
+  <target>Cantidad de franjas</target>
+</trans-unit>
+<trans-unit id="sc03e7e19043dfc6f">
+  <source>Stripe angle</source>
+  <target>Ángulo de franja</target>
+</trans-unit>
+<trans-unit id="sc3aa6f478f411744">
+  <source>Reflection</source>
+  <target>Reflexión</target>
+</trans-unit>
+<trans-unit id="sf5a0cb40762fc01b">
+  <source>Disturbance</source>
+  <target>Perturbación</target>
+</trans-unit>
+<trans-unit id="s2ce392a58aed817e">
+  <source>Contortion</source>
+  <target>Contorsión</target>
+</trans-unit>
+<trans-unit id="s03cf111991e2270b">
+  <source>Dispersion</source>
+  <target>Dispersión</target>
+</trans-unit>
+<trans-unit id="s1a72e12fa6330b64">
+  <source>Drift</source>
+  <target>Deriva</target>
+</trans-unit>
+<trans-unit id="s310242825565f001">
+  <source>Shadow</source>
+  <target>Sombra</target>
+</trans-unit>
+<trans-unit id="sf0257bb5b7130aaa">
+  <source>Offset</source>
+  <target>Desplazamiento</target>
+</trans-unit>
+<trans-unit id="sc793b8057bc684f6">
+  <source>Luminance blend (reflection)</source>
+  <target>Blend de luminancia (reflexión)</target>
+</trans-unit>
+<trans-unit id="seee966137d475634">
+  <source>Burn amount</source>
+  <target>Cantidad de quemadura</target>
+</trans-unit>
+<trans-unit id="s812b30a6166ff13b">
+  <source>Density</source>
+  <target>Densidad</target>
+</trans-unit>
+<trans-unit id="sb06b81d320df487a">
+  <source>Softness</source>
+  <target>Suavidad</target>
+</trans-unit>
+<trans-unit id="s6cafdcc2365f29b9">
+  <source>UV distortion</source>
+  <target>Distorsión UV</target>
+</trans-unit>
+<trans-unit id="s3fbf6ec179ad5d7b">
+  <source>Edge color</source>
+  <target>Color de borde</target>
+</trans-unit>
+<trans-unit id="s6241fcebc2a324ea">
+  <source>Mask color</source>
+  <target>Color de máscara</target>
+</trans-unit>
+<trans-unit id="s2bfae383a30213c7">
+  <source>Invert mask</source>
+  <target>Invertir máscara</target>
+</trans-unit>
+<trans-unit id="s3bebea81093fe972">
+  <source>Transparent blend</source>
+  <target>Blend transparente</target>
+</trans-unit>
+<trans-unit id="s1e74be11d65290c2">
+  <source>Repetition</source>
+  <target>Repetición</target>
+</trans-unit>
+<trans-unit id="s045d2bc7e5f1e11c">
+  <source>Shift red</source>
+  <target>Desplazar rojo</target>
+</trans-unit>
+<trans-unit id="sd50f3227bcf9534d">
+  <source>Shift blue</source>
+  <target>Desplazar azul</target>
+</trans-unit>
+<trans-unit id="s313e5670da31f6a1">
+  <source>Contour</source>
+  <target>Contorno</target>
+</trans-unit>
+<trans-unit id="s0c7287f85dd5ff5b">
+  <source>Angle (°)</source>
+  <target>Ángulo (°)</target>
+</trans-unit>
+<trans-unit id="s48f230bed1be8eef">
+  <source>Shape (no image)</source>
+  <target>Forma (sin imagen)</target>
+</trans-unit>
+<trans-unit id="s0dc982caf06150fa">
+  <source>None (canvas border)</source>
+  <target>Ninguno (borde del lienzo)</target>
+</trans-unit>
+<trans-unit id="s14c54ca33d0f3ea9">
+  <source>Circle</source>
+  <target>Círculo</target>
+</trans-unit>
+<trans-unit id="s4d7722b9bc9187d9">
+  <source>Daisy</source>
+  <target>Daisy</target>
+</trans-unit>
+<trans-unit id="s469d5c53c3a49087">
+  <source>Diamond</source>
+  <target>Diamante</target>
+</trans-unit>
+<trans-unit id="s9d1a9b55aa40302a">
+  <source>Metaballs</source>
+  <target>Metaballs</target>
+</trans-unit>
+<trans-unit id="s2d1b8cebd3eb0969">
+  <source>Use layer as mask</source>
+  <target>Usar capa como máscara</target>
+</trans-unit>
+<trans-unit id="s1e77c146bc38c226">
+  <source>CPU Poisson edge (WebGL; Paper-style R/G)</source>
+  <target>Borde de Poisson (WebGL; estilo Paper R/G)</target>
+</trans-unit>
+<trans-unit id="s1efbfc3937d565bd">
+  <source>Background</source>
+  <target>Fondo</target>
+</trans-unit>
+<trans-unit id="s48d785fb3005fe2c">
+  <source>Tint</source>
+  <target>Tint</target>
+</trans-unit>
+<trans-unit id="sa2dc20e2aa203abc">
+  <source>Inner glow</source>
+  <target>Glow interior</target>
+</trans-unit>
+<trans-unit id="s4bbf04c0d1ff6d2d">
+  <source>Outer glow</source>
+  <target>Glow exterior</target>
+</trans-unit>
+<trans-unit id="se64ab5d1c6fdd26c">
+  <source>CPU preprocess (WebGL; RGB blur)</source>
+  <target>Preprocesamiento CPU (WebGL; desenfoque RGB)</target>
+</trans-unit>
+<trans-unit id="s12afc66dedfa3589">
+  <source>Gradient (max 10)</source>
+  <target>Gradiente (máx. 10)</target>
+</trans-unit>
+<trans-unit id="s475918e882255d64">
+  <source>Add gradient stop</source>
+  <target>Agregar punto de gradiente</target>
+</trans-unit>
+<trans-unit id="sbe1e1a6a3c524354">
+  <source>Add stop</source>
+  <target>Agregar punto</target>
+</trans-unit>
+<trans-unit id="s79824ae12d7f9b0a">
+  <source>Inner distortion</source>
+  <target>Distorsión interior</target>
+</trans-unit>
+<trans-unit id="s26bc542fe6324bcb">
+  <source>Outer distortion</source>
+  <target>Distorsión exterior</target>
+</trans-unit>
+<trans-unit id="sbdbb61805b8eec60">
+  <source>Full canvas</source>
+  <target>Lienzo completo</target>
+</trans-unit>
+<trans-unit id="sf6342bf387c5069d">
+  <source>CPU Poisson (WebGL; R/G like liquid metal)</source>
+  <target>Borde de Poisson (WebGL; estilo Metal líquido R/G)</target>
+</trans-unit>
+<trans-unit id="sdb357adf64b15738">
+  <source>Inner color</source>
+  <target>Color interior</target>
+</trans-unit>
+<trans-unit id="s1f7c47fadc2411fd">
+  <source>Smoke colors (max 6)</source>
+  <target>Colores de humo (máx. 6)</target>
+</trans-unit>
+<trans-unit id="s468e34b14d7a5c1e">
+  <source>Add smoke color</source>
+  <target>Agregar color de humo</target>
+</trans-unit>
+<trans-unit id="s50c322a3e7252623">
+  <source>Add color</source>
+  <target>Agregar color</target>
+</trans-unit>
+<trans-unit id="sff77289e9ce38465">
+  <source>Export canvas</source>
+  <target>Exportar lienzo</target>
+</trans-unit>
+<trans-unit id="s911238ec3d7f59a8">
+  <source>Export layer (1)</source>
+  <target>Exportar capa (1)</target>
+</trans-unit>
+<trans-unit id="s3b83b4a2bbfdf11a">
+  <source>Export layers (<x id="0" equiv-text="${n}"/>)</source>
+  <target>Exportar capas (<x id="0" equiv-text="${n}"/>)</target>
+</trans-unit>
+<trans-unit id="sa3c9339de23c1752">
+  <source>Format</source>
+  <target>Formato</target>
+</trans-unit>
+<trans-unit id="sfac4d631c9ceea22">
+  <source>Detach variable</source>
+  <target>Desvincular variable</target>
+</trans-unit>
+<trans-unit id="s1c5c19167672848a">
+  <source>Select a registered set</source>
+  <target>Seleccionar un conjunto registrado</target>
+</trans-unit>
+<trans-unit id="s55111b858dfbe870">
+  <source>No sets registered (use registerIconifyIconSet)</source>
+  <target>No hay conjuntos registrados (use registerIconifyIconSet)</target>
+</trans-unit>
+<trans-unit id="sab8b4cbbb1fa71fa">
+  <source>Current</source>
+  <target>Actual</target>
+</trans-unit>
+<trans-unit id="sd6d11b8c4bd5be81">
+  <source>Choose icon</source>
+  <target>Seleccionar icono</target>
+</trans-unit>
+<trans-unit id="s52d81506be796d67">
+  <source>Filter by name</source>
+  <target>Filtrar por nombre</target>
+</trans-unit>
+<trans-unit id="sa89f03b117ec6483">
+  <source>Filter…</source>
+  <target>Filtrar…</target>
+</trans-unit>
+<trans-unit id="saff10b1024bf992f">
+  <source>No icon set is registered for this family. Use registerIconifyIconSet in your app to load a JSON, then set Icon font family to the same id.</source>
+  <target>No hay conjunto de iconos registrado para esta familia. Use registerIconifyIconSet en su aplicación para cargar un JSON, luego establezca la familia de fuentes de iconos en el mismo id.</target>
+</trans-unit>
+<trans-unit id="s3f80a2d93981bab4">
+  <source>No icon names match the current filter.</source>
+  <target>No hay nombres de iconos que coincidan con el filtro actual.</target>
+</trans-unit>
+<trans-unit id="s47e24833a1146b20">
+  <source>Icon names</source>
+  <target>Nombres de iconos</target>
+</trans-unit>
+<trans-unit id="s0202c4015979ad20">
+  <source>Custom icon id</source>
+  <target>ID de icono personalizado</target>
+</trans-unit>
+<trans-unit id="s8dcd3bba51570021">
+  <source>Short name or full collection:name override</source>
+  <target>Nombre corto o nombre completo de la colección:override</target>
+</trans-unit>
+<trans-unit id="s882a452e1868eacb">
+  <source>Resize panel width</source>
+  <target>Redimensionar ancho del panel</target>
+</trans-unit>
+<trans-unit id="s835464032ce06ce6">
+  <source>Resize panel height</source>
+  <target>Redimensionar altura del panel</target>
+</trans-unit>
+<trans-unit id="se473f3069677e37d">
+  <source>Icon font</source>
+  <target>Fuente de iconos</target>
+</trans-unit>
+<trans-unit id="saff8ce0cafa8707d">
+  <source>Iconfont</source>
+  <target>Iconfont</target>
+</trans-unit>
+<trans-unit id="saa7faf27fab389ef">
+  <source>Min width</source>
+  <target>Ancho mínimo</target>
+</trans-unit>
+<trans-unit id="scbc6a8704ba7b17d">
+  <source>Max width</source>
+  <target>Ancho máximo</target>
+</trans-unit>
+<trans-unit id="sbe66251de4af2b52">
+  <source>Min height</source>
+  <target>Altura mínima</target>
+</trans-unit>
+<trans-unit id="s5c793198e6404bd4">
+  <source>Max height</source>
+  <target>Altura máxima</target>
+</trans-unit>
+<trans-unit id="s78407bd240dbd596">
+  <source>Corner radius</source>
+  <target>Radio de esquina</target>
+</trans-unit>
+<trans-unit id="s293aa6a6446fb153">
+  <source>Export</source>
+  <target>Exportar</target>
+</trans-unit>
+<trans-unit id="sf244a133077de80e">
+  <source> selected</source>
+  <target> seleccionado</target>
+</trans-unit>
+<trans-unit id="sdf9bc5d9b7f3e3de">
+  <source>Alignment</source>
+  <target>Alineación</target>
+</trans-unit>
+<trans-unit id="s626daf42b1ab7df7">
+  <source>Align left</source>
+  <target>Alinear izquierda</target>
+</trans-unit>
+<trans-unit id="s070abf751b52befa">
+  <source>Align center horizontally</source>
+  <target>Alinear centro horizontalmente</target>
+</trans-unit>
+<trans-unit id="sac687b8649989de8">
+  <source>Align right</source>
+  <target>Alinear derecha</target>
+</trans-unit>
+<trans-unit id="s680ad94beb6c931d">
+  <source>Align top</source>
+  <target>Alinear arriba</target>
+</trans-unit>
+<trans-unit id="s4b8264a93888f7bc">
+  <source>Align middle vertically</source>
+  <target>Alinear medio verticalmente</target>
+</trans-unit>
+<trans-unit id="sf42ae02416c19699">
+  <source>Align bottom</source>
+  <target>Alinear abajo</target>
+</trans-unit>
+<trans-unit id="sff2b6bef7bb2d83f">
+  <source>Distribute horizontal spacing</source>
+  <target>Distribuir espaciado horizontal</target>
+</trans-unit>
+<trans-unit id="s6cfc4251d1780cc1">
+  <source>Distribute vertical spacing</source>
+  <target>Distribuir espaciado vertical</target>
+</trans-unit>
+<trans-unit id="s98ce2d07f7859949">
+  <source>Edits apply to all selected items.</source>
+  <target>Los cambios se aplican a todos los elementos seleccionados.</target>
+</trans-unit>
+<trans-unit id="sb91c0221632e6510">
+  <source>Selected items have different filters. Nothing is listed; add a filter to set the same chain for all.</source>
+  <target>Los elementos seleccionados tienen diferentes filtros. No hay nada listado; agregue un filtro para establecer la misma cadena para todos.</target>
+</trans-unit>
+<trans-unit id="s789ff24c8f03f1a4">
+  <source>Letter spacing</source>
+  <target>Espaciado de letras</target>
+</trans-unit>
+<trans-unit id="s4b2c143acf931122">
+  <source>Line height</source>
+  <target>Altura de línea</target>
+</trans-unit>
+<trans-unit id="sec2557a35b702525">
+  <source>Variable</source>
+  <target>Variable</target>
+</trans-unit>
+<trans-unit id="sa1f56f4e1dd76718">
+  <source>Stroke alignment</source>
+  <target>Alineación de trazo</target>
+</trans-unit>
+<trans-unit id="sc8d6855822afde83">
+  <source>No image</source>
+  <target>Sin imagen</target>
+</trans-unit>
+<trans-unit id="s96668830629e0dfc">
+  <source>Upload</source>
+  <target>Subir</target>
+</trans-unit>
+<trans-unit id="s094748f07458f069">
+  <source>Duration (s)</source>
+  <target>Duración (s)</target>
+</trans-unit>
+<trans-unit id="sf2fbc9199cc91e28">
+  <source>FPS</source>
+  <target>FPS</target>
+</trans-unit>
+<trans-unit id="sf675f879b1c892c6">
+  <source>Quality</source>
+  <target>Calidad</target>
+</trans-unit>
+<trans-unit id="s9deeefd89ca8a81d">
+  <source>High</source>
+  <target>Alta</target>
+</trans-unit>
+<trans-unit id="sac6bdc71f750ac96">
+  <source>Medium</source>
+  <target>Media</target>
+</trans-unit>
+<trans-unit id="s24f3a319b88552c1">
+  <source>Low</source>
+  <target>Baja</target>
+</trans-unit>
+<trans-unit id="s25b88419b92c65ca">
+  <source>LUT</source>
+  <target>LUT</target>
+</trans-unit>
+<trans-unit id="s4789364ddcdbeb45">
+  <source>LUT key</source>
+  <target>Clave LUT</target>
+</trans-unit>
+<trans-unit id="s82c21acdbcd6e830">
+  <source>Strength</source>
+  <target>Intensidad</target>
+</trans-unit>
+<trans-unit id="s08a45214b37f404b">
+  <source>Add keyframe at playhead</source>
+        <target>Agregar fotograma clave en el cursor</target>
+</trans-unit>
+<trans-unit id="s7383e8b37e1ea24f">
+  <source>Remove keyframe</source>
+        <target>Quitar fotograma clave</target>
+</trans-unit>
+<trans-unit id="s4c053313f48af96e">
+  <source>This element has no animation yet.</source>
+        <target>Este elemento aún no tiene animación.</target>
+</trans-unit>
+<trans-unit id="s09fefe208a0f70da">
+  <source>Add animation</source>
+        <target>Agregar animación</target>
+</trans-unit>
+<trans-unit id="s17da62951eca4f20">
+  <source>Duration (ms)</source>
+        <target>Duración (ms)</target>
+</trans-unit>
+<trans-unit id="s4edd8a45741826df">
+  <source>Delay (ms)</source>
+        <target>Retraso (ms)</target>
+</trans-unit>
+<trans-unit id="sffa67d746f6f64c8">
+  <source>Easing</source>
+        <target>Suavizado</target>
+</trans-unit>
+<trans-unit id="s4efee5b48a4593cb">
+  <source>Loop</source>
+        <target>Bucle</target>
+</trans-unit>
+<trans-unit id="s7534784c4360838d">
+  <source>Add property</source>
+        <target>Agregar propiedad</target>
+</trans-unit>
+<trans-unit id="s25e4e68bdc025fcf">
+  <source>Remove animation</source>
+        <target>Quitar animación</target>
+</trans-unit>
+<trans-unit id="sa602e3fd3f2d98fd">
+  <source>Animation</source>
+        <target>Animación</target>
+</trans-unit>
+<trans-unit id="s1e5b17b46559c77d">
+  <source>Select a single element to edit its animation.</source>
+        <target>Selecciona un solo elemento para editar su animación.</target>
+</trans-unit>
+<trans-unit id="s7f63ce7a69a3764b">
+  <source>Stroke options</source>
+</trans-unit>
+<trans-unit id="sbe976d0d27fda10d">
+  <source>Color pencil</source>
+</trans-unit>
+<trans-unit id="s984afe2bd363c533">
+  <source>Rain</source>
+</trans-unit>
+<trans-unit id="sfe887738c9d0b2de">
+  <source>Clamp edges</source>
+</trans-unit>
+<trans-unit id="se9d9164bc7a09136">
+  <source>Line length (ks)</source>
+</trans-unit>
+<trans-unit id="s39211f8cdcd58d9b">
+  <source>Directions</source>
+</trans-unit>
+<trans-unit id="scba83293da56ecb4">
+  <source>Stroke gamma</source>
+</trans-unit>
+<trans-unit id="s10665db13fcb08f8">
+  <source>Tone gamma</source>
+</trans-unit>
+<trans-unit id="s8fa5692a59fcb100">
+  <source>Drop sprite URL</source>
+</trans-unit>
+<trans-unit id="sa4754549db2c9a55">
+  <source>Background blur steps</source>
+</trans-unit>
+<trans-unit id="s04e601aea907834c">
+  <source>Mist</source>
+</trans-unit>
+<trans-unit id="sa7e4fe738f780c95">
+  <source>Mist blur step</source>
+</trans-unit>
+<trans-unit id="sdcbaade4956defb7">
+  <source>Mist fade time (s)</source>
+</trans-unit>
+<trans-unit id="s234669fc918b3fd9">
+  <source>Mist color R</source>
+</trans-unit>
+<trans-unit id="s23467cfc918b6022">
+  <source>Mist color G</source>
+</trans-unit>
+<trans-unit id="s234679fc918b5b09">
+  <source>Mist color B</source>
+</trans-unit>
+<trans-unit id="s234676fc918b55f0">
+  <source>Mist color A</source>
+</trans-unit>
+<trans-unit id="s212bbf3c88d654eb">
+  <source>Droplets per second</source>
+</trans-unit>
+<trans-unit id="s2f2b91b3ae74b452">
+  <source>Droplet size min</source>
+</trans-unit>
+<trans-unit id="s2f0f9bb3ae5c4a98">
+  <source>Droplet size max</source>
+</trans-unit>
+<trans-unit id="s681598b65b95afe2">
+  <source>Smooth raindrop min</source>
+</trans-unit>
+<trans-unit id="s67fa82b65b7ec2c8">
+  <source>Smooth raindrop max</source>
+</trans-unit>
+<trans-unit id="saa6ab2a9830afb43">
+  <source>Refraction base</source>
+</trans-unit>
+<trans-unit id="sa387c2684c605d9c">
+  <source>Refraction scale</source>
+</trans-unit>
+<trans-unit id="s4eae92bacca0c04f">
+  <source>Background wrap</source>
+</trans-unit>
+<trans-unit id="s90c139fba1ce9cdc">
+  <source>Clamp</source>
+</trans-unit>
+<trans-unit id="s44f87c21d186fcea">
+  <source>Repeat</source>
+</trans-unit>
+<trans-unit id="s1e5ff0f50c741122">
+  <source>Mirror</source>
+</trans-unit>
+<trans-unit id="s7145bb2481819356">
+  <source>Eraser size min</source>
+</trans-unit>
+<trans-unit id="s7160ad2481984344">
+  <source>Eraser size max</source>
+</trans-unit>
+<trans-unit id="sc3bf41e17dbc7446">
+  <source>Compose mode</source>
+</trans-unit>
+<trans-unit id="sc2392852c8f20c64">
+  <source>Smoother</source>
+</trans-unit>
+<trans-unit id="s0c307eeffb64d54b">
+  <source>Harder</source>
+</trans-unit>
+<trans-unit id="sda843b18b409bfa9">
+  <source>Lighting</source>
+</trans-unit>
+<trans-unit id="s27f07779e175369f">
+  <source>Light X</source>
+</trans-unit>
+<trans-unit id="s27f07679e17534ec">
+  <source>Light Y</source>
+</trans-unit>
+<trans-unit id="s27f07979e1753a05">
+  <source>Light Z</source>
+</trans-unit>
+<trans-unit id="s1702edb3e8af841d">
+  <source>Diffuse</source>
+</trans-unit>
+<trans-unit id="s2f368df91c7d8d60">
+  <source>Shadow offset</source>
+</trans-unit>
+<trans-unit id="s1b44bf2d2b646e7c">
+  <source>Specular shininess</source>
+</trans-unit>
+<trans-unit id="sb24365870446e3dd">
+  <source>Light bump</source>
+</trans-unit>
+<trans-unit id="s7ede1c55e35ce9d6">
+  <source>Simulation</source>
+</trans-unit>
+<trans-unit id="s83f780105a266936">
+  <source>Trail distance min</source>
+</trans-unit>
+<trans-unit id="s841272105a3d1924">
+  <source>Trail distance max</source>
+</trans-unit>
+<trans-unit id="s50696e3742f689e5">
+  <source>Gravity</source>
+</trans-unit>
+<trans-unit id="scd9a8affaa959dc0">
+  <source>Wind drift min</source>
+</trans-unit>
+<trans-unit id="scd7fa0ffaa7efb6a">
+  <source>Wind drift max</source>
+</trans-unit>
+<trans-unit id="s099581075217c403">
+  <source>Slip rate</source>
+</trans-unit>
+<trans-unit id="s9fee667fdd9c615b">
+  <source>Spawn limit</source>
+</trans-unit>
+<trans-unit id="sd94aea128cc879d0">
+  <source>Trail drop density</source>
+</trans-unit>
+<trans-unit id="s534d78c378898592">
+  <source>Trail spread</source>
+</trans-unit>
+<trans-unit id="s9e4befa19375805a">
+  <source>Min refraction</source>
+</trans-unit>
+<trans-unit id="s5d68fbf64f91ecb0">
+  <source>Max refraction</source>
+</trans-unit>
+<trans-unit id="s0bb18592338b8339">
+  <source>Alpha multiply</source>
+</trans-unit>
+<trans-unit id="sf7217241fbe69685">
+  <source>Alpha subtract</source>
+</trans-unit>
+<trans-unit id="s2badc6103d5d2e76">
+  <source>Sim scale</source>
+</trans-unit>
+<trans-unit id="s6abc0be76ac3f805">
+  <source>Rain chance</source>
+</trans-unit>
+<trans-unit id="s473f9452bc1bb7dd">
+  <source>Rain limit (per frame)</source>
+</trans-unit>
+<trans-unit id="s4ceb1eb89d2f6903">
+  <source>Max drops</source>
+</trans-unit>
+<trans-unit id="sc042e25b2deb43e0">
+  <source>Droplets rate</source>
+</trans-unit>
+<trans-unit id="scb59a62d429139df">
+  <source>Render shadow</source>
+</trans-unit>
+<trans-unit id="s99507a63691b98d2">
+  <source>Render shine</source>
+</trans-unit>
+<trans-unit id="s3dd6132dffe66f5d">
+  <source>Rain warmup (s)</source>
+</trans-unit>
+<trans-unit id="s94d1b678a3ff9059">
+  <source>Edit fill color</source>
+</trans-unit>
+<trans-unit id="s67a54a4edcd37722">
+  <source>Edit color</source>
+</trans-unit>
+<trans-unit id="s7e7ea18339f5c347">
+  <source>Hide fill layer</source>
+</trans-unit>
+<trans-unit id="sf4608143e2c2a2f8">
+  <source>Show fill layer</source>
+</trans-unit>
+<trans-unit id="s9df212d89cab196d">
+  <source>Hide</source>
+</trans-unit>
+<trans-unit id="s716a6024e3fe999c">
+  <source>Show</source>
+</trans-unit>
+<trans-unit id="s8171b40132065697">
+  <source>Remove fill layer</source>
+</trans-unit>
+<trans-unit id="s89e1b2ac8f211d50">
+  <source>Add fill layer</source>
+</trans-unit>
+<trans-unit id="se0a9c2d5aed7d40c">
+  <source>Fill (stretch)</source>
+</trans-unit>
+<trans-unit id="s87cefc710b3567fb">
+  <source>Contain</source>
+</trans-unit>
+<trans-unit id="s69d88ef4b2618980">
+  <source>Cover</source>
+</trans-unit>
+<trans-unit id="s669b18c6d2d9c95b">
+  <source>None</source>
+</trans-unit>
+<trans-unit id="s29a1c26521879b9f">
+  <source>Scale down</source>
+</trans-unit>
+<trans-unit id="s0a3ddcba94027d95">
+  <source>Object fit</source>
+</trans-unit>
+<trans-unit id="s8b6caa87325370e9">
+  <source>Object position</source>
+</trans-unit>
+<trans-unit id="s075c3ce1b60076cf">
+  <source>e.g. center or top left</source>
+</trans-unit>
+<trans-unit id="s4b4afa8bcb02d5ac">
+  <source>Typography</source>
+</trans-unit>
+<trans-unit id="s2de969afacdaa7a6">
+  <source>Shape</source>
+</trans-unit>
+<trans-unit id="s822bb535ea683190">
+  <source>Stroke style</source>
+</trans-unit>
+<trans-unit id="s3e71ea6112bd4c94">
+  <source>solid</source>
+</trans-unit>
+<trans-unit id="s830ca406ff99e47c">
+  <source>dashed</source>
+</trans-unit>
+<trans-unit id="sac8c7f732f377c15">
+  <source>Dash</source>
+</trans-unit>
+<trans-unit id="s1caf53cacbfd649d">
+  <source>Dash cap</source>
+</trans-unit>
+<trans-unit id="s3c0d17bad169557b">
+  <source>none</source>
+</trans-unit>
+<trans-unit id="s7884f79b0c364646">
+  <source>square</source>
+</trans-unit>
+<trans-unit id="s311418469f09741b">
+  <source>round</source>
+</trans-unit>
+<trans-unit id="sfe7146bf88007654">
+  <source>Edit stroke color</source>
+</trans-unit>
+<trans-unit id="sef32209cd54f7f06">
+  <source>Hide stroke layer</source>
+</trans-unit>
+<trans-unit id="s07d9fe778003338d">
+  <source>Show stroke layer</source>
+</trans-unit>
+<trans-unit id="s46c6a100474bef76">
+  <source>Remove stroke layer</source>
+</trans-unit>
+<trans-unit id="s005f5c0e6ea5c235">
+  <source>Add stroke layer</source>
+</trans-unit>
+<trans-unit id="sd5b1a6a020aaa6b4">
+  <source>Show animation panel</source>
+        <target>Mostrar panel de animación</target>
+</trans-unit>
+<trans-unit id="s9d3f6a19eaa45bf5">
+  <source>Show timeline panel</source>
+        <target>Mostrar panel de línea de tiempo</target>
+</trans-unit>
+<trans-unit id="sbf519920c2017d67">
+  <source>Hanging</source>
+</trans-unit>
+<trans-unit id="s4101ada154a1b958">
+  <source>Middle</source>
+</trans-unit>
+<trans-unit id="se8a94b4effa2033e">
+  <source>Alphabetic</source>
+</trans-unit>
+<trans-unit id="scec2be75ee985f6c">
+  <source>Ideographic</source>
+</trans-unit>
+<trans-unit id="s2372ea9818d00d65">
+  <source>Text baseline</source>
+</trans-unit>
+<trans-unit id="sd870dc93e0cb4183">
+  <source>Resize timeline height</source>
+        <target>Cambiar altura de la línea de tiempo</target>
+</trans-unit>
+<trans-unit id="s061cc20e3432dead">
+  <source>Pause</source>
+        <target>Pausar</target>
+</trans-unit>
+<trans-unit id="scd105819b5a10243">
+  <source>Play</source>
+        <target>Reproducir</target>
+</trans-unit>
+<trans-unit id="s680fc90489553ed6">
+  <source>Timeline</source>
+        <target>Línea de tiempo</target>
+</trans-unit>
+<trans-unit id="s5e8250fb85d64c23">
+  <source>Close</source>
+        <target>Cerrar</target>
+</trans-unit>
+<trans-unit id="s5826603a507d6364">
+  <source>No animations in this scene yet. Select an element and add an animation.</source>
+        <target>Aún no hay animaciones en esta escena. Selecciona un elemento y agrega una animación.</target>
+</trans-unit>
+<trans-unit id="seba413ba090c81fa">
+  <source>Import from...</source>
 </trans-unit>
 </body>
 </file>

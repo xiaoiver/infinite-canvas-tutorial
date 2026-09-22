@@ -1,0 +1,1561 @@
+import * as d3 from 'd3-color';
+import {
+  Entity,
+  System,
+  Camera,
+  Canvas,
+  Children,
+  Circle,
+  ComputedBounds,
+  ComputedCamera,
+  ComputedPoints,
+  ComputedRough,
+  ComputedTextMetrics,
+  Culled,
+  DropShadow,
+  Ellipse,
+  FillLayers,
+  FillTexture,
+  StrokeLayers,
+  FractionalIndex,
+  GlobalRenderOrder,
+  GlobalTransform,
+  GPUResource,
+  Grid,
+  CheckboardStyle,
+  InnerShadow,
+  Line,
+  Opacity,
+  Path,
+  Polyline,
+  RasterAnimationExportRequest,
+  RasterScreenshotRequest,
+  Rect,
+  Renderable,
+  Rough,
+  Screenshot,
+  SizeAttenuation,
+  StrokeAttenuation,
+  Stroke,
+  Text,
+  Theme,
+  ToBeDeleted,
+  Wireframe,
+  MaterialDirty,
+  GeometryDirty,
+  TextDecoration,
+  Parent,
+  UI,
+  ZIndex,
+  Brush,
+  Marker,
+  VectorNetwork,
+  Filter,
+  Transform,
+  Locked,
+  ClipMode,
+  Flex,
+  safeAddComponent,
+  getSceneRoot,
+  getDescendants,
+  parseGradient,
+  computeLinearGradient,
+  computeRadialGradient,
+  computeConicGradient,
+  parseEffect,
+  safeRemoveComponent,
+  co,
+  fontWeightMap,
+  parseColor,
+  Group,
+  computeObjectFitDrawRect,
+  fillLayerImageRasterOptions,
+  getFillLayerDecodedBitmap,
+  rasterizeFillLayerImageUrlForTexture,
+  resolveFillLayerOpacityFromWire,
+  resolveImageFillRasterOptions,
+} from '@infinite-canvas-tutorial/ecs';
+import type { API } from '@infinite-canvas-tutorial/ecs';
+import {
+  addRect,
+  addEllipse,
+  addLine,
+  addPath,
+  addVectorNetwork,
+  addBrush,
+  addPolyline,
+  addText,
+  addGroup,
+  addRoughRect,
+  clearShapes,
+  addRoughEllipse,
+  addRoughLine,
+  setExportView,
+  restoreCanvasAfterExport,
+  addRoughPolyline,
+  addRoughPath,
+} from '@infinite-canvas-tutorial/vello-renderer';
+import { setCanvasRenderOptions } from '@infinite-canvas-tutorial/vello-renderer';
+import { velloCanvasGridColors } from './velloGridTheme';
+import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { InitVello } from './InitVello';
+
+/**
+ * Rust 侧按 `z_index` 对整棵 shape 树排序；子实体若没有 {@link ZIndex}（如变换器锚点圆、部分 UI 子节点），
+ * 会落到默认 0，易被用户内容盖住。Mesh 管线用 BatchManager 的全局序，不受此影响。
+ * 此处沿 parent 链继承最近的 ZIndex，与「挂在 mask 上的装饰」语义一致。
+ */
+function resolveZIndexForVello(entity: Entity): number {
+  let e: Entity | undefined = entity;
+  for (let depth = 0; depth < 64 && e; depth++) {
+    if (e.has(ZIndex)) {
+      return e.read(ZIndex).value;
+    }
+    if (e.has(Children)) {
+      e = e.read(Children).parent;
+    } else {
+      break;
+    }
+  }
+  return 0;
+}
+
+/** 将 CSS 颜色字符串转为 [r,g,b,a]，取值 0–1。 */
+function colorToRgba(colorStr: string): [number, number, number, number] {
+  const rgb = parseColor(colorStr);
+  if (!rgb) return [0, 0, 0, 1];
+  return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
+}
+
+function velloFillLayerOpacity(o?: number | string): number {
+  if (o == null || o === '') {
+    return 1;
+  }
+  if (typeof o === 'number') {
+    return Number.isNaN(o) ? 1 : Math.min(1, Math.max(0, o));
+  }
+  const n = parseFloat(String(o));
+  return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : 1;
+}
+
+function velloGetEnabledFillLayers(entity: Entity) {
+  if (!entity.has(FillLayers)) {
+    return [];
+  }
+  const raw = entity.read(FillLayers).layers;
+  if (!raw?.length) {
+    return [];
+  }
+  return raw.filter((l) => l.enabled !== false);
+}
+
+function velloGetEnabledStrokeLayers(entity: Entity) {
+  if (!entity.has(StrokeLayers)) {
+    return [];
+  }
+  const raw = entity.read(StrokeLayers).layers;
+  if (!raw?.length) {
+    return [];
+  }
+  return raw.filter((l) => l.enabled !== false);
+}
+
+/** 线框 `strokes` 优先；无有效层时回退 `Stroke.color`（非 `none`）。 */
+function resolveVelloStrokePaint(
+  api: API | undefined,
+  entity: Entity,
+):
+  | {
+    width: number;
+    color: [number, number, number, number];
+    linecap: CanvasLineCap;
+    linejoin: CanvasLineJoin;
+    miterLimit: number;
+    dasharray: number[];
+    dashoffset: number;
+    alignment: 'center' | 'inner' | 'outer';
+  }
+  | undefined {
+  if (!entity.has(Stroke)) {
+    return undefined;
+  }
+  const {
+    width,
+    linecap,
+    linejoin,
+    miterlimit,
+    dasharray,
+    dashoffset,
+    alignment,
+  } = entity.read(Stroke);
+  if (width <= 0) {
+    return undefined;
+  }
+
+  let colorStr: string | undefined;
+  let layerAlphaMul = 1;
+  const layers = velloGetEnabledStrokeLayers(entity);
+  const solidLayer = layers.find((l) => l.type === 'solid');
+  if (solidLayer && solidLayer.type === 'solid') {
+    const v = String(solidLayer.value ?? '').trim();
+    if (v !== '' && v.toLowerCase() !== 'none') {
+      colorStr = solidLayer.value;
+      layerAlphaMul = resolveFillLayerOpacityFromWire(api, entity, solidLayer);
+    }
+  }
+  if (!colorStr) {
+    return undefined;
+  }
+
+  const { r, g, b, opacity } = d3.rgb(colorStr)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+  const a = opacity * layerAlphaMul;
+  if (a < 1e-8) {
+    return undefined;
+  }
+
+  return {
+    width,
+    color: [r / 255, g / 255, b / 255, a],
+    linecap: linecap ?? 'butt',
+    linejoin: linejoin ?? 'miter',
+    miterLimit: miterlimit ?? 4,
+    dasharray: dasharray ?? [],
+    dashoffset: dashoffset ?? 0,
+    alignment: alignment ?? 'center',
+  };
+}
+
+type FillGradientSpec = {
+  type: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  cx: number;
+  cy: number;
+  r: number;
+  startAngle: number;
+  endAngle: number;
+  stops: { offset: number; color: [number, number, number, number] }[];
+};
+
+function buildSingleGradient(
+  g: NonNullable<ReturnType<typeof parseGradient>>[number],
+  min: [number, number],
+  width: number,
+  height: number,
+): FillGradientSpec | null {
+  if (!g) return null;
+  const stops = (g as any).steps.map((s) => ({
+    offset: s.offset.type === '%' ? s.offset.value / 100 : s.offset.value,
+    color: colorToRgba(s.color),
+  }));
+  if (g.type === 'linear-gradient') {
+    const { x1, y1, x2, y2 } = computeLinearGradient(
+      min,
+      width,
+      height,
+      g.angle,
+    );
+    return {
+      type: 'linear',
+      x1,
+      y1,
+      x2,
+      y2,
+      cx: 0,
+      cy: 0,
+      r: 0,
+      startAngle: 0,
+      endAngle: Math.PI * 2,
+      stops,
+    };
+  }
+  if (g.type === 'radial-gradient') {
+    const { x, y, r } = computeRadialGradient(
+      min,
+      width,
+      height,
+      g.cx,
+      g.cy,
+      g.size,
+    );
+    return {
+      type: 'radial',
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: 0,
+      cx: x,
+      cy: y,
+      r,
+      startAngle: 0,
+      endAngle: Math.PI * 2,
+      stops,
+    };
+  }
+  if (g.type === 'conic-gradient') {
+    const { x, y } = computeConicGradient(min, width, height, g.cx, g.cy);
+    const startAngle = ((g.angle ?? 0) * Math.PI) / 180;
+    return {
+      type: 'conic',
+      x1: 0,
+      y1: 0,
+      x2: 0,
+      y2: 0,
+      cx: x,
+      cy: y,
+      r: 0,
+      startAngle,
+      endAngle: startAngle + Math.PI * 2,
+      stops,
+    };
+  }
+  return null;
+}
+
+/** 将 CSS 渐变字符串解析为 Rust fillGradient 格式，支持多渐变叠加。 */
+function buildFillGradients(
+  cssGradient: string,
+  min: [number, number],
+  width: number,
+  height: number,
+): FillGradientSpec[] {
+  const gradients = parseGradient(cssGradient);
+  if (!gradients?.length) return [];
+  const result: FillGradientSpec[] = [];
+  for (const g of gradients) {
+    const spec = buildSingleGradient(g, min, width, height);
+    if (spec) result.push(spec);
+  }
+  return result;
+}
+
+/** `serde_wasm_bindgen` 反序列化 `Vec<u8>` 需要普通数组，不能是 `Uint8Array`。 */
+function toWasmRgbaBytes(data: Uint8ClampedArray | Uint8Array): number[] {
+  return Array.from(data);
+}
+
+/** 将 TexImageSource 转为 RGBA；支持 ImageBitmap、HTMLImageElement 等。 */
+type ImageRgbaData = { width: number; height: number; data: Uint8Array };
+
+/** 已上传至 WASM `IMAGE_BRUSH_CACHE`（按 URL）；拖拽时不再传 `imageData`。 */
+const velloImageUploadedToWasm = new Set<string>();
+
+function velloImageWasmUploadKey(url: string, width: number, height: number): string {
+  return `${url}|${width}x${height}`;
+}
+
+const velloImageRgbaBySource = new WeakMap<object, ImageRgbaData>();
+
+function readVelloImageRgba(src: TexImageSource): ImageRgbaData | null {
+  const key = src as unknown as object;
+  const cached = velloImageRgbaBySource.get(key);
+  if (cached) {
+    return cached;
+  }
+  const data = imageToRgba(src);
+  if (data) {
+    velloImageRgbaBySource.set(key, data);
+  }
+  return data;
+}
+
+function pushVelloWasmImageFill(
+  out: Record<string, unknown>[],
+  url: string,
+  imageData: ImageRgbaData,
+  geomW: number,
+  geomH: number,
+  objectFit: string,
+  objectPosition: string | undefined,
+  layerAlpha: number,
+) {
+  const pixels = imageData.data;
+  const uploadKey = velloImageWasmUploadKey(
+    url,
+    imageData.width,
+    imageData.height,
+  );
+  const payload: Record<string, unknown> = {
+    kind: 'image',
+    imageRef: url,
+    imageWidth: imageData.width,
+    imageHeight: imageData.height,
+    layerAlpha,
+  };
+  if (!velloImageUploadedToWasm.has(uploadKey)) {
+    payload.imageData = toWasmRgbaBytes(pixels);
+    velloImageUploadedToWasm.add(uploadKey);
+  }
+  if (objectFit !== 'fill') {
+    const r = computeObjectFitDrawRect(
+      imageData.width,
+      imageData.height,
+      geomW,
+      geomH,
+      objectFit as 'contain' | 'cover' | 'none' | 'scale-down' | 'fill',
+      objectPosition,
+    );
+    payload.fitDrawRect = {
+      dx: r.dx,
+      dy: r.dy,
+      dw: r.dw,
+      dh: r.dh,
+    };
+  }
+  out.push(payload);
+}
+
+/** 与 Rust `WasmFillPaint` 对齐（`kind`：solid | gradient | image）。 */
+function buildVelloWasmFills(
+  api: API | undefined,
+  entity: Entity,
+  min: [number, number],
+  width: number,
+  height: number,
+): Record<string, unknown>[] {
+  if (!entity.has(FillLayers)) {
+    return [];
+  }
+  const layers = velloGetEnabledFillLayers(entity);
+  const out: Record<string, unknown>[] = [];
+
+  for (const layer of layers) {
+    const lo = resolveFillLayerOpacityFromWire(api, entity, layer);
+    if (layer.type === 'solid') {
+      const rgb = parseColor(layer.value);
+      const { r, g, b } = d3.rgb(rgb)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+      const a = (rgb.opacity ?? 1) * lo;
+      if (a < 1e-8) continue;
+      const rgba: [number, number, number, number] = [
+        r / 255,
+        g / 255,
+        b / 255,
+        a,
+      ];
+      out.push({ kind: 'solid', rgba });
+    } else if (layer.type === 'gradient') {
+      let grads = buildFillGradients(layer.value, min, width, height);
+      if (!grads.length) continue;
+      const aScale = lo;
+      if (aScale !== 1) {
+        grads = grads.map((g) => ({
+          ...g,
+          stops: g.stops.map((s) => ({
+            ...s,
+            color: [
+              s.color[0],
+              s.color[1],
+              s.color[2],
+              s.color[3] * aScale,
+            ] as [number, number, number, number],
+          })),
+        }));
+      }
+      out.push({ kind: 'gradient', fillGradients: grads });
+    } else if (layer.type === 'image') {
+      const rasterOpts = resolveImageFillRasterOptions(api, entity, layer);
+      const objectFit = rasterOpts.objectFit ?? 'fill';
+      const layerAlpha = lo;
+      const url = layer.value;
+      let imageData: ImageRgbaData | null = null;
+      const decoded = getFillLayerDecodedBitmap(url);
+      if (decoded) {
+        imageData = readVelloImageRgba(decoded);
+      } else {
+        const canvas = rasterizeFillLayerImageUrlForTexture(
+          url,
+          width,
+          height,
+          () => safeAddComponent(entity, MaterialDirty),
+          rasterOpts,
+        );
+        if (canvas) {
+          imageData = readVelloImageRgba(canvas as TexImageSource);
+        }
+      }
+      if (!imageData) {
+        continue;
+      }
+      pushVelloWasmImageFill(
+        out,
+        url,
+        imageData,
+        width,
+        height,
+        objectFit,
+        rasterOpts.objectPosition,
+        layerAlpha,
+      );
+    }
+  }
+  return out;
+}
+
+/** Rough 仅支持单色填充；取首个**有可见 alpha** 的启用层（与 {@link buildVelloWasmFills} 一致跳过 none/透明层）。 */
+function roughRepresentativeFillRgba(entity: Entity): [
+  number,
+  number,
+  number,
+  number,
+] {
+  const opacity = entity.has(Opacity) ? entity.read(Opacity).opacity : 1;
+  if (!entity.has(FillLayers)) {
+    return [0, 0, 0, 0];
+  }
+  const enabled = velloGetEnabledFillLayers(entity);
+  for (const layer of enabled) {
+    const lo = velloFillLayerOpacity(layer.opacity);
+    if (layer.type === 'solid') {
+      const raw = String(layer.value ?? '').trim();
+      if (!raw || raw === 'none' || raw === 'transparent') {
+        continue;
+      }
+      const rgb = parseColor(layer.value);
+      const { r, g, b } = d3.rgb(rgb)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+      const a = (rgb.opacity ?? 1) * lo * opacity;
+      if (a < 1e-8) {
+        continue;
+      }
+      return [r / 255, g / 255, b / 255, a];
+    }
+    if (layer.type === 'gradient') {
+      const parsed = parseGradient(layer.value)?.[0] as any;
+      const step0 = parsed?.steps?.[0];
+      if (step0) {
+        const [rf, gf, bf, af] = colorToRgba(step0.color);
+        const a = af * lo * opacity;
+        if (a >= 1e-8) {
+          return [rf, gf, bf, a];
+        }
+      }
+    }
+    if (layer.type === 'image') {
+      const a = lo * opacity;
+      if (a >= 1e-8) {
+        return [0.5, 0.5, 0.5, a];
+      }
+    }
+  }
+  return [0, 0, 0, 0];
+}
+
+// `src` 通常是稳定复用的 ImageBitmap/Canvas/OffscreenCanvas 对象；用 WeakMap 避免内存泄漏。
+// 注意：如果 `src` 是可变视频帧，这个缓存可能导致取到的仍是首次转换的帧。
+const imageToRgbaCache = new WeakMap<object, ImageRgbaData>();
+
+function imageToRgba(src: TexImageSource): ImageRgbaData | null {
+  // Video 帧可能会变化；为避免冻结首帧，这里不缓存。
+  const isVideo =
+    'currentTime' in src &&
+    typeof (src as unknown as { currentTime: unknown }).currentTime ===
+    'number';
+  const cacheKey = src as unknown as object;
+  if (!isVideo) {
+    const cached = imageToRgbaCache.get(cacheKey);
+    if (cached) return cached;
+  }
+
+  try {
+    const width =
+      'width' in src && typeof src.width === 'number'
+        ? src.width
+        : 'naturalWidth' in src
+          ? (src as HTMLImageElement).naturalWidth
+          : 0;
+    const height =
+      'height' in src && typeof src.height === 'number'
+        ? src.height
+        : 'naturalHeight' in src
+          ? (src as HTMLImageElement).naturalHeight
+          : 0;
+    if (width === 0 || height === 0) return null;
+    const canvas = new OffscreenCanvas(width, height);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(src as CanvasImageSource, 0, 0);
+    const imageData = ctx.getImageData(0, 0, width, height);
+    const result = {
+      width: imageData.width,
+      height: imageData.height,
+      data: new Uint8Array(imageData.data),
+    };
+
+    if (!isVideo) {
+      imageToRgbaCache.set(cacheKey, result);
+    }
+
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+type GPURenderer = {
+  uniformBuffer: Buffer;
+  uniformLegacyObject: Record<string, unknown>;
+};
+
+export class VelloPipeline extends System {
+  private initVello = this.attach(InitVello);
+
+  private canvases = this.query((q) => q.current.with(Canvas).read);
+
+  private renderables = this.query(
+    (q) =>
+      q.added.and.changed.and.removed
+        .with(Renderable)
+        .withAny(
+          Circle,
+          Ellipse,
+          Rect,
+          Line,
+          Polyline,
+          Path,
+          Text,
+          Brush,
+          VectorNetwork,
+          Transform,
+          Group,
+        ).trackWrites,
+  );
+
+  private lines = this.query((q) => q.added.and.removed.with(Line));
+  private polylines = this.query((q) => q.added.and.removed.with(Polyline));
+  private paths = this.query((q) => q.added.and.removed.with(Path));
+  private vectorNetworks = this.query((q) =>
+    q.added.and.removed.with(VectorNetwork),
+  );
+
+  private toBeDeleted = this.query(
+    (q) => q.addedOrChanged.with(ToBeDeleted).trackWrites,
+  );
+
+  private culleds = this.query(
+    (q) => q.addedOrChanged.and.removed.with(Culled).trackWrites,
+  );
+
+  private grids = this.query(
+    (q) => q.addedChangedOrRemoved.with(Grid).trackWrites,
+  );
+  private themes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Theme).trackWrites,
+  );
+
+  private rasterScreenshotRequests = this.query(
+    (q) => q.addedChangedOrRemoved.with(RasterScreenshotRequest).trackWrites,
+  );
+
+  private rasterAnimationExportRequests = this.query(
+    (q) => q.addedChangedOrRemoved.with(RasterAnimationExportRequest).trackWrites,
+  );
+
+  private fillLayers = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
+  );
+  private strokeLayers = this.query(
+    (q) => q.addedChangedOrRemoved.with(StrokeLayers).trackWrites,
+  );
+  private materialDirty = this.query(
+    (q) => q.addedChangedOrRemoved.with(MaterialDirty).trackWrites,
+  );
+  private fillTextures = this.query(
+    (q) => q.addedChangedOrRemoved.with(FillTexture).trackWrites,
+  );
+  private strokes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Stroke).trackWrites,
+  );
+  private opacities = this.query(
+    (q) => q.addedChangedOrRemoved.with(Opacity).trackWrites,
+  );
+  private innerShadows = this.query(
+    (q) => q.addedChangedOrRemoved.with(InnerShadow).trackWrites,
+  );
+  private dropShadows = this.query(
+    (q) => q.addedChangedOrRemoved.with(DropShadow).trackWrites,
+  );
+  private wireframes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Wireframe).trackWrites,
+  );
+  private roughs = this.query(
+    (q) => q.addedChangedOrRemoved.with(Rough).trackWrites,
+  );
+  private fractionalIndexes = this.query(
+    (q) => q.addedChangedOrRemoved.with(FractionalIndex).trackWrites,
+  );
+  private textDecorations = this.query(
+    (q) => q.addedChangedOrRemoved.with(TextDecoration).trackWrites,
+  );
+  private sizeAttenuations = this.query(
+    (q) => q.addedChangedOrRemoved.with(SizeAttenuation).trackWrites,
+  );
+  private strokeAttenuations = this.query(
+    (q) => q.addedChangedOrRemoved.with(StrokeAttenuation).trackWrites,
+  );
+  private markers = this.query(
+    (q) => q.addedChangedOrRemoved.with(Marker).trackWrites,
+  );
+  private filters = this.query(
+    (q) => q.addedChangedOrRemoved.with(Filter).trackWrites,
+  );
+  private clipModes = this.query(
+    (q) => q.addedChangedOrRemoved.with(ClipMode).trackWrites,
+  );
+
+  renderers: Map<Entity, GPURenderer> = new Map();
+
+  private pendingRenderables: WeakMap<
+    Entity,
+    {
+      type: 'add' | 'remove';
+      entity: Entity;
+    }[]
+  > = new WeakMap();
+
+  constructor() {
+    super();
+    this.query(
+      (q) =>
+        q.current
+          .with(
+            Theme,
+            Grid,
+            GPUResource,
+            Camera,
+            ComputedCamera,
+            Parent,
+            Children,
+            Group,
+            Circle,
+            Ellipse,
+            Rect,
+            Line,
+            Polyline,
+            Path,
+            ComputedPoints,
+            ComputedBounds,
+            GlobalTransform,
+            Opacity,
+            Stroke,
+            InnerShadow,
+            DropShadow,
+            Wireframe,
+            GlobalRenderOrder,
+            Rough,
+            ComputedRough,
+            Text,
+            ComputedTextMetrics,
+            FillLayers,
+            FillTexture,
+            StrokeLayers,
+            FractionalIndex,
+            SizeAttenuation,
+            StrokeAttenuation,
+            TextDecoration,
+            UI,
+            ZIndex,
+            Marker,
+            Locked,
+            ClipMode,
+            Flex,
+          )
+          .read.and.using(
+            RasterScreenshotRequest,
+            RasterAnimationExportRequest,
+            Screenshot,
+            GeometryDirty,
+            MaterialDirty,
+          ).write,
+    );
+  }
+
+  @co private *setScreenshotTrigger(
+    canvas: Entity,
+    element: HTMLCanvasElement,
+    type: string,
+    encoderOptions: number,
+    download: boolean,
+    exportAtCurrentFrame = false,
+  ): Generator {
+    let dataURL = '';
+    if (exportAtCurrentFrame) {
+      dataURL = (element as HTMLCanvasElement).toDataURL(type, encoderOptions);
+
+      yield;
+    } else {
+      yield;
+      dataURL = (element as HTMLCanvasElement).toDataURL(type, encoderOptions);
+    }
+
+    safeAddComponent(canvas, Screenshot);
+    const screenshot = canvas.write(Screenshot);
+
+    Object.assign(screenshot, { dataURL, canvas, download });
+    yield;
+
+    safeRemoveComponent(canvas, Screenshot);
+    safeRemoveComponent(canvas, RasterScreenshotRequest);
+  }
+
+  private renderCamera(canvas: Entity, camera: Entity, sort = false) {
+    const { api, element } = canvas.read(Canvas);
+    const canvasId = this.initVello.canvasIds.get(element as HTMLCanvasElement);
+    if (canvasId === undefined) {
+      return;
+    }
+    const { giEnabled, giStrength } = api.getAppState();
+
+    const request = canvas.has(RasterScreenshotRequest)
+      ? canvas.read(RasterScreenshotRequest)
+      : null;
+    const { type, encoderOptions, grid, download, nodes } = request ?? {
+      type: 'image/png',
+      encoderOptions: 1,
+      grid: false,
+      nodes: [],
+    };
+    const shouldRenderGrid = !request || grid;
+    const shouldRenderPartially = nodes.length > 0;
+
+    const { checkboardStyle } = canvas.read(Grid);
+    const checkboardOrder: CheckboardStyle[] = [
+      CheckboardStyle.NONE,
+      CheckboardStyle.GRID,
+      CheckboardStyle.DOTS,
+    ];
+    let checkboardStyleIdx = checkboardOrder.indexOf(checkboardStyle);
+    if (checkboardStyleIdx < 0) {
+      checkboardStyleIdx = 1;
+    }
+    const checkboardStyleForWasm = shouldRenderGrid ? checkboardStyleIdx : 0;
+
+    setCanvasRenderOptions(canvasId, {
+      grid: shouldRenderGrid,
+      ui: !request,
+      checkboardStyle: checkboardStyleForWasm,
+      giEnabled,
+      giStrength,
+      ...velloCanvasGridColors(canvas),
+    });
+
+    const PADDING = 0;
+    let exportLogicalWidth = 0;
+    let exportLogicalHeight = 0;
+    let bounds: {
+      minX: number;
+      minY: number;
+      maxX: number;
+      maxY: number;
+    } | null = null;
+    if (shouldRenderPartially) {
+      bounds = api.getBounds(nodes);
+      exportLogicalWidth = bounds.maxX - bounds.minX + 2 * PADDING;
+      exportLogicalHeight = bounds.maxY - bounds.minY + 2 * PADDING;
+    }
+
+    clearShapes(canvasId);
+    const entitiesToRender = shouldRenderPartially
+      ? (() => {
+        const clipParents = new Set<Entity>();
+        const entities: Entity[] = [];
+        nodes.forEach((node: SerializedNode) => {
+          const parentNode = node.parentId && api.getNodeById(node.parentId);
+          const parentEntity = parentNode && api.getEntity(parentNode);
+          const needRenderClipParent =
+            parentNode &&
+            !nodes.includes(parentNode) &&
+            parentNode.clipMode &&
+            parentEntity &&
+            !clipParents.has(parentEntity);
+          if (needRenderClipParent && parentEntity) {
+            clipParents.add(parentEntity);
+            entities.push(parentEntity);
+          }
+          const entity = api.getEntity(node);
+          if (entity) entities.push(entity);
+        });
+        return entities;
+      })()
+      : getDescendants(camera).filter((e) => !e.has(Culled));
+
+    entitiesToRender.forEach((entity) => {
+      const zIndex = resolveZIndexForVello(entity);
+
+      const transform = api.getTransform(entity);
+      // gl-matrix mat3 为列主序：col0=[0,1,2], col1=[3,4,5], col2=[6,7,8]
+      const localTransform = {
+        m00: transform[0],
+        m01: transform[3],
+        m02: transform[6],
+        m10: transform[1],
+        m11: transform[4],
+        m12: transform[7],
+        m20: transform[2],
+        m21: transform[5],
+        m22: transform[8],
+      };
+      const baseOpts: Record<string, unknown> = {
+        id: `${entity.__id}`,
+        parentId:
+          entity.has(Children) && !entity.read(Children).parent.has(Camera)
+            ? `${entity.read(Children).parent.__id}`
+            : undefined,
+        zIndex,
+        ui: entity.has(UI),
+        ...(entity.has(ClipMode)
+          ? { clipMode: entity.read(ClipMode).value }
+          : {}),
+        localTransform,
+        sizeAttenuation: entity.has(SizeAttenuation),
+        strokeAttenuation: entity.has(StrokeAttenuation),
+      };
+
+      if (entity.has(Renderable)) {
+        const strokePaint = resolveVelloStrokePaint(api, entity);
+        if (strokePaint) {
+          baseOpts.stroke = strokePaint;
+        }
+
+        if (entity.has(Opacity)) {
+          baseOpts.opacity = entity.read(Opacity).opacity;
+        }
+
+        if (entity.has(Marker)) {
+          const { start, end, factor } = entity.read(Marker);
+          baseOpts.markerStart = start;
+          baseOpts.markerEnd = end;
+          baseOpts.markerFactor = factor;
+        }
+
+        let fillBlur: number | undefined = undefined;
+        let dropShadow:
+          | {
+            color: [number, number, number, number];
+            blur: number;
+            offsetX: number;
+            offsetY: number;
+          }
+          | undefined = undefined;
+        if (entity.has(Filter)) {
+          const { value } = entity.read(Filter);
+          const effects = parseEffect(value);
+          for (const effect of effects) {
+            if (effect.type === 'blur') {
+              fillBlur = effect.value;
+            } else if (effect.type === 'drop-shadow') {
+              const { r, g, b, opacity } =
+                d3.rgb(effect.color)?.rgb() ?? d3.rgb(0, 0, 0, 1);
+              dropShadow = {
+                color: [r / 255, g / 255, b / 255, opacity],
+                blur: effect.blur,
+                offsetX: effect.x,
+                offsetY: effect.y,
+              };
+            }
+          }
+        }
+
+        if (entity.has(Circle)) {
+          const { cx, cy, r } = entity.read(Circle);
+          const opts: Record<string, unknown> = {
+            ...baseOpts,
+            cx,
+            cy,
+            rx: r,
+            ry: r,
+          };
+          const fills = buildVelloWasmFills(
+            api,
+            entity,
+            [cx - r, cy - r],
+            2 * r,
+            2 * r,
+          );
+          if (fills.length) opts.fills = fills;
+
+          if (entity.has(Rough)) {
+            const {
+              roughness,
+              bowing,
+              fillStyle,
+              fillWeight,
+              hachureAngle,
+              hachureGap,
+              curveStepCount,
+              simplification,
+              seed,
+            } = entity.read(Rough);
+            // WASM 需原始 fillStyle（含 watercolor）；dashed 见 issue #19
+            const fillStyleWasm =
+              fillStyle === 'dashed' ? 'hachure' : fillStyle;
+            addRoughEllipse(canvasId, {
+              ...opts,
+              fill: roughRepresentativeFillRgba(entity),
+              roughness,
+              bowing,
+              fillStyle: fillStyleWasm,
+              fillWeight,
+              hachureAngle,
+              hachureGap,
+              curveStepCount,
+              simplification,
+              roughSeed: seed | 0,
+            });
+          } else {
+            addEllipse(canvasId, opts);
+          }
+        } else if (entity.has(Ellipse)) {
+          const { cx, cy, rx, ry } = entity.read(Ellipse);
+          const opts: Record<string, unknown> = { ...baseOpts, cx, cy, rx, ry };
+          const fills = buildVelloWasmFills(
+            api,
+            entity,
+            [cx - rx, cy - ry],
+            2 * rx,
+            2 * ry,
+          );
+          if (fills.length) opts.fills = fills;
+
+          if (entity.has(Rough)) {
+            const {
+              roughness,
+              bowing,
+              fillStyle,
+              fillWeight,
+              hachureAngle,
+              hachureGap,
+              curveStepCount,
+              simplification,
+              seed,
+            } = entity.read(Rough);
+            const fillStyleWasm =
+              fillStyle === 'dashed' ? 'hachure' : fillStyle;
+            addRoughEllipse(canvasId, {
+              ...opts,
+              fill: roughRepresentativeFillRgba(entity),
+              roughness,
+              bowing,
+              fillStyle: fillStyleWasm,
+              fillWeight,
+              hachureAngle,
+              hachureGap,
+              curveStepCount,
+              simplification,
+              roughSeed: seed | 0,
+            });
+          } else {
+            addEllipse(canvasId, opts);
+          }
+        } else if (entity.has(Line)) {
+          const { x1, y1, x2, y2 } = entity.read(Line);
+          const opts: Record<string, unknown> = {
+            ...baseOpts,
+            x1,
+            y1,
+            x2,
+            y2,
+          };
+
+          if (entity.has(Rough)) {
+            const { roughness, bowing, simplification } = entity.read(Rough);
+            addRoughLine(canvasId, {
+              ...opts,
+              roughness,
+              bowing,
+              simplification,
+            });
+          } else {
+            addLine(canvasId, opts);
+          }
+        } else if (entity.has(Rect)) {
+          const { x, y, width, height, cornerRadius } = entity.read(Rect);
+          const opts: Record<string, unknown> = {
+            ...baseOpts,
+            x,
+            y,
+            width,
+            height,
+            radius: cornerRadius ?? 0,
+            fillBlur: fillBlur ?? 0,
+            dropShadow: dropShadow ?? undefined,
+          };
+          const fills = buildVelloWasmFills(api, entity, [x, y], width, height);
+          if (fills.length) opts.fills = fills;
+          if (entity.has(Rough)) {
+            const {
+              roughness,
+              bowing,
+              fillStyle,
+              fillWeight,
+              hachureAngle,
+              hachureGap,
+              curveStepCount,
+              simplification,
+              seed,
+            } = entity.read(Rough);
+            const fillStyleWasm =
+              fillStyle === 'dashed' ? 'hachure' : fillStyle;
+            addRoughRect(canvasId, {
+              ...opts,
+              fill: roughRepresentativeFillRgba(entity),
+              roughness,
+              bowing,
+              fillStyle: fillStyleWasm,
+              fillWeight,
+              hachureAngle,
+              hachureGap,
+              curveStepCount,
+              simplification,
+              roughSeed: seed | 0,
+            });
+          } else {
+            addRect(canvasId, opts);
+          }
+        } else if (entity.has(Path)) {
+          const { d, fillRule } = entity.read(Path);
+          if (d) {
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              d,
+              fillRule: fillRule ?? 'nonzero',
+            };
+            if (entity.has(ComputedBounds)) {
+              const { minX, minY, maxX, maxY } =
+                entity.read(ComputedBounds).geometryBounds;
+              const fills = buildVelloWasmFills(
+                api,
+                entity,
+                [minX, minY],
+                maxX - minX,
+                maxY - minY,
+              );
+              if (fills.length) opts.fills = fills;
+            }
+
+            if (entity.has(Rough)) {
+              const {
+                roughness,
+                bowing,
+                fillStyle,
+                fillWeight,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+                seed,
+              } = entity.read(Rough);
+              const fillStyleWasm =
+                fillStyle === 'dashed' ? 'hachure' : fillStyle;
+              addRoughPath(canvasId, {
+                ...opts,
+                fill: roughRepresentativeFillRgba(entity),
+                roughness,
+                bowing,
+                fillStyle: fillStyleWasm,
+                fillWeight,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+                roughSeed: seed | 0,
+              });
+            } else {
+              addPath(canvasId, opts);
+            }
+          }
+        } else if (entity.has(VectorNetwork)) {
+          const { vertices, segments, regions } = entity.read(VectorNetwork);
+          if (vertices?.length && segments?.length) {
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              vertices,
+              segments: segments.map(
+                (s: {
+                  start: number;
+                  end: number;
+                  tangentStart?: { x: number; y: number };
+                  tangentEnd?: { x: number; y: number };
+                }) => ({
+                  start: s.start,
+                  end: s.end,
+                  tangentStart: s.tangentStart,
+                  tangentEnd: s.tangentEnd,
+                }),
+              ),
+              regions:
+                regions?.map(
+                  (r: {
+                    fillRule?: string;
+                    windingRule?: string;
+                    loops: readonly (readonly number[])[];
+                  }) => ({
+                    fillRule: r.fillRule,
+                    windingRule: r.windingRule,
+                    loops: r.loops.map((loop) => [...loop]),
+                  }),
+                ) ?? [],
+            };
+            if (entity.has(ComputedBounds)) {
+              const { minX, minY, maxX, maxY } =
+                entity.read(ComputedBounds).geometryBounds;
+              const fills = buildVelloWasmFills(
+                api,
+                entity,
+                [minX, minY],
+                maxX - minX,
+                maxY - minY,
+              );
+              if (fills.length) opts.fills = fills;
+            }
+            addVectorNetwork(canvasId, opts);
+          }
+        } else if (entity.has(Brush)) {
+          const brush = entity.read(Brush);
+          if (brush.points && brush.points.length >= 2) {
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              points: brush.points
+                .map(({ x, y, radius }) => `${x},${y},${radius}`)
+                .join(' '),
+              brushType: brush.type,
+              stampInterval: brush.stampInterval,
+              stampMode: brush.stampMode,
+              stampNoiseFactor: brush.stampNoiseFactor,
+              stampRotationFactor: brush.stampRotationFactor,
+            };
+            const strokePaint = resolveVelloStrokePaint(api, entity);
+            if (strokePaint) {
+              opts.strokeWidth = strokePaint.width;
+              opts.stroke = strokePaint.color;
+            }
+            const stampLayer = velloGetEnabledFillLayers(entity).find(
+              (l) => l.type === 'image',
+            );
+            if (stampLayer && stampLayer.type === 'image') {
+              const src = getFillLayerDecodedBitmap(stampLayer.value);
+              if (src) {
+                const imageData = imageToRgba(src);
+                if (imageData) {
+                  opts.imageWidth = imageData.width;
+                  opts.imageHeight = imageData.height;
+                  opts.imageData = toWasmRgbaBytes(imageData.data);
+                } else {
+                  opts.brushStamp = src;
+                }
+              }
+            }
+            addBrush(canvasId, opts);
+          }
+        } else if (entity.has(Polyline)) {
+          const { points } = entity.read(Polyline);
+          if (points && points.length >= 2) {
+            const opts: Record<string, unknown> = {
+              ...baseOpts,
+              points,
+            };
+            if (entity.has(Rough)) {
+              const {
+                roughness,
+                bowing,
+                fillStyle,
+                fillWeight,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+                seed,
+              } = entity.read(Rough);
+              const fillStyleWasm =
+                fillStyle === 'dashed' ? 'hachure' : fillStyle;
+              addRoughPolyline(canvasId, {
+                ...opts,
+                fill: roughRepresentativeFillRgba(entity),
+                roughness,
+                bowing,
+                fillStyle: fillStyleWasm,
+                fillWeight,
+                hachureAngle,
+                hachureGap,
+                curveStepCount,
+                simplification,
+                roughSeed: seed | 0,
+              });
+            } else {
+              addPolyline(canvasId, opts);
+            }
+          }
+        } else if (entity.has(Text)) {
+          const text = entity.read(Text);
+          const metrics = entity.read(ComputedTextMetrics);
+          const {
+            fontSize,
+            fontFamily,
+            fontWeight,
+            fontStyle,
+            fontVariant,
+            fontKerning,
+            anchorX,
+            anchorY,
+            letterSpacing,
+            lineHeight,
+            wordWrap,
+            wordWrapWidth,
+            whiteSpace,
+            textOverflow,
+            maxLines,
+            textAlign,
+            textBaseline,
+            leading,
+          } = text;
+
+          let fontWeightValue: string | undefined = undefined;
+          if (fontWeight) {
+            fontWeightValue = `${typeof fontWeight === 'string'
+              ? fontWeightMap[fontWeight]
+              : fontWeight
+              }`;
+          }
+          const fillGeom = Text.getGeometryBounds(text, metrics);
+          const fillW = Math.max(0, fillGeom.maxX - fillGeom.minX);
+          const fillH = Math.max(0, fillGeom.maxY - fillGeom.minY);
+          const fills = buildVelloWasmFills(api, entity, [
+            fillGeom.minX,
+            fillGeom.minY,
+          ], fillW, fillH);
+
+          const opts: Record<string, unknown> = {
+            ...baseOpts,
+            content: metrics.lines.join('\n'),
+            fontSize,
+            fontFamily,
+            fontWeight: fontWeightValue,
+            fontStyle,
+            fontVariant,
+            fontKerning,
+            anchorX,
+            anchorY,
+            letterSpacing,
+            lineHeight,
+            wordWrap,
+            wordWrapWidth,
+            whiteSpace,
+            textOverflow,
+            textAlign,
+            textBaseline,
+            leading,
+            ...(Number.isFinite(maxLines)
+              ? { maxLines: maxLines as number }
+              : {}),
+          };
+          if (fills.length) opts.fills = fills;
+          addText(canvasId, opts);
+        } else if (entity.has(Group)) {
+          addGroup(canvasId, baseOpts);
+        }
+      }
+    });
+    this.pendingRenderables.delete(camera);
+
+    if (request) {
+      if (
+        shouldRenderPartially &&
+        bounds &&
+        bounds.minX <= bounds.maxX &&
+        bounds.minY <= bounds.maxY &&
+        exportLogicalWidth > 0 &&
+        exportLogicalHeight > 0
+      ) {
+        const left = bounds.minX - PADDING;
+        const top = bounds.minY - PADDING;
+        // 这里会触发一次额外的 redraw（导出帧）。需要保证导出那一帧也禁用 grid/UI，
+        // 否则 Rust 侧 take_pending_canvas_render_options 可能已在上一帧被消费，导致导出帧仍画 grid。
+        setCanvasRenderOptions(canvasId, {
+          grid: false,
+          ui: false,
+          checkboardStyle: 0,
+          giEnabled,
+          giStrength,
+          ...velloCanvasGridColors(canvas),
+        });
+        setExportView(
+          canvasId,
+          { left, top, width: exportLogicalWidth, height: exportLogicalHeight },
+          () => {
+            restoreCanvasAfterExport(canvasId);
+            this.setScreenshotTrigger(
+              canvas,
+              element as HTMLCanvasElement,
+              type,
+              encoderOptions,
+              download,
+              true,
+            );
+          },
+        );
+      } else {
+        this.setScreenshotTrigger(
+          canvas,
+          element as HTMLCanvasElement,
+          type,
+          encoderOptions,
+          download,
+        );
+      }
+    }
+  }
+
+  execute() {
+    new Set([
+      ...this.renderables.added,
+      ...this.renderables.changed,
+      ...this.polylines.added,
+      ...this.lines.added,
+      ...this.paths.added,
+      ...this.vectorNetworks.added,
+      ...this.culleds.removed,
+    ]).forEach((entity) => {
+      const camera = getSceneRoot(entity);
+
+      if (this.renderables.added.includes(entity)) {
+        safeAddComponent(entity, GeometryDirty);
+        safeAddComponent(entity, MaterialDirty);
+      }
+
+      if (this.renderables.changed.includes(entity)) {
+        if (
+          entity.has(Line) ||
+          entity.has(Polyline) ||
+          entity.has(Path) ||
+          entity.has(VectorNetwork) ||
+          entity.has(Text) ||
+          entity.has(Rough) ||
+          entity.has(Brush)
+        ) {
+          safeAddComponent(entity, GeometryDirty);
+        }
+        if (entity.has(Text)) {
+          safeAddComponent(entity, MaterialDirty);
+        }
+      }
+
+      // The gpu resources is not ready for the camera.
+      if (!this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.set(camera, []);
+      }
+
+      this.pendingRenderables.get(camera).push({
+        type: 'add',
+        entity,
+      });
+    });
+
+    new Set([
+      ...this.toBeDeleted.addedOrChanged,
+      ...this.renderables.removed,
+      ...this.polylines.removed,
+      ...this.lines.removed,
+      ...this.paths.removed,
+      ...this.vectorNetworks.removed,
+      ...this.culleds.addedOrChanged,
+    ]).forEach((entity) => {
+      const camera = getSceneRoot(entity);
+
+      // The gpu resources is not ready for the camera.
+      if (!this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.set(camera, []);
+      }
+      this.pendingRenderables.get(camera).push({
+        type: 'remove',
+        entity,
+      });
+    });
+
+    // Handle some special cases.
+    this.materialDirty.addedChangedOrRemoved.forEach((entity) => {
+      if (!entity.has(Renderable)) {
+        return;
+      }
+      const camera = getSceneRoot(entity);
+      if (!this.pendingRenderables.has(camera)) {
+        this.pendingRenderables.set(camera, []);
+      }
+      this.pendingRenderables.get(camera)!.push({
+        type: 'add',
+        entity,
+      });
+    });
+
+    [
+      ...this.strokes.addedChangedOrRemoved,
+      ...this.markers.addedChangedOrRemoved,
+    ].forEach((entity) => {
+      if (
+        entity.has(Polyline) ||
+        entity.has(Path) ||
+        entity.has(Line) ||
+        entity.has(VectorNetwork)
+      ) {
+        safeAddComponent(entity, GeometryDirty);
+      }
+    });
+
+    this.canvases.current.forEach((canvas) => {
+      if (
+        this.rasterAnimationExportRequests.addedChangedOrRemoved.includes(
+          canvas,
+        ) &&
+        canvas.has(RasterAnimationExportRequest)
+      ) {
+        safeRemoveComponent(canvas, RasterAnimationExportRequest);
+        console.warn(
+          'Raster animation export (WebM/GIF) requires the WebGPU MeshPipeline renderer, not Vello.',
+        );
+        return;
+      }
+      let toRender =
+        this.grids.addedChangedOrRemoved.includes(canvas) ||
+        this.themes.addedChangedOrRemoved.includes(canvas) ||
+        this.rasterScreenshotRequests.addedChangedOrRemoved.includes(canvas);
+
+      const { cameras } = canvas.read(Canvas);
+      cameras.forEach((camera) => {
+        if (!toRender && this.pendingRenderables.get(camera)) {
+          const pendingRenderables = this.pendingRenderables.get(camera);
+          toRender = !!pendingRenderables.length;
+        }
+
+        // 相机变换本身由 InitVello 负责：会调用 wasm 的 `setCameraTransform`
+        // 并触发 request_redraw。这里避免因 camera 变化就重新 clear/add 全量 shapes，
+        // 从而减少 JS->wasm 的数据传输（尤其是 brush 位图 image_data 像素搬运）。
+
+        if (
+          !toRender &&
+          (!!this.fillLayers.addedChangedOrRemoved.length ||
+            !!this.fillTextures.addedChangedOrRemoved.length ||
+            !!this.strokeLayers.addedChangedOrRemoved.length ||
+            !!this.strokes.addedChangedOrRemoved.length ||
+            !!this.opacities.addedChangedOrRemoved.length ||
+            !!this.innerShadows.addedChangedOrRemoved.length ||
+            !!this.dropShadows.addedChangedOrRemoved.length ||
+            !!this.wireframes.addedChangedOrRemoved.length ||
+            !!this.roughs.addedChangedOrRemoved.length ||
+            !!this.fractionalIndexes.addedChangedOrRemoved.length ||
+            !!this.textDecorations.addedChangedOrRemoved.length ||
+            !!this.sizeAttenuations.addedChangedOrRemoved.length ||
+            !!this.strokeAttenuations.addedChangedOrRemoved.length ||
+            !!this.markers.addedChangedOrRemoved.length ||
+            !!this.filters.addedChangedOrRemoved.length ||
+            !!this.clipModes.addedChangedOrRemoved.length ||
+            !!this.materialDirty.addedChangedOrRemoved.length)
+        ) {
+          toRender = true;
+        }
+
+        if (toRender) {
+          this.renderCamera(canvas, camera, true);
+        }
+      });
+    });
+  }
+}

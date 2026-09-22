@@ -1,6 +1,5 @@
-import { load } from '@loaders.gl/core';
-import { ImageLoader } from '@loaders.gl/images';
 import { Adapter } from './adapter';
+import { loadImageBitmapUniversal } from '../utils/load-image-bitmap';
 
 export const BrowserAdapter: Adapter = {
   createCanvas: (width: number, height: number): HTMLCanvasElement => {
@@ -12,7 +11,7 @@ export const BrowserAdapter: Adapter = {
     return canvas;
   },
   createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
-  createImage: (src: string) => load(src, ImageLoader),
+  createImage: (src: string | Blob) => loadImageBitmapUniversal(src),
   getWindow: () => window,
   getDocument: () => document,
   getXMLSerializer: () => new XMLSerializer(),

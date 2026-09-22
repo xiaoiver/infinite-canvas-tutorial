@@ -74,9 +74,7 @@ export class CameraControl extends System {
       const y = transform.translation.y;
       const rotation = transform.rotation;
 
-      if (pen === Pen.HAND) {
-        cursor.value = 'grab';
-      } else if (pen === Pen.TEXT) {
+      if (pen === Pen.TEXT) {
         cursor.value = 'text';
       }
 
@@ -183,6 +181,18 @@ export class CameraControl extends System {
           });
         }
       }
+
+      if (input.touchPanDeltaX !== 0 || input.touchPanDeltaY !== 0) {
+        const { x, y, zoom } = entity.read(ComputedCamera);
+        const transform = entity.write(Transform);
+        Object.assign(transform, {
+          translation: {
+            x: x + input.touchPanDeltaX / zoom,
+            y: y + input.touchPanDeltaY / zoom,
+          },
+          rotation: rotation,
+        });
+      }
     });
   }
 
@@ -259,12 +269,13 @@ export class CameraControl extends System {
     dist: number,
   ) => {
     const { zoom } = camera.read(ComputedCamera);
+    const { cameraZoomFactor } = api.getAppState();
 
     // multiply the wheel movement by the current zoom level
     // so we zoom less when zoomed in and more when zoomed out
     const newZoom = Math.max(
       MIN_ZOOM,
-      Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -0.01)),
+      Math.min(MAX_ZOOM, zoom * Math.pow(2, dist * -cameraZoomFactor)),
     );
 
     api.gotoLandmark(

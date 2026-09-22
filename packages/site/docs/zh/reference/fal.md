@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 使用 [fal.ai] 实现 [AI 相关 API]，包括：
 
 -   [upload] 上传本地文件

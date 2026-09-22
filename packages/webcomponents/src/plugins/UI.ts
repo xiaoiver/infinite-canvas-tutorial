@@ -3,20 +3,19 @@ import {
   CameraControl,
   Canvas,
   ComputeBounds,
+  ComputeCamera,
   Plugin,
   PreStartUp,
   PropagateTransforms,
-  SetupDevice,
   SyncSimpleTransforms,
   system,
-  Select,
   Last,
-  RenderTransformer,
-  RenderHighlighter,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   Comment,
+  DownloadAnimationExport,
   DownloadScreenshot,
+  EmitCanvasReady,
   InitCanvas,
   ListenTransformableStatus,
   ZoomLevel,
@@ -38,31 +37,41 @@ export const UIPlugin: Plugin = () => {
   Object.defineProperty(DownloadScreenshot, 'name', {
     value: 'DownloadScreenshot',
   });
+  Object.defineProperty(DownloadAnimationExport, 'name', {
+    value: 'DownloadAnimationExport',
+  });
   Object.defineProperty(ListenTransformableStatus, 'name', {
     value: 'ListenTransformableStatus',
   });
   Object.defineProperty(Comment, 'name', {
     value: 'Comment',
   });
+  Object.defineProperty(EmitCanvasReady, 'name', {
+    value: 'EmitCanvasReady',
+  });
 
   system((s) => s.after(PreStartUp).before(ZoomLevel).beforeWritersOf(Canvas))(
     InitCanvas,
   );
+  system((s) => s.after(PreStartUp, InitCanvas).before(ZoomLevel).beforeWritersOf(Canvas))(
+    EmitCanvasReady,
+  );
+  // React to ComputedCamera changes only — must not run after Select (that caused
+  // Select → ZoomLevel → ComputeCamera → Select precedence cycles).
   system((s) =>
     s
       .inAnyOrderWithWritersOf(Camera)
+      .afterWritersOf(Canvas)
       .after(
-        SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
         ComputeBounds,
         CameraControl,
-        Select,
-        RenderTransformer,
-        RenderHighlighter,
+        ComputeCamera,
       )
       .before(Last),
   )(ZoomLevel);
+  system((s) => s.before(PreStartUp))(DownloadAnimationExport);
   system((s) => s.before(PreStartUp))(DownloadScreenshot);
   system(PreStartUp)(ListenTransformableStatus);
   system(PreStartUp)(Comment);

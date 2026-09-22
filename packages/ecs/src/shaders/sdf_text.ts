@@ -33,6 +33,7 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_DropShadowColor;
   vec4 u_DropShadow;
   vec2 u_AtlasSize;
+  vec4 u_FillUVRect;
 };
 
 ${wireframe_vert_declaration}
@@ -40,6 +41,9 @@ layout(location = ${Location.POSITION}) in vec3 a_Position;
 layout(location = ${Location.UV_OFFSET}) in vec4 a_UvOffset;
 
 out vec2 v_Uv;
+#ifdef USE_FILLIMAGE
+out vec2 v_FillUv;
+#endif
 
 void main() {
   ${wireframe_vert}
@@ -62,10 +66,18 @@ void main() {
   v_Uv = a_UvOffset.xy / u_AtlasSize;
   vec2 offset = a_UvOffset.zw;
 
+  vec2 localPos = a_Position.xy + offset * scale;
+#ifdef USE_FILLIMAGE
+  // Render-to-texture uses framebuffer/texture row order vs. our top-down local UVs; flip V
+  // so filtered RGBA matches on-screen SDF orientation (same issue as mesh FillImage from GPU RT).
+  v_FillUv = (localPos - u_FillUVRect.xy) * u_FillUVRect.zw;
+  v_FillUv.y = 1.0 - v_FillUv.y;
+#endif
+
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
     * u_ModelMatrix 
-    * vec3(a_Position.xy + offset * scale, 1)).xy, zIndex, 1);
+    * vec3(localPos, 1)).xy, zIndex, 1);
 }
 `;
 
@@ -89,12 +101,16 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_DropShadowColor;
   vec4 u_DropShadow;
   vec2 u_AtlasSize;
+  vec4 u_FillUVRect;
 };
 
 out vec4 outputColor;
 
 ${wireframe_frag_declaration}
 in vec2 v_Uv;
+#ifdef USE_FILLIMAGE
+in vec2 v_FillUv;
+#endif
 uniform sampler2D u_Texture;
 
 float epsilon = 0.000001;
@@ -106,6 +122,13 @@ float median(float r, float g, float b) {
 #define SDF_PX 8.0
 
 void main() {
+#ifdef USE_FILLIMAGE
+  outputColor = texture(SAMPLER_2D(u_Texture), v_FillUv);
+  outputColor.a *= u_Opacity.x;
+  ${wireframe_frag}
+  if (outputColor.a < epsilon)
+    discard;
+#else
   float strokeWidth = u_ZIndexStrokeWidth.y;
   vec4 fillColor = u_FillColor;
   vec4 strokeColor = u_StrokeColor;
@@ -182,6 +205,7 @@ void main() {
 
   if (outputColor.a < epsilon)
     discard;
+#endif
 }
 `;
 
@@ -205,12 +229,16 @@ layout(std140) uniform ShapeUniforms {
   vec4 u_DropShadowColor;
   vec4 u_DropShadow;
   vec2 u_AtlasSize;
+  vec4 u_FillUVRect;
 };
 
 out vec4 outputColor;
 
 ${wireframe_frag_declaration}
 in vec2 v_Uv;
+#ifdef USE_FILLIMAGE
+in vec2 v_FillUv;
+#endif
 uniform sampler2D u_Texture;
 
 float epsilon = 0.000001;
@@ -224,6 +252,13 @@ ${ink}
 #define SDF_PX 8.0
 
 void main() {
+#ifdef USE_FILLIMAGE
+  outputColor = texture(SAMPLER_2D(u_Texture), v_FillUv);
+  outputColor.a *= u_Opacity.x;
+  ${wireframe_frag}
+  if (outputColor.a < epsilon)
+    discard;
+#else
   float strokeWidth = u_ZIndexStrokeWidth.y;
   vec4 fillColor = u_FillColor;
   vec4 strokeColor = u_StrokeColor;
@@ -290,5 +325,6 @@ void main() {
 
   if (outputColor.a < epsilon)
     discard;
+#endif
 }
 `;

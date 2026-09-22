@@ -1,11 +1,22 @@
 ---
 outline: deep
 ---
-
 关于相机的相关内容可以参考：[课程 4 - 相机]。在 [获取 API] 后，可以调用相关方法：
 
 ```ts
 api.createLandmark();
+```
+
+## 相机状态 {#get-set-camera-state}
+
+通过 `get/setAppState` 可以获取或者设置相机状态：
+
+```ts
+cameraZoom: number;
+cameraX: number;
+cameraY: number;
+cameraRotation: number;
+cameraZoomFactor: number; // 缩放速度
 ```
 
 ## createLandmark

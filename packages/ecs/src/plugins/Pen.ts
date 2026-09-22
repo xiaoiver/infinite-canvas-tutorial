@@ -6,17 +6,21 @@ import {
   RenderHighlighter,
   RenderTransformer,
   Select,
-  SetupDevice,
   Sort,
   SyncSimpleTransforms,
   DrawRect,
+  DrawArrowConnect,
   CameraControl,
   ComputeCamera,
+  CameraSync,
   Last,
   ComputeVisibility,
   DrawPencil,
-  MeshPipeline,
+  DrawVectorNetwork,
   DrawBrush,
+  DrawPoint,
+  RenderBindings,
+  RenderNameLabel,
 } from '../systems';
 import {
   Highlighted,
@@ -35,30 +39,36 @@ export const PenPlugin: Plugin = () => {
   component(Anchor);
   component(VectorNetwork);
 
+  // After CameraSync so 3D pick probe uses the same matrices as Pick3D / rendering.
   system((s) =>
     s
       .after(
         ComputeBounds,
-        SetupDevice,
         SyncSimpleTransforms,
         PropagateTransforms,
         Sort,
         ComputeCamera,
         ComputeVisibility,
         CameraControl,
+        CameraSync,
       )
       .before(Last),
   )(Select);
-  system((s) => s.after(Select).before(Last))(DrawRect);
+  system((s) => s.after(Select).before(Last))(RenderBindings);
+  system((s) => s.after(RenderBindings).before(Last))(DrawArrowConnect);
+  system((s) => s.after(DrawArrowConnect).before(Last))(DrawRect);
   system((s) => s.after(DrawRect).before(Last))(DrawBrush);
-  system((s) => s.after(DrawBrush).before(Last))(DrawPencil);
-  system((s) => s.afterWritersOf(Selected).before(Last, MeshPipeline))(
+  system((s) => s.after(DrawBrush).before(Last))(DrawPoint);
+  system((s) => s.after(DrawPoint).before(Last))(DrawPencil);
+  system((s) => s.after(DrawPencil).before(Last))(DrawVectorNetwork);
+  system((s) => s.afterWritersOf(Selected).before(Last))(
     RenderTransformer,
   );
   system((s) =>
     s
       .afterWritersOf(Highlighted)
       .inAnyOrderWith(RenderTransformer)
-      .before(Last, MeshPipeline),
+      .before(Last),
   )(RenderHighlighter);
+  system((s) => s.after(RenderHighlighter).before(Last))(RenderNameLabel);
 };

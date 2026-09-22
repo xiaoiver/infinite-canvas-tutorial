@@ -4,7 +4,16 @@
 
 import { component, system } from '@lastolivegames/becsy';
 import { Plugin } from './types';
-import { Children, FractionalIndex, Parent, ZIndex } from '../components';
+import {
+  Binded,
+  Binding,
+  Children,
+  EdgeLabel,
+  FractionalIndex,
+  Parent,
+  PartialBinding,
+  ZIndex,
+} from '../components';
 import { ComputeZIndex, PreUpdate } from '../systems';
 
 // /**
@@ -30,6 +39,10 @@ export const HierarchyPlugin: Plugin = () => {
   component(Children);
   component(ZIndex);
   component(FractionalIndex);
+  component(Binding);
+  component(PartialBinding);
+  component(Binded);
+  component(EdgeLabel);
 
   system(PreUpdate)(ComputeZIndex);
 };

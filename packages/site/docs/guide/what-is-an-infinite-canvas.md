@@ -1,7 +1,6 @@
 ---
 description: 'Introduction to infinite canvas concepts including high scalability, zooming capabilities, and direct manipulation. Overview of modern rendering technologies and the roadmap for building a GPU-accelerated infinite canvas.'
 ---
-
 # What is an Infinite Canvas?
 
 The term "infinite" in [infinitecanvas] is described as follows:
@@ -36,6 +35,8 @@ I hope to rewrite the rendering part of the canvas with Rust in the future, but 
 -   [y-crdt] is the Rust implementation of [Yjs].
 
 ![rust stack](/rust.png)
+
+I have already implemented rendering of basic shapes, sketch style, and related features in Rust using [vello], invoked via WASM.
 
 Let's get started!
 

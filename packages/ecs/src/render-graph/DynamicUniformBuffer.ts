@@ -1,11 +1,11 @@
-import type { Device, Buffer } from '@antv/g-device-api';
+import type { Device, Buffer } from '@infinite-canvas-tutorial/device-api';
 import {
   BufferUsage,
   BufferFrequencyHint,
   alignNonPowerOfTwo,
   assert,
   assertExists,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 
 // This is a very basic linear allocator. We allocate offsets in-order.
 export class DynamicUniformBuffer {
@@ -72,7 +72,7 @@ export class DynamicUniformBuffer {
     } else if (wordOffset + wordCount >= this.shadowBufferF32.length) {
       assert(
         wordOffset < this.currentWordOffset &&
-          wordOffset + wordCount <= this.currentWordOffset,
+        wordOffset + wordCount <= this.currentWordOffset,
       );
 
       // Grow logarithmically, aligned to page size.

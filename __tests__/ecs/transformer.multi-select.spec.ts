@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -31,6 +32,8 @@ import {
   Selected,
   Pen,
   RectSerializedNode,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -63,7 +66,8 @@ describe('Transformer', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -71,6 +75,8 @@ describe('Transformer', () => {
             DropShadow,
             ZIndex,
             Selected,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -93,26 +99,28 @@ describe('Transformer', () => {
         const node1: RectSerializedNode = {
           id: '1',
           type: 'rect',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,
           width: 30,
           height: 30,
+          zIndex: 0,
         };
         const node2: RectSerializedNode = {
           id: '2',
           type: 'rect',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 150,
           y: 150,
           width: 30,
           height: 30,
+          zIndex: 1,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,

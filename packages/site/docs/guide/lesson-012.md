@@ -4,7 +4,6 @@ description: 'Implement polylines with advanced features including arbitrary lin
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 12 - Polylines' }]
 ---
-
 <script setup>
 import Wireframe from '../components/Wireframe.vue';
 </script>

@@ -72,14 +72,13 @@ describe('BatchManager resource ownership', () => {
     );
   });
 
-  it('releases unused replacement drawcalls and keeps the cached drawcalls alive', () => {
+  it('reuses cached drawcalls without allocating replacements', () => {
     const batch = manager();
     const node = shape(false);
     batch.add(node);
     batch.add(node);
-    expect(mockDrawcalls).toHaveLength(4);
+    expect(mockDrawcalls).toHaveLength(2);
     expect(mockDrawcalls[0].destroy).not.toHaveBeenCalled();
-    expect(mockDrawcalls[2].destroy).toHaveBeenCalledTimes(1);
     batch.destroy();
     mockDrawcalls.forEach((drawcall) =>
       expect(drawcall.destroy).toHaveBeenCalledTimes(1),

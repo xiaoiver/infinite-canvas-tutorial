@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import {
-  App,
   Pen,
-  DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
-import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
-import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-
+import { ensureExampleWorld } from '../lib/ensure-example-world';
+import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -29,7 +24,7 @@ onMounted(async () => {
       y: 20,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       zIndex: 1,
     },
     {
@@ -39,7 +34,7 @@ onMounted(async () => {
       y: 70,
       width: 100,
       height: 100,
-      fill: 'blue',
+      fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
       zIndex: 2,
     },
     {
@@ -49,7 +44,7 @@ onMounted(async () => {
       y: 120,
       width: 100,
       height: 100,
-      fill: 'green',
+      fills: [{ type: 'solid', value: 'green', opacity: 1 }],
       zIndex: 3,
     },
   ];
@@ -72,44 +67,7 @@ onMounted(async () => {
 
   canvas.addEventListener(Event.READY, onReady);
 
-  // App only runs once
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    await import('@infinite-canvas-tutorial/lasso/spectrum');
-    await import('@infinite-canvas-tutorial/eraser/spectrum');
-    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
-  } else {
-    // 等待组件更新完成后检查API是否已经准备好
-    setTimeout(() => {
-      // 检查canvas的apiProvider是否已经有值
-      const canvasElement = canvas as any;
-      if (canvasElement.apiProvider?.value) {
-        // 如果API已经准备好，手动触发onReady
-        const readyEvent = new CustomEvent(Event.READY, {
-          detail: canvasElement.apiProvider.value
-        });
-        onReady?.(readyEvent);
-      } else {
-        // 如果API还没准备好，监听API的变化
-        let checkCount = 0;
-        const checkInterval = setInterval(() => {
-          checkCount++;
-          if (canvasElement.apiProvider?.value) {
-            clearInterval(checkInterval);
-            const readyEvent = new CustomEvent(Event.READY, {
-              detail: canvasElement.apiProvider.value
-            });
-            onReady?.(readyEvent);
-          } else if (checkCount > 50) { // 5秒超时
-            clearInterval(checkInterval);
-            console.warn('Canvas API initialization timeout');
-          }
-        }, 100);
-      }
-    }, 100);
-  }
+  await ensureExampleWorld();
 });
 
 onUnmounted(async () => {
@@ -122,7 +80,6 @@ onUnmounted(async () => {
     canvas.removeEventListener(Event.READY, onReady);
   }
 
-  api?.destroy();
 });
 </script>
 

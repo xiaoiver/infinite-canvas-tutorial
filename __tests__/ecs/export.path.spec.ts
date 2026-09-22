@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -30,6 +32,8 @@ import {
   ExportFormat,
   Screenshot,
   Path,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -65,7 +69,8 @@ describe('Export SVG', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -73,6 +78,8 @@ describe('Export SVG', () => {
             DropShadow,
             ZIndex,
             Path,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -95,11 +102,12 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'path',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 10,
             strokeLinejoin: 'round',
             strokeLinecap: 'round',
             d: 'M 0 0 L 100 100 L 200 0',
+            zIndex: 0,
           },
         ]);
       }
@@ -109,13 +117,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-path');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-path', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -125,7 +131,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

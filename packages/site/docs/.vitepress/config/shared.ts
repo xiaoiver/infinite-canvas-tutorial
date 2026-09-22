@@ -4,6 +4,8 @@ import { search } from './zh';
 const title = 'Infinite Canvas Tutorial';
 const description =
   'An in-depth and open-source infinite canvas tutorial built with HTML5 Canvas, WebGL/WebGPU, ECS, SDF rendering, collaboration via CRDT/Yjs—empowering developers to craft Figma‑like interactive workspaces.';
+const adsenseClient = process.env.ADSENSE_CLIENT;
+const enableAdsense = process.env.ADSENSE_ENABLED === 'true' && !!adsenseClient;
 
 // https://vitepress.dev/reference/site-config
 export const shared = defineConfig({
@@ -65,6 +67,18 @@ export const shared = defineConfig({
     ['meta', { name: 'twitter:site', content: '@YuqiP45780' }],
     ['meta', { name: 'twitter:title', content: title }],
     ['meta', { name: 'twitter:description', content: description }],
+    ...(enableAdsense
+      ? [
+          [
+            'script',
+            {
+              async: '',
+              src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`,
+              crossorigin: 'anonymous',
+            },
+          ],
+        ]
+      : []),
   ],
   // @see https://vitepress.dev/reference/site-config#example-adding-a-canonical-url-link
   transformPageData(pageData) {

@@ -2,7 +2,6 @@
 outline: deep
 description: '使用Lit和Shoelace构建框架无关的Web UI组件。创建可复用的画布组件和缩放工具栏，实现合适的生命周期管理和异步任务处理。'
 ---
-
 # 课程 7 - Web UI
 
 在这节课中你将学习到以下内容：

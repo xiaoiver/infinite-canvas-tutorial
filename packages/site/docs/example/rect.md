@@ -1,9 +1,14 @@
 ---
-publish: false
+title: "Rectangle geometry with live controls"
+description: "Drive position, size, corner radius, and fill of a rounded rectangle interactively."
 ---
+<!-- example-intro:en -->
 
-Render a Rect, see:
-<a href="/guide/lesson-009">Render rect and ellipse</a>
+# Rectangle geometry with live controls
+
+Rectangles (including rounded corners) are core primitives for UI and diagrams. The sliders below exercise the same attributes introduced in [Lesson 9 — Draw ellipse and rectangle](/guide/lesson-009): position, size, `cornerRadius`, and fill.
+
+The embedded **genji** blocks let you mutate the shape every frame without rebuilding the page—ideal for teaching and quick experiments.
 
 ```js eval code=false
 x = Inputs.range([50, 300], { label: 'x', value: 100, step: 1 });

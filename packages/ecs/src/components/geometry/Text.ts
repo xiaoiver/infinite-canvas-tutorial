@@ -2,7 +2,6 @@ import { field, Type } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
 import { BitmapFont, strokeOffset } from '../../utils';
 import {
-  computeBidi,
   measureText,
   yOffsetFromTextBaseline,
 } from '../../systems/ComputeTextMetrics';
@@ -25,11 +24,13 @@ export class Text {
       anchorY = 0,
       textAlign = 'start',
       textBaseline = 'alphabetic',
+      lineHeight,
+      fontSize,
       content,
     } = text;
     let { width, height, fontMetrics } = computed ?? {};
+    let lineHeightValue = lineHeight || fontSize as number;
     if (!width || !height || !fontMetrics) {
-      computeBidi(content);
       const metrics = measureText(text);
       width = metrics.width;
       height = metrics.height;
@@ -47,9 +48,8 @@ export class Text {
     }
 
     let lineYOffset = anchorY;
-    if (fontMetrics) {
-      lineYOffset += yOffsetFromTextBaseline(textBaseline, fontMetrics);
-    }
+    lineYOffset += yOffsetFromTextBaseline(textBaseline, fontMetrics);
+    lineYOffset -= (lineHeightValue - fontMetrics.fontSize) / 2;
 
     return new AABB(
       lineXOffset,
@@ -119,6 +119,10 @@ export class Text {
    */
   @field({ type: Type.object, default: 12 }) declare fontSize: number | string;
 
+  /** 当 `fontSize` 为 `$token` 时存键名，否则为空串 */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare fontSizeVariableRef: string;
+
   /**
    * Specifies the weight of the font.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight
@@ -140,6 +144,13 @@ export class Text {
    */
   @field({ type: Type.dynamicString(100), default: 'normal' })
   declare fontVariant: string;
+
+  /**
+   * Font kerning.
+   * @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fontKerning
+   */
+  @field({ type: Type.boolean, default: true })
+  declare fontKerning: boolean;
 
   /**
    * Specifies the spacing between letters when drawing text in px.
@@ -231,12 +242,12 @@ export class Text {
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
    * @example
    * ```ts
-   * new Text({
-      text: 'abcde...',
+   * {
+      content: 'abcde...',
       textOverflow: TextOverflow.ELLIPSIS,
       wordWrapWidth: 100,
       maxLines: 3,
-    });
+    }
    */
   @field({ type: Type.staticString(['ellipsis', 'clip']) })
   declare textOverflow: 'ellipsis' | 'clip' | string;

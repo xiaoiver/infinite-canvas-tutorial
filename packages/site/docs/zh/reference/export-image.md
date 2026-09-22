@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 触发导出图片行为，详见：[课程 10 - 导入和导出图片]
 
 ```ts

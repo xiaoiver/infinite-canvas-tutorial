@@ -1,4 +1,4 @@
-import type { Color, Format } from '@antv/g-device-api';
+import type { Color, Format } from '@infinite-canvas-tutorial/device-api';
 
 export class RGRenderTargetDescription {
   width = 0;
@@ -8,8 +8,10 @@ export class RGRenderTargetDescription {
   colorClearColor: Readonly<Color> | 'load' = 'load';
   depthClearValue: number | 'load' = 'load';
   stencilClearValue: number | 'load' = 'load';
+  /** 离屏 RT 若会在后续 pass 中作为 shader 采样源，须含 {@link TextureUsage.SAMPLED}（WebGPU）。 */
+  sampledForShaderRead = false;
 
-  constructor(public format: Format) {}
+  constructor(public format: Format) { }
 
   /**
    * Set the dimensions of a render target description.

@@ -9,7 +9,8 @@ export enum Event {
   READY = 'ic-ready',
   DESTROY = 'ic-destroy',
   RESIZED = 'ic-resized',
-  ZOOM_CHANGED = 'ic-zoom-changed',
+  CAMERA_ZOOM_CHANGED = 'ic-camera-zoom-changed',
+  CAMERA_POSITION_CHANGED = 'ic-camera-position-changed',
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
   // CHECKBOARD_STYLE_CHANGED = 'ic-checkboard-style-changed',
   // PEN_CHANGED = 'ic-pen-changed',
@@ -19,25 +20,31 @@ export enum Event {
   NODE_DELETED = 'ic-node-deleted',
   VISIBILITY_CHANGED = 'ic-visibility-changed',
   SELECTED_NODES_CHANGED = 'ic-selected-nodes-changed',
+  MESH3D_LAYERS_CHANGED = 'ic-mesh3d-layers-changed',
   TRANSFORMABLE_STATUS_CHANGED = 'ic-transformable-status-changed',
   COMMENT_ADDED = 'ic-comment-added',
+  RECT_DRAWN = 'ic-rect-drawn',
+  PENCIL_DRAWN = 'ic-pencil-drawn',
+  LASSO_DRAWN = 'ic-lasso-drawn',
+  POINT_DRAWN = 'ic-point-drawn',
 }
 
 declare global {
   interface HTMLElementEventMap {
     [Event.READY]: CustomEvent<ExtendedAPI>;
     [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
-    [Event.ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
+    [Event.CAMERA_ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
+    [Event.CAMERA_POSITION_CHANGED]: CustomEvent<{ x: number; y: number }>;
     [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<
       Pick<Screenshot, 'dataURL' | 'svg'>
     >;
     [Event.NODES_UPDATED]: CustomEvent<{ nodes: SerializedNode[] }>;
-    [Event.NODE_UPDATED]: CustomEvent<{ node: SerializedNode }>;
     [Event.NODE_DELETED]: CustomEvent<{ nodes: SerializedNode[] }>;
     [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
       selected: SerializedNode[];
       preserveSelection: boolean;
     }>;
+    [Event.MESH3D_LAYERS_CHANGED]: CustomEvent<void>;
     [Event.TRANSFORMABLE_STATUS_CHANGED]: CustomEvent<{
       status: TransformableStatus;
     }>;
@@ -46,6 +53,19 @@ declare global {
       canvasY: number;
       viewportX: number;
       viewportY: number;
+    }>;
+    [Event.RECT_DRAWN]: CustomEvent<{
+      node: SerializedNode;
+    }>;
+    [Event.PENCIL_DRAWN]: CustomEvent<{
+      node: SerializedNode;
+    }>;
+    [Event.LASSO_DRAWN]: CustomEvent<{
+      node: SerializedNode;
+    }>;
+    [Event.POINT_DRAWN]: CustomEvent<{
+      x: number;
+      y: number;
     }>;
   }
 }

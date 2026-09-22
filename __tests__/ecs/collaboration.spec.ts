@@ -11,14 +11,14 @@ const a = {
   id: 'a',
   type: 'rect' as const,
   width: 10,
-  fill: 'red',
+  fills: [{ type: 'solid' as const, value: 'red' }],
   version: 1,
 };
 const b = {
   id: 'b',
   type: 'rect' as const,
   width: 20,
-  fill: 'blue',
+  fills: [{ type: 'solid' as const, value: 'blue' }],
   version: 1,
 };
 const implementations = [
@@ -47,7 +47,7 @@ describe.each(implementations)(
       expect(store.read().map((node) => node.id)).toEqual(['b', 'a']);
       store.write([b, a], [b]);
       expect(store.read()).toEqual([b]);
-      const { fill, ...withoutFill } = b;
+      const { fills, ...withoutFill } = b;
       store.write([b], [withoutFill]);
       expect(store.read()).toEqual([withoutFill]);
       store.write([withoutFill], []);
@@ -65,7 +65,7 @@ describe.each(implementations)(
       r.write(
         [a, b],
         [
-          { ...a, fill: 'green' },
+          { ...a, fills: [{ type: 'solid' as const, value: 'green' }] },
           { ...b, width: 40 },
         ],
       );
@@ -73,7 +73,11 @@ describe.each(implementations)(
       sync(right, left);
       expect(l.read()).toEqual(r.read());
       expect(l.read()).toEqual([
-        { ...a, width: 30, fill: 'green' },
+        {
+          ...a,
+          width: 30,
+          fills: [{ type: 'solid' as const, value: 'green' }],
+        },
         { ...b, width: 40 },
       ]);
     });
@@ -85,10 +89,20 @@ describe.each(implementations)(
         r: DocumentAdapter = adapter(right);
       l.write([], [a]);
       sync(left, right);
-      r.write([a], [{ ...a, fill: 'green' }, b]);
+      r.write(
+        [a],
+        [{ ...a, fills: [{ type: 'solid' as const, value: 'green' }] }, b],
+      );
       sync(right, left); // CRDT is current, but the canvas still shows [a].
       l.write([a], [{ ...a, width: 30 }]);
-      expect(l.read()).toEqual([{ ...a, fill: 'green', width: 30 }, b]);
+      expect(l.read()).toEqual([
+        {
+          ...a,
+          fills: [{ type: 'solid' as const, value: 'green' }],
+          width: 30,
+        },
+        b,
+      ]);
     });
   },
 );

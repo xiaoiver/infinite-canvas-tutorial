@@ -10,7 +10,7 @@ import {
   Grid,
   Theme,
   Renderable,
-  FillSolid,
+  FillLayers,
   Circle,
   Rect,
   DropShadow,
@@ -30,7 +30,6 @@ import {
   DefaultStateManagement,
   Name,
   Pen,
-  FillGradient,
   Selected,
   RectSerializedNode,
   ComputeZIndex,
@@ -68,8 +67,7 @@ class StartUpSystem extends System {
         Children,
         Transform,
         Renderable,
-        FillSolid,
-        FillGradient,
+        FillLayers,
         Stroke,
         DropShadow,
         Circle,
@@ -112,7 +110,7 @@ class StartUpSystem extends System {
       y: 0,
       width: 100,
       height: 100,
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
     } as RectSerializedNode;
     api.updateNodes([node]);
 

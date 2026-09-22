@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: '绘制矩形模式。实现画笔功能，包括画线消抖动算法和丝滑绘制体验。学习p5.brush等画笔库的实现原理和优化技术。'
+description: '绘制矩形、椭圆、箭头、多边形、激光笔、橡皮擦和贴图笔刷模式。实现画笔功能，包括画线消抖动算法和丝滑绘制体验。'
 head:
     - ['meta', { property: 'og:title', content: '课程 25 - 绘制模式与笔刷' }]
 ---
@@ -8,6 +8,7 @@ head:
 <script setup>
 import DrawRect from '../../components/DrawRect.vue'
 import DrawArrow from '../../components/DrawArrow.vue'
+import DrawPolygon from '../../components/DrawPolygon.vue'
 import Pencil from '../../components/Pencil.vue'
 import PencilFreehand from '../../components/PencilFreehand.vue'
 import Brush from '../../components/Brush.vue'
@@ -224,6 +225,10 @@ if (isSquare) {
 
 ![Arrow in Figma](/arrow-in-figma.png)
 
+再比如在 drawio 中也提供了一系列开箱即用的箭头字面量作为配置：
+
+![source: https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png](https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png)
+
 因此在声明式用法中，我们完全可以牺牲自定义箭头样式这一特性，提供一系列内置的箭头样式字面量，在构建 Polyline / Path 时将箭头端点和主体一并生成。这种思路在使用 SVG 渲染的 [plot - arrow] 中也可以看到，它并没有使用 `<marker>`，而是一个完整的 `<path>` 定义。
 
 ```ts
@@ -268,9 +273,46 @@ if (marker === 'line') {
 
 与之相对的，导出的 SVG 也要支持再导入画布。
 
-## [WIP] 绘制多边形 {#draw-polygon}
+## 绘制多边形 {#draw-polygon}
 
 [Shape tools - polygons]
+
+<DrawPolygon />
+
+给定一个矩形包围盒，程序化生成多边形路径：
+
+```ts
+function regularPolygonPathInRect(
+    sides: number,
+    width: number,
+    height: number,
+    rotation = -Math.PI / 2,
+): string {
+    if (sides < 3 || width <= 0 || height <= 0) {
+        return '';
+    }
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const rx = width / 2;
+    const ry = height / 2;
+    const step = (Math.PI * 2) / sides;
+    const points: [number, number][] = [];
+
+    for (let i = 0; i < sides; i++) {
+        const angle = rotation + i * step;
+        points.push([
+            formatNumber(cx + Math.cos(angle) * rx),
+            formatNumber(cy + Math.sin(angle) * ry),
+        ]);
+    }
+
+    return points
+        .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`)
+        .join(' ')
+        .concat(' Z');
+}
+```
 
 ## 铅笔工具 {#pencil-tool}
 
@@ -482,7 +524,7 @@ export class DrawEraser extends System {
 
 <Eraser />
 
-### [WIP] 非原子化 {#non-atomic}
+### 非原子化 {#non-atomic}
 
 以整个图形为单位擦除在大多数场景下都足够使用了，但在手绘类场景中非原子化的擦除更实用，例如将一条直线从中间断开。Excalidraw 暂时没有支持这一特性，详见：[non-atomic erasing for linear & freedraw shapes]，FigJam 也是这样。如果画布是基于 Canvas 或者 SVG 渲染的，确实无法实现这种像素级擦除效果。
 
@@ -505,6 +547,8 @@ glStencilFunc(GL_EQUAL, 1, 0xFF);
 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 // draw all scene objects (they will only appear where eraser just wrote 1)
 ```
+
+这部分我们放在 [课程 34 - Frame 与裁切] 中介绍。
 
 ## 扩展阅读 {#extended-reading}
 
@@ -540,3 +584,4 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer
 [课程 29 - HTML 容器]: /zh/guide/lesson-029#create-html-container
 [课程 20 - Awareness 和 Presence]: /zh/guide/lesson-020#awareness-presence
+[课程 34 - Frame 与裁切]: /zh/guide/lesson-034

@@ -12,7 +12,8 @@ import {
   Grid,
   Theme,
   Renderable,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Circle,
   Rect,
   DropShadow,
@@ -67,7 +68,7 @@ class StartUpSystem extends System {
         Children,
         Transform,
         Renderable,
-        FillSolid,
+        FillLayers,
         Stroke,
         DropShadow,
         Circle,
@@ -103,7 +104,7 @@ class StartUpSystem extends System {
     const parent = this.commands.spawn(
       new Transform(),
       new Renderable(),
-      new FillSolid('red'),
+      new FillLayers([{ type: 'solid', value: 'red' }]),
       new Circle({ cx: 0, cy: 0, r: 100 }),
       new Opacity(),
       new Visibility(),
@@ -114,9 +115,9 @@ class StartUpSystem extends System {
     const child = this.commands.spawn(
       new Transform(),
       new Renderable(),
-      new FillSolid('green'),
+      new FillLayers([{ type: 'solid', value: 'green' }]),
+      new StrokeLayers([{ type: 'solid', value: 'black' }]),
       new Stroke({
-        color: 'black',
         width: 10,
         alignment: 'center',
         dasharray: [10, 10],
@@ -130,7 +131,7 @@ class StartUpSystem extends System {
     // const grandchild = this.commands.spawn(
     //   new Transform(),
     //   new Renderable(),
-    //   new FillSolid('blue'),
+    //   new FillLayers([{ type: 'solid', value: 'blue' }]),
     //   new DropShadow({
     //     color: 'rgba(0, 0, 0, 0.5)',
     //     blurRadius: 10,
@@ -175,7 +176,7 @@ class StartUpSystem extends System {
     //     alignment: 'center',
     //     dasharray: [10, 10],
     //   }),
-    //   new FillSolid('yellow'),
+    //   new FillLayers([{ type: 'solid', value: 'yellow' }]),
     //   new Path({
     //     d: 'M 0 0 L 100 100 L 200 0 Z',
     //   }),
@@ -188,7 +189,7 @@ class StartUpSystem extends System {
     //     translation: { x: 200, y: -50 },
     //   }),
     //   new Renderable(),
-    //   new FillSolid('blue'),
+    //   new FillLayers([{ type: 'solid', value: 'blue' }]),
     //   new DropShadow({
     //     color: 'rgba(0, 0, 0, 0.5)',
     //     blurRadius: 10,
@@ -208,7 +209,7 @@ class StartUpSystem extends System {
     // const roughCircle = this.commands.spawn(
     //   new Transform(),
     //   new Renderable(),
-    //   new FillSolid('green'),
+    //   new FillLayers([{ type: 'solid', value: 'green' }]),
     //   new Stroke({
     //     color: 'black',
     //     width: 10,
@@ -222,7 +223,7 @@ class StartUpSystem extends System {
     // const text = this.commands.spawn(
     //   new Transform(),
     //   new Renderable(),
-    //   new FillSolid('black'),
+    //   new FillLayers([{ type: 'solid', value: 'black' }]),
     //   new Text({
     //     x: 100,
     //     y: 300,
@@ -272,7 +273,9 @@ class StartUpSystem extends System {
     // cameraEntity.write(Transform).scale.x = 2;
     // cameraEntity.write(Transform).scale.y = 2;
     // grandchildEntity.write(Transform).rotation = 20;
-    // grandchildEntity.write(FillSolid).value = 'grey';
+    // grandchildEntity.write(FillLayers).layers = [
+    //   { type: 'solid', value: 'grey' },
+    // ];
     // }, 1000);
     // expect(parent_entity?.read(Parent).children).toBe([child_entity]);
   }

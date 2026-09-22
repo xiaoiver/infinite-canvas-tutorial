@@ -7,7 +7,6 @@ head:
           { property: 'og:title', content: 'Lesson 1 - Initialize canvas' },
       ]
 ---
-
 # Lesson 1 - Initialize canvas
 
 In this lesson you will learn the following:

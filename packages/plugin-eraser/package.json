@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/eraser",
-  "version": "0.0.1-alpha.39",
+  "version": "0.0.10",
   "description": "Use eraser",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -45,18 +45,16 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib",
-    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm",
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
     "build": "run-p build:*",
-    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch",
+    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch",
     "localize:extract": "lit-localize extract",
     "localize:build": "lit-localize build"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
-    "@infinite-canvas-tutorial/webcomponents": "workspace:*",
-    "@spectrum-web-components/icon": "^1.10.0",
-    "@spectrum-web-components/icons-workflow": "^1.10.0",
+    "@spectrum-web-components/icon": "^1.11.2",
+    "@spectrum-web-components/icons-workflow": "^1.11.2",
     "@lit/context": "^1.1.2",
     "@lit/localize": "^0.12.2",
     "@lit/task": "^1.0.1",
@@ -64,6 +62,10 @@
   },
   "devDependencies": {
     "@lit/localize-tools": "^0.8.1"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

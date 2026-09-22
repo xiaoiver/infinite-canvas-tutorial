@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -28,6 +29,8 @@ import {
   ZIndex,
   ComputeZIndex,
   Pen,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -60,12 +63,15 @@ describe('Draw rect', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
             Name,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 

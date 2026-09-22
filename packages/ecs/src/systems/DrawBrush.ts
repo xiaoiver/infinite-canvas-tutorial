@@ -8,7 +8,7 @@ import {
   ComputedBounds,
   ComputedCamera,
   Cursor,
-  FillSolid,
+  FillLayers,
   GlobalTransform,
   Highlighted,
   Input,
@@ -32,7 +32,8 @@ import {
   Brush,
 } from '../components';
 import { API } from '../API';
-import { BrushSerializedNode, serializeBrushPoints } from '../utils/serialize';
+import { serializeBrushPoints } from '../utils';
+import { BrushSerializedNode } from '../types/serialized-node';
 import { distanceBetweenPoints } from '../utils/matrix';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { isBrowser } from '../utils';
@@ -73,7 +74,7 @@ export class DrawBrush extends System {
             Parent,
             Children,
             Renderable,
-            FillSolid,
+            FillLayers,
             Opacity,
             Stroke,
             Polyline,
@@ -99,8 +100,7 @@ export class DrawBrush extends System {
       }
 
       const { inputPoints, api } = canvas.read(Canvas);
-      const appState = api.getAppState();
-      const pen = appState.penbarSelected;
+      const pen = api.getAppState().penbarSelected;
 
       if (pen !== Pen.BRUSH) {
         return;
@@ -171,13 +171,19 @@ export class DrawBrush extends System {
         }
 
         api.runAtNextTick(() => {
+          const { stamps, ...rest } = api.getAppState().penbarBrush;
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
+          const activeStamp = stamps?.find((stamp) => stamp.active) ?? stamps?.[0];
+          const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
           const node: BrushSerializedNode = {
             id: uuidv4(),
             type: 'brush',
+            version: 0,
+            zIndex: maxZIndex + 1,
             points: brush.points,
-            ...appState.penbarBrush,
+            brushStamp: activeStamp?.src, // Use stamp from current settings
+            ...rest,
           };
 
           api.setAppState({
@@ -200,6 +206,8 @@ export class DrawBrush extends System {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
     const defaultDrawParams = api.getAppState().penbarBrush;
+    const { stamps, ...rest } = defaultDrawParams;
+    const activeStamp = stamps?.find((stamp) => stamp.active) ?? stamps?.[0];
 
     const { pointerDownViewportX, pointerDownViewportY } = camera.read(
       ComputedCameraControl,
@@ -223,7 +231,7 @@ export class DrawBrush extends System {
           points: '0,0,0',
           visibility: 'hidden',
           zIndex: DRAW_RECT_Z_INDEX,
-          ...defaultDrawParams,
+          ...rest,
         };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
@@ -262,10 +270,11 @@ export class DrawBrush extends System {
               strokePoints.map(({ point, pressure }) => ({
                 x: point[0],
                 y: point[1],
-                radius: pressure * defaultDrawParams.strokeWidth,
+                radius: pressure * rest.strokeWidth,
               })),
             ),
-            ...defaultDrawParams,
+            brushStamp: activeStamp?.src, // Use stamp from current settings
+            ...rest,
           },
           false,
         );

@@ -10,17 +10,16 @@ import {
   Matrix,
   rotateDEG,
 } from 'transformation-matrix';
-import { SerializedNode } from './type';
+import { SerializedNode } from '../../types/serialized-node';
 import { serializePoints } from './points';
 import { deserializePoints } from '../deserialize';
 import { getGeometryBounds } from '../style';
-import { computeBidi, measureText } from '../../systems/ComputeTextMetrics';
+import { measureText } from '../../systems/ComputeTextMetrics';
 import { ComputedTextMetrics } from '../../components';
 
 export function fixTransform(transform: string, attributes: SerializedNode) {
   let metrics: Partial<ComputedTextMetrics>;
   if (attributes.type === 'text') {
-    computeBidi(attributes.content);
     metrics = measureText(attributes);
     attributes.fontBoundingBoxAscent =
       metrics.fontMetrics.fontBoundingBoxAscent;
@@ -180,7 +179,46 @@ export function shiftPath(d: string, dx: number, dy: number) {
     }
   });
 
+  absoluteArray.forEach((segment) => {
+    for (let i = 1; i < segment.length; i++) {
+      const v = segment[i] as number;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        segment[i] = roundNumberToDecimals(v, 2);
+      }
+    }
+  });
+
   return path2String(absoluteArray);
+}
+
+const DECIMAL_ROUND_EPS = 1e-8;
+
+/** 将单坐标量化为指定位数十进制，供 icon 缩放后的 path/ellipse/line 与 SVG 导出共用。 */
+export function roundNumberToDecimals(
+  n: number,
+  decimalPlaces: number,
+): number {
+  if (!Number.isFinite(n)) {
+    return n;
+  }
+  const f = 10 ** decimalPlaces;
+  const o = Math.round(n * f) / f;
+  if (Object.is(o, -0) || (Math.abs(o) < DECIMAL_ROUND_EPS && f >= 1)) {
+    return 0;
+  }
+  return o;
+}
+
+/**
+ * 局部路径/折线顶点在「几何 min 归一化」坐标系下，不应再叠加节点位姿里的平移（m20/m21），
+ * 否则 transformPath / 点乘会与 obb 里的 x,y 重复平移。
+ */
+export function mat3WithoutTranslation(m: mat3): mat3 {
+  const out = mat3.clone(m);
+  out[6] = 0;
+  out[7] = 0;
+  out[8] = 1;
+  return out;
 }
 
 export function transformPath(d: string, transform: mat3) {
@@ -211,9 +249,19 @@ export function transformPath(d: string, transform: mat3) {
       );
       segment[1] = newY;
     } else if (command === 'A') {
+      // SVG 弧的 rx、ry 在用户坐标系中的长度；仅变换终点会导致曲率与线段不一致。
+      // 用 2×2 线性部分的列范数作为各轴缩放因子（与均匀 scale(s,s)、axis-aligned scale(sx,sy) 一致）。
+      const a = transform[0]!;
+      const b = transform[1]!;
+      const c = transform[3]!;
+      const d = transform[4]!;
+      const scaleX = Math.hypot(a, b);
+      const scaleY = Math.hypot(c, d);
+      segment[1] = (segment[1] as number) * scaleX;
+      segment[2] = (segment[2] as number) * scaleY;
       const [newX, newY] = vec2.transformMat3(
         vec2.create(),
-        [segment[6], segment[7]],
+        [segment[6] as number, segment[7] as number],
         transform,
       );
       segment[6] = newX;
@@ -255,6 +303,15 @@ export function transformPath(d: string, transform: mat3) {
       );
       segment[3] = newX2;
       segment[4] = newY2;
+    }
+  });
+
+  absoluteArray.forEach((segment) => {
+    for (let i = 1; i < segment.length; i++) {
+      const v = segment[i] as number;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        segment[i] = roundNumberToDecimals(v, 2);
+      }
     }
   });
 

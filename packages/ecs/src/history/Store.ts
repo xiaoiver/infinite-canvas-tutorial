@@ -8,7 +8,7 @@ import { AppStateChange } from './AppStateChange';
 import { ElementsChange } from './ElementsChange';
 import { Snapshot } from './Snapshot';
 import { API } from '../API';
-import { SerializedNode } from '../utils';
+import { SerializedNode } from '../types/serialized-node';
 
 export const StoreIncrementEvent = 'storeIncrement';
 
@@ -55,7 +55,7 @@ export class Store {
 
   onStoreIncrementEmitter = new EventEmitter();
 
-  constructor(private readonly api: API) {}
+  constructor(private readonly api: API) { }
 
   get snapshot() {
     return this.#snapshot;
@@ -106,18 +106,18 @@ export class Store {
       // Calculate and record the changes based on the previous and next snapshot
       const elementsChange = nextSnapshot.meta.didElementsChange
         ? ElementsChange.calculate(
-            prevSnapshot.elements,
-            nextSnapshot.elements,
-            this.api,
-          )
+          prevSnapshot.elements,
+          nextSnapshot.elements,
+          this.api,
+        )
         : ElementsChange.empty();
 
       const appStateChange = nextSnapshot.meta.didAppStateChange
         ? AppStateChange.calculate(
-            prevSnapshot.appState,
-            nextSnapshot.appState,
-            this.api,
-          )
+          prevSnapshot.appState,
+          nextSnapshot.appState,
+          this.api,
+        )
         : AppStateChange.empty();
 
       if (!elementsChange.isEmpty() || !appStateChange.isEmpty()) {

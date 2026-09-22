@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -31,6 +33,8 @@ import {
   Screenshot,
   SizeAttenuation,
   StrokeAttenuation,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -66,7 +70,8 @@ describe('Export Attenuation', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -75,6 +80,8 @@ describe('Export Attenuation', () => {
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -97,8 +104,8 @@ describe('Export Attenuation', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
-            stroke: 'blue',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+            strokes: [{ type: 'solid', value: 'blue', opacity: 1 }],
             strokeWidth: 10,
             sizeAttenuation: true,
             strokeAttenuation: true,
@@ -107,6 +114,7 @@ describe('Export Attenuation', () => {
             width: 100,
             height: 100,
             visibility: 'visible',
+            zIndex: 0,
           },
         ]);
       }
@@ -116,13 +124,11 @@ describe('Export Attenuation', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-attenuation');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-attenuation', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -132,7 +138,7 @@ describe('Export Attenuation', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

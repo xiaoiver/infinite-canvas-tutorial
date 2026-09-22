@@ -1,0 +1,173 @@
+import type { Entity } from '@lastolivegames/becsy';
+import { FillLayers, MaterialDirty } from '../components';
+import { safeAddComponent } from '../history/ElementsChange';
+import {
+  drawCanvasImageWithObjectFit,
+  type FillLayerImageRasterOptions,
+} from './fill-layer-image-object-fit';
+import { setFillLayerDecodedBitmapForUrl } from './fill-layer-image-url-raster';
+import { getEnabledFillLayers } from './fillLayers';
+
+const lastScheduledKey = new WeakMap<Entity, string>();
+
+/**
+ * FillLayers 图片层或 {@link loadImage} 重新加载后须清除，否则会沿用旧
+ * `url|targetW|targetH` 去重键而跳过 {@link scheduleFillImageSvgRerasterIfNeeded}，视觉上回到低分辨率插值。
+ */
+export function resetFillImageSvgRerasterSchedule(entity: Entity): void {
+  lastScheduledKey.delete(entity);
+}
+
+/**
+ * 判断 fill 的 URL 是否可能为 SVG（小 intrinsic 时 ImageLoader 常得到低分辨率位图，应用插值放大仍糊）。
+ */
+export function isLikelySvgResourceUrl(url: string): boolean {
+  if (!url || typeof url !== 'string') {
+    return false;
+  }
+  const s = url.trim();
+  if (/^data:image\/svg\+xml/i.test(s)) {
+    return true;
+  }
+  const head = s.split(/[?#]/)[0] ?? s;
+  if (/\.svg$/i.test(head)) {
+    return true;
+  }
+  try {
+    const u = new URL(s, 'https://local.invalid/');
+    return u.pathname.toLowerCase().endsWith('.svg');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 用 `HTMLImageElement` 在目标像素网格上重绘 SVG，再转为 `ImageBitmap`（与放大已有小位图不同，边缘更锐利）。
+ */
+export async function rasterizeSvgUrlToImageBitmap(
+  url: string,
+  width: number,
+  height: number,
+  options?: FillLayerImageRasterOptions,
+): Promise<ImageBitmap | null> {
+  if (typeof Image === 'undefined' || width < 1 || height < 1) {
+    return null;
+  }
+  return new Promise((resolve) => {
+    const img = new Image();
+    if (
+      url.startsWith('http://') ||
+      url.startsWith('https://') ||
+      url.startsWith('//')
+    ) {
+      img.crossOrigin = 'anonymous';
+    }
+    const done = (bmp: ImageBitmap | null) => resolve(bmp);
+    img.onload = () => {
+      let canvas: HTMLCanvasElement | OffscreenCanvas;
+      if (typeof document !== 'undefined') {
+        const c = document.createElement('canvas');
+        c.width = width;
+        c.height = height;
+        canvas = c;
+      } else {
+        canvas = new OffscreenCanvas(width, height);
+      }
+      const ctx = canvas.getContext('2d') as
+        | CanvasRenderingContext2D
+        | OffscreenCanvasRenderingContext2D
+        | null;
+      if (!ctx) {
+        done(null);
+        return;
+      }
+      ctx.imageSmoothingEnabled = true;
+      if ('imageSmoothingQuality' in ctx) {
+        (ctx as CanvasRenderingContext2D).imageSmoothingQuality = 'high';
+      }
+      try {
+        drawCanvasImageWithObjectFit(
+          ctx,
+          img,
+          img.naturalWidth,
+          img.naturalHeight,
+          width,
+          height,
+          options,
+        );
+      } catch {
+        done(null);
+        return;
+      }
+      void createImageBitmap(canvas)
+        .then((b) => done(b))
+        .catch(() => done(null));
+    };
+    img.onerror = () => done(null);
+    img.src = url;
+  });
+}
+
+/**
+ * 对 SVG：当前帧若仍用小 `ImageBitmap` 再插值到目标尺寸会偏糊，异步用矢量重栅格到 `targetW×targetH` 后写入
+ * URL 解码缓存并打 `MaterialDirty`；非 SVG 或已足够大时 no-op。
+ */
+export function scheduleFillImageSvgRerasterIfNeeded(o: {
+  entity: Entity;
+  url: string;
+  targetW: number;
+  targetH: number;
+  sourceW: number;
+  sourceH: number;
+  rasterOptions?: FillLayerImageRasterOptions;
+}): void {
+  const { entity, url, targetW, targetH, sourceW, sourceH, rasterOptions } = o;
+  if (!isLikelySvgResourceUrl(url)) {
+    return;
+  }
+  if (targetW <= sourceW + 0.5 && targetH <= sourceH + 0.5) {
+    return;
+  }
+  // 含 intrinsic 尺寸：主题刷新后小图会换实例，与旧 key 解耦，避免已调度成功却不再重跑
+  const key = `${url}\0${targetW}\0${targetH}\0${sourceW}\0${sourceH}`;
+  if (lastScheduledKey.get(entity) === key) {
+    return;
+  }
+  lastScheduledKey.set(entity, key);
+  void (async () => {
+    const bmp = await rasterizeSvgUrlToImageBitmap(
+      url,
+      targetW,
+      targetH,
+      rasterOptions,
+    );
+    if (!bmp) {
+      if (lastScheduledKey.get(entity) === key) {
+        lastScheduledKey.delete(entity);
+      }
+      return;
+    }
+    if (lastScheduledKey.get(entity) !== key) {
+      bmp.close();
+      return;
+    }
+    if (!entity.has(FillLayers)) {
+      bmp.close();
+      lastScheduledKey.delete(entity);
+      return;
+    }
+    const stillHasUrl = getEnabledFillLayers(entity).some(
+      (l) => l.type === 'image' && l.value === url,
+    );
+    if (!stillHasUrl) {
+      bmp.close();
+      lastScheduledKey.delete(entity);
+      return;
+    }
+    setFillLayerDecodedBitmapForUrl(url, bmp);
+    safeAddComponent(entity, MaterialDirty);
+    if (lastScheduledKey.get(entity) === key) {
+      lastScheduledKey.delete(entity);
+    }
+  })();
+}

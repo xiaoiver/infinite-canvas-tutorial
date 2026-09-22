@@ -139,6 +139,18 @@ Inspired by Figma's gradient editing panel, we've implemented a similar editor. 
 
 ![Figma gradient panel](/figma-gradient-panel.png)
 
+## Applying gradients to fill and stroke {#applying-gradients-to-fill-and-stroke}
+
+Fill gradients are consumed by drawcalls such as `SDF` and `Mesh`, while stroke gradients are consumed by `SmoothPolyline`. Once the gradient has been rasterized to a texture, the remaining question is how to compute UVs in the vertex shader.
+
+For mesh fills, the vertex shader uses **`u_FillUVRect`** (`minX`, `minY`, `1/width`, `1/height`) to map **local geometry coordinates** into texture space.
+
+For strokes, the vertex shader already has **`pos`** in **world space** after the model matrix—the expanded point on the stroke ribbon. To align with **`ComputedBounds.geometryBounds`**, we transform back to **local space**, then subtract `min` and multiply by the inverse extent:
+
+`local = inverse(model) * vec3(pos, 1.0)`, then `v_StrokeUv = (local.xy - u_StrokeUVRect.xy) * u_StrokeUVRect.zw`.
+
+On the **WebGPU** path, when GLSL is lowered to WGSL through **naga**, **`inverse(mat3)` is not supported**, so the implementation uses a hand-written **`inverseMat3`** (adjugate / determinant) instead of the built-in `inverse`.
+
 ## Implementing Gradients with Mesh {#mesh-gradient}
 
 The gradients implemented based on Canvas and SVG have limited expressiveness and cannot display complex effects. Some design tools like Sketch / Figma have many Mesh-based implementations in their communities, such as:

@@ -15,9 +15,9 @@ jobs:
         with:
           python-version: '3.10'
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
-          version: 7
+          version: 9
 
       - name: Use Node.js 18
         uses: actions/setup-node@v3
@@ -50,12 +50,13 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload blob report to GitHub Actions Artifacts
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: snapshots
           path: |
-            __tests__/ssr/snapshots/**/*-actual.svg
-            __tests__/ssr/snapshots/**/*-actual.png
-            __tests__/ssr/snapshots/**/*-diff.png
+            __tests__/**/snapshots/**/*-actual.svg
+            __tests__/**/snapshots/**/*-actual.png
+            __tests__/**/snapshots/**/*-diff.png
+          if-no-files-found: ignore
           retention-days: 1

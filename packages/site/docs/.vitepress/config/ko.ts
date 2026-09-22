@@ -8,6 +8,7 @@ export const ko = defineConfig({
   keywords: ['무한 캔버스', '캔버스', 'webgl', 'webgpu', 'ecs'],
   themeConfig: {
     nav: [
+      { text: 'App', link: 'https://app.infinitecanvas.cc/' },
       {
         text: '가이드',
         link: '/ko/guide/lesson-001',
@@ -180,6 +181,15 @@ export const ko = defineConfig({
             ],
           },
           {
+            text: '필터',
+            items: [
+              {
+                text: '효과 및 LUT',
+                link: 'filter',
+              },
+            ],
+          },
+          {
             text: '플러그인',
             items: [
               { text: '채팅', link: 'chat' },
@@ -270,6 +280,10 @@ export const ko = defineConfig({
               {
                 text: '채우기 규칙 (Fill rule)',
                 link: 'fill-rule',
+              },
+              {
+                text: 'Vector Network 큐브 (모서리 드래그)',
+                link: 'vector-network-cube',
               },
               {
                 text: '텍스트',
@@ -382,6 +396,10 @@ export const ko = defineConfig({
                   {
                     text: 'FlexTree',
                     link: 'flextree',
+                  },
+                  {
+                    text: '그래프 간 바인딩',
+                    link: 'binding',
                   },
                 ],
               },

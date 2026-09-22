@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -31,6 +33,8 @@ import {
   Screenshot,
   Polyline,
   Marker,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -66,7 +70,8 @@ describe('Export SVG', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -75,6 +80,8 @@ describe('Export SVG', () => {
             ZIndex,
             Polyline,
             Marker,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -97,7 +104,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'polyline',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             strokeWidth: 10,
             strokeLinejoin: 'round',
             strokeLinecap: 'round',
@@ -105,6 +112,7 @@ describe('Export SVG', () => {
             markerEnd: 'line',
             markerFactor: 3,
             points: '50,50 100,100 150,50',
+            zIndex: 0,
           },
         ]);
       }
@@ -114,13 +122,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-arrow');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-arrow', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -130,7 +136,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

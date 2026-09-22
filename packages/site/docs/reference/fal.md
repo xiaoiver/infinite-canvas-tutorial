@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 Use [fal.ai] to implement [AI API]
 
 -   [upload] Upload File to CDN and return an URL

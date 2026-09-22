@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 我们希望画布可以在不同的环境中运行，比如浏览器、Node.js、WebWorker 等。不同的环境提供的能力也不同，因此我们参考 Pixi.js 的实现，提供了 `Adapter` 接口以及默认的 `BrowserAdapter` 和 `WebWorkerAdapter`，供使用者选择。
 
 ```ts

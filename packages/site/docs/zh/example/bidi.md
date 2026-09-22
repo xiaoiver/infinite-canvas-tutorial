@@ -1,6 +1,14 @@
 ---
-publish: false
+title: "双向文字（Bidi）排版"
+description: "在同一段落中混合从左到右与从右到左的书写方向。"
 ---
+<!-- example-intro:zh -->
+
+# 双向文字（Bidi）排版
+
+**Bidi** 排版在阿语、希伯来语与英文混排时不可或缺，字形层面常依赖 HarfBuzz 等 shaping，本页展示与画布的集成。
+
+请用混合方向段落测试光标移动与选区行为。
 
 使用 [bidi-js] 处理双向文本。
 

@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "使用 HarfBuzz 进行文本 Shaping"
+description: "为复杂文字与 OpenType 特性提供工业级 shaping。"
 ---
+<!-- example-intro:zh -->
+
+# 使用 HarfBuzz 进行文本 Shaping
+
+**HarfBuzz** 是事实上的 shaping 实现，接入后可支持连字、字距与脚本相关规则，超越简单的码点→字形映射，见 [第 15 课](/zh/guide/lesson-015)。
+
+WASM 建议按需懒加载以控制首包体积。
+
+## 交互示例
 
 <script setup>
 import Harfbuzz from '../../components/Harfbuzz.vue'

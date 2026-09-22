@@ -125,6 +125,8 @@ export class App {
     this.world = await World.create({
       // Multithreading is not supported yet.
       threads: 1,
+      maxEntities: 4194304,
+      maxLimboComponents: 4194304,
     });
 
     const tick = async () => {

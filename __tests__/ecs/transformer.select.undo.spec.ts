@@ -1,0 +1,153 @@
+import _gl from 'gl';
+import '../useSnapshotMatchers';
+import {
+  App,
+  Camera,
+  Canvas,
+  Children,
+  Commands,
+  DOMAdapter,
+  DefaultPlugins,
+  DefaultStateManagement,
+  Entity,
+  FillLayers,
+  StrokeLayers,
+  Grid,
+  Parent,
+  Plugin,
+  PreStartUp,
+  Renderable,
+  Stroke,
+  System,
+  Theme,
+  Transform,
+  Visibility,
+  system,
+  API,
+  Name,
+  Ellipse,
+  ZIndex,
+  ComputeZIndex,
+  Pen,
+  RectSerializedNode,
+  Selected,
+  Rect,
+  Opacity,
+  GlobalTransform,
+} from '../../packages/ecs/src';
+import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
+
+DOMAdapter.set(NodeJSAdapter);
+
+describe('Select and Undo', () => {
+  it('should select and undo correctly', async () => {
+    const app = new App();
+
+    let $canvas: HTMLCanvasElement | undefined;
+    let canvasEntity: Entity | undefined;
+    let cameraEntity: Entity | undefined;
+    let api: API | undefined;
+    let parent: RectSerializedNode | undefined;
+    let child: RectSerializedNode | undefined;
+
+    const MyPlugin: Plugin = () => {
+      system(PreStartUp)(StartUpSystem);
+      system((s) => s.before(ComputeZIndex))(StartUpSystem);
+    };
+
+    class StartUpSystem extends System {
+      private readonly commands = new Commands(this);
+
+      q = this.query(
+        (q) =>
+          q.using(
+            Canvas,
+            Theme,
+            Grid,
+            Camera,
+            Parent,
+            Children,
+            Transform,
+            Renderable,
+            FillLayers,
+            StrokeLayers,
+            Stroke,
+            Rect,
+            Visibility,
+            Name,
+            ZIndex,
+            Selected,
+            Ellipse,
+            Opacity,
+            GlobalTransform,
+          ).write,
+      );
+
+      initialize(): void {
+        $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
+
+        api = new API(new DefaultStateManagement(), this.commands);
+
+        canvasEntity = api.createCanvas({
+          element: $canvas,
+          width: 200,
+          height: 200,
+          devicePixelRatio: 1,
+        });
+
+        cameraEntity = api.createCamera({
+          zoom: 1,
+        });
+
+        parent = {
+          id: 'parent',
+          type: 'rect',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+          x: 50,
+          y: 50,
+          width: 100,
+          height: 100,
+          zIndex: 0,
+        };
+        child = {
+          id: 'child',
+          parentId: 'parent',
+          type: 'rect',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
+          x: 0,
+          y: 0,
+          width: 50,
+          height: 50,
+          zIndex: 0,
+        };
+        api.setAppState({
+          penbarSelected: Pen.SELECT,
+        });
+        api.updateNodes([parent, child]);
+        api.selectNodes([parent]);
+        api.record();
+      }
+    }
+
+    app.addPlugins(...DefaultPlugins, MyPlugin);
+
+    await app.run();
+    if (api && child) {
+      await sleep(300);
+      api.selectNodes([child]);
+      api.record();
+      await sleep(300);
+
+      api.undo();
+      await sleep(300);
+    }
+
+    const dir = `${__dirname}/snapshots`;
+    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+      dir,
+      'transformer-select-undo',
+    );
+
+    await app.exit();
+  });
+});

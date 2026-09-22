@@ -16,6 +16,7 @@ export const zh = defineConfig({
   ],
   themeConfig: {
     nav: [
+      { text: '应用', link: 'https://app.infinitecanvas.cc/' },
       { text: '课程', link: '/zh/guide/lesson-001', activeMatch: '/zh/guide/' },
       {
         text: '案例',
@@ -81,6 +82,14 @@ export const zh = defineConfig({
               { text: '课程29 - 嵌入 HTML 内容', link: 'lesson-029' },
               { text: '课程30 - 后处理与渲染图', link: 'lesson-030' },
               { text: '课程31 - 图形间的连接关系', link: 'lesson-031' },
+              { text: '课程32 - 文本生成图表', link: 'lesson-032' },
+              { text: '课程33 - 布局引擎', link: 'lesson-033' },
+              { text: '课程34 - Group, Frame 与裁切', link: 'lesson-034' },
+              { text: '课程35 - 基于瓦片的渲染', link: 'lesson-035' },
+              { text: '课程36 - 动画', link: 'lesson-036' },
+              { text: '课程37 - 基于 Radiance Cascades 的 GI', link: 'lesson-037' },
+              { text: '课程38 - 从设计到代码', link: 'lesson-038' },
+              { text: '课程39 - 3D Mesh 渲染', link: 'lesson-039' },
             ],
           },
         ],
@@ -122,6 +131,15 @@ export const zh = defineConfig({
             ],
           },
           {
+            text: '滤镜',
+            items: [
+              {
+                text: '效果与 LUT',
+                link: 'filter',
+              },
+            ],
+          },
+          {
             text: '插件',
             items: [
               { text: 'Chat', link: 'chat' },
@@ -135,6 +153,12 @@ export const zh = defineConfig({
               { text: '激光笔', link: 'laser-pointer' },
               { text: '套索工具', link: 'lasso' },
               { text: '橡皮擦工具', link: 'eraser' },
+              { text: 'Mermaid', link: 'mermaid' },
+              { text: 'D2', link: 'd2' },
+              { text: 'Drawio', link: 'drawio' },
+              { text: 'Figma', link: 'figma' },
+              { text: 'Yoga', link: 'yoga' },
+              { text: 'Vello', link: 'vello' },
             ],
           },
           {
@@ -215,6 +239,10 @@ export const zh = defineConfig({
                 link: 'fill-rule',
               },
               {
+                text: 'VectorNetwork 立方体（拖拽边）',
+                link: 'vector-network-cube',
+              },
+              {
                 text: '文本',
                 items: [
                   {
@@ -281,6 +309,10 @@ export const zh = defineConfig({
                     text: '文本编辑器',
                     link: 'text-editor',
                   },
+                  {
+                    text: '使用 Pretext 度量文本',
+                    link: 'pretext',
+                  }
                 ],
               },
               {
@@ -304,12 +336,20 @@ export const zh = defineConfig({
                 link: 'declarative-gradient',
               },
               {
+                text: 'mix-blend-mode',
+                link: 'blend-mode',
+              },
+              {
                 text: '重复图案',
                 link: 'pattern',
               },
               {
                 text: '图像处理',
                 link: 'image-processing',
+              },
+              {
+                text: '对象适应',
+                link: 'object-fit',
               },
               {
                 text: '思维导图和布局',
@@ -325,6 +365,10 @@ export const zh = defineConfig({
                   {
                     text: 'FlexTree',
                     link: 'flextree',
+                  },
+                  {
+                    text: '图形间的绑定关系',
+                    link: 'binding',
                   },
                 ],
               },
@@ -399,6 +443,31 @@ export const zh = defineConfig({
                   },
                 ],
               },
+              {
+                text: '3D Mesh 渲染',
+                items: [
+                  {
+                    text: '立方体（正交）',
+                    link: 'cube',
+                  },
+                  {
+                    text: '立方体（透视）',
+                    link: 'cube-perspective',
+                  },
+                  {
+                    text: '场景光照',
+                    link: 'lighting',
+                  },
+                  {
+                    text: '贴图地球',
+                    link: 'earth',
+                  },
+                  {
+                    text: 'GLTF Duck',
+                    link: 'gltf-duck',
+                  },
+                ],
+              }
             ],
           },
         ],
@@ -427,6 +496,9 @@ export const zh = defineConfig({
             link: 'lama-in-worker',
           },
           { text: '音频可视化', link: 'audio-visualizer' },
+          { text: '使用 vello 渲染', link: 'vello' },
+          { text: 'Mermaid 水彩风格', link: 'mermaid-watercolor' },
+          { text: '基于 Radiance Cascades 的全局光照', link: 'radiance-cascades' },
         ],
       },
     },

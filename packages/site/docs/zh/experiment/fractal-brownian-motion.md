@@ -1,7 +1,3 @@
----
-publish: false
----
-
 <script setup>
 import FractalBrownianMotion from '../../components/FractalBrownianMotion.vue'
 </script>

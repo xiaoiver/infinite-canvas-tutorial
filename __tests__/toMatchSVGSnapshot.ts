@@ -15,6 +15,7 @@ export function toMatchSVGSnapshot(
   options: ToMatchSVGSnapshotOptions = {},
 ): { message: () => string; pass: boolean } {
   const { fileFormat = 'svg', ignore } = options;
+  const namePath = path.join(dir, name);
 
   if (ignore) {
     return {
@@ -23,7 +24,6 @@ export function toMatchSVGSnapshot(
     };
   }
 
-  const namePath = path.join(dir, name);
   const actualPath = path.join(dir, `${name}-actual.${fileFormat}`);
   const expectedPath = path.join(dir, `${name}.${fileFormat}`);
 
@@ -80,5 +80,24 @@ export function toMatchSVGSnapshot(
       message: () => `${e}`,
       pass: false,
     };
+  }
+}
+
+/**
+ * 在使用了 done 回调的测试中调用，避免 toMatchSVGSnapshot 失败时抛错导致 done() 未被调用而超时。
+ * 比对失败时会调用 done(error)，Jest 会正常结束并报告失败。
+ */
+export function expectToMatchSVGSnapshotWithDone(
+  dom: SVGElement | string | null,
+  dir: string,
+  name: string,
+  done: (err?: Error) => void,
+  options?: ToMatchSVGSnapshotOptions,
+): void {
+  const result = toMatchSVGSnapshot(dom, dir, name, options ?? {});
+  if (result.pass) {
+    done();
+  } else {
+    done(new Error(result.message()));
   }
 }

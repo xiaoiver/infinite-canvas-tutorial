@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # RoughEllipse
 
 参考 SVG [ellipse]。

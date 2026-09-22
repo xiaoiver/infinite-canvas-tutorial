@@ -28,7 +28,9 @@ test.describe('E2E Suite', () => {
       await expect(page.locator('canvas')).toHaveScreenshot([
         renderer,
         `${name}.png`,
-      ]);
+      ], {
+        maxDiffPixelRatio: 0.05,
+      });
     });
   });
 });

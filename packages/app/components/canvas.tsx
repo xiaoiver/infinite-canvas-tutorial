@@ -1,0 +1,306 @@
+'use client';
+
+import { throttle } from 'lodash-es';
+import { upload } from '@vercel/blob/client';
+import {
+  App,
+  Pen,
+  DefaultPlugins,
+  Task,
+  CheckboardStyle,
+  SerializedNode,
+  ThemeMode,
+  AppState,
+  registerIconifyIconSet,
+} from '@infinite-canvas-tutorial/ecs';
+import {
+  Event,
+  UIPlugin,
+  type ExtendedAPI,
+} from '@infinite-canvas-tutorial/webcomponents';
+// import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
+import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
+import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
+import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
+import { FilterPlugin } from '@infinite-canvas-tutorial/filter';
+import { useEffect, useRef, useCallback } from 'react';
+import { useTheme } from 'next-themes';
+import { useParams } from 'next/navigation';
+import { useAtom } from 'jotai';
+import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
+import { CanvasYjsManager } from '@/lib/yjs/canvas-yjs-manager';
+import ZoomToolbar from './zoom-toolbar';
+import lucide from '@iconify/json/json/lucide.json';
+import materialIconTheme from '@iconify/json/json/material-icon-theme.json';
+
+let appRunning = false;
+
+interface CanvasProps {
+  id?: string;
+  initialData?: SerializedNode[];
+  initialAppState?: Partial<AppState>;
+  /** 在首帧写入节点之前执行（例如注册 LUT），须在此完成异步准备 */
+  prepareCanvas?: (api: ExtendedAPI) => void | Promise<void>;
+}
+
+const Canvas = ({
+  id = 'default',
+  initialData,
+  initialAppState,
+  prepareCanvas,
+}: CanvasProps) => {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const projectIdRef = useRef<string>(id);
+  const yjsManagerRef = useRef<CanvasYjsManager | null>(null);
+  const prepareCanvasRef = useRef(prepareCanvas);
+  prepareCanvasRef.current = prepareCanvas;
+  const { resolvedTheme } = useTheme();
+  const params = useParams();
+  const locale = params.locale as string;
+
+  const [selectedNodes, setSelectedNodes] = useAtom(selectedNodesAtom);
+  const [canvasApi, setCanvasApi] = useAtom(canvasApiAtom);
+
+  // 更新 projectIdRef 当 id 改变时
+  useEffect(() => {
+    projectIdRef.current = id;
+  }, [id]);
+
+  // 保存画布数据到数据库的函数
+  const saveCanvasData = useCallback(async (nodes: SerializedNode[]) => {
+    const projectId = projectIdRef.current;
+    // 如果 id 是 'default'，说明不是项目页面，不需要保存
+    if (projectId === 'default') {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          canvasData: nodes,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error('Failed to save canvas data:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error saving canvas data:', error);
+    }
+  }, []);
+
+  // 创建 throttle 版本的保存函数，每 1 秒最多执行一次
+  const throttledSaveCanvasData = useRef(
+    throttle(saveCanvasData, 1000),
+  ).current;
+
+  const onReady = async (e: CustomEvent<any>) => {
+    const api = e.detail as ExtendedAPI;
+    setCanvasApi(api);
+
+    api.setLocale(locale);
+    api.upload = async (file: File) => {
+      // TODO: if already uploaded, return the url directly
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/assets/upload',
+      });
+      return blob.url;
+    };
+
+    // 初始化 Yjs 管理器
+    if (!yjsManagerRef.current) {
+      yjsManagerRef.current = new CanvasYjsManager(id);
+      await yjsManagerRef.current.waitForSync();
+
+      // 设置 API 的 onNodesChange 回调，将画布变化同步到 Yjs 并保存到数据库
+      api.onNodesChange = (nodes) => {
+        if (yjsManagerRef.current) {
+          yjsManagerRef.current.recordLocalOps(nodes);
+        }
+        const serializedNodes = nodes.filter(
+          (node) => !node.isDeleted,
+        ) as SerializedNode[];
+        throttledSaveCanvasData(serializedNodes);
+      };
+    }
+
+    // 从 Yjs 加载已保存的节点（如果有）
+    const savedNodes = yjsManagerRef.current.loadNodes();
+    const nodes: SerializedNode[] = initialData || savedNodes;
+
+    api.setAppState({
+      language: locale,
+      themeMode: resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
+      // variables: {
+      //   // 避免用 #FFFFFF：默认画布背景为浅色（如 #fbfbfb），白填充/白描边会几乎看不见
+      //   '--primary': { type: 'color', value: '#FF8400' },
+      //   '--primary-foreground': { type: 'color', value: '#111111' },
+      //   '--radius-pill': { type: 'number', value: 999 },
+      // },
+      cameraZoom: 0.35,
+      topbarVisible: false,
+      penbarSelected: Pen.SELECT,
+      penbarAll: [
+        Pen.HAND,
+        Pen.SELECT,
+        Pen.DRAW_RECT,
+        Pen.DRAW_ELLIPSE,
+        Pen.DRAW_LINE,
+        Pen.DRAW_ARROW,
+        Pen.DRAW_TRIANGLE,
+        Pen.DRAW_PENTAGON,
+        Pen.DRAW_HEXAGON,
+        Pen.DRAW_ROUGH_RECT,
+        Pen.DRAW_ROUGH_ELLIPSE,
+        Pen.DRAW_ICONFONT,
+        Pen.IMAGE,
+        Pen.TEXT,
+        Pen.PENCIL,
+        Pen.BRUSH,
+        Pen.ERASER,
+        Pen.LASER_POINTER,
+      ],
+      penbarText: {
+        ...api.getAppState().penbarText,
+        fontFamily: 'system-ui',
+        fontFamilies: ['system-ui', 'serif', 'monospace', 'Gaegu'],
+      },
+      taskbarAll: [Task.SHOW_LAYERS_PANEL, Task.SHOW_PROPERTIES_PANEL],
+      taskbarSelected: [],
+      checkboardStyle: CheckboardStyle.GRID,
+      snapToPixelGridEnabled: true,
+      snapToPixelGridSize: 1,
+      snapToObjectsEnabled: false,
+      snapToObjectsDistance: 8,
+      taskbarVisible: true,
+      contextBarVisible: false,
+      rotateEnabled: true,
+      flipEnabled: false,
+      propertiesPanelSectionsOpen: {
+        fillSection: true,
+        strokeSection: true,
+        typographySection: true,
+        shape: false,
+        transform: false,
+        layout: false,
+        flexItem: true,
+        effects: true,
+        multiSelectAlignment: true,
+        multiSelectEffects: true,
+        exportSection: true,
+        iconFont: true,
+      },
+      ...initialAppState,
+    });
+
+    registerIconifyIconSet('lucide', lucide);
+    registerIconifyIconSet('material-icon-theme', materialIconTheme);
+
+    await prepareCanvasRef.current?.(api);
+
+    api.runAtNextTick(() => {
+      api.updateNodes(nodes);
+      if (nodes.length > 0) {
+        api.selectNodes([nodes[0]]);
+      }
+      api.record();
+    });
+  };
+
+  const onSelectedNodesChanged = (e: CustomEvent<any>) => {
+    const newSelectedNodes = e.detail.selected;
+
+    // console.log('onSelectedNodesChanged... ', newSelectedNodes, selectedNodes);
+    // If the selected nodes are the same as the previous selected nodes, do nothing
+    // if (
+    //   newSelectedNodes.length === 0 && selectedNodes.length === 0
+    // ) {
+    //   return;
+    // }
+
+    setSelectedNodes(newSelectedNodes);
+  };
+
+  useEffect(() => {
+    if (!appRunning) {
+      new App()
+        .addPlugins(
+          ...DefaultPlugins,
+          FilterPlugin,
+          UIPlugin,
+          LaserPointerPlugin,
+          LassoPlugin,
+          EraserPlugin,
+          YogaPlugin,
+          // SAMPlugin
+        )
+        .run();
+      appRunning = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    canvasRef.current?.addEventListener(Event.READY, onReady);
+    canvasRef.current?.addEventListener(
+      Event.SELECTED_NODES_CHANGED,
+      onSelectedNodesChanged,
+    );
+
+    return () => {
+      if (canvasApi) {
+        try {
+          canvasApi.destroy();
+        } catch (error) {
+          console.error('Error destroying canvas:', error);
+        }
+        setCanvasApi(null);
+      }
+      if (yjsManagerRef.current) {
+        yjsManagerRef.current.destroy();
+        yjsManagerRef.current = null;
+      }
+      canvasRef.current?.removeEventListener(Event.READY, onReady);
+      canvasRef.current?.removeEventListener(
+        Event.SELECTED_NODES_CHANGED,
+        onSelectedNodesChanged,
+      );
+    };
+  }, []);
+
+  useEffect(() => {
+    if (canvasApi && resolvedTheme) {
+      canvasApi.setAppState({
+        themeMode: resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
+      });
+    }
+  }, [resolvedTheme]);
+
+  useEffect(() => {
+    import('@infinite-canvas-tutorial/webcomponents/spectrum');
+    import('@infinite-canvas-tutorial/lasso/spectrum');
+    import('@infinite-canvas-tutorial/eraser/spectrum');
+    import('@infinite-canvas-tutorial/laser-pointer/spectrum');
+  }, []);
+
+  return (
+    <div className="relative w-full h-full">
+      <ic-spectrum-canvas
+        ref={canvasRef}
+        className="w-full h-full"
+        app-state='{"topbarVisible":false}'
+      >
+        <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
+        <ic-spectrum-penbar-eraser slot="penbar-item" />
+      </ic-spectrum-canvas>
+      <ZoomToolbar canvasApi={canvasApi} canvasRef={canvasRef} />
+    </div>
+  );
+};
+
+export default Canvas;

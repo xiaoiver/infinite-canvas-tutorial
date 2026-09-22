@@ -1,6 +1,6 @@
 import { AppState, getDefaultAppState } from '../context';
-import { isShallowEqual } from './Delta';
-import { randomInteger, SerializedNode } from '../utils';
+import { randomInteger } from '../utils';
+import { SerializedNode } from '../types/serialized-node';
 import { getUpdatedTimestamp } from './ElementsChange';
 import { observeAppState, ObservedAppState } from './ObservedAppState';
 import { documentValueEqual } from '../document';
@@ -113,9 +113,7 @@ export class Snapshot {
     return nextAppStateSnapshot;
   }
   private detectChangedAppState(nextObservedAppState: ObservedAppState) {
-    return !isShallowEqual(this.appState, nextObservedAppState, {
-      layersSelected: isShallowEqual,
-    });
+    return !documentValueEqual(this.appState, nextObservedAppState);
   }
   private maybeCreateElementsSnapshot(
     elements: Map<string, OrderedExcalidrawElement> | undefined,

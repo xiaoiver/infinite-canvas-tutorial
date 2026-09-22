@@ -4,12 +4,12 @@ description: 'Master complex text rendering including TextMetrics, shaping with 
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 15 - Text rendering' }]
 ---
-
 <script setup>
 import MSDFText from '../components/MSDFText.vue';
 import BitmapFont from '../components/BitmapFont.vue';
 import Emoji from '../components/Emoji.vue';
 import Bidi from '../components/Bidi.vue';
+import TextBaseline2 from '../components/TextBaseline2.vue';
 </script>
 
 # Lesson 15 - Text rendering
@@ -94,6 +94,8 @@ The value of `text-baseline` can refer to [text-baseline], as shown in the figur
 ![text-baseline](/text-baseline.png)
 
 Finally, `fontBoundingBoxAscent/Descent` is the maximum boundary of the font itself, and `actualBoundingBoxAscent/Descent` is the maximum boundary of the font when actually drawn, so the former is suitable for drawing a consistent background for text, which will not appear unevenly high or low with content changes.
+
+<TextBaseline2 />
 
 ### measureText
 
@@ -216,6 +218,44 @@ const breakingSpaces: number[] = [
 In CJK, some characters cannot appear at the beginning of a line, and some cannot appear at the end. For example, in Chinese, most punctuation marks cannot appear at the beginning of a line. For specific rules, see: [Line breaking rules in East Asian languages]. [pixi-cjk] handles these situations:
 
 ![pixi-cjk](https://github.com/huang-yuwei/pixi-cjk/raw/main/docs/screenshot.png)
+
+Another common scenario for automatic line breaks is when a maximum width is specified, and the text wraps to the next line if it exceeds that width. Furthermore, you can set a maximum number of lines, and when this limit is exceeded, the [text-overflow] property is applied.
+
+```ts
+{
+    wordWrap: true,
+    wordWrapWidth: 100,
+    maxLines: 3,
+    textOverflow: TextOverflow.ELLIPSIS,
+}
+```
+
+We can refer to the implementation in Pixi.js: [CanvasTextMetrics]
+
+```ts
+for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    const prevChar = text[i - 1];
+    const nextChar = text[i + 1];
+    const charWidth = calcWidth(char);
+
+    if (currentWidth > 0 && currentWidth + charWidth > maxWidth) {
+        if (currentIndex + 1 >= maxLines) {
+            // 超出最大行数，添加省略号
+            appendEllipsis(currentIndex);
+            break;
+        }
+
+        currentIndex++;
+        currentWidth = 0;
+        lines[currentIndex] = '';
+
+        if (isBreakingSpace(char)) {
+            continue;
+        }
+    }
+}
+```
 
 ### BiDi {#bidi}
 
@@ -757,6 +797,27 @@ The biggest difference between this approach and SDF is that we cannot only pres
 
 <Emoji />
 
+## Export SVG {#export-svg}
+
+When exporting multi-line text to SVG, you can use `<tspan>`, setting `dy` to the line height after measurement:
+
+```html
+<text
+    x="0"
+    y="0"
+    dominant-baseline="ideographic"
+    id="node-text-5"
+    font-family="Gaegu"
+    font-size="16"
+    fill="black"
+    transform="matrix(1,0,0,1,50,234)"
+>
+    <tspan x="0" dy="17.368">Abcdef</tspan>
+    <tspan x="0" dy="17.368">ghijklm</tspan>
+    <tspan x="0" dy="17.368">nop(ide</tspan>
+</text>
+```
+
 ## Extended reading {#extended-reading}
 
 -   [State of Text Rendering 2024]
@@ -841,3 +902,5 @@ The biggest difference between this approach and SDF is that we cannot only pres
 [International Components for Unicode (ICU)]: http://site.icu-project.org/
 [rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
 [JavaScript-Arabic-Reshaper]: https://github.com/louy/JavaScript-Arabic-Reshaper
+[text-overflow]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
+[CanvasTextMetrics]: https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369

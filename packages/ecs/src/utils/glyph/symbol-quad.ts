@@ -1,7 +1,6 @@
-import { glyphPadding, type GlyphPosition } from './glyph-atlas';
+import { glyphPadding, BASE_FONT_BUFFER, SDF_SCALE, type GlyphPosition } from './glyph-atlas';
 import type { Point } from './alpha-image';
 import type { PositionedGlyph } from './glyph-manager';
-import { BASE_FONT_BUFFER, SDF_SCALE } from './glyph-manager';
 
 export type SymbolQuad = {
   tl: Point;

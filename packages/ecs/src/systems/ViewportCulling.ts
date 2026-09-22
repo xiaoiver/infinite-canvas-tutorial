@@ -103,6 +103,23 @@ export class ViewportCulling extends System {
 
     this.bounds.addedOrChanged.forEach((entity) => {
       const camera = getSceneRoot(entity);
+      if (camera === entity || !camera.has(Camera)) {
+        // delete rbush node
+        if (camera.has(RBush)) {
+          const rBush = camera.read(RBush).value;
+          rBush.remove(
+            {
+              minX: Infinity,
+              minY: Infinity,
+              maxX: -Infinity,
+              maxY: -Infinity,
+              entity,
+            },
+            (a, b) => a.entity === b.entity,
+          );
+        }
+        return;
+      }
       if (!modified.has(camera)) {
         modified.set(camera, new Set());
       }
@@ -111,7 +128,20 @@ export class ViewportCulling extends System {
 
     this.bounds.removed.forEach((entity) => {
       const camera = getSceneRoot(entity);
-      if (camera === entity) {
+      if (camera === entity || !camera.has(Camera)) {
+        if (camera.has(RBush)) {
+          const rBush = camera.read(RBush).value;
+          rBush.remove(
+            {
+              minX: Infinity,
+              minY: Infinity,
+              maxX: -Infinity,
+              maxY: -Infinity,
+              entity,
+            },
+            (a, b) => a.entity === b.entity,
+          )
+        }
         return;
       }
 

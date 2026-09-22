@@ -10,10 +10,9 @@ import {
   VertexStepMode,
   CompareFunction,
   TransparentBlack,
-  StencilOp,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location } from '../shaders/shadow_rect';
 import { paddingMat3, parseColor } from '../utils';
 import { DropShadow, GlobalTransform, Mat3, Rect, Stroke } from '../components';
@@ -184,19 +183,7 @@ export class ShadowRect extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: false,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
 
@@ -310,6 +297,9 @@ export class ShadowRect extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(6, this.shapes.length);
   }
 

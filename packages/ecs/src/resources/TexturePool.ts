@@ -5,12 +5,15 @@ import {
   computeLinearGradient,
   computeRadialGradient,
   ConicGradient,
+  fillLinearGradientPremultiplied,
   Gradient,
   hashCode,
   LinearGradient,
   Pattern,
   RadialGradient,
 } from '../utils';
+
+type CanvasRasterGradient = LinearGradient | RadialGradient | ConicGradient;
 
 type GradientExtraParams = {
   width: number;
@@ -96,7 +99,15 @@ export class TexturePool {
       this.#canvas.height = height;
     }
 
-    gradients.forEach((g) => {
+    // CSS `background` 列表：靠前的层在上；绘制时自下而上叠合。
+    [...gradients].reverse().forEach((g) => {
+      if (!g || g.type === 'mesh-gradient') {
+        return;
+      }
+      if (g.type === 'linear-gradient') {
+        fillLinearGradientPremultiplied(this.#ctx, 0, 0, width, height, g);
+        return;
+      }
       const gradient = this.getOrCreateGradientInternal({
         ...g,
         width,
@@ -114,8 +125,7 @@ export class TexturePool {
   }
 
   private getOrCreateGradientInternal(
-    params: (LinearGradient | RadialGradient | ConicGradient) &
-      GradientExtraParams,
+    params: CanvasRasterGradient & GradientExtraParams,
   ) {
     const key = generateGradientKey(params);
     const { type, steps, min, width, height } = params;
@@ -167,7 +177,7 @@ export class TexturePool {
 }
 
 export function generateGradientKey(
-  params: Gradient & GradientExtraParams,
+  params: CanvasRasterGradient & GradientExtraParams,
 ): string {
   const { type, min, width, height, steps } = params;
 

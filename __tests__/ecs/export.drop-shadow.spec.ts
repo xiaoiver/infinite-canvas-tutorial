@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,7 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
   Grid,
   Parent,
   Plugin,
@@ -31,6 +32,7 @@ import {
   Opacity,
   Screenshot,
   InnerShadow,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -66,7 +68,7 @@ describe('Export SVG', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
             InnerShadow,
             Stroke,
             Rect,
@@ -75,6 +77,7 @@ describe('Export SVG', () => {
             DropShadow,
             Opacity,
             ZIndex,
+            GlobalTransform,
           ).write,
       );
 
@@ -97,7 +100,7 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             dropShadowBlurRadius: 10,
             dropShadowColor: 'black',
             dropShadowOffsetX: 10,
@@ -106,6 +109,7 @@ describe('Export SVG', () => {
             y: 50,
             width: 100,
             height: 100,
+            zIndex: 0,
           },
         ]);
       }
@@ -115,13 +119,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-drop-shadow');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-drop-shadow', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -131,7 +133,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(1000).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

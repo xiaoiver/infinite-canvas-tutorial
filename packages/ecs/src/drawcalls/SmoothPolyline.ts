@@ -10,26 +10,52 @@ import {
   VertexStepMode,
   CompareFunction,
   TransparentBlack,
-  StencilOp,
-} from '@antv/g-device-api';
+  BindingsDescriptor,
+  Texture,
+  TextureUsage,
+} from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import {
   hasValidDecoration,
-  hasValidStroke,
+  hasValidStrokeEntity,
   paddingMat3,
   parseColor,
+  parseGradient,
   parsePath,
+  isMeshGradientGradient,
+  vectorNetworkToFlatStrokePointsWithMeta,
 } from '../utils';
 import {
+  getRasterFilterValueForShape,
+  filterRasterPostEffects,
+  filterStringUsesEngineTimePost,
+  parseEffect,
+  shouldRasterizeStrokeForFilterTexture,
+} from '../utils/filter';
+import {
+  getFirstFillLayerOpacityMul,
+  getFirstSolidFillLayerValue,
+} from '../utils/fillLayers';
+import {
+  getFirstGradientStrokeLayerValue,
+  resolveGpuStrokeColor,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
+import {
+  createStrokeSilhouetteRasterForFilter,
+  getStrokeSilhouetteRasterBounds,
+} from '../utils/solidShapeRasterForFilter';
+import {
   Circle,
+  ComputedBounds,
   ComputedPoints,
   ComputedRough,
   ComputedTextMetrics,
   Ellipse,
-  FillSolid,
+  FillLayers,
   GlobalRenderOrder,
   GlobalTransform,
   Line,
@@ -50,6 +76,37 @@ import { lineArrow } from '../utils';
 
 const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
+
+/**
+ * Stroke gradient raster and fragment `u_StrokeUVRect` must match the shape's local box.
+ * Mirrors {@link Mesh.getSolidFillFilterGeometry}: `createMaterial` can run before
+ * {@link ComputedBounds} catches up after Rect/Ellipse/Circle size changes.
+ */
+function geometryBoxForStrokeGradient(instance: Entity): {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+} {
+  if (instance.has(ComputedBounds)) {
+    const g = instance.read(ComputedBounds).geometryBounds;
+    const gw = g.maxX - g.minX;
+    const gh = g.maxY - g.minY;
+    if (gw >= 0.5 && gh >= 0.5) {
+      return { minX: g.minX, minY: g.minY, maxX: g.maxX, maxY: g.maxY };
+    }
+  }
+  if (instance.has(Rect)) {
+    return Rect.getGeometryBounds(instance.read(Rect));
+  }
+  if (instance.has(Ellipse)) {
+    return Ellipse.getGeometryBounds(instance.read(Ellipse));
+  }
+  if (instance.has(Circle)) {
+    return Circle.getGeometryBounds(instance.read(Circle));
+  }
+  return { minX: 0, minY: 0, maxX: 1, maxY: 1 };
+}
 const stridePoints = 2;
 const strideFloats = 3;
 const strokeAlignmentMap = {
@@ -59,6 +116,10 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SmoothPolyline extends Drawcall {
+  #strokeGradientTexture: Texture | null = null;
+  #strokeGradientFromPostChain = false;
+  #rawStrokeGradientTexture: Texture | null = null;
+
   static check(shape: Entity) {
     return (
       shape.has(Line) ||
@@ -68,11 +129,13 @@ export class SmoothPolyline extends Drawcall {
         shape.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line)) ||
       (shape.hasSomeOf(Rect, Circle, Ellipse) &&
         shape.has(Stroke) &&
-        shape.read(Stroke).dasharray[0] > 0 &&
-        shape.read(Stroke).dasharray[1] > 0) ||
+        ((shape.read(Stroke).dasharray[0] > 0 &&
+          shape.read(Stroke).dasharray[1] > 0) ||
+          (getFirstGradientStrokeLayerValue(shape) != null &&
+            shape.read(Stroke).width > 0))) ||
       (shape.has(Path) &&
         shape.has(Stroke) &&
-        hasValidStroke(shape.read(Stroke))) ||
+        hasValidStrokeEntity(shape)) ||
       (shape.has(Text) &&
         shape.has(TextDecoration) &&
         hasValidDecoration(shape.read(TextDecoration)))
@@ -81,6 +144,48 @@ export class SmoothPolyline extends Drawcall {
 
   validate(_: Entity) {
     return false;
+  }
+
+  protected override get useRasterFilterEngineTimeRefresh(): boolean {
+    const s = this.shapes[0];
+    if (!s || this.instanced) {
+      return false;
+    }
+    const usesStrokeTex =
+      shouldRasterizeStrokeForFilterTexture(s) ||
+      (getFirstGradientStrokeLayerValue(s) != null &&
+        !(
+          s.has(Rough) &&
+          ((s.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||
+            (s.has(Rect) && this.index === 2))
+        ));
+    if (!usesStrokeTex) {
+      return false;
+    }
+    const fv = getRasterFilterValueForShape(s);
+    return !!(fv && filterStringUsesEngineTimePost(fv));
+  }
+
+  protected get extraShaderDefines(): string {
+    const s = this.shapes[0];
+    if (
+      !this.instanced &&
+      s &&
+      shouldRasterizeStrokeForFilterTexture(s)
+    ) {
+      return '#define USE_STROKE_GRADIENT\n';
+    }
+    if (getFirstGradientStrokeLayerValue(s) == null) {
+      return '';
+    }
+    if (
+      s.has(Rough) &&
+      ((s.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||
+        (s.has(Rect) && this.index === 2))
+    ) {
+      return '';
+    }
+    return '#define USE_STROKE_GRADIENT\n';
   }
 
   #vertexNumBuffer: Buffer;
@@ -99,7 +204,10 @@ export class SmoothPolyline extends Drawcall {
       (instance.has(Rough) &&
         instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line))
     ) {
-      return this.pointsBuffer.length / strideFloats - 3;
+      return Math.max(
+        0,
+        Math.floor(this.pointsBuffer.length / strideFloats) - 3,
+      );
     } else if (instance.has(Rect)) {
       return 6;
     } else if (instance.hasSomeOf(Circle, Ellipse)) {
@@ -116,10 +224,10 @@ export class SmoothPolyline extends Drawcall {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
         shape.has(Rough) &&
-          ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
-            (shape.has(Rect) && this.index !== 2) ||
-            shape.has(Polyline) ||
-            shape.has(Line)),
+        ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
+          (shape.has(Rect) && this.index !== 2) ||
+          shape.has(Polyline) ||
+          shape.has(Line)),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -299,11 +407,20 @@ export class SmoothPolyline extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
+    const useStrokeGradient = defines.includes('USE_STROKE_GRADIENT');
+
+    this.bindings?.destroy();
+
+    if (!useStrokeGradient) {
+      this.#teardownStrokeGradientTexture();
+    }
+
     this.createProgram(vert, frag, defines);
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4),
+        viewOrSize:
+          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -339,33 +456,140 @@ export class SmoothPolyline extends Drawcall {
         blendConstant: TransparentBlack,
         depthWrite: false,
         depthCompare: CompareFunction.GREATER,
-        stencilWrite: false,
-        stencilFront: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
-        stencilBack: {
-          compare: CompareFunction.ALWAYS,
-          passOp: StencilOp.KEEP,
-          failOp: StencilOp.KEEP,
-          depthFailOp: StencilOp.KEEP,
-        },
+        ...this.stencilDescriptor,
       },
     });
 
-    this.bindings = this.device.createBindings({
+    const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
-        {
-          buffer: uniformBuffer,
-        },
-        {
-          buffer: this.#uniformBuffer,
-        },
+        { buffer: uniformBuffer },
+        { buffer: this.#uniformBuffer },
       ],
-    });
+    };
+
+    if (useStrokeGradient) {
+      const instance = this.shapes[0];
+      this.destroyFullPostProcessingChain();
+      this.#rawStrokeGradientTexture?.destroy();
+      this.#rawStrokeGradientTexture = null;
+      this.#strokeGradientTexture?.destroy?.();
+      this.#strokeGradientTexture = null;
+      this.#strokeGradientFromPostChain = false;
+
+      if (shouldRasterizeStrokeForFilterTexture(instance)) {
+        const bounds = getStrokeSilhouetteRasterBounds(instance, () =>
+          geometryBoxForStrokeGradient(instance),
+        );
+        const bw = bounds.maxX - bounds.minX;
+        const bh = bounds.maxY - bounds.minY;
+        const tw = Math.max(1, Math.ceil(bw));
+        const th = Math.max(1, Math.ceil(bh));
+        const canvas = createStrokeSilhouetteRasterForFilter(
+          instance,
+          bounds,
+          tw,
+          th,
+        );
+        const texture = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.SAMPLED,
+        });
+        texture.setImageData([canvas as HTMLCanvasElement]);
+        this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
+          instance,
+          texture,
+          tw,
+          th,
+        );
+      } else {
+        const gb = geometryBoxForStrokeGradient(instance);
+        const { minX, minY, maxX, maxY } = gb;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        const tw = Math.max(1, Math.ceil(width));
+        const th = Math.max(1, Math.ceil(height));
+
+        const strokeGradients = parseGradient(
+          getFirstGradientStrokeLayerValue(instance) ?? '',
+        );
+        const meshStroke =
+          strokeGradients?.length === 1 ? strokeGradients[0] : undefined;
+
+        if (meshStroke && isMeshGradientGradient(meshStroke)) {
+          const raw = this.renderMeshGradientTexture(meshStroke, tw, th);
+          this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            raw,
+            tw,
+            th,
+          );
+        } else {
+          const canvas = this.texturePool.getOrCreateGradient({
+            gradients: strokeGradients ?? [],
+            min: [minX, minY],
+            width: tw,
+            height: th,
+          });
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: tw,
+            height: th,
+            usage: TextureUsage.SAMPLED,
+          });
+          texture.setImageData([canvas]);
+          this.#strokeGradientTexture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            texture,
+            tw,
+            th,
+          );
+        }
+      }
+
+      bindings.samplerBindings = [
+        {
+          texture: this.#strokeGradientTexture,
+          sampler: this.createSampler(),
+        },
+      ];
+    }
+
+    this.bindings = this.renderCache.createBindings(bindings);
+  }
+
+  private applyRasterFilterChainIfNeeded(
+    instance: Entity,
+    raw: Texture,
+    tw: number,
+    th: number,
+  ): Texture {
+    const filterValue = getRasterFilterValueForShape(instance);
+    if (this.instanced || !filterValue) {
+      return raw;
+    }
+    const effects = filterRasterPostEffects(parseEffect(filterValue));
+    if (effects.length === 0) {
+      return raw;
+    }
+    this.#rawStrokeGradientTexture = raw;
+    this.createPostProcessing(effects, raw, tw, th);
+    const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
+    this.#strokeGradientFromPostChain = true;
+    return filtered;
+  }
+
+  #teardownStrokeGradientTexture(): void {
+    this.destroyFullPostProcessingChain();
+    this.#rawStrokeGradientTexture?.destroy();
+    this.#rawStrokeGradientTexture = null;
+    if (!this.#strokeGradientFromPostChain) {
+      this.#strokeGradientTexture?.destroy?.();
+    }
+    this.#strokeGradientTexture = null;
+    this.#strokeGradientFromPostChain = false;
   }
 
   render(
@@ -427,10 +651,15 @@ export class SmoothPolyline extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(15, this.instanceCount);
   }
 
   destroy(): void {
+    this.#teardownStrokeGradientTexture();
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
@@ -443,53 +672,68 @@ export class SmoothPolyline extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: null };
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    const fill = getFirstSolidFillLayerValue(shape);
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+      fill != null ? fill : 'transparent',
+    );
 
+    const strokeColor = resolveGpuStrokeColor(shape);
     const {
-      color: strokeColor,
       width,
       alignment,
       miterlimit,
       dasharray,
       dashoffset,
+      dashcap,
     } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : {
-          color: null,
+        ? shape.read(Stroke)
+        : {
           width: 0,
-          alignment: 'center',
+          alignment: 'center' as const,
           miterlimit: 10,
-          dasharray: [],
+          dasharray: [] as unknown as [number, number],
           dashoffset: 0,
+          dashcap: 'none' as const,
         };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
+    let strokeWidth = width;
+    if (shape.has(Rough)) {
+      const { fillWeight } = shape.read(Rough);
+      if (fillWeight !== -1 && this.index === 2) {
+        strokeWidth = fillWeight;
+      }
+    }
 
-    const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
+    const { strokeColorAlphaMul, strokeUniformOpacityMul } =
+      strokePaintAlphaMultipliers(shape);
 
-    let u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    let u_StrokeColor = [
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so * strokeColorAlphaMul,
+    ];
     const u_ZIndexStrokeWidth = [
       // Polyline should render after SDF
       (globalRenderOrder + 0.1) / ZINDEX_FACTOR,
-      width,
+      strokeWidth,
       miterlimit,
       strokeAlignmentMap[alignment],
     ];
     const u_Opacity = [
       opacity,
-      fillOpacity,
-      strokeOpacity,
+      1,
+      strokeUniformOpacityMul,
       shape.has(StrokeAttenuation) ? 1 : 0,
     ];
     const u_StrokeDash = [
       (dasharray && dasharray[0]) || 0, // DASH
       (dasharray && dasharray[1]) || 0, // GAP
       dashoffset || 0,
-      0,
+      dashcap === 'square' ? 1 : dashcap === 'round' ? 2 : 0,
     ];
 
     const instance = this.shapes[0];
@@ -499,7 +743,7 @@ export class SmoothPolyline extends Drawcall {
         (instance.has(Rect) && this.index === 2))
     ) {
       u_StrokeColor = [fr / 255, fg / 255, fb / 255, fo];
-      u_Opacity[2] = fillOpacity;
+      u_Opacity[2] = getFirstFillLayerOpacityMul(instance);
     } else if (instance.has(Text) && instance.has(TextDecoration)) {
       const {
         color: decorationColor,
@@ -528,15 +772,55 @@ export class SmoothPolyline extends Drawcall {
       } else if (decorationStyle === 'double') {
         // TODO: use two lines to render double decoration
       }
+      u_StrokeDash[3] = 0;
+    }
+
+    let u_StrokeUVRect = [0, 0, 0, 0];
+    if (shouldRasterizeStrokeForFilterTexture(shape)) {
+      const b = getStrokeSilhouetteRasterBounds(shape, () =>
+        geometryBoxForStrokeGradient(shape),
+      );
+      const gw = b.maxX - b.minX;
+      const gh = b.maxY - b.minY;
+      u_StrokeUVRect = [
+        b.minX,
+        b.minY,
+        gw === 0 ? 0 : 1 / gw,
+        gh === 0 ? 0 : 1 / gh,
+      ];
+    } else if (
+      getFirstGradientStrokeLayerValue(shape) != null &&
+      !(
+        shape.has(Rough) &&
+        ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 1) ||
+          (shape.has(Rect) && this.index === 2))
+      )
+    ) {
+      const { minX, minY, maxX, maxY } = geometryBoxForStrokeGradient(shape);
+      const gw = maxX - minX;
+      const gh = maxY - minY;
+      u_StrokeUVRect = [
+        minX,
+        minY,
+        gw === 0 ? 0 : 1 / gw,
+        gh === 0 ? 0 : 1 / gh,
+      ];
     }
 
     return [
-      [...u_StrokeColor, ...u_ZIndexStrokeWidth, ...u_Opacity, ...u_StrokeDash],
+      [
+        ...u_StrokeColor,
+        ...u_ZIndexStrokeWidth,
+        ...u_Opacity,
+        ...u_StrokeDash,
+        ...u_StrokeUVRect,
+      ],
       {
         u_StrokeColor,
         u_ZIndexStrokeWidth,
         u_Opacity,
         u_StrokeDash,
+        u_StrokeUVRect,
       },
     ];
   }
@@ -607,6 +891,32 @@ function generateMarker(
       arrowRadius,
       angle,
     ).flat();
+  } else if (markerType === 'triangle') {
+    const arrowRadius = strokeWidth * factor;
+    const tip = startPoint;
+    const left = [
+      tip[0] + arrowRadius * Math.cos(angle + Math.PI / 6),
+      tip[1] + arrowRadius * Math.sin(angle + Math.PI / 6),
+    ];
+    const right = [
+      tip[0] + arrowRadius * Math.cos(angle - Math.PI / 6),
+      tip[1] + arrowRadius * Math.sin(angle - Math.PI / 6),
+    ];
+    markerPoints = [...left, ...tip, ...right, ...left];
+  } else if (markerType === 'diamond') {
+    const arrowRadius = strokeWidth * factor;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const tip = startPoint;
+    const center = [
+      tip[0] + cos * arrowRadius * 0.5,
+      tip[1] + sin * arrowRadius * 0.5,
+    ];
+    const back = [tip[0] + cos * arrowRadius, tip[1] + sin * arrowRadius];
+    const halfWidth = arrowRadius * 0.4;
+    const left = [center[0] - sin * halfWidth, center[1] + cos * halfWidth];
+    const right = [center[0] + sin * halfWidth, center[1] - cos * halfWidth];
+    markerPoints = [...tip, ...left, ...back, ...right, ...tip];
   }
 
   return [NaN, NaN, ...markerPoints, NaN, NaN];
@@ -630,24 +940,27 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     linejoin,
     width: strokeWidth,
   } = object.has(Stroke)
-    ? object.read(Stroke)
-    : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
+      ? object.read(Stroke)
+      : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
   const { start, end, factor } = object.has(Marker)
     ? object.read(Marker)
     : ({ start: 'none', end: 'none', factor: 3 } as const);
 
   let points: number[] = [];
+  let vnLinejoin: (CanvasLineJoin | undefined)[] | undefined;
+  let vnLinecap: (CanvasLineCap | undefined)[] | undefined;
 
   if (
     object.has(Rough) &&
     object.has(ComputedRough) &&
-    object.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path)
+    object.hasSomeOf(Circle, Ellipse, Rect, Line, Polyline, Path)
   ) {
     const { strokePoints, fillPoints } = object.read(ComputedRough);
-    points = (useRoughStroke ? strokePoints : fillPoints)
+    const roughPointSets = useRoughStroke ? strokePoints : fillPoints;
+    points = roughPointSets
       .map((subPathPoints, i) => {
         return [...subPathPoints].concat(
-          i !== strokePoints.length - 1 ? [NaN, NaN] : [],
+          i !== roughPointSets.length - 1 ? [NaN, NaN] : [],
         );
       })
       .flat(2);
@@ -661,16 +974,10 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     points = [x1, y1, x2, y2];
   } else if (object.has(VectorNetwork)) {
     const { vertices, segments } = object.read(VectorNetwork);
-    for (let i = 0; i < segments.length; i++) {
-      if (i > 0) {
-        points.push(NaN, NaN);
-      }
-
-      const segment = segments[i];
-      const start = vertices[segment.start];
-      const end = vertices[segment.end];
-      points.push(start.x, start.y, end.x, end.y);
-    }
+    const vn = vectorNetworkToFlatStrokePointsWithMeta(vertices, segments);
+    points = vn.points;
+    vnLinejoin = vn.linejoin;
+    vnLinecap = vn.linecap;
   } else if (object.has(Path)) {
     const computed = object.read(ComputedPoints).points;
     points = computed
@@ -680,6 +987,11 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         );
       })
       .flat(2);
+
+    // degenerated path, draw a circle instead
+    if (points.length === 2) {
+      points.push(points[0] + epsilon, points[1]);
+    }
   } else if (object.has(Rect)) {
     const { x, y, width, height } = object.read(Rect);
     points = [
@@ -732,9 +1044,8 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
           //   wave_count % 2 != 0 ? quarterWave : -quarterWave,
           //   quarterWave * 2,
           //   0);
-          d += ` Q ${x_start + quarterWave} ${
-            wave_count % 2 != 0 ? quarterWave : -quarterWave
-          } ${x_start + quarterWave * 2} 0`;
+          d += ` Q ${x_start + quarterWave} ${wave_count % 2 != 0 ? quarterWave : -quarterWave
+            } ${x_start + quarterWave * 2} 0`;
 
           x_start += quarterWave * 2;
           ++wave_count;
@@ -778,10 +1089,23 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     });
   }
 
-  if (object.has(Line) || object.has(Polyline) || object.has(Path)) {
+  if (
+    object.has(Line) ||
+    object.has(Polyline) ||
+    object.has(Path) ||
+    object.has(VectorNetwork)
+  ) {
     points.push(
       ...generateMarkerPoints(points, start, end, strokeWidth, factor),
     );
+  }
+
+  if (vnLinejoin && vnLinejoin.length < points.length / 2) {
+    const add = points.length / 2 - vnLinejoin.length;
+    vnLinejoin = [...vnLinejoin, ...Array(add).fill(undefined)];
+    if (vnLinecap) {
+      vnLinecap = [...vnLinecap, ...Array(add).fill(undefined)];
+    }
   }
 
   const jointType = getJointType(linejoin);
@@ -811,7 +1135,14 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
   const pointsBufferTotal: number[] = [];
   const travelBufferTotal: number[] = [];
 
-  subPaths.forEach((points) => {
+  let fullPairCursor = 0;
+  subPaths.forEach((points, spIndex) => {
+    // Need at least two vertices; otherwise tail reads (e.g. points[length - 4]) are invalid.
+    // Empty fill sketch (e.g. fill: 'transparent' on Rough) must not emit a bogus instance.
+    if (points.length < stridePoints * 2) {
+      return;
+    }
+
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [0];
     let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
@@ -830,12 +1161,31 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     }
 
     for (let i = 0; i < points.length; i += stridePoints) {
+      const gi = fullPairCursor + i / stridePoints;
+      const lj =
+        vnLinejoin?.[gi] !== undefined ? vnLinejoin[gi]! : undefined;
+      const lc =
+        vnLinecap?.[gi] !== undefined ? vnLinecap[gi]! : undefined;
+      const jt = lj !== undefined ? getJointType(lj) : jointType;
+      const capStart = lc !== undefined ? getCapType(lc) : capType;
+      const endCap = lc !== undefined ? getCapType(lc) : capType;
+      let endJointLocal = endCap;
+      if (endCap === JointType.CAP_ROUND) {
+        endJointLocal = JointType.JOINT_CAP_ROUND;
+      }
+      if (endCap === JointType.CAP_BUTT) {
+        endJointLocal = JointType.JOINT_CAP_BUTT;
+      }
+      if (endCap === JointType.CAP_SQUARE) {
+        endJointLocal = JointType.JOINT_CAP_SQUARE;
+      }
+
       // calc travel
       if (i > 1) {
         if (!(zCommand && i >= points.length - stridePoints)) {
           dist += Math.sqrt(
             Math.pow(points[i] - points[i - stridePoints], 2) +
-              Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
+            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
           );
           travelBuffer.push(dist);
         }
@@ -843,10 +1193,10 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
 
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];
-      pointsBuffer[j] = jointType;
+      pointsBuffer[j] = jt;
       if (i == 0) {
-        if (capType !== JointType.CAP_ROUND) {
-          pointsBuffer[j] += capType;
+        if (capStart !== JointType.CAP_ROUND) {
+          pointsBuffer[j] += capStart;
         }
       } else {
         if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
@@ -858,7 +1208,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
         isNaN(points[i + 4]) ||
         isNaN(points[i + 5])
       ) {
-        pointsBuffer[j] += endJoint - jointType;
+        pointsBuffer[j] += endJointLocal - jt;
       } else if (
         i + stridePoints >= points.length ||
         isNaN(points[i + 2]) ||
@@ -876,12 +1226,20 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     pointsBuffer[2] = 0;
     pointsBuffer[3] = points[2];
     pointsBuffer[4] = points[3];
-    pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+    const firstGi = fullPairCursor;
+    const firstLc =
+      vnLinecap?.[firstGi] !== undefined ? vnLinecap[firstGi]! : undefined;
+    const cap0 = firstLc !== undefined ? getCapType(firstLc) : capType;
+    pointsBuffer[5] = cap0 === JointType.CAP_ROUND ? cap0 : 0;
 
     // instancedCount += Math.round(points.length / stridePoints);
 
     pointsBufferTotal.push(...pointsBuffer);
     travelBufferTotal.push(...travelBuffer);
+    fullPairCursor += points.length / stridePoints;
+    if (spIndex < subPaths.length - 1) {
+      fullPairCursor += 1;
+    }
   });
 
   return {

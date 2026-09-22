@@ -1,8 +1,14 @@
 ---
-publish: false
+title: "Drop shadows on rounded rectangles"
+description: "Tune shadow color and offset for rounded rects with interactive controls."
 ---
+<!-- example-intro:en -->
 
-<a href="/guide/lesson-009">Render a rounded rect with shadow</a>
+# Drop shadows on rounded rectangles
+
+Shadows separate layers visually and are implemented as part of the **effect** or post-processing stack depending on your pipeline. These controls map to shadow color and X/Y offset—see [Lesson 9](/guide/lesson-009) for the underlying shape and [Lesson 30](/guide/lesson-030) for broader post-processing ideas.
+
+Use the sliders to find values that read well on both light and dark backgrounds.
 
 ```js eval code=false
 dropShadowColor = Inputs.color({ label: 'dropShadowColor', value: '#000000' });

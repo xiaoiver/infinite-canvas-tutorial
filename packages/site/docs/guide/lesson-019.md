@@ -4,7 +4,6 @@ description: 'Implement undo/redo functionality with history management. Learn a
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 19 - History' }]
 ---
-
 <script setup>
 import History from '../components/History.vue';
 </script>

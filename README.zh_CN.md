@@ -5,7 +5,9 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
-> [我在 Gumroad 上的免费课程]，欢迎评分！
+[在线体验] | [自部署指南]
+
+[我在 Gumroad 上的免费课程]，欢迎评分！
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
 
@@ -54,6 +56,8 @@
 ```bash
 pnpm i
 ```
+
+运行 ECS 单元测试（`pnpm test:ecs`）需要 Node 20 与原生模块 `canvas` / `gl`，详见 [docs/running-ecs-tests.md](./docs/running-ecs-tests.md)。
 
 进入课程目录后，启动 Vite 开发服务器
 
@@ -151,6 +155,7 @@ pnpm run dev
 -   将画布内容导出成 PNG，JPEG 和 SVG 格式的图片
 -   在画布中渲染图片
 -   拓展 SVG 的能力，以 `stroke-alignment` 为例
+-   支持 CSS 中的 `object-fit` 和 `object-position` 让图片以不同策略适应宽高
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 
@@ -182,10 +187,11 @@ pnpm run dev
     -   正确处理路径中的孔洞
     -   支持 `fillRule` 属性
 -   实现一些手绘风格图形
+-   实现水彩效果
 
-|                Path and rough shapes                 |                 Fill rule                  |
-| :--------------------------------------------------: | :----------------------------------------: |
-| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) |
+|                Path and rough shapes                 |                 Fill rule                  |                 Watercolor                  |
+| :--------------------------------------------------: | :----------------------------------------: | :-----------------------------------------: |
+| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) | ![watercolor](./screenshots/watercolor.png) |
 
 ## 课程 14 - 画布模式 [🔗](https://infinitecanvas.cc/zh/guide/lesson-014)
 
@@ -285,10 +291,11 @@ pnpm run dev
 -   实现 Resize，锁定长宽比与中心缩放
 -   实现旋转，移动旋转中心
 -   使用方向键移动图形
+-   为直线、折线和 Path 提供交互式编辑能力
 
-|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
-| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
-| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) |
+|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |                    Path transformer                     |
+| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: | :-----------------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) | ![Path transformer](./screenshots/transformer-path.png) |
 
 ## 课程 22 - VectorNetwork [🔗](https://infinitecanvas.cc/zh/guide/lesson-022)
 
@@ -379,15 +386,130 @@ pnpm run dev
 
 ## 课程 30 - 图像后处理与渲染图 [🔗](https://infinitecanvas.cc/zh/guide/lesson-030)
 
--   图像后处理，例如噪声、亮度调整等效果
+-   图像后处理，例如噪声、亮度调整、halftone、液态玻璃、CRT、Glitch、Ascii 等效果
+-   配套的可叠加的滤镜效果编辑面板
+-   将时间动画导出成 GIF 和 WebM 格式动画
 -   渲染图的设计思路与实现
 -   使用 FXAA 进行快速抗锯齿
 
-|                Image processing                 |     |
-| :---------------------------------------------: | :-: |
-| ![image processing](./screenshots/lesson30.png) |     |
+|                                       Image processing                                       |                Effects panel                 |
+| :------------------------------------------------------------------------------------------: | :------------------------------------------: |
+| ![image processing](./screenshots/lesson30.png) ![effects panel](./screenshots/pixelate.png) | ![effects panel](./screenshots/halftone.png) |
 
+|               Glitch                |              LUTs               |            Raindrops            |
+| :---------------------------------: | :-----------------------------: | :-----------------------------: |
+| ![glitch](./screenshots/glitch.png) | ![luts](./screenshots/luts.png) | ![rain](./screenshots/rain.png) |
+
+## 课程 31 - 图形间的绑定关系 [🔗](https://infinitecanvas.cc/zh/guide/lesson-031)
+
+-   分析 excalidraw、tldraw、drawio 和 g6 中的数据结构设计
+-   连线边界算法，包括矩形和椭圆边界
+-   连线的路由规则
+    -   Orth Connector
+    -   Segment Connector
+    -   Loop Connector
+-   支持更多连线样式：圆角、二次和三次贝塞尔曲线
+
+|                Bindings                 |                   Orth Connector                    |                   Loop Connector                    |
+| :-------------------------------------: | :-------------------------------------------------: | :-------------------------------------------------: |
+| ![bindings](./screenshots/bindings.gif) | ![orth connector](./screenshots/orth-connector.png) | ![loop connector](./screenshots/loop-connector.png) |
+
+## 课程 32 - 文本生成图表 [🔗](https://infinitecanvas.cc/zh/guide/lesson-032)
+
+-   解析 Mermaid 并绘制
+-   解析 D2 并绘制
+-   解析 draw.io 图表并绘制
+-   实现附着在边上的标签，并提升可见性
+
+|                Mermaid flowchart                |                 D2 flowchart                  |          Draw.io flowchart          |
+| :---------------------------------------------: | :-------------------------------------------: | :---------------------------------: |
+| ![mermaid flowchart](./screenshots/mermaid.png) | ![d2 flowchart](./screenshots/lesson32-2.png) | ![drawio](./screenshots/drawio.png) |
+
+## 课程 33 - 布局引擎 [🔗](https://infinitecanvas.cc/zh/guide/lesson-033)
+
+-   基于 Yoga 实现 Flexbox 布局
+    -   AlignItems & JustifyContent
+    -   Gap
+    -   Flex Basis, Grow, and Shrink
+    -   Min/Max Width and Height
+
+|                   Gap                   |          AlignItems & JustifyContent           |                  Layout panel                   |
+| :-------------------------------------: | :--------------------------------------------: | :---------------------------------------------: |
+| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) | ![layout panel](./screenshots/layout-panel.png) |
+
+## 课程 34 - Frame 与裁切 [🔗](https://infinitecanvas.cc/zh/guide/lesson-034)
+
+-   基于 Stencil buffer 实现 clip 与 mask 两种效果
+-   裁剪图片
+-   非原子化橡皮擦
+
+|                 Crop an image                  |                     Brush with eraser                     |
+| :--------------------------------------------: | :-------------------------------------------------------: |
+| ![crop image](./screenshots/crop-an-image.gif) | ![brush with eraser](./screenshots/brush-with-eraser.png) |
+
+## 课程 35 - 基于瓦片的渲染 [🔗](https://infinitecanvas.cc/zh/guide/lesson-035)
+
+-   通过 WASM 使用 vello 作为渲染引擎，体验基于 WebGPU compute shader 的瓦片渲染
+-   基于 parley 对文本进行 Shaping、BiDi 等处理
+-   基于 kurbo 对 Polyline、Path 进行更精确的包围盒与拾取计算
+
+|               Vello               |     |
+| :-------------------------------: | :-: |
+| ![vello](./screenshots/vello.png) |     |
+
+## 课程 36 - 动画 [🔗](https://infinitecanvas.cc/zh/guide/lesson-036)
+
+-   如何设计动画 API
+-   参考 Web Animation API 实现声明式 Keyframe 与控制器
+-   实现路径、笔迹、形变等动画效果
+-   支持 Lottie 等格式
+-   动画与时间线面板
+
+|               Morph               |                      Dashoffset animation                       |             Timeline panel              |
+| :-------------------------------: | :-------------------------------------------------------------: | :-------------------------------------: |
+| ![morph](./screenshots/morph.gif) | ![animation-dashoffset](./screenshots/animation-dashoffset.gif) | ![timeline](./screenshots/timeline.png) |
+
+## 课程 37 - 基于 Radiance Cascades 的 GI [🔗](https://infinitecanvas.cc/zh/guide/lesson-037)
+
+-   使用 WebGPU Compute Shader 实现 Radiance Cascades
+    -   使用解析几何生成距离场
+    -   计算 cascade：CPU 调度与 ping-pong、派发射线、raymarch 与合并
+    -   生成 mipmap
+    -   与 vello 渲染管线结合，合成最终结果
+
+|               Radiance Cascades               | with mermaid flowchart, mindmap, state diagram |
+| :-------------------------------------------: | :--------------------------------------------: |
+| ![vello](./screenshots/radiance-cascades.png) |    ![mermaid](./screenshots/rc-mermaid.png)    |
+
+## 课程 38 - 从设计到代码 [🔗](https://infinitecanvas.cc/zh/guide/lesson-038)
+
+-   实现变量与主题
+-   支持 iconfont 渲染，在运行时引入 lucide、material 等图标集，支持应用 filter
+-   引用与继承已声明的组件
+
+|           Variables and themes            |         Components and instances          |
+| :---------------------------------------: | :---------------------------------------: |
+| ![variables](./screenshots/variables.png) | ![iconfont](./screenshots/components.png) |
+
+| Iconfont(lucide, material and pixelarticons) |                  Iconfont with filters                   |
+| :------------------------------------------: | :------------------------------------------------------: |
+|   ![iconfont](./screenshots/iconfont.png)    | ![iconfont with filters](./screenshots/liquid-metal.png) |
+
+## 课程 39 - 渲染 3D 图形 [🔗](https://infinitecanvas.cc/zh/guide/lesson-039)
+
+-   独立的 3D 渲染管线
+-   与 2D 画布的相机同步，支持正交和透视投影
+-   使用 Gizmo 为 3D 图形添加平移、旋转交互
+-   基于 raycast 的拾取
+-   光照
+
+|               Gizmo               |               Textured earth               |
+| :-------------------------------: | :----------------------------------------: |
+| ![gizmo](./screenshots/gizmo.gif) | ![textured earth](./screenshots/earth.png) |
+
+[在线体验]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
+[自部署指南]: /packages/app/README.md
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
 [rnote]: https://github.com/flxzt/rnote

@@ -275,7 +275,8 @@ history baseline without creating undo entries. Use `'local'` to record a local
 replacement. Undo/redo also notify `onchange`, allowing collaborators to observe
 them.
 
-History captures nodes, the document `filter`, and `layersSelected`. Camera,
+History captures nodes, the document `filter`, design `variables`, and
+`layersSelected`. Camera,
 loading, hover, chat, and panel state remain local session state and are not
 restored by undo. The public `AppState` shape is unchanged.
 

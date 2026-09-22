@@ -4,7 +4,6 @@ description: 'SDF(Signed Distance Field)를 이용해 캔버스에 원을 그리
 head:
     - ['meta', { property: 'og:title', content: '2강 - 원 그리기' }]
 ---
-
 # 2강 - 원 그리기
 
 이번 강의에서는 다음 내용을 중점적으로 다룹니다.

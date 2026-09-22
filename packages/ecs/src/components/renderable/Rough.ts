@@ -1,8 +1,9 @@
-import { Entity, field, Type } from '@lastolivegames/becsy';
+import { field, Type } from '@lastolivegames/becsy';
 import { Drawable, Options } from 'roughjs/bin/core';
-import { Stroke } from './Stroke';
-import { FillSolid } from './Fill';
-import { filterUndefined } from '../../utils';
+import { deserializePoints, filterUndefined } from '../../utils';
+import { FillAttributes, RoughAttributes, SerializedNode, StrokeAttributes } from '../../types/serialized-node';
+import { getFirstSolidFillLayerValueFromWire } from '../../utils/fillLayers';
+import { getPrimaryStrokeValue } from '../../utils/normalize-stroke-wire';
 
 export class Rough {
   /**
@@ -54,6 +55,7 @@ export class Rough {
       'dots',
       'dashed',
       'zigzag-line',
+      'watercolor',
     ]),
     default: 'hachure',
   })
@@ -64,14 +66,15 @@ export class Rough {
     | 'cross-hatch'
     | 'dots'
     | 'dashed'
-    | 'zigzag-line';
+    | 'zigzag-line'
+    | 'watercolor';
 
   /**
    * Numeric value representing the width of the hachure lines. Default value of the fillWeight is set to half the strokeWidth of that shape.
    * When using dots styles to fill the shape, this value represents the diameter of the dot.
    * @see https://github.com/rough-stuff/rough/wiki#fillweight
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.float32, default: -1 })
   declare fillWeight: Options['fillWeight'];
 
   /**
@@ -86,7 +89,7 @@ export class Rough {
    * Default value of the hachureGap is set to four times the strokeWidth of that shape.
    * @see https://github.com/rough-stuff/rough/wiki#hachuregap
    */
-  @field({ type: Type.float32, default: 0 })
+  @field({ type: Type.float32, default: -1 })
   declare hachureGap: Options['hachureGap'];
 
   /**
@@ -188,60 +191,70 @@ export class ComputedRough {
   declare drawableSets: Drawable['sets'];
 }
 
-export function getRoughOptions(entity: Entity): Options {
-  const rough = entity.read(Rough);
-  const fillComponent = entity.has(FillSolid)
-    ? entity.read(FillSolid)
-    : { value: 'none' };
-  const strokeComponent = entity.has(Stroke)
-    ? entity.read(Stroke)
-    : { color: 'none', width: 0, dasharray: [], dashoffset: 0 };
-  const { color, width, dasharray, dashoffset } = strokeComponent;
-  const { value: fill } = fillComponent;
+export function getRoughOptions(
+  node: Omit<SerializedNode, 'id' | 'zIndex'> & Partial<Pick<SerializedNode, 'id' | 'zIndex'>>,
+): Options {
+  const wire = node as RoughAttributes & StrokeAttributes & FillAttributes;
   const {
-    seed,
-    bowing,
-    roughness,
-    fillStyle,
-    fillWeight,
-    hachureAngle,
-    hachureGap,
-    curveStepCount,
-    curveFitting,
-    disableMultiStroke,
-    disableMultiStrokeFill,
-    simplification,
-    dashOffset,
-    dashGap,
-    zigzagOffset,
-    preserveVertices,
-    fillLineDash,
-    fillLineDashOffset,
-  } = rough;
+    stroke: legacyStroke,
+    strokeWidth,
+    strokeDasharray: strokeDasharrayString,
+    strokeDashoffset,
+    roughSeed,
+    roughBowing,
+    roughRoughness,
+    roughFillStyle,
+    roughFillWeight,
+    roughHachureAngle,
+    roughHachureGap,
+    roughCurveStepCount,
+    roughCurveFitting,
+    roughDisableMultiStroke,
+    roughDisableMultiStrokeFill,
+    roughSimplification,
+    roughDashOffset,
+    roughDashGap,
+    roughZigzagOffset,
+    roughPreserveVertices,
+    roughFillLineDash,
+    roughFillLineDashOffset,
+  } = wire;
+  const fill =
+    getFirstSolidFillLayerValueFromWire(wire.fills) ?? 'none';
+  const stroke =
+    getPrimaryStrokeValue(wire) ?? legacyStroke ?? 'none';
+  const resolvedStrokeWidth =
+    strokeWidth !== undefined && strokeWidth !== null ? Number(strokeWidth) : 1;
+
+  const strokeDasharray = strokeDasharrayString ? deserializePoints(strokeDasharrayString) : [0, 0];
+
+  const isWatercolor = roughFillStyle === 'watercolor';
 
   return filterUndefined({
-    fill,
-    stroke: color,
-    strokeWidth: width,
-    seed,
-    bowing,
-    roughness,
-    fillStyle,
-    fillWeight: fillWeight > 0 ? fillWeight : width / 2,
-    hachureAngle,
-    hachureGap: hachureGap > 0 ? hachureGap : width * 4,
-    curveStepCount,
-    curveFitting,
-    disableMultiStroke,
-    disableMultiStrokeFill,
-    simplification,
-    dashOffset,
-    dashGap,
-    zigzagOffset,
-    preserveVertices,
-    strokeLineDash: [dasharray[0], dasharray[1]],
-    strokeLineDashOffset: dashoffset[0],
-    fillLineDash,
-    fillLineDashOffset,
+    fill: isWatercolor ? '' : fill,
+    stroke,
+    strokeWidth: resolvedStrokeWidth,
+    seed: roughSeed,
+    bowing: roughBowing,
+    roughness: roughRoughness,
+    fillStyle: (isWatercolor ? 'solid' : roughFillStyle) as Options['fillStyle'],
+    fillWeight:
+      roughFillWeight !== -1 ? roughFillWeight : resolvedStrokeWidth / 2,
+    hachureAngle: roughHachureAngle,
+    hachureGap:
+      roughHachureGap !== -1 ? roughHachureGap : resolvedStrokeWidth * 4,
+    curveStepCount: roughCurveStepCount,
+    curveFitting: roughCurveFitting,
+    disableMultiStroke: roughDisableMultiStroke,
+    disableMultiStrokeFill: roughDisableMultiStrokeFill,
+    simplification: roughSimplification,
+    dashOffset: roughDashOffset,
+    dashGap: roughDashGap,
+    zigzagOffset: roughZigzagOffset,
+    preserveVertices: roughPreserveVertices,
+    strokeLineDash: [strokeDasharray[0], strokeDasharray[1]],
+    strokeLineDashOffset: strokeDashoffset,
+    fillLineDash: roughFillLineDash,
+    fillLineDashOffset: roughFillLineDashOffset,
   });
 }

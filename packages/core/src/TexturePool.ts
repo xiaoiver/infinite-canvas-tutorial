@@ -12,6 +12,8 @@ import {
   RadialGradient,
 } from './utils';
 
+type CanvasRasterGradient = LinearGradient | RadialGradient | ConicGradient;
+
 type GradientExtraParams = {
   width: number;
   height: number;
@@ -93,6 +95,9 @@ export class TexturePool {
     this.#canvas.height = height;
 
     gradients.forEach((g) => {
+      if (!g || g.type === 'mesh-gradient') {
+        return;
+      }
       const gradient = this.getOrCreateGradientInternal({
         ...g,
         width,
@@ -108,8 +113,7 @@ export class TexturePool {
   }
 
   private getOrCreateGradientInternal(
-    params: (LinearGradient | RadialGradient | ConicGradient) &
-      GradientExtraParams,
+    params: CanvasRasterGradient & GradientExtraParams,
   ) {
     const key = generateGradientKey(params);
     const { type, steps, min, width, height } = params;
@@ -161,7 +165,7 @@ export class TexturePool {
 }
 
 export function generateGradientKey(
-  params: Gradient & GradientExtraParams,
+  params: CanvasRasterGradient & GradientExtraParams,
 ): string {
   const { type, min, width, height, steps } = params;
 

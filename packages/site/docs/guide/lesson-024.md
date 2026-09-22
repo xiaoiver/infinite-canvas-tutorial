@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 <script setup>
 import ZIndex from '../components/ZIndex.vue';
 import DragNDropImage from '../components/DragNDropImage.vue';

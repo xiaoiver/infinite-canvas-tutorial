@@ -26,7 +26,13 @@ export default defineConfig({
         headless: true,
         screenshot: 'on',
         launchOptions: {
-          args: ['--use-angle=default', '--headless', '--no-sandbox'],
+          args: [
+            '--use-gl=angle',
+            '--use-angle=swiftshader', // 强制使用软件渲染
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gpu', // 有时禁用 GPU 反而能触发软件渲染回退
+          ],
         },
       },
     },

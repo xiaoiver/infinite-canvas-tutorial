@@ -4,7 +4,6 @@ description: '吸附与对齐'
 head:
     - ['meta', { property: 'og:title', content: '课程 27 - 吸附与对齐' }]
 ---
-
 <script setup>
 import SnapToPixelGrid from '../../components/SnapToPixelGrid.vue'
 import SnapToObjects from '../../components/SnapToObjects.vue'

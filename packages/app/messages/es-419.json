@@ -1,0 +1,245 @@
+{
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "result": "Resultado",
+    "parameters": "Parámetros",
+    "collapse": "Colapsar",
+    "expand": "Expandir"
+  },
+  "auth": {
+    "title": "Inicio de sesión",
+    "description": "Inicia sesión o crea una nueva cuenta con tus credenciales",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "signIn": "Iniciar sesión",
+    "signUp": "Registrarse",
+    "signingIn": "Iniciando sesión...",
+    "signingUp": "Registrando...",
+    "signInWithGoogle": "Iniciar sesión con Google",
+    "signInWithGitHub": "Iniciar sesión con GitHub",
+    "redirecting": "Redirigiendo...",
+    "or": "O",
+    "signUpSuccess": "¡Registro exitoso! Por favor revisa tu correo electrónico para verificar tu cuenta.",
+    "loginRequired": "Inicio de sesión requerido",
+    "loginToUseChat": "Por favor inicia sesión para usar la función de chat"
+  },
+  "theme": {
+    "light": "Claro",
+    "dark": "Oscuro",
+    "system": "Sistema"
+  },
+  "language": {
+    "chinese": "中文",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "projects": {
+    "title": "Mis Proyectos",
+    "description": "Administra todos tus proyectos",
+    "createProject": "Crear Proyecto",
+    "createDescription": "Crea un nuevo proyecto para comenzar",
+    "projectName": "Nombre del Proyecto",
+    "projectNamePlaceholder": "Ingresa el nombre del proyecto",
+    "projectDescription": "Descripción del Proyecto",
+    "projectDescriptionPlaceholder": "Ingresa la descripción del proyecto (opcional)",
+    "noProjects": "Aún no has creado ningún proyecto",
+    "createFirstProject": "Crea Tu Primer Proyecto",
+    "deleteProject": "Eliminar Proyecto",
+    "deleteSuccess": "Proyecto eliminado exitosamente",
+    "deleteConfirm": "¿Estás seguro de que deseas eliminar este proyecto? Esta acción no se puede deshacer.",
+    "editProject": "Editar Proyecto",
+    "editDescription": "Actualiza el nombre y la descripción del proyecto",
+    "rename": "Renombrar",
+    "renameDescription": "Actualiza el nombre del proyecto",
+    "modified": "Modificado",
+    "exportAs": "Exportar como...",
+    "exportAsSVG": "SVG",
+    "exportAsPNG": "PNG",
+    "exportAsJPEG": "JPEG",
+    "edit": "Editar",
+    "undo": "Deshacer",
+    "redo": "Rehacer",
+    "cut": "Cortar",
+    "copy": "Copiar",
+    "paste": "Pegar",
+    "preferences": "Preferencias",
+    "grid": "Cuadrícula",
+    "snapToPixelGrid": "Snap to Pixel Grid",
+    "snapToObjects": "Snap to Objects",
+    "shapesCount": "{count} formas",
+    "chatsCount": "{count} chats"
+  },
+  "chats": {
+    "title": "Chats",
+    "noChatSelected": "No hay chat seleccionado",
+    "unknownError": "Ocurrió un error desconocido",
+    "deleteChat": "Eliminar Chat",
+    "deleteConfirm": "¿Estás seguro de que deseas eliminar este chat? Esta acción no se puede deshacer.",
+    "deleteSuccess": "Chat eliminado exitosamente",
+    "uploadImages": "Cargar Imágenes",
+    "decomposeImageDescription": "Descomponer la imagen en múltiples capas.",
+    "vectorizeImageDescription": "Vectorizar la imagen.",
+    "insertImageSuccess": "Imagen insertada exitosamente",
+    "insertSVGImageSuccess": "SVG insertado exitosamente, puedes desbloquear las capas en la lista de capas para editar"
+  },
+  "zoom": {
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar",
+    "zoomTo50": "Zoom al 50%",
+    "zoomTo100": "Zoom al 100%",
+    "zoomTo200": "Zoom al 200%",
+    "fitToProject": "Ajustar al Proyecto",
+    "fitToSelection": "Ajustar a la Selección"
+  },
+  "toolbar": {
+    "home": "Inicio",
+    "myProjects": "Mis Proyectos",
+    "tools": "Herramientas",
+    "editArea": "Editar Área",
+    "drawRectMask": "Máscara de Rectángulo",
+    "drawPencilFreehandMask": "Máscara de Pencil Freehand",
+    "drawLassoMask": "Máscara de Lasso",
+    "decomposeImage": "Descomponer Imagen",
+    "vectorize": "Vectorizar",
+    "drawRectMaskDescription": "Arrastre para dibujar una máscara de rectángulo en la imagen.",
+    "drawPencilFreehandMaskDescription": "Dibujar una máscara de pencil freehand en la imagen.",
+    "drawLassoMaskDescription": "Dibujar una máscara de lasso en la imagen.",
+    "drawSmartClickMask": "Haga clic para seleccionar el área con SAM",
+    "insertIntoCanvas": "Insertar en el Canvas",
+    "download": "Descargar"
+  },
+  "settings": {
+    "title": "Configuración",
+    "apiKeys": {
+      "title": "Gestión de API Keys",
+      "description": "Agregar y administrar API Keys para varios Proveedores de IA",
+      "addNew": "Agregar Nueva API Key",
+      "provider": "Proveedor",
+      "selectProvider": "Seleccionar Proveedor",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "Ingresar API Key",
+      "label": "Etiqueta (Opcional)",
+      "labelPlaceholder": "ej., OpenAI de Trabajo",
+      "setAsDefault": "Establecer como Predeterminado",
+      "add": "Agregar",
+      "addedKeys": "API Keys Agregadas",
+      "noKeys": "No hay API Keys",
+      "default": "Predeterminado",
+      "fillProviderAndKey": "Por favor complete el Proveedor y la API Key",
+      "addFailed": "Error al agregar",
+      "addFailedWithError": "Error al agregar: {error}",
+      "deleteConfirm": "¿Estás seguro de que deseas eliminar esta API Key?",
+      "deleteFailed": "Error al eliminar",
+      "cancel": "Cancelar",
+      "adding": "Agregando...",
+      "copy": "Copiar",
+      "edit": "Editar",
+      "editKey": "Editar API Key",
+      "editDescription": "Actualizar información de la API Key",
+      "update": "Actualizar",
+      "updating": "Actualizando...",
+      "updateSuccess": "Actualizado exitosamente",
+      "updateFailed": "Error al actualizar",
+      "updateFailedWithError": "Error al actualizar: {error}",
+      "delete": "Eliminar"
+    },
+    "capabilities": {
+      "text": "Texto",
+      "chat": "Chat",
+      "image": "Imagen",
+      "image-layered": "Imagen en Capas",
+      "vectorize": "Vectorizar",
+      "title": "Configuración de Capacidades",
+      "description": "Configurar modelos y parámetros independientes para diferentes capacidades de IA",
+      "provider": "Proveedor",
+      "selectProvider": "Seleccionar Proveedor",
+      "model": "Modelo",
+      "selectModel": "Seleccionar Modelo",
+      "saveConfig": "Guardar",
+      "deleteConfig": "Eliminar",
+      "selectProviderAndModel": "Por favor seleccione el Proveedor y el Modelo",
+      "saveSuccess": "Guardado exitosamente",
+      "saveFailed": "Error al guardar",
+      "saveFailedWithError": "Error al guardar: {error}",
+      "deleteSuccess": "Eliminado exitosamente",
+      "deleteFailed": "Error al eliminar",
+      "deleteFailedWithError": "Error al eliminar: {error}",
+      "deleteConfirm": "¿Está seguro de que desea eliminar esta configuración de capacidad?",
+      "vectorizeInfoPrefix": "Si no está configurado, se usará",
+      "vectorizeInfoSuffix": ".",
+      "imageLayeredInfo": "Actualmente solo qwen-image-layered en fal.ai es compatible."
+    }
+  },
+  "onboarding": {
+    "step1": "Configurar sus API Keys",
+    "step2": "Crear su primer proyecto",
+    "step3": "Chatear con el canvas",
+    "step1Description": "Agrega API Keys para diferentes proveedores de IA para habilitar capacidades de IA. Solo configura las capacidades 'Chat' y 'Imagen' para usar la mayoría de las funciones del canvas. Vercel AI Gateway ofrece $5 de uso gratuito cuando te registras en una nueva cuenta.",
+    "step3Description": "Puedes cargar o generar imágenes y chatear con ellas."
+  },
+  "tools": {
+    "metaTitle": "Herramientas",
+    "metaDescription": "Filtros y utilidades. No hace falta iniciar sesión.",
+    "kicker": "Herramientas públicas",
+    "title": "Filtros y utilidades",
+    "comingSoon": "Próximamente",
+    "items": {
+      "photoColors": {
+        "title": "Color de la foto"
+      },
+      "glitch": {
+        "title": "Efecto Glitch",
+        "description": "Superposición de tres filtros: CRT, vignette y glitch.",
+        "description2": "Intenta descargar el GIF en el panel de exportación a la derecha."
+      },
+      "luts": {
+        "title": "Vista previa de LUT",
+        "description": "LUT .cube estilo película (Fujifilm, Ricoh y más). LUT Fujifilm desde <fujiRepo>github.com/abpy/FujifilmCameraProfiles</fujiRepo>. LUT Ricoh desde <ricohRepo>reddit.com/r/Lumix (LUT ingeniería inversa GR)</ricohRepo>."
+      },
+      "liquidMetal": {
+        "title": "Metal líquido",
+        "description": "Iconos Lucide y texto con el filtro liquid-metal. Añade capas o ajusta el efecto en el panel de propiedades."
+      },
+      "rain": {
+        "title": "Lluvia",
+        "description": "Gotas raindrop-fx: compara llovizna por defecto vs preset de tormenta con viento; ajusta rain() en el panel.",
+        "originalLabel": "Original",
+        "gentleLabel": "Llovizna rain()",
+        "stormLabel": "Preset tormenta"
+      }
+    },
+    "photoColors": {
+      "metaTitle": "Color de la foto",
+      "metaDescription": "Herramientas de color (próximamente).",
+      "backToTools": "Volver a herramientas",
+      "placeholder": "Zona reservada para controles y vista previa."
+    },
+    "glitch": {
+      "metaTitle": "Glitch",
+      "metaDescription": "Efectos tipo glitch (próximamente).",
+      "placeholder": "Zona reservada para el efecto Glitch."
+    },
+    "luts": {
+      "metaTitle": "Vista previa de LUT",
+      "metaDescription": "Prueba LUT .cube de emulación en el lienzo (Fujifilm, Ricoh y más)."
+    },
+    "liquidMetal": {
+      "metaTitle": "Metal líquido",
+      "metaDescription": "Vista previa del filtro liquid-metal en iconos y texto (Lucide y más)."
+    },
+    "rain": {
+      "metaTitle": "Lluvia",
+      "metaDescription": "Vista previa del filtro rain(): gotas Codrops, refracción en agua y combinación con blur en el lienzo."
+    }
+  }
+}

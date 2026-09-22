@@ -1,4 +1,4 @@
-import { Device, Format, TextureUsage } from '@antv/g-device-api';
+import { Device, Format, TextureUsage } from '@infinite-canvas-tutorial/device-api';
 import { AbstractBitmapFont } from './AbstractBitmapFont';
 import { BitmapFontData } from './bitmap-font-text-parser';
 

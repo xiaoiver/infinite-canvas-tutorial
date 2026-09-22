@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -30,6 +32,8 @@ import {
   ExportFormat,
   Screenshot,
   Polyline,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -65,7 +69,8 @@ describe('Export SVG', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -73,6 +78,8 @@ describe('Export SVG', () => {
             DropShadow,
             ZIndex,
             Polyline,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -95,8 +102,9 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'polyline',
-            stroke: 'black',
+            strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
             points: '0,0 100,100 200,0',
+            zIndex: 0,
           },
         ]);
       }
@@ -106,13 +114,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-polyline');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-polyline', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -122,7 +128,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

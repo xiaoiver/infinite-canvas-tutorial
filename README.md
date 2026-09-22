@@ -5,7 +5,9 @@
 [![Build Status](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml/badge.svg)](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/workflows/unit-ssr.yml)
 [![Coverage Status](https://coveralls.io/repos/github/xiaoiver/infinite-canvas-tutorial/badge.svg?branch=master)](https://coveralls.io/github/xiaoiver/infinite-canvas-tutorial?branch=master)
 
-> [My free course in Gumroad]. Feel free to rate!
+[Online App] | [Self-Deployment Guide]
+
+[My free course in Gumroad]. Feel free to rate!
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/U7U71DK7IM)
 
@@ -151,6 +153,7 @@ If you want to use it in your own project, you can refer to:
 -   Exporting canvas content to PNG, JPEG and SVG formats
 -   Rendering images in the canvas
 -   Extending the capabilities of SVG, using `stroke-alignment` as an example
+-   CSS `object-fit` and `object-position` on image fills (fill, contain, or cover)
 
 <img src="./screenshots/lesson10.png" width="300" alt="Lesson 10 - import and export images">
 
@@ -182,10 +185,11 @@ If you want to use it in your own project, you can refer to:
     -   Handle holes in the path correctly
     -   Support `fillRule` property
 -   Draw some hand-drawn shapes
+-   Watercolor effect
 
-|                Path and rough shapes                 |                 Fill rule                  |
-| :--------------------------------------------------: | :----------------------------------------: |
-| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) |
+|                Path and rough shapes                 |                 Fill rule                  |                 Watercolor                  |
+| :--------------------------------------------------: | :----------------------------------------: | :-----------------------------------------: |
+| ![Path and rough shapes](./screenshots/lesson13.png) | ![Fill rule](./screenshots/lesson13-2.png) | ![watercolor](./screenshots/watercolor.png) |
 
 ## Lesson 14 - Canvas mode and auxiliary UI [🔗](https://infinitecanvas.cc/guide/lesson-014)
 
@@ -285,10 +289,11 @@ If you want to use it in your own project, you can refer to:
 -   Resize, lock aspect ratio and centered scaling
 -   Rotate and change the rotation origin
 -   Nudge shapes with arrow key
+-   Edit Line, Polyline and Path with control points
 
-|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |
-| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: |
-| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) |
+|                Rotate anchor                 |                 Resize anchor                  |                 Line transformer                  |                    Path transformer                     |
+| :------------------------------------------: | :--------------------------------------------: | :-----------------------------------------------: | :-----------------------------------------------------: |
+| ![Rotate anchor](./screenshots/lesson21.png) | ![Resize anchor](./screenshots/lesson21-2.png) | ![Line transformer](./screenshots/lesson21-3.gif) | ![Path transformer](./screenshots/transformer-path.png) |
 
 ## Lesson 22 - VectorNetwork [🔗](https://infinitecanvas.cc/guide/lesson-022)
 
@@ -378,15 +383,130 @@ If you want to use it in your own project, you can refer to:
 
 ## Lesson 30 - Image processing and render graph [🔗](https://infinitecanvas.cc/guide/lesson-030)
 
--   Image processing, including brightness, noise, etc.
+-   Image processing, including brightness, noise, liquid glass, CRT, Glitch, Ascii etc.
+-   Effects panel
+-   Export time-based shader animation in GIF or WebM format
 -   The design concept and implementation of Render graph
 -   Use FXAA render pass
 
-|                Image processing                 |     |
-| :---------------------------------------------: | :-: |
-| ![image processing](./screenshots/lesson30.png) |     |
+|                                       Image processing                                       |                Effects panel                 |
+| :------------------------------------------------------------------------------------------: | :------------------------------------------: |
+| ![image processing](./screenshots/lesson30.png) ![effects panel](./screenshots/pixelate.png) | ![effects panel](./screenshots/halftone.png) |
 
+|               Glitch                |              LUTs               |            Raindrops            |
+| :---------------------------------: | :-----------------------------: | :-----------------------------: |
+| ![glitch](./screenshots/glitch.png) | ![luts](./screenshots/luts.png) | ![rain](./screenshots/rain.png) |
+
+## Lesson 31 - Bindings between shapes [🔗](https://infinitecanvas.cc/guide/lesson-031)
+
+-   Analyze the data-structure design in excalidraw, tldraw, drawio and g6
+-   Perimeter algorithm, including rectangle and ellipse
+-   Routing rules
+    -   Orth Connector
+    -   Segment Connector
+    -   Loop Connector
+-   More line styles: rounded, curved and bezier
+
+|                Bindings                 |                   Orth Connector                    |                   Loop Connector                    |
+| :-------------------------------------: | :-------------------------------------------------: | :-------------------------------------------------: |
+| ![bindings](./screenshots/bindings.gif) | ![orth connector](./screenshots/orth-connector.png) | ![loop connector](./screenshots/loop-connector.png) |
+
+## Lesson 32 - Text to diagram [🔗](https://infinitecanvas.cc/guide/lesson-032)
+
+-   Parse Mermaid and render in our canvas
+-   Parse D2 and render in our canvas
+-   Parse draw.io and render in our canvas
+-   Implement label on edge and improve its readability
+
+|                Mermaid flowchart                |                 D2 flowchart                  |          Draw.io flowchart          |
+| :---------------------------------------------: | :-------------------------------------------: | :---------------------------------: |
+| ![mermaid flowchart](./screenshots/mermaid.png) | ![d2 flowchart](./screenshots/lesson32-2.png) | ![drawio](./screenshots/drawio.png) |
+
+## Lesson 33 - Layout engine [🔗](https://infinitecanvas.cc/guide/lesson-033)
+
+-   Implement Flexbox layout with Yoga
+    -   AlignItems & JustifyContent
+    -   Gap
+    -   Flex Basis, Grow, and Shrink
+    -   Min/Max Width and Height
+
+|                   Gap                   |          AlignItems & JustifyContent           |                  Layout panel                   |
+| :-------------------------------------: | :--------------------------------------------: | :---------------------------------------------: |
+| ![Yoga gap](./screenshots/yoga-gap.gif) | ![Yoga gap](./screenshots/yoga-alignitems.gif) | ![layout panel](./screenshots/layout-panel.png) |
+
+## Lesson 34 - Frame and clip [🔗](https://infinitecanvas.cc/guide/lesson-034)
+
+-   Implement clip and mask effect with stencil buffer
+-   Crop an image
+-   Non-atomic eraser
+
+|                 Crop an image                  |                     Brush with eraser                     |
+| :--------------------------------------------: | :-------------------------------------------------------: |
+| ![crop image](./screenshots/crop-an-image.gif) | ![brush with eraser](./screenshots/brush-with-eraser.png) |
+
+## Lesson 35 - Tile-based rendering [🔗](https://infinitecanvas.cc/guide/lesson-035)
+
+-   Use vello as tile-based rendering engine via WASM, fully based on WebGPU compute shader
+-   Text shaping, BiDi with parley
+-   Compute bounds of Polyline, Path and hit-testing with kurbo
+
+|               Vello               |     |
+| :-------------------------------: | :-: |
+| ![vello](./screenshots/vello.png) |     |
+
+## Lesson 36 - Animation [🔗](https://infinitecanvas.cc/guide/lesson-036)
+
+-   How to design an animation API
+-   How to implement declarative keyframes and controllers aligned with the Web Animations API
+-   How to implement path, stroke, and morphing effects
+-   How formats like Lottie fit in
+-   Timeline panel
+
+|               Morph               |                      Dashoffset animation                       |             Timeline panel              |
+| :-------------------------------: | :-------------------------------------------------------------: | :-------------------------------------: |
+| ![morph](./screenshots/morph.gif) | ![animation-dashoffset](./screenshots/animation-dashoffset.gif) | ![timeline](./screenshots/timeline.png) |
+
+## Lesson 37 - Global illumination with radiance cascades [🔗](https://infinitecanvas.cc/guide/lesson-037)
+
+-   Implement radiance cascades with WebGPU Compute Shader
+    -   Generate SDF with analytic geometry methods
+    -   Compute cascade: ping-pong, dispatch rays, raymarch and merge
+    -   Generate mipmap
+    -   Composite with vello pipeline
+
+|               Radiance Cascades               | with mermaid flowchart, mindmap, state diagram |
+| :-------------------------------------------: | :--------------------------------------------: |
+| ![vello](./screenshots/radiance-cascades.png) |    ![mermaid](./screenshots/rc-mermaid.png)    |
+
+## Lesson 38 - From design to code [🔗](https://infinitecanvas.cc/guide/lesson-038)
+
+-   Variables and themes
+-   Render iconfont, import lucide, material and other iconsets
+-   Use components and instances with ref and descendants
+
+|           Variables and themes            |         Components and instances          |
+| :---------------------------------------: | :---------------------------------------: |
+| ![variables](./screenshots/variables.png) | ![iconfont](./screenshots/components.png) |
+
+| Iconfont(lucide, material and pixelarticons) |                  Iconfont with filters                   |
+| :------------------------------------------: | :------------------------------------------------------: |
+|   ![iconfont](./screenshots/iconfont.png)    | ![iconfont with filters](./screenshots/liquid-metal.png) |
+
+## Lesson 39 - 3D mesh rendering [🔗](https://infinitecanvas.cc/guide/lesson-039)
+
+-   3D mesh pipeline
+-   Linked with 2D camera, orthographic and perspective
+-   3D Gizmo
+-   Picking with raycast
+-   Lighting: ambient, spot, directional lights
+
+|               Gizmo               |               Textured earth               |
+| :-------------------------------: | :----------------------------------------: |
+| ![gizmo](./screenshots/gizmo.gif) | ![textured earth](./screenshots/earth.png) |
+
+[Online App]: app.infinitecanvas.cc
 [infinitecanvas]: https://infinitecanvas.tools/
+[Self-Deployment Guide]: /packages/app/README.md
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
 [Modyfi]: https://digest.browsertech.com/archive/browsertech-digest-how-modyfi-is-building-with/
 [rnote]: https://github.com/flxzt/rnote

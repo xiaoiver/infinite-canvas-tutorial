@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -31,6 +33,7 @@ import {
   Opacity,
   Screenshot,
   Ellipse,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -66,7 +69,8 @@ describe('Export SVG', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
@@ -74,6 +78,7 @@ describe('Export SVG', () => {
             DropShadow,
             Opacity,
             ZIndex,
+            GlobalTransform,
           ).write,
       );
 
@@ -96,16 +101,15 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'ellipse',
-            fill: 'red',
-            fillOpacity: 0.5,
-            stroke: 'blue',
+            fills: [{ type: 'solid', value: 'red', opacity: 0.5 }],
+            strokes: [{ type: 'solid', value: 'blue', opacity: 0.5 }],
             strokeWidth: 10,
-            strokeOpacity: 0.5,
             strokeAlignment: 'inner',
             x: 50,
             y: 50,
             width: 100,
             height: 100,
+            zIndex: 0,
           },
         ]);
       }
@@ -115,16 +119,16 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(
+          expectToMatchSVGSnapshotWithDone(
+            svg,
             dir,
             'export-stroke-alignment-inne-ellipse',
+            done,
           );
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -134,7 +138,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

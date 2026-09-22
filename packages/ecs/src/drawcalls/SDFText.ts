@@ -16,10 +16,15 @@ import {
   TransparentBlack,
   Texture,
   StencilOp,
-} from '@antv/g-device-api';
+  type Program,
+  type RenderPipeline,
+  type InputLayout,
+  type Bindings,
+  TextureUsage,
+} from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { vert, frag, physical_frag, Location } from '../shaders/sdf_text';
 import {
   BASE_FONT_WIDTH,
@@ -33,9 +38,11 @@ import {
   parseColor,
 } from '../utils';
 import {
+  ComputedBounds,
   ComputedTextMetrics,
   DropShadow,
-  FillSolid,
+  FillLayers,
+  FillTexture,
   GlobalRenderOrder,
   GlobalTransform,
   Mat3,
@@ -44,11 +51,132 @@ import {
   Stroke,
   Text,
 } from '../components';
+import {
+  getRasterFilterValueForShape,
+  hasRasterPostEffects,
+  parseEffect,
+  filterRasterPostEffects,
+  filterStringUsesEngineTimePost,
+} from '../utils/filter';
+import {
+  parseGradient,
+  isMeshGradientGradient,
+  type Gradient,
+} from '../utils/gradient';
+import {
+  fillLayerOpacity,
+  getEnabledFillLayers,
+  getFirstFillLayerOpacityMul,
+  getSingleEnabledFillLayer,
+} from '../utils/fillLayers';
+import {
+  resolveGpuStrokeColor,
+  strokePaintAlphaMultipliers,
+} from '../utils/strokeLayers';
+import {
+  applyTextGlyphMaskToFilterRasterCanvas,
+  createGradientFillTextRasterForFilter,
+  fillCssGradientsStackedInBounds,
+  setWorldToCanvasTransform,
+  shouldBakeStrokeIntoRasterFilterTexture,
+  type SolidShapeRasterBounds,
+} from '../utils/solidShapeRasterForFilter';
+import {
+  getDevicePixelRatioForRaster,
+  resolveFillImageTexturePixelSize,
+} from '../utils/fillImageTextureSize';
+import { measureText } from '../systems/ComputeTextMetrics';
+import { safeAddComponent } from '../history';
+
+function firstStopColorFromGradients(grads: Gradient[] | undefined): string | null {
+  if (!grads?.length) {
+    return null;
+  }
+  for (const g of grads) {
+    if (isMeshGradientGradient(g)) {
+      const c = g.colors[0] ?? g.backgroundColor;
+      if (c) {
+        return c;
+      }
+    } else if ('steps' in g && g.steps.length > 0) {
+      return g.steps[0]!.color;
+    }
+  }
+  return null;
+}
+
+/** 仅从 wire `fills` → {@link FillLayers} 解析；供 `u_FillColor` / 字形 atlas 色键使用。 */
+function resolveSdfTextFillColorCss(shape: Entity): string {
+  if (!shape.has(FillLayers)) {
+    return 'black';
+  }
+  for (const L of getEnabledFillLayers(shape)) {
+    if (L.type === 'solid') {
+      return L.value;
+    }
+    if (L.type === 'gradient') {
+      const c = firstStopColorFromGradients(parseGradient(L.value));
+      if (c) {
+        return c;
+      }
+    }
+  }
+  return 'black';
+}
+
+/** WebGL readPixels：缓冲区首行对应纹理底边；转为自上而下以便与 Canvas 字形遮罩对齐。 */
+function flipUint8RgbaRowsVertical(data: Uint8Array, width: number, height: number): void {
+  const rowStride = width * 4;
+  const half = Math.floor(height / 2);
+  const tmp = new Uint8Array(rowStride);
+  for (let y = 0; y < half; y++) {
+    const top = y * rowStride;
+    const bot = (height - 1 - y) * rowStride;
+    tmp.set(data.subarray(top, top + rowStride));
+    data.copyWithin(top, bot, bot + rowStride);
+    data.set(tmp, bot);
+  }
+}
+
+/**
+ * Canvas 2D 自上而下存储；GPU fill 纹理需与 `sdf_text` 顶点中 `v_FillUv.y` 翻转及 RT bake 行序一致。
+ */
+function flipCanvasForGpuFillTextureUpload(
+  src: HTMLCanvasElement | OffscreenCanvas,
+): HTMLCanvasElement | OffscreenCanvas {
+  const w = src.width;
+  const h = src.height;
+  let dst: HTMLCanvasElement | OffscreenCanvas;
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    dst = c;
+  } else {
+    dst = new OffscreenCanvas(w, h);
+  }
+  const ctx = dst.getContext('2d') as CanvasRenderingContext2D;
+  ctx.translate(0, h);
+  ctx.scale(1, -1);
+  ctx.drawImage(src as CanvasImageSource, 0, 0);
+  return dst;
+}
 
 export class SDFText extends Drawcall {
   #glyphManager = new GlyphManager();
   #uniformBuffer: Buffer;
-  #texture: Texture;
+  /** Display texture: glyph atlas, or filtered raster when {@link Drawcall.useFillImage}. */
+  #texture: Texture | null = null;
+  /** Unfiltered RGBA from GPU SDF bake (post chain input). */
+  #rawFillImageTexture: Texture | null = null;
+  /** True when {@link #texture} is owned by {@link destroyFullPostProcessingChain}. */
+  #fillTextureFromPostChain = false;
+
+  #bakeProgram: Program | null = null;
+  #bakePipeline: RenderPipeline | null = null;
+  #bakeInputLayout: InputLayout | null = null;
+  #bakeBindings: Bindings | null = null;
+  #bakeSceneUniformBuffer: Buffer | null = null;
 
   validate(shape: Entity) {
     const result = super.validate(shape);
@@ -69,12 +197,7 @@ export class SDFText extends Drawcall {
 
   private hash(shape: Entity) {
     const { bitmapFont, physical } = shape.read(Text);
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: 'none' };
-    const { color: stroke } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: 'none' };
+    const stroke = resolveGpuStrokeColor(shape) ?? 'none';
 
     const font = shape.has(ComputedTextMetrics)
       ? shape.read(ComputedTextMetrics)
@@ -82,7 +205,51 @@ export class SDFText extends Drawcall {
     const blurRadius = shape.has(DropShadow)
       ? shape.read(DropShadow).blurRadius
       : 0;
-    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${fill}-${stroke}`;
+    const fv = getRasterFilterValueForShape(shape) ?? '';
+    const fillLayersKey = shape.has(FillLayers)
+      ? getEnabledFillLayers(shape)
+          .map(
+            (l) =>
+              `${l.type}:${String(l.value)}:${fillLayerOpacity(l.opacity)}`,
+          )
+          .join('|')
+      : '';
+    return `${font}-${bitmapFont?.fontFamily}-${physical}-${blurRadius}-${stroke}-${fillLayersKey}-${fv}`;
+  }
+
+  protected override get useRasterFilterEngineTimeRefresh(): boolean {
+    const s = this.shapes[0];
+    if (!s) {
+      return false;
+    }
+    if (!this.useFillImage) {
+      return false;
+    }
+    const fv = getRasterFilterValueForShape(s);
+    return !!(fv && filterStringUsesEngineTimePost(fv));
+  }
+
+  /**
+   * {@link Drawcall.useFillImage} 在 `fills` 仅一层时也为 true，会把纯色先烤到 RT 再采样；
+   * 最终片元走 `USE_FILLIMAGE` 分支而不乘 `u_FillColor`，易糊。单层 solid 且无滤镜/描边栅格烘焙时走直接着色。
+   */
+  protected override get useFillImage() {
+    const s = this.shapes[0];
+    if (!s?.has(FillLayers)) {
+      return super.useFillImage;
+    }
+    const one = getSingleEnabledFillLayer(s);
+    const bm = one?.blendMode;
+    if (
+      one?.type === 'solid' &&
+      (bm == null || bm === 'normal') &&
+      !s.has(FillTexture) &&
+      !hasRasterPostEffects(getRasterFilterValueForShape(s)) &&
+      !shouldBakeStrokeIntoRasterFilterTexture(s)
+    ) {
+      return false;
+    }
+    return super.useFillImage;
   }
 
   private get useBitmapFont() {
@@ -100,9 +267,7 @@ export class SDFText extends Drawcall {
       fontSize,
     } = this.shapes[0].read(Text);
     const { font, fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
-    const { value: fill } = this.shapes[0].has(FillSolid)
-      ? this.shapes[0].read(FillSolid)
-      : { value: 'black' };
+    const fill = resolveSdfTextFillColorCss(this.shapes[0]);
 
     // const hasEmoji = containsEmoji(content);
     const hasEmoji = true;
@@ -218,14 +383,15 @@ export class SDFText extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
-    const { content, physical } = this.shapes[0].read(Text);
-    const { blurRadius } = this.shapes[0].has(DropShadow)
-      ? this.shapes[0].read(DropShadow)
+    const shape = this.shapes[0];
+    const { content, physical } = shape.read(Text);
+    const { blurRadius } = shape.has(DropShadow)
+      ? shape.read(DropShadow)
       : { blurRadius: 0 };
 
     let glyphAtlasTexture: Texture;
     if (this.useBitmapFont) {
-      const { bitmapFont } = this.shapes[0].read(Text);
+      const { bitmapFont } = shape.read(Text);
       bitmapFont.createTexture(this.device);
       glyphAtlasTexture = bitmapFont.pages[0].texture;
 
@@ -253,12 +419,361 @@ export class SDFText extends Drawcall {
 
     this.device.setResourceName(glyphAtlasTexture, 'SDFText Texture');
 
+    const useFillImage = defines.includes('USE_FILLIMAGE');
+    this.destroyFullPostProcessingChain();
+    this.#teardownFillImageGpu();
+    if (!useFillImage) {
+      this.#bakeBindings?.destroy();
+      this.#bakeBindings = null;
+    }
+
+    const definesBake = defines
+      .replace('#define USE_FILLIMAGE\n', '')
+      .replace('#define USE_WIREFRAME\n', '')
+      .replace('#define USE_STENCIL\n', '');
+
+    const isWebGPU = this.device.queryVendorInfo().platformString === 'WebGPU';
+    const diagnosticDerivativeUniformityHeader = isWebGPU
+      ? 'diagnostic(off,derivative_uniformity);\n'
+      : '';
+
+    if (useFillImage) {
+      let didGradientRaster = false;
+      let fillGradients:
+        | ReturnType<typeof parseGradient>
+        | undefined;
+      if (shape.has(FillLayers)) {
+        const one = getSingleEnabledFillLayer(shape);
+        if (one?.type === 'gradient') {
+          fillGradients = parseGradient(one.value);
+        }
+      }
+
+      if (fillGradients && fillGradients.length > 0 && !this.useBitmapFont) {
+        // 必须与 `generateBuffer` 中 `u_FillUVRect`（`ComputedBounds.renderBounds`）同源，与 GPU bake 一致，否则 fill 采样与离屏栅格错位。
+        let bounds: SolidShapeRasterBounds;
+        if (shape.has(ComputedBounds)) {
+          const rb = shape.read(ComputedBounds).renderBounds;
+          bounds = {
+            minX: rb.minX,
+            minY: rb.minY,
+            maxX: rb.maxX,
+            maxY: rb.maxY,
+          };
+        } else {
+          safeAddComponent(shape, ComputedTextMetrics);
+          Object.assign(
+            shape.write(ComputedTextMetrics),
+            measureText(shape.read(Text)),
+          );
+          const text = shape.read(Text);
+          const metrics = shape.read(ComputedTextMetrics);
+          const stroke = shape.has(Stroke) ? shape.read(Stroke) : undefined;
+          const dropShadow = shape.has(DropShadow)
+            ? shape.read(DropShadow)
+            : undefined;
+          const grb = Text.getRenderBounds(text, metrics, stroke, dropShadow);
+          bounds = {
+            minX: grb.minX,
+            minY: grb.minY,
+            maxX: grb.maxX,
+            maxY: grb.maxY,
+          };
+        }
+        const ggw = bounds.maxX - bounds.minX;
+        const ggh = bounds.maxY - bounds.minY;
+
+        if (ggw > 1e-6 && ggh > 1e-6) {
+          const { width: gtw, height: gth } = resolveFillImageTexturePixelSize(
+            1,
+            1,
+            ggw,
+            ggh,
+            getDevicePixelRatioForRaster(),
+          );
+
+          const meshLayers = fillGradients.filter(isMeshGradientGradient);
+          const cssLayers = fillGradients.filter((g) => !isMeshGradientGradient(g));
+          const fillOpacityMul = getFirstFillLayerOpacityMul(shape);
+
+          let rasterCanvas: HTMLCanvasElement | OffscreenCanvas | null = null;
+
+          if (meshLayers.length === 0 && cssLayers.length > 0) {
+            rasterCanvas = createGradientFillTextRasterForFilter(
+              shape,
+              bounds,
+              gtw,
+              gth,
+              cssLayers,
+              fillOpacityMul,
+            );
+            didGradientRaster = true;
+          } else if (meshLayers.length > 0) {
+            const meshFill = meshLayers[0]!;
+            const rawMesh = this.renderMeshGradientTexture(meshFill, gtw, gth);
+            const rgba = this.readTextureRgba8Sync(rawMesh, gtw, gth);
+            rawMesh.destroy();
+
+            flipUint8RgbaRowsVertical(rgba, gtw, gth);
+
+            if (fillOpacityMul < 0.999 || fillOpacityMul > 1.001) {
+              for (let i = 3; i < rgba.length; i += 4) {
+                rgba[i] = Math.round(rgba[i]! * fillOpacityMul);
+              }
+            }
+
+            let canvas: HTMLCanvasElement | OffscreenCanvas;
+            if (typeof document !== 'undefined') {
+              const c = document.createElement('canvas');
+              c.width = gtw;
+              c.height = gth;
+              canvas = c;
+            } else {
+              canvas = new OffscreenCanvas(gtw, gth);
+            }
+            const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+            const img = new ImageData(
+              new Uint8ClampedArray(
+                rgba.buffer,
+                rgba.byteOffset,
+                rgba.byteLength,
+              ),
+              gtw,
+              gth,
+            );
+            ctx.putImageData(img, 0, 0);
+
+            if (cssLayers.length > 0) {
+              ctx.globalCompositeOperation = 'source-atop';
+              setWorldToCanvasTransform(ctx, bounds, gtw, gth);
+              fillCssGradientsStackedInBounds(ctx, cssLayers, bounds);
+              ctx.setTransform(1, 0, 0, 1, 0, 0);
+              ctx.globalCompositeOperation = 'source-over';
+            }
+
+            applyTextGlyphMaskToFilterRasterCanvas(
+              canvas,
+              shape,
+              bounds,
+              gtw,
+              gth,
+            );
+            rasterCanvas = canvas;
+            didGradientRaster = true;
+          }
+
+          if (didGradientRaster && rasterCanvas) {
+            const colorTex = this.device.createTexture({
+              format: Format.U8_RGBA_NORM,
+              width: gtw,
+              height: gth,
+              usage: TextureUsage.SAMPLED,
+            });
+            const uploadCanvas =
+              flipCanvasForGpuFillTextureUpload(rasterCanvas);
+            colorTex.setImageData([uploadCanvas as HTMLCanvasElement]);
+            this.#rawFillImageTexture = colorTex;
+            const filtered = this.#applyRasterFilterChainIfNeeded(
+              shape,
+              colorTex,
+              gtw,
+              gth,
+            );
+            this.#fillTextureFromPostChain = filtered !== colorTex;
+            this.#texture = filtered;
+          }
+        }
+      }
+
+      if (!didGradientRaster) {
+        const rb = shape.read(ComputedBounds).renderBounds;
+        const gw = rb.maxX - rb.minX;
+        const gh = rb.maxY - rb.minY;
+        const { width: tw, height: th } = resolveFillImageTexturePixelSize(
+          1,
+          1,
+          gw,
+          gh,
+          getDevicePixelRatioForRaster(),
+        );
+
+        this.#bakeProgram = this.renderCache.createProgram({
+          vertex: { glsl: definesBake + vert },
+          fragment: {
+            glsl: definesBake + (physical ? physical_frag : frag),
+            postprocess: (fs) => diagnosticDerivativeUniformityHeader + fs,
+          },
+        });
+        this.#bakeInputLayout = this.renderCache.createInputLayout({
+          vertexBufferDescriptors: this.vertexBufferDescriptors,
+          indexBufferFormat: Format.U32_R,
+          program: this.#bakeProgram,
+        });
+        this.#bakePipeline = this.renderCache.createRenderPipeline({
+          inputLayout: this.#bakeInputLayout,
+          program: this.#bakeProgram,
+          colorAttachmentFormats: [Format.U8_RGBA_RT],
+          depthStencilAttachmentFormat: Format.D24_S8,
+          megaStateDescriptor: {
+            attachmentsState: [
+              {
+                channelWriteMask: ChannelWriteMask.ALL,
+                rgbBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.SRC_ALPHA,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+                alphaBlendState: {
+                  blendMode: BlendMode.ADD,
+                  blendSrcFactor: BlendFactor.ONE,
+                  blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+                },
+              },
+            ],
+            blendConstant: TransparentBlack,
+            depthWrite: true,
+            depthCompare: CompareFunction.GREATER,
+            stencilWrite: false,
+            stencilFront: {
+              compare: CompareFunction.ALWAYS,
+              passOp: StencilOp.KEEP,
+              failOp: StencilOp.KEEP,
+              depthFailOp: StencilOp.KEEP,
+            },
+            stencilBack: {
+              compare: CompareFunction.ALWAYS,
+              passOp: StencilOp.KEEP,
+              failOp: StencilOp.KEEP,
+              depthFailOp: StencilOp.KEEP,
+            },
+          },
+        });
+        this.device.setResourceName(this.#bakePipeline, 'SDFTextBakePipeline');
+
+        if (!this.#bakeSceneUniformBuffer) {
+          this.#bakeSceneUniformBuffer = this.device.createBuffer({
+            viewOrSize: 48 * Float32Array.BYTES_PER_ELEMENT,
+            usage: BufferUsage.UNIFORM,
+            hint: BufferFrequencyHint.DYNAMIC,
+          });
+        }
+        // Projection must use logical bounds (gw×gh): vertices live in layout space, while
+        // tw×th is only the RT pixel resolution (DPR). projection(tw,th) shrinks content to
+        // ~1/dpr² of the texture (e.g. 1/4 at devicePixelRatio=2).
+        this.#writeBakeSceneUniforms(gw, gh, tw, th);
+
+        if (!this.#uniformBuffer) {
+          this.#uniformBuffer = this.device.createBuffer({
+            viewOrSize: Float32Array.BYTES_PER_ELEMENT * 60,
+            usage: BufferUsage.UNIFORM,
+            hint: BufferFrequencyHint.DYNAMIC,
+          });
+        }
+
+        const translate = mat3.create();
+        mat3.identity(translate);
+        mat3.translate(translate, translate, [-rb.minX, -rb.minY]);
+        const bakeModel = Mat3.fromGLMat3(translate);
+        const atlasImage = this.useBitmapFont
+          ? shape.read(Text).bitmapFont.pages[0]
+          : this.#glyphManager.getAtlas().image;
+        const [bakeBuf, bakeLegacy] = this.generateBuffer(shape, atlasImage);
+        this.#uniformBuffer.setSubData(
+          0,
+          new Uint8Array(
+            new Float32Array([
+              ...paddingMat3(bakeModel),
+              ...bakeBuf,
+            ]).buffer,
+          ),
+        );
+        this.#bakeProgram.setUniformsLegacy({
+          u_ModelMatrix: Mat3.toGLMat3(bakeModel),
+          ...bakeLegacy,
+        });
+
+        const bakeSampler = this.renderCache.createSampler({
+          addressModeU: AddressMode.CLAMP_TO_EDGE,
+          addressModeV: AddressMode.CLAMP_TO_EDGE,
+          minFilter: FilterMode.POINT,
+          magFilter: FilterMode.BILINEAR,
+          mipmapFilter: MipmapFilterMode.LINEAR,
+          lodMinClamp: 0,
+          lodMaxClamp: 0,
+        });
+
+        this.#bakeBindings?.destroy();
+        this.#bakeBindings = this.renderCache.createBindings({
+          pipeline: this.#bakePipeline,
+          uniformBufferBindings: [
+            { buffer: this.#bakeSceneUniformBuffer },
+            { buffer: this.#uniformBuffer },
+          ],
+          samplerBindings: [
+            {
+              texture: glyphAtlasTexture,
+              sampler: bakeSampler,
+            },
+          ],
+        });
+
+        const colorTex = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED,
+        });
+        const depthTex = this.device.createTexture({
+          format: Format.D24_S8,
+          width: tw,
+          height: th,
+          usage: TextureUsage.RENDER_TARGET,
+        });
+        const colorRT = this.device.createRenderTargetFromTexture(colorTex);
+        const depthRT = this.device.createRenderTargetFromTexture(depthTex);
+
+        const bakePass = this.device.createRenderPass({
+          colorAttachment: [colorRT],
+          colorClearColor: [TransparentBlack],
+          colorResolveTo: [null],
+          colorStore: [true],
+          depthStencilAttachment: depthRT,
+          depthClearValue: 0,
+        });
+        bakePass.setViewport(0, 0, tw, th);
+        bakePass.setPipeline(this.#bakePipeline);
+        bakePass.setBindings(this.#bakeBindings);
+        bakePass.setVertexInput(
+          this.#bakeInputLayout,
+          this.vertexBuffers.map((buffer) => ({ buffer })),
+          { buffer: this.indexBuffer },
+        );
+        bakePass.drawIndexed(this.indexBufferData.length);
+        this.device.submitPass(bakePass);
+
+        // Do not call colorRT.destroy(): WebGL {@link RenderTarget_GL.destroy} also destroys
+        // the wrapped texture; `colorTex` must stay valid for {@link createPostProcessing}.
+        // Same lifetime pattern as {@link MeshGradientPass.render}.
+        depthRT.destroy();
+        depthTex.destroy();
+
+        this.#rawFillImageTexture = colorTex;
+        const filtered = this.#applyRasterFilterChainIfNeeded(
+          shape,
+          colorTex,
+          tw,
+          th,
+        );
+        this.#fillTextureFromPostChain = filtered !== colorTex;
+        this.#texture = filtered;
+      }
+    }
+
     this.createProgram(vert, physical ? physical_frag : frag, defines);
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize:
-          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4),
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 60,
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -315,6 +830,9 @@ export class SDFText extends Drawcall {
       lodMaxClamp: 0,
     });
 
+    const sampledTexture =
+      useFillImage && this.#texture ? this.#texture : glyphAtlasTexture;
+
     const bindings: BindingsDescriptor = {
       pipeline: this.pipeline,
       uniformBufferBindings: [
@@ -327,13 +845,90 @@ export class SDFText extends Drawcall {
       ],
       samplerBindings: [
         {
-          texture: glyphAtlasTexture,
+          texture: sampledTexture,
           sampler,
         },
       ],
     };
 
     this.bindings = this.renderCache.createBindings(bindings);
+  }
+
+  #teardownFillImageGpu(): void {
+    if (this.#rawFillImageTexture) {
+      this.#rawFillImageTexture.destroy();
+      this.#rawFillImageTexture = null;
+    }
+    if (!this.#fillTextureFromPostChain && this.#texture) {
+      this.#texture.destroy();
+    }
+    this.#texture = null;
+    this.#fillTextureFromPostChain = false;
+  }
+
+  /**
+   * @param logicW logic width/height of the bake (matches vertex coords after translate)
+   * @param logicH see logicW
+   * @param viewportW RT size in pixels (setViewport / u_Viewport)
+   * @param viewportH see viewportW
+   */
+  #writeBakeSceneUniforms(
+    logicW: number,
+    logicH: number,
+    viewportW: number,
+    viewportH: number,
+  ): void {
+    const proj = mat3.projection(mat3.create(), logicW, logicH);
+    const view = mat3.identity(mat3.create());
+    const vp = mat3.multiply(mat3.create(), proj, view);
+    const inv = mat3.invert(mat3.create(), vp) ?? mat3.identity(mat3.create());
+    const buf = new Float32Array([
+      ...paddingMat3(Mat3.fromGLMat3(proj)),
+      ...paddingMat3(Mat3.fromGLMat3(view)),
+      ...paddingMat3(Mat3.fromGLMat3(inv)),
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      this.sceneZoomScale,
+      0,
+      viewportW,
+      viewportH,
+    ]);
+    this.#bakeSceneUniformBuffer!.setSubData(0, new Uint8Array(buf.buffer));
+    this.#bakeProgram?.setUniformsLegacy({
+      u_ProjectionMatrix: proj,
+      u_ViewMatrix: view,
+      u_ViewProjectionInvMatrix: inv,
+      u_BackgroundColor: [0, 0, 0, 0],
+      u_GridColor: [0, 0, 0, 0],
+      u_ZoomScale: this.sceneZoomScale,
+      u_CheckboardStyle: 0,
+      u_Viewport: [viewportW, viewportH],
+    });
+  }
+
+  #applyRasterFilterChainIfNeeded(
+    instance: Entity,
+    raw: Texture,
+    tw: number,
+    th: number,
+  ): Texture {
+    const filterValue = getRasterFilterValueForShape(instance);
+    if (!filterValue) {
+      return raw;
+    }
+    const effects = filterRasterPostEffects(parseEffect(filterValue));
+    if (effects.length === 0) {
+      return raw;
+    }
+    this.createPostProcessing(effects, raw, tw, th);
+    const { texture: filtered } = this.renderPostProcessingTextureSpace(tw, th);
+    return filtered;
   }
 
   render(
@@ -379,6 +974,10 @@ export class SDFText extends Drawcall {
       ...legacyObject,
     });
 
+    if (this.useFillImage && this.#texture) {
+      this.program.setUniformsLegacy({ u_Texture: this.#texture });
+    }
+
     if (this.useWireframe && this.geometryDirty) {
       this.generateWireframe();
     }
@@ -394,16 +993,23 @@ export class SDFText extends Drawcall {
       buffer: this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
+    if (this.useStencil || this.parentClipMode) {
+      renderPass.setStencilReference(STENCIL_CLIP_REF);
+    }
     renderPass.drawIndexed(this.indexBufferData.length);
   }
 
   destroy(): void {
+    this.destroyFullPostProcessingChain();
+    this.#bakeBindings?.destroy();
+    this.#bakeBindings = null;
+    this.#teardownFillImageGpu();
+    this.#bakeSceneUniformBuffer?.destroy();
+    this.#bakeSceneUniformBuffer = null;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
-      this.#texture?.destroy();
     }
-
     this.#glyphManager.destroy();
   }
 
@@ -416,19 +1022,20 @@ export class SDFText extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
     const zIndex = globalRenderOrder / ZINDEX_FACTOR;
-    const { value: fill } = shape.has(FillSolid)
-      ? shape.read(FillSolid)
-      : { value: null };
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(fill);
+    const fillCss = resolveSdfTextFillColorCss(shape);
+    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+      fillCss && fillCss !== 'none' ? fillCss : 'transparent',
+    );
 
-    const { opacity, strokeOpacity, fillOpacity } = shape.has(Opacity)
-      ? shape.read(Opacity)
-      : { opacity: 1, strokeOpacity: 1, fillOpacity: 1 };
+    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
 
-    const { color: strokeColor, width } = shape.has(Stroke)
-      ? shape.read(Stroke)
-      : { color: null, width: 0 };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(strokeColor);
+    const strokeColor = resolveGpuStrokeColor(shape);
+    const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
+    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+      strokeColor ?? 'transparent',
+    );
+    const { strokeColorAlphaMul, strokeUniformOpacityMul } =
+      strokePaintAlphaMultipliers(shape);
 
     const {
       color: dropShadowColor,
@@ -436,8 +1043,8 @@ export class SDFText extends Drawcall {
       offsetY,
       blurRadius,
     } = shape.has(DropShadow)
-      ? shape.read(DropShadow)
-      : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
+        ? shape.read(DropShadow)
+        : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
     const {
       r: dsR,
       g: dsG,
@@ -450,16 +1057,41 @@ export class SDFText extends Drawcall {
     const { fontSize } = shape.read(ComputedTextMetrics).fontMetrics;
 
     const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
-    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
+    const u_StrokeColor = [
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so * strokeColorAlphaMul,
+    ];
 
     const u_ZIndexStrokeWidth = [zIndex, width, fontSize, 0];
 
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, sizeAttenuation];
+    const u_Opacity = [
+      opacity,
+      1,
+      strokeUniformOpacityMul,
+      sizeAttenuation,
+    ];
 
     const u_DropShadowColor = [dsR / 255, dsG / 255, dsB / 255, dsO];
     const u_DropShadow = [offsetX, offsetY, blurRadius, 0];
 
     const u_AtlasSize = [atlasWidth, atlasHeight];
+
+    let u_FillUVRect: number[];
+    if (shape.has(ComputedBounds)) {
+      const rb = shape.read(ComputedBounds).renderBounds;
+      const rw = rb.maxX - rb.minX;
+      const rh = rb.maxY - rb.minY;
+      u_FillUVRect = [
+        rb.minX,
+        rb.minY,
+        rw > 0 ? 1 / rw : 0,
+        rh > 0 ? 1 / rh : 0,
+      ];
+    } else {
+      u_FillUVRect = [0, 0, 1, 1];
+    }
 
     return [
       [
@@ -470,6 +1102,9 @@ export class SDFText extends Drawcall {
         ...u_DropShadowColor,
         ...u_DropShadow,
         ...u_AtlasSize,
+        0,
+        0,
+        ...u_FillUVRect,
       ],
       {
         u_FillColor,
@@ -479,6 +1114,7 @@ export class SDFText extends Drawcall {
         u_DropShadowColor,
         u_DropShadow,
         u_AtlasSize,
+        u_FillUVRect,
       },
     ];
   }
@@ -502,7 +1138,7 @@ export class SDFText extends Drawcall {
     bitmapFont: BitmapFont;
     fontScale: number;
   }) {
-    const { textAlign, textBaseline, bitmapFontKerning } = object.read(Text);
+    const { textAlign, bitmapFontKerning } = object.read(Text);
 
     const metrics = object.read(ComputedTextMetrics);
     const globalRenderOrder = object.has(GlobalRenderOrder)
@@ -522,23 +1158,8 @@ export class SDFText extends Drawcall {
 
     const {
       fontBoundingBoxAscent = 0,
-      fontBoundingBoxDescent = 0,
-      hangingBaseline = 0,
-      ideographicBaseline = 0,
     } = metrics.fontMetrics;
-    if (textBaseline === 'alphabetic') {
-      y = fontBoundingBoxAscent;
-    } else if (textBaseline === 'middle') {
-      y = fontBoundingBoxAscent;
-    } else if (textBaseline === 'hanging') {
-      y = hangingBaseline;
-    } else if (textBaseline === 'ideographic') {
-      y = ideographicBaseline;
-    } else if (textBaseline === 'bottom') {
-      y = fontBoundingBoxAscent + fontBoundingBoxDescent;
-    } else if (textBaseline === 'top') {
-      y = 0;
-    }
+    y = fontBoundingBoxAscent;
 
     const charUVOffsetBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
@@ -556,7 +1177,7 @@ export class SDFText extends Drawcall {
       fontScale,
       bitmapFontKerning,
       0,
-      0,
+      (lineHeight - metrics.fontMetrics.fontSize) / 2,
     );
 
     let positions: GlyphPositions;

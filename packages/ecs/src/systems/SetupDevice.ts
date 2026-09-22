@@ -3,8 +3,9 @@ import {
   DeviceContribution,
   WebGLDeviceContribution,
   WebGPUDeviceContribution,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { Canvas, GPUResource, Grid, Theme } from '../components';
+import { DOMAdapter } from '../environment';
 import { isBrowser, RenderCache } from '../utils';
 import { TexturePool } from '../resources';
 import { RenderGraph } from '../render-graph/RenderGraph';
@@ -32,6 +33,7 @@ export class SetupDevice extends System {
    * Used for rendering and exporting the shapes in canvas to image(PNG, JPEG, etc.).
    */
   #offscreenGPUResource: GPUResource;
+  #offscreenElement: HTMLCanvasElement | OffscreenCanvas;
   #offscreenPromise: Promise<void>;
   #resources = new Map<number, CanvasResources>();
   #disposed = false;
@@ -44,6 +46,22 @@ export class SetupDevice extends System {
 
   getOffscreenGPUResource() {
     return this.#offscreenGPUResource;
+  }
+
+  /**
+   * Resize the offscreen canvas for partial export (e.g. export selected nodes to PNG).
+   * Call with desired output dimensions in pixels (for 1:1 export use logical width/height).
+   */
+  resizeOffscreen(pixelWidth: number, pixelHeight: number): void {
+    if (!this.#offscreenElement || !this.#offscreenGPUResource) {
+      return;
+    }
+    this.#offscreenElement.width = pixelWidth;
+    this.#offscreenElement.height = pixelHeight;
+    this.#offscreenGPUResource.swapChain.configureSwapChain(
+      pixelWidth,
+      pixelHeight,
+    );
   }
 
   execute() {
@@ -100,8 +118,8 @@ export class SetupDevice extends System {
       if (entry.resource && !entry.attached) {
         const { width, height, devicePixelRatio } = entry.canvas.read(Canvas);
         entry.resource.swapChain.configureSwapChain(
-          width * devicePixelRatio,
-          height * devicePixelRatio,
+          Math.floor(width * devicePixelRatio),
+          Math.floor(height * devicePixelRatio),
         );
         entry.canvas.add(GPUResource, entry.resource);
         entry.attached = true;
@@ -118,7 +136,7 @@ export class SetupDevice extends System {
       const heightDPR = height * devicePixelRatio;
 
       const { swapChain } = canvas.read(GPUResource);
-      swapChain.configureSwapChain(widthDPR, heightDPR);
+      swapChain.configureSwapChain(Math.floor(widthDPR), Math.floor(heightDPR));
     });
   }
 
@@ -153,11 +171,15 @@ export class SetupDevice extends System {
       height,
       devicePixelRatio,
     } = props;
-    if (isBrowser) {
+    const skipOffscreenInJest =
+      typeof process !== 'undefined' && process.env.JEST_WORKER_ID;
+    if (isBrowser && !skipOffscreenInJest) {
       if (!this.#offscreenPromise) {
-        const offscreen = document.createElement('canvas');
-        offscreen.width = width * devicePixelRatio;
-        offscreen.height = height * devicePixelRatio;
+        const offscreen = DOMAdapter.get().createCanvas(
+          Math.floor(width * devicePixelRatio),
+          Math.floor(height * devicePixelRatio),
+        );
+        this.#offscreenElement = offscreen;
         this.#offscreenPromise = this.createGPUResource(
           renderer,
           shaderCompilerPath,
@@ -201,6 +223,7 @@ export class SetupDevice extends System {
       deviceContribution = new WebGLDeviceContribution({
         targets: ['webgl2', 'webgl1'],
         antialias: true,
+        preserveDrawingBuffer: true,
         shaderDebug: true,
         trackResources: false,
         onContextCreationError: () => {},
@@ -225,7 +248,7 @@ export class SetupDevice extends System {
       device.checkForLeaks();
     });
     try {
-      swapChain.configureSwapChain(widthDPR, heightDPR);
+      swapChain.configureSwapChain(Math.floor(widthDPR), Math.floor(heightDPR));
       const renderCache = new RenderCache(device);
       scope.add(() => renderCache.destroy());
       const renderGraph = new RenderGraph(device);

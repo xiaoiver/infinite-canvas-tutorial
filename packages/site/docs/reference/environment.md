@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 We want the canvas to run in different environments like browsers, Node.js, WebWorker, etc. Since different environments provide different functionalities, we referenced Pixi.js's implementation and provide an `Adapter` interface along with default `BrowserAdapter` and `WebWorkerAdapter` for developers to choose from.
 
 ```ts

@@ -12,21 +12,23 @@ import {
   isSupportedImageFileType,
   UI,
   ZIndex,
-  SerializedNode,
   DOMAdapter,
   MIME_TYPES,
   ExportFormat,
   isUrl,
+  Pen,
+  RectSerializedNode,
+  GSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
 import { v4 as uuidv4 } from 'uuid';
-import { load } from '@loaders.gl/core';
-import { ImageLoader } from '@loaders.gl/images';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { extractExternalUrlMetadata } from '../utils/url';
 import { measureHTML } from '../utils';
+import { updateAndSelectNodes } from '../utils/common';
+import { isLikelyMermaidSyntax, tryPasteMermaid } from './mermaid-paste';
 
 const ZINDEX_OFFSET = 0.0001;
 
@@ -35,8 +37,17 @@ export function executeCopy(
   appState: AppState,
   event?: ClipboardEvent,
 ) {
+
+  const nodes = appState.layersSelected.map((selectedId) => {
+    const node = api.getNodeById(selectedId);
+    if (node) {
+      return [node, ...api.getChildrenRecursively(node)];
+    }
+    return [];
+  }).flat();
+
   api.copyToClipboard(
-    appState.layersSelected.map((id) => api.getNodeById(id)),
+    nodes,
     event,
   );
 }
@@ -52,76 +63,8 @@ export function executeCut(
   api.record();
 }
 
-function updateAndSelectNodes(
-  api: ExtendedAPI,
-  appState: AppState,
-  nodes: SerializedNode[],
-) {
-  api.runAtNextTick(() => {
-    api.updateNodes(nodes);
-    api.record();
-
-    setTimeout(() => {
-      api.unhighlightNodes(
-        appState.layersHighlighted.map((id) => api.getNodeById(id)),
-      );
-      api.selectNodes([nodes[0]]);
-    }, 100);
-  });
-}
-
-async function getDataURL(file: Blob | File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataURL = reader.result as string;
-      resolve(dataURL);
-    };
-    reader.onerror = (error) => reject(error);
-    reader.readAsDataURL(file);
-  });
-}
-
-export async function createImage(
-  api: ExtendedAPI,
-  appState: AppState,
-  file: File,
-  position?: { x: number; y: number },
-) {
-  const size = {
-    width: api.element.clientWidth,
-    height: api.element.clientHeight,
-    zoom: appState.cameraZoom,
-  };
-
-  const [image, dataURL] = await Promise.all([
-    load(file, ImageLoader),
-    getDataURL(file),
-  ]);
-
-  // Heuristic to calculate the size of the image.
-  // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
-  const minHeight = Math.max(size.height - 120, 160);
-  // max 65% of canvas height, clamped to <300px, vh - 120px>
-  const maxHeight = Math.min(
-    minHeight,
-    Math.floor(size.height * 0.5) / size.zoom,
-  );
-  const height = Math.min(image.height, maxHeight);
-  const width = height * (image.width / image.height);
-
-  updateAndSelectNodes(api, appState, [
-    {
-      id: uuidv4(),
-      type: 'rect',
-      x: (position?.x ?? 0) - width / 2,
-      y: (position?.y ?? 0) - height / 2,
-      width,
-      height,
-      fill: dataURL,
-      lockAspectRatio: true,
-    },
-  ]);
+function getMaxZIndex(api: ExtendedAPI) {
+  return api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
 }
 
 function createSVG(
@@ -134,23 +77,33 @@ function createSVG(
   const doc = DOMAdapter.get()
     .getDOMParser()
     .parseFromString(svg, 'image/svg+xml');
-  const $svg = doc.documentElement;
+  const $svg = doc.documentElement as unknown as SVGSVGElement;
+
+  const width = $svg.width.baseVal.value;
+  const height = $svg.height.baseVal.value;
 
   // This method also works, but it may lose the namespace of the SVG element.
   // const $container = document.createElement('div');
   // $container.innerHTML = string;
   // const $svg = $container.children[0] as SVGSVGElement;
+
+  const root: GSerializedNode = {
+    id: uuidv4(),
+    type: 'g',
+    zIndex: getMaxZIndex(api) + 1,
+    x: position?.x ?? 0,
+    y: position?.y ?? 0,
+  };
+
   const nodes = svgElementsToSerializedNodes(
     Array.from($svg.children) as SVGElement[],
   );
-  if (position) {
-    // nodes.forEach((node) => {
-    //   node.x += position.x;
-    //   node.y += position.y;
-    // });
-  }
+  nodes.forEach((node) => {
+    node.parentId = root.id;
+    node.locked = true;
+  });
 
-  updateAndSelectNodes(api, appState, nodes);
+  updateAndSelectNodes(api, appState, [root, ...nodes]);
 }
 
 function createText(
@@ -168,7 +121,8 @@ function createText(
       content: text,
       fontSize: 16,
       fontFamily: 'system-ui',
-      fill: 'black',
+      fills: [{ type: 'solid', value: 'black', opacity: 1 }],
+      zIndex: getMaxZIndex(api) + 1,
     },
   ]);
 }
@@ -190,6 +144,7 @@ function createHTML(
       width,
       height,
       html,
+      zIndex: getMaxZIndex(api) + 1,
     },
   ]);
 }
@@ -209,7 +164,7 @@ export async function executePaste(
     let types;
     try {
       types = await readSystemClipboard();
-    } catch (error: any) {}
+    } catch (error: any) { }
     event = createPasteEvent({ types });
   }
 
@@ -239,11 +194,21 @@ export async function executePaste(
 
         // Plain url, extract metadata
         const meta = await extractExternalUrlMetadata(data.text);
-        console.log(meta);
+        // console.log(meta);
 
         // TODO: create bookmark asset
       } else if (string.startsWith('<svg') && string.endsWith('</svg>')) {
         createSVG(api, appState, string, canvasPosition);
+      } else if (isLikelyMermaidSyntax(string)) {
+        const pasted = await tryPasteMermaid(
+          api,
+          appState,
+          string,
+          canvasPosition,
+        );
+        if (!pasted) {
+          createText(api, appState, data.text, canvasPosition);
+        }
       } else {
         // const nonEmptyLines = data.text
         // .replace(/\r?\n|\r/g, '\n')
@@ -253,26 +218,29 @@ export async function executePaste(
         createText(api, appState, data.text, canvasPosition);
       }
     } else if (data.elements) {
-      const nodes = data.elements.map((node) => {
-        node.id = uuidv4();
-        if (node.zIndex) {
-          node.zIndex += ZINDEX_OFFSET;
-        }
+      const nodes = api.cloneNodes(data.elements);
 
-        if (canvasPosition) {
-          node.x = canvasPosition.x;
-          node.y = canvasPosition.y;
-        } else {
-          node.x += 10;
-          node.y += 10;
+      // 仅对粘贴树中的根节点做位移与 zIndex，子节点保持相对父级的变换
+      for (const node of nodes) {
+        if (!node.parentId) {
+          if (node.zIndex) {
+            node.zIndex += ZINDEX_OFFSET;
+          }
+
+          if (canvasPosition) {
+            node.x = canvasPosition.x;
+            node.y = canvasPosition.y;
+          } else {
+            node.x = (node.x as number) + 10;
+            node.y = (node.y as number) + 10;
+          }
         }
-        return node;
-      });
+      }
 
       updateAndSelectNodes(api, appState, nodes);
     }
   } else if (isSupportedImageFileType(file?.type)) {
-    createImage(api, appState, file, canvasPosition);
+    await api.createImageFromFile(file, { position: canvasPosition });
   }
 }
 
@@ -313,6 +281,8 @@ export class ContextMenu extends LitElement {
   private isClipboardEmpty = true;
 
   private binded = false;
+  /** Cached on bind so disconnect does not read a deleted canvas entity. */
+  private boundCanvas: HTMLCanvasElement | null = null;
   private lastContextMenuPosition: { x: number; y: number } | null = null;
   private lastPointerMovePosition: { x: number; y: number } | null = null;
 
@@ -337,6 +307,16 @@ export class ContextMenu extends LitElement {
       this.executeSendBackward();
     } else if (value === 'send-to-back') {
       this.executeSendToBack();
+    } else if (value === 'toggle-visibility') {
+      this.executeToggleVisibility();
+    } else if (value === 'toggle-lock') {
+      this.executeToggleLock();
+    } else if (value === 'crop') {
+      this.executeCrop();
+    } else if (value === 'group') {
+      this.executeGroup();
+    } else if (value === 'ungroup') {
+      this.executeUngroup();
     }
   };
 
@@ -345,7 +325,12 @@ export class ContextMenu extends LitElement {
     const nodes = this.api
       .getAppState()
       .layersSelected.map((id) => this.api.getNodeById(id));
-    this.api.export(format, true, nodes);
+
+    // Should export children recursively
+    const allNodes = nodes.flatMap((node) => {
+      return [node, ...this.api.getChildrenRecursively(node)];
+    });
+    this.api.export({ format, nodes: allNodes });
   };
 
   private contextMenuTemplate() {
@@ -358,9 +343,17 @@ export class ContextMenu extends LitElement {
       });
     }
 
+    // Locked element or unselected element should also be included in the context menu
+    // const { x, y } = this.lastContextMenuPosition;
+    // const canvasPosition = this.api.viewport2Canvas({ x, y });
+    // const [topmost] = this.api.elementsFromBBox(canvasPosition.x, canvasPosition.y, canvasPosition.x, canvasPosition.y, false);
+
     const isSelectedEmpty = layersSelected.length === 0;
     let bringForwardDisabled = false;
     let sendBackwardDisabled = false;
+    let isLocked = false;
+    let isVisible = true;
+    let isGrouped = false;
 
     if (layersSelected.length === 1) {
       const node = this.api.getNodeById(layersSelected[0]);
@@ -380,6 +373,9 @@ export class ContextMenu extends LitElement {
       if (node.zIndex === minZIndex) {
         sendBackwardDisabled = true;
       }
+      isLocked = node.locked;
+      isVisible = node.visibility !== 'hidden';
+      isGrouped = node.type === 'g';
     }
 
     return html`${when(
@@ -407,6 +403,17 @@ export class ContextMenu extends LitElement {
               <sp-icon-cut slot="icon"></sp-icon-cut>
               ${msg(str`Cut`)}
               <kbd slot="value">⌘X</kbd>
+            </sp-menu-item>
+            <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="toggle-visibility">
+              ${when(isVisible, () => html`<sp-icon-visibility slot="icon"></sp-icon-visibility>`, () => html`<sp-icon-visibility-off slot="icon"></sp-icon-visibility-off>`)}
+              ${isVisible ? msg(str`Hide layer`) : msg(str`Show layer`)}
+              <kbd slot="value">⌘H</kbd>
+            </sp-menu-item>
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="toggle-lock">
+              ${when(isLocked, () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`, () => html`<sp-icon-lock-open slot="icon"></sp-icon-lock-open>`)}
+              ${isLocked ? msg(str`Unlock layer`) : msg(str`Lock layer`)}
+              <kbd slot="value">⌘L</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
             <sp-menu-item
@@ -446,6 +453,22 @@ export class ContextMenu extends LitElement {
               <kbd slot="value">⌥⌘[</kbd>
             </sp-menu-item>
             <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item ?disabled=${isSelectedEmpty || isGrouped || layersSelected.length < 2} value="group">
+              <sp-icon-group slot="icon"></sp-icon-group>
+              ${msg(str`Group`)}
+              <kbd slot="value">⌘G</kbd>
+            </sp-menu-item>
+            <sp-menu-item ?disabled=${isSelectedEmpty || !isGrouped} value="ungroup">
+              <sp-icon-ungroup slot="icon"></sp-icon-ungroup>
+              ${msg(str`Ungroup`)}
+              <kbd slot="value">⌘⇧G</kbd>
+            </sp-menu-item>
+            <sp-menu-divider></sp-menu-divider>
+            <sp-menu-item ?disabled=${isSelectedEmpty} value="crop">
+              <sp-icon-crop slot="icon"></sp-icon-crop>
+              ${msg(str`Crop`)}
+              <kbd slot="value">⌘K</kbd>
+            </sp-menu-item>
             <sp-menu-item>
               ${msg(str`Export as...`)}
               <sp-menu slot="submenu" @change=${this.handleExport}>
@@ -464,6 +487,16 @@ export class ContextMenu extends LitElement {
                   ?disabled=${isSelectedEmpty}
                   >JPEG</sp-menu-item
                 >
+                <sp-menu-item
+                  value=${ExportFormat.WEBM}
+                  ?disabled=${isSelectedEmpty}
+                  >WebM</sp-menu-item
+                >
+                <sp-menu-item
+                  value=${ExportFormat.GIF}
+                  ?disabled=${isSelectedEmpty}
+                  >GIF</sp-menu-item
+                >
               </sp-menu>
             </sp-menu-item>
           </sp-menu>
@@ -476,6 +509,18 @@ export class ContextMenu extends LitElement {
     event.stopPropagation();
 
     this.lastContextMenuPosition = { x: event.clientX, y: event.clientY };
+
+    // Select the node first.
+    const { x: vx, y: vy } = this.api.client2Viewport(this.lastContextMenuPosition);
+    const { x: cx, y: cy } = this.api.viewport2Canvas({ x: vx, y: vy });
+    const nodes = this.api.elementsFromBBox(cx, cy, cx, cy, false).filter((node) => !node.has(UI));
+    if (nodes.length > 0) {
+      const node = this.api.getNodeByEntity(nodes[0]);
+      if (node) {
+        this.api.selectNodes([node]);
+        this.api.highlightNodes([node]);
+      }
+    }
 
     const trigger = event.target as LitElement;
     const virtualTrigger = new VirtualTrigger(
@@ -491,7 +536,7 @@ export class ContextMenu extends LitElement {
       placement: 'right-start',
       offset: 0,
       notImmediatelyClosable: true,
-      type: 'auto',
+      type: 'modal',
     });
     trigger.insertAdjacentElement('afterend', overlay as unknown as Element);
 
@@ -577,7 +622,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { y: node.y - 10 });
+          this.api.updateNodeOBB(node, { y: (node.y as number) - 10 });
         }
       });
       this.api.record();
@@ -586,7 +631,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { y: node.y + 10 });
+          this.api.updateNodeOBB(node, { y: (node.y as number) + 10 });
         }
       });
       this.api.record();
@@ -595,7 +640,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { x: node.x - 10 });
+          this.api.updateNodeOBB(node, { x: (node.x as number) - 10 });
         }
       });
       this.api.record();
@@ -604,7 +649,7 @@ export class ContextMenu extends LitElement {
       layersSelected.forEach((id) => {
         const node = this.api.getNodeById(id);
         if (node) {
-          this.api.updateNodeOBB(node, { x: node.x + 10 });
+          this.api.updateNodeOBB(node, { x: (node.x as number) + 10 });
         }
       });
       this.api.record();
@@ -616,6 +661,14 @@ export class ContextMenu extends LitElement {
       event.preventDefault();
       this.api.selectNodes([]);
       this.api.record();
+    } else if (event.key === 'g' && event.metaKey) {
+      this.executeGroup();
+      event.preventDefault();
+      event.stopPropagation();
+    } else if (event.key === 'g' && event.metaKey && event.shiftKey) {
+      this.executeUngroup();
+      event.preventDefault();
+      event.stopPropagation();
     }
   };
 
@@ -646,8 +699,7 @@ export class ContextMenu extends LitElement {
     const url = event.dataTransfer.getData('text/uri-list');
     if (url) {
       try {
-        const file = await fetch(url).then((res) => res.blob());
-        createImage(this.api, this.appState, file as File, canvasPosition);
+        await this.api.createImageFromFile(url, { position: canvasPosition });
         return;
       } catch (error) {
         console.error(error);
@@ -655,6 +707,18 @@ export class ContextMenu extends LitElement {
     }
     const text = event.dataTransfer.getData('text/plain');
     if (text) {
+      const trimmed = text.trim();
+      if (
+        isLikelyMermaidSyntax(trimmed) &&
+        (await tryPasteMermaid(
+          this.api,
+          this.appState,
+          trimmed,
+          canvasPosition,
+        ))
+      ) {
+        return;
+      }
       createText(this.api, this.appState, text, canvasPosition);
       return;
     }
@@ -665,7 +729,7 @@ export class ContextMenu extends LitElement {
           const svg = await file.text();
           createSVG(this.api, this.appState, svg, canvasPosition);
         } else {
-          createImage(this.api, this.appState, file, canvasPosition);
+          await this.api.createImageFromFile(file, { position: canvasPosition });
         }
       }
     }
@@ -703,40 +767,143 @@ export class ContextMenu extends LitElement {
     }
   }
 
+  private executeToggleVisibility() {
+    const node = this.api.getNodeById(this.appState.layersSelected[0]);
+    if (node) {
+      this.api.updateNode(node, {
+        visibility: node.visibility === 'hidden' ? 'visible' : 'hidden',
+      });
+      this.api.record();
+    }
+  }
+
+  private executeToggleLock() {
+    const node = this.api.getNodeById(this.appState.layersSelected[0]);
+    if (node) {
+      const isLocked = !!node.locked;
+      this.api.updateNode(node, {
+        locked: !isLocked,
+      });
+      this.api.record();
+    }
+  }
+
+  private executeCrop() {
+    const { layersSelected } = this.api.getAppState();
+
+    if (layersSelected.length === 1) {
+      const node = this.api.getNodeById(layersSelected[0]);
+      if (node.clipMode) {
+        this.api.setAppState({
+          layersCropping: layersSelected,
+          penbarSelected: Pen.SELECT,
+        });
+        // already is a clipping node, do nothing
+        return;
+      }
+    }
+
+    const children = layersSelected.map((id) => this.api.getNodeById(id));
+    const bounds = this.api.getBounds(children);
+    const { minX, minY, maxX, maxY } = bounds;
+    // create a clip parent for all the selected nodes
+    const clipParent: RectSerializedNode = {
+      id: uuidv4(),
+      type: 'rect',
+      clipMode: 'clip',
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      zIndex: 0,
+    };
+
+    this.api.runAtNextTick(() => {
+      this.api.updateNodes([clipParent]);
+
+      children.forEach((child) => {
+        this.api.reparentNode(child, clipParent);
+      });
+
+      this.api.setAppState({
+        layersCropping: [clipParent.id],
+        penbarSelected: Pen.SELECT,
+      });
+
+      this.api.record();
+    });
+  }
+
+  private executeGroup() {
+    this.api.runAtNextTick(() => {
+      this.api.group(this.appState.layersSelected.map((id) => this.api.getNodeById(id)));
+      this.api.record();
+    });
+  }
+
+  private executeUngroup() {
+    this.api.runAtNextTick(() => {
+      this.api.ungroup(this.api.getNodeById(this.appState.layersSelected[0]));
+      this.api.record();
+    });
+  }
+
+  private tryBindListeners() {
+    if (!this.api?.element || this.binded) {
+      return;
+    }
+
+    const $canvas = this.api.getCanvasElement();
+    this.boundCanvas = $canvas;
+    $canvas.addEventListener('contextmenu', this.handleContextMenu);
+    $canvas.addEventListener('pointermove', this.handlePointerMove);
+    $canvas.addEventListener('dragover', this.handleDragOver);
+    $canvas.addEventListener('drop', this.handleDrop);
+    $canvas.addEventListener('paste', this.handlePaste);
+    $canvas.addEventListener('copy', this.handleCopy, { passive: false });
+    $canvas.addEventListener('cut', this.handleCut, { passive: false });
+    $canvas.addEventListener('keydown', this.handleKeyDown);
+
+    this.binded = true;
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.tryBindListeners();
+  }
+
+  protected updated() {
+    this.tryBindListeners();
+  }
+
   disconnectedCallback() {
     super.disconnectedCallback();
-    this.api?.element?.removeEventListener(
+
+    const $canvas = this.boundCanvas;
+    if (!$canvas || !this.binded) {
+      return;
+    }
+
+    $canvas.removeEventListener(
       'contextmenu',
       this.handleContextMenu,
     );
-    this.api?.element?.removeEventListener(
+    $canvas.removeEventListener(
       'pointermove',
       this.handlePointerMove,
     );
-    this.api?.element?.removeEventListener('drop', this.handleDrop);
-    document.removeEventListener('copy', this.handleCopy);
-    document.removeEventListener('cut', this.handleCut);
-    document.removeEventListener('paste', this.handlePaste);
-    // this.api
-    //   .getCanvasElement()
-    //   .removeEventListener('keydown', this.handleKeyDown);
+    $canvas.removeEventListener('dragover', this.handleDragOver);
+    $canvas.removeEventListener('drop', this.handleDrop);
+    $canvas.removeEventListener('paste', this.handlePaste);
+    $canvas.removeEventListener('copy', this.handleCopy);
+    $canvas.removeEventListener('cut', this.handleCut);
+    $canvas.removeEventListener('keydown', this.handleKeyDown);
+
+    this.boundCanvas = null;
+    this.binded = false;
   }
 
   render() {
-    // FIXME: wait for the element to be ready.
-    if (this.api?.element && !this.binded) {
-      this.api.element.addEventListener('contextmenu', this.handleContextMenu);
-      this.api.element.addEventListener('pointermove', this.handlePointerMove);
-      this.api.element.addEventListener('dragover', this.handleDragOver);
-      this.api.element.addEventListener('drop', this.handleDrop);
-      document.addEventListener('copy', this.handleCopy, { passive: false });
-      document.addEventListener('cut', this.handleCut, { passive: false });
-      document.addEventListener('paste', this.handlePaste, { passive: false });
-      this.api
-        .getCanvasElement()
-        .addEventListener('keydown', this.handleKeyDown);
-    }
-
     return html``;
   }
 }

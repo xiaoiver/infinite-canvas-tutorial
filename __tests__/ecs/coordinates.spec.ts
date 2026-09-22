@@ -10,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -26,6 +27,8 @@ import {
   Name,
   ZIndex,
   ComputeZIndex,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -57,12 +60,15 @@ describe('Coordinates', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Circle,
             Visibility,
             Name,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 

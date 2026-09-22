@@ -17,7 +17,7 @@ export class TextDecoration {
    * The color applies to decorations, such as underlines, overlines, strikethroughs, and wavy lines like those used to mark misspellings, in the scope of the property's value.
    * @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-decoration-color
    */
-  @field({ type: Type.dynamicString(20), default: 'black' })
+  @field({ type: Type.object, default: 'black' })
   declare color: string;
 
   /**

@@ -1,4 +1,5 @@
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { msg, str } from '@lit/localize';
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
@@ -35,13 +36,13 @@ export class ContextCommonBar extends LitElement {
         .node=${this.node}
       ></ic-spectrum-fill-action-button>
       ${when(
-        !isText,
-        () => html`<ic-spectrum-stroke-action-button
+      !isText,
+      () => html`<ic-spectrum-stroke-action-button
             .node=${this.node}
           ></ic-spectrum-stroke-action-button>
           <sp-action-button quiet size="m" id="stroke-options">
             <sp-tooltip self-managed placement="bottom">
-              Stroke options
+              ${msg(str`Stroke options`)}
             </sp-tooltip>
             <sp-icon-stroke-width slot="icon"></sp-icon-stroke-width>
           </sp-action-button>
@@ -51,13 +52,13 @@ export class ContextCommonBar extends LitElement {
             type="auto"
           >
             <sp-popover dialog>
-              <h4>Stroke options</h4>
+              <h4>${msg(str`Stroke options`)}</h4>
               <ic-spectrum-stroke-content
                 .node=${this.node}
               ></ic-spectrum-stroke-content>
             </sp-popover>
           </sp-overlay>`,
-      )}`;
+    )}`;
   }
 }
 

@@ -26,6 +26,7 @@ export class LayerName extends LitElement {
       -webkit-box-orient: vertical;
       -webkit-line-clamp: 2;
       overflow: hidden;
+      text-overflow: ellipsis;
     }
   `;
 
@@ -41,12 +42,27 @@ export class LayerName extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: API;
 
-  private handleDoubleClick() {
+  /**
+   * 进入重命名；可由父级（如图层行）在整行 double-click 时调用。
+   * 若已在编辑中，则只尝试聚焦输入框。
+   */
+  beginEditing() {
+    if (this.node.locked) {
+      return;
+    }
+    if (this.editing) {
+      this.updateComplete.then(() => this.focusTextfield());
+      return;
+    }
     this.editing = true;
+    this.updateComplete.then(() => this.focusTextfield());
+  }
 
-    setTimeout(() => {
-      this.textfield.focus();
-    }, 0);
+  private focusTextfield() {
+    const el = this.textfield as
+      | (LitElement & { focus?: (o?: FocusOptions) => void })
+      | undefined;
+    el?.focus?.();
   }
 
   private handleKeydown(event: KeyboardEvent) {
@@ -69,16 +85,17 @@ export class LayerName extends LitElement {
 
     return html`
       ${when(
-        this.editing,
-        () => html`<sp-textfield
+      this.editing,
+      () => html`<sp-textfield
           quiet
           size="m"
           @blur=${this.handleBlur}
           @keydown=${this.handleKeydown}
           value=${name}
         ></sp-textfield>`,
-        () => html`<span @dblclick=${this.handleDoubleClick}>${name}</span>`,
-      )}
+      () =>
+        html`<span @dblclick=${() => this.beginEditing()}>${name}</span>`,
+    )}
     `;
   }
 }

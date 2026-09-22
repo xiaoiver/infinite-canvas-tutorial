@@ -14,8 +14,7 @@ import {
   DropShadow,
   InnerShadow,
   Ellipse,
-  FillGradient,
-  FillSolid,
+  FillLayers,
   Font,
   Grid,
   Name,
@@ -44,9 +43,19 @@ import {
   Embed,
   Editable,
   Filter,
+  Binding,
+  Binded,
+  PartialBinding,
+  Locked,
+  ClipMode,
+  Flex,
+  Group,
+  Theme,
+  AnimationPlayer,
+  MaterialDirty,
+  IconFont,
 } from '@infinite-canvas-tutorial/ecs';
-import { Event } from '../event';
-import { ExtendedAPI, pendingCanvases } from '../API';
+import { ExtendedAPI, pendingCanvases, pendingGpuReadyDispatch } from '../API';
 import { LitStateManagement } from '../context';
 import { InfiniteCanvas } from '../spectrum/infinite-canvas';
 import { localizedTemplates } from '../i18n';
@@ -71,8 +80,7 @@ export class InitCanvas extends System {
             Children,
             Renderable,
             Visibility,
-            FillSolid,
-            FillGradient,
+            FillLayers,
             Stroke,
             Circle,
             Ellipse,
@@ -84,6 +92,7 @@ export class InitCanvas extends System {
             Rough,
             Brush,
             VectorNetwork,
+            Group,
             Selected,
             Opacity,
             DropShadow,
@@ -99,6 +108,16 @@ export class InitCanvas extends System {
             Embed,
             Editable,
             Filter,
+            Binding,
+            Binded,
+            PartialBinding,
+            Locked,
+            ClipMode,
+            Flex,
+            Theme,
+            AnimationPlayer,
+            MaterialDirty,
+            IconFont,
           ).write,
     );
   }
@@ -131,14 +150,21 @@ export class InitCanvas extends System {
           });
           this.#setLocale = setLocale;
           this.#getLocale = getLocale;
-        } catch (e) {}
+        } catch (e) { }
 
         api.setLocale = this.#setLocale;
         api.getLocale = this.#getLocale;
 
         this.commands.execute();
 
-        container.dispatchEvent(new CustomEvent(Event.READY, { detail: api }));
+        const initialAppState = stateManagement.getAppState();
+        api.setAppState({
+          theme: initialAppState.theme,
+          themeMode: initialAppState.themeMode,
+          themePreference: initialAppState.themePreference,
+        });
+
+        pendingGpuReadyDispatch.push({ container, api });
       });
       pendingCanvases.length = 0;
     }

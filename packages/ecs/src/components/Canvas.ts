@@ -7,13 +7,18 @@ import { API } from '../API';
 export enum Pen {
   SELECT = 'select',
   HAND = 'hand',
+  DRAW_POINT = 'draw-point',
   DRAW_RECT = 'draw-rect',
+  DRAW_TRIANGLE = 'draw-triangle',
+  DRAW_PENTAGON = 'draw-pentagon',
+  DRAW_HEXAGON = 'draw-hexagon',
   DRAW_ELLIPSE = 'draw-ellipse',
   DRAW_LINE = 'draw-line',
   DRAW_ARROW = 'draw-arrow',
   DRAW_ROUGH_RECT = 'draw-rough-rect',
   DRAW_ROUGH_ELLIPSE = 'draw-rough-ellipse',
   DRAW_ROUGH_LINE = 'draw-rough-line',
+  DRAW_ICONFONT = 'draw-iconfont',
   IMAGE = 'image',
   TEXT = 'text',
   PENCIL = 'pencil',
@@ -23,6 +28,12 @@ export enum Pen {
   ERASER = 'eraser',
   LASSO = 'lasso',
   LASER_POINTER = 'laser-pointer',
+}
+
+export enum VectorNetworkEditMode {
+  MOVE = 'move',
+  BEND = 'bend',
+  CUT = 'cut',
 }
 
 export class Canvas {

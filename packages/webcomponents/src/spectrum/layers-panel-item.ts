@@ -1,5 +1,8 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { query } from 'lit/decorators/query.js';
+import type { LayerName } from './layer-name';
+import './layer-name.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import {
@@ -20,11 +23,10 @@ import { msg, str, localized } from '@lit/localize';
 export class LayersPanelItem extends LitElement {
   static styles = css`
     :host {
-      width: 320px;
       height: 64px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
       padding: 0 4px;
       cursor: pointer;
     }
@@ -38,6 +40,8 @@ export class LayersPanelItem extends LitElement {
 
     ic-spectrum-layer-name {
       flex: 1;
+      margin-left: 8px;
+      min-width: 0;
     }
 
     :host([selected]) {
@@ -65,6 +69,13 @@ export class LayersPanelItem extends LitElement {
       justify-content: space-between;
       margin: 0;
     }
+
+    .layer-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
   `;
 
   @property()
@@ -87,6 +98,23 @@ export class LayersPanelItem extends LitElement {
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  @query('ic-spectrum-layer-name')
+  private layerNameEl?: LayerName;
+
+  private handleItemDblClick(e: MouseEvent) {
+    if (this.node.locked) {
+      return;
+    }
+    const t = e.target;
+    if (!(t instanceof Element)) {
+      return;
+    }
+    if (t.closest('sp-action-button')) {
+      return;
+    }
+    this.layerNameEl?.beginEditing();
+  }
 
   private handleToggleExpand(e: Event) {
     e.stopPropagation();
@@ -112,33 +140,41 @@ export class LayersPanelItem extends LitElement {
     this.api.record();
   }
 
+  private handleToggleLocked() {
+    const isLocked = !!this.node.locked;
+    this.api.updateNode(this.node, {
+      locked: !isLocked,
+    });
+    this.api.record();
+  }
+
   private renderOverlayContent = () => {
     return html`
       <sp-popover
         @sp-opened=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
-          if (event.target !== event.currentTarget) {
-            return;
-          }
+        if (event.target !== event.currentTarget) {
+          return;
+        }
 
-          if (!this.api.getAppState().propertiesOpened.includes(this.node.id)) {
-            this.api.setAppState({
-              propertiesOpened: [
-                ...this.api.getAppState().propertiesOpened,
-                this.node.id,
-              ],
-            });
-          }
-        }}
-        @sp-closed=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
-          if (event.target !== event.currentTarget) {
-            return;
-          }
+        if (!this.api.getAppState().propertiesOpened.includes(this.node.id)) {
           this.api.setAppState({
-            propertiesOpened: this.api
-              .getAppState()
-              .propertiesOpened.filter((id) => id !== this.node.id),
+            propertiesOpened: [
+              ...this.api.getAppState().propertiesOpened,
+              this.node.id,
+            ],
           });
-        }}
+        }
+      }}
+        @sp-closed=${(event: CustomEvent<OverlayOpenCloseDetail>) => {
+        if (event.target !== event.currentTarget) {
+          return;
+        }
+        this.api.setAppState({
+          propertiesOpened: this.api
+            .getAppState()
+            .propertiesOpened.filter((id) => id !== this.node.id),
+        });
+      }}
       >
         <h4>${msg(str`Properties`)}</h4>
         <ic-spectrum-properties-panel-content
@@ -150,6 +186,7 @@ export class LayersPanelItem extends LitElement {
 
   render() {
     const isVisible = this.node.visibility !== 'hidden';
+    const isLocked = !!this.node.locked;
     const isOpen = this.api
       .getAppState()
       .propertiesOpened.includes(this.node.id);
@@ -161,17 +198,31 @@ export class LayersPanelItem extends LitElement {
       !this.appState.taskbarSelected.includes(Task.SHOW_PROPERTIES_PANEL);
 
     return html`
+      <div class="layer-row" @dblclick=${this.handleItemDblClick}>
         <sp-action-button quiet size="s" @click=${this.handleToggleVisibility}>
           ${when(
-            isVisible,
-            () => html`<sp-icon-visibility slot="icon"></sp-icon-visibility>`,
-            () =>
-              html`<sp-icon-visibility-off
+      isVisible,
+      () => html`<sp-icon-visibility slot="icon"></sp-icon-visibility>`,
+      () =>
+        html`<sp-icon-visibility-off
                 slot="icon"
               ></sp-icon-visibility-off>`,
-          )}
-          <sp-tooltip self-managed placement="left">
-            ${msg(str`Hide layer`)}
+    )}
+          <sp-tooltip self-managed placement="bottom">
+            ${isVisible ? msg(str`Hide layer`) : msg(str`Show layer`)}
+          </sp-tooltip>
+        </sp-action-button>
+        <sp-action-button quiet size="s" @click=${this.handleToggleLocked}>
+          ${when(
+      isLocked,
+      () => html`<sp-icon-lock-closed slot="icon"></sp-icon-lock-closed>`,
+      () =>
+        html`<sp-icon-lock-open
+                slot="icon"
+              ></sp-icon-lock-open>`,
+    )}
+          <sp-tooltip self-managed placement="bottom">
+            ${isLocked ? msg(str`Unlock layer`) : msg(str`Lock layer`)}
           </sp-tooltip>
         </sp-action-button>
         <span style="padding-left: calc(24px * ${this.depth});"></span>
@@ -183,20 +234,19 @@ export class LayersPanelItem extends LitElement {
       <ic-spectrum-layer-name
         .node=${this.node}></ic-spectrum-layer-name>
       <div 
-        class="layer-actions" style="visibility: ${
-          showProperties ? 'visible' : 'hidden'
-        };">
+        class="layer-actions" style="visibility: ${showProperties ? 'visible' : 'hidden'
+      };">
         <sp-action-button quiet size="m" .selected=${isOpen} ${trigger(
-      this.renderOverlayContent,
-      {
-        open: isOpen,
-        triggerInteraction: 'click',
-        overlayOptions: {
-          placement: 'bottom',
-          offset: 6,
+        this.renderOverlayContent,
+        {
+          open: isOpen,
+          triggerInteraction: 'click',
+          overlayOptions: {
+            placement: 'bottom',
+            offset: 6,
+          },
         },
-      },
-    )}>
+      )}>
           <sp-icon-properties slot="icon"></sp-icon-properties>
           <sp-tooltip self-managed placement="bottom">
             ${msg(str`Layer properties`)}</sp-tooltip
@@ -209,14 +259,14 @@ export class LayersPanelItem extends LitElement {
         () => html`
           <sp-action-button quiet size="s" @click=${this.handleToggleExpand}>
             ${when(
-              isExpanded,
-              () =>
-                html`<sp-icon-chevron-down slot="icon"></sp-icon-chevron-down>`,
-              () =>
-                html`<sp-icon-chevron-right
+          isExpanded,
+          () =>
+            html`<sp-icon-chevron-down slot="icon"></sp-icon-chevron-down>`,
+          () =>
+            html`<sp-icon-chevron-right
                   slot="icon"
                 ></sp-icon-chevron-right>`,
-            )}
+        )}
             <sp-tooltip self-managed placement="left">
               ${isExpanded ? msg(str`Collapse`) : msg(str`Expand`)}
             </sp-tooltip>
@@ -225,8 +275,8 @@ export class LayersPanelItem extends LitElement {
         () => html``,
       )}
       </span>
-      
-    </span>`;
+      </div>
+    `;
   }
 }
 

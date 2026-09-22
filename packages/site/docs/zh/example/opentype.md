@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "使用 Opentype.js 进行 Shaping"
+description: "在纯 JS 环境中解析字体并布局，适合轻量部署。"
 ---
+<!-- example-intro:zh -->
+
+# 使用 Opentype.js 进行 Shaping
+
+**Opentype.js** 在浏览器内解析字体，适合无法携带 HarfBuzz WASM 或需要快速原型的场景；复杂脚本覆盖与 HarfBuzz 可能有差异，请按目标语言验证。
+
+换行与行盒请结合 Canvas 文本度量调整。
+
+## 交互示例
 
 <script setup>
 import Opentype from '../../components/Opentype.vue'

@@ -161,7 +161,7 @@ export class InputGradient extends LitElement {
   }
 
   private addStop(index: number) {
-    this.gradients[index].steps.push({
+    (this.gradients[index] as any).steps.push({
       offset: {
         type: '%',
         value: 0,
@@ -173,7 +173,7 @@ export class InputGradient extends LitElement {
   }
 
   private removeStop(index: number, stopIndex: number) {
-    this.gradients[index].steps = this.gradients[index].steps.filter(
+    (this.gradients[index] as any).steps = (this.gradients[index] as any).steps.filter(
       (_, i) => i !== stopIndex,
     );
     this.requestUpdate();
@@ -204,14 +204,14 @@ export class InputGradient extends LitElement {
 
   private handleColorChange(index: number, stopIndex: number, e: CustomEvent) {
     const color = (e.target as any).value;
-    this.gradients[index].steps[stopIndex].color = color;
+    (this.gradients[index] as any).steps[stopIndex].color = color;
     this.requestUpdate();
     this.triggerGradientChangeEvent();
   }
 
   private handleOffsetChange(index: number, stopIndex: number, e: CustomEvent) {
     const offset = (e.target as any).value;
-    this.gradients[index].steps[stopIndex].offset.value = offset;
+    (this.gradients[index] as any).steps[stopIndex].offset.value = offset;
     this.requestUpdate();
     this.triggerGradientChangeEvent();
   }
@@ -229,13 +229,13 @@ export class InputGradient extends LitElement {
       </div>
       <div class="gradient-list">
         ${map(this.gradients, (gradient, index) => {
-          return html`<div class="gradient-item">
+      return html`<div class="gradient-item">
             <div>
               <div
                 class="gradient-preview"
                 style="background-image: ${convertGradientsToCSSValue([
-                  gradient,
-                ])}; transform: rotate(90deg);"
+        gradient,
+      ])}; transform: rotate(90deg);"
               ></div>
               <sl-select
                 placeholder="center"
@@ -258,7 +258,7 @@ export class InputGradient extends LitElement {
                 ></sl-icon-button>
                 <div class="gradient-settings">
                   ${gradient.type === 'linear-gradient'
-                    ? html`<sl-input
+          ? html`<sl-input
                         type="number"
                         label="Angle"
                         size="small"
@@ -268,7 +268,7 @@ export class InputGradient extends LitElement {
                         value=${gradient.angle}
                         @sl-input=${this.handleAngleChange.bind(this, index)}
                       ></sl-input>`
-                    : ''}
+          : ''}
                   <div class="gradient-stops-header">
                     Stops
                     <sl-tooltip content="Add stop" placement="left-start" hoist>
@@ -279,8 +279,8 @@ export class InputGradient extends LitElement {
                       ></sl-icon-button>
                     </sl-tooltip>
                   </div>
-                  ${gradient.steps.map((step, stopIndex) => {
-                    return html`
+                  ${(gradient as any).steps.map((step, stopIndex) => {
+            return html`
                       <div class="gradient-stop">
                         <div>
                           <sl-input
@@ -288,10 +288,10 @@ export class InputGradient extends LitElement {
                             size="small"
                             value=${step.offset.value}
                             @sl-input=${this.handleOffsetChange.bind(
-                              this,
-                              index,
-                              stopIndex,
-                            )}
+              this,
+              index,
+              stopIndex,
+            )}
                             min="0"
                             max="100"
                             step="0.1"
@@ -302,10 +302,10 @@ export class InputGradient extends LitElement {
                             size="small"
                             value=${step.color}
                             @sl-input=${this.handleColorChange.bind(
-                              this,
-                              index,
-                              stopIndex,
-                            )}
+              this,
+              index,
+              stopIndex,
+            )}
                             opacity
                             swatches="#d0021b; #f5a623; #f8e71c; #8b572a; #7ed321; #417505; #bd10e0; #9013fe; #4a90e2; #50e3c2; #b8e986; #000; #444; #888; #ccc; #fff;"
                           >
@@ -320,15 +320,15 @@ export class InputGradient extends LitElement {
                             name="dash-lg"
                             label="Remove stop"
                             @click="${this.removeStop.bind(
-                              this,
-                              index,
-                              stopIndex,
-                            )}"
+              this,
+              index,
+              stopIndex,
+            )}"
                           ></sl-icon-button>
                         </sl-tooltip>
                       </div>
                     `;
-                  })}
+          })}
                 </div>
               </sl-dropdown>
               <sl-tooltip content="Remove" placement="left-start" hoist>
@@ -340,7 +340,7 @@ export class InputGradient extends LitElement {
               </sl-tooltip>
             </div>
           </div>`;
-        })}
+    })}
       </div>
       <sl-input
         type="number"

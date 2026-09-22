@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Web Animations API with canvas"
+description: "Drive properties with WAAPI timelines instead of ad-hoc rAF loops."
 ---
+<!-- example-intro:en -->
+
+# Web Animations API with canvas
+
+The **Web Animations API** integrates with motion libraries and CSS timing—useful when coordinating canvas motion with DOM UI. Compare with manual loops from [Lesson 36](/guide/lesson-036) (animation lesson).
+
+Prefer WAAPI when you need pause, seek, or playbackRate.
+
+## Interactive demo
 
 <script setup>
 import WebAnimationsAPI from '../components/WebAnimationsAPI.vue'

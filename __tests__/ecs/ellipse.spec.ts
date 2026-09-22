@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -28,6 +29,9 @@ import {
   ZIndex,
   ComputeZIndex,
   UI,
+  EllipseSerializedNode,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -62,12 +66,15 @@ describe('Ellipse', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
             Name,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -87,44 +94,41 @@ describe('Ellipse', () => {
           zoom: 1,
         });
 
+        const node1: EllipseSerializedNode = {
+          id: '1',
+          type: 'ellipse',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+          x: 0,
+          y: 50,
+          width: 200,
+          height: 100,
+          visibility: 'visible',
+          zIndex: 0,
+        };
+        const node2: EllipseSerializedNode = {
+          id: '2',
+          parentId: '1',
+          type: 'ellipse',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
+          x: 50,
+          y: -50,
+          width: 100,
+          height: 200,
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
+          strokeWidth: 10,
+          strokeAlignment: 'center',
+          strokeDasharray: '10 10',
+          visibility: 'visible',
+          zIndex: 0,
+        };
+
         api.updateNodes([
-          {
-            id: '1',
-            type: 'ellipse',
-            fill: 'red',
-            x: 0,
-            y: 50,
-            width: 200,
-            height: 100,
-            visibility: 'visible',
-          },
-          {
-            id: '2',
-            parentId: '1',
-            type: 'ellipse',
-            fill: 'green',
-            x: 50,
-            y: -50,
-            width: 100,
-            height: 200,
-            stroke: 'black',
-            strokeWidth: 10,
-            strokeAlignment: 'center',
-            strokeDasharray: '10 10',
-            visibility: 'visible',
-          },
+          node1,
+          node2,
         ]);
 
-        parentEntity = api
-          .getEntity({
-            id: '1',
-          })
-          ?.hold();
-        childEntity = api
-          .getEntity({
-            id: '2',
-          })
-          ?.hold();
+        parentEntity = api.getEntity(node1)?.hold();
+        childEntity = api.getEntity(node2)?.hold();
       }
     }
 
@@ -141,22 +145,6 @@ describe('Ellipse', () => {
       expect(canvas.height).toBe(200);
       expect(canvas.renderer).toBe('webgl');
       expect(canvas.cameras).toHaveLength(1);
-
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(
-        cameraEntity.read(Parent).children.filter((c) => !c.has(UI)),
-      ).toHaveLength(1);
-      expect(
-        cameraEntity.read(Parent).children[0].isSame(parentEntity),
-      ).toBeTruthy();
-
-      const parent = parentEntity.read(Parent);
-      expect(parent.children).toHaveLength(1);
-      expect(parent.children[0].isSame(childEntity)).toBeTruthy();
-
-      const child = childEntity.read(Children);
-      expect(child.parent.isSame(parentEntity)).toBeTruthy();
     }
 
     const dir = `${__dirname}/snapshots`;

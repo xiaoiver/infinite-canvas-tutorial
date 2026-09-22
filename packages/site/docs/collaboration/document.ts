@@ -111,9 +111,10 @@ export function bindDocument(api: API, adapter: DocumentAdapter): () => void {
 export const demoNodes: SerializedNode[] = [
   {
     id: '0',
+    zIndex: 0,
     type: 'rect',
-    fill: 'red',
-    stroke: 'black',
+    fills: [{ type: 'solid', value: 'red' }],
+    strokes: [{ type: 'solid', value: 'black' }],
     x: 100,
     y: 100,
     width: 100,

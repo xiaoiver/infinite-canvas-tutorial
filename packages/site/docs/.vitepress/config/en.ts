@@ -8,6 +8,7 @@ export const en = defineConfig({
   keywords: ['infinite canvas', 'canvas', 'webgl', 'webgpu', 'ecs'],
   themeConfig: {
     nav: [
+      { text: 'App', link: 'https://app.infinitecanvas.cc/' },
       { text: 'Guide', link: '/guide/lesson-001', activeMatch: '/guide/' },
       {
         text: 'Example',
@@ -135,6 +136,42 @@ export const en = defineConfig({
                 text: 'Lesson 030 - Post-processing and render graph',
                 link: 'lesson-030',
               },
+              {
+                text: 'Lesson 031 - Bindings between shapes',
+                link: 'lesson-031',
+              },
+              {
+                text: 'Lesson 032 - Text to diagram',
+                link: 'lesson-032',
+              },
+              {
+                text: 'Lesson 033 - Layout engine',
+                link: 'lesson-033',
+              },
+              {
+                text: 'Lesson 034 - Group, Frame and clip',
+                link: 'lesson-034',
+              },
+              {
+                text: 'Lesson 035 - Tile-based rendering',
+                link: 'lesson-035',
+              },
+              {
+                text: 'Lesson 036 - Animation',
+                link: 'lesson-036',
+              },
+              {
+                text: 'Lesson 037 - GI with Radiance Cascades',
+                link: 'lesson-037',
+              },
+              {
+                text: 'Lesson 038 - From design to code',
+                link: 'lesson-038',
+              },
+              {
+                text: 'Lesson 039 - 3D Mesh Rendering',
+                link: 'lesson-039',
+              },
             ],
           },
         ],
@@ -176,6 +213,15 @@ export const en = defineConfig({
             ],
           },
           {
+            text: 'Filter',
+            items: [
+              {
+                text: 'Effects & LUT',
+                link: 'filter',
+              },
+            ],
+          },
+          {
             text: 'Plugins',
             items: [
               { text: 'Chat', link: 'chat' },
@@ -186,6 +232,12 @@ export const en = defineConfig({
               { text: 'Laser pointer', link: 'laser-pointer' },
               { text: 'Lasso', link: 'lasso' },
               { text: 'Eraser', link: 'eraser' },
+              { text: 'Mermaid', link: 'mermaid' },
+              { text: 'D2', link: 'd2' },
+              { text: 'Drawio', link: 'drawio' },
+              { text: 'Figma', link: 'figma' },
+              { text: 'Yoga', link: 'yoga' },
+              { text: 'Vello', link: 'vello' },
             ],
           },
           {
@@ -269,6 +321,10 @@ export const en = defineConfig({
                 link: 'fill-rule',
               },
               {
+                text: 'Vector Network cube (drag edge)',
+                link: 'vector-network-cube',
+              },
+              {
                 text: 'Text',
                 items: [
                   {
@@ -335,6 +391,10 @@ export const en = defineConfig({
                     text: 'Text editor',
                     link: 'text-editor',
                   },
+                  {
+                    text: 'Use Pretext to measure text',
+                    link: 'pretext',
+                  },
                 ],
               },
               {
@@ -358,12 +418,20 @@ export const en = defineConfig({
                 link: 'declarative-gradient',
               },
               {
+                text: 'Node-level mix-blend-mode',
+                link: 'blend-mode',
+              },
+              {
                 text: 'Pattern',
                 link: 'pattern',
               },
               {
                 text: 'Image processing',
                 link: 'image-processing',
+              },
+              {
+                text: 'Object fit',
+                link: 'object-fit',
               },
               {
                 text: 'Mindmap and layout',
@@ -379,6 +447,10 @@ export const en = defineConfig({
                   {
                     text: 'FlexTree',
                     link: 'flextree',
+                  },
+                  {
+                    text: 'Binding between shapes',
+                    link: 'binding',
                   },
                 ],
               },
@@ -453,6 +525,31 @@ export const en = defineConfig({
                   },
                 ],
               },
+              {
+                text: '3D Mesh Rendering',
+                items: [
+                  {
+                    text: 'Cube (Orthographic)',
+                    link: 'cube',
+                  },
+                  {
+                    text: 'Cube (Perspective)',
+                    link: 'cube-perspective',
+                  },
+                  {
+                    text: 'Lighting',
+                    link: 'lighting',
+                  },
+                  {
+                    text: 'Textured Earth',
+                    link: 'earth',
+                  },
+                  {
+                    text: 'glTF model',
+                    link: 'gltf-duck',
+                  },
+                ],
+              }
             ],
           },
         ],
@@ -481,6 +578,9 @@ export const en = defineConfig({
             link: 'lama-in-worker',
           },
           { text: 'Audio visualizer', link: 'audio-visualizer' },
+          { text: 'Use vello', link: 'vello' },
+          { text: 'Mermaid watercolor', link: 'mermaid-watercolor' },
+          { text: 'Radiance cascades', link: 'radiance-cascades' },
         ],
       },
     },

@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Liveblocks 在线房间与存储"
+description: "使用 Liveblocks 管理房间、在线状态与持久存储。"
 ---
+<!-- example-intro:zh -->
+
+# Liveblocks 在线房间与存储
+
+**Liveblocks** 将在线状态、存储与评论等打包，适合希望使用托管后端的场景；可与自建 CRDT 成本对照。
+
+评论叠加示例基于同一技术栈扩展。
+
+## 交互示例
 
 <script setup>
 import Liveblocks from '../../components/Liveblocks.vue'

@@ -1,4 +1,4 @@
-import { Device, SwapChain } from '@antv/g-device-api';
+import { Device, SwapChain } from '@infinite-canvas-tutorial/device-api';
 import { field } from '@lastolivegames/becsy';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';

@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 在 [获取 API] 后，可以调用相关方法：
 
 ## get/setAppState
@@ -33,6 +32,7 @@ export interface AppState {
     cameraX: number;
     cameraY: number;
     cameraRotation: number;
+    cameraZoomFactor: number;
     contextBarVisible: boolean;
     contextMenuVisible: boolean;
     topbarVisible: boolean;

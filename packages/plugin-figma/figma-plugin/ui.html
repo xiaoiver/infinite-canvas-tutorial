@@ -1,0 +1,108 @@
+<!--
+  UI for the "Infinite Canvas Import" Figma plugin.
+
+  Lets the user paste a Figma scene payload produced by
+  `serializedNodesToFigmaScene` (the `.ic` → Figma export direction) and replay
+  it into the current Figma document. Kept dependency-free so it can be loaded
+  directly by Figma without a build step.
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        font-size: 12px;
+        margin: 0;
+        padding: 12px;
+        color: #333;
+      }
+      h3 {
+        margin: 0 0 8px;
+        font-size: 13px;
+      }
+      p {
+        margin: 0 0 8px;
+        color: #666;
+      }
+      textarea {
+        width: 100%;
+        height: 220px;
+        box-sizing: border-box;
+        resize: vertical;
+        font-family: monospace;
+        font-size: 11px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+        align-items: center;
+      }
+      button {
+        padding: 6px 14px;
+        border-radius: 6px;
+        border: none;
+        background: #18a0fb;
+        color: #fff;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #eee;
+        color: #333;
+      }
+      .error {
+        color: #d6313b;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Import Infinite Canvas scene</h3>
+    <p>
+      Paste the Figma scene JSON exported from Infinite Canvas, then click
+      Import to recreate the nodes in this Figma file.
+    </p>
+    <textarea id="payload" placeholder='{"type":"infinite-canvas-figma-scene", ...}'></textarea>
+    <div class="row">
+      <button id="import">Import</button>
+      <button id="cancel" class="secondary">Close</button>
+      <span id="status"></span>
+    </div>
+    <script>
+      const status = document.getElementById('status');
+      document.getElementById('import').onclick = () => {
+        status.textContent = '';
+        status.className = '';
+        const raw = document.getElementById('payload').value.trim();
+        if (!raw) {
+          status.textContent = 'Paste a scene payload first.';
+          status.className = 'error';
+          return;
+        }
+        let scene;
+        try {
+          scene = JSON.parse(raw);
+        } catch (e) {
+          status.textContent = 'Invalid JSON.';
+          status.className = 'error';
+          return;
+        }
+        parent.postMessage({ pluginMessage: { type: 'import', scene } }, '*');
+      };
+      document.getElementById('cancel').onclick = () => {
+        parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
+      };
+      onmessage = (event) => {
+        const msg = event.data.pluginMessage;
+        if (!msg) return;
+        if (msg.type === 'done') {
+          status.textContent = 'Imported ' + msg.count + ' node(s).';
+        } else if (msg.type === 'error') {
+          status.textContent = msg.message;
+          status.className = 'error';
+        }
+      };
+    </script>
+  </body>
+</html>

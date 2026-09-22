@@ -1,4 +1,4 @@
-import type { SerializedNode } from './utils/serialize/type';
+import type { SerializedNode } from './types/serialized-node';
 
 /** Equality for JSON document values, independent of object key order. */
 export function documentValueEqual(a: unknown, b: unknown): boolean {

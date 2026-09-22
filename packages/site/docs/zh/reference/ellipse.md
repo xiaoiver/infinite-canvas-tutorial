@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Ellipse
 
 参考 SVG [ellipse]。

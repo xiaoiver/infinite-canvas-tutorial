@@ -18,7 +18,10 @@ import {
   Children,
   Transform,
   Renderable,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
+  Opacity,
+  GlobalTransform,
   Stroke,
   Visibility,
   Name,
@@ -52,7 +55,10 @@ describe('API transactions in the real ECS world', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
+            Opacity,
+            GlobalTransform,
             Stroke,
             Rect,
             Visibility,
@@ -139,7 +145,12 @@ describe('API transactions in the real ECS world', () => {
         api.updateNode(api.getNodeById('b'), { width: 55 });
         api.record();
         api.replaceDocument(
-          [{ ...api.getNodeById('b'), fill: 'green' }],
+          [
+            {
+              ...api.getNodeById('b'),
+              fills: [{ type: 'solid', value: 'green' }],
+            },
+          ],
           'remote',
         );
       });
@@ -148,7 +159,9 @@ describe('API transactions in the real ECS world', () => {
       api.undo();
       await app.world.execute();
       expect(api.getNodeById('b').width).toBe(44);
-      expect(api.getNodeById('b').fill).toBe('green');
+      expect(api.getNodeById('b').fills).toEqual([
+        { type: 'solid', value: 'green' },
+      ]);
       expect(changes).toHaveBeenCalledTimes(2);
       api.redo();
       await app.world.execute();
@@ -172,7 +185,7 @@ describe('API transactions in the real ECS world', () => {
             y: 0,
             width: 10,
             height: 10,
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red' }],
           },
         ]),
       );
@@ -197,20 +210,61 @@ describe('API transactions in the real ECS world', () => {
       );
       await app.world.execute();
       expect(api.getParent(api.getNodeById('child')).has(Camera)).toBe(true);
-      expect(api.getNodeById('child').fill).toBeUndefined();
-      expect(api.getEntity({ id: 'child' }).has(FillSolid)).toBe(false);
+      expect(api.getNodeById('child').fills).toBeUndefined();
+      expect(api.getEntity({ id: 'child' }).has(FillLayers)).toBe(false);
       expect(api.getAppState().layersSelected).toEqual(['child']);
       api.undo();
       await app.world.execute();
       expect(api.getNodeById('parent')).toBeDefined();
       expect(api.getNodeById('child').parentId).toBe('parent');
-      expect(api.getEntity({ id: 'child' }).has(FillSolid)).toBe(true);
+      expect(api.getEntity({ id: 'child' }).has(FillLayers)).toBe(true);
       api.redo();
       await app.world.execute();
       expect(api.getNodeById('parent')).toBeUndefined();
       expect(api.getParent(api.getNodeById('child')).has(Camera)).toBe(true);
-      expect(api.getEntity({ id: 'child' }).has(FillSolid)).toBe(false);
+      expect(api.getEntity({ id: 'child' }).has(FillLayers)).toBe(false);
       api.runAtNextTick(() => api.replaceDocument([]));
+      await app.world.execute();
+      expect(api.getNodes()).toEqual([]);
+      // Complete snapshots retain the upstream ref expansion and mesh3d defaults.
+      api.runAtNextTick(() =>
+        api.replaceDocument([
+          { id: 'template', type: 'g', x: 0, y: 0, zIndex: 0 },
+          {
+            id: 'leaf',
+            parentId: 'template',
+            type: 'rect',
+            x: 0,
+            y: 0,
+            width: 10,
+            height: 10,
+            zIndex: 0,
+            fills: [{ type: 'solid', value: 'red' }],
+          },
+          {
+            id: 'instance',
+            type: 'ref',
+            ref: 'template',
+            x: 30,
+            y: 0,
+            zIndex: 0,
+          },
+          { id: 'mesh', type: 'mesh3d', zIndex: 0, scale3d: 25 },
+        ]),
+      );
+      await app.world.execute();
+      expect(api.getNodeById('instance').type).toBe('g');
+      expect(api.getNodeById('instance__leaf').parentId).toBe('instance');
+      expect(api.getParent(api.getNodeById('instance__leaf'))).toBe(
+        api.getEntity({ id: 'instance' }),
+      );
+      expect(api.getNodeById('mesh')).toMatchObject({
+        x: 0,
+        y: 0,
+        width: 25,
+        height: 25,
+      });
+      api.runAtNextTick(() => api.destroy());
       await app.world.execute();
       expect(api.getNodes()).toEqual([]);
     } finally {

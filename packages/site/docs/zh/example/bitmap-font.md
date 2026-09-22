@@ -1,6 +1,14 @@
 ---
-publish: false
+title: "位图字体文本"
+description: "使用预烘焙字形图集，换取轻量与可预期的性能。"
 ---
+<!-- example-intro:zh -->
+
+# 位图字体文本
+
+**位图字体** 以灵活性换取速度与实现简单，适合游戏与 HUD。示例代码展示如何加载 XML/纹理对，并可切换字距观察度量差异。
+
+若需要完整 Unicode 或 Web 字体流程，可再参考 HarfBuzz、Opentype.js 等示例。
 
 移植自：<https://pixijs.com/8.x/examples/text/bitmap-text>
 

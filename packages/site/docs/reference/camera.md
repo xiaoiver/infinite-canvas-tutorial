@@ -1,12 +1,21 @@
 ---
 outline: deep
-publish: false
 ---
-
 For camera-related content, refer to: [Lesson 4 - Camera]. After [Getting the API], you can call the related methods:
 
 ```ts
 api.createLandmark();
+```
+
+
+## get/setState {#get-set-camera-state}
+
+```ts
+cameraZoom: number;
+cameraX: number;
+cameraY: number;
+cameraRotation: number;
+cameraZoomFactor: number; // zoom in/out speed
 ```
 
 ## createLandmark

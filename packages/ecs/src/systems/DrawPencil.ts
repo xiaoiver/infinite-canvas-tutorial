@@ -10,7 +10,7 @@ import {
   ComputedBounds,
   ComputedCamera,
   Cursor,
-  FillSolid,
+  FillLayers,
   GlobalTransform,
   Highlighted,
   Input,
@@ -32,17 +32,16 @@ import {
   ComputedCameraControl,
   Name,
   TesselationMethod,
+  FractionalIndex,
 } from '../components';
 import { API } from '../API';
-import {
+import type {
   PathSerializedNode,
   PolylineSerializedNode,
   StrokeAttributes,
-} from '../utils/serialize';
-import { distanceBetweenPoints } from '../utils/matrix';
+} from '../types/serialized-node';
 import { DRAW_RECT_Z_INDEX } from '../context';
-import { serializePoints } from '../utils/serialize';
-import { getFlatSvgPathFromStroke, isBrowser } from '../utils';
+import { getFlatSvgPathFromStroke, isBrowser, distanceBetweenPoints, serializePoints } from '../utils';
 
 const PENCIL_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAKOSURBVHgB7VY7jBJRFH2Dk2VgIYp8AobYSEFCY2JpY0NBZ2MtJoSSBAjh0wANnZQmUEJNAR0lgcYWAwQsVLZhlV/4GJCded47wopZ0HVn2G04yQl5P865nzczhBxxxBHSwVxzbicURAa4XC5lt9tNU0o/wu9bGJ/8jwkpYBKJBAfCnzKZDNXr9bRQKMCQfna73dyhTTB+v18FYt1oNEo5juOr1So9PT3lcYzzhzRxRXw0GqEoHQ6H4nht4sshTFyKh8Nhqlar+clkQgVBoDzPiybQDJrIZrO00+m8IzLij8i1Wi0PBmir1RKF0cDGBJbDZDKJWbDZbEoiQxaupB0jb7fbFNZos9kUhTETWAboBaFUKtF6vZ6Hdcm3YmfNUQzZaDREE2hmOp3iupBMJulisTg3Go1PYe2BFAN7G2475VgGLAeURYCrieLfoATP4fxjIEduiL+Kb1KOxHKAASEej4viBoPhBZx/AtTeNPpriW91/WXkcogrvF6vGjv4TsTxIPz3h1gsduviCCafz7/BjmZZlscrdZviYgaKxWImFArRYDB4cPFdr2NmtVoReJCQ2Wz2a5NCQUCXMAxDxuMxsVgsNBKJMMC+1Wp91e/3z2DbVyAeoESiAZxjITKiUql+uwLxwWBAzGazbOIIdsccnc/nPfioIE6nk4Iws1wuxWzkcjmaSqWYQCAgi7gY2I45jcPhsMEzvFoulzWVSoVAvQma8Hg8BOp9ZrfbX/d6PRQ/lyK+zwA+Nh+CiWc+n++lTqd7BD1xAeVga7Xa+3Q6XVQqlVMwJFl8nwHsAQ3wPlANxFfpPeAP4AXwO3AAXAAFIhH7rgyaOFmLs+t9/NrExoikyP9lYN8eWUSP2MZP4geL9VfezEoAAAAASUVORK5CYII=") 4 28, pointer';
@@ -66,7 +65,7 @@ export class DrawPencil extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds, ComputedCamera, ComputedCameraControl)
+          .using(ComputedBounds, ComputedCamera, ComputedCameraControl, FractionalIndex)
           .read.update.and.using(
             Canvas,
             GlobalTransform,
@@ -81,7 +80,7 @@ export class DrawPencil extends System {
             Parent,
             Children,
             Renderable,
-            FillSolid,
+            FillLayers,
             Opacity,
             Stroke,
             Polyline,
@@ -185,8 +184,12 @@ export class DrawPencil extends System {
         api.runAtNextTick(() => {
           api.updateNode(brush, { visibility: 'hidden' }, false);
 
+          const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
+
           const node: PathSerializedNode | PolylineSerializedNode = {
             id: uuidv4(),
+            version: 0,
+            zIndex: maxZIndex + 1,
             ...appState.penbarPencil,
           };
           const points: [number, number][] = selection.points.map((p) => [
@@ -198,7 +201,13 @@ export class DrawPencil extends System {
             const d = getFlatSvgPathFromStroke(getStroke(points));
             node.type = 'path';
             (node as PathSerializedNode).d = d;
-            (node as PathSerializedNode).fill = appState.penbarPencil.stroke;
+            (node as PathSerializedNode).fills = [
+              {
+                type: 'solid',
+                value: String(appState.penbarPencil.stroke ?? '#000'),
+                opacity: 1,
+              },
+            ];
             (node as PathSerializedNode).strokeWidth = 0;
             (node as PathSerializedNode).tessellationMethod =
               TesselationMethod.LIBTESS;
@@ -213,6 +222,18 @@ export class DrawPencil extends System {
           api.updateNode(node);
           api.selectNodes([node]);
           api.record();
+
+          if (isBrowser) {
+            // FIXME: Use the correct event name
+            // @ts-ignore
+            api.element.dispatchEvent(
+              new CustomEvent('ic-pencil-drawn', {
+                detail: {
+                  node,
+                },
+              }),
+            );
+          }
         });
       }
     });
@@ -247,22 +268,21 @@ export class DrawPencil extends System {
       if (!brush) {
         brush = freehand
           ? {
-              id: uuidv4(),
-              type: 'path',
-              d: 'M 0 0 L 1 1',
-              visibility: 'hidden',
-              zIndex: DRAW_RECT_Z_INDEX,
-              ...defaultDrawParams,
-            }
+            id: uuidv4(),
+            type: 'path',
+            d: 'M 0 0 L 1 1',
+            visibility: 'hidden',
+            zIndex: DRAW_RECT_Z_INDEX,
+            ...defaultDrawParams,
+          }
           : {
-              id: uuidv4(),
-              type: 'polyline',
-              points: '0,0 0,0',
-              visibility: 'hidden',
-              zIndex: DRAW_RECT_Z_INDEX,
-              strokeAttenuation: true,
-              ...defaultDrawParams,
-            };
+            id: uuidv4(),
+            type: 'polyline',
+            points: '0,0 0,0',
+            visibility: 'hidden',
+            zIndex: DRAW_RECT_Z_INDEX,
+            ...defaultDrawParams,
+          };
         api.updateNode(brush, undefined, false);
         api.getEntity(brush).add(UI, { type: UIType.BRUSH });
         selection.brush = brush;
@@ -301,18 +321,24 @@ export class DrawPencil extends System {
           brush,
           freehand
             ? {
-                visibility: 'visible',
-                d: getFlatSvgPathFromStroke(getStroke(points)),
-                ...defaultDrawParams,
-                strokeWidth: 0,
-                fill: defaultDrawParams.stroke,
-                tessellationMethod: TesselationMethod.LIBTESS,
-              }
+              visibility: 'visible',
+              d: getFlatSvgPathFromStroke(getStroke(points)),
+              ...defaultDrawParams,
+              strokeWidth: 0,
+              fills: [
+                {
+                  type: 'solid',
+                  value: String(defaultDrawParams.stroke ?? '#000'),
+                  opacity: 1,
+                },
+              ],
+              tessellationMethod: TesselationMethod.LIBTESS,
+            }
             : {
-                visibility: 'visible',
-                points: serializePoints(points),
-                ...defaultDrawParams,
-              },
+              visibility: 'visible',
+              points: serializePoints(points),
+              ...defaultDrawParams,
+            },
           false,
         );
       }

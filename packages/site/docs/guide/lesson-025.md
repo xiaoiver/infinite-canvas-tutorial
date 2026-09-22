@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: 'Draw rectangle mode. Implementation of brush features, including line drawing algorithms to eliminate jitter and silky smooth drawing experience. Learn the implementation principles and optimization techniques of brush libraries such as p5.brush.'
+description: 'Draw rectangle, ellipse, polygon, eraser, laser and brush mode. Implementation of brush features, including line drawing algorithms to eliminate jitter and silky smooth drawing experience.'
 head:
     - [
           'meta',
@@ -14,6 +14,7 @@ head:
 <script setup>
 import DrawRect from '../components/DrawRect.vue'
 import DrawArrow from '../components/DrawArrow.vue'
+import DrawPolygon from '../components/DrawPolygon.vue'
 import Pencil from '../components/Pencil.vue'
 import PencilFreehand from '../components/PencilFreehand.vue'
 import Brush from '../components/Brush.vue'
@@ -230,6 +231,10 @@ This way of separating the arrow endpoints from the body is very flexible. Howev
 
 ![Arrow in Figma](/arrow-in-figma.png)
 
+drawio also provides a lot of out-of-the-box arrow styles:
+
+![source: https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png](https://www.drawio.com/assets/img/blog/style-tab-line-start-line-end.png)
+
 So in declarative usage, it's perfectly acceptable to sacrifice the feature of custom arrow styles and provide a set of built-in arrow style literals that generate the arrow endpoints along with the body when constructing the Polyline / Path. This idea can also be seen in [plot - arrow] rendered using SVG, which doesn't use `<marker>`, but a full `<path>` definition.
 
 ```ts
@@ -276,9 +281,46 @@ if (marker === 'line') {
 
 In contrast, exported SVG files must also support re-importing into the canvas.
 
-## [WIP] Draw polygon {#draw-polygon}
+## Draw polygon {#draw-polygon}
 
 [Shape tools - polygons]
+
+<DrawPolygon />
+
+Given a rectangular bounding box, programmatically generate a polygonal path:
+
+```ts
+function regularPolygonPathInRect(
+    sides: number,
+    width: number,
+    height: number,
+    rotation = -Math.PI / 2,
+): string {
+    if (sides < 3 || width <= 0 || height <= 0) {
+        return '';
+    }
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const rx = width / 2;
+    const ry = height / 2;
+    const step = (Math.PI * 2) / sides;
+    const points: [number, number][] = [];
+
+    for (let i = 0; i < sides; i++) {
+        const angle = rotation + i * step;
+        points.push([
+            formatNumber(cx + Math.cos(angle) * rx),
+            formatNumber(cy + Math.sin(angle) * ry),
+        ]);
+    }
+
+    return points
+        .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x} ${y}`)
+        .join(' ')
+        .concat(' Z');
+}
+```
 
 ## Pencil tool {#pencil-tool}
 
@@ -487,7 +529,7 @@ export class DrawEraser extends System {
 
 <Eraser />
 
-### [WIP] Non-atomic {#non-atomic}
+### Non-atomic {#non-atomic}
 
 Erasing entire shapes is sufficient for most scenarios, but non-atomic erasing proves more practical in freehand drawing contexts—such as breaking a straight line midway. Excalidraw currently lacks this feature; see: [non-atomic erasing for linear & freedraw shapes]. FigJam shares this limitation. If the canvas is rendered using Canvas or SVG, achieving this pixel-level erasure effect is indeed impossible.
 
@@ -510,6 +552,8 @@ glStencilFunc(GL_EQUAL, 1, 0xFF);
 glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 // draw all scene objects (they will only appear where eraser just wrote 1)
 ```
+
+We'll introduce this later in [Lesson 34 - Frame and clip].
 
 ## Extended reading {#extended-reading}
 
@@ -545,3 +589,4 @@ glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 [@excalidraw/laser-pointer]: https://www.npmjs.com/package/@excalidraw/laser-pointer
 [Lesson 29 - HTML container]: /guide/lesson-029#create-html-container
 [Lesson 20 - Awareness and Presence]: /guide/lesson-020#awareness-presence
+[Lesson 34 - Frame and clip]: /guide/lesson-034

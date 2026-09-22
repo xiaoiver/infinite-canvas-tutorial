@@ -18,6 +18,7 @@ jest.mock('../../packages/ecs/src/components', () => ({
   Input: class {},
   Cursor: class {},
 }));
+jest.mock('../../packages/ecs/src/utils', () => ({ isBrowser: false }));
 jest.mock('../../packages/ecs/src/history', () => ({ safeAddComponent() {} }));
 jest.mock('../../packages/ecs/src/environment', () => ({
   DOMAdapter: { get: jest.fn() },

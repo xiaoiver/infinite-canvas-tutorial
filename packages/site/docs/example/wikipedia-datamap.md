@@ -1,6 +1,14 @@
 ---
-publish: false
+title: "Wikipedia embedding map with loaders.gl"
+description: "Load Arrow/CSV/ZIP datasets and plot them with deck.gl-style visualization."
 ---
+<!-- example-intro:en -->
+
+# Wikipedia embedding map with loaders.gl
+
+This example mixes **data loading** (`@loaders.gl/*`) with a large scatter-style map. It is heavier than a typical tutorial snippet: use it to study streaming formats, not as a minimal hello-world.
+
+The referenced notebook shows how the same datasets were prepared; adapt paths and loaders for your own tiles.
 
 [Wikipedia_data_map_example] use [deck.gl]
 

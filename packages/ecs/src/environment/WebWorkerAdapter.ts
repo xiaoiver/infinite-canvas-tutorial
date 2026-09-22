@@ -1,12 +1,11 @@
-import { load } from '@loaders.gl/core';
-import { ImageLoader } from '@loaders.gl/images';
 import { Adapter } from './adapter';
+import { loadImageBitmapUniversal } from '../utils/load-image-bitmap';
 
 export const WebWorkerAdapter: Adapter = {
   createCanvas: (width?: number, height?: number) =>
     new OffscreenCanvas(width ?? 0, height ?? 0),
   createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
-  createImage: (src: string) => load(src, ImageLoader),
+  createImage: (src: string | Blob) => loadImageBitmapUniversal(src),
   getWindow: () => self,
   getDocument: () => null,
   /**

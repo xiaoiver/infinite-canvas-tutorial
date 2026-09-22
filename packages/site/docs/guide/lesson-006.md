@@ -4,7 +4,6 @@ description: 'Implement a DOM-compatible event system with shape picking, drag-a
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 6 - Event system' }]
 ---
-
 # Lesson 6 - Event system
 
 In this lesson, you will learn the following:
@@ -521,6 +520,12 @@ canvas.addEventListener('mousedown', (e: MouseEvent) => {}); // [!code --]
 root.addEventListener('pointerdown', (e: FederatedPointerEvent) => {}); // [!code ++]
 ```
 
+### hitStrokeWidth {#hit-stroke-width}
+
+For `Line`, `Polyline`, and `Path`, a `strokeWidth` that is too small makes interaction difficult. Konva provides `hitStrokeWidth` to expand the interactive area, see [What is hitStrokeWidth?]
+
+We also use this property name.
+
 ### Picking with API
 
 The picking functionality can not only be achieved through interactive events but can also be exposed as an API for explicit calls, similar to [elementsFromPoint]. This will be utilized when we implement the drag-and-drop plugin in the next section.
@@ -590,6 +595,19 @@ Here's the effect on iOS simulator.
 
 ![Pinch in ios simulator](/pinch-ios-simulator.gif)
 
+### use-gesture {#use-gesture}
+
+We can also use out-of-the-box gesture libraries, such as [@use-gesture/vanilla]. Two-finger pinch-to-zoom corresponds to the camera's zoom in/out, and two-finger swipe corresponds to the camera's pan.
+
+```ts
+import { Gesture } from '@use-gesture/vanilla';
+
+const gesture = new Gesture(element as HTMLCanvasElement, {
+    // camera zoom in/out
+    onPinch: ({ event, first, last, da, origin }) => {},
+});
+```
+
 ## Extended reading
 
 -   [The brief history of PointerEvent]
@@ -613,3 +631,5 @@ Here's the effect on iOS simulator.
 [target]: https://developer.mozilla.org/en-US/docs/Web/API/Event/target
 [Bubbling and capturing]: https://javascript.info/bubbling-and-capturing#capturing
 [Drag'n'Drop with mouse events]: https://javascript.info/mouse-drag-and-drop
+[What is hitStrokeWidth?]: https://konvajs.org/docs/events/Custom_Hit_Region.html#2-what-is-hitstrokewidth
+[@use-gesture/vanilla]: https://github.com/pmndrs/use-gesture

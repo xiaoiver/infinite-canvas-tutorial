@@ -5,6 +5,14 @@ head:
     - ['meta', { property: 'og:title', content: 'Lesson 21 - Transformer' }]
 ---
 
+<script setup>
+import TransformerRect from '../components/TransformerRect.vue'
+import TransformerRectRotated from '../components/TransformerRectRotated.vue'
+import TransformerLine from '../components/TransformerLine.vue'
+import TransformerPolyline from '../components/TransformerPolyline.vue'
+import TransformerPath from '../components/TransformerPath.vue'
+</script>
+
 # Lesson 21 - Transformer
 
 In [Lesson 14], we briefly introduced the "selection mode" in canvas mode. In this mode, after selecting a shape, an operation layer is overlaid on the shape, allowing it to be moved through drag behavior. In this lesson, we will provide more shape editing capabilities, including resize and rotation.
@@ -15,6 +23,8 @@ In Konva, the operation layer on selected shapes is called [Transformer], which 
 -   [Limit Dragging and Resizing]
 
 We also chose to use the name Transformer, which looks very similar to the shape's AABB. In fact, it's called OBB (oriented bounding box), which is a rectangle with a rotation angle under the world coordinate.
+
+<TransformerRect />
 
 ## Serializing Transform Matrix and Dimension Information {#serialize-transform-dimension}
 
@@ -448,7 +458,7 @@ if (centeredScaling) {
 }
 ```
 
-### [WIP] Flip {#flip}
+### Flip {#flip}
 
 When dragging an anchor point or edge to the opposite direction, flipping occurs. The following is the effect in Figma, note the change in Rotation:
 
@@ -458,9 +468,9 @@ We use a gradient background to show this flipping effect more clearly:
 
 ![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
-## [WIP] Rotation {#rotation}
+## Rotation {#rotation}
 
-Figma
+Rotation in Figma:
 
 > Hover just outside one of the layer's bounds until the icon appears.
 > Click and drag to rotate your selection:
@@ -468,11 +478,73 @@ Figma
 > Drag counterclockwise to create a positive angle (towards 180° )
 > Hold down Shift to snap rotation values to increments of 15.
 
+1. First, compute the geometric center of the OBB, taking rotation into account.
+2. Then accumulate the rotation angle by taking the `atan2` delta relative to the previous sample point, and normalize it to `((-\pi,\pi])` with `atan2(sin, cos)` to avoid discontinuities when crossing `(\pm\pi)`.
+3. On pointer down, initialize `rotateLastPointerAngle` and `rotateAccumulated = 0` in canvas coordinates (with the same pixel-aligned snapping used by move logic). Keep the center fixed. When only changing rotation, use `alignObbOriginToFixedCenter` to derive the new `x/y` so the center stays at `(px, py)`, then call the existing `fitSelected` to reuse the same Konva-style delta transform pipeline as resize.
+
+```ts
+// 1.
+const [px, py] = this.obbWorldCenter(selection.obb);
+// 2.
+const cur = Math.atan2(canvasY - py, canvasX - px);
+let delta = cur - selection.rotateLastPointerAngle;
+delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+selection.rotateLastPointerAngle = cur;
+selection.rotateAccumulated += delta;
+// 3.
+const newRotation = selection.obb.rotation + selection.rotateAccumulated;
+const newAttrs = this.alignObbOriginToFixedCenter(
+    selection.obb,
+    px,
+    py,
+    newRotation,
+);
+this.fitSelected(api, newAttrs, selection);
+```
+
+<TransformerRectRotated />
+
 ### Change the Rotation Origin {#change-the-rotation-origin}
 
 The following is the effect of Figma's [Change the rotation origin]:
 
 ![Change the rotation origin](https://help.figma.com/hc/article_attachments/31937330391447)
+
+Implementation notes:
+
+1. Add a center anchor (`AnchorName.CENTER`) to the transformer mask. This anchor is draggable.
+2. Store the custom rotation origin in transformer-local coordinates (`rotatePivotX/Y`) and mark whether it is user-pinned (`rotatePivotPinned`).
+3. On pointer move while dragging the center anchor, convert canvas coordinates into transformer-local coordinates:
+
+```ts
+const { x, y } = api.canvas2Transformer({ x: canvasX, y: canvasY }, mask);
+tf.rotatePivotX = x;
+tf.rotatePivotY = y;
+tf.rotatePivotPinned = true;
+```
+
+4. During rotation, use this pivot (fall back to geometric center if unset), then keep the pivot's world position fixed while solving new OBB origin:
+
+```ts
+const [px, py] = this.getRotatePivotWorld(api, selection);
+const pivotLocalX = Number.isNaN(tf.rotatePivotX)
+    ? selection.obb.width / 2
+    : tf.rotatePivotX;
+const pivotLocalY = Number.isNaN(tf.rotatePivotY)
+    ? selection.obb.height / 2
+    : tf.rotatePivotY;
+
+const newAttrs = this.alignObbOriginToFixedPivot(
+    selection.obb,
+    pivotLocalX,
+    pivotLocalY,
+    px,
+    py,
+    newRotation,
+);
+```
+
+5. Reset pivot to center when the selected node set changes.
 
 ## Move Shapes with Arrow Keys {#nudge-the-position}
 
@@ -486,7 +558,11 @@ if (e.key === 'ArrowUp') {
 }
 ```
 
-## Transformer for line {#transformer-for-line}
+## Transformer for other shapes {#transformer-for-other-shapes}
+
+The transformer we have implemented so far is suitable for shapes such as circles, ellipses, and rectangles, but it is not suitable for straight lines, polyline segments, or piecewise curves, which require more control points.
+
+### Transformer for line {#transformer-for-line}
 
 Finally, a straight line requires only two anchor points, allowing the series of operations based on the bounding rectangle we previously introduced to be significantly simplified.
 
@@ -499,6 +575,57 @@ export class Transformable {
 ```
 
 ![Transformer for line](/line-transformer.gif)
+
+<TransformerLine />
+
+### Transformer for polyline {#transformer-for-polyline}
+
+For a polyline, each connection point has a corresponding control point, and an additional point is inserted between each pair of adjacent control points to generate a new line segment:
+
+```ts
+export class Transformable {
+    @field.ref declare polylineMask: Entity;
+    @field.object declare controlPoints: Entity[];
+    @field.object declare segmentMidpoints: Entity[];
+}
+```
+
+The corresponding interaction is that when you hover over a control point, you can press the <kbd>Delete</kbd> key to delete it. To accommodate both the rectangular Transformer's resize and rotate behavior and vertex editing, we also support double-clicking to enter control point editing mode.
+
+<TransformerPolyline />
+
+### Path {#transformer-for-path}
+
+tldraw provides an example: [cubic-bezier-shape]. For interactive editing, two problems need to be solved:
+
+1. **Stable editable points**: every anchor and every Bézier control point can be selected and dragged, and changes are written back to `d`.
+2. **Round-trip without losing semantics**: use a small, predictable set of command types where possible, and avoid hand-rolling a full path parser in the editor.
+
+So we normalize `d` into a small vocabulary of commands (e.g. convert relative commands to absolute), then use **command index + coordinate offset in the array** as each handle’s identity. While dragging, only numeric coordinates change; finally `path2String` serializes back to a string.
+
+| Command | Handles produced | `meta` meaning                                                                        |
+| ------- | ---------------- | ------------------------------------------------------------------------------------- |
+| M / L   | One vertex       | `coordOffset: 1` → that point `(x, y)`                                                |
+| Q       | Control + end    | offsets `1` and `3`                                                                   |
+| C       | cp1, cp2, end    | offsets `1`, `3`, `5`                                                                 |
+| A       | End point only   | offset `6` (arcs have no Bézier handles in this editor; only the endpoint is exposed) |
+
+```ts
+interface PathControlHandleMeta {
+    commandIndex: number; // Index in the normalized command array.
+    coordOffset: number; // Start index of this handle’s coordinates (1-based, since `command[0]` is the command letter).
+}
+
+type HandlePoint = {
+    x: number;
+    y: number;
+    meta: PathControlHandleMeta;
+};
+```
+
+Similarly, double-click to enter control point editing mode.
+
+<TransformerPath />
 
 ## Extended Reading {#extended-reading}
 
@@ -522,3 +649,4 @@ export class Transformable {
 [SerializedNode]: /guide/lesson-010#shape-to-serialized-node
 [fig-file-parser]: https://madebyevan.com/figma/fig-file-parser
 [Is there a way to keep the image aspect ratio on transform?]: https://github.com/konvajs/react-konva/issues/407
+[cubic-bezier-shape]: https://examples.tldraw.com/cubic-bezier-shape

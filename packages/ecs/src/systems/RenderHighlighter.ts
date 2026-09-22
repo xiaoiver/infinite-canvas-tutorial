@@ -4,10 +4,9 @@ import {
   Circle,
   ComputedBounds,
   Ellipse,
-  FillSolid,
+  FillLayers,
   GlobalTransform,
   Highlighted,
-  Opacity,
   Parent,
   Path,
   Polyline,
@@ -27,20 +26,26 @@ import {
   Camera,
   FractionalIndex,
   ComputedCamera,
+  Group,
   Brush,
   Pen,
   Transformable,
   Visibility,
+  Line,
+  OBB,
+  StrokeLayers,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
 } from '../components';
 import { Commands } from '../commands';
-import { getSceneRoot, updateGlobalTransform } from './Transform';
+import { getSceneRoot, isEntityAlive, updateGlobalTransform } from './Transform';
 import {
-  TRANSFORMER_ANCHOR_FILL_COLOR,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
 } from './RenderTransformer';
 import { HIGHLIGHTER_Z_INDEX } from '../context';
 import { safeAddComponent, safeRemoveComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
+import { entityIsDeclarative3DNode } from '../utils/mesh3d-node';
 
 /**
  * Highlight objects when hovering over them like Figma
@@ -76,6 +81,8 @@ export class RenderHighlighter extends System {
             Camera,
             FractionalIndex,
             Transformable,
+            Mesh3DNode,
+            Mesh3DNodeTarget,
           )
           .read.and.using(
             Canvas,
@@ -86,15 +93,17 @@ export class RenderHighlighter extends System {
             Parent,
             Children,
             Renderable,
-            FillSolid,
-            Opacity,
+            FillLayers,
             Stroke,
+            StrokeLayers,
             Rect,
             Circle,
             Ellipse,
             Path,
             Polyline,
+            Line,
             Text,
+            Group,
             Brush,
             ZIndex,
             SizeAttenuation,
@@ -119,34 +128,89 @@ export class RenderHighlighter extends System {
 
       const { api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
-      if (pen !== Pen.SELECT) {
-        api.highlightNodes([]);
+      // if (pen !== Pen.SELECT && pen !== Pen.DRAW_ARROW) {
+      //   api.highlightNodes([]);
+      //   return;
+      // }
+    });
+
+    this.highlighted.removed.forEach((highlighted) => {
+      if (!isEntityAlive(highlighted)) {
         return;
+      }
+      const camera = getSceneRoot(highlighted);
+      if (isEntityAlive(camera)) {
+        this.remove(highlighted, camera);
       }
     });
 
     this.highlighted.added.forEach((highlighted) => {
+      if (!isEntityAlive(highlighted)) {
+        return;
+      }
       const camera = getSceneRoot(highlighted);
-      this.createOrUpdate(highlighted, camera);
-    });
-
-    this.highlighted.removed.forEach((highlighted) => {
-      const camera = getSceneRoot(highlighted);
-      this.remove(highlighted, camera);
+      if (isEntityAlive(camera) && camera.has(Camera)) {
+        this.createOrUpdate(highlighted, camera);
+      }
     });
 
     this.bounds.changed.forEach((entity) => {
-      if (entity.has(Highlighted)) {
-        const camera = getSceneRoot(entity);
-        this.createOrUpdate(entity, camera);
+      if (!isEntityAlive(entity)) {
+        return;
+      }
+      // 与 RenderTransformer 一致：hover 在 Group 上时 Highlighted 挂在 Group，子节点 bounds 变化需沿父链找到高亮目标
+      let e: Entity | undefined = entity;
+      while (e && isEntityAlive(e)) {
+        if (e.has(Highlighted)) {
+          const camera = getSceneRoot(e);
+          if (isEntityAlive(camera) && camera.has(Camera)) {
+            this.createOrUpdate(e, camera);
+          }
+          break;
+        }
+        if (!e.has(Children)) {
+          break;
+        }
+        const parent = e.read(Children).parent;
+        if (!parent || !isEntityAlive(parent)) {
+          break;
+        }
+        e = parent;
       }
     });
   }
 
   createOrUpdate(entity: Entity, camera: Entity) {
-    if (!entity.has(ComputedBounds)) {
+    if (
+      !isEntityAlive(entity) ||
+      !isEntityAlive(camera) ||
+      !camera.has(Camera) ||
+      !entity.has(ComputedBounds)
+    ) {
       return;
     }
+    if (entityIsDeclarative3DNode(entity)) {
+      this.remove(entity, camera);
+      return;
+    }
+    const { canvas } = camera.read(Camera);
+    if (!canvas?.has(Canvas)) {
+      return;
+    }
+
+    const { selectionOBB, transformOBB } = entity.read(ComputedBounds);
+    /**
+     * Polyline / Path / Line / Brush 的高亮几何是拷贝实体局部点；须与实体世界原点变换一致（transformOBB）。
+     * selectionOBB 对边类可为「包围盒 min 角」对齐，用于变换器，若用于高亮会与局部点错位。
+     */
+    const obb =
+      entity.has(Polyline) ||
+        entity.has(Path) ||
+        entity.has(Line) ||
+        entity.has(Brush)
+        ? transformOBB
+        : selectionOBB;
+    const { x, y, width, height, rotation, scaleX, scaleY } = obb;
 
     let highlighter = this.#highlighters.get(entity);
     if (!highlighter) {
@@ -155,9 +219,10 @@ export class RenderHighlighter extends System {
           new UI(UIType.HIGHLIGHTER),
           new Transform(),
           new Renderable(),
-          new FillSolid(TRANSFORMER_ANCHOR_FILL_COLOR),
-          new Opacity({ fillOpacity: 0 }),
-          new Stroke({ width: 2, color: TRANSFORMER_ANCHOR_STROKE_COLOR }), // --spectrum-thumbnail-border-color-selected
+          new StrokeLayers([
+            { type: 'solid', value: TRANSFORMER_ANCHOR_STROKE_COLOR, opacity: 1 },
+          ]),
+          new Stroke({ width: 2 }), // --spectrum-thumbnail-border-color-selected
           new ZIndex(HIGHLIGHTER_Z_INDEX),
           new StrokeAttenuation(),
           new Visibility(),
@@ -179,9 +244,7 @@ export class RenderHighlighter extends System {
     safeRemoveComponent(highlighter, Polyline);
     highlighter.write(Visibility).value = 'visible';
 
-    const {
-      obb: { x, y, width, height, rotation, scaleX, scaleY },
-    } = entity.read(ComputedBounds);
+
     Object.assign(highlighter.write(Transform), {
       translation: {
         x,
@@ -216,6 +279,12 @@ export class RenderHighlighter extends System {
         width,
         height,
       });
+    } else if (entity.has(Group)) {
+      safeAddComponent(highlighter, Rect);
+      Object.assign(highlighter.write(Rect), {
+        width,
+        height,
+      });
     } else if (entity.has(Path)) {
       safeAddComponent(highlighter, Path);
       const { d } = entity.read(Path);
@@ -228,6 +297,12 @@ export class RenderHighlighter extends System {
       Object.assign(highlighter.write(Polyline), {
         points,
       });
+    } else if (entity.has(Line)) {
+      safeAddComponent(highlighter, Polyline);
+      const { x1, y1, x2, y2 } = entity.read(Line);
+      Object.assign(highlighter.write(Polyline), {
+        points: [[x1, y1], [x2, y2]],
+      });
     } else if (entity.has(Brush)) {
       safeAddComponent(highlighter, Polyline);
       const { points } = entity.read(Brush);
@@ -237,7 +312,7 @@ export class RenderHighlighter extends System {
     } else if (entity.has(Text)) {
       safeAddComponent(highlighter, Polyline);
       const {
-        obb: { width, height },
+        selectionOBB: { width, height },
       } = entity.read(ComputedBounds);
       Object.assign(highlighter.write(Polyline), {
         points: [
@@ -250,8 +325,14 @@ export class RenderHighlighter extends System {
     updateComputedPoints(highlighter);
   }
 
-  remove(entity: Entity, camera: Entity) {
+  remove(entity: Entity, _camera: Entity) {
+    if (!isEntityAlive(entity)) {
+      return;
+    }
     const highlighter = this.#highlighters.get(entity);
+    if (!highlighter || !isEntityAlive(highlighter)) {
+      return;
+    }
     highlighter.write(Visibility).value = 'hidden';
   }
 }

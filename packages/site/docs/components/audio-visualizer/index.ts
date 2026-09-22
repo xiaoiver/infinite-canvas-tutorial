@@ -1,2 +1,1 @@
-export * from './Audio';
-export * from './effects';
+export * from '@infinite-canvas-tutorial/particle';

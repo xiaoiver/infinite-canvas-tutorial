@@ -1,0 +1,70 @@
+diff --git a/es/index.js b/es/index.js
+--- a/es/index.js
++++ b/es/index.js
+@@ -7409,6 +7409,20 @@
+         this.gpuRenderPassDescriptor.occlusionQuerySet = !isNil(descriptor.occlusionQueryPool)
+             ? getPlatformQuerySet(descriptor.occlusionQueryPool)
+             : undefined;
++        // Viewport/scissor Y flip must use the active render target height. Using swapChainHeight
++        // for offscreen passes places the viewport outside the attachment (nothing draws).
++        var firstColor = this.gfxColorAttachment.length > 0 ? this.gfxColorAttachment[0] : null;
++        var level0 = this.gfxColorAttachmentLevel.length > 0 ? this.gfxColorAttachmentLevel[0] || 0 : 0;
++        if (firstColor !== null && firstColor !== undefined) {
++            this._viewportFlipHeight = Math.max(1, firstColor.height >>> level0);
++        }
++        else if (descriptor.depthStencilAttachment) {
++            var ds = descriptor.depthStencilAttachment;
++            this._viewportFlipHeight = Math.max(1, ds.height >>> 0);
++        }
++        else {
++            this._viewportFlipHeight = this.device['swapChainHeight'];
++        }
+     };
+     RenderPass_WebGPU.prototype.beginRenderPass = function (commandEncoder, renderPassDescriptor) {
+         assert(this.gpuRenderPassEncoder === null);
+@@ -7417,7 +7431,9 @@
+         this.gpuRenderPassEncoder = this.frameCommandEncoder.beginRenderPass(this.gpuRenderPassDescriptor);
+     };
+     RenderPass_WebGPU.prototype.flipY = function (y, h) {
+-        var height = this.device['swapChainHeight'];
++        var height = this._viewportFlipHeight !== undefined && this._viewportFlipHeight !== null
++            ? this._viewportFlipHeight
++            : this.device['swapChainHeight'];
+         return height - y - h;
+     };
+     RenderPass_WebGPU.prototype.setViewport = function (x, y, w, h, minDepth, maxDepth) {
+diff --git a/lib/index.js b/lib/index.js
+--- a/lib/index.js
++++ b/lib/index.js
+@@ -7411,6 +7411,20 @@
+         this.gpuRenderPassDescriptor.occlusionQuerySet = !util.isNil(descriptor.occlusionQueryPool)
+             ? getPlatformQuerySet(descriptor.occlusionQueryPool)
+             : undefined;
++        // Viewport/scissor Y flip must use the active render target height. Using swapChainHeight
++        // for offscreen passes places the viewport outside the attachment (nothing draws).
++        var firstColor = this.gfxColorAttachment.length > 0 ? this.gfxColorAttachment[0] : null;
++        var level0 = this.gfxColorAttachmentLevel.length > 0 ? this.gfxColorAttachmentLevel[0] || 0 : 0;
++        if (firstColor !== null && firstColor !== undefined) {
++            this._viewportFlipHeight = Math.max(1, firstColor.height >>> level0);
++        }
++        else if (descriptor.depthStencilAttachment) {
++            var ds = descriptor.depthStencilAttachment;
++            this._viewportFlipHeight = Math.max(1, ds.height >>> 0);
++        }
++        else {
++            this._viewportFlipHeight = this.device['swapChainHeight'];
++        }
+     };
+     RenderPass_WebGPU.prototype.beginRenderPass = function (commandEncoder, renderPassDescriptor) {
+         assert(this.gpuRenderPassEncoder === null);
+@@ -7419,7 +7433,9 @@
+         this.gpuRenderPassEncoder = this.frameCommandEncoder.beginRenderPass(this.gpuRenderPassDescriptor);
+     };
+     RenderPass_WebGPU.prototype.flipY = function (y, h) {
+-        var height = this.device['swapChainHeight'];
++        var height = this._viewportFlipHeight !== undefined && this._viewportFlipHeight !== null
++            ? this._viewportFlipHeight
++            : this.device['swapChainHeight'];
+         return height - y - h;
+     };
+     RenderPass_WebGPU.prototype.setViewport = function (x, y, w, h, minDepth, maxDepth) {

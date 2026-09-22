@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -28,6 +29,11 @@ import {
   ZIndex,
   ComputeZIndex,
   Pen,
+  ToBeDeleted,
+  PartialBinding,
+  Binded,
+  Binding,
+  Opacity,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
 
@@ -60,12 +66,18 @@ describe('Draw line', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
+            Binding,
+            Binded,
+            PartialBinding,
+            ToBeDeleted,
             Name,
             ZIndex,
+            Opacity,
           ).write,
       );
 
@@ -100,6 +112,13 @@ describe('Draw line', () => {
     if ($canvas) {
       $canvas.dispatchEvent(
         createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
+      ); await sleep(100);
+      $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+      );
+      await sleep(100);
+      $canvas.dispatchEvent(
+        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
       );
       await sleep(100);
       $canvas.dispatchEvent(

@@ -4,7 +4,6 @@ description: 'Enable multi-user collaborative editing with CRDT (Conflict-free R
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 20 - Collaboration' }]
 ---
-
 <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue';
 import YjsCRDT from '../components/YjsCRDT.vue';

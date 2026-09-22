@@ -1,8 +1,8 @@
 /**
  * @see https://docs.rs/bevy/latest/bevy/render/struct.RenderPlugin.html
  */
-import { component, system } from '@lastolivegames/becsy';
-import { Plugin } from './types';
+import { component, system, SystemType } from '@lastolivegames/becsy';
+import { Plugin, type PluginWithConfig } from './types';
 import {
   SetupDevice,
   MeshPipeline,
@@ -19,6 +19,10 @@ import {
   Last,
   PropagateTransforms,
   ComputeVisibility,
+  ComputeCamera,
+  CameraSync,
+  ExportSVG,
+  Select,
 } from '../systems';
 import {
   Circle,
@@ -28,11 +32,10 @@ import {
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
-  FillGradient,
-  FillImage,
-  FillPattern,
-  FillSolid,
   FillTexture,
+  FillTextureLive,
+  FillLayers,
+  StrokeLayers,
   GlobalRenderOrder,
   InnerShadow,
   Opacity,
@@ -46,6 +49,18 @@ import {
   Wireframe,
   Visibility,
   GPUResource,
+  VelloCanvasSurface,
+  Camera3D,
+  Canvas3DScope,
+  Extrude3D,
+  Extrude3DTarget,
+  Mesh3D,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
+  Material3D,
+  Light3D,
+  Transform3D,
+  Selected3D,
   Name,
   ToBeDeleted,
   SizeAttenuation,
@@ -61,73 +76,125 @@ import {
   LockAspectRatio,
   Editable,
   Filter,
+  NodeLayerBlendMode,
+  Locked,
+  ClipMode,
+  Flex,
+  FlexLayoutDirty,
+  Group,
+  IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
 } from '../components';
 
-export const RendererPlugin: Plugin = () => {
-  /**
-   * Components
-   */
-  component(GPUResource);
-  component(Renderable);
-  component(Name);
-  component(LockAspectRatio);
-  component(Wireframe);
-  component(GlobalRenderOrder);
-  component(Visibility);
-  component(ComputedVisibility);
-  component(ToBeDeleted);
-  component(SizeAttenuation);
-  component(StrokeAttenuation);
-  component(GeometryDirty);
-  component(MaterialDirty);
-  component(Editable);
+export interface RendererPluginOptions {
+  setupDeviceSystemCtor?: SystemType<any>;
+  rendererSystemCtor?: SystemType<any>;
+}
 
-  /**
-   * Style
-   */
-  component(FillSolid);
-  component(FillGradient);
-  component(FillPattern);
-  component(FillImage);
-  component(FillTexture);
-  component(Stroke);
-  component(Opacity);
-  component(DropShadow);
-  component(InnerShadow);
-  component(Rough);
-  component(Font);
-  component(TextDecoration);
-  component(Marker);
-  component(Filter);
+function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
+  return () => {
+    /**
+     * Components
+     */
+    component(GPUResource);
+    component(VelloCanvasSurface);
+    component(Camera3D);
+    component(Canvas3DScope);
+    component(Extrude3D);
+    component(Extrude3DTarget);
+    component(Mesh3D);
+    component(Mesh3DNode);
+    component(Mesh3DNodeTarget);
+    component(Material3D);
+    component(Light3D);
+    component(Transform3D);
+    component(Selected3D);
+    component(Renderable);
+    component(Name);
+    component(LockAspectRatio);
+    component(Wireframe);
+    component(GlobalRenderOrder);
+    component(Visibility);
+    component(ComputedVisibility);
+    component(ToBeDeleted);
+    component(SizeAttenuation);
+    component(StrokeAttenuation);
+    component(GeometryDirty);
+    component(MaterialDirty);
+    component(Editable);
+    component(Locked);
+    component(Flex);
+    component(FlexLayoutDirty);
 
-  /**
-   * Geometry
-   */
-  component(Circle);
-  component(Ellipse);
-  component(Rect);
-  component(Line);
-  component(Polyline);
-  component(Path);
-  component(Text);
-  component(Brush);
-  component(ComputedPoints);
-  component(ComputedRough);
-  component(ComputedTextMetrics);
-  component(ComputedBounds);
+    /**
+     * Style
+     */
+    component(FillTexture);
+    component(FillTextureLive);
+    component(FillLayers);
+    component(StrokeLayers);
+    component(Stroke);
+    component(Opacity);
+    component(DropShadow);
+    component(InnerShadow);
+    component(Rough);
+    component(Font);
+    component(TextDecoration);
+    component(Marker);
+    component(Filter);
+    component(NodeLayerBlendMode);
+    component(ClipMode);
 
-  system(StartUp)(SetupDevice);
-  system(PreUpdate)(ComputePoints);
-  system(PreUpdate)(ComputeRough);
-  system(PreUpdate)(ComputeTextMetrics);
-  system(PreUpdate)(ComputeVisibility);
-  system(PostUpdate)(ComputeBounds);
-  system(PostUpdate)(Sort);
+    /**
+     * Geometry
+     */
+    component(IconFont);
+    component(IconFontEllipseStrokeRasterPlaceholder);
+    component(Group);
+    component(Circle);
+    component(Ellipse);
+    component(Rect);
+    component(Line);
+    component(Polyline);
+    component(Path);
+    component(Text);
+    component(Brush);
+    component(ComputedPoints);
+    component(ComputedRough);
+    component(ComputedTextMetrics);
+    component(ComputedBounds);
 
-  // system((s) => s.after(PropagateTransforms))(ComputeVisibility);
-  system((s) => s.after(PropagateTransforms, Sort))(ComputeBounds);
+    const SetupDeviceSystem = options.setupDeviceSystemCtor ?? SetupDevice;
+    system(StartUp)(SetupDeviceSystem);
+    system((s) => s.before(Select))(SetupDeviceSystem);
+    system(PreUpdate)(ComputePoints);
+    system(PreUpdate)(ComputeRough);
+    system(PreUpdate)(ComputeTextMetrics);
+    system(PreUpdate)(ComputeVisibility);
+    system(PostUpdate)(ComputeBounds);
+    system(PostUpdate)(Sort);
 
-  system(Last)(SetCursor);
-  system(Last)(MeshPipeline);
-  system(Last)(Deleter);
+    // system((s) => s.after(PropagateTransforms))(ComputeVisibility);
+    system((s) => s.after(PropagateTransforms, Sort))(ComputeBounds);
+
+    // Linked Camera3D sync; PenPlugin/Renderer3DPlugin schedule Select/Pick3D after this.
+    system((s) => s.after(ComputeCamera).before(Last))(CameraSync);
+
+    system(Last)(SetCursor);
+
+    const RenderSystem = options.rendererSystemCtor ?? MeshPipeline;
+    system(Last)(RenderSystem);
+    system((s) => s.before(Deleter, ExportSVG))(RenderSystem);
+
+    system(Last)(Deleter);
+  };
+}
+
+export const RendererPlugin: PluginWithConfig<RendererPluginOptions> = {
+  configure(options) {
+    const plugin = createRendererPlugin(options);
+    return plugin;
+  },
 };
+
+export const DefaultRendererPlugin = RendererPlugin.configure({});

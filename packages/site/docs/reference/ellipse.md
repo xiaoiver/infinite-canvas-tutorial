@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Ellipse
 
 See SVG [ellipse].

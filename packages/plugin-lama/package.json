@@ -1,6 +1,6 @@
 {
   "name": "@infinite-canvas-tutorial/lama",
-  "version": "0.0.1-alpha.39",
+  "version": "0.0.8",
   "description": "Use LaMa in client side",
   "main": "lib/index.js",
   "module": "esm/index.js",
@@ -40,14 +40,17 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc --module commonjs --outDir lib && cp src/worker.js lib/worker.js",
-    "build:esm": "rimraf ./esm && tsc --module ESNext --outDir esm && cp src/worker.js esm/worker.js",
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib && cp src/worker.js lib/worker.js",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm && cp src/worker.js esm/worker.js",
     "build": "run-p build:*",
-    "watch": "rimraf ./esm && tsc --module ESNext --outDir esm --watch"
+    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch"
   },
   "dependencies": {
-    "@infinite-canvas-tutorial/ecs": "workspace:*",
     "onnxruntime-web": "^1.23.2"
+  },
+  "peerDependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

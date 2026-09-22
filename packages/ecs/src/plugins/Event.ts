@@ -5,7 +5,7 @@ import {
   EventDisposer,
   EventWriter,
   Last,
-  SetupDevice,
+  First,
 } from '../systems';
 import { Event, Input, InputPoint } from '../components';
 
@@ -14,7 +14,7 @@ export const EventPlugin: Plugin = () => {
   component(Input);
   component(InputPoint);
 
-  system((s) => s.after(SetupDevice))(EventWriter);
+  system(First)(EventWriter);
   system(Last)(EventDisposer);
   system((s) => s.before(Deleter))(EventDisposer);
 };

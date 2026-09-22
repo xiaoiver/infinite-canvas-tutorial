@@ -1,7 +1,3 @@
----
-publish: false
----
-
 <script setup>
 import DomainWarping from '../components/DomainWarping.vue'
 </script>

@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Circle
 
 See SVG [circle].

@@ -22,3 +22,8 @@ export * from './Marker';
 export * from './LockAspectRatio';
 export * from './Editable';
 export * from './Filter';
+export * from './NodeLayerBlendMode';
+export * from './Locked';
+export * from './ClipMode';
+export * from './Flex';
+export * from './FlexLayoutDirty';

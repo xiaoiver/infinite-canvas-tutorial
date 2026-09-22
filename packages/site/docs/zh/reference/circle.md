@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # Circle
 
 参考 SVG [circle]。

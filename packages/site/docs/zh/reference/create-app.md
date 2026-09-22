@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 首先在全局创建一个 App 并使用默认的插件集，详见：[课程 18 - 使用 ECS 重构]
 
 ```ts
@@ -67,7 +65,7 @@ canvas.addEventListener(Event.READY, async (e) => {
 
 当画布改变尺寸时触发。可以获取此时画布的宽高：`{ width: number; height: number }`
 
-### Event.ZOOM_CHANGED
+### Event.CAMERA_ZOOM_CHANGED
 
 当画布相机缩放等级改变时触发。可以获取当前的缩放等级：`{ zoom: number }`
 
@@ -76,8 +74,6 @@ canvas.addEventListener(Event.READY, async (e) => {
 当导出图片请求完成后触发。可以获取导出图片的结果：`{ dataURL: string; svg: string }`
 
 ### Event.NODES_UPDATED
-
-### Event.NODE_UPDATED
 
 ### Event.NODE_DELETED
 

@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Web Animations API 与画布"
+description: "用 WAAPI 时间线驱动属性，替代临时 rAF 逻辑。"
 ---
+<!-- example-intro:zh -->
+
+# Web Animations API 与画布
+
+**Web Animations API** 可与动效库、CSS 时间函数协同，适合画布与 DOM UI **同步** 动效，亦可与 [第 36 课 — 动画](/zh/guide/lesson-036) 中的手工循环对照。
+
+需要暂停、跳转或 playbackRate 时优先考虑 WAAPI。
+
+## 交互示例
 
 <script setup>
 import WebAnimationsAPI from '../../components/WebAnimationsAPI.vue'

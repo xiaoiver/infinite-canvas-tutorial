@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import {
-  App,
   Pen,
-  DefaultPlugins,
   API,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Event, UIPlugin, ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
+import { ensureExampleWorld } from '../lib/ensure-example-world';
+import { Event, ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import opentype from 'opentype.js';
 import { svgPathProperties } from 'svg-path-properties';
 import ClipperLib from 'clipper-lib';
@@ -143,7 +142,7 @@ onMounted(async () => {
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
-          fill: 'none',
+          fills: [{ type: 'solid', value: 'none', opacity: 1 }],
           stroke: `rgb(${Math.round(PARAMS[`color${index + 1}`].r)}, ${Math.round(PARAMS[`color${index + 1}`].g)}, ${Math.round(PARAMS[`color${index + 1}`].b)})`,
           strokeWidth: 6,
         };
@@ -156,7 +155,7 @@ onMounted(async () => {
         id: `path-${index}`,
         type: 'path',
         d,
-        fill: `rgb(${Math.round(PARAMS.intersect.r)}, ${Math.round(PARAMS.intersect.g)}, ${Math.round(PARAMS.intersect.b)})`,
+        fills: [{ type: 'solid', value: `rgb(${Math.round(PARAMS.intersect.r)}, ${Math.round(PARAMS.intersect.g)}, ${Math.round(PARAMS.intersect.b)})`, opacity: 1 }],
         stroke: `rgb(${Math.round(PARAMS.intersect.r)}, ${Math.round(PARAMS.intersect.g)}, ${Math.round(PARAMS.intersect.b)})`,
         strokeWidth: 6,
         strokeLinecap: 'round',
@@ -253,7 +252,7 @@ onMounted(async () => {
       api?.updateNode({
         id: polygon.id,
         stroke: `rgb(${Math.round(ev.value.r)}, ${Math.round(ev.value.g)}, ${Math.round(ev.value.b)})`,
-        fill: `rgb(${Math.round(ev.value.r)}, ${Math.round(ev.value.g)}, ${Math.round(ev.value.b)})`,
+        fills: [{ type: 'solid', value: `rgb(${Math.round(ev.value.r)}, ${Math.round(ev.value.g)}, ${Math.round(ev.value.b)})`, opacity: 1 }],
       });
     });
   });
@@ -285,15 +284,7 @@ onMounted(async () => {
 
   canvas.addEventListener(Event.READY, onReady);
 
-  // App only runs once
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    await import('@infinite-canvas-tutorial/lasso/spectrum');
-    await import('@infinite-canvas-tutorial/eraser/spectrum');
-    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
-  }
+  await ensureExampleWorld();
 });
 
 onUnmounted(async () => {
@@ -306,7 +297,6 @@ onUnmounted(async () => {
     canvas.removeEventListener(Event.READY, onReady);
   }
 
-  api?.destroy();
 });
 </script>
 

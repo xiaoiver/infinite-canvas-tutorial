@@ -1,7 +1,12 @@
 import { html, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import { AppState } from '@infinite-canvas-tutorial/ecs';
+import {
+  AppState,
+  FillAttributes,
+  getPrimaryFillValue,
+  type SerializedFillLayerItem,
+} from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
@@ -19,10 +24,18 @@ export class PenbarTextSettings extends LitElement {
     e.stopPropagation();
 
     const fillColor = (e.target as any).selected[0];
+    const cur = this.api.getAppState().penbarText as FillAttributes;
+    const prev = (cur.fills?.[0] ?? {
+      type: 'solid',
+      value: '#000',
+      opacity: 1,
+    }) as SerializedFillLayerItem;
     this.api.setAppState({
       penbarText: {
         ...this.api.getAppState().penbarText,
-        fill: fillColor,
+        fills: [
+          { ...prev, type: 'solid', value: fillColor, opacity: prev.opacity ?? 1 },
+        ],
       },
     });
   }
@@ -66,13 +79,13 @@ export class PenbarTextSettings extends LitElement {
         id="font-family"
       >
         ${penbarText.fontFamilies.map(
-          (fontFamily) =>
-            html`<sp-menu-item
+      (fontFamily) =>
+        html`<sp-menu-item
               value=${fontFamily}
               style="font-family: ${fontFamily};"
               >${fontFamily}</sp-menu-item
             >`,
-        )}
+    )}
       </sp-picker>
 
       <div
@@ -91,7 +104,7 @@ export class PenbarTextSettings extends LitElement {
         </sp-picker>
 
         <sp-number-field
-          style="width: 80px;"
+          style="width: 70px;"
           value=${penbarText.fontSize}
           @change=${this.handleFontSizeChanged}
           autocomplete="off"
@@ -103,12 +116,14 @@ export class PenbarTextSettings extends LitElement {
       <sp-swatch-group
         id="fill"
         selects="single"
-        .selected=${[penbarText.fill]}
+        .selected=${[
+        getPrimaryFillValue(penbarText as FillAttributes) ?? '#000000',
+      ]}
         @change=${this.handleFillColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-        )}
+      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+    )}
       </sp-swatch-group> `;
   }
 }

@@ -127,7 +127,7 @@ class SAM2 {
     };
   }
 
-  async decode(points, masks) {
+  async decode(points) {
     const [session] = await this.getDecoderSession();
     const point = points[0];
 
@@ -159,7 +159,6 @@ const stats = {
 
 const sam = new SAM2();
 
-// eslint-disable-next-line no-undef
 self.onmessage = async (e) => {
   const { type, data, requestId } = e.data;
   const reply = (message) => self.postMessage({ ...message, requestId });

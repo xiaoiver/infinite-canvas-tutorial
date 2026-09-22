@@ -25,6 +25,7 @@ it('excludes transient state from snapshots while retaining document effects and
   expect(snapshot.appState).toEqual({
     filter: 'blur(2px)',
     layersSelected: ['a'],
+    variables: {},
   });
   const [restored] = AppStateChange.calculate(
     initial,

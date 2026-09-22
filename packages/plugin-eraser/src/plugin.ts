@@ -1,5 +1,5 @@
 import {
-  DrawPencil,
+  DrawVectorNetwork,
   Last,
   Plugin,
   system,
@@ -7,5 +7,6 @@ import {
 import { DrawEraser } from './system';
 
 export const EraserPlugin: Plugin = () => {
-  system((s) => s.after(DrawPencil).before(Last))(DrawEraser);
+  // After DrawVectorNetwork (which runs after DrawPencil) to avoid a schedule cycle.
+  system((s) => s.after(DrawVectorNetwork).before(Last))(DrawEraser);
 };

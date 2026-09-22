@@ -7,6 +7,9 @@ import {
 import { ResourceScope } from '../../packages/ecs/src/resources/ResourceScope';
 
 jest.mock('../../packages/ecs/node_modules/@lastolivegames/becsy', () => ({
+  ...jest.requireActual(
+    '../../packages/ecs/node_modules/@lastolivegames/becsy',
+  ),
   System: class {
     query() {
       return {};
@@ -33,14 +36,11 @@ jest.mock('../../packages/ecs/src/render-graph/GridRenderer', () => ({
     destroy = jest.fn();
   },
 }));
-jest.mock(
-  '../../packages/ecs/src/render-graph/PostProcessingRenderer',
-  () => ({}),
-);
 jest.mock('../../packages/ecs/src/systems/BatchManager', () => ({
   BatchManager: class {
     destroy = jest.fn();
     showUIs = jest.fn();
+    hideUIs = jest.fn();
   },
 }));
 
@@ -85,7 +85,15 @@ describe('renderer lifecycle', () => {
     (pipeline as any).setupDevice = { getOffscreenGPUResource: () => gpu };
     const create = jest.spyOn(pipeline as any, 'createRenderer');
     const values = new Map<any, any>([
-      [Canvas, { api: { getAppState: () => ({ filter: '' }) } }],
+      [
+        Canvas,
+        {
+          api: {
+            getAppState: () => ({ filter: '' }),
+            getBounds: () => ({ minX: 0, minY: 0, maxX: 0, maxY: 0 }),
+          },
+        },
+      ],
       [GPUResource, gpu],
       [RasterScreenshotRequest, { nodes: [{ id: '1' }] }],
     ]);

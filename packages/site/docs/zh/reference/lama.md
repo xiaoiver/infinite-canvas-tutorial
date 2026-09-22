@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 [AI API]
 
 ```ts

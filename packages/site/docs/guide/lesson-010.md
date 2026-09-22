@@ -11,12 +11,16 @@ head:
       ]
 ---
 
+<script setup>
+import ObjectFit from '../components/ObjectFit.vue';
+</script>
+
 # Lesson 10 - Importing and Exporting Images
 
 Image import and export is a very important feature in Infinite Canvas, and through the exported image it can be interfaced with other tools. So while our canvas drawing capabilities are currently limited, it's good to think ahead about issues related to images. In this lesson you will learn the following:
 
--   Exporting canvas content to PNG, JPEG and SVG formats
--   Rendering images in the canvas
+-   Exporting canvas content to PNG, JPEG, and SVG, and exporting time-based effects to GIF
+-   Rendering images in the canvas, including `object-fit` / `object-position` on image fills
 -   Extending the capabilities of SVG, using `stroke-alignment` as an example.
 
 ## Exporting canvas contents to image {#export-canvas-to-image}
@@ -510,6 +514,37 @@ Object.entries(rest).forEach(([key, value]) => {
 });
 ```
 
+#### [WIP] Inlined Web font {#inlined-web-font}
+
+When exporting to SVG, if web fonts are used, we aim to inline them within the file. Naturally, due to font file size constraints, some on-demand trimming is required during runtime. Below is Excalidraw's processing flow, detailed at: [Font subsetting in excalidraw]
+
+![source: https://link.excalidraw.com/readonly/MbbnWPSWXgadXdtmzgeO](https://github.com/user-attachments/assets/e255df0a-13de-4cb6-ae2e-9e885b643c63)
+
+### Export GIF {#to-gif}
+
+In a later [Lesson 30 - Time-based animation], we cover effects driven by post-processing and a time uniform. To **export** that motion you need formats such as GIF or MOV; here we outline the former.
+
+1. The render path must accept the current **frame index** (or engine time) so each step shows the right moment of the effect.
+2. **Snapshot the canvas to a raster**, e.g. PNG — the previous section already covered that.
+3. **Read pixels and quantize** to a palette (e.g. 256 colors per frame). If you can accept a small quality hit, 128 or 64 colors usually shrinks the file a lot; gradients and photo-like content will show more banding or noise.
+4. **Per-frame palettes:** the straightforward approach is one `quantize` per frame and one `palette` per `writeFrame`, which works well for flat UI. For short loops with little change between frames, a **single global palette** or **fewer keyframes** can save more space, at a notably higher implementation cost.
+
+```ts
+import { GIFEncoder, applyPalette, quantize } from 'gifenc';
+
+const gif = GIFEncoder();
+for (let i = 0; i < frameCount; i++) {
+    renderFrame(i); // (1) drive time / frame
+    const dataUrl = el.toDataURL('image/png', pngQuality); // (2) raster snapshot
+    const imageData = await imageDataFromPngDataUrl(dataUrl, w, h, ctx!);
+    const palette = quantize(imageData.data, 256); // (3) build palette
+    const index = applyPalette(imageData.data, palette); // (4) map to indices
+    gif.writeFrame(index, w, h, { palette, delay });
+}
+gif.finish();
+return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
+```
+
 ### Export PDF {#to-pdf}
 
 Now that pixels and vectors are available, if you still want to export to PDF you can use [jsPDF], which provides an API for adding images, which I won't cover here for lack of space.
@@ -679,9 +714,7 @@ call(() => {
     $icCanvas3.parentElement.appendChild($stats);
 
     $icCanvas3.addEventListener('ic-ready', async (e) => {
-        const image = await Utils.loadImage(
-            'https://infinitecanvas.cc/canvas.png',
-        );
+        const image = await Utils.loadImage('/canvas.png');
 
         const canvas = e.detail;
 
@@ -751,6 +784,56 @@ export class RenderCache {
         }
         return sampler;
     }
+}
+```
+
+### Object fit (object-fit) {#object-fit}
+
+A rectangle’s geometry often does not match the image’s intrinsic aspect ratio. Drawing with `drawImage(0, 0, width, height)` everywhere stretches icons and photos. Design tools usually offer fit / fill / crop modes; we follow CSS [object-fit] and [object-position] on `FillLayers` entries with `type: 'image'`:
+
+```ts
+fills: [
+    {
+        type: 'image',
+        value: '/canvas.png',
+        objectFit: 'contain',
+        objectPosition: 'top left',
+    },
+];
+```
+
+| `objectFit`           | Behavior                                                                  |
+| --------------------- | ------------------------------------------------------------------------- |
+| `fill`                | Stretch to fill the geometry (**default**, same as early raster behavior) |
+| `contain`             | Scale uniformly; show the whole image; letterboxing may appear            |
+| `cover`               | Scale uniformly; fill the geometry; crop overflow                         |
+| `none` / `scale-down` | Same semantics as CSS                                                     |
+
+See [Object fit example](/example/object-fit) for how this maps to Figma image scaling and Pencil `mode` (`stretch` / `fill` / `fit`).
+
+On the CPU we rasterize the image into a texture: compute the draw rectangle from `objectFit` and paint into a canvas. For `contain` / `cover`, texture size is **geometry × device pixel ratio**, not `max(source width, geometry width)`—otherwise the full image fills the bitmap and, when mapped to the shape, still looks like stretched `fill`.
+
+<ObjectFit />
+
+### iOS Live Photo {#ios-live-photo}
+
+At the file level, an iOS Live Photo is usually a HEIC still image plus a companion MOV. Neither the browser's native `<img>` path nor `@loaders.gl/images` can decode HEIC directly.
+
+We aim to treat it like a normal image: decode a single still frame into a bitmap, then upload it to a texture. Playing the Live Photo's embedded video in the canvas would be a follow-up, with a dedicated component (e.g. tap to play) built separately.
+
+```ts
+import heic2any from 'heic2any';
+
+async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
+    const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
+        heic2any({
+            blob,
+            toType,
+            quality: toType === 'image/jpeg' ? quality ?? 0.92 : 1,
+        });
+
+    const converted = await run('image/png');
+    return createImageBitmap(converted);
 }
 ```
 
@@ -958,3 +1041,5 @@ With the richness of the canvas functionality, it is necessary to introduce test
 [JSON objects in tldraw]: https://tldraw.dev/docs/shapes#The-shape-object
 [JSON schema in excalidraw]: https://docs.excalidraw.com/docs/codebase/json-schema
 [viewBox]: https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/viewBox
+[Font subsetting in excalidraw]: https://github.com/excalidraw/excalidraw/issues/1972#issuecomment-2417744618
+[Lesson 30 - Time-based animation]: /guide/lesson-030#time-animation

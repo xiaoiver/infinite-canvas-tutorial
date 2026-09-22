@@ -2,7 +2,11 @@
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts#L80
  */
 
-import { MIME_TYPES } from '@infinite-canvas-tutorial/ecs';
+import {
+  IC_FILE_SUFFIX,
+  IMAGE_MIME_TYPES,
+  MIME_TYPES,
+} from '@infinite-canvas-tutorial/ecs';
 import {
   fileOpen as _fileOpen,
   fileSave as _fileSave,
@@ -41,18 +45,38 @@ export const debounce = <T extends any[]>(
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/filesystem.ts
  */
 type FILE_EXTENSION = Exclude<keyof typeof MIME_TYPES, 'binary'>;
+/**
+ * Image extensions for the native file picker. `heic` / `heif` are listed
+ * explicitly so typings stay valid if ecs `lib` lags behind `clipboard.ts`.
+ */
+export type ImageFileExtension =
+  | keyof typeof IMAGE_MIME_TYPES
+  | 'heic'
+  | 'heif';
 const INPUT_CHANGE_INTERVAL_MS = 500;
 export const fileOpen = <M extends boolean | undefined = false>(opts: {
-  extensions?: FILE_EXTENSION[];
+  extensions?: ImageFileExtension[];
   description: string;
   multiple?: M;
 }): Promise<M extends false | undefined ? File : File[]> => {
   // an unsafe TS hack, alas not much we can do AFAIK
   type RetType = M extends false | undefined ? File : File[];
 
-  const mimeTypes = opts.extensions?.reduce((mimeTypes, type) => {
-    mimeTypes.push(MIME_TYPES[type]);
+  const mimeForImageExt = (type: ImageFileExtension): string => {
+    if (type in IMAGE_MIME_TYPES) {
+      return IMAGE_MIME_TYPES[type as keyof typeof IMAGE_MIME_TYPES];
+    }
+    if (type === 'heic') {
+      return 'image/heic';
+    }
+    if (type === 'heif') {
+      return 'image/heif';
+    }
+    return 'application/octet-stream';
+  };
 
+  const mimeTypes = opts.extensions?.reduce((mimeTypes, type) => {
+    mimeTypes.push(mimeForImageExt(type));
     return mimeTypes;
   }, [] as string[]);
 
@@ -132,3 +156,61 @@ export const fileSave = (
     opts.fileHandle,
   );
 };
+
+export async function getDataURL(file: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataURL = reader.result as string;
+      resolve(dataURL);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsDataURL(file);
+  });
+}
+
+export async function getFileText(file: Blob | File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result as string);
+    };
+    reader.onerror = (error) => reject(error);
+    reader.readAsText(file);
+  });
+}
+
+/**
+ * Open an Infinite Canvas interchange document (`.ic`) and return its text
+ * contents along with the original file name.
+ */
+export async function openIcDocument(): Promise<{
+  name: string;
+  contents: string;
+}> {
+  const file = await _fileOpen({
+    description: 'Infinite Canvas document',
+    extensions: [IC_FILE_SUFFIX],
+    mimeTypes: ['application/json'],
+    multiple: false,
+  });
+  const contents = await getFileText(file);
+  return { name: file.name, contents };
+}
+
+/**
+ * Open a Figma design file (`.fig`) and return its raw bytes.
+ */
+export async function openFigmaDocument(): Promise<{
+  name: string;
+  contents: Uint8Array;
+}> {
+  const file = await _fileOpen({
+    description: 'Figma design file',
+    extensions: ['.fig'],
+    mimeTypes: ['application/octet-stream'],
+    multiple: false,
+  });
+  const contents = new Uint8Array(await file.arrayBuffer());
+  return { name: file.name, contents };
+}

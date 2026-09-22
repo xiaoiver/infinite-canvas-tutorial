@@ -23,6 +23,11 @@ export class ComputeCamera extends System {
     (q) => q.changed.with(Canvas).trackWrites,
   );
 
+  /** Cameras spawned before the first `world.execute()` never hit `addedOrChanged`. */
+  private readonly missingComputedCamera = this.query(
+    (q) => q.current.with(Camera, Transform).without(ComputedCamera).read,
+  );
+
   constructor() {
     super();
     this.query(
@@ -34,6 +39,17 @@ export class ComputeCamera extends System {
   }
 
   execute(): void {
+    this.missingComputedCamera.current.forEach((entity) => {
+      const camera = entity.read(Camera);
+      if (!camera.canvas) {
+        return;
+      }
+      const { width, height } = camera.canvas.read(Canvas);
+      this.projection(entity, width, height);
+      this.updateMatrix(entity);
+      this.updateComputedCamera(entity);
+    });
+
     this.cameras.addedOrChanged.forEach((entity) => {
       const camera = entity.read(Camera);
 

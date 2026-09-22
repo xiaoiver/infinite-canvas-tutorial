@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 <script setup>
 import Eraser from '../components/Eraser.vue'
 </script>

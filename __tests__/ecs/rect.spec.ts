@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -29,6 +30,9 @@ import {
   ZIndex,
   ComputeZIndex,
   UI,
+  RectSerializedNode,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -63,13 +67,16 @@ describe('Rect', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -89,88 +96,82 @@ describe('Rect', () => {
           zoom: 1,
         });
 
-        api.updateNodes([
-          {
-            id: '1',
-            type: 'rect',
-            fill: 'red',
-            x: 50,
-            y: 50,
-            width: 100,
-            height: 100,
-            visibility: 'visible',
-          },
-          {
-            id: '2',
-            parentId: '1',
-            type: 'rect',
-            fill: 'green',
-            x: 50,
-            y: 50,
-            width: 50,
-            height: 50,
-            stroke: 'black',
-            strokeWidth: 10,
-            strokeAlignment: 'center',
-            strokeDasharray: '10 10',
-            dropShadowColor: 'black',
-            dropShadowBlurRadius: 10,
-            dropShadowOffsetX: 10,
-            dropShadowOffsetY: 10,
-            visibility: 'visible',
-          },
-        ]);
+        const node1: RectSerializedNode = {
+          id: '1',
+          type: 'rect',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+          x: 50,
+          y: 50,
+          width: 100,
+          height: 100,
+          zIndex: 0,
+        };
 
-        parentEntity = api
-          .getEntity({
-            id: '1',
-          })
-          ?.hold();
-        childEntity = api
-          .getEntity({
-            id: '2',
-          })
-          ?.hold();
+        const node2: RectSerializedNode = {
+          id: '2',
+          parentId: '1',
+          type: 'rect',
+          fills: [{ type: 'solid', value: 'green', opacity: 1 }],
+          x: 50,
+          y: 50,
+          width: 50,
+          height: 50,
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
+          strokeWidth: 10,
+          strokeAlignment: 'center',
+          strokeDasharray: '10 10',
+          dropShadowColor: 'black',
+          dropShadowBlurRadius: 10,
+          dropShadowOffsetX: 10,
+          dropShadowOffsetY: 10,
+          zIndex: 0,
+        };
+
+        api.updateNodes([node1, node2]);
+
+        parentEntity = api.getEntity(node1)?.hold();
+        childEntity = api.getEntity(node2)?.hold();
       }
     }
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    try {
+      await app.run();
 
-    await sleep(300);
+      await sleep(500);
 
-    if (canvasEntity && cameraEntity && parentEntity && childEntity) {
-      const canvas = canvasEntity.read(Canvas);
-      expect(canvas.devicePixelRatio).toBe(1);
-      expect(canvas.width).toBe(200);
-      expect(canvas.height).toBe(200);
-      expect(canvas.renderer).toBe('webgl');
-      expect(canvas.cameras).toHaveLength(1);
+      if (canvasEntity && cameraEntity && parentEntity && childEntity) {
+        const canvas = canvasEntity.read(Canvas);
+        expect(canvas.devicePixelRatio).toBe(1);
+        expect(canvas.width).toBe(200);
+        expect(canvas.height).toBe(200);
+        expect(canvas.renderer).toBe('webgl');
+        expect(canvas.cameras).toHaveLength(1);
 
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
-      expect(
-        cameraEntity.read(Parent).children.filter((c) => !c.has(UI)),
-      ).toHaveLength(1);
-      expect(
-        cameraEntity.read(Parent).children[0].isSame(parentEntity),
-      ).toBeTruthy();
+        const camera = cameraEntity.read(Camera);
+        expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
+        const sceneChildren = cameraEntity
+          .read(Parent)
+          .children.filter((c) => !c.has(UI));
+        expect(sceneChildren).toHaveLength(1);
+        expect(sceneChildren[0].isSame(parentEntity)).toBeTruthy();
 
-      const parent = parentEntity.read(Parent);
-      expect(parent.children).toHaveLength(1);
-      expect(parent.children[0].isSame(childEntity)).toBeTruthy();
+        const parent = parentEntity.read(Parent);
+        expect(parent.children).toHaveLength(1);
+        expect(parent.children[0].isSame(childEntity)).toBeTruthy();
 
-      const child = childEntity.read(Children);
-      expect(child.parent.isSame(parentEntity)).toBeTruthy();
+        const child = childEntity.read(Children);
+        expect(child.parent.isSame(parentEntity)).toBeTruthy();
+      }
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'rect',
+      );
+    } finally {
+      await app.exit();
     }
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'rect',
-    );
-
-    await app.exit();
   });
 });

@@ -66,8 +66,8 @@ function createImage(
 // }
 
 function copyImage(
-  srcImg: any,
-  dstImg: any,
+  srcImg: RGBAImage,
+  dstImg: RGBAImage,
   srcPt: Point,
   dstPt: Point,
   size: Size,

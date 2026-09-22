@@ -1,4 +1,4 @@
-import { Texture } from '@antv/g-device-api';
+import { Texture } from '@infinite-canvas-tutorial/device-api';
 import EventEmitter from 'eventemitter3';
 
 /** @memberof text */
@@ -83,8 +83,7 @@ interface BitmapFontEvents<Type> {
  */
 export abstract class AbstractBitmapFont<FontType>
   extends EventEmitter<BitmapFontEvents<FontType>>
-  implements Omit<BitmapFontData, 'chars' | 'pages' | 'fontSize'>
-{
+  implements Omit<BitmapFontData, 'chars' | 'pages' | 'fontSize'> {
   /** The map of characters by character code. */
   public readonly chars: Record<string, CharData> = Object.create(null);
 

@@ -6,6 +6,8 @@ import {
   AppState,
   Canvas,
   ComputedBounds,
+  FillAttributes,
+  getPrimaryFillValue,
   TransformableStatus,
   SerializedNode,
   isDataUrl,
@@ -14,8 +16,10 @@ import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { TOP_NAVBAR_HEIGHT } from './infinite-canvas';
 import { Event } from '../event';
+import './context-vector-network-edit-bar';
 
 const CONTEXT_BAR_MARGIN_BOTTOM = 16;
+const VN_EDIT_BAR_MARGIN_BOTTOM = 24;
 
 @customElement('ic-spectrum-context-bar')
 export class ContextBar extends LitElement {
@@ -24,6 +28,13 @@ export class ContextBar extends LitElement {
       position: absolute;
       top: 0;
       left: 0;
+    }
+
+    .wrapper.bottom-center {
+      top: auto;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
     }
 
     .bar {
@@ -44,6 +55,13 @@ export class ContextBar extends LitElement {
         var(--spectrum-drop-shadow-color) 0px var(--spectrum-drop-shadow-y)
           var(--spectrum-drop-shadow-blur)
       );
+    }
+
+    .wrapper.bottom-center .bar {
+      transform: none;
+      position: static;
+      left: auto;
+      margin-bottom: ${VN_EDIT_BAR_MARGIN_BOTTOM}px;
     }
   `;
 
@@ -80,9 +98,9 @@ export class ContextBar extends LitElement {
         Math.max(
           0,
           tl.y +
-            (br.y - tl.y) +
-            (topbarVisible ? TOP_NAVBAR_HEIGHT : 0) +
-            CONTEXT_BAR_MARGIN_BOTTOM,
+          (br.y - tl.y) +
+          (topbarVisible ? TOP_NAVBAR_HEIGHT : 0) +
+          CONTEXT_BAR_MARGIN_BOTTOM,
         ),
       ),
     ];
@@ -122,25 +140,41 @@ export class ContextBar extends LitElement {
       );
     }
 
-    const { layersSelected, contextBarVisible } = this.appState;
-
-    return html`${when(contextBarVisible && layersSelected.length > 0, () => {
-      // Only single selection need context bar for now.
-      if (layersSelected.length === 1) {
+    const { layersSelected, layersCropping, contextBarVisible } = this.appState;
+    return html`${when(contextBarVisible, () => {
+      if (layersSelected.length === 1 && layersCropping.length === 0) {
         const node =
           layersSelected[0] && this.api.getNodeById(layersSelected[0]);
+        if (!node || node.type === 'g' || node.type === 'mesh3d') {
+          return html``;
+        }
 
+        const fillVal = getPrimaryFillValue(node as FillAttributes);
         const isImage =
           node.type === 'rect' &&
-          (node.fill.endsWith('.jpg') ||
-            node.fill.endsWith('.jpeg') ||
-            node.fill.endsWith('.png') ||
-            isDataUrl(node.fill));
+          fillVal != null &&
+          (fillVal.endsWith('.jpg') ||
+            fillVal.endsWith('.jpeg') ||
+            fillVal.endsWith('.png') ||
+            isDataUrl(fillVal));
 
         const isHTML = node.type === 'html';
         const isEmbed = node.type === 'embed';
         if (isHTML || isEmbed) {
           return html``;
+        }
+
+        const isVectorNetworkEditing =
+          node.type === 'vector-network' && node.isEditing;
+
+        if (isVectorNetworkEditing) {
+          return html`<div class="wrapper bottom-center">
+            <div class="bar">
+              <ic-spectrum-context-vector-network-edit-bar
+                .node=${node}
+              ></ic-spectrum-context-vector-network-edit-bar>
+            </div>
+          </div>`;
         }
 
         const isEditing = node.isEditing;
@@ -153,10 +187,10 @@ export class ContextBar extends LitElement {
         >
           <div class="bar">
             ${when(
-              isImage && isEditing,
-              () => html`<ic-spectrum-context-image-edit-bar .node=${node} />`,
-              () => html`<ic-spectrum-context-common-bar .node=${node} />`,
-            )}
+          isImage && isEditing,
+          () => html`<ic-spectrum-context-image-edit-bar .node=${node} />`,
+          () => html`<ic-spectrum-context-common-bar .node=${node} />`,
+        )}
           </div>
         </div>`;
       } else {

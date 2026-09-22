@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "使用 Yjs 实时协同"
+description: "通过 Y.Doc 与传输层镜像画布状态。"
 ---
+<!-- example-intro:zh -->
+
+# 使用 Yjs 实时协同
+
+**Yjs** 在协同编辑中应用广泛。本示例用 **BroadcastChannel** 做本地双窗演示，生产环境可换 WebRTC 或 WebSocket Provider。
+
+深入模式见 [第 20 课 — 协同](/zh/guide/lesson-020)。
+
+## 交互示例
 
 <script setup>
 import YjsCRDT from '../../components/YjsCRDT.vue'

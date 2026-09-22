@@ -2,27 +2,54 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/change.ts#L399
  */
 import { ComponentType, Entity } from '@lastolivegames/becsy';
-import { isNil } from '@antv/util';
+import { isString } from '@antv/util';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
 import {
   isGradient,
   randomInteger,
-  SerializedNode,
   deserializePoints,
-  SerializedNodeAttributes,
   isDataUrl,
   isUrl,
   loadImage,
   deserializeBrushPoints,
 } from '../utils';
+import { hasRasterPostEffects } from '../utils/filter';
+import { resolveExtrude3DDepth } from '../utils/extrude3d';
+import {
+  normalizeGeometry,
+  parseLight3DColor,
+  parseMesh3DBaseColor,
+  rebuildMesh3DNodeCompanionGeometry,
+  syncMesh3DNodeCompanionFromSource,
+} from '../utils/mesh3d-node';
+import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
+import { isEntityAlive } from '../systems/Transform';
+import { AnimationController, Keyframe, AnimationOptions } from '../animation';
+import {
+  resolveDesignVariableValue,
+  designVariableRefKeyFromWire,
+  resolveFillLayerItemsForEcs,
+} from '../utils/design-variables';
+import type {
+  FillAttributes,
+  GSerializedNode,
+  IconFontSerializedNode,
+  SerializedFillLayerItem,
+  Light3DNodeSerializedNode,
+  Mesh3DNodeSerializedNode,
+  SerializedNode,
+  SerializedNodeAttributes,
+  StrokeAttributes,
+} from '../types/serialized-node';
 import { API } from '../API';
 import { documentValueEqual } from '../document';
+import { refreshComputedRoughForEntity } from '../systems/ComputeRough';
 import {
   Name,
-  FillSolid,
-  FillGradient,
+  FillLayers,
+  StrokeLayers,
   Stroke,
   Visibility,
   Ellipse,
@@ -32,11 +59,10 @@ import {
   DropShadow,
   Polyline,
   Path,
+  VectorNetwork,
   ZIndex,
   Transform,
   MaterialDirty,
-  FillImage,
-  FillPattern,
   StrokeAttenuation,
   SizeAttenuation,
   TextDecoration,
@@ -49,8 +75,51 @@ import {
   Embed,
   Editable,
   Filter,
+  NodeLayerBlendMode,
   Brush,
+  Children,
+  Parent,
+  Locked,
+  ClipMode,
+  GeometryDirty,
+  Flex,
+  FlexLayoutDirty,
+  Group,
+  IconFont,
+  IconFontEllipseStrokeRasterPlaceholder,
+  Extrude3D,
+  Light3D,
+  Mesh3DNode,
+  AnimationPlayer,
 } from '../components';
+import { getDescendants } from '../systems';
+import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
+import {
+  buildIconFontScalablePrimitives,
+  mapSvgLineCap,
+  mapSvgLineJoin,
+  pathFillRuleFromIconStyle,
+  pickChildFill,
+  pickStrokeColorForChild,
+  resolveIconFontWireStyle,
+  shouldUseIconFontEllipseStrokeRasterPlaceholder,
+  strokeWidthFromIconStyle,
+  type ScaledIconPrimitive,
+} from '../utils/icon-font';
+import { insertIconFontChildFromPrimitive } from '../utils/insert-icon-font-child-entity';
+import { getComputedInheritGroupWireForId } from '../utils/inherit-group-wire';
+import { buildGroupWirePresentation } from '../utils/group-presentation';
+import { migrateLegacyFillWireInPlace } from '../utils/normalize-fill-wire';
+import {
+  migrateLegacyStrokeWireInPlace,
+  normalizeStrokeDashCap,
+} from '../utils/normalize-stroke-wire';
+import { isFillLayerEnabled } from '../utils/fillLayers';
+import { TesselationMethod } from '../components/geometry/Path';
+import {
+  measureText,
+  yOffsetFromTextBaseline,
+} from '../systems/ComputeTextMetrics';
 
 export type SceneElementsMap = Map<SerializedNode['id'], SerializedNode>;
 
@@ -66,6 +135,123 @@ export type Mutable<T> = {
 };
 
 export const getUpdatedTimestamp = () => Date.now();
+
+/** 与 serialized-node 中 FlexboxLayoutAttributes 字段一致，变更时需让 Yoga 重新计算布局（即使 ComputedBounds 未变） */
+const FLEX_LAYOUT_MUTATION_KEYS: readonly string[] = [
+  'display',
+  'padding',
+  'margin',
+  'gap',
+  'rowGap',
+  'columnGap',
+  'alignItems',
+  'alignSelf',
+  'justifyContent',
+  'flexDirection',
+  'flexWrap',
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'flex',
+  'minWidth',
+  'maxWidth',
+  'minHeight',
+  'maxHeight',
+];
+
+function flexLayoutKeysChanged(
+  updates: object,
+  skipOverrideKeys: readonly string[],
+  previous: Record<string, unknown>,
+  keys: readonly string[],
+): boolean {
+  return keys.some(
+    (k) =>
+      k in updates &&
+      !skipOverrideKeys.includes(k) &&
+      (updates as Record<string, unknown>)[k] !== previous[k],
+  );
+}
+
+/** 整表 `updateNode(node, undefined)` 时 updates 与 element 同引用，值与快照总相等，须按「键在」标脏，否则首帧/加载后不会 markFlexLayoutDirty。变量表刷新已改为窄 patch。 */
+function shouldMarkFlexContainerForLayout(
+  entity: Entity,
+  updates: object,
+  element: object,
+  skipOverrideKeys: readonly string[],
+  preFlexLayout: Record<string, unknown>,
+): boolean {
+  if (!entity.has(Flex)) {
+    return false;
+  }
+  if (Object.is(updates, element)) {
+    return FLEX_LAYOUT_MUTATION_KEYS.some(
+      (k) => k in updates && !skipOverrideKeys.includes(k),
+    );
+  }
+  return flexLayoutKeysChanged(
+    updates,
+    skipOverrideKeys,
+    preFlexLayout,
+    FLEX_LAYOUT_MUTATION_KEYS,
+  );
+}
+
+/** 子项上影响 Yoga 的布局键：实体无 Flex 组件，需标记父级 flex 容器以触发 Yoga */
+const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
+  'flexGrow',
+  'flexShrink',
+  'flexBasis',
+  'alignSelf',
+  'padding',
+  'margin',
+  'minWidth',
+  'maxWidth',
+  'minHeight',
+  'maxHeight',
+  'content',
+  'fontSize',
+  'lineHeight',
+  'fontFamily',
+  'fontWeight',
+  'fontStyle',
+  'letterSpacing',
+  'width',
+  'height',
+];
+
+/**
+ * 与 {@link shouldMarkFlexContainerForLayout} 对称：部分 patch 用 `previous` 与 `updates` 比是否真变；
+ * 整表自同步（`updates === element`）时若按 `flexLayoutKeysChanged` 且入参已先被就地改过，会漏标父级（如只改 `content` 后 `updateNode(node)`）。
+ * 此时按「键在」即可标父级 flex 重算，与容器侧对 `FLEX_LAYOUT_MUTATION_KEYS` 的处理一致。
+ */
+function updatesAffectFlexItemInParentTree(
+  updates: object,
+  element: object,
+  skipOverrideKeys: readonly string[],
+  previous: Record<string, unknown>,
+): boolean {
+  if (Object.is(updates, element)) {
+    return FLEX_ITEM_PARENT_RELAYOUT_KEYS.some(
+      (k) => k in updates && !skipOverrideKeys.includes(k),
+    );
+  }
+  return flexLayoutKeysChanged(
+    updates,
+    skipOverrideKeys,
+    previous,
+    FLEX_ITEM_PARENT_RELAYOUT_KEYS,
+  );
+}
+
+/**
+ * YogaSystem 用 `q.added.with(FlexLayoutDirty)` 驱动；`safeAddComponent` 在组件已存在时
+ * 不会再次 `add`，已脏的节点上连续改 padding 等会无法二次触发。先移除再添加以保证每帧可侦测到 added。
+ */
+function markFlexLayoutDirty(entity: Entity) {
+  safeRemoveComponent(entity, FlexLayoutDirty);
+  safeAddComponent(entity, FlexLayoutDirty);
+}
 
 export function safeAddComponent<T>(
   entity: Entity,
@@ -87,6 +273,239 @@ export function safeRemoveComponent<T>(
   if (entity.has(componentCtor)) {
     entity.remove(componentCtor);
   }
+}
+
+function syncIconFontChildGeometryToPrim(
+  child: Entity,
+  prim: ScaledIconPrimitive,
+) {
+  const sameKind =
+    (prim.kind === 'path' && child.has(Path)) ||
+    (prim.kind === 'ellipse' && child.has(Ellipse)) ||
+    (prim.kind === 'line' && child.has(Line));
+  if (sameKind) {
+    if (prim.kind === 'path') {
+      const p = child.write(Path);
+      p.d = prim.d;
+      p.fillRule = pathFillRuleFromIconStyle(prim.style);
+    } else if (prim.kind === 'ellipse') {
+      const e = child.write(Ellipse);
+      e.cx = prim.cx;
+      e.cy = prim.cy;
+      e.rx = prim.rx;
+      e.ry = prim.ry;
+    } else {
+      const ln = child.write(Line);
+      ln.x1 = prim.x1;
+      ln.y1 = prim.y1;
+      ln.x2 = prim.x2;
+      ln.y2 = prim.y2;
+    }
+    safeAddComponent(child, GeometryDirty);
+    return;
+  }
+  safeRemoveComponent(child, Path);
+  safeRemoveComponent(child, Ellipse);
+  safeRemoveComponent(child, Line);
+  if (prim.kind === 'path') {
+    safeAddComponent(child, Path, {
+      d: prim.d,
+      tessellationMethod: TesselationMethod.LIBTESS,
+      fillRule: pathFillRuleFromIconStyle(prim.style),
+    });
+  } else if (prim.kind === 'ellipse') {
+    safeAddComponent(child, Ellipse, {
+      cx: prim.cx,
+      cy: prim.cy,
+      rx: prim.rx,
+      ry: prim.ry,
+    });
+  } else {
+    safeAddComponent(child, Line, {
+      x1: prim.x1,
+      y1: prim.y1,
+      x2: prim.x2,
+      y2: prim.y2,
+    });
+  }
+  safeAddComponent(child, GeometryDirty);
+}
+
+/**
+ * `iconfont` 的矢量与颜色在子 path 实体上；根节点 width/height 等变更时需重算 primitive 并写回子几何。
+ */
+function syncIconFontChildrenFromUpdatedNode(
+  rootEntity: Entity,
+  node: IconFontSerializedNode,
+  api: API,
+) {
+  if (!rootEntity.has(Parent)) {
+    return;
+  }
+  const designVariables = api.getAppState().variables;
+  const themeMode = api.getAppState().themeMode;
+  const w = node.width ?? 0;
+  const h = node.height ?? 0;
+  const scenePatched = api.getNodes().map((n) => (n.id === node.id ? node : n));
+  const nodeInherit = {
+    ...node,
+    ...getComputedInheritGroupWireForId(node.id, scenePatched),
+  } as IconFontSerializedNode;
+  const groupPres = buildGroupWirePresentation(
+    nodeInherit,
+    designVariables,
+    themeMode,
+  );
+  const { userColorStroke, userColorFill, rSw } = resolveIconFontWireStyle(
+    nodeInherit,
+    designVariables,
+    themeMode,
+    groupPres,
+  );
+  const rName = resolveDesignVariableValue(
+    node.iconFontName ?? '',
+    designVariables,
+    themeMode,
+  );
+  const rFamily = resolveDesignVariableValue(
+    node.iconFontFamily ?? 'lucide',
+    designVariables,
+    themeMode,
+  );
+  const prims = buildIconFontScalablePrimitives(
+    String(rName ?? node.iconFontName ?? ''),
+    String(rFamily ?? node.iconFontFamily ?? 'lucide'),
+    w,
+    h,
+  );
+
+  const filterWire = (nodeInherit as { filter?: string }).filter;
+  let strokeAsPlaceholderFillForRasterFilter = false;
+  if (filterWire != null && `${filterWire}`.trim() !== '') {
+    const rv = resolveDesignVariableValue(
+      filterWire,
+      designVariables,
+      themeMode,
+    );
+    if (typeof rv === 'string' && hasRasterPostEffects(rv)) {
+      strokeAsPlaceholderFillForRasterFilter = true;
+    }
+  } else if (rootEntity.has(Filter)) {
+    const v = rootEntity.read(Filter).value;
+    if (hasRasterPostEffects(v)) {
+      strokeAsPlaceholderFillForRasterFilter = true;
+    }
+  }
+
+  const hideIconFontChild = (child: Entity) => {
+    safeAddComponent(child, Visibility, { value: 'hidden' });
+    safeAddComponent(child, MaterialDirty);
+  };
+
+  if (!prims || prims.length === 0) {
+    const pathChildren = rootEntity.read(Parent).children;
+    for (let ci = 0; ci < pathChildren.length; ci++) {
+      hideIconFontChild(pathChildren[ci]!);
+    }
+    if (rootEntity.has(IconFont) && w > 0 && h > 0) {
+      const iw = rootEntity.write(IconFont);
+      iw.layoutWidth = w;
+      iw.layoutHeight = h;
+    }
+    safeAddComponent(rootEntity, Group, groupPres);
+    safeRemoveComponent(rootEntity, Stroke);
+    safeAddComponent(rootEntity, MaterialDirty);
+    return;
+  }
+
+  const zForChild = node.zIndex != null ? node.zIndex : 0;
+  const childVisibility =
+    (node.visibility as 'inherited' | 'hidden' | 'visible' | undefined) ??
+    'inherited';
+
+  for (let i = 0; i < prims.length; i++) {
+    const prim = prims[i]!;
+    let child: Entity;
+    const childrenNow = rootEntity.read(Parent).children;
+    if (i < childrenNow.length) {
+      child = childrenNow[i]!;
+      safeAddComponent(child, Visibility, { value: 'inherited' });
+      syncIconFontChildGeometryToPrim(child, prim);
+    } else {
+      const ch = api.getCommands().spawn();
+      insertIconFontChildFromPrimitive(ch, prim, {
+        userColorStroke,
+        userColorFill,
+        rSw,
+        zIndex: zForChild,
+        visibility: childVisibility,
+        name: `${node.id}__i${i}`,
+        strokeAsPlaceholderFillForRasterFilter,
+      });
+      api.getCommands().entity(rootEntity).appendChild(ch);
+      api.getCommands().execute();
+      child = ch.id();
+    }
+
+    const iconStrokeColor = pickStrokeColorForChild(
+      prim.style,
+      userColorStroke,
+      userColorFill,
+    );
+    safeAddComponent(child, Stroke, {
+      width: strokeWidthFromIconStyle(prim.style, rSw, {
+        primKind: prim.kind,
+      }),
+      linecap: mapSvgLineCap(prim.style.strokeLinecap),
+      linejoin: mapSvgLineJoin(prim.style.strokeLinejoin),
+    });
+    if (iconStrokeColor && iconStrokeColor !== 'none') {
+      safeAddComponent(child, StrokeLayers, {
+        layers: [{ type: 'solid', value: iconStrokeColor }],
+      });
+    }
+
+    const fillPart = pickChildFill(
+      prim.style,
+      userColorFill,
+      userColorStroke,
+      prim.kind,
+      strokeAsPlaceholderFillForRasterFilter,
+    );
+
+    if (fillPart && fillPart !== 'none') {
+      safeAddComponent(child, FillLayers, {
+        layers: [{ type: 'solid', value: fillPart }],
+      });
+      if (
+        shouldUseIconFontEllipseStrokeRasterPlaceholder(
+          prim,
+          strokeAsPlaceholderFillForRasterFilter,
+          fillPart,
+        )
+      ) {
+        safeAddComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+      } else {
+        safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+      }
+    } else {
+      safeRemoveComponent(child, FillLayers);
+      safeRemoveComponent(child, IconFontEllipseStrokeRasterPlaceholder);
+    }
+    safeAddComponent(child, MaterialDirty);
+  }
+  const childrenAfterSync = rootEntity.read(Parent).children;
+  for (let i = prims.length; i < childrenAfterSync.length; i++) {
+    hideIconFontChild(childrenAfterSync[i]!);
+  }
+  if (rootEntity.has(IconFont) && w > 0 && h > 0) {
+    const iw = rootEntity.write(IconFont);
+    iw.layoutWidth = w;
+    iw.layoutHeight = h;
+  }
+  safeAddComponent(rootEntity, Group, groupPres);
+  safeRemoveComponent(rootEntity, Stroke);
+  safeAddComponent(rootEntity, MaterialDirty);
 }
 
 export class ElementsChange implements Change<SceneElementsMap> {
@@ -331,18 +750,6 @@ export class ElementsChange implements Change<SceneElementsMap> {
     //   });
     // }
 
-    // if (isImageElement(element)) {
-    //   const _delta = delta as Delta<ElementPartial<ExcalidrawImageElement>>;
-    //   // we want to override `crop` only if modified so that we don't reset
-    //   // when undoing/redoing unrelated change
-    //   if (_delta.deleted.crop || _delta.inserted.crop) {
-    //     Object.assign(directlyApplicablePartial, {
-    //       // apply change verbatim
-    //       crop: _delta.inserted.crop ?? null,
-    //     });
-    //   }
-    // }
-
     if (!flags.containsVisibleDifference) {
       // strip away fractional as even if it would be different, it doesn't have to result in visible change
       const { fractionalIndex, ...rest } = directlyApplicablePartial;
@@ -536,6 +943,115 @@ export class ElementsChange implements Change<SceneElementsMap> {
   }
 }
 
+/**
+ * 将 wire `fills` 同步到 ECS（与反序列化一致）。
+ */
+function applyFillsWireMutation(
+  entity: Entity,
+  elAttrs: FillAttributes,
+  designVariables: Parameters<typeof resolveDesignVariableValue>[1],
+  themeMode: Parameters<typeof resolveDesignVariableValue>[2],
+): boolean {
+  const wireArr = elAttrs.fills;
+  if (!Array.isArray(wireArr)) {
+    safeRemoveComponent(entity, FillLayers);
+    safeAddComponent(entity, MaterialDirty);
+    return false;
+  }
+
+  if (wireArr.length === 0) {
+    safeRemoveComponent(entity, FillLayers);
+    safeAddComponent(entity, MaterialDirty);
+    return true;
+  }
+
+  if (!entity.has(FillLayers)) {
+    safeAddComponent(entity, FillLayers);
+  }
+  entity.write(FillLayers).layers = resolveFillLayerItemsForEcs(
+    wireArr as SerializedFillLayerItem[],
+    designVariables,
+    themeMode,
+  );
+  safeAddComponent(entity, MaterialDirty);
+  return true;
+}
+
+/**
+ * 将 wire `strokes` 同步到 ECS（与反序列化一致）。
+ */
+function applyStrokesWireMutation(
+  entity: Entity,
+  elAttrs: StrokeAttributes,
+  designVariables: Parameters<typeof resolveDesignVariableValue>[1],
+  themeMode: Parameters<typeof resolveDesignVariableValue>[2],
+): boolean {
+  const wireArr = elAttrs.strokes;
+  if (!Array.isArray(wireArr)) {
+    safeRemoveComponent(entity, StrokeLayers);
+    safeAddComponent(entity, MaterialDirty);
+    return false;
+  }
+
+  if (wireArr.length === 0) {
+    safeRemoveComponent(entity, StrokeLayers);
+    safeRemoveComponent(entity, Stroke);
+    safeAddComponent(entity, MaterialDirty);
+    return true;
+  }
+
+  const resolved = resolveFillLayerItemsForEcs(
+    wireArr as SerializedFillLayerItem[],
+    designVariables,
+    themeMode,
+  );
+  if (!entity.has(StrokeLayers)) {
+    safeAddComponent(entity, StrokeLayers);
+  }
+  entity.write(StrokeLayers).layers = resolved;
+
+  const priorStroke = entity.has(Stroke) ? entity.read(Stroke) : undefined;
+  const dashcap =
+    normalizeStrokeDashCap(elAttrs.strokeDashCap) ??
+    priorStroke?.dashcap ??
+    'none';
+
+  const firstWire = wireArr.find(isFillLayerEnabled);
+  const firstRes = resolved.find(isFillLayerEnabled);
+  const paint =
+    firstRes != null && typeof firstRes.value === 'string'
+      ? firstRes.value
+      : undefined;
+  const strokeRef = designVariableRefKeyFromWire(
+    firstWire != null && typeof firstWire.value === 'string'
+      ? firstWire.value
+      : undefined,
+  );
+  if (entity.has(Stroke)) {
+    const s = entity.read(Stroke);
+    safeAddComponent(entity, Stroke, {
+      colorVariableRef: paint != null && paint.trim() !== '' ? strokeRef : '',
+      width: s.width,
+      linecap: s.linecap,
+      linejoin: s.linejoin,
+      miterlimit: s.miterlimit,
+      dasharray: s.dasharray,
+      dashoffset: s.dashoffset,
+      dashcap,
+      alignment: s.alignment,
+      widthVariableRef: s.widthVariableRef,
+    });
+  } else if (paint != null && paint.trim() !== '') {
+    safeAddComponent(entity, Stroke, {
+      colorVariableRef: strokeRef,
+      dashcap,
+    });
+  }
+
+  safeAddComponent(entity, MaterialDirty);
+  return true;
+}
+
 // This function tracks updates of text elements for the purposes for collaboration.
 // The version is used to compare updates when more than one user is working in
 // the same drawing. Note: this will trigger the component to update. Make sure you
@@ -544,33 +1060,62 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   entity: Entity,
   element: TElement,
   updates: ElementUpdate<TElement>,
+  skipOverrideKeys: string[] = [],
+  api: API,
 ): TElement => {
   let didChange = false;
 
+  const el = element as Record<string, unknown>;
+  const preFlexLayout: Record<string, unknown> = {};
+  for (const k of FLEX_LAYOUT_MUTATION_KEYS) {
+    if (k in updates && !skipOverrideKeys.includes(k)) {
+      preFlexLayout[k] = el[k];
+    }
+  }
+  const preFlexItemParent: Record<string, unknown> = {};
+  for (const k of FLEX_ITEM_PARENT_RELAYOUT_KEYS) {
+    if (k in updates && !skipOverrideKeys.includes(k)) {
+      preFlexItemParent[k] = el[k];
+    }
+  }
+
   for (const key in updates) {
     const value = (updates as any)[key];
-    if (typeof value !== 'undefined') {
+    // if (typeof value !== 'undefined') {
+    if (!skipOverrideKeys.includes(key)) {
       (element as any)[key] = value;
-      didChange = true;
     }
+    didChange = true;
+    // }
   }
 
   if (!didChange) {
     return element;
   }
 
+  migrateLegacyFillWireInPlace(element as unknown as Record<string, unknown>);
+  migrateLegacyStrokeWireInPlace(element as unknown as Record<string, unknown>);
+
+  const designVariables = api.getAppState().variables;
+  const themeMode = api.getAppState().themeMode;
+  const elNode = element as SerializedNode;
+  const scenePatched = api
+    .getNodes()
+    .map((n) => (n.id === elNode.id ? elNode : n));
+  const withInheritPaint = {
+    ...elNode,
+    ...getComputedInheritGroupWireForId(elNode.id, scenePatched),
+  };
+
   const { name, visibility } = updates;
   const {
+    parentId,
     zIndex,
-    fill,
-    stroke,
     strokeWidth,
     strokeLinecap,
     strokeLinejoin,
     strokeAlignment,
     opacity,
-    fillOpacity,
-    strokeOpacity,
     innerShadowColor,
     innerShadowBlurRadius,
     innerShadowOffsetX,
@@ -584,13 +1129,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     y,
     width,
     height,
+    cornerRadius,
     rotation,
     scaleX,
     scaleY,
     points,
     d,
+    anchorX,
+    anchorY,
     fontWeight,
     fontStyle,
+    fontKerning,
+    letterSpacing,
+    lineHeight,
     textAlign,
     textBaseline,
     content,
@@ -628,313 +1179,939 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     lockAspectRatio,
     editable,
     isEditing,
+    locked,
     filter,
+    brushStamp,
+    clipMode,
   } = updates as unknown as SerializedNodeAttributes;
 
-  if (!isNil(name)) {
+  /** 矢量/颜色在子 path 上；若对根写 Fill/Stroke 会与 `syncIconFontChildren` 子实体冲突或渲染异常。 */
+  const t = (element as SerializedNode).type;
+  const isIconFontWireNode = t === 'iconfont' || (t as string) === 'icon_font';
+
+  if ('parentId' in updates) {
+    if (parentId) {
+      const parentNode = api.getNodeById(parentId);
+      if (parentNode) {
+        const newParentEntity = api.getEntity(parentNode);
+        safeAddComponent(entity, Children);
+        // const oldParentEntity = entity.read(Children).parent;
+        safeAddComponent(newParentEntity, Parent);
+        entity.write(Children).parent = newParentEntity;
+      }
+    } else {
+      // Remove the entity from the parent's children
+      safeAddComponent(entity, Children);
+      entity.write(Children).parent = api.getCamera();
+    }
+  }
+
+  if ('name' in updates) {
     entity.write(Name).value = name;
   }
-  if (!isNil(lockAspectRatio)) {
+  if ('lockAspectRatio' in updates) {
     if (lockAspectRatio) {
       safeAddComponent(entity, LockAspectRatio);
     } else {
       safeRemoveComponent(entity, LockAspectRatio);
     }
   }
-  if (!isNil(zIndex)) {
-    entity.write(ZIndex).value = zIndex;
+  if ('zIndex' in updates) {
+    entity.write(ZIndex).value = zIndex ?? 0;
   }
-  if (!isNil(visibility)) {
+  if ('visibility' in updates) {
     entity.write(Visibility).value = visibility;
   }
-  if (!isNil(fill)) {
-    if (isGradient(fill)) {
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillImage);
-      safeRemoveComponent(entity, FillPattern);
 
-      safeAddComponent(entity, MaterialDirty);
-      safeAddComponent(entity, FillGradient, { value: fill });
-    } else if (isDataUrl(fill) || isUrl(fill)) {
-      safeRemoveComponent(entity, FillSolid);
-      safeRemoveComponent(entity, FillGradient);
-      safeRemoveComponent(entity, FillPattern);
-
-      safeAddComponent(entity, MaterialDirty);
-      loadImage(fill, entity);
-    } else {
-      if (entity.has(FillGradient)) {
-        safeAddComponent(entity, MaterialDirty);
-      }
-
-      safeRemoveComponent(entity, FillGradient);
-      safeAddComponent(entity, FillSolid, { value: fill });
+  if (
+    ('fills' in updates || 'fill' in updates || 'fillLayers' in updates) &&
+    !isIconFontWireNode
+  ) {
+    applyFillsWireMutation(
+      entity,
+      element as FillAttributes,
+      designVariables,
+      themeMode,
+    );
+    if (entity.has(Rough)) {
+      refreshComputedRoughForEntity(entity);
+      safeAddComponent(entity, GeometryDirty);
     }
   }
-  if (!isNil(stroke)) {
-    safeAddComponent(entity, Stroke, { color: stroke });
+  if ('brushStamp' in updates) {
+    if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
+      loadImage(brushStamp, entity);
+    }
   }
-  if (!isNil(strokeWidth)) {
-    safeAddComponent(entity, Stroke, { width: strokeWidth });
+  if ('clipMode' in updates) {
+    safeAddComponent(entity, ClipMode, { value: clipMode });
+    safeAddComponent(entity, MaterialDirty);
+    // Should mark children cascade as dirty
+    getDescendants(entity).forEach((child) => {
+      safeAddComponent(child, MaterialDirty);
+    });
   }
-  if (!isNil(strokeLinecap)) {
+  if (
+    ('strokes' in updates ||
+      'stroke' in updates ||
+      'strokeOpacity' in updates) &&
+    !isIconFontWireNode
+  ) {
+    applyStrokesWireMutation(
+      entity,
+      element as StrokeAttributes,
+      designVariables,
+      themeMode,
+    );
+    if (entity.has(Rough)) {
+      refreshComputedRoughForEntity(entity);
+      safeAddComponent(entity, GeometryDirty);
+    }
+  }
+  if ('strokeWidth' in updates && !isIconFontWireNode) {
+    const w = resolveDesignVariableValue(
+      strokeWidth,
+      designVariables,
+      themeMode,
+    );
+    safeAddComponent(entity, Stroke, {
+      ...(w !== undefined && w !== null
+        ? { width: typeof w === 'number' ? w : Number(w) }
+        : {}),
+      widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
+    });
+  }
+  if ('strokeLinecap' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { linecap: strokeLinecap });
   }
-  if (!isNil(strokeLinejoin)) {
+  if ('strokeLinejoin' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { linejoin: strokeLinejoin });
   }
-  if (!isNil(strokeAlignment)) {
+  if ('strokeAlignment' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
   }
-  if (!isNil(opacity)) {
+  if ('strokeDasharray' in updates && !isIconFontWireNode) {
+    const sd = (element as StrokeAttributes).strokeDasharray;
+    const pair: [number, number] =
+      sd === 'none' || sd === undefined
+        ? [0, 0]
+        : (() => {
+            const parts = sd.includes(',')
+              ? sd.split(',')
+              : sd.trim().split(/\s+/).filter(Boolean);
+            const a = Number(parts[0]);
+            const b = Number(parts[1] ?? parts[0]);
+            return [Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0] as [
+              number,
+              number,
+            ];
+          })();
+    safeAddComponent(entity, Stroke, { dasharray: pair });
+  }
+  if ('strokeDashoffset' in updates && !isIconFontWireNode) {
+    const raw = (element as StrokeAttributes).strokeDashoffset;
+    const n = typeof raw === 'number' ? raw : parseFloat(String(raw ?? '0'));
+    safeAddComponent(entity, Stroke, {
+      dashoffset: Number.isFinite(n) ? n : 0,
+    });
+  }
+  if ('strokeDashCap' in updates && !isIconFontWireNode) {
+    const raw = (element as StrokeAttributes).strokeDashCap;
+    safeAddComponent(entity, Stroke, {
+      dashcap: normalizeStrokeDashCap(raw) ?? 'none',
+    });
+  }
+  if ('opacity' in updates) {
     safeAddComponent(entity, Opacity, { opacity });
   }
-  if (!isNil(fillOpacity)) {
-    safeAddComponent(entity, Opacity, { fillOpacity });
+  if ('animation' in updates) {
+    const animation = (updates as Record<string, unknown>).animation as
+      | { keyframes: unknown[]; options: unknown }
+      | null
+      | undefined;
+    if (
+      animation &&
+      Array.isArray(animation.keyframes) &&
+      animation.keyframes.length > 0
+    ) {
+      const controller = new AnimationController(
+        animation.keyframes as Keyframe[],
+        animation.options as AnimationOptions,
+      );
+      if (!entity.has(AnimationPlayer)) {
+        entity.add(AnimationPlayer);
+      }
+      entity.write(AnimationPlayer).controller = controller;
+    } else {
+      safeRemoveComponent(entity, AnimationPlayer);
+    }
   }
-  if (!isNil(strokeOpacity)) {
-    safeAddComponent(entity, Opacity, { strokeOpacity });
+  if ('dropShadowColor' in updates) {
+    safeAddComponent(entity, DropShadow, {
+      color: resolveDesignVariableValue(
+        dropShadowColor,
+        designVariables,
+        themeMode,
+      ),
+    });
   }
-  if (!isNil(dropShadowColor)) {
-    safeAddComponent(entity, DropShadow, { color: dropShadowColor });
-  }
-  if (!isNil(dropShadowBlurRadius)) {
+  if ('dropShadowBlurRadius' in updates) {
     safeAddComponent(entity, DropShadow, { blurRadius: dropShadowBlurRadius });
   }
-  if (!isNil(dropShadowOffsetX)) {
+  if ('dropShadowOffsetX' in updates) {
     safeAddComponent(entity, DropShadow, { offsetX: dropShadowOffsetX });
   }
-  if (!isNil(dropShadowOffsetY)) {
+  if ('dropShadowOffsetY' in updates) {
     safeAddComponent(entity, DropShadow, { offsetY: dropShadowOffsetY });
   }
-  if (!isNil(innerShadowColor)) {
-    safeAddComponent(entity, InnerShadow, { color: innerShadowColor });
+  if ('innerShadowColor' in updates) {
+    safeAddComponent(entity, InnerShadow, {
+      color: resolveDesignVariableValue(
+        innerShadowColor,
+        designVariables,
+        themeMode,
+      ),
+    });
   }
-  if (!isNil(innerShadowBlurRadius)) {
+  if ('innerShadowBlurRadius' in updates) {
     safeAddComponent(entity, InnerShadow, {
       blurRadius: innerShadowBlurRadius,
     });
   }
-  if (!isNil(innerShadowOffsetX)) {
+  if ('innerShadowOffsetX' in updates) {
     safeAddComponent(entity, InnerShadow, { offsetX: innerShadowOffsetX });
   }
-  if (!isNil(innerShadowOffsetY)) {
+  if ('innerShadowOffsetY' in updates) {
     safeAddComponent(entity, InnerShadow, { offsetY: innerShadowOffsetY });
   }
-  if (!isNil(sizeAttenuation)) {
+  if ('sizeAttenuation' in updates) {
     if (sizeAttenuation) {
       safeAddComponent(entity, SizeAttenuation);
     } else {
       safeRemoveComponent(entity, SizeAttenuation);
     }
   }
-  if (!isNil(strokeAttenuation)) {
+  if ('strokeAttenuation' in updates) {
     if (strokeAttenuation) {
       safeAddComponent(entity, StrokeAttenuation);
     } else {
       safeRemoveComponent(entity, StrokeAttenuation);
     }
   }
-  if (!isNil(decorationColor)) {
-    safeAddComponent(entity, TextDecoration, { color: decorationColor });
+  if ('decorationColor' in updates) {
+    safeAddComponent(entity, TextDecoration, {
+      color: resolveDesignVariableValue(
+        decorationColor,
+        designVariables,
+        themeMode,
+      ),
+    });
   }
-  if (!isNil(decorationLine)) {
+  if ('decorationLine' in updates) {
     safeAddComponent(entity, TextDecoration, { line: decorationLine });
   }
-  if (!isNil(decorationStyle)) {
+  if ('decorationStyle' in updates) {
     safeAddComponent(entity, TextDecoration, { style: decorationStyle });
   }
-  if (!isNil(decorationThickness)) {
+  if ('decorationThickness' in updates) {
     safeAddComponent(entity, TextDecoration, {
       thickness: decorationThickness,
     });
   }
-  if (!isNil(roughRoughness)) {
+  if ('roughRoughness' in updates) {
     safeAddComponent(entity, Rough, { roughness: roughRoughness });
   }
-  if (!isNil(roughBowing)) {
+  if ('roughBowing' in updates) {
     safeAddComponent(entity, Rough, { bowing: roughBowing });
   }
-  if (!isNil(roughFillStyle)) {
+  if ('roughFillStyle' in updates) {
     safeAddComponent(entity, Rough, { fillStyle: roughFillStyle });
+    safeAddComponent(entity, MaterialDirty);
   }
-  if (!isNil(roughFillWeight)) {
+  if ('roughFillWeight' in updates) {
     safeAddComponent(entity, Rough, { fillWeight: roughFillWeight });
   }
-  if (!isNil(roughHachureAngle)) {
+  if ('roughHachureAngle' in updates) {
     safeAddComponent(entity, Rough, { hachureAngle: roughHachureAngle });
   }
-  if (!isNil(roughHachureGap)) {
+  if ('roughHachureGap' in updates) {
     safeAddComponent(entity, Rough, { hachureGap: roughHachureGap });
   }
-  if (!isNil(roughCurveStepCount)) {
+  if ('roughCurveStepCount' in updates) {
     safeAddComponent(entity, Rough, { curveStepCount: roughCurveStepCount });
   }
-  if (!isNil(roughCurveFitting)) {
+  if ('roughCurveFitting' in updates) {
     safeAddComponent(entity, Rough, { curveFitting: roughCurveFitting });
   }
-  if (!isNil(roughDisableMultiStroke)) {
+  if ('roughDisableMultiStroke' in updates) {
     safeAddComponent(entity, Rough, {
       disableMultiStroke: roughDisableMultiStroke,
     });
   }
-  if (!isNil(roughDisableMultiStrokeFill)) {
+  if ('roughDisableMultiStrokeFill' in updates) {
     safeAddComponent(entity, Rough, {
       disableMultiStrokeFill: roughDisableMultiStrokeFill,
     });
   }
-  if (!isNil(roughSimplification)) {
+  if ('roughSimplification' in updates) {
     safeAddComponent(entity, Rough, { simplification: roughSimplification });
   }
-  if (!isNil(roughDashOffset)) {
+  if ('roughDashOffset' in updates) {
     safeAddComponent(entity, Rough, { dashOffset: roughDashOffset });
   }
-  if (!isNil(roughDashGap)) {
+  if ('roughDashGap' in updates) {
     safeAddComponent(entity, Rough, { dashGap: roughDashGap });
   }
-  if (!isNil(roughZigzagOffset)) {
+  if ('roughZigzagOffset' in updates) {
     safeAddComponent(entity, Rough, { zigzagOffset: roughZigzagOffset });
   }
-  if (!isNil(roughPreserveVertices)) {
+  if ('roughPreserveVertices' in updates) {
     safeAddComponent(entity, Rough, {
       preserveVertices: roughPreserveVertices,
     });
   }
-  if (!isNil(roughFillLineDash)) {
+  if ('roughFillLineDash' in updates) {
     safeAddComponent(entity, Rough, { fillLineDash: roughFillLineDash });
   }
-  if (!isNil(roughFillLineDashOffset)) {
+  if ('roughFillLineDashOffset' in updates) {
     safeAddComponent(entity, Rough, {
       fillLineDashOffset: roughFillLineDashOffset,
     });
   }
-  if (!isNil(roughSeed)) {
+  if ('roughSeed' in updates) {
     safeAddComponent(entity, Rough, { seed: roughSeed });
   }
 
-  if (!isNil(markerStart)) {
+  if ('markerStart' in updates) {
     safeAddComponent(entity, Marker, { start: markerStart });
   }
-  if (!isNil(markerEnd)) {
+  if ('markerEnd' in updates) {
     safeAddComponent(entity, Marker, { end: markerEnd });
   }
-  if (!isNil(markerFactor)) {
+  if ('markerFactor' in updates) {
     safeAddComponent(entity, Marker, { factor: markerFactor });
   }
 
-  if (!isNil(fontSize)) {
-    entity.write(Text).fontSize = fontSize;
+  if ('anchorX' in updates) {
+    entity.write(Text).anchorX = anchorX;
   }
-  if (!isNil(fontWeight)) {
+  if ('anchorY' in updates) {
+    entity.write(Text).anchorY = anchorY;
+  }
+  if ('fontSize' in updates) {
+    const fs = resolveDesignVariableValue(fontSize, designVariables, themeMode);
+    entity.write(Text).fontSize = typeof fs === 'number' ? fs : Number(fs);
+    entity.write(Text).fontSizeVariableRef =
+      designVariableRefKeyFromWire(fontSize);
+  }
+  if ('wordWrapWidth' in updates) {
+    const w = (updates as { wordWrapWidth?: number }).wordWrapWidth;
+    if (w !== undefined) {
+      entity.write(Text).wordWrapWidth = w;
+    }
+  }
+  if ('fontFamily' in updates) {
+    const raw = (updates as { fontFamily?: string }).fontFamily;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
+    const s =
+      resolved != null && String(resolved).trim() !== ''
+        ? String(resolved)
+        : 'sans-serif';
+    entity.write(Text).fontFamily = s;
+  }
+  if ('fontWeight' in updates) {
     entity.write(Text).fontWeight = fontWeight;
   }
-  if (!isNil(fontStyle)) {
+  if ('fontStyle' in updates) {
     entity.write(Text).fontStyle = fontStyle;
   }
-  if (!isNil(textAlign)) {
+  if ('fontVariant' in updates) {
+    const raw = (updates as { fontVariant?: string }).fontVariant;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
+    if (resolved != null) {
+      entity.write(Text).fontVariant = String(resolved);
+    }
+  }
+  if ('fontKerning' in updates) {
+    entity.write(Text).fontKerning = fontKerning;
+  }
+  if ('letterSpacing' in updates) {
+    const raw = (updates as { letterSpacing?: number | string }).letterSpacing;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      entity.write(Text).letterSpacing = n;
+    }
+  }
+  if ('lineHeight' in updates) {
+    const raw = (updates as { lineHeight?: number | string }).lineHeight;
+    const resolved = resolveDesignVariableValue(
+      raw,
+      designVariables,
+      themeMode,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n) && n >= 0) {
+      entity.write(Text).lineHeight = n;
+    }
+  }
+  if (
+    ('textAlign' in updates || 'textBaseline' in updates) &&
+    !('anchorX' in updates) &&
+    !('anchorY' in updates) &&
+    entity.has(Text)
+  ) {
+    const textComp = entity.read(Text);
+    const oldTextAlign = textComp.textAlign;
+    const oldTextBaseline = textComp.textBaseline;
+    const newTextAlign = 'textAlign' in updates ? textAlign : oldTextAlign;
+    const newTextBaseline =
+      'textBaseline' in updates ? textBaseline : oldTextBaseline;
+
+    const metrics = measureText(textComp);
+    const { width = 0, fontMetrics } = metrics;
+
+    if (fontMetrics) {
+      const hwidth = width / 2;
+      let oldAnchorX = textComp.anchorX;
+      let oldAnchorY = textComp.anchorY;
+
+      const xOffsetFromTextAlign = (align: CanvasTextAlign) => {
+        if (align === 'center') {
+          return -hwidth;
+        }
+        if (align === 'right' || align === 'end') {
+          return -hwidth * 2;
+        }
+        return 0;
+      };
+
+      const oldXOffset = xOffsetFromTextAlign(oldTextAlign);
+      const newXOffset = xOffsetFromTextAlign(newTextAlign);
+
+      // Adjust anchorX/Y to compensate for the offset change
+      const newAnchorX = oldAnchorX + oldXOffset - newXOffset;
+      let newAnchorY = oldAnchorY;
+      if (oldTextBaseline !== newTextBaseline) {
+        const lineHeightValue =
+          textComp.lineHeight || (textComp.fontSize as number);
+        const lineHeightAdjust = (lineHeightValue - fontMetrics.fontSize) / 2;
+        const oldYOffset =
+          yOffsetFromTextBaseline(oldTextBaseline, fontMetrics) -
+          lineHeightAdjust;
+        const newYOffset =
+          yOffsetFromTextBaseline(newTextBaseline, fontMetrics) -
+          lineHeightAdjust;
+        newAnchorY = oldAnchorY + oldYOffset - newYOffset;
+      }
+      entity.write(Text).anchorX = newAnchorX;
+      entity.write(Text).anchorY = newAnchorY;
+      // Keep the serialized element in sync
+      (element as any).anchorX = newAnchorX;
+      (element as any).anchorY = newAnchorY;
+    }
+  }
+  if ('textAlign' in updates) {
     entity.write(Text).textAlign = textAlign;
   }
-  if (!isNil(textBaseline)) {
+  if ('textBaseline' in updates) {
     entity.write(Text).textBaseline = textBaseline;
   }
-  if (!isNil(content)) {
+  if ('content' in updates) {
     entity.write(Text).content = content;
   }
-  // TODO: Other text properties e.g. fontFamily
 
-  if (!isNil(x)) {
-    entity.write(Transform).translation.x = x;
-  }
-  if (!isNil(y)) {
-    entity.write(Transform).translation.y = y;
-  }
-  if (!isNil(rotation)) {
-    entity.write(Transform).rotation = rotation;
-  }
-  if (!isNil(scaleX)) {
-    entity.write(Transform).scale.x = scaleX;
-  }
-  if (!isNil(scaleY)) {
-    entity.write(Transform).scale.y = scaleY;
-  }
-  if (!isNil(width)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).width = width;
-    } else if (entity.has(Ellipse)) {
-      Object.assign(entity.write(Ellipse), {
-        rx: width / 2,
-        cx: width / 2,
-      });
-    } else if (entity.has(HTML)) {
-      entity.write(HTML).width = width;
-    } else if (entity.has(Embed)) {
-      entity.write(Embed).width = width;
+  if ('x' in updates) {
+    if (x !== undefined && !isString(x)) {
+      entity.write(Transform).translation.x = x;
     }
   }
-  if (!isNil(height)) {
-    if (entity.has(Rect)) {
-      entity.write(Rect).height = height;
-    } else if (entity.has(Ellipse)) {
-      Object.assign(entity.write(Ellipse), {
-        ry: height / 2,
-        cy: height / 2,
-      });
-    } else if (entity.has(HTML)) {
-      entity.write(HTML).height = height;
-    } else if (entity.has(Embed)) {
-      entity.write(Embed).height = height;
+  if ('y' in updates) {
+    if (y !== undefined && !isString(y)) {
+      entity.write(Transform).translation.y = y;
     }
   }
-  if (!isNil(points)) {
+  if ('rotation' in updates) {
+    if (rotation !== undefined) {
+      entity.write(Transform).rotation = rotation;
+    }
+  }
+  if ('scaleX' in updates) {
+    if (scaleX !== undefined) {
+      entity.write(Transform).scale.x = scaleX;
+    }
+  }
+  if ('scaleY' in updates) {
+    if (scaleY !== undefined) {
+      entity.write(Transform).scale.y = scaleY;
+    }
+  }
+  if ('width' in updates) {
+    if (width !== undefined && !isString(width)) {
+      if (entity.has(Rect)) {
+        entity.write(Rect).width = width;
+      } else if (entity.has(Ellipse)) {
+        Object.assign(entity.write(Ellipse), {
+          rx: width / 2,
+          cx: width / 2,
+        });
+      } else if (entity.has(HTML)) {
+        entity.write(HTML).width = width;
+      } else if (entity.has(Embed)) {
+        entity.write(Embed).width = width;
+      }
+    }
+  }
+  if ('height' in updates) {
+    if (height !== undefined && !isString(height)) {
+      if (entity.has(Rect)) {
+        entity.write(Rect).height = height;
+      } else if (entity.has(Ellipse)) {
+        Object.assign(entity.write(Ellipse), {
+          ry: height / 2,
+          cy: height / 2,
+        });
+      } else if (entity.has(HTML)) {
+        entity.write(HTML).height = height;
+      } else if (entity.has(Embed)) {
+        entity.write(Embed).height = height;
+      }
+    }
+  }
+  /** 椭圆/矩形尺寸变化需重建几何；虚线描边走 SmoothPolyline，依赖 GeometryDirty。 */
+  if (
+    ('width' in updates || 'height' in updates) &&
+    (entity.has(Ellipse) || entity.has(Rect))
+  ) {
+    safeAddComponent(entity, GeometryDirty);
+    safeAddComponent(entity, MaterialDirty);
+  }
+  if (('width' in updates || 'height' in updates) && entity.has(Filter)) {
+    api.runAtNextTick(() => {
+      safeAddComponent(entity, MaterialDirty);
+    });
+  }
+  if (
+    'cornerRadius' in updates &&
+    cornerRadius !== undefined &&
+    entity.has(Rect)
+  ) {
+    const resolved = resolveDesignVariableValue(
+      cornerRadius,
+      designVariables,
+      themeMode,
+    );
+    const n =
+      typeof resolved === 'number'
+        ? resolved
+        : parseFloat(String(resolved ?? ''));
+    if (Number.isFinite(n)) {
+      entity.write(Rect).cornerRadius = Math.max(0, n);
+      safeAddComponent(entity, GeometryDirty);
+      safeAddComponent(entity, MaterialDirty);
+    }
+  }
+  if ('points' in updates) {
     if (entity.has(Polyline)) {
       entity.write(Polyline).points = deserializePoints(points);
     } else if (entity.has(Brush)) {
       entity.write(Brush).points = deserializeBrushPoints(points);
     }
   }
-  if (!isNil(d)) {
+  if ('d' in updates) {
     if (entity.has(Path)) {
       entity.write(Path).d = d;
     }
   }
-  if (!isNil(x1)) {
+  if ('vertices' in updates || 'segments' in updates || 'regions' in updates) {
+    if (entity.has(VectorNetwork)) {
+      const vn = entity.write(VectorNetwork);
+      const vnNode = element as unknown as {
+        vertices?: VectorNetwork['vertices'];
+        segments?: VectorNetwork['segments'];
+        regions?: VectorNetwork['regions'];
+      };
+      if ('vertices' in updates && vnNode.vertices) {
+        vn.vertices = vnNode.vertices;
+      }
+      if ('segments' in updates && vnNode.segments) {
+        vn.segments = vnNode.segments;
+      }
+      if ('regions' in updates) {
+        vn.regions = vnNode.regions;
+      }
+      safeAddComponent(entity, GeometryDirty);
+      safeAddComponent(entity, MaterialDirty);
+    }
+  }
+  if ('x1' in updates) {
     entity.write(Line).x1 = x1;
   }
-  if (!isNil(y1)) {
+  if ('y1' in updates) {
     entity.write(Line).y1 = y1;
   }
-  if (!isNil(x2)) {
+  if ('x2' in updates) {
     entity.write(Line).x2 = x2;
   }
-  if (!isNil(y2)) {
+  if ('y2' in updates) {
     entity.write(Line).y2 = y2;
   }
+  if (
+    'x1' in updates ||
+    'y1' in updates ||
+    'x2' in updates ||
+    'y2' in updates
+  ) {
+    if (entity.has(Line)) {
+      safeAddComponent(entity, GeometryDirty);
+      if (entity.has(Rough)) {
+        refreshComputedRoughForEntity(entity);
+      }
+    }
+  }
 
-  if (!isNil(editable)) {
+  if ('hitStrokeWidth' in updates) {
+    const v = (updates as { hitStrokeWidth?: number }).hitStrokeWidth;
+    const next = v != null && Number.isFinite(v) && v >= 0 ? v : -1;
+    if (entity.has(Line)) {
+      entity.write(Line).hitStrokeWidth = next;
+    } else if (entity.has(Polyline)) {
+      entity.write(Polyline).hitStrokeWidth = next;
+    } else if (entity.has(Path)) {
+      entity.write(Path).hitStrokeWidth = next;
+    }
+  }
+
+  if ('editable' in updates) {
     if (editable) {
       safeAddComponent(entity, Editable);
     } else {
       safeRemoveComponent(entity, Editable);
     }
   }
-  if (!isNil(isEditing)) {
+  if ('isEditing' in updates) {
     safeAddComponent(entity, Editable);
     entity.write(Editable).isEditing = !!isEditing;
   }
 
-  if (!isNil(filter)) {
-    safeAddComponent(entity, Filter, { value: filter });
+  if ('locked' in updates) {
+    if (locked) {
+      safeAddComponent(entity, Locked);
+      const node = api.getNodeByEntity(entity);
+      api.deselectNodes([node]);
+      api.unhighlightNodes([node]);
+    } else {
+      safeRemoveComponent(entity, Locked);
+    }
   }
 
-  if (isNil(element.version)) {
+  if ('filter' in updates) {
+    safeAddComponent(entity, Filter, { value: filter });
+    safeAddComponent(entity, MaterialDirty);
+    if (entity.has(IconFont)) {
+      getDescendants(entity).forEach((child) => {
+        safeAddComponent(child, MaterialDirty);
+      });
+    }
+  }
+
+  if ('blendMode' in updates) {
+    const mode = (element as SerializedNode).blendMode;
+    if (mode != null && mode !== 'normal') {
+      safeAddComponent(entity, NodeLayerBlendMode, { mode });
+    } else if (entity.has(NodeLayerBlendMode)) {
+      safeRemoveComponent(entity, NodeLayerBlendMode);
+    }
+    safeAddComponent(entity, MaterialDirty);
+  }
+
+  if ('extrude3d' in updates && entity.has(Rect)) {
+    const depth = resolveExtrude3DDepth(
+      (updates as { extrude3d?: boolean | number }).extrude3d,
+    );
+    if (depth === undefined) {
+      safeRemoveComponent(entity, Extrude3D);
+    } else {
+      safeAddComponent(entity, Extrude3D, { depth });
+    }
+  }
+
+  if (elNode.type === 'mesh3d') {
+    const patch = updates as Partial<Mesh3DNodeSerializedNode>;
+    const touchesMesh3DNode =
+      'z' in updates ||
+      'rotation3d' in updates ||
+      'scale3d' in updates ||
+      'material3d' in updates ||
+      'camera3d' in updates ||
+      'geometry' in updates ||
+      'x' in updates ||
+      'y' in updates ||
+      'width' in updates ||
+      'height' in updates;
+    if (touchesMesh3DNode) {
+      const meshNode = entity.write(Mesh3DNode);
+      if ('geometry' in updates && patch.geometry != null) {
+        meshNode.geometry = normalizeGeometry(patch.geometry);
+      }
+      if ('z' in updates && patch.z != null) {
+        meshNode.z = patch.z;
+      }
+      if ('rotation3d' in updates && patch.rotation3d) {
+        meshNode.rotation3d = [...patch.rotation3d];
+      }
+      if ('scale3d' in updates && patch.scale3d != null) {
+        meshNode.scale3d = patch.scale3d;
+      }
+      if ('material3d' in updates && patch.material3d) {
+        const mat = patch.material3d;
+        if (mat.baseColor != null) {
+          meshNode.baseColor = parseMesh3DBaseColor(mat.baseColor);
+        }
+        if (mat.ambient != null) meshNode.ambient = mat.ambient;
+        if (mat.diffuse != null) meshNode.diffuse = mat.diffuse;
+        if (mat.specular != null) meshNode.specular = mat.specular;
+        if (mat.shininess != null) meshNode.shininess = mat.shininess;
+        if (mat.metallic != null) meshNode.metallic = mat.metallic;
+        if (mat.roughness != null) meshNode.roughness = mat.roughness;
+        if ('map' in mat) meshNode.map = mat.map ?? null;
+        if ('specularMap' in mat) {
+          meshNode.specularMap = mat.specularMap ?? null;
+        }
+        if ('bumpMap' in mat) meshNode.bumpMap = mat.bumpMap ?? null;
+        if (mat.bumpScale != null) meshNode.bumpScale = mat.bumpScale;
+      }
+      const meshEntity = meshNode.meshEntity;
+      const needsCompanionSync =
+        meshEntity &&
+        isEntityAlive(meshEntity) &&
+        ('rotation3d' in updates ||
+          'scale3d' in updates ||
+          'z' in updates ||
+          'material3d' in updates ||
+          'geometry' in updates ||
+          'x' in updates ||
+          'y' in updates ||
+          'width' in updates ||
+          'height' in updates);
+      if (needsCompanionSync) {
+        const source = entity;
+        const mesh = meshEntity;
+        const rebuildGeometry = 'geometry' in updates;
+        api.runAtNextTick(() => {
+          if (
+            !isEntityAlive(source) ||
+            !isEntityAlive(mesh) ||
+            !source.has(Mesh3DNode) ||
+            source.read(Mesh3DNode).meshEntity !== mesh
+          ) {
+            return;
+          }
+          if (rebuildGeometry) {
+            rebuildMesh3DNodeCompanionGeometry(source, mesh);
+          }
+          syncMesh3DNodeCompanionFromSource(source, mesh);
+          requestGltfMeshLoad(source);
+        });
+      }
+    }
+  }
+
+  if (elNode.type === 'light3d') {
+    const light = entity.write(Light3D);
+    const patch = updates as Partial<Light3DNodeSerializedNode>;
+    if ('lightType' in updates && patch.lightType) {
+      light.type = patch.lightType;
+    }
+    if ('color' in updates) {
+      light.color = parseLight3DColor(patch.color);
+    }
+    if ('intensity' in updates && patch.intensity != null) {
+      light.intensity = patch.intensity;
+    }
+    if ('direction' in updates && patch.direction) {
+      light.direction = [...patch.direction];
+    }
+    if ('range' in updates && patch.range != null) {
+      light.range = patch.range;
+    }
+    if ('innerConeAngle' in updates && patch.innerConeAngle != null) {
+      light.innerConeAngle = patch.innerConeAngle;
+    }
+    if ('outerConeAngle' in updates && patch.outerConeAngle != null) {
+      light.outerConeAngle = patch.outerConeAngle;
+    }
+    if (
+      ('x' in updates || 'y' in updates || 'z' in updates) &&
+      entity.has(Transform)
+    ) {
+      const t = entity.read(Transform).translation;
+      light.position = [
+        'x' in updates && patch.x != null ? patch.x : t.x,
+        'y' in updates && patch.y != null ? patch.y : t.y,
+        patch.z ?? light.position[2],
+      ];
+    }
+  }
+
+  if ('display' in updates) {
+    const d = (updates as { display?: string }).display;
+    if (d === 'flex') {
+      safeAddComponent(entity, Flex);
+    } else {
+      safeRemoveComponent(entity, Flex);
+      safeRemoveComponent(entity, FlexLayoutDirty);
+    }
+  }
+
+  if (
+    shouldMarkFlexContainerForLayout(
+      entity,
+      updates,
+      element,
+      skipOverrideKeys,
+      preFlexLayout,
+    )
+  ) {
+    markFlexLayoutDirty(entity);
+  }
+
+  if (
+    updatesAffectFlexItemInParentTree(
+      updates,
+      element,
+      skipOverrideKeys,
+      preFlexItemParent,
+    )
+  ) {
+    const pid = element.parentId;
+    if (pid) {
+      const parentNode = api.getNodeById(pid);
+      if (
+        parentNode &&
+        (parentNode as { display?: string }).display === 'flex'
+      ) {
+        const parentEntity = api.getEntity(parentNode);
+        if (parentEntity?.has(Flex)) {
+          markFlexLayoutDirty(parentEntity);
+        }
+      }
+    }
+  }
+
+  if ('version' in updates) {
     element.version = 0;
   }
 
-  Object.assign(element, updates);
+  if (
+    ('fromId' in updates ||
+      'toId' in updates ||
+      'sourcePoint' in updates ||
+      'targetPoint' in updates ||
+      'exitX' in updates ||
+      'exitY' in updates ||
+      'exitPerimeter' in updates ||
+      'exitDx' in updates ||
+      'exitDy' in updates ||
+      'entryX' in updates ||
+      'entryY' in updates ||
+      'entryPerimeter' in updates ||
+      'entryDx' in updates ||
+      'entryDy' in updates) &&
+    (entity.has(Polyline) || entity.has(Line) || entity.has(Path))
+  ) {
+    syncEdgeBindingForEntity(api, entity, element);
+  }
+
+  {
+    const nodeType = (element as SerializedNode).type;
+    const isIconFontNode =
+      nodeType === 'iconfont' || (nodeType as string) === 'icon_font';
+    if (
+      isIconFontNode &&
+      ('fills' in updates ||
+        'strokes' in updates ||
+        'stroke' in updates ||
+        'strokeOpacity' in updates ||
+        'strokeWidth' in updates ||
+        'strokeLinecap' in updates ||
+        'strokeLinejoin' in updates ||
+        'strokeAlignment' in updates ||
+        'strokeDasharray' in updates ||
+        'strokeDashoffset' in updates ||
+        'strokeDashCap' in updates ||
+        'width' in updates ||
+        'height' in updates ||
+        'iconFontName' in updates ||
+        'iconFontFamily' in updates)
+    ) {
+      syncIconFontChildrenFromUpdatedNode(
+        entity,
+        element as IconFontSerializedNode,
+        api,
+      );
+    }
+  }
+
+  {
+    const gType = (element as SerializedNode).type;
+    if (
+      gType === 'g' &&
+      ('fills' in updates ||
+        'strokes' in updates ||
+        'stroke' in updates ||
+        'strokeOpacity' in updates ||
+        'strokeWidth' in updates ||
+        'fillRule' in updates ||
+        'opacity' in updates ||
+        'strokeLinecap' in updates ||
+        'strokeLinejoin' in updates ||
+        'strokeDasharray' in updates ||
+        'strokeDashoffset' in updates ||
+        'strokeDashCap' in updates)
+    ) {
+      safeAddComponent(
+        entity,
+        Group,
+        buildGroupWirePresentation(
+          withInheritPaint as GSerializedNode,
+          designVariables,
+          themeMode,
+        ),
+      );
+    }
+  }
+
+  // Object.assign(element, updates);
 
   element.version++;
   element.versionNonce = randomInteger();
   element.updated = getUpdatedTimestamp();
+
+  // Remove undefined keys
+  Object.keys(element).forEach((key) => {
+    if (element[key] === undefined) {
+      delete element[key];
+    }
+  });
 
   return element;
 };

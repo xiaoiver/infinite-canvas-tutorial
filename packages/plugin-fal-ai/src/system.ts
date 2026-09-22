@@ -1,6 +1,5 @@
-import { Canvas, System } from '@infinite-canvas-tutorial/ecs';
+import { Canvas, System, imageToCanvas } from '@infinite-canvas-tutorial/ecs';
 import { createFalClient } from '@fal-ai/client';
-import { imageToCanvas } from './utils';
 
 export class FalAISystem extends System {
   protected client = createFalClient();

@@ -41,7 +41,8 @@ export class SAMSystem extends System {
             const selected = api.getNodeById(
               api.getAppState().layersSelected[0],
             );
-            if (!selected?.width || !selected?.height)
+            const size = selected && api.getAbsoluteTransformAndSize(selected);
+            if (!size?.width || !size?.height)
               throw new Error('Select an image before segmenting');
             const { x, y, label } = input.point_prompts[0];
             // Keep encoding and decoding atomic even when callers segment different images.
@@ -49,8 +50,8 @@ export class SAMSystem extends System {
             const data = await client.request<any>('decodeMask', {
               points: [
                 {
-                  x: (x / selected.width) * imageSize.w,
-                  y: (y / selected.height) * imageSize.h,
+                  x: (x / size.width) * imageSize.w,
+                  y: (y / size.height) * imageSize.h,
                   label,
                 },
               ],

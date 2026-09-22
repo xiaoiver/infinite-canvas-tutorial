@@ -62,6 +62,7 @@ layout(location = ${Location.FRAG_COORD}) in vec2 a_FragCoord;
     vec4 u_Opacity;
     vec4 u_InnerShadowColor;
     vec4 u_InnerShadow;
+    vec4 u_FilterExtras;
   };
 #endif
 
@@ -136,10 +137,19 @@ void main() {
   if (sizeAttenuation > 0.5) {
     scale = 1.0 / u_ZoomScale;
   }
-  if (strokeAttenuation > 0.5) {
+  if (strokeAttenuation > 0.5 && sizeAttenuation < 0.5) {
     strokeWidth = strokeWidth / u_ZoomScale;
   }
 
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+  float bakedHalfStroke = u_FilterExtras.y * 0.5;
+  vec2 radius = size + vec2(bakedHalfStroke);
+  v_FragCoord = vec2(a_FragCoord * radius);
+  v_Radius = abs(radius);
+  #ifdef USE_FILLIMAGE
+    v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
+  #endif
+#else
   float strokeOffset;
   if (strokeAlignment < 0.5) {
     strokeOffset = strokeWidth / 2.0;
@@ -156,6 +166,7 @@ void main() {
   #ifdef USE_FILLIMAGE
     v_Uv = (a_FragCoord * radius / size + 1.0) / 2.0;
   #endif
+#endif
 
   gl_Position = vec4((u_ProjectionMatrix 
     * u_ViewMatrix
@@ -192,6 +203,7 @@ layout(std140) uniform SceneUniforms {
     vec4 u_Opacity;
     vec4 u_InnerShadowColor;
     vec4 u_InnerShadow;
+    vec4 u_FilterExtras;
   };
 #endif
 
@@ -243,6 +255,13 @@ float sdf_rounded_box(vec2 p, vec2 b, float r) {
   return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - r;
 }
 
+// sdf_rounded_box is only valid for 0 <= r <= min(b.x, b.y); larger r inverts
+// the field so the interior reads as outside and the rect disappears. Clamp
+// to max corner radius (pill / CSS-style when r exceeds the short side).
+float effective_round_rect_radius(vec2 b, float r) {
+  return min(max(r, 0.0), min(b.x, b.y));
+}
+
 vec4 over(vec4 below, vec4 above) {
   vec4 result;
   float alpha = above.a + below.a * (1.0 - above.a);
@@ -273,7 +292,7 @@ float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float d
   } else if (shape < 1.5) {
     distance = sdf_ellipse(pos, halfSize);
   } else if (shape < 2.5) {
-    distance = sdf_rounded_box(pos, halfSize, cornerRd + blurRd);
+    distance = sdf_rounded_box(pos, halfSize, effective_round_rect_radius(halfSize, cornerRd + blurRd));
   }
   float dist = sigmoid(distMul * distance / blurRd);
   return clamp(dist, 0.0, 1.0);
@@ -320,6 +339,17 @@ void main() {
 
   #ifdef USE_FILLIMAGE
     fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+    #ifndef USE_INSTANCES
+      if (u_FilterExtras.w > 0.5) {
+        fillColor = vec4(0.0);
+      } else {
+        float _layerAlphaMul =
+          (dot(u_FillColor.rgb, vec3(1.0)) < 0.001 && u_FillColor.a < 0.001)
+            ? 1.0
+            : u_FillColor.a;
+        fillColor.a *= _layerAlphaMul;
+      }
+    #endif
   #endif
 
   float compressed = shapeSizeAttenuation;
@@ -329,18 +359,33 @@ void main() {
   compressed -= strokeAttenuation * SHIFT_LEFT22;
   float shape = compressed;
 
-  if (strokeAttenuation > 0.5) {
+  if (strokeAttenuation > 0.5 && sizeAttenuation < 0.5) {
     strokeWidth = strokeWidth / u_ZoomScale;
   }
 
   float distance;
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+  vec2 sdfHalfSize = u_Size.xy;
+#endif
   // 'circle', 'ellipse', 'rect'
   if (shape < 0.5) {
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+    distance = sdf_circle(v_FragCoord, sdfHalfSize.x);
+#else
     distance = sdf_circle(v_FragCoord, v_Radius.x);
+#endif
   } else if (shape < 1.5) {
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+    distance = sdf_ellipse(v_FragCoord, sdfHalfSize);
+#else
     distance = sdf_ellipse(v_FragCoord, v_Radius);
+#endif
   } else if (shape < 2.5) {
-    distance = sdf_rounded_box(v_FragCoord, v_Radius, cornerRadius);
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+    distance = sdf_rounded_box(v_FragCoord, sdfHalfSize, effective_round_rect_radius(sdfHalfSize, cornerRadius));
+#else
+    distance = sdf_rounded_box(v_FragCoord, v_Radius, effective_round_rect_radius(v_Radius, cornerRadius));
+#endif
     // TODO: Fast path when the quad is not rounded and doesn't have any border.
   }
 
@@ -351,24 +396,30 @@ void main() {
   vec4 color = fillColor;
   float d1;
   float d2;
-  if (strokeAlignment < 0.5) {
-    d1 = distance + strokeWidth;
-    d2 = distance + strokeWidth / 2.0;
-    color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
-    color = mix_border_inside(strokeColor, color, d2);
-  } else if (strokeAlignment < 1.5) {
-    d1 = distance + strokeWidth;
-    d2 = distance;
-    color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
-    color = mix_border_inside(strokeColor, color, d2);
-  } else if (strokeAlignment < 2.5) {
-    d2 = distance + strokeWidth;
-    color = mix_border_inside(strokeColor, color, d2);
+  if (strokeWidth > 0.0) {
+    if (strokeAlignment < 0.5) {
+      d1 = distance + strokeWidth;
+      d2 = distance + strokeWidth / 2.0;
+      color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+      color = mix_border_inside(strokeColor, color, d2);
+    } else if (strokeAlignment < 1.5) {
+      d1 = distance + strokeWidth;
+      d2 = distance;
+      color = mix_border_inside(over(fillColor, strokeColor), fillColor, d1);
+      color = mix_border_inside(strokeColor, color, d2);
+    } else if (strokeAlignment < 2.5) {
+      d2 = distance + strokeWidth;
+      color = mix_border_inside(strokeColor, color, d2);
+    }
   }
   outputColor = color;
 
   float innerShadowBlurRadius = innerShadow.z / 2.0;
-  if (innerShadowBlurRadius > 0.0) {
+  if (innerShadowBlurRadius > 0.0
+#if !defined(USE_INSTANCES)
+      && u_FilterExtras.z < 0.5
+#endif
+  ) {
     vec2 shadowOffset = -innerShadow.xy;
     float blurRadius = innerShadow.z;
     float distMul = -1.0;
@@ -381,11 +432,29 @@ void main() {
 
   float antialiasedBlur = -fwidth(length(v_FragCoord));
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
+#ifdef USE_FILLIMAGE_BAKED_STROKE
+  float distForAlpha = distance - u_FilterExtras.x;
+  outputColor.a *= clamp(1.0 - distForAlpha, 0.0, 1.0) * opacity * opacity_t;
+#else
   outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
+#endif
 
   ${wireframe_frag}
 
+#ifdef USE_STENCIL
+  // Stencil pass: discard by geometry (SDF distance), not alpha. Include the same
+  // anti-alias band as the normal pass (fwidth(distance)) so the stencil boundary
+  // matches the visible shape and avoids edge holes.
+  float outerBoundary = (strokeAlignment < 1.5) ? 0.0 : strokeWidth;
+  if (distance > outerBoundary)
+    discard;
+#else
   if (outputColor.a < epsilon)
     discard;
+#endif
+
+#ifdef USE_SOFT_CLIP_OUTSIDE
+  outputColor *= 0.15;
+#endif
 }
 `;

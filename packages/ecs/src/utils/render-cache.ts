@@ -14,17 +14,18 @@ import type {
   RenderPipelineDescriptor,
   Sampler,
   SamplerDescriptor,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import {
   TransparentBlack,
   bindingsDescriptorCopy,
   bindingsDescriptorEquals,
+  defaultMegaState,
   inputLayoutDescriptorCopy,
   inputLayoutDescriptorEquals,
   renderPipelineDescriptorCopy,
   renderPipelineDescriptorEquals,
   samplerDescriptorEquals,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import {
   HashMap,
   hashCodeNumberFinish,
@@ -80,7 +81,11 @@ function renderPipelineDescriptorHash(a: RenderPipelineDescriptor): number {
   hash = hashCodeNumberUpdate(hash, a.program.id);
   if (a.inputLayout !== null)
     hash = hashCodeNumberUpdate(hash, a.inputLayout.id);
-  hash = megaStateDescriptorHash(hash, a.megaStateDescriptor!);
+  // 与 `Device` / `RenderPipeline`：未传 `megaStateDescriptor` 时使用 `defaultMegaState`
+  hash = megaStateDescriptorHash(
+    hash,
+    a.megaStateDescriptor ?? defaultMegaState,
+  );
   for (let i = 0; i < a.colorAttachmentFormats.length; i++)
     hash = hashCodeNumberUpdate(hash, a.colorAttachmentFormats[i] || 0);
   hash = hashCodeNumberUpdate(hash, a.depthStencilAttachmentFormat || 0);
@@ -156,7 +161,7 @@ function programDescriptorCopy(
 }
 
 export class RenderCache {
-  constructor(private device: Device) {}
+  constructor(private device: Device) { }
 
   private bindingsCache = new HashMap<BindingsDescriptor, Bindings>(
     bindingsDescriptorEquals,

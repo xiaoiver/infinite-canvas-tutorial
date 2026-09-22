@@ -1,5 +1,5 @@
-import type { Device, Format, RenderTarget, Texture } from '@antv/g-device-api';
-import { assert, TextureDimension, TextureUsage } from '@antv/g-device-api';
+import type { Device, Format, RenderTarget, Texture } from '@infinite-canvas-tutorial/device-api';
+import { assert, TextureDimension, TextureUsage } from '@infinite-canvas-tutorial/device-api';
 import type { RGRenderTargetDescription } from './RenderTargetDescription';
 
 export class RGRenderTarget {
@@ -19,14 +19,20 @@ export class RGRenderTarget {
   texture: Texture | null = null;
   attachment: RenderTarget;
   age = 0;
+  private readonly sampledForShaderRead: boolean;
 
   constructor(device: Device, desc: Readonly<RGRenderTargetDescription>) {
     this.format = desc.format;
     this.width = desc.width;
     this.height = desc.height;
     this.sampleCount = desc.sampleCount;
+    this.sampledForShaderRead = desc.sampledForShaderRead;
 
     assert(this.sampleCount >= 1);
+
+    if (this.sampledForShaderRead) {
+      this.usage = TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED;
+    }
 
     if (this.sampleCount > 1) {
       // MSAA render targets must be backed by attachments.
@@ -51,7 +57,8 @@ export class RGRenderTarget {
       this.format === desc.format &&
       this.width === desc.width &&
       this.height === desc.height &&
-      this.sampleCount === desc.sampleCount
+      this.sampleCount === desc.sampleCount &&
+      this.sampledForShaderRead === desc.sampledForShaderRead
     );
   }
 

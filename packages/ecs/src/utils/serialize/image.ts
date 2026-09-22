@@ -1,4 +1,4 @@
-import { Texture } from '@antv/g-device-api';
+import { Texture } from '@infinite-canvas-tutorial/device-api';
 import { DOMAdapter } from '../../environment';
 import { isBrowser } from '..';
 
@@ -41,5 +41,28 @@ export function serializeCanvasImageSource(
     }
   } else {
     return serializeImage(source as ImageBitmap);
+  }
+}
+
+export async function imageToCanvas(
+  image: HTMLImageElement | string,
+): Promise<HTMLCanvasElement> {
+  if (typeof image === 'string') {
+    const bitmap = (await DOMAdapter.get().createImage(
+      image,
+    )) as ImageBitmap;
+    const canvas = DOMAdapter.get().getDocument().createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0);
+    bitmap.close?.();
+    return canvas;
+  } else {
+    const canvas = DOMAdapter.get().getDocument().createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(image, 0, 0);
+    return Promise.resolve(canvas);
   }
 }

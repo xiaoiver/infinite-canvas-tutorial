@@ -1,5 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
+import { expectToMatchSVGSnapshotWithDone } from '../toMatchSVGSnapshot';
 import {
   App,
   Camera,
@@ -9,7 +10,8 @@ import {
   DOMAdapter,
   DefaultPlugins,
   DefaultStateManagement,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -29,6 +31,8 @@ import {
   ComputeZIndex,
   ExportFormat,
   Screenshot,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -64,13 +68,16 @@ describe('Export SVG', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
             Name,
             DropShadow,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -93,12 +100,13 @@ describe('Export SVG', () => {
           {
             id: '1',
             type: 'rect',
-            fill: 'red',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
             x: 50,
             y: 50,
             width: 100,
             height: 100,
             visibility: 'visible',
+            zIndex: 0,
           },
         ]);
       }
@@ -108,13 +116,11 @@ describe('Export SVG', () => {
           const { svg } = screenshot.read(Screenshot);
 
           const dir = `${__dirname}/snapshots`;
-          expect(svg).toMatchSVGSnapshot(dir, 'export-rect');
+          expectToMatchSVGSnapshotWithDone(svg, dir, 'export-rect', done);
 
           setTimeout(() => {
             app.exit();
           });
-
-          done();
         });
       }
     }
@@ -124,7 +130,7 @@ describe('Export SVG', () => {
     app.run().then(() => {
       sleep(300).then(() => {
         if (api) {
-          api.export(ExportFormat.SVG, false);
+          api.export({ format: ExportFormat.SVG, download: false });
         }
       });
     });

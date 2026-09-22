@@ -48,7 +48,7 @@ export function yjsDocument(doc: Y.Doc): DocumentAdapter {
             nodes.set(patch.id, node);
           }
           Object.entries(patch.set).forEach(([key, value]) =>
-            node.set(key, structuredClone(value)),
+            node.set(key, JSON.parse(JSON.stringify(value))),
           );
           patch.unset.forEach((key) => node.delete(key));
         });

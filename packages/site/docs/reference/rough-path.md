@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 <script setup>
 import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';

@@ -1,0 +1,245 @@
+{
+  "common": {
+    "loading": "加载中...",
+    "error": "错误",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "确认",
+    "save": "保存",
+    "delete": "删除",
+    "edit": "编辑",
+    "close": "关闭",
+    "result": "结果",
+    "parameters": "参数",
+    "collapse": "折叠",
+    "expand": "展开"
+  },
+  "auth": {
+    "title": "用户登录",
+    "description": "使用您的账户登录或注册新账户",
+    "login": "登录",
+    "logout": "退出",
+    "email": "邮箱",
+    "password": "密码",
+    "signIn": "登录",
+    "signUp": "注册",
+    "signingIn": "登录中...",
+    "signingUp": "注册中...",
+    "signInWithGoogle": "使用 Google 登录",
+    "signInWithGitHub": "使用 GitHub 登录",
+    "redirecting": "正在跳转...",
+    "or": "或",
+    "signUpSuccess": "注册成功！请检查您的邮箱以验证账户。",
+    "loginRequired": "需要登录",
+    "loginToUseChat": "请登录以使用聊天功能"
+  },
+  "theme": {
+    "light": "浅色",
+    "dark": "深色",
+    "system": "跟随系统"
+  },
+  "language": {
+    "chinese": "中文",
+    "english": "English",
+    "spanish": "Español"
+  },
+  "projects": {
+    "title": "我的项目",
+    "description": "管理您的所有项目",
+    "createProject": "创建项目",
+    "createDescription": "创建一个新项目来开始您的工作",
+    "projectName": "项目名称",
+    "projectNamePlaceholder": "输入项目名称",
+    "projectDescription": "项目描述",
+    "projectDescriptionPlaceholder": "输入项目描述（可选）",
+    "noProjects": "您还没有创建任何项目",
+    "createFirstProject": "创建第一个项目",
+    "deleteProject": "删除项目",
+    "deleteSuccess": "项目删除成功",
+    "deleteConfirm": "确定要删除这个项目吗？此操作无法撤销。",
+    "editProject": "编辑项目",
+    "editDescription": "修改项目的名称和描述",
+    "rename": "重命名",
+    "renameDescription": "修改项目的名称",
+    "modified": "修改于",
+    "exportAs": "导出为...",
+    "exportAsSVG": "SVG",
+    "exportAsPNG": "PNG",
+    "exportAsJPEG": "JPEG",
+    "edit": "编辑",
+    "undo": "撤销",
+    "redo": "重做",
+    "cut": "剪切",
+    "copy": "复制",
+    "paste": "粘贴",
+    "preferences": "偏好设置",
+    "grid": "网格",
+    "snapToPixelGrid": "像素网格对齐",
+    "snapToObjects": "对象对齐",
+    "shapesCount": "{count} 个图形",
+    "chatsCount": "{count} 个对话"
+  },
+  "chats": {
+    "title": "对话",
+    "noChatSelected": "没有选择对话",
+    "unknownError": "发生未知错误",
+    "deleteChat": "删除聊天记录",
+    "deleteConfirm": "确定要删除这个聊天记录吗？此操作无法撤销。",
+    "deleteSuccess": "聊天记录删除成功",
+    "uploadImages": "上传图片",
+    "decomposeImageDescription": "将图像分解为多个图层。",
+    "vectorizeImageDescription": "将图像矢量化。",
+    "insertImageSuccess": "图片插入成功",
+    "insertSVGImageSuccess": "SVG 插入成功，您可以在图层列表中解锁图层以进行编辑"
+  },
+  "zoom": {
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "zoomTo50": "缩放至50%",
+    "zoomTo100": "缩放至100%",
+    "zoomTo200": "缩放至200%",
+    "fitToProject": "适应项目",
+    "fitToSelection": "适应选中"
+  },
+  "toolbar": {
+    "home": "首页",
+    "myProjects": "我的项目",
+    "tools": "工具",
+    "editArea": "编辑区域",
+    "drawRectMask": "矩形遮罩",
+    "drawPencilFreehandMask": "铅笔自由绘制遮罩",
+    "drawLassoMask": "套索遮罩",
+    "decomposeImage": "分割图层",
+    "vectorize": "矢量化",
+    "drawRectMaskDescription": "拖动以在图像上绘制矩形遮罩。",
+    "drawPencilFreehandMaskDescription": "在图像上自由绘制遮罩。",
+    "drawLassoMaskDescription": "在图像上绘制套索遮罩。",
+    "drawSmartClickMask": "在图像上点击智能选择区域",
+    "insertIntoCanvas": "插入到画布",
+    "download": "下载"
+  },
+  "settings": {
+    "title": "设置",
+    "apiKeys": {
+      "title": "API Keys 管理",
+      "description": "添加和管理各个 AI Provider 的 API Keys",
+      "addNew": "添加新的 API Key",
+      "provider": "Provider",
+      "selectProvider": "选择 Provider",
+      "apiKey": "API Key",
+      "apiKeyPlaceholder": "输入 API Key",
+      "label": "标签（可选）",
+      "labelPlaceholder": "例如：工作用 OpenAI",
+      "setAsDefault": "设为默认",
+      "add": "添加",
+      "addedKeys": "已添加的 API Keys",
+      "noKeys": "暂无 API Keys",
+      "default": "默认",
+      "fillProviderAndKey": "请填写 Provider 和 API Key",
+      "addFailed": "添加失败",
+      "addFailedWithError": "添加失败: {error}",
+      "deleteConfirm": "确定要删除这个 API Key 吗？",
+      "deleteFailed": "删除失败",
+      "cancel": "取消",
+      "adding": "添加中...",
+      "copy": "复制",
+      "edit": "编辑",
+      "editKey": "编辑 API Key",
+      "editDescription": "修改 API Key 的信息",
+      "update": "更新",
+      "updating": "更新中...",
+      "updateSuccess": "更新成功",
+      "updateFailed": "更新失败",
+      "updateFailedWithError": "更新失败: {error}",
+      "delete": "删除"
+    },
+    "capabilities": {
+      "text": "文本",
+      "chat": "对话",
+      "image": "图像",
+      "image-layered": "图像分层",
+      "vectorize": "矢量化",
+      "title": "能力配置",
+      "description": "为不同的 AI 能力配置独立的模型和参数",
+      "provider": "Provider",
+      "selectProvider": "选择 Provider",
+      "model": "Model",
+      "selectModel": "选择 Model",
+      "saveConfig": "保存",
+      "deleteConfig": "删除",
+      "selectProviderAndModel": "请选择 Provider 和 Model",
+      "saveSuccess": "保存成功",
+      "saveFailed": "保存失败",
+      "saveFailedWithError": "保存失败: {error}",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败",
+      "deleteFailedWithError": "删除失败: {error}",
+      "deleteConfirm": "确定要删除此能力配置吗？",
+      "vectorizeInfoPrefix": "如果未配置，将使用",
+      "vectorizeInfoSuffix": "。",
+      "imageLayeredInfo": "目前仅支持 fal.ai 上的 qwen-image-layered。"
+    }
+  },
+  "onboarding": {
+    "step1": "配置您的 API Keys",
+    "step2": "创建您的第一个项目",
+    "step3": "与画布对话",
+    "step1Description": "添加不同的 AI 提供商的 API Keys 以启用 AI 能力。只需要配置“对话”和“图像”能力即可使用画布的绝大部分功能。Vercel AI Gateway 提供了 $5 的免费使用额度。",
+    "step3Description": "您可以上传或生成图像并与它们对话。"
+  },
+  "tools": {
+    "metaTitle": "工具",
+    "metaDescription": "预设滤镜与实用小工具，无需登录。",
+    "kicker": "公开工具",
+    "title": "滤镜与工具",
+    "comingSoon": "即将推出",
+    "items": {
+      "photoColors": {
+        "title": "照片色彩"
+      },
+      "glitch": {
+        "title": "故障效果",
+        "description": "叠加三个滤镜：CRT、晕影和故障",
+        "description2": "尝试在右侧导出面板下载 GIF"
+      },
+      "luts": {
+        "title": "LUT 预览",
+        "description": "多种 .cube 胶片风格 LUT（富士、理光等）。富士 LUT 来源：<fujiRepo>github.com/abpy/FujifilmCameraProfiles</fujiRepo>。理光 LUT 来源：<ricohRepo>reddit.com/r/Lumix（GR 正向片等 LUT 逆向）</ricohRepo>。"
+      },
+      "liquidMetal": {
+        "title": "液态金属",
+        "description": "为 Lucide 图标与文字套用 liquid-metal 滤镜；可在右侧属性面板继续添加图层或调整效果参数。"
+      },
+      "rain": {
+        "title": "雨滴",
+        "description": "raindrop-fx 玻璃雨滴效果：默认细雨与大风暴雨预设对比，可在属性面板微调 rain() 参数。",
+        "originalLabel": "原图",
+        "gentleLabel": "细雨 rain()",
+        "stormLabel": "暴雨 preset"
+      }
+    },
+    "photoColors": {
+      "metaTitle": "照片色彩",
+      "metaDescription": "照片色彩类工具（待完善）。",
+      "backToTools": "返回工具列表",
+      "placeholder": "此处预留给色彩参数与预览区域。"
+    },
+    "glitch": {
+      "metaTitle": "故障艺术",
+      "metaDescription": "故障风 / Glitch 图像效果（待完善）。",
+      "placeholder": "预留给 Glitch 参数与预览。"
+    },
+    "luts": {
+      "metaTitle": "LUT 预览",
+      "metaDescription": "在画布上试用 .cube 胶片模拟 LUT（富士、理光等）。"
+    },
+    "liquidMetal": {
+      "metaTitle": "液态金属",
+      "metaDescription": "在图标字体与文字上预览 liquid-metal 滤镜效果。"
+    },
+    "rain": {
+      "metaTitle": "雨滴",
+      "metaDescription": "预览 rain() 滤镜：Codrops 雨滴模拟、水面折射，以及与 blur 等效果的叠加。"
+    }
+  }
+}

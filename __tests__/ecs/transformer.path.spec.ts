@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -32,6 +33,8 @@ import {
   Pen,
   PathSerializedNode,
   Path,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -65,7 +68,8 @@ describe('Transformer', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Rect,
             Visibility,
@@ -74,6 +78,8 @@ describe('Transformer', () => {
             ZIndex,
             Selected,
             Path,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -97,14 +103,15 @@ describe('Transformer', () => {
           id: '1',
           type: 'path',
           d: 'M 0 0 L 100 100 L 100 50 Z',
-          stroke: 'black',
+          strokes: [{ type: 'solid', value: 'black', opacity: 1 }],
           strokeWidth: 10,
-          fill: 'red',
+          fills: [{ type: 'solid', value: 'red', opacity: 1 }],
           visibility: 'visible',
           x: 50,
           y: 50,
           width: 100,
           height: 100,
+          zIndex: 0,
         };
         api.setAppState({
           penbarSelected: Pen.SELECT,
@@ -113,9 +120,7 @@ describe('Transformer', () => {
         api.selectNodes([node]);
 
         entity = api
-          .getEntity({
-            id: '1',
-          })
+          .getEntity(node)
           ?.hold();
       }
     }

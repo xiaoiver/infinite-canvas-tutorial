@@ -4,6 +4,7 @@
  */
 import libtess from 'libtess';
 import polygonClipping from 'polygon-clipping';
+import { formatNumber } from './serialize/points';
 
 // function called for each vertex of tesselator output
 function vertexCallback(data, polyVertArray) {
@@ -89,19 +90,15 @@ export function getSvgPathFromStroke(points: number[][], closed = true) {
   let b = points[1];
   const c = points[2];
 
-  let result = `M${a[0].toFixed(2)},${a[1].toFixed(2)} Q${b[0].toFixed(
-    2,
-  )},${b[1].toFixed(2)} ${average(b[0], c[0]).toFixed(2)},${average(
+  let result = `M${formatNumber(a[0])},${formatNumber(a[1])} Q${formatNumber(b[0])},${formatNumber(b[1])} ${formatNumber(average(b[0], c[0]))},${formatNumber(average(
     b[1],
     c[1],
-  ).toFixed(2)} T`;
+  ))} T`;
 
   for (let i = 2, max = len - 1; i < max; i++) {
     a = points[i];
     b = points[i + 1];
-    result += `${average(a[0], b[0]).toFixed(2)},${average(a[1], b[1]).toFixed(
-      2,
-    )} `;
+    result += `${formatNumber(average(a[0], b[0]))},${formatNumber(average(a[1], b[1]))} `;
   }
 
   if (closed) {
@@ -121,9 +118,9 @@ export function getFlatSvgPathFromStroke(stroke: number[][]) {
     face.forEach((points) => {
       d.push(
         getSvgPathFromStroke(points, false) ||
-          `M${points[0][0].toFixed(2)},${points[0][1].toFixed(2)} ${points
-            .map((p) => `L${p[0].toFixed(2)},${p[1].toFixed(2)}`)
-            .join('')}`,
+        `M${formatNumber(points[0][0])},${formatNumber(points[0][1])} ${points
+          .map((p) => `L${formatNumber(p[0])},${formatNumber(p[1])}`)
+          .join('')}`,
       );
     }),
   );

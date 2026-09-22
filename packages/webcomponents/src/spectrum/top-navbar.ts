@@ -7,16 +7,16 @@ import {
   CheckboardStyle,
   AppState,
   readSystemClipboard,
+  effectiveThemePreference,
+  resolveThemeModeFromPreference,
+  type ThemePreference,
+  ExportFormat,
+  downloadIcDocument,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { openFigmaDocument, openIcDocument } from '../utils';
 import { executeCopy, executeCut, executePaste } from './context-menu';
-
-export enum ExportFormat {
-  SVG = 'svg',
-  PNG = 'png',
-  JPEG = 'jpeg',
-}
 
 @customElement('ic-spectrum-top-navbar')
 @localized()
@@ -90,10 +90,84 @@ export class TopNavbar extends LitElement {
     }
   };
 
-  private handleExport(event: CustomEvent) {
-    const format = (event.target as any).value as ExportFormat;
+  private async handleExport(event: CustomEvent) {
+    const format = (event.target as any).value as ExportFormat | 'ic' | 'figma';
+    if (format === 'ic') {
+      const doc = this.api.exportIcDocument(window.location.origin);
+      downloadIcDocument(doc, 'my-scene.ic');
+    } else if (format === 'figma') {
+      await this.handleExportFigma();
+    } else {
+      this.api.export({ format });
+    }
+  }
 
-    this.api.export(format);
+  /**
+   * Export the scene as a Figma scene payload (`.json`). The Figma REST API is
+   * read-only, so the JSON is replayed into Figma via the companion
+   * "Infinite Canvas Import" plugin (see `@infinite-canvas-tutorial/figma`).
+   */
+  private async handleExportFigma() {
+    try {
+      // Dynamic import keeps the figma plugin out of the core bundle and
+      // mirrors the mermaid integration (avoids stale build artifacts).
+      const { serializedNodesToFigmaScene } = await import(
+        '@infinite-canvas-tutorial/figma'
+      );
+      const doc = this.api.exportIcDocument(window.location.origin);
+      const scene = serializedNodesToFigmaScene(doc.elements, doc.source);
+      const json = JSON.stringify(scene, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'my-scene.figma.json';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
+  private async handleImport(event: CustomEvent) {
+    const format = (event.target as any).value as 'ic' | 'figma';
+    if (format === 'figma') {
+      await this.handleImportFigma();
+      return;
+    }
+    if (format !== 'ic') {
+      return;
+    }
+    try {
+      const { contents } = await openIcDocument();
+      this.api.importIcDocument(contents);
+    } catch (e) {
+      // The user canceled the file picker or selected an invalid document.
+      console.warn(e);
+    }
+  }
+
+  /** Import a local Figma `.fig` file and apply it as an `.ic` scene. */
+  private async handleImportFigma() {
+    try {
+      const { contents } = await openFigmaDocument();
+      const { parseFigFileToSerializedNodes } = await import(
+        '@infinite-canvas-tutorial/figma'
+      );
+      const doc = parseFigFileToSerializedNodes(contents, {
+        source: 'https://www.figma.com',
+      });
+      this.api.importIcDocument(doc);
+    } catch (e) {
+      // The user canceled the file picker or selected an invalid document.
+      console.warn(e);
+    }
   }
 
   private handleEdit(event: CustomEvent) {
@@ -133,26 +207,15 @@ export class TopNavbar extends LitElement {
   }
 
   private handleConfigTheme(event: CustomEvent) {
-    const selected = (event.target as any).selected[0];
-    let isDark = false;
-    if (selected === 'system') {
-      isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    } else {
-      isDark = selected === 'dark';
-    }
-
-    this.dispatchEvent(
-      new CustomEvent('theme-change', {
-        detail: {
-          isDark,
-        },
-        bubbles: true,
-        composed: true,
-      }),
-    );
-
+    const raw = (event.target as any).selected[0] as string;
+    const themePreference: ThemePreference =
+      raw === 'light' || raw === 'dark' || raw === 'system'
+        ? raw
+        : 'system';
+    const themeMode = resolveThemeModeFromPreference(themePreference);
     this.api.setAppState({
-      themeMode: selected,
+      themePreference,
+      themeMode,
     });
   }
 
@@ -250,9 +313,9 @@ export class TopNavbar extends LitElement {
                   slot="submenu"
                   selects="multiple"
                   .selected=${this.appState.checkboardStyle ===
-                  CheckboardStyle.GRID
-                    ? ['grid']
-                    : []}
+            CheckboardStyle.GRID
+            ? ['grid']
+            : []}
                   @change=${this.handleConfigView}
                 >
                   <sp-menu-item value="grid"> ${msg(str`Grid`)} </sp-menu-item>
@@ -264,13 +327,13 @@ export class TopNavbar extends LitElement {
                   slot="submenu"
                   selects="multiple"
                   .selected=${[
-                    this.appState.snapToPixelGridEnabled
-                      ? 'snapToPixelGrid'
-                      : undefined,
-                    this.appState.snapToObjectsEnabled
-                      ? 'snapToObjects'
-                      : undefined,
-                  ].filter(Boolean)}
+            this.appState.snapToPixelGridEnabled
+              ? 'snapToPixelGrid'
+              : undefined,
+            this.appState.snapToObjectsEnabled
+              ? 'snapToObjects'
+              : undefined,
+          ].filter(Boolean)}
                   @change=${this.handleConfigPreferences}
                 >
                   <sp-menu-item value="snapToPixelGrid">
@@ -285,7 +348,9 @@ export class TopNavbar extends LitElement {
                     <sp-menu
                       slot="submenu"
                       selects="single"
-                      .selected=${[this.appState.themeMode]}
+                      .selected=${[
+            effectiveThemePreference(this.appState),
+          ]}
                       @change=${this.handleConfigTheme}
                     >
                       <sp-menu-item value="light">
@@ -321,6 +386,17 @@ export class TopNavbar extends LitElement {
                   <sp-menu-item value=${ExportFormat.SVG}>SVG</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.PNG}>PNG</sp-menu-item>
                   <sp-menu-item value=${ExportFormat.JPEG}>JPEG</sp-menu-item>
+                  <sp-menu-item value=${ExportFormat.WEBM}>WebM</sp-menu-item>
+                  <sp-menu-item value=${ExportFormat.GIF}>GIF</sp-menu-item>
+                  <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
+                  <sp-menu-item value=${'figma'}>Figma (.json)</sp-menu-item>
+                </sp-menu>
+              </sp-menu-item>
+              <sp-menu-item>
+                ${msg(str`Import from...`)}
+                <sp-menu slot="submenu" @change=${this.handleImport}>
+                  <sp-menu-item value=${'ic'}>.ic</sp-menu-item>
+                  <sp-menu-item value=${'figma'}>Figma (.fig)</sp-menu-item>
                 </sp-menu>
               </sp-menu-item>
             </sp-action-menu>

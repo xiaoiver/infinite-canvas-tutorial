@@ -10,7 +10,8 @@ import {
   DefaultPlugins,
   DefaultStateManagement,
   Entity,
-  FillSolid,
+  FillLayers,
+  StrokeLayers,
   Grid,
   Parent,
   Plugin,
@@ -30,6 +31,8 @@ import {
   SizeAttenuation,
   StrokeAttenuation,
   UI,
+  Opacity,
+  GlobalTransform,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, sleep } from '../utils';
 
@@ -62,7 +65,8 @@ describe('Attenuation', () => {
             Children,
             Transform,
             Renderable,
-            FillSolid,
+            FillLayers,
+            StrokeLayers,
             Stroke,
             Ellipse,
             Visibility,
@@ -70,6 +74,8 @@ describe('Attenuation', () => {
             StrokeAttenuation,
             Name,
             ZIndex,
+            Opacity,
+            GlobalTransform,
           ).write,
       );
 
@@ -93,8 +99,8 @@ describe('Attenuation', () => {
           {
             id: '1',
             type: 'ellipse',
-            fill: 'red',
-            stroke: 'blue',
+            fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+            strokes: [{ type: 'solid', value: 'blue', opacity: 1 }],
             strokeWidth: 10,
             x: 0,
             y: 50,
@@ -103,6 +109,7 @@ describe('Attenuation', () => {
             sizeAttenuation: true,
             strokeAttenuation: true,
             visibility: 'visible',
+            zIndex: 0,
           },
         ]);
       }

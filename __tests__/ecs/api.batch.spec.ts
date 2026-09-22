@@ -1,6 +1,6 @@
 import { API, DefaultStateManagement } from '../../packages/ecs/src/API';
 import { mutateElement } from '../../packages/ecs/src/history';
-import { SerializedNode } from '../../packages/ecs/src/utils';
+import { SerializedNode } from '../../packages/ecs/src';
 
 jest.mock('../../packages/ecs/src/history', () => ({
   ...jest.requireActual('../../packages/ecs/src/history'),

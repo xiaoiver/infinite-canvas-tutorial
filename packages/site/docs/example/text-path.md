@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Text on a path"
+description: "Place glyphs along curves for badges and annotations."
 ---
+<!-- example-intro:en -->
+
+# Text on a path
+
+Path-on-text needs **arc length** sampling and rotation per glyph. Use it for circular badges and flow labels; performance scales with segment count.
+
+See vector path math in [Lesson 12](/guide/lesson-012) and [Lesson 13](/guide/lesson-013).
+
+## Interactive demo
 
 <script setup>
 import TextPath from '../components/TextPath.vue'

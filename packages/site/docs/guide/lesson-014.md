@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 # Lesson 14 - Canvas mode and auxiliary UI
 
 Previously, we implemented some canvas UI components using Web Components, including camera zooming and image downloading. In this lesson, we will expose more canvas capabilities through components and implement some new drawing properties:

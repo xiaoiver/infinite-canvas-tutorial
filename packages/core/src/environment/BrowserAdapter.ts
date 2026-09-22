@@ -14,7 +14,13 @@ export const BrowserAdapter: Adapter = {
     return canvas;
   },
   createTexImageSource: (canvas: HTMLCanvasElement | OffscreenCanvas) => canvas,
-  createImage: (src: string) => load(src, ImageLoader),
+  createImage: (src: string | Blob) => {
+    if (typeof src === 'string') {
+      return load(src, ImageLoader);
+    }
+    const url = URL.createObjectURL(src);
+    return load(url, ImageLoader).finally(() => URL.revokeObjectURL(url));
+  },
   getWindow: () => window,
   getDocument: () => document,
   getXMLSerializer: () => new XMLSerializer(),

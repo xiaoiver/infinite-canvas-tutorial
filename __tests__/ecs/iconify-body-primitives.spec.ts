@@ -1,0 +1,50 @@
+import { resolveIconifyBodyToScalablePrimitives } from '../../packages/ecs/src/utils/icon-font';
+
+describe('resolveIconifyBodyToScalablePrimitives', () => {
+  it('merges g fill=currentColor onto child paths (pixelarticons a-arrow-down shape)', () => {
+    const body =
+      '<g fill="currentColor"><path d="M16 6h2v12h-2z"/><path d="M2 2h2v2H2z"/></g>';
+    const prims = resolveIconifyBodyToScalablePrimitives(body, 32, 32);
+    expect(prims).not.toBeNull();
+    expect(prims!.length).toBe(2);
+    expect(prims![0]!.style.fill).toBe('currentColor');
+    expect(prims![1]!.style.fill).toBe('currentColor');
+  });
+
+  it('merges nested g: inner fill overrides for paths under inner g', () => {
+    const body =
+      '<g fill="red"><g fill="blue"><path d="M0 0H10V10H0Z"/></g></g>';
+    const prims = resolveIconifyBodyToScalablePrimitives(body, 32, 32);
+    expect(prims).not.toBeNull();
+    expect(prims!.length).toBe(1);
+    expect(prims![0]!.style.fill).toBe('blue');
+  });
+
+  it('accepts root-level paths with no g', () => {
+    const body = '<path d="M0 0H10V10H0Z" fill="red"/>';
+    const prims = resolveIconifyBodyToScalablePrimitives(body, 32, 32);
+    expect(prims).not.toBeNull();
+    expect(prims![0]!.style.fill).toBe('red');
+  });
+
+  it('converts self-closing rect to path (material android-style body)', () => {
+    const body = `<rect width="4" height="10" x="2" y="12" fill="#8bc34a" rx="2"/>
+<path fill="#8bc34a" d="M8 12h16v12H8z"/>`;
+    const prims = resolveIconifyBodyToScalablePrimitives(body, 32, 32, 0, 0);
+    expect(prims).not.toBeNull();
+    expect(prims!.length).toBe(2);
+    expect(prims![0]!.kind).toBe('path');
+    expect(prims![0]!.d).toMatch(/^M/);
+    expect(prims![0]!.style.fill).toBe('#8bc34a');
+    expect(prims![1]!.kind).toBe('path');
+  });
+
+  it('applies Iconify viewBox left/top (min-x/min-y) when width/height are set', () => {
+    const body = '<path d="M0 0H100V100H0Z"/>';
+    const origin = resolveIconifyBodyToScalablePrimitives(body, 100, 100, 200, 200, 0, 0);
+    const shifted = resolveIconifyBodyToScalablePrimitives(body, 100, 100, 200, 200, -50, -25);
+    expect(origin).not.toBeNull();
+    expect(shifted).not.toBeNull();
+    expect(origin![0]!.d).not.toEqual(shifted![0]!.d);
+  });
+});

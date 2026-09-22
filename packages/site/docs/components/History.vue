@@ -1,16 +1,11 @@
 <script setup lang="ts">
 import {
-  App,
   Pen,
   Task,
-  DefaultPlugins,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
-import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
-import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
-import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
-
+import { ensureExampleWorld } from '../lib/ensure-example-world';
+import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
 const wrapper = ref<HTMLElement | null>(null);
 let api: any | undefined;
@@ -28,7 +23,7 @@ onMounted(async () => {
     const node = {
       type: 'rect',
       id: '0',
-      fill: 'red',
+      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
       stroke: 'black',
       x: 100,
       y: 100,
@@ -45,21 +40,13 @@ onMounted(async () => {
     api.record();
 
     api.updateNode(node, {
-      fill: 'blue',
+      fills: [{ type: 'solid', value: 'blue', opacity: 1 }],
     });
     api.record();
   };
   canvas.addEventListener(Event.READY, onReady);
 
-  // App only runs once
-  if (!(window as any).worldInited) {
-    (window as any).worldInited = true;
-    await import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    await import('@infinite-canvas-tutorial/lasso/spectrum');
-    await import('@infinite-canvas-tutorial/eraser/spectrum');
-    await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
-  }
+  await ensureExampleWorld();
 });
 
 onUnmounted(() => {
@@ -73,7 +60,6 @@ onUnmounted(() => {
     canvas.removeEventListener(Event.READY, onReady);
   }
 
-  api?.destroy();
 });
 </script>
 

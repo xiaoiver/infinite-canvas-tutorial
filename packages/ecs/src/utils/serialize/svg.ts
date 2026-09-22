@@ -1,4 +1,4 @@
-import { isNil, isNumber, isString } from '@antv/util';
+import { isNil, isNumber, isString, path2String } from '@antv/util';
 import toposort from 'toposort';
 import { Marker, Mat3 } from '../../components';
 import {
@@ -6,17 +6,31 @@ import {
   fontStringFromTextStyle,
   sortByFractionalIndex,
   measureText,
+  computeDrawableSets,
 } from '../../systems';
 import { createSVGElement } from '../browser';
 import {
+  FillAttributes,
+  IconFontSerializedNode,
   InnerShadowAttributes,
   PathSerializedNode,
   RectSerializedNode,
+  RoughAttributes,
   SerializedNode,
   SerializedNodeAttributes,
   StrokeAttributes,
   TextSerializedNode,
-} from './type';
+  VectorNetworkSerializedNode,
+} from '../../types/serialized-node';
+import {
+  firstEnabledFillPresentation,
+  getPrimaryFillValue,
+  migrateLegacyFillWireInPlace,
+} from '../normalize-fill-wire';
+import {
+  firstEnabledStrokePresentation,
+  migrateLegacyStrokeWireInPlace,
+} from '../normalize-stroke-wire';
 import { serializePoints } from './points';
 import {
   computeLinearGradient,
@@ -26,13 +40,40 @@ import {
   parseGradient,
 } from '../gradient';
 import { isPattern, Pattern } from '../pattern';
+import { toCSSMixBlendMode } from '../blend-mode';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { lineArrow } from '../marker';
 import { DOMAdapter } from '../../environment';
+import { imageToCanvas } from './image';
+import { opSet2Absolute } from '../rough';
+import { hashCode } from '../uid';
+import {
+  getWatercolorFillContoursFromSerializedNode,
+  polygonToPathD,
+  WATERCOLOR_LAYER_FILL_OPACITY,
+} from '../watercolor-rough';
+import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
+import { buildGroupWirePresentation } from '../group-presentation';
+import {
+  type ScaledIconPrimitive,
+  buildIconFontScalablePrimitives,
+  mapSvgLineCap,
+  mapSvgLineJoin,
+  pickChildFill,
+  pickStrokeColorForChild,
+  resolveIconFontWireStyle,
+  strokeWidthFromIconStyle,
+} from '../icon-font';
+import {
+  buildVectorNetworkFillPathD,
+  buildVectorNetworkStrokePathD,
+  resolveVectorNetworkFillRule,
+} from '../vector-network-svg';
 
 const strokeDefaultAttributes = {
+  strokes: [{ type: 'solid' as const, value: 'none', opacity: 1 }],
+  /** 与 SVG 默认一致；导出时与 `fillOpacity` 相同，为 1 则不写属性 */
   strokeOpacity: 1,
-  stroke: 'none',
   strokeWidth: 1,
   strokeLinecap: 'butt',
   strokeLinejoin: 'miter',
@@ -40,6 +81,7 @@ const strokeDefaultAttributes = {
   strokeMiterlimit: 4,
   strokeDasharray: '0,0',
   strokeDashoffset: 0,
+  strokeDashCap: 'none',
 };
 
 export const markerDefaultAttributes = {
@@ -48,9 +90,9 @@ export const markerDefaultAttributes = {
   markerFactor: 3,
 };
 
+/** 不设 `fill` 默认值，与线框上未写时由父链继承 / 导入 SVG 时由父 `g` 决定一致；仅保留不透明度。 */
 const fillDefaultAttributes = {
   fillOpacity: 1,
-  fill: 'black',
 };
 
 const commonDefaultAttributes = {
@@ -112,10 +154,19 @@ export const defaultAttributes: Record<
     y1: 0,
     x2: 0,
     y2: 0,
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...strokeDefaultAttributes,
   },
   'rough-polyline': {
+    hitStrokeWidth: -1,
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+    ...markerDefaultAttributes,
+  },
+  'rough-path': {
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
@@ -135,15 +186,18 @@ export const defaultAttributes: Record<
     y1: 0,
     x2: 0,
     y2: 0,
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
   },
   polyline: {
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
+    fill: 'none',
   },
   brush: {
     ...commonDefaultAttributes,
@@ -152,10 +206,12 @@ export const defaultAttributes: Record<
   },
   path: {
     fillRule: 'nonzero',
+    hitStrokeWidth: -1,
     ...commonDefaultAttributes,
     ...fillDefaultAttributes,
     ...strokeDefaultAttributes,
     ...markerDefaultAttributes,
+    fill: 'none',
   },
   text: {
     fontFamily: 'sans-serif',
@@ -175,6 +231,8 @@ export const defaultAttributes: Record<
   },
   g: {
     ...commonDefaultAttributes,
+    /** 与 {@link strokeDefaultAttributes.strokeOpacity} 一致，避免 `<g>` 上多余 `stroke-opacity="1"` */
+    strokeOpacity: 1,
   },
   'vector-network': {
     ...commonDefaultAttributes,
@@ -195,42 +253,130 @@ export const defaultAttributes: Record<
     height: 0,
     url: '',
   },
+  iconfont: {
+    x: 0,
+    y: 0,
+    width: 24,
+    height: 24,
+    iconFontName: '',
+    iconFontFamily: 'lucide',
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
+  mesh3d: {
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    z: 0,
+    geometry: 'cube',
+    scale3d: 100,
+    rotation3d: [0, 0, 0],
+    ...commonDefaultAttributes,
+  },
+  light3d: {
+    x: 0,
+    y: 0,
+    lightType: 'directional',
+    intensity: 1,
+    direction: [-0.5, -0.7, -0.5],
+    z: 0,
+    ...commonDefaultAttributes,
+  },
+  ref: {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    ref: '',
+    ...commonDefaultAttributes,
+    ...fillDefaultAttributes,
+    ...strokeDefaultAttributes,
+  },
 };
 
-// @see https://github.com/plouc/nivo/issues/164
-const BASELINE_MAP: Record<string, string> = {
-  top: 'hanging', // Use hanging here.
-  middle: 'central',
-  bottom: 'text-after-edge', // FIXME: It is not a standard property.
-  alphabetic: 'alphabetic',
-  ideographic: 'ideographic',
-  hanging: 'hanging',
-};
+/**
+ * Max rx/ry for a rect of size (w,h) is min(w,h)/2, same as half-extent
+ * clamp in {@link packages/ecs/src/shaders/sdf.ts} (effective_round_rect_radius).
+ */
+function effectiveSvgRectCornerRadius(
+  w: number | string | undefined,
+  h: number | string | undefined,
+  r: number,
+): number {
+  if (!Number.isFinite(r) || r <= 0) return 0;
+  const rw = isString(w) ? parseFloat(w) : Number(w ?? 0);
+  const rh = isString(h) ? parseFloat(h) : Number(h ?? 0);
+  if (!Number.isFinite(rw) || !Number.isFinite(rh) || rw <= 0 || rh <= 0) {
+    return 0;
+  }
+  const cap = Math.min(rw, rh) / 2;
+  return Math.min(r, cap);
+}
 
-export function serializeNodesToSVGElements(
+/** Append `propertyName: value` to SVG `style`, escaping double quotes for XML attribute safety. */
+function appendSvgStyleProperty(
+  el: SVGElement,
+  propertyName: string,
+  value: string,
+) {
+  const safe = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const decl = `${propertyName}: ${safe}`;
+  const prev = el.getAttribute('style');
+  el.setAttribute('style', prev?.trim() ? `${prev.trim()}; ${decl}` : decl);
+}
+
+/**
+ * 将场景节点导出为 SVG 子树。对 `fill` / `stroke` 等与 {@link getComputedInheritGroupWireMap} 一致的可继承
+ * 线框字段，按 `parentId` 链做「有效展示」再写出，使从父 `g` 继承到的颜色在导出中显式化。
+ *
+ * 入参**不应**含 `type: 'ref'`（无对应 SVG 图元）。请在外层用
+ * {@link expandSerializedNodesForSvgExport} 展开，或使用 `toSVGElement` / `API#renderToSVG` 已接好的路径。
+ *
+ * 支持**仅导出子集**（例如只含某个子节点、不含其父）：父级不在 `nodes` 中时，不会向 toposort 注入未知顶点；
+ * 该子节点会作为顶层根写入返回列表；继承类属性仍由 {@link getComputedInheritGroupWireMap} 在子集内能解析的 `g` 链上尽量合并。
+ */
+export async function serializeNodesToSVGElements(
   nodes: SerializedNode[],
-): SVGElement[] {
+): Promise<SVGElement[]> {
   const elements: SVGElement[] = [];
 
   const idSerializedNodeMap = new Map<string, SerializedNode>();
   for (const node of nodes) {
     idSerializedNodeMap.set(node.id, node);
   }
+  const vertexSet = new Set(idSerializedNodeMap.keys());
+  for (const n of nodes) {
+    migrateLegacyFillWireInPlace(n as unknown as Record<string, unknown>);
+    migrateLegacyStrokeWireInPlace(n as unknown as Record<string, unknown>);
+  }
+  const inheritGroupWireById = getComputedInheritGroupWireMap(nodes);
 
   const idSVGElementMap = new Map<string, SVGElement>();
   const svgElementIdMap = new WeakMap<SVGElement, string>();
 
   const vertices = nodes.map((node) => node.id);
+  /** 仅当父也在导出集合内时才建立边，避免 toposort 因未知父 id 抛错。 */
   const edges = nodes
-    .filter((node) => !isNil(node.parentId))
-    .map((node) => [node.parentId, node.id] as [string, string]);
+    .filter(
+      (node) =>
+        !isNil(node.parentId) && vertexSet.has(node.parentId as string),
+    )
+    .map((node) => [node.parentId as string, node.id] as [string, string]);
   const sorted = toposort.array(vertices, edges);
 
   for (const id of sorted) {
     const node = idSerializedNodeMap.get(id);
     const { id: _, parentId, type, ...restAttributes } = node;
-    const element = createSVGElement(type);
-    element.id = `node-${id}`;
+
+    // Use <path> for rough elements.
+    const isRough = type?.startsWith('rough-');
+    const isVectorNetwork = type === 'vector-network';
+    const element =
+      !isRough &&
+      !isVectorNetwork &&
+      createSVGElement(type === 'iconfont' ? 'g' : (type as string));
 
     const {
       x = 0,
@@ -256,11 +402,15 @@ export function serializeNodesToSVGElements(
       tessellationMethod,
       cornerRadius,
       zIndex,
+      /** Text attributes */
+      anchorX,
+      anchorY,
       fontFamily,
       fontSize,
       fontWeight,
       fontStyle,
       fontVariant,
+      fontKerning,
       content,
       letterSpacing,
       lineHeight,
@@ -284,41 +434,150 @@ export function serializeNodesToSVGElements(
       markerStart,
       markerEnd,
       markerFactor,
-      filter,
+      filter: _filterWireOmitFromAttrs,
       sizeAttenuation,
       strokeAttenuation,
+      hitStrokeWidth,
+      svgDataAttributes,
+      version,
+      versionNonce,
+      updated,
+      clipMode,
+      /** Yoga attributes */
+      display,
+      alignItems,
+      justifyContent,
+      padding,
+      margin,
+      gap,
+      rowGap,
+      columnGap,
+      flexBasis,
+      flexGrow,
+      flexShrink,
+      flexDirection,
+      flexWrap,
+      minWidth,
+      maxWidth,
+      minHeight,
+      maxHeight,
+      /** Binded attributes */
+      fromId,
+      toId,
+      orthogonal,
+      exitX,
+      exitY,
+      exitPerimeter,
+      exitDx,
+      exitDy,
+      entryX,
+      entryY,
+      entryPerimeter,
+      entryDx,
+      entryDy,
+      edgeStyle,
+      sourceJettySize,
+      targetJettySize,
+      jettySize,
+      sourcePortConstraint,
+      targetPortConstraint,
+      portConstraint,
+      // iconfont：不写入 <g> 的 icon 元数据；子 path/ellipse/line 由 buildIconFontScalablePrimitives 在导出时生成
+      iconFontName,
+      iconFontFamily,
+      lockAspectRatio,
+      blendMode,
       ...rest
     } = restAttributes as SerializedNodeAttributes;
 
-    Object.entries(rest).forEach(([key, value]) => {
-      if (
-        `${value}` !== '' &&
-        `${defaultAttributes[type][key]}` !== `${value}`
-      ) {
-        if (isNumber(value)) {
-          value = toFixedAndRemoveTrailingZeros(value);
+    const effWire = inheritGroupWireById.get(id) ?? {};
+    const restForExport = { ...rest, ...effWire };
+    migrateLegacyFillWireInPlace(restForExport as Record<string, unknown>);
+    migrateLegacyStrokeWireInPlace(restForExport as Record<string, unknown>);
+    const fillPres = firstEnabledFillPresentation(
+      (restForExport as FillAttributes).fills,
+    );
+    if (fillPres) {
+      (restForExport as Record<string, unknown>).fill = fillPres.fill;
+      const fo = fillPres.fillOpacity ?? 1;
+      const n =
+        typeof fo === 'number' && Number.isFinite(fo)
+          ? fo
+          : parseFloat(String(fo));
+      (restForExport as Record<string, unknown>).fillOpacity =
+        Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    }
+    const strokePres = firstEnabledStrokePresentation(
+      (restForExport as unknown as StrokeAttributes).strokes,
+    );
+    if (strokePres) {
+      (restForExport as Record<string, unknown>).stroke = strokePres.stroke;
+      const so = strokePres.strokeOpacity ?? 1;
+      const sn =
+        typeof so === 'number' && Number.isFinite(so)
+          ? so
+          : parseFloat(String(so));
+      (restForExport as Record<string, unknown>).strokeOpacity =
+        Number.isFinite(sn) ? Math.max(0, Math.min(1, sn)) : 1;
+    }
+    const restExportRec = restForExport as Record<string, unknown>;
+    const nodeForExport = { ...node, ...effWire } as SerializedNode;
+
+    if (element) {
+      Object.entries(restForExport).forEach(([key, value]) => {
+        if (
+          key === 'hitStrokeWidth' ||
+          key === 'svgDataAttributes' ||
+          key === 'filter' ||
+          key === 'fills' ||
+          key === 'strokes'
+        ) {
+          return;
         }
-        element.setAttribute(camelToKebabCase(key), `${value}`);
+        if (
+          `${value}` !== '' &&
+          `${(defaultAttributes[type] as Record<string, unknown>)[key]}` !==
+          `${value}`
+        ) {
+          if (isNumber(value)) {
+            value = toFixedAndRemoveTrailingZeros(value);
+          }
+          element.setAttribute(camelToKebabCase(key), `${value}`);
+        }
+      });
+    }
+
+    if (type === 'rect' || type === 'ellipse' || type === 'polyline' || type === 'path') {
+      if (!restExportRec.fill) {
+        element.setAttribute('fill', 'none');
       }
-    });
+    }
 
     if (type === 'ellipse') {
-      element.setAttribute('cx', `${toFixedAndRemoveTrailingZeros(width / 2)}`);
+      element.setAttribute('cx', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width / 2)}`);
       element.setAttribute(
         'cy',
-        `${toFixedAndRemoveTrailingZeros(height / 2)}`,
+        `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height / 2)}`,
       );
-      element.setAttribute('rx', `${toFixedAndRemoveTrailingZeros(width / 2)}`);
+      element.setAttribute('rx', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width / 2)}`);
       element.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(height / 2)}`,
+        `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height / 2)}`,
       );
     } else if (type === 'rect') {
-      element.setAttribute('width', `${toFixedAndRemoveTrailingZeros(width)}`);
+      element.setAttribute('width', `${isString(width) ? width : toFixedAndRemoveTrailingZeros(width)}`);
       element.setAttribute(
         'height',
-        `${toFixedAndRemoveTrailingZeros(height)}`,
+        `${isString(height) ? height : toFixedAndRemoveTrailingZeros(height)}`,
       );
+      {
+        const rEff = effectiveSvgRectCornerRadius(width, height, Number(cornerRadius) || 0);
+        if (rEff > 0) {
+          const r = toFixedAndRemoveTrailingZeros(rEff);
+          element.setAttribute('rx', r);
+          element.setAttribute('ry', r);
+        }
+      }
       // const { width, height, x, y } = node;
       // // Handle negative size of rect.
       // if (width < 0 || height < 0) {
@@ -331,28 +590,32 @@ export function serializeNodesToSVGElements(
       //   element.setAttribute('width', `${Math.abs(width)}`);
       //   element.setAttribute('height', `${Math.abs(height)}`);
       // }
-    } else if (type === 'polyline' || type === 'path') {
-      if (!rest.fill) {
-        element.setAttribute('fill', 'none');
-      }
     } else if (type === 'text') {
       let x = 0;
       let y = 0;
       if (textAlign === 'center') {
-        x = width / 2;
+        x = (width ?? 0) / 2;
       } else if (textAlign === 'right' || textAlign === 'end') {
-        x = width;
+        x = width ?? 0;
       }
 
-      if (textBaseline === 'middle') {
-        y = height / 2;
-      } else if (textBaseline === 'alphabetic' || textBaseline === 'hanging') {
-        y = fontBoundingBoxAscent;
-      }
+      const lineHeightValue = lineHeight || fontSize as number;
+      y += (lineHeightValue - (fontSize as number)) / 2;
 
       element.setAttribute('x', `${toFixedAndRemoveTrailingZeros(x)}`);
       element.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y)}`);
       element.removeAttribute('fill');
+
+      // if (fontFamily === 'Gaegu') {
+      //   // Inline font faces so exported SVG is self-contained (see Excalidraw export.ts).
+      //   // const doc = $namespace.ownerDocument;
+      //   const $fontStyle = await createFontFacesStyleElement(nodes, DOMAdapter.get().getDocument());
+      //   if ($fontStyle) {
+      //     const $defs = createSVGElement('defs');
+      //     $defs.appendChild($fontStyle);
+      //     // $namespace.appendChild($defs);
+      //   }
+      // }
     }
 
     if (textAlign) {
@@ -360,13 +623,11 @@ export function serializeNodesToSVGElements(
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/text-anchor
       if (textAlign === 'center') {
         element.setAttribute('text-anchor', 'middle');
-      } else {
-        element.setAttribute('text-anchor', textAlign);
+      } else if (textAlign === 'right' || textAlign === 'end') {
+        element.setAttribute('text-anchor', 'end');
+      } else if (textAlign === 'left' || textAlign === 'start') {
+        element.setAttribute('text-anchor', 'start');
       }
-    }
-
-    if (textBaseline) {
-      element.setAttribute('dominant-baseline', BASELINE_MAP[textBaseline]);
     }
 
     if (sizeAttenuation) {
@@ -385,11 +646,23 @@ export function serializeNodesToSVGElements(
       (markerStart && markerStart !== 'none') ||
       (markerEnd && markerEnd !== 'none');
     const hasFillImage =
-      rest.fill && isString(rest.fill) && isDataUrl(rest.fill);
+      restExportRec.fill &&
+      isString(restExportRec.fill) &&
+      (isUrl(restExportRec.fill) || isDataUrl(restExportRec.fill as string));
     const hasFillGradient =
-      rest.fill && isString(rest.fill) && isGradient(rest.fill);
-    const hasFillPattern = rest.fill && isPattern(rest.fill);
-    const isRough = false;
+      restExportRec.fill &&
+      isString(restExportRec.fill) &&
+      isGradient(restExportRec.fill as string);
+    const hasFillPattern =
+      restExportRec.fill && isPattern(restExportRec.fill);
+    const hasStrokeGradient =
+      restForExport.stroke &&
+      isString(restForExport.stroke) &&
+      isGradient(restForExport.stroke as string);
+    const hasStrokePattern =
+      restForExport.stroke && isPattern(restForExport.stroke);
+    const hasClipMode = !!clipMode;
+
     const hasChildren = edges.some(([parentId]) => parentId === id);
 
     /**
@@ -430,10 +703,14 @@ export function serializeNodesToSVGElements(
       (hasChildren && type !== 'g') ||
       (innerOrOuterStrokeAlignment && type !== 'polyline') ||
       isRough ||
+      isVectorNetwork ||
       hasFillImage ||
       hasFillGradient ||
       hasFillPattern ||
-      hasMarker
+      hasStrokeGradient ||
+      hasStrokePattern ||
+      hasMarker ||
+      hasClipMode
     ) {
       $g = createSVGElement('g');
       if (element) {
@@ -441,43 +718,99 @@ export function serializeNodesToSVGElements(
       }
     }
 
+    let strokePaintLayer: SVGElement | undefined;
     if (innerOrOuterStrokeAlignment) {
-      exportInnerOrOuterStrokeAlignment(node, element, $g);
+      strokePaintLayer = exportInnerOrOuterStrokeAlignment(
+        nodeForExport,
+        element,
+        $g,
+      );
     }
+    const strokeDecorationsTarget = strokePaintLayer ?? element;
     if (innerShadowBlurRadius > 0) {
-      exportInnerShadow(node, element, $g);
+      exportInnerShadow(nodeForExport, element, $g);
     }
     if (dropShadowBlurRadius > 0) {
       // RoughRect has no element, use $g instead.
-      exportDropShadow(node, element || $g, $g);
+      exportDropShadow(nodeForExport, element || $g, $g);
     }
     // avoid `fill="[object ImageBitmap]"`
     if (hasFillImage) {
-      exportFillImage(node, element, $g);
+      await exportFillImage(nodeForExport, element, $g);
     }
     if (hasFillGradient || hasFillPattern) {
-      exportFillGradientOrPattern(node, element, $g);
+      exportFillGradientOrPattern(nodeForExport, element, $g);
     }
-    if (hasMarker) {
-      exportMarker(node, element, $g);
+    if ((hasStrokeGradient || hasStrokePattern) && strokeDecorationsTarget) {
+      exportStrokeGradientOrPattern(
+        nodeForExport,
+        strokeDecorationsTarget,
+        ($g ?? element) as SVGElement,
+      );
+    }
+    if (hasMarker && !isRough && strokeDecorationsTarget) {
+      exportMarker(nodeForExport, strokeDecorationsTarget, $g);
+    }
+    if (hasClipMode) {
+      await exportClipOrMask(nodeForExport, element, $g);
     }
 
     $g = $g || element;
+    $g.id = `node-${id}`;
+
+    const wireFilter = (nodeForExport as { filter?: string }).filter;
+    if (typeof wireFilter === 'string' && wireFilter.trim() !== '') {
+      appendSvgStyleProperty($g, 'filter', wireFilter.trim());
+    }
+
+    // Layer-level blend mode ("mix mode"): how the whole node composites with the
+    // backdrop. Exported as CSS `mix-blend-mode`; `normal` / unsupported modes are omitted.
+    const mixBlendMode = toCSSMixBlendMode(blendMode);
+    if (mixBlendMode) {
+      appendSvgStyleProperty($g, 'mix-blend-mode', mixBlendMode);
+    }
+
+    applySvgDataAttributesToElement($g, {
+      hitStrokeWidth,
+      svgDataAttributes,
+    });
 
     if (visibility === 'hidden') {
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/visibility
       $g.setAttribute('visibility', 'hidden');
     }
-    if (cornerRadius) {
-      $g.setAttribute('rx', `${cornerRadius}`);
-      $g.setAttribute('ry', `${cornerRadius}`);
+    // Rounded <rect> uses rx/ry on the <rect> element (set above for type 'rect');
+    // applying rx/ry on a parent <g> is ignored by SVG and broke export when a <g> wrapped the rect.
+    if (cornerRadius && type !== 'rect') {
+      const rEff = effectiveSvgRectCornerRadius(width, height, Number(cornerRadius) || 0);
+      if (rEff > 0) {
+        const r = toFixedAndRemoveTrailingZeros(rEff);
+        $g.setAttribute('rx', r);
+        $g.setAttribute('ry', r);
+      }
     }
     if (isRough) {
-      // TODO:
-      // exportRough(node, $g);
+      exportRough(nodeForExport, $g);
     }
     if (content) {
-      exportText(node as TextSerializedNode, $g, element);
+      exportText(nodeForExport as TextSerializedNode, $g, element);
+    }
+
+    if (type === 'iconfont' || (type as string) === 'icon_font') {
+      const iconfontHost: SVGElement =
+        $g && element && $g !== element
+          ? (element as SVGElement)
+          : ($g as SVGElement);
+      if (iconfontHost) {
+        appendIconfontVectorChildren(
+          iconfontHost,
+          nodeForExport as IconFontSerializedNode,
+        );
+      }
+    }
+
+    if (isVectorNetwork) {
+      exportVectorNetwork(nodeForExport as VectorNetworkSerializedNode, $g);
     }
 
     const matrix = Mat3.from_scale_angle_translation(
@@ -487,8 +820,8 @@ export function serializeNodesToSVGElements(
       },
       rotation,
       {
-        x,
-        y,
+        x: x ?? 0,
+        y: y ?? 0,
       },
     );
     const a = matrix.m00;
@@ -513,12 +846,14 @@ export function serializeNodesToSVGElements(
 
     idSVGElementMap.set(id, $g);
     svgElementIdMap.set($g, id);
-    if (parentId) {
-      const parent = idSVGElementMap.get(parentId);
+    const parentInExport =
+      parentId != null && vertexSet.has(parentId as string);
+    if (parentInExport) {
+      const parent = idSVGElementMap.get(parentId as string);
       if (parent) {
-        // parent.childNodes
-
         parent.appendChild($g);
+      } else {
+        elements.push($g);
       }
     } else {
       elements.push($g);
@@ -541,6 +876,40 @@ export function camelToKebabCase(str: string) {
   return str.replace(/[A-Z]/g, (match) => `-${match.toLowerCase()}`);
 }
 
+/** `myKey` → `data-my-key`; `data-foo` → `data-foo`. */
+function svgDataAttributeName(key: string): string {
+  if (key.startsWith('data-')) {
+    return key;
+  }
+  return `data-${camelToKebabCase(key)}`;
+}
+
+/**
+ * Writes interaction / app metadata on the exported SVG root for each node (`<g>` or leaf).
+ */
+export function applySvgDataAttributesToElement(
+  el: SVGElement,
+  options: {
+    hitStrokeWidth?: number;
+    svgDataAttributes?: Record<string, string>;
+  },
+): void {
+  const { hitStrokeWidth, svgDataAttributes } = options;
+  if (
+    hitStrokeWidth != null &&
+    Number.isFinite(hitStrokeWidth) &&
+    hitStrokeWidth >= 0
+  ) {
+    el.setAttribute('data-hit-stroke-width', String(hitStrokeWidth));
+  }
+  if (svgDataAttributes && typeof svgDataAttributes === 'object') {
+    for (const [k, v] of Object.entries(svgDataAttributes)) {
+      if (v == null || String(v) === '') continue;
+      el.setAttribute(svgDataAttributeName(k), String(v));
+    }
+  }
+}
+
 /**
  * @see https://stackoverflow.com/questions/74958705/how-to-simulate-stroke-align-stroke-alignment-in-svg
  * @example
@@ -555,7 +924,7 @@ function exportInnerOrOuterStrokeAlignment(
   attributes: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
-) {
+): SVGElement | undefined {
   const { type } = attributes;
   const { strokeWidth, strokeAlignment } = attributes as StrokeAttributes;
   const innerStrokeAlignment = strokeAlignment === 'inner';
@@ -575,6 +944,7 @@ function exportInnerOrOuterStrokeAlignment(
     );
 
     element.setAttribute('points', serializePoints(shiftedPoints));
+    return undefined;
   } else {
     const $stroke = element.cloneNode() as SVGElement;
     element.setAttribute('stroke', 'none');
@@ -585,14 +955,17 @@ function exportInnerOrOuterStrokeAlignment(
       const offset = innerStrokeAlignment ? -halfStrokeWidth : halfStrokeWidth;
       $stroke.setAttribute(
         'rx',
-        `${toFixedAndRemoveTrailingZeros(width / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros((width ?? 0) / 2 + offset)}`,
       );
       $stroke.setAttribute(
         'ry',
-        `${toFixedAndRemoveTrailingZeros(height / 2 + offset)}`,
+        `${toFixedAndRemoveTrailingZeros((height ?? 0) / 2 + offset)}`,
       );
     } else if (type === 'rect') {
-      const { width, height, strokeWidth } = attributes;
+      const { width, height, strokeWidth, cornerRadius: cr } =
+        attributes as RectSerializedNode;
+      const sw = (width ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth);
+      const sh = (height ?? 0) + (innerStrokeAlignment ? -strokeWidth : strokeWidth);
       $stroke.setAttribute(
         'x',
         `${toFixedAndRemoveTrailingZeros(
@@ -607,19 +980,24 @@ function exportInnerOrOuterStrokeAlignment(
       );
       $stroke.setAttribute(
         'width',
-        `${toFixedAndRemoveTrailingZeros(
-          width + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
-        )}`,
+        `${toFixedAndRemoveTrailingZeros(sw)}`,
       );
       $stroke.setAttribute(
         'height',
-        `${toFixedAndRemoveTrailingZeros(
-          height + (innerStrokeAlignment ? -strokeWidth : strokeWidth),
-        )}`,
+        `${toFixedAndRemoveTrailingZeros(sh)}`,
       );
+      if (cr) {
+        const r = effectiveSvgRectCornerRadius(sw, sh, cr);
+        if (r > 0) {
+          const rStr = toFixedAndRemoveTrailingZeros(r);
+          $stroke.setAttribute('rx', rStr);
+          $stroke.setAttribute('ry', rStr);
+        }
+      }
     }
 
     $g.appendChild($stroke);
+    return $stroke;
   }
 }
 
@@ -727,11 +1105,11 @@ export function exportDropShadow(
   const $feDropShadow = createSVGElement('feDropShadow');
   $feDropShadow.setAttribute(
     'dx',
-    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width)}`,
+    `${((dropShadowOffsetX || 0) / 2) * Math.sign(width ?? 0)}`,
   );
   $feDropShadow.setAttribute(
     'dy',
-    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height)}`,
+    `${((dropShadowOffsetY || 0) / 2) * Math.sign(height ?? 0)}`,
   );
   $feDropShadow.setAttribute(
     'stdDeviation',
@@ -752,13 +1130,41 @@ function createOrUpdateGradient(
   $def: SVGDefsElement,
   gradient: Gradient,
 ) {
-  const { x, y, width, height } = node;
+  const { width, height } = node;
+  const x = 0;
+  const y = 0;
+
+  if (gradient.type === 'mesh-gradient') {
+    const gradientId = `meshg_${hashCode(
+      `${gradient.backgroundColor}|${gradient.colors.join('|')}`,
+    )}`;
+    let $existed = $def.querySelector(`#${gradientId}`);
+    if (!$existed) {
+      $existed = createSVGElement('linearGradient');
+      $existed.setAttribute('gradientUnits', 'userSpaceOnUse');
+      const cMid = gradient.colors[4] ?? '#888888';
+      $existed.innerHTML = `<stop offset="0" stop-color="${gradient.backgroundColor}"></stop><stop offset="1" stop-color="${cMid}"></stop>`;
+      $existed.id = gradientId;
+      $def.appendChild($existed);
+    }
+    const { x1, y1, x2, y2 } = computeLinearGradient(
+      [x ?? 0, y ?? 0],
+      width ?? 0,
+      height ?? 0,
+      0,
+    );
+    $existed.setAttribute('x1', `${x1}`);
+    $existed.setAttribute('y1', `${y1}`);
+    $existed.setAttribute('x2', `${x2}`);
+    $existed.setAttribute('y2', `${y2}`);
+    return gradientId;
+  }
 
   const gradientId = generateGradientKey({
     ...gradient,
-    min: [x, y],
-    width,
-    height,
+    min: [x ?? 0, y ?? 0],
+    width: width ?? 0,
+    height: height ?? 0,
   });
   let $existed = $def.querySelector(`#${gradientId}`);
 
@@ -778,9 +1184,8 @@ function createOrUpdateGradient(
       .sort((a, b) => a.offset.value - b.offset.value)
       .forEach(({ offset, color }) => {
         // TODO: support absolute unit like `px`
-        innerHTML += `<stop offset="${
-          offset.value / 100
-        }" stop-color="${color}"></stop>`;
+        innerHTML += `<stop offset="${offset.value / 100
+          }" stop-color="${color}"></stop>`;
       });
     $existed.innerHTML = innerHTML;
     $existed.id = gradientId;
@@ -790,9 +1195,9 @@ function createOrUpdateGradient(
   if (gradient.type === 'linear-gradient') {
     const { angle } = gradient;
     const { x1, y1, x2, y2 } = computeLinearGradient(
-      [x, y],
-      width,
-      height,
+      [x ?? 0, y ?? 0],
+      width ?? 0,
+      height ?? 0,
       angle,
     );
 
@@ -806,7 +1211,7 @@ function createOrUpdateGradient(
       x: xx,
       y: yy,
       r,
-    } = computeRadialGradient([x, y], width, height, cx, cy, size);
+    } = computeRadialGradient([x ?? 0, y ?? 0], width ?? 0, height ?? 0, cx, cy, size);
 
     $existed.setAttribute('cx', `${xx}`);
     $existed.setAttribute('cy', `${yy}`);
@@ -820,8 +1225,12 @@ export function createOrUpdateMultiGradient(
   node: SerializedNode,
   $def: SVGDefsElement,
   gradients: Gradient[],
+  paint: 'fill' | 'stroke' = 'fill',
 ) {
-  const filterId = `filter-${node.id}-gradient`;
+  const filterId =
+    paint === 'stroke'
+      ? `filter-${node.id}-stroke-gradient`
+      : `filter-${node.id}-gradient`;
   let $existed = $def.querySelector(`#${filterId}`);
   if (!$existed) {
     $existed = createSVGElement('filter') as SVGFilterElement;
@@ -913,15 +1322,15 @@ function create$Pattern(
 
   // There is no equivalent to CSS no-repeat for SVG patterns
   // @see https://stackoverflow.com/a/33481956
-  let patternWidth = width;
-  let patternHeight = height;
+  let patternWidth = width ?? 0;
+  let patternHeight = height ?? 0;
   if (repetition === 'repeat-x') {
-    patternHeight = nodeHeight;
+    patternHeight = nodeHeight ?? 0;
   } else if (repetition === 'repeat-y') {
-    patternWidth = nodeWidth;
+    patternWidth = nodeWidth ?? 0;
   } else if (repetition === 'no-repeat') {
-    patternWidth = nodeWidth;
-    patternHeight = nodeHeight;
+    patternWidth = nodeWidth ?? 0;
+    patternHeight = nodeHeight ?? 0;
   }
   $pattern.setAttribute('width', `${patternWidth}`);
   $pattern.setAttribute('height', `${patternHeight}`);
@@ -965,10 +1374,9 @@ export function exportFillGradientOrPattern(
   $el: SVGElement,
   $g: SVGElement,
 ) {
-  const $defs = createSVGElement('defs') as SVGDefsElement;
-  $g.prepend($defs);
+  const $defs = ensureGroupDefs($g);
 
-  const fill = (node as TextSerializedNode).fill;
+  const fill = getPrimaryFillValue(node as FillAttributes) ?? '';
 
   if (isPattern(fill)) {
     const patternId = createOrUpdatePattern(node, $defs, fill);
@@ -987,24 +1395,78 @@ export function exportFillGradientOrPattern(
   }
 }
 
+function ensureGroupDefs($g: SVGElement): SVGDefsElement {
+  const first = $g.firstElementChild;
+  if (first?.localName === 'defs') {
+    return first as SVGDefsElement;
+  }
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.prepend($defs);
+  return $defs;
+}
+
+export function exportStrokeGradientOrPattern(
+  node: SerializedNode,
+  $el: SVGElement,
+  $g: SVGElement,
+) {
+  const $defs = ensureGroupDefs($g);
+  const nrec = node as unknown as Record<string, unknown>;
+  migrateLegacyStrokeWireInPlace(nrec);
+  const stroke =
+    firstEnabledStrokePresentation(
+      (node as StrokeAttributes).strokes,
+    )?.stroke ?? '';
+  if (!stroke || String(stroke).trim() === '') {
+    return;
+  }
+
+  if (isPattern(stroke)) {
+    const patternId = createOrUpdatePattern(node, $defs, stroke);
+    $el?.setAttribute('stroke', `url(#${patternId})`);
+  } else {
+    const gradients = parseGradient(stroke as string);
+    if (gradients.length === 1) {
+      const gradientId = createOrUpdateGradient(node, $defs, gradients[0]);
+      $el?.setAttribute('stroke', `url(#${gradientId})`);
+    } else if (gradients.length > 1) {
+      const filterId = createOrUpdateMultiGradient(
+        node,
+        $defs,
+        gradients,
+        'stroke',
+      );
+      const existedFilter = $el?.getAttribute('filter') || '';
+      $el?.setAttribute(
+        'filter',
+        `${existedFilter} url(#${filterId})`.trim(),
+      );
+      $el?.setAttribute('stroke', 'black');
+    }
+  }
+}
+
 function createOrUpdateMarker(
   node: SerializedNode,
   $def: SVGDefsElement,
   marker: Marker['start'],
   isEnd = false,
 ) {
-  const {
-    stroke,
-    strokeWidth,
-    strokeOpacity,
-    strokeLinecap,
-    strokeLinejoin,
-    markerFactor = 3,
-  } = node as PathSerializedNode;
+  migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
+  const sp = firstEnabledStrokePresentation(
+    (node as StrokeAttributes).strokes,
+  );
+  const stroke = sp?.stroke ?? 'none';
+  const rawSo = sp?.strokeOpacity ?? 1;
+  const strokeOpacity =
+    typeof rawSo === 'number' && Number.isFinite(rawSo)
+      ? rawSo
+      : parseFloat(String(rawSo)) || 1;
+  const { strokeWidth, strokeLinecap, strokeLinejoin, markerFactor = 3 } =
+    node as PathSerializedNode;
 
-  const patternId = `marker-${marker}-${
-    isEnd ? 'end' : 'start'
-  }-${strokeWidth}`;
+  const patternId = `marker-${marker}-${isEnd ? 'end' : 'start'
+    }-${strokeWidth}`;
   const $existed = $def.querySelector(`#${patternId}`);
   if (!$existed) {
     const arrowRadius = strokeWidth * markerFactor;
@@ -1031,13 +1493,38 @@ function createOrUpdateMarker(
     }
     $def.appendChild($marker);
 
-    if (marker === 'line') {
-      const points = lineArrow(0, 0, arrowRadius, Math.PI);
+    if (marker === 'line' || marker === 'triangle' || marker === 'diamond') {
       const $path = createSVGElement('path');
-      $path.setAttribute('fill', 'none');
+      let d = '';
+
+      if (marker === 'line') {
+        const points = lineArrow(0, 0, arrowRadius, Math.PI);
+        d = `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]}`;
+        $path.setAttribute('fill', 'none');
+      } else if (marker === 'triangle') {
+        const points = lineArrow(0, 0, arrowRadius, Math.PI);
+        d = `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]} Z`;
+        $path.setAttribute('fill', stroke);
+        if (!isNil(strokeOpacity) && strokeOpacity !== 1) {
+          $path.setAttribute('fill-opacity', `${strokeOpacity}`);
+        }
+      } else {
+        const tip = [0, 0] as const;
+        const center = [-(arrowRadius * 0.5), 0] as const;
+        const back = [-arrowRadius, 0] as const;
+        const halfWidth = arrowRadius * 0.4;
+        const left = [center[0], center[1] - halfWidth] as const;
+        const right = [center[0], center[1] + halfWidth] as const;
+        d = `M ${tip[0]} ${tip[1]} L ${left[0]} ${left[1]} L ${back[0]} ${back[1]} L ${right[0]} ${right[1]} Z`;
+        $path.setAttribute('fill', stroke);
+        if (!isNil(strokeOpacity) && strokeOpacity !== 1) {
+          $path.setAttribute('fill-opacity', `${strokeOpacity}`);
+        }
+      }
+
       $path.setAttribute('stroke', stroke);
       $path.setAttribute('stroke-width', `${strokeWidth}`);
-      if (!isNil(strokeOpacity)) {
+      if (!isNil(strokeOpacity) && strokeOpacity !== 1) {
         $path.setAttribute('stroke-opacity', `${strokeOpacity}`);
       }
       if (!isNil(strokeLinecap)) {
@@ -1046,10 +1533,7 @@ function createOrUpdateMarker(
       if (!isNil(strokeLinejoin)) {
         $path.setAttribute('stroke-linejoin', strokeLinejoin);
       }
-      $path.setAttribute(
-        'd',
-        `M ${points[0][0]} ${points[0][1]} L ${points[1][0]} ${points[1][1]} L ${points[2][0]} ${points[2][1]}`,
-      );
+      $path.setAttribute('d', d);
       $marker.appendChild($path);
     }
   }
@@ -1066,14 +1550,236 @@ export function exportMarker(
   const $defs = createSVGElement('defs') as SVGDefsElement;
   $g.prepend($defs);
 
-  if (markerStart === 'line') {
+  if (markerStart !== 'none') {
     const markerId = createOrUpdateMarker(node, $defs, markerStart);
     $el?.setAttribute('marker-start', `url(#${markerId})`);
   }
-  if (markerEnd === 'line') {
+  if (markerEnd !== 'none') {
     const markerId = createOrUpdateMarker(node, $defs, markerEnd, true);
     $el?.setAttribute('marker-end', `url(#${markerId})`);
   }
+}
+
+async function createOrUpdateClipPath(
+  node: SerializedNode,
+  $defs: SVGDefsElement,
+  isMask = false,
+) {
+  const clipPathId = isMask ? `mask-${node.id}` : `clip-path-${node.id}`;
+  const $existed = $defs.querySelector(`#${clipPathId}`);
+  if (!$existed) {
+    const $clipPath = createSVGElement(isMask ? 'mask' : 'clipPath') as SVGClipPathElement;
+    $clipPath.setAttribute('id', clipPathId);
+
+    const { clipMode, ...rest } = node;
+    const [$parentNode] = await serializeNodesToSVGElements([rest]);
+
+    /**
+     * clipPath is a sibling of the node itself, so we need to remove the transform attribute.
+     *
+     * <defs>
+     *   <clipPath id="clip-path-frame-1">
+     *     <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
+     *   </clipPath>
+     * </defs>
+     * <ellipse id="node-frame-1" fill="green" cx="100" cy="100" rx="100" ry="100"/>
+     */
+    $parentNode.removeAttribute('id');
+    $parentNode.removeAttribute('transform');
+
+    if (isMask) {
+      // erase：mask 中白色=显示、黑色=隐藏。需要「白底 + 擦除形状为黑」才能擦掉内容
+      const $whiteRect = createSVGElement('rect');
+      $whiteRect.setAttribute('x', '-10000');
+      $whiteRect.setAttribute('y', '-10000');
+      $whiteRect.setAttribute('width', '20000');
+      $whiteRect.setAttribute('height', '20000');
+      $whiteRect.setAttribute('fill', 'white');
+      $clipPath.appendChild($whiteRect);
+      $parentNode.setAttribute('fill', 'black');
+      $parentNode.setAttribute('stroke', 'black');
+    }
+
+    $clipPath.appendChild($parentNode);
+    $defs.appendChild($clipPath);
+  }
+  return clipPathId;
+}
+
+export async function exportClipOrMask(
+  node: SerializedNode,
+  $el: SVGElement,
+  $g: SVGElement,
+) {
+  const { clipMode } = node;
+  const $defs = createSVGElement('defs') as SVGDefsElement;
+  $g.prepend($defs);
+
+  if (clipMode === 'clip') {
+    const clipPathId = await createOrUpdateClipPath(node, $defs);
+    $g.setAttribute('clip-path', `url(#${clipPathId})`);
+  } else if (clipMode === 'erase') {
+    const maskId = await createOrUpdateClipPath(node, $defs, true);
+    $g.setAttribute('mask', `url(#${maskId})`);
+  }
+}
+
+export function exportVectorNetwork(
+  node: VectorNetworkSerializedNode,
+  $g: SVGElement,
+): void {
+  migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+  migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
+
+  const { vertices = [], segments = [], regions } = node;
+  const fillPres = firstEnabledFillPresentation(node.fills);
+  const fill = fillPres?.fill;
+  const rawFillOpacity = fillPres?.fillOpacity ?? 1;
+  const fillOpacity =
+    typeof rawFillOpacity === 'number' && Number.isFinite(rawFillOpacity)
+      ? rawFillOpacity
+      : parseFloat(String(rawFillOpacity)) || 1;
+
+  const strokePres = firstEnabledStrokePresentation(node.strokes);
+  const stroke = strokePres?.stroke;
+  const rawStrokeOpacity = strokePres?.strokeOpacity ?? 1;
+  const strokeOpacity =
+    typeof rawStrokeOpacity === 'number' && Number.isFinite(rawStrokeOpacity)
+      ? rawStrokeOpacity
+      : parseFloat(String(rawStrokeOpacity)) || 1;
+
+  const {
+    strokeWidth = 1,
+    strokeLinecap,
+    strokeLinejoin,
+    strokeDasharray,
+    strokeDashoffset,
+    opacity,
+  } = node;
+
+  const fillD = buildVectorNetworkFillPathD(vertices, segments, regions);
+  if (fillD && fill && `${fill}` !== 'none') {
+    const $fill = createSVGElement('path');
+    $fill.setAttribute('d', fillD);
+    $fill.setAttribute('fill', `${fill}`);
+    if (fillOpacity !== 1) {
+      $fill.setAttribute(
+        'fill-opacity',
+        `${toFixedAndRemoveTrailingZeros(Math.max(0, Math.min(1, fillOpacity)))}`,
+      );
+    }
+    $fill.setAttribute('fill-rule', resolveVectorNetworkFillRule(regions));
+    $fill.setAttribute('stroke', 'none');
+    $g.appendChild($fill);
+  }
+
+  const strokeD = buildVectorNetworkStrokePathD(vertices, segments);
+  if (
+    strokeD &&
+    stroke &&
+    `${stroke}` !== 'none' &&
+    strokeWidth > 0
+  ) {
+    const $stroke = createSVGElement('path');
+    $stroke.setAttribute('d', strokeD);
+    $stroke.setAttribute('fill', 'none');
+    $stroke.setAttribute('stroke', `${stroke}`);
+    $stroke.setAttribute(
+      'stroke-width',
+      `${toFixedAndRemoveTrailingZeros(strokeWidth)}`,
+    );
+    if (strokeOpacity !== 1) {
+      $stroke.setAttribute(
+        'stroke-opacity',
+        `${toFixedAndRemoveTrailingZeros(Math.max(0, Math.min(1, strokeOpacity)))}`,
+      );
+    }
+    if (strokeLinecap) {
+      $stroke.setAttribute('stroke-linecap', strokeLinecap);
+    }
+    if (strokeLinejoin) {
+      $stroke.setAttribute('stroke-linejoin', strokeLinejoin);
+    }
+    if (
+      strokeDasharray &&
+      strokeDasharray !== '0,0' &&
+      strokeDasharray !== '0'
+    ) {
+      $stroke.setAttribute('stroke-dasharray', strokeDasharray);
+      if (strokeDashoffset) {
+        $stroke.setAttribute(
+          'stroke-dashoffset',
+          `${toFixedAndRemoveTrailingZeros(strokeDashoffset)}`,
+        );
+      }
+    }
+    $g.appendChild($stroke);
+  }
+
+  if (
+    opacity != null &&
+    Number.isFinite(opacity) &&
+    opacity !== 1
+  ) {
+    $g.setAttribute('opacity', `${toFixedAndRemoveTrailingZeros(opacity)}`);
+  }
+}
+
+export function exportRough(node: SerializedNode, $g: SVGElement) {
+  migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+  migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
+  const pres = firstEnabledFillPresentation((node as FillAttributes).fills);
+  const fill = pres?.fill ?? 'none';
+  const rawFo = pres?.fillOpacity ?? 1;
+  const fillOpacity =
+    typeof rawFo === 'number' && Number.isFinite(rawFo)
+      ? rawFo
+      : parseFloat(String(rawFo)) || 1;
+  const { strokeWidth } = node as PathSerializedNode;
+  const stroke =
+    firstEnabledStrokePresentation((node as StrokeAttributes).strokes)
+      ?.stroke ?? 'none';
+  const roughFillStyle = (node as RoughAttributes).roughFillStyle;
+
+  if (roughFillStyle === 'watercolor') {
+    const wc = getWatercolorFillContoursFromSerializedNode(node);
+    if (wc) {
+      wc.forEach((layer) => {
+        const $path = createSVGElement('path');
+        $path.setAttribute('d', polygonToPathD(layer));
+        $path.setAttribute('fill', fill as string);
+        $path.setAttribute(
+          'fill-opacity',
+          String(WATERCOLOR_LAYER_FILL_OPACITY * fillOpacity),
+        );
+        $path.setAttribute('stroke', 'none');
+        $g.appendChild($path);
+      });
+    }
+  }
+
+  const drawableSets = computeDrawableSets(node);
+
+  drawableSets.forEach((drawableSet) => {
+    const { type } = drawableSet;
+    const commands = opSet2Absolute(drawableSet);
+    const d = path2String(commands, 2);
+    const $path = createSVGElement('path');
+    $path.setAttribute('d', d);
+    $g.appendChild($path);
+    if (type === 'fillSketch') {
+      $path.setAttribute('stroke', fill as string);
+      $path.setAttribute('stroke-width', `${strokeWidth}`);
+      $path.setAttribute('fill', 'none');
+    } else if (type === 'path') {
+      $path.setAttribute('stroke', stroke as string);
+      $path.setAttribute('fill', 'none');
+      $path.setAttribute('stroke-width', `${strokeWidth}`);
+    } else if (type === 'fillPath') {
+      $path.setAttribute('fill', fill as string);
+      $path.setAttribute('stroke', 'none');
+    }
+  });
 }
 
 /**
@@ -1085,6 +1791,10 @@ export function exportText(
   $g: SVGElement,
   element: SVGElement,
 ) {
+  migrateLegacyFillWireInPlace(attributes as unknown as Record<string, unknown>);
+  migrateLegacyStrokeWireInPlace(attributes as unknown as Record<string, unknown>);
+  const fp = firstEnabledFillPresentation((attributes as FillAttributes).fills);
+  const fillFromFills = fp?.fill;
   const {
     content,
     fontFamily,
@@ -1092,24 +1802,31 @@ export function exportText(
     fontWeight,
     fontStyle,
     fontVariant,
-    fill,
     decorationLine,
     decorationStyle,
     decorationColor,
     decorationThickness,
+    letterSpacing,
   } = attributes;
+  const fill = fillFromFills ?? '#000';
 
-  const { lineHeight } = measureText(attributes);
+  $g.setAttribute('dominant-baseline', 'hanging');
 
-  const lines = content.split('\n');
+  const { lineHeight, lines } = measureText(attributes);
   if (lines.length > 1) {
     lines.forEach((line, i) => {
       const $tspan = createSVGElement('tspan');
       $tspan.textContent = line;
       $tspan.setAttribute('x', '0');
-      $tspan.setAttribute('dy', `${i * lineHeight}`);
+
+      if (i > 0) {
+        $tspan.setAttribute('dy', `${toFixedAndRemoveTrailingZeros(lineHeight)}`);
+      }
       $g.appendChild($tspan);
     });
+
+    // const y = Number($g.getAttribute('y'));
+    // $g.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y - lines.length * lineHeight)}`);
   } else {
     $g.textContent = content;
   }
@@ -1118,9 +1835,21 @@ export function exportText(
   if ($g === element) {
     $g.setAttribute('font-family', fontFamily);
     $g.setAttribute('font-size', `${fontSize}`);
-    $g.setAttribute('font-weight', `${fontWeight}`);
-    $g.setAttribute('font-style', fontStyle);
-    $g.setAttribute('font-variant', fontVariant);
+    if (fontWeight) {
+      $g.setAttribute('font-weight', `${fontWeight}`);
+    }
+    if (fontStyle) {
+      $g.setAttribute('font-style', fontStyle);
+    }
+    if (fontVariant) {
+      $g.setAttribute('font-variant', fontVariant);
+    }
+    if (letterSpacing) {
+      $g.setAttribute(
+        'letter-spacing',
+        `${toFixedAndRemoveTrailingZeros(letterSpacing)}`,
+      );
+    }
     $g.setAttribute('fill', fill as string);
   } else {
     let styleCSSText = '';
@@ -1136,6 +1865,9 @@ export function exportText(
     }
     if (fill) {
       styleCSSText += `fill: ${fill as string};`;
+    }
+    if (letterSpacing !== 0) {
+      styleCSSText += `letter-spacing: ${toFixedAndRemoveTrailingZeros(letterSpacing)}px;`;
     }
     if (styleCSSText) {
       $g.setAttribute('style', styleCSSText);
@@ -1153,34 +1885,49 @@ export function exportText(
     $g.setAttribute(
       'style',
       styleCSSText +
-        `text-decoration: ${decorationStyle} ${decorationLine} ${decorationColor} ${decorationThickness}px;`,
+      `text-decoration: ${decorationStyle} ${decorationLine} ${decorationColor} ${decorationThickness}px;`,
     );
   }
 }
 
-export function exportFillImage(
+export async function exportFillImage(
   node: SerializedNode,
   element: SVGElement,
   $g: SVGElement,
 ) {
+  const wire = { ...(node as unknown as Record<string, unknown>) };
+  migrateLegacyFillWireInPlace(wire);
+  migrateLegacyStrokeWireInPlace(wire);
+  let fill = getPrimaryFillValue(wire as FillAttributes) ?? '';
+  if (!fill) {
+    element.setAttribute('fill', 'none');
+    return;
+  }
+
   const $defs = createSVGElement('defs');
   const $pattern = createSVGElement('pattern');
   $pattern.id = `image-fill_${node.id}`;
   $pattern.setAttribute('patternUnits', 'objectBoundingBox');
+  $pattern.setAttribute('patternContentUnits', 'objectBoundingBox');
   $pattern.setAttribute('width', '1');
   $pattern.setAttribute('height', '1');
   const $image = createSVGElement('image');
-  $image.setAttribute('href', (node as any).fill as string);
+
+  if (isUrl(fill)) {
+    // Convert url to dataURL
+    fill = (await imageToCanvas(fill)).toDataURL();
+  }
+
+  $image.setAttribute('href', fill);
   $image.setAttribute('x', '0');
   $image.setAttribute('y', '0');
-  // use geometry bounds of shape.
-  const { width: nodeWidth, height: nodeHeight } = node;
-  $image.setAttribute('width', `${nodeWidth}`);
-  $image.setAttribute('height', `${nodeHeight}`);
+  $image.setAttribute('width', '1');
+  $image.setAttribute('height', '1');
+  // 按 node 宽高填充，不保持图片原始宽高比
+  $image.setAttribute('preserveAspectRatio', 'none');
   $pattern.appendChild($image);
   $defs.appendChild($pattern);
   $g.appendChild($defs);
-
   element.setAttribute('fill', `url(#${$pattern.id})`);
 }
 
@@ -1197,8 +1944,124 @@ export function isUrl(url: string) {
   );
 }
 
-function toFixedAndRemoveTrailingZeros(value: number) {
+export function toFixedAndRemoveTrailingZeros(value: number) {
   return value.toFixed(3).replace(/\.?0+$/, '');
+}
+
+function parsePositiveIconfontDim(
+  v: number | string | undefined,
+  fallback: number,
+): number {
+  if (v == null) {
+    return fallback;
+  }
+  const n = typeof v === 'number' ? v : parseFloat(String(v));
+  if (!Number.isFinite(n) || n <= 0) {
+    return fallback;
+  }
+  return n;
+}
+
+function applyIconfontPrimitiveAttrs(
+  el: SVGElement,
+  prim: ScaledIconPrimitive,
+  userColorStroke: string | undefined,
+  userColorFill: string | undefined,
+  rSw: unknown,
+) {
+  const fillPart = pickChildFill(
+    prim.style,
+    userColorFill,
+    userColorStroke,
+    prim.kind,
+    false,
+  );
+  if (fillPart && fillPart !== 'none') {
+    el.setAttribute('fill', fillPart);
+  } else {
+    el.setAttribute('fill', 'none');
+  }
+  const sw = strokeWidthFromIconStyle(prim.style, rSw, { primKind: prim.kind });
+  const strokeC = pickStrokeColorForChild(
+    prim.style,
+    userColorStroke,
+    userColorFill,
+  );
+  if (sw > 0) {
+    el.setAttribute('stroke', strokeC);
+    el.setAttribute('stroke-width', toFixedAndRemoveTrailingZeros(sw));
+    el.setAttribute('stroke-linecap', mapSvgLineCap(prim.style.strokeLinecap));
+    el.setAttribute('stroke-linejoin', mapSvgLineJoin(prim.style.strokeLinejoin));
+  } else {
+    el.setAttribute('stroke', 'none');
+  }
+}
+
+function appendIconfontVectorChildren(
+  host: SVGElement,
+  node: IconFontSerializedNode,
+) {
+  const w = parsePositiveIconfontDim(node.width, 24);
+  const h = parsePositiveIconfontDim(node.height, 24);
+  const { iconFontName = '', iconFontFamily = 'lucide' } = node;
+  const groupPres = buildGroupWirePresentation(node, undefined, undefined);
+  const { userColorStroke, userColorFill, rSw } = resolveIconFontWireStyle(
+    node,
+    undefined,
+    undefined,
+    groupPres,
+  );
+  const prims = buildIconFontScalablePrimitives(
+    String(iconFontName),
+    String(iconFontFamily),
+    w,
+    h,
+  );
+  if (!prims || prims.length === 0) {
+    return;
+  }
+  for (const prim of prims) {
+    if (prim.kind === 'path') {
+      const p = createSVGElement('path');
+      p.setAttribute('d', prim.d);
+      applyIconfontPrimitiveAttrs(
+        p,
+        prim,
+        userColorStroke,
+        userColorFill,
+        rSw,
+      );
+      host.appendChild(p);
+    } else if (prim.kind === 'ellipse') {
+      const e = createSVGElement('ellipse');
+      e.setAttribute('cx', toFixedAndRemoveTrailingZeros(prim.cx));
+      e.setAttribute('cy', toFixedAndRemoveTrailingZeros(prim.cy));
+      e.setAttribute('rx', toFixedAndRemoveTrailingZeros(prim.rx));
+      e.setAttribute('ry', toFixedAndRemoveTrailingZeros(prim.ry));
+      applyIconfontPrimitiveAttrs(
+        e,
+        prim,
+        userColorStroke,
+        userColorFill,
+        rSw,
+      );
+      host.appendChild(e);
+    } else {
+      const l = createSVGElement('line');
+      l.setAttribute('x1', toFixedAndRemoveTrailingZeros(prim.x1));
+      l.setAttribute('y1', toFixedAndRemoveTrailingZeros(prim.y1));
+      l.setAttribute('x2', toFixedAndRemoveTrailingZeros(prim.x2));
+      l.setAttribute('y2', toFixedAndRemoveTrailingZeros(prim.y2));
+      applyIconfontPrimitiveAttrs(
+        l,
+        prim,
+        userColorStroke,
+        userColorFill,
+        rSw,
+      );
+      host.appendChild(l);
+    }
+  }
 }
 
 export function toSVG($svg: SVGElement) {

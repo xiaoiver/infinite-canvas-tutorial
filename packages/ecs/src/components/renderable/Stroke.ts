@@ -1,15 +1,9 @@
 import { field, Type } from '@lastolivegames/becsy';
 
+/**
+ * 描边几何与样式（线宽、虚线、端帽等）。颜料见 {@link StrokeLayers} / 线框 `strokes[]`。
+ */
 export class Stroke {
-  /**
-   * It is a presentation attribute defining the color used to paint the outline of the shape.
-   *
-   * Default to `none`.
-   * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke
-   */
-  @field({ type: Type.dynamicString(20), default: 'none' })
-  declare color: string;
-
   /**
    * It is a presentation attribute defining the width of the stroke to be applied to the shape.
    *
@@ -86,6 +80,24 @@ export class Stroke {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/stroke-dashoffset
    */
   @field({ type: Type.float32, default: 0 }) declare dashoffset: number;
+
+  /**
+   * 虚线段两端在间隙方向的延伸样式（Figma dash cap）。
+   * `none`：齐平；`square`：沿路径各延伸约半线宽；`round`：半圆端帽。
+   */
+  @field({
+    type: Type.staticString(['none', 'square', 'round']),
+    default: 'none',
+  })
+  declare dashcap: 'none' | 'square' | 'round';
+
+  /** 设计变量绑定：变量表键名（与 `$` 后一致），对应 `strokes[]` 首层 `value` */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare colorVariableRef: string;
+
+  /** 作用于 {@link width} */
+  @field({ type: Type.dynamicString(200), default: '' })
+  declare widthVariableRef: string;
 
   constructor(props?: Partial<Stroke>) {
     Object.assign(this, props);

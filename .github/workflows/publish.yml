@@ -1,6 +1,9 @@
 name: publish
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   publish:
@@ -13,21 +16,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - uses: pnpm/action-setup@v2
+      - uses: pnpm/action-setup@v4
         with:
-          version: 7
+          version: 9  
 
-      - name: Use Node.js 18
+      - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20.14.0
           cache: 'pnpm'
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install
 
-      - name: Build
-        run: pnpm build
+      - name: Build packages
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' --filter '!@infinite-canvas-tutorial/site' run build
+
+      - name: Build site
+        env:
+          # VitePress bundles many demo deps (vello wasm, lottie, etc.) and exceeds the default ~4GB heap.
+          NODE_OPTIONS: --max-old-space-size=6144
+          # 配置了 ADSENSE_CLIENT 时默认启用；也可通过 vars/secrets.ADSENSE_ENABLED 显式控制
+          ADSENSE_ENABLED: ${{ secrets.ADSENSE_CLIENT != '' && 'true' || vars.ADSENSE_ENABLED || secrets.ADSENSE_ENABLED }}
+          ADSENSE_CLIENT: ${{ secrets.ADSENSE_CLIENT }}
+        run: pnpm --filter '@infinite-canvas-tutorial/site' run build
 
       - name: Publish to Cloudflare Pages
         uses: cloudflare/pages-action@v1

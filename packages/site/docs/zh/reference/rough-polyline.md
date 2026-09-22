@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 # RoughPolyline
 
 参考 SVG [polyline]。

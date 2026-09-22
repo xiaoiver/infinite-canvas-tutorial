@@ -1,0 +1,92 @@
+import type { Entity } from '@lastolivegames/becsy';
+import type { FillImageObjectFit } from './fill-layer-image-object-fit';
+import { getSdfGeometryBoundsForFilter } from './solidShapeRasterForFilter';
+
+/** 避免 SVG 等小 intrinsic 位图在放大后处理时糊成一片；与 {@link resolveFillImageTexturePixelSize} 配合使用。 */
+export const FILL_IMAGE_RASTER_MAX_EDGE = 4096;
+
+/**
+ * 几何在画布上的像素宽高；与 {@link getSdfGeometryBoundsForFilter} 一致（`ComputedBounds` 未就绪时从 Rect 等回退）。
+ */
+export function getShapePixelBoundsForFillImage(instance: Entity): {
+  geomW: number;
+  geomH: number;
+} {
+  const g = getSdfGeometryBoundsForFilter(instance);
+  return {
+    geomW: g.maxX - g.minX,
+    geomH: g.maxY - g.minY,
+  };
+}
+
+export function getDevicePixelRatioForRaster(): number {
+  if (typeof globalThis === 'undefined') {
+    return 1;
+  }
+  const dpr = (globalThis as { devicePixelRatio?: number }).devicePixelRatio;
+  return Number.isFinite(dpr) && dpr! > 0 ? dpr! : 1;
+}
+
+/**
+ * 按画布上实际占用尺寸 × DPR 提升纹理分辨率，使 SVG 等小图在 liquid-metal / heatmap / gem-smoke 等
+ * 全纹理后处理中仍足够清晰；若超过 {@link FILL_IMAGE_RASTER_MAX_EDGE} 则等比缩小。
+ */
+export function resolveFillImageTexturePixelSize(
+  srcW: number,
+  srcH: number,
+  geomW: number,
+  geomH: number,
+  devicePixelRatio: number,
+  maxEdge: number = FILL_IMAGE_RASTER_MAX_EDGE,
+  objectFit: FillImageObjectFit = 'fill',
+): { width: number; height: number } {
+  const sw = Math.max(1, Math.floor(srcW));
+  const sh = Math.max(1, Math.floor(srcH));
+  const dpr = Math.max(1, devicePixelRatio);
+  if (geomW < 0.5 || geomH < 0.5) {
+    return { width: sw, height: sh };
+  }
+  const targetW = Math.ceil(geomW * dpr);
+  const targetH = Math.ceil(geomH * dpr);
+  // `contain` / `cover` 等在「形状像素框」内烘焙留白或裁切；勿用图源 intrinsic 作画布尺寸。
+  let tw =
+    objectFit === 'fill' ? Math.max(sw, targetW) : targetW;
+  let th =
+    objectFit === 'fill' ? Math.max(sh, targetH) : targetH;
+  if (tw > maxEdge || th > maxEdge) {
+    const scale = Math.min(maxEdge / tw, maxEdge / th, 1);
+    tw = Math.max(1, Math.floor(tw * scale));
+    th = Math.max(1, Math.floor(th * scale));
+  }
+  return { width: tw, height: th };
+}
+
+/**
+ * 将**已有**位图画到目标尺寸（Canvas2D 插值）。对真正的 SVG 矢量，插值仍偏糊，需配合
+ * `fillImageSvgReraster` 在目标尺寸用矢量重栅格后替换 `FillImage.src`。
+ */
+export function blitImageBitmapToPixelSize(
+  src: ImageBitmap,
+  width: number,
+  height: number,
+): HTMLCanvasElement | OffscreenCanvas {
+  let canvas: HTMLCanvasElement | OffscreenCanvas;
+  if (typeof document !== 'undefined') {
+    const c = document.createElement('canvas');
+    c.width = width;
+    c.height = height;
+    canvas = c;
+  } else {
+    canvas = new OffscreenCanvas(width, height);
+  }
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | null;
+  if (!ctx) {
+    throw new Error('Canvas 2D required for FillImage raster upscale');
+  }
+  ctx.imageSmoothingEnabled = true;
+  if ('imageSmoothingQuality' in ctx) {
+    ctx.imageSmoothingQuality = 'high';
+  }
+  ctx.drawImage(src, 0, 0, width, height);
+  return canvas;
+}

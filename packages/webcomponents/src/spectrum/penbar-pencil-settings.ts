@@ -62,15 +62,15 @@ export class PenbarPencilSettings extends LitElement {
         @change=${this.handleStrokeColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-        )}
+      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+    )}
       </sp-swatch-group>
       <div class="line" style="display: flex; align-items: center;">
         <sp-slider
           style="flex: 1;"
           size="s"
           label=${msg(str`Stroke width`)}
-          max="20"
+          max="100"
           min="0"
           value=${penbarPencil.strokeWidth}
           step="1"

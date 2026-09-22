@@ -1,8 +1,6 @@
 ---
 outline: deep
-publish: false
 ---
-
 First, create a global App with the default plugin set. For more details, see: [Lesson 18 - Refactor with ECS]
 
 ```ts
@@ -67,7 +65,7 @@ Triggered when the canvas initialization is complete. `ExtendedAPI` can be obtai
 
 Triggered when the canvas resizes. You can retrieve the current canvas dimensions: `{ width: number; height: number }`
 
-### Event.ZOOM_CHANGED
+### Event.CAMERA_ZOOM_CHANGED
 
 Triggered when the canvas camera's zoom level changes. The current zoom level can be retrieved: `{ zoom: number }`
 
@@ -76,8 +74,6 @@ Triggered when the canvas camera's zoom level changes. The current zoom level ca
 Triggered when the image export request completes. You can retrieve the export result: `{ dataURL: string; svg: string }`
 
 ### Event.NODES_UPDATED
-
-### Event.NODE_UPDATED
 
 ### Event.NODE_DELETED
 

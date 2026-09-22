@@ -1,12 +1,47 @@
 import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
-import { isGradient } from '@infinite-canvas-tutorial/ecs';
+import { cssColorToHex, isGradient, isUrl, isDataUrl } from '@infinite-canvas-tutorial/ecs';
+import { localized, msg, str } from '@lit/localize';
+import './input-image.js';
+import type { ImageObjectFit } from './image-fill-fields.js';
 
 export enum ColorType {
   None = 'none',
   Solid = 'solid',
   Gradient = 'gradient',
+  Image = 'image',
+}
+
+export type ColorPickerChangeDetail = {
+  type: ColorType;
+  /** 纯色 / 渐变 / 图片 URL 等；用于 fill 或 stroke（如 `linear-gradient(...)` 写入描边）。 */
+  value: string;
+  /** 与 `ic-spectrum-input-solid` 一致：由父组件传入并回传。 */
+  fillOpacity?: number;
+  strokeOpacity?: number;
+  objectFit?: ImageObjectFit;
+  objectPosition?: string;
+};
+
+/** Spectrum `sp-action-group` host exposes `selected`. */
+interface SpActionGroupElement extends HTMLElement {
+  selected: string[];
+}
+
+/** Detail from `ic-spectrum-input-solid` / `ic-spectrum-input-gradient`. */
+type ChildColorChangeDetail = {
+  type: string;
+  value: string;
+  opacity?: number;
+  fillOpacity?: number;
+  strokeOpacity?: number;
+  objectFit?: ImageObjectFit;
+  objectPosition?: string;
+};
+
+function isColorType(s: string): s is ColorType {
+  return (Object.values(ColorType) as string[]).includes(s);
 }
 
 @customElement('ic-spectrum-color-picker')
@@ -17,19 +52,47 @@ export class ColorPicker extends LitElement {
       flex-direction: column;
       gap: 8px;
       padding: 8px;
-      height: 200px;
     }
 
     h4 {
       margin: 0;
     }
+
+    .gradient-swatch {
+      transform: rotate(90deg);
+    }
   `;
 
   @property()
-  value: string;
+  value: string | undefined;
 
   @property()
-  types: ColorType[] = [ColorType.None, ColorType.Solid, ColorType.Gradient];
+  types: ColorType[] = [
+    ColorType.None,
+    ColorType.Solid,
+    ColorType.Gradient,
+    ColorType.Image,
+  ];
+
+  /** 传给 `ic-spectrum-input-solid`（例如编辑 fill 时）；可为 `$token`。 */
+  @property()
+  fillOpacity: number | string | undefined;
+
+  /** 传给 `ic-spectrum-input-solid`（例如编辑 stroke 时）；可为 `$token`。 */
+  @property()
+  strokeOpacity: number | string | undefined;
+
+  /** 与工具条一致：透明度可绑定数字变量 */
+  @property({ type: Boolean, attribute: 'enable-opacity-variable-binding' })
+  enableOpacityVariableBinding = false;
+
+  /** Image fill: CSS `object-fit` (only used when type is Image). */
+  @property({ attribute: 'object-fit' })
+  objectFit: ImageObjectFit = 'fill';
+
+  /** Image fill: CSS `object-position`. */
+  @property({ attribute: 'object-position' })
+  objectPosition = '';
 
   @state()
   type: ColorType = ColorType.None;
@@ -39,28 +102,43 @@ export class ColorPicker extends LitElement {
     [ColorType.None]: 'none',
     [ColorType.Solid]: '#000',
     [ColorType.Gradient]: 'linear-gradient(to right, #000, #fff)',
+    [ColorType.Image]: '',
   };
 
   willUpdate(changedProperties: PropertyValues<this>) {
     if (changedProperties.has('value')) {
+      const v = this.value;
+      // 选 Image 后父级会先写入 `value: ''`（尚未选 URL）；`!v` 会误判为 None 导致 Tab 跳回
       this.type =
-        !this.value || this.value === 'none'
+        v === 'none' || v == null
           ? ColorType.None
-          : isGradient(this.value)
-          ? ColorType.Gradient
-          : ColorType.Solid;
+          : v === ''
+            ? ColorType.Image
+            : isGradient(v)
+              ? ColorType.Gradient
+              : isUrl(v) || isDataUrl(v)
+                ? ColorType.Image
+                : ColorType.Solid;
 
-      this.prevColors[this.type] = this.value;
+      this.prevColors = {
+        ...this.prevColors,
+        [this.type]: v ?? 'none',
+      };
     }
   }
 
   private handleTypeChanged(e: CustomEvent) {
-    const type = (e.target as any).selected[0] as ColorType;
+    const target = e.currentTarget as SpActionGroupElement;
+    const raw = target.selected[0];
+    if (!raw || !isColorType(raw)) return;
+
+    this.type = raw;
+
     this.dispatchEvent(
-      new CustomEvent('color-change', {
+      new CustomEvent<ColorPickerChangeDetail>('color-change', {
         detail: {
-          type,
-          value: this.prevColors[type],
+          type: raw,
+          value: this.prevColors[raw],
         },
         bubbles: true,
         composed: true,
@@ -68,27 +146,30 @@ export class ColorPicker extends LitElement {
     );
   }
 
-  private handleColorChanged(e: CustomEvent) {
-    const { type, value } = e.detail;
-    this.prevColors[type] = value;
+  private handleColorChanged(e: CustomEvent<ChildColorChangeDetail>) {
+    const { type: rawType, value } = e.detail;
+    if (!isColorType(rawType)) return;
+    this.prevColors = { ...this.prevColors, [rawType]: value };
   }
 
   render() {
+    const headingId = 'color-picker-heading';
     return html`
-      <h4>Select a color</h4>
       ${when(
-        this.types.length > 1,
-        () => html`<sp-action-group
+      this.types.length > 1,
+      () => html`<sp-action-group
           quiet
           compact
+          emphasized
           size="m"
           selects="single"
+          aria-labelledby=${headingId}
           .selected=${[this.type]}
           @change=${this.handleTypeChanged}
         >
           ${when(
-            this.types.includes(ColorType.None),
-            () => html`
+        this.types.includes(ColorType.None),
+        () => html`
               <sp-action-button value=${ColorType.None}>
                 <sp-tooltip self-managed placement="bottom">
                   No color
@@ -96,54 +177,75 @@ export class ColorPicker extends LitElement {
                 <sp-swatch nothing slot="icon"> </sp-swatch>
               </sp-action-button>
             `,
-          )}
+      )}
           ${when(
-            this.types.includes(ColorType.Solid),
-            () => html`
+        this.types.includes(ColorType.Solid),
+        () => html`
               <sp-action-button value=${ColorType.Solid}>
                 <sp-tooltip self-managed placement="bottom"> Solid </sp-tooltip>
                 <sp-swatch
-                  color=${this.prevColors[ColorType.Solid]}
+                  color=${cssColorToHex(this.prevColors[ColorType.Solid])}
                   slot="icon"
                 >
                 </sp-swatch>
               </sp-action-button>
             `,
-          )}
+      )}
           ${when(
-            this.types.includes(ColorType.Gradient),
-            () => html`
+        this.types.includes(ColorType.Gradient),
+        () => html`
               <sp-action-button value=${ColorType.Gradient}>
                 <sp-tooltip self-managed placement="bottom">
                   Gradient
                 </sp-tooltip>
                 <sp-swatch
-                  style="transform: rotate(90deg);"
+                  class="gradient-swatch"
                   color=${this.prevColors[ColorType.Gradient]}
                   slot="icon"
                 >
                 </sp-swatch>
               </sp-action-button>
             `,
-          )}
-        </sp-action-group>`,
       )}
-      ${when(
-        this.type === ColorType.Solid,
+          ${when(
+        this.types.includes(ColorType.Image),
         () => html`
+              <sp-action-button value=${ColorType.Image}>
+                <sp-tooltip self-managed placement="bottom"> Image </sp-tooltip>
+                <sp-icon-image slot="icon"></sp-icon-image>
+              </sp-action-button>
+            `,
+      )}
+        </sp-action-group>`,
+    )}
+      ${when(
+      this.type === ColorType.Solid,
+      () => html`
           <ic-spectrum-input-solid
             value=${this.prevColors[ColorType.Solid]}
+            .fillOpacity=${this.fillOpacity}
+            .strokeOpacity=${this.strokeOpacity}
+            ?enable-opacity-variable-binding=${this
+          .enableOpacityVariableBinding}
             @color-change=${this.handleColorChanged}
           ></ic-spectrum-input-solid>
         `,
-      )}
+    )}
       ${when(
-        this.type === ColorType.Gradient,
-        () => html`<ic-spectrum-input-gradient
+      this.type === ColorType.Gradient,
+      () => html`<ic-spectrum-input-gradient
           value=${this.prevColors[ColorType.Gradient]}
           @color-change=${this.handleColorChanged}
         ></ic-spectrum-input-gradient>`,
-      )}
+    )}
+      ${when(this.type === ColorType.Image, () => html`
+        <ic-spectrum-input-image
+          value=${this.prevColors[ColorType.Image]}
+          .objectFit=${this.objectFit}
+          .objectPosition=${this.objectPosition}
+          @color-change=${this.handleColorChanged}
+        ></ic-spectrum-input-image>
+      `)}
     `;
   }
 }

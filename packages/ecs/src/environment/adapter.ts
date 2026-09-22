@@ -9,7 +9,7 @@ export interface Adapter {
   createTexImageSource: (
     canvas: HTMLCanvasElement | OffscreenCanvas,
   ) => TexImageSource;
-  createImage: (src: string) => Promise<ImageType>;
+  createImage: (src: string | Blob) => Promise<ImageType>;
   getWindow: () => typeof globalThis;
   getDocument: () => Document;
   getXMLSerializer: () => XMLSerializer | null;

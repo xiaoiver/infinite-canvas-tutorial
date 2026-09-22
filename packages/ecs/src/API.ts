@@ -1,7 +1,9 @@
-import { Entity } from '@lastolivegames/becsy';
+import { Entity, type ComponentType } from '@lastolivegames/becsy';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
-import { isNil } from '@antv/util';
+import { isEntityAlive, updateGlobalTransform } from './systems/Transform';
+import { updateComputedPoints } from './systems/ComputePoints';
+import { isNil, path2Absolute } from '@antv/util';
 import {
   CaptureUpdateAction,
   CaptureUpdateActionType,
@@ -9,61 +11,140 @@ import {
   StoreIncrementEvent,
 } from './history/Store';
 import { Commands, EntityCommands } from './commands';
+import type { Bundle } from './components';
 import { AppState, getDefaultAppState } from './context';
 import {
   BitmapFont,
-  BrushSerializedNode,
   copyTextToClipboard,
+  createSVGElement,
   deserializeBrushPoints,
   deserializePoints,
+  distanceBetweenPoints,
   EASING_FUNCTION,
   getScale,
   inferXYWidthHeight,
+  inLine,
+  inPolyline,
+  isDataUrl,
   isEntity,
+  isPointInEllipse,
+  isUrl,
   parsePath,
-  PathSerializedNode,
-  PolylineSerializedNode,
   serializeBrushPoints,
-  SerializedNode,
   serializedNodesToEntities,
+  serializeNodesToSVGElements,
   serializePoints,
   shiftPath,
+  strokeOffset,
+  strokeWidthForHitTest,
+  entityHasRenderableStrokePaint,
+  entityHasValidStrokeGeometry,
+  resolveGpuStrokeColor,
+  cloneStrokeWithHitTestWidth,
+  cloneSerializedNodes,
+  expandRefSerializedNodes,
+  mergeSerializedNodesForRefLookup,
+  prepareSerializedNodesForSvgExport,
+  type DesignVariablesSvgExportMode,
+  decompose,
   transformPath,
+  mat3WithoutTranslation,
+  transformVectorNetworkGeometry,
+  buildDesignVariableRefreshPatch,
+  expandSerializedNodesForSvgExport,
+  serializedNodesToCode,
+  type CodegenOptions,
 } from './utils';
+import type { AnimationGifQuality } from './utils/animationExportCodec';
+export type { AnimationGifQuality } from './utils/animationExportCodec';
+import { getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList } from './utils/icon-font';
+import type {
+  BrushSerializedNode,
+  FillAttributes,
+  GSerializedNode,
+  LineSerializedNode,
+  PathSerializedNode,
+  PolylineSerializedNode,
+  SerializedNode,
+  StrokeAttributes,
+  TextSerializedNode,
+  VectorNetworkSerializedNode,
+} from './types/serialized-node';
+import {
+  firstEnabledFillPresentation,
+  migrateLegacyFillWireInPlace,
+} from './utils/normalize-fill-wire';
+import {
+  firstEnabledStrokePresentation,
+  migrateLegacyStrokeWireInPlace,
+} from './utils/normalize-stroke-wire';
+import { getEnabledFillLayers } from './utils/fillLayers';
+import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
+import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
   Brush,
   Camera,
   Canvas,
+  Canvas3DScope,
+  CheckboardStyle,
   Children,
+  Circle,
   ComputedBounds,
   ComputedCamera,
+  ComputedPoints,
   Cursor,
+  Ellipse,
+  FillLayers,
   Font,
   GlobalTransform,
   Grid,
+  Group,
   Highlighted,
   Landmark,
   LandmarkAnimationEffectTiming,
+  Line,
+  Locked,
   Mat3,
+  Mesh3DNode,
   OBB,
   Parent,
   Path,
   Polyline,
+  RasterAnimationExportRequest,
   RasterScreenshotRequest,
   RBush,
+  Rect,
   Selected,
+  Selected3D,
+  Stroke,
+  Text,
+  Theme,
+  ThemeMode,
+  mergeThemeState,
+  resolveThemeModeFromPreference,
   ToBeDeleted,
   Transform,
   UI,
   VectorNetwork,
+  AnimationPlayer,
   VectorScreenshotRequest,
   ZIndex,
 } from './components';
-import { History, mutateElement, safeAddComponent } from './history';
+import { AnimationController, AnimationOptions, Keyframe } from './animation';
 import {
+  History,
+  mutateElement,
+  safeAddComponent,
+  safeRemoveComponent,
+} from './history';
+import {
+  drawDotsGrid,
+  drawLinesGrid,
   maybeShiftPoints,
   sortByFractionalIndex,
+  toSVGElement,
+  measureText,
   updateMatrix,
 } from './systems';
 import { DOMAdapter } from './environment';
@@ -72,6 +153,11 @@ import { CapabilityRegistry } from './CapabilityRegistry';
 import { ResourceScope } from './resources/ResourceScope';
 import { documentValueEqual, validateDocument } from './document';
 import { SIBLINGS_MAX_Z_INDEX, SIBLINGS_MIN_Z_INDEX } from './context';
+import {
+  applyIcDocumentToApi,
+  buildIcDocumentFromState,
+  parseIcDocumentJson,
+} from './format/ic-document';
 
 export interface StateManagement {
   getAppState: () => AppState;
@@ -81,10 +167,67 @@ export interface StateManagement {
   onChange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
 }
 
+/** 多选时按选区几何包络（世界坐标系）对齐，与 {@link API.alignSelectedNodes} 一致。 */
+export type NodeAlignment =
+  | 'left'
+  | 'right'
+  | 'top'
+  | 'bottom'
+  | 'centerH'
+  | 'centerV';
+
+/** 多选时按几何包络在水平或竖直方向作等间距分布。 */
+export type DistributeSpacingAxis = 'horizontal' | 'vertical';
+
 export enum ExportFormat {
   SVG = 'svg',
   PNG = 'png',
   JPEG = 'jpeg',
+  /** WebM（VP8/VP9），适合带引擎时间动画的滤镜 */
+  WEBM = 'webm',
+  GIF = 'gif',
+}
+
+/** {@link API.export} 的选项：格式、下载行为、目标节点、栅格倍率等。 */
+export interface ExportOptions {
+  format: ExportFormat;
+  /** 为 `true` 时触发下载；默认 `true`。 */
+  download?: boolean;
+  /** 要导出的节点；空数组表示整幅画布。默认 `[]`。 */
+  nodes?: SerializedNode[];
+  /**
+   * 局部栅格导出的边长倍率（相对逻辑选区），仅对 PNG / JPEG 等有效；默认 `1`。
+   * @see RasterScreenshotRequest.scale
+   */
+  scale?: number;
+  /**
+   * 动画导出时长（秒），仅 WEBM / GIF；默认 `3`，上限约 `15`。
+   */
+  durationSec?: number;
+  /**
+   * 动画导出帧率，仅 WEBM / GIF；默认 `24`，上限约 `30`。
+   */
+  fps?: number;
+  /**
+   * 第一帧引擎时间（秒），仅 WEBM / GIF；默认 `0`。
+   * @see RasterAnimationExportRequest.timeStart
+   */
+  timeStart?: number;
+  /**
+   * GIF 导出质量（每帧 palette 色数档）：仅 `ExportFormat.GIF`；默认 `high`（256 色）。
+   * @see RasterAnimationExportRequest.gifQuality
+   */
+  gifQuality?: AnimationGifQuality;
+  /**
+   * raindrop-fx（`rain()` / `rain(url("…"))`）专用：导出前离线模拟雨的秒数（从 t=0 重置）。
+   * PNG/JPEG：预热后截单帧；WEBM/GIF：在 `timeStart` 之前预热。默认 `0` 表示用当前预览状态。
+   */
+  rainWarmupSec?: number;
+  /**
+   * raindrop-fx 专用：截图帧的引擎时间（秒）；默认等于 `rainWarmupSec`。
+   * @see RasterScreenshotRequest.rainCaptureTimeSec
+   */
+  rainCaptureTimeSec?: number;
 }
 
 export class DefaultStateManagement implements StateManagement {
@@ -130,6 +273,17 @@ export const arrayToMap = <T extends { id: string } | string>(
   }, new Map());
 };
 
+export interface Mesh3DLayer {
+  id: string;
+  name: string;
+  sourceNodeId?: string;
+  vertexCount: number;
+}
+
+export type Mesh3DLayerRegistration = Mesh3DLayer & {
+  entity: Entity;
+};
+
 /**
  * Expose the API to the outside world.
  *
@@ -143,9 +297,13 @@ export class API {
    */
   #landmarkAnimationID: number;
   #idEntityMap: Map<string, EntityCommands> = new Map();
+  #mesh3DLayers: Mesh3DLayer[] = [];
+  #mesh3DLayerEntities: Map<string, Entity> = new Map();
+  #selectedMesh3DLayerIds: string[] = [];
   #history = new History();
   #store = new Store(this);
   #tasks = new TaskQueue();
+  #afterDeleteTasks = new TaskQueue();
   #destroyed = false;
   #scope = new ResourceScope();
   #activeImageTasks = 0;
@@ -153,6 +311,8 @@ export class API {
   readonly capabilities = new CapabilityRegistry();
 
   onchange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
+  onNodesChange: (nodes: SerializedNode[]) => void;
+  onAppStateChange: (appState: AppState) => void;
 
   constructor(
     private readonly stateManagement: StateManagement,
@@ -161,35 +321,134 @@ export class API {
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
       this.#history.record(event.elementsChange, event.appStateChange);
 
-      this.notifyChange();
+      this.notifyChange(
+        !event.elementsChange.isEmpty(),
+        !event.appStateChange.isEmpty(),
+      );
     });
   }
 
-  private notifyChange() {
+  private notifyChange(nodesChanged = true, appStateChanged = true) {
     const snapshot = { appState: this.getAppState(), nodes: this.getNodes() };
     this.stateManagement.onChange?.(snapshot);
-    this.onchange?.(snapshot);
+    if (nodesChanged) this.onNodesChange?.(snapshot.nodes);
+    if (appStateChanged) this.onAppStateChange?.(snapshot.appState);
+    if (nodesChanged || appStateChanged) this.onchange?.(snapshot);
   }
 
-  /** Register canvas-owned plugin cleanup. The returned disposer is idempotent. */
+  /** Register cleanup owned by this canvas. Returns an idempotent disposer. */
   onDestroy(cleanup: () => void) {
     return this.#scope.add(cleanup);
+  }
+
+  getCommands() {
+    return this.commands;
+  }
+
+  /**
+   * Spawn 3D ECS entities scoped to this canvas (multi-canvas safe).
+   */
+  spawn3D(...bundles: (ComponentType<any> | Bundle)[]) {
+    return this.commands.spawn(
+      ...bundles,
+      new Canvas3DScope({ canvas: this.#canvas }),
+    );
   }
 
   getAppState() {
     return this.stateManagement.getAppState();
   }
 
-  setAppState(appState: Partial<AppState>) {
-    const oldAppState = this.getAppState();
-    const { checkboardStyle } = appState;
-    const nextAppState = { ...oldAppState, ...appState };
-    const { cameraZoom, cameraX, cameraY, cameraRotation } = nextAppState;
+  /** 当前已注册的 icon 集合 id（`registerIconifyIcons` 的 `family` 参数）。 */
+  getRegisteredIconifyIconFamilies(): string[] {
+    return getRegisteredIconifyIconFamiliesList();
+  }
 
-    if (checkboardStyle && checkboardStyle !== oldAppState.checkboardStyle) {
+  setAppState(
+    appState: Partial<AppState>,
+    options?: {
+      recordDesignVariableUndo?: boolean;
+      /** 为 true 时 `variables` 整表替换（用于删除键等），默认与旧键合并 */
+      replaceVariables?: boolean;
+    },
+  ) {
+    const patch: Partial<AppState> = { ...appState };
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'themePreference') &&
+      patch.themePreference !== undefined &&
+      !Object.prototype.hasOwnProperty.call(patch, 'themeMode')
+    ) {
+      patch.themeMode = resolveThemeModeFromPreference(patch.themePreference);
+    }
+
+    const oldAppState = this.getAppState();
+    const { cameraZoom, cameraX, cameraY, cameraRotation } = {
+      ...oldAppState,
+      ...patch,
+    };
+
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'checkboardStyle') &&
+      patch.checkboardStyle !== oldAppState.checkboardStyle
+    ) {
       safeAddComponent(this.#canvas, Grid, {
-        checkboardStyle,
+        checkboardStyle: patch.checkboardStyle as CheckboardStyle,
       });
+    }
+
+    let themeAppStatePatch: Partial<AppState> = {};
+
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'theme') ||
+      Object.prototype.hasOwnProperty.call(patch, 'themeMode') ||
+      Object.prototype.hasOwnProperty.call(patch, 'themePreference')
+    ) {
+      const nextThemeMode =
+        patch.themeMode !== undefined ? patch.themeMode : oldAppState.themeMode;
+      const mergedTheme = mergeThemeState(
+        { ...oldAppState.theme, mode: oldAppState.themeMode },
+        {
+          ...(patch.theme ?? {}),
+          mode: nextThemeMode,
+        },
+      );
+      themeAppStatePatch = {
+        themeMode: nextThemeMode,
+        theme: {
+          mode: mergedTheme.mode,
+          colors: mergedTheme.colors,
+        },
+      };
+      if (this.#canvas?.has(Theme)) {
+        safeAddComponent(this.#canvas, Theme, {
+          mode: mergedTheme.mode,
+          colors: mergedTheme.colors,
+        });
+      }
+    }
+
+    let propertiesPanelSectionsOpenPatch: Partial<AppState> = {};
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'propertiesPanelSectionsOpen')
+    ) {
+      propertiesPanelSectionsOpenPatch = {
+        propertiesPanelSectionsOpen: {
+          ...oldAppState.propertiesPanelSectionsOpen,
+          ...patch.propertiesPanelSectionsOpen,
+        },
+      };
+    }
+
+    let variablesPatch: Partial<AppState> = {};
+    const prevVariables = oldAppState.variables ?? {};
+    if (Object.prototype.hasOwnProperty.call(patch, 'variables')) {
+      const mergedVariables = options?.replaceVariables
+        ? (patch.variables as NonNullable<AppState['variables']>)
+        : {
+            ...prevVariables,
+            ...patch.variables,
+          };
+      variablesPatch = { variables: mergedVariables };
     }
 
     if (
@@ -223,15 +482,230 @@ export class API {
       }
     }
 
+    const nextAppState = {
+      ...oldAppState,
+      ...patch,
+      ...themeAppStatePatch,
+      ...propertiesPanelSectionsOpenPatch,
+      ...variablesPatch,
+    };
+    const themeModeChanged = nextAppState.themeMode !== oldAppState.themeMode;
+
     this.stateManagement.setAppState(nextAppState);
+
+    const variablesActuallyChanged =
+      Object.prototype.hasOwnProperty.call(patch, 'variables') &&
+      JSON.stringify((variablesPatch as { variables?: object }).variables) !==
+        JSON.stringify(prevVariables);
+
+    const shouldRefreshDesignVariableBindings =
+      variablesActuallyChanged ||
+      (themeModeChanged &&
+        Object.keys(nextAppState.variables ?? {}).length > 0);
+
+    if (shouldRefreshDesignVariableBindings) {
+      this.runAtNextTick(() => {
+        for (const node of this.getNodes()) {
+          if (this.#idEntityMap.has(node.id)) {
+            const varPatch = buildDesignVariableRefreshPatch(node);
+            if (Object.keys(varPatch).length > 0) {
+              this.updateNode(node, varPatch, false);
+            }
+          }
+        }
+        // 撤销/重做应用 AppState 时不要再次 record（见 {@link AppStateChange.applyTo}）
+        if (options?.recordDesignVariableUndo !== false) {
+          this.record();
+        }
+      });
+    }
   }
 
   getNodes() {
     return this.stateManagement.getNodes();
   }
 
+  getMesh3DLayers() {
+    return this.#mesh3DLayers;
+  }
+
+  getSelectedMesh3DLayerIds() {
+    return this.#selectedMesh3DLayerIds;
+  }
+
+  setMesh3DLayers(layers: Mesh3DLayerRegistration[]) {
+    const nextLayers = layers.map(({ entity: _entity, ...layer }) => layer);
+    const changed =
+      JSON.stringify(nextLayers) !== JSON.stringify(this.#mesh3DLayers);
+
+    this.#mesh3DLayers = nextLayers;
+    this.#mesh3DLayerEntities = new Map(
+      layers.map((layer) => [layer.id, layer.entity]),
+    );
+
+    const validIds = new Set(nextLayers.map((layer) => layer.id));
+    const selected = this.#selectedMesh3DLayerIds.filter((id) =>
+      validIds.has(id),
+    );
+    if (selected.length !== this.#selectedMesh3DLayerIds.length) {
+      this.setSelectedMesh3DLayerIds(selected);
+    }
+
+    return changed;
+  }
+
+  setSelectedMesh3DLayerIds(ids: string[]) {
+    const selected = ids.filter(
+      (id, index, self) => self.indexOf(id) === index,
+    );
+    const changed =
+      selected.length !== this.#selectedMesh3DLayerIds.length ||
+      selected.some((id, i) => id !== this.#selectedMesh3DLayerIds[i]);
+
+    this.#selectedMesh3DLayerIds = selected;
+    return changed;
+  }
+
+  getMesh3DLayerIdByEntity(entity: Entity) {
+    for (const [id, layerEntity] of this.#mesh3DLayerEntities.entries()) {
+      if (layerEntity === entity) {
+        return id;
+      }
+    }
+  }
+
+  private clear2DSelectionComponents(ids = this.getAppState().layersSelected) {
+    ids.forEach((id) => {
+      const entity = this.#idEntityMap.get(id)?.id();
+      if (entity && entity.has(Selected)) {
+        entity.remove(Selected);
+      }
+      if (entity) {
+        safeRemoveComponent(entity, Highlighted);
+      }
+    });
+  }
+
+  clearSelectedMesh3DLayers() {
+    this.#selectedMesh3DLayerIds.forEach((id) => {
+      const entity = this.#mesh3DLayerEntities.get(id);
+      if (entity?.has(Selected3D)) {
+        entity.remove(Selected3D);
+      }
+    });
+    return this.setSelectedMesh3DLayerIds([]);
+  }
+
+  /** Layer panel / app state only — no ECS {@link Selected} or {@link Selected3D} writes. */
+  syncMesh3DLayerAppState(entity: Entity) {
+    const id = this.getMesh3DLayerIdByEntity(entity);
+    const layer = this.#mesh3DLayers.find((item) => item.id === id);
+    if (!id || !layer) {
+      return false;
+    }
+
+    this.setSelectedMesh3DLayerIds([id]);
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: layer.sourceNodeId ? [layer.sourceNodeId] : [],
+      layersHighlighted: [],
+    });
+    return true;
+  }
+
+  /** Clear 3D layer panel selection in app state only (companion {@link Selected3D} is managed by Pick3D). */
+  clearMesh3DLayerAppState() {
+    this.setSelectedMesh3DLayerIds([]);
+    const prevAppState = this.getAppState();
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: prevAppState.layersSelected.filter((id) => {
+        const node = this.getNodeById(id);
+        return node?.type !== 'mesh3d';
+      }),
+      layersHighlighted: prevAppState.layersHighlighted.filter((id) => {
+        const node = this.getNodeById(id);
+        return node?.type !== 'mesh3d';
+      }),
+    });
+  }
+
+  selectMesh3DLayer(id: string) {
+    const entity = this.#mesh3DLayerEntities.get(id);
+    const layer = this.#mesh3DLayers.find((item) => item.id === id);
+    if (!entity || !layer) {
+      return false;
+    }
+
+    const prevAppState = this.getAppState();
+    this.clear2DSelectionComponents(prevAppState.layersSelected);
+
+    this.#selectedMesh3DLayerIds.forEach((selectedId) => {
+      const selectedEntity = this.#mesh3DLayerEntities.get(selectedId);
+      if (
+        selectedEntity &&
+        selectedEntity !== entity &&
+        selectedEntity.has(Selected3D)
+      ) {
+        selectedEntity.remove(Selected3D);
+      }
+    });
+
+    if (!entity.has(Selected3D)) {
+      entity.add(Selected3D, {
+        mode: 'transform',
+        activeAxis: 'none',
+        activePartKind: null,
+        dragging: false,
+      });
+    }
+
+    const selectedChanged = this.setSelectedMesh3DLayerIds([id]);
+    this.setAppState({
+      ...prevAppState,
+      layersSelected: layer.sourceNodeId ? [layer.sourceNodeId] : [],
+      layersHighlighted: [],
+    });
+
+    return selectedChanged;
+  }
+
+  selectMesh3DLayerByEntity(entity: Entity) {
+    const id = this.getMesh3DLayerIdByEntity(entity);
+    return id ? this.selectMesh3DLayer(id) : false;
+  }
+
+  /**
+   * 增量 {@link updateNode} / {@link updateNodes} 只传入「本批」节点时，边的 `fromId`/`toId` 仍需从完整场景解析。
+   */
+  #mergeSceneWithBatchForEdgeLookup(batch: SerializedNode[]): SerializedNode[] {
+    const merged = new Map<string, SerializedNode>();
+    for (const n of this.getNodes()) {
+      merged.set(n.id, n);
+    }
+    for (const n of batch) {
+      merged.set(n.id, n);
+    }
+    return [...merged.values()];
+  }
+
+  /**
+   * 与 {@link serializedNodesToEntities} 中一致：将 `ref` 解析为可渲染 wire（含子树 id 重映射）。
+   * 须用于 `setNodes`，否则 {@link getNodeByEntity} / Yoga 会拿到 `type: 'ref'`，子节点 id 也不存在于场景图中。
+   */
+  #refExpandedWireForBatch(batch: SerializedNode[]): SerializedNode[] {
+    return expandRefSerializedNodes(
+      batch,
+      mergeSerializedNodesForRefLookup(
+        batch,
+        this.#mergeSceneWithBatchForEdgeLookup(batch),
+      ),
+    );
+  }
+
   setNodes(nodes: SerializedNode[]) {
-    this.stateManagement.setNodes(JSON.parse(JSON.stringify(nodes)));
+    this.stateManagement.setNodes(nodes.slice());
   }
 
   getEntityCommands() {
@@ -277,11 +751,70 @@ export class API {
         },
         entity.rotation,
         {
-          x: entity.x,
-          y: entity.y,
+          x: entity.x ?? 0,
+          y: entity.y ?? 0,
         },
       ),
     );
+  }
+
+  getAbsoluteTransformAndSize(node: SerializedNode) {
+    const entity = this.getEntity(node);
+    if (entity.has(ComputedBounds)) {
+      const { translation, rotation, scale } = entity.read(Transform);
+      const { width, height } = entity.read(ComputedBounds).transformOBB;
+      return {
+        id: node.id,
+        x: translation.x,
+        y: translation.y,
+        width,
+        height,
+        rotation,
+        scaleX: scale[0],
+        scaleY: scale[1],
+      };
+    } else {
+      return {
+        id: node.id,
+        x: node.x ?? 0,
+        y: node.y ?? 0,
+        width: node.width ?? 0,
+        height: node.height ?? 0,
+        rotation: node.rotation ?? 0,
+        scaleX: node.scaleX ?? 1,
+        scaleY: node.scaleY ?? 1,
+      };
+    }
+  }
+
+  /**
+   * 浅拷贝节点列表，并用 ECS 当前几何覆盖 x/y/width/height/rotation/scale（如 Flex/Yoga 仅写 ECS、序列化节点未同步时，导出 SVG 前调用）。
+   * 对带 {@link Rect} 的 `rect` / `rough-rect` 同时覆盖 `cornerRadius`，保证导出与运行时一致。
+   */
+  readLayoutFromECS(nodes: SerializedNode[]): SerializedNode[] {
+    return nodes.map((node) => {
+      const g = this.getAbsoluteTransformAndSize(node);
+      const out: SerializedNode = {
+        ...node,
+        x: g.x,
+        y: g.y,
+        width: g.width,
+        height: g.height,
+        rotation: g.rotation,
+        scaleX: g.scaleX,
+        scaleY: g.scaleY,
+      };
+      const entity = this.getEntity(node);
+      if (
+        entity &&
+        entity.has(Rect) &&
+        (node.type === 'rect' || node.type === 'rough-rect')
+      ) {
+        (out as { cornerRadius?: number }).cornerRadius =
+          entity.read(Rect).cornerRadius;
+      }
+      return out;
+    });
   }
 
   getCanvas() {
@@ -327,7 +860,7 @@ export class API {
    * Create a new camera.
    */
   createCamera(cameraProps: Partial<ComputedCamera>) {
-    const { zoom } = cameraProps;
+    const { zoom, x, y } = cameraProps;
     this.#camera = this.commands
       .spawn(
         new Camera({
@@ -337,6 +870,10 @@ export class API {
           scale: {
             x: 1 / zoom,
             y: 1 / zoom,
+          },
+          translation: {
+            x,
+            y,
           },
         }),
       )
@@ -444,7 +981,17 @@ export class API {
   /**
    * Search entites within a bounding box. Use rbush under the hood to accelerate the search.
    */
-  elementsFromBBox(minX: number, minY: number, maxX: number, maxY: number) {
+  elementsFromBBox(
+    minX: number,
+    minY: number,
+    maxX: number,
+    maxY: number,
+    shouldFilterLocked = true,
+  ) {
+    if (!this.#camera.has(RBush)) {
+      return [];
+    }
+
     const rBush = this.#camera.read(RBush).value;
     const rBushNodes = rBush.search({
       minX,
@@ -456,9 +1003,165 @@ export class API {
     // Sort by fractional index
     return rBushNodes
       .map((node) => node.entity)
-      .filter((entity) => entity.__valid)
+      .filter(
+        (entity) =>
+          entity.__valid && (!shouldFilterLocked || !entity.has(Locked)),
+      )
       .sort(sortByFractionalIndex)
       .reverse();
+  }
+
+  elementsFromPoint(point: IPointData, shouldFilterLocked = true) {
+    const entities = this.elementsFromBBox(
+      point.x,
+      point.y,
+      point.x,
+      point.y,
+      shouldFilterLocked,
+    );
+
+    const results: Entity[] = [];
+    entities.forEach((entity) => {
+      if (!entity.has(GlobalTransform)) {
+        console.warn('entity has no GlobalTransform', entity.__id);
+        return;
+      }
+
+      const matrix = Mat3.toGLMat3(entity.read(GlobalTransform).matrix);
+      const invMatrix = mat3.invert(mat3.create(), matrix);
+      const [x, y] = vec2.transformMat3(
+        vec2.create(),
+        [point.x, point.y],
+        invMatrix,
+      );
+
+      let isIntersected = false;
+      const hasFill =
+        entity.has(FillLayers) && getEnabledFillLayers(entity).length > 0;
+      const fill = hasFill ? 'black' : undefined;
+      const hasStrokeGeom = entityHasValidStrokeGeometry(entity);
+      const hasStrokePaint = entityHasRenderableStrokePaint(entity);
+      const hasStroke = hasStrokeGeom && hasStrokePaint;
+      const stroke = hasStrokeGeom ? entity.read(Stroke) : undefined;
+      const halfStrokeWidth = hasStroke ? stroke.width / 2 : 0;
+      const lineHitStrokeWidth = hasStroke
+        ? strokeWidthForHitTest(entity, stroke)
+        : 0;
+      const offset = strokeOffset(stroke);
+
+      if (entity.has(Circle)) {
+        const { cx, cy, r } = entity.read(Circle);
+        const distance = distanceBetweenPoints(x, y, cx, cy);
+        if (hasFill && hasStroke) {
+          isIntersected = distance <= r + offset;
+        } else if (hasFill) {
+          isIntersected = distance <= r;
+        } else if (hasStroke) {
+          isIntersected =
+            distance >= r + offset - halfStrokeWidth &&
+            distance <= r + offset + halfStrokeWidth;
+        }
+      } else if (entity.has(Ellipse)) {
+        const { cx, cy, rx, ry } = entity.read(Ellipse);
+        if (hasFill && hasStroke) {
+          isIntersected = isPointInEllipse(
+            x,
+            y,
+            cx,
+            cy,
+            rx + offset,
+            ry + offset,
+          );
+        } else if (hasFill) {
+          isIntersected = isPointInEllipse(x, y, cx, cy, rx, ry);
+        } else if (hasStroke) {
+          isIntersected =
+            !isPointInEllipse(
+              x,
+              y,
+              cx,
+              cy,
+              rx + offset - halfStrokeWidth * 2,
+              ry + offset - halfStrokeWidth * 2,
+            ) && isPointInEllipse(x, y, cx, cy, rx + offset, ry + offset);
+        }
+      } else if (entity.has(Line)) {
+        if (Line.hitTestProvider && hasStroke) {
+          const { x1, y1, x2, y2 } = entity.read(Line);
+          const strokeForHit = cloneStrokeWithHitTestWidth(entity, stroke);
+          isIntersected = Line.hitTestProvider({
+            x1,
+            y1,
+            x2,
+            y2,
+            x,
+            y,
+            stroke: strokeForHit,
+          });
+        } else if (hasStroke) {
+          const { x1, y1, x2, y2 } = entity.read(Line);
+          isIntersected = inLine(x1, y1, x2, y2, lineHitStrokeWidth, x, y);
+        }
+      } else if (entity.has(Polyline)) {
+        if (Polyline.hitTestProvider && hasStroke) {
+          const { points } = entity.read(Polyline);
+          const strokeForHit = cloneStrokeWithHitTestWidth(entity, stroke);
+          isIntersected = Polyline.hitTestProvider({
+            points,
+            x,
+            y,
+            stroke: strokeForHit,
+          });
+        } else if (hasStroke) {
+          const { shiftedPoints } = entity.read(ComputedPoints);
+          isIntersected = inPolyline(shiftedPoints, lineHitStrokeWidth, x, y);
+        }
+      } else if (entity.has(Path)) {
+        const { d, fillRule } = entity.read(Path);
+        if (Path.hitTestProvider) {
+          const strokeForHit = hasStroke
+            ? cloneStrokeWithHitTestWidth(entity, stroke)
+            : undefined;
+          isIntersected = Path.hitTestProvider({
+            d,
+            x,
+            y,
+            fill: hasFill,
+            fillRule: fillRule ?? 'nonzero',
+            stroke: strokeForHit,
+          });
+        } else {
+          const ctx = DOMAdapter.get()
+            .createCanvas(100, 100)
+            .getContext('2d') as CanvasRenderingContext2D;
+          const path = new Path2D(d);
+          if (hasStroke) {
+            ctx.strokeStyle = resolveGpuStrokeColor(entity) ?? 'transparent';
+            ctx.lineWidth = lineHitStrokeWidth;
+            ctx.lineCap = stroke.linecap;
+            ctx.lineJoin = stroke.linejoin;
+            ctx.miterLimit = stroke.miterlimit;
+            ctx.stroke(path);
+          }
+          if (hasFill) {
+            ctx.fillStyle = fill;
+            ctx.fill(path, fillRule);
+          }
+          if (hasStroke && !hasFill) {
+            isIntersected = ctx.isPointInStroke(path, x, y);
+          } else if (hasFill) {
+            isIntersected = ctx.isPointInPath(path, x, y);
+          }
+        }
+      } else {
+        isIntersected = true;
+      }
+
+      if (isIntersected) {
+        results.push(entity);
+      }
+    });
+    return results;
   }
 
   getViewportBounds() {
@@ -666,6 +1369,232 @@ export class API {
     }
   }
 
+  animate(
+    target: Entity | SerializedNode | SerializedNode['id'],
+    keyframes: Keyframe[],
+    options: AnimationOptions,
+  ) {
+    let entity: Entity | undefined;
+    if (typeof target === 'string') {
+      const node = this.getNodeById(target);
+      entity = node ? this.getEntity(node) : undefined;
+    } else if (isEntity(target)) {
+      entity = target;
+    } else {
+      entity = this.getEntity(target);
+    }
+
+    if (!entity) {
+      return undefined;
+    }
+
+    const controller = new AnimationController(keyframes, options);
+    if (entity.has(AnimationPlayer)) {
+      entity.write(AnimationPlayer).controller = controller;
+    } else {
+      entity.add(AnimationPlayer, new AnimationPlayer({ controller }));
+    }
+    this.commands.execute();
+    return controller;
+  }
+
+  // -------------------------------------------------------------------------
+  // Animation editor API
+  //
+  // Editor-facing helpers used by the Animation panel (per-element keyframes)
+  // and the Timeline panel (scene-wide tracks + scrubbable playhead). Reads are
+  // sourced from the authoritative `AnimationPlayer` controller on each entity;
+  // edits go through `updateNode({ animation })` so they participate in history,
+  // serialization, and appState propagation like any other node mutation.
+  // -------------------------------------------------------------------------
+
+  /** @returns the live {@link AnimationController} attached to a node, if any. */
+  getNodeAnimationController(
+    id: SerializedNode['id'],
+  ): AnimationController | null {
+    const node = this.getNodeById(id);
+    if (!node) {
+      return null;
+    }
+    const entity = this.getEntity(node);
+    if (!entity || !entity.has(AnimationPlayer)) {
+      return null;
+    }
+    return entity.read(AnimationPlayer).controller ?? null;
+  }
+
+  /** @returns serializable `{ keyframes, options }` for a node, or `null`. */
+  getNodeAnimation(
+    id: SerializedNode['id'],
+  ): { keyframes: Keyframe[]; options: AnimationOptions } | null {
+    const controller = this.getNodeAnimationController(id);
+    if (!controller) {
+      return null;
+    }
+    const { keyframes, options } = controller.serialize();
+    return {
+      keyframes: keyframes as Keyframe[],
+      options: options as AnimationOptions,
+    };
+  }
+
+  /**
+   * Replace (or remove, when `animation` is `null`) a node's animation. Goes
+   * through {@link updateNode} so undo/redo and serialization work.
+   */
+  setNodeAnimation(
+    id: SerializedNode['id'],
+    animation: { keyframes: Keyframe[]; options: AnimationOptions } | null,
+  ) {
+    const node = this.getNodeById(id);
+    if (!node) {
+      return;
+    }
+    this.updateNode(node, { animation: animation ?? undefined });
+  }
+
+  /** Remove a node's animation entirely. */
+  removeNodeAnimation(id: SerializedNode['id']) {
+    this.setNodeAnimation(id, null);
+  }
+
+  /** Merge a partial options patch into a node's animation (duration, delay, …). */
+  updateNodeAnimationOptions(
+    id: SerializedNode['id'],
+    patch: Partial<AnimationOptions>,
+  ) {
+    const current = this.getNodeAnimation(id);
+    if (!current) {
+      return;
+    }
+    this.setNodeAnimation(id, {
+      keyframes: current.keyframes,
+      options: { ...current.options, ...patch },
+    });
+  }
+
+  /** Replace a node's keyframes, keeping its existing options. */
+  setNodeAnimationKeyframes(id: SerializedNode['id'], keyframes: Keyframe[]) {
+    const current = this.getNodeAnimation(id);
+    if (!current) {
+      return;
+    }
+    this.setNodeAnimation(id, { keyframes, options: current.options });
+  }
+
+  /** Insert a new keyframe into a node's animation. */
+  addNodeAnimationKeyframe(id: SerializedNode['id'], keyframe: Keyframe) {
+    const current = this.getNodeAnimation(id);
+    if (!current) {
+      return;
+    }
+    this.setNodeAnimationKeyframes(id, [...current.keyframes, { ...keyframe }]);
+  }
+
+  /** Patch a keyframe (by index) of a node's animation. */
+  updateNodeAnimationKeyframe(
+    id: SerializedNode['id'],
+    index: number,
+    patch: Partial<Keyframe>,
+  ) {
+    const current = this.getNodeAnimation(id);
+    if (!current || index < 0 || index >= current.keyframes.length) {
+      return;
+    }
+    const keyframes = current.keyframes.map((kf, i) =>
+      i === index ? { ...kf, ...patch } : { ...kf },
+    );
+    this.setNodeAnimationKeyframes(id, keyframes);
+  }
+
+  /** Remove a keyframe (by index) of a node's animation. Keeps ≥1 keyframe. */
+  removeNodeAnimationKeyframe(id: SerializedNode['id'], index: number) {
+    const current = this.getNodeAnimation(id);
+    if (!current || current.keyframes.length <= 1) {
+      return;
+    }
+    const keyframes = current.keyframes.filter((_, i) => i !== index);
+    this.setNodeAnimationKeyframes(id, keyframes);
+  }
+
+  /**
+   * @returns one descriptor per animated node in the scene, for the bottom
+   * Timeline panel. `delay`/`duration`/`totalDuration` are in milliseconds.
+   */
+  getAnimatedTracks(): {
+    id: SerializedNode['id'];
+    name: string;
+    properties: string[];
+    delay: number;
+    duration: number;
+    totalDuration: number;
+  }[] {
+    const tracks: ReturnType<API['getAnimatedTracks']> = [];
+    for (const node of this.getNodes()) {
+      const controller = this.getNodeAnimationController(node.id);
+      if (!controller) {
+        continue;
+      }
+      const options = controller.getOptions();
+      tracks.push({
+        id: node.id,
+        name: (node as { name?: string }).name || node.id,
+        properties: controller.getAnimatedProperties(),
+        delay: options.delay,
+        duration: controller.getDuration() - options.delay,
+        totalDuration: controller.getDuration(),
+      });
+    }
+    return tracks;
+  }
+
+  /** @returns the longest active track end-time (ms) across the scene. */
+  getSceneAnimationDuration(): number {
+    let max = 0;
+    for (const node of this.getNodes()) {
+      const controller = this.getNodeAnimationController(node.id);
+      if (controller) {
+        max = Math.max(max, controller.getDuration());
+      }
+    }
+    return max;
+  }
+
+  // --- Timeline transport (drives the scene playhead via appState) ---
+
+  /** Enter/leave the deterministic scrub mode used by the Animation editor. */
+  setAnimationEditing(editing: boolean) {
+    this.setAppState({ animationEditing: editing });
+  }
+
+  /** Set the global playhead time (ms) and pause so the frame is sampled there. */
+  setAnimationCurrentTime(time: number) {
+    this.setAppState({
+      animationCurrentTime: Math.max(0, time),
+      animationPlaying: false,
+    });
+  }
+
+  playAnimation() {
+    this.setAppState({ animationEditing: true, animationPlaying: true });
+  }
+
+  pauseAnimation() {
+    this.setAppState({ animationPlaying: false });
+  }
+
+  toggleAnimationPlaying() {
+    if (this.getAppState().animationPlaying) {
+      this.pauseAnimation();
+    } else {
+      this.playAnimation();
+    }
+  }
+
+  setAnimationLoop(loop: boolean) {
+    this.setAppState({ animationLoop: loop });
+  }
+
   private getSceneGraphBounds() {
     const rbush = this.#camera.read(RBush).value;
 
@@ -765,21 +1694,91 @@ export class API {
   /**
    * Select nodes.
    */
+  /** Remove {@link Selected3D} from a declarative mesh3d companion mesh (deferred: runs in {@link Deleter}). */
+  #deselectMesh3DCompanion(source: Entity): void {
+    this.runAtNextTick(() => this.#deselectMesh3DCompanionDeferred(source));
+  }
+
+  #deselectMesh3DCompanionDeferred(source: Entity): void {
+    if (!source.has(Mesh3DNode)) {
+      return;
+    }
+    const mesh = source.read(Mesh3DNode).meshEntity;
+    if (!mesh || !isEntityAlive(mesh) || !mesh.has(Selected3D)) {
+      return;
+    }
+    try {
+      mesh.remove(Selected3D);
+    } catch {
+      /* companion already deleted */
+    }
+  }
+
+  /** Attach {@link Selected3D} once the companion mesh exists (after {@link EnsureMesh3DNodes}). */
+  #selectMesh3DCompanion(source: Entity): void {
+    this.runAtNextTick(() => this.#selectMesh3DCompanionDeferred(source, 0));
+  }
+
+  #selectMesh3DCompanionDeferred(source: Entity, attempt = 0): void {
+    if (!source.has(Mesh3DNode) || !source.has(Selected)) {
+      return;
+    }
+    const mesh = source.read(Mesh3DNode).meshEntity;
+    if (!mesh || !isEntityAlive(mesh)) {
+      if (attempt < 120) {
+        this.runAtNextTick(() =>
+          this.#selectMesh3DCompanionDeferred(source, attempt + 1),
+        );
+      }
+      return;
+    }
+    if (!mesh.has(Selected3D)) {
+      mesh.add(Selected3D, {
+        mode: 'transform',
+        activeAxis: 'none',
+        activePartKind: null,
+        dragging: false,
+      });
+    }
+    set3DMeshGizmoSelectedForCanvas(this.#canvas, true);
+  }
+
+  #scheduleSyncMesh3DGizmoBridge(): void {
+    this.runAtNextTick(() => this.#syncMesh3DGizmoBridge());
+  }
+
+  #syncMesh3DGizmoBridge(): void {
+    const has3DSelection = this.getAppState().layersSelected.some((id) => {
+      const entity = this.#idEntityMap.get(id)?.id();
+      if (!entity?.has(Mesh3DNode)) {
+        return false;
+      }
+      const mesh = entity.read(Mesh3DNode).meshEntity;
+      return !!(mesh && isEntityAlive(mesh) && mesh.has(Selected3D));
+    });
+    set3DMeshGizmoSelectedForCanvas(this.#canvas, has3DSelection);
+  }
+
   selectNodes(
     nodes: SerializedNode[],
     preserveSelection = false,
     updateAppState = true,
   ) {
+    const prevAppState = this.getAppState();
+    const prevSelectedIds = prevAppState.layersSelected;
+
     if (!preserveSelection) {
-      this.getAppState().layersSelected.forEach((id) => {
+      this.clearSelectedMesh3DLayers();
+      prevSelectedIds.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
-        if (entity && entity.has(Selected)) {
-          entity.remove(Selected);
+        if (entity) {
+          this.#deselectMesh3DCompanion(entity);
         }
       });
+      // 与 handleSelectedMoved 等路径写入的 Highlighted 同步清理，否则取消选中后仍残留描边高亮
+      this.clear2DSelectionComponents(prevSelectedIds);
     }
 
-    const prevAppState = this.getAppState();
     // remove duplicates
     const layersSelected = preserveSelection
       ? [
@@ -790,9 +1789,16 @@ export class API {
           .map((node) => node.id)
           .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
+      const layersHighlighted = preserveSelection
+        ? prevAppState.layersHighlighted
+        : prevAppState.layersHighlighted.filter(
+            (id) =>
+              !prevSelectedIds.includes(id) || layersSelected.includes(id),
+          );
       this.setAppState({
         ...prevAppState,
         layersSelected,
+        layersHighlighted,
       });
     }
 
@@ -802,23 +1808,37 @@ export class API {
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
       }
+      // Deferred in Deleter; #selectMesh3DCompanionDeferred no-ops for non-mesh3d nodes.
+      if (entity) {
+        this.#selectMesh3DCompanion(entity);
+      }
     });
   }
 
   deselectNodes(nodes: SerializedNode[]) {
+    const deselectIds = nodes.map((node) => node.id);
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
       if (entity && entity.has(Selected)) {
         entity.remove(Selected);
       }
+      if (entity) {
+        safeRemoveComponent(entity, Highlighted);
+        this.#deselectMesh3DCompanion(entity);
+      }
     });
 
-    const ids = new Set(nodes.map((node) => node.id));
     const prevAppState = this.getAppState();
     this.setAppState({
       ...prevAppState,
-      layersSelected: prevAppState.layersSelected.filter((id) => !ids.has(id)),
+      layersSelected: prevAppState.layersSelected.filter(
+        (id) => !deselectIds.includes(id),
+      ),
+      layersHighlighted: prevAppState.layersHighlighted.filter(
+        (id) => !deselectIds.includes(id),
+      ),
     });
+    this.#scheduleSyncMesh3DGizmoBridge();
   }
 
   highlightNodes(
@@ -826,12 +1846,19 @@ export class API {
     preserveSelection = false,
     updateAppState = true,
   ) {
+    const isDeclarative3DNode = (id: string) => {
+      const node = this.getNodeById(id);
+      return node?.type === 'mesh3d' || node?.type === 'light3d';
+    };
+
+    nodes = nodes.filter(
+      (node) => node.type !== 'mesh3d' && node.type !== 'light3d',
+    );
+
     if (!preserveSelection) {
       this.getAppState().layersHighlighted.forEach((id) => {
         const entity = this.#idEntityMap.get(id)?.id();
-        if (entity && entity.has(Highlighted)) {
-          entity.remove(Highlighted);
-        }
+        safeRemoveComponent(entity, Highlighted);
       });
     }
 
@@ -854,18 +1881,18 @@ export class API {
 
     layersHighlighted.forEach((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
-      if (entity && !entity.has(Highlighted)) {
-        entity.add(Highlighted);
+      if (!entity || isDeclarative3DNode(id)) {
+        safeRemoveComponent(entity, Highlighted);
+        return;
       }
+      safeAddComponent(entity, Highlighted);
     });
   }
 
   unhighlightNodes(nodes: SerializedNode[]) {
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
-      if (entity && entity.has(Highlighted)) {
-        entity.remove(Highlighted);
-      }
+      safeRemoveComponent(entity, Highlighted);
     });
 
     const ids = new Set(nodes.map((node) => node.id));
@@ -878,6 +1905,61 @@ export class API {
     });
   }
 
+  applyCrop() {
+    const [croppingNodeId] = this.getAppState().layersCropping;
+    const node = this.getNodeById(croppingNodeId);
+    if (node && node.clipMode === 'soft') {
+      this.updateNode(node, { clipMode: 'clip', locked: false });
+    }
+    // Lock all children
+    const children = this.getChildren(node);
+    children.forEach((child) => {
+      this.updateNode(this.getNodeByEntity(child), { locked: true });
+    });
+    this.setAppState({
+      layersCropping: [],
+    });
+    this.selectNodes([node]);
+    this.record();
+  }
+
+  cancelCrop() {
+    const [croppingNodeId] = this.getAppState().layersCropping;
+    const node = this.getNodeById(croppingNodeId);
+    if (node && node.clipMode === 'soft') {
+      this.updateNode(node, { clipMode: 'clip', locked: false });
+    }
+    // Lock all children
+    const children = this.getChildren(node);
+    children.forEach((child) => {
+      this.updateNode(this.getNodeByEntity(child), { locked: true });
+    });
+    this.setAppState({
+      layersCropping: [],
+    });
+    this.selectNodes([node]);
+    this.record();
+  }
+
+  cancelLasso() {
+    const [lassoingNodeId] = this.getAppState().layersLassoing;
+    const node = this.getNodeById(lassoingNodeId);
+    // Delete all children
+    const children = this.getChildren(node);
+    this.deleteNodesById(
+      children.map((child) => this.getNodeByEntity(child).id),
+    );
+    this.setAppState({
+      layersLassoing: [],
+      penbarLasso: {
+        ...this.getAppState().penbarLasso,
+        mode: undefined,
+      },
+    });
+    this.selectNodes([node]);
+    this.record();
+  }
+
   /**
    * If diff is provided, no need to calculate diffs.
    */
@@ -885,6 +1967,7 @@ export class API {
     node: SerializedNode,
     diff?: Partial<SerializedNode>,
     updateAppState = true,
+    skipOverrideKeys: string[] = [],
   ) {
     const entity = this.#idEntityMap.get(node.id)?.id();
     const nodes = this.getNodes();
@@ -898,6 +1981,12 @@ export class API {
         this.#canvas.read(Canvas).fonts,
         this.commands,
         this.#idEntityMap,
+        {
+          lookupNodes: this.#mergeSceneWithBatchForEdgeLookup([node]),
+          variables: this.getAppState().variables,
+          themeMode: this.getAppState().themeMode,
+          canvas: this.#canvas,
+        },
       );
       this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
 
@@ -908,15 +1997,25 @@ export class API {
         if (!entity.has(Children)) {
           cameraEntityCommands.appendChild(this.commands.entity(entity));
         }
+        // PropagateTransforms already ran this frame; new nodes need a world matrix
+        // before the render pass (SmoothPolyline, transformer anchors, etc.).
+        updateGlobalTransform(entity);
       });
 
       this.commands.execute();
 
       if (updateAppState) {
-        this.setNodes([...nodes, node]);
+        this.setNodes([...nodes, ...this.#refExpandedWireForBatch([node])]);
       }
     } else {
-      const updated = mutateElement(entity, node, diff ?? node);
+      const updated = mutateElement(
+        entity,
+        node,
+        diff ?? node,
+        skipOverrideKeys,
+        this,
+      );
+
       this.commands.execute();
 
       if (updateAppState) {
@@ -955,6 +2054,12 @@ export class API {
         this.#canvas.read(Canvas).fonts,
         this.commands,
         this.#idEntityMap,
+        {
+          lookupNodes: this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
+          variables: this.getAppState().variables,
+          themeMode: this.getAppState().themeMode,
+          canvas: this.#canvas,
+        },
       );
       nonExistentNodes.forEach((node) => {
         this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
@@ -967,12 +2072,15 @@ export class API {
         if (!entity.has(Children)) {
           cameraEntityCommands.appendChild(this.commands.entity(entity));
         }
+        // PropagateTransforms already ran this frame; new nodes need a world matrix
+        // before the render pass (SmoothPolyline, transformer anchors, etc.).
+        updateGlobalTransform(entity);
       });
 
       this.commands.execute();
 
       if (updateAppState) {
-        nextNodes.push(...nonExistentNodes);
+        nextNodes.push(...this.#refExpandedWireForBatch(nonExistentNodes));
       }
     }
 
@@ -980,7 +2088,8 @@ export class API {
       existentNodes.forEach((node) => {
         this.updateNode(node, undefined, false);
         const index = indices.get(node.id);
-        if (updateAppState && index !== undefined) nextNodes[index] = node;
+        if (updateAppState && index !== undefined)
+          nextNodes[index] = { ...node };
       });
     }
     if (updateAppState) this.setNodes(nextNodes);
@@ -994,9 +2103,21 @@ export class API {
     nodes: readonly SerializedNode[],
     source: 'local' | 'remote' = 'remote',
   ) {
-    const next = structuredClone(nodes.filter((node) => !node.isDeleted));
+    const received = structuredClone(nodes.filter((node) => !node.isDeleted));
+    validateDocument(received);
+    const next = expandRefSerializedNodes(received, received);
     validateDocument(next);
     next.forEach((node) => {
+      if (node.type === 'mesh3d') {
+        node.x ??= 0;
+        node.y ??= 0;
+        const scale =
+          typeof node.scale3d === 'number'
+            ? node.scale3d
+            : node.scale3d?.[0] ?? 100;
+        node.width ??= scale;
+        node.height ??= scale;
+      }
       if ([node.x, node.y, node.width, node.height].some(isNil))
         inferXYWidthHeight(node);
     });
@@ -1040,7 +2161,37 @@ export class API {
     );
   }
 
-  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {}
+  updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {
+    const vertices = vectorNetwork.vertices ?? [];
+    const segments = vectorNetwork.segments ?? [];
+    const { regions } = vectorNetwork;
+
+    // Re-normalize the geometry so its bounding box top-left sits at the local
+    // origin (0,0), mirroring the deserialize convention (see
+    // utils/deserialize/entity.ts). The node translation absorbs the offset so
+    // the geometry keeps its world position, and Transformer resize math keeps
+    // relying on node.x === geometry left.
+    const { minX, minY, maxX, maxY } = VectorNetwork.getGeometryBounds({
+      vertices,
+      segments,
+    });
+
+    const normalizedVertices = vertices.map((vertex) => ({
+      ...vertex,
+      x: vertex.x - minX,
+      y: vertex.y - minY,
+    }));
+
+    this.updateNode(node, {
+      x: (node.x ?? 0) + minX,
+      y: (node.y ?? 0) + minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      vertices: normalizedVertices,
+      segments,
+      ...(regions !== undefined ? { regions } : {}),
+    } as Partial<SerializedNode>);
+  }
 
   updateNodeOBB(
     node: SerializedNode,
@@ -1069,20 +2220,36 @@ export class API {
     }
     if (!isNil(width)) {
       if (lockAspectRatio) {
-        const aspectRatio = node.width / node.height;
+        const aspectRatio = (node.width ?? 0) / (node.height ?? 1);
         diff.height = width / aspectRatio;
       }
       diff.width = width;
     }
     if (!isNil(height)) {
       if (lockAspectRatio) {
-        const aspectRatio = node.width / node.height;
+        const aspectRatio = (node.width ?? 0) / (node.height ?? 1);
         diff.width = height * aspectRatio;
       }
       diff.height = height;
     }
 
+    if ((node as { display?: string }).display === 'flex') {
+      if (!isNil(width))
+        (diff as { flexHugWidth?: boolean }).flexHugWidth = false;
+      if (!isNil(height))
+        (diff as { flexHugHeight?: boolean }).flexHugHeight = false;
+    }
+
     if (delta) {
+      // geomDelta 是新 local 变换的线性部分，仍含节点旋转 R(θ)。直接把它烘焙进
+      // d/points，而 Transform 又保留 R(θ)，会叠加成双重旋转（旋转后再 resize 形变错误）。
+      // 左乘 R(-θ) 去掉节点旋转，只保留局部缩放/翻转；θ=0 时与原逻辑完全一致。
+      let geomDelta = mat3WithoutTranslation(delta);
+      const oldRotation = oldNode?.rotation ?? node.rotation ?? 0;
+      if (oldRotation) {
+        const unrotate = mat3.fromRotation(mat3.create(), -oldRotation);
+        geomDelta = mat3.multiply(mat3.create(), unrotate, geomDelta);
+      }
       if (node.type === 'polyline' || node.type === 'rough-polyline') {
         const { strokeAlignment = 'center', strokeWidth = 1 } = node;
         const shiftedPoints = maybeShiftPoints(
@@ -1092,7 +2259,7 @@ export class API {
               const [newX, newY] = vec2.transformMat3(
                 vec2.create(),
                 [x, y],
-                delta,
+                geomDelta,
               );
               return [newX, newY] as [number, number];
             },
@@ -1108,8 +2275,8 @@ export class API {
         (diff as PolylineSerializedNode).points = serializePoints(
           shiftedPoints.map((point) => [point[0] - minX, point[1] - minY]),
         );
-      } else if (node.type === 'path') {
-        const d = transformPath((oldNode as PathSerializedNode).d, delta);
+      } else if (node.type === 'path' || node.type === 'rough-path') {
+        const d = transformPath((oldNode as PathSerializedNode).d, geomDelta);
         const { subPaths } = parsePath(d);
         const points = subPaths.map((subPath) =>
           subPath
@@ -1119,6 +2286,51 @@ export class API {
         // @ts-ignore
         const { minX, minY } = Path.getGeometryBounds({ d }, { points });
         (diff as PathSerializedNode).d = shiftPath(d, -minX, -minY);
+      } else if (node.type === 'line' || node.type === 'rough-line') {
+        const { x1, y1, x2, y2 } = oldNode as LineSerializedNode;
+        const [newX1, newY1] = vec2.transformMat3(
+          vec2.create(),
+          [x1, y1],
+          geomDelta,
+        );
+        const [newX2, newY2] = vec2.transformMat3(
+          vec2.create(),
+          [x2, y2],
+          geomDelta,
+        );
+        const { minX, minY } = Line.getGeometryBounds({
+          x1: newX1,
+          y1: newY1,
+          x2: newX2,
+          y2: newY2,
+        });
+        (diff as LineSerializedNode).x1 = newX1 - minX;
+        (diff as LineSerializedNode).y1 = newY1 - minY;
+        (diff as LineSerializedNode).x2 = newX2 - minX;
+        (diff as LineSerializedNode).y2 = newY2 - minY;
+      } else if (node.type === 'vector-network') {
+        const oldNetwork = oldNode as VectorNetworkSerializedNode;
+        const transformed = transformVectorNetworkGeometry(
+          {
+            vertices: (oldNetwork.vertices ?? []).map((v) => ({ ...v })),
+            segments: (oldNetwork.segments ?? []).map((s) => ({
+              ...s,
+              tangentStart: s.tangentStart ? { ...s.tangentStart } : undefined,
+              tangentEnd: s.tangentEnd ? { ...s.tangentEnd } : undefined,
+            })),
+            regions: oldNetwork.regions?.map((region) => ({
+              fillRule: region.fillRule,
+              loops: region.loops.map((loop) => [...loop]),
+            })),
+          },
+          geomDelta,
+        );
+        (diff as VectorNetworkSerializedNode).vertices = transformed.vertices;
+        (diff as VectorNetworkSerializedNode).segments = transformed.segments;
+        if (transformed.regions !== undefined) {
+          (diff as VectorNetworkSerializedNode).regions =
+            transformed.regions as VectorNetworkSerializedNode['regions'];
+        }
       } else if (node.type === 'brush') {
         const shiftedPoints = deserializeBrushPoints(
           (oldNode as BrushSerializedNode)?.points,
@@ -1139,6 +2351,55 @@ export class API {
             radius: point.radius,
           })),
         );
+      } else if (node.type === 'text') {
+        const textOld = (oldNode ?? node) as TextSerializedNode;
+        const metrics = measureText(textOld);
+        const { minX, minY, maxX, maxY } = Text.getGeometryBounds(
+          textOld,
+          metrics,
+        );
+
+        const corners: [number, number][] = [
+          [minX, minY],
+          [maxX, minY],
+          [maxX, maxY],
+          [minX, maxY],
+        ];
+        let nxMin = Infinity;
+        let nyMin = Infinity;
+        let nxMax = -Infinity;
+        let nyMax = -Infinity;
+        for (const [px, py] of corners) {
+          const [nx, ny] = vec2.transformMat3(vec2.create(), [px, py], delta);
+          nxMin = Math.min(nxMin, nx);
+          nyMin = Math.min(nyMin, ny);
+          nxMax = Math.max(nxMax, nx);
+          nyMax = Math.max(nyMax, ny);
+        }
+        const [naX, naY] = vec2.transformMat3(
+          vec2.create(),
+          [textOld.anchorX ?? 0, textOld.anchorY ?? 0],
+          delta,
+        );
+        (diff as TextSerializedNode).anchorX = naX - nxMin;
+        (diff as TextSerializedNode).anchorY = naY - nyMin;
+
+        const { scale } = decompose(delta);
+        const sX = Math.abs(scale[0]);
+        const sY = Math.abs(scale[1]);
+        const fs = textOld.fontSize;
+        const oldFontSize =
+          typeof fs === 'number'
+            ? fs
+            : typeof fs === 'string'
+            ? parseFloat(fs) || 12
+            : 12;
+        (diff as TextSerializedNode).fontSize = oldFontSize * sY;
+
+        const ww = textOld.wordWrapWidth ?? 0;
+        if (ww > 0) {
+          (diff as TextSerializedNode).wordWrapWidth = ww * sX;
+        }
       }
     }
 
@@ -1153,7 +2414,27 @@ export class API {
     nodes.forEach((node) => {
       const entity = this.#idEntityMap.get(node.id)?.id();
       if (entity && entity.has(ComputedBounds)) {
-        bounds.addBounds(entity.read(ComputedBounds).renderWorldBounds);
+        // Account for parent's clip
+        const parentEntity = this.getParent(node);
+        const parent = this.getNodeByEntity(parentEntity);
+        if (parent && parent.clipMode && parent.clipMode === 'clip') {
+          // Union node's bounds with parent's clip bounds
+          const { minX, minY, maxX, maxY } =
+            entity.read(ComputedBounds).renderWorldBounds;
+          const {
+            minX: parentMinX,
+            minY: parentMinY,
+            maxX: parentMaxX,
+            maxY: parentMaxY,
+          } = parentEntity.read(ComputedBounds).renderWorldBounds;
+          const isectMinX = Math.max(minX, parentMinX);
+          const isectMinY = Math.max(minY, parentMinY);
+          const isectMaxX = Math.min(maxX, parentMaxX);
+          const isectMaxY = Math.min(maxY, parentMaxY);
+          bounds.addFrame(isectMinX, isectMinY, isectMaxX, isectMaxY);
+        } else {
+          bounds.addBounds(entity.read(ComputedBounds).renderWorldBounds);
+        }
       }
     });
     return bounds;
@@ -1170,13 +2451,253 @@ export class API {
     return bounds;
   }
 
+  /**
+   * 将选中的多个节点在**世界空间**中按各节点 {@link ComputedBounds.geometryWorldBounds} 的并集对齐
+   *（与变换器多选选区同语义）。跳过 {@link SerializedNode.locked|locked} 的节点；至少两个未锁定。
+   */
+  alignSelectedNodes(alignment: NodeAlignment, nodeIds?: string[]) {
+    const ids = nodeIds ?? this.getAppState().layersSelected;
+    if (ids.length < 2) {
+      return;
+    }
+    const nodes = ids
+      .map((id) => this.getNodeById(id))
+      .filter((n): n is SerializedNode => !!n && n.locked !== true);
+    if (nodes.length < 2) {
+      return;
+    }
+    const union = this.getGeometryBounds(nodes);
+    if (
+      !Number.isFinite(union.minX) ||
+      !Number.isFinite(union.maxX) ||
+      !Number.isFinite(union.minY) ||
+      !Number.isFinite(union.maxY) ||
+      union.minX > union.maxX ||
+      union.minY > union.maxY
+    ) {
+      return;
+    }
+
+    for (const node of nodes) {
+      const entity = this.getEntity(node);
+      if (!entity?.has(ComputedBounds)) {
+        continue;
+      }
+      const g = entity.read(ComputedBounds).geometryWorldBounds;
+      if (
+        !Number.isFinite(g.minX) ||
+        !Number.isFinite(g.maxX) ||
+        !Number.isFinite(g.minY) ||
+        !Number.isFinite(g.maxY) ||
+        g.minX > g.maxX ||
+        g.minY > g.maxY
+      ) {
+        continue;
+      }
+      let dx = 0;
+      let dy = 0;
+      if (alignment === 'left') {
+        dx = union.minX - g.minX;
+      } else if (alignment === 'right') {
+        dx = union.maxX - g.maxX;
+      } else if (alignment === 'top') {
+        dy = union.minY - g.minY;
+      } else if (alignment === 'bottom') {
+        dy = union.maxY - g.maxY;
+      } else if (alignment === 'centerH') {
+        const gc = (g.minX + g.maxX) * 0.5;
+        const uc = (union.minX + union.maxX) * 0.5;
+        dx = uc - gc;
+      } else {
+        const gc = (g.minY + g.maxY) * 0.5;
+        const uc = (union.minY + union.maxY) * 0.5;
+        dy = uc - gc;
+      }
+      this.#applyNodeWorldDelta(node, dx, dy);
+    }
+
+    this.record();
+  }
+
+  /**
+   * 将多个选中节点在**世界空间**中沿水平或竖直方向做**等间距**分布：固定整体首尾（沿该轴的 min/max
+   * 几何包络），在相邻两物体之间使用相同间隔；基于 {@link ComputedBounds.geometryWorldBounds} 与
+   * {@link alignSelectedNodes} 相同的 OBB 更新。跳过 `locked` 的节点，至少两个未锁。
+   */
+  distributeSelectedNodesSpacing(
+    axis: DistributeSpacingAxis,
+    nodeIds?: string[],
+  ) {
+    const ids = nodeIds ?? this.getAppState().layersSelected;
+    if (ids.length < 2) {
+      return;
+    }
+    const nodes = ids
+      .map((id) => this.getNodeById(id))
+      .filter((n): n is SerializedNode => !!n && n.locked !== true);
+    if (nodes.length < 2) {
+      return;
+    }
+    const entries: {
+      node: SerializedNode;
+      minX: number;
+      maxX: number;
+      minY: number;
+      maxY: number;
+      w: number;
+      h: number;
+    }[] = [];
+    for (const node of nodes) {
+      const entity = this.getEntity(node);
+      if (!entity?.has(ComputedBounds)) {
+        continue;
+      }
+      const g = entity.read(ComputedBounds).geometryWorldBounds;
+      if (
+        !Number.isFinite(g.minX) ||
+        !Number.isFinite(g.maxX) ||
+        !Number.isFinite(g.minY) ||
+        !Number.isFinite(g.maxY) ||
+        g.minX > g.maxX ||
+        g.minY > g.maxY
+      ) {
+        continue;
+      }
+      entries.push({
+        node,
+        minX: g.minX,
+        maxX: g.maxX,
+        minY: g.minY,
+        maxY: g.maxY,
+        w: g.maxX - g.minX,
+        h: g.maxY - g.minY,
+      });
+    }
+    if (entries.length < 2) {
+      return;
+    }
+    if (axis === 'horizontal') {
+      entries.sort((a, b) => a.minX - b.minX);
+    } else {
+      entries.sort((a, b) => a.minY - b.minY);
+    }
+    const n = entries.length;
+    if (axis === 'horizontal') {
+      const sumW = entries.reduce((s, e) => s + e.w, 0);
+      const span = entries[n - 1]!.maxX - entries[0]!.minX;
+      const gGap = (span - sumW) / (n - 1);
+      if (!Number.isFinite(gGap)) {
+        return;
+      }
+      const targetMinX: number[] = new Array(n);
+      targetMinX[0] = entries[0]!.minX;
+      for (let i = 1; i < n; i++) {
+        targetMinX[i] = targetMinX[i - 1]! + entries[i - 1]!.w + gGap;
+      }
+      for (let i = 0; i < n; i++) {
+        this.#applyNodeWorldDelta(
+          entries[i]!.node,
+          targetMinX[i]! - entries[i]!.minX,
+          0,
+        );
+      }
+    } else {
+      const sumH = entries.reduce((s, e) => s + e.h, 0);
+      const span = entries[n - 1]!.maxY - entries[0]!.minY;
+      const gGap = (span - sumH) / (n - 1);
+      if (!Number.isFinite(gGap)) {
+        return;
+      }
+      const targetMinY: number[] = new Array(n);
+      targetMinY[0] = entries[0]!.minY;
+      for (let i = 1; i < n; i++) {
+        targetMinY[i] = targetMinY[i - 1]! + entries[i - 1]!.h + gGap;
+      }
+      for (let i = 0; i < n; i++) {
+        this.#applyNodeWorldDelta(
+          entries[i]!.node,
+          0,
+          targetMinY[i]! - entries[i]!.minY,
+        );
+      }
+    }
+    this.record();
+  }
+
+  #applyNodeWorldDelta(node: SerializedNode, dx: number, dy: number) {
+    if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) {
+      return;
+    }
+    const entity = this.getEntity(node);
+    if (!entity) {
+      return;
+    }
+    const epsilon = 0.01;
+    const oldNode = { ...node, ...this.getAbsoluteTransformAndSize(node) };
+    const oldAttrs = {
+      x: oldNode.x ?? 0,
+      y: oldNode.y ?? 0,
+      width: oldNode.width ?? 0,
+      height: oldNode.height ?? 0,
+      rotation: oldNode.rotation ?? 0,
+      scaleX: oldNode.scaleX ?? 1,
+      scaleY: oldNode.scaleY ?? 1,
+    };
+    const wSign = oldAttrs.width;
+    const hSign = oldAttrs.height;
+    const delta = mat3.create();
+    mat3.fromTranslation(delta, [dx, dy]);
+    const parentTransform = this.getParentTransform(entity);
+    const localTransform = this.getTransform(oldNode);
+    const newLocalTransform = mat3.create();
+    mat3.multiply(newLocalTransform, parentTransform, localTransform);
+    mat3.multiply(newLocalTransform, delta, newLocalTransform);
+    mat3.multiply(
+      newLocalTransform,
+      mat3.invert(mat3.create(), parentTransform),
+      newLocalTransform,
+    );
+    const { rotation, translation, scale } = decompose(newLocalTransform);
+    const obb = {
+      x: translation[0],
+      y: translation[1],
+      width: Math.max(Math.abs((oldNode.width ?? 0) * scale[0]), epsilon),
+      height: Math.max(Math.abs((oldNode.height ?? 0) * scale[1]), epsilon),
+      rotation,
+      scaleX: oldAttrs.scaleX * (Math.sign(wSign) || 1),
+      scaleY: oldAttrs.scaleY * (Math.sign(hSign) || 1),
+    };
+    if (entity.hasSomeOf(Polyline, Path, Line)) {
+      const signW = Math.sign(wSign) || 1;
+      const signH = Math.sign(hSign) || 1;
+      obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
+      obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
+    }
+    this.updateNodeOBB(node, obb, node.lockAspectRatio, undefined, oldNode);
+    updateGlobalTransform(entity);
+    updateComputedPoints(entity);
+  }
+
   deleteNodesById(ids: SerializedNode['id'][], updateAppState = true) {
-    const idsToDelete = new Set(ids);
-    const nodes: SerializedNode[] = [];
-    const deletedNodes: SerializedNode[] = [];
-    this.getNodes().forEach((node) => {
-      (idsToDelete.has(node.id) ? deletedNodes : nodes).push(node);
+    const previous = this.getNodes();
+    const children = new Map<string, string[]>();
+    previous.forEach((node) => {
+      if (node.parentId != null) {
+        const siblings = children.get(node.parentId) ?? [];
+        siblings.push(node.id);
+        children.set(node.parentId, siblings);
+      }
     });
+    const deletedIds = new Set<string>();
+    const pending = [...ids];
+    while (pending.length) {
+      const id = pending.pop()!;
+      if (deletedIds.has(id)) continue;
+      deletedIds.add(id);
+      pending.push(...(children.get(id) ?? []));
+    }
+    const nodes = previous.filter((node) => !deletedIds.has(node.id));
+    const deletedNodes = previous.filter((node) => deletedIds.has(node.id));
 
     this.deselectNodes(deletedNodes);
     this.unhighlightNodes(deletedNodes);
@@ -1227,6 +2748,26 @@ export class API {
     }
 
     return entity.read(Parent).children;
+  }
+
+  getChildrenRecursively(node: SerializedNode): SerializedNode[] {
+    const children = this.getChildren(node);
+    return children.flatMap((child) => {
+      const childNode = this.getNodeByEntity(child);
+      if (!childNode) {
+        return [];
+      }
+      return [childNode, ...this.getChildrenRecursively(childNode)];
+    });
+  }
+
+  reparentNode(node: SerializedNode, parent: SerializedNode) {
+    // Modify x,y to be relative to the parent
+    this.updateNode(node, {
+      parentId: parent.id,
+      x: (node.x ?? 0) - (parent.x ?? 0),
+      y: (node.y ?? 0) - (parent.y ?? 0),
+    });
   }
 
   /**
@@ -1297,6 +2838,79 @@ export class API {
     this.updateNode(node, { zIndex: minZIndex - 1 });
   }
 
+  group(nodes: SerializedNode[]) {
+    const targets = [...new Map(nodes.map((n) => [n.id, n])).values()].filter(
+      Boolean,
+    );
+    if (targets.length === 0) {
+      return;
+    }
+
+    const bounds = this.getGeometryBounds(targets);
+    if (
+      !Number.isFinite(bounds.minX) ||
+      !Number.isFinite(bounds.minY) ||
+      !Number.isFinite(bounds.maxX) ||
+      !Number.isFinite(bounds.maxY)
+    ) {
+      return;
+    }
+
+    const parentIds = new Set(targets.map((n) => n.parentId ?? '__ROOT__'));
+    const commonParentId =
+      parentIds.size === 1 ? targets[0].parentId ?? undefined : undefined;
+
+    const zIndex = Math.max(...targets.map((n) => n.zIndex ?? 0), 0);
+    const groupNode: GSerializedNode = {
+      id: uuidv4(),
+      type: 'g',
+      parentId: commonParentId,
+      zIndex,
+    };
+
+    this.updateNode(groupNode);
+
+    targets.forEach((node) => {
+      if (node.id === groupNode.id) {
+        return;
+      }
+      this.reparentNode(node, groupNode);
+    });
+
+    this.selectNodes([groupNode]);
+  }
+
+  ungroup(node: SerializedNode) {
+    if (node.type !== 'g') {
+      return;
+    }
+
+    const parentId = node.parentId;
+    const groupX = node.x ?? 0;
+    const groupY = node.y ?? 0;
+    const groupZ = node.zIndex ?? 0;
+
+    const children = this.getChildren(node)
+      .map((child) => this.getNodeByEntity(child))
+      .filter(Boolean);
+    if (children.length === 0) {
+      this.deleteNodesById([node.id]);
+      return;
+    }
+
+    children.forEach((child, index) => {
+      this.updateNode(child, {
+        parentId,
+        x: (child.x ?? 0) + groupX,
+        y: (child.y ?? 0) + groupY,
+        zIndex: groupZ + index * 0.001,
+      });
+    });
+
+    this.deleteNodesById([node.id]);
+    this.selectNodes(children);
+  }
+
   /**
    * Record the current state of the canvas.
    * @param captureUpdateAction Record the changes immediately or never.
@@ -1355,7 +2969,8 @@ export class API {
     this.#history.clear();
   }
 
-  export(format: ExportFormat, download = true, nodes: SerializedNode[] = []) {
+  export(options: ExportOptions) {
+    const { format, download = true, nodes = [] } = options;
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,
@@ -1363,11 +2978,82 @@ export class API {
         nodes,
       });
     } else if (format === ExportFormat.PNG || format === ExportFormat.JPEG) {
+      const scale =
+        options.scale != null && Number.isFinite(options.scale)
+          ? Math.max(0.25, Math.min(8, options.scale))
+          : 1;
+      const rainWarmupRaw = options.rainWarmupSec;
+      const rainWarmupSec = Math.max(
+        0,
+        Math.min(
+          30,
+          rainWarmupRaw != null && Number.isFinite(rainWarmupRaw)
+            ? rainWarmupRaw
+            : 0,
+        ),
+      );
+      const rainCaptureRaw = options.rainCaptureTimeSec;
+      const rainCaptureTimeSec =
+        rainCaptureRaw != null && Number.isFinite(rainCaptureRaw)
+          ? Math.max(0, Math.min(120, rainCaptureRaw))
+          : 0;
       safeAddComponent(this.#canvas, RasterScreenshotRequest, {
         canvas: this.#canvas,
         type: `image/${format}`,
         download,
         nodes,
+        scale,
+        rainWarmupSec,
+        rainCaptureTimeSec,
+      });
+    } else if (format === ExportFormat.WEBM || format === ExportFormat.GIF) {
+      const scale =
+        options.scale != null && Number.isFinite(options.scale)
+          ? Math.max(0.25, Math.min(8, options.scale))
+          : 1;
+      const durationRaw = options.durationSec;
+      const durationSec = Math.max(
+        0.2,
+        Math.min(
+          15,
+          durationRaw != null && Number.isFinite(durationRaw) ? durationRaw : 3,
+        ),
+      );
+      const fpsRaw = options.fps;
+      const fps = Math.max(
+        1,
+        Math.min(30, fpsRaw != null && Number.isFinite(fpsRaw) ? fpsRaw : 24),
+      );
+      const timeStartRaw = options.timeStart;
+      const timeStart =
+        timeStartRaw != null && Number.isFinite(timeStartRaw)
+          ? timeStartRaw
+          : 0;
+      const gq = options.gifQuality;
+      const gifQuality: AnimationGifQuality =
+        gq === 'medium' || gq === 'low' || gq === 'high' ? gq : 'high';
+      const rainWarmupRaw = options.rainWarmupSec;
+      const rainWarmupSec = Math.max(
+        0,
+        Math.min(
+          30,
+          rainWarmupRaw != null && Number.isFinite(rainWarmupRaw)
+            ? rainWarmupRaw
+            : 0,
+        ),
+      );
+      safeAddComponent(this.#canvas, RasterAnimationExportRequest, {
+        canvas: this.#canvas,
+        download,
+        format: format === ExportFormat.WEBM ? 'webm' : 'gif',
+        durationSec,
+        fps,
+        grid: false,
+        nodes,
+        scale,
+        timeStart,
+        rainWarmupSec,
+        gifQuality: format === ExportFormat.GIF ? gifQuality : 'high',
       });
     }
 
@@ -1375,18 +3061,336 @@ export class API {
   }
 
   /**
-   * Delete Canvas component
+   * Render nodes or the whole scene to SVG.
+   */
+  async renderToSVG(
+    nodes: SerializedNode[],
+    options: Partial<{
+      grid: boolean;
+      padding?: number;
+      /** 默认 `resolved`；`css-var` 会注入 `:root` 变量并输出 `var(--token)` */
+      designVariablesExport?: DesignVariablesSvgExportMode;
+    }> = {},
+  ) {
+    const canvas = this.#canvas;
+    const {
+      grid: gridEnabled,
+      padding = 0,
+      designVariablesExport = 'resolved',
+    } = options;
+    const { cameras, api } = canvas.read(Canvas);
+    const { width, height } = canvas.read(Canvas);
+    const { mode, colors } = canvas.read(Theme);
+    const { checkboardStyle } = canvas.read(Grid);
+    const { grid: gridColor, background: backgroundColor } = colors[mode];
+    const hasNodes = nodes && nodes.length;
+
+    if (hasNodes) {
+      return toSVGElement(api, nodes, padding, { designVariablesExport });
+    }
+
+    const $namespace = createSVGElement('svg');
+    $namespace.setAttribute('width', `${width}`);
+    $namespace.setAttribute('height', `${height}`);
+
+    if (checkboardStyle !== CheckboardStyle.NONE) {
+      // @see https://www.geeksforgeeks.org/how-to-set-the-svg-background-color/
+      $namespace.setAttribute('style', `background-color: ${backgroundColor}`);
+    }
+
+    {
+      // Calculate viewBox according to the camera's transform.
+      const { x, y, zoom } = cameras[0].read(ComputedCamera);
+      $namespace.setAttribute(
+        'viewBox',
+        `${x} ${y} ${width / zoom} ${height / zoom}`,
+      );
+    }
+
+    if (gridEnabled) {
+      if (checkboardStyle === CheckboardStyle.GRID) {
+        drawLinesGrid($namespace, gridColor);
+      } else if (checkboardStyle === CheckboardStyle.DOTS) {
+        drawDotsGrid($namespace, gridColor);
+      }
+    }
+
+    const prep = prepareSerializedNodesForSvgExport(
+      api.readLayoutFromECS(api.getNodes()),
+      api.getAppState().variables,
+      designVariablesExport,
+      api.getAppState().themeMode,
+    );
+    const exportNodes = expandSerializedNodesForSvgExport(
+      prep.nodes,
+      api.getNodes(),
+    );
+    if (prep.cssRootStyle) {
+      const $defs = createSVGElement('defs');
+      const $style = DOMAdapter.get()
+        .getDocument()
+        .createElementNS('http://www.w3.org/2000/svg', 'style');
+      $style.textContent = prep.cssRootStyle;
+      $defs.appendChild($style);
+      $namespace.insertBefore($defs, $namespace.firstChild);
+    }
+    (await serializeNodesToSVGElements(exportNodes)).forEach((element) => {
+      $namespace.appendChild(element);
+    });
+    return $namespace;
+  }
+
+  /**
+   * Transpile nodes (or the whole scene) to framework code (design-to-code).
+   *
+   * 确定性转译，对照 {@link renderToSVG}：默认 `react-tailwind` + `resolved`。变量与 `reusable`/
+   * `ref` 组件结构会被保留并映射为目标框架的 token / 组件。
+   */
+  exportCode(nodes?: SerializedNode[], options: CodegenOptions = {}): string {
+    const api = this.#canvas.read(Canvas).api;
+    const source = nodes && nodes.length ? nodes : api.getNodes();
+    return serializedNodesToCode(source, {
+      variables: api.getAppState().variables,
+      themeMode: api.getAppState().themeMode,
+      ...options,
+    });
+  }
+
+  async renderToCanvas(
+    node: SerializedNode,
+    options: {
+      canvas?: HTMLCanvasElement;
+      width?: number;
+      height?: number;
+    } = {},
+  ): Promise<HTMLCanvasElement> {
+    let {
+      canvas,
+      width = node.width ?? 0,
+      height = node.height ?? 0,
+    } = options;
+    if (!canvas) {
+      canvas = DOMAdapter.get().createCanvas(
+        width,
+        height,
+      ) as HTMLCanvasElement;
+    }
+
+    const ctx = canvas.getContext('2d')!;
+    migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+    migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
+    const pres = firstEnabledFillPresentation((node as FillAttributes).fills);
+    const fillFromFills = pres?.fill ?? '';
+    const fillOpacity = (() => {
+      const o = pres?.fillOpacity ?? 1;
+      if (typeof o === 'number' && Number.isFinite(o)) {
+        return Math.max(0, Math.min(1, o));
+      }
+      const n = parseFloat(String(o));
+      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    })();
+    const spres = firstEnabledStrokePresentation(
+      (node as StrokeAttributes).strokes,
+    );
+    const strokeFromStrokes = spres?.stroke ?? '';
+    const strokeOpacity = (() => {
+      const o = spres?.strokeOpacity ?? 1;
+      if (typeof o === 'number' && Number.isFinite(o)) {
+        return Math.max(0, Math.min(1, o));
+      }
+      const n = parseFloat(String(o));
+      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    })();
+    const opacity = (node as { opacity?: number }).opacity ?? 1;
+
+    if (node.type === 'rect' || node.type === 'rough-rect') {
+      const {
+        x,
+        y,
+        width,
+        height,
+        strokeWidth,
+        strokeLinecap,
+        strokeLinejoin,
+      } = node;
+      const fill = fillFromFills;
+      ctx.save();
+      if (isDataUrl(fill) || isUrl(fill)) {
+        ctx.globalAlpha = opacity * fillOpacity;
+        const image = (await DOMAdapter.get().createImage(fill)) as ImageBitmap;
+        ctx.drawImage(image, x ?? 0, y ?? 0, width ?? 0, height ?? 0);
+      } else {
+        ctx.globalAlpha = opacity * fillOpacity;
+        ctx.fillStyle = fill;
+        ctx.fillRect(x ?? 0, y ?? 0, width ?? 0, height ?? 0);
+      }
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = strokeFromStrokes;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+      ctx.restore();
+    } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
+      const {
+        x,
+        y,
+        width,
+        height,
+        strokeWidth,
+        strokeLinecap,
+        strokeLinejoin,
+      } = node;
+      const fill = fillFromFills;
+      ctx.save();
+      ctx.globalAlpha = opacity * fillOpacity;
+      ctx.fillStyle = fill;
+      ctx.ellipse(
+        (x ?? 0) + (width ?? 0) / 2,
+        (y ?? 0) + (height ?? 0) / 2,
+        (width ?? 0) / 2,
+        (height ?? 0) / 2,
+        0,
+        0,
+        2 * Math.PI,
+      );
+      ctx.fill();
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = strokeFromStrokes;
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+      ctx.restore();
+    } else if (node.type === 'path' || node.type === 'rough-path') {
+      const { d, strokeWidth } = node;
+      const fill = fillFromFills;
+      ctx.save();
+      ctx.globalAlpha = opacity * fillOpacity;
+      ctx.fillStyle = fill;
+      ctx.beginPath();
+      path2Absolute(d).forEach(([command, ...data]) => {
+        if (command === 'M') {
+          ctx.moveTo(data[0], data[1]);
+        } else if (command === 'L') {
+          ctx.lineTo(data[0], data[1]);
+        } else if (command === 'C') {
+          ctx.bezierCurveTo(
+            data[0],
+            data[1],
+            data[2],
+            data[3],
+            data[4],
+            data[5],
+          );
+        }
+      });
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = strokeFromStrokes;
+      ctx.lineWidth = strokeWidth;
+      ctx.stroke();
+      ctx.restore();
+    } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
+      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
+      ctx.save();
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = strokeFromStrokes;
+      deserializePoints(points).forEach((point, index) => {
+        if (index === 0) {
+          ctx.moveTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
+        } else {
+          ctx.lineTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
+        }
+      });
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+      ctx.restore();
+    } else if (node.type === 'line' || node.type === 'rough-line') {
+      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin } =
+        node;
+      ctx.save();
+      ctx.globalAlpha = opacity * strokeOpacity;
+      ctx.strokeStyle = strokeFromStrokes;
+      ctx.moveTo(x1 ?? 0, y1 ?? 0);
+      ctx.lineTo(x2 ?? 0, y2 ?? 0);
+      ctx.lineWidth = strokeWidth;
+      ctx.lineCap = strokeLinecap;
+      ctx.lineJoin = strokeLinejoin;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    await Promise.all(
+      this.getChildren(node)
+        .map((child) =>
+          this.renderToCanvas(this.getNodeByEntity(child), { canvas }),
+        )
+        .filter(Boolean),
+    );
+
+    return canvas;
+  }
+
+  /**
+   * Tear down this canvas instance (scene nodes, camera, and canvas entity).
    */
   destroy() {
     if (this.#destroyed) return;
     this.#destroyed = true;
     this.#tasks.dispose();
+    this.#afterDeleteTasks.dispose();
     this.cancelLandmarkAnimation();
     this.capabilities.dispose();
     try {
       this.#scope.dispose();
     } finally {
-      this.#canvas.delete();
+      const prev = this.getAppState();
+      this.setAppState({
+        ...prev,
+        layersSelected: [],
+        layersHighlighted: [],
+        layersCropping: [],
+      });
+
+      for (const node of [...this.getNodes()]) {
+        const entity = this.getEntity(node);
+        if (entity) {
+          try {
+            if (entity.has(Selected)) {
+              entity.remove(Selected);
+            }
+            safeRemoveComponent(entity, Highlighted);
+          } catch {
+            /* entity already deleted */
+          }
+          try {
+            entity.delete();
+          } catch {
+            /* already deleted */
+          }
+        }
+        this.#idEntityMap.delete(node.id);
+      }
+      this.setNodes([]);
+
+      if (this.#camera) {
+        try {
+          this.#camera.delete();
+        } catch {
+          /* already deleted */
+        }
+      }
+      if (this.#canvas) {
+        try {
+          this.#canvas.delete();
+        } catch {
+          /* already deleted */
+        }
+      }
     }
   }
 
@@ -1399,6 +3403,14 @@ export class API {
       }),
     );
     this.commands.execute();
+  }
+
+  /**
+   * 克隆一组序列化节点：为每个节点生成新 id，并在本批次内重写 parentId，保持原有父子关系。
+   * 不修改入参。若某节点的父 id 不在 `nodes` 中，则其 `parentId` 置为 undefined。
+   */
+  cloneNodes(nodes: readonly SerializedNode[]): SerializedNode[] {
+    return cloneSerializedNodes(nodes);
   }
 
   async copyToClipboard(
@@ -1418,6 +3430,11 @@ export class API {
     this.#tasks.flush();
   }
 
+  /** @internal Called after entity deletion by the owning world. */
+  flushAfterDeleteTasks() {
+    this.#afterDeleteTasks.flush();
+  }
+
   private async runImageTask<T>(
     message: string,
     task: () => Promise<T>,
@@ -1433,6 +3450,32 @@ export class API {
         this.setAppState({ loading: false, loadingMessage: '' });
       }
     }
+  }
+
+  /**
+   * 在当前帧实体删除（`ToBeDeleted` → `entity.delete()`）完成之后执行回调。
+   */
+  runAfterDeletedEntities(fn: () => any) {
+    this.#afterDeleteTasks.add(fn);
+  }
+
+  /**
+   * 导出为 `.ic` 互换文档（含 variables / themes / elements / appState）。
+   * @see https://docs.excalidraw.com/docs/codebase/json-schema
+   */
+  exportIcDocument(source?: string) {
+    return buildIcDocumentFromState(
+      this.getAppState(),
+      this.getNodes(),
+      source,
+    );
+  }
+
+  /**
+   * 自 `.ic` 文档或 JSON 字符串恢复场景（会先清空当前场景根节点）。
+   */
+  importIcDocument(doc: unknown, options?: { recordHistory?: boolean }) {
+    applyIcDocumentToApi(this, parseIcDocumentJson(doc), options);
   }
 
   // AI APIs

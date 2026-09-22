@@ -4,7 +4,6 @@ description: '实现选择工具。'
 head:
     - ['meta', { property: 'og:title', content: '课程 26 - 选择工具' }]
 ---
-
 <script setup>
 import MultiSelection from '../../components/MultiSelection.vue'
 import Lasso from '../../components/Lasso.vue'

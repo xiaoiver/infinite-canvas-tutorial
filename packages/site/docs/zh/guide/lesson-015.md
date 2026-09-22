@@ -2,12 +2,12 @@
 outline: deep
 description: '掌握复杂的文本渲染技术，包括TextMetrics、HarfBuzz shaping、文本分段、BiDi支持、SDF图集生成以及国际化排版的emoji处理。'
 ---
-
 <script setup>
 import MSDFText from '../../components/MSDFText.vue';
 import BitmapFont from '../../components/BitmapFont.vue';
 import Emoji from '../../components/Emoji.vue';
 import Bidi from '../../components/Bidi.vue';
+import TextBaseline2 from '../../components/TextBaseline2.vue';
 </script>
 
 # 课程 15 - 绘制文本
@@ -92,6 +92,8 @@ interface TextMetrics {
 ![text-baseline](/text-baseline.png)
 
 最后 `fontBoundingBoxAscent/Descent` 是字体本身的最大边界，`actualBoundingBoxAscent/Descent` 是实际绘制时字体的最大边界，因此前者适合用来绘制一致的文本的背景，不会随内容变化而显得高低不平。
+
+<TextBaseline2 />
 
 ### measureText
 
@@ -214,6 +216,44 @@ const breakingSpaces: number[] = [
 在 CJK 中部分字符不能出现在行首，部分不能出现在行尾。例如在中文里大部分标点符号不能出现在行首，具体规则详见：[Line breaking rules in East Asian languages]。[pixi-cjk] 处理了这些情况：
 
 ![pixi-cjk](https://github.com/huang-yuwei/pixi-cjk/raw/main/docs/screenshot.png)
+
+还有一种常见的自动换行的场景，给定最大宽度，超出就换行。更进一步可以设置最大行数，超出时应用 [text-overflow]。
+
+```ts
+{
+    wordWrap: true,
+    wordWrapWidth: 100,
+    maxLines: 3,
+    textOverflow: TextOverflow.ELLIPSIS,
+}
+```
+
+我们可以参考 Pixi.js 的实现：[CanvasTextMetrics]
+
+```ts
+for (let i = 0; i < chars.length; i++) {
+    const char = chars[i];
+    const prevChar = text[i - 1];
+    const nextChar = text[i + 1];
+    const charWidth = calcWidth(char);
+
+    if (currentWidth > 0 && currentWidth + charWidth > maxWidth) {
+        if (currentIndex + 1 >= maxLines) {
+            // 超出最大行数，添加省略号
+            appendEllipsis(currentIndex);
+            break;
+        }
+
+        currentIndex++;
+        currentWidth = 0;
+        lines[currentIndex] = '';
+
+        if (isBreakingSpace(char)) {
+            continue;
+        }
+    }
+}
+```
 
 ### BiDi {#bidi}
 
@@ -739,7 +779,7 @@ float median(float r, float g, float b) {
 
 <BitmapFont />
 
-在运行时如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
+Canvas API 也提供了 [fontKerning]。在运行时如果我们想获取 [font-kerning]，可以参考 <https://github.com/mapbox/tiny-sdf/issues/6#issuecomment-1532395796> 给出的方式：
 
 ![font-kerning](https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning/font-kerning.png)
 
@@ -769,6 +809,27 @@ this.glyphAtlasTexture = device.createTexture({
 ```
 
 <Emoji />
+
+## 导出 SVG {#export-svg}
+
+多行文本导出 SVG 时可以使用 `<tspan>`，`dy` 设置为度量后的行高：
+
+```html
+<text
+    x="0"
+    y="0"
+    dominant-baseline="ideographic"
+    id="node-text-5"
+    font-family="Gaegu"
+    font-size="16"
+    fill="black"
+    transform="matrix(1,0,0,1,50,234)"
+>
+    <tspan x="0" dy="17.368">Abcdef</tspan>
+    <tspan x="0" dy="17.368">ghijklm</tspan>
+    <tspan x="0" dy="17.368">nop(ide</tspan>
+</text>
+```
 
 ## 扩展阅读 {#extended-reading}
 
@@ -847,6 +908,7 @@ this.glyphAtlasTexture = device.createTexture({
 [BitmapFontLoader]: https://api.pixijs.io/@pixi/text-bitmap/PIXI/BitmapFontLoader.html
 [MSDF font generator]: https://msdf-bmfont.donmccurdy.com/
 [font-kerning]: https://developer.mozilla.org/en-US/docs/Web/CSS/font-kerning
+[fontKerning]: https://developer.mozilla.org/en-US/docs/Web/API/CanvasRenderingContext2D/fontKerning
 [BiDi in Pixi.js]: https://github.com/pixijs/pixijs/issues/4482
 [Rendering Crispy Text On The GPU]: https://osor.io/text
 [Localization, languages, and listening]: https://www.figma.com/blog/expanding-figmas-international-presence/
@@ -854,3 +916,5 @@ this.glyphAtlasTexture = device.createTexture({
 [International Components for Unicode (ICU)]: http://site.icu-project.org/
 [rtl-text]: https://www.jsdelivr.com/package/npm/rtl-text
 [JavaScript-Arabic-Reshaper]: https://github.com/louy/JavaScript-Arabic-Reshaper
+[text-overflow]: https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow
+[CanvasTextMetrics]: https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369

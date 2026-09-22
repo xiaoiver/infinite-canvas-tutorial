@@ -1,7 +1,6 @@
 ---
 outline: deep
 ---
-
 Use [UpscalerJS] implementing [AI API] `upscaleImage`
 
 -   Running in WebWorker with tensorflow.js runtime

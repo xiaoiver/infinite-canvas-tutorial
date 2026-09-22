@@ -1,9 +1,7 @@
 ---
-publish: false
 title: 一种字体生成艺术效果
 description: generative-art fonts
 ---
-
 <script setup>
 import Signature from '../components/Signature.vue'
 </script>

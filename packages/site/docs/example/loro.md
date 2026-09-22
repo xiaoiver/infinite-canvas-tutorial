@@ -1,6 +1,16 @@
 ---
-publish: false
+title: "Collaboration with Loro CRDT"
+description: "Sync structured state with Loro’s CRDT primitives."
 ---
+<!-- example-intro:en -->
+
+# Collaboration with Loro CRDT
+
+**Loro** offers CRDT data types for collaborative apps—compare with Yjs in the adjacent example. Conflict resolution is automatic; UI must still converge sensibly.
+
+See [Lesson 20 — Collaboration](/guide/lesson-020) for architecture context.
+
+## Interactive demo
 
 <script setup>
 import LoroCRDT from '../components/LoroCRDT.vue'

@@ -2,7 +2,7 @@
  * borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/clipboard.ts#L212
  */
 
-import { SerializedNode } from './serialize';
+import type { SerializedNode } from '../types/serialized-node';
 
 export const IMAGE_MIME_TYPES = {
   svg: 'image/svg+xml',
@@ -14,6 +14,8 @@ export const IMAGE_MIME_TYPES = {
   ico: 'image/x-icon',
   avif: 'image/avif',
   jfif: 'image/jfif',
+  heic: 'image/heic',
+  heif: 'image/heif',
 } as const;
 
 export const MIME_TYPES = {

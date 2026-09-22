@@ -6,13 +6,19 @@ import {
   AppState,
   Pen,
   FillAttributes,
+  getPrimaryFillValue,
   RoughAttributes,
   Marker,
   MarkerAttributes,
+  type IconFontAttributes,
+  type SerializedFillLayerItem,
+  type StrokeAttributes,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { msg, str, localized } from '@lit/localize';
+import './icon-font-controls.js';
+import type { IconFontControlsPatch } from './icon-font-controls';
 
 @customElement('ic-spectrum-penbar-draw-settings')
 @localized()
@@ -28,7 +34,7 @@ export class PenbarDrawSettings extends LitElement {
       }
 
       sp-number-field {
-        width: 80px;
+        width: 70px;
       }
 
       > div {
@@ -57,10 +63,16 @@ export class PenbarDrawSettings extends LitElement {
   @property({ type: String })
   pen:
     | Pen.DRAW_RECT
+    | Pen.DRAW_TRIANGLE
+    | Pen.DRAW_PENTAGON
+    | Pen.DRAW_HEXAGON
     | Pen.DRAW_ELLIPSE
     | Pen.DRAW_LINE
     | Pen.DRAW_ARROW
-    | Pen.DRAW_ROUGH_RECT;
+    | Pen.DRAW_ROUGH_RECT
+    | Pen.DRAW_ROUGH_ELLIPSE
+    | Pen.DRAW_ROUGH_LINE
+    | Pen.DRAW_ICONFONT;
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
     const strokeWidth = parseInt(e.target.value);
@@ -98,10 +110,16 @@ export class PenbarDrawSettings extends LitElement {
 
   private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
     const fillOpacity = parseFloat(e.target.value);
+    const cur = this.api.getAppState()[this.penbarDrawKey] as FillAttributes;
+    const prev = (cur.fills?.[0] ?? {
+      type: 'solid',
+      value: '#000000',
+      opacity: 1,
+    }) as SerializedFillLayerItem;
     this.api.setAppState({
       [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        fillOpacity,
+        ...cur,
+        fills: [{ ...prev, opacity: fillOpacity }],
       },
     });
     this.api.record();
@@ -111,10 +129,18 @@ export class PenbarDrawSettings extends LitElement {
     e.stopPropagation();
 
     const fillColor = (e.target as any).selected[0];
+    const cur = this.api.getAppState()[this.penbarDrawKey] as FillAttributes;
+    const prev = (cur.fills?.[0] ?? {
+      type: 'solid',
+      value: '#000000',
+      opacity: 1,
+    }) as SerializedFillLayerItem;
     this.api.setAppState({
       [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        fill: fillColor,
+        ...cur,
+        fills: [
+          { ...prev, type: 'solid', value: fillColor, opacity: prev.opacity ?? 1 },
+        ],
       },
     });
   }
@@ -178,35 +204,82 @@ export class PenbarDrawSettings extends LitElement {
     this.api.record();
   }
 
+  private handlePenbarIconFontControlsPatch(
+    e: CustomEvent<IconFontControlsPatch>,
+  ) {
+    if (this.pen !== Pen.DRAW_ICONFONT) {
+      return;
+    }
+    const prev = this.api.getAppState().penbarDrawIconfont;
+    this.api.setAppState({
+      penbarDrawIconfont: {
+        ...prev,
+        ...e.detail,
+      },
+    });
+    this.api.record();
+    this.requestUpdate();
+  }
+
   get penbarDrawKey() {
     return this.pen === Pen.DRAW_RECT
       ? 'penbarDrawRect'
-      : this.pen === Pen.DRAW_ELLIPSE
-      ? 'penbarDrawEllipse'
-      : this.pen === Pen.DRAW_LINE
-      ? 'penbarDrawLine'
-      : this.pen === Pen.DRAW_ARROW
-      ? 'penbarDrawArrow'
-      : 'penbarDrawRoughRect';
+      : this.pen === Pen.DRAW_TRIANGLE
+        ? 'penbarDrawTriangle'
+        : this.pen === Pen.DRAW_PENTAGON
+          ? 'penbarDrawPentagon'
+          : this.pen === Pen.DRAW_HEXAGON
+            ? 'penbarDrawHexagon'
+            : this.pen === Pen.DRAW_ELLIPSE
+              ? 'penbarDrawEllipse'
+              : this.pen === Pen.DRAW_LINE
+                ? 'penbarDrawLine'
+                : this.pen === Pen.DRAW_ARROW
+                  ? 'penbarDrawArrow'
+                  : this.pen === Pen.DRAW_ROUGH_RECT
+                    ? 'penbarDrawRoughRect'
+                    : this.pen === Pen.DRAW_ROUGH_ELLIPSE
+                      ? 'penbarDrawRoughEllipse'
+                      : this.pen === Pen.DRAW_ROUGH_LINE
+                        ? 'penbarDrawRoughLine'
+                        : 'penbarDrawIconfont';
   }
 
   get penbarDraw() {
     const {
       penbarDrawRect,
+      penbarDrawTriangle,
+      penbarDrawPentagon,
+      penbarDrawHexagon,
       penbarDrawEllipse,
       penbarDrawLine,
       penbarDrawArrow,
       penbarDrawRoughRect,
+      penbarDrawRoughEllipse,
+      penbarDrawRoughLine,
+      penbarDrawIconfont,
     } = this.appState;
     return this.pen === Pen.DRAW_RECT
       ? penbarDrawRect
-      : this.pen === Pen.DRAW_ELLIPSE
-      ? penbarDrawEllipse
-      : this.pen === Pen.DRAW_LINE
-      ? penbarDrawLine
-      : this.pen === Pen.DRAW_ARROW
-      ? penbarDrawArrow
-      : penbarDrawRoughRect;
+      : this.pen === Pen.DRAW_TRIANGLE
+        ? penbarDrawTriangle
+        : this.pen === Pen.DRAW_PENTAGON
+          ? penbarDrawPentagon
+          : this.pen === Pen.DRAW_HEXAGON
+            ? penbarDrawHexagon
+            : this.pen === Pen.DRAW_ELLIPSE
+              ? penbarDrawEllipse
+              : this.pen === Pen.DRAW_LINE
+                ? penbarDrawLine
+                : this.pen === Pen.DRAW_ARROW
+                  ? penbarDrawArrow
+                  : this.pen === Pen.DRAW_ROUGH_RECT
+                    ? penbarDrawRoughRect
+                    : this.pen === Pen.DRAW_ROUGH_ELLIPSE
+                      ? penbarDrawRoughEllipse
+                      : this.pen === Pen.DRAW_ROUGH_LINE
+                        ? penbarDrawRoughLine
+                        : penbarDrawIconfont;
   }
 
   render() {
@@ -217,22 +290,30 @@ export class PenbarDrawSettings extends LitElement {
 
       <div style="display: flex; flex-direction: column; gap: 4px;">
         ${when(
-          this.pen === Pen.DRAW_RECT ||
-            this.pen === Pen.DRAW_ELLIPSE ||
-            this.pen === Pen.DRAW_ROUGH_RECT,
-          () => html`
+      this.pen === Pen.DRAW_RECT ||
+      this.pen === Pen.DRAW_TRIANGLE ||
+      this.pen === Pen.DRAW_PENTAGON ||
+      this.pen === Pen.DRAW_HEXAGON ||
+      this.pen === Pen.DRAW_ELLIPSE ||
+      this.pen === Pen.DRAW_ROUGH_RECT ||
+      this.pen === Pen.DRAW_ROUGH_ELLIPSE ||
+      this.pen === Pen.DRAW_ROUGH_LINE ||
+      this.pen === Pen.DRAW_ICONFONT,
+      () => html`
             <div>
               <sp-field-label for="fill">${msg(str`Fill`)}</sp-field-label>
               <sp-swatch-group
                 id="fill"
                 selects="single"
-                .selected=${[(this.penbarDraw as FillAttributes).fill]}
+                .selected=${[
+        getPrimaryFillValue(this.penbarDraw as FillAttributes) ?? '#000000',
+      ]}
                 @change=${this.handleFillColorChanged}
               >
                 ${theme.colors[theme.mode].swatches.map(
-                  (color) =>
-                    html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-                )}
+        (color) =>
+          html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+      )}
               </sp-swatch-group>
             </div>
 
@@ -242,14 +323,19 @@ export class PenbarDrawSettings extends LitElement {
                 size="s"
                 max="1"
                 min="0"
-                value=${(this.penbarDraw as FillAttributes).fillOpacity}
+                value=${(() => {
+        const fo = (this.penbarDraw as FillAttributes).fills?.[0]?.opacity ?? 1;
+        return typeof fo === 'number' && Number.isFinite(fo)
+          ? fo
+          : parseFloat(String(fo)) || 1;
+      })()}
                 step="0.01"
                 editable
                 @change=${this.handleFillOpacityChanged}
               ></sp-slider>
             </div>
           `,
-        )}
+    )}
 
         <div>
           <sp-field-label for="stroke">${msg(str`Stroke`)}</sp-field-label>
@@ -260,9 +346,9 @@ export class PenbarDrawSettings extends LitElement {
             @change=${this.handleStrokeColorChanged}
           >
             ${theme.colors[theme.mode].swatches.map(
-              (color) =>
-                html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-            )}
+      (color) =>
+        html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+    )}
           </sp-swatch-group>
         </div>
         <div class="line">
@@ -296,25 +382,25 @@ export class PenbarDrawSettings extends LitElement {
         </div>
 
         ${when(
-          this.pen === Pen.DRAW_ARROW,
-          () => html`
+      this.pen === Pen.DRAW_ARROW,
+      () => html`
             <div class="line">
               <sp-field-label for="marker-start" side-aligned="start"
                 >${msg(str`Marker start`)}</sp-field-label
               >
               <sp-picker
-                style="width: 80px;"
+                style="width: 70px;"
                 label=${msg(str`Marker start`)}
                 value=${(this.penbarDraw as MarkerAttributes).markerStart}
                 @change=${this.handleMarkerStartChanged}
                 id="marker-start"
               >
-                ${['none', 'line'].map(
-                  (markerType) =>
-                    html`<sp-menu-item value=${markerType}
+                ${['none', 'line', 'triangle', 'diamond'].map(
+        (markerType) =>
+          html`<sp-menu-item value=${markerType}
                       >${markerType}</sp-menu-item
                     >`,
-                )}
+      )}
               </sp-picker>
             </div>
 
@@ -323,25 +409,47 @@ export class PenbarDrawSettings extends LitElement {
                 >${msg(str`Marker end`)}</sp-field-label
               >
               <sp-picker
-                style="width: 80px;"
+                style="width: 70px;"
                 label=${msg(str`Marker end`)}
                 value=${(this.penbarDraw as MarkerAttributes).markerEnd}
                 @change=${this.handleMarkerEndChanged}
                 id="marker-end"
               >
-                ${['none', 'line'].map(
-                  (markerType) =>
-                    html`<sp-menu-item value=${markerType}
+                ${['none', 'line', 'triangle', 'diamond'].map(
+        (markerType) =>
+          html`<sp-menu-item value=${markerType}
                       >${markerType}</sp-menu-item
                     >`,
-                )}
+      )}
               </sp-picker>
             </div>
           `,
-        )}
+    )}
         ${when(
-          this.pen === Pen.DRAW_ROUGH_RECT,
-          () => html`
+      this.pen === Pen.DRAW_ICONFONT,
+      () => {
+        const p = this.penbarDraw as Partial<
+          FillAttributes & StrokeAttributes & IconFontAttributes
+        >;
+        return html`
+            <div>
+              <h4 style="margin: 8px 0 4px; font-size: var(--spectrum-font-size-100);">
+                ${msg(str`Icon font`)}
+              </h4>
+              <ic-spectrum-icon-font-controls
+                .iconFontFamily=${p.iconFontFamily}
+                .iconFontName=${p.iconFontName}
+                instanceId="penbar-draw-iconfont"
+                @ic-iconfont-controls-change=${this
+            .handlePenbarIconFontControlsPatch}
+              ></ic-spectrum-icon-font-controls>
+            </div>
+          `;
+      },
+    )}
+        ${when(
+      this.pen === Pen.DRAW_ROUGH_RECT,
+      () => html`
             <div>
               <sp-field-label for="rough-fill-style"
                 >${msg(str`Rough fill style`)}</sp-field-label
@@ -358,6 +466,7 @@ export class PenbarDrawSettings extends LitElement {
                 <sp-menu-item value="cross-hatch">Cross hatch</sp-menu-item>
                 <sp-menu-item value="dots">Dots</sp-menu-item>
                 <sp-menu-item value="dashed">Dashed</sp-menu-item>
+                <sp-menu-item value="watercolor">Watercolor</sp-menu-item>
               </sp-picker>
             </div>
 
@@ -387,7 +496,7 @@ export class PenbarDrawSettings extends LitElement {
               ></sp-slider>
             </div>
           `,
-        )}
+    )}
       </div> `;
   }
 }

@@ -4,17 +4,40 @@
 
 import { Entity, field } from '@lastolivegames/becsy';
 import { Polyline } from './Polyline';
-import {
-  SerializedNode,
-  serializePoints,
+import { Path } from './Path';
+import type {
   VectorNetworkSerializedNode,
+  SerializedNode,
+} from '../../types/serialized-node';
+import {
+  expandBoundsWithVectorSegments,
+  serializePoints,
+  pathToVectorNetwork,
 } from '../../utils';
 import { AABB } from '../math';
 import { Stroke } from '../renderable';
 
+/**
+ * How two curve handles behave relative to one another.
+ * The possible values are:
+ * - "NONE": the two vector handles are independent from each other
+ * - "ANGLE": the two vector handles form a single tangent line, but the length of each handle is independent
+ * - "ANGLE_AND_LENGTH": the two vector handles form a single tangent line, equidistant on both sides of the vertex
+ * @see https://developers.figma.com/docs/plugins/api/HandleMirroring
+ */
+type HandleMirroring = "NONE" | "ANGLE" | "ANGLE_AND_LENGTH";
+
+/**
+ * Each vertex is a point in the graph, defined by its position.
+ * @see https://developers.figma.com/docs/plugins/api/VectorNetwork/#vectorvertex
+ */
 interface VectorVertex {
   x: number;
   y: number;
+  strokeLinecap?: Stroke['linecap'];
+  strokeLinejoin?: Stroke['linejoin'];
+  cornerRadius?: number;
+  handleMirroring?: HandleMirroring;
 }
 
 interface VectorSegment {
@@ -53,6 +76,19 @@ export class VectorNetwork {
     const maxY = Math.max(
       ...vertices.map(({ y }) => (isNaN(y) ? -Infinity : y)),
     );
+
+    const { segments } = vectorNetwork;
+    if (segments?.length) {
+      const b = expandBoundsWithVectorSegments(
+        vertices,
+        segments,
+        minX,
+        minY,
+        maxX,
+        maxY,
+      );
+      return new AABB(b.minX, b.minY, b.maxX, b.maxY);
+    }
 
     return new AABB(minX, minY, maxX, maxY);
   }
@@ -99,6 +135,15 @@ export class VectorNetwork {
       }));
 
       return { vertices, segments };
+    }
+
+    if (entity.has(Path)) {
+      const { d, fillRule } = entity.read(Path);
+      const { vertices, segments, regions } = pathToVectorNetwork(
+        d,
+        fillRule,
+      );
+      return { vertices, segments, regions } as VectorNetwork;
     }
   }
 

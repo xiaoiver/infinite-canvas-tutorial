@@ -1,3 +1,4 @@
+import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
 import { System } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
 import bidiFactory from 'bidi-js';
@@ -7,8 +8,21 @@ import { DOMAdapter } from '../environment';
 import { BitmapFont } from '../utils';
 import { safeAddComponent } from '../history';
 
-type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
 type CharacterWidthCache = Record<string, number>;
+type TextSegment = { text: string; direction: 'ltr' | 'rtl' };
+
+/**
+ * Pretext 的 `line.text` 面向整段 `fillText`，与 SDF/TinySDF 按 grapheme 单独光栅化、再 LTR 排 advance 的管线不兼容
+ *（阿拉伯等需要展示字形与正确视觉顺序）。含这些脚本时仍走 legacy BiDi + reshape 生成 `lines` / `bidiChars`。
+ */
+const LEGACY_GLYPH_LAYOUT_SCRIPT_RE =
+  /[\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+/** Used as max line width when `wordWrap` is off (Pretext still respects hard breaks in pre-wrap). */
+const PRETEXT_SOFT_WRAP_MAX = 16_777_216;
+
+const bidi = bidiFactory();
+const bidiCache: Record<string, string> = {};
 
 const METRICS_STRING = '|ÉqÅ';
 const BASELINE_SYMBOL = 'M';
@@ -68,7 +82,7 @@ const genericFontFamilies = [
 ];
 
 // https://developer.mozilla.org/en-US/docs/Web/CSS/font-weight#common_weight_name_mapping
-const fontWeightMap = {
+export const fontWeightMap = {
   thin: 100,
   extraLight: 200,
   ultraLight: 200,
@@ -154,17 +168,16 @@ export function yOffsetFromTextBaseline(
   const {
     fontBoundingBoxAscent = 0,
     fontBoundingBoxDescent = 0,
-    hangingBaseline = 0,
-    ideographicBaseline = 0,
   } = fontMetrics;
+
   if (textBaseline === 'alphabetic') {
     offset -= fontBoundingBoxAscent;
   } else if (textBaseline === 'middle') {
     offset -= (fontBoundingBoxAscent + fontBoundingBoxDescent) / 2;
   } else if (textBaseline === 'hanging') {
-    offset -= hangingBaseline;
+    offset = 0;
   } else if (textBaseline === 'ideographic') {
-    offset -= ideographicBaseline;
+    offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
   } else if (textBaseline === 'bottom') {
     offset -= fontBoundingBoxAscent + fontBoundingBoxDescent;
   } else if (textBaseline === 'top') {
@@ -173,11 +186,46 @@ export function yOffsetFromTextBaseline(
   return offset;
 }
 
+export type FontMetricsResult = Pick<
+  globalThis.TextMetrics,
+  | 'fontBoundingBoxAscent'
+  | 'fontBoundingBoxDescent'
+  | 'actualBoundingBoxAscent'
+  | 'actualBoundingBoxDescent'
+  | 'actualBoundingBoxLeft'
+  | 'actualBoundingBoxRight'
+  | 'alphabeticBaseline'
+  | 'hangingBaseline'
+  | 'ideographicBaseline'
+  | 'emHeightAscent'
+  | 'emHeightDescent'
+  | 'width'
+> & { fontSize: number };
+
+export type MeasureFontFn = (style: Partial<Text>) => FontMetricsResult;
+
+/**
+ * 测量给定文本字符串的像素宽度（单行）。
+ * text: 要测量的字符串（可以是一行文字，也可以是单个字符）
+ * style: 当前文字样式（字号、字体等）
+ * 返回值为像素宽度（不含 letterSpacing；letterSpacing 由调用方叠加）。
+ */
+export type MeasureLineFn = (text: string, style: Partial<Text>) => number;
+
 let canvas: OffscreenCanvas | HTMLCanvasElement;
 let context: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-const fonts: Record<string, globalThis.TextMetrics & { fontSize: number }> = {};
-const bidi = bidiFactory();
-const bidiCache: Record<string, string> = {};
+const fonts: Record<string, FontMetricsResult> = {};
+
+export let measureFontFn: MeasureFontFn = defaultMeasureFont;
+let measureLineFn: MeasureLineFn = defaultMeasureLine;
+
+export function setMeasureFontFn(fn: MeasureFontFn) {
+  measureFontFn = fn;
+}
+
+export function setMeasureLineFn(fn: MeasureLineFn) {
+  measureLineFn = fn;
+}
 export class ComputeTextMetrics extends System {
   texts = this.query((q) => q.addedOrChanged.with(Text).trackWrites);
 
@@ -189,20 +237,24 @@ export class ComputeTextMetrics extends System {
   execute() {
     this.texts.addedOrChanged.forEach((entity) => {
       const text = entity.read(Text);
-      const bidiChars = computeBidi(text.content);
       const metrics = measureText(text);
 
       safeAddComponent(entity, ComputedTextMetrics);
 
-      Object.assign(entity.write(ComputedTextMetrics), {
-        bidiChars,
-        ...metrics,
-      });
+      Object.assign(entity.write(ComputedTextMetrics), metrics);
     });
   }
 }
 
-function measureFont(font: string) {
+function defaultMeasureFont(style: Partial<Text>): FontMetricsResult {
+  if (!canvas) {
+    canvas = DOMAdapter.get().createCanvas(1, 1);
+    context = canvas.getContext('2d') as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
+  }
+
+  const font = fontStringFromTextStyle(style);
   if (fonts[font]) {
     return fonts[font];
   }
@@ -223,7 +275,7 @@ function measureFont(font: string) {
     emHeightDescent,
   } = context.measureText(METRICS_STRING + BASELINE_SYMBOL);
 
-  const properties: globalThis.TextMetrics & { fontSize: number } = {
+  const properties: FontMetricsResult = {
     actualBoundingBoxAscent,
     actualBoundingBoxDescent,
     actualBoundingBoxLeft,
@@ -244,6 +296,79 @@ function measureFont(font: string) {
   return properties;
 }
 
+function needsLegacyGlyphLayoutForRtlScripts(text: string): boolean {
+  return LEGACY_GLYPH_LAYOUT_SCRIPT_RE.test(text);
+}
+
+/** 与原先 `computeBidi` 一致：供 SDF 逐字 atlas 使用的视觉顺序串（含阿拉伯展示形 + RTL 段反转）。 */
+function computeBidiForGlyphAtlas(text: string): string {
+  if (!bidiCache[text]) {
+    const segmentStack = [new Array<TextSegment>()];
+
+    const reduceStack = (stack: TextSegment[][], target: number) => {
+      const validatedTarget = target < 0 ? 0 : target;
+      while (stack.length > validatedTarget + 1) {
+        const current = stack.pop()!;
+        stack[stack.length - 1]!.push(...current.reverse());
+      }
+    };
+    const pushInStack = (
+      stack: TextSegment[][],
+      seg: string,
+      level: number,
+    ) => {
+      if (level + 1 > stack.length) {
+        stack.push(
+          ...Array.from(
+            { length: level + 1 - stack.length },
+            () => new Array<TextSegment>(),
+          ),
+        );
+      } else {
+        reduceStack(stack, level);
+      }
+      stack[level]!.push({
+        text: seg,
+        direction: level % 2 === 0 ? 'ltr' : 'rtl',
+      });
+    };
+
+    const embeddingLevels = bidi.getEmbeddingLevels(text);
+    const iter = embeddingLevels.levels.entries();
+    const first = iter.next();
+    if (!first.done) {
+      let [prevIndex, prevLevel] = first.value;
+      for (const [i, level] of iter) {
+        if (level !== prevLevel) {
+          pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
+          prevIndex = i;
+          prevLevel = level;
+        }
+      }
+      pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
+      reduceStack(segmentStack, 0);
+    }
+
+    let bidiChars = '';
+    for (const segment of segmentStack[0]!) {
+      const { text: seg, direction } = segment;
+
+      if (direction === 'ltr') {
+        bidiChars += seg;
+      } else {
+        bidiChars += ArabicReshaper.convertArabic(seg)
+          .split('')
+          .reverse()
+          .join('');
+      }
+    }
+
+    bidiCache[text] = bidiChars;
+  }
+
+  return bidiCache[text];
+}
+
 export function measureText(
   style: Partial<Text>,
 ): Partial<ComputedTextMetrics> {
@@ -254,8 +379,7 @@ export function measureText(
       | CanvasRenderingContext2D;
   }
 
-  const { content } = style;
-  const bidiChars = bidiCache[content] ?? content;
+  const content = style.content ?? '';
 
   const {
     wordWrap,
@@ -273,7 +397,7 @@ export function measureText(
 
   let lineHeight = style.lineHeight ?? 0;
   const font = fontStringFromTextStyle(style);
-  let fontMetrics: globalThis.TextMetrics & { fontSize: number };
+  let fontMetrics: FontMetricsResult;
   let scale = 1;
 
   if (bitmapFont) {
@@ -282,7 +406,7 @@ export function measureText(
     fontMetrics = textMetrics.fontMetrics;
     scale = textMetrics.scale;
   } else {
-    fontMetrics = measureFont(font);
+    fontMetrics = measureFontFn(style);
     context.font = font;
   }
 
@@ -293,10 +417,60 @@ export function measureText(
     fontMetrics.fontSize = fontSize as number;
   }
 
-  const outputText = wordWrap
-    ? wordWrapInternal(bidiChars, style, scale)
-    : bidiChars;
-  const lines = outputText.split(/(?:\r\n|\r|\n)/);
+  const pretextLineHeight = Math.max(
+    1,
+    lineHeight || fontMetrics.fontSize + strokeWidth || Number(fontSize) || 16,
+  );
+
+  let lines: string[];
+
+  if (needsLegacyGlyphLayoutForRtlScripts(content)) {
+    const visual = computeBidiForGlyphAtlas(content);
+    const outputText = wordWrap
+      ? wordWrapInternal(visual, style, scale)
+      : visual;
+    lines = outputText.split(/(?:\r\n|\r|\n)/);
+  } else if (bitmapFont) {
+    const prepared = prepareWithSegments(content, font, {
+      whiteSpace: 'pre-wrap',
+    });
+    const { lines: visualLines } = layoutWithLines(
+      prepared,
+      PRETEXT_SOFT_WRAP_MAX,
+      pretextLineHeight,
+    );
+    const visualFlattened = visualLines.map((l) => l.text).join('\n');
+    const outputText = wordWrap
+      ? wordWrapInternal(visualFlattened, style, scale)
+      : visualFlattened;
+    lines = outputText.split(/(?:\r\n|\r|\n)/);
+  } else {
+    const prepared = prepareWithSegments(content, font, {
+      whiteSpace: 'pre-wrap',
+    });
+    const maxW =
+      wordWrap && (style.wordWrapWidth ?? 0) > 0
+        ? style.wordWrapWidth! + letterSpacing
+        : PRETEXT_SOFT_WRAP_MAX;
+    const { lines: layoutLines } = layoutWithLines(
+      prepared,
+      maxW,
+      pretextLineHeight,
+    );
+    let lineTexts = layoutLines.map((l) => l.text);
+    if (
+      wordWrap &&
+      Number.isFinite(style.maxLines) &&
+      style.maxLines > 0 &&
+      lineTexts.length > style.maxLines
+    ) {
+      lineTexts = lineTexts.slice(0, style.maxLines);
+      applyEllipsisForTruncatedLines(lineTexts, style.maxLines - 1, style, scale);
+    }
+    lines = lineTexts;
+  }
+
+  const bidiChars = lines.join('');
   const lineWidths = new Array<number>(lines.length);
   let maxLineWidth = 0;
   for (let i = 0; i < lines.length; i++) {
@@ -306,6 +480,7 @@ export function measureText(
       bitmapFont,
       bitmapFontKerning,
       scale,
+      style,
     );
     lineWidths[i] = lineWidth;
     maxLineWidth = Math.max(maxLineWidth, lineWidth);
@@ -340,6 +515,7 @@ export function measureText(
   }
 
   return {
+    bidiChars,
     font,
     width,
     height,
@@ -367,6 +543,72 @@ export function measureText(
   };
 }
 
+function ellipsisString(style: Partial<Text>): string {
+  const textOverflow = style.textOverflow ?? 'ellipsis';
+  if (textOverflow === 'ellipsis') {
+    return '...';
+  }
+  if (textOverflow && textOverflow !== 'clip') {
+    return textOverflow;
+  }
+  return '';
+}
+
+function applyEllipsisToLine(
+  lines: string[],
+  lineIndex: number,
+  ellipsis: string,
+  ellipsisWidth: number,
+  maxWidth: number,
+  charWidth: (char: string) => number,
+): void {
+  if (ellipsisWidth <= 0 || ellipsisWidth > maxWidth) {
+    return;
+  }
+  const line = lines[lineIndex] ?? '';
+  let lastLineWidth = 0;
+  let lastLineIndex = line.length;
+  for (let i = 0; i < line.length; i++) {
+    const w = charWidth(line[i]!);
+    if (lastLineWidth + w + ellipsisWidth > maxWidth) {
+      lastLineIndex = i;
+      break;
+    }
+    lastLineWidth += w;
+  }
+  lines[lineIndex] = line.slice(0, lastLineIndex) + ellipsis;
+}
+
+/** After slicing Pretext lines to `maxLines`, trim the last line and append an ellipsis. */
+function applyEllipsisForTruncatedLines(
+  lines: string[],
+  lastLineIndex: number,
+  style: Partial<Text>,
+  scale: number,
+): void {
+  const ellipsis = ellipsisString(style);
+  if (!ellipsis) {
+    return;
+  }
+  const { letterSpacing = 0, wordWrapWidth = 0 } = style;
+  const maxWidth = wordWrapWidth + letterSpacing;
+  const ctx = canvas.getContext('2d', {
+    willReadFrequently: true,
+  }) as CanvasRenderingContext2D;
+  const cache: CharacterWidthCache = {};
+  const charW = (ch: string) =>
+    getFromCache(ch, letterSpacing, cache, ctx, undefined, scale, style);
+  const ellipsisWidth = Array.from(ellipsis).reduce((p, c) => p + charW(c), 0);
+  applyEllipsisToLine(
+    lines,
+    lastLineIndex,
+    ellipsis,
+    ellipsisWidth,
+    maxWidth,
+    charW,
+  );
+}
+
 /**
  * @see https://github.com/pixijs/pixijs/blob/dev/src/scene/text/canvas/CanvasTextMetrics.ts#L369
  */
@@ -375,7 +617,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
     willReadFrequently: true,
   });
 
-  const { letterSpacing = 0, textOverflow, maxLines, bitmapFont } = style;
+  const { letterSpacing = 0, maxLines, bitmapFont } = style;
 
   // How to handle whitespaces
   // const collapseSpaces = this.collapseSpaces(whiteSpace);
@@ -392,12 +634,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
   // And then the final space is simply no appended to each line
   const maxWidth = style.wordWrapWidth + letterSpacing;
 
-  let ellipsis = '';
-  if (textOverflow === 'ellipsis') {
-    ellipsis = '...';
-  } else if (textOverflow && textOverflow !== 'clip') {
-    ellipsis = textOverflow;
-  }
+  const ellipsis = ellipsisString(style);
 
   let lines: string[] = [];
   let currentIndex = 0;
@@ -412,6 +649,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
       context as CanvasRenderingContext2D,
       bitmapFont,
       scale,
+      style,
     );
   };
   const ellipsisWidth = Array.from(ellipsis).reduce((prev, cur) => {
@@ -419,28 +657,14 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
   }, 0);
 
   function appendEllipsis(lineIndex: number) {
-    // If there is not enough space to display the string itself, it is clipped.
-    // @see https://developer.mozilla.org/en-US/docs/Web/CSS/text-overflow#values
-    if (ellipsisWidth <= 0 || ellipsisWidth > maxWidth) {
-      return;
-    }
-
-    // Backspace from line's end.
-    const currentLineLength = lines[lineIndex].length;
-    let lastLineWidth = 0;
-    let lastLineIndex = currentLineLength;
-    for (let i = 0; i < currentLineLength; i++) {
-      const width = calcWidth(lines[lineIndex][i]);
-      if (lastLineWidth + width + ellipsisWidth > maxWidth) {
-        lastLineIndex = i;
-        break;
-      }
-
-      lastLineWidth += width;
-    }
-
-    lines[lineIndex] =
-      (lines[lineIndex] || '').slice(0, lastLineIndex) + ellipsis;
+    applyEllipsisToLine(
+      lines,
+      lineIndex,
+      ellipsis,
+      ellipsisWidth,
+      maxWidth,
+      calcWidth,
+    );
   }
 
   const chars = Array.from(text);
@@ -456,8 +680,6 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
 
       // exceed maxLines, break immediately
       if (currentIndex >= maxLines) {
-        // parsedStyle.isOverflowing = true;
-
         if (i < chars.length - 1) {
           appendEllipsis(currentIndex - 1);
         }
@@ -472,8 +694,6 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
 
     if (currentWidth > 0 && currentWidth + charWidth > maxWidth) {
       if (currentIndex + 1 >= maxLines) {
-        // parsedStyle.isOverflowing = true;
-
         appendEllipsis(currentIndex);
 
         break;
@@ -492,7 +712,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
         currentWidth = sumTextWidthByCache(lines[currentIndex] || '', cache);
       }
 
-      if (shouldBreakByKinsokuShorui(char, nextChar)) {
+      if (nextChar && shouldBreakByKinsokuShorui(char, nextChar)) {
         lines = trimByKinsokuShorui(lines);
         currentWidth += calcWidth(prevChar || '');
       }
@@ -505,75 +725,6 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
   return lines.join('\n');
 }
 
-export function computeBidi(text: string) {
-  if (!bidiCache[text]) {
-    // @see https://github.com/beanandbean/font-mesh-pipeline/blob/main/packages/harfbuzz-modern-wrapper/src/harfbuzz.ts#L50
-    const segmentStack = [new Array<TextSegment>()];
-
-    const reduceStack = (stack: TextSegment[][], target: number) => {
-      const validatedTarget = target < 0 ? 0 : target;
-      while (stack.length > validatedTarget + 1) {
-        const current = stack.pop()!;
-        stack[stack.length - 1]!.push(...current.reverse());
-      }
-    };
-    const pushInStack = (
-      stack: TextSegment[][],
-      text: string,
-      level: number,
-    ) => {
-      if (level + 1 > stack.length) {
-        stack.push(
-          ...Array.from(
-            { length: level + 1 - stack.length },
-            () => new Array<TextSegment>(),
-          ),
-        );
-      } else {
-        reduceStack(stack, level);
-      }
-      stack[level]!.push({
-        text,
-        direction: level % 2 === 0 ? 'ltr' : 'rtl',
-      });
-    };
-
-    const embeddingLevels = bidi.getEmbeddingLevels(text);
-    const iter = embeddingLevels.levels.entries();
-    const first = iter.next();
-    if (!first.done) {
-      let [prevIndex, prevLevel] = first.value;
-      for (const [i, level] of iter) {
-        if (level !== prevLevel) {
-          pushInStack(segmentStack, text.slice(prevIndex, i), prevLevel);
-          prevIndex = i;
-          prevLevel = level;
-        }
-      }
-      pushInStack(segmentStack, text.slice(prevIndex), prevLevel);
-      reduceStack(segmentStack, 0);
-    }
-
-    let bidiChars = '';
-    for (const segment of segmentStack[0]!) {
-      const { text, direction } = segment;
-
-      if (direction === 'ltr') {
-        bidiChars += text;
-      } else {
-        bidiChars += ArabicReshaper.convertArabic(text)
-          .split('')
-          .reverse()
-          .join('');
-      }
-    }
-
-    bidiCache[text] = bidiChars;
-  }
-
-  return bidiCache[text];
-}
-
 function measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
   const { fontMetrics, lineHeight } = bitmapFont;
   const scale = fontSize / bitmapFont.baseMeasurementFontSize;
@@ -584,16 +735,29 @@ function measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
       actualBoundingBoxAscent: fontMetrics.ascent * scale,
       actualBoundingBoxDescent: fontMetrics.descent * scale,
       fontSize,
-    } as globalThis.TextMetrics & { fontSize: number },
+    } as FontMetricsResult,
   };
+}
+
+function defaultMeasureLine(text: string, style: Partial<Text>): number {
+  if (!canvas) {
+    canvas = DOMAdapter.get().createCanvas(1, 1);
+    context = canvas.getContext('2d') as
+      | OffscreenCanvasRenderingContext2D
+      | CanvasRenderingContext2D;
+  }
+  context.font = fontStringFromTextStyle(style);
+  context.letterSpacing = `${style.letterSpacing ?? 0}px`;
+  return context.measureText(text).width;
 }
 
 function measureTextInternal(
   text: string,
-  letterSpacing: number,
+  _letterSpacing: number,
   bitmapFont: BitmapFont,
   bitmapFontKerning: boolean,
   scale: number,
+  style: Partial<Text>,
 ) {
   const segments = DOMAdapter.get().splitGraphemes(text);
 
@@ -614,20 +778,8 @@ function measureTextInternal(
     }, 0);
     boundsWidth = metricWidth;
   } else {
-    context.letterSpacing = `${letterSpacing}px`;
-
-    const metrics = context.measureText(text);
-    metricWidth = metrics.width;
-    const actualBoundingBoxLeft = -metrics.actualBoundingBoxLeft;
-    const actualBoundingBoxRight = metrics.actualBoundingBoxRight;
-    boundsWidth = actualBoundingBoxRight - actualBoundingBoxLeft;
-  }
-
-  if (metricWidth > 0) {
-    const val = (segments.length - 1) * letterSpacing;
-
-    metricWidth += val;
-    boundsWidth += val;
+    metricWidth = measureLineFn(text, style);
+    boundsWidth = metricWidth;
   }
 
   return Math.max(metricWidth, boundsWidth);
@@ -711,9 +863,10 @@ function getFromCache(
   key: string,
   letterSpacing: number,
   cache: CharacterWidthCache,
-  context: CanvasRenderingContext2D,
-  bitmapFont: BitmapFont,
+  _context: CanvasRenderingContext2D,
+  bitmapFont: BitmapFont | undefined,
   scale: number,
+  style: Partial<Text>,
 ): number {
   let width = cache[key];
   if (typeof width !== 'number') {
@@ -721,7 +874,7 @@ function getFromCache(
     width =
       (bitmapFont
         ? bitmapFont.chars[key]?.xAdvance || 0
-        : context.measureText(key).width) *
+        : measureLineFn(key, style)) *
         scale +
       spacing;
     cache[key] = width;

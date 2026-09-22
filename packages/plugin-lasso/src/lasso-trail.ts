@@ -21,14 +21,16 @@ export const easeOut = (k: number) => {
 };
 
 export class LassoTrail extends AnimatedTrail {
+  private points: [number, number][];
+
   constructor(animationFrameHandler: AnimationFrameHandler, api: API) {
     const {
-      lassoTrailStroke = TRANSFORMER_ANCHOR_STROKE_COLOR,
-      lassoTrailStrokeDasharray,
-      lassoTrailStrokeDashoffset,
-      lassoTrailFill = TRANSFORMER_MASK_FILL_COLOR,
-      lassoTrailFillOpacity = 0.5,
-    } = api.getAppState();
+      trailStroke = TRANSFORMER_ANCHOR_STROKE_COLOR,
+      trailStrokeDasharray,
+      trailStrokeDashoffset,
+      trailFill = TRANSFORMER_MASK_FILL_COLOR,
+      trailFillOpacity = 0.5,
+    } = api.getAppState().penbarLasso;
     super(animationFrameHandler, api, {
       animateTrail: true,
       streamline: 0.4,
@@ -46,11 +48,11 @@ export class LassoTrail extends AnimatedTrail {
 
         return Math.min(easeOut(l), easeOut(t));
       },
-      fill: () => lassoTrailFill,
-      stroke: () => lassoTrailStroke,
-      fillOpacity: () => lassoTrailFillOpacity,
-      strokeDasharray: lassoTrailStrokeDasharray,
-      strokeDashoffset: lassoTrailStrokeDashoffset,
+      fill: () => trailFill,
+      stroke: () => trailStroke,
+      fillOpacity: () => trailFillOpacity,
+      strokeDasharray: trailStrokeDasharray,
+      strokeDashoffset: trailStrokeDashoffset,
     });
   }
 
@@ -59,33 +61,20 @@ export class LassoTrail extends AnimatedTrail {
     this.endPath();
 
     super.startPath(x, y);
-    // this.intersectedElements.clear();
-    // this.enclosedElements.clear();
-
-    // this.keepPreviousSelection = keepPreviousSelection;
-
-    // if (!this.keepPreviousSelection) {
-    //   this.app.setState({
-    //     selectedElementIds: {},
-    //     selectedGroupIds: {},
-    //     selectedLinearElement: null,
-    //   });
-    // }
   }
 
   addPointToPath = (x: number, y: number, keepPreviousSelection = false) => {
     super.addPointToPath(x, y);
-
-    // this.keepPreviousSelection = keepPreviousSelection;
     this.updateSelection();
   };
 
   endPath(): void {
     super.endPath();
     super.clearTrails();
-    // this.intersectedElements.clear();
-    // this.enclosedElements.clear();
-    // this.elementsSegments = null;
+  }
+
+  getPoints() {
+    return this.points;
   }
 
   private updateSelection() {
@@ -97,19 +86,24 @@ export class LassoTrail extends AnimatedTrail {
 
     if (lassoPath) {
       const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
-      const selectedElements = selectByLassoPath(
-        this.api,
-        simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]),
-      );
+      const points = simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]) as [number, number][];
+      this.points = points;
 
-      if (selectedElements.length > 0) {
-        this.api.setAppState({
-          penbarSelected: Pen.SELECT,
-        });
-        this.api.selectNodes(
-          selectedElements.map((e) => this.api.getNodeByEntity(e)),
+      if (this.api.getAppState().penbarLasso.mode === 'select') {
+        const selectedElements = selectByLassoPath(
+          this.api,
+          points,
         );
-        this.api.record();
+
+        if (selectedElements.length > 0) {
+          this.api.setAppState({
+            penbarSelected: Pen.SELECT,
+          });
+          this.api.selectNodes(
+            selectedElements.map((e) => this.api.getNodeByEntity(e)),
+          );
+          this.api.record();
+        }
       }
     }
   }

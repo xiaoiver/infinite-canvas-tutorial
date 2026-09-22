@@ -10,7 +10,6 @@ head:
           },
       ]
 ---
-
 # Lesson 9 - Drawing ellipse and rectangle
 
 In this lesson, you will learn the following:

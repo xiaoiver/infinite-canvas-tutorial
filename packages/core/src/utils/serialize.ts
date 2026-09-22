@@ -30,6 +30,7 @@ import { Drawable } from 'roughjs/bin/core';
 import { opSet2Absolute } from './rough';
 import { fontStringFromTextStyle } from './font';
 import { randomInteger } from './math';
+import { hashCode } from './uid';
 import {
   computeLinearGradient,
   computeRadialGradient,
@@ -819,6 +820,32 @@ function createOrUpdateGradient(
   const min = [bounds.minX, bounds.minY] as [number, number];
   const width = bounds.maxX - bounds.minX;
   const height = bounds.maxY - bounds.minY;
+
+  if (gradient.type === 'mesh-gradient') {
+    const gradientId = `meshg_${hashCode(
+      `${gradient.backgroundColor}|${gradient.colors.join('|')}`,
+    )}`;
+    let $existed = $def.querySelector(`#${gradientId}`);
+    if (!$existed) {
+      $existed = createSVGElement('linearGradient');
+      $existed.setAttribute('gradientUnits', 'userSpaceOnUse');
+      const cMid = gradient.colors[4] ?? '#888888';
+      $existed.innerHTML = `<stop offset="0" stop-color="${gradient.backgroundColor}"></stop><stop offset="1" stop-color="${cMid}"></stop>`;
+      $existed.id = gradientId;
+      $def.appendChild($existed);
+    }
+    const { x1, y1, x2, y2 } = computeLinearGradient(
+      [min[0], min[1]],
+      width,
+      height,
+      0,
+    );
+    $existed.setAttribute('x1', `${x1}`);
+    $existed.setAttribute('y1', `${y1}`);
+    $existed.setAttribute('x2', `${x2}`);
+    $existed.setAttribute('y2', `${y2}`);
+    return gradientId;
+  }
 
   const gradientId = generateGradientKey({
     ...gradient,
