@@ -250,8 +250,7 @@ export class YogaSystem extends System {
     const cameras = new Set<Entity>();
     this.bounds.addedOrChanged.forEach((entity) => {
       if (entity.has(YogaLayoutApplied)) return;
-      const { positionChanged, sizeChanged } =
-        this.detectBoundsChangeKind(entity);
+      const { sizeChanged } = this.detectBoundsChangeKind(entity);
       if (sizeChanged) {
         const camera = getSceneRoot(entity);
         cameras.add(camera);
@@ -626,7 +625,7 @@ const YOGA_SETTERS = Object.create(null);
   // @ts-expect-error
   YOGA_SETTERS[styleProp] = mapping
     ? (yogaNode, value) => {
-      if (mapping.hasOwnProperty(value)) {
+      if (Object.prototype.hasOwnProperty.call(mapping, value)) {
         value = Yoga[mapping[value]];
         yogaNode[setter](value);
       }
@@ -735,7 +734,7 @@ function process(
     }
 
     for (let prop in styleNode) {
-      if (styleNode.hasOwnProperty(prop)) {
+      if (Object.prototype.hasOwnProperty.call(styleNode, prop)) {
         // Look for a style setter, and invoke it
         const setter = YOGA_SETTERS[prop];
         if (setter) {

@@ -3,7 +3,6 @@ import { Stroke } from '../components/renderable/Stroke';
 import { StrokeLayers } from '../components/renderable/Fill';
 import {
   fillLayerOpacity,
-  getEnabledFillLayersFromItems,
   isFillLayerEnabled,
   type FillLayerItem,
 } from './fillLayers';

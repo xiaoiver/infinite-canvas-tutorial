@@ -12,13 +12,22 @@ const typescriptRules = {
   '@typescript-eslint/no-empty-object-type': 'off',
   '@typescript-eslint/no-namespace': 'off',
   '@typescript-eslint/no-duplicate-enum-values': 'off',
+  '@typescript-eslint/no-unused-expressions': [
+    'error',
+    { allowShortCircuit: true, allowTernary: true },
+  ],
   '@typescript-eslint/no-unused-vars': [
     'error',
-    { args: 'none', ignoreRestSiblings: true, caughtErrors: 'none' },
+    {
+      args: 'none',
+      ignoreRestSiblings: true,
+      caughtErrors: 'none',
+      varsIgnorePattern: '^_',
+    },
   ],
   '@typescript-eslint/no-use-before-define': [
     'error',
-    { functions: false, classes: false },
+    { functions: false, classes: false, variables: false },
   ],
   '@typescript-eslint/no-redeclare': 'error',
   // TypeScript performs name resolution; the core rule misreports type-only names.
@@ -28,6 +37,7 @@ const typescriptRules = {
 };
 
 export default [
+  { linterOptions: { reportUnusedDisableDirectives: 'off' } },
   {
     ignores: [
       '**/node_modules/**',
@@ -40,6 +50,7 @@ export default [
       '.test-results/**',
       'test-results/**',
       'playwright-report/**',
+      'playwright/.cache/**',
       'blob-report/**',
       'rust/**',
       'packages/site/docs/.vitepress/cache/**',
@@ -63,6 +74,10 @@ export default [
       'no-fallthrough': 'off',
       'no-case-declarations': 'off',
       'no-useless-escape': 'off',
+      'no-unused-expressions': [
+        'error',
+        { allowShortCircuit: true, allowTernary: true },
+      ],
     },
   },
   {
@@ -95,11 +110,22 @@ export default [
   },
   {
     files: [
-      '__tests__/ecs/**/*.js',
-      '__tests__/ecs/**/*.ts',
-      '__tests__/unit/**/*.js',
-      '__tests__/unit/**/*.ts',
+      '__tests__/**/*.js',
+      '__tests__/**/*.ts',
+      '__tests__/**/*.tsx',
     ],
     languageOptions: { globals: globals.jest },
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
+      'no-loss-of-precision': 'off',
+    },
+  },
+  {
+    files: ['**/examples/**/*.js', '**/examples/**/*.ts', '**/examples/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': 'off',
+      'no-unused-vars': 'off',
+    },
   },
 ];

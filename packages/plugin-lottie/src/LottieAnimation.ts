@@ -483,7 +483,7 @@ function keyframePayloadEqual(
  * 注意：不能只保留「多于 1 个」关键帧——表达式烘焙若 281 帧算出相同 cx/cy（或去重后只剩 1 帧），
  * 以前 `out.length <= 1` 时返回 `[]` 会导致 `formatKeyframes` 空数组、椭圆无 `cx`/`cy` 关键帧。
  */
-function collapseRedundantKeyframes(
+function _collapseRedundantKeyframes(
   keyframes: KeyframeAnimationKeyframe[],
 ): KeyframeAnimationKeyframe[] {
   if (keyframes.length === 0) {
@@ -841,7 +841,7 @@ export class LottieAnimation {
 
       const element = this.displayObjectElementMap.get(child);
       if (element && element.clipPath) {
-        const { shape, keyframeAnimation } = element.clipPath;
+        const { shape } = element.clipPath;
         //   const clipPath = new Path();
         //   // use clipPath as target's siblings
         //   child.parentElement.appendChild(clipPath);
@@ -1220,7 +1220,7 @@ export class LottieAnimation {
    * @see https://github.com/airbnb/lottie-web#playsegmentssegments-forceflag
    */
   playSegments(segments: [number, number]) {
-    const [firstFrame, lastFrame] = segments;
+    const [firstFrame] = segments;
 
     this.isPaused = false;
     this.animations.forEach((animation) => {

@@ -1,5 +1,5 @@
 import type { FillAttributes, SerializedFillLayerItem } from '../types/serialized-node';
-import { fillLayerOpacity, isFillLayerEnabled } from './fillLayers';
+import { isFillLayerEnabled } from './fillLayers';
 import { isPattern } from './pattern';
 
 /**

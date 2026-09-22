@@ -1,7 +1,7 @@
 /**
  * Ported from raindrop-fx (MIT, SardineFish).
  */
-import { Rect, Vec2 } from './math';
+import { Rect } from './math';
 import { RainDrop } from './raindrop';
 import { Spawner } from './spawner';
 import type { Time } from './utils';

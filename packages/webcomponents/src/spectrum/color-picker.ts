@@ -2,7 +2,6 @@ import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { cssColorToHex, isGradient, isUrl, isDataUrl } from '@infinite-canvas-tutorial/ecs';
-import { localized, msg, str } from '@lit/localize';
 import './input-image.js';
 import type { ImageObjectFit } from './image-fill-fields.js';
 

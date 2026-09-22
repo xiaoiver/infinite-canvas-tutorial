@@ -93,8 +93,6 @@ import {
   parseMesh3DBaseColor,
 } from '../mesh3d-node';
 import {
-  isDataUrl,
-  isUrl,
   serializePoints,
   shiftPath,
   transformPath,
@@ -108,8 +106,6 @@ import { Mat3 } from '../../components/math/Mat3';
 import { formatNumber } from '../serialize/points';
 import { deserializeBrushPoints, deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
-import { isGradient } from '../gradient';
-import { isPattern } from '../pattern';
 import {
   resolveDesignVariableValue,
   designVariableRefKeyFromWire,
@@ -1663,14 +1659,6 @@ export function serializedNodesToEntities(
       strokeAlignment,
     } = wireMergedAttrs as StrokeAttributes;
     const firstWireStrokeLayer = strokesWireArr?.find(isFillLayerEnabled);
-    const firstResolvedStroke = resolvedStrokeLayerItems?.find(
-      isFillLayerEnabled,
-    );
-    const resolvedStroke =
-      firstResolvedStroke != null &&
-      typeof firstResolvedStroke.value === 'string'
-        ? firstResolvedStroke.value
-        : undefined;
     const resolvedStrokeWidth = resolveDesignVariableValue(
       strokeWidth,
       designVariables,

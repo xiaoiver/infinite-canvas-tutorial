@@ -1,5 +1,5 @@
 import { System, type Entity } from '@lastolivegames/becsy';
-import { mat4 as glMat4, vec2, vec3 as glVec3 } from 'gl-matrix';
+import { vec2, vec3 as glVec3 } from 'gl-matrix';
 import {
   Camera,
   Camera3D,

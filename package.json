@@ -35,7 +35,7 @@
     "release:alpha": "changeset publish --tag alpha",
     "dev:browser-tests": "NODE_OPTIONS=--max-http-header-size=65536 vite --config __tests__/browser/vite.config.ts",
     "test:browser": "playwright test -c playwright.browser.config.ts",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "test:tooling": "node --test __tests__/tooling/*.test.mjs"
   },
   "devDependencies": {

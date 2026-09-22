@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Pen,
-  Task,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ensureExampleWorld } from '../lib/ensure-example-world';

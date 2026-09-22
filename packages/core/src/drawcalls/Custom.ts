@@ -1,5 +1,5 @@
 import { Buffer, RenderPass } from '@antv/g-device-api';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { Drawcall } from './Drawcall';
 import { Custom as CustomShape } from '../shapes';
 
 export class Custom extends Drawcall {

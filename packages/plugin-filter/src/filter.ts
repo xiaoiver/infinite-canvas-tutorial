@@ -23,10 +23,7 @@ import type {
   RainFxParams,
   RainFxSimParams,
   RaindropsCodropsSimOptions,
-  BrightnessEffect,
-  ContrastEffect,
   AdjustmentEffect,
-  BlurEffect,
   RainCodropsWaterParams,
   RainCodropsSimParams,
   HalftoneDotsEffect,
@@ -41,7 +38,6 @@ import type {
   LiquidMetalEffect,
   HeatmapEffect,
   GemSmokeEffect,
-  LutEffect,
   ColorPencilEffect,
   DefaultEffectKind,
 } from '@infinite-canvas-tutorial/ecs';
@@ -1582,7 +1578,7 @@ function parseLutFilterParams(
   return { lutKey, strength: parseLutStrengthSuffix(rest) };
 }
 
-/** Serialize {@link LutEffect.lutKey} for a filter string (name vs `url("…")`). */
+/** Serialize a LUT key for a filter string (name vs `url("…")`). */
 export function formatLutFilterSegment(lutKey: string, strength: number): string {
   if (/^[a-zA-Z_][a-zA-Z0-9_-]*$/.test(lutKey)) {
     return `lut(${lutKey}, ${strength})`;

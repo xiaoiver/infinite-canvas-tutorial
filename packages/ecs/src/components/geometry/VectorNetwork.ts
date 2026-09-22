@@ -118,7 +118,7 @@ export class VectorNetwork {
     node: SerializedNode,
   ): SerializedNode {
     if (node.type === 'polyline') {
-      const { vertices, segments } = network;
+      const { vertices } = network;
       const points = vertices.map(({ x, y }) => [x, y] as [number, number]);
       node.points = serializePoints(points);
     }

@@ -35,10 +35,10 @@ suite remains a separate regression check.
 ## Commit checks
 
 `pnpm test:tooling` verifies that ESLint actually checks TypeScript, TSX, and Vue,
-understands their runtime globals, and excludes generated and vendored files.
-The application in `packages/app` retains its own ESLint configuration. Running
-`pnpm lint` audits the remaining repository, including historical violations;
-the commit hook checks changed files.
+understands their runtime globals, and excludes generated, cached, and vendored
+files. The application in `packages/app` retains its own ESLint configuration.
+`pnpm lint` checks the remaining repository with zero warnings allowed; CI runs
+the same command, while the commit hook checks changed files.
 
 Normal commits check every staged matching file. During a merge, the hook checks
 staged files that differ from the incoming `MERGE_HEAD`, including conflict

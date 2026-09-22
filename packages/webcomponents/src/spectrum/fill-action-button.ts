@@ -11,7 +11,6 @@ import {
   resolveDesignVariableValue,
   SerializedFillLayerItem,
   SerializedNode,
-  TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';

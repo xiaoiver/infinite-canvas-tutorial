@@ -63,6 +63,7 @@ test('generated output and vendored code are excluded, maintained source is incl
     'packages/ecs/esm/API.js',
     'packages/ecs/lib/API.js',
     'packages/plugin-lottie/vendor/third-party.js',
+    'playwright/.cache/generated.js',
   ])
     assert.equal(await eslint.isPathIgnored(file), true, file);
   for (const file of [

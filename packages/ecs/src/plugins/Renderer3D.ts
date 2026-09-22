@@ -23,7 +23,7 @@
  * 3D geometry is drawn in the first pass of {@link MeshPipeline}'s render graph;
  * 2D/grid/HTML overlays composite on the same target afterward.
  */
-import { component, system } from '@lastolivegames/becsy';
+import { system } from '@lastolivegames/becsy';
 import { Plugin, type PluginWithConfig } from './types';
 import {
   CameraSync,

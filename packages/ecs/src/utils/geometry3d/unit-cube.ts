@@ -14,7 +14,7 @@ function cubeVertexUv(
   const uCoord = (c: number) => (c + h) / (2 * h);
   const vCoord = (c: number) => (c + h) / (2 * h);
 
-  const [nx, ny, nz] = normal;
+  const [, ny, nz] = normal;
   if (Math.abs(nz) > 0) {
     return [uCoord(x), vCoord(y)];
   }

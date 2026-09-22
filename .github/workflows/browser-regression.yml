@@ -20,6 +20,7 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:tooling
+      - run: pnpm lint
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
       - run: pnpm test:browser
       - uses: actions/upload-artifact@v4

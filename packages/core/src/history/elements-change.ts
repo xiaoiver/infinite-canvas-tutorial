@@ -2,7 +2,6 @@ import { newElementWith, SerializedNode } from '../utils';
 import { Change } from './change';
 
 import { Delta } from './change';
-import { mutateElement } from './mutate';
 
 export type FractionalIndex = string & { _brand: 'franctionalIndex' };
 export type Ordered<TElement extends SerializedNode> = TElement & {
@@ -11,13 +10,13 @@ export type Ordered<TElement extends SerializedNode> = TElement & {
 export type OrderedSerializedNode = Ordered<SerializedNode>;
 
 type HasBrand<T> = {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   [K in keyof T]: K extends `~brand${infer _}` ? true : never;
 }[keyof T];
 
 type RemoveAllBrands<T> = HasBrand<T> extends true
   ? {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
       [K in keyof T as K extends `~brand~${infer _}` ? never : K]: T[K];
     }
   : never;
@@ -175,8 +174,6 @@ export class ElementsChange implements Change<SceneElementsMap> {
     snapshot: Map<number, OrderedSerializedNode>,
   ): [SceneElementsMap, boolean] {
     let nextElements = toBrandedType<SceneElementsMap>(new Map(elements));
-    let changedElements: Map<number, OrderedSerializedNode>;
-
     const flags = {
       containsVisibleDifference: false,
       containsZindexDifference: false,
@@ -190,19 +187,10 @@ export class ElementsChange implements Change<SceneElementsMap> {
         flags,
       );
 
-      const addedElements = applyDeltas(this.added);
-      const removedElements = applyDeltas(this.removed);
-      const updatedElements = applyDeltas(this.updated);
-
-      const affectedElements = this.resolveConflicts(elements, nextElements);
-
-      // TODO: #7348 validate elements semantically and syntactically the changed elements, in case they would result data integrity issues
-      changedElements = new Map([
-        ...addedElements,
-        ...removedElements,
-        ...updatedElements,
-        ...affectedElements,
-      ]);
+      applyDeltas(this.added);
+      applyDeltas(this.removed);
+      applyDeltas(this.updated);
+      this.resolveConflicts(elements, nextElements);
     } catch (e) {
       console.error(`Couldn't apply elements change`, e);
 
@@ -213,26 +201,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
       return [elements, true];
     }
 
-    try {
-      // TODO: #7348 refactor away mutations below, so that we couldn't end up in an incosistent state
-      // ElementsChange.redrawTextBoundingBoxes(nextElements, changedElements);
-      // the following reorder performs also mutations, but only on new instances of changed elements
-      // (unless something goes really bad and it fallbacks to fixing all invalid indices)
-      // nextElements = ElementsChange.reorderElements(
-      //   nextElements,
-      //   changedElements,
-      //   flags,
-      // );
-      // Need ordered nextElements to avoid z-index binding issues
-      // ElementsChange.redrawBoundArrows(nextElements, changedElements);
-    } catch (e) {
-      console.error(
-        `Couldn't mutate elements after applying elements change`,
-        e,
-      );
-    } finally {
-      return [nextElements, flags.containsVisibleDifference];
-    }
+    return [nextElements, flags.containsVisibleDifference];
   }
 
   /**
@@ -415,35 +384,6 @@ export class ElementsChange implements Change<SceneElementsMap> {
     nextElements: SceneElementsMap,
   ) {
     const nextAffectedElements = new Map<number, OrderedSerializedNode>();
-    const updater = (
-      element: SerializedNode,
-      updates: ElementPartial<SerializedNode>,
-    ) => {
-      const nextElement = nextElements.get(element.uid); // only ever modify next element!
-      if (!nextElement) {
-        return;
-      }
-
-      let affectedElement: OrderedSerializedNode;
-
-      if (prevElements.get(element.uid) === nextElement) {
-        // create the new element instance in case we didn't modify the element yet
-        // so that we won't end up in an incosistent state in case we would fail in the middle of mutations
-        affectedElement = newElementWith(
-          nextElement,
-          updates as ElementPartial<OrderedSerializedNode>,
-        );
-      } else {
-        affectedElement = mutateElement(
-          nextElement,
-          updates as ElementPartial<OrderedSerializedNode>,
-        );
-      }
-
-      nextAffectedElements.set(affectedElement.uid, affectedElement);
-      nextElements.set(affectedElement.uid, affectedElement);
-    };
-
     // // removed delta is affecting the bindings always, as all the affected elements of the removed elements need to be unbound
     // for (const [id] of this.removed) {
     //   ElementsChange.unbindAffected(prevElements, nextElements, id, updater);

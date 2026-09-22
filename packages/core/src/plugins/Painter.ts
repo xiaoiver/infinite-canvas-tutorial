@@ -8,7 +8,6 @@ import { Plugin, PluginContext } from './interfaces';
 export interface PainterPluginOptions {}
 
 export class Painter implements Plugin {
-  #options: PainterPluginOptions;
   #context: PluginContext;
 
   #pen: AbstractPen;
@@ -30,9 +29,7 @@ export class Painter implements Plugin {
   register: () => void;
   unregister: () => void;
 
-  constructor(options: PainterPluginOptions) {
-    this.#options = options;
-  }
+  constructor(_options: PainterPluginOptions) {}
 
   apply(context: PluginContext) {
     const {

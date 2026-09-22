@@ -1,6 +1,5 @@
 import { field } from '@lastolivegames/becsy';
 import { m3Type, Mat3 } from '../math/Mat3';
-import { Transform } from './Transform';
 
 export class GlobalTransform {
   /**

@@ -12,7 +12,6 @@ import {
   FillLayers,
   FillTexture,
   IconFontEllipseStrokeRasterPlaceholder,
-  Opacity,
   Line,
   Path,
   Polyline,

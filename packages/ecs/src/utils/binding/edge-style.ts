@@ -149,8 +149,6 @@ export function orthConnector(state: EdgeState, source: NodeSerializedNode, targ
   // that the edge may connect to
   // portConstraint [source, target]
   const portConstraint = [DIRECTION_MASK_ALL, DIRECTION_MASK_ALL]; // 默认允许所有方向
-  let rotation = 0;
-
   if (source !== null) {
     portConstraint[0] = getPortConstraints(source, state, true, DIRECTION_MASK_ALL);
     // rotation = getValue(source.style, STYLE_ROTATION, 0);

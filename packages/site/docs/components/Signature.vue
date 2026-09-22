@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   Pen,
-  API,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';

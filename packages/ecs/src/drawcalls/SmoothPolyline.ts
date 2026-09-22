@@ -55,7 +55,6 @@ import {
   ComputedRough,
   ComputedTextMetrics,
   Ellipse,
-  FillLayers,
   GlobalRenderOrder,
   GlobalTransform,
   Line,
@@ -213,6 +212,7 @@ export class SmoothPolyline extends Drawcall {
     } else if (instance.hasSomeOf(Circle, Ellipse)) {
       return circleEllipsePointsNum + 1;
     }
+    return 0;
   }
 
   createGeometry(): void {
@@ -1110,16 +1110,6 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
 
   const jointType = getJointType(linejoin);
   const capType = getCapType(linecap);
-  let endJoint = capType;
-  if (capType === JointType.CAP_ROUND) {
-    endJoint = JointType.JOINT_CAP_ROUND;
-  }
-  if (capType === JointType.CAP_BUTT) {
-    endJoint = JointType.JOINT_CAP_BUTT;
-  }
-  if (capType === JointType.CAP_SQUARE) {
-    endJoint = JointType.JOINT_CAP_SQUARE;
-  }
 
   // Split subpath by [NaN, NaN]
   const subPaths = [];
