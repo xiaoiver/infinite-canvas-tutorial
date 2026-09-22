@@ -31,3 +31,6 @@ packages/**/src/**/*.js
 !packages/**/src/**/worker.js
 packages/**/src/**/*.d.ts
 packages/**/src/**/*.js.map
+
+# Source-based browser regression artifacts
+.test-results/

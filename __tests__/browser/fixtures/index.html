@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Canvas lifecycle regression</title>
+    <style>
+      body {
+        font: 16px system-ui;
+        margin: 32px;
+        color: #20242b;
+        background: #f2f4f7;
+      }
+      main {
+        display: flex;
+        gap: 24px;
+      }
+      section {
+        padding: 16px;
+        background: white;
+        border: 1px solid #ccd2db;
+        border-radius: 8px;
+      }
+      canvas {
+        display: block;
+        width: 320px;
+        height: 220px;
+      }
+      button {
+        margin: 8px 8px 0 0;
+        padding: 8px 12px;
+      }
+      output {
+        display: block;
+        margin: 12px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Canvas lifecycle regression</h1>
+    <p>Two independent canvases using the production ECS renderer.</p>
+    <output id="status">Starting…</output>
+    <main>
+      <section id="left">
+        <h2>Left canvas</h2>
+        <canvas width="320" height="220"></canvas>
+      </section>
+      <section id="right">
+        <h2>Right canvas</h2>
+        <canvas width="320" height="220"></canvas>
+      </section>
+    </main>
+    <button id="edit">Edit left canvas</button>
+    <button id="undo">Undo left</button>
+    <button id="redo">Redo left</button>
+    <button id="recreate">Recreate left</button>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

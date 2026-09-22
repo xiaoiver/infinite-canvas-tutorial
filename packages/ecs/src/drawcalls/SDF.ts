@@ -13,9 +13,7 @@ import {
   BindingsDescriptor,
   TransparentBlack,
   Texture,
-  StencilOp,
   CullMode,
-  InputLayout,
   Bindings,
   type RenderPipeline,
 } from '@infinite-canvas-tutorial/device-api';
@@ -98,6 +96,7 @@ export class SDF extends Drawcall {
 
   #uniformBuffer: Buffer;
   #texture: Texture;
+  #borrowedFillTexture = false;
   /** Unfiltered image GPU texture when applying {@link Filter} (chain samples this). */
   #rawFillImageTexture: Texture | null = null;
   /** True when {@link #texture} references the post-process chain output (do not `destroy` in SDF.destroy). */
@@ -188,11 +187,23 @@ export class SDF extends Drawcall {
       t.destroy?.();
     }
     this.#fillLayerTextures = [];
-    if (clearsMainTexture) {
+    if (clearsMainTexture || precomposedTexture) {
       this.#texture = null;
     }
     precomposedTexture?.destroy?.();
     this.disposeMultiFillDepthPassResources();
+  }
+
+  private disposeFillImageResources(): void {
+    this.disposeFillLayerResources();
+    if (!this.#fillTextureFromPostChain && !this.#borrowedFillTexture) {
+      this.#texture?.destroy();
+    }
+    this.#rawFillImageTexture?.destroy();
+    this.#rawFillImageTexture = null;
+    this.#texture = null;
+    this.#fillTextureFromPostChain = false;
+    this.#borrowedFillTexture = false;
   }
 
   private disposeMultiFillDepthPassResources(): void {
@@ -537,7 +548,7 @@ export class SDF extends Drawcall {
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
     this.createProgram(vert, frag, defines);
-    this.disposeFillLayerResources();
+    this.disposeFillImageResources();
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -720,6 +731,7 @@ export class SDF extends Drawcall {
       } else if (instance.has(FillTexture)) {
         // `Texture` has no public size here; per-shape filter on FillTexture needs GPU size API.
         this.#texture = instance.read(FillTexture).value;
+        this.#borrowedFillTexture = true;
       } else if (
         !this.instanced &&
         shouldBakeStrokeIntoRasterFilterTexture(instance)
@@ -1265,15 +1277,8 @@ export class SDF extends Drawcall {
   }
 
   destroy(): void {
-    this.disposeFillLayerResources();
+    this.disposeFillImageResources();
     this.destroyFullPostProcessingChain();
-    this.#rawFillImageTexture?.destroy();
-    this.#rawFillImageTexture = null;
-    if (!this.#fillTextureFromPostChain) {
-      this.#texture?.destroy?.();
-    }
-    this.#texture = null;
-    this.#fillTextureFromPostChain = false;
     this.#bakedStrokeIntoFilterTexture = false;
     super.destroy();
     if (this.program) {

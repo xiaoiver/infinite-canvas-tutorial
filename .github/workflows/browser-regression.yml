@@ -1,0 +1,31 @@
+name: Browser lifecycle regression
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  browser-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:tooling
+      - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
+      - run: pnpm test:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: browser-regression-failures
+          path: .test-results/browser
+          include-hidden-files: true
+          if-no-files-found: ignore

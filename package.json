@@ -18,7 +18,7 @@
   },
   "scripts": {
     "clean": "rimraf dist",
-    "lint-staged": "lint-staged",
+    "lint-staged": "lint-staged --config scripts/lint-staged.config.cjs",
     "prepare": "husky install",
     "build": "pnpm -r run build",
     "build:vello": "cd rust/vello-renderer && cargo build --release --target wasm32-unknown-unknown --lib && wasm-bindgen target/wasm32-unknown-unknown/release/vello_renderer.wasm --out-dir pkg --target web --typescript && rm -f pkg/.gitignore && node -e \"const fs=require('fs');const path='./pkg/package.json';let p;try{p=JSON.parse(fs.readFileSync(path,'utf8'));}catch{p={name:'@infinite-canvas-tutorial/vello-renderer',type:'module',version:'0.1.0',license:'MIT',files:['vello_renderer_bg.wasm','vello_renderer.js','vello_renderer.d.ts'],main:'vello_renderer.js',types:'vello_renderer.d.ts',sideEffects:['./snippets/*']};}p.publishConfig={access:'public'};fs.writeFileSync(path,JSON.stringify(p,null,2));\"",
@@ -32,7 +32,11 @@
     "changeset": "changeset",
     "version": "changeset version",
     "release": "changeset publish --tag latest",
-    "release:alpha": "changeset publish --tag alpha"
+    "release:alpha": "changeset publish --tag alpha",
+    "dev:browser-tests": "NODE_OPTIONS=--max-http-header-size=65536 vite --config __tests__/browser/vite.config.ts",
+    "test:browser": "playwright test -c playwright.browser.config.ts",
+    "lint": "eslint .",
+    "test:tooling": "node --test __tests__/tooling/*.test.mjs"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",
@@ -78,19 +82,6 @@
   },
   "optionalDependencies": {
     "gl": "^6.0.2"
-  },
-  "lint-staged": {
-    "*.{md,json}": [
-      "prettier --write"
-    ],
-    "*.md": [
-      "markdownlint --fix",
-      "case-police --fix",
-      "prettier --write"
-    ],
-    "*.{js,jsx,tsx,ts,vue}": [
-      "eslint --fix"
-    ]
   },
   "commitlint": {
     "extends": [

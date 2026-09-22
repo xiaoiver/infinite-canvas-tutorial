@@ -1,4 +1,3 @@
-import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
   App,
@@ -35,7 +34,7 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
+import { NodeJSAdapter, createMouseEvent } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
 
@@ -44,8 +43,6 @@ describe('Transformer', () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement | undefined;
-    let canvasEntity: Entity | undefined;
-    let cameraEntity: Entity | undefined;
     let entity: Entity | undefined;
 
     const MyPlugin: Plugin = () => {
@@ -86,14 +83,14 @@ describe('Transformer', () => {
 
         const api = new API(new DefaultStateManagement(), this.commands);
 
-        canvasEntity = api.createCanvas({
+        api.createCanvas({
           element: $canvas,
           width: 200,
           height: 200,
           devicePixelRatio: 1,
         });
 
-        cameraEntity = api.createCamera({
+        api.createCamera({
           zoom: 1,
         });
 
@@ -116,9 +113,7 @@ describe('Transformer', () => {
         api.updateNodes([node]);
         api.selectNodes([node]);
 
-        entity = api
-          .getEntity(node)
-          ?.hold();
+        entity = api.getEntity(node)?.hold();
       }
     }
 
@@ -126,42 +121,46 @@ describe('Transformer', () => {
 
     await app.run();
 
-    await sleep(300);
+    try {
+      await app.world.execute();
+      await app.world.execute();
 
-    if ($canvas) {
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 165, clientY: 100 }),
+      if ($canvas) {
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 165, clientY: 100 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mousedown', { clientX: 165, clientY: 100 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 152, clientY: 102 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 152, clientY: 150 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 152, clientY: 200 }),
+        );
+        await app.world.execute();
+        $canvas.dispatchEvent(
+          createMouseEvent('mouseup', { clientX: 152, clientY: 200 }),
+        );
+      }
+
+      for (let frame = 0; frame < 6; frame++) await app.world.execute();
+      expect(entity!.read(Transform).rotation).not.toBe(0);
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'transformer-rotate2',
       );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 165, clientY: 100 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 152, clientY: 102 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 152, clientY: 150 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 152, clientY: 200 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 152, clientY: 200 }),
-      );
+    } finally {
+      await app.exit();
     }
-
-    await sleep(300);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'transformer-rotate2',
-    );
-
-    await app.exit();
   });
 });
