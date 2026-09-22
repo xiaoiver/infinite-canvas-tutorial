@@ -1,4 +1,4 @@
-import { co, Entity, System } from '@lastolivegames/becsy';
+import { Entity, System } from '@lastolivegames/becsy';
 import {
   DeviceContribution,
   WebGLDeviceContribution,
@@ -8,6 +8,14 @@ import { Canvas, GPUResource, Grid, Theme } from '../components';
 import { isBrowser, RenderCache } from '../utils';
 import { TexturePool } from '../resources';
 import { RenderGraph } from '../render-graph/RenderGraph';
+import { ResourceScope } from '../resources/ResourceScope';
+
+type CanvasResources = {
+  canvas: Entity;
+  resource?: GPUResource;
+  attached: boolean;
+  cancelled: boolean;
+};
 
 /**
  * Usually the first built-in system to run.
@@ -23,8 +31,10 @@ export class SetupDevice extends System {
   /**
    * Used for rendering and exporting the shapes in canvas to image(PNG, JPEG, etc.).
    */
-  #offscreenElement: HTMLCanvasElement | OffscreenCanvas;
   #offscreenGPUResource: GPUResource;
+  #offscreenPromise: Promise<void>;
+  #resources = new Map<number, CanvasResources>();
+  #disposed = false;
 
   constructor() {
     super();
@@ -32,20 +42,21 @@ export class SetupDevice extends System {
     this.#texturePool = new TexturePool();
   }
 
-  @co private *addGPUResource(
-    canvas: Entity,
-    gpuResource: GPUResource,
-  ): Generator {
-    canvas.add(GPUResource, gpuResource);
-    yield;
-  }
-
   getOffscreenGPUResource() {
     return this.#offscreenGPUResource;
   }
 
   execute() {
-    this.canvases.added.forEach(async (canvas) => {
+    this.canvases.removed.forEach((canvas) => {
+      const entry = this.#resources.get(canvas.__id);
+      if (entry) {
+        entry.cancelled = true;
+        entry.resource?.scope.dispose();
+        this.#resources.delete(canvas.__id);
+      }
+    });
+
+    this.canvases.added.forEach((canvas) => {
       if (!canvas.has(Theme)) {
         canvas.add(Theme);
       }
@@ -54,50 +65,47 @@ export class SetupDevice extends System {
         canvas.add(Grid);
       }
 
+      const entry: CanvasResources = {
+        canvas: canvas.hold(),
+        attached: false,
+        cancelled: false,
+      };
+      this.#resources.set(canvas.__id, entry);
+      // Copy component values before crossing an asynchronous boundary.
       const {
-        width,
-        height,
-        devicePixelRatio,
         renderer,
         shaderCompilerPath,
         element,
+        width,
+        height,
+        devicePixelRatio,
       } = canvas.read(Canvas);
-
-      if (!this.#offscreenElement && isBrowser) {
-        this.#offscreenElement = document.createElement('canvas');
-        this.#offscreenElement.width = width * devicePixelRatio;
-        this.#offscreenElement.height = height * devicePixelRatio;
-        this.#offscreenGPUResource = {
-          ...(await this.createGPUResource(
-            renderer,
-            shaderCompilerPath,
-            this.#offscreenElement,
-            width,
-            height,
-            devicePixelRatio,
-          )),
-          texturePool: this.#texturePool,
-        };
-      }
-
-      const holder = canvas.hold();
-      const { device, swapChain, renderCache, renderGraph } =
-        await this.createGPUResource(
-          renderer,
-          shaderCompilerPath,
-          element,
-          width,
-          height,
-          devicePixelRatio,
-        );
-
-      this.addGPUResource(holder, {
-        device,
-        swapChain,
-        renderCache,
-        renderGraph,
-        texturePool: this.#texturePool,
+      const props = {
+        renderer,
+        shaderCompilerPath,
+        element,
+        width,
+        height,
+        devicePixelRatio,
+      };
+      this.initializeCanvas(entry, props).catch((error) => {
+        if (!this.#disposed && !entry.cancelled) {
+          console.error('Failed to initialize canvas GPU resources', error);
+        }
       });
+    });
+
+    // Attach completed resources only while executing in the owning system.
+    this.#resources.forEach((entry) => {
+      if (entry.resource && !entry.attached) {
+        const { width, height, devicePixelRatio } = entry.canvas.read(Canvas);
+        entry.resource.swapChain.configureSwapChain(
+          width * devicePixelRatio,
+          height * devicePixelRatio,
+        );
+        entry.canvas.add(GPUResource, entry.resource);
+        entry.attached = true;
+      }
     });
 
     this.canvases.changed.forEach((canvas) => {
@@ -112,27 +120,69 @@ export class SetupDevice extends System {
       const { swapChain } = canvas.read(GPUResource);
       swapChain.configureSwapChain(widthDPR, heightDPR);
     });
-
-    this.canvases.removed.forEach((canvas) => {
-      this.accessRecentlyDeletedData();
-      this.destroyCanvas(canvas);
-    });
   }
 
   finalize(): void {
-    this.canvases.current.forEach((canvas) => {
-      this.destroyCanvas(canvas);
+    this.#disposed = true;
+    this.#resources.forEach((entry) => {
+      entry.cancelled = true;
+      entry.resource?.scope.dispose();
     });
-
-    if (this.#offscreenElement) {
-      const { device, renderCache, renderGraph } = this.#offscreenGPUResource;
-      renderCache.destroy();
-      renderGraph.destroy();
-      device.destroy();
-      device.checkForLeaks();
-    }
-
+    this.#resources.clear();
+    this.#offscreenGPUResource?.scope.dispose();
     this.#texturePool.destroy();
+  }
+
+  private async initializeCanvas(
+    entry: CanvasResources,
+    props: Pick<
+      Canvas,
+      | 'renderer'
+      | 'shaderCompilerPath'
+      | 'element'
+      | 'width'
+      | 'height'
+      | 'devicePixelRatio'
+    >,
+  ) {
+    const {
+      renderer,
+      shaderCompilerPath,
+      element,
+      width,
+      height,
+      devicePixelRatio,
+    } = props;
+    if (isBrowser) {
+      if (!this.#offscreenPromise) {
+        const offscreen = document.createElement('canvas');
+        offscreen.width = width * devicePixelRatio;
+        offscreen.height = height * devicePixelRatio;
+        this.#offscreenPromise = this.createGPUResource(
+          renderer,
+          shaderCompilerPath,
+          offscreen,
+          width,
+          height,
+          devicePixelRatio,
+        ).then((resource) => {
+          if (this.#disposed) resource.scope.dispose();
+          else this.#offscreenGPUResource = resource;
+        });
+      }
+      await this.#offscreenPromise;
+    }
+    if (this.#disposed || entry.cancelled) return;
+    const resource = await this.createGPUResource(
+      renderer,
+      shaderCompilerPath,
+      element,
+      width,
+      height,
+      devicePixelRatio,
+    );
+    if (this.#disposed || entry.cancelled) resource.scope.dispose();
+    else entry.resource = resource;
   }
 
   private async createGPUResource(
@@ -168,24 +218,29 @@ export class SetupDevice extends System {
       element as HTMLCanvasElement,
     );
 
-    swapChain.configureSwapChain(widthDPR, heightDPR);
     const device = swapChain.getDevice();
-    const renderCache = new RenderCache(device);
-    const renderGraph = new RenderGraph(device);
-
-    return {
-      device,
-      swapChain,
-      renderCache,
-      renderGraph,
-    };
-  }
-
-  private destroyCanvas(canvas: Entity) {
-    const { device, renderCache, renderGraph } = canvas.read(GPUResource);
-    renderCache.destroy();
-    renderGraph.destroy();
-    device.destroy();
-    device.checkForLeaks();
+    const scope = new ResourceScope();
+    scope.add(() => {
+      device.destroy();
+      device.checkForLeaks();
+    });
+    try {
+      swapChain.configureSwapChain(widthDPR, heightDPR);
+      const renderCache = new RenderCache(device);
+      scope.add(() => renderCache.destroy());
+      const renderGraph = new RenderGraph(device);
+      scope.add(() => renderGraph.destroy());
+      return {
+        device,
+        swapChain,
+        renderCache,
+        renderGraph,
+        scope,
+        texturePool: this.#texturePool,
+      };
+    } catch (error) {
+      scope.dispose();
+      throw error;
+    }
   }
 }

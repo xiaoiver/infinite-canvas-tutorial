@@ -18,6 +18,7 @@ import {
   deserializeBrushPoints,
 } from '../utils';
 import { API } from '../API';
+import { documentValueEqual } from '../document';
 import {
   Name,
   FillSolid,
@@ -161,7 +162,7 @@ export class ElementsChange implements Change<SceneElementsMap> {
         continue;
       }
 
-      if (prevElement.versionNonce !== nextElement.versionNonce) {
+      if (!documentValueEqual(prevElement, nextElement)) {
         const delta = Delta.calculate<ElementPartial>(
           prevElement,
           nextElement,
@@ -356,7 +357,24 @@ export class ElementsChange implements Change<SceneElementsMap> {
         delta.deleted.fractionalIndex !== delta.inserted.fractionalIndex;
     }
 
-    return newElementWith(element, directlyApplicablePartial);
+    const removedKeys = [
+      ...new Set([
+        ...Object.keys(delta.deleted),
+        ...Object.keys(delta.inserted),
+      ]),
+    ].filter((key) => delta.inserted[key] === undefined);
+    if (!element.isDeleted && removedKeys.some((key) => key in element)) {
+      flags.containsVisibleDifference = true;
+    }
+    const next = newElementWith(
+      element,
+      directlyApplicablePartial,
+      removedKeys.length > 0,
+    );
+    removedKeys.forEach((key) => {
+      delete next[key];
+    });
+    return next;
   }
 
   public static create(
@@ -439,7 +457,8 @@ export class ElementsChange implements Change<SceneElementsMap> {
           //   latestPartial[key] = partial[key];
           //   break;
           default:
-            latestPartial[key] = element[key];
+            latestPartial[key] =
+              key === 'isDeleted' ? !!element[key] : element[key];
         }
       }
 
@@ -497,41 +516,12 @@ export class ElementsChange implements Change<SceneElementsMap> {
       flags,
     );
 
-    const addedElements = applyDeltas(this.added);
-    const removedElements = applyDeltas(this.removed);
-    const updatedElements = applyDeltas(this.updated);
+    applyDeltas(this.added);
+    applyDeltas(this.removed);
+    applyDeltas(this.updated);
 
-    if (this.api) {
-      this.added.forEach((delta, id) => {
-        const { inserted, deleted } = delta;
-        const element = addedElements.get(id);
-        if (element) {
-          Object.keys(deleted).forEach((key) => {
-            delete element[key];
-          });
-          Object.assign(element, inserted);
-          this.api.updateNode(element, delta.inserted);
-        }
-      });
-
-      this.removed.forEach((delta, id) => {
-        const element = nextElements.get(id);
-        if (element) {
-          this.api.deleteNodesById([id]);
-        }
-      });
-
-      this.updated.forEach((delta, id) => {
-        const { inserted, deleted } = delta;
-        const element = nextElements.get(id);
-        if (element) {
-          Object.keys(deleted).forEach((key) => {
-            delete element[key];
-          });
-          Object.assign(element, inserted);
-          this.api.updateNode(element, delta.inserted);
-        }
-      });
+    if (this.api && !this.isEmpty()) {
+      this.api.replaceDocument([...nextElements.values()], 'remote');
     }
 
     return [nextElements, flags.containsVisibleDifference];

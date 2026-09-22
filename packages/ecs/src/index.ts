@@ -93,3 +93,10 @@ export const DefaultPlugins: Plugin[] = [
   PenPlugin,
   HTMLPlugin,
 ];
+
+export {
+  CapabilityRegistry,
+  type CanvasCapabilities,
+} from './CapabilityRegistry';
+export { documentValueEqual } from './document';
+export { WorkerClient } from './WorkerClient';

@@ -2,14 +2,7 @@
 /**
  * @see https://github.com/yjs/yjs
  */
-import {
-  App,
-  Pen,
-  DefaultPlugins,
-  SerializedNode,
-  API,
-  Task,
-} from '@infinite-canvas-tutorial/ecs';
+import { App, Pen, DefaultPlugins, API } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Event, UIPlugin } from '@infinite-canvas-tutorial/webcomponents';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
@@ -17,63 +10,13 @@ import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 import { EraserPlugin } from '@infinite-canvas-tutorial/eraser';
 
 import * as Y from 'yjs';
-import deepEqual from "deep-equal";
+import { bindDocument } from '../collaboration/document';
+import { yjsDocument, createYjsDemoDocument } from '../collaboration/yjs';
 
-const local = Math.random().toString();
-
-function recordLocalOps(
-  yArray: Y.Array<Y.Map<any>>,
-  nodes: readonly { version?: number; isDeleted?: boolean }[],
-): boolean {
-  doc.transact(() => {
-    nodes = nodes.filter((e) => !e.isDeleted);
-    let changed = false;
-
-    // 同步数组长度
-    while (yArray.length < nodes.length) {
-      const map = new Y.Map();
-      yArray.push([map]);
-      changed = true;
-    }
-
-    while (yArray.length > nodes.length) {
-      yArray.delete(yArray.length - 1, 1);
-      changed = true;
-    }
-
-    // 同步每个节点的属性
-    const n = nodes.length;
-    for (let i = 0; i < n; i++) {
-      const map = yArray.get(i) as Y.Map<any> | undefined;
-      if (!map) {
-        break;
-      }
-
-      const elem = nodes[i];
-      const currentVersion = map.get("version");
-
-      if (currentVersion === elem.version) {
-        continue;
-      }
-
-      // 更新所有属性
-      for (const [key, value] of Object.entries(elem)) {
-        const src = map.get(key);
-        if (
-          (typeof src === 'object' && !deepEqual(src, value)) ||
-          src !== value
-        ) {
-          changed = true;
-          map.set(key, value);
-        }
-      }
-    }
-  }, local);
-}
+let unbindDocument: (() => void) | undefined;
 
 let channel: BroadcastChannel;
 let doc: Y.Doc;
-let yArray: Y.Array<Y.Map<any>>;
 const wrapper = ref<HTMLElement | null>(null);
 let api: API;
 let onReady: ((api: CustomEvent<any>) => void) | undefined;
@@ -84,65 +27,29 @@ onMounted(async () => {
     return;
   }
 
-  channel = new BroadcastChannel('yjs-crdt');
+  channel = new BroadcastChannel('yjs-crdt-v2');
   channel.onmessage = (e) => {
-    const update = new Uint8Array(e.data);
-    try {
-      Y.applyUpdate(doc, update);
-    } catch (e) {
-      console.error('Failed to apply update:', e);
+    if (e.data.type === 'sync-request') {
+      channel.postMessage({
+        type: 'update',
+        update: Y.encodeStateAsUpdate(doc),
+      });
+    } else if (e.data.type === 'update') {
+      Y.applyUpdate(doc, e.data.update, channel);
     }
   };
 
-  doc = new Y.Doc();
-  yArray = doc.getArray("nodes");
+  doc = createYjsDemoDocument();
 
-  // 从 localStorage 加载保存的状态
-  // const savedState = localStorage.getItem("yjs-store");
-  // if (savedState) {
-  //   try {
-  //     const update = Uint8Array.from(atob(savedState), c => c.charCodeAt(0));
-  //     Y.applyUpdate(doc, update);
-  //   } catch (e) {
-  //     console.error('Failed to load saved state:', e);
-  //   }
-  // }
-
-  // 监听文档更新
   doc.on('update', (update: Uint8Array, origin) => {
-    // 如果是本地更新，通过 BroadcastChannel 发送给其他标签页
-    if (origin === local) {
-      channel.postMessage(update);
-    }
-
-    // 保存到 localStorage
-    // const base64 = btoa(String.fromCharCode(...update));
-    // localStorage.setItem("yjs-store", base64);
-
-    // 如果是远程更新，更新 canvas 节点
-    if (origin !== local) {
-      const nodes = yArray.toArray().map((map: Y.Map<any>) => map.toJSON());
-      api.updateNodes(nodes);
-    }
+    if (origin !== channel) channel.postMessage({ type: 'update', update });
   });
+  channel.postMessage({ type: 'sync-request' });
 
   onReady = (e) => {
     api = e.detail;
-    api.onchange = (snapshot) => {
-      const { appState, nodes } = snapshot;
-      recordLocalOps(yArray, nodes);
-    }
-
-    const node = {
-      type: 'rect',
-      id: '0',
-      fill: 'red',
-      stroke: 'black',
-      x: 100,
-      y: 100,
-      width: 100,
-      height: 100,
-    } as SerializedNode;
+    const adapter = yjsDocument(doc);
+    unbindDocument = bindDocument(api, adapter);
 
     api.setAppState({
       penbarSelected: Pen.SELECT,
@@ -150,9 +57,6 @@ onMounted(async () => {
       taskbarAll: [],
       taskbarVisible: false,
     });
-
-    api.updateNodes([node]);
-    api.record();
   };
   canvas.addEventListener(Event.READY, onReady);
 
@@ -163,11 +67,20 @@ onMounted(async () => {
     await import('@infinite-canvas-tutorial/lasso/spectrum');
     await import('@infinite-canvas-tutorial/eraser/spectrum');
     await import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-    new App().addPlugins(...DefaultPlugins, UIPlugin, LaserPointerPlugin, LassoPlugin, EraserPlugin).run();
+    new App()
+      .addPlugins(
+        ...DefaultPlugins,
+        UIPlugin,
+        LaserPointerPlugin,
+        LassoPlugin,
+        EraserPlugin,
+      )
+      .run();
   }
 });
 
 onUnmounted(() => {
+  unbindDocument?.();
   channel?.close();
   const canvas = wrapper.value;
 
@@ -186,6 +99,9 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 200px"></ic-spectrum-canvas>
+    <ic-spectrum-canvas
+      ref="wrapper"
+      style="width: 100%; height: 200px"
+    ></ic-spectrum-canvas>
   </div>
 </template>

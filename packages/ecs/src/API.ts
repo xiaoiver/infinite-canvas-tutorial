@@ -18,6 +18,7 @@ import {
   deserializePoints,
   EASING_FUNCTION,
   getScale,
+  inferXYWidthHeight,
   isEntity,
   parsePath,
   PathSerializedNode,
@@ -66,6 +67,10 @@ import {
   updateMatrix,
 } from './systems';
 import { DOMAdapter } from './environment';
+import { TaskQueue } from './TaskQueue';
+import { CapabilityRegistry } from './CapabilityRegistry';
+import { ResourceScope } from './resources/ResourceScope';
+import { documentValueEqual, validateDocument } from './document';
 import { SIBLINGS_MAX_Z_INDEX, SIBLINGS_MIN_Z_INDEX } from './context';
 
 export interface StateManagement {
@@ -125,8 +130,6 @@ export const arrayToMap = <T extends { id: string } | string>(
   }, new Map());
 };
 
-export const pendingAPICallings: (() => any)[] = [];
-
 /**
  * Expose the API to the outside world.
  *
@@ -142,6 +145,12 @@ export class API {
   #idEntityMap: Map<string, EntityCommands> = new Map();
   #history = new History();
   #store = new Store(this);
+  #tasks = new TaskQueue();
+  #destroyed = false;
+  #scope = new ResourceScope();
+  #activeImageTasks = 0;
+
+  readonly capabilities = new CapabilityRegistry();
 
   onchange: (snapshot: { appState: AppState; nodes: SerializedNode[] }) => void;
 
@@ -152,16 +161,19 @@ export class API {
     this.#store.onStoreIncrementEmitter.on(StoreIncrementEvent, (event) => {
       this.#history.record(event.elementsChange, event.appStateChange);
 
-      const snapshot = {
-        appState: this.stateManagement.getAppState(),
-        nodes: this.stateManagement.getNodes(),
-      };
-      this.stateManagement.onChange?.(snapshot);
-
-      if (this.onchange) {
-        this.onchange(snapshot);
-      }
+      this.notifyChange();
     });
+  }
+
+  private notifyChange() {
+    const snapshot = { appState: this.getAppState(), nodes: this.getNodes() };
+    this.stateManagement.onChange?.(snapshot);
+    this.onchange?.(snapshot);
+  }
+
+  /** Register canvas-owned plugin cleanup. The returned disposer is idempotent. */
+  onDestroy(cleanup: () => void) {
+    return this.#scope.add(cleanup);
   }
 
   getAppState() {
@@ -170,8 +182,9 @@ export class API {
 
   setAppState(appState: Partial<AppState>) {
     const oldAppState = this.getAppState();
-    const { checkboardStyle, cameraZoom, cameraX, cameraY, cameraRotation } =
-      appState;
+    const { checkboardStyle } = appState;
+    const nextAppState = { ...oldAppState, ...appState };
+    const { cameraZoom, cameraX, cameraY, cameraRotation } = nextAppState;
 
     if (checkboardStyle && checkboardStyle !== oldAppState.checkboardStyle) {
       safeAddComponent(this.#canvas, Grid, {
@@ -180,12 +193,12 @@ export class API {
     }
 
     if (
-      (cameraZoom && cameraZoom !== oldAppState.cameraZoom) ||
-      (cameraX && cameraX !== oldAppState.cameraX) ||
-      (cameraY && cameraY !== oldAppState.cameraY) ||
-      (cameraRotation && cameraRotation !== oldAppState.cameraRotation)
+      cameraZoom !== oldAppState.cameraZoom ||
+      cameraX !== oldAppState.cameraX ||
+      cameraY !== oldAppState.cameraY ||
+      cameraRotation !== oldAppState.cameraRotation
     ) {
-      if (this.#camera.has(ComputedCamera)) {
+      if (this.#camera?.has(ComputedCamera)) {
         this.gotoLandmark(
           {
             zoom: cameraZoom ?? 1,
@@ -210,10 +223,7 @@ export class API {
       }
     }
 
-    this.stateManagement.setAppState({
-      ...oldAppState,
-      ...appState,
-    });
+    this.stateManagement.setAppState(nextAppState);
   }
 
   getNodes() {
@@ -543,6 +553,7 @@ export class API {
     const EPSILON = 0.0001;
 
     const animate = (timestamp: number) => {
+      if (this.#destroyed) return;
       if (timeStart === undefined) {
         timeStart = timestamp;
       }
@@ -586,12 +597,14 @@ export class API {
         if (onframe) {
           onframe(t);
         }
-        this.#landmarkAnimationID =
-          DOMAdapter.get().requestAnimationFrame(animate);
+        if (!this.#destroyed) {
+          this.#landmarkAnimationID =
+            DOMAdapter.get().requestAnimationFrame(animate);
+        }
       }
     };
 
-    DOMAdapter.get().requestAnimationFrame(animate);
+    this.#landmarkAnimationID = DOMAdapter.get().requestAnimationFrame(animate);
   }
 
   private applyLandmark(landmark: Landmark) {
@@ -800,12 +813,11 @@ export class API {
       }
     });
 
+    const ids = new Set(nodes.map((node) => node.id));
     const prevAppState = this.getAppState();
     this.setAppState({
       ...prevAppState,
-      layersSelected: prevAppState.layersSelected.filter(
-        (id) => !nodes.map((node) => node.id).includes(id),
-      ),
+      layersSelected: prevAppState.layersSelected.filter((id) => !ids.has(id)),
     });
   }
 
@@ -856,11 +868,12 @@ export class API {
       }
     });
 
+    const ids = new Set(nodes.map((node) => node.id));
     const prevAppState = this.getAppState();
     this.setAppState({
       ...prevAppState,
       layersHighlighted: prevAppState.layersHighlighted.filter(
-        (id) => !nodes.map((node) => node.id).includes(id),
+        (id) => !ids.has(id),
       ),
     });
   }
@@ -904,11 +917,10 @@ export class API {
       }
     } else {
       const updated = mutateElement(entity, node, diff ?? node);
-      const index = nodes.findIndex((n) => n.id === updated.id);
-
       this.commands.execute();
 
       if (updateAppState) {
+        const index = nodes.findIndex((n) => n.id === updated.id);
         if (index !== -1) {
           nodes[index] = updated;
           this.setNodes(nodes);
@@ -924,6 +936,9 @@ export class API {
    * @see https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api/props/excalidraw-api#updatescene
    */
   updateNodes(nodes: SerializedNode[], updateAppState = true) {
+    if (!nodes.length) return;
+    const nextNodes = updateAppState ? this.getNodes().slice() : [];
+    const indices = new Map(nextNodes.map((node, index) => [node.id, index]));
     const existentNodes = nodes.filter((node) =>
       this.#idEntityMap.has(node.id),
     );
@@ -957,15 +972,72 @@ export class API {
       this.commands.execute();
 
       if (updateAppState) {
-        this.setNodes([...this.getNodes(), ...nonExistentNodes]);
+        nextNodes.push(...nonExistentNodes);
       }
     }
 
     if (existentNodes.length > 0) {
       existentNodes.forEach((node) => {
-        this.updateNode(node, undefined, updateAppState);
+        this.updateNode(node, undefined, false);
+        const index = indices.get(node.id);
+        if (updateAppState && index !== undefined) nextNodes[index] = node;
       });
     }
+    if (updateAppState) this.setNodes(nextNodes);
+  }
+
+  /**
+   * Apply a complete document snapshot. Missing IDs are deleted, unlike updateNodes.
+   * Call inside runAtNextTick when applying an asynchronous remote update.
+   */
+  replaceDocument(
+    nodes: readonly SerializedNode[],
+    source: 'local' | 'remote' = 'remote',
+  ) {
+    const next = structuredClone(nodes.filter((node) => !node.isDeleted));
+    validateDocument(next);
+    next.forEach((node) => {
+      if ([node.x, node.y, node.width, node.height].some(isNil))
+        inferXYWidthHeight(node);
+    });
+    const previous = this.getNodes();
+    const previousById = new Map(previous.map((node) => [node.id, node]));
+    const nextIds = new Set(next.map((node) => node.id));
+    const changed = next.filter(
+      (node) => !documentValueEqual(previousById.get(node.id), node),
+    );
+    // Structural changes and removed attributes need fresh components with their defaults.
+    const rebuild = changed.some((node) => {
+      const old = previousById.get(node.id);
+      return (
+        old &&
+        (old.type !== node.type ||
+          old.parentId !== node.parentId ||
+          Object.keys(old).some(
+            (key) => old[key] !== undefined && node[key] === undefined,
+          ))
+      );
+    });
+    const selected = this.getAppState().layersSelected.filter((id) =>
+      nextIds.has(id),
+    );
+    const removed = previous.filter((node) => rebuild || !nextIds.has(node.id));
+    if (removed.length)
+      this.deleteNodesById(
+        removed.map((node) => node.id),
+        false,
+      );
+    // mutateElement updates local version metadata; keep the received document intact.
+    this.updateNodes(structuredClone(rebuild ? next : changed), false);
+    this.setNodes(next);
+    if (rebuild && selected.length) {
+      this.selectNodes(selected.map((id) => this.getNodeById(id)));
+    }
+    this.record(
+      source === 'remote'
+        ? CaptureUpdateAction.NEVER
+        : CaptureUpdateAction.IMMEDIATELY,
+    );
   }
 
   updateNodeVectorNetwork(node: SerializedNode, vectorNetwork: VectorNetwork) {}
@@ -1098,14 +1170,12 @@ export class API {
     return bounds;
   }
 
-  deleteNodesById(ids: SerializedNode['id'][]) {
-    const nodes = this.getNodes();
+  deleteNodesById(ids: SerializedNode['id'][], updateAppState = true) {
+    const idsToDelete = new Set(ids);
+    const nodes: SerializedNode[] = [];
     const deletedNodes: SerializedNode[] = [];
-    ids.forEach((id) => {
-      const index = nodes.findIndex((n) => id === n.id);
-      if (index !== -1) {
-        deletedNodes.push(...nodes.splice(index, 1));
-      }
+    this.getNodes().forEach((node) => {
+      (idsToDelete.has(node.id) ? deletedNodes : nodes).push(node);
     });
 
     this.deselectNodes(deletedNodes);
@@ -1119,7 +1189,7 @@ export class API {
       this.#idEntityMap.delete(node.id);
     });
 
-    this.setNodes(nodes);
+    if (updateAppState) this.setNodes(nodes);
 
     return deletedNodes;
   }
@@ -1247,21 +1317,29 @@ export class API {
 
   undo() {
     this.runAtNextTick(() => {
-      this.#history.undo(
+      const result = this.#history.undo(
         arrayToMap(this.getNodes()),
         this.getAppState(),
         this.#store.snapshot,
       );
+      if (result) {
+        this.record(CaptureUpdateAction.NEVER);
+        this.notifyChange();
+      }
     });
   }
 
   redo() {
     this.runAtNextTick(() => {
-      this.#history.redo(
+      const result = this.#history.redo(
         arrayToMap(this.getNodes()),
         this.getAppState(),
         this.#store.snapshot,
       );
+      if (result) {
+        this.record(CaptureUpdateAction.NEVER);
+        this.notifyChange();
+      }
     });
   }
 
@@ -1300,7 +1378,16 @@ export class API {
    * Delete Canvas component
    */
   destroy() {
-    this.#canvas.delete();
+    if (this.#destroyed) return;
+    this.#destroyed = true;
+    this.#tasks.dispose();
+    this.cancelLandmarkAnimation();
+    this.capabilities.dispose();
+    try {
+      this.#scope.dispose();
+    } finally {
+      this.#canvas.delete();
+    }
   }
 
   loadBitmapFont(bitmapFont: BitmapFont) {
@@ -1323,7 +1410,29 @@ export class API {
   }
 
   runAtNextTick(fn: () => any) {
-    pendingAPICallings.push(fn);
+    this.#tasks.add(fn);
+  }
+
+  /** @internal Called by the owning world's Deleter system. */
+  flushPendingTasks() {
+    this.#tasks.flush();
+  }
+
+  private async runImageTask<T>(
+    message: string,
+    task: () => Promise<T>,
+  ): Promise<T> {
+    if (this.#destroyed) throw new Error('Canvas has been destroyed');
+    this.#activeImageTasks++;
+    this.setAppState({ loading: true, loadingMessage: message });
+    try {
+      return await task();
+    } finally {
+      this.#activeImageTasks--;
+      if (!this.#destroyed && !this.#activeImageTasks) {
+        this.setAppState({ loading: false, loadingMessage: '' });
+      }
+    }
   }
 
   // AI APIs
@@ -1336,21 +1445,27 @@ export class API {
     prompt: string,
     image_urls: string[],
   ): Promise<{ images: Image[]; description: string }> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Generating image...', () =>
+      this.capabilities.get('createOrEditImage')(isEdit, prompt, image_urls),
+    );
   }
 
   /**
    * Upload the file to CDN and return an URL.
    */
   async upload(file: File): Promise<string> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Uploading image...', () =>
+      this.capabilities.get('upload')(file),
+    );
   }
 
   /**
    * Encode image before segmenting.
    */
   async encodeImage(image_url: string): Promise<void> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Encoding image...', () =>
+      this.capabilities.get('encodeImage')(image_url),
+    );
   }
 
   /**
@@ -1367,7 +1482,9 @@ export class API {
      */
     image: Image;
   }> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Segmenting image...', () =>
+      this.capabilities.get('segmentImage')(input),
+    );
   }
 
   /**
@@ -1379,7 +1496,9 @@ export class API {
   }): Promise<{
     images: Image[];
   }> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Decomposing image...', () =>
+      this.capabilities.get('decomposeImage')(input),
+    );
   }
 
   /**
@@ -1389,14 +1508,18 @@ export class API {
     image_url: string;
     scale_factor?: number;
   }): Promise<Image> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Upscaling image...', () =>
+      this.capabilities.get('upscaleImage')(input),
+    );
   }
 
   async removeByMask(input: {
     image_url: string;
     mask: HTMLCanvasElement;
   }): Promise<Image> {
-    throw new Error('Not implemented');
+    return this.runImageTask('Removing by mask...', () =>
+      this.capabilities.get('removeByMask')(input),
+    );
   }
 }
 

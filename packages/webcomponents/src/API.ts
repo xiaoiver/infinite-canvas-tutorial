@@ -119,16 +119,18 @@ export class ExtendedAPI extends API {
     }
   }
 
-  deleteNodesById(ids: SerializedNode['id'][]) {
-    const nodes = super.deleteNodesById(ids);
+  deleteNodesById(ids: SerializedNode['id'][], updateAppState = true) {
+    const nodes = super.deleteNodesById(ids, updateAppState);
 
-    this.element.dispatchEvent(
-      new CustomEvent(Event.NODE_DELETED, {
-        detail: {
-          nodes,
-        },
-      }),
-    );
+    if (updateAppState) {
+      this.element.dispatchEvent(
+        new CustomEvent(Event.NODE_DELETED, {
+          detail: {
+            nodes,
+          },
+        }),
+      );
+    }
 
     return nodes;
   }

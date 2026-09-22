@@ -90,6 +90,8 @@ export class BatchManager {
    * Drawcalls to flush in the next frame.
    */
   #drawcallsToFlush: Drawcall[] = [];
+  // WeakMap caches cannot be enumerated during teardown.
+  #ownedDrawcalls = new Set<Drawcall>();
 
   /**
    * Cache drawcalls for non batchable shape.
@@ -152,6 +154,7 @@ export class BatchManager {
         index,
         this.api,
       ) as Drawcall;
+      this.#ownedDrawcalls.add(drawcall);
       drawcall.add(shape);
       return drawcall;
     });
@@ -173,6 +176,11 @@ export class BatchManager {
         existed = newDrawcalls;
         this.remove(shape);
         this.add(shape, existed);
+      } else {
+        newDrawcalls.forEach((drawcall) => {
+          drawcall.destroy();
+          this.#ownedDrawcalls.delete(drawcall);
+        });
       }
       this.#nonBatchableDrawcallsCache.set(shape, existed);
     }
@@ -273,6 +281,7 @@ export class BatchManager {
       this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
         if (destroy) {
           drawcall.destroy();
+          this.#ownedDrawcalls.delete(drawcall);
         }
 
         if (this.#drawcallsToFlush.includes(drawcall)) {
@@ -310,20 +319,15 @@ export class BatchManager {
   }
 
   destroy() {
-    for (const key in this.#nonBatchableDrawcallsCache) {
-      this.#nonBatchableDrawcallsCache[key].forEach((drawcall) => {
-        if (!drawcall.destroyed) {
-          drawcall.destroy();
-        }
-      });
-    }
-    for (const key in this.#batchableDrawcallsCache) {
-      this.#batchableDrawcallsCache[key].forEach((drawcall) => {
-        if (!drawcall.destroyed) {
-          drawcall.destroy();
-        }
-      });
-    }
+    this.#ownedDrawcalls.forEach((drawcall) => {
+      if (!drawcall.destroyed) drawcall.destroy();
+    });
+    this.#ownedDrawcalls.clear();
+    this.#nonBatchableDrawcallsCache = new WeakMap();
+    this.#batchableDrawcallsCache = new WeakMap();
+    this.#instancesCache = Object.create(null);
+    this.#hidedUIs = [];
+    this.clear();
   }
 
   clear() {

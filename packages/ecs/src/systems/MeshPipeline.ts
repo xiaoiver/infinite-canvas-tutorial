@@ -74,7 +74,6 @@ import {
   makeBackbufferDescSimple,
   opaqueWhiteFullClearRenderPassDescriptor,
 } from '../render-graph/utils';
-import { RenderGraph } from '../render-graph/RenderGraph';
 import { PostProcessingRenderer } from '../render-graph/PostProcessingRenderer';
 
 type GPURenderer = {
@@ -83,7 +82,7 @@ type GPURenderer = {
   gridRenderer: GridRenderer;
   batchManager: BatchManager;
   filters: Record<Effect['type'], PostProcessingRenderer>;
-  renderGraph: RenderGraph;
+  dispose: () => void;
 };
 
 export class MeshPipeline extends System {
@@ -273,10 +272,13 @@ export class MeshPipeline extends System {
     canvas.remove(RasterScreenshotRequest);
   }
 
-  private createRenderer(gpuResource: GPUResource, api: API) {
-    const { device, swapChain, renderCache, texturePool, renderGraph } =
-      gpuResource;
-    return {
+  private createRenderer(
+    gpuResource: GPUResource,
+    api: API,
+    onDispose?: () => void,
+  ): GPURenderer {
+    const { device, swapChain, renderCache, texturePool, scope } = gpuResource;
+    const renderer: GPURenderer = {
       uniformBuffer: device.createBuffer({
         viewOrSize: (16 * 3 + 4 * 5) * Float32Array.BYTES_PER_ELEMENT,
         usage: BufferUsage.UNIFORM,
@@ -292,8 +294,16 @@ export class MeshPipeline extends System {
         texturePool,
         api,
       ),
-      renderGraph,
+      dispose: undefined,
     };
+    renderer.dispose = scope.add(() => {
+      onDispose?.();
+      renderer.gridRenderer.destroy();
+      Object.values(renderer.filters).forEach((filter) => filter.destroy());
+      renderer.batchManager.destroy();
+      renderer.uniformBuffer.destroy();
+    });
+    return renderer;
   }
 
   private renderCamera(canvas: Entity, camera: Entity, sort = false) {
@@ -322,134 +332,147 @@ export class MeshPipeline extends System {
     if (shouldRenderPartially) {
       // Render to offscreen canvas.
       gpuResource = this.setupDevice.getOffscreenGPUResource();
+      if (!gpuResource) return;
       renderer = this.createRenderer(gpuResource, api);
     } else {
       if (!this.renderers.get(camera)) {
-        this.renderers.set(camera, this.createRenderer(gpuResource, api));
+        this.renderers.set(
+          camera,
+          this.createRenderer(gpuResource, api, () => {
+            this.renderers.delete(camera);
+            this.pendingRenderables.delete(camera);
+          }),
+        );
       }
       renderer = this.renderers.get(camera);
     }
 
-    const { swapChain, device, renderCache, renderGraph } = gpuResource;
-    const { uniformBuffer, gridRenderer, batchManager, filters } = renderer;
+    try {
+      const { swapChain, device, renderCache, renderGraph } = gpuResource;
+      const { uniformBuffer, gridRenderer, batchManager, filters } = renderer;
 
-    const { width, height } = swapChain.getCanvas();
-    const onscreenTexture = swapChain.getOnscreenTexture();
+      const { width, height } = swapChain.getCanvas();
+      const onscreenTexture = swapChain.getOnscreenTexture();
 
-    if (request) {
-      batchManager.hideUIs();
-    }
+      if (request) {
+        batchManager.hideUIs();
+      }
 
-    const [buffer, legacyObject] = this.updateUniform(
-      canvas,
-      camera,
-      shouldRenderGrid,
-      swapChain,
-    );
-    renderer.uniformLegacyObject = legacyObject;
-
-    uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-
-    const renderInput = {
-      backbufferWidth: width,
-      backbufferHeight: height,
-      antialiasingMode: AntialiasingMode.None,
-    };
-
-    const mainColorDesc = makeBackbufferDescSimple(
-      RGAttachmentSlot.Color0,
-      renderInput,
-      makeAttachmentClearDescriptor(TransparentWhite),
-    );
-    const mainDepthDesc = makeBackbufferDescSimple(
-      RGAttachmentSlot.DepthStencil,
-      renderInput,
-      opaqueWhiteFullClearRenderPassDescriptor,
-    );
-
-    const builder = renderGraph.newGraphBuilder();
-
-    const mainColorTargetID = builder.createRenderTargetID(
-      mainColorDesc,
-      'Main Color',
-    );
-    const mainDepthTargetID = builder.createRenderTargetID(
-      mainDepthDesc,
-      'Main Depth',
-    );
-    builder.pushPass((pass) => {
-      pass.setDebugName('Main Render Pass');
-      pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-      pass.attachRenderTargetID(
-        RGAttachmentSlot.DepthStencil,
-        mainDepthTargetID,
+      const [buffer, legacyObject] = this.updateUniform(
+        canvas,
+        camera,
+        shouldRenderGrid,
+        swapChain,
       );
-      pass.exec((renderPass) => {
-        gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
-        if (shouldRenderPartially) {
-          const { api } = canvas.read(Canvas);
-          nodes.forEach((node: SerializedNode) => {
-            const entity = api.getEntity(node);
-            batchManager.add(entity);
-          });
-        } else {
-          if (this.pendingRenderables.has(camera)) {
-            this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-              if (type === 'remove') {
-                batchManager.remove(entity, !entity.has(Culled));
-              } else {
-                batchManager.add(entity);
-              }
-            });
-            this.pendingRenderables.delete(camera);
-          }
-        }
+      renderer.uniformLegacyObject = legacyObject;
 
-        if (sort) {
-          batchManager.sort();
-        }
-        batchManager.flush(renderPass, uniformBuffer, legacyObject, builder);
-      });
-    });
+      uniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
 
-    parseEffect(filter).forEach((effect) => {
+      const renderInput = {
+        backbufferWidth: width,
+        backbufferHeight: height,
+        antialiasingMode: AntialiasingMode.None,
+      };
+
+      const mainColorDesc = makeBackbufferDescSimple(
+        RGAttachmentSlot.Color0,
+        renderInput,
+        makeAttachmentClearDescriptor(TransparentWhite),
+      );
+      const mainDepthDesc = makeBackbufferDescSimple(
+        RGAttachmentSlot.DepthStencil,
+        renderInput,
+        opaqueWhiteFullClearRenderPassDescriptor,
+      );
+
+      const builder = renderGraph.newGraphBuilder();
+
+      const mainColorTargetID = builder.createRenderTargetID(
+        mainColorDesc,
+        'Main Color',
+      );
+      const mainDepthTargetID = builder.createRenderTargetID(
+        mainDepthDesc,
+        'Main Depth',
+      );
       builder.pushPass((pass) => {
-        pass.setDebugName(effect.type.toUpperCase());
+        pass.setDebugName('Main Render Pass');
         pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
-
-        const mainColorResolveTextureID =
-          builder.resolveRenderTarget(mainColorTargetID);
-        pass.attachResolveTexture(mainColorResolveTextureID);
-        pass.exec((passRenderer, scope) => {
-          if (!filters[effect.type]) {
-            filters[effect.type] = new PostProcessingRenderer(
-              device,
-              swapChain,
-              renderCache,
-            );
+        pass.attachRenderTargetID(
+          RGAttachmentSlot.DepthStencil,
+          mainDepthTargetID,
+        );
+        pass.exec((renderPass) => {
+          gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
+          if (shouldRenderPartially) {
+            const { api } = canvas.read(Canvas);
+            nodes.forEach((node: SerializedNode) => {
+              const entity = api.getEntity(node);
+              batchManager.add(entity);
+            });
+          } else {
+            if (this.pendingRenderables.has(camera)) {
+              this.pendingRenderables
+                .get(camera)
+                .forEach(({ type, entity }) => {
+                  if (type === 'remove') {
+                    batchManager.remove(entity, !entity.has(Culled));
+                  } else {
+                    batchManager.add(entity);
+                  }
+                });
+              this.pendingRenderables.delete(camera);
+            }
           }
-          filters[effect.type].render(
-            passRenderer,
-            scope.getResolveTextureForID(mainColorResolveTextureID),
-            effect,
-          );
+
+          if (sort) {
+            batchManager.sort();
+          }
+          batchManager.flush(renderPass, uniformBuffer, legacyObject, builder);
         });
       });
-    });
 
-    builder.resolveRenderTargetToExternalTexture(
-      mainColorTargetID,
-      onscreenTexture,
-    );
-    renderGraph.execute();
+      parseEffect(filter).forEach((effect) => {
+        builder.pushPass((pass) => {
+          pass.setDebugName(effect.type.toUpperCase());
+          pass.attachRenderTargetID(RGAttachmentSlot.Color0, mainColorTargetID);
 
-    if (request) {
-      const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
-        type,
-        encoderOptions,
+          const mainColorResolveTextureID =
+            builder.resolveRenderTarget(mainColorTargetID);
+          pass.attachResolveTexture(mainColorResolveTextureID);
+          pass.exec((passRenderer, scope) => {
+            if (!filters[effect.type]) {
+              filters[effect.type] = new PostProcessingRenderer(
+                device,
+                swapChain,
+                renderCache,
+              );
+            }
+            filters[effect.type].render(
+              passRenderer,
+              scope.getResolveTextureForID(mainColorResolveTextureID),
+              effect,
+            );
+          });
+        });
+      });
+
+      builder.resolveRenderTargetToExternalTexture(
+        mainColorTargetID,
+        onscreenTexture,
       );
-      this.setScreenshotTrigger(canvas, dataURL, download);
-      batchManager.showUIs();
+      renderGraph.execute();
+
+      if (request) {
+        const dataURL = (swapChain.getCanvas() as HTMLCanvasElement).toDataURL(
+          type,
+          encoderOptions,
+        );
+        this.setScreenshotTrigger(canvas, dataURL, download);
+      }
+    } finally {
+      if (request) renderer.batchManager.showUIs();
+      if (shouldRenderPartially) renderer.dispose();
     }
   }
 
@@ -577,17 +600,8 @@ export class MeshPipeline extends System {
   }
 
   finalize() {
-    this.renderers.forEach(
-      ({ gridRenderer, batchManager, renderGraph, filters }) => {
-        gridRenderer.destroy();
-        Object.values(filters).forEach((filter) => {
-          filter.destroy();
-        });
-        batchManager.clear();
-        batchManager.destroy();
-        renderGraph.destroy();
-      },
-    );
+    this.renderers.forEach((renderer) => renderer.dispose());
+    this.renderers.clear();
   }
 
   private updateUniform(

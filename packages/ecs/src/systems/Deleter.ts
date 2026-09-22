@@ -1,7 +1,6 @@
 import { System } from '@lastolivegames/becsy';
-import { ToBeDeleted } from '../components';
+import { Canvas, ToBeDeleted } from '../components';
 import { ViewportCulling } from './ViewportCulling';
-import { pendingAPICallings } from '..';
 /**
  * Deletes entities with the {@link ToBeDeleted} component.
  * @see https://lastolivegames.github.io/becsy/guide/architecture/entities#deleting-entities
@@ -12,19 +11,20 @@ export class Deleter extends System {
 
   viewportCulling = this.attach(ViewportCulling);
 
+  private canvases = this.query((q) => q.current.with(Canvas).read);
+
   execute() {
-    if (pendingAPICallings.length) {
-      pendingAPICallings.forEach((fn) => fn());
-      pendingAPICallings.length = 0;
-    }
+    this.canvases.current.forEach((canvas) => {
+      canvas.read(Canvas).api?.flushPendingTasks();
+    });
 
     for (const entity of this.entities.current) {
       /**
        * Execute before node removed from scenegraph.
        */
       this.viewportCulling.remove(entity);
-
-      entity.delete();
     }
+    // Remove every spatial entry while parent links are still available.
+    for (const entity of this.entities.current) entity.delete();
   }
 }

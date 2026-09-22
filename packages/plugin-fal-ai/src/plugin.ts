@@ -4,7 +4,7 @@ import {
   system,
   PluginWithConfig,
 } from '@infinite-canvas-tutorial/ecs';
-import { fal } from '@fal-ai/client';
+import { createFalClient } from '@fal-ai/client';
 import { FalAISystem } from './system';
 
 export interface FalAIPluginOptions {
@@ -24,11 +24,12 @@ export interface FalAIPluginOptions {
 export const FalAIPlugin: PluginWithConfig<FalAIPluginOptions> = {
   configure(options: FalAIPluginOptions): Plugin {
     return () => {
-      // Configure fal client with credentials before registering the system
-      fal.config({
-        credentials: options.credentials,
-      });
-      system((s) => s.after(PreStartUp))(FalAISystem);
+      class ConfiguredFalAISystem extends FalAISystem {
+        protected client = createFalClient({
+          credentials: options.credentials,
+        });
+      }
+      system((s) => s.after(PreStartUp))(ConfiguredFalAISystem);
     };
   },
 };

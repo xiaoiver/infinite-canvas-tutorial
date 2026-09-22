@@ -1,6 +1,6 @@
 // input: onnx Tensor [1, 3, W, H], output: Canvas [W, H, 4]
 export function imgTensorToCanvas(imgTensor: any): HTMLCanvasElement {
-  const [bs, colors, width, height] = imgTensor.dims;
+  const [, colors, width, height] = imgTensor.dims;
   const stride = width * height;
 
   console.log('imgTensorToCanvas', colors, width, height, imgTensor.dims);
@@ -8,7 +8,7 @@ export function imgTensorToCanvas(imgTensor: any): HTMLCanvasElement {
   const C = 4; // 4 output channels, RGBA
   const imageData = new Uint8ClampedArray(width * height * C);
 
-  let srcIdx, dstIdx;
+  let dstIdx;
   for (let i = 0; i < width * height; i++) {
     dstIdx = i * C;
     imageData[dstIdx] = tensorData[i];
@@ -110,40 +110,18 @@ export function maskCanvasToFloat32Array(canvas: HTMLCanvasElement): {
 }
 
 export function image2Canvas(url: string): Promise<HTMLCanvasElement> {
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = url;
-
   return new Promise((resolve, reject) => {
-    img.onload = function () {
-      const largestDim =
-        img.naturalWidth > img.naturalHeight
-          ? img.naturalWidth
-          : img.naturalHeight;
-      const box = resizeAndPadBox(
-        { h: img.naturalHeight, w: img.naturalWidth },
-        { h: largestDim, w: largestDim },
-      )!;
-
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
       const canvas = document.createElement('canvas');
-      canvas.width = largestDim;
-      canvas.height = largestDim;
-
-      canvas
-        .getContext('2d')!
-        .drawImage(
-          img,
-          0,
-          0,
-          img.naturalWidth,
-          img.naturalHeight,
-          box.x,
-          box.y,
-          box.w,
-          box.h,
-        );
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      canvas.getContext('2d')!.drawImage(image, 0, 0);
       resolve(canvas);
     };
+    image.onerror = () => reject(new Error('Failed to load image'));
+    image.src = url;
   });
 }
 

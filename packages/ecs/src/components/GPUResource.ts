@@ -3,6 +3,7 @@ import { field } from '@lastolivegames/becsy';
 import { RenderCache } from '../utils';
 import { TexturePool } from '../resources';
 import { RenderGraph } from '../render-graph/RenderGraph';
+import { ResourceScope } from '../resources/ResourceScope';
 
 export class GPUResource {
   @field.object declare device: Device;
@@ -10,6 +11,7 @@ export class GPUResource {
   @field.object declare renderCache: RenderCache;
   @field.object declare renderGraph: RenderGraph;
   @field.object declare texturePool: TexturePool;
+  @field.object declare scope: ResourceScope;
 
   constructor(value?: Partial<GPUResource>) {
     Object.assign(this, value);

@@ -7,6 +7,7 @@ const esm = [
   'roughjs',
   'fractional-indexing',
   'point-to-segment-2d',
+  'uuid',
 ]
   .map((d) => `_${d}|${d}`)
   .join('|');

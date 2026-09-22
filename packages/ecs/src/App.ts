@@ -28,7 +28,12 @@ export class App {
    */
   #plugins: (Plugin | [Plugin, any] | PluginWithConfig<any>)[] = [];
 
-  #rafId: number;
+  #rafId: number | undefined;
+  #runPromise: Promise<this>;
+  #exitPromise: Promise<void>;
+  #frame: Promise<void>;
+  #exiting = false;
+  #adapter: ReturnType<typeof DOMAdapter.get>;
 
   /**
    * @example
@@ -61,7 +66,13 @@ export class App {
   /**
    * Start the app and run all systems.
    */
-  async run() {
+  run(): Promise<this> {
+    if (this.#exiting) return Promise.reject(new Error('App has exited'));
+    return (this.#runPromise ??= this.start());
+  }
+
+  private async start() {
+    this.#adapter = DOMAdapter.get();
     // Create a global init system.
     @system(PreStartUp)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -117,10 +128,17 @@ export class App {
     });
 
     const tick = async () => {
-      await this.world.execute();
-      this.#rafId = DOMAdapter.get().requestAnimationFrame(tick);
+      this.#rafId = undefined;
+      if (this.#exiting) return;
+      this.#frame = this.world.execute();
+      await this.#frame;
+      if (!this.#exiting) {
+        this.#rafId = this.#adapter.requestAnimationFrame(tick);
+      }
     };
-    this.#rafId = DOMAdapter.get().requestAnimationFrame(tick);
+    if (!this.#exiting) {
+      this.#rafId = this.#adapter.requestAnimationFrame(tick);
+    }
 
     return this;
   }
@@ -129,8 +147,22 @@ export class App {
    * Exit the app.
    * @see https://bevy-cheatbook.github.io/programming/app-builder.html#quitting-the-app
    */
-  async exit() {
-    DOMAdapter.get().cancelAnimationFrame(this.#rafId);
-    await this.world.terminate();
+  exit(): Promise<void> {
+    if (!this.#runPromise) return Promise.resolve();
+    if (this.#exitPromise) return this.#exitPromise;
+    this.#exiting = true;
+    if (this.#rafId !== undefined) {
+      this.#adapter.cancelAnimationFrame(this.#rafId);
+      this.#rafId = undefined;
+    }
+    this.#exitPromise = (async () => {
+      await this.#runPromise;
+      try {
+        await this.#frame;
+      } finally {
+        await this.world.terminate();
+      }
+    })();
+    return this.#exitPromise;
   }
 }

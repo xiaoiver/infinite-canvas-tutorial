@@ -2,14 +2,52 @@ import { AppState, getDefaultAppState } from '../context';
 import { isShallowEqual } from './Delta';
 import { randomInteger, SerializedNode } from '../utils';
 import { getUpdatedTimestamp } from './ElementsChange';
+import { observeAppState, ObservedAppState } from './ObservedAppState';
+import { documentValueEqual } from '../document';
 
 type OrderedExcalidrawElement = SerializedNode;
-type ObservedAppState = AppState;
+
+/**
+ * @see https://github.com/excalidraw/excalidraw/blob/ab89d4c16f53bd1e06cb980c600f0952b7a3d7d3/packages/excalidraw/element/mutateElement.ts#L152
+ */
+export const newElementWith = <TElement extends SerializedNode>(
+  element: TElement,
+  updates: Partial<TElement>,
+  /** pass `true` to always regenerate */
+  force = false,
+): TElement => {
+  let didChange = false;
+  for (const key in updates) {
+    const value = (updates as any)[key];
+    if (typeof value !== 'undefined') {
+      if (
+        (element as any)[key] === value &&
+        // if object, always update because its attrs could have changed
+        (typeof value !== 'object' || value === null)
+      ) {
+        continue;
+      }
+      didChange = true;
+    }
+  }
+
+  if (!didChange && !force) {
+    return element;
+  }
+
+  return {
+    ...element,
+    ...updates,
+    updated: getUpdatedTimestamp(),
+    version: (element.version || 0) + 1,
+    versionNonce: randomInteger(),
+  };
+};
 
 export class Snapshot {
   private constructor(
     public readonly elements: Map<string, SerializedNode>,
-    public readonly appState: AppState,
+    public readonly appState: ObservedAppState,
     public readonly meta: {
       didElementsChange: boolean;
       didAppStateChange: boolean;
@@ -22,7 +60,7 @@ export class Snapshot {
   ) {}
 
   static empty() {
-    return new Snapshot(new Map(), getDefaultAppState(), {
+    return new Snapshot(new Map(), observeAppState(getDefaultAppState()), {
       didElementsChange: false,
       didAppStateChange: false,
       isEmpty: true,
@@ -30,7 +68,7 @@ export class Snapshot {
   }
 
   isEmpty() {
-    return this.meta.isEmpty;
+    return !!this.meta.isEmpty;
   }
   /**
    * Efficiently clone the existing snapshot, only if we detected changes.
@@ -51,7 +89,7 @@ export class Snapshot {
     if (this.appState !== nextAppStateSnapshot) {
       didAppStateChange = true;
     }
-    if (!didElementsChange && !didAppStateChange) {
+    if (!this.isEmpty() && !didElementsChange && !didAppStateChange) {
       return this;
     }
     const snapshot = new Snapshot(nextElementsSnapshot, nextAppStateSnapshot, {
@@ -67,11 +105,7 @@ export class Snapshot {
     if (!appState) {
       return this.appState;
     }
-    // Not watching over everything from the app state, just the relevant props
-    // const nextAppStateSnapshot = !isObservedAppState(appState)
-    //   ? getObservedAppState(appState)
-    //   : appState;
-    const nextAppStateSnapshot = appState;
+    const nextAppStateSnapshot = observeAppState(appState);
     const didAppStateChange = this.detectChangedAppState(nextAppStateSnapshot);
     if (!didAppStateChange) {
       return this.appState;
@@ -80,8 +114,7 @@ export class Snapshot {
   }
   private detectChangedAppState(nextObservedAppState: ObservedAppState) {
     return !isShallowEqual(this.appState, nextObservedAppState, {
-      // selectedElementIds: isShallowEqual,
-      // selectedGroupIds: isShallowEqual,
+      layersSelected: isShallowEqual,
     });
   }
   private maybeCreateElementsSnapshot(
@@ -121,7 +154,8 @@ export class Snapshot {
         !prev ||
         !next ||
         prev.id !== next.id ||
-        prev.versionNonce !== next.versionNonce
+        prev.versionNonce !== next.versionNonce ||
+        !documentValueEqual(prev, next)
       ) {
         return true;
       }
@@ -143,7 +177,9 @@ export class Snapshot {
         // When we cannot find the prev element in the next elements, we mark it as deleted
         clonedElements.set(
           id,
-          newElementWith(prevElement, { isDeleted: true }),
+          prevElement.isDeleted
+            ? prevElement
+            : newElementWith(prevElement, { isDeleted: true }),
         );
       } else {
         clonedElements.set(id, prevElement);
@@ -154,7 +190,7 @@ export class Snapshot {
       // At this point our elements are reconcilled already, meaning the next element is always newer
       if (
         !prevElement || // element was added
-        (prevElement && prevElement.versionNonce !== nextElement.versionNonce) // element was updated
+        (prevElement && !documentValueEqual(prevElement, nextElement)) // element was updated
       ) {
         // @see https://github.com/you-dont-need/You-Dont-Need-Lodash-Underscore?tab=readme-ov-file#_clonedeep
         clonedElements.set(id, structuredClone(nextElement));
@@ -163,40 +199,3 @@ export class Snapshot {
     return clonedElements;
   }
 }
-
-/**
- * @see https://github.com/excalidraw/excalidraw/blob/ab89d4c16f53bd1e06cb980c600f0952b7a3d7d3/packages/excalidraw/element/mutateElement.ts#L152
- */
-export const newElementWith = <TElement extends SerializedNode>(
-  element: TElement,
-  updates: Partial<TElement>,
-  /** pass `true` to always regenerate */
-  force = false,
-): TElement => {
-  let didChange = false;
-  for (const key in updates) {
-    const value = (updates as any)[key];
-    if (typeof value !== 'undefined') {
-      if (
-        (element as any)[key] === value &&
-        // if object, always update because its attrs could have changed
-        (typeof value !== 'object' || value === null)
-      ) {
-        continue;
-      }
-      didChange = true;
-    }
-  }
-
-  if (!didChange && !force) {
-    return element;
-  }
-
-  return {
-    ...element,
-    ...updates,
-    updated: getUpdatedTimestamp(),
-    version: (element.version || 0) + 1,
-    versionNonce: randomInteger(),
-  };
-};

@@ -105,7 +105,7 @@ export class LAMA {
   }
 
   async removeArea(imageTensor, maskTensor) {
-    const [session, device] = await this.getORTSession();
+    const [session] = await this.getORTSession();
     const results = await session.run({
       image: imageTensor,
       mask: maskTensor,
@@ -122,27 +122,35 @@ const lama = new LAMA();
 self.onmessage = async (e) => {
   console.log('worker received message', e.data);
 
-  const { type, data } = e.data;
+  const { type, data, requestId } = e.data;
+  const reply = (message) => self.postMessage({ ...message, requestId });
+  try {
+    if (type === 'ping') {
+      reply({ type: 'downloadInProgress' });
+      await lama.downloadModels();
 
-  if (type === 'ping') {
-    self.postMessage({ type: 'downloadInProgress' });
-    await lama.downloadModels();
+      reply({ type: 'loadingInProgress' });
+      const report = await lama.createSessions();
 
-    self.postMessage({ type: 'loadingInProgress' });
-    const report = await lama.createSessions();
+      reply({ done: true, type: 'pong', data: report });
+    } else if (type === 'runRemove') {
+      const { imgArray, imgArrayShape, maskArray, maskArrayShape } = data;
 
-    self.postMessage({ type: 'pong', data: report });
-  } else if (type === 'runRemove') {
-    const { imgArray, imgArrayShape, maskArray, maskArrayShape } = data;
+      const imgTensor = new Tensor('float32', imgArray, imgArrayShape);
+      const maskTensor = new Tensor('float32', maskArray, maskArrayShape);
 
-    const imgTensor = new Tensor('float32', imgArray, imgArrayShape);
-    const maskTensor = new Tensor('float32', maskArray, maskArrayShape);
+      const result = await lama.removeArea(imgTensor, maskTensor);
 
-    const result = await lama.removeArea(imgTensor, maskTensor);
-
-    // result.output is the
-    self.postMessage({ type: 'removeDone', data: result.output });
-  } else {
-    throw new Error(`Unknown message type: ${type}`);
+      // result.output is the
+      reply({ done: true, type: 'removeDone', data: result.output });
+    } else {
+      throw new Error(`Unknown message type: ${type}`);
+    }
+  } catch (error) {
+    reply({
+      done: true,
+      type: 'error',
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 };

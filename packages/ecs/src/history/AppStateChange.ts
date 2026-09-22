@@ -7,10 +7,11 @@ import { API } from '../API';
 import { Change } from './Change';
 import { Delta } from './Delta';
 import { SceneElementsMap } from './ElementsChange';
+import { observeAppState, ObservedAppState } from './ObservedAppState';
 
 export class AppStateChange implements Change<AppState> {
   private constructor(
-    private readonly delta: Delta<AppState>,
+    private readonly delta: Delta<ObservedAppState>,
     private readonly api: API,
   ) {}
 
@@ -18,46 +19,20 @@ export class AppStateChange implements Change<AppState> {
     return new AppStateChange(Delta.create({}, {}), undefined);
   }
 
-  static calculate<T extends AppState>(
+  static calculate<T extends ObservedAppState>(
     prevAppState: T,
     nextAppState: T,
     api: API,
   ): AppStateChange {
     const delta = Delta.calculate(
-      prevAppState,
-      nextAppState,
+      observeAppState(prevAppState),
+      observeAppState(nextAppState),
       undefined,
       // AppStateChange.postProcess,
     );
 
     return new AppStateChange(delta, api);
   }
-
-  // private static postProcess<T extends ObservedAppState>(
-  //   deleted: Partial<T>,
-  //   inserted: Partial<T>,
-  // ): [Partial<T>, Partial<T>] {
-  //   try {
-  //     Delta.diffObjects(
-  //       deleted,
-  //       inserted,
-  //       "selectedElementIds",
-  //       // ts language server has a bit trouble resolving this, so we are giving it a little push
-  //       (_) => true as ValueOf<T["selectedElementIds"]>,
-  //     );
-  //     Delta.diffObjects(
-  //       deleted,
-  //       inserted,
-  //       "selectedGroupIds",
-  //       (prevValue) => (prevValue ?? false) as ValueOf<T["selectedGroupIds"]>,
-  //     );
-  //   } catch (e) {
-  //     // if postprocessing fails it does not make sense to bubble up, but let's make sure we know about it
-  //     console.error(`Couldn't postprocess appstate change deltas.`);
-  //   } finally {
-  //     return [deleted, inserted];
-  //   }
-  // }
 
   inverse(): AppStateChange {
     const inversedDelta = Delta.create(this.delta.inserted, this.delta.deleted);
@@ -136,7 +111,17 @@ export class AppStateChange implements Change<AppState> {
     nextAppState: AppState,
     nextElements: SceneElementsMap,
   ): boolean {
-    return true;
+    nextAppState.layersSelected = nextAppState.layersSelected.filter(
+      (id) => nextElements.has(id) && !nextElements.get(id).isDeleted,
+    );
+    return (
+      prevAppState.filter !== nextAppState.filter ||
+      prevAppState.layersSelected.length !==
+        nextAppState.layersSelected.length ||
+      prevAppState.layersSelected.some(
+        (id, index) => id !== nextAppState.layersSelected[index],
+      )
+    );
   }
 
   isEmpty(): boolean {

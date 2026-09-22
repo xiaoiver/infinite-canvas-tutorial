@@ -117,7 +117,7 @@ class SAM2 {
   }
 
   async encodeImage(inputTensor) {
-    const [session, device] = await this.getEncoderSession();
+    const [session] = await this.getEncoderSession();
     const results = await session.run({ image: inputTensor });
 
     this.image_encoded = {
@@ -128,7 +128,7 @@ class SAM2 {
   }
 
   async decode(points, masks) {
-    const [session, device] = await this.getDecoderSession();
+    const [session] = await this.getDecoderSession();
     const point = points[0];
 
     const inputs = {
@@ -161,55 +161,62 @@ const sam = new SAM2();
 
 // eslint-disable-next-line no-undef
 self.onmessage = async (e) => {
-  const { type, data } = e.data;
+  const { type, data, requestId } = e.data;
+  const reply = (message) => self.postMessage({ ...message, requestId });
+  try {
+    if (type === 'ping') {
+      reply({ type: 'downloadInProgress' });
+      const startTime = performance.now();
+      await sam.downloadModels();
+      const durationMs = performance.now() - startTime;
+      stats.downloadModelsTime.push(durationMs);
 
-  if (type === 'ping') {
-    self.postMessage({ type: 'downloadInProgress' });
-    const startTime = performance.now();
-    await sam.downloadModels();
-    const durationMs = performance.now() - startTime;
-    stats.downloadModelsTime.push(durationMs);
+      reply({ type: 'loadingInProgress' });
+      const report = await sam.createSessions();
 
-    self.postMessage({ type: 'loadingInProgress' });
-    const report = await sam.createSessions();
+      stats.device = report.device;
 
-    stats.device = report.device;
+      reply({ done: true, type: 'pong', data: report });
+      reply({ type: 'stats', data: stats });
+    } else if (type === 'encodeImage') {
+      const { float32Array, shape } = data;
+      const imgTensor = new Tensor('float32', float32Array, shape);
 
-    self.postMessage({ type: 'pong', data: report });
-    self.postMessage({ type: 'stats', data: stats });
-  } else if (type === 'encodeImage') {
-    const { float32Array, shape } = data;
-    const imgTensor = new Tensor('float32', float32Array, shape);
+      const startTime = performance.now();
+      await sam.encodeImage(imgTensor);
+      const durationMs = performance.now() - startTime;
+      stats.encodeImageTimes.push(durationMs);
 
-    const startTime = performance.now();
-    await sam.encodeImage(imgTensor);
-    const durationMs = performance.now() - startTime;
-    stats.encodeImageTimes.push(durationMs);
+      reply({
+        done: true,
+        type: 'encodeImageDone',
+        data: { durationMs: durationMs },
+      });
+      reply({ type: 'stats', data: stats });
+    } else if (type === 'decodeMask') {
+      const { points, maskArray, maskShape } = data;
 
-    self.postMessage({
-      type: 'encodeImageDone',
-      data: { durationMs: durationMs },
-    });
-    self.postMessage({ type: 'stats', data: stats });
-  } else if (type === 'decodeMask') {
-    const { points, maskArray, maskShape } = data;
+      let decodingResults;
+      if (maskArray) {
+        const maskTensor = new Tensor('float32', maskArray, maskShape);
+        decodingResults = await sam.decode(points, maskTensor);
+      } else {
+        decodingResults = await sam.decode(points);
+      }
+      // decodingResults = Tensor [B=1, Masks, W, H]
 
-    const startTime = performance.now();
-
-    let decodingResults;
-    if (maskArray) {
-      const maskTensor = new Tensor('float32', maskArray, maskShape);
-      decodingResults = await sam.decode(points, maskTensor);
+      reply({ done: true, type: 'decodeMaskResult', data: decodingResults });
+      reply({ type: 'stats', data: stats });
+    } else if (type === 'stats') {
+      reply({ type: 'stats', data: stats });
     } else {
-      decodingResults = await sam.decode(points);
+      throw new Error(`Unknown message type: ${type}`);
     }
-    // decodingResults = Tensor [B=1, Masks, W, H]
-
-    self.postMessage({ type: 'decodeMaskResult', data: decodingResults });
-    self.postMessage({ type: 'stats', data: stats });
-  } else if (type === 'stats') {
-    self.postMessage({ type: 'stats', data: stats });
-  } else {
-    throw new Error(`Unknown message type: ${type}`);
+  } catch (error) {
+    reply({
+      done: true,
+      type: 'error',
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 };
