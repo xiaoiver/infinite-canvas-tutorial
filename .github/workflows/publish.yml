@@ -23,7 +23,7 @@ jobs:
       - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 20.14.0
+          node-version: 20
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -42,19 +42,13 @@ jobs:
         run: pnpm --filter '@infinite-canvas-tutorial/site' run build
 
       - name: Publish to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@4e88846969242f7752bcfdaf5511bfbb3985ca47 # v4.1.1
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 4abdc9b6ff77e69917753afff2a4ad14
-          projectName: infinite-canvas-tutorial
-          directory: packages/site/docs/.vitepress/dist
-          # Optional: Switch what branch you are publishing to.
-          # By default this will be the branch which triggered this workflow
-          branch: master
-          # Optional: Change the working directory
-          # workingDirectory: my-site
-          # Optional: Change the Wrangler version, allows you to point to a specific version or a tag such as `beta`
-          wranglerVersion: '3'
+          command: pages deploy packages/site/docs/.vitepress/dist --project-name=infinite-canvas-tutorial --branch=master
+          wranglerVersion: '4'
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
 
       # - name: Algolia crawler creation and crawl
       #   uses: algolia/algoliasearch-crawler-github-actions@v1.0.10
