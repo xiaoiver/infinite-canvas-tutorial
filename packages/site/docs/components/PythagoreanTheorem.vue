@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { App, Flex } from 'ant-design-vue';
+import { Flex } from 'ant-design-vue';
 import { Sender, Prompts, type PromptsProps } from 'ant-design-x-vue';
 import { BulbOutlined } from '@ant-design/icons-vue';
 import { ref, onMounted } from 'vue';
@@ -130,8 +130,6 @@ const Demo = () => {
 
   const value = ref('');
   const loading = ref<boolean>(false);
-
-  const { message } = App.useApp();
 
   const handleSendUserMessage = async (userMessage: string) => {
     loading.value = true;

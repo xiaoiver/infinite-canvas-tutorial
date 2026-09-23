@@ -8,7 +8,6 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 
-import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
 // import { UpscalerPlugin } from '@infinite-canvas-tutorial/upscaler';
 
 const wrapper = ref<HTMLElement | null>(null);

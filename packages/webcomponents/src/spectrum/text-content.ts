@@ -311,7 +311,6 @@ export class TextContent extends LitElement {
       fontSize,
       fontWeight,
       fontFamily,
-      fontVariant,
       fontStyle,
       textAlign = 'start',
       textBaseline = 'alphabetic',

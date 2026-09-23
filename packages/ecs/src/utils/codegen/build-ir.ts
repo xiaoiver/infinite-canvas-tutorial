@@ -6,7 +6,6 @@
  */
 import type {
   IconFontSerializedNode,
-  RectSerializedNode,
   RefSerializedNode,
   SerializedNode,
   SerializedFillLayerItem,

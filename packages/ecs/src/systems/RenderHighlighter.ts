@@ -28,11 +28,9 @@ import {
   ComputedCamera,
   Group,
   Brush,
-  Pen,
   Transformable,
   Visibility,
   Line,
-  OBB,
   StrokeLayers,
   Mesh3DNode,
   Mesh3DNodeTarget,
@@ -52,10 +50,6 @@ import { entityIsDeclarative3DNode } from '../utils/mesh3d-node';
  */
 export class RenderHighlighter extends System {
   private readonly commands = new Commands(this);
-
-  private readonly cameras = this.query((q) =>
-    q.current.and.added.with(Camera),
-  );
 
   private readonly highlighted = this.query((q) =>
     q.added.and.removed.with(Highlighted),
@@ -116,24 +110,6 @@ export class RenderHighlighter extends System {
   }
 
   execute() {
-    this.cameras.current.forEach((camera) => {
-      if (!camera.has(Camera)) {
-        return;
-      }
-
-      const { canvas } = camera.read(Camera);
-      if (!canvas) {
-        return;
-      }
-
-      const { api } = canvas.read(Canvas);
-      const pen = api.getAppState().penbarSelected;
-      // if (pen !== Pen.SELECT && pen !== Pen.DRAW_ARROW) {
-      //   api.highlightNodes([]);
-      //   return;
-      // }
-    });
-
     this.highlighted.removed.forEach((highlighted) => {
       if (!isEntityAlive(highlighted)) {
         return;

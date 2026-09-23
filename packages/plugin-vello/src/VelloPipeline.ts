@@ -69,7 +69,6 @@ import {
   parseColor,
   Group,
   computeObjectFitDrawRect,
-  fillLayerImageRasterOptions,
   getFillLayerDecodedBitmap,
   rasterizeFillLayerImageUrlForTexture,
   resolveFillLayerOpacityFromWire,

@@ -83,7 +83,7 @@ export class DrawPoint extends System {
         return;
       }
 
-      const { inputPoints, api } = canvas.read(Canvas);
+      const { api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
 
       if (pen !== Pen.DRAW_POINT) {
@@ -91,8 +91,6 @@ export class DrawPoint extends System {
       }
 
       const input = canvas.write(Input);
-      const cursor = canvas.write(Cursor);
-
       if (input.pointerUpTrigger) {
         if (isBrowser) {
           const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(

@@ -13,5 +13,8 @@
   },
   "front-matter": {
     "type": "yaml"
-  }
+  },
+  "MD029": false,
+  "MD030": false,
+  "MD007": { "indent": 4 }
 }

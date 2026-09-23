@@ -2,7 +2,6 @@
  * Full raindrop-fx GPU pipeline (blur, droplets, mist, instanced raindrops, compose).
  */
 import type {
-  Bindings,
   Buffer,
   Device,
   InputLayout,
@@ -28,7 +27,6 @@ import {
   Format,
   TextureUsage,
   TransparentBlack,
-  TransparentWhite,
   VertexStepMode,
   type MegaStateDescriptor,
 } from '@infinite-canvas-tutorial/device-api';

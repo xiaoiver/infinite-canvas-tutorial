@@ -217,10 +217,6 @@ function setAbsoluteTerminalPoint(edge: EdgeState, point: IPointData | null, sou
   }
 }
 
-function getEdgeStyle(edge: EdgeState, points: IPointData[], source: SerializedNode, target: SerializedNode) {
-
-}
-
 function pointInBounds(
   bounds: { x: number; y: number; width: number; height: number },
   point: IPointData,

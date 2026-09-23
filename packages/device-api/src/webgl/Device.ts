@@ -35,7 +35,6 @@ import {
   SwapChain,
   Texture,
   TextureDescriptor,
-  TransparentWhite,
   VendorInfo,
   VertexBufferDescriptor,
   defaultBindingLayoutSamplerDescriptor,
@@ -207,6 +206,8 @@ export class Device_GL implements SwapChain, Device {
   private renderPassDrawFramebuffer: WebGLFramebuffer;
   private readbackFramebuffer: WebGLFramebuffer;
 
+  private destroyed = false;
+  private fallbackTextures: Texture[] = [];
   private fallbackTexture2D: WebGLTexture;
   private fallbackTexture2DDepth: WebGLTexture;
   private fallbackTexture2DArray: WebGLTexture;
@@ -403,6 +404,8 @@ export class Device_GL implements SwapChain, Device {
   }
 
   destroy() {
+    if (this.destroyed) return;
+    this.destroyed = true;
     if (this.blitBindings) {
       this.blitBindings.destroy();
     }
@@ -417,6 +420,20 @@ export class Device_GL implements SwapChain, Device {
     }
     if (this.blitProgram) {
       this.blitProgram.destroy();
+    }
+    this.fallbackVertexBuffer.destroy();
+    this.fallbackTextures.forEach((texture) => texture.destroy());
+    this.fallbackTextures.length = 0;
+    this.scTexture?.destroy();
+    for (const framebuffer of [
+      this.resolveColorReadFramebuffer,
+      this.resolveColorDrawFramebuffer,
+      this.resolveDepthStencilReadFramebuffer,
+      this.resolveDepthStencilDrawFramebuffer,
+      this.renderPassDrawFramebuffer,
+      this.readbackFramebuffer,
+    ]) {
+      this.gl.deleteFramebuffer(framebuffer);
     }
   }
 
@@ -446,6 +463,7 @@ export class Device_GL implements SwapChain, Device {
     if (formatKind === SamplerFormatKind.Float) {
       texture.setImageData([new Uint8Array(4 * depthOrArrayLayers)]);
     }
+    this.fallbackTextures.push(texture);
     return getPlatformTexture(texture);
   }
 

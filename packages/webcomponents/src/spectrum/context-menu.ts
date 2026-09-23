@@ -79,9 +79,6 @@ function createSVG(
     .parseFromString(svg, 'image/svg+xml');
   const $svg = doc.documentElement as unknown as SVGSVGElement;
 
-  const width = $svg.width.baseVal.value;
-  const height = $svg.height.baseVal.value;
-
   // This method also works, but it may lose the namespace of the SVG element.
   // const $container = document.createElement('div');
   // $container.innerHTML = string;
@@ -193,7 +190,7 @@ export async function executePaste(
         // TODO: youtube, figma, google maps, etc.
 
         // Plain url, extract metadata
-        const meta = await extractExternalUrlMetadata(data.text);
+        await extractExternalUrlMetadata(data.text);
         // console.log(meta);
 
         // TODO: create bookmark asset
@@ -661,12 +658,12 @@ export class ContextMenu extends LitElement {
       event.preventDefault();
       this.api.selectNodes([]);
       this.api.record();
-    } else if (event.key === 'g' && event.metaKey) {
-      this.executeGroup();
-      event.preventDefault();
-      event.stopPropagation();
     } else if (event.key === 'g' && event.metaKey && event.shiftKey) {
       this.executeUngroup();
+      event.preventDefault();
+      event.stopPropagation();
+    } else if (event.key === 'g' && event.metaKey) {
+      this.executeGroup();
       event.preventDefault();
       event.stopPropagation();
     }

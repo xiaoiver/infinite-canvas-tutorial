@@ -355,7 +355,6 @@ function convertFlowchartToSerializedNodes(
   options: { fontSize: number },
 ): SerializedNode[] {
   const { fontSize } = options;
-
   const root: GSerializedNode = {
     id: uuidv4(),
     type: 'g',
@@ -498,8 +497,6 @@ function convertSequenceToSerializedNodes(
   groups: any,
   options: { fontSize: number },
 ): SerializedNode[] {
-  const { fontSize } = options;
-
   const root: GSerializedNode = {
     id: uuidv4(),
     type: 'g',
@@ -527,7 +524,6 @@ function convertSequenceToSerializedNodes(
           break;
         default:
           throw `unknown type ${element.type}`;
-          break;
       }
       if (element.type === "rectangle" && element?.subtype === "activation") {
         // activations.push(excalidrawElement);

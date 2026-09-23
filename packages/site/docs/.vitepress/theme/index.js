@@ -84,7 +84,7 @@ const props = {
 export default {
   extends: DefaultTheme,
   Layout: () => h(Layout, props),
-  async enhanceApp({ app }) {
+  async enhanceApp() {
     // @see https://vitepress.dev/guide/ssr-compat#conditional-import
     if (!import.meta.env.SSR) {
       // @see https://shoelace.style/tutorials/integrating-with-nextjs/#defining-custom-elements

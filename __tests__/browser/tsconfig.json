@@ -1,0 +1,26 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../..",
+    "baseUrl": "../..",
+    "paths": {
+      "@infinite-canvas-tutorial/ecs": [
+        "packages/ecs/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/device-api": [
+        "packages/device-api/src/index.ts"
+      ],
+      "yjs": [
+        "packages/site/node_modules/yjs/dist/src/index.d.ts"
+      ]
+    },
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "Bundler"
+  },
+  "include": [
+    "./**/*.ts",
+    "../../playwright.browser.config.ts"
+  ]
+}

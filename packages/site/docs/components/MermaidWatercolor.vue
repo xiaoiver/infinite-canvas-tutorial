@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import {
   Pen,
-  RendererPlugin,
-  DefaultRendererPlugin,
 } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
-import {
-  InitVello,
-  VelloPipeline,
-  registerFont,
-} from '@infinite-canvas-tutorial/vello';
 import { parseMermaidToSerializedNodes } from '@infinite-canvas-tutorial/mermaid';
 
 const wrapper = ref<HTMLElement | null>(null);

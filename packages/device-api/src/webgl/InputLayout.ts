@@ -135,16 +135,17 @@ export class InputLayout_GL extends ResourceBase_GL implements InputLayout {
   }
 
   destroy() {
+    if (!this.vao) return;
     super.destroy();
+    const gl = this.device.gl;
     if (this.device['currentBoundVAO'] === this.vao) {
-      if (isWebGL2(this.device.gl)) {
-        this.device.gl.bindVertexArray(null);
-        this.device.gl.deleteVertexArray(this.vao);
-      } else {
-        this.device.OES_vertex_array_object.bindVertexArrayOES(null);
-        this.device.OES_vertex_array_object.deleteVertexArrayOES(this.vao);
-      }
+      if (isWebGL2(gl)) gl.bindVertexArray(null);
+      else this.device.OES_vertex_array_object.bindVertexArrayOES(null);
       this.device['currentBoundVAO'] = null;
     }
+    // Unbound layouts still own a VAO and must release it.
+    if (isWebGL2(gl)) gl.deleteVertexArray(this.vao);
+    else this.device.OES_vertex_array_object.deleteVertexArrayOES(this.vao);
+    this.vao = null;
   }
 }

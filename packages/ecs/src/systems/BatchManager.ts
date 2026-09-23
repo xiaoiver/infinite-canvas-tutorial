@@ -15,7 +15,6 @@ import {
   makeBackbufferDescSimple,
   makeLayerBlendSrcColorDesc,
   layerBlendSrcDepthClearRenderPassDescriptor,
-  opaqueWhiteFullClearRenderPassDescriptor,
 } from '../render-graph/utils';
 import { Entity } from '@lastolivegames/becsy';
 import {

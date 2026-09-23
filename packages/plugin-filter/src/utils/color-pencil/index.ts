@@ -1,5 +1,4 @@
 import {
-  imageDataToPencilTexture,
   pencilDrawing,
   type PencilDrawingParams,
   type PencilTextureData,

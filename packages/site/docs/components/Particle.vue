@@ -2,7 +2,6 @@
 import { ref, onMounted } from 'vue';
 import { PLYLoader } from '@loaders.gl/ply';
 import { load } from '@loaders.gl/core';
-import { mat4 } from 'gl-matrix';
 
 const wrapper = ref < HTMLCanvasElement | null > (null);
 const button = ref < HTMLButtonElement | null > (null);

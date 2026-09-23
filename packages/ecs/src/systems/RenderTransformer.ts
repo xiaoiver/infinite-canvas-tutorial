@@ -241,7 +241,7 @@ export class RenderTransformer extends System {
         this.createRectMask(camera, transformable);
       }
 
-      const { selecteds, mask, lineMask, polylineMask } =
+      const { selecteds, mask, polylineMask } =
         camera.read(Transformable);
 
       const vectorNetworkEditing =

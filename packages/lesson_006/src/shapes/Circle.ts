@@ -35,7 +35,6 @@ export class Circle extends Shape {
   #fill: string;
   #fillRGB: d3.RGBColor;
   #stroke: string;
-  #strokeRGB: d3.RGBColor;
   #strokeWidth: number;
 
   #program: Program;
@@ -112,7 +111,6 @@ export class Circle extends Shape {
   set stroke(stroke: string) {
     if (this.#stroke !== stroke) {
       this.#stroke = stroke;
-      this.#strokeRGB = d3.rgb(stroke);
       this.renderDirtyFlag = true;
     }
   }

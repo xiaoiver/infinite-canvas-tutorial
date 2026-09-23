@@ -7,7 +7,6 @@ import { Change } from './Change';
 import { Delta } from './Delta';
 import { newElementWith } from './Snapshot';
 import {
-  isGradient,
   randomInteger,
   deserializePoints,
   isDataUrl,
@@ -1140,8 +1139,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     fontWeight,
     fontStyle,
     fontKerning,
-    letterSpacing,
-    lineHeight,
     textAlign,
     textBaseline,
     content,

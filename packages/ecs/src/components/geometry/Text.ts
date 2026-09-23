@@ -26,7 +26,6 @@ export class Text {
       textBaseline = 'alphabetic',
       lineHeight,
       fontSize,
-      content,
     } = text;
     let { width, height, fontMetrics } = computed ?? {};
     let lineHeightValue = lineHeight || fontSize as number;

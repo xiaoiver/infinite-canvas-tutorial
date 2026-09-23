@@ -100,6 +100,7 @@ export class SmoothPolyline extends Drawcall {
     } else if (instance instanceof Circle || instance instanceof Ellipse) {
       return circleEllipsePointsNum + 1;
     }
+    return 0;
   }
 
   createGeometry(): void {
