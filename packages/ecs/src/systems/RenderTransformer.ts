@@ -1685,17 +1685,12 @@ export function hitTest(api: API, { x, y }: IPointData) {
     vnTangentHandles,
   } = camera.read(Transformable);
 
+  const selected = selecteds[0];
   if (
-    (penbarSelected === Pen.VECTOR_NETWORK || isSelectVertexEditingActive) &&
-    controlPoints
+    selected?.has(VectorNetwork) &&
+    (penbarSelected === Pen.VECTOR_NETWORK || isSelectVertexEditingActive)
   ) {
-    const selected = selecteds[0];
-    const isVectorNetworkEditing =
-      selected?.has(VectorNetwork) &&
-      (penbarSelected === Pen.VECTOR_NETWORK || isSelectVertexEditingActive);
-
     if (
-      isVectorNetworkEditing &&
       vectorNetworkEditMode === VectorNetworkEditMode.BEND &&
       vnTangentHandles
     ) {
@@ -1717,6 +1712,61 @@ export function hitTest(api: API, { x, y }: IPointData) {
       }
     }
 
+    // Pick from live geometry: transformer handles may still reflect the
+    // previous frame, and a midpoint is only drawn after its edge is hovered.
+    const { vertices, segments } = selected.read(VectorNetwork);
+    const matrix = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
+    const hitsPoint = (local: [number, number]) => {
+      const world = vec2.transformMat3(vec2.create(), local, matrix);
+      const viewport = api.canvas2Viewport({ x: world[0], y: world[1] });
+      return (
+        distanceBetweenPoints(x, y, viewport.x, viewport.y) <=
+        TRANSFORMER_ANCHOR_RESIZE_RADIUS
+      );
+    };
+    for (let i = 0; i < vertices.length; i++) {
+      if (hitsPoint([vertices[i].x, vertices[i].y])) {
+        return { anchor: AnchorName.CONTROL, cursor: 'crosshair', index: i };
+      }
+    }
+    if (
+      vectorNetworkEditMode === VectorNetworkEditMode.MOVE ||
+      vectorNetworkEditMode === VectorNetworkEditMode.CUT
+    ) {
+      for (let i = 0; i < segments.length; i++) {
+        const midpoint = getVectorSegmentPointAt(vertices, segments[i], 0.5);
+        if (midpoint && hitsPoint(midpoint)) {
+          return {
+            anchor: AnchorName.SEGMENT_MIDPOINT,
+            cursor: 'crosshair',
+            index: i,
+          };
+        }
+      }
+    }
+    if (
+      vectorNetworkEditMode === VectorNetworkEditMode.MOVE ||
+      vectorNetworkEditMode === VectorNetworkEditMode.BEND
+    ) {
+      const index = findHoveredVectorNetworkSegmentIndex(api, selected, x, y);
+      if (index >= 0) {
+        return {
+          anchor: AnchorName.SEGMENT,
+          cursor:
+            vectorNetworkEditMode === VectorNetworkEditMode.BEND
+              ? 'crosshair'
+              : 'move',
+          index,
+        };
+      }
+    }
+    return { anchor: AnchorName.OUTSIDE, cursor: 'default', index: -1 };
+  }
+
+  if (
+    (penbarSelected === Pen.VECTOR_NETWORK || isSelectVertexEditingActive) &&
+    controlPoints
+  ) {
     for (let i = 0; i < controlPoints.length; i++) {
       if (controlPoints[i].read(Visibility).value === 'hidden') {
         continue;
@@ -1734,56 +1784,6 @@ export function hitTest(api: API, { x, y }: IPointData) {
           index: i,
         };
       }
-    }
-
-    if (isVectorNetworkEditing) {
-      const allowSegmentMidpoint =
-        vectorNetworkEditMode === VectorNetworkEditMode.MOVE ||
-        vectorNetworkEditMode === VectorNetworkEditMode.CUT;
-      if (allowSegmentMidpoint) {
-        const segmentMidpointsSafe = segmentMidpoints ?? [];
-        for (let i = 0; i < segmentMidpointsSafe.length; i++) {
-          if (segmentMidpointsSafe[i].read(Visibility).value === 'hidden') {
-            continue;
-          }
-          const { cx, cy } = segmentMidpointsSafe[i].read(Circle);
-          const { x: xx, y: yy } = api.canvas2Viewport({ x: cx, y: cy });
-          const distance = distanceBetweenPoints(x, y, xx, yy);
-          if (distance <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
-            return {
-              anchor: AnchorName.SEGMENT_MIDPOINT,
-              cursor: 'crosshair',
-              index: i,
-            };
-          }
-        }
-
-        const segmentIndex = findHoveredVectorNetworkSegmentIndex(
-          api,
-          selected,
-          x,
-          y,
-        );
-        if (
-          segmentIndex >= 0 &&
-          vectorNetworkEditMode === VectorNetworkEditMode.MOVE
-        ) {
-          return {
-            anchor: AnchorName.SEGMENT,
-            cursor: 'move',
-            index: segmentIndex,
-          };
-        }
-      }
-      if (vectorNetworkEditMode === VectorNetworkEditMode.BEND) {
-        const index = findHoveredVectorNetworkSegmentIndex(api, selected, x, y);
-        if (index >= 0) return { anchor: AnchorName.SEGMENT, cursor: 'crosshair', index };
-      }
-      return {
-        anchor: AnchorName.OUTSIDE,
-        cursor: 'default',
-        index: -1,
-      };
     }
 
     const segmentMidpointsSafe = segmentMidpoints ?? [];

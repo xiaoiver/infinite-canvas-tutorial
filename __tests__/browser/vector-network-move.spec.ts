@@ -40,12 +40,7 @@ const node = (page: Page) =>
         .nodes[0] as VectorNetworkSerializedNode,
   );
 async function frame(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((r) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => r())),
-      ),
-  );
+  await page.evaluate(() => window.canvasRegression.settleFrames());
 }
 async function position(page: Page, point: [number, number]) {
   const p = await page.evaluate(
@@ -386,3 +381,81 @@ test('splits crossings after Move release as one undoable edit', async ({
   ).toHaveLength(4);
   await history(page, before, after);
 });
+
+for (const tool of ['Bend', 'Move'] as const)
+  test(`${tool} resolves a coalesced press without a preceding hover frame`, async ({
+    page,
+  }) => {
+    const n = network();
+    n.vertices = [
+      { x: 0, y: 80 },
+      { x: 180, y: 80 },
+    ];
+    n.segments = [
+      {
+        start: 0,
+        end: 1,
+        tangentStart: { x: 50, y: -60 },
+        tangentEnd: { x: -50, y: -60 },
+      },
+    ];
+    await prepare(page, n);
+    if (tool === 'Bend')
+      await page.getByRole('radio', { name: 'Bend', exact: true }).click();
+    const before = await node(page),
+      fixed = await anchors(page);
+    // Leave a different anchor in the hover cache, then move and press together.
+    await page.mouse.move(fixed[0].x, fixed[0].y);
+    await frame(page);
+    const local = pointOnVectorCubic(
+      vectorSegmentCubic(n.vertices, n.segments[0])!,
+      tool === 'Bend' ? 0.35 : 0.5,
+    );
+    const p = await position(page, local);
+    await page.evaluate((p) => {
+      const canvas = document.querySelector('#left canvas')!;
+      const init = {
+        bubbles: true,
+        pointerId: 1,
+        pointerType: 'mouse',
+        isPrimary: true,
+        clientX: p.x,
+        clientY: p.y,
+        button: 0,
+      };
+      canvas.dispatchEvent(
+        new PointerEvent('pointermove', { ...init, buttons: 0 }),
+      );
+      canvas.dispatchEvent(
+        new PointerEvent('pointerdown', { ...init, buttons: 1 }),
+      );
+    }, p);
+    await frame(page);
+    expect((await node(page)).isEditing).toBe(true);
+    if (tool === 'Move') expect((await node(page)).vertices).toHaveLength(3);
+    const end = { clientX: p.x, clientY: p.y - 25 };
+    await page
+      .locator('#left canvas')
+      .dispatchEvent('pointermove', {
+        ...end,
+        pointerId: 1,
+        pointerType: 'mouse',
+        buttons: 1,
+      });
+    await frame(page);
+    await page
+      .locator('#left canvas')
+      .dispatchEvent('pointerup', {
+        ...end,
+        pointerId: 1,
+        pointerType: 'mouse',
+        button: 0,
+        buttons: 0,
+      });
+    await frame(page);
+    const after = await node(page),
+      points = await anchors(page);
+    fixed.forEach((p, i) => close(points[i], p, 0.02));
+    expect(after.segments).not.toEqual(before.segments);
+    await history(page, before, after);
+  });

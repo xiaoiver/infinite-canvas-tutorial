@@ -40,12 +40,7 @@ const node = (page: Page) =>
         .nodes[0] as VectorNetworkSerializedNode,
   );
 async function frame(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
+  await page.evaluate(() => window.canvasRegression.settleFrames());
 }
 async function position(page: Page, point: [number, number]) {
   const p = await page.evaluate(

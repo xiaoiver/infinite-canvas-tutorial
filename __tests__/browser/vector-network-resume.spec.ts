@@ -40,12 +40,7 @@ const nodes = (page: Page) =>
 const node = async (page: Page) =>
   (await nodes(page)).find((n) => n.id === 'resume')!;
 async function frame(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((r) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => r())),
-      ),
-  );
+  await page.evaluate(() => window.canvasRegression.settleFrames());
 }
 async function point(page: Page, p: [number, number]) {
   return page.evaluate(

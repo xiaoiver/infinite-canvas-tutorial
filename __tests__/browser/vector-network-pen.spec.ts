@@ -16,12 +16,7 @@ const nodes = (page: Page) =>
         .nodes as VectorNetworkSerializedNode[],
   );
 async function frame(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
+  await page.evaluate(() => window.canvasRegression.settleFrames());
 }
 async function move(page: Page, x: number, y: number) {
   const box = (await page.locator('#left canvas').boundingBox())!;

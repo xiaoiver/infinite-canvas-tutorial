@@ -2619,15 +2619,38 @@ export class Select extends System {
       }
 
       if (input.pointerDownTrigger) {
-        const [x, y] = input.pointerViewport;
+        const { selecteds } = camera.read(Transformable);
+        const selected = selecteds.length === 1 ? selecteds[0] : undefined;
+        const vectorNetworkEditing =
+          selected?.has(VectorNetwork) &&
+          selected.has(Editable) &&
+          selected.read(Editable).isEditing;
+        const [x, y] = vectorNetworkEditing
+          ? input.pointerDownViewport
+          : input.pointerViewport;
 
-        if (selection.editing?.has(VectorNetwork)) {
-          const hit = hitTest(api, { x, y });
-          const anchor = hit?.anchor;
-          if (
-            anchor === AnchorName.OUTSIDE ||
-            anchor === AnchorName.INSIDE
-          ) {
+        if (vectorNetworkEditing) {
+          // A move and press can arrive in the same ECS frame, before hover
+          // runs. Resolve the pressed anchor instead of using the hover cache.
+          selection.editing = selected;
+          const { anchor, index } = hitTest(api, { x, y });
+          selection.activeControlPointIndex =
+            anchor === AnchorName.CONTROL ? index : undefined;
+          selection.activeTangentHandleIndex =
+            anchor === AnchorName.TANGENT ? index : undefined;
+          selection.activeSegmentMidpointIndex =
+            anchor === AnchorName.SEGMENT_MIDPOINT ? index : undefined;
+          selection.activeSegmentIndex =
+            anchor === AnchorName.SEGMENT ? index : undefined;
+          const hitHandle =
+            anchor === AnchorName.CONTROL ||
+            anchor === AnchorName.TANGENT ||
+            anchor === AnchorName.SEGMENT_MIDPOINT ||
+            anchor === AnchorName.SEGMENT;
+          selection.mode = hitHandle
+            ? SelectionMode.READY_TO_MOVE_CONTROL_POINT
+            : SelectionMode.IDLE;
+          if (!hitHandle) {
             this.clearVectorNetworkSelectedVertex(camera, canvas);
           }
         }

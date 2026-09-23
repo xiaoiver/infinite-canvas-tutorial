@@ -54,12 +54,7 @@ const geometry = (n: VectorNetworkSerializedNode) => ({
   regions: n.regions,
 });
 async function frame(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((r) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => r())),
-      ),
-  );
+  await page.evaluate(() => window.canvasRegression.settleFrames());
 }
 async function point(page: Page, p: [number, number]) {
   const q = await page.evaluate(

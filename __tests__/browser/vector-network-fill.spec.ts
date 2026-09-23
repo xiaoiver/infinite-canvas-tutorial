@@ -54,12 +54,7 @@ async function click(page: Page, point: [number, number]) {
 }
 
 async function frame(page: Page) {
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
-      ),
-  );
+  await page.evaluate(() => window.canvasRegression.settleFrames());
 }
 
 async function prepare(page: Page, node: VectorNetworkSerializedNode) {

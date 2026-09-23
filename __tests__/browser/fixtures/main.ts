@@ -265,6 +265,15 @@ const harness = {
       ...(tf.vnTangentHandles ?? []),
     ].filter((entity) => entity && !entity.has(Culled)).length;
   },
+  async settleFrames() {
+    // App awaits world.execute() before scheduling another animation frame.
+    // Browser RAFs alone can run while that asynchronous ECS work is pending.
+    for (let i = 0; i < 2; i++) {
+      const side = slots.keys().next().value as Side | undefined;
+      if (!side) return;
+      await act(side, () => {});
+    }
+  },
   setScene(side: Side, nodes: SerializedNode[], selectedId: string) {
     return act(side, ({ api }) => {
       api.replaceDocument(nodes);
