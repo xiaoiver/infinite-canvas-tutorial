@@ -86,6 +86,7 @@ export const TRANSFORMER_ANCHOR_FILL_COLOR = 'white';
  */
 export class RenderTransformer extends System {
   private readonly commands = new Commands(this);
+  private readonly vectorEditModes = new WeakMap<API, VectorNetworkEditMode>();
 
   private readonly cameras = this.query((q) =>
     q.current.and.added.with(Camera),
@@ -312,6 +313,7 @@ export class RenderTransformer extends System {
     if (
       !isEntityAlive(selected) ||
       !selected.has(VectorNetwork) ||
+      (!penDrawing && editMode === VectorNetworkEditMode.FILL) ||
       (!penDrawing &&
         (!selected.has(Editable) || !selected.read(Editable).isEditing))
     ) {
@@ -465,10 +467,9 @@ export class RenderTransformer extends System {
           const dx = other.x - v.x;
           const dy = other.y - v.y;
           const len = Math.hypot(dx, dy) || 1;
-          const sign = end === 'end' ? -1 : 1;
           const dist = Math.min(48, len * 0.35);
-          ox = sign * (dx / len) * dist;
-          oy = sign * (dy / len) * dist;
+          ox = (dx / len) * dist;
+          oy = (dy / len) * dist;
         }
         tangentDefs.push({
           segmentIndex,
@@ -832,6 +833,7 @@ export class RenderTransformer extends System {
   }
 
   execute() {
+    const camerasToUpdate = new Set<Entity>();
     this.cameras.current.forEach((camera) => {
       if (!camera.has(Camera)) {
         return;
@@ -844,6 +846,13 @@ export class RenderTransformer extends System {
 
       const { api } = canvas.read(Canvas);
       const pen = api.getAppState().penbarSelected;
+      const editMode = api.getAppState().vectorNetworkEditMode;
+      // Tool changes do not necessarily write geometry or Editable. Track them
+      // per canvas so entering/leaving Fill reliably hides/restores anchors.
+      if (this.vectorEditModes.get(api) !== editMode) {
+        this.vectorEditModes.set(api, editMode);
+        camerasToUpdate.add(camera);
+      }
       if (camera.has(Transformable)) {
         if (pen !== Pen.SELECT) {
           // Clear transformer
@@ -867,7 +876,6 @@ export class RenderTransformer extends System {
       }
     });
 
-    const camerasToUpdate = new Set<Entity>();
     this.cameras.added.forEach((camera) => {
       camerasToUpdate.add(camera);
     });
@@ -1766,6 +1774,10 @@ export function hitTest(api: API, { x, y }: IPointData) {
             index: segmentIndex,
           };
         }
+      }
+      if (vectorNetworkEditMode === VectorNetworkEditMode.BEND) {
+        const index = findHoveredVectorNetworkSegmentIndex(api, selected, x, y);
+        if (index >= 0) return { anchor: AnchorName.SEGMENT, cursor: 'crosshair', index };
       }
       return {
         anchor: AnchorName.OUTSIDE,

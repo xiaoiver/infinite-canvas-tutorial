@@ -17,7 +17,7 @@ import VectorNetworkCube from '../../components/VectorNetworkCube.vue';
 -   SVG Path 的局限性
 -   什么是 VectorNetwork？
 -   使用 Pen 工具修改 Path
--   双击进入 Vector 编辑态与 Move / Bend / Cut 工具
+-   双击进入 Vector 编辑态与 Move / Bend / Cut / Fill 工具
 -   拓扑算子：分裂边、删除顶点、Cut 断开闭合环
 
 ## SVG Path 的局限性 {#limitations-of-svg-path}
@@ -235,11 +235,51 @@ function tessellateVectorSegment(
 按 Figma 的 loops（有序 segment 下标）走一圈，用与描边相同的 tessellateVectorSegment 把每条边（含 cubic）细分，按拓扑方向拼接，去掉重复点并闭合。
 
 -   对每个 region 的每个 loop 生成一条闭合轮廓
--   nonzero（或 Figma 的 windingRule: 'NONZERO'）：沿用 Mesh 里 Path 的 earcut + 孔洞 逻辑（isClockWise 区分外环/洞）
+-   nonzero（或 Figma 的 windingRule: 'NONZERO'）：用 triangulate（libtess）的非零绕数规则，同时处理区域中的所有轮廓，支持不连通区域与嵌套孔洞
 -   evenodd（或 EVENODD）：用 triangulate（libtess）
 -   多个 region 依次三角化后，把顶点与索引拼到同一张 mesh 上（vOffset 累加）
 
+### 点击填充区域 {#click-to-fill}
+
+双击 VectorNetwork 进入编辑，选择 **Fill** 工具。鼠标悬停时预览最小封闭面，点击添加填充，再次点击取消；一次点击对应一次撤销记录。拖动、指针取消和多指缩放不会提交填充。切换工具、按 Esc、点击图形外的空白或销毁画布会清理预览。
+
+`findVectorNetworkFaces` 枚举有方向的半边环，并将不连通内层组件的外边界作为所属面的孔洞。预览和新建区域使用 `evenodd`，因此孔洞不依赖边的存储方向。已有 `nonzero` / `evenodd` 填充会按实际覆盖范围转换为最小面，取消其中一个面时保留其他面的填充。
+
+所有面共用节点的 `fills`。对只有描边的网络首次填充时，使用钢笔配置中的可见填充；若没有配置，则使用蓝色。预览位于临时 SVG 覆盖层，不进入文档、导出或撤销记录。命中测试使用局部坐标，支持旋转、镜像和缩放。
+
+Fill 会先在临时几何上把交点拆成共享顶点，再查找最小封闭面；悬停不修改文档，首次点击填充时才把拓扑与填充一起提交，一次撤销即可恢复。每个面独立的颜色仍属于后续扩展。
+
+## 使用钢笔绘制 {#drawing-with-pen}
+
+选择 **Vector Network** 钢笔。单击放置角点，拖动放置平滑点。首个锚点在第一条边提交前只作为临时预览显示，放弃单个点不会在文档中留下空节点。
+
+拖动向量定义新锚点的出射控制柄，入射控制柄取相反方向；下一条边沿用该向量作为 `tangentStart`。橡皮筋预览与实际提交共用相同的三次贝塞尔控制点计算，首个锚点也支持拖动设置切线。拖动时同时显示控制柄辅助线。
+
+在已有锚点的 10 个视口像素范围内单击，可闭合网络并返回选择工具。吸附使用按下位置，拖动闭合点的控制柄不会新增顶点。闭合后自动识别区域，并采用钢笔配置的填充；默认仅描边样式仍需使用 **Fill** 才会上色。单击当前活动锚点，或按 **Enter / Esc**，可结束开放路径；尚未完成的拖动会被丢弃。
+
+每条提交的边对应一次撤销。指针取消、离开画布、切换工具都会放弃当前手势，已提交的边保持不变。绘制中撤销或收到外部几何更新后会清除续画点，避免连接到失效的顶点。预览保存在所属画布的临时 SVG 层，不进入保存数据、历史记录或导出；画布销毁时同步清理。
+
+### 从已有网络续画 {#resume-with-pen}
+
+选中一个 VectorNetwork 后切换到钢笔，靠近已有顶点时会显示吸附提示。点击该顶点作为起点，再点击或拖动下一个锚点，就会在同一个网络中添加边；既可从端点延长，也可从共享顶点建立分支。选择起点不会修改文档，提交每条新边才产生一条撤销记录。点击远离顶点的空白则新建独立网络。
+
+续画支持旋转、非等比缩放和镜像，曲线预览与提交使用同一组控制点。已有边的切线、填充和孔洞会被保留；新增封闭面可用 Fill 工具填充。连接到已有顶点后结束本次绘制，重复连接相同的边不会创建副本。锁定、隐藏或变换不可逆的节点不能续画。取消、切换工具或绘制期间撤销会丢弃尚未提交的边，保留已完成的编辑。
+
 ## Bending
+
+**Bend** 支持直接拖动边上的任意内部位置：端点保持原位，被按住的曲线位置跟随鼠标。直线会转换为三次贝塞尔曲线，已有曲线从按下时的快照计算控制点，避免连续拖动造成累积偏移。旋转、镜像和非等比缩放下采用同样的屏幕空间命中逻辑。
+
+对于参数 `t`，两控制点的权重为 `a = 3(1-t)²t`、`b = 3(1-t)t²`。指针位移为 `Δ` 时，控制点分别移动 `aΔ/(a²+b²)` 和 `bΔ/(a²+b²)`，在满足抓取位置跟随指针的前提下，最小化控制点位移。直接拖边会解除其端点的控制柄联动，其他边的控制点保持不变。接近端点的位置由锚点或手柄交互接管。
+
+双击矢量网络，选择 **Bend**，再单击锚点显示控制柄。对于恰有两个关联边端点的锚点，**Handle coupling** 提供三种模式：
+
+-   **Independent**：独立移动控制柄，不影响另一侧。
+-   **Align angles**：保持两侧方向相反，另一侧的长度不变。
+-   **Mirror angle and length**：保持两侧方向相反且长度相等。
+
+切换模式会以第一个非零控制柄为基准立即对齐。拖动时按住 **Alt** 可以解除联动，松开后该锚点继续保持独立模式。连接三条或更多边的分叉点始终独立编辑；自环贡献两个关联端点。零长度控制柄没有方向，因此仅角度联动会先保留另一侧，直到拖出的控制柄重新具有方向。
+
+直线也会显示指向另一端点的临时手柄，拖动后才创建实际的贝塞尔控制点。这些提示不会提前改变保存的几何。每次完成拖动或切换联动模式各占一个撤销步骤。**Esc**、指针取消、离开画布或切换工具会取消尚未完成的拖动并恢复原几何。调整曲线边界时，旋转、镜像和缩放后的锚点位置也保持不变。
 
 下文来自 [Introducing Vector Networks - Bending]，对于贝塞尔曲线的编辑，在 Path 和 VectorNetwork 中都是通用的：
 
@@ -251,7 +291,7 @@ function tessellateVectorSegment(
 
 也可以在 Konva 的 [How to modify line points with anchors?] 在线例子或者 [bezierjs] 中体验。
 
-双击进入编辑态、Move / Bend / Cut 工具条与 midpoint 插入等交互见下文 [进入编辑态与工具条](#vector-edit-mode)。
+双击进入编辑态、Move / Bend / Cut / Fill 工具条与 midpoint 插入等交互见下文 [进入编辑态与工具条](#vector-edit-mode)。
 
 ![Vector edit mode in Figma](/figma-vectornetwork-mode.png)
 
@@ -265,7 +305,7 @@ export enum Pen {
 
 有别于 [课程 21 - Transformer] 中基于 OBB 的实现：
 
--   拖拽 VectorSegment 和 OBB 一样，移动整个图形
+-   编辑态下拖拽 VectorSegment 同时移动该边的两个端点；与它们共享顶点的相邻边自然联动
 -   拖拽 VectorVertex 只移动该顶点本身，所有共享它的 segment 自然联动——这是 Vector Network 相较 Path 的核心价值。拖拽产生的新坐标通过统一写回入口 `API.updateNodeVectorNetwork(node, vectorNetwork)` 落到实体的 `VectorNetwork` 组件，并触发重新三角化与历史记录（undo/redo）。
 
 ```ts
@@ -276,17 +316,18 @@ export enum Pen {
 // 3. 调用 api.updateNodeVectorNetwork 写回
 ```
 
-写回时会复用 `VectorNetwork.getGeometryBounds` 重算几何包围盒，并把左上角归一化到局部 `(0, 0)`（顶点整体平移 `-minX/-minY`，平移量加到 `node.x/y`），从而保持 `node.x == 几何左边` 这一 Transformer resize 所依赖的不变量。
+写回时复用 `VectorNetwork.getGeometryBounds` 重算几何包围盒，并将顶点整体平移 `-minX/-minY`，使包围盒左上角归一化到局部 `(0, 0)`。补偿到 `node.x/y` 的偏移先经过节点的缩放和旋转，转换到父节点坐标系，因此重算边界不会改变锚点的世界位置。相对锚点定义的切线向量无需平移。
 
 ### 进入编辑态与工具条 {#vector-edit-mode}
 
-参考 Figma 的 [Edit vector layers]，双击 `vector-network` 节点进入顶点编辑态：为实体添加 `Editable.isEditing = true`，并显示底部居中的 **Move / Bend / Cut** 工具条（`VectorNetworkEditMode`，见 `context-vector-network-edit-bar.ts`）。退出编辑（工具条关闭按钮、Esc 或点击画布空白）时写回 `isEditing: false`，`RenderTransformer` 会隐藏所有编辑锚点（顶点、线段 midpoint、切线手柄）。
+参考 Figma 的 [Edit vector layers]，双击 `vector-network` 节点进入顶点编辑态：为实体添加 `Editable.isEditing = true`，并显示底部居中的 **Move / Bend / Cut / Fill** 工具条（`VectorNetworkEditMode`，见 `context-vector-network-edit-bar.ts`）。退出编辑（工具条关闭按钮、Esc 或点击画布空白）时写回 `isEditing: false`，`RenderTransformer` 会隐藏所有编辑锚点（顶点、线段 midpoint、切线手柄）。
 
 | 模式     | 交互                                                                                               |
 | -------- | -------------------------------------------------------------------------------------------------- |
 | **Move** | 拖拽顶点；hover 线段显示 midpoint，点击插入新顶点                                                  |
-| **Bend** | 选中顶点后显示切线手柄，拖拽调整 `tangentStart` / `tangentEnd`                                     |
+| **Bend** | 直接拖动边弯曲，或选中顶点调整支持三种联动模式的切线手柄                                           |
 | **Cut**  | 与 Move 相同可在线段 midpoint 插入顶点；**点击顶点**在 cut 点断开拓扑并自动切回 Move，便于拖拽分离 |
+| **Fill** | 悬停预览封闭面；点击切换该面的填充，保留孔洞及其他面                                               |
 
 锚点的 **hover 高亮**与**选中**分离：`Transformable.hoveredControlPointIndex` 随指针移开消失，`selectedControlPointIndex` 在点击后保持，直到点击空白或图形内部取消。
 
@@ -294,7 +335,17 @@ export enum Pen {
 
 hover 某条 segment 时在曲线中点（`t = 0.5`，cubic 边取曲线上的点）渲染 midpoint 锚点。点击后调用 `splitSegmentAt`（见 [Creation & delete](#creation--delete)）分裂该边并写回 network。相关逻辑在 `Select.insertControlPointFromMidpoint` 与 `RenderTransformer.findHoveredVectorNetworkSegmentIndex`（viewport 空间到局部曲线的距离检测）。
 
+Move 支持拖动单个顶点或整条边；移动整条边时同时移动两端顶点，并保留切线。旋转、缩放或镜像后的节点也使用按下时的坐标系计算拖动，避免包围盒更新导致位置漂移。顶点拖到另一顶点附近时吸附，松开后合并。Esc、指针取消或切换工具会还原整个手势，包括刚插入的中点。Cut 在点击时提交断开，松开不会重新焊接。删除作用于已选中的顶点，鼠标移开后仍可操作。
+
+拖动中的几何属于未提交手势。执行撤销或重做之前，先恢复该手势的起始几何，再应用历史记录，避免混用拖动中的包围盒与已提交的顶点。若外部更新已替换几何或变换，则直接丢弃旧手势，保留最新文档；随后移动、松开或按 Esc 都不会写回旧快照。仅改变颜色等样式不会打断拖动，取消几何时也会保留新样式。拖动中按 Delete 会先取消未完成的移动，再删除选中的原始顶点；若目标是刚插入的中点，则仅取消本次插入。
+
 ## Topological operators
+
+### 交点自动拆分 {#automatic-intersections}
+
+钢笔提交新边、完成 Move 或 Bend 拖动时，会把同一网络内的横向交叉和 T 型连接拆成共享顶点，支持直线、三次贝塞尔曲线、多交点及单条曲线的自交。拆分使用 de Casteljau 算法，保留曲线形状，并按原边界遍历方向改写区域与孔洞引用。已有顶点索引保持稳定，钢笔可继续从刚点击的端点续画。
+
+拖动期间不拆分，松开后与形状变化一起提交；取消拖动不会留下交点，撤销和重做覆盖整个操作。也可调用 `splitVectorNetworkIntersections(network)` 显式整理导入的几何。算法采用自适应细分和数值迭代，暂不处理相切接触、重叠边的布尔合并或不同节点之间的连接。仅端点重合的边不会自动焊接，以保留 Cut 的结果。
 
 Figma 支持 [Boolean operations]，例如 union
 
@@ -313,7 +364,7 @@ export function splitSegmentAt(
     network: VectorNetworkData,
     segIdx: number,
     t: number,
-): VectorNetworkData;
+): number; // 原地更新 network，返回新顶点索引
 ```
 
 删除顶点：移除该顶点及其关联边后，对 degree==2 的相邻顶点执行「heal」——把它的两条边合并为一条，从而保持路径连通（对齐 Figma 的 Delete and Heal）。编辑态下按 **Delete / Backspace** 触发：
@@ -325,7 +376,9 @@ export function deleteVertex(
 ): VectorNetworkData;
 ```
 
-> 上述算子均为纯函数（位于 `packages/ecs/src/utils/vector-network-topology.ts`），输入输出都是 `{ vertices, segments, regions }`，方便单测且与渲染解耦；编辑系统拿到结果后再通过 `API.updateNodeVectorNetwork` 统一写回。
+> 删除、断开和合并返回新的网络；`splitSegmentAt` 原地更新传入的网络副本并返回新顶点索引。这些算子位于 `packages/ecs/src/utils/vector-network-topology.ts`，方便单测且与渲染解耦；编辑系统拿到结果后再通过 `API.updateNodeVectorNetwork` 统一写回。
+
+曲线节点的 Heal 优先恢复原曲线的细分；一般曲线使用带误差上界检查的拟合，默认容差为控制点包围范围的 5%，可通过 `maxError` 指定局部坐标容差。超过容差时保留原网络。**Shift + Delete / Backspace** 仅删除节点和关联边，不执行 Heal。分割与编辑会按环的遍历方向更新边索引，保留有效区域。
 
 ### Glue & unglue
 
@@ -335,12 +388,12 @@ export function deleteVertex(
 
 ![Cut and uncut operator](/vgc-operator-cut-uncut.png)
 
-Cut 在 cut 顶点处**断开拓扑**（不是删掉对边）。闭合环上保留 cut 点上的两条 incident 边，复制闭合端点并改写闭合 segment，使路径在该点打开。以三角形 `0—1—2—0` 在顶点 `1` 处 Cut 为例：
+Cut 在选中的顶点处**断开拓扑**。复制该顶点，保留第一个关联端点，其余关联端点改连到副本；闭合环和开口链使用同一规则。以三角形 `0—1—2—0` 在顶点 `1` 处 Cut 为例：
 
 ```plaintext
 Cut 前:  0 — 1 — 2 — 0（闭合）
-Cut 后:  0 — 1 — 2 — 3（3 与 0 同位置，开口折线）
-segments: [0,1], [1,2], [2,3]
+Cut 后:  1 — 0 — 2 — 3（3 与 1 同位置，开口折线）
+segments: [0,1], [3,2], [2,0]
 ```
 
 开口折线上则在 cut 点**复制顶点**，把除第一条外的 incident 边改连到副本，两条链可在 Move 模式下拖开。实现见 `breakVertex`：
@@ -352,7 +405,7 @@ export function breakVertex(
 ): VectorNetworkData | null;
 ```
 
-Cut 模式点击顶点后调用 `breakVectorNetworkAtVertex`（`Select.ts`），写回 network、记录历史，并 `setAppState({ vectorNetworkEditMode: MOVE })` 以便立刻拖拽。`regions` 在断开后丢弃，需重新 click-to-fill 或由后续 region 检测重建。
+Cut 模式点击顶点后调用 `breakVectorNetworkAtVertex`（`Select.ts`），写回 network、记录历史，并 `setAppState({ vectorNetworkEditMode: MOVE })` 以便立刻拖拽。断开后保留仍然闭合的 `regions`，移除边界失效的区域；若孔洞边界失效，则移除整个所属区域，避免意外填实孔洞。清空时显式写回 `regions: []`，以便同步实体和撤销记录。单顶点曲线自环也支持 Cut。
 
 ## 扩展阅读 {#extended-reading}
 

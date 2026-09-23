@@ -60,7 +60,10 @@ export function installProbes() {
     if (context && 'createBuffer' in context && !seen.has(context)) {
       seen.add(context);
       const live = new Map<string, Set<object>>();
-      resources.push({ side: this.parentElement?.id || 'offscreen', live });
+      resources.push({
+        side: this.closest('section')?.id || 'offscreen',
+        live,
+      });
       for (const kind of [
         'Buffer',
         'Texture',

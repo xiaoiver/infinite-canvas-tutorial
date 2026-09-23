@@ -238,3 +238,7 @@ export {
 } from './CapabilityRegistry';
 export { documentValueEqual } from './document';
 export { WorkerClient } from './WorkerClient';
+
+export { moveVectorHandle, setVectorVertexMirroring, vectorHandlesAtVertex } from './utils/vector-network-handles';
+
+export { splitVectorNetworkIntersections } from './utils/vector-network-intersections';

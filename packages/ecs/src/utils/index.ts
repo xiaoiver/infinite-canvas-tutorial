@@ -52,6 +52,7 @@ export * from './polygon';
 export * from './vector-network-stroke';
 export * from './vector-network-fill';
 export * from './vector-network-topology';
+export * from './vector-network-loop';
 export * from './vector-network-region';
 export * from './vector-network-svg';
 export * from './ray-casting';
@@ -62,3 +63,7 @@ export * from './pick3d-bridge';
 export * from './gizmo-geometry';
 export * from './geometry3d';
 export * from './gltf';
+
+export * from './vector-network-handles';
+
+export { splitVectorNetworkIntersections } from './vector-network-intersections';

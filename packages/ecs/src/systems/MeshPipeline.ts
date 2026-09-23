@@ -804,7 +804,9 @@ export class MeshPipeline extends System {
       } else {
         if (this.pendingRenderables.has(camera)) {
           this.pendingRenderables.get(camera).forEach(({ type, entity }) => {
-            if (type === 'remove') {
+            // Geometry/style refreshes can enqueue an add after a culling
+            // removal in the same frame. Never resurrect a hidden shape.
+            if (type === 'remove' || entity.has(Culled)) {
               batchManager.remove(entity, !entity.has(Culled));
             } else {
               batchManager.add(entity);

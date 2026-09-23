@@ -9,10 +9,22 @@ export class Input {
 
   @field.boolean declare pointerUpTrigger: boolean;
 
+  /** Remains cancelled until the next press, including across render frames. */
+  @field.boolean declare pointerCancelled: boolean;
+
+  @field.int32.vector(2) declare pointerDownViewport: [number, number];
+
+  @field.boolean declare pointerInside: boolean;
+
+  @field.int32 declare pointerButton: number;
+
   @field.boolean declare doubleClickTrigger: boolean;
   @field.float32 declare lastPointerDownTime: number;
 
   @field.object declare key: string;
+
+  /** Shift state at keydown, retained when keyup arrives before the next frame. */
+  @field.boolean declare keyShiftKey: boolean;
 
   @field.boolean declare ctrlKey: boolean;
 

@@ -25,7 +25,7 @@ import { Stroke } from '../renderable';
  * - "ANGLE_AND_LENGTH": the two vector handles form a single tangent line, equidistant on both sides of the vertex
  * @see https://developers.figma.com/docs/plugins/api/HandleMirroring
  */
-type HandleMirroring = "NONE" | "ANGLE" | "ANGLE_AND_LENGTH";
+export type HandleMirroring = "NONE" | "ANGLE" | "ANGLE_AND_LENGTH";
 
 /**
  * Each vertex is a point in the graph, defined by its position.
@@ -60,7 +60,7 @@ export class VectorNetwork {
   ) {
     let { vertices } = vectorNetwork;
 
-    if (!vertices || vertices.length < 2) {
+    if (!vertices?.length) {
       return new AABB(0, 0, 0, 0);
     }
 

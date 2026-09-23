@@ -145,20 +145,20 @@ describe('deleteVertex', () => {
 });
 
 describe('breakVertex', () => {
-  it('opens a closed loop at the cut vertex (triangle → 0-1, 1-2, 2-3)', () => {
+  it('opens a closed loop at the selected vertex (triangle → 0-1, 3-2, 2-0)', () => {
     const network = pathToVectorNetwork(
       'M 0 0 L 100 0 L 50 100 Z',
     ) as VectorNetworkData;
     const result = breakVertex(network, 1);
     expect(result).not.toBeNull();
     expect(result!.vertices).toHaveLength(4);
-    expect(result!.vertices[3]).toEqual(result!.vertices[0]);
+    expect(result!.vertices[3]).toEqual(result!.vertices[1]);
     expect(result!.segments.map((s) => [s.start, s.end])).toEqual([
       [0, 1],
-      [1, 2],
-      [2, 3],
+      [3, 2],
+      [2, 0],
     ]);
-    expect(result!.regions).toBeUndefined();
+    expect(result!.regions).toEqual([]);
   });
 
   it('opens a closed loop when the closing edge is incident to the cut vertex', () => {
@@ -234,7 +234,7 @@ describe('mergeVertices', () => {
       { x: 50, y: 100 },
     ]);
     expect(result!.segments.map((s) => [s.start, s.end])).toEqual([[0, 1]]);
-    expect(result!.regions).toBeUndefined();
+    expect(result!.regions).toEqual([]);
   });
 
   it('returns null when source and target are the same', () => {

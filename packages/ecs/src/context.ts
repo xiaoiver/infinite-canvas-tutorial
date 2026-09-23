@@ -194,8 +194,10 @@ export interface AppState {
    * Points in editing mode.
    */
   editingPoints: [number, number][];
-  /** VectorNetwork 顶点编辑工具：Move / Bend / Cut */
+  /** VectorNetwork 顶点编辑工具：Move / Bend / Cut / Fill */
   vectorNetworkEditMode: VectorNetworkEditMode;
+  /** Transient vertex selection for the vector edit toolbar. */
+  vectorNetworkSelectedVertex: { nodeId: string; index: number } | null;
 
   /**
    * loading state
@@ -530,6 +532,7 @@ export const getDefaultAppState: () => AppState = () => {
     snapLineStrokeWith: 1,
     editingPoints: [],
     vectorNetworkEditMode: VectorNetworkEditMode.MOVE,
+    vectorNetworkSelectedVertex: null,
     loading: false,
     loadingMessage: '',
     filter: '',
