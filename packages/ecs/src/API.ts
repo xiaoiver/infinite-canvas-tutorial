@@ -299,6 +299,7 @@ export class API {
   #mesh3DLayerEntities: Map<string, Entity> = new Map();
   #selectedMesh3DLayerIds: string[] = [];
   #history = new History();
+  #beforeHistoryChange = new Set<() => void>();
   #store = new Store(this);
   #tasks = new TaskQueue();
   #afterDeleteTasks = new TaskQueue();
@@ -337,6 +338,12 @@ export class API {
   /** Register cleanup owned by this canvas. Returns an idempotent disposer. */
   onDestroy(cleanup: () => void) {
     return this.#scope.add(cleanup);
+  }
+
+  /** End transient edits before undo/redo reads the current document. */
+  onBeforeHistoryChange(callback: () => void) {
+    this.#beforeHistoryChange.add(callback);
+    return this.onDestroy(() => this.#beforeHistoryChange.delete(callback));
   }
 
   getCommands() {
@@ -2167,8 +2174,7 @@ export class API {
     // Re-normalize the geometry so its bounding box top-left sits at the local
     // origin (0,0), mirroring the deserialize convention (see
     // utils/deserialize/entity.ts). The node translation absorbs the offset so
-    // the geometry keeps its world position, and Transformer resize math keeps
-    // relying on node.x === geometry left.
+    // the geometry keeps its world position, including under rotation and scale.
     const { minX, minY, maxX, maxY } = VectorNetwork.getGeometryBounds({
       vertices,
       segments,
@@ -2180,9 +2186,13 @@ export class API {
       y: vertex.y - minY,
     }));
 
+    // Rebase in the parent's coordinate system, preserving rotated/scaled anchors.
+    const angle = node.rotation ?? 0;
+    const dx = minX * (node.scaleX ?? 1);
+    const dy = minY * (node.scaleY ?? 1);
     this.updateNode(node, {
-      x: (node.x ?? 0) + minX,
-      y: (node.y ?? 0) + minY,
+      x: (node.x ?? 0) + Math.cos(angle) * dx - Math.sin(angle) * dy,
+      y: (node.y ?? 0) + Math.sin(angle) * dx + Math.cos(angle) * dy,
       width: maxX - minX,
       height: maxY - minY,
       vertices: normalizedVertices,
@@ -2929,6 +2939,7 @@ export class API {
 
   undo() {
     this.runAtNextTick(() => {
+      this.#beforeHistoryChange.forEach((callback) => callback());
       const result = this.#history.undo(
         arrayToMap(this.getNodes()),
         this.getAppState(),
@@ -2943,6 +2954,7 @@ export class API {
 
   redo() {
     this.runAtNextTick(() => {
+      this.#beforeHistoryChange.forEach((callback) => callback());
       const result = this.#history.redo(
         arrayToMap(this.getNodes()),
         this.getAppState(),

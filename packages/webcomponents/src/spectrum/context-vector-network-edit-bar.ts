@@ -4,6 +4,10 @@ import {
   VectorNetworkEditMode,
   VectorNetworkSerializedNode,
   requestTransformerRefreshForCanvas,
+  setVectorVertexMirroring,
+  vectorHandlesAtVertex,
+  type HandleMirroring,
+  type VectorNetwork,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
@@ -11,6 +15,11 @@ import '@spectrum-web-components/action-group/sp-action-group.js';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/divider/sp-divider.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-move.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-graph-profit-curve.js';
+import '@spectrum-web-components/icons-workflow/icons/sp-icon-cut.js';
+import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { msg, str } from '@lit/localize';
@@ -49,6 +58,15 @@ export class ContextVectorNetworkEditBar extends LitElement {
     .close-button {
       margin-inline-start: var(--spectrum-global-dimension-size-100);
     }
+
+    select {
+      margin-inline: 8px;
+      padding: 5px;
+      color: inherit;
+      background: var(--spectrum-gray-100, white);
+      border: 1px solid var(--spectrum-gray-400, #ccc);
+      border-radius: 4px;
+    }
   `;
 
   @consume({ context: appStateContext, subscribe: true })
@@ -78,44 +96,120 @@ export class ContextVectorNetworkEditBar extends LitElement {
     requestTransformerRefreshForCanvas(canvas);
   }
 
+  private setMirroring(event: Event) {
+    const selected = this.appState.vectorNetworkSelectedVertex;
+    if (!selected || selected.nodeId !== this.node?.id) return;
+    const node = this.api.getNodeById(selected.nodeId);
+    if (node?.type !== 'vector-network' || !node.isEditing) return;
+    const mode = (event.target as HTMLSelectElement).value as HandleMirroring;
+    if ((node.vertices?.[selected.index]?.handleMirroring ?? 'NONE') === mode)
+      return;
+    const geometry = {
+      vertices: node.vertices ?? [],
+      segments: node.segments ?? [],
+      regions: node.regions,
+    };
+    const next = setVectorVertexMirroring(geometry, selected.index, mode);
+    if (next === geometry) return;
+    this.api.updateNodeVectorNetwork(node, next as VectorNetwork);
+    this.api.record();
+    requestTransformerRefreshForCanvas(this.api.getCanvas());
+  }
+
   render() {
     const { vectorNetworkEditMode } = this.appState;
+    const selected = this.appState.vectorNetworkSelectedVertex;
+    const vertex =
+      selected?.nodeId === this.node?.id
+        ? this.node?.vertices?.[selected.index]
+        : undefined;
+    const canCouple =
+      !!vertex &&
+      vectorHandlesAtVertex(
+        {
+          vertices: this.node.vertices ?? [],
+          segments: this.node.segments ?? [],
+        },
+        selected.index,
+      ).length === 2;
 
     return html`
       <sp-action-group
         selects="single"
         .selected=${[vectorNetworkEditMode]}
-        @change=${(e: Event & { target: HTMLElement & { selected: string[] } }) => {
-        const next = e.target.selected?.[0] as VectorNetworkEditMode | undefined;
-        if (next) {
-          this.setMode(next);
-        }
-      }}
+        @change=${(
+          e: Event & { target: HTMLElement & { selected: string[] } },
+        ) => {
+          const next = e.target.selected?.[0] as
+            | VectorNetworkEditMode
+            | undefined;
+          if (next) {
+            this.setMode(next);
+          }
+        }}
         quiet
         size="m"
       >
-        <sp-action-button value="${VectorNetworkEditMode.MOVE}">
+        <sp-action-button
+          value="${VectorNetworkEditMode.MOVE}"
+          label=${msg(str`Move`)}
+        >
           <sp-tooltip self-managed placement="top">
             ${msg(str`Move`)}
           </sp-tooltip>
           <sp-icon-move slot="icon"></sp-icon-move>
         </sp-action-button>
-        <sp-action-button value="${VectorNetworkEditMode.BEND}">
+        <sp-action-button
+          value="${VectorNetworkEditMode.BEND}"
+          label=${msg(str`Bend`)}
+        >
           <sp-tooltip self-managed placement="top">
             ${msg(str`Bend`)}
           </sp-tooltip>
           <sp-icon-graph-profit-curve slot="icon"></sp-icon-graph-profit-curve>
         </sp-action-button>
-        <sp-action-button value="${VectorNetworkEditMode.CUT}">
+        <sp-action-button
+          value="${VectorNetworkEditMode.CUT}"
+          label=${msg(str`Cut`)}
+        >
           <sp-tooltip self-managed placement="top">
             ${msg(str`Cut`)}
           </sp-tooltip>
           <sp-icon-cut slot="icon"></sp-icon-cut>
         </sp-action-button>
+        <sp-action-button
+          value="${VectorNetworkEditMode.FILL}"
+          label=${msg(str`Fill region`)}
+        >
+          <sp-tooltip self-managed placement="top">
+            ${msg(str`Click a region to toggle its fill`)}
+          </sp-tooltip>
+          <sp-icon-color-fill slot="icon"></sp-icon-color-fill>
+        </sp-action-button>
       </sp-action-group>
+      ${vectorNetworkEditMode === VectorNetworkEditMode.BEND
+        ? html`
+            <select
+              aria-label=${msg(str`Handle coupling`)}
+              title=${msg(
+                str`Select a vertex with two handles to change coupling`,
+              )}
+              ?disabled=${!canCouple}
+              .value=${canCouple ? vertex.handleMirroring ?? 'NONE' : 'NONE'}
+              @change=${this.setMirroring}
+            >
+              <option value="NONE">${msg(str`Independent`)}</option>
+              <option value="ANGLE">${msg(str`Align angles`)}</option>
+              <option value="ANGLE_AND_LENGTH">
+                ${msg(str`Mirror angle and length`)}
+              </option>
+            </select>
+          `
+        : ''}
       <sp-divider size="s" vertical></sp-divider>
       <sp-action-button
         class="close-button"
+        label=${msg(str`Exit vector edit`)}
         quiet
         size="m"
         @click=${this.exitEditMode}

@@ -1,3 +1,4 @@
+import '../../../packages/webcomponents/src/spectrum/context-vector-network-edit-bar';
 import {
   API,
   App,
@@ -19,6 +20,12 @@ import {
   ZIndex,
   Opacity,
   GlobalTransform,
+  VectorNetwork,
+  Editable,
+  Selected,
+  Transformable,
+  Culled,
+  Pen,
   Commands,
   ComputeZIndex,
   DefaultPlugins,
@@ -28,6 +35,7 @@ import {
   System,
   system,
   type SerializedNode,
+  type AppState,
 } from '@infinite-canvas-tutorial/ecs';
 import { WorkerClient } from '../../../packages/ecs/src/WorkerClient';
 import { bindDocument } from '../../../packages/site/docs/collaboration/document';
@@ -42,10 +50,25 @@ import {
 import * as Y from 'yjs';
 
 type Side = 'left' | 'right';
+// Mirror LitStateManagement's immediate updates, including non-history state.
+class ToolbarStateManagement extends DefaultStateManagement {
+  listeners = new Set<() => void>();
+  setAppState(state: AppState) {
+    super.setAppState(state);
+    this.listeners.forEach((listener) => listener());
+  }
+  setNodes(nodes: SerializedNode[]) {
+    super.setNodes(nodes);
+    this.listeners.forEach((listener) => listener());
+  }
+}
+
 type Slot = {
   api: API;
+  stateManagement: ToolbarStateManagement;
   entity: ReturnType<API['createCanvas']>;
   canvas: HTMLCanvasElement;
+  svgLayer: HTMLDivElement;
   worker: WorkerClient;
 };
 const slots = new Map<Side, Slot>();
@@ -71,9 +94,18 @@ const seed = (): SerializedNode => ({
 });
 function create(side: Side) {
   const canvas = document.querySelector<HTMLCanvasElement>(`#${side} canvas`)!;
-  const api = new API(new DefaultStateManagement(), commands);
+  canvas.tabIndex = 0;
+  const svgLayer = document.createElement('div');
+  const host = document.createElement('div');
+  host.style.cssText = 'position:relative;width:320px;height:220px';
+  canvas.replaceWith(host);
+  host.append(canvas, svgLayer);
+  svgLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+  const stateManagement = new ToolbarStateManagement();
+  const api = new API(stateManagement, commands);
   const entity = api.createCanvas({
     element: canvas,
+    svgLayer,
     width: 320,
     height: 220,
     devicePixelRatio: 1,
@@ -97,7 +129,7 @@ function create(side: Side) {
     return native;
   });
   api.onDestroy(() => worker.dispose());
-  const slot = { api, entity, canvas, worker };
+  const slot = { api, stateManagement, entity, canvas, svgLayer, worker };
   slots.set(side, slot);
   return slot;
 }
@@ -124,6 +156,9 @@ class Bootstrap extends System {
         ZIndex,
         Opacity,
         GlobalTransform,
+        VectorNetwork,
+        Editable,
+        Selected,
       ).write,
   );
   initialize() {
@@ -154,7 +189,7 @@ function act(side: Side, fn: (slot: Slot) => void) {
 async function destroy(side: Side) {
   await act(side, ({ api, canvas }) => {
     api.destroy();
-    canvas.remove();
+    canvas.parentElement!.remove();
     slots.delete(side);
   });
 }
@@ -215,6 +250,82 @@ function connect(kind: 'yjs' | 'loro', room: string) {
 
 const harness = {
   ready: false,
+  visibleVectorAnchors(side: Side) {
+    const tf = slots.get(side)!.api.getCamera().read(Transformable);
+    return [
+      tf.tlAnchor,
+      tf.trAnchor,
+      tf.blAnchor,
+      tf.brAnchor,
+      tf.centerAnchor,
+      tf.x1y1Anchor,
+      tf.x2y2Anchor,
+      ...(tf.controlPoints ?? []),
+      ...(tf.segmentMidpoints ?? []),
+      ...(tf.vnTangentHandles ?? []),
+    ].filter((entity) => entity && !entity.has(Culled)).length;
+  },
+  async settleFrames() {
+    // App awaits world.execute() before scheduling another animation frame.
+    // Browser RAFs alone can run while that asynchronous ECS work is pending.
+    for (let i = 0; i < 2; i++) {
+      const side = slots.keys().next().value as Side | undefined;
+      if (!side) return;
+      await act(side, () => {});
+    }
+  },
+  setScene(side: Side, nodes: SerializedNode[], selectedId: string) {
+    return act(side, ({ api }) => {
+      api.replaceDocument(nodes);
+      api.setAppState({ penbarSelected: Pen.SELECT });
+      api.selectNodes(nodes.filter((node) => node.id === selectedId));
+      api.record();
+    });
+  },
+  setPen(side: Side, pen: Pen) {
+    return act(side, ({ api }) => api.setAppState({ penbarSelected: pen }));
+  },
+  setZoom(side: Side, zoom: number) {
+    return act(side, ({ api }) => api.setAppState({ cameraZoom: zoom }));
+  },
+  async vectorToolbar(side: Side, id: string) {
+    const toolbar = document.createElement(
+      'ic-spectrum-context-vector-network-edit-bar',
+    );
+    toolbar.style.setProperty(
+      '--spectrum-accent-background-color-default',
+      '#147af3',
+    );
+    const { api, stateManagement } = slots.get(side)!;
+    const sync = () => {
+      toolbar.api = api as typeof toolbar.api;
+      toolbar.appState = api.getAppState();
+      toolbar.node = api.getNodeById(id) as typeof toolbar.node;
+      toolbar.requestUpdate();
+    };
+    sync();
+    stateManagement.listeners.add(sync);
+    api.onDestroy(() => {
+      stateManagement.listeners.delete(sync);
+      toolbar.remove();
+    });
+    document.getElementById(side)!.append(toolbar);
+  },
+  viewportPoint(side: Side, id: string, point: [number, number]) {
+    const { api } = slots.get(side)!;
+    const entity = api.getEntity(api.getNodeById(id));
+    const m = entity.read(GlobalTransform).matrix;
+    return api.canvas2Viewport({
+      x: m.m00 * point[0] + m.m10 * point[1] + m.m20,
+      y: m.m01 * point[0] + m.m11 * point[1] + m.m21,
+    });
+  },
+  update(side: Side, id: string, patch: Partial<SerializedNode>) {
+    return act(side, ({ api }) => {
+      api.updateNode(api.getNodeById(id), patch);
+      api.record();
+    });
+  },
   state(side: Side) {
     const slot = slots.get(side);
     return slot

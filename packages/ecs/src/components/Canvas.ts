@@ -34,6 +34,7 @@ export enum VectorNetworkEditMode {
   MOVE = 'move',
   BEND = 'bend',
   CUT = 'cut',
+  FILL = 'fill',
 }
 
 export class Canvas {

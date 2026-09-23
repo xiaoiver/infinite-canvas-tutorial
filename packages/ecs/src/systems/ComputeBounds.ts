@@ -155,6 +155,7 @@ export class ComputeBounds extends System {
       let e: Entity | undefined = entity;
       while (e?.has(Children)) {
         const parent = e.read(Children).parent;
+        if (!parent) break; // Canvas teardown may have detached this subtree.
         if (parent.has(Group)) {
           groupAncestorsToRefresh.add(parent);
         }
@@ -168,6 +169,7 @@ export class ComputeBounds extends System {
       let e: Entity | undefined = entity;
       while (e?.has(Children)) {
         const parent = e.read(Children).parent;
+        if (!parent) break;
         if (parent.has(Group)) {
           groupAncestorsToRefresh.add(parent);
         }

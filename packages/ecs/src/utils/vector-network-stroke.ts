@@ -81,7 +81,10 @@ export function tessellateVectorSegment(
   vec2.add(p1, p0, vec2.fromValues(ts?.x ?? 0, ts?.y ?? 0));
   vec2.add(p2, p3, vec2.fromValues(te?.x ?? 0, te?.y ?? 0));
 
-  if (vec2.squaredDistance(p0, p3) < EPS * EPS) {
+  if (
+    vec2.squaredDistance(p0, p3) < EPS * EPS &&
+    isStraightCubic(p0, p1, p2, p3)
+  ) {
     return [p0[0], p0[1], p3[0], p3[1]];
   }
 

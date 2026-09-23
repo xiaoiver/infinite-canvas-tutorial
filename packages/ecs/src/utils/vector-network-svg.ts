@@ -1,11 +1,11 @@
 import type { VectorNetworkSerializedNode } from '../types/serialized-node';
-import {
-  type VectorRegionLike,
-} from './vector-network-fill';
+import { type VectorRegionLike } from './vector-network-fill';
 import {
   type VectorSegmentLike,
   type VectorVertexLike,
 } from './vector-network-stroke';
+
+import { orientVectorLoop } from './vector-network-loop';
 
 const EPS = 1e-6;
 
@@ -100,13 +100,14 @@ function orientedSegmentPath(
   const y2 = y3 + (te?.y ?? 0);
 
   const straight =
-    Math.hypot(x1 - x0, y1 - y0) < EPS &&
-    Math.hypot(x2 - x3, y2 - y3) < EPS;
+    Math.hypot(x1 - x0, y1 - y0) < EPS && Math.hypot(x2 - x3, y2 - y3) < EPS;
   if (moveToFirst) {
     if (straight) {
       return `M ${fmt(x0)} ${fmt(y0)} L ${fmt(x3)} ${fmt(y3)}`;
     }
-    return `M ${fmt(x0)} ${fmt(y0)} C ${fmt(x1)} ${fmt(y1)} ${fmt(x2)} ${fmt(y2)} ${fmt(x3)} ${fmt(y3)}`;
+    return `M ${fmt(x0)} ${fmt(y0)} C ${fmt(x1)} ${fmt(y1)} ${fmt(x2)} ${fmt(
+      y2,
+    )} ${fmt(x3)} ${fmt(y3)}`;
   }
   if (straight) {
     return ` L ${fmt(x3)} ${fmt(y3)}`;
@@ -187,37 +188,15 @@ function loopToPathD(
   segments: VectorSegmentLike[],
   loop: ReadonlyArray<number>,
 ): string {
-  if (loop.length === 0) {
+  const walk = orientVectorLoop(segments, loop);
+  if (!walk || walk.some(({ from, to }) => !vertices[from] || !vertices[to])) {
     return '';
   }
-
-  let d = '';
-  let prevVertexIdx = -1;
-  let firstMove = true;
-
-  for (let k = 0; k < loop.length; k++) {
-    const segIdx = loop[k];
-    if (segIdx < 0 || segIdx >= segments.length) {
-      continue;
-    }
-    const seg = segments[segIdx];
-    let from = seg.start;
-    let to = seg.end;
-    if (prevVertexIdx >= 0) {
-      if (seg.start === prevVertexIdx) {
-        from = seg.start;
-        to = seg.end;
-      } else if (seg.end === prevVertexIdx) {
-        from = seg.end;
-        to = seg.start;
-      }
-    }
-
-    d += orientedSegmentPath(vertices, seg, from, to, firstMove);
-    firstMove = false;
-    prevVertexIdx = to;
-  }
-
+  const d = walk
+    .map(({ segmentIndex, from, to }, i) =>
+      orientedSegmentPath(vertices, segments[segmentIndex], from, to, i === 0),
+    )
+    .join('');
   return d ? `${d} Z` : '';
 }
 
@@ -250,11 +229,11 @@ export function buildVectorNetworkFillPathD(
 
   const parts: string[] = [];
   for (const region of regions) {
-    for (const loop of region.loops) {
-      const loopD = loopToPathD(vertices, segments, loop);
-      if (loopD) {
-        parts.push(loopD);
-      }
+    const loops = region.loops.map((loop) =>
+      loopToPathD(vertices, segments, loop),
+    );
+    if (loops.every(Boolean)) {
+      parts.push(...loops);
     }
   }
   return parts.join(' ');

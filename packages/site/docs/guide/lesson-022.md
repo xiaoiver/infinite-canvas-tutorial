@@ -17,7 +17,7 @@ In this lesson, you will learn about:
 -   Limitations of SVG Path
 -   What is VectorNetwork?
 -   Using the Pen tool to modify Path
--   Double-click to enter vector edit mode and Move / Bend / Cut tools
+-   Double-click to enter vector edit mode and Move / Bend / Cut / Fill tools
 -   Topological operators: split segment, delete vertex, Cut to open a closed loop
 
 ## Limitations of SVG Path {#limitations-of-svg-path}
@@ -235,11 +235,51 @@ function tessellateVectorSegment(
 Walk each Figma `loops` entry (ordered segment indices), tessellate every edge—including cubics—with the same `tessellateVectorSegment`, stitch in traversal order, drop duplicate points, and close the ring.
 
 -   For each region and each loop, build one closed contour.
--   **nonzero** (or Figma `windingRule: 'NONZERO'`): same earcut + holes path as Path fills in `Mesh` (`isClockWise` separates outer rings from holes).
+-   **nonzero** (or Figma `windingRule: 'NONZERO'`): use `triangulate` (libtess) with nonzero winding across all contours, supporting disconnected islands and nested holes regardless of contour order.
 -   **evenodd** (or `EVENODD`): `triangulate` (libtess).
 -   Multiple regions are triangulated in sequence; vertices and indices are concatenated into one mesh with a running vertex offset.
 
+### Click to fill a region {#click-to-fill}
+
+Double-click a VectorNetwork and choose **Fill**. Hover previews the smallest enclosed face; click to fill it and click again to clear it. Each click is one undo step. Drags, cancelled pointers and multi-touch zoom do not commit a fill. Switching tools, pressing Esc, clicking empty canvas outside the shape, or destroying the canvas clears the preview.
+
+`findVectorNetworkFaces` walks directed half-edges and attaches the exterior boundaries of enclosed disconnected components as holes. Previews and newly created regions use `evenodd`, so holes do not depend on the storage direction of edges. Existing `nonzero` / `evenodd` fills are resolved to minimal faces by their coverage; clearing one face preserves neighbouring fills.
+
+Faces share the node's `fills`. The first fill on a stroke-only network uses the pen's configured visible fill, falling back to blue. Previews live in a transient SVG overlay and never enter the document, exports or history. Picking uses local coordinates and supports rotation, reflection and scaling.
+
+Fill splits crossings into shared vertices in temporary geometry before finding faces. Hovering does not change the document: the first fill click commits both topology and paint, and one undo restores both. Independent paint per face remains a separate extension.
+
+## Drawing with the Pen {#drawing-with-pen}
+
+Choose the **Vector Network** pen. Click to place corner anchors; drag to place smooth anchors. The first anchor remains a transient preview until the first edge is committed, so abandoning a single point does not create an empty document node.
+
+A drag defines the new anchor's outgoing handle. Its incoming handle is the opposite vector, and the outgoing vector becomes the next edge's `tangentStart`. Both the rubber-band preview and committed geometry use these same cubic controls, including a drag on the first anchor. The preview also shows the handle line.
+
+Click an existing anchor within 10 viewport pixels to close the network and return to Select. Snapping uses the press position, so dragging the closing handle away does not create an extra vertex. Closed faces are detected automatically and rendered with the pen's configured fill; the default stroke-only style remains unfilled until **Fill** is used. Click the active anchor, or press **Enter / Esc**, to finish an open path. An unfinished drag is discarded.
+
+Each committed edge is one undo step. Pointer cancellation, leaving the canvas, and switching tools discard the pending gesture; committed edges remain. Undo or an external geometry edit clears the continuation point, so the next stroke cannot attach to a stale vertex. Previews belong to their canvas's SVG overlay and are excluded from saved nodes, history and exports; destroying the canvas removes them.
+
+### Resume an existing network {#resume-with-pen}
+
+Select a VectorNetwork and switch to the pen. Hover near an existing vertex to see its snap indicator, click it to start, then click or drag the next anchor to add an edge to the same network. This extends endpoints and creates branches at shared vertices. Choosing the first anchor does not change the document; each committed edge is one undo step. Starting away from a vertex creates a separate network.
+
+Continuation supports rotation, nonuniform scaling and reflection, using the same cubic controls for preview and commit. Existing edge handles, fills and holes are preserved; use Fill to paint newly enclosed faces. Connecting to an existing vertex finishes the stroke, and retracing an identical edge creates no duplicate. Locked, hidden or noninvertible nodes cannot be resumed. Cancellation, switching tools or undo during drawing discards the pending edge while retaining completed edits.
+
 ## Bending
+
+In **Bend**, drag an interior point on an edge directly. Its anchors stay fixed while the grabbed curve point follows the pointer. Straight edges become cubic Béziers. Every update starts from the pointer-down snapshot, preventing accumulated control displacement. Picking uses screen coordinates, including rotation, reflection and nonuniform scaling.
+
+At parameter `t`, the two control weights are `a = 3(1-t)²t` and `b = 3(1-t)t²`. For pointer displacement `Δ`, the controls move by `aΔ/(a²+b²)` and `bΔ/(a²+b²)`. This minimizes squared control displacement while keeping the grabbed point under the pointer. Direct edge bending releases handle coupling at its endpoints; other edges retain their controls. Near endpoints, anchor and handle interactions take priority.
+
+Double-click a vector network, choose **Bend**, then select an anchor to reveal its handles. For anchors with exactly two incident edge ends, **Handle coupling** offers three modes:
+
+-   **Independent**: move either handle without changing the other.
+-   **Align angles**: keep the handles on opposite rays while preserving the other handle's length.
+-   **Mirror angle and length**: keep the handles opposite and equally long.
+
+Changing the mode aligns the pair immediately, using the first non-zero handle as reference. Hold **Alt** while dragging to break the coupling; the anchor remains independent afterward. Branch vertices with three or more incident edge ends keep independent handles. A self-loop contributes two ends. A collapsed handle has no direction, so angle-only coupling retains the other handle until the dragged handle has a direction again.
+
+Straight edges expose temporary handle positions pointing toward the other endpoint; dragging one creates its Bézier control. These guides do not change saved geometry until dragged. Each completed drag or coupling change is one undo step. **Esc**, pointer cancellation, leaving the canvas, or switching tools cancels a pending drag and restores its original geometry. Changing curve bounds preserves anchor positions under rotation, reflection and scaling.
 
 The following is from [Introducing Vector Networks - Bending]. For Bezier curve editing, it's common in both Path and VectorNetwork:
 
@@ -251,7 +291,7 @@ In VectorNetwork's edge definition, `tangentStart` and `tangentEnd` can define t
 
 You can also try the Konva example [How to modify line points with anchors?] or [bezierjs].
 
-Double-click edit mode, the Move / Bend / Cut toolbar, and midpoint insertion are covered in [Entering edit mode and toolbar](#vector-edit-mode) below.
+Double-click edit mode, the Move / Bend / Cut / Fill toolbar, and midpoint insertion are covered in [Entering edit mode and toolbar](#vector-edit-mode) below.
 
 ![Vector edit mode in Figma](/figma-vectornetwork-mode.png)
 
@@ -265,7 +305,7 @@ export enum Pen {
 
 Unlike the OBB-based approach in [Lesson 21 - Transformer]:
 
--   Dragging a `VectorSegment` moves the whole shape, like OBB drag.
+-   In edit mode, dragging a `VectorSegment` moves both endpoints; adjacent edges sharing those vertices follow naturally.
 -   Dragging a `VectorVertex` moves only that vertex; every segment that shares it follows automatically — this is the core advantage of a Vector Network over a Path. The new coordinates are written back through a single entry point `API.updateNodeVectorNetwork(node, vectorNetwork)`, which updates the entity's `VectorNetwork` component and triggers re-tessellation plus history (undo/redo).
 
 ```ts
@@ -277,17 +317,18 @@ Unlike the OBB-based approach in [Lesson 21 - Transformer]:
 // 3. Call api.updateNodeVectorNetwork to write back.
 ```
 
-On write-back, `VectorNetwork.getGeometryBounds` recomputes the geometry bounds and normalizes the top-left to local `(0, 0)` (all vertices shift by `-minX/-minY`, with that offset added to `node.x/y`), preserving the `node.x == geometry left` invariant that Transformer resize relies on.
+On write-back, `VectorNetwork.getGeometryBounds` recomputes the geometry bounds and shifts all vertices by `-minX/-minY`, normalizing the top-left to local `(0, 0)`. Before adding the compensating offset to `node.x/y`, it applies the node's scale and rotation to express the offset in the parent coordinate system. Rebasing therefore preserves world-space anchor positions. Tangents are relative to their anchors and need no translation.
 
 ### Entering edit mode and toolbar {#vector-edit-mode}
 
-Following Figma's [Edit vector layers], double-click a `vector-network` node to enter vertex edit mode: set `Editable.isEditing = true` on the entity and show a bottom-centered **Move / Bend / Cut** toolbar (`VectorNetworkEditMode`, see `context-vector-network-edit-bar.ts`). Exiting edit (toolbar close button, Esc, or clicking empty canvas) writes `isEditing: false`; `RenderTransformer` hides all edit anchors (vertices, segment midpoints, tangent handles).
+Following Figma's [Edit vector layers], double-click a `vector-network` node to enter vertex edit mode: set `Editable.isEditing = true` on the entity and show a bottom-centered **Move / Bend / Cut / Fill** toolbar (`VectorNetworkEditMode`, see `context-vector-network-edit-bar.ts`). Exiting edit (toolbar close button, Esc, or clicking empty canvas) writes `isEditing: false`; `RenderTransformer` hides all edit anchors (vertices, segment midpoints, tangent handles).
 
 | Mode     | Interaction                                                                                                                       |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | **Move** | Drag vertices; hover a segment to show its midpoint, click to insert a new vertex                                                 |
-| **Bend** | Show tangent handles on the selected vertex; drag to adjust `tangentStart` / `tangentEnd`                                         |
+| **Bend** | Drag an edge to bend it directly, or edit its handles with three coupling modes                                                   |
 | **Cut**  | Same midpoint insertion as Move; **click a vertex** to break topology at the cut point and auto-switch to Move for dragging apart |
+| **Fill** | Hover to preview a closed face; click to toggle its fill while preserving holes and neighbouring faces                            |
 
 **Hover highlight** and **selection** are separate for anchors: `Transformable.hoveredControlPointIndex` clears when the pointer leaves; `selectedControlPointIndex` persists after a click until you click empty space or inside the shape.
 
@@ -295,7 +336,17 @@ Following Figma's [Edit vector layers], double-click a `vector-network` node to 
 
 When hovering a segment, render a midpoint anchor at the curve midpoint (`t = 0.5`; for cubic edges, the point on the curve). A click calls `splitSegmentAt` (see [Creation & delete](#creation--delete)) to split the edge and write back the network. See `Select.insertControlPointFromMidpoint` and `RenderTransformer.findHoveredVectorNetworkSegmentIndex` (viewport-to-local curve distance).
 
+Move drags either one vertex or an entire edge, moving both endpoints while preserving tangents. Rotated, scaled and mirrored nodes use the coordinate system captured on press, avoiding drift when bounds change. A vertex snaps near another vertex and merges on release. Esc, pointer cancellation or switching tools restores the whole gesture, including a newly inserted midpoint. Cut commits on click and remains disconnected on release. Delete acts on the selected vertex even after the pointer moves away.
+
+Geometry changes during a drag remain uncommitted. Undo and redo first restore the gesture’s starting geometry, then apply history, keeping bounds and vertices from the same edit. If an external update has replaced geometry or transforms, the old gesture is discarded instead: later movement, release or Escape cannot restore its stale snapshot. Style-only changes do not interrupt the drag, and cancelling geometry preserves the new paint. Delete during a drag first cancels the unfinished move, then deletes the selected original vertex; for a newly inserted midpoint, it only cancels that insertion.
+
 ## Topological operators
+
+### Automatic intersection splitting {#automatic-intersections}
+
+Committing a Pen edge or finishing a Move or Bend drag connects transverse crossings and T junctions within that network. This supports lines, cubic Béziers, multiple crossings and a cubic's self-intersection. De Casteljau subdivision preserves curve shape; region and hole walks are rewritten in traversal order. Existing vertex indices stay stable, so Pen continuation still starts at the clicked endpoint.
+
+Topology stays unchanged during a drag. Splitting commits with the shape edit on release; cancellation leaves no junctions, and undo/redo covers the whole operation. Call `splitVectorNetworkIntersections(network)` to normalize imported geometry explicitly. Detection uses adaptive subdivision and numerical refinement; tangent contacts, boolean merging of overlapping spans, and connections across separate nodes are not supported. Endpoint-only contacts remain separate to preserve Cut results.
 
 Figma supports [Boolean operations], for example union.
 
@@ -314,7 +365,7 @@ export function splitSegmentAt(
     network: VectorNetworkData,
     segIdx: number,
     t: number,
-): VectorNetworkData;
+): number; // Mutates network and returns the new vertex index.
 ```
 
 Deleting a vertex: after removing the vertex and its incident edges, a degree-2 neighbor is "healed" by merging its two edges into one, keeping the path connected (matching Figma's Delete and Heal). Triggered with **Delete / Backspace** in edit mode:
@@ -326,7 +377,9 @@ export function deleteVertex(
 ): VectorNetworkData;
 ```
 
-> These operators are pure functions (in `packages/ecs/src/utils/vector-network-topology.ts`) taking and returning `{ vertices, segments, regions }`, so they are easy to unit-test and decoupled from rendering; the editing system feeds their result back through `API.updateNodeVectorNetwork`.
+> Delete, break and merge return a new network; `splitSegmentAt` mutates the supplied network copy and returns the inserted vertex index. The operators in `packages/ecs/src/utils/vector-network-topology.ts` are decoupled from rendering and independently testable; the editing system feeds their result back through `API.updateNodeVectorNetwork`.
+
+For curves, Heal first attempts to recover an original subdivided cubic. Otherwise it fits a cubic with a checked error bound, defaulting to 5% of the control-point bounding extent; `maxError` sets a tolerance in local units. If the tolerance cannot be met, the original network is retained. **Shift + Delete / Backspace** removes the vertex and incident edges without healing. Splitting and editing remap boundary indices in traversal order and preserve valid regions.
 
 ### Glue & unglue
 
@@ -336,12 +389,12 @@ export function deleteVertex(
 
 ![Cut and uncut operator](/vgc-operator-cut-uncut.png)
 
-Cut **breaks topology at the cut vertex** (it does not remove the opposite edge). On a closed loop, keep both incident edges at the cut point, duplicate the closing endpoint, and rewrite the closing segment so the path opens there. For triangle `0—1—2—0` with a cut at vertex `1`:
+Cut **breaks topology at the selected vertex**. Duplicate that vertex, keep its first incident endpoint, and move the remaining endpoints to the copy. Closed loops and open chains use the same rule. For triangle `0—1—2—0` with a cut at vertex `1`:
 
 ```plaintext
 Before:  0 — 1 — 2 — 0 (closed)
-After:   0 — 1 — 2 — 3 (3 coincident with 0, open polyline)
-segments: [0,1], [1,2], [2,3]
+After:   1 — 0 — 2 — 3 (3 coincident with 1, open polyline)
+segments: [0,1], [3,2], [2,0]
 ```
 
 On an open polyline, **duplicate the cut vertex** and reassign all but the first incident edge to the copy so the two chains can be pulled apart in Move mode. See `breakVertex`:
@@ -353,7 +406,7 @@ export function breakVertex(
 ): VectorNetworkData | null;
 ```
 
-Clicking a vertex in Cut mode calls `breakVectorNetworkAtVertex` (`Select.ts`), writes back the network, records history, and `setAppState({ vectorNetworkEditMode: MOVE })` so you can drag immediately. `regions` are dropped after a break; use click-to-fill again or rebuild via region detection later.
+Clicking a vertex in Cut mode calls `breakVectorNetworkAtVertex` (`Select.ts`), writes back the network, records history, and `setAppState({ vectorNetworkEditMode: MOVE })` so you can drag immediately. Regions whose boundaries remain closed are preserved. An invalid boundary removes its containing region, including when a hole breaks, to avoid accidentally filling that hole. Clearing uses explicit `regions: []` so the entity and undo history stay in sync. A one-vertex cubic self-loop can also be cut.
 
 ## Extended reading {#extended-reading}
 

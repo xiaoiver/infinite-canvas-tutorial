@@ -35,6 +35,7 @@ import {
   GlobalTransform,
 } from '../../packages/ecs/src';
 import { mat3 } from 'gl-matrix';
+import { breakVertex } from '../../packages/ecs/src/utils/vector-network-topology';
 import { NodeJSAdapter, sleep } from '../utils';
 
 DOMAdapter.set(NodeJSAdapter);
@@ -169,6 +170,28 @@ describe('updateNodeVectorNetwork', () => {
     // normalization it sits at local x === 0.
     expect(serialized.vertices[0].x).toBeCloseTo(0, 3);
     expect(Math.min(...serialized.vertices.map((v) => v.x))).toBeCloseTo(0, 3);
+
+    // A cut must explicitly clear stale regions through the real API and history.
+    api.record();
+    const cut = breakVertex({
+      vertices: updated.vertices,
+      segments: updated.segments,
+      regions: updated.regions,
+    }, 1)!;
+    api.updateNodeVectorNetwork(serialized, cut as VectorNetwork);
+    api.record();
+    await sleep(100);
+    expect(api.getEntity(vnNode).read(VectorNetwork).regions).toEqual([]);
+    expect((api.getNodeById('vn-1') as VectorNetworkSerializedNode).regions).toEqual([]);
+
+    api.undo();
+    await sleep(100);
+    expect(api.getEntity(vnNode).read(VectorNetwork).regions![0].loops).toEqual([[0, 1, 2]]);
+    expect(api.getEntity(vnNode).read(VectorNetwork).vertices).toHaveLength(3);
+    api.redo();
+    await sleep(100);
+    expect(api.getEntity(vnNode).read(VectorNetwork).regions).toEqual([]);
+    expect(api.getEntity(vnNode).read(VectorNetwork).vertices).toHaveLength(4);
 
     await app.exit();
   });

@@ -1,5 +1,7 @@
-import earcut from 'earcut';
-import { isClockWise } from './curve/shape-path';
+import {
+  orientVectorLoop,
+  type OrientedVectorSegment,
+} from './vector-network-loop';
 import { triangulate } from './tessy';
 import {
   tessellateVectorSegment,
@@ -39,122 +41,50 @@ function flatToPairs(flat: number[]): [number, number][] {
   return out;
 }
 
-function tessellateOrientedFill(
-  vertices: VectorVertexLike[],
-  seg: VectorSegmentLike,
-  from: number,
-  to: number,
-): [number, number][] {
-  const flat = tessellateVectorSegment(vertices, seg);
-  if (flat.length === 0) {
-    return [];
-  }
-  if (seg.start === from && seg.end === to) {
-    return flatToPairs(flat);
-  }
-  if (seg.end === from && seg.start === to) {
-    return flatToPairs(flat).reverse();
-  }
-  return [];
-}
-
-/**
- * Closed 2D contour from a Figma-style loop (ordered segment indices).
- */
-export function contourFromSegmentLoop(
+/** Sample an explicitly directed boundary (also used by face detection). */
+export function contourFromOrientedSegments(
   vertices: VectorVertexLike[],
   segments: VectorSegmentLike[],
-  loop: ReadonlyArray<number>,
+  walk: ReadonlyArray<OrientedVectorSegment>,
 ): [number, number][] {
-  if (loop.length === 0) {
-    return [];
-  }
   const out: [number, number][] = [];
-  let prevVertexIdx = -1;
-
-  for (let k = 0; k < loop.length; k++) {
-    const segIdx = loop[k];
-    if (segIdx < 0 || segIdx >= segments.length) {
-      continue;
+  for (const { segmentIndex, from, to, reversed } of walk) {
+    if (!vertices[from] || !vertices[to]) {
+      return [];
     }
-    const seg = segments[segIdx];
-    let from = seg.start;
-    let to = seg.end;
-    if (prevVertexIdx >= 0) {
-      if (seg.start === prevVertexIdx) {
-        from = seg.start;
-        to = seg.end;
-      } else if (seg.end === prevVertexIdx) {
-        from = seg.end;
-        to = seg.start;
-      } else {
-        from = seg.start;
-        to = seg.end;
-      }
+    const piece = flatToPairs(
+      tessellateVectorSegment(vertices, segments[segmentIndex]),
+    );
+    if (reversed) {
+      piece.reverse();
     }
-
-    const piece = tessellateOrientedFill(vertices, seg, from, to);
     for (const pt of piece) {
-      if (out.length > 0 && closePointsEqual(out[out.length - 1], pt)) {
-        continue;
+      if (!Number.isFinite(pt[0]) || !Number.isFinite(pt[1])) {
+        return [];
       }
-      out.push(pt);
+      if (!out.length || !closePointsEqual(out[out.length - 1], pt)) {
+        out.push(pt);
+      }
     }
-    prevVertexIdx = to;
   }
-
   if (out.length >= 2 && closePointsEqual(out[0], out[out.length - 1])) {
     out.pop();
   }
   return out;
 }
 
-/** Same earcut grouping as {@link Mesh} for Path nonzero fills. */
-function earcutTriangulateContours(
-  rawPoints: [number, number][][],
-): { vertices: number[]; indices: number[] } {
-  const flatAll = rawPoints.flat(2);
-  if (flatAll.length === 0) {
-    return { vertices: [], indices: [] };
-  }
-
-  let holes: number[] = [];
-  let contours: [number, number][] = [];
-  const indices: number[] = [];
-  let indexOffset = 0;
-
-  let firstClockWise = isClockWise(rawPoints[0]);
-
-  rawPoints.forEach((points) => {
-    const isHole = isClockWise(points) !== firstClockWise;
-    if (isHole) {
-      holes.push(contours.length);
-    } else {
-      firstClockWise = isClockWise(points);
-
-      if (holes.length > 0) {
-        indices.push(
-          ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
-        );
-        indexOffset += contours.length;
-        holes = [];
-        contours = [];
-      }
-    }
-    contours.push(...points);
-  });
-
-  if (contours.length) {
-    indices.push(
-      ...earcut(contours.flat(), holes).map((i) => i + indexOffset),
-    );
-  }
-
-  return { vertices: flatAll, indices };
+/** Closed contour from ordered segment indices; reject broken boundaries. */
+export function contourFromSegmentLoop(
+  vertices: VectorVertexLike[],
+  segments: VectorSegmentLike[],
+  loop: ReadonlyArray<number>,
+): [number, number][] {
+  const walk = orientVectorLoop(segments, loop);
+  return walk ? contourFromOrientedSegments(vertices, segments, walk) : [];
 }
 
 /**
- * Indexed mesh for VectorNetwork fill: `regions` → triangulation (nonzero / earcut, evenodd / libtess).
+ * Indexed mesh for VectorNetwork fill: `regions` → triangulation with the requested winding rule.
  */
 export function buildVectorNetworkFillMesh(
   vertices: VectorVertexLike[],
@@ -178,28 +108,19 @@ export function buildVectorNetworkFillMesh(
         contours.push(c);
       }
     }
-    if (contours.length === 0) {
+    if (contours.length === 0 || contours.length !== loops.length) {
       continue;
     }
 
-    if (resolveRegionFillRule(region) === 'evenodd') {
-      const tri = triangulate(contours, 'evenodd');
-      const nv = tri.length / 2;
-      for (let i = 0; i < tri.length; i++) {
-        allPoints.push(tri[i]);
-      }
-      for (let i = 0; i < nv; i++) {
-        allIndices.push(vOffset + i);
-      }
-      vOffset += nv;
-    } else {
-      const { vertices: flat, indices } = earcutTriangulateContours(contours);
-      allPoints.push(...flat);
-      for (const i of indices) {
-        allIndices.push(i + vOffset);
-      }
-      vOffset += flat.length / 2;
+    // Apply winding rules across all contours together. Grouping holes by
+    // input order incorrectly joins disconnected islands and nested contours.
+    const tri = triangulate(contours, resolveRegionFillRule(region));
+    const nv = tri.length / 2;
+    allPoints.push(...tri);
+    for (let i = 0; i < nv; i++) {
+      allIndices.push(vOffset + i);
     }
+    vOffset += nv;
   }
 
   return { points: allPoints, indices: allIndices };

@@ -7,6 +7,8 @@ import type {
 } from './vector-network-stroke';
 import { expandBoundsWithVectorSegments } from './vector-network-stroke';
 import type { VectorRegionLike } from './vector-network-fill';
+import { orientVectorLoop } from './vector-network-loop';
+import { healVectorSegments } from './vector-network-heal';
 
 const EPS = 1e-6;
 
@@ -171,7 +173,11 @@ export function pathToVectorNetwork(
           const c2: [number, number] = [data[i + 2], data[i + 3]];
           const next: [number, number] = [data[i + 4], data[i + 5]];
           const idx = pushVertex(next);
-          addSegment(currentIndex, idx, tangentsFromCubic(current, c1, c2, next));
+          addSegment(
+            currentIndex,
+            idx,
+            tangentsFromCubic(current, c1, c2, next),
+          );
           current = next;
           currentIndex = idx;
           prevCubicControl = c2;
@@ -182,12 +188,19 @@ export function pathToVectorNetwork(
       case 'S': {
         for (let i = 0; i < data.length; i += 4) {
           const c1: [number, number] = prevCubicControl
-            ? [2 * current[0] - prevCubicControl[0], 2 * current[1] - prevCubicControl[1]]
+            ? [
+                2 * current[0] - prevCubicControl[0],
+                2 * current[1] - prevCubicControl[1],
+              ]
             : [current[0], current[1]];
           const c2: [number, number] = [data[i], data[i + 1]];
           const next: [number, number] = [data[i + 2], data[i + 3]];
           const idx = pushVertex(next);
-          addSegment(currentIndex, idx, tangentsFromCubic(current, c1, c2, next));
+          addSegment(
+            currentIndex,
+            idx,
+            tangentsFromCubic(current, c1, c2, next),
+          );
           current = next;
           currentIndex = idx;
           prevCubicControl = c2;
@@ -201,7 +214,11 @@ export function pathToVectorNetwork(
           const next: [number, number] = [data[i + 2], data[i + 3]];
           const { c1, c2 } = quadraticToCubic(current, q, next);
           const idx = pushVertex(next);
-          addSegment(currentIndex, idx, tangentsFromCubic(current, c1, c2, next));
+          addSegment(
+            currentIndex,
+            idx,
+            tangentsFromCubic(current, c1, c2, next),
+          );
           current = next;
           currentIndex = idx;
           prevQuadControl = q;
@@ -212,12 +229,19 @@ export function pathToVectorNetwork(
       case 'T': {
         for (let i = 0; i < data.length; i += 2) {
           const q: [number, number] = prevQuadControl
-            ? [2 * current[0] - prevQuadControl[0], 2 * current[1] - prevQuadControl[1]]
+            ? [
+                2 * current[0] - prevQuadControl[0],
+                2 * current[1] - prevQuadControl[1],
+              ]
             : [current[0], current[1]];
           const next: [number, number] = [data[i], data[i + 1]];
           const { c1, c2 } = quadraticToCubic(current, q, next);
           const idx = pushVertex(next);
-          addSegment(currentIndex, idx, tangentsFromCubic(current, c1, c2, next));
+          addSegment(
+            currentIndex,
+            idx,
+            tangentsFromCubic(current, c1, c2, next),
+          );
           current = next;
           currentIndex = idx;
           prevQuadControl = q;
@@ -300,8 +324,16 @@ export function getVectorSegmentPointAt(
   const p3 = vec2.fromValues(b.x, b.y);
   const p1 = vec2.create();
   const p2 = vec2.create();
-  vec2.add(p1, p0, vec2.fromValues(seg.tangentStart?.x ?? 0, seg.tangentStart?.y ?? 0));
-  vec2.add(p2, p3, vec2.fromValues(seg.tangentEnd?.x ?? 0, seg.tangentEnd?.y ?? 0));
+  vec2.add(
+    p1,
+    p0,
+    vec2.fromValues(seg.tangentStart?.x ?? 0, seg.tangentStart?.y ?? 0),
+  );
+  vec2.add(
+    p2,
+    p3,
+    vec2.fromValues(seg.tangentEnd?.x ?? 0, seg.tangentEnd?.y ?? 0),
+  );
   const point = new CubicBezierCurve(
     vec2.clone(p0),
     vec2.clone(p1),
@@ -330,9 +362,15 @@ export function splitSegmentAt(
 ): number {
   const { vertices, segments } = network;
   const seg = segments[segmentIndex];
-  if (!seg) {
+  if (
+    !seg ||
+    !vertices[seg.start] ||
+    !vertices[seg.end] ||
+    !Number.isFinite(t)
+  ) {
     return -1;
   }
+  const oldSegments = segments.slice();
   const clampedT = Math.min(1 - EPS, Math.max(EPS, t));
 
   let newVertex: VectorVertexLike;
@@ -400,100 +438,54 @@ export function splitSegmentAt(
   const secondIndex = segments.length;
   segments.push(secondHalf);
 
-  // Keep region loops consistent: insert the new segment index right after the
-  // original wherever it appears.
   if (network.regions) {
-    for (const region of network.regions) {
-      const loops = region.loops as number[][];
-      for (let li = 0; li < loops.length; li++) {
-        const loop = loops[li];
-        const out: number[] = [];
-        for (const s of loop) {
-          out.push(s);
-          if (s === segmentIndex) {
-            out.push(secondIndex);
-          }
-        }
-        loops[li] = out;
-      }
-    }
+    network.regions = rewriteRegions(
+      network.regions,
+      oldSegments,
+      segments,
+      (index) =>
+        index === segmentIndex ? [segmentIndex, secondIndex] : [index],
+    );
   }
 
   return newVertexIndex;
 }
 
 /**
- * Removes a vertex and re-indexes the network. Segments touching the vertex are
- * dropped. When the vertex had exactly two segments (degree 2) the two edges are
- * healed into a single straight segment connecting the neighbours (Figma-style
- * "delete and heal"). Region loops referencing removed segments are dropped.
+ * Remap a boundary in its traversal direction, then validate closure. A region
+ * is atomic: dropping just a broken hole would unexpectedly fill that hole.
+ * Explicit [] is important: the API interprets undefined as "leave unchanged".
  */
-export function deleteVertex(
-  network: VectorNetworkData,
-  vertexIndex: number,
-): VectorNetworkData {
-  const { vertices, segments } = network;
-  if (vertexIndex < 0 || vertexIndex >= vertices.length) {
-    return network;
-  }
-
-  // Collect incident segments.
-  const incident: number[] = [];
-  segments.forEach((s, i) => {
-    if (s.start === vertexIndex || s.end === vertexIndex) {
-      incident.push(i);
+function rewriteRegions(
+  regions: VectorRegionLike[],
+  before: VectorSegmentLike[],
+  after: VectorSegmentLike[],
+  replacement: (index: number) => number[] | null,
+  simplify?: (loop: number[]) => number[],
+): VectorRegionLike[] {
+  return regions.flatMap((region) => {
+    const loops: number[][] = [];
+    for (const loop of region.loops) {
+      const walk = orientVectorLoop(before, loop);
+      if (!walk) {
+        return [];
+      }
+      let mapped: number[] = [];
+      for (const edge of walk) {
+        const indices = replacement(edge.segmentIndex);
+        if (!indices) {
+          return [];
+        }
+        mapped.push(...(edge.reversed ? [...indices].reverse() : indices));
+      }
+      mapped = simplify ? simplify(mapped) : mapped;
+      if (!orientVectorLoop(after, mapped)) {
+        return [];
+      }
+      loops.push(mapped);
     }
+    return loops.length ? [{ ...region, loops }] : [];
   });
-
-  const healed: VectorSegmentLike[] = [];
-  if (incident.length === 2) {
-    const [iA, iB] = incident;
-    const segA = segments[iA];
-    const segB = segments[iB];
-    const otherA = segA.start === vertexIndex ? segA.end : segA.start;
-    const otherB = segB.start === vertexIndex ? segB.end : segB.start;
-    if (otherA !== otherB && otherA !== vertexIndex && otherB !== vertexIndex) {
-      healed.push({ start: otherA, end: otherB });
-    }
-  }
-
-  const removedSegments = new Set(incident);
-  const keptSegments: VectorSegmentLike[] = [];
-  segments.forEach((s, i) => {
-    if (!removedSegments.has(i)) {
-      keptSegments.push(s);
-    }
-  });
-  keptSegments.push(...healed);
-
-  // Re-index vertices (drop the removed one).
-  const remap = new Map<number, number>();
-  const newVertices: VectorVertexLike[] = [];
-  vertices.forEach((v, i) => {
-    if (i === vertexIndex) {
-      return;
-    }
-    remap.set(i, newVertices.length);
-    newVertices.push(v);
-  });
-
-  const newSegments: VectorSegmentLike[] = [];
-  for (const s of keptSegments) {
-    const start = remap.get(s.start);
-    const end = remap.get(s.end);
-    if (start === undefined || end === undefined || start === end) {
-      continue;
-    }
-    newSegments.push({ ...s, start, end });
-  }
-
-  // Drop regions that referenced removed segments; rebuilding faces is left to
-  // the caller (e.g. via region detection).
-  const result: VectorNetworkData = {
-    vertices: newVertices,
-    segments: newSegments,
-  };
-  return result;
 }
 
 function cloneSegments(segments: VectorSegmentLike[]): VectorSegmentLike[] {
@@ -504,265 +496,237 @@ function cloneSegments(segments: VectorSegmentLike[]): VectorSegmentLike[] {
   }));
 }
 
+export interface DeleteVectorVertexOptions {
+  /** Set false to remove incident edges without joining their neighbours. */
+  heal?: boolean;
+  /** Maximum curve deviation in local units; default is 5% of the control hull. */
+  maxError?: number;
+}
+
 /**
- * Walk from `fromVertex` away from `avoidVertex` until `targetVertex` is reached.
- * Returns the last segment on that path (the closing edge of a simple loop cut).
+ * Delete and heal a degree-two vertex. Curves are fitted with a checked error
+ * bound, and a split cubic can be recovered exactly. If the requested tolerance
+ * cannot be met, return the original network; callers can offer plain deletion.
  */
-function findLoopClosingSegmentIndex(
-  segments: VectorSegmentLike[],
-  avoidVertex: number,
-  fromVertex: number,
-  targetVertex: number,
-): number | null {
-  let current = fromVertex;
-  let prev = avoidVertex;
-  while (current !== targetVertex) {
-    const neighbors: { segIdx: number; vtx: number }[] = [];
-    segments.forEach((s, i) => {
-      if (s.start === current) {
-        neighbors.push({ segIdx: i, vtx: s.end });
-      } else if (s.end === current) {
-        neighbors.push({ segIdx: i, vtx: s.start });
-      }
-    });
-    const next = neighbors.filter((n) => n.vtx !== prev);
-    if (next.length !== 1) {
-      return null;
-    }
-    const { segIdx, vtx } = next[0];
-    if (vtx === targetVertex) {
-      return segIdx;
-    }
-    prev = current;
-    current = vtx;
+export function deleteVertex(
+  network: VectorNetworkData,
+  vertexIndex: number,
+  options: DeleteVectorVertexOptions = {},
+): VectorNetworkData {
+  const { vertices, segments } = network;
+  if (!Number.isInteger(vertexIndex) || !vertices[vertexIndex]) {
+    return network;
   }
-  return null;
-}
+  const incident = segments.flatMap((s, i) =>
+    s.start === vertexIndex || s.end === vertexIndex ? [i] : [],
+  );
+  let healed: VectorSegmentLike | null = null;
+  if (
+    options.heal !== false &&
+    incident.length === 2 &&
+    incident.every((i) => segments[i].start !== segments[i].end)
+  ) {
+    healed = healVectorSegments(
+      vertices,
+      segments[incident[0]],
+      segments[incident[1]],
+      vertexIndex,
+      options.maxError,
+    );
+    if (!healed) {
+      return network;
+    }
+    if (healed.start === healed.end && isStraightSegment(healed)) {
+      healed = null;
+    }
+  }
 
-function replaceVertexOnSegment(
-  seg: VectorSegmentLike,
-  oldIndex: number,
-  newIndex: number,
-) {
-  if (seg.start === oldIndex) {
-    seg.start = newIndex;
-  } else if (seg.end === oldIndex) {
-    seg.end = newIndex;
+  const vertexRemap = (index: number) =>
+    index > vertexIndex ? index - 1 : index;
+  const segmentRemap = new Map<number, number>();
+  const removed = new Set(incident);
+  const nextSegments = cloneSegments(segments).filter((_, i) => {
+    if (removed.has(i)) {
+      return false;
+    }
+    segmentRemap.set(i, segmentRemap.size);
+    return true;
+  });
+  const healedIndex = nextSegments.length;
+  if (healed) {
+    nextSegments.push(healed);
   }
+  for (const s of nextSegments) {
+    s.start = vertexRemap(s.start);
+    s.end = vertexRemap(s.end);
+  }
+  const regions =
+    network.regions &&
+    rewriteRegions(
+      network.regions,
+      segments,
+      nextSegments,
+      (i) =>
+        removed.has(i)
+          ? healed
+            ? [healedIndex]
+            : null
+          : [segmentRemap.get(i)!],
+      (loop) => {
+        const out = loop.filter(
+          (index, i) =>
+            index !== healedIndex || i === 0 || loop[i - 1] !== index,
+        );
+        if (
+          out.length > 1 &&
+          out[0] === healedIndex &&
+          out[out.length - 1] === healedIndex
+        )
+          out.pop();
+        return out;
+      },
+    );
+  return {
+    vertices: vertices
+      .filter((_, i) => i !== vertexIndex)
+      .map((v) => ({ ...v })),
+    segments: nextSegments,
+    ...(regions !== undefined ? { regions } : {}),
+  };
 }
 
 /**
- * Split the vector network at a vertex.
- * - On a closed loop (degree 2): keep both incident edges on the cut vertex,
- *   duplicate a loop endpoint on the closing edge so the path opens as
- *   … A — V — B — … — A′ (e.g. triangle cut at 1 → 0-1, 1-2, 2-3 with 3 ≡ 0).
- * - On an open path: duplicate the cut vertex and reassign all but one incident
- *   segment to the copy so the chains can be pulled apart by dragging.
+ * Cut at the selected vertex. Keep its first incident endpoint and move the
+ * others to a duplicate at the SAME position. A self-loop has two endpoints
+ * and can therefore be cut as well. Unaffected closed regions are retained.
  */
 export function breakVertex(
   network: VectorNetworkData,
   vertexIndex: number,
 ): VectorNetworkData | null {
   const { vertices, segments } = network;
-  if (vertexIndex < 0 || vertexIndex >= vertices.length) {
+  if (!Number.isInteger(vertexIndex) || !vertices[vertexIndex]) {
     return null;
   }
-
-  const incident: number[] = [];
-  segments.forEach((s, i) => {
-    if (s.start === vertexIndex || s.end === vertexIndex) {
-      incident.push(i);
-    }
+  const endpoints: { index: number; end: 'start' | 'end' }[] = [];
+  segments.forEach((s, index) => {
+    if (s.start === vertexIndex) endpoints.push({ index, end: 'start' });
+    if (s.end === vertexIndex) endpoints.push({ index, end: 'end' });
   });
-
-  if (incident.length < 2) {
+  if (endpoints.length < 2) {
     return null;
   }
-
-  if (incident.length === 2) {
-    const segA = segments[incident[0]];
-    const segB = segments[incident[1]];
-    const neighborA = segA.start === vertexIndex ? segA.end : segA.start;
-    const neighborB = segB.start === vertexIndex ? segB.end : segB.start;
-
-    const returnToBIdx = incident.find((i) => {
-      const s = segments[i];
-      return (
-        (s.start === vertexIndex && s.end === neighborB) ||
-        (s.end === vertexIndex && s.start === neighborB)
-      );
-    });
-
-    const closingIndex = findLoopClosingSegmentIndex(
-      segments,
-      vertexIndex,
-      neighborB,
-      neighborA,
-    );
-
-    const newVertices = vertices.map((v) => ({ ...v }));
-    const newSegments = cloneSegments(segments);
-
-    const closingIsDirectNeighborLink =
-      closingIndex !== null &&
-      !incident.includes(closingIndex) &&
-      (() => {
-        const s = segments[closingIndex];
-        return (
-          (s.start === neighborA && s.end === neighborB) ||
-          (s.start === neighborB && s.end === neighborA)
-        );
-      })();
-
-    const useClosingWalk =
-      closingIndex !== null &&
-      !incident.includes(closingIndex) &&
-      (!closingIsDirectNeighborLink || vertexIndex > neighborA);
-
-    if (useClosingWalk) {
-      const newVertexIndex = newVertices.length;
-      newVertices.push({ ...vertices[neighborA] });
-      replaceVertexOnSegment(
-        newSegments[closingIndex],
-        neighborA,
-        newVertexIndex,
-      );
-      return { vertices: newVertices, segments: newSegments };
-    }
-
-    if (returnToBIdx !== undefined) {
-      const newVertexIndex = newVertices.length;
-      newVertices.push({ ...vertices[vertexIndex] });
-      replaceVertexOnSegment(
-        newSegments[returnToBIdx],
-        vertexIndex,
-        newVertexIndex,
-      );
-      return { vertices: newVertices, segments: newSegments };
-    }
-
-    return null;
+  const nextSegments = cloneSegments(segments);
+  for (const endpoint of endpoints.slice(1)) {
+    nextSegments[endpoint.index][endpoint.end] = vertices.length;
   }
-
-  const newVertexIndex = vertices.length;
-  const newVertices = vertices.map((v) => ({ ...v }));
-  newVertices.push({ ...vertices[vertexIndex] });
-
-  const newSegments = cloneSegments(segments);
-
-  for (let i = 1; i < incident.length; i++) {
-    replaceVertexOnSegment(newSegments[incident[i]], vertexIndex, newVertexIndex);
-  }
-
   return {
-    vertices: newVertices,
-    segments: newSegments,
+    vertices: [
+      ...vertices.map((v) => ({ ...v })),
+      { ...vertices[vertexIndex] },
+    ],
+    segments: nextSegments,
+    ...(network.regions
+      ? {
+          regions: rewriteRegions(
+            network.regions,
+            segments,
+            nextSegments,
+            (i) => [i],
+          ),
+        }
+      : {}),
   };
 }
 
-function segmentUndirectedKey(start: number, end: number): string {
-  return start < end ? `${start}:${end}` : `${end}:${start}`;
+/** Equal geometry, not just equal endpoint indices, determines duplicates. */
+function segmentGeometryKey(s: VectorSegmentLike): string {
+  const ts = s.tangentStart ?? { x: 0, y: 0 };
+  const te = s.tangentEnd ?? { x: 0, y: 0 };
+  const forward = [s.start, s.end, ts.x, ts.y, te.x, te.y].join(':');
+  const reverse = [s.end, s.start, te.x, te.y, ts.x, ts.y].join(':');
+  return forward < reverse ? forward : reverse;
 }
 
-/**
- * Merge `sourceVertexIndex` into `targetVertexIndex`. The source vertex is
- * removed; incident segments are rewired to the target. Zero-length and
- * duplicate (same vertex pair) segments are dropped; region loops are updated
- * when segments are removed.
- */
+/** Remove immediate out-and-back traversals after coincident edges coalesce. */
+function cancelRetracedEdges(
+  loop: number[],
+  segments: VectorSegmentLike[],
+): number[] {
+  const out: number[] = [];
+  for (const i of loop) {
+    if (out[out.length - 1] === i && segments[i].start !== segments[i].end)
+      out.pop();
+    else out.push(i);
+  }
+  while (
+    out.length > 1 &&
+    out[0] === out[out.length - 1] &&
+    segments[out[0]].start !== segments[out[0]].end
+  ) {
+    out.shift();
+    out.pop();
+  }
+  return out;
+}
+
+/** Merge vertices, preserving curved self-loops and geometrically distinct edges. */
 export function mergeVertices(
   network: VectorNetworkData,
   sourceVertexIndex: number,
   targetVertexIndex: number,
 ): VectorNetworkData | null {
-  if (sourceVertexIndex === targetVertexIndex) {
-    return null;
-  }
-
   const { vertices, segments } = network;
   if (
-    sourceVertexIndex < 0 ||
-    sourceVertexIndex >= vertices.length ||
-    targetVertexIndex < 0 ||
-    targetVertexIndex >= vertices.length
+    sourceVertexIndex === targetVertexIndex ||
+    !Number.isInteger(sourceVertexIndex) ||
+    !Number.isInteger(targetVertexIndex) ||
+    !vertices[sourceVertexIndex] ||
+    !vertices[targetVertexIndex]
   ) {
     return null;
   }
-
-  const remapped = segments.map((s) => ({
-    ...s,
-    tangentStart: s.tangentStart ? { ...s.tangentStart } : undefined,
-    tangentEnd: s.tangentEnd ? { ...s.tangentEnd } : undefined,
-    start: s.start === sourceVertexIndex ? targetVertexIndex : s.start,
-    end: s.end === sourceVertexIndex ? targetVertexIndex : s.end,
-  }));
-
-  const filteredSegments: VectorSegmentLike[] = [];
-  const oldSegmentToNew = new Map<number, number>();
-  const seen = new Set<string>();
-
-  remapped.forEach((s, oldIndex) => {
-    if (s.start === s.end) {
-      return;
-    }
-    const key = segmentUndirectedKey(s.start, s.end);
-    if (seen.has(key)) {
-      return;
-    }
-    seen.add(key);
-    oldSegmentToNew.set(oldIndex, filteredSegments.length);
-    filteredSegments.push(s);
-  });
-
-  const vertexRemap = new Map<number, number>();
-  const newVertices: VectorVertexLike[] = [];
-  vertices.forEach((v, i) => {
-    if (i === sourceVertexIndex) {
-      return;
-    }
-    vertexRemap.set(i, newVertices.length);
-    newVertices.push({ ...v });
-  });
-
-  const newSegments: VectorSegmentLike[] = [];
-  for (const s of filteredSegments) {
-    const start = vertexRemap.get(s.start);
-    const end = vertexRemap.get(s.end);
-    if (start === undefined || end === undefined || start === end) {
-      continue;
-    }
-    newSegments.push({ ...s, start, end });
-  }
-
-  const result: VectorNetworkData = {
-    vertices: newVertices,
-    segments: newSegments,
+  const vertexRemap = (i: number) => {
+    const merged = i === sourceVertexIndex ? targetVertexIndex : i;
+    return merged > sourceVertexIndex ? merged - 1 : merged;
   };
-
-  if (network.regions) {
-    const regions = network.regions
-      .map((region) => ({
-        fillRule: region.fillRule,
-        loops: (region.loops as number[][])
-          .map((loop) => {
-            const next: number[] = [];
-            for (const oldSegIdx of loop) {
-              const mapped = oldSegmentToNew.get(oldSegIdx);
-              if (mapped !== undefined) {
-                next.push(mapped);
-              }
-            }
-            return next;
-          })
-          .filter((loop) => loop.length >= 3),
-      }))
-      .filter((region) => region.loops.length > 0);
-    if (regions.length > 0) {
-      result.regions = regions;
+  const nextSegments: VectorSegmentLike[] = [];
+  const segmentRemap = new Map<number, number[]>();
+  const seen = new Map<string, number>();
+  cloneSegments(segments).forEach((s, i) => {
+    s.start = vertexRemap(s.start);
+    s.end = vertexRemap(s.end);
+    if (s.start === s.end && isStraightSegment(s)) {
+      segmentRemap.set(i, []);
+      return;
     }
-  }
-
-  return result;
+    const key = segmentGeometryKey(s);
+    const duplicate = seen.get(key);
+    if (duplicate !== undefined) {
+      segmentRemap.set(i, [duplicate]);
+      return;
+    }
+    segmentRemap.set(i, [nextSegments.length]);
+    seen.set(key, nextSegments.length);
+    nextSegments.push(s);
+  });
+  return {
+    vertices: vertices
+      .filter((_, i) => i !== sourceVertexIndex)
+      .map((v) => ({ ...v })),
+    segments: nextSegments,
+    ...(network.regions
+      ? {
+          regions: rewriteRegions(
+            network.regions,
+            segments,
+            nextSegments,
+            (i) => segmentRemap.get(i)!,
+            (loop) => cancelRetracedEdges(loop, nextSegments),
+          ),
+        }
+      : {}),
+  };
 }
 
 function vectorNetworkGeometryBounds(
@@ -796,7 +760,11 @@ function transformVectorTangent(
   if (!tangent) {
     return undefined;
   }
-  const out = vec2.transformMat3(vec2.create(), [tangent.x, tangent.y], geomDelta);
+  const out = vec2.transformMat3(
+    vec2.create(),
+    [tangent.x, tangent.y],
+    geomDelta,
+  );
   if (Math.abs(out[0]) < EPS && Math.abs(out[1]) < EPS) {
     return undefined;
   }
