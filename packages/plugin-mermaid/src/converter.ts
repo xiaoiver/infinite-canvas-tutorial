@@ -354,6 +354,7 @@ function convertFlowchartToSerializedNodes(
   edges: Edge[],
   options: { fontSize: number },
 ): SerializedNode[] {
+  const { fontSize } = options;
   const root: GSerializedNode = {
     id: uuidv4(),
     type: 'g',
