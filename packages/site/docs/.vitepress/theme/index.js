@@ -2,7 +2,7 @@
 import DefaultTheme from 'vitepress/theme';
 import './custom.css';
 import Layout from 'genji-theme-vitepress';
-import { h } from 'vue';
+import { defineComponent, h, onMounted } from 'vue';
 import Stats from 'stats.js';
 import { ImageLoader } from '@loaders.gl/images';
 import { load } from '@loaders.gl/core';
@@ -81,9 +81,35 @@ const props = {
   },
 };
 
+const SiteLayout = defineComponent({
+  name: 'SiteLayout',
+  setup() {
+    // Auto Ads can mutate SSR markup, so load it only after Vue has hydrated.
+    onMounted(() => {
+      const client = import.meta.env.VITE_ADSENSE_CLIENT;
+      if (
+        !client ||
+        document.querySelector(
+          'script[src^="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]',
+        )
+      ) {
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`;
+      document.head.append(script);
+    });
+
+    return () => h(Layout, props);
+  },
+});
+
 export default {
   extends: DefaultTheme,
-  Layout: () => h(Layout, props),
+  Layout: SiteLayout,
   async enhanceApp() {
     // @see https://vitepress.dev/guide/ssr-compat#conditional-import
     if (!import.meta.env.SSR) {

@@ -7,7 +7,7 @@ import implicitFigures from 'markdown-it-implicit-figures';
 import { RssPlugin } from 'vitepress-plugin-rss';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
-import { shared } from './shared';
+import { adsenseClient, shared } from './shared';
 import { en } from './en';
 import { zh } from './zh';
 import { ko } from './ko';
@@ -61,7 +61,12 @@ export default defineConfig({
       chunkSizeWarningLimit: 800,
     },
     // @see https://github.com/adobe/spectrum-web-components/issues/4268
-    define: { 'window.__swc.DEBUG': 'false' },
+    define: {
+      'window.__swc.DEBUG': 'false',
+      'import.meta.env.VITE_ADSENSE_CLIENT': JSON.stringify(
+        adsenseClient ?? '',
+      ),
+    },
     ssr: {
       noExternal: [
         '@antv/g-device-api',
