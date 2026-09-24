@@ -294,6 +294,9 @@ export class InfiniteCanvas extends LitElement {
       $htmlLayer.style.contain = 'layout style size';
       $htmlLayer.style.userSelect = 'none';
       $htmlLayer.style.outline = 'none';
+      // The transformed 1px origin must not intercept canvas clicks. Editable
+      // HTML/Embed children opt back in with their own pointer-events: auto.
+      $htmlLayer.style.pointerEvents = 'none';
       $htmlLayer.style.transform = `scale(${toDomPrecision(
         cameraZoom,
       )}) translate(${toDomPrecision(-cameraX)}px, ${toDomPrecision(

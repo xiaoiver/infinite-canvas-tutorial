@@ -23,6 +23,8 @@ import '@spectrum-web-components/tooltip/sp-tooltip.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { msg, str } from '@lit/localize';
+import './fill-action-button';
+import './vector-topology-controls';
 
 @customElement('ic-spectrum-context-vector-network-edit-bar')
 export class ContextVectorNetworkEditBar extends LitElement {
@@ -31,6 +33,8 @@ export class ContextVectorNetworkEditBar extends LitElement {
       display: flex;
       align-items: center;
       gap: var(--spectrum-global-dimension-size-75);
+      width: max-content;
+      flex: none;
     }
 
     sp-divider {
@@ -38,6 +42,8 @@ export class ContextVectorNetworkEditBar extends LitElement {
     }
 
     sp-action-group {
+      flex: none;
+      flex-wrap: nowrap;
       --mod-actionbutton-content-color-default: var(--spectrum-gray-800);
       --mod-actionbutton-background-color-default: transparent;
       --mod-actionbutton-border-color-default: transparent;
@@ -57,6 +63,12 @@ export class ContextVectorNetworkEditBar extends LitElement {
 
     .close-button {
       margin-inline-start: var(--spectrum-global-dimension-size-100);
+    }
+
+    ic-spectrum-fill-action-button,
+    sp-divider,
+    .close-button {
+      flex: none;
     }
 
     select {
@@ -187,6 +199,25 @@ export class ContextVectorNetworkEditBar extends LitElement {
           <sp-icon-color-fill slot="icon"></sp-icon-color-fill>
         </sp-action-button>
       </sp-action-group>
+      ${vectorNetworkEditMode === VectorNetworkEditMode.MOVE
+        ? html`<ic-spectrum-vector-topology-controls
+            .api=${this.api} .appState=${this.appState} .node=${this.node}
+          ></ic-spectrum-vector-topology-controls>
+          <ic-spectrum-vector-topology-controls faces
+            .api=${this.api} .appState=${this.appState} .node=${this.node}
+          ></ic-spectrum-vector-topology-controls>`
+        : ''}
+      ${vectorNetworkEditMode === VectorNetworkEditMode.FILL
+        ? html`<ic-spectrum-fill-action-button
+            .api=${this.api}
+            .appState=${this.appState}
+            .node=${this.node}
+            .defaultFill=${this.appState.penbarVectorNetwork.fills?.find(
+              (fill) => fill.enabled !== false && fill.opacity !== 0 &&
+                (fill.type !== 'solid' || fill.value !== 'none'),
+            ) ?? { type: 'solid', value: '#147af3', opacity: 1 }}
+          ></ic-spectrum-fill-action-button>`
+        : ''}
       ${vectorNetworkEditMode === VectorNetworkEditMode.BEND
         ? html`
             <select

@@ -1,5 +1,5 @@
 import { html, css, LitElement } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
 import {
@@ -12,7 +12,7 @@ import {
   SerializedNode,
   isDataUrl,
 } from '@infinite-canvas-tutorial/ecs';
-import { apiContext, appStateContext } from '../context';
+import { apiContext, appStateContext, nodesContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { TOP_NAVBAR_HEIGHT } from './infinite-canvas';
 import { Event } from '../event';
@@ -67,6 +67,10 @@ export class ContextBar extends LitElement {
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  @consume({ context: nodesContext, subscribe: true })
+  @state()
+  private nodes: SerializedNode[];
 
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;

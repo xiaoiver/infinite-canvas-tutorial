@@ -242,3 +242,12 @@ export { WorkerClient } from './WorkerClient';
 export { moveVectorHandle, setVectorVertexMirroring, vectorHandlesAtVertex } from './utils/vector-network-handles';
 
 export { splitVectorNetworkIntersections } from './utils/vector-network-intersections';
+export { glueVertices, unglueVertex, vectorVertexEndpoints, getVectorSegmentPointAt } from './utils/vector-network-topology';
+export type { VectorEndpoint, VectorTopologyResult, VectorNetworkData } from './utils/vector-network-topology';
+export { vectorSegmentCubic } from './utils/vector-network-curve';
+export { cutVectorNetworkFace, uncutVectorNetworkEdge } from './utils/vector-network-face-topology';
+export type { VectorFaceTopologyResult, VectorFaceTopologyFailure } from './utils/vector-network-face-topology';
+export { glueVectorNetworkEdges, unglueVectorNetworkEdge, vectorEdgeUses } from './utils/vector-network-edge-topology';
+export type { VectorEdgeUse, VectorEdgeTopologyResult } from './utils/vector-network-edge-topology';
+export { preferVectorNetworkEdge } from './utils/vector-network-edge-selection';
+export { buildVectorNetworkFillMesh } from './utils/vector-network-fill';

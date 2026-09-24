@@ -67,6 +67,8 @@ import {
   collectPathHandleLineSegments,
   normalizePathCommands,
 } from '../utils/path-edit';
+import { coincidentVectorEdges } from '../utils/vector-network-edge-topology';
+import { preferredVectorNetworkEdge } from '../utils/vector-network-edge-selection';
 import { getVectorSegmentPointAt } from '../utils/vector-network-topology';
 import { tessellateVectorSegment } from '../utils/vector-network-stroke';
 import type { VectorSegmentLike, VectorVertexLike } from '../utils/vector-network-stroke';
@@ -1654,6 +1656,15 @@ export function findHoveredVectorNetworkSegmentIndex(
     }
   }
 
+  const node = api.getNodeByEntity(selected);
+  const preferred = node ? preferredVectorNetworkEdge(api, node.id) : -1;
+  if (
+    bestIndex >= 0 &&
+    preferred >= 0 &&
+    coincidentVectorEdges({ vertices, segments }, bestIndex, preferred)
+  ) {
+    return preferred;
+  }
   return bestIndex;
 }
 
@@ -1724,9 +1735,19 @@ export function hitTest(api: API, { x, y }: IPointData) {
         TRANSFORMER_ANCHOR_RESIZE_RADIUS
       );
     };
+    // Unglue creates coincident vertices. Let the selected copy be dragged away.
+    const preferred = camera.read(Transformable).selectedControlPointIndex;
     for (let i = 0; i < vertices.length; i++) {
       if (hitsPoint([vertices[i].x, vertices[i].y])) {
-        return { anchor: AnchorName.CONTROL, cursor: 'crosshair', index: i };
+        const copy = vertices[preferred];
+        const coincident =
+          copy &&
+          Math.hypot(copy.x - vertices[i].x, copy.y - vertices[i].y) < 1e-6;
+        return {
+          anchor: AnchorName.CONTROL,
+          cursor: 'crosshair',
+          index: coincident ? preferred : i,
+        };
       }
     }
     if (

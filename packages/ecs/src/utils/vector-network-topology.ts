@@ -670,22 +670,105 @@ function cancelRetracedEdges(
   return out;
 }
 
-/** Merge vertices, preserving curved self-loops and geometrically distinct edges. */
-export function mergeVertices(
+export interface VectorEndpoint {
+  segmentIndex: number;
+  end: 'start' | 'end';
+}
+
+export type VectorTopologyResult =
+  | {
+      ok: true;
+      network: VectorNetworkData;
+      /** One-to-many maps also describe a vertex split and removed edges. */
+      vertexMap: number[][];
+      segmentMap: number[][];
+      selectedVertex: number;
+    }
+  | { ok: false; reason: 'invalid-vertex' | 'same-vertex' | 'invalid-endpoints' };
+
+/** Endpoints, rather than edges, distinguish both ends of a self-loop. */
+export function vectorVertexEndpoints(
+  network: VectorNetworkData,
+  vertexIndex: number,
+): VectorEndpoint[] {
+  if (!Number.isInteger(vertexIndex) || !network.vertices[vertexIndex]) return [];
+  return network.segments.flatMap((segment, segmentIndex) => {
+    const ends: VectorEndpoint[] = [];
+    if (segment.start === vertexIndex) ends.push({ segmentIndex, end: 'start' });
+    if (segment.end === vertexIndex) ends.push({ segmentIndex, end: 'end' });
+    return ends;
+  });
+}
+
+/** Detach a nonempty, proper subset of incident endpoints without moving geometry. */
+export function unglueVertex(
+  network: VectorNetworkData,
+  vertexIndex: number,
+  endpoints: readonly VectorEndpoint[],
+): VectorTopologyResult {
+  if (!Number.isInteger(vertexIndex) || !network.vertices[vertexIndex])
+    return { ok: false, reason: 'invalid-vertex' };
+  const incident = vectorVertexEndpoints(network, vertexIndex);
+  const key = (e: VectorEndpoint) => `${e.segmentIndex}:${e.end}`;
+  const valid = new Set(incident.map(key));
+  const chosen = new Set(endpoints.map(key));
+  if (
+    !chosen.size ||
+    chosen.size >= incident.length ||
+    chosen.size !== endpoints.length ||
+    [...chosen].some((k) => !valid.has(k))
+  )
+    return { ok: false, reason: 'invalid-endpoints' };
+
+  const selectedVertex = network.vertices.length;
+  const vertices = network.vertices.map((v, i) => ({
+    ...v,
+    ...(i === vertexIndex ? { handleMirroring: 'NONE' as const } : {}),
+  }));
+  vertices.push({ ...vertices[vertexIndex] });
+  const segments = cloneSegments(network.segments);
+  for (const e of endpoints) segments[e.segmentIndex][e.end] = selectedVertex;
+  return {
+    ok: true,
+    network: {
+      vertices,
+      segments,
+      ...(network.regions !== undefined
+        ? {
+            regions: rewriteRegions(
+              network.regions,
+              network.segments,
+              segments,
+              (i) => [i],
+            ),
+          }
+        : {}),
+    },
+    vertexMap: network.vertices.map((_, i) =>
+      i === vertexIndex ? [i, selectedVertex] : [i],
+    ),
+    segmentMap: network.segments.map((_, i) => [i]),
+    selectedVertex,
+  };
+}
+
+/** Glue onto the target position, retaining curved loops and geometrically distinct edges. */
+export function glueVertices(
   network: VectorNetworkData,
   sourceVertexIndex: number,
   targetVertexIndex: number,
-): VectorNetworkData | null {
+): VectorTopologyResult {
   const { vertices, segments } = network;
   if (
-    sourceVertexIndex === targetVertexIndex ||
     !Number.isInteger(sourceVertexIndex) ||
     !Number.isInteger(targetVertexIndex) ||
     !vertices[sourceVertexIndex] ||
     !vertices[targetVertexIndex]
   ) {
-    return null;
+    return { ok: false, reason: 'invalid-vertex' };
   }
+  if (sourceVertexIndex === targetVertexIndex)
+    return { ok: false, reason: 'same-vertex' };
   const vertexRemap = (i: number) => {
     const merged = i === sourceVertexIndex ? targetVertexIndex : i;
     return merged > sourceVertexIndex ? merged - 1 : merged;
@@ -710,7 +793,7 @@ export function mergeVertices(
     seen.set(key, nextSegments.length);
     nextSegments.push(s);
   });
-  return {
+  const next: VectorNetworkData = {
     vertices: vertices
       .filter((_, i) => i !== sourceVertexIndex)
       .map((v) => ({ ...v })),
@@ -727,6 +810,23 @@ export function mergeVertices(
         }
       : {}),
   };
+  return {
+    ok: true,
+    network: next,
+    vertexMap: vertices.map((_, i) => [vertexRemap(i)]),
+    segmentMap: segments.map((_, i) => segmentRemap.get(i)!),
+    selectedVertex: vertexRemap(targetVertexIndex),
+  };
+}
+
+/** Compatibility wrapper used by drag-to-weld. */
+export function mergeVertices(
+  network: VectorNetworkData,
+  sourceVertexIndex: number,
+  targetVertexIndex: number,
+): VectorNetworkData | null {
+  const result = glueVertices(network, sourceVertexIndex, targetVertexIndex);
+  return result.ok ? result.network : null;
 }
 
 function vectorNetworkGeometryBounds(
