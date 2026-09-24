@@ -42,7 +42,7 @@ jobs:
         run: pnpm --filter '@infinite-canvas-tutorial/site' run build
 
       - name: Publish to Cloudflare Pages
-        uses: cloudflare/wrangler-action@4e88846969242f7752bcfdaf5511bfbb3985ca47 # v4.1.1
+        uses: cloudflare/wrangler-action@25853364521e0d392ece9b0c1e97a4b37b638087 # v4.1.2
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: 4abdc9b6ff77e69917753afff2a4ad14
