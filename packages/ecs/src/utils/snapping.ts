@@ -2,7 +2,7 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/f55ecb96cc8db9a2417d48cd8077833c3822d64e/packages/excalidraw/snapping.ts
  */
 
-import { AABB, API, Culled, Selected } from '..';
+import { AABB, API, Culled, Selected, TextSerializedNode } from '..';
 import { rangeIntersection, rangesOverlap } from './math';
 
 const round = (x: number) => {
@@ -80,7 +80,7 @@ export type SnapLine = PointSnapLine | GapSnapLine;
 
 const VISIBLE_GAPS_LIMIT_PER_AXIS = 99999;
 
-const getElementsCorners = (
+export const getElementsCorners = (
   api: API,
   elements: string[],
   dragOffset?: [number, number],
@@ -94,6 +94,29 @@ const getElementsCorners = (
     minY += dragOffset[1];
     maxX += dragOffset[0];
     maxY += dragOffset[1];
+  }
+
+  // For a single non-rotated Text element, snap by its anchor point instead of
+  // the bounding box top-left corner so that snapping respects the text's
+  // `textAlign`/`textBaseline` anchor.
+  // @see https://github.com/xiaoiver/infinite-canvas-tutorial/issues/284
+  if (elements.length === 1) {
+    const node = api.getNodeById(elements[0]) as TextSerializedNode | undefined;
+    if (node && node.type === 'text' && !node.rotation) {
+      // `anchorX`/`anchorY` are stored relative to the geometry bounds' top-left
+      // corner, so the world-space anchor is `minX + anchorX`/`minY + anchorY`.
+      const anchorX = minX + (node.anchorX ?? 0);
+      const anchorY = minY + (node.anchorY ?? 0);
+      const boundsWidth = maxX - minX;
+      const boundsHeight = maxY - minY;
+      return [
+        [anchorX, anchorY],
+        [maxX, minY],
+        [minX, maxY],
+        [maxX, maxY],
+        [minX + boundsWidth / 2, minY + boundsHeight / 2],
+      ] as [number, number][];
+    }
   }
 
   const boundsWidth = maxX - minX;
