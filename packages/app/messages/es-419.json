@@ -216,6 +216,19 @@
         "originalLabel": "Original",
         "gentleLabel": "Llovizna rain()",
         "stormLabel": "Preset tormenta"
+      },
+      "footballFormation": {
+        "title": "Pizarra de formación",
+        "description": "Elige equipo y dibujo para generar una cancha editable, tarjetas de posición y avatares de jugadores. Incluye datos públicos de Portugal.",
+        "teamLabel": "Equipo",
+        "formationLabel": "Formación",
+        "resetCanvas": "Regenerar canvas",
+        "pitchLabel": "Cancha de fútbol",
+        "avatarLabel": "Avatar del jugador",
+        "dataSource": "Nombres, números y posiciones se adaptan de convocatorias públicas; los avatares se generan con iniciales y pueden reemplazarse por fotos.",
+        "teams": {
+          "portugal": "Portugal"
+        }
       }
     },
     "photoColors": {
@@ -240,6 +253,10 @@
     "rain": {
       "metaTitle": "Lluvia",
       "metaDescription": "Vista previa del filtro rain(): gotas Codrops, refracción en agua y combinación con blur en el lienzo."
+    },
+    "footballFormation": {
+      "metaTitle": "Pizarra de formación",
+      "metaDescription": "Genera pizarras de formación editables con datos públicos de plantillas."
     }
   }
 }
