@@ -32,6 +32,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        env:
+          # headless-gl 6's bundled ANGLE omits this header, required by GCC 13+.
+          CXXFLAGS: -include cstdint
 
       - name: Verify headless-gl native binding
         run: node -e "require('gl')"
