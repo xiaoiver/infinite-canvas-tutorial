@@ -28,10 +28,13 @@ jobs:
       - name: Install headless-gl dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6
+          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6 libxi-dev libxext-dev libx11-dev libgl1-mesa-dev
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Verify headless-gl native binding
+        run: node -e "require('gl')"
 
       - name: Run ECS unit tests
         run: |
