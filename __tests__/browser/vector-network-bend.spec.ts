@@ -11,6 +11,18 @@ declare global {
     canvasRegression: BrowserHarness;
   }
 }
+const couplingPicker = (page: Page) =>
+  page.locator('sp-picker[label="Handle coupling"]');
+async function selectCoupling(page: Page, mode: string) {
+  const labels: Record<string, string> = {
+    NONE: 'Independent',
+    ANGLE: 'Align angles',
+    ANGLE_AND_LENGTH: 'Mirror angle and length',
+  };
+  await couplingPicker(page).locator('button').click();
+  await page.getByRole('option', { name: labels[mode], exact: true }).click();
+  await expect(couplingPicker(page)).toHaveJSProperty('value', mode);
+}
 const network = (): VectorNetworkSerializedNode => ({
   id: 'bend',
   type: 'vector-network',
@@ -71,15 +83,11 @@ async function prepare(page: Page, n = network()) {
     window.canvasRegression.vectorToolbar('left', 'bend'),
   );
   await page.getByRole('radio', { name: 'Bend', exact: true }).click();
-  await expect(
-    page.getByRole('combobox', { name: 'Handle coupling' }),
-  ).toBeVisible();
+  await expect(couplingPicker(page).locator('button')).toBeVisible();
   // The editor's double-click detector uses a 300ms interval between presses.
   await page.waitForTimeout(310);
   await selectVertex(page);
-  await expect(
-    page.getByRole('combobox', { name: 'Handle coupling' }),
-  ).toBeEnabled();
+  await expect(couplingPicker(page).locator('button')).toBeEnabled();
 }
 async function dragHandle(
   page: Page,
@@ -140,9 +148,7 @@ for (const mode of ['NONE', 'ANGLE', 'ANGLE_AND_LENGTH']) {
     page,
   }) => {
     await prepare(page);
-    await page
-      .getByRole('combobox', { name: 'Handle coupling' })
-      .selectOption(mode);
+    await selectCoupling(page, mode);
     await frame(page);
     const before = await node(page);
     const points = await anchors(page);
@@ -186,9 +192,7 @@ test('keeps rotated, reflected and scaled anchors fixed when bounds are rebased'
   const n = network();
   Object.assign(n, { x: 245, y: 40, rotation: 0.45, scaleX: -1, scaleY: 0.75 });
   await prepare(page, n);
-  await page
-    .getByRole('combobox', { name: 'Handle coupling' })
-    .selectOption('ANGLE_AND_LENGTH');
+  await selectCoupling(page, 'ANGLE_AND_LENGTH');
   await frame(page);
   const points = await anchors(page);
   await dragHandle(page, [30, -30]);
@@ -202,9 +206,7 @@ test('Alt drag breaks the coupling and the whole edit is undoable', async ({
   page,
 }) => {
   await prepare(page);
-  await page
-    .getByRole('combobox', { name: 'Handle coupling' })
-    .selectOption('ANGLE_AND_LENGTH');
+  await selectCoupling(page, 'ANGLE_AND_LENGTH');
   await frame(page);
   const before = await node(page);
   await page.keyboard.down('Alt');
@@ -214,9 +216,7 @@ test('Alt drag breaks the coupling and the whole edit is undoable', async ({
   expect(after.vertices[1].handleMirroring).toBe('NONE');
   expect(after.segments[0].tangentEnd).toEqual(before.segments[0].tangentEnd);
   close(after.segments[1].tangentStart!, [30, -40]);
-  await expect(
-    page.getByRole('combobox', { name: 'Handle coupling' }),
-  ).toHaveValue('NONE');
+  await expect(couplingPicker(page)).toHaveJSProperty('value', 'NONE');
   await page.evaluate(() => window.canvasRegression.undo('left'));
   await expect
     .poll(() => node(page).then((n) => n.vertices[1].handleMirroring))
@@ -231,9 +231,7 @@ for (const cancel of [
 ]) {
   test(`rolls back a ${cancel} drag`, async ({ page }) => {
     await prepare(page);
-    await page
-      .getByRole('combobox', { name: 'Handle coupling' })
-      .selectOption('ANGLE_AND_LENGTH');
+    await selectCoupling(page, 'ANGLE_AND_LENGTH');
     await frame(page);
     const before = await node(page);
     await dragHandle(page, [30, -40], false);
@@ -281,9 +279,7 @@ test('disables coupling at branch vertices', async ({ page }) => {
     n,
   );
   await frame(page);
-  await expect(
-    page.getByRole('combobox', { name: 'Handle coupling' }),
-  ).toBeDisabled();
+  await expect(couplingPicker(page).locator('button')).toBeDisabled();
   await dragHandle(page, [30, -40]);
   const after = await node(page);
   expect(after.segments[2].tangentStart).toEqual({ x: 0, y: 20 });
@@ -353,9 +349,7 @@ for (const kind of ['straight', 'cubic', 'transformed', 'cancel']) {
       window.canvasRegression.vectorToolbar('left', 'bend'),
     );
     await page.getByRole('radio', { name: 'Bend', exact: true }).click();
-    await expect(
-      page.getByRole('combobox', { name: 'Handle coupling' }),
-    ).toBeVisible();
+    await expect(couplingPicker(page).locator('button')).toBeVisible();
     const before = await node(page),
       fixed = await anchors(page);
     const end = await position(page, [onCurve[0], onCurve[1] - 35]);
@@ -430,9 +424,7 @@ test('commits curve bending and its new crossings as one undo step', async ({
     window.canvasRegression.vectorToolbar('left', 'bend'),
   );
   await page.getByRole('radio', { name: 'Bend', exact: true }).click();
-  await expect(
-    page.getByRole('combobox', { name: 'Handle coupling' }),
-  ).toBeVisible();
+  await expect(couplingPicker(page).locator('button')).toBeVisible();
   const before = await node(page),
     fixed = await anchors(page);
   const end = await position(page, [90, 30]);

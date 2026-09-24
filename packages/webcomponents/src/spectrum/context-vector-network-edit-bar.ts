@@ -14,6 +14,9 @@ import { customElement, property } from 'lit/decorators.js';
 import '@spectrum-web-components/action-group/sp-action-group.js';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/divider/sp-divider.js';
+import '@spectrum-web-components/picker/sp-picker.js';
+import '@spectrum-web-components/menu/sp-menu-item.js';
+import type { Picker } from '@spectrum-web-components/picker';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-close.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-color-fill.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-move.js';
@@ -29,15 +32,20 @@ export class ContextVectorNetworkEditBar extends LitElement {
   static styles = css`
     :host {
       display: flex;
+      width: max-content;
+      flex: none;
       align-items: center;
       gap: var(--spectrum-global-dimension-size-75);
     }
 
     sp-divider {
       height: 24px;
+      flex: none;
     }
 
     sp-action-group {
+      flex: none;
+      flex-wrap: nowrap;
       --mod-actionbutton-content-color-default: var(--spectrum-gray-800);
       --mod-actionbutton-background-color-default: transparent;
       --mod-actionbutton-border-color-default: transparent;
@@ -56,16 +64,13 @@ export class ContextVectorNetworkEditBar extends LitElement {
     }
 
     .close-button {
+      flex: none;
       margin-inline-start: var(--spectrum-global-dimension-size-100);
     }
 
-    select {
-      margin-inline: 8px;
-      padding: 5px;
-      color: inherit;
-      background: var(--spectrum-gray-100, white);
-      border: 1px solid var(--spectrum-gray-400, #ccc);
-      border-radius: 4px;
+    sp-picker {
+      width: 144px;
+      flex: none;
     }
   `;
 
@@ -101,7 +106,7 @@ export class ContextVectorNetworkEditBar extends LitElement {
     if (!selected || selected.nodeId !== this.node?.id) return;
     const node = this.api.getNodeById(selected.nodeId);
     if (node?.type !== 'vector-network' || !node.isEditing) return;
-    const mode = (event.target as HTMLSelectElement).value as HandleMirroring;
+    const mode = (event.target as Picker).value as HandleMirroring;
     if ((node.vertices?.[selected.index]?.handleMirroring ?? 'NONE') === mode)
       return;
     const geometry = {
@@ -189,8 +194,9 @@ export class ContextVectorNetworkEditBar extends LitElement {
       </sp-action-group>
       ${vectorNetworkEditMode === VectorNetworkEditMode.BEND
         ? html`
-            <select
-              aria-label=${msg(str`Handle coupling`)}
+            <sp-picker
+              label=${msg(str`Handle coupling`)}
+              size="m"
               title=${msg(
                 str`Select a vertex with two handles to change coupling`,
               )}
@@ -198,12 +204,14 @@ export class ContextVectorNetworkEditBar extends LitElement {
               .value=${canCouple ? vertex.handleMirroring ?? 'NONE' : 'NONE'}
               @change=${this.setMirroring}
             >
-              <option value="NONE">${msg(str`Independent`)}</option>
-              <option value="ANGLE">${msg(str`Align angles`)}</option>
-              <option value="ANGLE_AND_LENGTH">
+              <sp-menu-item value="NONE">${msg(str`Independent`)}</sp-menu-item>
+              <sp-menu-item value="ANGLE"
+                >${msg(str`Align angles`)}</sp-menu-item
+              >
+              <sp-menu-item value="ANGLE_AND_LENGTH">
                 ${msg(str`Mirror angle and length`)}
-              </option>
-            </select>
+              </sp-menu-item>
+            </sp-picker>
           `
         : ''}
       <sp-divider size="s" vertical></sp-divider>
