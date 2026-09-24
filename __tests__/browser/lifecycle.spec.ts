@@ -7,6 +7,8 @@ declare global {
     canvasRegression: BrowserHarness;
     lifecycleProbes: {
       listeners(): number;
+      capturePageListeners(): void;
+      pageListeners(): number;
       leaks(): unknown;
       resources(): { side: string; live: Record<string, number> }[];
     };
@@ -89,10 +91,12 @@ test('edits and undo/redo stay in the owning WebGL canvas', async ({
 test('destroy/recreate cancels tasks and releases GPU resources and global listeners', async ({
   page,
 }) => {
-  const baseline = await page.evaluate(() =>
-    window.lifecycleProbes.listeners(),
-  );
-  expect(baseline).toBeGreaterThan(0);
+  const { baseline, pageListeners } = await page.evaluate(() => ({
+    baseline: window.lifecycleProbes.listeners(),
+    pageListeners: window.lifecycleProbes.pageListeners(),
+  }));
+  const canvasListeners = baseline - pageListeners;
+  expect(canvasListeners).toBeGreaterThan(0);
   for (let i = 0; i < 3; i++) {
     expect(
       await page.evaluate(() =>
@@ -101,7 +105,7 @@ test('destroy/recreate cancels tasks and releases GPU resources and global liste
     ).toBe(false);
     await expect
       .poll(() => page.evaluate(() => window.lifecycleProbes.listeners()))
-      .toBe(baseline / 2);
+      .toBe(pageListeners + canvasListeners / 2);
     await expect
       .poll(() =>
         page.evaluate(() =>
@@ -146,8 +150,34 @@ test('destroy/recreate cancels tasks and releases GPU resources and global liste
   await page.evaluate(() => window.canvasRegression.shutdown());
   await expect
     .poll(() => page.evaluate(() => window.lifecycleProbes.listeners()))
-    .toBe(0);
+    .toBe(pageListeners);
   expect(await page.evaluate(() => window.lifecycleProbes.leaks())).toEqual([]);
+});
+
+test('the page baseline stays fixed and later global listeners remain tracked', async ({
+  page,
+}) => {
+  const counts = await page.evaluate(() => {
+    const probes = window.lifecycleProbes;
+    const before = probes.listeners();
+    const pageBefore = probes.pageListeners();
+    const listener = () => {};
+    // Use the same event type as the page-wide OverlayStack and canvas inputs.
+    window.addEventListener('keydown', listener);
+    const during = probes.listeners();
+    const pageDuring = probes.pageListeners();
+    window.removeEventListener('keydown', listener);
+    return {
+      before,
+      pageBefore,
+      during,
+      pageDuring,
+      after: probes.listeners(),
+    };
+  });
+  expect(counts.during).toBe(counts.before + 1);
+  expect(counts.pageDuring).toBe(counts.pageBefore);
+  expect(counts.after).toBe(counts.before);
 });
 
 test('destroy terminates a real worker and rejects active and queued operations', async ({

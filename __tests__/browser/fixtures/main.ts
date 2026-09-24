@@ -171,6 +171,7 @@ class Bootstrap extends System {
     create('right');
   }
 }
+window.lifecycleProbes?.capturePageListeners();
 const app = new App().addPlugins(...DefaultPlugins, () => {
   system(PreStartUp)(Bootstrap);
   system((s) => s.before(ComputeZIndex))(Bootstrap);

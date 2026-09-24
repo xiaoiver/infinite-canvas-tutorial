@@ -6,6 +6,7 @@ export function installProbes() {
     listener: unknown;
     capture: boolean;
   }[] = [];
+  let pageListenerBaseline: number | undefined;
   const add = EventTarget.prototype.addEventListener;
   const remove = EventTarget.prototype.removeEventListener;
   const types = new Set([
@@ -101,6 +102,18 @@ export function installProbes() {
   Object.assign(window, {
     lifecycleProbes: {
       listeners: () => globalListeners.length,
+      // Imported UI singletons (such as Spectrum's OverlayStack) live for the
+      // whole page. Snapshot them before App starts, never during a canvas life.
+      capturePageListeners: () => {
+        if (pageListenerBaseline !== undefined)
+          throw new Error('Page listener baseline was already captured');
+        pageListenerBaseline = globalListeners.length;
+      },
+      pageListeners: () => {
+        if (pageListenerBaseline === undefined)
+          throw new Error('Capture page listeners before starting the app');
+        return pageListenerBaseline;
+      },
       leaks: () =>
         resources.flatMap((r) =>
           [...r.live.values()].flatMap((set) =>
