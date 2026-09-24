@@ -292,7 +292,7 @@ void main() {
     outputColor = over(outputColor, vec4(color.xyz, clamp(distance, 0.0, 1.0)));
   }
 
-  float antialiasedBlur = -fwidth(length(v_FragCoord));
+  float antialiasedBlur = -fwidth(distance);
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
   outputColor.a *= clamp(1.0 - distance, 0.0, 1.0) * opacity * opacity_t;
 
