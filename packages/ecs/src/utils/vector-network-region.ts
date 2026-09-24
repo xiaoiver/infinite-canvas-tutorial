@@ -326,17 +326,15 @@ function windingNumber(
 }
 
 /**
- * Resolve existing (possibly multi-face) fills to minimal faces before toggling
- * one. This preserves neighbouring fills when removing a face from an imported
- * broad region. No geometry is mutated, and an empty result explicitly clears.
+ * Classify minimal faces against existing fills, including imported broad regions.
+ * No geometry is mutated. Face contours may come from a later subdivision.
  */
-export function toggleVectorNetworkFace(
+export function vectorNetworkFaceFillStates(
   vertices: VectorVertexLike[],
   segments: VectorSegmentLike[],
   regions: ReadonlyArray<VectorRegionLike> | undefined,
   faces: VectorNetworkFace[],
-  target: VectorNetworkFace,
-): VectorNetworkFace['region'][] {
+): Array<boolean | null> {
   const existing = (regions ?? []).flatMap((region) => {
     const contours = region.loops.map((loop) =>
       contourFromSegmentLoop(vertices, segments, loop),
@@ -351,10 +349,10 @@ export function toggleVectorNetworkFace(
       },
     ];
   });
-  return faces.flatMap((face) => {
+  return faces.map((face) => {
     // A triangle centroid is inside the face even for concave outlines or holes.
     const triangles = triangulate(face.contours, 'evenodd');
-    if (triangles.length < 6) return [];
+    if (triangles.length < 6) return null;
     const sample: [number, number] = [
       (triangles[0] + triangles[2] + triangles[4]) / 3,
       (triangles[1] + triangles[3] + triangles[5]) / 3,
@@ -366,13 +364,32 @@ export function toggleVectorNetworkFace(
       );
       return evenodd ? Math.abs(winding) % 2 === 1 : winding !== 0;
     });
-    return filled !== (face === target)
+    return filled;
+  });
+}
+
+/** Toggle one minimal face while preserving neighbouring fills and holes. */
+export function toggleVectorNetworkFace(
+  vertices: VectorVertexLike[],
+  segments: VectorSegmentLike[],
+  regions: ReadonlyArray<VectorRegionLike> | undefined,
+  faces: VectorNetworkFace[],
+  target: VectorNetworkFace,
+): VectorNetworkFace['region'][] {
+  const filled = vectorNetworkFaceFillStates(
+    vertices,
+    segments,
+    regions,
+    faces,
+  );
+  return faces.flatMap((face, i) =>
+    filled[i] !== null && filled[i] !== (face === target)
       ? [
           {
             fillRule: 'evenodd' as const,
             loops: face.region.loops.map((loop) => [...loop]),
           },
         ]
-      : [];
-  });
+      : [],
+  );
 }

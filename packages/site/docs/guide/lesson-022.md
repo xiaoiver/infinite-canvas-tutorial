@@ -8,6 +8,7 @@ head:
 <script setup>
 import VectorNetwork from '../components/VectorNetwork.vue';
 import VectorNetworkCube from '../components/VectorNetworkCube.vue';
+import VectorNetworkFaceCut from '../components/VectorNetworkFaceCut.vue';
 </script>
 
 # Lesson 22 - VectorNetwork
@@ -243,6 +244,12 @@ Walk each Figma `loops` entry (ordered segment indices), tessellate every edge�
 
 Double-click a VectorNetwork and choose **Fill**. Hover previews the smallest enclosed face; click to fill it and click again to clear it. Each click is one undo step. Drags, cancelled pointers and multi-touch zoom do not commit a fill. Switching tools, pressing Esc, clicking empty canvas outside the shape, or destroying the canvas clears the preview.
 
+Try the cube below, which starts in **Fill** mode. Hover over its front, top or right face to preview it, then click to fill it. Fill two neighbouring faces and click either one again: only that face is cleared. Use the canvas's **Undo / Redo** buttons to step through your changes.
+
+<VectorNetworkCube fill />
+
+In **Fill** mode, click the color swatch beside the tool buttons to open the color picker. Choose a color or enter a color value before clicking a face. Changing the color also updates all already-filled faces in this network; color changes can be undone. Faces currently share one fill style.
+
 `findVectorNetworkFaces` walks directed half-edges and attaches the exterior boundaries of enclosed disconnected components as holes. Previews and newly created regions use `evenodd`, so holes do not depend on the storage direction of edges. Existing `nonzero` / `evenodd` fills are resolved to minimal faces by their coverage; clearing one face preserves neighbouring fills.
 
 Faces share the node's `fills`. The first fill on a stroke-only network uses the pen's configured visible fill, falling back to blue. Previews live in a transient SVG overlay and never enter the document, exports or history. Picking uses local coordinates and supports rotation, reflection and scaling.
@@ -385,9 +392,60 @@ For curves, Heal first attempts to recover an original subdivided cubic. Otherwi
 
 ![Glue and unglue operator](/vgc-operator-glue-unglue.png)
 
+In **Move**, select a vertex, then click **Glue / Unglue** (the chain icon). The panel labels vertices **V1, V2, …** and incident edges **E1, E2, …** on the canvas.
+
+-   **Glue**: choose a target vertex and confirm. The selected vertex moves to the target and their connections are combined. Distinct curves and curved self-loops are retained; identical edges coalesce.
+-   **Unglue**: check the edge ends to detach, then confirm. A new vertex is created at the same position, connected only to those ends. It becomes selected so you can immediately drag it away. Keep at least one end attached to the original vertex. A self-loop's start and end can be chosen separately.
+
+Try selecting the cube's front top-right junction, open **Glue / Unglue**, and detach **E7 · Start**. Drag the selected copy away, then use **Glue** with **V3** as the target to join it back.
+
+<VectorNetworkCube topology />
+
+The preview does not modify the document. Cancel closes it without changing geometry; an external geometry update, undo, or leaving edit mode invalidates the pending operation. Each confirmed operation is one undo step. Unglue preserves curve geometry and still-closed regions; opening an outer boundary or a hole removes the entire affected fill region. Glue restores connectivity but does not automatically restore removed fills: use Fill again, or Undo to restore the complete previous state.
+
+`glueVertices(network, source, target)` and `unglueVertex(network, vertex, endpoints)` return a `VectorTopologyResult`: either a failure reason or the new network, vertex/segment index maps and selected vertex index. Endpoints use `{ segmentIndex, end: 'start' | 'end' }`; indices in the API are zero-based. Inputs are not mutated. This first stage operates on vertices within one network; shared-edge and face operations are described below.
+
+#### Shared-edge Glue / Unglue
+
+In **Move**, select an endpoint and open **Glue / Unglue**, then set **Topology target** to **Edges**. Choose a **Source edge** to label its incident filled regions **R1, R2, …**. Checked regions are highlighted. Boundary uses are labelled **R (region) · L (loop) · position within the loop**, all one-based.
+
+The cube below has three filled faces. Select the front top-right vertex **V3**, choose **Unglue edge → E7**, check **R2 · L1 · 4** (the top face), and confirm. The top face now uses the copy **E10**, while the right face still uses **E7**. Unglue enters **Bend** automatically: drag the middle of the diagonal to bend only the copy and the top face's boundary. Both endpoints remain shared. To edit the overlapping original instead, return to Move, choose E7 in the Edges panel, and click **Bend selected edge**.
+
+<VectorNetworkCube edges />
+
+Undo the bend to make the curves coincide again, switch back to Move and select V3. In the Edges panel, choose **Glue edges** to merge **E10** into **E7**. Glue supports reversed storage direction and welds coincident endpoint vertices with different indices. Only the requested source edge is removed; unrelated duplicates remain. Mismatching curves or control points, incompatible endpoints, two edges used in the same boundary loop, and partial winding reversals that could change nonzero fills are rejected.
+
+Unglue preserves curve geometry, endpoints and all regions, including holes, moving only selected boundary uses to the copy. At least one use must remain on the original. Regions currently store filled boundaries: an edge needs at least two such uses, so fill adjacent faces first if needed. Fill can normalize imported broad regions into separate faces. While copies still overlap, use Bend or Glue; Fill and face Cut / Uncut still assume a planar embedding. Each Glue / Unglue is one undo step. Preview and **Bend selected edge** create no history entry.
+
+The pure function `vectorEdgeUses(network, edge)` returns `{ regionIndex, loopIndex, offset }` entries. `unglueVectorNetworkEdge(network, edge, uses)` and `glueVectorNetworkEdges(network, source, target)` return `VectorEdgeTopologyResult`: the new network, vertex/edge index maps and selected edge, or a failure reason. API indices are zero-based; inputs are not mutated.
+
 ### Cut & uncut {#cut-uncut}
 
 ![Cut and uncut operator](/vgc-operator-cut-uncut.png)
+
+#### Split and merge faces
+
+In **Move**, select a vertex and click **Cut / Uncut faces** (the divided-path icon). **Cut face** connects boundary vertices of the same face with a straight seam, including connections to or between holes. **Uncut edge** removes a shared edge between adjacent faces or a seam joining boundary components. Vertex positions and existing curve control points stay unchanged. Both operations support one-step Undo / Redo.
+
+Try the filled front face below: select its **bottom-left vertex V1**, choose **Cut face → V3**, and confirm. The new diagonal **E10** splits the blue face into two filled triangles. Open the panel again, choose **Uncut edge → E10**, and confirm to merge them back. You can use Fill to clear one triangle; Uncut then explains that both sides must have the same fill state instead of changing the painted area unexpectedly.
+
+<VectorNetworkCube faces />
+
+Cuts must remain inside a planar face: crossing or touching another edge, overlapping an edge, or passing through a hole is rejected. Existing curved boundaries and holes on either side are preserved. Cuts currently use straight seams rather than arbitrary drawn curves. When Uncut merges two bounded faces, both must be filled or both unfilled. Removing a seam that joins hole boundaries preserves the original fill. Dangling strokes are not removed as boundary-joining seams. The preview is temporary; Cancel, Undo, changing the selected vertex, or external geometry updates discard it. A rejected operation explains the reason and creates no history entry.
+
+The pure functions `cutVectorNetworkFace(network, from, to)` and `uncutVectorNetworkEdge(network, edgeIndex)` return `VectorFaceTopologyResult`, including failure reasons or the new network, vertex/edge index maps and selected vertex. Indices are zero-based. Filled regions are normalized into minimal planar faces, preserving the visible painted area and holes. This face operation is separate from the existing Cut tool that opens a vertex, described below.
+
+#### Connecting hole boundaries
+
+The ring below has an unfilled hole. In Move, select the outer top-left corner **V1**, open **Cut / Uncut faces**, and choose **Cut face → V5**. The new **E9** joins the outer boundary to the hole. The blue area remains one face, the hole stays transparent, and the boundary traverses E9 once in each direction.
+
+Next select the outer top-right corner **V2** and choose **Cut face → V6**. The new **E10** splits the ring into two faces that Fill can toggle independently. Without changing the fills, select V2 and **Uncut edge → E10**, then select V1 and **Uncut edge → E9**, to restore the ring with two separate boundary loops. Each step supports undo and redo.
+
+<VectorNetworkFaceCut />
+
+Two holes can also be connected when the entire seam lies inside the same face without touching other boundaries. Joining different boundaries removes one boundary loop without adding a face; cutting within one boundary adds a face. Existing curved boundaries stay unchanged, and fills are normalized into `evenodd` face regions while preserving their coverage.
+
+#### Open a vertex
 
 Cut **breaks topology at the selected vertex**. Duplicate that vertex, keep its first incident endpoint, and move the remaining endpoints to the copy. Closed loops and open chains use the same rule. For triangle `0—1—2—0` with a cut at vertex `1`:
 

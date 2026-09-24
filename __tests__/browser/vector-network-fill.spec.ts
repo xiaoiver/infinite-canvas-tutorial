@@ -167,6 +167,58 @@ test('previews, fills and clears individual faces with one undo step per click',
   ).toEqual([255, 0, 0, 255]);
 });
 
+test('chooses a Fill color before painting and undoes recoloring without changing faces', async ({
+  page,
+}) => {
+  const node = square();
+  node.fills = [];
+  node.segments.push({ start: 0, end: 2 });
+  await prepare(page, node);
+  const picker = page.locator('ic-spectrum-fill-action-button');
+  const swatch = picker.locator('ic-spectrum-fill-icon');
+  await expect(swatch).toHaveAttribute('value', '#147af3');
+  const color = () =>
+    page.evaluate(() => {
+      const node = window.canvasRegression.state('left')!
+        .nodes[0] as VectorNetworkSerializedNode;
+      return node.fills?.[0]?.value;
+    });
+  const choose = async (value: string) => {
+    await picker.getByRole('button', { name: 'Fill color', exact: true }).click();
+    const input = picker.locator('sp-color-field').locator('input');
+    await expect(input).toBeVisible();
+    await input.fill(value);
+    await input.press('Tab');
+    await expect.poll(color).toBe(value);
+    // Dismiss the popover through its trigger without clicking the drawing.
+    await picker.getByRole('button', { name: 'Fill color', exact: true }).click();
+    await expect(input).not.toBeVisible();
+  };
+  await choose('#ff0000');
+  expect(await regions(page)).toEqual([]);
+  await click(page, [100, 30]);
+  await expect.poll(() => regions(page)).toHaveLength(1);
+  await click(page, [30, 100]);
+  await expect.poll(() => regions(page)).toHaveLength(2);
+  const filledFaces = await regions(page);
+  await choose('#00ff00');
+  expect(await regions(page)).toEqual(filledFaces);
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.canvasRegression.pixel('left', 140, 70)),
+    )
+    .toEqual([0, 255, 0, 255]);
+  await page.evaluate(() => window.canvasRegression.undo('left'));
+  await expect.poll(color).toBe('#ff0000');
+  await expect(swatch).toHaveAttribute('value', '#ff0000');
+  expect(await regions(page)).toEqual(filledFaces);
+  await page.evaluate(() => window.canvasRegression.redo('left'));
+  await expect.poll(color).toBe('#00ff00');
+  await expect(swatch).toHaveAttribute('value', '#00ff00');
+  await page.getByRole('radio', { name: 'Move', exact: true }).click();
+  await expect(picker).toHaveCount(0);
+});
+
 test('fills an outer ring without painting its hole, then fills the inner face separately', async ({
   page,
 }) => {

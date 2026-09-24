@@ -1,4 +1,8 @@
 import '../../../packages/webcomponents/src/spectrum/context-vector-network-edit-bar';
+import '../../../packages/webcomponents/src/spectrum/infinite-canvas';
+import '../../../packages/webcomponents/src/spectrum/fill-icon';
+import '../../../packages/webcomponents/src/spectrum/input-solid';
+import '../../../packages/webcomponents/src/spectrum/input-gradient';
 import {
   API,
   App,
@@ -289,6 +293,9 @@ const harness = {
     return act(side, ({ api }) => api.setAppState({ cameraZoom: zoom }));
   },
   async vectorToolbar(side: Side, id: string) {
+    const theme = document.createElement('sp-theme');
+    theme.setAttribute('color', 'light');
+    theme.setAttribute('scale', 'medium');
     const toolbar = document.createElement(
       'ic-spectrum-context-vector-network-edit-bar',
     );
@@ -307,9 +314,10 @@ const harness = {
     stateManagement.listeners.add(sync);
     api.onDestroy(() => {
       stateManagement.listeners.delete(sync);
-      toolbar.remove();
+      theme.remove();
     });
-    document.getElementById(side)!.append(toolbar);
+    theme.append(toolbar);
+    document.getElementById(side)!.append(theme);
   },
   viewportPoint(side: Side, id: string, point: [number, number]) {
     const { api } = slots.get(side)!;

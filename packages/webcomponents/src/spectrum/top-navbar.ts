@@ -12,8 +12,9 @@ import {
   type ThemePreference,
   ExportFormat,
   downloadIcDocument,
+  type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
-import { apiContext, appStateContext } from '../context';
+import { apiContext, appStateContext, nodesContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { openFigmaDocument, openIcDocument } from '../utils';
 import { executeCopy, executeCut, executePaste } from './context-menu';
@@ -53,6 +54,11 @@ export class TopNavbar extends LitElement {
 
   @consume({ context: appStateContext, subscribe: true })
   appState: AppState;
+
+  // Node-only edits and history navigation also change Undo / Redo availability.
+  @consume({ context: nodesContext, subscribe: true })
+  @state()
+  private nodes: SerializedNode[];
 
   @consume({ context: apiContext, subscribe: true })
   api: ExtendedAPI;

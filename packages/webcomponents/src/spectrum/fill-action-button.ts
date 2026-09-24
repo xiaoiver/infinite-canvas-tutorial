@@ -130,6 +130,12 @@ export class FillActionButton extends LitElement {
   @property()
   node: SerializedNode;
 
+  /** Paint shown before a stroke-only node receives its first fill. */
+  @property({ attribute: false })
+  defaultFill: SerializedFillLayerItem = {
+    type: 'solid', value: '#000000', opacity: 1,
+  };
+
   @state()
   private fillPanelTab: 'color' | 'variable' = 'color';
 
@@ -139,14 +145,14 @@ export class FillActionButton extends LitElement {
 
   private textFillLayer(): SerializedFillLayerItem {
     if (!this.node) {
-      return { type: 'solid', value: '#000000', opacity: 1 };
+      return { ...this.defaultFill };
     }
     migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
     const fl = (this.node as FillAttributes).fills;
     if (Array.isArray(fl) && fl[0]) {
       return { ...fl[0] };
     }
-    return { type: 'solid', value: '#000000', opacity: 1 };
+    return { ...this.defaultFill };
   }
 
   private fillWireBound(): boolean {
@@ -335,6 +341,7 @@ export class FillActionButton extends LitElement {
         quiet
         size="m"
         id="fill"
+        label=${msg(str`Fill color`)}
         @click=${this.handleFillTriggerClick}
       >
         <ic-spectrum-fill-icon
@@ -342,7 +349,7 @@ export class FillActionButton extends LitElement {
           .node=${this.node}
           slot="icon"
         ></ic-spectrum-fill-icon>
-        <sp-tooltip self-managed placement="bottom"> Fill </sp-tooltip>
+        <sp-tooltip self-managed placement="bottom">${msg(str`Fill color`)}</sp-tooltip>
       </sp-action-button>
       <sp-overlay trigger="fill@click" placement="bottom" type="auto">
         <sp-popover dialog>

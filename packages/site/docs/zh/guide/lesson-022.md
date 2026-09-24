@@ -8,6 +8,7 @@ head:
 <script setup>
 import VectorNetwork from '../../components/VectorNetwork.vue';
 import VectorNetworkCube from '../../components/VectorNetworkCube.vue';
+import VectorNetworkFaceCut from '../../components/VectorNetworkFaceCut.vue';
 </script>
 
 # 课程 22 - VectorNetwork
@@ -243,6 +244,12 @@ function tessellateVectorSegment(
 
 双击 VectorNetwork 进入编辑，选择 **Fill** 工具。鼠标悬停时预览最小封闭面，点击添加填充，再次点击取消；一次点击对应一次撤销记录。拖动、指针取消和多指缩放不会提交填充。切换工具、按 Esc、点击图形外的空白或销毁画布会清理预览。
 
+下面的立方体已进入 **Fill** 模式。将鼠标移到正面、顶面或右侧面上预览，点击即可填色。试着填充两个相邻的面，再次点击其中一个面：只有这个面的填充会被清除。使用画布中的 **撤销 / 重做** 按钮可以逐步回退或恢复操作。
+
+<VectorNetworkCube fill />
+
+在 **Fill** 模式下，点击工具按钮旁的颜色色块即可打开取色器。先选择颜色或输入色值，再点击要填充的面。修改颜色也会更新这个网络中所有已填充的面，颜色修改支持撤销。目前各个面共用同一套填充样式。
+
 `findVectorNetworkFaces` 枚举有方向的半边环，并将不连通内层组件的外边界作为所属面的孔洞。预览和新建区域使用 `evenodd`，因此孔洞不依赖边的存储方向。已有 `nonzero` / `evenodd` 填充会按实际覆盖范围转换为最小面，取消其中一个面时保留其他面的填充。
 
 所有面共用节点的 `fills`。对只有描边的网络首次填充时，使用钢笔配置中的可见填充；若没有配置，则使用蓝色。预览位于临时 SVG 覆盖层，不进入文档、导出或撤销记录。命中测试使用局部坐标，支持旋转、镜像和缩放。
@@ -384,9 +391,60 @@ export function deleteVertex(
 
 ![Glue and unglue operator](/vgc-operator-glue-unglue.png)
 
+在 **Move** 模式下选中顶点，点击工具栏的 **Glue / Unglue**（链条图标）。打开面板后，画布会显示顶点编号 **V1、V2……** 和关联边编号 **E1、E2……**。
+
+-   **Glue**：选择目标顶点并确认，将当前顶点移动到目标位置，合并它们的连接关系。保留不同的曲线和曲线自环，合并几何相同的重复边。
+-   **Unglue**：勾选要拆开的边端点并确认，在原位置创建新顶点，仅将勾选的端点连接到副本。副本会自动选中，可以直接拖走。至少保留一个端点连接到原顶点；自环的起点和终点可以分别选择。
+
+试着选中立方体正面右上角的交汇点，打开 **Glue / Unglue**，拆开 **E7 · Start**。将选中的副本拖走，再用 **Glue** 选择 **V3**，就能把它接回原顶点。
+
+<VectorNetworkCube topology />
+
+预览不修改文档，点击 Cancel 可以取消；外部几何更新、撤销或退出编辑会使待执行操作失效。每次确认对应一次撤销。Unglue 保持曲线形状及仍然闭合的区域；若外边界或孔洞被打开，会移除整个受影响的填充区域。Glue 恢复连接关系，但不会自动恢复已移除的填充：可以重新使用 Fill，或通过撤销恢复之前的完整状态。
+
+`glueVertices(network, source, target)` 和 `unglueVertex(network, vertex, endpoints)` 返回 `VectorTopologyResult`：失败时包含原因，成功时包含新网络、顶点与边的索引映射，以及操作后选中的顶点索引。端点使用 `{ segmentIndex, end: 'start' | 'end' }` 表示，API 索引从 0 开始。输入不会被修改。第一阶段支持同一网络内的顶点操作，共享边和面的操作见下文。
+
+#### 共享边的 Glue / Unglue
+
+在 **Move** 中选中边的一个端点，打开 **Glue / Unglue**，将 **Topology target** 切换为 **Edges**。选择 **Source edge** 后，画布会标注相关区域 **R1、R2……**；勾选的区域会高亮。边界引用以 **R（区域）· L（边界环）· 环内位置** 编号，编号均从 1 开始。
+
+下面的立方体已填充三个面。选中正面右上角 **V3**，选择 **Unglue edge → E7**，勾选 **R2 · L1 · 4**（顶面）并确认。顶面的这条边会改用副本 **E10**，右面仍使用 **E7**。操作后自动进入 **Bend**，拖动这条斜边的中部，只会弯曲副本及顶面边界；两个端点仍然共享。若要编辑重合的原边，可以返回 Move，在 Edges 面板选中 E7，然后点击 **Bend selected edge**。
+
+<VectorNetworkCube edges />
+
+试完 Bend 后先撤销这次弯曲，让两条边重新重合，再切回 Move 并选中 V3。在 Edges 面板选择 **Glue edges**，将 **E10** 合并到 **E7**。Glue 支持相反的边存储方向，也会焊接位置重合但索引不同的端点；只移除选中的源边，不会顺带合并其他重复边。曲线及其控制点不匹配、端点关系不兼容，两条边出现在同一边界环中，或合并会改变 nonzero 填充的部分边界绕向时，操作会被拒绝。
+
+Unglue 保留曲线形状、端点和全部区域，包括孔洞；它只把选中的边界引用改到副本。必须保留至少一个引用在原边上。当前区域数据记录的是填充边界，因此边须被至少两个已填充区域边界引用；未填充的相邻面请先用 Fill 填充。已有宽区域可通过 Fill 操作拆分为独立面域。重合边尚未分开时，优先使用 Bend 或 Glue；Fill 和面级 Cut / Uncut 的面识别仍以平面嵌入为前提。每次 Glue / Unglue 对应一条历史记录，选择预览和 **Bend selected edge** 本身不写入历史。
+
+纯函数 `vectorEdgeUses(network, edge)` 返回 `{ regionIndex, loopIndex, offset }` 引用列表；`unglueVectorNetworkEdge(network, edge, uses)` 和 `glueVectorNetworkEdges(network, source, target)` 返回 `VectorEdgeTopologyResult`，包含新网络、顶点/边索引映射及选中的边，或明确的失败原因。API 索引从 0 开始，输入不会被修改。
+
 ### Cut & uncut {#cut-uncut}
 
 ![Cut and uncut operator](/vgc-operator-cut-uncut.png)
+
+#### 切分与合并面
+
+在 **Move** 模式选中顶点，点击 **Cut / Uncut faces**（分割路径图标）。**Cut face** 用直线连接同一个面的边界顶点，支持外边界与孔洞之间、两个孔洞之间的连接；**Uncut edge** 移除相邻面之间的共享边，或移除连接不同边界的切线。已有顶点的位置和曲线控制点保持不变，每次操作都支持一步撤销和重做。
+
+试试下面已填充的正面：选中**左下角 V1**，选择 **Cut face → V3** 并确认，新增对角线 **E10** 会把蓝色正面分成两个仍有填充的三角形。再次打开面板，选择 **Uncut edge → E10** 并确认，即可合并回来。也可以先用 Fill 清除其中一个三角形的填充；此时 Uncut 会提示两侧填充状态必须一致，避免意外改变着色范围。
+
+<VectorNetworkCube faces />
+
+切线必须位于同一个平面嵌入的面内部：穿过或接触其他边、与已有边重叠、穿过孔洞都会被拒绝。已有曲线边界和切线两侧的孔洞会保留。当前切线为直线，暂不支持任意手绘曲线。Uncut 合并两个有界面时，两侧须同时有填充或同时无填充；移除连接孔洞的切线时，保留原面的填充。悬空线段不会被作为这类切线移除。预览不会写入文档；取消、撤销、切换所选顶点或外部几何更新都会丢弃待确认的操作。操作被拒绝时会说明原因，也不会新增历史记录。
+
+纯函数 `cutVectorNetworkFace(network, from, to)` 和 `uncutVectorNetworkEdge(network, edgeIndex)` 返回 `VectorFaceTopologyResult`，包含失败原因，或新网络、顶点与边的索引映射以及所选顶点。API 索引从 0 开始。填充区域会归一化为最小平面面域，保留可见着色范围和孔洞。这里的面级操作与下文已有的“在顶点处断开”Cut 工具相互独立。
+
+#### 连接孔洞边界
+
+下面的环形有一个未填充的孔洞。在 Move 中选中外边界左上角 **V1**，打开 **Cut / Uncut faces**，选择 **Cut face → V5**。新增 **E9** 连接外边界和孔洞：蓝色区域仍然是一个面，孔洞保持透明，边界沿 E9 往返各一次。
+
+再选中外边界右上角 **V2**，执行 **Cut face → V6**，新增 **E10** 才会把环形分成两个面。可以用 Fill 分别操作这两个面。若未改变填充，选中 V2 并 **Uncut edge → E10**，再选中 V1 并 **Uncut edge → E9**，即可恢复只有两条独立边界的环形；每步都能单独撤销和重做。
+
+<VectorNetworkFaceCut />
+
+两个孔洞之间也可以这样连接，只要整条切线位于同一个面内部且不触碰其他边界。连接不同边界时减少一个边界环，面数不变；在同一边界内切分时增加一个面。已有曲线边界保持不变，填充会归一化为 `evenodd` 面域，保留原有的着色范围。
+
+#### 在顶点处断开
 
 Cut 在选中的顶点处**断开拓扑**。复制该顶点，保留第一个关联端点，其余关联端点改连到副本；闭合环和开口链使用同一规则。以三角形 `0—1—2—0` 在顶点 `1` 处 Cut 为例：
 

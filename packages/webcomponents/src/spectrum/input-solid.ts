@@ -17,6 +17,7 @@ import opacityCheckerBoardStyles from '@spectrum-web-components/opacity-checkerb
 import { localized, msg, str } from '@lit/localize';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import './design-variable-picker.js';
+import { normalizeSolidCssValue } from './normalize-solid-css';
 
 import '@spectrum-web-components/action-button/sp-action-button.js';
 
@@ -486,6 +487,13 @@ export class InputSolid extends LitElement {
     this.emitSolid(next.r, next.g, next.b, this.getEffectiveOpacity());
   }
 
+  private handleHexChanged(e: Event) {
+    const value = (e.currentTarget as HTMLElement & { value: string }).value;
+    const color = d3.color(normalizeSolidCssValue(value))?.rgb();
+    if (!color) return;
+    this.emitSolid(color.r, color.g, color.b, this.getEffectiveOpacity());
+  }
+
   private handleRChanged(e: CustomEvent) {
     const v = Number((e.target as HTMLElement & { value: number }).value);
     const p = parseColor(this.value);
@@ -773,7 +781,7 @@ export class InputSolid extends LitElement {
               <sp-color-field
                 size="s"
                 value=${hex6}
-                @input=${this.handlePickerRgbChanged}
+                @change=${this.handleHexChanged}
               ></sp-color-field>
             `,
     )}
