@@ -1,5 +1,5 @@
 import { mat3, vec2 } from 'gl-matrix';
-import { IPointData, Point, Rectangle } from '@pixi/math';
+import { IPointData, Rectangle } from '@pixi/math';
 import type { Plugin, PluginContext } from './interfaces';
 import type { FederatedPointerEvent, FederatedWheelEvent } from '../events';
 
@@ -198,20 +198,27 @@ export class CameraControl implements Plugin {
 
     const move = (e: FederatedPointerEvent) => {
       if (this.touchCount >= 2) {
-        const x = e.global.x;
-        const y = e.global.y;
+        // Use client coordinates so the gesture is independent of the camera.
+        const x = e.nativeEvent.clientX;
+        const y = e.nativeEvent.clientY;
         const pointers = this.#touches;
         const keys = Object.keys(pointers);
         const firstKey = Number(keys[0]);
         const secondKey = Number(keys[1]);
         const first = pointers[firstKey];
         const second = pointers[secondKey];
-        const last =
+
+        // Record the distance and midpoint between both fingers before moving.
+        const prevGesture =
           first.last && second.last
-            ? Math.sqrt(
-                Math.pow(second.last.x - first.last.x, 2) +
-                  Math.pow(second.last.y - first.last.y, 2),
-              )
+            ? {
+                dist: Math.sqrt(
+                  Math.pow(second.last.x - first.last.x, 2) +
+                    Math.pow(second.last.y - first.last.y, 2),
+                ),
+                x: (first.last.x + second.last.x) / 2,
+                y: (first.last.y + second.last.y) / 2,
+              }
             : null;
 
         if (firstKey === e.pointerId) {
@@ -220,18 +227,20 @@ export class CameraControl implements Plugin {
           second.last = { x, y };
         }
 
-        if (last) {
-          const point = new Point(
-            first.last.x + (second.last.x - first.last.x) / 2,
-            first.last.y + (second.last.y - first.last.y) / 2,
-          );
-
+        if (prevGesture && first.last && second.last) {
           const dist = Math.sqrt(
             Math.pow(second.last.x - first.last.x, 2) +
               Math.pow(second.last.y - first.last.y, 2),
           );
+          const midX = (first.last.x + second.last.x) / 2;
+          const midY = (first.last.y + second.last.y) / 2;
 
-          zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
+          // Two-finger swipe pans the camera, following the fingers.
+          camera.x += (prevGesture.x - midX) / camera.zoom;
+          camera.y += (prevGesture.y - midY) / camera.zoom;
+
+          // Changing the distance between the fingers zooms the camera.
+          zoomByPoint(midX, midY, (prevGesture.dist / dist - 1) * PINCH_FACTOR);
         } else if (!this.#pinching) {
           this.#pinching = true;
         }
