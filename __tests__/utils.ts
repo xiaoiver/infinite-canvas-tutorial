@@ -1,6 +1,7 @@
 import _gl from 'gl';
 import { createCanvas } from 'canvas';
-import getPixels from 'get-pixels';
+import { readFile } from 'node:fs/promises';
+import { PNG } from 'pngjs';
 import { JSDOM } from 'jsdom';
 import { XMLSerializer, DOMParser } from '@xmldom/xmldom';
 import GraphemeSplitter from 'grapheme-splitter';
@@ -53,20 +54,10 @@ export function sleep(n: number) {
   });
 }
 
-export function loadImage(path: string) {
-  // Load local image instead of fetching remote URL.
-  // @see https://github.com/stackgl/headless-gl/pull/53/files#diff-55563b6c0b90b80aed19c83df1c51e80fd45d2fbdad6cc047ee86e98f65da3e9R83
-  return new Promise((resolve, reject) => {
-    getPixels(path, function (err, image) {
-      if (err) {
-        reject('Bad image path');
-      } else {
-        image.width = image.shape[0];
-        image.height = image.shape[1];
-        resolve(image);
-      }
-    });
-  });
+export async function loadImage(path: string) {
+  // Fixtures are local PNGs; avoid the deprecated get-pixels/request dependency.
+  const { width, height, data } = PNG.sync.read(await readFile(path));
+  return { width, height, data: new Uint8Array(data) };
 }
 
 export function getCanvas(width = 100, height = 100) {

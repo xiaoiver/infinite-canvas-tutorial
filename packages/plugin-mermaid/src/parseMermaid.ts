@@ -15,6 +15,7 @@ import { parseMermaidERDiagram } from '@excalidraw/mermaid-to-excalidraw/dist/pa
 import { parseMermaidStateDiagram } from '@excalidraw/mermaid-to-excalidraw/dist/parser/state';
 import { runMermaidTaskSequentially } from '@excalidraw/mermaid-to-excalidraw/dist/mermaidExecutionQueue';
 import { parseMindmapFromSvg, type MindmapDbLike } from './mindmapFromSvg';
+import { useScopedSvgSelectors } from './scopedSvgSelectors';
 
 let lastConfigHash: string | null = null;
 let renderCounter = 0;
@@ -109,6 +110,7 @@ export const parseMermaid = async (
     try {
       const { svg } = await mermaid.render(renderId, definition, svgContainer);
       svgContainer.innerHTML = svg;
+      useScopedSvgSelectors(svgContainer, renderId);
       await prepareSvgForMeasurement(svgContainer);
       let data: unknown;
       try {

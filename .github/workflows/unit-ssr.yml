@@ -17,21 +17,27 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 9.15.9
 
-      - name: Use Node.js 18
+      - name: Use Node.js 20
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
           cache: 'pnpm'
 
       - name: Install headless-gl dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6
+          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6 libxi-dev libxext-dev libx11-dev libgl1-mesa-dev
 
       - name: Install dependencies
         run: pnpm install
+        env:
+          # headless-gl 6's bundled ANGLE omits this header, required by GCC 13+.
+          CXXFLAGS: -include cstdint
+
+      - name: Verify headless-gl native binding
+        run: node -e "require('gl')"
 
       - name: Run ECS unit tests
         run: |
