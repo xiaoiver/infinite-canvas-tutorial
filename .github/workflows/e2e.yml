@@ -16,10 +16,10 @@ jobs:
       - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 9.15.9
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
       - name: Install dependencies
         run: pnpm install
 
@@ -47,10 +47,10 @@ jobs:
       - uses: actions/checkout@v3
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 9.15.9
       - uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20
       - name: Install dependencies
         run: pnpm install
 
