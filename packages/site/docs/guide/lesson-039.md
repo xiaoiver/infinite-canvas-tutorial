@@ -221,6 +221,26 @@ Consistent with [Unified 3D space](#unified-space), the gizmo uses **canvas coor
 -   Rings follow the object’s current orientation; arrows stay in canvas world axes (X right, Y down, Z depth).
 -   Picking uses screen-space **nearest** hit; when overlapping, arrows are on top so translate wins. `scale` is reserved for later.
 
+### Shape architecture (PlayCanvas-style) {#gizmo-shapes}
+
+The handle geometry is organized like PlayCanvas' [`extras/gizmo`](https://github.com/playcanvas/engine/tree/main/src/extras/gizmo): a small `gizmo/` module with a `GizmoShape` class hierarchy instead of one flat geometry function.
+
+```plaintext
+packages/ecs/src/gizmo/
+  ├─ constants.ts   axes / planes / spaces / drag modes
+  ├─ color.ts       axis colors + hover (lerp-to-white) / disabled / lerp helpers
+  ├─ gizmos.ts      per-mode assemblers: translate / rotate / scale / transform
+  └─ shape/
+       ├─ shape.ts        GizmoShape base: mesh + per-state colors + hover/disabled/visible
+       ├─ arrow-shape.ts  single-axis translate arrow (shaft + cone)
+       ├─ plane-shape.ts  translucent plane-drag quad
+       ├─ torus-shape.ts  rotation ring
+       ├─ box-shape.ts    single-axis scale box
+       └─ sphere-shape.ts center / uniform-scale handle
+```
+
+Each `GizmoShape` owns its triangle mesh (`positions` / `normals` / `indices`) plus `defaultColor` / `hoverColor` / `disabledColor`, and exposes `getColor()` driven by its `hover` / `disabled` state. `utils/gizmo-geometry.ts` now adapts these shapes into the flat `GizmoMeshData[]` consumed by `RenderGizmo3D` / `Pick3D`, so the existing render and pick paths are unchanged. The `scale` shapes (`box` + center `sphere`) and `createScaleGizmo()` provide the geometry for a future scale gizmo; the drag math is a later stage.
+
 ## Lighting {#lighting}
 
 Demonstrates `Light3D` with Blinn-Phong materials: ambient fill, a cool directional light, a warm spotlight orbiting the scene center, and three meshes (cube, sphere, cylinder) with different specular settings to compare highlights and shading.
