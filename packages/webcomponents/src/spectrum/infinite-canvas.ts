@@ -10,7 +10,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 
 import { apiContext, appStateContext, nodesContext } from '../context';
-import { pendingCanvases } from '../API';
+import { pendingCanvases, pendingGpuReadyDispatch } from '../API';
 import { readStoredThemePreference } from '../theme-preference-storage';
 
 import '@spectrum-web-components/theme/sp-theme.js';
@@ -225,7 +225,9 @@ export class InfiniteCanvas extends LitElement {
     this.resizeObserver = new ResizeObserver((entries) =>
       this.handleResize(entries),
     );
-    this.updateComplete.then(() => this.resizeObserver.observe(this));
+    this.updateComplete.then(() => {
+      if (this.isConnected) this.resizeObserver.observe(this);
+    });
 
     this.addEventListener('theme-change', (e: CustomEvent) => {
       this.theme = e.detail.themeMode;
@@ -235,6 +237,15 @@ export class InfiniteCanvas extends LitElement {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.resizeObserver?.unobserve(this);
+
+    // A canvas may be removed before InitCanvas or GPU initialization runs.
+    for (let i = pendingCanvases.length - 1; i >= 0; i--) {
+      if (pendingCanvases[i].container === this) pendingCanvases.splice(i, 1);
+    }
+    for (let i = pendingGpuReadyDispatch.length - 1; i >= 0; i--) {
+      if (pendingGpuReadyDispatch[i].container === this)
+        pendingGpuReadyDispatch.splice(i, 1);
+    }
 
     // Defer so shadow-DOM children (context-menu, text-editor, …) can unbind first.
     const api = this.apiProvider.value;
@@ -367,15 +378,17 @@ export class InfiniteCanvas extends LitElement {
           html`${$svgLayer}${$htmlLayer}<ic-spectrum-top-navbar
             ></ic-spectrum-top-navbar>${$canvas}
             <ic-spectrum-penbar
-              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-            }px; left: 0;`}
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; left: 0;`}
             >
               <slot name="penbar-item" slot="penbar-item"></slot>
             </ic-spectrum-penbar>
             <ic-spectrum-penbar-crop></ic-spectrum-penbar-crop>
             <ic-spectrum-taskbar
-              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-            }px; right: 0;`}
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; right: 0;`}
             >
               <slot name="taskbar-item" slot="taskbar-item"></slot>
               <slot name="taskbar-panel" slot="taskbar-panel"></slot>
@@ -383,12 +396,14 @@ export class InfiniteCanvas extends LitElement {
             <ic-spectrum-context-bar></ic-spectrum-context-bar>
             <ic-spectrum-context-menu></ic-spectrum-context-menu>
             <ic-spectrum-text-editor
-              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-            }px; left: 0;`}
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; left: 0;`}
             ></ic-spectrum-text-editor>
             <ic-spectrum-comments
-              style=${`top: ${topbarVisible ? TOP_NAVBAR_HEIGHT : 0
-            }px; left: 0;`}
+              style=${`top: ${
+                topbarVisible ? TOP_NAVBAR_HEIGHT : 0
+              }px; left: 0;`}
             ></ic-spectrum-comments>
             <ic-spectrum-mask></ic-spectrum-mask>
             <ic-spectrum-timeline-panel></ic-spectrum-timeline-panel>`,

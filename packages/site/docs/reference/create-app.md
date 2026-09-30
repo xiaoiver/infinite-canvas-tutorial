@@ -13,6 +13,8 @@ app.run();
 
 Then you can create one or more canvases. Here we use UI components implemented based on WebComponents.
 
+React projects can use the [React bindings](/reference/react) to manage the runtime, canvas lifecycle, and events.
+
 ## Using WebComponents {#use-webcomponents}
 
 First, import the component library:

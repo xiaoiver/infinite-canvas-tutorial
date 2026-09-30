@@ -3,9 +3,7 @@
 import { throttle } from 'lodash-es';
 import { upload } from '@vercel/blob/client';
 import {
-  App,
   Pen,
-  DefaultPlugins,
   Task,
   CheckboardStyle,
   SerializedNode,
@@ -13,11 +11,11 @@ import {
   AppState,
   registerIconifyIconSet,
 } from '@infinite-canvas-tutorial/ecs';
+import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import {
-  Event,
-  UIPlugin,
-  type ExtendedAPI,
-} from '@infinite-canvas-tutorial/webcomponents';
+  InfiniteCanvas,
+  createCanvasRuntime,
+} from '@infinite-canvas-tutorial/react/spectrum';
 // import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
 import { LaserPointerPlugin } from '@infinite-canvas-tutorial/laser-pointer';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
@@ -34,7 +32,21 @@ import ZoomToolbar from './zoom-toolbar';
 import lucide from '@iconify/json/json/lucide.json';
 import materialIconTheme from '@iconify/json/json/material-icon-theme.json';
 
-let appRunning = false;
+const canvasRuntime = createCanvasRuntime({
+  plugins: [
+    FilterPlugin,
+    LaserPointerPlugin,
+    LassoPlugin,
+    EraserPlugin,
+    YogaPlugin,
+  ],
+  loadUI: () =>
+    Promise.all([
+      import('@infinite-canvas-tutorial/lasso/spectrum'),
+      import('@infinite-canvas-tutorial/eraser/spectrum'),
+      import('@infinite-canvas-tutorial/laser-pointer/spectrum'),
+    ]),
+});
 
 interface CanvasProps {
   id?: string;
@@ -53,13 +65,16 @@ const Canvas = ({
   const canvasRef = useRef<HTMLDivElement>(null);
   const projectIdRef = useRef<string>(id);
   const yjsManagerRef = useRef<CanvasYjsManager | null>(null);
+  const canvasInitializedRef = useRef(false);
   const prepareCanvasRef = useRef(prepareCanvas);
-  prepareCanvasRef.current = prepareCanvas;
+  useEffect(() => {
+    prepareCanvasRef.current = prepareCanvas;
+  }, [prepareCanvas]);
   const { resolvedTheme } = useTheme();
   const params = useParams();
   const locale = params.locale as string;
 
-  const [selectedNodes, setSelectedNodes] = useAtom(selectedNodesAtom);
+  const [, setSelectedNodes] = useAtom(selectedNodesAtom);
   const [canvasApi, setCanvasApi] = useAtom(canvasApiAtom);
 
   // 更新 projectIdRef 当 id 改变时
@@ -99,11 +114,10 @@ const Canvas = ({
     throttle(saveCanvasData, 1000),
   ).current;
 
-  const onReady = async (e: CustomEvent<any>) => {
-    const api = e.detail as ExtendedAPI;
-    setCanvasApi(api);
-
-    api.setLocale(locale);
+  const onReady = async (
+    api: ExtendedAPI,
+    { signal }: { signal: AbortSignal },
+  ) => {
     api.upload = async (file: File) => {
       // TODO: if already uploaded, return the url directly
       const blob = await upload(file.name, file, {
@@ -114,24 +128,23 @@ const Canvas = ({
     };
 
     // 初始化 Yjs 管理器
-    if (!yjsManagerRef.current) {
-      yjsManagerRef.current = new CanvasYjsManager(id);
-      await yjsManagerRef.current.waitForSync();
-
-      // 设置 API 的 onNodesChange 回调，将画布变化同步到 Yjs 并保存到数据库
-      api.onNodesChange = (nodes) => {
-        if (yjsManagerRef.current) {
-          yjsManagerRef.current.recordLocalOps(nodes);
-        }
-        const serializedNodes = nodes.filter(
-          (node) => !node.isDeleted,
-        ) as SerializedNode[];
-        throttledSaveCanvasData(serializedNodes);
-      };
-    }
+    const manager = new CanvasYjsManager(id);
+    yjsManagerRef.current = manager;
+    signal.addEventListener(
+      'abort',
+      () => {
+        canvasInitializedRef.current = false;
+        manager.destroy();
+        if (yjsManagerRef.current === manager) yjsManagerRef.current = null;
+        throttledSaveCanvasData.cancel();
+      },
+      { once: true },
+    );
+    await manager.waitForSync();
+    if (signal.aborted) return;
 
     // 从 Yjs 加载已保存的节点（如果有）
-    const savedNodes = yjsManagerRef.current.loadNodes();
+    const savedNodes = manager.loadNodes();
     const nodes: SerializedNode[] = initialData || savedNodes;
 
     api.setAppState({
@@ -203,8 +216,11 @@ const Canvas = ({
     registerIconifyIconSet('material-icon-theme', materialIconTheme);
 
     await prepareCanvasRef.current?.(api);
+    if (signal.aborted) return;
 
     api.runAtNextTick(() => {
+      if (signal.aborted) return;
+      canvasInitializedRef.current = true;
       api.updateNodes(nodes);
       if (nodes.length > 0) {
         api.selectNodes([nodes[0]]);
@@ -213,65 +229,12 @@ const Canvas = ({
     });
   };
 
-  const onSelectedNodesChanged = (e: CustomEvent<any>) => {
-    const newSelectedNodes = e.detail.selected;
-
-    // console.log('onSelectedNodesChanged... ', newSelectedNodes, selectedNodes);
-    // If the selected nodes are the same as the previous selected nodes, do nothing
-    // if (
-    //   newSelectedNodes.length === 0 && selectedNodes.length === 0
-    // ) {
-    //   return;
-    // }
-
-    setSelectedNodes(newSelectedNodes);
+  const onNodesChange = (nodes: SerializedNode[]) => {
+    const manager = yjsManagerRef.current;
+    if (!manager || !canvasInitializedRef.current) return;
+    manager.recordLocalOps(nodes);
+    throttledSaveCanvasData(nodes.filter((node) => !node.isDeleted));
   };
-
-  useEffect(() => {
-    if (!appRunning) {
-      new App()
-        .addPlugins(
-          ...DefaultPlugins,
-          FilterPlugin,
-          UIPlugin,
-          LaserPointerPlugin,
-          LassoPlugin,
-          EraserPlugin,
-          YogaPlugin,
-          // SAMPlugin
-        )
-        .run();
-      appRunning = true;
-    }
-  }, []);
-
-  useEffect(() => {
-    canvasRef.current?.addEventListener(Event.READY, onReady);
-    canvasRef.current?.addEventListener(
-      Event.SELECTED_NODES_CHANGED,
-      onSelectedNodesChanged,
-    );
-
-    return () => {
-      if (canvasApi) {
-        try {
-          canvasApi.destroy();
-        } catch (error) {
-          console.error('Error destroying canvas:', error);
-        }
-        setCanvasApi(null);
-      }
-      if (yjsManagerRef.current) {
-        yjsManagerRef.current.destroy();
-        yjsManagerRef.current = null;
-      }
-      canvasRef.current?.removeEventListener(Event.READY, onReady);
-      canvasRef.current?.removeEventListener(
-        Event.SELECTED_NODES_CHANGED,
-        onSelectedNodesChanged,
-      );
-    };
-  }, []);
 
   useEffect(() => {
     if (canvasApi && resolvedTheme) {
@@ -279,25 +242,28 @@ const Canvas = ({
         themeMode: resolvedTheme === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
       });
     }
-  }, [resolvedTheme]);
-
-  useEffect(() => {
-    import('@infinite-canvas-tutorial/webcomponents/spectrum');
-    import('@infinite-canvas-tutorial/lasso/spectrum');
-    import('@infinite-canvas-tutorial/eraser/spectrum');
-    import('@infinite-canvas-tutorial/laser-pointer/spectrum');
-  }, []);
+  }, [canvasApi, resolvedTheme]);
 
   return (
-    <div className="relative w-full h-full">
-      <ic-spectrum-canvas
-        ref={canvasRef}
+    <div ref={canvasRef} className="relative w-full h-full">
+      <InfiniteCanvas
+        key={id}
+        runtime={canvasRuntime}
         className="w-full h-full"
-        app-state='{"topbarVisible":false}'
+        initialAppState={{ topbarVisible: false }}
+        locale={locale}
+        theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+        onReady={onReady}
+        onAPIChange={(api) => {
+          setCanvasApi(api);
+          if (!api) setSelectedNodes([]);
+        }}
+        onNodesChange={onNodesChange}
+        onSelectedNodesChange={setSelectedNodes}
       >
         <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
         <ic-spectrum-penbar-eraser slot="penbar-item" />
-      </ic-spectrum-canvas>
+      </InfiniteCanvas>
       <ZoomToolbar canvasApi={canvasApi} canvasRef={canvasRef} />
     </div>
   );

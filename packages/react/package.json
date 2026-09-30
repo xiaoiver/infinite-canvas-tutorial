@@ -1,0 +1,58 @@
+{
+  "name": "@infinite-canvas-tutorial/react",
+  "version": "0.0.1",
+  "description": "React bindings for Infinite Canvas",
+  "main": "lib/index.js",
+  "module": "esm/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "import": "./esm/index.js",
+      "require": "./lib/index.js"
+    },
+    "./spectrum": {
+      "types": "./lib/spectrum.d.ts",
+      "import": "./esm/spectrum.js",
+      "require": "./lib/spectrum.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "spectrum": ["lib/spectrum.d.ts"]
+    }
+  },
+  "files": [
+    "esm",
+    "lib",
+    "README.md"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xiaoiver/infinite-canvas-tutorial"
+  },
+  "scripts": {
+    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
+    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
+    "build": "run-p build:*"
+  },
+  "dependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*",
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
+  },
+  "devDependencies": {
+    "jest-environment-jsdom": "^29.7.0",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

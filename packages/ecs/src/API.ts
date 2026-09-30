@@ -157,6 +157,16 @@ import {
   parseIcDocumentJson,
 } from './format/ic-document';
 
+export interface CanvasSnapshot {
+  appState: AppState;
+  nodes: SerializedNode[];
+}
+
+export interface CanvasChanges {
+  nodesChanged: boolean;
+  appStateChanged: boolean;
+}
+
 export interface StateManagement {
   getAppState: () => AppState;
   setAppState: (appState: AppState) => void;
@@ -306,6 +316,9 @@ export class API {
   #destroyed = false;
   #scope = new ResourceScope();
   #activeImageTasks = 0;
+  #subscribers = new Set<
+    (snapshot: CanvasSnapshot, changes: CanvasChanges) => void
+  >();
 
   readonly capabilities = new CapabilityRegistry();
 
@@ -333,6 +346,21 @@ export class API {
     if (nodesChanged) this.onNodesChange?.(snapshot.nodes);
     if (appStateChanged) this.onAppStateChange?.(snapshot.appState);
     if (nodesChanged || appStateChanged) this.onchange?.(snapshot);
+    if (nodesChanged || appStateChanged) {
+      const changes = { nodesChanged, appStateChanged };
+      this.#subscribers.forEach((listener) => listener(snapshot, changes));
+    }
+  }
+
+  /** Observe committed changes without replacing existing API callbacks. */
+  subscribe(
+    listener: (snapshot: CanvasSnapshot, changes: CanvasChanges) => void,
+  ) {
+    if (this.#destroyed) return () => {};
+    const subscriber = (snapshot: CanvasSnapshot, changes: CanvasChanges) =>
+      listener(snapshot, changes);
+    this.#subscribers.add(subscriber);
+    return this.onDestroy(() => this.#subscribers.delete(subscriber));
   }
 
   /** Register cleanup owned by this canvas. Returns an idempotent disposer. */

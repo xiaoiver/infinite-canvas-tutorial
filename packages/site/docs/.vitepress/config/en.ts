@@ -188,6 +188,10 @@ export const en = defineConfig({
             link: 'create-app',
           },
           {
+            text: 'React',
+            link: 'react',
+          },
+          {
             text: 'API',
             items: [
               {
