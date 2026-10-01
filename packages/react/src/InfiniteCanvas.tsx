@@ -245,7 +245,7 @@ export const InfiniteCanvas = forwardRef<
                   if (signal.aborted) return;
                   try {
                     api.updateNodes(nodes);
-                    api.record();
+                    api.record('NEVER');
                     setStatus('ready');
                   } catch (reason) {
                     reportError(reason);

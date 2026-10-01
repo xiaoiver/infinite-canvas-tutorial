@@ -22,6 +22,20 @@ Now we use it in the following projects:
 npm install @antv/g-device-api
 ```
 
+## Bundled compiler in the Infinite Canvas fork
+
+`@infinite-canvas-tutorial/device-api` includes the WebGPU shader compiler
+bindings in both its CommonJS and ESM builds. Its matching WASM is exported as
+`@infinite-canvas-tutorial/device-api/shader-compiler.wasm`. With Vite, use the
+asset URL when creating a WebGPU device:
+
+```js
+import compilerUrl from '@infinite-canvas-tutorial/device-api/shader-compiler.wasm?url';
+import { WebGPUDeviceContribution } from '@infinite-canvas-tutorial/device-api';
+
+const contribution = new WebGPUDeviceContribution({ shaderCompilerPath: compilerUrl });
+```
+
 ## <a id='api' />API Reference
 
 -   [Create a device](#createDevice)

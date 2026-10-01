@@ -8,6 +8,11 @@ a shared ECS App lifecycle, and scoped selector hooks.
 npm install @infinite-canvas-tutorial/react
 ```
 
+The first npm release is being prepared. The documentation playground runs from
+the workspace build; registry installation becomes available after publication.
+Copyable [Vite and Next.js starters](https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/examples) are checked against
+packed packages by `pnpm test:react:package`.
+
 ```tsx
 'use client';
 
@@ -108,6 +113,9 @@ const history = useCanvasSelector(
 ```
 
 Nodes and application state update on committed API changes (`api.record()`).
+This includes initial scenes and `api.record('NEVER')` updates, which notify
+subscribers without adding an undo entry. `initialNodes` is published to hooks
+and node callbacks after preparation, with no extra `record()` needed.
 Camera and selection events also refresh application state immediately. History
 availability updates on edits, undo, redo, and `clearHistory()` without polling.
 Uncommitted direct API writes become visible on the next commit/event. API
@@ -117,7 +125,7 @@ availability marks GPU readiness and may precede async `onReady` completion.
 
 | Prop                           | Behavior                                                                                                                               |
 | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `initialNodes`                 | Copied once per canvas creation and inserted into ECS after `onReady` completes. Later changes to this prop do not replace user edits. |
+| `initialNodes`                 | Copied once per canvas creation and inserted into ECS after `onReady` completes, without an undo entry. Later prop changes do not replace user edits. |
 | `initialAppState`              | Initial canvas state; later edits use `api.setAppState()`.                                                                             |
 | `renderer`                     | `webgl` (default) or `webgpu`. Changing it recreates the canvas.                                                                       |
 | `shaderCompilerPath`           | Override the WebGPU shader compiler URL. Changing it recreates the canvas.                                                             |
@@ -213,6 +221,8 @@ unsubscribe();
 
 Subscriptions coexist with legacy `onchange`, `onNodesChange`, and
 `onAppStateChange` callbacks and are automatically removed on API destruction.
+Independent subscriptions also receive initialization and non-undoable commits;
+legacy callbacks retain their local-edit/history behavior for collaboration.
 
 ## Scope
 

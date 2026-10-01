@@ -1,7 +1,7 @@
 import init, {
   glsl_compile,
   WGSLComposer,
-} from '../../../../rust/glsl-wgsl-compiler/pkg/glsl_wgsl_compiler';
+} from '../vendor/glsl_wgsl_compiler';
 import { DeviceContribution } from '../api';
 import { Device_WebGPU } from './Device';
 

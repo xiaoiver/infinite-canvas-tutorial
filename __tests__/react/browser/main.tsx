@@ -6,18 +6,22 @@ import {
   useCanvasAPI,
   useCanvasSelector,
 } from '@infinite-canvas-tutorial/react';
-import { Pen } from '@infinite-canvas-tutorial/ecs';
+import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 
 declare global {
   interface Window {
     apis: Record<string, ExtendedAPI>;
     canvasErrors: string[];
+    nodeChanges: Record<string, SerializedNode[][]>;
+    snapshots: Record<string, unknown[]>;
     setShown: (ids: string[]) => void;
   }
 }
 window.apis = {};
 window.canvasErrors = [];
+window.nodeChanges = {};
+window.snapshots = {};
 
 function Toolbar({ id }: { id: string }) {
   const api = useCanvasAPI();
@@ -27,10 +31,14 @@ function Toolbar({ id }: { id: string }) {
   const selected = useCanvasSelector(
     (state) => state.appState?.layersSelected.length ?? 0,
   );
+  const count = useCanvasSelector(
+    (state) => state.nodes.filter((node) => !node.isDeleted).length,
+  );
   return (
     <div data-testid={`${id}-toolbar`}>
       <output data-testid={`${id}-zoom`}>{zoom}</output>
       <output data-testid={`${id}-selection`}>{selected}</output>
+      <output data-testid={`${id}-count`}>{count}</output>
       <button
         data-testid={`${id}-undo`}
         disabled={!canUndo}
@@ -79,11 +87,31 @@ function Editor() {
               },
             ]}
             style={{ width: 400, height: 300, display: 'inline-block' }}
+            onReady={
+              new URLSearchParams(location.search).has('prepare')
+                ? (api, { signal }) =>
+                    new Promise<void>((resolve) => {
+                      api.runAtNextTick(() => {
+                        if (!signal.aborted) api.record();
+                        resolve();
+                      });
+                    })
+                : undefined
+            }
             onAPIChange={(api) => {
               if (api) window.apis[id] = api;
               else delete window.apis[id];
             }}
             onError={(error) => window.canvasErrors.push(error.message)}
+            onNodesChange={(nodes) => {
+              (window.nodeChanges[id] ??= []).push(structuredClone(nodes));
+            }}
+            onChange={(snapshot) => {
+              (window.snapshots[id] ??= []).push({
+                ids: snapshot.nodes.map((node) => node.id),
+                selected: [...snapshot.appState.layersSelected],
+              });
+            }}
           >
             <span slot="penbar-item" data-testid={`${id}-slot`}>
               React slot

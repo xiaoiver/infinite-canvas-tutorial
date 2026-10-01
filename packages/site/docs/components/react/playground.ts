@@ -245,23 +245,13 @@ function CanvasPanel({
         className: 'react-demo-canvas',
         locale: locale === 'zh' ? 'zh-Hans' : 'en',
         theme,
+        initialNodes: initialNodes(id),
         initialAppState: {
           penbarSelected: Pen.SELECT,
           topbarVisible: false,
           penbarVisible: false,
           taskbarVisible: false,
           contextBarVisible: false,
-        },
-        onReady: (api, { signal }) => {
-          api.runAtNextTick(() => {
-            if (signal.aborted) return;
-            // Establish an empty baseline, publish the seeded scene, then start
-            // the reader's history after initialization.
-            api.record();
-            api.updateNodes(initialNodes(id));
-            api.record();
-            api.clearHistory();
-          });
         },
         fallback: h(
           'p',

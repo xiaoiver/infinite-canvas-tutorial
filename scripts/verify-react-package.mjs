@@ -106,6 +106,22 @@ try {
       linked.add(name);
     }
   }
+  const consumerRequire = createRequire(join(consumer, 'consumer.cjs'));
+  const wasm = readFileSync(
+    consumerRequire.resolve(
+      '@infinite-canvas-tutorial/device-api/shader-compiler.wasm',
+    ),
+  );
+  const compiler = consumerRequire(
+    join(
+      modules,
+      '@infinite-canvas-tutorial/device-api/lib/vendor/glsl_wgsl_compiler.js',
+    ),
+  );
+  compiler.initSync(wasm);
+  const composer = new compiler.WGSLComposer();
+  composer.free();
+  assert.equal(typeof compiler.glsl_compile, 'function');
   const ssr = `
 const assert = require('node:assert/strict');
 const React = require('react');
@@ -210,9 +226,83 @@ export const editor = <><CanvasProvider><InfiniteCanvas style={{ height: 400 }} 
     );
     execFileSync(process.execPath, [outfile], { stdio: 'inherit' });
   }
+
+  // Build the copyable framework starters against the packed libraries, rather
+  // than workspace aliases or unpublished registry versions.
+  link('typescript', join(root, 'node_modules/typescript'));
+  link('vite', join(root, 'node_modules/vite'));
+  mkdirSync(join(modules, '.bin'));
+  symlinkSync(join(modules, 'typescript/bin/tsc'), join(modules, '.bin/tsc'));
+  symlinkSync(join(modules, 'vite/bin/vite.js'), join(modules, '.bin/vite'));
+  const examples = join(consumer, 'examples');
+  cpSync(join(root, 'examples/react-vite'), join(examples, 'react-vite'), {
+    recursive: true,
+  });
+  const viteExample = join(examples, 'react-vite');
+  execFileSync(
+    process.execPath,
+    [require.resolve('typescript/bin/tsc'), '-p', viteExample],
+    {
+      stdio: 'inherit',
+    },
+  );
+  execFileSync(
+    process.execPath,
+    [join(root, 'node_modules/vite/bin/vite.js'), 'build'],
+    {
+      cwd: viteExample,
+      stdio: 'inherit',
+    },
+  );
+  assert(existsSync(join(viteExample, 'dist/index.html')));
+
+  // Next.js 16 requires React 19. React 18 still exercises the standalone Vite
+  // consumer, package exports, SSR rendering, and types above.
+  const reactVersion = JSON.parse(
+    readFileSync(join(modules, 'react/package.json'), 'utf8'),
+  ).version;
+  if (reactVersion.startsWith('19.')) {
+    link('next', join(root, 'packages/app/node_modules/next'));
+    symlinkSync(
+      join(modules, 'next/dist/bin/next'),
+      join(modules, '.bin/next'),
+    );
+    link('@types/node', join(root, 'packages/app/node_modules/@types/node'));
+    const nextExample = join(examples, 'react-nextjs');
+    cpSync(join(root, 'examples/react-nextjs'), nextExample, {
+      recursive: true,
+    });
+    execFileSync(
+      process.execPath,
+      [join(modules, 'next/dist/bin/next'), 'build', '--webpack'],
+      {
+        cwd: nextExample,
+        env: {
+          ...process.env,
+          NEXT_TELEMETRY_DISABLED: '1',
+          CIRCLE_NODE_TOTAL: '2',
+        },
+        stdio: 'inherit',
+      },
+    );
+    const html = readFileSync(
+      join(nextExample, '.next/server/app/index.html'),
+      'utf8',
+    );
+    assert(
+      html.includes('React canvas with Next.js') &&
+        html.includes('Loading canvas'),
+    );
+  }
   console.log(
-    'Packed React package: CommonJS/ESM SSR and both TypeScript resolutions passed.',
+    `Packed React ${reactVersion}: CommonJS/ESM SSR, types, Vite${
+      reactVersion.startsWith('19.') ? ', and Next.js SSR' : ''
+    } passed.`,
   );
 } finally {
-  rmSync(consumer, { recursive: true, force: true });
+  if (process.env.REACT_PACKAGE_KEEP_ARTIFACTS === '1') {
+    console.log(`Consumer artifacts: ${consumer}`);
+  } else {
+    rmSync(consumer, { recursive: true, force: true });
+  }
 }

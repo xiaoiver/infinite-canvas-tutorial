@@ -52,7 +52,7 @@ import {
 import type {
   glsl_compile as glsl_compile_,
   WGSLComposer,
-} from '../../../../rust/glsl-wgsl-compiler/pkg/glsl_wgsl_compiler';
+} from '../vendor/glsl_wgsl_compiler';
 import { Bindings_WebGPU } from './Bindings';
 import { Buffer_WebGPU } from './Buffer';
 import { ComputePass_WebGPU } from './ComputePass';
