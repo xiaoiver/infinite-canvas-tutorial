@@ -10,7 +10,8 @@
       "types": "./lib/index.d.ts",
       "import": "./esm/index.js",
       "require": "./lib/index.js"
-    }
+    },
+    "./shader-compiler.wasm": "./esm/vendor/glsl_wgsl_compiler_bg.wasm"
   },
   "files": [
     "package.json",
@@ -38,10 +39,10 @@
     "dev": "vite dev",
     "deploy": "vite build",
     "preview": "vite preview",
-    "build:cjs": "rimraf ./lib && tsc -p tsconfig.build.json --module commonjs --outDir lib",
-    "build:esm": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm",
+    "build:cjs": "node ../../scripts/build-device-api.mjs commonjs",
+    "build:esm": "node ../../scripts/build-device-api.mjs ESNext",
     "build": "run-p build:*",
-    "watch": "rimraf ./esm && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch"
+    "watch": "node ../../scripts/build-device-api.mjs ESNext && tsc -p tsconfig.build.json --module ESNext --outDir esm --watch"
   },
   "dependencies": {
     "@antv/util": "^3.3.10",

@@ -15,6 +15,11 @@ Spectrum canvas, including typed events, scoped hooks, API access, and a shared 
 npm install @infinite-canvas-tutorial/react
 ```
 
+::: info First release
+The first npm release is being prepared. The playground uses the workspace
+build; registry installation becomes available after publication.
+:::
+
 ```tsx
 'use client';
 
@@ -121,6 +126,9 @@ const history = useCanvasSelector(
 ```
 
 Nodes and application state update on committed API changes (`api.record()`).
+Initial scenes and `api.record('NEVER')` also notify subscribers without adding
+undo entries. `initialNodes` updates selectors and node callbacks after
+preparation; no extra `record()` is needed.
 Camera and selection events also refresh application state immediately. History
 availability updates on edits, undo, redo, and `clearHistory()` without polling.
 Uncommitted direct API writes become visible on the next commit/event. API
@@ -129,7 +137,7 @@ availability marks GPU readiness and may precede async `onReady` completion.
 ## Initialization and API
 
 - `initialNodes` is copied once per canvas creation and inserted into ECS after
-  async `onReady` completes. Later prop changes do not overwrite user edits;
+  async `onReady` completes, without an undo entry. Later prop changes do not overwrite user edits;
   use `api.updateNodes()` for updates.
 - `initialAppState` seeds canvas state; subsequent edits use `api.setAppState()`.
 - The ref exposes live `api` and `element` getters, initially `null`. The element
@@ -139,6 +147,14 @@ availability marks GPU readiness and may precede async `onReady` completion.
   in the same page share the `locale`.
 - Changing `renderer`, `shaderCompilerPath`, or `initializationTimeout` recreates
   the canvas.
+
+## Framework starters
+
+Copy the [Vite or Next.js starter](https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/examples)
+for a minimal Provider, initial scene, reactive shape counter, and undo/redo
+toolbar. The Next.js example uses a Client Component editor within a Server
+Component page, including an SSR loading fallback. The package verification
+builds these examples from real tarballs before publication.
 
 ## Events and loading
 

@@ -5,7 +5,7 @@ import {
   TextureDescriptor,
   TextureDimension,
   TextureUsage,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 import { float32ToFloat16Bits } from './float32-to-float16-bits';
 import { parseAdobeCube } from './parse-adobe-cube';
 

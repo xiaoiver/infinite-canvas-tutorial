@@ -317,6 +317,7 @@ export class API {
   #historyState: CanvasHistoryState = { canUndo: false, canRedo: false };
   #historySubscribers = new Set<(state: CanvasHistoryState) => void>();
   #beforeHistoryChange = new Set<() => void>();
+  #restoringHistory = false;
   #store = new Store(this);
   #tasks = new TaskQueue();
   #afterDeleteTasks = new TaskQueue();
@@ -354,12 +355,15 @@ export class API {
     if (appStateChanged) this.onAppStateChange?.(snapshot.appState);
     if (nodesChanged || appStateChanged) this.onchange?.(snapshot);
     if (nodesChanged || appStateChanged) {
-      const changes = { nodesChanged, appStateChanged };
-      this.#subscribers.forEach((listener) => listener(snapshot, changes));
+      this.notifySubscribers(snapshot, { nodesChanged, appStateChanged });
     }
   }
 
-  /** Observe committed changes without replacing existing API callbacks. */
+  private notifySubscribers(snapshot: CanvasSnapshot, changes: CanvasChanges) {
+    this.#subscribers.forEach((listener) => listener(snapshot, changes));
+  }
+
+  /** Observe committed changes, including initialization and non-undoable updates. */
   subscribe(
     listener: (snapshot: CanvasSnapshot, changes: CanvasChanges) => void,
   ) {
@@ -2986,44 +2990,58 @@ export class API {
   record(
     captureUpdateAction: CaptureUpdateActionType = CaptureUpdateAction.IMMEDIATELY,
   ) {
-    if (
-      captureUpdateAction === CaptureUpdateAction.NEVER ||
-      this.#store.snapshot.isEmpty()
-    ) {
+    const previous = this.#store.snapshot;
+    const updateSnapshot =
+      captureUpdateAction === CaptureUpdateAction.NEVER || previous.isEmpty();
+    if (updateSnapshot) {
       this.#store.shouldUpdateSnapshot();
     } else {
       this.#store.shouldCaptureIncrement();
     }
     this.#store.commit(arrayToMap(this.getNodes()), this.getAppState());
+    const next = this.#store.snapshot;
+    if (
+      updateSnapshot &&
+      !this.#restoringHistory &&
+      next !== previous &&
+      (next.meta.didElementsChange || next.meta.didAppStateChange)
+    ) {
+      // Legacy callbacks are for local edits/history; remote commits must not
+      // feed back into collaboration adapters that write through onchange.
+      this.notifySubscribers(
+        { appState: this.getAppState(), nodes: this.getNodes() },
+        {
+          nodesChanged: next.meta.didElementsChange,
+          appStateChanged: next.meta.didAppStateChange,
+        },
+      );
+    }
   }
 
   undo() {
-    this.runAtNextTick(() => {
-      this.#beforeHistoryChange.forEach((callback) => callback());
-      const result = this.#history.undo(
-        arrayToMap(this.getNodes()),
-        this.getAppState(),
-        this.#store.snapshot,
-      );
-      if (result) {
-        this.record(CaptureUpdateAction.NEVER);
-        this.notifyChange();
-      }
-    });
+    this.restoreHistory('undo');
   }
 
   redo() {
+    this.restoreHistory('redo');
+  }
+
+  private restoreHistory(action: 'undo' | 'redo') {
     this.runAtNextTick(() => {
       this.#beforeHistoryChange.forEach((callback) => callback());
-      const result = this.#history.redo(
-        arrayToMap(this.getNodes()),
-        this.getAppState(),
-        this.#store.snapshot,
-      );
-      if (result) {
-        this.record(CaptureUpdateAction.NEVER);
-        this.notifyChange();
+      let changed = false;
+      this.#restoringHistory = true;
+      try {
+        changed = !!this.#history[action](
+          arrayToMap(this.getNodes()),
+          this.getAppState(),
+          this.#store.snapshot,
+        );
+        if (changed) this.record(CaptureUpdateAction.NEVER);
+      } finally {
+        this.#restoringHistory = false;
       }
+      if (changed) this.notifyChange();
     });
   }
 

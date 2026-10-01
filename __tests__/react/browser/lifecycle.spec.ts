@@ -1,5 +1,41 @@
 import { expect, test } from '@playwright/test';
 
+test('initialNodes stays outside history after async preparation creates a baseline', async ({
+  page,
+}) => {
+  await page.goto('/?prepare');
+  await page.waitForFunction(
+    () =>
+      Object.keys(window.apis).length === 2 &&
+      Object.values(window.apis).every((api) => api.getNodes().length === 1),
+  );
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('right-count')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  await page.evaluate(() =>
+    window.apis.left.runAtNextTick(() => {
+      const api = window.apis.left;
+      api.updateNodes([{ ...api.getNodes()[0], width: 150 }]);
+      api.selectNodes([api.getNodes()[0]]);
+      api.record();
+    }),
+  );
+  await expect(page.getByTestId('left-undo')).toBeEnabled();
+  const beforeUndo = await page.evaluate(() => window.snapshots.left.length);
+  await page.getByTestId('left-undo').click();
+  await page.waitForFunction(
+    () => window.apis.left.getNodes()[0].width === 100,
+  );
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('left-selection')).toHaveText('0');
+  expect(await page.evaluate(() => window.snapshots.left.length)).toBe(
+    beforeUndo + 1,
+  );
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+});
+
 test('React Providers isolate real canvases through edits, history, zoom, and App restart', async ({
   page,
 }) => {
@@ -16,10 +52,14 @@ test('React Providers isolate real canvases through edits, history, zoom, and Ap
       Object.values(window.apis).every((api) => api.getNodes().length === 1),
   );
   await expect(page.getByTestId('left-slot')).toBeAttached();
-  await page.evaluate(() =>
-    Object.values(window.apis).forEach((api) => api.clearHistory()),
-  );
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('right-count')).toHaveText('1');
   await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.nodeChanges.left.length)).toBe(1);
+  expect(await page.evaluate(() => window.nodeChanges.left[0][0].id)).toBe(
+    'left',
+  );
   await page.evaluate(() =>
     window.apis.left.runAtNextTick(() => {
       const api = window.apis.left;
@@ -33,6 +73,9 @@ test('React Providers isolate real canvases through edits, history, zoom, and Ap
   await page.waitForFunction(
     () => window.apis.left.getNodes()[0].width === 100,
   );
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('right-count')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
   await expect(page.getByTestId('left-redo')).toBeEnabled();
   await page.getByTestId('left-redo').click();
   await page.waitForFunction(
@@ -73,6 +116,9 @@ test('React Providers isolate real canvases through edits, history, zoom, and Ap
       Object.values(window.apis).every((api) => api.getNodes().length === 1),
   );
   await expect(page.getByTestId('left-zoom')).toHaveText('1');
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('right-count')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
   await expect(page.getByTestId('right-selection')).toHaveText('0');
   await page.evaluate(() => window.setShown([]));
   expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);

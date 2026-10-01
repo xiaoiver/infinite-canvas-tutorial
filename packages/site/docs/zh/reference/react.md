@@ -15,6 +15,10 @@ Spectrum Web Component，负责画布生命周期、类型化回调、API 获取
 npm install @infinite-canvas-tutorial/react
 ```
 
+::: info 首次发布
+正在准备首次 npm 发布。交互示例使用仓库构建产物；发布后即可从 npm 安装。
+:::
+
 ```tsx
 'use client';
 
@@ -116,6 +120,8 @@ const history = useCanvasSelector(
 ```
 
 节点与应用状态在 API 提交（`api.record()`）时更新；相机和选区事件也会立即刷新应用状态。
+初始化场景和 `api.record('NEVER')` 同样会通知订阅者，但不增加撤销记录。
+`initialNodes` 在准备完成后更新 selectors 和节点回调，无需额外调用 `record()`。
 编辑、撤销、重做和 `clearHistory()` 都会通知历史可用状态，无需轮询。
 直接调用 API 而未提交的修改，在下一次提交或事件时才反映到 hooks。
 API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
@@ -123,7 +129,7 @@ API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
 ## 初始化与 API
 
 - `initialNodes` 在每次创建画布时复制一次，在异步 `onReady` 完成后写入 ECS。
-  后续改变该属性不会覆盖用户编辑；更新图形请使用 `api.updateNodes()`。
+  初始化不增加撤销记录，后续改变该属性不会覆盖用户编辑；更新图形请使用 `api.updateNodes()`。
 - `initialAppState` 是初始化状态；后续通过 `api.setAppState()` 修改。
 - `ref.current.api` 和 `ref.current.element` 是实时 getter，初始化前为 `null`。
   后者指向真正的 Web Component，可监听额外 DOM 事件。
@@ -131,6 +137,13 @@ API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
 - `theme` 同步 Spectrum UI 与画布主题。`locale` 使用 Lit 的全局本地化状态，
   同一页面上的画布共享语言。
 - 改变 `renderer`、`shaderCompilerPath` 或 `initializationTimeout` 会重建画布。
+
+## 框架接入示例
+
+[Vite 和 Next.js 最小示例](https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/examples)
+包含 Provider、初始场景、响应式图形计数和撤销/重做工具栏。
+Next.js 示例在 Server Component 页面中使用 Client Component 编辑器，支持 SSR 加载占位。
+发布前的包验证会从真实 tarball 构建这些示例。
 
 ## 事件与加载状态
 

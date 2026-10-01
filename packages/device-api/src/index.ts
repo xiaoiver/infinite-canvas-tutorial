@@ -1,3 +1,5 @@
+/// <reference types="@webgpu/types" preserve="true" />
+
 export * from './api';
 export * from './shader';
 export { WebGLDeviceContribution } from './webgl/WebGLDeviceContribution';

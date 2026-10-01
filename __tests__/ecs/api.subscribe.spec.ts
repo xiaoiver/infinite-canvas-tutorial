@@ -1,5 +1,64 @@
 import { API, DefaultStateManagement } from '../../packages/ecs/src/API';
 
+it('publishes the initial scene without adding an undo entry', () => {
+  const state = new DefaultStateManagement();
+  const api = new API(state, {} as any);
+  const listener = jest.fn();
+  const legacy = jest.fn();
+  api.subscribe(listener);
+  api.onNodesChange = legacy;
+  const nodes = [{ id: 'initial', type: 'rect' as const, zIndex: 0 }];
+  state.setNodes(nodes);
+  api.setAppState({ filter: 'blur(2px)' });
+  api.record();
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(listener).toHaveBeenCalledWith(
+    { nodes, appState: api.getAppState() },
+    { nodesChanged: true, appStateChanged: true },
+  );
+  expect(legacy).not.toHaveBeenCalled();
+  expect(api.getHistoryState()).toEqual({ canUndo: false, canRedo: false });
+  api.record();
+  expect(listener).toHaveBeenCalledTimes(1);
+  api.destroy();
+});
+
+it('publishes non-undoable scene updates once without changing history', () => {
+  const state = new DefaultStateManagement();
+  const api = new API(state, {} as any);
+  api.record();
+  const listener = jest.fn();
+  api.subscribe(listener);
+  const legacy = jest.fn();
+  api.onchange = legacy;
+  const nodes = [{ id: 'initial', type: 'rect' as const, zIndex: 0 }];
+  state.setNodes(nodes);
+  api.record('NEVER');
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(legacy).not.toHaveBeenCalled();
+  expect(listener).toHaveBeenLastCalledWith(
+    { nodes, appState: api.getAppState() },
+    { nodesChanged: true, appStateChanged: false },
+  );
+  expect(api.getHistoryState()).toEqual({ canUndo: false, canRedo: false });
+  api.record('NEVER');
+  expect(listener).toHaveBeenCalledTimes(1);
+  api.setAppState({ filter: 'blur(2px)' });
+  api.record();
+  listener.mockClear();
+  api.undo();
+  api.flushPendingTasks();
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(api.getNodes()).toEqual(nodes);
+  expect(api.getAppState().filter).toBe('');
+  listener.mockClear();
+  api.redo();
+  api.flushPendingTasks();
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(api.getAppState().filter).toBe('blur(2px)');
+  api.destroy();
+});
+
 it('publishes changes to independent subscribers alongside existing callbacks', () => {
   const api = new API(new DefaultStateManagement(), {} as any);
   api.record();

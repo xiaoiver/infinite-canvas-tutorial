@@ -1,0 +1,24 @@
+body {
+  margin: 0;
+  font: 16px system-ui, sans-serif;
+}
+main {
+  max-width: 900px;
+  padding: 24px;
+  margin: auto;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+button {
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
