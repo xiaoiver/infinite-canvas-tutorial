@@ -14,6 +14,7 @@ import {
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import {
   InfiniteCanvas,
+  CanvasProvider,
   createCanvasRuntime,
 } from '@infinite-canvas-tutorial/react/spectrum';
 // import { SAMPlugin } from '@infinite-canvas-tutorial/sam';
@@ -110,9 +111,17 @@ const Canvas = ({
   }, []);
 
   // 创建 throttle 版本的保存函数，每 1 秒最多执行一次
-  const throttledSaveCanvasData = useRef(
-    throttle(saveCanvasData, 1000),
-  ).current;
+  const throttledSaveRef = useRef<ReturnType<
+    typeof throttle<typeof saveCanvasData>
+  > | null>(null);
+  useEffect(() => {
+    const save = throttle(saveCanvasData, 1000);
+    throttledSaveRef.current = save;
+    return () => {
+      save.cancel();
+      throttledSaveRef.current = null;
+    };
+  }, [saveCanvasData]);
 
   const onReady = async (
     api: ExtendedAPI,
@@ -136,7 +145,7 @@ const Canvas = ({
         canvasInitializedRef.current = false;
         manager.destroy();
         if (yjsManagerRef.current === manager) yjsManagerRef.current = null;
-        throttledSaveCanvasData.cancel();
+        throttledSaveRef.current?.cancel();
       },
       { once: true },
     );
@@ -233,7 +242,7 @@ const Canvas = ({
     const manager = yjsManagerRef.current;
     if (!manager || !canvasInitializedRef.current) return;
     manager.recordLocalOps(nodes);
-    throttledSaveCanvasData(nodes.filter((node) => !node.isDeleted));
+    throttledSaveRef.current?.(nodes.filter((node) => !node.isDeleted));
   };
 
   useEffect(() => {
@@ -245,27 +254,29 @@ const Canvas = ({
   }, [canvasApi, resolvedTheme]);
 
   return (
-    <div ref={canvasRef} className="relative w-full h-full">
-      <InfiniteCanvas
-        key={id}
-        runtime={canvasRuntime}
-        className="w-full h-full"
-        initialAppState={{ topbarVisible: false }}
-        locale={locale}
-        theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
-        onReady={onReady}
-        onAPIChange={(api) => {
-          setCanvasApi(api);
-          if (!api) setSelectedNodes([]);
-        }}
-        onNodesChange={onNodesChange}
-        onSelectedNodesChange={setSelectedNodes}
-      >
-        <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
-        <ic-spectrum-penbar-eraser slot="penbar-item" />
-      </InfiniteCanvas>
-      <ZoomToolbar canvasApi={canvasApi} canvasRef={canvasRef} />
-    </div>
+    <CanvasProvider>
+      <div ref={canvasRef} className="relative w-full h-full">
+        <InfiniteCanvas
+          key={id}
+          runtime={canvasRuntime}
+          className="w-full h-full"
+          initialAppState={{ topbarVisible: false }}
+          locale={locale}
+          theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
+          onReady={onReady}
+          onAPIChange={(api) => {
+            setCanvasApi(api);
+            if (!api) setSelectedNodes([]);
+          }}
+          onNodesChange={onNodesChange}
+          onSelectedNodesChange={setSelectedNodes}
+        >
+          <ic-spectrum-penbar-laser-pointer slot="penbar-item" />
+          <ic-spectrum-penbar-eraser slot="penbar-item" />
+        </InfiniteCanvas>
+        <ZoomToolbar canvasRef={canvasRef} />
+      </div>
+    </CanvasProvider>
   );
 };
 

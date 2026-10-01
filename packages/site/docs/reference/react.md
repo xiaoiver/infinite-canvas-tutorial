@@ -5,7 +5,7 @@ outline: deep
 # React
 
 `@infinite-canvas-tutorial/react` provides React 18/19 bindings for the existing
-Spectrum canvas, including typed events, API access, and a shared App lifecycle.
+Spectrum canvas, including typed events, scoped hooks, API access, and a shared App lifecycle.
 
 ```sh
 npm install @infinite-canvas-tutorial/react
@@ -29,7 +29,7 @@ export function Editor() {
                 ref={canvas}
                 style={{ width: '100%', height: 600 }}
                 initialNodes={[
-                    { id: 'rect', type: 'rect', x: 50, y: 50, width: 100, height: 80, fill: '#ff8400' },
+                    { id: 'rect', zIndex: 0, type: 'rect', x: 50, y: 50, width: 100, height: 80, fills: [{ type: 'solid', value: '#ff8400' }] },
                 ]}
                 onNodesChange={(nodes) => console.log(nodes)}
                 fallback={<span>Loading canvas…</span>}
@@ -42,6 +42,69 @@ export function Editor() {
 Give the container an explicit height. Browser dependencies and Custom Element
 registration are deferred until client mount, including in Next.js Client
 Components. The root entry and `/spectrum` currently export the same component.
+
+## Provider and selector hooks
+
+Use one `CanvasProvider` per canvas to share its API with sibling controls and
+slot children. `InfiniteCanvas` attaches automatically to the nearest Provider;
+the Provider is optional for ref/callback integration.
+
+```tsx
+'use client';
+
+import {
+    CanvasProvider,
+    InfiniteCanvas,
+    useCanvasAPI,
+    useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
+
+function Toolbar() {
+    const api = useCanvasAPI();
+    const canUndo = useCanvasSelector((state) => state.canUndo);
+    const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+    return (
+        <div>
+            <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>
+            <span>{Math.round(zoom * 100)}%</span>
+        </div>
+    );
+}
+
+export function Editor() {
+    return (
+        <CanvasProvider>
+            <InfiniteCanvas style={{ height: 600 }} />
+            <Toolbar />
+        </CanvasProvider>
+    );
+}
+```
+
+`useCanvasAPI()` returns `null` during SSR, before readiness, and after removal
+or failure. Its consumers update only when the API changes. Both hooks require
+a Provider; mounting two canvases in the same Provider reports an error. For
+multiple canvases, give each its own Provider and share the runtime.
+
+`useCanvasSelector(selector, isEqual?)` selects from `CanvasState`: `api`,
+`appState`, `nodes`, `canUndo`, and `canRedo`. The server/empty state has `api` and
+`appState` set to `null`, an empty node array, and both history flags `false`.
+Selectors must be pure and treat state as read-only. By default, selected values
+are compared with `Object.is`; only changed selections trigger a store-driven
+render. When returning objects or arrays, pass an equality function:
+
+```tsx
+const history = useCanvasSelector(
+    (state) => ({ undo: state.canUndo, redo: state.canRedo }),
+    (a, b) => a.undo === b.undo && a.redo === b.redo,
+);
+```
+
+Nodes and application state update on committed API changes (`api.record()`).
+Camera and selection events also refresh application state immediately. History
+availability updates on edits, undo, redo, and `clearHistory()` without polling.
+Uncommitted direct API writes become visible on the next commit/event. API
+availability marks GPU readiness and may precede async `onReady` completion.
 
 ## Initialization and API
 
@@ -118,4 +181,3 @@ tasks and check it after awaits before using the API:
 ```
 
 Uploading, persistence, and collaboration belong to the host application.
-Providers and selector hooks are planned as subsequent additions.

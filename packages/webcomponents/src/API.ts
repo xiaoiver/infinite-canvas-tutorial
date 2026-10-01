@@ -138,6 +138,18 @@ export class ExtendedAPI extends API {
     );
   }
 
+  deselectNodes(nodes: SerializedNode[]) {
+    super.deselectNodes(nodes);
+    const selected = this.getAppState().layersSelected
+      .map((id) => this.getNodeById(id))
+      .filter((node): node is SerializedNode => !!node);
+    this.element.dispatchEvent(
+      new CustomEvent(Event.SELECTED_NODES_CHANGED, {
+        detail: { selected, preserveSelection: false },
+      }),
+    );
+  }
+
   setMesh3DLayers(layers: Mesh3DLayerRegistration[]) {
     const changed = super.setMesh3DLayers(layers);
     if (changed) {

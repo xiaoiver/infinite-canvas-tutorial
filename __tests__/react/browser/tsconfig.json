@@ -1,0 +1,21 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "../../..",
+    "baseUrl": "../../..",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "jsx": "react-jsx",
+    "paths": {
+      "react": ["packages/react/node_modules/@types/react/index.d.ts"],
+      "react/*": ["packages/react/node_modules/@types/react/*"],
+      "react-dom/*": ["packages/react/node_modules/@types/react-dom/*"],
+      "@infinite-canvas-tutorial/react": ["packages/react/lib/index.d.ts"],
+      "@infinite-canvas-tutorial/webcomponents": ["packages/webcomponents/lib/index.d.ts"],
+      "@infinite-canvas-tutorial/ecs": ["packages/ecs/lib/index.d.ts"]
+    }
+  },
+  "include": ["./*.ts", "./*.tsx", "../../../playwright.react.config.ts"]
+}

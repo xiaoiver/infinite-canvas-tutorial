@@ -4,8 +4,8 @@ outline: deep
 
 # React
 
-`@infinite-canvas-tutorial/react` 提供 React 18/19 的便利封装。第一版复用
-Spectrum Web Component，负责画布生命周期、类型化回调和 API 获取。
+`@infinite-canvas-tutorial/react` 提供 React 18/19 的便利封装。封装复用
+Spectrum Web Component，负责画布生命周期、类型化回调、API 获取与状态订阅。
 
 ```sh
 npm install @infinite-canvas-tutorial/react
@@ -30,7 +30,7 @@ export function Editor() {
                 ref={canvas}
                 style={{ width: '100%', height: 600 }}
                 initialNodes={[
-                    { id: 'rect', type: 'rect', x: 50, y: 50, width: 100, height: 80, fill: '#ff8400' },
+                    { id: 'rect', zIndex: 0, type: 'rect', x: 50, y: 50, width: 100, height: 80, fills: [{ type: 'solid', value: '#ff8400' }] },
                 ]}
                 onNodesChange={(nodes) => console.log(nodes)}
                 fallback={<span>正在加载画布…</span>}
@@ -42,6 +42,65 @@ export function Editor() {
 
 请为容器设置明确高度。浏览器依赖和自定义元素在客户端挂载时才加载，适用于
 Next.js Client Component。默认入口和 `/spectrum` 目前导出同一个组件。
+
+## Provider 与 selector hooks
+
+每个画布使用一个 `CanvasProvider`，让旁边的工具栏和 slot children 共享 API。
+`InfiniteCanvas` 会自动连接最近的 Provider；只使用 ref 或回调时可以省略 Provider。
+
+```tsx
+'use client';
+
+import {
+    CanvasProvider,
+    InfiniteCanvas,
+    useCanvasAPI,
+    useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
+
+function Toolbar() {
+    const api = useCanvasAPI();
+    const canUndo = useCanvasSelector((state) => state.canUndo);
+    const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+    return (
+        <div>
+            <button disabled={!canUndo} onClick={() => api?.undo()}>撤销</button>
+            <span>{Math.round(zoom * 100)}%</span>
+        </div>
+    );
+}
+
+export function Editor() {
+    return (
+        <CanvasProvider>
+            <InfiniteCanvas style={{ height: 600 }} />
+            <Toolbar />
+        </CanvasProvider>
+    );
+}
+```
+
+`useCanvasAPI()` 在 SSR、就绪前、卸载或失败后返回 `null`，只在 API 改变时触发更新。
+两个 hooks 都必须在 Provider 内使用。同一个 Provider 同时挂载两个画布会报错；
+多画布请分别包裹 Provider，并共享同一个 runtime。
+
+`useCanvasSelector(selector, isEqual?)` 从 `CanvasState` 中选择 `api`、`appState`、
+`nodes`、`canUndo` 或 `canRedo`。服务端和未就绪状态的 `api`、`appState` 为 `null`，
+节点数组为空，两个历史标记为 `false`。selector 应保持纯函数，并把状态当作只读数据。
+默认用 `Object.is` 比较选中值，仅在选中值变化时由订阅触发渲染；返回对象或数组时
+可以传入比较函数：
+
+```tsx
+const history = useCanvasSelector(
+    (state) => ({ undo: state.canUndo, redo: state.canRedo }),
+    (a, b) => a.undo === b.undo && a.redo === b.redo,
+);
+```
+
+节点与应用状态在 API 提交（`api.record()`）时更新；相机和选区事件也会立即刷新应用状态。
+编辑、撤销、重做和 `clearHistory()` 都会通知历史可用状态，无需轮询。
+直接调用 API 而未提交的修改，在下一次提交或事件时才反映到 hooks。
+API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
 
 ## 初始化与 API
 
@@ -114,4 +173,4 @@ React children 会放入 Web Component 的 light DOM，可使用已有的具名 
 />
 ```
 
-上传、持久化和协作由宿主应用实现。Provider 和 selector hooks 将作为后续扩展。
+上传、持久化和协作由宿主应用实现。

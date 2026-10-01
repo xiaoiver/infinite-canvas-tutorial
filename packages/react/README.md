@@ -1,8 +1,8 @@
 # @infinite-canvas-tutorial/react
 
-React 18/19 bindings for Infinite Canvas. The first version wraps the existing
-Spectrum Web Component and provides typed props, events, an imperative API, and
-a shared ECS App lifecycle.
+React 18/19 bindings for Infinite Canvas. The bindings wrap the existing
+Spectrum Web Component and provide typed props, events, an imperative API,
+a shared ECS App lifecycle, and scoped selector hooks.
 
 ```sh
 npm install @infinite-canvas-tutorial/react
@@ -29,12 +29,13 @@ export function Editor() {
                 initialNodes={[
                     {
                         id: 'rect',
+                        zIndex: 0,
                         type: 'rect',
                         x: 50,
                         y: 50,
                         width: 100,
                         height: 80,
-                        fill: '#ff8400',
+                        fills: [{ type: 'solid', value: '#ff8400' }],
                     },
                 ]}
                 onNodesChange={(nodes) => console.log(nodes)}
@@ -48,6 +49,69 @@ export function Editor() {
 The root entry and `/spectrum` currently export the same component. Browser-only
 dependencies and Custom Element registration are deferred until mount, so the
 component can be rendered on the server. Give the container an explicit height.
+
+## Provider and selector hooks
+
+Use one `CanvasProvider` per canvas to share its API with sibling controls and
+slot children. `InfiniteCanvas` attaches automatically to the nearest Provider;
+the Provider is optional for ref/callback integration.
+
+```tsx
+'use client';
+
+import {
+    CanvasProvider,
+    InfiniteCanvas,
+    useCanvasAPI,
+    useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
+
+function Toolbar() {
+    const api = useCanvasAPI();
+    const canUndo = useCanvasSelector((state) => state.canUndo);
+    const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+    return (
+        <div>
+            <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>
+            <span>{Math.round(zoom * 100)}%</span>
+        </div>
+    );
+}
+
+export function Editor() {
+    return (
+        <CanvasProvider>
+            <InfiniteCanvas style={{ height: 600 }} />
+            <Toolbar />
+        </CanvasProvider>
+    );
+}
+```
+
+`useCanvasAPI()` returns `null` during SSR, before readiness, and after removal
+or failure. Its consumers update only when the API changes. Both hooks require
+a Provider; mounting two canvases in the same Provider reports an error. For
+multiple canvases, give each its own Provider and share the runtime.
+
+`useCanvasSelector(selector, isEqual?)` selects from `CanvasState`: `api`,
+`appState`, `nodes`, `canUndo`, and `canRedo`. The server/empty state has `api` and
+`appState` set to `null`, an empty node array, and both history flags `false`.
+Selectors must be pure and treat state as read-only. By default, selected values
+are compared with `Object.is`; only changed selections trigger a store-driven
+render. When returning objects or arrays, pass an equality function:
+
+```tsx
+const history = useCanvasSelector(
+    (state) => ({ undo: state.canUndo, redo: state.canRedo }),
+    (a, b) => a.undo === b.undo && a.redo === b.redo,
+);
+```
+
+Nodes and application state update on committed API changes (`api.record()`).
+Camera and selection events also refresh application state immediately. History
+availability updates on edits, undo, redo, and `clearHistory()` without polling.
+Uncommitted direct API writes become visible on the next commit/event. API
+availability marks GPU readiness and may precede async `onReady` completion.
 
 ## Props and API
 
@@ -152,7 +216,6 @@ Subscriptions coexist with legacy `onchange`, `onNodesChange`, and
 
 ## Scope
 
-This first version provides the component, runtime, and imperative integration.
-Canvas providers and selector hooks are planned separately. Uploading,
+The bindings provide the component, runtime, Provider, selectors, and imperative integration. Uploading,
 persistence, collaboration, and application state libraries remain choices of
 the host application.

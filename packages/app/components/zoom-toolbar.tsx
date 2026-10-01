@@ -1,8 +1,11 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { ExtendedAPI, Event } from '@infinite-canvas-tutorial/webcomponents';
+import {
+  useCanvasAPI,
+  useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
 import { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { Button } from '@/components/ui/button';
 import { Undo2, Redo2, ChevronDown } from 'lucide-react';
@@ -16,52 +19,41 @@ import {
 import { Kbd, KbdGroup } from './ui/kbd';
 
 // 缩放相关的常量
-const ZOOM_STEPS = [0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4];
+const ZOOM_STEPS = [
+  0.02, 0.05, 0.1, 0.15, 0.2, 0.33, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4,
+];
 
 interface ZoomToolbarProps {
-  canvasApi: ExtendedAPI | null;
   canvasRef: React.RefObject<HTMLDivElement | null>;
 }
 
-export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) {
+export default function ZoomToolbar({ canvasRef }: ZoomToolbarProps) {
   const t = useTranslations('zoom');
-  
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [canUndo, setCanUndo] = useState<boolean>(false);
-  const [canRedo, setCanRedo] = useState<boolean>(false);
 
-  const updateHistoryState = useCallback(() => {
-    if (canvasApi) {
-      setCanUndo(!canvasApi.isUndoStackEmpty());
-      setCanRedo(!canvasApi.isRedoStackEmpty());
-    }
-  }, [canvasApi]);
+  const canvasApi = useCanvasAPI();
+  const zoomLevel = useCanvasSelector(
+    (state) => state.appState?.cameraZoom ?? 1,
+  );
+  const canUndo = useCanvasSelector((state) => state.canUndo);
+  const canRedo = useCanvasSelector((state) => state.canRedo);
+  const hasNodes = useCanvasSelector((state) => state.nodes.length > 0);
+  const hasSelection = useCanvasSelector(
+    (state) => (state.appState?.layersSelected.length ?? 0) > 0,
+  );
 
-  const onZoomChanged = useCallback((e: CustomEvent<{ zoom: number }>) => {
-    setZoomLevel(e.detail.zoom);
-  }, []);
-
-  const handleUndo = useCallback(() => {
-    if (canvasApi && !canvasApi.isUndoStackEmpty()) {
-      canvasApi.undo();
-      // 延迟更新状态，等待 API 处理完成
-      setTimeout(updateHistoryState, 0);
-    }
-  }, [canvasApi, updateHistoryState]);
-
-  const handleRedo = useCallback(() => {
-    if (canvasApi && !canvasApi.isRedoStackEmpty()) {
-      canvasApi.redo();
-      // 延迟更新状态，等待 API 处理完成
-      setTimeout(updateHistoryState, 0);
-    }
-  }, [canvasApi, updateHistoryState]);
+  const handleUndo = useCallback(() => canvasApi?.undo(), [canvasApi]);
+  const handleRedo = useCallback(() => canvasApi?.redo(), [canvasApi]);
 
   const findZoomCeil = (zoom: number) => {
-    return ZOOM_STEPS.find((step) => step > zoom) || ZOOM_STEPS[ZOOM_STEPS.length - 1];
+    return (
+      ZOOM_STEPS.find((step) => step > zoom) ||
+      ZOOM_STEPS[ZOOM_STEPS.length - 1]
+    );
   };
   const findZoomFloor = (zoom: number) => {
-    return [...ZOOM_STEPS].reverse().find((step) => step < zoom) || ZOOM_STEPS[0];
+    return (
+      [...ZOOM_STEPS].reverse().find((step) => step < zoom) || ZOOM_STEPS[0]
+    );
   };
 
   const handleZoomIn = useCallback(() => {
@@ -111,7 +103,7 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
       return;
     }
     const selectedNodes = selectedIds
-      .map(id => canvasApi!.getNodeById(id))
+      .map((id) => canvasApi!.getNodeById(id))
       .filter(Boolean) as SerializedNode[];
     if (selectedNodes.length === 0) {
       return;
@@ -153,69 +145,43 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
     );
   }, [canvasApi]);
 
-  const onKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!canvasApi) return;
-    
-    if ((e.key === '+' || e.key === '=') && e.metaKey) {
-      e.preventDefault();
-      const currentZoom = canvasApi.getAppState().cameraZoom;
-      const nextZoom = ZOOM_STEPS.find((step) => step > currentZoom) || ZOOM_STEPS[ZOOM_STEPS.length - 1];
-      canvasApi.zoomTo(nextZoom);
-    } else if ((e.key === '-' || e.key === '_') && e.metaKey) {
-      e.preventDefault();
-      const currentZoom = canvasApi.getAppState().cameraZoom;
-      const prevZoom = [...ZOOM_STEPS].reverse().find((step) => step < currentZoom) || ZOOM_STEPS[0];
-      canvasApi.zoomTo(prevZoom);
-    } else if (e.key === '1' && e.metaKey) {
-      e.preventDefault();
-      canvasApi.zoomTo(1);
-    } else if (e.key === '2' && e.metaKey) {
-      e.preventDefault();
-      canvasApi.zoomTo(2);
-    } else if (e.key === '0' && e.metaKey) {
-      e.preventDefault();
-      canvasApi.fitToScreen();
-    }
-  }, [canvasApi]);
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!canvasApi) return;
 
-  // 初始化状态
-  useEffect(() => {
-    if (canvasApi) {
-      const appState = canvasApi.getAppState();
-      setZoomLevel(appState.cameraZoom || 1);
-      setCanUndo(!canvasApi.isUndoStackEmpty());
-      setCanRedo(!canvasApi.isRedoStackEmpty());
-    }
-  }, [canvasApi]);
+      if ((e.key === '+' || e.key === '=') && e.metaKey) {
+        e.preventDefault();
+        const currentZoom = canvasApi.getAppState().cameraZoom;
+        const nextZoom =
+          ZOOM_STEPS.find((step) => step > currentZoom) ||
+          ZOOM_STEPS[ZOOM_STEPS.length - 1];
+        canvasApi.zoomTo(nextZoom);
+      } else if ((e.key === '-' || e.key === '_') && e.metaKey) {
+        e.preventDefault();
+        const currentZoom = canvasApi.getAppState().cameraZoom;
+        const prevZoom =
+          [...ZOOM_STEPS].reverse().find((step) => step < currentZoom) ||
+          ZOOM_STEPS[0];
+        canvasApi.zoomTo(prevZoom);
+      } else if (e.key === '1' && e.metaKey) {
+        e.preventDefault();
+        canvasApi.zoomTo(1);
+      } else if (e.key === '2' && e.metaKey) {
+        e.preventDefault();
+        canvasApi.zoomTo(2);
+      } else if (e.key === '0' && e.metaKey) {
+        e.preventDefault();
+        canvasApi.fitToScreen();
+      }
+    },
+    [canvasApi],
+  );
 
-  // 监听缩放变化事件
   useEffect(() => {
     const host = canvasRef.current;
-    const element = canvasApi?.element;
     host?.addEventListener('keydown', onKeyDown);
-    element?.addEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
-    return () => {
-      host?.removeEventListener('keydown', onKeyDown);
-      element?.removeEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
-    };
-  }, [canvasApi, canvasRef, onZoomChanged, onKeyDown]);
-
-  // 定期更新 undo/redo 状态
-  useEffect(() => {
-    if (!canvasApi) return;
-    
-    // 立即更新一次
-    updateHistoryState();
-    
-    // 设置定期检查
-    const interval = setInterval(() => {
-      updateHistoryState();
-    }, 100);
-    
-    return () => {
-      clearInterval(interval);
-    };
-  }, [canvasApi, updateHistoryState]);
+    return () => host?.removeEventListener('keydown', onKeyDown);
+  }, [canvasRef, onKeyDown]);
 
   return (
     <div className="absolute bottom-0 right-0 flex items-center gap-2 z-50 p-1 pb-2">
@@ -248,21 +214,34 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
               className="h-7 px-0! pr-2! gap-1 text-sm font-medium"
             >
               <span className="min-w-[50px] text-center">
-                <span className="w-8 inline-block text-center">{Math.round(zoomLevel * 100)}</span>
+                <span className="w-8 inline-block text-center">
+                  {Math.round(zoomLevel * 100)}
+                </span>
                 <span>%</span>
               </span>
               <ChevronDown className="h-3 w-3" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48" alignOffset={-5} sideOffset={8}>
-            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomIn}>
+          <DropdownMenuContent
+            align="end"
+            className="w-48"
+            alignOffset={-5}
+            sideOffset={8}
+          >
+            <DropdownMenuItem
+              className="flex items-center justify-between"
+              onClick={handleZoomIn}
+            >
               {t('zoomIn')}
               <KbdGroup>
                 <Kbd>⌘</Kbd>
                 <Kbd>+</Kbd>
               </KbdGroup>
             </DropdownMenuItem>
-            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomOut}>
+            <DropdownMenuItem
+              className="flex items-center justify-between"
+              onClick={handleZoomOut}
+            >
               {t('zoomOut')}
               <KbdGroup>
                 <Kbd>⌘</Kbd>
@@ -273,14 +252,20 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
             <DropdownMenuItem onClick={handleZoomTo50}>
               {t('zoomTo50')}
             </DropdownMenuItem>
-            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomTo100}>
+            <DropdownMenuItem
+              className="flex items-center justify-between"
+              onClick={handleZoomTo100}
+            >
               {t('zoomTo100')}
               <KbdGroup>
                 <Kbd>⌘</Kbd>
                 <Kbd>1</Kbd>
               </KbdGroup>
             </DropdownMenuItem>
-            <DropdownMenuItem className="flex items-center justify-between" onClick={handleZoomTo200}>
+            <DropdownMenuItem
+              className="flex items-center justify-between"
+              onClick={handleZoomTo200}
+            >
               {t('zoomTo200')}
               <KbdGroup>
                 <Kbd>⌘</Kbd>
@@ -288,9 +273,9 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
               </KbdGroup>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={handleFitToProject}
-              disabled={!canvasApi || canvasApi.getNodes().length === 0}
+              disabled={!canvasApi || !hasNodes}
               className="flex items-center justify-between"
             >
               {t('fitToProject')}
@@ -299,9 +284,9 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
                 <Kbd>0</Kbd>
               </KbdGroup>
             </DropdownMenuItem>
-            <DropdownMenuItem 
+            <DropdownMenuItem
               onClick={handleFitToSelection}
-              disabled={!canvasApi || canvasApi.getAppState().layersSelected.length === 0}
+              disabled={!canvasApi || !hasSelection}
             >
               {t('fitToSelection')}
             </DropdownMenuItem>
@@ -311,4 +296,3 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
     </div>
   );
 }
-

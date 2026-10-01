@@ -1483,6 +1483,9 @@ importers:
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
+      use-sync-external-store:
+        specifier: ^1.6.0
+        version: 1.6.0(react@19.2.3)
     devDependencies:
       '@types/react':
         specifier: ^19
@@ -1490,6 +1493,9 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.2.3(@types/react@19.2.10)
+      '@types/use-sync-external-store':
+        specifier: ^1.5.0
+        version: 1.7.0
       jest-environment-jsdom:
         specifier: ^29.7.0
         version: 29.7.0(canvas@3.1.0)
@@ -5650,6 +5656,9 @@ packages:
 
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
+
+  '@types/use-sync-external-store@1.7.0':
+    resolution: {integrity: sha512-v8435kzWm3FuxyUa4r8o4sG6b0D+r+uOrzF5MXHxZKW4Haoo6txu/lq56Vio45e2i1nkmFPA+R7myWcmV7Z7Bg==}
 
   '@types/validate-npm-package-name@4.0.2':
     resolution: {integrity: sha512-lrpDziQipxCEeK5kWxvljWYhUvOiB2A9izZd9B2AFarYAkqZshb4lPbRs7zKEic6eGtH8V/2qJW+dPp9OtF6bw==}
@@ -16459,6 +16468,8 @@ snapshots:
   '@types/unist@2.0.11': {}
 
   '@types/unist@3.0.3': {}
+
+  '@types/use-sync-external-store@1.7.0': {}
 
   '@types/validate-npm-package-name@4.0.2': {}
 

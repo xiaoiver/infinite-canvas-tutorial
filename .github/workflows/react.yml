@@ -1,0 +1,43 @@
+name: React bindings
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  react:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        react: ['18.2.0', '19.2.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Install isolated React version
+        run: |
+          npm install --prefix "$RUNNER_TEMP/react-compat" --ignore-scripts --no-audit --no-fund react@${{ matrix.react }} react-dom@${{ matrix.react }} @types/react@${{ startsWith(matrix.react, '18') && '18' || '19' }} @types/react-dom@${{ startsWith(matrix.react, '18') && '18' || '19' }}
+          echo "REACT_TEST_MODULES=$RUNNER_TEMP/react-compat/node_modules" >> "$GITHUB_ENV"
+      - run: pnpm test:react
+      - run: pnpm --filter '@infinite-canvas-tutorial/react...' build
+      - run: pnpm test:react:package
+      - run: pnpm exec tsc -p __tests__/react/browser/tsconfig.json
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:react:browser
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: react-${{ matrix.react }}-failures
+          path: .test-results/react
+          if-no-files-found: ignore
