@@ -167,6 +167,11 @@ export interface CanvasChanges {
   appStateChanged: boolean;
 }
 
+export interface CanvasHistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
 export interface StateManagement {
   getAppState: () => AppState;
   setAppState: (appState: AppState) => void;
@@ -308,7 +313,9 @@ export class API {
   #mesh3DLayers: Mesh3DLayer[] = [];
   #mesh3DLayerEntities: Map<string, Entity> = new Map();
   #selectedMesh3DLayerIds: string[] = [];
-  #history = new History();
+  #history = new History(() => this.notifyHistoryChange());
+  #historyState: CanvasHistoryState = { canUndo: false, canRedo: false };
+  #historySubscribers = new Set<(state: CanvasHistoryState) => void>();
   #beforeHistoryChange = new Set<() => void>();
   #store = new Store(this);
   #tasks = new TaskQueue();
@@ -361,6 +368,31 @@ export class API {
       listener(snapshot, changes);
     this.#subscribers.add(subscriber);
     return this.onDestroy(() => this.#subscribers.delete(subscriber));
+  }
+
+  getHistoryState(): Readonly<CanvasHistoryState> {
+    return this.#historyState;
+  }
+
+  /** Observe undo/redo availability, including clearHistory(), without polling. */
+  subscribeHistory(listener: (state: Readonly<CanvasHistoryState>) => void) {
+    if (this.#destroyed) return () => {};
+    const subscriber = (state: CanvasHistoryState) => listener(state);
+    this.#historySubscribers.add(subscriber);
+    return this.onDestroy(() => this.#historySubscribers.delete(subscriber));
+  }
+
+  private notifyHistoryChange() {
+    const canUndo = !this.#history.isUndoStackEmpty;
+    const canRedo = !this.#history.isRedoStackEmpty;
+    if (
+      canUndo === this.#historyState.canUndo &&
+      canRedo === this.#historyState.canRedo
+    ) {
+      return;
+    }
+    this.#historyState = { canUndo, canRedo };
+    this.#historySubscribers.forEach((listener) => listener(this.#historyState));
   }
 
   /** Register cleanup owned by this canvas. Returns an idempotent disposer. */

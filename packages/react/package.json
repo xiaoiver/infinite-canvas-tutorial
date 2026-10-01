@@ -19,7 +19,9 @@
   },
   "typesVersions": {
     "*": {
-      "spectrum": ["lib/spectrum.d.ts"]
+      "spectrum": [
+        "lib/spectrum.d.ts"
+      ]
     }
   },
   "files": [
@@ -39,16 +41,18 @@
   },
   "dependencies": {
     "@infinite-canvas-tutorial/ecs": "workspace:*",
-    "@infinite-canvas-tutorial/webcomponents": "workspace:*"
+    "@infinite-canvas-tutorial/webcomponents": "workspace:*",
+    "use-sync-external-store": "^1.6.0"
   },
   "peerDependencies": {
     "react": "^18.2.0 || ^19.0.0",
     "react-dom": "^18.2.0 || ^19.0.0"
   },
   "devDependencies": {
-    "jest-environment-jsdom": "^29.7.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/use-sync-external-store": "^1.5.0",
+    "jest-environment-jsdom": "^29.7.0",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

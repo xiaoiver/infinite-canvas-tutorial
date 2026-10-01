@@ -12,12 +12,10 @@ import { Snapshot } from './Snapshot';
 type HistoryStack = HistoryEntry[];
 
 export class History {
-  // public readonly onHistoryChangedEmitter = new Emitter<
-  //   [HistoryChangedEvent]
-  // >();
-
   #undoStack: HistoryStack = [];
   #redoStack: HistoryStack = [];
+
+  constructor(private readonly onChange?: () => void) {}
 
   private static pop(stack: HistoryStack): HistoryEntry | null {
     if (!stack.length) {
@@ -53,6 +51,7 @@ export class History {
   clear() {
     this.#undoStack.length = 0;
     this.#redoStack.length = 0;
+    this.onChange?.();
   }
 
   /**
@@ -71,9 +70,7 @@ export class History {
         this.#redoStack.length = 0;
       }
 
-      // this.onHistoryChangedEmitter.trigger(
-      //   new HistoryChangedEvent(this.isUndoStackEmpty, this.isRedoStackEmpty),
-      // );
+      this.onChange?.();
     }
   }
 
@@ -142,11 +139,8 @@ export class History {
 
       return [nextElements, nextAppState];
     } finally {
-      // trigger the history change event before returning completely
-      // also trigger it just once, no need doing so on each entry
-      // this.onHistoryChangedEmitter.trigger(
-      //   new HistoryChangedEvent(this.isUndoStackEmpty, this.isRedoStackEmpty),
-      // );
+      // Notify once after all entries have been processed, even on failure.
+      this.onChange?.();
     }
   }
 }

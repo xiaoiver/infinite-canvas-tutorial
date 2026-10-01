@@ -2,6 +2,7 @@
 
 import {
   forwardRef,
+  useContext,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -18,6 +19,7 @@ import type {
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { Event } from '@infinite-canvas-tutorial/webcomponents/events';
 import { defaultCanvasRuntime, type CanvasRuntime } from './runtime';
+import { CanvasContext } from './CanvasProvider';
 
 interface CanvasElement extends HTMLElement {
   renderer: 'webgl' | 'webgpu';
@@ -99,6 +101,7 @@ export const InfiniteCanvas = forwardRef<
     ...htmlProps
   } = props;
   const hostRef = useRef<HTMLDivElement>(null);
+  const store = useContext(CanvasContext);
   const apiRef = useRef<ExtendedAPI | null>(null);
   const elementRef = useRef<CanvasElement | null>(null);
   const callbacks = useRef(props);
@@ -135,12 +138,16 @@ export const InfiniteCanvas = forwardRef<
     let unsubscribe: (() => void) | undefined;
     let readyTimer: ReturnType<typeof setTimeout> | undefined;
     const removers: (() => void)[] = [];
+    let providerLease:
+      | ReturnType<NonNullable<typeof store>['claim']>
+      | undefined;
     const teardown = () => {
       if (signal.aborted) return;
       controller.abort();
       clearTimeout(readyTimer);
       unsubscribe?.();
       removers.forEach((remove) => remove());
+      providerLease?.release();
       const hadAPI = apiRef.current !== null;
       apiRef.current = null;
       elementRef.current = null;
@@ -162,6 +169,12 @@ export const InfiniteCanvas = forwardRef<
       setStatus('error');
       callbacks.current.onError?.(nextError);
     };
+    try {
+      providerLease = store?.claim();
+    } catch (reason) {
+      reportError(reason);
+      return teardown;
+    }
     if (initializationTimeout > 0) {
       readyTimer = setTimeout(
         () => reportError(new Error('Canvas initialization timed out.')),
@@ -223,6 +236,7 @@ export const InfiniteCanvas = forwardRef<
                   themePreference: callbacks.current.theme,
                 });
               }
+              providerLease?.attach(api, canvas!);
               callbacks.current.onAPIChange?.(api);
               await callbacks.current.onReady?.(api, { signal });
               if (signal.aborted) return;
@@ -260,7 +274,7 @@ export const InfiniteCanvas = forwardRef<
       .catch(reportError);
 
     return teardown;
-  }, [runtime, renderer, shaderCompilerPath, initializationTimeout]);
+  }, [runtime, renderer, shaderCompilerPath, initializationTimeout, store]);
 
   useEffect(() => {
     if (element && theme) {

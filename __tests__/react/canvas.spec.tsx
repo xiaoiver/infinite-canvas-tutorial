@@ -1,20 +1,50 @@
-import { StrictMode, act, createRef } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { StrictMode, createRef } from 'react';
+import { act } from './act';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToString } from 'react-dom/server';
 import {
   InfiniteCanvas,
   type InfiniteCanvasHandle,
 } from '../../packages/react/src/InfiniteCanvas';
 import type { CanvasRuntime } from '../../packages/react/src/runtime';
+import {
+  CanvasProvider,
+  useCanvasAPI,
+  useCanvasSelector,
+} from '../../packages/react/src/CanvasProvider';
 
 const canvases: TestCanvas[] = [];
 class TestCanvas extends HTMLElement {
+  state = { cameraZoom: 1, layersSelected: [], filter: '' };
+  nodes = [];
+  history = { canUndo: false, canRedo: false };
+  historySubscribers = new Set<(state: any) => void>();
+  cleanups = new Set<() => void>();
   api = {
+    getAppState: () => this.state,
+    getNodes: () => this.nodes,
+    getHistoryState: () => this.history,
+    subscribeHistory: jest.fn((listener) => {
+      this.historySubscribers.add(listener);
+      return () => this.historySubscribers.delete(listener);
+    }),
+    onDestroy: (cleanup) => {
+      const dispose = () => {
+        if (!this.cleanups.delete(dispose)) return;
+        cleanup();
+      };
+      this.cleanups.add(dispose);
+      return dispose;
+    },
     subscribe: jest.fn((listener) => {
       this.subscribers.add(listener);
       return () => this.subscribers.delete(listener);
     }),
-    destroy: jest.fn(),
+    destroy: jest.fn(() => {
+      [...this.cleanups].forEach((cleanup) => cleanup());
+      this.subscribers.clear();
+      this.historySubscribers.clear();
+    }),
     setLocale: jest.fn().mockResolvedValue(undefined),
     setAppState: jest.fn(),
     updateNodes: jest.fn(),
@@ -31,6 +61,15 @@ class TestCanvas extends HTMLElement {
   }
   ready() {
     this.dispatchEvent(new CustomEvent('ic-ready', { detail: this.api }));
+  }
+  commit(patch = {}) {
+    this.state = { ...this.state, ...patch };
+    this.subscribers.forEach((listener) =>
+      listener(
+        { appState: this.state, nodes: this.nodes },
+        { nodesChanged: false, appStateChanged: true },
+      ),
+    );
   }
 }
 customElements.define('ic-spectrum-canvas', TestCanvas);
@@ -236,4 +275,207 @@ it('times out GPU initialization and removes the pending canvas', async () => {
     'timed out',
   );
   expect(release).toHaveBeenCalledTimes(1);
+});
+
+function Toolbar({ id = 'toolbar' }: { id?: string }) {
+  const api = useCanvasAPI();
+  const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+  const canUndo = useCanvasSelector((state) => state.canUndo);
+  const selection = useCanvasSelector(
+    (state) => state.appState?.layersSelected.length ?? 0,
+  );
+  return (
+    <output
+      data-testid={id}
+    >{`${!!api}:${zoom}:${canUndo}:${selection}`}</output>
+  );
+}
+
+it('hydrates a Provider with a stable empty server snapshot before GPU readiness', async () => {
+  const editor = (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <Toolbar />
+    </CanvasProvider>
+  );
+  const html = renderToString(editor);
+  expect(html).toContain('false:1:false:0');
+  expect(runtime.acquire).not.toHaveBeenCalled();
+  await act(async () => root.unmount());
+  host.innerHTML = html;
+  const recoverable = jest.fn();
+  await act(async () => {
+    root = hydrateRoot(host, editor, { onRecoverableError: recoverable });
+  });
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('output')!.textContent).toBe('true:1:false:0');
+  expect(recoverable).not.toHaveBeenCalled();
+});
+
+it('only rerenders selectors whose value changes and keeps API consumers stable', async () => {
+  const zoomRender = jest.fn();
+  const apiRender = jest.fn();
+  function Zoom() {
+    const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+    zoomRender(zoom);
+    return <span>{zoom}</span>;
+  }
+  function APIConsumer() {
+    apiRender(useCanvasAPI());
+    return null;
+  }
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <Zoom />
+        <APIConsumer />
+      </CanvasProvider>,
+    ),
+  );
+  await act(async () => canvases[0].ready());
+  zoomRender.mockClear();
+  apiRender.mockClear();
+  await act(async () => canvases[0].commit({ filter: 'blur(2px)' }));
+  expect(zoomRender).not.toHaveBeenCalled();
+  expect(apiRender).not.toHaveBeenCalled();
+  await act(async () => {
+    canvases[0].state = { ...canvases[0].state, cameraZoom: 2 };
+    canvases[0].dispatchEvent(
+      new CustomEvent('ic-camera-zoom-changed', { detail: { zoom: 2 } }),
+    );
+  });
+  expect(zoomRender).toHaveBeenCalledTimes(1);
+  expect(apiRender).not.toHaveBeenCalled();
+});
+
+it('supports inline object selectors, custom equality, and changed selectors', async () => {
+  const render = jest.fn();
+  function Probe({ field }: { field: 'cameraZoom' | 'filter' }) {
+    const selected = useCanvasSelector(
+      (state) => ({ value: state.appState?.[field] }),
+      (a, b) => a.value === b.value,
+    );
+    render(selected);
+    return <output>{String(selected.value)}</output>;
+  }
+  const editor = (field: 'cameraZoom' | 'filter') => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <Probe field={field} />
+    </CanvasProvider>
+  );
+  await act(async () => root.render(editor('cameraZoom')));
+  await act(async () => canvases[0].ready());
+  render.mockClear();
+  await act(async () => canvases[0].commit({ filter: 'blur(2px)' }));
+  expect(render).not.toHaveBeenCalled();
+  await act(async () => root.render(editor('filter')));
+  expect(host.querySelector('output')!.textContent).toBe('blur(2px)');
+  expect(canvases).toHaveLength(1);
+});
+
+it('isolates Providers and updates history and selection without polling', async () => {
+  const editor = (left: boolean) => (
+    <>
+      {left && (
+        <CanvasProvider key="left">
+          <InfiniteCanvas runtime={runtime} />
+          <Toolbar id="left" />
+        </CanvasProvider>
+      )}
+      <CanvasProvider key="right">
+        <InfiniteCanvas runtime={runtime} />
+        <Toolbar id="right" />
+      </CanvasProvider>
+    </>
+  );
+  await act(async () => root.render(editor(true)));
+  await act(async () => canvases.forEach((canvas) => canvas.ready()));
+  await act(async () => {
+    canvases[0].historySubscribers.forEach((listener) =>
+      listener({ canUndo: true, canRedo: false }),
+    );
+    canvases[0].state = {
+      ...canvases[0].state,
+      layersSelected: ['rect'] as any,
+    };
+    canvases[0].dispatchEvent(
+      new CustomEvent('ic-selected-nodes-changed', {
+        detail: { selected: [] },
+      }),
+    );
+  });
+  expect(host.querySelector('[data-testid="left"]')!.textContent).toBe(
+    'true:1:true:1',
+  );
+  expect(host.querySelector('[data-testid="right"]')!.textContent).toBe(
+    'true:1:false:0',
+  );
+  await act(async () => root.render(editor(false)));
+  expect(canvases[0].historySubscribers.size).toBe(0);
+  expect(canvases[1].api.destroy).not.toHaveBeenCalled();
+  await act(async () => canvases[1].commit({ cameraZoom: 3 }));
+  expect(host.querySelector('output')!.textContent).toBe('true:3:false:0');
+});
+
+it('releases Provider ownership under StrictMode, recreation, and API destruction', async () => {
+  const editor = (renderer: 'webgl' | 'webgpu') => (
+    <StrictMode>
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} renderer={renderer} />
+        <Toolbar />
+      </CanvasProvider>
+    </StrictMode>
+  );
+  await act(async () => root.render(editor('webgl')));
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('output')!.textContent).toBe('true:1:false:0');
+  await act(async () => root.render(editor('webgpu')));
+  expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
+  expect(canvases[0].subscribers.size).toBe(0);
+  await act(async () => canvases[1].ready());
+  await act(async () => canvases[1].api.destroy());
+  expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
+  expect(canvases[1].historySubscribers.size).toBe(0);
+});
+
+it('rejects a second canvas in one Provider without replacing its API', async () => {
+  const onError = jest.fn();
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <InfiniteCanvas runtime={runtime} onError={onError} />
+        <Toolbar />
+      </CanvasProvider>,
+    ),
+  );
+  expect(onError).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: expect.stringContaining('one mounted'),
+    }),
+  );
+  expect(canvases).toHaveLength(1);
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('output')!.textContent).toBe('true:1:false:0');
+});
+
+it('clears Provider state after async preparation fails', async () => {
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas
+          runtime={runtime}
+          onReady={async () => {
+            throw new Error('preparation failed');
+          }}
+        />
+        <Toolbar />
+      </CanvasProvider>,
+    ),
+  );
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
+  expect(canvases[0].historySubscribers.size).toBe(0);
 });
