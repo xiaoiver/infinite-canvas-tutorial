@@ -2,6 +2,10 @@
 outline: deep
 ---
 
+<script setup>
+import ReactCanvasExample from '../components/ReactCanvasExample.vue';
+</script>
+
 # React
 
 `@infinite-canvas-tutorial/react` provides React 18/19 bindings for the existing
@@ -42,6 +46,22 @@ export function Editor() {
 Give the container an explicit height. Browser dependencies and Custom Element
 registration are deferred until client mount, including in Next.js Client
 Components. The root entry and `/spectrum` currently export the same component.
+
+## Interactive example
+
+Try adding a rectangle, changing its color, zooming, and undoing or redoing an
+edit. Drag a shape to see the selection update. Canvas A and Canvas B use
+separate Providers and share one runtime; editing one leaves the other's
+history and zoom unchanged.
+
+<ReactCanvasExample locale="en" />
+
+Hide the second canvas to try removing one while the other remains usable.
+**Reset demo** recreates both canvases and clears their edits and history.
+The example runs in an isolated frame so it can coexist with the documentation
+site's other canvas examples. Changes are local to this demo and are not saved.
+
+<a href="/example/react-playground" target="_blank" rel="noopener">Open the example in its own page</a>.
 
 ## Provider and selector hooks
 

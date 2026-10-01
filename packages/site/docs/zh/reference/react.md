@@ -2,6 +2,10 @@
 outline: deep
 ---
 
+<script setup>
+import ReactCanvasExample from '../../components/ReactCanvasExample.vue';
+</script>
+
 # React
 
 `@infinite-canvas-tutorial/react` 提供 React 18/19 的便利封装。封装复用
@@ -42,6 +46,20 @@ export function Editor() {
 
 请为容器设置明确高度。浏览器依赖和自定义元素在客户端挂载时才加载，适用于
 Next.js Client Component。默认入口和 `/spectrum` 目前导出同一个组件。
+
+## 可交互示例
+
+试试添加矩形、修改颜色、缩放，以及撤销和重做。拖动图形可观察选区变化。
+画布 A 和 B 分别使用独立的 Provider，并共享同一个 runtime；编辑其中一个，
+另一个的历史和缩放不会改变。
+
+<ReactCanvasExample locale="zh" />
+
+取消勾选“显示第二个画布”，可以体验卸载一个画布后继续操作另一个。
+**重置示例**会重新创建画布，并清空编辑和历史记录。示例放在独立的 iframe 中，
+可与文档站其他画布示例共存。这里的修改只在当前示例中有效，不会保存。
+
+<a href="/zh/example/react-playground" target="_blank" rel="noopener">在独立页面打开示例</a>。
 
 ## Provider 与 selector hooks
 
