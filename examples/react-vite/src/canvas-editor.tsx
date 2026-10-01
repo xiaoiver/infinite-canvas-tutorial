@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import {
   CanvasProvider,
   InfiniteCanvas,
-  useCanvasAPI,
+  useCanvasActions,
   useCanvasSelector,
   type InfiniteCanvasProps,
 } from '@infinite-canvas-tutorial/react';
@@ -20,35 +21,40 @@ const initialNodes: NonNullable<InfiniteCanvasProps['initialNodes']> = [
 ];
 
 function Toolbar() {
-  const api = useCanvasAPI();
+  const actions = useCanvasActions();
+  const ready = useCanvasSelector((state) => state.api !== null);
+  const [error, setError] = useState<string | null>(null);
   const count = useCanvasSelector(
     (state) => state.nodes.filter((node) => !node.isDeleted).length,
   );
   const canUndo = useCanvasSelector((state) => state.canUndo);
   const canRedo = useCanvasSelector((state) => state.canRedo);
-  const enlarge = () => {
-    if (!api) return;
-    api.runAtNextTick(() => {
-      const node = api.getNodeById('rectangle');
-      if (!node) return;
-      api.updateNodes([{ ...node, width: (node.width ?? 100) + 20 }]);
-      api.record();
-    });
+  const enlarge = async () => {
+    setError(null);
+    try {
+      await actions.updateNodes((nodes) => {
+        const node = nodes.find((node) => node.id === 'rectangle');
+        return node ? [{ ...node, width: (node.width ?? 100) + 20 }] : [];
+      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : String(error));
+    }
   };
   return (
     <div className="toolbar">
-      <button disabled={!api} onClick={enlarge}>
+      <button disabled={!ready} onClick={enlarge}>
         Enlarge rectangle
       </button>
-      <button disabled={!canUndo} onClick={() => api?.undo()}>
+      <button disabled={!canUndo} onClick={actions.undo}>
         Undo
       </button>
-      <button disabled={!canRedo} onClick={() => api?.redo()}>
+      <button disabled={!canRedo} onClick={actions.redo}>
         Redo
       </button>
       <span>
         Shapes: <output data-testid="shape-count">{count}</output>
       </span>
+      {error && <span role="alert">{error}</span>}
     </div>
   );
 }

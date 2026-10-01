@@ -34,6 +34,16 @@ export function createCanvasStore() {
   return {
     getSnapshot: () => state,
     getServerSnapshot: () => emptyState,
+    /** Refresh view settings that the history snapshot does not observe. */
+    refresh(api: ExtendedAPI) {
+      if (state.api !== api) return;
+      publish({
+        ...state,
+        appState: api.getAppState(),
+        nodes: api.getNodes(),
+        ...api.getHistoryState(),
+      });
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {

@@ -1,5 +1,78 @@
 import { expect, test } from '@playwright/test';
 
+test('editing hooks compose live updates, group undo, and refresh view settings', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  const committed = await page.evaluate(async () => {
+    const actions = window.actions.left;
+    const enlarge = () =>
+      actions.updateNodes((nodes) =>
+        nodes.map((node) => ({ ...node, width: node.width! + 20 })),
+      );
+    return Promise.all([enlarge(), enlarge()]);
+  });
+  expect(committed).toEqual([true, true]);
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    140,
+  );
+  expect(await page.evaluate(() => window.apis.right.getNodes()[0].width)).toBe(
+    100,
+  );
+  await page.getByTestId('left-undo').click();
+  await page.waitForFunction(
+    () => window.apis.left.getNodes()[0].width === 120,
+  );
+  await page.getByTestId('left-undo').click();
+  await page.waitForFunction(
+    () => window.apis.left.getNodes()[0].width === 100,
+  );
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await page.evaluate(() => window.actions.left.clearHistory());
+  const before = await page.evaluate(() => window.snapshots.left.length);
+  await page.getByTestId('left-batch-edit').click();
+  await expect(page.getByTestId('left-selection')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeEnabled();
+  expect(await page.evaluate(() => window.snapshots.left.length)).toBe(
+    before + 1,
+  );
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-selection')).toHaveText('0');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    100,
+  );
+  await page.evaluate(() =>
+    window.actions.left.setAppState(
+      { penbarVisible: false },
+      { capture: 'NEVER' },
+    ),
+  );
+  await expect(page.getByTestId('left-penbar')).toHaveText('false');
+  await expect(page.getByTestId('right-penbar')).toHaveText('true');
+  await expect(
+    page
+      .locator('ic-spectrum-canvas')
+      .first()
+      .locator('ic-spectrum-penbar sp-action-group'),
+  ).toHaveCount(0);
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('initialNodes stays outside history after async preparation creates a baseline', async ({
   page,
 }) => {

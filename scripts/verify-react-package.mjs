@@ -127,9 +127,11 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasSelector } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
+    const actions = useCanvasActions();
+    assert.equal(actions.undo(), false);
     const zoom = useCanvasSelector(state => state.appState?.cameraZoom ?? 1);
     return React.createElement('output', null, String(api === null) + ':' + zoom);
   }
@@ -145,10 +147,16 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasSelector, type CanvasState } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import { InfiniteCanvas as SpectrumCanvas } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
   const api = useCanvasAPI();
+  const actions: CanvasActions = useCanvasActions();
+  const options: CanvasEditOptions = { capture: 'NEVER' };
+  const update: Promise<boolean> = actions.updateNodes(nodes => nodes.map(node => ({ ...node, width: 100 })), options);
+  const patch: Promise<boolean> = actions.setAppState(state => ({ filter: state.filter }), options);
+  const selection: Promise<boolean> = actions.selectNodes(['rect'], { preserveSelection: true });
+  const edit: Promise<boolean> = actions.edit(api => { api.setAppState({ filter: '' }); });
   const canUndo: boolean = useCanvasSelector((state: CanvasState) => state.canUndo);
   return <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>;
 }

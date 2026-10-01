@@ -1,8 +1,15 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useSyncExternalStoreWithSelector } from 'use-sync-external-store/shim/with-selector';
 import { createCanvasStore, type CanvasState, type CanvasStore } from './store';
+import { createCanvasActions } from './actions';
 
 export const CanvasContext = createContext<CanvasStore | null>(null);
 
@@ -34,4 +41,12 @@ export function useCanvasSelector<T>(
 /** Returns null during SSR, before readiness, and after canvas removal. */
 export function useCanvasAPI() {
   return useCanvasSelector((state) => state.api);
+}
+
+/** Stable editing actions scoped to the nearest Provider; does not subscribe. */
+export function useCanvasActions() {
+  const store = useContext(CanvasContext);
+  if (!store)
+    throw new Error('Canvas hooks must be used inside CanvasProvider.');
+  return useMemo(() => createCanvasActions(store), [store]);
 }
