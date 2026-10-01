@@ -18,6 +18,7 @@ module.exports = {
     '!**/e2e/*.spec.+(ts|tsx|js)',
     '!**/ui/*.spec.+(ts|tsx|js)',
     '!**/ecs/*.spec.+(ts|tsx|js)',
+    '!**/react/*.spec.+(ts|tsx|js)',
     // '**/ssr/selector.spec.+(ts|tsx|js)',
   ],
   preset: 'ts-jest',

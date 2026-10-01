@@ -1,9 +1,9 @@
-import {
+import type {
   Screenshot,
   SerializedNode,
   TransformableStatus,
 } from '@infinite-canvas-tutorial/ecs';
-import { ExtendedAPI } from './API';
+import type { ExtendedAPI } from './API';
 
 export enum Event {
   READY = 'ic-ready',

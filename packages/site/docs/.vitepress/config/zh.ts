@@ -106,6 +106,10 @@ export const zh = defineConfig({
             link: 'create-app',
           },
           {
+            text: 'React',
+            link: 'react',
+          },
+          {
             text: 'API',
             items: [
               {

@@ -60,6 +60,9 @@ import { LitStateManagement } from '../context';
 import { InfiniteCanvas } from '../spectrum/infinite-canvas';
 import { localizedTemplates } from '../i18n';
 
+// Localization is global to Lit and must survive App teardown/recreation.
+let localization: ReturnType<typeof configureLocalization> | undefined;
+
 export class InitCanvas extends System {
   private readonly commands = new Commands(this);
 
@@ -122,10 +125,6 @@ export class InitCanvas extends System {
     );
   }
 
-  // configureLocalization can only be called once, so we need to store the setLocale and getLocale functions in instance variables.
-  #setLocale: (locale: string) => Promise<void>;
-  #getLocale: () => string;
-
   execute() {
     if (pendingCanvases.length) {
       pendingCanvases.forEach(({ container, canvas, camera }) => {
@@ -142,18 +141,14 @@ export class InitCanvas extends System {
         api.createCanvas({ ...canvas, api });
         api.createCamera(camera);
 
-        try {
-          const { getLocale, setLocale } = configureLocalization({
-            sourceLocale,
-            targetLocales,
-            loadLocale: async (locale) => localizedTemplates.get(locale),
-          });
-          this.#setLocale = setLocale;
-          this.#getLocale = getLocale;
-        } catch (e) { }
+        localization ??= configureLocalization({
+          sourceLocale,
+          targetLocales,
+          loadLocale: async (locale) => localizedTemplates.get(locale),
+        });
 
-        api.setLocale = this.#setLocale;
-        api.getLocale = this.#getLocale;
+        api.setLocale = localization.setLocale;
+        api.getLocale = localization.getLocale;
 
         this.commands.execute();
 

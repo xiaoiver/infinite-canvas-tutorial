@@ -190,13 +190,15 @@ export default function ZoomToolbar({ canvasApi, canvasRef }: ZoomToolbarProps) 
 
   // 监听缩放变化事件
   useEffect(() => {
-    canvasRef.current?.addEventListener('keydown', onKeyDown);
-    canvasRef.current?.addEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
+    const host = canvasRef.current;
+    const element = canvasApi?.element;
+    host?.addEventListener('keydown', onKeyDown);
+    element?.addEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
     return () => {
-      canvasRef.current?.removeEventListener('keydown', onKeyDown);
-      canvasRef.current?.removeEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
+      host?.removeEventListener('keydown', onKeyDown);
+      element?.removeEventListener(Event.CAMERA_ZOOM_CHANGED, onZoomChanged as EventListener);
     };
-  }, [canvasRef, onZoomChanged, onKeyDown]);
+  }, [canvasApi, canvasRef, onZoomChanged, onKeyDown]);
 
   // 定期更新 undo/redo 状态
   useEffect(() => {

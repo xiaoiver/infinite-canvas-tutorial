@@ -13,6 +13,8 @@ app.run();
 
 然后就可以创建一个或多个画布，这里我们使用基于 WebComponents 实现的 UI 组件。
 
+React 项目可以使用 [React 封装](/zh/reference/react)，自动管理运行时、画布生命周期和事件。
+
 ## 使用 WebComponents {#use-webcomponents}
 
 首先引入组件库：

@@ -10,7 +10,39 @@ import {
   PreStartUp,
   PostStartUp,
   PreUpdate,
+  prepareStages,
 } from './systems/stages';
+
+// Becsy keeps system definitions globally. Reuse these types across Worlds;
+// declaring new classes inside start() registers duplicate component names.
+@system(PreStartUp)
+class PreStartUpPlaceHolder extends System {}
+@system(StartUp)
+class StartUpPlaceHolder extends System {}
+@system(PostStartUp)
+class PostStartUpPlaceHolder extends System {}
+@system(PreUpdate)
+class PreUpdatePlaceHolder extends System {}
+@system(Update)
+class UpdatePlaceHolder extends System {}
+@system(PostUpdate)
+class PostUpdatePlaceHolder extends System {}
+@system(First)
+class FirstPlaceHolder extends System {}
+@system(Last)
+class LastPlaceHolder extends System {}
+
+// Registration happens in the decorators; no instances are constructed here.
+void [
+  PreStartUpPlaceHolder,
+  StartUpPlaceHolder,
+  PostStartUpPlaceHolder,
+  PreUpdatePlaceHolder,
+  UpdatePlaceHolder,
+  PostUpdatePlaceHolder,
+  FirstPlaceHolder,
+  LastPlaceHolder,
+];
 
 /**
  * @see https://bevy-cheatbook.github.io/programming/app-builder.html
@@ -73,32 +105,6 @@ export class App {
 
   private async start() {
     this.#adapter = DOMAdapter.get();
-    // Create a global init system.
-    @system(PreStartUp)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PreStartUpPlaceHolder extends System {}
-    @system(StartUp)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class StartUpPlaceHolder extends System {}
-    @system(PostStartUp)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PostStartUpPlaceHolder extends System {}
-    @system(PreUpdate)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PreUpdatePlaceHolder extends System {}
-    @system(Update)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class UpdatePlaceHolder extends System {}
-    @system(PostUpdate)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class PostUpdatePlaceHolder extends System {}
-    @system(First)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class FirstPlaceHolder extends System {}
-    @system(Last)
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    class LastPlaceHolder extends System {}
-
     // Build all plugins.
     for (const plugin of this.#plugins) {
       if (Array.isArray(plugin)) {
@@ -122,6 +128,7 @@ export class App {
 
     // Create world.
     // All systems will be instantiated and initialized before the returned promise resolves.
+    prepareStages();
     this.world = await World.create({
       // Multithreading is not supported yet.
       threads: 1,

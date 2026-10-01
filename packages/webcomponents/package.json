@@ -11,10 +11,21 @@
       "import": "./esm/index.js",
       "require": "./lib/index.js"
     },
+    "./events": {
+      "types": "./lib/event.d.ts",
+      "import": "./esm/event.js",
+      "require": "./lib/event.js"
+    },
     "./spectrum": {
       "types": "./lib/spectrum/index.d.ts",
       "import": "./esm/spectrum/index.js",
       "require": "./lib/spectrum/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "events": ["lib/event.d.ts"],
+      "spectrum": ["lib/spectrum/index.d.ts"]
     }
   },
   "files": [

@@ -36,6 +36,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   // 告诉 Next.js 包含这些本地包
   transpilePackages: [
+    "@infinite-canvas-tutorial/react",
     "@infinite-canvas-tutorial/ecs",
     "@infinite-canvas-tutorial/webcomponents",
     "@infinite-canvas-tutorial/fal-ai",
