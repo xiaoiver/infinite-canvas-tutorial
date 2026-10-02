@@ -1,6 +1,94 @@
 import { expect, test } from '@playwright/test';
 import type { ExportFormat, Pen } from '@infinite-canvas-tutorial/ecs';
 
+test('selected nodes keep valid renderer references through consecutive hierarchy undo and redo', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  const renderingFailed = new Promise<void>((resolve) =>
+    page.once('pageerror', () => resolve()),
+  );
+  await Promise.race([
+    page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const api = window.apis.left;
+          api.runAtNextTick(() => {
+            api.replaceDocument([
+              {
+                id: 'parent',
+                type: 'rect',
+                zIndex: 0,
+                x: 0,
+                y: 0,
+                width: 50,
+                height: 50,
+              },
+              {
+                id: 'left',
+                parentId: 'parent',
+                type: 'rect',
+                zIndex: 1,
+                x: 0,
+                y: 0,
+                width: 10,
+                height: 10,
+                fills: [{ type: 'solid', value: 'red' }],
+              },
+            ]);
+            api.clearHistory();
+            api.runAtNextTick(() => {
+              api.selectNodes([api.getNodeById('left')!]);
+              api.record('NEVER');
+              api.runAtNextTick(() => {
+                api.replaceDocument(
+                  [
+                    {
+                      id: 'left',
+                      type: 'rect',
+                      zIndex: 1,
+                      x: 0,
+                      y: 0,
+                      width: 10,
+                      height: 10,
+                    },
+                  ],
+                  'local',
+                );
+                api.undo();
+                api.runAtNextTick(() => {
+                  api.redo();
+                  api.runAtNextTick(resolve);
+                });
+              });
+            });
+          });
+        }),
+    ),
+    renderingFailed,
+  ]);
+  expect(errors).toEqual([]);
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('left-selection')).toHaveText('1');
+  expect(
+    await page.evaluate(() => {
+      const node = window.apis.left.getNodeById('left');
+      if (node?.type !== 'rect') throw new Error('Expected a rectangle');
+      return { fills: node.fills, parentId: node.parentId };
+    }),
+  ).toEqual({ fills: undefined, parentId: undefined });
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('UI phases deliver current comment coordinates and deferred SVG export events', async ({
   page,
 }) => {
