@@ -10,6 +10,7 @@ import {
   CanvasProvider,
   InfiniteCanvas,
   useCanvasAPI,
+  useCanvasActions,
   useCanvasSelector,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
@@ -94,6 +95,10 @@ function Controls({
 }) {
   const text = copy[locale];
   const api = useCanvasAPI();
+  const actions = useCanvasActions();
+  const [error, setError] = useState<string | null>(null);
+  const reportEditError = (reason: unknown) =>
+    setError(reason instanceof Error ? reason.message : String(reason));
   const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
   const canUndo = useCanvasSelector((state) => state.canUndo);
   const canRedo = useCanvasSelector((state) => state.canRedo);
@@ -107,35 +112,38 @@ function Controls({
   const add = () => {
     if (!api) return;
     const index = nextId.current++;
-    api.runAtNextTick(() => {
-      const node: SerializedNode = {
-        id: `${id}-${index}`,
-        type: 'rect',
-        zIndex: index,
-        x: 40 + ((index * 28) % 160),
-        y: 45 + ((index * 20) % 110),
-        width: 80,
-        height: 60,
-        fills: [{ type: 'solid', value: colors[index % colors.length] }],
-      };
-      api.updateNodes([node]);
-      api.selectNodes([node]);
-      api.record();
-    });
+    void actions
+      .edit((api) => {
+        const node: SerializedNode = {
+          id: `${id}-${index}`,
+          type: 'rect',
+          zIndex: index,
+          x: 40 + ((index * 28) % 160),
+          y: 45 + ((index * 20) % 110),
+          width: 80,
+          height: 60,
+          fills: [{ type: 'solid', value: colors[index % colors.length] }],
+        };
+        api.updateNodes([node]);
+        api.selectNodes([node]);
+      })
+      .catch(reportEditError);
   };
   const changeColor = () => {
     if (!api) return;
-    api.runAtNextTick(() => {
-      const selectedId = api.getAppState().layersSelected[0];
-      const node = selectedId
-        ? api.getNodeById(selectedId)
-        : api.getNodes().find((candidate) => !candidate.isDeleted);
-      if (!node || !('fills' in node)) return;
-      const current = node.fills?.[0]?.value;
-      const color = colors[(colors.indexOf(current ?? '') + 1) % colors.length];
-      api.updateNode(node, { fills: [{ type: 'solid', value: color }] });
-      api.record();
-    });
+    void actions
+      .edit((api) => {
+        const selectedId = api.getAppState().layersSelected[0];
+        const node = selectedId
+          ? api.getNodeById(selectedId)
+          : api.getNodes().find((candidate) => !candidate.isDeleted);
+        if (!node || !('fills' in node)) return;
+        const current = node.fills?.[0]?.value;
+        const color =
+          colors[(colors.indexOf(current ?? '') + 1) % colors.length];
+        api.updateNode(node, { fills: [{ type: 'solid', value: color }] });
+      })
+      .catch(reportEditError);
   };
   const button = (
     action: string,
@@ -159,8 +167,8 @@ function Controls({
         role: 'group',
         'aria-label': `${text.canvas} ${id}`,
       },
-      button('undo', text.undo, () => api?.undo(), !canUndo),
-      button('redo', text.redo, () => api?.redo(), !canRedo),
+      button('undo', text.undo, actions.undo, !canUndo),
+      button('redo', text.redo, actions.redo, !canRedo),
       button('add', text.add, add),
       button('color', text.color, changeColor, !api || count === 0),
     ),
@@ -221,6 +229,7 @@ function Controls({
         h('output', { 'data-state': 'selected' }, selected),
       ),
     ),
+    error && h('p', { role: 'alert' }, error),
   );
 }
 

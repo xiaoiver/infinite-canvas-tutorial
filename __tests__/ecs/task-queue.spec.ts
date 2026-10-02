@@ -31,6 +31,20 @@ describe('canvas task queues', () => {
     expect(remaining).toHaveBeenCalledTimes(1);
   });
 
+  it('keeps explicitly deferred work out of the current flush without delaying ordinary tasks', () => {
+    const queue = new TaskQueue();
+    const calls: string[] = [];
+    queue.add(() => calls.push('edit-followup'), true);
+    queue.add(() => {
+      calls.push('ordinary');
+      queue.add(() => calls.push('nested'));
+    });
+    queue.flush();
+    expect(calls).toEqual(['ordinary']);
+    queue.flush();
+    expect(calls).toEqual(['ordinary', 'edit-followup', 'nested']);
+  });
+
   it('cancels remaining and future work when disposed during a flush', () => {
     const queue = new TaskQueue();
     const cancelled = jest.fn();

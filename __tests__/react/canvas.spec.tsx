@@ -10,8 +10,10 @@ import type { CanvasRuntime } from '../../packages/react/src/runtime';
 import {
   CanvasProvider,
   useCanvasAPI,
+  useCanvasActions,
   useCanvasSelector,
 } from '../../packages/react/src/CanvasProvider';
+import type { CanvasActions } from '../../packages/react/src/actions';
 
 const canvases: TestCanvas[] = [];
 class TestCanvas extends HTMLElement {
@@ -50,6 +52,11 @@ class TestCanvas extends HTMLElement {
     updateNodes: jest.fn(),
     record: jest.fn(),
     runAtNextTick: jest.fn((task) => task()),
+    edit: jest.fn(async (update) => {
+      update(this.api);
+      this.api.record();
+      return true;
+    }),
   };
   subscribers = new Set<(snapshot: any, changes: any) => void>();
   constructor() {
@@ -97,6 +104,42 @@ it('renders on the server without starting the browser runtime', () => {
     renderToString(<InfiniteCanvas runtime={runtime} fallback="Loading" />),
   ).toContain('Loading');
   expect(runtime.acquire).not.toHaveBeenCalled();
+});
+
+it('keeps action-only consumers stable through readiness, edits, and recreation', async () => {
+  let actions!: CanvasActions;
+  const render = jest.fn();
+  function Controls() {
+    actions = useCanvasActions();
+    render(actions);
+    return null;
+  }
+  const editor = (renderer: 'webgl' | 'webgpu') => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} renderer={renderer} />
+      <Controls />
+    </CanvasProvider>
+  );
+  renderToString(editor('webgl'));
+  expect(runtime.acquire).not.toHaveBeenCalled();
+  render.mockClear();
+  await act(async () => root.render(editor('webgl')));
+  const retained = actions;
+  expect(await retained.edit(jest.fn())).toBe(false);
+  render.mockClear();
+  await act(async () => canvases[0].ready());
+  await act(async () => canvases[0].commit({ filter: 'blur(2px)' }));
+  expect(render).not.toHaveBeenCalled();
+  await act(async () => root.render(editor('webgpu')));
+  expect(actions).toBe(retained);
+  expect(await retained.edit(jest.fn())).toBe(false);
+  await act(async () => canvases[1].ready());
+  const nodes = [{ id: 'rect', type: 'rect' as const, zIndex: 0, width: 100 }];
+  await act(async () => {
+    expect(await retained.updateNodes(nodes)).toBe(true);
+  });
+  expect(canvases[0].api.updateNodes).not.toHaveBeenCalled();
+  expect(canvases[1].api.updateNodes).toHaveBeenCalledWith(nodes);
 });
 
 it('survives StrictMode and seeds nodes into ECS after async preparation', async () => {

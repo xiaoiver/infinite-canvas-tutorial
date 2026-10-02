@@ -1,0 +1,118 @@
+import type {
+  AppState,
+  CanvasEditOptions,
+  SerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
+import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
+import type { CanvasStore } from './store';
+
+export type { CanvasEditOptions } from '@infinite-canvas-tutorial/ecs';
+
+export interface CanvasActions {
+  /** Run synchronous mutations before derived data/rendering and commit once. */
+  edit(
+    update: (api: ExtendedAPI) => void,
+    options?: CanvasEditOptions,
+  ): Promise<boolean>;
+  /** Upsert nodes; an updater reads the latest scene when the edit executes. */
+  updateNodes(
+    update:
+      | readonly SerializedNode[]
+      | ((nodes: readonly SerializedNode[]) => readonly SerializedNode[]),
+    options?: CanvasEditOptions,
+  ): Promise<boolean>;
+  /** Merge a patch; an updater reads the latest application state. */
+  setAppState(
+    update:
+      | Partial<AppState>
+      | ((state: Readonly<AppState>) => Partial<AppState>),
+    options?: CanvasEditOptions,
+  ): Promise<boolean>;
+  /** Resolve IDs from the latest scene; ignore missing/deleted nodes. */
+  selectNodes(
+    ids: readonly string[],
+    options?: CanvasEditOptions & { preserveSelection?: boolean },
+  ): Promise<boolean>;
+  /** Return false if no API is attached; undo/redo queue in the ECS Edit stage. */
+  undo(): boolean;
+  redo(): boolean;
+  clearHistory(): boolean;
+}
+
+/** Actions read the Provider at invocation time, never capturing an old API. */
+export function createCanvasActions(store: CanvasStore): CanvasActions {
+  const edit: CanvasActions['edit'] = async (update, options = {}) => {
+    const api = store.getSnapshot().api;
+    const signal = options.signal;
+    if (!api || signal?.aborted) return false;
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
+    const unsubscribe = store.subscribeAPI(() => {
+      if (store.getSnapshot().api !== api) cancel();
+    });
+    try {
+      const applied = await api.edit(update, {
+        ...options,
+        signal: controller.signal,
+      });
+      if (applied) store.refresh(api);
+      return applied;
+    } finally {
+      unsubscribe();
+      signal?.removeEventListener('abort', cancel);
+    }
+  };
+
+  return {
+    edit,
+    async updateNodes(update, options) {
+      const next =
+        typeof update === 'function' ? update : structuredClone(update);
+      return edit((api) => {
+        const nodes =
+          typeof next === 'function'
+            ? structuredClone(next(api.getNodes()))
+            : next;
+        api.updateNodes([...nodes]);
+      }, options);
+    },
+    async setAppState(update, options) {
+      // AppState may contain DOM/platform objects. Match API's shallow patch semantics.
+      const next = typeof update === 'function' ? update : { ...update };
+      return edit((api) => {
+        api.setAppState(
+          typeof next === 'function' ? next(api.getAppState()) : next,
+        );
+      }, options);
+    },
+    selectNodes(ids, options = {}) {
+      const selected = [...ids];
+      const preserveSelection = options.preserveSelection ?? false;
+      return edit((api) => {
+        const nodes = selected
+          .map((id) => api.getNodeById(id))
+          .filter((node): node is SerializedNode => !!node && !node.isDeleted);
+        api.selectNodes(nodes, preserveSelection);
+      }, options);
+    },
+    undo() {
+      const api = store.getSnapshot().api;
+      if (!api) return false;
+      api.undo();
+      return true;
+    },
+    redo() {
+      const api = store.getSnapshot().api;
+      if (!api) return false;
+      api.redo();
+      return true;
+    },
+    clearHistory() {
+      const api = store.getSnapshot().api;
+      if (!api) return false;
+      api.clearHistory();
+      return true;
+    },
+  };
+}

@@ -1,6 +1,6 @@
 # React framework starters
 
-These independent projects target the first `@infinite-canvas-tutorial/react`
+These independent projects target the future first `@infinite-canvas-tutorial/react`
 0.1.0 npm release. The package has not been published yet; registry installation
 will become available after that release. They are outside the pnpm workspace
 so library and documentation builds do not build example applications.
@@ -20,6 +20,8 @@ npm run dev
 Both examples start with one rectangle and an empty history. **Enlarge rectangle**
 commits an edit; **Undo** restores its original width without removing it. The
 shape counter uses `useCanvasSelector` and updates after initialization.
+Editing uses `useCanvasActions`, including a functional node update and history
+actions, so the toolbar does not schedule ECS tasks or record history itself.
 The built-in toolbars are hidden so the examples use their own React controls.
 
 ## Verify unreleased changes

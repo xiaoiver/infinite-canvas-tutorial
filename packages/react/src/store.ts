@@ -26,18 +26,40 @@ export function createCanvasStore() {
   let owner: symbol | undefined;
   let disconnect: (() => void) | undefined;
   const listeners = new Set<() => void>();
+  const apiListeners = new Set<() => void>();
   const publish = (next: CanvasState) => {
+    const previousAPI = state.api;
     state = next;
+    if (state.api !== previousAPI) {
+      [...apiListeners].forEach((listener) => listener());
+    }
     [...listeners].forEach((listener) => listener());
   };
 
   return {
     getSnapshot: () => state,
     getServerSnapshot: () => emptyState,
+    /** Refresh view settings that the history snapshot does not observe. */
+    refresh(api: ExtendedAPI) {
+      if (state.api !== api) return;
+      publish({
+        ...state,
+        appState: api.getAppState(),
+        nodes: api.getNodes(),
+        ...api.getHistoryState(),
+      });
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
+      };
+    },
+    /** Ownership observers do not run for document or view-state updates. */
+    subscribeAPI(listener: () => void) {
+      apiListeners.add(listener);
+      return () => {
+        apiListeners.delete(listener);
       };
     },
     claim() {

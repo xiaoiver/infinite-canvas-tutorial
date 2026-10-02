@@ -16,8 +16,8 @@ npm install @infinite-canvas-tutorial/react
 ```
 
 ::: info First release
-The first npm release is being prepared. The playground uses the workspace
-build; registry installation becomes available after publication.
+The React package has not been published to npm. The playground uses the
+workspace build; registry installation becomes available after publication.
 :::
 
 ```tsx
@@ -38,7 +38,16 @@ export function Editor() {
                 ref={canvas}
                 style={{ width: '100%', height: 600 }}
                 initialNodes={[
-                    { id: 'rect', zIndex: 0, type: 'rect', x: 50, y: 50, width: 100, height: 80, fills: [{ type: 'solid', value: '#ff8400' }] },
+                    {
+                        id: 'rect',
+                        zIndex: 0,
+                        type: 'rect',
+                        x: 50,
+                        y: 50,
+                        width: 100,
+                        height: 80,
+                        fills: [{ type: 'solid', value: '#ff8400' }],
+                    },
                 ]}
                 onNodesChange={(nodes) => console.log(nodes)}
                 fallback={<span>Loading canvas…</span>}
@@ -90,7 +99,9 @@ function Toolbar() {
     const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
     return (
         <div>
-            <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>
+            <button disabled={!canUndo} onClick={() => api?.undo()}>
+                Undo
+            </button>
             <span>{Math.round(zoom * 100)}%</span>
         </div>
     );
@@ -107,7 +118,7 @@ export function Editor() {
 ```
 
 `useCanvasAPI()` returns `null` during SSR, before readiness, and after removal
-or failure. Its consumers update only when the API changes. Both hooks require
+or failure. Its consumers update only when the API changes. All canvas hooks require
 a Provider; mounting two canvases in the same Provider reports an error. For
 multiple canvases, give each its own Provider and share the runtime.
 
@@ -134,19 +145,97 @@ availability updates on edits, undo, redo, and `clearHistory()` without polling.
 Uncommitted direct API writes become visible on the next commit/event. API
 availability marks GPU readiness and may precede async `onReady` completion.
 
+## Editing actions
+
+`useCanvasActions()` returns stable commands for the nearest Provider. Action-only
+consumers do not subscribe to scene changes. Retained commands use the current
+canvas after recreation. Use `useCanvasSelector` to render readiness or state.
+
+```tsx
+import {
+    useCanvasActions,
+    useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
+
+function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
+    const actions = useCanvasActions();
+    const ready = useCanvasSelector((state) => state.api !== null);
+    const enlarge = () =>
+        actions.updateNodes((nodes) =>
+            nodes
+                .filter((node) => node.type === 'rect')
+                .map((node) => ({
+                    ...node,
+                    width: (node.width ?? 100) + 20,
+                })),
+        );
+    return (
+        <button
+            disabled={!ready}
+            onClick={() => {
+                void enlarge().catch(onError);
+            }}
+        >
+            Enlarge rectangles
+        </button>
+    );
+}
+```
+
+| Command                                 | Behavior                                                                                                                                                                          |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `updateNodes(nodesOrUpdater, options?)` | Upserts by ID, preserving omitted nodes. Supplied arrays are copied before queueing; an updater reads the latest nodes at execution. Return new nodes without mutating the input. |
+| `setAppState(patchOrUpdater, options?)` | Merges a patch using API semantics. An updater reads the latest state. View settings also refresh selectors when they do not participate in history.                              |
+| `selectNodes(ids, options?)`            | Resolves IDs at execution, ignoring missing/deleted nodes. `preserveSelection: true` extends the selection. Pass `[]` to clear it.                                                |
+| `edit(callback, options?)`              | Runs synchronous API mutations before derived data/rendering, then calls `record()` once.                                                                                              |
+| `undo()`, `redo()`, `clearHistory()`    | Use the current canvas history. Undo/redo queue their work; clearHistory runs immediately.                                                                                        |
+
+The first four commands return `Promise<boolean>`: `true` after a successful
+commit, or `false` if no canvas is available or the owning canvas is removed
+before execution. Failures reject the Promise; handle them in the calling
+component. History commands return `false` when no API is attached. Actions use
+the same GPU-ready API availability as `useCanvasAPI()`.
+
+Each editing command commits independently. To group changes into one undo entry,
+use `edit` in an event handler:
+
+```tsx
+await actions.edit((api) => {
+    const node = api.getNodes().find((node) => node.type === 'rect');
+    if (!node) return;
+    api.updateNodes([{ ...node, width: (node.width ?? 100) + 20 }]);
+    api.selectNodes([api.getNodeById(node.id)!]);
+});
+```
+
+The editing actions delegate to the shared ECS `api.edit()` interface. Edits and
+undo/redo run in invocation order before geometry, transforms, bounds, and
+rendering, so those systems see the changes in the same frame. Calls to
+`record()` made synchronously inside an edit join its single commit. Await network
+or other asynchronous work before calling `edit`; its callback must be synchronous.
+It does not roll back mutations if a callback fails. Set
+`{ capture: 'NEVER' }` to notify selectors without adding an undo entry; the
+default is `'IMMEDIATELY'`.
+
+Pass `{ signal: controller.signal }` to cancel queued work. Cancellation, canvas
+destruction, and Provider ownership changes settle `false` without waiting for
+another frame. Nested edits and `undo`/`redo` are separate queued operations;
+invoke history navigation separately from an edit. A successful Promise indicates
+a committed edit, not a rendered frame.
+
 ## Initialization and API
 
-- `initialNodes` is copied once per canvas creation and inserted into ECS after
-  async `onReady` completes, without an undo entry. Later prop changes do not overwrite user edits;
-  use `api.updateNodes()` for updates.
-- `initialAppState` seeds canvas state; subsequent edits use `api.setAppState()`.
-- The ref exposes live `api` and `element` getters, initially `null`. The element
-  is the actual Web Component, suitable for additional DOM events.
-- `onAPIChange(api)` publishes the API and receives `null` on removal.
-- `theme` updates Spectrum and the canvas. Lit localization is global, so canvases
-  in the same page share the `locale`.
-- Changing `renderer`, `shaderCompilerPath`, or `initializationTimeout` recreates
-  the canvas.
+-   `initialNodes` is copied once per canvas creation and inserted into ECS after
+    async `onReady` completes, without an undo entry. Later prop changes do not overwrite user edits;
+    use `api.updateNodes()` for updates.
+-   `initialAppState` seeds canvas state; subsequent edits use `api.setAppState()`.
+-   The ref exposes live `api` and `element` getters, initially `null`. The element
+    is the actual Web Component, suitable for additional DOM events.
+-   `onAPIChange(api)` publishes the API and receives `null` on removal.
+-   `theme` updates Spectrum and the canvas. Lit localization is global, so canvases
+    in the same page share the `locale`.
+-   Changing `renderer`, `shaderCompilerPath`, or `initializationTimeout` recreates
+    the canvas.
 
 ## Framework starters
 
@@ -172,7 +261,10 @@ the runtime/GPU readiness timeout.
 Create a shared runtime outside component render:
 
 ```tsx
-import { InfiniteCanvas, createCanvasRuntime } from '@infinite-canvas-tutorial/react';
+import {
+    InfiniteCanvas,
+    createCanvasRuntime,
+} from '@infinite-canvas-tutorial/react';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 
 const runtime = createCanvasRuntime({

@@ -1,4 +1,431 @@
 import { expect, test } from '@playwright/test';
+import type { ExportFormat, Pen } from '@infinite-canvas-tutorial/ecs';
+
+test('selected nodes keep valid renderer references through consecutive hierarchy undo and redo', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  const renderingFailed = new Promise<void>((resolve) =>
+    page.once('pageerror', () => resolve()),
+  );
+  await Promise.race([
+    page.evaluate(
+      () =>
+        new Promise<void>((resolve) => {
+          const api = window.apis.left;
+          api.runAtNextTick(() => {
+            api.replaceDocument([
+              {
+                id: 'parent',
+                type: 'rect',
+                zIndex: 0,
+                x: 0,
+                y: 0,
+                width: 50,
+                height: 50,
+              },
+              {
+                id: 'left',
+                parentId: 'parent',
+                type: 'rect',
+                zIndex: 1,
+                x: 0,
+                y: 0,
+                width: 10,
+                height: 10,
+                fills: [{ type: 'solid', value: 'red' }],
+              },
+            ]);
+            api.clearHistory();
+            api.runAtNextTick(() => {
+              api.selectNodes([api.getNodeById('left')!]);
+              api.record('NEVER');
+              api.runAtNextTick(() => {
+                api.replaceDocument(
+                  [
+                    {
+                      id: 'left',
+                      type: 'rect',
+                      zIndex: 1,
+                      x: 0,
+                      y: 0,
+                      width: 10,
+                      height: 10,
+                    },
+                  ],
+                  'local',
+                );
+                api.undo();
+                api.runAtNextTick(() => {
+                  api.redo();
+                  api.runAtNextTick(resolve);
+                });
+              });
+            });
+          });
+        }),
+    ),
+    renderingFailed,
+  ]);
+  expect(errors).toEqual([]);
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('left-selection')).toHaveText('1');
+  expect(
+    await page.evaluate(() => {
+      const node = window.apis.left.getNodeById('left');
+      if (node?.type !== 'rect') throw new Error('Expected a rectangle');
+      return { fills: node.fills, parentId: node.parentId };
+    }),
+  ).toEqual({ fills: undefined, parentId: undefined });
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('UI phases deliver current comment coordinates and deferred SVG export events', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await page.evaluate(() => {
+    const api = window.apis.left;
+    api.element.addEventListener(
+      'ic-comment-added',
+      (event) => {
+        const { canvasX, canvasY, viewportX, viewportY } = (
+          event as CustomEvent<{
+            canvasX: number;
+            canvasY: number;
+            viewportX: number;
+            viewportY: number;
+          }>
+        ).detail;
+        const expected = api.viewport2Canvas({ x: viewportX, y: viewportY });
+        api.element.dataset.commentProbe = JSON.stringify({
+          actual: [canvasX, canvasY],
+          expected: [expected.x, expected.y],
+        });
+      },
+      { once: true },
+    );
+    return window.actions.left.setAppState(
+      {
+        penbarSelected: 'comment' as Pen,
+        cameraZoom: 2,
+      },
+      { capture: 'NEVER' },
+    );
+  });
+  await expect(page.getByTestId('left-zoom')).toHaveText('2');
+  const canvas = page.locator('ic-spectrum-canvas').first();
+  await canvas.locator('canvas').click({ position: { x: 120, y: 100 } });
+  await expect(canvas).toHaveAttribute('data-comment-probe', /actual/);
+  const coordinates = JSON.parse(
+    (await canvas.getAttribute('data-comment-probe'))!,
+  );
+  expect(coordinates.actual).toEqual(coordinates.expected);
+  const svg = await page.evaluate(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const api = window.apis.left;
+        api.element.addEventListener(
+          'ic-screenshot-downloaded',
+          (event) => {
+            resolve((event as CustomEvent<{ svg: string }>).detail.svg);
+          },
+          { once: true },
+        );
+        void api
+          .edit(
+            (editor) =>
+              editor.export({
+                format: 'svg' as ExportFormat,
+                download: false,
+                nodes: [editor.getNodeById('left')!],
+              }),
+            { capture: 'NEVER' },
+          )
+          .catch(reject);
+      }),
+  );
+  expect(svg).toContain('<svg');
+  expect(svg).toContain('<rect');
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('early edits rebuild hierarchy and renderer resources through replacement, deletion, and undo', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  expect(
+    await page.evaluate(() =>
+      window.actions.left.edit(
+        (api) =>
+          api.replaceDocument([
+            { id: 'parent', type: 'g', zIndex: 0, x: 30, y: 0 },
+            {
+              id: 'left',
+              type: 'rect',
+              parentId: 'parent',
+              zIndex: 0,
+              x: 5,
+              y: 50,
+              width: 25,
+              height: 20,
+              fills: [{ type: 'solid', value: '#f00' }],
+            },
+          ]),
+        { capture: 'NEVER' },
+      ),
+    ),
+  ).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => window.sceneGeometry('left')))
+    .toEqual({
+      x: 35,
+      minX: 35,
+      maxX: 60,
+    });
+  expect(await page.evaluate(() => window.boundFill('left'))).toBe('#f00');
+  for (let i = 0; i < 2; i++) {
+    expect(
+      await page.evaluate(() =>
+        window.actions.left.edit((api) => api.deleteNodesById(['parent'])),
+      ),
+    ).toBe(true);
+    await expect(page.getByTestId('left-count')).toHaveText('0');
+    await page.getByTestId('left-undo').click();
+    await expect(page.getByTestId('left-count')).toHaveText('2');
+    await expect
+      .poll(() => page.evaluate(() => window.sceneGeometry('left')))
+      .toEqual({
+        x: 35,
+        minX: 35,
+        maxX: 60,
+      });
+    expect(await page.evaluate(() => window.boundFill('left'))).toBe('#f00');
+  }
+  expect(await page.evaluate(() => window.sceneGeometry('right'))).toEqual({
+    x: 50,
+    minX: 50,
+    maxX: 150,
+  });
+  // Allow the real GPU renderer to consume the last restored entities.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('core edits commit once, resolve bindings, isolate failures, and support cancellation', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  const before = await page.evaluate(() => window.snapshots.left.length);
+  const result = await page.evaluate(async () => {
+    const api = window.apis.left;
+    const applied = await api.edit((editor) => {
+      const node = editor.getNodes()[0];
+      if (node.type !== 'rect') throw new Error('Expected a rectangle');
+      editor.setAppState({
+        variables: { accent: { type: 'color', value: '#f00' } },
+      });
+      editor.updateNodes([
+        {
+          ...node,
+          width: 160,
+          fills: [{ type: 'solid', value: '$accent' }],
+        },
+      ]);
+      editor.record();
+      editor.setAppState({
+        variables: { accent: { type: 'color', value: '#0f0' } },
+      });
+      editor.selectNodes([editor.getNodes()[0]]);
+      editor.record('NEVER');
+    });
+    return {
+      applied,
+      width: api.getNodes()[0].width,
+      selection: api.getAppState().layersSelected,
+      variables: api.getAppState().variables,
+      fill: window.boundFill('left'),
+    };
+  });
+  expect(result).toEqual({
+    applied: true,
+    width: 160,
+    selection: ['left'],
+    variables: { accent: { type: 'color', value: '#0f0' } },
+    fill: '#0f0',
+  });
+  expect(await page.evaluate(() => window.snapshots.left.length)).toBe(
+    before + 1,
+  );
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('left-selection')).toHaveText('0');
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    100,
+  );
+  const checks = await page.evaluate(async () => {
+    const api = window.apis.left;
+    const controller = new AbortController();
+    const cancelled = api.edit(
+      (editor) => editor.updateNodes([{ ...editor.getNodes()[0], width: 999 }]),
+      {
+        signal: controller.signal,
+      },
+    );
+    controller.abort();
+    const failed = api
+      .edit(() => {
+        throw new Error('invalid edit');
+      })
+      .catch((error: Error) => error.message);
+    const asynchronous = api
+      .edit(async () => {})
+      .catch((error: Error) => error.message);
+    const applied = api.edit((editor) =>
+      editor.updateNodes([{ ...editor.getNodes()[0], width: 120 }]),
+    );
+    return {
+      outcomes: await Promise.all([cancelled, failed, asynchronous, applied]),
+      width: api.getNodes()[0].width,
+      otherWidth: window.apis.right.getNodes()[0].width,
+    };
+  });
+  expect(checks).toEqual({
+    outcomes: [
+      false,
+      'invalid edit',
+      'Canvas edits must be synchronous. Await work before edit().',
+      true,
+    ],
+    width: 120,
+    otherWidth: 100,
+  });
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    100,
+  );
+  expect(errors).toEqual([]);
+});
+
+test('editing hooks compose live updates, group undo, and refresh view settings', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  const committed = await page.evaluate(async () => {
+    const actions = window.actions.left;
+    const enlarge = () =>
+      actions.updateNodes((nodes) =>
+        nodes.map((node) => ({ ...node, width: node.width! + 20 })),
+      );
+    return Promise.all([enlarge(), enlarge()]);
+  });
+  expect(committed).toEqual([true, true]);
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    140,
+  );
+  expect(await page.evaluate(() => window.apis.right.getNodes()[0].width)).toBe(
+    100,
+  );
+  await page.getByTestId('left-undo').click();
+  await page.waitForFunction(
+    () => window.apis.left.getNodes()[0].width === 120,
+  );
+  await page.getByTestId('left-undo').click();
+  await page.waitForFunction(
+    () => window.apis.left.getNodes()[0].width === 100,
+  );
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await page.evaluate(() => window.actions.left.clearHistory());
+  const before = await page.evaluate(() => window.snapshots.left.length);
+  await page.getByTestId('left-batch-edit').click();
+  await expect(page.getByTestId('left-selection')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeEnabled();
+  expect(await page.evaluate(() => window.snapshots.left.length)).toBe(
+    before + 1,
+  );
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-selection')).toHaveText('0');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    100,
+  );
+  await page.evaluate(() =>
+    window.actions.left.setAppState(
+      { penbarVisible: false },
+      { capture: 'NEVER' },
+    ),
+  );
+  await expect(page.getByTestId('left-penbar')).toHaveText('false');
+  await expect(page.getByTestId('right-penbar')).toHaveText('true');
+  await expect(
+    page
+      .locator('ic-spectrum-canvas')
+      .first()
+      .locator('ic-spectrum-penbar sp-action-group'),
+  ).toHaveCount(0);
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
 
 test('initialNodes stays outside history after async preparation creates a baseline', async ({
   page,

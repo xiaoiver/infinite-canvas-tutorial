@@ -16,7 +16,7 @@ npm install @infinite-canvas-tutorial/react
 ```
 
 ::: info 首次发布
-正在准备首次 npm 发布。交互示例使用仓库构建产物；发布后即可从 npm 安装。
+React 封装正在仓库中完善，尚未发布到 npm。交互示例使用仓库构建产物。
 :::
 
 ```tsx
@@ -38,7 +38,16 @@ export function Editor() {
                 ref={canvas}
                 style={{ width: '100%', height: 600 }}
                 initialNodes={[
-                    { id: 'rect', zIndex: 0, type: 'rect', x: 50, y: 50, width: 100, height: 80, fills: [{ type: 'solid', value: '#ff8400' }] },
+                    {
+                        id: 'rect',
+                        zIndex: 0,
+                        type: 'rect',
+                        x: 50,
+                        y: 50,
+                        width: 100,
+                        height: 80,
+                        fills: [{ type: 'solid', value: '#ff8400' }],
+                    },
                 ]}
                 onNodesChange={(nodes) => console.log(nodes)}
                 fallback={<span>正在加载画布…</span>}
@@ -86,7 +95,9 @@ function Toolbar() {
     const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
     return (
         <div>
-            <button disabled={!canUndo} onClick={() => api?.undo()}>撤销</button>
+            <button disabled={!canUndo} onClick={() => api?.undo()}>
+                撤销
+            </button>
             <span>{Math.round(zoom * 100)}%</span>
         </div>
     );
@@ -126,17 +137,92 @@ const history = useCanvasSelector(
 直接调用 API 而未提交的修改，在下一次提交或事件时才反映到 hooks。
 API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
 
+## 编辑操作 hooks
+
+`useCanvasActions()` 返回最近 Provider 的稳定操作对象。仅使用这些操作的组件
+不会订阅场景变化；画布重建后，保留的操作会使用当前画布。
+渲染就绪状态或场景数据时，继续使用 `useCanvasSelector`。
+
+```tsx
+import {
+    useCanvasActions,
+    useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
+
+function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
+    const actions = useCanvasActions();
+    const ready = useCanvasSelector((state) => state.api !== null);
+    const enlarge = () =>
+        actions.updateNodes((nodes) =>
+            nodes
+                .filter((node) => node.type === 'rect')
+                .map((node) => ({
+                    ...node,
+                    width: (node.width ?? 100) + 20,
+                })),
+        );
+    return (
+        <button
+            disabled={!ready}
+            onClick={() => {
+                void enlarge().catch(onError);
+            }}
+        >
+            放大矩形
+        </button>
+    );
+}
+```
+
+| 操作                                    | 行为                                                                                                             |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `updateNodes(nodesOrUpdater, options?)` | 按 ID 新增或更新，保留未提供的节点。数组在排队前复制；函数式更新在执行时读取最新节点，请返回新数据，不修改输入。 |
+| `setAppState(patchOrUpdater, options?)` | 按 API 语义合并状态；函数式更新读取执行时的最新状态。不参与历史记录的界面设置也会刷新 selectors。                |
+| `selectNodes(ids, options?)`            | 执行时解析 ID，忽略不存在或已删除的节点。`preserveSelection: true` 保留原有选区，传入 `[]` 清空选区。            |
+| `edit(callback, options?)`              | 在派生数据计算和渲染之前执行同步修改，并在回调结束后调用一次 `record()`。                                                   |
+| `undo()`、`redo()`、`clearHistory()`    | 使用当前画布的历史记录；撤销/重做排队执行，清空历史立即执行。                                                    |
+
+前四项返回 `Promise<boolean>`：提交成功后为 `true`，画布不可用或在执行前卸载时
+为 `false`。执行失败会拒绝 Promise，请在调用组件中处理。
+历史操作在 API 不可用时返回 `false`。操作的 API 可用时机与 `useCanvasAPI()`
+一致，表示 GPU 就绪。
+
+每次编辑调用分别提交。需要把多步操作合并成一条撤销记录时，在事件处理函数中
+使用 `edit`：
+
+```tsx
+await actions.edit((api) => {
+    const node = api.getNodes().find((node) => node.type === 'rect');
+    if (!node) return;
+    api.updateNodes([{ ...node, width: (node.width ?? 100) + 20 }]);
+    api.selectNodes([api.getNodeById(node.id)!]);
+});
+```
+
+这些编辑操作委托给共用的 ECS `api.edit()` 接口。编辑与撤销、重做按调用顺序
+在几何、变换、边界计算及渲染之前执行，这些系统会在同一帧看到修改。
+在回调中同步调用的 `record()`
+会合并到本次提交。网络请求等异步工作应在调用 `edit` 前完成，回调必须同步；
+回调失败时不会自动回滚已执行的修改。
+传入 `{ capture: 'NEVER' }` 可通知 selectors 而不增加撤销记录，默认值为
+`'IMMEDIATELY'`。
+
+传入 `{ signal: controller.signal }` 可取消待执行的编辑。取消、画布销毁或
+Provider 更换所属画布时，Promise 会立即结算为 `false`，无需等待下一帧。
+嵌套编辑及 `undo` / `redo` 仍是独立排队的操作；撤销、重做应在编辑回调之外调用。
+Promise 成功表示编辑已提交，不等待画面渲染，也不等待图片、字体等异步资源。
+
 ## 初始化与 API
 
-- `initialNodes` 在每次创建画布时复制一次，在异步 `onReady` 完成后写入 ECS。
-  初始化不增加撤销记录，后续改变该属性不会覆盖用户编辑；更新图形请使用 `api.updateNodes()`。
-- `initialAppState` 是初始化状态；后续通过 `api.setAppState()` 修改。
-- `ref.current.api` 和 `ref.current.element` 是实时 getter，初始化前为 `null`。
-  后者指向真正的 Web Component，可监听额外 DOM 事件。
-- `onAPIChange(api)` 发布可用 API，卸载时传入 `null`。
-- `theme` 同步 Spectrum UI 与画布主题。`locale` 使用 Lit 的全局本地化状态，
-  同一页面上的画布共享语言。
-- 改变 `renderer`、`shaderCompilerPath` 或 `initializationTimeout` 会重建画布。
+-   `initialNodes` 在每次创建画布时复制一次，在异步 `onReady` 完成后写入 ECS。
+    初始化不增加撤销记录，后续改变该属性不会覆盖用户编辑；更新图形请使用 `api.updateNodes()`。
+-   `initialAppState` 是初始化状态；后续通过 `api.setAppState()` 修改。
+-   `ref.current.api` 和 `ref.current.element` 是实时 getter，初始化前为 `null`。
+    后者指向真正的 Web Component，可监听额外 DOM 事件。
+-   `onAPIChange(api)` 发布可用 API，卸载时传入 `null`。
+-   `theme` 同步 Spectrum UI 与画布主题。`locale` 使用 Lit 的全局本地化状态，
+    同一页面上的画布共享语言。
+-   改变 `renderer`、`shaderCompilerPath` 或 `initializationTimeout` 会重建画布。
 
 ## 框架接入示例
 
@@ -160,7 +246,10 @@ Next.js 示例在 Server Component 页面中使用 Client Component 编辑器，
 在组件外创建一个共享运行时，然后传给所有同时挂载的画布：
 
 ```tsx
-import { InfiniteCanvas, createCanvasRuntime } from '@infinite-canvas-tutorial/react';
+import {
+    InfiniteCanvas,
+    createCanvasRuntime,
+} from '@infinite-canvas-tutorial/react';
 import { LassoPlugin } from '@infinite-canvas-tutorial/lasso';
 
 const runtime = createCanvasRuntime({

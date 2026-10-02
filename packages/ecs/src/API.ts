@@ -147,6 +147,7 @@ import {
 } from './systems';
 import { DOMAdapter } from './environment';
 import { TaskQueue } from './TaskQueue';
+import { EditQueue } from './EditQueue';
 import { CapabilityRegistry } from './CapabilityRegistry';
 import { ResourceScope } from './resources/ResourceScope';
 import { documentValueEqual, validateDocument } from './document';
@@ -170,6 +171,13 @@ export interface CanvasChanges {
 export interface CanvasHistoryState {
   canUndo: boolean;
   canRedo: boolean;
+}
+
+export interface CanvasEditOptions {
+  /** Default: IMMEDIATELY. NEVER commits without creating an undo entry. */
+  capture?: 'IMMEDIATELY' | 'NEVER';
+  /** Cancel queued work; cancellation does not roll back applied mutations. */
+  signal?: AbortSignal;
 }
 
 export interface StateManagement {
@@ -320,6 +328,10 @@ export class API {
   #restoringHistory = false;
   #store = new Store(this);
   #tasks = new TaskQueue();
+  #editTasks = new TaskQueue();
+  #edits = new EditQueue((task) => this.#editTasks.add(task));
+  #editing = false;
+  #flushingEdits = false;
   #afterDeleteTasks = new TaskQueue();
   #destroyed = false;
   #scope = new ResourceScope();
@@ -396,7 +408,9 @@ export class API {
       return;
     }
     this.#historyState = { canUndo, canRedo };
-    this.#historySubscribers.forEach((listener) => listener(this.#historyState));
+    this.#historySubscribers.forEach((listener) =>
+      listener(this.#historyState),
+    );
   }
 
   /** Register cleanup owned by this canvas. Returns an idempotent disposer. */
@@ -573,7 +587,7 @@ export class API {
         Object.keys(nextAppState.variables ?? {}).length > 0);
 
     if (shouldRefreshDesignVariableBindings) {
-      this.runAtNextTick(() => {
+      const refresh = () => {
         for (const node of this.getNodes()) {
           if (this.#idEntityMap.has(node.id)) {
             const varPatch = buildDesignVariableRefreshPatch(node);
@@ -586,7 +600,10 @@ export class API {
         if (options?.recordDesignVariableUndo !== false) {
           this.record();
         }
-      });
+      };
+      // edit() already owns a safe ECS write phase and its history commit.
+      if (this.#flushingEdits || this.#editing) refresh();
+      else this.runAtNextTick(refresh);
     }
   }
 
@@ -2066,8 +2083,8 @@ export class API {
         if (!entity.has(Children)) {
           cameraEntityCommands.appendChild(this.commands.entity(entity));
         }
-        // PropagateTransforms already ran this frame; new nodes need a world matrix
-        // before the render pass (SmoothPolyline, transformer anchors, etc.).
+        // Late callers may run after PropagateTransforms; initialize new nodes'
+        // world matrices for SmoothPolyline, transformer anchors, etc.
         updateGlobalTransform(entity);
       });
 
@@ -2141,8 +2158,8 @@ export class API {
         if (!entity.has(Children)) {
           cameraEntityCommands.appendChild(this.commands.entity(entity));
         }
-        // PropagateTransforms already ran this frame; new nodes need a world matrix
-        // before the render pass (SmoothPolyline, transformer anchors, etc.).
+        // Late callers may run after PropagateTransforms; initialize new nodes'
+        // world matrices for SmoothPolyline, transformer anchors, etc.
         updateGlobalTransform(entity);
       });
 
@@ -2166,7 +2183,7 @@ export class API {
 
   /**
    * Apply a complete document snapshot. Missing IDs are deleted, unlike updateNodes.
-   * Call inside runAtNextTick when applying an asynchronous remote update.
+   * Await remote preparation, then call inside edit() with capture: 'NEVER'.
    */
   replaceDocument(
     nodes: readonly SerializedNode[],
@@ -2990,6 +3007,8 @@ export class API {
   record(
     captureUpdateAction: CaptureUpdateActionType = CaptureUpdateAction.IMMEDIATELY,
   ) {
+    // Operations that record internally participate in the enclosing edit.
+    if (this.#editing) return;
     const previous = this.#store.snapshot;
     const updateSnapshot =
       captureUpdateAction === CaptureUpdateAction.NEVER || previous.isEmpty();
@@ -3027,7 +3046,7 @@ export class API {
   }
 
   private restoreHistory(action: 'undo' | 'redo') {
-    this.runAtNextTick(() => {
+    this.#editTasks.add(() => {
       this.#beforeHistoryChange.forEach((callback) => callback());
       let changed = false;
       this.#restoringHistory = true;
@@ -3429,6 +3448,8 @@ export class API {
   destroy() {
     if (this.#destroyed) return;
     this.#destroyed = true;
+    this.#edits.dispose();
+    this.#editTasks.dispose();
     this.#tasks.dispose();
     this.#afterDeleteTasks.dispose();
     this.cancelLandmarkAnimation();
@@ -3509,8 +3530,51 @@ export class API {
     await copyTextToClipboard(text, clipboardEvent);
   }
 
+  /**
+   * Queue synchronous mutations and commit once before derived data/rendering.
+   * Resolves true after the commit, false on cancellation/destruction; rejects
+   * on failure. Neither completion nor rejection guarantees a rendered frame
+   * or rollback. Nested edits are separate operations on the following tick.
+   */
+  edit(update: (api: this) => void, options: CanvasEditOptions = {}) {
+    const capture = options.capture ?? CaptureUpdateAction.IMMEDIATELY;
+    return this.#edits.add(
+      () => {
+        // Reject native async callbacks before they can start work that resumes
+        // outside this write phase. EditQueue also rejects returned thenables.
+        if (
+          Object.prototype.toString.call(update) === '[object AsyncFunction]'
+        ) {
+          throw new TypeError(
+            'Canvas edits must be synchronous. Await work before edit().',
+          );
+        }
+        this.#editing = true;
+        try {
+          return update(this);
+        } finally {
+          this.#editing = false;
+        }
+      },
+      () => this.record(capture),
+      options.signal,
+    );
+  }
+
   runAtNextTick(fn: () => any) {
-    this.#tasks.add(fn);
+    // Edits used to run in the late queue. Keep callbacks they enqueue on the
+    // following frame even though the edit itself now runs before rendering.
+    this.#tasks.add(fn, this.#flushingEdits);
+  }
+
+  /** @internal Called in the owning world's Edit stage, before PreUpdate. */
+  flushPendingEdits() {
+    this.#flushingEdits = true;
+    try {
+      this.#editTasks.flush();
+    } finally {
+      this.#flushingEdits = false;
+    }
   }
 
   /** @internal Called by the owning world's Deleter system. */
