@@ -52,6 +52,11 @@ class TestCanvas extends HTMLElement {
     updateNodes: jest.fn(),
     record: jest.fn(),
     runAtNextTick: jest.fn((task) => task()),
+    edit: jest.fn(async (update) => {
+      update(this.api);
+      this.api.record();
+      return true;
+    }),
   };
   subscribers = new Set<(snapshot: any, changes: any) => void>();
   constructor() {

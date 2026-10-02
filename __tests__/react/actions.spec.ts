@@ -2,6 +2,7 @@ import type { AppState, SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { ResourceScope } from '../../packages/ecs/src/resources/ResourceScope';
 import { TaskQueue } from '../../packages/ecs/src/TaskQueue';
+import { EditQueue } from '../../packages/ecs/src/EditQueue';
 import { createCanvasActions } from '../../packages/react/src/actions';
 import { createCanvasStore } from '../../packages/react/src/store';
 
@@ -15,6 +16,7 @@ const rectangle = (width = 100): SerializedNode => ({
 
 function mount(store = createCanvasStore()) {
   const queue = new TaskQueue();
+  const edits = new EditQueue((task) => queue.add(task));
   const scope = new ResourceScope();
   let nodes: SerializedNode[] = [rectangle()];
   let state = {
@@ -32,6 +34,13 @@ function mount(store = createCanvasStore()) {
     subscribeHistory: () => () => {},
     onDestroy: (cleanup: () => void) => scope.add(cleanup),
     runAtNextTick: (task: () => void) => queue.add(task),
+    edit: jest.fn((update, options = {}) =>
+      edits.add(
+        () => update(api),
+        () => api.record(options.capture ?? 'IMMEDIATELY'),
+        options.signal,
+      ),
+    ),
     updateNodes: jest.fn((updates: SerializedNode[]) => {
       const next = new Map(nodes.map((node) => [node.id, node]));
       updates.forEach((node) => next.set(node.id, node));
@@ -56,6 +65,7 @@ function mount(store = createCanvasStore()) {
     redo: jest.fn(),
     clearHistory: jest.fn(),
     destroy() {
+      edits.dispose();
       queue.dispose();
       scope.dispose();
     },
@@ -125,11 +135,7 @@ it('refreshes non-history view settings and composes application state patches',
     penbarVisible: false,
     filter: 'ab',
   });
-  expect(api.setAppState).toHaveBeenNthCalledWith(
-    1,
-    { penbarVisible: false },
-    { recordDesignVariableUndo: false },
-  );
+  expect(api.setAppState).toHaveBeenNthCalledWith(1, { penbarVisible: false });
   expect(api.record.mock.calls).toEqual([
     ['NEVER'],
     ['IMMEDIATELY'],
@@ -147,6 +153,7 @@ it('commits a compound synchronous edit once and exposes its complete state', as
   flush();
   expect(await edit).toBe(true);
   expect(api.record).toHaveBeenCalledTimes(1);
+  expect(api.edit).toHaveBeenCalledTimes(1);
   expect(store.getSnapshot().nodes[0].width).toBe(150);
   expect(store.getSnapshot().appState!.layersSelected).toEqual(['rect']);
   api.destroy();
@@ -230,5 +237,46 @@ it('rejects failed or asynchronous mutators while allowing subsequent queued edi
   expect(await next).toBe(true);
   expect(api.record).toHaveBeenCalledTimes(1);
   expect(api.getNodes()[0].width).toBe(140);
+  api.destroy();
+});
+
+it('cancels ownership changes without waiting for the old canvas to tick', async () => {
+  const first = mount();
+  const mutate = jest.fn();
+  const pending = first.actions.edit(mutate);
+  first.lease.release();
+  expect(await pending).toBe(false);
+  first.flush();
+  expect(mutate).not.toHaveBeenCalled();
+  first.api.destroy();
+});
+
+it('forwards explicit cancellation and releases its listener after completion', async () => {
+  const { api, actions, flush } = mount();
+  const controller = new AbortController();
+  const remove = jest.spyOn(controller.signal, 'removeEventListener');
+  const mutate = jest.fn();
+  const pending = actions.edit(mutate, { signal: controller.signal });
+  controller.abort();
+  expect(await pending).toBe(false);
+  flush();
+  expect(mutate).not.toHaveBeenCalled();
+  expect(remove).toHaveBeenCalledWith('abort', expect.any(Function));
+  expect(await actions.edit(mutate, { signal: controller.signal })).toBe(false);
+  api.destroy();
+});
+
+it('observes canvas replacement without scanning pending edits on document updates', async () => {
+  const { api, store, lease, actions, flush } = mount();
+  const ownership = jest.fn();
+  const unsubscribe = store.subscribeAPI(ownership);
+  const first = actions.updateNodes([rectangle(120)]);
+  const second = actions.setAppState({ filter: 'blur(2px)' });
+  flush();
+  expect(await Promise.all([first, second])).toEqual([true, true]);
+  expect(ownership).not.toHaveBeenCalled();
+  lease.release();
+  expect(ownership).toHaveBeenCalledTimes(1);
+  unsubscribe();
   api.destroy();
 });

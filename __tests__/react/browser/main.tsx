@@ -8,7 +8,11 @@ import {
   useCanvasSelector,
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
-import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import {
+  FillLayers,
+  Pen,
+  type SerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 
 declare global {
@@ -19,6 +23,7 @@ declare global {
     nodeChanges: Record<string, SerializedNode[][]>;
     snapshots: Record<string, unknown[]>;
     setShown: (ids: string[]) => void;
+    boundFill: (id: string) => string | undefined;
   }
 }
 window.apis = {};
@@ -26,6 +31,11 @@ window.actions = {};
 window.canvasErrors = [];
 window.nodeChanges = {};
 window.snapshots = {};
+window.boundFill = (id) => {
+  const api = window.apis[id];
+  const layer = api.getEntity(api.getNodes()[0]).read(FillLayers).layers[0];
+  return layer?.type === 'solid' ? layer.value : undefined;
+};
 
 function Toolbar({ id }: { id: string }) {
   const api = useCanvasAPI();

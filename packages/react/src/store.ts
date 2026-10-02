@@ -26,8 +26,13 @@ export function createCanvasStore() {
   let owner: symbol | undefined;
   let disconnect: (() => void) | undefined;
   const listeners = new Set<() => void>();
+  const apiListeners = new Set<() => void>();
   const publish = (next: CanvasState) => {
+    const previousAPI = state.api;
     state = next;
+    if (state.api !== previousAPI) {
+      [...apiListeners].forEach((listener) => listener());
+    }
     [...listeners].forEach((listener) => listener());
   };
 
@@ -48,6 +53,13 @@ export function createCanvasStore() {
       listeners.add(listener);
       return () => {
         listeners.delete(listener);
+      };
+    },
+    /** Ownership observers do not run for document or view-state updates. */
+    subscribeAPI(listener: () => void) {
+      apiListeners.add(listener);
+      return () => {
+        apiListeners.delete(listener);
       };
     },
     claim() {

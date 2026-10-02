@@ -143,6 +143,38 @@ updates ECS entities without publishing node state.
 With the Web Components API, a batch emits `ic-nodes-updated`; use
 `updateNode()` for individual `ic-node-updated` notifications.
 
+### edit
+
+`api.edit(callback, { capture?, signal? })` queues synchronous API mutations at
+the owning canvas's ECS write boundary and commits history once. Calls to
+`record()` made by the callback or its synchronous helpers join that commit.
+The default capture mode is `IMMEDIATELY`; use `NEVER` for non-undoable changes,
+including remote document replacements.
+
+```ts
+const applied = await api.edit((editor) => {
+    editor.updateNodes(nodes);
+    editor.selectNodes([editor.getNodeById(nodes[0].id)]);
+});
+```
+
+The Promise resolves `true` after the commit, or `false` if the canvas is
+destroyed or the supplied `AbortSignal` cancels the work. Pending cancellation
+settles immediately, without waiting for a frame. Errors reject the Promise
+without aborting subsequent edits. Callback failures and cancellation do not
+roll back mutations that have already run. Await asynchronous preparation before
+calling `edit`; the callback must be synchronous.
+
+Separate edits retain separate undo steps, even within one frame. Nested `edit`
+calls and history navigation (`undo`/`redo`) remain queued operations; call
+history navigation separately from an edit. Design-variable bindings changed
+inside an edit refresh before its commit.
+
+This API is inherited by the Web Components API and used by React's editing
+actions. Completion means the edit was committed, not that a frame was rendered.
+The current write boundary still runs after rendering; moving editing before
+transform/bounds computation and rendering is a separate scheduling change.
+
 ### runAtNextTick
 
 Queues a synchronous callback for the owning canvas's ECS frame boundary.
@@ -150,6 +182,10 @@ Callbacks queued by another callback run on the following frame. Destroying
 the canvas cancels its remaining callbacks. Use this method instead of the
 previously exported global `pendingAPICallings` array, which has been removed
 to isolate canvas lifetimes.
+
+Prefer `edit` for application edits that need a history commit and completion or
+cancellation feedback. `runAtNextTick` remains available for low-level callbacks;
+its scheduling and error propagation are unchanged.
 
 ### App lifecycle
 

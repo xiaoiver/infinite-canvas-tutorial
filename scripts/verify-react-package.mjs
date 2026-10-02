@@ -152,11 +152,15 @@ import { InfiniteCanvas as SpectrumCanvas } from '@infinite-canvas-tutorial/reac
 function Toolbar() {
   const api = useCanvasAPI();
   const actions: CanvasActions = useCanvasActions();
-  const options: CanvasEditOptions = { capture: 'NEVER' };
+  const options: CanvasEditOptions = { capture: 'NEVER', signal: new AbortController().signal };
   const update: Promise<boolean> = actions.updateNodes(nodes => nodes.map(node => ({ ...node, width: 100 })), options);
   const patch: Promise<boolean> = actions.setAppState(state => ({ filter: state.filter }), options);
   const selection: Promise<boolean> = actions.selectNodes(['rect'], { preserveSelection: true });
   const edit: Promise<boolean> = actions.edit(api => { api.setAppState({ filter: '' }); });
+  const coreEdit: Promise<boolean> | undefined = api?.edit(editor => {
+    editor.setAppState({ filter: '' });
+    editor.getLocale();
+  }, options);
   const canUndo: boolean = useCanvasSelector((state: CanvasState) => state.canUndo);
   return <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>;
 }

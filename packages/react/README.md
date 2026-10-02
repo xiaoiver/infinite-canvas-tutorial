@@ -78,7 +78,9 @@ function Toolbar() {
     const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
     return (
         <div>
-            <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>
+            <button disabled={!canUndo} onClick={() => api?.undo()}>
+                Undo
+            </button>
             <span>{Math.round(zoom * 100)}%</span>
         </div>
     );
@@ -129,32 +131,43 @@ consumers do not subscribe to scene changes. Retained commands use the current
 canvas after recreation. Use `useCanvasSelector` to render readiness or state.
 
 ```tsx
-import { useCanvasActions, useCanvasSelector } from '@infinite-canvas-tutorial/react';
+import {
+    useCanvasActions,
+    useCanvasSelector,
+} from '@infinite-canvas-tutorial/react';
 
 function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
     const actions = useCanvasActions();
     const ready = useCanvasSelector((state) => state.api !== null);
-    const enlarge = () => actions.updateNodes((nodes) =>
-        nodes.filter((node) => node.type === 'rect').map((node) => ({
-            ...node,
-            width: (node.width ?? 100) + 20,
-        })),
-    );
+    const enlarge = () =>
+        actions.updateNodes((nodes) =>
+            nodes
+                .filter((node) => node.type === 'rect')
+                .map((node) => ({
+                    ...node,
+                    width: (node.width ?? 100) + 20,
+                })),
+        );
     return (
-        <button disabled={!ready} onClick={() => { void enlarge().catch(onError); }}>
+        <button
+            disabled={!ready}
+            onClick={() => {
+                void enlarge().catch(onError);
+            }}
+        >
             Enlarge rectangles
         </button>
     );
 }
 ```
 
-| Command | Behavior |
-| --- | --- |
+| Command                                 | Behavior                                                                                                                                                                          |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `updateNodes(nodesOrUpdater, options?)` | Upserts by ID, preserving omitted nodes. Supplied arrays are copied before queueing; an updater reads the latest nodes at execution. Return new nodes without mutating the input. |
-| `setAppState(patchOrUpdater, options?)` | Merges a patch using API semantics. An updater reads the latest state. View settings also refresh selectors when they do not participate in history. |
-| `selectNodes(ids, options?)` | Resolves IDs at execution, ignoring missing/deleted nodes. `preserveSelection: true` extends the selection. Pass `[]` to clear it. |
-| `edit(callback, options?)` | Runs synchronous API mutations at an ECS frame boundary, then calls `record()` once. |
-| `undo()`, `redo()`, `clearHistory()` | Use the current canvas history. Undo/redo queue their work; clearHistory runs immediately. |
+| `setAppState(patchOrUpdater, options?)` | Merges a patch using API semantics. An updater reads the latest state. View settings also refresh selectors when they do not participate in history.                              |
+| `selectNodes(ids, options?)`            | Resolves IDs at execution, ignoring missing/deleted nodes. `preserveSelection: true` extends the selection. Pass `[]` to clear it.                                                |
+| `edit(callback, options?)`              | Runs synchronous API mutations at an ECS frame boundary, then calls `record()` once.                                                                                              |
+| `undo()`, `redo()`, `clearHistory()`    | Use the current canvas history. Undo/redo queue their work; clearHistory runs immediately.                                                                                        |
 
 The first four commands return `Promise<boolean>`: `true` after a successful
 commit, or `false` if no canvas is available or the owning canvas is removed
@@ -174,34 +187,41 @@ await actions.edit((api) => {
 });
 ```
 
-Await network or other asynchronous work before calling `edit`; its callback
-must be synchronous and should use API mutations that do not commit history
-themselves. It does not roll back mutations if a callback fails. Set
+The editing actions delegate to the shared ECS `api.edit()` interface. Calls to
+`record()` made synchronously inside an edit join its single commit. Await network
+or other asynchronous work before calling `edit`; its callback must be synchronous.
+It does not roll back mutations if a callback fails. Set
 `{ capture: 'NEVER' }` to notify selectors without adding an undo entry; the
 default is `'IMMEDIATELY'`.
 
+Pass `{ signal: controller.signal }` to cancel queued work. Cancellation, canvas
+destruction, and Provider ownership changes settle `false` without waiting for
+another frame. Nested edits and `undo`/`redo` are separate queued operations;
+invoke history navigation separately from an edit. A successful Promise indicates
+a committed edit, not a rendered frame.
+
 ## Props and API
 
-| Prop                           | Behavior                                                                                                                               |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Prop                           | Behavior                                                                                                                                              |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `initialNodes`                 | Copied once per canvas creation and inserted into ECS after `onReady` completes, without an undo entry. Later prop changes do not replace user edits. |
-| `initialAppState`              | Initial canvas state; later edits use `api.setAppState()`.                                                                             |
-| `renderer`                     | `webgl` (default) or `webgpu`. Changing it recreates the canvas.                                                                       |
-| `shaderCompilerPath`           | Override the WebGPU shader compiler URL. Changing it recreates the canvas.                                                             |
-| `theme`                        | `light` or `dark`; updates both the Spectrum theme and canvas state.                                                                   |
-| `locale`                       | Lit's shared locale. Canvases in the same page share localization.                                                                     |
-| `runtime`                      | Shared runtime created with `createCanvasRuntime()`. Omit to use the default.                                                          |
-| `initializationTimeout`        | Milliseconds to wait for the runtime and GPU-ready event. Defaults to `30000`; `0` disables it. Changing it recreates the canvas.      |
-| `onReady(api, { signal })`     | Runs after GPU readiness. May return a Promise for preparation before initial nodes are inserted. Check the signal after each await.   |
-| `onAPIChange(api)`             | Publishes the API and receives `null` on removal or initialization failure after readiness.                                            |
-| `onChange(snapshot)`           | Committed snapshot containing `nodes` and `appState`.                                                                                  |
-| `onNodesChange(nodes)`         | Committed node changes.                                                                                                                |
-| `onAppStateChange(state)`      | Committed application state changes.                                                                                                   |
-| `onSelectedNodesChange(nodes)` | Selection changes.                                                                                                                     |
-| `onCameraZoomChange(zoom)`     | Camera zoom changes.                                                                                                                   |
-| `onResize(size)`               | Canvas size changes.                                                                                                                   |
-| `onError(error)`               | Reports runtime loading, readiness timeout, locale, and preparation failures.                                                          |
-| `fallback` / `renderError`     | Loading and error content.                                                                                                             |
+| `initialAppState`              | Initial canvas state; later edits use `api.setAppState()`.                                                                                            |
+| `renderer`                     | `webgl` (default) or `webgpu`. Changing it recreates the canvas.                                                                                      |
+| `shaderCompilerPath`           | Override the WebGPU shader compiler URL. Changing it recreates the canvas.                                                                            |
+| `theme`                        | `light` or `dark`; updates both the Spectrum theme and canvas state.                                                                                  |
+| `locale`                       | Lit's shared locale. Canvases in the same page share localization.                                                                                    |
+| `runtime`                      | Shared runtime created with `createCanvasRuntime()`. Omit to use the default.                                                                         |
+| `initializationTimeout`        | Milliseconds to wait for the runtime and GPU-ready event. Defaults to `30000`; `0` disables it. Changing it recreates the canvas.                     |
+| `onReady(api, { signal })`     | Runs after GPU readiness. May return a Promise for preparation before initial nodes are inserted. Check the signal after each await.                  |
+| `onAPIChange(api)`             | Publishes the API and receives `null` on removal or initialization failure after readiness.                                                           |
+| `onChange(snapshot)`           | Committed snapshot containing `nodes` and `appState`.                                                                                                 |
+| `onNodesChange(nodes)`         | Committed node changes.                                                                                                                               |
+| `onAppStateChange(state)`      | Committed application state changes.                                                                                                                  |
+| `onSelectedNodesChange(nodes)` | Selection changes.                                                                                                                                    |
+| `onCameraZoomChange(zoom)`     | Camera zoom changes.                                                                                                                                  |
+| `onResize(size)`               | Canvas size changes.                                                                                                                                  |
+| `onError(error)`               | Reports runtime loading, readiness timeout, locale, and preparation failures.                                                                         |
+| `fallback` / `renderError`     | Loading and error content.                                                                                                                            |
 
 Standard `div` props apply to the outer container. The ref exposes live `api` and
 `element` getters, both initially `null`. `element` is the actual Web Component;

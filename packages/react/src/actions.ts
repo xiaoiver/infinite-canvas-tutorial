@@ -1,11 +1,12 @@
-import type { AppState, SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import type {
+  AppState,
+  CanvasEditOptions,
+  SerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import type { CanvasStore } from './store';
 
-export interface CanvasEditOptions {
-  /** Non-undoable updates still notify selectors. Default: IMMEDIATELY. */
-  capture?: 'IMMEDIATELY' | 'NEVER';
-}
+export type { CanvasEditOptions } from '@infinite-canvas-tutorial/ecs';
 
 export interface CanvasActions {
   /** Run synchronous mutations at the next ECS tick and commit once. */
@@ -40,55 +41,27 @@ export interface CanvasActions {
 
 /** Actions read the Provider at invocation time, never capturing an old API. */
 export function createCanvasActions(store: CanvasStore): CanvasActions {
-  const edit: CanvasActions['edit'] = (update, options = {}) => {
+  const edit: CanvasActions['edit'] = async (update, options = {}) => {
     const api = store.getSnapshot().api;
-    if (!api) return Promise.resolve(false);
-    const capture = options.capture ?? 'IMMEDIATELY';
-    return new Promise<boolean>((resolve, reject) => {
-      let settled = false;
-      let dispose = () => {};
-      const finish = (settle: () => void) => {
-        if (settled) return;
-        settled = true;
-        dispose();
-        settle();
-      };
-      dispose = api.onDestroy(() => finish(() => resolve(false)));
-      if (settled) return;
-      try {
-        api.runAtNextTick(() => {
-          if (settled) return;
-          if (store.getSnapshot().api !== api) {
-            finish(() => resolve(false));
-            return;
-          }
-          try {
-            const result: unknown = update(api);
-            if (
-              result &&
-              typeof (result as { then?: unknown }).then === 'function'
-            ) {
-              // Observe a rejected Promise even though async mutators are unsupported.
-              Promise.resolve(result).catch(() => {});
-              throw new TypeError(
-                'Canvas edits must be synchronous. Await work before edit().',
-              );
-            }
-            if (settled || store.getSnapshot().api !== api) {
-              finish(() => resolve(false));
-              return;
-            }
-            api.record(capture);
-            store.refresh(api);
-            finish(() => resolve(true));
-          } catch (error) {
-            finish(() => reject(error));
-          }
-        });
-      } catch (error) {
-        finish(() => reject(error));
-      }
+    const signal = options.signal;
+    if (!api || signal?.aborted) return false;
+    const controller = new AbortController();
+    const cancel = () => controller.abort();
+    signal?.addEventListener('abort', cancel, { once: true });
+    const unsubscribe = store.subscribeAPI(() => {
+      if (store.getSnapshot().api !== api) cancel();
     });
+    try {
+      const applied = await api.edit(update, {
+        ...options,
+        signal: controller.signal,
+      });
+      if (applied) store.refresh(api);
+      return applied;
+    } finally {
+      unsubscribe();
+      signal?.removeEventListener('abort', cancel);
+    }
   };
 
   return {
@@ -110,7 +83,6 @@ export function createCanvasActions(store: CanvasStore): CanvasActions {
       return edit((api) => {
         api.setAppState(
           typeof next === 'function' ? next(api.getAppState()) : next,
-          { recordDesignVariableUndo: false },
         );
       }, options);
     },

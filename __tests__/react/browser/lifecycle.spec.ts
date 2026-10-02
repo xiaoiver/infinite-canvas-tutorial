@@ -1,5 +1,112 @@
 import { expect, test } from '@playwright/test';
 
+test('core edits commit once, resolve bindings, isolate failures, and support cancellation', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  const before = await page.evaluate(() => window.snapshots.left.length);
+  const result = await page.evaluate(async () => {
+    const api = window.apis.left;
+    const applied = await api.edit((editor) => {
+      const node = editor.getNodes()[0];
+      if (node.type !== 'rect') throw new Error('Expected a rectangle');
+      editor.setAppState({
+        variables: { accent: { type: 'color', value: '#f00' } },
+      });
+      editor.updateNodes([
+        {
+          ...node,
+          width: 160,
+          fills: [{ type: 'solid', value: '$accent' }],
+        },
+      ]);
+      editor.record();
+      editor.setAppState({
+        variables: { accent: { type: 'color', value: '#0f0' } },
+      });
+      editor.selectNodes([editor.getNodes()[0]]);
+      editor.record('NEVER');
+    });
+    return {
+      applied,
+      width: api.getNodes()[0].width,
+      selection: api.getAppState().layersSelected,
+      variables: api.getAppState().variables,
+      fill: window.boundFill('left'),
+    };
+  });
+  expect(result).toEqual({
+    applied: true,
+    width: 160,
+    selection: ['left'],
+    variables: { accent: { type: 'color', value: '#0f0' } },
+    fill: '#0f0',
+  });
+  expect(await page.evaluate(() => window.snapshots.left.length)).toBe(
+    before + 1,
+  );
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('left-selection')).toHaveText('0');
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    100,
+  );
+  const checks = await page.evaluate(async () => {
+    const api = window.apis.left;
+    const controller = new AbortController();
+    const cancelled = api.edit(
+      (editor) => editor.updateNodes([{ ...editor.getNodes()[0], width: 999 }]),
+      {
+        signal: controller.signal,
+      },
+    );
+    controller.abort();
+    const failed = api
+      .edit(() => {
+        throw new Error('invalid edit');
+      })
+      .catch((error: Error) => error.message);
+    const asynchronous = api
+      .edit(async () => {})
+      .catch((error: Error) => error.message);
+    const applied = api.edit((editor) =>
+      editor.updateNodes([{ ...editor.getNodes()[0], width: 120 }]),
+    );
+    return {
+      outcomes: await Promise.all([cancelled, failed, asynchronous, applied]),
+      width: api.getNodes()[0].width,
+      otherWidth: window.apis.right.getNodes()[0].width,
+    };
+  });
+  expect(checks).toEqual({
+    outcomes: [
+      false,
+      'invalid edit',
+      'Canvas edits must be synchronous. Await work before edit().',
+      true,
+    ],
+    width: 120,
+    otherWidth: 100,
+  });
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.apis.left.getNodes()[0].width)).toBe(
+    100,
+  );
+  expect(errors).toEqual([]);
+});
+
 test('editing hooks compose live updates, group undo, and refresh view settings', async ({
   page,
 }) => {
