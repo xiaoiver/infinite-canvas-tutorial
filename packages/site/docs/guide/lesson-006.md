@@ -4,6 +4,7 @@ description: 'Implement a DOM-compatible event system with shape picking, drag-a
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 6 - Event system' }]
 ---
+
 # Lesson 6 - Event system
 
 In this lesson, you will learn the following:
@@ -588,7 +589,15 @@ this.#touches[event.pointerId] = { last: null };
 When listening to the `pointermove` event, record the distance between two touch points and compare it with the previous distance. As the two points move closer together, it corresponds to zooming out, and as they move further apart, it corresponds to zooming in.
 
 ```ts
-zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
+zoomByPoint(midX, midY, (prevDist / dist - 1) * PINCH_FACTOR);
+```
+
+Relying on drag events alone is not enough on mobile: dragging with a single finger triggers panning, but as soon as a second finger touches the screen we treat it as a pinch and skip the drag handlers, so two-finger swipes would not move the camera at all. To keep panning valid on mobile, the same `pointermove` handler also tracks the midpoint between both fingers and pans the camera by however far that midpoint moves. The movement is measured in client coordinates and divided by the current zoom level, so it stays consistent regardless of how far the camera is zoomed in.
+
+```ts
+// Two-finger swipe pans the camera, following the fingers.
+camera.x += (prevMidX - midX) / camera.zoom;
+camera.y += (prevMidY - midY) / camera.zoom;
 ```
 
 Here's the effect on iOS simulator.
