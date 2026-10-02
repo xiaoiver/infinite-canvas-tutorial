@@ -216,6 +216,19 @@
         "originalLabel": "原图",
         "gentleLabel": "细雨 rain()",
         "stormLabel": "暴雨 preset"
+      },
+      "footballFormation": {
+        "title": "球队阵型图",
+        "description": "选择球队与阵型后，在画布中生成可编辑的球场、位置卡片和球员头像。当前内置葡萄牙队公开名单数据。",
+        "teamLabel": "球队",
+        "formationLabel": "阵型",
+        "resetCanvas": "重新生成画布",
+        "pitchLabel": "足球场",
+        "avatarLabel": "球员头像",
+        "dataSource": "球员姓名、号码与位置基于公开赛事名单整理；头像为姓名缩写生成，可替换为真实照片。",
+        "teams": {
+          "portugal": "葡萄牙队"
+        }
       }
     },
     "photoColors": {
@@ -240,6 +253,10 @@
     "rain": {
       "metaTitle": "雨滴",
       "metaDescription": "预览 rain() 滤镜：Codrops 雨滴模拟、水面折射，以及与 blur 等效果的叠加。"
+    },
+    "footballFormation": {
+      "metaTitle": "球队阵型图",
+      "metaDescription": "用公开名单数据快速生成可编辑的球队阵型图。"
     }
   }
 }

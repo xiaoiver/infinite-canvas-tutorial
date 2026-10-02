@@ -44,4 +44,9 @@ export const toolEntries: ToolEntry[] = [
         status: 'ready',
         screenshot: '/screenshot-rain.png',
     },
+    {
+        id: 'footballFormation',
+        path: '/football-formation',
+        status: 'ready',
+    },
 ];
