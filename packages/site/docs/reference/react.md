@@ -226,7 +226,10 @@ a committed edit, not a rendered frame.
 ## Initialization and API
 
 -   `initialNodes` is copied once per canvas creation and inserted into ECS after
-    async `onReady` completes, without an undo entry. Later prop changes do not overwrite user edits;
+    async `onReady` completes, through `api.edit()` with `capture: 'NEVER'`.
+    Transforms, bounds, and rendering see the initial scene in its commit frame.
+    The loading fallback clears after the commit; removal or recreation cancels
+    pending initialization. Later prop changes do not overwrite user edits;
     use `api.updateNodes()` for updates.
 -   `initialAppState` seeds canvas state; subsequent edits use `api.setAppState()`.
 -   The ref exposes live `api` and `element` getters, initially `null`. The element

@@ -215,7 +215,10 @@ Promise 成功表示编辑已提交，不等待画面渲染，也不等待图片
 ## 初始化与 API
 
 -   `initialNodes` 在每次创建画布时复制一次，在异步 `onReady` 完成后写入 ECS。
-    初始化不增加撤销记录，后续改变该属性不会覆盖用户编辑；更新图形请使用 `api.updateNodes()`。
+    写入通过 `api.edit()` 执行，使用 `capture: 'NEVER'`，不增加撤销记录。
+    变换、边界计算和渲染在提交的同一帧看到初始场景；提交完成后移除加载占位内容。
+    卸载或重建画布会取消尚未执行的初始化。后续改变该属性不会覆盖用户编辑；
+    更新图形请使用 `api.updateNodes()`。
 -   `initialAppState` 是初始化状态；后续通过 `api.setAppState()` 修改。
 -   `ref.current.api` 和 `ref.current.element` 是实时 getter，初始化前为 `null`。
     后者指向真正的 Web Component，可监听额外 DOM 事件。

@@ -1,6 +1,32 @@
 import { expect, test } from '@playwright/test';
 import type { ExportFormat, Pen } from '@infinite-canvas-tutorial/ecs';
 
+test('initial nodes reach the renderer with current transforms and bounds in their commit frame', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/?initialFrame&prepare');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1');
+  await page.waitForFunction(
+    () => Object.keys(window.initialFrames).length === 2,
+  );
+  const initialFrames = await page.evaluate(() => window.initialFrames);
+  for (const initial of Object.values(initialFrames)) {
+    expect(initial.rendered).toBe(initial.committed);
+    expect(initial).toMatchObject({ x: 50, minX: 50, maxX: 150 });
+  }
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  expect(await page.evaluate(() => window.nodeChanges.left.length)).toBe(1);
+  expect(await page.evaluate(() => window.nodeChanges.right.length)).toBe(1);
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('selected nodes keep valid renderer references through consecutive hierarchy undo and redo', async ({
   page,
 }) => {
