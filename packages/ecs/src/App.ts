@@ -4,6 +4,7 @@ import { DOMAdapter } from './environment';
 import {
   StartUp,
   First,
+  Edit,
   Last,
   PostUpdate,
   Update,
@@ -29,6 +30,8 @@ class UpdatePlaceHolder extends System {}
 class PostUpdatePlaceHolder extends System {}
 @system(First)
 class FirstPlaceHolder extends System {}
+@system(Edit)
+class EditPlaceHolder extends System {}
 @system(Last)
 class LastPlaceHolder extends System {}
 
@@ -41,6 +44,7 @@ void [
   UpdatePlaceHolder,
   PostUpdatePlaceHolder,
   FirstPlaceHolder,
+  EditPlaceHolder,
   LastPlaceHolder,
 ];
 

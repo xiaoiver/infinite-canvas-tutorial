@@ -1,4 +1,163 @@
 import { expect, test } from '@playwright/test';
+import type { ExportFormat, Pen } from '@infinite-canvas-tutorial/ecs';
+
+test('UI phases deliver current comment coordinates and deferred SVG export events', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await page.evaluate(() => {
+    const api = window.apis.left;
+    api.element.addEventListener(
+      'ic-comment-added',
+      (event) => {
+        const { canvasX, canvasY, viewportX, viewportY } = (
+          event as CustomEvent<{
+            canvasX: number;
+            canvasY: number;
+            viewportX: number;
+            viewportY: number;
+          }>
+        ).detail;
+        const expected = api.viewport2Canvas({ x: viewportX, y: viewportY });
+        api.element.dataset.commentProbe = JSON.stringify({
+          actual: [canvasX, canvasY],
+          expected: [expected.x, expected.y],
+        });
+      },
+      { once: true },
+    );
+    return window.actions.left.setAppState(
+      {
+        penbarSelected: 'comment' as Pen,
+        cameraZoom: 2,
+      },
+      { capture: 'NEVER' },
+    );
+  });
+  await expect(page.getByTestId('left-zoom')).toHaveText('2');
+  const canvas = page.locator('ic-spectrum-canvas').first();
+  await canvas.locator('canvas').click({ position: { x: 120, y: 100 } });
+  await expect(canvas).toHaveAttribute('data-comment-probe', /actual/);
+  const coordinates = JSON.parse(
+    (await canvas.getAttribute('data-comment-probe'))!,
+  );
+  expect(coordinates.actual).toEqual(coordinates.expected);
+  const svg = await page.evaluate(
+    () =>
+      new Promise<string>((resolve, reject) => {
+        const api = window.apis.left;
+        api.element.addEventListener(
+          'ic-screenshot-downloaded',
+          (event) => {
+            resolve((event as CustomEvent<{ svg: string }>).detail.svg);
+          },
+          { once: true },
+        );
+        void api
+          .edit(
+            (editor) =>
+              editor.export({
+                format: 'svg' as ExportFormat,
+                download: false,
+                nodes: [editor.getNodeById('left')!],
+              }),
+            { capture: 'NEVER' },
+          )
+          .catch(reject);
+      }),
+  );
+  expect(svg).toContain('<svg');
+  expect(svg).toContain('<rect');
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test('early edits rebuild hierarchy and renderer resources through replacement, deletion, and undo', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('left-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-count')).toHaveText('1', {
+    timeout: 45000,
+  });
+  expect(
+    await page.evaluate(() =>
+      window.actions.left.edit(
+        (api) =>
+          api.replaceDocument([
+            { id: 'parent', type: 'g', zIndex: 0, x: 30, y: 0 },
+            {
+              id: 'left',
+              type: 'rect',
+              parentId: 'parent',
+              zIndex: 0,
+              x: 5,
+              y: 50,
+              width: 25,
+              height: 20,
+              fills: [{ type: 'solid', value: '#f00' }],
+            },
+          ]),
+        { capture: 'NEVER' },
+      ),
+    ),
+  ).toBe(true);
+  await expect
+    .poll(() => page.evaluate(() => window.sceneGeometry('left')))
+    .toEqual({
+      x: 35,
+      minX: 35,
+      maxX: 60,
+    });
+  expect(await page.evaluate(() => window.boundFill('left'))).toBe('#f00');
+  for (let i = 0; i < 2; i++) {
+    expect(
+      await page.evaluate(() =>
+        window.actions.left.edit((api) => api.deleteNodesById(['parent'])),
+      ),
+    ).toBe(true);
+    await expect(page.getByTestId('left-count')).toHaveText('0');
+    await page.getByTestId('left-undo').click();
+    await expect(page.getByTestId('left-count')).toHaveText('2');
+    await expect
+      .poll(() => page.evaluate(() => window.sceneGeometry('left')))
+      .toEqual({
+        x: 35,
+        minX: 35,
+        maxX: 60,
+      });
+    expect(await page.evaluate(() => window.boundFill('left'))).toBe('#f00');
+  }
+  expect(await page.evaluate(() => window.sceneGeometry('right'))).toEqual({
+    x: 50,
+    minX: 50,
+    maxX: 150,
+  });
+  // Allow the real GPU renderer to consume the last restored entities.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
 
 test('core edits commit once, resolve bindings, isolate failures, and support cancellation', async ({
   page,

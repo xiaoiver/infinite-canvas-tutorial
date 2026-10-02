@@ -12,6 +12,7 @@ import { System } from '@lastolivegames/becsy';
  *
  * Then it will run:
  * * [`First`]
+ * * [`Edit`]
  * * [`PreUpdate`]
  * * [`StateTransition`]
  * * [`RunFixedUpdateLoop`]
@@ -40,6 +41,9 @@ export const PostStartUp = System.group();
  * Runs first in the schedule.
  */
 export const First = System.group();
+
+/** Apply queued canvas edits and history before derived data and rendering. */
+export const Edit = System.group();
 
 /**
  * The schedule that contains logic that must run before [`Update`]. For example, a system that reads raw keyboard
@@ -80,6 +84,7 @@ const stages = [
   StartUp,
   PostStartUp,
   First,
+  Edit,
   PreUpdate,
   Update,
   PostUpdate,

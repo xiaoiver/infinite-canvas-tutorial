@@ -9,7 +9,7 @@ import type { CanvasStore } from './store';
 export type { CanvasEditOptions } from '@infinite-canvas-tutorial/ecs';
 
 export interface CanvasActions {
-  /** Run synchronous mutations at the next ECS tick and commit once. */
+  /** Run synchronous mutations before derived data/rendering and commit once. */
   edit(
     update: (api: ExtendedAPI) => void,
     options?: CanvasEditOptions,
@@ -33,7 +33,7 @@ export interface CanvasActions {
     ids: readonly string[],
     options?: CanvasEditOptions & { preserveSelection?: boolean },
   ): Promise<boolean>;
-  /** Return false if no API is attached; undo/redo run on the next ECS tick. */
+  /** Return false if no API is attached; undo/redo queue in the ECS Edit stage. */
   undo(): boolean;
   redo(): boolean;
   clearHistory(): boolean;

@@ -166,7 +166,7 @@ function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
 | `updateNodes(nodesOrUpdater, options?)` | Upserts by ID, preserving omitted nodes. Supplied arrays are copied before queueing; an updater reads the latest nodes at execution. Return new nodes without mutating the input. |
 | `setAppState(patchOrUpdater, options?)` | Merges a patch using API semantics. An updater reads the latest state. View settings also refresh selectors when they do not participate in history.                              |
 | `selectNodes(ids, options?)`            | Resolves IDs at execution, ignoring missing/deleted nodes. `preserveSelection: true` extends the selection. Pass `[]` to clear it.                                                |
-| `edit(callback, options?)`              | Runs synchronous API mutations at an ECS frame boundary, then calls `record()` once.                                                                                              |
+| `edit(callback, options?)`              | Runs synchronous API mutations before derived data/rendering, then calls `record()` once.                                                                                              |
 | `undo()`, `redo()`, `clearHistory()`    | Use the current canvas history. Undo/redo queue their work; clearHistory runs immediately.                                                                                        |
 
 The first four commands return `Promise<boolean>`: `true` after a successful
@@ -187,7 +187,9 @@ await actions.edit((api) => {
 });
 ```
 
-The editing actions delegate to the shared ECS `api.edit()` interface. Calls to
+The editing actions delegate to the shared ECS `api.edit()` interface. Edits and
+undo/redo run in invocation order before geometry, transforms, bounds, and
+rendering, so those systems see the changes in the same frame. Calls to
 `record()` made synchronously inside an edit join its single commit. Await network
 or other asynchronous work before calling `edit`; its callback must be synchronous.
 It does not roll back mutations if a callback fails. Set

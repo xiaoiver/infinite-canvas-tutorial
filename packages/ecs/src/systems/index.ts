@@ -1,4 +1,5 @@
 export * from './stages';
+export * from './ApplyEdits';
 export * from './Animation';
 export * from './SetupDevice';
 export * from './Transform';

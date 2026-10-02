@@ -145,8 +145,8 @@ With the Web Components API, a batch emits `ic-nodes-updated`; use
 
 ### edit
 
-`api.edit(callback, { capture?, signal? })` queues synchronous API mutations at
-the owning canvas's ECS write boundary and commits history once. Calls to
+`api.edit(callback, { capture?, signal? })` queues synchronous API mutations in
+the owning canvas's `Edit` stage and commits history once. Calls to
 `record()` made by the callback or its synchronous helpers join that commit.
 The default capture mode is `IMMEDIATELY`; use `NEVER` for non-undoable changes,
 including remote document replacements.
@@ -165,23 +165,26 @@ without aborting subsequent edits. Callback failures and cancellation do not
 roll back mutations that have already run. Await asynchronous preparation before
 calling `edit`; the callback must be synchronous.
 
-Separate edits retain separate undo steps, even within one frame. Nested `edit`
-calls and history navigation (`undo`/`redo`) remain queued operations; call
-history navigation separately from an edit. Design-variable bindings changed
-inside an edit refresh before its commit.
+Separate edits retain separate undo steps, even within one frame. Edits and
+history navigation (`undo`/`redo`) share a queue and run in invocation order.
+Nested edits on the same canvas run on the following frame; call history
+navigation separately from an edit. Design-variable bindings changed inside an edit or restored by
+history refresh within the same write phase.
 
 This API is inherited by the Web Components API and used by React's editing
-actions. Completion means the edit was committed, not that a frame was rendered.
-The current write boundary still runs after rendering; moving editing before
-transform/bounds computation and rendering is a separate scheduling change.
+actions. The `Edit` stage runs between `First` and `PreUpdate`, before geometry,
+transforms, bounds, and rendering, so those systems see queued edits in the same
+frame. Physical deletion remains after rendering to allow renderer resource
+cleanup. Completion means the edit was committed; it does not wait for rendering
+or asynchronous resources such as images and fonts.
 
 ### runAtNextTick
 
-Queues a synchronous callback for the owning canvas's ECS frame boundary.
-Callbacks queued by another callback run on the following frame. Destroying
-the canvas cancels its remaining callbacks. Use this method instead of the
-previously exported global `pendingAPICallings` array, which has been removed
-to isolate canvas lifetimes.
+Queues a synchronous callback for the owning canvas's late ECS frame boundary,
+after rendering. Callbacks queued by another callback or an edit run on the
+following frame. Destroying the canvas cancels its remaining callbacks. Use this
+method instead of the previously exported global `pendingAPICallings` array,
+which has been removed to isolate canvas lifetimes.
 
 Prefer `edit` for application edits that need a history commit and completion or
 cancellation feedback. `runAtNextTick` remains available for low-level callbacks;
@@ -303,11 +306,12 @@ System execution order:
 ### Document snapshots and history
 
 `updateNodes(nodes)` is an upsert. Use `replaceDocument(nodes, 'remote')` for a
-complete collaboration snapshot: omitted IDs are deleted. Apply asynchronous
-snapshots inside `runAtNextTick`. IDs must be unique and parent links must form a
-valid hierarchy. Structural changes and removed attributes rebuild components;
-ordinary attribute updates remain incremental. Remote snapshots update the
-history baseline without creating undo entries. Use `'local'` to record a local
+complete collaboration snapshot: omitted IDs are deleted. Await asynchronous
+preparation, then apply snapshots inside `api.edit()` with `{ capture: 'NEVER' }`.
+IDs must be unique and parent links must form a valid hierarchy. Structural
+changes and removed attributes rebuild components; ordinary attribute updates
+remain incremental. Remote snapshots update the history baseline without
+creating undo entries. Use `'local'` to record a local
 replacement. Undo/redo also notify `onchange`, allowing collaborators to observe
 them.
 

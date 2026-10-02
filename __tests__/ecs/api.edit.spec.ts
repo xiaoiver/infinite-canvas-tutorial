@@ -1,5 +1,10 @@
 import { API, DefaultStateManagement } from '../../packages/ecs/src/API';
 
+function flushFrame(api: API) {
+  api.flushPendingEdits();
+  api.flushPendingTasks();
+}
+
 function createAPI() {
   const state = new DefaultStateManagement();
   const api = new API(state, {} as any);
@@ -19,12 +24,12 @@ it('defers edits, reads current state, and commits a compound edit once', async 
   });
   expect(api.getAppState().filter).toBe('');
   api.setAppState({ filter: 'blur(2px)' });
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await pending).toBe(true);
   expect(api.getAppState().filter).toBe('blur(2px)ab');
   expect(changed).toHaveBeenCalledTimes(1);
   api.undo();
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(api.getAppState().filter).toBe('');
   expect(api.isUndoStackEmpty()).toBe(true);
   api.destroy();
@@ -38,13 +43,13 @@ it('keeps separate edits as separate undo steps even in one flush', async () => 
   const second = api.edit((editor) =>
     editor.setAppState({ filter: 'blur(4px)' }),
   );
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await Promise.all([first, second])).toEqual([true, true]);
   api.undo();
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(api.getAppState().filter).toBe('blur(2px)');
   api.undo();
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(api.getAppState().filter).toBe('');
   api.destroy();
 });
@@ -61,7 +66,7 @@ it('publishes non-undoable edits once without notifying collaboration callbacks'
     },
     { capture: 'NEVER' },
   );
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await pending).toBe(true);
   expect(changed).toHaveBeenCalledTimes(1);
   expect(api.onchange).not.toHaveBeenCalled();
@@ -76,7 +81,7 @@ it('settles pending and future edits when the canvas is destroyed', async () => 
   api.destroy();
   expect(await pending).toBe(false);
   expect(await api.edit(update)).toBe(false);
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(update).not.toHaveBeenCalled();
 });
 
@@ -90,7 +95,7 @@ it('cancels queued edits without waiting for a frame and removes abort listeners
   expect(await pending).toBe(false);
   expect(remove).toHaveBeenCalledTimes(1);
   expect(await api.edit(update, { signal: controller.signal })).toBe(false);
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(update).not.toHaveBeenCalled();
   api.destroy();
 });
@@ -105,7 +110,7 @@ it('does not cancel completed edits when a signal aborts later', async () => {
       signal: controller.signal,
     },
   );
-  api.flushPendingTasks();
+  flushFrame(api);
   controller.abort();
   expect(await pending).toBe(true);
   expect(remove).toHaveBeenCalledTimes(1);
@@ -120,7 +125,7 @@ it('isolates failed edits, restores commit behavior, and does not roll back muta
     throw new Error('invalid edit');
   });
   const check = expect(failed).rejects.toThrow('invalid edit');
-  expect(() => api.flushPendingTasks()).not.toThrow();
+  expect(() => flushFrame(api)).not.toThrow();
   await check;
   expect(api.getAppState().filter).toBe('blur(2px)');
   expect(api.isUndoStackEmpty()).toBe(true);
@@ -129,7 +134,7 @@ it('isolates failed edits, restores commit behavior, and does not roll back muta
   const next = api.edit((editor) =>
     editor.setAppState({ filter: 'blur(4px)' }),
   );
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await next).toBe(true);
   api.destroy();
 });
@@ -146,7 +151,7 @@ it('rejects asynchronous callbacks without blocking the next queued edit', async
   const next = api.edit((editor) =>
     editor.setAppState({ filter: 'blur(2px)' }),
   );
-  expect(() => api.flushPendingTasks()).not.toThrow();
+  expect(() => flushFrame(api)).not.toThrow();
   await check;
   expect(await next).toBe(true);
   expect(invoked).not.toHaveBeenCalled();
@@ -160,7 +165,7 @@ it('rejects returned thenables and observes their rejection', async () => {
     Promise.reject(new Error('thenable callback')),
   );
   const check = expect(pending).rejects.toThrow('must be synchronous');
-  expect(() => api.flushPendingTasks()).not.toThrow();
+  expect(() => flushFrame(api)).not.toThrow();
   await check;
   expect(api.isUndoStackEmpty()).toBe(true);
   api.destroy();
@@ -175,11 +180,11 @@ it('preserves following-tick semantics for nested edits and legacy tasks', async
     nested = editor.edit((inner) => inner.setAppState({ filter: 'blur(4px)' }));
     editor.runAtNextTick(legacy);
   });
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await first).toBe(true);
   expect(api.getAppState().filter).toBe('blur(2px)');
   expect(legacy).not.toHaveBeenCalled();
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await nested!).toBe(true);
   expect(api.getAppState().filter).toBe('blur(4px)');
   expect(legacy).toHaveBeenCalledTimes(1);
@@ -191,7 +196,7 @@ it('settles all remaining edits if a callback destroys its canvas', async () => 
   const next = jest.fn();
   const first = api.edit((editor) => editor.destroy());
   const second = api.edit(next);
-  expect(() => api.flushPendingTasks()).not.toThrow();
+  expect(() => flushFrame(api)).not.toThrow();
   expect(await Promise.all([first, second])).toEqual([false, false]);
   expect(next).not.toHaveBeenCalled();
 });
@@ -218,16 +223,16 @@ it('refreshes design-variable bindings before completion and records only once',
       variables: { accent: { type: 'color', value: '#0f0' } },
     });
   });
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(await pending).toBe(true);
   expect(refresh).toHaveBeenCalledTimes(2);
   expect(refresh).toHaveBeenLastCalledWith(node, { fills: node.fills }, false);
   expect(changed).toHaveBeenCalledTimes(1);
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(refresh).toHaveBeenCalledTimes(2);
   expect(changed).toHaveBeenCalledTimes(1);
   api.undo();
-  api.flushPendingTasks();
+  flushFrame(api);
   expect(api.getAppState().variables).toEqual({});
   expect(api.isUndoStackEmpty()).toBe(true);
   api.getEntityCommands().clear();

@@ -4,8 +4,11 @@ import {
   Canvas,
   ComputeBounds,
   ComputeCamera,
+  EventWriter,
+  Edit,
   Plugin,
   PreStartUp,
+  PostStartUp,
   PropagateTransforms,
   SyncSimpleTransforms,
   system,
@@ -50,10 +53,15 @@ export const UIPlugin: Plugin = () => {
     value: 'EmitCanvasReady',
   });
 
-  system((s) => s.after(PreStartUp).before(ZoomLevel).beforeWritersOf(Canvas))(
-    InitCanvas,
-  );
-  system((s) => s.after(PreStartUp, InitCanvas).before(ZoomLevel).beforeWritersOf(Canvas))(
+  // Initialization and synchronous READY handlers use broad API permissions.
+  // Explicit phases keep them ahead of edits and derived data without inferred
+  // dependencies moving them behind the components they initialize.
+  system(PreStartUp)(InitCanvas);
+  system((s) =>
+    s.inAnyOrderWith(s.allSystems).after(PreStartUp).before(ZoomLevel),
+  )(InitCanvas);
+  system(PostStartUp)(EmitCanvasReady);
+  system((s) => s.inAnyOrderWith(s.allSystems).before(ZoomLevel))(
     EmitCanvasReady,
   );
   // React to ComputedCamera changes only — must not run after Select (that caused
@@ -63,6 +71,7 @@ export const UIPlugin: Plugin = () => {
       .inAnyOrderWithWritersOf(Camera)
       .afterWritersOf(Canvas)
       .after(
+        Edit,
         SyncSimpleTransforms,
         PropagateTransforms,
         ComputeBounds,
@@ -71,8 +80,20 @@ export const UIPlugin: Plugin = () => {
       )
       .before(Last),
   )(ZoomLevel);
-  system((s) => s.before(PreStartUp))(DownloadAnimationExport);
-  system((s) => s.before(PreStartUp))(DownloadScreenshot);
+  // Consume outputs from the preceding frame before the next frame begins.
+  system((s) => s.inAnyOrderWith(s.allSystems).before(PreStartUp))(
+    DownloadAnimationExport,
+  );
+  system((s) => s.inAnyOrderWith(s.allSystems).before(PreStartUp))(
+    DownloadScreenshot,
+  );
   system(PreStartUp)(ListenTransformableStatus);
-  system(PreStartUp)(Comment);
+  system((s) => s.inAnyOrderWith(s.allSystems))(ListenTransformableStatus);
+  // Comments need this frame's input and camera coordinates.
+  system((s) =>
+    s
+      .inAnyOrderWith(s.allSystems)
+      .after(EventWriter, CameraControl, ComputeCamera)
+      .before(Last),
+  )(Comment);
 };

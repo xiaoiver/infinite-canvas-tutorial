@@ -328,8 +328,10 @@ export class API {
   #restoringHistory = false;
   #store = new Store(this);
   #tasks = new TaskQueue();
-  #edits = new EditQueue((task) => this.runAtNextTick(task));
+  #editTasks = new TaskQueue();
+  #edits = new EditQueue((task) => this.#editTasks.add(task));
   #editing = false;
+  #flushingEdits = false;
   #afterDeleteTasks = new TaskQueue();
   #destroyed = false;
   #scope = new ResourceScope();
@@ -406,7 +408,9 @@ export class API {
       return;
     }
     this.#historyState = { canUndo, canRedo };
-    this.#historySubscribers.forEach((listener) => listener(this.#historyState));
+    this.#historySubscribers.forEach((listener) =>
+      listener(this.#historyState),
+    );
   }
 
   /** Register cleanup owned by this canvas. Returns an idempotent disposer. */
@@ -598,7 +602,7 @@ export class API {
         }
       };
       // edit() already owns a safe ECS write phase and its history commit.
-      if (this.#editing) refresh();
+      if (this.#flushingEdits || this.#editing) refresh();
       else this.runAtNextTick(refresh);
     }
   }
@@ -2079,8 +2083,8 @@ export class API {
         if (!entity.has(Children)) {
           cameraEntityCommands.appendChild(this.commands.entity(entity));
         }
-        // PropagateTransforms already ran this frame; new nodes need a world matrix
-        // before the render pass (SmoothPolyline, transformer anchors, etc.).
+        // Late callers may run after PropagateTransforms; initialize new nodes'
+        // world matrices for SmoothPolyline, transformer anchors, etc.
         updateGlobalTransform(entity);
       });
 
@@ -2154,8 +2158,8 @@ export class API {
         if (!entity.has(Children)) {
           cameraEntityCommands.appendChild(this.commands.entity(entity));
         }
-        // PropagateTransforms already ran this frame; new nodes need a world matrix
-        // before the render pass (SmoothPolyline, transformer anchors, etc.).
+        // Late callers may run after PropagateTransforms; initialize new nodes'
+        // world matrices for SmoothPolyline, transformer anchors, etc.
         updateGlobalTransform(entity);
       });
 
@@ -2179,7 +2183,7 @@ export class API {
 
   /**
    * Apply a complete document snapshot. Missing IDs are deleted, unlike updateNodes.
-   * Call inside runAtNextTick when applying an asynchronous remote update.
+   * Await remote preparation, then call inside edit() with capture: 'NEVER'.
    */
   replaceDocument(
     nodes: readonly SerializedNode[],
@@ -3042,7 +3046,7 @@ export class API {
   }
 
   private restoreHistory(action: 'undo' | 'redo') {
-    this.runAtNextTick(() => {
+    this.#editTasks.add(() => {
       this.#beforeHistoryChange.forEach((callback) => callback());
       let changed = false;
       this.#restoringHistory = true;
@@ -3445,6 +3449,7 @@ export class API {
     if (this.#destroyed) return;
     this.#destroyed = true;
     this.#edits.dispose();
+    this.#editTasks.dispose();
     this.#tasks.dispose();
     this.#afterDeleteTasks.dispose();
     this.cancelLandmarkAnimation();
@@ -3526,7 +3531,7 @@ export class API {
   }
 
   /**
-   * Queue synchronous mutations and commit once at the owning ECS boundary.
+   * Queue synchronous mutations and commit once before derived data/rendering.
    * Resolves true after the commit, false on cancellation/destruction; rejects
    * on failure. Neither completion nor rejection guarantees a rendered frame
    * or rollback. Nested edits are separate operations on the following tick.
@@ -3537,7 +3542,9 @@ export class API {
       () => {
         // Reject native async callbacks before they can start work that resumes
         // outside this write phase. EditQueue also rejects returned thenables.
-        if (Object.prototype.toString.call(update) === '[object AsyncFunction]') {
+        if (
+          Object.prototype.toString.call(update) === '[object AsyncFunction]'
+        ) {
           throw new TypeError(
             'Canvas edits must be synchronous. Await work before edit().',
           );
@@ -3555,7 +3562,19 @@ export class API {
   }
 
   runAtNextTick(fn: () => any) {
-    this.#tasks.add(fn);
+    // Edits used to run in the late queue. Keep callbacks they enqueue on the
+    // following frame even though the edit itself now runs before rendering.
+    this.#tasks.add(fn, this.#flushingEdits);
+  }
+
+  /** @internal Called in the owning world's Edit stage, before PreUpdate. */
+  flushPendingEdits() {
+    this.#flushingEdits = true;
+    try {
+      this.#editTasks.flush();
+    } finally {
+      this.#flushingEdits = false;
+    }
   }
 
   /** @internal Called by the owning world's Deleter system. */

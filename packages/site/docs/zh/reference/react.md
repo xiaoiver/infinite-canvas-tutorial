@@ -179,7 +179,7 @@ function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
 | `updateNodes(nodesOrUpdater, options?)` | 按 ID 新增或更新，保留未提供的节点。数组在排队前复制；函数式更新在执行时读取最新节点，请返回新数据，不修改输入。 |
 | `setAppState(patchOrUpdater, options?)` | 按 API 语义合并状态；函数式更新读取执行时的最新状态。不参与历史记录的界面设置也会刷新 selectors。                |
 | `selectNodes(ids, options?)`            | 执行时解析 ID，忽略不存在或已删除的节点。`preserveSelection: true` 保留原有选区，传入 `[]` 清空选区。            |
-| `edit(callback, options?)`              | 在 ECS 帧边界执行同步修改，并在回调结束后调用一次 `record()`。                                                   |
+| `edit(callback, options?)`              | 在派生数据计算和渲染之前执行同步修改，并在回调结束后调用一次 `record()`。                                                   |
 | `undo()`、`redo()`、`clearHistory()`    | 使用当前画布的历史记录；撤销/重做排队执行，清空历史立即执行。                                                    |
 
 前四项返回 `Promise<boolean>`：提交成功后为 `true`，画布不可用或在执行前卸载时
@@ -199,7 +199,9 @@ await actions.edit((api) => {
 });
 ```
 
-这些编辑操作委托给共用的 ECS `api.edit()` 接口。在回调中同步调用的 `record()`
+这些编辑操作委托给共用的 ECS `api.edit()` 接口。编辑与撤销、重做按调用顺序
+在几何、变换、边界计算及渲染之前执行，这些系统会在同一帧看到修改。
+在回调中同步调用的 `record()`
 会合并到本次提交。网络请求等异步工作应在调用 `edit` 前完成，回调必须同步；
 回调失败时不会自动回滚已执行的修改。
 传入 `{ capture: 'NEVER' }` 可通知 selectors 而不增加撤销记录，默认值为
@@ -208,7 +210,7 @@ await actions.edit((api) => {
 传入 `{ signal: controller.signal }` 可取消待执行的编辑。取消、画布销毁或
 Provider 更换所属画布时，Promise 会立即结算为 `false`，无需等待下一帧。
 嵌套编辑及 `undo` / `redo` 仍是独立排队的操作；撤销、重做应在编辑回调之外调用。
-Promise 成功表示编辑已提交，画面渲染可能发生在之后的帧。
+Promise 成功表示编辑已提交，不等待画面渲染，也不等待图片、字体等异步资源。
 
 ## 初始化与 API
 

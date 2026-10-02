@@ -9,7 +9,9 @@ import {
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
 import {
+  ComputedBounds,
   FillLayers,
+  GlobalTransform,
   Pen,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
@@ -24,6 +26,7 @@ declare global {
     snapshots: Record<string, unknown[]>;
     setShown: (ids: string[]) => void;
     boundFill: (id: string) => string | undefined;
+    sceneGeometry: (id: string) => { x: number; minX: number; maxX: number };
   }
 }
 window.apis = {};
@@ -33,8 +36,18 @@ window.nodeChanges = {};
 window.snapshots = {};
 window.boundFill = (id) => {
   const api = window.apis[id];
-  const layer = api.getEntity(api.getNodes()[0]).read(FillLayers).layers[0];
+  const layer = api.getEntity(api.getNodeById(id)!).read(FillLayers).layers[0];
   return layer?.type === 'solid' ? layer.value : undefined;
+};
+window.sceneGeometry = (id) => {
+  const api = window.apis[id];
+  const entity = api.getEntity(api.getNodeById(id)!);
+  const bounds = entity.read(ComputedBounds).geometryWorldBounds;
+  return {
+    x: entity.read(GlobalTransform).matrix.m20,
+    minX: bounds.minX,
+    maxX: bounds.maxX,
+  };
 };
 
 function Toolbar({ id }: { id: string }) {
