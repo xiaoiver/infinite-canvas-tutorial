@@ -241,19 +241,16 @@ export const InfiniteCanvas = forwardRef<
               await callbacks.current.onReady?.(api, { signal });
               if (signal.aborted) return;
               if (nodes !== undefined) {
-                api.runAtNextTick(() => {
-                  if (signal.aborted) return;
-                  try {
-                    api.updateNodes(nodes);
-                    api.record('NEVER');
-                    setStatus('ready');
-                  } catch (reason) {
-                    reportError(reason);
-                  }
-                });
-              } else {
-                setStatus('ready');
+                const applied = await api.edit(
+                  (editor) => editor.updateNodes(nodes),
+                  {
+                    capture: 'NEVER',
+                    signal,
+                  },
+                );
+                if (!applied || signal.aborted) return;
               }
+              setStatus('ready');
             })
             .catch(reportError);
         });

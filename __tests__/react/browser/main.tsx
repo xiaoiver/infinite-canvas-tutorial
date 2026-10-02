@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   CanvasProvider,
+  createCanvasRuntime,
   InfiniteCanvas,
   useCanvasAPI,
   useCanvasActions,
@@ -10,9 +11,15 @@ import {
 } from '@infinite-canvas-tutorial/react';
 import {
   ComputedBounds,
+  Deleter,
   FillLayers,
+  First,
   GlobalTransform,
+  Last,
+  MeshPipeline,
   Pen,
+  System,
+  system,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
@@ -27,6 +34,16 @@ declare global {
     setShown: (ids: string[]) => void;
     boundFill: (id: string) => string | undefined;
     sceneGeometry: (id: string) => { x: number; minX: number; maxX: number };
+    initialFrames: Record<
+      string,
+      {
+        committed: number;
+        rendered: number;
+        x: number;
+        minX: number;
+        maxX: number;
+      }
+    >;
   }
 }
 window.apis = {};
@@ -34,6 +51,48 @@ window.actions = {};
 window.canvasErrors = [];
 window.nodeChanges = {};
 window.snapshots = {};
+window.initialFrames = {};
+const initialCommitFrames: Record<string, number> = {};
+let frame = 0;
+class InitialFrameStart extends System {
+  execute() {
+    frame++;
+  }
+}
+class InitialFrameRender extends System {
+  access = this.query((q) => q.usingAll.read);
+  execute() {
+    for (const [id, api] of Object.entries(window.apis)) {
+      if (window.initialFrames[id] || initialCommitFrames[id] === undefined)
+        continue;
+      const node = api.getNodeById(id);
+      if (!node) continue;
+      const entity = api.getEntity(node);
+      const bounds = entity.read(ComputedBounds).geometryWorldBounds;
+      window.initialFrames[id] = {
+        committed: initialCommitFrames[id],
+        rendered: frame,
+        x: entity.read(GlobalTransform).matrix.m20,
+        minX: bounds.minX,
+        maxX: bounds.maxX,
+      };
+    }
+  }
+}
+const runtime = createCanvasRuntime({
+  plugins: new URLSearchParams(location.search).has('initialFrame')
+    ? [
+        () => {
+          system(First)(InitialFrameStart);
+          system((s) => s.inAnyOrderWith(s.allSystems))(InitialFrameStart);
+          system(Last)(InitialFrameRender);
+          system((s) =>
+            s.inAnyOrderWith(s.allSystems).after(MeshPipeline).before(Deleter),
+          )(InitialFrameRender);
+        },
+      ]
+    : [],
+});
 window.boundFill = (id) => {
   const api = window.apis[id];
   const layer = api.getEntity(api.getNodeById(id)!).read(FillLayers).layers[0];
@@ -123,6 +182,7 @@ function Editor() {
       {shown.map((id) => (
         <CanvasProvider key={id}>
           <InfiniteCanvas
+            runtime={runtime}
             initialAppState={{
               topbarVisible: false,
               penbarSelected: Pen.SELECT,
@@ -157,6 +217,12 @@ function Editor() {
             }}
             onError={(error) => window.canvasErrors.push(error.message)}
             onNodesChange={(nodes) => {
+              if (
+                initialCommitFrames[id] === undefined &&
+                nodes.some((node) => node.id === id)
+              ) {
+                initialCommitFrames[id] = frame;
+              }
               (window.nodeChanges[id] ??= []).push(structuredClone(nodes));
             }}
             onChange={(snapshot) => {

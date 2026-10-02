@@ -204,6 +204,11 @@ a committed edit, not a rendered frame.
 
 ## Props and API
 
+After async `onReady` completes, `initialNodes` is applied through
+`api.edit()` with `capture: 'NEVER'`, before derived data and rendering in its
+commit frame. The loading fallback clears after that commit. Unmounting or
+recreating the canvas cancels a pending initial edit.
+
 | Prop                           | Behavior                                                                                                                                              |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `initialNodes`                 | Copied once per canvas creation and inserted into ECS after `onReady` completes, without an undo entry. Later prop changes do not replace user edits. |

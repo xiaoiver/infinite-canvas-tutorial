@@ -14,6 +14,7 @@ import {
   useCanvasSelector,
 } from '../../packages/react/src/CanvasProvider';
 import type { CanvasActions } from '../../packages/react/src/actions';
+import type { CanvasEditOptions } from '@infinite-canvas-tutorial/ecs';
 
 const canvases: TestCanvas[] = [];
 class TestCanvas extends HTMLElement {
@@ -52,9 +53,9 @@ class TestCanvas extends HTMLElement {
     updateNodes: jest.fn(),
     record: jest.fn(),
     runAtNextTick: jest.fn((task) => task()),
-    edit: jest.fn(async (update) => {
+    edit: jest.fn(async (update, options: CanvasEditOptions = {}) => {
       update(this.api);
-      this.api.record();
+      this.api.record(options.capture);
       return true;
     }),
   };
@@ -145,8 +146,13 @@ it('keeps action-only consumers stable through readiness, edits, and recreation'
 it('survives StrictMode and seeds nodes into ECS after async preparation', async () => {
   const ref = createRef<InfiniteCanvasHandle>();
   const nodes = [{ id: 'rect', type: 'rect' as const, width: 10, height: 10 }];
+  let finish!: () => void;
+  const preparation = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
   const onReady = jest.fn(async (api) => {
     expect(api.updateNodes).not.toHaveBeenCalled();
+    await preparation;
   });
   await act(async () =>
     root.render(
@@ -156,6 +162,7 @@ it('survives StrictMode and seeds nodes into ECS after async preparation', async
           runtime={runtime}
           initialNodes={nodes}
           onReady={onReady}
+          fallback="Loading initial scene"
         >
           <span slot="penbar-item">Custom tool</span>
         </InfiniteCanvas>
@@ -167,11 +174,106 @@ it('survives StrictMode and seeds nodes into ECS after async preparation', async
   await act(async () => canvases[0].ready());
   expect(onReady).toHaveBeenCalledTimes(1);
   expect(ref.current!.api).toBe(canvases[0].api);
+  expect(canvases[0].api.edit).not.toHaveBeenCalled();
+  expect(host.textContent).toContain('Loading initial scene');
+  await act(async () => finish());
   expect(canvases[0].api.updateNodes).toHaveBeenCalledWith(nodes);
+  expect(canvases[0].api.edit).toHaveBeenCalledWith(expect.any(Function), {
+    capture: 'NEVER',
+    signal: expect.any(AbortSignal),
+  });
+  expect(canvases[0].api.record).toHaveBeenCalledTimes(1);
+  expect(canvases[0].api.record).toHaveBeenCalledWith('NEVER');
+  expect(canvases[0].api.runAtNextTick).not.toHaveBeenCalled();
+  expect(host.textContent).not.toContain('Loading initial scene');
   expect(canvases[0].querySelector('[slot="penbar-item"]')!.textContent).toBe(
     'Custom tool',
   );
   expect(canvases[0].api.destroy).not.toHaveBeenCalled();
+});
+
+it('aborts a pending initial edit on recreation and ignores its late completion', async () => {
+  let finish!: (applied: boolean) => void;
+  const pending = new Promise<boolean>((resolve) => {
+    finish = resolve;
+  });
+  const onError = jest.fn();
+  const editor = (renderer: 'webgl' | 'webgpu') => (
+    <InfiniteCanvas
+      runtime={runtime}
+      renderer={renderer}
+      initialNodes={[{ id: 'rect', type: 'rect', zIndex: 0, width: 10 }]}
+      fallback="Loading initial scene"
+      onError={onError}
+    />
+  );
+  await act(async () => root.render(editor('webgl')));
+  canvases[0].api.edit.mockReturnValueOnce(pending);
+  await act(async () => canvases[0].ready());
+  const options = canvases[0].api.edit.mock.calls[0][1];
+  expect(options.signal!.aborted).toBe(false);
+  expect(host.textContent).toContain('Loading initial scene');
+  await act(async () => root.render(editor('webgpu')));
+  expect(options.signal!.aborted).toBe(true);
+  await act(async () => finish(true));
+  expect(host.textContent).toContain('Loading initial scene');
+  expect(canvases[0].api.updateNodes).not.toHaveBeenCalled();
+  await act(async () => canvases[1].ready());
+  expect(canvases[1].api.updateNodes).toHaveBeenCalledTimes(1);
+  expect(host.textContent).not.toContain('Loading initial scene');
+  expect(onError).not.toHaveBeenCalled();
+});
+
+it('cancels a queued initial edit on unmount without reporting its late rejection', async () => {
+  let fail!: (reason: Error) => void;
+  const pending = new Promise<boolean>((_resolve, reject) => {
+    fail = reject;
+  });
+  const onError = jest.fn();
+  await act(async () =>
+    root.render(
+      <InfiniteCanvas runtime={runtime} initialNodes={[]} onError={onError} />,
+    ),
+  );
+  canvases[0].api.edit.mockReturnValueOnce(pending);
+  await act(async () => canvases[0].ready());
+  const options = canvases[0].api.edit.mock.calls[0][1];
+  await act(async () => root.render(null));
+  expect(options.signal!.aborted).toBe(true);
+  await act(async () => fail(new Error('removed canvas')));
+  expect(canvases[0].api.updateNodes).not.toHaveBeenCalled();
+  expect(onError).not.toHaveBeenCalled();
+  expect(release).toHaveBeenCalledTimes(1);
+});
+
+it('reports a failed initial edit and releases its Provider and runtime', async () => {
+  const onError = jest.fn();
+  const onAPIChange = jest.fn();
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas
+          runtime={runtime}
+          initialNodes={[]}
+          onError={onError}
+          onAPIChange={onAPIChange}
+        />
+        <Toolbar />
+      </CanvasProvider>,
+    ),
+  );
+  const error = new Error('initial edit failed');
+  canvases[0].api.edit.mockRejectedValueOnce(error);
+  await act(async () => canvases[0].ready());
+  expect(onError).toHaveBeenCalledWith(error);
+  expect(host.querySelector('[role="alert"]')!.textContent).toBe(error.message);
+  expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
+  expect(onAPIChange.mock.calls.map(([api]) => api)).toEqual([
+    canvases[0].api,
+    null,
+  ]);
+  expect(canvases[0].api.destroy).toHaveBeenCalledTimes(1);
+  expect(release).toHaveBeenCalledTimes(1);
 });
 
 it('does not create a canvas if unmounted while the runtime starts', async () => {
@@ -231,6 +333,7 @@ it('aborts async preparation and clears the API when removed', async () => {
         onReady={onReady}
         onAPIChange={onAPIChange}
         onError={onError}
+        initialNodes={[]}
       />,
     ),
   );
@@ -244,6 +347,8 @@ it('aborts async preparation and clears the API when removed', async () => {
   expect(canvases[0].api.destroy).toHaveBeenCalledTimes(1);
   expect(canvases[0].subscribers.size).toBe(0);
   await act(async () => finish());
+  expect(canvases[0].api.edit).not.toHaveBeenCalled();
+  expect(canvases[0].api.updateNodes).not.toHaveBeenCalled();
   expect(onError).not.toHaveBeenCalled();
 });
 
