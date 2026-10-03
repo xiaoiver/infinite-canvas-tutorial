@@ -17,7 +17,7 @@ import {
   useCanvasHistory,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { DocumentControls } from '../../../../../examples/react-vite/src/document-controls';
+import { DocumentControls } from './document-controls';
 
 export interface PlaygroundOptions {
   locale: 'en' | 'zh';
