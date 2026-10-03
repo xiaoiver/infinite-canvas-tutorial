@@ -46,6 +46,16 @@ function mount(store = createCanvasStore()) {
       updates.forEach((node) => next.set(node.id, node));
       nodes = [...next.values()];
     }),
+    deleteNodesById: jest.fn((ids: string[]) => {
+      nodes = nodes.filter((node) => !ids.includes(node.id));
+      state = {
+        ...state,
+        layersSelected: state.layersSelected.filter((id) => !ids.includes(id)),
+      };
+    }),
+    replaceDocument: jest.fn((next: readonly SerializedNode[]) => {
+      nodes = structuredClone([...next]);
+    }),
     setAppState: jest.fn((patch: Partial<AppState>) => {
       state = { ...state, ...patch };
     }),
@@ -110,6 +120,80 @@ it('copies supplied nodes before queueing and preserves omitted nodes', async ()
     ['rect', 100],
     ['second', 60],
   ]);
+  api.destroy();
+});
+
+it('copies deletion IDs and refreshes the document and selection after execution', async () => {
+  const { api, store, flush, actions } = mount();
+  const selected = actions.selectNodes(['rect']);
+  const ids = ['rect', 'missing', 'rect'];
+  const deleted = actions.deleteNodes(ids);
+  ids.length = 0;
+  expect(api.deleteNodesById).not.toHaveBeenCalled();
+  flush();
+  expect(await Promise.all([selected, deleted])).toEqual([true, true]);
+  expect(api.deleteNodesById).toHaveBeenCalledWith(['rect', 'missing', 'rect']);
+  expect(store.getSnapshot().nodes).toEqual([]);
+  expect(store.getSnapshot().appState!.layersSelected).toEqual([]);
+  expect(api.record.mock.calls).toEqual([['IMMEDIATELY'], ['IMMEDIATELY']]);
+  api.destroy();
+});
+
+it('copies a full replacement document before queueing and honors capture options', async () => {
+  const { api, store, flush, actions } = mount();
+  const supplied = { ...rectangle(60), id: 'second' };
+  const replaced = actions.replaceDocument([supplied], { capture: 'NEVER' });
+  supplied.width = 999;
+  expect(api.replaceDocument).not.toHaveBeenCalled();
+  flush();
+  expect(await replaced).toBe(true);
+  expect(api.replaceDocument).toHaveBeenCalledWith(
+    [expect.objectContaining({ id: 'second', width: 60 })],
+    'local',
+  );
+  expect(store.getSnapshot().nodes.map((node) => node.id)).toEqual(['second']);
+  expect(api.record.mock.calls).toEqual([['NEVER']]);
+  api.destroy();
+});
+
+it('runs replacement updaters against the latest scene in edit invocation order', async () => {
+  const { api, flush, actions } = mount();
+  const inserted = actions.updateNodes([{ ...rectangle(70), id: 'second' }]);
+  const deleted = actions.deleteNodes(['rect']);
+  const replaced = actions.replaceDocument((nodes) =>
+    nodes.map((node) => ({ ...node, width: node.width! + 10 })),
+  );
+  flush();
+  expect(await Promise.all([inserted, deleted, replaced])).toEqual([
+    true,
+    true,
+    true,
+  ]);
+  expect(api.getNodes().map((node) => [node.id, node.width])).toEqual([
+    ['second', 80],
+  ]);
+  expect(api.record).toHaveBeenCalledTimes(3);
+  api.destroy();
+});
+
+it('cancels queued document commands and propagates replacement validation failures', async () => {
+  const { api, actions, flush } = mount();
+  const controller = new AbortController();
+  const deleted = actions.deleteNodes(['rect'], { signal: controller.signal });
+  const replaced = actions.replaceDocument([], { signal: controller.signal });
+  controller.abort();
+  expect(await Promise.all([deleted, replaced])).toEqual([false, false]);
+  api.replaceDocument.mockImplementationOnce(() => {
+    throw new Error('Duplicate node id');
+  });
+  const failed = actions.replaceDocument([rectangle(), rectangle()]);
+  const rejected = expect(failed).rejects.toThrow('Duplicate node id');
+  flush();
+  await rejected;
+  expect(api.deleteNodesById).not.toHaveBeenCalled();
+  expect(api.replaceDocument).toHaveBeenCalledTimes(1);
+  expect(api.record).not.toHaveBeenCalled();
+  expect(api.getNodes()).toEqual([rectangle()]);
   api.destroy();
 });
 

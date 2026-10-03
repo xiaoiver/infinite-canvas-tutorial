@@ -7,6 +7,9 @@ import {
   useCanvasAPI,
   useCanvasActions,
   useCanvasSelector,
+  useCanvasNode,
+  useCanvasSelection,
+  useCanvasHistory,
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
 import {
@@ -119,11 +122,9 @@ function Toolbar({ id }: { id: string }) {
     };
   }, [id, actions]);
   const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
-  const canUndo = useCanvasSelector((state) => state.canUndo);
-  const canRedo = useCanvasSelector((state) => state.canRedo);
-  const selected = useCanvasSelector(
-    (state) => state.appState?.layersSelected.length ?? 0,
-  );
+  const { canUndo, canRedo } = useCanvasHistory();
+  const selected = useCanvasSelection();
+  const node = useCanvasNode(selected[0]?.id);
   const count = useCanvasSelector(
     (state) => state.nodes.filter((node) => !node.isDeleted).length,
   );
@@ -133,7 +134,11 @@ function Toolbar({ id }: { id: string }) {
   return (
     <div data-testid={`${id}-toolbar`}>
       <output data-testid={`${id}-zoom`}>{zoom}</output>
-      <output data-testid={`${id}-selection`}>{selected}</output>
+      <output data-testid={`${id}-selection`}>{selected.length}</output>
+      <output data-testid={`${id}-node-width`}>{node?.width ?? ''}</output>
+      <output data-testid={`${id}-selected-ids`}>
+        {selected.map((node) => node.id).join(',')}
+      </output>
       <output data-testid={`${id}-count`}>{count}</output>
       <output data-testid={`${id}-penbar`}>{String(penbar)}</output>
       <button
@@ -243,8 +248,24 @@ function Editor() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Editor />
-  </StrictMode>,
-);
+const host = document.getElementById('root')!;
+const playgroundLocale = new URLSearchParams(location.search).get('playground');
+if (playgroundLocale) {
+  // Exercise the real documentation controls without building the whole site.
+  const style = document.createElement('style');
+  style.textContent = '.react-demo-canvas { width: 400px; height: 300px; }';
+  document.head.append(style);
+  void import('../../../packages/site/docs/components/react/playground').then(
+    ({ mountPlayground }) =>
+      mountPlayground(host, {
+        locale: playgroundLocale === 'zh' ? 'zh' : 'en',
+        theme: 'light',
+      }),
+  );
+} else {
+  createRoot(host).render(
+    <StrictMode>
+      <Editor />
+    </StrictMode>,
+  );
+}

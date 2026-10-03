@@ -63,8 +63,9 @@ Components. The root entry and `/spectrum` currently export the same component.
 
 ## Interactive example
 
-Try adding a rectangle, changing its color, zooming, and undoing or redoing an
-edit. Drag a shape to see the selection update. Canvas A and Canvas B use
+Try adding a rectangle, changing its color or width, deleting selected shapes,
+and undoing or redoing an edit. **Restore sample** replaces the full document
+and can also be undone. Select a shape to see its width update. Canvas A and Canvas B use
 separate Providers and share one runtime; editing one leaves the other's
 history and zoom unchanged.
 
@@ -145,6 +146,57 @@ availability updates on edits, undo, redo, and `clearHistory()` without polling.
 Uncommitted direct API writes become visible on the next commit/event. API
 availability marks GPU readiness and may precede async `onReady` completion.
 
+## Node, selection, and history hooks
+
+These hooks require a `CanvasProvider` and are available from both package entries:
+
+| Hook                   | Result                                                                                                           |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `useCanvasNode(id?)`   | A read-only node copy, or `null` for an absent/deleted ID. Accepts `null` or `undefined` for an empty selection. |
+| `useCanvasSelection()` | Read-only node copies in selection order, excluding missing/deleted IDs.                                         |
+| `useCanvasHistory()`   | `{ canUndo, canRedo }`; use `useCanvasActions()` for navigation.                                                 |
+
+During SSR, before readiness, and after removal, they return `null`, `[]`, and
+`{ canUndo: false, canRedo: false }` respectively. References stay stable while
+the selected content is unchanged, including through camera and unrelated node
+updates. Node copies also detect committed in-place `api.updateNode()` changes;
+do not mutate them to edit the canvas. For individual scalar values, continue
+using `useCanvasSelector`.
+
+```tsx
+import {
+    useCanvasActions,
+    useCanvasHistory,
+    useCanvasNode,
+    useCanvasSelection,
+} from '@infinite-canvas-tutorial/react';
+
+function Properties({ onError }: { onError: (error: unknown) => void }) {
+    const actions = useCanvasActions();
+    const selected = useCanvasSelection();
+    const node = useCanvasNode(selected[0]?.id);
+    const { canUndo } = useCanvasHistory();
+    return (
+        <div>
+            <output>{node?.width ?? 'Select a shape'}</output>
+            <button disabled={!canUndo} onClick={actions.undo}>
+                Undo
+            </button>
+            <button
+                disabled={selected.length === 0}
+                onClick={() => {
+                    void actions
+                        .deleteNodes(selected.map((node) => node.id))
+                        .catch(onError);
+                }}
+            >
+                Delete selected
+            </button>
+        </div>
+    );
+}
+```
+
 ## Editing actions
 
 `useCanvasActions()` returns stable commands for the nearest Provider. Action-only
@@ -182,19 +234,27 @@ function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
-| Command                                 | Behavior                                                                                                                                                                          |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `updateNodes(nodesOrUpdater, options?)` | Upserts by ID, preserving omitted nodes. Supplied arrays are copied before queueing; an updater reads the latest nodes at execution. Return new nodes without mutating the input. |
-| `setAppState(patchOrUpdater, options?)` | Merges a patch using API semantics. An updater reads the latest state. View settings also refresh selectors when they do not participate in history.                              |
-| `selectNodes(ids, options?)`            | Resolves IDs at execution, ignoring missing/deleted nodes. `preserveSelection: true` extends the selection. Pass `[]` to clear it.                                                |
-| `edit(callback, options?)`              | Runs synchronous API mutations before derived data/rendering, then calls `record()` once.                                                                                              |
-| `undo()`, `redo()`, `clearHistory()`    | Use the current canvas history. Undo/redo queue their work; clearHistory runs immediately.                                                                                        |
+| Command                                     | Behavior                                                                                                                                                                                    |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `updateNodes(nodesOrUpdater, options?)`     | Upserts by ID, preserving omitted nodes. Supplied arrays are copied before queueing; an updater reads the latest nodes at execution. Return new nodes without mutating the input.           |
+| `deleteNodes(ids, options?)`                | Deletes IDs and descendants, clearing their selection; missing IDs are ignored.                                                                                                             |
+| `replaceDocument(nodesOrUpdater, options?)` | Replaces the full document, deleting omitted IDs; validates the complete hierarchy before applying. Arrays are copied before queueing; updaters read the latest nodes. Undoable by default. |
+| `setAppState(patchOrUpdater, options?)`     | Merges a patch using API semantics. An updater reads the latest state. View settings also refresh selectors when they do not participate in history.                                        |
+| `selectNodes(ids, options?)`                | Resolves IDs at execution, ignoring missing/deleted nodes. `preserveSelection: true` extends the selection. Pass `[]` to clear it.                                                          |
+| `edit(callback, options?)`                  | Runs synchronous API mutations before derived data/rendering, then calls `record()` once.                                                                                                   |
+| `undo()`, `redo()`, `clearHistory()`        | Use the current canvas history. Undo/redo queue their work; clearHistory runs immediately.                                                                                                  |
 
-The first four commands return `Promise<boolean>`: `true` after a successful
+The six editing commands return `Promise<boolean>`: `true` after a successful
 commit, or `false` if no canvas is available or the owning canvas is removed
 before execution. Failures reject the Promise; handle them in the calling
 component. History commands return `false` when no API is attached. Actions use
 the same GPU-ready API availability as `useCanvasAPI()`.
+
+To load a remote or saved document without adding an undo entry, use
+`replaceDocument(nodes, { capture: 'NEVER' })`. Pass `[]` to clear the document.
+Call `clearHistory()` separately if existing history should be removed.
+Replacement preserves camera settings; later `initialNodes` prop changes do not
+replace the document.
 
 Each editing command commits independently. To group changes into one undo entry,
 use `edit` in an event handler:
