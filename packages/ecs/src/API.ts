@@ -3624,10 +3624,18 @@ export class API {
   }
 
   /**
-   * 自 `.ic` 文档或 JSON 字符串恢复场景（会先清空当前场景根节点）。
+   * 从 `.ic` 文档或 JSON 字符串恢复场景，在 Edit 阶段替换并提交一次。
+   * 返回 true 表示提交完成，取消或销毁返回 false；输入在排队前校验并复制。
    */
-  importIcDocument(doc: unknown, options?: { recordHistory?: boolean }) {
-    applyIcDocumentToApi(this, parseIcDocumentJson(doc), options);
+  importIcDocument(
+    doc: unknown,
+    options?: { recordHistory?: boolean; signal?: AbortSignal },
+  ): Promise<boolean> {
+    const received = structuredClone(parseIcDocumentJson(doc));
+    return this.edit((api) => applyIcDocumentToApi(api, received, options), {
+      capture: options?.recordHistory === false ? 'NEVER' : 'IMMEDIATELY',
+      signal: options?.signal,
+    });
   }
 
   // AI APIs

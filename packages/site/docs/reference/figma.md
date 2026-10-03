@@ -35,7 +35,7 @@ import { parseFigFileToSerializedNodes } from '@infinite-canvas-tutorial/figma';
 
 const bytes = new Uint8Array(await (await fetch('/design.fig')).arrayBuffer());
 const doc = parseFigFileToSerializedNodes(bytes);
-api.importIcDocument(doc);
+await api.importIcDocument(doc);
 ```
 
 In the app, use **Import from… → Figma (.fig)** in the top navigation bar to open
@@ -70,7 +70,7 @@ const file = await client.getFile('https://www.figma.com/file/<key>/<name>');
 const imageRefUrls = await client.getImageFills('<key>');
 
 const doc = parseFigmaFileToSerializedNodes(file, { imageRefUrls });
-api.importIcDocument(doc);
+await api.importIcDocument(doc);
 ```
 
 Cloud files need `getImageFills` for image paint URLs; local `.fig` files use

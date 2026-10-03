@@ -17,6 +17,7 @@ import {
   useCanvasHistory,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { DocumentControls } from './document-controls';
 
 export interface PlaygroundOptions {
   locale: 'en' | 'zh';
@@ -276,6 +277,11 @@ function Controls({
         ),
     ),
     error && h('p', { role: 'alert' }, error),
+    h(DocumentControls, {
+      storageKey: `infinite-canvas:react-playground:${id}:v1`,
+      filename: `canvas-${id}.ic`,
+      locale,
+    }),
   );
 }
 

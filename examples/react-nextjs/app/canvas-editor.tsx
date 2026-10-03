@@ -8,6 +8,7 @@ import {
   useCanvasSelector,
   type InfiniteCanvasProps,
 } from '@infinite-canvas-tutorial/react';
+import { DocumentControls } from './document-controls';
 
 const initialNodes: NonNullable<InfiniteCanvasProps['initialNodes']> = [
   {
@@ -57,6 +58,7 @@ function Toolbar() {
         Shapes: <output data-testid="shape-count">{count}</output>
       </span>
       {error && <span role="alert">{error}</span>}
+      <DocumentControls storageKey="infinite-canvas:react-nextjs:v1" />
     </div>
   );
 }

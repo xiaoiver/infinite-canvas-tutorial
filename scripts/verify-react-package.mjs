@@ -172,6 +172,7 @@ function Toolbar() {
     editor.setAppState({ filter: '' });
     editor.getLocale();
   }, options);
+  const imported: Promise<boolean> | undefined = api?.importIcDocument('{}', { recordHistory: false, signal: options.signal });
   const canUndo: boolean = useCanvasSelector((state: CanvasState) => state.canUndo);
   return <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>;
 }

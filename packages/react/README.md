@@ -175,6 +175,58 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
+## Saving and importing documents
+
+The playground and both framework starters include **Save locally**, **Load saved**,
+**Export .ic**, and **Import .ic** controls. Saving is explicit; it stores one
+native document per canvas in this browser's `localStorage`. Resetting or
+reloading the demo keeps that save, but does not load it automatically. Use
+**Load saved** to restore it. Storage is scoped to the site's origin and browser;
+export a file to move a document elsewhere. Storage and file errors appear beside
+the controls.
+
+These controls belong to the host application. The starters' `document-controls.tsx`
+shows the complete implementation, including cancellation when its canvas is
+removed. It only accesses browser APIs from event handlers, so it can be imported
+by a Next.js Client Component during SSR.
+
+Use the native `.ic` format when saving nodes, design variables, themes, selection,
+and camera/UI state together. `replaceDocument` only replaces nodes. Read the
+latest document in a queued edit, then import outside that edit:
+
+```tsx
+// In an event handler, with useCanvasAPI() and useCanvasActions().
+await actions.edit(
+    (api) => {
+        localStorage.setItem(
+            'my-canvas:v1',
+            JSON.stringify(api.exportIcDocument()),
+        );
+    },
+    { capture: 'NEVER' },
+);
+
+const raw = localStorage.getItem('my-canvas:v1');
+if (api && raw !== null) {
+    await api.importIcDocument(raw, { signal: controller.signal });
+}
+```
+
+`api.importIcDocument` accepts a native document object or its JSON string. It
+validates the format, version, node IDs/types, hierarchy, and selection/view fields
+before mutation, copies the input before queueing, and commits once in the Edit
+phase. It returns `Promise<boolean>`: `true` after commit, or `false` on cancellation
+or canvas destruction. Invalid input throws before queueing; execution failures
+reject the Promise. Catch both in the event handler. Read files with `await file.text()`
+before importing, and abort pending reads/imports when their owning canvas is removed.
+
+Imports create one undo entry for nodes, variables, selection, and filter. Camera,
+theme, and other UI settings follow the existing non-undoable state rules.
+`{ recordHistory: false }` imports without adding an undo entry; call
+`clearHistory()` separately to discard earlier history. Saves and exports use
+`capture: 'NEVER'`. Existing edits are not rolled back if an arbitrary runtime
+mutation fails.
+
 ## Editing actions
 
 `useCanvasActions()` returns stable commands for the nearest Provider. Action-only
