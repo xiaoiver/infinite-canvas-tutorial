@@ -39,12 +39,17 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep } from '../utils';
+import { NodeJSAdapter } from '../utils';
 
-DOMAdapter.set(NodeJSAdapter);
+DOMAdapter.set({
+  ...NodeJSAdapter,
+  // Drive full ECS frames ourselves; a fixed delay can capture stale selection UI.
+  requestAnimationFrame: () => 0,
+  cancelAnimationFrame: () => {},
+});
 
 describe('Transformer', () => {
-  it('should undo deleting node correctly', async () => {
+  it('clears the transformer when undo follows an unrecorded deletion', async () => {
     const app = new App();
 
     let api: API;
@@ -144,28 +149,33 @@ describe('Transformer', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    try {
+      await app.run();
+      // Frames 1/2 delete and request undo; subsequent frames flush selection UI.
+      for (let i = 0; i < 6; i++) await app.world.execute();
+      expect(api!.getNodes()).toEqual([]);
+      expect(api!.getAppState().layersSelected).toEqual([]);
+      expect(api!.isUndoStackEmpty()).toBe(true);
 
-    await sleep(300);
+      if (canvasEntity && cameraEntity) {
+        const canvas = canvasEntity.read(Canvas);
+        expect(canvas.devicePixelRatio).toBe(1);
+        expect(canvas.width).toBe(200);
+        expect(canvas.height).toBe(200);
+        expect(canvas.renderer).toBe('webgl');
+        expect(canvas.cameras).toHaveLength(1);
 
-    if (canvasEntity && cameraEntity) {
-      const canvas = canvasEntity.read(Canvas);
-      expect(canvas.devicePixelRatio).toBe(1);
-      expect(canvas.width).toBe(200);
-      expect(canvas.height).toBe(200);
-      expect(canvas.renderer).toBe('webgl');
-      expect(canvas.cameras).toHaveLength(1);
+        const camera = cameraEntity.read(Camera);
+        expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
+      }
 
-      const camera = cameraEntity.read(Camera);
-      expect(camera.canvas.isSame(canvasEntity)).toBeTruthy();
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'transformer-undo-delete',
+      );
+    } finally {
+      await app.exit();
     }
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'transformer-undo-delete',
-    );
-
-    await app.exit();
   });
 });
