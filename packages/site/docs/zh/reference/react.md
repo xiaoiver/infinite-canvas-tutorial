@@ -62,7 +62,8 @@ Next.js Client Component。默认入口和 `/spectrum` 目前导出同一个组�
 
 ## 可交互示例
 
-试试添加矩形、修改颜色、缩放，以及撤销和重做。拖动图形可观察选区变化。
+试试添加矩形、修改颜色、增加选中图形的宽度、删除图形，以及撤销和重做。
+“恢复示例文档”会替换当前画布的整份文档，该操作也可以撤销。拖动图形可观察选区和宽度变化。
 画布 A 和 B 分别使用独立的 Provider，并共享同一个 runtime；编辑其中一个，
 另一个的历史和缩放不会改变。
 
@@ -114,7 +115,7 @@ export function Editor() {
 ```
 
 `useCanvasAPI()` 在 SSR、就绪前、卸载或失败后返回 `null`，只在 API 改变时触发更新。
-两个 hooks 都必须在 Provider 内使用。同一个 Provider 同时挂载两个画布会报错；
+所有画布 hooks 都必须在 Provider 内使用。同一个 Provider 同时挂载两个画布会报错；
 多画布请分别包裹 Provider，并共享同一个 runtime。
 
 `useCanvasSelector(selector, isEqual?)` 从 `CanvasState` 中选择 `api`、`appState`、
@@ -136,6 +137,55 @@ const history = useCanvasSelector(
 编辑、撤销、重做和 `clearHistory()` 都会通知历史可用状态，无需轮询。
 直接调用 API 而未提交的修改，在下一次提交或事件时才反映到 hooks。
 API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
+
+## 节点、选区和历史 hooks
+
+以下 hooks 需要 `CanvasProvider`，两个包入口都提供：
+
+| Hook                   | 返回值                                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| `useCanvasNode(id?)`   | 节点的只读副本；ID 不存在或已删除时为 `null`。可传入 `null` 或 `undefined` 表示没有选中节点。 |
+| `useCanvasSelection()` | 按选区顺序返回节点的只读副本，忽略不存在或已删除的 ID。                                       |
+| `useCanvasHistory()`   | `{ canUndo, canRedo }`；历史操作使用 `useCanvasActions()`。                                   |
+
+SSR、就绪前和卸载后，分别返回 `null`、`[]` 和两个标记均为 `false` 的历史状态。
+选中内容不变时保持引用稳定，相机或其他节点更新不会触发无关渲染。
+节点副本还能检测提交后的原地 `api.updateNode()` 修改；请勿修改副本来编辑画布。
+只需要单个标量值时，可以继续使用 `useCanvasSelector`。
+
+```tsx
+import {
+    useCanvasActions,
+    useCanvasHistory,
+    useCanvasNode,
+    useCanvasSelection,
+} from '@infinite-canvas-tutorial/react';
+
+function Properties({ onError }: { onError: (error: unknown) => void }) {
+    const actions = useCanvasActions();
+    const selected = useCanvasSelection();
+    const node = useCanvasNode(selected[0]?.id);
+    const { canUndo } = useCanvasHistory();
+    return (
+        <div>
+            <output>{node?.width ?? '请选择图形'}</output>
+            <button disabled={!canUndo} onClick={actions.undo}>
+                撤销
+            </button>
+            <button
+                disabled={selected.length === 0}
+                onClick={() => {
+                    void actions
+                        .deleteNodes(selected.map((node) => node.id))
+                        .catch(onError);
+                }}
+            >
+                删除选中图形
+            </button>
+        </div>
+    );
+}
+```
 
 ## 编辑操作 hooks
 
@@ -174,18 +224,24 @@ function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
-| 操作                                    | 行为                                                                                                             |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `updateNodes(nodesOrUpdater, options?)` | 按 ID 新增或更新，保留未提供的节点。数组在排队前复制；函数式更新在执行时读取最新节点，请返回新数据，不修改输入。 |
-| `setAppState(patchOrUpdater, options?)` | 按 API 语义合并状态；函数式更新读取执行时的最新状态。不参与历史记录的界面设置也会刷新 selectors。                |
-| `selectNodes(ids, options?)`            | 执行时解析 ID，忽略不存在或已删除的节点。`preserveSelection: true` 保留原有选区，传入 `[]` 清空选区。            |
-| `edit(callback, options?)`              | 在派生数据计算和渲染之前执行同步修改，并在回调结束后调用一次 `record()`。                                                   |
-| `undo()`、`redo()`、`clearHistory()`    | 使用当前画布的历史记录；撤销/重做排队执行，清空历史立即执行。                                                    |
+| 操作                                        | 行为                                                                                                             |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `updateNodes(nodesOrUpdater, options?)`     | 按 ID 新增或更新，保留未提供的节点。数组在排队前复制；函数式更新在执行时读取最新节点，请返回新数据，不修改输入。 |
+| `deleteNodes(ids, options?)`                | 删除指定 ID 及其子节点，并清理被删除节点的选区；忽略不存在的 ID。                                                |
+| `replaceDocument(nodesOrUpdater, options?)` | 替换整份文档，删除未提供的 ID；执行前校验完整层级。数组在排队前复制，函数式更新读取最新节点。默认可以撤销。      |
+| `setAppState(patchOrUpdater, options?)`     | 按 API 语义合并状态；函数式更新读取执行时的最新状态。不参与历史记录的界面设置也会刷新 selectors。                |
+| `selectNodes(ids, options?)`                | 执行时解析 ID，忽略不存在或已删除的节点。`preserveSelection: true` 保留原有选区，传入 `[]` 清空选区。            |
+| `edit(callback, options?)`                  | 在派生数据计算和渲染之前执行同步修改，并在回调结束后调用一次 `record()`。                                        |
+| `undo()`、`redo()`、`clearHistory()`        | 使用当前画布的历史记录；撤销/重做排队执行，清空历史立即执行。                                                    |
 
-前四项返回 `Promise<boolean>`：提交成功后为 `true`，画布不可用或在执行前卸载时
+六项编辑操作返回 `Promise<boolean>`：提交成功后为 `true`，画布不可用或在执行前卸载时
 为 `false`。执行失败会拒绝 Promise，请在调用组件中处理。
 历史操作在 API 不可用时返回 `false`。操作的 API 可用时机与 `useCanvasAPI()`
 一致，表示 GPU 就绪。
+
+使用 `replaceDocument` 加载远程或已保存文档时，可以传入 `{ capture: 'NEVER' }`
+以提交内容而不增加撤销记录；清空文档可传入 `[]`。需要清空已有历史时，另行调用
+`clearHistory()`。它不会更改相机设置；`initialNodes` 的后续 prop 更新也不会替换文档。
 
 每次编辑调用分别提交。需要把多步操作合并成一条撤销记录时，在事件处理函数中
 使用 `edit`：

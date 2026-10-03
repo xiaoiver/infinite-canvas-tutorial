@@ -21,6 +21,18 @@ export interface CanvasActions {
       | ((nodes: readonly SerializedNode[]) => readonly SerializedNode[]),
     options?: CanvasEditOptions,
   ): Promise<boolean>;
+  /** Delete IDs and their descendants from the latest scene. */
+  deleteNodes(
+    ids: readonly string[],
+    options?: CanvasEditOptions,
+  ): Promise<boolean>;
+  /** Replace the entire document, deleting omitted IDs; undoable by default. */
+  replaceDocument(
+    update:
+      | readonly SerializedNode[]
+      | ((nodes: readonly SerializedNode[]) => readonly SerializedNode[]),
+    options?: CanvasEditOptions,
+  ): Promise<boolean>;
   /** Merge a patch; an updater reads the latest application state. */
   setAppState(
     update:
@@ -75,6 +87,23 @@ export function createCanvasActions(store: CanvasStore): CanvasActions {
             ? structuredClone(next(api.getNodes()))
             : next;
         api.updateNodes([...nodes]);
+      }, options);
+    },
+    deleteNodes(ids, options) {
+      const deleted = [...ids];
+      return edit((api) => {
+        api.deleteNodesById(deleted);
+      }, options);
+    },
+    async replaceDocument(update, options) {
+      const next =
+        typeof update === 'function' ? update : structuredClone(update);
+      return edit((api) => {
+        // The core validates and clones the full document before applying it.
+        api.replaceDocument(
+          typeof next === 'function' ? next(api.getNodes()) : next,
+          'local',
+        );
       }, options);
     },
     async setAppState(update, options) {

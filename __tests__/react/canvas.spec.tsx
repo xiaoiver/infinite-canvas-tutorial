@@ -14,12 +14,20 @@ import {
   useCanvasSelector,
 } from '../../packages/react/src/CanvasProvider';
 import type { CanvasActions } from '../../packages/react/src/actions';
-import type { CanvasEditOptions } from '@infinite-canvas-tutorial/ecs';
+import type {
+  CanvasEditOptions,
+  SerializedNode,
+} from '@infinite-canvas-tutorial/ecs';
+import {
+  useCanvasNode,
+  useCanvasSelection,
+  useCanvasHistory,
+} from '../../packages/react/src/hooks';
 
 const canvases: TestCanvas[] = [];
 class TestCanvas extends HTMLElement {
   state = { cameraZoom: 1, layersSelected: [], filter: '' };
-  nodes = [];
+  nodes: SerializedNode[] = [];
   history = { canUndo: false, canRedo: false };
   historySubscribers = new Set<(state: any) => void>();
   cleanups = new Set<() => void>();
@@ -521,6 +529,138 @@ it('supports inline object selectors, custom equality, and changed selectors', a
   await act(async () => root.render(editor('filter')));
   expect(host.querySelector('output')!.textContent).toBe('blur(2px)');
   expect(canvases).toHaveLength(1);
+});
+
+it('keeps node, selection, and history hooks stable through unrelated updates', async () => {
+  const nodeRender = jest.fn();
+  const selectionRender = jest.fn();
+  const historyRender = jest.fn();
+  function Node() {
+    nodeRender(useCanvasNode('rect'));
+    return null;
+  }
+  function Selection() {
+    selectionRender(useCanvasSelection());
+    return null;
+  }
+  function History() {
+    historyRender(useCanvasHistory());
+    return null;
+  }
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <Node />
+        <Selection />
+        <History />
+      </CanvasProvider>,
+    ),
+  );
+  const canvas = canvases[0];
+  canvas.nodes = [
+    {
+      id: 'rect',
+      type: 'rect',
+      zIndex: 0,
+      width: 100,
+      fills: [{ type: 'solid', value: 'red' }],
+    },
+    { id: 'other', type: 'rect', zIndex: 1, width: 50 },
+  ];
+  await act(async () => canvas.ready());
+  await act(async () => canvas.commit({ layersSelected: ['rect'] }));
+  const previousNode = nodeRender.mock.calls.at(-1)![0];
+  const previousSelection = selectionRender.mock.calls.at(-1)![0];
+  nodeRender.mockClear();
+  selectionRender.mockClear();
+  historyRender.mockClear();
+  await act(async () => {
+    canvas.nodes[1].width = 90;
+    canvas.commit({ cameraZoom: 2 });
+    canvas.historySubscribers.forEach((listener) => listener(canvas.history));
+  });
+  expect(nodeRender).not.toHaveBeenCalled();
+  expect(selectionRender).not.toHaveBeenCalled();
+  expect(historyRender).not.toHaveBeenCalled();
+  await act(async () => {
+    canvas.nodes[0].width = 120;
+    canvas.nodes[0].fills![0].value = 'blue';
+    canvas.commit();
+  });
+  expect(nodeRender).toHaveBeenCalledTimes(1);
+  expect(selectionRender).toHaveBeenCalledTimes(1);
+  expect(historyRender).not.toHaveBeenCalled();
+  expect(nodeRender.mock.calls[0][0]).toMatchObject({
+    width: 120,
+    fills: [{ value: 'blue' }],
+  });
+  expect(previousNode).toMatchObject({ width: 100, fills: [{ value: 'red' }] });
+  expect(previousSelection[0]).toEqual(previousNode);
+  await act(async () =>
+    canvas.historySubscribers.forEach((listener) =>
+      listener({ canUndo: true, canRedo: false }),
+    ),
+  );
+  expect(historyRender).toHaveBeenCalledTimes(1);
+  expect(historyRender.mock.calls[0][0]).toEqual({
+    canUndo: true,
+    canRedo: false,
+  });
+});
+
+it('resolves changed node IDs and ordered selection and resets hooks on destruction', async () => {
+  const render = jest.fn();
+  function Probe({ id }: { id?: string | null }) {
+    const node = useCanvasNode(id);
+    const selection = useCanvasSelection();
+    const history = useCanvasHistory();
+    render({ node, selection, history });
+    return (
+      <output>{`${node?.id ?? 'none'}:${selection
+        .map((node) => node.id)
+        .join(',')}`}</output>
+    );
+  }
+  const editor = (id?: string | null) => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <Probe id={id} />
+    </CanvasProvider>
+  );
+  expect(renderToString(editor())).toContain('none:');
+  expect(render.mock.calls.at(-1)![0]).toEqual({
+    node: null,
+    selection: [],
+    history: { canUndo: false, canRedo: false },
+  });
+  await act(async () => root.render(editor('rect')));
+  const canvas = canvases[0];
+  canvas.nodes = [
+    { id: 'rect', type: 'rect', zIndex: 0 },
+    { id: 'other', type: 'rect', zIndex: 1 },
+    { id: 'deleted', type: 'rect', zIndex: 2, isDeleted: true },
+  ];
+  await act(async () => canvas.ready());
+  await act(async () =>
+    canvas.commit({ layersSelected: ['other', 'missing', 'deleted', 'rect'] }),
+  );
+  expect(host.querySelector('output')!.textContent).toBe('rect:other,rect');
+  await act(async () => root.render(editor('other')));
+  expect(host.querySelector('output')!.textContent).toBe('other:other,rect');
+  await act(async () => root.render(editor('deleted')));
+  expect(host.querySelector('output')!.textContent).toBe('none:other,rect');
+  await act(async () => {
+    canvas.nodes[1].isDeleted = true;
+    canvas.commit();
+  });
+  expect(host.querySelector('output')!.textContent).toBe('none:rect');
+  await act(async () => canvas.api.destroy());
+  expect(render.mock.calls.at(-1)![0]).toEqual({
+    node: null,
+    selection: [],
+    history: { canUndo: false, canRedo: false },
+  });
 });
 
 it('isolates Providers and updates history and selection without polling', async () => {

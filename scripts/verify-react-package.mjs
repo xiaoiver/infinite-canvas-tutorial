@@ -127,11 +127,16 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
     assert.equal(actions.undo(), false);
+    assert.equal(useCanvasNode('rect'), null);
+    assert.deepEqual(useCanvasSelection(), []);
+    assert.deepEqual(useCanvasHistory(), { canUndo: false, canRedo: false });
+    assert.equal(typeof actions.deleteNodes, 'function');
+    assert.equal(typeof actions.replaceDocument, 'function');
     const zoom = useCanvasSelector(state => state.appState?.cameraZoom ?? 1);
     return React.createElement('output', null, String(api === null) + ':' + zoom);
   }
@@ -147,7 +152,8 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, type CanvasHistoryState, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InfiniteCanvas as SpectrumCanvas } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
   const api = useCanvasAPI();
@@ -156,6 +162,11 @@ function Toolbar() {
   const update: Promise<boolean> = actions.updateNodes(nodes => nodes.map(node => ({ ...node, width: 100 })), options);
   const patch: Promise<boolean> = actions.setAppState(state => ({ filter: state.filter }), options);
   const selection: Promise<boolean> = actions.selectNodes(['rect'], { preserveSelection: true });
+  const deleted: Promise<boolean> = actions.deleteNodes(['rect'], options);
+  const replaced: Promise<boolean> = actions.replaceDocument(nodes => nodes.filter(node => !node.isDeleted), options);
+  const selected: readonly Readonly<SerializedNode>[] = useCanvasSelection();
+  const node: Readonly<SerializedNode> | null = useCanvasNode(selected[0]?.id);
+  const history: Readonly<CanvasHistoryState> = useCanvasHistory();
   const edit: Promise<boolean> = actions.edit(api => { api.setAppState({ filter: '' }); });
   const coreEdit: Promise<boolean> | undefined = api?.edit(editor => {
     editor.setAppState({ filter: '' });

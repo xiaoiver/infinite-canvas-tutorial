@@ -12,6 +12,9 @@ import {
   useCanvasAPI,
   useCanvasActions,
   useCanvasSelector,
+  useCanvasNode,
+  useCanvasSelection,
+  useCanvasHistory,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
@@ -23,7 +26,7 @@ export interface PlaygroundOptions {
 const copy = {
   en: {
     title: 'Try the React canvas',
-    hint: 'Drag a shape, add a rectangle, or change its color. Each canvas keeps its own zoom, selection, and history.',
+    hint: 'Select a shape to change its color or width, delete it, or restore the sample document. Each canvas keeps its own zoom, selection, and history.',
     second: 'Show second canvas',
     reset: 'Reset demo',
     canvas: 'Canvas',
@@ -31,6 +34,10 @@ const copy = {
     redo: 'Redo',
     add: 'Add rectangle',
     color: 'Change color',
+    delete: 'Delete selected',
+    replace: 'Restore sample',
+    enlarge: 'Increase width',
+    width: 'Width',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     zoomReset: 'Reset zoom',
@@ -41,7 +48,7 @@ const copy = {
   },
   zh: {
     title: '试试 React 画布',
-    hint: '拖动图形、添加矩形或修改颜色。每个画布拥有独立的缩放、选区和历史记录。',
+    hint: '选中图形后修改颜色或宽度、删除图形，或恢复示例文档。每个画布拥有独立的缩放、选区和历史记录。',
     second: '显示第二个画布',
     reset: '重置示例',
     canvas: '画布',
@@ -49,6 +56,10 @@ const copy = {
     redo: '重做',
     add: '添加矩形',
     color: '修改颜色',
+    delete: '删除选中图形',
+    replace: '恢复示例文档',
+    enlarge: '增加宽度',
+    width: '宽度',
     zoomIn: '放大',
     zoomOut: '缩小',
     zoomReset: '重置缩放',
@@ -100,14 +111,12 @@ function Controls({
   const reportEditError = (reason: unknown) =>
     setError(reason instanceof Error ? reason.message : String(reason));
   const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
-  const canUndo = useCanvasSelector((state) => state.canUndo);
-  const canRedo = useCanvasSelector((state) => state.canRedo);
+  const { canUndo, canRedo } = useCanvasHistory();
   const count = useCanvasSelector(
     (state) => state.nodes.filter((node) => !node.isDeleted).length,
   );
-  const selected = useCanvasSelector(
-    (state) => state.appState?.layersSelected.length ?? 0,
-  );
+  const selected = useCanvasSelection();
+  const node = useCanvasNode(selected[0]?.id);
   const nextId = useRef(2);
   const add = () => {
     if (!api) return;
@@ -171,6 +180,36 @@ function Controls({
       button('redo', text.redo, actions.redo, !canRedo),
       button('add', text.add, add),
       button('color', text.color, changeColor, !api || count === 0),
+      button(
+        'enlarge',
+        text.enlarge,
+        () => {
+          void actions
+            .updateNodes((nodes) =>
+              nodes
+                .filter((candidate) => candidate.id === node?.id)
+                .map((candidate) => ({
+                  ...candidate,
+                  width: (candidate.width ?? 0) + 20,
+                })),
+            )
+            .catch(reportEditError);
+        },
+        !api || node?.width == null,
+      ),
+      button(
+        'delete',
+        text.delete,
+        () => {
+          void actions
+            .deleteNodes(selected.map((node) => node.id))
+            .catch(reportEditError);
+        },
+        !api || selected.length === 0,
+      ),
+      button('replace', text.replace, () => {
+        void actions.replaceDocument(initialNodes(id)).catch(reportEditError);
+      }),
     ),
     h(
       'div',
@@ -226,8 +265,15 @@ function Controls({
         'span',
         null,
         `${text.selected}: `,
-        h('output', { 'data-state': 'selected' }, selected),
+        h('output', { 'data-state': 'selected' }, selected.length),
       ),
+      node?.width != null &&
+        h(
+          'span',
+          null,
+          `${text.width}: `,
+          h('output', { 'data-state': 'width' }, node.width),
+        ),
     ),
     error && h('p', { role: 'alert' }, error),
   );
