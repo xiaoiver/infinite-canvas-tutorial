@@ -19,4 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify patched dependency vulnerabilities
+        run: node --test __tests__/tooling/security-patches.test.mjs
       - run: pnpm audit --audit-level=low

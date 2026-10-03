@@ -152,6 +152,16 @@
       "tough-cookie@<4.1.3": "^4.1.3",
       "@loaders.gl/textures>texture-compressor": "-",
       "@loaders.gl/images": "4.5.2"
+    },
+    "patchedDependencies": {
+      "braces@3.0.3": "patches/braces@3.0.3.patch",
+      "http-cache-semantics@4.1.1": "patches/http-cache-semantics@4.1.1.patch"
+    },
+    "auditConfig": {
+      "ignoreCves": [
+        "CVE-2026-93687",
+        "CVE-2026-93748"
+      ]
     }
   },
   "packageManager": "pnpm@9.15.9"

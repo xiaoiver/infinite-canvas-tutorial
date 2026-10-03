@@ -1,0 +1,25 @@
+diff --git a/index.js b/index.js
+index 31fba4860024cd38137fd013d2c54f4f8b71da65..d4b6ba92803f1d772f79c0f412b4557c55d88831 100644
+--- a/index.js
++++ b/index.js
+@@ -226,6 +226,20 @@ module.exports = class CachePolicy {
+     satisfiesWithoutRevalidation(req) {
+         this._assertRequestHasHeaders(req);
+ 
++        // Client max-stale must never revive entries zeroed for security.
++        if (
++            !this.storable() ||
++            this._rescc['no-cache'] ||
++            this._resHeaders.vary === '*' ||
++            (this._isShared && (
++                this._rescc['proxy-revalidate'] ||
++                (this._resHeaders['set-cookie'] &&
++                    !this._rescc.public && !this._rescc.immutable)
++            ))
++        ) {
++            return false;
++        }
++
+         // When presented with a request, a cache MUST NOT reuse a stored response, unless:
+         // the presented request does not contain the no-cache pragma (Section 5.4), nor the no-cache cache directive,
+         // unless the stored response is successfully validated (Section 4.3), and
