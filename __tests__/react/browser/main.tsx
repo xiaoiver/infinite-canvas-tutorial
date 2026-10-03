@@ -249,7 +249,9 @@ function Editor() {
 }
 
 const host = document.getElementById('root')!;
-const playgroundLocale = new URLSearchParams(location.search).get('playground');
+const query = new URLSearchParams(location.search);
+const playgroundLocale = query.get('playground');
+const starter = query.get('starter');
 if (playgroundLocale) {
   // Exercise the real documentation controls without building the whole site.
   const style = document.createElement('style');
@@ -261,6 +263,18 @@ if (playgroundLocale) {
         locale: playgroundLocale === 'zh' ? 'zh' : 'en',
         theme: 'light',
       }),
+  );
+} else if (starter) {
+  const load =
+    starter === 'nextjs'
+      ? import('../../../examples/react-nextjs/app/canvas-editor')
+      : import('../../../examples/react-vite/src/canvas-editor');
+  void load.then(({ CanvasEditor }) =>
+    createRoot(host).render(
+      <StrictMode>
+        <CanvasEditor />
+      </StrictMode>,
+    ),
   );
 } else {
   createRoot(host).render(

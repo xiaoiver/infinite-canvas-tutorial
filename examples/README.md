@@ -24,6 +24,18 @@ Editing uses `useCanvasActions`, including a functional node update and history
 actions, so the toolbar does not schedule ECS tasks or record history itself.
 The built-in toolbars are hidden so the examples use their own React controls.
 
+**Save locally** stores the native `.ic` document in this browser. **Load saved**
+restores it as one undoable edit, including nodes, variables, and selection.
+Camera and theme are restored but retain their existing non-undoable semantics.
+The Vite and Next.js starters use separate storage keys; reloads keep the saved
+document and require an explicit load. **Export .ic** downloads a file and
+**Import .ic** opens one. The controls display storage/file errors and cancel
+pending work when their canvas is removed.
+
+`document-controls.tsx` is host application code. It reads browser APIs only in
+event handlers, queues saves/exports without an undo entry, and awaits native
+`api.importIcDocument` outside any `actions.edit` callback.
+
 ## Verify unreleased changes
 
 From the repository root:

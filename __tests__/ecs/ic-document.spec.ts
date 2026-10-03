@@ -9,6 +9,70 @@ import {
 } from '../../packages/ecs/src';
 
 describe('IC document', () => {
+  const empty = () => buildIcDocumentFromState(getDefaultAppState(), []);
+
+  it.each([
+    [null, /string IDs/],
+    [{ id: 1, type: 'rect' }, /string IDs/],
+    [{ id: '', type: 'rect' }, /string IDs/],
+    [{ id: 'a', type: 'unknown' }, /Unsupported IC element type/],
+    [{ id: 'a', type: 'rect', parentId: 1 }, /Invalid parent ID/],
+    [{ id: 'a', type: 'rect', parentId: 'missing' }, /Missing parent/],
+    [{ id: 'a', type: 'g', parentId: 'a' }, /Cyclic/],
+  ])('rejects invalid element %j before import', (node, error) => {
+    expect(() => parseIcDocumentJson({ ...empty(), elements: [node] })).toThrow(
+      error,
+    );
+  });
+
+  it('rejects duplicate IDs and indirect hierarchy cycles', () => {
+    expect(() =>
+      parseIcDocumentJson({
+        ...empty(),
+        elements: [
+          { id: 'a', type: 'g' },
+          { id: 'a', type: 'rect' },
+        ],
+      }),
+    ).toThrow(/Duplicate/);
+    expect(() =>
+      parseIcDocumentJson({
+        ...empty(),
+        elements: [
+          { id: 'a', type: 'g', parentId: 'b' },
+          { id: 'b', type: 'g', parentId: 'a' },
+        ],
+      }),
+    ).toThrow(/Cyclic/);
+  });
+
+  it.each([
+    [{ layersSelected: 'a' }, /array of IDs/],
+    [{ layersHighlighted: [1] }, /array of IDs/],
+    [{ cameraZoom: 0 }, /cameraZoom/],
+    [{ cameraX: Infinity }, /cameraX/],
+    [{ cameraRotation: '0' }, /cameraRotation/],
+    [{ themeMode: 'blue' }, /theme mode/],
+    [{ checkboardStyle: 'unknown' }, /checkboardStyle/],
+  ])('rejects malformed app state %j', (appState, error) => {
+    expect(() => parseIcDocumentJson({ ...empty(), appState })).toThrow(error);
+  });
+
+  it('validates the live hierarchy while retaining deleted nodes in the format', () => {
+    const doc = {
+      ...empty(),
+      elements: [
+        { id: 'deleted', type: 'rect', isDeleted: true, parentId: 'missing' },
+        { id: 'root', type: 'g' },
+        { id: 'child', type: 'rect', parentId: 'root' },
+      ],
+    };
+    expect(parseIcDocumentJson(doc).elements).toHaveLength(3);
+    expect(() =>
+      parseIcDocumentJson({ ...empty(), themes: { mode: 'blue' } }),
+    ).toThrow(/theme mode/);
+  });
+
   it('parse ↔ stringify roundtrip', () => {
     const base = getDefaultAppState();
     const doc = buildIcDocumentFromState(
@@ -80,9 +144,9 @@ describe('IC document', () => {
   it('parseIcDocumentJson rejects invalid payloads', () => {
     expect(() => parseIcDocumentJson(null)).toThrow(/JSON object/);
     expect(() => parseIcDocumentJson('[]')).toThrow(/JSON object/);
-    expect(() =>
-      parseIcDocumentJson({ type: 'wrong', version: 1 }),
-    ).toThrow(/Invalid IC document type/);
+    expect(() => parseIcDocumentJson({ type: 'wrong', version: 1 })).toThrow(
+      /Invalid IC document type/,
+    );
     expect(() =>
       parseIcDocumentJson({
         type: IC_DOCUMENT_TYPE,
@@ -104,18 +168,18 @@ describe('IC document', () => {
       elements: [],
       appState: {},
     };
-    expect(() =>
-      parseIcDocumentJson({ ...valid, variables: 1 }),
-    ).toThrow(/"variables" must be an object/);
-    expect(() =>
-      parseIcDocumentJson({ ...valid, themes: [] }),
-    ).toThrow(/"themes" must be an object/);
-    expect(() =>
-      parseIcDocumentJson({ ...valid, elements: {} }),
-    ).toThrow(/"elements" must be an array/);
-    expect(() =>
-      parseIcDocumentJson({ ...valid, appState: 'no' }),
-    ).toThrow(/"appState" must be an object/);
+    expect(() => parseIcDocumentJson({ ...valid, variables: 1 })).toThrow(
+      /"variables" must be an object/,
+    );
+    expect(() => parseIcDocumentJson({ ...valid, themes: [] })).toThrow(
+      /"themes" must be an object/,
+    );
+    expect(() => parseIcDocumentJson({ ...valid, elements: {} })).toThrow(
+      /"elements" must be an array/,
+    );
+    expect(() => parseIcDocumentJson({ ...valid, appState: 'no' })).toThrow(
+      /"appState" must be an object/,
+    );
     expect(() => parseIcDocumentJson(valid)).not.toThrow();
   });
 });

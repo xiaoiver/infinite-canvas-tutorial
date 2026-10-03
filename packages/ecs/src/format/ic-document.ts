@@ -7,10 +7,16 @@
 import type { API } from '../API';
 import { AppState, getDefaultAppState } from '../context';
 import { Parent } from '../components';
-import { ThemeMode, mergeThemeState, type ThemeStateLike } from '../components/Theme';
+import { CheckboardStyle } from '../components/Grid';
+import {
+  ThemeMode,
+  mergeThemeState,
+  type ThemeStateLike,
+} from '../components/Theme';
 import type { SerializedNode } from '../types/serialized-node';
 import type { DesignVariablesMap } from '../utils/design-variables';
 import { DOMAdapter } from '../environment';
+import { validateDocument } from '../document';
 
 export const IC_DOCUMENT_TYPE = 'infinite-canvas' as const;
 
@@ -18,6 +24,29 @@ export const IC_DOCUMENT_TYPE = 'infinite-canvas' as const;
 export const IC_SCHEMA_VERSION = 1;
 
 export const IC_FILE_SUFFIX = '.ic';
+
+const nodeTypes = new Set<SerializedNode['type']>([
+  'g',
+  'rect',
+  'ellipse',
+  'line',
+  'polyline',
+  'path',
+  'text',
+  'brush',
+  'rough-rect',
+  'rough-ellipse',
+  'rough-line',
+  'rough-polyline',
+  'rough-path',
+  'vector-network',
+  'html',
+  'embed',
+  'iconfont',
+  'mesh3d',
+  'light3d',
+  'ref',
+]);
 
 /**
  * 与 Excalidraw 文件类似的顶层结构：`type` / `version` / `source` + 场景负载。
@@ -68,19 +97,22 @@ export function stringifyIcDocument(doc: ICDocumentV1, space = 2): string {
 }
 
 export function parseIcDocumentJson(raw: unknown): ICDocumentV1 {
-  const data =
-    typeof raw === 'string' ? (JSON.parse(raw) as unknown) : raw;
+  const data = typeof raw === 'string' ? (JSON.parse(raw) as unknown) : raw;
   if (!isPlainObject(data)) {
     throw new Error('IC document must be a JSON object');
   }
   if (data.type !== IC_DOCUMENT_TYPE) {
     throw new Error(
-      `Invalid IC document type: expected "${IC_DOCUMENT_TYPE}", got ${JSON.stringify(data.type)}`,
+      `Invalid IC document type: expected "${IC_DOCUMENT_TYPE}", got ${JSON.stringify(
+        data.type,
+      )}`,
     );
   }
   if (data.version !== IC_SCHEMA_VERSION) {
     throw new Error(
-      `Unsupported IC schema version: ${String(data.version)} (supported: ${IC_SCHEMA_VERSION})`,
+      `Unsupported IC schema version: ${String(
+        data.version,
+      )} (supported: ${IC_SCHEMA_VERSION})`,
     );
   }
   if (!isPlainObject(data.variables)) {
@@ -95,6 +127,63 @@ export function parseIcDocumentJson(raw: unknown): ICDocumentV1 {
   if (!isPlainObject(data.appState)) {
     throw new Error('IC document "appState" must be an object');
   }
+  for (const key of [
+    'layersSelected',
+    'layersHighlighted',
+    'layersExpanded',
+    'propertiesOpened',
+    'layersCropping',
+    'layersLassoing',
+  ]) {
+    const ids = data.appState[key];
+    if (
+      ids !== undefined &&
+      (!Array.isArray(ids) || ids.some((id) => typeof id !== 'string'))
+    ) {
+      throw new Error(`IC document appState.${key} must be an array of IDs`);
+    }
+  }
+  for (const key of ['cameraX', 'cameraY', 'cameraZoom', 'cameraRotation']) {
+    const value = data.appState[key];
+    if (
+      value !== undefined &&
+      (typeof value !== 'number' ||
+        !Number.isFinite(value) ||
+        (key === 'cameraZoom' && value <= 0))
+    ) {
+      throw new Error(`Invalid IC document appState.${key}`);
+    }
+  }
+  for (const mode of [data.themes.mode, data.appState.themeMode]) {
+    if (
+      mode !== undefined &&
+      mode !== ThemeMode.LIGHT &&
+      mode !== ThemeMode.DARK
+    ) {
+      throw new Error('IC document theme mode must be light or dark');
+    }
+  }
+  const grid = data.appState.checkboardStyle;
+  if (
+    grid !== undefined &&
+    !Object.values(CheckboardStyle).includes(grid as CheckboardStyle)
+  ) {
+    throw new Error('Invalid IC document appState.checkboardStyle');
+  }
+  for (const node of data.elements) {
+    if (!isPlainObject(node) || typeof node.id !== 'string' || !node.id) {
+      throw new Error('IC document elements must have non-empty string IDs');
+    }
+    if (!nodeTypes.has(node.type as SerializedNode['type'])) {
+      throw new Error(`Unsupported IC element type: ${String(node.type)}`);
+    }
+    if (node.parentId != null && typeof node.parentId !== 'string') {
+      throw new Error(`Invalid parent ID for IC element ${node.id}`);
+    }
+  }
+  validateDocument(
+    (data.elements as SerializedNode[]).filter((node) => !node.isDeleted),
+  );
   return data as unknown as ICDocumentV1;
 }
 
@@ -121,7 +210,7 @@ function filterIdsByElementSet(
 }
 
 /**
- * 用文档内容替换当前场景：删除所有场景根节点，再写入 `appState` / `elements`。
+ * 在 api.edit() 的同步回调中替换文档，与外层编辑共享一次提交。
  */
 export function applyIcDocumentToApi(
   api: API,
@@ -146,40 +235,36 @@ export function applyIcDocumentToApi(
     doc.themes,
   );
 
-  const validIds = new Set(doc.elements.map((e) => e.id));
-
-  const rootIds = collectSceneRootNodeIds(api);
-  if (rootIds.length > 0) {
-    api.deleteNodesById(rootIds);
-  }
-
-  api.setAppState(
-    {
-      ...slice,
-      variables: doc.variables ?? {},
-      theme: {
-        mode: mergedTheme.mode,
-        colors: mergedTheme.colors,
-      },
-      themeMode: mergedTheme.mode,
-      layersSelected: filterIdsByElementSet(slice.layersSelected, validIds),
-      layersHighlighted: filterIdsByElementSet(slice.layersHighlighted, validIds),
-      layersExpanded: filterIdsByElementSet(slice.layersExpanded, validIds),
-      propertiesOpened: filterIdsByElementSet(slice.propertiesOpened, validIds),
-      layersCropping: filterIdsByElementSet(slice.layersCropping, validIds),
-      layersLassoing: filterIdsByElementSet(slice.layersLassoing, validIds),
-    },
-    { replaceVariables: true, recordDesignVariableUndo: false },
+  const validIds = new Set(
+    doc.elements.filter((node) => !node.isDeleted).map((e) => e.id),
   );
-
-  api.runAfterDeletedEntities(() => {
-    if (doc.elements.length > 0) {
-      api.updateNodes(doc.elements);
-    }
-    if (recordHistory) {
-      api.record();
-    }
+  const selected = filterIdsByElementSet(slice.layersSelected, validIds);
+  const nextAppState = {
+    ...slice,
+    variables: doc.variables ?? {},
+    theme: {
+      mode: mergedTheme.mode,
+      colors: mergedTheme.colors,
+    },
+    themeMode: mergedTheme.mode,
+    layersSelected: [],
+    layersHighlighted: filterIdsByElementSet(slice.layersHighlighted, validIds),
+    layersExpanded: filterIdsByElementSet(slice.layersExpanded, validIds),
+    propertiesOpened: filterIdsByElementSet(slice.propertiesOpened, validIds),
+    layersCropping: filterIdsByElementSet(slice.layersCropping, validIds),
+    layersLassoing: filterIdsByElementSet(slice.layersLassoing, validIds),
+  };
+  // Validate and rebuild the document in the Edit phase. Retiring entities can
+  // coexist with their replacements until Deleter without a second frame/task.
+  api.replaceDocument(doc.elements);
+  api.selectNodes([]);
+  api.setAppState(nextAppState, {
+    replaceVariables: true,
+    recordDesignVariableUndo: false,
   });
+
+  api.selectNodes(selected.map((id) => api.getNodeById(id)));
+  api.record(recordHistory ? 'IMMEDIATELY' : 'NEVER');
 }
 
 /** 在浏览器中触发下载（需 `DOMAdapter` 的 `document` 可用）。 */
@@ -193,7 +278,9 @@ export function downloadIcDocument(
   if (!win?.URL?.createObjectURL || !docRef?.createElement) {
     return;
   }
-  const name = filename.endsWith(IC_FILE_SUFFIX) ? filename : `${filename}${IC_FILE_SUFFIX}`;
+  const name = filename.endsWith(IC_FILE_SUFFIX)
+    ? filename
+    : `${filename}${IC_FILE_SUFFIX}`;
   const blob = new Blob([json], { type: 'application/json' });
   const url = win.URL.createObjectURL(blob);
   const a = docRef.createElement('a');

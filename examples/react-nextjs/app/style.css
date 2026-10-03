@@ -22,3 +22,14 @@ button {
 button:disabled {
   cursor: default;
 }
+
+.document-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.document-controls p {
+  width: 100%;
+  margin: 0;
+}

@@ -88,11 +88,19 @@ onBeforeUnmount(() => {
 .react-demo-settings,
 .react-demo-actions,
 .react-demo-status,
-.react-demo-zoom {
+.react-demo-zoom,
+.react-demo .document-controls {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+}
+.react-demo .document-controls {
+  margin-top: 12px;
+}
+.react-demo .document-controls p {
+  margin: 0;
+  width: 100%;
 }
 .react-demo-settings {
   justify-content: space-between;

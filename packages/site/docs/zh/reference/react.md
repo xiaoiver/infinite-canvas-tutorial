@@ -71,7 +71,9 @@ Next.js Client Component。默认入口和 `/spectrum` 目前导出同一个组�
 
 取消勾选“显示第二个画布”，可以体验卸载一个画布后继续操作另一个。
 **重置示例**会重新创建画布，并清空编辑和历史记录。示例放在独立的 iframe 中，
-可与文档站其他画布示例共存。这里的修改只在当前示例中有效，不会保存。
+可与文档站其他画布示例共存。点击“本地保存”可在此浏览器保留文档，
+点击“导出 .ic”可下载文件。“重置示例”保留存档，点击“加载存档”即可恢复。
+每个画布使用独立的存储键。
 
 <a href="/zh/example/react-playground" target="_blank" rel="noopener">在独立页面打开示例</a>。
 
@@ -186,6 +188,50 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
     );
 }
 ```
+
+## 保存与导入文档
+
+示例和两个框架 starter 提供“本地保存”“加载存档”“导出 .ic”和“导入 .ic”。
+保存需手动触发，每个画布在此浏览器的 `localStorage` 中保留一份原生文档。
+重置或刷新示例会保留存档，但不会自动加载；点击“加载存档”即可恢复。
+存储按网站来源和浏览器隔离，可导出文件在其他位置打开。存储或文件操作失败时，
+控件旁会显示错误。
+
+这些操作由宿主应用实现。starter 中的 `document-controls.tsx` 展示了完整实现，
+包括在画布移除时取消操作。浏览器 API 只在事件处理函数中访问，因此可以在
+Next.js Client Component 的 SSR 阶段导入此模块。
+
+原生 `.ic` 格式包含节点、设计变量、主题、选区，以及相机和 UI 状态。
+`replaceDocument` 只替换节点。先通过排队的编辑读取最新文档，再在编辑回调外导入：
+
+```tsx
+// 事件处理函数中，api 和 actions 来自 useCanvasAPI() / useCanvasActions()。
+await actions.edit(
+    (api) => {
+        localStorage.setItem(
+            'my-canvas:v1',
+            JSON.stringify(api.exportIcDocument()),
+        );
+    },
+    { capture: 'NEVER' },
+);
+
+const raw = localStorage.getItem('my-canvas:v1');
+if (api && raw !== null) {
+    await api.importIcDocument(raw, { signal: controller.signal });
+}
+```
+
+`api.importIcDocument` 接受原生文档对象或 JSON 字符串。在修改场景前校验格式、版本、
+节点 ID 和类型、层级，以及选区和视图字段；排队前复制输入，在 Edit 阶段提交一次。
+返回 `Promise<boolean>`：提交成功为 `true`，取消或画布销毁为 `false`。
+无效输入在排队前抛错，执行失败使 Promise reject，事件处理函数需捕获这两类错误。
+先用 `await file.text()` 读取文件，再调用导入；画布移除时取消尚未完成的读取和导入。
+
+一次导入为节点、变量、选区和 filter 创建一个撤销条目。相机、主题及其他 UI 设置
+沿用已有的不可撤销规则。传入 `{ recordHistory: false }` 可不增加撤销条目，
+如需丢弃之前的历史，再单独调用 `clearHistory()`。保存和导出使用 `capture: 'NEVER'`。
+任意运行时修改失败时，不会自动回滚已经完成的修改。
 
 ## 编辑操作 hooks
 

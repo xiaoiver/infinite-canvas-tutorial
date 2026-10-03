@@ -29,7 +29,7 @@ import { parseFigFileToSerializedNodes } from '@infinite-canvas-tutorial/figma';
 
 const bytes = new Uint8Array(await (await fetch('/design.fig')).arrayBuffer());
 const doc = parseFigFileToSerializedNodes(bytes);
-api.importIcDocument(doc);
+await api.importIcDocument(doc);
 ```
 
 在应用中可使用顶部导航栏 **Import from… → Figma (.fig)** 打开文件选择器。
@@ -59,7 +59,7 @@ const file = await client.getFile('https://www.figma.com/file/<key>/<name>');
 const imageRefUrls = await client.getImageFills('<key>');
 
 const doc = parseFigmaFileToSerializedNodes(file, { imageRefUrls });
-api.importIcDocument(doc);
+await api.importIcDocument(doc);
 ```
 
 云端文件的图片填充需通过 `getImageFills` 解析 URL；本地 `.fig` 则使用包内嵌入图片。
