@@ -127,12 +127,15 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasEvent } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
     assert.equal(actions.undo(), false);
     assert.deepEqual(useCanvasStatus(), { status: 'idle', error: null });
+    assert.deepEqual(useCanvasCamera(), { x: 0, y: 0, zoom: 1, rotation: 0 });
+    assert.equal(actions.zoomTo(2), false);
+    assert.equal(actions.fitToScreen(), false);
     assert.equal(useCanvasNode('rect'), null);
     assert.deepEqual(useCanvasSelection(), []);
     assert.deepEqual(useCanvasHistory(), { canUndo: false, canRedo: false });
@@ -154,7 +157,7 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasEvent, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InfiniteCanvas as SpectrumCanvas, useCanvasEvent as useSpectrumCanvasEvent } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
@@ -172,6 +175,11 @@ function Toolbar() {
   const lifecycle = useCanvasStatus();
   const status: CanvasStatus = lifecycle.status;
   const startupError: Error | null = lifecycle.error;
+  const camera: CanvasCameraState = useCanvasCamera();
+  const cameraOptions: CanvasCameraAnimationOptions = { duration: 0, easing: 'linear', onfinish: () => {} };
+  const zoomed: boolean = actions.zoomTo(camera.zoom * 2, cameraOptions);
+  const fitted: boolean = actions.fitToScreen(cameraOptions);
+  useCanvasEvent('ic-camera-changed', event => { const rotation: number = event.detail.rotation; });
   const eventOptions: CanvasEventOptions = { enabled: status === 'ready', once: true, capture: false, passive: true, signal: options.signal };
   useCanvasEvent('ic-point-drawn', event => {
     const x: number = event.detail.x;

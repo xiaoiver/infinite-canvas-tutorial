@@ -23,6 +23,7 @@ import {
   useCanvasSelection,
   useCanvasHistory,
   useCanvasStatus,
+  useCanvasCamera,
 } from '../../packages/react/src/hooks';
 import {
   useCanvasEvent,
@@ -688,7 +689,7 @@ it('only rerenders selectors whose value changes and keeps API consumers stable'
   await act(async () => {
     canvases[0].state = { ...canvases[0].state, cameraZoom: 2 };
     canvases[0].dispatchEvent(
-      new CustomEvent('ic-camera-zoom-changed', { detail: { zoom: 2 } }),
+      new CustomEvent('ic-camera-changed', { detail: { zoom: 2 } }),
     );
   });
   expect(zoomRender).toHaveBeenCalledTimes(1);
@@ -1003,6 +1004,60 @@ it('clears Provider state after async preparation fails', async () => {
   await act(async () => canvases[0].ready());
   expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
   expect(canvases[0].historySubscribers.size).toBe(0);
+});
+
+it('keeps camera snapshots stable and follows camera events, recreation, and removal', async () => {
+  const render = jest.fn();
+  function CameraProbe() {
+    const camera = useCanvasCamera();
+    render(camera);
+    return <output>{JSON.stringify(camera)}</output>;
+  }
+  const editor = (renderer: 'webgl' | 'webgpu', shown = true) => (
+    <CanvasProvider>
+      {shown && <InfiniteCanvas runtime={runtime} renderer={renderer} />}
+      <CameraProbe />
+    </CanvasProvider>
+  );
+  renderToString(editor('webgl'));
+  expect(render).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 1, rotation: 0 });
+  expect(runtime.acquire).not.toHaveBeenCalled();
+  await act(async () => root.render(editor('webgl')));
+  await act(async () => canvases[0].ready());
+  render.mockClear();
+  await act(async () => canvases[0].commit({ filter: 'blur(2px)' }));
+  expect(render).not.toHaveBeenCalled();
+  const first = canvases[0];
+  const move = () => {
+    Object.assign(first.state, { cameraX: 20, cameraY: -10, cameraZoom: 2 });
+    first.dispatchEvent(new CustomEvent('ic-camera-changed'));
+  };
+  await act(async () => move());
+  const previous = render.mock.calls[0][0];
+  expect(previous).toEqual({ x: 20, y: -10, zoom: 2, rotation: 0 });
+  await act(async () => move());
+  expect(render).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    Object.assign(first.state, { cameraRotation: Math.PI / 2 });
+    first.dispatchEvent(new CustomEvent('ic-camera-changed'));
+  });
+  expect(render).toHaveBeenLastCalledWith({
+    x: 20,
+    y: -10,
+    zoom: 2,
+    rotation: Math.PI / 2,
+  });
+  expect(previous.rotation).toBe(0);
+  await act(async () => root.render(editor('webgpu')));
+  expect(render).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 1, rotation: 0 });
+  await act(async () => canvases[1].ready());
+  render.mockClear();
+  await act(async () => move());
+  expect(render).not.toHaveBeenCalled();
+  await act(async () => canvases[1].commit({ cameraZoom: 3 }));
+  expect(render).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 3, rotation: 0 });
+  await act(async () => root.render(editor('webgpu', false)));
+  expect(render).toHaveBeenLastCalledWith({ x: 0, y: 0, zoom: 1, rotation: 0 });
 });
 
 function EventProbe({

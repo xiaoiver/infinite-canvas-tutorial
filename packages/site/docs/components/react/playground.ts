@@ -9,7 +9,6 @@ import { createRoot } from 'react-dom/client';
 import {
   CanvasProvider,
   InfiniteCanvas,
-  useCanvasAPI,
   useCanvasActions,
   useCanvasSelector,
   useCanvasNode,
@@ -17,6 +16,7 @@ import {
   useCanvasHistory,
   useCanvasStatus,
   useCanvasEvent,
+  useCanvasCamera,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { DocumentControls } from './document-controls';
@@ -44,6 +44,7 @@ const copy = {
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     zoomReset: 'Reset zoom',
+    fit: 'Fit all shapes',
     pick: 'Pick coordinates',
     cancelPick: 'Cancel picking',
     pickHint: 'Tap or click the canvas to get its coordinates.',
@@ -70,6 +71,7 @@ const copy = {
     zoomIn: '放大',
     zoomOut: '缩小',
     zoomReset: '重置缩放',
+    fit: '适应全部图形',
     pick: '取点坐标',
     cancelPick: '取消取点',
     pickHint: '轻触或点击画布，获取画布中的坐标。',
@@ -116,7 +118,6 @@ function Controls({
   locale: PlaygroundOptions['locale'];
 }) {
   const text = copy[locale];
-  const api = useCanvasAPI();
   const { status } = useCanvasStatus();
   const ready = status === 'ready';
   const actions = useCanvasActions();
@@ -124,7 +125,7 @@ function Controls({
   const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
   const reportEditError = (reason: unknown) =>
     setError(reason instanceof Error ? reason.message : String(reason));
-  const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+  const { zoom } = useCanvasCamera();
   const picking = useCanvasSelector(
     (state) => state.appState?.penbarSelected === Pen.DRAW_POINT,
   );
@@ -264,7 +265,7 @@ function Controls({
             disabled: !ready || zoom <= 0.25,
             'aria-label': text.zoomOut,
             'data-action': 'zoom-out',
-            onClick: () => api?.zoomTo(Math.max(0.25, zoom / 1.25)),
+            onClick: () => actions.zoomTo(Math.max(0.25, zoom / 1.25)),
           },
           '−',
         ),
@@ -275,7 +276,7 @@ function Controls({
             disabled: !ready,
             'aria-label': text.zoomReset,
             'data-action': 'zoom-reset',
-            onClick: () => api?.zoomTo(1),
+            onClick: () => actions.zoomTo(1),
           },
           h('output', { 'data-state': 'zoom' }, `${Math.round(zoom * 100)}%`),
         ),
@@ -286,9 +287,15 @@ function Controls({
             disabled: !ready || zoom >= 4,
             'aria-label': text.zoomIn,
             'data-action': 'zoom-in',
-            onClick: () => api?.zoomTo(Math.min(4, zoom * 1.25)),
+            onClick: () => actions.zoomTo(Math.min(4, zoom * 1.25)),
           },
           '+',
+        ),
+        button(
+          'fit',
+          text.fit,
+          () => actions.fitToScreen(),
+          !ready || count === 0,
         ),
       ),
       h(

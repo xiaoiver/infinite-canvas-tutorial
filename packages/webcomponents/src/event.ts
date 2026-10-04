@@ -11,6 +11,7 @@ export enum Event {
   RESIZED = 'ic-resized',
   CAMERA_ZOOM_CHANGED = 'ic-camera-zoom-changed',
   CAMERA_POSITION_CHANGED = 'ic-camera-position-changed',
+  CAMERA_CHANGED = 'ic-camera-changed',
   SCREENSHOT_DOWNLOADED = 'ic-screenshot-downloaded',
   // CHECKBOARD_STYLE_CHANGED = 'ic-checkboard-style-changed',
   // PEN_CHANGED = 'ic-pen-changed',
@@ -34,6 +35,12 @@ export interface CanvasEventMap {
   'ic-resized': CustomEvent<{ width: number; height: number }>;
   'ic-camera-zoom-changed': CustomEvent<{ zoom: number }>;
   'ic-camera-position-changed': CustomEvent<{ x: number; y: number }>;
+  'ic-camera-changed': CustomEvent<{
+    x: number;
+    y: number;
+    zoom: number;
+    rotation: number;
+  }>;
   'ic-screenshot-downloaded': CustomEvent<Pick<Screenshot, 'dataURL' | 'svg'>>;
   'ic-nodes-updated': CustomEvent<{ nodes: SerializedNode[] }>;
   'ic-node-deleted': CustomEvent<{ nodes: SerializedNode[] }>;

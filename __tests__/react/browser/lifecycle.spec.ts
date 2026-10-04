@@ -1,6 +1,175 @@
 import { expect, test } from '@playwright/test';
 import type { ExportFormat, Pen } from '@infinite-canvas-tutorial/ecs';
 
+test('camera hooks observe matching cameras and rotation-only changes without adding history', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByTestId('left-status')).toHaveText('ready', {
+    timeout: 45000,
+  });
+  await expect(page.getByTestId('right-status')).toHaveText('ready');
+  const target = { x: 20, y: -10, zoom: 1, rotation: 0 };
+  for (const id of ['left', 'right']) {
+    await page.evaluate(
+      ({ id, target }) => {
+        window.apis[id].gotoLandmark(target, { duration: 0 });
+      },
+      { id, target },
+    );
+    await expect
+      .poll(async () =>
+        JSON.parse((await page.getByTestId(`${id}-camera`).textContent())!),
+      )
+      .toEqual(target);
+  }
+  await page.evaluate(() =>
+    window.apis.left.gotoLandmark(
+      window.apis.left.createLandmark({ rotation: Math.PI / 2 }),
+      { duration: 0 },
+    ),
+  );
+  await expect
+    .poll(
+      async () =>
+        JSON.parse((await page.getByTestId('left-camera').textContent())!)
+          .rotation,
+    )
+    .toBeCloseTo(Math.PI / 2, 5);
+  await expect
+    .poll(async () =>
+      JSON.parse((await page.getByTestId('right-camera').textContent())!),
+    )
+    .toEqual(target);
+  expect(
+    await page.evaluate(() => window.actions.left.zoomTo(2, { duration: 0 })),
+  ).toBe(true);
+  await expect(page.getByTestId('left-zoom')).toHaveText('2');
+  await expect(page.getByTestId('right-zoom')).toHaveText('1');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('instant fit centers the scene at the current camera rotation', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByTestId('left-status')).toHaveText('ready', {
+    timeout: 45000,
+  });
+  for (const rotation of [0, Math.PI / 4]) {
+    await page.evaluate(
+      (rotation) =>
+        window.apis.left.gotoLandmark(
+          { x: 80, y: 10, zoom: 1, rotation },
+          { duration: 0 },
+        ),
+      rotation,
+    );
+    await expect
+      .poll(async () =>
+        JSON.parse((await page.getByTestId('left-camera').textContent())!),
+      )
+      .toMatchObject({ x: 80, y: 10, zoom: 1 });
+    await expect
+      .poll(
+        async () =>
+          JSON.parse((await page.getByTestId('left-camera').textContent())!)
+            .rotation,
+      )
+      .toBeCloseTo(rotation, 5);
+    expect(
+      await page.evaluate(() =>
+        window.actions.left.fitToScreen({ duration: 0 }),
+      ),
+    ).toBe(true);
+    const cos = Math.abs(Math.cos(rotation));
+    const sin = Math.abs(Math.sin(rotation));
+    const zoom = Math.min(
+      400 / (100 * cos + 80 * sin),
+      300 / (100 * sin + 80 * cos),
+    );
+    await expect
+      .poll(async () =>
+        Number(await page.getByTestId('left-zoom').textContent()),
+      )
+      .toBeCloseTo(zoom, 4);
+    const points = await page.evaluate(() => {
+      const api = window.apis.left;
+      return [
+        { x: 100, y: 90 },
+        { x: 50, y: 50 },
+        { x: 150, y: 50 },
+        { x: 150, y: 130 },
+        { x: 50, y: 130 },
+      ].map((point) => api.canvas2Viewport(point));
+    });
+    expect(points[0].x).toBeCloseTo(200, 2);
+    expect(points[0].y).toBeCloseTo(150, 2);
+    for (const point of points.slice(1)) {
+      expect(point.x).toBeGreaterThanOrEqual(-0.01);
+      expect(point.x).toBeLessThanOrEqual(400.01);
+      expect(point.y).toBeGreaterThanOrEqual(-0.01);
+      expect(point.y).toBeLessThanOrEqual(300.01);
+    }
+  }
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('immediate camera actions supersede an in-flight animation and empty fits are no-ops', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expect(page.getByTestId('left-status')).toHaveText('ready', {
+    timeout: 45000,
+  });
+  const result = await page.evaluate(async () => {
+    let previousFinished = false;
+    let currentFinished = false;
+    window.actions.left.zoomTo(3, {
+      duration: 100,
+      onfinish: () => {
+        previousFinished = true;
+      },
+    });
+    window.actions.left.zoomTo(1.5, {
+      duration: 0,
+      onfinish: () => {
+        currentFinished = true;
+      },
+    });
+    // Observe beyond the old animation's duration so a leaked callback cannot pass.
+    const start = performance.now();
+    await new Promise<void>((resolve) => {
+      const frame = () =>
+        performance.now() - start > 200
+          ? resolve()
+          : requestAnimationFrame(frame);
+      requestAnimationFrame(frame);
+    });
+    return { previousFinished, currentFinished };
+  });
+  expect(result).toEqual({ previousFinished: false, currentFinished: true });
+  await expect(page.getByTestId('left-zoom')).toHaveText('1.5');
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await page.evaluate(() => window.actions.left.replaceDocument([]));
+  await expect(page.getByTestId('left-count')).toHaveText('0');
+  const before = await page.getByTestId('left-camera').textContent();
+  await page.evaluate(async () => {
+    window.actions.left.fitToScreen({ duration: 0 });
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    );
+  });
+  await expect(page.getByTestId('left-camera')).toHaveText(before!);
+});
+
 for (const locale of ['en', 'zh']) {
   test(`documentation controls edit, delete, and restore a document (${locale})`, async ({
     page,
@@ -14,6 +183,12 @@ for (const locale of ['en', 'zh']) {
       timeout: 45000,
     });
     await expect(right.locator('[data-state="nodes"]')).toHaveText('2');
+    await left.locator('[data-action="fit"]').click();
+    await expect(left.locator('[data-state="zoom"]')).toHaveText('174%');
+    await expect(right.locator('[data-state="zoom"]')).toHaveText('100%');
+    await expect(left.locator('[data-action="undo"]')).toBeDisabled();
+    await left.locator('[data-action="zoom-reset"]').click();
+    await expect(left.locator('[data-state="zoom"]')).toHaveText('100%');
     await left.locator('[data-action="add"]').click();
     await expect(left.locator('[data-state="nodes"]')).toHaveText('3');
     await expect(left.locator('[data-state="selected"]')).toHaveText('1');

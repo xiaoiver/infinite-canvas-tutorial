@@ -74,6 +74,8 @@ function mount(store = createCanvasStore()) {
     undo: jest.fn(),
     redo: jest.fn(),
     clearHistory: jest.fn(),
+    zoomTo: jest.fn(),
+    fitToScreen: jest.fn(),
     destroy() {
       edits.dispose();
       queue.dispose();
@@ -106,6 +108,44 @@ it('composes queued functional node updates from the latest scene', async () => 
   expect(store.getSnapshot().nodes[0].width).toBe(120);
   expect(original.width).toBe(100);
   expect(api.record.mock.calls).toEqual([['IMMEDIATELY'], ['IMMEDIATELY']]);
+  api.destroy();
+});
+
+it('routes retained camera actions to the current canvas without creating history', () => {
+  const store = createCanvasStore();
+  const actions = createCanvasActions(store);
+  expect(actions.zoomTo(2)).toBe(false);
+  expect(actions.fitToScreen()).toBe(false);
+  const first = mount(store);
+  const options = { duration: 0, onfinish: jest.fn() };
+  expect(actions.zoomTo(2, options)).toBe(true);
+  expect(first.api.zoomTo).toHaveBeenCalledWith(2, options);
+  expect(actions.fitToScreen(options)).toBe(true);
+  expect(first.api.fitToScreen).toHaveBeenCalledWith(options);
+  first.flush();
+  expect(first.api.record).not.toHaveBeenCalled();
+  first.lease.release();
+  first.api.destroy();
+  expect(actions.zoomTo(3)).toBe(false);
+  expect(actions.fitToScreen()).toBe(false);
+  const second = mount(store);
+  expect(actions.zoomTo(4)).toBe(true);
+  expect(actions.fitToScreen()).toBe(true);
+  expect(first.api.zoomTo).toHaveBeenCalledTimes(1);
+  expect(first.api.fitToScreen).toHaveBeenCalledTimes(1);
+  expect(second.api.zoomTo).toHaveBeenCalledWith(4, undefined);
+  expect(second.api.fitToScreen).toHaveBeenCalledWith(undefined);
+  second.api.destroy();
+});
+
+it('rejects invalid zoom before it reaches the camera', () => {
+  const { api, actions } = mount();
+  for (const zoom of [0, -1, NaN, Infinity, -Infinity]) {
+    expect(() => actions.zoomTo(zoom)).toThrow(RangeError);
+  }
+  expect(api.zoomTo).not.toHaveBeenCalled();
+  expect(actions.zoomTo(0.25)).toBe(true);
+  expect(api.zoomTo).toHaveBeenCalledWith(0.25, undefined);
   api.destroy();
 });
 

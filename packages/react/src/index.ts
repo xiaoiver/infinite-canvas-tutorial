@@ -12,12 +12,17 @@ export {
   useCanvasSelection,
   useCanvasHistory,
   useCanvasStatus,
+  useCanvasCamera,
 } from './hooks';
-export type { CanvasHistoryState } from './hooks';
+export type { CanvasHistoryState, CanvasCameraState } from './hooks';
 export { useCanvasEvent } from './useCanvasEvent';
 export type { CanvasEventOptions } from './useCanvasEvent';
 export type { CanvasState, CanvasStatus } from './store';
-export type { CanvasActions, CanvasEditOptions } from './actions';
+export type {
+  CanvasActions,
+  CanvasEditOptions,
+  CanvasCameraAnimationOptions,
+} from './actions';
 export type {
   InfiniteCanvasProps,
   InfiniteCanvasHandle,
