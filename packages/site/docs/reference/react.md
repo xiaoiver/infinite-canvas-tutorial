@@ -130,12 +130,23 @@ multiple canvases, give each its own Provider and share the runtime.
 `appState` set to `null`, an empty node array, and both history flags `false`.
 Selectors must be pure and treat state as read-only. By default, selected values
 are compared with `Object.is`; only changed selections trigger a store-driven
-render. When returning objects or arrays, pass an equality function:
+render. When returning newly created objects or arrays, pass an equality function:
 
 ```tsx
 const history = useCanvasSelector(
     (state) => ({ undo: state.canUndo, redo: state.canRedo }),
     (a, b) => a.undo === b.undo && a.redo === b.redo,
+);
+```
+
+`nodes` contains store-owned copies, isolated from the API's mutable document.
+Unchanged nodes retain their references across commits; the array also retains
+its reference when its content and order stay the same. You can return a node
+directly without a custom equality function:
+
+```tsx
+const rect = useCanvasSelector((state) =>
+    state.nodes.find((node) => node.id === 'rect'),
 );
 ```
 
@@ -145,7 +156,8 @@ undo entries. `initialNodes` updates selectors and node callbacks after
 preparation; no extra `record()` is needed.
 Camera and selection events also refresh application state immediately. History
 availability updates on edits, undo, redo, and `clearHistory()` without polling.
-Uncommitted direct API writes become visible on the next commit/event. API
+After direct node writes, use `api.edit()` or `api.record()` to publish the
+document change; camera/selection events only refresh application state. API
 availability marks GPU readiness and may precede async `onReady` completion.
 
 ## Node, selection, and history hooks
@@ -161,9 +173,11 @@ These hooks require a `CanvasProvider` and are available from both package entri
 During SSR, before readiness, and after removal, they return `null`, `[]`, and
 `{ canUndo: false, canRedo: false }` respectively. References stay stable while
 the selected content is unchanged, including through camera and unrelated node
-updates. Node copies also detect committed in-place `api.updateNode()` changes;
-do not mutate them to edit the canvas. For individual scalar values, continue
-using `useCanvasSelector`.
+updates. These hooks share the store-owned node copies, so each committed
+change is copied once rather than once per consumer. They also detect committed
+in-place `api.updateNode()` changes; treat the copies and their nested values
+as read-only, and use actions or the API to edit the canvas. For individual
+scalar values, continue using `useCanvasSelector`.
 
 ```tsx
 import {

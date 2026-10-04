@@ -242,9 +242,21 @@ function Editor() {
             </span>
           </InfiniteCanvas>
           <Toolbar id={id} />
+          <NodeProperty id={id} />
         </CanvasProvider>
       ))}
     </>
+  );
+}
+
+// Keep this consumer separate from Toolbar: selection/history updates must not
+// mask a stale object selector by causing a parent render.
+function NodeProperty({ id }: { id: string }) {
+  const node = useCanvasSelector((state) =>
+    state.nodes.find((node) => node.id === id),
+  );
+  return (
+    <output data-testid={`${id}-object-width`}>{node?.width ?? ''}</output>
   );
 }
 
@@ -255,7 +267,8 @@ const starter = query.get('starter');
 if (playgroundLocale) {
   // Exercise the real documentation controls without building the whole site.
   const style = document.createElement('style');
-  style.textContent = '.react-demo-canvas { width: 100%; max-width: 400px; height: 300px; }';
+  style.textContent =
+    '.react-demo-canvas { width: 100%; max-width: 400px; height: 300px; }';
   document.head.append(style);
   void import('../../../packages/site/docs/components/react/playground').then(
     ({ mountPlayground }) =>

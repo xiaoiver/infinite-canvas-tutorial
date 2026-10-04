@@ -78,12 +78,12 @@ class TestCanvas extends HTMLElement {
   ready() {
     this.dispatchEvent(new CustomEvent('ic-ready', { detail: this.api }));
   }
-  commit(patch = {}) {
+  commit(patch = {}, nodesChanged = false) {
     this.state = { ...this.state, ...patch };
     this.subscribers.forEach((listener) =>
       listener(
         { appState: this.state, nodes: this.nodes },
-        { nodesChanged: false, appStateChanged: true },
+        { nodesChanged, appStateChanged: true },
       ),
     );
   }
@@ -531,6 +531,40 @@ it('supports inline object selectors, custom equality, and changed selectors', a
   expect(canvases).toHaveLength(1);
 });
 
+it('updates object selectors for committed in-place node mutations', async () => {
+  const render = jest.fn();
+  function Probe() {
+    const node = useCanvasSelector((state) =>
+      state.nodes.find((node) => node.id === 'rect'),
+    );
+    render(node);
+    return <output>{node?.width}</output>;
+  }
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <Probe />
+      </CanvasProvider>,
+    ),
+  );
+  const canvas = canvases[0];
+  canvas.nodes = [{ id: 'rect', type: 'rect', zIndex: 0, width: 100 }];
+  await act(async () => canvas.ready());
+  const previous = render.mock.calls.at(-1)![0];
+  render.mockClear();
+  await act(async () => {
+    canvas.nodes[0].width = 120;
+    canvas.commit({}, true);
+  });
+  expect(host.querySelector('output')!.textContent).toBe('120');
+  expect(render).toHaveBeenCalledTimes(1);
+  expect(previous.width).toBe(100);
+  render.mockClear();
+  await act(async () => canvas.commit({ cameraZoom: 2 }));
+  expect(render).not.toHaveBeenCalled();
+});
+
 it('keeps node, selection, and history hooks stable through unrelated updates', async () => {
   const nodeRender = jest.fn();
   const selectionRender = jest.fn();
@@ -577,7 +611,7 @@ it('keeps node, selection, and history hooks stable through unrelated updates', 
   historyRender.mockClear();
   await act(async () => {
     canvas.nodes[1].width = 90;
-    canvas.commit({ cameraZoom: 2 });
+    canvas.commit({ cameraZoom: 2 }, true);
     canvas.historySubscribers.forEach((listener) => listener(canvas.history));
   });
   expect(nodeRender).not.toHaveBeenCalled();
@@ -586,7 +620,7 @@ it('keeps node, selection, and history hooks stable through unrelated updates', 
   await act(async () => {
     canvas.nodes[0].width = 120;
     canvas.nodes[0].fills![0].value = 'blue';
-    canvas.commit();
+    canvas.commit({}, true);
   });
   expect(nodeRender).toHaveBeenCalledTimes(1);
   expect(selectionRender).toHaveBeenCalledTimes(1);
@@ -597,6 +631,8 @@ it('keeps node, selection, and history hooks stable through unrelated updates', 
   });
   expect(previousNode).toMatchObject({ width: 100, fills: [{ value: 'red' }] });
   expect(previousSelection[0]).toEqual(previousNode);
+  expect(previousSelection[0]).toBe(previousNode);
+  expect(selectionRender.mock.calls[0][0][0]).toBe(nodeRender.mock.calls[0][0]);
   await act(async () =>
     canvas.historySubscribers.forEach((listener) =>
       listener({ canUndo: true, canRedo: false }),
@@ -652,7 +688,7 @@ it('resolves changed node IDs and ordered selection and resets hooks on destruct
   expect(host.querySelector('output')!.textContent).toBe('none:other,rect');
   await act(async () => {
     canvas.nodes[1].isDeleted = true;
-    canvas.commit();
+    canvas.commit({}, true);
   });
   expect(host.querySelector('output')!.textContent).toBe('none:rect');
   await act(async () => canvas.api.destroy());
