@@ -6,6 +6,7 @@ import {
   useCanvasSelector,
   useCanvasStatus,
   useCanvasCamera,
+  useCanvasShortcuts,
   type InfiniteCanvasProps,
 } from '@infinite-canvas-tutorial/react';
 import { DocumentControls } from './document-controls';
@@ -75,9 +76,11 @@ function Toolbar() {
   );
 }
 
-export function CanvasEditor() {
+function EditorContent() {
+  const [error, setError] = useState<Error | null>(null);
+  const shortcuts = useCanvasShortcuts({ onError: setError });
   return (
-    <CanvasProvider>
+    <section {...shortcuts} aria-label="Canvas editor">
       <Toolbar />
       <InfiniteCanvas
         style={{ height: 420 }}
@@ -89,6 +92,15 @@ export function CanvasEditor() {
         }}
         fallback={<p role="status">Loading canvas…</p>}
       />
+      {error && <p role="alert">{error.message}</p>}
+    </section>
+  );
+}
+
+export function CanvasEditor() {
+  return (
+    <CanvasProvider>
+      <EditorContent />
     </CanvasProvider>
   );
 }

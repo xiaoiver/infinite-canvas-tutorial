@@ -235,6 +235,63 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
+## Keyboard shortcuts
+
+`useCanvasShortcuts(options?)` returns stable props to spread onto a focusable
+container inside `CanvasProvider`. Enclose both the canvas and its React controls
+in that container. Each DOM scope handles keys only from within itself; keyboard
+focus on a toolbar button works as well as focus on the canvas.
+
+```tsx
+import { useState } from 'react';
+import {
+    CanvasProvider,
+    InfiniteCanvas,
+    useCanvasShortcuts,
+} from '@infinite-canvas-tutorial/react';
+
+function EditorSurface() {
+    const [error, setError] = useState<Error | null>(null);
+    const shortcuts = useCanvasShortcuts({ onError: setError });
+    return (
+        <section {...shortcuts} aria-label="Canvas editor">
+            <InfiniteCanvas style={{ height: 400 }} />
+            {error && <p role="alert">{error.message}</p>}
+        </section>
+    );
+}
+
+export function Editor() {
+    return <CanvasProvider><EditorSurface /></CanvasProvider>;
+}
+```
+
+| Key | Action |
+| --- | --- |
+| Ctrl/⌘+Z | Undo |
+| Ctrl/⌘+Shift+Z, Ctrl+Y | Redo |
+| Ctrl/⌘+A | Select all undeleted nodes without adding an undo entry |
+| Delete, Backspace | Delete the current selection as one undoable edit |
+
+Keep all returned props on the same element, including `onKeyDownCapture` and
+`data-canvas-shortcuts`. Capture prevents the Web Component from processing the
+same command twice. The default `tabIndex` is `0`; it can be overridden. No global
+keyboard listener is installed. Nested scopes own their keys, and portals outside
+the DOM container are excluded.
+
+The hook waits for `status === 'ready'`, follows canvas recreation, and reads the
+current API at key time. It ignores inputs, textareas, selects, editable ancestors,
+textbox/combobox roles, IME composition, repeat events, and already-prevented events.
+Open Shadow DOM inputs are detected through the event's composed path. Add
+`data-canvas-shortcuts-ignore` to a custom editor or a closed shadow host to opt
+its subtree out. Selection and deletion resolve the latest scene in the ECS edit
+stage, so consecutive queued keys compose.
+
+`enabled: false` pauses this hook; it does not disable the Web Component's own
+shortcuts. `onError` receives editing errors while the owning canvas remains
+attached; without it, errors are logged to `console.error`. Existing clipboard,
+arrow-key, and other native canvas behavior remain available.
+
 ## Camera controls
 
 `useCanvasCamera()` returns a read-only `{ x, y, zoom, rotation }` snapshot for

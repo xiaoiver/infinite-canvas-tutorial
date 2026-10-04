@@ -221,6 +221,58 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
+## 键盘快捷键
+
+`useCanvasShortcuts(options?)` 返回可展开到容器上的稳定 props。调用组件必须位于
+`CanvasProvider` 内；让这个容器同时包含画布和 React 工具栏。只有容器内的按键会被处理，
+聚焦工具栏按钮也可以操作当前画布。
+
+```tsx
+import { useState } from 'react';
+import {
+    CanvasProvider,
+    InfiniteCanvas,
+    useCanvasShortcuts,
+} from '@infinite-canvas-tutorial/react';
+
+function EditorSurface() {
+    const [error, setError] = useState<Error | null>(null);
+    const shortcuts = useCanvasShortcuts({ onError: setError });
+    return (
+        <section {...shortcuts} aria-label="画布编辑器">
+            <InfiniteCanvas style={{ height: 400 }} />
+            {error && <p role="alert">{error.message}</p>}
+        </section>
+    );
+}
+
+export function Editor() {
+    return <CanvasProvider><EditorSurface /></CanvasProvider>;
+}
+```
+
+| 按键 | 操作 |
+| --- | --- |
+| Ctrl/⌘+Z | 撤销 |
+| Ctrl/⌘+Shift+Z、Ctrl+Y | 重做 |
+| Ctrl/⌘+A | 全选未删除的节点，不增加撤销记录 |
+| Delete、Backspace | 删除当前选区，作为一次可撤销编辑 |
+
+请将返回的 props 一起展开到同一个元素上，包括 `onKeyDownCapture` 和
+`data-canvas-shortcuts`。捕获阶段处理可避免底层 Web Component 重复执行同一条命令。
+默认 `tabIndex` 为 `0`，可自行覆盖。hook 不安装全局键盘监听；嵌套容器只处理自己范围内
+的按键，渲染到容器外的 portal 不属于该范围。
+
+hook 仅在 `status === 'ready'` 时工作，重建画布后会使用最新 API。输入框、文本域、
+下拉框、可编辑祖先、textbox/combobox 角色、输入法组合输入、重复按键及已被阻止的事件
+不会触发这些操作。通过事件的 composed path，也能识别开放 Shadow DOM 中的输入控件。
+自定义编辑器或封闭 Shadow DOM 的宿主可以添加 `data-canvas-shortcuts-ignore`，让整个
+子树退出快捷键处理。全选和删除在 ECS 编辑阶段读取最新场景，连续排队的按键也能正确组合。
+
+`enabled: false` 暂停这个 hook，不会关闭 Web Component 自带的快捷键。编辑出错时，
+只要原画布仍然挂载，`onError` 就会收到错误；未提供回调时输出到 `console.error`。
+原有剪贴板、方向键等画布行为仍然可用。
+
 ## 相机与视图控制
 
 `useCanvasCamera()` 返回当前 Provider 的只读 `{ x, y, zoom, rotation }` 快照，

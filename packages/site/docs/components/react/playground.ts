@@ -17,6 +17,7 @@ import {
   useCanvasStatus,
   useCanvasEvent,
   useCanvasCamera,
+  useCanvasShortcuts,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { DocumentControls } from './document-controls';
@@ -33,6 +34,8 @@ const copy = {
     second: 'Show second canvas',
     reset: 'Reset demo',
     canvas: 'Canvas',
+    shortcuts:
+      'Keyboard: Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z redo, Ctrl/⌘+A select all, Delete/Backspace delete. Focus a canvas or its controls first.',
     undo: 'Undo',
     redo: 'Redo',
     add: 'Add rectangle',
@@ -60,6 +63,8 @@ const copy = {
     second: '显示第二个画布',
     reset: '重置示例',
     canvas: '画布',
+    shortcuts:
+      '快捷键：Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做，Ctrl/⌘+A 全选，Delete/Backspace 删除。先聚焦画布或它的控件。',
     undo: '撤销',
     redo: '重做',
     add: '添加矩形',
@@ -339,45 +344,49 @@ function Controls({
   );
 }
 
-function CanvasPanel({
+function CanvasPanelContent({
   id,
   locale,
   theme,
 }: PlaygroundOptions & { id: string }) {
   const text = copy[locale];
+  const [error, setError] = useState<Error | null>(null);
+  const shortcuts = useCanvasShortcuts({ onError: setError });
   return h(
-    CanvasProvider,
-    null,
-    h(
-      'section',
-      {
-        className: 'react-demo-panel',
-        'data-canvas': id,
-        'aria-label': `${text.canvas} ${id}`,
+    'section',
+    {
+      ...shortcuts,
+      className: 'react-demo-panel',
+      'data-canvas': id,
+      'aria-label': `${text.canvas} ${id}`,
+    },
+    h('h2', null, `${text.canvas} ${id}`),
+    h(InfiniteCanvas, {
+      className: 'react-demo-canvas',
+      locale: locale === 'zh' ? 'zh-Hans' : 'en',
+      theme,
+      initialNodes: initialNodes(id),
+      initialAppState: {
+        penbarSelected: Pen.SELECT,
+        topbarVisible: false,
+        penbarVisible: false,
+        taskbarVisible: false,
+        contextBarVisible: false,
       },
-      h('h2', null, `${text.canvas} ${id}`),
-      h(InfiniteCanvas, {
-        className: 'react-demo-canvas',
-        locale: locale === 'zh' ? 'zh-Hans' : 'en',
-        theme,
-        initialNodes: initialNodes(id),
-        initialAppState: {
-          penbarSelected: Pen.SELECT,
-          topbarVisible: false,
-          penbarVisible: false,
-          taskbarVisible: false,
-          contextBarVisible: false,
-        },
-        fallback: h(
-          'p',
-          { className: 'react-demo-loading', role: 'status' },
-          text.loading,
-        ),
-        renderError: () => h('p', { role: 'alert' }, text.error),
-      }),
-      h(Controls, { id, locale }),
-    ),
+      fallback: h(
+        'p',
+        { className: 'react-demo-loading', role: 'status' },
+        text.loading,
+      ),
+      renderError: () => h('p', { role: 'alert' }, text.error),
+    }),
+    h(Controls, { id, locale }),
+    error && h('p', { role: 'alert' }, error.message),
   );
+}
+
+function CanvasPanel(props: PlaygroundOptions & { id: string }) {
+  return h(CanvasProvider, null, h(CanvasPanelContent, props));
 }
 
 function Playground(options: PlaygroundOptions) {
@@ -392,6 +401,7 @@ function Playground(options: PlaygroundOptions) {
     },
     h('h1', null, text.title),
     h('p', { className: 'react-demo-hint' }, text.hint),
+    h('p', { className: 'react-demo-hint' }, text.shortcuts),
     h(
       'div',
       { className: 'react-demo-settings' },
