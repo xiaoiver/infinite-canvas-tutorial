@@ -25,6 +25,30 @@ async function frame(page: Page) {
   });
 }
 
+async function openPlayground(page: Page, locale: string) {
+  await page.addInitScript(() => {
+    window.mobileApis = {};
+    document.addEventListener(
+      'ic-ready',
+      (event) => {
+        const target = event.target as HTMLElement;
+        const id = target.closest<HTMLElement>('[data-canvas]')?.dataset.canvas;
+        if (id)
+          window.mobileApis[id] = (event as CustomEvent<ExtendedAPI>).detail;
+      },
+      true,
+    );
+  });
+  await page.goto(`/?playground=${locale}`);
+  const left = page.locator('[data-canvas="A"]');
+  const right = page.locator('[data-canvas="B"]');
+  await expect(left.locator('[data-action="pick"]')).toBeEnabled({
+    timeout: 45000,
+  });
+  await expect(right.locator('[data-action="pick"]')).toBeEnabled();
+  return { left, right };
+}
+
 async function resizeWithTouch(
   page: Page,
   canvas: Locator,
@@ -109,23 +133,7 @@ for (const locale of ['en', 'zh']) {
   }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.addInitScript(() => {
-      window.mobileApis = {};
-      document.addEventListener(
-        'ic-ready',
-        (event) => {
-          const target = event.target as HTMLElement;
-          const id =
-            target.closest<HTMLElement>('[data-canvas]')?.dataset.canvas;
-          if (id)
-            window.mobileApis[id] = (event as CustomEvent<ExtendedAPI>).detail;
-        },
-        true,
-      );
-    });
-    await page.goto(`/?playground=${locale}`);
-    const left = page.locator('[data-canvas="A"]');
-    const right = page.locator('[data-canvas="B"]');
+    const { left, right } = await openPlayground(page, locale);
     await expect(left.locator('[data-state="nodes"]')).toHaveText('2', {
       timeout: 45000,
     });
@@ -166,6 +174,82 @@ for (const locale of ['en', 'zh']) {
       .toBeCloseTo(resized.width, 3);
     await expect(right.locator('[data-state="selected"]')).toHaveText('0');
     await expect(right.locator('[data-action="undo"]')).toBeDisabled();
+    await expect(page.getByRole('alert')).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+
+  test(`phone picks canvas coordinates through the React event hook (${locale})`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const { left, right } = await openPlayground(page, locale);
+    await left.locator('[data-action="zoom-in"]').tap();
+    await expect(left.locator('[data-state="zoom"]')).toHaveText('125%');
+    const pick = left.locator('[data-action="pick"]');
+    await pick.tap();
+    await expect(pick).toHaveText(
+      locale === 'zh' ? '取消取点' : 'Cancel picking',
+    );
+    const box = (await left.locator('canvas').boundingBox())!;
+    const cancelled = {
+      pointerType: 'touch',
+      pointerId: 1,
+      isPrimary: true,
+      bubbles: true,
+      button: 0,
+      buttons: 1,
+      clientX: box.x + 60,
+      clientY: box.y + 100,
+    };
+    const canvas = left.locator('canvas');
+    await canvas.dispatchEvent('pointerdown', cancelled);
+    await frame(page);
+    await canvas.dispatchEvent('pointercancel', cancelled);
+    await canvas.dispatchEvent('pointerup', { ...cancelled, buttons: 0 });
+    await frame(page);
+    await expect(left.locator('[data-state="point"] output')).toHaveCount(0);
+    await expect(pick).toHaveText(
+      locale === 'zh' ? '取消取点' : 'Cancel picking',
+    );
+    const tap = { x: Math.round(box.x + 95), y: Math.round(box.y + 160) };
+    const expected = await page.evaluate(
+      (point) => window.mobileApis.A.viewport2Canvas(point),
+      // Input stores press positions in integer viewport coordinates.
+      { x: Math.trunc(tap.x - box.x), y: Math.trunc(tap.y - box.y) },
+    );
+    await page.touchscreen.tap(tap.x, tap.y);
+    const coordinates = left.locator('[data-state="point"] output');
+    await expect(coordinates).toBeVisible();
+    expect(Number(await coordinates.getAttribute('data-x'))).toBeCloseTo(
+      expected.x,
+      1,
+    );
+    expect(Number(await coordinates.getAttribute('data-y'))).toBeCloseTo(
+      expected.y,
+      1,
+    );
+    await expect(pick).toHaveText(
+      locale === 'zh' ? '取点坐标' : 'Pick coordinates',
+    );
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.mobileApis.A.getAppState().penbarSelected),
+      )
+      .toBe('select');
+    await expect(left.locator('[data-state="nodes"]')).toHaveText('2');
+    await expect(left.locator('[data-action="undo"]')).toBeDisabled();
+    await expect(right.locator('[data-state="point"]')).toBeEmpty();
+    await expect(right.locator('[data-action="undo"]')).toBeDisabled();
+    await pick.tap();
+    await expect(pick).toHaveText(
+      locale === 'zh' ? '取消取点' : 'Cancel picking',
+    );
+    await pick.tap();
+    await expect(pick).toHaveText(
+      locale === 'zh' ? '取点坐标' : 'Pick coordinates',
+    );
+    await expect(left.locator('[data-state="point"]')).toBeEmpty();
     await expect(page.getByRole('alert')).toHaveCount(0);
     expect(errors).toEqual([]);
   });

@@ -16,6 +16,7 @@ import {
   useCanvasSelection,
   useCanvasHistory,
   useCanvasStatus,
+  useCanvasEvent,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { DocumentControls } from './document-controls';
@@ -43,6 +44,10 @@ const copy = {
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     zoomReset: 'Reset zoom',
+    pick: 'Pick coordinates',
+    cancelPick: 'Cancel picking',
+    pickHint: 'Tap or click the canvas to get its coordinates.',
+    coordinates: 'Canvas coordinates',
     shapes: 'Shapes',
     selected: 'Selected',
     loading: 'Loading canvas…',
@@ -65,6 +70,10 @@ const copy = {
     zoomIn: '放大',
     zoomOut: '缩小',
     zoomReset: '重置缩放',
+    pick: '取点坐标',
+    cancelPick: '取消取点',
+    pickHint: '轻触或点击画布，获取画布中的坐标。',
+    coordinates: '画布坐标',
     shapes: '图形',
     selected: '已选择',
     loading: '正在加载画布…',
@@ -112,9 +121,23 @@ function Controls({
   const ready = status === 'ready';
   const actions = useCanvasActions();
   const [error, setError] = useState<string | null>(null);
+  const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
   const reportEditError = (reason: unknown) =>
     setError(reason instanceof Error ? reason.message : String(reason));
   const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+  const picking = useCanvasSelector(
+    (state) => state.appState?.penbarSelected === Pen.DRAW_POINT,
+  );
+  useCanvasEvent(
+    'ic-point-drawn',
+    ({ detail: { x, y } }) => {
+      setPoint({ x, y });
+      void actions
+        .setAppState({ penbarSelected: Pen.SELECT }, { capture: 'NEVER' })
+        .catch(reportEditError);
+    },
+    { enabled: ready },
+  );
   const { canUndo, canRedo } = useCanvasHistory();
   const count = useCanvasSelector(
     (state) => state.nodes.filter((node) => !node.isDeleted).length,
@@ -214,6 +237,15 @@ function Controls({
       button('replace', text.replace, () => {
         void actions.replaceDocument(initialNodes(id)).catch(reportEditError);
       }),
+      button('pick', picking ? text.cancelPick : text.pick, () => {
+        setPoint(null);
+        void actions
+          .setAppState(
+            { penbarSelected: picking ? Pen.SELECT : Pen.DRAW_POINT },
+            { capture: 'NEVER' },
+          )
+          .catch(reportEditError);
+      }),
     ),
     h(
       'div',
@@ -277,6 +309,18 @@ function Controls({
           null,
           `${text.width}: `,
           h('output', { 'data-state': 'width' }, node.width),
+        ),
+    ),
+    h(
+      'p',
+      { role: 'status', 'data-state': 'point' },
+      picking ? text.pickHint : point ? `${text.coordinates}: ` : '',
+      !picking &&
+        point &&
+        h(
+          'output',
+          { 'data-x': point.x, 'data-y': point.y },
+          `x: ${point.x.toFixed(2)}, y: ${point.y.toFixed(2)}`,
         ),
     ),
     error && h('p', { role: 'alert' }, error),

@@ -24,6 +24,10 @@ import {
   useCanvasHistory,
   useCanvasStatus,
 } from '../../packages/react/src/hooks';
+import {
+  useCanvasEvent,
+  type CanvasEventOptions,
+} from '../../packages/react/src/useCanvasEvent';
 
 const canvases: TestCanvas[] = [];
 class TestCanvas extends HTMLElement {
@@ -33,6 +37,7 @@ class TestCanvas extends HTMLElement {
   historySubscribers = new Set<(state: any) => void>();
   cleanups = new Set<() => void>();
   api = {
+    element: this,
     getAppState: () => this.state,
     getNodes: () => this.nodes,
     getHistoryState: () => this.history,
@@ -998,4 +1003,207 @@ it('clears Provider state after async preparation fails', async () => {
   await act(async () => canvases[0].ready());
   expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
   expect(canvases[0].historySubscribers.size).toBe(0);
+});
+
+function EventProbe({
+  name = 'ic-point-drawn',
+  listener,
+  options,
+}: {
+  name?: 'ic-point-drawn' | 'ic-camera-zoom-changed';
+  listener: (event: CustomEvent) => void;
+  options?: CanvasEventOptions;
+}) {
+  useCanvasEvent(name, listener, options);
+  return null;
+}
+
+const dispatchPoint = (canvas: TestCanvas) =>
+  canvas.dispatchEvent(
+    new CustomEvent('ic-point-drawn', { detail: { x: 12, y: 34 } }),
+  );
+
+it('subscribes after API attachment, remains SSR safe, and requires a Provider', async () => {
+  const listener = jest.fn();
+  const editor = (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <EventProbe listener={listener} />
+    </CanvasProvider>
+  );
+  renderToString(editor);
+  expect(runtime.acquire).not.toHaveBeenCalled();
+  expect(() => renderToString(<EventProbe listener={listener} />)).toThrow(
+    'inside CanvasProvider',
+  );
+  await act(async () => root.render(editor));
+  dispatchPoint(canvases[0]);
+  expect(listener).not.toHaveBeenCalled();
+  await act(async () => canvases[0].ready());
+  dispatchPoint(canvases[0]);
+  expect(listener).toHaveBeenCalledWith(
+    expect.objectContaining({ detail: { x: 12, y: 34 } }),
+  );
+});
+
+it('uses the latest callback without rearming a once listener on rerenders', async () => {
+  const first = jest.fn();
+  const second = jest.fn();
+  const editor = (listener: jest.Mock) => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <EventProbe listener={listener} options={{ once: true }} />
+    </CanvasProvider>
+  );
+  await act(async () => root.render(editor(first)));
+  await act(async () => canvases[0].ready());
+  await act(async () => root.render(editor(second)));
+  dispatchPoint(canvases[0]);
+  expect(first).not.toHaveBeenCalled();
+  expect(second).toHaveBeenCalledTimes(1);
+  await act(async () => root.render(editor(first)));
+  dispatchPoint(canvases[0]);
+  expect(first).not.toHaveBeenCalled();
+  expect(second).toHaveBeenCalledTimes(1);
+});
+
+it('switches event names and pauses and resumes subscriptions', async () => {
+  const listener = jest.fn();
+  const editor = (
+    name: 'ic-point-drawn' | 'ic-camera-zoom-changed',
+    enabled = true,
+  ) => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <EventProbe name={name} listener={listener} options={{ enabled }} />
+    </CanvasProvider>
+  );
+  await act(async () => root.render(editor('ic-point-drawn', false)));
+  await act(async () => canvases[0].ready());
+  dispatchPoint(canvases[0]);
+  expect(listener).not.toHaveBeenCalled();
+  await act(async () => root.render(editor('ic-point-drawn')));
+  dispatchPoint(canvases[0]);
+  expect(listener).toHaveBeenCalledTimes(1);
+  await act(async () => root.render(editor('ic-camera-zoom-changed')));
+  dispatchPoint(canvases[0]);
+  canvases[0].dispatchEvent(
+    new CustomEvent('ic-camera-zoom-changed', { detail: { zoom: 2 } }),
+  );
+  expect(listener).toHaveBeenCalledTimes(2);
+  expect(listener.mock.calls[1][0].detail).toEqual({ zoom: 2 });
+  await act(async () => root.render(editor('ic-camera-zoom-changed', false)));
+  canvases[0].dispatchEvent(new CustomEvent('ic-camera-zoom-changed'));
+  expect(listener).toHaveBeenCalledTimes(2);
+});
+
+it('honors aborted signals and can subscribe again with a new signal', async () => {
+  const listener = jest.fn();
+  const controller = new AbortController();
+  const editor = (signal: AbortSignal) => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} />
+      <EventProbe listener={listener} options={{ signal }} />
+    </CanvasProvider>
+  );
+  controller.abort();
+  await act(async () => root.render(editor(controller.signal)));
+  await act(async () => canvases[0].ready());
+  dispatchPoint(canvases[0]);
+  expect(listener).not.toHaveBeenCalled();
+  const next = new AbortController();
+  await act(async () => root.render(editor(next.signal)));
+  dispatchPoint(canvases[0]);
+  expect(listener).toHaveBeenCalledTimes(1);
+  next.abort();
+  dispatchPoint(canvases[0]);
+  await act(async () => root.render(editor(next.signal)));
+  dispatchPoint(canvases[0]);
+  expect(listener).toHaveBeenCalledTimes(1);
+});
+
+it('cleans up a removed subscriber under StrictMode and preserves other listeners', async () => {
+  const listener = jest.fn();
+  const external = jest.fn();
+  const editor = (shown = true) => (
+    <StrictMode>
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        {shown && <EventProbe listener={listener} />}
+      </CanvasProvider>
+    </StrictMode>
+  );
+  await act(async () => root.render(editor()));
+  const canvas = canvases[canvases.length - 1];
+  await act(async () => canvas.ready());
+  canvas.addEventListener('ic-point-drawn', external);
+  dispatchPoint(canvas);
+  expect(listener).toHaveBeenCalledTimes(1);
+  await act(async () => root.render(editor(false)));
+  dispatchPoint(canvas);
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(external).toHaveBeenCalledTimes(2);
+  expect(canvas.isConnected).toBe(true);
+  await act(async () => root.render(editor()));
+  dispatchPoint(canvas);
+  expect(listener).toHaveBeenCalledTimes(2);
+});
+
+it('isolates Providers and rejects detached events before cleanup when recreating', async () => {
+  const left = jest.fn();
+  const right = jest.fn();
+  let oldCanvas: TestCanvas;
+  const editor = (renderer: 'webgl' | 'webgpu') => (
+    <>
+      <CanvasProvider>
+        <InfiniteCanvas
+          runtime={runtime}
+          renderer={renderer}
+          onAPIChange={(api) => {
+            if (!api && oldCanvas) dispatchPoint(oldCanvas);
+          }}
+        />
+        <EventProbe listener={left} />
+      </CanvasProvider>
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <EventProbe listener={right} />
+      </CanvasProvider>
+    </>
+  );
+  await act(async () => root.render(editor('webgl')));
+  oldCanvas = canvases[0];
+  await act(async () => canvases.forEach((canvas) => canvas.ready()));
+  dispatchPoint(oldCanvas);
+  expect(left).toHaveBeenCalledTimes(1);
+  expect(right).not.toHaveBeenCalled();
+  await act(async () => root.render(editor('webgpu')));
+  dispatchPoint(oldCanvas);
+  expect(left).toHaveBeenCalledTimes(1);
+  await act(async () => canvases[2].ready());
+  dispatchPoint(canvases[2]);
+  expect(left).toHaveBeenCalledTimes(2);
+  dispatchPoint(canvases[1]);
+  expect(right).toHaveBeenCalledTimes(1);
+});
+
+it('removes event subscriptions synchronously on API destruction', async () => {
+  const listener = jest.fn();
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <EventProbe listener={listener} />
+      </CanvasProvider>,
+    ),
+  );
+  const canvas = canvases[0];
+  await act(async () => canvas.ready());
+  dispatchPoint(canvas);
+  await act(async () => {
+    canvas.api.destroy();
+    dispatchPoint(canvas);
+  });
+  expect(listener).toHaveBeenCalledTimes(1);
+  expect(canvas.cleanups.size).toBe(0);
 });

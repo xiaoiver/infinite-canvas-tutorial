@@ -127,7 +127,7 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasEvent } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
@@ -136,6 +136,7 @@ for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutori
     assert.equal(useCanvasNode('rect'), null);
     assert.deepEqual(useCanvasSelection(), []);
     assert.deepEqual(useCanvasHistory(), { canUndo: false, canRedo: false });
+    useCanvasEvent('ic-point-drawn', () => { throw new Error('SSR event listener ran'); });
     assert.equal(typeof actions.deleteNodes, 'function');
     assert.equal(typeof actions.replaceDocument, 'function');
     const zoom = useCanvasSelector(state => state.appState?.cameraZoom ?? 1);
@@ -153,9 +154,9 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasEvent, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { InfiniteCanvas as SpectrumCanvas } from '@infinite-canvas-tutorial/react/spectrum';
+import { InfiniteCanvas as SpectrumCanvas, useCanvasEvent as useSpectrumCanvasEvent } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
   const api = useCanvasAPI();
   const actions: CanvasActions = useCanvasActions();
@@ -171,6 +172,18 @@ function Toolbar() {
   const lifecycle = useCanvasStatus();
   const status: CanvasStatus = lifecycle.status;
   const startupError: Error | null = lifecycle.error;
+  const eventOptions: CanvasEventOptions = { enabled: status === 'ready', once: true, capture: false, passive: true, signal: options.signal };
+  useCanvasEvent('ic-point-drawn', event => {
+    const x: number = event.detail.x;
+    // @ts-expect-error point events have no zoom property
+    event.detail.zoom;
+  }, eventOptions);
+  useSpectrumCanvasEvent('ic-screenshot-downloaded', event => {
+    const svg: string = event.detail.svg;
+  });
+  useCanvasEvent('pointerdown', event => { const pointerType: string = event.pointerType; });
+  // @ts-expect-error unknown events must be declared in HTMLElementEventMap
+  useCanvasEvent('ic-unknown-event', () => {});
   const edit: Promise<boolean> = actions.edit(api => { api.setAppState({ filter: '' }); });
   const coreEdit: Promise<boolean> | undefined = api?.edit(editor => {
     editor.setAppState({ filter: '' });

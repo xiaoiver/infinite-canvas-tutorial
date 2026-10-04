@@ -11,6 +11,7 @@ import {
   useCanvasSelection,
   useCanvasHistory,
   useCanvasStatus,
+  useCanvasEvent,
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
 import {
@@ -119,6 +120,17 @@ function Toolbar({ id }: { id: string }) {
   const api = useCanvasAPI();
   const actions = useCanvasActions();
   const { status } = useCanvasStatus();
+  useCanvasEvent('ic-comment-added', ({ detail }) => {
+    const { canvasX, canvasY, viewportX, viewportY } = detail;
+    const expected = api!.viewport2Canvas({ x: viewportX, y: viewportY });
+    api!.element.dataset.commentProbe = JSON.stringify({
+      actual: [canvasX, canvasY],
+      expected: [expected.x, expected.y],
+    });
+  });
+  useCanvasEvent('ic-screenshot-downloaded', ({ detail }) => {
+    api!.element.dataset.svgProbe = detail.svg;
+  });
   useEffect(() => {
     window.actions[id] = actions;
     return () => {
