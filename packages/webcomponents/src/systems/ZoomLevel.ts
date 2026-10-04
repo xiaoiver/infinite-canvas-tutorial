@@ -6,7 +6,7 @@ import {
   System,
   Transform,
   toDomPrecision,
-  Theme
+  Theme,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
@@ -21,7 +21,12 @@ export class ZoomLevel extends System {
 
   constructor() {
     super();
-    this.query((q) => q.using(Camera, Transform, Theme).write.and.using(Canvas, ComputedBounds).read);
+    this.query(
+      (q) =>
+        q
+          .using(Camera, Transform, Theme)
+          .write.and.using(Canvas, ComputedBounds).read,
+    );
   }
 
   initialize() {
@@ -32,14 +37,17 @@ export class ZoomLevel extends System {
       bubbles: true,
       composed: true,
     });
-    this.#positionChangedEvent = new CustomEvent(Event.CAMERA_POSITION_CHANGED, {
-      detail: {
-        x: undefined,
-        y: undefined,
+    this.#positionChangedEvent = new CustomEvent(
+      Event.CAMERA_POSITION_CHANGED,
+      {
+        detail: {
+          x: undefined,
+          y: undefined,
+        },
+        bubbles: true,
+        composed: true,
       },
-      bubbles: true,
-      composed: true,
-    });
+    );
   }
 
   execute(): void {
@@ -73,11 +81,22 @@ export class ZoomLevel extends System {
       if (zoom !== this.#zoomChangedEvent.detail.zoom) {
         this.#zoomChangedEvent.detail.zoom = zoom;
         api.element.dispatchEvent(this.#zoomChangedEvent);
-      } else if (x !== this.#positionChangedEvent.detail.x || y !== this.#positionChangedEvent.detail.y) {
+      } else if (
+        x !== this.#positionChangedEvent.detail.x ||
+        y !== this.#positionChangedEvent.detail.y
+      ) {
         this.#positionChangedEvent.detail.x = x;
         this.#positionChangedEvent.detail.y = y;
         api.element.dispatchEvent(this.#positionChangedEvent);
       }
+      // Include rotation-only changes and notify each canvas independently.
+      api.element.dispatchEvent(
+        new CustomEvent(Event.CAMERA_CHANGED, {
+          detail: { x, y, zoom, rotation },
+          bubbles: true,
+          composed: true,
+        }),
+      );
     });
   }
 }

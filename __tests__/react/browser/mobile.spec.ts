@@ -127,6 +127,31 @@ async function resizeWithTouch(
 }
 
 for (const locale of ['en', 'zh']) {
+  test(`phone fits the scene through the React camera controls (${locale})`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const { left, right } = await openPlayground(page, locale);
+    const box = await left.locator('canvas').boundingBox();
+    expect(box).not.toBeNull();
+    await left.locator('[data-action="fit"]').tap();
+    const expectedZoom = Math.min(box!.width / 230, box!.height / 150);
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.mobileApis.A.getAppState().cameraZoom),
+      )
+      .toBeCloseTo(expectedZoom, 4);
+    const center = await page.evaluate(() =>
+      window.mobileApis.A.canvas2Viewport({ x: 155, y: 120 }),
+    );
+    expect(center.x).toBeCloseTo(box!.width / 2, 2);
+    expect(center.y).toBeCloseTo(box!.height / 2, 2);
+    await expect(left.locator('[data-action="undo"]')).toBeDisabled();
+    await expect(right.locator('[data-state="zoom"]')).toHaveText('100%');
+    expect(errors).toEqual([]);
+  });
+
   test(`phone touch selects and resizes the documentation rectangle (${locale})`, async ({
     page,
     browserName,

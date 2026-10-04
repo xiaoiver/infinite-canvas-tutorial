@@ -7,6 +7,7 @@ import {
   useCanvasActions,
   useCanvasSelector,
   useCanvasStatus,
+  useCanvasCamera,
   type InfiniteCanvasProps,
 } from '@infinite-canvas-tutorial/react';
 import { DocumentControls } from './document-controls';
@@ -28,6 +29,7 @@ function Toolbar() {
   const actions = useCanvasActions();
   const { status } = useCanvasStatus();
   const ready = status === 'ready';
+  const { zoom } = useCanvasCamera();
   const [error, setError] = useState<string | null>(null);
   const count = useCanvasSelector(
     (state) => state.nodes.filter((node) => !node.isDeleted).length,
@@ -56,6 +58,16 @@ function Toolbar() {
       <button disabled={!ready || !canRedo} onClick={actions.redo}>
         Redo
       </button>
+      <button disabled={!ready} onClick={() => actions.zoomTo(1)}>
+        Reset zoom
+      </button>
+      <button
+        disabled={!ready || count === 0}
+        onClick={() => actions.fitToScreen()}
+      >
+        Fit all shapes
+      </button>
+      <output aria-label="Zoom">{Math.round(zoom * 100)}%</output>
       <span>
         Shapes: <output data-testid="shape-count">{count}</output>
       </span>

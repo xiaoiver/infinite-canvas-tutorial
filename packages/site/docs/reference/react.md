@@ -67,7 +67,8 @@ Try adding a rectangle, changing its color or width, deleting selected shapes,
 and undoing or redoing an edit. **Restore sample** replaces the full document
 and can also be undone. Select a shape to see its width update. Canvas A and Canvas B use
 separate Providers and share one runtime; editing one leaves the other's
-history and zoom unchanged.
+history and zoom unchanged. Use **Fit all shapes** to center the scene in the
+viewport without adding an undo entry.
 
 <ReactCanvasExample locale="en" />
 
@@ -233,6 +234,52 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
     );
 }
 ```
+
+## Camera controls
+
+`useCanvasCamera()` returns a read-only `{ x, y, zoom, rotation }` snapshot for
+its Provider. Rotation is in radians. Its reference stays stable during
+unrelated document updates; pan, zoom, and rotation-only changes update it.
+SSR, an empty Provider, and a removed canvas return `{ x: 0, y: 0, zoom: 1, rotation: 0 }`.
+
+```tsx
+import {
+    useCanvasActions,
+    useCanvasCamera,
+    useCanvasStatus,
+} from '@infinite-canvas-tutorial/react';
+
+function ViewControls() {
+    const { zoom } = useCanvasCamera();
+    const actions = useCanvasActions();
+    const { status } = useCanvasStatus();
+    return (
+        <div>
+            <output aria-label="Zoom">{Math.round(zoom * 100)}%</output>
+            <button disabled={status !== 'ready'} onClick={() => actions.zoomTo(1)}>
+                Reset zoom
+            </button>
+            <button disabled={status !== 'ready'} onClick={() => actions.fitToScreen()}>
+                Fit all shapes
+            </button>
+        </div>
+    );
+}
+```
+
+Both actions return `false` without an attached API and `true` when forwarded.
+This boolean reports dispatch, not animation completion. They animate for 300 ms
+with `ease` by default; `CanvasCameraAnimationOptions` accepts `duration`,
+`easing`, `onframe`, and `onfinish`. Pass `{ duration: 0 }` for an immediate change.
+`zoomTo` zooms around the viewport center and throws `RangeError` for a non-finite
+or non-positive zoom when an API is attached. `fitToScreen` fits scene bounds at
+the current rotation, excludes editor handles, and does nothing for an empty
+scene. Camera actions leave document undo history unchanged. Retained actions
+always target the current canvas in their Provider.
+
+For event-driven work, `useCanvasEvent('ic-camera-changed', listener)` receives
+the complete `{ x, y, zoom, rotation }` in `event.detail`. The existing zoom and
+position events remain available.
 
 ## Canvas event subscriptions
 

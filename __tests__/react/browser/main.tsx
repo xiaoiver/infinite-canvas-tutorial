@@ -12,6 +12,7 @@ import {
   useCanvasHistory,
   useCanvasStatus,
   useCanvasEvent,
+  useCanvasCamera,
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
 import {
@@ -137,7 +138,7 @@ function Toolbar({ id }: { id: string }) {
       delete window.actions[id];
     };
   }, [id, actions]);
-  const zoom = useCanvasSelector((state) => state.appState?.cameraZoom ?? 1);
+  const camera = useCanvasCamera();
   const { canUndo, canRedo } = useCanvasHistory();
   const selected = useCanvasSelection();
   const node = useCanvasNode(selected[0]?.id);
@@ -150,7 +151,8 @@ function Toolbar({ id }: { id: string }) {
   return (
     <div data-testid={`${id}-toolbar`}>
       <output data-testid={`${id}-status`}>{status}</output>
-      <output data-testid={`${id}-zoom`}>{zoom}</output>
+      <output data-testid={`${id}-zoom`}>{camera.zoom}</output>
+      <output data-testid={`${id}-camera`}>{JSON.stringify(camera)}</output>
       <output data-testid={`${id}-selection`}>{selected.length}</output>
       <output data-testid={`${id}-node-width`}>{node?.width ?? ''}</output>
       <output data-testid={`${id}-selected-ids`}>
@@ -172,7 +174,7 @@ function Toolbar({ id }: { id: string }) {
       >
         Redo
       </button>
-      <button data-testid={`${id}-zoom-in`} onClick={() => api?.zoomTo(2)}>
+      <button data-testid={`${id}-zoom-in`} onClick={() => actions.zoomTo(2)}>
         Zoom
       </button>
       <button

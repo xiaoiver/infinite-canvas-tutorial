@@ -149,11 +149,7 @@ export function createCanvasStore() {
           const refreshAppState = () => {
             publish({ ...state, appState: api.getAppState() });
           };
-          const events = [
-            Event.CAMERA_ZOOM_CHANGED,
-            Event.CAMERA_POSITION_CHANGED,
-            Event.SELECTED_NODES_CHANGED,
-          ];
+          const events = [Event.CAMERA_CHANGED, Event.SELECTED_NODES_CHANGED];
           events.forEach((event) =>
             element.addEventListener(event, refreshAppState),
           );

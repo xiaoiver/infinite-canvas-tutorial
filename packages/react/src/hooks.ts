@@ -9,6 +9,31 @@ import type { CanvasState } from './store';
 
 export type { CanvasHistoryState } from '@infinite-canvas-tutorial/ecs';
 
+export interface CanvasCameraState {
+  readonly x: number;
+  readonly y: number;
+  readonly zoom: number;
+  /** Rotation in radians. */
+  readonly rotation: number;
+}
+
+/** Current camera; unrelated document/history changes retain the same object. */
+export function useCanvasCamera(): CanvasCameraState {
+  return useCanvasSelector(
+    ({ appState }) => ({
+      x: appState?.cameraX ?? 0,
+      y: appState?.cameraY ?? 0,
+      zoom: appState?.cameraZoom ?? 1,
+      rotation: appState?.cameraRotation ?? 0,
+    }),
+    (a, b) =>
+      a.x === b.x &&
+      a.y === b.y &&
+      a.zoom === b.zoom &&
+      a.rotation === b.rotation,
+  );
+}
+
 /** Initialization status, including async preparation and the initial commit. */
 export function useCanvasStatus(): Pick<CanvasState, 'status' | 'error'> {
   return useCanvasSelector(

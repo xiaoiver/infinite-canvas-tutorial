@@ -67,6 +67,8 @@ Next.js Client Component。默认入口和 `/spectrum` 目前导出同一个组�
 画布 A 和 B 分别使用独立的 Provider，并共享同一个 runtime；编辑其中一个，
 另一个的历史和缩放不会改变。
 
+使用 **适应全部图形** 可将场景居中显示在视口内，不会增加撤销记录。
+
 <ReactCanvasExample locale="zh" />
 
 取消勾选“显示第二个画布”，可以体验卸载一个画布后继续操作另一个。
@@ -218,6 +220,48 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
     );
 }
 ```
+
+## 相机与视图控制
+
+`useCanvasCamera()` 返回当前 Provider 的只读 `{ x, y, zoom, rotation }` 快照，
+旋转角度使用弧度。无关的文档更新不会改变对象引用；平移、缩放和仅旋转都会更新快照。
+SSR、空 Provider 和画布卸载后返回 `{ x: 0, y: 0, zoom: 1, rotation: 0 }`。
+
+```tsx
+import {
+    useCanvasActions,
+    useCanvasCamera,
+    useCanvasStatus,
+} from '@infinite-canvas-tutorial/react';
+
+function ViewControls() {
+    const { zoom } = useCanvasCamera();
+    const actions = useCanvasActions();
+    const { status } = useCanvasStatus();
+    return (
+        <div>
+            <output aria-label="缩放比例">{Math.round(zoom * 100)}%</output>
+            <button disabled={status !== 'ready'} onClick={() => actions.zoomTo(1)}>
+                重置缩放
+            </button>
+            <button disabled={status !== 'ready'} onClick={() => actions.fitToScreen()}>
+                适应全部图形
+            </button>
+        </div>
+    );
+}
+```
+
+两个操作在没有挂载 API 时返回 `false`，转交给 API 后返回 `true`；这表示已发起操作，
+不代表动画完成。默认使用 300 毫秒的 `ease` 动画，可通过
+`CanvasCameraAnimationOptions` 传入 `duration`、`easing`、`onframe` 和 `onfinish`。
+传入 `{ duration: 0 }` 可立即切换。`zoomTo` 围绕视口中心缩放；有 API 时，非有限数或
+非正数缩放值会抛出 `RangeError`。`fitToScreen` 保留当前旋转角度，让场景边界适应视口，
+忽略编辑手柄；空场景下不改变视图。这些操作不增加文档撤销记录。保存下来的操作函数
+始终访问当前 Provider 的最新画布。
+
+需要监听事件时，`useCanvasEvent('ic-camera-changed', listener)` 的 `event.detail`
+包含完整的 `{ x, y, zoom, rotation }`。原有的缩放和位置事件仍然可用。
 
 ## 订阅画布事件
 
