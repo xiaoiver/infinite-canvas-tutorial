@@ -123,7 +123,7 @@ export function Editor() {
 `useCanvasSelector(selector, isEqual?)` 从 `CanvasState` 中选择 `api`、`appState`、
 `nodes`、`canUndo` 或 `canRedo`。服务端和未就绪状态的 `api`、`appState` 为 `null`，
 节点数组为空，两个历史标记为 `false`。selector 应保持纯函数，并把状态当作只读数据。
-默认用 `Object.is` 比较选中值，仅在选中值变化时由订阅触发渲染；返回对象或数组时
+默认用 `Object.is` 比较选中值，仅在选中值变化时由订阅触发渲染；返回新创建的对象或数组时
 可以传入比较函数：
 
 ```tsx
@@ -133,11 +133,22 @@ const history = useCanvasSelector(
 );
 ```
 
+`nodes` 由 store 持有副本，与 API 中可变的文档数据隔离。
+提交时未变更的节点保持原引用；节点内容与顺序都不变时，数组引用也保持稳定。
+直接返回其中的节点无需自定义比较函数：
+
+```tsx
+const rect = useCanvasSelector((state) =>
+    state.nodes.find((node) => node.id === 'rect'),
+);
+```
+
 节点与应用状态在 API 提交（`api.record()`）时更新；相机和选区事件也会立即刷新应用状态。
 初始化场景和 `api.record('NEVER')` 同样会通知订阅者，但不增加撤销记录。
 `initialNodes` 在准备完成后更新 selectors 和节点回调，无需额外调用 `record()`。
 编辑、撤销、重做和 `clearHistory()` 都会通知历史可用状态，无需轮询。
-直接调用 API 而未提交的修改，在下一次提交或事件时才反映到 hooks。
+直接修改节点后，使用 `api.edit()` 或 `api.record()` 发布文档变更；
+相机和选区事件仅刷新应用状态。
 API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
 
 ## 节点、选区和历史 hooks
@@ -152,7 +163,9 @@ API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
 
 SSR、就绪前和卸载后，分别返回 `null`、`[]` 和两个标记均为 `false` 的历史状态。
 选中内容不变时保持引用稳定，相机或其他节点更新不会触发无关渲染。
-节点副本还能检测提交后的原地 `api.updateNode()` 修改；请勿修改副本来编辑画布。
+这些 hooks 共享 store 中的节点副本，每次提交只复制变更节点一次，无需为每个使用方重复复制。
+副本还能检测提交后的原地 `api.updateNode()` 修改；请把副本及嵌套数据视为只读，
+通过 actions 或 API 编辑画布。
 只需要单个标量值时，可以继续使用 `useCanvasSelector`。
 
 ```tsx

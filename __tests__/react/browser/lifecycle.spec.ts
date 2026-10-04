@@ -311,6 +311,33 @@ test('early edits rebuild hierarchy and renderer resources through replacement, 
   expect(errors).toEqual([]);
 });
 
+test('object selectors observe direct in-place API edits and history restoration', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByTestId('left-object-width')).toHaveText('100', {
+    timeout: 45000,
+  });
+  // Bypass actions.refresh so the engine subscription must deliver the change.
+  expect(
+    await page.evaluate(() =>
+      window.apis.left.edit((api) => {
+        api.updateNode(api.getNodeById('left')!, { width: 140 });
+      }),
+    ),
+  ).toBe(true);
+  await expect(page.getByTestId('left-object-width')).toHaveText('140');
+  await expect(page.getByTestId('right-object-width')).toHaveText('100');
+  await page.getByTestId('left-undo').click();
+  await expect(page.getByTestId('left-object-width')).toHaveText('100');
+  await page.getByTestId('left-redo').click();
+  await expect(page.getByTestId('left-object-width')).toHaveText('140');
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('document actions update property hooks and replace the scene with one undo entry', async ({
   page,
 }) => {
@@ -320,8 +347,9 @@ test('document actions update property hooks and replace the scene with one undo
   await expect(page.getByTestId('left-count')).toHaveText('1', {
     timeout: 45000,
   });
-  await page.evaluate(async () =>
-    await window.actions.left.selectNodes(['left'], { capture: 'NEVER' }),
+  await page.evaluate(
+    async () =>
+      await window.actions.left.selectNodes(['left'], { capture: 'NEVER' }),
   );
   await expect(page.getByTestId('left-node-width')).toHaveText('100');
   await page.evaluate(() =>
