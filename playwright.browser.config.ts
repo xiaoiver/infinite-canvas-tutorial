@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './__tests__/browser',
   testMatch: '*.spec.ts',
+  testIgnore: 'touch-webkit.spec.ts',
   outputDir: '.test-results/browser',
   timeout: 30000,
   fullyParallel: false,

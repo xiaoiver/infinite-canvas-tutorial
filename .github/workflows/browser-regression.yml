@@ -18,15 +18,18 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm test:tooling
       - run: pnpm lint
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
       - run: pnpm test:browser
+      - run: pnpm test:browser:webkit
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: browser-regression-failures
-          path: .test-results/browser
+          path: |
+            .test-results/browser
+            .test-results/webkit
           include-hidden-files: true
           if-no-files-found: ignore

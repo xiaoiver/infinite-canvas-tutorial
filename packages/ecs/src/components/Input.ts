@@ -1,4 +1,4 @@
-import { Entity, field } from '@lastolivegames/becsy';
+import { Entity, field, Type } from '@lastolivegames/becsy';
 
 export class Input {
   @field.int32.vector(2) declare pointerClient: [number, number];
@@ -17,6 +17,13 @@ export class Input {
   @field.boolean declare pointerInside: boolean;
 
   @field.int32 declare pointerButton: number;
+
+  /** Last primary pointer kind; keyboard and wheel events do not change it. */
+  @field({
+    type: Type.staticString(['mouse', 'touch', 'pen']),
+    default: 'mouse',
+  })
+  declare pointerType: 'mouse' | 'touch' | 'pen';
 
   @field.boolean declare doubleClickTrigger: boolean;
   @field.float32 declare lastPointerDownTime: number;

@@ -3,10 +3,11 @@
 Run from the repository root after installing the workspace dependencies:
 
 ```sh
-pnpm exec playwright install chromium
+pnpm exec playwright install --with-deps chromium webkit
 pnpm test:tooling
 pnpm exec tsc -p __tests__/browser/tsconfig.json
 pnpm test:browser
+pnpm test:browser:webkit
 ```
 
 Playwright starts the isolated Vite fixture on `127.0.0.1:4175`. To inspect it
@@ -25,12 +26,20 @@ The five browser tests cover:
 The probes wrap native resource creation and deletion without replacing the
 renderer. Chromium uses software WebGL for reproducibility. The worker runs a
 small deterministic protocol fixture through the production `WorkerClient`;
-these tests do not download models or cover inference, WebGPU, other browsers,
-or a production collaboration server.
+these tests do not download models or cover inference, WebGPU, or a production
+collaboration server.
+
+Touch transformer tests use trusted Chromium touch events at phone viewport
+sizes, different camera zooms, and DPR 3. They cover padded corner and edge
+resizing, rotation, consecutive gestures, selection, and undo/redo. The separate
+WebKit suite uses an iPhone profile and native touchscreen taps; drag tests use
+DOM PointerEvents because Playwright does not expose native WebKit touch drags.
+Physical iOS Safari still requires a device check.
 
 CI runs these checks in `.github/workflows/browser-regression.yml` and uploads
-failure screenshots and traces from `.test-results/browser`. The existing ECS
-suite remains a separate regression check.
+failure screenshots and traces from `.test-results/browser` and
+`.test-results/webkit`. The existing ECS suite remains a separate regression
+check.
 
 ## Commit checks
 

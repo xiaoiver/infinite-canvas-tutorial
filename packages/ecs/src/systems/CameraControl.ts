@@ -80,12 +80,12 @@ export class CameraControl extends System {
 
       if (input.pointerDownTrigger) {
         this.createEntity(InputPoint, {
-          prevPoint: pointerViewport,
+          prevPoint: input.pointerDownViewport,
           canvas,
         });
 
         {
-          const [x, y] = pointerViewport;
+          const [x, y] = input.pointerDownViewport;
           cameraControl.pointerDownViewportX = x;
           cameraControl.pointerDownViewportY = y;
           const { x: wx, y: wy } = api.viewport2Canvas({

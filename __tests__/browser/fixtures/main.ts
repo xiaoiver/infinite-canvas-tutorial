@@ -112,7 +112,7 @@ function create(side: Side) {
     svgLayer,
     width: 320,
     height: 220,
-    devicePixelRatio: 1,
+    devicePixelRatio: window.devicePixelRatio,
   });
   api.createCamera({ zoom: 1 });
   api.updateNodes([seed()]);

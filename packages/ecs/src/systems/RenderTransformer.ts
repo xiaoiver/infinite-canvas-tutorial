@@ -76,6 +76,9 @@ import type { VectorSegmentLike, VectorVertexLike } from '../utils/vector-networ
 const TRANSFORMER_ANCHOR_RADIUS = 5;
 export const TRANSFORMER_ANCHOR_ROTATE_RADIUS = 20;
 export const TRANSFORMER_ANCHOR_RESIZE_RADIUS = 5;
+// CSS viewport pixels: a 44px finger target independent of camera zoom / DPR.
+const TRANSFORMER_TOUCH_RESIZE_RADIUS = 22;
+const TRANSFORMER_TOUCH_ROTATE_RADIUS = 42;
 /** Viewport px — snap a dragged vector-network vertex onto another when this close. */
 export const VECTOR_NETWORK_VERTEX_SNAP_RADIUS = TRANSFORMER_ANCHOR_RADIUS + 3;
 // --spectrum-thumbnail-border-color-selected
@@ -1671,7 +1674,17 @@ export function findHoveredVectorNetworkSegmentIndex(
 /**
  * Hit test with transformer, return anchor name and cursor.
  */
-export function hitTest(api: API, { x, y }: IPointData) {
+export function hitTest(
+  api: API,
+  { x, y }: IPointData,
+  pointerType: 'mouse' | 'touch' | 'pen' = 'mouse',
+) {
+  const resizeRadius = pointerType === 'touch'
+    ? TRANSFORMER_TOUCH_RESIZE_RADIUS
+    : TRANSFORMER_ANCHOR_RESIZE_RADIUS;
+  const rotateRadius = pointerType === 'touch'
+    ? TRANSFORMER_TOUCH_ROTATE_RADIUS
+    : TRANSFORMER_ANCHOR_ROTATE_RADIUS;
   const camera = api.getCamera();
   const { rotateEnabled, penbarSelected, vectorNetworkEditMode } =
     api.getAppState();
@@ -1918,7 +1931,7 @@ export function hitTest(api: API, { x, y }: IPointData) {
       const distanceToX2y2 = distanceBetweenPoints(x, y, x2y2X, x2y2Y);
       const minDistanceToAnchors = Math.min(distanceToX1y1, distanceToX2y2);
 
-      if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+      if (minDistanceToAnchors <= resizeRadius) {
         if (minDistanceToAnchors === distanceToX1y1) {
           return {
             anchor: AnchorName.X1Y1,
@@ -2017,56 +2030,6 @@ export function hitTest(api: API, { x, y }: IPointData) {
         distanceToBR,
       );
 
-      if (minDistanceToAnchors <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
-        if (minDistanceToAnchors === distanceToTL) {
-          return {
-            anchor: AnchorName.TOP_LEFT,
-            cursor: 'nwse-resize',
-          };
-        } else if (minDistanceToAnchors === distanceToTR) {
-          return {
-            anchor: AnchorName.TOP_RIGHT,
-            cursor: 'nesw-resize',
-          };
-        } else if (minDistanceToAnchors === distanceToBL) {
-          return {
-            anchor: AnchorName.BOTTOM_LEFT,
-            cursor: 'nesw-resize',
-          };
-        } else if (minDistanceToAnchors === distanceToBR) {
-          return {
-            anchor: AnchorName.BOTTOM_RIGHT,
-            cursor: 'nwse-resize',
-          };
-        }
-      } else if (
-        rotateEnabled &&
-        !isInside &&
-        minDistanceToAnchors <= TRANSFORMER_ANCHOR_ROTATE_RADIUS
-      ) {
-        if (minDistanceToAnchors === distanceToTL) {
-          return {
-            anchor: AnchorName.TOP_LEFT,
-            cursor: 'nwse-rotate',
-          };
-        } else if (minDistanceToAnchors === distanceToTR) {
-          return {
-            anchor: AnchorName.TOP_RIGHT,
-            cursor: 'nesw-rotate',
-          };
-        } else if (minDistanceToAnchors === distanceToBL) {
-          return {
-            anchor: AnchorName.BOTTOM_LEFT,
-            cursor: 'swne-rotate',
-          };
-        } else if (minDistanceToAnchors === distanceToBR) {
-          return {
-            anchor: AnchorName.BOTTOM_RIGHT,
-            cursor: 'senw-rotate',
-          };
-        }
-      }
-
       const distanceToTopEdge = distanceBetweenPointAndLineSegment(
         point,
         [tlX, tlY],
@@ -2098,7 +2061,61 @@ export function hitTest(api: API, { x, y }: IPointData) {
         distanceToRightEdge,
       );
 
-      if (minDistanceToEdges <= TRANSFORMER_ANCHOR_RESIZE_RADIUS) {
+
+      if (minDistanceToAnchors <= resizeRadius) {
+        if (minDistanceToAnchors === distanceToTL) {
+          return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-resize',
+          };
+        } else if (minDistanceToAnchors === distanceToTR) {
+          return {
+            anchor: AnchorName.TOP_RIGHT,
+            cursor: 'nesw-resize',
+          };
+        } else if (minDistanceToAnchors === distanceToBL) {
+          return {
+            anchor: AnchorName.BOTTOM_LEFT,
+            cursor: 'nesw-resize',
+          };
+        } else if (minDistanceToAnchors === distanceToBR) {
+          return {
+            anchor: AnchorName.BOTTOM_RIGHT,
+            cursor: 'nwse-resize',
+          };
+        }
+      } else if (
+        rotateEnabled &&
+        !isInside &&
+        minDistanceToAnchors <= rotateRadius &&
+        // Finger-sized edge targets take precedence over the rotation ring.
+        !(pointerType === 'touch' && minDistanceToEdges <= resizeRadius)
+      ) {
+        if (minDistanceToAnchors === distanceToTL) {
+          return {
+            anchor: AnchorName.TOP_LEFT,
+            cursor: 'nwse-rotate',
+          };
+        } else if (minDistanceToAnchors === distanceToTR) {
+          return {
+            anchor: AnchorName.TOP_RIGHT,
+            cursor: 'nesw-rotate',
+          };
+        } else if (minDistanceToAnchors === distanceToBL) {
+          return {
+            anchor: AnchorName.BOTTOM_LEFT,
+            cursor: 'swne-rotate',
+          };
+        } else if (minDistanceToAnchors === distanceToBR) {
+          return {
+            anchor: AnchorName.BOTTOM_RIGHT,
+            cursor: 'senw-rotate',
+          };
+        }
+      }
+
+
+      if (minDistanceToEdges <= resizeRadius) {
         if (minDistanceToEdges === distanceToTopEdge) {
           return {
             anchor: AnchorName.TOP_CENTER,
