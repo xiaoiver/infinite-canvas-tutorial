@@ -22,6 +22,7 @@ import {
   useCanvasNode,
   useCanvasSelection,
   useCanvasHistory,
+  useCanvasStatus,
 } from '../../packages/react/src/hooks';
 
 const canvases: TestCanvas[] = [];
@@ -106,6 +107,184 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   jest.useRealTimers();
+});
+
+function StatusProbe({
+  render = () => {},
+}: {
+  render?: (value: ReturnType<typeof useCanvasStatus>) => void;
+}) {
+  const lifecycle = useCanvasStatus();
+  const api = useCanvasAPI();
+  render(lifecycle);
+  return (
+    <output data-testid="lifecycle">{`${lifecycle.status}:${api !== null}:${
+      lifecycle.error?.message ?? ''
+    }`}</output>
+  );
+}
+
+it('keeps initialization loading through async preparation and the initial commit', async () => {
+  let finishPreparation!: () => void;
+  let finishCommit!: (applied: boolean) => void;
+  const preparation = new Promise<void>((resolve) => {
+    finishPreparation = resolve;
+  });
+  const commit = new Promise<boolean>((resolve) => {
+    finishCommit = resolve;
+  });
+  const render = jest.fn();
+  const editor = (shown = true) => (
+    <CanvasProvider>
+      {shown && (
+        <InfiniteCanvas
+          runtime={runtime}
+          initialNodes={[]}
+          onReady={() => preparation}
+        />
+      )}
+      <StatusProbe render={render} />
+    </CanvasProvider>
+  );
+  expect(renderToString(editor())).toContain('idle:false:');
+  expect(runtime.acquire).not.toHaveBeenCalled();
+  await act(async () => root.render(editor()));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'loading:false:',
+  );
+  canvases[0].api.edit.mockReturnValueOnce(commit);
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'loading:true:',
+  );
+  await act(async () => finishPreparation());
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'loading:true:',
+  );
+  await act(async () => finishCommit(true));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'ready:true:',
+  );
+  render.mockClear();
+  await act(async () => canvases[0].commit({ cameraZoom: 2 }));
+  expect(render).not.toHaveBeenCalled();
+  await act(async () => root.render(editor(false)));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'idle:false:',
+  );
+});
+
+it('preserves lifecycle errors after teardown and resets them on recreation and removal', async () => {
+  const failure = new Error('preparation failed');
+  const editor = (renderer: 'webgl' | 'webgpu', shown = true) => (
+    <CanvasProvider>
+      {shown && (
+        <InfiniteCanvas
+          runtime={runtime}
+          renderer={renderer}
+          onReady={() => {
+            if (renderer === 'webgl') throw failure;
+          }}
+        />
+      )}
+      <StatusProbe />
+    </CanvasProvider>
+  );
+  await act(async () => root.render(editor('webgl')));
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'error:false:preparation failed',
+  );
+  expect(canvases[0].historySubscribers.size).toBe(0);
+  expect(canvases[0].subscribers.size).toBe(0);
+  expect(release).toHaveBeenCalledTimes(1);
+  await act(async () => root.render(editor('webgpu')));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'loading:false:',
+  );
+  await act(async () => canvases[1].ready());
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'ready:true:',
+  );
+  await act(async () => root.render(editor('webgpu', false)));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'idle:false:',
+  );
+});
+
+it('ignores a preparation rejection from a removed canvas after recreation', async () => {
+  let fail!: (reason: Error) => void;
+  const preparation = new Promise<void>((_resolve, reject) => {
+    fail = reject;
+  });
+  const editor = (renderer: 'webgl' | 'webgpu') => (
+    <CanvasProvider>
+      <InfiniteCanvas
+        runtime={runtime}
+        renderer={renderer}
+        onReady={() => (renderer === 'webgl' ? preparation : undefined)}
+      />
+      <StatusProbe />
+    </CanvasProvider>
+  );
+  await act(async () => root.render(editor('webgl')));
+  await act(async () => canvases[0].ready());
+  await act(async () => root.render(editor('webgpu')));
+  await act(async () => canvases[1].ready());
+  await act(async () => fail(new Error('obsolete preparation')));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'ready:true:',
+  );
+  expect(host.querySelector('[role="alert"]')).toBeNull();
+});
+
+it('reports runtime failures through the Provider before an API attaches', async () => {
+  runtime.acquire = () => ({
+    ready: Promise.reject(new Error('offline')),
+    release,
+  });
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <InfiniteCanvas runtime={runtime} />
+        <StatusProbe />
+      </CanvasProvider>,
+    ),
+  );
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'error:false:offline',
+  );
+  await act(async () =>
+    root.render(
+      <CanvasProvider>
+        <StatusProbe />
+      </CanvasProvider>,
+    ),
+  );
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'idle:false:',
+  );
+});
+
+it('exposes locale update errors without discarding the active API', async () => {
+  const editor = (locale: string) => (
+    <CanvasProvider>
+      <InfiniteCanvas runtime={runtime} locale={locale} />
+      <StatusProbe />
+    </CanvasProvider>
+  );
+  await act(async () => root.render(editor('en')));
+  await act(async () => canvases[0].ready());
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'ready:true:',
+  );
+  canvases[0].api.setLocale.mockRejectedValueOnce(new Error('locale failed'));
+  await act(async () => root.render(editor('zh-Hans')));
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'error:true:locale failed',
+  );
+  expect(canvases).toHaveLength(1);
+  expect(canvases[0].api.destroy).not.toHaveBeenCalled();
 });
 
 it('renders on the server without starting the browser runtime', () => {
@@ -254,7 +433,7 @@ it('cancels a queued initial edit on unmount without reporting its late rejectio
   expect(release).toHaveBeenCalledTimes(1);
 });
 
-it('reports a failed initial edit and releases its Provider and runtime', async () => {
+it('reports a failed initial edit, clears its Provider API, and releases the runtime', async () => {
   const onError = jest.fn();
   const onAPIChange = jest.fn();
   await act(async () =>
@@ -418,11 +597,14 @@ it('times out GPU initialization and removes the pending canvas', async () => {
   const onError = jest.fn();
   await act(async () =>
     root.render(
-      <InfiniteCanvas
-        runtime={runtime}
-        initializationTimeout={100}
-        onError={onError}
-      />,
+      <CanvasProvider>
+        <InfiniteCanvas
+          runtime={runtime}
+          initializationTimeout={100}
+          onError={onError}
+        />
+        <StatusProbe />
+      </CanvasProvider>,
     ),
   );
   await act(async () => jest.advanceTimersByTime(100));
@@ -431,6 +613,9 @@ it('times out GPU initialization and removes the pending canvas', async () => {
     'timed out',
   );
   expect(release).toHaveBeenCalledTimes(1);
+  expect(
+    host.querySelector('[data-testid="lifecycle"]')!.textContent,
+  ).toContain('error:false:Canvas initialization timed out.');
 });
 
 function Toolbar({ id = 'toolbar' }: { id?: string }) {
@@ -749,18 +934,25 @@ it('releases Provider ownership under StrictMode, recreation, and API destructio
       <CanvasProvider>
         <InfiniteCanvas runtime={runtime} renderer={renderer} />
         <Toolbar />
+        <StatusProbe />
       </CanvasProvider>
     </StrictMode>
   );
   await act(async () => root.render(editor('webgl')));
   await act(async () => canvases[0].ready());
   expect(host.querySelector('output')!.textContent).toBe('true:1:false:0');
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'ready:true:',
+  );
   await act(async () => root.render(editor('webgpu')));
   expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
   expect(canvases[0].subscribers.size).toBe(0);
   await act(async () => canvases[1].ready());
   await act(async () => canvases[1].api.destroy());
   expect(host.querySelector('output')!.textContent).toBe('false:1:false:0');
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'idle:false:',
+  );
   expect(canvases[1].historySubscribers.size).toBe(0);
 });
 
@@ -772,6 +964,7 @@ it('rejects a second canvas in one Provider without replacing its API', async ()
         <InfiniteCanvas runtime={runtime} />
         <InfiniteCanvas runtime={runtime} onError={onError} />
         <Toolbar />
+        <StatusProbe />
       </CanvasProvider>,
     ),
   );
@@ -783,6 +976,9 @@ it('rejects a second canvas in one Provider without replacing its API', async ()
   expect(canvases).toHaveLength(1);
   await act(async () => canvases[0].ready());
   expect(host.querySelector('output')!.textContent).toBe('true:1:false:0');
+  expect(host.querySelector('[data-testid="lifecycle"]')!.textContent).toBe(
+    'ready:true:',
+  );
 });
 
 it('clears Provider state after async preparation fails', async () => {

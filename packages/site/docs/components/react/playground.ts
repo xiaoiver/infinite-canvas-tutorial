@@ -15,6 +15,7 @@ import {
   useCanvasNode,
   useCanvasSelection,
   useCanvasHistory,
+  useCanvasStatus,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { DocumentControls } from './document-controls';
@@ -107,6 +108,8 @@ function Controls({
 }) {
   const text = copy[locale];
   const api = useCanvasAPI();
+  const { status } = useCanvasStatus();
+  const ready = status === 'ready';
   const actions = useCanvasActions();
   const [error, setError] = useState<string | null>(null);
   const reportEditError = (reason: unknown) =>
@@ -120,7 +123,7 @@ function Controls({
   const node = useCanvasNode(selected[0]?.id);
   const nextId = useRef(2);
   const add = () => {
-    if (!api) return;
+    if (!ready) return;
     const index = nextId.current++;
     void actions
       .edit((api) => {
@@ -140,7 +143,7 @@ function Controls({
       .catch(reportEditError);
   };
   const changeColor = () => {
-    if (!api) return;
+    if (!ready) return;
     void actions
       .edit((api) => {
         const selectedId = api.getAppState().layersSelected[0];
@@ -159,7 +162,7 @@ function Controls({
     action: string,
     label: string,
     onClick: () => void,
-    disabled = !api,
+    disabled = !ready,
   ) =>
     h(
       'button',
@@ -177,10 +180,10 @@ function Controls({
         role: 'group',
         'aria-label': `${text.canvas} ${id}`,
       },
-      button('undo', text.undo, actions.undo, !canUndo),
-      button('redo', text.redo, actions.redo, !canRedo),
+      button('undo', text.undo, actions.undo, !ready || !canUndo),
+      button('redo', text.redo, actions.redo, !ready || !canRedo),
       button('add', text.add, add),
-      button('color', text.color, changeColor, !api || count === 0),
+      button('color', text.color, changeColor, !ready || count === 0),
       button(
         'enlarge',
         text.enlarge,
@@ -196,7 +199,7 @@ function Controls({
             )
             .catch(reportEditError);
         },
-        !api || node?.width == null,
+        !ready || node?.width == null,
       ),
       button(
         'delete',
@@ -206,7 +209,7 @@ function Controls({
             .deleteNodes(selected.map((node) => node.id))
             .catch(reportEditError);
         },
-        !api || selected.length === 0,
+        !ready || selected.length === 0,
       ),
       button('replace', text.replace, () => {
         void actions.replaceDocument(initialNodes(id)).catch(reportEditError);
@@ -226,7 +229,7 @@ function Controls({
           'button',
           {
             type: 'button',
-            disabled: !api || zoom <= 0.25,
+            disabled: !ready || zoom <= 0.25,
             'aria-label': text.zoomOut,
             'data-action': 'zoom-out',
             onClick: () => api?.zoomTo(Math.max(0.25, zoom / 1.25)),
@@ -237,7 +240,7 @@ function Controls({
           'button',
           {
             type: 'button',
-            disabled: !api,
+            disabled: !ready,
             'aria-label': text.zoomReset,
             'data-action': 'zoom-reset',
             onClick: () => api?.zoomTo(1),
@@ -248,7 +251,7 @@ function Controls({
           'button',
           {
             type: 'button',
-            disabled: !api || zoom >= 4,
+            disabled: !ready || zoom >= 4,
             'aria-label': text.zoomIn,
             'data-action': 'zoom-in',
             onClick: () => api?.zoomTo(Math.min(4, zoom * 1.25)),

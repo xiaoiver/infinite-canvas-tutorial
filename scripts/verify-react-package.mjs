@@ -127,11 +127,12 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
     assert.equal(actions.undo(), false);
+    assert.deepEqual(useCanvasStatus(), { status: 'idle', error: null });
     assert.equal(useCanvasNode('rect'), null);
     assert.deepEqual(useCanvasSelection(), []);
     assert.deepEqual(useCanvasHistory(), { canUndo: false, canRedo: false });
@@ -152,7 +153,7 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, type CanvasHistoryState, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InfiniteCanvas as SpectrumCanvas } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
@@ -167,6 +168,9 @@ function Toolbar() {
   const selected: readonly Readonly<SerializedNode>[] = useCanvasSelection();
   const node: Readonly<SerializedNode> | null = useCanvasNode(selected[0]?.id);
   const history: Readonly<CanvasHistoryState> = useCanvasHistory();
+  const lifecycle = useCanvasStatus();
+  const status: CanvasStatus = lifecycle.status;
+  const startupError: Error | null = lifecycle.error;
   const edit: Promise<boolean> = actions.edit(api => { api.setAppState({ filter: '' }); });
   const coreEdit: Promise<boolean> | undefined = api?.edit(editor => {
     editor.setAppState({ filter: '' });

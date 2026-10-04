@@ -20,6 +20,9 @@ import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { Event } from '@infinite-canvas-tutorial/webcomponents/events';
 import { defaultCanvasRuntime, type CanvasRuntime } from './runtime';
 import { CanvasContext } from './CanvasProvider';
+import type { CanvasStore } from './store';
+
+type ProviderLease = ReturnType<CanvasStore['claim']>;
 
 interface CanvasElement extends HTMLElement {
   renderer: 'webgl' | 'webgpu';
@@ -104,6 +107,7 @@ export const InfiniteCanvas = forwardRef<
   const store = useContext(CanvasContext);
   const apiRef = useRef<ExtendedAPI | null>(null);
   const elementRef = useRef<CanvasElement | null>(null);
+  const providerLeaseRef = useRef<ProviderLease | null>(null);
   const callbacks = useRef(props);
   const [element, setElement] = useState<CanvasElement | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
@@ -138,22 +142,27 @@ export const InfiniteCanvas = forwardRef<
     let unsubscribe: (() => void) | undefined;
     let readyTimer: ReturnType<typeof setTimeout> | undefined;
     const removers: (() => void)[] = [];
-    let providerLease:
-      | ReturnType<NonNullable<typeof store>['claim']>
-      | undefined;
+    let providerLease: ProviderLease | undefined;
     const teardown = () => {
       if (signal.aborted) return;
       controller.abort();
       clearTimeout(readyTimer);
       unsubscribe?.();
       removers.forEach((remove) => remove());
-      providerLease?.release();
+      providerLease?.detach();
       const hadAPI = apiRef.current !== null;
       apiRef.current = null;
       elementRef.current = null;
       canvas?.remove(); // The Web Component owns API.destroy().
       lease.release();
       if (hadAPI) callbacks.current.onAPIChange?.(null);
+    };
+    const cleanup = () => {
+      teardown();
+      providerLease?.release();
+      if (providerLeaseRef.current === providerLease) {
+        providerLeaseRef.current = null;
+      }
     };
     setStatus('loading');
     setError(null);
@@ -164,6 +173,7 @@ export const InfiniteCanvas = forwardRef<
       const nextError =
         reason instanceof Error ? reason : new Error(String(reason));
       teardown();
+      providerLease?.setStatus('error', nextError);
       setElement(null);
       setError(nextError);
       setStatus('error');
@@ -171,9 +181,10 @@ export const InfiniteCanvas = forwardRef<
     };
     try {
       providerLease = store?.claim();
+      providerLeaseRef.current = providerLease ?? null;
     } catch (reason) {
       reportError(reason);
-      return teardown;
+      return cleanup;
     }
     if (initializationTimeout > 0) {
       readyTimer = setTimeout(
@@ -250,6 +261,7 @@ export const InfiniteCanvas = forwardRef<
                 );
                 if (!applied || signal.aborted) return;
               }
+              providerLease?.setStatus('ready');
               setStatus('ready');
             })
             .catch(reportError);
@@ -270,7 +282,7 @@ export const InfiniteCanvas = forwardRef<
       })
       .catch(reportError);
 
-    return teardown;
+    return cleanup;
   }, [runtime, renderer, shaderCompilerPath, initializationTimeout, store]);
 
   useEffect(() => {
@@ -296,6 +308,7 @@ export const InfiniteCanvas = forwardRef<
             reason instanceof Error ? reason : new Error(String(reason));
           setError(nextError);
           setStatus('error');
+          providerLeaseRef.current?.setStatus('error', nextError);
           callbacks.current.onError?.(nextError);
         });
     }

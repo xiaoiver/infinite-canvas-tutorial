@@ -10,6 +10,7 @@ import {
   useCanvasNode,
   useCanvasSelection,
   useCanvasHistory,
+  useCanvasStatus,
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
 import {
@@ -35,6 +36,7 @@ declare global {
     nodeChanges: Record<string, SerializedNode[][]>;
     snapshots: Record<string, unknown[]>;
     setShown: (ids: string[]) => void;
+    finishPreparation: Record<string, () => void>;
     boundFill: (id: string) => string | undefined;
     sceneGeometry: (id: string) => { x: number; minX: number; maxX: number };
     initialFrames: Record<
@@ -55,6 +57,7 @@ window.canvasErrors = [];
 window.nodeChanges = {};
 window.snapshots = {};
 window.initialFrames = {};
+window.finishPreparation = {};
 const initialCommitFrames: Record<string, number> = {};
 let frame = 0;
 class InitialFrameStart extends System {
@@ -115,6 +118,7 @@ window.sceneGeometry = (id) => {
 function Toolbar({ id }: { id: string }) {
   const api = useCanvasAPI();
   const actions = useCanvasActions();
+  const { status } = useCanvasStatus();
   useEffect(() => {
     window.actions[id] = actions;
     return () => {
@@ -133,6 +137,7 @@ function Toolbar({ id }: { id: string }) {
   );
   return (
     <div data-testid={`${id}-toolbar`}>
+      <output data-testid={`${id}-status`}>{status}</output>
       <output data-testid={`${id}-zoom`}>{zoom}</output>
       <output data-testid={`${id}-selection`}>{selected.length}</output>
       <output data-testid={`${id}-node-width`}>{node?.width ?? ''}</output>
@@ -160,7 +165,7 @@ function Toolbar({ id }: { id: string }) {
       </button>
       <button
         data-testid={`${id}-batch-edit`}
-        disabled={!api}
+        disabled={status !== 'ready'}
         onClick={() => {
           void actions
             .edit((api) => {
@@ -206,7 +211,12 @@ function Editor() {
             ]}
             style={{ width: 400, height: 300, display: 'inline-block' }}
             onReady={
-              new URLSearchParams(location.search).has('prepare')
+              new URLSearchParams(location.search).has('holdPreparation')
+                ? () =>
+                    new Promise<void>((resolve) => {
+                      window.finishPreparation[id] = resolve;
+                    })
+                : new URLSearchParams(location.search).has('prepare')
                 ? (api, { signal }) =>
                     new Promise<void>((resolve) => {
                       api.runAtNextTick(() => {
