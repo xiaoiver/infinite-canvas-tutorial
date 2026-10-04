@@ -17,5 +17,10 @@
       "@infinite-canvas-tutorial/ecs": ["packages/ecs/lib/index.d.ts"]
     }
   },
-  "include": ["./*.ts", "./*.tsx", "../../../playwright.react.config.ts"]
+  "include": [
+    "./*.ts",
+    "./*.tsx",
+    "../../../playwright.react.config.ts",
+    "../../../playwright.react-webkit.config.ts"
+  ]
 }

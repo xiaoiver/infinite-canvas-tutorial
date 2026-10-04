@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 
 declare global {
@@ -25,9 +25,87 @@ async function frame(page: Page) {
   });
 }
 
+async function resizeWithTouch(
+  page: Page,
+  canvas: Locator,
+  browserName: 'chromium' | 'firefox' | 'webkit',
+  start: { x: number; y: number },
+) {
+  if (browserName === 'webkit') {
+    // WebKit exposes native taps, but no native touch-drag protocol. Keep the
+    // same geometry/history assertions while exercising its PointerEvent path.
+    const init = {
+      pointerType: 'touch',
+      pointerId: 1,
+      isPrimary: true,
+      bubbles: true,
+      button: 0,
+      buttons: 1,
+      width: 20,
+      height: 20,
+    };
+    await canvas.dispatchEvent('pointerdown', {
+      ...init,
+      clientX: start.x,
+      clientY: start.y,
+    });
+    await frame(page);
+    for (let step = 1; step <= 5; step++) {
+      await canvas.dispatchEvent('pointermove', {
+        ...init,
+        clientX: start.x + step * 6,
+        clientY: start.y + step * 4,
+      });
+      await frame(page);
+    }
+    await canvas.dispatchEvent('pointerup', {
+      ...init,
+      buttons: 0,
+      clientX: start.x + 30,
+      clientY: start.y + 20,
+    });
+    await frame(page);
+    return;
+  }
+
+  // Chromium supplies trusted native touch drags through CDP.
+  const session = await page.context().newCDPSession(page);
+  try {
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ ...start, id: 1, radiusX: 10, radiusY: 10, force: 1 }],
+    });
+    await frame(page);
+    for (let step = 1; step <= 5; step++) {
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [
+          {
+            x: start.x + step * 6,
+            y: start.y + step * 4,
+            id: 1,
+            radiusX: 10,
+            radiusY: 10,
+            force: 1,
+          },
+        ],
+      });
+      await frame(page);
+    }
+    await session.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+    await frame(page);
+  } finally {
+    await session.detach();
+  }
+}
+
 for (const locale of ['en', 'zh']) {
   test(`phone touch selects and resizes the documentation rectangle (${locale})`, async ({
     page,
+    browserName,
   }) => {
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
@@ -61,37 +139,7 @@ for (const locale of ['en', 'zh']) {
       window.mobileApis.A.canvas2Viewport({ x: 140, y: 125 }),
     );
     const start = { x: box.x + corner.x + 12, y: box.y + corner.y + 8 };
-    const session = await page.context().newCDPSession(page);
-    try {
-      await session.send('Input.dispatchTouchEvent', {
-        type: 'touchStart',
-        touchPoints: [{ ...start, id: 1, radiusX: 10, radiusY: 10, force: 1 }],
-      });
-      await frame(page);
-      for (let step = 1; step <= 5; step++) {
-        await session.send('Input.dispatchTouchEvent', {
-          type: 'touchMove',
-          touchPoints: [
-            {
-              x: start.x + step * 6,
-              y: start.y + step * 4,
-              id: 1,
-              radiusX: 10,
-              radiusY: 10,
-              force: 1,
-            },
-          ],
-        });
-        await frame(page);
-      }
-      await session.send('Input.dispatchTouchEvent', {
-        type: 'touchEnd',
-        touchPoints: [],
-      });
-      await frame(page);
-    } finally {
-      await session.detach();
-    }
+    await resizeWithTouch(page, canvas, browserName, start);
     const resized = await page.evaluate(() => {
       const n = window.mobileApis.A.getNodeById('A-rect')!;
       return { width: n.width!, height: n.height!, rotation: n.rotation ?? 0 };
