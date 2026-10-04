@@ -24,7 +24,6 @@ import {
   UI,
   Visibility,
   ZIndex,
-  ComputedCameraControl,
   Name,
   Brush,
   HTML,
@@ -41,7 +40,7 @@ export class DrawPoint extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds, ComputedCamera, ComputedCameraControl)
+          .using(ComputedBounds, ComputedCamera)
           .read.update.and.using(
             Canvas,
             GlobalTransform,
@@ -91,19 +90,16 @@ export class DrawPoint extends System {
       }
 
       const input = canvas.write(Input);
-      if (input.pointerUpTrigger) {
+      if (input.pointerUpTrigger && !input.pointerCancelled) {
         if (isBrowser) {
-          const { pointerDownCanvasX, pointerDownCanvasY } = camera.read(
-            ComputedCameraControl,
-          );
+          // CameraControl has already cleared its press coordinates on release.
+          const [x, y] = input.pointerDownViewport;
+          const point = api.viewport2Canvas({ x, y });
           // FIXME: Use the correct event name
           // @ts-ignore
           api.element.dispatchEvent(
             new CustomEvent('ic-point-drawn', {
-              detail: {
-                x: pointerDownCanvasX,
-                y: pointerDownCanvasY,
-              },
+              detail: point,
             }),
           );
         }

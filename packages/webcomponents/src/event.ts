@@ -29,43 +29,43 @@ export enum Event {
   POINT_DRAWN = 'ic-point-drawn',
 }
 
+export interface CanvasEventMap {
+  'ic-ready': CustomEvent<ExtendedAPI>;
+  'ic-resized': CustomEvent<{ width: number; height: number }>;
+  'ic-camera-zoom-changed': CustomEvent<{ zoom: number }>;
+  'ic-camera-position-changed': CustomEvent<{ x: number; y: number }>;
+  'ic-screenshot-downloaded': CustomEvent<Pick<Screenshot, 'dataURL' | 'svg'>>;
+  'ic-nodes-updated': CustomEvent<{ nodes: SerializedNode[] }>;
+  'ic-node-deleted': CustomEvent<{ nodes: SerializedNode[] }>;
+  'ic-selected-nodes-changed': CustomEvent<{
+    selected: SerializedNode[];
+    preserveSelection: boolean;
+  }>;
+  'ic-mesh3d-layers-changed': CustomEvent<void>;
+  'ic-transformable-status-changed': CustomEvent<{
+    status: TransformableStatus;
+  }>;
+  'ic-comment-added': CustomEvent<{
+    canvasX: number;
+    canvasY: number;
+    viewportX: number;
+    viewportY: number;
+  }>;
+  'ic-rect-drawn': CustomEvent<{
+    node: SerializedNode;
+  }>;
+  'ic-pencil-drawn': CustomEvent<{
+    node: SerializedNode;
+  }>;
+  'ic-lasso-drawn': CustomEvent<{
+    node: SerializedNode;
+  }>;
+  'ic-point-drawn': CustomEvent<{
+    x: number;
+    y: number;
+  }>;
+}
+
 declare global {
-  interface HTMLElementEventMap {
-    [Event.READY]: CustomEvent<ExtendedAPI>;
-    [Event.RESIZED]: CustomEvent<{ width: number; height: number }>;
-    [Event.CAMERA_ZOOM_CHANGED]: CustomEvent<{ zoom: number }>;
-    [Event.CAMERA_POSITION_CHANGED]: CustomEvent<{ x: number; y: number }>;
-    [Event.SCREENSHOT_DOWNLOADED]: CustomEvent<
-      Pick<Screenshot, 'dataURL' | 'svg'>
-    >;
-    [Event.NODES_UPDATED]: CustomEvent<{ nodes: SerializedNode[] }>;
-    [Event.NODE_DELETED]: CustomEvent<{ nodes: SerializedNode[] }>;
-    [Event.SELECTED_NODES_CHANGED]: CustomEvent<{
-      selected: SerializedNode[];
-      preserveSelection: boolean;
-    }>;
-    [Event.MESH3D_LAYERS_CHANGED]: CustomEvent<void>;
-    [Event.TRANSFORMABLE_STATUS_CHANGED]: CustomEvent<{
-      status: TransformableStatus;
-    }>;
-    [Event.COMMENT_ADDED]: CustomEvent<{
-      canvasX: number;
-      canvasY: number;
-      viewportX: number;
-      viewportY: number;
-    }>;
-    [Event.RECT_DRAWN]: CustomEvent<{
-      node: SerializedNode;
-    }>;
-    [Event.PENCIL_DRAWN]: CustomEvent<{
-      node: SerializedNode;
-    }>;
-    [Event.LASSO_DRAWN]: CustomEvent<{
-      node: SerializedNode;
-    }>;
-    [Event.POINT_DRAWN]: CustomEvent<{
-      x: number;
-      y: number;
-    }>;
-  }
+  interface HTMLElementEventMap extends CanvasEventMap {}
 }

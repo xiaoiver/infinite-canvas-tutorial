@@ -14,6 +14,8 @@ export {
   useCanvasStatus,
 } from './hooks';
 export type { CanvasHistoryState } from './hooks';
+export { useCanvasEvent } from './useCanvasEvent';
+export type { CanvasEventOptions } from './useCanvasEvent';
 export type { CanvasState, CanvasStatus } from './store';
 export type { CanvasActions, CanvasEditOptions } from './actions';
 export type {

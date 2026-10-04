@@ -186,7 +186,7 @@ test('selected nodes keep valid renderer references through consecutive hierarch
   expect(errors).toEqual([]);
 });
 
-test('UI phases deliver current comment coordinates and deferred SVG export events', async ({
+test('React event hooks receive current comment coordinates and deferred SVG exports', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -199,26 +199,6 @@ test('UI phases deliver current comment coordinates and deferred SVG export even
     timeout: 45000,
   });
   await page.evaluate(() => {
-    const api = window.apis.left;
-    api.element.addEventListener(
-      'ic-comment-added',
-      (event) => {
-        const { canvasX, canvasY, viewportX, viewportY } = (
-          event as CustomEvent<{
-            canvasX: number;
-            canvasY: number;
-            viewportX: number;
-            viewportY: number;
-          }>
-        ).detail;
-        const expected = api.viewport2Canvas({ x: viewportX, y: viewportY });
-        api.element.dataset.commentProbe = JSON.stringify({
-          actual: [canvasX, canvasY],
-          expected: [expected.x, expected.y],
-        });
-      },
-      { once: true },
-    );
     return window.actions.left.setAppState(
       {
         penbarSelected: 'comment' as Pen,
@@ -235,32 +215,24 @@ test('UI phases deliver current comment coordinates and deferred SVG export even
     (await canvas.getAttribute('data-comment-probe'))!,
   );
   expect(coordinates.actual).toEqual(coordinates.expected);
-  const svg = await page.evaluate(
-    () =>
-      new Promise<string>((resolve, reject) => {
-        const api = window.apis.left;
-        api.element.addEventListener(
-          'ic-screenshot-downloaded',
-          (event) => {
-            resolve((event as CustomEvent<{ svg: string }>).detail.svg);
-          },
-          { once: true },
-        );
-        void api
-          .edit(
-            (editor) =>
-              editor.export({
-                format: 'svg' as ExportFormat,
-                download: false,
-                nodes: [editor.getNodeById('left')!],
-              }),
-            { capture: 'NEVER' },
-          )
-          .catch(reject);
-      }),
+  await page.evaluate(() =>
+    window.apis.left.edit(
+      (editor) =>
+        editor.export({
+          format: 'svg' as ExportFormat,
+          download: false,
+          nodes: [editor.getNodeById('left')!],
+        }),
+      { capture: 'NEVER' },
+    ),
   );
+  await expect(canvas).toHaveAttribute('data-svg-probe', /<svg/);
+  const svg = (await canvas.getAttribute('data-svg-probe'))!;
   expect(svg).toContain('<svg');
   expect(svg).toContain('<rect');
+  const right = page.locator('ic-spectrum-canvas').nth(1);
+  await expect(right).not.toHaveAttribute('data-comment-probe', /actual/);
+  await expect(right).not.toHaveAttribute('data-svg-probe', /<svg/);
   expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
   expect(errors).toEqual([]);
 });

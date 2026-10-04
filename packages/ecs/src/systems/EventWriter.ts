@@ -257,7 +257,8 @@ export class EventWriter extends System {
 
     const onPointerLeave = () => {
       input.write(Input).pointerInside = false;
-      input.write(Input).pointerCancelled = true;
+      // Touch release is followed by pointerleave; only cancel an active press.
+      if (pointerIds.size > 0) input.write(Input).pointerCancelled = true;
     };
 
     const onPointerWheel = (e: WheelEvent) => {

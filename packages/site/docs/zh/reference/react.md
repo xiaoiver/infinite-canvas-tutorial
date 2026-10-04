@@ -219,6 +219,46 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
+## 订阅画布事件
+
+`useCanvasEvent(name, listener, options?)` 直接订阅当前 `CanvasProvider` 中画布元素的事件，
+两个包入口都提供。事件名会推导回调类型，例如 `ic-point-drawn` 的 `detail.x/y` 是数值，
+`ic-screenshot-downloaded` 提供 `detail.svg/dataURL`。也支持 `pointerdown` 等原生 DOM 事件。
+
+```tsx
+import { useState } from 'react';
+import {
+    useCanvasEvent,
+    useCanvasStatus,
+} from '@infinite-canvas-tutorial/react';
+
+function Coordinates() {
+    const { status } = useCanvasStatus();
+    const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
+    useCanvasEvent(
+        'ic-point-drawn',
+        ({ detail: { x, y } }) => {
+            setPoint({ x, y });
+        },
+        { enabled: status === 'ready' },
+    );
+    return <output>{point ? `x: ${point.x}, y: ${point.y}` : ''}</output>;
+}
+```
+
+通过 `actions.setAppState({ penbarSelected: Pen.DRAW_POINT }, { capture: 'NEVER' })`
+启用取点工具，其中 `Pen` 来自 `@infinite-canvas-tutorial/ecs`。点击或轻触画布会返回考虑
+相机缩放和位置后的画布坐标。上方交互示例的 **取点坐标** 按钮展示了这个流程，取点后自动回到选择工具。
+
+hook 在 GPU-ready API 挂载后开始监听，并自动跟随画布重建。初始化使用 `onReady` 或
+`useCanvasStatus()`；首次 `ic-ready` 发生时，这个订阅还没有安装。订阅组件卸载或 API 销毁时
+会移除监听；已脱离 Provider 的旧画布也不会再把事件传给新画布的控件。
+
+`options.enabled` 默认为 `true`，传 `false` 可暂停监听。其余选项是原生的 `capture`、
+`passive`、`once` 和 `signal`。中止 signal 会移除监听，传入新的 signal 可重新订阅。
+回调更新会使用最近提交的回调，不会重复绑定；选项值相同的新对象也会保留订阅，因而重渲染不会
+重新启用已触发的 `once` 监听。事件名、选项值或画布变化时会创建新的订阅。
+
 ## 保存与导入文档
 
 示例和两个框架 starter 提供“本地保存”“加载存档”“导出 .ic”和“导入 .ic”。

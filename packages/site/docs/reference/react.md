@@ -234,6 +234,55 @@ function Properties({ onError }: { onError: (error: unknown) => void }) {
 }
 ```
 
+## Canvas event subscriptions
+
+`useCanvasEvent(name, listener, options?)` subscribes directly to the current
+canvas element in the nearest `CanvasProvider`. Both package entries provide it.
+The event name infers the payload: for example, `ic-point-drawn` has numeric
+`detail.x/y`, and `ic-screenshot-downloaded` has `detail.svg/dataURL`. Native DOM
+events such as `pointerdown` are supported too.
+
+```tsx
+import { useState } from 'react';
+import {
+    useCanvasEvent,
+    useCanvasStatus,
+} from '@infinite-canvas-tutorial/react';
+
+function Coordinates() {
+    const { status } = useCanvasStatus();
+    const [point, setPoint] = useState<{ x: number; y: number } | null>(null);
+    useCanvasEvent(
+        'ic-point-drawn',
+        ({ detail: { x, y } }) => {
+            setPoint({ x, y });
+        },
+        { enabled: status === 'ready' },
+    );
+    return <output>{point ? `x: ${point.x}, y: ${point.y}` : ''}</output>;
+}
+```
+
+Activate the point tool with
+`actions.setAppState({ penbarSelected: Pen.DRAW_POINT }, { capture: 'NEVER' })`
+(`Pen` comes from `@infinite-canvas-tutorial/ecs`). Click or tap the canvas to get
+canvas coordinates, accounting for camera zoom and position. The documentation
+playground includes this flow in its **Pick coordinates** button and returns to
+the selection tool after picking.
+
+The hook starts listening after the GPU-ready API attaches, then follows canvas
+recreation. Use `onReady` or `useCanvasStatus()` for initialization; the initial
+`ic-ready` event occurs before this subscription is installed. Listeners are
+removed when the subscriber unmounts or the API is destroyed, and detached
+canvases cannot deliver events to a replacement canvas's controls.
+
+`options.enabled` defaults to `true`; set it to `false` to pause listening. The
+other options are native `capture`, `passive`, `once`, and `signal`. Aborting the
+signal removes the listener; pass a new signal to listen again. Callback changes
+use the latest committed callback without rebinding. A new options object with
+the same values also keeps the subscription, so rerenders do not rearm a `once`
+listener. Changing the event, option values, or canvas creates a new subscription.
+
 ## Saving and importing documents
 
 The playground and both framework starters include **Save locally**, **Load saved**,
