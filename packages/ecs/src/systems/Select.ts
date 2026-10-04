@@ -2630,10 +2630,12 @@ export class Select extends System {
         const [x, y] = input.pointerDownViewport;
 
         if (!vectorNetworkEditing) {
+          const allowPivot = input.pointerType !== 'touch' &&
+            selection.mode === SelectionMode.READY_TO_MOVE_PIVOT;
           // Touch has no hover. Resolve the pressed target afresh, also when
           // pointermove and pointerdown arrive before the same render frame.
           selection.mode = SelectionMode.IDLE;
-          this.updateSelectionAtPointer(api, selection, x, y, input, cursor);
+          this.updateSelectionAtPointer(api, selection, x, y, input, cursor, allowPivot);
           // Selection or geometry may change while the pointer stays still.
           selection.pointerMoveViewportX = NaN;
           selection.pointerMoveViewportY = NaN;
@@ -3162,6 +3164,7 @@ export class Select extends System {
     y: number,
     input: Input,
     cursor: Cursor,
+    allowPivot = input.pointerType !== 'touch',
   ) {
     const camera = api.getCamera();
     const canvas = api.getCanvas();
@@ -3200,11 +3203,13 @@ export class Select extends System {
 
     // Hit test with transformer
     if (selecteds.length >= 1) {
-      const {
-        anchor,
-        cursor: cursorName,
-        index,
-      } = hitTest(api, { x, y }, input.pointerType) || {};
+      const { anchor: hitAnchor, cursor: cursorName, index } =
+        hitTest(api, { x, y }, input.pointerType) || {};
+      // A direct press in the body moves the shape. Moving the small rotation
+      // pivot remains an explicit mouse/pen action after hovering its handle.
+      const anchor = hitAnchor === AnchorName.CENTER && !allowPivot
+        ? AnchorName.INSIDE
+        : hitAnchor;
 
       const selected = selecteds.length === 1 ? selecteds[0] : undefined;
       const vectorNetworkEditing =

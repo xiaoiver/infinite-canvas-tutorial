@@ -135,7 +135,7 @@ test('resolves each press after a resize: shape body moves instead of reusing th
   await touchDrag(page, { x: corner.x + 12, y: corner.y + 8 }, [30, 20]);
   const resized = await node(page);
   await page.waitForTimeout(310); // Separate gestures from double-tap editing.
-  const body = await position(page, [35, 45]);
+  const body = await position(page, [resized.width! / 2, resized.height! / 2]);
   await touchDrag(page, body, [20, 20]);
   const moved = await node(page);
   expect(moved.width).toBeCloseTo(resized.width!, 3);
@@ -206,4 +206,30 @@ test('mouse retains its precise rotation ring at the same padded corner', async 
   expect(Math.abs(rotated.rotation ?? 0)).toBeGreaterThan(0.1);
   expect(rotated.width).toBeCloseTo(120, 0);
   expect(rotated.height).toBeCloseTo(100, 0);
+});
+
+test('a mouse can still drag the rotation pivot after hovering its handle', async ({
+  page,
+}) => {
+  const center = await position(page, [60, 50]);
+  await page.mouse.move(center.x, center.y);
+  await frame(page);
+  await page.mouse.down();
+  await frame(page);
+  await page.mouse.move(center.x + 20, center.y + 10, { steps: 5 });
+  await frame(page);
+  await page.mouse.up();
+  await frame(page);
+  expect(await node(page)).toMatchObject({
+    x: 40,
+    y: 40,
+    width: 120,
+    height: 100,
+  });
+  const pivot = await page.evaluate(() =>
+    window.canvasRegression.rotationPivot('left'),
+  );
+  expect(pivot.pinned).toBe(true);
+  expect(Math.abs(pivot.x - 80)).toBeLessThan(1.5);
+  expect(Math.abs(pivot.y - 60)).toBeLessThan(1.5);
 });

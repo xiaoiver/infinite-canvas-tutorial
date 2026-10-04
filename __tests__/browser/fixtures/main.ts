@@ -293,6 +293,10 @@ const harness = {
   setZoom(side: Side, zoom: number) {
     return act(side, ({ api }) => api.setAppState({ cameraZoom: zoom }));
   },
+  rotationPivot(side: Side) {
+    const tf = slots.get(side)!.api.getCamera().read(Transformable);
+    return { x: tf.rotatePivotX, y: tf.rotatePivotY, pinned: tf.rotatePivotPinned };
+  },
   async vectorToolbar(side: Side, id: string) {
     const theme = document.createElement('sp-theme');
     theme.setAttribute('color', 'light');

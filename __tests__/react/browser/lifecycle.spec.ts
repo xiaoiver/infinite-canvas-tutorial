@@ -320,8 +320,8 @@ test('document actions update property hooks and replace the scene with one undo
   await expect(page.getByTestId('left-count')).toHaveText('1', {
     timeout: 45000,
   });
-  await page.evaluate(() =>
-    window.actions.left.selectNodes(['left'], { capture: 'NEVER' }),
+  await page.evaluate(async () =>
+    await window.actions.left.selectNodes(['left'], { capture: 'NEVER' }),
   );
   await expect(page.getByTestId('left-node-width')).toHaveText('100');
   await page.evaluate(() =>
