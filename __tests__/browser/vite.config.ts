@@ -3,6 +3,10 @@ import { fileURLToPath } from 'node:url';
 import wasm from '../../packages/site/node_modules/vite-plugin-wasm';
 
 export default defineConfig({
+  // Keep source-based browser tests separate from the compiled React fixture.
+  cacheDir: fileURLToPath(
+    new URL('../../node_modules/.vite/browser-tests', import.meta.url),
+  ),
   plugins: [wasm()],
   optimizeDeps: {
     exclude: ['loro-crdt'],

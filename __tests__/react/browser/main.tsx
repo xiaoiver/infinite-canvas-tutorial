@@ -255,7 +255,7 @@ const starter = query.get('starter');
 if (playgroundLocale) {
   // Exercise the real documentation controls without building the whole site.
   const style = document.createElement('style');
-  style.textContent = '.react-demo-canvas { width: 400px; height: 300px; }';
+  style.textContent = '.react-demo-canvas { width: 100%; max-width: 400px; height: 300px; }';
   document.head.append(style);
   void import('../../../packages/site/docs/components/react/playground').then(
     ({ mountPlayground }) =>

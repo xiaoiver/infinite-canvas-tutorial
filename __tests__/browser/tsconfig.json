@@ -21,6 +21,7 @@
   },
   "include": [
     "./**/*.ts",
-    "../../playwright.browser.config.ts"
+    "../../playwright.browser.config.ts",
+    "../../playwright.webkit.config.ts"
   ]
 }

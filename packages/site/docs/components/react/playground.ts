@@ -27,7 +27,7 @@ export interface PlaygroundOptions {
 const copy = {
   en: {
     title: 'Try the React canvas',
-    hint: 'Select a shape to change its color or width, delete it, or restore the sample document. Each canvas keeps its own zoom, selection, and history.',
+    hint: 'Select a shape to change its color or width, delete it, or restore the sample document. On a phone, tap to select, then drag a corner to resize; drag just outside a corner to rotate. Each canvas keeps its own zoom, selection, and history.',
     second: 'Show second canvas',
     reset: 'Reset demo',
     canvas: 'Canvas',
@@ -49,7 +49,7 @@ const copy = {
   },
   zh: {
     title: '试试 React 画布',
-    hint: '选中图形后修改颜色或宽度、删除图形，或恢复示例文档。每个画布拥有独立的缩放、选区和历史记录。',
+    hint: '选中图形后修改颜色或宽度、删除图形，或恢复示例文档。手机上轻触选中，拖动角上的锚点缩放，在角外侧拖动旋转。每个画布拥有独立的缩放、选区和历史记录。',
     second: '显示第二个画布',
     reset: '重置示例',
     canvas: '画布',
