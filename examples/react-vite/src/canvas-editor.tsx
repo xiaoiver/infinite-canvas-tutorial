@@ -4,6 +4,7 @@ import {
   InfiniteCanvas,
   useCanvasActions,
   useCanvasSelector,
+  useCanvasStatus,
   type InfiniteCanvasProps,
 } from '@infinite-canvas-tutorial/react';
 import { DocumentControls } from './document-controls';
@@ -23,7 +24,8 @@ const initialNodes: NonNullable<InfiniteCanvasProps['initialNodes']> = [
 
 function Toolbar() {
   const actions = useCanvasActions();
-  const ready = useCanvasSelector((state) => state.api !== null);
+  const { status } = useCanvasStatus();
+  const ready = status === 'ready';
   const [error, setError] = useState<string | null>(null);
   const count = useCanvasSelector(
     (state) => state.nodes.filter((node) => !node.isDeleted).length,
@@ -46,10 +48,10 @@ function Toolbar() {
       <button disabled={!ready} onClick={enlarge}>
         Enlarge rectangle
       </button>
-      <button disabled={!canUndo} onClick={actions.undo}>
+      <button disabled={!ready || !canUndo} onClick={actions.undo}>
         Undo
       </button>
-      <button disabled={!canRedo} onClick={actions.redo}>
+      <button disabled={!ready || !canRedo} onClick={actions.redo}>
         Redo
       </button>
       <span>

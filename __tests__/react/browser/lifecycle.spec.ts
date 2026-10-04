@@ -42,6 +42,36 @@ for (const locale of ['en', 'zh']) {
   });
 }
 
+test('controls wait for async preparation and the initial scene while APIs are available', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/?holdPreparation');
+  await page.waitForFunction(
+    () => Object.keys(window.finishPreparation).length === 2,
+  );
+  await expect(page.getByTestId('left-status')).toHaveText('loading');
+  await expect(page.getByTestId('left-count')).toHaveText('0');
+  await expect(page.getByTestId('left-batch-edit')).toBeDisabled();
+  expect(await page.evaluate(() => Object.keys(window.apis).length)).toBe(2);
+  await page.evaluate(() => window.finishPreparation.left());
+  await expect(page.getByTestId('left-status')).toHaveText('ready');
+  await expect(page.getByTestId('left-count')).toHaveText('1');
+  await expect(page.getByTestId('left-batch-edit')).toBeEnabled();
+  await expect(page.getByTestId('right-status')).toHaveText('loading');
+  await expect(page.getByTestId('right-batch-edit')).toBeDisabled();
+  await page.getByTestId('left-batch-edit').click();
+  await expect(page.getByTestId('left-node-width')).toHaveText('120');
+  await page.evaluate(() => window.finishPreparation.right());
+  await expect(page.getByTestId('right-status')).toHaveText('ready');
+  await expect(page.getByTestId('right-object-width')).toHaveText('100');
+  await page.evaluate(() => window.setShown(['right']));
+  await expect(page.getByTestId('right-status')).toHaveText('ready');
+  expect(await page.evaluate(() => window.canvasErrors)).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
 test('initial nodes reach the renderer with current transforms and bounds in their commit frame', async ({
   page,
 }) => {

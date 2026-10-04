@@ -121,7 +121,7 @@ export function Editor() {
 多画布请分别包裹 Provider，并共享同一个 runtime。
 
 `useCanvasSelector(selector, isEqual?)` 从 `CanvasState` 中选择 `api`、`appState`、
-`nodes`、`canUndo` 或 `canRedo`。服务端和未就绪状态的 `api`、`appState` 为 `null`，
+`nodes`、`canUndo`、`canRedo`、`status` 或 `error`。服务端和未就绪状态的 `api`、`appState` 为 `null`，
 节点数组为空，两个历史标记为 `false`。selector 应保持纯函数，并把状态当作只读数据。
 默认用 `Object.is` 比较选中值，仅在选中值变化时由订阅触发渲染；返回新创建的对象或数组时
 可以传入比较函数：
@@ -150,6 +150,23 @@ const rect = useCanvasSelector((state) =>
 直接修改节点后，使用 `api.edit()` 或 `api.record()` 发布文档变更；
 相机和选区事件仅刷新应用状态。
 API 可用表示 GPU 已就绪，此时异步 `onReady` 可能还未完成。
+
+## 初始化状态
+
+`useCanvasStatus()` 从当前 Provider 返回 `{ status, error }`，两个包入口都提供。
+SSR、没有挂载画布或 API 已销毁时为 `idle`；运行时/GPU 初始化、异步 `onReady`
+或初始场景提交期间为 `loading`；全部完成后为 `ready`；生命周期失败时为 `error`。
+`error` 是 `Error` 或 `null`。无关的文档、视图或历史变化不会改变返回对象的引用。
+
+```tsx
+const { status, error } = useCanvasStatus();
+const ready = status === 'ready';
+```
+
+编辑、保存和导入按钮可用 `ready` 控制是否启用。`useCanvasAPI()` 仍会在 GPU 就绪时
+提供 API，供 `onReady` 准备场景；API 非空不代表初始场景已准备完成。
+启动失败会清除 API，并保留错误直到移除或重建画布；后续语言更新失败会报告错误，
+但保留仍可用的 API。每个 Provider 的状态相互独立，旧画布的异步结果不会改变新画布的状态。
 
 ## 节点、选区和历史 hooks
 
@@ -255,12 +272,13 @@ if (api && raw !== null) {
 ```tsx
 import {
     useCanvasActions,
-    useCanvasSelector,
+    useCanvasStatus,
 } from '@infinite-canvas-tutorial/react';
 
 function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
     const actions = useCanvasActions();
-    const ready = useCanvasSelector((state) => state.api !== null);
+    const { status } = useCanvasStatus();
+    const ready = status === 'ready';
     const enlarge = () =>
         actions.updateNodes((nodes) =>
             nodes

@@ -21,7 +21,7 @@ export function CanvasProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/** Select committed document state, live camera/selection, or history availability. */
+/** Select document/view state, history availability, or initialization status. */
 export function useCanvasSelector<T>(
   selector: (state: CanvasState) => T,
   isEqual: (previous: T, next: T) => boolean = Object.is,
@@ -38,7 +38,7 @@ export function useCanvasSelector<T>(
   );
 }
 
-/** Returns null during SSR, before readiness, and after canvas removal. */
+/** Returns null during SSR, before GPU readiness, and after canvas removal. */
 export function useCanvasAPI() {
   return useCanvasSelector((state) => state.api);
 }

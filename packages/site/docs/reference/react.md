@@ -126,7 +126,7 @@ a Provider; mounting two canvases in the same Provider reports an error. For
 multiple canvases, give each its own Provider and share the runtime.
 
 `useCanvasSelector(selector, isEqual?)` selects from `CanvasState`: `api`,
-`appState`, `nodes`, `canUndo`, and `canRedo`. The server/empty state has `api` and
+`appState`, `nodes`, `canUndo`, `canRedo`, `status`, and `error`. The server/empty state has `api` and
 `appState` set to `null`, an empty node array, and both history flags `false`.
 Selectors must be pure and treat state as read-only. By default, selected values
 are compared with `Object.is`; only changed selections trigger a store-driven
@@ -159,6 +159,27 @@ availability updates on edits, undo, redo, and `clearHistory()` without polling.
 After direct node writes, use `api.edit()` or `api.record()` to publish the
 document change; camera/selection events only refresh application state. API
 availability marks GPU readiness and may precede async `onReady` completion.
+
+## Initialization status
+
+`useCanvasStatus()` returns `{ status, error }` from the nearest Provider. It is
+available from both package entries. Status is `idle` during SSR, with no mounted
+canvas, or after the API is destroyed; `loading` while the runtime/GPU, async
+`onReady`, or the initial scene commit is pending; `ready` after initialization
+completes; and `error` after a lifecycle failure. `error` is an `Error` or `null`.
+The returned object stays stable through unrelated document/view/history changes.
+
+```tsx
+const { status, error } = useCanvasStatus();
+const ready = status === 'ready';
+```
+
+Use `ready` to enable editing, saving, and importing controls. `useCanvasAPI()`
+continues to expose the API at GPU readiness so `onReady` can prepare it; a non-null
+API alone does not mean the initial scene is ready. Startup failures clear the
+API and retain the error until removal or recreation. A later locale-update
+failure reports `error` while retaining the usable API. Each Provider owns its
+status; stale async completions cannot change a recreated canvas's status.
 
 ## Node, selection, and history hooks
 
@@ -269,17 +290,19 @@ mutation fails.
 
 `useCanvasActions()` returns stable commands for the nearest Provider. Action-only
 consumers do not subscribe to scene changes. Retained commands use the current
-canvas after recreation. Use `useCanvasSelector` to render readiness or state.
+canvas after recreation. Use `useCanvasStatus` for completed initialization
+and `useCanvasSelector` for document or application state.
 
 ```tsx
 import {
     useCanvasActions,
-    useCanvasSelector,
+    useCanvasStatus,
 } from '@infinite-canvas-tutorial/react';
 
 function EnlargeButton({ onError }: { onError: (error: unknown) => void }) {
     const actions = useCanvasActions();
-    const ready = useCanvasSelector((state) => state.api !== null);
+    const { status } = useCanvasStatus();
+    const ready = status === 'ready';
     const enlarge = () =>
         actions.updateNodes((nodes) =>
             nodes

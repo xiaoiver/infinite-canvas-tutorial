@@ -5,8 +5,17 @@ import type {
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { useCanvasSelector } from './CanvasProvider';
+import type { CanvasState } from './store';
 
 export type { CanvasHistoryState } from '@infinite-canvas-tutorial/ecs';
+
+/** Initialization status, including async preparation and the initial commit. */
+export function useCanvasStatus(): Pick<CanvasState, 'status' | 'error'> {
+  return useCanvasSelector(
+    ({ status, error }) => ({ status, error }),
+    (a, b) => a.status === b.status && a.error === b.error,
+  );
+}
 
 /** A read-only copy, or null for an absent/deleted ID or an empty Provider. */
 export function useCanvasNode(

@@ -7,9 +7,14 @@ export {
   useCanvasActions,
   useCanvasSelector,
 } from './CanvasProvider';
-export { useCanvasNode, useCanvasSelection, useCanvasHistory } from './hooks';
+export {
+  useCanvasNode,
+  useCanvasSelection,
+  useCanvasHistory,
+  useCanvasStatus,
+} from './hooks';
 export type { CanvasHistoryState } from './hooks';
-export type { CanvasState } from './store';
+export type { CanvasState, CanvasStatus } from './store';
 export type { CanvasActions, CanvasEditOptions } from './actions';
 export type {
   InfiniteCanvasProps,

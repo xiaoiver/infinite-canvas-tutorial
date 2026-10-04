@@ -6,13 +6,19 @@ import type {
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { Event } from '@infinite-canvas-tutorial/webcomponents/events';
 
+export type CanvasStatus = 'idle' | 'loading' | 'ready' | 'error';
+
 export interface CanvasState extends Readonly<CanvasHistoryState> {
+  readonly status: CanvasStatus;
+  readonly error: Error | null;
   readonly api: ExtendedAPI | null;
   readonly appState: Readonly<AppState> | null;
   readonly nodes: readonly SerializedNode[];
 }
 
 const emptyState: CanvasState = Object.freeze({
+  status: 'idle',
+  error: null,
   api: null,
   appState: null,
   nodes: Object.freeze([]),
@@ -109,7 +115,23 @@ export function createCanvasStore() {
       const token = Symbol();
       owner = token;
       let released = false;
+      publish({ ...emptyState, status: 'loading' });
+      const detach = () => {
+        if (released || owner !== token) return;
+        disconnect?.();
+        if (state !== emptyState) publish(emptyState);
+      };
       return {
+        /** Remove browser subscriptions while retaining this mounted owner. */
+        detach,
+        setStatus(
+          status: Exclude<CanvasStatus, 'idle'>,
+          error: Error | null = null,
+        ) {
+          if (released || owner !== token) return;
+          if (status === 'ready' && !state.api) return;
+          publish({ ...state, status, error });
+        },
         attach(api: ExtendedAPI, element: HTMLElement) {
           if (released || owner !== token) return;
           const unsubscribe = api.subscribe((snapshot, changes) => {
@@ -147,6 +169,8 @@ export function createCanvasStore() {
           const unsubscribeDestroy = api.onDestroy(reset);
           disconnect = unsubscribeDestroy;
           publish({
+            status: 'loading',
+            error: null,
             api,
             appState: api.getAppState(),
             nodes: snapshotNodes(state.nodes, api.getNodes()),
@@ -155,9 +179,9 @@ export function createCanvasStore() {
         },
         release() {
           if (released) return;
+          detach();
           released = true;
           if (owner !== token) return;
-          disconnect?.();
           owner = undefined;
         },
       };

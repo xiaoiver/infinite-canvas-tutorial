@@ -5,7 +5,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react';
-import { useCanvasAPI } from '@infinite-canvas-tutorial/react';
+import { useCanvasAPI, useCanvasStatus } from '@infinite-canvas-tutorial/react';
 
 const copy = {
   en: {
@@ -45,6 +45,8 @@ export function DocumentControls({
   locale?: 'en' | 'zh';
 }) {
   const api = useCanvasAPI();
+  const { status } = useCanvasStatus();
+  const ready = status === 'ready';
   const text = copy[locale];
   const input = useRef<HTMLInputElement>(null);
   const active = useRef<AbortController | null>(null);
@@ -71,7 +73,7 @@ export function DocumentControls({
     operation: (signal: AbortSignal) => Promise<boolean>,
     success: string,
   ) => {
-    if (!api || active.current) return;
+    if (!api || !ready || active.current) return;
     const controller = new AbortController();
     active.current = controller;
     setBusy(true);
@@ -162,7 +164,7 @@ export function DocumentControls({
       {
         type: 'button',
         'data-document-action': 'save',
-        disabled: !api || busy,
+        disabled: !ready || busy,
         onClick: save,
       },
       text.save,
@@ -172,7 +174,7 @@ export function DocumentControls({
       {
         type: 'button',
         'data-document-action': 'load',
-        disabled: !api || busy,
+        disabled: !ready || busy,
         onClick: load,
       },
       text.load,
@@ -182,7 +184,7 @@ export function DocumentControls({
       {
         type: 'button',
         'data-document-action': 'export',
-        disabled: !api || busy,
+        disabled: !ready || busy,
         onClick: exportFile,
       },
       text.export,
@@ -192,7 +194,7 @@ export function DocumentControls({
       {
         type: 'button',
         'data-document-action': 'import',
-        disabled: !api || busy,
+        disabled: !ready || busy,
         onClick: () => input.current?.click(),
       },
       text.import,
@@ -202,7 +204,7 @@ export function DocumentControls({
       type: 'file',
       hidden: true,
       accept: '.ic,.json,application/json',
-      disabled: !api || busy,
+      disabled: !ready || busy,
       'aria-label': text.import,
       onChange: (event: ChangeEvent<HTMLInputElement>) => {
         const file = event.currentTarget.files?.[0];
