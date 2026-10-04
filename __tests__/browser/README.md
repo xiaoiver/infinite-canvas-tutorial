@@ -41,6 +41,25 @@ failure screenshots and traces from `.test-results/browser` and
 `.test-results/webkit`. The existing ECS suite remains a separate regression
 check.
 
+## React playground touch regression
+
+The React suite mounts the production English and Chinese documentation
+playgrounds. Build the React package and its workspace dependencies first:
+
+```sh
+pnpm --filter '@infinite-canvas-tutorial/react...' build
+pnpm exec playwright install --with-deps chromium webkit
+pnpm test:react:browser
+pnpm test:react:browser:webkit
+```
+
+Both browsers use native taps to select shapes and activate undo/redo. Chromium
+uses trusted touch drags; WebKit uses DOM touch PointerEvents for resizing.
+Assertions cover geometry, the React inspector, history, and isolation from the
+second canvas. These are interaction checks, not a physical iOS or WebKit visual
+rendering check. The React 18/19 CI matrix runs both browsers and uploads failure
+traces and screenshots from `.test-results/react` and `.test-results/react-webkit`.
+
 ## Commit checks
 
 `pnpm test:tooling` verifies that ESLint actually checks TypeScript, TSX, and Vue,
