@@ -218,4 +218,20 @@ selection change does not redirect the result or select the generated nodes.
 At commit time, removed sources or changed source image contents cause the
 result to be ignored. Canvas destruction cancels a queued edit and discards late
 results; it does not guarantee cancellation of an underlying provider request.
-Smart selection and mask previews are separate from these document edits.
+
+Smart selection owns a session for the selected, editable source image. Only the
+latest point request can publish a mask. Clearing points removes the preview;
+changing the selection or source image, leaving editing, and toolbar or canvas
+teardown end the session and discard late responses. Existing points are not
+reused when starting a new session. Segmentation receives the source image URL
+and accepts either a canvas or a URL mask. Previews are copied from provider
+canvases, and removal receives another copy so preview changes cannot mutate its
+input while the provider is preparing the result.
+
+Mask removal inserts its completed result beside the original with one undo
+entry, using the image and placement captured on click. It requires the smart
+selection session to remain valid through the commit. Failures and empty results
+retain the mask for retry; success clears only the submitted preview, preserving
+any newer selection preview. These lifecycle guards discard results without
+requiring providers to support cancellation. Existing point coordinate rules and
+touch gestures are unchanged.

@@ -4,10 +4,11 @@ import {
   AppState,
   FillAttributes,
   getPrimaryFillValue,
+  imageToCanvas,
   RectSerializedNode,
   type Image,
 } from '@infinite-canvas-tutorial/ecs';
-import { html, css, LitElement, PropertyValues } from 'lit';
+import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -15,6 +16,15 @@ import { ExtendedAPI } from '../API';
 enum ImageEditMode {
   IDLE = 'idle',
   POINT_SEGMENT = 'point-segment',
+}
+
+interface SmartSelection {
+  api: ExtendedAPI;
+  nodeId: string;
+  imageUrl: string;
+  revision: number;
+  points?: [number, number][];
+  dispose: () => void;
 }
 
 @customElement('ic-spectrum-context-image-edit-bar')
@@ -52,38 +62,85 @@ export class ContextImageEditBar extends LitElement {
   @state()
   maskCanvas: HTMLCanvasElement;
 
-  private binded = false;
-
+  @state()
   private mode: ImageEditMode = ImageEditMode.IDLE;
 
-  previouseEditingPoints: [number, number][];
+  private smartSelection?: SmartSelection;
 
-  shouldUpdate(changedProperties: PropertyValues) {
-    for (const prop of changedProperties.keys()) {
-      if (prop !== 'appState') return true;
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.endSmartSelection();
+  }
+
+  protected updated() {
+    const session = this.smartSelection;
+    if (!session) return;
+    if (!this.isCurrentSelection(session)) {
+      this.endSmartSelection();
+      return;
     }
 
-    const newEditingPoints = this.appState.editingPoints;
-    if (newEditingPoints !== this.previouseEditingPoints) {
-      this.previouseEditingPoints = newEditingPoints;
-
-      if (this.mode === ImageEditMode.POINT_SEGMENT) {
-        this.segmentWithPoints(newEditingPoints);
-      }
-
-      if (newEditingPoints.length === 0) {
-        this.maskCanvas?.remove();
-        this.maskCanvas = undefined;
-      }
-      return true;
+    const points = session.api.getAppState().editingPoints;
+    if (
+      this.mode === ImageEditMode.POINT_SEGMENT &&
+      points !== session.points
+    ) {
+      session.points = points;
+      void this.segmentWithPoints(session, points);
     }
+  }
 
-    return false;
+  private isCurrentSelection(session: SmartSelection) {
+    if (
+      this.smartSelection !== session ||
+      !this.isConnected ||
+      this.api !== session.api ||
+      this.node?.id !== session.nodeId
+    )
+      return false;
+    const node = session.api.getNodeById(session.nodeId);
+    const selected = session.api.getAppState().layersSelected;
+    return !!(
+      node &&
+      !node.isDeleted &&
+      node.isEditing &&
+      session.api.getEntity(node) &&
+      selected.length === 1 &&
+      selected[0] === session.nodeId &&
+      getPrimaryFillValue(node as FillAttributes) === session.imageUrl
+    );
+  }
+
+  private clearMask() {
+    this.maskCanvas?.remove();
+    this.maskCanvas = undefined;
+  }
+
+  private endSmartSelection() {
+    const session = this.smartSelection;
+    this.smartSelection = undefined;
+    this.mode = ImageEditMode.IDLE;
+    this.encodingImage = false;
+    this.clearMask();
+    session?.dispose();
+  }
+
+  private copyMask(source: HTMLCanvasElement) {
+    const mask = document.createElement('canvas');
+    mask.width = source.width;
+    mask.height = source.height;
+    mask.getContext('2d')!.drawImage(source, 0, 0);
+    return mask;
   }
 
   private async runImageEdit(
-    loading: 'removingBackground' | 'decomposingImage' | 'upscalingImage',
+    loading:
+      | 'removingBackground'
+      | 'decomposingImage'
+      | 'upscalingImage'
+      | 'removingByMask',
     prepare: (api: ExtendedAPI, imageUrl: string) => Promise<Image[]>,
+    isCurrent = () => true,
   ) {
     if (this[loading] || !this.api || !this.node) return;
     this[loading] = true;
@@ -100,17 +157,18 @@ export class ContextImageEditBar extends LitElement {
       if (controller.signal.aborted) return;
 
       const images = await prepare(api, imageUrl);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || !isCurrent()) return;
       const urls = images
         .map((image) => image.url ?? image.canvas?.toDataURL())
         .filter((url): url is string => !!url);
       if (urls.length === 0) return;
 
-      await api.edit(
+      return await api.edit(
         (editor) => {
           const current = editor.getNodeById(source.id);
           // A late response must not resurrect a deleted or replaced source image.
           if (
+            !isCurrent() ||
             !current ||
             current.isDeleted ||
             !editor.getEntity(current) ||
@@ -141,7 +199,7 @@ export class ContextImageEditBar extends LitElement {
         { signal: controller.signal },
       );
     } catch (error) {
-      if (!controller.signal.aborted) console.error(error);
+      if (!controller.signal.aborted && isCurrent()) console.error(error);
     } finally {
       dispose();
       this[loading] = false;
@@ -160,64 +218,123 @@ export class ContextImageEditBar extends LitElement {
   }
 
   private async startSmartSelect() {
-    this.encodingImage = true;
-    await this.api.encodeImage(
-      getPrimaryFillValue(this.node as FillAttributes) ?? '',
-    );
-    this.mode = ImageEditMode.POINT_SEGMENT;
-    this.encodingImage = false;
-  }
-
-  private async segmentWithPoints(points: [number, number][]) {
-    if (points.length === 0) {
+    if (this.smartSelection || !this.api || !this.node || !this.isConnected)
+      return;
+    const imageUrl = getPrimaryFillValue(this.node);
+    if (!imageUrl) return;
+    const session: SmartSelection = {
+      api: this.api,
+      nodeId: this.node.id,
+      imageUrl,
+      revision: 0,
+      points: this.api.getAppState().editingPoints,
+      dispose: () => {},
+    };
+    this.smartSelection = session;
+    const unsubscribe = session.api.subscribe(() => {
+      if (
+        this.smartSelection === session &&
+        !this.isCurrentSelection(session)
+      ) {
+        this.endSmartSelection();
+      } else {
+        this.requestUpdate();
+      }
+    });
+    const dispose = session.api.onDestroy(() => {
+      if (this.smartSelection === session) this.endSmartSelection();
+    });
+    session.dispose = () => {
+      unsubscribe();
+      dispose();
+    };
+    if (!this.isCurrentSelection(session)) {
+      this.endSmartSelection();
       return;
     }
-
-    // convert points in canvas coordinages to local coordinates
-    const selectedNode = this.api.getNodeById(
-      this.api.getAppState().layersSelected[0],
-    );
-
-    const point = points[0];
-    const { x, y } = this.api.viewport2Canvas({ x: point[0], y: point[1] });
-
-    if (this.maskCanvas) {
-      this.maskCanvas.remove();
+    this.encodingImage = true;
+    try {
+      await session.api.encodeImage(imageUrl);
+      if (this.isCurrentSelection(session))
+        this.mode = ImageEditMode.POINT_SEGMENT;
+    } catch (error) {
+      if (this.isCurrentSelection(session)) {
+        console.error(error);
+        this.endSmartSelection();
+      }
+    } finally {
+      if (this.smartSelection === session) this.encodingImage = false;
     }
+  }
 
-    const { image } = await this.api.segmentImage({
-      image_url: '',
-      point_prompts: [
-        {
-          x: x - (selectedNode.x as number),
-          y: y - (selectedNode.y as number),
-          label: 1,
-        },
-      ],
-    });
-
-    this.maskCanvas = image.canvas!;
-    this.maskCanvas.style.position = 'absolute';
-    this.maskCanvas.style.left = `${selectedNode.x}px`;
-    this.maskCanvas.style.top = `${selectedNode.y}px`;
-    this.maskCanvas.style.width = `${selectedNode.width}px`;
-    this.maskCanvas.style.height = `${selectedNode.height}px`;
-    this.maskCanvas.style.pointerEvents = 'none';
-    this.api.getHtmlLayer().appendChild(this.maskCanvas);
+  private async segmentWithPoints(
+    session: SmartSelection,
+    points: [number, number][],
+  ) {
+    const revision = ++session.revision;
+    this.clearMask();
+    if (points.length === 0) return;
+    const isCurrent = () =>
+      this.isCurrentSelection(session) &&
+      session.revision === revision &&
+      session.api.getAppState().editingPoints === points;
+    try {
+      const { api } = session;
+      const selectedNode = api.getNodeById(session.nodeId);
+      const { x, y } = api.viewport2Canvas({
+        x: points[0][0],
+        y: points[0][1],
+      });
+      const { image } = await api.segmentImage({
+        image_url: session.imageUrl,
+        point_prompts: [
+          {
+            x: x - (selectedNode.x as number),
+            y: y - (selectedNode.y as number),
+            label: 1,
+          },
+        ],
+      });
+      if (!isCurrent()) return;
+      const source =
+        image.canvas ??
+        (image.url ? await imageToCanvas(image.url) : undefined);
+      if (!source || !source.width || !source.height || !isCurrent()) return;
+      // Own the preview, rather than attaching a provider's reusable canvas.
+      const mask = this.copyMask(source);
+      mask.style.position = 'absolute';
+      mask.style.left = `${selectedNode.x}px`;
+      mask.style.top = `${selectedNode.y}px`;
+      mask.style.width = `${selectedNode.width}px`;
+      mask.style.height = `${selectedNode.height}px`;
+      mask.style.pointerEvents = 'none';
+      api.getHtmlLayer().appendChild(mask);
+      this.maskCanvas = mask;
+    } catch (error) {
+      if (isCurrent()) console.error(error);
+    }
   }
 
   private async removeByMask() {
-    this.removingByMask = true;
-
-    // convert points in canvas coordinages to local coordinates
-    const selectedNode = this.api.getNodeById(
-      this.api.getAppState().layersSelected[0],
+    const session = this.smartSelection;
+    const preview = this.maskCanvas;
+    if (
+      !session ||
+      !preview ||
+      !this.isCurrentSelection(session) ||
+      this.removingByMask
+    )
+      return;
+    const committed = await this.runImageEdit(
+      'removingByMask',
+      async (api, imageUrl) => {
+        // Providers may read the mask after awaiting image/model loading.
+        const mask = this.copyMask(preview);
+        return [await api.removeByMask({ image_url: imageUrl, mask })];
+      },
+      () => this.isCurrentSelection(session),
     );
-    await this.api.removeByMask({
-      image_url: getPrimaryFillValue(selectedNode as FillAttributes) ?? '',
-      mask: this.maskCanvas!,
-    });
-    this.removingByMask = false;
+    if (committed && this.maskCanvas === preview) this.clearMask();
   }
 
   private decomposeImage() {
@@ -238,16 +355,11 @@ export class ContextImageEditBar extends LitElement {
       return;
     }
 
-    // FIXME: wait for the element to be ready.
-    if (this.api.element && !this.binded) {
-      this.binded = true;
-    }
-
     if (this.mode === ImageEditMode.POINT_SEGMENT) {
       return html`<sp-action-button
         quiet
         size="m"
-        ?disabled="${!this.maskCanvas}"
+        ?disabled="${!this.maskCanvas || this.removingByMask}"
         ?loading="${this.removingByMask}"
         @click="${this.removeByMask}"
       >
