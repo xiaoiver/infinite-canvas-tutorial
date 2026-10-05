@@ -419,21 +419,57 @@ export class PropertiesPanelContent extends LitElement {
     this.api.record();
   }
 
-  private handleIconFontControlsPatch(
+  private async handleIconFontControlsPatch(
     e: CustomEvent<IconFontControlsPatch>,
   ) {
+    const api = this.api;
+    const node = this.node;
     if (
-      this.node.type !== 'iconfont' &&
-      (this.node.type as string) !== 'icon_font'
-    ) {
+      !api ||
+      !node ||
+      (node.type !== 'iconfont' && (node.type as string) !== 'icon_font')
+    )
       return;
-    }
-
-    this.api.runAtNextTick(() => {
-      this.api.updateNode(this.node, e.detail as Partial<IconFontSerializedNode>);
-      this.api.record();
+    const id = node.id;
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      // The panel and event detail can be reused before the queued edit runs.
+      const patch = structuredClone(e.detail);
+      await api.edit(
+        (editor) => {
+          const current = editor.getNodeById(id);
+          if (
+            !current ||
+            current.isDeleted ||
+            !editor.getEntity(current) ||
+            (current.type !== 'iconfont' &&
+              (current.type as string) !== 'icon_font')
+          ) {
+            controller.abort();
+            return;
+          }
+          if (
+            Object.entries(patch).every(
+              ([key, value]) =>
+                (current as IconFontSerializedNode)[
+                  key as keyof IconFontControlsPatch
+                ] === value,
+            )
+          ) {
+            controller.abort();
+            return;
+          }
+          editor.updateNode(current, patch);
+        },
+        { signal: controller.signal },
+      );
       this.requestUpdate();
-    });
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+    }
   }
 
   private handleLayoutPaddingChanged(e: Event) {

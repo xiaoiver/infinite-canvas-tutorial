@@ -235,3 +235,27 @@ retain the mask for retry; success clears only the submitted preview, preserving
 any newer selection preview. These lifecycle guards discard results without
 requiring providers to support cancellation. Existing point coordinate rules and
 touch gestures are unchanged.
+
+### Queued text and icon edits
+
+The Spectrum text editor submits changed, nonblank text through one `api.edit()`.
+Each command owns its source canvas, target ID, and input. Existing text is
+updated from the current node so concurrent style changes are preserved; deleted
+or replaced targets are skipped. Empty new drafts create no node. Empty existing
+text fields retain their original contents, and whitespace in nonblank input is
+preserved. Unchanged blur does not commit or consume unrelated pending changes.
+
+Hiding the original text while the textarea is open changes only renderer
+visibility. It cannot enter document snapshots or another action's undo history.
+Closing the editor restores visibility from the live document. Disconnecting
+discards an active draft and removes the double-click listener; reconnecting binds
+it again. Blur processing allows the disconnect callback to run before deciding
+whether to submit. Already queued edits retain their source canvas and are
+cancelled when that canvas is destroyed. Edit failures are reported by the event
+entry point; the core API still does not roll back partial mutations.
+
+Icon-font property changes copy the control event's patch and target before
+queuing. They apply to the latest matching icon node even if the panel has since
+changed selection. Empty and unchanged patches, removed targets, and targets
+whose type changed are skipped without a history entry. Other property fields
+are being migrated separately.
