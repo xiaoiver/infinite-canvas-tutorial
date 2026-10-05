@@ -24,8 +24,11 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
 import '@spectrum-web-components/picker/sp-picker.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import { when } from 'lit/directives/when.js';
+import { live } from 'lit/directives/live.js';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import './design-variable-picker.js';
+
+type TypographyNumberField = 'fontSize' | 'letterSpacing' | 'lineHeight';
 
 @customElement('ic-spectrum-text-content')
 @localized()
@@ -108,183 +111,257 @@ export class TextContent extends LitElement {
   @property()
   node: SerializedNode;
 
-  private handleFontFamilyChanged(e: Event & { target: HTMLInputElement }) {
-    const el = e.target as HTMLInputElement & { value?: string };
-    const fontFamily = typeof el.value === 'string' ? el.value : '';
-    if (!fontFamily) {
-      return;
+  private async editTypography(
+    resolvePatch: (
+      node: TextSerializedNode,
+      api: ExtendedAPI,
+    ) => Partial<TextSerializedNode> | undefined,
+  ) {
+    const api = this.api;
+    const source = this.node;
+    if (!api || source?.type !== 'text') return;
+    const { id } = source;
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          const current = editor.getNodeById(id);
+          if (
+            current?.type !== 'text' ||
+            current.isDeleted ||
+            !editor.getEntity(current)
+          ) {
+            controller.abort();
+            return;
+          }
+          const patch = resolvePatch(current, editor);
+          if (
+            !patch ||
+            Object.entries(patch).every(
+              ([key, value]) =>
+                current[key as keyof TextSerializedNode] === value,
+            )
+          ) {
+            // Abort before writing so a no-op cannot capture unrelated history.
+            controller.abort();
+            return;
+          }
+          editor.updateNode(current, patch);
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+      this.requestUpdate();
     }
-    this.api.updateNode(this.node, { fontFamily });
-    this.api.record();
   }
 
-  private handleLetterSpacingChanged(e: Event & { target: HTMLInputElement }) {
-    const letterSpacing = parseFloat(e.target.value);
-    if (!Number.isFinite(letterSpacing)) {
+  private handleFontFamilyChanged(e: Event) {
+    const fontFamily = (e.target as HTMLInputElement).value;
+    if (typeof fontFamily !== 'string' || !fontFamily.trim()) {
+      this.requestUpdate();
       return;
     }
-    this.api.updateNode(this.node, { letterSpacing });
-    this.api.record();
+    return this.editTypography((node) =>
+      (node.fontFamily ?? 'sans-serif') === fontFamily
+        ? undefined
+        : { fontFamily },
+    );
+  }
+
+  private static numericValue(raw: unknown, field: TypographyNumberField) {
+    if (
+      (typeof raw !== 'number' && typeof raw !== 'string') ||
+      (typeof raw === 'string' && !raw.trim())
+    )
+      return;
+    const value = Number(raw);
+    if (Number.isFinite(value) && (field === 'letterSpacing' || value >= 0)) {
+      return value;
+    }
+  }
+
+  private changeNumber(e: Event, field: TypographyNumberField) {
+    const value = TextContent.numericValue(
+      (e.target as HTMLInputElement).value,
+      field,
+    );
+    if (value === undefined) {
+      this.requestUpdate();
+      return;
+    }
+    return this.editTypography((node) =>
+      field !== 'fontSize' && (node[field] ?? 0) === value
+        ? undefined
+        : { [field]: value },
+    );
+  }
+
+  private bindNumber(
+    e: CustomEvent<DesignVariablePickDetail>,
+    field: TypographyNumberField,
+  ) {
+    const key = e.detail?.key;
+    if (typeof key !== 'string' || !key) return;
+    return this.editTypography((node, api) =>
+      api.getAppState().variables?.[key]?.type === 'number'
+        ? { [field]: `$${key}` }
+        : undefined,
+    );
+  }
+
+  private unbindNumber(field: TypographyNumberField) {
+    return this.editTypography((node, api) => {
+      const raw = node[field] as number | string | undefined;
+      if (!isDesignVariableReference(raw)) return;
+      const { variables, themeMode } = api.getAppState();
+      const value = TextContent.numericValue(
+        resolveDesignVariableValue(raw, variables, themeMode),
+        field,
+      );
+      if (value !== undefined) return { [field]: value };
+    });
+  }
+
+  private handleLetterSpacingChanged(e: Event) {
+    return this.changeNumber(e, 'letterSpacing');
   }
 
   private handleLetterSpacingVariablePick(
     e: CustomEvent<DesignVariablePickDetail>,
   ) {
-    this.api.updateNode(this.node, {
-      letterSpacing: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
+    return this.bindNumber(e, 'letterSpacing');
   }
 
   private handleLetterSpacingUnbind() {
-    const raw = (this.node as TextSerializedNode).letterSpacing;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, { letterSpacing: n });
-      this.api.record();
-    }
+    return this.unbindNumber('letterSpacing');
   }
 
-  private handleLineHeightChanged(e: Event & { target: HTMLInputElement }) {
-    const lineHeight = parseFloat(e.target.value);
-    if (!Number.isFinite(lineHeight) || lineHeight < 0) {
-      return;
-    }
-    this.api.updateNode(this.node, { lineHeight });
-    this.api.record();
+  private handleLineHeightChanged(e: Event) {
+    return this.changeNumber(e, 'lineHeight');
   }
 
   private handleLineHeightVariablePick(
     e: CustomEvent<DesignVariablePickDetail>,
   ) {
-    this.api.updateNode(this.node, {
-      lineHeight: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
+    return this.bindNumber(e, 'lineHeight');
   }
 
   private handleLineHeightUnbind() {
-    const raw = (this.node as TextSerializedNode).lineHeight;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n) && n >= 0) {
-      this.api.updateNode(this.node, { lineHeight: n });
-      this.api.record();
+    return this.unbindNumber('lineHeight');
+  }
+
+  private handleFontSizeChanged(e: Event) {
+    return this.changeNumber(e, 'fontSize');
+  }
+
+  private handleFontStyleChanged(e: Event) {
+    const selected = (e.target as HTMLElement & { selected?: string[] })
+      .selected;
+    if (
+      !Array.isArray(selected) ||
+      selected.some((value) => !['bold', 'italic'].includes(value))
+    ) {
+      this.requestUpdate();
+      return;
     }
+    const fontWeight = selected.includes('bold') ? 'bold' : 'normal';
+    const fontStyle = selected.includes('italic') ? 'italic' : 'normal';
+    return this.editTypography((node) =>
+      (node.fontWeight ?? 'normal') === fontWeight &&
+      (node.fontStyle ?? 'normal') === fontStyle
+        ? undefined
+        : { fontWeight, fontStyle },
+    );
   }
 
-  private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
-    const fontSize = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      fontSize,
-    });
-    this.api.record();
-  }
-
-  private handleFontStyleChanged(e: Event & { target: HTMLInputElement }) {
-    const selected = (e.target as any).selected;
-    this.api.updateNode(this.node, {
-      fontWeight: selected.includes('bold') ? 'bold' : 'normal',
-      fontStyle: selected.includes('italic') ? 'italic' : 'normal',
-      // TODO: implement text underline
-    });
-    this.api.record();
-  }
-
-  private handleFontSizeVariablePick(
-    e: CustomEvent<DesignVariablePickDetail>,
-  ) {
-    this.api.updateNode(this.node, {
-      fontSize: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
+  private handleFontSizeVariablePick(e: CustomEvent<DesignVariablePickDetail>) {
+    return this.bindNumber(e, 'fontSize');
   }
 
   private handleFontSizeUnbind() {
-    const fs = (this.node as TextSerializedNode).fontSize;
-    const resolved = resolveDesignVariableValue(
-      fs,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, { fontSize: n });
-      this.api.record();
-    }
+    return this.unbindNumber('fontSize');
   }
 
-  private handleTextAlignChanged(e: Event & { target: HTMLInputElement }) {
-    const selected = (e.target as any).selected;
-
-    const newAnchorX = (this.node as TextSerializedNode).anchorX + this.node.x;
-    const newAnchorY = (this.node as TextSerializedNode).anchorY + this.node.y;
-    const { x, y, width, height, ...rest } = this.node;
-
-    const inferred = inferXYWidthHeight({
-      ...rest,
-      anchorX: newAnchorX,
-      anchorY: newAnchorY,
-      textAlign: selected[0],
-    } as TextSerializedNode) as TextSerializedNode;
-
-    this.api.updateNode(this.node, {
-      textAlign: selected[0],
-      anchorX: inferred.anchorX ?? 0,
-      anchorY: inferred.anchorY ?? 0,
-      x: inferred.x,
-      y: inferred.y,
-      width: inferred.width,
-      height: inferred.height,
+  private changeAlignment(
+    field: 'textAlign' | 'textBaseline',
+    value: CanvasTextAlign | CanvasTextBaseline,
+  ) {
+    return this.editTypography((node, api) => {
+      const previous =
+        field === 'textAlign'
+          ? { left: 'start', right: 'end' }[node.textAlign] ??
+            node.textAlign ??
+            'start'
+          : node.textBaseline ?? 'alphabetic';
+      if (previous === value) return;
+      const { x, y, width, height, ...rest } = node;
+      // Measure current typography, including current theme values, without
+      // replacing the document's variable references with resolved literals.
+      const { variables, themeMode } = api.getAppState();
+      for (const key of ['fontSize', 'letterSpacing', 'lineHeight'] as const) {
+        if (rest[key] == null) continue;
+        const resolved = TextContent.numericValue(
+          resolveDesignVariableValue(rest[key], variables, themeMode),
+          key,
+        );
+        if (resolved === undefined) return;
+        rest[key] = resolved;
+      }
+      const inferred = inferXYWidthHeight({
+        ...rest,
+        anchorX: (node.anchorX ?? 0) + x,
+        anchorY: (node.anchorY ?? 0) + y,
+        [field]: value,
+      } as TextSerializedNode) as TextSerializedNode;
+      const geometry = {
+        anchorX: inferred.anchorX ?? 0,
+        anchorY: inferred.anchorY ?? 0,
+        x: inferred.x,
+        y: inferred.y,
+        width: inferred.width,
+        height: inferred.height,
+      };
+      if (Object.values(geometry).every(Number.isFinite)) {
+        return { [field]: value, ...geometry };
+      }
     });
-    this.api.record();
   }
 
-  private handleTextBaselineChanged(e: Event & { target: HTMLInputElement }) {
-    const textBaseline = e.target.value as TextSerializedNode['textBaseline'];
-    if (!textBaseline) {
+  private handleTextAlignChanged(e: Event) {
+    const selected = (e.target as HTMLElement & { selected?: string[] })
+      .selected;
+    const value = selected?.[0];
+    if (
+      !Array.isArray(selected) ||
+      selected.length !== 1 ||
+      !['start', 'center', 'end'].includes(value)
+    ) {
+      this.requestUpdate();
       return;
     }
+    return this.changeAlignment('textAlign', value as CanvasTextAlign);
+  }
 
-    const newAnchorX = (this.node as TextSerializedNode).anchorX + this.node.x;
-    const newAnchorY = (this.node as TextSerializedNode).anchorY + this.node.y;
-    const { x, y, width, height, ...rest } = this.node;
-
-    const inferred = inferXYWidthHeight({
-      ...rest,
-      anchorX: newAnchorX,
-      anchorY: newAnchorY,
-      textBaseline,
-    } as TextSerializedNode) as TextSerializedNode;
-
-    this.api.updateNode(this.node, {
-      textBaseline,
-      anchorX: inferred.anchorX ?? 0,
-      anchorY: inferred.anchorY ?? 0,
-      x: inferred.x,
-      y: inferred.y,
-      width: inferred.width,
-      height: inferred.height,
-    });
-    this.api.record();
+  private handleTextBaselineChanged(e: Event) {
+    const value = (e.target as HTMLInputElement).value;
+    if (
+      ![
+        'top',
+        'hanging',
+        'middle',
+        'alphabetic',
+        'ideographic',
+        'bottom',
+      ].includes(value)
+    ) {
+      this.requestUpdate();
+      return;
+    }
+    return this.changeAlignment('textBaseline', value as CanvasTextBaseline);
   }
 
   private textBaselineLabel(value: CanvasTextBaseline): string {
@@ -402,7 +479,7 @@ export class TextContent extends LitElement {
             class="font-family-picker"
             id="ic-text-content-font-family"
             size="s"
-            .value=${fontFamilyResolved}
+            .value=${live(fontFamilyResolved)}
             @change=${this.handleFontFamilyChanged}
           >
             ${fontFamilyOptions.map(
@@ -434,7 +511,7 @@ export class TextContent extends LitElement {
           <sp-number-field
             id="font-size"
             size="s"
-            value=${fontSizeShow}
+            .value=${live(fontSizeShow)}
             hide-stepper
             autocomplete="off"
             @change=${this.handleFontSizeChanged}
@@ -499,7 +576,7 @@ export class TextContent extends LitElement {
           <sp-number-field
             id="ic-text-content-letter-spacing"
             size="s"
-            .value=${letterSpacingShow}
+            .value=${live(letterSpacingShow)}
             min="-50"
             max="200"
             step="0.5"
@@ -569,7 +646,7 @@ export class TextContent extends LitElement {
           <sp-number-field
             id="ic-text-content-line-height"
             size="s"
-            .value=${lineHeightForInput}
+            .value=${live(lineHeightForInput)}
             min="0"
             max="400"
             step="0.5"
@@ -624,11 +701,11 @@ export class TextContent extends LitElement {
           quiet
           size="m"
           selects="multiple"
-          .selected=${this.node &&
+          .selected=${live(this.node &&
       [
         fontWeight === 'bold' ? 'bold' : undefined,
         fontStyle === 'italic' ? 'italic' : undefined,
-      ].filter(Boolean)}
+      ].filter(Boolean))}
           @change=${this.handleFontStyleChanged}
         >
           <sp-action-button value="bold" size="s">
@@ -649,7 +726,7 @@ export class TextContent extends LitElement {
           quiet
           size="m"
           selects="single"
-          .selected=${[formattedTextAlign]}
+          .selected=${live([formattedTextAlign])}
           @change=${this.handleTextAlignChanged}
         >
           <sp-action-button value="start" size="s">
@@ -684,7 +761,7 @@ export class TextContent extends LitElement {
             id="ic-text-content-text-baseline"
             size="s"
             label=${msg(str`Text baseline`)}
-            .value=${textBaseline}
+            .value=${live(textBaseline)}
             @change=${this.handleTextBaselineChanged}
           >
             ${textBaselineOptions.map(
