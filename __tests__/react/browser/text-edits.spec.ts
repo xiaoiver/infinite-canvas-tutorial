@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import type { TextEditor } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 
 async function ready(page: Page) {
   const errors: string[] = [];
@@ -71,25 +72,7 @@ test('text editing hides only the renderer, commits current text once, and prese
   page,
 }) => {
   const { input, errors } = await ready(page);
-  // Establish selection before the double click; selection itself can be an
-  // independent history entry when pointer events span multiple frames.
-  await page.evaluate(() =>
-    window.apis.left.edit(
-      (api) => api.selectNodes([api.getNodeById('text-0')!]),
-      { capture: 'NEVER' },
-    ),
-  );
-  await page.evaluate(async () => {
-    // edit completion precedes derived geometry. Let the selection's handles
-    // finish their ECS frames before sending real pointer events (as in mobile.spec).
-    for (let frame = 0; frame < 2; frame++) {
-      await new Promise<void>((resolve) =>
-        window.apis.left.runAtNextTick(resolve),
-      );
-    }
-  });
-  const point = await page.evaluate(() => window.editingProbe.point('text-0'));
-  await page.mouse.dblclick(point.x, point.y);
+  await open(page);
   await expect(input).toHaveValue('Alpha');
   expect(
     await page.evaluate(() => window.editingProbe.textState('text-0')),
@@ -125,6 +108,26 @@ test('text editing hides only the renderer, commits current text once, and prese
   ).toBe(24);
   await page.getByTestId('left-redo').click();
   await content(page, '  Updated text  ');
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('a real double click edits text and one undo restores its contents', async ({
+  page,
+}) => {
+  const { input, errors } = await ready(page);
+  const point = await page.evaluate(() => window.editingProbe.point('text-0'));
+  await page.mouse.dblclick(point.x, point.y);
+  await expect(input).toHaveValue('Alpha');
+  await input.fill('Pointer edit');
+  await input.press('Escape');
+  await content(page, 'Pointer edit');
+  await page.getByTestId('left-undo').click();
+  await content(page, 'Alpha');
+  // Pointer selection can have its own earlier history entry. The text edit
+  // must be reverted by this single undo, regardless of that selection entry.
+  await page.getByTestId('left-redo').click();
+  await content(page, 'Pointer edit');
   await expect(page.getByTestId('right-undo')).toBeDisabled();
   expect(errors).toEqual([]);
 });
@@ -371,6 +374,54 @@ test('disconnecting the editor restores the original text and reconnecting rebin
   await content(page, 'Reconnected', 'text-1');
   await page.getByTestId('left-undo').click();
   await expect(page.getByTestId('left-undo')).toBeDisabled();
+  expect(errors).toEqual([]);
+});
+
+test('rebinding the editor removes the previous canvas listener', async ({
+  page,
+}) => {
+  const { editor, input, errors } = await ready(page);
+  await page
+    .getByTestId('right-shortcuts')
+    .locator('ic-spectrum-text-editor')
+    .evaluate((element) => element.remove());
+  await editor.evaluate(async (element: TextEditor) => {
+    element.api = window.apis.right;
+    element.requestUpdate();
+    await element.updateComplete;
+    const support = '/editing-test-support.ts';
+    const { textPen } = await import(support);
+    textPen('right');
+  });
+  const point = await page.evaluate(() =>
+    window.apis.right.viewport2Client({ x: 200, y: 150 }),
+  );
+  await page
+    .getByTestId('left-shortcuts')
+    .locator('canvas')
+    .dispatchEvent('dblclick', { clientX: point.x, clientY: point.y });
+  await expect(input).toBeHidden();
+  await page
+    .getByTestId('right-shortcuts')
+    .locator('canvas')
+    .dispatchEvent('dblclick', { clientX: point.x, clientY: point.y });
+  await expect(input).toBeVisible();
+  await input.fill('Right canvas');
+  await input.press('Escape');
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        window.apis.right
+          .getNodes()
+          .flatMap((node) =>
+            !node.isDeleted && node.type === 'text' ? [node.content] : [],
+          ),
+      ),
+    )
+    .toEqual(['Right canvas']);
+  await expect(page.getByTestId('left-undo')).toBeDisabled();
+  await page.getByTestId('right-undo').click();
+  await expect(page.getByTestId('right-undo')).toBeDisabled();
   expect(errors).toEqual([]);
 });
 

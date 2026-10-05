@@ -30,8 +30,12 @@ registerIconifyIconSet('regression', {
     triangle: { body: '<path d="M12 2L22 22H2Z" fill="currentColor"/>' },
   },
 });
+export function textPen(id = 'left') {
+  window.apis[id].setAppState({ penbarSelected: Pen.TEXT });
+}
+
 window.editingProbe = {
-  textPen: () => window.apis.left.setAppState({ penbarSelected: Pen.TEXT }),
+  textPen,
   properties: () =>
     window.apis.left.setAppState({
       taskbarVisible: true,
