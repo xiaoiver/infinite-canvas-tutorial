@@ -297,6 +297,12 @@ const harness = {
     const tf = slots.get(side)!.api.getCamera().read(Transformable);
     return { x: tf.rotatePivotX, y: tf.rotatePivotY, pinned: tf.rotatePivotPinned };
   },
+  selectVectorVertex(side: Side, id: string, index: number) {
+    return act(side, ({ api }) => {
+      api.getCamera().write(Transformable).selectedControlPointIndex = index;
+      api.setAppState({ vectorNetworkSelectedVertex: { nodeId: id, index } });
+    });
+  },
   async vectorToolbar(side: Side, id: string) {
     const theme = document.createElement('sp-theme');
     theme.setAttribute('color', 'light');
