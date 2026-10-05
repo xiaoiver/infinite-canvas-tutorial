@@ -38,7 +38,12 @@ import '@spectrum-web-components/menu/sp-menu-item.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-link.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-divide-path.js';
 
-type Session = { node: VectorNetworkSerializedNode; source: number };
+type Session = {
+  api: ExtendedAPI;
+  node: VectorNetworkSerializedNode;
+  source: number;
+  geometryKey: string;
+};
 
 const geometry = (node: VectorNetworkSerializedNode) => ({
   vertices: node.vertices ?? [],
@@ -112,7 +117,8 @@ export class VectorTopologyControls extends LitElement {
   private frame = 0;
   private stopHistory?: () => void;
   private stopDestroy?: () => void;
-  private pending = false;
+  @state() private pending = false;
+  private operation?: AbortController;
   private previewKey = '';
 
   private get source() {
@@ -123,10 +129,13 @@ export class VectorTopologyControls extends LitElement {
   }
 
   private current(session: Session) {
-    const node = this.api.getNodeById(session.node.id);
-    const state = this.api.getAppState();
+    if (this.api !== session.api) return;
+    const node = session.api.getNodeById(session.node.id);
+    const state = session.api.getAppState();
     const selected = state.vectorNetworkSelectedVertex;
     return node?.type === 'vector-network' &&
+      !node.isDeleted &&
+      !!session.api.getEntity(node) &&
       node.isEditing &&
       !node.locked &&
       node.visibility !== 'hidden' &&
@@ -161,7 +170,12 @@ export class VectorTopologyControls extends LitElement {
       this.close();
       return;
     }
-    this.session = { node: { ...node }, source: this.source };
+    this.session = {
+      api: this.api,
+      node: { ...node },
+      source: this.source,
+      geometryKey: JSON.stringify(geometry(node)),
+    };
     this.target = '';
     this.detached = [];
     this.faceAction = 'cut';
@@ -197,6 +211,8 @@ export class VectorTopologyControls extends LitElement {
   }
 
   private close() {
+    this.operation?.abort();
+    this.operation = undefined;
     const overlay = this.renderRoot.querySelector('sp-overlay');
     if (overlay) overlay.open = false;
     cancelAnimationFrame(this.frame);
@@ -218,9 +234,9 @@ export class VectorTopologyControls extends LitElement {
   }
 
   private drawPreview() {
-    const { node, source } = this.session!;
-    const m = this.api.getEntity(node).read(GlobalTransform).matrix;
-    const state = this.api.getAppState();
+    const { api, node, source } = this.session!;
+    const m = api.getEntity(node).read(GlobalTransform).matrix;
+    const state = api.getAppState();
     const key = [
       state.cameraX,
       state.cameraY,
@@ -245,7 +261,7 @@ export class VectorTopologyControls extends LitElement {
     if (key === this.previewKey) return;
     this.previewKey = key;
     const screen = (x: number, y: number) =>
-      this.api.canvas2Viewport({
+      api.canvas2Viewport({
         x: m.m00 * x + m.m10 * y + m.m20,
         y: m.m01 * x + m.m11 * y + m.m21,
       });
@@ -373,15 +389,24 @@ export class VectorTopologyControls extends LitElement {
     });
   }
 
-  private apply(
+  private async apply(
     kind: 'glue' | 'unglue' | 'cut' | 'uncut' | 'edge-glue' | 'edge-unglue',
   ) {
     const session = this.session;
-    if (!session || this.pending) return;
+    if (
+      !session ||
+      this.pending ||
+      !['glue', 'unglue', 'cut', 'uncut', 'edge-glue', 'edge-unglue'].includes(
+        kind,
+      )
+    )
+      return;
+    const { api } = session;
+    const showError = this.faces || this.edgeMode;
     const target = Number(this.target);
     const edge = Number(this.edge);
-    const endpoints = this.detached.slice();
-    const uses = this.uses.slice();
+    const endpoints = this.detached.map((endpoint) => ({ ...endpoint }));
+    const uses = this.uses.map((use) => ({ ...use }));
     const edgeTarget = Number(this.edgeTarget);
     if ((kind === 'edge-glue' || kind === 'edge-unglue') && this.edge === '')
       return;
@@ -390,110 +415,138 @@ export class VectorTopologyControls extends LitElement {
     if (kind === 'uncut' && this.edge === '') return;
     this.error = '';
     this.pending = true;
-    this.api.runAtNextTick(() => {
-      if (!this.isConnected || this.session !== session) return;
-      const node = this.current(session);
-      if (!node) {
-        this.close();
-        return;
-      }
-      const result =
-        kind === 'edge-glue'
-          ? glueVectorNetworkEdges(geometry(node), edge, edgeTarget)
-          : kind === 'edge-unglue'
-          ? unglueVectorNetworkEdge(geometry(node), edge, uses)
-          : kind === 'cut'
-          ? cutVectorNetworkFace(geometry(node), session.source, target)
-          : kind === 'uncut'
-          ? uncutVectorNetworkEdge(geometry(node), edge)
-          : kind === 'glue'
-          ? glueVertices(geometry(node), session.source, target)
-          : unglueVertex(geometry(node), session.source, endpoints);
-      if (result.ok) {
-        this.api.updateNodeVectorNetwork(node, result.network as VectorNetwork);
-        const transformable = this.api.getCamera().write(Transformable);
-        transformable.selectedControlPointIndex = result.selectedVertex;
-        transformable.hoveredControlPointIndex = -1;
-        transformable.hoveredSegmentIndex = -1;
-        this.api.setAppState({
-          vectorNetworkSelectedVertex: {
-            nodeId: node.id,
-            index: result.selectedVertex,
-          },
-        });
-        this.api.record();
-        if (
-          'selectedSegment' in result &&
-          typeof result.selectedSegment === 'number'
-        ) {
-          const current = this.api.getNodeById(
-            node.id,
-          ) as VectorNetworkSerializedNode;
-          preferVectorNetworkEdge(this.api, current, result.selectedSegment);
-          if (kind === 'edge-unglue')
-            this.api.setAppState({
-              vectorNetworkEditMode: VectorNetworkEditMode.BEND,
-            });
+    const controller = new AbortController();
+    this.operation = controller;
+    try {
+      const committed = await api.edit(
+        () => {
+          const node =
+            this.session === session && this.isConnected
+              ? this.current(session)
+              : undefined;
+          if (!node || JSON.stringify(geometry(node)) !== session.geometryKey) {
+            controller.abort();
+            if (this.session === session) this.close();
+            return;
+          }
+          const result =
+            kind === 'edge-glue'
+              ? glueVectorNetworkEdges(geometry(node), edge, edgeTarget)
+              : kind === 'edge-unglue'
+              ? unglueVectorNetworkEdge(geometry(node), edge, uses)
+              : kind === 'cut'
+              ? cutVectorNetworkFace(geometry(node), session.source, target)
+              : kind === 'uncut'
+              ? uncutVectorNetworkEdge(geometry(node), edge)
+              : kind === 'glue'
+              ? glueVertices(geometry(node), session.source, target)
+              : unglueVertex(geometry(node), session.source, endpoints);
+          if (result.ok === false) {
+            // Reject before writes so unrelated pending changes stay unrecorded.
+            controller.abort();
+            if (!showError) {
+              this.close();
+              return;
+            }
+            const messages: Record<string, string> = {
+              'invalid-uses': msg(
+                str`Choose some, but not all, region boundary uses. Fill adjacent faces first if the edge is not shared.`,
+              ),
+              'different-geometry': msg(
+                str`The edges must have matching curves, including their control points.`,
+              ),
+              'collapsed-region': msg(
+                str`Both edges occur in one boundary. This merge is not supported.`,
+              ),
+              'incompatible-winding': msg(
+                str`Merging would change a nonzero fill boundary. Keep these edges separate.`,
+              ),
+              'incompatible-endpoints': msg(
+                str`The endpoint topology of these edges cannot be matched.`,
+              ),
+              'invalid-edge': msg(str`Choose an existing edge.`),
+              'same-edge': msg(str`Choose two different edges.`),
+              'no-shared-face': msg(
+                str`Choose two boundary vertices of the same face, including its holes.`,
+              ),
+              'crossing-cut': msg(
+                str`The cut touches or crosses an existing edge. Choose another target.`,
+              ),
+              'not-interior-edge': msg(
+                str`Choose a shared face edge or a seam connecting hole boundaries.`,
+              ),
+              'different-fills': msg(
+                str`Both faces must have the same fill state. Fill or clear the other face first.`,
+              ),
+              'unsupported-topology': msg(
+                str`This operation requires compatible planar face boundaries.`,
+              ),
+              'invalid-network': msg(
+                str`The network contains an invalid edge or region boundary.`,
+              ),
+            };
+            this.error =
+              messages[result.reason] ?? msg(str`Choose a different vertex.`);
+            return;
+          }
+          api.updateNodeVectorNetwork(node, result.network as VectorNetwork);
+          const transformable = api.getCamera().write(Transformable);
+          transformable.selectedControlPointIndex = result.selectedVertex;
+          transformable.hoveredControlPointIndex = -1;
+          transformable.hoveredSegmentIndex = -1;
+          api.setAppState({
+            vectorNetworkSelectedVertex: {
+              nodeId: node.id,
+              index: result.selectedVertex,
+            },
+          });
+          if (
+            'selectedSegment' in result &&
+            typeof result.selectedSegment === 'number'
+          ) {
+            const current = api.getNodeById(
+              node.id,
+            ) as VectorNetworkSerializedNode;
+            preferVectorNetworkEdge(api, current, result.selectedSegment);
+            if (kind === 'edge-unglue')
+              api.setAppState({
+                vectorNetworkEditMode: VectorNetworkEditMode.BEND,
+              });
+          }
+          requestTransformerRefreshForCanvas(api.getCanvas());
+        },
+        { signal: controller.signal },
+      );
+      // Closing aborts pending work, so only close a successful edit after commit.
+      if (committed && this.session === session) this.close();
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.error(error);
+        if (this.session === session) {
+          this.error = msg(str`Could not apply this operation. Try again.`);
         }
-        requestTransformerRefreshForCanvas(this.api.getCanvas());
       }
-      if (result.ok === false && (this.faces || this.edgeMode)) {
-        const messages: Record<string, string> = {
-          'invalid-uses': msg(
-            str`Choose some, but not all, region boundary uses. Fill adjacent faces first if the edge is not shared.`,
-          ),
-          'different-geometry': msg(
-            str`The edges must have matching curves, including their control points.`,
-          ),
-          'collapsed-region': msg(
-            str`Both edges occur in one boundary. This merge is not supported.`,
-          ),
-          'incompatible-winding': msg(
-            str`Merging would change a nonzero fill boundary. Keep these edges separate.`,
-          ),
-          'incompatible-endpoints': msg(
-            str`The endpoint topology of these edges cannot be matched.`,
-          ),
-          'invalid-edge': msg(str`Choose an existing edge.`),
-          'same-edge': msg(str`Choose two different edges.`),
-          'no-shared-face': msg(
-            str`Choose two boundary vertices of the same face, including its holes.`,
-          ),
-          'crossing-cut': msg(
-            str`The cut touches or crosses an existing edge. Choose another target.`,
-          ),
-          'not-interior-edge': msg(
-            str`Choose a shared face edge or a seam connecting hole boundaries.`,
-          ),
-          'different-fills': msg(
-            str`Both faces must have the same fill state. Fill or clear the other face first.`,
-          ),
-          'unsupported-topology': msg(
-            str`This operation requires compatible planar face boundaries.`,
-          ),
-          'invalid-network': msg(
-            str`The network contains an invalid edge or region boundary.`,
-          ),
-        };
-        this.error =
-          messages[result.reason] ?? msg(str`Choose a different vertex.`);
+    } finally {
+      if (this.operation === controller) {
+        this.operation = undefined;
         this.pending = false;
-        return;
       }
-      this.close();
-    });
+    }
   }
 
   private bendEdge() {
     const session = this.session,
       edge = Number(this.edge);
-    if (!session || this.edge === '') return;
-    this.api.runAtNextTick(() => {
+    if (!session || this.pending || this.edge === '') return;
+    const { api } = session;
+    // Picking preference and tool mode are transient; recording here would
+    // consume unrelated document changes, even with capture: 'NEVER'.
+    api.runAtNextTick(() => {
       if (this.session !== session || !this.isConnected) return;
       const node = this.current(session);
       if (node) {
-        preferVectorNetworkEdge(this.api, node, edge);
-        this.api.setAppState({
+        preferVectorNetworkEdge(api, node, edge);
+        api.setAppState({
           vectorNetworkEditMode: VectorNetworkEditMode.BEND,
         });
       }
@@ -596,7 +649,7 @@ export class VectorTopologyControls extends LitElement {
       ${this.error ? html`<p role="alert">${this.error}</p>` : ''}
       <div class="actions">
         <sp-action-button
-          ?disabled=${this.edge === '' ||
+          ?disabled=${this.pending || this.edge === '' ||
           (this.edgeAction === 'edge-glue'
             ? this.edgeTarget === ''
             : !this.uses.length || this.uses.length === uses.length)}
@@ -609,7 +662,7 @@ export class VectorTopologyControls extends LitElement {
           >${msg(str`Cancel`)}</sp-action-button
         >
       </div>
-      <sp-action-button ?disabled=${this.edge === ''} @click=${this.bendEdge}
+      <sp-action-button ?disabled=${this.pending || this.edge === ''} @click=${this.bendEdge}
         >${msg(str`Bend selected edge`)}</sp-action-button
       >`;
   }
@@ -672,9 +725,9 @@ export class VectorTopologyControls extends LitElement {
       ${this.error ? html`<p role="alert">${this.error}</p>` : ''}
       <div class="actions">
         <sp-action-button
-          ?disabled=${this.faceAction === 'cut'
+          ?disabled=${this.pending || (this.faceAction === 'cut'
             ? this.target === ''
-            : this.edge === ''}
+            : this.edge === '')}
           @click=${() => this.apply(this.faceAction)}
         >
           ${this.faceAction === 'cut'
@@ -745,6 +798,7 @@ export class VectorTopologyControls extends LitElement {
               : this.edgeMode
               ? this.renderEdgeControls(session, incident)
               : html`
+                  ${this.error ? html`<p role="alert">${this.error}</p>` : ''}
                   <h4>${msg(str`Vertex`)} V${session.source + 1}</h4>
                   <p>${msg(str`Glue moves this vertex to the target.`)}</p>
                   <sp-picker
@@ -763,7 +817,7 @@ export class VectorTopologyControls extends LitElement {
                     )}
                   </sp-picker>
                   <sp-action-button
-                    ?disabled=${this.target === ''}
+                    ?disabled=${this.pending || this.target === ''}
                     @click=${() => this.apply('glue')}
                     >${msg(str`Glue`)}</sp-action-button
                   >
@@ -802,7 +856,7 @@ export class VectorTopologyControls extends LitElement {
                   </p>
                   <div class="actions">
                     <sp-action-button
-                      ?disabled=${!this.detached.length ||
+                      ?disabled=${this.pending || !this.detached.length ||
                       this.detached.length === incident.length}
                       @click=${() => this.apply('unglue')}
                       >${msg(str`Unglue`)}</sp-action-button

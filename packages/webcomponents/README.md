@@ -321,3 +321,27 @@ pending changes, and controls resynchronize after failures. Binding requires a
 current numeric variable; detaching uses the current binding and theme. Missing
 or invalid resolutions remain bound. Errors are observed at the event entry
 point; the core API still does not roll back partial mutations.
+
+### Queued vector topology and handle coupling
+
+Vertex glue/unglue, face cut/uncut, edge glue/unglue, and handle coupling submit
+through `api.edit()`. Each effective command forms one undo entry. Topology
+commands retain their originating canvas and preview session and copy endpoint
+and region-use selections before queuing. They reject stale nodes, vertex
+selections, tools, transforms, or geometry, including in-place geometry changes.
+
+Closing a preview, disconnecting its control, or destroying the canvas cancels
+pending topology work. Duplicate submissions are ignored. Invalid operations
+cancel before writing so unrelated pending changes remain unrecorded. Rejected
+edits are observed, display an error, and enable retry. A successful preview closes
+only after its commit, since closing also cancels pending work.
+
+Handle coupling captures its mode and vertex and uses current tangents while
+connectivity and selection remain valid. Invalid and unchanged choices do not
+commit; rejected edits restore the select value. Disconnection and canvas
+destruction cancel pending coupling commands.
+
+`Bend selected edge` changes only a transient picking preference and tool mode.
+It retains a non-recording next-tick callback: even `api.edit(callback, { capture: 'NEVER' })`
+would advance the document history baseline and consume unrelated pending changes.
+This migration preserves the core API's no-rollback contract.

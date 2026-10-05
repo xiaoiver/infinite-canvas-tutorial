@@ -10,6 +10,7 @@ import {
   type VectorNetwork,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, css, LitElement } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { customElement, property } from 'lit/decorators.js';
 import '@spectrum-web-components/action-group/sp-action-group.js';
 import '@spectrum-web-components/action-button/sp-action-button.js';
@@ -108,24 +109,90 @@ export class ContextVectorNetworkEditBar extends LitElement {
     requestTransformerRefreshForCanvas(canvas);
   }
 
-  private setMirroring(event: Event) {
-    const selected = this.appState.vectorNetworkSelectedVertex;
-    if (!selected || selected.nodeId !== this.node?.id) return;
-    const node = this.api.getNodeById(selected.nodeId);
-    if (node?.type !== 'vector-network' || !node.isEditing) return;
+  private mirroringEdits = new Set<AbortController>();
+
+  disconnectedCallback() {
+    this.mirroringEdits.forEach((controller) => controller.abort());
+    this.mirroringEdits.clear();
+    super.disconnectedCallback();
+  }
+
+  private async setMirroring(event: Event) {
+    const api = this.api;
+    const selected = api.getAppState().vectorNetworkSelectedVertex;
     const mode = (event.target as HTMLSelectElement).value as HandleMirroring;
-    if ((node.vertices?.[selected.index]?.handleMirroring ?? 'NONE') === mode)
+    if (
+      !selected ||
+      selected.nodeId !== this.node?.id ||
+      !['NONE', 'ANGLE', 'ANGLE_AND_LENGTH'].includes(mode)
+    ) {
+      this.requestUpdate();
       return;
-    const geometry = {
-      vertices: node.vertices ?? [],
-      segments: node.segments ?? [],
-      regions: node.regions,
-    };
-    const next = setVectorVertexMirroring(geometry, selected.index, mode);
-    if (next === geometry) return;
-    this.api.updateNodeVectorNetwork(node, next as VectorNetwork);
-    this.api.record();
-    requestTransformerRefreshForCanvas(this.api.getCanvas());
+    }
+    const { nodeId, index } = selected;
+    const source = api.getNodeById(nodeId);
+    if (source?.type !== 'vector-network') return;
+    // Vertex indices remain meaningful only while connectivity is unchanged.
+    const vertexCount = source.vertices.length;
+    const endpoints = source.segments.map(({ start, end }) => ({ start, end }));
+    const controller = new AbortController();
+    this.mirroringEdits.add(controller);
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          const node = editor.getNodeById(nodeId);
+          const state = editor.getAppState();
+          const current = state.vectorNetworkSelectedVertex;
+          if (
+            !this.isConnected ||
+            this.api !== api ||
+            node?.type !== 'vector-network' ||
+            node.isDeleted ||
+            !node.isEditing ||
+            node.locked ||
+            node.visibility === 'hidden' ||
+            !editor.getEntity(node) ||
+            state.vectorNetworkEditMode !== VectorNetworkEditMode.BEND ||
+            state.layersSelected.length !== 1 ||
+            state.layersSelected[0] !== nodeId ||
+            current?.nodeId !== nodeId ||
+            current.index !== index ||
+            node.vertices.length !== vertexCount ||
+            node.segments.length !== endpoints.length ||
+            endpoints.some(
+              ({ start, end }, i) =>
+                node.segments[i].start !== start ||
+                node.segments[i].end !== end,
+            ) ||
+            !node.vertices[index] ||
+            (node.vertices[index].handleMirroring ?? 'NONE') === mode
+          ) {
+            controller.abort();
+            return;
+          }
+          const geometry = {
+            vertices: node.vertices,
+            segments: node.segments,
+            regions: node.regions,
+          };
+          const next = setVectorVertexMirroring(geometry, index, mode);
+          if (next === geometry) {
+            controller.abort();
+            return;
+          }
+          editor.updateNodeVectorNetwork(node, next as VectorNetwork);
+          requestTransformerRefreshForCanvas(editor.getCanvas());
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+      this.mirroringEdits.delete(controller);
+      this.requestUpdate();
+    }
   }
 
   render() {
@@ -226,7 +293,7 @@ export class ContextVectorNetworkEditBar extends LitElement {
                 str`Select a vertex with two handles to change coupling`,
               )}
               ?disabled=${!canCouple}
-              .value=${canCouple ? vertex.handleMirroring ?? 'NONE' : 'NONE'}
+              .value=${live(canCouple ? vertex.handleMirroring ?? 'NONE' : 'NONE')}
               @change=${this.setMirroring}
             >
               <option value="NONE">${msg(str`Independent`)}</option>
