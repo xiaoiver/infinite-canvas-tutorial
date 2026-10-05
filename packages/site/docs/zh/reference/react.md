@@ -69,6 +69,9 @@ Next.js Client Component。默认入口和 `/spectrum` 目前导出同一个组�
 
 使用 **适应全部图形** 可将场景居中显示在视口内，不会增加撤销记录。
 
+将矩形按钮拖入画布可在落点添加图形；点击或轻触按钮会在当前视图中心添加。
+插入和选中可以一次撤销。
+
 <ReactCanvasExample locale="zh" />
 
 取消勾选“显示第二个画布”，可以体验卸载一个画布后继续操作另一个。
@@ -314,6 +317,53 @@ function ViewControls() {
 
 需要监听事件时，`useCanvasEvent('ic-camera-changed', listener)` 的 `event.detail`
 包含完整的 `{ x, y, zoom, rotation }`。原有的缩放和位置事件仍然可用。
+
+## 坐标转换
+
+`useCanvasCoordinates()` 为最近的 `CanvasProvider` 返回稳定的坐标转换函数。
+两个包入口同时导出 `CanvasCoordinates` 和只读的
+`CanvasPoint` 类型（`{ x: number; y: number }`）。
+
+| 方法                      | 输入                            | 输出                 |
+| ------------------------- | ------------------------------- | -------------------- |
+| `clientToCanvas(point)`   | 浏览器客户区坐标（`clientX/Y`） | 画布世界坐标         |
+| `canvasToClient(point)`   | 画布世界坐标                    | 浏览器客户区坐标     |
+| `viewportToCanvas(point)` | 绘图视口内的局部坐标            | 画布世界坐标         |
+| `canvasToViewport(point)` | 画布世界坐标                    | 绘图视口内的局部坐标 |
+
+客户区和视口坐标均使用 CSS 像素。视口原点位于实际绘图画布，不包含编辑器工具栏。
+无需乘以 `devicePixelRatio`，也不要把页面坐标或相对元素的偏移当作客户区坐标传入。
+转换支持相机平移、缩放和旋转；涉及客户区时，还会读取当前画布边界，处理页面滚动
+和沿坐标轴的正向 CSS 缩放。不支持 DOM 容器的旋转、倾斜、透视变换或翻转。
+
+```tsx
+import type { PointerEvent } from 'react';
+import { useCanvasCoordinates } from '@infinite-canvas-tutorial/react';
+
+// 放在 CanvasProvider 内的组件中：
+const coordinates = useCanvasCoordinates();
+const onPointerMove = (event: PointerEvent) => {
+    const point = coordinates.clientToCanvas({
+        x: event.clientX,
+        y: event.clientY,
+    });
+    if (point) console.log('画布坐标', point.x, point.y);
+};
+```
+
+将 `onPointerMove` 传给 `InfiniteCanvas` 或其容器。函数在调用时读取最新 API 和页面位置；
+同一 Provider 中重建画布后，保存下来的函数也会访问新的画布。SSR、API 尚不可用或画布
+移除后，所有转换均返回 `null`。API 可用可能早于初始场景准备完成，因此编辑控件仍应使用
+`useCanvasStatus().status === 'ready'` 判断。转换不会修改输入或增加撤销记录。
+
+此 hook 不订阅相机或布局变化，应在事件中调用。需要让浮层跟随视图时，可结合
+`useCanvasCamera()` 响应相机变化，并按布局需要监听滚动和尺寸变化。
+客户区坐标可直接用于 `position: fixed` 浮层，其他定位方式需要再换算到对应包含块。
+
+交互示例用 `clientToCanvas` 将新矩形的中心放在落点，并通过一次 `actions.edit`
+提交插入和选中。在 `onDragOverCapture` / `onDropCapture` 中处理自定义拖放类型，
+可先于编辑器内置的文件拖入逻辑接收事件。点击或轻触矩形按钮会在当前视图中心添加，
+手机和键盘用户也能使用。
 
 ## 订阅画布事件
 

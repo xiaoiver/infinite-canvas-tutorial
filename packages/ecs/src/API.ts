@@ -998,8 +998,8 @@ export class API {
   viewport2Client({ x, y }: IPointData): IPointData {
     const { scaleX, scaleY, bbox } = getScale(this.getCanvasElement());
     return {
-      x: (x + (bbox?.left || 0)) * scaleX,
-      y: (y + (bbox?.top || 0)) * scaleY,
+      x: x * scaleX + (bbox?.left || 0),
+      y: y * scaleY + (bbox?.top || 0),
     };
   }
 

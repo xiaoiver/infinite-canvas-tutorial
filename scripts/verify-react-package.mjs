@@ -127,7 +127,7 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent, useCanvasShortcuts } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasCoordinates, useCanvasEvent, useCanvasShortcuts } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
@@ -137,6 +137,9 @@ for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutori
     assert.equal(actions.undo(), false);
     assert.deepEqual(useCanvasStatus(), { status: 'idle', error: null });
     assert.deepEqual(useCanvasCamera(), { x: 0, y: 0, zoom: 1, rotation: 0 });
+    for (const convert of Object.values(useCanvasCoordinates())) {
+      assert.equal(convert({ x: 10, y: 20 }), null);
+    }
     assert.equal(actions.zoomTo(2), false);
     assert.equal(actions.fitToScreen(), false);
     assert.equal(useCanvasNode('rect'), null);
@@ -160,9 +163,9 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent, useCanvasShortcuts, type CanvasShortcutOptions, type CanvasShortcutProps, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasCoordinates, useCanvasEvent, useCanvasShortcuts, type CanvasCoordinates, type CanvasPoint, type CanvasShortcutOptions, type CanvasShortcutProps, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
-import { InfiniteCanvas as SpectrumCanvas, useCanvasEvent as useSpectrumCanvasEvent } from '@infinite-canvas-tutorial/react/spectrum';
+import { InfiniteCanvas as SpectrumCanvas, useCanvasEvent as useSpectrumCanvasEvent, useCanvasCoordinates as useSpectrumCoordinates, type CanvasPoint as SpectrumPoint } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
   const shortcutOptions: CanvasShortcutOptions = { enabled: true, onError: (error: Error) => {} };
   const shortcuts: CanvasShortcutProps = useCanvasShortcuts(shortcutOptions);
@@ -180,6 +183,15 @@ function Toolbar() {
   const lifecycle = useCanvasStatus();
   const status: CanvasStatus = lifecycle.status;
   const startupError: Error | null = lifecycle.error;
+  const coordinates: CanvasCoordinates = useCanvasCoordinates();
+  const point: CanvasPoint = { x: 10, y: 20 };
+  const world: CanvasPoint | null = coordinates.clientToCanvas(point);
+  const client: CanvasPoint | null = coordinates.canvasToClient(point);
+  const viewport: CanvasPoint | null = coordinates.canvasToViewport(point);
+  const fromViewport: CanvasPoint | null = coordinates.viewportToCanvas(point);
+  const spectrumPoint: SpectrumPoint | null = useSpectrumCoordinates().clientToCanvas(point);
+  // @ts-expect-error points have numeric coordinates
+  coordinates.clientToCanvas({ x: '10', y: 20 });
   const camera: CanvasCameraState = useCanvasCamera();
   const cameraOptions: CanvasCameraAnimationOptions = { duration: 0, easing: 'linear', onfinish: () => {} };
   const zoomed: boolean = actions.zoomTo(camera.zoom * 2, cameraOptions);

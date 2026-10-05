@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type DragEvent,
 } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -18,6 +19,9 @@ import {
   useCanvasEvent,
   useCanvasCamera,
   useCanvasShortcuts,
+  useCanvasCoordinates,
+  useCanvasAPI,
+  type CanvasPoint,
 } from '@infinite-canvas-tutorial/react';
 import { Pen, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { DocumentControls } from './document-controls';
@@ -30,10 +34,11 @@ export interface PlaygroundOptions {
 const copy = {
   en: {
     title: 'Try the React canvas',
-    hint: 'Select a shape to change its color or width, delete it, or restore the sample document. On a phone, tap to select, then drag a corner to resize; drag just outside a corner to rotate. Each canvas keeps its own zoom, selection, and history.',
+    hint: 'Select a shape to change its color or width, delete it, or restore the sample document. On a phone, tap to select, then drag a corner to resize; drag just outside a corner to rotate. Drag the rectangle button onto the canvas, or click/tap it to add at the view center. Each canvas keeps its own zoom, selection, and history.',
     second: 'Show second canvas',
     reset: 'Reset demo',
     canvas: 'Canvas',
+    place: 'Drag rectangle onto canvas, or click to add at center',
     shortcuts:
       'Keyboard: Ctrl/⌘+Z undo, Ctrl/⌘+Shift+Z redo, Ctrl/⌘+A select all, Delete/Backspace delete. Focus a canvas or its controls first.',
     undo: 'Undo',
@@ -59,10 +64,11 @@ const copy = {
   },
   zh: {
     title: '试试 React 画布',
-    hint: '选中图形后修改颜色或宽度、删除图形，或恢复示例文档。手机上轻触选中，拖动角上的锚点缩放，在角外侧拖动旋转。每个画布拥有独立的缩放、选区和历史记录。',
+    hint: '选中图形后修改颜色或宽度、删除图形，或恢复示例文档。手机上轻触选中，拖动角上的锚点缩放，在角外侧拖动旋转。将矩形按钮拖入画布，或点击按钮在当前视图中心添加。每个画布拥有独立的缩放、选区和历史记录。',
     second: '显示第二个画布',
     reset: '重置示例',
     canvas: '画布',
+    place: '拖入矩形，或点击居中添加',
     shortcuts:
       '快捷键：Ctrl/⌘+Z 撤销，Ctrl/⌘+Shift+Z 重做，Ctrl/⌘+A 全选，Delete/Backspace 删除。先聚焦画布或它的控件。',
     undo: '撤销',
@@ -89,6 +95,7 @@ const copy = {
 };
 
 const colors = ['#ff8400', '#4263eb', '#9c36b5', '#0ca678'];
+const shapeDragType = 'application/x-infinitecanvas-react-shape';
 
 function initialNodes(id: string): SerializedNode[] {
   return [
@@ -352,6 +359,40 @@ function CanvasPanelContent({
   const text = copy[locale];
   const [error, setError] = useState<Error | null>(null);
   const shortcuts = useCanvasShortcuts({ onError: setError });
+  const coordinates = useCanvasCoordinates();
+  const actions = useCanvasActions();
+  const api = useCanvasAPI();
+  const { status } = useCanvasStatus();
+  const ready = status === 'ready';
+  const placeAt = (client: CanvasPoint) => {
+    if (!ready) return;
+    const point = coordinates.clientToCanvas(client);
+    if (!point) return;
+    setError(null);
+    void actions
+      .edit((current) => {
+        const node: SerializedNode = {
+          id: `${id}-drop-${crypto.randomUUID()}`,
+          type: 'rect',
+          zIndex:
+            current
+              .getNodes()
+              .reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0) + 1,
+          x: point.x - 40,
+          y: point.y - 30,
+          width: 80,
+          height: 60,
+          fills: [{ type: 'solid', value: '#0ca678' }],
+        };
+        current.updateNodes([node]);
+        current.selectNodes([node]);
+      })
+      .catch((reason: unknown) =>
+        setError(reason instanceof Error ? reason : new Error(String(reason))),
+      );
+  };
+  const acceptsShape = (event: DragEvent) =>
+    ready && event.dataTransfer.types.includes(shapeDragType);
   return h(
     'section',
     {
@@ -361,8 +402,44 @@ function CanvasPanelContent({
       'aria-label': `${text.canvas} ${id}`,
     },
     h('h2', null, `${text.canvas} ${id}`),
+    h(
+      'button',
+      {
+        type: 'button',
+        'data-action': 'place',
+        disabled: !ready,
+        draggable: ready,
+        onDragStart: (event: DragEvent<HTMLButtonElement>) => {
+          event.dataTransfer.setData(shapeDragType, 'rect');
+          event.dataTransfer.effectAllowed = 'copy';
+        },
+        onClick: () => {
+          const bounds = api?.getCanvasElement().getBoundingClientRect();
+          if (bounds)
+            placeAt({
+              x: bounds.left + bounds.width / 2,
+              y: bounds.top + bounds.height / 2,
+            });
+        },
+      },
+      text.place,
+    ),
     h(InfiniteCanvas, {
       className: 'react-demo-canvas',
+      onDragOverCapture: (event: DragEvent<HTMLDivElement>) => {
+        if (!acceptsShape(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'copy';
+      },
+      onDropCapture: (event: DragEvent<HTMLDivElement>) => {
+        if (!acceptsShape(event)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.dataTransfer.getData(shapeDragType) === 'rect') {
+          placeAt({ x: event.clientX, y: event.clientY });
+        }
+      },
       locale: locale === 'zh' ? 'zh-Hans' : 'en',
       theme,
       initialNodes: initialNodes(id),

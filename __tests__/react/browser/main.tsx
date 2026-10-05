@@ -14,6 +14,8 @@ import {
   useCanvasEvent,
   useCanvasCamera,
   useCanvasShortcuts,
+  useCanvasCoordinates,
+  type CanvasCoordinates,
   type CanvasActions,
 } from '@infinite-canvas-tutorial/react';
 import {
@@ -35,6 +37,7 @@ declare global {
   interface Window {
     apis: Record<string, ExtendedAPI>;
     actions: Record<string, CanvasActions>;
+    coordinates: Record<string, CanvasCoordinates>;
     canvasErrors: string[];
     nodeChanges: Record<string, SerializedNode[][]>;
     snapshots: Record<string, unknown[]>;
@@ -56,6 +59,7 @@ declare global {
 }
 window.apis = {};
 window.actions = {};
+window.coordinates = {};
 window.canvasErrors = [];
 window.nodeChanges = {};
 window.snapshots = {};
@@ -121,6 +125,7 @@ window.sceneGeometry = (id) => {
 function Toolbar({ id }: { id: string }) {
   const api = useCanvasAPI();
   const actions = useCanvasActions();
+  const coordinates = useCanvasCoordinates();
   const { status } = useCanvasStatus();
   useCanvasEvent('ic-comment-added', ({ detail }) => {
     const { canvasX, canvasY, viewportX, viewportY } = detail;
@@ -135,10 +140,12 @@ function Toolbar({ id }: { id: string }) {
   });
   useEffect(() => {
     window.actions[id] = actions;
+    window.coordinates[id] = coordinates;
     return () => {
       delete window.actions[id];
+      delete window.coordinates[id];
     };
-  }, [id, actions]);
+  }, [id, actions, coordinates]);
   const camera = useCanvasCamera();
   const { canUndo, canRedo } = useCanvasHistory();
   const selected = useCanvasSelection();
