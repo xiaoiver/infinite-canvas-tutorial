@@ -27,6 +27,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { editLayer } from './layer-command';
+import {
+  deleteLayers,
+  editLayerStructure,
+  layerSubtree,
+  nudgeLayers,
+} from './layer-structure-command';
 import { extractExternalUrlMetadata } from '../utils/url';
 import { measureHTML } from '../utils';
 import { updateAndSelectNodes } from '../utils/common';
@@ -54,15 +60,44 @@ export function executeCopy(
   );
 }
 
-export function executeCut(
+export async function executeCut(
   api: ExtendedAPI,
   appState: AppState,
   event?: ClipboardEvent,
 ) {
-  executeCopy(api, appState, event);
-  // delete nodes
-  api.deleteNodesById(appState.layersSelected);
-  api.record();
+  const ids = [...new Set(appState.layersSelected)].filter((id) => {
+    const node = api.getNodeById(id);
+    return node && !node.isDeleted && !node.locked && api.getEntity(node);
+  });
+  if (!ids.length) return false;
+  const controller = new AbortController();
+  const dispose = api.onDestroy(() => controller.abort());
+  try {
+    const snapshot = JSON.stringify(layerSubtree(api, ids));
+    // ClipboardEvent data is writable only during dispatch. Populate it before
+    // awaiting; menu commands instead wait for the system clipboard to succeed.
+    let copied = false;
+    if (event?.clipboardData) {
+      event.clipboardData.setData(MIME_TYPES.text, snapshot);
+      copied = event.clipboardData.getData(MIME_TYPES.text) === snapshot;
+    }
+    if (!copied) await api.copyToClipboard(JSON.parse(snapshot));
+    if (controller.signal.aborted) return false;
+    return await editLayerStructure(api, (editor) => {
+      // Do not delete newer edits or newly added descendants after a slow copy.
+      if (
+        controller.signal.aborted ||
+        JSON.stringify(layerSubtree(editor, ids)) !== snapshot
+      )
+        return;
+      return () => editor.deleteNodesById(ids);
+    });
+  } catch (error) {
+    if (!controller.signal.aborted) console.error(error);
+    return false;
+  } finally {
+    dispose();
+  }
 }
 
 function getMaxZIndex(api: ExtendedAPI) {
@@ -297,7 +332,7 @@ export class ContextMenu extends LitElement {
         this.lastContextMenuPosition,
       ).catch((error: unknown) => console.error(error));
     } else if (value === 'cut') {
-      executeCut(this.api, this.appState);
+      void executeCut(this.api, this.api.getAppState());
     } else if (value === 'bring-to-front') {
       this.executeBringToFront();
     } else if (value === 'bring-forward') {
@@ -558,7 +593,7 @@ export class ContextMenu extends LitElement {
   };
 
   private handleCut = (event: ClipboardEvent) => {
-    const { layersSelected } = this.appState;
+    const { layersSelected } = this.api.getAppState();
     if (
       document.activeElement !== this.api.element ||
       layersSelected.length === 0
@@ -566,7 +601,7 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    executeCut(this.api, this.appState, event);
+    void executeCut(this.api, this.api.getAppState(), event);
 
     event.preventDefault();
     event.stopPropagation();
@@ -621,46 +656,18 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    if (event.key === 'ArrowUp') {
+    if (
+      ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)
+    ) {
       event.preventDefault();
-      layersSelected.forEach((id) => {
-        const node = this.api.getNodeById(id);
-        if (node) {
-          this.api.updateNodeOBB(node, { y: (node.y as number) - 10 });
-        }
-      });
-      this.api.record();
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      layersSelected.forEach((id) => {
-        const node = this.api.getNodeById(id);
-        if (node) {
-          this.api.updateNodeOBB(node, { y: (node.y as number) + 10 });
-        }
-      });
-      this.api.record();
-    } else if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      layersSelected.forEach((id) => {
-        const node = this.api.getNodeById(id);
-        if (node) {
-          this.api.updateNodeOBB(node, { x: (node.x as number) - 10 });
-        }
-      });
-      this.api.record();
-    } else if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      layersSelected.forEach((id) => {
-        const node = this.api.getNodeById(id);
-        if (node) {
-          this.api.updateNodeOBB(node, { x: (node.x as number) + 10 });
-        }
-      });
-      this.api.record();
+      const axis =
+        event.key === 'ArrowUp' || event.key === 'ArrowDown' ? 'y' : 'x';
+      const delta =
+        event.key === 'ArrowUp' || event.key === 'ArrowLeft' ? -10 : 10;
+      void nudgeLayers(this.api, layersSelected, axis, delta);
     } else if (event.key === 'Backspace') {
       event.preventDefault();
-      this.api.deleteNodesById(layersSelected);
-      this.api.record();
+      void deleteLayers(this.api, layersSelected);
     } else if (event.key === 'Escape') {
       event.preventDefault();
       this.api.selectNodes([]);

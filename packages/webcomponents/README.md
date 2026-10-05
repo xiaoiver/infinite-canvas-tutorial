@@ -361,3 +361,26 @@ Enter and blur submit once, while Escape, removal, or recycling discards the dra
 Once submitted, a command keeps its original target even if its control is reused.
 Errors are observed and rename can be retried; the core edit API retains its
 existing no-rollback contract.
+
+### Queued layer structure, cut, and native keyboard edits
+
+Panel reorder/reparent, panel deletion, native Backspace, and arrow-key nudging
+use `api.edit()`. Commands own their canvas and target IDs, resolve current nodes,
+and create one undo entry per effective operation. Deletion removes descendants,
+selects a surviving eligible layer when needed, and preserves a newer selection.
+Repeated arrow keys accumulate from current positions; missing, type-replaced,
+locked, or invalid-coordinate targets are skipped before committing history.
+
+Sortable's DOM movement is restored before submitting a drop so Lit retains a
+consistent tree. Reparenting validates the whole destination membership, source
+parent, locks, and ancestor chain before writing hierarchy and sibling order.
+Cross-canvas drops between layer lists are rejected. Unchanged order and stale drops do not commit.
+Position preservation retains the existing translation-stack behavior; full
+affine compensation for rotated/scaled parents is outside this change.
+
+Cut copies an owned, deduplicated snapshot including descendants. Native clipboard
+events receive their data synchronously during dispatch; menu cut waits for system
+copy success. Before deleting, it checks that the copied subtree is unchanged.
+Failed copy, destruction, or newer subtree edits leave the document intact and do
+not record unrelated changes. Errors are observed. The core edit API's existing
+no-rollback contract remains unchanged.

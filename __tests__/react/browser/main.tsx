@@ -2,7 +2,10 @@ import { StrictMode, useEffect, useState, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { updateAndSelectNodes } from '@infinite-canvas-tutorial/webcomponents';
-import { executePaste } from '@infinite-canvas-tutorial/webcomponents/spectrum';
+import {
+  executePaste,
+  executeCut,
+} from '@infinite-canvas-tutorial/webcomponents/spectrum';
 import {
   CanvasProvider,
   createCanvasRuntime,
@@ -43,6 +46,7 @@ declare global {
     coordinates: Record<string, CanvasCoordinates>;
     insertNodes: typeof updateAndSelectNodes;
     paste: typeof executePaste;
+    cut: typeof executeCut;
     flushReact: typeof flushSync;
     canvasErrors: string[];
     nodeChanges: Record<string, SerializedNode[][]>;
@@ -68,6 +72,7 @@ window.actions = {};
 window.coordinates = {};
 window.insertNodes = updateAndSelectNodes;
 window.paste = executePaste;
+window.cut = executeCut;
 window.flushReact = flushSync;
 window.canvasErrors = [];
 window.nodeChanges = {};
