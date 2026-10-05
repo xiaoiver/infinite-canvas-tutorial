@@ -52,6 +52,25 @@ import './text-content.js';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
 type TransformField = 'width' | 'height' | 'x' | 'y' | 'rotation';
+type LayoutNumberField =
+  | 'padding'
+  | 'margin'
+  | 'gap'
+  | 'rowGap'
+  | 'columnGap'
+  | 'flexGrow'
+  | 'flexShrink'
+  | 'flexBasis'
+  | 'minWidth'
+  | 'maxWidth'
+  | 'minHeight'
+  | 'maxHeight';
+type LayoutChoiceField =
+  | 'flexDirection'
+  | 'alignItems'
+  | 'justifyContent'
+  | 'flexWrap'
+  | 'alignSelf';
 
 /** Yoga：`number` / `[上下, 左右]` / `[上,右,下,左]`，用于 padding / margin */
 function normalizeBoxSides(
@@ -324,43 +343,122 @@ export class PropertiesPanelContent extends LitElement {
     return parent?.display === 'flex';
   }
 
-  private handleCornerRadiusChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
-    if (!Number.isFinite(v)) {
+  private async editPanelProperties(
+    resolvePatch: (
+      node: FlexNode,
+      api: ExtendedAPI,
+    ) => Partial<FlexNode> | undefined,
+  ) {
+    const api = this.api;
+    const source = this.node;
+    if (!api || !source) return;
+    const { id, type } = source;
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          const current = editor.getNodeById(id);
+          if (
+            !current ||
+            current.isDeleted ||
+            current.type !== type ||
+            !editor.getEntity(current)
+          ) {
+            controller.abort();
+            return;
+          }
+          // Resolve compound values and variables in the owning write phase.
+          const patch = resolvePatch(current, editor);
+          if (
+            !patch ||
+            Object.entries(patch).every(([key, value]) => {
+              const previous = current[key as keyof SerializedNode];
+              return (
+                previous === value ||
+                (Array.isArray(previous) &&
+                  Array.isArray(value) &&
+                  previous.length === value.length &&
+                  previous.every((item, i) => item === value[i]))
+              );
+            })
+          ) {
+            // Cancel before writing: an empty commit can capture unrelated changes.
+            controller.abort();
+            return;
+          }
+          editor.updateNode(current, patch);
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+      this.requestUpdate();
+    }
+  }
+
+  /** Spectrum reports a cleared native input as NaN; other invalid values are ignored. */
+  private static readOptionalNumber(
+    e: Event,
+  ): { value: number | undefined } | undefined {
+    const control = e.target as HTMLElement & {
+      value?: number | string;
+      inputElement?: HTMLInputElement;
+    };
+    const raw = control.value;
+    if (
+      raw == null ||
+      (typeof raw === 'string' && raw.trim() === '') ||
+      (Number.isNaN(raw) && control.inputElement?.value.trim() === '')
+    ) {
+      return { value: undefined };
+    }
+    const value = Number(raw);
+    return Number.isFinite(value) ? { value } : undefined;
+  }
+
+  private handleCornerRadiusChanged(e: Event) {
+    const parsed = PropertiesPanelContent.readOptionalNumber(e);
+    if (parsed?.value === undefined) {
+      this.requestUpdate();
       return;
     }
-    this.api.updateNode(this.node, {
-      cornerRadius: Math.max(0, v),
-    });
-    this.api.record();
+    const value = Math.max(0, parsed.value);
+    return this.editPanelProperties((node) =>
+      (node as RectSerializedNode).cornerRadius === value ||
+      ((node as RectSerializedNode).cornerRadius == null && value === 0)
+        ? undefined
+        : { cornerRadius: value },
+    );
   }
 
   private handleCornerRadiusVariablePick(
     e: CustomEvent<DesignVariablePickDetail>,
   ) {
-    this.api.updateNode(this.node, {
-      cornerRadius: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
+    const key = e.detail?.key;
+    if (typeof key !== 'string' || !key) return;
+    return this.editPanelProperties((node, api) =>
+      api.getAppState().variables?.[key]?.type === 'number'
+        ? { cornerRadius: `$${key}` as unknown as number }
+        : undefined,
+    );
   }
 
   private handleCornerRadiusVariableUnbind() {
-    const raw = (this.node as RectSerializedNode).cornerRadius;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, {
-        cornerRadius: Math.max(0, n),
-      });
-      this.api.record();
-    }
+    return this.editPanelProperties((node, api) => {
+      const raw = (node as RectSerializedNode).cornerRadius as
+        | number
+        | string
+        | undefined;
+      if (!isDesignVariableReference(raw)) return;
+      const { variables, themeMode } = api.getAppState();
+      const resolved = resolveDesignVariableValue(raw, variables, themeMode);
+      if (typeof resolved === 'string' && resolved.trim() === '') return;
+      const value = Number(resolved);
+      if (Number.isFinite(value)) return { cornerRadius: Math.max(0, value) };
+    });
   }
 
   private async editTransform(
@@ -537,187 +635,151 @@ export class PropertiesPanelContent extends LitElement {
     }
   }
 
-  private handleLayoutPaddingChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, {
-      padding: v,
-    } as Partial<SerializedNode>);
-    this.api.record();
+  private handleLayoutNumberChanged(field: LayoutNumberField, e: Event) {
+    const parsed = PropertiesPanelContent.readOptionalNumber(e);
+    if (!parsed || (parsed.value !== undefined && parsed.value < 0)) {
+      this.requestUpdate();
+      return;
+    }
+    const { value } = parsed;
+    return this.editPanelProperties(() => ({ [field]: value }));
   }
 
-  private handlePaddingSideChanged(
+  private handleBoxSideChanged(
+    field: 'padding' | 'margin',
     index: 0 | 1 | 2 | 3,
     e: Event,
   ) {
-    const raw = PropertiesPanelContent.parseNumberFieldValue(e);
-    const next = raw !== undefined && Number.isFinite(raw) ? raw : 0;
-    const sides = normalizeBoxSides(
-      (this.node as FlexNode).padding,
-    ) as [number, number, number, number];
-    sides[index] = next;
-    this.api.updateNode(this.node, {
-      padding: sidesToBoxValue(sides),
-    } as Partial<SerializedNode>);
-    this.api.record();
+    const parsed = PropertiesPanelContent.readOptionalNumber(e);
+    if (!parsed || (parsed.value !== undefined && parsed.value < 0)) {
+      this.requestUpdate();
+      return;
+    }
+    const value = parsed.value ?? 0;
+    return this.editPanelProperties((node) => {
+      const sides = normalizeBoxSides(node[field]);
+      if (sides[index] === value) return;
+      sides[index] = value;
+      return { [field]: sidesToBoxValue(sides) };
+    });
+  }
+
+  private handleLayoutChoiceChanged(
+    field: LayoutChoiceField,
+    choices: readonly string[],
+    e: Event,
+  ) {
+    const value = (e.target as HTMLElement & { value: string }).value;
+    if (!choices.includes(value)) {
+      this.requestUpdate();
+      return;
+    }
+    return this.editPanelProperties(() => ({
+      [field]: field === 'alignSelf' && value === 'auto' ? undefined : value,
+    }));
+  }
+
+  private handlePaddingSideChanged(index: 0 | 1 | 2 | 3, e: Event) {
+    return this.handleBoxSideChanged('padding', index, e);
+  }
+
+  private handleMarginSideChanged(index: 0 | 1 | 2 | 3, e: Event) {
+    return this.handleBoxSideChanged('margin', index, e);
+  }
+
+  private handleLayoutPaddingChanged(e: Event) {
+    return this.handleLayoutNumberChanged('padding', e);
   }
 
   private handleLayoutMarginChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, {
-      margin: v,
-    } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('margin', e);
   }
 
-  private handleMarginSideChanged(
-    index: 0 | 1 | 2 | 3,
-    e: Event,
-  ) {
-    const raw = PropertiesPanelContent.parseNumberFieldValue(e);
-    const next = raw !== undefined && Number.isFinite(raw) ? raw : 0;
-    const sides = normalizeBoxSides(
-      (this.node as FlexNode).margin,
-    ) as [number, number, number, number];
-    sides[index] = next;
-    this.api.updateNode(this.node, {
-      margin: sidesToBoxValue(sides),
-    } as Partial<SerializedNode>);
-    this.api.record();
+  private handleLayoutGapChanged(e: Event) {
+    return this.handleLayoutNumberChanged('gap', e);
   }
 
-  private handleLayoutGapChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      gap: Number.isFinite(v) ? v : undefined,
-    });
-    this.api.record();
+  private handleLayoutRowGapChanged(e: Event) {
+    return this.handleLayoutNumberChanged('rowGap', e);
   }
 
-  private handleLayoutRowGapChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      rowGap: Number.isFinite(v) ? v : undefined,
-    });
-    this.api.record();
-  }
-
-  private handleLayoutColumnGapChanged(e: Event & { target: HTMLInputElement }) {
-    const v = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      columnGap: Number.isFinite(v) ? v : undefined,
-    });
-    this.api.record();
-  }
-
-  private handleFlexDirectionChanged(e: Event & { target: HTMLInputElement }) {
-    const v = e.target.value as FlexboxLayoutAttributes['flexDirection'];
-    this.api.updateNode(this.node, { flexDirection: v });
-    this.api.record();
-  }
-
-  private handleAlignItemsChanged(e: Event & { target: HTMLInputElement }) {
-    const v = e.target.value as FlexboxLayoutAttributes['alignItems'];
-    this.api.updateNode(this.node, { alignItems: v });
-    this.api.record();
-  }
-
-  private handleJustifyContentChanged(e: Event & { target: HTMLInputElement }) {
-    const v = e.target.value as FlexboxLayoutAttributes['justifyContent'];
-    this.api.updateNode(this.node, { justifyContent: v });
-    this.api.record();
-  }
-
-  private handleFlexWrapChanged(e: Event & { target: HTMLInputElement }) {
-    const v = e.target.value as FlexboxLayoutAttributes['flexWrap'];
-    this.api.updateNode(this.node, { flexWrap: v });
-    this.api.record();
-  }
-
-  private handleAlignSelfChanged(e: Event & { target: HTMLInputElement }) {
-    const v = e.target.value;
-    if (v === 'auto') {
-      this.api.updateNode(this.node, {
-        alignSelf: undefined,
-      } as Partial<SerializedNode>);
-    } else {
-      this.api.updateNode(this.node, {
-        alignSelf: v as
-          | 'center'
-          | 'flex-start'
-          | 'flex-end'
-          | 'stretch'
-          | 'baseline',
-      } as Partial<SerializedNode>);
-    }
-    this.api.record();
-  }
-
-  /** sp-number-field 的 value 可能在自定义元素上，且为 number */
-  private static parseNumberFieldValue(e: Event): number | undefined {
-    const t = e.target as HTMLElement & { value?: number | string };
-    if (t.value === undefined || t.value === '') {
-      return undefined;
-    }
-    const n =
-      typeof t.value === 'number' ? t.value : parseFloat(String(t.value));
-    return Number.isFinite(n) ? n : undefined;
+  private handleLayoutColumnGapChanged(e: Event) {
+    return this.handleLayoutNumberChanged('columnGap', e);
   }
 
   private handleFlexGrowChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, {
-      flexGrow: v,
-    } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('flexGrow', e);
   }
 
   private handleFlexShrinkChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, {
-      flexShrink: v,
-    } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('flexShrink', e);
   }
 
   private handleFlexBasisChanged(e: Event) {
-    const t = e.target as HTMLElement & { value?: number | string };
-    const raw =
-      t.value === undefined || t.value === ''
-        ? ''
-        : String(t.value).trim();
-    if (raw === '') {
-      this.api.updateNode(this.node, { flexBasis: undefined } as Partial<SerializedNode>);
-    } else {
-      const v = parseFloat(raw);
-      this.api.updateNode(this.node, {
-        flexBasis: Number.isFinite(v) ? v : undefined,
-      } as Partial<SerializedNode>);
-    }
-    this.api.record();
+    return this.handleLayoutNumberChanged('flexBasis', e);
   }
 
   private handleMinWidthChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, { minWidth: v } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('minWidth', e);
   }
 
   private handleMaxWidthChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, { maxWidth: v } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('maxWidth', e);
   }
 
   private handleMinHeightChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, { minHeight: v } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('minHeight', e);
   }
 
   private handleMaxHeightChanged(e: Event) {
-    const v = PropertiesPanelContent.parseNumberFieldValue(e);
-    this.api.updateNode(this.node, { maxHeight: v } as Partial<SerializedNode>);
-    this.api.record();
+    return this.handleLayoutNumberChanged('maxHeight', e);
+  }
+
+  private handleFlexDirectionChanged(e: Event) {
+    return this.handleLayoutChoiceChanged(
+      'flexDirection',
+      ['row', 'row-reverse', 'column', 'column-reverse'],
+      e,
+    );
+  }
+
+  private handleAlignItemsChanged(e: Event) {
+    return this.handleLayoutChoiceChanged(
+      'alignItems',
+      ['center', 'flex-start', 'flex-end', 'stretch', 'baseline'],
+      e,
+    );
+  }
+
+  private handleJustifyContentChanged(e: Event) {
+    return this.handleLayoutChoiceChanged(
+      'justifyContent',
+      [
+        'center',
+        'flex-start',
+        'flex-end',
+        'space-between',
+        'space-around',
+        'space-evenly',
+      ],
+      e,
+    );
+  }
+
+  private handleFlexWrapChanged(e: Event) {
+    return this.handleLayoutChoiceChanged(
+      'flexWrap',
+      ['nowrap', 'wrap', 'wrap-reverse'],
+      e,
+    );
+  }
+
+  private handleAlignSelfChanged(e: Event) {
+    return this.handleLayoutChoiceChanged(
+      'alignSelf',
+      ['auto', 'center', 'flex-start', 'flex-end', 'stretch', 'baseline'],
+      e,
+    );
   }
 
   /** Flex 子项上的 padding / margin（与 Layout 相同交互，id 前缀避免与容器区块冲突） */
@@ -787,7 +849,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id=${`fi-pad-${safeId}-${i}`}
                     size="s"
-                    .value=${paddingSides[i]}
+                    .value=${live(paddingSides[i])}
                     @change=${(e: Event) =>
           this.handlePaddingSideChanged(i as 0 | 1 | 2 | 3, e)}
                     hide-stepper
@@ -803,7 +865,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id=${`fi-pad-main-${safeId}`}
             size="s"
-            .value=${paddingUniform ? paddingSides[0] : ''}
+            .value=${live(paddingUniform ? paddingSides[0] : '')}
             placeholder=${paddingUniform ? '' : '—'}
             ?readonly=${!paddingUniform}
             @change=${this.handleLayoutPaddingChanged}
@@ -866,7 +928,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id=${`fi-mar-${safeId}-${i}`}
                     size="s"
-                    .value=${marginSides[i]}
+                    .value=${live(marginSides[i])}
                     @change=${(e: Event) =>
           this.handleMarginSideChanged(i as 0 | 1 | 2 | 3, e)}
                     hide-stepper
@@ -882,7 +944,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id=${`fi-mar-main-${safeId}`}
             size="s"
-            .value=${marginUniform ? marginSides[0] : ''}
+            .value=${live(marginUniform ? marginSides[0] : '')}
             placeholder=${marginUniform ? '' : '—'}
             ?readonly=${!marginUniform}
             @change=${this.handleLayoutMarginChanged}
@@ -900,7 +962,7 @@ export class PropertiesPanelContent extends LitElement {
         <sp-number-field
           id=${`fi-minw-${safeId}`}
           size="s"
-          .value=${minW !== undefined && Number.isFinite(minW) ? minW : undefined}
+          .value=${live(minW !== undefined && Number.isFinite(minW) ? minW : undefined)}
           placeholder=${msg(str`Auto`)}
           @change=${this.handleMinWidthChanged}
           hide-stepper
@@ -916,7 +978,7 @@ export class PropertiesPanelContent extends LitElement {
         <sp-number-field
           id=${`fi-maxw-${safeId}`}
           size="s"
-          .value=${maxW !== undefined && Number.isFinite(maxW) ? maxW : undefined}
+          .value=${live(maxW !== undefined && Number.isFinite(maxW) ? maxW : undefined)}
           placeholder=${msg(str`Auto`)}
           @change=${this.handleMaxWidthChanged}
           hide-stepper
@@ -932,7 +994,7 @@ export class PropertiesPanelContent extends LitElement {
         <sp-number-field
           id=${`fi-minh-${safeId}`}
           size="s"
-          .value=${minH !== undefined && Number.isFinite(minH) ? minH : undefined}
+          .value=${live(minH !== undefined && Number.isFinite(minH) ? minH : undefined)}
           placeholder=${msg(str`Auto`)}
           @change=${this.handleMinHeightChanged}
           hide-stepper
@@ -948,7 +1010,7 @@ export class PropertiesPanelContent extends LitElement {
         <sp-number-field
           id=${`fi-maxh-${safeId}`}
           size="s"
-          .value=${maxH !== undefined && Number.isFinite(maxH) ? maxH : undefined}
+          .value=${live(maxH !== undefined && Number.isFinite(maxH) ? maxH : undefined)}
           placeholder=${msg(str`Auto`)}
           @change=${this.handleMaxHeightChanged}
           hide-stepper
@@ -981,7 +1043,7 @@ export class PropertiesPanelContent extends LitElement {
           >
           <sp-picker
             size="s"
-            .value=${alignSelf}
+            .value=${live(alignSelf)}
             @change=${this.handleAlignSelfChanged}
           >
             <sp-menu-item value="auto">${msg(str`Auto`)}</sp-menu-item>
@@ -1001,7 +1063,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id="flex-grow"
             size="s"
-            .value=${flexGrow}
+            .value=${live(flexGrow)}
             @change=${this.handleFlexGrowChanged}
             hide-stepper
             autocomplete="off"
@@ -1017,7 +1079,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id="flex-shrink"
             size="s"
-            .value=${flexShrink}
+            .value=${live(flexShrink)}
             @change=${this.handleFlexShrinkChanged}
             hide-stepper
             autocomplete="off"
@@ -1033,7 +1095,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id="flex-basis"
             size="s"
-            .value=${flexBasisStr === '' ? undefined : flexBasisStr}
+            .value=${live(flexBasisStr === '' ? undefined : flexBasisStr)}
             placeholder=${msg(str`Auto`)}
             @change=${this.handleFlexBasisChanged}
             hide-stepper
@@ -1098,7 +1160,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="pad-t"
                     size="s"
-                    value=${paddingSides[0]}
+                    .value=${live(paddingSides[0])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handlePaddingSideChanged(0, e)}
                     hide-stepper
@@ -1115,7 +1177,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="pad-r"
                     size="s"
-                    value=${paddingSides[1]}
+                    .value=${live(paddingSides[1])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handlePaddingSideChanged(1, e)}
                     hide-stepper
@@ -1132,7 +1194,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="pad-b"
                     size="s"
-                    value=${paddingSides[2]}
+                    .value=${live(paddingSides[2])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handlePaddingSideChanged(2, e)}
                     hide-stepper
@@ -1149,7 +1211,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="pad-l"
                     size="s"
-                    value=${paddingSides[3]}
+                    .value=${live(paddingSides[3])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handlePaddingSideChanged(3, e)}
                     hide-stepper
@@ -1163,7 +1225,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="flex-pad"
               size="s"
-              value=${paddingUniform ? paddingSides[0] : ''}
+              .value=${live(paddingUniform ? paddingSides[0] : '')}
               placeholder=${paddingUniform ? '' : '—'}
               ?readonly=${!paddingUniform}
               @change=${this.handleLayoutPaddingChanged}
@@ -1204,7 +1266,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="mar-t"
                     size="s"
-                    value=${marginSides[0]}
+                    .value=${live(marginSides[0])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handleMarginSideChanged(0, e)}
                     hide-stepper
@@ -1221,7 +1283,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="mar-r"
                     size="s"
-                    value=${marginSides[1]}
+                    .value=${live(marginSides[1])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handleMarginSideChanged(1, e)}
                     hide-stepper
@@ -1238,7 +1300,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="mar-b"
                     size="s"
-                    value=${marginSides[2]}
+                    .value=${live(marginSides[2])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handleMarginSideChanged(2, e)}
                     hide-stepper
@@ -1255,7 +1317,7 @@ export class PropertiesPanelContent extends LitElement {
                   <sp-number-field
                     id="mar-l"
                     size="s"
-                    value=${marginSides[3]}
+                    .value=${live(marginSides[3])}
                     @change=${(e: Event & { target: HTMLInputElement }) =>
         this.handleMarginSideChanged(3, e)}
                     hide-stepper
@@ -1269,7 +1331,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="flex-margin"
               size="s"
-              value=${marginUniform ? marginSides[0] : ''}
+              .value=${live(marginUniform ? marginSides[0] : '')}
               placeholder=${marginUniform ? '' : '—'}
               ?readonly=${!marginUniform}
               @change=${this.handleLayoutMarginChanged}
@@ -1287,7 +1349,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id="flex-gap"
             size="s"
-            value=${gap}
+            .value=${live(gap)}
             @change=${this.handleLayoutGapChanged}
             hide-stepper
             autocomplete="off"
@@ -1302,7 +1364,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id="flex-rowgap"
             size="s"
-            value=${rowGap}
+            .value=${live(rowGap)}
             @change=${this.handleLayoutRowGapChanged}
             hide-stepper
             autocomplete="off"
@@ -1317,7 +1379,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-number-field
             id="flex-colgap"
             size="s"
-            value=${columnGap}
+            .value=${live(columnGap)}
             @change=${this.handleLayoutColumnGapChanged}
             hide-stepper
             autocomplete="off"
@@ -1331,7 +1393,7 @@ export class PropertiesPanelContent extends LitElement {
           >
           <sp-picker
             size="s"
-            .value=${flexDirection}
+            .value=${live(flexDirection)}
             @change=${this.handleFlexDirectionChanged}
           >
             <sp-menu-item value="row">${msg(str`Row`)}</sp-menu-item>
@@ -1350,7 +1412,7 @@ export class PropertiesPanelContent extends LitElement {
           >
           <sp-picker
             size="s"
-            .value=${alignItems}
+            .value=${live(alignItems)}
             @change=${this.handleAlignItemsChanged}
           >
             <sp-menu-item value="flex-start"
@@ -1368,7 +1430,7 @@ export class PropertiesPanelContent extends LitElement {
           >
           <sp-picker
             size="s"
-            .value=${justifyContent}
+            .value=${live(justifyContent)}
             @change=${this.handleJustifyContentChanged}
           >
             <sp-menu-item value="flex-start"
@@ -1391,7 +1453,7 @@ export class PropertiesPanelContent extends LitElement {
           <sp-field-label side-aligned="start"
             >${msg(str`Wrap`)}</sp-field-label
           >
-          <sp-picker size="s" .value=${flexWrap} @change=${this.handleFlexWrapChanged}>
+          <sp-picker size="s" .value=${live(flexWrap)} @change=${this.handleFlexWrapChanged}>
             <sp-menu-item value="nowrap">${msg(str`No wrap`)}</sp-menu-item>
             <sp-menu-item value="wrap">${msg(str`Wrap`)}</sp-menu-item>
             <sp-menu-item value="wrap-reverse"
@@ -1692,7 +1754,7 @@ export class PropertiesPanelContent extends LitElement {
                       <sp-number-field
                         id="corner-radius"
                         size="s"
-                        value=${cornerRadiusShow}
+                        .value=${live(cornerRadiusShow)}
                         min="0"
                         step="1"
                         hide-stepper
