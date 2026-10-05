@@ -234,7 +234,7 @@ export class TopNavbar extends LitElement {
   }
 
   private handleCut() {
-    executeCut(this.api, this.appState);
+    void executeCut(this.api, this.api.getAppState());
   }
 
   private handleCopy() {

@@ -16,8 +16,6 @@ import {
   Task,
   AppState,
   sortByFractionalIndex,
-  SIBLINGS_MAX_Z_INDEX,
-  SIBLINGS_MIN_Z_INDEX,
   UI,
   ZIndex,
   Mesh3DLayer,
@@ -26,6 +24,7 @@ import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
 import { editLayer } from './layer-command';
+import { deleteLayers, moveLayer } from './layer-structure-command';
 import { localized, msg, str } from '@lit/localize';
 
 const LAYERS_PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-layers-panel-body-height';
@@ -492,91 +491,11 @@ export class LayersPanel extends LitElement {
         group: {
           name: 'layers',
           pull: true,
-          put: true,
+          put: (to, from) => to.el.getRootNode() === from.el.getRootNode(),
         },
         onEnd: (evt) => this.handleSortableEnd(evt),
       });
       this.sortableInstances.push(sortable);
-    });
-  }
-
-  /**
-   * Translation-only world position of a node's local origin (consistent with group / ungroup).
-   */
-  private layerNodeWorldTranslation(node: SerializedNode): {
-    x: number;
-    y: number;
-  } {
-    let x = node.x ?? 0;
-    let y = node.y ?? 0;
-    let id = node.parentId;
-    while (id) {
-      const p = this.api.getNodeById(id);
-      if (!p) {
-        break;
-      }
-      x += p.x ?? 0;
-      y += p.y ?? 0;
-      id = p.parentId;
-    }
-    return { x, y };
-  }
-
-  /**
-   * World position of parent node's local origin (0,0).
-   */
-  private layerParentOriginWorld(parent: SerializedNode): {
-    x: number;
-    y: number;
-  } {
-    let x = parent.x ?? 0;
-    let y = parent.y ?? 0;
-    let id = parent.parentId;
-    while (id) {
-      const p = this.api.getNodeById(id);
-      if (!p) {
-        break;
-      }
-      x += p.x ?? 0;
-      y += p.y ?? 0;
-      id = p.parentId;
-    }
-    return { x, y };
-  }
-
-  private isUnderAncestor(ancestorId: string, node: SerializedNode): boolean {
-    let id: string | undefined = node.parentId;
-    while (id) {
-      if (id === ancestorId) {
-        return true;
-      }
-      const p = this.api.getNodeById(id);
-      id = p?.parentId;
-    }
-    return false;
-  }
-
-  /**
-   * Reparent for layers panel: keep visual placement (translation stack only).
-   */
-  private reparentLayerNodeMaintainingWorldPosition(
-    node: SerializedNode,
-    newParent: SerializedNode | undefined,
-  ) {
-    const world = this.layerNodeWorldTranslation(node);
-    if (newParent === undefined) {
-      this.api.updateNode(node, {
-        parentId: undefined,
-        x: world.x,
-        y: world.y,
-      });
-      return;
-    }
-    const origin = this.layerParentOriginWorld(newParent);
-    this.api.updateNode(node, {
-      parentId: newParent.id,
-      x: world.x - origin.x,
-      y: world.y - origin.y,
     });
   }
 
@@ -587,83 +506,28 @@ export class LayersPanel extends LitElement {
       .filter((id): id is string => !!id);
   }
 
-  private handleSortableEnd(evt: Sortable.SortableEvent) {
-    const from = evt.from as HTMLElement;
-    const to = evt.to as HTMLElement;
-    const toPid = to.dataset.layerParentId ?? '';
-
-    const item = evt.item as HTMLElement;
-    const movedId = item.dataset.nodeId;
-    if (!movedId) {
-      return;
-    }
-
-    const movedNode = this.api.getNodeById(movedId);
-    if (!movedNode) {
-      this.requestUpdate();
-      return;
-    }
-
+  private async handleSortableEnd(evt: Sortable.SortableEvent) {
+    const api = this.api;
+    const { from, to, item, oldIndex } = evt;
+    const id = item.dataset.nodeId;
+    const fromParentId = from.dataset.layerParentId || undefined;
+    const toParentId = to.dataset.layerParentId || undefined;
     const orderedIds = this.collectBranchIds(to);
-
-    if (from !== to) {
-      const newParent = toPid === '' ? undefined : this.api.getNodeById(toPid);
-      if (toPid !== '' && !newParent) {
-        this.requestUpdate();
-        return;
-      }
-      if (
-        newParent &&
-        (newParent.id === movedNode.id ||
-          this.isUnderAncestor(movedNode.id, newParent))
-      ) {
-        this.requestUpdate();
-        return;
-      }
-      this.reparentLayerNodeMaintainingWorldPosition(movedNode, newParent);
-    } else if (evt.oldIndex === evt.newIndex) {
+    // Sortable moves DOM owned by Lit. Restore it before queuing document edits,
+    // including rejected drops, so the next render starts from a consistent tree.
+    if (oldIndex !== undefined) {
+      item.remove();
+      from.insertBefore(item, from.children[oldIndex] ?? null);
+    }
+    if (
+      !id ||
+      from.getRootNode() !== this.shadowRoot ||
+      to.getRootNode() !== this.shadowRoot
+    )
       return;
-    }
-
-    this.applyLayerSiblingOrder(toPid, orderedIds);
-  }
-
-  /**
-   * Reassign sibling z-index order to match the layers panel (expects all ids to share parent toPid).
-   */
-  private applyLayerSiblingOrder(parentIdAttr: string, orderedIds: string[]) {
-    if (orderedIds.length === 0) {
-      return;
-    }
-
-    const parentId = parentIdAttr === '' ? undefined : parentIdAttr;
-
-    const nodes = orderedIds
-      .map((id) => this.api.getNodeById(id))
-      .filter((n): n is SerializedNode => !!n);
-
-    if (nodes.length !== orderedIds.length) {
-      this.requestUpdate();
-      return;
-    }
-
-    for (const node of nodes) {
-      const pid = node.parentId ?? undefined;
-      if (pid !== parentId) {
-        this.requestUpdate();
-        return;
-      }
-    }
-
-    const n = nodes.length;
-    if (n >= 2) {
-      const span = SIBLINGS_MAX_Z_INDEX - SIBLINGS_MIN_Z_INDEX;
-      nodes.forEach((node, i) => {
-        const z = SIBLINGS_MIN_Z_INDEX + ((i + 1) / (n + 1)) * span;
-        this.api.updateNode(node, { zIndex: z });
-      });
-    }
-    this.api.record();
+    if (from === to && evt.oldIndex === evt.newIndex) return;
+    await moveLayer(api, id, fromParentId, toParentId, orderedIds);
+    if (this.isConnected && this.api === api) this.requestUpdate();
   }
 
   private generateLayersPanelItemId(node: SerializedNode | string) {
@@ -679,17 +543,7 @@ export class LayersPanel extends LitElement {
   }
 
   private handleDelete() {
-    const { layersSelected } = this.api.getAppState();
-    this.api.deleteNodesById(layersSelected);
-
-    // Try to select the next layer
-    const nextLayer = this.nodes.find(
-      (node) => !layersSelected.includes(node.id),
-    );
-    if (nextLayer) {
-      this.api.selectNodes([nextLayer]);
-    }
-    this.api.record();
+    return deleteLayers(this.api, this.api.getAppState().layersSelected, true);
   }
 
   private handleAdd() {
