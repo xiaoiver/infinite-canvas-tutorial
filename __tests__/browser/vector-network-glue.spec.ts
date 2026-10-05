@@ -246,6 +246,11 @@ test('reopens within a narrow viewport after changing the desktop placement', as
   await open(page);
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator('[data-vector-topology-preview]')).toHaveCount(0);
+  // The preview is removed before Spectrum finishes closing its overlay.
+  // Reopening during that transition races the previous sp-closed event.
+  await expect(
+    controls(page).locator('sp-overlay[trigger="topology@click"]'),
+  ).toHaveJSProperty('state', 'closed');
   await open(page);
   await expect
     .poll(async () => {
