@@ -19,6 +19,7 @@ import {
   Pen,
   RectSerializedNode,
   GSerializedNode,
+  type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, render } from '@spectrum-web-components/base';
 import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
@@ -799,63 +800,67 @@ export class ContextMenu extends LitElement {
     }
   }
 
-  private executeCrop() {
-    const { layersSelected } = this.api.getAppState();
+  private editSelectedNodes(
+    update: (api: ExtendedAPI, nodes: SerializedNode[]) => void,
+  ) {
+    // Keep the command bound to its original canvas and targets, while resolving
+    // live nodes at the write boundary (a queued edit may have deleted them).
+    const api = this.api;
+    const ids = [...api.getAppState().layersSelected];
+    if (ids.length === 0) return;
 
-    if (layersSelected.length === 1) {
-      const node = this.api.getNodeById(layersSelected[0]);
-      if (node.clipMode) {
-        this.api.setAppState({
-          layersCropping: layersSelected,
+    void api.edit((editor) => {
+      const nodes = ids
+        .map((id) => editor.getNodeById(id))
+        .filter(
+          (node): node is SerializedNode =>
+            !!node && !node.isDeleted && !!editor.getEntity(node),
+        );
+      if (nodes.length > 0) update(editor, nodes);
+    }).catch((error: unknown) => console.error(error));
+  }
+
+  private executeCrop() {
+    this.editSelectedNodes((api, children) => {
+      if (children.length === 1 && children[0].clipMode) {
+        api.setAppState({
+          layersCropping: [children[0].id],
           penbarSelected: Pen.SELECT,
         });
-        // already is a clipping node, do nothing
         return;
       }
-    }
 
-    const children = layersSelected.map((id) => this.api.getNodeById(id));
-    const bounds = this.api.getBounds(children);
-    const { minX, minY, maxX, maxY } = bounds;
-    // create a clip parent for all the selected nodes
-    const clipParent: RectSerializedNode = {
-      id: uuidv4(),
-      type: 'rect',
-      clipMode: 'clip',
-      x: minX,
-      y: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      zIndex: 0,
-    };
+      const { minX, minY, maxX, maxY } = api.getBounds(children);
+      if (![minX, minY, maxX, maxY].every(Number.isFinite)) return;
 
-    this.api.runAtNextTick(() => {
-      this.api.updateNodes([clipParent]);
-
-      children.forEach((child) => {
-        this.api.reparentNode(child, clipParent);
-      });
-
-      this.api.setAppState({
+      const clipParent: RectSerializedNode = {
+        id: uuidv4(),
+        type: 'rect',
+        clipMode: 'clip',
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        zIndex: 0,
+      };
+      api.updateNodes([clipParent]);
+      children.forEach((child) => api.reparentNode(child, clipParent));
+      api.setAppState({
         layersCropping: [clipParent.id],
         penbarSelected: Pen.SELECT,
       });
-
-      this.api.record();
     });
   }
 
   private executeGroup() {
-    this.api.runAtNextTick(() => {
-      this.api.group(this.appState.layersSelected.map((id) => this.api.getNodeById(id)));
-      this.api.record();
+    this.editSelectedNodes((api, nodes) => {
+      if (nodes.length >= 2) api.group(nodes);
     });
   }
 
   private executeUngroup() {
-    this.api.runAtNextTick(() => {
-      this.api.ungroup(this.api.getNodeById(this.appState.layersSelected[0]));
-      this.api.record();
+    this.editSelectedNodes((api, nodes) => {
+      if (nodes.length === 1 && nodes[0].type === 'g') api.ungroup(nodes[0]);
     });
   }
 
