@@ -100,7 +100,7 @@ function createSVG(
     node.locked = true;
   });
 
-  updateAndSelectNodes(api, appState, [root, ...nodes]);
+  return updateAndSelectNodes(api, appState, [root, ...nodes]);
 }
 
 function createText(
@@ -109,7 +109,7 @@ function createText(
   text: string,
   position?: { x: number; y: number },
 ) {
-  updateAndSelectNodes(api, appState, [
+  return updateAndSelectNodes(api, appState, [
     {
       id: uuidv4(),
       type: 'text',
@@ -132,7 +132,7 @@ function createHTML(
 ) {
   const { width, height } = measureHTML(html);
 
-  updateAndSelectNodes(api, appState, [
+  return updateAndSelectNodes(api, appState, [
     {
       id: uuidv4(),
       type: 'html',
@@ -178,7 +178,7 @@ export async function executePaste(
 
   if (!file) {
     if (data.html) {
-      createHTML(api, appState, data.html, canvasPosition);
+      await createHTML(api, appState, data.html, canvasPosition);
       // return this.addElementsFromMixedContentPaste(data.mixedContent, {
       //   isPlainPaste,
       //   sceneX,
@@ -195,7 +195,7 @@ export async function executePaste(
 
         // TODO: create bookmark asset
       } else if (string.startsWith('<svg') && string.endsWith('</svg>')) {
-        createSVG(api, appState, string, canvasPosition);
+        await createSVG(api, appState, string, canvasPosition);
       } else if (isLikelyMermaidSyntax(string)) {
         const pasted = await tryPasteMermaid(
           api,
@@ -204,7 +204,7 @@ export async function executePaste(
           canvasPosition,
         );
         if (!pasted) {
-          createText(api, appState, data.text, canvasPosition);
+          await createText(api, appState, data.text, canvasPosition);
         }
       } else {
         // const nonEmptyLines = data.text
@@ -212,7 +212,7 @@ export async function executePaste(
         // .split(/\n+/)
         // .map((s) => s.trim())
         // .filter(Boolean);
-        createText(api, appState, data.text, canvasPosition);
+        await createText(api, appState, data.text, canvasPosition);
       }
     } else if (data.elements) {
       const nodes = api.cloneNodes(data.elements);
@@ -234,7 +234,7 @@ export async function executePaste(
         }
       }
 
-      updateAndSelectNodes(api, appState, nodes);
+      await updateAndSelectNodes(api, appState, nodes);
     }
   } else if (isSupportedImageFileType(file?.type)) {
     await api.createImageFromFile(file, { position: canvasPosition });
@@ -288,12 +288,12 @@ export class ContextMenu extends LitElement {
     if (value === 'copy') {
       executeCopy(this.api, this.appState);
     } else if (value === 'paste') {
-      executePaste(
+      void executePaste(
         this.api,
         this.appState,
         undefined,
         this.lastContextMenuPosition,
-      );
+      ).catch((error: unknown) => console.error(error));
     } else if (value === 'cut') {
       executeCut(this.api, this.appState);
     } else if (value === 'bring-to-front') {
@@ -575,7 +575,12 @@ export class ContextMenu extends LitElement {
       return;
     }
 
-    executePaste(this.api, this.appState, event, this.lastPointerMovePosition);
+    void executePaste(
+      this.api,
+      this.appState,
+      event,
+      this.lastPointerMovePosition,
+    ).catch((error: unknown) => console.error(error));
 
     event.preventDefault();
     event.stopPropagation();
@@ -683,54 +688,63 @@ export class ContextMenu extends LitElement {
   /**
    * @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10242
    */
-  private handleDrop = async (event: DragEvent) => {
+  private handleDrop = (event: DragEvent) => {
     event.preventDefault();
+    void this.drop(event).catch((error: unknown) => console.error(error));
+  };
 
-    const canvasPosition = this.api.viewport2Canvas(
-      this.api.client2Viewport({
+  private async drop(event: DragEvent) {
+    // Keep async preparation bound to the canvas that received this drop.
+    const api = this.api;
+    const appState = api.getAppState();
+
+    const canvasPosition = api.viewport2Canvas(
+      api.client2Viewport({
         x: event.clientX,
         y: event.clientY,
       }),
     );
 
+    // Capture protected drag data before image/SVG/Mermaid preparation awaits.
     const url = event.dataTransfer.getData('text/uri-list');
+    const text = event.dataTransfer.getData('text/plain');
+    const files = Array.from(event.dataTransfer.files);
     if (url) {
       try {
-        await this.api.createImageFromFile(url, { position: canvasPosition });
+        await api.createImageFromFile(url, { position: canvasPosition });
         return;
       } catch (error) {
         console.error(error);
       }
     }
-    const text = event.dataTransfer.getData('text/plain');
     if (text) {
       const trimmed = text.trim();
       if (
         isLikelyMermaidSyntax(trimmed) &&
         (await tryPasteMermaid(
-          this.api,
-          this.appState,
+          api,
+          appState,
           trimmed,
           canvasPosition,
         ))
       ) {
         return;
       }
-      createText(this.api, this.appState, text, canvasPosition);
+      await createText(api, appState, text, canvasPosition);
       return;
     }
 
-    for (const file of Array.from(event.dataTransfer.files)) {
+    for (const file of files) {
       if (isSupportedImageFileType(file.type)) {
         if (file.type === MIME_TYPES.svg) {
           const svg = await file.text();
-          createSVG(this.api, this.appState, svg, canvasPosition);
+          await createSVG(api, appState, svg, canvasPosition);
         } else {
-          await this.api.createImageFromFile(file, { position: canvasPosition });
+          await api.createImageFromFile(file, { position: canvasPosition });
         }
       }
     }
-  };
+  }
 
   private executeBringToFront() {
     const node = this.api.getNodeById(this.appState.layersSelected[0]);

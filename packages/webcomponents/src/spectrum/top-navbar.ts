@@ -242,7 +242,9 @@ export class TopNavbar extends LitElement {
   }
 
   private handlePaste() {
-    executePaste(this.api, this.appState);
+    void executePaste(this.api, this.appState).catch((error: unknown) =>
+      console.error(error),
+    );
   }
 
   private handleOpen() {

@@ -326,7 +326,7 @@ export class ExtendedAPI extends API {
       lockAspectRatio: true,
       zIndex: maxZIndex + 1,
     };
-    updateAndSelectNodes(this, this.getAppState(), [node]);
+    await updateAndSelectNodes(this, this.getAppState(), [node]);
     return node;
   }
 

@@ -524,10 +524,13 @@ test('document actions update property hooks and replace the scene with one undo
   await expect(page.getByTestId('left-count')).toHaveText('1', {
     timeout: 45000,
   });
-  await page.evaluate(
-    async () =>
-      await window.actions.left.selectNodes(['left'], { capture: 'NEVER' }),
-  );
+  await page.evaluate(() => {
+    // Observe selection through the UI below. Chromium can collect a transient
+    // async evaluate Promise while its queued edit completes (CDP -32000).
+    void window.actions.left
+      .selectNodes(['left'], { capture: 'NEVER' })
+      .catch((error: Error) => window.canvasErrors.push(error.message));
+  });
   await expect(page.getByTestId('left-node-width')).toHaveText('100');
   await page.evaluate(() =>
     window.actions.left.edit((api) => {
