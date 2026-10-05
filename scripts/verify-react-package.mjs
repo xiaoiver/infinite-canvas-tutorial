@@ -127,10 +127,13 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent } = require(entry);
+  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent, useCanvasShortcuts } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
+    const shortcuts = useCanvasShortcuts();
+    assert.equal(shortcuts.tabIndex, 0);
+    assert.equal(typeof shortcuts.onKeyDownCapture, 'function');
     assert.equal(actions.undo(), false);
     assert.deepEqual(useCanvasStatus(), { status: 'idle', error: null });
     assert.deepEqual(useCanvasCamera(), { x: 0, y: 0, zoom: 1, rotation: 0 });
@@ -143,7 +146,7 @@ for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutori
     assert.equal(typeof actions.deleteNodes, 'function');
     assert.equal(typeof actions.replaceDocument, 'function');
     const zoom = useCanvasSelector(state => state.appState?.cameraZoom ?? 1);
-    return React.createElement('output', null, String(api === null) + ':' + zoom);
+    return React.createElement('output', shortcuts, String(api === null) + ':' + zoom);
   }
   const html = renderToString(React.createElement(CanvasProvider, null,
     React.createElement(InfiniteCanvas, { fallback: 'Loading' }), React.createElement(Toolbar)));
@@ -157,10 +160,12 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasEvent, useCanvasShortcuts, type CanvasShortcutOptions, type CanvasShortcutProps, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InfiniteCanvas as SpectrumCanvas, useCanvasEvent as useSpectrumCanvasEvent } from '@infinite-canvas-tutorial/react/spectrum';
 function Toolbar() {
+  const shortcutOptions: CanvasShortcutOptions = { enabled: true, onError: (error: Error) => {} };
+  const shortcuts: CanvasShortcutProps = useCanvasShortcuts(shortcutOptions);
   const api = useCanvasAPI();
   const actions: CanvasActions = useCanvasActions();
   const options: CanvasEditOptions = { capture: 'NEVER', signal: new AbortController().signal };
@@ -199,7 +204,7 @@ function Toolbar() {
   }, options);
   const imported: Promise<boolean> | undefined = api?.importIcDocument('{}', { recordHistory: false, signal: options.signal });
   const canUndo: boolean = useCanvasSelector((state: CanvasState) => state.canUndo);
-  return <button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button>;
+  return <section {...shortcuts}><button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button></section>;
 }
 export const editor = <><CanvasProvider><InfiniteCanvas style={{ height: 400 }} /><Toolbar /></CanvasProvider><SpectrumCanvas /></>;
 `;

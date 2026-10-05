@@ -17,6 +17,11 @@ export {
 export type { CanvasHistoryState, CanvasCameraState } from './hooks';
 export { useCanvasEvent } from './useCanvasEvent';
 export type { CanvasEventOptions } from './useCanvasEvent';
+export { useCanvasShortcuts } from './useCanvasShortcuts';
+export type {
+  CanvasShortcutOptions,
+  CanvasShortcutProps,
+} from './useCanvasShortcuts';
 export type { CanvasState, CanvasStatus } from './store';
 export type {
   CanvasActions,
