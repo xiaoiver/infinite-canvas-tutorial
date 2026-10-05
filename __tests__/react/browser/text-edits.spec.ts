@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { test } from './isolated-webkit-test';
+import { expect, type Page } from '@playwright/test';
 import type { TextEditor } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 
 async function ready(page: Page) {

@@ -36,12 +36,6 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm test:react:browser
       - run: pnpm test:react:browser:webkit
-        # Headless Linux runners have no GPU. Avoid probing unavailable Vulkan
-        # drivers and bound Mesa's software-rendering threads to the runner CPUs.
-        env:
-          LIBGL_ALWAYS_SOFTWARE: '1'
-          GALLIUM_DRIVER: llvmpipe
-          LP_NUM_THREADS: '2'
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
