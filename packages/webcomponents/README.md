@@ -300,3 +300,24 @@ and theme at commit time, preserving a valid literal radius. Missing or
 unresolvable references remain bound. Deleted and type-replaced nodes are skipped,
 and canvas destruction cancels pending edits. Every effective command commits
 once; the core API's no-rollback behavior remains unchanged.
+
+### Queued typography properties
+
+Font family, size, letter spacing, line height, bold/italic, alignment, and baseline
+controls submit through `api.edit()`. Events capture their source canvas, text
+node, and values, including selection arrays and variable keys. Reusing a control
+or switching selection cannot redirect an already queued command.
+
+Alignment and baseline changes measure the latest text and position in the write
+phase, resolve current numeric typography variables and theme for measurement,
+and preserve the text anchor and document variable references. Each effective
+command forms one undo entry. Removed or type-replaced targets are skipped;
+canvas destruction cancels pending edits.
+
+Font size and line height accept finite nonnegative numbers; letter spacing also
+accepts negative values. Zero line height retains automatic spacing. Clearing an
+input preserves its value. Invalid or unchanged commands do not capture unrelated
+pending changes, and controls resynchronize after failures. Binding requires a
+current numeric variable; detaching uses the current binding and theme. Missing
+or invalid resolutions remain bound. Errors are observed at the event entry
+point; the core API still does not roll back partial mutations.
