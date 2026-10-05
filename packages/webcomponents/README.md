@@ -384,3 +384,22 @@ copy success. Before deleting, it checks that the copied subtree is unchanged.
 Failed copy, destruction, or newer subtree edits leave the document intact and do
 not record unrelated changes. Errors are observed. The core edit API's existing
 no-rollback contract remains unchanged.
+
+### Paint shortcut edits
+
+The context toolbar's fill and stroke color pickers submit color, opacity and
+variable binding changes through `api.edit()`. Each event owns its source canvas,
+node and input. At execution, it edits the first paint layer using current data
+and retains the other layers. Stroke shortcuts read and write canonical `strokes`
+instead of the deprecated `stroke` / `strokeOpacity` fields. Reading legacy paint
+for display does not mutate the document.
+
+Opacity retains zero and variable references. Image changes preserve omitted fit
+and position settings and allow an explicit empty position to reset it. Detaching
+variables resolves the current binding and theme. Invalid, unchanged, locked,
+deleted or replaced targets cancel before writing; destroying the canvas cancels
+queued work. Rejected edits are observed and can be retried.
+
+Each effective picker event remains a separate undo entry, including continuous
+color input. Gesture-level history coalescing, paint stack controls in the
+properties panel, stroke geometry and effects are separate follow-up work.

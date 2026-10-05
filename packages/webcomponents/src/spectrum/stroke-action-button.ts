@@ -7,14 +7,15 @@ import {
   isDesignVariableReference,
   resolveDesignVariableValue,
   SerializedNode,
-  TextSerializedNode,
+  SerializedFillLayerItem,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { normalizeSolidCssValue } from './normalize-solid-css';
+import type { ColorPickerChangeDetail } from './color-picker.js';
 import { localized, msg, str } from '@lit/localize';
 import { when } from 'lit/directives/when.js';
 import { choose } from 'lit/directives/choose.js';
+import { editPaint, primaryPaint } from './paint-command';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-unlink.js';
@@ -119,11 +120,19 @@ export class StrokeActionButton extends LitElement {
 
   private prevStrokeWireBound: boolean | undefined;
 
+  private strokeLayer(): SerializedFillLayerItem {
+    return primaryPaint(this.node, 'strokes', {
+      type: 'solid',
+      value: 'none',
+      opacity: 1,
+    });
+  }
+
   private strokeWireBound(): boolean {
     if (!this.node) {
       return false;
     }
-    return isDesignVariableReference((this.node as TextSerializedNode).stroke);
+    return isDesignVariableReference(this.strokeLayer().value);
   }
 
   willUpdate(changed: PropertyValues) {
@@ -167,85 +176,52 @@ export class StrokeActionButton extends LitElement {
     this.prevStrokeWireBound = bound;
   }
 
-  private handleStrokeChanged(e: CustomEvent) {
-    const { type, value, strokeOpacity } = e.detail;
-    this.api.updateNode(this.node, {
-      stroke: type === 'solid' ? normalizeSolidCssValue(value) : value,
-      ...(strokeOpacity !== undefined && { strokeOpacity }),
+  private submitPaint(command: Parameters<typeof editPaint>[3]) {
+    const api = this.api;
+    const id = this.node?.id;
+    void editPaint(api, id, 'strokes', command, {
+      type: 'solid',
+      value: 'none',
+      opacity: 1,
+    }).then(() => {
+      if (this.isConnected && this.api === api && this.node?.id === id)
+        this.requestUpdate();
     });
-    this.api.record();
+  }
+
+  private handleStrokeChanged(e: CustomEvent<ColorPickerChangeDetail>) {
+    this.submitPaint({ ...e.detail, kind: 'color' });
   }
 
   private handleStrokeOpacityChanged(
     e: CustomEvent<{ strokeOpacity?: number }>,
   ) {
-    const { strokeOpacity } = e.detail;
-    if (strokeOpacity === undefined) return;
-    this.api.updateNode(this.node, { strokeOpacity });
-    this.api.record();
+    const value = e.detail.strokeOpacity;
+    if (value !== undefined) this.submitPaint({ kind: 'opacity', value });
   }
 
   private handleVariablePick(e: CustomEvent<DesignVariablePickDetail>) {
-    const { key } = e.detail;
     this.strokePanelTab = 'variable';
-    this.api.updateNode(this.node, { stroke: `$${key}` });
-    this.api.record();
+    this.submitPaint({ kind: 'bind', field: 'value', key: e.detail.key });
   }
 
   private handleUnbind() {
     this.strokePanelTab = 'color';
-    const stroke = (this.node as TextSerializedNode).stroke;
-    const resolved = resolveDesignVariableValue(
-      stroke,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const next =
-      typeof resolved === 'string'
-        ? resolved
-        : String(resolved ?? stroke ?? 'none');
-    this.api.updateNode(this.node, {
-      stroke: isDesignVariableReference(next)
-        ? next
-        : normalizeSolidCssValue(next),
-    });
-    this.api.record();
+    this.submitPaint({ kind: 'unbind', field: 'value' });
   }
 
   private handleStrokeOpacityVariablePick(
     e: CustomEvent<{ mode: 'fill' | 'stroke'; key: string }>,
   ) {
-    if (e.detail.mode !== 'stroke') {
-      return;
-    }
-    this.api.updateNode(this.node, {
-      strokeOpacity: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
+    if (e.detail.mode === 'stroke')
+      this.submitPaint({ kind: 'bind', field: 'opacity', key: e.detail.key });
   }
 
   private handleStrokeOpacityVariableUnbind(
     e: CustomEvent<{ mode: 'fill' | 'stroke' }>,
   ) {
-    if (e.detail.mode !== 'stroke') {
-      return;
-    }
-    const raw = (this.node as TextSerializedNode).strokeOpacity;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, {
-        strokeOpacity: Math.max(0, Math.min(1, n)),
-      });
-      this.api.record();
-    }
+    if (e.detail.mode === 'stroke')
+      this.submitPaint({ kind: 'unbind', field: 'opacity' });
   }
 
   render() {
@@ -253,7 +229,8 @@ export class StrokeActionButton extends LitElement {
       return html``;
     }
 
-    const { stroke, strokeOpacity = 1 } = this.node as TextSerializedNode;
+    const layer = this.strokeLayer();
+    const { value: stroke, opacity: strokeOpacity = 1 } = layer;
     const strokeResolved = String(
       resolveDesignVariableValue(
         stroke,
@@ -312,6 +289,8 @@ export class StrokeActionButton extends LitElement {
               html`<ic-spectrum-color-picker
                         value=${strokeResolved}
                         .strokeOpacity=${strokeOpacity}
+                        .objectFit=${layer.type === 'image' ? (layer.objectFit ?? 'fill') : 'fill'}
+                        .objectPosition=${layer.type === 'image' ? (layer.objectPosition ?? '') : ''}
                         enable-opacity-variable-binding
                         @color-change=${this.handleStrokeChanged}
                         @opacity-change=${this.handleStrokeOpacityChanged}

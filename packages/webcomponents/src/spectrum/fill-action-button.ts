@@ -4,38 +4,24 @@ import { consume } from '@lit/context';
 import {
   AppState,
   designVariableRefKeyFromWire,
-  FillAttributes,
-  getPrimaryFillValue,
   isDesignVariableReference,
-  migrateLegacyFillWireInPlace,
   resolveDesignVariableValue,
   SerializedFillLayerItem,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { normalizeSolidCssValue } from './normalize-solid-css';
-import { ColorType, type ColorPickerChangeDetail } from './color-picker.js';
-import {
-  applyImageFillChangeFields,
-  imageFillFieldsFromDetail,
-} from './image-fill-fields.js';
+import type { ColorPickerChangeDetail } from './color-picker.js';
 import { localized, msg, str } from '@lit/localize';
 import { when } from 'lit/directives/when.js';
 import { choose } from 'lit/directives/choose.js';
+import { editPaint, primaryPaint } from './paint-command';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import '@spectrum-web-components/action-button/sp-action-button.js';
 import './design-variable-picker.js';
 
 function serializedFillPrimaryWire(L: SerializedFillLayerItem): string {
   return L.value;
-}
-
-function serializedFillSetPrimaryWire(
-  L: SerializedFillLayerItem,
-  wire: string,
-): SerializedFillLayerItem {
-  return { ...L, value: wire };
 }
 
 @customElement('ic-spectrum-fill-action-button')
@@ -144,22 +130,14 @@ export class FillActionButton extends LitElement {
   private prevFillWireBound: boolean | undefined;
 
   private textFillLayer(): SerializedFillLayerItem {
-    if (!this.node) {
-      return { ...this.defaultFill };
-    }
-    migrateLegacyFillWireInPlace(this.node as unknown as Record<string, unknown>);
-    const fl = (this.node as FillAttributes).fills;
-    if (Array.isArray(fl) && fl[0]) {
-      return { ...fl[0] };
-    }
-    return { ...this.defaultFill };
+    return primaryPaint(this.node, 'fills', this.defaultFill);
   }
 
   private fillWireBound(): boolean {
     if (!this.node) {
       return false;
     }
-    const v = getPrimaryFillValue(this.node as FillAttributes);
+    const v = this.textFillLayer().value;
     return v != null && isDesignVariableReference(v);
   }
 
@@ -204,115 +182,46 @@ export class FillActionButton extends LitElement {
     this.prevFillWireBound = bound;
   }
 
-  private handleFillChanged(e: CustomEvent<ColorPickerChangeDetail>) {
-    const { type, value, fillOpacity, objectFit, objectPosition } = e.detail;
-    const L = this.textFillLayer();
-    const wire =
-      type === ColorType.Solid ? normalizeSolidCssValue(value) : value;
-    const imageFields = imageFillFieldsFromDetail({
-      objectFit,
-      objectPosition,
+  private submitPaint(command: Parameters<typeof editPaint>[3]) {
+    const api = this.api;
+    const id = this.node?.id;
+    void editPaint(api, id, 'fills', command, this.defaultFill).then(() => {
+      if (this.isConnected && this.api === api && this.node?.id === id)
+        this.requestUpdate();
     });
-    let next: SerializedFillLayerItem;
-    if (type === ColorType.Gradient) {
-      next = { ...L, type: 'gradient', value: wire };
-    } else if (type === ColorType.Image) {
-      next = applyImageFillChangeFields(
-        { ...L, type: 'image', value: wire },
-        imageFields,
-      );
-    } else {
-      next = { ...L, type: 'solid', value: wire };
-    }
-    if (fillOpacity !== undefined) {
-      next.opacity = fillOpacity;
-    }
-    this.api.updateNode(this.node, { fills: [next] });
-    this.api.record();
   }
 
-  /** 外部 `fillOpacity` 模式下仅透明度由 `opacity-change` 更新（不冒泡 `color-change`）。 */
+  private handleFillChanged(e: CustomEvent<ColorPickerChangeDetail>) {
+    this.submitPaint({ ...e.detail, kind: 'color' });
+  }
+
   private handleFillOpacityChanged(e: CustomEvent<{ fillOpacity?: number }>) {
-    const { fillOpacity } = e.detail;
-    if (fillOpacity === undefined) return;
-    const L = this.textFillLayer();
-    this.api.updateNode(this.node, {
-      fills: [{ ...L, opacity: fillOpacity }],
-    });
-    this.api.record();
+    const value = e.detail.fillOpacity;
+    if (value !== undefined) this.submitPaint({ kind: 'opacity', value });
   }
 
   private handleVariablePick(e: CustomEvent<DesignVariablePickDetail>) {
-    const { key } = e.detail;
     this.fillPanelTab = 'variable';
-    const L = this.textFillLayer();
-    this.api.updateNode(this.node, {
-      fills: [serializedFillSetPrimaryWire(L, `$${key}`)],
-    });
-    this.api.record();
+    this.submitPaint({ kind: 'bind', field: 'value', key: e.detail.key });
   }
 
   private handleUnbind() {
     this.fillPanelTab = 'color';
-    const L = this.textFillLayer();
-    const w = serializedFillPrimaryWire(L);
-    const resolved = resolveDesignVariableValue(
-      w,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const next =
-      typeof resolved === 'string'
-        ? resolved
-        : String(resolved ?? w ?? '#000000');
-    const wire =
-      L.type === 'pattern'
-        ? next
-        : isDesignVariableReference(next)
-          ? next
-          : normalizeSolidCssValue(next);
-    this.api.updateNode(this.node, {
-      fills: [serializedFillSetPrimaryWire(L, wire)],
-    });
-    this.api.record();
+    this.submitPaint({ kind: 'unbind', field: 'value' });
   }
 
   private handleFillOpacityVariablePick(
     e: CustomEvent<{ mode: 'fill' | 'stroke'; key: string }>,
   ) {
-    if (e.detail.mode !== 'fill') {
-      return;
-    }
-    const L = this.textFillLayer();
-    this.api.updateNode(this.node, {
-      fills: [{ ...L, opacity: `$${e.detail.key}` }],
-    });
-    this.api.record();
+    if (e.detail.mode === 'fill')
+      this.submitPaint({ kind: 'bind', field: 'opacity', key: e.detail.key });
   }
 
   private handleFillOpacityVariableUnbind(
     e: CustomEvent<{ mode: 'fill' | 'stroke' }>,
   ) {
-    if (e.detail.mode !== 'fill') {
-      return;
-    }
-    const L = this.textFillLayer();
-    const raw = L.opacity ?? 1;
-    const resolved = resolveDesignVariableValue(
-      raw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, {
-        fills: [{ ...L, opacity: Math.max(0, Math.min(1, n)) }],
-      });
-      this.api.record();
-    }
+    if (e.detail.mode === 'fill')
+      this.submitPaint({ kind: 'unbind', field: 'opacity' });
   }
 
   render() {
@@ -322,11 +231,7 @@ export class FillActionButton extends LitElement {
 
     const L = this.textFillLayer();
     const fill = serializedFillPrimaryWire(L);
-    const fillOpacityRaw = L.opacity ?? 1;
-    const fillOpacity =
-      typeof fillOpacityRaw === 'number' && Number.isFinite(fillOpacityRaw)
-        ? fillOpacityRaw
-        : parseFloat(String(fillOpacityRaw)) || 1;
+    const fillOpacity = L.opacity ?? 1;
     const fillResolved = String(
       resolveDesignVariableValue(
         fill,
