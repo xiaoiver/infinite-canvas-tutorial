@@ -17,6 +17,8 @@ export {
 export type { CanvasHistoryState, CanvasCameraState } from './hooks';
 export { useCanvasEvent } from './useCanvasEvent';
 export type { CanvasEventOptions } from './useCanvasEvent';
+export { useCanvasCoordinates } from './useCanvasCoordinates';
+export type { CanvasCoordinates, CanvasPoint } from './useCanvasCoordinates';
 export { useCanvasShortcuts } from './useCanvasShortcuts';
 export type {
   CanvasShortcutOptions,

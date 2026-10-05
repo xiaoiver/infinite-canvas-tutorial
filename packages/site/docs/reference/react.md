@@ -68,7 +68,9 @@ and undoing or redoing an edit. **Restore sample** replaces the full document
 and can also be undone. Select a shape to see its width update. Canvas A and Canvas B use
 separate Providers and share one runtime; editing one leaves the other's
 history and zoom unchanged. Use **Fit all shapes** to center the scene in the
-viewport without adding an undo entry.
+viewport without adding an undo entry. Drag the rectangle button onto the canvas
+to place a shape at the pointer, or click/tap it to add at the current view center.
+Insertion and selection can be undone together.
 
 <ReactCanvasExample locale="en" />
 
@@ -337,6 +339,60 @@ always target the current canvas in their Provider.
 For event-driven work, `useCanvasEvent('ic-camera-changed', listener)` receives
 the complete `{ x, y, zoom, rotation }` in `event.detail`. The existing zoom and
 position events remain available.
+
+## Coordinate conversion
+
+`useCanvasCoordinates()` returns stable conversion functions for the nearest
+`CanvasProvider`. Both package entries also export `CanvasCoordinates` and the
+read-only `{ x: number; y: number }` type `CanvasPoint`.
+
+| Method                    | Input                                    | Output                             |
+| ------------------------- | ---------------------------------------- | ---------------------------------- |
+| `clientToCanvas(point)`   | Browser client coordinates (`clientX/Y`) | Canvas world coordinates           |
+| `canvasToClient(point)`   | Canvas world coordinates                 | Browser client coordinates         |
+| `viewportToCanvas(point)` | Local drawing viewport coordinates       | Canvas world coordinates           |
+| `canvasToViewport(point)` | Canvas world coordinates                 | Local drawing viewport coordinates |
+
+Client and viewport coordinates use CSS pixels. The viewport origin is the
+actual drawing canvas, excluding the editor's toolbar. Do not multiply by
+`devicePixelRatio` or pass page/element-offset coordinates as client coordinates.
+Conversions account for camera pan, zoom, and rotation; client conversions also
+read the current canvas bounds, including scrolling and positive, axis-aligned
+CSS scaling. Rotated, skewed, perspective-transformed, or flipped DOM containers
+are not supported.
+
+```tsx
+import type { PointerEvent } from 'react';
+import { useCanvasCoordinates } from '@infinite-canvas-tutorial/react';
+
+// Inside a component rendered under CanvasProvider:
+const coordinates = useCanvasCoordinates();
+const onPointerMove = (event: PointerEvent) => {
+    const point = coordinates.clientToCanvas({
+        x: event.clientX,
+        y: event.clientY,
+    });
+    if (point) console.log('Canvas position', point.x, point.y);
+};
+```
+
+Attach `onPointerMove` to `InfiniteCanvas` or its container. Conversion reads the
+latest API and geometry when called; retained functions follow a recreated
+canvas in the same Provider. Every method returns `null` during SSR, before API
+availability, or after removal. Use `useCanvasStatus().status === 'ready'` to
+enable editing controls because API availability can precede scene preparation.
+Inputs are not mutated, and conversion does not create history entries.
+
+This hook does not subscribe to camera or layout changes. Call it from events;
+for a reactive overlay, use `useCanvasCamera()` to update on view changes and
+also track relevant scrolling/resizing in your layout. Client output can position
+a `position: fixed` overlay; convert to its containing block for other layouts.
+
+The interactive example uses `clientToCanvas` to center a new rectangle on the
+drop position and commits insertion plus selection in one `actions.edit` call.
+It handles its custom drag type in `onDragOverCapture` / `onDropCapture`, before
+the editor's native file-drop handler. Clicking or tapping the palette button
+adds at the current view center, so touch and keyboard users can also add shapes.
 
 ## Canvas event subscriptions
 

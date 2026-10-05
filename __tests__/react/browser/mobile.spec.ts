@@ -127,6 +127,45 @@ async function resizeWithTouch(
 }
 
 for (const locale of ['en', 'zh']) {
+  test(`phone taps the palette to add one undoable rectangle at the view center (${locale})`, async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const { left, right } = await openPlayground(page, locale);
+    await page.evaluate(() => {
+      window.mobileApis.A.gotoLandmark(
+        { x: 20, y: -10, zoom: 1.5, rotation: Math.PI / 6 },
+        { duration: 0 },
+      );
+    });
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.mobileApis.A.getAppState().cameraRotation),
+      )
+      .toBeCloseTo(Math.PI / 6, 5);
+    await left.locator('[data-action="place"]').tap();
+    await expect(left.locator('[data-state="nodes"]')).toHaveText('3');
+    await expect(left.locator('[data-state="selected"]')).toHaveText('1');
+    const box = (await left.locator('canvas').boundingBox())!;
+    const center = await page.evaluate(() => {
+      const api = window.mobileApis.A;
+      const node = api.getNodeById(api.getAppState().layersSelected[0])!;
+      return api.canvas2Viewport({
+        x: Number(node.x) + 40,
+        y: Number(node.y) + 30,
+      });
+    });
+    expect(center.x).toBeCloseTo(box.width / 2, 2);
+    expect(center.y).toBeCloseTo(box.height / 2, 2);
+    await left.locator('[data-action="undo"]').tap();
+    await expect(left.locator('[data-state="nodes"]')).toHaveText('2');
+    await expect(left.locator('[data-action="undo"]')).toBeDisabled();
+    await expect(right.locator('[data-state="nodes"]')).toHaveText('2');
+    await expect(right.locator('[data-action="undo"]')).toBeDisabled();
+    expect(errors).toEqual([]);
+  });
+
   test(`phone fits the scene through the React camera controls (${locale})`, async ({
     page,
   }) => {
