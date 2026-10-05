@@ -13,6 +13,24 @@ export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   resolve: {
     alias: {
+      '@infinite-canvas-tutorial/webcomponents/events': fileURLToPath(
+        new URL(
+          '../../../packages/webcomponents/esm/event.js',
+          import.meta.url,
+        ),
+      ),
+      '@infinite-canvas-tutorial/webcomponents/spectrum': fileURLToPath(
+        new URL(
+          '../../../packages/webcomponents/esm/spectrum/index.js',
+          import.meta.url,
+        ),
+      ),
+      '@infinite-canvas-tutorial/webcomponents': fileURLToPath(
+        new URL(
+          '../../../packages/webcomponents/esm/index.js',
+          import.meta.url,
+        ),
+      ),
       '@infinite-canvas-tutorial/react': fileURLToPath(
         new URL('../../../packages/react/esm/index.js', import.meta.url),
       ),

@@ -185,3 +185,20 @@ the name "sp-overlay" has already been used with this registry
 [Figma API]: https://www.figma.com/developers/api
 [Excalidraw API]: https://docs.excalidraw.com/docs/@excalidraw/excalidraw/api
 [cursor]: https://developer.mozilla.org/en-US/docs/Web/CSS/cursor
+
+### Insert and select as one edit
+
+`updateAndSelectNodes(api, appState, nodes, options?)` inserts nodes, clears the
+current highlights, and selects the first inserted node in one `api.edit()`.
+The `appState` parameter is retained for compatibility; the edit uses the state
+current at execution time. Input nodes are copied before queuing.
+
+The returned `Promise<boolean>` resolves after the commit, with `false` for an
+empty insertion, cancellation, or canvas destruction. It rejects on edit errors.
+`options` accepts the core `CanvasEditOptions` (`signal` and `capture`). Completion
+does not guarantee a rendered frame or rollback on failure.
+
+Clipboard insertion and `createImageFromFile()` await this commit. The image
+method retains its prepared-node return value; the helper's boolean result can
+be used when callers need an explicit cancellation result. Pending insertions
+cannot change a destroyed canvas or a replacement canvas.

@@ -1,8 +1,5 @@
-import {
-  SerializedNode,
-  AppState,
-} from '@infinite-canvas-tutorial/ecs';
-import { ExtendedAPI } from '../API';
+import type { SerializedNode, AppState } from '@infinite-canvas-tutorial/ecs';
+import type { ExtendedAPI } from '../API';
 import { updateAndSelectNodes } from '../utils/common';
 
 /** Same rules as `@infinite-canvas-tutorial/mermaid` `isLikelyMermaidSyntax` (kept local to avoid stale build artifacts). */
@@ -40,7 +37,9 @@ export function isLikelyMermaidSyntax(text: string): boolean {
 const ZINDEX_OFFSET = 0.0001;
 
 function getMaxZIndex(api: ExtendedAPI) {
-  return api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
+  return api
+    .getNodes()
+    .reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
 }
 
 function layoutMermaidPasteNodes(
@@ -68,16 +67,19 @@ export async function tryPasteMermaid(
   definition: string,
   canvasPosition: { x: number; y: number } | null,
 ): Promise<boolean> {
+  let nodes: SerializedNode[];
   try {
     const { parseMermaidToSerializedNodes } = await import(
       '@infinite-canvas-tutorial/mermaid'
     );
-    const nodes = await parseMermaidToSerializedNodes(definition);
+    nodes = await parseMermaidToSerializedNodes(definition);
+    if (!nodes.length) return false;
     api.applyMermaidPasteStyler(nodes);
     layoutMermaidPasteNodes(api, nodes, canvasPosition);
-    updateAndSelectNodes(api, appState, nodes);
-    return true;
   } catch {
     return false;
   }
+  // Only conversion failures should fall back to text. An edit error must not
+  // trigger a second insertion after a partially applied edit.
+  return updateAndSelectNodes(api, appState, nodes);
 }
