@@ -25,6 +25,7 @@ import {
 import { apiContext, appStateContext, nodesContext } from '../context';
 import { Event } from '../event';
 import { ExtendedAPI } from '../API';
+import { editLayer } from './layer-command';
 import { localized, msg, str } from '@lit/localize';
 
 const LAYERS_PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-layers-panel-body-height';
@@ -712,31 +713,35 @@ export class LayersPanel extends LitElement {
   }
 
   private handleBringToFront() {
-    const { layersSelected } = this.api.getAppState();
-    const node = this.api.getNodeById(layersSelected[0]);
-    this.api.bringToFront(node);
-    this.api.record();
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'bringToFront',
+    );
   }
 
   private handleBringForward() {
-    const { layersSelected } = this.api.getAppState();
-    const node = this.api.getNodeById(layersSelected[0]);
-    this.api.bringForward(node);
-    this.api.record();
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'bringForward',
+    );
   }
 
   private handleSendBackward() {
-    const { layersSelected } = this.api.getAppState();
-    const node = this.api.getNodeById(layersSelected[0]);
-    this.api.sendBackward(node);
-    this.api.record();
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'sendBackward',
+    );
   }
 
   private handleSendToBack() {
-    const { layersSelected } = this.api.getAppState();
-    const node = this.api.getNodeById(layersSelected[0]);
-    this.api.sendToBack(node);
-    this.api.record();
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'sendToBack',
+    );
   }
 
   render() {

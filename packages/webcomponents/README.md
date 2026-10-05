@@ -345,3 +345,19 @@ destruction cancel pending coupling commands.
 It retains a non-recording next-tick callback: even `api.edit(callback, { capture: 'NEVER' })`
 would advance the document history baseline and consume unrelated pending changes.
 This migration preserves the core API's no-rollback contract.
+
+### Queued layer commands
+
+Layer rename, visibility, locking, and the four stacking commands share an
+`api.edit()` entry point across the layers panel, context menu, and stacking
+shortcuts. Submitted commands retain their canvas and target while resolving
+current flags and sibling order at execution. Each effective command forms one
+undo entry. Row visibility and lock buttons do not also select the row.
+
+Deleted or type-replaced targets and destroyed canvases cancel pending commands.
+Stacking boundaries, unchanged names, and renaming a newly locked node cancel
+before writing, preserving unrelated pending history. Rename preserves whitespace;
+Enter and blur submit once, while Escape, removal, or recycling discards the draft.
+Once submitted, a command keeps its original target even if its control is reused.
+Errors are observed and rename can be retried; the core edit API retains its
+existing no-rollback contract.

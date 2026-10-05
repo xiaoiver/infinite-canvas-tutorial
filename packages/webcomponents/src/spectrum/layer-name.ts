@@ -1,10 +1,11 @@
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, type PropertyValues } from 'lit';
 import { consume } from '@lit/context';
 import { customElement, property, state } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
 import { query } from 'lit/decorators/query.js';
 import { SerializedNode, API } from '@infinite-canvas-tutorial/ecs';
 import { apiContext } from '../context';
+import { editLayer } from './layer-command';
 
 @customElement('ic-spectrum-layer-name')
 export class LayerName extends LitElement {
@@ -42,20 +43,39 @@ export class LayerName extends LitElement {
   @consume({ context: apiContext, subscribe: true })
   api: API;
 
-  /**
-   * 进入重命名；可由父级（如图层行）在整行 double-click 时调用。
-   * 若已在编辑中，则只尝试聚焦输入框。
-   */
+  private session?: { api: API; id: string };
+
+  disconnectedCallback() {
+    this.cancelEditing();
+    super.disconnectedCallback();
+  }
+
+  protected willUpdate(changed: PropertyValues) {
+    super.willUpdate(changed);
+    if (
+      this.session &&
+      (this.session.api !== this.api || this.session.id !== this.node?.id)
+    ) {
+      this.cancelEditing();
+    }
+  }
+
+  /** Start a draft owned by this canvas and layer. */
   beginEditing() {
-    if (this.node.locked) {
-      return;
+    const current = this.api.getNodeById(this.node.id);
+    if (!current || current.isDeleted || current.locked) return;
+    if (!this.editing) {
+      this.session = { api: this.api, id: current.id };
+      this.editing = true;
     }
-    if (this.editing) {
-      this.updateComplete.then(() => this.focusTextfield());
-      return;
-    }
-    this.editing = true;
-    this.updateComplete.then(() => this.focusTextfield());
+    void this.updateComplete.then(() => {
+      if (this.editing && this.isConnected) this.focusTextfield();
+    });
+  }
+
+  private cancelEditing() {
+    this.session = undefined;
+    this.editing = false;
   }
 
   private focusTextfield() {
@@ -66,18 +86,34 @@ export class LayerName extends LitElement {
   }
 
   private handleKeydown(event: KeyboardEvent) {
-    if (event.key === 'Enter') {
+    if (event.isComposing) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
+      this.cancelEditing();
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      event.stopPropagation();
       this.textfield.blur();
     }
   }
 
   private handleBlur() {
-    this.editing = false;
-
-    this.api.updateNode(this.node, {
-      name: (this.textfield as any).value,
+    const session = this.session;
+    if (!this.editing || !session) return;
+    const name = (this.textfield as LitElement & { value: string }).value;
+    this.cancelEditing();
+    // Removing or recycling a row can blur its input. Discard that draft before
+    // submitting; an accepted command remains bound to its original target.
+    queueMicrotask(() => {
+      if (
+        this.isConnected &&
+        this.api === session.api &&
+        this.node?.id === session.id
+      ) {
+        void editLayer(session.api, session.id, 'rename', name);
+      }
     });
-    this.api.record();
   }
 
   render() {

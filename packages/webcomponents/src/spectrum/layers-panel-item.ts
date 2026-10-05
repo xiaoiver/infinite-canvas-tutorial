@@ -2,6 +2,7 @@ import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { query } from 'lit/decorators/query.js';
 import type { LayerName } from './layer-name';
+import { editLayer } from './layer-command';
 import './layer-name.js';
 import { when } from 'lit/directives/when.js';
 import { consume } from '@lit/context';
@@ -132,20 +133,14 @@ export class LayersPanelItem extends LitElement {
     }
   }
 
-  private handleToggleVisibility() {
-    const isVisible = this.node.visibility !== 'hidden';
-    this.api.updateNode(this.node, {
-      visibility: isVisible ? 'hidden' : 'visible',
-    });
-    this.api.record();
+  private handleToggleVisibility(event: Event) {
+    event.stopPropagation();
+    return editLayer(this.api, this.node.id, 'toggleVisibility');
   }
 
-  private handleToggleLocked() {
-    const isLocked = !!this.node.locked;
-    this.api.updateNode(this.node, {
-      locked: !isLocked,
-    });
-    this.api.record();
+  private handleToggleLocked(event: Event) {
+    event.stopPropagation();
+    return editLayer(this.api, this.node.id, 'toggleLocked');
   }
 
   private renderOverlayContent = () => {

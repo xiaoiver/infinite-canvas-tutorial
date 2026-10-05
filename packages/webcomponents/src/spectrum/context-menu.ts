@@ -26,6 +26,7 @@ import { VirtualTrigger, openOverlay } from '@spectrum-web-components/overlay';
 import { v4 as uuidv4 } from 'uuid';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+import { editLayer } from './layer-command';
 import { extractExternalUrlMetadata } from '../utils/url';
 import { measureHTML } from '../utils';
 import { updateAndSelectNodes } from '../utils/common';
@@ -748,56 +749,51 @@ export class ContextMenu extends LitElement {
   }
 
   private executeBringToFront() {
-    const node = this.api.getNodeById(this.appState.layersSelected[0]);
-    if (node) {
-      this.api.bringToFront(node);
-      this.api.record();
-    }
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'bringToFront',
+    );
   }
 
   private executeBringForward() {
-    const node = this.api.getNodeById(this.appState.layersSelected[0]);
-    if (node) {
-      this.api.bringForward(node);
-      this.api.record();
-    }
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'bringForward',
+    );
   }
 
   private executeSendBackward() {
-    const node = this.api.getNodeById(this.appState.layersSelected[0]);
-    if (node) {
-      this.api.sendBackward(node);
-      this.api.record();
-    }
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'sendBackward',
+    );
   }
 
   private executeSendToBack() {
-    const node = this.api.getNodeById(this.appState.layersSelected[0]);
-    if (node) {
-      this.api.sendToBack(node);
-      this.api.record();
-    }
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'sendToBack',
+    );
   }
 
   private executeToggleVisibility() {
-    const node = this.api.getNodeById(this.appState.layersSelected[0]);
-    if (node) {
-      this.api.updateNode(node, {
-        visibility: node.visibility === 'hidden' ? 'visible' : 'hidden',
-      });
-      this.api.record();
-    }
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'toggleVisibility',
+    );
   }
 
   private executeToggleLock() {
-    const node = this.api.getNodeById(this.appState.layersSelected[0]);
-    if (node) {
-      const isLocked = !!node.locked;
-      this.api.updateNode(node, {
-        locked: !isLocked,
-      });
-      this.api.record();
-    }
+    return editLayer(
+      this.api,
+      this.api.getAppState().layersSelected[0],
+      'toggleLocked',
+    );
   }
 
   private editSelectedNodes(
