@@ -275,4 +275,28 @@ Unchanged values do not consume unrelated pending history changes.
 Explicitly entering a flex container dimension still disables hugging on that
 axis, even when the numeric value is unchanged. Each effective command forms one
 undo entry; edit failures are observed without changing the core no-rollback
-contract. Other layout, corner, and vector commands are being migrated separately.
+contract. Layout and corner-radius controls use the same queued-edit contract,
+as described below; remaining property groups and vector commands are being
+migrated separately.
+
+### Queued layout and corner-radius properties
+
+Container spacing and alignment, flex-item sizing and constraints, and rectangle
+corner-radius controls capture their source canvas, node, and event value before
+queuing. Side-specific padding and margin edits merge into the latest box at
+commit time, preserving edits to the other sides. Existing one-, two-, and
+four-value box representations remain supported.
+
+Clearing an optional layout number removes its explicit value, while entering
+zero keeps an explicit zero. Clearing one box side sets that side to zero;
+selecting align-self Auto removes its override. Clearing a corner-radius input
+retains the current radius. Invalid numeric values and picker choices are ignored.
+Unchanged commands are cancelled before writing so unrelated pending changes do
+not enter their history. Controls resynchronize after a failed edit.
+
+Variable binding captures the selected key and requires a current numeric
+variable. Detaching resolves the current node's binding against the variables
+and theme at commit time, preserving a valid literal radius. Missing or
+unresolvable references remain bound. Deleted and type-replaced nodes are skipped,
+and canvas destruction cancels pending edits. Every effective command commits
+once; the core API's no-rollback behavior remains unchanged.
