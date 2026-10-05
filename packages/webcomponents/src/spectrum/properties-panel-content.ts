@@ -14,6 +14,7 @@ import {
   type RectSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { when } from 'lit/directives/when.js';
+import { live } from 'lit/directives/live.js';
 import { DEG_TO_RAD, RAD_TO_DEG } from '@pixi/math';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
@@ -50,6 +51,7 @@ import './stroke-content.js';
 import './text-content.js';
 
 type FlexNode = SerializedNode & Partial<FlexboxLayoutAttributes>;
+type TransformField = 'width' | 'height' | 'x' | 'y' | 'rotation';
 
 /** Yoga：`number` / `[上下, 左右]` / `[上,右,下,左]`，用于 padding / margin */
 function normalizeBoxSides(
@@ -361,62 +363,125 @@ export class PropertiesPanelContent extends LitElement {
     }
   }
 
-  private handleWidthChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeOBB(
-      this.node,
-      {
-        width: parseInt(e.target.value),
-      },
-      this.lockAspectRatio,
-    );
-    this.api.record();
+  private async editTransform(
+    field: TransformField | 'lockAspectRatio',
+    value?: number,
+  ) {
+    const api = this.api;
+    const source = this.node;
+    if (!api || !source) return;
+    const { id, type } = source;
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          const current = editor.getNodeById(id);
+          if (
+            !current ||
+            current.isDeleted ||
+            current.type !== type ||
+            !editor.getEntity(current)
+          ) {
+            controller.abort();
+            return;
+          }
+          if (field === 'lockAspectRatio') {
+            // Toggle the committed state so multiple queued clicks compose.
+            editor.updateNode(current, {
+              lockAspectRatio: current.lockAspectRatio !== true,
+            });
+            return;
+          }
+          const isSize = field === 'width' || field === 'height';
+          const flex = current as FlexNode;
+          const changesHug =
+            isSize &&
+            flex.display === 'flex' &&
+            (field === 'width' ? flex.flexHugWidth : flex.flexHugHeight) !==
+              false;
+          const previous = isSize ? current[field] : current[field] ?? 0;
+          if (previous === value && !changesHug) {
+            // An empty commit could capture unrelated unrecorded changes.
+            controller.abort();
+            return;
+          }
+          if (isSize && current.lockAspectRatio === true) {
+            const ratio = current.width / current.height;
+            const otherSize = field === 'width' ? value / ratio : value * ratio;
+            if (
+              !Number.isFinite(ratio) ||
+              ratio <= 0 ||
+              !Number.isFinite(otherSize)
+            ) {
+              // A zero/unknown aspect ratio cannot produce a valid resize.
+              // Cancel before writing; edit() does not roll back mutations.
+              controller.abort();
+              return;
+            }
+          }
+          if (field === 'rotation') {
+            editor.updateNode(current, { rotation: value });
+          } else {
+            editor.updateNodeOBB(
+              current,
+              { [field]: value },
+              current.lockAspectRatio === true,
+            );
+          }
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+      this.requestUpdate();
+    }
   }
 
-  private handleHeightChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeOBB(
-      this.node,
-      {
-        height: parseInt(e.target.value),
-      },
-      this.lockAspectRatio,
+  private handleTransformChanged(field: TransformField, e: Event) {
+    const raw = (e.target as HTMLElement & { value?: number | string }).value;
+    if (raw == null || (typeof raw === 'string' && raw.trim() === '')) {
+      this.requestUpdate();
+      return;
+    }
+    const value = Number(raw);
+    if (
+      !Number.isFinite(value) ||
+      ((field === 'width' || field === 'height') && value < 0)
+    ) {
+      this.requestUpdate();
+      return;
+    }
+    return this.editTransform(
+      field,
+      field === 'rotation' ? value * DEG_TO_RAD : value,
     );
-    this.api.record();
   }
 
-  private handleXChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeOBB(
-      this.node,
-      {
-        x: parseInt(e.target.value),
-      },
-      this.lockAspectRatio,
-    );
-    this.api.record();
+  private handleWidthChanged(e: Event) {
+    return this.handleTransformChanged('width', e);
   }
 
-  private handleYChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNodeOBB(
-      this.node,
-      {
-        y: parseInt(e.target.value),
-      },
-      this.lockAspectRatio,
-    );
-    this.api.record();
+  private handleHeightChanged(e: Event) {
+    return this.handleTransformChanged('height', e);
   }
 
-  private handleAngleChanged(e: Event & { target: HTMLInputElement }) {
-    this.api.updateNode(this.node, {
-      rotation: parseFloat(e.target.value) * DEG_TO_RAD,
-    });
-    this.api.record();
+  private handleXChanged(e: Event) {
+    return this.handleTransformChanged('x', e);
+  }
+
+  private handleYChanged(e: Event) {
+    return this.handleTransformChanged('y', e);
+  }
+
+  private handleAngleChanged(e: Event) {
+    return this.handleTransformChanged('rotation', e);
   }
 
   private handleLockAspectRatioChanged() {
-    this.api.updateNode(this.node, {
-      lockAspectRatio: !this.lockAspectRatio,
-    });
-    this.api.record();
+    return this.editTransform('lockAspectRatio');
   }
 
   private async handleIconFontControlsPatch(
@@ -1353,7 +1418,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="w"
               size="s"
-              value=${width}
+              .value=${live(width)}
               @change=${this.handleWidthChanged}
               hide-stepper
               autocomplete="off"
@@ -1385,7 +1450,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="x"
               size="s"
-              value=${x}
+              .value=${live(x)}
               @change=${this.handleXChanged}
               hide-stepper
               autocomplete="off"
@@ -1403,7 +1468,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="h"
               size="s"
-              value=${height}
+              .value=${live(height)}
               @change=${this.handleHeightChanged}
               hide-stepper
               autocomplete="off"
@@ -1435,7 +1500,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="y"
               size="s"
-              value=${y}
+              .value=${live(y)}
               @change=${this.handleYChanged}
               hide-stepper
               autocomplete="off"
@@ -1481,7 +1546,7 @@ export class PropertiesPanelContent extends LitElement {
             <sp-number-field
               id="angle"
               size="s"
-              value=${angle}
+              .value=${live(angle)}
               @change=${this.handleAngleChanged}
               hide-stepper
               autocomplete="off"

@@ -257,5 +257,22 @@ entry point; the core API still does not roll back partial mutations.
 Icon-font property changes copy the control event's patch and target before
 queuing. They apply to the latest matching icon node even if the panel has since
 changed selection. Empty and unchanged patches, removed targets, and targets
-whose type changed are skipped without a history entry. Other property fields
-are being migrated separately.
+whose type changed are skipped without a history entry.
+
+### Queued transform properties
+
+The Spectrum width, height, position, rotation, and aspect-ratio lock controls
+submit through `api.edit()`. Each event captures its numeric input and source
+canvas and node before queuing. The commit resolves the current node, so changing
+selection cannot redirect it and queued lock toggles compose in order. Locked
+resizing uses the dimensions and lock state current at commit time. Deleted or
+type-replaced targets are skipped, and canvas destruction cancels pending edits.
+
+Numeric controls preserve fractional values. Empty, invalid, and nonfinite
+inputs, negative dimensions, and unusable locked aspect ratios are ignored before
+writing. Controls resynchronize with the document after a rejected edit.
+Unchanged values do not consume unrelated pending history changes.
+Explicitly entering a flex container dimension still disables hugging on that
+axis, even when the numeric value is unchanged. Each effective command forms one
+undo entry; edit failures are observed without changing the core no-rollback
+contract. Other layout, corner, and vector commands are being migrated separately.
