@@ -5,6 +5,7 @@ import {
   FillAttributes,
   getPrimaryFillValue,
   RectSerializedNode,
+  type Image,
 } from '@infinite-canvas-tutorial/ecs';
 import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
@@ -80,43 +81,82 @@ export class ContextImageEditBar extends LitElement {
     return false;
   }
 
-  private async removeBackground() {
-    this.removingBackground = true;
+  private async runImageEdit(
+    loading: 'removingBackground' | 'decomposingImage' | 'upscalingImage',
+    prepare: (api: ExtendedAPI, imageUrl: string) => Promise<Image[]>,
+  ) {
+    if (this[loading] || !this.api || !this.node) return;
+    this[loading] = true;
+    const controller = new AbortController();
+    let dispose = () => {};
+    try {
+      // A toolbar can be reused for another selection while a provider is busy.
+      // Own the input and retain the originating canvas throughout preparation.
+      const api = this.api;
+      const source = structuredClone(this.node);
+      const imageUrl = getPrimaryFillValue(source);
+      if (!imageUrl) return;
+      dispose = api.onDestroy(() => controller.abort());
+      if (controller.signal.aborted) return;
 
-    // 先创建一个空白元素
-    let newImage: RectSerializedNode;
-    this.api.runAtNextTick(() => {
-      const imgUrl =
-        getPrimaryFillValue(this.node as FillAttributes) ?? '';
-      newImage = {
-        id: uuidv4(),
-        type: 'rect',
-        fills: [{ type: 'image', value: imgUrl, opacity: 1 }],
-        lockAspectRatio: true,
-        x: (this.node.x as number) + (this.node.width as number) + 50,
-        y: (this.node.y as number),
-        width: this.node.width,
-        height: this.node.height,
-        zIndex: 0,
-      };
-      this.api.updateNode(newImage);
-    });
+      const images = await prepare(api, imageUrl);
+      if (controller.signal.aborted) return;
+      const urls = images
+        .map((image) => image.url ?? image.canvas?.toDataURL())
+        .filter((url): url is string => !!url);
+      if (urls.length === 0) return;
 
-    const { images } = await this.api.createOrEditImage(
-      true,
-      'Remove background from the image',
-      [getPrimaryFillValue(this.node as FillAttributes) ?? ''],
-    );
-    if (images.length > 0) {
-      this.api.runAtNextTick(() => {
-        this.api.updateNode(newImage, {
-          fills: [{ type: 'image', value: images[0].url, opacity: 1 }],
-        });
+      await api.edit(
+        (editor) => {
+          const current = editor.getNodeById(source.id);
+          // A late response must not resurrect a deleted or replaced source image.
+          if (
+            !current ||
+            current.isDeleted ||
+            !editor.getEntity(current) ||
+            getPrimaryFillValue(current as FillAttributes) !== imageUrl
+          ) {
+            // Cancel before mutating, so an empty edit cannot record unrelated
+            // transient changes accumulated during image preparation.
+            controller.abort();
+            return;
+          }
 
-        this.api.record();
-        this.removingBackground = false;
-      });
+          editor.updateNodes(
+            urls.map(
+              (url, index): RectSerializedNode => ({
+                id: uuidv4(),
+                type: 'rect',
+                fills: [{ type: 'image', value: url, opacity: 1 }],
+                lockAspectRatio: true,
+                x: (source.x as number) + (source.width as number) + 50,
+                y: source.y,
+                width: source.width,
+                height: source.height,
+                zIndex: index,
+              }),
+            ),
+          );
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+      this[loading] = false;
     }
+  }
+
+  private removeBackground() {
+    return this.runImageEdit('removingBackground', async (api, imageUrl) => {
+      const { images } = await api.createOrEditImage(
+        true,
+        'Remove background from the image',
+        [imageUrl],
+      );
+      return images.slice(0, 1);
+    });
   }
 
   private async startSmartSelect() {
@@ -180,80 +220,17 @@ export class ContextImageEditBar extends LitElement {
     this.removingByMask = false;
   }
 
-  private async decomposeImage() {
-    this.decomposingImage = true;
-    // const { images } = await this.api.decomposeImage({
-    //   image_url: this.node.fill,
-    // });
-    const images = [
-      {
-        url: 'https://v3b.fal.media/files/b/0a86d42c/7T3zJKciQ1cCzqR3ADLif.png',
-      },
-      {
-        url: 'https://v3b.fal.media/files/b/0a86d42c/KVt5pIhe2dU-qZNC2Njo2.png',
-      },
-      {
-        url: 'https://v3b.fal.media/files/b/0a86d42c/3BMMGMaHyA3Y7Q_kamIJ_.png',
-      },
-      {
-        url: 'https://v3b.fal.media/files/b/0a86d42c/AY1BjZxhqS1jl-Pw2S1Tx.png',
-      },
-    ];
-    if (images.length > 0) {
-      this.api.runAtNextTick(() => {
-        for (const image of images) {
-          const newImage = {
-            id: uuidv4(),
-            type: 'rect',
-            fills: [{ type: 'image', value: image.url, opacity: 1 }],
-            lockAspectRatio: true,
-            x: (this.node.x as number) + (this.node.width as number) + 50,
-            y: (this.node.y as number),
-            width: this.node.width,
-            height: this.node.height,
-          } as RectSerializedNode;
-          this.api.updateNode(newImage, {
-            fills: [{ type: 'image', value: image.url, opacity: 1 }],
-          });
-        }
-        this.api.record();
-      });
-    }
-    this.decomposingImage = false;
-
-    this.mode = ImageEditMode.IDLE;
+  private decomposeImage() {
+    return this.runImageEdit('decomposingImage', async (api, imageUrl) => {
+      const { images } = await api.decomposeImage({ image_url: imageUrl });
+      return images;
+    });
   }
 
-  private async upscaleImage() {
-    this.upscalingImage = true;
-
-    const selectedNode = this.api.getNodeById(
-      this.api.getAppState().layersSelected[0],
-    );
-
-    const image = await this.api.upscaleImage({
-      image_url: getPrimaryFillValue(selectedNode as FillAttributes) ?? '',
-    });
-    const url = image.url ?? image.canvas?.toDataURL();
-
-    this.api.runAtNextTick(() => {
-      const newImage = {
-        id: uuidv4(),
-        type: 'rect',
-        fills: [{ type: 'image', value: url ?? '', opacity: 1 }],
-        lockAspectRatio: true,
-        x: (this.node.x as number) + (this.node.width as number) + 50,
-        y: (this.node.y as number),
-        width: this.node.width,
-        height: this.node.height,
-      } as RectSerializedNode;
-      this.api.updateNode(newImage, {
-        fills: [{ type: 'image', value: url ?? '', opacity: 1 }],
-      });
-      this.api.record();
-    });
-
-    this.upscalingImage = false;
+  private upscaleImage() {
+    return this.runImageEdit('upscalingImage', async (api, imageUrl) => [
+      await api.upscaleImage({ image_url: imageUrl }),
+    ]);
   }
 
   render() {

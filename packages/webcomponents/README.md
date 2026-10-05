@@ -202,3 +202,20 @@ Clipboard insertion and `createImageFromFile()` await this commit. The image
 method retains its prepared-node return value; the helper's boolean result can
 be used when callers need an explicit cancellation result. Pending insertions
 cannot change a destroyed canvas or a replacement canvas.
+
+### Asynchronous image edits
+
+The Spectrum image toolbar prepares background removal, upscaling, and image
+decomposition results before inserting them through one `api.edit()`. It creates
+no placeholder node. Preparation failures and empty results leave no new nodes
+or history entries, and reset the action's busy state. Edit errors also reset the
+busy state, but retain the core API's no-rollback semantics. Multiple decomposed layers are
+inserted in provider order with one undo entry. Decomposition uses the registered
+`decomposeImage` capability rather than sample images.
+
+Each request captures its source image, dimensions, placement, and canvas. A
+selection change does not redirect the result or select the generated nodes.
+At commit time, removed sources or changed source image contents cause the
+result to be ignored. Canvas destruction cancels a queued edit and discards late
+results; it does not guarantee cancellation of an underlying provider request.
+Smart selection and mask previews are separate from these document edits.
