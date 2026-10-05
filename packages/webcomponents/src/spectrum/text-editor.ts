@@ -3,7 +3,6 @@ import { customElement, query, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
   AppState,
-  Canvas,
   ComputedBounds,
   ComputedCamera,
   GlobalTransform,
@@ -17,6 +16,12 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
+
+interface TextEditingSession {
+  api: ExtendedAPI;
+  source: TextSerializedNode;
+  isNew: boolean;
+}
 
 @customElement('ic-spectrum-text-editor')
 export class TextEditor extends LitElement {
@@ -68,86 +73,142 @@ export class TextEditor extends LitElement {
   @state()
   private node: TextSerializedNode;
 
-  private binded = false;
+  private session?: TextEditingSession;
+  private boundApi?: ExtendedAPI;
+  private disposeBinding?: () => void;
   private prevCameraZoom: number;
   private prevCameraX: number;
   private prevCameraY: number;
 
-  private handleBlur = (event: FocusEvent) => {
-    const target = event.target as HTMLTextAreaElement;
-    const content = target.value;
-
-    if (content.trim() !== '' && content.trim() !== this.node.content) {
-      this.api.runAtNextTick(() => {
-        const entity = this.api.getEntity(this.node);
-        if (!entity) {
-          this.api.updateNode({
-            ...this.node,
-            content,
-            visibility: 'visible',
-          });
-        } else {
-          this.api.updateNode(this.node, {
-            content,
-            visibility: 'visible',
-          });
-        }
-
-        this.api.record();
-      });
-    } else {
-      this.api.runAtNextTick(() => {
-        this.api.updateNode(
-          this.node,
-          {
-            visibility: 'visible',
-          },
+  private closeEditing(restore = true) {
+    const session = this.session;
+    this.session = undefined;
+    this.node = undefined;
+    if (this.editable) {
+      this.editable.style.display = 'none';
+      this.editable.value = '';
+      this.editable.blur();
+    }
+    if (restore && session && !session.isNew) {
+      const { api, source } = session;
+      const current = api.getNodeById(source.id);
+      if (
+        current?.type === 'text' &&
+        !current.isDeleted &&
+        api.getEntity(current)
+      ) {
+        // Visibility belongs to the renderer while the textarea is open. Do not
+        // change the document or capture unrelated edits just to restore it.
+        api.updateNode(
+          current,
+          { visibility: current.visibility ?? 'inherited' },
           false,
+          ['visibility'],
         );
-      });
+      }
     }
+  }
 
-    const isPenSelect = this.appState.penbarSelected === Pen.SELECT;
-    if (!isPenSelect) {
-      this.api.setAppState({
-        penbarSelected: Pen.SELECT,
-      });
+  private async commitText(session: TextEditingSession, content: string) {
+    const { api, source, isNew } = session;
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          const current = editor.getNodeById(source.id);
+          if (isNew) {
+            if (current || editor.getEntity(source)) {
+              controller.abort();
+              return;
+            }
+            editor.updateNode({ ...source, content });
+          } else {
+            if (
+              current?.type !== 'text' ||
+              current.isDeleted ||
+              !editor.getEntity(current) ||
+              current.content === content
+            ) {
+              // Cancel before mutating; an empty commit could record unrelated
+              // transient changes accumulated since this command was queued.
+              controller.abort();
+              return;
+            }
+            editor.updateNode(current, { content });
+          }
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
     }
+  }
 
-    this.editable.style.display = 'none';
-    this.editable.value = '';
+  private finishEditing(content = this.editable?.value ?? '') {
+    const session = this.session;
+    if (!session) return;
+    this.closeEditing();
+    if (session.api.getAppState().penbarSelected !== Pen.SELECT) {
+      session.api.setAppState({ penbarSelected: Pen.SELECT });
+    }
+    // Keep the existing blank-text policy: discard a blank draft, and retain
+    // the original contents when an existing text field is emptied.
+    if (content.trim() !== '' && content !== session.source.content) {
+      void this.commitText(session, content);
+    }
+  }
+
+  private handleBlur = (event: FocusEvent) => {
+    const session = this.session;
+    if (!session) return;
+    const content = (event.target as HTMLTextAreaElement).value;
+    // Removing a focused custom element can blur its textarea before the
+    // disconnected callback runs. Let teardown discard the draft first.
+    queueMicrotask(() => {
+      if (this.session !== session) return;
+      if (!this.isConnected) this.closeEditing();
+      else this.finishEditing(content);
+    });
   };
 
   private handleDblclick = (event: MouseEvent) => {
-    const isPenSelect = this.appState.penbarSelected === Pen.SELECT;
-    const isPenText = this.appState.penbarSelected === Pen.TEXT;
+    const api = this.boundApi;
+    if (!api || !this.isConnected) return;
+    this.finishEditing();
+    const appState = api.getAppState();
+    const isPenSelect = appState.penbarSelected === Pen.SELECT;
+    const isPenText = appState.penbarSelected === Pen.TEXT;
 
     if (!isPenSelect && !isPenText) {
       return;
     }
 
-    const { x: vx, y: vy } = this.api.client2Viewport({
+    const { x: vx, y: vy } = api.client2Viewport({
       x: event.clientX,
       y: event.clientY,
     });
-    const { x: wx, y: wy } = this.api.viewport2Canvas({
+    const { x: wx, y: wy } = api.viewport2Canvas({
       x: vx,
       y: vy,
     });
 
-    const entities = this.api.elementsFromBBox(wx, wy, wx, wy);
+    const entities = api.elementsFromBBox(wx, wy, wx, wy);
     const entity = entities.find((e) => !e.has(UI));
 
     this.node = undefined;
 
     if (isPenSelect && entity && entity.has(Text)) {
       // Edit the existing text node.
-      const node = this.api.getNodeByEntity(entity) as TextSerializedNode;
+      const node = api.getNodeByEntity(entity) as TextSerializedNode;
 
       const { geometryBounds } = entity.read(ComputedBounds);
       const textW = geometryBounds.maxX - geometryBounds.minX;
       const textH = geometryBounds.maxY - geometryBounds.minY;
-      this.node = node;
+      this.node = structuredClone(node);
+      this.session = { api, source: this.node, isNew: false };
 
       this.editable.value = node.content;
       this.updateTextareaStyle(node);
@@ -160,32 +221,33 @@ export class TextEditor extends LitElement {
       this.editable.style.height = `${textH}px`;
       // }
 
-      this.api.deselectNodes([node]);
-      this.api.unhighlightNodes([node]);
+      api.deselectNodes([node]);
       // Hide original text node for now.
-      this.api.updateNode(
+      api.updateNode(
         node,
         {
           visibility: 'hidden',
         },
         false,
+        ['visibility'],
       );
     }
 
     if (isPenText) {
       // Create a new text node if blank area is clicked.
-      this.node = {
+      this.node = structuredClone({
         id: uuidv4(),
         type: 'text',
         content: '',
         anchorX: wx,
         anchorY: wy,
         zIndex: 0,
-        ...this.appState.penbarText,
-      };
+        ...appState.penbarText,
+      });
       inferXYWidthHeight(this.node);
+      this.session = { api, source: this.node, isNew: true };
 
-      this.updateTextareaStyle(this.appState.penbarText);
+      this.updateTextareaStyle(appState.penbarText);
     }
 
     if (!this.node) {
@@ -198,29 +260,6 @@ export class TextEditor extends LitElement {
 
     this.editable.style.transformOrigin = `left top`;
     this.editable.focus();
-
-    // // 根据双击位置精确定位光标（下一帧 layout 后再取 caret 位置）
-    // const { clientX, clientY } = event;
-    // setTimeout(() => {
-    //   if (!this.editable) return;
-    //   const len = this.editable.value.length;
-    //   let index: number | null = null;
-    //   if (document.caretPositionFromPoint) {
-    //     const pos = document.caretPositionFromPoint(clientX, clientY);
-    //     if (pos && (pos.offsetNode === this.editable || this.editable.contains(pos.offsetNode))) {
-    //       index = pos.offset;
-    //     }
-    //   }
-    //   if (index == null && (document as Document & { caretRangeFromPoint?(x: number, y: number): Range }).caretRangeFromPoint) {
-    //     const range = (document as Document & { caretRangeFromPoint(x: number, y: number): Range }).caretRangeFromPoint(clientX, clientY);
-    //     if (range && (range.startContainer === this.editable || this.editable.contains(range.startContainer))) {
-    //       index = range.startOffset;
-    //     }
-    //   }
-    //   if (index != null && index >= 0 && index <= len) {
-    //     this.editable.setSelectionRange(index, index);
-    //   }
-    // }, 400);
   };
 
   private handleKeyDown = (event: KeyboardEvent) => {
@@ -249,6 +288,7 @@ export class TextEditor extends LitElement {
   };
 
   private handleInput = (event: Event) => {
+    if (!this.node) return;
     const target = event.target as HTMLTextAreaElement;
     const content = target.value;
 
@@ -290,30 +330,77 @@ export class TextEditor extends LitElement {
     }
   };
 
+  private releaseBinding() {
+    try {
+      this.closeEditing();
+    } catch (error) {
+      console.error(error);
+    }
+    this.disposeBinding?.();
+    this.disposeBinding = undefined;
+    this.boundApi = undefined;
+  }
+
+  private bindCanvas() {
+    if (!this.isConnected || !this.api?.element || this.boundApi === this.api)
+      return;
+    this.releaseBinding();
+    const api = this.api;
+    this.boundApi = api;
+    let canvas: HTMLCanvasElement | undefined;
+    let destroyed = false;
+    this.disposeBinding = api.onDestroy(() => {
+      destroyed = true;
+      this.closeEditing(false);
+      canvas?.removeEventListener('dblclick', this.handleDblclick);
+    });
+    if (destroyed) return;
+    canvas = api.getCanvasElement();
+    canvas.addEventListener('dblclick', this.handleDblclick);
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.requestUpdate();
+  }
+
   disconnectedCallback() {
     super.disconnectedCallback();
-    if (this.api && this.api.getCanvas().has(Canvas)) {
-      const $canvas = this.api.getCanvasElement();
-      $canvas?.removeEventListener('dblclick', this.handleDblclick);
+    this.releaseBinding();
+  }
+
+  protected updated() {
+    this.bindCanvas();
+    if (
+      this.appState &&
+      (this.prevCameraZoom !== this.appState.cameraZoom ||
+        this.prevCameraX !== this.appState.cameraX ||
+        this.prevCameraY !== this.appState.cameraY)
+    ) {
+      this.updatePositionWithCamera();
+      this.prevCameraZoom = this.appState.cameraZoom;
+      this.prevCameraX = this.appState.cameraX;
+      this.prevCameraY = this.appState.cameraY;
     }
   }
 
   private updatePositionWithCamera() {
     if (this.node) {
-      const camera = this.api.getCamera();
+      const api = this.session.api;
+      const camera = api.getCamera();
       const { zoom } = camera.read(ComputedCamera);
 
       // 文本实体局部 (0,0) → 画布；父×(x,y) 会漏子项旋转/缩放。
       let canvasX = this.node.x;
       let canvasY = this.node.y;
-      const textEntity = this.api.getEntity(this.node);
+      const textEntity = api.getEntity(this.node);
       if (textEntity?.has(GlobalTransform)) {
-        const p = this.api.transformer2Canvas({ x: 0, y: 0 }, textEntity);
+        const p = api.transformer2Canvas({ x: 0, y: 0 }, textEntity);
         canvasX = p.x;
         canvasY = p.y;
       }
 
-      const { x, y } = this.api.canvas2Viewport({
+      const { x, y } = api.canvas2Viewport({
         x: canvasX,
         y: canvasY,
       });
@@ -395,24 +482,6 @@ export class TextEditor extends LitElement {
   }
 
   render() {
-    // FIXME: wait for the element to be ready.
-    if (this.api?.element && !this.binded) {
-      const $canvas = this.api.getCanvasElement();
-      $canvas?.addEventListener('dblclick', this.handleDblclick);
-      this.binded = true;
-    }
-
-    if (
-      this.prevCameraZoom !== this.appState.cameraZoom ||
-      this.prevCameraX !== this.appState.cameraX ||
-      this.prevCameraY !== this.appState.cameraY
-    ) {
-      this.updatePositionWithCamera();
-      this.prevCameraZoom = this.appState.cameraZoom;
-      this.prevCameraX = this.appState.cameraX;
-      this.prevCameraY = this.appState.cameraY;
-    }
-
     return html`<textarea
       dir="auto"
       tabindex="0"

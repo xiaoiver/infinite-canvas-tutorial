@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { test } from './isolated-webkit-test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 
 declare global {
