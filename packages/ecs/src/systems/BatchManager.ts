@@ -478,6 +478,13 @@ export class BatchManager {
       return;
     }
 
+    // A blend in the bottom layer still needs the cleared canvas/grid as its
+    // backdrop. Resolving the main target before any pass attached it throws
+    // and stops subsequent rendering and queued edits.
+    if (segments[0]?.type === 'layerBlend') {
+      segments.unshift({ type: 'normal', drawcalls: [] });
+    }
+
     let firstNormal = true;
     const srcRenderInput = {
       backbufferWidth: width,

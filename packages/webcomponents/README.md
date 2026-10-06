@@ -422,8 +422,8 @@ Adds append to the current stack. Each effective command has its own undo entry.
 Opacity fields retain decimals and zero; invalid, blank and unchanged inputs do
 not record, and controls refresh from the document. Bound opacity stays a variable
 reference and detaching resolves the current binding and theme. Reading paint for
-display does not mutate the document. Effect controls remain separate follow-up
-work; this change adds no paint-layer reorder UI.
+display does not mutate the document. Effect controls use the boundary described
+below; this change adds no paint-layer reorder UI.
 
 ### Stroke geometry edits
 
@@ -442,5 +442,28 @@ latest variable and theme and cancels if no valid width is available.
 Locked, deleted or type-changed targets are skipped; canvas destruction cancels
 queued work. Controls refresh from the document after cancellation or failure,
 and rejected edits can be retried. This changes the shared control used in both
-the properties panel and the context toolbar. Effect and drawing settings remain
-follow-up work.
+the properties panel and the context toolbar. Drawing settings remain follow-up
+work.
+
+### Effect and layer blend edits
+
+Effect rows and node blend modes submit through `api.edit()`. Parameter events own
+only their changes and read the current effect when the command runs, including
+nested rain settings and the opposite endpoint of numeric ranges. Add, remove,
+reorder, effect-kind and gradient-color commands retain row identity across these
+edits, so duplicate effects/colors and repeated removals cannot redirect commands
+to neighbours. These identities stay in a canvas-scoped cache and are never
+serialized; a changed filter string from external code or undo invalidates old
+rows. Replacing a filter with the exact same string is semantically unchanged.
+
+Multi-target effect edits capture their target IDs and validate every target before
+writing. One effective event forms one undo entry. Mixed selections reset to the
+new effect once, then append consecutive additions. Locked, deleted or retyped
+targets cancel the whole operation; canvas destruction cancels queued work. Invalid
+or equivalent values do not record unrelated pending changes. Rejected commands
+restore controls from the document and can be retried. `api.edit()` does not provide
+rollback or guarantee that rendering has completed.
+
+Blend modes retain the implicit `normal` default. Rendering a blend at the bottom
+of the scene initializes its background before resolving it, keeping subsequent
+rendering, editing and undo available.

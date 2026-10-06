@@ -1,4 +1,5 @@
 import { html, css, LitElement } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { customElement, property } from 'lit/decorators.js';
 import { consume } from '@lit/context';
 import {
@@ -121,16 +122,47 @@ export class LayerBlendModeRow extends LitElement {
   @property({ type: Object })
   node!: SerializedNode;
 
-  private handleBlendModeChanged(e: Event & { target: HTMLInputElement }) {
-    const value = (e.target as HTMLInputElement & { value?: string }).value;
-    if (!value) {
+  private async handleBlendModeChanged(
+    e: Event & { target: HTMLInputElement },
+  ) {
+    const api = this.api;
+    const id = this.node?.id;
+    const type = this.node?.type;
+    const value = e.target.value as FillLayerBlendMode;
+    if (!id || !LAYER_BLEND_MODE_OPTIONS.includes(value)) {
+      this.requestUpdate();
       return;
     }
-    const blendMode = value as FillLayerBlendMode;
-    this.api.updateNode(this.node, {
-      blendMode: blendMode === 'normal' ? undefined : blendMode,
-    });
-    this.api.record();
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          const node = editor.getNodeById(id);
+          if (
+            !node ||
+            node.isDeleted ||
+            node.locked ||
+            node.type !== type ||
+            !editor.getEntity(node) ||
+            (node.blendMode ?? 'normal') === value
+          ) {
+            controller.abort();
+            return;
+          }
+          editor.updateNode(node, {
+            blendMode: value === 'normal' ? undefined : value,
+          });
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+      if (this.isConnected && this.api === api && this.node?.id === id)
+        this.requestUpdate();
+    }
   }
 
   render() {
@@ -138,7 +170,8 @@ export class LayerBlendModeRow extends LitElement {
       return html``;
     }
 
-    const blendMode = this.node.blendMode ?? 'normal';
+    const node = this.api?.getNodeById(this.node.id) ?? this.node;
+    const blendMode = node.blendMode ?? 'normal';
 
     return html`
       <div class="line">
@@ -150,7 +183,7 @@ export class LayerBlendModeRow extends LitElement {
             id="layer-blend-mode"
             size="s"
             label=${msg(str`Blend mode`)}
-            .value=${blendMode}
+            .value=${live(blendMode)}
             @change=${this.handleBlendModeChanged}
           >
             ${LAYER_BLEND_MODE_OPTIONS.map(
