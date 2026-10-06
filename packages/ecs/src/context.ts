@@ -184,7 +184,7 @@ export interface AppState {
   snapToObjectsEnabled: boolean;
 
   /**
-   * Snip distance for objects
+   * Object attraction radius in CSS pixels, independent of camera zoom.
    */
   snapToObjectsDistance: number;
   snapLineStroke: string;

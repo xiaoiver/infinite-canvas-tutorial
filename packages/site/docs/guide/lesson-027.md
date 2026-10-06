@@ -4,6 +4,7 @@ description: 'Snap and align'
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 27 - Snap and align' }]
 ---
+
 <script setup>
 import SnapToPixelGrid from '../components/SnapToPixelGrid.vue'
 import SnapToObjects from '../components/SnapToObjects.vue'
@@ -17,7 +18,9 @@ Snapping is a common feature in graphics editor applications. The core idea is t
 
 In [Lesson 5 - Drawing grids], we introduced how to efficiently draw straight-line grids. In some drag interactions such as moving and drawing, snapping to the minimum unit of the grid ensures that the position or geometric information of graphics are integers. This feature is called "Snap to pixel grid" in Figma and can be enabled in "User Preferences".
 
-![source: [Snap to grid in Excalidraw] ](https://user-images.githubusercontent.com/490574/85198268-4ff5f300-b322-11ea-897e-602ef5936995.gif)
+![Snap to pixel grid](https://user-images.githubusercontent.com/490574/85198268-4ff5f300-b322-11ea-897e-602ef5936995.gif)
+
+Source: [Snap to grid in Excalidraw].
 
 ```ts
 export interface AppState {
@@ -76,6 +79,10 @@ The implementation of snapping functionality in Excalidraw is divided into the f
 
 Below, we will implement this by following the steps outlined above.
 
+Object snapping works independently of the pixel grid. `snapToObjectsDistance` is a radius in CSS pixels, so zooming does not change the perceived attraction distance. During movement, calculate the candidate from the pointer-down geometry and the raw pointer displacement; apply the snap only to the displayed position. Feeding the snapped position into the next sample would keep pulling the object back to the guide.
+
+Movement supports bounding-box edge/center alignment and equal-gap guides. Resizing snaps the moving edge or corner to other objects' edges and centers, while preserving the opposite edge, aspect-ratio constraints and centered scaling. For rotated objects, the moving handle is aligned in world coordinates. References exclude hidden/off-screen objects and the selection's ancestors and descendants. These are the implemented behaviors; resize gap distribution, equal-size matching and snapping while drawing remain follow-up work, so this is not full Figma parity.
+
 ### Is snapping enabled {#is-snapping-enabled}
 
 We have added the following configuration options to the application settings, which can also be enabled in the “Preferences Menu”:
@@ -86,7 +93,7 @@ export interface AppState {
 }
 ```
 
-Triggered when dragging and moving or drawing shapes:
+Triggered when moving or resizing selected shapes:
 
 ![source: https://github.com/excalidraw/excalidraw/issues/263#issuecomment-577605528](https://user-images.githubusercontent.com/5153846/72973602-d804ba80-3dcd-11ea-9717-05448160044c.gif)
 
@@ -262,7 +269,7 @@ Regarding the display of gap snap lines, Excalidraw's documentation is highly il
 
 ![Display gap snap lines and distance labels](/snap-to-objects.gif)
 
-You can move the middle rectangle in the example below to experience the effect:
+Move or resize the middle rectangle below. Use the independent controls to compare object snapping and pixel-grid snapping:
 
 <SnapToObjects />
 
@@ -271,7 +278,7 @@ You can move the middle rectangle in the example below to experience the effect:
 -   [How to snap shapes positions on dragging with Konva?]
 -   [Custom snapping in tldraw]
 
-[Lesson 5 - Draw grids]: /guide/lesson-005
+[Lesson 5 - Drawing grids]: /guide/lesson-005
 [How to snap shapes positions on dragging with Konva?]: https://konvajs.org/docs/sandbox/Objects_Snapping.html
 [Snap to grid in Excalidraw]: https://github.com/excalidraw/excalidraw/issues/521
 [Custom snapping in tldraw]: https://tldraw.dev/examples/bounds-snapping-shape

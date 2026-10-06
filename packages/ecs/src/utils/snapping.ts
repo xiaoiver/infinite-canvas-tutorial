@@ -2,7 +2,7 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/f55ecb96cc8db9a2417d48cd8077833c3822d64e/packages/excalidraw/snapping.ts
  */
 
-import { AABB, API, Culled, Selected } from '..';
+import { AABB, API, ComputedCamera, ComputedVisibility, Culled } from '..';
 import { rangeIntersection, rangesOverlap } from './math';
 
 const round = (x: number) => {
@@ -80,59 +80,86 @@ export type SnapLine = PointSnapLine | GapSnapLine;
 
 const VISIBLE_GAPS_LIMIT_PER_AXIS = 99999;
 
-const getElementsCorners = (
-  api: API,
-  elements: string[],
-  dragOffset?: [number, number],
-) => {
-  let { minX, minY, maxX, maxY } = api.getGeometryBounds(
-    elements.map((id) => api.getNodeById(id)),
-  );
-
-  if (dragOffset) {
-    minX += dragOffset[0];
-    minY += dragOffset[1];
-    maxX += dragOffset[0];
-    maxY += dragOffset[1];
-  }
-
-  const boundsWidth = maxX - minX;
-  const boundsHeight = maxY - minY;
-  return [
+const getBoundsSnapPoints = ({ minX, minY, maxX, maxY }: AABB) =>
+  [
     [minX, minY],
     [maxX, minY],
     [minX, maxY],
     [maxX, maxY],
-    [minX + boundsWidth / 2, minY + boundsHeight / 2],
+    [(minX + maxX) / 2, (minY + maxY) / 2],
   ] as [number, number][];
+
+const offsetBounds = (bounds: AABB, [dx, dy]: [number, number]) =>
+  new AABB(
+    bounds.minX + dx,
+    bounds.minY + dy,
+    bounds.maxX + dx,
+    bounds.maxY + dy,
+  );
+
+/** References must not include geometry that changes with the selection. */
+const getReferenceBounds = (api: API): AABB[] => {
+  const nodes = api.getNodes();
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const selected = new Set(api.getAppState().layersSelected);
+  const ancestors = new Set<string>();
+  const parents = (id: string) => {
+    const result = new Set<string>();
+    let parentId = byId.get(id)?.parentId;
+    while (parentId && !result.has(parentId)) {
+      result.add(parentId);
+      parentId = byId.get(parentId)?.parentId;
+    }
+    return result;
+  };
+  selected.forEach((id) =>
+    parents(id).forEach((parent) => ancestors.add(parent)),
+  );
+
+  return nodes.flatMap((node) => {
+    if (
+      selected.has(node.id) ||
+      ancestors.has(node.id) ||
+      [...parents(node.id)].some((id) => selected.has(id))
+    )
+      return [];
+    const entity = api.getEntity(node);
+    if (
+      !entity ||
+      entity.has(Culled) ||
+      (entity.has(ComputedVisibility) &&
+        !entity.read(ComputedVisibility).visible)
+    )
+      return [];
+    const bounds = api.getGeometryBounds([node]);
+    return [bounds.minX, bounds.minY, bounds.maxX, bounds.maxY].every(
+      Number.isFinite,
+    )
+      ? [bounds]
+      : [];
+  });
+};
+
+/** AppState's distance is measured in CSS pixels, independently of camera zoom. */
+const getSnapDistance = (api: API) => {
+  const distance = api.getAppState().snapToObjectsDistance;
+  const zoom = api.getCamera().read(ComputedCamera).zoom;
+  return Number.isFinite(distance) && zoom > 0
+    ? Math.max(0, distance) / zoom
+    : 0;
 };
 
 const getPointSnaps = (
-  api: API,
   selectionSnapPoints: [number, number][],
+  referenceSnapPoints: [number, number][],
   nearestSnapsX: Snaps,
   nearestSnapsY: Snaps,
   minOffset: [number, number],
 ) => {
-  const { layersSelected } = api.getAppState();
-  if (layersSelected.length === 0) {
-    return [];
-  }
-
-  const unculledAndUnselected = api
-    .getNodes()
-    .map((node) => api.getEntity(node))
-    .filter((entity) => !entity.has(Culled) && !entity.has(Selected));
-
-  // Snap points of other elements.
-  const referenceSnapPoints: [number, number][] = unculledAndUnselected
-    .map((entity) => getElementsCorners(api, [api.getNodeByEntity(entity).id]))
-    .flat();
-
   for (const thisSnapPoint of selectionSnapPoints) {
     for (const otherSnapPoint of referenceSnapPoints) {
-      const offsetX = otherSnapPoint[0] - thisSnapPoint[0];
-      const offsetY = otherSnapPoint[1] - thisSnapPoint[1];
+      const offsetX = round(otherSnapPoint[0] - thisSnapPoint[0]);
+      const offsetY = round(otherSnapPoint[1] - thisSnapPoint[1]);
 
       if (Math.abs(offsetX) <= minOffset[0]) {
         if (Math.abs(offsetX) < minOffset[0]) {
@@ -166,182 +193,159 @@ const getPointSnaps = (
 };
 
 const getGapSnaps = (
-  api: API,
-  dragOffset: [number, number],
+  bounds: AABB,
+  visibleGaps: ReturnType<typeof getVisibleGaps>,
   nearestSnapsX: Snaps,
   nearestSnapsY: Snaps,
   minOffset: [number, number],
 ) => {
-  const { layersSelected } = api.getAppState();
-  if (layersSelected.length === 0) {
-    return [];
-  }
+  const { horizontalGaps, verticalGaps } = visibleGaps;
+  const { minX, minY, maxX, maxY } = bounds;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
 
-  const visibleGaps = getVisibleGaps(api);
-  if (visibleGaps) {
-    const { horizontalGaps, verticalGaps } = visibleGaps;
-
-    // Account for the dragOffset
-    let { minX, minY, maxX, maxY } = api.getGeometryBounds(
-      layersSelected.map((id) => api.getNodeById(id)),
-    );
-    minX += dragOffset[0];
-    minY += dragOffset[1];
-    maxX += dragOffset[0];
-    maxY += dragOffset[1];
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    for (const gap of horizontalGaps) {
-      if (!rangesOverlap([minY, maxY], gap.overlap)) {
-        continue;
-      }
-
-      // center gap
-      const gapMidX = gap.startSide[0][0] + gap.length / 2;
-      const centerOffset = round(gapMidX - centerX);
-      const gapIsLargerThanSelection = gap.length > maxX - minX;
-
-      if (gapIsLargerThanSelection && Math.abs(centerOffset) <= minOffset[0]) {
-        if (Math.abs(centerOffset) < minOffset[0]) {
-          nearestSnapsX.length = 0;
-        }
-        minOffset[0] = Math.abs(centerOffset);
-
-        const snap: GapSnap = {
-          type: 'gap',
-          direction: 'center_horizontal',
-          gap,
-          offset: centerOffset,
-        };
-
-        nearestSnapsX.push(snap);
-        continue;
-      }
-
-      // side gap, from the right
-      const { maxX: endMaxX } = gap.endBounds;
-      const distanceToEndElementX = minX - endMaxX;
-      const sideOffsetRight = round(gap.length - distanceToEndElementX);
-
-      if (Math.abs(sideOffsetRight) <= minOffset[0]) {
-        if (Math.abs(sideOffsetRight) < minOffset[0]) {
-          nearestSnapsX.length = 0;
-        }
-        minOffset[0] = Math.abs(sideOffsetRight);
-
-        const snap: GapSnap = {
-          type: 'gap',
-          direction: 'side_right',
-          gap,
-          offset: sideOffsetRight,
-        };
-        nearestSnapsX.push(snap);
-        continue;
-      }
-
-      // side gap, from the left
-      const { minX: startMinX } = gap.startBounds;
-      const distanceToStartElementX = startMinX - maxX;
-      const sideOffsetLeft = round(distanceToStartElementX - gap.length);
-
-      if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
-        if (Math.abs(sideOffsetLeft) < minOffset[0]) {
-          nearestSnapsX.length = 0;
-        }
-        minOffset[0] = Math.abs(sideOffsetLeft);
-
-        const snap: GapSnap = {
-          type: 'gap',
-          direction: 'side_left',
-          gap,
-          offset: sideOffsetLeft,
-        };
-        nearestSnapsX.push(snap);
-        continue;
-      }
+  for (const gap of horizontalGaps) {
+    if (!rangesOverlap([minY, maxY], gap.overlap)) {
+      continue;
     }
 
-    for (const gap of verticalGaps) {
-      if (!rangesOverlap([minX, maxX], gap.overlap)) {
-        continue;
+    // center gap
+    const gapMidX = gap.startSide[0][0] + gap.length / 2;
+    const centerOffset = round(gapMidX - centerX);
+    const gapIsLargerThanSelection = gap.length > maxX - minX;
+
+    if (gapIsLargerThanSelection && Math.abs(centerOffset) <= minOffset[0]) {
+      if (Math.abs(centerOffset) < minOffset[0]) {
+        nearestSnapsX.length = 0;
       }
+      minOffset[0] = Math.abs(centerOffset);
 
-      // center gap
-      const gapMidY = gap.startSide[0][1] + gap.length / 2;
-      const centerOffset = round(gapMidY - centerY);
-      const gapIsLargerThanSelection = gap.length > maxY - minY;
+      const snap: GapSnap = {
+        type: 'gap',
+        direction: 'center_horizontal',
+        gap,
+        offset: centerOffset,
+      };
 
-      if (gapIsLargerThanSelection && Math.abs(centerOffset) <= minOffset[1]) {
-        if (Math.abs(centerOffset) < minOffset[1]) {
-          nearestSnapsY.length = 0;
-        }
-        minOffset[1] = Math.abs(centerOffset);
+      nearestSnapsX.push(snap);
+      continue;
+    }
 
-        const snap: GapSnap = {
-          type: 'gap',
-          direction: 'center_vertical',
-          gap,
-          offset: centerOffset,
-        };
+    // side gap, from the right
+    const { maxX: endMaxX } = gap.endBounds;
+    const distanceToEndElementX = minX - endMaxX;
+    const sideOffsetRight = round(gap.length - distanceToEndElementX);
 
-        nearestSnapsY.push(snap);
-        continue;
+    if (Math.abs(sideOffsetRight) <= minOffset[0]) {
+      if (Math.abs(sideOffsetRight) < minOffset[0]) {
+        nearestSnapsX.length = 0;
       }
+      minOffset[0] = Math.abs(sideOffsetRight);
 
-      // side gap, from the top
-      const { minY: startMinY } = gap.startBounds;
-      const distanceToStartElementY = startMinY - maxY;
-      const sideOffsetTop = round(distanceToStartElementY - gap.length);
+      const snap: GapSnap = {
+        type: 'gap',
+        direction: 'side_right',
+        gap,
+        offset: sideOffsetRight,
+      };
+      nearestSnapsX.push(snap);
+      continue;
+    }
 
-      if (Math.abs(sideOffsetTop) <= minOffset[1]) {
-        if (Math.abs(sideOffsetTop) < minOffset[1]) {
-          nearestSnapsY.length = 0;
-        }
-        minOffset[1] = Math.abs(sideOffsetTop);
+    // side gap, from the left
+    const { minX: startMinX } = gap.startBounds;
+    const distanceToStartElementX = startMinX - maxX;
+    const sideOffsetLeft = round(distanceToStartElementX - gap.length);
 
-        const snap: GapSnap = {
-          type: 'gap',
-          direction: 'side_top',
-          gap,
-          offset: sideOffsetTop,
-        };
-        nearestSnapsY.push(snap);
-        continue;
+    if (Math.abs(sideOffsetLeft) <= minOffset[0]) {
+      if (Math.abs(sideOffsetLeft) < minOffset[0]) {
+        nearestSnapsX.length = 0;
       }
+      minOffset[0] = Math.abs(sideOffsetLeft);
 
-      // side gap, from the bottom
-      const { maxY: endMaxY } = gap.endBounds;
-      const distanceToEndElementY = round(minY - endMaxY);
-      const sideOffsetBottom = gap.length - distanceToEndElementY;
+      const snap: GapSnap = {
+        type: 'gap',
+        direction: 'side_left',
+        gap,
+        offset: sideOffsetLeft,
+      };
+      nearestSnapsX.push(snap);
+      continue;
+    }
+  }
 
-      if (Math.abs(sideOffsetBottom) <= minOffset[1]) {
-        if (Math.abs(sideOffsetBottom) < minOffset[1]) {
-          nearestSnapsY.length = 0;
-        }
-        minOffset[1] = Math.abs(sideOffsetBottom);
+  for (const gap of verticalGaps) {
+    if (!rangesOverlap([minX, maxX], gap.overlap)) {
+      continue;
+    }
 
-        const snap: GapSnap = {
-          type: 'gap',
-          direction: 'side_bottom',
-          gap,
-          offset: sideOffsetBottom,
-        };
-        nearestSnapsY.push(snap);
-        continue;
+    // center gap
+    const gapMidY = gap.startSide[0][1] + gap.length / 2;
+    const centerOffset = round(gapMidY - centerY);
+    const gapIsLargerThanSelection = gap.length > maxY - minY;
+
+    if (gapIsLargerThanSelection && Math.abs(centerOffset) <= minOffset[1]) {
+      if (Math.abs(centerOffset) < minOffset[1]) {
+        nearestSnapsY.length = 0;
       }
+      minOffset[1] = Math.abs(centerOffset);
+
+      const snap: GapSnap = {
+        type: 'gap',
+        direction: 'center_vertical',
+        gap,
+        offset: centerOffset,
+      };
+
+      nearestSnapsY.push(snap);
+      continue;
+    }
+
+    // side gap, from the top
+    const { minY: startMinY } = gap.startBounds;
+    const distanceToStartElementY = startMinY - maxY;
+    const sideOffsetTop = round(distanceToStartElementY - gap.length);
+
+    if (Math.abs(sideOffsetTop) <= minOffset[1]) {
+      if (Math.abs(sideOffsetTop) < minOffset[1]) {
+        nearestSnapsY.length = 0;
+      }
+      minOffset[1] = Math.abs(sideOffsetTop);
+
+      const snap: GapSnap = {
+        type: 'gap',
+        direction: 'side_top',
+        gap,
+        offset: sideOffsetTop,
+      };
+      nearestSnapsY.push(snap);
+      continue;
+    }
+
+    // side gap, from the bottom
+    const { maxY: endMaxY } = gap.endBounds;
+    const distanceToEndElementY = round(minY - endMaxY);
+    const sideOffsetBottom = gap.length - distanceToEndElementY;
+
+    if (Math.abs(sideOffsetBottom) <= minOffset[1]) {
+      if (Math.abs(sideOffsetBottom) < minOffset[1]) {
+        nearestSnapsY.length = 0;
+      }
+      minOffset[1] = Math.abs(sideOffsetBottom);
+
+      const snap: GapSnap = {
+        type: 'gap',
+        direction: 'side_bottom',
+        gap,
+        offset: sideOffsetBottom,
+      };
+      nearestSnapsY.push(snap);
+      continue;
     }
   }
 };
 
-const getVisibleGaps = (api: API) => {
-  // Unculled and unselected elements
-  const referenceBounds = api
-    .getNodes() // TODO: account for groups
-    .map((node) => api.getEntity(node))
-    .filter((entity) => !entity.has(Culled) && !entity.has(Selected))
-    .map((entity) => api.getGeometryBounds([api.getNodeByEntity(entity)]));
-
+const getVisibleGaps = (referenceBounds: AABB[]) => {
   const horizontallySorted = referenceBounds.sort((a, b) => a.minX - b.minX);
 
   const horizontalGaps: Gap[] = [];
@@ -434,106 +438,141 @@ const getVisibleGaps = (api: API) => {
   };
 };
 
+/** Calculate from unsnapped geometry; callers must never feed the last snap back in. */
 export const snapDraggedElements = (
   api: API,
   dragOffset: [number, number],
   previousSnapOffset?: [number, number],
+  selectionBounds = api.getGeometryBounds(
+    api.getAppState().layersSelected.map((id) => api.getNodeById(id)),
+  ),
 ) => {
-  const { snapToObjectsEnabled, snapToObjectsDistance, layersSelected } =
-    api.getAppState();
-  if (!snapToObjectsEnabled) {
+  if (
+    !api.getAppState().snapToObjectsEnabled ||
+    !api.getAppState().layersSelected.length
+  ) {
     return {
       snapOffset: [0, 0] as [number, number],
-      snapLines: [],
+      snapLines: [] as SnapLine[],
     };
   }
-
-  const selected = layersSelected;
-
-  dragOffset[0] = round(dragOffset[0]);
-  dragOffset[1] = round(dragOffset[1]);
+  const references = getReferenceBounds(api);
+  const referencePoints = references.flatMap(getBoundsSnapPoints);
+  const gaps = getVisibleGaps(references);
+  const candidate = offsetBounds(selectionBounds, dragOffset);
+  const distance = getSnapDistance(api);
+  const minOffset: [number, number] = [distance, distance];
   const nearestSnapsX: Snaps = [];
   const nearestSnapsY: Snaps = [];
-  const minOffset = [snapToObjectsDistance, snapToObjectsDistance] as [
-    number,
-    number,
-  ];
-
-  const selectionSnapPoints = getElementsCorners(api, selected, dragOffset);
-
-  // get the nearest horizontal and vertical point and gap snaps
   getPointSnaps(
-    api,
-    selectionSnapPoints,
+    getBoundsSnapPoints(candidate),
+    referencePoints,
     nearestSnapsX,
     nearestSnapsY,
     minOffset,
   );
+  getGapSnaps(candidate, gaps, nearestSnapsX, nearestSnapsY, minOffset);
 
-  // Get gap snaps
-  getGapSnaps(api, dragOffset, nearestSnapsX, nearestSnapsY, minOffset);
-
-  // When multiple snaps have the same distance, prefer the previous snap to avoid jitter
   const pickStableSnap = (snaps: Snaps, axis: 0 | 1): number => {
-    if (snaps.length === 0) return 0;
-    const prev = previousSnapOffset?.[axis];
-    if (prev !== undefined) {
-      const match = snaps.find((s) => round(s.offset) === round(prev));
-      if (match !== undefined) return match.offset;
-    }
-    return snaps[0].offset;
+    const previous = previousSnapOffset?.[axis];
+    return (
+      snaps.find((snap) => round(snap.offset) === round(previous))?.offset ??
+      snaps[0]?.offset ??
+      0
+    );
   };
-
-  // using the nearest snaps to figure out how
-  // much the elements need to be offset to be snapped
-  // to some reference elements
   const snapOffset: [number, number] = [
     pickStableSnap(nearestSnapsX, 0),
     pickStableSnap(nearestSnapsY, 1),
   ];
-
-  // once the elements are snapped
-  // and moved to the snapped position
-  // we want to use the element's snapped position
-  // to update nearest snaps so that we can create
-  // point and gap snap lines correctly without any shifting
-
-  minOffset[0] = 0;
-  minOffset[1] = 0;
-  nearestSnapsX.length = 0;
-  nearestSnapsY.length = 0;
-  const newDragOffset: [number, number] = [
-    round(dragOffset[0] + snapOffset[0]),
-    round(dragOffset[1] + snapOffset[1]),
-  ];
-
+  const snapped = offsetBounds(candidate, snapOffset);
+  minOffset[0] = minOffset[1] = 0.000001;
+  nearestSnapsX.length = nearestSnapsY.length = 0;
   getPointSnaps(
-    api,
-    getElementsCorners(api, selected, newDragOffset),
+    getBoundsSnapPoints(snapped),
+    referencePoints,
     nearestSnapsX,
     nearestSnapsY,
     minOffset,
   );
-
-  getGapSnaps(api, newDragOffset, nearestSnapsX, nearestSnapsY, minOffset);
-
-  const pointSnapLines = createPointSnapLines(nearestSnapsX, nearestSnapsY);
-
-  const gapSnapLines = createGapSnapLines(
-    api,
-    newDragOffset,
-    [...nearestSnapsX, ...nearestSnapsY].filter(
-      (snap) => snap.type === 'gap',
-    ) as GapSnap[],
-  );
-
+  getGapSnaps(snapped, gaps, nearestSnapsX, nearestSnapsY, minOffset);
   return {
     snapOffset,
-    snapLines: [...pointSnapLines, ...gapSnapLines],
+    snapLines: [
+      ...createPointSnapLines(nearestSnapsX, nearestSnapsY),
+      ...createGapSnapLines(
+        snapped,
+        [...nearestSnapsX, ...nearestSnapsY].filter(
+          (snap) => snap.type === 'gap',
+        ) as GapSnap[],
+      ),
+    ],
   };
 };
 
-const createPointSnapLines = (nearestSnapsX: Snaps, nearestSnapsY: Snaps) => {
+/** Snap only the moving resize handle. A direction preserves side/aspect constraints. */
+export const snapResizingElements = (
+  api: API,
+  point: [number, number],
+  direction?: [number, number],
+) => {
+  if (!api.getAppState().snapToObjectsEnabled) {
+    return {
+      snapOffset: [0, 0] as [number, number],
+      snapLines: [] as SnapLine[],
+    };
+  }
+  const referencePoints = getReferenceBounds(api).flatMap(getBoundsSnapPoints);
+  const distance = getSnapDistance(api);
+  const snapsX: Snaps = [];
+  const snapsY: Snaps = [];
+  const minOffset: [number, number] = [distance, distance];
+  let snapOffset: [number, number];
+  let unit: [number, number];
+  if (direction) {
+    const length = Math.hypot(...direction);
+    if (!length)
+      return {
+        snapOffset: [0, 0] as [number, number],
+        snapLines: [] as SnapLine[],
+      };
+    unit = [direction[0] / length, direction[1] / length];
+    let nearest = Infinity;
+    for (const reference of referencePoints) {
+      for (const axis of [0, 1] as const) {
+        if (Math.abs(unit[axis]) < 0.000001) continue;
+        const movement = round((reference[axis] - point[axis]) / unit[axis]);
+        if (
+          Math.abs(movement) <= distance &&
+          Math.abs(movement) < Math.abs(nearest)
+        )
+          nearest = movement;
+      }
+    }
+    snapOffset = Number.isFinite(nearest)
+      ? [unit[0] * nearest, unit[1] * nearest]
+      : [0, 0];
+  } else {
+    getPointSnaps([point], referencePoints, snapsX, snapsY, minOffset);
+    snapOffset = [snapsX[0]?.offset ?? 0, snapsY[0]?.offset ?? 0];
+  }
+  snapsX.length = snapsY.length = 0;
+  getPointSnaps(
+    [[point[0] + snapOffset[0], point[1] + snapOffset[1]]],
+    referencePoints,
+    snapsX,
+    snapsY,
+    [0.000001, 0.000001],
+  );
+  if (unit && Math.abs(unit[0]) < 0.000001) snapsX.length = 0;
+  if (unit && Math.abs(unit[1]) < 0.000001) snapsY.length = 0;
+  return { snapOffset, snapLines: createPointSnapLines(snapsX, snapsY) };
+};
+
+const createPointSnapLines = (
+  nearestSnapsX: Snaps,
+  nearestSnapsY: Snaps,
+): PointSnapLine[] => {
   const snapsX = {} as { [key: string]: [number, number][] };
   const snapsY = {} as { [key: string]: [number, number][] };
 
@@ -574,7 +613,7 @@ const createPointSnapLines = (nearestSnapsX: Snaps, nearestSnapsY: Snaps) => {
   return Object.entries(snapsX)
     .map(([key, points]) => {
       return {
-        type: 'points',
+        type: 'points' as const,
         points: dedupePoints(
           points
             .map<[number, number]>((p) => {
@@ -587,7 +626,7 @@ const createPointSnapLines = (nearestSnapsX: Snaps, nearestSnapsY: Snaps) => {
     .concat(
       Object.entries(snapsY).map(([key, points]) => {
         return {
-          type: 'points',
+          type: 'points' as const,
           points: dedupePoints(
             points
               .map<[number, number]>((p) => {
@@ -600,20 +639,9 @@ const createPointSnapLines = (nearestSnapsX: Snaps, nearestSnapsY: Snaps) => {
     );
 };
 
-const createGapSnapLines = (
-  api: API,
-  dragOffset: [number, number],
-  gapSnaps: GapSnap[],
-) => {
+const createGapSnapLines = (bounds: AABB, gapSnaps: GapSnap[]) => {
   const gapSnapLines: GapSnapLine[] = [];
-
-  let { minX, minY, maxX, maxY } = api.getGeometryBounds(
-    api.getAppState().layersSelected.map((id) => api.getNodeById(id)),
-  );
-  minX += dragOffset[0];
-  minY += dragOffset[1];
-  maxX += dragOffset[0];
-  maxY += dragOffset[1];
+  const { minX, minY, maxX, maxY } = bounds;
 
   for (const gapSnap of gapSnaps) {
     const {

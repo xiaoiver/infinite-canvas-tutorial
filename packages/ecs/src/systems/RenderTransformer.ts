@@ -2088,8 +2088,8 @@ export function hitTest(
         rotateEnabled &&
         !isInside &&
         minDistanceToAnchors <= rotateRadius &&
-        // Finger-sized edge targets take precedence over the rotation ring.
-        !(pointerType === 'touch' && minDistanceToEdges <= resizeRadius)
+        // An edge hit takes precedence over the nearby corner's rotation ring.
+        minDistanceToEdges > resizeRadius
       ) {
         if (minDistanceToAnchors === distanceToTL) {
           return {
