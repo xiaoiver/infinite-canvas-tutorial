@@ -401,7 +401,7 @@ deleted or replaced targets cancel before writing; destroying the canvas cancels
 queued work. Rejected edits are observed and can be retried.
 
 Each effective picker event remains a separate undo entry, including continuous
-color input. Gesture-level history coalescing, stroke geometry and effects remain separate
+color input. Gesture-level history coalescing and effects remain separate
 follow-up work. Property-panel paint stacks use the same boundary as described
 below.
 
@@ -422,5 +422,25 @@ Adds append to the current stack. Each effective command has its own undo entry.
 Opacity fields retain decimals and zero; invalid, blank and unchanged inputs do
 not record, and controls refresh from the document. Bound opacity stays a variable
 reference and detaching resolves the current binding and theme. Reading paint for
-display does not mutate the document. Stroke geometry and effect controls remain
-separate follow-up work; this change adds no paint-layer reorder UI.
+display does not mutate the document. Effect controls remain separate follow-up
+work; this change adds no paint-layer reorder UI.
+
+### Stroke geometry edits
+
+Stroke width, line style, dash/gap lengths, alignment, caps, joins, markers and
+width-variable controls submit through `api.edit()`. Commands capture the canvas,
+node and input before waiting. Dash/gap edits read the other segment's current
+value at execution, so consecutive changes and line-style switches compose in
+order. Each effective event has its own undo entry.
+
+Widths accept finite nonnegative values, including fractions and zero; dash/gap
+lengths must be finite and positive. Invalid inputs, unknown choices, implicit
+defaults and unchanged selections cancel before writes, preserving unrelated
+pending history. Variable binding retains the reference; detaching resolves the
+latest variable and theme and cancels if no valid width is available.
+
+Locked, deleted or type-changed targets are skipped; canvas destruction cancels
+queued work. Controls refresh from the document after cancellation or failure,
+and rejected edits can be retried. This changes the shared control used in both
+the properties panel and the context toolbar. Effect and drawing settings remain
+follow-up work.
