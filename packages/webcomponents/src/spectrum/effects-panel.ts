@@ -1,6 +1,8 @@
 import { css, html, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { map } from 'lit/directives/map.js';
+import { live } from 'lit/directives/live.js';
+import { editEffects, effectRows, type EffectCommand } from './effect-command';
 import { consume } from '@lit/context';
 import * as d3 from 'd3-color';
 import {
@@ -11,10 +13,7 @@ import {
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import {
-  parseEffect,
-  formatFilter,
   isSaturateOnlyAdjustment,
-  createDefaultEffect,
   BLUR_DEFAULTS,
   HEATMAP_DEFAULTS,
   GEM_SMOKE_DEFAULTS,
@@ -365,33 +364,32 @@ export class EffectsPanel extends LitElement {
     return [...base, k];
   }
 
-  protected willUpdate(changed: PropertyValues<this>): void {
-    if (changed.has('filtersMixed') || (changed.has('node') && this.node)) {
-      if (this.filtersMixed) {
-        this.effects = [];
-      } else if (this.node) {
-        const f = (this.node as { filter?: string }).filter ?? '';
-        this.effects = f ? parseEffect(f) : [];
-      }
+  protected willUpdate(_changed: PropertyValues<this>): void {
+    // Also refresh after cancelled edits, even when the serialized node is mutable.
+    this.effects =
+      this.filtersMixed || !this.node || !this.api
+        ? []
+        : effectRows(this.api, this.api.getNodeById(this.node.id) ?? this.node);
+  }
+
+  private async commit(command: EffectCommand, effect?: Effect) {
+    const api = this.api;
+    const id = this.node?.id;
+    const ids = this.targetNodeIds?.length
+      ? [...this.targetNodeIds]
+      : id
+      ? [id]
+      : [];
+    try {
+      await editEffects(api, ids, command, effect, this.filtersMixed);
+    } finally {
+      if (this.isConnected && this.api === api && this.node?.id === id)
+        this.requestUpdate();
     }
   }
 
-  private commit(next: Effect[]) {
-    this.effects = next;
-    const filter = formatFilter(next);
-    const ids =
-      this.targetNodeIds && this.targetNodeIds.length > 0
-        ? this.targetNodeIds
-        : this.node
-          ? [this.node.id]
-          : [];
-    for (const id of ids) {
-      const n = this.api.getNodeById(id);
-      if (n) {
-        this.api.updateNode(n, { filter });
-      }
-    }
-    this.api.record();
+  private patchEffect(effect: Effect, patch: object) {
+    void this.commit({ kind: 'patch', patch }, effect);
   }
 
   private renderEffectSolidPopover(
@@ -424,7 +422,7 @@ export class EffectsPanel extends LitElement {
           <sp-popover dialog>
             <div class="solid-popover-body">
               <ic-spectrum-input-solid
-                .value=${value}
+                .value=${live(value)}
                 @color-change=${onColorChange}
               ></ic-spectrum-input-solid>
             </div>
@@ -435,30 +433,22 @@ export class EffectsPanel extends LitElement {
   }
 
   private handleAddDefaultEffect() {
-    this.commit([
-      ...this.effects,
-      createDefaultEffect(DEFAULT_NEW_EFFECT_KIND),
-    ]);
+    void this.commit({ kind: 'add', effectKind: DEFAULT_NEW_EFFECT_KIND });
   }
 
-  private handleRemove(index: number) {
-    const next = this.effects.filter((_, i) => i !== index);
-    this.commit(next);
+  private handleRemove(effect: Effect) {
+    void this.commit({ kind: 'remove' }, effect);
   }
 
-  private handleMove(index: number, delta: -1 | 1) {
-    const j = index + delta;
-    if (j < 0 || j >= this.effects.length) return;
-    const next = [...this.effects];
-    [next[index], next[j]] = [next[j], next[index]];
-    this.commit(next);
+  private handleMove(effect: Effect, delta: -1 | 1) {
+    void this.commit({ kind: 'move', delta }, effect);
   }
 
-  private handleKindChanged(index: number, e: Event & { target: HTMLInputElement }) {
-    const kind = e.target.value as EffectKind;
-    const next = [...this.effects];
-    next[index] = createDefaultEffect(kind);
-    this.commit(next);
+  private handleKindChanged(
+    effect: Effect,
+    e: Event & { target: HTMLInputElement },
+  ) {
+    void this.commit({ kind: 'replace', effectKind: e.target.value }, effect);
   }
 
   private renderEffectRow(effect: Effect, index: number) {
@@ -477,9 +467,9 @@ export class EffectsPanel extends LitElement {
                 <sp-picker
                   size="s"
                   label=${msg(str`Filter type`)}
-                  .value=${kind}
+                  .value=${live(kind)}
                   @change=${(e: Event & { target: HTMLInputElement }) =>
-            this.handleKindChanged(index, e)}
+            this.handleKindChanged(effect, e)}
                 >
                   <sp-menu-item value="brightness"
                     >${msg(str`Brightness`)}</sp-menu-item
@@ -557,7 +547,7 @@ export class EffectsPanel extends LitElement {
               size="s"
               label=${msg(str`Move up`)}
               ?disabled=${index === 0}
-              @click=${() => this.handleMove(index, -1)}
+              @click=${() => this.handleMove(effect, -1)}
             >
               <sp-icon-arrow-up slot="icon"></sp-icon-arrow-up>
             </sp-action-button>
@@ -566,7 +556,7 @@ export class EffectsPanel extends LitElement {
               size="s"
               label=${msg(str`Move down`)}
               ?disabled=${index >= this.effects.length - 1}
-              @click=${() => this.handleMove(index, 1)}
+              @click=${() => this.handleMove(effect, 1)}
             >
               <sp-icon-arrow-down slot="icon"></sp-icon-arrow-down>
             </sp-action-button>
@@ -574,7 +564,7 @@ export class EffectsPanel extends LitElement {
               quiet
               size="s"
               label=${msg(str`Remove`)}
-              @click=${() => this.handleRemove(index)}
+              @click=${() => this.handleRemove(effect)}
             >
               <sp-icon-delete slot="icon"></sp-icon-delete>
             </sp-action-button>
@@ -599,16 +589,17 @@ export class EffectsPanel extends LitElement {
           min="-1"
           max="1"
           step="0.01"
-          .value=${effect.value}
+          .value=${live(effect.value)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = {
-            ...effect,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             value: v,
-          };
-          this.commit(next);
+          });
         }}
         ></sp-slider>
       `;
@@ -622,13 +613,15 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${effect.value}
+          .value=${live(effect.value)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, value: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { value: v });
         }}
         ></sp-slider>
       `;
@@ -641,9 +634,7 @@ export class EffectsPanel extends LitElement {
           : BLUR_DEFAULTS.quality;
       const clamp = h.clamp !== false;
       const patch = (partial: Partial<BlurEffect>) => {
-        const next = [...this.effects];
-        next[index] = { ...h, ...partial, type: 'blur' };
-        this.commit(next);
+        this.patchEffect(effect, { ...partial, type: 'blur' });
       };
       return html`
         <sp-slider
@@ -653,10 +644,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="64"
           step="0.5"
-          .value=${h.value}
+          .value=${live(h.value)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             value: Number.isFinite(v)
               ? Math.max(0, Math.min(64, v))
@@ -671,10 +666,14 @@ export class EffectsPanel extends LitElement {
           min="1"
           max="8"
           step="1"
-          .value=${quality}
+          .value=${live(quality)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             quality: Number.isFinite(v)
               ? Math.max(1, Math.min(8, Math.round(v)))
@@ -684,7 +683,7 @@ export class EffectsPanel extends LitElement {
         ></sp-slider>
         <sp-switch
           size="s"
-          ?checked=${clamp}
+          .checked=${live(clamp)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           patch({ clamp: e.target.checked });
         }}
@@ -700,13 +699,15 @@ export class EffectsPanel extends LitElement {
           min="1"
           max="64"
           step="1"
-          .value=${effect.size}
+          .value=${live(effect.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, size: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { size: v });
         }}
         ></sp-slider>
       `;
@@ -719,13 +720,15 @@ export class EffectsPanel extends LitElement {
           min="0.1"
           max="8"
           step="0.05"
-          .value=${effect.scale}
+          .value=${live(effect.scale)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, scale: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { scale: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -734,13 +737,15 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="10"
           step="0.05"
-          .value=${effect.angle}
+          .value=${live(effect.angle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, angle: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { angle: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -749,16 +754,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="1"
-          .value=${effect.grayscale}
+          .value=${live(effect.grayscale)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = {
-            ...effect,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             grayscale: v > 0.5 ? 1 : 0,
-          };
-          this.commit(next);
+          });
         }}
         ></sp-slider>
       `;
@@ -771,13 +777,15 @@ export class EffectsPanel extends LitElement {
           min="2"
           max="16"
           step="1"
-          .value=${effect.ks}
+          .value=${live(effect.ks)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, ks: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { ks: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -786,13 +794,15 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="4"
           step="1"
-          .value=${effect.strokeWidth}
+          .value=${live(effect.strokeWidth)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, strokeWidth: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { strokeWidth: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -801,13 +811,15 @@ export class EffectsPanel extends LitElement {
           min="2"
           max="16"
           step="1"
-          .value=${effect.dirNum}
+          .value=${live(effect.dirNum)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, dirNum: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { dirNum: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -816,13 +828,15 @@ export class EffectsPanel extends LitElement {
           min="0.2"
           max="3"
           step="0.05"
-          .value=${effect.gammaS}
+          .value=${live(effect.gammaS)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, gammaS: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { gammaS: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -831,13 +845,15 @@ export class EffectsPanel extends LitElement {
           min="0.2"
           max="3"
           step="0.05"
-          .value=${effect.gammaI}
+          .value=${live(effect.gammaI)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, gammaI: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { gammaI: v });
         }}
         ></sp-slider>
       `;
@@ -850,13 +866,15 @@ export class EffectsPanel extends LitElement {
           min="1"
           max="32"
           step="0.5"
-          .value=${effect.size}
+          .value=${live(effect.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, size: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { size: v });
         }}
         ></sp-slider>
         <sp-slider
@@ -865,13 +883,15 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="6.283"
           step="0.02"
-          .value=${effect.angle}
+          .value=${live(effect.angle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          (next[index] as typeof effect) = { ...effect, angle: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { angle: v });
         }}
         ></sp-slider>
       `;
@@ -885,16 +905,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.size}
+          .value=${live(h.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             size: Number.isFinite(v) ? v : h.size,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -903,16 +924,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.radius}
+          .value=${live(h.radius)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             radius: Number.isFinite(v) ? v : h.radius,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -921,30 +943,29 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.contrast}
+          .value=${live(h.contrast)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             contrast: Number.isFinite(v) ? v : h.contrast,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-picker
           size="s"
           label=${msg(str`Grid`)}
-          .value=${String(h.grid)}
+          .value=${live(String(h.grid))}
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseInt(e.target.value, 10);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = Number(e.target.value);
+          if (!['0','1','2','3','4'].includes(e.target.value)) { this.requestUpdate(); return; }
+          this.patchEffect(effect, {
             grid: v === 1 ? 1 : 0,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         >
           <sp-menu-item value="0">${msg(str`Square`)}</sp-menu-item>
@@ -953,15 +974,13 @@ export class EffectsPanel extends LitElement {
         <sp-picker
           size="s"
           label=${msg(str`Dot style`)}
-          .value=${String(h.dotStyle)}
+          .value=${live(String(h.dotStyle))}
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseInt(e.target.value, 10);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = Number(e.target.value);
+          if (!['0','1','2','3','4'].includes(e.target.value)) { this.requestUpdate(); return; }
+          this.patchEffect(effect, {
             dotStyle: Math.max(0, Math.min(3, v)),
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         >
           <sp-menu-item value="0">${msg(str`Classic`)}</sp-menu-item>
@@ -971,15 +990,12 @@ export class EffectsPanel extends LitElement {
         </sp-picker>
         <sp-switch
           size="s"
-          ?checked=${h.originalColors !== false}
+          .checked=${live(h.originalColors !== false)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          this.patchEffect(effect, {
             originalColors: checked,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         >${msg(str`Original colors`)}</sp-switch>
       `;
@@ -993,16 +1009,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.size}
+          .value=${live(h.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             size: Number.isFinite(v) ? v : h.size,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -1011,16 +1028,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="180"
           step="1"
-          .value=${h.angle}
+          .value=${live(h.angle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             angle: Number.isFinite(v) ? v : h.angle,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -1029,16 +1047,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.distortion}
+          .value=${live(h.distortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             distortion: Number.isFinite(v) ? v : h.distortion,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -1047,16 +1066,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.blur}
+          .value=${live(h.blur)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             blur: Number.isFinite(v) ? v : h.blur,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -1065,16 +1085,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.edges}
+          .value=${live(h.edges)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             edges: Number.isFinite(v) ? v : h.edges,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
       `;
@@ -1085,12 +1106,9 @@ export class EffectsPanel extends LitElement {
         key: keyof Omit<TsunamiEffect, 'type'>,
         v: number,
       ) => {
-        const next = [...this.effects];
-        next[index] = {
-          ...h,
+        this.patchEffect(effect, {
           [key]: v,
-        } as unknown as Effect;
-        this.commit(next);
+        });
       };
       return html`
         <sp-slider
@@ -1099,10 +1117,14 @@ export class EffectsPanel extends LitElement {
           min="4"
           max="128"
           step="1"
-          .value=${h.stripeCount}
+          .value=${live(h.stripeCount)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('stripeCount', Number.isFinite(v) ? v : h.stripeCount);
         }}
         ></sp-slider>
@@ -1112,10 +1134,14 @@ export class EffectsPanel extends LitElement {
           min="-180"
           max="180"
           step="1"
-          .value=${h.stripeAngle}
+          .value=${live(h.stripeAngle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('stripeAngle', Number.isFinite(v) ? v : h.stripeAngle);
         }}
         ></sp-slider>
@@ -1125,10 +1151,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="4"
           step="0.01"
-          .value=${h.distortion}
+          .value=${live(h.distortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('distortion', Number.isFinite(v) ? v : h.distortion);
         }}
         ></sp-slider>
@@ -1138,10 +1168,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.reflection}
+          .value=${live(h.reflection)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('reflection', Number.isFinite(v) ? v : h.reflection);
         }}
         ></sp-slider>
@@ -1151,10 +1185,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.disturbance}
+          .value=${live(h.disturbance)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('disturbance', Number.isFinite(v) ? v : h.disturbance);
         }}
         ></sp-slider>
@@ -1164,10 +1202,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.contortion}
+          .value=${live(h.contortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('contortion', Number.isFinite(v) ? v : h.contortion);
         }}
         ></sp-slider>
@@ -1177,10 +1219,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.dispersion}
+          .value=${live(h.dispersion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('dispersion', Number.isFinite(v) ? v : h.dispersion);
         }}
         ></sp-slider>
@@ -1190,10 +1236,14 @@ export class EffectsPanel extends LitElement {
           min="-1"
           max="1"
           step="0.01"
-          .value=${h.drift}
+          .value=${live(h.drift)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('drift', Number.isFinite(v) ? v : h.drift);
         }}
         ></sp-slider>
@@ -1203,10 +1253,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.shadowIntensity}
+          .value=${live(h.shadowIntensity)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('shadowIntensity', Number.isFinite(v) ? v : h.shadowIntensity);
         }}
         ></sp-slider>
@@ -1216,24 +1270,25 @@ export class EffectsPanel extends LitElement {
           min="-0.5"
           max="0.5"
           step="0.001"
-          .value=${h.offset}
+          .value=${live(h.offset)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           num('offset', Number.isFinite(v) ? v : h.offset);
         }}
         ></sp-slider>
         <sp-switch
           size="s"
-          ?checked=${h.blend > 0.5}
+          .checked=${live(h.blend > 0.5)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          this.patchEffect(effect, {
             blend: checked ? 1 : 0,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         >${msg(str`Luminance blend (reflection)`)}
         </sp-switch>
@@ -1242,13 +1297,10 @@ export class EffectsPanel extends LitElement {
     if (effect.type === 'rain') {
       const h = effect as RainEffect;
       const patch = (partial: Partial<RainEffect>) => {
-        const next = [...this.effects];
-        next[index] = {
-          ...h,
+        this.patchEffect(effect, {
           ...partial,
           type: 'rain',
-        } as unknown as Effect;
-        this.commit(next);
+        });
       };
 
       if (isRainFxEffect(h)) {
@@ -1294,10 +1346,10 @@ export class EffectsPanel extends LitElement {
           slipRate: h.rainFxSim?.slipRate ?? RS.slipRate,
         };
         const patchFx = (partial: RainFxParams) => {
-          patch({ rainFx: { ...h.rainFx, ...partial } });
+          patch({ rainFx: partial });
         };
         const patchSim = (partial: RainFxSimParams) => {
-          patch({ rainFxSim: { ...h.rainFxSim, ...partial } });
+          patch({ rainFxSim: partial });
         };
         const dropUrl =
           h.dropTextureUrl?.trim() || RAIN_DROPDROP_TEXTURE_DEFAULT;
@@ -1305,7 +1357,7 @@ export class EffectsPanel extends LitElement {
           <sp-textfield
             size="s"
             label=${msg(str`Drop sprite URL`)}
-            .value=${dropUrl}
+            .value=${live(dropUrl)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
               const v = e.target.value.trim();
               patch({
@@ -1319,10 +1371,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="6"
             step="1"
-            .value=${fx.backgroundBlurSteps}
+            .value=${live(fx.backgroundBlurSteps)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 backgroundBlurSteps: Number.isFinite(v)
                   ? Math.max(0, Math.round(v))
@@ -1332,7 +1388,7 @@ export class EffectsPanel extends LitElement {
           ></sp-slider>
           <sp-switch
             size="s"
-            ?checked=${fx.mist}
+            .checked=${live(fx.mist)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
               const checked =
                 (e.target as { checked?: boolean }).checked === true;
@@ -1346,11 +1402,15 @@ export class EffectsPanel extends LitElement {
             min="1"
             max="8"
             step="1"
-            .value=${fx.mistBlurStep}
+            .value=${live(fx.mistBlurStep)}
             editable
             ?disabled=${!fx.mist}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 mistBlurStep: Number.isFinite(v)
                   ? Math.max(1, Math.round(v))
@@ -1364,11 +1424,15 @@ export class EffectsPanel extends LitElement {
             min="1"
             max="30"
             step="0.5"
-            .value=${fx.mistTime}
+            .value=${live(fx.mistTime)}
             editable
             ?disabled=${!fx.mist}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 mistTime: Number.isFinite(v)
                   ? Math.max(0.1, v)
@@ -1382,15 +1446,27 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.001"
-            .value=${fx.mistColor[0]}
+            .value=${live(fx.mistColor[0])}
             editable
             ?disabled=${!fx.mist}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const r = Number.isFinite(v) ? v : fx.mistColor[0];
-              patchFx({
-                mistColor: [r, fx.mistColor[1], fx.mistColor[2], fx.mistColor[3]],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'mistColor',
+                  index: 0,
+                  value: v,
+                  fallback: fx.mistColor,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1399,15 +1475,27 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.001"
-            .value=${fx.mistColor[1]}
+            .value=${live(fx.mistColor[1])}
             editable
             ?disabled=${!fx.mist}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const g = Number.isFinite(v) ? v : fx.mistColor[1];
-              patchFx({
-                mistColor: [fx.mistColor[0], g, fx.mistColor[2], fx.mistColor[3]],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'mistColor',
+                  index: 1,
+                  value: v,
+                  fallback: fx.mistColor,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1416,15 +1504,27 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.001"
-            .value=${fx.mistColor[2]}
+            .value=${live(fx.mistColor[2])}
             editable
             ?disabled=${!fx.mist}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const b = Number.isFinite(v) ? v : fx.mistColor[2];
-              patchFx({
-                mistColor: [fx.mistColor[0], fx.mistColor[1], b, fx.mistColor[3]],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'mistColor',
+                  index: 2,
+                  value: v,
+                  fallback: fx.mistColor,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1433,15 +1533,27 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.001"
-            .value=${fx.mistColor[3]}
+            .value=${live(fx.mistColor[3])}
             editable
             ?disabled=${!fx.mist}
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const a = Number.isFinite(v) ? v : fx.mistColor[3];
-              patchFx({
-                mistColor: [fx.mistColor[0], fx.mistColor[1], fx.mistColor[2], a],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'mistColor',
+                  index: 3,
+                  value: v,
+                  fallback: fx.mistColor,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1450,10 +1562,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1500"
             step="10"
-            .value=${fx.dropletsPerSecond}
+            .value=${live(fx.dropletsPerSecond)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 dropletsPerSecond: Number.isFinite(v)
                   ? Math.max(0, v)
@@ -1467,14 +1583,26 @@ export class EffectsPanel extends LitElement {
             min="1"
             max="60"
             step="1"
-            .value=${fx.dropletSize[0]}
+            .value=${live(fx.dropletSize[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const min = Number.isFinite(v) ? v : fx.dropletSize[0];
-              patchFx({
-                dropletSize: [min, Math.max(min, fx.dropletSize[1])],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'dropletSize',
+                  index: 0,
+                  value: v,
+                  fallback: fx.dropletSize,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1483,14 +1611,26 @@ export class EffectsPanel extends LitElement {
             min="1"
             max="60"
             step="1"
-            .value=${fx.dropletSize[1]}
+            .value=${live(fx.dropletSize[1])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const max = Number.isFinite(v) ? v : fx.dropletSize[1];
-              patchFx({
-                dropletSize: [Math.min(fx.dropletSize[0], max), max],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'dropletSize',
+                  index: 1,
+                  value: v,
+                  fallback: fx.dropletSize,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1499,14 +1639,26 @@ export class EffectsPanel extends LitElement {
             min="0.9"
             max="1"
             step="0.001"
-            .value=${fx.smoothRaindrop[0]}
+            .value=${live(fx.smoothRaindrop[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const min = Number.isFinite(v) ? v : fx.smoothRaindrop[0];
-              patchFx({
-                smoothRaindrop: [min, Math.max(min, fx.smoothRaindrop[1])],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'smoothRaindrop',
+                  index: 0,
+                  value: v,
+                  fallback: fx.smoothRaindrop,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1515,14 +1667,26 @@ export class EffectsPanel extends LitElement {
             min="0.9"
             max="1"
             step="0.001"
-            .value=${fx.smoothRaindrop[1]}
+            .value=${live(fx.smoothRaindrop[1])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const max = Number.isFinite(v) ? v : fx.smoothRaindrop[1];
-              patchFx({
-                smoothRaindrop: [Math.min(fx.smoothRaindrop[0], max), max],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'smoothRaindrop',
+                  index: 1,
+                  value: v,
+                  fallback: fx.smoothRaindrop,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1531,10 +1695,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.01"
-            .value=${fx.refractBase}
+            .value=${live(fx.refractBase)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 refractBase: Number.isFinite(v) ? v : fx.refractBase,
               });
@@ -1546,10 +1714,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="2"
             step="0.01"
-            .value=${fx.refractScale}
+            .value=${live(fx.refractScale)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 refractScale: Number.isFinite(v) ? v : fx.refractScale,
               });
@@ -1558,7 +1730,7 @@ export class EffectsPanel extends LitElement {
           <sp-field-label size="s">${msg(str`Background wrap`)}</sp-field-label>
           <sp-picker
             size="s"
-            .value=${fx.backgroundWrapMode}
+            .value=${live(fx.backgroundWrapMode)}
             @change=${(e: Event & { target: { value: string } }) => {
               const mode = e.target.value;
               if (mode === 'clamp' || mode === 'repeat' || mode === 'mirror') {
@@ -1576,17 +1748,26 @@ export class EffectsPanel extends LitElement {
             min="0.85"
             max="1"
             step="0.001"
-            .value=${fx.raindropEraserSize[0]}
+            .value=${live(fx.raindropEraserSize[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const min = Number.isFinite(v) ? v : fx.raindropEraserSize[0];
-              patchFx({
-                raindropEraserSize: [
-                  min,
-                  Math.max(min, fx.raindropEraserSize[1]),
-                ],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'raindropEraserSize',
+                  index: 0,
+                  value: v,
+                  fallback: fx.raindropEraserSize,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1595,23 +1776,32 @@ export class EffectsPanel extends LitElement {
             min="0.85"
             max="1"
             step="0.001"
-            .value=${fx.raindropEraserSize[1]}
+            .value=${live(fx.raindropEraserSize[1])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const max = Number.isFinite(v) ? v : fx.raindropEraserSize[1];
-              patchFx({
-                raindropEraserSize: [
-                  Math.min(fx.raindropEraserSize[0], max),
-                  max,
-                ],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'raindropEraserSize',
+                  index: 1,
+                  value: v,
+                  fallback: fx.raindropEraserSize,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-field-label size="s">${msg(str`Compose mode`)}</sp-field-label>
           <sp-picker
             size="s"
-            .value=${fx.raindropCompose}
+            .value=${live(fx.raindropCompose)}
             @change=${(e: Event & { target: { value: string } }) => {
               const mode = e.target.value;
               if (mode === 'smoother' || mode === 'harder') {
@@ -1629,18 +1819,26 @@ export class EffectsPanel extends LitElement {
             min="-3"
             max="3"
             step="0.01"
-            .value=${fx.raindropLightPos[0]}
+            .value=${live(fx.raindropLightPos[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              patchFx({
-                raindropLightPos: [
-                  Number.isFinite(v) ? v : fx.raindropLightPos[0],
-                  fx.raindropLightPos[1],
-                  fx.raindropLightPos[2],
-                  fx.raindropLightPos[3],
-                ],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'raindropLightPos',
+                  index: 0,
+                  value: v,
+                  fallback: fx.raindropLightPos,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1649,18 +1847,26 @@ export class EffectsPanel extends LitElement {
             min="-3"
             max="3"
             step="0.01"
-            .value=${fx.raindropLightPos[1]}
+            .value=${live(fx.raindropLightPos[1])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              patchFx({
-                raindropLightPos: [
-                  fx.raindropLightPos[0],
-                  Number.isFinite(v) ? v : fx.raindropLightPos[1],
-                  fx.raindropLightPos[2],
-                  fx.raindropLightPos[3],
-                ],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'raindropLightPos',
+                  index: 1,
+                  value: v,
+                  fallback: fx.raindropLightPos,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1669,18 +1875,26 @@ export class EffectsPanel extends LitElement {
             min="-3"
             max="8"
             step="0.01"
-            .value=${fx.raindropLightPos[2]}
+            .value=${live(fx.raindropLightPos[2])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              patchFx({
-                raindropLightPos: [
-                  fx.raindropLightPos[0],
-                  fx.raindropLightPos[1],
-                  Number.isFinite(v) ? v : fx.raindropLightPos[2],
-                  fx.raindropLightPos[3],
-                ],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'raindropLightPos',
+                  index: 2,
+                  value: v,
+                  fallback: fx.raindropLightPos,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1689,14 +1903,26 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.01"
-            .value=${fx.raindropDiffuseLight[0]}
+            .value=${live(fx.raindropDiffuseLight[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const d = Number.isFinite(v) ? v : fx.raindropDiffuseLight[0];
-              patchFx({
-                raindropDiffuseLight: [d, d, d],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFx',
+                  key: 'raindropDiffuseLight',
+                  index: 0,
+                  value: v,
+                  fallback: fx.raindropDiffuseLight,
+                  range: false,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1705,10 +1931,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="2"
             step="0.01"
-            .value=${fx.raindropShadowOffset}
+            .value=${live(fx.raindropShadowOffset)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 raindropShadowOffset: Number.isFinite(v)
                   ? v
@@ -1722,10 +1952,14 @@ export class EffectsPanel extends LitElement {
             min="1"
             max="512"
             step="1"
-            .value=${fx.raindropSpecularShininess}
+            .value=${live(fx.raindropSpecularShininess)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 raindropSpecularShininess: Number.isFinite(v)
                   ? Math.max(1, Math.round(v))
@@ -1739,10 +1973,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="4"
             step="0.01"
-            .value=${fx.raindropLightBump}
+            .value=${live(fx.raindropLightBump)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchFx({
                 raindropLightBump: Number.isFinite(v) ? v : fx.raindropLightBump,
               });
@@ -1755,14 +1993,26 @@ export class EffectsPanel extends LitElement {
             min="5"
             max="80"
             step="1"
-            .value=${sim.trailDistance[0]}
+            .value=${live(sim.trailDistance[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const min = Number.isFinite(v) ? v : sim.trailDistance[0];
-              patchSim({
-                trailDistance: [min, Math.max(min, sim.trailDistance[1])],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFxSim',
+                  key: 'trailDistance',
+                  index: 0,
+                  value: v,
+                  fallback: sim.trailDistance,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1771,14 +2021,26 @@ export class EffectsPanel extends LitElement {
             min="5"
             max="80"
             step="1"
-            .value=${sim.trailDistance[1]}
+            .value=${live(sim.trailDistance[1])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const max = Number.isFinite(v) ? v : sim.trailDistance[1];
-              patchSim({
-                trailDistance: [Math.min(sim.trailDistance[0], max), max],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFxSim',
+                  key: 'trailDistance',
+                  index: 1,
+                  value: v,
+                  fallback: sim.trailDistance,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1787,10 +2049,14 @@ export class EffectsPanel extends LitElement {
             min="500"
             max="5000"
             step="50"
-            .value=${sim.gravity}
+            .value=${live(sim.gravity)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchSim({
                 gravity: Number.isFinite(v) ? v : sim.gravity,
               });
@@ -1802,14 +2068,26 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="0.5"
             step="0.01"
-            .value=${sim.xShifting[0]}
+            .value=${live(sim.xShifting[0])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const min = Number.isFinite(v) ? v : sim.xShifting[0];
-              patchSim({
-                xShifting: [min, Math.max(min, sim.xShifting[1])],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFxSim',
+                  key: 'xShifting',
+                  index: 0,
+                  value: v,
+                  fallback: sim.xShifting,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1818,14 +2096,26 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="0.5"
             step="0.01"
-            .value=${sim.xShifting[1]}
+            .value=${live(sim.xShifting[1])}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const max = Number.isFinite(v) ? v : sim.xShifting[1];
-              patchSim({
-                xShifting: [Math.min(sim.xShifting[0], max), max],
-              });
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              void this.commit(
+                {
+                  kind: 'tuple',
+                  group: 'rainFxSim',
+                  key: 'xShifting',
+                  index: 1,
+                  value: v,
+                  fallback: sim.xShifting,
+                  range: true,
+                },
+                effect,
+              );
             }}
           ></sp-slider>
           <sp-slider
@@ -1834,10 +2124,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.01"
-            .value=${sim.slipRate}
+            .value=${live(sim.slipRate)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchSim({
                 slipRate: Number.isFinite(v) ? v : sim.slipRate,
               });
@@ -1849,10 +2143,14 @@ export class EffectsPanel extends LitElement {
             min="100"
             max="5000"
             step="50"
-            .value=${sim.spawnLimit}
+            .value=${live(sim.spawnLimit)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchSim({
                 spawnLimit: Number.isFinite(v)
                   ? Math.max(1, Math.round(v))
@@ -1866,10 +2164,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.01"
-            .value=${sim.trailDropDensity}
+            .value=${live(sim.trailDropDensity)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchSim({
                 trailDropDensity: Number.isFinite(v)
                   ? v
@@ -1883,10 +2185,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.01"
-            .value=${sim.trailSpread}
+            .value=${live(sim.trailSpread)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patchSim({
                 trailSpread: Number.isFinite(v) ? v : sim.trailSpread,
               });
@@ -1910,7 +2216,7 @@ export class EffectsPanel extends LitElement {
         renderShine: h.codropsWater?.renderShine ?? D.renderShine,
       };
       const patchCw = (partial: RainCodropsWaterParams) => {
-        patch({ codropsWater: { ...cw, ...partial } });
+        patch({ codropsWater: partial });
       };
       const SD = RAINDROPS_SIM_DEFAULTS;
       const cs = {
@@ -1920,7 +2226,7 @@ export class EffectsPanel extends LitElement {
         dropletsRate: h.codropsSim?.dropletsRate ?? SD.dropletsRate,
       };
       const patchCs = (partial: RainCodropsSimParams) => {
-        patch({ codropsSim: { ...cs, ...partial } });
+        patch({ codropsSim: partial });
       };
       return html`
           <sp-slider
@@ -1929,10 +2235,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="2000"
             step="1"
-            .value=${cw.minRefraction}
+            .value=${live(cw.minRefraction)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCw({
             minRefraction: Number.isFinite(v) ? v : cw.minRefraction,
           });
@@ -1944,10 +2254,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="2000"
             step="1"
-            .value=${cw.maxRefraction}
+            .value=${live(cw.maxRefraction)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCw({
             maxRefraction: Number.isFinite(v) ? v : cw.maxRefraction,
           });
@@ -1959,10 +2273,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="4"
             step="0.01"
-            .value=${cw.brightness}
+            .value=${live(cw.brightness)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCw({ brightness: Number.isFinite(v) ? v : cw.brightness });
         }}
           ></sp-slider>
@@ -1972,10 +2290,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="80"
             step="0.5"
-            .value=${cw.alphaMultiply}
+            .value=${live(cw.alphaMultiply)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCw({
             alphaMultiply: Number.isFinite(v) ? v : cw.alphaMultiply,
           });
@@ -1987,10 +2309,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="40"
             step="0.5"
-            .value=${cw.alphaSubtract}
+            .value=${live(cw.alphaSubtract)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCw({
             alphaSubtract: Number.isFinite(v) ? v : cw.alphaSubtract,
           });
@@ -2002,10 +2328,14 @@ export class EffectsPanel extends LitElement {
             min="0.25"
             max="4"
             step="0.05"
-            .value=${h.rainSimScale ?? 1}
+            .value=${live(h.rainSimScale ?? 1)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             rainSimScale: Number.isFinite(v) ? Math.max(0.05, v) : 1,
           });
@@ -2017,10 +2347,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="1"
             step="0.01"
-            .value=${cs.rainChance}
+            .value=${live(cs.rainChance)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCs({
             rainChance: Number.isFinite(v)
               ? Math.max(0, Math.min(1, v))
@@ -2034,10 +2368,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="20"
             step="1"
-            .value=${cs.rainLimit}
+            .value=${live(cs.rainLimit)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCs({
             rainLimit: Number.isFinite(v) ? Math.max(0, v) : cs.rainLimit,
           });
@@ -2049,10 +2387,14 @@ export class EffectsPanel extends LitElement {
             min="50"
             max="3000"
             step="50"
-            .value=${cs.maxDrops}
+            .value=${live(cs.maxDrops)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCs({
             maxDrops: Number.isFinite(v)
               ? Math.max(1, Math.round(v))
@@ -2066,10 +2408,14 @@ export class EffectsPanel extends LitElement {
             min="0"
             max="200"
             step="1"
-            .value=${cs.dropletsRate}
+            .value=${live(cs.dropletsRate)}
             editable
             @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patchCs({
             dropletsRate: Number.isFinite(v)
               ? Math.max(0, v)
@@ -2079,7 +2425,7 @@ export class EffectsPanel extends LitElement {
           ></sp-slider>
           <sp-switch
             size="s"
-            ?checked=${cw.renderShadow}
+            .checked=${live(cw.renderShadow)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patchCw({ renderShadow: checked });
@@ -2088,7 +2434,7 @@ export class EffectsPanel extends LitElement {
           >
           <sp-switch
             size="s"
-            ?checked=${cw.renderShine}
+            .checked=${live(cw.renderShine)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patchCw({ renderShine: checked });
@@ -2100,9 +2446,7 @@ export class EffectsPanel extends LitElement {
     if (isBurnEffect(effect)) {
       const h = effect as unknown as BurnEffect;
       const patch = (partial: Partial<BurnEffect>) => {
-        const next = [...this.effects];
-        next[index] = { ...h, ...partial, type: 'burn' } as unknown as Effect;
-        this.commit(next);
+        this.patchEffect(effect, { ...partial, type: 'burn' });
       };
       return html`
         <sp-slider
@@ -2111,10 +2455,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.burn}
+          .value=${live(h.burn)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ burn: Number.isFinite(v) ? v : h.burn });
         }}
         ></sp-slider>
@@ -2124,10 +2472,14 @@ export class EffectsPanel extends LitElement {
           min="0.01"
           max="4"
           step="0.01"
-          .value=${h.density}
+          .value=${live(h.density)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ density: Number.isFinite(v) ? v : h.density });
         }}
         ></sp-slider>
@@ -2137,10 +2489,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.softness}
+          .value=${live(h.softness)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ softness: Number.isFinite(v) ? v : h.softness });
         }}
         ></sp-slider>
@@ -2150,10 +2506,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.dispersion}
+          .value=${live(h.dispersion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ dispersion: Number.isFinite(v) ? v : h.dispersion });
         }}
         ></sp-slider>
@@ -2163,10 +2523,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.distortion}
+          .value=${live(h.distortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ distortion: Number.isFinite(v) ? v : h.distortion });
         }}
         ></sp-slider>
@@ -2202,7 +2566,7 @@ export class EffectsPanel extends LitElement {
         </div>
         <sp-switch
           size="s"
-          ?checked=${h.invertMask}
+          .checked=${live(h.invertMask)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patch({ invertMask: checked });
@@ -2211,7 +2575,7 @@ export class EffectsPanel extends LitElement {
         >
         <sp-switch
           size="s"
-          ?checked=${h.transparent}
+          .checked=${live(h.transparent)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patch({ transparent: checked });
@@ -2225,9 +2589,7 @@ export class EffectsPanel extends LitElement {
       type Lm = LiquidMetalEffect & { usePoisson?: boolean };
       const h = effect as unknown as Lm;
       const patch = (partial: Partial<Lm>) => {
-        const next = [...this.effects];
-        next[index] = { ...h, ...partial, type: 'liquidMetal' } as unknown as Effect;
-        this.commit(next);
+        this.patchEffect(effect, { ...partial, type: 'liquidMetal' });
       };
       return html`
         <sp-slider
@@ -2236,10 +2598,14 @@ export class EffectsPanel extends LitElement {
           min="1"
           max="10"
           step="0.1"
-          .value=${h.repetition}
+          .value=${live(h.repetition)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             repetition: Number.isFinite(v) ? v : h.repetition,
           });
@@ -2251,10 +2617,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.softness}
+          .value=${live(h.softness)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ softness: Number.isFinite(v) ? v : h.softness });
         }}
         ></sp-slider>
@@ -2264,10 +2634,14 @@ export class EffectsPanel extends LitElement {
           min="-30"
           max="30"
           step="0.5"
-          .value=${h.shiftRed}
+          .value=${live(h.shiftRed)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ shiftRed: Number.isFinite(v) ? v : h.shiftRed });
         }}
         ></sp-slider>
@@ -2277,10 +2651,14 @@ export class EffectsPanel extends LitElement {
           min="-30"
           max="30"
           step="0.5"
-          .value=${h.shiftBlue}
+          .value=${live(h.shiftBlue)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ shiftBlue: Number.isFinite(v) ? v : h.shiftBlue });
         }}
         ></sp-slider>
@@ -2290,10 +2668,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.distortion}
+          .value=${live(h.distortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ distortion: Number.isFinite(v) ? v : h.distortion });
         }}
         ></sp-slider>
@@ -2303,10 +2685,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.contour}
+          .value=${live(h.contour)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ contour: Number.isFinite(v) ? v : h.contour });
         }}
         ></sp-slider>
@@ -2316,19 +2702,24 @@ export class EffectsPanel extends LitElement {
           min="-180"
           max="180"
           step="1"
-          .value=${h.angle}
+          .value=${live(h.angle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ angle: Number.isFinite(v) ? v : h.angle });
         }}
         ></sp-slider>
         <sp-picker
           size="s"
           label=${msg(str`Shape (no image)`)}
-          .value=${String(h.shape)}
+          .value=${live(String(h.shape))}
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseInt(e.target.value, 10);
+          const v = Number(e.target.value);
+          if (!['0','1','2','3','4'].includes(e.target.value)) { this.requestUpdate(); return; }
           patch({ shape: Math.max(0, Math.min(4, Number.isFinite(v) ? v : h.shape)) });
         }}
         >
@@ -2342,7 +2733,7 @@ export class EffectsPanel extends LitElement {
         </sp-picker>
         <sp-switch
           size="s"
-          ?checked=${h.useImage}
+          .checked=${live(h.useImage)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patch({ useImage: checked });
@@ -2352,7 +2743,7 @@ export class EffectsPanel extends LitElement {
         ${h.useImage
           ? html`<sp-switch
             size="s"
-            ?checked=${h.usePoisson !== false}
+            .checked=${live(h.usePoisson !== false)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
               const checked = (e.target as { checked?: boolean }).checked === true;
               patch({ usePoisson: checked });
@@ -2390,7 +2781,7 @@ export class EffectsPanel extends LitElement {
         <div class="row-head">
           <sp-switch
             size="s"
-            ?checked=${!!h.useEngineTime}
+            .checked=${live(!!h.useEngineTime)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as HTMLInputElement).checked;
           patch({ useEngineTime: checked });
@@ -2407,10 +2798,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="100"
           step="0.1"
-          .value=${h.time}
+          .value=${live(h.time)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patch({ time: Number.isFinite(v) ? v : h.time });
             }}
         ></sp-slider>
@@ -2420,13 +2815,10 @@ export class EffectsPanel extends LitElement {
     if (isHeatmapEffect(effect)) {
       const h = effect as unknown as HeatmapEffect;
       const patch = (partial: Partial<HeatmapEffect>) => {
-        const next = [...this.effects];
-        next[index] = {
-          ...h,
+        this.patchEffect(effect, {
           ...partial,
           type: 'heatmap',
-        } as unknown as Effect;
-        this.commit(next);
+        });
       };
       const palette = h.colors?.length ? h.colors : [...HEATMAP_DEFAULTS.colors];
       return html`
@@ -2436,10 +2828,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.contour}
+          .value=${live(h.contour)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ contour: Number.isFinite(v) ? v : h.contour });
         }}
         ></sp-slider>
@@ -2449,10 +2845,14 @@ export class EffectsPanel extends LitElement {
           min="-180"
           max="180"
           step="1"
-          .value=${h.angle}
+          .value=${live(h.angle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ angle: Number.isFinite(v) ? v : h.angle });
         }}
         ></sp-slider>
@@ -2462,10 +2862,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.noise}
+          .value=${live(h.noise)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ noise: Number.isFinite(v) ? v : h.noise });
         }}
         ></sp-slider>
@@ -2475,10 +2879,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.innerGlow}
+          .value=${live(h.innerGlow)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ innerGlow: Number.isFinite(v) ? v : h.innerGlow });
         }}
         ></sp-slider>
@@ -2488,16 +2896,20 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.outerGlow}
+          .value=${live(h.outerGlow)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ outerGlow: Number.isFinite(v) ? v : h.outerGlow });
         }}
         ></sp-slider>
         <sp-switch
           size="s"
-          ?checked=${h.useImage}
+          .checked=${live(h.useImage)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patch({ useImage: checked });
@@ -2507,7 +2919,7 @@ export class EffectsPanel extends LitElement {
         ${h.useImage
           ? html`<sp-switch
             size="s"
-            ?checked=${h.usePreprocess !== false}
+            .checked=${live(h.usePreprocess !== false)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
               const checked = (e.target as { checked?: boolean }).checked === true;
               patch({ usePreprocess: checked });
@@ -2541,9 +2953,7 @@ export class EffectsPanel extends LitElement {
               c,
               (e) => {
                 solidColorToPatch(e, (v) => {
-                  const list = [...palette];
-                  list[ci] = v;
-                  patch({ colors: list });
+                  void this.commit({ kind: 'color-stop', action: 'set', index: ci, value: v }, effect);
                 });
               },
             )}
@@ -2553,10 +2963,7 @@ export class EffectsPanel extends LitElement {
                 label=${msg(str`Remove`)}
                 ?disabled=${palette.length <= 1}
                 @click=${() => {
-                const list = palette.filter((_, j) => j !== ci);
-                patch({
-                  colors: list.length > 0 ? list : [...HEATMAP_DEFAULTS.colors],
-                });
+                void this.commit({ kind: 'color-stop', action: 'remove', index: ci }, effect);
               }}
               >
                 <sp-icon-delete slot="icon"></sp-icon-delete>
@@ -2569,10 +2976,7 @@ export class EffectsPanel extends LitElement {
           size="m"
           label=${msg(str`Add gradient stop`)}
           @click=${() => {
-          const list = [...palette];
-          if (list.length >= 10) return;
-          list.push('#888888');
-          patch({ colors: list });
+          void this.commit({ kind: 'color-stop', action: 'add' }, effect);
         }}
           ?disabled=${palette.length >= 10}
         >
@@ -2582,7 +2986,7 @@ export class EffectsPanel extends LitElement {
         <div class="row-head">
           <sp-switch
             size="s"
-            ?checked=${!!h.useEngineTime}
+            .checked=${live(!!h.useEngineTime)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as HTMLInputElement).checked;
           patch({ useEngineTime: checked });
@@ -2599,10 +3003,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="100"
           step="0.1"
-          .value=${h.time}
+          .value=${live(h.time)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patch({ time: Number.isFinite(v) ? v : h.time });
             }}
         ></sp-slider>
@@ -2612,13 +3020,10 @@ export class EffectsPanel extends LitElement {
     if (isGemSmokeEffect(effect)) {
       const h = effect as unknown as GemSmokeEffect;
       const patch = (partial: Partial<GemSmokeEffect>) => {
-        const next = [...this.effects];
-        next[index] = {
-          ...h,
+        this.patchEffect(effect, {
           ...partial,
           type: 'gemSmoke',
-        } as unknown as Effect;
-        this.commit(next);
+        });
       };
       const smPalette = h.colors?.length
         ? h.colors
@@ -2630,10 +3035,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.innerDistortion}
+          .value=${live(h.innerDistortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             innerDistortion: Number.isFinite(v) ? v : h.innerDistortion,
           });
@@ -2645,10 +3054,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.outerDistortion}
+          .value=${live(h.outerDistortion)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             outerDistortion: Number.isFinite(v) ? v : h.outerDistortion,
           });
@@ -2660,10 +3073,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.outerGlow}
+          .value=${live(h.outerGlow)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ outerGlow: Number.isFinite(v) ? v : h.outerGlow });
         }}
         ></sp-slider>
@@ -2673,10 +3090,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.innerGlow}
+          .value=${live(h.innerGlow)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ innerGlow: Number.isFinite(v) ? v : h.innerGlow });
         }}
         ></sp-slider>
@@ -2686,10 +3107,14 @@ export class EffectsPanel extends LitElement {
           min="-1"
           max="1"
           step="0.01"
-          .value=${h.offset}
+          .value=${live(h.offset)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ offset: Number.isFinite(v) ? v : h.offset });
         }}
         ></sp-slider>
@@ -2699,10 +3124,14 @@ export class EffectsPanel extends LitElement {
           min="-180"
           max="180"
           step="1"
-          .value=${h.angle}
+          .value=${live(h.angle)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ angle: Number.isFinite(v) ? v : h.angle });
         }}
         ></sp-slider>
@@ -2712,19 +3141,24 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="2"
           step="0.01"
-          .value=${h.size}
+          .value=${live(h.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({ size: Number.isFinite(v) ? v : h.size });
         }}
         ></sp-slider>
         <sp-picker
           size="s"
           label=${msg(str`Shape (no image)`)}
-          .value=${String(h.shape)}
+          .value=${live(String(h.shape))}
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseInt(e.target.value, 10);
+          const v = Number(e.target.value);
+          if (!['0','1','2','3','4'].includes(e.target.value)) { this.requestUpdate(); return; }
           patch({
             shape: Math.max(0, Math.min(4, Number.isFinite(v) ? v : h.shape)),
           });
@@ -2740,7 +3174,7 @@ export class EffectsPanel extends LitElement {
         </sp-picker>
         <sp-switch
           size="s"
-          ?checked=${h.useImage}
+          .checked=${live(h.useImage)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as { checked?: boolean }).checked === true;
           patch({ useImage: checked });
@@ -2750,7 +3184,7 @@ export class EffectsPanel extends LitElement {
         ${h.useImage
           ? html`<sp-switch
             size="s"
-            ?checked=${h.usePoisson !== false}
+            .checked=${live(h.usePoisson !== false)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
               const checked = (e.target as { checked?: boolean }).checked === true;
               patch({ usePoisson: checked });
@@ -2799,9 +3233,7 @@ export class EffectsPanel extends LitElement {
               c,
               (e) => {
                 solidColorToPatch(e, (v) => {
-                  const list = [...smPalette];
-                  list[ci] = v;
-                  patch({ colors: list });
+                  void this.commit({ kind: 'color-stop', action: 'set', index: ci, value: v }, effect);
                 });
               },
             )}
@@ -2811,10 +3243,7 @@ export class EffectsPanel extends LitElement {
                 label=${msg(str`Remove`)}
                 ?disabled=${smPalette.length <= 1}
                 @click=${() => {
-                const list = smPalette.filter((_, j) => j !== ci);
-                patch({
-                  colors: list.length > 0 ? list : [...GEM_SMOKE_DEFAULTS.colors],
-                });
+                void this.commit({ kind: 'color-stop', action: 'remove', index: ci }, effect);
               }}
               >
                 <sp-icon-delete slot="icon"></sp-icon-delete>
@@ -2827,10 +3256,7 @@ export class EffectsPanel extends LitElement {
           size="m"
           label=${msg(str`Add smoke color`)}
           @click=${() => {
-          const list = [...smPalette];
-          if (list.length >= 6) return;
-          list.push('#888888');
-          patch({ colors: list });
+          void this.commit({ kind: 'color-stop', action: 'add' }, effect);
         }}
           ?disabled=${smPalette.length >= 6}
         >
@@ -2840,7 +3266,7 @@ export class EffectsPanel extends LitElement {
         <div class="row-head">
           <sp-switch
             size="s"
-            ?checked=${!!h.useEngineTime}
+            .checked=${live(!!h.useEngineTime)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as HTMLInputElement).checked;
           patch({ useEngineTime: checked });
@@ -2857,10 +3283,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="100"
           step="0.1"
-          .value=${h.time}
+          .value=${live(h.time)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
               patch({ time: Number.isFinite(v) ? v : h.time });
             }}
         ></sp-slider>
@@ -2876,16 +3306,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="4"
           step="0.05"
-          .value=${h.curvature}
+          .value=${live(h.curvature)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             curvature: Number.isFinite(v) ? v : h.curvature,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -2894,16 +3325,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="10"
           step="0.1"
-          .value=${h.lineWidth}
+          .value=${live(h.lineWidth)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             lineWidth: Number.isFinite(v) ? v : h.lineWidth,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -2912,16 +3344,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.lineContrast}
+          .value=${live(h.lineContrast)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             lineContrast: Number.isFinite(v) ? v : h.lineContrast,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -2930,30 +3363,28 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.verticalLine}
+          .value=${live(h.verticalLine)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             verticalLine: Number.isFinite(v) ? v : h.verticalLine,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <div class="row-head">
           <sp-switch
             size="s"
-            ?checked=${!!h.useEngineTime}
+            .checked=${live(!!h.useEngineTime)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as HTMLInputElement).checked;
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          this.patchEffect(effect, {
             useEngineTime: checked,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
             >${msg(str`Engine time (animate)`)}</sp-switch
           >
@@ -2967,16 +3398,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="100"
           step="0.1"
-          .value=${h.time}
+          .value=${live(h.time)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const next = [...this.effects];
-              next[index] = {
-                ...h,
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              this.patchEffect(effect, {
                 time: Number.isFinite(v) ? v : h.time,
-              } as unknown as Effect;
-              this.commit(next);
+              });
             }}
         ></sp-slider>
       `}
@@ -2991,16 +3423,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.jitter}
+          .value=${live(h.jitter)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             jitter: Number.isFinite(v) ? v : h.jitter,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -3009,16 +3442,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.blocks}
+          .value=${live(h.blocks)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             blocks: Number.isFinite(v) ? v : h.blocks,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -3027,30 +3461,28 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="0.5"
           step="0.05"
-          .value=${h.rgbSplit}
+          .value=${live(h.rgbSplit)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             rgbSplit: Number.isFinite(v) ? v : h.rgbSplit,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <div class="row-head">
           <sp-switch
             size="s"
-            ?checked=${!!h.useEngineTime}
+            .checked=${live(!!h.useEngineTime)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as HTMLInputElement).checked;
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          this.patchEffect(effect, {
             useEngineTime: checked,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
             >${msg(str`Engine time (animate)`)}</sp-switch
           >
@@ -3064,16 +3496,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="100"
           step="0.1"
-          .value=${h.time}
+          .value=${live(h.time)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-              const v = parseFloat(e.target.value);
-              const next = [...this.effects];
-              next[index] = {
-                ...h,
+              const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+              if (!Number.isFinite(v)) {
+                this.requestUpdate();
+                return;
+              }
+              this.patchEffect(effect, {
                 time: Number.isFinite(v) ? v : h.time,
-              } as unknown as Effect;
-              this.commit(next);
+              });
             }}
         ></sp-slider>
       `}
@@ -3082,16 +3515,18 @@ export class EffectsPanel extends LitElement {
     if (isLiquidGlassEffect(effect)) {
       const h = effect as unknown as LiquidGlassEffect;
       const patch = (partial: Partial<LiquidGlassEffect>) => {
-        const next = [...this.effects];
-        next[index] = { ...h, ...partial } as unknown as Effect;
-        this.commit(next);
+        this.patchEffect(effect, { ...partial });
       };
       const num = (
         e: Event & { target: HTMLInputElement },
         cur: number,
         fn: (v: number) => Partial<LiquidGlassEffect>,
       ) => {
-        const v = parseFloat(e.target.value);
+        const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+        if (!Number.isFinite(v)) {
+          this.requestUpdate();
+          return;
+        }
         patch(Number.isFinite(v) ? fn(v) : fn(cur));
       };
       return html`
@@ -3101,7 +3536,7 @@ export class EffectsPanel extends LitElement {
           min="2"
           max="16"
           step="0.1"
-          .value=${h.powerFactor}
+          .value=${live(h.powerFactor)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.powerFactor, (v) => ({ powerFactor: v }))}
@@ -3112,7 +3547,7 @@ export class EffectsPanel extends LitElement {
           min="0.2"
           max="3"
           step="0.02"
-          .value=${h.ellipseSizeX ?? 1}
+          .value=${live(h.ellipseSizeX ?? 1)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.ellipseSizeX ?? 1, (v) => ({ ellipseSizeX: v }))}
@@ -3123,7 +3558,7 @@ export class EffectsPanel extends LitElement {
           min="0.2"
           max="3"
           step="0.02"
-          .value=${h.ellipseSizeY ?? 1}
+          .value=${live(h.ellipseSizeY ?? 1)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.ellipseSizeY ?? 1, (v) => ({ ellipseSizeY: v }))}
@@ -3134,7 +3569,7 @@ export class EffectsPanel extends LitElement {
           min="0.5"
           max="8"
           step="0.05"
-          .value=${h.fPower}
+          .value=${live(h.fPower)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.fPower, (v) => ({ fPower: v }))}
@@ -3145,7 +3580,7 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="0.5"
           step="0.01"
-          .value=${h.noise}
+          .value=${live(h.noise)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.noise, (v) => ({ noise: v }))}
@@ -3156,7 +3591,7 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.glowWeight}
+          .value=${live(h.glowWeight)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.glowWeight, (v) => ({ glowWeight: v }))}
@@ -3167,7 +3602,7 @@ export class EffectsPanel extends LitElement {
           min="-0.5"
           max="0.5"
           step="0.01"
-          .value=${h.glowBias}
+          .value=${live(h.glowBias)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.glowBias, (v) => ({ glowBias: v }))}
@@ -3178,7 +3613,7 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="0.2"
           step="0.005"
-          .value=${h.glowEdge0}
+          .value=${live(h.glowEdge0)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.glowEdge0, (v) => ({ glowEdge0: v }))}
@@ -3189,7 +3624,7 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="0.2"
           step="0.005"
-          .value=${h.glowEdge1}
+          .value=${live(h.glowEdge1)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.glowEdge1, (v) => ({ glowEdge1: v }))}
@@ -3200,7 +3635,7 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.centerX}
+          .value=${live(h.centerX)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.centerX, (v) => ({ centerX: v }))}
@@ -3211,7 +3646,7 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.centerY}
+          .value=${live(h.centerY)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.centerY, (v) => ({ centerY: v }))}
@@ -3222,7 +3657,7 @@ export class EffectsPanel extends LitElement {
           min="0.25"
           max="2"
           step="0.01"
-          .value=${h.scaleX}
+          .value=${live(h.scaleX)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.scaleX, (v) => ({ scaleX: v }))}
@@ -3233,7 +3668,7 @@ export class EffectsPanel extends LitElement {
           min="0.25"
           max="2"
           step="0.01"
-          .value=${h.scaleY}
+          .value=${live(h.scaleY)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) =>
           num(e, h.scaleY, (v) => ({ scaleY: v }))}
@@ -3254,16 +3689,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.size}
+          .value=${live(h.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             size: Number.isFinite(v) ? v : h.size,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <sp-slider
@@ -3272,16 +3708,17 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.amount}
+          .value=${live(h.amount)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             amount: Number.isFinite(v) ? v : h.amount,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
       `;
@@ -3295,30 +3732,28 @@ export class EffectsPanel extends LitElement {
           min="1"
           max="32"
           step="1"
-          .value=${h.size}
+          .value=${live(h.size)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, {
             size: Number.isFinite(v) ? Math.round(v) : h.size,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
         ></sp-slider>
         <div class="row-head">
           <sp-switch
             size="s"
-            ?checked=${h.replaceColor}
+            .checked=${live(h.replaceColor)}
             @change=${(e: Event & { target: HTMLInputElement }) => {
           const checked = (e.target as HTMLInputElement).checked;
-          const next = [...this.effects];
-          next[index] = {
-            ...h,
+          this.patchEffect(effect, {
             replaceColor: checked,
-          } as unknown as Effect;
-          this.commit(next);
+          });
         }}
             >${msg(str`Solid glyph color`)}</sp-switch
           >
@@ -3327,12 +3762,10 @@ export class EffectsPanel extends LitElement {
           ? html`<sp-textfield
               size="s"
               label=${msg(str`Color`)}
-              .value=${h.color}
+              .value=${live(h.color)}
               @change=${(e: Event & { target: HTMLInputElement }) => {
               const v = e.target.value.trim();
-              const next = [...this.effects];
-              next[index] = { ...h, color: v || h.color } as unknown as Effect;
-              this.commit(next);
+              this.patchEffect(effect, { color: v || h.color });
             }}
             ></sp-textfield>`
           : null}
@@ -3345,9 +3778,7 @@ export class EffectsPanel extends LitElement {
         strength: number;
       };
       const patch = (partial: Partial<{ lutKey: string; strength: number }>) => {
-        const next = [...this.effects];
-        next[index] = { ...h, ...partial, type: 'lut' } as unknown as Effect;
-        this.commit(next);
+        this.patchEffect(effect, { ...partial, type: 'lut' });
       };
       const keyOptions = this.lutKeyPickerOptions(h.lutKey);
       const pickerValue = keyOptions.includes(h.lutKey)
@@ -3357,7 +3788,7 @@ export class EffectsPanel extends LitElement {
         <sp-picker
           size="s"
           label=${msg(str`LUT key`)}
-          .value=${pickerValue}
+          .value=${live(pickerValue)}
           @change=${(e: Event & { target: HTMLInputElement }) => {
           const v = e.target.value.trim();
           if (v.length) {
@@ -3378,10 +3809,14 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="1"
           step="0.01"
-          .value=${h.strength}
+          .value=${live(h.strength)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
           patch({
             strength: Number.isFinite(v)
               ? Math.max(0, Math.min(1, v))
@@ -3400,15 +3835,15 @@ export class EffectsPanel extends LitElement {
           min="0"
           max="3"
           step="0.01"
-          .value=${effect.saturation}
+          .value=${live(effect.saturation)}
           editable
           @change=${(e: Event & { target: HTMLInputElement }) => {
-          const v = parseFloat(e.target.value);
-          const next = [...this.effects];
-          const cur = next[index];
-          if (cur.type !== 'adjustment') return;
-          next[index] = { ...cur, saturation: v };
-          this.commit(next);
+          const v = String(e.target.value).trim() ? Number(e.target.value) : NaN;
+          if (!Number.isFinite(v)) {
+            this.requestUpdate();
+            return;
+          }
+          this.patchEffect(effect, { saturation: v });
         }}
         ></sp-slider>
       `;
