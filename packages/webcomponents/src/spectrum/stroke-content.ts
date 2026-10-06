@@ -5,7 +5,6 @@ import {
   AppState,
   designVariableRefKeyFromWire,
   isDesignVariableReference,
-  Marker,
   PolylineSerializedNode,
   resolveDesignVariableValue,
   SerializedNode,
@@ -18,56 +17,15 @@ import '@spectrum-web-components/number-field/sp-number-field.js';
 import '@spectrum-web-components/picker/sp-picker.js';
 import '@spectrum-web-components/menu/sp-menu-item.js';
 import { when } from 'lit/directives/when.js';
+import { live } from 'lit/directives/live.js';
+import {
+  editStrokeGeometry,
+  parseDashGapPxFromWire,
+  strokeNumber,
+  strokeStyleFromDasharrayWire,
+} from './stroke-geometry-command';
 import type { DesignVariablePickDetail } from './design-variable-picker';
 import './design-variable-picker.js';
-
-/** 线框 `strokeDasharray` 与 ECS `Stroke.dasharray` 的默认虚线图案（dash, gap） */
-const DASHED_STROKE_DASHARRAY_WIRE = '6,6';
-
-function strokeStyleFromDasharrayWire(
-  dash: string | undefined,
-): 'solid' | 'dashed' {
-  const raw = (dash ?? '').trim();
-  if (raw === '' || raw === 'none') {
-    return 'solid';
-  }
-  const parts = raw.includes(',')
-    ? raw.split(',')
-    : raw.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) {
-    return 'solid';
-  }
-  const a = Number(String(parts[0]).trim());
-  const b = Number(String(parts[1] ?? parts[0]).trim());
-  return Number.isFinite(a) && Number.isFinite(b) && a > 0 && b > 0
-    ? 'dashed'
-    : 'solid';
-}
-
-/** 解析当前虚线段的 dash / gap（px），用于展示与编辑 */
-function parseDashGapPxFromWire(
-  dash: string | undefined,
-): { dashPx: number; gapPx: number } {
-  const raw = (dash ?? '').trim();
-  if (raw === '' || raw === 'none') {
-    return { dashPx: 6, gapPx: 6 };
-  }
-  const parts = raw.includes(',')
-    ? raw.split(',')
-    : raw.split(/\s+/).filter(Boolean);
-  const a = Number(String(parts[0] ?? '').trim());
-  const b = Number(String(parts[1] ?? parts[0] ?? '').trim());
-  const dashPx = Number.isFinite(a) && a > 0 ? a : 6;
-  const gapPx = Number.isFinite(b) && b > 0 ? b : dashPx;
-  return { dashPx, gapPx };
-}
-
-function clampDashGapPx(n: number, fallback: number): number {
-  if (!Number.isFinite(n) || n <= 0) {
-    return fallback;
-  }
-  return n;
-}
 
 @customElement('ic-spectrum-stroke-content')
 @localized()
@@ -144,114 +102,84 @@ export class StrokeContent extends LitElement {
   @property()
   node: SerializedNode;
 
+  private async commit(command: Parameters<typeof editStrokeGeometry>[2]) {
+    const api = this.api;
+    const id = this.node?.id;
+    if (!api || !id) return;
+    try {
+      return await editStrokeGeometry(api, id, command);
+    } finally {
+      if (this.isConnected && this.api === api && this.node?.id === id)
+        this.requestUpdate();
+    }
+  }
+
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeWidth = parseFloat(e.target.value);
-    this.api.updateNode(this.node, {
-      strokeWidth,
-    });
-    this.api.record();
+    return this.commit({ kind: 'width', value: e.target.value });
   }
 
   private handleStrokeStyleChanged(e: Event & { target: HTMLInputElement }) {
-    const style = e.target.value as 'solid' | 'dashed';
-    if (style === 'dashed') {
-      const wire = (this.node as PolylineSerializedNode).strokeDasharray;
-      const cur = parseDashGapPxFromWire(wire);
-      const already =
-        strokeStyleFromDasharrayWire(wire) === 'dashed';
-      this.api.updateNode(this.node, {
-        strokeDasharray: already
-          ? `${clampDashGapPx(cur.dashPx, 6)},${clampDashGapPx(cur.gapPx, 6)}`
-          : DASHED_STROKE_DASHARRAY_WIRE,
-      });
-    } else {
-      this.api.updateNode(this.node, { strokeDasharray: 'none' });
-    }
-    this.api.record();
+    return this.commit({ kind: 'style', value: e.target.value });
   }
 
   private handleDashPxChanged(e: Event & { target: HTMLInputElement }) {
-    const nextDash = parseFloat(e.target.value);
-    const wire = (this.node as PolylineSerializedNode).strokeDasharray;
-    const { dashPx, gapPx } = parseDashGapPxFromWire(wire);
-    const d = clampDashGapPx(nextDash, dashPx);
-    const g = clampDashGapPx(gapPx, 6);
-    this.api.updateNode(this.node, { strokeDasharray: `${d},${g}` });
-    this.api.record();
+    return this.commit({ kind: 'dash', value: e.target.value });
   }
 
   private handleGapPxChanged(e: Event & { target: HTMLInputElement }) {
-    const nextGap = parseFloat(e.target.value);
-    const wire = (this.node as PolylineSerializedNode).strokeDasharray;
-    const { dashPx, gapPx } = parseDashGapPxFromWire(wire);
-    const d = clampDashGapPx(dashPx, 6);
-    const g = clampDashGapPx(nextGap, gapPx);
-    this.api.updateNode(this.node, { strokeDasharray: `${d},${g}` });
-    this.api.record();
+    return this.commit({ kind: 'gap', value: e.target.value });
   }
 
   private handleStrokeDashCapChanged(e: Event & { target: HTMLInputElement }) {
-    const dashcap = e.target.value as 'none' | 'square' | 'round';
-    this.api.updateNode(this.node, { strokeDashCap: dashcap });
-    this.api.record();
+    return this.commit({
+      kind: 'choice',
+      field: 'strokeDashCap',
+      value: e.target.value,
+    });
   }
 
   private handleStrokeAlignmentChanged(e: Event) {
-    const strokeAlignment = (e.target as any).selected[0];
-    this.api.updateNode(this.node, {
-      strokeAlignment,
-    });
-    this.api.record();
+    const value = (e.target as HTMLElement & { selected?: string[] })
+      .selected?.[0];
+    return this.commit({ kind: 'choice', field: 'strokeAlignment', value });
   }
 
-  private handleStrokeLinecapChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeLinecap = (e.target as any).selected[0] as CanvasLineCap;
-    this.api.updateNode(this.node, { strokeLinecap });
-    this.api.record();
+  private handleStrokeLinecapChanged(e: Event) {
+    const value = (e.target as HTMLElement & { selected?: string[] })
+      .selected?.[0];
+    return this.commit({ kind: 'choice', field: 'strokeLinecap', value });
   }
 
-  private handleStrokeLinejoinChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeLinejoin = (e.target as any).selected[0] as CanvasLineJoin;
-    this.api.updateNode(this.node, { strokeLinejoin });
-    this.api.record();
+  private handleStrokeLinejoinChanged(e: Event) {
+    const value = (e.target as HTMLElement & { selected?: string[] })
+      .selected?.[0];
+    return this.commit({ kind: 'choice', field: 'strokeLinejoin', value });
   }
 
   private handleMarkerStartChanged(e: Event & { target: HTMLInputElement }) {
-    const markerStart = e.target.value as Marker['start'];
-    this.api.updateNode(this.node, { markerStart });
-    this.api.record();
+    return this.commit({
+      kind: 'choice',
+      field: 'markerStart',
+      value: e.target.value,
+    });
   }
 
   private handleMarkerEndChanged(e: Event & { target: HTMLInputElement }) {
-    const markerEnd = e.target.value as Marker['end'];
-    this.api.updateNode(this.node, { markerEnd });
-    this.api.record();
+    return this.commit({
+      kind: 'choice',
+      field: 'markerEnd',
+      value: e.target.value,
+    });
   }
 
   private handleStrokeWidthVariablePick(
     e: CustomEvent<DesignVariablePickDetail>,
   ) {
-    this.api.updateNode(this.node, {
-      strokeWidth: `$${e.detail.key}` as unknown as number,
-    });
-    this.api.record();
+    return this.commit({ kind: 'bind', key: e.detail.key });
   }
 
   private handleStrokeWidthUnbind() {
-    const sw = (this.node as PolylineSerializedNode).strokeWidth;
-    const resolved = resolveDesignVariableValue(
-      sw,
-      this.appState.variables,
-      this.appState.themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      this.api.updateNode(this.node, { strokeWidth: n });
-      this.api.record();
-    }
+    return this.commit({ kind: 'unbind' });
   }
 
   render() {
@@ -260,7 +188,7 @@ export class StrokeContent extends LitElement {
     }
 
     const {
-      strokeWidth,
+      strokeWidth = 1,
       strokeDasharray,
       strokeAlignment = 'center',
       strokeLinecap = 'butt',
@@ -278,13 +206,7 @@ export class StrokeContent extends LitElement {
       this.appState.variables,
       this.appState.themeMode,
     );
-    const strokeWidthShow = (() => {
-      if (typeof strokeWidthResolved === 'number') {
-        return strokeWidthResolved;
-      }
-      const n = parseFloat(String(strokeWidthResolved ?? ''));
-      return Number.isFinite(n) ? n : 0;
-    })();
+    const strokeWidthShow = strokeNumber(strokeWidthResolved) ?? 0;
     const strokeWidthBound =
       typeof strokeWidth === 'string' &&
       isDesignVariableReference(strokeWidth);
@@ -307,10 +229,9 @@ export class StrokeContent extends LitElement {
           <sp-number-field
             id="stroke-width"
             size="s"
-            value=${strokeWidthShow}
+            .value=${live(strokeWidthShow)}
             min="0"
             max="20"
-            step="1"
             autocomplete="off"
             @change=${this.handleStrokeWidthChanged}
             format-options='{
@@ -364,7 +285,7 @@ export class StrokeContent extends LitElement {
           size="s"
           style="width: 70px;"
           label=${msg(str`Stroke style`)}
-          value=${strokeStyle}
+          .value=${live(strokeStyle)}
           @change=${this.handleStrokeStyleChanged}
         >
           <sp-menu-item value="solid">${msg(str`solid`)}</sp-menu-item>
@@ -382,7 +303,7 @@ export class StrokeContent extends LitElement {
         <sp-number-field
           id="stroke-dash-length"
           size="s"
-          value=${dashPx}
+          .value=${live(dashPx)}
           min="0.5"
           step="0.5"
           hide-stepper
@@ -401,7 +322,7 @@ export class StrokeContent extends LitElement {
         <sp-number-field
           id="stroke-gap-length"
           size="s"
-          value=${gapPx}
+          .value=${live(gapPx)}
           min="0.5"
           step="0.5"
           hide-stepper
@@ -422,9 +343,9 @@ export class StrokeContent extends LitElement {
           size="s"
           style="width: 70px;"
           label=${msg(str`Dash cap`)}
-          value=${strokeDashCap === 'square' || strokeDashCap === 'round'
+          .value=${live(strokeDashCap === 'square' || strokeDashCap === 'round'
           ? strokeDashCap
-          : 'none'}
+          : 'none')}
           @change=${this.handleStrokeDashCapChanged}
         >
           <sp-menu-item value="none">${msg(str`none`)}</sp-menu-item>
@@ -444,7 +365,7 @@ export class StrokeContent extends LitElement {
           size="s"
           compact
           selects="single"
-          .selected=${[strokeAlignment]}
+          .selected=${live([strokeAlignment])}
           @change=${this.handleStrokeAlignmentChanged}
         >
           <sp-action-button value="inner">
@@ -551,7 +472,7 @@ export class StrokeContent extends LitElement {
           size="s"
           compact
           selects="single"
-          .selected=${[strokeLinecap]}
+          .selected=${live([strokeLinecap])}
           @change=${this.handleStrokeLinecapChanged}
         >
           <sp-action-button value="butt">
@@ -656,7 +577,7 @@ export class StrokeContent extends LitElement {
           size="s"
           compact
           selects="single"
-          .selected=${[strokeLinejoin]}
+          .selected=${live([strokeLinejoin])}
           @change=${this.handleStrokeLinejoinChanged}
         >
           <sp-action-button value="miter">
@@ -760,7 +681,7 @@ export class StrokeContent extends LitElement {
           size="s"
           style="width: 70px;"
           label=${msg(str`Marker start`)}
-          value=${markerStart}
+          .value=${live(markerStart)}
           @change=${this.handleMarkerStartChanged}
           id="marker-start"
         >
@@ -781,7 +702,7 @@ export class StrokeContent extends LitElement {
           size="s"
           style="width: 70px;"
           label=${msg(str`Marker end`)}
-          value=${markerEnd}
+          .value=${live(markerEnd)}
           @change=${this.handleMarkerEndChanged}
           id="marker-end"
         >
