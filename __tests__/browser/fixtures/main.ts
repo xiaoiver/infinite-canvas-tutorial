@@ -18,6 +18,7 @@ import {
   StrokeLayers,
   Stroke,
   Rect,
+  Circle,
   Visibility,
   Name,
   DropShadow,
@@ -279,11 +280,12 @@ const harness = {
       await act(side, () => {});
     }
   },
-  setScene(side: Side, nodes: SerializedNode[], selectedId: string) {
+  setScene(side: Side, nodes: SerializedNode[], selectedIds: string | string[]) {
     return act(side, ({ api }) => {
       api.replaceDocument(nodes);
       api.setAppState({ penbarSelected: Pen.SELECT });
-      api.selectNodes(nodes.filter((node) => node.id === selectedId));
+      const ids = typeof selectedIds === 'string' ? [selectedIds] : selectedIds;
+      api.selectNodes(nodes.filter((node) => ids.includes(node.id)));
       api.record();
     });
   },
@@ -304,6 +306,27 @@ const harness = {
   rotationPivot(side: Side) {
     const tf = slots.get(side)!.api.getCamera().read(Transformable);
     return { x: tf.rotatePivotX, y: tf.rotatePivotY, pinned: tf.rotatePivotPinned };
+  },
+  transformer(side: Side) {
+    const { api } = slots.get(side)!;
+    const tf = api.getCamera().read(Transformable);
+    const { mask, tlAnchor, trAnchor, brAnchor, blAnchor, centerAnchor } = tf;
+    const status = tf.status;
+    const { width, height } = mask.read(Rect);
+    const { rotation } = mask.read(Transform);
+    return {
+      status,
+      width,
+      height,
+      rotation,
+      visible: mask.read(Visibility).value !== 'hidden',
+      anchors: [tlAnchor, trAnchor, brAnchor, blAnchor, centerAnchor].map(
+        (anchor) => {
+          const { cx, cy } = anchor.read(Circle);
+          return api.transformer2Canvas({ x: cx, y: cy }, anchor);
+        },
+      ),
+    };
   },
   selectVectorVertex(side: Side, id: string, index: number) {
     return act(side, ({ api }) => {

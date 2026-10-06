@@ -1424,7 +1424,8 @@ export function getOBB(camera: Entity): OBB {
   }
 
   /**
-   * 多选旋转时 union AABB 每帧重算会跳动；用手势开始时的 gestureFrozenSelectionOBB。
+   * During multi-selection rotation, Select supplies the transformed initial
+   * frame. Recomputing the union AABB would change its dimensions and pivot.
    */
   if (
     status === TransformableStatus.ROTATING &&
