@@ -15,6 +15,12 @@ const nodeGyp = resolveFrom(gl, 'node-gyp');
 const fetch = resolveFrom(nodeGyp, 'make-fetch-happen');
 const CachePolicy = createRequire(fetch)('http-cache-semantics');
 
+const packages = resolveFrom(config, '@manypkg/get-packages');
+const yamlFile = resolveFrom(packages, 'read-yaml-file');
+const yaml = resolveFrom(yamlFile, 'js-yaml');
+const argparse = resolveFrom(yaml, 'argparse');
+const { sprintf, vsprintf } = createRequire(argparse)('sprintf-js');
+
 test('audit exceptions are backed by registered patches for installed tooling', () => {
   const { pnpm } = JSON.parse(
     readFileSync(new URL('../../package.json', import.meta.url)),
@@ -22,16 +28,23 @@ test('audit exceptions are backed by registered patches for installed tooling', 
   assert.deepEqual(pnpm.auditConfig.ignoreCves.toSorted(), [
     'CVE-2026-93687',
     'CVE-2026-93748',
+    'CVE-2026-97058',
   ]);
   for (const [name, version, cve] of [
     ['braces', '3.0.3', 'CVE-2026-93687'],
     ['http-cache-semantics', '4.1.1', 'CVE-2026-93748'],
+    ['sprintf-js', '1.0.3', 'CVE-2026-97058'],
   ]) {
     const patch = pnpm.patchedDependencies[`${name}@${version}`];
     assert.equal(patch, `patches/${name}@${version}.patch`);
     assert(readFileSync(new URL(`../../${patch}`, import.meta.url)).length > 0);
     assert(pnpm.auditConfig.ignoreCves.includes(cve));
-    const installed = resolveFrom(name === 'braces' ? micromatch : fetch, name);
+    const parent = {
+      braces: micromatch,
+      'http-cache-semantics': fetch,
+      'sprintf-js': argparse,
+    }[name];
+    const installed = resolveFrom(parent, name);
     assert.equal(
       JSON.parse(readFileSync(installed)).version,
       version,
@@ -153,4 +166,23 @@ test('public freshness and explicit stale handling continue to work', () => {
     { shared: false },
   );
   assert.equal(privateCache.satisfiesWithoutRevalidation(request()), true);
+});
+
+test('sprintf preserves ordinary formatting and supported precision boundaries', () => {
+  assert.equal(sprintf('%s: %.2f', 'value', 1.25), 'value: 1.25');
+  assert.equal(vsprintf('%2$s %1$+08.2f', [1.25, 'value']), 'value +0001.25');
+  assert.equal(sprintf('%.0f', 1.25), '1');
+  assert.equal(sprintf('%.0e', 1.25), '1e+0');
+  assert.equal(sprintf('%.1g', 1.25), '1');
+  assert.equal(sprintf('%.100f', 1.25), (1.25).toFixed(100));
+});
+
+test('sprintf clamps invalid precision before calling number formatters', () => {
+  for (const precision of ['101', '1000000000', '9'.repeat(400)]) {
+    assert.equal(sprintf(`%.${precision}f`, 1.25), (1.25).toFixed(100));
+    assert.equal(sprintf(`%.${precision}e`, 1.25), (1.25).toExponential(100));
+    assert.equal(sprintf(`%.${precision}g`, 1.25), (1.25).toPrecision(100));
+  }
+  assert.equal(sprintf('%.0g', 1.25), (1.25).toPrecision(1));
+  assert.equal(vsprintf('%.999g', [1.25]), (1.25).toPrecision(100));
 });
