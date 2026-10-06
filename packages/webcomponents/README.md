@@ -401,5 +401,26 @@ deleted or replaced targets cancel before writing; destroying the canvas cancels
 queued work. Rejected edits are observed and can be retried.
 
 Each effective picker event remains a separate undo entry, including continuous
-color input. Gesture-level history coalescing, paint stack controls in the
-properties panel, stroke geometry and effects are separate follow-up work.
+color input. Gesture-level history coalescing, stroke geometry and effects remain separate
+follow-up work. Property-panel paint stacks use the same boundary as described
+below.
+
+### Paint stack edits
+
+Fill and stroke property sections share the toolbar's `api.edit()` boundary for
+adding/removing layers, toggling visibility, changing color/opacity and binding
+opacity variables. Each row targets its original paint object. The command helper
+carries its identity across its own immutable patches, so queued edits still find
+the correct layer after a preceding removal or an object-preserving reorder,
+including when adjacent layers have identical colors. Repeated removal and edits
+from a removed row cannot affect its successor.
+
+Identity stays in an API-keyed weak map and is never serialized. Replacing layer
+objects externally (including import/history restoration) invalidates commands
+from old rows; matching by value or index would risk modifying a different layer.
+Adds append to the current stack. Each effective command has its own undo entry.
+Opacity fields retain decimals and zero; invalid, blank and unchanged inputs do
+not record, and controls refresh from the document. Bound opacity stays a variable
+reference and detaching resolves the current binding and theme. Reading paint for
+display does not mutate the document. Stroke geometry and effect controls remain
+separate follow-up work; this change adds no paint-layer reorder UI.

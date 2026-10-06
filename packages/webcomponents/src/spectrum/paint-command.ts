@@ -16,10 +16,14 @@ type PaintCommand =
   | ({ kind: 'color' } & ColorPickerChangeDetail)
   | { kind: 'opacity'; value: number }
   | { kind: 'bind'; field: 'value' | 'opacity'; key: string }
-  | { kind: 'unbind'; field: 'value' | 'opacity' };
+  | { kind: 'unbind'; field: 'value' | 'opacity' }
+  | { kind: 'add'; layer: SerializedFillLayerItem }
+  | { kind: 'remove' }
+  | { kind: 'toggle' }
+  | { kind: 'value'; value: string };
 
 /** Read legacy paint without mutating the document during rendering. */
-function paintLayers(node: SerializedNode, field: PaintField) {
+export function paintLayers(node: SerializedNode, field: PaintField) {
   const wire = { ...node } as unknown as Record<string, unknown>;
   if (field === 'fills') migrateLegacyFillWireInPlace(wire);
   else migrateLegacyStrokeWireInPlace(wire);
@@ -35,18 +39,36 @@ export function primaryPaint(
   return { ...(layer ?? fallback) };
 }
 
-/** Edit the first paint layer; retain the latest remaining layers and metadata. */
+// Paint wire has no persistent layer IDs. Preserve identity across our own
+// immutable layer patches without adding editor-only metadata to the document.
+// Replaced objects (including undo/import) invalidate an old row's commands;
+// array reorders that retain the objects can still locate their original layer.
+const identities = new WeakMap<API, WeakMap<SerializedFillLayerItem, object>>();
+function layerIdentity(api: API, layer: SerializedFillLayerItem) {
+  let layers = identities.get(api);
+  if (!layers) identities.set(api, (layers = new WeakMap()));
+  let identity = layers.get(layer);
+  if (!identity) layers.set(layer, (identity = {}));
+  return identity;
+}
+
+/** Edit a captured paint layer, or the first layer for toolbar shortcuts. */
 export async function editPaint(
   api: API,
   id: string | undefined,
   field: PaintField,
   input: PaintCommand,
   fallback: SerializedFillLayerItem,
+  target?: SerializedFillLayerItem,
 ) {
   const source = id && api.getNodeById(id);
   if (!source || source.isDeleted) return false;
   const { type } = source;
-  const command = { ...input };
+  const command =
+    input.kind === 'add'
+      ? { ...input, layer: { ...input.layer } }
+      : { ...input };
+  const identity = target && layerIdentity(api, target);
   const defaultLayer = { ...fallback };
   const controller = new AbortController();
   const dispose = api.onDestroy(() => controller.abort());
@@ -65,9 +87,45 @@ export async function editPaint(
           return;
         }
         const layers = paintLayers(node, field);
-        const layer = layers[0] ?? defaultLayer;
+        if (command.kind === 'add') {
+          editor.updateNode(node, {
+            [field]: [...layers, command.layer],
+          } as Partial<SerializedNode>);
+          return;
+        }
+        const matches =
+          identity &&
+          layers.flatMap((layer, index) =>
+            layerIdentity(api, layer) === identity ? [index] : [],
+          );
+        if (matches && matches.length !== 1) {
+          controller.abort();
+          return;
+        }
+        const index = matches ? matches[0] : 0;
+        const layer = layers[index] ?? defaultLayer;
+        if (command.kind === 'remove') {
+          if (!layers[index]) {
+            controller.abort();
+            return;
+          }
+          editor.updateNode(node, {
+            [field]: layers.filter((_, i) => i !== index),
+          } as Partial<SerializedNode>);
+          return;
+        }
         let next: SerializedFillLayerItem = { ...layer };
-        if (command.kind === 'color') {
+        if (command.kind === 'toggle') {
+          next.enabled = layer.enabled === false;
+        } else if (command.kind === 'value') {
+          const raw = command.value.trim();
+          if (!raw) {
+            controller.abort();
+            return;
+          }
+          next.value =
+            layer.type === 'solid' ? normalizeSolidCssValue(raw) : raw;
+        } else if (command.kind === 'color') {
           const { value, type: colorType } = command;
           if (
             typeof value !== 'string' ||
@@ -163,8 +221,13 @@ export async function editPaint(
           controller.abort();
           return;
         }
+        // Carry the logical identity to the replacement before the next queued edit.
+        const nextIdentity = layerIdentity(api, layer);
+        identities.get(api)!.set(next, nextIdentity);
         editor.updateNode(node, {
-          [field]: [next, ...layers.slice(1)],
+          [field]: layers.length
+            ? layers.map((item, i) => (i === index ? next : item))
+            : [next],
         } as Partial<SerializedNode>);
       },
       { signal: controller.signal },
