@@ -293,6 +293,14 @@ const harness = {
   setZoom(side: Side, zoom: number) {
     return act(side, ({ api }) => api.setAppState({ cameraZoom: zoom }));
   },
+  setPreferences(side: Side, preferences: Partial<AppState>) {
+    return act(side, ({ api }) => api.setAppState(preferences));
+  },
+  selectNodes(side: Side, ids: string[]) {
+    return act(side, ({ api }) =>
+      api.selectNodes(api.getNodes().filter((node) => ids.includes(node.id))),
+    );
+  },
   rotationPivot(side: Side) {
     const tf = slots.get(side)!.api.getCamera().read(Transformable);
     return { x: tf.rotatePivotX, y: tf.rotatePivotY, pinned: tf.rotatePivotPinned };

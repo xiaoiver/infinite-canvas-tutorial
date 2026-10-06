@@ -36,6 +36,13 @@ WebKit suite uses an iPhone profile and native touchscreen taps; drag tests use
 DOM PointerEvents because Playwright does not expose native WebKit touch drags.
 Physical iOS Safari still requires a device check.
 
+Object-snapping regressions cover independent grid/object switches, one-pixel
+movement and release, references off the grid, zoom-independent CSS-pixel
+thresholds, equal spacing, hidden references, nested groups and rotated parents.
+Resize checks exercise corners, edges, endpoints, multi-selection, aspect-ratio
+and centered scaling, rotated handles, guide cleanup and undo/redo. The WebKit
+suite also checks touch attraction/release and padded-corner object snapping.
+
 CI runs these checks in `.github/workflows/browser-regression.yml` and uploads
 failure screenshots and traces from `.test-results/browser` and
 `.test-results/webkit`. The existing ECS suite remains a separate regression

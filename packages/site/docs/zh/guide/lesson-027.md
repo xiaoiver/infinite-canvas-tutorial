@@ -4,6 +4,7 @@ description: '吸附与对齐'
 head:
     - ['meta', { property: 'og:title', content: '课程 27 - 吸附与对齐' }]
 ---
+
 <script setup>
 import SnapToPixelGrid from '../../components/SnapToPixelGrid.vue'
 import SnapToObjects from '../../components/SnapToObjects.vue'
@@ -17,7 +18,9 @@ import SnapToObjects from '../../components/SnapToObjects.vue'
 
 在 [课程 5 - 绘制网格] 中我们介绍了如何高效绘制直线网格，在一些拖拽交互例如移动和绘制时，吸附到网格的最小单位，能保证图形的位置或者几何信息为整数。这个功能在 Figma 中被称为 “Snap to pixel grid”，在“用户偏好设置”中可以开启。
 
-![source: [Snap to grid in Excalidraw] ](https://user-images.githubusercontent.com/490574/85198268-4ff5f300-b322-11ea-897e-602ef5936995.gif)
+![网格吸附](https://user-images.githubusercontent.com/490574/85198268-4ff5f300-b322-11ea-897e-602ef5936995.gif)
+
+来源：[Snap to grid in Excalidraw]。
 
 我们在应用状态中增加两个配置项：
 
@@ -78,6 +81,10 @@ Excalidraw 中的 snapping 功能实现分为以下几个关键步骤：
 
 下面我们参考以上步骤来实现。
 
+对象吸附与像素网格可以独立开启。`snapToObjectsDistance` 的单位是 CSS 屏幕像素，因此缩放画布不会改变感受到的吸附距离。移动时，从按下指针时的几何和原始指针位移计算候选位置，只对显示位置增加吸附偏移。如果下一次计算继续使用已经吸附的位置，图形就容易被不断拉回辅助线。
+
+移动支持包围盒边缘、中心对齐以及等间距辅助线。缩放时，对正在拖动的边或角计算与其他对象边缘、中心的吸附，同时保留对边、比例锁定和居中缩放约束；旋转图形按世界坐标对齐移动的控制点。隐藏、视口外的对象，以及选区的祖先和后代不参与参考。这是目前实现的范围；缩放中的间距分配、等尺寸匹配以及绘制时吸附仍待补充，尚未覆盖 Figma 的全部行为。
+
 ### 检查是否允许吸附 {#is-snapping-enabled}
 
 我们在应用状态中增加以下配置项，同样可以在“偏好菜单”中开启：
@@ -88,7 +95,7 @@ export interface AppState {
 }
 ```
 
-在拖拽移动和绘制图形时触发：
+在拖拽移动或缩放选中图形时触发：
 
 ![source: https://github.com/excalidraw/excalidraw/issues/263#issuecomment-577605528](https://user-images.githubusercontent.com/5153846/72973602-d804ba80-3dcd-11ea-9717-05448160044c.gif)
 
@@ -264,9 +271,9 @@ renderSnapLines(
 
 ![Display gap snap lines and distance labels](/snap-to-objects.gif)
 
-你可以在下面的例子中移动中间的矩形体验效果：
+你可以移动或缩放下面的中间矩形，并用独立开关比较对象吸附与像素网格的效果：
 
-<SnapToObjects />
+<SnapToObjects locale="zh" />
 
 ## 扩展阅读 {#extended-reading}
 
