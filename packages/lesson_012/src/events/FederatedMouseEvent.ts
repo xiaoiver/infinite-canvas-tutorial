@@ -63,7 +63,7 @@ export class FederatedMouseEvent
   dy: number;
 
   /** This is the number of clicks that occurs in 200ms/click of each other. */
-  detail: number;
+  declare detail: number;
 
   /** The movement in this pointer relative to the last `mousemove` event. */
   movement: Point = new Point();

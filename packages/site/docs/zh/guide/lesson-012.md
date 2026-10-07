@@ -2,6 +2,7 @@
 outline: deep
 description: '实现具有高级功能的折线绘制，包括任意线宽、stroke连接和端点、虚线以及反走样。学习在CPU和GPU中构建Mesh以及包围盒计算。'
 ---
+
 <script setup>
 import Wireframe from '../../components/Wireframe.vue';
 </script>
@@ -629,48 +630,39 @@ call(() => {
 
 ### 虚线 {#dash}
 
-首先计算每个顶点从起点处经过的距离，以 `[[0, 0], [100, 0], [200, 0]]` 的折线为例，三个 instance 的 `a_Travel` 的值依次为 `[0, 100, 200]`。在 Vertex Shader 中计算拉伸后顶点经过的距离：
+每一小段虚线都有自己的两个端点。对整条实线叠加周期性透明度遮罩，只能在直线段上得到平切的断口，无法产生圆头；在转角处仅沿入射线段投影，还会裁出错位的楔形。
+
+首先，需要把沿**中心线**累计的距离与线段实例正确对应。对于 `[[0, 0], [100, 0], [200, 0]]`，实例依次是起始端帽和两条线段，起始距离应为 `[0, 0, 100]`。每个实例还携带前后相邻线段的起始距离，`-1` 表示该邻居不存在：
 
 ```glsl
-layout(location = ${Location.TRAVEL}) in float a_Travel;
-out float v_Travel;
-
-v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
+layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
+// x：当前线段起点；y：前一段起点；z：后一段起点的累计距离
 ```
 
-在 Fragment Shader 中，将 `stroke-dasharray` 和 `stroke-dashoffset` 的值传入，和 SVG 标准不同，我们暂时仅支持长度为 2 的 `stroke-dasharray`，即 `[10, 5, 2]` 这样的虚线暂不支持。
+Fragment Shader 使用 `period = dash + gap` 找到附近的着色区间，再将区间裁到对应的中心线段内。着色长度是 **dash**，不能误用 gap。本章仍只支持两个数字的虚线模式；周期只要大于零就有效，也支持小于一个像素的周期。间隔为零时绘制实线。
+
+当 `strokeLinecap: 'round'` 时，每个着色区间都应是胶囊。下面的 `p.x` 是沿该区间方向的世界空间距离，`p.y` 是距中心线的垂直距离，`dashLength` 是裁剪后的区间长度，三者使用相同单位：
 
 ```glsl
-in float v_Travel;
-
-/**
-虚线模式重复单元：
-┌─────────────────┬─────────┬─────────────────┐
-│   Gap/2         │  Dash   │   Gap/2         │
-│  (透明)          │ (不透明) │  (透明)         │
-└─────────────────┴─────────┴─────────────────┘
-       ↑                          ↑
-      -0.5                   Dash+0.5
-   (抗锯齿边界)            (抗锯齿边界)
- */
-float u_Dash = u_StrokeDash.x;
-float u_Gap = u_StrokeDash.y;
-float u_DashOffset = u_StrokeDash.z;
-if (u_Dash + u_Gap > 1.0) {
-    /**
-    travel 值的含义：
-  < -0.5          : 间隔区域（alpha = 0）
-  -0.5 ~ 0        : 虚线起始边缘（平滑过渡）
-  0 ~ Dash        : 虚线段（alpha = 1）
-  Dash ~ Dash+0.5 : 虚线结束边缘（平滑过渡）
-  > Dash+0.5      : 间隔区域（alpha = 0）
-     */
-  float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
-  float left = max(travel - 0.5, -0.5);
-  float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
-  alpha *= antialias(max(0.0, right - left));
-}
+float radius = strokeWidth * 0.5;
+float alongOutside = max(max(-p.x, p.x - dashLength), 0.0);
+float distance = length(vec2(alongOutside, p.y)) - radius;
+float coverage = clamp(
+    0.5 - distance / max(fwidth(distance), 0.0001),
+    0.0, 1.0
+);
 ```
+
+圆头半径应等于线宽的一半，不能与已缩放的垂直距离混用，否则线段和圆头都会变窄。`butt` 使用矩形，`square` 则在两端各延长半个线宽。圆头和方头都会进入名义上的 gap，所以间隔小于线宽时，相邻虚线段可能相接。
+
+转角处需要同时考虑两段的方向：
+
+1. 分别计算当前、前一条和后一条线段中的虚线区间，取覆盖范围的并集。同时检查相邻周期，处理路径端部的不完整虚线和负偏移。
+2. 同一段虚线跨过顶点时，不在该线段边界生成两个假端帽，外侧转角使用 `strokeLinejoin`。
+3. 虚线在顶点结束，或顶点位于间隔中时，不额外补实心 join。真实端帽仍可能覆盖转角，不能再用整条实线的圆角或斜角把端帽裁掉。
+4. 闭合路径以真实累计距离连接首尾线段；独立子路径从零重新计数。
+
+改变 `strokeDashoffset` 时，几何保持不变，只更新 uniform。距离场的反走样分母需要防止除零，常量覆盖率的片元也不能例外。
 
 我们还可以实时改变（自增） `stroke-dashoffset` 实现蚂蚁线效果。通常这类动画效果会通过 SVG 同名属性实现，详见：[How to animate along an SVG path at the same time the path animates?]
 
@@ -723,7 +715,7 @@ call(() => {
             ],
             stroke: 'black',
             strokeWidth: 10,
-            strokeDasharray: [2, 10],
+            strokeDasharray: [20, 20],
             strokeDashoffset: 0,
             strokeLinecap: 'round',
             strokeLinejoin: 'round',
@@ -755,7 +747,7 @@ call(() => {
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 ```
 
-以 Rect 为例，我们需要根据 `x / y / width / height` 属性人为构造一条折线，其中包含 6 个顶点。值得注意的是，前 5 个其实已经可以完成闭合，但我们额外增加一个 `[x + epsilon, y]` 用来完成最后的 `strokeLinejoin`。Circle 和 Ellipse 同理，只不过为了保证平滑多增加一些采样点（这里我们使用 `64`）：
+对于 Rect，构造五个点：四个角点，加上重复的首点。准备 GPU 实例时，让首段的前驱指向末段、末段的后继指向首段，这样就能闭合 join，不需要额外的 epsilon 短线段，也不会生成首尾端帽。Circle 和 Ellipse 同理，只是采样更多点（这里使用 `64`）：
 
 ```ts
 if (object instanceof Polyline) {
@@ -765,20 +757,7 @@ if (object instanceof Polyline) {
     }, [] as number[]);
 } else if (object instanceof Rect) {
     const { x, y, width, height } = object;
-    points = [
-        x,
-        y,
-        x + width,
-        y,
-        x + width,
-        y + height,
-        x,
-        y + height,
-        x,
-        y,
-        x + epsilon,
-        y,
-    ];
+    points = [x, y, x + width, y, x + width, y + height, x, y + height, x, y];
 }
 ```
 

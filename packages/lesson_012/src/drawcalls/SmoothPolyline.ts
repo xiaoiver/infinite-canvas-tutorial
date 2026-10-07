@@ -22,7 +22,6 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3 } from '../utils';
 
-const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
 const stridePoints = 2;
 const strideFloats = 3;
@@ -65,15 +64,7 @@ export class SmoothPolyline extends Drawcall {
   travelBuffer: number[] = [];
 
   get instanceCount() {
-    const instance = this.shapes[0];
-    if (instance instanceof Polyline) {
-      return this.pointsBuffer.length / strideFloats - 3;
-    } else if (instance instanceof Rect) {
-      return 6;
-    } else if (instance instanceof Circle || instance instanceof Ellipse) {
-      return circleEllipsePointsNum + 1;
-    }
-    return 0;
+    return Math.max(0, this.pointsBuffer.length / strideFloats - 3);
   }
 
   createGeometry(): void {
@@ -142,7 +133,7 @@ export class SmoothPolyline extends Drawcall {
       this.#travelBuffer.destroy();
     }
     this.#travelBuffer = this.device.createBuffer({
-      viewOrSize: Float32Array.BYTES_PER_ELEMENT * this.instanceCount,
+      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 3 * this.instanceCount,
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
@@ -243,11 +234,11 @@ export class SmoothPolyline extends Drawcall {
         ],
       },
       {
-        arrayStride: 4 * 1,
+        arrayStride: 4 * 3,
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
-            format: Format.F32_R,
+            format: Format.F32_RGB,
             offset: 4 * 0,
             shaderLocation: Location.TRAVEL,
           },
@@ -427,6 +418,7 @@ export class SmoothPolyline extends Drawcall {
       strokeMiterlimit,
       strokeDasharray,
       strokeDashoffset,
+      strokeLinecap,
       sizeAttenuation,
     } = shape;
 
@@ -448,7 +440,7 @@ export class SmoothPolyline extends Drawcall {
       (strokeDasharray && strokeDasharray[0]) || 0, // DASH
       (strokeDasharray && strokeDasharray[1]) || 0, // GAP
       strokeDashoffset || 0,
-      0,
+      strokeLinecap === 'round' ? 2 : strokeLinecap === 'square' ? 1 : 0,
     ];
 
     return [
@@ -516,20 +508,7 @@ export function updateBuffer(
     }, [] as number[]);
   } else if (object instanceof Rect) {
     const { x, y, width, height } = object;
-    points = [
-      x,
-      y,
-      x + width,
-      y,
-      x + width,
-      y + height,
-      x,
-      y + height,
-      x,
-      y,
-      x + epsilon,
-      y,
-    ];
+    points = [x, y, x + width, y, x + width, y + height, x, y + height, x, y];
   } else if (object instanceof Circle) {
     const { cx, cy, r } = object;
     for (let i = 0; i < circleEllipsePointsNum; i++) {
@@ -574,26 +553,45 @@ export function updateBuffer(
   const travelBufferTotal: number[] = [];
   // let instancedCount = 0;
   subPaths.forEach((points) => {
+    if (points.length < 4) return;
+    const closed =
+      points.length > 4 &&
+      points[0] === points[points.length - 2] &&
+      points[1] === points[points.length - 1];
+    const distances = [0];
+    for (let i = 2; i < points.length; i += 2) {
+      distances.push(
+        distances[distances.length - 1] +
+          Math.hypot(points[i] - points[i - 2], points[i + 1] - points[i - 1]),
+      );
+    }
+    if (pointsBufferTotal.length) {
+      // Padding records between independent subpaths are also GPU instances.
+      travelBufferTotal.push(...Array(9).fill(-1));
+    }
     const pointsBuffer: number[] = [];
-    const travelBuffer: number[] = [];
+    // Instance zero draws the start cap; the first segment also starts at zero.
+    const travelBuffer: number[] = [0, -1, -1];
     let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
-    let dist = 0;
-
     for (let i = 0; i < points.length; i += stridePoints) {
-      // calc travel
-      if (i > 1) {
-        dist += Math.sqrt(
-          Math.pow(points[i] - points[i - stridePoints], 2) +
-            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
+      if (i + stridePoints < points.length) {
+        const index = i / stridePoints;
+        travelBuffer.push(
+          distances[index],
+          index > 0
+            ? distances[index - 1]
+            : closed
+            ? distances[distances.length - 2]
+            : -1,
+          index < distances.length - 2 ? distances[index + 1] : closed ? 0 : -1,
         );
       }
-      travelBuffer.push(dist);
 
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];
       pointsBuffer[j] = jointType;
       if (i == 0) {
-        if (capType !== JointType.CAP_ROUND) {
+        if (!closed && capType !== JointType.CAP_ROUND) {
           pointsBuffer[j] += capType;
         }
       } else {
@@ -601,30 +599,23 @@ export function updateBuffer(
           pointsBuffer[j] += JointType.CAP_BUTT;
         }
       }
-      if (
-        i + stridePoints * 2 >= points.length ||
-        isNaN(points[i + 4]) ||
-        isNaN(points[i + 5])
-      ) {
-        pointsBuffer[j] += endJoint - jointType;
-      } else if (
-        i + stridePoints >= points.length ||
-        isNaN(points[i + 2]) ||
-        isNaN(points[i + 3])
-      ) {
+      if (i + stridePoints >= points.length) {
+        // The final point is only an endpoint, including between subpaths.
         pointsBuffer[j] = 0;
+      } else if (!closed && i + stridePoints * 2 >= points.length) {
+        pointsBuffer[j] += endJoint - jointType;
       }
       j++;
     }
-    pointsBuffer[j++] = points[points.length - 4];
-    pointsBuffer[j++] = points[points.length - 3];
+    pointsBuffer[j++] = closed ? points[2] : points[points.length - 4];
+    pointsBuffer[j++] = closed ? points[3] : points[points.length - 3];
     pointsBuffer[j++] = 0;
     pointsBuffer[0] = points[0];
     pointsBuffer[1] = points[1];
     pointsBuffer[2] = 0;
-    pointsBuffer[3] = points[2];
-    pointsBuffer[4] = points[3];
-    pointsBuffer[5] = capType === JointType.CAP_ROUND ? capType : 0;
+    pointsBuffer[3] = closed ? points[points.length - 4] : points[2];
+    pointsBuffer[4] = closed ? points[points.length - 3] : points[3];
+    pointsBuffer[5] = !closed && capType === JointType.CAP_ROUND ? capType : 0;
 
     // instancedCount += Math.round(points.length / stridePoints);
 
