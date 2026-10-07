@@ -137,7 +137,7 @@ export class SDF extends Drawcall {
     const { dasharray } = shape.has(Stroke)
       ? shape.read(Stroke)
       : { dasharray: [0, 0] };
-    return dasharray[0] > 0 && dasharray[1] > 0;
+    return dasharray[0] >= 0 && dasharray[1] > 0;
   }
 
   /**

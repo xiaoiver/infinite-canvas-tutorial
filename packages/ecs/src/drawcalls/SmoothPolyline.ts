@@ -128,7 +128,7 @@ export class SmoothPolyline extends Drawcall {
         shape.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line)) ||
       (shape.hasSomeOf(Rect, Circle, Ellipse) &&
         shape.has(Stroke) &&
-        ((shape.read(Stroke).dasharray[0] > 0 &&
+        ((shape.read(Stroke).dasharray[0] >= 0 &&
           shape.read(Stroke).dasharray[1] > 0) ||
           (getFirstGradientStrokeLayerValue(shape) != null &&
             shape.read(Stroke).width > 0))) ||
@@ -197,22 +197,7 @@ export class SmoothPolyline extends Drawcall {
   travelBuffer: number[] = [];
 
   get instanceCount() {
-    const instance = this.shapes[0];
-    if (
-      instance.hasSomeOf(Polyline, Path, Text, VectorNetwork, Line) ||
-      (instance.has(Rough) &&
-        instance.hasSomeOf(Circle, Ellipse, Rect, Polyline, Path, Line))
-    ) {
-      return Math.max(
-        0,
-        Math.floor(this.pointsBuffer.length / strideFloats) - 3,
-      );
-    } else if (instance.has(Rect)) {
-      return 6;
-    } else if (instance.hasSomeOf(Circle, Ellipse)) {
-      return circleEllipsePointsNum + 1;
-    }
-    return 0;
+    return Math.max(0, this.pointsBuffer.length / strideFloats - 3);
   }
 
   createGeometry(): void {
@@ -282,7 +267,7 @@ export class SmoothPolyline extends Drawcall {
       this.#travelBuffer.destroy();
     }
     this.#travelBuffer = this.device.createBuffer({
-      viewOrSize: Float32Array.BYTES_PER_ELEMENT * this.instanceCount,
+      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 3 * this.instanceCount,
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
@@ -385,11 +370,11 @@ export class SmoothPolyline extends Drawcall {
         ],
       },
       {
-        arrayStride: 4 * 1,
+        arrayStride: 4 * 3,
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
-            format: Format.F32_R,
+            format: Format.F32_RGB,
             offset: 4 * 0,
             shaderLocation: Location.TRAVEL,
           },
@@ -994,20 +979,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     }
   } else if (object.has(Rect)) {
     const { x, y, width, height } = object.read(Rect);
-    points = [
-      x,
-      y,
-      x + width,
-      y,
-      x + width,
-      y + height,
-      x,
-      y + height,
-      x,
-      y,
-      x + epsilon,
-      y,
-    ];
+    points = [x, y, x + width, y, x + width, y + height, x, y + height, x, y];
   } else if (object.has(Circle)) {
     const { cx, cy, r } = object.read(Circle);
     for (let i = 0; i < circleEllipsePointsNum; i++) {
@@ -1127,109 +1099,85 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
 
   let fullPairCursor = 0;
   subPaths.forEach((points, spIndex) => {
-    // Need at least two vertices; otherwise tail reads (e.g. points[length - 4]) are invalid.
-    // Empty fill sketch (e.g. fill: 'transparent' on Rough) must not emit a bogus instance.
-    if (points.length < stridePoints * 2) {
-      return;
-    }
-
-    const pointsBuffer: number[] = [];
-    const travelBuffer: number[] = [0];
-    let j = (Math.round(0 / stridePoints) + 2) * strideFloats;
-    let dist = 0;
-
-    // Account for Z command in path
-    let zCommand = false;
-    if (
-      points.length >= 6 &&
+    const firstGi = fullPairCursor;
+    fullPairCursor +=
+      points.length / stridePoints + (spIndex < subPaths.length - 1 ? 1 : 0);
+    // Empty rough fills and singleton subpaths have no segment instances.
+    if (points.length < stridePoints * 2) return;
+    const closed =
+      points.length > 4 &&
       points[0] === points[points.length - 2] &&
-      points[1] === points[points.length - 1]
-    ) {
-      const dir = [points[2] - points[0], points[3] - points[1]];
-      points.push(points[0] + epsilon * dir[0], points[1] + epsilon * dir[1]);
-      zCommand = true;
+      points[1] === points[points.length - 1];
+    const distances = [0];
+    for (let i = 2; i < points.length; i += 2) {
+      distances.push(
+        distances[distances.length - 1] +
+          Math.hypot(points[i] - points[i - 2], points[i + 1] - points[i - 1]),
+      );
     }
-
+    if (pointsBufferTotal.length) {
+      // Concatenated subpaths contain three inactive padding instances.
+      travelBufferTotal.push(...Array(9).fill(-1));
+    }
+    const pointsBuffer: number[] = [];
+    // Optional reverse start-cap instance, followed by the actual segments.
+    const travelBuffer: number[] = [0, -1, -1];
+    const startCap =
+      vnLinecap?.[firstGi] === undefined
+        ? capType
+        : getCapType(vnLinecap[firstGi]!);
+    const lastGi = firstGi + points.length / stridePoints - 1;
+    const endCap =
+      vnLinecap?.[lastGi] === undefined
+        ? capType
+        : getCapType(vnLinecap[lastGi]!);
+    const endJoint =
+      endCap === JointType.CAP_ROUND
+        ? JointType.JOINT_CAP_ROUND
+        : endCap === JointType.CAP_SQUARE
+        ? JointType.JOINT_CAP_SQUARE
+        : JointType.JOINT_CAP_BUTT;
+    let j = 2 * strideFloats;
     for (let i = 0; i < points.length; i += stridePoints) {
-      const gi = fullPairCursor + i / stridePoints;
-      const lj =
-        vnLinejoin?.[gi] !== undefined ? vnLinejoin[gi]! : undefined;
-      const lc =
-        vnLinecap?.[gi] !== undefined ? vnLinecap[gi]! : undefined;
-      const jt = lj !== undefined ? getJointType(lj) : jointType;
-      const capStart = lc !== undefined ? getCapType(lc) : capType;
-      const endCap = lc !== undefined ? getCapType(lc) : capType;
-      let endJointLocal = endCap;
-      if (endCap === JointType.CAP_ROUND) {
-        endJointLocal = JointType.JOINT_CAP_ROUND;
+      const index = i / stridePoints;
+      if (i + stridePoints < points.length) {
+        travelBuffer.push(
+          distances[index],
+          index > 0
+            ? distances[index - 1]
+            : closed
+            ? distances[distances.length - 2]
+            : -1,
+          index < distances.length - 2 ? distances[index + 1] : closed ? 0 : -1,
+        );
       }
-      if (endCap === JointType.CAP_BUTT) {
-        endJointLocal = JointType.JOINT_CAP_BUTT;
-      }
-      if (endCap === JointType.CAP_SQUARE) {
-        endJointLocal = JointType.JOINT_CAP_SQUARE;
-      }
-
-      // calc travel
-      if (i > 1) {
-        if (!(zCommand && i >= points.length - stridePoints)) {
-          dist += Math.sqrt(
-            Math.pow(points[i] - points[i - stridePoints], 2) +
-            Math.pow(points[i + 1] - points[i + 1 - stridePoints], 2),
-          );
-          travelBuffer.push(dist);
-        }
-      }
-
+      const lj = vnLinejoin?.[firstGi + index];
+      const jt = lj === undefined ? jointType : getJointType(lj);
       pointsBuffer[j++] = points[i];
       pointsBuffer[j++] = points[i + 1];
       pointsBuffer[j] = jt;
-      if (i == 0) {
-        if (capStart !== JointType.CAP_ROUND) {
-          pointsBuffer[j] += capStart;
-        }
-      } else {
-        if (isNaN(points[i - 2]) || isNaN(points[i - 1])) {
-          pointsBuffer[j] += JointType.CAP_BUTT;
-        }
+      if (!closed && i === 0 && startCap !== JointType.CAP_ROUND) {
+        pointsBuffer[j] += startCap;
       }
-      if (
-        i + stridePoints * 2 >= points.length ||
-        isNaN(points[i + 4]) ||
-        isNaN(points[i + 5])
-      ) {
-        pointsBuffer[j] += endJointLocal - jt;
-      } else if (
-        i + stridePoints >= points.length ||
-        isNaN(points[i + 2]) ||
-        isNaN(points[i + 3])
-      ) {
+      if (i + stridePoints >= points.length) {
         pointsBuffer[j] = 0;
+      } else if (!closed && i + stridePoints * 2 >= points.length) {
+        pointsBuffer[j] += endJoint - jt;
       }
       j++;
     }
-    pointsBuffer[j++] = points[points.length - 4];
-    pointsBuffer[j++] = points[points.length - 3];
+    pointsBuffer[j++] = closed ? points[2] : points[points.length - 4];
+    pointsBuffer[j++] = closed ? points[3] : points[points.length - 3];
     pointsBuffer[j++] = 0;
     pointsBuffer[0] = points[0];
     pointsBuffer[1] = points[1];
     pointsBuffer[2] = 0;
-    pointsBuffer[3] = points[2];
-    pointsBuffer[4] = points[3];
-    const firstGi = fullPairCursor;
-    const firstLc =
-      vnLinecap?.[firstGi] !== undefined ? vnLinecap[firstGi]! : undefined;
-    const cap0 = firstLc !== undefined ? getCapType(firstLc) : capType;
-    pointsBuffer[5] = cap0 === JointType.CAP_ROUND ? cap0 : 0;
-
-    // instancedCount += Math.round(points.length / stridePoints);
-
+    pointsBuffer[3] = closed ? points[points.length - 4] : points[2];
+    pointsBuffer[4] = closed ? points[points.length - 3] : points[3];
+    pointsBuffer[5] =
+      !closed && startCap === JointType.CAP_ROUND ? startCap : 0;
     pointsBufferTotal.push(...pointsBuffer);
     travelBufferTotal.push(...travelBuffer);
-    fullPairCursor += points.length / stridePoints;
-    if (spIndex < subPaths.length - 1) {
-      fullPairCursor += 1;
-    }
   });
 
   return {

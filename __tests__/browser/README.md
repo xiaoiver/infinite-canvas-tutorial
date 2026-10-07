@@ -65,7 +65,11 @@ closed paths and rectangles, sharp corners, zoom, short dashes, dots, independen
 subpaths, alignment and solid strokes. Edge antialiasing kernels may differ, so
 the comparison ignores partially covered pixels. Offset animation also checks
 that geometry is not rebuilt. These fixtures use the independent lesson 12
-renderer; they do not cover the core or ECS renderer's dashed strokes.
+renderer. The same comparison cases also run against ECS, with additional
+coverage for independent path/dash caps, screen-space stroke sizing, gradients,
+paths, vector networks and sampled ellipses. ECS currently rebuilds geometry on
+every Stroke write, so only the lesson fixture asserts uniform-only offset
+updates. The core renderer is not covered by these fixtures.
 
 ## React playground touch regression
 
