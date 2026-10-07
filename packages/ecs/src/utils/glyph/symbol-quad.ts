@@ -1,4 +1,9 @@
-import { glyphPadding, BASE_FONT_BUFFER, SDF_SCALE, type GlyphPosition } from './glyph-atlas';
+import {
+  glyphPadding,
+  BASE_FONT_BUFFER,
+  SDF_SCALE,
+  type GlyphPosition,
+} from './glyph-atlas';
 import type { Point } from './alpha-image';
 import type { PositionedGlyph } from './glyph-manager';
 
@@ -56,6 +61,18 @@ export function getGlyphQuads(
     const tr = { x: x2, y: y1 };
     const bl = { x: x1, y: y2 };
     const br = { x: x2, y: y2 };
+
+    const rotation = positionedGlyph.rotation ?? 0;
+    if (rotation) {
+      const cos = Math.cos(rotation),
+        sin = Math.sin(rotation);
+      for (const point of [tl, tr, bl, br]) {
+        const lx = point.x - x,
+          ly = point.y - y;
+        point.x = x + cos * lx - sin * ly;
+        point.y = y + sin * lx + cos * ly;
+      }
+    }
 
     quads.push({ tl, tr, bl, br, tex: rect });
   }

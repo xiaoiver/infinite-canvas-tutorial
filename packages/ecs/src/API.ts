@@ -1,4 +1,5 @@
 import { Entity, type ComponentType } from '@lastolivegames/becsy';
+import { hitTestTextPath } from './utils/glyph/measure-text-path';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
 import { isEntityAlive, updateGlobalTransform } from './systems/Transform';
@@ -118,6 +119,7 @@ import {
   Selected3D,
   Stroke,
   Text,
+  ComputedTextMetrics,
   Theme,
   mergeThemeState,
   resolveThemeModeFromPreference,
@@ -866,8 +868,8 @@ export class API {
         width,
         height,
         rotation,
-        scaleX: scale[0],
-        scaleY: scale[1],
+        scaleX: scale.x,
+        scaleY: scale.y,
       };
     } else {
       return {
@@ -1249,6 +1251,10 @@ export class API {
             isIntersected = ctx.isPointInPath(path, x, y);
           }
         }
+      } else if (entity.has(Text) && entity.read(Text).path) {
+        isIntersected = hitTestTextPath(
+          entity.read(ComputedTextMetrics).pathGlyphs ?? [], x, y, offset,
+        );
       } else {
         isIntersected = true;
       }
@@ -2346,6 +2352,32 @@ export class API {
         (diff as { flexHugWidth?: boolean }).flexHugWidth = false;
       if (!isNil(height))
         (diff as { flexHugHeight?: boolean }).flexHugHeight = false;
+    }
+
+    if (node.type === 'text' && node.path) {
+      // Keep the curve and its glyphs in one coordinate system. Baking only
+      // fontSize would lose horizontal scale and distort curved baselines.
+      const original = (oldNode ?? node) as TextSerializedNode;
+      const entity = this.getEntity(node);
+      const bounds = entity?.has(ComputedBounds)
+        ? entity.read(ComputedBounds).geometryBounds
+        : Text.getGeometryBounds(original, measureText(original));
+      const localWidth = bounds.maxX - bounds.minX;
+      const localHeight = bounds.maxY - bounds.minY;
+      if (delta) {
+        const { scale } = decompose(delta);
+        diff.scaleX = scale[0];
+        diff.scaleY = scale[1];
+      } else {
+        if (isNil(scaleX) && !isNil(diff.width) && localWidth > 0)
+          diff.scaleX = ((original.scaleX ?? 1) * diff.width) / localWidth;
+        if (isNil(scaleY) && !isNil(diff.height) && localHeight > 0)
+          diff.scaleY = ((original.scaleY ?? 1) * diff.height) / localHeight;
+      }
+      diff.width = localWidth;
+      diff.height = localHeight;
+      this.updateNode(node, diff);
+      return;
     }
 
     if (delta) {

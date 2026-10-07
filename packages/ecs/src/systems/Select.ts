@@ -3378,10 +3378,12 @@ export class Select extends System {
        * resize / 其它：烘焙局部几何（API 内用 mat3WithoutTranslation 避免平移重复），缩放进路径定义；
        * 此时 Transform 的 scale 若再乘 decompose 的尺度会与 d 双重叠加，故只保留翻转符号（±1）。
        */
-      const skipGeometryDeltaForEdge =
-        selection.mode === SelectionMode.ROTATE &&
-        selected.hasSomeOf(Polyline, Path, Line, VectorNetwork);
-      if (skipGeometryDeltaForEdge) {
+      // Path text always retains affine scale so glyphs and the curve resize together.
+      const keepGeometry =
+        (selected.has(Text) && !!selected.read(Text).path) ||
+        (selection.mode === SelectionMode.ROTATE &&
+          selected.hasSomeOf(Polyline, Path, Line, VectorNetwork));
+      if (keepGeometry) {
         obb.width = oldNode.width;
         obb.height = oldNode.height;
         obb.scaleX = scale[0];
@@ -3392,13 +3394,13 @@ export class Select extends System {
         node,
         obb,
         node.lockAspectRatio,
-        skipGeometryDeltaForEdge ? undefined : newLocalTransform,
+        keepGeometry ? undefined : newLocalTransform,
         oldNode,
       );
 
       if (selecteds.length === 1 && selected.has(Text)) {
         const t = selected.read(Text);
-        if (t.wordWrap && (t.wordWrapWidth ?? 0) > 0) {
+        if (!t.path && t.wordWrap && (t.wordWrapWidth ?? 0) > 0) {
           const tf = camera.write(Transformable);
           tf.resizeWidth = obb.width;
           tf.resizeHeight = obb.height;

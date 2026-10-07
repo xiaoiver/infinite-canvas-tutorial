@@ -7,6 +7,10 @@ import {
 } from '../../systems/ComputeTextMetrics';
 import { AABB } from '../math';
 import { DropShadow, Stroke } from '../renderable';
+import {
+  textPathGlyphCorners,
+  type TextPathGlyph,
+} from '../../utils/glyph/measure-text-path';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 
@@ -19,6 +23,27 @@ export class Text {
     text: Partial<Text>,
     computed?: Partial<ComputedTextMetrics>,
   ) {
+    if (text.path) {
+      const glyphs = computed?.pathGlyphs ?? measureText(text).pathGlyphs ?? [];
+      const bounds = new AABB();
+      for (const glyph of glyphs) {
+        if (glyph.right <= glyph.left || glyph.bottom <= glyph.top) continue;
+        for (const { x, y } of textPathGlyphCorners(glyph)) {
+          bounds.minX = Math.min(bounds.minX, x);
+          bounds.minY = Math.min(bounds.minY, y);
+          bounds.maxX = Math.max(bounds.maxX, x);
+          bounds.maxY = Math.max(bounds.maxY, y);
+        }
+      }
+      return Number.isFinite(bounds.minX)
+        ? bounds
+        : new AABB(
+            text.anchorX ?? 0,
+            text.anchorY ?? 0,
+            text.anchorX ?? 0,
+            text.anchorY ?? 0,
+          );
+    }
     const {
       anchorX = 0,
       anchorY = 0,
@@ -262,12 +287,27 @@ export class Text {
    */
   @field({ type: Type.int32, default: Infinity }) declare maxLines: number;
 
+  /** SVG path in local coordinates, translated by anchorX/anchorY. Empty means ordinary text. */
+  @field({ type: Type.dynamicString(10000), default: '' }) declare path: string;
+
+  /** Reading direction along the path. */
+  @field({ type: Type.staticString(['left', 'right']), default: 'left' })
+  declare side: 'left' | 'right';
+
+  /** Offset along the reading direction, in local pixels. */
+  @field({ type: Type.float32, default: 0 }) declare startOffset: number;
+
+  /** Baseline distance along the reading direction's normal, in local pixels. */
+  @field({ type: Type.float32, default: 0 }) declare pathOffset: number;
+
   constructor(props?: Partial<Text>) {
     Object.assign(this, props);
   }
 }
 
 export class ComputedTextMetrics {
+  @field({ type: Type.object }) declare pathGlyphs: TextPathGlyph[];
+
   /**
    * BiDi chars after doing metrics.
    */

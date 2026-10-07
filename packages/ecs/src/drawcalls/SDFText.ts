@@ -1144,7 +1144,7 @@ export class SDFText extends Drawcall {
     bitmapFont: BitmapFont;
     fontScale: number;
   }) {
-    const { textAlign, bitmapFontKerning } = object.read(Text);
+    const { textAlign, bitmapFontKerning, path } = object.read(Text);
 
     const metrics = object.read(ComputedTextMetrics);
     const globalRenderOrder = object.has(GlobalRenderOrder)
@@ -1166,6 +1166,7 @@ export class SDFText extends Drawcall {
       fontBoundingBoxAscent = 0,
     } = metrics.fontMetrics;
     y = fontBoundingBoxAscent;
+    if (path) x = y = 0;
 
     const charUVOffsetBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
@@ -1173,18 +1174,22 @@ export class SDFText extends Drawcall {
 
     let i = indicesOffset;
 
-    const positionedGlyphs = this.#glyphManager.layout(
-      lines,
-      fontStack,
-      lineHeight,
-      textAlign,
-      letterSpacing,
-      bitmapFont,
-      fontScale,
-      bitmapFontKerning,
-      0,
-      (lineHeight - metrics.fontMetrics.fontSize) / 2,
-    );
+    const positionedGlyphs = path
+      ? metrics.pathGlyphs.map((glyph) => ({
+          ...glyph, fontStack, scale: fontScale,
+        }))
+      : this.#glyphManager.layout(
+        lines,
+        fontStack,
+        lineHeight,
+        textAlign,
+        letterSpacing,
+        bitmapFont,
+        fontScale,
+        bitmapFontKerning,
+        0,
+        (lineHeight - metrics.fontMetrics.fontSize) / 2,
+      );
 
     let positions: GlyphPositions;
     if (bitmapFont) {
@@ -1197,7 +1202,7 @@ export class SDFText extends Drawcall {
               width: xAdvance,
               height: bitmapFont.lineHeight,
               left: xOffset,
-              top: -yOffset,
+              top: (path ? bitmapFont.lineHeight : 0) - yOffset,
               advance: xAdvance,
             },
           };

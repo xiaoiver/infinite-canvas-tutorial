@@ -395,6 +395,8 @@ Drag the text or blue handle along the path, and drag orange control points to r
 
 This example uses the `core` SDF text renderer. The path layout and editing improvements retain the existing grapheme pipeline; they do not add full OpenType shaping or ligature support.
 
+ECS also supports these path attributes, with transformer gestures, glyph picking, undo/redo and text editing. Try the [ECS path text example](/example/text-path#ecs-editor); editing uses a straight text box and committing restores the curved layout.
+
 ### Export SVG {#export-svg-text-path}
 
 Native SVG supports [textPath], as shown below; see [Curved Text Along a Path]. The exporter shares the canvas layout and emits positioned `<tspan>` elements with `x`, `y` and `rotate` to preserve side changes, overflow clipping and closed seams across browsers with different `textPath side` support. JSON serialization preserves the path, side, alignment and offsets for further editing after import.

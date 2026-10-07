@@ -388,6 +388,8 @@ const y =
 
 示例使用 `core` 的 SDF 文本渲染。本轮完善路径定位与编辑体验，仍沿用现有字素排版，没有新增完整的 OpenType 字形塑形或连字支持。
 
+ECS 也支持这些路径属性，并接入选框变换、逐字点击检测、撤销重做和文本编辑。可以在 [ECS 路径文本示例](/zh/example/text-path#ecs-编辑器)中体验；编辑时使用直线文本框，提交后恢复曲线排版。
+
 ### 导出 SVG {#export-svg-text-path}
 
 原生 SVG 可以使用 [textPath]，如下例所示，详见 [Curved Text Along a Path]。当前导出器复用画布的排版结果，输出带 `x`、`y`、`rotate` 的逐字 `<tspan>`，以保留另一侧、溢出裁切和闭合接缝效果，避免不同浏览器对 `textPath side` 支持的差异。JSON 序列化保留路径、方向、对齐与偏移，导入后可继续编辑。

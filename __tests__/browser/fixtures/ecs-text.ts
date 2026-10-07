@@ -114,7 +114,7 @@ class Bootstrap extends System {
     api.createCanvas({
       element: actual,
       width: 640,
-      height: 320,
+      height: Number(actual.getAttribute('height') ?? 320),
       devicePixelRatio: 1,
     });
     api.createCamera({ zoom: 1 });

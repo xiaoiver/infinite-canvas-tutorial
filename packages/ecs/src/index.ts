@@ -25,6 +25,7 @@ export * from './environment';
 export * from './context';
 export { safeAddComponent, safeRemoveComponent } from './history';
 export { requestTransformerRefreshForCanvas } from './utils/pick3d-bridge';
+export type { TextPathGlyph } from './utils/glyph/measure-text-path';
 export {
   svgSvgElementToComputedCamera,
   svgElementsToSerializedNodes,

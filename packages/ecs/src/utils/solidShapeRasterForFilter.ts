@@ -3,6 +3,7 @@
  * matching paper-style “real” alpha contours instead of a full bounding rect.
  */
 import type { Entity } from '@lastolivegames/becsy';
+import { DOMAdapter } from '../environment';
 import {
   Circle,
   ComputedBounds,
@@ -126,6 +127,41 @@ function tryDrawSolidFillTextMask(
     metrics;
   if (!font || !lines?.length || !lineMetrics?.length || !fontMetrics) {
     return false;
+  }
+
+  if (text.path) {
+    // Intersect the fill with the whole text mask once. Applying destination-in
+    // separately for each glyph would keep only their intersection (often empty).
+    const target = ctx;
+    const mask = ctx.globalCompositeOperation === 'destination-in'
+      ? DOMAdapter.get().createCanvas(ctx.canvas.width, ctx.canvas.height)
+      : undefined;
+    if (mask) {
+      ctx = mask.getContext('2d') as BitmapCanvas2D;
+      ctx.setTransform(target.getTransform());
+    }
+    ctx.save();
+    ctx.font = font;
+    ctx.textBaseline = 'alphabetic';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = fillRgba;
+    if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    for (const glyph of metrics.pathGlyphs ?? []) {
+      ctx.save();
+      ctx.translate(glyph.x, glyph.y);
+      ctx.rotate(glyph.rotation);
+      ctx.fillText(glyph.glyph, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+    if (mask) {
+      target.save();
+      target.setTransform(1, 0, 0, 1, 0, 0);
+      target.globalAlpha = 1;
+      target.drawImage(mask as CanvasImageSource, 0, 0);
+      target.restore();
+    }
+    return true;
   }
 
   ctx.fillStyle = fillRgba;
@@ -700,14 +736,22 @@ export function fillCssGradientsStackedInBounds(
       continue;
     }
     if (g.type === 'linear-gradient') {
+      // The pixel rasterizer uses putImageData, which ignores the current
+      // transform and requires integer dimensions. Rasterize separately and
+      // draw it into the local bounds so fractional glyph bounds work too.
+      const transform = ctx.getTransform();
+      const width = Math.max(1, Math.ceil(gw * Math.hypot(transform.a, transform.b)));
+      const height = Math.max(1, Math.ceil(gh * Math.hypot(transform.c, transform.d)));
+      const layer = DOMAdapter.get().createCanvas(width, height);
       fillLinearGradientPremultiplied(
-        ctx,
-        bounds.minX,
-        bounds.minY,
-        gw,
-        gh,
+        layer.getContext('2d') as BitmapCanvas2D,
+        0,
+        0,
+        width,
+        height,
         g,
       );
+      ctx.drawImage(layer as CanvasImageSource, bounds.minX, bounds.minY, gw, gh);
       continue;
     }
     const cg = createCanvasGradientForBounds(ctx, g, bounds);
