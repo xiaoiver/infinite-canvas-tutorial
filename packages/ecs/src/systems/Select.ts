@@ -134,6 +134,11 @@ import {
 import { splitVectorNetworkIntersections } from '../utils/vector-network-intersections';
 import { moveVectorHandle } from '../utils/vector-network-handles';
 import { VectorNetworkFillEditor } from './vector-network-fill-editor';
+import {
+  resizeOBB,
+  resizePointToLocal,
+  resizePointToWorld,
+} from '../utils/transformer-resize';
 
 const LASSO_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAABUFJREFUeAHtVltIXFcUPU6c0VGTWqdqRqtVTFrU+GFimgYpTUibQmm/JDZEKMF3rFjFigjFBi2I9ccPq6CIitEIvlFREYrioxYVK7UqPgk+2mh9j46jM/d07evVTjVpjTMN/eiGzT2ve/Y6+7HOYew/JLIjfQv2EuSMkXGhqqrq84iICG87O7vN/v7+VQnESwHCysrK4paXl3l1dTUnmZqaqiovL38PU3Jpyb8KRlZZWfmwra2No82dnZ0NsbGxfHR0lLAszszM1N69e9fjyD9mBWMbEBDgr9frdTY2NiIISQWA4S0tLYJWqyUwv9TV1cXcv3/fwwiEWYDYQM+vr6/PJCYmHgKQyWTcwsLioG/w9/cXAEYM0fT0dF1FRYW39L+MmSiUjA5JSUkPJicnRYNGho+BoRAhJHxjY4MjcT9iZhJ7KyurCzjcjpeX1zHjxn1ra2vBz8+Pz8/P89LS0ofMTGFQQB3b29sfZ2dnHzUuXL16lefk5FB1iCHY3NycbW5ufow5J6gtM4NQHM/FxMREUcLBsOHg5NeuXSObWwDXER0dnebu7h6M8UDoBagz+9MDJufCWejriO1UYGDgYczp5F1dXa1oU9L5IVRvKZVKV7Tl8fHx9ijf9Nra2gfmAGEJtS8sLMzr6+s7DAPxQUpKSjzaLtBXyHBoaOjZsbGxQvJMXl4en52d5SCzsOfse+IcoYWvent7v2PECQL5HzzxNtp2tCYyMlKNodXBwUGxEi5evMhHRkYoPwaRG492dnZ+wvzPILCSO3fueEp7n9gzSqiaOCEsLIxTtu/u7j7B2Hmau337ti0Zv3fvHlepVAYuiU6nM+Tn5/OgoCBuMBg4VVJubq4Ifnx8/NsXASFyQlxcXKRGoxFLDTHOI8/QJDZ7BHDkEcPe3h6Hp/Stra20TvDx8eGNjY0ioN7eXg7G5Lhf9LQPyjWIvUAoKM5eGRkZ35SUlJShTW5U4fRutDliTSfXwzNbICKdq6urnsbX1taeZGVllQYHB3+N5MwENk1RUZHg4eEhwCvr+Fqf1AuWuJKpvt3YfuKpoXKcIqqpqYm7ubnxpaWlaScnpxB4QQND2vDw8AysCZTL5f74kgZ4enp+QsTm4uIiIDc4wL1/zNBzAJDbVtg+OZHsQekUlxcWFlhmZiYDkL7FxcURlOMHMGqBuQ2Upxa5sEb/Q5VIwo25ublJqC9Kmq2srKglDwj/BIBJm+iN+jIQkOrmzZtiJyEhYRSfX3F6GZSGtNAtCSxVzw5Uh9M7Qxl4gqnVajkzQSyHh4frk5OTeUFBAe/u7i6XDnBGOpVxgonXdHp6+sfIE65QKMRquX79OoVGyU4pVnB9UmdnJ0cycdD1iGT8aGaLfXCFO2xqGhoaDIIg8IGBgR8wrIJas1PK2StXrlzGZrvFxcXiiUA+3z1rIZL1Bt1XUVFR3NHRkdbqfH19P8TUa8wEqibkKroBybi9vb0eScbBek9Rql9Aw9PS0j7b3t4eWF1d5UhQISQkxEAhwCPnK7ZfSSbdmjKpNL2GhoZ+hGvFVxLKkdfU1PCenh6RgFJTU8Xx+vp6YkE9CO1L9N9k++43+bZU4DHyBr4+uKy+P6Bheh0h08ULqaOjg94KHF6YvXTp0qeScQL+zIo7zUtGCRDOcL0tciLg1q1b7+KUNxwcHJQTExO/gZKf4oXdAwZsBi9oUAG/A9A6+2tJmwSAhPKB6Pqc1LaxtLSU6/cJgepfK32XodvMiHjMBYCESlAhAVBIfTK0C9VJXwLE/24TczwmLYy+B8Y4+19OKH8AGG0Nxm0lh+0AAAAASUVORK5CYII=") 0 4, pointer';
@@ -788,8 +793,7 @@ export class Select extends System {
     selection: SelectOBB,
   ) {
     const camera = api.getCamera();
-    const { resizingAnchorName, obb, cos, sin, label } = selection;
-    const { rotation, scaleX, scaleY } = obb;
+    const { resizingAnchorName, label } = selection;
 
     // Use the lock aspect ratio of the selected node if there is only one
     const { layersSelected, flipEnabled } = api.getAppState();
@@ -824,7 +828,9 @@ export class Select extends System {
 
       const edgeNode = node;
       const edgeEntity = selected;
-      if (isEdgeBindingRebindCandidate(edgeEntity, edgeNode as EdgeSerializedNode)) {
+      if (
+        isEdgeBindingRebindCandidate(edgeEntity, edgeNode as EdgeSerializedNode)
+      ) {
         selection.bindingRebindLastCanvas = { x: canvasX, y: canvasY };
         this.applyBindingRebindHover(api, canvasX, canvasY);
       }
@@ -838,11 +844,7 @@ export class Select extends System {
       if (!inv) {
         return;
       }
-      const local = vec2.transformMat3(
-        vec2.create(),
-        [canvasX, canvasY],
-        inv,
-      );
+      const local = vec2.transformMat3(vec2.create(), [canvasX, canvasY], inv);
 
       if (node.type === 'line' || node.type === 'rough-line') {
         if (!selected.has(Line)) {
@@ -909,348 +911,15 @@ export class Select extends System {
         });
       }
     } else {
-      const { tlAnchor, trAnchor, blAnchor, brAnchor, mask } =
-        camera.read(Transformable);
-      const prevTlAnchorX = tlAnchor.read(Circle).cx;
-      const prevTlAnchorY = tlAnchor.read(Circle).cy;
-      const prevBrAnchorX = brAnchor.read(Circle).cx;
-      const prevBrAnchorY = brAnchor.read(Circle).cy;
-      const { x, y } = api.canvas2Transformer(
-        {
-          x: canvasX,
-          y: canvasY,
-        },
-        mask,
+      const resized = resizeOBB(
+        selection.obb,
+        resizingAnchorName,
+        { x: canvasX, y: canvasY },
+        { flipEnabled, lockAspectRatio, centeredScaling },
       );
-
-      let anchor: Entity;
-      let anchorName = resizingAnchorName;
-      if (anchorName === AnchorName.TOP_LEFT) {
-        anchor = tlAnchor;
-      } else if (anchorName === AnchorName.TOP_RIGHT) {
-        anchor = trAnchor;
-      } else if (anchorName === AnchorName.BOTTOM_LEFT) {
-        anchor = blAnchor;
-      } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
-        anchor = brAnchor;
-      }
-
-      if (anchor) {
-        if (!flipEnabled) {
-          if (anchor === tlAnchor) {
-            Object.assign(anchor.write(Circle), {
-              cx: Math.min(x, trAnchor.read(Circle).cx),
-              cy: Math.min(y, blAnchor.read(Circle).cy),
-            });
-          } else if (anchor === trAnchor) {
-            Object.assign(anchor.write(Circle), {
-              cx: Math.max(x, tlAnchor.read(Circle).cx),
-              cy: Math.min(y, blAnchor.read(Circle).cy),
-            });
-          } else if (anchor === blAnchor) {
-            Object.assign(anchor.write(Circle), {
-              cx: Math.min(x, trAnchor.read(Circle).cx),
-              cy: Math.max(y, tlAnchor.read(Circle).cy),
-            });
-          } else if (anchor === brAnchor) {
-            Object.assign(anchor.write(Circle), {
-              cx: Math.max(x, tlAnchor.read(Circle).cx),
-              cy: Math.max(y, tlAnchor.read(Circle).cy),
-            });
-          }
-        } else {
-          Object.assign(anchor.write(Circle), {
-            cx: x,
-            cy: y,
-          });
-        }
-      }
-
-      let newHypotenuse: number;
-
-      if (anchorName === AnchorName.TOP_LEFT) {
-        if (flipEnabled && !lockAspectRatio) {
-          const { cx: oppositeX, cy: oppositeY } = brAnchor.read(Circle);
-          if (x > oppositeX && y <= oppositeY) {
-            anchorName = AnchorName.TOP_RIGHT;
-            selection.resizingAnchorName = AnchorName.TOP_RIGHT;
-          } else if (x <= oppositeX && y > oppositeY) {
-            anchorName = AnchorName.BOTTOM_LEFT;
-            selection.resizingAnchorName = AnchorName.BOTTOM_LEFT;
-          } else if (x > oppositeX && y > oppositeY) {
-            anchorName = AnchorName.BOTTOM_RIGHT;
-            selection.resizingAnchorName = AnchorName.BOTTOM_RIGHT;
-          }
-        }
-        if (lockAspectRatio) {
-          const comparePoint = centeredScaling
-            ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-            : {
-              x: brAnchor.read(Circle).cx,
-              y: brAnchor.read(Circle).cy,
-            };
-          newHypotenuse = Math.sqrt(
-            Math.pow(comparePoint.x - x, 2) + Math.pow(comparePoint.y - y, 2),
-          );
-
-          const { cx, cy } = tlAnchor.read(Circle);
-          const reverseX = cx > comparePoint.x ? -1 : 1;
-          const reverseY = cy > comparePoint.y ? -1 : 1;
-
-          Object.assign(tlAnchor.write(Circle), {
-            cx: comparePoint.x - newHypotenuse * cos * reverseX,
-            cy: comparePoint.y - newHypotenuse * sin * reverseY,
-          });
-        }
-      } else if (anchorName === AnchorName.TOP_RIGHT) {
-        if (flipEnabled && !lockAspectRatio) {
-          const { cx: oppositeX, cy: oppositeY } = blAnchor.read(Circle);
-          if (x < oppositeX && y <= oppositeY) {
-            anchorName = AnchorName.TOP_LEFT;
-            selection.resizingAnchorName = AnchorName.TOP_LEFT;
-          } else if (x >= oppositeX && y > oppositeY) {
-            anchorName = AnchorName.BOTTOM_RIGHT;
-            selection.resizingAnchorName = AnchorName.BOTTOM_RIGHT;
-          } else if (x < oppositeX && y > oppositeY) {
-            anchorName = AnchorName.BOTTOM_LEFT;
-            selection.resizingAnchorName = AnchorName.BOTTOM_LEFT;
-          }
-        }
-        if (lockAspectRatio) {
-          const comparePoint = centeredScaling
-            ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-            : {
-              x: blAnchor.read(Circle).cx,
-              y: blAnchor.read(Circle).cy,
-            };
-
-          newHypotenuse = Math.sqrt(
-            Math.pow(x - comparePoint.x, 2) + Math.pow(comparePoint.y - y, 2),
-          );
-
-          const { cx, cy } = trAnchor.read(Circle);
-          const reverseX = cx < comparePoint.x ? -1 : 1;
-          const reverseY = cy > comparePoint.y ? -1 : 1;
-
-          Object.assign(trAnchor.write(Circle), {
-            cx: comparePoint.x + newHypotenuse * cos * reverseX,
-            cy: comparePoint.y - newHypotenuse * sin * reverseY,
-          });
-        }
-
-        tlAnchor.write(Circle).cy = trAnchor.read(Circle).cy;
-        brAnchor.write(Circle).cx = trAnchor.read(Circle).cx;
-      } else if (anchorName === AnchorName.BOTTOM_LEFT) {
-        if (flipEnabled && !lockAspectRatio) {
-          const { cx: oppositeX, cy: oppositeY } = trAnchor.read(Circle);
-          if (x <= oppositeX && y < oppositeY) {
-            anchorName = AnchorName.TOP_LEFT;
-            selection.resizingAnchorName = AnchorName.TOP_LEFT;
-          } else if (x > oppositeX && y >= oppositeY) {
-            anchorName = AnchorName.BOTTOM_RIGHT;
-            selection.resizingAnchorName = AnchorName.BOTTOM_RIGHT;
-          } else if (x > oppositeX && y < oppositeY) {
-            anchorName = AnchorName.TOP_RIGHT;
-            selection.resizingAnchorName = AnchorName.TOP_RIGHT;
-          }
-        }
-        if (lockAspectRatio) {
-          const comparePoint = centeredScaling
-            ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-            : {
-              x: trAnchor.read(Circle).cx,
-              y: trAnchor.read(Circle).cy,
-            };
-
-          newHypotenuse = Math.sqrt(
-            Math.pow(comparePoint.x - x, 2) + Math.pow(y - comparePoint.y, 2),
-          );
-
-          const reverseX = comparePoint.x < x ? -1 : 1;
-          const reverseY = y < comparePoint.y ? -1 : 1;
-
-          Object.assign(blAnchor.write(Circle), {
-            cx: comparePoint.x - newHypotenuse * cos * reverseX,
-            cy: comparePoint.y + newHypotenuse * sin * reverseY,
-          });
-        }
-
-        tlAnchor.write(Circle).cx = blAnchor.read(Circle).cx;
-        brAnchor.write(Circle).cy = blAnchor.read(Circle).cy;
-      } else if (anchorName === AnchorName.BOTTOM_RIGHT) {
-        if (flipEnabled && !lockAspectRatio) {
-          const { cx: oppositeX, cy: oppositeY } = tlAnchor.read(Circle);
-          if (x < oppositeX && y >= oppositeY) {
-            anchorName = AnchorName.BOTTOM_LEFT;
-            selection.resizingAnchorName = AnchorName.BOTTOM_LEFT;
-          } else if (x >= oppositeX && y < oppositeY) {
-            anchorName = AnchorName.TOP_RIGHT;
-            selection.resizingAnchorName = AnchorName.TOP_RIGHT;
-          } else if (x < oppositeX && y < oppositeY) {
-            anchorName = AnchorName.TOP_LEFT;
-            selection.resizingAnchorName = AnchorName.TOP_LEFT;
-          }
-        }
-        if (lockAspectRatio) {
-          const comparePoint = centeredScaling
-            ? {
-              x: obb.width / 2,
-              y: obb.height / 2,
-            }
-            : {
-              x: tlAnchor.read(Circle).cx,
-              y: tlAnchor.read(Circle).cy,
-            };
-
-          newHypotenuse = Math.sqrt(
-            Math.pow(x - comparePoint.x, 2) + Math.pow(y - comparePoint.y, 2),
-          );
-
-          const reverseX = brAnchor.read(Circle).cx < comparePoint.x ? -1 : 1;
-          const reverseY = brAnchor.read(Circle).cy < comparePoint.y ? -1 : 1;
-          Object.assign(brAnchor.write(Circle), {
-            cx: comparePoint.x + newHypotenuse * cos * reverseX,
-            cy: comparePoint.y + newHypotenuse * sin * reverseY,
-          });
-        }
-      } else if (anchorName === AnchorName.TOP_CENTER) {
-        if (!flipEnabled) {
-          tlAnchor.write(Circle).cy = Math.min(y, brAnchor.read(Circle).cy);
-        } else {
-          const prevBrY = brAnchor.read(Circle).cy;
-          tlAnchor.write(Circle).cy = y;
-          if (y > prevBrY) {
-            // Crossing over: dragged edge becomes bottom edge.
-            tlAnchor.write(Circle).cy = prevBrY;
-            brAnchor.write(Circle).cy = y;
-            anchorName = AnchorName.BOTTOM_CENTER;
-            selection.resizingAnchorName = AnchorName.BOTTOM_CENTER;
-          }
-        }
-      } else if (anchorName === AnchorName.BOTTOM_CENTER) {
-        if (!flipEnabled) {
-          brAnchor.write(Circle).cy = Math.max(y, tlAnchor.read(Circle).cy);
-        } else {
-          const prevTlY = tlAnchor.read(Circle).cy;
-          brAnchor.write(Circle).cy = y;
-          if (y < prevTlY) {
-            // Crossing over: dragged edge becomes top edge.
-            brAnchor.write(Circle).cy = prevTlY;
-            tlAnchor.write(Circle).cy = y;
-            anchorName = AnchorName.TOP_CENTER;
-            selection.resizingAnchorName = AnchorName.TOP_CENTER;
-          }
-        }
-      } else if (anchorName === AnchorName.MIDDLE_LEFT) {
-        if (!flipEnabled) {
-          tlAnchor.write(Circle).cx = Math.min(x, brAnchor.read(Circle).cx);
-        } else {
-          const prevBrX = brAnchor.read(Circle).cx;
-          tlAnchor.write(Circle).cx = x;
-          if (x > prevBrX) {
-            // Crossing over: dragged edge becomes right edge.
-            tlAnchor.write(Circle).cx = prevBrX;
-            brAnchor.write(Circle).cx = x;
-            anchorName = AnchorName.MIDDLE_RIGHT;
-            selection.resizingAnchorName = AnchorName.MIDDLE_RIGHT;
-          }
-        }
-      } else if (anchorName === AnchorName.MIDDLE_RIGHT) {
-        if (!flipEnabled) {
-          brAnchor.write(Circle).cx = Math.max(x, tlAnchor.read(Circle).cx);
-        } else {
-          const prevTlX = tlAnchor.read(Circle).cx;
-          brAnchor.write(Circle).cx = x;
-          if (x < prevTlX) {
-            // Crossing over: dragged edge becomes left edge.
-            brAnchor.write(Circle).cx = prevTlX;
-            tlAnchor.write(Circle).cx = x;
-            anchorName = AnchorName.MIDDLE_LEFT;
-            selection.resizingAnchorName = AnchorName.MIDDLE_LEFT;
-          }
-        }
-      }
-
-      if (lockAspectRatio) {
-        if (
-          anchorName === AnchorName.MIDDLE_LEFT ||
-          anchorName === AnchorName.MIDDLE_RIGHT
-        ) {
-          const newWidth = brAnchor.read(Circle).cx - tlAnchor.read(Circle).cx;
-          const tan = sin / cos;
-          const newHeight = newWidth * tan;
-          const deltaY = newHeight - (prevBrAnchorY - prevTlAnchorY);
-          brAnchor.write(Circle).cy = brAnchor.read(Circle).cy + deltaY / 2;
-          tlAnchor.write(Circle).cy = tlAnchor.read(Circle).cy - deltaY / 2;
-        } else if (
-          anchorName === AnchorName.TOP_CENTER ||
-          anchorName === AnchorName.BOTTOM_CENTER
-        ) {
-          const newHeight = brAnchor.read(Circle).cy - tlAnchor.read(Circle).cy;
-          const tan = sin / cos;
-          const newWidth = newHeight / tan;
-          const deltaX = newWidth - (prevBrAnchorX - prevTlAnchorX);
-          brAnchor.write(Circle).cx = brAnchor.read(Circle).cx + deltaX / 2;
-          tlAnchor.write(Circle).cx = tlAnchor.read(Circle).cx - deltaX / 2;
-        }
-      }
-
-      if (centeredScaling) {
-        const topOffsetX = tlAnchor.read(Circle).cx - prevTlAnchorX;
-        const topOffsetY = tlAnchor.read(Circle).cy - prevTlAnchorY;
-
-        const bottomOffsetX = brAnchor.read(Circle).cx - prevBrAnchorX;
-        const bottomOffsetY = brAnchor.read(Circle).cy - prevBrAnchorY;
-
-        Object.assign(brAnchor.write(Circle), {
-          cx: brAnchor.read(Circle).cx - topOffsetX,
-          cy: brAnchor.read(Circle).cy - topOffsetY,
-        });
-
-        Object.assign(tlAnchor.write(Circle), {
-          cx: tlAnchor.read(Circle).cx - bottomOffsetX,
-          cy: tlAnchor.read(Circle).cy - bottomOffsetY,
-        });
-      }
-
-      const { cx: tlCx, cy: tlCy } = tlAnchor.read(Circle);
-      const { cx: brCx, cy: brCy } = brAnchor.read(Circle);
-
-      {
-        const width = brCx - tlCx;
-        const height = brCy - tlCy;
-
-        if (!flipEnabled && (width <= 0 || height <= 0)) {
-          return;
-        }
-
-        const { x, y } = api.transformer2Canvas({ x: tlCx, y: tlCy }, mask);
-
-        this.fitSelected(
-          api,
-          {
-            x,
-            y,
-            width,
-            height,
-            rotation,
-            scaleX,
-            scaleY,
-          },
-          selection,
-        );
-
-        showLabel(label, api, { x, y, width, height, rotation });
-      }
+      if (!resized) return;
+      this.fitSelected(api, resized, selection);
+      showLabel(label, api, resized);
     }
   }
 
@@ -1270,10 +939,12 @@ export class Select extends System {
     let point: [number, number] = [canvasX, canvasY];
     let direction: [number, number];
     if (anchor !== AnchorName.X1Y1 && anchor !== AnchorName.X2Y2) {
-      const { mask, tlAnchor, brAnchor } = api.getCamera().read(Transformable);
-      const { cx: tlX, cy: tlY } = tlAnchor.read(Circle);
-      const { cx: brX, cy: brY } = brAnchor.read(Circle);
-      const local = api.canvas2Transformer({ x: canvasX, y: canvasY }, mask);
+      const obb = selection.obb;
+      const tlX = 0;
+      const tlY = 0;
+      const brX = obb.width;
+      const brY = obb.height;
+      const local = resizePointToLocal(obb, { x: canvasX, y: canvasY });
       let localDirection: [number, number];
       if (
         anchor === AnchorName.TOP_CENTER ||
@@ -1313,13 +984,13 @@ export class Select extends System {
         local.x = fixedX + localDirection[0] * length;
         local.y = fixedY + localDirection[1] * length;
       }
-      const world = api.transformer2Canvas(local, mask);
+      const world = resizePointToWorld(obb, local);
       point = [world.x, world.y];
       if (localDirection) {
-        const end = api.transformer2Canvas(
-          { x: local.x + localDirection[0], y: local.y + localDirection[1] },
-          mask,
-        );
+        const end = resizePointToWorld(obb, {
+          x: local.x + localDirection[0],
+          y: local.y + localDirection[1],
+        });
         direction = [end.x - world.x, end.y - world.y];
       }
     }
@@ -3584,7 +3255,6 @@ export class Select extends System {
   private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
     const camera = api.getCamera();
     const { selecteds } = camera.read(Transformable);
-    const { width, height } = newAttrs;
     const epsilon = 0.01;
     const oldAttrs = {
       x: selection.obb.x,
@@ -3615,27 +3285,16 @@ export class Select extends System {
       mat3.translate(oldTr, oldTr, [oldAttrs.x, oldAttrs.y]);
       mat3.rotate(oldTr, oldTr, oldAttrs.rotation);
       mat3.scale(oldTr, oldTr, [
-        oldAttrs.width / baseSize,
-        oldAttrs.height / baseSize,
+        (oldAttrs.width * oldAttrs.scaleX) / baseSize,
+        (oldAttrs.height * oldAttrs.scaleY) / baseSize,
       ]);
       const newTr = mat3.create();
-      const newScaleX = newAttrs.width / baseSize;
-      const newScaleY = newAttrs.height / baseSize;
-
-      const { flipEnabled } = api.getAppState();
-      if (flipEnabled) {
-        mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
-        mat3.rotate(newTr, newTr, newAttrs.rotation);
-        mat3.scale(newTr, newTr, [newScaleX, newScaleY]);
-      } else {
-        mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
-        mat3.rotate(newTr, newTr, newAttrs.rotation);
-        mat3.translate(newTr, newTr, [
-          newAttrs.width < 0 ? newAttrs.width : 0,
-          newAttrs.height < 0 ? newAttrs.height : 0,
-        ]);
-        mat3.scale(newTr, newTr, [Math.abs(newScaleX), Math.abs(newScaleY)]);
-      }
+      mat3.translate(newTr, newTr, [newAttrs.x, newAttrs.y]);
+      mat3.rotate(newTr, newTr, newAttrs.rotation);
+      mat3.scale(newTr, newTr, [
+        (newAttrs.width * newAttrs.scaleX) / baseSize,
+        (newAttrs.height * newAttrs.scaleY) / baseSize,
+      ]);
 
       // Borrow from Konva.js
       // @see https://github.com/konvajs/konva/blob/9a9bd00cd377a6d12cce3ee7c9fbf906afa55de5/src/shapes/Transformer.ts#L1103
@@ -3710,8 +3369,8 @@ export class Select extends System {
         width: Math.max(Math.abs(oldNode.width * scale[0]), epsilon),
         height: Math.max(Math.abs(oldNode.height * scale[1]), epsilon),
         rotation,
-        scaleX: oldAttrs.scaleX * (Math.sign(width) || 1),
-        scaleY: oldAttrs.scaleY * (Math.sign(height) || 1),
+        scaleX: Math.sign(scale[0]) || 1,
+        scaleY: Math.sign(scale[1]) || 1,
       };
 
       /**
@@ -3722,14 +3381,11 @@ export class Select extends System {
       const skipGeometryDeltaForEdge =
         selection.mode === SelectionMode.ROTATE &&
         selected.hasSomeOf(Polyline, Path, Line, VectorNetwork);
-      if (
-        !skipGeometryDeltaForEdge &&
-        selected.hasSomeOf(Polyline, Path, Line, VectorNetwork)
-      ) {
-        const signW = Math.sign(width) || 1;
-        const signH = Math.sign(height) || 1;
-        obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
-        obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
+      if (skipGeometryDeltaForEdge) {
+        obb.width = oldNode.width;
+        obb.height = oldNode.height;
+        obb.scaleX = scale[0];
+        obb.scaleY = scale[1];
       }
 
       api.updateNodeOBB(

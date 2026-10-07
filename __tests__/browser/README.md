@@ -48,6 +48,12 @@ the rotating shapes, including reversal, angle wrapping, a pinned pivot,
 consecutive gestures, Escape and undo/redo. The WebKit suite also checks touch
 rotation and the final frame after release.
 
+Flip regressions cover all corner/edge handles, reversing across zero size,
+aspect-ratio and centered constraints, rotated and previously mirrored shapes,
+multi-selection, rotation after flipping, undo/redo and rendered gradient pixels.
+Asymmetric path, polyline and vector-network checks catch double reflection; the
+WebKit suite also checks flipping from a padded touch corner.
+
 CI runs these checks in `.github/workflows/browser-regression.yml` and uploads
 failure screenshots and traces from `.test-results/browser` and
 `.test-results/webkit`. The existing ECS suite remains a separate regression

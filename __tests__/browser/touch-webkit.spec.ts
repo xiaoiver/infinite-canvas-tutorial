@@ -122,6 +122,43 @@ test('WebKit native touch selects a shape without hover, then deselects on empty
   ).toEqual([]);
 });
 
+test('WebKit touch flips from a padded corner and undoes in one step', async ({
+  page,
+}) => {
+  await page.evaluate(async () => {
+    await window.canvasRegression.selectNodes('left', ['shape']);
+    await window.canvasRegression.setPreferences('left', {
+      flipEnabled: true,
+      snapToObjectsEnabled: false,
+      snapToPixelGridEnabled: false,
+    });
+  });
+  await frame(page);
+  const start = await position(page, [120, 100]);
+  await pointerDrag(page, { x: start.x + 6, y: start.y + 6 }, [-150, 20]);
+  const current = await node(page);
+  const origin = await page.evaluate(() =>
+    window.canvasRegression.viewportPoint('left', 'shape', [0, 0]),
+  );
+  const corner = await page.evaluate(
+    (n) =>
+      window.canvasRegression.viewportPoint('left', 'shape', [
+        n.width!,
+        n.height!,
+      ]),
+    current,
+  );
+  expect(origin.x).toBeCloseTo(40, 2);
+  expect(origin.y).toBeCloseTo(40, 2);
+  expect(corner.x).toBeCloseTo(10, 2);
+  expect(corner.y).toBeCloseTo(160, 2);
+  await page.evaluate(() => window.canvasRegression.undo('left'));
+  await frame(page);
+  expect((await node(page)).width).toBeCloseTo(120, 2);
+  expect((await node(page)).height).toBeCloseTo(100, 2);
+  expect((await node(page)).scaleX ?? 1).toBe(1);
+});
+
 test('WebKit touch rotation moves the multi-selection frame and refreshes it on release', async ({
   page,
 }) => {

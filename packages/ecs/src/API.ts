@@ -2349,15 +2349,23 @@ export class API {
     }
 
     if (delta) {
-      // geomDelta 是新 local 变换的线性部分，仍含节点旋转 R(θ)。直接把它烘焙进
-      // d/points，而 Transform 又保留 R(θ)，会叠加成双重旋转（旋转后再 resize 形变错误）。
-      // 左乘 R(-θ) 去掉节点旋转，只保留局部缩放/翻转；θ=0 时与原逻辑完全一致。
-      let geomDelta = mat3WithoutTranslation(delta);
-      const oldRotation = oldNode?.rotation ?? node.rotation ?? 0;
-      if (oldRotation) {
-        const unrotate = mat3.fromRotation(mat3.create(), -oldRotation);
-        geomDelta = mat3.multiply(mat3.create(), unrotate, geomDelta);
-      }
+      // Bake only the residual geometry transform. Rotation and reflection are
+      // already retained on the node; baking either again mirrors/rotates twice.
+      const retained = mat3.fromRotation(
+        mat3.create(),
+        rotation ?? oldNode?.rotation ?? node.rotation ?? 0,
+      );
+      mat3.scale(retained, retained, [
+        scaleX ?? oldNode?.scaleX ?? node.scaleX ?? 1,
+        scaleY ?? oldNode?.scaleY ?? node.scaleY ?? 1,
+      ]);
+      const inverse = mat3.invert(mat3.create(), retained);
+      if (!inverse) return;
+      const geomDelta = mat3.multiply(
+        mat3.create(),
+        inverse,
+        mat3WithoutTranslation(delta),
+      );
       if (node.type === 'polyline' || node.type === 'rough-polyline') {
         const { strokeAlignment = 'center', strokeWidth = 1 } = node;
         const shiftedPoints = maybeShiftPoints(
