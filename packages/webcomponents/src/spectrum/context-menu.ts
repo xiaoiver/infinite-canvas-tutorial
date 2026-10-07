@@ -27,6 +27,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { editLayer } from './layer-command';
+import { clearLayerSelection } from './selection-command';
 import {
   deleteLayers,
   editLayerStructure,
@@ -315,6 +316,8 @@ export class ContextMenu extends LitElement {
   private isClipboardEmpty = true;
 
   private binded = false;
+  private boundApi: ExtendedAPI | undefined;
+  private disposeBinding: (() => void) | undefined;
   /** Cached on bind so disconnect does not read a deleted canvas entity. */
   private boundCanvas: HTMLCanvasElement | null = null;
   private lastContextMenuPosition: { x: number; y: number } | null = null;
@@ -624,7 +627,18 @@ export class ContextMenu extends LitElement {
   };
 
   private handleKeyDown = (event: KeyboardEvent) => {
-    if (document.activeElement !== this.api.element) {
+    if (
+      !this.isConnected ||
+      !this.api ||
+      this.api !== this.boundApi ||
+      document.activeElement !== this.api.element
+    ) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      void clearLayerSelection(this.api);
       return;
     }
 
@@ -668,10 +682,6 @@ export class ContextMenu extends LitElement {
     } else if (event.key === 'Backspace') {
       event.preventDefault();
       void deleteLayers(this.api, layersSelected);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      this.api.selectNodes([]);
-      this.api.record();
     } else if (event.key === 'g' && event.metaKey && event.shiftKey) {
       this.executeUngroup();
       event.preventDefault();
@@ -868,11 +878,21 @@ export class ContextMenu extends LitElement {
   }
 
   private tryBindListeners() {
-    if (!this.api?.element || this.binded) {
+    if (!this.isConnected || !this.api?.element || this.boundApi === this.api) {
       return;
     }
 
-    const $canvas = this.api.getCanvasElement();
+    this.releaseBinding();
+    const api = this.api;
+    this.boundApi = api;
+    let destroyed = false;
+    this.disposeBinding = api.onDestroy(() => {
+      destroyed = true;
+      this.releaseBinding();
+    });
+    if (destroyed) return;
+
+    const $canvas = api.getCanvasElement();
     this.boundCanvas = $canvas;
     $canvas.addEventListener('contextmenu', this.handleContextMenu);
     $canvas.addEventListener('pointermove', this.handlePointerMove);
@@ -897,7 +917,13 @@ export class ContextMenu extends LitElement {
 
   disconnectedCallback() {
     super.disconnectedCallback();
+    this.releaseBinding();
+  }
 
+  private releaseBinding() {
+    this.disposeBinding?.();
+    this.disposeBinding = undefined;
+    this.boundApi = undefined;
     const $canvas = this.boundCanvas;
     if (!$canvas || !this.binded) {
       return;
