@@ -128,3 +128,25 @@ test('zero-length round dashes route rectangle strokes through the dash renderer
     width: 10,
   });
 });
+
+test('solid arrowhead subpaths preserve endpoint caps and sharp joins', async ({
+  page,
+}) => {
+  for (const cap of ['butt', 'square', 'round'] as const) {
+    await compare(page, {
+      points: [
+        [150, 100],
+        [100, 70],
+        [150, 40],
+        [NaN, NaN],
+        [380, 150],
+        [410, 200],
+        [440, 150],
+      ],
+      dash: [0, 0],
+      cap,
+      join: 'miter',
+      width: 8,
+    });
+  }
+});

@@ -118,38 +118,40 @@ describe('Draw arrow', () => {
 
     await app.run();
 
-    await sleep(300);
+    try {
+      await sleep(300);
 
-    if ($canvas) {
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
+      if ($canvas) {
+        $canvas.dispatchEvent(
+          createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
+        );
+        await sleep(100);
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+        );
+        await sleep(100);
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
+        );
+        await sleep(100);
+        $canvas.dispatchEvent(
+          createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
+        );
+        await sleep(100);
+        $canvas.dispatchEvent(
+          createMouseEvent('mouseup', { clientX: 150, clientY: 150 }),
+        );
+      }
+
+      await sleep(500);
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'draw-arrow',
       );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
-      );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
-      );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
-      );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 150, clientY: 150 }),
-      );
+    } finally {
+      await app.exit();
     }
-
-    await sleep(500);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'draw-arrow',
-    );
-
-    await app.exit();
   });
 });
