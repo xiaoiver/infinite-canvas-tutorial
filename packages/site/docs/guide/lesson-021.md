@@ -468,6 +468,18 @@ We use a gradient background to show this flipping effect more clearly:
 
 ![Flip a rect with gradient fill](/rotate-when-flipped.png)
 
+Cross-edge flipping is disabled by default. The interactive example at the top of this page enables it and uses an orange-to-blue gradient to make mirroring visible:
+
+```ts
+api.setAppState({ flipEnabled: true });
+```
+
+Keep the pointer-down selection frame, node transforms, and handle identity fixed throughout the gesture. Convert the pointer into that original frame and calculate signed dimensions around the opposite corner or edge (the center when Alt / Option is held). A negative dimension means reflection. Swapping handles and taking absolute dimensions too early loses that reflection or moves the fixed edge on the next frame. At exactly zero size, use a small nonzero dimension and continue calculating subsequent samples from the original frame.
+
+After applying the transform, keep node `width` / `height` positive and obtain `rotation` and `scaleX` / `scaleY` from the same matrix decomposition. Combining the decomposed rotation with the old scale signs is incorrect. When baking path, polyline, or vector-network geometry, remove the rotation and reflection already retained in Transform so the geometry is not mirrored twice.
+
+A reflected matrix can have equivalent rotation/scale decompositions. Check the mirrored shape and gradient, fixed edge, and handle positions rather than requiring Rotation to change by 180°. Shift preserves the aspect ratio and Alt / Option preserves the center; the released frame, next gesture, and undo/redo should remain consistent.
+
 ## Rotation {#rotation}
 
 Rotation in Figma:

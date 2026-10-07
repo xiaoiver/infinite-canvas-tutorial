@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import {
-  Pen,
-} from '@infinite-canvas-tutorial/ecs';
+import { Pen } from '@infinite-canvas-tutorial/ecs';
 import { ref, onMounted, onUnmounted } from 'vue';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
@@ -22,6 +20,7 @@ onMounted(async () => {
     api.setAppState({
       ...api.getAppState(),
       penbarSelected: Pen.SELECT,
+      flipEnabled: true,
       penbarAll: [Pen.SELECT, Pen.HAND],
     });
 
@@ -32,7 +31,13 @@ onMounted(async () => {
       y: 100,
       width: 100,
       height: 100,
-      fills: [{ type: 'solid', value: 'red', opacity: 1 }],
+      fills: [
+        {
+          type: 'gradient',
+          value: 'linear-gradient(to right, #ff8400 0%, #147af3 100%)',
+          opacity: 1,
+        },
+      ],
       stroke: 'black',
       strokeWidth: 10,
     };
@@ -49,9 +54,7 @@ onMounted(async () => {
       strokeWidth: 10,
     };
 
-    api.updateNodes([
-      node1, node2
-    ]);
+    api.updateNodes([node1, node2]);
     api.selectNodes([node1]);
     api.record();
   };
@@ -70,10 +73,12 @@ onUnmounted(async () => {
   if (onReady) {
     canvas.removeEventListener(Event.READY, onReady);
   }
-
 });
 </script>
 
 <template>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 300px"></ic-spectrum-canvas>
+  <ic-spectrum-canvas
+    ref="wrapper"
+    style="width: 100%; height: 300px"
+  ></ic-spectrum-canvas>
 </template>
