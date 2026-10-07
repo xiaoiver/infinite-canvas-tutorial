@@ -211,10 +211,10 @@ window.textTest = {
     const entity = api.getEntity(api.getNodeById('text')!);
     const bounds = entity.read(ComputedBounds).geometryBounds;
     return [
-      [0, 0],
-      [bounds.maxX - bounds.minX, 0],
-      [bounds.maxX - bounds.minX, bounds.maxY - bounds.minY],
-      [0, bounds.maxY - bounds.minY],
+      [bounds.minX, bounds.minY],
+      [bounds.maxX, bounds.minY],
+      [bounds.maxX, bounds.maxY],
+      [bounds.minX, bounds.maxY],
     ].map(([x, y]) =>
       api.canvas2Viewport(api.transformer2Canvas({ x, y }, entity)),
     );

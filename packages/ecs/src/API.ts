@@ -2320,6 +2320,8 @@ export class API {
     lockAspectRatio = false,
     delta?: mat3,
     oldNode?: SerializedNode,
+    // Fraction of the original text box that stays fixed while its font reflows.
+    textResizeOrigin?: { x: number; y: number },
   ) {
     const { x, y, width, height, rotation, scaleX, scaleY } = obb;
 
@@ -2508,38 +2510,7 @@ export class API {
         );
       } else if (node.type === 'text') {
         const textOld = (oldNode ?? node) as TextSerializedNode;
-        const metrics = measureText(textOld);
-        const { minX, minY, maxX, maxY } = Text.getGeometryBounds(
-          textOld,
-          metrics,
-        );
-
-        const corners: [number, number][] = [
-          [minX, minY],
-          [maxX, minY],
-          [maxX, maxY],
-          [minX, maxY],
-        ];
-        let nxMin = Infinity;
-        let nyMin = Infinity;
-        let nxMax = -Infinity;
-        let nyMax = -Infinity;
-        for (const [px, py] of corners) {
-          const [nx, ny] = vec2.transformMat3(vec2.create(), [px, py], delta);
-          nxMin = Math.min(nxMin, nx);
-          nyMin = Math.min(nyMin, ny);
-          nxMax = Math.max(nxMax, nx);
-          nyMax = Math.max(nyMax, ny);
-        }
-        const [naX, naY] = vec2.transformMat3(
-          vec2.create(),
-          [textOld.anchorX ?? 0, textOld.anchorY ?? 0],
-          delta,
-        );
-        (diff as TextSerializedNode).anchorX = naX - nxMin;
-        (diff as TextSerializedNode).anchorY = naY - nyMin;
-
-        const { scale } = decompose(delta);
+        const { scale } = decompose(geomDelta);
         const sX = Math.abs(scale[0]);
         const sY = Math.abs(scale[1]);
         const fs = textOld.fontSize;
@@ -2554,6 +2525,36 @@ export class API {
         const ww = textOld.wordWrapWidth ?? 0;
         if (ww > 0) {
           (diff as TextSerializedNode).wordWrapWidth = ww * sX;
+        }
+
+        // Font metrics are rounded and wrapping can change the number of lines;
+        // neither dimension is necessarily the requested affine box size.
+        // Rebase the measured local box, not a rotated parent-space AABB, so
+        // baseline/alignment offsets remain local and the frame hugs the text.
+        const resizedText = { ...textOld, ...diff, anchorX: 0, anchorY: 0 };
+        const bounds = Text.getGeometryBounds(
+          resizedText,
+          measureText(resizedText),
+        );
+        (diff as TextSerializedNode).anchorX = -bounds.minX;
+        (diff as TextSerializedNode).anchorY = -bounds.minY;
+        diff.width = bounds.maxX - bounds.minX;
+        diff.height = bounds.maxY - bounds.minY;
+
+        if (textResizeOrigin) {
+          const { x: ox, y: oy } = textResizeOrigin;
+          const fixed = vec2.transformMat3(
+            vec2.create(),
+            [(textOld.width ?? 0) * ox, (textOld.height ?? 0) * oy],
+            delta,
+          );
+          const offset = vec2.transformMat3(
+            vec2.create(),
+            [diff.width * ox, diff.height * oy],
+            retained,
+          );
+          diff.x = fixed[0] - offset[0];
+          diff.y = fixed[1] - offset[1];
         }
       }
     }

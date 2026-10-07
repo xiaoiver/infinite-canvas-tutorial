@@ -918,7 +918,22 @@ export class Select extends System {
         { flipEnabled, lockAspectRatio, centeredScaling },
       );
       if (!resized) return;
-      this.fitSelected(api, resized, selection);
+      const left = [
+        AnchorName.TOP_LEFT, AnchorName.BOTTOM_LEFT, AnchorName.MIDDLE_LEFT,
+      ].includes(resizingAnchorName);
+      const right = [
+        AnchorName.TOP_RIGHT, AnchorName.BOTTOM_RIGHT, AnchorName.MIDDLE_RIGHT,
+      ].includes(resizingAnchorName);
+      const top = [
+        AnchorName.TOP_LEFT, AnchorName.TOP_RIGHT, AnchorName.TOP_CENTER,
+      ].includes(resizingAnchorName);
+      const bottom = [
+        AnchorName.BOTTOM_LEFT, AnchorName.BOTTOM_RIGHT, AnchorName.BOTTOM_CENTER,
+      ].includes(resizingAnchorName);
+      this.fitSelected(api, resized, selection, {
+        x: centeredScaling ? 0.5 : left ? 1 : right ? 0 : 0.5,
+        y: centeredScaling ? 0.5 : top ? 1 : bottom ? 0 : 0.5,
+      });
       showLabel(label, api, resized);
     }
   }
@@ -1926,8 +1941,6 @@ export class Select extends System {
     const camera = api.getCamera();
     const tfDone = camera.write(Transformable);
     tfDone.status = TransformableStatus.RESIZED;
-    tfDone.resizeWidth = -1;
-    tfDone.resizeHeight = -1;
 
     api.setNodes(api.getNodes());
     api.record();
@@ -3252,7 +3265,12 @@ export class Select extends System {
     selection.selectedNodeIds = selectedNodeIds;
   }
 
-  private fitSelected(api: API, newAttrs: OBB, selection: SelectOBB) {
+  private fitSelected(
+    api: API,
+    newAttrs: OBB,
+    selection: SelectOBB,
+    textResizeOrigin?: { x: number; y: number },
+  ) {
     const camera = api.getCamera();
     const { selecteds } = camera.read(Transformable);
     const epsilon = 0.01;
@@ -3333,7 +3351,6 @@ export class Select extends System {
     };
     selecteds.forEach((selected) => collectSelectedAndDescendants(selected));
 
-    let resizePreviewSet = false;
     entitiesToUpdate.forEach((selected) => {
       const node = api.getNodeByEntity(selected);
       if (!node) {
@@ -3382,7 +3399,7 @@ export class Select extends System {
       const keepGeometry =
         (selected.has(Text) && !!selected.read(Text).path) ||
         (selection.mode === SelectionMode.ROTATE &&
-          selected.hasSomeOf(Polyline, Path, Line, VectorNetwork));
+          selected.hasSomeOf(Polyline, Path, Line, VectorNetwork, Text));
       if (keepGeometry) {
         obb.width = oldNode.width;
         obb.height = oldNode.height;
@@ -3396,27 +3413,14 @@ export class Select extends System {
         node.lockAspectRatio,
         keepGeometry ? undefined : newLocalTransform,
         oldNode,
+        selecteds.length === 1 && selected === selecteds[0]
+          ? textResizeOrigin
+          : undefined,
       );
-
-      if (selecteds.length === 1 && selected.has(Text)) {
-        const t = selected.read(Text);
-        if (!t.path && t.wordWrap && (t.wordWrapWidth ?? 0) > 0) {
-          const tf = camera.write(Transformable);
-          tf.resizeWidth = obb.width;
-          tf.resizeHeight = obb.height;
-          resizePreviewSet = true;
-        }
-      }
 
       updateGlobalTransform(selected);
       updateComputedPoints(selected);
     });
-
-    if (!resizePreviewSet) {
-      const tf = camera.write(Transformable);
-      tf.resizeWidth = -1;
-      tf.resizeHeight = -1;
-    }
   }
 
   private hideBrush(selection: SelectOBB) {
