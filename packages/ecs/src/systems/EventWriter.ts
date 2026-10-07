@@ -82,6 +82,11 @@ export class EventWriter extends System {
     const { element, api } = entity.read(Canvas);
 
     const globalThis = DOMAdapter.get().getWindow();
+    // Pointer-down already focuses the canvas. Make bare ECS canvases focusable
+    // too, without overriding an embedding application's explicit tabindex.
+    if (isBrowser && 'tabIndex' in element && !element.hasAttribute('tabindex')) {
+      element.tabIndex = 0;
+    }
     const supportsPointerEvents = !!globalThis.PointerEvent;
     const supportsTouchEvents = 'ontouchstart' in globalThis;
 
@@ -387,6 +392,13 @@ export class EventWriter extends System {
     );
 
     const onKeyDown = (e: KeyboardEvent) => {
+      // Escape belongs to the focused canvas, not every canvas listening on
+      // window. Shadow editors and controls own their own Escape behavior.
+      if (
+        isBrowser &&
+        e.key === 'Escape' &&
+        !e.composedPath().includes(element)
+      ) return;
       if (e.key === 'Control') {
         input.write(Input).ctrlKey = true;
       }
@@ -419,7 +431,9 @@ export class EventWriter extends System {
         input.write(Input).altKey = false;
       }
 
-      input.write(Input).event = e;
+      // Preserve defaultPrevented on a pending keydown until systems consume it.
+      // A quick keyup must not turn a UI-handled Escape into a second deselection.
+      if (!input.read(Input).key) input.write(Input).event = e;
     };
 
     const addPointerEventListener = ($el: HTMLCanvasElement) => {

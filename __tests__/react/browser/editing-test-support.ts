@@ -2,6 +2,7 @@ import {
   Pen,
   Task,
   Visibility,
+  Selected,
   registerIconifyIconSet,
 } from '@infinite-canvas-tutorial/ecs';
 
@@ -17,6 +18,7 @@ declare global {
         fontSize: string | number;
       } | null;
       point: (id: string) => { x: number; y: number };
+      selectedEntities: (canvasId: string) => string[];
     };
   }
 }
@@ -35,6 +37,13 @@ export function textPen(id = 'left') {
 }
 
 window.editingProbe = {
+  selectedEntities: (canvasId) => {
+    const api = window.apis[canvasId];
+    return api
+      .getNodes()
+      .filter((node) => api.getEntity(node)?.has(Selected))
+      .map((node) => node.id);
+  },
   textPen,
   properties: () =>
     window.apis.left.setAppState({

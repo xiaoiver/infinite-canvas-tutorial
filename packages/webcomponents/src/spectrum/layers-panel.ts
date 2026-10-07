@@ -25,6 +25,7 @@ import { Event } from '../event';
 import { ExtendedAPI } from '../API';
 import { editLayer } from './layer-command';
 import { deleteLayers, moveLayer } from './layer-structure-command';
+import { selectLayer } from './selection-command';
 import { localized, msg, str } from '@lit/localize';
 
 const LAYERS_PANEL_HEIGHT_STORAGE_KEY = 'ic-spectrum-layers-panel-body-height';
@@ -552,18 +553,8 @@ export class LayersPanel extends LitElement {
   }
 
   private handleSelect(e: MouseEvent, id: SerializedNode['id']) {
-    const { layersSelected } = this.api.getAppState();
-
-    if (layersSelected.length === 1 && layersSelected.includes(id)) {
-      return;
-    }
-
-    const node = this.api.getNodeById(id);
-
-    if (!node.locked) {
-      this.api.selectNodes([node], e.shiftKey);
-      this.api.record();
-    }
+    if (!this.isConnected || !this.api) return;
+    return selectLayer(this.api, id, e.shiftKey);
   }
 
   private handleBringToFront() {

@@ -2834,8 +2834,13 @@ export class Select extends System {
           selection.editing = undefined;
           api.setAppState({ editingPoints: [] });
         }
-        api.selectNodes([]);
-        api.highlightNodes([]);
+        // A UI command may have already queued this deselection in event order.
+        // Do not clear a newer selection submitted after that command. Gesture
+        // cleanup below still runs for the owning canvas.
+        if (!input.event?.defaultPrevented) {
+          api.selectNodes([]);
+          api.highlightNodes([]);
+        }
         this.saveSelectedOBB(api, selection);
         if (selection.mode === SelectionMode.BRUSH) {
           this.hideBrush(selection);

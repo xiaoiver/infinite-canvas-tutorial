@@ -18,13 +18,63 @@ jest.mock('../../packages/ecs/src/components', () => ({
   Input: class {},
   Cursor: class {},
 }));
-jest.mock('../../packages/ecs/src/utils', () => ({ isBrowser: false }));
+jest.mock('../../packages/ecs/src/utils', () => ({ isBrowser: true }));
 jest.mock('../../packages/ecs/src/history', () => ({ safeAddComponent() {} }));
 jest.mock('../../packages/ecs/src/environment', () => ({
   DOMAdapter: { get: jest.fn() },
 }));
 
 describe('input listener lifecycle', () => {
+  it('routes Escape through the canvas event path and retains the handled keydown through keyup', () => {
+    const { window } = new JSDOM();
+    (window as any).PointerEvent = window.MouseEvent;
+    (DOMAdapter.get as jest.Mock).mockReturnValue({ getWindow: () => window });
+    const inputs = [{}, {}] as Array<{ key?: string; event?: Event }>;
+    const elements = inputs.map(() => {
+      const element = window.document.createElement('canvas');
+      window.document.body.append(element);
+      return element;
+    });
+    elements[1].tabIndex = -1;
+    const canvases = inputs.map((input, index) => {
+      const entity = {
+        __id: index,
+        hold: () => entity,
+        read: (type) =>
+          type === Canvas ? { element: elements[index], api: {} } : input,
+        write: () => input,
+      };
+      return entity;
+    });
+    mockQuery = { added: canvases, removed: [] };
+    const writer = new EventWriter();
+    writer.execute();
+    expect(elements[0].tabIndex).toBe(0);
+    expect(elements[1].tabIndex).toBe(-1);
+    elements[0].addEventListener('keydown', (event) => event.preventDefault());
+    const down = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    elements[0].dispatchEvent(down);
+    elements[0].dispatchEvent(
+      new window.KeyboardEvent('keyup', { key: 'Escape', bubbles: true }),
+    );
+    expect(inputs[0].key).toBe('Escape');
+    expect(inputs[0].event).toBe(down);
+    expect(inputs[0].event!.defaultPrevented).toBe(true);
+    expect(inputs[1].key).toBeUndefined();
+    inputs[0].key = undefined;
+    const input = window.document.createElement('input');
+    window.document.body.append(input);
+    input.dispatchEvent(
+      new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    expect(inputs.every((state) => state.key === undefined)).toBe(true);
+    writer.finalize();
+    window.close();
+  });
   it('removes global listeners on world exit even if the canvas was just deleted', () => {
     const { window } = new JSDOM();
     (window as any).PointerEvent = window.MouseEvent;

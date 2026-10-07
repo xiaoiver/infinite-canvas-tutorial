@@ -87,7 +87,9 @@ export class AppStateChange implements Change<AppState> {
           toSelect
             .map((id) => this.api.getNodeById(id))
             .filter((node) => node !== undefined),
-          false,
+          // The unchanged portion of the restored selection is already selected.
+          // Replacing it here removes those ECS components on additive redo.
+          true,
           false,
         );
       }
