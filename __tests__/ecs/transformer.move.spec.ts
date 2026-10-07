@@ -34,6 +34,9 @@ import {
   Rect,
   Opacity,
   GlobalTransform,
+  Highlighted,
+  Transformable,
+  TransformableStatus,
 } from '../../packages/ecs/src';
 import { NodeJSAdapter, createMouseEvent } from '../utils';
 
@@ -52,6 +55,7 @@ describe('Transformer', () => {
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
     let entity: Entity | undefined;
+    let api: API | undefined;
 
     const MyPlugin: Plugin = () => {
       system(PreStartUp)(StartUpSystem);
@@ -89,7 +93,7 @@ describe('Transformer', () => {
       initialize(): void {
         $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
 
-        const api = new API(new DefaultStateManagement(), this.commands);
+        api = new API(new DefaultStateManagement(), this.commands);
 
         canvasEntity = api.createCanvas({
           element: $canvas,
@@ -120,6 +124,7 @@ describe('Transformer', () => {
         });
         api.updateNodes([node]);
         api.selectNodes([node]);
+        api.record();
 
         entity = api.getEntity(node)?.hold();
       }
@@ -156,11 +161,36 @@ describe('Transformer', () => {
         x: 50,
         y: 75,
       });
+      // Finish MOVE before release-time hover can switch to another handle's mode.
+      // Once the frame catches up, the pointer is over its center handle and no
+      // hover highlight remains. Completion records exactly one undoable change.
+      expect(cameraEntity!.read(Transformable).status).toBe(
+        TransformableStatus.MOVED,
+      );
+      expect(entity!.has(Highlighted)).toBe(false);
+      expect(api!.isUndoStackEmpty()).toBe(false);
       const dir = `${__dirname}/snapshots`;
       await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
         dir,
         'transformer-move',
       );
+
+      api!.undo();
+      for (let frame = 0; frame < 6; frame++) await app.world.execute();
+      expect(entity!.read(Transform).translation).toMatchObject({
+        x: 50,
+        y: 50,
+      });
+      expect(api!.isUndoStackEmpty()).toBe(true);
+      expect(api!.isRedoStackEmpty()).toBe(false);
+
+      api!.redo();
+      for (let frame = 0; frame < 6; frame++) await app.world.execute();
+      expect(entity!.read(Transform).translation).toMatchObject({
+        x: 50,
+        y: 75,
+      });
+      expect(api!.isRedoStackEmpty()).toBe(true);
     } finally {
       await app.exit();
     }

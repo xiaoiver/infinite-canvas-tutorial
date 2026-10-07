@@ -43,6 +43,11 @@ Resize checks exercise corners, edges, endpoints, multi-selection, aspect-ratio
 and centered scaling, rotated handles, guide cleanup and undo/redo. The WebKit
 suite also checks touch attraction/release and padded-corner object snapping.
 
+Multi-selection rotation checks compare the rendered frame and all anchors with
+the rotating shapes, including reversal, angle wrapping, a pinned pivot,
+consecutive gestures, Escape and undo/redo. The WebKit suite also checks touch
+rotation and the final frame after release.
+
 CI runs these checks in `.github/workflows/browser-regression.yml` and uploads
 failure screenshots and traces from `.test-results/browser` and
 `.test-results/webkit`. The existing ECS suite remains a separate regression

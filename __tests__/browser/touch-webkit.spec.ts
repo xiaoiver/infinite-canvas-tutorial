@@ -122,6 +122,80 @@ test('WebKit native touch selects a shape without hover, then deselects on empty
   ).toEqual([]);
 });
 
+test('WebKit touch rotation moves the multi-selection frame and refreshes it on release', async ({
+  page,
+}) => {
+  await page.evaluate(async () => {
+    await window.canvasRegression.setScene(
+      'left',
+      [
+        { id: 'a', x: 70, y: 60 },
+        { id: 'b', x: 170, y: 100 },
+      ].map((node) => ({
+        ...node,
+        type: 'rect',
+        width: 40,
+        height: 40,
+        zIndex: 0,
+        fills: [{ type: 'solid', value: '#ff8400' }],
+      })),
+      ['a', 'b'],
+    );
+    await window.canvasRegression.setPreferences('left', {
+      snapToObjectsEnabled: false,
+      snapToPixelGridEnabled: false,
+    });
+  });
+  await frame(page);
+  const before = await page.evaluate(() =>
+    window.canvasRegression.transformer('left'),
+  );
+  const box = (await page.locator('#left canvas').boundingBox())!;
+  const corner = before.anchors[2];
+  const pivot = before.anchors[4];
+  await pointerDrag(
+    page,
+    { x: box.x + corner.x + 24, y: box.y + corner.y + 20 },
+    [-40, 25],
+    async () => {
+      const current = await page.evaluate(() =>
+        window.canvasRegression.transformer('left'),
+      );
+      const rotation = (await node(page)).rotation!;
+      expect(rotation).toBeGreaterThan(0.03);
+      expect(current.rotation).toBeCloseTo(rotation, 4);
+      expect(current.width).toBeCloseTo(before.width, 3);
+      expect(current.height).toBeCloseTo(before.height, 3);
+      expect(current.anchors[4].x).toBeCloseTo(pivot.x, 3);
+      expect(current.anchors[4].y).toBeCloseTo(pivot.y, 3);
+      expect(current.anchors[2].x).toBeCloseTo(
+        pivot.x +
+          (corner.x - pivot.x) * Math.cos(rotation) -
+          (corner.y - pivot.y) * Math.sin(rotation),
+        2,
+      );
+      expect(current.anchors[2].y).toBeCloseTo(
+        pivot.y +
+          (corner.x - pivot.x) * Math.sin(rotation) +
+          (corner.y - pivot.y) * Math.cos(rotation),
+        2,
+      );
+    },
+  );
+  const after = await page.evaluate(() =>
+    window.canvasRegression.transformer('left'),
+  );
+  expect(after.rotation).toBe(0);
+  expect(after.anchors[0]).not.toEqual(before.anchors[0]);
+  await page.evaluate(() => window.canvasRegression.undo('left'));
+  await frame(page);
+  expect((await node(page)).rotation ?? 0).toBe(0);
+  expect(
+    (await page.evaluate(() => window.canvasRegression.transformer('left')))
+      .anchors,
+  ).toEqual(before.anchors);
+});
+
 test('WebKit pointer events resize a padded corner after native selection, with undo and redo', async ({
   page,
 }) => {

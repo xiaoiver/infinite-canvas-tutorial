@@ -770,6 +770,13 @@ export class Select extends System {
       newRotation,
     );
     this.fitSelected(api, newAttrs, selection);
+    const tf = camera.write(Transformable);
+    if (tf.transformerObbFrozenDuringRotate) {
+      // Keep the pointer-down geometry in selection.obb as the immutable input,
+      // but display that frame transformed around the same fixed world pivot.
+      Object.assign(tf.gestureFrozenSelectionOBB, newAttrs);
+      requestTransformerRefreshForCanvas(api.getCanvas());
+    }
   }
 
   private handleSelectedResizing(
@@ -2364,6 +2371,19 @@ export class Select extends System {
     tfDone.status = TransformableStatus.ROTATED;
     tfDone.transformerObbFrozenDuringRotate = false;
 
+    if (
+      tfDone.selecteds.length > 1 &&
+      tfDone.rotatePivotPinned &&
+      selection.rotatePivotWorldFixed
+    ) {
+      // Multi-selection returns to its world-axis-aligned union after release.
+      // Rebase the pinned pivot into that frame without moving it in the canvas.
+      const { x, y } = getOBB(camera);
+      const tf = camera.write(Transformable);
+      tf.rotatePivotX = selection.rotatePivotWorldFixed[0] - x;
+      tf.rotatePivotY = selection.rotatePivotWorldFixed[1] - y;
+    }
+
     delete selection.rotateLastPointerAngle;
     delete selection.rotateAccumulated;
     delete selection.rotatePivotWorldFixed;
@@ -2383,6 +2403,9 @@ export class Select extends System {
     });
 
     this.saveSelectedOBB(api, selection);
+    // The last pointer sample may have settled before pointerup, so no bounds
+    // change remains to trigger RenderTransformer when the preview is cleared.
+    requestTransformerRefreshForCanvas(api.getCanvas());
   }
 
   private handleBrushing(api: API, viewportX: number, viewportY: number) {
@@ -3019,7 +3042,13 @@ export class Select extends System {
         this.saveSelectedOBB(api, selection);
       }
 
-      if (camera.has(ComputedCamera) && inputPoints.length === 0) {
+      // Finish the active gesture before hover hit-testing can change its mode.
+      // CameraControl removes inputPoints on release before Select runs.
+      if (
+        camera.has(ComputedCamera) &&
+        inputPoints.length === 0 &&
+        !input.pointerUpTrigger
+      ) {
         const [x, y] = input.pointerViewport;
         if (
           selection.pointerMoveViewportX !== x ||
@@ -3508,6 +3537,7 @@ export class Select extends System {
       delete selection.lastSnapOffset;
       if (isBrowser) this.clearSnapLines(selection);
       const tf = camera.write(Transformable);
+      tf.transformerObbFrozenDuringRotate = false;
       tf.rotatePivotPinned = false;
       tf.rotatePivotX = NaN;
       tf.rotatePivotY = NaN;

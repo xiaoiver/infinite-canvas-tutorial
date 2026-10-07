@@ -103,7 +103,9 @@ export class Transformable {
   @field({ type: Type.boolean, default: false }) declare rotatePivotPinned: boolean;
 
   /**
-   * 多选旋转时：{@link getOBB} 返回此快照而非实时 union AABB，避免拖拽中包围盒跳动导致枢轴与 transformer 框漂移。
+   * During multi-selection rotation, render the initial frame transformed by the
+   * current gesture, instead of recomputing a world-axis-aligned union each frame.
+   * Width/height stay fixed; Select updates its origin and rotation per sample.
    */
   @field({ type: Type.boolean, default: false }) declare transformerObbFrozenDuringRotate: boolean;
   @field(obbType) declare gestureFrozenSelectionOBB: OBB;
