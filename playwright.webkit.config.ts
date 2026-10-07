@@ -12,6 +12,7 @@ export default defineConfig({
     'ecs-text-resize.spec.ts',
     'ecs-text-path.spec.ts',
     'ecs-blend-mode.spec.ts',
+    'size-label.spec.ts',
   ],
   testIgnore: [],
   outputDir: '.test-results/webkit',
