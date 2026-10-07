@@ -13,6 +13,7 @@ import { DOMAdapter } from '../../environment';
 
 export type PositionedGlyph = {
   glyph: string;
+  rotation?: number;
   x: number;
   y: number;
   scale: number;

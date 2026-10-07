@@ -1,3 +1,5 @@
+import { measureTextPath } from '../utils/glyph/measure-text-path';
+import { BASE_FONT_WIDTH } from '../utils/glyph/glyph-atlas';
 import { prepareWithSegments, layoutWithLines } from '@chenglou/pretext';
 import { System } from '@lastolivegames/becsy';
 import { Rectangle } from '@pixi/math';
@@ -514,7 +516,7 @@ export function measureText(
     offsetY = 0;
   }
 
-  return {
+  const computed: Partial<ComputedTextMetrics> = {
     bidiChars,
     font,
     width,
@@ -541,6 +543,22 @@ export function measureText(
       );
     }),
   };
+  computed.pathGlyphs = style.path
+    ? measureTextPath(style, computed, context, {
+        font: fontStringFromTextStyle({
+          // ECS fields live on accessors and cannot be copied with object spread.
+          fontFamily: style.fontFamily ?? 'sans-serif',
+          fontStyle: style.fontStyle ?? 'normal',
+          fontWeight: style.fontWeight ?? 'normal',
+          fontVariant: 'normal',
+          fontSize: BASE_FONT_WIDTH,
+        }),
+        baselineOffset:
+          yOffsetFromTextBaseline(style.textBaseline ?? 'alphabetic', fontMetrics) +
+          (fontMetrics.fontBoundingBoxAscent ?? 0),
+      })
+    : [];
+  return computed;
 }
 
 function ellipsisString(style: Partial<Text>): string {

@@ -358,7 +358,10 @@ export function updateBounds(entity: Entity) {
 
     let selectionX = transformOBB.x;
     let selectionY = transformOBB.y;
-    if (entity.has(Polyline) || entity.has(Path) || entity.has(Line)) {
+    if (
+      entity.hasSomeOf(Polyline, Path, Line) ||
+      (entity.has(Text) && entity.read(Text).path)
+    ) {
       const gx = geometryBounds.minX;
       const gy = geometryBounds.minY;
       const { m00, m01, m10, m11, m20, m21 } = matrix;

@@ -215,6 +215,10 @@ const FLEX_ITEM_PARENT_RELAYOUT_KEYS: readonly string[] = [
   'fontWeight',
   'fontStyle',
   'letterSpacing',
+  'path',
+  'side',
+  'startOffset',
+  'pathOffset',
   'width',
   'height',
 ];
@@ -1489,6 +1493,17 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, Marker, { factor: markerFactor });
   }
 
+  if (element.type === 'text') {
+    for (const key of ['path', 'side', 'startOffset', 'pathOffset'] as const) {
+      if (key in updates) {
+        const defaults = {
+          path: '', side: 'left' as const, startOffset: 0, pathOffset: 0,
+        };
+        // Preserve clearing a setting in undo/redo as well as explicit updates.
+        Object.assign(entity.write(Text), { [key]: updates[key] ?? defaults[key] });
+      }
+    }
+  }
   if ('anchorX' in updates) {
     entity.write(Text).anchorX = anchorX;
   }
@@ -1574,7 +1589,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     ('textAlign' in updates || 'textBaseline' in updates) &&
     !('anchorX' in updates) &&
     !('anchorY' in updates) &&
-    entity.has(Text)
+    entity.has(Text) &&
+    !entity.read(Text).path
   ) {
     const textComp = entity.read(Text);
     const oldTextAlign = textComp.textAlign;

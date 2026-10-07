@@ -195,7 +195,7 @@ export class TextEditor extends LitElement {
       y: vy,
     });
 
-    const entities = api.elementsFromBBox(wx, wy, wx, wy);
+    const entities = api.elementsFromPoint({ x: wx, y: wy });
     const entity = entities.find((e) => !e.has(UI));
 
     this.node = undefined;
@@ -204,7 +204,11 @@ export class TextEditor extends LitElement {
       // Edit the existing text node.
       const node = api.getNodeByEntity(entity) as TextSerializedNode;
 
-      const { geometryBounds } = entity.read(ComputedBounds);
+      // A textarea cannot bend individual glyphs. Edit path text as a straight
+      // run at its ink bounds, preserving the path attributes on commit.
+      const geometryBounds = node.path
+        ? Text.getGeometryBounds({ ...node, path: '' })
+        : entity.read(ComputedBounds).geometryBounds;
       const textW = geometryBounds.maxX - geometryBounds.minX;
       const textH = geometryBounds.maxY - geometryBounds.minY;
       this.node = structuredClone(node);
@@ -296,7 +300,9 @@ export class TextEditor extends LitElement {
       ...this.node,
       content,
     };
-    const { minX, minY, maxX, maxY } = Text.getGeometryBounds(attributes);
+    const { minX, minY, maxX, maxY } = Text.getGeometryBounds({
+      ...attributes, path: '',
+    });
     const width = maxX - minX;
     const height = maxY - minY;
 
@@ -414,9 +420,14 @@ export class TextEditor extends LitElement {
           y: cameraZoom * (-sin * dx + cos * dy),
         };
       };
-      const origin = toViewport(0, 0);
-      const xAxis = toViewport(1, 0);
-      const yAxis = toViewport(0, 1);
+      const bounds = this.node.path && textEntity?.has(ComputedBounds)
+        ? textEntity.read(ComputedBounds).geometryBounds
+        : undefined;
+      const ox = bounds?.minX ?? 0;
+      const oy = bounds?.minY ?? 0;
+      const origin = toViewport(ox, oy);
+      const xAxis = toViewport(ox + 1, oy);
+      const yAxis = toViewport(ox, oy + 1);
 
       this.editable.style.left = `${origin.x}px`;
       this.editable.style.top = `${origin.y}px`;

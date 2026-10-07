@@ -1407,7 +1407,7 @@ export function getOBB(camera: Entity): OBB {
         selected.has(Text)
       ) {
         const text = selected.read(Text);
-        if (text.wordWrap && (text.wordWrapWidth ?? 0) > 0) {
+        if (!text.path && text.wordWrap && (text.wordWrapWidth ?? 0) > 0) {
           const o = selectionOBB;
           return new OBB({
             x: o.x,

@@ -616,6 +616,10 @@ export interface TextAttributes
   extends Partial<
     Pick<
       Text,
+      | 'path'
+      | 'side'
+      | 'startOffset'
+      | 'pathOffset'
       | 'anchorX'
       | 'anchorY'
       | 'content'

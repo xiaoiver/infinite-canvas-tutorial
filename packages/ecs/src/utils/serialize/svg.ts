@@ -526,6 +526,7 @@ export async function serializeNodesToSVGElements(
     if (element) {
       Object.entries(restForExport).forEach(([key, value]) => {
         if (
+          (type === 'text' && ['path', 'side', 'startOffset', 'pathOffset'].includes(key)) ||
           key === 'hitStrokeWidth' ||
           key === 'svgDataAttributes' ||
           key === 'filter' ||
@@ -602,8 +603,8 @@ export async function serializeNodesToSVGElements(
       const lineHeightValue = lineHeight || fontSize as number;
       y += (lineHeightValue - (fontSize as number)) / 2;
 
-      element.setAttribute('x', `${toFixedAndRemoveTrailingZeros(x)}`);
-      element.setAttribute('y', `${toFixedAndRemoveTrailingZeros(y)}`);
+      element.setAttribute('x', `${toFixedAndRemoveTrailingZeros((node as TextSerializedNode).path ? 0 : x)}`);
+      element.setAttribute('y', `${toFixedAndRemoveTrailingZeros((node as TextSerializedNode).path ? 0 : y)}`);
       element.removeAttribute('fill');
 
       // if (fontFamily === 'Gaegu') {
@@ -1810,10 +1811,20 @@ export function exportText(
   } = attributes;
   const fill = fillFromFills ?? '#000';
 
-  $g.setAttribute('dominant-baseline', 'hanging');
+  $g.setAttribute('dominant-baseline', attributes.path ? 'alphabetic' : 'hanging');
 
-  const { lineHeight, lines } = measureText(attributes);
-  if (lines.length > 1) {
+  const { lineHeight, lines, pathGlyphs } = measureText(attributes);
+  if (attributes.path) {
+    $g.textContent = '';
+    for (const glyph of pathGlyphs ?? []) {
+      const span = createSVGElement('tspan');
+      span.textContent = glyph.glyph;
+      span.setAttribute('x', `${toFixedAndRemoveTrailingZeros(glyph.x)}`);
+      span.setAttribute('y', `${toFixedAndRemoveTrailingZeros(glyph.y)}`);
+      span.setAttribute('rotate', `${toFixedAndRemoveTrailingZeros(glyph.rotation * 180 / Math.PI)}`);
+      $g.appendChild(span);
+    }
+  } else if (lines.length > 1) {
     lines.forEach((line, i) => {
       const $tspan = createSVGElement('tspan');
       $tspan.textContent = line;
