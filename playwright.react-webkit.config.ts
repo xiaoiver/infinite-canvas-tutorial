@@ -7,6 +7,7 @@ export default defineConfig({
     'mobile.spec.ts',
     'text-edits.spec.ts',
     'drawing-preferences.spec.ts',
+    'design-variable-edits.spec.ts',
   ],
   outputDir: '.test-results/react-webkit',
   use: {
