@@ -80,7 +80,7 @@ function submitOffscreenPass(
 }
 
 /**
- * 将多层纹理按 blendMode + opacity 预合成一张 premul RGBA。
+ * 将多层纹理按 blendMode + opacity 预合成一张 straight RGBA（中间累积使用 premultiplied RGBA）。
  */
 export function composeFillLayerTexturesOnGpu(
   device: Device,
@@ -183,15 +183,20 @@ export function composeFillLayerTexturesOnGpu(
 
   const samp = createSampler();
 
-  const setUniform = (mode: number, opacity: number) => {
+  const setUniform = (mode: number, opacity: number, final = false) => {
     const d = new Float32Array(4);
     d[0] = mode;
     d[1] = opacity;
+    d[2] = 1; // Straight-alpha uploaded source.
+    d[3] = final ? 1 : 0;
     ubuf.setSubData(0, new Uint8Array(d.buffer));
+    progBlit.setUniformsLegacy({ u_BlendParams: d });
+    progBlend.setUniformsLegacy({ u_BlendParams: d });
   };
 
   setUniform(0, fillLayerOpacity(layers[0]!.opacity));
-  const bindBlit0 = renderCache.createBindings({
+  progBlit.setUniformsLegacy({ u_Src: 0 });
+  const bindBlit0 = device.createBindings({
     pipeline: pipBlit,
     uniformBufferBindings: [{ buffer: ubuf }],
     samplerBindings: [{ texture: textures[0]!, sampler: samp }],
@@ -222,9 +227,11 @@ export function composeFillLayerTexturesOnGpu(
     setUniform(
       fillLayerBlendModeToIndex(layer.blendMode),
       fillLayerOpacity(layer.opacity),
+      i === n - 1,
     );
     const targetRt = writeToB ? rtB : rtA;
-    const bindBlend = renderCache.createBindings({
+    progBlend.setUniformsLegacy({ u_Backdrop: 0, u_Src: 1 });
+    const bindBlend = device.createBindings({
       pipeline: pipBlend,
       uniformBufferBindings: [{ buffer: ubuf }],
       samplerBindings: [

@@ -9,7 +9,7 @@ export class SingleSampledTexture {
   readonly depthOrArrayLayers = 1;
   readonly mipLevelCount = 1;
 
-  readonly usage = TextureUsage.RENDER_TARGET;
+  readonly usage = TextureUsage.RENDER_TARGET | TextureUsage.SAMPLED;
 
   format: Format;
   width = 0;

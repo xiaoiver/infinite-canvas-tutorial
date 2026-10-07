@@ -46,7 +46,6 @@ import {
   GlobalRenderOrder,
   GlobalTransform,
   Mat3,
-  Opacity,
   SizeAttenuation,
   Stroke,
   Text,
@@ -1033,7 +1032,7 @@ export class SDFText extends Drawcall {
       fillCss && fillCss !== 'none' ? fillCss : 'transparent',
     );
 
-    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
+    const opacity = this.getOpacity(shape);
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;

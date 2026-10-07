@@ -15,6 +15,9 @@ jest.mock('../../packages/ecs/src/drawcalls', () => {
     remove(shape: any) {
       this.shapes = this.shapes.filter((s) => s !== shape);
     }
+    needsNodeLayerBlend() {
+      return this.shapes[0]?.blendMode != null;
+    }
     validate() {
       return true;
     }
@@ -44,7 +47,9 @@ describe('BatchManager resource ownership', () => {
     } as any;
   }
   function manager() {
-    return new BatchManager(null, null, null, null, null);
+    return new BatchManager(null, null, null, null, {
+      getNodeByEntity: (node: any) => node,
+    } as any);
   }
 
   it('releases cached non-batched drawcalls even after culling and clearing', () => {
@@ -83,5 +88,36 @@ describe('BatchManager resource ownership', () => {
     mockDrawcalls.forEach((drawcall) =>
       expect(drawcall.destroy).toHaveBeenCalledTimes(1),
     );
+  });
+  it('composites all drawcalls of one blended node together', () => {
+    const batch = manager();
+    const node = shape(false);
+    node.blendMode = 'multiply';
+    batch.add(node);
+    const segments = batch.buildFlushSegments();
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({
+      type: 'layerBlend',
+      drawcalls: mockDrawcalls,
+    });
+    batch.destroy();
+  });
+
+  it('moves nodes out of instancing when blend mode changes and releases both caches', () => {
+    const batch = manager();
+    const node = shape(true);
+    batch.add(node);
+    const shared = [...mockDrawcalls];
+    node.blendMode = 'multiply';
+    batch.add(node);
+    shared.forEach((d) => expect(d.shapes).not.toContain(node));
+    expect(mockDrawcalls).toHaveLength(4);
+    expect(batch.buildFlushSegments()).toHaveLength(1);
+    batch.remove(node);
+    mockDrawcalls
+      .slice(2)
+      .forEach((d) => expect(d.destroy).toHaveBeenCalledTimes(1));
+    batch.destroy();
+    shared.forEach((d) => expect(d.destroy).toHaveBeenCalledTimes(1));
   });
 });

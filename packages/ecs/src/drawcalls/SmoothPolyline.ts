@@ -60,7 +60,6 @@ import {
   Line,
   Marker,
   Mat3,
-  Opacity,
   Path,
   Polyline,
   Rect,
@@ -691,7 +690,7 @@ export class SmoothPolyline extends Drawcall {
       }
     }
 
-    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
+    const opacity = this.getOpacity(shape);
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 

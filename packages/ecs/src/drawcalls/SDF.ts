@@ -29,7 +29,6 @@ import {
   parseEffect,
   getNodeLayerBlendMode,
   isNonNormalNodeLayerBlend,
-  compositeNodeLayerBlendOnRenderPass,
 } from '../utils';
 import {
   fillLayerOpacity,
@@ -78,7 +77,6 @@ import {
   InnerShadow,
   Mat3,
   MaterialDirty,
-  Opacity,
   Rect,
   SizeAttenuation,
   StrokeAttenuation,
@@ -960,29 +958,6 @@ export class SDF extends Drawcall {
     }
   }
 
-  override submitNodeLayerBlendComposite(
-    renderPass: RenderPass,
-    backdrop: Texture,
-    src: Texture,
-    uniformBuffer: Buffer,
-    sceneUniformLegacyObject: Record<string, unknown>,
-    width: number,
-    height: number,
-  ): void {
-    void uniformBuffer;
-    void sceneUniformLegacyObject;
-    compositeNodeLayerBlendOnRenderPass(
-      renderPass,
-      this.device,
-      this.renderCache,
-      backdrop,
-      src,
-      getNodeLayerBlendMode(this.api, this.shapes[0]),
-      width,
-      height,
-    );
-  }
-
   render(
     renderPass: RenderPass,
     uniformBuffer: Buffer,
@@ -1345,7 +1320,7 @@ export class SDF extends Drawcall {
       fill != null && fill !== '' ? fill : 'transparent',
     );
 
-    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
+    const opacity = this.getOpacity(shape);
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
@@ -1386,7 +1361,7 @@ export class SDF extends Drawcall {
     if (multiFill?.kind === 'fill-layer' && multiLayers) {
       const L = multiLayers[multiFill.layerIndex];
       const lo = fillLayerOpacity(L.opacity);
-      if (L.type === 'gradient') {
+      if (this.useFillImage) {
         frN = 1;
         fgN = 1;
         fbN = 1;
@@ -1401,7 +1376,7 @@ export class SDF extends Drawcall {
     ) {
       const L = enabledFill[0];
       const lo = fillLayerOpacity(L.opacity);
-      if (L.type === 'gradient') {
+      if (this.useFillImage) {
         frN = 1;
         fgN = 1;
         fbN = 1;

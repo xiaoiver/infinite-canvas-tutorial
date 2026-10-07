@@ -1,4 +1,5 @@
 import type {
+  Buffer,
   Device,
   RenderPass,
   Texture,
@@ -50,31 +51,30 @@ const nodeLayerBlendMegaState = makeMegaState({
   depthWrite: false,
 });
 
-class NodeLayerBlendCompositor {
-  #ubuf;
+export class NodeLayerBlendCompositor {
+  #uniforms: Buffer[] = [];
+  #uniformIndex = 0;
   #vb;
   #sampler;
   #pipBlend;
+  #program;
   #ilBlend;
   #compositeBindings: ReturnType<RenderCache['createBindings']> | null = null;
   #compositeBindingsKey = '';
 
-  constructor(
-    private device: Device,
-    private renderCache: RenderCache,
-  ) {
+  constructor(private device: Device, private renderCache: RenderCache) {
     const diagnosticDerivativeUniformityHeader =
       device.queryVendorInfo().platformString === 'WebGPU'
         ? 'diagnostic(off,derivative_uniformity);\n'
         : '';
 
-    const progBlend = renderCache.createProgram({
+    const progBlend = (this.#program = renderCache.createProgram({
       vertex: { glsl: composeVert },
       fragment: {
         glsl: fragBlendLayer,
         postprocess: (fs: string) => diagnosticDerivativeUniformityHeader + fs,
       },
-    });
+    }));
 
     this.#vb = device.createBuffer({
       viewOrSize: new Float32Array([1, 3, -3, -1, 1, -1]),
@@ -102,12 +102,6 @@ class NodeLayerBlendCompositor {
       megaStateDescriptor: nodeLayerBlendMegaState,
     });
 
-    this.#ubuf = device.createBuffer({
-      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 4,
-      usage: BufferUsage.UNIFORM,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
-
     this.#sampler = renderCache.createSampler({
       addressModeU: AddressMode.CLAMP_TO_EDGE,
       addressModeV: AddressMode.CLAMP_TO_EDGE,
@@ -119,6 +113,10 @@ class NodeLayerBlendCompositor {
     });
   }
 
+  beginFrame(): void {
+    this.#uniformIndex = 0;
+  }
+
   composite(
     renderPass: RenderPass,
     backdrop: Texture,
@@ -126,18 +124,29 @@ class NodeLayerBlendCompositor {
     blendMode: FillLayerBlendMode | undefined,
     width: number,
     height: number,
+    opacity = 1,
   ): void {
-    const d = new Float32Array(4);
-    d[0] = fillLayerBlendModeToIndex(blendMode);
-    d[1] = 1;
-    this.#ubuf.setSubData(0, new Uint8Array(d.buffer));
+    const mode = fillLayerBlendModeToIndex(blendMode);
+    const index = this.#uniformIndex++;
+    let uniform = this.#uniforms[index];
+    if (!uniform) {
+      // One buffer per pass: WebGPU submits all passes after their uniform uploads.
+      uniform = this.device.createBuffer({
+        viewOrSize: 16,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
+      this.#uniforms[index] = uniform;
+    }
+    const params = new Float32Array([mode, opacity, 0, 0]);
+    uniform.setSubData(0, new Uint8Array(params.buffer));
 
-    const bindingsKey = `${backdrop.id}:${src.id}:${d[0]}`;
+    const bindingsKey = `${backdrop.id}:${src.id}:${uniform.id}`;
     if (this.#compositeBindingsKey !== bindingsKey) {
       this.#compositeBindings?.destroy();
-      this.#compositeBindings = this.renderCache.createBindings({
+      this.#compositeBindings = this.device.createBindings({
         pipeline: this.#pipBlend,
-        uniformBufferBindings: [{ buffer: this.#ubuf }],
+        uniformBufferBindings: [{ buffer: uniform }],
         samplerBindings: [
           { texture: backdrop, sampler: this.#sampler },
           { texture: src, sampler: this.#sampler },
@@ -146,6 +155,11 @@ class NodeLayerBlendCompositor {
       this.#compositeBindingsKey = bindingsKey;
     }
 
+    this.#program.setUniformsLegacy({
+      u_BlendParams: params,
+      u_Backdrop: 0,
+      u_Src: 1,
+    });
     renderPass.setViewport(0, 0, width, height);
     renderPass.setPipeline(this.#pipBlend);
     renderPass.setBindings(this.#compositeBindings!);
@@ -157,41 +171,8 @@ class NodeLayerBlendCompositor {
     this.#compositeBindings?.destroy();
     this.#compositeBindings = null;
     this.#compositeBindingsKey = '';
-    this.#ubuf.destroy();
+    this.#uniforms.forEach((buffer) => buffer.destroy());
+    this.#uniforms = [];
     this.#vb.destroy();
   }
-}
-
-const compositorByDevice = new WeakMap<Device, NodeLayerBlendCompositor>();
-
-function getCompositor(
-  device: Device,
-  renderCache: RenderCache,
-): NodeLayerBlendCompositor {
-  let c = compositorByDevice.get(device);
-  if (!c) {
-    c = new NodeLayerBlendCompositor(device, renderCache);
-    compositorByDevice.set(device, c);
-  }
-  return c;
-}
-
-export function compositeNodeLayerBlendOnRenderPass(
-  renderPass: RenderPass,
-  device: Device,
-  renderCache: RenderCache,
-  backdrop: Texture,
-  src: Texture,
-  blendMode: FillLayerBlendMode | undefined,
-  width: number,
-  height: number,
-): void {
-  getCompositor(device, renderCache).composite(
-    renderPass,
-    backdrop,
-    src,
-    blendMode,
-    width,
-    height,
-  );
 }
