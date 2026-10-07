@@ -1,12 +1,9 @@
+import { live } from 'lit/directives/live.js';
+import { drawingPaint, updateDrawingPreference } from './drawing-preferences';
 import { html, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import {
-  AppState,
-  FillAttributes,
-  getPrimaryFillValue,
-  type SerializedFillLayerItem,
-} from '@infinite-canvas-tutorial/ecs';
+import { AppState } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
@@ -22,45 +19,36 @@ export class PenbarTextSettings extends LitElement {
 
   private handleFillColorChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-
-    const fillColor = (e.target as any).selected[0];
-    const cur = this.api.getAppState().penbarText as FillAttributes;
-    const prev = (cur.fills?.[0] ?? {
-      type: 'solid',
-      value: '#000',
-      opacity: 1,
-    }) as SerializedFillLayerItem;
-    this.api.setAppState({
-      penbarText: {
-        ...this.api.getAppState().penbarText,
-        fills: [
-          { ...prev, type: 'solid', value: fillColor, opacity: prev.opacity ?? 1 },
-        ],
-      },
+    updateDrawingPreference(this, 'penbarText', {
+      kind: 'paint',
+      field: 'fills',
+      color: (e.target as any).selected?.[0],
     });
   }
 
   private handleFontFamilyChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-    const fontFamily = e.target.value;
-    this.api.setAppState({
-      penbarText: { ...this.api.getAppState().penbarText, fontFamily },
+    updateDrawingPreference(this, 'penbarText', {
+      kind: 'fontFamily',
+      value: e.target.value,
     });
   }
 
   private handleFontSizeChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-    const fontSize = (e.target as any).value;
-    this.api.setAppState({
-      penbarText: { ...this.api.getAppState().penbarText, fontSize },
+    updateDrawingPreference(this, 'penbarText', {
+      kind: 'number',
+      field: 'fontSize',
+      value: e.target.value,
     });
   }
 
   private handleFontStyleChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-    const fontStyle = e.target.value;
-    this.api.setAppState({
-      penbarText: { ...this.api.getAppState().penbarText, fontStyle },
+    updateDrawingPreference(this, 'penbarText', {
+      kind: 'choice',
+      field: 'fontStyle',
+      value: e.target.value,
     });
   }
 
@@ -74,18 +62,18 @@ export class PenbarTextSettings extends LitElement {
       <sp-picker
         style="width: 100%; margin-bottom: 4px;"
         label=${msg(str`Font family`)}
-        value=${penbarText.fontFamily}
+        .value=${live(penbarText.fontFamily)}
         @change=${this.handleFontFamilyChanged}
         id="font-family"
       >
         ${penbarText.fontFamilies.map(
-      (fontFamily) =>
-        html`<sp-menu-item
-              value=${fontFamily}
+          (fontFamily) =>
+            html`<sp-menu-item
+              .value=${live(fontFamily)}
               style="font-family: ${fontFamily};"
               >${fontFamily}</sp-menu-item
             >`,
-    )}
+        )}
       </sp-picker>
 
       <div
@@ -95,7 +83,7 @@ export class PenbarTextSettings extends LitElement {
         <sp-picker
           style="flex: 1;"
           label=${msg(str`Font style`)}
-          value=${penbarText.fontStyle}
+          .value=${live(penbarText.fontStyle)}
           @change=${this.handleFontStyleChanged}
           id="font-style"
         >
@@ -105,10 +93,11 @@ export class PenbarTextSettings extends LitElement {
 
         <sp-number-field
           style="width: 70px;"
-          value=${penbarText.fontSize}
+          .value=${live(penbarText.fontSize)}
           @change=${this.handleFontSizeChanged}
           autocomplete="off"
           min="0"
+          step="0.1"
         ></sp-number-field>
       </div>
 
@@ -116,14 +105,12 @@ export class PenbarTextSettings extends LitElement {
       <sp-swatch-group
         id="fill"
         selects="single"
-        .selected=${[
-        getPrimaryFillValue(penbarText as FillAttributes) ?? '#000000',
-      ]}
+        .selected=${[drawingPaint(penbarText, 'fills')[0]?.value ?? '#000000']}
         @change=${this.handleFillColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-    )}
+          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+        )}
       </sp-swatch-group> `;
   }
 }
