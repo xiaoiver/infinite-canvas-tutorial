@@ -8,8 +8,6 @@ import {
   AppState,
   readSystemClipboard,
   effectiveThemePreference,
-  resolveThemeModeFromPreference,
-  type ThemePreference,
   ExportFormat,
   downloadIcDocument,
   type SerializedNode,
@@ -18,6 +16,7 @@ import { apiContext, appStateContext, nodesContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { openFigmaDocument, openIcDocument } from '../utils';
 import { executeCopy, executeCut, executePaste } from './context-menu';
+import { updateThemePreference } from './theme-preference';
 
 @customElement('ic-spectrum-top-navbar')
 @localized()
@@ -213,16 +212,15 @@ export class TopNavbar extends LitElement {
   }
 
   private handleConfigTheme(event: CustomEvent) {
-    const raw = (event.target as any).selected[0] as string;
-    const themePreference: ThemePreference =
-      raw === 'light' || raw === 'dark' || raw === 'system'
-        ? raw
-        : 'system';
-    const themeMode = resolveThemeModeFromPreference(themePreference);
-    this.api.setAppState({
-      themePreference,
-      themeMode,
-    });
+    // This submenu must not toggle its ancestor's grid/snapping preferences.
+    event.stopPropagation();
+    const selected = (event.target as { selected?: unknown }).selected;
+    updateThemePreference(
+      this,
+      Array.isArray(selected) && selected.length === 1
+        ? selected[0]
+        : undefined,
+    );
   }
 
   private handleUndo() {

@@ -8,6 +8,7 @@ export default defineConfig({
     'text-edits.spec.ts',
     'drawing-preferences.spec.ts',
     'design-variable-edits.spec.ts',
+    'theme-preferences.spec.ts',
   ],
   outputDir: '.test-results/react-webkit',
   use: {

@@ -452,6 +452,7 @@ export class API {
   setAppState(
     appState: Partial<AppState>,
     options?: {
+      /** Record changed variable definitions, never a theme-only refresh. */
       recordDesignVariableUndo?: boolean;
       /** 为 true 时 `variables` 整表替换（用于删除键等），默认与旧键合并 */
       replaceVariables?: boolean;
@@ -608,8 +609,14 @@ export class API {
             }
           }
         }
-        // 撤销/重做应用 AppState 时不要再次 record（见 {@link AppStateChange.applyTo}）
-        if (options?.recordDesignVariableUndo !== false) {
+        // Theme is a display preference, outside document history. Refreshing
+        // its bindings must neither capture pending edits nor advance their
+        // baseline via record(NEVER). Variable definitions remain document edits.
+        // Undo/redo opts out when applying AppStateChange as well.
+        if (
+          variablesActuallyChanged &&
+          options?.recordDesignVariableUndo !== false
+        ) {
           this.record();
         }
       };
