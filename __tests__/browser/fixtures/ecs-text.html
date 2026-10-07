@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body {
+    margin: 0;
+  }
+  #host {
+    position: relative;
+    width: 640px;
+    height: 320px;
+  }
+  canvas {
+    display: block;
+  }
+  ic-spectrum-text-editor {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+</style>
+<div id="host">
+  <canvas id="actual"></canvas
+  ><ic-spectrum-text-editor></ic-spectrum-text-editor>
+</div>
+<div id="status">Loading</div>
+<script type="module" src="/ecs-text.ts"></script>
