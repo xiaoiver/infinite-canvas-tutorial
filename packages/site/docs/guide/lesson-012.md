@@ -4,6 +4,7 @@ description: 'Implement polylines with advanced features including arbitrary lin
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 12 - Polylines' }]
 ---
+
 <script setup>
 import Wireframe from '../components/Wireframe.vue';
 </script>
@@ -629,48 +630,39 @@ Finally, there are two points to note:
 
 ### Dashed lines {#dash}
 
-First, calculate the distance each vertex has traveled from the starting point. Taking the polyline of `[[0, 0], [100, 0], [200, 0]]` as an example, the `a_Travel` values of the three instances are `[0, 100, 200]`. Calculate the stretched vertex distance in the Vertex Shader:
+A dash has its own two ends. Applying a periodic alpha mask to a solid stroke can produce flat cuts on straight segments, but it cannot create round caps, and projecting a corner onto only the incoming segment produces misplaced wedges.
+
+First, associate cumulative **centerline** distances with the correct segment instances. For `[[0, 0], [100, 0], [200, 0]]`, the instances are the optional start cap and two segments, with start distances `[0, 0, 100]`. Each instance also carries the previous and next segment's start distance; `-1` means that neighbor does not exist:
 
 ```glsl
-layout(location = ${Location.TRAVEL}) in float a_Travel;
-out float v_Travel;
-
-v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
+layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
+// x: current segment start; y: previous start; z: next start
 ```
 
-In the Fragment Shader, pass in the values of `stroke-dasharray` and `stroke-dashoffset`. Different from the SVG standard, we only support `stroke-dasharray` of length 2 for the time being, that is, dashed lines like `[10, 5, 2]` are not supported.
+In the fragment shader, use `period = dash + gap` to locate the nearest painted intervals, then clip those intervals to their centerline segment. The painted length is **dash**, not gap. This chapter still supports a two-number pattern; any positive period is valid, including values below one pixel. A zero gap produces a solid stroke.
+
+For `strokeLinecap: 'round'`, each painted interval is a capsule. Here `p.x` is distance along that interval in world units, `p.y` is perpendicular distance from its centerline, and `dashLength` is its clipped length in the same units:
 
 ```glsl
-in float v_Travel;
-
-/**
-虚线模式重复单元：
-┌─────────────────┬─────────┬─────────────────┐
-│   Gap/2         │  Dash   │   Gap/2         │
-│  (Transparent)  │ (Opaque)│  (Transparent)  │
-└─────────────────┴─────────┴─────────────────┘
-       ↑                          ↑
-      -0.5                   Dash+0.5
-   (antialias)            (antialias)
- */
-float u_Dash = u_StrokeDash.x;
-float u_Gap = u_StrokeDash.y;
-float u_DashOffset = u_StrokeDash.z;
-if (u_Dash + u_Gap > 1.0) {
-    /**
-    value of travel:
-  < -0.5          : gap region (alpha = 0)
-  -0.5 ~ 0        : dash start edge (smooth transition)
-  0 ~ Dash        : dash segment (alpha = 1)
-  Dash ~ Dash+0.5 : dash end edge (smooth transition)
-  > Dash+0.5      : gap region (alpha = 0)
-     */
-  float travel = mod(v_Travel + u_Gap * v_ScalingFactor * 0.5 + u_DashOffset, u_Dash * v_ScalingFactor + u_Gap * v_ScalingFactor) - (u_Gap * v_ScalingFactor * 0.5);
-  float left = max(travel - 0.5, -0.5);
-  float right = min(travel + 0.5, u_Gap * v_ScalingFactor + 0.5);
-  alpha *= antialias(max(0.0, right - left));
-}
+float radius = strokeWidth * 0.5;
+float alongOutside = max(max(-p.x, p.x - dashLength), 0.0);
+float distance = length(vec2(alongOutside, p.y)) - radius;
+float coverage = clamp(
+    0.5 - distance / max(fwidth(distance), 0.0001),
+    0.0, 1.0
+);
 ```
+
+Use the full half-width for the radius; mixing this with an already scaled perpendicular distance makes the caps and body too narrow. `butt` uses a rectangle; `square` extends the rectangle by the half-width at each end. Round and square caps extend into the nominal gap, so a gap narrower than the stroke width can make neighboring dashes touch.
+
+Corners need both segment directions:
+
+1. Evaluate the current, previous and next segment's visible dash intervals, and take their union. The neighboring period cells are also checked so partial endpoint dashes and negative offsets work.
+2. If one dash continues through a vertex, suppress the artificial caps at that segment boundary and use `strokeLinejoin` for the outer corner.
+3. If the dash stops there or the vertex lies in a gap, do not add a solid join wedge. Real dash caps can still overlap the corner; do not clip them by the solid stroke's round or bevel join.
+4. Closed paths connect their first and last segments with their actual cumulative distances. Independent subpaths restart at zero.
+
+The geometry stays fixed as `strokeDashoffset` changes; only its uniform changes. The signed-distance antialiasing denominator is bounded away from zero, including on constant-coverage fragments.
 
 We can also change (increment) `stroke-dashoffset` in real-time to achieve an ant line effect. Such animation effects are usually implemented through the SVG attribute of the same name, see: [How to animate along an SVG path at the same time the path animates?]
 
@@ -723,7 +715,7 @@ call(() => {
             ],
             stroke: 'black',
             strokeWidth: 10,
-            strokeDasharray: [2, 10],
+            strokeDasharray: [20, 20],
             strokeDashoffset: 0,
             strokeLinecap: 'round',
             strokeLinejoin: 'round',
@@ -755,7 +747,7 @@ According to the SVG specification, the attributes `stroke-dasharray` and `strok
 SHAPE_DRAWCALL_CTORS.set(Rect, [ShadowRect, SDF, SmoothPolyline]);
 ```
 
-Taking Rect as an example, we need to artificially construct a polyline based on the `x / y / width / height` attributes, which includes 6 vertices. It is worth noting that the first 5 can actually complete the closure, but we add an extra `[x + epsilon, y]` to complete the final `strokeLinejoin`. Circle and Ellipse are similar, only adding more sampling points to ensure smoothness (here we use `64`):
+For Rect, construct five points: four corners and the repeated first point. When preparing the GPU instances, connect the first segment's previous point to the last segment, and the last segment's next point to the first. This closes the join without an extra epsilon-length segment or endpoint caps. Circle and Ellipse use the same closure with more samples (here `64`):
 
 ```ts
 if (object instanceof Polyline) {
@@ -765,20 +757,7 @@ if (object instanceof Polyline) {
     }, [] as number[]);
 } else if (object instanceof Rect) {
     const { x, y, width, height } = object;
-    points = [
-        x,
-        y,
-        x + width,
-        y,
-        x + width,
-        y + height,
-        x,
-        y + height,
-        x,
-        y,
-        x + epsilon,
-        y,
-    ];
+    points = [x, y, x + width, y, x + width, y + height, x, y + height, x, y];
 }
 ```
 

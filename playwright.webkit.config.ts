@@ -3,7 +3,7 @@ import browserConfig from './playwright.browser.config';
 
 export default defineConfig({
   ...browserConfig,
-  testMatch: 'touch-webkit.spec.ts',
+  testMatch: ['touch-webkit.spec.ts', 'dash-rendering.spec.ts'],
   testIgnore: [],
   outputDir: '.test-results/webkit',
   timeout: 60000,

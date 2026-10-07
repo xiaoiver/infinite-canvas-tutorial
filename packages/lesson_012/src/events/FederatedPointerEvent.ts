@@ -73,7 +73,7 @@ export class FederatedPointerEvent
   twist: number;
 
   /** This is the number of clicks that occurs in 200ms/click of each other. */
-  detail: number;
+  declare detail: number;
 
   /**
    * prevent click event being triggerd

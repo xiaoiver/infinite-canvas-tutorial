@@ -59,6 +59,14 @@ failure screenshots and traces from `.test-results/browser` and
 `.test-results/webkit`. The existing ECS suite remains a separate regression
 check.
 
+Lesson 12 dash rendering checks run in Chromium and WebKit. They compare rendered
+stroke interiors with native Canvas2D for all cap/join combinations, offsets,
+closed paths and rectangles, sharp corners, zoom, short dashes, dots, independent
+subpaths, alignment and solid strokes. Edge antialiasing kernels may differ, so
+the comparison ignores partially covered pixels. Offset animation also checks
+that geometry is not rebuilt. These fixtures use the independent lesson 12
+renderer; they do not cover the core or ECS renderer's dashed strokes.
+
 ## React playground touch regression
 
 The React suite mounts the production English and Chinese documentation
