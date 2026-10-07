@@ -192,6 +192,9 @@ test('double-click editing follows transformer rotation and camera changes', asy
 }) => {
   await page.evaluate(() => window.textTest.render({ fontSize: 48 }));
   await page.evaluate(() => window.textTest.select());
+  const original = await page.evaluate(
+    () => window.textTest.api.getNodeById('text') as TextSerializedNode,
+  );
   const anchors = await page.evaluate(() => window.textTest.anchors());
   const start = { x: anchors[2].x + 12, y: anchors[2].y + 8 };
   const pivot = anchors[4],
@@ -221,6 +224,13 @@ test('double-click editing follows transformer rotation and camera changes', asy
       ),
     ),
   ).toBeGreaterThan(0.3);
+  expect(await page.evaluate(() => window.textTest.api.getNodeById('text'))).toMatchObject({
+    fontSize: original.fontSize,
+    anchorX: original.anchorX,
+    anchorY: original.anchorY,
+    width: original.width,
+    height: original.height,
+  });
   const corners = await page.evaluate(() => window.textTest.corners());
   await page.mouse.dblclick(
     (corners[0].x + corners[2].x) / 2,

@@ -9,6 +9,7 @@ export default defineConfig({
     'ecs-dash-rendering.spec.ts',
     'text-path.spec.ts',
     'ecs-text.spec.ts',
+    'ecs-text-resize.spec.ts',
     'ecs-text-path.spec.ts',
     'ecs-blend-mode.spec.ts',
   ],
