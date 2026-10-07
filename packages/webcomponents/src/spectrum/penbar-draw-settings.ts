@@ -1,3 +1,5 @@
+import { live } from 'lit/directives/live.js';
+import { drawingPaint, updateDrawingPreference } from './drawing-preferences';
 import { css, html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { when } from 'lit/directives/when.js';
@@ -6,12 +8,9 @@ import {
   AppState,
   Pen,
   FillAttributes,
-  getPrimaryFillValue,
   RoughAttributes,
-  Marker,
   MarkerAttributes,
   type IconFontAttributes,
-  type SerializedFillLayerItem,
   type StrokeAttributes,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
@@ -75,211 +74,133 @@ export class PenbarDrawSettings extends LitElement {
     | Pen.DRAW_ICONFONT;
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeWidth = parseInt(e.target.value);
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        strokeWidth,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'number',
+      field: 'strokeWidth',
+      value: e.target.value,
     });
-    this.api.record();
-  }
-
-  private handleStrokeOpacityChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeOpacity = parseFloat(e.target.value);
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        strokeOpacity,
-      },
-    });
-    this.api.record();
   }
 
   private handleStrokeColorChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'paint',
+      field: 'strokes',
+      color: (e.target as any).selected?.[0],
+    });
+  }
 
-    const strokeColor = (e.target as any).selected[0];
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        stroke: strokeColor,
-      },
+  private handleStrokeOpacityChanged(e: Event & { target: HTMLInputElement }) {
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'paint',
+      field: 'strokes',
+      opacity: e.target.value,
     });
   }
 
   private handleFillOpacityChanged(e: Event & { target: HTMLInputElement }) {
-    const fillOpacity = parseFloat(e.target.value);
-    const cur = this.api.getAppState()[this.penbarDrawKey] as FillAttributes;
-    const prev = (cur.fills?.[0] ?? {
-      type: 'solid',
-      value: '#000000',
-      opacity: 1,
-    }) as SerializedFillLayerItem;
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...cur,
-        fills: [{ ...prev, opacity: fillOpacity }],
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'paint',
+      field: 'fills',
+      opacity: e.target.value,
     });
-    this.api.record();
   }
 
   private handleFillColorChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-
-    const fillColor = (e.target as any).selected[0];
-    const cur = this.api.getAppState()[this.penbarDrawKey] as FillAttributes;
-    const prev = (cur.fills?.[0] ?? {
-      type: 'solid',
-      value: '#000000',
-      opacity: 1,
-    }) as SerializedFillLayerItem;
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...cur,
-        fills: [
-          { ...prev, type: 'solid', value: fillColor, opacity: prev.opacity ?? 1 },
-        ],
-      },
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'paint',
+      field: 'fills',
+      color: (e.target as any).selected?.[0],
     });
   }
 
-  private handleRoughFillStyleChanged(
-    e: Event & { target: HTMLSelectElement },
-  ) {
+  private handleRoughFillStyleChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-
-    const roughFillStyle = e.target.value;
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        roughFillStyle,
-      },
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'choice',
+      field: 'roughFillStyle',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleRoughBowingChanged(e: Event & { target: HTMLInputElement }) {
-    const roughBowing = parseFloat(e.target.value);
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        roughBowing,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'number',
+      field: 'roughBowing',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleRoughRoughnessChanged(e: Event & { target: HTMLInputElement }) {
-    const roughRoughness = parseFloat(e.target.value);
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        roughRoughness,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'number',
+      field: 'roughRoughness',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleMarkerStartChanged(e: Event & { target: HTMLInputElement }) {
-    const markerStart = e.target.value as Marker['start'];
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        markerStart,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'choice',
+      field: 'markerStart',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleMarkerEndChanged(e: Event & { target: HTMLInputElement }) {
-    const markerEnd = e.target.value as Marker['end'];
-    this.api.setAppState({
-      [this.penbarDrawKey]: {
-        ...this.api.getAppState()[this.penbarDrawKey],
-        markerEnd,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, this.penbarDrawKey, {
+      kind: 'choice',
+      field: 'markerEnd',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handlePenbarIconFontControlsPatch(
     e: CustomEvent<IconFontControlsPatch>,
   ) {
-    if (this.pen !== Pen.DRAW_ICONFONT) {
-      return;
+    e.stopPropagation();
+    if (this.pen === Pen.DRAW_ICONFONT) {
+      updateDrawingPreference(this, 'penbarDrawIconfont', {
+        kind: 'icon',
+        value: e.detail,
+      });
     }
-    const prev = this.api.getAppState().penbarDrawIconfont;
-    this.api.setAppState({
-      penbarDrawIconfont: {
-        ...prev,
-        ...e.detail,
-      },
-    });
-    this.api.record();
-    this.requestUpdate();
   }
 
   get penbarDrawKey() {
     return this.pen === Pen.DRAW_RECT
       ? 'penbarDrawRect'
       : this.pen === Pen.DRAW_TRIANGLE
-        ? 'penbarDrawTriangle'
-        : this.pen === Pen.DRAW_PENTAGON
-          ? 'penbarDrawPentagon'
-          : this.pen === Pen.DRAW_HEXAGON
-            ? 'penbarDrawHexagon'
-            : this.pen === Pen.DRAW_ELLIPSE
-              ? 'penbarDrawEllipse'
-              : this.pen === Pen.DRAW_LINE
-                ? 'penbarDrawLine'
-                : this.pen === Pen.DRAW_ARROW
-                  ? 'penbarDrawArrow'
-                  : this.pen === Pen.DRAW_ROUGH_RECT
-                    ? 'penbarDrawRoughRect'
-                    : this.pen === Pen.DRAW_ROUGH_ELLIPSE
-                      ? 'penbarDrawRoughEllipse'
-                      : this.pen === Pen.DRAW_ROUGH_LINE
-                        ? 'penbarDrawRoughLine'
-                        : 'penbarDrawIconfont';
+      ? 'penbarDrawTriangle'
+      : this.pen === Pen.DRAW_PENTAGON
+      ? 'penbarDrawPentagon'
+      : this.pen === Pen.DRAW_HEXAGON
+      ? 'penbarDrawHexagon'
+      : this.pen === Pen.DRAW_ELLIPSE
+      ? 'penbarDrawEllipse'
+      : this.pen === Pen.DRAW_LINE
+      ? 'penbarDrawLine'
+      : this.pen === Pen.DRAW_ARROW
+      ? 'penbarDrawArrow'
+      : this.pen === Pen.DRAW_ROUGH_RECT
+      ? 'penbarDrawRoughRect'
+      : this.pen === Pen.DRAW_ROUGH_ELLIPSE
+      ? 'penbarDrawRoughEllipse'
+      : this.pen === Pen.DRAW_ROUGH_LINE
+      ? 'penbarDrawRoughLine'
+      : 'penbarDrawIconfont';
   }
 
   get penbarDraw() {
-    const {
-      penbarDrawRect,
-      penbarDrawTriangle,
-      penbarDrawPentagon,
-      penbarDrawHexagon,
-      penbarDrawEllipse,
-      penbarDrawLine,
-      penbarDrawArrow,
-      penbarDrawRoughRect,
-      penbarDrawRoughEllipse,
-      penbarDrawRoughLine,
-      penbarDrawIconfont,
-    } = this.appState;
-    return this.pen === Pen.DRAW_RECT
-      ? penbarDrawRect
-      : this.pen === Pen.DRAW_TRIANGLE
-        ? penbarDrawTriangle
-        : this.pen === Pen.DRAW_PENTAGON
-          ? penbarDrawPentagon
-          : this.pen === Pen.DRAW_HEXAGON
-            ? penbarDrawHexagon
-            : this.pen === Pen.DRAW_ELLIPSE
-              ? penbarDrawEllipse
-              : this.pen === Pen.DRAW_LINE
-                ? penbarDrawLine
-                : this.pen === Pen.DRAW_ARROW
-                  ? penbarDrawArrow
-                  : this.pen === Pen.DRAW_ROUGH_RECT
-                    ? penbarDrawRoughRect
-                    : this.pen === Pen.DRAW_ROUGH_ELLIPSE
-                      ? penbarDrawRoughEllipse
-                      : this.pen === Pen.DRAW_ROUGH_LINE
-                        ? penbarDrawRoughLine
-                        : penbarDrawIconfont;
+    return this.appState[this.penbarDrawKey];
   }
 
   render() {
@@ -290,30 +211,30 @@ export class PenbarDrawSettings extends LitElement {
 
       <div style="display: flex; flex-direction: column; gap: 4px;">
         ${when(
-      this.pen === Pen.DRAW_RECT ||
-      this.pen === Pen.DRAW_TRIANGLE ||
-      this.pen === Pen.DRAW_PENTAGON ||
-      this.pen === Pen.DRAW_HEXAGON ||
-      this.pen === Pen.DRAW_ELLIPSE ||
-      this.pen === Pen.DRAW_ROUGH_RECT ||
-      this.pen === Pen.DRAW_ROUGH_ELLIPSE ||
-      this.pen === Pen.DRAW_ROUGH_LINE ||
-      this.pen === Pen.DRAW_ICONFONT,
-      () => html`
+          this.pen === Pen.DRAW_RECT ||
+            this.pen === Pen.DRAW_TRIANGLE ||
+            this.pen === Pen.DRAW_PENTAGON ||
+            this.pen === Pen.DRAW_HEXAGON ||
+            this.pen === Pen.DRAW_ELLIPSE ||
+            this.pen === Pen.DRAW_ROUGH_RECT ||
+            this.pen === Pen.DRAW_ROUGH_ELLIPSE ||
+            this.pen === Pen.DRAW_ROUGH_LINE ||
+            this.pen === Pen.DRAW_ICONFONT,
+          () => html`
             <div>
               <sp-field-label for="fill">${msg(str`Fill`)}</sp-field-label>
               <sp-swatch-group
                 id="fill"
                 selects="single"
                 .selected=${[
-        getPrimaryFillValue(this.penbarDraw as FillAttributes) ?? '#000000',
-      ]}
+                  drawingPaint(this.penbarDraw, 'fills')[0]?.value ?? '#000000',
+                ]}
                 @change=${this.handleFillColorChanged}
               >
                 ${theme.colors[theme.mode].swatches.map(
-        (color) =>
-          html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-      )}
+                  (color) =>
+                    html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+                )}
               </sp-swatch-group>
             </div>
 
@@ -323,32 +244,29 @@ export class PenbarDrawSettings extends LitElement {
                 size="s"
                 max="1"
                 min="0"
-                value=${(() => {
-        const fo = (this.penbarDraw as FillAttributes).fills?.[0]?.opacity ?? 1;
-        return typeof fo === 'number' && Number.isFinite(fo)
-          ? fo
-          : parseFloat(String(fo)) || 1;
-      })()}
+                .value=${live(
+                  drawingPaint(this.penbarDraw, 'fills')[0]?.opacity ?? 1,
+                )}
                 step="0.01"
                 editable
                 @change=${this.handleFillOpacityChanged}
               ></sp-slider>
             </div>
           `,
-    )}
+        )}
 
         <div>
           <sp-field-label for="stroke">${msg(str`Stroke`)}</sp-field-label>
           <sp-swatch-group
             id="stroke"
             selects="single"
-            .selected=${[this.penbarDraw.stroke]}
+            .selected=${[drawingPaint(this.penbarDraw, 'strokes')[0]?.value]}
             @change=${this.handleStrokeColorChanged}
           >
             ${theme.colors[theme.mode].swatches.map(
-      (color) =>
-        html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-    )}
+              (color) =>
+                html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+            )}
           </sp-swatch-group>
         </div>
         <div class="line">
@@ -357,8 +275,8 @@ export class PenbarDrawSettings extends LitElement {
             size="s"
             max="20"
             min="0"
-            value=${this.penbarDraw.strokeWidth}
-            step="1"
+            .value=${live(this.penbarDraw.strokeWidth)}
+            step="0.1"
             editable
             format-options='{
               "style": "unit",
@@ -374,7 +292,9 @@ export class PenbarDrawSettings extends LitElement {
             label=${msg(str`Stroke opacity`)}
             max="1"
             min="0"
-            value=${this.penbarDraw.strokeOpacity}
+            .value=${live(
+              drawingPaint(this.penbarDraw, 'strokes')[0]?.opacity ?? 1,
+            )}
             step="0.01"
             editable
             @change=${this.handleStrokeOpacityChanged}
@@ -382,8 +302,8 @@ export class PenbarDrawSettings extends LitElement {
         </div>
 
         ${when(
-      this.pen === Pen.DRAW_ARROW,
-      () => html`
+          this.pen === Pen.DRAW_ARROW,
+          () => html`
             <div class="line">
               <sp-field-label for="marker-start" side-aligned="start"
                 >${msg(str`Marker start`)}</sp-field-label
@@ -391,16 +311,18 @@ export class PenbarDrawSettings extends LitElement {
               <sp-picker
                 style="width: 70px;"
                 label=${msg(str`Marker start`)}
-                value=${(this.penbarDraw as MarkerAttributes).markerStart}
+                .value=${live(
+                  (this.penbarDraw as MarkerAttributes).markerStart,
+                )}
                 @change=${this.handleMarkerStartChanged}
                 id="marker-start"
               >
                 ${['none', 'line', 'triangle', 'diamond'].map(
-        (markerType) =>
-          html`<sp-menu-item value=${markerType}
+                  (markerType) =>
+                    html`<sp-menu-item .value=${live(markerType)}
                       >${markerType}</sp-menu-item
                     >`,
-      )}
+                )}
               </sp-picker>
             </div>
 
@@ -411,29 +333,29 @@ export class PenbarDrawSettings extends LitElement {
               <sp-picker
                 style="width: 70px;"
                 label=${msg(str`Marker end`)}
-                value=${(this.penbarDraw as MarkerAttributes).markerEnd}
+                .value=${live((this.penbarDraw as MarkerAttributes).markerEnd)}
                 @change=${this.handleMarkerEndChanged}
                 id="marker-end"
               >
                 ${['none', 'line', 'triangle', 'diamond'].map(
-        (markerType) =>
-          html`<sp-menu-item value=${markerType}
+                  (markerType) =>
+                    html`<sp-menu-item .value=${live(markerType)}
                       >${markerType}</sp-menu-item
                     >`,
-      )}
+                )}
               </sp-picker>
             </div>
           `,
-    )}
-        ${when(
-      this.pen === Pen.DRAW_ICONFONT,
-      () => {
-        const p = this.penbarDraw as Partial<
-          FillAttributes & StrokeAttributes & IconFontAttributes
-        >;
-        return html`
+        )}
+        ${when(this.pen === Pen.DRAW_ICONFONT, () => {
+          const p = this.penbarDraw as Partial<
+            FillAttributes & StrokeAttributes & IconFontAttributes
+          >;
+          return html`
             <div>
-              <h4 style="margin: 8px 0 4px; font-size: var(--spectrum-font-size-100);">
+              <h4
+                style="margin: 8px 0 4px; font-size: var(--spectrum-font-size-100);"
+              >
                 ${msg(str`Icon font`)}
               </h4>
               <ic-spectrum-icon-font-controls
@@ -441,22 +363,23 @@ export class PenbarDrawSettings extends LitElement {
                 .iconFontName=${p.iconFontName}
                 instanceId="penbar-draw-iconfont"
                 @ic-iconfont-controls-change=${this
-            .handlePenbarIconFontControlsPatch}
+                  .handlePenbarIconFontControlsPatch}
               ></ic-spectrum-icon-font-controls>
             </div>
           `;
-      },
-    )}
+        })}
         ${when(
-      this.pen === Pen.DRAW_ROUGH_RECT,
-      () => html`
+          this.pen === Pen.DRAW_ROUGH_RECT,
+          () => html`
             <div>
               <sp-field-label for="rough-fill-style"
                 >${msg(str`Rough fill style`)}</sp-field-label
               >
               <sp-picker
                 label=${msg(str`Rough fill style`)}
-                value=${(this.penbarDraw as RoughAttributes).roughFillStyle}
+                .value=${live(
+                  (this.penbarDraw as RoughAttributes).roughFillStyle,
+                )}
                 @change=${this.handleRoughFillStyleChanged}
                 id="rough-fill-style"
               >
@@ -474,7 +397,7 @@ export class PenbarDrawSettings extends LitElement {
               <sp-slider
                 size="s"
                 label=${msg(str`Bowing`)}
-                value=${(this.penbarDraw as RoughAttributes).roughBowing}
+                .value=${live((this.penbarDraw as RoughAttributes).roughBowing)}
                 step="0.1"
                 min="0"
                 max="10"
@@ -487,7 +410,9 @@ export class PenbarDrawSettings extends LitElement {
               <sp-slider
                 size="s"
                 label=${msg(str`Roughness`)}
-                value=${(this.penbarDraw as RoughAttributes).roughRoughness}
+                .value=${live(
+                  (this.penbarDraw as RoughAttributes).roughRoughness,
+                )}
                 step="0.1"
                 min="0"
                 max="10"
@@ -496,7 +421,7 @@ export class PenbarDrawSettings extends LitElement {
               ></sp-slider>
             </div>
           `,
-    )}
+        )}
       </div> `;
   }
 }

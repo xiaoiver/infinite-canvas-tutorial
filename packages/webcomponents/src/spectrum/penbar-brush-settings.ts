@@ -1,3 +1,5 @@
+import { live } from 'lit/directives/live.js';
+import { drawingPaint, updateDrawingPreference } from './drawing-preferences';
 import { html, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
@@ -16,77 +18,60 @@ export class PenbarBrushSettings extends LitElement {
   api: ExtendedAPI;
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeWidth = parseInt(e.target.value);
-    this.api.setAppState({
-      penbarBrush: {
-        ...this.api.getAppState().penbarBrush,
-        strokeWidth,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarBrush', {
+      kind: 'number',
+      field: 'strokeWidth',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleStrokeColorChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-
-    const strokeColor = (e.target as any).selected[0];
-    this.api.setAppState({
-      penbarBrush: {
-        ...this.api.getAppState().penbarBrush,
-        stroke: strokeColor,
-      },
+    updateDrawingPreference(this, 'penbarBrush', {
+      kind: 'paint',
+      field: 'strokes',
+      color: (e.target as any).selected?.[0],
     });
   }
 
   private handleStampIntervalChanged(e: Event & { target: HTMLInputElement }) {
-    const stampInterval = parseFloat(e.target.value);
-    this.api.setAppState({
-      penbarBrush: {
-        ...this.api.getAppState().penbarBrush,
-        stampInterval,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarBrush', {
+      kind: 'number',
+      field: 'stampInterval',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleStampNoiseFactorChanged(
     e: Event & { target: HTMLInputElement },
   ) {
-    const stampNoiseFactor = parseFloat(e.target.value);
-    this.api.setAppState({
-      penbarBrush: {
-        ...this.api.getAppState().penbarBrush,
-        stampNoiseFactor,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarBrush', {
+      kind: 'number',
+      field: 'stampNoiseFactor',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleStampRotationFactorChanged(
     e: Event & { target: HTMLInputElement },
   ) {
-    const stampRotationFactor = parseFloat(e.target.value);
-    this.api.setAppState({
-      penbarBrush: {
-        ...this.api.getAppState().penbarBrush,
-        stampRotationFactor,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarBrush', {
+      kind: 'number',
+      field: 'stampRotationFactor',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleStampChanged(e: Event & { target: HTMLInputElement }) {
-    const activeStampSrc = (e.target as any).value as string;
-    this.api.setAppState({
-      penbarBrush: {
-        ...this.api.getAppState().penbarBrush,
-        stamps: this.api.getAppState().penbarBrush.stamps.map((stamp) => ({
-          ...stamp,
-          active: stamp.src === activeStampSrc,
-        })),
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarBrush', {
+      kind: 'stamp',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   render() {
@@ -99,29 +84,32 @@ export class PenbarBrushSettings extends LitElement {
       <sp-swatch-group
         id="stroke"
         selects="single"
-        .selected=${[penbarBrush.stroke]}
+        .selected=${[drawingPaint(penbarBrush, 'strokes')[0]?.value]}
         @change=${this.handleStrokeColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-    )}
+          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+        )}
       </sp-swatch-group>
 
       <div class="line">
         <sp-picker
           style="width: 100%; margin-bottom: 4px; margin-top: 4px;"
           label=${msg(str`Stamp`)}
-          value=${penbarBrush.stamps.find((stamp) => stamp.active)?.src}
+          .value=${live(penbarBrush.stamps.find((stamp) => stamp.active)?.src)}
           @change=${this.handleStampChanged}
           id="font-family"
         >
           ${penbarBrush.stamps.map(
-      (stamp) =>
-        html`<sp-menu-item value=${stamp.src} style="display: flex; align-items: center; gap: 4px;">
+            (stamp) =>
+              html`<sp-menu-item
+                .value=${live(stamp.src)}
+                style="display: flex; align-items: center; gap: 4px;"
+              >
                 <img src=${stamp.src} style="width: 20px; height: 20px;" />
                 <span>${stamp.name}</span>
               </sp-menu-item>`,
-    )}
+          )}
         </sp-picker>
       </div>
       <div class="line" style="display: flex; align-items: center;">
@@ -131,8 +119,8 @@ export class PenbarBrushSettings extends LitElement {
           label=${msg(str`Stroke width`)}
           max="80"
           min="0"
-          value=${penbarBrush.strokeWidth}
-          step="1"
+          .value=${live(penbarBrush.strokeWidth)}
+          step="0.1"
           editable
           format-options='{
         "style": "unit",
@@ -148,7 +136,7 @@ export class PenbarBrushSettings extends LitElement {
           label=${msg(str`Stamp interval`)}
           max="1"
           min="0.1"
-          value=${penbarBrush.stampInterval}
+          .value=${live(penbarBrush.stampInterval)}
           step="0.1"
           editable
           @change=${this.handleStampIntervalChanged}
@@ -160,8 +148,8 @@ export class PenbarBrushSettings extends LitElement {
           size="s"
           label=${msg(str`Stamp noise factor`)}
           max="1"
-          min="0.1"
-          value=${penbarBrush.stampNoiseFactor}
+          min="0"
+          .value=${live(penbarBrush.stampNoiseFactor)}
           step="0.1"
           editable
           @change=${this.handleStampNoiseFactorChanged}
@@ -173,8 +161,8 @@ export class PenbarBrushSettings extends LitElement {
           size="s"
           label=${msg(str`Stamp rotation factor`)}
           max="1"
-          min="0.1"
-          value=${penbarBrush.stampRotationFactor}
+          min="0"
+          .value=${live(penbarBrush.stampRotationFactor)}
           step="0.1"
           editable
           @change=${this.handleStampRotationFactorChanged}

@@ -78,6 +78,12 @@ second canvas. These are interaction checks, not a physical iOS or WebKit visual
 rendering check. The React 18/19 CI matrix runs both browsers and uploads failure
 traces and screenshots from `.test-results/react` and `.test-results/react-webkit`.
 
+Drawing preference checks in `__tests__/react/browser/drawing-preferences.spec.ts`
+mount the real settings controls with two React canvases. They cover history and
+redo preservation, uncommitted document changes, validation and recovery,
+canvas/tool isolation, legacy and layered paint, and actual rectangle/pencil
+creation. The React 18/19 matrix runs these checks in Chromium and WebKit.
+
 ## Commit checks
 
 `pnpm test:tooling` verifies that ESLint actually checks TypeScript, TSX, and Vue,

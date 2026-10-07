@@ -1,3 +1,5 @@
+import { live } from 'lit/directives/live.js';
+import { drawingPaint, updateDrawingPreference } from './drawing-preferences';
 import { html, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { consume } from '@lit/context';
@@ -16,35 +18,28 @@ export class PenbarPencilSettings extends LitElement {
   api: ExtendedAPI;
 
   private handleStrokeWidthChanged(e: Event & { target: HTMLInputElement }) {
-    const strokeWidth = parseInt(e.target.value);
-    this.api.setAppState({
-      penbarPencil: {
-        ...this.api.getAppState().penbarPencil,
-        strokeWidth,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarPencil', {
+      kind: 'number',
+      field: 'strokeWidth',
+      value: e.target.value,
     });
-    this.api.record();
   }
 
   private handleStrokeColorChanged(e: Event & { target: HTMLInputElement }) {
     e.stopPropagation();
-
-    const strokeColor = (e.target as any).selected[0];
-    this.api.setAppState({
-      penbarPencil: {
-        ...this.api.getAppState().penbarPencil,
-        stroke: strokeColor,
-      },
+    updateDrawingPreference(this, 'penbarPencil', {
+      kind: 'paint',
+      field: 'strokes',
+      color: (e.target as any).selected?.[0],
     });
   }
 
   private handleFreehandChanged(e: Event & { target: HTMLInputElement }) {
-    const freehand = (e.target as any).checked;
-    this.api.setAppState({
-      penbarPencil: {
-        ...this.api.getAppState().penbarPencil,
-        freehand,
-      },
+    e.stopPropagation();
+    updateDrawingPreference(this, 'penbarPencil', {
+      kind: 'freehand',
+      value: (e.target as any).checked,
     });
   }
 
@@ -58,12 +53,12 @@ export class PenbarPencilSettings extends LitElement {
       <sp-swatch-group
         id="stroke"
         selects="single"
-        .selected=${[penbarPencil.stroke]}
+        .selected=${[drawingPaint(penbarPencil, 'strokes')[0]?.value]}
         @change=${this.handleStrokeColorChanged}
       >
         ${theme.colors[theme.mode].swatches.map(
-      (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
-    )}
+          (color) => html` <sp-swatch color=${color} size="s"></sp-swatch> `,
+        )}
       </sp-swatch-group>
       <div class="line" style="display: flex; align-items: center;">
         <sp-slider
@@ -72,8 +67,8 @@ export class PenbarPencilSettings extends LitElement {
           label=${msg(str`Stroke width`)}
           max="100"
           min="0"
-          value=${penbarPencil.strokeWidth}
-          step="1"
+          .value=${live(penbarPencil.strokeWidth)}
+          step="0.1"
           editable
           format-options='{
         "style": "unit",
@@ -88,7 +83,7 @@ export class PenbarPencilSettings extends LitElement {
       >
         <sp-switch
           label=${msg(str`Freehand`)}
-          .checked=${penbarPencil.freehand}
+          .checked=${live(penbarPencil.freehand ?? false)}
           @change=${this.handleFreehandChanged}
           >${msg(str`Freehand`)}</sp-switch
         >

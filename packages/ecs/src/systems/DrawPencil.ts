@@ -39,8 +39,10 @@ import type {
   PathSerializedNode,
   PolylineSerializedNode,
   StrokeAttributes,
+  SerializedFillLayerItem,
 } from '../types/serialized-node';
 import { DRAW_RECT_Z_INDEX } from '../context';
+import { migrateLegacyStrokeWireInPlace } from '../utils/normalize-stroke-wire';
 import { getFlatSvgPathFromStroke, isBrowser, distanceBetweenPoints, serializePoints } from '../utils';
 
 const PENCIL_CURSOR =
@@ -201,13 +203,9 @@ export class DrawPencil extends System {
             const d = getFlatSvgPathFromStroke(getStroke(points));
             node.type = 'path';
             (node as PathSerializedNode).d = d;
-            (node as PathSerializedNode).fills = [
-              {
-                type: 'solid',
-                value: String(appState.penbarPencil.stroke ?? '#000'),
-                opacity: 1,
-              },
-            ];
+            (node as PathSerializedNode).fills = pencilFillLayers(
+              appState.penbarPencil,
+            );
             (node as PathSerializedNode).strokeWidth = 0;
             (node as PathSerializedNode).tessellationMethod =
               TesselationMethod.LIBTESS;
@@ -325,13 +323,7 @@ export class DrawPencil extends System {
               d: getFlatSvgPathFromStroke(getStroke(points)),
               ...defaultDrawParams,
               strokeWidth: 0,
-              fills: [
-                {
-                  type: 'solid',
-                  value: String(defaultDrawParams.stroke ?? '#000'),
-                  opacity: 1,
-                },
-              ],
+              fills: pencilFillLayers(defaultDrawParams),
               tessellationMethod: TesselationMethod.LIBTESS,
             }
             : {
@@ -344,4 +336,15 @@ export class DrawPencil extends System {
       }
     }
   }
+}
+
+/** Freehand outlines use the same paint as the pencil's stroke preview. */
+function pencilFillLayers(
+  settings: Partial<StrokeAttributes>,
+): SerializedFillLayerItem[] {
+  const wire = { ...settings } as Record<string, unknown>;
+  migrateLegacyStrokeWireInPlace(wire);
+  return ((wire.strokes as SerializedFillLayerItem[] | undefined) ?? [
+    { type: 'solid', value: '#000', opacity: 1 },
+  ]).map((layer) => ({ ...layer }));
 }
