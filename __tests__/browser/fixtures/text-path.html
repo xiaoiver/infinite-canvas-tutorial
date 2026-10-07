@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      body {
+        margin: 0;
+        background: white;
+      }
+      canvas {
+        display: block;
+        width: 640px;
+        height: 340px;
+      }
+      #demo {
+        max-width: 640px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="actual" width="640" height="340"></canvas
+    ><canvas id="reference" width="640" height="340"></canvas
+    ><output id="status">Loading</output>
+    <div id="demo"></div>
+    <script type="module" src="./text-path.ts"></script>
+  </body>
+</html>

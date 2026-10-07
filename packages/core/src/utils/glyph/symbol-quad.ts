@@ -60,6 +60,20 @@ export function getGlyphQuads(
     const bl = { x: x1, y: y2 };
     const br = { x: x2, y: y2 };
 
+    // Rotate about the glyph's baseline origin. Atlas padding and ink bearings
+    // must not move the text away from its path.
+    const rotation = positionedGlyph.rotation ?? 0;
+    if (rotation) {
+      const cos = Math.cos(rotation),
+        sin = Math.sin(rotation);
+      for (const point of [tl, tr, bl, br]) {
+        const localX = point.x - x,
+          localY = point.y - y;
+        point.x = x + cos * localX - sin * localY;
+        point.y = y + sin * localX + cos * localY;
+      }
+    }
+
     quads.push({
       tl,
       tr,
