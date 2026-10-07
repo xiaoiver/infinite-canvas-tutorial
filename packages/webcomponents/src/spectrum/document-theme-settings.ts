@@ -1,20 +1,23 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
+import { live } from 'lit/directives/live.js';
 import * as d3 from 'd3-color';
 import {
   AppState,
   ThemeMode,
   parseColor,
   getDesignVariableLightDarkValues,
-  setDesignVariableLightDarkColumn,
   type DesignVariable,
   type DesignVariableType,
 } from '@infinite-canvas-tutorial/ecs';
 import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { localized, msg, str } from '@lit/localize';
-import { normalizeSolidCssValue } from './normalize-solid-css';
+import {
+  editDesignVariable,
+  type DesignVariableCommand,
+} from './design-variable-command';
 import './input-solid';
 
 import '@spectrum-web-components/accordion/sp-accordion.js';
@@ -31,12 +34,6 @@ import '@spectrum-web-components/icons-workflow/icons/sp-icon-code.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-color-palette.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-delete.js';
 import '@spectrum-web-components/icons-workflow/icons/sp-icon-text.js';
-
-type ThemeColorField =
-  | 'background'
-  | 'grid'
-  | 'selectionBrushFill'
-  | 'selectionBrushStroke';
 
 function solidHexForPicker(raw: string): string {
   const p = parseColor(raw.trim() || '#808080');
@@ -223,95 +220,26 @@ export class DocumentThemeSettings extends LitElement {
   @state()
   private draftVarValue = '';
 
-  private patchColor(mode: ThemeMode, key: ThemeColorField, value: string) {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return;
-    }
-    const prev = this.appState.theme.colors[mode] ?? {};
-    this.api.setAppState({
-      theme: {
-        mode: this.appState.themeMode,
-        colors: {
-          [mode]: {
-            ...prev,
-            [key]: trimmed,
-          },
-        },
-      },
-    });
-  }
+  @state()
+  private addingVariable = false;
 
-  private handleInputSolidColorChange(
-    mode: ThemeMode,
-    key: ThemeColorField,
-    e: CustomEvent<{ type: string; value: string }>,
+  private async commitVariable(
+    command: DesignVariableCommand,
+    target?: DesignVariable,
   ) {
-    const { type, value } = e.detail;
-    if (type !== 'solid' || !value?.trim()) {
-      return;
+    const { api } = this;
+    if (!this.isConnected || !api) return false;
+    const committed = await editDesignVariable(api, command, target);
+    if (this.isConnected && this.api === api) {
+      this.appState = api.getAppState();
+      this.requestUpdate();
     }
-    this.patchColor(mode, key, normalizeSolidCssValue(value));
+    return committed;
   }
 
-  private patchVariable(key: string, def: DesignVariable) {
-    this.api.setAppState({
-      variables: {
-        [key]: def,
-      },
-    });
-  }
-
-  private removeVariable(key: string) {
-    const next = { ...this.appState.variables };
-    delete next[key];
-    this.api.setAppState({ variables: next }, { replaceVariables: true });
-  }
-
-  /** 行内重命名：`change` 时提交；空名或与已有键重名则恢复为原键 */
-  private handleVariableKeyCommit(oldKey: string, e: Event) {
-    const host = e.target as HTMLElement & { value?: string };
-    const raw =
-      typeof host.value === 'string'
-        ? host.value
-        : (
-          host.shadowRoot?.querySelector(
-            'input',
-          ) as HTMLInputElement | null
-        )?.value ?? '';
-    const next = raw.trim();
-    if (!next) {
-      this.revertVariableKeyField(host, oldKey);
-      return;
-    }
-    if (next === oldKey) {
-      return;
-    }
-    if (this.appState.variables[next]) {
-      this.revertVariableKeyField(host, oldKey);
-      return;
-    }
-    const def = this.appState.variables[oldKey];
-    if (!def) {
-      return;
-    }
-    const map = { ...this.appState.variables };
-    delete map[oldKey];
-    map[next] = def;
-    this.api.setAppState({ variables: map }, { replaceVariables: true });
-  }
-
-  private revertVariableKeyField(host: HTMLElement, oldKey: string) {
-    const h = host as { value?: string };
-    if (typeof h.value === 'string' || 'value' in h) {
-      h.value = oldKey;
-    }
-    const input = host.shadowRoot?.querySelector(
-      'input',
-    ) as HTMLInputElement | null;
-    if (input) {
-      input.value = oldKey;
-    }
+  private handleVariableKeyCommit(def: DesignVariable, e: Event) {
+    const host = e.target as HTMLElement & { value: string };
+    return this.commitVariable({ kind: 'rename', key: host.value }, def);
   }
 
   private focusDraftKeyField() {
@@ -324,97 +252,60 @@ export class DocumentThemeSettings extends LitElement {
   }
 
   private handleVariableSolidChange(
-    key: string,
-    columnMode: ThemeMode,
+    def: DesignVariable,
+    mode: ThemeMode,
     e: CustomEvent<{ type: string; value: string }>,
   ) {
-    const { type, value } = e.detail;
-    if (type !== 'solid' || !value?.trim()) {
-      return;
-    }
-    const prev = this.appState.variables[key];
-    if (!prev || prev.type !== 'color') {
-      return;
-    }
-    this.patchVariable(
-      key,
-      setDesignVariableLightDarkColumn(
-        prev,
-        columnMode,
-        normalizeSolidCssValue(value),
-      ),
+    if (e.detail.type !== 'solid') return;
+    return this.commitVariable(
+      { kind: 'value', type: 'color', mode, value: e.detail.value },
+      def,
     );
   }
 
-  private handleVariableNumberInput(
-    key: string,
-    columnMode: ThemeMode,
+  private handleVariableValueInput(
+    def: DesignVariable,
+    mode: ThemeMode,
     e: Event & { target: HTMLInputElement },
   ) {
-    const n = parseFloat(e.target.value);
-    if (!Number.isFinite(n)) {
-      return;
-    }
-    const prev = this.appState.variables[key];
-    if (!prev) {
-      return;
-    }
-    this.patchVariable(
-      key,
-      setDesignVariableLightDarkColumn(
-        { ...prev, type: 'number' },
-        columnMode,
-        n,
-      ),
+    return this.commitVariable(
+      { kind: 'value', type: def.type, mode, value: e.target.value },
+      def,
     );
   }
 
-  private handleVariableStringInput(
-    key: string,
-    columnMode: ThemeMode,
-    e: Event & { target: HTMLInputElement },
-  ) {
-    const prev = this.appState.variables[key];
-    if (!prev) {
-      return;
-    }
-    this.patchVariable(
-      key,
-      setDesignVariableLightDarkColumn(
-        { ...prev, type: 'string' },
-        columnMode,
-        e.target.value,
-      ),
-    );
-  }
-
-  private addVariable() {
-    const key = this.draftVarKey.trim();
-    if (!key || this.appState.variables[key]) {
-      return;
-    }
-    let v: string | number;
-    if (this.draftVarType === 'color') {
-      v = normalizeSolidCssValue(this.draftVarValue.trim() || '#808080');
-    } else if (this.draftVarType === 'number') {
-      const n = parseFloat(this.draftVarValue);
-      if (!Number.isFinite(n)) {
-        return;
+  private async addVariable() {
+    if (this.addingVariable || !this.isConnected || !this.api) return;
+    const {
+      api,
+      draftVarKey: key,
+      draftVarType: type,
+      draftVarValue: value,
+    } = this;
+    this.addingVariable = true;
+    try {
+      const committed = await this.commitVariable({
+        kind: 'add',
+        key,
+        type,
+        value,
+      });
+      // A pending submission must not clear a newer draft or another canvas.
+      if (
+        committed &&
+        this.isConnected &&
+        this.api === api &&
+        this.draftVarKey === key &&
+        this.draftVarType === type &&
+        this.draftVarValue === value
+      ) {
+        this.draftVarKey = '';
+        this.draftVarValue = '';
+        this.draftVarType = 'color';
       }
-      v = n;
-    } else {
-      v = this.draftVarValue;
+    } finally {
+      this.addingVariable = false;
     }
-    this.patchVariable(key, {
-      type: this.draftVarType,
-      value: [
-        { value: v, theme: { Mode: 'Light' } },
-        { value: v, theme: { Mode: 'Dark' } },
-      ],
-    });
-    this.draftVarKey = '';
-    this.draftVarValue = '';
-    this.draftVarType = 'color';
   }
 
   private varKeySlug(key: string) {
@@ -462,10 +353,14 @@ export class DocumentThemeSettings extends LitElement {
         id=${id}
         size="s"
         label=${msg(str`Type`)}
-        value=${current}
+        .value=${live(current)}
         @change=${(e: Event & { target: { value: string } }) => {
-        onPick(e.target.value as DesignVariableType);
-      }}
+          if (['color', 'number', 'string'].includes(e.target.value)) {
+            onPick(e.target.value as DesignVariableType);
+          } else {
+            this.requestUpdate();
+          }
+        }}
       >
         <sp-menu-item value="color">${msg(str`color`)}</sp-menu-item>
         <sp-menu-item value="number">${msg(str`number`)}</sp-menu-item>
@@ -474,24 +369,24 @@ export class DocumentThemeSettings extends LitElement {
     `;
   }
 
-  private variableCellForMode(key: string, def: DesignVariable, mode: ThemeMode) {
+  private variableCellForMode(
+    key: string,
+    def: DesignVariable,
+    mode: ThemeMode,
+  ) {
     const { light, dark } = getDesignVariableLightDarkValues(def);
     if (def.type === 'color') {
       const raw = String(mode === ThemeMode.LIGHT ? light : dark);
       const hex = solidHexForPicker(typeof raw === 'string' ? raw : '#808080');
       const slug = this.varKeySlug(key);
-      const triggerId = `var-solid-${slug}-${mode === ThemeMode.LIGHT ? 'L' : 'D'
-        }`;
+      const triggerId = `var-solid-${slug}-${
+        mode === ThemeMode.LIGHT ? 'L' : 'D'
+      }`;
       return html`<div
         class="var-cell var-cell--color"
         title=${msg(str`value`)}
       >
-        <sp-action-button
-          class="color-trigger"
-          quiet
-          size="s"
-          id=${triggerId}
-        >
+        <sp-action-button class="color-trigger" quiet size="s" id=${triggerId}>
           <span
             class="swatch"
             style=${`background-color: ${hex}`}
@@ -502,10 +397,10 @@ export class DocumentThemeSettings extends LitElement {
           <sp-popover dialog>
             <div class="solid-popover-body">
               <ic-spectrum-input-solid
-                .value=${hex}
+                .value=${live(hex)}
                 @color-change=${(
-        e: CustomEvent<{ type: string; value: string }>,
-      ) => this.handleVariableSolidChange(key, mode, e)}
+                  e: CustomEvent<{ type: string; value: string }>,
+                ) => this.handleVariableSolidChange(def, mode, e)}
               ></ic-spectrum-input-solid>
             </div>
           </sp-popover>
@@ -514,15 +409,14 @@ export class DocumentThemeSettings extends LitElement {
     }
     if (def.type === 'number') {
       const v = mode === ThemeMode.LIGHT ? light : dark;
-      const n =
-        typeof v === 'number' ? v : parseFloat(String(v ?? '')) || 0;
+      const n = typeof v === 'number' ? v : parseFloat(String(v ?? '')) || 0;
       return html`<div class="var-cell">
         <sp-number-field
           size="s"
-          value=${n}
+          .value=${live(n)}
           hide-stepper
           @change=${(e: Event & { target: HTMLInputElement }) =>
-          this.handleVariableNumberInput(key, mode, e)}
+            this.handleVariableValueInput(def, mode, e)}
         ></sp-number-field>
       </div>`;
     }
@@ -530,25 +424,27 @@ export class DocumentThemeSettings extends LitElement {
     return html`<div class="var-cell">
       <sp-textfield
         size="s"
-        value=${s}
+        .value=${live(s)}
         @change=${(e: Event & { target: HTMLInputElement }) =>
-        this.handleVariableStringInput(key, mode, e)}
+          this.handleVariableValueInput(def, mode, e)}
       ></sp-textfield>
     </div>`;
   }
 
   private variableTableRow(key: string, def: DesignVariable) {
     return html`
-      <div class="var-table-row">
+      <div class="var-table-row" data-variable-key=${key}>
         <div class="var-name-block">
           ${this.variableTypeIcon(def.type)}
           <sp-textfield
             size="s"
-            value=${key}
-            title=${msg(str`Variable name; use $ in nodes, e.g. $color.background`)}
+            .value=${live(key)}
+            title=${msg(
+              str`Variable name; use $ in nodes, e.g. $color.background`,
+            )}
             placeholder=${msg(str`name`)}
             @change=${(e: Event & { target: HTMLElement }) =>
-        this.handleVariableKeyCommit(key, e)}
+              this.handleVariableKeyCommit(def, e)}
           ></sp-textfield>
         </div>
         ${this.variableCellForMode(key, def, ThemeMode.LIGHT)}
@@ -556,7 +452,7 @@ export class DocumentThemeSettings extends LitElement {
         <sp-action-button
           quiet
           size="s"
-          @click=${() => this.removeVariable(key)}
+          @click=${() => this.commitVariable({ kind: 'remove' }, def)}
           label=${msg(str`Remove variable`)}
         >
           <sp-icon-delete slot="icon"></sp-icon-delete>
@@ -566,8 +462,8 @@ export class DocumentThemeSettings extends LitElement {
   }
 
   private variablesSection() {
-    const entries = Object.entries(this.appState.variables ?? {}).sort(([a], [b]) =>
-      a.localeCompare(b),
+    const entries = Object.entries(this.appState.variables ?? {}).sort(
+      ([a], [b]) => a.localeCompare(b),
     );
     return html`<sp-accordion-item label=${msg(str`Variables`)} ?open=${true}>
       <div class="var-table">
@@ -595,36 +491,36 @@ export class DocumentThemeSettings extends LitElement {
                 id="dv-draft-key"
                 size="s"
                 placeholder=${msg(str`e.g. --primary`)}
-                value=${this.draftVarKey}
+                .value=${live(this.draftVarKey)}
                 @input=${(e: Event & { target: HTMLInputElement }) => {
-        this.draftVarKey = e.target.value;
-      }}
+                  this.draftVarKey = e.target.value;
+                }}
               ></sp-textfield>
               ${this.variableTypePicker('draft', this.draftVarType, (t) => {
-        this.draftVarType = t;
-        this.draftVarValue =
-          t === 'color'
-            ? '#808080'
-            : t === 'number'
-              ? '0'
-              : '';
-      })}
+                this.draftVarType = t;
+                this.draftVarValue =
+                  t === 'color' ? '#808080' : t === 'number' ? '0' : '';
+              })}
             </div>
             <div class="draft-value-merge">
               <sp-textfield
                 size="s"
                 placeholder=${msg(str`Default for Light & Dark`)}
-                value=${this.draftVarValue}
+                .value=${live(this.draftVarValue)}
                 @input=${(e: Event & { target: HTMLInputElement }) => {
-        this.draftVarValue = e.target.value;
-      }}
+                  this.draftVarValue = e.target.value;
+                }}
               ></sp-textfield>
             </div>
             <sp-action-button
               size="s"
               @click=${() => this.addVariable()}
-              ?disabled=${!this.draftVarKey.trim() ||
-      !!this.appState.variables[this.draftVarKey.trim()]}
+              ?disabled=${this.addingVariable ||
+              !this.draftVarKey.trim() ||
+              Object.prototype.hasOwnProperty.call(
+                this.appState.variables,
+                this.draftVarKey.trim(),
+              )}
             >
               ${msg(str`Add`)}
             </sp-action-button>
