@@ -18,3 +18,27 @@ import BlendMode from '../../components/BlendMode.vue'
 </script>
 
 <BlendMode />
+
+## 使用混合模式
+
+在可绘制节点上设置 `blendMode`，会把节点的填充、描边和阴影合成后，与画布中下方的内容混合。混合公式遵循 [W3C 标准](https://www.w3.org/TR/compositing-1/#blending)，包括背景透明的情况。`light` 对应 CSS 的 `lighten`，`softLight` 等驼峰命名对应 `soft-light`。`linearBurn` 和 `linearDodge` 会先限制颜色通道相加的结果，再计算透明度合成；它们没有对应的 CSS 关键字。
+
+```ts
+await api.edit(() => {
+    api.updateNodes([
+        {
+            id: 'blended-rect',
+            type: 'rect',
+            x: 100,
+            y: 100,
+            width: 160,
+            height: 120,
+            fills: [{ type: 'solid', value: '#eb658f' }],
+            blendMode: 'multiply',
+            zIndex: 1,
+        },
+    ]);
+});
+```
+
+`fills[i].blendMode` 的作用范围不同：它将当前填充与**同一个图形内部**更靠下的填充混合。填充数组按从下到上排列。目前 GPU 填充层混合支持矩形、圆、椭圆和路径；节点级混合还支持路径、描边和文字。尚未实现将整个分组子树隔离后统一混合。

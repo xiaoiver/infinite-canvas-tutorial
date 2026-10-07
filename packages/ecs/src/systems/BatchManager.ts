@@ -12,9 +12,7 @@ import {
 import {
   AntialiasingMode,
   makeAttachmentClearDescriptor,
-  makeBackbufferDescSimple,
   makeLayerBlendSrcColorDesc,
-  layerBlendSrcDepthClearRenderPassDescriptor,
 } from '../render-graph/utils';
 import { Entity } from '@lastolivegames/becsy';
 import {
@@ -34,6 +32,7 @@ import {
   GeometryDirty,
   Line,
   MaterialDirty,
+  Opacity,
   Path,
   Polyline,
   Rect,
@@ -48,6 +47,11 @@ import { RenderCache } from '../utils';
 import { sortByFractionalIndex } from './Sort';
 import { safeRemoveComponent } from '../history';
 import { API } from '../API';
+import {
+  getNodeLayerBlendMode,
+  isNonNormalNodeLayerBlend,
+} from '../utils/nodeLayerBlend';
+import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
 import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 
 /**
@@ -104,7 +108,7 @@ function getDrawcallCtors(shape: Entity) {
 
 export type BatchFlushSegment =
   | { type: 'normal'; drawcalls: Drawcall[] }
-  | { type: 'layerBlend'; drawcall: Drawcall };
+  | { type: 'layerBlend'; drawcall: Drawcall; drawcalls: Drawcall[] };
 
 export class BatchManager {
   /**
@@ -113,6 +117,7 @@ export class BatchManager {
   #drawcallsToFlush: Drawcall[] = [];
   // WeakMap caches cannot be enumerated during teardown.
   #ownedDrawcalls = new Set<Drawcall>();
+  #blendCompositor?: NodeLayerBlendCompositor;
 
   /**
    * Cache drawcalls for non batchable shape.
@@ -281,7 +286,13 @@ export class BatchManager {
       return;
     }
     if (!drawcalls) {
-      if (shape.read(Renderable).batchable) {
+      const batchable = shape.read(Renderable).batchable &&
+        !isNonNormalNodeLayerBlend(getNodeLayerBlendMode(this.api, shape));
+      const changedBatching = batchable
+        ? this.#nonBatchableDrawcallsCache.has(shape)
+        : this.#batchableDrawcallsCache.has(shape);
+      if (changedBatching) this.remove(shape);
+      if (batchable) {
         drawcalls = this.getOrCreateBatchableDrawcalls(shape);
       } else {
         drawcalls = this.getOrCreateNonBatchableDrawcalls(shape);
@@ -302,29 +313,32 @@ export class BatchManager {
    * * invisible.
    */
   remove(shape: Entity, destroy = true) {
-    if (shape.read(Renderable).batchable) {
-      this.getOrCreateBatchableDrawcalls(shape).forEach((drawcall) => {
+    if (this.#batchableDrawcallsCache.has(shape)) {
+      this.#batchableDrawcallsCache.get(shape)!.forEach((drawcall) => {
         drawcall.remove(shape);
+        if (drawcall.shapes.length === 0) {
+          const index = this.#drawcallsToFlush.indexOf(drawcall);
+          if (index !== -1) this.#drawcallsToFlush.splice(index, 1);
+        }
       });
       this.#batchableDrawcallsCache.delete(shape);
-    } else {
-      this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
-        if (destroy) {
-          drawcall.destroy();
-          this.#ownedDrawcalls.delete(drawcall);
-        }
-
-        if (this.#drawcallsToFlush.includes(drawcall)) {
-          this.#drawcallsToFlush.splice(
-            this.#drawcallsToFlush.indexOf(drawcall),
-            1,
-          );
-        }
-      });
-
+    }
+    this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
       if (destroy) {
-        this.#nonBatchableDrawcallsCache.delete(shape);
+        drawcall.destroy();
+        this.#ownedDrawcalls.delete(drawcall);
       }
+
+      if (this.#drawcallsToFlush.includes(drawcall)) {
+        this.#drawcallsToFlush.splice(
+          this.#drawcallsToFlush.indexOf(drawcall),
+          1,
+        );
+      }
+    });
+
+    if (destroy) {
+      this.#nonBatchableDrawcallsCache.delete(shape);
     }
   }
 
@@ -349,6 +363,8 @@ export class BatchManager {
   }
 
   destroy() {
+    this.#blendCompositor?.destroy();
+    this.#blendCompositor = undefined;
     this.#ownedDrawcalls.forEach((drawcall) => {
       if (!drawcall.destroyed) drawcall.destroy();
     });
@@ -381,7 +397,15 @@ export class BatchManager {
           segments.push({ type: 'normal', drawcalls: [...normalBatch] });
           normalBatch = [];
         }
-        segments.push({ type: 'layerBlend', drawcall });
+        const previous = segments[segments.length - 1];
+        if (
+          previous?.type === 'layerBlend' &&
+          previous.drawcall.shapes[0] === drawcall.shapes[0]
+        ) {
+          previous.drawcalls.push(drawcall);
+        } else {
+          segments.push({ type: 'layerBlend', drawcall, drawcalls: [drawcall] });
+        }
       } else {
         normalBatch.push(drawcall);
       }
@@ -453,6 +477,7 @@ export class BatchManager {
     }
     this.#prepareFlushDirtyFlags();
 
+    this.#blendCompositor?.beginFrame();
     const segments = this.buildFlushSegments();
     const hasLayerBlend = segments.some((s) => s.type === 'layerBlend');
 
@@ -492,7 +517,6 @@ export class BatchManager {
       antialiasingMode: AntialiasingMode.None,
     };
     const srcColorClear = makeAttachmentClearDescriptor(TransparentBlack);
-    const srcDepthClear = layerBlendSrcDepthClearRenderPassDescriptor;
 
     for (const segment of segments) {
       if (segment.type === 'normal') {
@@ -524,28 +548,23 @@ export class BatchManager {
           makeLayerBlendSrcColorDesc(srcRenderInput, srcColorClear),
           'Node Layer Blend Src',
         );
-        const srcDepthTargetID = builder.createRenderTargetID(
-          makeBackbufferDescSimple(
-            RGAttachmentSlot.DepthStencil,
-            srcRenderInput,
-            srcDepthClear,
-          ),
-          'Node Layer Blend Src Depth',
-        );
 
         builder.pushPass((pass) => {
           pass.setDebugName('Node Layer Blend Src');
           pass.attachRenderTargetID(RGAttachmentSlot.Color0, srcColorTargetID);
           pass.attachRenderTargetID(
             RGAttachmentSlot.DepthStencil,
-            srcDepthTargetID,
+            // Preserve parent clipping stencils and normal depth ordering.
+            mainDepthTargetID,
           );
           pass.exec((renderPass) => {
-            segment.drawcall.renderNodeLayerBlendSrcInPass(
-              renderPass,
-              uniformBuffer,
-              uniformLegacyObject,
-            );
+            segment.drawcalls.forEach((drawcall) => {
+              drawcall.renderNodeLayerBlendSrcInPass(
+                renderPass,
+                uniformBuffer,
+                uniformLegacyObject,
+              );
+            });
           });
         });
 
@@ -564,14 +583,18 @@ export class BatchManager {
           pass.exec((renderPass, scope) => {
             const backdrop = scope.getResolveTextureForID(resolveTextureID);
             const src = scope.getResolveTextureForID(srcResolveTextureID);
-            segment.drawcall.submitNodeLayerBlendComposite(
+            this.#blendCompositor ??= new NodeLayerBlendCompositor(
+              this.device, this.renderCache,
+            );
+            const shape = segment.drawcall.shapes[0];
+            this.#blendCompositor.composite(
               renderPass,
               backdrop,
               src,
-              uniformBuffer,
-              uniformLegacyObject,
+              getNodeLayerBlendMode(this.api, shape),
               width,
               height,
+              shape.has(Opacity) ? shape.read(Opacity).opacity : 1,
             );
           });
         });

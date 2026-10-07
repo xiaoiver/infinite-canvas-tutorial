@@ -33,7 +33,6 @@ import {
   FillLayers,
   GlobalRenderOrder,
   GlobalTransform,
-  Opacity,
   Stroke,
   Mat3,
   Brush,
@@ -372,7 +371,7 @@ export class StampBrush extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
+    const opacity = this.getOpacity(shape);
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;

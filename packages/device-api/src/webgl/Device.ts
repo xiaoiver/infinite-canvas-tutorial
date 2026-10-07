@@ -654,13 +654,13 @@ export class Device_GL implements SwapChain, Device {
       case Format.D32F_S8:
         return isWebGL2(this.gl)
           ? GL.DEPTH32F_STENCIL8
-          : this.WEBGL_depth_texture
+          : this.WEBGL_depth_texture || isRenderbufferStorage
             ? GL.DEPTH_STENCIL
             : GL.DEPTH_COMPONENT16;
       case Format.D24_S8:
         return isWebGL2(this.gl)
           ? GL.DEPTH24_STENCIL8
-          : this.WEBGL_depth_texture
+          : this.WEBGL_depth_texture || isRenderbufferStorage
             ? GL.DEPTH_STENCIL
             : GL.DEPTH_COMPONENT16;
       case Format.D32F:
@@ -1055,7 +1055,11 @@ export class Device_GL implements SwapChain, Device {
       depthStencilResolveTo,
     } = descriptor;
 
-    const skipBlit = this.computeSkipBlit(colorResolveTo, colorAttachment as (RenderTarget_GL | null)[]);
+    const skipBlit = this.computeSkipBlit(
+      colorResolveTo,
+      colorAttachment as (RenderTarget_GL | null)[],
+      colorClearColor,
+    );
     this.setRenderPassParametersBegin(colorAttachment.length, skipBlit);
     for (let i = 0; i < colorAttachment.length; i++) {
       this.setRenderPassParametersColor(
@@ -1528,23 +1532,14 @@ export class Device_GL implements SwapChain, Device {
     const stencil = !!(flags & FormatFlags.Stencil);
 
     if (depth && stencil) {
-      const supportDepthTexture =
-        isWebGL2(this.gl) || (!isWebGL2(this.gl) && !!this.WEBGL_depth_texture);
-      if (supportDepthTexture) {
-        this.bindFramebufferAttachment(
-          framebuffer,
-          gl.DEPTH_STENCIL_ATTACHMENT,
-          attachment,
-          0,
-        );
-      } else {
-        this.bindFramebufferAttachment(
-          framebuffer,
-          gl.DEPTH_ATTACHMENT,
-          attachment,
-          0,
-        );
-      }
+      // Packed depth/stencil renderbuffers are core WebGL1. They do not need
+      // WEBGL_depth_texture; falling back to D16 loses stencil and merges nearby z values.
+      this.bindFramebufferAttachment(
+        framebuffer,
+        gl.DEPTH_STENCIL_ATTACHMENT,
+        attachment,
+        0,
+      );
     } else if (depth) {
       this.bindFramebufferAttachment(
         framebuffer,
@@ -2474,7 +2469,7 @@ export class Device_GL implements SwapChain, Device {
   draw(
     vertexCount: number,
     instanceCount?: number,
-    firstVertex?: number,
+    firstVertex = 0,
     firstInstance?: number,
   ) {
     if (this.renderBundle) {
@@ -2513,7 +2508,7 @@ export class Device_GL implements SwapChain, Device {
   drawIndexed(
     indexCount: number,
     instanceCount?: number,
-    firstIndex?: number,
+    firstIndex = 0,
     baseVertex?: number,
     firstInstance?: number,
   ) {
@@ -2613,6 +2608,7 @@ export class Device_GL implements SwapChain, Device {
   private computeSkipBlit(
     colorResolveTo: (Texture | null)[],
     colorAttachment: (RenderTarget_GL | null)[],
+    colorClearColor: RenderPassDescriptor['colorClearColor'],
   ): boolean {
     const resolvesToScreen =
       colorResolveTo.length === 1 && colorResolveTo[0] === this.scTexture;
@@ -2622,7 +2618,9 @@ export class Device_GL implements SwapChain, Device {
     const offscreenColorAttachmentCount = colorAttachment.filter(
       (a) => a !== null,
     ).length;
-    return offscreenColorAttachmentCount <= 1;
+    // A load pass continues an offscreen target written by earlier passes.
+    // Redirecting only this last pass to the canvas loses all earlier content.
+    return offscreenColorAttachmentCount <= 1 && colorClearColor[0] !== 'load';
   }
 
   /**
@@ -2655,6 +2653,7 @@ export class Device_GL implements SwapChain, Device {
     const skipBlit = this.computeSkipBlit(
       this.currentColorResolveTos,
       this.currentColorAttachments,
+      this.currentRenderPassDescriptor.colorClearColor,
     );
 
     let didUnbindDraw = false;
@@ -2990,7 +2989,7 @@ void main() {
       uniformBufferBindings: [],
     });
     this.blitProgram.setUniformsLegacy({
-      u_Texture: resolveFrom.texture,
+      u_Texture: 0,
     });
 
     const currentRenderPassDescriptor = this.currentRenderPassDescriptor;

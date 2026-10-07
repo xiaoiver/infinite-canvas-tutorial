@@ -22,6 +22,8 @@ export enum Location {
 }
 
 export const vert = /* wgsl */ `
+// Packed flags use 23 bits; mediump can overflow on WebKit/mobile GPUs.
+precision highp float;
 #define SHIFT_RIGHT23 1.0 / 8388608.0
 #define SHIFT_LEFT23 8388608.0
 #define SHIFT_RIGHT22 1.0 / 4194304.0
@@ -176,6 +178,8 @@ void main() {
 `;
 
 export const frag = /* wgsl */ `
+// Packed flags use 23 bits; mediump can overflow on WebKit/mobile GPUs.
+precision highp float;
 #define SHIFT_RIGHT23 1.0 / 8388608.0
 #define SHIFT_LEFT23 8388608.0
 #define SHIFT_RIGHT22 1.0 / 4194304.0

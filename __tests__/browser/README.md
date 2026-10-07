@@ -120,3 +120,11 @@ Nested lists use the same four-space indent in MarkdownLint (`MD007`).
 `ecs-text.spec.ts` uses local Gaegu and Noto fonts, the ECS renderer, and the Spectrum text editor. It compares glyph ink against Canvas, counts rasterization and atlas uploads during actual transformer resize gestures, checks atlas invalidation for new content/fonts, and verifies editor corners after rotation, camera changes, flips, and parent transforms. Both Chromium and WebKit run this suite.
 
 Manual check: open `/example/pretext`, enlarge the text containing `hijk`, resize repeatedly, rotate from outside a corner, and double-click to edit. The `j` descender should remain complete, resizing should reuse existing glyphs, and the editor should retain the text angle.
+
+Blend-mode regressions compare GPU pixels (including alpha) with native Canvas2D
+for the 16 CSS modes, and with clamped channel-sum references for linear burn and
+dodge. They cover node and paint-layer blending, transparent backdrops, node
+opacity, path fills plus strokes, text, clipping, three-layer accumulation and a
+normal draw after the blended nodes. Chromium and WebKit both run these checks,
+including a forced WebGL1 fallback. The SDF cases also guard against mediump
+packed-flag overflow on mobile GPUs.

@@ -10,6 +10,7 @@ export default defineConfig({
     'text-path.spec.ts',
     'ecs-text.spec.ts',
     'ecs-text-path.spec.ts',
+    'ecs-blend-mode.spec.ts',
   ],
   testIgnore: [],
   outputDir: '.test-results/webkit',

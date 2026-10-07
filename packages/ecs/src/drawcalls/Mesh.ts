@@ -72,7 +72,6 @@ import {
   GlobalRenderOrder,
   GlobalTransform,
   MaterialDirty,
-  Opacity,
   Path,
   Rect,
   Rough,
@@ -943,7 +942,7 @@ export class Mesh extends Drawcall {
       fill != null && fill !== '' ? fill : 'transparent',
     );
 
-    const opacity = shape.has(Opacity) ? shape.read(Opacity).opacity : 1;
+    const opacity = this.getOpacity(shape);
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
@@ -997,7 +996,7 @@ export class Mesh extends Drawcall {
     if (multiFill?.kind === 'fill-layer' && multiLayers) {
       const L = multiLayers[multiFill.layerIndex];
       const lo = fillLayerOpacity(L.opacity);
-      if (L.type === 'gradient') {
+      if (this.useFillImage) {
         frN = 1;
         fgN = 1;
         fbN = 1;
@@ -1012,7 +1011,7 @@ export class Mesh extends Drawcall {
     ) {
       const L = enabledFill[0];
       const lo = fillLayerOpacity(L.opacity);
-      if (L.type === 'gradient') {
+      if (this.useFillImage) {
         frN = 1;
         fgN = 1;
         fbN = 1;
