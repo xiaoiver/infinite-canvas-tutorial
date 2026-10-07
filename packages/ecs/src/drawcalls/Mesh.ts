@@ -114,7 +114,7 @@ export class Mesh extends Drawcall {
     const { dasharray = [] } = shape.has(Stroke)
       ? shape.read(Stroke)
       : { dasharray: [] };
-    return dasharray[0] > 0 && dasharray[1] > 0;
+    return dasharray[0] >= 0 && dasharray[1] > 0;
   }
 
   /**

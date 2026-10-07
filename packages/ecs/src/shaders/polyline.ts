@@ -54,7 +54,7 @@ layout(location = ${Location.POINTB}) in vec2 a_PointB;
 layout(location = ${Location.NEXT}) in vec2 a_Next;
 layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
 layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
-layout(location = ${Location.TRAVEL}) in float a_Travel;
+layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
 
 layout(std140) uniform ShapeUniforms {
   mat3 u_ModelMatrix;
@@ -84,8 +84,10 @@ const float dpr = 2.0;
 out vec4 v_Distance;
 out vec4 v_Arc;
 out float v_Type;
-out float v_Travel;
-out float v_ScalingFactor;
+out vec2 v_DashPosition;
+out vec4 v_DashSegment;
+out vec4 v_DashPrevious;
+out vec4 v_DashNext;
 #ifdef USE_STROKE_GRADIENT
 out vec2 v_StrokeUv;
 #endif
@@ -183,6 +185,10 @@ void main() {
 
   float capType = floor(type / 32.0);
   type -= capType * 32.0;
+  if (type < BEVEL && capType != CAP_ROUND) {
+    gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
+  }
   v_Arc = vec4(0.0);
   strokeWidth *= 0.5;
   float strokeAlignmentFactor = 2.0 * strokeAlignment - 1.0;
@@ -190,6 +196,8 @@ void main() {
   vec2 pos;
 
   if (capType == CAP_ROUND) {
+    // This extra instance runs backwards to draw the first endpoint.
+    strokeAlignmentFactor = -strokeAlignmentFactor;
     if (vertexNum < 3.5) {
       gl_Position = vec4(0.0, 0.0, 0.0, 1.0);
       return;
@@ -421,7 +429,7 @@ void main() {
           float sign = step(0.0, dy) * 2.0 - 1.0;
           dy = -sign * dot(pos, norm);
           dy2 = -sign * dot(pos, norm2);
-          dy3 = (-sign * dot(pos, norm3)) + strokeWidth;
+          dy3 = (-sign * dot(pos, norm3)) + strokeWidth * dot(norm, norm3);
           v_Type = 4.0;
           hit = 1.0;
         }
@@ -434,11 +442,32 @@ void main() {
     pos += base;
     v_Distance = vec4(dy, dy2, dy3, strokeWidth) * dpr;
     v_Arc *= dpr;
-    v_Travel = a_Travel + dot(pos - pointA, vec2(-norm.y, norm.x));
   }
 
-  // v_ScalingFactor = sqrt(model[0][0] * model[0][0] + model[0][1] * model[0][1] + model[0][2] * model[0][2]);
-  v_ScalingFactor = 1.0;
+  // Carry segment frames, not a single extrapolated travel coordinate. At a
+  // corner the incoming and outgoing directions have different projections.
+  vec2 dashA = (model * vec3(a_PointA, 1.0)).xy;
+  vec2 dashB = (model * vec3(a_PointB, 1.0)).xy;
+  vec2 dashPrev = (model * vec3(a_Prev, 1.0)).xy;
+  vec2 dashNext = (model * vec3(a_Next, 1.0)).xy;
+  bool startCap = floor(a_VertexJoint / 32.0) == CAP_ROUND;
+  float localLength = length(a_PointB - a_PointA);
+  float previousLength = length(a_PointA - a_Prev);
+  float nextLength = length(a_Next - a_PointB);
+  // The dedicated round start-cap instance runs in the reverse direction.
+  if (startCap) {
+    v_DashPosition = pos - dashB;
+    v_DashSegment = vec4(dashA - dashB, 0.0, localLength);
+    v_DashPrevious = vec4(0.0, 0.0, 0.0, -1.0);
+    v_DashNext = vec4(0.0, 0.0, 0.0, -1.0);
+  } else {
+    v_DashPosition = pos - dashA;
+    v_DashSegment = vec4(dashB - dashA, a_Travel.x, localLength);
+    v_DashPrevious = vec4(dashA - dashPrev, previousLength,
+      a_Travel.y);
+    v_DashNext = vec4(dashNext - dashB, nextLength,
+      a_Travel.z);
+  }
 
 #ifdef USE_STROKE_GRADIENT
   vec3 localH = inverseMat3(model) * vec3(pos, 1.0);
@@ -483,8 +512,10 @@ ${wireframe_frag_declaration}
 in vec4 v_Distance;
 in vec4 v_Arc;
 in float v_Type;
-in float v_Travel;
-in float v_ScalingFactor;
+in vec2 v_DashPosition;
+in vec4 v_DashSegment;
+in vec4 v_DashPrevious;
+in vec4 v_DashNext;
 #ifdef USE_STROKE_GRADIENT
 in vec2 v_StrokeUv;
 uniform sampler2D u_Texture;
@@ -493,7 +524,7 @@ uniform sampler2D u_Texture;
 float epsilon = 0.000001;
 
 float antialias(float distance) {
-  return clamp(distance / fwidth(distance), 0.0, 1.0);
+  return clamp(distance / max(fwidth(distance), 0.0001), 0.0, 1.0);
 }
 
 float pixelLine(float x) {
@@ -509,6 +540,103 @@ float pixelLine(float x) {
 //   return (1.0 + s * (1.0 - y * y)) * 0.5;
 //   //return clamp(x + 0.5, 0.0, 1.0);
 // }
+
+// Signed distance to a painted interval, clipped to this centerline segment.
+float dashIntervalDistance(vec2 p, vec2 segment, float localLength,
+  float travel, float cell, float dash, float period, float offset,
+  float radius, float cap, float startJoint, float endJoint) {
+  float worldLength = length(segment);
+  if (worldLength < 0.0001 || localLength < 0.0001) return 1.0e6;
+  float rawStart = cell * period - offset - travel;
+  float rawEnd = rawStart + dash;
+  float start = max(0.0, rawStart);
+  float end = min(localLength, rawEnd);
+  if (start >= localLength || end < start || (end == start && dash > 0.0) || (dash == 0.0 && cap < 0.5)) return 1.0e6;
+  vec2 direction = segment / worldLength;
+  float along = dot(p, direction);
+  float across = dot(p, vec2(-direction.y, direction.x))
+    + radius * (2.0 * u_ZIndexStrokeWidth.w - 1.0);
+  float scale = worldLength / localLength;
+  float outside = max(start * scale - along, along - end * scale);
+  // A dash crossing a vertex has a join, not two artificial caps.
+  float edgeCap = cap;
+  if (along < start * scale && start == 0.0 && startJoint > 0.5) edgeCap = 0.0;
+  if (along > end * scale && end == localLength && endJoint > 0.5) edgeCap = 0.0;
+  if (edgeCap > 1.5) {
+    return length(vec2(max(outside, 0.0), across)) - radius;
+  }
+  float extension = edgeCap > 0.5 ? radius : 0.0;
+  vec2 q = vec2(outside - extension, abs(across) - radius);
+  return length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0);
+}
+
+float dashedSegmentDistance(vec2 p, vec2 segment, float localLength,
+  float travel, float dash, float period, float offset, float radius, float cap, float startJoint, float endJoint) {
+  float worldLength = length(segment);
+  if (worldLength < 0.0001 || localLength < 0.0001) return 1.0e6;
+  float along = clamp(dot(p, segment) / (worldLength * worldLength), 0.0, 1.0) * localLength;
+  float cell = floor((along + travel + offset) / period);
+  float distance = dashIntervalDistance(p, segment, localLength, travel, cell,
+    dash, period, offset, radius, cap, startJoint, endJoint);
+  // The closest dash can be in a neighboring cell, including a partial dash
+  // at a path endpoint. Dash intervals are evaluated entirely in the shader.
+  distance = min(distance, dashIntervalDistance(p, segment, localLength, travel, cell - 1.0,
+    dash, period, offset, radius, cap, startJoint, endJoint));
+  return min(distance, dashIntervalDistance(p, segment, localLength, travel, cell + 1.0,
+    dash, period, offset, radius, cap, startJoint, endJoint));
+}
+
+vec2 dashCoverage() {
+  float attenuation = u_Opacity.w > 0.5 ? u_ZoomScale : 1.0;
+  float dash = u_StrokeDash.x / attenuation;
+  float gap = u_StrokeDash.y / attenuation;
+  float period = dash + gap;
+  if (period <= 0.0 || gap <= 0.0) return vec2(0.0, 1.0);
+  float offset = u_StrokeDash.z / attenuation;
+  float cap = u_StrokeDash.w;
+  float radius = u_ZIndexStrokeWidth.y * 0.5 / attenuation;
+  vec2 p = v_DashPosition;
+  vec2 segment = v_DashSegment.xy;
+  float travel = v_DashSegment.z;
+  float localLength = v_DashSegment.w;
+  float startPhase = mod(travel + offset, period);
+  float previousPhase = mod(v_DashPrevious.w + v_DashPrevious.z + offset, period);
+  float endPhase = mod(travel + localLength + offset, period);
+  float nextPhase = mod(v_DashNext.w + offset, period);
+  float startJoin = v_DashPrevious.w >= 0.0 && previousPhase > 0.0001 && previousPhase <= dash
+    && startPhase < dash - 0.0001 ? 1.0 : 0.0;
+  float endJoin = v_DashNext.w >= 0.0 && endPhase > 0.0001 && endPhase <= dash
+    && nextPhase < dash - 0.0001 ? 1.0 : 0.0;
+  // Open path endpoints keep linecap (including VectorNetwork overrides),
+  // independently of the caps on internal dash intervals.
+  if (v_DashPrevious.w < 0.0 && dot(p, segment) < 0.0 && startPhase < dash) {
+    return vec2(0.0, 1.0);
+  }
+  if (v_DashNext.w < 0.0 && dot(p - segment, segment) > 0.0 && endPhase > 0.0 && endPhase <= dash) {
+    return vec2(0.0, 1.0);
+  }
+  float distance = dashedSegmentDistance(p, segment, localLength, travel,
+    dash, period, offset, radius, cap, startJoin, endJoin);
+  if (v_DashPrevious.w >= 0.0) {
+    distance = min(distance, dashedSegmentDistance(p + v_DashPrevious.xy,
+      v_DashPrevious.xy, v_DashPrevious.z, v_DashPrevious.w,
+      dash, period, offset, radius, cap, 0.0, startJoin));
+  }
+  float join = 0.0;
+  if (v_DashNext.w >= 0.0) {
+    distance = min(distance, dashedSegmentDistance(p - segment,
+      v_DashNext.xy, v_DashNext.z, v_DashNext.w,
+      dash, period, offset, radius, cap, endJoin, 0.0));
+    // Only paint the outer join when one dash crosses the vertex. A gap or
+    // a dash ending exactly at the vertex must not leave a solid join wedge.
+    vec2 q = p - segment;
+    if (endJoin > 0.5 &&
+        dot(q, segment) > 0.0 && dot(q, v_DashNext.xy) < 0.0) {
+      join = 1.0;
+    }
+  }
+  return vec2(clamp(0.5 - distance / max(fwidth(distance), 0.0001), 0.0, 1.0), join);
+}
 
 void main() {
 #ifdef USE_STROKE_GRADIENT
@@ -530,11 +658,8 @@ void main() {
   if (v_Type < 0.5) {
     float left = max(d1 - 0.5, -w);
     float right = min(d1 + 0.5, w);
-    float near = d2 - 0.5;
-    float far = min(d2 + 0.5, 0.0);
-    float top = d3 - 0.5;
-    float bottom = min(d3 + 0.5, 0.0);
-    alpha = max(antialias(right - left), 0.0) * max(bottom - top, 0.0) * max(far - near, 0.0);
+    // Avoid cancellation of large clipping sentinels on mediump GPUs.
+    alpha = antialias(right - left) * pixelLine(-d2) * pixelLine(-d3);
   } else if (v_Type < 1.5) {
     float a1 = pixelLine(d1 - w);
     float a2 = pixelLine(d1 + w);
@@ -571,60 +696,8 @@ void main() {
     alpha *= pixelLine(d3);
   }
 
-  float u_Dash = u_StrokeDash.x;
-  float u_Gap = u_StrokeDash.y;
-  float u_DashOffset = u_StrokeDash.z;
-
-  float scalingFactor = v_ScalingFactor;
-  float travelScalingFactor = 1.0;
-  if (strokeAttenuation) {
-    travelScalingFactor = u_ZoomScale;
-  }
-
-  if (u_Dash + u_Gap > 1.0) {
-    float P = u_Dash * scalingFactor + u_Gap * scalingFactor;
-    float dashLen = u_Dash * scalingFactor;
-    float dashCapMode = u_StrokeDash.w;
-
-    if (dashCapMode < 0.5) {
-      float travel = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, P) - (u_Gap * scalingFactor * 0.5);
-      float left = max(travel - 0.5, -0.5);
-      float right = min(travel + 0.5, u_Dash * v_ScalingFactor + 0.5);
-      alpha *= antialias(max(0.0, right - left));
-    } else {
-      float s = mod(v_Travel * travelScalingFactor + u_Gap * scalingFactor * 0.5 + u_DashOffset, P);
-      float sw = u_ZIndexStrokeWidth.y;
-      float capExt = sw * 0.5;
-      float aa = 0.5;
-      float L1 = dashLen + capExt;
-      float L2 = P - capExt;
-      float inLeft = 1.0 - smoothstep(L1 - aa, L1 + aa, s);
-      float inRight = smoothstep(L2 - aa, L2 + aa, s);
-      alpha *= clamp(inLeft + inRight, 0.0, 1.0);
-
-      // Round dash cap：用线段胶囊 SDF（与方帽同一可见弧长区间），避免两段 min(圆,圆) 在周期坐标下错位。
-      if (dashCapMode > 1.5) {
-        float k = w / max(sw, 1.0e-4);
-        float R = w * 0.5;
-        float Lk = dashLen * k;
-        float xCell;
-        if (s >= L2) {
-          // 起点前间隙 + 起点半圆：s∈[L2,P) 映射到 x∈[-R,0)（沿路径指向 dash 方向）
-          xCell = -R + (s - L2) * k;
-        } else if (s <= L1) {
-          // dash 主体 + 终点半圆：x∈[0, Lk+R]
-          xCell = s * k;
-        } else {
-          xCell = 1.0e9;
-        }
-        vec2 pa = vec2(xCell, d1);
-        vec2 ba = vec2(max(Lk, 1.0e-6), 0.0);
-        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-        float distCap = length(pa - ba * h) - R;
-        alpha *= antialias(-distCap);
-      }
-    }
-  }
+  vec2 dashed = dashCoverage();
+  alpha = max(dashed.x, alpha * dashed.y);
 
   outputColor = strokeColor;
   outputColor.a *= alpha * opacity * strokeOpacity;
