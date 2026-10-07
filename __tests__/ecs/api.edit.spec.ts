@@ -1,4 +1,5 @@
 import { API, DefaultStateManagement } from '../../packages/ecs/src/API';
+import { ThemeMode } from '../../packages/ecs/src/components/Theme';
 
 function flushFrame(api: API) {
   api.flushPendingEdits();
@@ -236,5 +237,49 @@ it('refreshes design-variable bindings before completion and records only once',
   expect(api.getAppState().variables).toEqual({});
   expect(api.isUndoStackEmpty()).toBe(true);
   api.getEntityCommands().clear();
+  api.destroy();
+});
+
+it('refreshes theme bindings without recording or advancing pending document history', () => {
+  const { api } = createAPI();
+  api.setAppState(
+    { variables: { accent: { type: 'color', value: '#f00' } } },
+    { recordDesignVariableUndo: false },
+  );
+  flushFrame(api);
+  api.record('NEVER');
+  api.setAppState({ filter: 'blur(2px)' });
+  api.setAppState({ themeMode: ThemeMode.DARK });
+  flushFrame(api);
+  expect(api.isUndoStackEmpty()).toBe(true);
+  api.setAppState({ filter: 'blur(4px)' });
+  api.record();
+  api.undo();
+  flushFrame(api);
+  expect(api.getAppState().filter).toBe('');
+  expect(api.getAppState().themeMode).toBe(ThemeMode.DARK);
+  api.setAppState({ themeMode: ThemeMode.LIGHT });
+  flushFrame(api);
+  expect(api.isRedoStackEmpty()).toBe(false);
+  api.redo();
+  flushFrame(api);
+  expect(api.getAppState().filter).toBe('blur(4px)');
+  expect(api.getAppState().themeMode).toBe(ThemeMode.LIGHT);
+  api.destroy();
+});
+
+it('still records legacy variable edits, including patches that also change theme', () => {
+  const { api } = createAPI();
+  api.setAppState({
+    themeMode: ThemeMode.DARK,
+    variables: { accent: { type: 'color', value: '#f00' } },
+  });
+  flushFrame(api);
+  expect(api.isUndoStackEmpty()).toBe(false);
+  api.undo();
+  flushFrame(api);
+  expect(api.getAppState().variables).toEqual({});
+  expect(api.getAppState().themeMode).toBe(ThemeMode.DARK);
+  expect(api.isUndoStackEmpty()).toBe(true);
   api.destroy();
 });
