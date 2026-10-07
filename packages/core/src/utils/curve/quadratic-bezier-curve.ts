@@ -28,8 +28,4 @@ export class QuadraticBezierCurve extends Curve {
     return point;
   }
 
-  // Line curve is linear, so we can overwrite default getPointAt
-  getPointAt(u: number, optionalTarget) {
-    return this.getPoint(u, optionalTarget);
-  }
 }

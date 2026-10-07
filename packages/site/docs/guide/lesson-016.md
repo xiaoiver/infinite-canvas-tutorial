@@ -10,6 +10,7 @@ head:
           },
       ]
 ---
+
 <script setup>
 import WebFontLoader from '../components/WebFontLoader.vue';
 import Opentype from '../components/Opentype.vue';
@@ -348,56 +349,55 @@ In Mapbox, placing labels along roads and rivers is a common scenario, see [Map 
 
 Kittl provides a [Easily Type Text On Any Path] tool.
 
-A more appropriate reference implementation comes from Fabricjs, see: [fabricjs - text on path].
-
-We refer to the implementation from Fabricjs: [fabricjs - text on path], which adds a stage after the regular layout to compute the position of the current character on the path, using the method we introduced [Lesson 13 - Sampling on a curve]:
+See [fabricjs - text on path] for another implementation. Place each glyph by the **arc length** at the center of its advance box, then use the tangent at that same distance for its orientation. A Bézier parameter `t` is generally not a length fraction: point and tangent sampling must use the same arc-length mapping, as described in [Lesson 13 - Sampling on a curve].
 
 ```ts
-const centerPosition = positionInPath + positionedGlyph.width / 2;
-const ratio = centerPosition / totalPathLength;
-const point = path.getPointAt(ratio);
+const centerDistance =
+    startOffset + alignmentOffset + advanceBefore + advance / 2;
+const ratio = centerDistance / totalPathLength;
+const point = curve.getPointAt(ratio);
+const tangent = curve.getTangentAt(ratio);
 ```
 
-In addition, you need to use the Path method when calculating the bounding box.
-
-![Text path without rotation](/text-path-without-rotation.png)
+The advance width positions the next glyph. It differs from the texture width, ink bearings and SDF padding. `letterSpacing` applies only between adjacent glyphs.
 
 ### Adjust rotation {#adjust-rotation}
 
-The normal/tangent direction also needs to be calculated and passed into the shader for text rotation.
+The implementation rotates each Quad on the CPU around the **glyph's baseline origin**, then renders it with SDF/MSDF. Rotating around the texture's bottom edge would displace text differently for each font and size.
 
 ```ts
-const tangent = path.getTangentAt(ratio);
 const rotation = Math.atan2(tangent[1], tangent[0]);
+const x =
+    point[0] -
+    (Math.cos(rotation) * advance) / 2 -
+    Math.sin(rotation) * pathOffset;
+const y =
+    point[1] -
+    (Math.sin(rotation) * advance) / 2 +
+    Math.cos(rotation) * pathOffset;
 ```
 
-We can optionally add a component to `a_Position` to store the `rotation`, and later construct the rotation matrix in the vertex shader:
+This example uses the `alphabetic` baseline; other `textBaseline` adjustments also follow the local normal. Bounds are the union of the rotated glyph ink rectangles, so changing content, size, path or offsets updates the selection bounds too.
 
-```ts
-this.vertexBufferDescriptors = [
-    {
-        arrayStride: 4 * 3, // [!code --]
-        arrayStride: 4 * 4, // [!code ++]
-        stepMode: VertexStepMode.VERTEX,
-        attributes: [
-            {
-                shaderLocation: Location.POSITION, // a_Position
-                offset: 0,
-                format: Format.F32_RGB, // [!code --]
-                format: Format.F32_RGBA, // [!code ++]
-            },
-        ],
-    },
-];
-```
+| Attribute       | Behavior                                                                                                        |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `textAlign`     | `start` / `left`, `center`, or `end` / `right`, relative to the available path length                           |
+| `startOffset`   | Moves the aligned text along its reading direction, in document units                                           |
+| `side`          | `left` follows the path; `right` travels from the other end and rotates glyphs while preserving reading order   |
+| `pathOffset`    | Moves the baseline along the local normal; positive values lie 90° clockwise from the reading-direction tangent |
+| `letterSpacing` | Adds distance between adjacent glyphs                                                                           |
 
-Optionally, the Quad four-vertex transformation can be done on the CPU side.
+On open paths, glyphs whose centers fall beyond either endpoint are omitted instead of wrapping or piling up at an endpoint. A single closed contour can cross its seam at positive or negative offsets, with at most one lap per line. Separate subpaths concatenate their lengths without inventing a line across `M` gaps. Additional lines follow the local normal at their line-height spacing.
+
+Drag the text or blue handle along the path, and drag orange control points to reshape the curve. Switch between a curve, circle and line, change sides and alignment, or adjust spacing and baseline distance. Handles support arrow keys, Shift for larger steps and Esc to cancel; a canceled touch gesture restores its starting state.
 
 <TextPath />
 
+This example uses the `core` SDF text renderer. The path layout and editing improvements retain the existing grapheme pipeline; they do not add full OpenType shaping or ligature support.
+
 ### Export SVG {#export-svg-text-path}
 
-In SVG this can be achieved with [textPath], see: [Curved Text Along a Path].
+Native SVG supports [textPath], as shown below; see [Curved Text Along a Path]. The exporter shares the canvas layout and emits positioned `<tspan>` elements with `x`, `y` and `rotate` to preserve side changes, overflow clipping and closed seams across browsers with different `textPath side` support. JSON serialization preserves the path, side, alignment and offsets for further editing after import.
 
 ```html
 <path

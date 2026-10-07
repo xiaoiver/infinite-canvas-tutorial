@@ -8,7 +8,7 @@ import { BitmapFont } from '../utils/bitmap-font/BitmapFont';
 import { AABB } from './AABB';
 import { GConstructor } from './mixins';
 import { Shape, ShapeAttributes, strokeOffset } from './Shape';
-import { Path } from './Path';
+import { measureTextPath } from '../utils/glyph/measure-text-path';
 
 export type TextStyleWhiteSpace = 'normal' | 'pre' | 'pre-line';
 export type TextDecorationLine =
@@ -227,6 +227,9 @@ export interface TextAttributes extends ShapeAttributes {
    * @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/startOffset
    */
   startOffset: number;
+
+  /** Baseline displacement along the path normal, in document units. */
+  pathOffset: number;
 }
 
 // @ts-ignore
@@ -267,6 +270,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     #path: string;
     #side: 'left' | 'right';
     #startOffset: number;
+    #pathOffset: number;
 
     bitmapFont: BitmapFont;
     bitmapFontKerning: boolean;
@@ -281,10 +285,26 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     ) {
       const { x, y, textAlign, textBaseline, metrics, path } = attributes;
 
-      // Use path instead.
       if (path) {
-        const ppath = new Path({ d: path });
-        return ppath.getGeometryBounds();
+        const bounds = new AABB();
+        for (const glyph of measureTextPath(attributes, metrics)) {
+          if (glyph.right <= glyph.left || glyph.bottom <= glyph.top) continue;
+          const cos = Math.cos(glyph.rotation),
+            sin = Math.sin(glyph.rotation);
+          for (const gx of [glyph.left, glyph.right]) {
+            for (const gy of [glyph.top, glyph.bottom]) {
+              const px = (x ?? 0) + glyph.x + cos * gx - sin * gy;
+              const py = (y ?? 0) + glyph.y + sin * gx + cos * gy;
+              bounds.minX = Math.min(bounds.minX, px);
+              bounds.minY = Math.min(bounds.minY, py);
+              bounds.maxX = Math.max(bounds.maxX, px);
+              bounds.maxY = Math.max(bounds.maxY, py);
+            }
+          }
+        }
+        return Number.isFinite(bounds.minX)
+          ? bounds
+          : new AABB(x ?? 0, y ?? 0, x ?? 0, y ?? 0);
       }
 
       const { width, height } = metrics;
@@ -352,6 +372,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         path,
         side,
         startOffset,
+        pathOffset,
       } = attributes;
 
       this.#x = x ?? 0;
@@ -387,6 +408,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       this.path = path ?? null;
       this.side = side ?? 'left';
       this.startOffset = startOffset ?? 0;
+      this.pathOffset = pathOffset ?? 0;
     }
 
     containsPoint(x: number, y: number) {
@@ -454,6 +476,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -467,6 +490,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -476,10 +500,12 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
     set content(value: string) {
       if (this.#content !== value) {
         this.#content = value;
+        this.materialDirtyFlag = true;
         this.renderDirtyFlag = true;
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -583,6 +609,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -596,6 +623,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -609,6 +637,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -622,6 +651,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -635,6 +665,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -648,6 +679,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -661,6 +693,7 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
         this.geometryBoundsDirtyFlag = true;
         this.renderBoundsDirtyFlag = true;
         this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -793,6 +826,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       if (this.#path !== path) {
         this.#path = path;
         this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -803,6 +840,24 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       if (this.#side !== side) {
         this.#side = side;
         this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
+      }
+    }
+
+    get pathOffset() {
+      return this.#pathOffset;
+    }
+    set pathOffset(value: number) {
+      if (this.#pathOffset !== value) {
+        this.#pathOffset = value;
+        this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
 
@@ -813,6 +868,10 @@ export function TextWrapper<TBase extends GConstructor>(Base: TBase) {
       if (this.#startOffset !== startOffset) {
         this.#startOffset = startOffset;
         this.renderDirtyFlag = true;
+        this.geometryBoundsDirtyFlag = true;
+        this.renderBoundsDirtyFlag = true;
+        this.boundsDirtyFlag = true;
+        this.geometryDirtyFlag = true;
       }
     }
   };

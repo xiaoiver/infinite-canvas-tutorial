@@ -2,6 +2,7 @@
 outline: deep
 description: '探索高级文本特性，包括贝塞尔曲线渲染、文本描边、装饰线、阴影、文本路径以及交互式文本编辑和选择功能，支持辅助功能。'
 ---
+
 <script setup>
 import WebFontLoader from '../../components/WebFontLoader.vue';
 import Opentype from '../../components/Opentype.vue';
@@ -341,54 +342,55 @@ canvas.drawTextBlob(textblob, 0, 0, textPaint);
 
 Kittl 提供了 [Easily Type Text On Any Path] 工具，可以方便的将文本放置在路径上。
 
-我们参考来自 Fabricjs 的实现：[fabricjs - text on path]，在常规 layout 之后增加一个阶段，使用我们介绍过 [课程 13 - 在曲线上采样]，计算当前字符在路径上的位置：
+沿路径排版可以参考 [fabricjs - text on path]。关键是按**弧长**定位每个字形的前进宽度中心，再用该位置的切线确定朝向。贝塞尔曲线的参数 `t` 通常不等于长度比例；取点和取切线必须使用同一弧长映射，详见 [课程 13 - 在曲线上采样]。
 
 ```ts
-const centerPosition = positionInPath + positionedGlyph.width / 2;
-const ratio = centerPosition / totalPathLength;
-const point = path.getPointAt(ratio);
+const centerDistance =
+    startOffset + alignmentOffset + advanceBefore + advance / 2;
+const ratio = centerDistance / totalPathLength;
+const point = curve.getPointAt(ratio);
+const tangent = curve.getTangentAt(ratio);
 ```
 
-另外在计算包围盒时需要使用 Path 的方式。
-
-![Text path without rotation](/text-path-without-rotation.png)
+字形的前进宽度决定下一个字形的位置，与字形纹理的宽度、留白和 SDF padding 不同。`letterSpacing` 只加在相邻字形之间。
 
 ### 调整旋转角度 {#adjust-rotation}
 
-在 [课程 13 - 在曲线上采样] 的同时，还需要计算出法线 / 切线方向，传入 shader 中进行文本旋转。
+当前实现在 CPU 侧围绕**字形基线原点**旋转 Quad 的四个顶点，再交给 SDF/MSDF 渲染。不能围绕纹理底边旋转，否则不同字体和字号会产生偏移。
 
 ```ts
-const tangent = path.getTangentAt(ratio);
 const rotation = Math.atan2(tangent[1], tangent[0]);
+const x =
+    point[0] -
+    (Math.cos(rotation) * advance) / 2 -
+    Math.sin(rotation) * pathOffset;
+const y =
+    point[1] -
+    (Math.sin(rotation) * advance) / 2 +
+    Math.cos(rotation) * pathOffset;
 ```
 
-我们可以选择为 `a_Position` 增加一个分量，用于存储 `rotation`，随后在 vertex shader 中构建旋转矩阵：
+这里使用 `alphabetic` 基线；其他 `textBaseline` 的偏移也沿当前法线计算。包围盒取所有旋转后字形墨迹矩形的并集，因此文字、字号、路径和偏移改变时，选框也会更新。
 
-```ts
-this.vertexBufferDescriptors = [
-    {
-        arrayStride: 4 * 3, // [!code --]
-        arrayStride: 4 * 4, // [!code ++]
-        stepMode: VertexStepMode.VERTEX,
-        attributes: [
-            {
-                shaderLocation: Location.POSITION, // a_Position
-                offset: 0,
-                format: Format.F32_RGB, // [!code --]
-                format: Format.F32_RGBA, // [!code ++]
-            },
-        ],
-    },
-];
-```
+| 属性            | 行为                                                                  |
+| --------------- | --------------------------------------------------------------------- |
+| `textAlign`     | `start` / `left`、`center`、`end` / `right`，相对于可用路径长度对齐   |
+| `startOffset`   | 从对齐后的起始位置沿阅读方向移动，单位为文档坐标                      |
+| `side`          | `left` 沿原路径方向；`right` 从另一端反向行进并旋转字形，保留阅读顺序 |
+| `pathOffset`    | 沿阅读方向的局部法线移动基线，正值位于切线顺时针旋转 90° 的一侧       |
+| `letterSpacing` | 相邻字形之间额外的距离                                                |
 
-也可以选择在 CPU 侧完成 Quad 四个顶点的变换。
+开放路径两端以字形中心判断溢出，超出的字形不绘制，不会回绕或堆在端点。单条闭合路径允许跨越接缝，偏移可正可负，但每行最多排一圈。多个子路径按长度顺序衔接，不在 `M` 指令之间补线；多行文本沿局部法线按行高排布。
 
-<TextPath />
+拖动文字或蓝色手柄可沿路径移动；橙色控制点可调整曲线。也可以切换圆形/直线、两侧、对齐方式、字距和基线距离。手柄支持方向键、Shift 加速和 Esc 取消，触摸取消会恢复拖动前状态。
+
+<TextPath locale="zh" />
+
+示例使用 `core` 的 SDF 文本渲染。本轮完善路径定位与编辑体验，仍沿用现有字素排版，没有新增完整的 OpenType 字形塑形或连字支持。
 
 ### 导出 SVG {#export-svg-text-path}
 
-在 SVG 中可以通过 [textPath] 实现，详见：[Curved Text Along a Path]
+原生 SVG 可以使用 [textPath]，如下例所示，详见 [Curved Text Along a Path]。当前导出器复用画布的排版结果，输出带 `x`、`y`、`rotate` 的逐字 `<tspan>`，以保留另一侧、溢出裁切和闭合接缝效果，避免不同浏览器对 `textPath side` 支持的差异。JSON 序列化保留路径、方向、对齐与偏移，导入后可继续编辑。
 
 ```html
 <path

@@ -28,7 +28,8 @@ import {
 import { IRough } from '../shapes/mixins/Rough';
 import { Drawable } from 'roughjs/bin/core';
 import { opSet2Absolute } from './rough';
-import { fontStringFromTextStyle } from './font';
+import { fontStringFromTextStyle, getOrCreateCanvasTextMetrics } from './font';
+import { measureTextPath } from './glyph/measure-text-path';
 import { randomInteger } from './math';
 import { hashCode } from './uid';
 import {
@@ -135,6 +136,17 @@ const rectAttributes = [
 ] as const;
 const polylineAttributes = ['points'] as const;
 const pathAttributes = ['d', 'fillRule'] as const;
+const textPathAttributes = [
+  'path',
+  'side',
+  'startOffset',
+  'pathOffset',
+  'textAlign',
+  'textBaseline',
+  'leading',
+  'maxLines',
+  'textOverflow',
+] as const;
 const textAttributes = [
   'x',
   'y',
@@ -153,6 +165,7 @@ const textAttributes = [
   'decorationStyle',
   'decorationColor',
   'decorationThickness',
+  ...textPathAttributes,
 ] as const;
 
 /**
@@ -344,7 +357,8 @@ export async function deserializeNode(data: SerializedNode) {
   } else if (type === 'text') {
     shape = new Text();
     // @ts-ignore
-    attributes.content = text;
+    if (attributes.content === undefined && text !== undefined)
+      attributes.content = text;
   } else if (type === 'rough-circle') {
     shape = new RoughCircle();
     // TODO: implement with path
@@ -417,6 +431,13 @@ export function serializeNode(node: Shape): SerializedNode | undefined {
     uid: node.uid,
     type,
     attributes: [...commonAttributes, ...attributes].reduce((prev, cur) => {
+      if (
+        type === 'text' &&
+        !(node as Text).path &&
+        textPathAttributes.some((attribute) => attribute === cur)
+      ) return prev;
+      // Infinity is the default and cannot round-trip through JSON.
+      if (cur === 'maxLines' && !Number.isFinite(node[cur])) return prev;
       if (!isUndefined(node[cur])) {
         prev[cur] = node[cur];
       }
@@ -1078,6 +1099,22 @@ export function exportText(
     decorationThickness,
   } = node.attributes;
   $g.textContent = content;
+  if (node.attributes.path) {
+    const { transform: _transform, ...attributes } = node.attributes;
+    const style = { leading: 0, ...attributes };
+    const metrics = getOrCreateCanvasTextMetrics().measureText(content, style);
+    $g.textContent = '';
+    // Explicit glyph transforms also work in browsers without SVG textPath side.
+    // They preserve the same overflow and closed-contour seam rules as the canvas.
+    for (const glyph of measureTextPath(style, metrics)) {
+      const span = createSVGElement('tspan');
+      span.setAttribute('x', `${glyph.x + (node.attributes.x ?? 0)}`);
+      span.setAttribute('y', `${glyph.y + (node.attributes.y ?? 0)}`);
+      span.setAttribute('rotate', `${(glyph.rotation * 180) / Math.PI}`);
+      span.textContent = glyph.glyph;
+      $g.appendChild(span);
+    }
+  }
 
   // <text>
   if ($g === element) {
@@ -1189,6 +1226,15 @@ export function toSVGElement(node?: SerializedNode) {
     whiteSpace,
     wordWrap,
     wordWrapWidth,
+    path,
+    side,
+    startOffset,
+    pathOffset,
+    textAlign,
+    textBaseline,
+    leading,
+    maxLines,
+    textOverflow,
     ...rest
   } = attributes;
 

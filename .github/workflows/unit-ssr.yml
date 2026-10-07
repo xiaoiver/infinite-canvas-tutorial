@@ -45,6 +45,18 @@ jobs:
         env:
           CI: true
 
+      - name: Run path text and curve regression tests
+        run: >-
+          xvfb-run -s "-ac -screen 0 1280x1024x16"
+          pnpm exec jest -c jest.config.js --runInBand --runTestsByPath
+          __tests__/unit/curve-arclength.spec.ts
+          __tests__/unit/text-path.spec.ts
+          __tests__/unit/text.spec.ts
+          __tests__/unit/serialize.spec.ts
+          __tests__/ssr/text.spec.ts
+        env:
+          CI: true
+
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
