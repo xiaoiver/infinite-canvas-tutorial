@@ -151,7 +151,7 @@ export class GlyphManager {
     );
 
     if (newChars.length) {
-      const glyphMap = newChars
+      const glyphMap = Array.from(new Set(newChars))
         .map((char) => {
           return this.generateSDF(
             fontStack,

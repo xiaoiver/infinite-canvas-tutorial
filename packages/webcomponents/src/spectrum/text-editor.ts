@@ -4,7 +4,6 @@ import { consume } from '@lit/context';
 import {
   AppState,
   ComputedBounds,
-  ComputedCamera,
   GlobalTransform,
   Pen,
   Text,
@@ -79,6 +78,7 @@ export class TextEditor extends LitElement {
   private prevCameraZoom: number;
   private prevCameraX: number;
   private prevCameraY: number;
+  private prevCameraRotation: number;
 
   private closeEditing(restore = true) {
     const session = this.session;
@@ -375,39 +375,59 @@ export class TextEditor extends LitElement {
       this.appState &&
       (this.prevCameraZoom !== this.appState.cameraZoom ||
         this.prevCameraX !== this.appState.cameraX ||
-        this.prevCameraY !== this.appState.cameraY)
+        this.prevCameraY !== this.appState.cameraY ||
+        this.prevCameraRotation !== this.appState.cameraRotation)
     ) {
       this.updatePositionWithCamera();
       this.prevCameraZoom = this.appState.cameraZoom;
       this.prevCameraX = this.appState.cameraX;
       this.prevCameraY = this.appState.cameraY;
+      this.prevCameraRotation = this.appState.cameraRotation;
     }
   }
 
   private updatePositionWithCamera() {
     if (this.node) {
       const api = this.session.api;
-      const camera = api.getCamera();
-      const { zoom } = camera.read(ComputedCamera);
-
-      // 文本实体局部 (0,0) → 画布；父×(x,y) 会漏子项旋转/缩放。
-      let canvasX = this.node.x;
-      let canvasY = this.node.y;
       const textEntity = api.getEntity(this.node);
-      if (textEntity?.has(GlobalTransform)) {
-        const p = api.transformer2Canvas({ x: 0, y: 0 }, textEntity);
-        canvasX = p.x;
-        canvasY = p.y;
-      }
+      const {
+        cameraZoom = 1,
+        cameraX = 0,
+        cameraY = 0,
+        cameraRotation = 0,
+      } = api.getAppState();
+      const cos = Math.cos(cameraRotation);
+      const sin = Math.sin(cameraRotation);
+      // Map the local origin and basis vectors through the same transforms as
+      // the text. This includes rotation, flips, parent transforms and camera
+      // zoom/pan without applying any of them twice.
+      const toViewport = (x: number, y: number) => {
+        const world = textEntity?.has(GlobalTransform)
+          ? api.transformer2Canvas({ x, y }, textEntity)
+          : { x: this.node.x + x, y: this.node.y + y };
+        // App state can notify before ComputeCamera updates its matrices.
+        // Use the requested camera state, as the HTML overlay does.
+        const dx = world.x - cameraX;
+        const dy = world.y - cameraY;
+        return {
+          x: cameraZoom * (cos * dx + sin * dy),
+          y: cameraZoom * (-sin * dx + cos * dy),
+        };
+      };
+      const origin = toViewport(0, 0);
+      const xAxis = toViewport(1, 0);
+      const yAxis = toViewport(0, 1);
 
-      const { x, y } = api.canvas2Viewport({
-        x: canvasX,
-        y: canvasY,
-      });
-
-      this.editable.style.left = `${x}px`;
-      this.editable.style.top = `${y}px`;
-      this.editable.style.transform = `scale(${zoom})`;
+      this.editable.style.left = `${origin.x}px`;
+      this.editable.style.top = `${origin.y}px`;
+      this.editable.style.transform = `matrix(${[
+        xAxis.x - origin.x,
+        xAxis.y - origin.y,
+        yAxis.x - origin.x,
+        yAxis.y - origin.y,
+        0,
+        0,
+      ].join(',')})`;
     }
   }
 

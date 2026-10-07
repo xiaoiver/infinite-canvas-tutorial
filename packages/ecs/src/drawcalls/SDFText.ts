@@ -266,8 +266,14 @@ export class SDFText extends Drawcall {
       // content,
       fontSize,
     } = this.shapes[0].read(Text);
-    const { font, fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
+    const { fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
     const fill = resolveSdfTextFillColorCss(this.shapes[0]);
+    // Glyphs are always rasterized at BASE_FONT_WIDTH. Display font size only
+    // changes quad layout; including it in the atlas key rerasterizes the
+    // entire alphabet and uploads a growing atlas on every resize frame.
+    const fontStack = JSON.stringify([
+      fontFamily, fontWeight, fontStyle, esdt, fill,
+    ]);
 
     // const hasEmoji = containsEmoji(content);
     const hasEmoji = true;
@@ -287,7 +293,7 @@ export class SDFText extends Drawcall {
         .map((text: Entity) => text.read(ComputedTextMetrics).bidiChars)
         .join('');
       this.#glyphManager.generateAtlas(
-        font,
+        fontStack,
         fontFamily,
         fontWeight.toString(),
         fontStyle,
@@ -311,7 +317,7 @@ export class SDFText extends Drawcall {
       } = this.buildTextBuffers({
         object,
         lines,
-        fontStack: font,
+        fontStack: bitmapFont ? font : fontStack,
         lineHeight,
         letterSpacing: letterSpacing,
         indicesOffset: indicesOff,

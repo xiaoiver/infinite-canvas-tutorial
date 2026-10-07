@@ -114,3 +114,9 @@ Markdown processing runs sequentially: case corrections, Prettier, then
 MarkdownLint. Prettier owns list numbering and spacing (`MD029` and `MD030` are
 disabled), avoiding conflicts with the repository's four-space Markdown indent.
 Nested lists use the same four-space indent in MarkdownLint (`MD007`).
+
+### ECS text rendering and editing
+
+`ecs-text.spec.ts` uses local Gaegu and Noto fonts, the ECS renderer, and the Spectrum text editor. It compares glyph ink against Canvas, counts rasterization and atlas uploads during actual transformer resize gestures, checks atlas invalidation for new content/fonts, and verifies editor corners after rotation, camera changes, flips, and parent transforms. Both Chromium and WebKit run this suite.
+
+Manual check: open `/example/pretext`, enlarge the text containing `hijk`, resize repeatedly, rotate from outside a corner, and double-click to edit. The `j` descender should remain complete, resizing should reuse existing glyphs, and the editor should retain the text angle.

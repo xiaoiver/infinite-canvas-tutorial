@@ -1,14 +1,13 @@
 ---
-title: "Pretext for shaping and layout metrics"
-description: "Use Pretext to obtain consistent measurements across engines."
+title: 'Text layout with Pretext'
+description: 'Explore ECS text wrapping, glyph rendering, and editing.'
 ---
+
 <!-- example-intro:en -->
 
-# Pretext for shaping and layout metrics
+# Text layout with Pretext
 
-**Pretext** helps unify shaping data when mixing multiple backends. The upstream project documents API nuances—treat this page as a bridge experiment.
-
-Validate line breaks against HarfBuzz for production.
+**Pretext** supplies line breaking for the ECS text layout pipeline. Font metrics and SDF glyph rendering are handled separately by the renderer. Pretext does not perform glyph shaping or bidirectional reordering; the current Hebrew/Arabic path retains the existing fallback.
 
 ## Interactive demo
 
@@ -16,8 +15,10 @@ Validate line breaks against HarfBuzz for production.
 import Pretext from '../components/Pretext.vue'
 </script>
 
-Use [pretext] to do text shaping & layout.
+Select text to resize it with the corner handles, or drag outside a corner to rotate it. Double-click to edit the text in place. Resizing reuses the SDF atlas when only the display font size changes.
+
+See [Pretext] for the upstream layout APIs.
 
 <Pretext />
 
-[pretext]: https://github.com/chenglou/pretext
+[Pretext]: https://github.com/chenglou/pretext

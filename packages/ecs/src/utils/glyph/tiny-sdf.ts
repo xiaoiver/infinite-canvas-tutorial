@@ -129,18 +129,13 @@ export class TinySDF {
     // The integer/pixel part of the top alignment is encoded in metrics.glyphTop
     // The remainder is implicitly encoded in the rasterization
     const glyphTop = Math.ceil(actualBoundingBoxAscent);
-    const glyphLeft = 0;
-
-    // If the glyph overflows the canvas size, it will be clipped at the bottom/right
-    const w = Math.max(
+    // Canvas reports the left extent as a distance *left* of the pen origin.
+    // Keep the signed bearing separately from advance, and rasterize all ink,
+    // including overhangs such as an italic f or Gaegu's j descender.
+    const glyphLeft = Math.floor(-actualBoundingBoxLeft);
+    const w = Math.max(0, Math.ceil(actualBoundingBoxRight) - glyphLeft);
+    const h = Math.max(
       0,
-      Math.min(
-        this.size - this.buffer,
-        Math.ceil(actualBoundingBoxRight - actualBoundingBoxLeft),
-      ),
-    );
-    const h = Math.min(
-      this.size - this.buffer,
       glyphTop + Math.ceil(actualBoundingBoxDescent),
     );
 
@@ -165,8 +160,19 @@ export class TinySDF {
     const pad = this.buffer;
 
     const { ctx, buffer } = this;
-    ctx.clearRect(buffer, buffer, w, h);
-    ctx.fillText(char, buffer, buffer + glyphTop);
+    const size = Math.max(this.size, w + buffer, h + buffer);
+    if (size > this.size) {
+      // Resizing clears Canvas state. Wide graphemes must not be truncated to
+      // the initial em-sized scratch canvas.
+      const { font, fillStyle } = ctx;
+      ctx.canvas.width = ctx.canvas.height = this.size = size;
+      ctx.font = font;
+      ctx.fillStyle = fillStyle;
+      ctx.textBaseline = 'alphabetic';
+      ctx.textAlign = 'left';
+    }
+    ctx.clearRect(0, 0, this.size, this.size);
+    ctx.fillText(char, buffer - glyphLeft, buffer + glyphTop);
     const imageData = ctx.getImageData(buffer, buffer, w, h);
 
     let data: Uint8Array;

@@ -8,6 +8,7 @@ export default defineConfig({
     'dash-rendering.spec.ts',
     'ecs-dash-rendering.spec.ts',
     'text-path.spec.ts',
+    'ecs-text.spec.ts',
   ],
   testIgnore: [],
   outputDir: '.test-results/webkit',
