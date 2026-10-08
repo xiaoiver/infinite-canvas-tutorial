@@ -2024,37 +2024,28 @@ export class API {
   }
 
   applyCrop() {
-    const [croppingNodeId] = this.getAppState().layersCropping;
-    const node = this.getNodeById(croppingNodeId);
-    if (node && node.clipMode === 'soft') {
-      this.updateNode(node, { clipMode: 'clip', locked: false });
-    }
-    // Lock all children
-    const children = this.getChildren(node);
-    children.forEach((child) => {
-      this.updateNode(this.getNodeByEntity(child), { locked: true });
-    });
-    this.setAppState({
-      layersCropping: [],
-    });
-    this.selectNodes([node]);
-    this.record();
+    this.finishCrop();
   }
 
   cancelCrop() {
-    const [croppingNodeId] = this.getAppState().layersCropping;
-    const node = this.getNodeById(croppingNodeId);
-    if (node && node.clipMode === 'soft') {
+    // Preserve the existing exit behavior: cancellation keeps the current crop.
+    this.finishCrop();
+  }
+
+  private finishCrop() {
+    const [id] = this.getAppState().layersCropping;
+    const node = id && this.getNodeById(id);
+    if (!node || node.isDeleted || !this.getEntity(node)) return;
+    const children = this.getChildren(node)
+      .map((child) => this.getNodeByEntity(child))
+      .filter((child): child is SerializedNode => !!child && !child.isDeleted);
+    if (node.clipMode === 'soft') {
       this.updateNode(node, { clipMode: 'clip', locked: false });
     }
-    // Lock all children
-    const children = this.getChildren(node);
     children.forEach((child) => {
-      this.updateNode(this.getNodeByEntity(child), { locked: true });
+      if (!child.locked) this.updateNode(child, { locked: true });
     });
-    this.setAppState({
-      layersCropping: [],
-    });
+    this.setAppState({ layersCropping: [] });
     this.selectNodes([node]);
     this.record();
   }
