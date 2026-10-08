@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { test } from '../isolated-webkit-test';
 import { PNG } from 'pngjs';
 import type { DashCase } from './fixtures/dash';
 
@@ -37,7 +38,9 @@ export function registerDashRenderingTests(
     errors = [];
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(fixture);
-    await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
+    await expect(page.locator('#status')).toHaveText('Ready', {
+      timeout: 20000,
+    });
   });
   test.afterEach(() => expect(errors).toEqual([]));
 

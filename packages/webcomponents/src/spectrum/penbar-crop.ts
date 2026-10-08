@@ -1,12 +1,11 @@
-import { html, css, LitElement, PropertyValues } from 'lit';
+import { html, css, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { consume } from '@lit/context';
-import {
-  AppState,
-} from '@infinite-canvas-tutorial/ecs';
-import { apiContext, appStateContext } from '../context';
+import { AppState, type SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { apiContext, appStateContext, nodesContext } from '../context';
 import { ExtendedAPI } from '../API';
-import { Event } from '../event';
+import { live } from 'lit/directives/live.js';
+import { CropSession, type CropCommand } from './crop-command';
 import { msg, str } from '@lit/localize';
 
 @customElement('ic-spectrum-penbar-crop')
@@ -41,215 +40,195 @@ export class PenbarCrop extends LitElement {
     }
   `;
 
+  private appStateValue: AppState;
+  private apiValue: ExtendedAPI;
+  private nodesValue: SerializedNode[];
+  private session?: CropSession;
+
   @consume({ context: appStateContext, subscribe: true })
-  appState: AppState;
+  get appState() {
+    return this.appStateValue;
+  }
+  set appState(value: AppState) {
+    this.appStateValue = value;
+    // Invalidate synchronously, including exit/re-entry in one ECS frame.
+    if (this.session && !this.session.resolve()) this.releaseSession();
+    this.requestUpdate();
+  }
 
   @consume({ context: apiContext, subscribe: true })
-  api: ExtendedAPI;
+  get api() {
+    return this.apiValue;
+  }
+  set api(value: ExtendedAPI) {
+    if (value === this.apiValue) return;
+    this.releaseSession();
+    this.apiValue = value;
+    this.requestUpdate();
+  }
+
+  @consume({ context: nodesContext, subscribe: true })
+  get nodes() {
+    return this.nodesValue;
+  }
+  set nodes(value: SerializedNode[]) {
+    this.nodesValue = value;
+    if (this.session && !this.session.resolve()) this.releaseSession();
+    this.requestUpdate();
+  }
 
   @state()
-  private cropRatio = 2;
+  private cropRatio = 1;
 
   get clipNode() {
-    const { layersCropping } = this.appState;
-    const [croppingNodeId] = layersCropping;
-    const node = this.api.getNodeById(croppingNodeId);
-    return node;
+    return this.session?.resolve()?.clip;
   }
-
   get clipChildNode() {
-    const node = this.clipNode;
-    if (node) {
-      return this.api.getNodeByEntity(this.api.getChildren(node)[0]);
+    return this.session?.resolve()?.children[0];
+  }
+
+  private releaseSession() {
+    this.session?.dispose();
+    this.session = undefined;
+  }
+
+  private syncSession() {
+    if (!this.isConnected || !this.api) return;
+    if (this.session && !this.session.resolve()) this.releaseSession();
+    if (!this.session) {
+      const session = new CropSession(this.api);
+      if (session.resolve()) this.session = session;
+      else session.dispose();
     }
-    return null;
+    this.cropRatio = this.session?.ratio ?? 1;
   }
 
-  private handleApply() {
-    this.api.applyCrop();
+  protected willUpdate() {
+    this.syncSession();
   }
 
-  private handleCancel() {
-    this.api.cancelCrop();
+  connectedCallback() {
+    super.connectedCallback();
+    this.requestUpdate();
   }
 
-  private handleClipAspectChanged(event: CustomEvent) {
-    const value = (event.target as any).value;
-    if (value === 'original') {
-      const { x: px, y: py } = this.clipNode;
-      const { x: cx, y: cy, width: cw, height: ch } = this.clipChildNode;
-      // Make clip the same size of the original image
-      this.api.updateNode(this.clipNode, {
-        x: px + cx,
-        y: py + cy,
-        width: cw,
-        height: ch,
-      });
-      this.api.updateNode(this.clipChildNode, {
-        x: 0,
-        y: 0,
-      });
-    } else if (value === 'square') {
-      // 1:1: Use the smaller dimension of the child element as the side length, crop from center
-      const { x: px, y: py } = this.clipNode;
-      const { x: cx, y: cy, width: cw, height: ch } = this.clipChildNode;
-      const side = Math.min(cw, ch);
-      const offsetX = (cw - side) / 2;
-      const offsetY = (ch - side) / 2;
-      this.api.updateNode(this.clipNode, {
-        x: px + cx + offsetX,
-        y: py + cy + offsetY,
-        width: side,
-        height: side,
-      });
-      this.api.updateNode(this.clipChildNode, {
-        x: -offsetX,
-        y: -offsetY,
-      });
-    } else if (value.includes(':')) {
-      const [w, h] = value.split(':').map(Number);
-      const ratio = w / h;
-      const { x: px, y: py } = this.clipNode;
-      const { x: cx, y: cy, width: cw, height: ch } = this.clipChildNode;
-      // Calculate the largest visible rectangle within the child element according to the ratio, centered
-      const clipW = Math.min(cw, ratio * ch);
-      const clipH = clipW / ratio;
-      const offsetX = (cw - clipW) / 2;
-      const offsetY = (ch - clipH) / 2;
-      this.api.updateNode(this.clipNode, {
-        x: px + cx + offsetX,
-        y: py + cy + offsetY,
-        width: clipW,
-        height: clipH,
-      });
-      this.api.updateNode(this.clipChildNode, {
-        x: -offsetX,
-        y: -offsetY,
-      });
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.releaseSession();
+  }
+
+  private async submit(event: Event, command: CropCommand) {
+    event.stopPropagation();
+    const control = event.currentTarget as HTMLElement;
+    if (
+      !this.isConnected ||
+      !control?.isConnected ||
+      !this.renderRoot.contains(control)
+    )
+      return;
+    this.syncSession();
+    const session = this.session;
+    if (!session) return;
+    await session.edit(command);
+    if (this.session === session && this.isConnected) {
+      this.cropRatio = session.ratio;
+      this.requestUpdate();
     }
   }
 
-  private handleCropRatioChanged(e: Event & { target: HTMLInputElement }) {
-    const value = e.target.value;
-    this.cropRatio = parseFloat(value);
-
-    if (this.clipChildNode) {
-      const child = this.clipChildNode;
-      const width = this.originalClipWidth * this.cropRatio;
-      const height = this.originalClipHeight * this.cropRatio;
-      // Scale around the geometric center recorded when entering crop mode
-      const x = this.originalCenterX - width / 2;
-      const y = this.originalCenterY - height / 2;
-      this.api.updateNode(child, {
-        x,
-        y,
-        width,
-        height,
-      });
-      this.api.record();
-    }
+  private handleApply(event: Event) {
+    void this.submit(event, { kind: 'apply' });
+  }
+  private handleCancel(event: Event) {
+    void this.submit(event, { kind: 'cancel' });
   }
 
-  shouldUpdate(changedProperties: PropertyValues) {
-    const newLayersCropping = this.appState.layersCropping;
-    if (newLayersCropping.length !== this.previousLayersCropping.length) {
-      this.previousLayersCropping = newLayersCropping;
-
-      if (this.clipChildNode) {
-        const child = this.clipChildNode;
-        this.cropRatio = child.width / this.clipNode.width;
-        this.originalClipWidth = this.clipNode.width;
-        this.originalClipHeight = this.clipNode.height;
-        // Record the geometric center when entering crop mode (in clip coordinates), scale around this center when ratio changes
-        this.originalCenterX = child.x + child.width / 2;
-        this.originalCenterY = child.y + child.height / 2;
-      }
-      return true;
-    }
-
-    return super.shouldUpdate(changedProperties);
+  private handleClipAspectChanged(event: Event) {
+    const value = (event.currentTarget as HTMLElement & { value: string })
+      .value;
+    void this.submit(event, { kind: 'aspect', value });
   }
 
-  private previousLayersCropping: string[] = [];
-  private originalClipWidth = 0;
-  private originalClipHeight = 0;
-  /** Geometric center of the child node in clip coordinates when entering crop mode, scale around this point when ratio changes */
-  private originalCenterX = 0;
-  private originalCenterY = 0;
+  private handleCropRatioChanged(event: Event) {
+    const value = (event.currentTarget as HTMLElement & { value: number })
+      .value;
+    void this.submit(event, { kind: 'scale', value });
+  }
 
   render() {
-    const { layersCropping } = this.appState;
-
-    if (layersCropping.length === 1) {
+    if (this.session?.resolve()) {
       return html`
-      <div class="wrapper">
-      ${msg(str`Crop`)}
-      <sp-divider
-        size="s"
-        style="align-self: stretch; height: auto;"
-        vertical
-      ></sp-divider>
-      <sp-slider
-        size="s"
-        quiet
-        value=${this.cropRatio}
-        min=${1}
-        max=${4}
-        step=${0.2}
-        labelVisibility="none"
-        @input=${this.handleCropRatioChanged}
-      ></sp-slider>
-      <sp-divider
-        size="s"
-        style="align-self: stretch; height: auto;"
-        vertical
-      ></sp-divider>
-      <sp-action-menu size="s" label=${msg(str`Clip Aspect`)} @change=${this.handleClipAspectChanged}>
-        <sp-icon-crop slot="icon"></sp-icon-crop>
-        <sp-menu-item value="original">
-          ${msg(str`Original`)}
-        </sp-menu-item>
-        <sp-menu-item value="square">
-          ${msg(str`Square`)}
-        </sp-menu-item>
-        <sp-menu-item>
-          ${msg(str`Landscape`)}
-          <sp-menu slot="submenu" @change=${this.handleClipAspectChanged}>
-            <sp-menu-item
-              value="16:9"
-            >16:9</sp-menu-item>
-            <sp-menu-item
-              value="4:3"
-            >4:3</sp-menu-item>
-            <sp-menu-item
-              value="3:2"
-            >3:2</sp-menu-item>
-          </sp-menu>
-        </sp-menu-item>
-        <sp-menu-item>
-          ${msg(str`Portrait`)}
-          <sp-menu slot="submenu" @change=${this.handleClipAspectChanged}>
-            <sp-menu-item
-              value="9:16"
-            >9:16</sp-menu-item>
-            <sp-menu-item
-              value="3:4"
-            >3:4</sp-menu-item>
-            <sp-menu-item
-              value="2:3"
-            >2:3</sp-menu-item>
-          </sp-menu>
-        </sp-menu-item>
-      </sp-action-menu>
-      <div class="buttons">
-        <sp-action-button quiet size="s" @click=${this.handleCancel}>
-          <sp-icon-cancel slot="icon"></sp-icon-cancel>
-        </sp-action-button>
-        <sp-action-button quiet size="s" @click=${this.handleApply}>
-          <sp-icon-checkmark slot="icon"></sp-icon-checkmark>
-        </sp-action-button>
-      </div>
-      </div>
+        <div class="wrapper">
+          ${msg(str`Crop`)}
+          <sp-divider
+            size="s"
+            style="align-self: stretch; height: auto;"
+            vertical
+          ></sp-divider>
+          <sp-slider
+            size="s"
+            quiet
+            .value=${live(this.cropRatio)}
+            label=${msg(str`Image scale`)}
+            ?disabled=${!this.session.geometry}
+            min=${1}
+            max=${4}
+            step=${0.2}
+            labelVisibility="none"
+            @input=${this.handleCropRatioChanged}
+          ></sp-slider>
+          <sp-divider
+            size="s"
+            style="align-self: stretch; height: auto;"
+            vertical
+          ></sp-divider>
+          <sp-action-menu
+            size="s"
+            ?disabled=${!this.session.geometry}
+            label=${msg(str`Clip Aspect`)}
+            @change=${this.handleClipAspectChanged}
+          >
+            <sp-icon-crop slot="icon"></sp-icon-crop>
+            <sp-menu-item value="original">
+              ${msg(str`Original`)}
+            </sp-menu-item>
+            <sp-menu-item value="square"> ${msg(str`Square`)} </sp-menu-item>
+            <sp-menu-item>
+              ${msg(str`Landscape`)}
+              <sp-menu slot="submenu" @change=${this.handleClipAspectChanged}>
+                <sp-menu-item value="16:9">16:9</sp-menu-item>
+                <sp-menu-item value="4:3">4:3</sp-menu-item>
+                <sp-menu-item value="3:2">3:2</sp-menu-item>
+              </sp-menu>
+            </sp-menu-item>
+            <sp-menu-item>
+              ${msg(str`Portrait`)}
+              <sp-menu slot="submenu" @change=${this.handleClipAspectChanged}>
+                <sp-menu-item value="9:16">9:16</sp-menu-item>
+                <sp-menu-item value="3:4">3:4</sp-menu-item>
+                <sp-menu-item value="2:3">2:3</sp-menu-item>
+              </sp-menu>
+            </sp-menu-item>
+          </sp-action-menu>
+          <div class="buttons">
+            <sp-action-button
+              quiet
+              size="s"
+              aria-label=${msg(str`Exit crop`)}
+              @click=${this.handleCancel}
+            >
+              <sp-icon-cancel slot="icon"></sp-icon-cancel>
+            </sp-action-button>
+            <sp-action-button
+              quiet
+              size="s"
+              aria-label=${msg(str`Apply crop`)}
+              @click=${this.handleApply}
+            >
+              <sp-icon-checkmark slot="icon"></sp-icon-checkmark>
+            </sp-action-button>
+          </div>
+        </div>
       `;
     }
   }

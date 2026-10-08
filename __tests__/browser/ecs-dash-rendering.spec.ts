@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect } from '@playwright/test';
+import { test } from '../isolated-webkit-test';
 import { PNG } from 'pngjs';
 import { compare, registerDashRenderingTests } from './dash-rendering-cases';
 import type { EcsDashCase } from './fixtures/ecs-dash';
