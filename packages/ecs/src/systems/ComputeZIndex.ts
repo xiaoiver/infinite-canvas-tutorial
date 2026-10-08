@@ -10,9 +10,25 @@ import {
 } from '../components';
 import { getDescendants, getSceneRoot } from './Transform';
 import { safeAddComponent } from '../history';
+import { sortByFractionalIndex } from './Sort';
 
 export function sortByZIndex(a: Entity, b: Entity) {
   return a.read(ZIndex).value - b.read(ZIndex).value;
+}
+
+function sortForReconciliation(a: Entity, b: Entity) {
+  const difference = sortByZIndex(a, b);
+  if (difference) return difference;
+
+  // Back-reference iteration order can change between frames. Preserve the
+  // established order of siblings sharing a ZIndex (e.g. the icon demo), so
+  // untouched neighbours remain valid bounds when regenerating moved keys.
+  const aHasKey = a.has(FractionalIndex);
+  const bHasKey = b.has(FractionalIndex);
+  if (aHasKey && bHasKey) return sortByFractionalIndex(a, b);
+  if (aHasKey) return -1;
+  if (bHasKey) return 1;
+  return 0;
 }
 
 export class ComputeZIndex extends System {
@@ -65,7 +81,14 @@ export class ComputeZIndex extends System {
     this.zIndexes.changed.forEach(collect);
 
     movedByCamera.forEach((moved, camera) => {
-      const descendants = getDescendants(camera, sortByZIndex);
+      const descendants = getDescendants(camera, sortForReconciliation);
+      // A moved parent carries its whole subtree in the flattened render order.
+      // Its children cannot keep their old keys as bounds for the parent's new
+      // key (history can rewrite a root without writing child ZIndex).
+      // This traversal visits parents before children, including nested groups.
+      descendants.forEach((entity) => {
+        if (moved.has(entity.read(Children).parent)) moved.add(entity);
+      });
       this.reconcileFractionalIndices(descendants, moved);
     });
   }
@@ -102,11 +125,17 @@ export class ComputeZIndex extends System {
       const prev = runStart - 1 >= 0 ? descendants[runStart - 1] : null;
       const next = runEnd < n ? descendants[runEnd] : null;
       const lowerBound =
-        (prev?.has(FractionalIndex) && prev.read(FractionalIndex).value) || null;
+        (prev?.has(FractionalIndex) && prev.read(FractionalIndex).value) ||
+        null;
       const upperBound =
-        (next?.has(FractionalIndex) && next.read(FractionalIndex).value) || null;
+        (next?.has(FractionalIndex) && next.read(FractionalIndex).value) ||
+        null;
 
-      const keys = generateNKeysBetween(lowerBound, upperBound, runEnd - runStart);
+      const keys = generateNKeysBetween(
+        lowerBound,
+        upperBound,
+        runEnd - runStart,
+      );
       for (let idx = runStart; idx < runEnd; idx++) {
         safeAddComponent(descendants[idx], FractionalIndex, {
           value: keys[idx - runStart],

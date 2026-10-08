@@ -353,7 +353,6 @@ export class Select extends System {
             Input,
             Locked,
             FillLayers,
-            StrokeLayers,
             Stroke,
             Rough,
             ComputedTextMetrics,
@@ -373,6 +372,8 @@ export class Select extends System {
             FillLayers,
             Opacity,
             Stroke,
+            // Resizing icons rebuilds their children's stroke layers.
+            StrokeLayers,
             Group,
             HTML,
             Embed,
