@@ -151,11 +151,14 @@ Therefore, we need to use custom mouse styles and be able to dynamically adjust 
 Apply the rotation transformation to the SVG icon to get the Cursor value at this time:
 
 ```ts
-`url("data:image/svg+xml,<svg height='32' width='32'>...
-    <g fill='none' transform='rotate(${
-      r + tr // rotation angle
-    } 16 16)>
+// SVG angles are in degrees; both reflections are in the object's local axes.
+const sx = scaleX < 0 ? -1 : 1;
+const sy = scaleY < 0 ? -1 : 1;
+const r = (rotation - cameraRotation) * RAD_TO_DEG;
+const transform = `translate(16 16) rotate(${r}) scale(${sx} ${sy}) rotate(${tr}) translate(-16 -16)`;
 ```
+
+Keep the sign of each scale axis. SVG applies transforms from right to left: orient the artwork for the handle, reflect in the object’s local axes, then rotate into the viewport. The determinant alone cannot distinguish horizontal, vertical and double reflection, and reflecting after rotation points the cursor in the wrong direction.
 
 And when the mouse gets closer to the anchor point, it changes from rotation to Resize interaction:
 
@@ -490,28 +493,23 @@ Rotation in Figma:
 > Drag counterclockwise to create a positive angle (towards 180° )
 > Hold down Shift to snap rotation values to increments of 15.
 
-1. First, compute the geometric center of the OBB, taking rotation into account.
-2. Then accumulate the rotation angle by taking the `atan2` delta relative to the previous sample point, and normalize it to `((-\pi,\pi])` with `atan2(sin, cos)` to avoid discontinuities when crossing `(\pm\pi)`.
-3. On pointer down, initialize `rotateLastPointerAngle` and `rotateAccumulated = 0` in canvas coordinates (with the same pixel-aligned snapping used by move logic). Keep the center fixed. When only changing rotation, use `alignObbOriginToFixedCenter` to derive the new `x/y` so the center stays at `(px, py)`, then call the existing `fitSelected` to reuse the same Konva-style delta transform pipeline as resize.
+1. On pointer down, save the OBB and both local and world pivots. Use the geometric center when no custom pivot is set.
+2. Track the previous pointer angle in canvas coordinates. Accumulate adjacent `atan2` deltas, normalized with `atan2(sin, cos)`, to stay continuous across ±π.
+3. Solve the new origin and rotation from that fixed pivot and initial OBB, then update nodes through `Select.fitSelected`. During multi-selection rotation, display the same rotated initial frame; restore the world-axis-aligned union on release.
+
+The ECS module `systems/select/rotate-gesture.ts` owns gesture start, sampling, completion and cleanup. `Select` retains input dispatch, node updates and history. `resize-gesture.ts` owns resize constraints, snapping, endpoint dragging and touch offsets.
 
 ```ts
-// 1.
-const [px, py] = this.obbWorldCenter(selection.obb);
-// 2.
-const cur = Math.atan2(canvasY - py, canvasX - px);
-let delta = cur - selection.rotateLastPointerAngle;
-delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-selection.rotateLastPointerAngle = cur;
-selection.rotateAccumulated += delta;
-// 3.
-const newRotation = selection.obb.rotation + selection.rotateAccumulated;
-const newAttrs = this.alignObbOriginToFixedCenter(
-    selection.obb,
-    px,
-    py,
-    newRotation,
-);
-this.fitSelected(api, newAttrs, selection);
+// Pointer down, after converting to canvas coordinates and pixel snapping:
+beginRotateGesture(api, selection, { x: canvasX, y: canvasY });
+
+// Pointer move:
+updateRotateGesture(api, selection, { x: canvasX, y: canvasY }, (obb) => {
+    this.fitSelected(api, obb, selection);
+});
+
+// Pointer up; Select records the resulting document once afterwards:
+finishRotateGesture(api, selection);
 ```
 
 <TransformerRectRotated />
@@ -538,22 +536,16 @@ tf.rotatePivotPinned = true;
 4. During rotation, use this pivot (fall back to geometric center if unset), then keep the pivot's world position fixed while solving new OBB origin:
 
 ```ts
-const [px, py] = this.getRotatePivotWorld(api, selection);
-const pivotLocalX = Number.isNaN(tf.rotatePivotX)
-    ? selection.obb.width / 2
-    : tf.rotatePivotX;
-const pivotLocalY = Number.isNaN(tf.rotatePivotY)
-    ? selection.obb.height / 2
-    : tf.rotatePivotY;
-
-const newAttrs = this.alignObbOriginToFixedPivot(
-    selection.obb,
-    pivotLocalX,
-    pivotLocalY,
-    px,
-    py,
-    newRotation,
-);
+const { obb, pivotWorld: [px, py], pivotLocal: [lx, ly] } = gesture;
+const rotation = obb.rotation + gesture.accumulated;
+const c = Math.cos(rotation);
+const s = Math.sin(rotation);
+const newAttrs = {
+    ...obb,
+    x: px - lx * obb.scaleX * c + ly * obb.scaleY * s,
+    y: py - lx * obb.scaleX * s - ly * obb.scaleY * c,
+    rotation,
+};
 ```
 
 5. Reset pivot to center when the selected node set changes.
