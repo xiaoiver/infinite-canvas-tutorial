@@ -611,6 +611,20 @@ export type EllipseShape = ShapeElement & {
   s: MultiDimensional;
 };
 
+export type PolyStarShape = ShapeElement & {
+  /** 1 = star, 2 = polygon. */
+  sy: 1 | 2;
+  /** 3 reverses path winding. */
+  d?: number;
+  pt: Value;
+  p: MultiDimensional;
+  r: Value;
+  or: Value;
+  os: Value;
+  ir?: Value;
+  is?: Value;
+};
+
 export type MultiDimensional = {
   /**
    * number[]: Non-animated value.

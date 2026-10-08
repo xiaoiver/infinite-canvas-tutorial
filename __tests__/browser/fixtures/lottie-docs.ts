@@ -1,6 +1,7 @@
 import { createApp } from 'vue';
 import BouncyBall from '../../../packages/site/docs/components/AnimationLottieBouncyBall.vue';
 import Bezier from '../../../packages/site/docs/components/AnimationLottieBezier.vue';
+import PolyStar from '../../../packages/site/docs/components/AnimationLottiePolyStar.vue';
 import type { API } from '../../../packages/ecs/src';
 
 let api: API | undefined;
@@ -15,9 +16,11 @@ window.fetch = (input, options) => {
   );
   return nativeFetch(input, options);
 };
-function mount(bezier = false) {
+function mount(bezier: boolean | 'polystar' = false) {
   api = undefined;
-  app = createApp(bezier ? Bezier : BouncyBall);
+  app = createApp(
+    bezier === 'polystar' ? PolyStar : bezier ? Bezier : BouncyBall,
+  );
   app.mount('#demo');
   document.querySelector('ic-spectrum-canvas')!.addEventListener(
     'ic-ready',
@@ -31,6 +34,14 @@ const probe = {
   mount,
   unmount: () => app.unmount(),
   nodes: () => api?.getNodes().length ?? 0,
+  paths: () =>
+    api
+      ?.getNodes()
+      .filter((node) => node.type === 'path')
+      .map(
+        (node) =>
+          api!.getNodeAnimationController(node.id)?.getCurrentValues()?.d,
+      ) ?? [],
   ready: () => !!api,
   cancelled: () => cancelled,
 };
@@ -40,4 +51,5 @@ declare global {
   }
 }
 window.lottieDocs = probe;
-mount(new URLSearchParams(location.search).has('bezier'));
+const params = new URLSearchParams(location.search);
+mount(params.has('polystar') ? 'polystar' : params.has('bezier'));

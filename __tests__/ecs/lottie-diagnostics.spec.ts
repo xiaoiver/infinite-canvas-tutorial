@@ -35,11 +35,6 @@ test('reports nested compatibility gaps with stable JSON pointers without mutati
   expect(diagnostics).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        code: 'shape.sr',
-        severity: 'unsupported',
-        path: '/layers/0/shapes/0/it/0',
-      }),
-      expect.objectContaining({
         code: 'shape.rp',
         severity: 'unsupported',
         path: '/layers/0/shapes/0/it/1',
@@ -76,6 +71,18 @@ test('supported primitives, hidden features and effect type codes do not produce
             { ty: 'sh' },
             { ty: 'fl' },
             { ty: 'st' },
+            {
+              ty: 'sr',
+              sy: 1,
+              pt: {
+                a: 1,
+                k: [
+                  { t: 0, s: [5] },
+                  { t: 30, s: [8] },
+                ],
+              },
+            },
+            { ty: 'sr', sy: 2 },
             { ty: 'sr', hd: true },
           ],
         },

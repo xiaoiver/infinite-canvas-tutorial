@@ -72,6 +72,12 @@ export function useLottieExample(url: string, cameraX = 0) {
     animation?.stop();
     if (animation) playStateLabel.value = 'stopped';
   }
+  function onSeek(frame: number) {
+    if (!animation) return;
+    animation.pause();
+    animation.goTo(frame, true);
+    playStateLabel.value = 'paused';
+  }
   function onReverse() {
     if (!animation) return;
     direction = direction === 1 ? -1 : 1;
@@ -132,6 +138,7 @@ export function useLottieExample(url: string, cameraX = 0) {
     onPlay,
     onPause,
     onStop,
+    onSeek,
     onReverse,
     onRestart,
     applyPlaybackSpeed,

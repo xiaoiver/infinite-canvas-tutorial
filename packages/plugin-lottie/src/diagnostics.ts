@@ -21,7 +21,6 @@ export function inspectLottie(data: unknown): LottieDiagnostic[] {
     diagnostics.push({ code, severity, path, message });
   };
   const unsupportedShapes: Record<string, string> = {
-    sr: 'PolyStar',
     rp: 'Repeater',
     rd: 'Round Corners',
     mm: 'Merge Paths',
@@ -151,7 +150,7 @@ export function inspectLottie(data: unknown): LottieDiagnostic[] {
           'Trim Paths uses stroke dashes: filled shapes, multiple paths, existing dash patterns, animated zero-length round caps, direction and modifier ordering can differ from Lottie.',
         );
       else if (
-        !['gr', 'tr', 'sh', 'el', 'rc', 'fl', 'st', 'gf', 'gs', 'no'].includes(
+        !['gr', 'tr', 'sh', 'el', 'rc', 'sr', 'fl', 'st', 'gf', 'gs', 'no'].includes(
           value.ty,
         )
       )

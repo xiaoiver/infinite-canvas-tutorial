@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#status')).toHaveText('Ready');
 });
 
-function compare(urls: string[], label: string) {
+function compare(urls: string[], label: string, compareAlpha = true) {
   const [actual, reference] = urls.map((url) =>
     PNG.sync.read(Buffer.from(url.split(',')[1], 'base64')),
   );
@@ -65,7 +65,11 @@ function compare(urls: string[], label: string) {
     `${label}: coverage outside tolerance (${actualInk}/${expectedInk} ink)`,
   ).toBe(0);
   expect(maxColorError, `${label}: interior color`).toBeLessThanOrEqual(3);
-  expect(maxAlphaError, `${label}: interior alpha`).toBeLessThanOrEqual(3);
+  // SmoothPolyline has existing alpha seams at tessellated curve joins (e.g.
+  // alpha 192 instead of 255 inside a round stroke). Curved-stroke cases check
+  // geometry and color, not alpha parity; fills and straight trims check all three.
+  if (compareAlpha)
+    expect(maxAlphaError, `${label}: interior alpha`).toBeLessThanOrEqual(3);
   if (expectedInk === 0) expect(actualInk, label).toBe(0);
   else expect(actualInk, label).toBeGreaterThan(0);
 }
@@ -181,7 +185,9 @@ test('autoplay false, seek, stop, render idempotence and destroy own their resou
 test('canvas teardown cancels a running player and queued cleanup', async ({
   page,
 }) => {
-  await page.evaluate(() => window.lottieTest.load({ kind: 'move' }));
+  await page.evaluate(() =>
+    window.lottieTest.load({ kind: 'polystar', animated: true }),
+  );
   const result = await page.evaluate(async () => {
     const player = window.lottieTest.animation();
     const controllers = player.getAnimations();
@@ -193,4 +199,110 @@ test('canvas teardown cancels a running player and queued cleanup', async ({
   });
   expect(result.length).toBeGreaterThan(0);
   expect(result.every((state) => state === 'cancelled')).toBe(true);
+});
+
+test('PolyStar stars and polygons match lottie-web, including winding, roundness and degenerate radii', async ({
+  page,
+}) => {
+  for (const polygon of [false, true]) {
+    for (const options of [
+      { points: 5 },
+      { points: 6.75, roundness: 70 },
+      { points: 3, roundness: 100, direction: 3 },
+      { points: 7, roundness: 40, nested: true },
+      { outerRadius: 0, innerRadius: 0, roundness: 100 },
+      { innerRadius: 0, roundness: 50 },
+      { points: 5, roundness: 50, stroked: true },
+    ]) {
+      await page.evaluate(
+        (options: LottieCase) => window.lottieTest.load(options),
+        { kind: 'polystar', polygon, ...options } satisfies LottieCase,
+      );
+      expect(
+        await page.evaluate(() =>
+          window.lottieTest.animation().getDiagnostics(),
+        ),
+      ).toEqual([]);
+      compare(
+        await page.evaluate(() => window.lottieTest.seek(0)),
+        JSON.stringify({ polygon, ...options }),
+        !options.stroked,
+      );
+    }
+  }
+});
+
+for (const options of [
+  {},
+  { polygon: true, eased: true, direction: 3, nested: true },
+  { hold: true },
+  { startFrame: 10 },
+  { startFrame: 10, expression: true },
+  { animatedPaint: true },
+  { stroked: true, animatedPaint: true },
+]) {
+  test(`PolyStar parameter animation matches lottie-web: ${JSON.stringify(
+    options,
+  )}`, async ({ page }) => {
+    await page.evaluate(
+      (options: LottieCase) => window.lottieTest.load(options),
+      { kind: 'polystar', animated: true, ...options } satisfies LottieCase,
+    );
+    // Out-of-order seeks catch stale caches as well as forward/backward playback.
+    const end = 60 - (options.startFrame ?? 0);
+    for (const frame of [0, 7.5, 14.99, 15, 30, end, 22.25, 0])
+      compare(
+        await page.evaluate((frame) => window.lottieTest.seek(frame), frame),
+        `${JSON.stringify(options)} frame ${frame}`,
+        !options.stroked,
+      );
+  });
+}
+
+test('PolyStar paused seek, repeat render, stop and destroy retain one owner for geometry', async ({
+  page,
+}) => {
+  await page.evaluate(() =>
+    window.lottieTest.load({ kind: 'polystar', animated: true }),
+  );
+  const result = await page.evaluate(async () => {
+    const { animation, api, rendered } = window.lottieTest;
+    const player = animation(),
+      owner = api();
+    const controllers = player.getAnimations();
+    const paths = () =>
+      controllers
+        .map((controller) => controller.getCurrentValues()?.d)
+        .filter(Boolean);
+    const initial = paths();
+    player.goTo(30, true);
+    const middle = paths();
+    const count = owner.getNodes().length;
+    await owner.edit(() => player.render(owner));
+    const repeated =
+      owner.getNodes().length === count &&
+      player.getAnimations().length === controllers.length;
+    player.setDirection(-1);
+    player.play();
+    await rendered();
+    player.stop();
+    const stopped = paths();
+    await player.destroy();
+    await player.destroy();
+    await rendered();
+    return {
+      initial,
+      middle,
+      stopped,
+      repeated,
+      remaining: owner.getNodes().length,
+      states: controllers.map((controller) => controller.getPlayState()),
+    };
+  });
+  expect(result.initial).toHaveLength(1);
+  expect(result.middle).not.toEqual(result.initial);
+  expect(result.stopped).toEqual(result.initial);
+  expect(result.repeated).toBe(true);
+  expect(result.remaining).toBe(0);
+  expect(result.states.every((state) => state === 'cancelled')).toBe(true);
 });
