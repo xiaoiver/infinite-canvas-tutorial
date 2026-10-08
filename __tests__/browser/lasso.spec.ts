@@ -17,6 +17,15 @@ const outline: Point[] = [
 const settle = (page: Page) => page.evaluate(() => window.lassoTest.settle());
 const selected = (page: Page) =>
   page.evaluate(() => [...window.lassoTest.state().layersSelected].sort());
+const highlighted = (page: Page) =>
+  page.evaluate(() => [...window.lassoTest.state().layersHighlighted].sort());
+const hits = ['lasso-polyline', 'lasso-rect-1'];
+async function expectPreview(page: Page, ids: string[]) {
+  expect(await highlighted(page)).toEqual(ids);
+  expect(await page.evaluate(() => window.lassoTest.highlighted())).toEqual(
+    ids,
+  );
+}
 
 // Playwright has native WebKit taps but no native touch-drag command.
 // Use real mouse events on Chromium and Safari's touch PointerEvent path on WebKit.
@@ -25,6 +34,7 @@ async function drag(
   points: Point[],
   touch: boolean,
   beforeRelease?: () => Promise<void>,
+  afterMove?: (index: number) => Promise<void>,
 ) {
   const canvas = page.locator('canvas').first();
   const box = (await canvas.boundingBox())!;
@@ -52,7 +62,8 @@ async function drag(
     await page.mouse.down();
   }
   await settle(page);
-  for (const { x, y } of viewport.slice(1)) {
+  for (let i = 1; i < viewport.length; i++) {
+    const { x, y } = viewport[i];
     if (touch)
       await canvas.dispatchEvent('pointermove', {
         ...init,
@@ -61,6 +72,7 @@ async function drag(
       });
     else await page.mouse.move(box.x + x, box.y + y, { steps: 4 });
     await settle(page);
+    await afterMove?.(i);
   }
   await beforeRelease?.();
   const end = viewport[viewport.length - 1];
@@ -96,15 +108,26 @@ test.afterEach(async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('the lesson lasso selects both shapes only after release and can be reused', async ({
+test('the lesson lasso previews hits before release, commits once and can be reused', async ({
   page,
   browserName,
 }) => {
+  const history = await page.evaluate(() => window.lassoTest.history());
   await drag(page, outline, browserName === 'webkit', async () => {
     expect(errors).toEqual([]);
+    await expectPreview(page, hits);
     expect(await selected(page)).toEqual([]);
+    expect(await page.evaluate(() => window.lassoTest.history())).toEqual(
+      history,
+    );
   });
-  expect(await selected(page)).toEqual(['lasso-polyline', 'lasso-rect-1']);
+  expect(await selected(page)).toEqual(hits);
+  await expectPreview(page, []);
+  await page.evaluate(() => window.lassoTest.undo());
+  expect(await selected(page)).toEqual([]);
+  await expectPreview(page, []);
+  await page.evaluate(() => window.lassoTest.redo());
+  expect(await selected(page)).toEqual(hits);
   const tool = page.locator('ic-spectrum-penbar-lasso sp-action-button');
   if (browserName === 'webkit') await tool.tap();
   else await tool.click();
@@ -123,6 +146,30 @@ test('the lesson lasso selects both shapes only after release and can be reused'
     browserName === 'webkit',
   );
   expect(await selected(page)).toEqual(['lasso-polyline']);
+});
+
+test('the moving closing edge adds and removes live hits before release', async ({
+  page,
+  browserName,
+}) => {
+  await drag(
+    page,
+    [
+      [60, 60],
+      [440, 60],
+      [440, 240],
+      [380, 80],
+    ],
+    browserName === 'webkit',
+    undefined,
+    async (index) => {
+      // The unfinished path closes back to its start on every move. The last
+      // point narrows that polygon, excluding the rectangle again.
+      await expectPreview(page, index === 2 ? hits : []);
+      expect(await selected(page)).toEqual([]);
+    },
+  );
+  expect(await selected(page)).toEqual([]);
 });
 
 test('taps, straight drags and cancelled gestures leave no stale selection', async ({
@@ -146,21 +193,26 @@ test('taps, straight drags and cancelled gestures leave no stale selection', asy
   );
   expect(await selected(page)).toEqual([]);
   await drag(page, outline, touch, async () => {
+    await expectPreview(page, hits);
     await page.keyboard.press('Escape');
     await settle(page);
+    await expectPreview(page, []);
   });
   expect(await selected(page)).toEqual([]);
   await drag(page, outline, true, async () => {
+    await expectPreview(page, hits);
     await page.locator('canvas').first().dispatchEvent('pointercancel', {
       pointerType: 'touch',
       pointerId: 1,
       bubbles: true,
     });
     await settle(page);
+    await expectPreview(page, []);
   });
   expect(await selected(page)).toEqual([]);
   // A two-finger gesture cancels even when pointerup is set in the same frame.
   await drag(page, outline, true, async () => {
+    await expectPreview(page, hits);
     const canvas = page.locator('canvas').first();
     await canvas.dispatchEvent('pointerdown', {
       pointerType: 'touch',
@@ -171,6 +223,7 @@ test('taps, straight drags and cancelled gestures leave no stale selection', asy
       clientY: 150,
     });
     await settle(page);
+    await expectPreview(page, []);
     await canvas.dispatchEvent('pointerup', {
       pointerType: 'touch',
       pointerId: 2,
@@ -185,6 +238,27 @@ test('taps, straight drags and cancelled gestures leave no stale selection', asy
   expect(await selected(page)).toEqual([]);
   await drag(page, outline, touch);
   expect(await selected(page)).toEqual(['lasso-polyline', 'lasso-rect-1']);
+});
+
+test('changing tools or lasso mode clears the preview without committing', async ({
+  page,
+  browserName,
+}) => {
+  await drag(page, outline, browserName === 'webkit', async () => {
+    await expectPreview(page, hits);
+    await page.evaluate(() => window.lassoTest.selectTool());
+    await expectPreview(page, []);
+  });
+  expect(await selected(page)).toEqual([]);
+  await page.evaluate(() => window.lassoTest.activate('select'));
+  await drag(page, outline, browserName === 'webkit', async () => {
+    await expectPreview(page, hits);
+    await page.evaluate(() => window.lassoTest.activate('draw'));
+    await expectPreview(page, []);
+  });
+  expect(await selected(page)).toEqual([]);
+  expect(await page.evaluate(() => window.lassoTest.masks())).toEqual([]);
+  expect(await page.evaluate(() => window.lassoTest.drawn())).toEqual([]);
 });
 
 test('hit testing respects parent transforms, rotation, flips, camera zoom and locked/hidden shapes', async ({
@@ -260,6 +334,9 @@ test('hit testing respects parent transforms, rotation, flips, camera zoom and l
       [80, 230],
     ],
     browserName === 'webkit',
+    async () => {
+      await expectPreview(page, ['child', 'ellipse']);
+    },
   );
   expect(await selected(page)).toEqual(['child', 'ellipse']);
 });
@@ -310,6 +387,7 @@ test('draw mode still creates one closed mask and emits its event', async ({
     browserName === 'webkit',
     async () => {
       expect(await page.evaluate(() => window.lassoTest.masks())).toEqual([]);
+      await expectPreview(page, []);
     },
   );
   const masks = await page.evaluate(() => window.lassoTest.masks());
@@ -330,35 +408,19 @@ test('unmounting an active lasso leaves the next demo usable', async ({
   page,
   browserName,
 }) => {
-  const canvas = page.locator('canvas').first();
-  const box = (await canvas.boundingBox())!;
-  await canvas.dispatchEvent('pointerdown', {
-    pointerType: 'touch',
-    pointerId: 1,
-    bubbles: true,
-    button: 0,
-    clientX: box.x + 80,
-    clientY: box.y + 80,
+  await drag(page, outline, browserName === 'webkit', async () => {
+    await expectPreview(page, hits);
+    await page.evaluate(async () => {
+      window.lassoTest.unmount();
+      await window.lassoTest.settle();
+      window.lassoTest.mount();
+    });
+    await expect
+      .poll(() => page.evaluate(() => window.lassoTest.ready()))
+      .toBe(true);
+    await settle(page);
+    await expectPreview(page, []);
   });
-  await settle(page);
-  await canvas.dispatchEvent('pointermove', {
-    pointerType: 'touch',
-    pointerId: 1,
-    bubbles: true,
-    button: 0,
-    clientX: box.x + 180,
-    clientY: box.y + 180,
-  });
-  await settle(page);
-  await page.evaluate(async () => {
-    window.lassoTest.unmount();
-    await window.lassoTest.settle();
-    window.lassoTest.mount();
-  });
-  await expect
-    .poll(() => page.evaluate(() => window.lassoTest.ready()))
-    .toBe(true);
-  await settle(page);
   await drag(page, outline, browserName === 'webkit');
   expect(await selected(page)).toEqual(['lasso-polyline', 'lasso-rect-1']);
 });
