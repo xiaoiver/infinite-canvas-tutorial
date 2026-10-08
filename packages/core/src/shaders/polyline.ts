@@ -228,12 +228,23 @@ void main() {
     }
     norm2 *= sign2;
 
+    vec2 straightNormal = norm;
+    #ifdef USE_ADAPTIVE_PATH
+      // Dense curve samples often fall below the straight-join threshold.
+      // Both incident segments must still share the same cross-section:
+      // separate normals leave cracks outside the bend and overlap inside it.
+      // This symmetric expression produces the same offset from either side.
+      if (abs(D) < 0.01 && dot(norm, norm2) > 0.0) {
+        straightNormal = (norm + norm2) / (1.0 + dot(norm, norm2));
+      }
+    #endif
+
     if (abs(strokeAlignmentFactor) > 0.01) {
       float shift = strokeWidth * strokeAlignmentFactor;
       pointA += norm * shift;
       pointB += norm * shift;
       if (abs(D) < 0.01) {
-        base += norm * shift;
+        base += straightNormal * shift;
       } else {
         base += doBisect(norm, len, norm2, len2, shift, 0.0);
       }
@@ -252,7 +263,7 @@ void main() {
 
     if (vertexNum < 3.5) {
       if (abs(D) < 0.01) {
-        pos = dy * norm;
+        pos = dy * straightNormal;
       } else {
         if (flag < 0.5 && inner < 0.5) {
           pos = dy * norm;
@@ -307,7 +318,7 @@ void main() {
       v_Arc.w = strokeWidth;
       v_Type = 3.0;
     } else if (abs(D) < 0.01) {
-      pos = dy * norm;
+      pos = dy * straightNormal;
     } else {
       if (type >= ROUND && type < ROUND + 1.5) {
         if (inner > 0.5) {

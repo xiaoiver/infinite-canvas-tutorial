@@ -23,6 +23,42 @@ async function compare(page: Page) {
   expect(different).toBeLessThan(200);
 }
 
+async function expectUniformStrokeInterior(page: Page) {
+  const actual = PNG.sync.read(
+    await page.locator('#actual').screenshot({ scale: 'css' }),
+  );
+  const reference = PNG.sync.read(
+    await page.locator('#reference').screenshot({ scale: 'css' }),
+  );
+  let interiorPixels = 0;
+  let defects = 0;
+  for (let y = 2; y < actual.height - 2; y++) {
+    for (let x = 2; x < actual.width - 2; x++) {
+      const i = (y * actual.width + x) * 4;
+      if (reference.data[i] > 130) continue;
+      // Erode the native stroke by two pixels to exclude its external AA edge.
+      let interior = true;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const neighbor = ((y + dy) * actual.width + x + dx) * 4;
+          if (reference.data[neighbor] !== reference.data[i]) interior = false;
+        }
+      }
+      if (!interior) continue;
+      interiorPixels++;
+      // Detect light cracks and dark double blending, allowing only rounding.
+      if (
+        [0, 1, 2].some(
+          (c) => Math.abs(actual.data[i + c] - reference.data[i + c]) > 3,
+        )
+      )
+        defects++;
+    }
+  }
+  expect(interiorPixels).toBeGreaterThan(20000);
+  expect(defects).toBe(0);
+}
+
 for (const engine of ['ecs', 'core']) {
   test.describe(`${engine} adaptive path rendering`, () => {
     test.beforeEach(async ({ page }) => {
@@ -111,6 +147,50 @@ for (const engine of ['ecs', 'core']) {
       );
       await page.evaluate(() => window.pathTest.zoom(64));
       await compare(page);
+    });
+
+    for (const lineJoin of ['miter', 'round', 'bevel'] as const) {
+      test(`has no internal cracks or overdraw with ${lineJoin} joins`, async ({
+        page,
+      }) => {
+        // Multiple GPU readbacks can be slow on software-rendered CI workers.
+        test.setTimeout(120000);
+        for (const opacity of [1, 0.5]) {
+          await page.evaluate((options) => window.pathTest.render(options), {
+            d: 'M0 100 C0 -80 200 -80 200 100',
+            fill: false,
+            parentScale: 1,
+            lineJoin,
+            opacity,
+          });
+          await page.evaluate(() => window.pathTest.zoom(64));
+          await expectUniformStrokeInterior(page);
+        }
+      });
+    }
+
+    test('keeps mirrored high-DPI arc joins uniform across precision levels', async ({
+      page,
+    }) => {
+      test.setTimeout(120000);
+      await page.goto(`/${engine}-path-rendering.html?dpr=3`);
+      await expect(page.locator('#status')).toHaveText('Ready', {
+        timeout: 20000,
+      });
+      await page.evaluate(() =>
+        window.pathTest.render({
+          d: 'M0 100 A100 135 0 0 1 200 100',
+          fill: false,
+          parentScale: -2,
+          opacity: 0.5,
+          strokeWidth: 3,
+          lineJoin: 'round',
+        }),
+      );
+      for (const zoom of [32, 64]) {
+        await page.evaluate((zoom) => window.pathTest.zoom(zoom), zoom);
+        await expectUniformStrokeInterior(page);
+      }
     });
   });
 }
