@@ -236,6 +236,8 @@ class YogaSystem extends System {
 
 很容易实现按钮：
 
+这里让文字使用自身的实际宽度（`wordWrap: false`），由 Yoga 将测量后的文字盒居中放置。固定的 `wordWrapWidth` 搭配 `maxLines: 1` 和 `textOverflow: 'ellipsis'`，会在按钮仍有空间时提前截断文字；只有需要主动截断标签时才应使用这些配置。
+
 <YogaButton />
 
 ### Gap {#gap}

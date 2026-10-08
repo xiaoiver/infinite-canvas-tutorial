@@ -52,10 +52,7 @@ onMounted(async () => {
       zIndex: 1,
       textAlign: 'center',
       textBaseline: 'middle',
-      wordWrap: true,
-      wordWrapWidth: 100,
-      maxLines: 1,
-      textOverflow: 'ellipsis',
+      wordWrap: false,
     };
 
     const button2 = {
@@ -86,10 +83,7 @@ onMounted(async () => {
       zIndex: 1,
       textAlign: 'center',
       textBaseline: 'middle',
-      wordWrap: true,
-      wordWrapWidth: 100,
-      maxLines: 1,
-      textOverflow: 'ellipsis',
+      wordWrap: false,
     };
 
     api.updateNodes([button1, text1, button2, text2]);
