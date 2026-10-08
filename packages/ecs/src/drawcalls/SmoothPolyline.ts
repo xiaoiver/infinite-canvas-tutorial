@@ -16,7 +16,8 @@ import {
 } from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
-import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
+import { ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
+import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import {
   hasValidDecoration,
@@ -113,7 +114,7 @@ const strokeAlignmentMap = {
   outer: 1,
 } as const;
 
-export class SmoothPolyline extends Drawcall {
+export class SmoothPolyline extends PathDrawcall {
   #strokeGradientTexture: Texture | null = null;
   #strokeGradientFromPostChain = false;
   #rawStrokeGradientTexture: Texture | null = null;
@@ -199,6 +200,8 @@ export class SmoothPolyline extends Drawcall {
     return Math.max(0, this.pointsBuffer.length / strideFloats - 3);
   }
 
+  protected pathStroke = true;
+
   createGeometry(): void {
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
@@ -212,6 +215,7 @@ export class SmoothPolyline extends Drawcall {
           (shape.has(Rect) && this.index !== 2) ||
           shape.has(Polyline) ||
           shape.has(Line)),
+        this.pathPoints.get(shape),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -918,7 +922,11 @@ function generateMarkerPoints(
   return [...startMarker, ...endMarker];
 }
 
-export function updateBuffer(object: Entity, useRoughStroke = true) {
+export function updateBuffer(
+  object: Entity,
+  useRoughStroke = true,
+  pathPoints?: [number, number][][],
+) {
   const {
     linecap,
     linejoin,
@@ -963,7 +971,7 @@ export function updateBuffer(object: Entity, useRoughStroke = true) {
     vnLinejoin = vn.linejoin;
     vnLinecap = vn.linecap;
   } else if (object.has(Path)) {
-    const computed = object.read(ComputedPoints).points;
+    const computed = pathPoints ?? object.read(ComputedPoints).points;
     points = computed
       .map((subPathPoints, i) => {
         return [...subPathPoints].concat(

@@ -20,7 +20,8 @@ import {
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import earcut from 'earcut';
-import { Drawcall, ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
+import { ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
+import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location } from '../shaders/mesh';
 import {
   buildVectorNetworkFillMesh,
@@ -89,7 +90,7 @@ const strokeAlignmentMap = {
   outer: 2,
 } as const;
 
-export class Mesh extends Drawcall {
+export class Mesh extends PathDrawcall {
   #uniformBuffer: Buffer;
   #texture: Texture;
   /** Unfiltered GPU texture when applying {@link Filter} (chain samples this). */
@@ -400,7 +401,7 @@ export class Mesh extends Drawcall {
       rawPoints = instance.read(ComputedRough).fillPathPoints;
       tessellationMethod = TesselationMethod.EARCUT;
     } else if (instance.has(Path)) {
-      rawPoints = instance.read(ComputedPoints).points;
+      rawPoints = this.pathPoints.get(instance) ?? instance.read(ComputedPoints).points;
       tessellationMethod = instance.read(Path).tessellationMethod;
     } else if (instance.has(VectorNetwork)) {
       const { vertices, segments, regions } = instance.read(VectorNetwork);

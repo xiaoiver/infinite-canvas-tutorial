@@ -4,10 +4,10 @@ import { CubicBezier } from './interpolations';
 
 export class CubicBezierCurve extends Curve {
   constructor(
-    private v0 = vec2.create(),
-    private v1 = vec2.create(),
-    private v2 = vec2.create(),
-    private v3 = vec2.create(),
+    readonly v0 = vec2.create(),
+    readonly v1 = vec2.create(),
+    readonly v2 = vec2.create(),
+    readonly v3 = vec2.create(),
   ) {
     super();
 

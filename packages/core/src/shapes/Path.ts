@@ -1,6 +1,7 @@
 import { Shape, ShapeAttributes, isFillOrStrokeAffected } from './Shape';
 import { AABB } from './AABB';
 import { parsePath } from '../utils';
+import { pathGeometryBounds } from '../utils/path-rendering';
 import { GConstructor } from './mixins';
 
 export enum TesselationMethod {
@@ -45,18 +46,12 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
         Pick<PathAttributes, 'd'> & { points?: [number, number][][] }
       >,
     ) {
-      const { d, points } = attributes;
+      const { d } = attributes;
       if (!d) {
         return new AABB(0, 0, 0, 0);
       }
 
-      const flattedPoints = points.flat();
-
-      // FIXME: account for strokeLinejoin & strokeLinecap
-      const minX = Math.min(...flattedPoints.map((point) => point[0]));
-      const maxX = Math.max(...flattedPoints.map((point) => point[0]));
-      const minY = Math.min(...flattedPoints.map((point) => point[1]));
-      const maxY = Math.max(...flattedPoints.map((point) => point[1]));
+      const { minX, minY, maxX, maxY } = pathGeometryBounds(d);
 
       return new AABB(minX, minY, maxX, maxY);
     }

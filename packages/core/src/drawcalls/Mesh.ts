@@ -23,7 +23,8 @@ import {
   RoughRect,
   TesselationMethod,
 } from '../shapes';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { ZINDEX_FACTOR } from './Drawcall';
+import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location } from '../shaders/mesh';
 import { isClockWise, isString, paddingMat3, triangulate } from '../utils';
 import earcut from 'earcut';
@@ -34,7 +35,7 @@ const strokeAlignmentMap = {
   outer: 2,
 } as const;
 
-export class Mesh extends Drawcall {
+export class Mesh extends PathDrawcall {
   #uniformBuffer: Buffer;
   #texture: Texture;
 
@@ -84,7 +85,7 @@ export class Mesh extends Drawcall {
     let tessellationMethod: TesselationMethod;
 
     if (instance instanceof Path) {
-      rawPoints = instance.points;
+      rawPoints = this.pathPoints.get(instance) ?? instance.points;
       tessellationMethod = instance.tessellationMethod;
     } else if (
       instance instanceof RoughCircle ||

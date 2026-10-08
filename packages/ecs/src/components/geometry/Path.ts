@@ -1,7 +1,7 @@
 import { field, Type } from '@lastolivegames/becsy';
 import { AABB } from '../math';
 import { Marker, Stroke } from '../renderable';
-import { parsePath } from '../../utils';
+import { pathGeometryBounds } from '../../utils/path-rendering';
 
 export enum TesselationMethod {
   EARCUT = 'earcut',
@@ -10,7 +10,7 @@ export enum TesselationMethod {
 
 /**
  * 可选的 Path 几何包围盒提供者。设置后 `Path.getGeometryBounds` 将使用该函数。
- * 未设置时使用内置的采样点 bbox 实现。
+ * 未设置时使用内置的曲线极值 bbox 实现。
  */
 export type PathGeometryBoundsProvider = (
   path: Partial<Path>,
@@ -222,27 +222,10 @@ export class Path {
       return Path.geometryBoundsProvider(path, computed);
     }
     const { d } = path;
-    let { points } = computed || {};
     if (!d) {
       return new AABB(Infinity, Infinity, -Infinity, -Infinity);
     }
-
-    if (!points) {
-      const { subPaths } = parsePath(d);
-      points = subPaths.map((subPath) =>
-        subPath
-          .getPoints()
-          .map((point) => [point[0], point[1]] as [number, number]),
-      );
-    }
-
-    const flattedPoints = points.flat();
-
-    // FIXME: account for strokeLinejoin & strokeLinecap
-    const minX = Math.min(...flattedPoints.map((point) => point[0]));
-    const maxX = Math.max(...flattedPoints.map((point) => point[0]));
-    const minY = Math.min(...flattedPoints.map((point) => point[1]));
-    const maxY = Math.max(...flattedPoints.map((point) => point[1]));
+    const { minX, minY, maxX, maxY } = pathGeometryBounds(d);
 
     return new AABB(minX, minY, maxX, maxY);
   }
