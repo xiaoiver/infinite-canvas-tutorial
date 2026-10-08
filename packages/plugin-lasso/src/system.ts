@@ -120,8 +120,15 @@ export class LassoSystem extends System {
         });
         selection = this.selections.get(cameraId);
 
-        // Default is hidden
-        selection.svgSVGElement.style.overflow = 'visible';
+        // The trail uses canvas viewport coordinates and must not occupy space
+        // in the overlay layer, even after its path has been cleared.
+        Object.assign(selection.svgSVGElement.style, {
+          position: 'absolute',
+          inset: '0',
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
+        });
 
         api.getSvgLayer().appendChild(selection.svgSVGElement);
       }

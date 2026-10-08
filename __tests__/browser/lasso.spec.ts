@@ -54,11 +54,14 @@ async function drag(
   if (touch) {
     await canvas.dispatchEvent('pointerdown', {
       ...init,
-      clientX: box.x + start.x,
-      clientY: box.y + start.y,
+      clientX: Math.round(box.x + start.x),
+      clientY: Math.round(box.y + start.y),
     });
   } else {
-    await page.mouse.move(box.x + start.x, box.y + start.y);
+    await page.mouse.move(
+      Math.round(box.x + start.x),
+      Math.round(box.y + start.y),
+    );
     await page.mouse.down();
   }
   await settle(page);
@@ -67,10 +70,13 @@ async function drag(
     if (touch)
       await canvas.dispatchEvent('pointermove', {
         ...init,
-        clientX: box.x + x,
-        clientY: box.y + y,
+        clientX: Math.round(box.x + x),
+        clientY: Math.round(box.y + y),
       });
-    else await page.mouse.move(box.x + x, box.y + y, { steps: 4 });
+    else
+      await page.mouse.move(Math.round(box.x + x), Math.round(box.y + y), {
+        steps: 4,
+      });
     await settle(page);
     await afterMove?.(i);
   }
@@ -80,8 +86,8 @@ async function drag(
     await canvas.dispatchEvent('pointerup', {
       ...init,
       buttons: 0,
-      clientX: box.x + end.x,
-      clientY: box.y + end.y,
+      clientX: Math.round(box.x + end.x),
+      clientY: Math.round(box.y + end.y),
     });
   else await page.mouse.up();
   await settle(page);
@@ -171,6 +177,84 @@ test('the moving closing edge adds and removes live hits before release', async 
   );
   expect(await selected(page)).toEqual([]);
 });
+
+for (const zoomed of [false, true]) {
+  test(`switching from lasso keeps the marquee aligned with the pointer (${
+    zoomed ? 'zoomed, reverse drag' : 'forward drag'
+  })`, async ({ page, browserName }) => {
+    const touch = browserName === 'webkit';
+    // Match a documentation embed with content above it and a scrolled page.
+    await page.locator('#demo').evaluate((element) => {
+      element.style.margin = '160px 0 0 20px';
+      element.style.width = 'min(560px, calc(100vw - 40px))';
+      document.body.style.minHeight = '1100px';
+      window.scrollTo(0, 90);
+    });
+    await settle(page);
+    await drag(
+      page,
+      [
+        [80, 80],
+        [230, 80],
+        [230, 220],
+        [80, 220],
+      ],
+      touch,
+      async () => {
+        await page.keyboard.press('Escape');
+        await settle(page);
+      },
+    );
+    const selectTool = page.locator(
+      'ic-spectrum-penbar sp-action-button[value="select"]',
+    );
+    if (touch) await selectTool.tap();
+    else await selectTool.click();
+    await expect
+      .poll(() => page.evaluate(() => window.lassoTest.state().penbarSelected))
+      .toBe('select');
+    if (zoomed) await page.evaluate(() => window.lassoTest.camera());
+    const points: Point[] = zoomed
+      ? [
+          [230, 220],
+          [80, 80],
+        ]
+      : [
+          [80, 80],
+          [230, 220],
+        ];
+    await drag(page, points, touch, async () => {
+      const box = (await page.locator('canvas').first().boundingBox())!;
+      const [start, end] = await page.evaluate(
+        (points) => points.map(([x, y]) => window.lassoTest.point(x, y)),
+        points,
+      );
+      const rect = await page.evaluate(() => window.lassoTest.marquee());
+      expect(rect).toBeDefined();
+      expect(rect.x).toBeCloseTo(
+        Math.min(Math.round(box.x + start.x), Math.round(box.x + end.x)),
+        0,
+      );
+      expect(rect.y).toBeCloseTo(
+        Math.min(Math.round(box.y + start.y), Math.round(box.y + end.y)),
+        0,
+      );
+      expect(rect.width).toBeCloseTo(
+        Math.abs(Math.round(box.x + end.x) - Math.round(box.x + start.x)),
+        0,
+      );
+      expect(rect.height).toBeCloseTo(
+        Math.abs(Math.round(box.y + end.y) - Math.round(box.y + start.y)),
+        0,
+      );
+      expect(await selected(page)).toEqual(['lasso-rect-1']);
+    });
+    expect(await selected(page)).toEqual(['lasso-rect-1']);
+    expect(
+      await page.evaluate(() => window.lassoTest.marquee()),
+    ).toBeUndefined();
+  });
+}
 
 test('taps, straight drags and cancelled gestures leave no stale selection', async ({
   page,

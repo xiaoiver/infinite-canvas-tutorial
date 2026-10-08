@@ -47,6 +47,12 @@ const harness = {
       .map((node) => node.id)
       .sort(),
   history: () => api.getHistoryState(),
+  marquee: () => {
+    const rect = api
+      .getSvgLayer()
+      .querySelector<SVGRectElement>('svg[visibility="visible"] > rect');
+    return rect?.getBoundingClientRect().toJSON();
+  },
   masks: () => api.getNodes().filter((node) => node.type === 'path'),
   drawn: () => drawn,
   async mask() {
