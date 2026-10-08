@@ -264,70 +264,113 @@ export class ExtendedAPI extends API {
     }
   }
 
+  /** Insert and select once; cancellation rejects with AbortError before commit. */
   async createImageFromFile(
     file: File | string,
     {
       position,
       heuristicResize,
+      signal,
     }: Partial<{
       position: { x: number; y: number };
       heuristicResize: boolean;
+      signal: AbortSignal;
     }> = {},
   ) {
-    const size = {
-      width: this.element.clientWidth,
-      height: this.element.clientHeight,
-      zoom: this.getAppState().cameraZoom,
-    };
-
-    const [image, dataURL] = await Promise.all([
-      DOMAdapter.get().createImage(
-        file as Parameters<Adapter['createImage']>[0],
-      ) as Promise<ImageBitmap>,
-      isString(file) ? Promise.resolve(file) : getDataURL(file),
-    ]);
-
-    let cdnUrl = dataURL;
-    if (!isString(file) && this.upload) {
-      try {
-        cdnUrl = await this.upload(file);
-      } catch {
-        cdnUrl = dataURL;
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    const dispose = this.onDestroy(abort);
+    signal?.addEventListener('abort', abort, { once: true });
+    if (signal?.aborted) abort();
+    const checkActive = () => {
+      if (controller.signal.aborted) {
+        throw new DOMException('Image insertion was cancelled', 'AbortError');
       }
-    }
-
-    let height = image.height;
-    let width = image.width;
-    if (heuristicResize) {
-      // Heuristic to calculate the size of the image.
-      // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
-      const minHeight = Math.max(size.height - 120, 160);
-      // max 65% of canvas height, clamped to <300px, vh - 120px>
-      const maxHeight = Math.min(
-        minHeight,
-        Math.floor(size.height * 0.5) / size.zoom,
-      );
-      height = Math.min(image.height, maxHeight);
-      width = height * (image.width / image.height);
-    }
-
-    const maxZIndex = this.getNodes().reduce(
-      (max, node) => Math.max(max, node.zIndex ?? 0),
-      0,
-    );
-    const node: RectSerializedNode = {
-      id: uuidv4(),
-      type: 'rect',
-      x: (position?.x ?? 0) - width / 2,
-      y: (position?.y ?? 0) - height / 2,
-      width,
-      height,
-      fills: [{ type: 'image', value: cdnUrl, opacity: 1 }],
-      lockAspectRatio: true,
-      zIndex: maxZIndex + 1,
     };
-    await updateAndSelectNodes(this, this.getAppState(), [node]);
-    return node;
+    // Caller-owned coordinates may change while decoding or uploading.
+    const center = position && { ...position };
+    try {
+      checkActive();
+      const size = {
+        width: this.element.clientWidth,
+        height: this.element.clientHeight,
+        zoom: this.getAppState().cameraZoom,
+      };
+
+      const [image, dataURL] = await Promise.all([
+        (
+          DOMAdapter.get().createImage(
+            file as Parameters<Adapter['createImage']>[0],
+          ) as Promise<ImageBitmap>
+        ).then((image) => {
+          const dimensions = { width: image.width, height: image.height };
+          // This bitmap only measures the source; rendering loads its own image.
+          image.close?.();
+          return dimensions;
+        }),
+        isString(file) ? Promise.resolve(file) : getDataURL(file),
+      ]);
+      checkActive();
+
+      let cdnUrl = dataURL;
+      if (!isString(file) && this.upload) {
+        try {
+          cdnUrl = await this.upload(file);
+        } catch {
+          cdnUrl = dataURL;
+        }
+      }
+      checkActive();
+
+      let height = image.height;
+      let width = image.width;
+      if (heuristicResize) {
+        // Heuristic to calculate the size of the image.
+        // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/components/App.tsx#L10059
+        const minHeight = Math.max(size.height - 120, 160);
+        // max 65% of canvas height, clamped to <300px, vh - 120px>
+        const maxHeight = Math.min(
+          minHeight,
+          Math.floor(size.height * 0.5) / size.zoom,
+        );
+        height = Math.min(image.height, maxHeight);
+        width = height * (image.width / image.height);
+      }
+
+      const maxZIndex = this.getNodes().reduce(
+        (max, node) => Math.max(max, node.zIndex ?? 0),
+        0,
+      );
+      const node: RectSerializedNode = {
+        id: uuidv4(),
+        type: 'rect',
+        x: (center?.x ?? 0) - width / 2,
+        y: (center?.y ?? 0) - height / 2,
+        width,
+        height,
+        fills: [{ type: 'image', value: cdnUrl, opacity: 1 }],
+        lockAspectRatio: true,
+        zIndex: maxZIndex + 1,
+      };
+      const applied = await updateAndSelectNodes(
+        this,
+        this.getAppState(),
+        [node],
+        {
+          signal: controller.signal,
+        },
+      );
+      if (!applied) {
+        throw new DOMException('Image insertion was cancelled', 'AbortError');
+      }
+      return node;
+    } catch (error) {
+      checkActive();
+      throw error;
+    } finally {
+      signal?.removeEventListener('abort', abort);
+      dispose();
+    }
   }
 
   /**

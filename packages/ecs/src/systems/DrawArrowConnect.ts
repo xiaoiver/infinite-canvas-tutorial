@@ -46,6 +46,8 @@ import {
   Flex,
   StrokeLayers,
   Rough,
+  Text,
+  ComputedTextMetrics,
 } from '../components';
 import { API } from '../API';
 import type { PathSerializedNode, SerializedNode } from '../types/serialized-node';
@@ -89,7 +91,7 @@ export class DrawArrowConnect extends System {
     this.query(
       (q) =>
         q
-          .using(
+          .using(Text, ComputedTextMetrics).read.and.using(
             ComputedBounds,
             ComputedCamera,
             ComputedCameraControl,

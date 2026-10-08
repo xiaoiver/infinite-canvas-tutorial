@@ -10,6 +10,7 @@ export default defineConfig({
     'design-variable-edits.spec.ts',
     'theme-preferences.spec.ts',
     'selection-edits.spec.ts',
+    'image-tool.spec.ts',
   ],
   outputDir: '.test-results/react-webkit',
   use: {

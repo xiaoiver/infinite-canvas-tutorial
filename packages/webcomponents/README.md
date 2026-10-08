@@ -199,9 +199,27 @@ empty insertion, cancellation, or canvas destruction. It rejects on edit errors.
 does not guarantee a rendered frame or rollback on failure.
 
 Clipboard insertion and `createImageFromFile()` await this commit. The image
-method retains its prepared-node return value; the helper's boolean result can
-be used when callers need an explicit cancellation result. Pending insertions
-cannot change a destroyed canvas or a replacement canvas.
+method resolves with the inserted node and accepts an optional `signal` alongside
+`position` and `heuristicResize`. Cancellation or canvas destruction before
+commit rejects with `AbortError`; other preparation and edit errors propagate.
+Coordinates are copied before asynchronous preparation, and the temporary bitmap
+used for measuring dimensions is released. Upload failure still falls back to
+the local data URL. Cancellation discards late results; it does not guarantee
+cancellation of an underlying decoder, file picker, or upload request.
+
+The Spectrum image tool captures its canvas and viewport center when opened.
+After a file is chosen, it restores the selection tool before preparing and
+committing the image, so the ECS selection system retains the inserted image's
+selection. Tool changes, API replacement, disconnection, and canvas destruction
+cancel the pending toolbar request. An older request cannot reset a newer tool
+or insert into another canvas. Context changes cancel synchronously, including a
+tool change queued before image insertion in the same ECS frame. Tool restoration never records document history;
+image insertion and selection remain one undo step. Toolbar keyboard listeners
+are removed on disconnection, API replacement, and destruction, and rebound on
+reconnection, retaining the last drawing tool for each canvas. Browsers without
+the File System Access API open a native file input with `click()` rather than
+relying on WebKit's incomplete file `showPicker()` support. Change and cancel
+events remove the temporary input without focus timers or polling.
 
 ### Asynchronous image edits
 
