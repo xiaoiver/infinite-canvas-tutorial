@@ -14,6 +14,7 @@ export default defineConfig({
     'ecs-blend-mode.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',
+    'icon-resize.spec.ts',
     'lottie.spec.ts',
     'lottie-docs.spec.ts',
   ],
