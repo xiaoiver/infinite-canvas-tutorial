@@ -33,10 +33,11 @@ export default defineConfig({
   root: fileURLToPath(new URL('./fixtures', import.meta.url)),
   resolve: {
     alias: {
-      // The lasso fixture mounts the documentation's real shared example world.
+      // Documentation fixtures mount the real shared example world.
       // Resolve its plugins from source so CI needs no generated esm/lib folders.
       ...Object.fromEntries(
         [
+          ['lottie', 'plugin-lottie/src/index.ts'],
           ['webcomponents/spectrum', 'webcomponents/src/spectrum/index.ts'],
           ['webcomponents', 'webcomponents/src/index.ts'],
           ['eraser/spectrum', 'plugin-eraser/src/spectrum/index.ts'],

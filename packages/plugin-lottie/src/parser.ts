@@ -2154,12 +2154,12 @@ export function parse(
   context.autoplay = !!autoplay;
   context.fill = fill;
   context.expressions = expressions !== false;
-  context.expressionEngine = expressionEngine ?? 'simple';
+  context.expressionEngine = expressionEngine ?? 'lottie-web';
   context.animation = data;
   context.compWidth = data.w ?? 0;
   context.compHeight = data.h ?? 0;
   // eslint-disable-next-line no-nested-ternary
-  context.iterations = isNumber(loop) ? loop : loop ? Infinity : 1 as number;
+  context.iterations = isNumber(loop) ? Math.max(0, Math.floor(loop)) + 1 : loop ? Infinity : 1 as number;
   // @see https://lottiefiles.github.io/lottie-docs/assets/
   data.assets?.forEach((asset) => {
     context.assetsMap.set(asset.id, asset);

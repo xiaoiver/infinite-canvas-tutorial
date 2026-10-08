@@ -14,6 +14,8 @@ export default defineConfig({
     'ecs-blend-mode.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',
+    'lottie.spec.ts',
+    'lottie-docs.spec.ts',
   ],
   testIgnore: [],
   outputDir: '.test-results/webkit',
