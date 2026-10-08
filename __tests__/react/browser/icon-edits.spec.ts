@@ -60,10 +60,25 @@ test('the icon picker commits one patch and supports undo and redo', async ({
   await controls.getByRole('option', { name: 'triangle', exact: true }).click();
   await icon(page, 'icon-a', 'triangle');
   await icon(page, 'icon-b', 'square');
-  // The grid intentionally stays open for repeated picks. Close its overlay
-  // before using controls outside the canvas.
+  // A hovered option opens a tooltip above the picker. Let that hint close
+  // first so Escape is directed at the picker rather than the tooltip.
+  await controls.locator('.icon-name-picker-trigger').hover();
+  await expect(controls.locator('sp-tooltip[open]')).toHaveCount(0);
+  // Escape belongs to the picker: close the grid while keeping the canvas
+  // selection and its property controls intact.
   await page.keyboard.press('Escape');
-  await expect(controls).toHaveCount(0);
+  await expect(controls.locator('.iconfont-name-popover')).toBeHidden();
+  await expect(controls).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.apis.left.getAppState().layersSelected),
+    )
+    .toEqual(['icon-a']);
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.editingProbe.selectedEntities('left')),
+    )
+    .toEqual(['icon-a']);
   await page.getByTestId('left-undo').click();
   await icon(page, 'icon-a', 'square');
   await expect(page.getByTestId('left-undo')).toBeDisabled();

@@ -251,6 +251,9 @@ test('reopens within a narrow viewport after changing the desktop placement', as
   await expect(
     controls(page).locator('sp-overlay[trigger="topology@click"]'),
   ).toHaveJSProperty('state', 'closed');
+  // Spectrum still restores focus and cleans up slotted content over the next
+  // two frames. Finish that work before opening a new placement session.
+  await frame(page);
   await open(page);
   await expect
     .poll(async () => {

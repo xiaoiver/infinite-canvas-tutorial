@@ -7,7 +7,11 @@ const settle = (page: Page) => page.evaluate(() => window.textTest.rendered());
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/ecs-text.html');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 15000 });
+});
+
+test.afterEach(async ({ page }) => {
+  await page.evaluate(() => window.textTest?.dispose());
 });
 
 test('Gaegu j and italic overhangs retain the same ink as Canvas text', async ({

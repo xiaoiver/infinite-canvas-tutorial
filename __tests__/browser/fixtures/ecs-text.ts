@@ -156,6 +156,7 @@ editor.appState = api.getAppState();
 editor.requestUpdate();
 window.textTest = {
   api,
+  dispose: () => app.exit(),
   counts: () => ({ draws, uploads, rasterMs }),
   resetCounts: () => {
     draws = 0;
@@ -227,6 +228,7 @@ declare global {
   interface Window {
     textTest: {
       api: API;
+      dispose: () => Promise<void>;
       counts: () => { draws: number; uploads: number; rasterMs: number };
       resetCounts: () => void;
       rendered: () => Promise<void>;
