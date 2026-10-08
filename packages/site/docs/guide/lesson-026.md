@@ -2,6 +2,7 @@
 outline: deep
 description: 'Implement selection tools.'
 ---
+
 <script setup>
 import MultiSelection from '../components/MultiSelection.vue'
 import Lasso from '../components/Lasso.vue'
@@ -151,15 +152,21 @@ First, convert the point coordinates from the viewport coordinate system to the 
 ```ts
 import simplify from 'simplify-js';
 
-let lassoPath = super
+const lassoPath = super
     .getCurrentTrail()
-    ?.originalPoints?.map((p) => ({ x: p[0], y: p[1] }));
+    ?.originalPoints?.map(([x, y]) => this.api.viewport2Canvas({ x, y }));
 
 const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
-selectByLassoPath(simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]));
+const points = simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]);
+// Hit-test the complete path on pointerup, before clearing the trail.
+const selected = selectByLassoPath(this.api, points);
 ```
 
 <Lasso />
+
+Drag around the shapes, then release to select them. The lasso closes automatically; selection is committed once on release. Press Escape to cancel. Taps, tiny movements, cancelled touch gestures and pinch gestures do not select anything. Choose the lasso tool again for another selection.
+
+Hit testing uses world coordinates, including each shape's parent transforms, rotation and flips. Open polylines are tested segment by segment without an implicit closing edge. Locked and hidden shapes are excluded.
 
 ### Intersection detection of polygons {#polygon-intersection}
 
@@ -187,7 +194,7 @@ function selectByLassoPath(api: API, lassoPath: [number, number][]) {
         lassoBounds[3],
     );
 
-    // TODO: filter locked elements
+    // elementsFromBBox excludes locked elements; also filter UI and hidden nodes.
 }
 ```
 

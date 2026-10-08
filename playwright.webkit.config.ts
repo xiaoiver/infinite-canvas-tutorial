@@ -13,6 +13,7 @@ export default defineConfig({
     'ecs-text-path.spec.ts',
     'ecs-blend-mode.spec.ts',
     'size-label.spec.ts',
+    'lasso.spec.ts',
   ],
   testIgnore: [],
   outputDir: '.test-results/webkit',

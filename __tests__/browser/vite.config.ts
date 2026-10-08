@@ -16,7 +16,16 @@ export default defineConfig({
   cacheDir: fileURLToPath(
     new URL('../../node_modules/.vite/browser-tests', import.meta.url),
   ),
-  plugins: [wasm(), vue()],
+  plugins: [
+    wasm(),
+    vue({
+      template: {
+        compilerOptions: {
+          isCustomElement: (tag: string) => tag.startsWith('ic-'),
+        },
+      },
+    }),
+  ],
   optimizeDeps: {
     exclude: ['loro-crdt'],
     esbuildOptions: { target: 'esnext' },
@@ -24,6 +33,38 @@ export default defineConfig({
   root: fileURLToPath(new URL('./fixtures', import.meta.url)),
   resolve: {
     alias: {
+      // The lasso fixture mounts the documentation's real shared example world.
+      // Resolve its plugins from source so CI needs no generated esm/lib folders.
+      ...Object.fromEntries(
+        [
+          ['webcomponents/spectrum', 'webcomponents/src/spectrum/index.ts'],
+          ['webcomponents', 'webcomponents/src/index.ts'],
+          ['eraser/spectrum', 'plugin-eraser/src/spectrum/index.ts'],
+          ['eraser', 'plugin-eraser/src/index.ts'],
+          [
+            'laser-pointer/spectrum',
+            'plugin-laser-pointer/src/spectrum/index.ts',
+          ],
+          ['laser-pointer', 'plugin-laser-pointer/src/index.ts'],
+          ['filter', 'plugin-filter/src/index.ts'],
+          ['yoga', 'plugin-yoga/src/index.ts'],
+          ['vello', 'plugin-vello/src/index.ts'],
+          ['figma', 'plugin-figma/src/index.ts'],
+          ['mermaid', 'plugin-mermaid/src/index.ts'],
+        ].map(([name, path]) => [
+          `@infinite-canvas-tutorial/${name}`,
+          fileURLToPath(new URL(`../../packages/${path}`, import.meta.url)),
+        ]),
+      ),
+      '@infinite-canvas-tutorial/lasso/spectrum': fileURLToPath(
+        new URL(
+          '../../packages/plugin-lasso/src/spectrum/index.ts',
+          import.meta.url,
+        ),
+      ),
+      '@infinite-canvas-tutorial/lasso': fileURLToPath(
+        new URL('../../packages/plugin-lasso/src/index.ts', import.meta.url),
+      ),
       '@infinite-canvas-tutorial/core': fileURLToPath(
         new URL('../../packages/core/src/index.ts', import.meta.url),
       ),

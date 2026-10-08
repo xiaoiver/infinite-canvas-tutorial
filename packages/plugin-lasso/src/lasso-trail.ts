@@ -4,13 +4,11 @@
 
 import {
   API,
-  Pen,
   TRANSFORMER_ANCHOR_STROKE_COLOR,
   TRANSFORMER_MASK_FILL_COLOR,
 } from '@infinite-canvas-tutorial/ecs';
 import { AnimatedTrail } from '@infinite-canvas-tutorial/webcomponents';
 import type { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
-import { selectByLassoPath } from './utils';
 import simplify from 'simplify-js';
 
 /**
@@ -21,8 +19,6 @@ export const easeOut = (k: number) => {
 };
 
 export class LassoTrail extends AnimatedTrail {
-  private points: [number, number][];
-
   constructor(animationFrameHandler: AnimationFrameHandler, api: API) {
     const {
       trailStroke = TRANSFORMER_ANCHOR_STROKE_COLOR,
@@ -56,55 +52,37 @@ export class LassoTrail extends AnimatedTrail {
     });
   }
 
-  startPath(x: number, y: number, keepPreviousSelection = false) {
-    // clear any existing trails just in case
-    this.endPath();
-
+  startPath(x: number, y: number) {
+    this.clearTrails();
     super.startPath(x, y);
   }
 
-  addPointToPath = (x: number, y: number, keepPreviousSelection = false) => {
-    super.addPointToPath(x, y);
-    this.updateSelection();
-  };
-
   endPath(): void {
     super.endPath();
+    this.clearTrails();
+  }
+
+  clearTrails(): void {
     super.clearTrails();
+    this.stop();
   }
 
-  getPoints() {
-    return this.points;
-  }
+  /** Snapshot the complete gesture before endPath clears it. */
+  getPoints(): [number, number][] {
+    const originalPoints = this.getCurrentTrail()?.originalPoints;
+    if (!originalPoints?.length) return [];
 
-  private updateSelection() {
-    const lassoPath = super
-      .getCurrentTrail()
-      ?.originalPoints?.map((p) =>
-        this.api.viewport2Canvas({ x: p[0], y: p[1] }),
-      );
-
-    if (lassoPath) {
-      const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
-      const points = simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]) as [number, number][];
-      this.points = points;
-
-      if (this.api.getAppState().penbarLasso.mode === 'select') {
-        const selectedElements = selectByLassoPath(
-          this.api,
-          points,
-        );
-
-        if (selectedElements.length > 0) {
-          this.api.setAppState({
-            penbarSelected: Pen.SELECT,
-          });
-          this.api.selectNodes(
-            selectedElements.map((e) => this.api.getNodeByEntity(e)),
-          );
-          this.api.record();
-        }
-      }
+    const [startX, startY] = originalPoints[0];
+    // A tap or small touch jitter must not become a selection/mask.
+    if (
+      !originalPoints.some(([x, y]) => Math.hypot(x - startX, y - startY) >= 5)
+    ) {
+      return [];
     }
+    const lassoPath = originalPoints.map(([x, y]) =>
+      this.api.viewport2Canvas({ x, y }),
+    );
+    const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
+    return simplify(lassoPath, simplifyDistance).map(({ x, y }) => [x, y]);
   }
 }
