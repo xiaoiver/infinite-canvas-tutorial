@@ -4,6 +4,7 @@ description: '实现选择工具。'
 head:
     - ['meta', { property: 'og:title', content: '课程 26 - 选择工具' }]
 ---
+
 <script setup>
 import MultiSelection from '../../components/MultiSelection.vue'
 import Lasso from '../../components/Lasso.vue'
@@ -153,15 +154,21 @@ if (input.key === 'Escape') {
 ```ts
 import simplify from 'simplify-js';
 
-let lassoPath = super
+const lassoPath = super
     .getCurrentTrail()
-    ?.originalPoints?.map((p) => ({ x: p[0], y: p[1] }));
+    ?.originalPoints?.map(([x, y]) => this.api.viewport2Canvas({ x, y }));
 
 const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
-selectByLassoPath(simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]));
+const points = simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]);
+// Hit-test the complete path on pointerup, before clearing the trail.
+const selected = selectByLassoPath(this.api, points);
 ```
 
 <Lasso />
+
+按住并拖动以圈住图形，松开后完成选择。套索会自动闭合，并在松手时统一提交选区。按 Escape 可以取消；点击、轻微移动、触摸取消和双指缩放都不会误触发选择。再次圈选时，重新点击套索工具即可。
+
+命中检测使用世界坐标，包含图形及父节点的旋转、缩放与翻转。开放折线逐段检测，不会增加虚构的闭合边。锁定和隐藏的图形不会被选中。
 
 ### 多边形的相交性检测 {#polygon-intersection}
 
@@ -189,7 +196,7 @@ function selectByLassoPath(api: API, lassoPath: [number, number][]) {
         lassoBounds[3],
     );
 
-    // TODO: filter locked elements
+    // elementsFromBBox excludes locked elements; also filter UI and hidden nodes.
 }
 ```
 
