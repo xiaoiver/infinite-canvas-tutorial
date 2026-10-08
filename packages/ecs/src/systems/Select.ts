@@ -103,7 +103,6 @@ import {
   hasTerminalPoint,
   isBrowser,
   snapDraggedElements,
-  snapResizingElements,
   snapToGrid,
 } from '../utils';
 import { API } from '../API';
@@ -114,7 +113,7 @@ import { isEntityAlive, updateGlobalTransform } from './Transform';
 import { safeAddComponent } from '../history';
 import { updateComputedPoints } from './ComputePoints';
 import { DOMAdapter } from '../environment';
-import { hideLabel, initLabel, showLabel } from '..';
+import { hideLabel, initLabel } from '..';
 import type { EdgeSerializedNode, SerializedNode, VectorNetworkSerializedNode } from '../types/serialized-node';
 import { constraintAttrsFromCanvasPoint } from '../utils/binding/constraint-from-point';
 import {
@@ -135,10 +134,18 @@ import { splitVectorNetworkIntersections } from '../utils/vector-network-interse
 import { moveVectorHandle } from '../utils/vector-network-handles';
 import { VectorNetworkFillEditor } from './vector-network-fill-editor';
 import {
-  resizeOBB,
-  resizePointToLocal,
-  resizePointToWorld,
-} from '../utils/transformer-resize';
+  beginRotateGesture,
+  finishRotateGesture,
+  getRotatePivotWorld,
+  moveRotatePivot,
+  resetRotateGesture,
+  updateRotateGesture,
+  type RotateGesture,
+} from './select/rotate-gesture';
+import {
+  getResizePointerOffset,
+  updateResizeGesture,
+} from './select/resize-gesture';
 
 const LASSO_CURSOR =
   'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAOdEVYdFNvZnR3YXJlAEZpZ21hnrGWYwAABUFJREFUeAHtVltIXFcUPU6c0VGTWqdqRqtVTFrU+GFimgYpTUibQmm/JDZEKMF3rFjFigjFBi2I9ccPq6CIitEIvlFREYrioxYVK7UqPgk+2mh9j46jM/d07evVTjVpjTMN/eiGzT2ve/Y6+7HOYew/JLIjfQv2EuSMkXGhqqrq84iICG87O7vN/v7+VQnESwHCysrK4paXl3l1dTUnmZqaqiovL38PU3Jpyb8KRlZZWfmwra2No82dnZ0NsbGxfHR0lLAszszM1N69e9fjyD9mBWMbEBDgr9frdTY2NiIISQWA4S0tLYJWqyUwv9TV1cXcv3/fwwiEWYDYQM+vr6/PJCYmHgKQyWTcwsLioG/w9/cXAEYM0fT0dF1FRYW39L+MmSiUjA5JSUkPJicnRYNGho+BoRAhJHxjY4MjcT9iZhJ7KyurCzjcjpeX1zHjxn1ra2vBz8+Pz8/P89LS0ofMTGFQQB3b29sfZ2dnHzUuXL16lefk5FB1iCHY3NycbW5ufow5J6gtM4NQHM/FxMREUcLBsOHg5NeuXSObWwDXER0dnebu7h6M8UDoBagz+9MDJufCWejriO1UYGDgYczp5F1dXa1oU9L5IVRvKZVKV7Tl8fHx9ijf9Nra2gfmAGEJtS8sLMzr6+s7DAPxQUpKSjzaLtBXyHBoaOjZsbGxQvJMXl4en52d5SCzsOfse+IcoYWvent7v2PECQL5HzzxNtp2tCYyMlKNodXBwUGxEi5evMhHRkYoPwaRG492dnZ+wvzPILCSO3fueEp7n9gzSqiaOCEsLIxTtu/u7j7B2Hmau337ti0Zv3fvHlepVAYuiU6nM+Tn5/OgoCBuMBg4VVJubq4Ifnx8/NsXASFyQlxcXKRGoxFLDTHOI8/QJDZ7BHDkEcPe3h6Hp/Stra20TvDx8eGNjY0ioN7eXg7G5Lhf9LQPyjWIvUAoKM5eGRkZ35SUlJShTW5U4fRutDliTSfXwzNbICKdq6urnsbX1taeZGVllQYHB3+N5MwENk1RUZHg4eEhwCvr+Fqf1AuWuJKpvt3YfuKpoXKcIqqpqYm7ubnxpaWlaScnpxB4QQND2vDw8AysCZTL5f74kgZ4enp+QsTm4uIiIDc4wL1/zNBzAJDbVtg+OZHsQekUlxcWFlhmZiYDkL7FxcURlOMHMGqBuQ2Upxa5sEb/Q5VIwo25ublJqC9Kmq2srKglDwj/BIBJm+iN+jIQkOrmzZtiJyEhYRSfX3F6GZSGtNAtCSxVzw5Uh9M7Qxl4gqnVajkzQSyHh4frk5OTeUFBAe/u7i6XDnBGOpVxgonXdHp6+sfIE65QKMRquX79OoVGyU4pVnB9UmdnJ0cycdD1iGT8aGaLfXCFO2xqGhoaDIIg8IGBgR8wrIJas1PK2StXrlzGZrvFxcXiiUA+3z1rIZL1Bt1XUVFR3NHRkdbqfH19P8TUa8wEqibkKroBybi9vb0eScbBek9Rql9Aw9PS0j7b3t4eWF1d5UhQISQkxEAhwCPnK7ZfSSbdmjKpNL2GhoZ+hGvFVxLKkdfU1PCenh6RgFJTU8Xx+vp6YkE9CO1L9N9k++43+bZU4DHyBr4+uKy+P6Bheh0h08ULqaOjg94KHF6YvXTp0qeScQL+zIo7zUtGCRDOcL0tciLg1q1b7+KUNxwcHJQTExO/gZKf4oXdAwZsBi9oUAG/A9A6+2tJmwSAhPKB6Pqc1LaxtLSU6/cJgepfK32XodvMiHjMBYCESlAhAVBIfTK0C9VJXwLE/24TczwmLYy+B8Y4+19OKH8AGG0Nxm0lh+0AAAAASUVORK5CYII=") 0 4, pointer';
@@ -233,14 +240,7 @@ export interface SelectOBB {
     applied: [number, number];
   };
 
-  /** Pointer angle (rad) vs. {@link SelectOBB.obb} center on last rotate sample; for incremental drag. */
-  rotateLastPointerAngle?: number;
-  /** Total rotation applied during current rotate gesture (rad), relative to saved {@link SelectOBB.obb}. */
-  rotateAccumulated?: number;
-  /** 旋转手势开始时锁定的枢轴（画布坐标）；避免拖拽中 mask 每帧更新导致 `transformer2Canvas(pivot, mask)` 漂移。 */
-  rotatePivotWorldFixed?: [number, number];
-  /** 与 {@link SelectOBB.obb} 手势快照一致的局部枢轴；避免 `updateRectMask` 每帧按新 union 宽高重写 rotatePivot。 */
-  rotatePivotLocalFixed?: [number, number];
+  rotateGesture?: RotateGesture;
   selectedNodeIds?: string[];
 
   /** 绑定边重接时最后一次指针位置（画布坐标） */
@@ -654,135 +654,14 @@ export class Select extends System {
     this.saveSelectedOBB(api, selection);
   }
 
-  /** 选区 OBB 在画布坐标系下的几何中心（与 mask 的 Transform × Rect 一致）。 */
-  private obbWorldCenter(obb: SelectOBB['obb']): [number, number] {
-    const { x, y, width, height, rotation, scaleX, scaleY } = obb;
-    const lx = width / 2;
-    const ly = height / 2;
-    const c = Math.cos(rotation);
-    const s = Math.sin(rotation);
-    return [
-      x + lx * scaleX * c - ly * scaleY * s,
-      y + lx * scaleX * s + ly * scaleY * c,
-    ];
-  }
-
-  /** 保持任意本地 pivot 的世界坐标不动，仅改变旋转角时，反推新的 OBB 原点 (x, y)。 */
-  private alignObbOriginToFixedPivot(
-    obb: SelectOBB['obb'],
-    pivotLocalX: number,
-    pivotLocalY: number,
-    centerX: number,
-    centerY: number,
-    newRotation: number,
-  ) {
-    const c = Math.cos(newRotation);
-    const s = Math.sin(newRotation);
-    const { scaleX, scaleY, width, height } = obb;
-    return {
-      x: centerX - pivotLocalX * scaleX * c + pivotLocalY * scaleY * s,
-      y: centerY - pivotLocalX * scaleX * s - pivotLocalY * scaleY * c,
-      width,
-      height,
-      rotation: newRotation,
-      scaleX,
-      scaleY,
-    };
-  }
-
-  private getRotatePivotWorld(api: API, selection: SelectOBB): [number, number] {
-    const camera = api.getCamera();
-    const { mask, rotatePivotX, rotatePivotY } = camera.read(Transformable);
-    if (!Number.isNaN(rotatePivotX) && !Number.isNaN(rotatePivotY) && mask) {
-      const { x, y } = api.transformer2Canvas({ x: rotatePivotX, y: rotatePivotY }, mask);
-      return [x, y];
-    }
-    return this.obbWorldCenter(selection.obb);
-  }
-
-  /** 旋转拖拽全程使用指针按下时锁定的世界枢轴（见 {@link SelectOBB.rotatePivotWorldFixed}）。 */
-  private getRotatePivotWorldStable(api: API, selection: SelectOBB): [number, number] {
-    if (selection.rotatePivotWorldFixed) {
-      return selection.rotatePivotWorldFixed;
-    }
-    return this.getRotatePivotWorld(api, selection);
-  }
-
-  private handleRotatePivotMoving(api: API, canvasX: number, canvasY: number) {
-    const camera = api.getCamera();
-    const { mask, centerAnchor } = camera.read(Transformable);
-    if (!mask) {
-      return;
-    }
-    const { x, y } = api.canvas2Transformer({ x: canvasX, y: canvasY }, mask);
-    const tf = camera.write(Transformable);
-    tf.rotatePivotX = x;
-    tf.rotatePivotY = y;
-    tf.rotatePivotPinned = true;
-    if (centerAnchor?.has(Circle)) {
-      Object.assign(centerAnchor.write(Circle), { cx: x, cy: y });
-      updateGlobalTransform(centerAnchor);
-    }
-  }
-
-  private handleSelectedRotating(
-    api: API,
-    canvasX: number,
-    canvasY: number,
-  ) {
-    const camera = api.getCamera();
-    const selection = this.selections.get(camera.__id);
-    if (selection.rotateLastPointerAngle === undefined) {
-      return;
-    }
-    if (selection.rotateAccumulated === undefined) {
-      selection.rotateAccumulated = 0;
-    }
-
-    camera.write(Transformable).status = TransformableStatus.ROTATING;
-
-    const { selecteds } = camera.read(Transformable);
-    selecteds.forEach((selected) => {
-      if (selected.has(Highlighted)) {
-        selected.remove(Highlighted);
-      }
-    });
-
-    const [px, py] = this.getRotatePivotWorldStable(api, selection);
-    const cameraTf = camera.read(Transformable);
-    const pivotLocalX = selection.rotatePivotLocalFixed
-      ? selection.rotatePivotLocalFixed[0]
-      : Number.isNaN(cameraTf.rotatePivotX)
-        ? selection.obb.width / 2
-        : cameraTf.rotatePivotX;
-    const pivotLocalY = selection.rotatePivotLocalFixed
-      ? selection.rotatePivotLocalFixed[1]
-      : Number.isNaN(cameraTf.rotatePivotY)
-        ? selection.obb.height / 2
-        : cameraTf.rotatePivotY;
-    const cur = Math.atan2(canvasY - py, canvasX - px);
-    let delta = cur - selection.rotateLastPointerAngle;
-    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-    selection.rotateLastPointerAngle = cur;
-    selection.rotateAccumulated += delta;
-
-    const newRotation = selection.obb.rotation + selection.rotateAccumulated;
-    const newAttrs = this.alignObbOriginToFixedPivot(
-      selection.obb,
-      pivotLocalX,
-      pivotLocalY,
-      px,
-      py,
-      newRotation,
+  private handleSelectedRotating(api: API, canvasX: number, canvasY: number) {
+    const selection = this.selections.get(api.getCamera().__id);
+    updateRotateGesture(
+      api,
+      selection,
+      { x: canvasX, y: canvasY },
+      (obb) => this.fitSelected(api, obb, selection),
     );
-    this.fitSelected(api, newAttrs, selection);
-    const tf = camera.write(Transformable);
-    if (tf.transformerObbFrozenDuringRotate) {
-      // Keep the pointer-down geometry in selection.obb as the immutable input,
-      // but display that frame transformed around the same fixed world pivot.
-      Object.assign(tf.gestureFrozenSelectionOBB, newAttrs);
-      requestTransformerRefreshForCanvas(api.getCanvas());
-    }
   }
 
   private handleSelectedResizing(
@@ -793,230 +672,26 @@ export class Select extends System {
     centeredScaling: boolean,
     selection: SelectOBB,
   ) {
-    const camera = api.getCamera();
-    const { resizingAnchorName, label } = selection;
-
-    // Use the lock aspect ratio of the selected node if there is only one
-    const { layersSelected, flipEnabled } = api.getAppState();
-    if (layersSelected.length === 1) {
-      const node = api.getNodeById(layersSelected[0]);
-      lockAspectRatio = node.lockAspectRatio ?? lockAspectRatio;
-    }
-
-    [canvasX, canvasY] = this.snapResizePointer(
+    updateResizeGesture(
       api,
-      selection,
       canvasX,
       canvasY,
       lockAspectRatio,
       centeredScaling,
-    );
-
-    camera.write(Transformable).status = TransformableStatus.RESIZING;
-
-    if (
-      resizingAnchorName === AnchorName.X1Y1 ||
-      resizingAnchorName === AnchorName.X2Y2
-    ) {
-      const node = api.getNodeById(layersSelected[0]);
-      if (!node) {
-        return;
-      }
-      const selected = api.getEntity(node);
-      if (!selected?.has(GlobalTransform)) {
-        return;
-      }
-
-      const edgeNode = node;
-      const edgeEntity = selected;
-      if (
-        isEdgeBindingRebindCandidate(edgeEntity, edgeNode as EdgeSerializedNode)
-      ) {
-        selection.bindingRebindLastCanvas = { x: canvasX, y: canvasY };
-        this.applyBindingRebindHover(api, canvasX, canvasY);
-      }
-
-      const isX1Y1 = resizingAnchorName === AnchorName.X1Y1;
-
-      const inv = mat3.invert(
-        mat3.create(),
-        Mat3.toGLMat3(selected.read(GlobalTransform).matrix),
-      );
-      if (!inv) {
-        return;
-      }
-      const local = vec2.transformMat3(vec2.create(), [canvasX, canvasY], inv);
-
-      if (node.type === 'line' || node.type === 'rough-line') {
-        if (!selected.has(Line)) {
-          return;
-        }
-        const line = selected.read(Line);
-        let x1 = line.x1;
-        let y1 = line.y1;
-        let x2 = line.x2;
-        let y2 = line.y2;
-        if (isX1Y1) {
-          x1 = local[0];
-          y1 = local[1];
-        } else {
-          x2 = local[0];
-          y2 = local[1];
-        }
-        api.updateNode(node, { x1, y1, x2, y2 });
-      } else if (selected.has(Polyline)) {
-        const { points } = selected.read(Polyline);
-        const next = points.map((p) => [p[0], p[1]] as [number, number]);
-        if (isX1Y1) {
-          next[0] = [local[0], local[1]];
-        } else {
-          next[next.length - 1] = [local[0], local[1]];
-        }
-        api.updateNode(node, {
-          points: next.map((p) => p.join(',')).join(' '),
-        });
-      } else {
-        return;
-      }
-
-      updateGlobalTransform(selected);
-      updateComputedPoints(selected);
-
+      selection,
       {
-        const m = Mat3.toGLMat3(selected.read(GlobalTransform).matrix);
-        let fixedLocalX: number;
-        let fixedLocalY: number;
-        if (node.type === 'line' || node.type === 'rough-line') {
-          const ln = selected.read(Line);
-          fixedLocalX = isX1Y1 ? ln.x2 : ln.x1;
-          fixedLocalY = isX1Y1 ? ln.y2 : ln.y1;
-        } else {
-          const { points } = selected.read(Polyline);
-          const fp = isX1Y1 ? points[points.length - 1] : points[0];
-          fixedLocalX = fp[0];
-          fixedLocalY = fp[1];
-        }
-        const otherCanvas = vec2.transformMat3(
-          vec2.create(),
-          [fixedLocalX, fixedLocalY],
-          m,
-        );
-        const width = canvasX - otherCanvas[0];
-        const height = canvasY - otherCanvas[1];
-        showLabel(label, api, {
-          x: otherCanvas[0],
-          y: otherCanvas[1],
-          width,
-          height,
-          rotate: true,
-        });
-      }
-    } else {
-      const resized = resizeOBB(
-        selection.obb,
-        resizingAnchorName,
-        { x: canvasX, y: canvasY },
-        { flipEnabled, lockAspectRatio, centeredScaling },
-      );
-      if (!resized) return;
-      const left = [
-        AnchorName.TOP_LEFT, AnchorName.BOTTOM_LEFT, AnchorName.MIDDLE_LEFT,
-      ].includes(resizingAnchorName);
-      const right = [
-        AnchorName.TOP_RIGHT, AnchorName.BOTTOM_RIGHT, AnchorName.MIDDLE_RIGHT,
-      ].includes(resizingAnchorName);
-      const top = [
-        AnchorName.TOP_LEFT, AnchorName.TOP_RIGHT, AnchorName.TOP_CENTER,
-      ].includes(resizingAnchorName);
-      const bottom = [
-        AnchorName.BOTTOM_LEFT, AnchorName.BOTTOM_RIGHT, AnchorName.BOTTOM_CENTER,
-      ].includes(resizingAnchorName);
-      this.fitSelected(api, resized, selection, {
-        x: centeredScaling ? 0.5 : left ? 1 : right ? 0 : 0.5,
-        y: centeredScaling ? 0.5 : top ? 1 : bottom ? 0 : 0.5,
-      });
-      showLabel(label, api, resized);
-    }
-  }
-
-  private snapResizePointer(
-    api: API,
-    selection: SelectOBB,
-    canvasX: number,
-    canvasY: number,
-    lockAspectRatio: boolean,
-    centeredScaling: boolean,
-  ): [number, number] {
-    if (!api.getAppState().snapToObjectsEnabled) {
-      if (isBrowser) this.clearSnapLines(selection);
-      return [canvasX, canvasY];
-    }
-    const anchor = selection.resizingAnchorName;
-    let point: [number, number] = [canvasX, canvasY];
-    let direction: [number, number];
-    if (anchor !== AnchorName.X1Y1 && anchor !== AnchorName.X2Y2) {
-      const obb = selection.obb;
-      const tlX = 0;
-      const tlY = 0;
-      const brX = obb.width;
-      const brY = obb.height;
-      const local = resizePointToLocal(obb, { x: canvasX, y: canvasY });
-      let localDirection: [number, number];
-      if (
-        anchor === AnchorName.TOP_CENTER ||
-        anchor === AnchorName.BOTTOM_CENTER
-      ) {
-        local.x = (tlX + brX) / 2;
-        localDirection = [0, 1];
-      } else if (
-        anchor === AnchorName.MIDDLE_LEFT ||
-        anchor === AnchorName.MIDDLE_RIGHT
-      ) {
-        local.y = (tlY + brY) / 2;
-        localDirection = [1, 0];
-      } else if (lockAspectRatio) {
-        // Project the raw pointer onto the same aspect-ratio ray used by resize.
-        // Snapping then moves along this ray, instead of breaking the constraint.
-        const right =
-          anchor === AnchorName.TOP_RIGHT || anchor === AnchorName.BOTTOM_RIGHT;
-        const bottom =
-          anchor === AnchorName.BOTTOM_LEFT ||
-          anchor === AnchorName.BOTTOM_RIGHT;
-        const fixedX = centeredScaling
-          ? selection.obb.width / 2
-          : right
-          ? tlX
-          : brX;
-        const fixedY = centeredScaling
-          ? selection.obb.height / 2
-          : bottom
-          ? tlY
-          : brY;
-        const length = Math.hypot(local.x - fixedX, local.y - fixedY);
-        localDirection = [
-          (Math.sign(local.x - fixedX) || (right ? 1 : -1)) * selection.cos,
-          (Math.sign(local.y - fixedY) || (bottom ? 1 : -1)) * selection.sin,
-        ];
-        local.x = fixedX + localDirection[0] * length;
-        local.y = fixedY + localDirection[1] * length;
-      }
-      const world = resizePointToWorld(obb, local);
-      point = [world.x, world.y];
-      if (localDirection) {
-        const end = resizePointToWorld(obb, {
-          x: local.x + localDirection[0],
-          y: local.y + localDirection[1],
-        });
-        direction = [end.x - world.x, end.y - world.y];
-      }
-    }
-    const { snapOffset, snapLines } = snapResizingElements(
-      api,
-      point,
-      direction,
+        fit: (obb, origin) => this.fitSelected(api, obb, selection, origin),
+        snapLines: (lines) => {
+          if (isBrowser) this.renderSnapLines(selection, lines, api);
+        },
+        rebindEndpoint: (entity, node, x, y) => {
+          if (isEdgeBindingRebindCandidate(entity, node as EdgeSerializedNode)) {
+            selection.bindingRebindLastCanvas = { x, y };
+            this.applyBindingRebindHover(api, x, y);
+          }
+        },
+      },
     );
-    if (isBrowser) this.renderSnapLines(selection, snapLines, api);
-    return [point[0] + snapOffset[0], point[1] + snapOffset[1]];
   }
 
   private handleControlPointMoving(
@@ -2052,27 +1727,7 @@ export class Select extends System {
 
   private handleSelectedRotated(api: API, selection: SelectOBB) {
     const camera = api.getCamera();
-    const tfDone = camera.write(Transformable);
-    tfDone.status = TransformableStatus.ROTATED;
-    tfDone.transformerObbFrozenDuringRotate = false;
-
-    if (
-      tfDone.selecteds.length > 1 &&
-      tfDone.rotatePivotPinned &&
-      selection.rotatePivotWorldFixed
-    ) {
-      // Multi-selection returns to its world-axis-aligned union after release.
-      // Rebase the pinned pivot into that frame without moving it in the canvas.
-      const { x, y } = getOBB(camera);
-      const tf = camera.write(Transformable);
-      tf.rotatePivotX = selection.rotatePivotWorldFixed[0] - x;
-      tf.rotatePivotY = selection.rotatePivotWorldFixed[1] - y;
-    }
-
-    delete selection.rotateLastPointerAngle;
-    delete selection.rotateAccumulated;
-    delete selection.rotatePivotWorldFixed;
-    delete selection.rotatePivotLocalFixed;
+    finishRotateGesture(api, selection);
 
     api.setNodes(api.getNodes());
     api.record();
@@ -2524,14 +2179,10 @@ export class Select extends System {
         ) {
           this.saveSelectedOBB(api, selection);
           if (selection.mode === SelectionMode.READY_TO_RESIZE) {
-            delete selection.rotateLastPointerAngle;
-            delete selection.rotateAccumulated;
-            delete selection.rotatePivotWorldFixed;
-            delete selection.rotatePivotLocalFixed;
-            camera.write(Transformable).transformerObbFrozenDuringRotate = false;
+            resetRotateGesture(api, selection);
             selection.mode = SelectionMode.RESIZE;
             if (input.pointerType === 'touch') {
-              selection.resizePointerOffset = this.getResizePointerOffset(
+              selection.resizePointerOffset = getResizePointerOffset(
                 api,
                 selection.resizingAnchorName,
                 x,
@@ -2539,31 +2190,6 @@ export class Select extends System {
               );
             }
           } else if (selection.mode === SelectionMode.READY_TO_ROTATE) {
-            const [px, py] = this.getRotatePivotWorld(api, selection);
-            selection.rotatePivotWorldFixed = [px, py];
-            const cameraTfAtDown = camera.read(Transformable);
-            const plx = Number.isNaN(cameraTfAtDown.rotatePivotX)
-              ? selection.obb.width / 2
-              : cameraTfAtDown.rotatePivotX;
-            const ply = Number.isNaN(cameraTfAtDown.rotatePivotY)
-              ? selection.obb.height / 2
-              : cameraTfAtDown.rotatePivotY;
-            selection.rotatePivotLocalFixed = [plx, ply];
-
-            if (api.getAppState().layersSelected.length > 1) {
-              const tf = camera.write(Transformable);
-              tf.transformerObbFrozenDuringRotate = true;
-              const g = tf.gestureFrozenSelectionOBB;
-              const obb = selection.obb;
-              g.x = obb.x;
-              g.y = obb.y;
-              g.width = obb.width;
-              g.height = obb.height;
-              g.rotation = obb.rotation;
-              g.scaleX = obb.scaleX;
-              g.scaleY = obb.scaleY;
-            }
-
             let { x: cx, y: cy } = api.viewport2Canvas({ x, y });
             const { snapToPixelGridEnabled, snapToPixelGridSize } =
               api.getAppState();
@@ -2571,8 +2197,7 @@ export class Select extends System {
               cx = snapToGrid(cx, snapToPixelGridSize);
               cy = snapToGrid(cy, snapToPixelGridSize);
             }
-            selection.rotateLastPointerAngle = Math.atan2(cy - py, cx - px);
-            selection.rotateAccumulated = 0;
+            beginRotateGesture(api, selection, { x: cx, y: cy });
             selection.mode = SelectionMode.ROTATE;
           }
         } else if (selection.mode === SelectionMode.READY_TO_MOVE_PIVOT) {
@@ -2822,7 +2447,7 @@ export class Select extends System {
         } else if (selection.mode === SelectionMode.ROTATE) {
           this.handleSelectedRotating(api, ex, ey);
         } else if (selection.mode === SelectionMode.MOVE_PIVOT) {
-          this.handleRotatePivotMoving(api, ex, ey);
+          moveRotatePivot(api, { x: ex, y: ey });
         } else if (selection.mode === SelectionMode.MOVE_CONTROL_POINT) {
           this.handleControlPointMoving(api, ex, ey, selection, input.altKey);
         }
@@ -2861,11 +2486,7 @@ export class Select extends System {
           selection.mode === SelectionMode.ROTATE ||
           selection.mode === SelectionMode.READY_TO_ROTATE
         ) {
-          delete selection.rotateLastPointerAngle;
-          delete selection.rotateAccumulated;
-          delete selection.rotatePivotWorldFixed;
-          delete selection.rotatePivotLocalFixed;
-          camera.write(Transformable).transformerObbFrozenDuringRotate = false;
+          resetRotateGesture(api, selection);
         }
 
         if (api.getAppState().layersCropping.length > 0) {
@@ -2920,52 +2541,6 @@ export class Select extends System {
   finalize(): void {
     this.selections.forEach((selection) => selection.dispose?.());
     this.selections.clear();
-  }
-
-  private getResizePointerOffset(
-    api: API,
-    anchor: AnchorName,
-    x: number,
-    y: number,
-  ): [number, number] {
-    const tf = api.getCamera().read(Transformable);
-    let mask = tf.mask;
-    let hx: number;
-    let hy: number;
-    if (anchor === AnchorName.X1Y1 || anchor === AnchorName.X2Y2) {
-      const endpoint =
-        anchor === AnchorName.X1Y1 ? tf.x1y1Anchor : tf.x2y2Anchor;
-      const { cx, cy } = endpoint.read(Circle);
-      hx = cx;
-      hy = cy;
-      mask = tf.lineMask;
-    } else {
-      const { cx: left, cy: top } = tf.tlAnchor.read(Circle);
-      const { cx: right, cy: bottom } = tf.brAnchor.read(Circle);
-      hx =
-        anchor === AnchorName.TOP_LEFT ||
-        anchor === AnchorName.BOTTOM_LEFT ||
-        anchor === AnchorName.MIDDLE_LEFT
-          ? left
-          : anchor === AnchorName.TOP_RIGHT ||
-            anchor === AnchorName.BOTTOM_RIGHT ||
-            anchor === AnchorName.MIDDLE_RIGHT
-          ? right
-          : (left + right) / 2;
-      hy =
-        anchor === AnchorName.TOP_LEFT ||
-        anchor === AnchorName.TOP_RIGHT ||
-        anchor === AnchorName.TOP_CENTER
-          ? top
-          : anchor === AnchorName.BOTTOM_LEFT ||
-            anchor === AnchorName.BOTTOM_RIGHT ||
-            anchor === AnchorName.BOTTOM_CENTER
-          ? bottom
-          : (top + bottom) / 2;
-    }
-    const handle = api.transformer2Canvas({ x: hx, y: hy }, mask);
-    const pointer = api.viewport2Canvas({ x, y });
-    return [pointer.x - handle.x, pointer.y - handle.y];
   }
 
   private updateSelectionAtPointer(
@@ -3108,9 +2683,9 @@ export class Select extends System {
               cursor.value =
                 getCursor(
                   cursorName,
-                  rotation,
+                  rotation - camera.read(ComputedCamera).rotation,
                   '',
-                  Math.sign(scale[0] * scale[1]) < 0,
+                  [scale.x, scale.y],
                 ) ?? cursorName;
               selection.resizingAnchorName = anchor;
 
@@ -3308,7 +2883,7 @@ export class Select extends System {
     const delta = mat3.create();
     if (useWorldPivotRotate) {
       const theta = newAttrs.rotation - oldAttrs.rotation;
-      const [px, py] = this.getRotatePivotWorldStable(api, selection);
+      const [px, py] = getRotatePivotWorld(api, selection);
       mat3.identity(delta);
       mat3.translate(delta, delta, [px, py]);
       mat3.rotate(delta, delta, theta);

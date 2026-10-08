@@ -1,6 +1,5 @@
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -34,13 +33,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, createMouseEvent } from '../utils';
-
-DOMAdapter.set(NodeJSAdapter);
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Transformer', () => {
   it('should rotate rect correctly', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let $canvas: HTMLCanvasElement | undefined;
     let entity: Entity | undefined;
@@ -119,39 +117,20 @@ describe('Transformer', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
-
     try {
-      await app.world.execute();
-      await app.world.execute();
+      await app.run();
+      await frames();
 
       if ($canvas) {
-        $canvas.dispatchEvent(
-          createMouseEvent('mousemove', { clientX: 165, clientY: 100 }),
-        );
-        await app.world.execute();
-        $canvas.dispatchEvent(
-          createMouseEvent('mousedown', { clientX: 165, clientY: 100 }),
-        );
-        await app.world.execute();
-        $canvas.dispatchEvent(
-          createMouseEvent('mousemove', { clientX: 152, clientY: 102 }),
-        );
-        await app.world.execute();
-        $canvas.dispatchEvent(
-          createMouseEvent('mousemove', { clientX: 152, clientY: 150 }),
-        );
-        await app.world.execute();
-        $canvas.dispatchEvent(
-          createMouseEvent('mousemove', { clientX: 152, clientY: 200 }),
-        );
-        await app.world.execute();
-        $canvas.dispatchEvent(
-          createMouseEvent('mouseup', { clientX: 152, clientY: 200 }),
-        );
+        await interaction.mouse($canvas!, 'mousemove', 165, 100);
+        await interaction.mouse($canvas!, 'mousedown', 165, 100);
+        await interaction.mouse($canvas!, 'mousemove', 152, 102);
+        await interaction.mouse($canvas!, 'mousemove', 152, 150);
+        await interaction.mouse($canvas!, 'mousemove', 152, 200);
+        await interaction.mouse($canvas!, 'mouseup', 152, 200);
       }
 
-      for (let frame = 0; frame < 6; frame++) await app.world.execute();
+      await frames(6);
       expect(entity!.read(Transform).rotation).not.toBe(0);
 
       const dir = `${__dirname}/snapshots`;
@@ -160,7 +139,7 @@ describe('Transformer', () => {
         'transformer-rotate2',
       );
     } finally {
-      await app.exit();
+      await interaction.dispose();
     }
   });
 });

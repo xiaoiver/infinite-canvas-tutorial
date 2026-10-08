@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -35,13 +34,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
-
-DOMAdapter.set(NodeJSAdapter);
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Select and Undo', () => {
   it('should select and undo correctly', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let $canvas: HTMLCanvasElement | undefined;
     let canvasEntity: Entity | undefined;
@@ -131,23 +129,25 @@ describe('Select and Undo', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
-    if (api && child) {
-      await sleep(300);
-      api.selectNodes([child]);
-      api.record();
-      await sleep(300);
+    try {
+      await app.run();
+      if (api && child) {
+        await frames(6);
+        api.selectNodes([child]);
+        api.record();
+        await frames(6);
 
-      api.undo();
-      await sleep(300);
+        api.undo();
+        await frames(6);
+      }
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'transformer-select-undo',
+      );
+    } finally {
+      await interaction.dispose();
     }
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'transformer-select-undo',
-    );
-
-    await app.exit();
   });
 });

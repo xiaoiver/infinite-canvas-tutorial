@@ -1,3 +1,4 @@
+import { settleECSFrames } from './ecs-frames';
 import { createApp } from 'vue';
 import IconLucide from '../../../packages/site/docs/components/IconLucide.vue';
 import {
@@ -22,13 +23,7 @@ document.querySelector('ic-spectrum-canvas')!.addEventListener(
   { once: true },
 );
 
-async function settle() {
-  for (let i = 0; i < 4; i++) {
-    await new Promise<void>((resolve) =>
-      requestAnimationFrame(() => resolve()),
-    );
-  }
-}
+const settle = () => settleECSFrames(api, 4);
 
 const harness = {
   ready: () => !!api?.getNodeById('search-icon-lucide'),

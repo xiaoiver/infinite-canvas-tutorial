@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -32,17 +31,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, createMouseEvent } from '../utils';
-
-DOMAdapter.set({
-  ...NodeJSAdapter,
-  requestAnimationFrame: () => 0,
-  cancelAnimationFrame: () => {},
-});
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Draw triangle', () => {
   it('should render triangle correctly', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let api: API;
     let $canvas: HTMLCanvasElement;
@@ -104,24 +98,12 @@ describe('Draw triangle', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    const frames = async (count = 2) => {
-      for (let i = 0; i < count; i++) await app.world.execute();
-    };
-
     try {
       await app.run();
       await frames();
-      $canvas!.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
-      );
-      await frames();
-      $canvas!.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
-      );
-      await frames();
-      $canvas!.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 150, clientY: 150 }),
-      );
+      await interaction.mouse($canvas!, 'mousedown', 50, 50);
+      await interaction.mouse($canvas!, 'mousemove', 150, 150);
+      await interaction.mouse($canvas!, 'mouseup', 150, 150);
       // Completing the drawing selects the new node and then refreshes its
       // transformer. A fixed 300ms delay can capture an earlier frame in CI.
       await frames(6);
@@ -137,8 +119,7 @@ describe('Draw triangle', () => {
         'draw-triangle',
       );
     } finally {
-      await app.exit();
-      DOMAdapter.set(NodeJSAdapter);
+      await interaction.dispose();
     }
   });
 });

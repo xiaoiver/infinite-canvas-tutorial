@@ -149,11 +149,14 @@ function getCursor(anchorName: string, rad: number) {
 将旋转变换应用在 SVG 图标上，得到此时 Cursor 的值：
 
 ```ts
-`url("data:image/svg+xml,<svg height='32' width='32'>...
-    <g fill='none' transform='rotate(${
-      r + tr // 旋转角度
-    } 16 16)>
+// SVG angles are in degrees; both reflections are in the object's local axes.
+const sx = scaleX < 0 ? -1 : 1;
+const sy = scaleY < 0 ? -1 : 1;
+const r = (rotation - cameraRotation) * RAD_TO_DEG;
+const transform = `translate(16 16) rotate(${r}) scale(${sx} ${sy}) rotate(${tr}) translate(-16 -16)`;
 ```
+
+翻转必须分别保留 X/Y 轴的符号。SVG 变换从右向左应用：先按锚点类型设置图标方向，再沿图形的局部轴翻转，最后转到视口方向。只判断行列式正负无法区分水平、垂直和双轴翻转；在旋转之后做翻转也会使光标指向错误。
 
 而当鼠标进一步靠近锚点时，会从旋转变成 Resize 交互：
 
@@ -488,28 +491,23 @@ Figma 中的旋转交互如下：
 > Drag counterclockwise to create a positive angle (towards 180° )
 > Hold down Shift to snap rotation values to increments of 15.
 
-1. 首先需要计算 OBB 的几何中心，需要考虑旋转。
-2. 然后累积转角，用 `atan2` 相对上一采样点的差值，并用 `atan2(sin, cos)` 归一化到 `((-\pi,\pi])`，避免跨过 `(\pm\pi)` 时突变。
-3. 指针按下时在画布坐标（并与移动逻辑一致地做像素对齐栅格）下初始化 `rotateLastPointerAngle` 与 `rotateAccumulated = 0`。 保持中心不动。只改 rotation 时，用 `alignObbOriginToFixedCenter` 反推新的 `x/y`，使中心点仍在 `(px, py)`，再调用现有的 `fitSelected`，与 resize 共用同一套 Konva 式 delta 变换。
+1. 指针按下时保存 OBB、局部枢轴和世界枢轴；未自定义枢轴时使用几何中心。
+2. 在画布坐标下记录上一个指针角度，累积相邻采样点的 `atan2` 差值，并用 `atan2(sin, cos)` 归一化，避免跨过 ±π 时突变。
+3. 使用固定的枢轴和初始 OBB 求解新的原点与旋转角，随后由 `Select.fitSelected` 更新节点。多选旋转时，选框也使用这份初始 OBB 的旋转结果；松手后再恢复为图形的轴对齐包围框。
+
+ECS 的 `systems/select/rotate-gesture.ts` 负责手势开始、采样、结束及状态清理，`Select` 保留输入分发、节点更新和历史记录。`resize-gesture.ts` 则负责缩放约束、吸附、端点拖拽和触摸偏移。
 
 ```ts
-// 1.
-const [px, py] = this.obbWorldCenter(selection.obb);
-// 2.
-const cur = Math.atan2(canvasY - py, canvasX - px);
-let delta = cur - selection.rotateLastPointerAngle;
-delta = Math.atan2(Math.sin(delta), Math.cos(delta));
-selection.rotateLastPointerAngle = cur;
-selection.rotateAccumulated += delta;
-// 3.
-const newRotation = selection.obb.rotation + selection.rotateAccumulated;
-const newAttrs = this.alignObbOriginToFixedCenter(
-    selection.obb,
-    px,
-    py,
-    newRotation,
-);
-this.fitSelected(api, newAttrs, selection);
+// Pointer down, after converting to canvas coordinates and pixel snapping:
+beginRotateGesture(api, selection, { x: canvasX, y: canvasY });
+
+// Pointer move:
+updateRotateGesture(api, selection, { x: canvasX, y: canvasY }, (obb) => {
+    this.fitSelected(api, obb, selection);
+});
+
+// Pointer up; Select records the resulting document once afterwards:
+finishRotateGesture(api, selection);
 ```
 
 <TransformerRectRotated />
@@ -536,22 +534,16 @@ tf.rotatePivotPinned = true;
 4. 旋转时优先使用该 pivot（未设置时回退几何中心），并在求解新 OBB 原点时保持该 pivot 的世界坐标不变：
 
 ```ts
-const [px, py] = this.getRotatePivotWorld(api, selection);
-const pivotLocalX = Number.isNaN(tf.rotatePivotX)
-    ? selection.obb.width / 2
-    : tf.rotatePivotX;
-const pivotLocalY = Number.isNaN(tf.rotatePivotY)
-    ? selection.obb.height / 2
-    : tf.rotatePivotY;
-
-const newAttrs = this.alignObbOriginToFixedPivot(
-    selection.obb,
-    pivotLocalX,
-    pivotLocalY,
-    px,
-    py,
-    newRotation,
-);
+const { obb, pivotWorld: [px, py], pivotLocal: [lx, ly] } = gesture;
+const rotation = obb.rotation + gesture.accumulated;
+const c = Math.cos(rotation);
+const s = Math.sin(rotation);
+const newAttrs = {
+    ...obb,
+    x: px - lx * obb.scaleX * c + ly * obb.scaleY * s,
+    y: py - lx * obb.scaleX * s - ly * obb.scaleY * c,
+    rotation,
+};
 ```
 
 5. 当选中对象集合变化时，将 pivot 重置回几何中心。

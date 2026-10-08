@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -36,13 +35,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
-
-DOMAdapter.set(NodeJSAdapter);
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Transformer', () => {
   it('should resize group correctly', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let $canvas: HTMLCanvasElement | undefined;
     let canvasEntity: Entity | undefined;
@@ -130,52 +128,35 @@ describe('Transformer', () => {
         api.updateNodes([node, node2]);
         api.selectNodes([node]);
 
-        entity = api
-          .getEntity(node)
-          ?.hold();
+        entity = api.getEntity(node)?.hold();
       }
     }
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    try {
+      await app.run();
 
-    await sleep(300);
+      await frames(6);
 
-    if ($canvas) {
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 151, clientY: 101 }),
+      if ($canvas) {
+        await interaction.mouse($canvas!, 'mousemove', 151, 101);
+        await interaction.mouse($canvas!, 'mousedown', 152, 102);
+        await interaction.mouse($canvas!, 'mousemove', 152, 102);
+        await interaction.mouse($canvas!, 'mousemove', 152, 150);
+        await interaction.mouse($canvas!, 'mousemove', 152, 200);
+        await interaction.mouse($canvas!, 'mouseup', 152, 200);
+      }
+
+      await frames(6);
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'transformer-resize-group',
       );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 152, clientY: 102 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 152, clientY: 102 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 152, clientY: 150 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 152, clientY: 200 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 152, clientY: 200 }),
-      );
+    } finally {
+      await interaction.dispose();
     }
-
-    await sleep(300);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'transformer-resize-group',
-    );
-
-    await app.exit();
   });
 });

@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -37,18 +36,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, createMouseEvent } from '../utils';
-
-DOMAdapter.set({
-  ...NodeJSAdapter,
-  // Advance complete ECS frames between input events instead of racing timers.
-  requestAnimationFrame: () => 0,
-  cancelAnimationFrame: () => {},
-});
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Draw line', () => {
   it('should render line correctly', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let api: API;
     let $canvas: HTMLCanvasElement;
@@ -115,23 +108,8 @@ describe('Draw line', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    const frames = async (count = 2) => {
-      for (let i = 0; i < count; i++) await app.world.execute();
-    };
-    const mouse = async (type: string, x: number, y: number, time: number) => {
-      // EventWriter detects double-clicks with performance.now(). CI coverage
-      // and GPU work can exceed its 300ms window despite a short sleep.
-      // Mock only event dispatch; world execution keeps its normal clock.
-      const clock = jest.spyOn(performance, 'now').mockReturnValue(time);
-      try {
-        $canvas.dispatchEvent(
-          createMouseEvent(type, { clientX: x, clientY: y }),
-        );
-      } finally {
-        clock.mockRestore();
-      }
-      await frames();
-    };
+    const mouse = (type: string, x: number, y: number, time: number) =>
+      interaction.mouse($canvas, type, x, y, time);
 
     try {
       await app.run();
@@ -167,8 +145,7 @@ describe('Draw line', () => {
         'draw-line-edit',
       );
     } finally {
-      await app.exit();
-      DOMAdapter.set(NodeJSAdapter);
+      await interaction.dispose();
     }
   });
 });
