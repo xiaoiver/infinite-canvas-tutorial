@@ -353,7 +353,6 @@ export class Select extends System {
             Input,
             Locked,
             FillLayers,
-            StrokeLayers,
             Stroke,
             Rough,
             ComputedTextMetrics,
@@ -373,6 +372,8 @@ export class Select extends System {
             FillLayers,
             Opacity,
             Stroke,
+            // Resizing icons rebuilds their children's stroke layers.
+            StrokeLayers,
             Group,
             HTML,
             Embed,
@@ -2219,10 +2220,20 @@ export class Select extends System {
         });
 
         if (isBrowser) {
-          selection.brushContainer.style.overflow = 'visible';
-          selection.brushContainer.style.position = 'absolute';
-          selection.snapContainer.style.overflow = 'visible';
-          selection.snapContainer.style.position = 'absolute';
+          // Both overlays use viewport coordinates. Anchor them explicitly so
+          // other tools' SVG elements cannot shift their CSS static position.
+          for (const container of [
+            selection.brushContainer,
+            selection.snapContainer,
+          ]) {
+            Object.assign(container.style, {
+              position: 'absolute',
+              inset: '0',
+              width: '100%',
+              height: '100%',
+              overflow: 'visible',
+            });
+          }
 
           const $svgLayer = api.getSvgLayer();
           if ($svgLayer) {

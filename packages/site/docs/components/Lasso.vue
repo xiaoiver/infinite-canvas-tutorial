@@ -16,37 +16,42 @@ onMounted(async () => {
   onReady = (e) => {
     const api = e.detail;
 
-    api.setAppState({
-      penbarSelected: Pen.LASSO,
-      cameraZoom: Math.min(1, canvas.clientWidth / 460),
-      penbarAll: [Pen.SELECT, Pen.DRAW_RECT, Pen.LASSO],
-    });
-    api.updateNodes([
-      {
-        id: 'lasso-rect-1',
-        type: 'rect',
-        zIndex: 0,
-        x: 100,
-        y: 100,
-        width: 100,
-        height: 100,
-        fills: [{ type: 'solid', value: '#e0f2ff', opacity: 0.5 }],
-        stroke: '#147af3',
-        strokeWidth: 1,
+    void api.edit(
+      () => {
+        api.setAppState({
+          penbarSelected: Pen.LASSO,
+          cameraZoom: Math.min(1, canvas.clientWidth / 460),
+          penbarAll: [Pen.SELECT, Pen.DRAW_RECT, Pen.LASSO],
+        });
+        api.updateNodes([
+          {
+            id: 'lasso-rect-1',
+            type: 'rect',
+            zIndex: 0,
+            x: 100,
+            y: 100,
+            width: 100,
+            height: 100,
+            fills: [{ type: 'solid', value: '#e0f2ff', opacity: 0.5 }],
+            stroke: '#147af3',
+            strokeWidth: 1,
+          },
+          {
+            id: 'lasso-polyline',
+            type: 'polyline',
+            zIndex: 1,
+            x: 300,
+            y: 100,
+            width: 100,
+            height: 100,
+            points: '0,0 100,100 0,100',
+            stroke: '#147af3',
+            strokeWidth: 1,
+          },
+        ]);
       },
-      {
-        id: 'lasso-polyline',
-        type: 'polyline',
-        zIndex: 1,
-        x: 300,
-        y: 100,
-        width: 100,
-        height: 100,
-        points: '0,0 100,100 0,100',
-        stroke: '#147af3',
-        strokeWidth: 1,
-      },
-    ]);
+      { capture: 'NEVER' },
+    );
   };
 
   canvas.addEventListener(Event.READY, onReady);

@@ -62,29 +62,30 @@ describe('ZIndex multi-change undo/redo', () => {
     class StartUpSystem extends System {
       private readonly commands = new Commands(this);
 
-      q = this.query((q) =>
-        q.using(
-          Canvas,
-          Theme,
-          Grid,
-          Camera,
-          Parent,
-          Children,
-          Transform,
-          Renderable,
-          FillLayers,
-          StrokeLayers,
-          Stroke,
-          Rect,
-          Visibility,
-          Name,
-          DropShadow,
-          ZIndex,
-          UI,
-          Flex,
-          Opacity,
-          GlobalTransform,
-        ).write,
+      q = this.query(
+        (q) =>
+          q.using(
+            Canvas,
+            Theme,
+            Grid,
+            Camera,
+            Parent,
+            Children,
+            Transform,
+            Renderable,
+            FillLayers,
+            StrokeLayers,
+            Stroke,
+            Rect,
+            Visibility,
+            Name,
+            DropShadow,
+            ZIndex,
+            UI,
+            Flex,
+            Opacity,
+            GlobalTransform,
+          ).write,
       );
 
       initialize(): void {
@@ -123,8 +124,8 @@ describe('ZIndex multi-change undo/redo', () => {
     await app.run();
     await sleep(200);
 
-    const renderOrder = () => {
-      const rows = ['1', '2', '3', '4'].map((id) => {
+    const renderOrder = (ids = ['1', '2', '3', '4']) => {
+      const rows = ids.map((id) => {
         const e: Entity = api!.getEntity(api!.getNodeById(id)!);
         return {
           id,
@@ -133,7 +134,10 @@ describe('ZIndex multi-change undo/redo', () => {
             : Number.NaN,
         };
       });
-      return [...rows].sort((a, b) => a.order - b.order).map((r) => r.id).join('<');
+      return [...rows]
+        .sort((a, b) => a.order - b.order)
+        .map((r) => r.id)
+        .join('<');
     };
 
     expect(renderOrder()).toBe('1<2<3<4');
@@ -155,6 +159,80 @@ describe('ZIndex multi-change undo/redo', () => {
     api!.redo();
     await sleep(150);
     expect(renderOrder()).toBe('3<2<1<4');
+
+    // Reordering a group moves its descendants in the flattened render order,
+    // even though only the group's ZIndex is written. Include a nested group
+    // to verify that the change propagates beyond direct children.
+    await api!.edit(() =>
+      api!.updateNodes([
+        { id: 'group', type: 'g', zIndex: 5 },
+        { id: 'nested', type: 'g', parentId: 'group', zIndex: 0 },
+        {
+          id: 'leaf',
+          type: 'rect',
+          parentId: 'nested',
+          zIndex: 0,
+          x: 0,
+          y: 0,
+          width: 20,
+          height: 20,
+          fills: [{ type: 'solid', value: 'blue' }],
+        },
+        {
+          id: 'reference',
+          type: 'rect',
+          zIndex: 6,
+          x: 0,
+          y: 0,
+          width: 20,
+          height: 20,
+          fills: [{ type: 'solid', value: 'green' }],
+        },
+      ]),
+    );
+    await sleep(150);
+    const ids = ['group', 'nested', 'leaf', 'reference'];
+    expect(renderOrder(ids)).toBe('group<nested<leaf<reference');
+    await api!.edit(() => api!.bringToFront(api!.getNodeById('group')!));
+    await sleep(150);
+    expect(renderOrder(ids)).toBe('reference<group<nested<leaf');
+    api!.undo();
+    await sleep(150);
+    expect(renderOrder(ids)).toBe('group<nested<leaf<reference');
+    api!.redo();
+    await sleep(150);
+    expect(renderOrder(ids)).toBe('reference<group<nested<leaf');
+
+    // History restores full nodes, including an unchanged ZIndex. Siblings
+    // sharing that value must retain their existing order across those writes.
+    const tiedIds = ['tie-first', 'tie-middle', 'tie-last'];
+    await api!.edit(() =>
+      api!.updateNodes(
+        tiedIds.map((id) => ({
+          id,
+          type: 'rect',
+          zIndex: 10,
+          x: 0,
+          y: 0,
+          width: 20,
+          height: 20,
+          fills: [{ type: 'solid', value: 'blue' }],
+        })),
+      ),
+    );
+    await sleep(150);
+    const tiedOrder = renderOrder(tiedIds);
+    await api!.edit(() =>
+      api!.updateNode(api!.getNodeById('tie-middle')!, { x: 20 }),
+    );
+    await sleep(150);
+    expect(renderOrder(tiedIds)).toBe(tiedOrder);
+    api!.undo();
+    await sleep(150);
+    expect(renderOrder(tiedIds)).toBe(tiedOrder);
+    api!.redo();
+    await sleep(150);
+    expect(renderOrder(tiedIds)).toBe(tiedOrder);
 
     await app.exit();
   });
