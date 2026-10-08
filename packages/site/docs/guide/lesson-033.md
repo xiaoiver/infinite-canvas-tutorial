@@ -239,6 +239,8 @@ The most common use is centering content with these two properties:
 
 To implement buttons with centered text:
 
+The label uses its intrinsic width (`wordWrap: false`), and Yoga centers the measured text box inside the button. A fixed `wordWrapWidth` with `maxLines: 1` and `textOverflow: 'ellipsis'` can truncate the label even when the button has enough room. Reserve those options for labels that intentionally need truncation.
+
 <YogaButton />
 
 ### Gap {#gap}
