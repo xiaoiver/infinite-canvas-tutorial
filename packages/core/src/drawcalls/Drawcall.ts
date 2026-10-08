@@ -69,6 +69,12 @@ export abstract class Drawcall {
     protected index: number,
   ) {}
 
+  protected get geometryDefines() {
+    return '';
+  }
+
+  protected prepareGeometry(_uniforms: Record<string, unknown>): void {}
+
   abstract createGeometry(): void;
   abstract createMaterial(define: string, uniformBuffer: Buffer): void;
   abstract render(
@@ -100,12 +106,14 @@ export abstract class Drawcall {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
+    this.prepareGeometry(uniformLegacyObject);
+
     if (this.geometryDirty) {
       this.createGeometry();
     }
 
     if (this.materialDirty) {
-      let defines = '';
+      let defines = this.geometryDefines;
       if (this.instanced) {
         defines += '#define USE_INSTANCES\n';
       }

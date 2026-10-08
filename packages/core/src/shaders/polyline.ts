@@ -158,6 +158,12 @@ void main() {
   float capType = floor(type / 32.0);
   type -= capType * 32.0;
   v_Arc = vec4(0.0);
+  #ifdef USE_ADAPTIVE_PATH
+    // Distances and the AA fringe use physical pixels, including exports.
+    vec3 pixelBasis = u_ProjectionMatrix * u_ViewMatrix * vec3(1.0, 0.0, 0.0);
+    float dpr = max(length(pixelBasis.xy * u_Viewport * 0.5), 0.000001);
+    float expand = 1.0 / dpr;
+  #endif
   strokeWidth *= 0.5;
   float strokeAlignmentFactor = 2.0 * strokeAlignment - 1.0;
 
@@ -457,7 +463,7 @@ in float v_ScalingFactor;
 float epsilon = 0.000001;
 
 float antialias(float distance) {
-  return clamp(distance / fwidth(distance), 0.0, 1.0);
+  return clamp(distance / max(fwidth(distance), 0.0001), 0.0, 1.0);
 }
 
 float pixelLine(float x) {
@@ -489,11 +495,16 @@ void main() {
   if (v_Type < 0.5) {
     float left = max(d1 - 0.5, -w);
     float right = min(d1 + 0.5, w);
+    #ifdef USE_ADAPTIVE_PATH
+      // Coverage is already in pixels. Differentiating it again inflates edges.
+      alpha = clamp(right - left, 0.0, 1.0) * pixelLine(-d2) * pixelLine(-d3);
+    #else
     float near = d2 - 0.5;
     float far = min(d2 + 0.5, 0.0);
     float top = d3 - 0.5;
     float bottom = min(d3 + 0.5, 0.0);
     alpha = max(antialias(right - left), 0.0) * max(bottom - top, 0.0) * max(far - near, 0.0);
+    #endif
   } else if (v_Type < 1.5) {
     float a1 = pixelLine(d1 - w);
     float a2 = pixelLine(d1 + w);
@@ -503,7 +514,11 @@ void main() {
     float left = max(d1 - 0.5, -w);
     float right = min(d1 + 0.5, w);
     
-    alpha = antialias(a2 * b2 - a1 * b1);
+    #ifdef USE_ADAPTIVE_PATH
+      alpha = clamp(a2 * b2 - a1 * b1, 0.0, 1.0);
+    #else
+      alpha = antialias(a2 * b2 - a1 * b1);
+    #endif
   } else if (v_Type < 2.5) {
     alpha *= max(min(d1 + 0.5, 1.0), 0.0);
     alpha *= max(min(d2 + 0.5, 1.0), 0.0);
@@ -526,7 +541,11 @@ void main() {
     float a2 = pixelLine(d1 + w);
     float b1 = pixelLine(d2 - w);
     float b2 = pixelLine(d2 + w);
-    alpha = antialias(a2 * b2 - a1 * b1);
+    #ifdef USE_ADAPTIVE_PATH
+      alpha = clamp(a2 * b2 - a1 * b1, 0.0, 1.0);
+    #else
+      alpha = antialias(a2 * b2 - a1 * b1);
+    #endif
     alpha *= pixelLine(d3);
   }
 

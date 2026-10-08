@@ -28,7 +28,8 @@ import {
   hasValidDecoration,
   Text,
 } from '../shapes';
-import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
+import { ZINDEX_FACTOR } from './Drawcall';
+import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import { paddingMat3, parsePath } from '../utils';
 
@@ -42,7 +43,7 @@ const strokeAlignmentMap = {
   outer: 1,
 } as const;
 
-export class SmoothPolyline extends Drawcall {
+export class SmoothPolyline extends PathDrawcall {
   static check(shape: Shape) {
     return (
       shape instanceof Polyline ||
@@ -96,6 +97,8 @@ export class SmoothPolyline extends Drawcall {
     return 0;
   }
 
+  protected pathStroke = true;
+
   createGeometry(): void {
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
@@ -110,6 +113,7 @@ export class SmoothPolyline extends Drawcall {
           this.index === 2) ||
           (shape instanceof RoughRect && this.index !== 2) ||
           shape instanceof RoughPolyline,
+        this.pathPoints.get(shape),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -543,7 +547,11 @@ function getCapType(lineCap: CanvasLineCap) {
   return cap;
 }
 
-export function updateBuffer(object: Shape, useRoughStroke = true) {
+export function updateBuffer(
+  object: Shape,
+  useRoughStroke = true,
+  pathPoints?: [number, number][][],
+) {
   const { strokeLinecap: lineCap, strokeLinejoin: lineJoin } = object;
 
   let points: number[] = [];
@@ -570,10 +578,11 @@ export function updateBuffer(object: Shape, useRoughStroke = true) {
       return prev;
     }, [] as number[]);
   } else if (object instanceof Path) {
-    points = object.points
+    const computed = pathPoints ?? object.points;
+    points = computed
       .map((subPathPoints, i) => {
         return [...subPathPoints].concat(
-          i !== object.points.length - 1 ? [NaN, NaN] : [],
+          i !== computed.length - 1 ? [NaN, NaN] : [],
         );
       })
       .flat(2);

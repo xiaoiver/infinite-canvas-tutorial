@@ -253,6 +253,16 @@ export class CurvePath extends Curve {
 }
 ```
 
+### Adaptive precision when zooming {#adaptive-precision}
+
+The fixed divisions above explain the basic algorithm. The current `core` and `ecs` Path renderers instead flatten quadratic/cubic Beziers and ellipse arcs according to their size on screen. They target a 0.25 physical-pixel error, accounting for camera zoom, device pixel ratio, parent transforms and the render pass used for export. Thick strokes also constrain tangent changes, including the direction of endpoint caps. Path stroke coverage uses physical pixels so its antialiasing fringe does not grow with zoom.
+
+Precision is rounded up to powers of two. Zooming in refines as soon as the current level is insufficient; zooming out has an extra octave of hysteresis to avoid repeatedly rebuilding near a boundary. Each drawcall keeps up to four sampled point sets per Path. Panning and zooming within a level reuse GPU geometry. Changes to `d` invalidate those samples.
+
+Geometry bounds come from the extrema of the original curves, independently of render precision. `Path.points`, ECS `ComputedPoints`, and curve length/text-on-path calculations retain their view-independent behavior, so changing zoom does not move selection bounds or reflow text. Custom ECS bounds providers remain supported.
+
+Subdivision stops after 16 recursive levels or 4096 segments per SVG command. At extreme magnification this work limit can relax the target error. This change covers ordinary Paths; Rough paths, VectorNetwork sampling and the historical lesson packages keep their existing sampling strategies.
+
 Taking a third-order Bessel curve as an example, given the normalized `t`, the sampling points can be obtained by its definition: [Bézier_curve]
 
 ```ts

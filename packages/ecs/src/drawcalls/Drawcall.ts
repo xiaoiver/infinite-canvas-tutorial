@@ -153,6 +153,12 @@ export abstract class Drawcall {
     protected api: API,
   ) { }
 
+  protected get geometryDefines() {
+    return '';
+  }
+
+  protected prepareGeometry(_uniforms: Record<string, unknown>): void {}
+
   abstract createGeometry(): void;
   abstract createMaterial(define: string, uniformBuffer: Buffer): void;
   abstract render(
@@ -220,13 +226,15 @@ export abstract class Drawcall {
     this.sceneZoomScale =
       typeof zs === 'number' && Number.isFinite(zs) && zs > 0 ? zs : 1;
 
+    this.prepareGeometry(uniformLegacyObject);
+
     if (this.geometryDirty) {
       this.getPostChain()?.invalidateEngineTimeCaches();
       this.createGeometry();
     }
 
     if (this.materialDirty) {
-      let defines = '';
+      let defines = this.geometryDefines;
       if (this.instanced) {
         defines += '#define USE_INSTANCES\n';
       }
