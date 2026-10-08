@@ -10,6 +10,7 @@ import {
 import {
   fileOpen as _fileOpen,
   fileSave as _fileSave,
+  supported as fileSystemAccessSupported,
 } from 'browser-fs-access';
 
 export const debounce = <T extends any[]>(
@@ -53,7 +54,6 @@ export type ImageFileExtension =
   | keyof typeof IMAGE_MIME_TYPES
   | 'heic'
   | 'heif';
-const INPUT_CHANGE_INTERVAL_MS = 500;
 export const fileOpen = <M extends boolean | undefined = false>(opts: {
   extensions?: ImageFileExtension[];
   description: string;
@@ -87,49 +87,48 @@ export const fileOpen = <M extends boolean | undefined = false>(opts: {
     return acc.concat(`.${ext}`);
   }, [] as string[]);
 
-  return _fileOpen({
-    description: opts.description,
-    extensions,
-    mimeTypes,
-    multiple: opts.multiple ?? false,
-    // @ts-ignore
-    legacySetup: (resolve, reject, input) => {
-      const scheduleRejection = debounce(reject, INPUT_CHANGE_INTERVAL_MS);
-      const checkForFile = () => {
-        // this hack might not work when expecting multiple files
-        if (input.files?.length) {
-          const ret = opts.multiple ? [...input.files] : input.files[0];
-          resolve(ret as RetType);
-        }
-      };
-      const focusHandler = () => {
-        checkForFile();
-        document.addEventListener('keyup', scheduleRejection);
-        document.addEventListener('pointerup', scheduleRejection);
-        scheduleRejection();
-      };
-      requestAnimationFrame(() => {
-        window.addEventListener('focus', focusHandler);
-      });
-      const interval = window.setInterval(() => {
-        checkForFile();
-      }, INPUT_CHANGE_INTERVAL_MS);
-      return (rejectPromise) => {
-        clearInterval(interval);
-        scheduleRejection.cancel();
-        window.removeEventListener('focus', focusHandler);
-        document.removeEventListener('keyup', scheduleRejection);
-        document.removeEventListener('pointerup', scheduleRejection);
-        if (rejectPromise) {
-          // so that something is shown in console if we need to debug this
-          console.warn('Opening the file was canceled (legacy-fs).');
-          rejectPromise(
-            new Error('Opening the file was canceled (legacy-fs).'),
-          );
-        }
-      };
-    },
-  }) as Promise<RetType>;
+  if (fileSystemAccessSupported) {
+    return _fileOpen({
+      description: opts.description,
+      extensions,
+      mimeTypes,
+      multiple: opts.multiple ?? false,
+    }) as Promise<RetType>;
+  }
+
+  // WebKit exposes showPicker(), but it may not open a file chooser. A native
+  // input click also keeps activation within the originating toolbar event.
+  return new Promise<RetType>((resolve, reject) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = [...(mimeTypes ?? []), ...(extensions ?? [])].join(',');
+    input.multiple = opts.multiple ?? false;
+    input.style.display = 'none';
+    const cleanup = () => {
+      input.removeEventListener('change', change);
+      input.removeEventListener('cancel', cancel);
+      input.remove();
+    };
+    const cancel = () => {
+      cleanup();
+      reject(new DOMException('Opening the file was cancelled', 'AbortError'));
+    };
+    const change = () => {
+      const files = Array.from(input.files ?? []);
+      if (!files.length) return cancel();
+      cleanup();
+      resolve((opts.multiple ? files : files[0]) as RetType);
+    };
+    input.addEventListener('change', change);
+    input.addEventListener('cancel', cancel);
+    document.body.append(input);
+    try {
+      input.click();
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
 };
 
 export const fileSave = (

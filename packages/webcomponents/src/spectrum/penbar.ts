@@ -8,6 +8,28 @@ import { apiContext, appStateContext } from '../context';
 import { ExtendedAPI } from '../API';
 import { fileOpen } from '../utils';
 
+const DRAW_PENS = [
+  Pen.DRAW_RECT,
+  Pen.DRAW_TRIANGLE,
+  Pen.DRAW_PENTAGON,
+  Pen.DRAW_HEXAGON,
+  Pen.DRAW_ELLIPSE,
+  Pen.DRAW_LINE,
+  Pen.DRAW_ROUGH_RECT,
+  Pen.DRAW_ROUGH_ELLIPSE,
+  Pen.DRAW_ROUGH_LINE,
+  Pen.DRAW_ICONFONT,
+] as const;
+type DrawPen = (typeof DRAW_PENS)[number];
+const isDrawPen = (pen: Pen): pen is DrawPen =>
+  (DRAW_PENS as readonly Pen[]).includes(pen);
+
+type ImageRequest = {
+  api: ExtendedAPI;
+  controller: AbortController;
+  pen: Pen.IMAGE | Pen.SELECT;
+};
+
 @customElement('ic-spectrum-penbar')
 @localized()
 export class Penbar extends LitElement {
@@ -39,41 +61,58 @@ export class Penbar extends LitElement {
     }
   `;
 
+  private appStateValue: AppState;
+
   @consume({ context: appStateContext, subscribe: true })
-  appState: AppState;
+  get appState() {
+    return this.appStateValue;
+  }
+  set appState(value: AppState) {
+    this.appStateValue = value;
+    // Context changes are synchronous. Waiting for updated() would let a later
+    // image edit in the same ECS frame commit after a queued tool change.
+    if (this.imageRequest && !this.isCurrentImageRequest(this.imageRequest)) {
+      this.cancelImageRequest();
+    }
+    this.requestUpdate();
+  }
+
+  private apiValue: ExtendedAPI;
 
   @consume({ context: apiContext, subscribe: true })
-  api: ExtendedAPI;
+  get api() {
+    return this.apiValue;
+  }
+  set api(value: ExtendedAPI) {
+    if (this.apiValue === value) return;
+    this.releaseBinding();
+    this.apiValue = value;
+    this.requestUpdate();
+  }
 
   /**
    * Record the last draw pen, so that when the penbar is changed, the last draw pen will be selected.
    */
   @state()
-  lastDrawPen:
-    | Pen.DRAW_RECT
-    | Pen.DRAW_TRIANGLE
-    | Pen.DRAW_PENTAGON
-    | Pen.DRAW_HEXAGON
-    | Pen.DRAW_ELLIPSE
-    | Pen.DRAW_LINE
-    | Pen.DRAW_ROUGH_RECT
-    | Pen.DRAW_ROUGH_ELLIPSE
-    | Pen.DRAW_ROUGH_LINE
-    | Pen.DRAW_ICONFONT;
+  lastDrawPen: DrawPen = Pen.DRAW_RECT;
 
-  private binded = false;
+  private boundApi?: ExtendedAPI;
+  private boundCanvas?: HTMLCanvasElement;
+  private disposeBinding?: () => void;
+  private imageRequest?: ImageRequest;
+  private drawPens = new WeakMap<ExtendedAPI, DrawPen>();
 
   private previousPen: Pen;
   private previousPenbarVisible: boolean;
 
   shouldUpdate(changedProperties: PropertyValues) {
-    const newPen = this.appState.penbarSelected;
+    const newPen = this.appState?.penbarSelected;
     if (newPen !== this.previousPen) {
       this.previousPen = newPen;
       return true;
     }
 
-    const newPenbarVisible = this.appState.penbarVisible;
+    const newPenbarVisible = this.appState?.penbarVisible;
     if (newPenbarVisible !== this.previousPenbarVisible) {
       this.previousPenbarVisible = newPenbarVisible;
       return true;
@@ -82,136 +121,189 @@ export class Penbar extends LitElement {
     return super.shouldUpdate(changedProperties);
   }
 
-  private async handlePenChanged(e: CustomEvent) {
-    const pen = (e.target as any).selected[0];
-
-    if (!this.api.getAppState().penbarAll.includes(pen)) {
-      return;
+  private refreshTool(api: ExtendedAPI) {
+    if (this.isConnected && this.api === api) {
+      this.appState = api.getAppState();
+      this.requestUpdate();
     }
+  }
 
-    this.api.setAppState({
-      penbarSelected: pen,
-    });
-
+  private cancelImageRequest(restoreTool = false) {
+    const request = this.imageRequest;
+    this.imageRequest = undefined;
+    if (!request) return;
+    request.controller.abort();
     if (
-      pen === Pen.DRAW_RECT ||
-      pen === Pen.DRAW_TRIANGLE ||
-      pen === Pen.DRAW_PENTAGON ||
-      pen === Pen.DRAW_HEXAGON ||
-      pen === Pen.DRAW_ELLIPSE ||
-      pen === Pen.DRAW_LINE ||
-      pen === Pen.DRAW_ROUGH_RECT ||
-      pen === Pen.DRAW_ROUGH_ELLIPSE ||
-      pen === Pen.DRAW_ROUGH_LINE ||
-      pen === Pen.DRAW_ICONFONT
+      restoreTool &&
+      this.boundCanvas &&
+      this.boundApi === request.api &&
+      request.api.getAppState().penbarSelected === Pen.IMAGE
     ) {
-      this.lastDrawPen = pen;
-    } else if (pen === Pen.IMAGE) {
       try {
-        const file = await fileOpen({
-          extensions: ['jpg', 'png', 'svg', 'webp', 'heic', 'heif'],
-          description: 'Image to upload',
-        });
-
-        if (file) {
-          const center = this.api.viewport2Canvas({
-            x: this.api.element.clientWidth / 2,
-            y: this.api.element.clientHeight / 2,
-          });
-          await this.api.createImageFromFile(file, { position: center });
-          this.api.setAppState({
-            penbarSelected: Pen.SELECT,
-          });
-          this.api.record();
-        }
-      } catch (e) {
-        this.api.setAppState({
-          penbarSelected: Pen.SELECT,
-        });
+        request.api.setAppState({ penbarSelected: Pen.SELECT });
+        this.refreshTool(request.api);
+      } catch (error) {
+        console.error('Failed to restore image tool', error);
       }
     }
   }
 
-  private setPenWithKeyboard(
-    event: KeyboardEvent,
-    pen:
-      | Pen.DRAW_RECT
-      | Pen.DRAW_TRIANGLE
-      | Pen.DRAW_PENTAGON
-      | Pen.DRAW_HEXAGON
-      | Pen.DRAW_ELLIPSE
-      | Pen.DRAW_LINE
-      | Pen.DRAW_ARROW
-      | Pen.DRAW_ICONFONT,
-    targetKey: string,
-    shiftKey: boolean = false,
-  ) {
-    if (
-      event.key.toUpperCase() === targetKey.toUpperCase() &&
-      !event.ctrlKey &&
-      !event.metaKey &&
-      !event.altKey &&
-      (!shiftKey || (shiftKey && event.shiftKey))
-    ) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      this.api.setAppState({
-        penbarSelected: pen,
-      });
-      if (pen !== Pen.DRAW_ARROW) {
-        this.lastDrawPen = pen;
-      }
-    }
-  }
-
-  // keyboard shortcuts R L O
-  private handleKeyDown = (event: KeyboardEvent) => {
-    if (document.activeElement !== this.api.element) {
+  /** Tool preferences never advance the document's undo baseline. */
+  private selectPen(pen: Pen) {
+    this.bindCanvas();
+    const api = this.boundApi;
+    if (!this.isConnected || !api || !this.boundCanvas || this.api !== api)
       return;
+    try {
+      if (!api.getAppState().penbarAll.includes(pen)) return;
+      this.cancelImageRequest();
+      if (api.getAppState().penbarSelected !== pen) {
+        api.setAppState({ penbarSelected: pen });
+      }
+      if (isDrawPen(pen)) {
+        this.lastDrawPen = pen;
+        this.drawPens.set(api, pen);
+      }
+      return api;
+    } catch (error) {
+      console.error('Failed to select drawing tool', error);
+    } finally {
+      this.refreshTool(api);
     }
-    this.setPenWithKeyboard(event, Pen.DRAW_RECT, 'R');
-    this.setPenWithKeyboard(event, Pen.DRAW_TRIANGLE, 'T');
-    this.setPenWithKeyboard(event, Pen.DRAW_PENTAGON, '5');
-    this.setPenWithKeyboard(event, Pen.DRAW_HEXAGON, '6');
-    this.setPenWithKeyboard(event, Pen.DRAW_LINE, 'L');
-    this.setPenWithKeyboard(event, Pen.DRAW_ELLIPSE, 'O');
-    this.setPenWithKeyboard(event, Pen.DRAW_ARROW, 'L', true);
+  }
+
+  private async handlePenChanged(event: CustomEvent) {
+    event.stopPropagation();
+    const pen = (event.currentTarget as HTMLElement & { selected: Pen[] })
+      .selected?.[0];
+    const api = this.selectPen(pen);
+    if (!api || pen !== Pen.IMAGE) return;
+
+    const request: ImageRequest = {
+      api,
+      controller: new AbortController(),
+      pen: Pen.IMAGE,
+    };
+    this.imageRequest = request;
+    const { signal } = request.controller;
+    try {
+      // Keep the invocation's canvas and position even while the picker is open.
+      const position = api.viewport2Canvas({
+        x: api.element.clientWidth / 2,
+        y: api.element.clientHeight / 2,
+      });
+      const file = await fileOpen({
+        extensions: ['jpg', 'png', 'svg', 'webp', 'heic', 'heif'],
+        description: 'Image to upload',
+      });
+      if (!file || !this.isCurrentImageRequest(request)) return;
+      // Select runs after edits in the ECS frame and clears selection for IMAGE.
+      // Restore the tool before queuing insertion so it keeps the new selection.
+      request.pen = Pen.SELECT;
+      api.setAppState({ penbarSelected: Pen.SELECT });
+      this.refreshTool(api);
+      await api.createImageFromFile(file, { position, signal });
+    } catch (error) {
+      if (!signal.aborted && error && (error as Error).name !== 'AbortError') {
+        console.error('Failed to insert image', error);
+      }
+    } finally {
+      if (this.imageRequest === request) {
+        this.cancelImageRequest(true);
+      }
+    }
+  }
+
+  private isCurrentImageRequest(request: ImageRequest) {
+    return (
+      this.isConnected &&
+      this.api === request.api &&
+      this.boundApi === request.api &&
+      !!this.boundCanvas &&
+      this.imageRequest === request &&
+      !request.controller.signal.aborted &&
+      request.api.getAppState().penbarSelected === request.pen
+    );
+  }
+
+  private handleKeyDown = (event: KeyboardEvent) => {
+    const api = this.boundApi;
+    if (
+      !this.isConnected ||
+      !this.boundCanvas ||
+      this.api !== api ||
+      document.activeElement !== api?.element ||
+      event.defaultPrevented ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey
+    )
+      return;
+    const pens: Record<string, Pen> = {
+      R: Pen.DRAW_RECT,
+      T: Pen.DRAW_TRIANGLE,
+      '5': Pen.DRAW_PENTAGON,
+      '6': Pen.DRAW_HEXAGON,
+      L: event.shiftKey ? Pen.DRAW_ARROW : Pen.DRAW_LINE,
+      O: Pen.DRAW_ELLIPSE,
+    };
+    const pen = pens[event.key.toUpperCase()];
+    if (!pen || !api.getAppState().penbarAll.includes(pen)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectPen(pen);
   };
+
+  private releaseBinding() {
+    this.cancelImageRequest(true);
+    this.boundCanvas?.removeEventListener('keydown', this.handleKeyDown);
+    this.boundCanvas = undefined;
+    this.disposeBinding?.();
+    this.disposeBinding = undefined;
+    this.boundApi = undefined;
+  }
+
+  private bindCanvas() {
+    if (!this.isConnected || this.boundApi === this.api) return;
+    this.releaseBinding();
+    const api = this.api;
+    if (!api?.element) return;
+    this.boundApi = api;
+    let destroyed = false;
+    this.disposeBinding = api.onDestroy(() => {
+      destroyed = true;
+      this.cancelImageRequest();
+      this.boundCanvas?.removeEventListener('keydown', this.handleKeyDown);
+      this.boundCanvas = undefined;
+    });
+    if (destroyed) return;
+    this.boundCanvas = api.getCanvasElement();
+    this.boundCanvas.addEventListener('keydown', this.handleKeyDown);
+    const pen = api.getAppState().penbarSelected;
+    this.lastDrawPen = isDrawPen(pen)
+      ? pen
+      : this.drawPens.get(api) ?? Pen.DRAW_RECT;
+    this.drawPens.set(api, this.lastDrawPen);
+  }
+
+  connectedCallback() {
+    super.connectedCallback();
+    this.requestUpdate();
+  }
 
   disconnectedCallback() {
     super.disconnectedCallback();
-    // this.api
-    //   .getCanvasElement()
-    //   .removeEventListener('keydown', this.handleKeyDown);
+    this.releaseBinding();
   }
 
+  protected updated() {
+    this.bindCanvas();
+    if (this.imageRequest && !this.isCurrentImageRequest(this.imageRequest)) {
+      this.cancelImageRequest();
+    }
+  }
   render() {
-    if (!this.api) {
-      return;
-    }
-
-    // FIXME: wait for the element to be ready.
-    if (this.api.element && !this.binded) {
-      this.api
-        .getCanvasElement()
-        .addEventListener('keydown', this.handleKeyDown);
-      this.binded = true;
-
-      const pen = this.api.getAppState().penbarSelected;
-      this.lastDrawPen =
-        pen === Pen.DRAW_RECT ||
-          pen === Pen.DRAW_TRIANGLE ||
-          pen === Pen.DRAW_PENTAGON ||
-          pen === Pen.DRAW_HEXAGON ||
-          pen === Pen.DRAW_ELLIPSE ||
-          pen === Pen.DRAW_LINE ||
-          pen === Pen.DRAW_ROUGH_RECT ||
-          pen === Pen.DRAW_ROUGH_ELLIPSE ||
-          pen === Pen.DRAW_ROUGH_LINE
-          ? pen
-          : Pen.DRAW_RECT;
-    }
+    if (!this.api) return;
 
     const { penbarAll, penbarSelected, penbarVisible } = this.api.getAppState();
     return when(
