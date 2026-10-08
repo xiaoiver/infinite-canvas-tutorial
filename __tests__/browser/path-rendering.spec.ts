@@ -6,9 +6,11 @@ import type { Page } from '@playwright/test';
 test.setTimeout(60000);
 
 async function compare(page: Page) {
-  const actual = PNG.sync.read(await page.locator('#actual').screenshot());
+  const actual = PNG.sync.read(
+    await page.locator('#actual').screenshot({ scale: 'css' }),
+  );
   const reference = PNG.sync.read(
-    await page.locator('#reference').screenshot(),
+    await page.locator('#reference').screenshot({ scale: 'css' }),
   );
   let different = 0,
     ink = 0;
@@ -93,6 +95,22 @@ for (const engine of ['ecs', 'core']) {
           await compare(page);
         }
       }
+    });
+
+    test('retains thin edges at high zoom and DPR 3', async ({ page }) => {
+      await page.goto(`/${engine}-path-rendering.html?dpr=3`);
+      await expect(page.locator('#status')).toHaveText('Ready', {
+        timeout: 20000,
+      });
+      await page.evaluate(() =>
+        window.pathTest.render({
+          d: 'M0 100 C0 -80 200 -80 200 100',
+          fill: false,
+          parentScale: 1,
+        }),
+      );
+      await page.evaluate(() => window.pathTest.zoom(64));
+      await compare(page);
     });
   });
 }

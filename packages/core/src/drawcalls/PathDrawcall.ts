@@ -9,9 +9,10 @@ export abstract class PathDrawcall extends Drawcall {
   protected pathPoints = new WeakMap<Shape, PathPoints>();
   private pathCaches = new WeakMap<Shape, PathGeometryCache>();
 
+  // Screen-space distances can exceed mediump range at high zoom/DPR.
   protected get geometryDefines() {
     return this.shapes.some((shape) => shape instanceof Path)
-      ? '#define USE_ADAPTIVE_PATH\n'
+      ? '#define USE_ADAPTIVE_PATH\nprecision highp float;\n'
       : '';
   }
 

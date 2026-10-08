@@ -23,6 +23,10 @@ declare global {
 
 export function installPathTest(driver: Driver) {
   let options: PathCase;
+  const dpr = Number(new URLSearchParams(location.search).get('dpr')) || 1;
+  const reference = document.querySelector<HTMLCanvasElement>('#reference')!;
+  reference.width = 640 * dpr;
+  reference.height = 320 * dpr;
   window.pathTest = {
     async render(next) {
       options = next;
@@ -38,8 +42,15 @@ export function installPathTest(driver: Driver) {
         .getContext('2d')!;
       ctx.resetTransform();
       ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, 640, 320);
-      ctx.setTransform(zoom, 0, 0, zoom, -x * zoom, -y * zoom);
+      ctx.fillRect(0, 0, reference.width, reference.height);
+      ctx.setTransform(
+        zoom * dpr,
+        0,
+        0,
+        zoom * dpr,
+        -x * zoom * dpr,
+        -y * zoom * dpr,
+      );
       const path = new Path2D();
       // Both shaders extrude strokes in world space, after the model transform.
       path.addPath(

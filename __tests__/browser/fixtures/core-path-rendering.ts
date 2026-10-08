@@ -9,9 +9,13 @@ import { Mesh } from '../../../packages/core/src/drawcalls/Mesh';
 import { SmoothPolyline } from '../../../packages/core/src/drawcalls/SmoothPolyline';
 import { installPathTest } from './path-rendering';
 
+const dpr = Number(new URLSearchParams(location.search).get('dpr')) || 1;
+const actual = document.querySelector<HTMLCanvasElement>('#actual')!;
+actual.width = 640 * dpr;
+actual.height = 320 * dpr;
 const canvas = await new Canvas({
-  canvas: document.querySelector<HTMLCanvasElement>('#actual')!,
-  devicePixelRatio: 1,
+  canvas: actual,
+  devicePixelRatio: dpr,
   checkboardStyle: CheckboardStyle.NONE,
   themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
 }).initialized;

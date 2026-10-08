@@ -77,7 +77,8 @@ class Bootstrap extends System {
       element: actual,
       width: 640,
       height: 320,
-      devicePixelRatio: 1,
+      devicePixelRatio:
+        Number(new URLSearchParams(location.search).get('dpr')) || 1,
     });
     api.createCamera({ zoom: 1 });
     api.setAppState({
