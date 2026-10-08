@@ -1,3 +1,4 @@
+import { settleECSFrames } from './ecs-frames';
 import { createApp } from 'vue';
 import LassoDemo from '../../../packages/site/docs/components/Lasso.vue';
 import {
@@ -9,11 +10,8 @@ import {
 
 let api: API;
 const drawn: string[] = [];
-const frame = () =>
-  new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-async function settle() {
-  for (let i = 0; i < 4; i++) await frame();
-}
+const settle = () => settleECSFrames(api, 4);
+
 let app: ReturnType<typeof createApp>;
 function mount() {
   api = undefined;

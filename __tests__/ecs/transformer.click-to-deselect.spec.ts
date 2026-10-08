@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -35,13 +34,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
-
-DOMAdapter.set(NodeJSAdapter);
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Transformer', () => {
   it('should click empty area to deselect rect correctly', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let $canvas: HTMLCanvasElement | undefined;
     let canvasEntity: Entity | undefined;
@@ -116,32 +114,30 @@ describe('Transformer', () => {
         api.updateNodes([node]);
         api.selectNodes([node]);
 
-        entity = api
-          .getEntity(node)
-          ?.hold();
+        entity = api.getEntity(node)?.hold();
       }
     }
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    try {
+      await app.run();
 
-    await sleep(300);
+      await frames(6);
 
-    if ($canvas) {
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 0, clientY: 0 }), // deselect
+      if ($canvas) {
+        await interaction.mouse($canvas!, 'mousedown', 0, 0);
+      }
+
+      await frames(6);
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'transformer-click-to-deselect',
       );
+    } finally {
+      await interaction.dispose();
     }
-
-    await sleep(300);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'transformer-click-to-deselect',
-    );
-
-    await app.exit();
   });
 });

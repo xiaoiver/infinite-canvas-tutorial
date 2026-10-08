@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -39,18 +38,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter } from '../utils';
-
-DOMAdapter.set({
-  ...NodeJSAdapter,
-  // Drive full ECS frames ourselves; a fixed delay can capture stale selection UI.
-  requestAnimationFrame: () => 0,
-  cancelAnimationFrame: () => {},
-});
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Transformer', () => {
   it('clears the transformer when undo follows an unrecorded deletion', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let api: API;
     let $canvas: HTMLCanvasElement;
@@ -152,7 +145,7 @@ describe('Transformer', () => {
     try {
       await app.run();
       // Frames 1/2 delete and request undo; subsequent frames flush selection UI.
-      for (let i = 0; i < 6; i++) await app.world.execute();
+      await frames(6);
       expect(api!.getNodes()).toEqual([]);
       expect(api!.getAppState().layersSelected).toEqual([]);
       expect(api!.isUndoStackEmpty()).toBe(true);
@@ -175,7 +168,7 @@ describe('Transformer', () => {
         'transformer-undo-delete',
       );
     } finally {
-      await app.exit();
+      await interaction.dispose();
     }
   });
 });
