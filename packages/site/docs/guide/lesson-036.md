@@ -275,31 +275,51 @@ We implemented a plugin that converts Lottie JSON into graphics and keyframes. H
     -   [Ellipse](https://lottiefiles.github.io/lottie-docs/shapes/#ellipse)
     -   [Path](https://lottiefiles.github.io/lottie-docs/shapes/#path)
     -   [Group](https://lottiefiles.github.io/lottie-docs/shapes/#group)
-    -   [PolyStar](https://lottiefiles.github.io/lottie-docs/shapes/#polystar)
 -   In Lottie, `anchorX` / `anchorY` define the scale and rotation center relative to the top-left of the shape’s bounding box—take care when mapping to `transformOrigin`
 -   Merge multiple animation tracks into one keyframe set and fill in missing properties
 
 ```ts
 import { loadAnimation } from '@infinite-canvas-tutorial/lottie';
 
-fetch('/bouncy_ball.json')
-    .then((res) => res.json())
-    .then((data) => {
-        const animation = loadAnimation(data, {
-            loop: true,
-            autoplay: true,
-        });
+const response = await fetch('/bouncy_ball.json');
+const animation = loadAnimation(await response.json(), {
+    loop: true,
+    autoplay: true,
+    onDiagnostic: ({ code, path, message }) =>
+        console.info(code, path, message),
+});
 
-        api.runAtNextTick(() => {
-            animation.render(api);
-            animation.play();
-        });
-    });
+await api.edit(() => animation.render(api), { capture: 'NEVER' });
+
+// On component unmount (also automatically cleaned up on canvas destruction):
+// await animation.destroy();
 ```
 
 Below is the official sample running in our setup: [Bouncy Ball]
 
 <AnimationLottieBouncyBall />
+
+### Compatibility {#lottie-compatibility}
+
+This importer converts Lottie into ECS nodes and keyframes; it is not a complete Lottie renderer. Parsing a field does not necessarily implement its visual effect.
+
+| Feature                                                            | Current behavior                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rectangles, ellipses, paths, groups; basic fill/stroke             | Basic static geometry, path morphing and 2D position/rotation/scale; primitive size/corner animation remains limited                                                                                                                   |
+| Solid, Null, parenting, Precomp                                    | Basic support; layer in/out visibility, time stretch and remapping are incomplete                                                                                                                                                      |
+| Gradients and multiple paints                                      | Basic gradients; animated gradient geometry, radial highlights and multiple paint/operator ordering remain limited                                                                                                                     |
+| Trim Paths                                                         | Stroke-dash approximation with corrected full/empty coverage, endpoint sorting and offsets; filled geometry, multi-path modes, existing dash patterns, animated zero-length round caps, direction and modifier ordering remain limited |
+| Spatial Bézier motion, Skew                                        | Incomplete; reported during inspection                                                                                                                                                                                                 |
+| PolyStar, Repeater, Merge Paths, Round Corners and other modifiers | Not rendered                                                                                                                                                                                                                           |
+| Image                                                              | Partial; asset directories and preloading are not implemented                                                                                                                                                                          |
+| Text, Masks, Track Mattes, Effects, Blend Modes, 3D                | Not implemented or not reliably rendered; ECS capabilities do not imply Lottie import support                                                                                                                                          |
+| Expressions                                                        | Baked at import; defaults to the bundled lottie-web ExpressionManager with a limited shape-layer environment, not full AE semantics                                                                                                    |
+
+`inspectLottie(data)` checks known gaps without mutating JSON or evaluating expressions. `animation.getDiagnostics()` and `onDiagnostic` provide a stable `code`, `severity` (`partial` / `unsupported`), JSON Pointer `path`, and message. Import continues with diagnostics; an empty list does not certify AE compatibility. Expand **Compatibility notes** in the examples to inspect their gaps.
+
+Playback uses one composition clock. `goTo(value, true)` seeks composition-relative frames; the default unit is seconds, preserving play/pause state. `stop()` pauses at frame zero. `setSpeed()` takes a positive multiplier; `setDirection(-1)` reverses from the current position while preserving speed. `playSegments([start, end])` honors both endpoints; descending endpoints play backward. Numeric `loop` counts extra repeats. ECS controllers returned by `getAnimations()` are sampled by the player; control time through the player API.
+
+Repeated `render(api)` on the same instance is idempotent; another canvas needs a separate instance. `destroy()` is idempotent, cancels playback, and removes the imported node tree in a safe edit. Components should also cancel pending fetches and queued edits when unmounting. Browser regressions compare fixed frames against a pinned lottie-web version for position and single-path stroked Trim Paths; they do not establish whole-format parity.
 
 ### Bézier curves in Lottie {#beziers-in-lottie}
 
@@ -331,11 +351,17 @@ Below is the official sample running in our setup: [Bouncy Ball]
 
 ### Text layer
 
+Text layers and text animators are not imported yet.
+
 ### Clipping mask
+
+Mask modes, inversion, animation and track mattes are not reliably rendered.
 
 [clipping-masks]
 
 ### Layer effects
+
+Lottie effects are not mapped to ECS yet.
 
 [Layer Effects]
 
@@ -435,7 +461,7 @@ The current implementation stays deliberately simple compared with full DCC tool
 
 -   The Timeline uses **one track per node**, not Lottie’s layer + property multi-track layout; property names appear as a label suffix (`Rect · opacity, x`).
 -   Keyframes and bar timing cannot be dragged on the Timeline yet; timing is edited via `offset` in the Animation panel.
--   Expressions, text layers, clipping masks, and other advanced Lottie features still go through plugin baking—not authored directly in this editor.
+-   Expressions use limited import-time baking. Text layers and clipping masks are not reliably supported or authored by this editor.
 
 Possible extensions: property sub-tracks, keyframe diamond markers, dragging bar edges to change delay/duration, and more.
 

@@ -39,21 +39,20 @@ export function lottieTrimToStrokeDash(
     return { dasharray: [0, 0], dashoffset: 0 };
   }
 
-  const offsetLen = (trimOffset / 360) * perimeter;
-  const startLen = mod((trimStart / 100) * perimeter + offsetLen, perimeter);
-  const endLen = mod((trimEnd / 100) * perimeter + offsetLen, perimeter);
-
-  let dashLen: number;
-  if (endLen >= startLen) {
-    dashLen = endLen - startLen;
-  } else {
-    dashLen = perimeter - startLen + endLen;
-  }
+  // Lottie clamps percentages and sorts endpoints BEFORE applying the offset.
+  // Modulo both endpoints first makes 0..100 indistinguishable from an empty trim.
+  const clamp = (value: number, fallback: number) =>
+    Number.isFinite(value) ? Math.max(0, Math.min(100, value)) / 100 : fallback;
+  const s = clamp(trimStart, 0);
+  const e = clamp(trimEnd, 1);
+  const dashLen = Math.abs(e - s) * perimeter;
+  const offset = Number.isFinite(trimOffset) ? trimOffset / 360 : 0;
+  const startLen = mod(Math.min(s, e) + offset, 1) * perimeter;
 
   const gapLen = Math.max(0, perimeter - dashLen);
   return {
     dasharray: [dashLen, gapLen],
-    dashoffset: -startLen,
+    dashoffset: dashLen === perimeter || dashLen === 0 ? 0 : -startLen,
   };
 }
 
@@ -61,24 +60,17 @@ export function hasLottieTrim(shape?: Record<string, unknown> | null): boolean {
   if (!shape) {
     return false;
   }
-  const s = shape.trimStart;
-  const e = shape.trimEnd;
-  const o = shape.trimOffset;
-  if (typeof s === 'number' && Number.isFinite(s) && s !== 0) {
-    return true;
-  }
-  if (typeof e === 'number' && Number.isFinite(e) && e !== 100) {
-    return true;
-  }
-  if (typeof o === 'number' && Number.isFinite(o) && o !== 0) {
-    return true;
-  }
-  return false;
+  // Presence matters: a full-trim keyframe must reset the previous partial dash.
+  return ['trimStart', 'trimEnd', 'trimOffset'].some(
+    (key) => typeof shape[key] === 'number' && Number.isFinite(shape[key]),
+  );
 }
 
-export function readLottieTrim(
-  shape?: Record<string, unknown> | null,
-): { trimStart: number; trimEnd: number; trimOffset: number } {
+export function readLottieTrim(shape?: Record<string, unknown> | null): {
+  trimStart: number;
+  trimEnd: number;
+  trimOffset: number;
+} {
   return {
     trimStart:
       typeof shape?.trimStart === 'number' && Number.isFinite(shape.trimStart)
@@ -111,7 +103,13 @@ export function getShapePerimeter(
     const w = Number(shape.width);
     const h = Number(shape.height);
     if (Number.isFinite(w) && Number.isFinite(h)) {
-      return 2 * (w + h);
+      const radius = Math.max(
+        0,
+        Math.min(Number(shape.r) || 0, Math.abs(w) / 2, Math.abs(h) / 2),
+      );
+      return (
+        2 * (Math.abs(w) + Math.abs(h)) - 8 * radius + 2 * Math.PI * radius
+      );
     }
   }
   if (pathD && pathD.length > 0) {
@@ -127,6 +125,8 @@ export function getShapePerimeter(
   return 0;
 }
 
-export function strokeDasharrayToWireString(dasharray: [number, number]): string {
+export function strokeDasharrayToWireString(
+  dasharray: [number, number],
+): string {
   return `${dasharray[0]} ${dasharray[1]}`;
 }

@@ -170,6 +170,9 @@ importers:
       lint-staged:
         specifier: ^10.5.4
         version: 10.5.4
+      lottie-web:
+        specifier: 5.13.0
+        version: 5.13.0
       markdownlint-cli:
         specifier: ^0.32.2
         version: 0.32.2
@@ -9493,6 +9496,9 @@ packages:
 
   loro-crdt@1.4.2:
     resolution: {integrity: sha512-3jXI7pzC4PusDBz4MNjJ4Qoh/CJoRYKvjEuZ/DYI0t/P5voFFCj0ZcDatY+HlVgJSlmeB96A0i4CmPMpIkzwsA==}
+
+  lottie-web@5.13.0:
+    resolution: {integrity: sha512-+gfBXl6sxXMPe8tKQm7qzLnUy5DUPJPKIyRHwtpCpyUEYjHYRJC/5gjUvdkuO2c3JllrPtHXH5UJJK8LRYl5yQ==}
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
@@ -21165,6 +21171,8 @@ snapshots:
       js-tokens: 4.0.0
 
   loro-crdt@1.4.2: {}
+
+  lottie-web@5.13.0: {}
 
   lru-cache@10.4.3: {}
 

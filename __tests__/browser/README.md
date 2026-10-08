@@ -128,3 +128,19 @@ opacity, path fills plus strokes, text, clipping, three-layer accumulation and a
 normal draw after the blended nodes. Chromium and WebKit both run these checks,
 including a forced WebGL1 fallback. The SDF cases also guard against mediump
 packed-flag overflow on mobile GPUs.
+
+## Lottie import baseline
+
+`lottie.spec.ts` compares fixed frames of ECS output against the pinned
+`lottie-web` Canvas renderer: position animation, animated single-path trim
+returning to full coverage, reversed trim endpoints, wrapped offsets and empty
+static round-cap trims. Silhouette comparisons allow a one-pixel edge difference;
+interior color/alpha checks still detect missing geometry or unintended fading.
+The same fixture verifies autoplay=false, seek/stop, repeat rendering, unrelated
+node preservation and cleanup on player/canvas destruction. Pure ECS-folder
+specs cover clock continuity, finite/infinite loops, forward/reverse segments,
+trim arithmetic and non-mutating JSON-pointer diagnostics.
+
+These are scoped import regressions, not a whole-format compatibility suite.
+Text, masks, effects, multi-path/fill trim and other unsupported features remain
+listed in lesson 36. Lottie tests run in Chromium and the separate WebKit suite.

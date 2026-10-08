@@ -276,35 +276,55 @@ function mergePaths(
     -   [Ellipse](https://lottiefiles.github.io/lottie-docs/shapes/#ellipse)
     -   [Path](https://lottiefiles.github.io/lottie-docs/shapes/#path)
     -   [Group](https://lottiefiles.github.io/lottie-docs/shapes/#group)
-    -   [PolyStar](https://lottiefiles.github.io/lottie-docs/shapes/#polystar)
 -   lottie 中的 `anchorX/anchorY` 表示缩放和旋转中心，相对于图形的包围盒左上角，在映射到 `transformOrigin` 时需要注意
 -   将多组动画轨道合并成一组 keyframes，补全缺失的属性
 
 ```ts
 import { loadAnimation } from '@infinite-canvas-tutorial/lottie';
 
-fetch('/bouncy_ball.json')
-    .then((res) => res.json())
-    .then((data) => {
-        const animation = loadAnimation(data, {
-            loop: true,
-            autoplay: true,
-        });
+const response = await fetch('/bouncy_ball.json');
+const animation = loadAnimation(await response.json(), {
+    loop: true,
+    autoplay: true,
+    onDiagnostic: ({ code, path, message }) =>
+        console.info(code, path, message),
+});
 
-        api.runAtNextTick(() => {
-            animation.render(api);
-            animation.play();
-        });
-    });
+await api.edit(() => animation.render(api), { capture: 'NEVER' });
+
+// On component unmount (also automatically cleaned up on canvas destruction):
+// await animation.destroy();
 ```
 
 下面是官方示例的运行效果：[Bouncy Ball]
 
 <AnimationLottieBouncyBall />
 
+### 兼容性范围 {#lottie-compatibility}
+
+这是将 Lottie 转换成 ECS 节点和关键帧的导入器，目前并非完整的 Lottie 播放器。下表描述的是实际渲染能力，不能把“解析了字段”等同于“支持了效果”。
+
+| 特性                                                       | 当前状态                                                                                                                                              |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 矩形、椭圆、路径、分组；基础填充和描边                     | 支持基础静态形状、路径 morph 和 2D 位置/旋转/缩放动画；原始图形的尺寸/圆角动画仍有限制                                                                |
+| Solid、Null、父子层级、Precomp                             | 基础支持；图层 in/out 可见性、时间拉伸和重映射未完整实现                                                                                              |
+| 渐变、多重填充/描边                                        | 基础渐变可用；渐变几何动画、径向高光、多重绘制及运算顺序有限制                                                                                        |
+| Trim Paths                                                 | 用描边虚线近似；已修正完整/空路径、端点排序和偏移。填充裁切、多路径模式、与原有虚线样式叠加、动画中的零长度圆头描边、路径方向及 modifier 顺序仍有限制 |
+| 空间贝塞尔运动、Skew                                       | 未完整实现，导入时报告诊断                                                                                                                            |
+| PolyStar、Repeater、Merge Paths、Round Corners 等 modifier | 尚未实现渲染                                                                                                                                          |
+| Image                                                      | 部分支持；未处理资源目录和预加载                                                                                                                      |
+| Text、Mask、Track Matte、Effects、Blend Mode、3D           | 尚未实现或无法可靠还原；ECS 支持某项能力不代表 Lottie 已完成映射                                                                                      |
+| 表达式                                                     | 导入时烘焙；默认使用带有限形状图层环境的 lottie-web ExpressionManager，不等同于完整 AE 环境                                                           |
+
+`inspectLottie(data)` 可在不修改 JSON、不执行表达式的情况下检查已知缺口。`animation.getDiagnostics()` 和 `onDiagnostic` 返回 `code`、`severity`（`partial` / `unsupported`）、JSON Pointer `path` 和说明。诊断不会中止导入；没有诊断也不代表完全兼容 AE。两个示例中的 **Compatibility notes** 会展示具体缺口。
+
+播放器使用统一合成时间轴。`goTo(value, true)` 按相对于合成起点的帧定位，默认单位为秒，且保留播放/暂停状态。`stop()` 暂停并回到第 0 帧；`setSpeed()` 接受正数，`setDirection(-1)` 保留速度并从当前位置倒放。`playSegments([start, end])` 遵守两个端点，逆序端点表示倒放；`loop` 数字表示额外重复次数。底层 `getAnimations()` 返回的 ECS 控制器由播放器采样，请通过播放器控制时间。
+
+同一实例重复 `render(api)` 不重复创建动画，不允许挂载到另一个画布；`destroy()` 可重复调用，取消时间轴并在安全编辑阶段移除导入的节点树。切换示例或卸载组件还需取消未完成的 fetch 和排队的编辑。固定帧浏览器测试使用锁定版本的 lottie-web 作为参考，覆盖位置动画及单路径描边 Trim Paths，不代表整个格式已通过一致性验证。
+
 ### 表达式 {#expression}
 
-[Expressions] 描述了 After Effects 导出到 Bodymovin JSON 时，如何在属性上挂一段 JavaScript（属性对象上的字符串字段 `x`）。本教程里的 Lottie 插件**不会在每一帧实时执行**这些脚本，而是在 **`loadAnimation` / `parse` 时按合成时间范围把表达式烘焙成普通关键帧**，再交给现有的 Web Animations API 驱动，因此行为与 AE 接近，但依赖「烘焙」这一实现策略。
+[Expressions] 描述了 After Effects 导出到 Bodymovin JSON 时，如何在属性上挂一段 JavaScript（属性对象上的字符串字段 `x`）。本教程里的 Lottie 插件**不会在每一帧实时执行**这些脚本，而是在 **`loadAnimation` / `parse` 时按合成时间范围把表达式烘焙成普通关键帧**，再由统一时间轴采样 ECS 关键帧。支持范围取决于有限的表达式环境，不能保证与 AE 一致。
 
 下面是一段路径属性上的表达式示例（运行时仍表现为普通 shape 关键帧动画）：
 
@@ -329,11 +349,17 @@ fetch('/bouncy_ball.json')
 
 ### Text layer
 
+尚未实现文本图层和文本动画器的导入。
+
 ### Clipping mask
+
+现有解析不能可靠还原 mask 模式、反相、动画及 Track Matte。
 
 [clipping-masks]
 
 ### Layer effects
+
+尚未实现从 Lottie effects 到 ECS 的映射。
 
 [Layer Effects]
 
@@ -433,7 +459,7 @@ interface Track {
 
 -   Timeline 以**节点**为轨道，而非 Lottie 的 layer + property 多轨展开；属性名显示在标签后缀（`Rect · opacity, x`）。
 -   暂不支持在 Timeline 上直接拖动 keyframe 或条形块改 timing；timing 在 Animation 面板通过 `offset` 编辑。
--   表达式、Text layer、Clipping mask 等 Lottie 高级特性仍走插件烘焙路径，不由该编辑器直接创作。
+-   表达式由插件在导入时有限烘焙；Text layer、Clipping mask 尚未可靠支持，也不能由该编辑器直接创作。
 
 后续可在此基础上扩展：property 子轨、keyframe 菱形标记、条形块 edge 拖拽改 delay/duration 等。
 
