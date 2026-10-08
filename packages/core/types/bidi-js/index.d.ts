@@ -5,6 +5,12 @@ declare module 'bidi-js' {
   };
 
   const bidiFactory: () => {
+    getBidiCharTypeName: (char: string) => string;
+    getMirroredCharacter: (char: string) => string | null;
+    getReorderedIndices: (
+      text: string,
+      embeddingLevels: EmbeddingLevels,
+    ) => number[];
     getEmbeddingLevels: (
       text: string,
       explicitDirection?: 'ltr' | 'rtl',
