@@ -11,6 +11,7 @@ import AnimationDasharray from '../../components/AnimationDasharray.vue';
 import AnimationDashoffset from '../../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../../components/AnimationMorphing.vue';
 import AnimationLottieBouncyBall from '../../components/AnimationLottieBouncyBall.vue';
+import AnimationLottiePolyStar from '../../components/AnimationLottiePolyStar.vue';
 import AnimationLottieBezier from '../../components/AnimationLottieBezier.vue';
 import AnimationTimeline from '../../components/AnimationTimeline.vue';
 </script>
@@ -274,6 +275,7 @@ function mergePaths(
 -   支持 Shape Layer 中定义的以下元素：
     -   [Rectangle](https://lottiefiles.github.io/lottie-docs/shapes/#rectangle)
     -   [Ellipse](https://lottiefiles.github.io/lottie-docs/shapes/#ellipse)
+    -   [PolyStar](https://lottiefiles.github.io/lottie-docs/shapes/#polystar)
     -   [Path](https://lottiefiles.github.io/lottie-docs/shapes/#path)
     -   [Group](https://lottiefiles.github.io/lottie-docs/shapes/#group)
 -   lottie 中的 `anchorX/anchorY` 表示缩放和旋转中心，相对于图形的包围盒左上角，在映射到 `transformOrigin` 时需要注意
@@ -304,23 +306,34 @@ await api.edit(() => animation.render(api), { capture: 'NEVER' });
 
 这是将 Lottie 转换成 ECS 节点和关键帧的导入器，目前并非完整的 Lottie 播放器。下表描述的是实际渲染能力，不能把“解析了字段”等同于“支持了效果”。
 
-| 特性                                                       | 当前状态                                                                                                                                              |
-| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 矩形、椭圆、路径、分组；基础填充和描边                     | 支持基础静态形状、路径 morph 和 2D 位置/旋转/缩放动画；原始图形的尺寸/圆角动画仍有限制                                                                |
-| Solid、Null、父子层级、Precomp                             | 基础支持；图层 in/out 可见性、时间拉伸和重映射未完整实现                                                                                              |
-| 渐变、多重填充/描边                                        | 基础渐变可用；渐变几何动画、径向高光、多重绘制及运算顺序有限制                                                                                        |
-| Trim Paths                                                 | 用描边虚线近似；已修正完整/空路径、端点排序和偏移。填充裁切、多路径模式、与原有虚线样式叠加、动画中的零长度圆头描边、路径方向及 modifier 顺序仍有限制 |
-| 空间贝塞尔运动、Skew                                       | 未完整实现，导入时报告诊断                                                                                                                            |
-| PolyStar、Repeater、Merge Paths、Round Corners 等 modifier | 尚未实现渲染                                                                                                                                          |
-| Image                                                      | 部分支持；未处理资源目录和预加载                                                                                                                      |
-| Text、Mask、Track Matte、Effects、Blend Mode、3D           | 尚未实现或无法可靠还原；ECS 支持某项能力不代表 Lottie 已完成映射                                                                                      |
-| 表达式                                                     | 导入时烘焙；默认使用带有限形状图层环境的 lottie-web ExpressionManager，不等同于完整 AE 环境                                                           |
+| 特性                                             | 当前状态                                                                                                                                              |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 矩形、椭圆、路径、分组；基础填充和描边           | 支持基础静态形状、路径 morph 和 2D 位置/旋转/缩放动画；原始图形的尺寸/圆角动画仍有限制                                                                |
+| PolyStar                                         | 星形和多边形、正反路径方向；点数、位置、旋转、内外半径和圆角的数值关键帧，支持时间缓动及保持关键帧                                                    |
+| Solid、Null、父子层级、Precomp                   | 基础支持；图层 in/out 可见性、时间拉伸和重映射未完整实现                                                                                              |
+| 渐变、多重填充/描边                              | 基础渐变可用；渐变几何动画、径向高光、多重绘制及运算顺序有限制                                                                                        |
+| Trim Paths                                       | 用描边虚线近似；已修正完整/空路径、端点排序和偏移。填充裁切、多路径模式、与原有虚线样式叠加、动画中的零长度圆头描边、路径方向及 modifier 顺序仍有限制 |
+| 空间贝塞尔运动、Skew                             | 未完整实现，导入时报告诊断                                                                                                                            |
+| Repeater、Merge Paths、Round Corners 等 modifier | 尚未实现渲染                                                                                                                                          |
+| Image                                            | 部分支持；未处理资源目录和预加载                                                                                                                      |
+| Text、Mask、Track Matte、Effects、Blend Mode、3D | 尚未实现或无法可靠还原；ECS 支持某项能力不代表 Lottie 已完成映射                                                                                      |
+| 表达式                                           | 导入时烘焙；默认使用带有限形状图层环境的 lottie-web ExpressionManager，不等同于完整 AE 环境                                                           |
 
-`inspectLottie(data)` 可在不修改 JSON、不执行表达式的情况下检查已知缺口。`animation.getDiagnostics()` 和 `onDiagnostic` 返回 `code`、`severity`（`partial` / `unsupported`）、JSON Pointer `path` 和说明。诊断不会中止导入；没有诊断也不代表完全兼容 AE。两个示例中的 **Compatibility notes** 会展示具体缺口。
+`inspectLottie(data)` 可在不修改 JSON、不执行表达式的情况下检查已知缺口。`animation.getDiagnostics()` 和 `onDiagnostic` 返回 `code`、`severity`（`partial` / `unsupported`）、JSON Pointer `path` 和说明。诊断不会中止导入；没有诊断也不代表完全兼容 AE。示例中的 **Compatibility notes** 会展示具体缺口。
 
 播放器使用统一合成时间轴。`goTo(value, true)` 按相对于合成起点的帧定位，默认单位为秒，且保留播放/暂停状态。`stop()` 暂停并回到第 0 帧；`setSpeed()` 接受正数，`setDirection(-1)` 保留速度并从当前位置倒放。`playSegments([start, end])` 遵守两个端点，逆序端点表示倒放；`loop` 数字表示额外重复次数。底层 `getAnimations()` 返回的 ECS 控制器由播放器采样，请通过播放器控制时间。
 
-同一实例重复 `render(api)` 不重复创建动画，不允许挂载到另一个画布；`destroy()` 可重复调用，取消时间轴并在安全编辑阶段移除导入的节点树。切换示例或卸载组件还需取消未完成的 fetch 和排队的编辑。固定帧浏览器测试使用锁定版本的 lottie-web 作为参考，覆盖位置动画及单路径描边 Trim Paths，不代表整个格式已通过一致性验证。
+同一实例重复 `render(api)` 不重复创建动画，不允许挂载到另一个画布；`destroy()` 可重复调用，取消时间轴并在安全编辑阶段移除导入的节点树。切换示例或卸载组件还需取消未完成的 fetch 和排队的编辑。固定帧浏览器测试使用锁定版本的 lottie-web 作为参考，覆盖位置动画、单路径描边 Trim Paths，以及整数帧和小数帧下的 PolyStar 几何，不代表整个格式已通过一致性验证。
+
+### 星形与多边形 {#lottie-polystar}
+
+PolyStar（`ty: "sr"`）生成闭合贝塞尔路径：`sy: 1` 为星形，`sy: 2` 为多边形。点数 `pt`、位置 `p`、旋转 `r`、半径 `or` / `ir` 和圆角 `os` / `is` 可以独立动画，内半径和内圆角仅用于星形。`d: 3` 反转路径方向。小数点数与 lottie-web 5.13 一样向下取整，并非不同点数之间的连续形变。
+
+下面的示例同时动画两种图形。可以暂停、倒放，或拖动 **Seek frame** 查看中间状态。实现先插值参数再生成路径，因此旋转时半径不收缩，点数也在对应时刻切换。
+
+<AnimationLottiePolyStar />
+
+PolyStar 几何动画由插件控制器随合成时间轴采样。目前普通 ECS 关键帧序列化及动画编辑器还不能保留或编辑这些参数轨道，重新加载时需保留原始 Lottie JSON。位置的空间切线、modifier 组合（包括变化几何上的 Trim Paths）、表达式等仍受上述兼容性范围限制。曲线描边还会受到 ECS 渲染器已有的细分接缝透明度问题影响，因此这类描边的参考测试验证轮廓和颜色，不验证 alpha 完全一致。
 
 ### 表达式 {#expression}
 

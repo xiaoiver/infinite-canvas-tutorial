@@ -4,6 +4,48 @@ import { test } from '../isolated-webkit-test';
 import type {} from './fixtures/lottie-docs';
 
 test.setTimeout(60000);
+test('PolyStar demo renders both shapes and supports frame seeking and reverse playback', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.route('**/data/polystar.json', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: readFileSync(
+        'packages/site/docs/public/data/polystar.json',
+        'utf8',
+      ),
+    }),
+  );
+  await page.goto('/lottie-docs.html?polystar');
+  await expect(page.locator('.state')).toContainText('running', {
+    timeout: 30000,
+  });
+  expect(
+    await page.evaluate(() => window.lottieDocs.nodes()),
+  ).toBeGreaterThanOrEqual(4);
+  await expect(page.locator('.compatibility')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  const initial = await page.evaluate(() => window.lottieDocs.paths());
+  expect(initial).toHaveLength(2);
+  expect(
+    initial.every((path) => typeof path === 'string' && path.startsWith('M')),
+  ).toBe(true);
+  await page.getByRole('slider', { name: 'Seek frame' }).fill('60.25');
+  await expect(page.locator('.state')).toContainText('paused');
+  await expect(page.locator('output')).toHaveText('60.25');
+  expect(await page.evaluate(() => window.lottieDocs.paths())).not.toEqual(
+    initial,
+  );
+  await page.getByRole('button', { name: 'Reverse', exact: true }).click();
+  await expect(page.locator('.state')).toContainText('running (reverse)');
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  await expect(page.locator('.state')).toContainText('stopped');
+  expect(await page.evaluate(() => window.lottieDocs.paths())).toEqual(initial);
+  await page.evaluate(() => window.lottieDocs.unmount());
+  expect(errors).toEqual([]);
+});
 test('real demos render, expose compatibility notes and remount cleanly', async ({
   page,
 }) => {

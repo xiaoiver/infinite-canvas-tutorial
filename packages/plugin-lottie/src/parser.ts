@@ -16,6 +16,7 @@ import {
 } from './expressions';
 import * as Lottie from './type';
 import { filterUndefined, formatNumber } from '@infinite-canvas-tutorial/ecs';
+import { compilePolyStar, type PolyStarPath } from './polystar';
 
 const rad2deg = (rad: number) => rad * (180 / Math.PI);
 
@@ -43,6 +44,8 @@ export interface CustomElementOption {
   children?: CustomElementOption[];
 
   shape?: Record<string, any>;
+  /** Composition-relative milliseconds; evaluated after interpolating shape parameters. */
+  sampleShape?: (time: number) => PolyStarPath;
   style?: Record<string, any>;
   clipPath?: CustomElementOption;
   extra?: any;
@@ -1117,6 +1120,61 @@ function parseShapeEllipse(
   return attrs;
 }
 
+function parseShapePolyStar(
+  source: Lottie.PolyStarShape,
+  context: ParseContext,
+): CustomElementOption {
+  const shape = { ...source };
+  const { startFrame, endFrame, fps, layerOffsetTime } = context;
+  // Preserve the existing import-time expression behavior. The sampler then reads
+  // the baked property just like ordinary numeric keyframes, without evaluating code.
+  for (const key of ['pt', 'p', 'r', 'or', 'os', 'ir', 'is'] as const) {
+    const property = shape[key];
+    if (!context.expressions || !propertyHasExpression(property)) continue;
+    const names = key === 'p' ? ['x', 'y'] : ['value'];
+    const baked =
+      key === 'p'
+        ? bakeVectorExpressionTrack(
+            property.x,
+            property as Lottie.MultiDimensional,
+            expressionBakeContext(context),
+            '',
+            names,
+          )
+        : bakeScalarExpressionTrack(
+            property.x,
+            property as Lottie.Value,
+            expressionBakeContext(context),
+            '',
+            'value',
+          );
+    if (baked) {
+      shape[key] = {
+        a: 1,
+        k: baked.keyframes.map((row) => ({
+          t:
+            startFrame + row.offset * (endFrame - startFrame) - layerOffsetTime,
+          s: names.map((name) => row[name] as number),
+        })),
+      };
+    }
+  }
+  const geometry = compilePolyStar(shape);
+  const sampleShape = (time: number) => {
+    const frame = startFrame + (time * fps) / 1000 - layerOffsetTime;
+    // Clock normalization can leave an exact keyframe at 59.99999999999999.
+    // Preserve the point-count/hold transition at that frame, in either direction.
+    const integer = Math.round(frame);
+    return geometry.sample(Math.abs(frame - integer) < 1e-9 ? integer : frame);
+  };
+  return {
+    type: 'path',
+    style: { fill: 'none', stroke: 'none' },
+    shape: sampleShape(0),
+    ...(geometry.animated ? { sampleShape } : {}),
+  };
+}
+
 function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
   const GROUP_TRANSFORM_ATTR_KEYS = new Set([
     'x',
@@ -1192,7 +1250,7 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
         );
         break;
       case Lottie.ShapeType.PolyStar:
-        // TODO: parseShapePolyStar
+        ecEl = parseShapePolyStar(shape as Lottie.PolyStarShape, context);
         break;
     }
     return ecEl;
@@ -1761,6 +1819,7 @@ function hasFillRuleAnimation(
 }
 
 function pathHasGeometryAnimation(el: CustomElementOption): boolean {
+  if (el.sampleShape) return true;
   if (!el.keyframeAnimation?.length) {
     return false;
   }

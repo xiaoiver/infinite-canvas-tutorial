@@ -1352,6 +1352,9 @@ importers:
       '@infinite-canvas-tutorial/webcomponents':
         specifier: workspace:*
         version: link:../webcomponents
+      bezier-easing:
+        specifier: ^2.1.0
+        version: 2.1.0
       uuid:
         specifier: ^14.0.0
         version: 14.0.0

@@ -107,14 +107,103 @@ const linear = (from: number[], to: number[]) => ({
   ],
 });
 export type LottieCase = {
-  kind: 'move' | 'trim';
+  kind: 'move' | 'trim' | 'polystar';
   start?: number;
   end?: number;
   offset?: number;
   round?: boolean;
   animated?: boolean;
   dashed?: boolean;
+  polygon?: boolean;
+  points?: number;
+  direction?: number;
+  roundness?: number;
+  outerRadius?: number;
+  innerRadius?: number;
+  nested?: boolean;
+  hold?: boolean;
+  eased?: boolean;
+  expression?: boolean;
+  startFrame?: number;
+  stroked?: boolean;
+  animatedPaint?: boolean;
 };
+function polystarShapes(options: LottieCase) {
+  const animate = (from: number[], to: number[]) => {
+    const property = linear(from, to);
+    if (options.eased) {
+      property.k[0].o = { x: [0.42], y: [0] };
+      property.k[0].i = { x: [1], y: [1] };
+    }
+    return options.hold
+      ? { ...property, k: [{ ...property.k[0], h: 1 }, property.k[1]] }
+      : property;
+  };
+  const shapes = [
+    {
+      ty: 'sr',
+      sy: options.polygon ? 2 : 1,
+      d: options.direction ?? 1,
+      pt: options.animated ? animate([4], [8]) : property(options.points ?? 5),
+      p: options.animated ? animate([100, 64], [150, 60]) : property([128, 64]),
+      r: options.expression
+        ? { ...property(0), x: 'var $bm_rt; $bm_rt = time * 120;' }
+        : options.animated
+        ? animate([0], [270])
+        : property(17),
+      or: options.animated
+        ? animate([36], [48])
+        : property(options.outerRadius ?? 50),
+      os: options.animated
+        ? animate([0], [80])
+        : property(options.roundness ?? 0),
+      ir: options.animated
+        ? animate([12], [24])
+        : property(options.innerRadius ?? 23),
+      is: options.animated
+        ? animate([60], [0])
+        : property(options.roundness ?? 0),
+    },
+    ...(options.stroked
+      ? [
+          {
+            ty: 'st',
+            c: property([1, 0, 0, 1]),
+            o: property(100),
+            w: options.animatedPaint ? linear([3], [8]) : property(5),
+            lc: 2,
+            lj: 2,
+            ml: 4,
+          },
+        ]
+      : [
+          {
+            ty: 'fl',
+            c: property([1, 0, 0, 1]),
+            o: options.animatedPaint ? linear([100], [40]) : property(100),
+            r: 1,
+          },
+        ]),
+  ];
+  return options.nested
+    ? [
+        {
+          ty: 'gr',
+          it: [
+            ...shapes,
+            {
+              ty: 'tr',
+              p: property([8, 3]),
+              a: property([0, 0]),
+              s: property([90, 85]),
+              r: property(5),
+              o: property(100),
+            },
+          ],
+        },
+      ]
+    : shapes;
+}
 function fixture(options: LottieCase) {
   const ks = {
     o: property(100),
@@ -127,7 +216,9 @@ function fixture(options: LottieCase) {
     s: property([100, 100, 100]),
   };
   const shapes =
-    options.kind === 'move'
+    options.kind === 'polystar'
+      ? polystarShapes(options)
+      : options.kind === 'move'
       ? [
           {
             ty: 'rc',
@@ -186,7 +277,7 @@ function fixture(options: LottieCase) {
   return {
     v: '5.13.0',
     fr: 60,
-    ip: 0,
+    ip: options.startFrame ?? 0,
     op: 61,
     w: 256,
     h: 128,
@@ -201,7 +292,7 @@ function fixture(options: LottieCase) {
         ddd: 0,
         sr: 1,
         st: 0,
-        ip: 0,
+        ip: options.startFrame ?? 0,
         op: 61,
         ks,
         shapes,

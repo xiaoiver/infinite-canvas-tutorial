@@ -6,7 +6,7 @@ import type {
   KeyframeAnimationKeyframe,
   ParseContext,
 } from './parser';
-import { AnimationController, API, DOMAdapter, EllipseSerializedNode, filterUndefined, GSerializedNode, PathSerializedNode, RectSerializedNode, SerializedNode } from '@infinite-canvas-tutorial/ecs';
+import { AnimationController, AnimationPlayer, API, DOMAdapter, EllipseSerializedNode, filterUndefined, GSerializedNode, PathSerializedNode, RectSerializedNode, SerializedNode, type AnimationOptions } from '@infinite-canvas-tutorial/ecs';
 import { v4 as uuidv4 } from 'uuid';
 import {
   getShapePerimeter,
@@ -18,6 +18,7 @@ import {
 
 import type { LottieDiagnostic } from './diagnostics';
 import { LottiePlayback } from './playback';
+import { SampledPathAnimation } from './SampledPathAnimation';
 
 const eps = 0.0001;
 
@@ -619,7 +620,6 @@ export class LottieAnimation {
     // TODO: repeater @see https://lottiefiles.github.io/lottie-docs/shapes/#repeater
 
     // @see https://lottiefiles.github.io/lottie-docs/shapes/#shape
-    // TODO: polystar, convert to Bezier @see https://lottiefiles.github.io/lottie-docs/rendering/#polystar
     if (type === 'g') {
       displayObject = {
         id: uuidv4(),
@@ -971,6 +971,12 @@ export class LottieAnimation {
         ];
       }
 
+      if (element?.sampleShape && !keyframeAnimation?.length) {
+        keyframeAnimation = [{
+          duration: this.getDuration() * 1000,
+          keyframes: [{ offset: 0 }],
+        }];
+      }
       if (keyframeAnimation && keyframeAnimation.length) {
         const keyframesOptions: [
           KeyframeAnimationKeyframe[],
@@ -1051,9 +1057,30 @@ export class LottieAnimation {
 
               // console.log('formatted', formatted, options, child);
 
-              if (formatted.length) {
-                // @ts-expect-error 
-                const animation = api.animate(child, formatted, options);
+              if (formatted.length || element?.sampleShape) {
+                let animation = api.animate(
+                  child,
+                  formatted.length ? formatted : [{ offset: 0 }],
+                  options as AnimationOptions,
+                );
+                if (element?.sampleShape) {
+                  let previousShape: ReturnType<typeof element.sampleShape>;
+                  let d: string;
+                  animation = new SampledPathAnimation(
+                    formatted,
+                    options as AnimationOptions,
+                    (time) => {
+                      const shape = element.sampleShape(time);
+                      if (shape !== previousShape) {
+                        previousShape = shape;
+                        d = path2String(this.generatePathFromShape(shape));
+                      }
+                      return d;
+                    },
+                  );
+                  api.getEntity(child).write(AnimationPlayer).controller =
+                    animation;
+                }
                 if (
                   !isNil(visibilityStartOffset) &&
                   !isNil(visibilityEndOffset)
