@@ -1,6 +1,11 @@
 import { createApp } from 'vue';
 import LassoDemo from '../../../packages/site/docs/components/Lasso.vue';
-import { type API, type SerializedNode, Pen } from '../../../packages/ecs/src';
+import {
+  type API,
+  type SerializedNode,
+  Highlighted,
+  Pen,
+} from '../../../packages/ecs/src';
 
 let api: API;
 const drawn: string[] = [];
@@ -35,6 +40,19 @@ const harness = {
   ready: () => !!api && api.getNodes().length >= 2,
   settle,
   state: () => api.getAppState(),
+  highlighted: () =>
+    api
+      .getNodes()
+      .filter((node) => api.getEntity(node)?.has(Highlighted))
+      .map((node) => node.id)
+      .sort(),
+  history: () => api.getHistoryState(),
+  marquee: () => {
+    const rect = api
+      .getSvgLayer()
+      .querySelector<SVGRectElement>('svg[visibility="visible"] > rect');
+    return rect?.getBoundingClientRect().toJSON();
+  },
   masks: () => api.getNodes().filter((node) => node.type === 'path'),
   drawn: () => drawn,
   async mask() {
@@ -49,6 +67,14 @@ const harness = {
   },
   async undo() {
     await api.undo();
+    await settle();
+  },
+  async redo() {
+    await api.redo();
+    await settle();
+  },
+  async selectTool() {
+    await api.edit(() => api.setAppState({ penbarSelected: Pen.SELECT }));
     await settle();
   },
   async camera() {

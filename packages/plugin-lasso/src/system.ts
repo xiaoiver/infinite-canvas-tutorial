@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import {
+  API,
   Camera,
   Canvas,
   ComputedCamera,
@@ -18,6 +19,7 @@ import {
   Polyline,
   Ellipse,
   GlobalTransform,
+  Highlighted,
   isBrowser,
   TesselationMethod,
   PathSerializedNode,
@@ -27,18 +29,19 @@ import {
 import { AnimationFrameHandler } from '@infinite-canvas-tutorial/webcomponents';
 import { LassoTrail } from './lasso-trail';
 import { isValidLassoPath, selectByLassoPath } from './utils';
+
+interface LassoSelection {
+  lassoTrail: LassoTrail;
+  svgSVGElement: SVGSVGElement;
+  removeCleanup: () => void;
+  mode?: 'select' | 'draw';
+  previewIds: string[];
+}
+
 export class LassoSystem extends System {
   private readonly cameras = this.query((q) => q.current.with(Camera).read);
 
-  private selections = new Map<
-    number,
-    {
-      lassoTrail: LassoTrail;
-      svgSVGElement: SVGSVGElement;
-      removeCleanup: () => void;
-      mode?: 'select' | 'draw';
-    }
-  >();
+  private selections = new Map<number, LassoSelection>();
 
   private readonly handler = new AnimationFrameHandler();
 
@@ -48,7 +51,7 @@ export class LassoSystem extends System {
     this.query(
       (q) =>
         q
-          .using(Cursor)
+          .using(Cursor, Highlighted)
           .write.and.using(
             Canvas,
             Input,
@@ -93,6 +96,7 @@ export class LassoSystem extends System {
         // Clear selection
         if (selection?.lassoTrail.hasCurrentTrail) {
           selection.lassoTrail.clearTrails();
+          this.clearPreview(api, selection);
         }
         return;
       }
@@ -106,6 +110,7 @@ export class LassoSystem extends System {
         this.selections.set(cameraId, {
           lassoTrail: new LassoTrail(this.handler, api),
           svgSVGElement: createSVGElement('svg') as SVGSVGElement,
+          previewIds: [],
           removeCleanup: api.onDestroy(() => {
             const current = this.selections.get(cameraId);
             current?.lassoTrail.clearTrails();
@@ -115,8 +120,15 @@ export class LassoSystem extends System {
         });
         selection = this.selections.get(cameraId);
 
-        // Default is hidden
-        selection.svgSVGElement.style.overflow = 'visible';
+        // The trail uses canvas viewport coordinates and must not occupy space
+        // in the overlay layer, even after its path has been cleared.
+        Object.assign(selection.svgSVGElement.style, {
+          position: 'absolute',
+          inset: '0',
+          width: '100%',
+          height: '100%',
+          overflow: 'visible',
+        });
 
         api.getSvgLayer().appendChild(selection.svgSVGElement);
       }
@@ -126,6 +138,7 @@ export class LassoSystem extends System {
       // Cancellation must precede pointerup (pinch can set both in one frame).
       if (input.key === 'Escape' || input.pointerCancelled) {
         trail.clearTrails();
+        this.clearPreview(api, selection);
         if (input.key === 'Escape' && appState.layersLassoing.length > 0) {
           void api.edit(() => api.cancelLasso());
         }
@@ -133,6 +146,7 @@ export class LassoSystem extends System {
       }
       if (trail.hasCurrentTrail && selection.mode !== mode) {
         trail.clearTrails();
+        this.clearPreview(api, selection);
       }
       if (input.pointerDownTrigger && input.pointerButton === 0) {
         const [x, y] = input.pointerDownViewport;
@@ -143,11 +157,34 @@ export class LassoSystem extends System {
       if (!trail.hasCurrentTrail) return;
 
       const [x, y] = input.pointerViewport;
-      if (!trail.hasLastPoint(x, y)) trail.addPointToPath(x, y);
+      const pointChanged = !trail.hasLastPoint(x, y);
+      if (pointChanged) trail.addPointToPath(x, y);
+
+      // Preview once per input frame, without committing selection/history or
+      // rebuilding unchanged outlines on every animation frame.
+      if (
+        mode === 'select' &&
+        !input.pointerUpTrigger &&
+        (pointChanged || input.pointerDownTrigger)
+      ) {
+        const nodes = selectByLassoPath(api, trail.getPoints()).map((entity) =>
+          api.getNodeByEntity(entity),
+        );
+        const ids = nodes.map((node) => node.id);
+        const highlighted = new Set(api.getAppState().layersHighlighted);
+        if (
+          ids.length !== highlighted.size ||
+          ids.some((id) => !highlighted.has(id))
+        ) {
+          api.highlightNodes(nodes);
+        }
+        selection.previewIds = ids;
+      }
 
       if (input.pointerUpTrigger) {
         const points = trail.getPoints();
         trail.endPath();
+        this.clearPreview(api, selection);
         if (!isValidLassoPath(points)) return;
 
         if (mode === 'select') {
@@ -212,6 +249,16 @@ export class LassoSystem extends System {
         }
       }
     });
+  }
+
+  private clearPreview(api: API, selection: LassoSelection) {
+    if (!selection.previewIds.length) return;
+    api.unhighlightNodes(
+      selection.previewIds
+        .map((id) => api.getNodeById(id))
+        .filter((node) => !!node),
+    );
+    selection.previewIds = [];
   }
 
   finalize(): void {

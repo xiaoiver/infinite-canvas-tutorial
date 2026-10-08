@@ -67,7 +67,7 @@ export class LassoTrail extends AnimatedTrail {
     this.stop();
   }
 
-  /** Snapshot the complete gesture before endPath clears it. */
+  /** Snapshot the current gesture for preview or commit before endPath clears it. */
   getPoints(): [number, number][] {
     const originalPoints = this.getCurrentTrail()?.originalPoints;
     if (!originalPoints?.length) return [];

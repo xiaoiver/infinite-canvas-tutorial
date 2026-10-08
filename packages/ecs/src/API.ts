@@ -1992,7 +1992,6 @@ export class API {
           .filter((id, index, self) => self.indexOf(id) === index);
     if (updateAppState) {
       this.setAppState({
-        ...prevAppState,
         layersHighlighted,
       });
     }
@@ -2016,7 +2015,6 @@ export class API {
     const ids = new Set(nodes.map((node) => node.id));
     const prevAppState = this.getAppState();
     this.setAppState({
-      ...prevAppState,
       layersHighlighted: prevAppState.layersHighlighted.filter(
         (id) => !ids.has(id),
       ),

@@ -158,13 +158,14 @@ const lassoPath = super
 
 const simplifyDistance = 5 / this.api.getAppState().cameraZoom;
 const points = simplify(lassoPath, simplifyDistance).map((p) => [p.x, p.y]);
-// Hit-test the complete path on pointerup, before clearing the trail.
+// Hit-test the current path as it changes for preview, and again on pointerup
+// before clearing the trail to commit the final selection.
 const selected = selectByLassoPath(this.api, points);
 ```
 
 <Lasso />
 
-Drag around the shapes, then release to select them. The lasso closes automatically; selection is committed once on release. Press Escape to cancel. Taps, tiny movements, cancelled touch gestures and pinch gestures do not select anything. Choose the lasso tool again for another selection.
+Drag around the shapes to preview hits immediately: outlines appear or disappear as the lasso changes. The unfinished lasso closes automatically back to its starting point for hit testing. Release to commit the final selection in one undo step. Press Escape, cancel the touch gesture, start a pinch, or switch tools to clear the preview without selecting. Taps and tiny movements do not select anything. Choose the lasso tool again for another selection. Mask drawing mode creates its path only on release and does not preview shape selection.
 
 Hit testing uses world coordinates, including each shape's parent transforms, rotation and flips. Open polylines are tested segment by segment without an implicit closing edge. Locked and hidden shapes are excluded.
 
