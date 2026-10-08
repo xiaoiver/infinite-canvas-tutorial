@@ -8,7 +8,12 @@ test.beforeEach(async ({ page }) => {
   await expect(page.locator('#status')).toHaveText('Ready');
 });
 
-function compare(urls: string[], label: string, compareAlpha = true) {
+function compare(
+  urls: string[],
+  label: string,
+  compareAlpha = true,
+  coverageThreshold = 127,
+) {
   const [actual, reference] = urls.map((url) =>
     PNG.sync.read(Buffer.from(url.split(',')[1], 'base64')),
   );
@@ -22,7 +27,7 @@ function compare(urls: string[], label: string, compareAlpha = true) {
     y >= 0 &&
     x < png.width &&
     y < png.height &&
-    png.data[(y * png.width + x) * 4 + 3] > 127;
+    png.data[(y * png.width + x) * 4 + 3] > coverageThreshold;
   const neighbors = (png: PNG, x: number, y: number) => {
     for (let dy = -1; dy <= 1; dy++)
       for (let dx = -1; dx <= 1; dx++)
@@ -46,16 +51,35 @@ function compare(urls: string[], label: string, compareAlpha = true) {
             [-1, 0, 1].every((dx) => covered(png, x + dx, y + dy)),
           ),
         );
-        if (interior) {
+        // Overlapping paints introduce internal color/alpha edges too. Compare
+        // solid reference interiors, keeping the same one-pixel AA tolerance.
+        const solidReference = [-1, 0, 1].every((dy) =>
+          [-1, 0, 1].every((dx) => {
+            const neighbor = ((y + dy) * reference.width + x + dx) * 4;
+            return [0, 1, 2, 3].every(
+              (c) =>
+                Math.abs(
+                  reference.data[neighbor + c] - reference.data[i + c],
+                ) <= 3,
+            );
+          }),
+        );
+        if (interior && solidReference) {
           maxAlphaError = Math.max(
             maxAlphaError,
             Math.abs(actual.data[i + 3] - reference.data[i + 3]),
           );
-          if (actual.data[i + 3] > 250 && reference.data[i + 3] > 250)
+          if (
+            compareAlpha ||
+            (actual.data[i + 3] > 250 && reference.data[i + 3] > 250)
+          )
             for (let c = 0; c < 3; c++)
               maxColorError = Math.max(
                 maxColorError,
-                Math.abs(actual.data[i + c] - reference.data[i + c]),
+                Math.abs(
+                  (actual.data[i + c] * actual.data[i + 3]) / 255 -
+                    (reference.data[i + c] * reference.data[i + 3]) / 255,
+                ),
               );
         }
       }
@@ -305,4 +329,193 @@ test('PolyStar paused seek, repeat render, stop and destroy retain one owner for
   expect(result.repeated).toBe(true);
   expect(result.remaining).toBe(0);
   expect(result.states.every((state) => state === 'cancelled')).toBe(true);
+});
+
+for (const options of [
+  {},
+  { copies: 0 },
+  { copies: 3, layerOpacity: 0 },
+  { copies: 1, opacityStart: 70, opacityEnd: 20 },
+  { copies: 2.25, offset: 0.5, repeatScale: [90, 110], repeatRotation: 15 },
+  { offset: -1 },
+  { offset: -0.5, repeatScale: [90, 110], repeatRotation: 15 },
+  { composite: 2, repeatPosition: [10, 3], opacityStart: 100, opacityEnd: 60 },
+  { composite: 1, repeatPosition: [10, 3], opacityStart: 100, opacityEnd: 60 },
+  { nested: true, copies: 3, repeatRotation: 10 },
+] satisfies Omit<LottieCase, 'kind'>[]) {
+  test(`Repeater fixed frame matches lottie-web: ${JSON.stringify(
+    options,
+  )}`, async ({ page }) => {
+    await page.evaluate(
+      (options: LottieCase) => window.lottieTest.load(options),
+      { kind: 'repeater', ...options },
+    );
+    expect(
+      await page.evaluate(() => window.lottieTest.animation().getDiagnostics()),
+    ).toEqual([]);
+    compare(
+      await page.evaluate(() => window.lottieTest.seek(0)),
+      JSON.stringify(options),
+      true,
+      32,
+    );
+  });
+}
+
+for (const options of [
+  { animated: true },
+  { animated: true, composite: 2, animatedPaint: true },
+  { animated: true, eased: true },
+  { animated: true, hold: true },
+  { repeatedStar: true, copies: 4 },
+  { animated: true, expression: true, startFrame: 10 },
+] satisfies Omit<LottieCase, 'kind'>[]) {
+  test(`Repeater animated frames match lottie-web: ${JSON.stringify(
+    options,
+  )}`, async ({ page }) => {
+    await page.evaluate(
+      (options: LottieCase) => window.lottieTest.load(options),
+      { kind: 'repeater', ...options },
+    );
+    const initialCount = await page.evaluate(
+      () => window.lottieTest.api().getNodes().length,
+    );
+    for (const frame of [
+      0,
+      0.01,
+      7.5,
+      24,
+      40,
+      60 - (options.startFrame ?? 0),
+      15,
+      0,
+    ])
+      compare(
+        await page.evaluate((frame) => window.lottieTest.seek(frame), frame),
+        `${JSON.stringify(options)} frame ${frame}`,
+        true,
+        32,
+      );
+    expect(
+      await page.evaluate(() => window.lottieTest.api().getNodes().length),
+    ).toBe(initialCount);
+  });
+}
+
+test('nested Repeaters render recursive copies and report their reference ordering limitation', async ({
+  page,
+}) => {
+  await page.evaluate(() =>
+    window.lottieTest.load({
+      kind: 'repeater',
+      nestedRepeater: true,
+      copies: 3,
+    }),
+  );
+  expect(
+    await page.evaluate(() =>
+      window.lottieTest
+        .animation()
+        .getDiagnostics()
+        .map((d) => d.code),
+    ),
+  ).toEqual(['shape.repeater.nested']);
+  const [url] = await page.evaluate(() => window.lottieTest.seek(0));
+  const png = PNG.sync.read(Buffer.from(url.split(',')[1], 'base64'));
+  for (const row of [0, 1])
+    for (const column of [0, 1, 2]) {
+      const x = 18 + column * 40,
+        y = 40 + column * 10 + row * 48;
+      const i = (y * png.width + x) * 4;
+      expect([...png.data.slice(i, i + 4)]).toEqual([255, 0, 0, 255]);
+    }
+  expect(
+    await page.evaluate(
+      () =>
+        window.lottieTest
+          .api()
+          .getNodes()
+          .filter((node) => node.type === 'rect').length,
+    ),
+  ).toBe(12);
+});
+
+test('Repeater stop, seek, render and destroy keep one pool and cancel every controller', async ({
+  page,
+}) => {
+  await page.evaluate(() =>
+    window.lottieTest.load({
+      kind: 'repeater',
+      animated: true,
+      repeatedStar: true,
+    }),
+  );
+  const result = await page.evaluate(async () => {
+    const player = window.lottieTest.animation(),
+      api = window.lottieTest.api();
+    const controllers = player.getAnimations();
+    const initial = controllers.map((c) => c.getCurrentValues());
+    const count = api.getNodes().length;
+    player.goTo(40, true);
+    await window.lottieTest.rendered();
+    const middle = controllers.map((c) => c.getCurrentValues());
+    player.setDirection(-1);
+    player.play();
+    await window.lottieTest.rendered();
+    player.stop();
+    const stopped = controllers.map((c) => c.getCurrentValues());
+    await api.edit(() => player.render(api));
+    const stable =
+      api.getNodes().length === count &&
+      player.getAnimations().length === controllers.length;
+    await player.destroy();
+    await player.destroy();
+    return {
+      initial,
+      middle,
+      stopped,
+      stable,
+      count: api.getNodes().length,
+      states: controllers.map((c) => c.getPlayState()),
+    };
+  });
+  expect(result.initial.length).toBeGreaterThan(5);
+  expect(result.middle).not.toEqual(result.initial);
+  expect(result.stopped).toEqual(result.initial);
+  expect(result.stable).toBe(true);
+  expect(result.count).toBe(0);
+  expect(result.states.every((state) => state === 'cancelled')).toBe(true);
+});
+
+// lottie-web 5.13 Canvas/CVContextData.opacity assigns the local operand to
+// globalAlpha instead of the accumulated layer opacity. Check the multiplied
+// layer/group opacity against analytical RGBA values, independently of that bug.
+test('layer opacity multiplies group and copy opacity, including animated layer tracks', async ({
+  page,
+}) => {
+  for (const animatedLayerOpacity of [false, true]) {
+    await page.evaluate(
+      (animatedLayerOpacity) =>
+        window.lottieTest.load({
+          kind: 'repeater',
+          copies: 1,
+          nested: true,
+          layerOpacity: 40,
+          animatedLayerOpacity,
+        }),
+      animatedLayerOpacity,
+    );
+    for (const frame of [0, 30, 60, 0]) {
+      const [url] = await page.evaluate(
+        (frame) => window.lottieTest.seek(frame),
+        frame,
+      );
+      const png = PNG.sync.read(Buffer.from(url.split(',')[1], 'base64'));
+      const alpha =
+        255 * 0.8 * (animatedLayerOpacity ? 1 - (frame / 60) * 0.4 : 0.4);
+      const i = (40 * png.width + 22) * 4;
+      expect([...png.data.slice(i, i + 3)]).toEqual([255, 0, 0]);
+      expect(Math.abs(png.data[i + 3] - alpha)).toBeLessThanOrEqual(1);
+    }
+  }
 });

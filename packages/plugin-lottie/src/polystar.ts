@@ -1,67 +1,11 @@
-import BezierEasing from 'bezier-easing';
-import type {
-  MultiDimensional,
-  OffsetKeyframe,
-  PolyStarShape,
-  Value,
-} from './type';
+import type { PolyStarShape } from './type';
+import { compileNumericProperty } from './numeric-property';
 
 export interface PolyStarPath {
   v: number[][];
   in: number[][];
   out: number[][];
   close: true;
-}
-
-const channel = (
-  value: number | number[] | undefined,
-  dimension: number,
-  fallback = 0,
-) => (Array.isArray(value) ? value[dimension] ?? value[0] : value) ?? fallback;
-
-/** Compile once; keyframe easing belongs to the outgoing Lottie segment. */
-function compileProperty(
-  property: Value | MultiDimensional | undefined,
-  dimension = 0,
-) {
-  const k = property?.k;
-  if (!Array.isArray(k) || !k.length || typeof k[0] !== 'object') {
-    const value = channel(k as number | number[] | undefined, dimension);
-    return { animated: false, sample: (_frame: number) => value };
-  }
-  const frames = k as OffsetKeyframe[];
-  const values = frames.map((frame, i) =>
-    channel(frame.s ?? frames[i - 1]?.e, dimension),
-  );
-  const segments = frames.slice(0, -1).map((frame, i) => ({
-    start: frame.t,
-    end: frames[i + 1].t,
-    from: values[i],
-    to: channel(frames[i + 1].s ?? frame.e, dimension, values[i]),
-    hold: frame.h === 1,
-    ease: BezierEasing(
-      channel(frame.o?.x, dimension, 0),
-      channel(frame.o?.y, dimension, 0),
-      channel(frame.i?.x, dimension, 1),
-      channel(frame.i?.y, dimension, 1),
-    ),
-  }));
-  return {
-    animated: true,
-    sample(frame: number) {
-      if (frame <= frames[0].t) return values[0];
-      for (const segment of segments) {
-        if (frame < segment.end) {
-          if (segment.hold) return segment.from;
-          const progress = segment.ease(
-            (frame - segment.start) / (segment.end - segment.start),
-          );
-          return segment.from + (segment.to - segment.from) * progress;
-        }
-      }
-      return values[values.length - 1];
-    },
-  };
 }
 
 /**
@@ -73,14 +17,14 @@ function compileProperty(
 export function compilePolyStar(shape: PolyStarShape) {
   const star = shape.sy === 1;
   const properties = [
-    compileProperty(shape.pt),
-    compileProperty(shape.p, 0),
-    compileProperty(shape.p, 1),
-    compileProperty(shape.r),
-    compileProperty(shape.or),
-    compileProperty(shape.os),
-    compileProperty(star ? shape.ir : undefined),
-    compileProperty(star ? shape.is : undefined),
+    compileNumericProperty(shape.pt),
+    compileNumericProperty(shape.p, 0),
+    compileNumericProperty(shape.p, 1),
+    compileNumericProperty(shape.r),
+    compileNumericProperty(shape.or),
+    compileNumericProperty(shape.os),
+    compileNumericProperty(star ? shape.ir : undefined),
+    compileNumericProperty(star ? shape.is : undefined),
   ];
   let previous: number[] | undefined;
   let path: PolyStarPath;

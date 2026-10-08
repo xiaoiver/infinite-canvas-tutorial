@@ -12,6 +12,7 @@ import AnimationDashoffset from '../../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../../components/AnimationMorphing.vue';
 import AnimationLottieBouncyBall from '../../components/AnimationLottieBouncyBall.vue';
 import AnimationLottiePolyStar from '../../components/AnimationLottiePolyStar.vue';
+import AnimationLottieRepeater from '../../components/AnimationLottieRepeater.vue';
 import AnimationLottieBezier from '../../components/AnimationLottieBezier.vue';
 import AnimationTimeline from '../../components/AnimationTimeline.vue';
 </script>
@@ -310,11 +311,12 @@ await api.edit(() => animation.render(api), { capture: 'NEVER' });
 | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 矩形、椭圆、路径、分组；基础填充和描边           | 支持基础静态形状、路径 morph 和 2D 位置/旋转/缩放动画；原始图形的尺寸/圆角动画仍有限制                                                                |
 | PolyStar                                         | 星形和多边形、正反路径方向；点数、位置、旋转、内外半径和圆角的数值关键帧，支持时间缓动及保持关键帧                                                    |
+| Repeater                                         | 复制前面的形状/分组；支持数量、偏移、锚点、位移、缩放、旋转、起止透明度和堆叠顺序，以及数值关键帧动画                                                 |
 | Solid、Null、父子层级、Precomp                   | 基础支持；图层 in/out 可见性、时间拉伸和重映射未完整实现                                                                                              |
 | 渐变、多重填充/描边                              | 基础渐变可用；渐变几何动画、径向高光、多重绘制及运算顺序有限制                                                                                        |
 | Trim Paths                                       | 用描边虚线近似；已修正完整/空路径、端点排序和偏移。填充裁切、多路径模式、与原有虚线样式叠加、动画中的零长度圆头描边、路径方向及 modifier 顺序仍有限制 |
 | 空间贝塞尔运动、Skew                             | 未完整实现，导入时报告诊断                                                                                                                            |
-| Repeater、Merge Paths、Round Corners 等 modifier | 尚未实现渲染                                                                                                                                          |
+| Merge Paths、Round Corners 等 modifier           | 尚未实现渲染                                                                                                                                          |
 | Image                                            | 部分支持；未处理资源目录和预加载                                                                                                                      |
 | Text、Mask、Track Matte、Effects、Blend Mode、3D | 尚未实现或无法可靠还原；ECS 支持某项能力不代表 Lottie 已完成映射                                                                                      |
 | 表达式                                           | 导入时烘焙；默认使用带有限形状图层环境的 lottie-web ExpressionManager，不等同于完整 AE 环境                                                           |
@@ -323,7 +325,7 @@ await api.edit(() => animation.render(api), { capture: 'NEVER' });
 
 播放器使用统一合成时间轴。`goTo(value, true)` 按相对于合成起点的帧定位，默认单位为秒，且保留播放/暂停状态。`stop()` 暂停并回到第 0 帧；`setSpeed()` 接受正数，`setDirection(-1)` 保留速度并从当前位置倒放。`playSegments([start, end])` 遵守两个端点，逆序端点表示倒放；`loop` 数字表示额外重复次数。底层 `getAnimations()` 返回的 ECS 控制器由播放器采样，请通过播放器控制时间。
 
-同一实例重复 `render(api)` 不重复创建动画，不允许挂载到另一个画布；`destroy()` 可重复调用，取消时间轴并在安全编辑阶段移除导入的节点树。切换示例或卸载组件还需取消未完成的 fetch 和排队的编辑。固定帧浏览器测试使用锁定版本的 lottie-web 作为参考，覆盖位置动画、单路径描边 Trim Paths，以及整数帧和小数帧下的 PolyStar 几何，不代表整个格式已通过一致性验证。
+同一实例重复 `render(api)` 不重复创建动画，不允许挂载到另一个画布；`destroy()` 可重复调用，取消时间轴并在安全编辑阶段移除导入的节点树。切换示例或卸载组件还需取消未完成的 fetch 和排队的编辑。固定帧浏览器测试使用锁定版本的 lottie-web 作为参考，覆盖位置动画、单路径描边 Trim Paths，以及整数帧和小数帧下的 PolyStar 几何和 Repeater 分组，不代表整个格式已通过一致性验证。
 
 ### 星形与多边形 {#lottie-polystar}
 
@@ -334,6 +336,18 @@ PolyStar（`ty: "sr"`）生成闭合贝塞尔路径：`sy: 1` 为星形，`sy: 2
 <AnimationLottiePolyStar />
 
 PolyStar 几何动画由插件控制器随合成时间轴采样。目前普通 ECS 关键帧序列化及动画编辑器还不能保留或编辑这些参数轨道，重新加载时需保留原始 Lottie JSON。位置的空间切线、modifier 组合（包括变化几何上的 Trim Paths）、表达式等仍受上述兼容性范围限制。曲线描边还会受到 ECS 渲染器已有的细分接缝透明度问题影响，因此这类描边的参考测试验证轮廓和颜色，不验证 alpha 完全一致。
+
+### Repeater
+
+Repeater（`ty: "rp"`）复制当前形状分组中位于它之前的操作符。将填充/描边放在**被复制的分组内部**，即可分别绘制每个副本。支持嵌套形状分组，以及带动画的 PolyStar 几何。嵌套或串联多个 Repeater 目前按递归方式复制，并产生 `shape.repeater.nested` 诊断；复合绘制顺序和保留的原始副本可能与 lottie-web 不同。
+
+数量 `c` 向上取整，零会隐藏所有副本。偏移 `o` 支持小数和负数。变换 `tr` 包括锚点 `a`、位移 `p`、非等比缩放 `s`、旋转 `r` 和起止透明度 `so` / `eo`。合成模式 `m` 控制副本堆叠顺序。数值轨道支持时间缓动和保持关键帧。变换遵循 lottie-web 5.13，包括负整数偏移穿过恒等变换时的行为。
+
+<AnimationLottieRepeater />
+
+导入时根据数量轨道的上界（包含缓动超调）建立副本池，播放和跳帧复用节点。较大的数量及嵌套 Repeater 会成倍增加节点数。与 PolyStar 一样，目前普通 ECS 关键帧序列化和动画编辑器不能保留这些参数轨道，需要保留原始 Lottie JSON。
+
+位于 Repeater **之后**的填充/描边仅部分支持，并会产生 `shape.repeater.paint-scope` 诊断：逐副本继承样式不能还原 lottie-web 共享复合路径的填充范围和透明度。modifier 顺序、skew、空间运动和图层时间仍受兼容性矩阵限制。无法求逆的缩放（例如负偏移搭配零缩放）会隐藏受影响副本，避免提交无效变换。
 
 ### 表达式 {#expression}
 
