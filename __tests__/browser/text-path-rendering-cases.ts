@@ -13,7 +13,12 @@ export function registerTextPathRenderingTests(url: string) {
       { timeout: 30000 },
     );
   });
-  test.afterEach(() => expect(errors).toEqual([]));
+  test.afterEach(async ({ page }) => {
+    // Release the ECS world and GPU resources before Playwright closes the page.
+    if (url.includes('ecs-'))
+      await page.evaluate(() => window.textTest?.dispose());
+    expect(errors).toEqual([]);
+  });
 
   async function pixels(page: Page) {
     const actual = PNG.sync.read(await page.locator('#actual').screenshot());

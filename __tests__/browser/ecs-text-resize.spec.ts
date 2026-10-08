@@ -36,7 +36,11 @@ function expectPoint(actual: Point, expected: Point) {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/ecs-text.html');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 15000 });
+});
+
+test.afterEach(async ({ page }) => {
+  await page.evaluate(() => window.textTest?.dispose());
 });
 
 for (const wrapped of [false, true])
