@@ -37,15 +37,21 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
+import { NodeJSAdapter, createMouseEvent } from '../utils';
 
-DOMAdapter.set(NodeJSAdapter);
+DOMAdapter.set({
+  ...NodeJSAdapter,
+  // Advance complete ECS frames between input events instead of racing timers.
+  requestAnimationFrame: () => 0,
+  cancelAnimationFrame: () => {},
+});
 
 describe('Draw line', () => {
   it('should render line correctly', async () => {
     const app = new App();
 
-    let $canvas: HTMLCanvasElement | undefined;
+    let api: API;
+    let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
 
@@ -88,7 +94,7 @@ describe('Draw line', () => {
       initialize(): void {
         $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
 
-        const api = new API(new DefaultStateManagement(), this.commands);
+        api = new API(new DefaultStateManagement(), this.commands);
 
         canvasEntity = api.createCanvas({
           element: $canvas,
@@ -109,57 +115,60 @@ describe('Draw line', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    const frames = async (count = 2) => {
+      for (let i = 0; i < count; i++) await app.world.execute();
+    };
+    const mouse = async (type: string, x: number, y: number, time: number) => {
+      // EventWriter detects double-clicks with performance.now(). CI coverage
+      // and GPU work can exceed its 300ms window despite a short sleep.
+      // Mock only event dispatch; world execution keeps its normal clock.
+      const clock = jest.spyOn(performance, 'now').mockReturnValue(time);
+      try {
+        $canvas.dispatchEvent(
+          createMouseEvent(type, { clientX: x, clientY: y }),
+        );
+      } finally {
+        clock.mockRestore();
+      }
+      await frames();
+    };
 
-    await sleep(300);
+    try {
+      await app.run();
+      await frames();
+      await mouse('mousedown', 50, 50, 1000);
+      await mouse('mousemove', 50, 50, 1100);
+      await mouse('mousemove', 100, 100, 1200);
+      await mouse('mousemove', 150, 150, 1300);
+      await mouse('mouseup', 150, 150, 1400);
+      await frames(4);
 
-    if ($canvas) {
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
-      ); await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 50, clientY: 50 }),
+      expect(api!.getNodes()).toHaveLength(1);
+      expect(api!.getAppState().penbarSelected).toBe(Pen.SELECT);
+      const line = api!.getEntity(api!.getNodes()[0]);
+      const isEditing = () =>
+        line.has(Editable) && line.read(Editable).isEditing;
+      expect(isEditing()).toBe(false);
+
+      // The first click is outside the drawing gesture's double-click window.
+      await mouse('mousedown', 120, 120, 2000);
+      await mouse('mouseup', 120, 120, 2020);
+      expect(isEditing()).toBe(false);
+      // The second click is 100ms after the first, regardless of runner load.
+      await mouse('mousedown', 120, 120, 2100);
+      await mouse('mouseup', 120, 120, 2120);
+      await frames(4);
+      expect(isEditing()).toBe(true);
+      expect(api!.getNodes()[0].isEditing).toBe(true);
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'draw-line-edit',
       );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 100, clientY: 100 }),
-      );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
-      );
-      await sleep(100);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 150, clientY: 150 }),
-      );
-      await sleep(500);
-      // Dblclick to enter edit mode
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 120, clientY: 120 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 120, clientY: 120 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mousedown', { clientX: 120, clientY: 120 }),
-      );
-      await sleep(10);
-      $canvas.dispatchEvent(
-        createMouseEvent('mouseup', { clientX: 120, clientY: 120 }),
-      );
-      await sleep(300);
+    } finally {
+      await app.exit();
+      DOMAdapter.set(NodeJSAdapter);
     }
-
-    await sleep(1000);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'draw-line-edit',
-    );
-
-    await app.exit();
   });
 });

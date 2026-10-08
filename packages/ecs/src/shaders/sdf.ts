@@ -436,6 +436,11 @@ void main() {
 
   float antialiasedBlur = -fwidth(length(v_FragCoord));
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
+  if (shape > 1.5 && shape < 2.5 && strokeWidth == 0.0) {
+    // Fill-only rectangles need coverage centered at the geometric edge. The
+    // radial derivative fades solid corners and can vanish at the center.
+    opacity_t = clamp(0.5 - distance / max(fwidth(distance), 0.0001), 0.0, 1.0);
+  }
 #ifdef USE_FILLIMAGE_BAKED_STROKE
   float distForAlpha = distance - u_FilterExtras.x;
   outputColor.a *= clamp(1.0 - distForAlpha, 0.0, 1.0) * opacity * opacity_t;

@@ -10,7 +10,7 @@ test('reports nested compatibility gaps with stable JSON pointers without mutati
         ip: 0,
         op: 60,
         shapes: [
-          { ty: 'gr', it: [{ ty: 'sr' }, { ty: 'rp' }, { ty: 'tm', m: 2 }] },
+          { ty: 'gr', it: [{ ty: 'sr' }, { ty: 'rd' }, { ty: 'tm', m: 2 }] },
         ],
       },
       { ty: 5, masksProperties: [{}], tt: 1, ef: [{ ty: 5 }] },
@@ -35,7 +35,7 @@ test('reports nested compatibility gaps with stable JSON pointers without mutati
   expect(diagnostics).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
-        code: 'shape.rp',
+        code: 'shape.rd',
         severity: 'unsupported',
         path: '/layers/0/shapes/0/it/1',
       }),
@@ -83,6 +83,7 @@ test('supported primitives, hidden features and effect type codes do not produce
               },
             },
             { ty: 'sr', sy: 2 },
+            { ty: 'rp' },
             { ty: 'sr', hd: true },
           ],
         },
@@ -114,4 +115,26 @@ test('flags spatial motion, primitive geometry, multiple paints and unknown oper
       'transform.spatial',
     ]),
   );
+});
+
+test('shared paints after a repeater report their partial compound paint semantics', () => {
+  const diagnostics = inspectLottie({
+    layers: [
+      {
+        ty: 4,
+        shapes: [
+          { ty: 'gr', it: [{ ty: 'sh' }, { ty: 'fl' }] },
+          { ty: 'rp' },
+          { ty: 'fl' },
+        ],
+      },
+    ],
+  });
+  expect(diagnostics).toEqual([
+    expect.objectContaining({
+      code: 'shape.repeater.paint-scope',
+      severity: 'partial',
+      path: '/layers/0/shapes/1',
+    }),
+  ]);
 });

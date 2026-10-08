@@ -21,7 +21,6 @@ export function inspectLottie(data: unknown): LottieDiagnostic[] {
     diagnostics.push({ code, severity, path, message });
   };
   const unsupportedShapes: Record<string, string> = {
-    rp: 'Repeater',
     rd: 'Round Corners',
     mm: 'Merge Paths',
     op: 'Offset Paths',
@@ -150,9 +149,20 @@ export function inspectLottie(data: unknown): LottieDiagnostic[] {
           'Trim Paths uses stroke dashes: filled shapes, multiple paths, existing dash patterns, animated zero-length round caps, direction and modifier ordering can differ from Lottie.',
         );
       else if (
-        !['gr', 'tr', 'sh', 'el', 'rc', 'sr', 'fl', 'st', 'gf', 'gs', 'no'].includes(
-          value.ty,
-        )
+        ![
+          'gr',
+          'tr',
+          'sh',
+          'el',
+          'rc',
+          'sr',
+          'rp',
+          'fl',
+          'st',
+          'gf',
+          'gs',
+          'no',
+        ].includes(value.ty)
       )
         add(
           'shape.type',
@@ -208,6 +218,42 @@ export function inspectLottie(data: unknown): LottieDiagnostic[] {
     for (const key of ['shapes', 'it']) {
       const operators = value[key];
       if (Array.isArray(operators)) {
+        const containsRepeater = (items: any[]): boolean =>
+          items.some(
+            (item) =>
+              !item.hd &&
+              (item.ty === 'rp' ||
+                (Array.isArray(item.it) && containsRepeater(item.it))),
+          );
+        operators.forEach((operator, i) => {
+          if (
+            !operator.hd &&
+            operator.ty === 'rp' &&
+            containsRepeater(operators.slice(0, i))
+          )
+            add(
+              'shape.repeater.nested',
+              'partial',
+              `${path}/${key}/${i}`,
+              'Nested or stacked Repeaters use recursive duplication; lottie-web compound ordering and retained source copies can differ.',
+            );
+          if (
+            !operator.hd &&
+            operator.ty === 'rp' &&
+            operators
+              .slice(i + 1)
+              .some(
+                (item) =>
+                  !item.hd && ['fl', 'st', 'gf', 'gs'].includes(item.ty),
+              )
+          )
+            add(
+              'shape.repeater.paint-scope',
+              'partial',
+              `${path}/${key}/${i}`,
+              'Paints after a Repeater are inherited per copy; shared compound fill coverage and opacity can differ. Put paints inside the repeated group for per-copy rendering.',
+            );
+        });
         const paints = operators.filter(
           (item) => !item.hd && ['fl', 'st', 'gf', 'gs'].includes(item.ty),
         );

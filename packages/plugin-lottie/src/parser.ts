@@ -17,6 +17,7 @@ import {
 import * as Lottie from './type';
 import { filterUndefined, formatNumber } from '@infinite-canvas-tutorial/ecs';
 import { compilePolyStar, type PolyStarPath } from './polystar';
+import { compileRepeater, hiddenRepeaterCopy, type RepeaterCopy } from './repeater';
 
 const rad2deg = (rad: number) => rad * (180 / Math.PI);
 
@@ -46,6 +47,8 @@ export interface CustomElementOption {
   shape?: Record<string, any>;
   /** Composition-relative milliseconds; evaluated after interpolating shape parameters. */
   sampleShape?: (time: number) => PolyStarPath;
+  sampleTransform?: (time: number) => Partial<RepeaterCopy['outer'] & RepeaterCopy['inner']>;
+  opacityMultiplier?: number | ((time: number) => number);
   style?: Record<string, any>;
   clipPath?: CustomElementOption;
   extra?: any;
@@ -1120,58 +1123,103 @@ function parseShapeEllipse(
   return attrs;
 }
 
+function bakeNumericProperty(
+  property: Lottie.Value | Lottie.MultiDimensional | undefined,
+  names: string[],
+  context: ParseContext,
+) {
+  if (!context.expressions || !propertyHasExpression(property)) return property;
+  const { startFrame, endFrame, layerOffsetTime } = context;
+  // Preserve the existing import-time expression behavior. The sampler then reads
+  // the baked property just like ordinary numeric keyframes, without evaluating code.
+  const baked =
+    names.length > 1
+      ? bakeVectorExpressionTrack(
+          property.x,
+          property as Lottie.MultiDimensional,
+          expressionBakeContext(context),
+          '',
+          names,
+        )
+      : bakeScalarExpressionTrack(
+          property.x,
+          property as Lottie.Value,
+          expressionBakeContext(context),
+          '',
+          'value',
+        );
+  if (baked) {
+    return {
+      a: 1,
+      k: baked.keyframes.map((row) => ({
+        t: startFrame + row.offset * (endFrame - startFrame) - layerOffsetTime,
+        s: names.map((name) => row[name] as number),
+      })),
+    };
+  }
+  return property;
+}
+
+function localFrameAtTime({ startFrame, fps, layerOffsetTime }: ParseContext) {
+  return (time: number) => {
+    const frame = startFrame + (time * fps) / 1000 - layerOffsetTime;
+    // Clock normalization can leave an exact keyframe at 59.99999999999999.
+    // Preserve the point-count/hold transition at that frame, in either direction.
+    const integer = Math.round(frame);
+    return Math.abs(frame - integer) < 1e-9 ? integer : frame;
+  };
+}
+
 function parseShapePolyStar(
   source: Lottie.PolyStarShape,
   context: ParseContext,
 ): CustomElementOption {
   const shape = { ...source };
-  const { startFrame, endFrame, fps, layerOffsetTime } = context;
-  // Preserve the existing import-time expression behavior. The sampler then reads
-  // the baked property just like ordinary numeric keyframes, without evaluating code.
-  for (const key of ['pt', 'p', 'r', 'or', 'os', 'ir', 'is'] as const) {
-    const property = shape[key];
-    if (!context.expressions || !propertyHasExpression(property)) continue;
-    const names = key === 'p' ? ['x', 'y'] : ['value'];
-    const baked =
-      key === 'p'
-        ? bakeVectorExpressionTrack(
-            property.x,
-            property as Lottie.MultiDimensional,
-            expressionBakeContext(context),
-            '',
-            names,
-          )
-        : bakeScalarExpressionTrack(
-            property.x,
-            property as Lottie.Value,
-            expressionBakeContext(context),
-            '',
-            'value',
-          );
-    if (baked) {
-      shape[key] = {
-        a: 1,
-        k: baked.keyframes.map((row) => ({
-          t:
-            startFrame + row.offset * (endFrame - startFrame) - layerOffsetTime,
-          s: names.map((name) => row[name] as number),
-        })),
-      };
-    }
-  }
+  for (const key of ['pt', 'p', 'r', 'or', 'os', 'ir', 'is'] as const)
+    shape[key] = bakeNumericProperty(
+      shape[key],
+      key === 'p' ? ['x', 'y'] : ['value'],
+      context,
+    ) as Lottie.MultiDimensional;
   const geometry = compilePolyStar(shape);
-  const sampleShape = (time: number) => {
-    const frame = startFrame + (time * fps) / 1000 - layerOffsetTime;
-    // Clock normalization can leave an exact keyframe at 59.99999999999999.
-    // Preserve the point-count/hold transition at that frame, in either direction.
-    const integer = Math.round(frame);
-    return geometry.sample(Math.abs(frame - integer) < 1e-9 ? integer : frame);
-  };
+  const frameAtTime = localFrameAtTime(context);
+  const sampleShape = (time: number) => geometry.sample(frameAtTime(time));
   return {
     type: 'path',
     style: { fill: 'none', stroke: 'none' },
     shape: sampleShape(0),
     ...(geometry.animated ? { sampleShape } : {}),
+  };
+}
+
+function parseRepeater(source: Lottie.RepeatShape, context: ParseContext) {
+  const shape = { ...source, tr: { ...source.tr } };
+  if (shape.tr.p && 'y' in shape.tr.p) {
+    shape.tr.p = {
+      ...shape.tr.p,
+      x: bakeNumericProperty(shape.tr.p.x, ['value'], context) as Lottie.Value,
+      y: bakeNumericProperty(shape.tr.p.y, ['value'], context) as Lottie.Value,
+    };
+  }
+  for (const key of ['c', 'o'] as const)
+    shape[key] = bakeNumericProperty(
+      shape[key],
+      ['value'],
+      context,
+    ) as Lottie.Value;
+  for (const key of ['p', 'a', 's', 'r', 'so', 'eo'] as const) {
+    if (key === 'p' && 'y' in shape.tr.p) continue;
+    shape.tr[key] = bakeNumericProperty(
+      shape.tr[key] as Lottie.Value | Lottie.MultiDimensional,
+      ['p', 'a', 's'].includes(key) ? ['x', 'y'] : ['value'],
+      context,
+    ) as Lottie.MultiDimensional;
+  }
+  const repeater = compileRepeater(shape);
+  const frameAtTime = localFrameAtTime(context);
+  return {
+    ...repeater,
+    sample: (time: number) => repeater.sample(frameAtTime(time)),
   };
 }
 
@@ -1308,34 +1356,6 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
       }
       // eslint-disable-next-line @typescript-eslint/switch-exhaustiveness-check
       switch (shape.ty) {
-        case Lottie.ShapeType.Repeater:
-          parseValue(
-            (shape as Lottie.RepeatShape).c,
-            modifiers.attrs,
-            'shape',
-            ['repeat'],
-            modifiers.keyframeAnimations,
-            context,
-          );
-          parseTransforms(
-            (shape as Lottie.RepeatShape).tr,
-            modifiers.attrs,
-            modifiers.keyframeAnimations,
-            context,
-            'shape',
-            {
-              x: 'repeatX',
-              y: 'repeatY',
-              rotation: 'repeatRot',
-              scaleX: 'repeatScaleX',
-              scaleY: 'repeatScaleY',
-              anchorX: 'repeatAnchorX',
-              anchorY: 'repeatAnchorY',
-              skew: 'repeatSkew',
-              skewAxis: 'repeatSkewAxis',
-            },
-          );
-          break;
         case Lottie.ShapeType.Trim:
           parseValue(
             (shape as Lottie.TrimShape).s,
@@ -1374,6 +1394,46 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
     },
     keepTransformOnGroup = false,
   ) {
+    type RepeatedGroup = Lottie.GroupShapeElement & {
+      repeatCopy?: {
+        repeater: ReturnType<typeof parseRepeater>;
+        index: number;
+        template: CustomElementOption[];
+      };
+    };
+    // A repeater consumes the preceding operator list, including paints/groups and
+    // earlier repeaters. The trailing group transform still applies only once.
+    let repeatIndex = shapes.length - 1;
+    while (
+      repeatIndex >= 0 &&
+      (shapes[repeatIndex].hd ||
+        shapes[repeatIndex].ty !== Lottie.ShapeType.Repeater)
+    )
+      repeatIndex--;
+    if (repeatIndex >= 0) {
+      const source = shapes[repeatIndex] as Lottie.RepeatShape;
+      const repeater = parseRepeater(source, context);
+      const prefix = shapes.slice(0, repeatIndex);
+      // Compile expressions and numeric samplers once, then share their pure
+      // sample functions. Each copy still owns its mutable style/keyframe data.
+      const template = repeater.capacity
+        ? parseIterations(prefix, { attrs: {}, keyframeAnimations: [] }, true)
+        : [];
+      shapes = [
+        ...Array.from(
+          { length: repeater.capacity },
+          (_, index) =>
+            ({
+              ty: Lottie.ShapeType.Group,
+              nm: `${source.nm || 'Repeater'} ${index + 1}`,
+              it: prefix,
+              repeatCopy: { repeater, index, template },
+            } as RepeatedGroup),
+        ),
+        ...shapes.slice(repeatIndex + 1),
+      ];
+    }
+
     const ecEls: CustomElementOption[] = [];
     const attrs: Record<string, any> = {};
     const keyframeAnimations: KeyframeAnimation[] = [];
@@ -1393,17 +1453,54 @@ function parseShapeLayer(layer: Lottie.ShapeLayer, context: ParseContext) {
       /** Indices into {@link keyframeAnimations} for this shape only (path / ellipse / rect). */
       let ownKfRange: [number, number] | undefined;
       switch (shape.ty) {
-        case Lottie.ShapeType.Group:
-          ecEl = {
-            type: 'g',
-            children: parseIterations(
-              (shape as Lottie.GroupShapeElement).it,
-              // Trim / repeater apply within this group only (Lottie shape list scope).
-              { attrs: {}, keyframeAnimations: [] },
-              true,
-            ),
-          };
+        case Lottie.ShapeType.Group: {
+          const group = shape as RepeatedGroup;
+          const cloneElement = (
+            element: CustomElementOption,
+          ): CustomElementOption => ({
+            ...element,
+            shape: element.shape && structuredClone(element.shape),
+            style: element.style && structuredClone(element.style),
+            keyframeAnimation:
+              element.keyframeAnimation && structuredClone(element.keyframeAnimation),
+            children: element.children?.map(cloneElement),
+            clipPath: element.clipPath && cloneElement(element.clipPath),
+          });
+          let children = group.repeatCopy
+            ? group.repeatCopy.template.map(cloneElement)
+            : parseIterations(group.it, { attrs: {}, keyframeAnimations: [] }, true);
+          if (group.repeatCopy) {
+            const { repeater, index } = group.repeatCopy;
+            const sample = (time: number) =>
+              repeater.sample(time)[index] ?? hiddenRepeaterCopy;
+            const initial = sample(0);
+            children = [
+              {
+                type: 'g',
+                ...initial.outer,
+                ...(repeater.animated
+                  ? { sampleTransform: (time: number) => sample(time).outer }
+                  : {}),
+                opacityMultiplier: repeater.animated
+                  ? (time: number) => sample(time).opacity
+                  : initial.opacity,
+                children: [
+                  {
+                    type: 'g',
+                    ...initial.inner,
+                    rotation: (initial.inner.rotation * 180) / Math.PI,
+                    ...(repeater.animated
+                      ? { sampleTransform: (time: number) => sample(time).inner }
+                      : {}),
+                    children,
+                  },
+                ],
+              },
+            ];
+          }
+          ecEl = { type: 'g', children };
           break;
+        }
         // TODO Multiple fill and stroke
         case Lottie.ShapeType.Fill:
         case Lottie.ShapeType.GradientFill:
@@ -1930,7 +2027,7 @@ function applyGroupOpacityToChildren(el: CustomElementOption) {
       const baseOpacity = typeof current.style.opacity === 'number' ? current.style.opacity : 1;
       current.style.opacity = baseOpacity * staticOpacity;
     }
-    if (hasStaticFill && current.style.fill == null) {
+    if (hasStaticFill && (current.style.fill == null || current.style.fill === 'none')) {
       current.style.fill = staticFill;
     }
     if (hasStaticFillRule && current.style.fillRule == null) {
@@ -1999,11 +2096,20 @@ function addLayerOpacity(
       (val) => val / 100,
     );
 
-    if (opacityAttrs.style?.opacity || opacityAnimations.length) {
+    if (opacityAttrs.style?.opacity != null || opacityAnimations.length) {
       // apply opacity to group's children
       traverse(layerGroup, (el) => {
         if (el.type !== 'g' && el.style) {
-          Object.assign(el.style, opacityAttrs.style);
+          const baseOpacity = el.style.opacity ?? 1;
+          if (opacityAnimations.length) {
+            const multiplier = el.opacityMultiplier ?? 1;
+            el.opacityMultiplier = typeof multiplier === 'number'
+              ? multiplier * baseOpacity
+              : (time) => multiplier(time) * baseOpacity;
+          }
+          if (opacityAttrs.style?.opacity != null) {
+            el.style.opacity = (opacityAnimations.length ? 1 : baseOpacity) * opacityAttrs.style.opacity;
+          }
           if (opacityAnimations.length) {
             el.keyframeAnimation = (el.keyframeAnimation || []).concat(
               opacityAnimations,

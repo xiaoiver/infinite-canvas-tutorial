@@ -18,7 +18,7 @@ import {
 
 import type { LottieDiagnostic } from './diagnostics';
 import { LottiePlayback } from './playback';
-import { SampledPathAnimation } from './SampledPathAnimation';
+import { SampledAnimation } from './SampledAnimation';
 
 const eps = 0.0001;
 
@@ -596,7 +596,16 @@ export class LottieAnimation {
 
   private animations: AnimationController[] = [];
 
-  private buildHierachy(element: CustomElementOption, parentId?: string): SerializedNode[] {
+  private buildHierachy(
+    element: CustomElementOption,
+    parentId?: string,
+    inheritedOpacity: CustomElementOption['opacityMultiplier'] = 1,
+  ): SerializedNode[] {
+    const ownOpacity = element.opacityMultiplier ?? 1;
+    const opacityMultiplier = typeof inheritedOpacity === 'number' && typeof ownOpacity === 'number'
+      ? inheritedOpacity * ownOpacity
+      : (time: number) => (typeof inheritedOpacity === 'number' ? inheritedOpacity : inheritedOpacity(time))
+        * (typeof ownOpacity === 'number' ? ownOpacity : ownOpacity(time));
     const {
       type,
       name,
@@ -616,8 +625,6 @@ export class LottieAnimation {
     } = element;
 
     let displayObject: SerializedNode;
-
-    // TODO: repeater @see https://lottiefiles.github.io/lottie-docs/shapes/#repeater
 
     // @see https://lottiefiles.github.io/lottie-docs/shapes/#shape
     if (type === 'g') {
@@ -712,6 +719,9 @@ export class LottieAnimation {
     if (!isNil(rotation)) {
       displayObject.rotation = rotRad;
     }
+    if (element.sampleTransform) {
+      Object.assign(displayObject, element.sampleTransform(0));
+    }
 
     // TODO: match name `mn`, used in expressions
 
@@ -722,6 +732,11 @@ export class LottieAnimation {
           ? style[key].join(' ')
           : style[key];
       });
+    }
+    // ECS primitives default to a one-pixel stroke. A Lottie fill-only shape
+    // must not blend that invisible border into the fill's antialias band.
+    if (style?.stroke === 'none' && style.strokeWidth == null) {
+      displayObject['strokeWidth'] = 0;
     }
 
     applyLottieTrimPathsToSerializedNode(
@@ -751,11 +766,17 @@ export class LottieAnimation {
 
 
     displayObject.version = 0;
+    if (type !== 'g' && (displayObject.type === 'path' || displayObject.type === 'ellipse' || displayObject.type === 'rect')) {
+      displayObject.opacity = (displayObject.opacity ?? 1) * (typeof opacityMultiplier === 'number' ? opacityMultiplier : opacityMultiplier(0));
+    }
 
-    this.displayObjectElementMap.set(displayObject, element);
+    this.displayObjectElementMap.set(displayObject, {
+      ...element,
+      opacityMultiplier: type === 'g' ? undefined : opacityMultiplier,
+    });
 
     if (children) {
-      const childNodes = children.map((child) => this.buildHierachy(child, displayObject.id));
+      const childNodes = children.map((child) => this.buildHierachy(child, displayObject.id, opacityMultiplier));
       return [displayObject, ...childNodes.flat()];
     } else {
       return [displayObject];
@@ -971,7 +992,10 @@ export class LottieAnimation {
         ];
       }
 
-      if (element?.sampleShape && !keyframeAnimation?.length) {
+      const needsSampler = element?.sampleShape
+        || element?.sampleTransform
+        || typeof element?.opacityMultiplier === 'function';
+      if (needsSampler && !keyframeAnimation?.length) {
         keyframeAnimation = [{
           duration: this.getDuration() * 1000,
           keyframes: [{ offset: 0 }],
@@ -1057,25 +1081,39 @@ export class LottieAnimation {
 
               // console.log('formatted', formatted, options, child);
 
-              if (formatted.length || element?.sampleShape) {
+              if (formatted.length || needsSampler) {
                 let animation = api.animate(
                   child,
                   formatted.length ? formatted : [{ offset: 0 }],
                   options as AnimationOptions,
                 );
-                if (element?.sampleShape) {
+                if (needsSampler || (element?.opacityMultiplier != null && element.opacityMultiplier !== 1)) {
                   let previousShape: ReturnType<typeof element.sampleShape>;
                   let d: string;
-                  animation = new SampledPathAnimation(
+                  const properties = [
+                    ...(element.sampleShape ? ['d'] : []),
+                    ...(element.sampleTransform ? Object.keys(element.sampleTransform(0)) : []),
+                    ...(element.opacityMultiplier != null ? ['opacity'] : []),
+                  ];
+                  animation = new SampledAnimation(
                     formatted,
                     options as AnimationOptions,
-                    (time) => {
-                      const shape = element.sampleShape(time);
-                      if (shape !== previousShape) {
-                        previousShape = shape;
-                        d = path2String(this.generatePathFromShape(shape));
+                    properties,
+                    (time, values) => {
+                      if (element.sampleShape) {
+                        const shape = element.sampleShape(time);
+                        if (shape !== previousShape) {
+                          previousShape = shape;
+                          d = path2String(this.generatePathFromShape(shape));
+                        }
+                        values.d = d;
                       }
-                      return d;
+                      if (element.sampleTransform) Object.assign(values, element.sampleTransform(time));
+                      const multiplier = element.opacityMultiplier;
+                      if (multiplier != null)
+                        values.opacity = ((values.opacity as number | undefined) ?? element.style?.opacity ?? 1)
+                          * (typeof multiplier === 'number' ? multiplier : multiplier(time));
+                      return values;
                     },
                   );
                   api.getEntity(child).write(AnimationPlayer).controller =

@@ -1,21 +1,26 @@
 import {
   AnimationController,
+  type AnimationFrameValues,
   type AnimationOptions,
   type Keyframe,
 } from '@infinite-canvas-tutorial/ecs';
 
-/** Procedural path geometry sampled by the same ECS controller as its paint. */
-export class SampledPathAnimation extends AnimationController {
+/** Sample procedural geometry/transforms and regular paint on one ECS controller. */
+export class SampledAnimation extends AnimationController {
   constructor(
     keyframes: Keyframe[],
     options: AnimationOptions,
-    private samplePath: (time: number) => string,
+    private properties: string[],
+    private sample: (
+      time: number,
+      values: AnimationFrameValues,
+    ) => AnimationFrameValues,
   ) {
     super(keyframes.length ? keyframes : [{ offset: 0 }], options);
   }
 
   getAnimatedProperties() {
-    return [...new Set([...super.getAnimatedProperties(), 'd'])];
+    return [...new Set([...super.getAnimatedProperties(), ...this.properties])];
   }
 
   getCurrentValues(snapshot = this.getSnapshot()) {
@@ -25,9 +30,6 @@ export class SampledPathAnimation extends AnimationController {
       snapshot.direction === 'forward'
         ? snapshot.progress
         : 1 - snapshot.progress;
-    return {
-      ...values,
-      d: this.samplePath(progress * this.getOptions().duration),
-    };
+    return this.sample(progress * this.getOptions().duration, values);
   }
 }

@@ -107,7 +107,7 @@ const linear = (from: number[], to: number[]) => ({
   ],
 });
 export type LottieCase = {
-  kind: 'move' | 'trim' | 'polystar';
+  kind: 'move' | 'trim' | 'polystar' | 'repeater';
   start?: number;
   end?: number;
   offset?: number;
@@ -127,7 +127,125 @@ export type LottieCase = {
   startFrame?: number;
   stroked?: boolean;
   animatedPaint?: boolean;
+  copies?: number;
+  composite?: 1 | 2;
+  repeatPosition?: number[];
+  repeatScale?: number[];
+  repeatRotation?: number;
+  repeatAnchor?: number[];
+  opacityStart?: number;
+  opacityEnd?: number;
+  nestedRepeater?: boolean;
+  outerPaint?: boolean;
+  repeatedStar?: boolean;
+  layerOpacity?: number;
+  animatedLayerOpacity?: boolean;
 };
+function repeaterShapes(options: LottieCase) {
+  const paint = (color: number[]) => ({
+    ty: 'fl',
+    c: property(color),
+    o: options.animatedPaint ? linear([100], [50]) : property(100),
+    r: 1,
+  });
+  const box = (p: number[], size: number[], color: number[]) => ({
+    ty: 'gr',
+    it: [
+      { ty: 'rc', p: property(p), s: property(size), r: property(0) },
+      ...(!options.outerPaint ? [paint(color)] : []),
+    ],
+  });
+  const repeated = options.repeatedStar
+    ? [
+        {
+          ty: 'gr',
+          it: [
+            {
+              ty: 'sr',
+              sy: 1,
+              pt: property(5),
+              p: property([25, 30]),
+              r: linear([0], [180]),
+              or: property(12),
+              os: property(0),
+              ir: property(6),
+              is: property(0),
+            },
+            paint([1, 0, 0, 1]),
+          ],
+        },
+      ]
+    : [
+        box([25, 35], [22, 24], [1, 0, 0, 1]),
+        box([30, 30], [18, 14], [0, 0, 1, 1]),
+      ];
+  const copies = options.animated
+    ? linear([0], [5])
+    : property(options.copies ?? 4);
+  if (options.hold && options.animated) Object.assign(copies.k[0], { h: 1 });
+  if (options.eased && options.animated) {
+    copies.k[0].o = { x: [0.3], y: [1.8] };
+    copies.k[0].i = { x: [0.7], y: [1.8] };
+  }
+  if (options.expression)
+    Object.assign(copies, { x: 'var $bm_rt; $bm_rt = 3 + time * 2;' });
+  const repeater = {
+    ty: 'rp',
+    c: copies,
+    o: options.animated ? linear([-0.5], [1.5]) : property(options.offset ?? 0),
+    m: options.composite ?? 1,
+    tr: {
+      p: options.animated
+        ? linear([35, 3], [40, 10])
+        : property(options.repeatPosition ?? [40, 10]),
+      a: property(options.repeatAnchor ?? [20, 30]),
+      s: options.animated
+        ? linear([100, 100], [85, 110])
+        : property(options.repeatScale ?? [100, 100]),
+      r: options.animated
+        ? linear([0], [12])
+        : property(options.repeatRotation ?? 0),
+      so: options.animated
+        ? linear([100], [70])
+        : property(options.opacityStart ?? 100),
+      eo: options.animated
+        ? linear([80], [100])
+        : property(options.opacityEnd ?? 100),
+    },
+  };
+  const shapes = [...repeated, repeater];
+  if (options.nestedRepeater)
+    shapes.splice(0, shapes.length, { ty: 'gr', it: [...shapes] } as any, {
+      ...repeater,
+      c: property(2),
+      o: property(0),
+      tr: {
+        ...repeater.tr,
+        p: property([0, 48]),
+        r: property(0),
+        s: property([100, 100]),
+      },
+    });
+  if (options.outerPaint) shapes.push(paint([1, 0, 0, 1]) as any);
+  return options.nested
+    ? [
+        {
+          ty: 'gr',
+          it: [
+            ...shapes,
+            {
+              ty: 'tr',
+              p: property([5, 5]),
+              a: property([3, 2]),
+              r: property(5),
+              s: property([90, 90]),
+              o: property(80),
+            },
+          ],
+        },
+      ]
+    : shapes;
+}
 function polystarShapes(options: LottieCase) {
   const animate = (from: number[], to: number[]) => {
     const property = linear(from, to);
@@ -206,7 +324,9 @@ function polystarShapes(options: LottieCase) {
 }
 function fixture(options: LottieCase) {
   const ks = {
-    o: property(100),
+    o: options.animatedLayerOpacity
+      ? linear([100], [60])
+      : property(options.layerOpacity ?? 100),
     r: property(0),
     p:
       options.kind === 'move'
@@ -216,7 +336,9 @@ function fixture(options: LottieCase) {
     s: property([100, 100, 100]),
   };
   const shapes =
-    options.kind === 'polystar'
+    options.kind === 'repeater'
+      ? repeaterShapes(options)
+      : options.kind === 'polystar'
       ? polystarShapes(options)
       : options.kind === 'move'
       ? [

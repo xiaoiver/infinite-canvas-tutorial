@@ -12,6 +12,7 @@ import AnimationDashoffset from '../components/AnimationDashoffset.vue';
 import AnimationMorphing from '../components/AnimationMorphing.vue';
 import AnimationLottieBouncyBall from '../components/AnimationLottieBouncyBall.vue';
 import AnimationLottiePolyStar from '../components/AnimationLottiePolyStar.vue';
+import AnimationLottieRepeater from '../components/AnimationLottieRepeater.vue';
 import AnimationTimeline from '../components/AnimationTimeline.vue';
 </script>
 
@@ -305,24 +306,25 @@ Below is the official sample running in our setup: [Bouncy Ball]
 
 This importer converts Lottie into ECS nodes and keyframes; it is not a complete Lottie renderer. Parsing a field does not necessarily implement its visual effect.
 
-| Feature                                                  | Current behavior                                                                                                                                                                                                                       |
-| -------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Rectangles, ellipses, paths, groups; basic fill/stroke   | Basic static geometry, path morphing and 2D position/rotation/scale; primitive size/corner animation remains limited                                                                                                                   |
-| PolyStar                                                 | Stars/polygons, both windings, point count, position, rotation, inner/outer radius and roundness; numeric keyframes with temporal easing and holds                                                                                     |
-| Solid, Null, parenting, Precomp                          | Basic support; layer in/out visibility, time stretch and remapping are incomplete                                                                                                                                                      |
-| Gradients and multiple paints                            | Basic gradients; animated gradient geometry, radial highlights and multiple paint/operator ordering remain limited                                                                                                                     |
-| Trim Paths                                               | Stroke-dash approximation with corrected full/empty coverage, endpoint sorting and offsets; filled geometry, multi-path modes, existing dash patterns, animated zero-length round caps, direction and modifier ordering remain limited |
-| Spatial Bézier motion, Skew                              | Incomplete; reported during inspection                                                                                                                                                                                                 |
-| Repeater, Merge Paths, Round Corners and other modifiers | Not rendered                                                                                                                                                                                                                           |
-| Image                                                    | Partial; asset directories and preloading are not implemented                                                                                                                                                                          |
-| Text, Masks, Track Mattes, Effects, Blend Modes, 3D      | Not implemented or not reliably rendered; ECS capabilities do not imply Lottie import support                                                                                                                                          |
-| Expressions                                              | Baked at import; defaults to the bundled lottie-web ExpressionManager with a limited shape-layer environment, not full AE semantics                                                                                                    |
+| Feature                                                | Current behavior                                                                                                                                                                                                                       |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Rectangles, ellipses, paths, groups; basic fill/stroke | Basic static geometry, path morphing and 2D position/rotation/scale; primitive size/corner animation remains limited                                                                                                                   |
+| PolyStar                                               | Stars/polygons, both windings, point count, position, rotation, inner/outer radius and roundness; numeric keyframes with temporal easing and holds                                                                                     |
+| Repeater                                               | Copies of preceding shapes/groups; count, offset, anchor, translation, scale, rotation, start/end opacity and composite order, including numeric keyframes                                                                             |
+| Solid, Null, parenting, Precomp                        | Basic support; layer in/out visibility, time stretch and remapping are incomplete                                                                                                                                                      |
+| Gradients and multiple paints                          | Basic gradients; animated gradient geometry, radial highlights and multiple paint/operator ordering remain limited                                                                                                                     |
+| Trim Paths                                             | Stroke-dash approximation with corrected full/empty coverage, endpoint sorting and offsets; filled geometry, multi-path modes, existing dash patterns, animated zero-length round caps, direction and modifier ordering remain limited |
+| Spatial Bézier motion, Skew                            | Incomplete; reported during inspection                                                                                                                                                                                                 |
+| Merge Paths, Round Corners and other modifiers         | Not rendered                                                                                                                                                                                                                           |
+| Image                                                  | Partial; asset directories and preloading are not implemented                                                                                                                                                                          |
+| Text, Masks, Track Mattes, Effects, Blend Modes, 3D    | Not implemented or not reliably rendered; ECS capabilities do not imply Lottie import support                                                                                                                                          |
+| Expressions                                            | Baked at import; defaults to the bundled lottie-web ExpressionManager with a limited shape-layer environment, not full AE semantics                                                                                                    |
 
 `inspectLottie(data)` checks known gaps without mutating JSON or evaluating expressions. `animation.getDiagnostics()` and `onDiagnostic` provide a stable `code`, `severity` (`partial` / `unsupported`), JSON Pointer `path`, and message. Import continues with diagnostics; an empty list does not certify AE compatibility. Expand **Compatibility notes** in the examples to inspect their gaps.
 
 Playback uses one composition clock. `goTo(value, true)` seeks composition-relative frames; the default unit is seconds, preserving play/pause state. `stop()` pauses at frame zero. `setSpeed()` takes a positive multiplier; `setDirection(-1)` reverses from the current position while preserving speed. `playSegments([start, end])` honors both endpoints; descending endpoints play backward. Numeric `loop` counts extra repeats. ECS controllers returned by `getAnimations()` are sampled by the player; control time through the player API.
 
-Repeated `render(api)` on the same instance is idempotent; another canvas needs a separate instance. `destroy()` is idempotent, cancels playback, and removes the imported node tree in a safe edit. Components should also cancel pending fetches and queued edits when unmounting. Browser regressions compare fixed frames against a pinned lottie-web version for position, single-path stroked Trim Paths and PolyStar geometry at integer/fractional frames; they do not establish whole-format parity.
+Repeated `render(api)` on the same instance is idempotent; another canvas needs a separate instance. `destroy()` is idempotent, cancels playback, and removes the imported node tree in a safe edit. Components should also cancel pending fetches and queued edits when unmounting. Browser regressions compare fixed frames against a pinned lottie-web version for position, single-path stroked Trim Paths, PolyStar geometry and Repeater groups at integer/fractional frames; they do not establish whole-format parity.
 
 ### Stars and polygons {#lottie-polystar}
 
@@ -342,6 +344,18 @@ Animated PolyStar geometry is sampled by a plugin controller on the composition 
 -   `i` is an array of “in” tangent points, relative to `v`.
 -   `o` is an array of “out” tangent points, relative to `v`.
 -   `c` is a boolean determining whether the poly-Bézier is closed. If it is, there is an extra Bézier segment between the last point in `v` and the first.
+
+### Repeater
+
+Repeater (`ty: "rp"`) duplicates the operators before it in the current shape group. Keep the fill/stroke **inside the repeated group** to paint each copy independently. Nested shape groups and animated PolyStar geometry can be repeated. Nested or stacked Repeaters currently use recursive duplication and emit `shape.repeater.nested`; compound ordering and retained source copies can differ from lottie-web.
+
+Copies (`c`) round up; zero hides every copy. Offset (`o`) accepts fractional and negative values. The transform (`tr`) includes anchor (`a`), translation (`p`), nonuniform scale (`s`), rotation (`r`) and start/end opacity (`so` / `eo`). Composite mode (`m`) changes copy stacking. Numeric tracks support temporal easing and holds. Transforms follow lottie-web 5.13, including its identity-crossing behavior at negative integer offsets.
+
+<AnimationLottieRepeater />
+
+The importer allocates a copy pool from the count track’s upper bound, including easing overshoot. Playback and seeking reuse this pool. Large counts and nested repeaters multiply the imported node count. As with PolyStar, keep the original Lottie JSON: plain ECS keyframe serialization and the animation editor do not preserve these procedural tracks.
+
+Paint operators **after** the Repeater have partial support and emit `shape.repeater.paint-scope`: per-copy paint inheritance does not reproduce the shared compound fill coverage/opacity of lottie-web. Modifier ordering, skew, spatial motion and layer timing remain subject to the compatibility matrix. Singular inverse scales (e.g. zero scale with a negative offset) hide the affected copies instead of submitting invalid transforms.
 
 ### Expressions {#expression}
 

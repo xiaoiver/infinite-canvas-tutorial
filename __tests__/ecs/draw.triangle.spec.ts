@@ -32,15 +32,20 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep, createMouseEvent } from '../utils';
+import { NodeJSAdapter, createMouseEvent } from '../utils';
 
-DOMAdapter.set(NodeJSAdapter);
+DOMAdapter.set({
+  ...NodeJSAdapter,
+  requestAnimationFrame: () => 0,
+  cancelAnimationFrame: () => {},
+});
 
 describe('Draw triangle', () => {
   it('should render triangle correctly', async () => {
     const app = new App();
 
-    let $canvas: HTMLCanvasElement | undefined;
+    let api: API;
+    let $canvas: HTMLCanvasElement;
     let canvasEntity: Entity | undefined;
     let cameraEntity: Entity | undefined;
 
@@ -78,7 +83,7 @@ describe('Draw triangle', () => {
       initialize(): void {
         $canvas = DOMAdapter.get().createCanvas(200, 200) as HTMLCanvasElement;
 
-        const api = new API(new DefaultStateManagement(), this.commands);
+        api = new API(new DefaultStateManagement(), this.commands);
 
         canvasEntity = api.createCanvas({
           element: $canvas,
@@ -99,32 +104,41 @@ describe('Draw triangle', () => {
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    const frames = async (count = 2) => {
+      for (let i = 0; i < count; i++) await app.world.execute();
+    };
 
-    await sleep(300);
-
-    if ($canvas) {
-      $canvas.dispatchEvent(
+    try {
+      await app.run();
+      await frames();
+      $canvas!.dispatchEvent(
         createMouseEvent('mousedown', { clientX: 50, clientY: 50 }),
       );
-      await sleep(100);
-      $canvas.dispatchEvent(
+      await frames();
+      $canvas!.dispatchEvent(
         createMouseEvent('mousemove', { clientX: 150, clientY: 150 }),
       );
-      await sleep(100);
-      $canvas.dispatchEvent(
+      await frames();
+      $canvas!.dispatchEvent(
         createMouseEvent('mouseup', { clientX: 150, clientY: 150 }),
       );
+      // Completing the drawing selects the new node and then refreshes its
+      // transformer. A fixed 300ms delay can capture an earlier frame in CI.
+      await frames(6);
+      expect(api!.getNodes()).toHaveLength(1);
+      expect(api!.getAppState().penbarSelected).toBe(Pen.SELECT);
+      expect(api!.getAppState().layersSelected).toEqual([
+        api!.getNodes()[0].id,
+      ]);
+
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'draw-triangle',
+      );
+    } finally {
+      await app.exit();
+      DOMAdapter.set(NodeJSAdapter);
     }
-
-    await sleep(300);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'draw-triangle',
-    );
-
-    await app.exit();
   });
 });

@@ -713,7 +713,10 @@ export type TransformShape = ShapeElement & {
 
 export type RepeatShape = ShapeElement & {
   c: Value;
-  tr: Transform;
+  o?: Value;
+  /** Composite copies above (1) or below (2) the original. */
+  m?: 1 | 2;
+  tr: Transform & { so?: Value; eo?: Value };
 };
 
 export type TrimShape = ShapeElement & {

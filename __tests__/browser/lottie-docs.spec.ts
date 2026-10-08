@@ -105,3 +105,50 @@ test('unmount aborts an in-flight example request before it can queue a render',
   expect(await page.evaluate(() => window.lottieDocs.nodes())).toBe(0);
   expect(errors).toEqual([]);
 });
+
+test('Repeater demo seeks and reverses without changing its node pool, then unmounts cleanly', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.route('**/data/repeater.json', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: readFileSync(
+        'packages/site/docs/public/data/repeater.json',
+        'utf8',
+      ),
+    }),
+  );
+  await page.goto('/lottie-docs.html?repeater');
+  await expect(page.locator('.state')).toContainText('running', {
+    timeout: 30000,
+  });
+  await expect(page.locator('.compatibility')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  const initial = await page.evaluate(() => ({
+    count: window.lottieDocs.nodes(),
+    values: window.lottieDocs.values(),
+  }));
+  expect(initial.count).toBeGreaterThan(8);
+  await page.getByRole('slider', { name: 'Seek frame' }).fill('60.25');
+  await expect(page.locator('.state')).toContainText('paused');
+  await expect(page.locator('output')).toHaveText('60.25');
+  expect(await page.evaluate(() => window.lottieDocs.values())).not.toEqual(
+    initial.values,
+  );
+  expect(await page.evaluate(() => window.lottieDocs.nodes())).toBe(
+    initial.count,
+  );
+  await page.getByRole('button', { name: 'Reverse', exact: true }).click();
+  await expect(page.locator('.state')).toContainText('running (reverse)');
+  await page.getByRole('button', { name: 'Stop', exact: true }).click();
+  expect(await page.evaluate(() => window.lottieDocs.values())).toEqual(
+    initial.values,
+  );
+  await page.evaluate(() => window.lottieDocs.unmount());
+  await expect
+    .poll(() => page.evaluate(() => window.lottieDocs.nodes()))
+    .toBe(0);
+  expect(errors).toEqual([]);
+});
