@@ -1,6 +1,25 @@
 import { parsePath } from './curve/shape-path';
 import { curvePathBounds, flattenPath, PathPoints } from './curve/adaptive';
 
+/** Earcut can drop triangles when nonadjacent edges share a contour vertex. */
+export function hasSelfTouchingContour(contours: PathPoints): boolean {
+  return contours.some((points) => {
+    const seen = new Set<string>();
+    let previous: string | undefined;
+    const first = points.length ? `${points[0][0]},${points[0][1]}` : '';
+    for (let i = 0; i < points.length; i++) {
+      const key = `${points[i][0]},${points[i][1]}`;
+      // Adjacent duplicates and the closing vertex are ordinary contour seams.
+      if (key === previous || (i === points.length - 1 && key === first))
+        continue;
+      if (seen.has(key)) return true;
+      seen.add(key);
+      previous = key;
+    }
+    return false;
+  });
+}
+
 // Match the standalone core implementation; no cross-package runtime dependency.
 export class PathGeometryCache {
   private d: string;

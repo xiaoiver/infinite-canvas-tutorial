@@ -28,6 +28,7 @@ import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location } from '../shaders/mesh';
 import { isClockWise, isString, paddingMat3, triangulate } from '../utils';
 import earcut from 'earcut';
+import { hasSelfTouchingContour } from '../utils/path-rendering';
 
 const strokeAlignmentMap = {
   center: 0,
@@ -87,6 +88,12 @@ export class Mesh extends PathDrawcall {
     if (instance instanceof Path) {
       rawPoints = this.pathPoints.get(instance) ?? instance.points;
       tessellationMethod = instance.tessellationMethod;
+      if (
+        tessellationMethod === TesselationMethod.EARCUT &&
+        hasSelfTouchingContour(rawPoints)
+      ) {
+        tessellationMethod = TesselationMethod.LIBTESS;
+      }
     } else if (
       instance instanceof RoughCircle ||
       instance instanceof RoughEllipse ||
