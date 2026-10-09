@@ -12,7 +12,14 @@ jest.mock('../../packages/ecs/node_modules/@lastolivegames/becsy', () => ({
   ),
   System: class {
     query() {
-      return {};
+      return {
+        current: [],
+        added: [],
+        changed: [],
+        removed: [],
+        addedOrChanged: [],
+        addedChangedOrRemoved: [],
+      };
     }
     attach() {
       return {};
@@ -58,6 +65,28 @@ function resource() {
 }
 
 describe('renderer lifecycle', () => {
+  it('redraws an idle scene when asynchronous image decoding dirties its material', () => {
+    const pipeline = new MeshPipeline();
+    const camera = {};
+    const canvas = { read: () => ({ cameras: [camera] }) };
+    const render = jest
+      .spyOn(pipeline as any, 'renderCamera')
+      .mockImplementation(() => {});
+    (pipeline as any).canvases.current = [canvas];
+
+    // No camera, node, theme or fill edits: the scene is idle.
+    pipeline.execute();
+    expect(render).not.toHaveBeenCalled();
+    // The image decode callback only adds MaterialDirty to its renderable.
+    (pipeline as any).dirtyMaterials.added = [{}];
+    pipeline.execute();
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(render).toHaveBeenCalledWith(canvas, camera, true);
+    (pipeline as any).dirtyMaterials.added = [];
+    pipeline.execute();
+    expect(render).toHaveBeenCalledTimes(1);
+  });
+
   it('releases renderer resources exactly once, before the shared device', () => {
     const gpu = resource();
     const pipeline = new MeshPipeline();

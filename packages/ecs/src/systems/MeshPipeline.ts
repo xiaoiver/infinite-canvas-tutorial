@@ -261,6 +261,11 @@ export class MeshPipeline extends System {
   private fillLayers = this.query(
     (q) => q.addedChangedOrRemoved.with(FillLayers).trackWrites,
   );
+  // Image decoding can invalidate a material after the scene is otherwise idle.
+  // A dirty texture must request a frame, not wait for a camera or node edit.
+  private dirtyMaterials = this.query((q) =>
+    q.added.with(Renderable, MaterialDirty),
+  );
   private strokeLayers = this.query(
     (q) => q.addedChangedOrRemoved.with(StrokeLayers).trackWrites,
   );
@@ -1239,6 +1244,7 @@ export class MeshPipeline extends System {
       let toRender =
         this.grids.addedChangedOrRemoved.includes(canvas) ||
         this.themes.addedChangedOrRemoved.includes(canvas) ||
+        this.dirtyMaterials.added.length > 0 ||
         engineTimeNeedsContinuousRender ||
         fillTextureLiveNeedsContinuousRender ||
         mesh3dNeedsRender;

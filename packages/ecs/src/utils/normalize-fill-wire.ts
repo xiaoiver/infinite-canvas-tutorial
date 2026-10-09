@@ -1,22 +1,48 @@
-import type { FillAttributes, SerializedFillLayerItem } from '../types/serialized-node';
+import type {
+  FillAttributes,
+  SerializedFillLayerItem,
+} from '../types/serialized-node';
 import { isFillLayerEnabled } from './fillLayers';
 import { isPattern } from './pattern';
+
+function isLegacyImageLayer(layer: SerializedFillLayerItem): boolean {
+  // The first fill -> fills migration labelled image sources as solid colors.
+  // Do not infer from arbitrary strings: colors, variables and SVG paint-server
+  // references must keep their declared type.
+  return (
+    layer.type === 'solid' &&
+    /^(?:https?:\/\/|data:image\/|blob:|\/|\.{1,2}\/)/i.test(layer.value.trim())
+  );
+}
+
+function normalizeLegacyImageLayers(
+  layers: SerializedFillLayerItem[],
+): SerializedFillLayerItem[] {
+  return layers.some(isLegacyImageLayer)
+    ? layers.map((layer) =>
+        isLegacyImageLayer(layer) ? { ...layer, type: 'image' } : layer,
+      )
+    : layers;
+}
 
 /**
  * 将历史 wire 上的 `fill` / `fillOpacity` / `fillLayers` 合并为权威字段 `fills`，并删除旧键。
  * 应在场景反序列化、继承计算之前对节点调用。
  */
-export function migrateLegacyFillWireInPlace(attrs: Record<string, unknown>): void {
+export function migrateLegacyFillWireInPlace(
+  attrs: Record<string, unknown>,
+): void {
   if (Array.isArray(attrs.fills)) {
+    attrs.fills = normalizeLegacyImageLayers(attrs.fills);
     delete attrs.fill;
     delete attrs.fillOpacity;
     delete attrs.fillLayers;
     return;
   }
   if (Array.isArray(attrs.fillLayers)) {
-    attrs.fills = (attrs.fillLayers as SerializedFillLayerItem[]).map((L) => ({
-      ...L,
-    }));
+    attrs.fills = normalizeLegacyImageLayers(
+      (attrs.fillLayers as SerializedFillLayerItem[]).map((L) => ({ ...L })),
+    );
     delete attrs.fillLayers;
     delete attrs.fill;
     delete attrs.fillOpacity;
@@ -49,13 +75,13 @@ export function migrateLegacyFillWireInPlace(attrs: Record<string, unknown>): vo
     return;
   }
   if (fill !== undefined && fill !== null && String(fill).trim() !== '') {
-    attrs.fills = [
+    attrs.fills = normalizeLegacyImageLayers([
       {
         type: 'solid',
         value: String(fill),
         opacity: coalesceOpacityToOptional(fo),
       },
-    ];
+    ]);
     delete attrs.fill;
     delete attrs.fillOpacity;
     delete attrs.fillLayers;
