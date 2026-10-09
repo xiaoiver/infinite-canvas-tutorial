@@ -429,6 +429,57 @@ camera3d 仍是首次创建场景相机的配置，不是本批新增的实时�
 耗时 50.7 秒，WebKit 共 2 项耗时 27.2 秒。浏览器执行不计入 Jest 覆盖率。
 修改文件 lint、相关单测和浏览器 TypeScript 检查、新文件格式检查均通过。
 
+## 第十一批：吸附组合交互与坐标精度
+
+2026-10-09，基于 master `d7606f2d`（第十批 PR #393 已合并），继续使用相同
+Node 20 原生依赖环境和全包统计范围，基线复用第十批完整覆盖率报告。
+
+新增 36 项单测，使用真实 EventWriter、Select、Transformer、相机与历史系统：
+
+- 鼠标、触摸、触控笔的吸附与逐像素脱离，0.5 / 1 / 2 倍相机缩放下的 CSS 像素阈值，
+  像素网格与离网格参考组合、拖动时停用吸附、水平/垂直等距、隐藏/剔除/跨画布参考排除。
+- 拖动过程中 pointercancel、Escape、切换工具后的单步历史；边、角、Shift 等比、
+  节点锁定比例、Alt 中心缩放，以及顶部/左侧只吸附移动轴。
+- 嵌套组缩放不重复变换或吸附自己的后代，多选边界的共同吸附和历史恢复，
+  旋转边的对向中点固定，以及旋转/翻转父级下叶节点的移动与绕世界中心旋转。
+- 部分相机位置、缩放、旋转和空 landmark 保留其余参数，坐标往返一致，
+  只修改 zoom 时仍保持指定 viewport 锚点下的世界坐标。
+
+完善事件工具以保留 jsdom MouseEvent 会截断的小数坐标后，测试复现了生产 Input /
+InputPoint 的整数存储造成的 8 项交互偏差，以及部分相机参数的 3 项赋值错误。
+指针位置与手势起点现使用 float64，避免经过相机、父级和 CSS 变换的小数被截断；
+gotoLandmark 通过 createLandmark 显式读取相机默认值，不再展开 Becsy 组件的访问器对象。
+修饰键通过 keyup 清理，帧和事件时钟仍显式推进，无固定延时。新增单测仅替换
+GPU 设备与渲染系统，不将组件和几何断言当作 GPU 像素验证。
+
+完整运行 214 个文件、1610 项测试，新增 36 项全部通过；213 个文件 / 1609 项通过，
+旧的 `export.single.ellipse.spec.ts` 在并发构建期间超过 30 秒，完整运行耗时
+809.48 秒。该导出用例在停止并发构建后原样单独复跑通过（用例 5.174 秒，
+总计 16.879 秒），未修改断言或超时。下表保留这次全量报告，不以局部复跑覆盖统计。
+现有 21 个模块的覆盖率门槛全部满足，没有排除源文件或降低门槛。
+
+| 范围 | 行覆盖率（前 → 后） | 分支覆盖率（前 → 后） |
+| --- | ---: | ---: |
+| ECS 全包 | 70.25% → 70.42% | 58.73% → 58.92% |
+| `API` | 54.87% → 57.65% | 40.08% → 42.03% |
+| `Select` | 74.17% → 74.31% | 70.12% → 70.38% |
+| `CameraControl` | 52.27% → 57.57% | 48.64% → 48.64% |
+
+全包函数覆盖率从 70.83% 提升到 70.99%；已覆盖行净增 50、分支净增 26、
+函数净增 6，行计数为 19914 / 28275。API 移除一个无用局部变量，因此总行数减少 1。
+这些是本地完整 ECS 报告数据；Coveralls master 在合并后由 CI 上传更新。
+
+新增 2 项浏览器交互回归：CSS 放大画布上的半像素移动/缩放与撤销重做，以及
+部分 landmark 和指定 viewport 锚点的缩放。Chromium 与 WebKit（iPhone 13 配置）
+各 2 项通过；另有 5 项已有 Chromium 吸附组合回归通过。移动端用例显式添加
+viewport 元数据，隔离页面默认缩放与画布 CSS 缩放。这些用例验证真实 DOM 指针
+和几何状态，不是像素采样，也不计入 Jest 覆盖率。
+
+修改文件 lint、单测及浏览器 TypeScript 检查、新文件格式检查均通过。
+React 及依赖包构建通过。master React 19 的 `selection-edits` 用例出现
+`Execution context was destroyed`，本地最新构建连续 3 次复跑通过；trace 未发现
+实际重新导航，根因尚未确认，不能据此宣称 CI 已恢复。
+
 ## 覆盖率门槛与报告
 
 `jest.ecs.config.js` 为已建立回归基线的模块设置独立门槛，`pnpm test:ecs` 会检查：
@@ -558,12 +609,24 @@ pnpm exec playwright test -c playwright.browser.config.ts rough-properties.spec.
 pnpm exec playwright test -c playwright.webkit.config.ts rough-properties.spec.ts group-inheritance.spec.ts
 ```
 
+只验证第十一批吸附交互与坐标精度：
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/select.snapping-interaction.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts interaction-precision.spec.ts
+pnpm exec playwright test -c playwright.webkit.config.ts interaction-precision.spec.ts
+```
+
 ## 后续顺序
 
-属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性。后续优先：
+属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性；吸附与复杂嵌套
+变换已增加组合事件回归。后续优先：
 
-1. **交互剩余路径与浏览器稳定性**：继续补齐吸附与复杂嵌套变换的组合场景，
-   并改进浏览器双击/帧同步；保留少量真实 DOM、像素及平台事件回归。
+1. **React CI 稳定性与耗时**：先定位 master / PR #393 的 React 19 选择测试上下文错误，
+   再拆分浏览器与测试分片、补充耗时报告和失败诊断。成功的 PR #392 React CI 中，
+   Chromium 用时约 23–29 分钟，随后串行 WebKit 约 37–46 分钟；应缩短关键路径，
+   保留 React 18 / 19 和两种浏览器覆盖，不依赖扩大超时或自动重试。
 2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、glTF 异步替换与取消、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 

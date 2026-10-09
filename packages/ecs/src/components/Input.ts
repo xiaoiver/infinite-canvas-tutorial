@@ -14,9 +14,11 @@ export class Input {
   @field({ type: Type.object, default: [] })
   declare pointerSamples: PointerSample[];
 
-  @field.int32.vector(2) declare pointerClient: [number, number];
+  // PointerEvent and CSS transforms provide subpixel coordinates. Truncating
+  // either end of a gesture shifts resize anchors and snapping thresholds.
+  @field.float64.vector(2) declare pointerClient: [number, number];
 
-  @field.int32.vector(2) declare pointerViewport: [number, number];
+  @field.float64.vector(2) declare pointerViewport: [number, number];
 
   @field.boolean declare pointerDownTrigger: boolean;
 
@@ -25,7 +27,7 @@ export class Input {
   /** Remains cancelled until the next press, including across render frames. */
   @field.boolean declare pointerCancelled: boolean;
 
-  @field.int32.vector(2) declare pointerDownViewport: [number, number];
+  @field.float64.vector(2) declare pointerDownViewport: [number, number];
 
   @field.boolean declare pointerInside: boolean;
 
@@ -76,7 +78,7 @@ export class InputPoint {
   /**
    * In viewport coordinates.
    */
-  @field.int32.vector(2) declare prevPoint: [number, number];
+  @field.float64.vector(2) declare prevPoint: [number, number];
 
   /**
    * Canvas target.

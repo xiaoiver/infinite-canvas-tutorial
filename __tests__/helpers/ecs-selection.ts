@@ -39,6 +39,10 @@ export async function createSelectionWorld(count = 1) {
       ...options,
     });
     Object.defineProperties(event, {
+      // jsdom's MouseEventInit truncates coordinates to integers. PointerEvent
+      // preserves subpixel positions, including camera/parent transforms.
+      clientX: { value: options.clientX ?? x },
+      clientY: { value: options.clientY ?? y },
       pointerType: { value: options.pointerType ?? 'mouse' },
       pointerId: { value: options.pointerId ?? 1 },
       pressure: { value: 0.5 },
