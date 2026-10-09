@@ -450,7 +450,7 @@ for(int i = 0; i < MAX_i; i++){
 }
 ```
 
-The effect is as follows:
+The effect is as follows. Select the brush tool and vary your dragging speed: ECS uses timestamped mouse/touch samples to make fast strokes thinner and slow strokes thicker, with smooth transitions. A pressure-sensitive pen uses its measured pressure instead. The resulting radii are stored in the stroke, so undo/redo and reloading preserve the shape.
 
 <Brush />
 

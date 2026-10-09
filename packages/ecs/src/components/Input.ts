@@ -1,6 +1,19 @@
 import { Entity, field, Type } from '@lastolivegames/becsy';
 
+export interface PointerSample {
+  phase: 'down' | 'move' | 'up';
+  x: number;
+  y: number;
+  timeStamp: number;
+  pressure: number;
+  pointerType: 'mouse' | 'touch' | 'pen';
+}
+
 export class Input {
+  /** Active-pointer samples since the previous frame, in viewport CSS pixels. */
+  @field({ type: Type.object, default: [] })
+  declare pointerSamples: PointerSample[];
+
   @field.int32.vector(2) declare pointerClient: [number, number];
 
   @field.int32.vector(2) declare pointerViewport: [number, number];
