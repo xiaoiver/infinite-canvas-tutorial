@@ -126,6 +126,8 @@ x -> y: hello world
 
 <D2 />
 
+Connections become Paths bound to their endpoint nodes, with a stroke and `fills: []`. Filling an open path implicitly joins its endpoints into an area, so the connection color must not also be used as a fill. Connections still update when nodes move, and markers draw the arrowheads.
+
 ### Container
 
 ```txt

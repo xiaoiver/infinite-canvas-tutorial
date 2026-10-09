@@ -301,7 +301,8 @@ export const parseD2ToSerializedNodes = async (definition: string) => {
       fromId: src,
       toId: dst,
       stroke: colors[stroke.toLowerCase()],
-      fills: [{ type: 'solid', value: colors[stroke.toLowerCase()], opacity: 1 }],
+      // A connector is an open stroke; filling it closes its route into a wedge.
+      fills: [],
       strokeWidth,
       hitStrokeWidth: strokeWidth * 4,
       markerStart: D2_ARROW_HEAD_MAP[srcArrow],

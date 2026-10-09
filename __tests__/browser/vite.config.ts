@@ -52,6 +52,7 @@ export default defineConfig({
           ['vello', 'plugin-vello/src/index.ts'],
           ['figma', 'plugin-figma/src/index.ts'],
           ['mermaid', 'plugin-mermaid/src/index.ts'],
+          ['d2', 'plugin-d2/src/index.ts'],
         ].map(([name, path]) => [
           `@infinite-canvas-tutorial/${name}`,
           fileURLToPath(new URL(`../../packages/${path}`, import.meta.url)),
