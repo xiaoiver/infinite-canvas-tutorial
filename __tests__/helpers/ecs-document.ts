@@ -9,6 +9,7 @@ import {
   DOMAdapter,
   PreStartUp,
   Pen,
+  Theme,
   RendererPlugin,
   System,
   system,
@@ -16,11 +17,15 @@ import {
 } from '../../packages/ecs/src';
 
 /** Real scene/history systems, explicit frames, and no GPU allocation. */
-export async function createDocumentWorld(count = 1) {
+export async function createDocumentWorld(count = 1, pointerEvents = false) {
   const previousAdapter = DOMAdapter.get();
   const previousWindow = globalThis.window;
   const previousDocument = globalThis.document;
   const { window } = new JSDOM();
+  // jsdom has MouseEvent but no PointerEvent. The driver supplies pointer fields.
+  if (pointerEvents) {
+    Object.defineProperty(window, 'PointerEvent', { value: window.MouseEvent });
+  }
   globalThis.window = window as unknown as Window & typeof globalThis;
   globalThis.document = window.document;
   DOMAdapter.set({
@@ -51,6 +56,7 @@ export async function createDocumentWorld(count = 1) {
           height: 200,
         });
         api.createCamera({ zoom: 1, x: 0, y: 0 });
+        api.getCanvas().add(Theme);
         api.setAppState({ penbarSelected: Pen.SELECT });
         api.record('NEVER');
         apis.push(api);
@@ -106,6 +112,7 @@ export async function createDocumentWorld(count = 1) {
     return result.value;
   };
   return {
+    window,
     apis,
     frame,
     edit,

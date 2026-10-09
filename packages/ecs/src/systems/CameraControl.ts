@@ -21,7 +21,10 @@ const MAX_ZOOM = 4;
 const PINCH_FACTOR = 100;
 
 export class CameraControl extends System {
-  private readonly cameras = this.query((q) => q.current.with(Camera).read);
+  private readonly cameras = this.query(
+    (q) => q.current.and.removed.with(Camera).read,
+  );
+  private readonly gesturePens = new Map<number, Pen>();
 
   constructor() {
     super();
@@ -41,6 +44,9 @@ export class CameraControl extends System {
   }
 
   execute() {
+    this.cameras.removed.forEach((entity) =>
+      this.gesturePens.delete(entity.__id),
+    );
     this.cameras.current.forEach((entity) => {
       const camera = entity.read(Camera);
       safeAddComponent(entity, ComputedCameraControl);
@@ -58,6 +64,14 @@ export class CameraControl extends System {
       const pen = api.getAppState().penbarSelected;
 
       const cameraControl = entity.write(ComputedCameraControl);
+
+      // A held selection pointer must not become a camera pan on tool change.
+      const toolChanged =
+        this.gesturePens.has(entity.__id) &&
+        this.gesturePens.get(entity.__id) !== pen;
+      if (toolChanged) {
+        this.releaseInputPoints(entity, canvas, cameraControl);
+      }
 
       const input = canvas.write(Input);
       const cursor = canvas.write(Cursor);
@@ -78,7 +92,12 @@ export class CameraControl extends System {
         cursor.value = 'text';
       }
 
-      if (input.pointerDownTrigger) {
+      if (
+        input.pointerDownTrigger &&
+        !input.pointerCancelled &&
+        input.key !== 'Escape'
+      ) {
+        this.gesturePens.set(entity.__id, pen);
         this.createEntity(InputPoint, {
           prevPoint: input.pointerDownViewport,
           canvas,
@@ -124,6 +143,7 @@ export class CameraControl extends System {
       }
 
       inputPoints.forEach((point) => {
+        if (toolChanged) return;
         const inputPoint = point.write(InputPoint);
         const {
           prevPoint: [prevX, prevY],
@@ -143,17 +163,12 @@ export class CameraControl extends System {
         }
       });
 
-      if (input.pointerUpTrigger) {
-        Object.assign(cameraControl, {
-          pointerDownViewportX: undefined,
-          pointerDownViewportY: undefined,
-          pointerDownCanvasX: undefined,
-          pointerDownCanvasY: undefined,
-        });
-
-        for (const point of canvas.read(Canvas).inputPoints) {
-          point.delete();
-        }
+      if (
+        input.pointerUpTrigger ||
+        input.pointerCancelled ||
+        (pen === Pen.SELECT && input.key === 'Escape')
+      ) {
+        this.releaseInputPoints(entity, canvas, cameraControl);
         if (pen === Pen.HAND) {
           cursor.value = 'grab';
           cameraControl.rotate = false;
@@ -194,6 +209,22 @@ export class CameraControl extends System {
         });
       }
     });
+  }
+
+  private releaseInputPoints(
+    camera: Entity,
+    canvas: Entity,
+    control: ComputedCameraControl,
+  ) {
+    Object.assign(control, {
+      pointerDownViewportX: undefined,
+      pointerDownViewportY: undefined,
+      pointerDownCanvasX: undefined,
+      pointerDownCanvasY: undefined,
+      rotate: false,
+    });
+    for (const point of canvas.read(Canvas).inputPoints) point.delete();
+    this.gesturePens.delete(camera.__id);
   }
 
   private moveCamera(entity: Entity) {

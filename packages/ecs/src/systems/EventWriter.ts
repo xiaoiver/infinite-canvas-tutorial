@@ -186,8 +186,8 @@ export class EventWriter extends System {
         pointerInside:
           viewport.x >= 0 &&
           viewport.y >= 0 &&
-          viewport.x <= entity.read(Canvas).width &&
-          viewport.y <= entity.read(Canvas).height,
+          viewport.x <= input.read(Canvas).width &&
+          viewport.y <= input.read(Canvas).height,
       });
 
       if (recordSample && pointerIds.has(e.pointerId)) {
