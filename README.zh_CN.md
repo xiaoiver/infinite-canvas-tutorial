@@ -507,7 +507,7 @@ pnpm run dev
 | :-------------------------------: | :----------------------------------------: |
 | ![gizmo](./screenshots/gizmo.gif) | ![textured earth](./screenshots/earth.png) |
 
-[在线体验]: app.infinitecanvas.cc
+[在线体验]: https://app.infinitecanvas.cc/
 [infinitecanvas]: https://infinitecanvas.tools/
 [自部署指南]: /packages/app/README.md
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
