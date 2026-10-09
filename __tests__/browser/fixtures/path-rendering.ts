@@ -2,6 +2,9 @@ export interface PathCase {
   d: string;
   fill: boolean;
   parentScale: number;
+  strokeWidth?: number;
+  lineJoin?: CanvasLineJoin;
+  opacity?: number;
 }
 type Stats = { builds: number; vertices: number };
 interface Driver {
@@ -57,9 +60,11 @@ export function installPathTest(driver: Driver) {
         new Path2D(options.d),
         new DOMMatrix([options.parentScale, 0, 0, 1, 0, 0]),
       );
-      ctx.fillStyle = ctx.strokeStyle = 'black';
-      ctx.lineWidth = 3;
-      ctx.lineJoin = 'round';
+      ctx.fillStyle = ctx.strokeStyle = `rgba(0, 0, 255, ${
+        options.opacity ?? 1
+      })`;
+      ctx.lineWidth = options.strokeWidth ?? 3;
+      ctx.lineJoin = options.lineJoin ?? 'round';
       ctx.lineCap = 'butt';
       if (options.fill) ctx.fill(path);
       else ctx.stroke(path);

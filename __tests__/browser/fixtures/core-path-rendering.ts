@@ -39,10 +39,11 @@ installPathTest({
     group.scale.x = options.parentScale;
     path = new Path({
       d: options.d,
-      fill: options.fill ? 'black' : 'none',
-      stroke: options.fill ? 'none' : 'black',
-      strokeWidth: 3,
-      strokeLinejoin: 'round',
+      fill: options.fill ? 'blue' : 'none',
+      stroke: options.fill ? 'none' : 'blue',
+      opacity: options.opacity ?? 1,
+      strokeWidth: options.strokeWidth ?? 3,
+      strokeLinejoin: options.lineJoin ?? 'round',
       strokeLinecap: 'butt',
     });
     group.appendChild(path);
