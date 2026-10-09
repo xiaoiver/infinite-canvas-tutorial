@@ -3,7 +3,12 @@ import { mutateElement } from '../../packages/ecs/src/history';
 import { SerializedNode } from '../../packages/ecs/src';
 
 jest.mock('../../packages/ecs/src/history', () => ({
-  ...jest.requireActual('../../packages/ecs/src/history'),
+  ...jest.requireActual<typeof import('../../packages/ecs/src/history')>(
+    '../../packages/ecs/src/history',
+  ),
+  // This suite isolates publication/ordering. Component writes are exercised
+  // with real entities in history-inheritance-sync.spec.ts.
+  syncInheritedPresentation: jest.fn(),
   mutateElement: jest.fn((_entity, node, diff) =>
     Object.assign(node, diff, { version: (node.version || 0) + 1 }),
   ),
@@ -17,6 +22,7 @@ describe('API batch updates', () => {
     const nodes: SerializedNode[] = Array.from({ length: 1000 }, (_, i) => ({
       id: String(i),
       type: 'rect',
+      zIndex: i,
       x: i,
     }));
     api.setNodes(nodes);
@@ -51,7 +57,7 @@ describe('API batch updates', () => {
     const { api, state } = createAPI();
     const commit = jest.spyOn(state, 'setNodes');
     (mutateElement as jest.Mock).mockClear();
-    api.updateNodes([{ id: '0', type: 'rect', x: 500 }], false);
+    api.updateNodes([{ id: '0', type: 'rect', zIndex: 0, x: 500 }], false);
     expect(mutateElement).toHaveBeenCalledTimes(1);
     expect(commit).not.toHaveBeenCalled();
     expect(api.getNodes()[0].x).toBe(0);

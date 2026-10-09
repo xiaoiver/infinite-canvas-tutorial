@@ -108,6 +108,7 @@ import { deserializeBrushPoints, deserializePoints } from './points';
 import { EntityCommands, Commands } from '../../commands';
 import {
   resolveDesignVariableValue,
+  resolveDesignVariableNumber,
   designVariableRefKeyFromWire,
   resolveFillLayerItemsForEcs,
   type DesignVariablesMap,
@@ -1286,21 +1287,7 @@ export function serializedNodesToEntities(
       }
     } else if (type === 'rect' || type === 'rough-rect') {
       const { cornerRadius } = attributes as RectSerializedNode;
-      const resolvedCr = resolveDesignVariableValue(
-        cornerRadius,
-        designVariables,
-        themeMode,
-      );
-      const crNum = (() => {
-        if (resolvedCr === undefined || resolvedCr === null) {
-          return undefined;
-        }
-        const n =
-          typeof resolvedCr === 'number'
-            ? resolvedCr
-            : parseFloat(String(resolvedCr));
-        return Number.isFinite(n) ? Math.max(0, n) : undefined;
-      })();
+      const crNum = Math.max(0, resolveDesignVariableNumber(cornerRadius, designVariables, themeMode, 0));
       entityCommands.insert(
         new Rect({
           x: 0,
@@ -1375,8 +1362,9 @@ export function serializedNodesToEntities(
         loadImage(brushStamp, entityCommands.id());
       }
     } else if (type === 'path' || type === 'rough-path') {
-      const { d, fillRule, tessellationMethod, hitStrokeWidth } =
+      const { d, tessellationMethod, hitStrokeWidth } =
         attributes as PathSerializedNode;
+      const { fillRule } = wireMergedAttrs as PathSerializedNode;
       entityCommands.insert(
         new Path({
           d,
@@ -1427,11 +1415,8 @@ export function serializedNodesToEntities(
         edgeLabelOffset,
       } = attributes as TextSerializedNode;
 
-      const resolvedFontSize = resolveDesignVariableValue(
-        fontSize,
-        designVariables,
-        themeMode,
-      );
+      const resolvedFontSize = resolveDesignVariableNumber(fontSize, designVariables, themeMode, 12);
+      const resolvedFontFamily = String(resolveDesignVariableValue(fontFamily, designVariables, themeMode) || 'sans-serif');
       const resolvedDecorationColor = resolveDesignVariableValue(
         decorationColor,
         designVariables,
@@ -1454,7 +1439,7 @@ export function serializedNodesToEntities(
 
       const bitmapFonts = fonts.map((font) => font.read(Font).bitmapFont);
       const bitmapFont = bitmapFonts.find(
-        (font) => font.fontFamily === fontFamily,
+        (font) => font.fontFamily === resolvedFontFamily,
       );
 
       entityCommands.insert(
@@ -1466,18 +1451,15 @@ export function serializedNodesToEntities(
           anchorX,
           anchorY,
           content,
-          fontFamily,
-          fontSize:
-            typeof resolvedFontSize === 'number'
-              ? resolvedFontSize
-              : Number(resolvedFontSize),
+          fontFamily: resolvedFontFamily,
+          fontSize: resolvedFontSize,
           fontSizeVariableRef: designVariableRefKeyFromWire(fontSize),
           fontWeight,
           fontStyle,
-          fontVariant,
+          fontVariant: String(resolveDesignVariableValue(fontVariant, designVariables, themeMode) ?? 'normal'),
           fontKerning,
-          letterSpacing,
-          lineHeight,
+          letterSpacing: resolveDesignVariableNumber(letterSpacing, designVariables, themeMode, 0),
+          lineHeight: Math.max(0, resolveDesignVariableNumber(lineHeight, designVariables, themeMode, 0)),
           leading,
           whiteSpace,
           wordWrap,
@@ -1680,14 +1662,16 @@ export function serializedNodesToEntities(
       (resolvedStrokeLayerItems != null &&
         resolvedStrokeLayerItems.length > 0) ||
       (resolvedStrokeWidth !== undefined && resolvedStrokeWidth !== null) ||
-      strokeWidth !== undefined;
+      strokeWidth !== undefined ||
+      strokeLinecap != null ||
+      strokeLinejoin != null;
     if (hasStrokeGeometry && !skipParentFillStroke) {
       const rawW =
         resolvedStrokeWidth !== undefined ? resolvedStrokeWidth : strokeWidth;
       const widthInit =
         rawW !== undefined && rawW !== null
           ? {
-            width: typeof rawW === 'number' ? rawW : Number(rawW),
+            width: resolveDesignVariableNumber(rawW, designVariables, themeMode, 1),
           }
           : {};
       const dashPair =

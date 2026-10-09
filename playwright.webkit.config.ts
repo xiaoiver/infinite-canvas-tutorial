@@ -22,6 +22,7 @@ export default defineConfig({
     'ecs-blend-mode.spec.ts',
     'brush.spec.ts',
     'image-fill.spec.ts',
+    'group-inheritance.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',
     'icon-resize.spec.ts',
