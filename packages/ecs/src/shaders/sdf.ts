@@ -434,7 +434,7 @@ void main() {
     outputColor = over(outputColor, vec4(color.xyz, clamp(distance, 0.0, 1.0)));
   }
 
-  float antialiasedBlur = -fwidth(length(v_FragCoord));
+  float antialiasedBlur = -fwidth(distance);
   float opacity_t = clamp(distance / antialiasedBlur, 0.0, 1.0);
   if (shape > 1.5 && shape < 2.5 && strokeWidth == 0.0) {
     // Fill-only rectangles need coverage centered at the geometric edge. The
