@@ -2,6 +2,7 @@
 outline: deep
 description: '实现兼容DOM的事件系统，支持图形拾取、拖拽功能和手势操作。学习如何处理指针、鼠标和触摸事件以实现交互式画布应用。'
 ---
+
 # 课程 6 - 事件系统
 
 在这节课中你将学习到以下内容：
@@ -589,7 +590,15 @@ this.#touches[event.pointerId] = { last: null };
 在监听 `pointermove` 事件时，记录两个触控点间的距离，与上一次的距离进行比较，两个点越靠越近对应缩小，越来越远对应放大：
 
 ```ts
-zoomByPoint(point.x, point.y, (last / dist - 1) * PINCH_FACTOR);
+zoomByPoint(midX, midY, (prevDist / dist - 1) * PINCH_FACTOR);
+```
+
+在移动端仅依赖拖拽事件是不够的：单指拖拽会触发平移，但只要第二根手指触屏，我们就会将其视为 `pinch` 手势并跳过拖拽处理，导致双指滑动完全无法移动相机。为了让移动端的平移依然有效，同一个 `pointermove` 处理函数还会记录两指连线的中点，并根据中点的移动距离平移相机。该距离基于 client 坐标计算并除以当前缩放比例，因此无论相机缩放到何种程度都能保持一致：
+
+```ts
+// 双指滑动平移相机，跟随手指移动。
+camera.x += (prevMidX - midX) / camera.zoom;
+camera.y += (prevMidY - midY) / camera.zoom;
 ```
 
 在 iOS 模拟器上效果如下：
