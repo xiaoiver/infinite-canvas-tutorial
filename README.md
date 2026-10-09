@@ -504,7 +504,7 @@ If you want to use it in your own project, you can refer to:
 | :-------------------------------: | :----------------------------------------: |
 | ![gizmo](./screenshots/gizmo.gif) | ![textured earth](./screenshots/earth.png) |
 
-[Online App]: app.infinitecanvas.cc
+[Online App]: https://app.infinitecanvas.cc/
 [infinitecanvas]: https://infinitecanvas.tools/
 [Self-Deployment Guide]: /packages/app/README.md
 [Figma]: https://madebyevan.com/figma/building-a-professional-design-tool-on-the-web/
