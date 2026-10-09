@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body {
+    margin: 0;
+  }
+  #host {
+    position: relative;
+    width: 640px;
+    height: 320px;
+  }
+  canvas {
+    display: block;
+    touch-action: none;
+  }
+  #overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+</style>
+<div id="host">
+  <canvas id="actual"></canvas>
+  <div id="overlay"></div>
+</div>
+<output id="status">Loading</output>
+<script type="module" src="/brush.ts"></script>

@@ -1,6 +1,6 @@
 import { co, Entity, System } from '@lastolivegames/becsy';
 import { Gesture } from '@use-gesture/vanilla';
-import { Canvas, Input, Cursor } from '../components';
+import { Canvas, Input, Cursor, type PointerSample } from '../components';
 import { safeAddComponent } from '../history';
 import { DOMAdapter } from '../environment';
 import { isBrowser } from '../utils';
@@ -84,7 +84,11 @@ export class EventWriter extends System {
     const globalThis = DOMAdapter.get().getWindow();
     // Pointer-down already focuses the canvas. Make bare ECS canvases focusable
     // too, without overriding an embedding application's explicit tabindex.
-    if (isBrowser && 'tabIndex' in element && !element.hasAttribute('tabindex')) {
+    if (
+      isBrowser &&
+      'tabIndex' in element &&
+      !element.hasAttribute('tabindex')
+    ) {
       element.tabIndex = 0;
     }
     const supportsPointerEvents = !!globalThis.PointerEvent;
@@ -126,7 +130,33 @@ export class EventWriter extends System {
       }
     };
 
-    const onPointerMove = (e: PointerEvent) => {
+    const appendSamples = (e: PointerEvent, phase: PointerSample['phase']) => {
+      const coalesced = phase === 'move' ? e.getCoalescedEvents?.() : undefined;
+      const events = coalesced?.length ? [...coalesced, e] : [e];
+      const samples = events.map((event): PointerSample => {
+        const { x, y } = api.client2Viewport({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        return {
+          phase,
+          x,
+          y,
+          timeStamp: Number.isFinite(event.timeStamp)
+            ? event.timeStamp
+            : performance.now(),
+          pressure: event.pressure,
+          pointerType:
+            e.pointerType === 'pen' || e.pointerType === 'touch'
+              ? e.pointerType
+              : 'mouse',
+        };
+      });
+      const state = input.write(Input);
+      state.pointerSamples = [...(state.pointerSamples ?? []), ...samples];
+    };
+
+    const onPointerMove = (e: PointerEvent, recordSample = true) => {
       if (e.pointerType === 'touch' && isPinching) return;
       if (
         e.pointerType === 'touch' &&
@@ -160,6 +190,10 @@ export class EventWriter extends System {
           viewport.y <= entity.read(Canvas).height,
       });
 
+      if (recordSample && pointerIds.has(e.pointerId)) {
+        appendSamples(e, 'move');
+      }
+
       syncCtrlShiftAltMeta(e);
     };
 
@@ -176,7 +210,8 @@ export class EventWriter extends System {
       }
 
       if (Number.isFinite(e.clientX) && Number.isFinite(e.clientY)) {
-        onPointerMove(e);
+        onPointerMove(e, false);
+        if (pointerIds.has(e.pointerId)) appendSamples(e, 'up');
       }
       this.setInputTrigger(input, 'pointerUpTrigger');
       pointerIds.delete(e.pointerId);
@@ -243,6 +278,7 @@ export class EventWriter extends System {
           lastPointerDownTime: currentTime,
           pressure: e.pressure,
         });
+        appendSamples(e, 'down');
       }
 
       syncCtrlShiftAltMeta(e);
@@ -398,7 +434,8 @@ export class EventWriter extends System {
         isBrowser &&
         e.key === 'Escape' &&
         !e.composedPath().includes(element)
-      ) return;
+      )
+        return;
       if (e.key === 'Control') {
         input.write(Input).ctrlKey = true;
       }

@@ -25,6 +25,80 @@ jest.mock('../../packages/ecs/src/environment', () => ({
 }));
 
 describe('input listener lifecycle', () => {
+  it('retains timestamped coalesced samples and the release position within a frame', () => {
+    const { window } = new JSDOM();
+    (window as any).PointerEvent = window.MouseEvent;
+    (DOMAdapter.get as jest.Mock).mockReturnValue({ getWindow: () => window });
+    const element = window.document.createElement('canvas');
+    window.document.body.append(element);
+    const input = { pointerSamples: [] } as any;
+    const api = {
+      getCanvasElement: () => element,
+      client2Viewport: ({ x, y }) => ({ x: x - 100, y: y - 50 }),
+    };
+    const entity = {
+      __id: 1,
+      hold: () => entity,
+      read: (type) =>
+        type === Canvas ? { element, api, width: 640, height: 320 } : input,
+      write: () => input,
+    };
+    mockQuery = { added: [entity], removed: [] };
+    const writer = new EventWriter();
+    writer.execute();
+    const event = (
+      type: string,
+      x: number,
+      timeStamp: number,
+      pressure: number,
+    ) => {
+      const result = new window.MouseEvent(type, {
+        clientX: x + 100,
+        clientY: 70,
+        button: 0,
+      });
+      Object.defineProperties(result, {
+        pointerId: { value: 1 },
+        pointerType: { value: 'pen' },
+        timeStamp: { value: timeStamp },
+        pressure: { value: pressure },
+      });
+      return result;
+    };
+    // Hover does not enter the active-stroke queue.
+    element.dispatchEvent(event('pointermove', 0, 1, 0));
+    element.dispatchEvent(event('pointerdown', 0, 10, 0.2));
+    const move = event('pointermove', 12, 16, 0.8);
+    Object.defineProperty(move, 'getCoalescedEvents', {
+      value: () => [
+        event('pointermove', 4, 12, 0.4),
+        event('pointermove', 8, 14, 0.6),
+      ],
+    });
+    element.dispatchEvent(move);
+    element.dispatchEvent(event('pointerup', 15, 18, 0));
+    expect(
+      input.pointerSamples.map(
+        ({ phase, x, y, timeStamp, pressure, pointerType }) => [
+          phase,
+          x,
+          y,
+          timeStamp,
+          pressure,
+          pointerType,
+        ],
+      ),
+    ).toEqual([
+      ['down', 0, 20, 10, 0.2, 'pen'],
+      ['move', 4, 20, 12, 0.4, 'pen'],
+      ['move', 8, 20, 14, 0.6, 'pen'],
+      ['move', 12, 20, 16, 0.8, 'pen'],
+      ['up', 15, 20, 18, 0, 'pen'],
+    ]);
+    writer.finalize();
+    window.close();
+  });
+
   it('routes Escape through the canvas event path and retains the handled keydown through keyup', () => {
     const { window } = new JSDOM();
     (window as any).PointerEvent = window.MouseEvent;
