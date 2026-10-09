@@ -2033,7 +2033,10 @@ export class API {
   private finishCrop() {
     const [id] = this.getAppState().layersCropping;
     const node = id && this.getNodeById(id);
-    if (!node || node.isDeleted || !this.getEntity(node)) return;
+    if (!node || node.isDeleted || !this.getEntity(node)) {
+      this.setAppState({ layersCropping: [] });
+      return;
+    }
     const children = this.getChildren(node)
       .map((child) => this.getNodeByEntity(child))
       .filter((child): child is SerializedNode => !!child && !child.isDeleted);
