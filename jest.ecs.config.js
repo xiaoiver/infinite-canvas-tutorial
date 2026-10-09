@@ -81,6 +81,24 @@ module.exports = {
       functions: 100,
       lines: 100,
     },
+    './packages/ecs/src/utils/glyph/glyph-manager.ts': {
+      statements: 100,
+      branches: 90,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/utils/fill-layer-image-url-raster.ts': {
+      statements: 95,
+      branches: 95,
+      functions: 80,
+      lines: 95,
+    },
+    './packages/ecs/src/systems/BatchManager.ts': {
+      statements: 98,
+      branches: 90,
+      functions: 98,
+      lines: 98,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [

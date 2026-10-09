@@ -84,11 +84,11 @@ export function resolveImageFillRasterOptions(
   const wire =
     (fills.find(
       (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
-        l.type === 'image' && l.value === layer.value,
+        isFillLayerEnabled(l) && l.type === 'image' && l.value === layer.value,
     ) ??
       fills.find(
         (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
-          l.type === 'image',
+          isFillLayerEnabled(l) && l.type === 'image',
       )) as Extract<SerializedFillLayerItem, { type: 'image' }> | undefined;
   if (!wire) {
     return fromEcs;
@@ -110,19 +110,18 @@ export function setFillLayerDecodedBitmapForUrl(
   bmp: ImageBitmap,
 ): void {
   const prev = fillLayerDecodedBitmapByUrl.get(url);
-  if (
-    prev &&
-    prev !== bmp &&
-    'close' in prev &&
-    typeof (prev as ImageBitmap).close === 'function'
-  ) {
-    try {
-      (prev as ImageBitmap).close();
-    } catch {
-      // ignore
-    }
+  if (prev && prev !== bmp) {
+    closeDecodedBitmap(prev);
   }
   fillLayerDecodedBitmapByUrl.set(url, bmp);
+}
+
+function closeDecodedBitmap(bitmap: ImageBitmap): void {
+  try {
+    if (typeof bitmap.close === 'function') bitmap.close();
+  } catch {
+    // Releasing an obsolete bitmap must not prevent publishing its replacement.
+  }
 }
 const fillLayerDecodeInflight = new Map<string, Promise<void>>();
 const fillLayerDecodeWaiters = new Map<string, Set<() => void>>();
@@ -166,10 +165,18 @@ function scheduleFillLayerUrlDecode(url: string, onDecoded?: () => void): void {
   if (fillLayerDecodeInflight.has(url)) {
     return;
   }
-  const p = (async () => {
+  // Register the in-flight promise before invoking adapters that may throw
+  // synchronously; otherwise their cleanup runs before the entry is inserted.
+  const p = Promise.resolve().then(async () => {
     try {
       const bmp = (await DOMAdapter.get().createImage(url)) as ImageBitmap;
-      fillLayerDecodedBitmapByUrl.set(url, bmp);
+      const current = fillLayerDecodedBitmapByUrl.get(url);
+      if (!current) {
+        fillLayerDecodedBitmapByUrl.set(url, bmp);
+      } else if (current !== bmp) {
+        // A newer bitmap (e.g. a larger SVG raster) was supplied during decode.
+        closeDecodedBitmap(bmp);
+      }
       const waiters = fillLayerDecodeWaiters.get(url);
       fillLayerDecodeWaiters.delete(url);
       if (waiters) {
@@ -186,7 +193,7 @@ function scheduleFillLayerUrlDecode(url: string, onDecoded?: () => void): void {
     } finally {
       fillLayerDecodeInflight.delete(url);
     }
-  })();
+  });
   fillLayerDecodeInflight.set(url, p);
 }
 

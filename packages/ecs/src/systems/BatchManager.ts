@@ -262,7 +262,10 @@ export class BatchManager {
       existed = instancedDrawcalls.find(
         (drawcalls) =>
           drawcalls.length === ctors.length &&
-          drawcalls.every((drawcall) => drawcall.validate(shape)),
+          drawcalls.every(
+            (drawcall, i) =>
+              drawcall.constructor === ctors[i] && drawcall.validate(shape),
+          ),
       );
 
       if (!existed) {
@@ -301,8 +304,20 @@ export class BatchManager {
     if (!drawcalls.length) {
       return;
     }
-    if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
-      this.#drawcallsToFlush.push(...drawcalls);
+    for (const drawcall of drawcalls) {
+      if (
+        !this.#drawcallsToFlush.includes(drawcall) &&
+        !this.#hidedUIs.includes(drawcall)
+      ) {
+        this.#drawcallsToFlush.push(drawcall);
+      }
+    }
+  }
+
+  #removeFromFrame(drawcall: Drawcall) {
+    for (const queue of [this.#drawcallsToFlush, this.#hidedUIs]) {
+      const index = queue.indexOf(drawcall);
+      if (index !== -1) queue.splice(index, 1);
     }
   }
 
@@ -317,8 +332,7 @@ export class BatchManager {
       this.#batchableDrawcallsCache.get(shape)!.forEach((drawcall) => {
         drawcall.remove(shape);
         if (drawcall.shapes.length === 0) {
-          const index = this.#drawcallsToFlush.indexOf(drawcall);
-          if (index !== -1) this.#drawcallsToFlush.splice(index, 1);
+          this.#removeFromFrame(drawcall);
         }
       });
       this.#batchableDrawcallsCache.delete(shape);
@@ -329,12 +343,7 @@ export class BatchManager {
         this.#ownedDrawcalls.delete(drawcall);
       }
 
-      if (this.#drawcallsToFlush.includes(drawcall)) {
-        this.#drawcallsToFlush.splice(
-          this.#drawcallsToFlush.indexOf(drawcall),
-          1,
-        );
-      }
+      this.#removeFromFrame(drawcall);
     });
 
     if (destroy) {
@@ -357,7 +366,13 @@ export class BatchManager {
 
   showUIs() {
     this.#hidedUIs.forEach((drawcall) => {
-      this.#drawcallsToFlush.push(drawcall);
+      if (
+        !drawcall.destroyed &&
+        drawcall.shapes.length > 0 &&
+        !this.#drawcallsToFlush.includes(drawcall)
+      ) {
+        this.#drawcallsToFlush.push(drawcall);
+      }
     });
     this.#hidedUIs = [];
   }
@@ -378,6 +393,7 @@ export class BatchManager {
 
   clear() {
     this.#drawcallsToFlush = [];
+    this.#hidedUIs = [];
   }
 
   sort() {
