@@ -51,6 +51,12 @@ module.exports = {
       functions: 100,
       lines: 100,
     },
+    './packages/ecs/src/systems/select/rotate-gesture.ts': {
+      statements: 95,
+      branches: 85,
+      functions: 100,
+      lines: 100,
+    },
     './packages/ecs/src/history/Snapshot.ts': {
       statements: 100,
       branches: 90,

@@ -514,7 +514,12 @@ export class Select extends System {
     });
     const entities = api.elementsFromPoint({ x: wx, y: wy });
 
-    return entities.find(selector);
+    return entities.find(
+      (entity) =>
+        (!entity.has(ComputedVisibility) ||
+          entity.read(ComputedVisibility).visible) &&
+        selector(entity),
+    );
   }
 
   /**
@@ -1799,6 +1804,7 @@ export class Select extends System {
 
       if (pen !== Pen.SELECT) {
         this.cancelVectorEditDrag(api, this.selections.get(camera.__id));
+        this.interruptTransformGesture(api, this.selections.get(camera.__id));
         if (api.getAppState().vectorNetworkSelectedVertex) {
           api.setAppState({ vectorNetworkSelectedVertex: null });
         }
@@ -1995,6 +2001,11 @@ export class Select extends System {
       ) {
         this.cancelVectorEditDrag(api, selection);
       }
+      if (input.pointerCancelled || input.key === 'Escape') {
+        this.interruptTransformGesture(api, selection);
+        cursor.value = 'default';
+        if (input.pointerCancelled) return;
+      }
       const vertexEntity = selecteds.length === 1 ? selecteds[0] : undefined;
       const vertexIndex = camera.read(Transformable).selectedControlPointIndex;
       const vertexNode = vertexEntity && api.getNodeByEntity(vertexEntity);
@@ -2067,7 +2078,7 @@ export class Select extends System {
         }
       }
 
-      if (input.pointerDownTrigger) {
+      if (input.pointerDownTrigger && input.key !== 'Escape') {
         delete selection.moveGesture;
         delete selection.lastSnapOffset;
         const { selecteds } = camera.read(Transformable);
@@ -2497,37 +2508,7 @@ export class Select extends System {
       }
 
       if (input.pointerUpTrigger && !selection.vectorDragCancelled) {
-        hideLabel(selection.label);
-
-        if (selection.mode === SelectionMode.BRUSH) {
-          this.hideBrush(selection);
-          this.applyBrushSelection(api, selection, false);
-        } else if (selection.mode === SelectionMode.MOVE) {
-          this.handleSelectedMoved(api, selection);
-          selection.mode = SelectionMode.READY_TO_MOVE;
-        } else if (
-          selection.mode === SelectionMode.RESIZE ||
-          selection.mode === SelectionMode.READY_TO_RESIZE
-        ) {
-          this.handleSelectedResized(api, selection);
-          selection.mode = SelectionMode.READY_TO_RESIZE;
-        } else if (selection.mode === SelectionMode.ROTATE) {
-          this.handleSelectedRotated(api, selection);
-          selection.mode = SelectionMode.READY_TO_ROTATE;
-        } else if (
-          selection.mode === SelectionMode.MOVE_PIVOT ||
-          selection.mode === SelectionMode.READY_TO_MOVE_PIVOT
-        ) {
-          selection.mode = SelectionMode.READY_TO_MOVE_PIVOT;
-        } else if (
-          selection.mode === SelectionMode.MOVE_CONTROL_POINT ||
-          selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
-        ) {
-          this.handleControlPointMoved(api, selection);
-          delete selection.vectorEditDrag;
-          selection.activeSegmentIndex = undefined;
-          selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
-        }
+        this.finishSelectionGesture(api, selection);
 
         cursor.value = 'default';
 
@@ -2536,6 +2517,67 @@ export class Select extends System {
         }
       }
     });
+  }
+
+  private finishSelectionGesture(api: API, selection: SelectOBB) {
+    hideLabel(selection.label);
+
+    if (selection.mode === SelectionMode.BRUSH) {
+      this.hideBrush(selection);
+      this.applyBrushSelection(api, selection, false);
+    } else if (selection.mode === SelectionMode.MOVE) {
+      this.handleSelectedMoved(api, selection);
+      selection.mode = SelectionMode.READY_TO_MOVE;
+    } else if (
+      selection.mode === SelectionMode.RESIZE ||
+      selection.mode === SelectionMode.READY_TO_RESIZE
+    ) {
+      this.handleSelectedResized(api, selection);
+      selection.mode = SelectionMode.READY_TO_RESIZE;
+    } else if (selection.mode === SelectionMode.ROTATE) {
+      this.handleSelectedRotated(api, selection);
+      selection.mode = SelectionMode.READY_TO_ROTATE;
+    } else if (
+      selection.mode === SelectionMode.MOVE_PIVOT ||
+      selection.mode === SelectionMode.READY_TO_MOVE_PIVOT
+    ) {
+      selection.mode = SelectionMode.READY_TO_MOVE_PIVOT;
+    } else if (
+      selection.mode === SelectionMode.MOVE_CONTROL_POINT ||
+      selection.mode === SelectionMode.READY_TO_MOVE_CONTROL_POINT
+    ) {
+      this.handleControlPointMoved(api, selection);
+      delete selection.vectorEditDrag;
+      selection.activeSegmentIndex = undefined;
+      selection.mode = SelectionMode.READY_TO_MOVE_CONTROL_POINT;
+    }
+  }
+
+  /** Keep the last applied transform undoable, then release all transient state. */
+  private interruptTransformGesture(api: API, selection?: SelectOBB) {
+    if (!selection) return;
+    // Cancellation must not attach an endpoint to the last hovered target.
+    delete selection.bindingRebindLastCanvas;
+    if (
+      !selection.vectorDragCancelled &&
+      [
+        SelectionMode.MOVE,
+        SelectionMode.RESIZE,
+        SelectionMode.ROTATE,
+        SelectionMode.MOVE_CONTROL_POINT,
+      ].includes(selection.mode)
+    ) {
+      this.finishSelectionGesture(api, selection);
+    }
+    resetRotateGesture(api, selection);
+    delete selection.resizePointerOffset;
+    delete selection.moveGesture;
+    delete selection.lastSnapOffset;
+    hideLabel(selection.label);
+    this.hideBrush(selection);
+    this.clearSnapLines(selection);
+    selection.pointerMoveViewportX = NaN;
+    selection.pointerMoveViewportY = NaN;
   }
 
   finalize(): void {
@@ -2790,7 +2832,13 @@ export class Select extends System {
         // locked layers should not be selected
         .elementsFromBBox(minX, minY, maxX, maxY)
         // Only select direct children of the camera
-        .filter((e) => !e.has(UI) && e.has(Children) && e.read(Children).parent.has(Camera))
+        .filter(
+          (e) =>
+            !e.has(UI) &&
+            (!e.has(ComputedVisibility) || e.read(ComputedVisibility).visible) &&
+            e.has(Children) &&
+            e.read(Children).parent.has(Camera),
+        )
         .map((e) => api.getNodeByEntity(e));
       api.selectNodes(selecteds);
       if (needHighlight) {
