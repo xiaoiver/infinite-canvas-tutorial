@@ -156,6 +156,50 @@ Node 20 原生依赖环境和全包统计范围。基线复用第二批完整报
 Chromium 用例，在真实浏览器中验证 Path2D 孔洞与描边、锥形渐变角度和多行文字透明度；
 此浏览器用例不计入 Jest 覆盖率。
 
+## 第五批：atlas、图片缓存与批次生命周期
+
+2026-10-09，基于 master `8d4ffbba`（第四批 PR #386 已合并），沿用上一批完整
+报告的 65.23% 行覆盖率、51.57% 分支覆盖率基线，继续保留全部 ECS 源文件统计。
+
+同一 Node 20 原生依赖环境下，202 个测试文件、1273 项测试全部通过，耗时约
+9 分 25 秒，所有覆盖率门槛均通过。完整报告中已覆盖行净增 226 行、已覆盖分支
+净增 152 个：
+
+| 范围 | 行覆盖率（前 → 后） | 分支覆盖率（前 → 后） |
+| --- | ---: | ---: |
+| ECS 全包 | 65.23% → 65.99% | 51.57% → 52.62% |
+| `GlyphManager` | 89.39% → 100% | 61.29% → 91.17% |
+| 图片 URL 栅格缓存 | 65.07% → 97.70% | 32.20% → 96.87% |
+| `BatchManager` | 74.05% → 98.76% | 58.62% → 93.49% |
+
+全包函数覆盖率由 66.91% 提升到 67.93%。可执行行总数从 28222 变为 28241，
+已覆盖行从 18412 增至 18638，没有排除源文件。现有 Chromium 文字/图片/混合模式
+回归所选 12 项全部通过（约 1 分 54 秒）；未增加浏览器用例，也不将浏览器执行
+计入 Jest 覆盖率。Coveralls 的 master 数字在合并并完成 CI 后更新。
+
+新增 68 项单测，覆盖：
+
+- atlas 字符去重、跨字体隔离、采样留白、无变更时避免重复上传；分配/上传失败
+  保留旧 atlas，首次失败与增量失败均可重试，重复销毁与重新初始化不重复释放。
+- 多行文字起点与对齐、默认缩放、组合字符，以及位图字体 kerning 开关。
+- 同 URL 解码合并、订阅者去重、异常回调隔离、同步/异步失败后重试、迟到解码
+  与新缓存竞争、旧位图释放，以及真实 Canvas 图片像素和透明占位。
+- 图片适配参数与透明度优先读取启用的序列化填充层，保持 ECS 回退值和 DPR 尺寸策略。
+- 使用实际 drawcall 类选择渲染组合、兼容批次复用、空批次构造函数变化、
+  非实例化/实例化切换、隐藏 UI 的移除/清空/恢复和脏标记传递。
+- 混合模式在底层时先初始化背景、普通/混合节点的执行顺序、多帧 uniform 复用、
+  节点透明度只在合成时应用一次，以及调度资源的最终释放。
+
+测试复现并修复：atlas 重建失败前已销毁旧纹理并修改缓存；重复销毁 atlas；
+多行起点与位图 kerning 偏移；迟到解码覆盖新位图；同步抛错遗留解码中的记录；
+停用图片层影响适配参数；空批次只按数量匹配而复用错误 renderer；以及已移除 UI
+drawcall 在恢复时重新进入绘制队列。
+
+atlas 测试只替换字形栅格输入和 GPU 分配边界，实际执行图集打包；字形像素质量
+继续由已有 TinySDF/浏览器测试验证。图片测试使用真实 Cairo 像素和显式 Promise
+完成顺序，不用固定延时。批次测试使用实际 renderer 类、检查和缓存逻辑，在组件
+存储、GPU 提交与 render graph 调度边界使用替身；不将这些测试当作 GPU 像素验证。
+
 ## 覆盖率门槛与报告
 
 `jest.ecs.config.js` 为已补齐的模块设置独立门槛，`pnpm test:ecs` 会检查：
@@ -170,6 +214,9 @@ Chromium 用例，在真实浏览器中验证 Path2D 孔洞与描边、锥形渐
 | `utils/solidShapeRasterForFilter.ts` | 90% | 75% | 100% | 90% |
 | `utils/render-cache.ts`            | 100% | 85% | 100% | 100% |
 | `utils/cube-lut-cache.ts`           | 100% | 100% | 100% | 100% |
+| `utils/glyph/glyph-manager.ts`     | 100% | 90% | 100% | 100% |
+| `utils/fill-layer-image-url-raster.ts` | 95% | 95% | 80% | 95% |
+| `systems/BatchManager.ts`          | 98% | 90% | 98% | 98% |
 
 其余模块仍计入全包统计。后续批次补齐行为测试后再增加对应门槛；不因新增代码
 降低已有门槛。吸附中的大场景候选数量上限分支暂未覆盖。
@@ -199,7 +246,7 @@ Jest 输出 `coverage/coverage-summary.json` 和原有 LCOV 等报告。CI 的 `
 artifact 保留 JSON 摘要和 LCOV 14 天，成功与失败的已完成运行均可下载。
 原生依赖与 Linux 虚拟显示配置见 [运行 ECS 测试](./running-ecs-tests.md)。
 
-只验证本批栅格化和资源生命周期：
+只验证第四批栅格化和资源生命周期：
 
 ```sh
 pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
@@ -209,14 +256,31 @@ pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
 pnpm exec playwright test -c playwright.browser.config.ts filter-raster.spec.ts
 ```
 
+只验证第五批 atlas、图片缓存和批次生命周期：
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/glyph-manager.lifecycle.spec.ts \
+  __tests__/ecs/fill-layer-image-cache.spec.ts \
+  __tests__/ecs/batch.transitions.spec.ts
+```
+
+对应的现有 Chromium 回归（12 项，未新增浏览器用例）：
+
+```sh
+pnpm exec playwright test -c playwright.browser.config.ts \
+  ecs-text.spec.ts image-fill.spec.ts ecs-blend-mode.spec.ts \
+  --grep 'Gaegu|reuses glyphs|refresh the atlas|renders migrated|blending matches|text participates|parent clipping|WebGL1 fallback|three translucent'
+```
+
 ## 后续顺序
 
-1. **渲染与资源后续**：文本 atlas/图片资源失效、绘制批次复用与释放。
-   纯计算用单测，像素和浏览器能力用真实渲染回归，避免把计算替身当成渲染验证。
-2. **继续补齐属性同步**：`ElementsChange` 的文字、图标和特效属性更新仍有缺口，
+1. **继续补齐属性同步**：`ElementsChange` 的文字、图标和特效属性更新仍有缺口，
    结合真实组件状态和必要的渲染回归，避免只检查序列化数据。
-3. **选择交互剩余路径**：矢量控制点、裁剪和嵌套图形；继续把浏览器中的
+2. **选择交互剩余路径**：矢量控制点、裁剪和嵌套图形；继续把浏览器中的
    核心状态机断言下沉到真实 ECS 帧测试，并改进浏览器双击/帧同步的稳定性。
+3. **资源路径剩余部分**：TexturePool、SVG 重栅格与雨滴等异步纹理；验证淘汰和失败恢复。
+   纯计算用单测，像素和浏览器能力用真实渲染回归，避免把计算替身当成渲染验证。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前
 Jest/Coveralls 报告；核心算法应尽量有快速、可独立执行的行为测试。

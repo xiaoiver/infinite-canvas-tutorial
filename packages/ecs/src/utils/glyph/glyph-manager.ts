@@ -39,9 +39,11 @@ export class GlyphManager {
   constructor() { }
 
   destroy() {
-    if (this.glyphAtlasTexture) {
-      this.glyphAtlasTexture.destroy();
-    }
+    this.glyphAtlasTexture?.destroy();
+    this.glyphAtlasTexture = undefined;
+    this.glyphAtlas = undefined;
+    this.glyphMap = {};
+    this.sdfGeneratorCache = {};
   }
 
   getMap() {
@@ -63,7 +65,7 @@ export class GlyphManager {
     textAlign: CanvasTextAlign,
     letterSpacing: number,
     bitmapFont?: BitmapFont,
-    scale?: number,
+    scale = 1,
     bitmapFontKerning?: boolean,
     dx?: number,
     dy?: number,
@@ -103,6 +105,7 @@ export class GlyphManager {
             advance = glyph.metrics.advance;
           }
 
+          x += kerning * scale;
           positionedGlyphs.push({
             glyph: char,
             x: x,
@@ -110,17 +113,17 @@ export class GlyphManager {
             scale,
             fontStack,
           });
-          x += (advance + kerning) * scale + letterSpacing;
+          x += advance * scale + letterSpacing;
 
           previousChar = char;
         });
 
-      const lineWidth = x - letterSpacing;
+      const lineWidth = x - (dx ?? 0) - letterSpacing;
       for (let i = lineStartIndex; i < positionedGlyphs.length; i++) {
         positionedGlyphs[i].x -= justify * lineWidth;
       }
 
-      x = 0;
+      x = dx ?? 0;
       y += lineHeight;
     });
 
@@ -164,28 +167,25 @@ export class GlyphManager {
             fill,
           );
         })
-        .reduce((prev, cur) => {
+        .reduce<Record<string, StyleGlyph>>((prev, cur) => {
           prev[cur.id] = cur;
           return prev;
-        }, {}) as StyleGlyph;
+        }, {});
 
-      // @ts-ignore
-      this.glyphMap[fontStack] = {
-        ...this.glyphMap[fontStack],
-        ...glyphMap,
+      // Publish the map, packing and texture together only after upload succeeds.
+      // A failed allocation/upload must leave the previous atlas usable for retry.
+      const nextMap = {
+        ...this.glyphMap,
+        [fontStack]: { ...this.glyphMap[fontStack], ...glyphMap },
       };
-      this.glyphAtlas = new GlyphAtlas(this.glyphMap);
+      const nextAtlas = new GlyphAtlas(nextMap);
       const {
         width: atlasWidth,
         height: atlasHeight,
         data,
-      } = this.glyphAtlas.image;
+      } = nextAtlas.image;
 
-      if (this.glyphAtlasTexture) {
-        this.glyphAtlasTexture.destroy();
-      }
-
-      this.glyphAtlasTexture = device.createTexture({
+      const nextTexture = device.createTexture({
         ...makeTextureDescriptor2D(
           Format.U8_RGBA_NORM,
           atlasWidth,
@@ -197,7 +197,17 @@ export class GlyphManager {
         //   unpackAlignment: 4,
         // },
       });
-      this.glyphAtlasTexture.setImageData([data]);
+      try {
+        nextTexture.setImageData([data]);
+      } catch (error) {
+        nextTexture.destroy();
+        throw error;
+      }
+      const previousTexture = this.glyphAtlasTexture;
+      this.glyphMap = nextMap;
+      this.glyphAtlas = nextAtlas;
+      this.glyphAtlasTexture = nextTexture;
+      previousTexture?.destroy();
     }
   }
 
