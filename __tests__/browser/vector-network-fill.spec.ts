@@ -184,14 +184,18 @@ test('chooses a Fill color before painting and undoes recoloring without changin
       return node.fills?.[0]?.value;
     });
   const choose = async (value: string) => {
-    await picker.getByRole('button', { name: 'Fill color', exact: true }).click();
+    await picker
+      .getByRole('button', { name: 'Fill color', exact: true })
+      .click();
     const input = picker.locator('sp-color-field').locator('input');
     await expect(input).toBeVisible();
     await input.fill(value);
     await input.press('Tab');
     await expect.poll(color).toBe(value);
     // Dismiss the popover through its trigger without clicking the drawing.
-    await picker.getByRole('button', { name: 'Fill color', exact: true }).click();
+    await picker
+      .getByRole('button', { name: 'Fill color', exact: true })
+      .click();
     await expect(input).not.toBeVisible();
   };
   await choose('#ff0000');
@@ -324,6 +328,12 @@ test('cancels drags and pointer cancellation and clears previews on exit and des
   await expect(
     page.locator('[data-vector-network-fill-preview]'),
   ).toBeVisible();
+  // Re-entry restores hover only; the cancelled press must not paint a face.
+  expect(await regions(page)).toEqual([]);
+  await click(page, [50, 50]);
+  await expect.poll(() => regions(page)).toHaveLength(1);
+  await page.evaluate(() => window.canvasRegression.undo('left'));
+  await expect.poll(() => regions(page)).toEqual([]);
   await page.getByRole('radio', { name: 'Move', exact: true }).click();
   await expect(page.locator('[data-vector-network-fill-preview]')).toHaveCount(
     0,

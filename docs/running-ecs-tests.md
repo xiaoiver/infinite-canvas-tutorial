@@ -25,6 +25,14 @@ pnpm test:ecs
 pnpm exec jest -c ./jest.ecs.config.js __tests__/ecs/group.spec.ts
 ```
 
+## CI 排查与浏览器回归
+
+若日志只有 `The runner has received a shutdown signal`，且没有 Jest 失败汇总，
+应先检查 runner 中断并重跑，不能据此认定某个测试断言失败或已经证实内存耗尽。
+
+React 浏览器回归使用各包的 `esm` 构建产物。修改 ECS 或 WebComponents 后，先运行
+`pnpm --filter '@infinite-canvas-tutorial/react...' build`，再执行 React 浏览器测试。
+
 ## Node 版本
 
 | Node 版本    | `canvas@3.1`                   | `gl@6.0.2`                                                                               |

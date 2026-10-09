@@ -2021,6 +2021,9 @@ export class Select extends System {
         this.interruptTransformGesture(api, selection);
         cursor.value = 'default';
         if (input.pointerCancelled) {
+          // Fill owns its own pending press and hover overlay. Keep it updated
+          // while the cancelled press suppresses ordinary selection gestures.
+          if (this.vectorFillEditor.update(api, input, selecteds)) return;
           // Cancellation suppresses the old drag until the next press, but
           // mouse/pen hover should recover as soon as the pointer re-enters.
           if (input.pointerInside && input.pointerType !== 'touch') {
