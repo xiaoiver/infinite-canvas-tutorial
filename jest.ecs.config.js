@@ -63,6 +63,12 @@ module.exports = {
       functions: 100,
       lines: 100,
     },
+    './packages/ecs/src/history/ElementsChange.ts': {
+      statements: 73,
+      branches: 55,
+      functions: 85,
+      lines: 73,
+    },
     './packages/ecs/src/utils/solidShapeRasterForFilter.ts': {
       statements: 90,
       branches: 75,

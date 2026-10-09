@@ -342,9 +342,9 @@ function syncIconFontChildrenFromUpdatedNode(
   node: IconFontSerializedNode,
   api: API,
 ) {
-  if (!rootEntity.has(Parent)) {
-    return;
-  }
+  // An unresolved icon starts as a rectangle without children. It must still
+  // be able to become a vector icon when its name or family changes.
+  safeAddComponent(rootEntity, Parent);
   const designVariables = api.getAppState().variables;
   const themeMode = api.getAppState().themeMode;
   const w = node.width ?? 0;
@@ -422,6 +422,9 @@ function syncIconFontChildrenFromUpdatedNode(
   }
 
   const zForChild = node.zIndex != null ? node.zIndex : 0;
+  safeRemoveComponent(rootEntity, Rect);
+  safeRemoveComponent(rootEntity, FillLayers);
+  safeRemoveComponent(rootEntity, StrokeLayers);
   const childVisibility =
     (node.visibility as 'inherited' | 'hidden' | 'visible' | undefined) ??
     'inherited';
@@ -466,6 +469,8 @@ function syncIconFontChildrenFromUpdatedNode(
       safeAddComponent(child, StrokeLayers, {
         layers: [{ type: 'solid', value: iconStrokeColor }],
       });
+    } else {
+      safeRemoveComponent(child, StrokeLayers);
     }
 
     const fillPart = pickChildFill(
@@ -1127,7 +1132,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     dropShadowBlurRadius,
     dropShadowOffsetX,
     dropShadowOffsetY,
-    fontSize,
+    fontSize = 12,
     x,
     y,
     width,
@@ -1138,14 +1143,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     scaleY,
     points,
     d,
-    anchorX,
-    anchorY,
-    fontWeight,
-    fontStyle,
-    fontKerning,
-    textAlign,
-    textBaseline,
-    content,
+    anchorX = 0,
+    anchorY = 0,
+    fontWeight = 'normal',
+    fontStyle = 'normal',
+    fontKerning = true,
+    textAlign = 'start',
+    textBaseline = 'alphabetic',
+    content = '',
     sizeAttenuation,
     strokeAttenuation,
     decorationColor,
@@ -1494,11 +1499,19 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (element.type === 'text') {
-    for (const key of ['path', 'side', 'startOffset', 'pathOffset'] as const) {
+    const defaults = {
+      path: '',
+      side: 'left' as const,
+      startOffset: 0,
+      pathOffset: 0,
+      wordWrap: false,
+      whiteSpace: 'normal' as const,
+      maxLines: 0,
+      textOverflow: 'ellipsis' as const,
+      leading: 0,
+    };
+    for (const key of Object.keys(defaults)) {
       if (key in updates) {
-        const defaults = {
-          path: '', side: 'left' as const, startOffset: 0, pathOffset: 0,
-        };
         // Preserve clearing a setting in undo/redo as well as explicit updates.
         Object.assign(entity.write(Text), { [key]: updates[key] ?? defaults[key] });
       }
@@ -1518,9 +1531,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if ('wordWrapWidth' in updates) {
     const w = (updates as { wordWrapWidth?: number }).wordWrapWidth;
-    if (w !== undefined) {
-      entity.write(Text).wordWrapWidth = w;
-    }
+    entity.write(Text).wordWrapWidth = w ?? 0;
   }
   if ('fontFamily' in updates) {
     const raw = (updates as { fontFamily?: string }).fontFamily;
@@ -1548,9 +1559,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       designVariables,
       themeMode,
     );
-    if (resolved != null) {
-      entity.write(Text).fontVariant = String(resolved);
-    }
+    entity.write(Text).fontVariant = String(resolved ?? 'normal');
   }
   if ('fontKerning' in updates) {
     entity.write(Text).fontKerning = fontKerning;
@@ -1558,7 +1567,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('letterSpacing' in updates) {
     const raw = (updates as { letterSpacing?: number | string }).letterSpacing;
     const resolved = resolveDesignVariableValue(
-      raw,
+      raw ?? 0,
       designVariables,
       themeMode,
     );
@@ -1573,7 +1582,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   if ('lineHeight' in updates) {
     const raw = (updates as { lineHeight?: number | string }).lineHeight;
     const resolved = resolveDesignVariableValue(
-      raw,
+      raw ?? 0,
       designVariables,
       themeMode,
     );
@@ -1587,6 +1596,8 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
   if (
     ('textAlign' in updates || 'textBaseline' in updates) &&
+    // Full snapshots already specify the desired anchors (or their defaults).
+    !Object.is(updates, element) &&
     !('anchorX' in updates) &&
     !('anchorY' in updates) &&
     entity.has(Text) &&
@@ -1837,7 +1848,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if ('filter' in updates) {
-    safeAddComponent(entity, Filter, { value: filter });
+    if (filter) {
+      safeAddComponent(entity, Filter, { value: filter });
+    } else {
+      safeRemoveComponent(entity, Filter);
+    }
     safeAddComponent(entity, MaterialDirty);
     if (entity.has(IconFont)) {
       getDescendants(entity).forEach((child) => {
@@ -2073,6 +2088,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         'strokeDashCap' in updates ||
         'width' in updates ||
         'height' in updates ||
+        'filter' in updates ||
         'iconFontName' in updates ||
         'iconFontFamily' in updates)
     ) {
