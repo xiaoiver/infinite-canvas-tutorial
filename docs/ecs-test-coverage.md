@@ -290,12 +290,60 @@ Select、Transformer 和历史系统。新增的确定性双击工具控制事�
 新增用例及已有选择交互共 91 项定向验证通过；全仓库 lint、新增单测及其生产
 依赖的 TypeScript 检查、修改文件的格式检查均通过。
 
+## 第八批：纹理缓存与 SVG 异步重栅格
+
+2026-10-09，基于 master `154db720`（第七批 PR #389 已合并），继续使用同一
+Node 20 原生依赖环境与全包统计范围。基线复用第七批完整覆盖率报告。
+
+完整覆盖率运行耗时约 10 分 22 秒，共 208 个文件、1459 项测试：207 个文件、
+1458 项通过，旧的 `bindings-ellipse` 测试触发 30 秒超时。新增测试全部通过，
+原有及新增覆盖率门槛均满足。以下数据来自该完整报告，未用局部复跑结果替换统计。
+保持代码和 30 秒时限不变，随后串行定向复跑 `bindings-ellipse` 通过：用例约 5 秒，
+含 Jest 启动共约 19 秒。
+
+| 范围 | 行覆盖率（前 → 后） | 分支覆盖率（前 → 后） |
+| --- | ---: | ---: |
+| ECS 全包 | 69.07% → 69.53% | 56.76% → 57.20% |
+| `TexturePool` | 64.10% → 97.80% | 51.72% → 93.33% |
+| SVG 重栅格 | 24.70% → 97.91% | 12.50% → 96.15% |
+| 雨滴纹理缓存 | 23.07% → 100% | 0% → 100% |
+
+全包函数覆盖率由 69.68% 提升到 70.25%，已覆盖行净增 152 行，分支净增 76 个。
+Coveralls master 的报告仍需等待合并后的 CI 上传。
+
+新增 78 项单测，覆盖纹理池、SVG 重栅格、雨滴共享缓存及图片固有尺寸：
+
+- 不同图片对象的 pattern 缓存隔离、同源复用、重复方式、创建失败重试和 destroy。
+- 渐变与 pattern 各自最多保留 256 项，按最近使用顺序淘汰；不关闭调用方持有的图片。
+- 渐变的小数参数、单位、半径关键字和导出 ID；透明线性渐变与底层颜色的合成。
+- SVG 加载、Canvas 和 ImageBitmap 失败；相同任务去重、重置后旧任务的成功/失败回调。
+- 请求尺寸变更、图形删除/失效、图片层删除/禁用/换源时的结果丢弃与位图释放。
+- 跨图形共享 SVG 保留源图比例、晚到的小尺寸结果不降级缓存、4096 像素边长限制。
+- 初始 1×1 占位无法提供比例时，按实际 SVG 尺寸栅格化；连续升级仍保留固有尺寸，
+  不让 `none/scale-down` 因源位图分辨率提高而放大。
+- 雨滴纹理并发请求合并、同步读取已就绪资源、失败重试、批量预加载去重及部分失败恢复。
+
+这批修复了图片对象字符串化导致 pattern 串图、失败 pattern 绘成黑色、渐变缓存键
+丢失小数/单位/关键字、线性渐变直接覆盖底层像素，以及 SVG 旧请求覆盖新请求、
+按某个图形裁切后的结果污染共享源图缓存等问题。四份 SVG 导出快照仅更新渐变 ID，
+已对比确认几何、颜色及其余导出内容不变。
+
+定向单测及原生导出共 105 项通过。新增 1 个共享 SVG 的浏览器像素用例，复用已有
+矩形/Path 图片回归；Chromium、WebKit 各 3 项通过，其中 WebKit 同时验证 3 倍 DPR。
+TexturePool 使用原生 Canvas2D 像素和 API 边界断言；SVG 异步单测控制加载完成顺序，
+在 Entity/浏览器资源边界使用小型替身，实际 ECS 和 GPU 行为由浏览器回归验证。
+雨滴测试只替换解码边界，不依赖网络或固定延时。浏览器执行不计入 Jest 覆盖率。
+全仓库 lint、新增/修改用例及其生产依赖的 TypeScript 检查、修改文件格式检查均通过。
+
 ## 覆盖率门槛与报告
 
 `jest.ecs.config.js` 为已建立回归基线的模块设置独立门槛，`pnpm test:ecs` 会检查：
 
 | 模块                               |   行 | 分支 | 函数 | 语句 |
 | ---------------------------------- | ---: | ---: | ---: | ---: |
+| `resources/TexturePool.ts`         | 95% | 85% | 100% | 95% |
+| `utils/fillImageSvgReraster.ts`     | 95% | 90% | 100% | 95% |
+| `utils/rain-drop-texture-cache.ts` | 100% | 100% | 100% | 100% |
 | `systems/Select.ts`                | 70% | 65% | 75% | 70% |
 | `systems/RenderTransformer.ts`     | 65% | 60% | 75% | 65% |
 | `utils/snapping.ts`                |  98% |  95% | 100% |  98% |
@@ -379,14 +427,26 @@ pnpm exec playwright test -c playwright.browser.config.ts \
   --grep 'resizes from corner|Gaegu|reuses glyphs|refresh the atlas|filter rasters'
 ```
 
+只验证第八批纹理缓存与 SVG 重栅格，以及对应的浏览器回归：
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/texture-pool.spec.ts \
+  __tests__/ecs/fill-image-svg-reraster.spec.ts \
+  __tests__/ecs/rain-drop-texture-cache.spec.ts \
+  __tests__/ecs/fill-layer-image-cache.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts image-fill.spec.ts
+pnpm exec playwright test -c playwright.webkit.config.ts image-fill.spec.ts
+```
+
 ## 后续顺序
 
-1. **资源路径剩余部分**：TexturePool、SVG 重栅格与雨滴等异步纹理；验证淘汰和失败恢复。
-   纯计算用单测，像素和浏览器能力用真实渲染回归，避免把计算替身当成渲染验证。
-2. **属性同步剩余路径**：设计变量/主题切换、组继承样式、粗糙图形和三维属性，
+1. **属性同步剩余路径**：设计变量/主题切换、组继承样式、粗糙图形和三维属性，
    继续比较局部更新、完整文档加载与历史恢复后的实际组件状态。
-3. **交互剩余路径与浏览器稳定性**：继续补齐吸附与复杂嵌套变换的组合场景，
+2. **交互剩余路径与浏览器稳定性**：继续补齐吸附与复杂嵌套变换的组合场景，
    并改进浏览器双击/帧同步；保留少量真实 DOM、像素及平台事件回归。
+3. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜和导出失败恢复。
+   纯计算用单测，像素和浏览器能力用真实渲染回归。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前
 Jest/Coveralls 报告；核心算法应尽量有快速、可独立执行的行为测试。
