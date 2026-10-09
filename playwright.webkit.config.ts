@@ -13,6 +13,7 @@ export default defineConfig({
     'ecs-text-resize.spec.ts',
     'ecs-text-path.spec.ts',
     'ecs-blend-mode.spec.ts',
+    'image-fill.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',
     'icon-resize.spec.ts',
