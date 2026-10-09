@@ -1,5 +1,9 @@
 import { System } from '@lastolivegames/becsy';
 import {
+  Camera,
+  Canvas,
+  Canvas3DScope,
+  Children,
   ComputedBounds,
   Material3D,
   Mesh3DNode,
@@ -25,17 +29,32 @@ import { isEntityAlive } from './Transform';
 export class SyncMesh3DNodes extends System {
   private readonly sources = this.query((q) => q.current.with(Mesh3DNode).read);
 
-  private readonly targets = this.query((q) =>
-    q.current.with(Mesh3DNodeTarget).read,
+  private readonly targets = this.query(
+    (q) => q.current.with(Mesh3DNodeTarget).read,
   );
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(ComputedBounds, Transform, Rect, Material3D, Transform3D, Selected)
-        .read.and.using(Mesh3DNode, Mesh3DNodeTarget, ToBeDeleted, Selected3D)
-        .read.write,
+    this.query(
+      (q) =>
+        q
+          .using(
+            Camera,
+            Canvas,
+            Canvas3DScope,
+            Children,
+            ComputedBounds,
+            Rect,
+            Selected,
+          )
+          .read.and.using(
+            Mesh3DNode,
+            Transform,
+            Material3D,
+            Transform3D,
+            ToBeDeleted,
+            Selected3D,
+          ).write,
     );
   }
 
@@ -73,7 +92,7 @@ export class SyncMesh3DNodes extends System {
       if (
         isEntityAlive(source) &&
         source.has(Mesh3DNode) &&
-        source.read(Mesh3DNode).meshEntity === meshEntity
+        source.read(Mesh3DNode).meshEntity?.isSame(meshEntity)
       ) {
         continue;
       }

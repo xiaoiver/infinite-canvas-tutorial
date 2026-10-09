@@ -33,6 +33,30 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/systems/EnsureExtrudeMeshes.ts': {
+      statements: 90,
+      branches: 60,
+      functions: 100,
+      lines: 90,
+    },
+    './packages/ecs/src/systems/EnsureMesh3DNodes.ts': {
+      statements: 95,
+      branches: 75,
+      functions: 100,
+      lines: 95,
+    },
+    './packages/ecs/src/systems/SyncMesh3DNodes.ts': {
+      statements: 90,
+      branches: 80,
+      functions: 100,
+      lines: 90,
+    },
+    './packages/ecs/src/systems/SyncExtrude3D.ts': {
+      statements: 95,
+      branches: 90,
+      functions: 100,
+      lines: 95,
+    },
     './packages/ecs/src/utils/gltf/load-gltf-mesh.ts': {
       statements: 100,
       branches: 100,

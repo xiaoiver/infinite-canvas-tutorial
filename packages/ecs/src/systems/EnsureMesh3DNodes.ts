@@ -30,7 +30,12 @@ import {
   queueCamera3DFromMesh3DNode,
 } from '../utils/mesh3d-companion';
 import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
-import { syncMesh3DNodeCompanionFromSource, ensureCompanionGizmoWhenSourceSelected, rebuildMesh3DNodeCompanionGeometry } from '../utils/mesh3d-node';
+import {
+  syncMesh3DNodeCompanionFromSource,
+  syncMesh3DNodeCompanionMaterial,
+  ensureCompanionGizmoWhenSourceSelected,
+  rebuildMesh3DNodeCompanionGeometry,
+} from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
 
 /**
@@ -40,13 +45,13 @@ import { isEntityAlive } from './Transform';
 export class EnsureMesh3DNodes extends System {
   private readonly commands = new Commands(this);
 
-  private readonly sources = this.query((q) =>
-    q.addedOrChanged.with(Mesh3DNode).trackWrites,
+  private readonly sources = this.query(
+    (q) => q.addedOrChanged.with(Mesh3DNode).trackWrites,
   );
 
   /** Retries spawn when bounds were not ready on the Mesh3DNode insert frame. */
-  private readonly pendingMeshes = this.query((q) =>
-    q.current.with(Mesh3DNode).read,
+  private readonly pendingMeshes = this.query(
+    (q) => q.current.with(Mesh3DNode).read,
   );
 
   private readonly cameras3D = this.query((q) => q.current.with(Camera3D).read);
@@ -54,31 +59,32 @@ export class EnsureMesh3DNodes extends System {
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(
-          ComputedBounds,
-          Canvas,
-          Camera,
-          Children,
-          FractionalIndex,
-          Light3D,
-          Flex,
-          Transform,
-          Rect,
-        )
-        .read.and.using(
-          Canvas3DScope,
-          Mesh3D,
-          Material3D,
-          Mesh3DNode,
-          Mesh3DNodeTarget,
-          Transform3D,
-          Camera3D,
-          Selected,
-          Selected3D,
-        )
-        .write,
+    this.query(
+      (q) =>
+        q
+          .using(
+            ComputedBounds,
+            Canvas,
+            Camera,
+            Children,
+            FractionalIndex,
+            Light3D,
+            Flex,
+            Transform,
+            Rect,
+          )
+          .read.and.using(
+            Canvas3DScope,
+            Mesh3D,
+            Material3D,
+            Mesh3DNode,
+            Mesh3DNodeTarget,
+            Transform3D,
+            Camera3D,
+            Selected,
+            Selected3D,
+            ToBeDeleted,
+          ).write,
     );
   }
 
@@ -110,7 +116,16 @@ export class EnsureMesh3DNodes extends System {
       const existingMesh = node.meshEntity;
       if (existingMesh && isEntityAlive(existingMesh)) {
         rebuildMesh3DNodeCompanionGeometry(entity, existingMesh);
-        syncMesh3DNodeCompanionFromSource(entity, existingMesh);
+        // SyncMesh3DNodes writes the source during a drag, so this tracked query
+        // runs again next frame. The gizmo still owns the companion's pose.
+        if (
+          existingMesh.has(Selected3D) &&
+          existingMesh.read(Selected3D).dragging
+        ) {
+          syncMesh3DNodeCompanionMaterial(entity, existingMesh);
+        } else {
+          syncMesh3DNodeCompanionFromSource(entity, existingMesh);
+        }
         requestGltfMeshLoad(entity);
         const canvas = this.resolveCanvasForSource(entity);
         if (canvas) {

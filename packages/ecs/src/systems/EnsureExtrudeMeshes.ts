@@ -1,6 +1,7 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import { Commands } from '../commands';
 import {
+  Camera,
   Camera3D,
   Canvas,
   Canvas3DScope,
@@ -29,13 +30,13 @@ const unitCube = createUnitCubeGeometry();
 export class EnsureExtrudeMeshes extends System {
   private readonly commands = new Commands(this);
 
-  private readonly sources = this.query((q) =>
-    q.addedOrChanged.with(Extrude3D).trackWrites,
+  private readonly sources = this.query(
+    (q) => q.addedOrChanged.with(Extrude3D).trackWrites,
   );
 
   /** Retries spawn when bounds were not ready on the Extrude3D insert frame. */
-  private readonly pendingMeshes = this.query((q) =>
-    q.current.with(Extrude3D, ComputedBounds).read,
+  private readonly pendingMeshes = this.query(
+    (q) => q.current.with(Extrude3D, ComputedBounds).read,
   );
 
   private readonly cameras3D = this.query((q) => q.current.with(Camera3D).read);
@@ -43,11 +44,20 @@ export class EnsureExtrudeMeshes extends System {
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(ComputedBounds, Canvas, Camera3D, Canvas3DScope, Children)
-        .read.and.using(Extrude3D, Extrude3DTarget)
-        .write,
+    this.query(
+      (q) =>
+        q
+          .using(ComputedBounds, Canvas, Camera, Children)
+          .read.and.using(
+            Extrude3D,
+            Extrude3DTarget,
+            Camera3D,
+            Canvas3DScope,
+            Mesh3D,
+            Material3D,
+            Transform3D,
+            ToBeDeleted,
+          ).write,
     );
   }
 
