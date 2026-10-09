@@ -63,6 +63,24 @@ module.exports = {
       functions: 100,
       lines: 100,
     },
+    './packages/ecs/src/utils/solidShapeRasterForFilter.ts': {
+      statements: 90,
+      branches: 75,
+      functions: 100,
+      lines: 90,
+    },
+    './packages/ecs/src/utils/render-cache.ts': {
+      statements: 100,
+      branches: 85,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/utils/cube-lut-cache.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [

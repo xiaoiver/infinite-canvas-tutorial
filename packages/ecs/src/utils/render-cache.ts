@@ -199,11 +199,13 @@ export class RenderCache {
   }
 
   createRenderPipeline(descriptor: RenderPipelineDescriptor): RenderPipeline {
-    let renderPipeline = this.renderPipelinesCache.get(descriptor);
+    const normalized = {
+      ...descriptor,
+      colorAttachmentFormats: descriptor.colorAttachmentFormats.filter((f) => f),
+    };
+    let renderPipeline = this.renderPipelinesCache.get(normalized);
     if (renderPipeline === null) {
-      const descriptorCopy = renderPipelineDescriptorCopy(descriptor);
-      descriptorCopy.colorAttachmentFormats =
-        descriptorCopy.colorAttachmentFormats.filter((f) => f);
+      const descriptorCopy = renderPipelineDescriptorCopy(normalized);
       renderPipeline = this.device.createRenderPipeline(descriptorCopy);
       this.renderPipelinesCache.add(descriptorCopy, renderPipeline);
     }
@@ -211,12 +213,15 @@ export class RenderCache {
   }
 
   createInputLayout(descriptor: InputLayoutDescriptor): InputLayout {
-    // remove hollows
-    descriptor.vertexBufferDescriptors =
-      descriptor.vertexBufferDescriptors.filter((d) => !!d);
-    let inputLayout = this.inputLayoutsCache.get(descriptor);
+    const normalized = {
+      ...descriptor,
+      vertexBufferDescriptors: descriptor.vertexBufferDescriptors.filter(
+        (d) => !!d,
+      ),
+    };
+    let inputLayout = this.inputLayoutsCache.get(normalized);
     if (inputLayout === null) {
-      const descriptorCopy = inputLayoutDescriptorCopy(descriptor);
+      const descriptorCopy = inputLayoutDescriptorCopy(normalized);
       inputLayout = this.device.createInputLayout(descriptorCopy);
       this.inputLayoutsCache.add(descriptorCopy, inputLayout);
     }
@@ -236,8 +241,9 @@ export class RenderCache {
   createSampler(descriptor: SamplerDescriptor): Sampler {
     let sampler = this.samplerCache.get(descriptor);
     if (sampler === null) {
-      sampler = this.device.createSampler(descriptor);
-      this.samplerCache.add(descriptor, sampler);
+      const descriptorCopy = { ...descriptor };
+      sampler = this.device.createSampler(descriptorCopy);
+      this.samplerCache.add(descriptorCopy, sampler);
     }
     return sampler;
   }

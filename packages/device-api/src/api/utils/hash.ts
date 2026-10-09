@@ -272,6 +272,7 @@ export function samplerDescriptorEquals(
   return (
     a.addressModeU === b.addressModeU &&
     a.addressModeV === b.addressModeV &&
+    a.addressModeW === b.addressModeW &&
     a.minFilter === b.minFilter &&
     a.magFilter === b.magFilter &&
     a.mipmapFilter === b.mipmapFilter &&
