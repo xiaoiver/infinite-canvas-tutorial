@@ -15,15 +15,15 @@ const GLTF_LOAD_OPTIONS = {
 
 const urlCache = new Map<string, Promise<GltfMeshBakeResult>>();
 
-function cacheKey(url: string, mesh?: number): string {
-  return JSON.stringify({ url, mesh: mesh ?? null });
+function cacheKey(url: string, mesh?: number, scene = 0): string {
+  return JSON.stringify({ url, mesh: mesh ?? null, scene });
 }
 
 export async function loadGltfMeshFromUrl(
   url: string,
   options?: { mesh?: number; scene?: number },
 ): Promise<GltfMeshBakeResult> {
-  const key = cacheKey(url, options?.mesh);
+  const key = cacheKey(url, options?.mesh, options?.scene);
   let pending = urlCache.get(key);
   if (!pending) {
     pending = (async () => {
@@ -33,7 +33,11 @@ export async function loadGltfMeshFromUrl(
         GLTF_LOAD_OPTIONS,
       )) as GltfContainer;
       return bakeGltfMesh(container, { ...options, baseUrl: url });
-    })();
+    })().catch((error) => {
+      // An invalidated request may settle after a replacement has been cached.
+      if (urlCache.get(key) === pending) urlCache.delete(key);
+      throw error;
+    });
     urlCache.set(key, pending);
   }
   return pending;

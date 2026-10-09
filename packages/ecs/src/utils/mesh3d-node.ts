@@ -21,10 +21,17 @@ import {
   type Mesh3DNodeGeometry,
 } from './geometry3d';
 import { set3DMeshGizmoSelectedForCanvas } from './pick3d-bridge';
+import type { GltfMeshBakeResult } from './gltf/bake-gltf-mesh';
 
-const companionGeometryKey = new WeakMap<Entity, string>();
+type ImportedMaterial = Pick<GltfMeshBakeResult, 'baseColor' | 'map'>;
+const companionGeometry = new WeakMap<
+  Entity,
+  { key: string; material?: ImportedMaterial }
+>();
 
-export function resolveMesh3DNodeGeometry(geometry: Mesh3DNodeGeometry = 'cube') {
+export function resolveMesh3DNodeGeometry(
+  geometry: Mesh3DNodeGeometry = 'cube',
+) {
   const spec = normalizeGeometry(geometry);
   if (isGltfGeometrySpec(spec)) {
     return emptyMesh3DGeometry();
@@ -42,10 +49,10 @@ export function rebuildMesh3DNodeCompanionGeometry(
   const spec = normalizeGeometry(source.read(Mesh3DNode).geometry);
   const key = geometrySpecKey(spec);
   if (isGltfGeometrySpec(spec)) {
-    if (companionGeometryKey.get(source) === key) {
+    if (companionGeometry.get(source)?.key === key) {
       return false;
     }
-    companionGeometryKey.delete(source);
+    companionGeometry.delete(source);
     Object.assign(meshEntity.write(Mesh3D), emptyMesh3DGeometry());
     return true;
   }
@@ -56,22 +63,25 @@ export function rebuildMesh3DNodeCompanionGeometry(
     return false;
   }
 
-  companionGeometryKey.set(source, key);
+  companionGeometry.set(source, { key });
   Object.assign(meshEntity.write(Mesh3D), data);
   meshEntity.write(Mesh3D).uvs = data.uvs ?? null;
   return true;
 }
 
 export function clearMesh3DNodeCompanionGeometryKey(source: Entity): void {
-  companionGeometryKey.delete(source);
+  companionGeometry.delete(source);
 }
 
-export function seedMesh3DNodeCompanionGeometryKey(source: Entity): void {
+export function seedMesh3DNodeCompanionGeometryKey(
+  source: Entity,
+  material?: ImportedMaterial,
+): void {
   if (!source.has(Mesh3DNode)) {
     return;
   }
   const spec = normalizeGeometry(source.read(Mesh3DNode).geometry);
-  companionGeometryKey.set(source, geometrySpecKey(spec));
+  companionGeometry.set(source, { key: geometrySpecKey(spec), material });
 }
 
 export function resolveMesh3DNodeScale(
@@ -149,19 +159,39 @@ export function syncMesh3DNodeCompanionFromSource(
     scale: resolveMesh3DNodeScale(node.scale3d),
   });
 
+  syncMesh3DNodeCompanionMaterial(source, meshEntity);
+  return true;
+}
+
+/** Imported defaults remain runtime data, independent of document overrides. */
+export function syncMesh3DNodeCompanionMaterial(
+  source: Entity,
+  meshEntity: Entity,
+): void {
+  const node = source.read(Mesh3DNode);
+  const loaded = companionGeometry.get(source);
+  const spec = normalizeGeometry(node.geometry);
+  const imported =
+    isGltfGeometrySpec(spec) && loaded?.key === geometrySpecKey(spec)
+      ? loaded.material
+      : undefined;
+  const hasCustomColor = node.baseColor.some((value) => value !== 1);
   const material = meshEntity.write(Material3D);
-  material.baseColor = [...node.baseColor];
+  material.baseColor = [
+    ...(hasCustomColor
+      ? node.baseColor
+      : imported?.baseColor ?? node.baseColor),
+  ];
   material.ambient = node.ambient;
   material.diffuse = node.diffuse;
   material.specular = node.specular;
   material.shininess = node.shininess;
   material.metallic = node.metallic;
   material.roughness = node.roughness;
-  material.map = node.map ?? null;
+  material.map = node.map ?? imported?.map ?? null;
   material.specularMap = node.specularMap ?? null;
   material.bumpMap = node.bumpMap ?? null;
   material.bumpScale = node.bumpScale;
-  return true;
 }
 
 /** Sync declarative source from companion mesh (during gizmo drag). */

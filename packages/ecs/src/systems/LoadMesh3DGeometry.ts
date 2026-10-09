@@ -1,5 +1,6 @@
 import { System } from '@lastolivegames/becsy';
 import {
+  Camera,
   Canvas,
   Canvas3DScope,
   Material3D,
@@ -22,7 +23,8 @@ export class LoadMesh3DGeometry extends System {
     this.query(
       (q) =>
         q
-          .using(Mesh3DNodeTarget, Canvas, Canvas3DScope)
+          // isEntityAlive probes Camera on both mesh and canvas entities.
+          .using(Camera, Mesh3DNodeTarget, Canvas, Canvas3DScope)
           .read.and.using(Mesh3D, Material3D, Mesh3DNode).write,
     );
   }
