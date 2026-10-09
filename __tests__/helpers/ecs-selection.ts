@@ -13,6 +13,7 @@ export async function createSelectionWorld(count = 1) {
     if (errors.length) throw errors.shift();
   };
   let time = 1000;
+  let pointerInterval = 400;
   const frames = async (count = 2) => {
     for (let i = 0; i < count; i++) await world.frame();
   };
@@ -48,7 +49,7 @@ export async function createSelectionWorld(count = 1) {
       assertNoErrors();
     } finally {
       clock.mockRestore();
-      time += 400; // Clicks are separate unless a test explicitly sends a double click.
+      time += pointerInterval;
     }
   };
   const pointer = async (...args: Parameters<typeof dispatch>) => {
@@ -61,6 +62,24 @@ export async function createSelectionWorld(count = 1) {
     frames,
     dispatch,
     pointer,
+    async doubleClick(
+      api: API,
+      x: number,
+      y: number,
+      options?: Parameters<typeof dispatch>[4],
+    ) {
+      // Exercise EventWriter's double-click detector without wall-clock sleeps.
+      pointerInterval = 40;
+      try {
+        for (let i = 0; i < 2; i++) {
+          await pointer(api, 'pointerdown', x, y, options);
+          await pointer(api, 'pointerup', x, y, options);
+        }
+      } finally {
+        pointerInterval = 400;
+        time += 400;
+      }
+    },
     async click(
       api: API,
       x: number,

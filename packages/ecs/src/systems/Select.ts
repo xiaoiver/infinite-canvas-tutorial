@@ -1805,6 +1805,9 @@ export class Select extends System {
       if (pen !== Pen.SELECT) {
         this.cancelVectorEditDrag(api, this.selections.get(camera.__id));
         this.interruptTransformGesture(api, this.selections.get(camera.__id));
+        if (api.getAppState().layersCropping.length > 0) {
+          api.applyCrop();
+        }
         if (api.getAppState().vectorNetworkSelectedVertex) {
           api.setAppState({ vectorNetworkSelectedVertex: null });
         }
@@ -1824,15 +1827,28 @@ export class Select extends System {
         return;
       }
 
-      const { layersCropping } = api.getAppState();
+      let { layersCropping } = api.getAppState();
       layersCropping.forEach((id) => {
         const node = api.getNodeById(id);
-        if (node && node.clipMode !== 'soft') {
+        const content =
+          node && !node.isDeleted && api.getEntity(node)
+            ? api.getChildren(node)
+                .map((child) => api.getNodeByEntity(child))
+                .find((child) => child && !child.isDeleted)
+            : undefined;
+        // Empty or deleted masks can arrive through document edits. Exit before
+        // locking the mask or attempting to select a missing content node.
+        if (!content) {
+          api.cancelCrop();
+          return;
+        }
+        if (node.clipMode !== 'soft') {
           api.updateNode(node, { clipMode: 'soft', locked: true });
           api.deselectNodes([node]);
-          api.selectNodes([api.getNodeByEntity(api.getChildren(node)[0])]);
+          api.selectNodes([content]);
         }
       });
+      layersCropping = api.getAppState().layersCropping;
 
       const cursor = canvas.write(Cursor);
 
@@ -2004,7 +2020,15 @@ export class Select extends System {
       if (input.pointerCancelled || input.key === 'Escape') {
         this.interruptTransformGesture(api, selection);
         cursor.value = 'default';
-        if (input.pointerCancelled) return;
+        if (input.pointerCancelled) {
+          // Cancellation suppresses the old drag until the next press, but
+          // mouse/pen hover should recover as soon as the pointer re-enters.
+          if (input.pointerInside && input.pointerType !== 'touch') {
+            const [x, y] = input.pointerViewport;
+            this.updateSelectionAtPointer(api, selection, x, y, input, cursor);
+          }
+          return;
+        }
       }
       const vertexEntity = selecteds.length === 1 ? selecteds[0] : undefined;
       const vertexIndex = camera.read(Transformable).selectedControlPointIndex;
