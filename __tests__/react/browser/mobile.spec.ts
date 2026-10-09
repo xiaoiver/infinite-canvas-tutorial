@@ -256,6 +256,11 @@ for (const locale of ['en', 'zh']) {
     await expect(pick).toHaveText(
       locale === 'zh' ? '取消取点' : 'Cancel picking',
     );
+    const canvas = left.locator('canvas');
+    // Keep fractional viewport positions explicit across fonts and layouts.
+    await canvas.evaluate((element: HTMLCanvasElement) => {
+      element.style.transform = 'translate(0.25px, 0.375px)';
+    });
     const box = (await left.locator('canvas').boundingBox())!;
     const cancelled = {
       pointerType: 'touch',
@@ -267,7 +272,6 @@ for (const locale of ['en', 'zh']) {
       clientX: box.x + 60,
       clientY: box.y + 100,
     };
-    const canvas = left.locator('canvas');
     await canvas.dispatchEvent('pointerdown', cancelled);
     await frame(page);
     await canvas.dispatchEvent('pointercancel', cancelled);
@@ -280,8 +284,8 @@ for (const locale of ['en', 'zh']) {
     const tap = { x: Math.round(box.x + 95), y: Math.round(box.y + 160) };
     const expected = await page.evaluate(
       (point) => window.mobileApis.A.viewport2Canvas(point),
-      // Input stores press positions in integer viewport coordinates.
-      { x: Math.trunc(tap.x - box.x), y: Math.trunc(tap.y - box.y) },
+      // Whole client pixels can still produce fractional viewport coordinates.
+      { x: tap.x - box.x, y: tap.y - box.y },
     );
     await page.touchscreen.tap(tap.x, tap.y);
     const coordinates = left.locator('[data-state="point"] output');

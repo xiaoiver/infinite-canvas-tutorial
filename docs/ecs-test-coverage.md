@@ -480,6 +480,39 @@ React 及依赖包构建通过。master React 19 的 `selection-edits` 用例出
 `Execution context was destroyed`，本地最新构建连续 3 次复跑通过；trace 未发现
 实际重新导航，根因尚未确认，不能据此宣称 CI 已恢复。
 
+## 配套：React CI 分片与诊断
+
+2026-10-09，基于 master `251e1be5`（PR #394 已合并）。本批只调整测试与 CI，
+不修改 ECS 运行时代码，也不宣称提高 Jest/Coveralls 覆盖率。
+
+最新 PR #394 的 React 18 / 19 CI 中，选择测试已通过，英文和中文手机取点测试失败：
+预期仍使用 `Math.trunc` 截断 viewport 坐标，与上一批 Input 保留小数的行为冲突。
+测试现保留小数，并显式给画布设置小数 CSS 偏移，避免字体或布局偶然让它退化成
+整数坐标用例；保持原有误差阈值与真实触摸事件。
+
+成功的 PR #392 React CI 用时约 70 分钟，其中 Chromium 约 23–29 分钟，
+随后串行运行的 WebKit 约 37–46 分钟。工作流现为每个 React 版本先执行单测、
+构建、打包消费和类型检查，再复用构建产物启动 2 个 Chromium、3 个 WebKit 分片。
+按用例均分，每台 runner 仍只有 1 个 worker；保留 WebKit 每用例独立浏览器。
+React 18 / 19 各自的 367 项 Chromium 和 94 项 WebKit 用例都保留，tooling 校验
+分片无遗漏、无重复且数量均衡。两个原有 `react (...)` 检查名保持不变，并要求
+整个兼容矩阵成功；失败、取消和跳过均不能绕过门槛。
+
+成功和失败的分片都上传 JSON、耗时明细及失败 trace/screenshot，保留 7 天。
+React 交互测试在失败时附加最多 50 条浏览器生命周期事件，记录导航、上下文销毁、
+关闭/崩溃、Vite 消息和资源错误；不依赖已经失效的页面上下文执行诊断。
+旧的 React 19 选择测试上下文错误尚无稳定复现，不能把本地通过或分片视为根因修复。
+实际流水线耗时需由新 PR 的 CI 测量；分片增加了并发 runner 与安装开销，构建产物
+复用避免每个分片重复构建。
+
+本地验证：21 项 tooling 检查通过；React 18 / 19 单测各 67 项通过，打包消费
+检查通过（两版的 CommonJS/ESM SSR、类型和 Vite，以及 React 19 的 Next.js SSR）。
+英文/中文手机取点在两版 React × 两种浏览器的 8 次执行全部通过；React 19 的
+9 项选择测试分别在 Chromium 和 WebKit 通过，React 18 在两种浏览器各定向验证
+2 项选择/异常恢复场景。另用 2 个临时故意失败用例验证重新导航与已关闭页面的
+诊断附件及原始错误保留，验证后移除了临时用例。Actionlint、修改文件 ESLint /
+Prettier 和浏览器 TypeScript 检查通过。
+
 ## 覆盖率门槛与报告
 
 `jest.ecs.config.js` 为已建立回归基线的模块设置独立门槛，`pnpm test:ecs` 会检查：
@@ -623,10 +656,9 @@ pnpm exec playwright test -c playwright.webkit.config.ts interaction-precision.s
 属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性；吸附与复杂嵌套
 变换已增加组合事件回归。后续优先：
 
-1. **React CI 稳定性与耗时**：先定位 master / PR #393 的 React 19 选择测试上下文错误，
-   再拆分浏览器与测试分片、补充耗时报告和失败诊断。成功的 PR #392 React CI 中，
-   Chromium 用时约 23–29 分钟，随后串行 WebKit 约 37–46 分钟；应缩短关键路径，
-   保留 React 18 / 19 和两种浏览器覆盖，不依赖扩大超时或自动重试。
+1. **验收 React CI 分片**：用新耗时报告检查关键路径与分片负载。如果 React 19
+   上下文错误再现，结合新增生命周期附件与 trace 继续定位，保持断言与重试策略。
+   不把仅完成工作流拆分当作实际耗时或偶发故障已经验收。
 2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、glTF 异步替换与取消、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 
