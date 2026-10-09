@@ -839,8 +839,9 @@ export class API {
   }
 
   getNodeByEntity(entity: Entity) {
+    if (!entity) return undefined;
     for (const [id, entityCommands] of this.#idEntityMap.entries()) {
-      if (entityCommands.id() === entity) {
+      if (entityCommands.id().isSame(entity)) {
         return this.getNodeById(id);
       }
     }

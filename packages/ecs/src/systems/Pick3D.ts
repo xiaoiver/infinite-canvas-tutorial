@@ -1,5 +1,4 @@
 import { System, type Entity } from '@lastolivegames/becsy';
-import { vec2, vec3 as glVec3 } from 'gl-matrix';
 import {
   Camera,
   Camera3D,
@@ -13,29 +12,22 @@ import {
   Transform3D,
   Extrude3DTarget,
   Mesh3DNodeTarget,
+  Mesh3DNode,
+  Transform,
+  Rect,
+  Children,
+  GlobalTransform,
 } from '../components';
-import {
-  Selected3D,
-  type GizmoAxis,
-} from '../components/geometry3d/Selected3D';
-import { Mat3 } from '../components/math/Mat3';
-import {
-  screenToRay,
-  computeInvViewProjection,
-  type Mesh3DPickScene,
-  type Ray,
-} from '../utils/ray-casting';
+import { Selected3D } from '../components/geometry3d/Selected3D';
+import type { Mesh3DPickScene } from '../utils/ray-casting';
 import {
   set3DGizmoDragging,
   set3DMeshGizmoSelectedForCanvas,
 } from '../utils/pick3d-bridge';
-import {
-  angleOnRotationPlane,
-  intersectRayWithPlane,
-  isRotateGizmoAxis,
-  rotationPlaneNormal,
-  unwrapAngleDelta,
-} from '../utils/gizmo-interaction';
+import { beginGizmoGesture } from './pick3d/gizmo-gesture';
+import { GizmoSession } from './pick3d/gizmo-session';
+import { buildGizmoRay } from './pick3d/gizmo-ray';
+import type { API } from '../API';
 import {
   buildPickSceneForViewport,
   probePick3DAtViewport,
@@ -61,6 +53,7 @@ import {
  *   - Ends drag.
  */
 export class Pick3D extends System {
+  private readonly sessions = new Map<API, GizmoSession>();
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
   private cameras2D = this.query(
     (q) => q.current.with(Camera, ComputedCamera).read,
@@ -94,40 +87,130 @@ export class Pick3D extends System {
             Selected3D,
             Extrude3DTarget,
             Mesh3DNodeTarget,
+            Mesh3DNode,
+            Transform,
+            Rect,
+            Children,
+            GlobalTransform,
           )
-          .read.and.using(Selected3D, Transform3D).write,
+          .read.and.using(Selected3D, Transform3D, Mesh3DNode, Transform).write,
     );
   }
 
   execute(): void {
-    for (const canvasEntity of this.canvases.current) {
-      if (!canvasEntity.has(Input)) continue;
-
-      const resolved = this.resolveCamera3D(canvasEntity);
-      if (!resolved) continue;
-      const camera = resolved.camera;
-
-      const { api } = canvasEntity.read(Canvas);
-      this.syncMesh3DLayers(api, canvasEntity);
-      if (api.getAppState().penbarSelected !== Pen.SELECT) continue;
-
-      const input = canvasEntity.read(Input);
-
-      if (!input.pointerDownTrigger && !input.pointerUpTrigger) {
-        this.updateGizmoHover(input, camera, canvasEntity);
-        this.handleDrag(input, camera, canvasEntity);
-        continue;
+    const active = new Set<API>();
+    for (const canvas of this.canvases.current) {
+      const { api } = canvas.read(Canvas);
+      active.add(api);
+      const session = this.sessions.get(api);
+      const input = canvas.has(Input) ? canvas.read(Input) : undefined;
+      const resolved = this.resolveCamera3D(canvas);
+      if (
+        session &&
+        (!session.valid() ||
+          !input ||
+          !resolved ||
+          api.getAppState().penbarSelected !== Pen.SELECT ||
+          input.pointerCancelled ||
+          input.key === 'Escape')
+      ) {
+        this.finishSession(api, false);
       }
-
-      if (input.pointerUpTrigger) {
-        this.handlePointerUp(canvasEntity);
+      if (!input || !resolved) continue;
+      this.syncMesh3DLayers(api, canvas);
+      if (
+        api.getAppState().penbarSelected !== Pen.SELECT ||
+        input.pointerCancelled ||
+        input.key === 'Escape'
+      )
         continue;
+      const { camera } = resolved;
+      // Samples retain press/release ordering even when both arrive in one frame.
+      // Triggers remain a fallback for integrations that populate Input directly.
+      const samples = input.pointerSamples.length
+        ? input.pointerSamples
+        : [
+            ...(input.pointerDownTrigger
+              ? [
+                  {
+                    phase: 'down',
+                    x: input.pointerDownViewport[0],
+                    y: input.pointerDownViewport[1],
+                  },
+                ]
+              : []),
+            ...(input.pointerUpTrigger
+              ? [
+                  {
+                    phase: 'up',
+                    x: input.pointerViewport[0],
+                    y: input.pointerViewport[1],
+                  },
+                ]
+              : []),
+          ];
+      for (const sample of samples) {
+        if (sample.phase === 'down') {
+          if (input.pointerButton !== 0) continue;
+          this.finishSession(api, false);
+          this.handlePointerDown([sample.x, sample.y], camera, canvas);
+        } else {
+          this.updateSession(api, canvas, camera, sample.x, sample.y);
+          if (sample.phase === 'up') this.finishSession(api, true);
+        }
       }
-
-      if (input.pointerDownTrigger) {
-        this.handlePointerDown(input, camera, canvasEntity);
+      if (!samples.length) {
+        if (this.sessions.has(api)) {
+          this.updateSession(api, canvas, camera, ...input.pointerViewport);
+        } else this.updateGizmoHover(input, camera, canvas);
       }
     }
+    // Dispose only this world's sessions; a canvas in another world is independent.
+    for (const [api, session] of this.sessions) {
+      if (!active.has(api)) {
+        session.finish(api, false);
+        this.sessions.delete(api);
+        set3DGizmoDragging(api, false);
+      }
+    }
+  }
+
+  finalize(): void {
+    for (const [api] of this.sessions) set3DGizmoDragging(api, false);
+    this.sessions.clear();
+  }
+
+  private finishSession(api: API, commit: boolean): void {
+    const session = this.sessions.get(api);
+    if (!session) return;
+    session.finish(api, commit);
+    this.sessions.delete(api);
+    set3DGizmoDragging(api, false);
+  }
+
+  private updateSession(
+    api: API,
+    canvas: Entity,
+    camera: Camera3D,
+    x: number,
+    y: number,
+  ): void {
+    const session = this.sessions.get(api);
+    if (!session) return;
+    const { width, height } = this.getViewportSize(canvas);
+    if (width <= 0 || height <= 0) return;
+    const scene = this.buildPickScene(camera, width, height, canvas);
+    if (!scene) return;
+    const ray = buildGizmoRay(
+      x,
+      y,
+      width,
+      height,
+      camera,
+      scene,
+      findCamera2DForCanvas(this.cameras2D.current, canvas),
+    );
+    if (ray) session.update(ray);
   }
 
   private resolveCamera3D(canvas: Entity): { camera: Camera3D } | undefined {
@@ -191,12 +274,12 @@ export class Pick3D extends System {
   }
 
   private handlePointerDown(
-    input: Input,
+    viewport: [number, number],
     camera: Camera3D,
     canvasEntity: Entity,
   ): void {
     const { api } = canvasEntity.read(Canvas);
-    const [vx, vy] = input.pointerViewport;
+    const [vx, vy] = viewport;
     const { width, height } = this.getViewportSize(canvasEntity);
     if (width <= 0 || height <= 0) return;
 
@@ -218,67 +301,26 @@ export class Pick3D extends System {
     );
 
     if (probe.kind === 'gizmo') {
-      const transform = probe.entity.read(Transform3D);
-      const translation = transform.translation;
-      const rotation = transform.rotation;
-      const anchor: [number, number, number] = [
-        translation[0],
-        translation[1],
-        translation[2],
-      ];
-      const ray = this.buildRay(
+      const ray = buildGizmoRay(
         vx,
         vy,
         width,
         height,
         camera,
         pickScene,
-        canvasEntity,
-        anchor,
+        findCamera2DForCanvas(this.cameras2D.current, canvasEntity),
       );
-
-      const sel = probe.entity.write(Selected3D);
-      sel.activeAxis = probe.axis;
-      sel.activePartKind = probe.partKind;
-      sel.initialTranslation = [...translation];
-      sel.initialRotation = [...rotation];
-      sel.initialScale = [...transform.scale];
-      sel.dragHitStart = null;
-      sel.dragAngleStart = null;
-
-      let canDrag = false;
-      if (probe.partKind === 'rotate' && isRotateGizmoAxis(probe.axis) && ray) {
-        const hit = intersectRayWithPlane(
-          ray,
-          translation,
-          rotationPlaneNormal(rotation, probe.axis),
-        );
-        if (hit) {
-          sel.dragAngleStart = angleOnRotationPlane(
-            hit,
-            translation,
-            probe.axis,
-            rotation,
-          );
-          canDrag = true;
-        }
-      } else if (probe.partKind === 'translate' && ray) {
-        const dragHitStart = this.intersectRayWithConstraintPlane(
-          ray,
+      const gesture =
+        ray &&
+        beginGizmoGesture(
+          probe.entity.read(Transform3D),
           probe.axis,
-          translation,
+          probe.partKind,
+          ray,
         );
-        if (dragHitStart) {
-          sel.dragHitStart = dragHitStart;
-          canDrag = true;
-        }
-      }
-
-      sel.dragging = canDrag;
-      set3DGizmoDragging(canDrag);
-      if (!canDrag) {
-        sel.dragHitStart = null;
-        sel.dragAngleStart = null;
+      if (gesture) {
+        this.sessions.set(api, new GizmoSession(probe.entity.hold(), gesture));
+        set3DGizmoDragging(api, true);
       }
       return;
     }
@@ -305,7 +347,7 @@ export class Pick3D extends System {
       api.runAtNextTick(() => api.clearMesh3DLayerAppState());
     }
 
-    set3DGizmoDragging(false);
+    set3DGizmoDragging(api, false);
     set3DMeshGizmoSelectedForCanvas(canvasEntity, closestEntity != null);
   }
 
@@ -363,199 +405,6 @@ export class Pick3D extends System {
     }
   }
 
-  private handlePointerUp(canvasEntity: Entity): void {
-    let didDrag = false;
-    for (const entity of this.canvasSelected(canvasEntity)) {
-      if (!entity.has(Selected3D)) continue;
-
-      const sel = entity.read(Selected3D);
-      if (sel.dragging) {
-        didDrag = true;
-      }
-      const node = entity.write(Selected3D);
-      node.dragging = false;
-      node.activeAxis = 'none';
-      node.activePartKind = null;
-      node.dragHitStart = null;
-      node.dragAngleStart = null;
-    }
-    if (didDrag && canvasEntity.has(Canvas)) {
-      const { api } = canvasEntity.read(Canvas);
-      api.setNodes(api.getNodes());
-      api.record();
-    }
-    set3DGizmoDragging(false);
-  }
-
-  private handleDrag(
-    input: Input,
-    camera: Camera3D,
-    canvasEntity: Entity,
-  ): void {
-    let anyDragging = false;
-    for (const entity of this.canvasSelected(canvasEntity)) {
-      if (!entity.has(Selected3D)) continue;
-
-      const sel = entity.read(Selected3D);
-      if (!sel.dragging || sel.activeAxis === 'none') {
-        continue;
-      }
-
-      const [vx, vy] = input.pointerViewport;
-      const { width, height } = this.getViewportSize(canvasEntity);
-      if (width <= 0 || height <= 0) continue;
-
-      const pickScene = this.buildPickScene(
-        camera,
-        width,
-        height,
-        canvasEntity,
-      );
-      if (!pickScene) continue;
-      const transformRead = entity.read(Transform3D);
-      const anchor: [number, number, number] = [
-        transformRead.translation[0],
-        transformRead.translation[1],
-        transformRead.translation[2],
-      ];
-      const ray = this.buildRay(
-        vx,
-        vy,
-        width,
-        height,
-        camera,
-        pickScene,
-        canvasEntity,
-        anchor,
-      );
-      if (!ray) continue;
-
-      anyDragging = true;
-      entity.write(Selected3D);
-      const transform = entity.write(Transform3D);
-
-      if (
-        sel.activePartKind === 'rotate' &&
-        isRotateGizmoAxis(sel.activeAxis) &&
-        sel.initialRotation &&
-        sel.dragAngleStart !== null
-      ) {
-        const newRotation = this.computeConstrainedRotation(
-          ray,
-          sel.activeAxis,
-          transformRead.translation,
-          sel.initialRotation,
-          sel.dragAngleStart,
-        );
-        if (newRotation) {
-          transform.rotation = newRotation;
-        }
-      } else if (
-        sel.activePartKind === 'translate' &&
-        sel.initialTranslation &&
-        sel.dragHitStart
-      ) {
-        const newTranslation = this.computeConstrainedTranslation(
-          ray,
-          sel.activeAxis,
-          sel.initialTranslation,
-          sel.dragHitStart,
-        );
-        if (newTranslation) {
-          transform.translation = newTranslation;
-        }
-      }
-    }
-    set3DGizmoDragging(anyDragging);
-  }
-
-  private constraintPlaneNormal(
-    axis: GizmoAxis,
-  ): [number, number, number] | null {
-    if (axis === 'x' || axis === 'z' || axis === 'xz') {
-      return [0, 1, 0];
-    }
-    if (axis === 'y' || axis === 'xy') {
-      return [0, 0, 1];
-    }
-    if (axis === 'yz') {
-      return [1, 0, 0];
-    }
-    return null;
-  }
-
-  private intersectRayWithConstraintPlane(
-    ray: Ray,
-    axis: GizmoAxis,
-    planePoint: [number, number, number],
-  ): [number, number, number] | null {
-    const planeNormal = this.constraintPlaneNormal(axis);
-    if (!planeNormal) return null;
-    return intersectRayWithPlane(ray, planePoint, planeNormal);
-  }
-
-  private computeConstrainedRotation(
-    ray: Ray,
-    axis: 'x' | 'y' | 'z',
-    center: [number, number, number],
-    initialRotation: [number, number, number],
-    dragAngleStart: number,
-  ): [number, number, number] | null {
-    const hit = intersectRayWithPlane(
-      ray,
-      center,
-      rotationPlaneNormal(initialRotation, axis),
-    );
-    if (!hit) return null;
-
-    const angle = angleOnRotationPlane(hit, center, axis, initialRotation);
-    const delta = unwrapAngleDelta(angle - dragAngleStart);
-    const result: [number, number, number] = [...initialRotation];
-    if (axis === 'x') result[0] = initialRotation[0] + delta;
-    else if (axis === 'y') result[1] = initialRotation[1] + delta;
-    else result[2] = initialRotation[2] + delta;
-    return result;
-  }
-
-  /**
-   * Constrained translation: delta = current plane hit − pointer-down plane hit.
-   */
-  private computeConstrainedTranslation(
-    ray: Ray,
-    axis: GizmoAxis,
-    initialTranslation: [number, number, number],
-    dragHitStart: [number, number, number],
-  ): [number, number, number] | null {
-    const planeNormal = this.constraintPlaneNormal(axis);
-    if (!planeNormal) return null;
-
-    const hitPoint = intersectRayWithPlane(
-      ray,
-      initialTranslation,
-      planeNormal,
-    );
-    if (!hitPoint) return null;
-
-    const delta: [number, number, number] = [
-      hitPoint[0] - dragHitStart[0],
-      hitPoint[1] - dragHitStart[1],
-      hitPoint[2] - dragHitStart[2],
-    ];
-
-    const result: [number, number, number] = [...initialTranslation];
-    if (axis === 'x' || axis === 'xy' || axis === 'xz') {
-      result[0] = initialTranslation[0] + delta[0];
-    }
-    if (axis === 'y' || axis === 'xy' || axis === 'yz') {
-      result[1] = initialTranslation[1] + delta[1];
-    }
-    if (axis === 'z' || axis === 'xz' || axis === 'yz') {
-      result[2] = initialTranslation[2] + delta[2];
-    }
-
-    return result;
-  }
-
   private buildPickScene(
     camera: Camera3D,
     viewportWidth: number,
@@ -575,52 +424,6 @@ export class Pick3D extends System {
       logicalH > 0 ? logicalH : viewportHeight,
       cam2d,
     );
-  }
-
-  /**
-   * Build a world-space ray from viewport coordinates (standard / linked-ortho).
-   */
-  private buildRay(
-    vx: number,
-    vy: number,
-    viewportWidth: number,
-    viewportHeight: number,
-    camera: Camera3D,
-    pickScene: Mesh3DPickScene,
-    canvasEntity: Entity,
-    _anchor?: [number, number, number],
-  ): Ray | null {
-    if (pickScene.mode === 'linkedPerspective') {
-      const cam2d = findCamera2DForCanvas(this.cameras2D.current, canvasEntity);
-      if (!cam2d) return null;
-      const inv = Mat3.toGLMat3(
-        cam2d.read(ComputedCamera).viewProjectionMatrixInv,
-      );
-      const ndc = vec2.fromValues(
-        (vx / viewportWidth) * 2 - 1,
-        1 - (vy / viewportHeight) * 2,
-      );
-      const canvasPt = vec2.transformMat3(vec2.create(), ndc, inv);
-      const origin: [number, number, number] = [
-        camera.eye[0],
-        camera.eye[1],
-        camera.eye[2],
-      ];
-      const target: [number, number, number] = [canvasPt[0], canvasPt[1], 0];
-      const dir = glVec3.create();
-      glVec3.subtract(dir, target, origin);
-      if (glVec3.length(dir) < 1e-8) return null;
-      glVec3.normalize(dir, dir);
-      return {
-        origin,
-        direction: [dir[0], dir[1], dir[2]],
-      };
-    }
-    const invVP = computeInvViewProjection(
-      pickScene.projMatrix,
-      pickScene.viewMatrix,
-    );
-    return screenToRay(vx, vy, viewportWidth, viewportHeight, invVP);
   }
 
   private getViewportSize(canvasEntity: Entity): {

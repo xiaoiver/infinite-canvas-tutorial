@@ -1,9 +1,12 @@
-import type { API } from '../../packages/ecs/src';
+import type { API, Plugin } from '../../packages/ecs/src';
 import { createDocumentWorld } from './ecs-document';
 
 /** Real event listeners and scene systems, with a deterministic dispatch clock. */
-export async function createSelectionWorld(count = 1) {
-  const world = await createDocumentWorld(count, true);
+export async function createSelectionWorld(
+  count = 1,
+  extraPlugins: Plugin[] = [],
+) {
+  const world = await createDocumentWorld(count, true, extraPlugins);
   const errors: unknown[] = [];
   world.window.addEventListener('error', (event) => {
     errors.push(event.error);

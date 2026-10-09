@@ -1,5 +1,10 @@
 import type { Entity } from '@lastolivegames/becsy';
+import { mat3 } from 'gl-matrix';
 import {
+  Camera,
+  Children,
+  GlobalTransform,
+  Mat3,
   ComputedBounds,
   Material3D,
   Mesh3D,
@@ -194,38 +199,66 @@ export function syncMesh3DNodeCompanionMaterial(
   material.bumpScale = node.bumpScale;
 }
 
+/** Convert the canvas-space companion center back to the source's local origin. */
+export function resolveMesh3DNodeSourceTransform(
+  source: Entity,
+  pose: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>,
+) {
+  if (!source.has(Mesh3DNode) || !source.has(Transform)) return;
+  const { translation, rotation, scale } = pose;
+  let inverseParent = mat3.create();
+  if (source.has(Children)) {
+    const parent = source.read(Children).parent;
+    if (parent && !parent.has(Camera) && parent.has(GlobalTransform)) {
+      const inverse = mat3.invert(
+        mat3.create(),
+        Mat3.toGLMat3(parent.read(GlobalTransform).matrix),
+      );
+      if (!inverse) return;
+      inverseParent = inverse;
+    }
+  }
+  const center = [
+    inverseParent[0] * translation[0] +
+      inverseParent[3] * translation[1] +
+      inverseParent[6],
+    inverseParent[1] * translation[0] +
+      inverseParent[4] * translation[1] +
+      inverseParent[7],
+  ];
+  const local = source.read(Transform);
+  const rect = source.has(Rect) ? source.read(Rect) : undefined;
+  const cx = ((rect?.width ?? 0) * local.scale.x) / 2;
+  const cy = ((rect?.height ?? 0) * local.scale.y) / 2;
+  const cos = Math.cos(local.rotation);
+  const sin = Math.sin(local.rotation);
+  const [sx, sy, sz] = scale;
+  return {
+    x: center[0] - (cx * cos - cy * sin),
+    y: center[1] - (cx * sin + cy * cos),
+    z: translation[2],
+    rotation3d: [...rotation] as [number, number, number],
+    scale3d:
+      Math.abs(sx - sy) < 1e-4 && Math.abs(sy - sz) < 1e-4
+        ? sx
+        : ([...scale] as [number, number, number]),
+  };
+}
+
 /** Sync declarative source from companion mesh (during gizmo drag). */
 export function syncMesh3DNodeSourceFromCompanion(
   source: Entity,
   meshEntity: Entity,
 ): boolean {
-  if (!source.has(Mesh3DNode) || !meshEntity.has(Transform3D)) {
-    return false;
-  }
-
-  const { translation, rotation, scale } = meshEntity.read(Transform3D);
-  const node = source.write(Mesh3DNode);
-  node.z = translation[2];
-  node.rotation3d = [...rotation] as [number, number, number];
-  const [sx, sy, sz] = scale;
-  node.scale3d =
-    Math.abs(sx - sy) < 1e-4 && Math.abs(sy - sz) < 1e-4
-      ? sx
-      : ([sx, sy, sz] as [number, number, number]);
-
-  if (source.has(Transform)) {
-    let width = 0;
-    let height = 0;
-    if (source.has(Rect)) {
-      const rect = source.read(Rect);
-      width = rect.width;
-      height = rect.height;
-    }
-    Object.assign(source.write(Transform).translation, {
-      x: translation[0] - width / 2,
-      y: translation[1] - height / 2,
-    });
-  }
+  if (!meshEntity.has(Transform3D)) return false;
+  const pose = resolveMesh3DNodeSourceTransform(
+    source,
+    meshEntity.read(Transform3D),
+  );
+  if (!pose) return false;
+  const { x, y, ...node } = pose;
+  Object.assign(source.write(Mesh3DNode), node);
+  Object.assign(source.write(Transform).translation, { x, y });
   return true;
 }
 

@@ -431,7 +431,7 @@ export class Select extends System {
     viewportX: number,
     viewportY: number,
   ): boolean {
-    if (is3DGizmoDragging()) {
+    if (is3DGizmoDragging(canvas)) {
       return true;
     }
     const probe = this.probePick3DAt(canvas, viewportX, viewportY);
@@ -444,7 +444,7 @@ export class Select extends System {
     viewportX: number,
     viewportY: number,
   ): boolean {
-    if (is3DGizmoDragging()) {
+    if (is3DGizmoDragging(canvas)) {
       return true;
     }
     const probe = this.probePick3DAt(canvas, viewportX, viewportY);
@@ -2456,7 +2456,7 @@ export class Select extends System {
           selection.mode === SelectionMode.READY_TO_BRUSH ||
           selection.mode === SelectionMode.BRUSH
         ) {
-          if (is3DGizmoDragging()) {
+          if (is3DGizmoDragging(canvas)) {
             this.hideBrush(selection);
             selection.mode = SelectionMode.IDLE;
             return;
@@ -2464,7 +2464,7 @@ export class Select extends System {
           this.handleBrushing(api, x, y);
           selection.mode = SelectionMode.BRUSH;
         } else if (selection.mode === SelectionMode.MOVE) {
-          if (is3DGizmoDragging()) {
+          if (is3DGizmoDragging(canvas)) {
             return;
           }
           if (layersCropping.length > 0) {

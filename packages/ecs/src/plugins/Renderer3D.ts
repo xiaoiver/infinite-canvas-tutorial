@@ -84,8 +84,12 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
       SyncMesh3DNodes,
     );
 
-    // Same-frame camera for picking; runs after Select (2D marquee probe is in Select).
-    system((s) => s.after(CameraSync, Select).before(Last))(Pick3D);
+    // Gizmo previews write source transforms after camera/bounds propagation.
+    // Explicitly schedule this late input pass: implicit Transform read/write
+    // ordering would put it before the Select pass that must probe first.
+    system((s) =>
+      s.inAnyOrderWith(s.allSystems).after(CameraSync, Select).before(Last),
+    )(Pick3D);
 
     // 3D gizmo rendering: runs alongside the 3D render system.
     system(PreUpdate)(RenderGizmo3D);
