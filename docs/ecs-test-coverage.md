@@ -521,9 +521,24 @@ Chromium 分片测试阶段用时 8.9–14.0 分钟，WebKit 为 12.9–19.4 分
 
 剩余失败仍是 React 19 的 native Escape 用例初始化时 `page.evaluate` 报执行
 上下文销毁。新增附件确认当时页面未关闭、浏览器保持连接，只有初次加载时的
-导航和 context-cleared 事件，没有随后导航、崩溃或 Vite 重载记录。Playwright
-会把多种协议错误改写成这一提示，因此还不能断定根因；本地 3 次强制 GC 诊断
-也均通过。保持原有断言与零重试，后续需要捕获失败时的原始 Chromium 协议错误。
+导航和 context-cleared 事件，没有随后导航、崩溃或 Vite 重载记录。当时本地
+3 次强制 GC 诊断也均通过，尚未捕获原始协议错误，不能据此断定根因。
+
+PR #396 再次在同一选择初始化步骤失败；ECS unit、Browser lifecycle regression、
+React 18 的所有分片和 React 19 的其他分片均成功。随后本地保持原代码运行
+native Escape 10 次，9 次通过、1 次在 `ready()` 初始化失败，捕获到 Chromium
+`Runtime.callFunctionOn` 的原始错误 `-32000: Promise was collected`。
+Playwright 1.55.1 将其改写成了同一条 execution-context/navigation 提示。
+
+选择测试现在让页面内部记录异步初始化的完成状态，Playwright 只读取同步状态，
+避免跨 CDP 等待初始化 Promise。仍逐一等待两个画布的编辑提交，保留独立的初始
+取消选择与后续选择步骤；任一提交取消或拒绝都会明确失败。图层事件顺序、原生
+Escape 的焦点归属、Shadow DOM 输入保护以及撤销/重做断言保持不变，也没有
+增加重试或固定延迟。修改后同一用例连续执行 10 次全部通过，原始协议错误
+未再次出现。React 19 的完整 9 项选择测试分别在 Chromium、WebKit 全部通过；
+React 18 在两种浏览器各通过 native Escape 与失败/销毁场景，共 32 次修复后
+浏览器执行全部成功。浏览器 TypeScript、修改文件 ESLint / Prettier、Markdown
+lint 和 diff 检查通过；后续以更新提交的完整 CI 结果验收。
 
 最新 master `2a33faac` 的 unit 首次运行因 runner shutdown 信号中断，没有测试
 断言失败；重新执行同一任务（attempt 2）后成功。
@@ -722,9 +737,8 @@ pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
 属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性；吸附与复杂嵌套
 变换已增加组合事件回归。后续优先：
 
-1. **定位 React 19 剩余故障**：分片耗时已有实测，接下来捕获 native Escape
-   失败时的原始 Chromium 协议错误。保持断言与零重试，不把本地重复通过当作
-   偶发故障已经解决。
+1. **验收 React 19 初始化修复**：已捕获 `Promise was collected` 并改为页面内
+   观察完成状态，跟踪更新提交的完整 CI；保持原有断言与零重试。
 2. **三维系统权限审计**：继续检查存活判断是否吞掉组件访问错误，以及三维同步系统的读写声明；用真实帧和拖拽状态验证。
 3. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。

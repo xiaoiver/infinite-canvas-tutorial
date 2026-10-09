@@ -8,48 +8,76 @@ import type {
 declare global {
   interface Window {
     selectionCommits: string[][];
+    selectionSetupStatus: string;
   }
 }
 
-async function ready(page: Page) {
+async function ready(page: Page, selectBoth = false) {
   await page.goto('/');
   for (const side of ['left', 'right']) {
     await expect(page.getByTestId(`${side}-status`)).toHaveText('ready', {
       timeout: 45000,
     });
   }
-  await page.evaluate(async () => {
-    const support = '/editing-test-support.ts';
-    await import(support);
-    for (const [id, api] of Object.entries(window.apis)) {
-      await api.edit(
-        (editor) => {
-          editor.updateNode({
-            id: `${id}-second`,
-            type: 'rect',
-            name: 'Second',
-            x: 210,
-            y: 60,
-            width: 40,
-            height: 40,
-            zIndex: 1,
-          });
-          editor.selectNodes([]);
-          editor.setAppState({
-            taskbarVisible: true,
-            taskbarSelected: ['show-layers-panel'] as ReturnType<
-              typeof api.getAppState
-            >['taskbarSelected'],
-          });
-        },
-        { capture: 'NEVER' },
+  await page.evaluate((selectBoth) => {
+    window.selectionSetupStatus = 'pending';
+    // Chromium can collect the Promise awaited by CDP while these panels mount.
+    // Observe completion in the page so edit failures/cancellation still fail setup.
+    void (async () => {
+      const support = '/editing-test-support.ts';
+      await import(support);
+      for (const [id, api] of Object.entries(window.apis)) {
+        const committed = await api.edit(
+          (editor) => {
+            editor.updateNode({
+              id: `${id}-second`,
+              type: 'rect',
+              name: 'Second',
+              x: 210,
+              y: 60,
+              width: 40,
+              height: 40,
+              zIndex: 1,
+            });
+            editor.selectNodes([]);
+            editor.setAppState({
+              taskbarVisible: true,
+              taskbarSelected: ['show-layers-panel'] as ReturnType<
+                typeof api.getAppState
+              >['taskbarSelected'],
+            });
+          },
+          { capture: 'NEVER' },
+        );
+        if (!committed) throw new Error(`Panel setup cancelled for ${id}`);
+      }
+      window.selectionCommits = [];
+      window.apis.left.subscribe(({ appState }) =>
+        window.selectionCommits.push([...appState.layersSelected]),
       );
-    }
-    window.selectionCommits = [];
-    window.apis.left.subscribe(({ appState }) =>
-      window.selectionCommits.push([...appState.layersSelected]),
+      if (selectBoth) {
+        for (const [id, api] of Object.entries(window.apis)) {
+          const committed = await api.edit(
+            (editor) => editor.selectNodes([editor.getNodeById(id)!]),
+            { capture: 'NEVER' },
+          );
+          if (!committed)
+            throw new Error(`Selection setup cancelled for ${id}`);
+        }
+      }
+    })().then(
+      () => {
+        window.selectionSetupStatus = 'ready';
+      },
+      (error) => {
+        window.selectionSetupStatus = String(error);
+      },
     );
-  });
+  }, selectBoth);
+  await expect
+    .poll(() => page.evaluate(() => window.selectionSetupStatus))
+    .not.toBe('pending');
+  expect(await page.evaluate(() => window.selectionSetupStatus)).toBe('ready');
   const panel = page
     .getByTestId('left-shortcuts')
     .locator('ic-spectrum-layers-panel');
@@ -146,15 +174,7 @@ test('row clicks and Escape commit in event order, with one undo step per change
 test('native Escape belongs to the focused canvas and leaves shadow inputs alone', async ({
   page,
 }) => {
-  await ready(page);
-  await page.evaluate(async () => {
-    for (const [id, api] of Object.entries(window.apis)) {
-      await api.edit(
-        (editor) => editor.selectNodes([editor.getNodeById(id)!]),
-        { capture: 'NEVER' },
-      );
-    }
-  });
+  await ready(page, true);
   await page.getByTestId('left-shortcuts').locator('canvas').focus();
   await page.keyboard.press('Escape');
   await drain(page);
@@ -313,15 +333,13 @@ test('Escape listeners follow component reconnection and API replacement', async
     // Non-composed events exercise only the component's listener, independently
     // of the already-covered global ECS keyboard writer.
     api.getCanvasElement().focus();
-    api
-      .getCanvasElement()
-      .dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Escape',
-          bubbles: true,
-          cancelable: true,
-        }),
-      );
+    api.getCanvasElement().dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
   });
   await drain(page);
   await selected(page, ['left']);
