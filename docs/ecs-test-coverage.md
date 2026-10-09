@@ -381,12 +381,62 @@ ECS 实体，在新增同步入口报错。更新该文件的组件写入替身�
 最终变更文件 lint、相关 TypeScript 检查与新增文件格式检查通过。
 这些是本地 ECS 完整统计；Coveralls 需要合并后的 CI 上传才会更新。
 
+## 第十批：粗糙图形与三维属性同步
+
+2026-10-09，基于 master `b1c7e67c`（PR #391 / #392 已合并）。基线取该提交
+成功的完整 ECS CI 报告：211 个文件、1523 项测试通过，行覆盖率 69.92%、
+分支覆盖率 57.87%、函数覆盖率 70.76%。本轮继续使用 Node 20 原生依赖环境，
+保留全部 ECS 源文件统计。
+
+新增 51 项真实 ECS 行为测试，覆盖：
+
+- 18 类粗糙参数的更新、清空、撤销重做与重新加载；零值、布尔值和虚线数组不丢失。
+  曲线参数使用椭圆验证，比较实际 RoughJS 几何，不仅检查组件字段。
+- 保持折线顶点、平移后粗糙线段的导出端点、dashed / zigzag-line 填充的默认间距，
+  以及固定随机种子时仅改变填充不改变描边。
+- 三维几何、深度、旋转、缩放与 camera3d 配置的存储同步；编辑后复用已有伴随实体，
+  检查真实顶点、法线、索引、UV、材质与 Transform3D，比较文档重新加载结果。
+- 11 类材质参数、整个材质对象的替换与移除，以及灯光颜色、强度、方向、位置、
+  范围、锥角和类型的历史恢复；明确验证零强度和零材质系数。
+
+修复了只改 Rough 参数未触发几何重算、preserveVertices 未传入生成器、虚线数组
+误用数值组件、自动填充间距默认值错误，以及清空粗糙/三维字段仍保留旧值的问题。
+三维加载与编辑共用 wire 转换函数，材质对象替换后不再遗留旧字段。
+
+三维测试通过真实 EnsureMesh3DNodes / SyncMesh3DNodes 创建和更新伴随网格，
+不启动 GPU、gizmo 或 glTF 网络加载；材质贴图断言仅验证 URL 状态，不冒充像素验证。
+camera3d 仍是首次创建场景相机的配置，不是本批新增的实时相机控制接口。
+所有新增 Jest 用例复用 ecs-document 显式帧推进，无固定等待。
+
+完整运行 213 个文件、1574 项测试全部通过，耗时 645.869 秒（约 10 分 46 秒）。
+现有门槛全部通过；依据同一完整报告为新转换模块和 ComputeRough 增加门槛，
+并提高 ElementsChange 的门槛，逐项核对 21 个模块均满足新配置。
+
+| 范围 | 行覆盖率（前 → 后） | 分支覆盖率（前 → 后） |
+| --- | ---: | ---: |
+| ECS 全包 | 69.92% → 70.25% | 57.87% → 58.73% |
+| `ElementsChange` | 82.72% → 92.03% | 67.75% → 85.10% |
+| `ComputeRough` | 65.85% → 81.70% | 40.42% → 70.21% |
+| `mesh3d-wire`（新模块） | 100% | 87.50% |
+
+全包函数覆盖率从 70.76% 提升到 70.83%，行计数为 19864 / 28276。
+共享三维转换减少了重复的加载/编辑代码；没有排除源文件或降低已有门槛。
+这些是本地完整 ECS 数据，Coveralls master 需要合并后 CI 上传才会更新。
+
+新增 1 项浏览器像素回归，验证粗糙参数编辑、撤销重做与重新加载；复用现有
+组继承像素回归，Chromium 与 WebKit（iPhone 13 配置）各 2 项通过。
+另定向验证了 Chromium 的 ECS / core miter 接缝用例，均通过；Chromium 共 4 项
+耗时 50.7 秒，WebKit 共 2 项耗时 27.2 秒。浏览器执行不计入 Jest 覆盖率。
+修改文件 lint、相关单测和浏览器 TypeScript 检查、新文件格式检查均通过。
+
 ## 覆盖率门槛与报告
 
 `jest.ecs.config.js` 为已建立回归基线的模块设置独立门槛，`pnpm test:ecs` 会检查：
 
 | 模块                               |   行 | 分支 | 函数 | 语句 |
 | ---------------------------------- | ---: | ---: | ---: | ---: |
+| `utils/mesh3d-wire.ts` | 100% | 85% | 100% | 100% |
+| `systems/ComputeRough.ts` | 80% | 65% | 100% | 80% |
 | `utils/design-variables.ts`     | 90% | 85% | 100% | 90% |
 | `utils/inherit-group-wire.ts`   | 85% | 80% | 100% | 85% |
 | `resources/TexturePool.ts`         | 95% | 85% | 100% | 95% |
@@ -399,7 +449,7 @@ ECS 实体，在新增同步入口报错。更新该文件的组件写入替身�
 | `systems/select/resize-gesture.ts` | 100% |  90% | 100% | 100% |
 | `systems/select/rotate-gesture.ts` | 100% |  85% | 100% |  95% |
 | `history/Snapshot.ts`              | 100% |  90% | 100% | 100% |
-| `history/ElementsChange.ts`        | 73% | 55% | 85% | 73% |
+| `history/ElementsChange.ts`        | 90% | 80% | 90% | 90% |
 | `utils/solidShapeRasterForFilter.ts` | 90% | 75% | 100% | 90% |
 | `utils/render-cache.ts`            | 100% | 85% | 100% | 100% |
 | `utils/cube-lut-cache.ts`           | 100% | 100% | 100% | 100% |
@@ -498,13 +548,23 @@ pnpm exec playwright test -c playwright.browser.config.ts group-inheritance.spec
 pnpm exec playwright test -c playwright.webkit.config.ts group-inheritance.spec.ts
 ```
 
+只验证第十批粗糙图形与三维属性，以及相关浏览器像素回归：
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/history-rough-sync.spec.ts \
+  __tests__/ecs/history-3d-sync.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts rough-properties.spec.ts group-inheritance.spec.ts
+pnpm exec playwright test -c playwright.webkit.config.ts rough-properties.spec.ts group-inheritance.spec.ts
+```
+
 ## 后续顺序
 
-1. **属性同步剩余路径**：粗糙图形的独立参数、三维几何/材质/灯光属性，
-   继续比较局部更新、完整文档加载与历史恢复后的实际组件状态；设计变量与组继承已完成本批回归。
-2. **交互剩余路径与浏览器稳定性**：继续补齐吸附与复杂嵌套变换的组合场景，
+属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性。后续优先：
+
+1. **交互剩余路径与浏览器稳定性**：继续补齐吸附与复杂嵌套变换的组合场景，
    并改进浏览器双击/帧同步；保留少量真实 DOM、像素及平台事件回归。
-3. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、glTF 异步替换与取消、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前

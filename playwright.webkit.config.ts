@@ -23,6 +23,7 @@ export default defineConfig({
     'brush.spec.ts',
     'image-fill.spec.ts',
     'group-inheritance.spec.ts',
+    'rough-properties.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',
     'icon-resize.spec.ts',
