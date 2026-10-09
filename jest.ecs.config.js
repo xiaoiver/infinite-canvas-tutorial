@@ -29,6 +29,29 @@ module.exports = {
     '^heic2any$': '<rootDir>/__tests__/mocks/heic2any.ts',
   },
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],
+  coverageReporters: ['json', 'json-summary', 'lcov', 'text', 'clover'],
+  // Ratchet the modules with deterministic behavioral tests. Keep every ECS
+  // source file in the overall report, including modules not yet tested.
+  coverageThreshold: {
+    './packages/ecs/src/utils/snapping.ts': {
+      statements: 98,
+      branches: 95,
+      functions: 100,
+      lines: 98,
+    },
+    './packages/ecs/src/utils/transformer-resize.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/systems/select/resize-gesture.ts': {
+      statements: 100,
+      branches: 90,
+      functions: 100,
+      lines: 100,
+    },
+  },
   transform: {
     '^.+\\.[tj]s$': [
       'ts-jest',
