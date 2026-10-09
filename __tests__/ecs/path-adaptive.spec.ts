@@ -44,6 +44,37 @@ describe.each([
   ['ecs', ecs, ecsCurve],
   ['core', core, coreCurve],
 ] as const)('%s adaptive paths', (_name, implementation, curves) => {
+  it('recognizes self-touching contours without treating ordinary seams as intersections', () => {
+    const cache = new implementation.PathGeometryCache();
+    for (const scale of [0.5, 1, 16, 64]) {
+      expect(
+        implementation.hasSelfTouchingContour(
+          cache.get(
+            'M0 0 Q-50 -100 -100 0 Q-50 100 0 0 Q50 -100 100 0 Q50 100 0 0 Z',
+            scale,
+          ),
+        ),
+      ).toBe(true);
+      expect(
+        implementation.hasSelfTouchingContour(
+          cache.get('M0 0 Q50 100 100 0 Z M0 0 Q-50 -100 -100 0 Z', scale),
+        ),
+      ).toBe(false);
+    }
+    expect(
+      implementation.hasSelfTouchingContour([
+        [
+          [0, 0],
+          [0, 0],
+          [100, 0],
+          [100, 100],
+          [0, 0],
+        ],
+        [],
+      ]),
+    ).toBe(false);
+  });
+
   it.each(paths)('keeps screen error below a quarter pixel: %s', (d) => {
     const cache = new implementation.PathGeometryCache();
     const path = curves.parsePath(d);

@@ -5,6 +5,59 @@ import type { TextSerializedNode } from '@infinite-canvas-tutorial/ecs';
 
 const settle = (page: Page) => page.evaluate(() => window.textTest.rendered());
 
+async function openTextEditor(page: Page) {
+  const corners = await page.evaluate(() => window.textTest.corners());
+  await page.mouse.dblclick(
+    (corners[0].x + corners[2].x) / 2,
+    (corners[0].y + corners[2].y) / 2,
+  );
+  await expect(page.locator('ic-spectrum-text-editor textarea')).toBeVisible();
+}
+
+async function expectNativeBidiOrder(page: Page, tokens: string[]) {
+  const order = await page.evaluate((tokens) => {
+    const input = document
+      .querySelector('ic-spectrum-text-editor')!
+      .shadowRoot!.querySelector('textarea')!;
+    // Textarea glyph positions are not exposed to Range. Mirror its native
+    // bidi styling in an ordinary text node to obtain a browser-owned oracle.
+    const mirror = document.createElement('div');
+    mirror.dir = input.dir;
+    const style = getComputedStyle(input);
+    Object.assign(mirror.style, {
+      position: 'absolute',
+      whiteSpace: 'pre',
+      width: 'max-content',
+      font: style.font,
+      direction: style.direction,
+      unicodeBidi: style.unicodeBidi,
+    });
+    mirror.textContent = input.value;
+    document.body.appendChild(mirror);
+    try {
+      const native = tokens
+        .map((token) => {
+          const start = input.value.indexOf(token);
+          const range = document.createRange();
+          range.setStart(mirror.firstChild!, start);
+          range.setEnd(mirror.firstChild!, start + token.length);
+          return { token, x: range.getBoundingClientRect().x };
+        })
+        .sort((a, b) => a.x - b.x)
+        .map(({ token }) => token);
+      const visual = window.textTest.lines()[0];
+      const canvas = [...tokens].sort(
+        (a, b) => visual.indexOf(a) - visual.indexOf(b),
+      );
+      return { native, canvas, visual };
+    } finally {
+      mirror.remove();
+    }
+  }, tokens);
+  for (const token of tokens) expect(order.visual).toContain(token);
+  expect(order.canvas).toEqual(order.native);
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/ecs-text.html');
   await expect(page.locator('#status')).toHaveText('Ready', { timeout: 15000 });
@@ -13,6 +66,62 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(async ({ page }) => {
   await page.evaluate(() => window.textTest?.dispose());
 });
+
+for (const leading of ['', 'Start ']) {
+  test(`mixed ${
+    leading ? 'LTR' : 'RTL'
+  } text keeps native order through editing`, async ({ page }) => {
+    test.setTimeout(90000);
+    const content = `${leading}سلام ABC גבא DEF 😁🚀`;
+    await page.evaluate(
+      (content) =>
+        window.textTest.render({
+          content,
+          fontSize: 32,
+          anchorX: 30,
+          anchorY: 120,
+        }),
+      content,
+    );
+    const before = await page.evaluate(() => window.textTest.lines());
+    await openTextEditor(page);
+    const input = page.locator('ic-spectrum-text-editor textarea');
+    await expect(input).toHaveValue(content);
+    await expectNativeBidiOrder(page, ['ABC', 'DEF', '😁', '🚀']);
+    await input.press('Escape');
+    await expect(input).toBeHidden();
+    await settle(page);
+    expect(await page.evaluate(() => window.textTest.lines())).toEqual(before);
+    expect(
+      await page.evaluate(
+        () =>
+          (window.textTest.api.getNodeById('text') as TextSerializedNode)
+            .content,
+      ),
+    ).toBe(content);
+
+    // Commit and reopen compound emoji without storing visual-order text.
+    const edited = content.replace('😁🚀', '👩‍💻👍🏽');
+    await openTextEditor(page);
+    await input.fill(edited);
+    await input.press('Escape');
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            (window.textTest.api.getNodeById('text') as TextSerializedNode)
+              .content,
+        ),
+      )
+      .toBe(edited);
+    await settle(page);
+    await openTextEditor(page);
+    await expect(input).toHaveValue(edited);
+    await expectNativeBidiOrder(page, ['ABC', 'DEF', '👩‍💻', '👍🏽']);
+    await input.press('Escape');
+    await expect(input).toBeHidden();
+  });
+}
 
 test('Gaegu j and italic overhangs retain the same ink as Canvas text', async ({
   page,
@@ -228,7 +337,9 @@ test('double-click editing follows transformer rotation and camera changes', asy
       ),
     ),
   ).toBeGreaterThan(0.3);
-  expect(await page.evaluate(() => window.textTest.api.getNodeById('text'))).toMatchObject({
+  expect(
+    await page.evaluate(() => window.textTest.api.getNodeById('text')),
+  ).toMatchObject({
     fontSize: original.fontSize,
     anchorX: original.anchorX,
     anchorY: original.anchorY,
