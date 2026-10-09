@@ -1,5 +1,6 @@
 import { System } from '@lastolivegames/becsy';
 import {
+  Camera,
   ComputedBounds,
   Extrude3D,
   Extrude3DTarget,
@@ -17,28 +18,21 @@ import { isEntityAlive } from './Transform';
  * Mesh entities are created by {@link EnsureExtrudeMeshes}.
  */
 export class SyncExtrude3D extends System {
-  private readonly sources = this.query((q) =>
-    q.current.with(Extrude3D, ComputedBounds).read,
+  private readonly sources = this.query(
+    (q) => q.current.with(Extrude3D, ComputedBounds).read,
   );
 
-  private readonly targets = this.query((q) =>
-    q.current.with(Extrude3DTarget).read,
+  private readonly targets = this.query(
+    (q) => q.current.with(Extrude3DTarget).read,
   );
 
   constructor() {
     super();
-    this.query((q) =>
-      q
-        .using(
-          Extrude3D,
-          Extrude3DTarget,
-          ComputedBounds,
-          FillLayers,
-          Material3D,
-          Transform3D,
-          ToBeDeleted,
-        )
-        .read.write,
+    this.query(
+      (q) =>
+        q
+          .using(Extrude3D, Extrude3DTarget, ComputedBounds, FillLayers, Camera)
+          .read.and.using(Material3D, Transform3D, ToBeDeleted).write,
     );
   }
 
@@ -80,7 +74,11 @@ export class SyncExtrude3D extends System {
   private cleanupOrphanMeshes(): void {
     for (const meshEntity of this.targets.current) {
       const { source } = meshEntity.read(Extrude3DTarget);
-      if (isEntityAlive(source) && source.has(Extrude3D)) {
+      if (
+        isEntityAlive(source) &&
+        source.has(Extrude3D) &&
+        source.read(Extrude3D).meshEntity?.isSame(meshEntity)
+      ) {
         continue;
       }
       meshEntity.add(ToBeDeleted);
