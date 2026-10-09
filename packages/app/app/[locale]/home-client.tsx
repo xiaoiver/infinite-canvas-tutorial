@@ -18,7 +18,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     type: 'rect',
     fills: [
       {
-        type: 'solid',
+        type: 'image',
         value:
           'https://v3b.fal.media/files/b/tiger/v1lf1EcPP1X1pw_YOKM4o.jpg',
         opacity: 1,
@@ -38,7 +38,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     type: 'rect',
     fills: [
       {
-        type: 'solid',
+        type: 'image',
         value:
           'https://v3b.fal.media/files/b/koala/0RQAsrw5rRX015XQUd4HX.jpg',
         opacity: 1,
@@ -58,7 +58,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     type: 'rect',
     fills: [
       {
-        type: 'solid',
+        type: 'image',
         value:
           'https://v3b.fal.media/files/b/panda/Xo61xntJdsl8_txn9WC-5.jpg',
         opacity: 1,
@@ -115,7 +115,7 @@ const DEFAULT_NODES: SerializedNode[] = [
     name: 'A dog with a hand-drawn fish',
     fills: [
       {
-        type: 'solid',
+        type: 'image',
         value:
           'https://v3.fal.media/files/penguin/9UH5Fgin7zc1u6NGGItGB.jpeg',
         opacity: 1,
