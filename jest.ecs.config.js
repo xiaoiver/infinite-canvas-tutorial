@@ -33,6 +33,18 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/utils/gltf/load-gltf-mesh.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/utils/gltf/request-gltf-mesh-load.ts': {
+      statements: 90,
+      branches: 75,
+      functions: 100,
+      lines: 90,
+    },
     './packages/ecs/src/utils/mesh3d-wire.ts': {
       statements: 100,
       branches: 85,

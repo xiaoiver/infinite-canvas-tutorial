@@ -16,10 +16,15 @@ import {
 import {
   clearMesh3DNodeCompanionGeometryKey,
   seedMesh3DNodeCompanionGeometryKey,
+  syncMesh3DNodeCompanionMaterial,
 } from '../mesh3d-node';
 import { loadGltfMeshFromSpec } from './load-gltf-mesh';
 
 const pendingByCanvas = new WeakMap<API, Set<string>>();
+const retryBySource = new WeakMap<
+  Entity,
+  { key: string; delay: number; after: number }
+>();
 
 /**
  * Kick off async glTF fetch + bake for a declarative {@link Mesh3DNode} source.
@@ -53,6 +58,9 @@ export function requestGltfMeshLoad(source: Entity): void {
     pendingByCanvas.set(api, pending);
   }
   const key = geometrySpecKey(spec);
+  const retry = retryBySource.get(source);
+  if (retry?.key === key && Date.now() < retry.after) return;
+  if (retry?.key !== key) retryBySource.delete(source);
   const pendingKey = `${source.__id}:${key}`;
   if (pending.has(pendingKey)) {
     return;
@@ -83,29 +91,32 @@ export function requestGltfMeshLoad(source: Entity): void {
         });
         meshWrite.uvs = baked.uvs ?? null;
 
+        retryBySource.delete(source);
+        seedMesh3DNodeCompanionGeometryKey(source, {
+          baseColor: baked.baseColor,
+          map: baked.map,
+        });
         if (companion.has(Material3D)) {
-          const material = companion.read(Material3D);
-          const hasCustomColor =
-            material.baseColor[0] !== 1 ||
-            material.baseColor[1] !== 1 ||
-            material.baseColor[2] !== 1 ||
-            material.baseColor[3] !== 1;
-          if (!hasCustomColor) {
-            companion.write(Material3D).baseColor = [...baked.baseColor];
-          }
-          if (baked.map && !material.map) {
-            companion.write(Material3D).map = baked.map;
-            if (source.has(Mesh3DNode) && !source.read(Mesh3DNode).map) {
-              source.write(Mesh3DNode).map = baked.map;
-            }
-          }
+          syncMesh3DNodeCompanionMaterial(source, companion);
         }
-        seedMesh3DNodeCompanionGeometryKey(source);
       });
     })
     .catch((err) => {
       console.warn('[requestGltfMeshLoad] failed to load glTF', spec.url, err);
-      clearMesh3DNodeCompanionGeometryKey(source);
+      if (
+        isEntityAlive(source) &&
+        source.has(Mesh3DNode) &&
+        geometrySpecKey(normalizeGeometry(source.read(Mesh3DNode).geometry)) ===
+          key
+      ) {
+        clearMesh3DNodeCompanionGeometryKey(source);
+        // The load system runs every frame. Retry without a timer or a request
+        // storm, and keep failures of other geometry versions independent.
+        const previous = retryBySource.get(source);
+        const delay =
+          previous?.key === key ? Math.min(previous.delay * 2, 30000) : 1000;
+        retryBySource.set(source, { key, delay, after: Date.now() + delay });
+      }
     })
     .finally(() => {
       pending.delete(pendingKey);
