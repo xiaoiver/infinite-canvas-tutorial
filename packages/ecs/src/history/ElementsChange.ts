@@ -28,12 +28,12 @@ import { isEntityAlive } from '../systems/Transform';
 import { AnimationController, Keyframe, AnimationOptions } from '../animation';
 import {
   resolveDesignVariableValue,
+  resolveDesignVariableNumber,
   designVariableRefKeyFromWire,
   resolveFillLayerItemsForEcs,
 } from '../utils/design-variables';
 import type {
   FillAttributes,
-  GSerializedNode,
   IconFontSerializedNode,
   SerializedFillLayerItem,
   Light3DNodeSerializedNode,
@@ -1060,6 +1060,74 @@ function applyStrokesWireMutation(
   return true;
 }
 
+function strokeDashPair(value: string | undefined): [number, number] {
+  if (value === undefined || value === 'none') return [0, 0];
+  const parts = value.trim().split(/[\s,]+/);
+  const a = Number(parts[0]);
+  const b = Number(parts[1] ?? parts[0]);
+  return [Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0];
+}
+
+/** Refresh computed paint without copying inherited values into document/history. */
+export function syncInheritedPresentation(
+  entity: Entity,
+  node: SerializedNode,
+  inherited: Record<string, unknown>,
+  api: API,
+) {
+  const attrs = { ...node, ...inherited } as SerializedNodeAttributes;
+  const { variables, themeMode } = api.getAppState();
+  if (node.type === 'iconfont' || (node.type as string) === 'icon_font') {
+    syncIconFontChildrenFromUpdatedNode(
+      entity,
+      attrs as IconFontSerializedNode,
+      api,
+    );
+  } else {
+    applyFillsWireMutation(entity, attrs, variables, themeMode);
+    applyStrokesWireMutation(
+      entity,
+      attrs as StrokeAttributes,
+      variables,
+      themeMode,
+    );
+    const hasStrokeGeometry =
+      attrs.strokes?.length > 0 ||
+      attrs.strokeWidth != null ||
+      attrs.strokeLinecap != null ||
+      attrs.strokeLinejoin != null;
+    if (hasStrokeGeometry) {
+      safeAddComponent(entity, Stroke, {
+        width: resolveDesignVariableNumber(
+          attrs.strokeWidth, variables, themeMode, 1,
+        ),
+        widthVariableRef: designVariableRefKeyFromWire(attrs.strokeWidth),
+        linecap: attrs.strokeLinecap ?? 'butt',
+        linejoin: attrs.strokeLinejoin ?? 'miter',
+        alignment: attrs.strokeAlignment ?? 'center',
+        miterlimit: attrs.strokeMiterlimit ?? 4,
+        dasharray: strokeDashPair(attrs.strokeDasharray),
+        dashoffset: attrs.strokeDashoffset ?? 0,
+        dashcap: normalizeStrokeDashCap(attrs.strokeDashCap) ?? 'none',
+      });
+    } else {
+      safeRemoveComponent(entity, Stroke);
+    }
+    if (entity.has(Path) && entity.read(Path).fillRule !== (attrs.fillRule ?? 'nonzero')) {
+      entity.write(Path).fillRule = attrs.fillRule ?? 'nonzero';
+      safeAddComponent(entity, GeometryDirty);
+    }
+    if (node.type === 'g') {
+      safeAddComponent(
+        entity, Group, buildGroupWirePresentation(attrs, variables, themeMode),
+      );
+    }
+    if (entity.has(Rough)) refreshComputedRoughForEntity(entity);
+  }
+  safeAddComponent(entity, Opacity, { opacity: attrs.opacity ?? 1 });
+  safeAddComponent(entity, MaterialDirty);
+}
+
 // This function tracks updates of text elements for the purposes for collaboration.
 // The version is used to compare updates when more than one user is working in
 // the same drawing. Note: this will trigger the component to update. Make sure you
@@ -1107,23 +1175,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   const designVariables = api.getAppState().variables;
   const themeMode = api.getAppState().themeMode;
   const elNode = element as SerializedNode;
-  const scenePatched = api
-    .getNodes()
-    .map((n) => (n.id === elNode.id ? elNode : n));
-  const withInheritPaint = {
-    ...elNode,
-    ...getComputedInheritGroupWireForId(elNode.id, scenePatched),
-  };
 
   const { name, visibility } = updates;
   const {
     parentId,
     zIndex,
-    strokeWidth,
-    strokeLinecap,
-    strokeLinejoin,
     strokeAlignment,
-    opacity,
     innerShadowColor,
     innerShadowBlurRadius,
     innerShadowOffsetX,
@@ -1229,21 +1286,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Visibility).value = visibility;
   }
 
-  if (
-    ('fills' in updates || 'fill' in updates || 'fillLayers' in updates) &&
-    !isIconFontWireNode
-  ) {
-    applyFillsWireMutation(
-      entity,
-      element as FillAttributes,
-      designVariables,
-      themeMode,
-    );
-    if (entity.has(Rough)) {
-      refreshComputedRoughForEntity(entity);
-      safeAddComponent(entity, GeometryDirty);
-    }
-  }
   if ('brushStamp' in updates) {
     if (isDataUrl(brushStamp) || isUrl(brushStamp)) {
       loadImage(brushStamp, entity);
@@ -1257,62 +1299,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(child, MaterialDirty);
     });
   }
-  if (
-    ('strokes' in updates ||
-      'stroke' in updates ||
-      'strokeOpacity' in updates) &&
-    !isIconFontWireNode
-  ) {
-    applyStrokesWireMutation(
-      entity,
-      element as StrokeAttributes,
-      designVariables,
-      themeMode,
-    );
-    if (entity.has(Rough)) {
-      refreshComputedRoughForEntity(entity);
-      safeAddComponent(entity, GeometryDirty);
-    }
-  }
-  if ('strokeWidth' in updates && !isIconFontWireNode) {
-    const w = resolveDesignVariableValue(
-      strokeWidth,
-      designVariables,
-      themeMode,
-    );
-    safeAddComponent(entity, Stroke, {
-      ...(w !== undefined && w !== null
-        ? { width: typeof w === 'number' ? w : Number(w) }
-        : {}),
-      widthVariableRef: designVariableRefKeyFromWire(strokeWidth),
-    });
-  }
-  if ('strokeLinecap' in updates && !isIconFontWireNode) {
-    safeAddComponent(entity, Stroke, { linecap: strokeLinecap });
-  }
-  if ('strokeLinejoin' in updates && !isIconFontWireNode) {
-    safeAddComponent(entity, Stroke, { linejoin: strokeLinejoin });
-  }
   if ('strokeAlignment' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
   }
   if ('strokeDasharray' in updates && !isIconFontWireNode) {
-    const sd = (element as StrokeAttributes).strokeDasharray;
-    const pair: [number, number] =
-      sd === 'none' || sd === undefined
-        ? [0, 0]
-        : (() => {
-            const parts = sd.includes(',')
-              ? sd.split(',')
-              : sd.trim().split(/\s+/).filter(Boolean);
-            const a = Number(parts[0]);
-            const b = Number(parts[1] ?? parts[0]);
-            return [Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0] as [
-              number,
-              number,
-            ];
-          })();
-    safeAddComponent(entity, Stroke, { dasharray: pair });
+    safeAddComponent(entity, Stroke, {
+      dasharray: strokeDashPair((element as StrokeAttributes).strokeDasharray),
+    });
   }
   if ('strokeDashoffset' in updates && !isIconFontWireNode) {
     const raw = (element as StrokeAttributes).strokeDashoffset;
@@ -1326,9 +1319,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, Stroke, {
       dashcap: normalizeStrokeDashCap(raw) ?? 'none',
     });
-  }
-  if ('opacity' in updates) {
-    safeAddComponent(entity, Opacity, { opacity });
   }
   if ('animation' in updates) {
     const animation = (updates as Record<string, unknown>).animation as
@@ -1524,8 +1514,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Text).anchorY = anchorY;
   }
   if ('fontSize' in updates) {
-    const fs = resolveDesignVariableValue(fontSize, designVariables, themeMode);
-    entity.write(Text).fontSize = typeof fs === 'number' ? fs : Number(fs);
+    entity.write(Text).fontSize = resolveDesignVariableNumber(
+      fontSize, designVariables, themeMode, 12,
+    );
     entity.write(Text).fontSizeVariableRef =
       designVariableRefKeyFromWire(fontSize);
   }
@@ -1565,34 +1556,14 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     entity.write(Text).fontKerning = fontKerning;
   }
   if ('letterSpacing' in updates) {
-    const raw = (updates as { letterSpacing?: number | string }).letterSpacing;
-    const resolved = resolveDesignVariableValue(
-      raw ?? 0,
-      designVariables,
-      themeMode,
+    entity.write(Text).letterSpacing = resolveDesignVariableNumber(
+      updates['letterSpacing'], designVariables, themeMode, 0,
     );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      entity.write(Text).letterSpacing = n;
-    }
   }
   if ('lineHeight' in updates) {
-    const raw = (updates as { lineHeight?: number | string }).lineHeight;
-    const resolved = resolveDesignVariableValue(
-      raw ?? 0,
-      designVariables,
-      themeMode,
-    );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n) && n >= 0) {
-      entity.write(Text).lineHeight = n;
-    }
+    entity.write(Text).lineHeight = Math.max(0, resolveDesignVariableNumber(
+      updates['lineHeight'], designVariables, themeMode, 0,
+    ));
   }
   if (
     ('textAlign' in updates || 'textBaseline' in updates) &&
@@ -1733,25 +1704,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(entity, MaterialDirty);
     });
   }
-  if (
-    'cornerRadius' in updates &&
-    cornerRadius !== undefined &&
-    entity.has(Rect)
-  ) {
-    const resolved = resolveDesignVariableValue(
-      cornerRadius,
-      designVariables,
-      themeMode,
+  if ('cornerRadius' in updates && entity.has(Rect)) {
+    entity.write(Rect).cornerRadius = Math.max(
+      0,
+      resolveDesignVariableNumber(cornerRadius, designVariables, themeMode, 0),
     );
-    const n =
-      typeof resolved === 'number'
-        ? resolved
-        : parseFloat(String(resolved ?? ''));
-    if (Number.isFinite(n)) {
-      entity.write(Rect).cornerRadius = Math.max(0, n);
-      safeAddComponent(entity, GeometryDirty);
-      safeAddComponent(entity, MaterialDirty);
-    }
+    safeAddComponent(entity, GeometryDirty);
+    safeAddComponent(entity, MaterialDirty);
   }
   if ('points' in updates) {
     if (entity.has(Polyline)) {
@@ -2096,35 +2055,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
         entity,
         element as IconFontSerializedNode,
         api,
-      );
-    }
-  }
-
-  {
-    const gType = (element as SerializedNode).type;
-    if (
-      gType === 'g' &&
-      ('fills' in updates ||
-        'strokes' in updates ||
-        'stroke' in updates ||
-        'strokeOpacity' in updates ||
-        'strokeWidth' in updates ||
-        'fillRule' in updates ||
-        'opacity' in updates ||
-        'strokeLinecap' in updates ||
-        'strokeLinejoin' in updates ||
-        'strokeDasharray' in updates ||
-        'strokeDashoffset' in updates ||
-        'strokeDashCap' in updates)
-    ) {
-      safeAddComponent(
-        entity,
-        Group,
-        buildGroupWirePresentation(
-          withInheritPaint as GSerializedNode,
-          designVariables,
-          themeMode,
-        ),
       );
     }
   }

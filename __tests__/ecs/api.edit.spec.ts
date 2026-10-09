@@ -211,7 +211,7 @@ it('refreshes design-variable bindings before completion and records only once',
     fills: [{ type: 'solid' as const, value: '$accent' }],
   };
   state.setNodes([node]);
-  api.getEntityCommands().set(node.id, {} as any);
+  api.getEntityCommands().set(node.id, { id: () => undefined } as any);
   const refresh = jest.spyOn(api, 'updateNode').mockImplementation(() => {});
   api.record('NEVER');
   const changed = jest.fn();

@@ -51,7 +51,7 @@ export function refreshComputedRoughForEntity(entity: Entity): void {
 
   const roughOptions = getRoughOptions({
     // @ts-ignore
-    fill,
+    fills: fill === 'none' ? [] : [{ type: 'solid', value: fill }],
     stroke: color,
     strokeWidth: width,
     strokeDasharray: [dasharray[0], dasharray[1]].join(','),

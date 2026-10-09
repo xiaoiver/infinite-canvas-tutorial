@@ -133,8 +133,13 @@ import {
 } from './components';
 import { AnimationController, AnimationOptions, Keyframe } from './animation';
 import {
+  getComputedInheritGroupWireMap,
+  INHERITABLE_GROUP_WIRE_KEYS,
+} from './utils/inherit-group-wire';
+import {
   History,
   mutateElement,
+  syncInheritedPresentation,
   safeAddComponent,
   safeRemoveComponent,
 } from './history';
@@ -601,14 +606,22 @@ export class API {
 
     if (shouldRefreshDesignVariableBindings) {
       const refresh = () => {
-        for (const node of this.getNodes()) {
-          if (this.#idEntityMap.has(node.id)) {
-            const varPatch = buildDesignVariableRefreshPatch(node);
-            if (Object.keys(varPatch).length > 0) {
-              this.updateNode(node, varPatch, false);
+        const nodes = this.getNodes();
+        const wasUpdatingNodes = this.#updatingNodes;
+        this.#updatingNodes = true;
+        try {
+          for (const node of nodes) {
+            if (this.#idEntityMap.has(node.id)) {
+              const varPatch = buildDesignVariableRefreshPatch(node);
+              if (Object.keys(varPatch).length > 0) {
+                this.updateNode(node, varPatch, false);
+              }
             }
           }
+        } finally {
+          this.#updatingNodes = wasUpdatingNodes;
         }
+        if (!wasUpdatingNodes) this.#refreshInheritedPresentation(nodes);
         // Theme is a display preference, outside document history. Refreshing
         // its bindings must neither capture pending edits nor advance their
         // baseline via record(NEVER). Variable definitions remain document edits.
@@ -1260,7 +1273,10 @@ export class API {
         }
       } else if (entity.has(Text) && entity.read(Text).path) {
         isIntersected = hitTestTextPath(
-          entity.read(ComputedTextMetrics).pathGlyphs ?? [], x, y, offset,
+          entity.read(ComputedTextMetrics).pathGlyphs ?? [],
+          x,
+          y,
+          offset,
         );
       } else {
         isIntersected = true;
@@ -2070,6 +2086,43 @@ export class API {
     this.record();
   }
 
+  #updatingNodes = false;
+
+  /** Resolve a batch once against its final scene, including untouched descendants. */
+  #refreshInheritedPresentation(
+    batch: SerializedNode[],
+    initializedIds: ReadonlySet<string> = new Set(),
+  ) {
+    const scene = this.#mergeSceneWithBatchForEdgeLookup(batch);
+    const affected = new Set(batch.map((node) => node.id));
+    const children = new Map<string, string[]>();
+    for (const node of scene) {
+      if (node.parentId) {
+        const ids = children.get(node.parentId) ?? [];
+        ids.push(node.id);
+        children.set(node.parentId, ids);
+      }
+    }
+    for (const id of affected) {
+      for (const child of children.get(id) ?? []) affected.add(child);
+    }
+    const inherited = getComputedInheritGroupWireMap(scene);
+    for (const node of scene) {
+      // Newly created entities already receive computed paint during deserialization.
+      // Rewriting them here also unnecessarily requires startup systems to declare
+      // write access to every presentation component.
+      if (!affected.has(node.id) || node.isDeleted || initializedIds.has(node.id)) continue;
+      const entity = this.#idEntityMap.get(node.id)?.id();
+      if (entity)
+        syncInheritedPresentation(
+          entity,
+          node,
+          inherited.get(node.id) ?? {},
+          this,
+        );
+    }
+  }
+
   /**
    * If diff is provided, no need to calculate diffs.
    */
@@ -2136,6 +2189,19 @@ export class API {
         }
       }
     }
+    const patch = diff ?? node;
+    if (
+      entity &&
+      !this.#updatingNodes &&
+      ('parentId' in patch ||
+        INHERITABLE_GROUP_WIRE_KEYS.some((key) => key in patch) ||
+        'fill' in patch ||
+        'fillLayers' in patch ||
+        'stroke' in patch ||
+        'strokeOpacity' in patch)
+    ) {
+      this.#refreshInheritedPresentation([node]);
+    }
   }
 
   /**
@@ -2146,63 +2212,74 @@ export class API {
    */
   updateNodes(nodes: SerializedNode[], updateAppState = true) {
     if (!nodes.length) return;
-    const nextNodes = updateAppState ? this.getNodes().slice() : [];
-    const indices = new Map(nextNodes.map((node, index) => [node.id, index]));
-    const existentNodes = nodes.filter((node) =>
-      this.#idEntityMap.has(node.id),
+    const initializedIds = new Set(
+      nodes.filter((node) => !this.#idEntityMap.has(node.id)).map((node) => node.id),
     );
-    const nonExistentNodes = nodes.filter(
-      (node) => !this.#idEntityMap.has(node.id),
-    );
-
-    if (nonExistentNodes.length > 0) {
-      const cameraEntityCommands = this.commands.entity(this.#camera);
-
-      // TODO: Calculate diffs and only update the changed nodes.
-      const { entities, idEntityMap } = serializedNodesToEntities(
-        nonExistentNodes,
-        this.#canvas.read(Canvas).fonts,
-        this.commands,
-        this.#idEntityMap,
-        {
-          lookupNodes: this.#mergeSceneWithBatchForEdgeLookup(nonExistentNodes),
-          variables: this.getAppState().variables,
-          themeMode: this.getAppState().themeMode,
-          canvas: this.#canvas,
-        },
+    const wasUpdatingNodes = this.#updatingNodes;
+    this.#updatingNodes = true;
+    try {
+      const nextNodes = updateAppState ? this.getNodes().slice() : [];
+      const indices = new Map(nextNodes.map((node, index) => [node.id, index]));
+      const existentNodes = nodes.filter((node) =>
+        this.#idEntityMap.has(node.id),
       );
-      nonExistentNodes.forEach((node) => {
-        this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
-      });
+      const nonExistentNodes = nodes.filter(
+        (node) => !this.#idEntityMap.has(node.id),
+      );
 
-      this.commands.execute();
+      if (nonExistentNodes.length > 0) {
+        const cameraEntityCommands = this.commands.entity(this.#camera);
 
-      entities.forEach((entity) => {
-        // Append roots to the camera.
-        if (!entity.has(Children)) {
-          cameraEntityCommands.appendChild(this.commands.entity(entity));
+        // TODO: Calculate diffs and only update the changed nodes.
+        const { entities, idEntityMap } = serializedNodesToEntities(
+          nonExistentNodes,
+          this.#canvas.read(Canvas).fonts,
+          this.commands,
+          this.#idEntityMap,
+          {
+            lookupNodes:
+              this.#mergeSceneWithBatchForEdgeLookup(nodes),
+            variables: this.getAppState().variables,
+            themeMode: this.getAppState().themeMode,
+            canvas: this.#canvas,
+          },
+        );
+        nonExistentNodes.forEach((node) => {
+          this.#idEntityMap.set(node.id, idEntityMap.get(node.id));
+        });
+
+        this.commands.execute();
+
+        entities.forEach((entity) => {
+          // Append roots to the camera.
+          if (!entity.has(Children)) {
+            cameraEntityCommands.appendChild(this.commands.entity(entity));
+          }
+          // Late callers may run after PropagateTransforms; initialize new nodes'
+          // world matrices for SmoothPolyline, transformer anchors, etc.
+          updateGlobalTransform(entity);
+        });
+
+        this.commands.execute();
+
+        if (updateAppState) {
+          nextNodes.push(...this.#refExpandedWireForBatch(nonExistentNodes));
         }
-        // Late callers may run after PropagateTransforms; initialize new nodes'
-        // world matrices for SmoothPolyline, transformer anchors, etc.
-        updateGlobalTransform(entity);
-      });
-
-      this.commands.execute();
-
-      if (updateAppState) {
-        nextNodes.push(...this.#refExpandedWireForBatch(nonExistentNodes));
       }
-    }
 
-    if (existentNodes.length > 0) {
-      existentNodes.forEach((node) => {
-        this.updateNode(node, undefined, false);
-        const index = indices.get(node.id);
-        if (updateAppState && index !== undefined)
-          nextNodes[index] = { ...node };
-      });
+      if (existentNodes.length > 0) {
+        existentNodes.forEach((node) => {
+          this.updateNode(node, undefined, false);
+          const index = indices.get(node.id);
+          if (updateAppState && index !== undefined)
+            nextNodes[index] = { ...node };
+        });
+      }
+      if (updateAppState) this.setNodes(nextNodes);
+    } finally {
+      this.#updatingNodes = wasUpdatingNodes;
     }
-    if (updateAppState) this.setNodes(nextNodes);
+    if (!wasUpdatingNodes) this.#refreshInheritedPresentation(nodes, initializedIds);
   }
 
   /**

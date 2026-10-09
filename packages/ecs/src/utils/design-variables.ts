@@ -260,7 +260,6 @@ export const SERIALIZED_NODE_VARIABLE_KEYS = [
   'innerShadowColor',
   'strokeWidth',
   'cornerRadius',
-  'cornerRadius',
   'letterSpacing',
   'lineHeight',
   'iconFontName',
@@ -274,6 +273,7 @@ const DESIGN_VARIABLE_REFRESH_EXTRA_KEYS = [
   'fontFamily',
   'fontWeight',
   'fontStyle',
+  'fontVariant',
   'fontKerning',
   'textAlign',
   'textBaseline',
@@ -523,6 +523,18 @@ export function resolveDesignVariableValue<T>(
     return value;
   }
   return resolveDesignVariableDefinitionScalar(def, themeMode) as T;
+}
+
+/** Missing or invalid numeric bindings use the component default, never stale values or NaN. */
+export function resolveDesignVariableNumber(
+  value: unknown,
+  variables: DesignVariablesMap | undefined,
+  themeMode: ThemeMode | undefined,
+  fallback: number,
+): number {
+  const resolved = resolveDesignVariableValue(value, variables, themeMode);
+  const number = typeof resolved === 'number' ? resolved : parseFloat(String(resolved ?? ''));
+  return Number.isFinite(number) ? number : fallback;
 }
 
 /**
