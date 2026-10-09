@@ -20,6 +20,7 @@ import {
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import earcut from 'earcut';
+import { hasSelfTouchingContour } from '../utils/path-rendering';
 import { ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location } from '../shaders/mesh';
@@ -403,6 +404,12 @@ export class Mesh extends PathDrawcall {
     } else if (instance.has(Path)) {
       rawPoints = this.pathPoints.get(instance) ?? instance.read(ComputedPoints).points;
       tessellationMethod = instance.read(Path).tessellationMethod;
+      if (
+        tessellationMethod === TesselationMethod.EARCUT &&
+        hasSelfTouchingContour(rawPoints)
+      ) {
+        tessellationMethod = TesselationMethod.LIBTESS;
+      }
     } else if (instance.has(VectorNetwork)) {
       const { vertices, segments, regions } = instance.read(VectorNetwork);
       vnFillMesh = buildVectorNetworkFillMesh(vertices, segments, regions);
