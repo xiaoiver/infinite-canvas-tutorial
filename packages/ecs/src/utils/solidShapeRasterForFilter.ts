@@ -129,17 +129,29 @@ function tryDrawSolidFillTextMask(
     return false;
   }
 
-  if (text.path) {
-    // Intersect the fill with the whole text mask once. Applying destination-in
-    // separately for each glyph would keep only their intersection (often empty).
-    const target = ctx;
-    const mask = ctx.globalCompositeOperation === 'destination-in'
-      ? DOMAdapter.get().createCanvas(ctx.canvas.width, ctx.canvas.height)
-      : undefined;
-    if (mask) {
-      ctx = mask.getContext('2d') as BitmapCanvas2D;
-      ctx.setTransform(target.getTransform());
+  if (ctx.globalCompositeOperation === 'destination-in') {
+    // Build the complete glyph union before clipping. Clipping each line/glyph
+    // separately intersects disjoint masks, and inherits fill opacity twice.
+    const mask = DOMAdapter.get().createCanvas(
+      ctx.canvas.width,
+      ctx.canvas.height,
+    );
+    const maskContext = mask.getContext('2d') as BitmapCanvas2D;
+    if (!maskContext) return false;
+    maskContext.setTransform(ctx.getTransform());
+    if (!tryDrawSolidFillTextMask(maskContext, shape, fillRgba)) return false;
+    ctx.save();
+    try {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(mask as CanvasImageSource, 0, 0);
+    } finally {
+      ctx.restore();
     }
+    return true;
+  }
+
+  if (text.path) {
     ctx.save();
     ctx.font = font;
     ctx.textBaseline = 'alphabetic';
@@ -154,13 +166,6 @@ function tryDrawSolidFillTextMask(
       ctx.restore();
     }
     ctx.restore();
-    if (mask) {
-      target.save();
-      target.setTransform(1, 0, 0, 1, 0, 0);
-      target.globalAlpha = 1;
-      target.drawImage(mask as CanvasImageSource, 0, 0);
-      target.restore();
-    }
     return true;
   }
 
@@ -233,15 +238,7 @@ export function createSolidFillMaskRasterForFilter(
   tw: number,
   th: number,
 ): HTMLCanvasElement | OffscreenCanvas {
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   if (!ctx) {
     throw new Error('Canvas 2D required for solid fill + filter mask');
@@ -443,15 +440,7 @@ export function createStrokeSilhouetteRasterForFilter(
   tw: number,
   th: number,
 ): HTMLCanvasElement | OffscreenCanvas {
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   if (!ctx) {
     throw new Error('Canvas 2D required for stroke silhouette filter raster');
@@ -567,15 +556,7 @@ export function createFillAndStrokeRgbaRasterForFilter(
   tw: number,
   th: number,
 ): HTMLCanvasElement | OffscreenCanvas {
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   if (!ctx) {
     throw new Error('Canvas 2D required for fill+stroke filter raster');
@@ -723,7 +704,7 @@ export function createCanvasGradientForBounds(
   return null;
 }
 
-/** 与 TexturePool 一致：从下至上叠多层 CSS 渐变（铺满几何盒）。 */
+/** 与 TexturePool 一致：CSS 首层在最上方，按逆序铺满几何盒。 */
 export function fillCssGradientsStackedInBounds(
   ctx: BitmapCanvas2D,
   gradients: Gradient[],
@@ -731,7 +712,7 @@ export function fillCssGradientsStackedInBounds(
 ): void {
   const gw = bounds.maxX - bounds.minX;
   const gh = bounds.maxY - bounds.minY;
-  for (const g of gradients) {
+  for (const g of [...gradients].reverse()) {
     if (isMeshGradientGradient(g)) {
       continue;
     }
@@ -774,15 +755,7 @@ export function createGradientFillTextRasterForFilter(
   cssGradients: Gradient[],
   fillOpacityMul: number,
 ): HTMLCanvasElement | OffscreenCanvas {
-  let canvas: HTMLCanvasElement | OffscreenCanvas;
-  if (typeof document !== 'undefined') {
-    const c = document.createElement('canvas');
-    c.width = tw;
-    c.height = th;
-    canvas = c;
-  } else {
-    canvas = new OffscreenCanvas(tw, th);
-  }
+  const canvas = DOMAdapter.get().createCanvas(tw, th);
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
   if (!ctx) {
     throw new Error('Canvas 2D required for gradient text + filter');

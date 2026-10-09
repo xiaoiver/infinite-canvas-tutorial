@@ -111,7 +111,12 @@ export function registerCubeLutFromText(
     usage: TextureUsage.SAMPLED,
   } as TextureDescriptor);
 
-  texture.setImageData([pixelData]);
+  try {
+    texture.setImageData([pixelData]);
+  } catch (error) {
+    texture.destroy();
+    throw error;
+  }
 
   byKey.set(lutKey, {
     texture,
