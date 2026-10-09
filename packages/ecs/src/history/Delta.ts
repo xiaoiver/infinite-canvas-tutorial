@@ -2,6 +2,8 @@
  * Borrow from https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/change.ts#L62
  */
 
+import { documentValueEqual } from '../document';
+
 /**
  * Represents the difference between two objects of the same type.
  *
@@ -91,11 +93,9 @@ export class Delta<T> {
     const deleted = {} as Partial<T>;
     const inserted = {} as Partial<T>;
 
-    // O(n^3) here for elements, but it's not as bad as it looks:
-    // - we do this only on store recordings, not on every frame (not for ephemerals)
-    // - we do this only on previously detected changed elements
-    // - we do shallow compare only on the first level of properties (not going any deeper)
-    // - # of properties is reasonably small
+    // Snapshots own deep copies of document values. Compare each property's
+    // contents so unchanged paints, geometry and variables don't enter a delta
+    // and overwrite unrelated remote edits during undo/redo.
     for (const key of this.distinctKeysIterator(
       'full',
       prevObject,
@@ -127,7 +127,7 @@ export class Delta<T> {
    *
    * @yields keys of properties with different values
    *
-   * WARN: it's based on shallow compare performed only on the first level and doesn't go deeper than that.
+   * Uses document value equality unless reference comparison is requested.
    */
   private static *distinctKeysIterator<T extends {}>(
     join: 'left' | 'right' | 'full',
@@ -162,7 +162,7 @@ export class Delta<T> {
           typeof object2Value === 'object' &&
           object1Value !== null &&
           object2Value !== null &&
-          isShallowEqual(object1Value, object2Value)
+          documentValueEqual(object1Value, object2Value)
         ) {
           continue;
         }
