@@ -1,6 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 import browserConfig from './playwright.browser.config';
 
+// Locally run every suite. CI balances Lottie against the remaining WebKit
+// tests on independent single-worker runners, preserving browser isolation.
+const group = process.env.PLAYWRIGHT_WEBKIT_GROUP || 'all';
+if (!['all', 'lottie', 'other'].includes(group)) {
+  throw new Error(`Unknown PLAYWRIGHT_WEBKIT_GROUP: ${group}`);
+}
+
 export default defineConfig({
   ...browserConfig,
   testMatch: [
@@ -21,7 +28,11 @@ export default defineConfig({
     'lottie.spec.ts',
     'lottie-docs.spec.ts',
     'd2-docs.spec.ts',
-  ],
+  ].filter(
+    (file) =>
+      group === 'all' ||
+      (file === 'lottie.spec.ts' ? group === 'lottie' : group === 'other'),
+  ),
   testIgnore: [],
   outputDir: '.test-results/webkit',
   timeout: 60000,
