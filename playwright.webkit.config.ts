@@ -19,6 +19,7 @@ export default defineConfig({
     'icon-resize.spec.ts',
     'lottie.spec.ts',
     'lottie-docs.spec.ts',
+    'd2-docs.spec.ts',
   ],
   testIgnore: [],
   outputDir: '.test-results/webkit',
