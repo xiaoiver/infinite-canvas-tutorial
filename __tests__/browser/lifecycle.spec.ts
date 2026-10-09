@@ -15,21 +15,23 @@ declare global {
   }
 }
 let errors: string[];
-async function open(page: Page) {
+async function open(page: Page, singleCanvas = false) {
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
     if (message.type() === 'error') errors.push(message.text());
   });
   await page.addInitScript(installProbes);
-  await page.goto('/');
+  await page.goto(singleCanvas ? '/?single-canvas' : '/');
   await expect(page.locator('#status')).toHaveText('Ready');
   await expect
     .poll(() =>
-      page.evaluate(() =>
-        ['left', 'right'].every(
-          (side) =>
-            window.canvasRegression.state(side as 'left' | 'right')?.gpu,
-        ),
+      page.evaluate(
+        (sides) =>
+          sides.every(
+            (side) =>
+              window.canvasRegression.state(side as 'left' | 'right')?.gpu,
+          ),
+        singleCanvas ? ['left'] : ['left', 'right'],
       ),
     )
     .toBe(true);
@@ -214,7 +216,7 @@ for (const provider of ['yjs', 'loro'] as const) {
     context,
   }, info) => {
     const other = await context.newPage();
-    await open(other);
+    await open(other, true);
     const room = `regression-${provider}-${info.testId}`;
     await page.evaluate(
       ([kind, room]) =>
@@ -268,7 +270,7 @@ for (const provider of ['yjs', 'loro'] as const) {
       .toBe(0);
     // A late-joining tab must not resurrect the immutable seed.
     const late = await context.newPage();
-    await open(late);
+    await open(late, true);
     await late.evaluate(
       ([kind, room]) =>
         window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
