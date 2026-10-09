@@ -48,8 +48,6 @@ import {
   Group,
   IconFont,
   Extrude3D,
-  Light3D,
-  Mesh3DNode,
   Canvas3DScope,
   AnimationPlayer,
 } from '../../components';
@@ -87,11 +85,7 @@ import type {
   FlexboxLayoutAttributes,
 } from '../../types/serialized-node';
 import { resolveExtrude3DDepth } from '../extrude3d';
-import {
-  normalizeGeometry,
-  parseLight3DColor,
-  parseMesh3DBaseColor,
-} from '../mesh3d-node';
+import { mesh3DNodeFromWire, light3DFromWire } from '../mesh3d-wire';
 import {
   serializePoints,
   shiftPath,
@@ -1218,7 +1212,6 @@ export function serializedNodesToEntities(
       );
     } else if (type === 'mesh3d') {
       const attrs = attributes as Mesh3DNodeSerializedNode;
-      const mat = attrs.material3d ?? {};
       entityCommands.insert(
         new Rect({
           x: 0,
@@ -1228,47 +1221,13 @@ export function serializedNodesToEntities(
           cornerRadius: 0,
         }),
       );
-      entityCommands.insert(
-        new Mesh3DNode({
-          geometry: normalizeGeometry(attrs.geometry),
-          z: attrs.z ?? 0,
-          rotation3d: attrs.rotation3d ?? [0, 0, 0],
-          scale3d: attrs.scale3d ?? 100,
-          baseColor: parseMesh3DBaseColor(mat.baseColor),
-          ambient: mat.ambient ?? 0.25,
-          diffuse: mat.diffuse ?? 0.75,
-          specular: mat.specular ?? 0.4,
-          shininess: mat.shininess ?? 48,
-          metallic: mat.metallic ?? 0,
-          roughness: mat.roughness ?? 1,
-          map: mat.map ?? null,
-          specularMap: mat.specularMap ?? null,
-          bumpMap: mat.bumpMap ?? null,
-          bumpScale: mat.bumpScale ?? 1,
-          camera3d: attrs.camera3d,
-        }),
-      );
+      entityCommands.insert(mesh3DNodeFromWire(attrs));
       if (options?.canvas) {
         entityCommands.insert(new Canvas3DScope({ canvas: options.canvas }));
       }
     } else if (type === 'light3d') {
       const attrs = attributes as Light3DNodeSerializedNode;
-      entityCommands.insert(
-        new Light3D({
-          type: attrs.lightType,
-          color: parseLight3DColor(attrs.color),
-          intensity: attrs.intensity ?? 1,
-          direction: attrs.direction ?? [-0.5, -0.7, -0.5],
-          position: [absoluteX, absoluteY, attrs.z ?? 0],
-          range: attrs.range ?? 0,
-          ...(attrs.innerConeAngle != null
-            ? { innerConeAngle: attrs.innerConeAngle }
-            : {}),
-          ...(attrs.outerConeAngle != null
-            ? { outerConeAngle: attrs.outerConeAngle }
-            : {}),
-        }),
-      );
+      entityCommands.insert(light3DFromWire(attrs));
       if (options?.canvas) {
         entityCommands.insert(new Canvas3DScope({ canvas: options.canvas }));
       }

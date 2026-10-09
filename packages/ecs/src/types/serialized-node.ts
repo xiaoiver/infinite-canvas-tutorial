@@ -525,6 +525,7 @@ export interface RoughLineSerializedNode
   extends BaseSerializeNode<'rough-line'>,
   Partial<Pick<Line, 'x1' | 'y1' | 'x2' | 'y2'>>,
   Partial<StrokeAttributes>,
+  Partial<RoughAttributes>,
   Partial<HitStrokeInteractionAttributes>,
   Partial<Pick<AttenuationAttributes, 'strokeAttenuation'>>,
   Partial<MarkerAttributes>,

@@ -113,7 +113,7 @@ export class Rough {
    * This property is similar to the strokeLineDash property but it affects the fills, not the stroke. eg. when you want hachure lines to be dashed.
    * @see https://github.com/rough-stuff/rough/wiki#filllinedash
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.object, default: [] })
   declare fillLineDash: Options['fillLineDash'];
 
   /**
@@ -148,21 +148,21 @@ export class Rough {
    * When filling a shape using the dashed style, this property indicates the nominal length of dash (in pixels). If not set, it defaults to the hachureGap value.
    * @see https://github.com/rough-stuff/rough/wiki#dashoffset
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.float32, default: -1 })
   declare dashOffset: Options['dashOffset'];
 
   /**
    * When filling a shape using the dashed style, this property indicates the nominal gap between dashes (in pixels). If not set, it defaults to the hachureGap value.
    * @see https://github.com/rough-stuff/rough/wiki#dashgap
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.float32, default: -1 })
   declare dashGap: Options['dashGap'];
 
   /**
    * When filling a shape using the zigzag-line style, this property indicates the nominal width of the zig-zag triangle in each line. If not set, it defaults to the hachureGap value.
    * @see https://github.com/rough-stuff/rough/wiki#zigzagoffset
    */
-  @field({ type: Type.float32 })
+  @field({ type: Type.float32, default: -1 })
   declare zigzagOffset: Options['zigzagOffset'];
 
   /**

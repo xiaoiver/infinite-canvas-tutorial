@@ -17,12 +17,10 @@ import {
 import { hasRasterPostEffects } from '../utils/filter';
 import { resolveExtrude3DDepth } from '../utils/extrude3d';
 import {
-  normalizeGeometry,
-  parseLight3DColor,
-  parseMesh3DBaseColor,
   rebuildMesh3DNodeCompanionGeometry,
   syncMesh3DNodeCompanionFromSource,
 } from '../utils/mesh3d-node';
+import { mesh3DNodeFromWire, light3DFromWire } from '../utils/mesh3d-wire';
 import { requestGltfMeshLoad } from '../utils/gltf/request-gltf-mesh-load';
 import { isEntityAlive } from '../systems/Transform';
 import { AnimationController, Keyframe, AnimationOptions } from '../animation';
@@ -1415,67 +1413,67 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     });
   }
   if ('roughRoughness' in updates) {
-    safeAddComponent(entity, Rough, { roughness: roughRoughness });
+    safeAddComponent(entity, Rough, { roughness: roughRoughness ?? 1 });
   }
   if ('roughBowing' in updates) {
-    safeAddComponent(entity, Rough, { bowing: roughBowing });
+    safeAddComponent(entity, Rough, { bowing: roughBowing ?? 1 });
   }
   if ('roughFillStyle' in updates) {
-    safeAddComponent(entity, Rough, { fillStyle: roughFillStyle });
+    safeAddComponent(entity, Rough, { fillStyle: roughFillStyle ?? 'hachure' });
     safeAddComponent(entity, MaterialDirty);
   }
   if ('roughFillWeight' in updates) {
-    safeAddComponent(entity, Rough, { fillWeight: roughFillWeight });
+    safeAddComponent(entity, Rough, { fillWeight: roughFillWeight ?? -1 });
   }
   if ('roughHachureAngle' in updates) {
-    safeAddComponent(entity, Rough, { hachureAngle: roughHachureAngle });
+    safeAddComponent(entity, Rough, { hachureAngle: roughHachureAngle ?? -41 });
   }
   if ('roughHachureGap' in updates) {
-    safeAddComponent(entity, Rough, { hachureGap: roughHachureGap });
+    safeAddComponent(entity, Rough, { hachureGap: roughHachureGap ?? -1 });
   }
   if ('roughCurveStepCount' in updates) {
-    safeAddComponent(entity, Rough, { curveStepCount: roughCurveStepCount });
+    safeAddComponent(entity, Rough, { curveStepCount: roughCurveStepCount ?? 9 });
   }
   if ('roughCurveFitting' in updates) {
-    safeAddComponent(entity, Rough, { curveFitting: roughCurveFitting });
+    safeAddComponent(entity, Rough, { curveFitting: roughCurveFitting ?? 0.95 });
   }
   if ('roughDisableMultiStroke' in updates) {
     safeAddComponent(entity, Rough, {
-      disableMultiStroke: roughDisableMultiStroke,
+      disableMultiStroke: roughDisableMultiStroke ?? false,
     });
   }
   if ('roughDisableMultiStrokeFill' in updates) {
     safeAddComponent(entity, Rough, {
-      disableMultiStrokeFill: roughDisableMultiStrokeFill,
+      disableMultiStrokeFill: roughDisableMultiStrokeFill ?? false,
     });
   }
   if ('roughSimplification' in updates) {
-    safeAddComponent(entity, Rough, { simplification: roughSimplification });
+    safeAddComponent(entity, Rough, { simplification: roughSimplification ?? 0 });
   }
   if ('roughDashOffset' in updates) {
-    safeAddComponent(entity, Rough, { dashOffset: roughDashOffset });
+    safeAddComponent(entity, Rough, { dashOffset: roughDashOffset ?? -1 });
   }
   if ('roughDashGap' in updates) {
-    safeAddComponent(entity, Rough, { dashGap: roughDashGap });
+    safeAddComponent(entity, Rough, { dashGap: roughDashGap ?? -1 });
   }
   if ('roughZigzagOffset' in updates) {
-    safeAddComponent(entity, Rough, { zigzagOffset: roughZigzagOffset });
+    safeAddComponent(entity, Rough, { zigzagOffset: roughZigzagOffset ?? -1 });
   }
   if ('roughPreserveVertices' in updates) {
     safeAddComponent(entity, Rough, {
-      preserveVertices: roughPreserveVertices,
+      preserveVertices: roughPreserveVertices ?? false,
     });
   }
   if ('roughFillLineDash' in updates) {
-    safeAddComponent(entity, Rough, { fillLineDash: roughFillLineDash });
+    safeAddComponent(entity, Rough, { fillLineDash: roughFillLineDash ?? [] });
   }
   if ('roughFillLineDashOffset' in updates) {
     safeAddComponent(entity, Rough, {
-      fillLineDashOffset: roughFillLineDashOffset,
+      fillLineDashOffset: roughFillLineDashOffset ?? 0,
     });
   }
   if ('roughSeed' in updates) {
-    safeAddComponent(entity, Rough, { seed: roughSeed });
+    safeAddComponent(entity, Rough, { seed: roughSeed ?? 1 });
   }
 
   if ('markerStart' in updates) {
@@ -1842,7 +1840,6 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (elNode.type === 'mesh3d') {
-    const patch = updates as Partial<Mesh3DNodeSerializedNode>;
     const touchesMesh3DNode =
       'z' in updates ||
       'rotation3d' in updates ||
@@ -1856,36 +1853,12 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       'height' in updates;
     if (touchesMesh3DNode) {
       const meshNode = entity.write(Mesh3DNode);
-      if ('geometry' in updates && patch.geometry != null) {
-        meshNode.geometry = normalizeGeometry(patch.geometry);
-      }
-      if ('z' in updates && patch.z != null) {
-        meshNode.z = patch.z;
-      }
-      if ('rotation3d' in updates && patch.rotation3d) {
-        meshNode.rotation3d = [...patch.rotation3d];
-      }
-      if ('scale3d' in updates && patch.scale3d != null) {
-        meshNode.scale3d = patch.scale3d;
-      }
-      if ('material3d' in updates && patch.material3d) {
-        const mat = patch.material3d;
-        if (mat.baseColor != null) {
-          meshNode.baseColor = parseMesh3DBaseColor(mat.baseColor);
-        }
-        if (mat.ambient != null) meshNode.ambient = mat.ambient;
-        if (mat.diffuse != null) meshNode.diffuse = mat.diffuse;
-        if (mat.specular != null) meshNode.specular = mat.specular;
-        if (mat.shininess != null) meshNode.shininess = mat.shininess;
-        if (mat.metallic != null) meshNode.metallic = mat.metallic;
-        if (mat.roughness != null) meshNode.roughness = mat.roughness;
-        if ('map' in mat) meshNode.map = mat.map ?? null;
-        if ('specularMap' in mat) {
-          meshNode.specularMap = mat.specularMap ?? null;
-        }
-        if ('bumpMap' in mat) meshNode.bumpMap = mat.bumpMap ?? null;
-        if (mat.bumpScale != null) meshNode.bumpScale = mat.bumpScale;
-      }
+      // Nested material3d is a complete wire value, not a merge into the old
+      // component. Omitted/removed fields must restore the same defaults as load.
+      Object.assign(
+        meshNode,
+        mesh3DNodeFromWire(elNode as Mesh3DNodeSerializedNode),
+      );
       const meshEntity = meshNode.meshEntity;
       const needsCompanionSync =
         meshEntity &&
@@ -1923,40 +1896,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if (elNode.type === 'light3d') {
-    const light = entity.write(Light3D);
-    const patch = updates as Partial<Light3DNodeSerializedNode>;
-    if ('lightType' in updates && patch.lightType) {
-      light.type = patch.lightType;
-    }
-    if ('color' in updates) {
-      light.color = parseLight3DColor(patch.color);
-    }
-    if ('intensity' in updates && patch.intensity != null) {
-      light.intensity = patch.intensity;
-    }
-    if ('direction' in updates && patch.direction) {
-      light.direction = [...patch.direction];
-    }
-    if ('range' in updates && patch.range != null) {
-      light.range = patch.range;
-    }
-    if ('innerConeAngle' in updates && patch.innerConeAngle != null) {
-      light.innerConeAngle = patch.innerConeAngle;
-    }
-    if ('outerConeAngle' in updates && patch.outerConeAngle != null) {
-      light.outerConeAngle = patch.outerConeAngle;
-    }
-    if (
-      ('x' in updates || 'y' in updates || 'z' in updates) &&
-      entity.has(Transform)
-    ) {
-      const t = entity.read(Transform).translation;
-      light.position = [
-        'x' in updates && patch.x != null ? patch.x : t.x,
-        'y' in updates && patch.y != null ? patch.y : t.y,
-        patch.z ?? light.position[2],
-      ];
-    }
+    Object.assign(
+      entity.write(Light3D),
+      light3DFromWire(elNode as Light3DNodeSerializedNode),
+    );
   }
 
   if ('display' in updates) {

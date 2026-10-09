@@ -73,6 +73,7 @@ export function refreshComputedRoughForEntity(entity: Entity): void {
     roughDashOffset: rough.dashOffset,
     roughDashGap: rough.dashGap,
     roughZigzagOffset: rough.zigzagOffset,
+    roughPreserveVertices: rough.preserveVertices,
   });
 
   if (entity.has(Circle)) {
@@ -141,6 +142,7 @@ export class ComputeRough extends System {
     (q) =>
       q.addedOrChanged
         .with(Rough)
+        .trackWrites
         .and.withAny(Circle, Ellipse, Rect, Line, Polyline, Path, FillLayers, Stroke, StrokeLayers)
         .trackWrites,
   );

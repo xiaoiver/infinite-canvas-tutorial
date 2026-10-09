@@ -14,10 +14,15 @@ import {
   System,
   system,
   type SerializedNode,
+  type Plugin,
 } from '../../packages/ecs/src';
 
 /** Real scene/history systems, explicit frames, and no GPU allocation. */
-export async function createDocumentWorld(count = 1, pointerEvents = false) {
+export async function createDocumentWorld(
+  count = 1,
+  pointerEvents = false,
+  extraPlugins: Plugin[] = [],
+) {
   const previousAdapter = DOMAdapter.get();
   const previousWindow = globalThis.window;
   const previousDocument = globalThis.document;
@@ -72,6 +77,7 @@ export async function createDocumentWorld(count = 1, pointerEvents = false) {
           })
         : plugin,
     ),
+    ...extraPlugins,
     () => {
       system(PreStartUp)(Bootstrap);
       system((s) => s.inAnyOrderWith(s.allSystems))(Bootstrap);
