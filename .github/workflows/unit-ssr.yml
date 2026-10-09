@@ -45,6 +45,17 @@ jobs:
         env:
           CI: true
 
+      - name: Upload ECS coverage reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecs-coverage
+          path: |
+            coverage/coverage-summary.json
+            coverage/lcov.info
+          if-no-files-found: warn
+          retention-days: 14
+
       - name: Run path text and curve regression tests
         run: >-
           xvfb-run -s "-ac -screen 0 1280x1024x16"

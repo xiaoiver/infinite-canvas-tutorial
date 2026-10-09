@@ -6,6 +6,8 @@
 | [FRAME_FEATURE_DESIGN.md](./FRAME_FEATURE_DESIGN.md) | Frame 功能设计                                                          |
 | [rc-gi-implementation.md](./rc-gi-implementation.md) | Radiance Cascades GI 实现说明                                           |
 
+测试覆盖率的分批计划、当前基线和 CI 门槛见 [ECS 测试覆盖率推进](./ecs-test-coverage.md)。
+
 ## 已确认的重构路线
 
 2026-10-05 与维护者确认。按下列顺序逐项推进，每轮提交独立 PR，合并后更新进度。
