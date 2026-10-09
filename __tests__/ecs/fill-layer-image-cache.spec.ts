@@ -52,6 +52,24 @@ const pixel = (
     1,
   ).data,
 ];
+
+it.each(['none', 'scale-down'] as const)(
+  'keeps intrinsic dimensions for %s after SVG supersampling',
+  (fit) => {
+    const source = url();
+    setFillLayerDecodedBitmapForUrl(source, bitmap('red', 80, 40), {
+      width: 8,
+      height: 4,
+    });
+    const c = rasterizeFillLayerImageUrlForTexture(source, 20, 20, undefined, {
+      objectFit: fit,
+      objectPosition: 'left top',
+    })!;
+    expect(pixel(c, 3, 2)).toEqual([255, 0, 0, 255]);
+    expect(pixel(c, 10, 2)[3]).toBe(0);
+    expect(pixel(c, 3, 8)[3]).toBe(0);
+  },
+);
 let createImage: jest.Mock;
 beforeEach(() => {
   globalThis.Image = undefined;

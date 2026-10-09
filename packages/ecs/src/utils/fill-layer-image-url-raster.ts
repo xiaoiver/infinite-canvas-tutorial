@@ -4,8 +4,12 @@ import type { FillLayerItem } from '../components/renderable/Fill';
 import { DOMAdapter } from '../environment';
 import { parseColor } from './color';
 import { fillLayerOpacity, isFillLayerEnabled } from './fillLayers';
-import type { FillAttributes, SerializedFillLayerItem } from '../types/serialized-node';
+import type {
+  FillAttributes,
+  SerializedFillLayerItem,
+} from '../types/serialized-node';
 import {
+  computeObjectFitDrawRect,
   drawCanvasImageWithObjectFit,
   fillLayerImageRasterOptions,
   type FillLayerImageRasterOptions,
@@ -15,7 +19,10 @@ import {
   resolveFillImageTexturePixelSize,
 } from './fillImageTextureSize';
 
-export type { FillImageObjectFit, FillLayerImageRasterOptions } from './fill-layer-image-object-fit';
+export type {
+  FillImageObjectFit,
+  FillLayerImageRasterOptions,
+} from './fill-layer-image-object-fit';
 export {
   computeObjectFitDrawRect,
   drawCanvasImageWithObjectFit,
@@ -53,8 +60,7 @@ export function resolveFillLayerOpacityFromWire(
         'value' in l &&
         'value' in layer &&
         String(l.value) === String(layer.value),
-    ) ??
-    fills.find((l) => isFillLayerEnabled(l) && l.type === layer.type);
+    ) ?? fills.find((l) => isFillLayerEnabled(l) && l.type === layer.type);
   if (
     wire &&
     'opacity' in wire &&
@@ -81,15 +87,14 @@ export function resolveImageFillRasterOptions(
   if (!Array.isArray(fills)) {
     return fromEcs;
   }
-  const wire =
-    (fills.find(
+  const wire = (fills.find(
+    (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
+      isFillLayerEnabled(l) && l.type === 'image' && l.value === layer.value,
+  ) ??
+    fills.find(
       (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
-        isFillLayerEnabled(l) && l.type === 'image' && l.value === layer.value,
-    ) ??
-      fills.find(
-        (l): l is Extract<SerializedFillLayerItem, { type: 'image' }> =>
-          isFillLayerEnabled(l) && l.type === 'image',
-      )) as Extract<SerializedFillLayerItem, { type: 'image' }> | undefined;
+        isFillLayerEnabled(l) && l.type === 'image',
+    )) as Extract<SerializedFillLayerItem, { type: 'image' }> | undefined;
   if (!wire) {
     return fromEcs;
   }
@@ -98,6 +103,22 @@ export function resolveImageFillRasterOptions(
 
 /** 已成功解码的 FillLayers 图片 URL，供后续帧同步栅格化。 */
 const fillLayerDecodedBitmapByUrl = new Map<string, ImageBitmap>();
+// SVG supersampling changes pixel dimensions, not CSS intrinsic dimensions.
+const bitmapIntrinsicSize = new WeakMap<
+  ImageBitmap,
+  { width: number; height: number }
+>();
+
+export function getFillLayerDecodedBitmapIntrinsicSize(url: string) {
+  const bitmap = fillLayerDecodedBitmapByUrl.get(url);
+  return (
+    bitmap &&
+    (bitmapIntrinsicSize.get(bitmap) ?? {
+      width: bitmap.width,
+      height: bitmap.height,
+    })
+  );
+}
 
 export function getFillLayerDecodedBitmap(
   url: string,
@@ -108,12 +129,14 @@ export function getFillLayerDecodedBitmap(
 export function setFillLayerDecodedBitmapForUrl(
   url: string,
   bmp: ImageBitmap,
+  intrinsicSize?: { width: number; height: number },
 ): void {
   const prev = fillLayerDecodedBitmapByUrl.get(url);
   if (prev && prev !== bmp) {
     closeDecodedBitmap(prev);
   }
   fillLayerDecodedBitmapByUrl.set(url, bmp);
+  if (intrinsicSize) bitmapIntrinsicSize.set(bmp, { ...intrinsicSize });
 }
 
 function closeDecodedBitmap(bitmap: ImageBitmap): void {
@@ -138,15 +161,17 @@ function blitImageBitmapToCanvas(
     return null;
   }
   try {
-    drawCanvasImageWithObjectFit(
-      ctx,
-      bmp,
-      bmp.width,
-      bmp.height,
+    const intrinsic = bitmapIntrinsicSize.get(bmp) ?? bmp;
+    const { dx, dy, dw, dh } = computeObjectFitDrawRect(
+      intrinsic.width,
+      intrinsic.height,
       tw,
       th,
-      options,
+      options?.objectFit,
+      options?.objectPosition,
     );
+    ctx.clearRect(0, 0, tw, th);
+    ctx.drawImage(bmp, 0, 0, bmp.width, bmp.height, dx, dy, dw, dh);
   } catch {
     return null;
   }

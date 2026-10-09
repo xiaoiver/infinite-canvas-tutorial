@@ -2,7 +2,6 @@ import { isString } from '@antv/util';
 import { DOMAdapter } from '../environment';
 import {
   computeConicGradient,
-  computeLinearGradient,
   computeRadialGradient,
   ConicGradient,
   fillLinearGradientPremultiplied,
@@ -21,11 +20,28 @@ type GradientExtraParams = {
   min: [number, number];
 };
 
+// Continuous edits must not retain every historical gradient/pattern forever.
+const TEXTURE_POOL_CACHE_LIMIT = 256;
+function cachedPaint<T>(cache: Map<string, T>, key: string): T | undefined {
+  const value = cache.get(key);
+  if (value) {
+    cache.delete(key);
+    cache.set(key, value);
+  }
+  return value;
+}
+function cachePaint<T>(cache: Map<string, T>, key: string, value: T): void {
+  cache.set(key, value);
+  if (cache.size > TEXTURE_POOL_CACHE_LIMIT) {
+    cache.delete(cache.keys().next().value);
+  }
+}
+
 export class TexturePool {
   #canvas: HTMLCanvasElement | OffscreenCanvas;
   #ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
-  #gradientCache: Record<string, CanvasGradient> = {};
-  #patternCache: Record<string, CanvasPattern> = {};
+  #gradientCache = new Map<string, CanvasGradient>();
+  #patternCache = new Map<string, CanvasPattern>();
 
   constructor() {
     this.#canvas = DOMAdapter.get().createCanvas(128, 128);
@@ -35,8 +51,8 @@ export class TexturePool {
   }
 
   destroy() {
-    this.#gradientCache = {};
-    this.#patternCache = {};
+    this.#gradientCache.clear();
+    this.#patternCache.clear();
   }
 
   getOrCreatePattern(params: {
@@ -57,11 +73,12 @@ export class TexturePool {
 
     let canvasPattern: CanvasPattern | null = null;
     const key = generatePatternKey(params);
-    if (this.#patternCache[key]) {
-      canvasPattern = this.#patternCache[key];
+    const cached = cachedPaint(this.#patternCache, key);
+    if (cached) {
+      canvasPattern = cached;
     } else {
       canvasPattern = image && this.#ctx.createPattern(image, repetition);
-      this.#patternCache[key] = canvasPattern;
+      if (canvasPattern) cachePaint(this.#patternCache, key, canvasPattern);
 
       // @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasPattern/setTransform
       // if (transform) {
@@ -80,8 +97,12 @@ export class TexturePool {
       // }
     }
 
-    this.#ctx.fillStyle = canvasPattern;
-    this.#ctx.fillRect(0, 0, width, height);
+    // createPattern can return null while its image is not decoded yet. Keep
+    // the placeholder transparent instead of filling with the default black.
+    if (canvasPattern) {
+      this.#ctx.fillStyle = canvasPattern;
+      this.#ctx.fillRect(0, 0, width, height);
+    }
 
     return DOMAdapter.get().createTexImageSource(this.#canvas);
   }
@@ -100,12 +121,21 @@ export class TexturePool {
     }
 
     // CSS `background` 列表：靠前的层在上；绘制时自下而上叠合。
-    [...gradients].reverse().forEach((g) => {
+    [...gradients].reverse().forEach((g, index) => {
       if (!g || g.type === 'mesh-gradient') {
         return;
       }
       if (g.type === 'linear-gradient') {
-        fillLinearGradientPremultiplied(this.#ctx, 0, 0, width, height, g);
+        // putImageData replaces pixels. Raster upper linear layers separately
+        // so their transparency composites over the existing lower layers.
+        if (index === 0) {
+          fillLinearGradientPremultiplied(this.#ctx, 0, 0, width, height, g);
+        } else {
+          const layer = DOMAdapter.get().createCanvas(width, height);
+          const ctx = layer.getContext('2d') as CanvasRenderingContext2D;
+          fillLinearGradientPremultiplied(ctx, 0, 0, width, height, g);
+          this.#ctx.drawImage(ctx.canvas, 0, 0);
+        }
         return;
       }
       const gradient = this.getOrCreateGradientInternal({
@@ -125,26 +155,16 @@ export class TexturePool {
   }
 
   private getOrCreateGradientInternal(
-    params: CanvasRasterGradient & GradientExtraParams,
+    params: (RadialGradient | ConicGradient) & GradientExtraParams,
   ) {
     const key = generateGradientKey(params);
     const { type, steps, min, width, height } = params;
 
-    if (this.#gradientCache[key]) {
-      return this.#gradientCache[key];
-    }
+    const cached = cachedPaint(this.#gradientCache, key);
+    if (cached) return cached;
 
     let gradient: CanvasGradient | null = null;
-    if (type === 'linear-gradient') {
-      const { x1, y1, x2, y2 } = computeLinearGradient(
-        min,
-        width,
-        height,
-        params.angle,
-      );
-      // @see https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasRenderingContext2D/createLinearGradient
-      gradient = this.#ctx.createLinearGradient(x1, y1, x2, y2);
-    } else if (type === 'radial-gradient') {
+    if (type === 'radial-gradient') {
       const { cx, cy, size } = params;
       const { x, y, r } = computeRadialGradient(
         min,
@@ -169,10 +189,10 @@ export class TexturePool {
         }
       });
 
-      this.#gradientCache[key] = gradient;
+      cachePaint(this.#gradientCache, key, gradient);
     }
 
-    return this.#gradientCache[key];
+    return gradient;
   }
 }
 
@@ -181,34 +201,48 @@ export function generateGradientKey(
 ): string {
   const { type, min, width, height, steps } = params;
 
-  const suffix = `${type}-${Math.round(min[0])}-${Math.round(
-    min[1],
-  )}-${Math.round(width)}-${Math.round(height)}-${steps
-    .map(({ offset, color }) => `${offset.value}${color}`)
-    .join('-')}`;
-
-  if (type === 'linear-gradient') {
-    const { angle } = params;
-    return `gradient-${hashCode(`${Math.round(angle)}-${suffix}`)}`;
-  } else if (type === 'radial-gradient') {
-    const { cx, cy, size } = params;
-    return `gradient-${hashCode(
-      `${Math.round(cx.value)}-${Math.round(cy.value)}-${Math.round(
-        Number(size?.value || 0),
-      )}-${suffix}`,
-    )}`;
-  } else if (type === 'conic-gradient') {
-    const { cx, cy, angle } = params;
-    return `gradient-${hashCode(
-      `${Math.round(cx.value)}-${Math.round(cy.value)}-${Math.round(
-        angle || 0,
-      )}-${suffix}`,
-    )}`;
-  }
+  // Keep units, keywords and fractional values: rounding merges visibly
+  // different gradients, both in the raster cache and exported SVG defs.
+  const geometry =
+    type === 'linear-gradient'
+      ? [params.angle]
+      : [
+          params.cx.type,
+          params.cx.value,
+          params.cy.type,
+          params.cy.value,
+          ...(type === 'radial-gradient'
+            ? [params.size?.type, params.size?.value]
+            : [params.angle]),
+        ];
+  return `gradient-${hashCode(
+    JSON.stringify([
+      type,
+      min,
+      width,
+      height,
+      geometry,
+      steps.map(({ offset, color }) => [
+        offset.type,
+        offset.value,
+        color.toString(),
+      ]),
+    ]),
+  )}`;
 }
+
+const patternImageIds = new WeakMap<object, number>();
+let nextPatternImageId = 0;
 
 export function generatePatternKey(params: { pattern: Pattern }): string {
   const { image, repetition, transform } = params.pattern;
-  // TODO: when image is not string
-  return `pattern-${hashCode(`pattern-${image}-${repetition}-${transform}`)}`;
+  if (isString(image)) {
+    return `pattern-${hashCode(`pattern-${image}-${repetition}-${transform}`)}`;
+  }
+  let id = patternImageIds.get(image);
+  if (id === undefined) {
+    id = nextPatternImageId++;
+    patternImageIds.set(image, id);
+  }
+  return `pattern-image-${id}-${hashCode(`${repetition}-${transform}`)}`;
 }
