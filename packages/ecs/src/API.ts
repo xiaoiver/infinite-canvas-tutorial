@@ -1347,7 +1347,6 @@ export class API {
       onfinish = undefined,
     } = options;
 
-    const camera = this.#camera;
     const {
       x,
       y,
@@ -1355,10 +1354,7 @@ export class API {
       rotation,
       viewportX = 0,
       viewportY = 0,
-    } = {
-      ...camera.read(ComputedCamera),
-      ...landmark,
-    };
+    } = this.createLandmark(landmark);
     const useFixedViewport = viewportX || viewportY;
 
     const endAnimation = () => {
