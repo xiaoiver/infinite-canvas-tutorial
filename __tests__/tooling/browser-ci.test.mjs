@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import BrowserTimingReporter, {
   summarizeTimings,
 } from '../../scripts/browser-timing-reporter.mjs';
+import { discover } from './helpers/playwright-discovery.mjs';
 
 const require = createRequire(import.meta.url);
 // Use ESLint's declared YAML dependency without adding another workspace package.
@@ -14,39 +15,6 @@ const workflow = load(
   readFileSync('.github/workflows/browser-regression.yml', 'utf8'),
 );
 const matrix = workflow.jobs['browser-tests'].strategy.matrix.include;
-
-function discover(config, shard = '1/1', group = 'all') {
-  const report = JSON.parse(
-    execFileSync(
-      process.execPath,
-      [
-        require.resolve('@playwright/test/cli'),
-        'test',
-        '-c',
-        config,
-        `--shard=${shard}`,
-        '--list',
-        '--reporter=json',
-      ],
-      {
-        encoding: 'utf8',
-        env: {
-          ...process.env,
-          PLAYWRIGHT_WEBKIT_GROUP: group,
-          PLAYWRIGHT_JSON_OUTPUT_FILE: '',
-        },
-        maxBuffer: 8 * 1024 * 1024,
-      },
-    ),
-  );
-  const ids = [];
-  const visit = (suite) => {
-    for (const spec of suite.specs ?? []) ids.push(spec.id);
-    for (const child of suite.suites ?? []) visit(child);
-  };
-  for (const suite of report.suites) visit(suite);
-  return ids;
-}
 
 for (const browser of ['chromium', 'webkit']) {
   test(`${browser} CI groups cover every discovered test exactly once`, () => {

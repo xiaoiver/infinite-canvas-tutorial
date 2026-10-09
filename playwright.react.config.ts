@@ -5,6 +5,9 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   outputDir: '.test-results/react',
   timeout: 60000,
+  // Shard individual cases instead of whole files. Each runner still executes
+  // sequentially; these tests own their page and have no shared beforeAll state.
+  fullyParallel: true,
   workers: 1,
   forbidOnly: !!process.env.CI,
   reporter: 'list',

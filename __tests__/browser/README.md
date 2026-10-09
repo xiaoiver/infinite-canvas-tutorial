@@ -117,8 +117,42 @@ Both browsers use native taps to select shapes and activate undo/redo. Chromium
 uses trusted touch drags; WebKit uses DOM touch PointerEvents for resizing.
 Assertions cover geometry, the React inspector, history, and isolation from the
 second canvas. These are interaction checks, not a physical iOS or WebKit visual
-rendering check. The React 18/19 CI matrix runs both browsers and uploads failure
-traces and screenshots from `.test-results/react` and `.test-results/react-webkit`.
+rendering check. The React 18/19 CI matrix runs both browsers.
+
+`.github/workflows/react.yml` builds and checks each React version once, then
+restores its ESM/CJS build artifact into independent browser jobs. Each version
+runs two Chromium shards and three WebKit shards, with one worker per runner
+and the existing per-test WebKit isolation. Sharding distributes individual cases
+evenly rather than keeping large files together; tests still run sequentially on
+each runner. Only the selected browser is installed
+on each runner. New commits cancel obsolete runs for the same PR or branch.
+
+The existing `react (18.2.0)` and `react (19.2.3)` checks remain the merge gates.
+Both require the complete checks/browser matrix to succeed; failures, skipped
+jobs and cancellations cannot turn either gate green. `pnpm test:tooling`
+discovers the actual tests and verifies each browser's shards cover them exactly
+once for both React versions. Local unsharded commands still run the entire suite.
+
+To run a CI shard locally, after the package build:
+
+```sh
+pnpm test:react:browser --shard=1/2
+pnpm test:react:browser:webkit --shard=1/3
+```
+
+Each browser job uploads JSON results, setup/body/teardown timing summaries, and
+failure screenshots/traces for seven days, including hidden files. Reports are
+available for successful runs too. Use `--reporter=list,./scripts/browser-timing-reporter.mjs`
+to generate timing reports locally. Set `PLAYWRIGHT_JSON_OUTPUT_FILE` and add the
+`json` reporter to also save machine-readable results.
+
+React suites using `isolated-webkit-test` attach a bounded `browser-lifecycle`
+event trail on failure: navigation, page close/crash, Vite messages, page errors,
+failed requests, and Chromium execution-context destruction. Capture uses
+host-side state, so it also works when `page.evaluate()` cannot run. This adds
+diagnostic evidence for the intermittent React 19 selection failure; it does not
+claim that its underlying cause has been fixed. Keep assertions and retry policy
+unchanged while investigating.
 
 Drawing preference checks in `__tests__/react/browser/drawing-preferences.spec.ts`
 mount the real settings controls with two React canvases. They cover history and
