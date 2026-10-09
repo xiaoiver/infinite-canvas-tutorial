@@ -51,6 +51,12 @@ module.exports = {
       functions: 100,
       lines: 100,
     },
+    './packages/ecs/src/history/Snapshot.ts': {
+      statements: 100,
+      branches: 90,
+      functions: 100,
+      lines: 100,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [
