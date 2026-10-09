@@ -311,7 +311,38 @@ for (const action of ['disconnect', 'replace', 'destroy', 'tool'] as const) {
       await expect(page.getByTestId('left-status')).toHaveCount(0);
     else {
       await geometry(page, 'left', [-30, -10, 200, 100]);
+      if (action === 'tool') {
+        // Select finishes the crop when switching tools. That legitimate exit
+        // is one undo step; the cancelled scale must not add another one.
+        await expect(panel.locator('sp-slider')).toHaveCount(0);
+        await expect
+          .poll(() =>
+            page.evaluate(() => window.apis.left.getAppState().layersCropping),
+          )
+          .toEqual([]);
+        await expect
+          .poll(() =>
+            page.evaluate(
+              () => window.apis.left.getNodeById('crop-a')!.clipMode,
+            ),
+          )
+          .toBe('clip');
+        await page.getByTestId('left-undo').click();
+        await geometry(page, 'left', [-30, -10, 200, 100]);
+      }
       await expect(page.getByTestId('left-undo')).toBeDisabled();
+      if (action === 'tool') {
+        await page.evaluate(() =>
+          window.apis.left.edit(
+            (api) => {
+              api.selectNodes([api.getNodeById('left')!]);
+              api.setAppState({ layersCropping: ['crop-a'] });
+            },
+            { capture: 'NEVER' },
+          ),
+        );
+        await expect(panel.locator('sp-slider')).toBeVisible();
+      }
       await scale(panel, 2);
       await geometry(page, 'left', [-130, -60, 400, 200]);
     }
@@ -345,14 +376,44 @@ for (const action of ['delete', 'reparent'] as const) {
       );
     }, action);
     await drain(page);
-    await expect(page.getByTestId('left-undo')).toBeDisabled();
+    // Removing the last child ends crop mode and restores the mask. Undo that
+    // cleanup once without reverting the remote deletion/reparent or scaling.
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.apis.left.getAppState().layersCropping),
+      )
+      .toEqual([]);
+    await expect(panel.locator('sp-slider')).toHaveCount(0);
     await geometry(page, 'crop-a', [70, 60, 100, 80]);
-    if (action === 'reparent')
+    const childState = () =>
+      page.evaluate(() => {
+        const node = window.apis.left.getNodeById('left');
+        if (!node) return null;
+        const { parentId, x, y, width, height } = node;
+        return { parentId, x, y, width, height };
+      });
+    const child = await childState();
+    if (action === 'delete') expect(child).toBeNull();
+    else
+      expect(child).toMatchObject({
+        parentId: 'crop-b',
+        width: 200,
+        height: 100,
+      });
+    for (const [history, clipMode] of [
+      ['undo', 'soft'],
+      ['redo', 'clip'],
+    ] as const) {
+      await page.getByTestId(`left-${history}`).click();
       await expect
         .poll(() =>
-          page.evaluate(() => window.apis.left.getNodeById('left')!.width),
+          page.evaluate(() => window.apis.left.getNodeById('crop-a')!.clipMode),
         )
-        .toBe(200);
+        .toBe(clipMode);
+      expect(await childState()).toEqual(child);
+      await expect(page.getByTestId(`left-${history}`)).toBeDisabled();
+    }
+    await expect(page.getByTestId('right-undo')).toBeDisabled();
     expect(errors).toEqual([]);
   });
 }
