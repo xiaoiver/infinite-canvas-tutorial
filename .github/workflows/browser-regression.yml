@@ -5,9 +5,17 @@ on:
     branches: [master]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  browser-regression:
+  static-checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -18,18 +26,83 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm exec playwright install --with-deps chromium webkit
       - run: pnpm test:tooling
       - run: pnpm lint
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
-      - run: pnpm test:browser
-      - run: pnpm test:browser:webkit
-      - uses: actions/upload-artifact@v4
-        if: failure()
+
+  browser-tests:
+    name: ${{ matrix.browser }} (${{ matrix.group }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            group: shard-1
+            config: playwright.browser.config.ts
+            shard: 1/2
+            webkit-group: all
+          - browser: chromium
+            group: shard-2
+            config: playwright.browser.config.ts
+            shard: 2/2
+            webkit-group: all
+          # Lottie took ~12 minutes on WebKit, as much as all other suites
+          # combined. Keep these groups on independent single-worker runners.
+          - browser: webkit
+            group: lottie
+            config: playwright.webkit.config.ts
+            shard: 1/1
+            webkit-group: lottie
+          - browser: webkit
+            group: other
+            config: playwright.webkit.config.ts
+            shard: 1/1
+            webkit-group: other
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
-          name: browser-regression-failures
-          path: |
-            .test-results/browser
-            .test-results/webkit
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - name: Run browser tests
+        run: >-
+          pnpm exec playwright test -c ${{ matrix.config }}
+          --shard=${{ matrix.shard }}
+          --reporter=list,json,./scripts/browser-timing-reporter.mjs
+        env:
+          PLAYWRIGHT_WEBKIT_GROUP: ${{ matrix.webkit-group }}
+          PLAYWRIGHT_JSON_OUTPUT_FILE: .test-results/results.json
+          BROWSER_TEST_GROUP: ${{ matrix.group }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: browser-regression-${{ matrix.browser }}-${{ matrix.group }}
+          path: .test-results/
           include-hidden-files: true
-          if-no-files-found: ignore
+          if-no-files-found: warn
+          retention-days: 7
+
+  # Preserve the existing required check name. A failed, skipped or cancelled
+  # prerequisite must never turn this merge gate green.
+  browser-regression:
+    if: ${{ always() }}
+    needs: [static-checks, browser-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all browser groups and static checks
+        env:
+          STATIC_CHECKS_RESULT: ${{ needs.static-checks.result }}
+          BROWSER_TESTS_RESULT: ${{ needs.browser-tests.result }}
+        run: |
+          if [[ "$STATIC_CHECKS_RESULT" != "success" || "$BROWSER_TESTS_RESULT" != "success" ]]; then
+            echo "Static checks: $STATIC_CHECKS_RESULT; browser tests: $BROWSER_TESTS_RESULT"
+            exit 1
+          fi

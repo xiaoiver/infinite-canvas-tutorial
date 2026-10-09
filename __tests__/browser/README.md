@@ -54,10 +54,40 @@ multi-selection, rotation after flipping, undo/redo and rendered gradient pixels
 Asymmetric path, polyline and vector-network checks catch double reflection; the
 WebKit suite also checks flipping from a padded touch corner.
 
-CI runs these checks in `.github/workflows/browser-regression.yml` and uploads
-failure screenshots and traces from `.test-results/browser` and
-`.test-results/webkit`. The existing ECS suite remains a separate regression
-check.
+CI runs `.github/workflows/browser-regression.yml` with four independent test
+runners: two Chromium shards, WebKit Lottie, and the remaining WebKit suites.
+Each runner still uses one worker and the existing WebKit browser isolation.
+The WebKit split balances measured duration: the Lottie renderer used roughly
+as much time as all other WebKit tests combined. Static checks run alongside
+the browser jobs. The existing `browser-regression` check succeeds only when
+all jobs succeed; failure, cancellation and skipping cannot pass the gate.
+New commits cancel older runs for the same PR or branch.
+
+Run the same groups locally (one at a time; the fixture uses a fixed port):
+
+```sh
+pnpm test:browser --shard=1/2
+pnpm test:browser --shard=2/2
+PLAYWRIGHT_WEBKIT_GROUP=lottie pnpm test:browser:webkit
+PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit
+```
+
+Without `PLAYWRIGHT_WEBKIT_GROUP`, the WebKit command still runs every suite.
+`pnpm test:tooling` discovers the actual Playwright cases and checks that the
+workflow groups cover each browser's tests exactly once.
+
+Every completed group uploads its JSON results, timing report and any failure
+screenshots/traces under a unique `browser-regression-*` artifact for seven
+days. The job summary lists slow files and test attempts, including setup,
+body and teardown durations. To produce the same report locally:
+
+```sh
+pnpm test:browser --reporter=list,./scripts/browser-timing-reporter.mjs
+```
+
+The reports are written to `.test-results/browser-timings.json` and
+`.test-results/browser-timings.md`. The existing ECS suite remains a separate
+regression check.
 
 Lesson 12 dash rendering checks run in Chromium and WebKit. They compare rendered
 stroke interiors with native Canvas2D for all cap/join combinations, offsets,
