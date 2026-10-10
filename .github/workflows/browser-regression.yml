@@ -48,17 +48,27 @@ jobs:
             config: playwright.browser.config.ts
             shard: 2/2
             webkit-group: all
-          # Lottie took ~12 minutes on WebKit, as much as all other suites
-          # combined. Keep these groups on independent single-worker runners.
+          # Keep Lottie isolated. The remaining suites outgrew the 25-minute
+          # budget; split them across three independent single-worker runners.
           - browser: webkit
             group: lottie
             config: playwright.webkit.config.ts
             shard: 1/1
             webkit-group: lottie
           - browser: webkit
-            group: other
+            group: other-1
             config: playwright.webkit.config.ts
-            shard: 1/1
+            shard: 1/3
+            webkit-group: other
+          - browser: webkit
+            group: other-2
+            config: playwright.webkit.config.ts
+            shard: 2/3
+            webkit-group: other
+          - browser: webkit
+            group: other-3
+            config: playwright.webkit.config.ts
+            shard: 3/3
             webkit-group: other
     steps:
       - uses: actions/checkout@v4

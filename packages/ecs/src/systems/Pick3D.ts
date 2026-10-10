@@ -28,7 +28,9 @@ import {
   set3DMeshGizmoSelectedForCanvas,
 } from '../utils/pick3d-bridge';
 import { beginGizmoPointerGesture } from './pick3d/gizmo-pointer';
+import { isEntityAlive } from './Transform';
 import { GizmoSession } from './pick3d/gizmo-session';
+import { gizmoViewKey } from './pick3d/gizmo-context';
 import type { API } from '../API';
 import {
   buildPickSceneForViewport,
@@ -134,7 +136,6 @@ export class Pick3D extends System {
         input.key === 'Escape'
       )
         continue;
-      const { camera } = resolved;
       // Samples retain press/release ordering even when both arrive in one frame.
       // Triggers remain a fallback for integrations that populate Input directly.
       const samples = input.pointerSamples.length
@@ -163,7 +164,11 @@ export class Pick3D extends System {
         if (sample.phase === 'down') {
           if (input.pointerButton !== 0) continue;
           this.finishSession(api, false);
-          this.handlePointerDown([sample.x, sample.y], camera, canvas);
+          this.handlePointerDown(
+            [sample.x, sample.y],
+            resolved.entity.read(Camera3D),
+            canvas,
+          );
         } else {
           this.sessions.get(api)?.update([sample.x, sample.y]);
           if (sample.phase === 'up') this.finishSession(api, true);
@@ -172,7 +177,8 @@ export class Pick3D extends System {
       if (!samples.length) {
         if (this.sessions.has(api)) {
           this.sessions.get(api)!.update([...input.pointerViewport]);
-        } else this.updateGizmoHover(input, camera, canvas);
+        } else
+          this.updateGizmoHover(input, resolved.entity.read(Camera3D), canvas);
       }
     }
     // Dispose only this world's sessions; a canvas in another world is independent.
@@ -198,7 +204,7 @@ export class Pick3D extends System {
     set3DGizmoDragging(api, false);
   }
 
-  private resolveCamera3D(canvas: Entity): { camera: Camera3D } | undefined {
+  private resolveCamera3D(canvas: Entity): { entity: Entity } | undefined {
     const canvasCount = this.canvases.current.length || 1;
     const cameraEntity = findCamera3DForCanvas(
       this.cameras3D.current,
@@ -208,7 +214,7 @@ export class Pick3D extends System {
     if (!cameraEntity) {
       return undefined;
     }
-    return { camera: cameraEntity.read(Camera3D) };
+    return { entity: cameraEntity };
   }
 
   private canvasMeshes(canvas: Entity): Entity[] {
@@ -300,7 +306,28 @@ export class Pick3D extends System {
         probe.hit.point,
       );
       if (gesture) {
-        this.sessions.set(api, new GizmoSession(probe.entity.hold(), gesture));
+        const cameraEntity = this.resolveCamera3D(canvasEntity)!.entity.hold();
+        const viewKey = gizmoViewKey(pickScene, width, height);
+        const canvas = canvasEntity.hold();
+        this.sessions.set(
+          api,
+          new GizmoSession(probe.entity.hold(), gesture, api, () => {
+            if (!isEntityAlive(canvas) || !canvas.has(Canvas)) return false;
+            const current = this.resolveCamera3D(canvas);
+            if (!current || !current.entity.isSame(cameraEntity)) return false;
+            const size = this.getViewportSize(canvas);
+            const scene = this.buildPickScene(
+              current.entity.read(Camera3D),
+              size.width,
+              size.height,
+              canvas,
+            );
+            return (
+              !!scene &&
+              gizmoViewKey(scene, size.width, size.height) === viewKey
+            );
+          }),
+        );
         set3DGizmoDragging(api, true);
       }
       return;
@@ -375,14 +402,15 @@ export class Pick3D extends System {
       if (!entity.has(Selected3D)) {
         continue;
       }
-      const sel = entity.write(Selected3D);
-      if (probe.kind === 'gizmo' && probe.entity === entity) {
-        sel.activeAxis = probe.axis;
-        sel.activePartKind = probe.partKind;
-      } else {
-        sel.activeAxis = 'none';
-        sel.activePartKind = null;
-      }
+      const hit = probe.kind === 'gizmo' && probe.entity.isSame(entity);
+      const activeAxis = hit ? probe.axis : 'none';
+      const activePartKind = hit ? probe.partKind : null;
+      const selected = entity.read(Selected3D);
+      if (
+        selected.activeAxis !== activeAxis ||
+        selected.activePartKind !== activePartKind
+      )
+        Object.assign(entity.write(Selected3D), { activeAxis, activePartKind });
     }
   }
 
