@@ -943,15 +943,76 @@ pnpm exec playwright test -c playwright.browser.config.ts gizmo.spec.ts
 pnpm exec playwright test -c playwright.webkit.config.ts gizmo.spec.ts
 ```
 
+## 第十六批：gizmo GPU 资源与画布生命周期
+
+2026-10-10，基于 master `5a4116f4`（PR #400 已合并），以上一批完整运行的
+行覆盖率 73.12%、分支覆盖率 61.48%、函数覆盖率 73.09% 为基线。
+
+- `RenderGizmo3D` 保留 ECS 选择、相机和画布适配；`gizmo3d/gizmo-uniforms.ts`
+  统一 legacy uniform 与 std140 数据，`gizmo3d/gizmo-resources.ts` 管理绘制和
+  GPU 资源。手柄几何在同一画布内共享，uniform buffer 和 binding 按对象及手柄
+  分配，避免延迟提交时多选对象的姿态、高亮和锚点被最后一个对象覆盖。
+- 资源挂入画布 `GPUResource.scope`，先于缓存和设备销毁。取消选择会释放对应
+  对象的 buffer/binding；几何保留供下次使用。设备、缓存或作用域任一身份变化
+  都会重建资源；中途分配失败会回收已分配的部分，单次清理抛错仍继续释放其余资源。
+  program、input layout 和 pipeline 的所有权留在 `RenderCache`。
+- 删除全局 gizmo 单例，改用 owning World 内的系统 attachment；二维合成器按
+  画布解析三维 renderer，注册从构造函数移到系统 initialize，再逐帧同步画布归属。
+  未初始化的第二个 World 不会覆盖正在绘制的 renderer。
+
+新增 24 项单元测试，验证多选延迟提交后的实际 buffer 内容、几何复用、取消选择、
+部分分配失败、重复销毁、清理失败继续释放、设备/缓存/作用域替换及画布注册归属。
+资源测试使用真实 `RenderCache` 和 `ResourceScope` 配合可观察的 Device；生命周期
+单测控制 query 快照，真实 ECS 访问权限和调度另由浏览器及调度测试验证。
+
+新增两项浏览器回归：同一 World 双画布独立绘制，销毁其中一个后继续编辑另一个，
+退出并重建 App；并发创建第二个 World 被拒绝后，第一个 World 仍可正常绘制。
+Becsy 仍不支持多个 World 同时共享组件类型，本批验证的是失败隔离和顺序重建。
+Chromium 与 WebKit 各通过本批 2 项和已有 6 项 gizmo 用例。
+
+完整原生 ECS 运行通过 223 个文件、1720 项测试，用时 747.718 秒（约 12 分 28 秒）。
+在 8 GiB 容器内沿用 CI 的两个 worker / 256 MB 回收阈值运行，退出码为 0，
+没有 worker 异常退出警告。使用本次完整报告复核全部门槛：新增上述四个模块，
+逐模块门槛从 32 项增加到 36 项，既有门槛与统计范围保持不变。
+
+| 指标 | 前 | 后 |
+| --- | ---: | ---: |
+| 行覆盖率 | 73.12%（20784/28424） | 73.55%（20920/28440） |
+| 语句覆盖率 | 73.10% | 73.56% |
+| 分支覆盖率 | 61.48% | 61.76% |
+| 函数覆盖率 | 73.09% | 73.48% |
+
+资源、uniform 和 renderer 注册模块的四项覆盖率均为 100%。`RenderGizmo3D`
+行覆盖率为 98.48%、语句 97.46%、分支 77.5%、函数 88.88%；linked camera
+与真实像素行为另有浏览器回归，这些结果不计入 Jest/Coveralls。
+
+ECS 和 device-api 的 CommonJS/ESM 构建、仓库 ESLint、浏览器与新增 ECS 测试的
+TypeScript 检查、21 项 tooling 测试及格式/Markdown 检查均通过。浏览器仍使用
+WebGL；延迟提交的 buffer 测试验证数据所有权，不代替原生 WebGPU 验收。
+
+本批未重写 MeshPipeline3D 的网格缓存，也未增加 scale 手柄、挤出编辑映射或
+活动手势冲突策略。GPU 资源数量随选中对象数量增长；重复帧复用现有分配，取消
+选择时释放对象专属资源。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/gizmo-resources.spec.ts \
+  __tests__/ecs/gizmo-renderer-lifecycle.spec.ts \
+  __tests__/ecs/mesh3d-bridge.spec.ts \
+  __tests__/ecs/renderer.lifecycle.spec.ts \
+  __tests__/ecs/renderer3d-schedule.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts gizmo
+pnpm exec playwright test -c playwright.webkit.config.ts gizmo
+```
+
 ## 后续顺序
 
 属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性；吸附与复杂嵌套
 变换已增加组合事件回归。后续优先：
 
-1. **gizmo 渲染资源拆分**：分离手柄描述、GPU 资源与逐帧绘制，替换跨 world 的 renderer 单例桥接，验证设备切换和销毁。
-2. **挤出图形的编辑映射**：明确 gizmo 姿态如何写回二维源图形的变换与挤出深度，再补提交、取消和撤销回归。
-3. **三维同步性能与中断**：验证无变化帧的写入量、几何缓存与变换更新独立失效，以及相机变更、外部文档编辑与活动手势的冲突策略。
-4. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+1. **挤出图形的编辑映射**：明确 gizmo 姿态如何写回二维源图形的变换与挤出深度，再补提交、取消和撤销回归。
+2. **三维同步性能与中断**：验证无变化帧的写入量、几何缓存与变换更新独立失效，以及相机变更、外部文档编辑与活动手势的冲突策略。
+3. **资源和渲染剩余路径**：MeshPipeline3D 网格缓存的所有权与销毁、图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前

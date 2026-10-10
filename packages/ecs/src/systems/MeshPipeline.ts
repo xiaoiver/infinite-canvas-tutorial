@@ -749,7 +749,7 @@ export class MeshPipeline extends System {
         antialiasingMode: AntialiasingMode.None,
       };
 
-      const mesh3d = getMeshPipeline3D();
+      const mesh3d = getMeshPipeline3D(canvas);
       mesh3d?.prepareForComposite(canvas);
       const composite3D = mesh3d?.shouldComposite(canvas) ?? false;
 
@@ -1194,12 +1194,10 @@ export class MeshPipeline extends System {
     const engineTimeNeedsContinuousRender = this.anyFilterUsesEngineTimePost();
     const fillTextureLiveNeedsContinuousRender =
       this.fillTextureLiveCurrent.current.length > 0;
-    const mesh3d = getMeshPipeline3D();
     const mesh3dNeedsRender =
       this.meshes3DChanged.addedOrChanged.length > 0 ||
       this.cameras3DChanged.addedOrChanged.length > 0 ||
-      this.extrude3DChanged.addedOrChanged.length > 0 ||
-      (mesh3d?.has3DContent() ?? false);
+      this.extrude3DChanged.addedOrChanged.length > 0;
 
     this.canvases.current.forEach((canvas) => {
       if (
@@ -1247,7 +1245,8 @@ export class MeshPipeline extends System {
         this.dirtyMaterials.added.length > 0 ||
         engineTimeNeedsContinuousRender ||
         fillTextureLiveNeedsContinuousRender ||
-        mesh3dNeedsRender;
+        mesh3dNeedsRender ||
+        (getMeshPipeline3D(canvas)?.has3DContent(canvas) ?? false);
 
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {

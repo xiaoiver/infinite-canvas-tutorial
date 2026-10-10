@@ -58,9 +58,10 @@ import { SetupDevice } from './SetupDevice';
 import {
   getMeshPipeline3D,
   registerMeshPipeline3D,
+  syncMeshPipeline3DCanvases,
   unregisterMeshPipeline3D,
 } from './mesh3d-bridge';
-import { getGizmo3D } from './gizmo3d-bridge';
+import { RenderGizmo3D } from './RenderGizmo3D';
 
 const MAX_3D_LIGHTS = 8;
 const SCENE_UNIFORM_FLOATS = 188;
@@ -108,6 +109,7 @@ interface MeshPipeline3DDeviceState {
  */
 export class MeshPipeline3D extends System {
   private setupDevice = this.attach(SetupDevice);
+  private gizmo = this.attach(RenderGizmo3D);
 
   private canvases = this.query((q) => q.current.with(Canvas).read);
 
@@ -137,7 +139,6 @@ export class MeshPipeline3D extends System {
 
   constructor() {
     super();
-    registerMeshPipeline3D(this);
     this.query((q) =>
       q
         .using(Canvas3DScope)
@@ -156,6 +157,11 @@ export class MeshPipeline3D extends System {
         )
         .read,
     );
+  }
+
+  initialize(): void {
+    // A rejected World must not replace the renderer of an active canvas.
+    registerMeshPipeline3D(this);
   }
 
   /** Prefer linked camera for this canvas when extrude meshes exist. */
@@ -377,7 +383,7 @@ export class MeshPipeline3D extends System {
     }
 
     // Draw 3D gizmos on top of meshes (depth disabled, always visible)
-    const gizmo = getGizmo3D();
+    const gizmo = this.gizmo;
     if (gizmo && gizmo.hasGizmoContent(canvas)) {
       gizmo.drawGizmos(renderPass, canvas, width, height);
     }
@@ -985,6 +991,10 @@ export class MeshPipeline3D extends System {
   }
 
   execute() {
+    syncMeshPipeline3DCanvases(
+      this,
+      this.canvases.current.map((canvas) => canvas.read(Canvas).api),
+    );
     for (const entity of this.meshes3DDirty.removed) {
       for (const device of this.trackedDevices) {
         const state = this.deviceStates.get(device);

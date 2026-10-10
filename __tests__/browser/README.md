@@ -222,3 +222,15 @@ visible X arrow receives the press where it covers a rotation ring.
 Pure projection/constraint math, tilted local rings, depth-plane dragging,
 multi-canvas lifecycle, and history are also covered by ECS Jest tests. Standard
 camera math is tested separately from these linked-camera browser scenarios.
+
+`gizmo-worlds.spec.ts` checks GPU pixels on two canvases in one World, destroys
+one canvas while continuing to edit the other, and exits/restarts the App with
+fresh canvases. A separate test attempts a concurrent World and checks that its
+expected Becsy rejection cannot replace the active renderer. Becsy still forbids
+concurrent Worlds sharing component types; this is failure isolation, not support
+for simultaneous Apps. Both tests run in Chromium and WebKit.
+
+ECS resource tests keep references to submitted bindings and inspect their
+buffers after every draw has been recorded. This catches multi-selection UBO
+overwrites with deferred submission semantics. Browser tests currently use
+WebGL; they do not certify a native WebGPU backend.
