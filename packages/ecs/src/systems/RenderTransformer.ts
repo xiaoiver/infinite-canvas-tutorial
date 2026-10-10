@@ -164,22 +164,6 @@ export class RenderTransformer extends System {
     );
   }
 
-  /** Hide 2D Transformer when declarative 3D or gizmo-selected mesh is active. */
-  private shouldSuppressTransformer(camera: Entity): boolean {
-    if (!camera.has(Transformable)) {
-      return false;
-    }
-    const { selecteds } = camera.read(Transformable);
-    if (selecteds.some(entityIsDeclarative3DNode)) {
-      return true;
-    }
-    const { canvas } = camera.read(Camera);
-    if (!canvas) {
-      return false;
-    }
-    return has3DMeshGizmoSelectedForCanvas(canvas);
-  }
-
   private hideAllTransformerUi(camera: Entity, transformable: Transformable): void {
     if (transformable.mask) {
       transformable.mask.write(Visibility).value = 'hidden';
@@ -205,7 +189,7 @@ export class RenderTransformer extends System {
 
     const transformable = camera.write(Transformable);
 
-    if (this.shouldSuppressTransformer(camera)) {
+    if (shouldSuppressTransformer(camera)) {
       this.hideAllTransformerUi(camera, transformable);
       return;
     }
@@ -1645,9 +1629,23 @@ export function findHoveredVectorNetworkSegmentIndex(
   return bestIndex;
 }
 
-/**
- * Hit test with transformer, return anchor name and cursor.
- */
+/** Hide 2D Transformer when declarative 3D or gizmo-selected mesh is active. */
+function shouldSuppressTransformer(camera: Entity): boolean {
+  if (!camera.has(Transformable)) {
+    return false;
+  }
+  const { selecteds } = camera.read(Transformable);
+  if (selecteds.some(entityIsDeclarative3DNode)) {
+    return true;
+  }
+  const { canvas } = camera.read(Camera);
+  if (!canvas) {
+    return false;
+  }
+  return has3DMeshGizmoSelectedForCanvas(canvas);
+}
+
+/** Hit test with transformer, return anchor name and cursor. */
 export function hitTest(
   api: API,
   { x, y }: IPointData,
@@ -1660,6 +1658,9 @@ export function hitTest(
     ? TRANSFORMER_TOUCH_ROTATE_RADIUS
     : TRANSFORMER_ANCHOR_ROTATE_RADIUS;
   const camera = api.getCamera();
+  // The 3D gizmo suppresses creation of the 2D mask/anchors. Picking must use
+  // the same rule as rendering, including on the first selected frame.
+  if (shouldSuppressTransformer(camera)) return;
   const { rotateEnabled, penbarSelected, vectorNetworkEditMode } =
     api.getAppState();
   const point = [x, y] as [number, number];

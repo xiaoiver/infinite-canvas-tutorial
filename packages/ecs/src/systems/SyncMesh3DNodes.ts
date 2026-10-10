@@ -5,6 +5,7 @@ import {
   Canvas3DScope,
   Children,
   ComputedBounds,
+  GlobalTransform,
   Material3D,
   Mesh3DNode,
   Mesh3DNodeTarget,
@@ -44,6 +45,7 @@ export class SyncMesh3DNodes extends System {
             Canvas3DScope,
             Children,
             ComputedBounds,
+            GlobalTransform,
             Rect,
             Selected,
           )

@@ -24,6 +24,7 @@ export default defineConfig({
     'image-fill.spec.ts',
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
+    'gizmo.spec.ts',
     'interaction-precision.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',

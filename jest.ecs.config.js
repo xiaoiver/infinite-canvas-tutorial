@@ -15,6 +15,10 @@ const esm = [
 
 module.exports = {
   testTimeout: 30000,
+  // Coverage workers retain instrumented modules and native rendering resources.
+  // Bound CI concurrency and recycle workers between files when their JS heap
+  // exceeds 256 MB; recycling also releases native allocations in that process.
+  ...(process.env.CI ? { maxWorkers: 2, workerIdleMemoryLimit: '256MB' } : {}),
   setupFiles: ['<rootDir>/__tests__/jest-pretext-canvas.js'],
   testMatch: ['**/ecs/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
@@ -33,6 +37,24 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/systems/Pick3D.ts': {
+      statements: 85,
+      branches: 70,
+      functions: 95,
+      lines: 90,
+    },
+    './packages/ecs/src/systems/pick3d/gizmo-gesture.ts': {
+      statements: 95,
+      branches: 80,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/systems/pick3d/gizmo-session.ts': {
+      statements: 100,
+      branches: 95,
+      functions: 100,
+      lines: 100,
+    },
     './packages/ecs/src/systems/EnsureExtrudeMeshes.ts': {
       statements: 90,
       branches: 60,
