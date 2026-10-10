@@ -37,6 +37,30 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/systems/gizmo3d/gizmo-resources.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/systems/gizmo3d/gizmo-uniforms.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/systems/mesh3d-bridge.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/systems/RenderGizmo3D.ts': {
+      statements: 95,
+      branches: 75,
+      functions: 85,
+      lines: 95,
+    },
     './packages/ecs/src/utils/gizmo-frame.ts': {
       statements: 95,
       branches: 90,
