@@ -591,6 +591,15 @@ Draco 解码或 GPU 像素验证；已有 Duck 文件烘焙和三维属性同步
 
 | 模块                               |   行 | 分支 | 函数 | 语句 |
 | ---------------------------------- | ---: | ---: | ---: | ---: |
+| `utils/gizmo-frame.ts` | 100% | 90% | 100% | 95% |
+| `systems/pick3d/gizmo-pointer.ts` | 100% | 90% | 100% | 95% |
+| `systems/Pick3D.ts` | 90% | 70% | 95% | 85% |
+| `systems/pick3d/gizmo-gesture.ts` | 100% | 80% | 100% | 95% |
+| `systems/pick3d/gizmo-session.ts` | 100% | 95% | 100% | 100% |
+| `systems/EnsureExtrudeMeshes.ts` | 90% | 60% | 100% | 90% |
+| `systems/EnsureMesh3DNodes.ts` | 95% | 75% | 100% | 95% |
+| `systems/SyncMesh3DNodes.ts` | 90% | 80% | 100% | 90% |
+| `systems/SyncExtrude3D.ts` | 95% | 90% | 100% | 95% |
 | `utils/gltf/load-gltf-mesh.ts` | 100% | 100% | 100% | 100% |
 | `utils/gltf/request-gltf-mesh-load.ts` | 90% | 75% | 100% | 90% |
 | `utils/mesh3d-wire.ts` | 100% | 85% | 100% | 100% |
@@ -875,14 +884,73 @@ pnpm exec playwright test -c playwright.browser.config.ts gizmo.spec.ts
 pnpm exec playwright test -c playwright.webkit.config.ts gizmo.spec.ts
 ```
 
+## 第十五批：gizmo 投影、命中与拖拽一致性
+
+2026-10-10，基于 master `82cd42b5`（PR #399 已合并）。沿用上一批最终完整
+运行的行覆盖率 73.01%、分支覆盖率 61.35%、函数覆盖率 72.99% 作为基线。
+
+真实指针测试先复现 linked Z 轴拖动 20 个世界单位仅移动约 9.65 的问题。
+原先渲染使用按对象锚点计算的 linked 投影和人为 Z 屏幕偏移，拖拽却将其当作
+普通透视相机射线；相机缩放与正深度组合还会改变手柄大小和命中位置。
+
+- `utils/gizmo-frame.ts` 统一渲染、拾取与手势的投影描述，使用逻辑 CSS 像素
+  计算尺寸和 Z 偏移。非正方形画布不再按 NDC 距离错误缩放斜向 Z 轴；普通
+  相机通过相机右向量的实际投影计算尺寸，覆盖倾斜、偏轴与正交场景。
+- `pick3d/gizmo-pointer.ts` 替换原 `gizmo-ray.ts`。普通相机保持逆矩阵射线；
+  linked 单轴拖动沿显示轴换算，平面移动和局部旋转在约束平面上反解实际投影。
+  退化或无法求解的采样不写入姿态；每次手势固定起始投影，避免预览反馈改变灵敏度。
+- XZ／YZ 平面共享 Z 轴屏幕偏移；同一 gizmo 内的手柄命中使用与绘制一致的优先级。
+- 缩放场景进一步复现二维选中抢占：手柄落在图形二维边界内时，`Select` 重新
+  选中节点会先移除 `Selected3D`，导致后续 `Pick3D` 无法开始手势。现在可见
+  gizmo 手柄优先接收按下，保留原选择和文档历史。
+
+新增 19 项投影/约束数学测试，以及 6 项真实 DOM/ECS 手势测试。覆盖画布宽高比、
+缩放、相机旋转、正负深度、倾斜标准相机、局部旋转环、三个平面、不跳变按下、
+退化投影和撤销。浏览器新增独立 GPU 像素定位与实际拖动测试，包含 DPR 2 和
+箭头覆盖旋转环；浏览器结果不计入 Jest/Coveralls 覆盖率。
+
+完整原生 ECS 测试通过：220 个文件、1696 项测试，用时 822.974 秒（约 13 分 43 秒）。
+在 8 GiB 容器中沿用 CI 配置运行，没有 worker 异常退出警告。完整报告复核全部
+32 项门槛；新模块门槛另以独立投影测试验证。
+
+| 指标 | 前 | 后 |
+| --- | ---: | ---: |
+| 行覆盖率 | 73.01%（20683/28326） | 73.12%（20784/28424） |
+| 语句覆盖率 | 72.99% | 73.10% |
+| 分支覆盖率 | 61.35% | 61.48% |
+| 函数覆盖率 | 72.99% | 73.09% |
+
+新投影模块的行/函数覆盖率均为 100%，分支覆盖率为 95%；指针映射模块的
+行/函数覆盖率均为 100%，分支覆盖率为 91.66%。Chromium 与 WebKit 各 6 项
+浏览器用例通过；ECS 和 device-api 的 CommonJS/ESM 构建、仓库 ESLint、
+浏览器及新增 ECS 测试的 TypeScript 检查、21 项 tooling 检查、改动的格式与
+Markdown 检查均通过。WebKit 使用本地补齐的动态库运行；CI 继续通过
+`playwright install --with-deps` 安装，不加入跳过浏览器测试的配置。
+
+新增投影和指针映射两个模块门槛，逐模块门槛由 30 项增加至 32 项；已有门槛、
+统计范围，以及 CI 的两个 worker / 256 MB 回收阈值保持不变。
+
+本批没有增加 scale 手柄、挤出源图形的三维编辑映射或 GPU 资源拆分。手势期间
+的相机变更、外部文档编辑冲突仍需单独定义中断策略。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/gizmo-projection.spec.ts \
+  __tests__/ecs/gizmo-gesture.spec.ts \
+  __tests__/ecs/gizmo-lifecycle.spec.ts \
+  __tests__/ecs/renderer3d-schedule.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts gizmo.spec.ts
+pnpm exec playwright test -c playwright.webkit.config.ts gizmo.spec.ts
+```
+
 ## 后续顺序
 
 属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性；吸附与复杂嵌套
 变换已增加组合事件回归。后续优先：
 
-1. **gizmo 投影与命中一致性**：统一渲染、拾取和拖拽对 linked Z 轴屏幕偏移的解释，验证相机缩放与倾斜视角；明确挤出图形的编辑映射。
-2. **gizmo 渲染资源拆分**：分离手柄描述、GPU 资源与逐帧绘制，替换跨 world 的 renderer 单例桥接，验证设备切换和销毁。
-3. **三维同步性能与中断**：验证无变化帧的写入量、几何缓存与变换更新独立失效，以及外部文档编辑与活动手势的冲突策略。
+1. **gizmo 渲染资源拆分**：分离手柄描述、GPU 资源与逐帧绘制，替换跨 world 的 renderer 单例桥接，验证设备切换和销毁。
+2. **挤出图形的编辑映射**：明确 gizmo 姿态如何写回二维源图形的变换与挤出深度，再补提交、取消和撤销回归。
+3. **三维同步性能与中断**：验证无变化帧的写入量、几何缓存与变换更新独立失效，以及相机变更、外部文档编辑与活动手势的冲突策略。
 4. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 

@@ -208,3 +208,17 @@ trim arithmetic and non-mutating JSON-pointer diagnostics.
 These are scoped import regressions, not a whole-format compatibility suite.
 Text, masks, effects, multi-path/fill trim and other unsupported features remain
 listed in lesson 36. Lottie tests run in Chromium and the separate WebKit suite.
+
+## 3D gizmo projection and gestures
+
+`gizmo.spec.ts` runs the complete 3D renderer in Chromium and WebKit. It checks
+pointer commits, undo/redo, and Escape cancellation. GPU pixel assertions locate
+the Z arrow independently of the picker on landscape and portrait canvases,
+including DPR 2, camera zoom/rotation, and positive/negative object depth. The
+same visible handle must start a translation and map a known CSS-pixel movement
+to the expected document depth. A separate overlap check verifies that the
+visible X arrow receives the press where it covers a rotation ring.
+
+Pure projection/constraint math, tilted local rings, depth-plane dragging,
+multi-canvas lifecycle, and history are also covered by ECS Jest tests. Standard
+camera math is tested separately from these linked-camera browser scenarios.

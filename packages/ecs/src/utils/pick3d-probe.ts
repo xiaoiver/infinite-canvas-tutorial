@@ -1,9 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
-import {
-  Camera3D,
-  Mesh3D,
-  Transform3D,
-} from '../components';
+import { Camera3D, Mesh3D, Transform3D } from '../components';
 import type { GizmoAxis } from '../components/geometry3d/Selected3D';
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import {
@@ -16,28 +12,26 @@ import {
   type Mesh3DPickScene,
   type RayHitResult,
 } from './ray-casting';
-import { computeLinkedPerspectiveZGizmoScreenBias } from './gizmo-projection';
-import {
-  computeGizmoScale,
-  GIZMO_AXIS_ARROW_LENGTH,
-  GIZMO_ROTATE_RING_RADIUS,
-  type GizmoPartKind,
-} from './gizmo-geometry';
+import { createGizmoFrame, type GizmoFrame } from './gizmo-frame';
+import { type GizmoPartKind } from './gizmo-geometry';
 import {
   buildGizmoModelMatrix,
   getGizmoMeshParts,
   gizmoPartUsesLinkedZScreenBias,
+  gizmoPartDrawLayer,
 } from './gizmo-interaction';
 
 export type Pick3DProbeResult =
   | { kind: 'none' }
   | { kind: 'mesh'; entity: Entity; hit: RayHitResult }
   | {
-    kind: 'gizmo';
-    entity: Entity;
-    axis: GizmoAxis;
-    partKind: GizmoPartKind;
-  };
+      kind: 'gizmo';
+      entity: Entity;
+      axis: GizmoAxis;
+      partKind: GizmoPartKind;
+      frame: GizmoFrame;
+      hit: RayHitResult;
+    };
 
 export function buildPickSceneForViewport(
   camera: Camera3D,
@@ -65,7 +59,7 @@ export function probePick3DAtViewport(
   viewportY: number,
   viewportWidth: number,
   viewportHeight: number,
-  camera: Camera3D,
+  _camera: Camera3D,
   pickScene: Mesh3DPickScene,
   meshes: readonly Entity[],
   selected: readonly Entity[],
@@ -82,13 +76,12 @@ export function probePick3DAtViewport(
       viewportY,
       viewportWidth,
       viewportHeight,
-      camera,
       pickScene,
       transform.translation,
       transform.rotation,
     );
     if (hit) {
-      return { kind: 'gizmo', entity, axis: hit.axis, partKind: hit.partKind };
+      return { kind: 'gizmo', entity, ...hit };
     }
   }
 
@@ -137,39 +130,32 @@ function hitTestGizmoPart(
   vy: number,
   viewportWidth: number,
   viewportHeight: number,
-  camera: Camera3D,
   pickScene: Mesh3DPickScene,
   translation: [number, number, number],
   rotation: [number, number, number],
-): { axis: GizmoAxis; partKind: GizmoPartKind } | null {
-  const scale = computeGizmoScale(
-    camera.eye,
+): {
+  axis: GizmoAxis;
+  partKind: GizmoPartKind;
+  frame: GizmoFrame;
+  hit: RayHitResult;
+} | null {
+  const frame = createGizmoFrame(
+    pickScene,
     translation,
-    camera.fovy,
+    viewportWidth,
     viewportHeight,
-    150,
-    camera.linked,
   );
+  if (!frame) return null;
+  const { scale, anchor, zBias: linkedZBias } = frame;
+  // Reverse painter order: the visually topmost handle must receive the press.
+  const parts = [...getGizmoMeshParts()]
+    .sort(
+      (a, b) =>
+        gizmoPartDrawLayer(a.kind, a.axis) - gizmoPartDrawLayer(b.kind, b.axis),
+    )
+    .reverse();
 
-  const anchor: [number, number, number] = [
-    translation[0],
-    translation[1],
-    translation[2],
-  ];
-
-  const linkedZBias =
-    pickScene.mode === 'linkedPerspective'
-      ? computeLinkedPerspectiveZGizmoScreenBias(
-        anchor,
-        scale * Math.max(GIZMO_AXIS_ARROW_LENGTH, GIZMO_ROTATE_RING_RADIUS * 2),
-        pickScene,
-      )
-      : undefined;
-
-  let closest: { axis: GizmoAxis; partKind: GizmoPartKind; t: number } | null =
-    null;
-
-  for (const part of getGizmoMeshParts()) {
+  for (const part of parts) {
     const gizmoModel = buildGizmoModelMatrix(
       translation,
       rotation,
@@ -191,12 +177,8 @@ function hitTestGizmoPart(
       pickScene,
       zBias,
     );
-    if (hit && (!closest || hit.t < closest.t)) {
-      closest = { axis: part.axis, partKind: part.kind, t: hit.t };
-    }
+    if (hit) return { axis: part.axis, partKind: part.kind, frame, hit };
   }
 
-  return closest
-    ? { axis: closest.axis, partKind: closest.partKind }
-    : null;
+  return null;
 }

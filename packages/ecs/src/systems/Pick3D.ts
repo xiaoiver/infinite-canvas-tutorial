@@ -24,9 +24,8 @@ import {
   set3DGizmoDragging,
   set3DMeshGizmoSelectedForCanvas,
 } from '../utils/pick3d-bridge';
-import { beginGizmoGesture } from './pick3d/gizmo-gesture';
+import { beginGizmoPointerGesture } from './pick3d/gizmo-pointer';
 import { GizmoSession } from './pick3d/gizmo-session';
-import { buildGizmoRay } from './pick3d/gizmo-ray';
 import type { API } from '../API';
 import {
   buildPickSceneForViewport,
@@ -155,13 +154,13 @@ export class Pick3D extends System {
           this.finishSession(api, false);
           this.handlePointerDown([sample.x, sample.y], camera, canvas);
         } else {
-          this.updateSession(api, canvas, camera, sample.x, sample.y);
+          this.sessions.get(api)?.update([sample.x, sample.y]);
           if (sample.phase === 'up') this.finishSession(api, true);
         }
       }
       if (!samples.length) {
         if (this.sessions.has(api)) {
-          this.updateSession(api, canvas, camera, ...input.pointerViewport);
+          this.sessions.get(api)!.update([...input.pointerViewport]);
         } else this.updateGizmoHover(input, camera, canvas);
       }
     }
@@ -186,31 +185,6 @@ export class Pick3D extends System {
     session.finish(api, commit);
     this.sessions.delete(api);
     set3DGizmoDragging(api, false);
-  }
-
-  private updateSession(
-    api: API,
-    canvas: Entity,
-    camera: Camera3D,
-    x: number,
-    y: number,
-  ): void {
-    const session = this.sessions.get(api);
-    if (!session) return;
-    const { width, height } = this.getViewportSize(canvas);
-    if (width <= 0 || height <= 0) return;
-    const scene = this.buildPickScene(camera, width, height, canvas);
-    if (!scene) return;
-    const ray = buildGizmoRay(
-      x,
-      y,
-      width,
-      height,
-      camera,
-      scene,
-      findCamera2DForCanvas(this.cameras2D.current, canvas),
-    );
-    if (ray) session.update(ray);
   }
 
   private resolveCamera3D(canvas: Entity): { camera: Camera3D } | undefined {
@@ -301,23 +275,14 @@ export class Pick3D extends System {
     );
 
     if (probe.kind === 'gizmo') {
-      const ray = buildGizmoRay(
-        vx,
-        vy,
-        width,
-        height,
-        camera,
-        pickScene,
-        findCamera2DForCanvas(this.cameras2D.current, canvasEntity),
+      const gesture = beginGizmoPointerGesture(
+        probe.entity.read(Transform3D),
+        probe.axis,
+        probe.partKind,
+        probe.frame,
+        [vx, vy],
+        probe.hit.point,
       );
-      const gesture =
-        ray &&
-        beginGizmoGesture(
-          probe.entity.read(Transform3D),
-          probe.axis,
-          probe.partKind,
-          ray,
-        );
       if (gesture) {
         this.sessions.set(api, new GizmoSession(probe.entity.hold(), gesture));
         set3DGizmoDragging(api, true);

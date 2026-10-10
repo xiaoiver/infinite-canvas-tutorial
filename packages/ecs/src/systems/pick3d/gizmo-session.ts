@@ -13,13 +13,9 @@ import {
   syncMesh3DNodeSourceFromCompanion,
 } from '../../utils/mesh3d-node';
 import { isEntityAlive } from '../Transform';
-import {
-  copyGizmoPose,
-  sameGizmoPose,
-  updateGizmoGesture,
-  type GizmoGesture,
-} from './gizmo-gesture';
-import type { Ray } from '../../utils/ray-casting';
+import { copyGizmoPose, sameGizmoPose } from './gizmo-gesture';
+import type { GizmoPointerGesture } from './gizmo-pointer';
+import type { GizmoViewportPoint } from '../../utils/gizmo-frame';
 
 /** One canvas gesture owns its preview; only finish(true) publishes a document edit. */
 export class GizmoSession {
@@ -28,7 +24,7 @@ export class GizmoSession {
     typeof resolveMesh3DNodeSourceTransform
   >;
 
-  constructor(readonly mesh: Entity, readonly gesture: GizmoGesture) {
+  constructor(readonly mesh: Entity, readonly gesture: GizmoPointerGesture) {
     if (mesh.has(Mesh3DNodeTarget)) {
       this.source = mesh.read(Mesh3DNodeTarget).source.hold();
       if (this.source.has(Transform) && this.source.has(Mesh3DNode)) {
@@ -67,8 +63,8 @@ export class GizmoSession {
     );
   }
 
-  update(ray: Ray): void {
-    const pose = updateGizmoGesture(this.gesture, ray);
+  update(pointer: GizmoViewportPoint): void {
+    const pose = this.gesture.update(pointer);
     if (!pose || sameGizmoPose(pose, this.mesh.read(Transform3D))) return;
     // A singular parent cannot convert a world-space preview back into a document.
     if (this.source && !resolveMesh3DNodeSourceTransform(this.source, pose))

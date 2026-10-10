@@ -37,16 +37,14 @@ import { Mat4 } from '../components/math/Mat4';
 import { gizmoDisplayVert, gizmoDisplayFrag } from '../shaders/gizmo3d-display';
 import {
   createCombinedTransformGizmo,
-  computeGizmoScale,
-  GIZMO_AXIS_ARROW_LENGTH,
-  GIZMO_ROTATE_RING_RADIUS,
   type GizmoMeshData,
   type GizmoPartKind,
 } from '../utils/gizmo-geometry';
-import { computeLinkedPerspectiveZGizmoScreenBias } from '../utils/gizmo-projection';
+import { createGizmoFrame, type GizmoFrame } from '../utils/gizmo-frame';
 import {
   buildGizmoModelMatrix,
   gizmoPartUsesLinkedZScreenBias,
+  gizmoPartDrawLayer,
 } from '../utils/gizmo-interaction';
 import {
   filterEntitiesForCanvas,
@@ -87,7 +85,6 @@ interface GizmoPartGPU {
   axis: string;
   partKind: GizmoPartKind;
   /** Plane handles drawn before rings / arrows. */
-  isPlane: boolean;
   /** Per-part UBOs: WebGPU batches queue.writeBuffer before submit (shared buffer = last write wins). */
   sceneUniformBuffer: Buffer;
   modelUniformBuffer: Buffer;
@@ -198,22 +195,17 @@ export class RenderGizmo3D extends System {
       const sel = entity.read(Selected3D);
       const translation = transform.translation;
 
-      // Gizmo scale for constant screen size
-      const gizmoScale = computeGizmoScale(
-        camera.eye,
+      const frame = createGizmoFrame(
+        sceneUniformsToPickScene(sceneUniforms),
         translation,
-        camera.fovy,
+        logicalW > 0 ? logicalW : width,
         logicalH > 0 ? logicalH : height,
-        150,
-        camera.linked,
       );
-
-      const extent =
-        gizmoScale *
-        Math.max(GIZMO_AXIS_ARROW_LENGTH, GIZMO_ROTATE_RING_RADIUS * 2);
-
+      if (!frame) continue;
       const drawOrder = [...state.gizmoParts].sort(
-        (a, b) => gizmoDrawLayer(a) - gizmoDrawLayer(b),
+        (a, b) =>
+          gizmoPartDrawLayer(a.partKind, a.axis) -
+          gizmoPartDrawLayer(b.partKind, b.axis),
       );
 
       const rotation = transform.rotation;
@@ -226,15 +218,14 @@ export class RenderGizmo3D extends System {
           state,
           part.sceneUniformBuffer,
           sceneUniforms,
-          translation,
-          extent,
+          frame,
           highlighted,
         );
 
         const modelMat = buildGizmoModelMatrix(
           translation,
           rotation,
-          gizmoScale,
+          frame.scale,
           part.partKind,
         );
         const modelLegacy = this.uploadModelUniforms(
@@ -269,22 +260,13 @@ export class RenderGizmo3D extends System {
     state: Gizmo3DDeviceState,
     sceneUniformBuffer: Buffer,
     uniforms: ReturnType<typeof buildCamera3DSceneUniforms>,
-    anchor: [number, number, number],
-    gizmoWorldExtent: number,
+    frame: GizmoFrame,
     highlighted: boolean,
   ): void {
 
     let sceneParams: [number, number, number, number] = [...uniforms.sceneParams];
-    if (uniforms.mode === 'linkedPerspective') {
-      const pickScene = sceneUniformsToPickScene(uniforms);
-      if (pickScene.mode === 'linkedPerspective') {
-        const bias = computeLinkedPerspectiveZGizmoScreenBias(
-          anchor,
-          gizmoWorldExtent,
-          pickScene,
-        );
-        sceneParams = [bias[0], bias[1], 1, 0];
-      }
+    if (frame.zBias) {
+      sceneParams = [frame.zBias[0], frame.zBias[1], 1, 0];
     }
     sceneParams[3] = highlighted ? 1 : 0;
 
@@ -501,8 +483,6 @@ export class RenderGizmo3D extends System {
         usage: BufferUsage.INDEX,
         hint: BufferFrequencyHint.STATIC,
       });
-      const isPlane =
-        part.axis === 'xy' || part.axis === 'xz' || part.axis === 'yz';
       const sceneUniformBuffer = device.createBuffer({
         viewOrSize: GIZMO_UNIFORM_FLOATS * 4,
         usage: BufferUsage.UNIFORM,
@@ -522,7 +502,6 @@ export class RenderGizmo3D extends System {
         color: part.color,
         axis: part.axis,
         partKind: part.kind,
-        isPlane,
         sceneUniformBuffer,
         modelUniformBuffer,
         bindings: null,
@@ -545,11 +524,4 @@ export class RenderGizmo3D extends System {
       }
     }
   }
-}
-
-/** Planes under rings, rings under arrows (arrows win overlapping picks). */
-function gizmoDrawLayer(part: GizmoPartGPU): number {
-  if (part.isPlane) return 0;
-  if (part.partKind === 'rotate') return 1;
-  return 2;
 }

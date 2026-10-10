@@ -1,7 +1,7 @@
 /**
  * Gizmo display shader – unlit, same projection as mesh3d (including linked perspective).
- * sceneParams.xy: Z-axis screen bias (linked perspective, translate blue arrow only).
- * u_LightParams.y: 1 = apply Z bias; 0 = mesh3d-style linked projection (rotate rings, etc.).
+ * sceneParams.xy: Z-axis screen bias (linked perspective, depth translation handles).
+ * u_LightParams.y: 1 = apply Z bias; 0 = mesh3d-style linked projection (rotation rings).
  * u_SceneParams.w: 1 = active handle highlight (yellow), WebGPU-safe via scene UBO.
  */
 

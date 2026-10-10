@@ -16,17 +16,26 @@ import {
 import { settleECSFrames } from './ecs-frames';
 
 let api: API;
+const params = new URLSearchParams(location.search);
+const width = Number(params.get('width') || 200);
+const height = Number(params.get('height') || 200);
+const zoom = Number(params.get('zoom') || 1);
+const rotation = Number(params.get('rotation') || 0);
+const z = Number(params.get('z') || 0);
 class Bootstrap extends System {
   access = this.query((q) => q.usingAll.write);
   initialize() {
     api = new API(new DefaultStateManagement(), new Commands(this));
+    const element = document.querySelector<HTMLCanvasElement>('#canvas')!;
+    element.style.width = `${width}px`;
+    element.style.height = `${height}px`;
     api.createCanvas({
-      element: document.querySelector<HTMLCanvasElement>('#canvas')!,
-      width: 200,
-      height: 200,
-      devicePixelRatio: 1,
+      element,
+      width,
+      height,
+      devicePixelRatio: Number(params.get('dpr') || 1),
     });
-    api.createCamera({ zoom: 1, x: 0, y: 0 });
+    api.createCamera({ zoom, x: 0, y: 0, rotation });
     api.setAppState({ penbarSelected: Pen.SELECT });
   }
 }
@@ -48,6 +57,11 @@ const harness = {
       node,
       translation: [...mesh.read(Transform3D).translation],
       dragging: mesh.has(Selected3D) && mesh.read(Selected3D).dragging,
+      axis: mesh.has(Selected3D) ? mesh.read(Selected3D).activeAxis : 'none',
+      partKind: mesh.has(Selected3D)
+        ? mesh.read(Selected3D).activePartKind
+        : null,
+      center: api.canvas2Viewport({ x: 80, y: 80 }),
     };
   },
 };
@@ -69,6 +83,7 @@ async function init() {
             zIndex: 0,
             x: 60,
             y: 60,
+            z,
             width: 40,
             height: 40,
             scale3d: 20,
