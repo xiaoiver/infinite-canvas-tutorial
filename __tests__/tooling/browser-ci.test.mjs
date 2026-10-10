@@ -37,6 +37,23 @@ for (const browser of ['chromium', 'webkit']) {
   });
 }
 
+test('non-Lottie WebKit suites retain three isolated shards within the existing timeout', () => {
+  const other = matrix.filter(
+    (group) => group.browser === 'webkit' && group['webkit-group'] === 'other',
+  );
+  assert.deepEqual(other.map((group) => group.shard).sort(), [
+    '1/3',
+    '2/3',
+    '3/3',
+  ]);
+  assert.equal(
+    new Set(matrix.map((group) => `${group.browser}-${group.group}`)).size,
+    matrix.length,
+  );
+  assert.equal(workflow.jobs['browser-tests']['timeout-minutes'], 25);
+  assert.equal(workflow.jobs['browser-tests'].strategy['fail-fast'], false);
+});
+
 test('the required browser check rejects failures, cancellations and skipped jobs', () => {
   const gate = workflow.jobs['browser-regression'];
   assert.equal(gate.if, '${{ always() }}');

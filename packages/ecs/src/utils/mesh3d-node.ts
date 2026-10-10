@@ -1,7 +1,6 @@
 import type { Entity } from '@lastolivegames/becsy';
 import {
   ComputedBounds,
-  Material3D,
   Mesh3D,
   Mesh3DNode,
   Extrude3D,
@@ -23,8 +22,11 @@ import {
   type Mesh3DNodeGeometry,
 } from './geometry3d';
 import { resolveCanvasSourceOrigin } from './canvas-source-origin';
+import { sameNumbers, syncMaterial3D, syncTransform3D } from './sync3d';
 import { set3DMeshGizmoSelectedForCanvas } from './pick3d-bridge';
 import type { GltfMeshBakeResult } from './gltf/bake-gltf-mesh';
+
+const proceduralGeometry = new WeakMap<Float32Array, string>();
 
 type ImportedMaterial = Pick<GltfMeshBakeResult, 'baseColor' | 'map'>;
 const companionGeometry = new WeakMap<
@@ -52,6 +54,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
   const spec = normalizeGeometry(source.read(Mesh3DNode).geometry);
   const key = geometrySpecKey(spec);
   if (isGltfGeometrySpec(spec)) {
+    proceduralGeometry.delete(meshEntity.read(Mesh3D).positions);
     if (companionGeometry.get(source)?.key === key) {
       return false;
     }
@@ -60,11 +63,14 @@ export function rebuildMesh3DNodeCompanionGeometry(
     return true;
   }
 
-  const data = createGeometry(spec);
   const mesh = meshEntity.read(Mesh3D);
+  if (proceduralGeometry.get(mesh.positions) === key) return false;
+  const data = createGeometry(spec);
   if (mesh3DGeometryDataEquals(mesh, data)) {
+    proceduralGeometry.set(mesh.positions, key);
     return false;
   }
+  proceduralGeometry.set(data.positions, key);
 
   companionGeometry.set(source, { key });
   Object.assign(meshEntity.write(Mesh3D), data);
@@ -161,7 +167,7 @@ export function syncMesh3DNodeCompanionFromSource(
   }
   const node = source.read(Mesh3DNode);
   const [centerX, centerY] = center;
-  Object.assign(meshEntity.write(Transform3D), {
+  syncTransform3D(meshEntity, {
     translation: [centerX, centerY, node.z],
     rotation: [...node.rotation3d],
     scale: resolveMesh3DNodeScale(node.scale3d),
@@ -184,22 +190,23 @@ export function syncMesh3DNodeCompanionMaterial(
       ? loaded.material
       : undefined;
   const hasCustomColor = node.baseColor.some((value) => value !== 1);
-  const material = meshEntity.write(Material3D);
-  material.baseColor = [
-    ...(hasCustomColor
-      ? node.baseColor
-      : imported?.baseColor ?? node.baseColor),
-  ];
-  material.ambient = node.ambient;
-  material.diffuse = node.diffuse;
-  material.specular = node.specular;
-  material.shininess = node.shininess;
-  material.metallic = node.metallic;
-  material.roughness = node.roughness;
-  material.map = node.map ?? imported?.map ?? null;
-  material.specularMap = node.specularMap ?? null;
-  material.bumpMap = node.bumpMap ?? null;
-  material.bumpScale = node.bumpScale;
+  syncMaterial3D(meshEntity, {
+    baseColor: [
+      ...(hasCustomColor
+        ? node.baseColor
+        : imported?.baseColor ?? node.baseColor),
+    ],
+    ambient: node.ambient,
+    diffuse: node.diffuse,
+    specular: node.specular,
+    shininess: node.shininess,
+    metallic: node.metallic,
+    roughness: node.roughness,
+    map: node.map ?? imported?.map ?? null,
+    specularMap: node.specularMap ?? null,
+    bumpMap: node.bumpMap ?? null,
+    bumpScale: node.bumpScale,
+  });
 }
 
 /** Convert the canvas-space companion center back to the source's local origin. */
@@ -235,8 +242,19 @@ export function syncMesh3DNodeSourceFromCompanion(
   );
   if (!pose) return false;
   const { x, y, ...node } = pose;
-  Object.assign(source.write(Mesh3DNode), node);
-  Object.assign(source.write(Transform).translation, { x, y });
+  const current = source.read(Mesh3DNode);
+  if (
+    current.z !== Math.fround(node.z) ||
+    !sameNumbers(current.rotation3d, node.rotation3d) ||
+    !sameNumbers(
+      resolveMesh3DNodeScale(current.scale3d),
+      resolveMesh3DNodeScale(node.scale3d),
+    )
+  )
+    Object.assign(source.write(Mesh3DNode), node);
+  const origin = source.read(Transform).translation;
+  if (origin.x !== Math.fround(x) || origin.y !== Math.fround(y))
+    Object.assign(source.write(Transform).translation, { x, y });
   return true;
 }
 

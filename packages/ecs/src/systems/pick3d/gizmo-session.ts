@@ -1,4 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
+import { gizmoDocumentKey } from './gizmo-context';
 import type { API } from '../../API';
 import { Selected3D, Transform3D } from '../../components';
 import { newElementWith } from '../../history/Snapshot';
@@ -12,8 +13,17 @@ import type { GizmoViewportPoint } from '../../utils/gizmo-frame';
 export class GizmoSession {
   private readonly binding?: GizmoSource;
 
-  constructor(readonly mesh: Entity, readonly gesture: GizmoPointerGesture) {
+  private readonly documentKey?: string;
+
+  constructor(
+    readonly mesh: Entity,
+    readonly gesture: GizmoPointerGesture,
+    private readonly api: API,
+    private readonly viewIsCurrent: () => boolean,
+  ) {
     this.binding = captureGizmoSource(mesh);
+    this.documentKey =
+      this.binding && gizmoDocumentKey(api, this.binding.entity);
     const selected = mesh.write(Selected3D);
     selected.dragging = true;
     selected.activeAxis = gesture.axis;
@@ -25,7 +35,10 @@ export class GizmoSession {
       isEntityAlive(this.mesh) &&
       this.mesh.has(Selected3D) &&
       this.mesh.has(Transform3D) &&
-      (!this.binding || this.binding.owns())
+      this.viewIsCurrent() &&
+      (!this.binding ||
+        (this.binding.owns() &&
+          this.documentKey === gizmoDocumentKey(this.api, this.binding.entity)))
     );
   }
 

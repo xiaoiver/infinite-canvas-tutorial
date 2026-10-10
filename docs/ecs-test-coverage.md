@@ -1072,13 +1072,80 @@ pnpm exec playwright test -c playwright.browser.config.ts gizmo
 pnpm exec playwright test -c playwright.webkit.config.ts gizmo
 ```
 
+## 第十八批：三维同步去重与活动手势中断
+
+2026-10-10，基于 master `f688d545`（PR #402 已合并），以上一批完整运行的
+行覆盖率 73.65%、分支覆盖率 61.97%、函数覆盖率 73.59% 为基线。
+
+- `utils/sync3d.ts` 比较派生值后再写入 `Transform3D` / `Material3D`，源位置
+  与 Z 值按 float32 存储精度比较，避免小数转换导致每帧重复写入。
+- 参数化网格按 CPU 位置数组和几何配置缓存。位置、旋转和材质编辑复用这些数据，
+  几何配置变化独立触发重建；弱引用键不依赖 Becsy 的实体包装对象。
+- 相同的 gizmo hover 状态不再重复写 `Selected3D`，相同三维选择状态不再
+  请求二维选框刷新。测试通过 ECS 的 `changed.trackWrites` 观察真实写入，
+  验证稳定后的五个连续帧没有伴生变换、材质或几何写入。
+- `pick3d/gizmo-context.ts` 比较视口、实际拾取投影及源/祖先文档空间属性。
+  相机移除、视图或画布尺寸变化、外部姿态/几何编辑及撤销会中断当前手势，
+  从当前文档恢复，忽略旧释放事件。名称和材质等无关编辑允许与拖动合并，
+  其他画布的变化不会中断当前手势。
+- 画布归属通过 `isSame` 比较实体身份。`Pick3D` 在使用时读取相机组件，
+  避免中断检查重新绑定组件后继续访问失效的组件视图。
+
+新增 32 项网格/挤出手势回归、7 项同步写入量/缓存/刷新测试，以及四项浏览器
+中断后重新拖动测试。Chromium 与 WebKit 各 16 项 gizmo 用例全部通过，
+包括既有投影像素、撤销重做和多画布生命周期检查。浏览器使用 WebGL，
+不计入 Jest 覆盖率。
+
+完整原生 ECS 运行通过 226 个文件、1793 项测试，用时 877.092 秒（约 14 分 37 秒），
+退出码为 0，没有 worker 异常退出警告。沿用 CI 的两个 worker / 256 MB 回收阈值和 8 GiB 容器限制。全部 40 项原有门槛
+保持不变，新增中断上下文和同步工具两项门槛，完整报告满足全部 42 项。
+统计范围仍包含所有 ECS 源文件。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 73.65% | 73.69%（21069/28590） |
+| 语句覆盖率 | 73.65% | 73.68%（22065/29944） |
+| 分支覆盖率 | 61.97% |  62.15%（8730/14045） |
+| 函数覆盖率 | 73.59% |   73.66%（2819/3827） |
+
+| 模块                              | 行覆盖率 | 分支覆盖率 | 函数覆盖率 |
+| --------------------------------- | -------: | ---------: | ---------: |
+| `systems/pick3d/gizmo-context.ts` |     100% |     88.46% |       100% |
+| `systems/pick3d/gizmo-session.ts` |     100% |       100% |       100% |
+| `systems/pick3d/gizmo-source.ts`  |   96.82% |     72.54% |       100% |
+| `utils/sync3d.ts`                 |     100% |       100% |       100% |
+| `systems/SyncExtrude3D.ts`        |   97.14% |     91.66% |       100% |
+| `systems/SyncMesh3DNodes.ts`      |   93.75% |     84.61% |       100% |
+
+ECS CommonJS/ESM 构建、仓库 ESLint、浏览器与新增 ECS 测试的 TypeScript 检查、
+格式检查、22 项 tooling 检查和 Markdown 检查均通过。
+
+### WebKit CI 分片
+
+复查 [PR #402 的 WebKit other 任务](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/runs/38034060919/job/114160741914)
+发现，该组超过 25 分钟任务上限后被取消，导致汇总门禁失败；取消前已完成的用例
+均通过。本批将非 Lottie WebKit 测试拆成三个独立单 worker 分片，Lottie 继续独立
+运行。保留原有超时、浏览器隔离、测试断言及必需门禁；失败、取消、跳过仍会让
+门禁失败。tooling 检查实际 Playwright 测试发现结果，确保各组覆盖完整且没有重复。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/gizmo-invalidation.spec.ts \
+  __tests__/ecs/companion3d-sync.spec.ts \
+  __tests__/ecs/gizmo-lifecycle.spec.ts \
+  __tests__/ecs/extrude-gizmo.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts gizmo
+pnpm exec playwright test -c playwright.webkit.config.ts gizmo
+pnpm test:tooling
+```
+
 ## 后续顺序
 
-属性同步专项已覆盖设计变量、组继承、粗糙参数和基础三维属性；吸附与复杂嵌套
-变换已增加组合事件回归。后续优先：
+属性同步、交互拆分、三维 gizmo 编辑及同步去重已建立回归基线。后续优先：
 
-1. **三维同步性能与中断**：验证无变化帧的写入量、几何缓存与变换更新独立失效，以及相机变更、外部文档编辑与活动手势的冲突策略。
-2. **资源和渲染剩余路径**：MeshPipeline3D 网格缓存的所有权与销毁、图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+1. **三维 GPU 资源**：进一步分离 MeshPipeline3D 的位姿/材质更新与 GPU 网格缓冲重建，补齐缓存所有权、销毁及多画布资源隔离测试。
+2. **三维同步后续**：减少无变化帧的派生矩阵计算和图层扫描，补充动态布局引起位置变化时的手势策略。
+3. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前

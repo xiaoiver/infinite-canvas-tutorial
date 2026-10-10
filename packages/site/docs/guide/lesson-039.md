@@ -184,6 +184,17 @@ The session updates runtime components during movement. On release, a declarativ
 source publishes one document edit and one undo entry. Escape, pointer cancellation
 or leaving the canvas restores the starting pose without recording an edit.
 
+Changing the active camera, its projection/view, or the canvas size cancels a
+held gesture. External edits to the source's pose, geometry, or an ancestor's
+transform also cancel it: the runtime preview returns to the **current document**,
+so an old pointer release cannot overwrite an API edit or undo. Unrelated edits,
+such as names and colors, can merge with a drag that continues normally. Changes
+on another canvas do not interrupt it. Press a handle again to start in the new view.
+
+Unchanged frames do not rewrite companion transforms or materials, and pose or
+material edits reuse generated CPU geometry. Geometry configuration changes
+invalidate that cache independently.
+
 See [3D transform Gizmo](#gizmo) for handle colors, axes, and the full pointer flow.
 
 ## 3D transform Gizmo {#gizmo}

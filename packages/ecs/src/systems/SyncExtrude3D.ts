@@ -19,6 +19,7 @@ import { resolveExtrudeCompanionTransform } from '../utils/extrude3d-transform';
 import { resolveCanvasFromSceneGraph } from '../utils/canvas3d-scope';
 import { ensureCompanionGizmoWhenSourceSelected } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
+import { syncMaterial3D, syncTransform3D } from '../utils/sync3d';
 
 /**
  * Keeps Extrude3D mesh companions aligned to their rect's canvas-space bounds.
@@ -71,14 +72,15 @@ export class SyncExtrude3D extends System {
           entity,
           meshEntity.read(Extrude3DTarget).unifiedSpace,
         );
-        if (pose) Object.assign(meshEntity.write(Transform3D), pose);
+        if (pose) syncTransform3D(meshEntity, pose);
       }
       const canvas = resolveCanvasFromSceneGraph(entity);
       if (canvas)
         ensureCompanionGizmoWhenSourceSelected(entity, meshEntity, canvas);
 
-      meshEntity.write(Material3D).baseColor =
-        extrudeMaterialBaseColorFromEntity(entity);
+      syncMaterial3D(meshEntity, {
+        baseColor: extrudeMaterialBaseColorFromEntity(entity),
+      });
     }
   }
 
