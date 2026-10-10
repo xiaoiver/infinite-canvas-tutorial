@@ -8,9 +8,16 @@ import {
   Material3D,
   ToBeDeleted,
   Transform3D,
-  canvasWorldToWorld3D,
+  Canvas,
+  Canvas3DScope,
+  Children,
+  Selected,
+  Selected3D,
 } from '../components';
 import { extrudeMaterialBaseColorFromEntity } from '../utils/extrude3d';
+import { resolveExtrudeCompanionTransform } from '../utils/extrude3d-transform';
+import { resolveCanvasFromSceneGraph } from '../utils/canvas3d-scope';
+import { ensureCompanionGizmoWhenSourceSelected } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
 
 /**
@@ -31,8 +38,19 @@ export class SyncExtrude3D extends System {
     this.query(
       (q) =>
         q
-          .using(Extrude3D, Extrude3DTarget, ComputedBounds, FillLayers, Camera)
-          .read.and.using(Material3D, Transform3D, ToBeDeleted).write,
+          .using(
+            Extrude3D,
+            Extrude3DTarget,
+            ComputedBounds,
+            FillLayers,
+            Camera,
+            Canvas,
+            Canvas3DScope,
+            Children,
+            Selected,
+          )
+          .read.and.using(Material3D, Transform3D, ToBeDeleted, Selected3D)
+          .write,
     );
   }
 
@@ -46,25 +64,18 @@ export class SyncExtrude3D extends System {
         continue;
       }
 
-      const bounds = entity.read(ComputedBounds).geometryWorldBounds;
-      const width = bounds.maxX - bounds.minX;
-      const height = bounds.maxY - bounds.minY;
-      if (width <= 0 || height <= 0) {
-        continue;
+      const dragging =
+        meshEntity.has(Selected3D) && meshEntity.read(Selected3D).dragging;
+      if (!dragging) {
+        const pose = resolveExtrudeCompanionTransform(
+          entity,
+          meshEntity.read(Extrude3DTarget).unifiedSpace,
+        );
+        if (pose) Object.assign(meshEntity.write(Transform3D), pose);
       }
-
-      const centerX = (bounds.minX + bounds.maxX) / 2;
-      const centerY = (bounds.minY + bounds.maxY) / 2;
-      const depth = extrude.depth;
-      const rotation = entity.read(ComputedBounds).transformOBB.rotation;
-      const unifiedSpace = meshEntity.read(Extrude3DTarget).unifiedSpace;
-
-      const transform = meshEntity.write(Transform3D);
-      transform.translation = unifiedSpace
-        ? [centerX, centerY, -depth / 2]
-        : canvasWorldToWorld3D(centerX, centerY, -depth / 2);
-      transform.rotation = [0, 0, rotation];
-      transform.scale = [width, height, depth];
+      const canvas = resolveCanvasFromSceneGraph(entity);
+      if (canvas)
+        ensureCompanionGizmoWhenSourceSelected(entity, meshEntity, canvas);
 
       meshEntity.write(Material3D).baseColor =
         extrudeMaterialBaseColorFromEntity(entity);

@@ -84,7 +84,7 @@ import type {
   WireframeAttributes,
   FlexboxLayoutAttributes,
 } from '../../types/serialized-node';
-import { resolveExtrude3DDepth } from '../extrude3d';
+import { extrude3DFromWire } from '../extrude3d';
 import { mesh3DNodeFromWire, light3DFromWire } from '../mesh3d-wire';
 import {
   serializePoints,
@@ -1260,11 +1260,11 @@ export function serializedNodesToEntities(
         serializeRough(attributes as RoughAttributes, entityCommands);
       }
       if (type === 'rect') {
-        const depth = resolveExtrude3DDepth(
+        const extrude = extrude3DFromWire(
           (attributes as Extrude3DAttributes).extrude3d,
         );
-        if (depth !== undefined) {
-          entityCommands.insert(new Extrude3D({ depth }));
+        if (extrude) {
+          entityCommands.insert(new Extrude3D(extrude));
         }
       }
     } else if (type === 'polyline' || type === 'rough-polyline') {

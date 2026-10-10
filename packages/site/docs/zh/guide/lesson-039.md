@@ -174,12 +174,12 @@ const hit = rayMeshIntersection(ray, positions, indices, modelMatrix);
 
 ### 拖拽约束
 
-gizmo 命中后，**`Pick3D.handleDrag`** 每帧重新求射线，并与 **约束平面** 求交（`intersectRayWithPlane`）：
+按下 gizmo 后会创建 `GizmoSession`，保存初始姿态和固定的投影。普通相机通过射线与
+约束平面求交；linked 相机反解实际显示的把手投影，包括 Z 轴的屏幕偏移。平移沿
+选中的轴或平面，旋转沿局部圆环轴；退化或无法求解的采样不会改动预览。
 
--   **平移**（箭头 / 平面）：平面法线随当前轴或平面 widget。
--   **旋转**（圆环）：平面法线为环轴；角度增量由 `angleOnRotationPlane` 计算。
-
-相对初始命中点（`dragHitStart`）的增量写回 **`Transform3D`**。
+拖动只更新运行时组件，松手时声明式源节点才提交一次文档改动和撤销记录。
+Escape、指针取消或离开画布会恢复起始姿态，不产生文档改动。
 
 完整指针流程与把手含义见 [3D 变换 Gizmo](#gizmo)。
 
@@ -191,16 +191,18 @@ gizmo 命中后，**`Pick3D.handleDrag`** 每帧重新求射线，并与 **约�
 
 ```plaintext
 pointer down（Select 工具）
-  └─ Pick3D.handlePointerDown
-       ├─ probePick3DAtViewport：先测 gizmo，再测 Mesh3D
-       ├─ 命中 gizmo → 记录 activeAxis、dragHitStart，dragging = true
-       └─ 命中 mesh → add Selected3D；未命中 → 移除已有 Selected3D
+  └─ Pick3D：先测 gizmo，再测 Mesh3D
+       ├─ 命中 gizmo → 保存姿态/投影，创建 GizmoSession
+       └─ 命中 mesh → 选中；未命中 → 清空选择
 
 pointer move（按住）
-  └─ Pick3D.handleDrag：射线与约束平面求交，delta = 当前交点 − dragHitStart
+  └─ GizmoSession.update → 受约束的运行时预览
 
 pointer up
-  └─ 结束拖拽，清空 activeAxis / dragHitStart
+  └─ finish(true) → 提交一次源节点姿态，记录历史
+
+Escape / pointer cancel / leave
+  └─ finish(false) → 恢复姿态，清空手势状态
 ```
 
 ### 坐标与把手含义 {#gizmo-axes}
@@ -220,6 +222,36 @@ pointer up
 -   拖 **箭头 / 平面** → 改 `Transform3D.translation`；拖 **圆环** → 改 `Transform3D.rotation`（局部欧拉角，与 mesh 一致）。
 -   圆环随物体当前朝向绘制；箭头仍保持画布世界轴向（X 右、Y 下、Z 深度）。
 -   拾取按屏幕空间 **最近** 命中；重叠时箭头在上层，优先拖到平移。`scale` 仍预留。
+
+### 编辑挤出矩形 {#extrude-editing}
+
+设置了 `extrude3d` 的 `rect` 使用与声明式网格相同的 gizmo。序列化选项支持高度偏移和局部三维旋转：
+
+```ts
+const node: RectSerializedNode = {
+    id: 'extruded-card',
+    type: 'rect',
+    zIndex: 0,
+    x: 100,
+    y: 80,
+    width: 160,
+    height: 100,
+    extrude3d: { depth: 80, z: 20, rotation: [0.2, 0.3, 0] },
+    fills: [{ type: 'solid', value: '#3377dd' }],
+};
+```
+
+-   XY 平移写回源矩形在父坐标系中的 `x`/`y`，支持父级旋转、缩放和翻转。父变换不可逆时拒绝预览。
+-   Z 平移改变 `extrude3d.z`，保留厚度 `depth`。未施加三维旋转时，`z` 表示前表面的高度偏移；伴生网格中心位于 `z - depth / 2`。
+-   圆环旋转写入 `extrude3d.rotation`，使用弧度制 XYZ 欧拉角，相对于源图形已有的世界空间二维旋转。源图形的二维 `rotation` 保持不变，网格使用 `Rz(sourceAngle) × Rx(x) × Ry(y) × Rz(z)` 组合姿态。
+
+松手提交一次，取消恢复预览；撤销、重做和重新载入文档会恢复相同姿态。拖动中关闭
+挤出或替换伴生网格会中断手势，并从当前文档恢复，不会重建过期的网格。
+
+`extrude3d: true` 仍表示厚度 100，数值仍表示指定厚度。对象写法默认厚度 100、
+高度偏移 0、旋转 `[0, 0, 0]`。更新采用整个选项值替换，省略的字段恢复上述默认值。
+目前没有缩放把手，可通过矩形尺寸和 `depth` 改变大小。挤出底面仍沿用世界 AABB
+尺寸，本次未实现旋转或剪切矩形底面的精确挤出几何。
 
 ## 光照 {#lighting}
 

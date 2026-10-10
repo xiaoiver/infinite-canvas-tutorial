@@ -234,3 +234,11 @@ ECS resource tests keep references to submitted bindings and inspect their
 buffers after every draw has been recorded. This catches multi-selection UBO
 overwrites with deferred submission semantics. Browser tests currently use
 WebGL; they do not certify a native WebGPU backend.
+
+`gizmo-extrude.spec.ts` checks rectangle extrusion through the full renderer:
+XY preview/commit with an independently sampled arrow pixel, cancellation,
+undo/redo, and Z movement that preserves thickness through deletion and document
+reload. It also guards clearing a 3D selection and disabling extrusion before
+resizing with the 2D transformer.
+These cases run in both browsers; parent-coordinate conversion, local rotation
+and source/companion invalidation are covered separately by ECS tests.

@@ -10,6 +10,10 @@ import {
   system,
   Pen,
   Mesh3DNode,
+  Extrude3D,
+  Camera3D,
+  Canvas3DScope,
+  type SerializedNode,
   Transform3D,
   Selected3D,
 } from '@infinite-canvas-tutorial/ecs';
@@ -37,6 +41,18 @@ class Bootstrap extends System {
     });
     api.createCamera({ zoom, x: 0, y: 0, rotation });
     api.setAppState({ penbarSelected: Pen.SELECT });
+    if (params.has('extrude')) {
+      const commands = new Commands(this);
+      commands.spawn(
+        new Camera3D({
+          linked: true,
+          projection: 'perspective',
+          clearColor: false,
+        }),
+        new Canvas3DScope({ canvas: api.getCanvas() }),
+      );
+      commands.execute();
+    }
   }
 }
 const app = new App().addPlugins(
@@ -52,10 +68,15 @@ const harness = {
   settle: () => settleECSFrames(api, 3),
   state: () => {
     const node = api.getNodeById('model');
-    const mesh = api.getEntity(node).read(Mesh3DNode).meshEntity!;
+    const entity = api.getEntity(node);
+    const mesh = entity.has(Extrude3D)
+      ? entity.read(Extrude3D).meshEntity!
+      : entity.read(Mesh3DNode).meshEntity!;
     return {
       node,
       translation: [...mesh.read(Transform3D).translation],
+      rotation: [...mesh.read(Transform3D).rotation],
+      scale: [...mesh.read(Transform3D).scale],
       dragging: mesh.has(Selected3D) && mesh.read(Selected3D).dragging,
       axis: mesh.has(Selected3D) ? mesh.read(Selected3D).activeAxis : 'none',
       partKind: mesh.has(Selected3D)
@@ -75,9 +96,19 @@ async function init() {
   await app.run();
   await api.edit(
     (editor) => {
-      editor.replaceDocument(
-        [
-          {
+      const node: SerializedNode = params.has('extrude')
+        ? {
+            id: 'model',
+            type: 'rect',
+            zIndex: 0,
+            x: 60,
+            y: 60,
+            width: 40,
+            height: 40,
+            extrude3d: { depth: 20, z: 10 },
+            fills: [{ type: 'solid', value: '#33aabb' }],
+          }
+        : {
             id: 'model',
             type: 'mesh3d',
             zIndex: 0,
@@ -87,10 +118,8 @@ async function init() {
             width: 40,
             height: 40,
             scale3d: 20,
-          },
-        ],
-        'remote',
-      );
+          };
+      editor.replaceDocument([node], 'remote');
       editor.selectNodes([editor.getNodeById('model')]);
     },
     { capture: 'NEVER' },

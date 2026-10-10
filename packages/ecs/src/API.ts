@@ -80,6 +80,7 @@ import {
   migrateLegacyStrokeWireInPlace,
 } from './utils/normalize-stroke-wire';
 import { getEnabledFillLayers } from './utils/fillLayers';
+import { resolveExtrude3DDepth } from './utils/extrude3d';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -107,6 +108,7 @@ import {
   Locked,
   Mat3,
   Mesh3DNode,
+  Extrude3D,
   OBB,
   Parent,
   Path,
@@ -740,11 +742,23 @@ export class API {
       ...prevAppState,
       layersSelected: prevAppState.layersSelected.filter((id) => {
         const node = this.getNodeById(id);
-        return node?.type !== 'mesh3d';
+        return (
+          node?.type !== 'mesh3d' &&
+          !(
+            node?.type === 'rect' &&
+            resolveExtrude3DDepth(node.extrude3d) !== undefined
+          )
+        );
       }),
       layersHighlighted: prevAppState.layersHighlighted.filter((id) => {
         const node = this.getNodeById(id);
-        return node?.type !== 'mesh3d';
+        return (
+          node?.type !== 'mesh3d' &&
+          !(
+            node?.type === 'rect' &&
+            resolveExtrude3DDepth(node.extrude3d) !== undefined
+          )
+        );
       }),
     });
   }
@@ -1825,16 +1839,18 @@ export class API {
   /**
    * Select nodes.
    */
-  /** Remove {@link Selected3D} from a declarative mesh3d companion mesh (deferred: runs in {@link Deleter}). */
+  /** Remove {@link Selected3D} from a declarative 3D companion mesh (deferred: runs in {@link Deleter}). */
   #deselectMesh3DCompanion(source: Entity): void {
     this.runAtNextTick(() => this.#deselectMesh3DCompanionDeferred(source));
   }
 
+  #getDeclarative3DCompanion(source: Entity): Entity | undefined {
+    if (source.has(Mesh3DNode)) return source.read(Mesh3DNode).meshEntity;
+    if (source.has(Extrude3D)) return source.read(Extrude3D).meshEntity;
+  }
+
   #deselectMesh3DCompanionDeferred(source: Entity): void {
-    if (!source.has(Mesh3DNode)) {
-      return;
-    }
-    const mesh = source.read(Mesh3DNode).meshEntity;
+    const mesh = this.#getDeclarative3DCompanion(source);
     if (!mesh || !isEntityAlive(mesh) || !mesh.has(Selected3D)) {
       return;
     }
@@ -1851,10 +1867,13 @@ export class API {
   }
 
   #selectMesh3DCompanionDeferred(source: Entity, attempt = 0): void {
-    if (!source.has(Mesh3DNode) || !source.has(Selected)) {
+    if (
+      (!source.has(Mesh3DNode) && !source.has(Extrude3D)) ||
+      !source.has(Selected)
+    ) {
       return;
     }
-    const mesh = source.read(Mesh3DNode).meshEntity;
+    const mesh = this.#getDeclarative3DCompanion(source);
     if (!mesh || !isEntityAlive(mesh)) {
       if (attempt < 120) {
         this.runAtNextTick(() =>
@@ -1881,10 +1900,7 @@ export class API {
   #syncMesh3DGizmoBridge(): void {
     const has3DSelection = this.getAppState().layersSelected.some((id) => {
       const entity = this.#idEntityMap.get(id)?.id();
-      if (!entity?.has(Mesh3DNode)) {
-        return false;
-      }
-      const mesh = entity.read(Mesh3DNode).meshEntity;
+      const mesh = entity && this.#getDeclarative3DCompanion(entity);
       return !!(mesh && isEntityAlive(mesh) && mesh.has(Selected3D));
     });
     set3DMeshGizmoSelectedForCanvas(this.#canvas, has3DSelection);
@@ -1939,7 +1955,7 @@ export class API {
       if (entity && !entity.has(Selected)) {
         entity.add(Selected, { camera: this.#camera });
       }
-      // Deferred in Deleter; #selectMesh3DCompanionDeferred no-ops for non-mesh3d nodes.
+      // Deferred in Deleter; no-ops for nodes without a 3D companion.
       if (entity) {
         this.#selectMesh3DCompanion(entity);
       }
