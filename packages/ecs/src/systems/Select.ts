@@ -2116,6 +2116,17 @@ export class Select extends System {
           selected.read(Editable).isEditing;
         const [x, y] = input.pointerDownViewport;
 
+        // Gizmos render above the document. A handle can overlap a node's 2D
+        // bounds, where reselecting that node would remove Selected3D before
+        // Pick3D sees this press. Give the visible handle first refusal.
+        if (this.shouldSuppress2DMove(canvas, x, y)) {
+          selection.mode = SelectionMode.IDLE;
+          delete selection.resizePointerOffset;
+          selection.pointerMoveViewportX = NaN;
+          selection.pointerMoveViewportY = NaN;
+          return;
+        }
+
         if (!vectorNetworkEditing) {
           const allowPivot = input.pointerType !== 'touch' &&
             selection.mode === SelectionMode.READY_TO_MOVE_PIVOT;

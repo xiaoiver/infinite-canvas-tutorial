@@ -64,6 +64,18 @@ export function beginGizmoGesture(
   }
   const hit = intersectRayWithPlane(ray, pose.translation, normal);
   if (!hit) return;
+  return beginGizmoGestureAtPoint(pose, axis, kind, hit, normal);
+}
+
+export function beginGizmoGestureAtPoint(
+  pose: GizmoPose,
+  axis: GizmoAxis,
+  kind: GizmoPartKind,
+  hit: Vec3,
+  normal: Vec3 = [0, 0, 1],
+): GizmoGesture | undefined {
+  if (axis === 'none' || (kind === 'rotate' && !isRotateGizmoAxis(axis)))
+    return;
   const angle =
     kind === 'rotate' && isRotateGizmoAxis(axis)
       ? angleOnRotationPlane(hit, pose.translation, axis, pose.rotation)
@@ -83,9 +95,17 @@ export function updateGizmoGesture(
   gesture: GizmoGesture,
   ray: Ray,
 ): GizmoPose | undefined {
-  const { initial, axis, normal } = gesture;
+  const { initial, normal } = gesture;
   const hit = intersectRayWithPlane(ray, initial.translation, normal);
   if (!hit) return;
+  return updateGizmoGestureAtPoint(gesture, hit);
+}
+
+export function updateGizmoGestureAtPoint(
+  gesture: GizmoGesture,
+  hit: Vec3,
+): GizmoPose {
+  const { initial, axis } = gesture;
   const pose = copyGizmoPose(initial);
   if (gesture.kind === 'translate') {
     for (let i = 0; i < 3; i++) {

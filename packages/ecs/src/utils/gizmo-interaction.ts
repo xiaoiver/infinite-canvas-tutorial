@@ -17,12 +17,17 @@ export function isRotateGizmoAxis(axis: GizmoAxis): axis is 'x' | 'y' | 'z' {
   return axis === 'x' || axis === 'y' || axis === 'z';
 }
 
-/** Linked canvas: Z screen bias only for the blue translate arrow (not rotation rings). */
+/** Depth translation handles share the displayed Z axis; rings retain their local planes. */
 export function gizmoPartUsesLinkedZScreenBias(
   partKind: GizmoPartKind,
   axis: string,
 ): boolean {
-  return partKind === 'translate' && axis === 'z';
+  return partKind === 'translate' && axis.includes('z');
+}
+
+/** The display is drawn without depth testing: arrows are above rings and planes. */
+export function gizmoPartDrawLayer(kind: GizmoPartKind, axis: string): number {
+  return kind === 'rotate' ? 1 : axis.length === 2 ? 0 : 2;
 }
 
 /** Translate handles stay world-aligned; rotate rings follow object euler. */

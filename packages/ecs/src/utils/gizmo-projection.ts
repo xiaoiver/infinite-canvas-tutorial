@@ -33,6 +33,8 @@ export function computeLinkedPerspectiveZGizmoScreenBias(
   anchor: [number, number, number],
   gizmoWorldExtent: number,
   scene: Extract<Mesh3DPickScene, { mode: 'linkedPerspective' }>,
+  viewportWidth = 2,
+  viewportHeight = 2,
 ): [number, number] {
   if (gizmoWorldExtent < 1e-8) {
     return [0, 0];
@@ -63,8 +65,12 @@ export function computeLinkedPerspectiveZGizmoScreenBias(
   );
 
   const ndcCenter = ndcXY(center.clip);
-  const xLen = ndcDistance(ndcCenter, ndcXY(xTip.clip));
-  const zLen = ndcDistance(ndcCenter, ndcXY(zTip.clip));
+  const pixels = (p: [number, number]): [number, number] => [
+    (p[0] * viewportWidth) / 2,
+    (p[1] * viewportHeight) / 2,
+  ];
+  const xLen = ndcDistance(pixels(ndcCenter), pixels(ndcXY(xTip.clip)));
+  const zLen = ndcDistance(pixels(ndcCenter), pixels(ndcXY(zTip.clip)));
 
   if (zLen >= xLen * 0.35) {
     return [0, 0];
@@ -73,7 +79,7 @@ export function computeLinkedPerspectiveZGizmoScreenBias(
   const targetLen = Math.max(xLen, 1e-4);
   const dir = normalize2d(Z_SCREEN_DIR_NDC);
   return [
-    (dir[0] * targetLen) / gizmoWorldExtent,
-    (dir[1] * targetLen) / gizmoWorldExtent,
+    (dir[0] * targetLen * 2) / (gizmoWorldExtent * viewportWidth),
+    (dir[1] * targetLen * 2) / (gizmoWorldExtent * viewportHeight),
   ];
 }

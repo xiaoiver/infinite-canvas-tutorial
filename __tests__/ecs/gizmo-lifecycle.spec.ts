@@ -73,7 +73,10 @@ beforeEach(async () => {
     await world.reset(editor, []);
     await world.edit(
       editor,
-      (e) => e.setAppState({ penbarSelected: Pen.SELECT }),
+      (e) => {
+        e.setAppState({ penbarSelected: Pen.SELECT });
+        e.gotoLandmark({ x: 0, y: 0, zoom: 1, rotation: 0 }, { duration: 0 });
+      },
       'NEVER',
     );
   }
@@ -268,6 +271,101 @@ it('commits rotation and restores it through undo/redo', async () => {
   await world.frames();
   expect(mesh().read(Transform3D).rotation[2]).toBeCloseTo(Math.PI / 4);
 });
+
+it.each(['xy', 'xz', 'yz'] as const)(
+  'picks and drags the displayed %s plane without snapping on press',
+  async (axis) => {
+    const z = 30;
+    await world.reset(api, [{ ...node(), z }]);
+    await world.edit(
+      api,
+      (editor) => editor.selectNodes([editor.getNodeById('model')]),
+      'NEVER',
+    );
+    await world.frames();
+    api.clearHistory();
+    const size = 150 * Math.tan(Math.PI / 8);
+    const eyeZ = 100 / Math.tan(Math.PI / 8);
+    const project = ([x, y, depth]: number[]) => {
+      const scale = 1 - depth / (eyeZ - z);
+      const length = Math.hypot(0.5, 0.55);
+      return [
+        80 + x * scale + (depth * 0.5) / length,
+        80 + y * scale + (depth * 0.55) / length,
+      ];
+    };
+    const press = project(
+      axis === 'xy'
+        ? [size * 0.38, size * 0.26, 0]
+        : axis === 'xz'
+        ? [size * 0.325, 0, size * 0.325]
+        : [0, size * 0.325, size * 0.325],
+    );
+    const delta =
+      axis === 'xy' ? [10, 5, 0] : axis === 'xz' ? [10, 0, 5] : [0, 10, 5];
+    const target = project(delta);
+    await world.pointer(api, 'pointerdown', press[0], press[1]);
+    expect(mesh().read(Selected3D).activeAxis).toBe(axis);
+    expect(mesh().read(Selected3D).dragging).toBe(true);
+    expect(mesh().read(Transform3D).translation).toEqual([80, 80, z]);
+    await world.pointer(
+      api,
+      'pointerup',
+      press[0] + target[0] - 80,
+      press[1] + target[1] - 80,
+    );
+    const updated = api.getNodeById('model') as Mesh3DNodeSerializedNode;
+    expect(updated.x).toBeCloseTo(60 + delta[0], 3);
+    expect(updated.y).toBeCloseTo(60 + delta[1], 3);
+    expect(updated.z).toBeCloseTo(z + delta[2], 3);
+    await world.history(api, 'undo');
+    await world.frames();
+    expect(mesh().read(Transform3D).translation).toEqual([80, 80, z]);
+  },
+);
+
+it.each([
+  { zoom: 1, rotation: 0, z: 0 },
+  { zoom: 2, rotation: 0.3, z: 40 },
+  { zoom: 0.75, rotation: -0.4, z: -30 },
+])(
+  'drags the displayed linked Z axis at $zoom zoom and depth $z',
+  async ({ zoom, rotation, z }) => {
+    await world.reset(api, [{ ...node(), z }]);
+    await world.edit(
+      api,
+      (editor) => {
+        editor.selectNodes([editor.getNodeById('model')]);
+        editor.gotoLandmark({ x: 20, y: 15, zoom, rotation }, { duration: 0 });
+      },
+      'NEVER',
+    );
+    await world.frames();
+    api.clearHistory();
+    const center = api.canvas2Viewport({ x: 80, y: 80 });
+    const length = Math.hypot(0.5, 0.55);
+    const dx = 0.5 / length;
+    const dy = 0.55 / length;
+    // Independently use the visible arrow's default CSS size and direction.
+    const distance = 150 * Math.tan(Math.PI / 8) * 0.6;
+    const x = center.x + dx * distance;
+    const y = center.y + dy * distance;
+    await world.pointer(api, 'pointerdown', x, y);
+    expect(mesh().read(Selected3D).activeAxis).toBe('z');
+    expect(mesh().read(Selected3D).activePartKind).toBe('translate');
+    expect(mesh().read(Selected3D).dragging).toBe(true);
+    await world.pointer(api, 'pointermove', x + dx * 10, y + dy * 10);
+    await world.pointer(api, 'pointerup', x + dx * 20, y + dy * 20);
+    expect(
+      (api.getNodeById('model') as Mesh3DNodeSerializedNode).z,
+    ).toBeCloseTo(z + 20 / zoom, 2);
+    expect(api.getNodeById('model').x).toBeCloseTo(60);
+    expect(api.getNodeById('model').y).toBeCloseTo(60);
+    await world.history(api, 'undo');
+    await world.frames();
+    expect(mesh().read(Transform3D).translation[2]).toBeCloseTo(z);
+  },
+);
 
 it('converts movement through a rotated and flipped parent without drifting after release', async () => {
   await world.reset(api, [
