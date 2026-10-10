@@ -15,6 +15,10 @@ const esm = [
 
 module.exports = {
   testTimeout: 30000,
+  // Coverage workers retain instrumented modules and native rendering resources.
+  // Bound CI concurrency and recycle workers between files when their JS heap
+  // exceeds 256 MB; recycling also releases native allocations in that process.
+  ...(process.env.CI ? { maxWorkers: 2, workerIdleMemoryLimit: '256MB' } : {}),
   setupFiles: ['<rootDir>/__tests__/jest-pretext-canvas.js'],
   testMatch: ['**/ecs/*.spec.+(ts|tsx|js)'],
   preset: 'ts-jest',
