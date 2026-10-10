@@ -174,12 +174,15 @@ This keeps “what you see is what you pick” when panning/zooming the infinite
 
 ### Drag constraints
 
-After a gizmo hit, **`Pick3D.handleDrag`** keeps casting a ray each frame and intersects it with a **constraint plane** (`intersectRayWithPlane`):
+A gizmo press creates a `GizmoSession` with the initial pose and a fixed projection.
+For ordinary cameras, pointer movement intersects a ray with the active constraint
+plane. Linked cameras invert the displayed handle projection, including its Z
+screen offset. Translation follows the selected axis or plane; rotation follows
+the local ring axis. Invalid or degenerate samples leave the preview unchanged.
 
--   **Translate** (arrow / plane): plane normal follows the active axis or plane widget.
--   **Rotate** (ring): plane normal is the ring’s rotation axis; angle delta comes from `angleOnRotationPlane`.
-
-The delta from the initial hit point (`dragHitStart`) is written back to **`Transform3D`**.
+The session updates runtime components during movement. On release, a declarative
+source publishes one document edit and one undo entry. Escape, pointer cancellation
+or leaving the canvas restores the starting pose without recording an edit.
 
 See [3D transform Gizmo](#gizmo) for handle colors, axes, and the full pointer flow.
 
@@ -191,16 +194,18 @@ With the **Select tool** (`penbarSelected === Pen.SELECT`), clicking a 3D mesh a
 
 ```plaintext
 pointer down (Select tool)
-  └─ Pick3D.handlePointerDown
-       ├─ probePick3DAtViewport: gizmo first, then Mesh3D
-       ├─ hit gizmo → record activeAxis, dragHitStart, dragging = true
-       └─ hit mesh → add Selected3D; miss → remove existing Selected3D
+  └─ Pick3D: probe gizmo first, then Mesh3D
+       ├─ hit gizmo → capture pose/projection, create GizmoSession
+       └─ hit mesh → select; miss → clear selection
 
 pointer move (held)
-  └─ Pick3D.handleDrag: ray vs constraint plane, delta = current hit − dragHitStart
+  └─ GizmoSession.update → constrained runtime preview
 
 pointer up
-  └─ end drag, clear activeAxis / dragHitStart
+  └─ finish(true) → publish source pose once, record history
+
+Escape / pointer cancel / leave
+  └─ finish(false) → restore pose, clear gesture state
 ```
 
 ### Coordinates and handle meaning {#gizmo-axes}
@@ -220,6 +225,46 @@ Consistent with [Unified 3D space](#unified-space), the gizmo uses **canvas coor
 -   Drag **arrow / plane** → updates `Transform3D.translation`; drag **ring** → updates `Transform3D.rotation` (local Euler angles, same as the mesh).
 -   Rings follow the object’s current orientation; arrows stay in canvas world axes (X right, Y down, Z depth).
 -   Picking uses screen-space **nearest** hit; when overlapping, arrows are on top so translate wins. `scale` is reserved for later.
+
+### Editing extruded rectangles {#extrude-editing}
+
+A `rect` with `extrude3d` uses the same gizmo as a declarative mesh. Its serializable
+options now include elevation and a local 3D rotation:
+
+```ts
+const node: RectSerializedNode = {
+    id: 'extruded-card',
+    type: 'rect',
+    zIndex: 0,
+    x: 100,
+    y: 80,
+    width: 160,
+    height: 100,
+    extrude3d: { depth: 80, z: 20, rotation: [0.2, 0.3, 0] },
+    fills: [{ type: 'solid', value: '#3377dd' }],
+};
+```
+
+-   XY translation writes the source rectangle's `x`/`y` in its parent's coordinates,
+    including rotated, scaled or flipped parents. A singular parent transform rejects
+    the preview because its inverse does not exist.
+-   Z translation changes `extrude3d.z`, preserving `depth`. With zero 3D rotation,
+    `z` is the front plane's elevation; the companion center is at `z - depth / 2`.
+-   Ring rotation writes `extrude3d.rotation`: XYZ Euler angles in radians, relative
+    to the source's existing world-space 2D rotation. It leaves the source's 2D
+    `rotation` intact. The companion composes `Rz(sourceAngle) × Rx(x) × Ry(y) × Rz(z)`.
+
+Release commits once; cancellation restores the preview. Undo/redo and document
+reload restore the same pose. Disabling extrusion or replacing its companion
+interrupts the gesture and restores the current document instead of recreating
+an obsolete companion.
+
+`extrude3d: true` still means a depth of 100, and a number still specifies depth.
+Object values default to depth 100, elevation 0 and rotation `[0, 0, 0]`. An update
+replaces the whole option value: omitted fields return to those defaults. There
+are no scale handles yet; use rectangle dimensions and `depth` to change size.
+The existing world-AABB-based extrusion footprint is unchanged, so this does not
+add exact extrusion geometry for sheared or rotated rectangular footprints.
 
 ## Lighting {#lighting}
 

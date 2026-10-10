@@ -11,6 +11,8 @@ import {
   Pen,
   Transform3D,
   Extrude3DTarget,
+  Extrude3D,
+  ComputedBounds,
   Mesh3DNodeTarget,
   Mesh3DNode,
   Transform,
@@ -21,6 +23,7 @@ import {
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import type { Mesh3DPickScene } from '../utils/ray-casting';
 import {
+  has3DMeshGizmoSelectedForCanvas,
   set3DGizmoDragging,
   set3DMeshGizmoSelectedForCanvas,
 } from '../utils/pick3d-bridge';
@@ -85,6 +88,8 @@ export class Pick3D extends System {
             Transform3D,
             Selected3D,
             Extrude3DTarget,
+            Extrude3D,
+            ComputedBounds,
             Mesh3DNodeTarget,
             Mesh3DNode,
             Transform,
@@ -92,7 +97,13 @@ export class Pick3D extends System {
             Children,
             GlobalTransform,
           )
-          .read.and.using(Selected3D, Transform3D, Mesh3DNode, Transform).write,
+          .read.and.using(
+            Selected3D,
+            Transform3D,
+            Mesh3DNode,
+            Extrude3D,
+            Transform,
+          ).write,
     );
   }
 
@@ -240,8 +251,13 @@ export class Pick3D extends System {
     });
 
     api.setMesh3DLayers(layers);
+    const selected = this.canvasSelected(canvasEntity);
+    // Deleting/disabling a companion can clear selection without a pointer event.
+    const hasSelection = selected.length > 0;
+    if (has3DMeshGizmoSelectedForCanvas(canvasEntity) !== hasSelection)
+      set3DMeshGizmoSelectedForCanvas(canvasEntity, hasSelection);
     api.setSelectedMesh3DLayerIds(
-      this.canvasSelected(canvasEntity)
+      selected
         .map((entity) => api.getMesh3DLayerIdByEntity(entity))
         .filter((id): id is string => !!id),
     );

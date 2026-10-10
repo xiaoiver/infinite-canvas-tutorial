@@ -33,6 +33,8 @@ import {
   Line,
   StrokeLayers,
   Mesh3DNode,
+  Extrude3DTarget,
+  Extrude3D,
   Mesh3DNodeTarget,
 } from '../components';
 import { Commands } from '../commands';
@@ -76,6 +78,8 @@ export class RenderHighlighter extends System {
             FractionalIndex,
             Transformable,
             Mesh3DNode,
+            Extrude3DTarget,
+            Extrude3D,
             Mesh3DNodeTarget,
           )
           .read.and.using(

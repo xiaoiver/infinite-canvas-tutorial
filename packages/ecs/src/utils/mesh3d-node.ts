@@ -1,14 +1,11 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { mat3 } from 'gl-matrix';
 import {
-  Camera,
-  Children,
-  GlobalTransform,
-  Mat3,
   ComputedBounds,
   Material3D,
   Mesh3D,
   Mesh3DNode,
+  Extrude3D,
+  Extrude3DTarget,
   Mesh3DNodeTarget,
   Rect,
   Selected,
@@ -25,6 +22,7 @@ import {
   normalizeGeometry,
   type Mesh3DNodeGeometry,
 } from './geometry3d';
+import { resolveCanvasSourceOrigin } from './canvas-source-origin';
 import { set3DMeshGizmoSelectedForCanvas } from './pick3d-bridge';
 import type { GltfMeshBakeResult } from './gltf/bake-gltf-mesh';
 
@@ -98,9 +96,14 @@ export function resolveMesh3DNodeScale(
   return scale3d;
 }
 
-/** Declarative mesh3d source or companion entity (no {@link Selected3D} read). */
+/** Declarative mesh or extrusion source/companion entity (no {@link Selected3D} read). */
 export function entityIsDeclarative3DNode(entity: Entity): boolean {
-  return entity.has(Mesh3DNode) || entity.has(Mesh3DNodeTarget);
+  return (
+    entity.has(Mesh3DNode) ||
+    entity.has(Mesh3DNodeTarget) ||
+    entity.has(Extrude3D) ||
+    entity.has(Extrude3DTarget)
+  );
 }
 
 /** 3D 节点用 gizmo 操作，不展示 2D Transformer。 */
@@ -206,36 +209,11 @@ export function resolveMesh3DNodeSourceTransform(
 ) {
   if (!source.has(Mesh3DNode) || !source.has(Transform)) return;
   const { translation, rotation, scale } = pose;
-  let inverseParent = mat3.create();
-  if (source.has(Children)) {
-    const parent = source.read(Children).parent;
-    if (parent && !parent.has(Camera) && parent.has(GlobalTransform)) {
-      const inverse = mat3.invert(
-        mat3.create(),
-        Mat3.toGLMat3(parent.read(GlobalTransform).matrix),
-      );
-      if (!inverse) return;
-      inverseParent = inverse;
-    }
-  }
-  const center = [
-    inverseParent[0] * translation[0] +
-      inverseParent[3] * translation[1] +
-      inverseParent[6],
-    inverseParent[1] * translation[0] +
-      inverseParent[4] * translation[1] +
-      inverseParent[7],
-  ];
-  const local = source.read(Transform);
-  const rect = source.has(Rect) ? source.read(Rect) : undefined;
-  const cx = ((rect?.width ?? 0) * local.scale.x) / 2;
-  const cy = ((rect?.height ?? 0) * local.scale.y) / 2;
-  const cos = Math.cos(local.rotation);
-  const sin = Math.sin(local.rotation);
+  const origin = resolveCanvasSourceOrigin(source, translation);
+  if (!origin) return;
   const [sx, sy, sz] = scale;
   return {
-    x: center[0] - (cx * cos - cy * sin),
-    y: center[1] - (cx * sin + cy * cos),
+    ...origin,
     z: translation[2],
     rotation3d: [...rotation] as [number, number, number],
     scale3d:

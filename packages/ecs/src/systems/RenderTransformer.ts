@@ -47,6 +47,8 @@ import {
   hasFullOrPartialEdgeBinding,
   Editable,
   Mesh3DNode,
+  Extrude3DTarget,
+  Extrude3D,
   Mesh3DNodeTarget,
 } from '../components';
 import { Commands } from '../commands';
@@ -128,6 +130,8 @@ export class RenderTransformer extends System {
             ComputedPoints,
             Editable,
             Mesh3DNode,
+            Extrude3DTarget,
+            Extrude3D,
             Mesh3DNodeTarget,
           )
           .read.and.using(
@@ -1082,6 +1086,7 @@ export class RenderTransformer extends System {
       brAnchor,
       centerAnchor,
     });
+    updateGlobalTransform(mask);
   }
 
   private updateRectMask(camera: Entity) {
@@ -1179,6 +1184,7 @@ export class RenderTransformer extends System {
 
     this.commands.entity(camera).appendChild(this.commands.entity(lineMask));
     this.commands.execute();
+    updateGlobalTransform(lineMask);
   }
 
   private updateLineMask(camera: Entity) {
@@ -1275,6 +1281,7 @@ export class RenderTransformer extends System {
       .entity(camera)
       .appendChild(this.commands.entity(polylineMask));
     this.commands.execute();
+    updateGlobalTransform(polylineMask);
   }
 
   private updatePolylineMask(camera: Entity) {

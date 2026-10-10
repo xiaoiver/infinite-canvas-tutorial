@@ -15,7 +15,7 @@ import {
   deserializeBrushPoints,
 } from '../utils';
 import { hasRasterPostEffects } from '../utils/filter';
-import { resolveExtrude3DDepth } from '../utils/extrude3d';
+import { extrude3DFromWire } from '../utils/extrude3d';
 import {
   rebuildMesh3DNodeCompanionGeometry,
   syncMesh3DNodeCompanionFromSource,
@@ -36,6 +36,7 @@ import type {
   SerializedFillLayerItem,
   Light3DNodeSerializedNode,
   Mesh3DNodeSerializedNode,
+  RectSerializedNode,
   SerializedNode,
   SerializedNodeAttributes,
   StrokeAttributes,
@@ -1829,13 +1830,13 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   }
 
   if ('extrude3d' in updates && entity.has(Rect)) {
-    const depth = resolveExtrude3DDepth(
-      (updates as { extrude3d?: boolean | number }).extrude3d,
+    const extrude = extrude3DFromWire(
+      (elNode as RectSerializedNode).extrude3d,
     );
-    if (depth === undefined) {
+    if (!extrude) {
       safeRemoveComponent(entity, Extrude3D);
     } else {
-      safeAddComponent(entity, Extrude3D, { depth });
+      safeAddComponent(entity, Extrude3D, extrude);
     }
   }
 

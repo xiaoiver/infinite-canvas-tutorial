@@ -25,6 +25,7 @@ export default defineConfig({
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
     'gizmo.spec.ts',
+    'gizmo-extrude.spec.ts',
     'gizmo-worlds.spec.ts',
     'interaction-precision.spec.ts',
     'size-label.spec.ts',
