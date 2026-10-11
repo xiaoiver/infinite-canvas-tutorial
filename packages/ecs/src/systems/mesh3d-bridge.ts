@@ -10,7 +10,7 @@ export function registerMeshPipeline3D(system: MeshPipeline3D): void {
   if (!instances.has(system)) instances.set(system, new Set());
 }
 
-/** Called in PreUpdate, before the 2D compositor runs in Last. */
+/** Called after 3D synchronization, before the 2D compositor runs in Last. */
 export function syncMeshPipeline3DCanvases(
   system: MeshPipeline3D,
   apis: API[],
