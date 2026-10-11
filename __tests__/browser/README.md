@@ -214,6 +214,12 @@ listed in lesson 36. Lottie tests run in Chromium and the separate WebKit suite.
 
 ## 3D gizmo projection and gestures
 
+`mesh-gpu-cache.spec.ts` checks real WebGL geometry uploads for mesh and extrusion
+pose/material edits. It verifies visible green material pixels, zero mesh geometry
+allocations during those edits, and one replacement upload after switching a mesh
+to a sphere. The ECS tests separately verify same-frame in-place geometry edits,
+allocation rollback, deferred uniforms, multi-canvas ownership and disposal.
+
 `gizmo.spec.ts` runs the complete 3D renderer in Chromium and WebKit. It checks
 pointer commits, undo/redo, and Escape cancellation. GPU pixel assertions locate
 the Z arrow independently of the picker on landscape and portrait canvases,

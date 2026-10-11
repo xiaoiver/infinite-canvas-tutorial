@@ -55,8 +55,11 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
      * 3D render system (Extrude3D / Mesh3D components registered in {@link DefaultRendererPlugin}).
      */
     const RenderSystem3D = options.rendererSystemCtor ?? MeshPipeline3D;
-    // GPU mesh cache only; drawing runs inside MeshPipeline via appendRenderPass.
-    system(PreUpdate)(RenderSystem3D);
+    // Consume geometry writes after companion sync and before the render graph.
+    // An earlier pass would miss this frame's in-place Mesh3D edits.
+    system((s) => s.inAnyOrderWith(s.allSystems).after(Pick3D).before(Last))(
+      RenderSystem3D,
+    );
 
     // PostUpdate: bounds → Ensure* → Sync*, all before 2D ComputeCamera / CameraControl.
     system(PostUpdate)(EnsureExtrudeMeshes);

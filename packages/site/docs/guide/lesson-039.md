@@ -195,6 +195,16 @@ Unchanged frames do not rewrite companion transforms or materials, and pose or
 material edits reuse generated CPU geometry. Geometry configuration changes
 invalidate that cache independently.
 
+`MeshPipeline3D` also reuses GPU vertex, normal, UV, index and per-mesh uniform
+buffers during pose/material edits. Only `Mesh3D` writes invalidate geometry;
+when editing arrays directly, acquire the component with `entity.write(Mesh3D)`
+first. The cache consumes those writes after companion synchronization, retains
+them across skipped draws, and uploads the replacement once on the next draw.
+Each canvas owns its cache and scene uniforms. Removing a mesh or moving it to
+another canvas releases the old buffers, and disposing the canvas releases its
+resources before the device. Failed allocations are rolled back and can be
+retried without replacing the previous complete cache entry.
+
 See [3D transform Gizmo](#gizmo) for handle colors, axes, and the full pointer flow.
 
 ## 3D transform Gizmo {#gizmo}

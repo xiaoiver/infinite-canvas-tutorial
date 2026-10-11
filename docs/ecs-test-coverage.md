@@ -1139,13 +1139,67 @@ pnpm exec playwright test -c playwright.webkit.config.ts gizmo
 pnpm test:tooling
 ```
 
+## 第十九批：三维网格 GPU 缓存与资源所有权
+
+2026-10-11，基于 master `2356d25d`（PR #404 已合并），以上一批完整运行的
+行覆盖率 73.69%、分支覆盖率 62.15%、函数覆盖率 73.66% 为基线。
+
+- 抽出 `mesh3d/mesh-gpu-cache.ts`：位姿和材质编辑复用网格缓冲，仅 `Mesh3D`
+  写入使几何缓存失效。多次写入合并为下一次绘制的一次上传，未绘制帧保留更新标记。
+- 缓存检查移到伴生同步和 `Pick3D` 之后、最终绘制之前，真实 ECS 回归验证
+  `entity.write(Mesh3D)` 后原地修改位置数组在当帧上传。
+- 每个画布独立拥有网格缓存、模型和场景 uniform；实体以 ID 去重，避免同一
+  挤出伴生的 held 包装对象重复绘制。共享 device 的两个画布也有独立 uniform。
+- 删除、待删除、清空几何、移除材质和跨画布移动均会回收旧网格缓冲，即使后续
+  不再绘制。更换 device、RenderCache 或资源 scope 会释放并重建对应画布资源。
+- 资源挂入画布 scope，在 RenderCache 和 device 之前释放；失败分配会回滚，
+  保留旧完整缓存供重试。销毁异常不会阻止同一资源组剩余资源的释放，晚到的纹理
+  加载不会在已销毁的画布上重新分配资源。
+
+新增 36 项 ECS 回归，覆盖实际调度、buffer 内容、UV 回退、有/无索引、分配失败、
+重复销毁和多画布隔离。新增两项浏览器回归统计真实 WebGL 网格上传并检查材质像素，
+像素检查前取消选择以排除绿色 gizmo 手柄。连续位姿/材质编辑没有几何上传，切换
+球体只上传一套新几何。Chromium 与 WebKit 各 18 项相关用例通过，包括原有的
+投影像素、撤销重做、中断和多画布生命周期测试；浏览器测试不计入 Jest 覆盖率。
+
+完整原生 ECS 运行通过 229 个文件、1829 项测试，
+用时 781.665 秒。沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+原有 42 项门槛和全量 ECS 源文件统计范围保持不变；新增网格缓存四项 100% 门槛
+及 `MeshPipeline3D` 门槛，完整报告满足全部 44 个模块门槛。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 73.69% | 73.82%（21105/28588） |
+| 语句覆盖率 | 73.68% | 73.82%（22114/29955） |
+| 分支覆盖率 | 62.15% |  62.28%（8754/14055） |
+| 函数覆盖率 | 73.66% |   73.77%（2835/3843） |
+
+| 模块                               | 行覆盖率 | 分支覆盖率 | 函数覆盖率 |
+| ---------------------------------- | -------: | ---------: | ---------: |
+| `systems/mesh3d/mesh-gpu-cache.ts` |     100% |       100% |       100% |
+| `systems/MeshPipeline3D.ts`        |   87.87% |      73.1% |     89.13% |
+
+ECS CommonJS/ESM 构建、仓库与修改文件 ESLint、浏览器和新增 ECS 测试 TypeScript、
+格式检查、22 项 tooling 检查和 Markdown 检查均通过。每帧仍更新场景/模型 uniform
+并创建 draw binding，后续继续按独立批次优化这些开销。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/mesh-gpu-cache.spec.ts \
+  __tests__/ecs/mesh3d-gpu-sync.spec.ts \
+  __tests__/ecs/mesh3d-renderer-lifecycle.spec.ts \
+  __tests__/ecs/renderer3d-schedule.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts 'gizmo|mesh-gpu-cache'
+pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
+pnpm test:tooling
+```
+
 ## 后续顺序
 
-属性同步、交互拆分、三维 gizmo 编辑及同步去重已建立回归基线。后续优先：
+属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **三维 GPU 资源**：进一步分离 MeshPipeline3D 的位姿/材质更新与 GPU 网格缓冲重建，补齐缓存所有权、销毁及多画布资源隔离测试。
-2. **三维同步后续**：减少无变化帧的派生矩阵计算和图层扫描，补充动态布局引起位置变化时的手势策略。
-3. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+1. **三维同步后续**：减少无变化帧的派生矩阵计算和图层扫描，补充动态布局引起位置变化时的手势策略。
+2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前

@@ -37,6 +37,18 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/systems/mesh3d/mesh-gpu-cache.ts': {
+      statements: 100,
+      branches: 100,
+      functions: 100,
+      lines: 100,
+    },
+    './packages/ecs/src/systems/MeshPipeline3D.ts': {
+      statements: 80,
+      branches: 65,
+      functions: 85,
+      lines: 80,
+    },
     './packages/ecs/src/systems/pick3d/gizmo-context.ts': {
       statements: 100,
       branches: 85,

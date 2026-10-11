@@ -16,6 +16,8 @@ import {
   type SerializedNode,
   Transform3D,
   Selected3D,
+  GPUResource,
+  Mesh3D,
 } from '@infinite-canvas-tutorial/ecs';
 import { settleECSFrames } from './ecs-frames';
 
@@ -63,9 +65,29 @@ const app = new App().addPlugins(
     system((s) => s.inAnyOrderWith(s.allSystems))(Bootstrap);
   },
 );
+const uploads: unknown[] = [];
 const harness = {
   api: () => api,
   settle: () => settleECSFrames(api, 3),
+  trackGeometryUploads: () => {
+    const device = api.getCanvas().read(GPUResource).device;
+    const createBuffer = device.createBuffer.bind(device);
+    device.createBuffer = (descriptor) => {
+      uploads.push(descriptor.viewOrSize);
+      return createBuffer(descriptor);
+    };
+  },
+  geometryUploads: () => {
+    const entity = api.getEntity(api.getNodeById('model'));
+    const mesh = (
+      entity.has(Extrude3D)
+        ? entity.read(Extrude3D).meshEntity!
+        : entity.read(Mesh3DNode).meshEntity!
+    ).read(Mesh3D);
+    const arrays = [mesh.positions, mesh.normals, mesh.uvs, mesh.indices];
+    return uploads.filter((data) => arrays.includes(data as Float32Array))
+      .length;
+  },
   state: () => {
     const node = api.getNodeById('model');
     const entity = api.getEntity(node);
