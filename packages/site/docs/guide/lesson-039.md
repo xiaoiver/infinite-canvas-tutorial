@@ -205,6 +205,16 @@ another canvas releases the old buffers, and disposing the canvas releases its
 resources before the device. Failed allocations are rolled back and can be
 retried without replacing the previous complete cache entry.
 
+Model and normal matrices are recalculated only when the pose changes. Model
+uniform uploads also skip unchanged frames and camera-only changes; material
+edits and completed texture loads update the uniforms without rebuilding those
+matrices. In-place edits to transform/color arrays are compared by value.
+
+The 3D layer list follows ECS geometry, metadata, scope and membership changes,
+instead of scanning every mesh each idle frame. Selection membership is tracked
+separately, so hovering gizmo handles does not rebuild the list. Layer entries
+retain stable entity references for later selection, including after undo/redo.
+
 See [3D transform Gizmo](#gizmo) for handle colors, axes, and the full pointer flow.
 
 ## 3D transform Gizmo {#gizmo}

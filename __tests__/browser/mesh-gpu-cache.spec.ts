@@ -11,6 +11,13 @@ for (const extrude of [false, true]) {
     page.on('pageerror', (error) => errors.push(error.message));
     await page.goto(`/gizmo.html${extrude ? '?extrude' : ''}`);
     await expect(page.locator('#status')).toHaveText('Ready');
+    await page.evaluate(async () => {
+      window.gizmoTest.resetDerivedUpdates();
+      await window.gizmoTest.settle();
+    });
+    expect(
+      await page.evaluate(() => window.gizmoTest.derivedUpdates()),
+    ).toEqual({ modelUploads: 0, layerScans: 0 });
     await page.evaluate(async (extrude) => {
       window.gizmoTest.trackGeometryUploads();
       const api = window.gizmoTest.api();
@@ -39,6 +46,51 @@ for (const extrude of [false, true]) {
     expect(await page.evaluate(() => window.gizmoTest.geometryUploads())).toBe(
       0,
     );
+    expect(
+      (await page.evaluate(() => window.gizmoTest.derivedUpdates()))
+        .modelUploads,
+    ).toBeGreaterThan(0);
+    await page.evaluate(async () => {
+      const api = window.gizmoTest.api();
+      await api.edit((editor) =>
+        editor.updateNode(editor.getNodeById('model'), {
+          name: 'Renamed mesh',
+        }),
+      );
+      await window.gizmoTest.settle();
+      window.gizmoTest.resetDerivedUpdates();
+      await api.edit(
+        (editor) => editor.gotoLandmark({ x: 1, y: 1 }, { duration: 0 }),
+        { capture: 'NEVER' },
+      );
+      await window.gizmoTest.settle();
+    });
+    expect(
+      await page.evaluate(() => window.gizmoTest.derivedUpdates()),
+    ).toEqual({ modelUploads: 0, layerScans: 0 });
+    expect(
+      await page.evaluate(
+        () => window.gizmoTest.api().getMesh3DLayers()[0].name,
+      ),
+    ).toBe('Renamed mesh');
+    await page.evaluate(async () => {
+      const api = window.gizmoTest.api();
+      await api.edit((editor) => editor.selectMesh3DLayer('model'), {
+        capture: 'NEVER',
+      });
+      await window.gizmoTest.settle();
+    });
+    expect(
+      await page.evaluate(() =>
+        window.gizmoTest.api().getSelectedMesh3DLayerIds(),
+      ),
+    ).toEqual(['model']);
+    await page.evaluate(async () => {
+      await window.gizmoTest
+        .api()
+        .edit((editor) => editor.selectNodes([]), { capture: 'NEVER' });
+      await window.gizmoTest.settle();
+    });
     const png = PNG.sync.read(await page.locator('#canvas').screenshot());
     let green = 0;
     for (let i = 0; i < png.data.length; i += 4) {

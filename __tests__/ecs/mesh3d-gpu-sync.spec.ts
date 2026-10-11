@@ -93,7 +93,15 @@ for (const type of ['mesh3d', 'rect'] as const) {
     expect(gpu.draws.length).toBeGreaterThan(0);
     const count = gpu.buffers.length;
     const model = gpu.draws.at(-1)!.uniformBufferBindings[1].buffer;
+    const uploads = model.setSubData.mock.calls.length;
     for (let i = 0; i < 4; i++) await world.frame();
+    expect(model.setSubData).toHaveBeenCalledTimes(uploads);
+    await world.edit(
+      api,
+      (editor) => editor.gotoLandmark({ x: 5, y: 7, zoom: 2 }, { duration: 0 }),
+      'NEVER',
+    );
+    expect(model.setSubData).toHaveBeenCalledTimes(uploads);
     await world.edit(api, (editor) =>
       editor.updateNode(editor.getNodeById('model'), { x: 50, y: 60 }),
     );
@@ -112,6 +120,7 @@ for (const type of ['mesh3d', 'rect'] as const) {
     expect([...new Float32Array(model.bytes.buffer).slice(32, 36)]).toEqual([
       0, 1, 0, 1,
     ]);
+    expect(model.setSubData).toHaveBeenCalledTimes(uploads + 2);
     expect(gpu.buffers).toHaveLength(count);
     expect(model.destroy).not.toHaveBeenCalled();
   });

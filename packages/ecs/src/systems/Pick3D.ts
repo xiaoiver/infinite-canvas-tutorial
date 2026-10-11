@@ -19,6 +19,8 @@ import {
   Rect,
   Children,
   GlobalTransform,
+  Name,
+  ToBeDeleted,
 } from '../components';
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import type { Mesh3DPickScene } from '../utils/ray-casting';
@@ -57,20 +59,44 @@ import {
  *   - Ends drag.
  */
 export class Pick3D extends System {
+  private layerRevision = 0;
+  private selectionRevision = 0;
+  private readonly layerStates = new Map<
+    API,
+    { layers: number; selection: number }
+  >();
+  private readonly layerChanges = [
+    Mesh3D,
+    Canvas3DScope,
+    Mesh3DNodeTarget,
+    Extrude3DTarget,
+    Name,
+    ToBeDeleted,
+  ].map((type) =>
+    this.query((q) => q.addedOrChanged.and.removed.with(type).trackWrites),
+  );
   private readonly sessions = new Map<API, GizmoSession>();
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
   private cameras2D = this.query(
     (q) => q.current.with(Camera, ComputedCamera).read,
   );
 
-  private canvases = this.query((q) => q.current.with(Canvas).read);
+  private canvases = this.query(
+    (q) => q.current.and.added.and.removed.with(Canvas).read,
+  );
 
   private meshes3D = this.query(
-    (q) => q.current.with(Mesh3D, Material3D, Transform3D).read,
+    (q) =>
+      q.current.and.added.and.removed
+        .with(Mesh3D, Material3D, Transform3D)
+        .without(ToBeDeleted).read,
   );
 
   private selected3D = this.query(
-    (q) => q.current.with(Selected3D, Transform3D).write,
+    (q) =>
+      q.current.and.added.and.removed
+        .with(Selected3D, Transform3D)
+        .without(ToBeDeleted).write,
   );
 
   constructor() {
@@ -110,6 +136,18 @@ export class Pick3D extends System {
   }
 
   execute(): void {
+    // Track membership separately: hover/drag writes to Selected3D do not
+    // change the layer selection, and pose/material writes do not rename layers.
+    if (
+      this.canvases.added.length ||
+      this.canvases.removed.length ||
+      this.meshes3D.added.length ||
+      this.meshes3D.removed.length ||
+      this.layerChanges.some((q) => q.addedOrChanged.length || q.removed.length)
+    )
+      this.layerRevision++;
+    if (this.selected3D.added.length || this.selected3D.removed.length)
+      this.selectionRevision++;
     const active = new Set<API>();
     for (const canvas of this.canvases.current) {
       const { api } = canvas.read(Canvas);
@@ -128,8 +166,8 @@ export class Pick3D extends System {
       ) {
         this.finishSession(api, false);
       }
-      if (!input || !resolved) continue;
       this.syncMesh3DLayers(api, canvas);
+      if (!input || !resolved) continue;
       if (
         api.getAppState().penbarSelected !== Pen.SELECT ||
         input.pointerCancelled ||
@@ -181,6 +219,12 @@ export class Pick3D extends System {
           this.updateGizmoHover(input, resolved.entity.read(Camera3D), canvas);
       }
     }
+    for (const api of this.layerStates.keys()) {
+      if (!active.has(api)) {
+        api.setMesh3DLayers([]);
+        this.layerStates.delete(api);
+      }
+    }
     // Dispose only this world's sessions; a canvas in another world is independent.
     for (const [api, session] of this.sessions) {
       if (!active.has(api)) {
@@ -194,6 +238,8 @@ export class Pick3D extends System {
   finalize(): void {
     for (const [api] of this.sessions) set3DGizmoDragging(api, false);
     this.sessions.clear();
+    for (const api of this.layerStates.keys()) api.setMesh3DLayers([]);
+    this.layerStates.clear();
   }
 
   private finishSession(api: API, commit: boolean): void {
@@ -241,22 +287,32 @@ export class Pick3D extends System {
   }
 
   private syncMesh3DLayers(api: Canvas['api'], canvasEntity: Entity): void {
-    const scopedMeshes = this.canvasMeshes(canvasEntity);
-    const layers = scopedMeshes.map((entity) => {
-      const sourceNode = this.resolveMesh3DSourceNode(api, entity);
-      const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;
-      const mesh = entity.read(Mesh3D);
+    const previous = this.layerStates.get(api);
+    const layersChanged = previous?.layers !== this.layerRevision;
+    if (!layersChanged && previous?.selection === this.selectionRevision)
+      return;
+    if (layersChanged) {
+      const scopedMeshes = this.canvasMeshes(canvasEntity);
+      const layers = scopedMeshes.map((entity) => {
+        const sourceNode = this.resolveMesh3DSourceNode(api, entity);
+        const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;
+        const mesh = entity.read(Mesh3D);
 
-      return {
-        id,
-        name: sourceNode?.name || `3D Mesh ${entity.__id}`,
-        sourceNodeId: sourceNode?.id,
-        vertexCount: mesh.vertexCount,
-        entity,
-      };
+        return {
+          id,
+          name: sourceNode?.name || `3D Mesh ${entity.__id}`,
+          sourceNodeId: sourceNode?.id,
+          vertexCount: mesh.vertexCount,
+          entity,
+        };
+      });
+
+      api.setMesh3DLayers(layers);
+    }
+    this.layerStates.set(api, {
+      layers: this.layerRevision,
+      selection: this.selectionRevision,
     });
-
-    api.setMesh3DLayers(layers);
     const selected = this.canvasSelected(canvasEntity);
     // Deleting/disabling a companion can clear selection without a pointer event.
     const hasSelection = selected.length > 0;
@@ -336,7 +392,10 @@ export class Pick3D extends System {
     const closestEntity = probe.kind === 'mesh' ? probe.entity : null;
 
     for (const entity of scopedSelected) {
-      if (entity !== closestEntity && entity.has(Selected3D)) {
+      if (
+        (!closestEntity || !entity.isSame(closestEntity)) &&
+        entity.has(Selected3D)
+      ) {
         entity.remove(Selected3D);
       }
     }
@@ -350,7 +409,11 @@ export class Pick3D extends System {
           dragging: false,
         });
       }
-      api.runAtNextTick(() => api.syncMesh3DLayerAppState(closestEntity));
+      const held = closestEntity.hold();
+      api.runAtNextTick(() => {
+        if (isEntityAlive(held) && held.has(Selected3D))
+          api.syncMesh3DLayerAppState(held);
+      });
     } else {
       api.runAtNextTick(() => api.clearMesh3DLayerAppState());
     }
