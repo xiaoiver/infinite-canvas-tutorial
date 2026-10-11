@@ -54,12 +54,13 @@ multi-selection, rotation after flipping, undo/redo and rendered gradient pixels
 Asymmetric path, polyline and vector-network checks catch double reflection; the
 WebKit suite also checks flipping from a padded touch corner.
 
-CI runs `.github/workflows/browser-regression.yml` with four independent test
-runners: two Chromium shards, WebKit Lottie, and the remaining WebKit suites.
+CI runs `.github/workflows/browser-regression.yml` with six independent test
+runners: two Chromium shards, WebKit Lottie, and three shards for the remaining
+WebKit suites.
 Each runner still uses one worker and the existing WebKit browser isolation.
-The WebKit split balances measured duration: the Lottie renderer used roughly
-as much time as all other WebKit tests combined. Static checks run alongside
-the browser jobs. The existing `browser-regression` check succeeds only when
+The non-Lottie WebKit suites exceeded the 25-minute job budget in PR #402.
+They now use three shards while Lottie retains its own runner. Static checks run
+alongside the browser jobs. The existing `browser-regression` check succeeds only when
 all jobs succeed; failure, cancellation and skipping cannot pass the gate.
 New commits cancel older runs for the same PR or branch.
 
@@ -69,7 +70,9 @@ Run the same groups locally (one at a time; the fixture uses a fixed port):
 pnpm test:browser --shard=1/2
 pnpm test:browser --shard=2/2
 PLAYWRIGHT_WEBKIT_GROUP=lottie pnpm test:browser:webkit
-PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit
+PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit --shard=1/3
+PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit --shard=2/3
+PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit --shard=3/3
 ```
 
 Without `PLAYWRIGHT_WEBKIT_GROUP`, the WebKit command still runs every suite.
@@ -242,3 +245,8 @@ reload. It also guards clearing a 3D selection and disabling extrusion before
 resizing with the 2D transformer.
 These cases run in both browsers; parent-coordinate conversion, local rotation
 and source/companion invalidation are covered separately by ECS tests.
+
+`gizmo-invalidation.spec.ts` changes the linked camera or source document while
+mesh/extrusion handles are held. It checks rollback to the current document,
+ignoring a late release without a history entry, and a fresh drag in the new view.
+Both Chromium and WebKit run these cases.

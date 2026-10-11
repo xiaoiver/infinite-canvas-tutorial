@@ -36,6 +36,9 @@ function fixture(count = 1) {
   const entity = (values: Map<any, any>, id = 0) =>
     ({
       __id: id,
+      isSame(other: Entity) {
+        return other === this;
+      },
       has: (type: any) => values.has(type),
       read: (type: any) => values.get(type),
     } as unknown as Entity);

@@ -26,6 +26,7 @@ export default defineConfig({
     'rough-properties.spec.ts',
     'gizmo.spec.ts',
     'gizmo-extrude.spec.ts',
+    'gizmo-invalidation.spec.ts',
     'gizmo-worlds.spec.ts',
     'interaction-precision.spec.ts',
     'size-label.spec.ts',

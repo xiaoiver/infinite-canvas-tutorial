@@ -8,6 +8,7 @@ import {
 } from '../../components';
 import type { SerializedNode } from '../../types/serialized-node';
 import { resolveMesh3DNodeSourceTransform } from '../../utils/mesh3d-node';
+import { mesh3DNodeFromWire } from '../../utils/mesh3d-wire';
 import { extrude3DFromWire, extrude3DToWire } from '../../utils/extrude3d';
 import { resolveExtrudeSourceTransform } from '../../utils/extrude3d-transform';
 import { isEntityAlive } from '../Transform';
@@ -67,9 +68,9 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
         return true;
       },
       restore(currentNode) {
-        if (!owns()) {
-          // Disabling extrusion or replacing the companion invalidates this
-          // preview. Restore the current document, never its stale start pose.
+        if (currentNode) {
+          // Cancellation always restores the current document, including
+          // external pose edits or a replacement companion during the preview.
           if (
             !isEntityAlive(entity) ||
             !entity.has(Transform) ||
@@ -85,6 +86,7 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
             Object.assign(entity.write(Extrude3D), extrude);
           return;
         }
+        if (!owns()) return;
         Object.assign(entity.write(Transform).translation, origin);
         Object.assign(entity.write(Extrude3D), initial);
       },
@@ -116,10 +118,24 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
       Object.assign(entity.write(Mesh3DNode), fields);
       return true;
     },
-    restore() {
-      if (!owns()) return;
-      Object.assign(entity.write(Transform).translation, origin);
-      Object.assign(entity.write(Mesh3DNode), initial);
+    restore(currentNode) {
+      if (
+        !isEntityAlive(entity) ||
+        !entity.has(Transform) ||
+        !entity.has(Mesh3DNode)
+      )
+        return;
+      if (currentNode?.type === 'mesh3d') {
+        const { z, rotation3d, scale3d } = mesh3DNodeFromWire(currentNode);
+        Object.assign(entity.write(Transform).translation, {
+          x: currentNode.x ?? 0,
+          y: currentNode.y ?? 0,
+        });
+        Object.assign(entity.write(Mesh3DNode), { z, rotation3d, scale3d });
+      } else if (owns()) {
+        Object.assign(entity.write(Transform).translation, origin);
+        Object.assign(entity.write(Mesh3DNode), initial);
+      }
     },
     patch: (pose, node) =>
       node.type === 'mesh3d'

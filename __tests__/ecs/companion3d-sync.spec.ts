@@ -10,6 +10,7 @@ import {
   Extrude3DTarget,
   Material3D,
   Mesh3DNode,
+  Mesh3D,
   PostUpdate,
   Selected3D,
   SyncExtrude3D,
@@ -23,6 +24,11 @@ import {
   type Mesh3DNodeSerializedNode,
   type RectSerializedNode,
 } from '../../packages/ecs/src';
+import * as geometry from '../../packages/ecs/src/utils/geometry3d';
+import {
+  consumeTransformerRefreshForCanvas,
+  set3DMeshGizmoSelectedForCanvas,
+} from '../../packages/ecs/src/utils/pick3d-bridge';
 import { createDocumentWorld } from '../helpers/ecs-document';
 
 const mesh = (
@@ -54,11 +60,33 @@ let world: Awaited<ReturnType<typeof createDocumentWorld>>;
 let api: API;
 let second: API;
 let cameras: Entity[];
+const writes = {
+  pose: [] as number[],
+  material: [] as number[],
+  geometry: [] as number[],
+  source: [] as number[],
+  transform: [] as number[],
+};
+const clearWrites = () =>
+  Object.values(writes).forEach((events) => events.splice(0));
 beforeAll(async () => {
   cameras = [];
   class ObserveCameras extends System {
     cameras = this.query((q) => q.current.with(Camera3D).read);
+    poses = this.query((q) => q.changed.with(Transform3D).trackWrites);
+    materials = this.query((q) => q.changed.with(Material3D).trackWrites);
+    meshes = this.query((q) => q.changed.with(Mesh3D).trackWrites);
+    sources = this.query((q) => q.changed.with(Mesh3DNode).trackWrites);
+    transforms = this.query((q) => q.changed.with(Transform).trackWrites);
     execute() {
+      for (const [key, query] of [
+        ['pose', this.poses],
+        ['material', this.materials],
+        ['geometry', this.meshes],
+        ['source', this.sources],
+        ['transform', this.transforms],
+      ] as const)
+        writes[key].push(...query.changed.map((e) => e.__id));
       cameras = this.cameras.current.map((e) => e.hold());
     }
   }
@@ -392,4 +420,129 @@ it('cleans up a replaced mesh companion while keeping the new mesh alive', async
   expect(replacement).not.toBe(target);
   expect(target.alive).toBe(false);
   expect(replacement.alive).toBe(true);
+});
+
+for (const makeNode of [mesh, rect]) {
+  it(`does not dirty an idle ${makeNode().type} companion`, async () => {
+    const node = makeNode();
+    await world.reset(api, [node]);
+    await world.edit(
+      api,
+      (editor) => editor.selectNodes([editor.getNodeById(node.id)]),
+      'NEVER',
+    );
+    for (let i = 0; i < 3; i++) await world.frame();
+    const target = companion(node.id);
+    clearWrites();
+    for (let i = 0; i < 5; i++) await world.frame();
+    for (const key of ['pose', 'material', 'geometry'] as const)
+      expect(writes[key].filter((id) => id === target.__id)).toEqual([]);
+  });
+
+  it(`invalidates pose and material independently for ${
+    makeNode().type
+  }`, async () => {
+    const node = makeNode();
+    await world.reset(api, [node]);
+    for (let i = 0; i < 3; i++) await world.frame();
+    const target = companion(node.id);
+    const positions = target.read(Mesh3D).positions;
+    clearWrites();
+    await world.edit(api, (editor) =>
+      editor.updateNode(editor.getNodeById(node.id), { x: 50 }),
+    );
+    await world.frame();
+    expect(writes.pose).toContain(target.__id);
+    expect(writes.material).not.toContain(target.__id);
+    expect(writes.geometry).not.toContain(target.__id);
+    clearWrites();
+    await world.edit(api, (editor) =>
+      editor.updateNode(
+        editor.getNodeById(node.id),
+        node.type === 'mesh3d'
+          ? { material3d: { baseColor: '#00ff00', roughness: 0.3 } }
+          : { fills: [{ type: 'solid', value: '#00ff00' }] },
+      ),
+    );
+    await world.frame();
+    expect(writes.material).toContain(target.__id);
+    expect(writes.pose).not.toContain(target.__id);
+    expect(writes.geometry).not.toContain(target.__id);
+    expect(target.read(Mesh3D).positions).toBe(positions);
+    expect(target.read(Material3D).baseColor).toEqual([0, 1, 0, 1]);
+  });
+}
+
+it('does not rewrite a stationary drag preview after float32 conversion', async () => {
+  await world.reset(api, [mesh()]);
+  const target = companion();
+  await world.edit(
+    api,
+    () => {
+      target.add(Selected3D, { dragging: true });
+      target.write(Transform3D).translation = [
+        80.123456789, 90.123456789, 0.123456789,
+      ];
+    },
+    'NEVER',
+  );
+  for (let i = 0; i < 3; i++) await world.frame();
+  clearWrites();
+  for (let i = 0; i < 5; i++) await world.frame();
+  expect(writes.source).not.toContain(source().__id);
+  expect(writes.transform).not.toContain(source().__id);
+  expect(writes.geometry).not.toContain(target.__id);
+});
+
+it('reuses procedural geometry across pose/material edits and rebuilds on a geometry edit', async () => {
+  await world.reset(api, [
+    mesh({
+      geometry: { type: 'sphere', segments: [32, 16] },
+    }),
+  ]);
+  for (let i = 0; i < 3; i++) await world.frame();
+  const target = companion();
+  const positions = target.read(Mesh3D).positions;
+  const create = jest.spyOn(geometry, 'createGeometry');
+  try {
+    await world.edit(api, (editor) =>
+      editor.updateNode(editor.getNodeById('model'), {
+        z: 25,
+        rotation3d: [0.1, 0.2, 0.3],
+      }),
+    );
+    await world.edit(api, (editor) =>
+      editor.updateNode(editor.getNodeById('model'), {
+        material3d: { roughness: 0.25 },
+      }),
+    );
+    expect(create).not.toHaveBeenCalled();
+    expect(target.read(Mesh3D).positions).toBe(positions);
+    await world.edit(api, (editor) =>
+      editor.updateNode(editor.getNodeById('model'), { geometry: 'cube' }),
+    );
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(target.read(Mesh3D).positions).not.toBe(positions);
+    await world.frame();
+    expect(create).toHaveBeenCalledTimes(1);
+  } finally {
+    create.mockRestore();
+  }
+});
+
+it('only requests transformer refresh when 3D selection changes', async () => {
+  await world.edit(
+    api,
+    () => {
+      const canvas = api.getCanvas();
+      set3DMeshGizmoSelectedForCanvas(canvas, true);
+      consumeTransformerRefreshForCanvas(canvas);
+      set3DMeshGizmoSelectedForCanvas(canvas, true);
+      expect(consumeTransformerRefreshForCanvas(canvas)).toBe(false);
+      set3DMeshGizmoSelectedForCanvas(canvas, false);
+      expect(consumeTransformerRefreshForCanvas(canvas)).toBe(true);
+      expect(consumeTransformerRefreshForCanvas(canvas)).toBe(false);
+    },
+    'NEVER',
+  );
 });

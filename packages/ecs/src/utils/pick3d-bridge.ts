@@ -33,6 +33,7 @@ export function set3DMeshGizmoSelectedForCanvas(
   canvas: Entity,
   hasSelection: boolean,
 ): void {
+  if (has3DMeshGizmoSelectedForCanvas(canvas) === hasSelection) return;
   meshGizmoSelectedByCanvas.set(canvas.read(Canvas).api, hasSelection);
   requestTransformerRefreshForCanvas(canvas);
 }

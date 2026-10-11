@@ -3,7 +3,9 @@ import { Camera, Canvas3DScope, Children } from '../components';
 import { isEntityAlive } from '../systems/Transform';
 
 /** Walk scene graph to the owning 2D {@link Camera} canvas. */
-export function resolveCanvasFromSceneGraph(entity: Entity): Entity | undefined {
+export function resolveCanvasFromSceneGraph(
+  entity: Entity,
+): Entity | undefined {
   let current: Entity | undefined = entity;
   const visited = new Set<Entity>();
 
@@ -35,7 +37,7 @@ export function entityBelongsToCanvas(
 ): boolean {
   if (entity.has(Canvas3DScope)) {
     const scopedCanvas = entity.read(Canvas3DScope).canvas;
-    return isEntityAlive(scopedCanvas) && scopedCanvas === canvas;
+    return isEntityAlive(scopedCanvas) && scopedCanvas.isSame(canvas);
   }
   return canvasCount === 1;
 }
@@ -51,7 +53,7 @@ export function findCamera3DForCanvas(
     }
     if (camera.has(Canvas3DScope)) {
       const scopedCanvas = camera.read(Canvas3DScope).canvas;
-      if (isEntityAlive(scopedCanvas) && scopedCanvas === canvas) {
+      if (isEntityAlive(scopedCanvas) && scopedCanvas.isSame(canvas)) {
         return camera;
       }
       continue;
@@ -68,7 +70,7 @@ export function findCamera2DForCanvas(
   canvas: Entity,
 ): Entity | undefined {
   return cameras2D.find(
-    (e) => e.has(Camera) && e.read(Camera).canvas === canvas,
+    (e) => e.has(Camera) && e.read(Camera).canvas?.isSame(canvas),
   );
 }
 
