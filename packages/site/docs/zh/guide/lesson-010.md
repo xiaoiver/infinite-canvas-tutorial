@@ -518,7 +518,7 @@ Object.entries(rest).forEach(([key, value]) => {
 
 ### 导出 GIF {#to-gif}
 
-在后续的 [课程 30 - 时间动画] 中，我们会介绍基于后处理和时间变量实现的动画效果。如果想导出动画，就需要 GIF 或者 MOV 等格式了，我们先来看前者如何实现。
+在后续的 [课程 30 - 时间动画] 中，我们会介绍基于后处理和时间变量实现的动画效果。如果想导出动画，就需要 GIF 或者 WebM 等格式了，我们先来看前者如何实现。
 
 1. 在渲染管线中要支持传入当前的帧序号
 2. 导出画布内容成 PNG，上一小节已经介绍过
@@ -531,6 +531,7 @@ import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 const gif = GIFEncoder();
 for (let i = 0; i < frameCount; i++) {
     renderFrame(i); // 1.
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const dataUrl = el.toDataURL('image/png', pngQuality); // 2.
     const imageData = await imageDataFromPngDataUrl(dataUrl, w, h, ctx!);
     const palette = quantize(imageData.data, 256); // 3.
@@ -540,6 +541,16 @@ for (let i = 0; i < frameCount; i++) {
 gif.finish();
 return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
 ```
+
+ECS 的 GIF 与 WebM 导出会在每帧渲染后等待浏览器帧回调，再读取 PNG 快照，
+并要求所有帧尺寸一致。空画布、尺寸改变、PNG 解码或绘制失败会使导出失败，
+不会返回空文件或部分动画。临时画布在成功和失败时都会释放；WebM 还会停止
+录制器及所有捕获轨道，取消待执行的帧回调并移除图片事件处理器，因此失败后
+可以重新发起导出。调用方的源画布不受影响。
+
+WebM 的时间戳仍由 `MediaRecorder` 的实时捕获时钟决定；设置的 FPS 用于推进
+效果时间，不能保证 WebM 成品的精确帧率或时长。GIF 则写入逐帧延迟，文件格式
+以 10 毫秒为单位存储时间，浏览器还可能限制最短显示时长。
 
 ### 导出 PDF {#to-pdf}
 

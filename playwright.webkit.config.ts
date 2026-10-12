@@ -23,6 +23,7 @@ export default defineConfig({
     'brush.spec.ts',
     'image-fill.spec.ts',
     'image-decoding.spec.ts',
+    'animation-export.spec.ts',
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
     'gizmo.spec.ts',
