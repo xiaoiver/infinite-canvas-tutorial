@@ -18,6 +18,8 @@ import {
   SyncMesh3DNodes,
   System,
   Transform3D,
+  Transform,
+  Rect,
   system,
   type Entity,
   type SerializedNode,
@@ -133,7 +135,9 @@ for (const type of ['mesh3d', 'rect'] as const) {
     async function released() {
       await world.frames(3);
       expect(is3DGizmoDragging(api().getCanvas())).toBe(false);
-      expect(mesh().read(Selected3D).dragging).toBe(false);
+      expect(mesh().has(Selected3D) && mesh().read(Selected3D).dragging).toBe(
+        false,
+      );
       const doc = structuredClone(api().getNodes());
       const pose = [...mesh().read(Transform3D).translation];
       await world.pointer(api(), 'pointerup', 175, 80);
@@ -141,6 +145,93 @@ for (const type of ['mesh3d', 'rect'] as const) {
       expect(mesh().read(Transform3D).translation).toEqual(pose);
       expect(api().getHistoryState().canUndo).toBe(false);
     }
+
+    // Yoga deliberately keeps its computed geometry out of the document.
+    async function layout(id: string, patch: Partial<SerializedNode>) {
+      await world.edit(
+        api(),
+        (e) =>
+          e.updateNode(e.getNodeById(id), patch, false, Object.keys(patch)),
+        'NEVER',
+      );
+      await world.frames(3);
+    }
+
+    it.each(['position', 'size', 'ancestor'])(
+      'yields to computed %s changes without overwriting the layout',
+      async (reason) => {
+        await drag();
+        const document = structuredClone(api().getNodes());
+        await layout(
+          reason === 'ancestor' ? 'parent' : 'model',
+          reason === 'size' ? { width: 80 } : { x: 30, y: 60 },
+        );
+        await released();
+        for (const node of document) {
+          const current = api().getNodeById(node.id);
+          for (const key of ['x', 'y', 'width', 'height'] as const)
+            expect(current[key]).toEqual(node[key]);
+        }
+        const source = api().getEntity(api().getNodeById('model'));
+        expect(source.read(Transform).translation.x).toBe(
+          reason === 'position' ? 30 : 60,
+        );
+        expect(source.read(Rect).width).toBe(reason === 'size' ? 80 : 40);
+        expect(mesh().read(Transform3D).translation).toEqual([
+          reason === 'position' ? 50 : reason === 'size' ? 100 : 110,
+          reason === 'ancestor' ? 140 : 80,
+          0,
+        ]);
+      },
+    );
+
+    it('cancels back to the computed origin rather than stale document coordinates', async () => {
+      await layout('model', { x: 50, y: 40 });
+      expect(api().getNodeById('model').x).toBe(60);
+      await world.pointer(api(), 'pointerdown', 115, 60);
+      await world.pointer(api(), 'pointermove', 135, 60);
+      expect(mesh().read(Selected3D).dragging).toBe(true);
+      expect(mesh().read(Transform3D).translation[0]).toBeCloseTo(90);
+      await world.key(api(), 'Escape');
+      await released();
+      expect(mesh().read(Transform3D).translation).toEqual([70, 60, 0]);
+    });
+
+    it('keeps its own preview and accepts a fresh gesture after relayout', async () => {
+      await drag();
+      await layout('model', { x: 30, y: 60 });
+      await released();
+      await world.pointer(api(), 'pointerdown', 95, 80);
+      await world.pointer(api(), 'pointermove', 105, 80);
+      await world.frames(4);
+      expect(mesh().read(Selected3D).dragging).toBe(true);
+      expect(mesh().read(Transform3D).translation[0]).toBeCloseTo(60);
+      await world.pointer(api(), 'pointermove', 115, 80);
+      await world.pointer(api(), 'pointerup', 115, 80);
+      expect(api().getNodeById('model').x).toBeCloseTo(50);
+      expect(mesh().read(Transform3D).translation[0]).toBeCloseTo(70);
+      expect(api().getHistoryState().canUndo).toBe(true);
+      await world.history(api(), 'undo');
+      expect(api().getNodeById('model').x).toBe(60);
+      expect(api().getHistoryState().canUndo).toBe(false);
+    });
+
+    it('ignores computed geometry changes in an independent canvas', async () => {
+      const other = world.apis[1];
+      await world.reset(other, [
+        { id: 'other', type: 'rect', zIndex: 0, width: 10, height: 10 },
+      ]);
+      await drag();
+      await world.edit(
+        other,
+        (e) => e.updateNode(e.getNodeById('other'), { x: 100 }, false, ['x']),
+        'NEVER',
+      );
+      await world.frames(3);
+      expect(mesh().read(Selected3D).dragging).toBe(true);
+      await world.pointer(api(), 'pointerup', 155, 80);
+      expect(api().getNodeById('model').x).toBeCloseTo(90);
+    });
 
     it.each([
       'pan',

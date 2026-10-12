@@ -38,6 +38,9 @@ export class Selected3D {
    */
   @field.boolean declare dragging: boolean;
 
+  /** @internal The pointer session owns source writes during its preview. */
+  @field.boolean declare sourcePreviewOwned: boolean;
+
   /**
    * Ray–constraint-plane hit at pointer down (translate drag reference).
    */
@@ -63,6 +66,7 @@ export class Selected3D {
     this.activeAxis ??= 'none';
     this.activePartKind ??= null;
     this.dragging ??= false;
+    this.sourcePreviewOwned ??= false;
     this.dragHitStart ??= null;
     this.dragAngleStart ??= null;
     this.initialTranslation ??= null;

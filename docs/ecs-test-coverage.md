@@ -1250,11 +1250,71 @@ pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
 pnpm test:tooling
 ```
 
+## 第二十一批：动态布局下的三维手势取消与恢复
+
+2026-10-12，基于 master `bc411ff0`（PR #406 已合并），以上一批完整运行的
+行覆盖率 73.91%、分支覆盖率 62.38%、函数覆盖率 73.96% 为基线。
+
+- 抽出 `pick3d/gizmo-source-frame.ts`，保存源节点与祖先的局部变换和尺寸快照。
+  Yoga 只更新 ECS 几何时也能识别布局变化；手势自己的预览写入会更新快照，
+  不会把正常拖动或延迟的世界矩阵传播当作外部变化。
+- 取消时按坐标轴撤销仍属于预览的值，保留外部布局改动；新的文档坐标优先。
+  布局未变时按 Escape，恢复拖拽前的计算坐标，而非可能过时的文档坐标。
+- 指针会话管理预览期间，`SyncMesh3DNodes` 不再重复回写源节点，避免覆盖刚
+  算出的布局；直接操作伴生网格的集成保留反向同步。结束时释放预览归属。
+- 修复 Yoga 对 `Mesh3DNode` 缺少写权限的问题，确保 flex 容器中的声明式三维
+  网格可以完成实际布局。浏览器类型检查解析 Yoga 源码，兼容现有 CommonJS
+  构建对 Yoga export-map 子路径的解析限制。
+
+新增 19 项 ECS 行为测试：真实指针流覆盖两种三维源的计算位置、尺寸、祖先移动、
+Escape、晚到松手、重新拖拽/撤销及跨画布隔离；独立快照测试覆盖默认坐标、单轴
+外部修改、文档坐标移除、缺失组件和无效祖先。旧实现的新布局回归先复现失败。
+
+新增 4 项真实 Yoga 浏览器回归，在 mesh 和挤出矩形拖动期间修改 padding 或
+flex-grow，验证文档几何字段不变、计算布局被保留、旧手势不产生撤销记录，且
+重新拖拽后 Escape 回到计算位置。Chromium 与 WebKit 各 22 项相关回归通过。
+浏览器测试使用 WebGL，不计入 Jest 覆盖率，也不作为原生 WebGPU 验证。
+
+完整原生 ECS 运行通过 232 个文件、1859 项测试，
+用时 780.622 秒，沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+新快照模块四项覆盖率均为 100%，并新增对应门槛；原有 45 项门槛和全量 ECS
+源文件统计范围不变，完整报告满足全部 46 个模块门槛。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 73.91% | 73.95%（21208/28677） |
+| 语句覆盖率 | 73.91% | 73.95%（22222/30049） |
+| 分支覆盖率 | 62.38% |  62.47%（8808/14098） |
+| 函数覆盖率 | 73.96% |      74%（2853/3855） |
+
+| 模块                                   | 行覆盖率 | 分支覆盖率 | 函数覆盖率 |
+| -------------------------------------- | -------: | ---------: | ---------: |
+| `systems/pick3d/gizmo-source-frame.ts` |     100% |       100% |       100% |
+| `systems/pick3d/gizmo-session.ts`      |     100% |       100% |       100% |
+| `systems/pick3d/gizmo-source.ts`       |   97.01% |     76.74% |       100% |
+| `systems/SyncMesh3DNodes.ts`           |   93.93% |     85.71% |       100% |
+
+ECS 与 Yoga CommonJS/ESM 构建、仓库及修改文件 ESLint、浏览器与新增 ECS 测试
+TypeScript、修改代码格式、Markdown 检查和 22 项 tooling 检查均通过。
+本批采用布局变化时取消手势的策略，未实现拖动中的约束重算或自动重新定位。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/gizmo-source-frame.spec.ts \
+  __tests__/ecs/gizmo-invalidation.spec.ts \
+  __tests__/ecs/gizmo-lifecycle.spec.ts \
+  __tests__/ecs/extrude-gizmo.spec.ts \
+  __tests__/ecs/companion3d-sync.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts 'gizmo|mesh-gpu-cache'
+pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
+pnpm test:tooling
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **三维同步后续**：补充动态布局引起位置变化时的手势策略，优先覆盖 Yoga 只更新 ECS 几何的情况，区分拖动预览与外部布局变化；随后检查场景矩阵、场景 uniform 与 draw binding 的重复工作。
+1. **三维同步后续**：检查场景矩阵、场景 uniform 与 draw binding 的重复工作，分别为相机、灯光、视口和资源重建建立失效条件与回归测试。
 2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 

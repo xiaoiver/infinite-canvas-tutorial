@@ -9,6 +9,9 @@
       "@infinite-canvas-tutorial/ecs": [
         "packages/ecs/src/index.ts"
       ],
+      "@infinite-canvas-tutorial/yoga": [
+        "packages/plugin-yoga/src/index.ts"
+      ],
       "@infinite-canvas-tutorial/device-api": [
         "packages/device-api/src/index.ts"
       ],

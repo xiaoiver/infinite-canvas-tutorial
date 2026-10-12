@@ -21,11 +21,12 @@ export class GizmoSession {
     private readonly api: API,
     private readonly viewIsCurrent: () => boolean,
   ) {
-    this.binding = captureGizmoSource(mesh);
+    this.binding = captureGizmoSource(mesh, api);
     this.documentKey =
       this.binding && gizmoDocumentKey(api, this.binding.entity);
     const selected = mesh.write(Selected3D);
     selected.dragging = true;
+    selected.sourcePreviewOwned = !!this.binding;
     selected.activeAxis = gesture.axis;
     selected.activePartKind = gesture.kind;
   }
@@ -38,6 +39,7 @@ export class GizmoSession {
       this.viewIsCurrent() &&
       (!this.binding ||
         (this.binding.owns() &&
+          this.binding.current() &&
           this.documentKey === gizmoDocumentKey(this.api, this.binding.entity)))
     );
   }
@@ -79,6 +81,7 @@ export class GizmoSession {
     if (isEntityAlive(this.mesh) && this.mesh.has(Selected3D)) {
       Object.assign(this.mesh.write(Selected3D), {
         dragging: false,
+        sourcePreviewOwned: false,
         activeAxis: 'none',
         activePartKind: null,
         dragHitStart: null,

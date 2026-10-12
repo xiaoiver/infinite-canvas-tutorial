@@ -27,6 +27,7 @@ export default defineConfig({
     'gizmo.spec.ts',
     'gizmo-extrude.spec.ts',
     'gizmo-invalidation.spec.ts',
+    'gizmo-layout.spec.ts',
     'gizmo-worlds.spec.ts',
     'mesh-gpu-cache.spec.ts',
     'interaction-precision.spec.ts',

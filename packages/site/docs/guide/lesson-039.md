@@ -191,6 +191,18 @@ so an old pointer release cannot overwrite an API edit or undo. Unrelated edits,
 such as names and colors, can merge with a drag that continues normally. Changes
 on another canvas do not interrupt it. Press a handle again to start in the new view.
 
+Computed layout is also part of the gesture context. Yoga can change a source's
+position or size without changing those document fields; these changes, including
+ancestor transforms, cancel the preview. Cancellation preserves the new layout
+and restores only coordinates still owned by the preview. Escape on an otherwise
+unchanged layout returns to the computed starting position, even when it differs
+from the document. The session's own preview writes do not invalidate it.
+
+`GizmoSourceFrame` snapshots local source/ancestor geometry, avoiding false
+interruptions from delayed world-matrix updates. While a pointer session owns
+the source preview, companion synchronization does not write that source again.
+Integrations that manipulate a companion directly retain their reverse sync.
+
 Unchanged frames do not rewrite companion transforms or materials, and pose or
 material edits reuse generated CPU geometry. Geometry configuration changes
 invalidate that cache independently.
