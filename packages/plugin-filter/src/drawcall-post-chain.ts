@@ -2409,6 +2409,12 @@ export class DrawcallPostChain {
       // WebGL1 uniforms must be set immediately before each draw, not up front.
       const data = pass.uniformData!;
       switch (pass.effect.type) {
+        case 'blur':
+          pass.program.setUniformsLegacy({
+            u_Kawase0: data.subarray(0, 4),
+            u_Kawase1: data.subarray(4, 8),
+          });
+          break;
         case 'brightness':
         case 'contrast':
           pass.program.setUniformsLegacy({ u_BrightnessContrast: data });

@@ -16,6 +16,29 @@ layout(std140) uniform PostProcessingUniforms {
 
 out vec4 outputColor;
 
+vec4 premultipliedTexel(vec2 uv) {
+  vec4 color = texture(SAMPLER_2D(u_Texture), uv);
+  return vec4(color.rgb * color.a, color.a);
+}
+
+vec4 sampleBlur(vec2 uv) {
+#ifdef FILTER_INPUT_STRAIGHT_ALPHA
+  // Hardware interpolation of straight RGBA mixes transparent black into RGB.
+  // Premultiply each neighboring texel before bilinear interpolation instead.
+  vec2 texel = 2.0 * u_Kawase1.xy;
+  vec2 pixel = uv / texel - 0.5;
+  vec2 base = (floor(pixel) + 0.5) * texel;
+  vec2 weight = fract(pixel);
+  return mix(
+    mix(premultipliedTexel(base), premultipliedTexel(base + vec2(texel.x, 0.0)), weight.x),
+    mix(premultipliedTexel(base + vec2(0.0, texel.y)), premultipliedTexel(base + texel), weight.x),
+    weight.y
+  );
+#else
+  return texture(SAMPLER_2D(u_Texture), uv);
+#endif
+}
+
 void main() {
   vec2 uv = v_Uv;
   vec2 o = u_Kawase0.xy;
@@ -36,10 +59,14 @@ void main() {
   }
 
   vec4 color = vec4(0.0);
-  color += texture(SAMPLER_2D(u_Texture), tl);
-  color += texture(SAMPLER_2D(u_Texture), tr);
-  color += texture(SAMPLER_2D(u_Texture), br);
-  color += texture(SAMPLER_2D(u_Texture), bl);
-  outputColor = color * 0.25;
+  color += sampleBlur(tl);
+  color += sampleBlur(tr);
+  color += sampleBlur(br);
+  color += sampleBlur(bl);
+  color *= 0.25;
+#ifdef FILTER_INPUT_STRAIGHT_ALPHA
+  color = color.a > 0.0 ? vec4(color.rgb / color.a, color.a) : vec4(0.0);
+#endif
+  outputColor = color;
 }
 `;

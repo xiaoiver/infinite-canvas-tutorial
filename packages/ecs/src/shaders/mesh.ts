@@ -5,6 +5,7 @@ import {
   frag_declaration as wireframe_frag_declaration,
   Location as WireframeLocation,
 } from './wireframe';
+import { straightAlphaSampling } from './straight-alpha';
 
 export enum Location {
   BARYCENTRIC = WireframeLocation.BARYCENTRIC,
@@ -103,6 +104,10 @@ uniform sampler2D u_Texture;
 
 float epsilon = 0.000001;
 
+#ifdef USE_BLUR_FILTER_OUTPUT
+${straightAlphaSampling}
+#endif
+
 void main() {
   float strokeWidth;
   vec4 fillColor;
@@ -123,7 +128,11 @@ void main() {
   strokeAlignment = u_ZIndexStrokeWidth.w;
 
   #ifdef USE_FILLIMAGE
+#ifdef USE_BLUR_FILTER_OUTPUT
+    fillColor = sampleStraightTexture(v_Uv, 1.0 / u_FillUVRect.zw);
+#else
     fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+#endif
     float _layerAlphaMul =
       (dot(u_FillColor.rgb, vec3(1.0)) < 0.001 && u_FillColor.a < 0.001)
         ? 1.0

@@ -48,11 +48,13 @@ import {
 } from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import { createComposedFillTexture } from '../utils/composed-fill-texture';
+import { createRasterFilterInput } from '../utils/raster-filter-input';
 import {
   getRasterFilterValueForShape,
   hasRasterPostEffects,
   parseEffect,
   filterRasterPostEffects,
+  getRasterFilterPadding,
 } from '../utils/filter';
 import { getRainFxAnimationExportContext } from '../utils/rain-fx/rain-fx-export-context';
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
@@ -100,6 +102,9 @@ export class Mesh extends PathDrawcall {
   /** True when {@link #texture} is the post-process chain output (do not `destroy` in Mesh.destroy). */
   #fillTextureFromPostChain = false;
   #borrowedFillTexture = false;
+  #blurRaster: ReturnType<typeof createRasterFilterInput> | null = null;
+  #blurVertices: Buffer | null = null;
+  #blurIndices: Buffer | null = null;
 
   #fillLayerTextures: Texture[] = [];
   #fillLayerBindings: Bindings[] = [];
@@ -112,6 +117,30 @@ export class Mesh extends PathDrawcall {
   points: number[] = [];
 
   instanced = false;
+
+  private get blurPadding(): number {
+    const shape = this.shapes[0];
+    // Keep stencil and wireframe geometry intact. External textures do not yet
+    // expose the raster dimensions required by the capture path.
+    if (
+      !shape ||
+      this.instanced ||
+      this.useStencil ||
+      this.useWireframe ||
+      shape.has(FillTexture) ||
+      shape.has(Rough) ||
+      !super.useFillImage
+    )
+      return 0;
+    return getRasterFilterPadding(getRasterFilterValueForShape(shape));
+  }
+
+  protected override get extraShaderDefines(): string {
+    if (this.blurPadding > 0) {
+      return `${super.extraShaderDefines}#define USE_BLUR_FILTER_OUTPUT\n`;
+    }
+    return super.extraShaderDefines;
+  }
 
   static useDash(shape: Entity) {
     const { dasharray = [] } = shape.has(Stroke)
@@ -137,6 +166,52 @@ export class Mesh extends PathDrawcall {
     const effects = filterRasterPostEffects(parseEffect(filterValue));
     if (effects.length === 0) {
       return raw;
+    }
+    const padding = this.blurPadding;
+    if (padding > 0) {
+      const geometry = getSdfGeometryBoundsForFilter(instance);
+      const [, uniforms] = this.generateBuffer(instance);
+      const bounds = {
+        minX: geometry.minX - padding,
+        minY: geometry.minY - padding,
+        maxX: geometry.maxX + padding,
+        maxY: geometry.maxY + padding,
+      };
+      this.#blurRaster = createRasterFilterInput({
+        device: this.device,
+        renderCache: this.renderCache,
+        vertex: '#define USE_FILLIMAGE\n' + vert,
+        fragment: '#define USE_FILLIMAGE\n' + frag,
+        points: this.vertexBufferDatas[0],
+        indices: this.indexBufferData,
+        uniforms,
+        texture: raw,
+        sampler: this.createSampler(),
+        bounds,
+      });
+      this.#blurVertices = this.device.createBuffer({
+        viewOrSize: new Float32Array([
+          bounds.minX,
+          bounds.minY,
+          bounds.maxX,
+          bounds.minY,
+          bounds.maxX,
+          bounds.maxY,
+          bounds.minX,
+          bounds.maxY,
+        ]),
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
+      this.#blurIndices = this.device.createBuffer({
+        viewOrSize: new Uint32Array([0, 1, 2, 0, 2, 3]),
+        usage: BufferUsage.INDEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
+      raw.destroy();
+      raw = this.#blurRaster.texture;
+      tw = this.#blurRaster.width;
+      th = this.#blurRaster.height;
     }
     this.#rawFillImageTexture = raw;
     const anim = getRainFxAnimationExportContext();
@@ -186,7 +261,13 @@ export class Mesh extends PathDrawcall {
     if (!this.#fillTextureFromPostChain && !this.#borrowedFillTexture) {
       this.#texture?.destroy();
     }
-    this.#rawFillImageTexture?.destroy();
+    if (this.#blurRaster) this.#blurRaster.destroy();
+    else this.#rawFillImageTexture?.destroy();
+    this.#blurRaster = null;
+    this.#blurVertices?.destroy();
+    this.#blurIndices?.destroy();
+    this.#blurVertices = null;
+    this.#blurIndices = null;
     this.#rawFillImageTexture = null;
     this.#texture = null;
     this.#fillTextureFromPostChain = false;
@@ -905,18 +986,23 @@ export class Mesh extends PathDrawcall {
 
     this.program.setUniformsLegacy(sceneUniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
-    const vertexBuffers = this.vertexBuffers.map((buffer) => ({ buffer }));
+    const vertexBuffers = this.#blurVertices
+      ? [{ buffer: this.#blurVertices }]
+      : this.vertexBuffers.map((buffer) => ({ buffer }));
     if (this.useWireframe) {
       vertexBuffers.push({ buffer: this.barycentricBuffer });
     }
     renderPass.setVertexInput(this.inputLayout, vertexBuffers, {
-      buffer: this.indexBuffer,
+      buffer: this.#blurIndices ?? this.indexBuffer,
     });
     renderPass.setBindings(this.bindings);
     if (this.useStencil || this.parentClipMode) {
       renderPass.setStencilReference(STENCIL_CLIP_REF);
     }
-    renderPass.drawIndexed(this.indexBufferData.length, this.shapes.length);
+    renderPass.drawIndexed(
+      this.#blurRaster ? 6 : this.indexBufferData.length,
+      this.shapes.length,
+    );
   }
 
   destroy(): void {
@@ -1040,7 +1126,7 @@ export class Mesh extends PathDrawcall {
       fbN = 1;
       fa = 1;
     }
-    const u_FillColor = [frN, fgN, fbN, fa];
+    const u_FillColor = this.#blurRaster ? [1, 1, 1, 1] : [frN, fgN, fbN, fa];
     const u_StrokeColor = [
       sr / 255,
       sg / 255,
@@ -1059,7 +1145,11 @@ export class Mesh extends PathDrawcall {
       strokeUniformOpacityMul,
       sizeAttenuation ? 1 : 0,
     ];
-    const u_FillUVRect = [minX, minY, invWidth, invHeight];
+    const bounds = this.#blurRaster?.bounds;
+    const u_FillUVRect = bounds
+      ? [bounds.minX, bounds.minY,
+        1 / (bounds.maxX - bounds.minX), 1 / (bounds.maxY - bounds.minY)]
+      : [minX, minY, invWidth, invHeight];
 
     if (this.isWatercolorRoughMesh()) {
       u_Opacity[1] *= 0.05;

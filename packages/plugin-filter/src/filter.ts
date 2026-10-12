@@ -1449,6 +1449,8 @@ function degreesToGlfxHue(deg: number): number {
 export function filterRasterPostEffects(effects: Effect[]): Effect[] {
   const out: Effect[] = [];
   for (const e of effects) {
+    // A neutral blur must not switch a stroke to a clipped fill-texture path.
+    if (e.type === 'blur' && !(e.value > 0)) continue;
     if (e.type === 'adjustment' && isSaturateOnlyAdjustment(e)) {
       const sat = pixiSaturationToGlfx(e.saturation);
       if (sat !== 0) {

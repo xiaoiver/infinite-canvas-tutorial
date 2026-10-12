@@ -16,6 +16,7 @@ export interface FilterBackend {
   parseEffect(filter: string): Effect[];
   formatFilter(effects: Effect[]): string;
   hasRasterPostEffects(filterValue: string | undefined): boolean;
+  getRasterFilterPadding?(filterValue: string | undefined): number;
   filterRasterPostEffects(effects: Effect[]): Effect[];
   collectRainDropTextureUrlsFromFilterValue(filterValue?: string): string[];
   filterStringUsesEngineTimePost(filter: string): boolean;

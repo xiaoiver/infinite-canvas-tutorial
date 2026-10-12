@@ -11,6 +11,7 @@ import {
   ComputedTextMetrics,
   DropShadow,
   Ellipse,
+  Filter,
   Embed,
   GlobalTransform,
   Group,
@@ -32,6 +33,8 @@ import {
 } from '../components';
 import { cloneStrokeWithHitTestWidth, decompose } from '../utils';
 import { safeAddComponent } from '../history';
+import { getRasterFilterPadding } from '../filter/api';
+import { getRasterFilterValueForShape } from '../utils/filterEntity';
 
 function isValidAabb(a: AABB): boolean {
   return (
@@ -77,6 +80,9 @@ function worldAabbToLocal(aabb: AABB, invGlobal: Mat3): AABB {
 }
 
 export class ComputeBounds extends System {
+  private readonly filters = this.query(
+    (q) => q.addedChangedOrRemoved.with(Filter, Renderable, GlobalTransform).trackWrites,
+  );
   renderables = this.query(
     (q) =>
       q.addedOrChanged
@@ -163,7 +169,12 @@ export class ComputeBounds extends System {
       }
     });
 
-    this.renderables.addedOrChanged.forEach((entity) => {
+    new Set([
+      ...this.renderables.addedOrChanged,
+      ...this.filters.addedChangedOrRemoved.filter(
+        (entity) => entity.alive && entity.has(Renderable) && entity.has(GlobalTransform),
+      ),
+    ]).forEach((entity) => {
       updateBounds(entity);
       // 子节点变化时 Group 不在 addedOrChanged，需沿父链刷新 Group 的并集 bounds
       let e: Entity | undefined = entity;
@@ -316,6 +327,18 @@ export function updateBounds(entity: Entity) {
       renderBounds = Circle.getRenderBounds(hitArea);
     } else if (hitArea instanceof Rect) {
       renderBounds = Rect.getRenderBounds(hitArea);
+    }
+  }
+
+  if (renderBounds && entity.hasSomeOf(Circle, Ellipse, Rect, Path, VectorNetwork)) {
+    const padding = getRasterFilterPadding(getRasterFilterValueForShape(entity));
+    if (padding > 0) {
+      // Keep selection/hit geometry unchanged while culling and export include
+      // pixels produced outside the original shape by spatial filters.
+      renderBounds = new AABB(
+        renderBounds.minX - padding, renderBounds.minY - padding,
+        renderBounds.maxX + padding, renderBounds.maxY + padding,
+      );
     }
   }
 

@@ -1,16 +1,48 @@
 import './filter-test-setup';
-import { parseEffect, formatFilter } from '../../packages/ecs/src/utils/filter';
+import {
+  parseEffect,
+  formatFilter,
+  hasRasterPostEffects,
+} from '../../packages/ecs/src/utils/filter';
 import {
   generateKawaseKernels,
   kawaseBlurUniformValues,
   kawaseKernelsForBlurEffect,
+  kawaseBlurPadding,
 } from '../../packages/plugin-filter/src/utils/kawase-blur';
 
 describe('Kawase blur', () => {
+  it('pads every pass for its bilinear sampling footprint', () => {
+    expect(kawaseBlurPadding({ type: 'blur', value: 6, quality: 3 })).toBe(15);
+    expect(kawaseBlurPadding({ type: 'blur', value: 0.2, quality: 1 })).toBe(1);
+    expect(
+      kawaseBlurPadding({
+        type: 'blur',
+        value: 6,
+        quality: 3,
+        pixelSize: { x: -2, y: 0.5 },
+      }),
+    ).toBe(27);
+  });
+
+  it('zero blur has neither a sampling offset nor padding', () => {
+    const effect = { type: 'blur' as const, value: 0, quality: 3 };
+    expect(kawaseBlurPadding(effect)).toBe(0);
+    expect(hasRasterPostEffects('blur(0px)')).toBe(false);
+    expect(kawaseBlurUniformValues(effect, 0, 100, 50).slice(0, 2)).toEqual([
+      0, 0,
+    ]);
+  });
+
   it('parses blur(px)', () => {
-    expect(parseEffect('blur(12px)')).toEqual([{
-      type: 'blur', value: 12, clamp: true, quality: 3,
-    }]);
+    expect(parseEffect('blur(12px)')).toEqual([
+      {
+        type: 'blur',
+        value: 12,
+        clamp: true,
+        quality: 3,
+      },
+    ]);
   });
 
   it('round-trips blur via formatFilter', () => {
@@ -58,10 +90,10 @@ describe('Kawase blur', () => {
     expect(u[0]).toBeCloseTo((4.5 * 1) / 200);
     expect(u[1]).toBeCloseTo((4.5 * 1) / 100);
     expect(u[2]).toBe(1);
-    expect(u[4]).toBe(0);
-    expect(u[5]).toBe(0);
-    expect(u[6]).toBe(1);
-    expect(u[7]).toBe(1);
+    expect(u[4]).toBe(0.5 / 200);
+    expect(u[5]).toBe(0.5 / 100);
+    expect(u[6]).toBe(1 - 0.5 / 200);
+    expect(u[7]).toBe(1 - 0.5 / 100);
   });
 
   it('kawaseKernelsForBlurEffect respects quality on effect', () => {
