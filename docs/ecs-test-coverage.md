@@ -1542,11 +1542,73 @@ pnpm test:ecs
 pnpm test:tooling
 ```
 
+## 第二十六批：复合路径填充与实时三角化选项
+
+2026-10-12，基于 master `b8c1340e`（PR #411 已合并），以上一批完整运行的
+行覆盖率 74.76%、分支覆盖率 63.09%、函数覆盖率 74.96% 为基线。
+
+默认 Earcut 分支原来只按轮廓方向和输入顺序猜测孔洞，没有应用 `fillRule`。
+同方向的 `evenodd` 孔洞被填满，重叠轮廓未按奇偶规则扣除，不同填充规则的
+同一路径也可能被分到同一个绘制批次。另发现实时修改 `tessellationMethod`
+只更新文档数据，没有同步到 Path 组件。
+
+-   提取 `buildPathFillMesh`，保留单轮廓 `nonzero` 的 Earcut 快速路径；
+    复合路径、`evenodd` 及已有的自接触回退交给 libtess，按整条路径解析绕数。
+-   填充规则和三角化选项参与 Mesh 合批校验。Rough 继续使用原有三角化流程，
+    保留笔触重叠时的透明度累积；VectorNetwork 的填充流程保持不变。
+-   同步实时三角化选项，清除该属性时恢复默认值，标记几何需要重建。
+    撤销、重做和重新加载保持组件与文档一致。
+-   同步中英文 lesson-013，并补充 ECS patch changeset。
+
+新增 62 项 ECS 测试：61 项使用真实 Earcut/libtess 验证三角形面积、孔洞、
+重叠与重复轮廓、方向和顺序、空输入、自接触、合批约束及旧缓冲释放；
+另 1 项通过真实文档 API 验证三角化选项及历史同步。初始 4 项几何回归中
+3 项在旧实现上失败，分离轮廓用例原本通过；新增的组件同步回归也先在旧实现失败。
+
+9 项浏览器回归将真实 GPU 输出、滤镜使用的 Canvas 填充遮罩与原生 Path2D
+逐像素比较，覆盖嵌套孔洞、镜像、重叠区域透明度、不同规则并存、实时规则和
+三角化选项切换。只跳过原生边缘抗锯齿区域，内部孔洞和三角形接缝仍参与比较，
+每例比较超过 10000 个像素，通道容差为 2。Chromium 与 WebKit 各 9 项通过；
+这些浏览器测试不计入 Jest 覆盖率，遮罩检查也不代表整条 GPU 滤镜链已覆盖。
+
+同时处理 #411 的 WebKit CI 初始化超时：blend-mode 测试绕过了仓库已有的
+WebKit 进程隔离 fixture，本批改为复用它。7 项 WebKit 混合模式回归通过，
+保留原来的像素断言和超时配置。
+
+完整原生 ECS 运行通过 237 个文件、2095 项测试，
+用时 982.388 秒，沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+新路径填充模块行、语句、分支和函数覆盖率均为 100%，为四项指标增加 100% 门槛。
+保留原有 50 项模块门槛和全量 ECS 源文件统计范围，全部 51 项通过。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 74.76% | 74.87%（21519/28739） |
+| 语句覆盖率 | 74.78% | 74.89%（22567/30133） |
+| 分支覆盖率 | 63.09% |   63.3%（8937/14118） |
+| 函数覆盖率 | 74.96% |   75.05%（2903/3868） |
+
+ECS CommonJS/ESM 构建、仓库及修改文件 ESLint、浏览器与修改 ECS 测试 TypeScript、
+格式/Markdown 检查和 22 项 tooling 检查均通过。
+
+一般自相交的单轮廓 `nonzero` 仍应显式选择 libtess，本批没有自动识别所有自交。
+复合路径改用 libtess 可能增加三角化成本；已有几何缓存继续生效，但本批没有
+声称性能提升，也未覆盖完整 WebGPU 渲染链。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/path-fill-mesh.spec.ts \
+  __tests__/ecs/history-inheritance-sync.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts ecs-path-fill
+pnpm exec playwright test -c playwright.webkit.config.ts 'ecs-path-fill|ecs-blend-mode'
+pnpm test:ecs
+pnpm test:tooling
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **资源和渲染剩余路径**：复杂滤镜，以及默认 Earcut 对 evenodd 的支持；动画导出的后续方向是确定的视频时间戳和 WebGPU 读回验证。
+1. **资源和渲染剩余路径**：复杂滤镜链的遮罩、透明度与缓存失效；路径后续关注大规模复合轮廓的三角化成本。动画导出的后续方向是确定的视频时间戳和 WebGPU 读回验证。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 2. **三维交互后续**：检查选中时 gizmo 的 uniform 上传与悬停命中开销，为进一步缓存建立失效条件和真实交互回归。
 

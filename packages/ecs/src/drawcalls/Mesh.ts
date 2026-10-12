@@ -20,7 +20,7 @@ import {
 import { Entity } from '@lastolivegames/becsy';
 import { mat3 } from 'gl-matrix';
 import earcut from 'earcut';
-import { hasSelfTouchingContour } from '../utils/path-rendering';
+import { buildPathFillMesh } from '../utils/path-fill-mesh';
 import { ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location } from '../shaders/mesh';
@@ -31,7 +31,6 @@ import {
   parseColor,
   parseGradient,
   isMeshGradientGradient,
-  triangulate,
 } from '../utils';
 import {
   fillLayerOpacity,
@@ -319,7 +318,10 @@ export class Mesh extends PathDrawcall {
     if (
       this.shapes[0].has(Path) &&
       shape.has(Path) &&
-      this.shapes[0].read(Path).d !== shape.read(Path).d
+      (this.shapes[0].read(Path).d !== shape.read(Path).d ||
+        this.shapes[0].read(Path).fillRule !== shape.read(Path).fillRule ||
+        this.shapes[0].read(Path).tessellationMethod !==
+          shape.read(Path).tessellationMethod)
     ) {
       return false;
     }
@@ -392,7 +394,7 @@ export class Mesh extends PathDrawcall {
 
     let rawPoints: [number, number][][] | undefined;
     let tessellationMethod: TesselationMethod | undefined;
-    let vnFillMesh: { points: number[]; indices: number[] } | undefined;
+    let fillMesh: { points: number[]; indices: number[] } | undefined;
 
     if (
       instance.has(Rough) &&
@@ -402,22 +404,20 @@ export class Mesh extends PathDrawcall {
       rawPoints = instance.read(ComputedRough).fillPathPoints;
       tessellationMethod = TesselationMethod.EARCUT;
     } else if (instance.has(Path)) {
-      rawPoints = this.pathPoints.get(instance) ?? instance.read(ComputedPoints).points;
-      tessellationMethod = instance.read(Path).tessellationMethod;
-      if (
-        tessellationMethod === TesselationMethod.EARCUT &&
-        hasSelfTouchingContour(rawPoints)
-      ) {
-        tessellationMethod = TesselationMethod.LIBTESS;
-      }
+      const { fillRule, tessellationMethod } = instance.read(Path);
+      fillMesh = buildPathFillMesh(
+        this.pathPoints.get(instance) ?? instance.read(ComputedPoints).points,
+        fillRule,
+        tessellationMethod,
+      );
     } else if (instance.has(VectorNetwork)) {
       const { vertices, segments, regions } = instance.read(VectorNetwork);
-      vnFillMesh = buildVectorNetworkFillMesh(vertices, segments, regions);
+      fillMesh = buildVectorNetworkFillMesh(vertices, segments, regions);
     }
 
-    if (vnFillMesh !== undefined) {
-      this.points = vnFillMesh.points;
-      this.indexBufferData = new Uint32Array(vnFillMesh.indices);
+    if (fillMesh !== undefined) {
+      this.points = fillMesh.points;
+      this.indexBufferData = new Uint32Array(fillMesh.indices);
     } else if (rawPoints !== undefined && tessellationMethod !== undefined) {
       const points = rawPoints.flat(2);
 
@@ -457,12 +457,6 @@ export class Mesh extends PathDrawcall {
 
           this.indexBufferData = new Uint32Array(indices);
           this.points = points;
-        } else if (tessellationMethod === TesselationMethod.LIBTESS) {
-          const newPoints = triangulate(rawPoints, instance.read(Path).fillRule);
-          this.indexBufferData = new Uint32Array(
-            new Array(newPoints.length / 2).fill(undefined).map((_, i) => i),
-          );
-          this.points = newPoints;
         }
       } else {
         this.points = [];

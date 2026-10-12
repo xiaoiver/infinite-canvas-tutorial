@@ -455,7 +455,7 @@ export interface PathAttributes extends ShapeAttributes {
 
 ### Draw holes {#draw-holes}
 
-In SVG, holes can be defined with a different clockwise direction than the outline. For example, in the path below, the outline is clockwise `M0 0 L100 0 L100 100 L0 100 Z`, and the two subsequent holes are counterclockwise:
+Under SVG's default `nonzero` rule, holes can be defined with the opposite winding direction to the outline. For example, in the path below, the outline is clockwise `M0 0 L100 0 L100 100 L0 100 Z`, and the two subsequent holes are counterclockwise:
 
 ```bash
 M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
@@ -485,6 +485,20 @@ tessy.gluTessProperty(
         : libtess.windingRule.GLU_TESS_WINDING_NONZERO,
 );
 ```
+
+In ECS, `fillRule` also applies with the default `tessellationMethod: 'earcut'`.
+Compound paths and `evenodd` fills automatically use libtess to resolve winding
+or parity across the whole path, instead of guessing holes from input order or
+the first contour's direction. Holes may precede their outlines; nested islands,
+overlapping contours, and duplicate contours follow the same rule as the native
+Canvas masks used for filters.
+
+A single `nonzero` contour retains the Earcut fast path. For general
+self-intersections in such a contour, explicitly choose `libtess`. Resolving
+compound paths may increase tessellation cost; existing geometry caches still
+avoid rebuilding on every frame. Paths with different fill rules or tessellation
+options no longer share a fill mesh. Rough paint retains its separate
+triangulation path to preserve overlapping brush alpha.
 
 ## Bounding box and picking {#bounding-box-picking}
 
