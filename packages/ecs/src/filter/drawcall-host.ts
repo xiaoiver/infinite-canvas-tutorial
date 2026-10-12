@@ -32,6 +32,7 @@ export interface DrawcallPostChain {
   destroy(): void;
   invalidateEngineTimeCaches(): void;
   syncEffects(effects: import('./types').Effect[]): boolean;
+  /** Input and returned textures use straight (non-premultiplied) RGBA. */
   createPostProcessing(
     effects: import('./types').Effect[],
     inputTexture: import('@infinite-canvas-tutorial/device-api').Texture,

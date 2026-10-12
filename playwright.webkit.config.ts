@@ -17,6 +17,7 @@ export default defineConfig({
     'path-rendering.spec.ts',
     'ecs-path-fill.spec.ts',
     'ecs-filter-chain.spec.ts',
+    'filter-alpha.spec.ts',
     'text-path.spec.ts',
     'ecs-text.spec.ts',
     'ecs-text-resize.spec.ts',

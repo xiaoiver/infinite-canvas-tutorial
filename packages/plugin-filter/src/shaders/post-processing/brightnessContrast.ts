@@ -1,3 +1,5 @@
+import { alpha } from './alpha';
+
 /**
  * Additive brightness + piecewise contrast, matching
  * {@link https://github.com/evanw/glfx.js/blob/master/src/filters/adjust/brightnesscontrast.js glfx.js brightnessContrast}
@@ -15,22 +17,22 @@ layout(std140) uniform PostProcessingUniforms {
 
 out vec4 outputColor;
 
+${alpha}
+
 void main() {
-  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
+  vec4 color = filterStraightColor(texture(SAMPLER_2D(u_Texture), v_Uv));
   float brightness = u_BrightnessContrast.x;
   float contrast = u_BrightnessContrast.y;
 
   if (color.a > 0.0) {
-    color.rgb /= color.a;
     color.rgb += brightness;
     if (contrast > 0.0) {
       color.rgb = (color.rgb - 0.5) / (1.0 - contrast) + 0.5;
     } else {
       color.rgb = (color.rgb - 0.5) * (1.0 + contrast) + 0.5;
     }
-    color.rgb *= color.a;
   }
 
-  outputColor = color;
+  outputColor = filterOutputColor(color);
 }
 `;
