@@ -838,10 +838,9 @@ export class DrawcallPostChain {
     this.state().filterVertexBuffer.destroy();
     this.state().filterIndexBuffer.destroy();
     this.state().filterUniformBuffer.destroy();
+    // Render targets own their attached texture (WebGL) or alias it (WebGPU).
     this.state().filterRenderTarget.destroy();
-    this.state().filterTexture.destroy();
     this.state().pingPongRenderTarget.destroy();
-    this.state().pingPongTexture.destroy();
     this.state().rainCodropsShinePlaceholder?.destroy();
     this.state().rainCodropsShinePlaceholder = undefined;
     this.state().rainFxAuxPlaceholder?.destroy();
@@ -2253,9 +2252,7 @@ export class DrawcallPostChain {
     if (this.state().filterWidth !== width || this.state().filterHeight !== height) {
       if (this.state().filterChainReady) {
         this.state().filterRenderTarget.destroy();
-        this.state().filterTexture.destroy();
         this.state().pingPongRenderTarget.destroy();
-        this.state().pingPongTexture.destroy();
 
         this.state().filterTexture = this.host.device.createTexture({
           format: Format.U8_RGBA_RT,

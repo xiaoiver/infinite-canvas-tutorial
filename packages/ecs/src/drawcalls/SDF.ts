@@ -46,8 +46,10 @@ import {
   strokePaintAlphaMultipliers,
 } from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
+import { createComposedFillTexture } from '../utils/composed-fill-texture';
 import {
   getRasterFilterValueForShape,
+  hasRasterPostEffects,
   filterRasterPostEffects,
 } from '../utils/filter';
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
@@ -271,7 +273,7 @@ export class SDF extends Drawcall {
         sourceH: sh,
         rasterOptions: rasterOpts,
       });
-      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+      return raw;
     }
     if (layer.type === 'pattern') {
       const pw = Math.max(1, Math.ceil(width));
@@ -292,7 +294,7 @@ export class SDF extends Drawcall {
         usage: TextureUsage.SAMPLED,
       });
       texture.setImageData([canvas]);
-      return this.applyRasterFilterChainIfNeeded(instance, texture, pw, ph);
+      return texture;
     }
     if (layer.type === 'solid') {
       const tw = Math.max(1, Math.ceil(width));
@@ -312,7 +314,7 @@ export class SDF extends Drawcall {
         usage: TextureUsage.SAMPLED,
       });
       upload2DRasterCanvasToTexture(raw, canvas);
-      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+      return raw;
     }
     const tw = Math.max(1, Math.ceil(width));
     const th = Math.max(1, Math.ceil(height));
@@ -323,7 +325,7 @@ export class SDF extends Drawcall {
         : undefined;
     if (meshFill && isMeshGradientGradient(meshFill)) {
       const raw = this.renderMeshGradientTexture(meshFill, tw, th);
-      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+      return raw;
     }
     const canvas = this.texturePool.getOrCreateGradient({
       gradients: fillGradients ?? [],
@@ -338,7 +340,7 @@ export class SDF extends Drawcall {
       usage: TextureUsage.SAMPLED,
     });
     texture.setImageData([canvas]);
-    return this.applyRasterFilterChainIfNeeded(instance, texture, tw, th);
+    return texture;
   }
 
   validate(shape: Entity) {
@@ -547,6 +549,9 @@ export class SDF extends Drawcall {
   createMaterial(defines: string, uniformBuffer: Buffer): void {
     this.createProgram(vert, frag, defines);
     this.disposeFillImageResources();
+    if (!hasRasterPostEffects(getRasterFilterValueForShape(this.shapes[0]))) {
+      this.destroyFullPostProcessingChain();
+    }
 
     if (!this.instanced && !this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
@@ -650,63 +655,57 @@ export class SDF extends Drawcall {
 
       this.#fillTextureFromPostChain = false;
       this.#bakedStrokeIntoFilterTexture = false;
-      if (!getRasterFilterValueForShape(instance)) {
-        this.destroyFullPostProcessingChain();
-      }
       if (this.#rawFillImageTexture) {
         this.#rawFillImageTexture.destroy();
         this.#rawFillImageTexture = null;
       }
 
       const multiForTex = getMultiFillLayers(instance);
+      const hasRasterFilter =
+        !this.instanced &&
+        hasRasterPostEffects(getRasterFilterValueForShape(instance));
       const needsFillLayerRaster =
         multiForTex &&
         (fillLayersNeedFillImage(multiForTex) ||
-          fillLayersShouldPrecompose(multiForTex));
+          fillLayersShouldPrecompose(multiForTex) ||
+          hasRasterFilter);
       if (needsFillLayerRaster && multiForTex) {
         const { minX, minY, maxX, maxY } =
           getSdfGeometryBoundsForFilter(instance);
-        const width = maxX - minX;
-        const height = maxY - minY;
-        this.#fillLayerTextures = multiForTex.map((layer) =>
+        const rasterize = (layer: FillLayerItem) =>
           this.createFillImageTextureForLayer(
             instance,
             layer,
             minX,
             minY,
-            width,
-            height,
-          ),
-        );
-        if (fillLayersShouldPrecompose(multiForTex)) {
-          const w = Math.max(
-            1,
-            ...this.#fillLayerTextures.map(
-              (t) => (t as unknown as { width: number }).width,
-            ),
+            maxX - minX,
+            maxY - minY,
           );
-          const h = Math.max(
-            1,
-            ...this.#fillLayerTextures.map(
-              (t) => (t as unknown as { height: number }).height,
-            ),
-          );
-          const composed = composeFillLayerTexturesOnGpu(
-            this.device,
-            this.renderCache,
+        if (fillLayersShouldPrecompose(multiForTex) || hasRasterFilter) {
+          const composed = createComposedFillTexture(
             multiForTex,
-            this.#fillLayerTextures,
-            w,
-            h,
-            () => this.createSampler(),
+            rasterize,
+            (textures, width, height) =>
+              composeFillLayerTexturesOnGpu(
+                this.device,
+                this.renderCache,
+                multiForTex,
+                textures,
+                width,
+                height,
+                () => this.createSampler(),
+              ),
           );
-          for (const t of this.#fillLayerTextures) {
-            t.destroy?.();
-          }
-          this.#fillLayerTextures = [];
-          this.#texture = composed;
+          this.#texture = composed.texture;
           this.#usePrecomposedMultiFill = true;
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            composed.texture,
+            composed.width,
+            composed.height,
+          );
         } else {
+          this.#fillLayerTextures = multiForTex.map(rasterize);
           this.#texture = this.#fillLayerTextures[0]!;
           this.#usePrecomposedMultiFill = false;
         }
@@ -717,13 +716,20 @@ export class SDF extends Drawcall {
             getSdfGeometryBoundsForFilter(instance);
           const width = maxX - minX;
           const height = maxY - minY;
-          this.#texture = this.createFillImageTextureForLayer(
+          const raw = this.createFillImageTextureForLayer(
             instance,
             one,
             minX,
             minY,
             width,
             height,
+          );
+          const size = raw as Texture & { width: number; height: number };
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            raw,
+            size.width,
+            size.height,
           );
         }
       } else if (instance.has(FillTexture)) {

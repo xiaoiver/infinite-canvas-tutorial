@@ -47,8 +47,10 @@ import {
   strokePaintAlphaMultipliers,
 } from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
+import { createComposedFillTexture } from '../utils/composed-fill-texture';
 import {
   getRasterFilterValueForShape,
+  hasRasterPostEffects,
   parseEffect,
   filterRasterPostEffects,
 } from '../utils/filter';
@@ -97,6 +99,7 @@ export class Mesh extends PathDrawcall {
   #rawFillImageTexture: Texture | null = null;
   /** True when {@link #texture} is the post-process chain output (do not `destroy` in Mesh.destroy). */
   #fillTextureFromPostChain = false;
+  #borrowedFillTexture = false;
 
   #fillLayerTextures: Texture[] = [];
   #fillLayerBindings: Bindings[] = [];
@@ -172,10 +175,22 @@ export class Mesh extends PathDrawcall {
       t.destroy?.();
     }
     this.#fillLayerTextures = [];
-    if (clearsMainTexture) {
+    if (clearsMainTexture || precomposedTexture) {
       this.#texture = null;
     }
     precomposedTexture?.destroy?.();
+  }
+
+  private disposeFillImageResources(): void {
+    this.disposeMeshFillLayerResources();
+    if (!this.#fillTextureFromPostChain && !this.#borrowedFillTexture) {
+      this.#texture?.destroy();
+    }
+    this.#rawFillImageTexture?.destroy();
+    this.#rawFillImageTexture = null;
+    this.#texture = null;
+    this.#fillTextureFromPostChain = false;
+    this.#borrowedFillTexture = false;
   }
 
   /** Rasterize one {@link FillLayers} entry for mesh fill sampling. */
@@ -226,7 +241,7 @@ export class Mesh extends PathDrawcall {
         sourceH: sh,
         rasterOptions: rasterOpts,
       });
-      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+      return raw;
     }
     if (layer.type === 'pattern') {
       const pw = Math.max(1, Math.ceil(width));
@@ -247,7 +262,7 @@ export class Mesh extends PathDrawcall {
         usage: TextureUsage.SAMPLED,
       });
       texture.setImageData([canvas]);
-      return this.applyRasterFilterChainIfNeeded(instance, texture, pw, ph);
+      return texture;
     }
     if (layer.type === 'solid') {
       const tw = Math.max(1, Math.ceil(width));
@@ -267,7 +282,7 @@ export class Mesh extends PathDrawcall {
         usage: TextureUsage.SAMPLED,
       });
       upload2DRasterCanvasToTexture(raw, canvas);
-      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+      return raw;
     }
     const tw = Math.max(1, Math.ceil(width));
     const th = Math.max(1, Math.ceil(height));
@@ -278,7 +293,7 @@ export class Mesh extends PathDrawcall {
         : undefined;
     if (meshFill && isMeshGradientGradient(meshFill)) {
       const raw = this.renderMeshGradientTexture(meshFill, tw, th);
-      return this.applyRasterFilterChainIfNeeded(instance, raw, tw, th);
+      return raw;
     }
     const canvas = this.texturePool.getOrCreateGradient({
       gradients: fillGradients ?? [],
@@ -293,7 +308,7 @@ export class Mesh extends PathDrawcall {
       usage: TextureUsage.SAMPLED,
     });
     texture.setImageData([canvas]);
-    return this.applyRasterFilterChainIfNeeded(instance, texture, tw, th);
+    return texture;
   }
 
   validate(shape: Entity) {
@@ -503,7 +518,10 @@ export class Mesh extends PathDrawcall {
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
     this.createProgram(vert, frag, defines);
-    this.disposeMeshFillLayerResources();
+    this.disposeFillImageResources();
+    if (!hasRasterPostEffects(getRasterFilterValueForShape(this.shapes[0]))) {
+      this.destroyFullPostProcessingChain();
+    }
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
         viewOrSize:
@@ -607,63 +625,57 @@ export class Mesh extends PathDrawcall {
       const instance = this.shapes[0];
 
       this.#fillTextureFromPostChain = false;
-      if (!getRasterFilterValueForShape(instance)) {
-        this.destroyFullPostProcessingChain();
-      }
       if (this.#rawFillImageTexture) {
         this.#rawFillImageTexture.destroy();
         this.#rawFillImageTexture = null;
       }
 
       const multiForTex = getMultiFillLayers(instance);
+      const hasRasterFilter =
+        !this.instanced &&
+        hasRasterPostEffects(getRasterFilterValueForShape(instance));
       const needsFillLayerRaster =
         multiForTex &&
         (fillLayersNeedFillImage(multiForTex) ||
-          fillLayersShouldPrecompose(multiForTex));
+          fillLayersShouldPrecompose(multiForTex) ||
+          hasRasterFilter);
       if (needsFillLayerRaster && multiForTex) {
         const { minX, minY, maxX, maxY } =
           getSdfGeometryBoundsForFilter(instance);
-        const width = maxX - minX;
-        const height = maxY - minY;
-        this.#fillLayerTextures = multiForTex.map((layer) =>
+        const rasterize = (layer: FillLayerItem) =>
           this.createMeshFillLayerTexture(
             instance,
             layer,
             minX,
             minY,
-            width,
-            height,
-          ),
-        );
-        if (fillLayersShouldPrecompose(multiForTex)) {
-          const w = Math.max(
-            1,
-            ...this.#fillLayerTextures.map(
-              (t) => (t as unknown as { width: number }).width,
-            ),
+            maxX - minX,
+            maxY - minY,
           );
-          const h = Math.max(
-            1,
-            ...this.#fillLayerTextures.map(
-              (t) => (t as unknown as { height: number }).height,
-            ),
-          );
-          const composed = composeFillLayerTexturesOnGpu(
-            this.device,
-            this.renderCache,
+        if (fillLayersShouldPrecompose(multiForTex) || hasRasterFilter) {
+          const composed = createComposedFillTexture(
             multiForTex,
-            this.#fillLayerTextures,
-            w,
-            h,
-            () => this.createSampler(),
+            rasterize,
+            (textures, width, height) =>
+              composeFillLayerTexturesOnGpu(
+                this.device,
+                this.renderCache,
+                multiForTex,
+                textures,
+                width,
+                height,
+                () => this.createSampler(),
+              ),
           );
-          for (const t of this.#fillLayerTextures) {
-            t.destroy?.();
-          }
-          this.#fillLayerTextures = [];
-          this.#texture = composed;
+          this.#texture = composed.texture;
           this.#usePrecomposedMultiFill = true;
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            composed.texture,
+            composed.width,
+            composed.height,
+          );
         } else {
+          this.#fillLayerTextures = multiForTex.map(rasterize);
           this.#texture = this.#fillLayerTextures[0]!;
           this.#usePrecomposedMultiFill = false;
         }
@@ -674,7 +686,7 @@ export class Mesh extends PathDrawcall {
             getSdfGeometryBoundsForFilter(instance);
           const width = maxX - minX;
           const height = maxY - minY;
-          this.#texture = this.createMeshFillLayerTexture(
+          const raw = this.createMeshFillLayerTexture(
             instance,
             one,
             minX,
@@ -682,9 +694,17 @@ export class Mesh extends PathDrawcall {
             width,
             height,
           );
+          const size = raw as Texture & { width: number; height: number };
+          this.#texture = this.applyRasterFilterChainIfNeeded(
+            instance,
+            raw,
+            size.width,
+            size.height,
+          );
         }
       } else if (instance.has(FillTexture)) {
         this.#texture = instance.read(FillTexture).value;
+        this.#borrowedFillTexture = true;
       }
 
       bindings.samplerBindings = [
@@ -900,15 +920,8 @@ export class Mesh extends PathDrawcall {
   }
 
   destroy(): void {
-    this.disposeMeshFillLayerResources();
+    this.disposeFillImageResources();
     this.destroyFullPostProcessingChain();
-    this.#rawFillImageTexture?.destroy();
-    this.#rawFillImageTexture = null;
-    if (!this.#fillTextureFromPostChain) {
-      this.#texture?.destroy?.();
-    }
-    this.#texture = null;
-    this.#fillTextureFromPostChain = false;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();

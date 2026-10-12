@@ -103,6 +103,14 @@ void main() {
 }
 ```
 
+### Multiple fills and filter order {#fill-filter-order}
+
+In ECS, raster filters on SDF primitives and Paths run after the enabled `fills` have been composed in paint order. Layer opacity and blend modes participate in that composition; the filter chain processes the resulting texture once, and shape opacity applies to the final draw. Applying the same chain separately to each layer can replace textures that earlier layers still need.
+
+For example, a red bottom fill and a blue top fill with `opacity: 0.5` remain purple under `brightness(0) contrast(0)`. These two filters use the glfx adjustment convention, where zero is neutral. Non-neutral effects execute in the order written in the `filter` string; exchanging brightness and contrast can change the result.
+
+Changing fills or geometry rebuilds the affected raster input. Removing raster filters releases the offscreen chain, including when the shape returns to direct solid-color drawing. Intermediate layer textures are released after composition, and attached render textures are released through their render targets.
+
 ### Brightness and contrast {#brightness-contrast}
 
 We can use the [CSS filter] syntax, for example `filter: brightness(0.4);`
