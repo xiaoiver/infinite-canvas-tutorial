@@ -3,7 +3,7 @@ import { loadImageBitmapUniversal } from '../../../packages/ecs/src/utils/load-i
 const canvas = document.querySelector<HTMLCanvasElement>('#decoded')!;
 const ctx = canvas.getContext('2d')!;
 
-async function read(source: string | Blob) {
+async function read(source: string | Blob, xs = [16, 48]) {
   const bitmap = await loadImageBitmapUniversal(source);
   try {
     const size = [bitmap.width, bitmap.height];
@@ -12,7 +12,7 @@ async function read(source: string | Blob) {
     ctx.drawImage(bitmap, 0, 0);
     return {
       size,
-      pixels: [16, 48].map((x) => [...ctx.getImageData(x, 16, 1, 1).data]),
+      pixels: xs.map((x) => [...ctx.getImageData(x, 16, 1, 1).data]),
     };
   } finally {
     bitmap.close();

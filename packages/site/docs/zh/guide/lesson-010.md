@@ -813,12 +813,12 @@ fills: [
 
 ### iOS Live Photo {#ios-live-photo}
 
-iOS Live Photo 在文件层面通常是 HEIC 静态图 + 配套 MOV。各浏览器对 HEIC 的原生支持不同，ECS 图片加载器通过 heic2any 提供转换路径。
+iOS Live Photo 在文件层面通常是 HEIC 静态图 + 配套 MOV。各浏览器对 HEIC 的原生支持不同，ECS 图片加载器通过 heic-to 提供转换路径。
 
 我们想将尽量与普通图片一样处理，先解出一帧静态位图再写入纹理。至于在画布里播 Live Photo 视频，需要后续再单独实现组件，提供点按播放等功能。
 
 `loadImageBitmapUniversal` 接受 URL、Blob 或 File，通过 MIME、文件扩展名或
-文件签名识别 HEIC/HEIF。heic2any 只在需要时加载，模块导入不会在 SSR 时访问
+文件签名识别 HEIC/HEIF。heic-to 只在需要时加载，模块导入不会在 SSR 时访问
 浏览器对象。转换只取第一帧静态图，先尝试 PNG；转换或位图解码失败后再尝试一次
 JPEG。其他图片格式继续交给 loaders.gl。
 
@@ -842,9 +842,10 @@ async function drawStill(
 }
 ```
 
-浏览器回归使用真实 HEIC 样本验证输入路径和失败恢复。当前 heic2any/libheif
-对该样本存在已知色彩范围偏差；色彩准确性、HDR 和 Live Photo 视频播放仍需
-分别完善。
+解码器使用 heic-to 1.6.6（libheif 1.23.6），修复旧解码器对完整范围 SDR 样本
+的偏色和透明度丢失。浏览器回归直接对照源颜色，并验证灰阶、PNG 透明度、多图容器
+第一帧、并发解码和损坏文件后的恢复。JPEG 回退仍有损且不保留透明度；任意 ICC 配置、
+广色域、HDR 和 Live Photo 视频播放不在这些回归的验证范围内。
 
 ## 增强 SVG: Stroke alignment {#stroke-alignment}
 

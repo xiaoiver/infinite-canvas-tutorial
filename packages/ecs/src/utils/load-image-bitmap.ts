@@ -1,21 +1,17 @@
 import { load } from '@loaders.gl/core';
 import { ImageLoader } from '@loaders.gl/images';
 
-/** 动态加载，避免 SSR/Node（如 VitePress build）执行 heic2any 顶层对 `window` 的访问。 */
-type Heic2Any = (options: {
-  blob: Blob;
-  toType?: 'image/jpeg' | 'image/png' | 'image/gif';
-  quality?: number;
-}) => Promise<Blob | Blob[]>;
+/** Keep HEIC conversion lazy; its background worker starts on first decode. */
+type HeicConverter = typeof import('heic-to')['heicTo'];
 
-let heic2anyModule: Heic2Any | undefined;
+let heicToModule: HeicConverter | undefined;
 
-async function getHeic2any(): Promise<Heic2Any> {
-  if (!heic2anyModule) {
-    const m = await import('heic2any');
-    heic2anyModule = m.default;
+async function getHeicConverter(): Promise<HeicConverter> {
+  if (!heicToModule) {
+    const m = await import('heic-to');
+    heicToModule = m.heicTo;
   }
-  return heic2anyModule;
+  return heicToModule;
 }
 
 function isHeicMime(mime: string): boolean {
@@ -52,31 +48,29 @@ async function blobLooksHeic(blob: Blob): Promise<boolean> {
 }
 
 /**
- * libheif / heic2any then `createImageBitmap`. Some runtimes fail on PNG output;
+ * libheif / heic-to then `createImageBitmap`. Some runtimes fail on PNG output;
  * JPEG is a common fallback.
  */
 async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
-  const heic2any = await getHeic2any();
-  const run = (toType: 'image/png' | 'image/jpeg') =>
-    heic2any({
+  const heicTo = await getHeicConverter();
+  const run = (type: 'image/png' | 'image/jpeg') =>
+    heicTo({
       blob,
-      toType,
-      quality: toType === 'image/jpeg' ? 0.92 : 1,
+      type,
+      quality: type === 'image/jpeg' ? 0.92 : 1,
     });
 
   try {
-    const converted = await run('image/png');
-    const out = Array.isArray(converted) ? converted[0] : converted;
+    const out = await run('image/png');
     if (out && out.size > 0) {
       return await createImageBitmap(out);
     }
   } catch {
     // Both PNG conversion and browser decoding can fail. Retry as JPEG once.
   }
-  const converted = await run('image/jpeg');
-  const out = Array.isArray(converted) ? converted[0] : converted;
+  const out = await run('image/jpeg');
   if (!out || out.size === 0) {
-    throw new Error('heic2any: empty output');
+    throw new Error('heic-to: empty output');
   }
   return createImageBitmap(out);
 }
@@ -121,7 +115,7 @@ function parseDataUrlBase64(
 }
 
 /**
- * Loads HEIC/HEIF (e.g. iOS Live Photo still, `.heic` URLs) via libheif (heic2any),
+ * Loads HEIC/HEIF (e.g. iOS Live Photo still, `.heic` URLs) via libheif (heic-to),
  * and other raster/SVG formats via loaders.gl.
  */
 export async function loadImageBitmapUniversal(

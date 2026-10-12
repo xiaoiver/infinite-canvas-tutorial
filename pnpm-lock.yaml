@@ -643,9 +643,9 @@ importers:
       gl-matrix:
         specifier: ^3.4.3
         version: 3.4.3
-      heic2any:
-        specifier: ^0.0.4
-        version: 0.0.4
+      heic-to:
+        specifier: 1.6.6
+        version: 1.6.6
       libtess:
         specifier: ^1.2.2
         version: 1.2.2
@@ -8469,8 +8469,8 @@ packages:
   headers-polyfill@4.0.3:
     resolution: {integrity: sha512-IScLbePpkvO846sIwOtOTDjutRMWdXdJmXdMvk6gCBHxFO8d+QKOQedyZSxFTTFYRSmlgSTDtXqqq4pcenBXLQ==}
 
-  heic2any@0.0.4:
-    resolution: {integrity: sha512-3lLnZiDELfabVH87htnRolZ2iehX9zwpRyGNz22GKXIu0fznlblf0/ftppXKNqS26dqFSeqfIBhAmAj/uSp0cA==}
+  heic-to@1.6.6:
+    resolution: {integrity: sha512-PYpOtPFEzgPxIoGF4LQ+oBD8o/tMvcFDNynrNzK1fLXfE6mTe2W+AHOvBKc5MwnVak4/Pnb51g9CJAtWL5YGWA==}
 
   hermes-estree@0.25.1:
     resolution: {integrity: sha512-0wUoCcLp+5Ev5pDW2OriHC2MJCbwLwuRx+gAqMTOkGKJJiBCLjtrvy4PWUGn6MIVefecRpzoOZ/UV6iGdOr+Cw==}
@@ -19972,7 +19972,7 @@ snapshots:
 
   headers-polyfill@4.0.3: {}
 
-  heic2any@0.0.4: {}
+  heic-to@1.6.6: {}
 
   hermes-estree@0.25.1: {}
 

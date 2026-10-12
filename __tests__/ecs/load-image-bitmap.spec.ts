@@ -5,9 +5,9 @@ const mockConvert = jest.fn();
 const mockImport = jest.fn();
 jest.mock('@loaders.gl/core', () => ({ load: mockLoad }));
 jest.mock('@loaders.gl/images', () => ({ ImageLoader: { id: 'image' } }));
-jest.mock('heic2any', () => {
+jest.mock('heic-to', () => {
   mockImport();
-  return { __esModule: true, default: mockConvert };
+  return { __esModule: true, heicTo: mockConvert };
 });
 
 let decode: typeof import('../../packages/ecs/src/utils/load-image-bitmap').loadImageBitmapUniversal;
@@ -60,7 +60,7 @@ it('tries JPEG when HEIC-to-PNG conversion fails and returns ownership of the bi
     .mockRejectedValueOnce(new Error('PNG encoding unavailable'))
     .mockResolvedValueOnce(jpeg);
   await expect(decode(blob)).resolves.toBe(bitmap);
-  expect(mockConvert.mock.calls.map(([options]) => options.toType)).toEqual([
+  expect(mockConvert.mock.calls.map(([options]) => options.type)).toEqual([
     'image/png',
     'image/jpeg',
   ]);
@@ -134,7 +134,7 @@ it.each([
   expect(slice).not.toHaveBeenCalled();
   expect(mockConvert).toHaveBeenCalledWith({
     blob,
-    toType: 'image/png',
+    type: 'image/png',
     quality: 1,
   });
   expect(mockLoad).not.toHaveBeenCalled();
@@ -310,40 +310,34 @@ it('surfaces a conversion failure after an extensionless response is confirmed a
   expect(mockConvert).toHaveBeenCalledTimes(2);
 });
 
-it.each(['blob', 'array'])(
-  'returns the first converted frame from PNG %s output',
-  async (shape) => {
-    const first = new Blob(['first']);
-    const second = new Blob(['second']);
-    mockConvert.mockResolvedValueOnce(
-      shape === 'blob' ? first : [first, second],
-    );
-    await expect(
-      decode(new Blob(['heic'], { type: 'image/heic' })),
-    ).resolves.toBe(bitmap);
-    expect(mockBitmap).toHaveBeenCalledTimes(1);
-    expect(mockBitmap).toHaveBeenCalledWith(first);
-    expect(mockConvert).toHaveBeenCalledTimes(1);
-  },
-);
+it('decodes the converted PNG once and returns its bitmap', async () => {
+  const png = new Blob(['first still frame'], { type: 'image/png' });
+  mockConvert.mockResolvedValueOnce(png);
+  await expect(
+    decode(new Blob(['heic'], { type: 'image/heic' })),
+  ).resolves.toBe(bitmap);
+  expect(mockBitmap).toHaveBeenCalledTimes(1);
+  expect(mockBitmap).toHaveBeenCalledWith(png);
+  expect(mockConvert).toHaveBeenCalledTimes(1);
+});
 
 it.each(['empty PNG', 'missing PNG', 'PNG decoder rejects'])(
   'falls back once to JPEG when %s',
   async (reason) => {
     mockConvert.mockResolvedValueOnce(
       reason === 'missing PNG'
-        ? []
+        ? undefined
         : new Blob(reason === 'empty PNG' ? [] : ['png']),
     );
     const jpeg = new Blob(['jpeg']);
-    mockConvert.mockResolvedValueOnce([jpeg]);
+    mockConvert.mockResolvedValueOnce(jpeg);
     if (reason === 'PNG decoder rejects')
       mockBitmap.mockRejectedValueOnce(new Error('PNG decoder'));
     await expect(
       decode(new Blob(['heic'], { type: 'image/heic' })),
     ).resolves.toBe(bitmap);
     expect(mockConvert.mock.calls[1][0]).toMatchObject({
-      toType: 'image/jpeg',
+      type: 'image/jpeg',
       quality: 0.92,
     });
     expect(mockBitmap).toHaveBeenLastCalledWith(jpeg);
@@ -356,13 +350,13 @@ it.each([
   'JPEG converter rejects',
   'JPEG decoder rejects',
 ])('rejects %s and permits a later independent retry', async (reason) => {
-  mockConvert.mockResolvedValueOnce([]);
+  mockConvert.mockResolvedValueOnce(undefined);
   if (reason === 'JPEG converter rejects')
     mockConvert.mockRejectedValueOnce(new Error('conversion'));
   else
     mockConvert.mockResolvedValueOnce(
       reason === 'missing JPEG'
-        ? []
+        ? undefined
         : new Blob(reason === 'empty JPEG' ? [] : ['jpeg']),
     );
   if (reason === 'JPEG decoder rejects')

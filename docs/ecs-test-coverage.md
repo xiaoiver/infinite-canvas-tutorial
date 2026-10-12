@@ -1426,11 +1426,67 @@ pnpm exec playwright test -c playwright.webkit.config.ts 'image-decoding|image-f
 pnpm test:tooling
 ```
 
+## 第二十四批：HEIC 色彩与透明度
+
+2026-10-12，基于 master `646c0622`（PR #409 已合并），以上一批完整运行的
+行覆盖率 74.36%、分支覆盖率 62.85%、函数覆盖率 74.39% 为基线。
+
+旧 heic2any 的显示实现固定使用 `1.164 * (Y - 16)` 的有限范围转换，并把
+alpha 写成 255。原双色样本的红色 `(220,60,30)` 被解为 `(233,52,18)`；
+灰阶样本的 16 被截为 0、235 被截为 255，半透明和全透明区域也变为不透明。
+
+-   将依赖替换为固定版本 heic-to 1.6.6（libheif 1.23.6），使用 libheif 的
+    RGBA 输出。新解码结果为 `(219,60,30)`，与 Pillow 的参考结果一致。
+-   保留按需导入、后台 worker、PNG/JPEG 一次回退、HTTP 错误处理、独立重试
+    和调用方对位图/object URL 的所有权。普通图片仍走 loaders.gl。
+-   使用新依赖自带的类型，移除旧声明和数组返回值处理。更新中英文文档，明确
+    已验证的是完整范围 SDR 样本，JPEG 回退仍有损且不保留透明度。
+
+已有 3 项浏览器回归改为直接比较源颜色，PNG 路径 RGB 容差从 8 收紧到 3，
+JPEG 回退容差收紧到 6，普通 PNG 要求完全一致。这 3 项断言先在旧实现上失败。
+新增 3 项回归使用灰阶/alpha 和双图容器样本，验证灰阶范围、透明度、第一帧
+选择、损坏文件后恢复及并发请求隔离；原始双色 HEIC 文件保持不变。
+
+Chromium 和 WebKit 各 9 项相关回归通过（含 image-fill）。额外构建并静态
+服务同一 fixture，打包后 Chromium 和 WebKit 各 6 项解码回归通过。生产构建
+保留独立的 HEIC 懒加载文件，约 3.15 MB，Vite 报告 gzip 约 774 KB；新版代码
+比旧库更大，仅遇到 HEIC 时加载。浏览器测试不计入 Jest 覆盖率。
+
+ECS 加载器保留 60 项单测；旧库的两项 Blob/数组返回值模拟改为一项 Blob
+行为验证，多图第一帧语义由真实 HEIC 浏览器回归覆盖，因此单测总数减少 1 项。
+完整原生 ECS 运行通过 235 个文件、1956 项测试，
+用时 847.638 秒，沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+图片解码模块行覆盖率为 98.92%、分支 97.5%、函数 100%；
+原有全部 49 项模块门槛及全量 ECS 源文件统计范围不变，完整报告满足全部门槛。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 74.36% | 74.36%（21345/28704） |
+| 语句覆盖率 | 74.36% | 74.36%（22373/30085） |
+| 分支覆盖率 | 62.85% |  62.84%（8854/14089） |
+| 函数覆盖率 | 74.39% |   74.39%（2874/3863） |
+
+ECS CommonJS/ESM 构建、仓库及修改文件 ESLint、浏览器与修改 ECS 测试 TypeScript、
+格式/Markdown 检查和 22 项 tooling 检查均通过。依赖审计按仓库原有忽略规则通过。
+任意 ICC 配置、广色域、HDR 色调映射和 Live Photo 视频不在本批验证范围内。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/load-image-bitmap.spec.ts \
+  __tests__/ecs/rain-drop-texture-cache.spec.ts \
+  __tests__/ecs/fill-layer-image-cache.spec.ts \
+  __tests__/ecs/mesh3d-renderer-lifecycle.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts 'image-decoding|image-fill'
+pnpm exec playwright test -c playwright.webkit.config.ts 'image-decoding|image-fill'
+pnpm test:tooling
+pnpm audit --audit-level=low
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **资源和渲染剩余路径**：HEIC 解码的色彩偏差、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+1. **资源和渲染剩余路径**：导出失败恢复（优先 `animationExportCodec` 的录制异常与流释放）、复杂滤镜，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 2. **三维交互后续**：检查选中时 gizmo 的 uniform 上传与悬停命中开销，为进一步缓存建立失效条件和真实交互回归。
 

@@ -30,7 +30,7 @@ module.exports = {
       '<rootDir>/packages/device-api/src/index.ts',
     '^@infinite-canvas-tutorial/ecs$': '<rootDir>/packages/ecs/src/index.ts',
     '^@infinite-canvas-tutorial/ecs/(.*)$': '<rootDir>/packages/ecs/src/$1',
-    '^heic2any$': '<rootDir>/__tests__/mocks/heic2any.ts',
+    '^heic-to$': '<rootDir>/__tests__/mocks/heic-to.ts',
   },
   collectCoverageFrom: ['packages/ecs/src/**/*.ts'],
   coverageReporters: ['json', 'json-summary', 'lcov', 'text', 'clover'],
