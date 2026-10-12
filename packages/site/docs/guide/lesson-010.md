@@ -522,7 +522,7 @@ When exporting to SVG, if web fonts are used, we aim to inline them within the f
 
 ### Export GIF {#to-gif}
 
-In a later [Lesson 30 - Time-based animation], we cover effects driven by post-processing and a time uniform. To **export** that motion you need formats such as GIF or MOV; here we outline the former.
+In a later [Lesson 30 - Time-based animation], we cover effects driven by post-processing and a time uniform. To **export** that motion you need formats such as GIF or WebM; here we outline the former.
 
 1. The render path must accept the current **frame index** (or engine time) so each step shows the right moment of the effect.
 2. **Snapshot the canvas to a raster**, e.g. PNG — the previous section already covered that.
@@ -535,6 +535,7 @@ import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 const gif = GIFEncoder();
 for (let i = 0; i < frameCount; i++) {
     renderFrame(i); // (1) drive time / frame
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     const dataUrl = el.toDataURL('image/png', pngQuality); // (2) raster snapshot
     const imageData = await imageDataFromPngDataUrl(dataUrl, w, h, ctx!);
     const palette = quantize(imageData.data, 256); // (3) build palette
@@ -544,6 +545,19 @@ for (let i = 0; i < frameCount; i++) {
 gif.finish();
 return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
 ```
+
+ECS waits for a browser frame callback after rendering each frame before reading
+its PNG snapshot, and requires a fixed canvas size throughout GIF and WebM exports.
+An empty canvas, size change, PNG decode error, or drawing exception rejects the
+export instead of returning an empty file or partial animation. Temporary canvases
+are released on success and failure. WebM also stops the recorder and every capture
+track, cancels pending frame callbacks, and detaches image handlers so a failed
+export can be retried. The caller's source canvas remains available.
+
+WebM timestamps still follow the real-time `MediaRecorder` capture clock. The chosen
+FPS advances effect time but does not guarantee an exact WebM frame rate or duration.
+GIF writes per-frame delays, stored in units of 10 milliseconds; browsers may also
+clamp short display durations.
 
 ### Export PDF {#to-pdf}
 

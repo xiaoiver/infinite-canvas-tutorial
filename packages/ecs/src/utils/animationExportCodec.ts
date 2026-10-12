@@ -1,6 +1,5 @@
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 
-/** GIF 动图导出色数档：与 `quantize` 第二项一致。 */
 export type AnimationGifQuality = 'high' | 'medium' | 'low';
 
 const GIF_QUALITY_MAX_COLORS: Record<AnimationGifQuality, number> = {
@@ -9,175 +8,208 @@ const GIF_QUALITY_MAX_COLORS: Record<AnimationGifQuality, number> = {
   low: 64,
 };
 
-/**
- * 将「高 / 中 / 低」质量映射为每帧调色板最大色数（2–256）。
- */
 export function maxColorsForAnimationGifQuality(
   quality: AnimationGifQuality | undefined,
 ): number {
-  if (quality == null) {
-    return GIF_QUALITY_MAX_COLORS.high;
-  }
-  const n = GIF_QUALITY_MAX_COLORS[quality];
-  return n != null ? n : GIF_QUALITY_MAX_COLORS.high;
+  return (
+    GIF_QUALITY_MAX_COLORS[quality ?? 'high'] ?? GIF_QUALITY_MAX_COLORS.high
+  );
 }
 
-/**
- * 浏览器是否支持通过 {@link MediaRecorder} 写 WebM。
- */
 export function pickWebmMimeType(): string | null {
-  if (typeof MediaRecorder === 'undefined') {
-    return null;
+  if (typeof MediaRecorder === 'undefined') return null;
+  return (
+    ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(
+      (mime) => MediaRecorder.isTypeSupported(mime),
+    ) ?? null
+  );
+}
+
+function validateFrameCount(frameCount: number) {
+  if (!Number.isInteger(frameCount) || frameCount < 1) {
+    throw new Error('Animation export requires a positive integer frame count');
   }
-  const candidates = [
-    'video/webm;codecs=vp9',
-    'video/webm;codecs=vp8',
-    'video/webm',
-  ];
-  for (const c of candidates) {
-    if (MediaRecorder.isTypeSupported(c)) {
-      return c;
+}
+
+/** Let the renderer present before reading pixels; abort queued recording work. */
+function nextAnimationFrame(signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const abort = () => {
+      cancelAnimationFrame(id);
+      reject(new Error('Animation export stopped'));
+    };
+    const id = requestAnimationFrame(() => {
+      signal?.removeEventListener('abort', abort);
+      resolve();
+    });
+    if (signal?.aborted) abort();
+    else signal?.addEventListener('abort', abort, { once: true });
+  });
+}
+
+async function drawPngFrame(
+  dataUrl: string,
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const image = new Image();
+  await new Promise<void>((resolve, reject) => {
+    const finish = (error?: Error) => {
+      image.onload = image.onerror = null;
+      signal?.removeEventListener('abort', abort);
+      if (error) reject(error);
+      else resolve();
+    };
+    const abort = () => finish(new Error('Animation export stopped'));
+    image.onload = () => finish();
+    image.onerror = () =>
+      finish(new Error('Animation frame PNG decode failed'));
+    if (signal?.aborted) {
+      abort();
+      return;
     }
-  }
-  return null;
+    signal?.addEventListener('abort', abort, { once: true });
+    try {
+      image.src = dataUrl;
+    } catch (error) {
+      image.onload = image.onerror = null;
+      signal?.removeEventListener('abort', abort);
+      reject(error);
+    }
+  });
+  // Drawing outside the event handler lets exceptions reject the export.
+  if (signal?.aborted) throw new Error('Animation export stopped');
+  context.clearRect(0, 0, width, height);
+  context.drawImage(image, 0, 0, width, height);
 }
 
-type CanvasCaptureTrack = {
-  requestFrame?: () => void;
-};
-
 /**
- * 等一帧，让 WebGPU 把一帧画呈现到可 `toDataURL` 的位图；与 {@link encodeGifFromCanvas} 前同步。
+ * Copy renderer snapshots to a 2D capture canvas. Direct WebGPU capture can
+ * record black frames. Every exit stops recording and all capture tracks.
+ * MediaRecorder timestamps still follow the browser's real-time capture clock.
  */
-function nextAnimationFrame(): Promise<void> {
-  return new Promise((r) => requestAnimationFrame(() => r()));
-}
-
-/**
- * 在单任务内逐帧 `render` 后，用与 GIF 相同的 `toDataURL` 将像素画到 2D 画布，再对 **2D** `canvas.captureStream(0)` 使用 `MediaRecorder`。
- * 对 WebGPU 的「直接」`captureStream`+`requestFrame` 在多数环境会整段采黑，故不再走该路径。
- */
-export function recordWebMFromCanvas(
+export async function recordWebMFromCanvas(
   getExportCanvas: () => HTMLCanvasElement,
   frameCount: number,
   renderFrame: (frameIndex: number) => void,
   pngQuality = 0.92,
 ): Promise<Blob> {
-  return recordWebMFromCanvasVia2D(getExportCanvas, frameCount, renderFrame, pngQuality);
-}
-
-async function recordWebMFromCanvasVia2D(
-  getExportCanvas: () => HTMLCanvasElement,
-  frameCount: number,
-  renderFrame: (frameIndex: number) => void,
-  pngQuality: number,
-): Promise<Blob> {
+  validateFrameCount(frameCount);
   const mime = pickWebmMimeType();
-  if (!mime) {
-    throw new Error('WebM encoding is not supported');
-  }
-  const chunks: Blob[] = [];
+  if (!mime) throw new Error('WebM encoding is not supported');
 
   renderFrame(0);
   await nextAnimationFrame();
-  let source = getExportCanvas();
-  const w = source.width;
-  const h = source.height;
-  if (w < 1 || h < 1) {
-    return new Blob([], { type: 'video/webm' });
-  }
-  const d2d = document.createElement('canvas');
-  d2d.width = w;
-  d2d.height = h;
-  const c2 = d2d.getContext('2d', { willReadFrequently: true });
-  if (!c2) {
-    return new Blob([], { type: 'video/webm' });
-  }
-
-  const drawDataUrl = (dataUrl: string) =>
-    new Promise<void>((res, rej) => {
-      const im = new Image();
-      im.onload = () => {
-        c2.clearRect(0, 0, w, h);
-        c2.drawImage(im, 0, 0, w, h);
-        res();
-      };
-      im.onerror = () => rej(new Error('WebM: frame PNG decode failed'));
-      im.src = dataUrl;
-    });
-
-  await drawDataUrl(source.toDataURL('image/png', pngQuality));
-  const stream = d2d.captureStream(0);
-  const track = stream.getVideoTracks()[0] as CanvasCaptureTrack;
-
-  return new Promise((resolve, reject) => {
-    const rec = new MediaRecorder(stream, {
+  const source = getExportCanvas();
+  const { width, height } = source;
+  if (width < 1 || height < 1) throw new Error('WebM: export canvas is empty');
+  const scratch = document.createElement('canvas');
+  let stream: MediaStream | undefined;
+  try {
+    scratch.width = width;
+    scratch.height = height;
+    const context = scratch.getContext('2d', { willReadFrequently: true });
+    if (!context) throw new Error('WebM: 2D context is unavailable');
+    await drawPngFrame(
+      source.toDataURL('image/png', pngQuality),
+      context,
+      width,
+      height,
+    );
+    stream = scratch.captureStream(0);
+    const track = stream.getVideoTracks()[0] as
+      | CanvasCaptureMediaStreamTrack
+      | undefined;
+    if (!track?.requestFrame)
+      throw new Error('Canvas capture track has no requestFrame()');
+    const recorder = new MediaRecorder(stream, {
       mimeType: mime,
       videoBitsPerSecond: 8_000_000,
     });
-    rec.ondataavailable = (e) => {
-      if (e.data && e.data.size > 0) {
-        chunks.push(e.data);
-      }
-    };
-    rec.onerror = () => reject(new Error('MediaRecorder error'));
-    rec.onstop = () => {
-      const base = mime.split(';')[0] ?? 'video/webm';
-      resolve(new Blob(chunks, { type: base }));
-    };
-    void (async () => {
-      try {
-        if (!track.requestFrame) {
-          throw new Error('Canvas capture track has no requestFrame()');
-        }
-        rec.start(100);
-        track.requestFrame();
-        for (let i = 1; i < frameCount; i++) {
-          renderFrame(i);
-          await nextAnimationFrame();
-          source = getExportCanvas();
-          if (source.width !== w || source.height !== h) {
-            reject(new Error('WebM: export size changed between frames'));
-            return;
+
+    return await new Promise<Blob>((resolve, reject) => {
+      const controller = new AbortController();
+      const { signal } = controller;
+      const chunks: Blob[] = [];
+      let settled = false;
+      let allFramesCaptured = false;
+      const finish = (settle: () => void) => {
+        if (settled) return;
+        settled = true;
+        recorder.ondataavailable = recorder.onerror = recorder.onstop = null;
+        controller.abort();
+        if (recorder.state !== 'inactive') {
+          try {
+            recorder.stop();
+          } catch {
+            /* Track cleanup below must still run if stop fails. */
           }
-          await drawDataUrl(source.toDataURL('image/png', pngQuality));
-          track.requestFrame();
         }
-        await new Promise((r) => setTimeout(r, 0));
-        rec.stop();
-      } catch (e) {
-        reject(e);
+        settle();
+      };
+      const fail = (error: unknown) => finish(() => reject(error));
+      recorder.ondataavailable = (event) => {
+        if (!settled && event.data?.size) chunks.push(event.data);
+      };
+      recorder.onerror = () => fail(new Error('MediaRecorder error'));
+      recorder.onstop = () => {
+        if (!allFramesCaptured) {
+          fail(
+            new Error('MediaRecorder stopped before all frames were captured'),
+          );
+        } else if (!chunks.length) {
+          fail(new Error('MediaRecorder produced no data'));
+        } else {
+          finish(() => resolve(new Blob(chunks, { type: mime.split(';')[0] })));
+        }
+      };
+      void (async () => {
+        try {
+          recorder.start(100);
+          if (settled) return;
+          track.requestFrame();
+          for (let i = 1; i < frameCount; i++) {
+            if (settled) return;
+            renderFrame(i);
+            await nextAnimationFrame(signal);
+            const next = getExportCanvas();
+            if (next.width !== width || next.height !== height) {
+              throw new Error('WebM: export size changed between frames');
+            }
+            await drawPngFrame(
+              next.toDataURL('image/png', pngQuality),
+              context,
+              width,
+              height,
+              signal,
+            );
+            track.requestFrame();
+          }
+          // A paint between these callbacks lets the last requested frame reach capture.
+          await nextAnimationFrame(signal);
+          await nextAnimationFrame(signal);
+          allFramesCaptured = true;
+          recorder.stop();
+        } catch (error) {
+          fail(error);
+        }
+      })();
+    });
+  } finally {
+    for (const track of stream?.getTracks() ?? []) {
+      try {
+        track.stop();
+      } catch {
+        /* Release the other tracks without replacing the export error. */
       }
-    })();
-  });
+    }
+    scratch.width = scratch.height = 0;
+  }
 }
 
-/**
- * 将 PNG data URL 解成 ImageData（在 2D 离屏上读像素，供 gifenc 使用）。
- */
-async function imageDataFromPngDataUrl(
-  dataUrl: string,
-  w: number,
-  h: number,
-  ctx: CanvasRenderingContext2D,
-): Promise<ImageData> {
-  const img = new Image();
-  await new Promise<void>((res, rej) => {
-    img.onload = () => res();
-    img.onerror = () => rej(new Error('GIF frame: failed to decode PNG data URL'));
-    img.src = dataUrl;
-  });
-  ctx.clearRect(0, 0, w, h);
-  ctx.drawImage(img, 0, 0, w, h);
-  return ctx.getImageData(0, 0, w, h);
-}
-
-/**
- * 逐帧读回 WebGPU 画布为 ImageData，经 gifenc 量化后写入 GIF。
- *
- * 与 `MeshPipeline` 栅格截图一致：用 `toDataURL('image/png')` 从**实际渲染目标**画布取像
- *（整幅为主 canvas，局部选区为离屏 canvas）。
- */
+/** Encode fixed-size renderer snapshots with one quantized palette per frame. */
 export async function encodeGifFromCanvas(
   getExportCanvas: () => HTMLCanvasElement,
   frameCount: number,
@@ -186,43 +218,49 @@ export async function encodeGifFromCanvas(
   pngQuality = 0.92,
   maxGifColors = 256,
 ): Promise<Blob> {
+  validateFrameCount(frameCount);
+  if (!Number.isFinite(fps) || !Number.isFinite(maxGifColors)) {
+    throw new Error('GIF: fps and palette size must be finite');
+  }
   const colorCap = Math.max(2, Math.min(256, Math.floor(maxGifColors)));
   const delay = Math.max(1, Math.round(1000 / Math.max(1, fps)));
-  let w = 0;
-  let h = 0;
-  let ctx: CanvasRenderingContext2D | null = null;
   const gif = GIFEncoder();
-  for (let i = 0; i < frameCount; i++) {
-    renderFrame(i);
-    const el = getExportCanvas();
-    if (i === 0) {
-      w = el.width;
-      h = el.height;
-      if (w < 1 || h < 1) {
-        return new Blob();
+  const scratch = document.createElement('canvas');
+  try {
+    let width = 0;
+    let height = 0;
+    let context: CanvasRenderingContext2D | null = null;
+    for (let i = 0; i < frameCount; i++) {
+      renderFrame(i);
+      await nextAnimationFrame();
+      const source = getExportCanvas();
+      if (i === 0) {
+        ({ width, height } = source);
+        if (width < 1 || height < 1)
+          throw new Error('GIF: export canvas is empty');
+        scratch.width = width;
+        scratch.height = height;
+        context = scratch.getContext('2d', { willReadFrequently: true });
+        if (!context) throw new Error('GIF: 2D context is unavailable');
+      } else if (source.width !== width || source.height !== height) {
+        throw new Error('GIF: export size changed between frames');
       }
-      const scratch = document.createElement('canvas');
-      scratch.width = w;
-      scratch.height = h;
-      ctx = scratch.getContext('2d', { willReadFrequently: true });
-      if (!ctx) {
-        return new Blob();
-      }
-    } else if (el.width !== w || el.height !== h) {
-      w = el.width;
-      h = el.height;
-      if (w < 1 || h < 1) {
-        return new Blob();
-      }
-      (ctx!.canvas as HTMLCanvasElement).width = w;
-      (ctx!.canvas as HTMLCanvasElement).height = h;
+      await drawPngFrame(
+        source.toDataURL('image/png', pngQuality),
+        context!,
+        width,
+        height,
+      );
+      const { data } = context!.getImageData(0, 0, width, height);
+      const palette = quantize(data, colorCap);
+      gif.writeFrame(applyPalette(data, palette), width, height, {
+        palette,
+        delay,
+      });
     }
-    const dataUrl = el.toDataURL('image/png', pngQuality);
-    const imageData = await imageDataFromPngDataUrl(dataUrl, w, h, ctx!);
-    const palette = quantize(imageData.data, colorCap);
-    const index = applyPalette(imageData.data, palette);
-    gif.writeFrame(index, w, h, { palette, delay });
+    gif.finish();
+    return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
+  } finally {
+    scratch.width = scratch.height = 0;
   }
-  gif.finish();
-  return new Blob([new Uint8Array(gif.bytes())], { type: 'image/gif' });
 }
