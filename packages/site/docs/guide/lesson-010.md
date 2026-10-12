@@ -817,12 +817,12 @@ On the CPU we rasterize the image into a texture: compute the draw rectangle fro
 
 ### iOS Live Photo {#ios-live-photo}
 
-At the file level, an iOS Live Photo is usually a HEIC still image plus a companion MOV. Native HEIC support varies between browsers; the ECS image loader uses heic2any to provide a conversion path.
+At the file level, an iOS Live Photo is usually a HEIC still image plus a companion MOV. Native HEIC support varies between browsers; the ECS image loader uses heic-to to provide a conversion path.
 
 We aim to treat it like a normal image: decode a single still frame into a bitmap, then upload it to a texture. Playing the Live Photo's embedded video in the canvas would be a follow-up, with a dedicated component (e.g. tap to play) built separately.
 
 `loadImageBitmapUniversal` accepts a URL, Blob or File. It recognizes HEIC/HEIF
-from MIME, file extension or the file signature, and loads heic2any only when
+from MIME, file extension or the file signature, and loads heic-to only when
 needed, keeping module imports safe during SSR. It converts the first still frame
 to PNG, with one JPEG retry if conversion or bitmap decoding fails. Non-HEIC
 images continue through loaders.gl.
@@ -848,9 +848,13 @@ async function drawStill(
 }
 ```
 
-The browser regressions cover routing and recovery with a real HEIC fixture. The
-current heic2any/libheif decoder has a known color-range discrepancy on that
-fixture; color accuracy, HDR and Live Photo video playback remain separate work.
+The decoder uses heic-to 1.6.6 (libheif 1.23.6), correcting the previous decoder's
+color shift and lost transparency on the full-range SDR fixtures. Browser
+regressions compare against source colors and cover gray levels, PNG transparency,
+the first still in a multi-image container, concurrent decoding and recovery after
+corrupt input.
+JPEG fallback remains lossy and cannot preserve alpha. These checks do not cover
+arbitrary ICC profiles, wide-gamut color, HDR or Live Photo video playback.
 
 ## Enhanced SVG: Stroke alignment {#stroke-alignment}
 
