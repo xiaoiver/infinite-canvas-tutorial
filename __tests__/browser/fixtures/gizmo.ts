@@ -19,6 +19,7 @@ import {
   GPUResource,
   Mesh3D,
 } from '@infinite-canvas-tutorial/ecs';
+import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
 import { settleECSFrames } from './ecs-frames';
 
 let api: API;
@@ -66,8 +67,15 @@ const app = new App().addPlugins(
   },
 );
 const uploads: unknown[] = [];
+const derivedUpdates = { modelUploads: 0, layerScans: 0 };
+const resetDerivedUpdates = () => {
+  derivedUpdates.modelUploads = 0;
+  derivedUpdates.layerScans = 0;
+};
 const harness = {
   api: () => api,
+  resetDerivedUpdates,
+  derivedUpdates: () => ({ ...derivedUpdates }),
   settle: () => settleECSFrames(api, 3),
   trackGeometryUploads: () => {
     const device = api.getCanvas().read(GPUResource).device;
@@ -116,6 +124,30 @@ declare global {
 window.gizmoTest = harness;
 async function init() {
   await app.run();
+  while (!api.getCanvas().has(GPUResource)) await harness.settle();
+  // Observe actual model UBO writes, including already-created meshes later on.
+  const device = api.getCanvas().read(GPUResource).device;
+  const createBuffer = device.createBuffer.bind(device);
+  device.createBuffer = (descriptor) => {
+    const buffer = createBuffer(descriptor);
+    // Model uniforms are 56 floats; gizmo and scene UBOs have different layouts.
+    if (
+      descriptor.usage === BufferUsage.UNIFORM &&
+      descriptor.viewOrSize === 56 * 4
+    ) {
+      const upload = buffer.setSubData.bind(buffer);
+      buffer.setSubData = (...args) => {
+        derivedUpdates.modelUploads++;
+        upload(...args);
+      };
+    }
+    return buffer;
+  };
+  const setLayers = api.setMesh3DLayers.bind(api);
+  api.setMesh3DLayers = (layers) => {
+    derivedUpdates.layerScans++;
+    return setLayers(layers);
+  };
   await api.edit(
     (editor) => {
       const node: SerializedNode = params.has('extrude')

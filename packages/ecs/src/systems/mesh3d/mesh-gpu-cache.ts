@@ -6,8 +6,10 @@ import {
 } from '@infinite-canvas-tutorial/device-api';
 import type { Mesh3D } from '../../components/geometry3d/Mesh3D';
 import { ResourceScope } from '../../resources/ResourceScope';
-
-export const MESH_MODEL_UNIFORM_FLOATS = 56;
+import {
+  MeshModelUniforms,
+  MESH_MODEL_UNIFORM_FLOATS,
+} from './mesh-model-uniforms';
 
 export interface MeshGPUData {
   vertexBuffer: Buffer;
@@ -18,6 +20,7 @@ export interface MeshGPUData {
   vertexCount: number;
   /** Deferred submission requires a separate model UBO for every mesh. */
   modelUniformBuffer: Buffer;
+  modelUniforms: MeshModelUniforms;
 }
 
 interface Entry {
@@ -79,7 +82,7 @@ export class MeshGPUCache {
     };
     let data: MeshGPUData;
     try {
-      data = {
+      const geometry = {
         vertexBuffer: buffer(mesh.positions, BufferUsage.VERTEX),
         normalBuffer: buffer(mesh.normals, BufferUsage.VERTEX),
         // Optional UVs must still satisfy the shared input layout.
@@ -98,6 +101,10 @@ export class MeshGPUCache {
           MESH_MODEL_UNIFORM_FLOATS * 4,
           BufferUsage.UNIFORM,
         ),
+      };
+      data = {
+        ...geometry,
+        modelUniforms: new MeshModelUniforms(geometry.modelUniformBuffer),
       };
     } catch (error) {
       // Keep the previous entry dirty for retry; never publish partial buffers.

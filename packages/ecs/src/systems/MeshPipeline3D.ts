@@ -1,4 +1,3 @@
-import { mat4 as glMat4 } from 'gl-matrix';
 import { Entity, System } from '@lastolivegames/becsy';
 import type { Device, RenderPass } from '@infinite-canvas-tutorial/device-api';
 import {
@@ -62,10 +61,7 @@ import {
   unregisterMeshPipeline3D,
 } from './mesh3d-bridge';
 import { RenderGizmo3D } from './RenderGizmo3D';
-import {
-  MeshGPUCache,
-  MESH_MODEL_UNIFORM_FLOATS,
-} from './mesh3d/mesh-gpu-cache';
+import { MeshGPUCache } from './mesh3d/mesh-gpu-cache';
 import { ResourceScope } from '../resources/ResourceScope';
 import type { API } from '../API';
 
@@ -314,9 +310,9 @@ export class MeshPipeline3D extends System {
       const { texture: bumpTexture, ready: bumpMapReady } =
         this.resolveMaterialTexture(state, device, material.bumpMap);
 
-      const modelLegacy = this.updateModelUniforms(
-        meshEntity,
-        gpuData.modelUniformBuffer,
+      const modelLegacy = gpuData.modelUniforms.update(
+        meshEntity.read(Transform3D),
+        meshEntity.read(Material3D),
         {
           mapReady,
           specularMapReady,
@@ -791,94 +787,6 @@ export class MeshPipeline3D extends System {
       });
 
     return { texture: state.whiteTexture, ready: false };
-  }
-
-  private updateModelUniforms(
-    entity: Entity,
-    modelUniformBuffer: Buffer,
-    textureReady: {
-      mapReady: boolean;
-      specularMapReady: boolean;
-      bumpMapReady: boolean;
-    } = {
-      mapReady: false,
-      specularMapReady: false,
-      bumpMapReady: false,
-    },
-  ): Record<string, unknown> {
-    const transform = entity.read(Transform3D);
-    const material = entity.read(Material3D);
-
-    const modelMat = glMat4.create();
-    glMat4.translate(modelMat, modelMat, transform.translation);
-    glMat4.rotateX(modelMat, modelMat, transform.rotation[0]);
-    glMat4.rotateY(modelMat, modelMat, transform.rotation[1]);
-    glMat4.rotateZ(modelMat, modelMat, transform.rotation[2]);
-    glMat4.scale(modelMat, modelMat, transform.scale);
-
-    const normalMat = glMat4.create();
-    glMat4.invert(normalMat, modelMat);
-    glMat4.transpose(normalMat, normalMat);
-
-    const legacy = {
-      u_ModelMatrix3D: modelMat,
-      u_NormalMatrix3D: normalMat,
-      u_BaseColor: material.baseColor,
-      u_LightParams: [
-        material.ambient,
-        material.diffuse,
-        material.specular,
-        material.shininess,
-      ],
-      u_LightDirection: [-0.5, -0.7, -0.5, 0],
-    };
-
-    const mapFlag = textureReady.mapReady ? 1 : 0;
-    const specularMapFlag = textureReady.specularMapReady ? 1 : 0;
-    const bumpMapFlag = textureReady.bumpMapReady ? 1 : 0;
-    const buffer = new Float32Array(MESH_MODEL_UNIFORM_FLOATS);
-    buffer.set(Array.from(modelMat as unknown as Float32Array), 0);
-    buffer.set(Array.from(normalMat as unknown as Float32Array), 16);
-    buffer.set(material.baseColor, 32);
-    buffer.set(
-      [
-        material.ambient,
-        material.diffuse,
-        material.specular,
-        material.shininess,
-      ],
-      36,
-    );
-    buffer.set([-0.5, -0.7, -0.5, 0], 40);
-    buffer.set(
-      [
-        transform.translation[0],
-        transform.translation[1],
-        transform.translation[2],
-        0,
-      ],
-      44,
-    );
-    buffer.set([mapFlag, specularMapFlag, bumpMapFlag, material.bumpScale], 48);
-    buffer.set([material.metallic, material.roughness, 0, 0], 52);
-
-    modelUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-    return {
-      ...legacy,
-      u_CanvasAnchor: [
-        transform.translation[0],
-        transform.translation[1],
-        transform.translation[2],
-        0,
-      ],
-      u_MaterialFlags: [
-        mapFlag,
-        specularMapFlag,
-        bumpMapFlag,
-        material.bumpScale,
-      ],
-      u_PbrParams: [material.metallic, material.roughness, 0, 0],
-    };
   }
 
   execute() {

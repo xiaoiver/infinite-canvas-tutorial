@@ -1194,11 +1194,67 @@ pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
 pnpm test:tooling
 ```
 
+## 第二十批：三维模型 uniform 与图层空闲帧优化
+
+2026-10-11，基于 master `c909ba85`（PR #405 已合并），以上一批完整运行的
+行覆盖率 73.82%、分支覆盖率 62.28%、函数覆盖率 73.77% 为基线。
+
+- 抽出 `mesh3d/mesh-model-uniforms.ts`，每个模型缓冲拥有独立缓存。位姿不变
+  时复用模型/法线矩阵；空闲帧和仅相机变化时不再上传模型 uniform。
+- 材质及纹理就绪状态单独比较，无需重算法线矩阵。保存数值快照，识别变换和
+  颜色数组的原地修改；比较使用原始精度，避免 Float32 舍入导致反复上传。
+- 零缩放时重置法线矩阵，避免保留旧逆矩阵；上传失败保留脏标记供下一次重试。
+  每个网格的独立模型缓冲继续支持延迟提交时的内容隔离。
+- `Pick3D` 跟踪网格成员、几何、名称、归属和来源变化，跳过空闲帧的图层扫描；
+  选择成员单独跟踪，悬停/拖动标记写入不重建图层。API 保留 held 实体，并按
+  ECS 身份比较，确保后续从图层面板选择时引用仍有效。
+
+新增 11 项 ECS 行为测试，覆盖原地修改、浮点值、奇异矩阵、纹理状态、失败重试、
+延迟提交隔离，以及真实 ECS 的图层改名、撤销重做、多画布归属、删除、重建和
+图层选择。扩展原有实际 GPU 调度测试，检查空闲帧和相机变化没有模型上传。
+Chromium 与 WebKit 各 18 项相关回归通过；现有两项 mesh/extrusion 浏览器测试
+增加真实模型 UBO 上传及图层扫描计数，并验证改名后选择和实际材质像素。
+这些浏览器测试使用 WebGL，不计入 Jest 覆盖率。
+
+完整原生 ECS 运行通过 231 个文件、1840 项测试，
+用时 850.545 秒，沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+新增模型 uniform 模块四项 100% 门槛；原有 44 项门槛与全量 ECS 源文件统计范围
+保持不变，完整报告满足全部 45 个模块门槛。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 73.82% | 73.91%（21168/28639） |
+| 语句覆盖率 | 73.82% | 73.91%（22183/30011） |
+| 分支覆盖率 | 62.28% |  62.38%（8784/14080） |
+| 函数覆盖率 | 73.77% |   73.96%（2846/3848） |
+
+| 模块                                    | 行覆盖率 | 分支覆盖率 | 函数覆盖率 |
+| --------------------------------------- | -------: | ---------: | ---------: |
+| `systems/mesh3d/mesh-model-uniforms.ts` |     100% |       100% |       100% |
+| `systems/mesh3d/mesh-gpu-cache.ts`      |     100% |       100% |       100% |
+| `systems/MeshPipeline3D.ts`             |   86.66% |        75% |     88.88% |
+| `systems/Pick3D.ts`                     |   90.44% |     75.89% |     96.55% |
+
+ECS CommonJS/ESM 构建、仓库与修改文件 ESLint、浏览器和新增 ECS 测试 TypeScript、
+修改代码的格式检查、22 项 tooling 检查和 Markdown 检查均通过。
+场景 uniform、draw binding 和选中时的悬停命中检测仍按原流程执行；相关 ECS
+变化发生时，图层列表仍会整体重建。本批没有把这些路径改成逐实体增量计算。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/mesh-model-uniforms.spec.ts \
+  __tests__/ecs/mesh3d-layers.spec.ts \
+  __tests__/ecs/mesh3d-gpu-sync.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts 'gizmo|mesh-gpu-cache'
+pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
+pnpm test:tooling
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **三维同步后续**：减少无变化帧的派生矩阵计算和图层扫描，补充动态布局引起位置变化时的手势策略。
+1. **三维同步后续**：补充动态布局引起位置变化时的手势策略，优先覆盖 Yoga 只更新 ECS 几何的情况，区分拖动预览与外部布局变化；随后检查场景矩阵、场景 uniform 与 draw binding 的重复工作。
 2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 

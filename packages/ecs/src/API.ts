@@ -660,7 +660,7 @@ export class API {
 
     this.#mesh3DLayers = nextLayers;
     this.#mesh3DLayerEntities = new Map(
-      layers.map((layer) => [layer.id, layer.entity]),
+      layers.map((layer) => [layer.id, layer.entity.hold()]),
     );
 
     const validIds = new Set(nextLayers.map((layer) => layer.id));
@@ -688,7 +688,7 @@ export class API {
 
   getMesh3DLayerIdByEntity(entity: Entity) {
     for (const [id, layerEntity] of this.#mesh3DLayerEntities.entries()) {
-      if (layerEntity === entity) {
+      if (isEntityAlive(layerEntity) && layerEntity.isSame(entity)) {
         return id;
       }
     }
@@ -709,7 +709,7 @@ export class API {
   clearSelectedMesh3DLayers() {
     this.#selectedMesh3DLayerIds.forEach((id) => {
       const entity = this.#mesh3DLayerEntities.get(id);
-      if (entity?.has(Selected3D)) {
+      if (isEntityAlive(entity) && entity.has(Selected3D)) {
         entity.remove(Selected3D);
       }
     });
@@ -766,7 +766,7 @@ export class API {
   selectMesh3DLayer(id: string) {
     const entity = this.#mesh3DLayerEntities.get(id);
     const layer = this.#mesh3DLayers.find((item) => item.id === id);
-    if (!entity || !layer) {
+    if (!isEntityAlive(entity) || !layer) {
       return false;
     }
 
@@ -776,8 +776,8 @@ export class API {
     this.#selectedMesh3DLayerIds.forEach((selectedId) => {
       const selectedEntity = this.#mesh3DLayerEntities.get(selectedId);
       if (
-        selectedEntity &&
-        selectedEntity !== entity &&
+        isEntityAlive(selectedEntity) &&
+        !selectedEntity.isSame(entity) &&
         selectedEntity.has(Selected3D)
       ) {
         selectedEntity.remove(Selected3D);
