@@ -21,7 +21,7 @@ export interface Camera3DSceneUniforms {
 }
 
 /**
- * Build 3D scene uniforms consistent with {@link MeshPipeline3D#updateSceneUniforms}.
+ * Shared camera math for mesh rendering, picking and gizmos.
  */
 export function buildCamera3DSceneUniforms(
   camera: Camera3D,
@@ -51,12 +51,7 @@ export function buildCamera3DSceneUniforms(
       computed.zoom,
       camera.fovy,
     );
-    const zShift = new Mat4(
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
-      0, 0, -eyeZ, 1,
-    );
+    const zShift = new Mat4(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, -eyeZ, 1);
     return {
       mode: 'linkedPerspective',
       viewMatrix: Mat4.multiply(mat3ViewToMat4(computed.viewMatrix), zShift),
@@ -89,12 +84,7 @@ export function buildCamera3DSceneUniforms(
       camera.far,
     );
   } else {
-    projMatrix = Mat4.perspective(
-      camera.fovy,
-      aspect,
-      camera.near,
-      camera.far,
-    );
+    projMatrix = Mat4.perspective(camera.fovy, aspect, camera.near, camera.far);
   }
   viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
 
@@ -133,7 +123,9 @@ export function sceneUniformsToPickScene(
 }
 
 /** Pack scene uniforms into the mesh3d std140 buffer (52 floats). */
-export function packSceneUniformBuffer(uniforms: Camera3DSceneUniforms): Float32Array {
+export function packSceneUniformBuffer(
+  uniforms: Camera3DSceneUniforms,
+): Float32Array {
   const buffer = new Float32Array(52);
   buffer.set(uniforms.projMatrix.toFloat32Array(), 0);
   buffer.set(uniforms.viewMatrix.toFloat32Array(), 16);

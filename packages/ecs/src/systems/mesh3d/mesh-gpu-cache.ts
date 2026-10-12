@@ -4,6 +4,7 @@ import {
   type Buffer,
   type Device,
 } from '@infinite-canvas-tutorial/device-api';
+import { MeshDrawBindings } from './mesh-draw-bindings';
 import type { Mesh3D } from '../../components/geometry3d/Mesh3D';
 import { ResourceScope } from '../../resources/ResourceScope';
 import {
@@ -21,6 +22,7 @@ export interface MeshGPUData {
   /** Deferred submission requires a separate model UBO for every mesh. */
   modelUniformBuffer: Buffer;
   modelUniforms: MeshModelUniforms;
+  bindings: MeshDrawBindings;
 }
 
 interface Entry {
@@ -105,7 +107,12 @@ export class MeshGPUCache {
       data = {
         ...geometry,
         modelUniforms: new MeshModelUniforms(geometry.modelUniformBuffer),
+        bindings: new MeshDrawBindings(
+          this.device,
+          geometry.modelUniformBuffer,
+        ),
       };
+      scope.add(() => data.bindings.destroy());
     } catch (error) {
       // Keep the previous entry dirty for retry; never publish partial buffers.
       try {

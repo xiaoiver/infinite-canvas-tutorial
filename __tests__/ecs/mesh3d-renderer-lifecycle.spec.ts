@@ -6,6 +6,7 @@ import {
   Extrude3D,
   GPUResource,
   Material3D,
+  Light3D,
   Mesh3D,
   Transform3D,
   ToBeDeleted,
@@ -135,6 +136,10 @@ it('reuses geometry while updating pose/material uniforms and avoids duplicate h
   expect([...floats.slice(12, 15)]).toEqual([30, 40, 50]);
   expect([...floats.slice(32, 36)]).toEqual([0, 1, 0, 1]);
   for (const buffer of buffers) expect(buffer.destroy).not.toHaveBeenCalled();
+  draw();
+  expect(slot.gpu.bindings).toHaveLength(1);
+  expect(slot.gpu.bindings[0].destroy).not.toHaveBeenCalled();
+  expect(buffers[0].setSubData).toHaveBeenCalledTimes(1);
 });
 
 it('remembers geometry changes across skipped frames and uploads once on the next draw', () => {
@@ -358,4 +363,132 @@ it('discards a late image completion after its canvas is disposed', async () => 
   expect(slot.gpu.textures).toHaveLength(allocations);
   for (const texture of slot.gpu.textures)
     expect(texture.destroy).toHaveBeenCalledTimes(1);
+});
+
+it('refreshes scoped lights and camera viewport without reallocating bindings or model data', () => {
+  const { renderer, queries, slots, draw, entity } = fixture(2);
+  const light = new Light3D({ type: 'ambient', color: [1, 0, 0] });
+  const scope = { canvas: slots[0].canvas };
+  queries.lights3D.current = [
+    entity(
+      new Map<any, any>([
+        [Light3D, light],
+        [Canvas3DScope, scope],
+      ]),
+      99,
+    ),
+  ];
+  draw(0);
+  draw(1);
+  const scenes = slots.map((slot) => slot.gpu.buffers[0]);
+  const models = slots.map(
+    (slot) => slot.gpu.draws[0].uniformBufferBindings[1].buffer,
+  );
+  const data = scenes.map((buffer) => new Float32Array(buffer.bytes.buffer));
+  expect([...data[0].slice(52, 55)]).toEqual([1, 0, 0]);
+  expect([...data[1].slice(52, 55)]).toEqual([1, 1, 1]);
+  light.color[1] = 0.5;
+  draw(0);
+  draw(1);
+  expect(data[0][53]).toBe(0.5);
+  expect(scenes[0].setSubData).toHaveBeenCalledTimes(2);
+  expect(scenes[1].setSubData).toHaveBeenCalledTimes(1);
+  scope.canvas = slots[1].canvas;
+  draw(0);
+  draw(1);
+  expect([...data[0].slice(52, 55)]).toEqual([1, 1, 1]);
+  expect([...data[1].slice(52, 55)]).toEqual([1, 0.5, 0]);
+  const oldProjection = data[0][0];
+  renderer.drawMeshes(slots[0].gpu.pass, slots[0].canvas, 800, 400);
+  expect(data[0][0]).toBeCloseTo(oldProjection / 2);
+  for (const [i, slot] of slots.entries()) {
+    expect(slot.gpu.bindings).toHaveLength(1);
+    expect(models[i].setSubData).toHaveBeenCalledTimes(1);
+  }
+});
+
+it.each(['map', 'specularMap', 'bumpMap'] as const)(
+  'rebinds a completed %s and releases bindings before their dependencies',
+  async (field) => {
+    const {
+      renderer,
+      queries,
+      slots: [slot],
+      draw,
+    } = fixture();
+    let complete!: (image: ImageBitmap) => void;
+    load.mockReturnValueOnce(
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+    );
+    slot.material[field] = 'texture.png';
+    draw();
+    draw();
+    const first = slot.gpu.bindings[0];
+    expect(slot.gpu.bindings).toHaveLength(1);
+    expect(
+      first.samplerBindings.every(
+        (binding) => binding.texture === (slot.gpu.textures[0] as unknown),
+      ),
+    ).toBe(true);
+    complete({ width: 4, height: 4 } as ImageBitmap);
+    await Promise.resolve();
+    draw();
+    const loaded = slot.gpu.textures[2];
+    const index = ['map', 'specularMap', 'bumpMap'].indexOf(field);
+    const second = slot.gpu.bindings[1];
+    expect(second.samplerBindings[index].texture).toBe(loaded);
+    expect(first.destroy).toHaveBeenCalledTimes(1);
+    const model = second.uniformBufferBindings[1].buffer;
+    expect(new Float32Array(model.bytes.buffer)[48 + index]).toBe(1);
+    draw();
+    expect(slot.gpu.bindings).toHaveLength(2);
+    // Replacing the geometry must release the bindings that reference its UBO.
+    queries.geometryDirty.addedOrChanged = [slot.target];
+    renderer.execute();
+    draw();
+    const third = slot.gpu.bindings[2];
+    expect(second.destroy).toHaveBeenCalledTimes(1);
+    expect(slot.gpu.releases.indexOf(`bindings:${second.id}`)).toBeLessThan(
+      slot.gpu.releases.indexOf(`buffer:${model.id}`),
+    );
+    slot.gpu.scope.dispose();
+    expect(third.destroy).toHaveBeenCalledTimes(1);
+    expect(third.destroy.mock.invocationCallOrder[0]).toBeLessThan(
+      loaded.destroy.mock.invocationCallOrder[0],
+    );
+    expect(third.destroy.mock.invocationCallOrder[0]).toBeLessThan(
+      slot.gpu.buffers[0].destroy.mock.invocationCallOrder[0],
+    );
+  },
+);
+
+it('reuses the white binding through a failed load and replaces it when a texture is removed', async () => {
+  const {
+    slots: [slot],
+    draw,
+  } = fixture();
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  load.mockRejectedValueOnce(new Error('image failed'));
+  slot.material.map = 'failed.png';
+  draw();
+  await Promise.resolve();
+  await Promise.resolve();
+  draw();
+  expect(slot.gpu.bindings).toHaveLength(1);
+  load.mockResolvedValueOnce({ width: 2, height: 2 } as ImageBitmap);
+  slot.material.map = 'ready.png';
+  draw();
+  await Promise.resolve();
+  draw();
+  expect(slot.gpu.bindings).toHaveLength(2);
+  slot.material.map = null;
+  draw();
+  expect(slot.gpu.bindings).toHaveLength(3);
+  expect(slot.gpu.bindings[2].samplerBindings[0].texture).toBe(
+    slot.gpu.textures[0],
+  );
+  expect(new Float32Array(slot.gpu.buffers[5].bytes.buffer)[48]).toBe(0);
+  warn.mockRestore();
 });

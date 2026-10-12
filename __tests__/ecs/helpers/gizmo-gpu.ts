@@ -1,6 +1,8 @@
 import {
   BufferUsage,
   type Device,
+  type Sampler,
+  type Texture,
   type RenderPass,
 } from '../../../packages/device-api/src';
 import { Mat4 } from '../../../packages/ecs/src/components/math/Mat4';
@@ -62,6 +64,8 @@ export function fakeGizmoGPU() {
     destroy: jest.Mock;
   }[] = [];
   const bindings: {
+    id: number;
+    samplerBindings: { texture: Texture; sampler: Sampler }[];
     uniformBufferBindings: { buffer: (typeof buffers)[number] }[];
     destroy: jest.Mock;
   }[] = [];

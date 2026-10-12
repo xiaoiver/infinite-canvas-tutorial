@@ -71,9 +71,16 @@ const app = new App().addPlugins(
   },
 );
 const uploads: unknown[] = [];
-const derivedUpdates = { modelUploads: 0, layerScans: 0 };
+const derivedUpdates = {
+  modelUploads: 0,
+  sceneUploads: 0,
+  meshBindings: 0,
+  layerScans: 0,
+};
 const resetDerivedUpdates = () => {
   derivedUpdates.modelUploads = 0;
+  derivedUpdates.sceneUploads = 0;
+  derivedUpdates.meshBindings = 0;
   derivedUpdates.layerScans = 0;
 };
 const harness = {
@@ -137,23 +144,36 @@ window.gizmoTest = harness;
 async function init() {
   await app.run();
   while (!api.getCanvas().has(GPUResource)) await harness.settle();
-  // Observe actual model UBO writes, including already-created meshes later on.
+  // Observe actual scene/model UBO writes and mesh bindings, excluding gizmos.
   const device = api.getCanvas().read(GPUResource).device;
+  const sceneBuffers = new WeakSet<object>();
   const createBuffer = device.createBuffer.bind(device);
   device.createBuffer = (descriptor) => {
     const buffer = createBuffer(descriptor);
-    // Model uniforms are 56 floats; gizmo and scene UBOs have different layouts.
-    if (
-      descriptor.usage === BufferUsage.UNIFORM &&
-      descriptor.viewOrSize === 56 * 4
-    ) {
-      const upload = buffer.setSubData.bind(buffer);
-      buffer.setSubData = (...args) => {
-        derivedUpdates.modelUploads++;
-        upload(...args);
-      };
+    if (descriptor.usage === BufferUsage.UNIFORM) {
+      const isScene = descriptor.viewOrSize === 188 * 4;
+      const isModel = descriptor.viewOrSize === 56 * 4;
+      if (isScene) sceneBuffers.add(buffer);
+      if (isScene || isModel) {
+        const upload = buffer.setSubData.bind(buffer);
+        buffer.setSubData = (...args) => {
+          if (isScene) derivedUpdates.sceneUploads++;
+          else derivedUpdates.modelUploads++;
+          upload(...args);
+        };
+      }
     }
     return buffer;
+  };
+  const createBindings = device.createBindings.bind(device);
+  device.createBindings = (descriptor) => {
+    if (
+      descriptor.uniformBufferBindings?.some(({ buffer }) =>
+        sceneBuffers.has(buffer),
+      )
+    )
+      derivedUpdates.meshBindings++;
+    return createBindings(descriptor);
   };
   const setLayers = api.setMesh3DLayers.bind(api);
   api.setMesh3DLayers = (layers) => {

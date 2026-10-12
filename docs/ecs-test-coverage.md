@@ -1310,13 +1310,73 @@ pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
 pnpm test:tooling
 ```
 
+## 第二十二批：三维场景 uniform 与网格绑定缓存
+
+2026-10-12，基于 master `3b491496`（PR #407 已合并），以上一批完整运行的
+行覆盖率 73.95%、分支覆盖率 62.47%、函数覆盖率 74% 为基线。
+
+- 抽出 `mesh3d/mesh-scene-uniforms.ts`，按画布保存相机和灯光的数值快照。
+  复用渲染、拾取和 gizmo 共用的相机计算；相机或联动二维视图变化才重算矩阵，
+  灯光变化独立重新打包，无变化帧跳过场景 UBO 上传。
+- 抽出 `mesh3d/mesh-draw-bindings.ts`，绑定随网格 GPU 分配保存。位姿、材质
+  数值、相机和灯光编辑复用绑定，纹理就绪或移除、几何重建和资源更换时更新。
+  分配失败保留旧绑定供重试，场景上传失败也可在输入未变时重试。
+- 绑定先于其引用的缓冲和纹理释放。每个画布和网格仍使用独立 UBO，避免延迟
+  提交时串用数据。灯光逐个读取，避免保留被下一次 ECS 读取复用的组件对象。
+  保持八盏非环境灯的上限、默认照明和自定义场景的方向补光规则。
+
+新增 37 项 ECS 行为测试，覆盖相机模式与视口比例、原地数组修改、灯光
+增删与跨画布归属、三种纹理槽位的异步加载、绑定分配失败、几何重建和释放顺序。
+真实 ECS 调度验证网格/挤出图形的空闲帧、相机编辑、材质编辑以及多个灯光组件。
+旧实现先复现连续三次绘制创建三份绑定，缓存后复用一份且不重复上传场景数据。
+
+扩展已有浏览器用例，统计实际场景/模型上传与网格绑定创建，并检查关灯和删除
+灯光后的画布像素。Chromium 与 WebKit 各 22 项相关回归通过，包含已有的手势、
+跨画布销毁和 Yoga 布局场景。浏览器使用 WebGL，不计入 Jest 覆盖率，也不作为
+原生 WebGPU 验证。本批没有新增浏览器用例数量。
+
+完整原生 ECS 运行通过 234 个文件、1896 项测试，
+用时 774.554 秒，沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+两个新缓存模块的行、语句、分支和函数覆盖率均为 100%，并增加对应门槛；原有
+46 个模块门槛和全量 ECS 源文件统计范围不变，完整报告满足全部 48 个模块门槛。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 73.95% | 74.05%（21256/28704） |
+| 语句覆盖率 | 73.95% | 74.05%（22278/30084） |
+| 分支覆盖率 | 62.47% |  62.54%（8815/14094） |
+| 函数覆盖率 |    74% |   74.11%（2863/3863） |
+
+| 模块                                    | 行覆盖率 | 分支覆盖率 | 函数覆盖率 |
+| --------------------------------------- | -------: | ---------: | ---------: |
+| `systems/mesh3d/mesh-scene-uniforms.ts` |     100% |       100% |       100% |
+| `systems/mesh3d/mesh-draw-bindings.ts`  |     100% |       100% |       100% |
+| `systems/mesh3d/mesh-gpu-cache.ts`      |     100% |       100% |       100% |
+| `systems/MeshPipeline3D.ts`             |   91.09% |      77.1% |     90.24% |
+
+ECS CommonJS/ESM 构建、仓库及修改文件 ESLint、浏览器与修改 ECS 测试 TypeScript、
+修改代码格式、Markdown 检查和 22 项 tooling 检查均通过。
+缓存仍按绘制读取相机和灯光数值以识别原地修改；选中时 gizmo 的 uniform 更新、
+悬停命中检测及 WebGL 1 的 legacy uniform 设置仍按原流程执行。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/mesh-scene-uniforms.spec.ts \
+  __tests__/ecs/mesh-draw-bindings.spec.ts \
+  __tests__/ecs/mesh3d-renderer-lifecycle.spec.ts \
+  __tests__/ecs/mesh3d-gpu-sync.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts 'gizmo|mesh-gpu-cache'
+pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
+pnpm test:tooling
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **三维同步后续**：检查场景矩阵、场景 uniform 与 draw binding 的重复工作，分别为相机、灯光、视口和资源重建建立失效条件与回归测试。
-2. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+1. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
+2. **三维交互后续**：检查选中时 gizmo 的 uniform 上传与悬停命中开销，为进一步缓存建立失效条件和真实交互回归。
 
 每轮同时关注行、分支、函数覆盖率与测试耗时。新增浏览器用例不会自动计入当前
 Jest/Coveralls 报告；核心算法应尽量有快速、可独立执行的行为测试。
