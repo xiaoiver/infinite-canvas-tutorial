@@ -222,6 +222,13 @@ uniform uploads also skip unchanged frames and camera-only changes; material
 edits and completed texture loads update the uniforms without rebuilding those
 matrices. In-place edits to transform/color arrays are compared by value.
 
+Scene uniforms are cached per canvas. Camera and linked 2D view changes update
+scene matrices; light changes repack lighting without rebuilding those matrices.
+Unchanged draws reuse both the scene data and each mesh's draw bindings. Texture
+readiness or replacement, geometry rebuilds and GPU resource replacement invalidate
+the affected bindings. Bindings are released before the buffers and textures they
+reference. Failed scene uploads and binding allocations remain retryable.
+
 The 3D layer list follows ECS geometry, metadata, scope and membership changes,
 instead of scanning every mesh each idle frame. Selection membership is tracked
 separately, so hovering gizmo handles does not rebuild the list. Layer entries

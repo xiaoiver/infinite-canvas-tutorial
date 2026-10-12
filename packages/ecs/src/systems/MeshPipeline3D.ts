@@ -33,15 +33,11 @@ import {
   ComputedCamera,
   Extrude3D,
   GPUResource,
-  LIGHT_3D_TYPE,
   Light3D,
   Mesh3D,
   Material3D,
   Transform3D,
   ToBeDeleted,
-  mat3ViewProjectionToMat4,
-  mat3ViewToMat4,
-  linkedPerspectiveEyeDistance,
 } from '../components';
 import {
   findCamera2DForCanvas,
@@ -49,7 +45,6 @@ import {
   filterEntitiesForCanvas,
 } from '../utils/canvas3d-scope';
 import { isEntityAlive } from './Transform';
-import { Mat4 } from '../components/math/Mat4';
 import type { RenderCache } from '../utils/render-cache';
 import { makeAttachmentClearDescriptor } from '../render-graph/utils';
 import { vert, frag } from '../shaders/mesh3d';
@@ -65,8 +60,10 @@ import { MeshGPUCache } from './mesh3d/mesh-gpu-cache';
 import { ResourceScope } from '../resources/ResourceScope';
 import type { API } from '../API';
 
-const MAX_3D_LIGHTS = 8;
-const SCENE_UNIFORM_FLOATS = 188;
+import {
+  MeshSceneUniforms,
+  MESH_SCENE_UNIFORM_FLOATS,
+} from './mesh3d/mesh-scene-uniforms';
 
 /** Async base-color texture state, cached per canvas owner + URL. */
 interface TextureCacheEntry {
@@ -84,9 +81,7 @@ interface MeshPipeline3DCanvasState {
   pipeline: RenderPipeline;
   inputLayout: InputLayout;
   sceneUniformBuffer: Buffer;
-  sceneLegacyUniforms: Record<string, unknown>;
-  sceneParams: number[];
-  canvasViewProjection: Mat4;
+  sceneUniforms: MeshSceneUniforms;
   meshGPUCache: MeshGPUCache;
   /** 1x1 opaque-white fallback for meshes without a base-color texture. */
   whiteTexture: Texture;
@@ -290,7 +285,12 @@ export class MeshPipeline3D extends System {
       camera.linked && logicalW > 0 && logicalH > 0
         ? logicalW / logicalH
         : width / height;
-    this.updateSceneUniforms(state, camera, aspect, cam2d, canvas, canvasCount);
+    const sceneLegacy = state.sceneUniforms.update(
+      camera,
+      aspect,
+      cam2d,
+      filterEntitiesForCanvas(this.lights3D.current, canvas, canvasCount),
+    );
 
     renderPass.setViewport(0, 0, width, height);
     renderPass.setPipeline(state.pipeline);
@@ -321,22 +321,18 @@ export class MeshPipeline3D extends System {
       );
 
       state.program.setUniformsLegacy({
-        ...state.sceneLegacyUniforms,
+        ...sceneLegacy,
         ...modelLegacy,
       });
 
-      const bindings = device.createBindings({
-        pipeline: state.pipeline,
-        uniformBufferBindings: [
-          { buffer: state.sceneUniformBuffer },
-          { buffer: gpuData.modelUniformBuffer },
-        ],
-        samplerBindings: [
-          { texture: baseColorTexture, sampler: state.sampler },
-          { texture: specularTexture, sampler: state.sampler },
-          { texture: bumpTexture, sampler: state.sampler },
-        ],
-      });
+      const bindings = gpuData.bindings.get(
+        state.pipeline,
+        state.sceneUniformBuffer,
+        state.sampler,
+        baseColorTexture,
+        specularTexture,
+        bumpTexture,
+      );
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(
         state.inputLayout,
@@ -353,7 +349,6 @@ export class MeshPipeline3D extends System {
       } else {
         renderPass.draw(gpuData.vertexCount);
       }
-      bindings.destroy();
     }
 
     // Draw 3D gizmos on top of meshes (depth disabled, always visible)
@@ -476,7 +471,7 @@ export class MeshPipeline3D extends System {
 
       const sceneUniformBuffer = own(
         device.createBuffer({
-          viewOrSize: SCENE_UNIFORM_FLOATS * 4,
+          viewOrSize: MESH_SCENE_UNIFORM_FLOATS * 4,
           usage: BufferUsage.UNIFORM,
           hint: BufferFrequencyHint.DYNAMIC,
         }),
@@ -511,10 +506,8 @@ export class MeshPipeline3D extends System {
         pipeline,
         inputLayout,
         sceneUniformBuffer,
-        sceneLegacyUniforms: {},
-        sceneParams: [0, 0, 0, 0],
-        canvasViewProjection: Mat4.IDENTITY,
-        meshGPUCache: own(new MeshGPUCache(device)),
+        sceneUniforms: new MeshSceneUniforms(sceneUniformBuffer),
+        meshGPUCache: new MeshGPUCache(device),
         whiteTexture,
         sampler,
         textureCache: new Map(),
@@ -527,6 +520,8 @@ export class MeshPipeline3D extends System {
         state.textureCache.clear();
         releases.dispose();
       });
+      // Bindings reference textures and UBOs: release meshes before either.
+      own(state.meshGPUCache);
       this.states.set(api, state);
       state.dispose = owner.add(() => {
         if (this.states.get(api) === state) this.states.delete(api);
@@ -541,194 +536,6 @@ export class MeshPipeline3D extends System {
       }
       throw error;
     }
-  }
-
-  private updateSceneUniforms(
-    state: MeshPipeline3DCanvasState,
-    camera: Camera3D,
-    aspect: number,
-    cam2d: Entity | undefined,
-    canvas: Entity,
-    canvasCount: number,
-  ) {
-    let projMatrix: Mat4;
-    let viewMatrix: Mat4;
-
-    // linked + orthographic: share 2D view-projection (extrude3d / canvas x,y).
-    if (camera.linked && cam2d && camera.projection === 'orthographic') {
-      const vp = cam2d.read(ComputedCamera).viewProjectionMatrix;
-      const zScale = camera.far > 0 ? -2 / camera.far : 0;
-      projMatrix = mat3ViewProjectionToMat4(vp, zScale);
-      viewMatrix = Mat4.IDENTITY;
-      state.canvasViewProjection = Mat4.IDENTITY;
-      state.sceneParams = [0, 0, 0, 0];
-    } else if (camera.linked && cam2d && camera.projection === 'perspective') {
-      const computed = cam2d.read(ComputedCamera);
-      const camera2d = cam2d.read(Camera);
-      const canvasHeight = camera2d.canvas
-        ? camera2d.canvas.read(Canvas).height
-        : 0;
-      const eyeZ = linkedPerspectiveEyeDistance(
-        canvasHeight,
-        computed.zoom,
-        camera.fovy,
-      );
-      const zShift = new Mat4(
-        1,
-        0,
-        0,
-        0, //
-        0,
-        1,
-        0,
-        0, //
-        0,
-        0,
-        1,
-        0, //
-        0,
-        0,
-        -eyeZ,
-        1, //
-      );
-      viewMatrix = Mat4.multiply(mat3ViewToMat4(computed.viewMatrix), zShift);
-      projMatrix = Mat4.perspective(
-        camera.fovy,
-        aspect,
-        camera.near,
-        camera.far,
-      );
-      state.canvasViewProjection = mat3ViewProjectionToMat4(
-        computed.viewProjectionMatrix,
-        0,
-      );
-      state.sceneParams = [computed.x, computed.y, 1, eyeZ];
-    } else {
-      state.canvasViewProjection = Mat4.IDENTITY;
-      state.sceneParams = [0, 0, 0, 0];
-      if (camera.projection === 'orthographic') {
-        const distance = Math.abs(camera.eye[2] - camera.center[2]);
-        const halfH = distance;
-        const halfW = halfH * aspect;
-        projMatrix = Mat4.ortho(
-          -halfW,
-          halfW,
-          -halfH,
-          halfH,
-          camera.near,
-          camera.far,
-        );
-      } else {
-        projMatrix = Mat4.perspective(
-          camera.fovy,
-          aspect,
-          camera.near,
-          camera.far,
-        );
-      }
-      viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
-    }
-
-    const lighting = this.packLightUniforms(canvas, canvasCount);
-    const buffer = new Float32Array(SCENE_UNIFORM_FLOATS);
-    buffer.set(projMatrix.toFloat32Array(), 0);
-    buffer.set(viewMatrix.toFloat32Array(), 16);
-    buffer.set(state.canvasViewProjection.toFloat32Array(), 32);
-    buffer.set(state.sceneParams, 48);
-    buffer.set(lighting.ambient, 52);
-    buffer.set([lighting.count, 0, 0, 0], 56);
-    buffer.set(lighting.positions, 60);
-    buffer.set(lighting.directions, 92);
-    buffer.set(lighting.colors, 124);
-    buffer.set(lighting.params, 156);
-
-    state.sceneUniformBuffer.setSubData(0, new Uint8Array(buffer.buffer));
-    state.sceneLegacyUniforms = {
-      u_ProjectionMatrix3D: Mat4.toGLMat4(projMatrix),
-      u_ViewMatrix3D: Mat4.toGLMat4(viewMatrix),
-      u_CanvasViewProjection3D: Mat4.toGLMat4(state.canvasViewProjection),
-      u_SceneParams: state.sceneParams,
-      u_AmbientLight: lighting.ambient,
-      u_LightCount: [lighting.count, 0, 0, 0],
-      u_LightPositions: lighting.positions,
-      u_LightDirections: lighting.directions,
-      u_LightColors: lighting.colors,
-      u_LightParams3D: lighting.params,
-    };
-  }
-
-  private packLightUniforms(canvas: Entity, canvasCount: number) {
-    const scopedLights = filterEntitiesForCanvas(
-      this.lights3D.current,
-      canvas,
-      canvasCount,
-    );
-    const ambient: [number, number, number, number] = [0, 0, 0, 1];
-    const positions = new Float32Array(MAX_3D_LIGHTS * 4);
-    const directions = new Float32Array(MAX_3D_LIGHTS * 4);
-    const colors = new Float32Array(MAX_3D_LIGHTS * 4);
-    const params = new Float32Array(MAX_3D_LIGHTS * 4);
-    let count = 0;
-
-    const addAmbient = (light: Light3D) => {
-      ambient[0] += light.color[0] * light.intensity;
-      ambient[1] += light.color[1] * light.intensity;
-      ambient[2] += light.color[2] * light.intensity;
-    };
-
-    const addPunctual = (light: Light3D) => {
-      if (count >= MAX_3D_LIGHTS) {
-        return;
-      }
-
-      const offset = count * 4;
-      const type = LIGHT_3D_TYPE[light.type as keyof typeof LIGHT_3D_TYPE];
-      const inner = Math.max(0, light.innerConeAngle);
-      const outer = Math.max(inner, light.outerConeAngle);
-
-      positions.set([...light.position, 0], offset);
-      directions.set(
-        [...light.direction, light.type === 'spot' ? Math.cos(outer) : 0],
-        offset,
-      );
-      colors.set([...light.color, 0], offset);
-      params.set(
-        [
-          type,
-          light.intensity,
-          light.range,
-          light.type === 'spot' ? Math.cos(inner) : 0,
-        ],
-        offset,
-      );
-      count++;
-    };
-
-    if (scopedLights.length === 0) {
-      addAmbient(new Light3D({ type: 'ambient' }));
-      addPunctual(new Light3D({ type: 'directional' }));
-    } else {
-      let hasDirectional = false;
-      for (const entity of scopedLights) {
-        const light = entity.read(Light3D);
-        if (light.type === 'ambient') {
-          addAmbient(light);
-        } else {
-          if (light.type === 'directional') {
-            hasDirectional = true;
-          }
-          addPunctual(light);
-        }
-      }
-      // Custom lights replace the default bundle; keep a directional fill unless
-      // the scene author already added one (avoids a black mesh when only
-      // ambient + mis-scaled point/spot lights are present).
-      if (!hasDirectional && count < MAX_3D_LIGHTS) {
-        addPunctual(new Light3D({ type: 'directional', intensity: 0.75 }));
-      }
-    }
-
-    return { ambient, count, positions, directions, colors, params };
   }
 
   /**

@@ -56,6 +56,11 @@ afterAll(async () => {
 });
 beforeEach(async () => {
   await world.reset(api, []);
+  await world.edit(
+    api,
+    (editor) => editor.gotoLandmark({ x: 0, y: 0, zoom: 1 }, { duration: 0 }),
+    'NEVER',
+  );
   await world.frame();
   await world.frame();
 });
@@ -94,8 +99,13 @@ for (const type of ['mesh3d', 'rect'] as const) {
     const count = gpu.buffers.length;
     const model = gpu.draws.at(-1)!.uniformBufferBindings[1].buffer;
     const uploads = model.setSubData.mock.calls.length;
+    const scene = gpu.draws.at(-1)!.uniformBufferBindings[0].buffer;
+    const sceneUploads = scene.setSubData.mock.calls.length;
+    const bindings = gpu.bindings.length;
     for (let i = 0; i < 4; i++) await world.frame();
     expect(model.setSubData).toHaveBeenCalledTimes(uploads);
+    expect(scene.setSubData).toHaveBeenCalledTimes(sceneUploads);
+    expect(gpu.bindings).toHaveLength(bindings);
     await world.edit(
       api,
       (editor) => editor.gotoLandmark({ x: 5, y: 7, zoom: 2 }, { duration: 0 }),
@@ -105,6 +115,8 @@ for (const type of ['mesh3d', 'rect'] as const) {
     await world.edit(api, (editor) =>
       editor.updateNode(editor.getNodeById('model'), { x: 50, y: 60 }),
     );
+    const cameraUploads = scene.setSubData.mock.calls.length;
+    expect(cameraUploads).toBeGreaterThan(sceneUploads);
     const expectedX = 70;
     expect(new Float32Array(model.bytes.buffer)[12]).toBe(expectedX);
     await world.edit(api, (editor) =>
@@ -123,6 +135,8 @@ for (const type of ['mesh3d', 'rect'] as const) {
     expect(model.setSubData).toHaveBeenCalledTimes(uploads + 2);
     expect(gpu.buffers).toHaveLength(count);
     expect(model.destroy).not.toHaveBeenCalled();
+    expect(scene.setSubData).toHaveBeenCalledTimes(cameraUploads);
+    expect(gpu.bindings).toHaveLength(bindings);
   });
 }
 
@@ -188,4 +202,56 @@ it('updates procedural geometry immediately and releases a deleted mesh before a
   await world.frame();
   expect(gpu.draws).toHaveLength(draws);
   for (const buffer of current) expect(buffer.destroy).toHaveBeenCalledTimes(1);
+});
+
+it('reads distinct live light components and refreshes light edits/deletion in the real schedule', async () => {
+  await world.reset(api, [
+    {
+      id: 'model',
+      type: 'mesh3d',
+      zIndex: 0,
+      x: 0,
+      y: 0,
+      width: 40,
+      height: 40,
+    },
+    {
+      id: 'ambient',
+      type: 'light3d',
+      lightType: 'ambient',
+      zIndex: 1,
+      x: 0,
+      y: 0,
+      color: '#ff0000',
+      intensity: 0.25,
+    },
+    {
+      id: 'directional',
+      type: 'light3d',
+      lightType: 'directional',
+      zIndex: 2,
+      x: 0,
+      y: 0,
+      color: '#00ff00',
+      intensity: 0.5,
+    },
+  ]);
+  const scene = gpu.draws.at(-1)!.uniformBufferBindings[0].buffer;
+  const data = new Float32Array(scene.bytes.buffer);
+  expect([...data.slice(52, 56)]).toEqual([0.25, 0, 0, 1]);
+  expect(data[56]).toBe(1);
+  expect([...data.slice(124, 128)]).toEqual([0, 1, 0, 0]);
+  const bindings = gpu.bindings.length;
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('ambient'), { intensity: 0.5 }),
+  );
+  expect(data[52]).toBe(0.5);
+  const uploads = scene.setSubData.mock.calls.length;
+  await world.frame();
+  expect(scene.setSubData).toHaveBeenCalledTimes(uploads);
+  await world.edit(api, (editor) => editor.deleteNodesById(['directional']));
+  await world.frame();
+  expect(data[157]).toBe(0.75); // Ambient-only scene gets the default directional fill.
+  expect([...data.slice(124, 128)]).toEqual([1, 1, 1, 0]);
+  expect(gpu.bindings).toHaveLength(bindings);
 });

@@ -17,7 +17,12 @@ for (const extrude of [false, true]) {
     });
     expect(
       await page.evaluate(() => window.gizmoTest.derivedUpdates()),
-    ).toEqual({ modelUploads: 0, layerScans: 0 });
+    ).toEqual({
+      modelUploads: 0,
+      sceneUploads: 0,
+      meshBindings: 0,
+      layerScans: 0,
+    });
     await page.evaluate(async (extrude) => {
       window.gizmoTest.trackGeometryUploads();
       const api = window.gizmoTest.api();
@@ -50,6 +55,9 @@ for (const extrude of [false, true]) {
       (await page.evaluate(() => window.gizmoTest.derivedUpdates()))
         .modelUploads,
     ).toBeGreaterThan(0);
+    expect(
+      await page.evaluate(() => window.gizmoTest.derivedUpdates()),
+    ).toMatchObject({ sceneUploads: 0, meshBindings: 0 });
     await page.evaluate(async () => {
       const api = window.gizmoTest.api();
       await api.edit((editor) =>
@@ -65,9 +73,27 @@ for (const extrude of [false, true]) {
       );
       await window.gizmoTest.settle();
     });
+    const panUpdates = await page.evaluate(() =>
+      window.gizmoTest.derivedUpdates(),
+    );
+    expect(panUpdates).toMatchObject({
+      modelUploads: 0,
+      meshBindings: 0,
+      layerScans: 0,
+    });
+    expect(panUpdates.sceneUploads).toBeGreaterThan(0);
+    await page.evaluate(async () => {
+      window.gizmoTest.resetDerivedUpdates();
+      await window.gizmoTest.settle();
+    });
     expect(
       await page.evaluate(() => window.gizmoTest.derivedUpdates()),
-    ).toEqual({ modelUploads: 0, layerScans: 0 });
+    ).toEqual({
+      modelUploads: 0,
+      sceneUploads: 0,
+      meshBindings: 0,
+      layerScans: 0,
+    });
     expect(
       await page.evaluate(
         () => window.gizmoTest.api().getMesh3DLayers()[0].name,
@@ -99,8 +125,61 @@ for (const extrude of [false, true]) {
       if (g > 20 && g > r * 1.4 && g > b * 1.4) green++;
     }
     expect(green).toBeGreaterThan(100);
+    await page.evaluate(async () => {
+      window.gizmoTest.resetDerivedUpdates();
+      await window.gizmoTest.api().edit((editor) =>
+        editor.updateNodes([
+          {
+            id: 'ambient',
+            type: 'light3d',
+            lightType: 'ambient',
+            zIndex: 1,
+            x: 0,
+            y: 0,
+            intensity: 0,
+          },
+          {
+            id: 'directional',
+            type: 'light3d',
+            lightType: 'directional',
+            zIndex: 2,
+            x: 0,
+            y: 0,
+            intensity: 0,
+          },
+        ]),
+      );
+      await window.gizmoTest.settle();
+    });
+    const dark = PNG.sync.read(await page.locator('#canvas').screenshot());
+    let darkGreen = 0;
+    for (let i = 0; i < dark.data.length; i += 4) {
+      const [r, g, b] = dark.data.subarray(i, i + 3);
+      if (g > 20 && g > r * 1.4 && g > b * 1.4) darkGreen++;
+    }
+    expect(darkGreen).toBe(0);
+    const lightingUpdates = await page.evaluate(() =>
+      window.gizmoTest.derivedUpdates(),
+    );
+    expect(lightingUpdates.sceneUploads).toBeGreaterThan(0);
+    expect(lightingUpdates).toMatchObject({ modelUploads: 0, meshBindings: 0 });
+    await page.evaluate(async () => {
+      const api = window.gizmoTest.api();
+      await api.edit((editor) =>
+        editor.deleteNodesById(['ambient', 'directional']),
+      );
+      await window.gizmoTest.settle();
+    });
+    const restored = PNG.sync.read(await page.locator('#canvas').screenshot());
+    let restoredGreen = 0;
+    for (let i = 0; i < restored.data.length; i += 4) {
+      const [r, g, b] = restored.data.subarray(i, i + 3);
+      if (g > 20 && g > r * 1.4 && g > b * 1.4) restoredGreen++;
+    }
+    expect(restoredGreen).toBeGreaterThan(100);
     if (!extrude) {
       await page.evaluate(async () => {
+        window.gizmoTest.resetDerivedUpdates();
         const api = window.gizmoTest.api();
         await api.edit((editor) =>
           editor.updateNode(editor.getNodeById('model'), {
@@ -117,6 +196,9 @@ for (const extrude of [false, true]) {
         await page.evaluate(() => window.gizmoTest.geometryUploads()),
       ).toBe(4);
     }
+    expect(
+      await page.evaluate(() => window.gizmoTest.derivedUpdates()),
+    ).toMatchObject({ meshBindings: extrude ? 0 : 1 });
     expect(errors).toEqual([]);
   });
 }
