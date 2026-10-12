@@ -813,25 +813,38 @@ fills: [
 
 ### iOS Live Photo {#ios-live-photo}
 
-iOS Live Photo 在文件层面通常是 HEIC 静态图 + 配套 MOV。浏览器里的 `<img>` 或者 `@loaders.gl/images` 都不能直接解码 HEIC。
+iOS Live Photo 在文件层面通常是 HEIC 静态图 + 配套 MOV。各浏览器对 HEIC 的原生支持不同，ECS 图片加载器通过 heic2any 提供转换路径。
 
 我们想将尽量与普通图片一样处理，先解出一帧静态位图再写入纹理。至于在画布里播 Live Photo 视频，需要后续再单独实现组件，提供点按播放等功能。
 
+`loadImageBitmapUniversal` 接受 URL、Blob 或 File，通过 MIME、文件扩展名或
+文件签名识别 HEIC/HEIF。heic2any 只在需要时加载，模块导入不会在 SSR 时访问
+浏览器对象。转换只取第一帧静态图，先尝试 PNG；转换或位图解码失败后再尝试一次
+JPEG。其他图片格式继续交给 loaders.gl。
+
+HTTP 错误会在转换前被拒绝。普通图片解码失败后，如果 HEIC 探测也失败，会保留
+最初的错误。后续调用可以独立重试；返回位图由调用方持有，用完后关闭。输入的
+object URL 也由调用方负责释放。
+
 ```ts
-import heic2any from 'heic2any';
+import { loadImageBitmapUniversal } from '@infinite-canvas-tutorial/ecs';
 
-async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
-    const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
-        heic2any({
-            blob,
-            toType,
-            quality: toType === 'image/jpeg' ? quality ?? 0.92 : 1,
-        });
-
-    const converted = await run('image/png');
-    return createImageBitmap(converted);
+async function drawStill(
+    context: CanvasRenderingContext2D,
+    source: string | Blob,
+) {
+    const bitmap = await loadImageBitmapUniversal(source);
+    try {
+        context.drawImage(bitmap, 0, 0);
+    } finally {
+        bitmap.close?.();
+    }
 }
 ```
+
+浏览器回归使用真实 HEIC 样本验证输入路径和失败恢复。当前 heic2any/libheif
+对该样本存在已知色彩范围偏差；色彩准确性、HDR 和 Live Photo 视频播放仍需
+分别完善。
 
 ## 增强 SVG: Stroke alignment {#stroke-alignment}
 

@@ -817,25 +817,40 @@ On the CPU we rasterize the image into a texture: compute the draw rectangle fro
 
 ### iOS Live Photo {#ios-live-photo}
 
-At the file level, an iOS Live Photo is usually a HEIC still image plus a companion MOV. Neither the browser's native `<img>` path nor `@loaders.gl/images` can decode HEIC directly.
+At the file level, an iOS Live Photo is usually a HEIC still image plus a companion MOV. Native HEIC support varies between browsers; the ECS image loader uses heic2any to provide a conversion path.
 
 We aim to treat it like a normal image: decode a single still frame into a bitmap, then upload it to a texture. Playing the Live Photo's embedded video in the canvas would be a follow-up, with a dedicated component (e.g. tap to play) built separately.
 
+`loadImageBitmapUniversal` accepts a URL, Blob or File. It recognizes HEIC/HEIF
+from MIME, file extension or the file signature, and loads heic2any only when
+needed, keeping module imports safe during SSR. It converts the first still frame
+to PNG, with one JPEG retry if conversion or bitmap decoding fails. Non-HEIC
+images continue through loaders.gl.
+
+HTTP errors are rejected before conversion. If an ordinary image fails to decode
+and the diagnostic HEIC probe also fails, the original error is preserved. Each
+call can retry independently; a returned bitmap belongs to the caller and should
+be closed after use. An input object URL also remains owned by its caller.
+
 ```ts
-import heic2any from 'heic2any';
+import { loadImageBitmapUniversal } from '@infinite-canvas-tutorial/ecs';
 
-async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
-    const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
-        heic2any({
-            blob,
-            toType,
-            quality: toType === 'image/jpeg' ? quality ?? 0.92 : 1,
-        });
-
-    const converted = await run('image/png');
-    return createImageBitmap(converted);
+async function drawStill(
+    context: CanvasRenderingContext2D,
+    source: string | Blob,
+) {
+    const bitmap = await loadImageBitmapUniversal(source);
+    try {
+        context.drawImage(bitmap, 0, 0);
+    } finally {
+        bitmap.close?.();
+    }
 }
 ```
+
+The browser regressions cover routing and recovery with a real HEIC fixture. The
+current heic2any/libheif decoder has a known color-range discrepancy on that
+fixture; color accuracy, HDR and Live Photo video playback remain separate work.
 
 ## Enhanced SVG: Stroke alignment {#stroke-alignment}
 

@@ -57,28 +57,36 @@ async function blobLooksHeic(blob: Blob): Promise<boolean> {
  */
 async function decodeHeicBlob(blob: Blob): Promise<ImageBitmap> {
   const heic2any = await getHeic2any();
-  const run = (toType: 'image/png' | 'image/jpeg', quality?: number) =>
+  const run = (toType: 'image/png' | 'image/jpeg') =>
     heic2any({
       blob,
       toType,
-      quality: toType === 'image/jpeg' ? (quality ?? 0.92) : 1,
+      quality: toType === 'image/jpeg' ? 0.92 : 1,
     });
 
-  let converted = await run('image/png');
-  let out = Array.isArray(converted) ? converted[0] : converted;
-  if (out && out.size > 0) {
-    try {
+  try {
+    const converted = await run('image/png');
+    const out = Array.isArray(converted) ? converted[0] : converted;
+    if (out && out.size > 0) {
       return await createImageBitmap(out);
-    } catch {
-      // fall through to JPEG
     }
+  } catch {
+    // Both PNG conversion and browser decoding can fail. Retry as JPEG once.
   }
-  converted = await run('image/jpeg');
-  out = Array.isArray(converted) ? converted[0] : converted;
+  const converted = await run('image/jpeg');
+  const out = Array.isArray(converted) ? converted[0] : converted;
   if (!out || out.size === 0) {
     throw new Error('heic2any: empty output');
   }
   return createImageBitmap(out);
+}
+
+async function fetchImageBlob(src: string): Promise<Blob> {
+  const response = await fetch(src, { mode: 'cors' });
+  if (!response.ok) {
+    throw new Error(`Image request failed: HTTP ${response.status}`);
+  }
+  return response.blob();
 }
 
 /**
@@ -120,7 +128,8 @@ export async function loadImageBitmapUniversal(
   src: string | Blob | File,
 ): Promise<ImageBitmap> {
   if (typeof src !== 'string') {
-    const name = src instanceof File ? src.name : '';
+    const name =
+      typeof File !== 'undefined' && src instanceof File ? src.name : '';
     if (isHeicMime(src.type) || /\.hei[cf]$/i.test(name)) {
       return decodeHeicBlob(src);
     }
@@ -132,12 +141,13 @@ export async function loadImageBitmapUniversal(
     try {
       return (await load(src, ImageLoader)) as ImageBitmap;
     } catch (err) {
-      const ab = await src.arrayBuffer();
-      if (isHeicMagic(ab.slice(0, 12))) {
-        return decodeHeicBlob(
-          new Blob([ab], { type: 'image/heic' }),
-        );
+      let heic = false;
+      try {
+        heic = await blobLooksHeic(src);
+      } catch {
+        // A failed signature probe must not hide the original decoder error.
       }
+      if (heic) return decodeHeicBlob(new Blob([src], { type: 'image/heic' }));
       throw err;
     }
   }
@@ -148,21 +158,17 @@ export async function loadImageBitmapUniversal(
     const parsed = parseDataUrlBase64(s);
     if (parsed) {
       if (isHeicMime(parsed.mime)) {
-        return decodeHeicBlob(
-          new Blob([parsed.data], { type: parsed.mime }),
-        );
+        return decodeHeicBlob(new Blob([parsed.data], { type: parsed.mime }));
       }
       if (isHeicMagic(parsed.data.slice(0, 12))) {
-        return decodeHeicBlob(
-          new Blob([parsed.data], { type: 'image/heic' }),
-        );
+        return decodeHeicBlob(new Blob([parsed.data], { type: 'image/heic' }));
       }
     }
     return (await load(s, ImageLoader)) as ImageBitmap;
   }
 
   if (s.startsWith('blob:')) {
-    const blob = await fetch(s).then((r) => r.blob());
+    const blob = await fetchImageBlob(s);
     if (await blobLooksHeic(blob)) {
       return decodeHeicBlob(blob);
     }
@@ -170,21 +176,21 @@ export async function loadImageBitmapUniversal(
   }
 
   if (looksHeicFromPath(s)) {
-    const r = await fetch(s, { mode: 'cors' });
-    const blob = await r.blob();
-    return decodeHeicBlob(blob);
+    return decodeHeicBlob(await fetchImageBlob(s));
   }
 
   try {
     return (await load(s, ImageLoader)) as ImageBitmap;
   } catch (first) {
-    const r = await fetch(s, { mode: 'cors' });
-    const buf = await r.arrayBuffer();
-    if (isHeicMagic(buf)) {
-      const ct =
-        r.headers.get('content-type')?.split(';')[0]?.trim() ?? 'image/heic';
-      return decodeHeicBlob(new Blob([buf], { type: ct }));
+    let blob: Blob;
+    try {
+      blob = await fetchImageBlob(s);
+      if (!(await blobLooksHeic(blob))) throw first;
+    } catch {
+      // This request only diagnoses an unlabelled HEIC source. Preserve the
+      // original error when fetching/reading it fails or it is another format.
+      throw first;
     }
-    throw first;
+    return decodeHeicBlob(blob);
   }
 }
