@@ -16,6 +16,7 @@ import {
   API,
   safeRemoveComponent,
   Rect,
+  Mesh3DNode,
   ComputedCamera,
   Flex,
   FlexLayoutDirty,
@@ -39,7 +40,7 @@ import {
   Visibility
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaLayoutApplied } from './YogaLayoutApplied';
-// @ts-expect-error - import.meta is only available in ES modules, but this code will run in ES module environments
+// @ts-ignore - The legacy CommonJS build cannot resolve export-map subpaths; browser bundlers resolve this typed entry.
 import { loadYoga } from 'yoga-layout/load';
 
 let Yoga;
@@ -170,6 +171,7 @@ export class YogaSystem extends System {
             Transform,
             Transformable,
             Rect,
+            Mesh3DNode,
             Ellipse,
             Polyline,
             Path,

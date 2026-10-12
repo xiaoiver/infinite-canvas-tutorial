@@ -74,7 +74,11 @@ export class SyncMesh3DNodes extends System {
         meshEntity.has(Selected3D) && meshEntity.read(Selected3D).dragging;
 
       if (dragging) {
-        syncMesh3DNodeSourceFromCompanion(entity, meshEntity);
+        // Pointer sessions already write their source atomically. Repeating
+        // that conversion here would overwrite an intervening Yoga layout.
+        // Keep reverse sync for integrations driving the companion directly.
+        if (!meshEntity.read(Selected3D).sourcePreviewOwned)
+          syncMesh3DNodeSourceFromCompanion(entity, meshEntity);
       } else {
         syncMesh3DNodeCompanionFromSource(entity, meshEntity);
       }

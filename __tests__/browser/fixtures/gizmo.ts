@@ -18,7 +18,10 @@ import {
   Selected3D,
   GPUResource,
   Mesh3D,
+  Rect,
+  Transform,
 } from '@infinite-canvas-tutorial/ecs';
+import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
 import { settleECSFrames } from './ecs-frames';
 
@@ -61,6 +64,7 @@ class Bootstrap extends System {
 const app = new App().addPlugins(
   ...DefaultPlugins,
   DefaultRenderer3DPlugin,
+  ...(params.has('yoga') ? [YogaPlugin] : []),
   () => {
     system(PreStartUp)(Bootstrap);
     system((s) => s.inAnyOrderWith(s.allSystems))(Bootstrap);
@@ -104,6 +108,14 @@ const harness = {
       : entity.read(Mesh3DNode).meshEntity!;
     return {
       node,
+      origin: {
+        x: entity.read(Transform).translation.x,
+        y: entity.read(Transform).translation.y,
+      },
+      size: {
+        width: entity.read(Rect).width,
+        height: entity.read(Rect).height,
+      },
       translation: [...mesh.read(Transform3D).translation],
       rotation: [...mesh.read(Transform3D).rotation],
       scale: [...mesh.read(Transform3D).scale],
@@ -173,7 +185,24 @@ async function init() {
             height: 40,
             scale3d: 20,
           };
-      editor.replaceDocument([node], 'remote');
+      const nodes: SerializedNode[] = [node];
+      if (params.has('yoga')) {
+        node.parentId = 'layout';
+        nodes.unshift({
+          id: 'layout',
+          type: 'rect',
+          zIndex: -1,
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 160,
+          display: 'flex',
+          flexDirection: 'row',
+          padding: [60, 60],
+          fills: [],
+        });
+      }
+      editor.replaceDocument(nodes, 'remote');
       editor.selectNodes([editor.getNodeById('model')]);
     },
     { capture: 'NEVER' },

@@ -258,3 +258,10 @@ and source/companion invalidation are covered separately by ECS tests.
 mesh/extrusion handles are held. It checks rollback to the current document,
 ignoring a late release without a history entry, and a fresh drag in the new view.
 Both Chromium and WebKit run these cases.
+
+`gizmo-layout.spec.ts` runs the actual Yoga plugin with mesh and extrusion children.
+Changing padding or flex-grow during a held gesture updates computed coordinates
+without persisting those geometry fields to the document. The tests check safe
+cancellation, preserved layout, ignored late release, and a fresh drag followed
+by Escape back to the computed origin. Both browsers run these cases; ECS tests
+also cover ancestor changes, per-axis rollback and independent canvases.

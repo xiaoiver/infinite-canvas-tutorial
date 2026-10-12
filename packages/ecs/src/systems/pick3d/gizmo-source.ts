@@ -13,11 +13,14 @@ import { extrude3DFromWire, extrude3DToWire } from '../../utils/extrude3d';
 import { resolveExtrudeSourceTransform } from '../../utils/extrude3d-transform';
 import { isEntityAlive } from '../Transform';
 import type { GizmoPose } from './gizmo-gesture';
+import type { API } from '../../API';
+import { GizmoSourceFrame } from './gizmo-source-frame';
 
 /** Source-specific conversion and rollback, independent of pointer/history policy. */
 export interface GizmoSource {
   entity: Entity;
   owns(): boolean;
+  current(): boolean;
   preview(pose: GizmoPose): boolean;
   restore(currentNode?: SerializedNode): void;
   patch(
@@ -25,7 +28,10 @@ export interface GizmoSource {
     node: SerializedNode,
   ): Partial<SerializedNode> | undefined;
 }
-export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
+export function captureGizmoSource(
+  mesh: Entity,
+  api?: Pick<API, 'getNodeByEntity'>,
+): GizmoSource | undefined {
   const extrusion = mesh.has(Extrude3DTarget);
   if (!extrusion && !mesh.has(Mesh3DNodeTarget)) return;
   const target = extrusion
@@ -34,8 +40,6 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
   const source = target.source;
   if (!isEntityAlive(source) || !source.has(Transform)) return;
   const entity = source.hold();
-  const { x, y } = entity.read(Transform).translation;
-  const origin = { x, y };
   const owns = () =>
     isEntityAlive(entity) &&
     (extrusion
@@ -44,6 +48,7 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
       : entity.has(Mesh3DNode) &&
         !!entity.read(Mesh3DNode).meshEntity?.isSame(mesh));
   if (!owns()) return;
+  const frame = new GizmoSourceFrame(entity, api?.getNodeByEntity(entity));
   if (extrusion) {
     const { depth, z, rotation } = entity.read(Extrude3D);
     const initial = {
@@ -57,6 +62,7 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
     return {
       entity,
       owns,
+      current: () => frame.current(),
       preview(pose) {
         const patch = resolve(pose);
         if (!patch) return false;
@@ -65,29 +71,26 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
           y: patch.y,
         });
         Object.assign(entity.write(Extrude3D), patch.extrude);
+        frame.acceptPreview();
         return true;
       },
       restore(currentNode) {
         if (currentNode) {
-          // Cancellation always restores the current document, including
-          // external pose edits or a replacement companion during the preview.
+          // Preserve newer document edits and computed layout coordinates.
           if (
             !isEntityAlive(entity) ||
             !entity.has(Transform) ||
             currentNode?.type !== 'rect'
           )
             return;
-          Object.assign(entity.write(Transform).translation, {
-            x: currentNode.x ?? 0,
-            y: currentNode.y ?? 0,
-          });
+          frame.restoreOrigin(currentNode);
           const extrude = extrude3DFromWire(currentNode.extrude3d);
           if (extrude && entity.has(Extrude3D))
             Object.assign(entity.write(Extrude3D), extrude);
           return;
         }
         if (!owns()) return;
-        Object.assign(entity.write(Transform).translation, origin);
+        frame.restoreOrigin();
         Object.assign(entity.write(Extrude3D), initial);
       },
       patch(pose, node) {
@@ -110,12 +113,14 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
   return {
     entity,
     owns,
+    current: () => frame.current(),
     preview(pose) {
       const patch = resolveMesh3DNodeSourceTransform(entity, pose);
       if (!patch) return false;
       const { x, y, ...fields } = patch;
       Object.assign(entity.write(Transform).translation, { x, y });
       Object.assign(entity.write(Mesh3DNode), fields);
+      frame.acceptPreview();
       return true;
     },
     restore(currentNode) {
@@ -127,13 +132,10 @@ export function captureGizmoSource(mesh: Entity): GizmoSource | undefined {
         return;
       if (currentNode?.type === 'mesh3d') {
         const { z, rotation3d, scale3d } = mesh3DNodeFromWire(currentNode);
-        Object.assign(entity.write(Transform).translation, {
-          x: currentNode.x ?? 0,
-          y: currentNode.y ?? 0,
-        });
+        frame.restoreOrigin(currentNode);
         Object.assign(entity.write(Mesh3DNode), { z, rotation3d, scale3d });
       } else if (owns()) {
-        Object.assign(entity.write(Transform).translation, origin);
+        frame.restoreOrigin();
         Object.assign(entity.write(Mesh3DNode), initial);
       }
     },
