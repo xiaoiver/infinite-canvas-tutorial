@@ -82,8 +82,9 @@ const snapshot = () => ({
     .map(({ width, height }) => [width, height]),
 });
 const harness = {
-  async render(node: SerializedNode) {
+  async render(node: SerializedNode, globalFilter = '') {
     await api.edit(() => {
+      api.setAppState({ filter: globalFilter });
       api.deleteNodesById(api.getNodes().map((node) => node.id));
       api.updateNodes([node]);
     });

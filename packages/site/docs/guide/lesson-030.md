@@ -111,11 +111,19 @@ For example, a red bottom fill and a blue top fill with `opacity: 0.5` remain pu
 
 Changing fills or geometry rebuilds the affected raster input. Removing raster filters releases the offscreen chain, including when the shape returns to direct solid-color drawing. Intermediate layer textures are released after composition, and attached render textures are released through their render targets.
 
+### Alpha in color filters {#filter-alpha}
+
+Brightness, contrast, hue/saturation, noise, dot and color-halftone adjustments operate on straight RGB, independently of paint alpha. Per-shape fill textures store straight RGBA; full-canvas filters receive premultiplied RGBA and convert it for the adjustment. RGB is clamped to the displayable range before premultiplication, while alpha is preserved. This also prevents an overbright intermediate result from changing the next filter unexpectedly.
+
+For example, `rgba(64,128,192,0.5)` with `brightness(0.2)` becomes approximately `rgba(115,179,243,0.5)` before shape opacity is applied. Lowering paint alpha should not reduce the brightness adjustment itself. These color filters update ordinary uniforms on WebGL1 as well as uniform buffers on WebGL2; scalar std140 blocks retain the required 16-byte alignment for WebKit.
+
+Blur needs separate handling of alpha-weighted sampling and geometry outside the original bounds; this color-filter convention alone does not provide that padding.
+
 ### Brightness and contrast {#brightness-contrast}
 
 We can use the [CSS filter] syntax, for example `filter: brightness(0.4);`
 
-In implementation, a single shader suffices; see [brightnesscontrast.js].
+The following shader illustrates the premultiplied full-canvas path; see [brightnesscontrast.js]. Per-shape filters use the shared alpha helpers to retain straight RGBA.
 
 ```glsl
 uniform sampler2D u_Texture;
@@ -140,7 +148,9 @@ void main() {
     } else {
       color.rgb = (color.rgb - 0.5) * (1.0 + contrast) + 0.5;
     }
-    color.rgb *= color.a;
+    color.rgb = clamp(color.rgb, 0.0, 1.0) * color.a;
+  } else {
+    color = vec4(0.0);
   }
 
   outputColor = color;

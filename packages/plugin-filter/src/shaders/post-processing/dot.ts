@@ -1,3 +1,5 @@
+import { alpha } from './alpha';
+
 /**
  * Halftone dot screen, matching
  * {@link https://github.com/pixijs/filters/blob/main/src/dot/dot.frag Pixi dot.frag}
@@ -19,6 +21,8 @@ layout(std140) uniform PostProcessingUniforms {
 
 out vec4 outputColor;
 
+${alpha}
+
 float dotPattern() {
   float angle = u_Dot.x;
   float scale = u_Dot.y;
@@ -32,12 +36,8 @@ float dotPattern() {
 }
 
 void main() {
-  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
+  vec4 color = filterStraightColor(texture(SAMPLER_2D(u_Texture), v_Uv));
   float useGray = u_Dot.z;
-
-  if (color.a > 0.0) {
-    color.rgb /= color.a;
-  }
 
   vec3 colorRGB = color.rgb;
   if (useGray > 0.5) {
@@ -45,8 +45,8 @@ void main() {
   }
 
   colorRGB = colorRGB * 10.0 - 5.0 + dotPattern();
-  color.rgb = colorRGB * color.a;
+  color.rgb = colorRGB;
 
-  outputColor = color;
+  outputColor = filterOutputColor(color);
 }
 `;

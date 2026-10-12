@@ -106,11 +106,19 @@ ECS 中 SDF 图形和 Path 的光栅滤镜在启用的 `fills` 按绘制顺序�
 
 修改填充或几何会重建相应的光栅输入。移除光栅滤镜时会释放离屏滤镜链，包括恢复直接绘制纯色的情况。中间层纹理在合成后释放，附属渲染纹理由对应的 RenderTarget 负责释放。
 
+### 颜色滤镜中的 alpha {#filter-alpha}
+
+亮度、对比度、色相/饱和度、噪点、dot 和 color-halftone 在非预乘 RGB 上计算，调整强度不随填充 alpha 降低。图形填充纹理保存非预乘 RGBA；全画布滤镜接收预乘 RGBA，需要先转换再调整。RGB 在乘回 alpha 之前截断到可显示范围，alpha 保持不变，避免过亮的中间结果影响后续滤镜。
+
+例如，`rgba(64,128,192,0.5)` 经过 `brightness(0.2)` 后约为 `rgba(115,179,243,0.5)`，之后再应用图形整体透明度。降低填充 alpha 不应同时减弱亮度调整。这些颜色滤镜既更新 WebGL1 普通 uniform，也更新 WebGL2 uniform buffer；标量 std140 块保留 WebKit 要求的最小 16 字节对齐。
+
+模糊还需要处理按 alpha 加权的采样，以及原始几何之外的绘制范围；统一颜色约定本身不会提供这部分留边。
+
 ### 亮度和对比度 {#brightness-contrast}
 
 我们可以使用 [CSS filter] 语法，例如 `filter: brightness(0.4);`
 
-在实现上用一个 Shader 就可以解决，参考 [brightnesscontrast.js]
+下面的 Shader 展示接收预乘 RGBA 的全画布路径，参考 [brightnesscontrast.js]。图形滤镜通过共用的 alpha 函数保持非预乘 RGBA。
 
 ```glsl
 uniform sampler2D u_Texture;
@@ -135,7 +143,9 @@ void main() {
     } else {
       color.rgb = (color.rgb - 0.5) * (1.0 + contrast) + 0.5;
     }
-    color.rgb *= color.a;
+    color.rgb = clamp(color.rgb, 0.0, 1.0) * color.a;
+  } else {
+    color = vec4(0.0);
   }
 
   outputColor = color;

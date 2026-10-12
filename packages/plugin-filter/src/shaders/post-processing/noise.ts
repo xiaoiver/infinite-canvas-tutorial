@@ -1,3 +1,5 @@
+import { alpha } from './alpha';
+
 import { random } from '../chunks/random';
 
 /**
@@ -14,27 +16,22 @@ layout(std140) uniform PostProcessingUniforms {
 
 out vec4 outputColor;
 
+${alpha}
+
 ${random}
 
 void main() {
-  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
+  vec4 color = filterStraightColor(texture(SAMPLER_2D(u_Texture), v_Uv));
 
   float u_Seed = 12345.0;
 
   float randomValue = random(v_Uv * u_Seed);
   float diff = (randomValue - 0.5) * u_Noise;
 
-  if (color.a > 0.0) {
-    color.rgb /= color.a;
-  }
-
   color.r += diff;
   color.g += diff;
   color.b += diff;
 
-  // Premultiply alpha again.
-  color.rgb *= color.a;
-
-  outputColor = color;
+  outputColor = filterOutputColor(color);
 }
 `;

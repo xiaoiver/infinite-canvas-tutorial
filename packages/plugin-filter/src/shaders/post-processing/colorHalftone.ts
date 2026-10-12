@@ -1,3 +1,5 @@
+import { alpha } from './alpha';
+
 /**
  * CMYK-style color halftone, matching
  * {@link https://github.com/evanw/glfx.js/blob/master/src/filters/fun/colorhalftone.js glfx colorHalftone}
@@ -17,6 +19,8 @@ layout(std140) uniform PostProcessingUniforms {
 
 out vec4 outputColor;
 
+${alpha}
+
 float halftonePattern(float rotAngle) {
   float s = sin(rotAngle), c = cos(rotAngle);
   vec2 tex = v_Uv * u_CH1.xy - u_CH0.xy;
@@ -28,11 +32,7 @@ float halftonePattern(float rotAngle) {
 }
 
 void main() {
-  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
-  if (color.a > 0.0) {
-    color.rgb /= color.a;
-  }
-
+  vec4 color = filterStraightColor(texture(SAMPLER_2D(u_Texture), v_Uv));
   float baseAngle = u_CH0.z;
   vec3 cmy = 1.0 - color.rgb;
   float k = min(cmy.x, min(cmy.y, cmy.z));
@@ -49,8 +49,8 @@ void main() {
   );
   k = clamp(k * 10.0 - 5.0 + halftonePattern(baseAngle + 0.78539), 0.0, 1.0);
   vec3 rgb = 1.0 - cmy - vec3(k);
-  color.rgb = rgb * color.a;
+  color.rgb = rgb;
 
-  outputColor = color;
+  outputColor = filterOutputColor(color);
 }
 `;

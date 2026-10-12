@@ -1,3 +1,5 @@
+import { alpha } from './alpha';
+
 /**
  * Rotational hue + multiplicative saturation, matching
  * {@link https://github.com/evanw/glfx.js/blob/master/src/filters/adjust/huesaturation.js glfx.js hueSaturation}
@@ -17,14 +19,14 @@ layout(std140) uniform PostProcessingUniforms {
 
 out vec4 outputColor;
 
+${alpha}
+
 void main() {
-  vec4 color = texture(SAMPLER_2D(u_Texture), v_Uv);
+  vec4 color = filterStraightColor(texture(SAMPLER_2D(u_Texture), v_Uv));
   float hue = u_HueSaturation.x;
   float saturation = u_HueSaturation.y;
 
   if (color.a > 0.0) {
-    color.rgb /= color.a;
-
     float angle = hue * 3.14159265;
     float s = sin(angle), c = cos(angle);
     vec3 weights = (vec3(2.0 * c, -sqrt(3.0) * s - c, sqrt(3.0) * s - c) + 1.0) / 3.0;
@@ -40,10 +42,8 @@ void main() {
     } else {
       color.rgb += (average - color.rgb) * (-saturation);
     }
-
-    color.rgb *= color.a;
   }
 
-  outputColor = color;
+  outputColor = filterOutputColor(color);
 }
 `;
