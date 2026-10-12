@@ -22,6 +22,7 @@ export default defineConfig({
     'ecs-blend-mode.spec.ts',
     'brush.spec.ts',
     'image-fill.spec.ts',
+    'image-decoding.spec.ts',
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
     'gizmo.spec.ts',

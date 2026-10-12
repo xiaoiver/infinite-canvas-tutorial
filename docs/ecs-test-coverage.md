@@ -1370,11 +1370,67 @@ pnpm exec playwright test -c playwright.webkit.config.ts 'gizmo|mesh-gpu-cache'
 pnpm test:tooling
 ```
 
+## 第二十三批：图片解码与失败恢复
+
+2026-10-12，基于 master `96c541a7`（PR #408 已合并），以上一批完整运行的
+行覆盖率 74.05%、分支覆盖率 62.54%、函数覆盖率 74.11% 为基线。
+
+- 修复没有全局 `File` 构造器时普通 Blob 加载抛出异常的问题。
+- HEIC 转 PNG 的转换和位图解码都纳入回退范围；失败或输出为空时，尝试一次
+  JPEG。JPEG 失败正常拒绝，后续独立调用仍能重新解码。
+- HEIC URL 和 object URL 在读取响应前检查 HTTP 状态；未知格式的普通解码
+  失败后，如果辅助 HEIC 请求或签名探测也失败，保留最初的解码错误。已确认
+  HEIC 后的转换错误正常向上传播。Blob 签名探测只读取文件头。
+- 保留懒加载的 SSR 导入边界；返回位图和输入 object URL 仍由调用方持有。
+  同步更新中英文 lesson-010 的实际 API 示例和失败处理说明。
+
+新增 61 项 ECS 行为测试，通过公开加载 API 覆盖 MIME、扩展名、文件签名、
+URL/Blob/File/base64 输入、AVIF 排除、并发懒加载、失败重试、第一帧选择和资源
+归属。四项修复先在旧实现上复现失败，再验证修复结果。
+
+新增 3 项真实 HEIC 浏览器回归，使用原创的 533 字节双色样本，验证五种输入、
+缺少 File 时的 PNG、PNG 转换/解码失败后的真实 JPEG 输出，以及 HTTP 失败后
+再次请求成功。Chromium 与 WebKit 各 6 项相关回归通过，包含已有 image-fill
+用例；这些浏览器结果不计入 Jest 覆盖率。
+
+样本还暴露出现有 heic2any/libheif 的色彩偏差：左侧源 RGB `(220,60,30)` 被
+解为约 `(233,52,18)`。浏览器测试明确使用当前解码结果验证不同输入和回退路径
+的一致性，未将其作为色彩准确性验证，也未扩大容差掩盖偏差。样本生成方法、
+原始颜色及对照解码结果已记录；解码库色彩、HDR 和 Live Photo 视频仍需后续完善。
+
+完整原生 ECS 运行通过 235 个文件、1957 项测试，
+用时 864.883 秒，沿用 CI 的两个 worker / 256 MB 回收阈值及 8 GiB 容器限制。
+图片解码模块的行覆盖率从 3.22% 提高到 98.94%，分支覆盖率从 0%
+提高到 97.72%，函数覆盖率为 100%。新增门槛为行/语句 98%、
+分支 95%、函数 100%；原有 48 项门槛和全量 ECS 源文件统计范围不变，完整报告
+满足全部 49 个模块门槛。保留私有 data URL 解析器的防御分支，不为满分改动接口。
+
+| 指标       |     前 |                    后 |
+| ---------- | -----: | --------------------: |
+| 行覆盖率   | 74.05% | 74.36%（21347/28706） |
+| 语句覆盖率 | 74.05% | 74.36%（22375/30087） |
+| 分支覆盖率 | 62.54% |  62.85%（8858/14093） |
+| 函数覆盖率 | 74.11% |   74.39%（2874/3863） |
+
+ECS CommonJS/ESM 构建、仓库及修改文件 ESLint、浏览器与新增 ECS 测试 TypeScript、
+修改代码格式、Markdown 检查和 22 项 tooling 检查均通过。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/load-image-bitmap.spec.ts \
+  __tests__/ecs/rain-drop-texture-cache.spec.ts \
+  __tests__/ecs/fill-layer-image-cache.spec.ts \
+  __tests__/ecs/mesh3d-renderer-lifecycle.spec.ts
+pnpm exec playwright test -c playwright.browser.config.ts 'image-decoding|image-fill'
+pnpm exec playwright test -c playwright.webkit.config.ts 'image-decoding|image-fill'
+pnpm test:tooling
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
 
-1. **资源和渲染剩余路径**：图片解码的 HEIC/回退分支、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
+1. **资源和渲染剩余路径**：HEIC 解码的色彩偏差、复杂滤镜、导出失败恢复，以及默认 Earcut 对 evenodd 的支持。
    纯计算用单测，像素和浏览器能力用真实渲染回归。
 2. **三维交互后续**：检查选中时 gizmo 的 uniform 上传与悬停命中开销，为进一步缓存建立失效条件和真实交互回归。
 
