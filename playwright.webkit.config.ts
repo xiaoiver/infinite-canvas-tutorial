@@ -15,6 +15,7 @@ export default defineConfig({
     'dash-rendering.spec.ts',
     'ecs-dash-rendering.spec.ts',
     'path-rendering.spec.ts',
+    'ecs-path-fill.spec.ts',
     'text-path.spec.ts',
     'ecs-text.spec.ts',
     'ecs-text-resize.spec.ts',

@@ -454,7 +454,7 @@ export interface PathAttributes extends ShapeAttributes {
 
 ### 绘制孔洞 {#draw-holes}
 
-在 SVG 中可以这样定义孔洞，与轮廓的时针方向不同。比如下面路径中的轮廓为顺时针 `M0 0 L100 0 L100 100 L0 100 Z`，后续的两个孔洞就是逆时针方向：
+在 SVG 默认的 `nonzero` 规则下，可以用与外轮廓相反的时针方向定义孔洞。比如下面路径中的轮廓为顺时针 `M0 0 L100 0 L100 100 L0 100 Z`，后续的两个孔洞就是逆时针方向：
 
 ```bash
 M0 0 L100 0 L100 100 L0 100 Z M50 50 L50 75 L75 75 L75 50 Z M25 25 L25
@@ -484,6 +484,17 @@ tessy.gluTessProperty(
         : libtess.windingRule.GLU_TESS_WINDING_NONZERO,
 );
 ```
+
+ECS 中即使保留默认的 `tessellationMethod: 'earcut'`，`fillRule` 也会生效：
+多个子路径或 `evenodd` 填充会自动交给 libtess，根据完整路径的绕数或奇偶性
+生成填充区域，不再按输入顺序或第一个轮廓的方向猜测孔洞。因此孔洞可以先于
+外轮廓出现，嵌套岛屿、重叠和重复轮廓也会遵循同一规则，与滤镜使用的原生
+Canvas 遮罩保持一致。
+
+单轮廓 `nonzero` 保留 Earcut 快速路径；对于这类路径中的一般自相交，仍应
+显式选择 `libtess`。复合路径的正确处理可能增加三角化开销，现有几何缓存仍会
+避免每帧重新生成。不同填充规则或三角化选项的 Path 不再共享同一个填充网格。
+Rough 笔触保留独立的三角化流程，以维持笔触叠加的透明度。
 
 ## 包围盒与拾取 {#bounding-box-picking}
 

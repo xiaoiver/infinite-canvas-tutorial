@@ -1199,6 +1199,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     scaleY,
     points,
     d,
+    tessellationMethod,
     anchorX = 0,
     anchorY = 0,
     fontWeight = 'normal',
@@ -1722,6 +1723,11 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     if (entity.has(Path)) {
       entity.write(Path).d = d;
     }
+  }
+  if ('tessellationMethod' in updates && entity.has(Path)) {
+    entity.write(Path).tessellationMethod =
+      tessellationMethod ?? TesselationMethod.EARCUT;
+    safeAddComponent(entity, GeometryDirty);
   }
   if ('vertices' in updates || 'segments' in updates || 'regions' in updates) {
     if (entity.has(VectorNetwork)) {

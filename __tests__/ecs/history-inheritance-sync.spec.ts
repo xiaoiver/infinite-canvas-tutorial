@@ -3,6 +3,7 @@ import {
   Group,
   Opacity,
   Path,
+  TesselationMethod,
   Stroke,
   StrokeLayers,
   ThemeMode,
@@ -135,6 +136,27 @@ describe('group presentation synchronization', () => {
       expect(presentation()[field]).toEqual(inherited);
     },
   );
+
+  it('synchronizes tessellator changes, resets and history with the Path component', async () => {
+    await world.reset(api, [group(), shape()]);
+    const method = () => entity().read(Path).tessellationMethod;
+    expect(method()).toBe(TesselationMethod.EARCUT);
+    await update('shape', { tessellationMethod: TesselationMethod.LIBTESS });
+    expect(method()).toBe(TesselationMethod.LIBTESS);
+    await world.history(api, 'undo');
+    expect(method()).toBe(TesselationMethod.EARCUT);
+    await world.history(api, 'redo');
+    expect(method()).toBe(TesselationMethod.LIBTESS);
+    await update('shape', { tessellationMethod: undefined });
+    expect(method()).toBe(TesselationMethod.EARCUT);
+    expect(api.getNodeById('shape')).not.toHaveProperty('tessellationMethod');
+    await world.history(api, 'undo');
+    expect(method()).toBe(TesselationMethod.LIBTESS);
+    const nodes = structuredClone(api.getNodes());
+    await world.reset(api, []);
+    await world.reset(api, nodes);
+    expect(method()).toBe(TesselationMethod.LIBTESS);
+  });
 
   it('preserves authored dash geometry when inherited stroke paint is disabled and restored', async () => {
     await world.reset(api, [
