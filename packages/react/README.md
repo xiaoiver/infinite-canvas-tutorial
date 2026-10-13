@@ -631,6 +631,34 @@ its Web Component, which destroys its API. The App exits only after its last
 lease is released, and a subsequent mount waits for that shutdown to finish.
 StrictMode's immediate setup/cleanup/setup shares the pending startup.
 
+## ECS capacity
+
+For bounded scenes, pass `appOptions` to reduce the ECS allocation at startup:
+
+```tsx
+const runtime = createCanvasRuntime({
+    appOptions: {
+        maxEntities: 16_384,
+        maxLimboComponents: 32_768,
+    },
+});
+
+<InfiniteCanvas runtime={runtime} style={{ height: 400 }} />;
+```
+
+All canvases using this runtime share one capacity budget, including internal
+entities. `maxEntities` defaults to `4_194_304`; `maxLimboComponents` defaults to
+`maxEntities` and limits removed components awaiting reclamation. These are fixed
+limits, so leave headroom for scene growth and bulk deletion; `16_384` is an
+example, not a recommended limit for every application. See [ECS capacity](https://infinitecanvas.cc/reference/create-app#ecs-capacity)
+for ranges and sizing guidance.
+
+Options are copied when `createCanvasRuntime()` is called and reused on every App
+restart. To change them, unmount all canvases and create a new runtime. Creating
+the runtime remains safe during SSR: imports, allocation, and validation wait
+until acquisition. Invalid options reject `acquire().ready`; `<InfiniteCanvas>`
+reports that startup error through `onError` and `renderError`.
+
 ## Async preparation and cancellation
 
 ```tsx

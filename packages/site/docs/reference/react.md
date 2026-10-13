@@ -659,6 +659,34 @@ is removed. StrictMode's immediate setup/cleanup/setup shares pending startup.
 React children are mounted in the Web Component's light DOM and support its
 named slots.
 
+## ECS capacity
+
+For bounded scenes, pass `appOptions` to reduce the ECS allocation at startup:
+
+```tsx
+const runtime = createCanvasRuntime({
+    appOptions: {
+        maxEntities: 16_384,
+        maxLimboComponents: 32_768,
+    },
+});
+
+<InfiniteCanvas runtime={runtime} style={{ height: 400 }} />;
+```
+
+All canvases using this runtime share one capacity budget, including internal
+entities. `maxEntities` defaults to `4_194_304`; `maxLimboComponents` defaults to
+`maxEntities` and limits removed components awaiting reclamation. These are fixed
+limits, so leave headroom for scene growth and bulk deletion; `16_384` is an
+example, not a recommended limit for every application. See [ECS capacity](/reference/create-app#ecs-capacity)
+for ranges and sizing guidance.
+
+Options are copied when `createCanvasRuntime()` is called and reused on every App
+restart. To change them, unmount all canvases and create a new runtime. Creating
+the runtime remains safe during SSR: imports, allocation, and validation wait
+until acquisition. Invalid options reject `acquire().ready`; `<InfiniteCanvas>`
+reports that startup error through `onError` and `renderError`.
+
 ## Async preparation
 
 `onReady(api, { signal })` may return a Promise. Pass the signal to cancellable

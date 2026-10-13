@@ -4,6 +4,7 @@ import reactConfig from './playwright.react.config';
 export default defineConfig({
   ...reactConfig,
   testMatch: [
+    'runtime-capacity.spec.ts',
     'mobile.spec.ts',
     'text-edits.spec.ts',
     'drawing-preferences.spec.ts',

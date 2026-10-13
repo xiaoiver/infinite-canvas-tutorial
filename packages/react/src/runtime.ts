@@ -1,8 +1,10 @@
-import type { App } from '@infinite-canvas-tutorial/ecs';
+import type { App, AppOptions } from '@infinite-canvas-tutorial/ecs';
 
 export type CanvasPlugin = Parameters<App['addPlugin']>[0];
 
 export interface CanvasRuntimeOptions {
+  /** Shared ECS capacity. Copied now and validated when the App starts. */
+  appOptions?: AppOptions;
   /** Additional plugins, registered once per App startup. */
   plugins?: readonly CanvasPlugin[];
   /** Register optional plugin UI elements before mounting any canvas. */
@@ -22,6 +24,7 @@ let activeRuntime: CanvasRuntime | undefined;
 export function createCanvasRuntime(
   options: CanvasRuntimeOptions = {},
 ): CanvasRuntime {
+  const appOptions = { ...options.appOptions };
   const plugins = [...(options.plugins ?? [])];
   const loadUI = options.loadUI;
   let users = 0;
@@ -50,7 +53,11 @@ export function createCanvasRuntime(
         ]);
         await import('@infinite-canvas-tutorial/webcomponents/spectrum');
         await loadUI?.();
-        app = new App().addPlugins(...DefaultPlugins, UIPlugin, ...plugins);
+        app = new App(appOptions).addPlugins(
+          ...DefaultPlugins,
+          UIPlugin,
+          ...plugins,
+        );
         await app.run();
       });
       const ready = starting;
