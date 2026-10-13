@@ -1,9 +1,13 @@
-import { createCanvasRuntime } from '../../packages/react/src/runtime';
+import {
+  createCanvasRuntime,
+  type CanvasRuntimeOptions,
+} from '../../packages/react/src/runtime';
 
 const mockApps: { run: jest.Mock; exit: jest.Mock; addPlugins: jest.Mock }[] =
   [];
 let mockStart: Promise<void>;
 let mockExit: Promise<void>;
+const mockConstructor = jest.fn();
 
 jest.mock(
   '@infinite-canvas-tutorial/ecs',
@@ -13,7 +17,8 @@ jest.mock(
       run = jest.fn(() => mockStart);
       exit = jest.fn(() => mockExit);
       addPlugins = jest.fn(() => this);
-      constructor() {
+      constructor(options: CanvasRuntimeOptions['appOptions']) {
+        mockConstructor(options);
         mockApps.push(this);
       }
     },
@@ -37,6 +42,81 @@ beforeEach(() => {
   mockApps.length = 0;
   mockStart = Promise.resolve();
   mockExit = Promise.resolve();
+  mockConstructor.mockReset();
+});
+
+it.each<[CanvasRuntimeOptions['appOptions']]>([
+  [undefined],
+  [{}],
+  [{ maxEntities: 16384 }],
+  [{ maxLimboComponents: 32768 }],
+  [{ maxEntities: 16384, maxLimboComponents: 32768 }],
+])('passes App options %j to the shared startup', async (appOptions) => {
+  const runtime = createCanvasRuntime({ appOptions });
+  await flush();
+  expect(mockConstructor).not.toHaveBeenCalled();
+  const left = runtime.acquire();
+  const right = runtime.acquire();
+  await Promise.all([left.ready, right.ready]);
+  expect(mockConstructor).toHaveBeenCalledTimes(1);
+  expect(mockConstructor).toHaveBeenCalledWith(appOptions ?? {});
+  left.release();
+  right.release();
+  await flush();
+});
+
+it('snapshots capacity before acquisition and reuses it after a full shutdown', async () => {
+  const appOptions = { maxEntities: 16384, maxLimboComponents: 32768 };
+  const options = { appOptions };
+  const runtime = createCanvasRuntime(options);
+  appOptions.maxEntities = 65536;
+  options.appOptions = { maxEntities: 128, maxLimboComponents: 128 };
+
+  const first = runtime.acquire();
+  await first.ready;
+  first.release();
+  await flush();
+  appOptions.maxLimboComponents = 65536;
+
+  const second = runtime.acquire();
+  await second.ready;
+  expect(mockConstructor.mock.calls).toEqual([
+    [{ maxEntities: 16384, maxLimboComponents: 32768 }],
+    [{ maxEntities: 16384, maxLimboComponents: 32768 }],
+  ]);
+  expect(mockApps[0].exit).toHaveBeenCalledTimes(1);
+  second.release();
+  await flush();
+});
+
+it('releases runtime ownership after all leases of a failed constructor are released', async () => {
+  const error = new RangeError('invalid capacity');
+  mockConstructor.mockImplementationOnce(() => {
+    throw error;
+  });
+  const runtime = createCanvasRuntime({ appOptions: { maxEntities: 0 } });
+  const left = runtime.acquire();
+  const right = runtime.acquire();
+  expect(left.ready).toBe(right.ready);
+  await expect(left.ready).rejects.toBe(error);
+  expect(mockApps).toHaveLength(0);
+  left.release();
+  await flush();
+
+  const replacement = createCanvasRuntime({ appOptions: { maxEntities: 128 } });
+  const blocked = replacement.acquire();
+  await expect(blocked.ready).rejects.toThrow('share the same CanvasRuntime');
+  blocked.release();
+  right.release();
+  await flush();
+
+  const retry = replacement.acquire();
+  await retry.ready;
+  expect(mockConstructor).toHaveBeenLastCalledWith({ maxEntities: 128 });
+  expect(mockApps).toHaveLength(1);
+  retry.release();
+  await flush();
+  expect(mockApps[0].exit).toHaveBeenCalledTimes(1);
 });
 
 it('shares one startup and shuts down only after the last canvas releases', async () => {

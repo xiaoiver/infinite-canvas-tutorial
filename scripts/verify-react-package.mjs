@@ -153,7 +153,7 @@ const assert = require('node:assert/strict');
 const React = require('react');
 const { renderToString } = require('react-dom/server');
 for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutorial/react/spectrum']) {
-  const { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasCoordinates, useCanvasEvent, useCanvasShortcuts } = require(entry);
+  const { createCanvasRuntime, CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasCoordinates, useCanvasEvent, useCanvasShortcuts } = require(entry);
   function Toolbar() {
     const api = useCanvasAPI();
     const actions = useCanvasActions();
@@ -177,11 +177,17 @@ for (const entry of ['@infinite-canvas-tutorial/react', '@infinite-canvas-tutori
     const zoom = useCanvasSelector(state => state.appState?.cameraZoom ?? 1);
     return React.createElement('output', shortcuts, String(api === null) + ':' + zoom);
   }
+  const runtime = createCanvasRuntime({
+    appOptions: { maxEntities: 16384, maxLimboComponents: 32768 },
+    plugins: [() => { throw new Error('SSR plugin ran'); }],
+    loadUI: () => { throw new Error('SSR UI loader ran'); },
+  });
   const html = renderToString(React.createElement(CanvasProvider, null,
-    React.createElement(InfiniteCanvas, { fallback: 'Loading' }), React.createElement(Toolbar)));
+    React.createElement(InfiniteCanvas, { runtime, fallback: 'Loading' }), React.createElement(Toolbar)));
   assert(html.includes('Loading') && html.includes('true:1'));
 }
 assert.equal(typeof window, 'undefined');
+assert(!Object.keys(require.cache).some(path => path.includes('/@infinite-canvas-tutorial/ecs/')), 'SSR loaded the ECS runtime');
 `;
   writeFileSync(join(consumer, 'ssr.cjs'), ssr);
   execFileSync(process.execPath, [join(consumer, 'ssr.cjs')], {
@@ -189,9 +195,17 @@ assert.equal(typeof window, 'undefined');
   });
 
   const types = `
-import { CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasCoordinates, useCanvasEvent, useCanvasShortcuts, type CanvasCoordinates, type CanvasPoint, type CanvasShortcutOptions, type CanvasShortcutProps, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
+import { createCanvasRuntime, type CanvasRuntimeOptions, CanvasProvider, InfiniteCanvas, useCanvasAPI, useCanvasActions, useCanvasSelector, useCanvasNode, useCanvasSelection, useCanvasHistory, useCanvasStatus, useCanvasCamera, useCanvasCoordinates, useCanvasEvent, useCanvasShortcuts, type CanvasCoordinates, type CanvasPoint, type CanvasShortcutOptions, type CanvasShortcutProps, type CanvasCameraState, type CanvasCameraAnimationOptions, type CanvasEventOptions, type CanvasHistoryState, type CanvasStatus, type CanvasState, type CanvasActions, type CanvasEditOptions } from '@infinite-canvas-tutorial/react';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 import { InfiniteCanvas as SpectrumCanvas, useCanvasEvent as useSpectrumCanvasEvent, useCanvasCoordinates as useSpectrumCoordinates, type CanvasPoint as SpectrumPoint } from '@infinite-canvas-tutorial/react/spectrum';
+const runtimeOptions: CanvasRuntimeOptions = {
+  appOptions: { maxEntities: 16384, maxLimboComponents: 32768 },
+};
+const runtime = createCanvasRuntime(runtimeOptions);
+// @ts-expect-error capacities must be numeric
+createCanvasRuntime({ appOptions: { maxEntities: '16384' } });
+// @ts-expect-error limbo capacity must be numeric
+createCanvasRuntime({ appOptions: { maxLimboComponents: '32768' } });
 function Toolbar() {
   const shortcutOptions: CanvasShortcutOptions = { enabled: true, onError: (error: Error) => {} };
   const shortcuts: CanvasShortcutProps = useCanvasShortcuts(shortcutOptions);
@@ -244,7 +258,7 @@ function Toolbar() {
   const canUndo: boolean = useCanvasSelector((state: CanvasState) => state.canUndo);
   return <section {...shortcuts}><button disabled={!canUndo} onClick={() => api?.undo()}>Undo</button></section>;
 }
-export const editor = <><CanvasProvider><InfiniteCanvas style={{ height: 400 }} /><Toolbar /></CanvasProvider><SpectrumCanvas /></>;
+export const editor = <><CanvasProvider><InfiniteCanvas runtime={runtime} style={{ height: 400 }} /><Toolbar /></CanvasProvider><SpectrumCanvas runtime={runtime} /></>;
 `;
   writeFileSync(join(consumer, 'consumer.tsx'), types);
   for (const [module, moduleResolution] of [

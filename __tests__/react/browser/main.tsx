@@ -106,7 +106,16 @@ class InitialFrameRender extends System {
     }
   }
 }
+const query = new URLSearchParams(location.search);
 const runtime = createCanvasRuntime({
+  appOptions: {
+    maxEntities: query.has('maxEntities')
+      ? Number(query.get('maxEntities'))
+      : undefined,
+    maxLimboComponents: query.has('maxLimboComponents')
+      ? Number(query.get('maxLimboComponents'))
+      : undefined,
+  },
   plugins: new URLSearchParams(location.search).has('initialFrame')
     ? [
         () => {
@@ -320,7 +329,6 @@ function NodeProperty({ id }: { id: string }) {
 }
 
 const host = document.getElementById('root')!;
-const query = new URLSearchParams(location.search);
 const playgroundLocale = query.get('playground');
 const starter = query.get('starter');
 if (playgroundLocale) {
