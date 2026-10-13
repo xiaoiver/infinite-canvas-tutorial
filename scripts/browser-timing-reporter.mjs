@@ -64,8 +64,10 @@ export default class BrowserTimingReporter {
   phases = new WeakMap();
   attempts = [];
   active = new Map();
+  finished = false;
 
   onBegin(config, suite) {
+    if (this.finished) return;
     this.startedAt = Date.now();
     this.totalTests = suite.allTests().length;
     this.browser = config.projects[0]?.use.browserName ?? 'chromium';
@@ -76,6 +78,7 @@ export default class BrowserTimingReporter {
   }
 
   onTestBegin(test, result) {
+    if (this.finished) return;
     this.active.set(test.id, {
       file: path.relative(process.cwd(), test.location.file),
       title: test.titlePath().filter(Boolean).join(' › '),
@@ -85,6 +88,7 @@ export default class BrowserTimingReporter {
   }
 
   onStepEnd(_test, result, step) {
+    if (this.finished) return;
     // Root hooks already include their nested hooks/fixtures. Counting both
     // would inflate timings and conceal whether browser shutdown is slow.
     if (step.category !== 'hook' || step.parent) return;
@@ -95,6 +99,7 @@ export default class BrowserTimingReporter {
   }
 
   onTestEnd(test, result) {
+    if (this.finished) return;
     this.active.delete(test.id);
     const { setup, teardown } = this.phases.get(result) ?? {
       setup: 0,
@@ -140,6 +145,11 @@ export default class BrowserTimingReporter {
   }
 
   onEnd(result) {
+    // A global timeout can finish the run before worker shutdown callbacks.
+    // Freeze this snapshot so late events cannot overwrite the final status or
+    // make the JSON disagree with the summary. Unfinished tests stay visible.
+    if (this.finished) return;
+    this.finished = true;
     const report = this.checkpoint(result);
     const summary = summarizeTimings(report);
     writeFileSync('.test-results/browser-timings.md', summary);

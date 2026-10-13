@@ -1,6 +1,11 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
 import type { BrowserHarness } from './fixtures/main';
 import { installProbes } from './fixtures/probes';
+
+// Collaboration peers need one canvas each; resource-isolation tests need two.
+const test = base.extend<{ singleCanvas: boolean }>({
+  singleCanvas: [false, { option: true }],
+});
 
 declare global {
   interface Window {
@@ -36,9 +41,9 @@ async function open(page: Page, singleCanvas = false) {
     )
     .toBe(true);
 }
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, singleCanvas }) => {
   errors = [];
-  await open(page);
+  await open(page, singleCanvas);
 });
 test.afterEach(async ({ context }) => {
   for (const page of context.pages()) {
@@ -210,78 +215,110 @@ test('destroy terminates a real worker and rejects active and queued operations'
   ).toEqual(['left:hold', 'right:echo']);
 });
 
-for (const provider of ['yjs', 'loro'] as const) {
-  test(`${provider}: edits, undo/redo, and deletion converge across browser pages`, async ({
-    page,
-    context,
-  }, info) => {
-    const other = await context.newPage();
-    await open(other, true);
-    const room = `regression-${provider}-${info.testId}`;
-    await page.evaluate(
-      ([kind, room]) =>
-        window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
-      [provider, room],
-    );
-    await other.evaluate(
-      ([kind, room]) =>
-        window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
-      [provider, room],
-    );
-    for (const replica of [page, other])
+test.describe('collaboration', () => {
+  test.use({ singleCanvas: true });
+
+  for (const provider of ['yjs', 'loro'] as const) {
+    test(`${provider}: edits, undo/redo, and deletion converge across browser pages`, async ({
+      page,
+      context,
+    }, info) => {
+      const other = await context.newPage();
+      await open(other, true);
+      const room = `regression-${provider}-${info.testId}`;
+      await page.evaluate(
+        ([kind, room]) =>
+          window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
+        [provider, room],
+      );
+      await other.evaluate(
+        ([kind, room]) =>
+          window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
+        [provider, room],
+      );
+      for (const replica of [page, other])
+        await expect
+          .poll(() =>
+            replica.evaluate(
+              () => window.canvasRegression.state('left')!.nodes[0]?.id,
+            ),
+          )
+          .toBe('0');
+      await page.evaluate(() => window.canvasRegression.edit('left', '0', 160));
       await expect
         .poll(() =>
-          replica.evaluate(
+          other.evaluate(
+            () => window.canvasRegression.state('left')!.nodes[0]?.width,
+          ),
+        )
+        .toBe(160);
+      await page.evaluate(() => window.canvasRegression.undo('left'));
+      await expect
+        .poll(() =>
+          other.evaluate(
+            () => window.canvasRegression.state('left')!.nodes[0]?.width,
+          ),
+        )
+        .toBe(100);
+      await page.evaluate(() => window.canvasRegression.redo('left'));
+      await expect
+        .poll(() =>
+          other.evaluate(
+            () => window.canvasRegression.state('left')!.nodes[0]?.width,
+          ),
+        )
+        .toBe(160);
+      await other.evaluate(() => window.canvasRegression.remove('left', '0'));
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => window.canvasRegression.state('left')!.nodes.length,
+          ),
+        )
+        .toBe(0);
+    });
+
+    test(`${provider}: a late participant does not resurrect deleted seed content`, async ({
+      page,
+      context,
+    }, info) => {
+      const room = `regression-${provider}-${info.testId}`;
+      await page.evaluate(
+        ([kind, room]) =>
+          window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
+        [provider, room],
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(
             () => window.canvasRegression.state('left')!.nodes[0]?.id,
           ),
         )
         .toBe('0');
-    await page.evaluate(() => window.canvasRegression.edit('left', '0', 160));
-    await expect
-      .poll(() =>
-        other.evaluate(
-          () => window.canvasRegression.state('left')!.nodes[0]?.width,
-        ),
-      )
-      .toBe(160);
-    await page.evaluate(() => window.canvasRegression.undo('left'));
-    await expect
-      .poll(() =>
-        other.evaluate(
-          () => window.canvasRegression.state('left')!.nodes[0]?.width,
-        ),
-      )
-      .toBe(100);
-    await page.evaluate(() => window.canvasRegression.redo('left'));
-    await expect
-      .poll(() =>
-        other.evaluate(
-          () => window.canvasRegression.state('left')!.nodes[0]?.width,
-        ),
-      )
-      .toBe(160);
-    await other.evaluate(() => window.canvasRegression.remove('left', '0'));
-    await expect
-      .poll(() =>
-        page.evaluate(
-          () => window.canvasRegression.state('left')!.nodes.length,
-        ),
-      )
-      .toBe(0);
-    // A late-joining tab must not resurrect the immutable seed.
-    const late = await context.newPage();
-    await open(late, true);
-    await late.evaluate(
-      ([kind, room]) =>
-        window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
-      [provider, room],
-    );
-    await expect
-      .poll(() =>
-        late.evaluate(
-          () => window.canvasRegression.state('left')!.nodes.length,
-        ),
-      )
-      .toBe(0);
-  });
-}
+      await page.evaluate(() => window.canvasRegression.remove('left', '0'));
+      await expect
+        .poll(() =>
+          page.evaluate(
+            () => window.canvasRegression.state('left')!.nodes.length,
+          ),
+        )
+        .toBe(0);
+      // Start a fresh page/document only after the seed has been deleted.
+      const late = await context.newPage();
+      await open(late, true);
+      await late.evaluate(
+        ([kind, room]) =>
+          window.canvasRegression.connect(kind as 'yjs' | 'loro', room),
+        [provider, room],
+      );
+      for (const replica of [page, late])
+        await expect
+          .poll(() =>
+            replica.evaluate(
+              () => window.canvasRegression.state('left')!.nodes.length,
+            ),
+          )
+          .toBe(0);
+    });
+  }
+});

@@ -170,8 +170,8 @@ class Bootstrap extends System {
   initialize() {
     commands = new Commands(this);
     create('left');
-    // Additional collaboration tabs only use the left canvas. Avoid starting
-    // an unrelated WebGL context in each replica; lifecycle cases keep both.
+    // Collaboration tabs only use the left canvas. Avoid starting an unrelated
+    // WebGL context in each replica; lifecycle cases keep both.
     if (!new URLSearchParams(location.search).has('single-canvas')) {
       create('right');
     }

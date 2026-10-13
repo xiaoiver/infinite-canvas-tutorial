@@ -15,10 +15,11 @@ manually, run `pnpm dev:browser-tests`. The fixture imports workspace source and
 uses the site's existing WebAssembly and collaboration dependencies; package
 builds, authentication, and environment secrets are not required.
 
-The five browser tests cover:
+The lifecycle tests cover:
 
 -   Two canvases in one ECS world, including rendered pixel checks and independent undo/redo.
 -   Repeated destruction and recreation, queued task cancellation, and release of native WebGL resources and global input listeners.
+-   A fixed page-listener baseline that continues tracking later global listeners.
 -   Lazy creation of a real browser worker, termination, rejection of active and queued operations, and isolation from another canvas's worker.
 -   Yjs collaboration across browser pages, including undo/redo, deletion, and a late participant.
 -   The same collaboration scenarios using Loro.
@@ -27,7 +28,11 @@ The probes wrap native resource creation and deletion without replacing the
 renderer. Chromium uses software WebGL for reproducibility. The worker runs a
 small deterministic protocol fixture through the production `WorkerClient`;
 these tests do not download models or cover inference, WebGPU, or a production
-collaboration server.
+collaboration server. Collaboration uses one WebGL canvas per page, including
+the first participant; the two-canvas lifecycle cases retain both canvases.
+Cross-page edits and late joining after deletion are separate scenarios, each
+using two real pages. This avoids bootstrapping three ECS worlds in a single
+30-second test; timeout and retry settings remain unchanged.
 
 Shader compiler tests load the actual bundled WASM and compile GLSL to WGSL in
 Chromium and WebKit. They verify lazy loading, same-origin requests, a custom
@@ -61,8 +66,8 @@ multi-selection, rotation after flipping, undo/redo and rendered gradient pixels
 Asymmetric path, polyline and vector-network checks catch double reflection; the
 WebKit suite also checks flipping from a padded touch corner.
 
-CI runs `.github/workflows/browser-regression.yml` with six independent test
-runners: two Chromium shards, WebKit Lottie, and three shards for the remaining
+CI runs `.github/workflows/browser-regression.yml` with eight independent test
+runners: four Chromium shards, WebKit Lottie, and three shards for the remaining
 WebKit suites.
 Each runner still uses one worker and the existing WebKit browser isolation.
 The non-Lottie WebKit suites exceeded the 25-minute job budget in PR #402.
@@ -74,8 +79,10 @@ New commits cancel older runs for the same PR or branch.
 Run the same groups locally (one at a time; the fixture uses a fixed port):
 
 ```sh
-pnpm test:browser --shard=1/2
-pnpm test:browser --shard=2/2
+pnpm test:browser --shard=1/4
+pnpm test:browser --shard=2/4
+pnpm test:browser --shard=3/4
+pnpm test:browser --shard=4/4
 PLAYWRIGHT_WEBKIT_GROUP=lottie pnpm test:browser:webkit
 PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit --shard=1/3
 PLAYWRIGHT_WEBKIT_GROUP=other pnpm test:browser:webkit --shard=2/3
@@ -96,8 +103,11 @@ pnpm test:browser --reporter=list,./scripts/browser-timing-reporter.mjs
 ```
 
 The reports are written to `.test-results/browser-timings.json` and
-`.test-results/browser-timings.md`. The existing ECS suite remains a separate
-regression check.
+`.test-results/browser-timings.md`. Each browser group has a 22-minute global
+timeout within its 25-minute CI job. The JSON checkpoints completed attempts and
+active tests during the run. At run completion, the report and summary are frozen;
+late worker shutdown callbacks cannot overwrite the final timeout status.
+The existing ECS suite remains a separate regression check.
 
 Lesson 12 dash rendering checks run in Chromium and WebKit. They compare rendered
 stroke interiors with native Canvas2D for all cap/join combinations, offsets,
