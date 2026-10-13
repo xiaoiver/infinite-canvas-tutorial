@@ -34,6 +34,12 @@ Cross-page edits and late joining after deletion are separate scenarios, each
 using two real pages. This avoids bootstrapping three ECS worlds in a single
 30-second test; timeout and retry settings remain unchanged.
 
+The shared lifecycle/interaction fixture sets `maxEntities: 16_384` on its App.
+This bounds preallocated ECS storage for these small scenes, including both
+canvases and their internal entities. Production defaults are unchanged. See
+[ECS capacity](../../packages/site/docs/reference/create-app.md)
+for the limits and sizing considerations.
+
 Shader compiler tests load the actual bundled WASM and compile GLSL to WGSL in
 Chromium and WebKit. They verify lazy loading, same-origin requests, a custom
 compiler URL, and retry after a broken asset. The failure-propagation case stubs

@@ -48,6 +48,15 @@ void [
   LastPlaceHolder,
 ];
 
+const MAX_ENTITIES = 2 ** 22;
+
+export interface AppOptions {
+  /** Maximum ECS entities shared by every canvas in this App. Defaults to 4,194,304. */
+  maxEntities?: number;
+  /** Removed components awaiting reclamation. Defaults to maxEntities. */
+  maxLimboComponents?: number;
+}
+
 /**
  * @see https://bevy-cheatbook.github.io/programming/app-builder.html
  */
@@ -70,6 +79,29 @@ export class App {
   #frame: Promise<void>;
   #exiting = false;
   #adapter: ReturnType<typeof DOMAdapter.get>;
+  #worldOptions: Required<AppOptions>;
+
+  constructor({
+    maxEntities = MAX_ENTITIES,
+    maxLimboComponents = maxEntities,
+  }: AppOptions = {}) {
+    // Validate before running plugins or creating the Becsy World.
+    if (
+      !Number.isSafeInteger(maxEntities) ||
+      maxEntities < 1 ||
+      maxEntities > MAX_ENTITIES
+    ) {
+      throw new RangeError(
+        `maxEntities must be an integer between 1 and ${MAX_ENTITIES}`,
+      );
+    }
+    if (!Number.isSafeInteger(maxLimboComponents) || maxLimboComponents < 1) {
+      throw new RangeError(
+        'maxLimboComponents must be a positive safe integer',
+      );
+    }
+    this.#worldOptions = { maxEntities, maxLimboComponents };
+  }
 
   /**
    * @example
@@ -136,8 +168,7 @@ export class App {
     this.world = await World.create({
       // Multithreading is not supported yet.
       threads: 1,
-      maxEntities: 4194304,
-      maxLimboComponents: 4194304,
+      ...this.#worldOptions,
     });
 
     const tick = async () => {
