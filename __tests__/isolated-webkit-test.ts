@@ -10,16 +10,26 @@ export const test = base.extend({
       await use(context);
       return;
     }
-    const browser = await playwright.webkit.launch();
+    // Own the process separately from the client connection. On Linux CI,
+    // browser.close() can spend 30 seconds waiting for WebKit to exit even after
+    // its contexts have closed. Finish context cleanup (including artifacts)
+    // normally, then reap this test's disposable process through the public API.
+    const server = await playwright.webkit.launchServer({ host: '127.0.0.1' });
     try {
-      const isolated = await browser.newContext();
+      const browser = await playwright.webkit.connect(server.wsEndpoint());
       try {
-        await use(isolated);
+        const isolated = await browser.newContext();
+        try {
+          await use(isolated);
+        } finally {
+          await isolated.close();
+        }
       } finally {
-        await isolated.close();
+        // For a connected browser this releases the client, not the process.
+        await browser.close();
       }
     } finally {
-      await browser.close();
+      await server.kill();
     }
   },
 });

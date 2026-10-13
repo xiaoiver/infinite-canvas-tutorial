@@ -82,6 +82,17 @@ alongside the browser jobs. The existing `browser-regression` check succeeds onl
 all jobs succeed; failure, cancellation and skipping cannot pass the gate.
 New commits cancel older runs for the same PR or branch.
 
+`isolated-webkit-test.ts`, shared by the source and React suites, owns a WebKit
+server process per test. It closes the context normally so Playwright can finish
+traces and screenshots, disconnects the client, then awaits `BrowserServer.kill()`
+to reap the disposable process. This avoids Linux CI's observed 30-second browser
+exit waits after context closure. Context cleanup errors still fail the test;
+test timeouts, assertions and Chromium's normal fixture are unchanged.
+`isolated-browser.spec.ts` runs a small child suite in both browsers to verify
+context options, native touch taps, storage isolation, context closure and WebKit
+disconnection before the next case. An intentional child failure also verifies
+that failure screenshots and traces survive cleanup.
+
 Run the same groups locally (one at a time; the fixture uses a fixed port):
 
 ```sh

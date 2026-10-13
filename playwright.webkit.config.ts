@@ -11,6 +11,7 @@ if (!['all', 'lottie', 'other'].includes(group)) {
 export default defineConfig({
   ...browserConfig,
   testMatch: [
+    'isolated-browser.spec.ts',
     'shader-compiler.spec.ts',
     'touch-webkit.spec.ts',
     'dash-rendering.spec.ts',
