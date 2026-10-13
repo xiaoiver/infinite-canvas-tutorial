@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, appendFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, appendFileSync, renameSync } from 'node:fs';
 import path from 'node:path';
 
 const seconds = (ms) => (ms / 1000).toFixed(2);
@@ -18,6 +18,14 @@ export function summarizeTimings(report) {
     `Status: ${cell(report.status)}. Wall time: ${seconds(
       report.duration,
     )}s. Test attempts: ${report.attempts.length}.`,
+    ...(report.active?.length
+      ? [
+          '',
+          `Unfinished tests: ${report.active
+            .map((test) => cell(test.title))
+            .join(', ')}.`,
+        ]
+      : []),
     '',
     '### Slowest files',
     '',
@@ -55,12 +63,25 @@ export function summarizeTimings(report) {
 export default class BrowserTimingReporter {
   phases = new WeakMap();
   attempts = [];
+  active = new Map();
 
-  onBegin(config) {
+  onBegin(config, suite) {
+    this.startedAt = Date.now();
+    this.totalTests = suite.allTests().length;
     this.browser = config.projects[0]?.use.browserName ?? 'chromium';
     this.group =
       process.env.BROWSER_TEST_GROUP ??
       (config.shard ? `${config.shard.current}/${config.shard.total}` : 'all');
+    this.checkpoint();
+  }
+
+  onTestBegin(test, result) {
+    this.active.set(test.id, {
+      file: path.relative(process.cwd(), test.location.file),
+      title: test.titlePath().filter(Boolean).join(' › '),
+      retry: result.retry,
+    });
+    this.checkpoint();
   }
 
   onStepEnd(_test, result, step) {
@@ -74,6 +95,7 @@ export default class BrowserTimingReporter {
   }
 
   onTestEnd(test, result) {
+    this.active.delete(test.id);
     const { setup, teardown } = this.phases.get(result) ?? {
       setup: 0,
       teardown: 0,
@@ -88,24 +110,39 @@ export default class BrowserTimingReporter {
       body: Math.max(0, result.duration - setup - teardown),
       teardown,
     });
+    this.checkpoint();
   }
 
-  onEnd(result) {
+  checkpoint(result) {
+    // Persist completed attempts and the active test while the runner is alive.
+    // A hard cancellation may never call onEnd; the last JSON remains useful.
+    if (this.startedAt === undefined && !result) return;
     const report = {
-      browser: this.browser,
-      group: this.group,
-      status: result.status,
-      duration: result.duration,
+      browser: this.browser ?? 'unknown',
+      group: this.group ?? process.env.BROWSER_TEST_GROUP ?? 'all',
+      status: result?.status ?? 'running',
+      duration: result?.duration ?? Date.now() - this.startedAt,
+      totalTests: this.totalTests ?? 0,
+      active: [...this.active.values()],
       attempts: this.attempts,
     };
     const directory = '.test-results';
     mkdirSync(directory, { recursive: true });
     writeFileSync(
-      `${directory}/browser-timings.json`,
+      `${directory}/browser-timings.json.tmp`,
       JSON.stringify(report, null, 2),
     );
+    renameSync(
+      `${directory}/browser-timings.json.tmp`,
+      `${directory}/browser-timings.json`,
+    );
+    return report;
+  }
+
+  onEnd(result) {
+    const report = this.checkpoint(result);
     const summary = summarizeTimings(report);
-    writeFileSync(`${directory}/browser-timings.md`, summary);
+    writeFileSync('.test-results/browser-timings.md', summary);
     if (process.env.GITHUB_STEP_SUMMARY) {
       appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
     }

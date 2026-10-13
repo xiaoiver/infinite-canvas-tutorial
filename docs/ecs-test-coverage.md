@@ -1792,6 +1792,37 @@ pnpm test:ecs
 pnpm test:tooling
 ```
 
+### CI 跟进：Chromium 分片与超时报告
+
+2026-10-13，PR #415 合并后复查浏览器门禁，
+[Chromium shard-2](https://github.com/xiaoiver/infinite-canvas-tutorial/actions/runs/38281226862/job/114918729091)
+的 GitHub 注解明确记录超过 25 分钟任务上限，导致该分片取消、汇总门禁失败。
+本地定向滤镜回归通过并不代表完整浏览器 CI 已通过。
+
+- Chromium 从两个分片拆成四个，当前实际发现的 501 项测试分为
+  132、122、122、125 项。继续使用单 worker、串行文件分组、零重试和原有断言。
+  WebKit 保留 Lottie 独立组及三个其他分片。
+- Playwright 设置 20 分钟全局时限，GitHub 任务仍为 25 分钟，为初始化、
+  报告输出和 artifact 上传留出空间。超时仍以失败退出，不会放行汇总门禁。
+- timing reporter 在每项测试开始、结束时原子写入 JSON，记录已完成用例和
+  当前活动用例。Playwright 全局超时可能不发送最后一个用例的结束回调，
+  报告会保留并列出未完成用例，不将其视作完成或通过。
+- tooling 实际发现所有 Chromium/WebKit 测试，验证分片完整、无重复且非空；
+  通过一个受控挂起的真实 Playwright 子进程，验证超时失败、部分进度、
+  JSON 报告和摘要输出。现有失败、取消和跳过状态的门禁检查保留。
+
+25 项 tooling 检查、仓库 ESLint 和浏览器 TypeScript 检查通过。
+本次只调整 CI 与诊断工具，不改变 ECS 实现、覆盖率统计范围或门槛；
+后续继续文本与独立描边的空间滤镜。
+
+```sh
+pnpm test:tooling
+pnpm exec playwright test -c playwright.browser.config.ts --shard=3/4 \
+  --global-timeout=1200000 --reporter=list,json,./scripts/browser-timing-reporter.mjs
+pnpm exec playwright test -c playwright.browser.config.ts --shard=4/4 \
+  --global-timeout=1200000 --reporter=list,json,./scripts/browser-timing-reporter.mjs
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：

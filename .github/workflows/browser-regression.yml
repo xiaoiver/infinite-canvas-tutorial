@@ -38,15 +38,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # File-level sharding preserves serial gestures and one GPU worker.
+          # Two Chromium shards no longer fit the 25-minute job budget.
           - browser: chromium
             group: shard-1
             config: playwright.browser.config.ts
-            shard: 1/2
+            shard: 1/4
             webkit-group: all
           - browser: chromium
             group: shard-2
             config: playwright.browser.config.ts
-            shard: 2/2
+            shard: 2/4
+            webkit-group: all
+          - browser: chromium
+            group: shard-3
+            config: playwright.browser.config.ts
+            shard: 3/4
+            webkit-group: all
+          - browser: chromium
+            group: shard-4
+            config: playwright.browser.config.ts
+            shard: 4/4
             webkit-group: all
           # Keep Lottie isolated. The remaining suites outgrew the 25-minute
           # budget; split them across three independent single-worker runners.
@@ -82,9 +94,11 @@ jobs:
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
       - name: Run browser tests
+        # Let Playwright fail and flush reports before the runner kills the job.
         run: >-
           pnpm exec playwright test -c ${{ matrix.config }}
           --shard=${{ matrix.shard }}
+          --global-timeout=1200000
           --reporter=list,json,./scripts/browser-timing-reporter.mjs
         env:
           PLAYWRIGHT_WEBKIT_GROUP: ${{ matrix.webkit-group }}
