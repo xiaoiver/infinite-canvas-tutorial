@@ -47,10 +47,12 @@ import {
 } from '../utils/strokeLayers';
 import { composeFillLayerTexturesOnGpu } from '../utils/fillLayerComposeGpu';
 import { createComposedFillTexture } from '../utils/composed-fill-texture';
+import { createRasterFilterInput } from '../utils/raster-filter-input';
 import {
   getRasterFilterValueForShape,
   hasRasterPostEffects,
   filterRasterPostEffects,
+  getRasterFilterPadding,
 } from '../utils/filter';
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
 import {
@@ -103,6 +105,7 @@ export class SDF extends Drawcall {
   #fillTextureFromPostChain = false;
   /** Fill+stroke were rasterized for raster filters; GPU stroke width must be zero to avoid double draw. */
   #bakedStrokeIntoFilterTexture = false;
+  #blurRaster: ReturnType<typeof createRasterFilterInput> | null = null;
 
   /** Per-layer GPU textures when {@link FillLayers} contains gradients (Normal 叠加). */
   #fillLayerTextures: Texture[] = [];
@@ -122,12 +125,35 @@ export class SDF extends Drawcall {
    */
   #usePrecomposedMultiFill = false;
 
+  private get blurPadding(): number {
+    const shape = this.shapes[0];
+    // Keep stencil and wireframe geometry intact. External textures do not yet
+    // expose the raster dimensions required by the capture path.
+    if (
+      !shape ||
+      this.instanced ||
+      this.useStencil ||
+      this.useWireframe ||
+      shape.has(FillTexture)
+    )
+      return 0;
+    return getRasterFilterPadding(getRasterFilterValueForShape(shape));
+  }
+
+  protected override get useFillImage() {
+    return super.useFillImage || this.blurPadding > 0;
+  }
+
   protected override get extraShaderDefines(): string {
-    const s = this.shapes[0];
-    if (!s || this.instanced) {
-      return super.extraShaderDefines;
+    if (this.blurPadding > 0) {
+      return `${super.extraShaderDefines}#define USE_BLUR_FILTER_OUTPUT\n`;
     }
-    if (shouldBakeStrokeIntoRasterFilterTexture(s)) {
+    const shape = this.shapes[0];
+    if (
+      shape &&
+      !this.instanced &&
+      shouldBakeStrokeIntoRasterFilterTexture(shape)
+    ) {
       return `${super.extraShaderDefines}#define USE_FILLIMAGE_BAKED_STROKE\n`;
     }
     return super.extraShaderDefines;
@@ -157,6 +183,43 @@ export class SDF extends Drawcall {
     const effects = filterRasterPostEffects(parseEffect(filterValue));
     if (effects.length === 0) {
       return raw;
+    }
+    const padding = this.blurPadding;
+    if (padding > 0) {
+      const geometry = getSdfGeometryBoundsForFilter(instance);
+      const stroke = instance.has(Stroke) ? instance.read(Stroke) : null;
+      const outset =
+        padding +
+        (stroke
+          ? stroke.width *
+            (stroke.alignment === 'inner'
+              ? 0
+              : stroke.alignment === 'outer'
+              ? 1
+              : 0.5)
+          : 0);
+      const [, uniforms] = this.generateBuffer(instance, 0, 1);
+      this.#blurRaster = createRasterFilterInput({
+        device: this.device,
+        renderCache: this.renderCache,
+        vertex: '#define USE_FILLIMAGE\n' + vert,
+        fragment: '#define USE_FILLIMAGE\n#define CAPTURE_FILTER_INPUT\n' + frag,
+        points: this.vertexBufferDatas[0],
+        indices: this.indexBufferData,
+        uniforms,
+        texture: raw,
+        sampler: this.createSampler(),
+        bounds: {
+          minX: geometry.minX - outset,
+          minY: geometry.minY - outset,
+          maxX: geometry.maxX + outset,
+          maxY: geometry.maxY + outset,
+        },
+      });
+      raw.destroy();
+      raw = this.#blurRaster.texture;
+      tw = this.#blurRaster.width;
+      th = this.#blurRaster.height;
     }
     this.#rawFillImageTexture = raw;
     this.createPostProcessing(effects, raw, tw, th);
@@ -199,7 +262,9 @@ export class SDF extends Drawcall {
     if (!this.#fillTextureFromPostChain && !this.#borrowedFillTexture) {
       this.#texture?.destroy();
     }
-    this.#rawFillImageTexture?.destroy();
+    if (this.#blurRaster) this.#blurRaster.destroy();
+    else this.#rawFillImageTexture?.destroy();
+    this.#blurRaster = null;
     this.#rawFillImageTexture = null;
     this.#texture = null;
     this.#fillTextureFromPostChain = false;
@@ -709,8 +774,10 @@ export class SDF extends Drawcall {
           this.#texture = this.#fillLayerTextures[0]!;
           this.#usePrecomposedMultiFill = false;
         }
-      } else if (instance.has(FillLayers)) {
-        const one = getSingleEnabledFillLayer(instance);
+      } else if (instance.has(FillLayers) || this.blurPadding > 0) {
+        const one = getSingleEnabledFillLayer(instance) ??
+          (getRasterFilterPadding(getRasterFilterValueForShape(instance)) > 0
+            ? { type: 'solid' as const, value: 'transparent' } : null);
         if (one) {
           const { minX, minY, maxX, maxY } =
             getSdfGeometryBoundsForFilter(instance);
@@ -1358,6 +1425,11 @@ export class SDF extends Drawcall {
       opacity: iso,
     } = parseColor(innerShadowColor);
 
+    if (this.#blurRaster) {
+      const b = this.#blurRaster.bounds;
+      position = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, zIndex, 0];
+      size = [(b.maxX - b.minX) / 2, (b.maxY - b.minY) / 2, 0, 0];
+    }
     const u_Position = position;
     const u_Size = size;
     let frN = fr / 255;
@@ -1396,7 +1468,7 @@ export class SDF extends Drawcall {
       fbN = 1;
       fa = 1;
     }
-    const u_FillColor = [frN, fgN, fbN, fa];
+    const u_FillColor = this.#blurRaster ? [1, 1, 1, 1] : [frN, fgN, fbN, fa];
     const u_StrokeColor = [
       sr / 255,
       sg / 255,

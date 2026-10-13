@@ -34,6 +34,10 @@ export const filterStringUsesEngineTimeCrt = delegate<typeof stubs.filterStringU
 export const filterStringUsesEngineTimePost = delegate<typeof stubs.filterStringUsesEngineTimePost>('filterStringUsesEngineTimePost');
 export const filterStringUsesEngineTimeGlitch = delegate<typeof stubs.filterStringUsesEngineTimeGlitch>('filterStringUsesEngineTimeGlitch');
 export const hasRasterPostEffects = delegate<typeof stubs.hasRasterPostEffects>('hasRasterPostEffects');
+/** Extra local-space sampling footprint; older/no-op backends need no padding. */
+export function getRasterFilterPadding(filterValue: string | undefined): number {
+  return resolve().getRasterFilterPadding?.(filterValue) ?? 0;
+}
 export const filterRasterPostEffects = delegate<typeof stubs.filterRasterPostEffects>('filterRasterPostEffects');
 export const collectRainDropTextureUrlsFromFilterValue = delegate<typeof stubs.collectRainDropTextureUrlsFromFilterValue>('collectRainDropTextureUrlsFromFilterValue');
 export const isRainFxEffect = delegate<typeof stubs.isRainFxEffect>('isRainFxEffect');

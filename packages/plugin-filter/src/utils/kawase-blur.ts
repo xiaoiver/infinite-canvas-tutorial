@@ -25,7 +25,9 @@ export function generateKawaseKernels(
 }
 
 export function kawaseKernelsForBlurEffect(effect: BlurEffect): number[] {
-  const strength = Number.isFinite(effect.value) ? Math.max(0, effect.value) : 0;
+  const strength = Number.isFinite(effect.value)
+    ? Math.max(0, effect.value)
+    : 0;
   const quality = Number.isFinite(effect.quality)
     ? effect.quality!
     : BLUR_DEFAULTS.quality;
@@ -57,17 +59,29 @@ export function kawaseBlurUniformValues(
   const tw = Math.max(1, textureWidth);
   const th = Math.max(1, textureHeight);
   const { x: pixelSizeX, y: pixelSizeY } = blurPixelSize(effect);
-  const offset = kernel + 0.5;
+  const offset = effect.value > 0 ? kernel + 0.5 : 0;
   const uvX = (pixelSizeX / tw) * offset;
   const uvY = (pixelSizeY / th) * offset;
   const useClamp = blurEffectUsesClamp(effect) ? 1 : 0;
-  return [uvX, uvY, useClamp, 0, 0, 0, 1, 1];
+  // Clamp to texel centers. The shader also uses min.xy to recover texel size
+  // when interpolating straight RGBA in premultiplied space.
+  return [
+    uvX,
+    uvY,
+    useClamp,
+    0,
+    0.5 / tw,
+    0.5 / th,
+    1 - 0.5 / tw,
+    1 - 0.5 / th,
+  ];
 }
 
-/** Sum of (kernel + 0.5) per pass — useful for filter texture padding. */
+/** Conservative sampling footprint, including bilinear neighbors of every pass. */
 export function kawaseBlurPadding(effect: BlurEffect): number {
+  if (!(effect.value > 0)) return 0;
   const kernels = kawaseKernelsForBlurEffect(effect);
-  return Math.ceil(
-    kernels.reduce((acc, k) => acc + Math.max(0, k) + 0.5, 0),
-  );
+  const { x, y } = blurPixelSize(effect);
+  const scale = Math.max(Math.abs(x), Math.abs(y));
+  return kernels.reduce((acc, k) => acc + Math.ceil((k + 0.5) * scale), 0);
 }

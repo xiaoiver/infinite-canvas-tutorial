@@ -5,6 +5,7 @@ import {
   frag_declaration as wireframe_frag_declaration,
   Location as WireframeLocation,
 } from './wireframe';
+import { straightAlphaSampling } from './straight-alpha';
 
 export enum Location {
   BARYCENTRIC = WireframeLocation.BARYCENTRIC,
@@ -143,7 +144,11 @@ void main() {
     strokeWidth = strokeWidth / u_ZoomScale;
   }
 
-#ifdef USE_FILLIMAGE_BAKED_STROKE
+#ifdef USE_BLUR_FILTER_OUTPUT
+  v_FragCoord = a_FragCoord * size;
+  v_Radius = abs(size);
+  v_Uv = (a_FragCoord + 1.0) / 2.0;
+#elif defined(USE_FILLIMAGE_BAKED_STROKE)
   float bakedHalfStroke = u_FilterExtras.y * 0.5;
   vec2 radius = size + vec2(bakedHalfStroke);
   v_FragCoord = vec2(a_FragCoord * radius);
@@ -236,6 +241,10 @@ in vec2 v_Radius;
 
 float epsilon = 0.000001;
 
+#ifdef USE_BLUR_FILTER_OUTPUT
+${straightAlphaSampling}
+#endif
+
 float sdf_circle(vec2 p, float r) {
   return length(p) - r;
 }
@@ -276,13 +285,24 @@ vec4 over(vec4 below, vec4 above) {
 }
 
 float antialias(float distance) {
-  return clamp(distance / -fwidth(distance), 0.0, 1.0);
+  // Derivatives can be zero on the diagonal of a symmetric shape. Avoid
+  // undefined division leaving opaque stroke pixels inside a hollow capture.
+  return clamp(-distance / max(fwidth(distance), 0.0001), 0.0, 1.0);
 }
 
 vec4 mix_border_inside(vec4 border, vec4 inside, float distance) {
   // Blend the border on top of the background and then linearly interpolate
   // between the two as we slide inside the background.
-  return mix(border, inside, clamp(1.0 - distance, 0.0, 1.0) * antialias(distance));
+  float weight = clamp(1.0 - distance, 0.0, 1.0) * antialias(distance);
+#ifdef CAPTURE_FILTER_INPUT
+  // Capture straight RGBA, but interpolate coverage in premultiplied space.
+  // Otherwise the transparent fill darkens an antialiased solid stroke.
+  vec4 color = mix(vec4(border.rgb * border.a, border.a),
+    vec4(inside.rgb * inside.a, inside.a), weight);
+  return color.a > 0.0 ? vec4(color.rgb / color.a, color.a) : vec4(0.0);
+#else
+  return mix(border, inside, weight);
+#endif
 }
 
 float sigmoid(float t) {
@@ -303,6 +323,14 @@ float make_shadow(vec2 pos, vec2 halfSize, float cornerRd, float blurRd, float d
 }
 
 void main() {
+#ifdef USE_BLUR_FILTER_OUTPUT
+  outputColor = sampleStraightTexture(v_Uv, 2.0 * u_Size.xy);
+  outputColor.a *= u_Opacity.x;
+#ifdef USE_SOFT_CLIP_OUTSIDE
+  outputColor *= 0.15;
+#endif
+  if (outputColor.a < epsilon) discard;
+#else
   float strokeWidth;
   vec4 fillColor;
   vec4 strokeColor;
@@ -464,6 +492,7 @@ void main() {
 
 #ifdef USE_SOFT_CLIP_OUTSIDE
   outputColor *= 0.15;
+#endif
 #endif
 }
 `;

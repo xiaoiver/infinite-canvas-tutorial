@@ -82,6 +82,13 @@ const snapshot = () => ({
     .map(({ width, height }) => [width, height]),
 });
 const harness = {
+  async view(zoom: number) {
+    await api.edit(() =>
+      api.setAppState({ cameraZoom: zoom, cameraX: 0, cameraY: 0 }),
+    );
+    await settleECSFrames(api);
+    return snapshot();
+  },
   async render(node: SerializedNode, globalFilter = '') {
     await api.edit(() => {
       api.setAppState({ filter: globalFilter });

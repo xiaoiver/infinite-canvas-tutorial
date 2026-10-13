@@ -117,7 +117,13 @@ Brightness, contrast, hue/saturation, noise, dot and color-halftone adjustments 
 
 For example, `rgba(64,128,192,0.5)` with `brightness(0.2)` becomes approximately `rgba(115,179,243,0.5)` before shape opacity is applied. Lowering paint alpha should not reduce the brightness adjustment itself. These color filters update ordinary uniforms on WebGL1 as well as uniform buffers on WebGL2; scalar std140 blocks retain the required 16-byte alignment for WebKit.
 
-Blur needs separate handling of alpha-weighted sampling and geometry outside the original bounds; this color-filter convention alone does not provide that padding.
+### Blur outside the original shape {#blur-bounds}
+
+For SDF primitives and ordinary Path fills, a positive `blur()` first captures the shape's fill, silhouette and SDF solid stroke into a texture with transparent padding. The final draw covers that padded area, so the blur can extend past rounded edges and into Path holes. Only render bounds expand; selection geometry stays unchanged. For example, `filter: 'blur(6px, 3)'` softens the outline, while `blur(0px)` preserves it.
+
+Sampling interpolates premultiplied texels before converting back to straight RGBA. This keeps a translucent blue edge blue instead of mixing transparent black into its RGB, including when zoomed in. Padding includes the sampling footprint of every pass and every consecutive blur. WebGL1 updates each pass's kernel uniforms immediately before drawing.
+
+This capture path currently covers SDF fills/solid strokes and ordinary Path/VectorNetwork fills. Text, separate Path strokes, rough fills, wireframe/stencil draws and external `FillTexture` inputs retain their existing filter paths; they do not yet receive this expanded geometry. Complete WebGPU rendering still needs separate validation.
 
 ### Brightness and contrast {#brightness-contrast}
 
