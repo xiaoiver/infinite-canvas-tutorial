@@ -3,6 +3,15 @@ import { test } from './isolated-webkit-test';
 import type { Pen } from '@infinite-canvas-tutorial/ecs';
 import type { PenbarCrop } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 
+declare global {
+  interface Window {
+    cropSetup: {
+      status: 'pending' | 'committed' | 'cancelled' | 'failed';
+      error?: string;
+    };
+  }
+}
+
 async function drain(page: Page) {
   await page.evaluate(
     () =>
@@ -21,8 +30,12 @@ async function ready(page: Page) {
       timeout: 45000,
     });
   }
-  await page.evaluate(async () => {
-    await window.apis.left.edit(
+  // Chromium can collect an awaited CDP Promise while the edit commits, which
+  // Playwright reports as a destroyed context. Submit once and poll plain state;
+  // never retry the mutation after an ambiguous protocol error.
+  await page.evaluate(() => {
+    window.cropSetup = { status: 'pending' };
+    const setup = window.apis.left.edit(
       (api) => {
         api.updateNodes([
           {
@@ -72,7 +85,20 @@ async function ready(page: Page) {
       },
       { capture: 'NEVER' },
     );
+    void setup.then(
+      (committed) => {
+        window.cropSetup = { status: committed ? 'committed' : 'cancelled' };
+      },
+      (error: unknown) => {
+        window.cropSetup = { status: 'failed', error: String(error) };
+      },
+    );
   });
+  await expect
+    .poll(() => page.evaluate(() => window.cropSetup))
+    .toEqual({
+      status: 'committed',
+    });
   const panel = page
     .getByTestId('left-shortcuts')
     .locator('ic-spectrum-penbar-crop');
