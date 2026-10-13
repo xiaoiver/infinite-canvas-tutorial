@@ -48,6 +48,7 @@ export default defineConfig({
     },
   },
   vite: {
+    optimizeDeps: { exclude: ['@infinite-canvas-tutorial/device-api'] },
     // d3-color Hoisting problem: color is undefined
     resolve: {
       alias: [

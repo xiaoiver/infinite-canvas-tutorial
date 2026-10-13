@@ -602,6 +602,11 @@ a committed edit, not a rendered frame.
 
 ## Framework starters
 
+With `renderer="webgpu"`, omitting `shaderCompilerPath` loads the matching
+compiler bundled with the device package on demand. See the [WebGPU compiler
+setup](/reference/create-app#shader-compiler) for Vite's dependency-prebundling
+configuration and custom URLs. WebGL and SSR do not load the compiler.
+
 Copy the [Vite or Next.js starter](https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/examples)
 for a minimal Provider, initial scene, reactive shape counter, and undo/redo
 toolbar. The Next.js example uses a Client Component editor within a Server

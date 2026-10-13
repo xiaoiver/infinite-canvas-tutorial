@@ -43,10 +43,11 @@ writeFileSync(
   join(vendor, `${name}.js`),
   format === 'commonjs'
     ? ts.transpileModule(javascript, {
-        fileName: `${name}.js`,
+        fileName: `${name}.cts`,
         compilerOptions: {
           target: ts.ScriptTarget.ES2020,
-          module: ts.ModuleKind.CommonJS,
+          // Preserve native import() of the lazy asset resolver in CommonJS.
+          module: ts.ModuleKind.Node16,
         },
       }).outputText
     : javascript,
@@ -57,3 +58,7 @@ for (const suffix of ['.d.ts', '_bg.wasm', '_bg.wasm.d.ts']) {
     join(vendor, `${name}${suffix}`),
   );
 }
+copyFileSync(
+  join(source, 'shader-compiler-url.mjs'),
+  join(vendor, 'shader-compiler-url.mjs'),
+);

@@ -7,6 +7,7 @@
   "files": [
     "glsl_wgsl_compiler_bg.wasm",
     "glsl_wgsl_compiler.js",
+    "shader-compiler-url.mjs",
     "glsl_wgsl_compiler.d.ts"
   ],
   "module": "glsl_wgsl_compiler.js",

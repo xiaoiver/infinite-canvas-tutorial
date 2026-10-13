@@ -568,7 +568,7 @@ recreating the canvas cancels a pending initial edit.
 | `initialNodes`                 | Copied once per canvas creation and inserted into ECS after `onReady` completes, without an undo entry. Later prop changes do not replace user edits. |
 | `initialAppState`              | Initial canvas state; later edits use `api.setAppState()`.                                                                                            |
 | `renderer`                     | `webgl` (default) or `webgpu`. Changing it recreates the canvas.                                                                                      |
-| `shaderCompilerPath`           | Override the WebGPU shader compiler URL. Changing it recreates the canvas.                                                                            |
+| `shaderCompilerPath`           | Override the WebGPU compiler URL. Omit it for the bundled compiler; see [setup](https://infinitecanvas.cc/reference/create-app#shader-compiler) for Vite configuration. Changing it recreates the canvas. |
 | `theme`                        | `light` or `dark`; updates both the Spectrum theme and canvas state.                                                                                  |
 | `locale`                       | Lit's shared locale. Canvases in the same page share localization.                                                                                    |
 | `runtime`                      | Shared runtime created with `createCanvasRuntime()`. Omit to use the default.                                                                         |

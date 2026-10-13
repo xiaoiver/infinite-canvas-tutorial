@@ -37,14 +37,26 @@ import '@infinite-canvas-tutorial/webcomponents';
 该组件中，可以通过 HTML Attribute 传入的参数如下：
 
 -   `renderer` 渲染器。可选值为 `'webgl' | 'webgpu'`，默认为 `'webgl'`
--   `shader-compiler-path` 用于将 GLSL 转译成 WGSL，详见 [课程 1 - 硬件抽象层]。默认值为 `'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm'`
+-   `shader-compiler-path` 覆盖 GLSL 转 WGSL 编译器的 URL。默认空值会加载 `@infinite-canvas-tutorial/device-api` 包内配套的 WASM，详见 [课程 1 - 硬件抽象层]。
 -   `theme` 主题。可选值为 `'dark' | 'light'`，默认为 `'light'`
 -   `app-state` JSON 字符串形式的应用状态，可以控制例如相机初始化参数
 -   `nodes` JSON 字符串形式的图形列表
 
 ### 打包 WebGPU Shader 编译器 {#shader-compiler}
 
-使用 Vite 的 ECS 项目，建议导入 `@infinite-canvas-tutorial/device-api` 导出的 WASM，使编译器与 JavaScript 绑定配套。通过 `?url` 导入后，Vite 会将文件与应用一起提供，避免运行时从 UNPKG 加载。请在将画布加入 DOM 前设置该属性：
+`ic-spectrum-canvas` 和 React 封装会在 WebGPU 初始化时加载 `@infinite-canvas-tutorial/device-api` 包内配套的编译器。WebGL 和 SSR 导入不会请求或初始化它。Vite 和 webpack 的生产构建会将 WASM 输出为应用资源，默认不再依赖 UNPKG。
+
+Vite 开发模式需要将 device 包排除在依赖预打包之外，使编译器地址保持相对于模块的位置。React Vite 模板已包含这项配置：
+
+```ts
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+    optimizeDeps: { exclude: ['@infinite-canvas-tutorial/device-api'] },
+});
+```
+
+仍可指定自定义编译器 URL，包括通过 `?url` 显式导入的地址。请在将画布加入 DOM 前设置该属性：
 
 ```ts
 import compilerUrl from '@infinite-canvas-tutorial/device-api/shader-compiler.wasm?url';
@@ -56,7 +68,7 @@ canvas.setAttribute('shader-compiler-path', compilerUrl);
 document.body.append(canvas);
 ```
 
-默认 CDN 地址仍显式固定为 `1.6.13`。经 2026 年 10 月 13 日核对，其 WASM 与此前的 `1.6.8` 文件和包内置文件逐字节相同，修改该地址不会升级编译器。安装上游 npm 包前，请先阅读[第一课的安全说明](/zh/guide/lesson-001)。
+较早的教程组件和 `ic-canvas` 仍使用固定为 `1.6.13` 的上游 CDN 地址。经 2026 年 10 月 13 日核对，其 WASM 与包内文件逐字节相同，改用内置资源不会升级编译器。安装上游 npm 包前，请先阅读[第一课的安全说明](/zh/guide/lesson-001)。
 
 ## 获取 API {#use-api}
 

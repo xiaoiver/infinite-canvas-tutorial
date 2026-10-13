@@ -85,9 +85,7 @@ export class WebGPUDeviceContribution implements DeviceContribution {
 
     if (!context) return null;
 
-    try {
-      await init(this.pluginOptions.shaderCompilerPath);
-    } catch (e) { }
+    await init(this.pluginOptions.shaderCompilerPath || undefined);
 
     return new Device_WebGPU(
       boundAdapter,
