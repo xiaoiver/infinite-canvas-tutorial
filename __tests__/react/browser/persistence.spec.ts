@@ -204,7 +204,10 @@ for (const locale of ['en', 'zh']) {
       });
     await expect(left.locator('[data-state="nodes"]')).toHaveText('3');
     await page.reload();
-    await expect(left.locator('[data-state="nodes"]')).toHaveText('2');
+    // Reload creates a new App, so use the same startup budget as navigation.
+    await expect(left.locator('[data-state="nodes"]')).toHaveText('2', {
+      timeout: 45000,
+    });
     await left.locator('[data-document-action="load"]').click();
     await expect(left.locator('[data-state="nodes"]')).toHaveText('3');
     await expect(left.locator('[data-state="width"]')).toHaveText('80');

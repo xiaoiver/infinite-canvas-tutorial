@@ -113,6 +113,8 @@ The reports are written to `.test-results/browser-timings.json` and
 timeout within its 25-minute CI job. The JSON checkpoints completed attempts and
 active tests during the run. At run completion, the report and summary are frozen;
 late worker shutdown callbacks cannot overwrite the final timeout status.
+The tooling timeout fixture waits for the reporter's checkpoint across the
+worker/parent process boundary, including deliberately delayed reporting.
 The existing ECS suite remains a separate regression check.
 
 Lesson 12 dash rendering checks run in Chromium and WebKit. They compare rendered
@@ -144,6 +146,23 @@ uses trusted touch drags; WebKit uses DOM touch PointerEvents for resizing.
 Assertions cover geometry, the React inspector, history, and isolation from the
 second canvas. These are interaction checks, not a physical iOS or WebKit visual
 rendering check. The React 18/19 CI matrix runs both browsers.
+
+The shared React editing fixture uses `createCanvasRuntime({ appOptions:
+{ maxEntities: 16_384 } })`. Both canvases and their internal entities share this
+budget; `maxLimboComponents` follows `maxEntities`. This limits preallocated ECS
+storage for these small regression scenes. The documentation playground and
+framework starters retain the default runtime, since they also import user
+documents. The library's production defaults are unchanged.
+
+For manual comparison, run `pnpm dev:react-tests` and open
+`http://127.0.0.1:4177/` or
+`http://127.0.0.1:4177/?maxEntities=4194304` in separate browser contexts.
+The fixture accepts `maxEntities` and `maxLimboComponents` query overrides,
+including invalid values used by the runtime error tests. Chromium's CDP
+`Runtime.getHeapUsage().backingStorageSize` reports external storage such as
+ArrayBuffers and external strings, not total process memory or GPU allocations.
+Compare after both canvases report ready; startup timings also depend on Vite
+warmup and browser caches.
 
 `.github/workflows/react.yml` builds and checks each React version once, then
 restores its ESM/CJS build artifact into independent browser jobs. Each version
