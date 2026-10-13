@@ -164,6 +164,25 @@ ArrayBuffers and external strings, not total process memory or GPU allocations.
 Compare after both canvases report ready; startup timings also depend on Vite
 warmup and browser caches.
 
+The React fixture prebundles the built React, ECS and Web Components entries in
+Vite. This avoids requesting hundreds of individual workspace modules on every
+new test page. Its dependency cache is separate from the source fixtures, and
+each server startup rebuilds it so that local package rebuilds cannot leave
+tests running against stale bundles. Build the packages before starting the
+server; restart it after rebuilding them.
+
+`device-api` stays outside dependency optimization so that Vite can resolve the
+shader compiler's lazy WASM URL relative to its original module. An explicit
+alias resolves that dependency from the prebundled chunks, where pnpm's
+package-local dependency links are no longer available.
+
+In a local Chromium/SwiftShader comparison, five fresh browser contexts after
+one discarded Vite warmup reduced resource requests from 918 to 93 and median
+navigation-to-ready time for both canvases from 2.09 s to 1.38 s. These numbers
+measure page startup, excluding server startup/prebundling; they are not a CI
+duration guarantee. Use the same browser, capacity, cache conditions and ready
+checks when comparing changes. Do not reuse browser contexts across samples.
+
 `.github/workflows/react.yml` builds and checks each React version once, then
 restores its ESM/CJS build artifact into independent browser jobs. Each version
 runs two Chromium shards and three WebKit shards, with one worker per runner
