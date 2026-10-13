@@ -42,6 +42,9 @@ export default defineConfig({
     },
   },
   esbuild: { jsx: 'automatic' },
-  optimizeDeps: { esbuildOptions: { target: 'esnext' } },
+  optimizeDeps: {
+    exclude: ['@infinite-canvas-tutorial/device-api'],
+    esbuildOptions: { target: 'esnext' },
+  },
   server: { host: '127.0.0.1', port: 4177, strictPort: true },
 });

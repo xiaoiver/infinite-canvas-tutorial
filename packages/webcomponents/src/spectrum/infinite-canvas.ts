@@ -201,8 +201,7 @@ export class InfiniteCanvas extends LitElement {
   @property({
     attribute: 'shader-compiler-path',
   })
-  shaderCompilerPath =
-    'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm';
+  shaderCompilerPath = '';
 
   @property()
   theme: 'dark' | 'light' = 'light';

@@ -548,6 +548,10 @@ Promise 成功表示编辑已提交，不等待画面渲染，也不等待图片
 
 ## 框架接入示例
 
+使用 `renderer="webgpu"` 且省略 `shaderCompilerPath` 时，会按需加载 device 包内配套的编译器。
+Vite 依赖预打包配置和自定义 URL 的用法见 [WebGPU 编译器配置](/zh/reference/create-app#shader-compiler)。
+WebGL 和 SSR 不会加载该编译器。
+
 [Vite 和 Next.js 最小示例](https://github.com/xiaoiver/infinite-canvas-tutorial/tree/master/examples)
 包含 Provider、初始场景、响应式图形计数和撤销/重做工具栏。
 Next.js 示例在 Server Component 页面中使用 Client Component 编辑器，支持 SSR 加载占位。

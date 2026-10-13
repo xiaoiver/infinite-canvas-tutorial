@@ -37,14 +37,26 @@ Declare the component in HTML:
 The following parameters can be passed via HTML attributes:
 
 -   `renderer` Renderer. Options are `'webgl' | 'webgpu'`, default is `'webgl'`
--   `shader-compiler-path` Used to transpile GLSL to WGSL. For more details, see [Lesson 1 - Hardware abstraction layers]. Default value is `'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm'`
+-   `shader-compiler-path` Overrides the GLSL-to-WGSL compiler URL. The default empty value loads the matching WASM bundled with `@infinite-canvas-tutorial/device-api`. For more details, see [Lesson 1 - Hardware abstraction layers].
 -   `theme` Theme. Options are `'dark' | 'light'`, default is `'light'`
 -   `app-state` Application state in JSON string format, which can control initialization parameters such as camera
 -   `nodes` List of shapes in JSON string format
 
 ### Bundling the WebGPU shader compiler {#shader-compiler}
 
-For ECS projects using Vite, prefer the WASM exported by `@infinite-canvas-tutorial/device-api` so the compiler stays with its JavaScript bindings. The `?url` import lets Vite serve the file with your application instead of fetching it from UNPKG at runtime. Set the attribute before connecting the canvas:
+`ic-spectrum-canvas` and the React bindings load the matching compiler bundled with `@infinite-canvas-tutorial/device-api` when WebGPU initializes. WebGL and SSR imports do not fetch or initialize it. Vite and webpack production builds emit the WASM as an application asset, so the default no longer depends on UNPKG.
+
+For Vite development, exclude the device package from dependency prebundling so the compiler URL stays relative to its module. The React Vite starter already includes this configuration:
+
+```ts
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+    optimizeDeps: { exclude: ['@infinite-canvas-tutorial/device-api'] },
+});
+```
+
+You can still override the compiler URL, including an explicit `?url` import. Set the attribute before connecting the canvas:
 
 ```ts
 import compilerUrl from '@infinite-canvas-tutorial/device-api/shader-compiler.wasm?url';
@@ -56,7 +68,7 @@ canvas.setAttribute('shader-compiler-path', compilerUrl);
 document.body.append(canvas);
 ```
 
-The default CDN URL remains explicitly pinned to `1.6.13`. Its WASM is byte-for-byte identical to the previous `1.6.8` artifact and the bundled file checked on October 13, 2026; changing this URL does not upgrade the compiler. See the [security note in Lesson 1](/guide/lesson-001) before installing the upstream npm package.
+The older lesson components and `ic-canvas` still use the upstream CDN URL pinned to `1.6.13`. Its WASM is byte-for-byte identical to the bundled file checked on October 13, 2026; switching to the bundled asset does not upgrade the compiler. See the [security note in Lesson 1](/guide/lesson-001) before installing the upstream npm package.
 
 ## Getting the API {#use-api}
 

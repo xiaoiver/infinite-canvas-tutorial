@@ -122,6 +122,32 @@ try {
   const composer = new compiler.WGSLComposer();
   composer.free();
   assert.equal(typeof compiler.glsl_compile, 'function');
+  // A fresh process exercises the default lazy ESM asset resolver from the
+  // CommonJS package, rather than reusing the initSync instance above.
+  const defaultCompiler = `
+const assert = require('node:assert/strict');
+const { readFileSync } = require('node:fs');
+let requests = 0;
+globalThis.fetch = async url => {
+  assert(url instanceof URL);
+  assert(url.pathname.endsWith('/lib/vendor/glsl_wgsl_compiler_bg.wasm'));
+  requests++;
+  return new Response(readFileSync(url), { headers: { 'Content-Type': 'application/wasm' } });
+};
+const compiler = require('./node_modules/@infinite-canvas-tutorial/device-api/lib/vendor/glsl_wgsl_compiler.js');
+assert.equal(requests, 0);
+(async () => {
+  await compiler.default();
+  await compiler.default();
+  assert.equal(requests, 1);
+  const wgsl = compiler.glsl_compile('#version 440\\nvoid main() { gl_Position = vec4(0.0, 0.0, 0.0, 1.0); }', 'vertex', true);
+  assert(wgsl.includes('@vertex') && wgsl.includes('@builtin(position)'));
+})().catch(error => { console.error(error); process.exitCode = 1; });
+`;
+  writeFileSync(join(consumer, 'default-compiler.cjs'), defaultCompiler);
+  execFileSync(process.execPath, [join(consumer, 'default-compiler.cjs')], {
+    stdio: 'inherit',
+  });
   const ssr = `
 const assert = require('node:assert/strict');
 const React = require('react');
@@ -321,6 +347,16 @@ export const editor = <><CanvasProvider><InfiniteCanvas style={{ height: 400 }} 
     },
   );
   assert(existsSync(join(viteExample, 'dist/index.html')));
+  const includesCompiler = (directory) =>
+    readdirSync(directory).some(
+      (name) =>
+        name.endsWith('.wasm') &&
+        readFileSync(join(directory, name)).equals(wasm),
+    );
+  assert(
+    includesCompiler(join(viteExample, 'dist/assets')),
+    'Vite did not emit the matching bundled shader compiler',
+  );
 
   // Next.js 16 requires React 19. React 18 still exercises the standalone Vite
   // consumer, package exports, SSR rendering, and types above.
@@ -358,6 +394,10 @@ export const editor = <><CanvasProvider><InfiniteCanvas style={{ height: 400 }} 
     assert(
       html.includes('React canvas with Next.js') &&
         html.includes('Loading canvas'),
+    );
+    assert(
+      includesCompiler(join(nextExample, '.next/static/media')),
+      'Next.js did not emit the matching bundled shader compiler',
     );
   }
   console.log(

@@ -29,6 +29,13 @@ small deterministic protocol fixture through the production `WorkerClient`;
 these tests do not download models or cover inference, WebGPU, or a production
 collaboration server.
 
+Shader compiler tests load the actual bundled WASM and compile GLSL to WGSL in
+Chromium and WebKit. They verify lazy loading, same-origin requests, a custom
+compiler URL, and retry after a broken asset. The failure-propagation case stubs
+GPU acquisition only, so these checks do not certify native WebGPU rendering.
+The package verifier also initializes the packed CommonJS compiler, checks SSR,
+and verifies that Vite and Next.js emit the matching WASM asset.
+
 Touch transformer tests use trusted Chromium touch events at phone viewport
 sizes, different camera zooms, and DPR 3. They cover padded corner and edge
 resizing, rotation, consecutive gestures, selection, and undo/redo. The separate

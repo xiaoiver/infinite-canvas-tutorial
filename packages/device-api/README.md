@@ -24,10 +24,24 @@ npm install @antv/g-device-api
 
 ## Bundled compiler in the Infinite Canvas fork
 
-`@infinite-canvas-tutorial/device-api` includes the WebGPU shader compiler
-bindings in both its CommonJS and ESM builds. Its matching WASM is exported as
-`@infinite-canvas-tutorial/device-api/shader-compiler.wasm`. With Vite, use the
-asset URL when creating a WebGPU device:
+`@infinite-canvas-tutorial/device-api` includes matching WebGPU compiler bindings
+and WASM in both its CommonJS and ESM builds. Omitting `shaderCompilerPath` (or
+passing an empty string) loads this compiler when WebGPU initializes. WebGL and
+SSR imports do not load the WASM. Compiler loading errors are propagated to the
+caller.
+
+In Vite development, keep the device package out of dependency prebundling so
+the lazy asset URL stays relative to its module:
+
+```js
+export default {
+    optimizeDeps: { exclude: ['@infinite-canvas-tutorial/device-api'] },
+};
+```
+
+The matching WASM is also exported as
+`@infinite-canvas-tutorial/device-api/shader-compiler.wasm`. A custom URL still
+takes precedence; with Vite you can explicitly import the asset URL:
 
 ```js
 import compilerUrl from '@infinite-canvas-tutorial/device-api/shader-compiler.wasm?url';
