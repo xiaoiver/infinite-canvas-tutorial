@@ -37,6 +37,18 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/utils/path-edit.ts': {
+      statements: 97,
+      branches: 94,
+      functions: 100,
+      lines: 97,
+    },
+    './packages/ecs/src/systems/DrawVectorNetwork.ts': {
+      statements: 98,
+      branches: 94,
+      functions: 96,
+      lines: 100,
+    },
     './packages/ecs/src/utils/composed-fill-texture.ts': {
       statements: 100,
       branches: 100,
