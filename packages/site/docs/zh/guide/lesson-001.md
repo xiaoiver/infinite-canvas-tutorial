@@ -13,6 +13,16 @@ head:
 -   实现一个简单的插件系统
 -   基于硬件抽象层实现一个渲染插件
 
+::: warning @antv/g-device-api 安全说明
+
+[GHSA-hqjp-pg4j-q8g2](https://github.com/advisories/GHSA-hqjp-pg4j-q8g2) 将 npm 版本 **1.7.13 和 1.8.13** 列为恶意版本，其中包含窃取凭据的 `preinstall` 脚本。**请勿安装这两个版本。** 截至 2026 年 10 月 13 日，该公告尚未列出修复版本。
+
+下方的 Shader 编译器 WASM 地址仍固定为 **1.6.8**，仅用于复现这个历史示例，不作为新项目的推荐方案。该版本不在公告列出的受影响版本中，浏览器加载 WASM 也不会执行 npm 安装脚本，但这两点均不代表该文件已经通过安全审计。
+
+仓库的 `pnpm-lock.yaml` 将本课使用的 JavaScript 包另行锁定在 **1.6.13**，该版本也不在公告列出的受影响版本中。使用本仓库学习时，请通过 `pnpm install --frozen-lockfile` 保留锁定的依赖。避免不指定版本或使用 `latest` 安装，更新依赖前应核实其来源。只有在可信的替代版本或方案经过验证后，本课才会更新推荐。
+
+:::
+
 启动项目后将看到一个空画布，可以修改宽高或者切换 WebGL / WebGPU 渲染器。
 
 ```js eval code=false
@@ -79,7 +89,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 当然，考虑到浏览器兼容性，现阶段我们仍需要尽可能兼容 WebGL1/2。在渲染引擎中，硬件抽象层（Hardware Abstraction Layer，简称 HAL）将 GPU 硬件细节抽象化，使得上层可以不依赖于具体的硬件实现。
 
-我们希望基于 WebGL1/2 和 WebGPU 尽可能提供一套统一的 API，同时提供 Shader 转译和模块化功能。[@antv/g-device-api] 参考了 [noclip] 的实现，在其基础上兼容了 WebGL1，我也在一些可视化相关的项目中使用了它。
+我们希望基于 WebGL1/2 和 WebGPU 尽可能提供一套统一的 API，同时提供 Shader 转译和模块化功能。本课使用的 [@antv/g-device-api] 参考了 [noclip] 的实现，在其基础上兼容了 WebGL1。安装该依赖前，请先阅读上方的安全说明。
 
 由于 WebGL 和 WebGPU 使用 Shader 语言不同，又不希望维护 GLSL 和 WGSL 两套代码，因此我们选择在运行时对 Shader 进行转译：
 

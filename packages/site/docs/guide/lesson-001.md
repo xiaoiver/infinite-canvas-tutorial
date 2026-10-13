@@ -16,6 +16,16 @@ In this lesson you will learn the following:
 -   Implementing a simple plug-in system
 -   Implementing a rendering plugin based on the HAL
 
+::: warning Security note: @antv/g-device-api
+
+[GHSA-hqjp-pg4j-q8g2](https://github.com/advisories/GHSA-hqjp-pg4j-q8g2) identifies npm versions **1.7.13 and 1.8.13** as malicious releases containing a credential-stealing `preinstall` script. **Do not install these versions.** As of October 13, 2026, the advisory lists no patched version.
+
+The shader compiler WASM URL below remains pinned to **1.6.8** to reproduce this historical example; it is not a recommendation for new projects. That version is not listed as affected, and fetching the WASM in a browser does not execute npm install scripts. Neither fact constitutes a security audit of the artifact.
+
+The repository's `pnpm-lock.yaml` separately locks the JavaScript package used by this lesson to **1.6.13**, also not listed as affected. When following the lesson from this repository, preserve the lockfile with `pnpm install --frozen-lockfile`. Avoid unversioned or `latest` installs, and review the provenance of any dependency update. A replacement release or alternative must be verified before it can be recommended here.
+
+:::
+
 When you start the project you will see an empty canvas and you can change the aspect or switch between WebGL and WebGPU renderers.
 
 ```js eval code=false
@@ -82,7 +92,7 @@ The WebGPU ecosystem now extends into JavaScript, C++, and Rust, and a number of
 
 Of course, given browser compatibility, we still need to be as compatible as possible with WebGL1/2. In the rendering engine, the Hardware Abstraction Layer (HAL) abstracts the details of the GPU hardware, allowing the upper layers to be independent of the specific hardware implementation.
 
-We hope to provide a unified set of APIs based on WebGL1/2 and WebGPU as much as possible, along with Shader translation and modularization. The [@antv/g-device-api] implementation references [noclip] and builds on it to be compatible with WebGL1, which we also use in some of our visualization-related projects.
+We hope to provide a unified set of APIs based on WebGL1/2 and WebGPU as much as possible, along with Shader translation and modularization. This lesson uses [@antv/g-device-api], whose implementation references [noclip] and adds WebGL1 compatibility. Refer to the security note above before installing the dependency.
 
 Since WebGL and WebGPU use different shader languages, and we don't want to maintain two sets of code, GLSL and WGSL, we choose to translate the shader at runtime:
 
