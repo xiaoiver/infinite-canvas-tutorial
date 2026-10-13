@@ -52,6 +52,9 @@ export default defineConfig({
   optimizeDeps: {
     // Linked package rebuilds do not invalidate Vite's dependency cache.
     force: true,
+    // Scan the excluded renderer too: its dependencies would otherwise be
+    // discovered after startup and force a reload during the first test.
+    entries: ['index.html', '../../../packages/device-api/esm/index.js'],
     // Keep each new page from requesting the built workspace modules one by one.
     include: [
       '@infinite-canvas-tutorial/react',

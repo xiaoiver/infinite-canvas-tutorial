@@ -175,6 +175,11 @@ server; restart it after rebuilding them.
 shader compiler's lazy WASM URL relative to its original module. An explicit
 alias resolves that dependency from the prebundled chunks, where pnpm's
 package-local dependency links are no longer available.
+The initial dependency scan also starts at its built entry, so `@antv/util` and
+`eventemitter3` are discovered before any test page loads. Otherwise Vite finds
+them after serving the page and reloads it during pending dynamic imports.
+When checking this configuration, start a new fixture server and run a
+documentation case first; warming `/` beforehand can hide the startup failure.
 
 In a local Chromium/SwiftShader comparison, five fresh browser contexts after
 one discarded Vite warmup reduced resource requests from 918 to 93 and median
@@ -217,6 +222,12 @@ host-side state, so it also works when `page.evaluate()` cannot run. This adds
 diagnostic evidence for the intermittent React 19 selection failure; it does not
 claim that its underlying cause has been fixed. Keep assertions and retry policy
 unchanged while investigating.
+
+The crop suite's initial edit is submitted once and its commit result is polled
+as plain page state. Repeated Chromium runs reproduced CDP's `Promise was
+collected` while awaiting that edit, which Playwright reports as a destroyed
+execution context even though the page did not navigate and the edit committed.
+Cancellation or rejection still fails setup; polling never replays the mutation.
 
 Drawing preference checks in `__tests__/react/browser/drawing-preferences.spec.ts`
 mount the real settings controls with two React canvases. They cover history and
