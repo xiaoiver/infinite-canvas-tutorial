@@ -5,6 +5,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import BrowserTimingReporter, {
   summarizeTimings,
 } from '../../scripts/browser-timing-reporter.mjs';
@@ -232,6 +233,22 @@ test('a real Playwright global timeout fails and preserves completed work and th
   try {
     const testModule = JSON.stringify(require.resolve('@playwright/test'));
     const reporter = path.resolve('scripts/browser-timing-reporter.mjs');
+    const delayedReporter = path.join(directory, 'delayed-reporter.mjs');
+    writeFileSync(
+      delayedReporter,
+      `import BrowserTimingReporter from ${JSON.stringify(
+        pathToFileURL(reporter).href,
+      )};
+export default class extends BrowserTimingReporter {
+  onTestBegin(test, result) {
+    // Worker execution can outrun the parent's IPC/checkpoint processing.
+    if (test.title === 'interrupted') {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 250);
+    }
+    super.onTestBegin(test, result);
+  }
+}`,
+    );
     writeFileSync(
       path.join(directory, 'playwright.config.cjs'),
       `module.exports = ${JSON.stringify({
@@ -240,7 +257,7 @@ test('a real Playwright global timeout fails and preserves completed work and th
         timeout: 0,
         workers: 1,
         retries: 0,
-        reporter: [['json', { outputFile: 'results.json' }], [reporter]],
+        reporter: [['json', { outputFile: 'results.json' }], [delayedReporter]],
       })};`,
     );
     writeFileSync(
@@ -249,11 +266,22 @@ test('a real Playwright global timeout fails and preserves completed work and th
 const { readFileSync } = require('node:fs');
 test('completed', async () => {});
 test('interrupted', async () => {
-  const report = JSON.parse(readFileSync('.test-results/browser-timings.json', 'utf8'));
-  expect(report.status).toBe('running');
-  expect(report.totalTests).toBe(3);
-  expect(report.attempts.map(test => test.status)).toEqual(['passed']);
-  expect(report.active.map(test => test.title)).toEqual(['timeout.spec.js › interrupted']);
+  // onTestBegin is delivered to the reporter in a different process. Wait for
+  // its checkpoint instead of assuming it was written before this body runs.
+  await expect.poll(() => {
+    const report = JSON.parse(readFileSync('.test-results/browser-timings.json', 'utf8'));
+    return {
+      status: report.status,
+      totalTests: report.totalTests,
+      attempts: report.attempts.map(test => test.status),
+      active: report.active.map(test => test.title),
+    };
+  }).toEqual({
+    status: 'running',
+    totalTests: 3,
+    attempts: ['passed'],
+    active: ['timeout.spec.js › interrupted'],
+  });
   await new Promise(() => {});
 });
 test('not reached', async () => {});`,
@@ -284,7 +312,17 @@ test('not reached', async () => {});`,
     const report = JSON.parse(
       readFileSync(path.join(directory, '.test-results/browser-timings.json')),
     );
-    assert.equal(report.status, 'timedout');
+    const json = JSON.parse(readFileSync(path.join(directory, 'results.json')));
+    assert.equal(
+      report.status,
+      'timedout',
+      JSON.stringify({
+        report,
+        results: json,
+        stdout: result.stdout,
+        stderr: result.stderr,
+      }),
+    );
     assert.equal(report.group, 'timeout-regression');
     assert.equal(report.totalTests, 3);
     // Depending on worker shutdown timing, Playwright may emit onTestEnd for
@@ -312,7 +350,6 @@ test('not reached', async () => {});`,
       title.endsWith(' › not reached'),
     );
     if (unstarted) assert.equal(unstarted.status, 'skipped');
-    const json = JSON.parse(readFileSync(path.join(directory, 'results.json')));
     assert.equal(json.stats.expected, 1);
     assert.equal(json.stats.unexpected, 0, JSON.stringify(json.stats));
     assert.equal(json.stats.skipped, 2, JSON.stringify(json.stats));

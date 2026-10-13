@@ -109,9 +109,11 @@ class InitialFrameRender extends System {
 const query = new URLSearchParams(location.search);
 const runtime = createCanvasRuntime({
   appOptions: {
+    // Small regression scenes share this budget across both canvases, including
+    // internal entities. Query overrides also exercise App validation/defaults.
     maxEntities: query.has('maxEntities')
       ? Number(query.get('maxEntities'))
-      : undefined,
+      : 16_384,
     maxLimboComponents: query.has('maxLimboComponents')
       ? Number(query.get('maxLimboComponents'))
       : undefined,
