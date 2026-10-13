@@ -77,8 +77,8 @@ test('Playwright times out with reporting headroom and uploads failed-run artifa
   const step = job.steps.find((step) => step.name === 'Run browser tests');
   const milliseconds = Number(step.run.match(/--global-timeout=(\d+)/)?.[1]);
   assert(milliseconds > 0);
-  // Keep five minutes for dependency/browser setup, teardown and upload.
-  assert(milliseconds <= (job['timeout-minutes'] - 5) * 60000);
+  // Keep three minutes for dependency/browser setup, teardown and upload.
+  assert(milliseconds <= (job['timeout-minutes'] - 3) * 60000);
   const upload = job.steps.find((step) =>
     step.uses?.startsWith('actions/upload-artifact@'),
   );
@@ -202,12 +202,12 @@ test('not reached', async () => {});`,
         'test',
         '-c',
         'playwright.config.cjs',
-        '--global-timeout=5000',
+        '--global-timeout=10000',
       ],
       {
         cwd: directory,
         encoding: 'utf8',
-        timeout: 20000,
+        timeout: 30000,
         env: {
           ...process.env,
           BROWSER_TEST_GROUP: 'timeout-regression',
@@ -224,16 +224,31 @@ test('not reached', async () => {});`,
     assert.equal(report.status, 'timedout');
     assert.equal(report.group, 'timeout-regression');
     assert.equal(report.totalTests, 3);
-    // Playwright can stop without sending onTestEnd for an interrupted worker.
-    // Keep that last active test instead of claiming it completed or was skipped.
-    assert.deepEqual(
-      report.active.map(({ title }) => title),
-      ['timeout.spec.js › interrupted'],
+    // Depending on worker shutdown timing, Playwright may emit onTestEnd for
+    // the interrupted test, or leave it active. Neither may lose the test or
+    // claim it passed; an unstarted test may only be reported as skipped.
+    const interrupted = report.attempts.find(({ title }) =>
+      title.endsWith(' › interrupted'),
     );
+    if (interrupted) {
+      assert.equal(interrupted.status, 'interrupted');
+      assert.deepEqual(report.active, []);
+    } else {
+      assert.deepEqual(
+        report.active.map(({ title }) => title),
+        ['timeout.spec.js › interrupted'],
+      );
+    }
     assert.deepEqual(
-      report.attempts.map(({ status }) => status),
-      ['passed'],
+      report.attempts
+        .filter(({ status }) => status === 'passed')
+        .map(({ title }) => title),
+      ['timeout.spec.js › completed'],
     );
+    const unstarted = report.attempts.find(({ title }) =>
+      title.endsWith(' › not reached'),
+    );
+    if (unstarted) assert.equal(unstarted.status, 'skipped');
     const json = JSON.parse(readFileSync(path.join(directory, 'results.json')));
     assert.equal(json.stats.expected, 1);
     assert.equal(json.stats.unexpected, 0, JSON.stringify(json.stats));

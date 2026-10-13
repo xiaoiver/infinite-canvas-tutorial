@@ -98,7 +98,7 @@ jobs:
         run: >-
           pnpm exec playwright test -c ${{ matrix.config }}
           --shard=${{ matrix.shard }}
-          --global-timeout=1200000
+          --global-timeout=1320000
           --reporter=list,json,./scripts/browser-timing-reporter.mjs
         env:
           PLAYWRIGHT_WEBKIT_GROUP: ${{ matrix.webkit-group }}

@@ -1802,15 +1802,23 @@ pnpm test:tooling
 - Chromium 从两个分片拆成四个，当前实际发现的 501 项测试分为
   132、122、122、125 项。继续使用单 worker、串行文件分组、零重试和原有断言。
   WebKit 保留 Lottie 独立组及三个其他分片。
-- Playwright 设置 20 分钟全局时限，GitHub 任务仍为 25 分钟，为初始化、
+- Playwright 设置 22 分钟全局时限，GitHub 任务仍为 25 分钟，为初始化、
   报告输出和 artifact 上传留出空间。超时仍以失败退出，不会放行汇总门禁。
+  master 的一次 WebKit other-2 测试步骤实际用了 20 分 27 秒，因此不能把
+  测试进程时限压到 20 分钟。
 - timing reporter 在每项测试开始、结束时原子写入 JSON，记录已完成用例和
   当前活动用例。Playwright 全局超时可能不发送最后一个用例的结束回调，
   报告会保留并列出未完成用例，不将其视作完成或通过。
 - tooling 实际发现所有 Chromium/WebKit 测试，验证分片完整、无重复且非空；
   通过一个受控挂起的真实 Playwright 子进程，验证超时失败、部分进度、
   JSON 报告和摘要输出。现有失败、取消和跳过状态的门禁检查保留。
+- 首次新分片运行还暴露了填色测试的输入时序问题：再次打开 Spectrum 弹层后，
+  可见的输入框尚未完成打开及聚焦更新，trace 显示填入绿色后已回到旧红色。
+  测试现在等待弹层 `opened` / `closed` 状态并通过真实点击聚焦后再输入，
+  同时检查输入值；保留文档颜色、像素、区域结构及撤销重做断言。
 
+本地 Chromium 第三分片 122 项测试全部通过，用时 1029.282 秒；
+调整后的填色用例连续运行 5 次通过。完整浏览器矩阵由 PR CI 再次验证。
 25 项 tooling 检查、仓库 ESLint 和浏览器 TypeScript 检查通过。
 本次只调整 CI 与诊断工具，不改变 ECS 实现、覆盖率统计范围或门槛；
 后续继续文本与独立描边的空间滤镜。
@@ -1818,9 +1826,9 @@ pnpm test:tooling
 ```sh
 pnpm test:tooling
 pnpm exec playwright test -c playwright.browser.config.ts --shard=3/4 \
-  --global-timeout=1200000 --reporter=list,json,./scripts/browser-timing-reporter.mjs
+  --global-timeout=1320000 --reporter=list,json,./scripts/browser-timing-reporter.mjs
 pnpm exec playwright test -c playwright.browser.config.ts --shard=4/4 \
-  --global-timeout=1200000 --reporter=list,json,./scripts/browser-timing-reporter.mjs
+  --global-timeout=1320000 --reporter=list,json,./scripts/browser-timing-reporter.mjs
 ```
 
 ## 后续顺序

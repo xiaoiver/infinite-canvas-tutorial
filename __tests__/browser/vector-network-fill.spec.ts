@@ -175,6 +175,7 @@ test('chooses a Fill color before painting and undoes recoloring without changin
   node.segments.push({ start: 0, end: 2 });
   await prepare(page, node);
   const picker = page.locator('ic-spectrum-fill-action-button');
+  const overlay = picker.locator('sp-overlay[trigger="fill@click"]');
   const swatch = picker.locator('ic-spectrum-fill-icon');
   await expect(swatch).toHaveAttribute('value', '#147af3');
   const color = () =>
@@ -187,15 +188,21 @@ test('chooses a Fill color before painting and undoes recoloring without changin
     await picker
       .getByRole('button', { name: 'Fill color', exact: true })
       .click();
+    // Visibility precedes Spectrum's opening transition and focus updates.
+    // Filling during that transition can be overwritten by the old field value.
+    await expect(overlay).toHaveJSProperty('state', 'opened');
     const input = picker.locator('sp-color-field').locator('input');
-    await expect(input).toBeVisible();
+    await input.click();
+    await expect(input).toBeFocused();
     await input.fill(value);
+    await expect(input).toHaveValue(value);
     await input.press('Tab');
     await expect.poll(color).toBe(value);
     // Dismiss the popover through its trigger without clicking the drawing.
     await picker
       .getByRole('button', { name: 'Fill color', exact: true })
       .click();
+    await expect(overlay).toHaveJSProperty('state', 'closed');
     await expect(input).not.toBeVisible();
   };
   await choose('#ff0000');
