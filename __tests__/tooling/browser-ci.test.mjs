@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import BrowserTimingReporter, {
   summarizeTimings,
 } from '../../scripts/browser-timing-reporter.mjs';
@@ -20,9 +22,11 @@ for (const browser of ['chromium', 'webkit']) {
   test(`${browser} CI groups cover every discovered test exactly once`, () => {
     const groups = matrix.filter((group) => group.browser === browser);
     const all = discover(groups[0].config);
-    const partitioned = groups.flatMap((group) =>
-      discover(group.config, group.shard, group['webkit-group']),
-    );
+    const partitioned = groups.flatMap((group) => {
+      const ids = discover(group.config, group.shard, group['webkit-group']);
+      assert(ids.length > 0, `empty ${browser} group ${group.group}`);
+      return ids;
+    });
     assert(all.length > 100);
     assert.equal(
       new Set(partitioned).size,
@@ -52,6 +56,33 @@ test('non-Lottie WebKit suites retain three isolated shards within the existing 
   );
   assert.equal(workflow.jobs['browser-tests']['timeout-minutes'], 25);
   assert.equal(workflow.jobs['browser-tests'].strategy['fail-fast'], false);
+});
+
+test('Chromium keeps four single-worker shards without extending the job timeout', () => {
+  const chromium = matrix.filter((group) => group.browser === 'chromium');
+  assert.deepEqual(chromium.map((group) => group.shard).sort(), [
+    '1/4',
+    '2/4',
+    '3/4',
+    '4/4',
+  ]);
+  const config = readFileSync('playwright.browser.config.ts', 'utf8');
+  assert.match(config, /fullyParallel: false/);
+  assert.match(config, /workers: 1/);
+  assert.match(config, /retries: 0/);
+});
+
+test('Playwright times out with reporting headroom and uploads failed-run artifacts', () => {
+  const job = workflow.jobs['browser-tests'];
+  const step = job.steps.find((step) => step.name === 'Run browser tests');
+  const milliseconds = Number(step.run.match(/--global-timeout=(\d+)/)?.[1]);
+  assert(milliseconds > 0);
+  // Keep three minutes for dependency/browser setup, teardown and upload.
+  assert(milliseconds <= (job['timeout-minutes'] - 3) * 60000);
+  const upload = job.steps.find((step) =>
+    step.uses?.startsWith('actions/upload-artifact@'),
+  );
+  assert.equal(upload.if, '${{ !cancelled() }}');
 });
 
 test('the required browser check rejects failures, cancellations and skipped jobs', () => {
@@ -131,4 +162,108 @@ test('timings separate setup, body and teardown without double-counting nested h
   assert(summary.includes('| passed | 1.00 | 0.20 | 0.50 | 0.30 |'));
   assert(summary.includes('Wall time: 1.60s'));
   assert(!summary.includes('<slow>'));
+});
+
+test('a real Playwright global timeout fails and preserves completed work and the last active test', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'browser-ci-timeout-'));
+  try {
+    const testModule = JSON.stringify(require.resolve('@playwright/test'));
+    const reporter = path.resolve('scripts/browser-timing-reporter.mjs');
+    writeFileSync(
+      path.join(directory, 'playwright.config.cjs'),
+      `module.exports = ${JSON.stringify({
+        testDir: directory,
+        testMatch: 'timeout.spec.js',
+        timeout: 0,
+        workers: 1,
+        retries: 0,
+        reporter: [['json', { outputFile: 'results.json' }], [reporter]],
+      })};`,
+    );
+    writeFileSync(
+      path.join(directory, 'timeout.spec.js'),
+      `const { test, expect } = require(${testModule});
+const { readFileSync } = require('node:fs');
+test('completed', async () => {});
+test('interrupted', async () => {
+  const report = JSON.parse(readFileSync('.test-results/browser-timings.json', 'utf8'));
+  expect(report.status).toBe('running');
+  expect(report.totalTests).toBe(3);
+  expect(report.attempts.map(test => test.status)).toEqual(['passed']);
+  expect(report.active.map(test => test.title)).toEqual(['timeout.spec.js › interrupted']);
+  await new Promise(() => {});
+});
+test('not reached', async () => {});`,
+    );
+    const result = spawnSync(
+      process.execPath,
+      [
+        require.resolve('@playwright/test/cli'),
+        'test',
+        '-c',
+        'playwright.config.cjs',
+        '--global-timeout=10000',
+      ],
+      {
+        cwd: directory,
+        encoding: 'utf8',
+        timeout: 30000,
+        env: {
+          ...process.env,
+          BROWSER_TEST_GROUP: 'timeout-regression',
+          PLAYWRIGHT_JSON_OUTPUT_FILE: '',
+          GITHUB_STEP_SUMMARY: path.join(directory, 'summary.md'),
+        },
+      },
+    );
+    assert.equal(result.error, undefined, result.stderr);
+    assert.equal(result.status, 1, result.stdout + result.stderr);
+    const report = JSON.parse(
+      readFileSync(path.join(directory, '.test-results/browser-timings.json')),
+    );
+    assert.equal(report.status, 'timedout');
+    assert.equal(report.group, 'timeout-regression');
+    assert.equal(report.totalTests, 3);
+    // Depending on worker shutdown timing, Playwright may emit onTestEnd for
+    // the interrupted test, or leave it active. Neither may lose the test or
+    // claim it passed; an unstarted test may only be reported as skipped.
+    const interrupted = report.attempts.find(({ title }) =>
+      title.endsWith(' › interrupted'),
+    );
+    if (interrupted) {
+      assert.equal(interrupted.status, 'interrupted');
+      assert.deepEqual(report.active, []);
+    } else {
+      assert.deepEqual(
+        report.active.map(({ title }) => title),
+        ['timeout.spec.js › interrupted'],
+      );
+    }
+    assert.deepEqual(
+      report.attempts
+        .filter(({ status }) => status === 'passed')
+        .map(({ title }) => title),
+      ['timeout.spec.js › completed'],
+    );
+    const unstarted = report.attempts.find(({ title }) =>
+      title.endsWith(' › not reached'),
+    );
+    if (unstarted) assert.equal(unstarted.status, 'skipped');
+    const json = JSON.parse(readFileSync(path.join(directory, 'results.json')));
+    assert.equal(json.stats.expected, 1);
+    assert.equal(json.stats.unexpected, 0, JSON.stringify(json.stats));
+    assert.equal(json.stats.skipped, 2, JSON.stringify(json.stats));
+    const summary = readFileSync(path.join(directory, 'summary.md'), 'utf8');
+    assert(summary.includes('Status: timedout'));
+    assert(summary.includes('interrupted'));
+    assert.equal(
+      readFileSync(
+        path.join(directory, '.test-results/browser-timings.md'),
+        'utf8',
+      ),
+      summary,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
