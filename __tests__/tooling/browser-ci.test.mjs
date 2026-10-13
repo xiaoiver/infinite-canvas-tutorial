@@ -164,6 +164,69 @@ test('timings separate setup, body and teardown without double-counting nested h
   assert(!summary.includes('<slow>'));
 });
 
+test('late worker callbacks cannot overwrite a finalized timeout report', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'browser-ci-late-events-'));
+  const cwd = process.cwd();
+  const summary = process.env.GITHUB_STEP_SUMMARY;
+  try {
+    process.chdir(directory);
+    process.env.GITHUB_STEP_SUMMARY = path.join(directory, 'summary.md');
+    const reporter = new BrowserTimingReporter();
+    reporter.onBegin({ projects: [] }, { allTests: () => [1, 2] });
+    const sample = (id) => ({
+      id,
+      location: { file: path.join(directory, 'example.spec.ts') },
+      titlePath: () => ['example.spec.ts', id],
+    });
+    const completed = sample('completed');
+    const interrupted = sample('interrupted');
+    reporter.onTestBegin(completed, { retry: 0 });
+    reporter.onTestEnd(completed, {
+      duration: 100,
+      retry: 0,
+      status: 'passed',
+    });
+    reporter.onTestBegin(interrupted, { retry: 0 });
+    reporter.onEnd({ duration: 1000, status: 'timedout' });
+    const files = [
+      '.test-results/browser-timings.json',
+      '.test-results/browser-timings.md',
+      'summary.md',
+    ];
+    const before = files.map((file) => readFileSync(file, 'utf8'));
+    // Simulate a worker completing shutdown after Playwright's run deadline.
+    reporter.onTestEnd(interrupted, {
+      duration: 1100,
+      retry: 0,
+      status: 'interrupted',
+    });
+    reporter.onTestBegin(sample('late'), { retry: 0 });
+    reporter.onBegin({ projects: [] }, { allTests: () => [] });
+    reporter.onEnd({ duration: 1200, status: 'failed' });
+    assert.deepEqual(
+      files.map((file) => readFileSync(file, 'utf8')),
+      before,
+    );
+    const report = JSON.parse(before[0]);
+    assert.equal(report.status, 'timedout');
+    assert.equal(report.duration, 1000);
+    assert.deepEqual(
+      report.attempts.map(({ status }) => status),
+      ['passed'],
+    );
+    assert.deepEqual(
+      report.active.map(({ title }) => title),
+      ['example.spec.ts › interrupted'],
+    );
+    assert.equal(before[1], before[2]);
+  } finally {
+    process.chdir(cwd);
+    if (summary === undefined) delete process.env.GITHUB_STEP_SUMMARY;
+    else process.env.GITHUB_STEP_SUMMARY = summary;
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test('a real Playwright global timeout fails and preserves completed work and the last active test', () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'browser-ci-timeout-'));
   try {
