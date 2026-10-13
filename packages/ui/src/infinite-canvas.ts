@@ -78,7 +78,7 @@ export class InfiniteCanvas extends LitElement {
 
   @property()
   shaderCompilerPath =
-    'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm';
+    'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm';
 
   @property()
   shoelaceBasePath =

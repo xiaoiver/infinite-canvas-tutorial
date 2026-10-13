@@ -13,6 +13,16 @@ head:
 -   유연한 확장을 위한 플러그인 시스템 구현
 -   하드웨어 추상화 레이어를 활용한 렌더링 플러그인 개발
 
+::: warning @antv/g-device-api 보안 안내
+
+[GHSA-hqjp-pg4j-q8g2](https://github.com/advisories/GHSA-hqjp-pg4j-q8g2)는 npm 버전 **1.7.13과 1.8.13**을 자격 증명을 탈취하는 `preinstall` 스크립트가 포함된 악성 릴리스로 명시합니다. **이 두 버전을 설치하지 마세요.** 2026년 10월 13일 기준으로 해당 권고에는 패치된 버전이 명시되어 있지 않습니다.
+
+아래 셰이더 컴파일러 WASM 주소는 위 날짜 기준으로 npm과 UNPKG에서 받을 수 있는 최신 버전인 **1.6.13**으로 고정되어 있으며, 저장소의 `pnpm-lock.yaml`에 고정된 JavaScript 패키지 버전과 일치합니다. 이 WASM은 이전에 사용한 **1.6.8** 파일 및 저장소에 포함된 컴파일러와 바이트 단위로 동일하므로, 이번 변경은 버전 표기만 통일하며 컴파일러 기능을 바꾸지 않습니다. 1.6.13은 영향을 받는 버전 목록에 없고, 브라우저에서 WASM을 불러오는 작업은 npm 설치 스크립트를 실행하지 않습니다. 하지만 이 두 사실이 해당 파일의 보안 감사를 의미하지는 않습니다.
+
+이 저장소로 학습할 때는 `pnpm install --frozen-lockfile`로 잠긴 의존성을 유지하세요. 버전을 지정하지 않거나 `latest`로 설치하지 말고, 의존성을 업데이트하기 전에 출처를 확인하세요. 대체 컴파일러가 검증된 후에만 이 강의의 권장 사항을 갱신할 수 있습니다. 현재 `@infinite-canvas-tutorial/device-api`를 사용하는 ECS 프로젝트에서는 JavaScript 바인딩과 컴파일러를 함께 관리하고 런타임 CDN 요청을 피할 수 있도록 [패키지에 포함된 WASM 파일](/reference/create-app#shader-compiler)을 사용하세요.
+
+:::
+
 구현을 마치면 캔버스의 크기를 조절하거나 WebGL과 WebGPU 렌더러를 자유롭게 전환할 수 있는 기초 환경이 완성됩니다.
 
 ```js eval code=false
@@ -41,7 +51,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
         canvas: $canvas,
         renderer,
         shaderCompilerPath:
-            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+            'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm',
     }).initialized;
 
     const resize = (width, height) => {
@@ -79,7 +89,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
 
 다만 여전한 브라우저 호환성 문제를 고려하면 WebGL1/2 지원도 놓칠 수 없습니다. 이때 필요한 것이 바로 하드웨어 추상화 레이어(HAL)입니다. HAL은 구체적인 GPU 하드웨어 제어 방식을 추상화하여, 상위 로직이 특정 API에 의존하지 않고도 동일하게 동작하도록 돕습니다.
 
-우리는 WebGL1/2와 WebGPU를 아우르는 통합 API 세트를 구축하고, 셰이더 변환 및 모듈화 기능을 제공할 계획입니다. [@antv/g-device-api]는 [noclip]의 구현을 참고해 WebGL1 호환성까지 확장한 라이브러리로, 실제 여러 데이터 시각화 프로젝트에서 활용되고 있습니다.
+우리는 WebGL1/2와 WebGPU를 아우르는 통합 API 세트를 구축하고, 셰이더 변환 및 모듈화 기능을 제공할 계획입니다. 이 강의는 [noclip]의 구현을 참고해 WebGL1 호환성을 추가한 [@antv/g-device-api]를 사용합니다. 이 의존성을 설치하기 전에 위의 보안 안내를 확인하세요.
 
 WebGL과 WebGPU는 서로 다른 셰이더 언어를 사용합니다. 하지만 GLSL과 WGSL 두 벌의 코드를 직접 관리하는 것은 비효율적이므로, 런타임에 셰이더를 자동 변환하는 전략을 택했습니다.
 

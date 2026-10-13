@@ -24,7 +24,9 @@ Just use `renderer="webgpu"` to enable WebGPU.
 <ic-canvas renderer="webgpu"></ic-canvas>
 ```
 
-If you don't set `shaderCompilerPath`, it will use the default shader compiler `'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm'`.
+If you don't set `shaderCompilerPath`, it will use the default shader compiler `'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm'`.
+
+This WASM is byte-for-byte identical to the previously used `1.6.8` artifact; the URL change does not upgrade the compiler. See [Lesson 1](/guide/lesson-001) for the upstream package security note. ECS projects using `ic-spectrum-canvas` can [bundle the matching compiler](/reference/create-app#shader-compiler) with their application.
 
 ```html
 <ic-canvas

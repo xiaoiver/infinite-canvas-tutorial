@@ -17,7 +17,7 @@ const canvas = await new Canvas({
   canvas: $canvas,
   // renderer: 'webgpu',
   // shaderCompilerPath:
-  //   'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+  //   'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm',
 }).initialized;
 
 // canvas.setGridImplementation(GridImplementation.LINE_GEOMETRY);

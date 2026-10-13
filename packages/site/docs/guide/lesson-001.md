@@ -16,6 +16,16 @@ In this lesson you will learn the following:
 -   Implementing a simple plug-in system
 -   Implementing a rendering plugin based on the HAL
 
+::: warning Security note: @antv/g-device-api
+
+[GHSA-hqjp-pg4j-q8g2](https://github.com/advisories/GHSA-hqjp-pg4j-q8g2) identifies npm versions **1.7.13 and 1.8.13** as malicious releases containing a credential-stealing `preinstall` script. **Do not install these versions.** As of October 13, 2026, the advisory lists no patched version.
+
+The shader compiler WASM URL below is pinned to **1.6.13**, the latest version available from npm and UNPKG as of that date, matching the JavaScript package in this repository's `pnpm-lock.yaml`. Its WASM is byte-for-byte identical to the previously used **1.6.8** artifact and the compiler bundled in this repository; this change aligns version numbers without changing compiler functionality. Version 1.6.13 is not listed as affected, and fetching the WASM in a browser does not execute npm install scripts. Neither fact constitutes a security audit of the artifact.
+
+When following the lesson from this repository, preserve the lockfile with `pnpm install --frozen-lockfile`. Avoid unversioned or `latest` installs, and review the provenance of any dependency update. A replacement compiler must be verified before it can be recommended here. For current ECS projects using `@infinite-canvas-tutorial/device-api`, prefer its [bundled WASM asset](/reference/create-app#shader-compiler) to keep the JavaScript bindings and compiler together and avoid a runtime CDN request.
+
+:::
+
 When you start the project you will see an empty canvas and you can change the aspect or switch between WebGL and WebGPU renderers.
 
 ```js eval code=false
@@ -44,7 +54,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
         canvas: $canvas,
         renderer,
         shaderCompilerPath:
-            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+            'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm',
     }).initialized;
 
     const resize = (width, height) => {
@@ -82,7 +92,7 @@ The WebGPU ecosystem now extends into JavaScript, C++, and Rust, and a number of
 
 Of course, given browser compatibility, we still need to be as compatible as possible with WebGL1/2. In the rendering engine, the Hardware Abstraction Layer (HAL) abstracts the details of the GPU hardware, allowing the upper layers to be independent of the specific hardware implementation.
 
-We hope to provide a unified set of APIs based on WebGL1/2 and WebGPU as much as possible, along with Shader translation and modularization. The [@antv/g-device-api] implementation references [noclip] and builds on it to be compatible with WebGL1, which we also use in some of our visualization-related projects.
+We hope to provide a unified set of APIs based on WebGL1/2 and WebGPU as much as possible, along with Shader translation and modularization. This lesson uses [@antv/g-device-api], whose implementation references [noclip] and adds WebGL1 compatibility. Refer to the security note above before installing the dependency.
 
 Since WebGL and WebGPU use different shader languages, and we don't want to maintain two sets of code, GLSL and WGSL, we choose to translate the shader at runtime:
 
