@@ -17,9 +17,9 @@ head:
 
 [GHSA-hqjp-pg4j-q8g2](https://github.com/advisories/GHSA-hqjp-pg4j-q8g2)는 npm 버전 **1.7.13과 1.8.13**을 자격 증명을 탈취하는 `preinstall` 스크립트가 포함된 악성 릴리스로 명시합니다. **이 두 버전을 설치하지 마세요.** 2026년 10월 13일 기준으로 해당 권고에는 패치된 버전이 명시되어 있지 않습니다.
 
-아래 셰이더 컴파일러 WASM 주소는 기존 예제를 재현하기 위해 **1.6.8**로 고정되어 있으며, 새 프로젝트를 위한 권장 사항은 아닙니다. 이 버전은 영향을 받는 버전 목록에 없고, 브라우저에서 WASM을 불러오는 작업은 npm 설치 스크립트를 실행하지 않습니다. 하지만 이 두 사실이 해당 파일의 보안 감사를 의미하지는 않습니다.
+아래 셰이더 컴파일러 WASM 주소는 위 날짜 기준으로 npm과 UNPKG에서 받을 수 있는 최신 버전인 **1.6.13**으로 고정되어 있으며, 저장소의 `pnpm-lock.yaml`에 고정된 JavaScript 패키지 버전과 일치합니다. 이 WASM은 이전에 사용한 **1.6.8** 파일 및 저장소에 포함된 컴파일러와 바이트 단위로 동일하므로, 이번 변경은 버전 표기만 통일하며 컴파일러 기능을 바꾸지 않습니다. 1.6.13은 영향을 받는 버전 목록에 없고, 브라우저에서 WASM을 불러오는 작업은 npm 설치 스크립트를 실행하지 않습니다. 하지만 이 두 사실이 해당 파일의 보안 감사를 의미하지는 않습니다.
 
-저장소의 `pnpm-lock.yaml`은 이 강의에서 사용하는 JavaScript 패키지를 별도로 **1.6.13**에 고정하며, 이 버전도 영향을 받는 버전 목록에 없습니다. 이 저장소로 학습할 때는 `pnpm install --frozen-lockfile`로 잠긴 의존성을 유지하세요. 버전을 지정하지 않거나 `latest`로 설치하지 말고, 의존성을 업데이트하기 전에 출처를 확인하세요. 신뢰할 수 있는 대체 릴리스나 대안이 검증된 후에만 이 강의의 권장 사항을 갱신할 수 있습니다.
+이 저장소로 학습할 때는 `pnpm install --frozen-lockfile`로 잠긴 의존성을 유지하세요. 버전을 지정하지 않거나 `latest`로 설치하지 말고, 의존성을 업데이트하기 전에 출처를 확인하세요. 대체 컴파일러가 검증된 후에만 이 강의의 권장 사항을 갱신할 수 있습니다. 현재 `@infinite-canvas-tutorial/device-api`를 사용하는 ECS 프로젝트에서는 JavaScript 바인딩과 컴파일러를 함께 관리하고 런타임 CDN 요청을 피할 수 있도록 [패키지에 포함된 WASM 파일](/reference/create-app#shader-compiler)을 사용하세요.
 
 :::
 
@@ -51,7 +51,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
         canvas: $canvas,
         renderer,
         shaderCompilerPath:
-            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+            'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm',
     }).initialized;
 
     const resize = (width, height) => {

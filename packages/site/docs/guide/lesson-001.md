@@ -20,9 +20,9 @@ In this lesson you will learn the following:
 
 [GHSA-hqjp-pg4j-q8g2](https://github.com/advisories/GHSA-hqjp-pg4j-q8g2) identifies npm versions **1.7.13 and 1.8.13** as malicious releases containing a credential-stealing `preinstall` script. **Do not install these versions.** As of October 13, 2026, the advisory lists no patched version.
 
-The shader compiler WASM URL below remains pinned to **1.6.8** to reproduce this historical example; it is not a recommendation for new projects. That version is not listed as affected, and fetching the WASM in a browser does not execute npm install scripts. Neither fact constitutes a security audit of the artifact.
+The shader compiler WASM URL below is pinned to **1.6.13**, the latest version available from npm and UNPKG as of that date, matching the JavaScript package in this repository's `pnpm-lock.yaml`. Its WASM is byte-for-byte identical to the previously used **1.6.8** artifact and the compiler bundled in this repository; this change aligns version numbers without changing compiler functionality. Version 1.6.13 is not listed as affected, and fetching the WASM in a browser does not execute npm install scripts. Neither fact constitutes a security audit of the artifact.
 
-The repository's `pnpm-lock.yaml` separately locks the JavaScript package used by this lesson to **1.6.13**, also not listed as affected. When following the lesson from this repository, preserve the lockfile with `pnpm install --frozen-lockfile`. Avoid unversioned or `latest` installs, and review the provenance of any dependency update. A replacement release or alternative must be verified before it can be recommended here.
+When following the lesson from this repository, preserve the lockfile with `pnpm install --frozen-lockfile`. Avoid unversioned or `latest` installs, and review the provenance of any dependency update. A replacement compiler must be verified before it can be recommended here. For current ECS projects using `@infinite-canvas-tutorial/device-api`, prefer its [bundled WASM asset](/reference/create-app#shader-compiler) to keep the JavaScript bindings and compiler together and avoid a runtime CDN request.
 
 :::
 
@@ -54,7 +54,7 @@ renderer = Inputs.select(['webgl', 'webgpu'], { label: 'renderer' });
         canvas: $canvas,
         renderer,
         shaderCompilerPath:
-            'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+            'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm',
     }).initialized;
 
     const resize = (width, height) => {

@@ -37,10 +37,26 @@ Declare the component in HTML:
 The following parameters can be passed via HTML attributes:
 
 -   `renderer` Renderer. Options are `'webgl' | 'webgpu'`, default is `'webgl'`
--   `shader-compiler-path` Used to transpile GLSL to WGSL. For more details, see [Lesson 1 - Hardware abstraction layers]. Default value is `'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm'`
+-   `shader-compiler-path` Used to transpile GLSL to WGSL. For more details, see [Lesson 1 - Hardware abstraction layers]. Default value is `'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm'`
 -   `theme` Theme. Options are `'dark' | 'light'`, default is `'light'`
 -   `app-state` Application state in JSON string format, which can control initialization parameters such as camera
 -   `nodes` List of shapes in JSON string format
+
+### Bundling the WebGPU shader compiler {#shader-compiler}
+
+For ECS projects using Vite, prefer the WASM exported by `@infinite-canvas-tutorial/device-api` so the compiler stays with its JavaScript bindings. The `?url` import lets Vite serve the file with your application instead of fetching it from UNPKG at runtime. Set the attribute before connecting the canvas:
+
+```ts
+import compilerUrl from '@infinite-canvas-tutorial/device-api/shader-compiler.wasm?url';
+
+const canvas = document.createElement('ic-spectrum-canvas');
+canvas.style.height = '400px';
+canvas.setAttribute('renderer', 'webgpu');
+canvas.setAttribute('shader-compiler-path', compilerUrl);
+document.body.append(canvas);
+```
+
+The default CDN URL remains explicitly pinned to `1.6.13`. Its WASM is byte-for-byte identical to the previous `1.6.8` artifact and the bundled file checked on October 13, 2026; changing this URL does not upgrade the compiler. See the [security note in Lesson 1](/guide/lesson-001) before installing the upstream npm package.
 
 ## Getting the API {#use-api}
 

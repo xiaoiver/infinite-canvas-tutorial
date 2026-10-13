@@ -39,7 +39,7 @@ const Utils = {
       canvas: $canvas,
       renderer,
       shaderCompilerPath:
-        'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm',
+        'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm',
     }).initialized;
 
     return canvas;

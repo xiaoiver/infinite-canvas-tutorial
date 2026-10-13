@@ -37,10 +37,26 @@ import '@infinite-canvas-tutorial/webcomponents';
 该组件中，可以通过 HTML Attribute 传入的参数如下：
 
 -   `renderer` 渲染器。可选值为 `'webgl' | 'webgpu'`，默认为 `'webgl'`
--   `shader-compiler-path` 用于将 GLSL 转译成 WGSL，详见 [课程 1 - 硬件抽象层]。默认值为 `'https://unpkg.com/@antv/g-device-api@1.6.8/dist/pkg/glsl_wgsl_compiler_bg.wasm'`
+-   `shader-compiler-path` 用于将 GLSL 转译成 WGSL，详见 [课程 1 - 硬件抽象层]。默认值为 `'https://unpkg.com/@antv/g-device-api@1.6.13/dist/pkg/glsl_wgsl_compiler_bg.wasm'`
 -   `theme` 主题。可选值为 `'dark' | 'light'`，默认为 `'light'`
 -   `app-state` JSON 字符串形式的应用状态，可以控制例如相机初始化参数
 -   `nodes` JSON 字符串形式的图形列表
+
+### 打包 WebGPU Shader 编译器 {#shader-compiler}
+
+使用 Vite 的 ECS 项目，建议导入 `@infinite-canvas-tutorial/device-api` 导出的 WASM，使编译器与 JavaScript 绑定配套。通过 `?url` 导入后，Vite 会将文件与应用一起提供，避免运行时从 UNPKG 加载。请在将画布加入 DOM 前设置该属性：
+
+```ts
+import compilerUrl from '@infinite-canvas-tutorial/device-api/shader-compiler.wasm?url';
+
+const canvas = document.createElement('ic-spectrum-canvas');
+canvas.style.height = '400px';
+canvas.setAttribute('renderer', 'webgpu');
+canvas.setAttribute('shader-compiler-path', compilerUrl);
+document.body.append(canvas);
+```
+
+默认 CDN 地址仍显式固定为 `1.6.13`。经 2026 年 10 月 13 日核对，其 WASM 与此前的 `1.6.8` 文件和包内置文件逐字节相同，修改该地址不会升级编译器。安装上游 npm 包前，请先阅读[第一课的安全说明](/zh/guide/lesson-001)。
 
 ## 获取 API {#use-api}
 
