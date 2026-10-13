@@ -178,10 +178,14 @@ class Bootstrap extends System {
   }
 }
 window.lifecycleProbes?.capturePageListeners();
-const app = new App().addPlugins(...DefaultPlugins, () => {
-  system(PreStartUp)(Bootstrap);
-  system((s) => s.before(ComputeZIndex))(Bootstrap);
-});
+// This fixture has a bounded scene; every canvas shares this entity budget.
+const app = new App({ maxEntities: 16_384 }).addPlugins(
+  ...DefaultPlugins,
+  () => {
+    system(PreStartUp)(Bootstrap);
+    system((s) => s.before(ComputeZIndex))(Bootstrap);
+  },
+);
 
 function act(side: Side, fn: (slot: Slot) => void) {
   const slot = slots.get(side)!;
@@ -280,7 +284,11 @@ const harness = {
     const slot = slots.values().next().value as Slot | undefined;
     if (slot) await settleECSFrames(slot.api);
   },
-  setScene(side: Side, nodes: SerializedNode[], selectedIds: string | string[]) {
+  setScene(
+    side: Side,
+    nodes: SerializedNode[],
+    selectedIds: string | string[],
+  ) {
     return act(side, ({ api }) => {
       api.replaceDocument(nodes);
       api.setAppState({ penbarSelected: Pen.SELECT });
@@ -305,7 +313,11 @@ const harness = {
   },
   rotationPivot(side: Side) {
     const tf = slots.get(side)!.api.getCamera().read(Transformable);
-    return { x: tf.rotatePivotX, y: tf.rotatePivotY, pinned: tf.rotatePivotPinned };
+    return {
+      x: tf.rotatePivotX,
+      y: tf.rotatePivotY,
+      pinned: tf.rotatePivotPinned,
+    };
   },
   transformer(side: Side) {
     const { api } = slots.get(side)!;

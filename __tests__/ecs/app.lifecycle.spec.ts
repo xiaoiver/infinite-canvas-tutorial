@@ -1,5 +1,5 @@
 import { World } from '../../packages/ecs/node_modules/@lastolivegames/becsy';
-import { App } from '../../packages/ecs/src/App';
+import { App, type AppOptions } from '../../packages/ecs/src/App';
 import { DOMAdapter } from '../../packages/ecs/src/environment';
 
 jest.mock('../../packages/ecs/node_modules/@lastolivegames/becsy', () => ({
@@ -43,6 +43,64 @@ describe('App lifecycle', () => {
     };
     (World.create as jest.Mock).mockReset().mockResolvedValue(world);
   });
+
+  it.each<[AppOptions | undefined, number, number]>([
+    [undefined, 4194304, 4194304],
+    [{}, 4194304, 4194304],
+    [{ maxEntities: 1024 }, 1024, 1024],
+    [{ maxLimboComponents: 8192 }, 4194304, 8192],
+    [{ maxEntities: 1024, maxLimboComponents: 8192 }, 1024, 8192],
+  ])(
+    'starts with the requested capacity: %j',
+    async (options, entities, limbo) => {
+      const app = new App(options);
+      try {
+        await app.run();
+        expect(World.create).toHaveBeenCalledWith({
+          threads: 1,
+          maxEntities: entities,
+          maxLimboComponents: limbo,
+        });
+      } finally {
+        await app.exit();
+      }
+    },
+  );
+
+  it('captures capacity at construction instead of retaining caller state', async () => {
+    const options = { maxEntities: 1024, maxLimboComponents: 2048 };
+    const app = new App(options);
+    options.maxEntities = 0;
+    options.maxLimboComponents = 0;
+    try {
+      await app.run();
+      expect(World.create).toHaveBeenCalledWith({
+        threads: 1,
+        maxEntities: 1024,
+        maxLimboComponents: 2048,
+      });
+    } finally {
+      await app.exit();
+    }
+  });
+
+  it.each([0, -1, 1.5, NaN, Infinity, 4194305])(
+    'rejects invalid entity capacity %s before creating a World',
+    (maxEntities) => {
+      expect(() => new App({ maxEntities })).toThrow(/maxEntities/);
+      expect(World.create).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects invalid limbo capacity %s before creating a World',
+    (maxLimboComponents) => {
+      expect(() => new App({ maxLimboComponents })).toThrow(
+        /maxLimboComponents/,
+      );
+      expect(World.create).not.toHaveBeenCalled();
+    },
+  );
 
   it('awaits the active frame and never schedules another frame after exit', async () => {
     const frame = deferred();

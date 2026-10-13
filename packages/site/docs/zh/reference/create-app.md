@@ -1,6 +1,7 @@
 ---
 outline: deep
 ---
+
 首先在全局创建一个 App 并使用默认的插件集，详见：[课程 18 - 使用 ECS 重构]
 
 ```ts
@@ -14,6 +15,27 @@ app.run();
 然后就可以创建一个或多个画布，这里我们使用基于 WebComponents 实现的 UI 组件。
 
 React 项目可以使用 [React 封装](/zh/reference/react)，自动管理运行时、画布生命周期和事件。
+
+## ECS 容量 {#ecs-capacity}
+
+App 的 ECS World 会在启动时根据实体容量预分配存储。对于规模明确的小型场景，可以在启动前指定较小的容量：
+
+```ts
+const app = new App({
+    maxEntities: 16_384,
+    maxLimboComponents: 16_384,
+}).addPlugins(...DefaultPlugins, UIPlugin);
+await app.run();
+```
+
+| 选项                 | 默认值                   | 含义                                                            |
+| -------------------- | ------------------------ | --------------------------------------------------------------- |
+| `maxEntities`        | `4_194_304`              | App 内所有画布共享的 ECS 实体上限，须为 1 至 4,194,304 的整数。 |
+| `maxLimboComponents` | 当前指定的 `maxEntities` | 已移除、等待 ECS 回收的组件容量，须为正的安全整数。             |
+
+这些是固定上限，不是可以自动增长的初始容量。实体数量还包括内部的画布、相机、变换器锚点、绘制图层和插件实体，因此应在文档图形数量之外留出余量。一个实体可能包含多个组件，批量删除时可能需要更大的 `maxLimboComponents`。无效参数会在构造时抛出 `RangeError`；运行中超过容量则会触发 Becsy 的容量错误。
+
+参数会在构造时复制。调整容量需要先退出 App，再创建新的 App。`new App()` 保留现有默认值。较小的容量可以降低 ECS 分配开销，但不会改变 GPU 纹理或几何内存，也不会解除同一 JavaScript 环境中多个 App 共享组件类型的并发限制。
 
 ## 使用 WebComponents {#use-webcomponents}
 
