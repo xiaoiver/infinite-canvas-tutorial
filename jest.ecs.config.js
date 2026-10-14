@@ -451,6 +451,12 @@ module.exports = {
       functions: 75,
       lines: 95,
     },
+    './packages/ecs/src/systems/DrawRect.ts': {
+      statements: 60,
+      branches: 70,
+      functions: 80,
+      lines: 60,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [
