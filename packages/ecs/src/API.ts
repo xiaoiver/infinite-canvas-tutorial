@@ -3,7 +3,7 @@ import { hitTestTextPath } from './utils/glyph/measure-text-path';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
 import { isEntityAlive, updateGlobalTransform } from './systems/Transform';
-import { isNil, path2Absolute } from '@antv/util';
+import { isNil, path2Curve } from '@antv/util';
 import {
   CaptureUpdateAction,
   CaptureUpdateActionType,
@@ -78,7 +78,7 @@ import {
   firstEnabledStrokePresentation,
   migrateLegacyStrokeWireInPlace,
 } from './utils/normalize-stroke-wire';
-import { getEnabledFillLayers } from './utils/fillLayers';
+import { fillLayerOpacity, getEnabledFillLayers } from './utils/fillLayers';
 import { resolveExtrude3DDepth } from './utils/extrude3d';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
@@ -3325,174 +3325,169 @@ export class API {
       height?: number;
     } = {},
   ): Promise<HTMLCanvasElement> {
-    let {
-      canvas,
-      width = node.width ?? 0,
-      height = node.height ?? 0,
-    } = options;
-    if (!canvas) {
-      canvas = DOMAdapter.get().createCanvas(
-        width,
-        height,
-      ) as HTMLCanvasElement;
-    }
-
+    const canvas =
+      options.canvas ??
+      (DOMAdapter.get().createCanvas(
+        options.width ?? node.width ?? 0,
+        options.height ?? node.height ?? 0,
+      ) as HTMLCanvasElement);
     const ctx = canvas.getContext('2d')!;
     migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
     migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
-    const pres = firstEnabledFillPresentation((node as FillAttributes).fills);
-    const fillFromFills = pres?.fill ?? '';
-    const fillOpacity = (() => {
-      const o = pres?.fillOpacity ?? 1;
-      if (typeof o === 'number' && Number.isFinite(o)) {
-        return Math.max(0, Math.min(1, o));
-      }
-      const n = parseFloat(String(o));
-      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-    })();
-    const spres = firstEnabledStrokePresentation(
+    const fillPresentation = firstEnabledFillPresentation(
+      (node as FillAttributes).fills,
+    );
+    const strokePresentation = firstEnabledStrokePresentation(
       (node as StrokeAttributes).strokes,
     );
-    const strokeFromStrokes = spres?.stroke ?? '';
-    const strokeOpacity = (() => {
-      const o = spres?.strokeOpacity ?? 1;
-      if (typeof o === 'number' && Number.isFinite(o)) {
-        return Math.max(0, Math.min(1, o));
-      }
-      const n = parseFloat(String(o));
-      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
-    })();
-    const opacity = (node as { opacity?: number }).opacity ?? 1;
+    const fill = fillPresentation?.fill ?? '';
+    const stroke = strokePresentation?.stroke ?? '';
+    const {
+      strokeWidth = 1,
+      strokeLinecap = 'butt',
+      strokeLinejoin = 'miter',
+    } = node as StrokeAttributes;
+    const hasFill = !!fill && fill !== 'none';
+    const hasStroke =
+      !!stroke &&
+      stroke !== 'none' &&
+      Number.isFinite(strokeWidth) &&
+      strokeWidth > 0;
 
-    if (node.type === 'rect' || node.type === 'rough-rect') {
-      const {
-        x,
-        y,
-        width,
-        height,
-        strokeWidth,
-        strokeLinecap,
-        strokeLinejoin,
-      } = node;
-      const fill = fillFromFills;
-      ctx.save();
-      if (isDataUrl(fill) || isUrl(fill)) {
-        ctx.globalAlpha = opacity * fillOpacity;
-        const image = (await DOMAdapter.get().createImage(fill)) as ImageBitmap;
-        ctx.drawImage(image, x ?? 0, y ?? 0, width ?? 0, height ?? 0);
-      } else {
-        ctx.globalAlpha = opacity * fillOpacity;
+    ctx.save();
+    try {
+      ctx.translate(node.x ?? 0, node.y ?? 0);
+      const nodeAlpha =
+        ctx.globalAlpha * fillLayerOpacity((node as FillAttributes).opacity);
+      ctx.globalAlpha = nodeAlpha;
+      const fillShape = (fillRule: CanvasFillRule = 'nonzero') => {
+        if (!hasFill) return;
+        ctx.globalAlpha =
+          nodeAlpha *
+          fillLayerOpacity(fillPresentation?.fillOpacity as number | string);
         ctx.fillStyle = fill;
-        ctx.fillRect(x ?? 0, y ?? 0, width ?? 0, height ?? 0);
-      }
-      ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = strokeFromStrokes;
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = strokeLinecap;
-      ctx.lineJoin = strokeLinejoin;
-      ctx.stroke();
-      ctx.restore();
-    } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
-      const {
-        x,
-        y,
-        width,
-        height,
-        strokeWidth,
-        strokeLinecap,
-        strokeLinejoin,
-      } = node;
-      const fill = fillFromFills;
-      ctx.save();
-      ctx.globalAlpha = opacity * fillOpacity;
-      ctx.fillStyle = fill;
-      ctx.ellipse(
-        (x ?? 0) + (width ?? 0) / 2,
-        (y ?? 0) + (height ?? 0) / 2,
-        (width ?? 0) / 2,
-        (height ?? 0) / 2,
-        0,
-        0,
-        2 * Math.PI,
-      );
-      ctx.fill();
-      ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = strokeFromStrokes;
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = strokeLinecap;
-      ctx.lineJoin = strokeLinejoin;
-      ctx.stroke();
-      ctx.restore();
-    } else if (node.type === 'path' || node.type === 'rough-path') {
-      const { d, strokeWidth } = node;
-      const fill = fillFromFills;
-      ctx.save();
-      ctx.globalAlpha = opacity * fillOpacity;
-      ctx.fillStyle = fill;
-      ctx.beginPath();
-      path2Absolute(d).forEach(([command, ...data]) => {
-        if (command === 'M') {
-          ctx.moveTo(data[0], data[1]);
-        } else if (command === 'L') {
-          ctx.lineTo(data[0], data[1]);
-        } else if (command === 'C') {
-          ctx.bezierCurveTo(
-            data[0],
-            data[1],
-            data[2],
-            data[3],
-            data[4],
-            data[5],
+        ctx.fill(fillRule);
+      };
+      const strokeShape = () => {
+        if (!hasStroke) return;
+        ctx.globalAlpha =
+          nodeAlpha *
+          fillLayerOpacity(
+            strokePresentation?.strokeOpacity as number | string,
           );
-        }
-      });
-      ctx.closePath();
-      ctx.fill();
-      ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = strokeFromStrokes;
-      ctx.lineWidth = strokeWidth;
-      ctx.stroke();
-      ctx.restore();
-    } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
-      const { points, strokeWidth, strokeLinecap, strokeLinejoin, x, y } = node;
-      ctx.save();
-      ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = strokeFromStrokes;
-      deserializePoints(points).forEach((point, index) => {
-        if (index === 0) {
-          ctx.moveTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = strokeWidth;
+        ctx.lineCap = strokeLinecap;
+        ctx.lineJoin = strokeLinejoin;
+        ctx.stroke();
+      };
+
+      if (node.type === 'rect' || node.type === 'rough-rect') {
+        ctx.beginPath();
+        const width = node.width ?? 0;
+        const height = node.height ?? 0;
+        const requestedRadius = (node as { cornerRadius?: number })
+          .cornerRadius;
+        const radius =
+          width > 0 && height > 0 && Number.isFinite(requestedRadius)
+            ? Math.max(0, Math.min(requestedRadius!, width / 2, height / 2))
+            : 0;
+        if (radius > 0) {
+          ctx.moveTo(radius, 0);
+          ctx.lineTo(width - radius, 0);
+          ctx.arcTo(width, 0, width, radius, radius);
+          ctx.lineTo(width, height - radius);
+          ctx.arcTo(width, height, width - radius, height, radius);
+          ctx.lineTo(radius, height);
+          ctx.arcTo(0, height, 0, height - radius, radius);
+          ctx.lineTo(0, radius);
+          ctx.arcTo(0, 0, radius, 0, radius);
+          ctx.closePath();
         } else {
-          ctx.lineTo(point[0] + (x ?? 0), point[1] + (y ?? 0));
+          ctx.rect(0, 0, width, height);
         }
-      });
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = strokeLinecap;
-      ctx.lineJoin = strokeLinejoin;
-      ctx.stroke();
-      ctx.restore();
-    } else if (node.type === 'line' || node.type === 'rough-line') {
-      const { x1, y1, x2, y2, strokeWidth, strokeLinecap, strokeLinejoin } =
-        node;
-      ctx.save();
-      ctx.globalAlpha = opacity * strokeOpacity;
-      ctx.strokeStyle = strokeFromStrokes;
-      ctx.moveTo(x1 ?? 0, y1 ?? 0);
-      ctx.lineTo(x2 ?? 0, y2 ?? 0);
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = strokeLinecap;
-      ctx.lineJoin = strokeLinejoin;
-      ctx.stroke();
+        if (hasFill && (isDataUrl(fill) || isUrl(fill))) {
+          ctx.globalAlpha =
+            nodeAlpha *
+            fillLayerOpacity(fillPresentation?.fillOpacity as number | string);
+          const image = (await DOMAdapter.get().createImage(
+            fill,
+          )) as ImageBitmap;
+          try {
+            if (radius > 0) {
+              ctx.save();
+              ctx.clip();
+            }
+            try {
+              ctx.drawImage(image, 0, 0, width, height);
+            } finally {
+              if (radius > 0) ctx.restore();
+            }
+          } finally {
+            image.close?.();
+          }
+        } else {
+          fillShape();
+        }
+        strokeShape();
+      } else if (node.type === 'ellipse' || node.type === 'rough-ellipse') {
+        ctx.beginPath();
+        ctx.ellipse(
+          (node.width ?? 0) / 2,
+          (node.height ?? 0) / 2,
+          (node.width ?? 0) / 2,
+          (node.height ?? 0) / 2,
+          0,
+          0,
+          2 * Math.PI,
+        );
+        fillShape();
+        strokeShape();
+      } else if (node.type === 'path' || node.type === 'rough-path') {
+        ctx.beginPath();
+        const [commands, closed] = path2Curve(node.d, true) as [
+          Array<[string, ...number[]]>,
+          number[],
+        ];
+        commands.forEach(([command, ...data], index) => {
+          if (command === 'M') ctx.moveTo(data[0], data[1]);
+          else if (command === 'C')
+            ctx.bezierCurveTo(
+              data[0],
+              data[1],
+              data[2],
+              data[3],
+              data[4],
+              data[5],
+            );
+          if (closed.includes(index)) ctx.closePath();
+        });
+        fillShape(node.fillRule ?? 'nonzero');
+        strokeShape();
+      } else if (node.type === 'polyline' || node.type === 'rough-polyline') {
+        ctx.beginPath();
+        deserializePoints(node.points).forEach(([x, y], index) => {
+          if (index === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        strokeShape();
+      } else if (node.type === 'line' || node.type === 'rough-line') {
+        ctx.beginPath();
+        ctx.moveTo(node.x1 ?? 0, node.y1 ?? 0);
+        ctx.lineTo(node.x2 ?? 0, node.y2 ?? 0);
+        strokeShape();
+      }
+
+      // Children share this canvas. Await each image decode before drawing the
+      // next sibling, preserving scene order and inherited transforms/opacity.
+      ctx.globalAlpha = nodeAlpha;
+      for (const child of this.getChildren(node)) {
+        const childNode = this.getNodeByEntity(child);
+        if (childNode) await this.renderToCanvas(childNode, { canvas });
+      }
+    } finally {
       ctx.restore();
     }
-
-    await Promise.all(
-      this.getChildren(node)
-        .map((child) =>
-          this.renderToCanvas(this.getNodeByEntity(child), { canvas }),
-        )
-        .filter(Boolean),
-    );
-
     return canvas;
   }
 

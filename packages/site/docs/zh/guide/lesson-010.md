@@ -458,6 +458,13 @@ const elements = await serializeNodesToSVGElements([
 椭圆根据 `width`、`height` 推导局部圆心和半径。重新导入这些 SVG 路径能保留
 渲染几何，但不会恢复可编辑的手绘参数。图案导入不属于这次导出支持的范围。
 
+需要 Canvas2D 结果时，可以调用 `API.renderToCanvas(node, { width, height })`，
+把节点及其子节点绘制到同一张画布。它支持矩形、椭圆、路径、折线和线段的纯色
+填充与描边，以及矩形的图片填充。每个图形独立建立路径；SVG 路径命令（包括弧线）
+和 `evenodd` 填充规则会转换为 Canvas2D 绘制。局部位置、圆角以及节点/图层
+透明度都会保留。子节点图片解码完成后才绘制下一个同级节点，从而保持图层顺序。
+图片解码失败时方法会拒绝，传入的画布仍可用于下一次绘制。
+
 #### 绘制网格 {#export-grid}
 
 最后来看如何使用 SVG 实现网格。参考 [How to draw grid using HTML5 and canvas or SVG]，我们使用 `<pattern>` 平铺实现：对于直线网格使用一大一小两组；对于圆点网格分别在“砖块”的四个角上各放置一个圆形：

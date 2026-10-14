@@ -56,10 +56,10 @@ module.exports = {
       lines: 100,
     },
     './packages/ecs/src/API.ts': {
-      statements: 74,
-      branches: 55,
-      functions: 78,
-      lines: 73,
+      statements: 80,
+      branches: 64,
+      functions: 81,
+      lines: 80,
     },
     './packages/ecs/src/utils/gradient.ts': {
       statements: 95,

@@ -467,6 +467,16 @@ Hachure strokes use `roughFillWeight` (half the outline width when omitted or
 Reimporting these SVG paths preserves the rendered geometry, but does not restore
 editable rough parameters. Pattern import is not covered by this export support.
 
+For callers needing a Canvas2D result, `API.renderToCanvas(node, { width, height })`
+draws that node and its children into one canvas. It supports solid fills and
+strokes on rectangles, ellipses, paths, polylines and lines, plus image-filled
+rectangles. Each shape starts its own path; SVG path commands, including arcs,
+and the `evenodd` fill rule are converted for Canvas2D. Local positions,
+rounded corners and node/layer opacity are preserved. Child images finish
+decoding before the next sibling is drawn, so their order stays stable. The
+method rejects if an image cannot be decoded, leaving a supplied canvas ready
+for another draw.
+
 #### Grid in SVG {#export-grid}
 
 Finally, let's look at how to implement a grid using SVG. Referring to [How to draw grid using HTML5 and canvas or SVG], we use `<pattern>` tiling: for the straight grid, we use two sets of one and one set of two; for the dot grid, we place a circle in each of the four corners of the “tile”:
