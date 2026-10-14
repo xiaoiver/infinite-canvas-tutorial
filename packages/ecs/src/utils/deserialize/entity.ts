@@ -155,7 +155,7 @@ export function inferXYWidthHeight(node: SerializedNode) {
   ) {
     const { type } = node;
     let bounds: AABB;
-    if (type === 'rect' || type === 'html' || type === 'embed' || type === 'iconfont') {
+    if (type === 'rect' || type === 'rough-rect' || type === 'html' || type === 'embed' || type === 'iconfont') {
       bounds = Rect.getGeometryBounds(node as Partial<Rect>);
     } else if (type === 'ellipse' || type === 'rough-ellipse') {
       bounds = Ellipse.getGeometryBounds(node);

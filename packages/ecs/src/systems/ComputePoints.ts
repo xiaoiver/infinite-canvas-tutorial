@@ -10,6 +10,9 @@ import { safeAddComponent } from '../history';
 export class ComputePoints extends System {
   paths = this.query((q) => q.addedOrChanged.with(Path).trackWrites);
   polylines = this.query((q) => q.addedOrChanged.with(Polyline).trackWrites);
+  polylineStrokes = this.query(
+    (q) => q.addedChangedOrRemoved.with(Polyline).and.with(Stroke).trackWrites,
+  );
 
   constructor() {
     super();
@@ -22,9 +25,14 @@ export class ComputePoints extends System {
       updateComputedPoints(entity);
     });
 
-    this.polylines.addedOrChanged.forEach((entity) => {
-      updateComputedPoints(entity);
-    });
+    const polylines = new Set([
+      ...this.polylines.addedOrChanged,
+      ...this.polylineStrokes.addedChangedOrRemoved,
+    ]);
+    for (const entity of polylines) {
+      // Removed strokes still need unshifted points; deleted shapes do not.
+      if (entity.alive && entity.has(Polyline)) updateComputedPoints(entity);
+    }
   }
 }
 
@@ -42,13 +50,13 @@ export function updateComputedPoints(entity: Entity) {
     entity.write(ComputedPoints).points = points;
   } else if (entity.has(Polyline)) {
     const { points } = entity.read(Polyline);
-    const { alignment, width } = entity.read(Stroke);
+    const stroke = entity.has(Stroke) ? entity.read(Stroke) : undefined;
 
     safeAddComponent(entity, ComputedPoints);
     entity.write(ComputedPoints).shiftedPoints = maybeShiftPoints(
       points,
-      alignment,
-      width,
+      stroke?.alignment ?? 'center',
+      stroke?.width ?? 0,
     );
   }
 }
@@ -64,10 +72,23 @@ export function maybeShiftPoints(
 }
 
 export function shiftPoints(
-  points: [number, number][],
+  source: [number, number][],
   innerStrokeAlignment: boolean,
   strokeWidth: number,
 ) {
+  // Repeated samples have no tangent. Offset their shared vertex once, then
+  // restore the original point count/order for rendering and SVG export.
+  const points: [number, number][] = [];
+  const indices = source.map((point) => {
+    const previous = points[points.length - 1];
+    if (!previous || point[0] !== previous[0] || point[1] !== previous[1]) {
+      points.push(point);
+    }
+    return points.length - 1;
+  });
+  if (points.length < 2)
+    return source.map(([x, y]) => [x, y] as [number, number]);
+
   const shiftedPoints: [number, number][] = [];
   points.forEach(([x, y], index) => {
     const current = vec2.fromValues(x, y);
@@ -83,13 +104,13 @@ export function shiftPoints(
     const xBasis = vec2.sub(vec2.create(), current, prev);
     const len = vec2.length(xBasis);
     const forward = vec2.create();
-    vec2.divide(forward, xBasis, vec2.fromValues(len, len));
+    vec2.normalize(forward, xBasis);
     const norm = vec2.fromValues(forward[1], -forward[0]);
 
     const xBasis2 = vec2.sub(vec2.create(), next, current);
     const len2 = vec2.length(xBasis2);
     const forward2 = vec2.create();
-    vec2.divide(forward2, xBasis2, vec2.fromValues(len2, len2));
+    vec2.normalize(forward2, xBasis2);
     const norm2 = vec2.fromValues(forward2[1], -forward2[0]);
 
     const D = norm[0] * norm2[1] - norm[1] * norm2[0];
@@ -112,5 +133,5 @@ export function shiftPoints(
 
     shiftedPoints.push([current[0], current[1]]);
   });
-  return shiftedPoints;
+  return indices.map((index) => shiftedPoints[index]);
 }

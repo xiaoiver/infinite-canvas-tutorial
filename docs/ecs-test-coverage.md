@@ -2138,6 +2138,71 @@ pnpm test:ecs
 pnpm test:tooling
 ```
 
+## 第三十四批：实体几何反序列化与折线描边缓存
+
+以 #428 合并后的 `master`（`a9b345c5`）为基线。Coveralls build 82348194
+已确认这一基线的线上覆盖率为 **76.584%**；本轮继续使用完整 ECS 统计范围，
+没有增加排除项，也没有降低原有 60 项模块门槛。
+
+新增 **51 项原生 Jest 回归**，使用真实实体、帧推进、属性同步和历史系统：
+
+-   矩形、椭圆、直线、折线、Path、Brush 及 rough 变体的缺省位置、几何归一化、
+    重复推导和文档重载；向量网络的顶点归一化；保留显式零尺寸、变换和笔刷半径。
+-   折线无描边/空描边、描边添加和移除、宽度和对齐修改、清除属性、撤销/重做、
+    重载一致性、多子路径更新、实体删除及祖先 Group 包围盒刷新。
+-   重复端点、重复转角、全部重合、水平/垂直、共线、反向折返及零宽偏移。
+    断言保留点序/数量且不修改输入；空闲帧和重命名不重建顶点缓存。
+
+测试暴露并修复：
+
+1. 无 `Stroke` 的折线在 `ComputePoints` 无条件读取组件而报错；现在保留原始顶点。
+2. 描边更新未使偏移缓存失效，且 `ComputeBounds` 未监听计算后的顶点更新。
+   现在监听描边的添加/修改/移除，并更新形状和祖先 Group 的边界。
+3. 重复采样点产生零向量除法及错误转角偏移。现在对连续重复顶点计算一次偏移，
+   再恢复原来的点序和数量；没有有效线段时保留有限坐标。
+4. `rough-rect` 缺省位置未进入矩形边界推导；现在与普通矩形一致。
+5. 清除 `strokeAlignment` 把 `undefined` 写入 ECS 枚举；现在恢复 `center` 默认值。
+
+`ComputePoints` 新增四项 100% 门槛，受保护模块总数为 61。定向原生回归
+覆盖新用例、历史属性同步、rough 同步及 SVG 内外描边导出。
+
+完整原生 ECS 回归 **254 个文件、2619 项测试**全部通过，
+Jest 进程成功退出，61 项模块门槛全部通过。沿用 CI 的两个 worker、256 MB worker
+回收阈值及 8 GiB 容器；用时 956.276 秒，完整统计 427 个 ECS 源文件。
+运行前后 1260 个源码/测试/配置/快照输入哈希一致。
+
+按 Coveralls 的行与分支合计口径，本地结果由 **76.584%** 提升至
+**76.816%**；新线上数值需本 PR 合并后的 CI 上传确认。
+
+| 指标       |                  基线 |          本批完整结果 |
+| ---------- | --------------------: | --------------------: |
+| 行覆盖率   | 80.13%（23101/28827） | 80.35%（23172/28838） |
+| 语句覆盖率 | 80.06%（24216/30245） | 80.27%（24290/30259） |
+| 分支覆盖率 |  69.37%（9851/14200） |  69.64%（9901/14217） |
+| 函数覆盖率 |   79.39%（3086/3887） |   79.71%（3101/3890） |
+
+| 模块                          |  行覆盖率前 → 后 | 分支覆盖率前 → 后 |
+| ----------------------------- | ---------------: | ----------------: |
+| `systems/ComputePoints.ts`    | 54.23% → 100.00% |  23.52% → 100.00% |
+| `utils/deserialize/entity.ts` |  65.57% → 66.76% |   62.96% → 63.97% |
+| `systems/ComputeBounds.ts`    |  92.99% → 94.26% |   88.54% → 90.62% |
+| `history/ElementsChange.ts`   |  93.91% → 93.91% |   87.77% → 87.81% |
+
+仓库 ESLint、新增用例 TypeScript、ECS CJS/ESM 构建、26 项 tooling、Markdown/case/格式及 diff 检查通过。
+
+中英文 lesson-012 同步说明描边更新及退化采样点的行为，附 ECS patch changeset。
+未发布包。本批没有增加浏览器测试；Jest 结果包含原有原生渲染及 SVG 导出回归。
+
+```sh
+pnpm exec jest -c jest.ecs.config.js --runInBand --runTestsByPath \
+  __tests__/ecs/compute-points.spec.ts __tests__/ecs/deserialize.entity-geometry.spec.ts \
+  __tests__/ecs/history-property-sync.spec.ts __tests__/ecs/history-rough-sync.spec.ts \
+  __tests__/ecs/export.stroke-alignment.inner.spec.ts \
+  __tests__/ecs/export.stroke-alignment.outer.spec.ts
+pnpm test:ecs
+pnpm test:tooling
+```
+
 ## 后续顺序
 
 属性同步、交互拆分、三维 gizmo 编辑、同步去重及 GPU 缓存已建立回归基线。后续优先：
