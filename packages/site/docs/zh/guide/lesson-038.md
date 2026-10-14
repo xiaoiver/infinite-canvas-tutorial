@@ -169,6 +169,9 @@ const m = await import('@iconify/json/json/lucide.json');
 registerIconifyIconSet('lucide', m);
 ```
 
+图标正文支持单引号或双引号的 SVG 属性。路径、矩形、圆、椭圆和线段既可以使用
+自闭合标签，也可以使用显式闭合标签；嵌套 `<g>` 的填充和描边属性会传给子图形。
+
 然后我们就可以将图标 JSON 转换成我们的场景图表示，例如下面的 Search 图标会被解析成一个 `Group` 父节点，拥有一个 `Path` 和 `Circle` 子节点，这部分和之前将 SVG 元素转换成我们的图形表示几乎一模一样：
 
 ```json

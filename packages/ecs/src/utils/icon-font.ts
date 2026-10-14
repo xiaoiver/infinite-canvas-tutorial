@@ -304,10 +304,10 @@ function parseTagAttrs(s: string): Record<string, string> {
   if (!s) {
     return o;
   }
-  const re = /\s([a-zA-Z0-9:-]+)\s*=\s*"([^"]*)"/g;
+  const re = /\s([a-zA-Z0-9:-]+)\s*=\s*(['"])([\s\S]*?)\2/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s)) != null) {
-    o[m[1]!] = m[2]!;
+    o[m[1]!] = m[3]!;
   }
   return o;
 }
@@ -689,9 +689,6 @@ export function resolveIconifyBodyToScalablePrimitives(
         styleStack.push(
           mergeSvgStyle(top, pickVisualAttrs(gattrs) as IconSvgStyle),
         );
-        continue;
-      }
-      if (!open.selfClose) {
         continue;
       }
       const at = parseTagAttrs(` ${open.attr}`);

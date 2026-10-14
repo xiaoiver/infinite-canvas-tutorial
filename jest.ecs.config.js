@@ -61,6 +61,12 @@ module.exports = {
       functions: 81,
       lines: 80,
     },
+    './packages/ecs/src/utils/icon-font.ts': {
+      statements: 73,
+      branches: 63,
+      functions: 95,
+      lines: 73,
+    },
     './packages/ecs/src/utils/gradient.ts': {
       statements: 95,
       branches: 92,
