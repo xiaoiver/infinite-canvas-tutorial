@@ -428,6 +428,45 @@ Unfortunately we get the following error. The reason for this is that we have al
 
 So we can only use the regular `drawImage` method to draw the image into the `<canvas>`.
 
+#### ECS paint and rough geometry export {#ecs-export-paints}
+
+The ECS exporter reads the first enabled layer in `fills` and `strokes`. An
+`image` fill stretches to the shape bounds. A `pattern` layer instead embeds the
+decoded image at its natural dimensions and preserves `repeat`, `repeat-x`,
+`repeat-y` or `no-repeat`. Its SVG `<pattern>` uses local coordinates, with the
+node transform applied once to the enclosing group. Pattern definitions have
+separate IDs when nodes need different repetition extents.
+
+```ts
+const elements = await serializeNodesToSVGElements([
+    {
+        id: 'tile',
+        type: 'rect',
+        zIndex: 0,
+        x: 40,
+        y: 30,
+        width: 200,
+        height: 100,
+        fills: [
+            { type: 'pattern', value: imageDataURL, repetition: 'repeat-x' },
+        ],
+    },
+]);
+```
+
+Image decoding is asynchronous. Await `serializeNodesToSVGElements`, or
+`exportFillGradientOrPattern` / `exportStrokeGradientOrPattern` when using those
+lower-level helpers directly. A failed image decode rejects the export.
+Gradient, image and pattern fills on text keep their definitions alongside the
+`<text>` element so writing its content does not remove its paint resources.
+
+Rough shapes export local geometry as SVG paths. Their group opacity, fill-layer
+opacity and stroke-layer opacity remain separate, including zero opacity.
+Hachure strokes use `roughFillWeight` (half the outline width when omitted or
+`-1`). Ellipses derive their local center and radii from `width` and `height`.
+Reimporting these SVG paths preserves the rendered geometry, but does not restore
+editable rough parameters. Pattern import is not covered by this export support.
+
 #### Grid in SVG {#export-grid}
 
 Finally, let's look at how to implement a grid using SVG. Referring to [How to draw grid using HTML5 and canvas or SVG], we use `<pattern>` tiling: for the straight grid, we use two sets of one and one set of two; for the dot grid, we place a circle in each of the four corners of the “tile”:

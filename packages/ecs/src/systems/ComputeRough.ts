@@ -22,7 +22,6 @@ import {
   deserializePoints,
   generator,
   parsePath,
-  shiftPath,
 } from '../utils';
 import { getWatercolorFillContoursFromEntity } from '../utils/watercolor-rough';
 import { safeAddComponent } from '../history';
@@ -164,21 +163,26 @@ export function computeDrawableSets(node: SerializedNode) {
 
   const roughOptions = getRoughOptions(node);
 
-  const { x, y, width, height, type } = node;
+  const { width, height, type } = node;
   if (type === 'ellipse' || type === 'rough-ellipse') {
-    const { cx, cy, rx, ry } = node;
-    drawable = generator.ellipse(cx - x, cy - y, rx * 2, ry * 2, roughOptions);
+    drawable = generator.ellipse(
+      width / 2,
+      height / 2,
+      width,
+      height,
+      roughOptions,
+    );
   } else if (type === 'rect' || type === 'rough-rect') {
     drawable = generator.rectangle(0, 0, width, height, roughOptions);
   } else if (type === 'line' || type === 'rough-line') {
     const { x1, y1, x2, y2 } = node;
-    drawable = generator.line(x1 - x, y1 - y, x2 - x, y2 - y, roughOptions);
+    drawable = generator.line(x1, y1, x2, y2, roughOptions);
   } else if (type === 'polyline' || type === 'rough-polyline') {
     const { points } = node;
     drawable = generator.linearPath(deserializePoints(points), roughOptions);
   } else if (type === 'path' || type === 'rough-path') {
     const { d } = node;
-    drawable = generator.path(shiftPath(d, -x, -y), roughOptions);
+    drawable = generator.path(d, roughOptions);
   }
 
   return drawable.sets;

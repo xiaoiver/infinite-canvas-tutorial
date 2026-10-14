@@ -424,6 +424,40 @@ async function imageBitmapToURL(bmp: ImageBitmap) {
 
 因此我们只能使用常规的 `drawImage` 方式将图片绘制到 `<canvas>` 中。
 
+#### ECS 填充与手绘图形导出 {#ecs-export-paints}
+
+ECS 导出器读取 `fills` 和 `strokes` 中第一个启用的图层。`image` 填充会拉伸到
+图形边界；`pattern` 图层则嵌入解码后的图片，使用图片原始尺寸，并保留 `repeat`、
+`repeat-x`、`repeat-y` 或 `no-repeat`。SVG `<pattern>` 使用局部坐标，节点变换
+只应用在外层分组上。不同节点需要不同的重复范围时，会使用独立的图案定义 ID。
+
+```ts
+const elements = await serializeNodesToSVGElements([
+    {
+        id: 'tile',
+        type: 'rect',
+        zIndex: 0,
+        x: 40,
+        y: 30,
+        width: 200,
+        height: 100,
+        fills: [
+            { type: 'pattern', value: imageDataURL, repetition: 'repeat-x' },
+        ],
+    },
+]);
+```
+
+图片解码是异步的。调用 `serializeNodesToSVGElements`，或直接使用底层
+`exportFillGradientOrPattern` / `exportStrokeGradientOrPattern` 时，需要
+`await`；图片解码失败会使导出 Promise 拒绝。文本使用渐变、图片或图案填充时，
+定义与 `<text>` 元素分别保留，写入文字内容不会删除填充资源。
+
+手绘图形将局部几何导出为 SVG 路径，分别保留分组、填充图层和描边图层的透明度，
+包括零透明度。排线填充使用 `roughFillWeight`，缺省或为 `-1` 时取轮廓线宽的一半。
+椭圆根据 `width`、`height` 推导局部圆心和半径。重新导入这些 SVG 路径能保留
+渲染几何，但不会恢复可编辑的手绘参数。图案导入不属于这次导出支持的范围。
+
 #### 绘制网格 {#export-grid}
 
 最后来看如何使用 SVG 实现网格。参考 [How to draw grid using HTML5 and canvas or SVG]，我们使用 `<pattern>` 平铺实现：对于直线网格使用一大一小两组；对于圆点网格分别在“砖块”的四个角上各放置一个圆形：
