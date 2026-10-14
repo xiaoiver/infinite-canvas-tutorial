@@ -1,7 +1,6 @@
 import _gl from 'gl';
 import '../useSnapshotMatchers';
 import {
-  App,
   Camera,
   Canvas,
   Children,
@@ -37,13 +36,12 @@ import {
   Opacity,
   GlobalTransform,
 } from '../../packages/ecs/src';
-import { NodeJSAdapter, sleep } from '../utils';
-
-DOMAdapter.set(NodeJSAdapter);
+import { createECSInteraction } from '../helpers/ecs-interaction';
 
 describe('Locked', () => {
   it('should deselect & unhighlight selected node when lock it', async () => {
-    const app = new App();
+    const interaction = createECSInteraction();
+    const { app, frames } = interaction;
 
     let api: API | undefined;
     let $canvas: HTMLCanvasElement | undefined;
@@ -122,32 +120,36 @@ describe('Locked', () => {
         });
         api.updateNodes([node]);
         api.selectNodes([node]);
-        // api.highlightNodes([node]);
+        api.highlightNodes([node]);
 
-        entity = api
-          .getEntity(node)
-          ?.hold();
+        entity = api.getEntity(node)?.hold();
       }
     }
 
     app.addPlugins(...DefaultPlugins, MyPlugin);
 
-    await app.run();
+    try {
+      await app.run();
+      await frames(6);
+      expect(entity!.has(Selected)).toBe(true);
+      expect(entity!.has(Highlighted)).toBe(true);
 
-    await sleep(300);
+      api!.runAtNextTick(() => {
+        api!.updateNode(node!, { locked: true });
+      });
+      await frames(6);
 
-    api?.runAtNextTick(() => {
-      api?.updateNode(node!, { locked: true });
-    });
-
-    await sleep(500);
-
-    const dir = `${__dirname}/snapshots`;
-    await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
-      dir,
-      'locked-deselect',
-    );
-
-    await app.exit();
+      expect(entity!.has(Locked)).toBe(true);
+      expect(entity!.has(Selected)).toBe(false);
+      expect(entity!.has(Highlighted)).toBe(false);
+      expect(api!.getAppState().layersSelected).toEqual([]);
+      const dir = `${__dirname}/snapshots`;
+      await expect($canvas!.getContext('webgl1')).toMatchWebGLSnapshot(
+        dir,
+        'locked-deselect',
+      );
+    } finally {
+      await interaction.dispose();
+    }
   });
 });

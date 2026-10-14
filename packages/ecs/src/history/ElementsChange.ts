@@ -39,6 +39,7 @@ import type {
   RectSerializedNode,
   SerializedNode,
   SerializedNodeAttributes,
+  TextSerializedNode,
   StrokeAttributes,
 } from '../types/serialized-node';
 import { API } from '../API';
@@ -53,6 +54,7 @@ import {
   Ellipse,
   Rect,
   Text,
+  EdgeLabel,
   Opacity,
   DropShadow,
   Polyline,
@@ -92,6 +94,9 @@ import {
 } from '../components';
 import { getDescendants } from '../systems';
 import { syncEdgeBindingForEntity } from '../utils/binding/sync-edge-entity';
+import { getEdgeLabelPoints } from '../utils/deserialize/entity';
+import { layoutTextAnchoredInParent } from '../utils/edge-label';
+import { pointAndNormalAlongPolylineByT } from '../utils/polyline-arclength';
 import {
   buildIconFontScalablePrimitives,
   mapSvgLineCap,
@@ -1174,6 +1179,41 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   const designVariables = api.getAppState().variables;
   const themeMode = api.getAppState().themeMode;
   const elNode = element as SerializedNode;
+
+  if (
+    elNode.type === 'text' &&
+    ('edgeLabelPosition' in updates || 'edgeLabelOffset' in updates)
+  ) {
+    const label = element as TextSerializedNode;
+    if (
+      label.edgeLabelPosition == null ||
+      Number.isNaN(label.edgeLabelPosition)
+    ) {
+      safeRemoveComponent(entity, EdgeLabel);
+    } else {
+      const position = label.edgeLabelPosition;
+      const offset = label.edgeLabelOffset ?? 0;
+      safeAddComponent(entity, EdgeLabel, {
+        labelPosition: position,
+        labelOffset: offset,
+      });
+      const parent = api.getNodeById(label.parentId);
+      const points = parent && getEdgeLabelPoints(parent);
+      if (points && points.length >= 2) {
+        const {
+          point: [px, py],
+          normal: [nx, ny],
+        } = pointAndNormalAlongPolylineByT(points, position);
+        const layout = layoutTextAnchoredInParent(
+          label,
+          px + nx * offset,
+          py + ny * offset,
+        );
+        Object.assign(element, layout);
+        updates = { ...updates, ...layout };
+      }
+    }
+  }
 
   const { name, visibility } = updates;
   const {
