@@ -9,6 +9,7 @@ declare global {
   interface Window {
     selectionCommits: string[][];
     selectionSetupStatus: string;
+    selectionReuseStatus: string;
   }
 }
 
@@ -282,20 +283,40 @@ test('accepted selections stay on their canvas when the panel is reused or detac
   page,
 }) => {
   const panel = await ready(page);
-  await panel.evaluate(async (element: LayersPanel) => {
-    const api = element.api;
-    const parent = element.parentNode!;
-    const row = element.shadowRoot!.querySelector('#layers-panel-item-left')!;
-    row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    element.api = window.apis.right;
-    element.remove();
-    // A detached control cannot submit new selections to the replacement API.
-    row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    const controller = new AbortController();
-    await api.edit(() => controller.abort(), { signal: controller.signal });
-    element.api = api;
-    parent.appendChild(element);
+  await panel.evaluate((element: LayersPanel) => {
+    window.selectionReuseStatus = 'pending';
+    // Keep completion observable in the page while the target is detached,
+    // instead of making CDP retain the Promise returned by locator.evaluate.
+    void (async () => {
+      const api = element.api;
+      const parent = element.parentNode!;
+      const row = element.shadowRoot!.querySelector('#layers-panel-item-left')!;
+      row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      element.api = window.apis.right;
+      element.remove();
+      // A detached control cannot submit new selections to the replacement API.
+      row.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      const controller = new AbortController();
+      const committed = await api.edit(() => controller.abort(), {
+        signal: controller.signal,
+      });
+      if (committed) throw new Error('Expected the drain edit to be cancelled');
+      element.api = api;
+      parent.appendChild(element);
+    })().then(
+      () => {
+        window.selectionReuseStatus = 'ready';
+      },
+      (error) => {
+        window.selectionReuseStatus = String(error);
+      },
+    );
   });
+  await expect
+    .poll(() => page.evaluate(() => window.selectionReuseStatus))
+    .not.toBe('pending');
+  expect(await page.evaluate(() => window.selectionReuseStatus)).toBe('ready');
+  await expect(panel).toBeAttached();
   await selected(page, ['left']);
   await selected(page, [], 'right');
   await expect(page.getByTestId('right-undo')).toBeDisabled();
