@@ -455,6 +455,8 @@ function moveCamera(e: MouseEvent) {
 
 You can try to drag canvas in the example at the top of this page.
 
+The ECS canvas also pans with the mouse wheel or a two-finger touch gesture. These deltas are measured in viewport pixels: rotate them into world space and divide by the current zoom before changing the camera position. Touch movement uses the opposite camera delta so the canvas follows the fingers. If a pinch changes zoom in the same frame, apply the pan to the updated camera transform.
+
 ### Rotation
 
 Rotation is not an essential feature for the canvas, but a FigJam user once inquired in the forums about its support: [Rotate canvas], as a slight rotation of the canvas aligns more with their usual usage habits.
@@ -476,6 +478,8 @@ function handleMouseMove(e: MouseEvent) {
 ```
 
 In the camera rotation mode, the distance moved by the mouse will be taken as the angle of rotation. Next, we construct a transformation matrix for rotation around a specified point in the world coordinate system; this can be referenced from [transform-origin]. Then, this transformation is applied to the camera matrix, and finally, various parameters are extracted from the matrix:
+
+Save the pointer-down coordinates as an independent value; retaining a live ECS input vector across frames can invalidate the rotation gesture.
 
 ```ts
 function rotateCamera(e: MouseEvent) {

@@ -61,6 +61,12 @@ module.exports = {
       functions: 82,
       lines: 82,
     },
+    './packages/ecs/src/systems/CameraControl.ts': {
+      statements: 95,
+      branches: 85,
+      functions: 90,
+      lines: 95,
+    },
     './packages/ecs/src/utils/icon-font.ts': {
       statements: 73,
       branches: 63,

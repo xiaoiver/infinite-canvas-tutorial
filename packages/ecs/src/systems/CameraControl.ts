@@ -131,7 +131,10 @@ export class CameraControl extends System {
             this.getClipSpaceMousePosition(entity),
             cameraControl.startInvertViewProjectionMatrix,
           );
-          cameraControl.startMousePos = pointerViewport;
+          cameraControl.startMousePos = vec2.fromValues(
+            pointerViewport[0],
+            pointerViewport[1],
+          );
         }
       }
 
@@ -184,31 +187,32 @@ export class CameraControl extends System {
             input.deltaY,
           );
         } else {
-          const { x, y, zoom } = entity.read(ComputedCamera);
-          // TODO: account for rotation
-          const transform = entity.write(Transform);
-          Object.assign(transform, {
-            translation: {
-              x: x + input.deltaX / zoom,
-              y: y + input.deltaY / zoom,
-            },
-            rotation: rotation,
-          });
+          this.panByViewportDelta(entity, input.deltaX, input.deltaY);
         }
       }
 
       if (input.touchPanDeltaX !== 0 || input.touchPanDeltaY !== 0) {
-        const { x, y, zoom } = entity.read(ComputedCamera);
-        const transform = entity.write(Transform);
-        Object.assign(transform, {
-          translation: {
-            x: x + input.touchPanDeltaX / zoom,
-            y: y + input.touchPanDeltaY / zoom,
-          },
-          rotation: rotation,
-        });
+        this.panByViewportDelta(
+          entity,
+          -input.touchPanDeltaX,
+          -input.touchPanDeltaY,
+        );
       }
     });
+  }
+
+  private panByViewportDelta(entity: Entity, deltaX: number, deltaY: number) {
+    const transform = entity.write(Transform);
+    const { x, y } = transform.translation;
+    const { rotation } = transform;
+    const scale = transform.scale.x;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+
+    transform.translation = {
+      x: x + (deltaX * cos - deltaY * sin) * scale,
+      y: y + (deltaX * sin + deltaY * cos) * scale,
+    };
   }
 
   private releaseInputPoints(
