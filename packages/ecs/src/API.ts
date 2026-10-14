@@ -3,7 +3,6 @@ import { hitTestTextPath } from './utils/glyph/measure-text-path';
 import { IPointData } from '@pixi/math';
 import { mat3, vec2 } from 'gl-matrix';
 import { isEntityAlive, updateGlobalTransform } from './systems/Transform';
-import { updateComputedPoints } from './systems/ComputePoints';
 import { isNil, path2Absolute } from '@antv/util';
 import {
   CaptureUpdateAction,
@@ -2694,93 +2693,10 @@ export class API {
     return bounds;
   }
 
-  /**
-   * 将选中的多个节点在**世界空间**中按各节点 {@link ComputedBounds.geometryWorldBounds} 的并集对齐
-   *（与变换器多选选区同语义）。跳过 {@link SerializedNode.locked|locked} 的节点；至少两个未锁定。
-   */
-  alignSelectedNodes(alignment: NodeAlignment, nodeIds?: string[]) {
-    const ids = nodeIds ?? this.getAppState().layersSelected;
-    if (ids.length < 2) {
-      return;
-    }
-    const nodes = ids
-      .map((id) => this.getNodeById(id))
-      .filter((n): n is SerializedNode => !!n && n.locked !== true);
-    if (nodes.length < 2) {
-      return;
-    }
-    const union = this.getGeometryBounds(nodes);
-    if (
-      !Number.isFinite(union.minX) ||
-      !Number.isFinite(union.maxX) ||
-      !Number.isFinite(union.minY) ||
-      !Number.isFinite(union.maxY) ||
-      union.minX > union.maxX ||
-      union.minY > union.maxY
-    ) {
-      return;
-    }
-
-    for (const node of nodes) {
-      const entity = this.getEntity(node);
-      if (!entity?.has(ComputedBounds)) {
-        continue;
-      }
-      const g = entity.read(ComputedBounds).geometryWorldBounds;
-      if (
-        !Number.isFinite(g.minX) ||
-        !Number.isFinite(g.maxX) ||
-        !Number.isFinite(g.minY) ||
-        !Number.isFinite(g.maxY) ||
-        g.minX > g.maxX ||
-        g.minY > g.maxY
-      ) {
-        continue;
-      }
-      let dx = 0;
-      let dy = 0;
-      if (alignment === 'left') {
-        dx = union.minX - g.minX;
-      } else if (alignment === 'right') {
-        dx = union.maxX - g.maxX;
-      } else if (alignment === 'top') {
-        dy = union.minY - g.minY;
-      } else if (alignment === 'bottom') {
-        dy = union.maxY - g.maxY;
-      } else if (alignment === 'centerH') {
-        const gc = (g.minX + g.maxX) * 0.5;
-        const uc = (union.minX + union.maxX) * 0.5;
-        dx = uc - gc;
-      } else {
-        const gc = (g.minY + g.maxY) * 0.5;
-        const uc = (union.minY + union.maxY) * 0.5;
-        dy = uc - gc;
-      }
-      this.#applyNodeWorldDelta(node, dx, dy);
-    }
-
-    this.record();
-  }
-
-  /**
-   * 将多个选中节点在**世界空间**中沿水平或竖直方向做**等间距**分布：固定整体首尾（沿该轴的 min/max
-   * 几何包络），在相邻两物体之间使用相同间隔；基于 {@link ComputedBounds.geometryWorldBounds} 与
-   * {@link alignSelectedNodes} 相同的 OBB 更新。跳过 `locked` 的节点，至少两个未锁。
-   */
-  distributeSelectedNodesSpacing(
-    axis: DistributeSpacingAxis,
-    nodeIds?: string[],
-  ) {
-    const ids = nodeIds ?? this.getAppState().layersSelected;
-    if (ids.length < 2) {
-      return;
-    }
-    const nodes = ids
-      .map((id) => this.getNodeById(id))
-      .filter((n): n is SerializedNode => !!n && n.locked !== true);
-    if (nodes.length < 2) {
-      return;
-    }
+  /** Resolve a stable, top-level selection before any layout mutations. */
+  #getSelectionLayoutEntries(nodeIds?: string[]) {
+    const scene = new Map(this.getNodes().map((node) => [node.id, node]));
+    const ids = new Set(nodeIds ?? this.getAppState().layersSelected);
     const entries: {
       node: SerializedNode;
       minX: number;
@@ -2790,22 +2706,19 @@ export class API {
       w: number;
       h: number;
     }[] = [];
-    for (const node of nodes) {
+    for (const id of ids) {
+      const node = scene.get(id);
+      if (!node || node.isDeleted || node.locked) continue;
       const entity = this.getEntity(node);
-      if (!entity?.has(ComputedBounds)) {
-        continue;
-      }
+      if (!entity?.has(ComputedBounds)) continue;
       const g = entity.read(ComputedBounds).geometryWorldBounds;
       if (
-        !Number.isFinite(g.minX) ||
-        !Number.isFinite(g.maxX) ||
-        !Number.isFinite(g.minY) ||
-        !Number.isFinite(g.maxY) ||
+        ![g.minX, g.minY, g.maxX, g.maxY].every(Number.isFinite) ||
         g.minX > g.maxX ||
-        g.minY > g.maxY
-      ) {
+        g.minY > g.maxY ||
+        !mat3.invert(mat3.create(), this.getParentTransform(entity))
+      )
         continue;
-      }
       entries.push({
         node,
         minX: g.minX,
@@ -2816,109 +2729,96 @@ export class API {
         h: g.maxY - g.minY,
       });
     }
-    if (entries.length < 2) {
-      return;
-    }
-    if (axis === 'horizontal') {
-      entries.sort((a, b) => a.minX - b.minX);
-    } else {
-      entries.sort((a, b) => a.minY - b.minY);
-    }
-    const n = entries.length;
-    if (axis === 'horizontal') {
-      const sumW = entries.reduce((s, e) => s + e.w, 0);
-      const span = entries[n - 1]!.maxX - entries[0]!.minX;
-      const gGap = (span - sumW) / (n - 1);
-      if (!Number.isFinite(gGap)) {
-        return;
+    const movable = new Set(entries.map(({ node }) => node.id));
+    return entries.filter(({ node }) => {
+      const seen = new Set([node.id]);
+      let parentId = node.parentId;
+      while (parentId) {
+        if (seen.has(parentId) || movable.has(parentId)) return false;
+        seen.add(parentId);
+        parentId = scene.get(parentId)?.parentId;
       }
-      const targetMinX: number[] = new Array(n);
-      targetMinX[0] = entries[0]!.minX;
-      for (let i = 1; i < n; i++) {
-        targetMinX[i] = targetMinX[i - 1]! + entries[i - 1]!.w + gGap;
-      }
-      for (let i = 0; i < n; i++) {
+      return true;
+    });
+  }
+
+  /** Align top-level unlocked nodes by their world geometry. Returns whether any moved. */
+  alignSelectedNodes(alignment: NodeAlignment, nodeIds?: string[]) {
+    const entries = this.#getSelectionLayoutEntries(nodeIds);
+    if (entries.length < 2) return false;
+    const union = new AABB();
+    entries.forEach((g) => union.addFrame(g.minX, g.minY, g.maxX, g.maxY));
+    let changed = false;
+    for (const g of entries) {
+      let dx = 0;
+      let dy = 0;
+      if (alignment === 'left') dx = union.minX - g.minX;
+      else if (alignment === 'right') dx = union.maxX - g.maxX;
+      else if (alignment === 'top') dy = union.minY - g.minY;
+      else if (alignment === 'bottom') dy = union.maxY - g.maxY;
+      else if (alignment === 'centerH')
+        dx = (union.minX + union.maxX - g.minX - g.maxX) / 2;
+      else dy = (union.minY + union.maxY - g.minY - g.maxY) / 2;
+      changed = this.#applyNodeWorldDelta(g.node, dx, dy) || changed;
+    }
+    if (changed) this.record();
+    return changed;
+  }
+
+  /** Distribute equal gaps in world geometry, retaining the selection's outer bounds. */
+  distributeSelectedNodesSpacing(
+    axis: DistributeSpacingAxis,
+    nodeIds?: string[],
+  ) {
+    const entries = this.#getSelectionLayoutEntries(nodeIds);
+    if (entries.length < 2) return false;
+    const horizontal = axis === 'horizontal';
+    const min = horizontal ? 'minX' : 'minY';
+    const max = horizontal ? 'maxX' : 'maxY';
+    const size = horizontal ? 'w' : 'h';
+    entries.sort((a, b) => a[min] - b[min]);
+    const end = Math.max(...entries.map((e) => e[max]));
+    const span = end - entries[0][min];
+    const gap =
+      (span - entries.reduce((sum, e) => sum + e[size], 0)) /
+      (entries.length - 1);
+    if (!Number.isFinite(gap)) return false;
+    let target = entries[0][min];
+    let changed = false;
+    for (const entry of entries) {
+      const delta = target - entry[min];
+      changed =
         this.#applyNodeWorldDelta(
-          entries[i]!.node,
-          targetMinX[i]! - entries[i]!.minX,
-          0,
-        );
-      }
-    } else {
-      const sumH = entries.reduce((s, e) => s + e.h, 0);
-      const span = entries[n - 1]!.maxY - entries[0]!.minY;
-      const gGap = (span - sumH) / (n - 1);
-      if (!Number.isFinite(gGap)) {
-        return;
-      }
-      const targetMinY: number[] = new Array(n);
-      targetMinY[0] = entries[0]!.minY;
-      for (let i = 1; i < n; i++) {
-        targetMinY[i] = targetMinY[i - 1]! + entries[i - 1]!.h + gGap;
-      }
-      for (let i = 0; i < n; i++) {
-        this.#applyNodeWorldDelta(
-          entries[i]!.node,
-          0,
-          targetMinY[i]! - entries[i]!.minY,
-        );
-      }
+          entry.node,
+          horizontal ? delta : 0,
+          horizontal ? 0 : delta,
+        ) || changed;
+      target += entry[size] + gap;
     }
-    this.record();
+    if (changed) this.record();
+    return changed;
   }
 
   #applyNodeWorldDelta(node: SerializedNode, dx: number, dy: number) {
-    if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) {
-      return;
-    }
+    if (
+      !Number.isFinite(dx) ||
+      !Number.isFinite(dy) ||
+      (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9)
+    )
+      return false;
     const entity = this.getEntity(node);
-    if (!entity) {
-      return;
-    }
-    const epsilon = 0.01;
-    const oldNode = { ...node, ...this.getAbsoluteTransformAndSize(node) };
-    const oldAttrs = {
-      x: oldNode.x ?? 0,
-      y: oldNode.y ?? 0,
-      width: oldNode.width ?? 0,
-      height: oldNode.height ?? 0,
-      rotation: oldNode.rotation ?? 0,
-      scaleX: oldNode.scaleX ?? 1,
-      scaleY: oldNode.scaleY ?? 1,
-    };
-    const wSign = oldAttrs.width;
-    const hSign = oldAttrs.height;
-    const delta = mat3.create();
-    mat3.fromTranslation(delta, [dx, dy]);
-    const parentTransform = this.getParentTransform(entity);
-    const localTransform = this.getTransform(oldNode);
-    const newLocalTransform = mat3.create();
-    mat3.multiply(newLocalTransform, parentTransform, localTransform);
-    mat3.multiply(newLocalTransform, delta, newLocalTransform);
-    mat3.multiply(
-      newLocalTransform,
-      mat3.invert(mat3.create(), parentTransform),
-      newLocalTransform,
-    );
-    const { rotation, translation, scale } = decompose(newLocalTransform);
-    const obb = {
-      x: translation[0],
-      y: translation[1],
-      width: Math.max(Math.abs((oldNode.width ?? 0) * scale[0]), epsilon),
-      height: Math.max(Math.abs((oldNode.height ?? 0) * scale[1]), epsilon),
-      rotation,
-      scaleX: oldAttrs.scaleX * (Math.sign(wSign) || 1),
-      scaleY: oldAttrs.scaleY * (Math.sign(hSign) || 1),
-    };
-    if (entity.hasSomeOf(Polyline, Path, Line)) {
-      const signW = Math.sign(wSign) || 1;
-      const signH = Math.sign(hSign) || 1;
-      obb.scaleX = Math.sign(oldAttrs.scaleX || 1) * signW;
-      obb.scaleY = Math.sign(oldAttrs.scaleY || 1) * signH;
-    }
-    this.updateNodeOBB(node, obb, node.lockAspectRatio, undefined, oldNode);
+    if (!entity) return false;
+    const inverse = mat3.invert(mat3.create(), this.getParentTransform(entity));
+    if (!inverse) return false;
+    // A world translation is a vector, so the inverse parent's translation
+    // must not contribute. Preserve every geometry/scale/rotation field.
+    const { translation } = entity.read(Transform);
+    this.updateNode(node, {
+      x: translation.x + inverse[0] * dx + inverse[3] * dy,
+      y: translation.y + inverse[1] * dx + inverse[4] * dy,
+    });
     updateGlobalTransform(entity);
-    updateComputedPoints(entity);
+    return true;
   }
 
   deleteNodesById(ids: SerializedNode['id'][], updateAppState = true) {

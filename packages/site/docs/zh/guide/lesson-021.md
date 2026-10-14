@@ -534,7 +534,11 @@ tf.rotatePivotPinned = true;
 4. 旋转时优先使用该 pivot（未设置时回退几何中心），并在求解新 OBB 原点时保持该 pivot 的世界坐标不变：
 
 ```ts
-const { obb, pivotWorld: [px, py], pivotLocal: [lx, ly] } = gesture;
+const {
+    obb,
+    pivotWorld: [px, py],
+    pivotLocal: [lx, ly],
+} = gesture;
 const rotation = obb.rotation + gesture.accumulated;
 const c = Math.cos(rotation);
 const s = Math.sin(rotation);
@@ -559,6 +563,32 @@ if (e.key === 'ArrowUp') {
     this.api.record();
 }
 ```
+
+## 多选对齐与等间距分布 {#align-distribute}
+
+ECS API 提供 `left`、`right`、`top`、`bottom`、`centerH`、`centerV` 六种对齐方式，
+依据世界坐标系中的几何包围盒计算，不包含描边厚度。操作只修改位置：旋转、翻转、
+尺寸、路径数据、文本度量和 Flex 尺寸偏好保持不变，也适用于带旋转或缩放的父级。
+
+```ts
+const ids = [...api.getAppState().layersSelected];
+await api.edit((editor) => {
+    editor.alignSelectedNodes('left', ids);
+});
+// 分成两次编辑，让派生几何在操作之间得到更新。
+await api.edit((editor) => {
+    editor.distributeSelectedNodesSpacing('horizontal', ids);
+});
+```
+
+分布方向支持 `horizontal` 和 `vertical`，沿世界坐标轴排序后，按选区范围计算相邻
+几何边界的相等间距；图形重叠时允许负间距。重复 ID、已删除、不存在或锁定的节点，
+以及父变换不可逆的节点会被跳过。父子同时选中时，子节点随父级移动，不会再移动一次；
+至少需要两个有效的顶层选中节点。方法返回是否发生移动，布局未变化时方法自身不记录历史。
+
+属性面板通过 `api.edit()` 提交操作，保留点击时的画布和节点 ID，在写入阶段读取最新节点，
+一次操作对应一步撤销。排队期间删除或锁定节点导致无变化时，会取消本次编辑，不把其他
+尚未提交的修改写入历史。直接使用 API 时，也可向 `edit()` 传入 `AbortSignal`，在修改前取消。
 
 ## 其他图形的 Transformer {#transformer-for-other-shapes}
 
