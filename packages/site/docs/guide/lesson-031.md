@@ -461,6 +461,8 @@ interface BindingAttributes {
 
 In the following example, we have defined anchor points `[1, 0]` and `[0, 1]` on the gray and green rectangles respectively.
 
+The endpoint coordinates `exitX/exitY` and `entryX/entryY` must be finite numbers. If either coordinate is invalid, the endpoint falls back to the shape perimeter instead of producing a non-finite path. Invalid pixel offsets (`exitDx/exitDy` or `entryDx/entryDy`) are ignored while a valid anchor remains fixed.
+
 <BindingConstraint />
 
 ## Routing rules {#routing rules}
