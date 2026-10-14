@@ -346,7 +346,7 @@ export class DrawArrowConnect extends System {
       ) {
         const [vx, vy] = input.pointerViewport;
         if (
-          state.pointerMoveViewportX !== vx &&
+          state.pointerMoveViewportX !== vx ||
           state.pointerMoveViewportY !== vy
         ) {
           state.pointerMoveViewportX = vx;

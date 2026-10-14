@@ -73,6 +73,12 @@ module.exports = {
       functions: 75,
       lines: 55,
     },
+    './packages/ecs/src/systems/DrawArrowConnect.ts': {
+      statements: 92,
+      branches: 71,
+      functions: 100,
+      lines: 92,
+    },
     './packages/ecs/src/utils/gradient.ts': {
       statements: 95,
       branches: 92,
