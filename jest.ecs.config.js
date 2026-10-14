@@ -457,6 +457,12 @@ module.exports = {
       functions: 80,
       lines: 60,
     },
+    './packages/ecs/src/systems/ExportSVG.ts': {
+      statements: 90,
+      branches: 70,
+      functions: 90,
+      lines: 90,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [
