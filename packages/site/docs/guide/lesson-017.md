@@ -96,6 +96,10 @@ rect.fill = 'linear-gradient(0deg, blue, green 40%, red)';
 rect.fill = 'radial-gradient(circle at center, red, blue, green 100%)';
 ```
 
+In ECS, gradient function names and direction, shape, size, and position keywords are case-insensitive. Detection checks the function name, so an image URL containing `linear` or `radial` is not treated as a gradient. Two-keyword positions such as `top center` and `bottom center` preserve the vertical axis. Circular radial gradients also support centers outside the bounds: `closest-side` uses the distance to the nearest side, which remains nonnegative.
+
+The parser supports circular radial gradients; elliptical and repeating gradients are not rendered yet. Conic strings currently use the default angle and the existing `circle at …` position syntax; CSS `from … at …` syntax is not implemented. Structured `ConicGradient.angle` values are in degrees, with matching orientation in ordinary fills and filter inputs.
+
 The parsing results are as follows:
 
 ```js eval code=false
@@ -152,6 +156,8 @@ For strokes, the vertex shader already has **`pos`** in **world space** after th
 On the **WebGPU** path, when GLSL is lowered to WGSL through **naga**, **`inverse(mat3)` is not supported**, so the implementation uses a hand-written **`inverseMat3`** (adjugate / determinant) instead of the built-in `inverse`.
 
 ## Implementing Gradients with Mesh {#mesh-gradient}
+
+The ECS mesh-gradient parser retains explicit point positions. Optional type, warp, and time controls can be serialized and parsed again. In modes that use a variable point count, `points(10)` preserves the tenth shader slot; the fixed mesh mode (`gtype(2)`) continues to use its 3×3 grid. The packed uniform data uses 92 floats in a 96-float buffer, including alignment padding.
 
 The gradients implemented based on Canvas and SVG have limited expressiveness and cannot display complex effects. Some design tools like Sketch / Figma have many Mesh-based implementations in their communities, such as:
 

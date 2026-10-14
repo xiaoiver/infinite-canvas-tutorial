@@ -31,6 +31,7 @@ export default defineConfig({
     'image-decoding.spec.ts',
     'animation-export.spec.ts',
     'animation-state.spec.ts',
+    'gradient-geometry.spec.ts',
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
     'gizmo.spec.ts',

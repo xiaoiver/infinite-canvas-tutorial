@@ -212,7 +212,7 @@ export const parseGradientAST = (function () {
     sideOrCorner:
       /^to (left (top|bottom)|right (top|bottom)|top (left|right)|bottom (left|right)|left|right|top|bottom)/i,
     extentKeywords:
-      /^(closest\-side|closest\-corner|farthest\-side|farthest\-corner|contain|cover)/,
+      /^(closest\-side|closest\-corner|farthest\-side|farthest\-corner|contain|cover)/i,
     positionKeywords: /^(left|center|right|top|bottom)/i,
     pixelValue: /^(-?(([0-9]*\.[0-9]+)|([0-9]+\.?)))px/,
     percentageValue: /^(-?(([0-9]*\.[0-9]+)|([0-9]+\.?)))\%/,
@@ -596,7 +596,7 @@ export const parseGradientAST = (function () {
   }
 
   function matchAtPosition() {
-    if (match('position', /^at/, 0)) {
+    if (match('position', /^at\b/i, 0)) {
       const positioning = matchPositioning();
 
       if (!positioning) {
@@ -713,9 +713,17 @@ export const parseGradientAST = (function () {
   function match(type: string, pattern, captureIndex: number) {
     const captures = scan(pattern);
     if (captures) {
+      const value = captures[captureIndex];
       return {
         type,
-        value: captures[captureIndex],
+        value: [
+          'directional',
+          'shape',
+          'position-keyword',
+          'extent-keyword',
+        ].includes(type)
+          ? value.toLowerCase()
+          : value,
       };
     }
   }
@@ -951,7 +959,8 @@ export function computeRadialGradient(
     y = (cy.value / 100) * height;
   }
 
-  // default to farthest-side
+  // Default to farthest-corner. Side distances stay positive even when the
+  // center is outside the bounds (for example, at 150% -25%).
   let r = Math.max(
     distanceSquareRoot([0, 0], [x, y]),
     distanceSquareRoot([0, height], [x, y]),
@@ -961,9 +970,19 @@ export function computeRadialGradient(
   if (size) {
     if (size.type === 'extent-keyword') {
       if (size.value === 'closest-side') {
-        r = Math.min(x, width - x, y, height - y);
+        r = Math.min(
+          Math.abs(x),
+          Math.abs(width - x),
+          Math.abs(y),
+          Math.abs(height - y),
+        );
       } else if (size.value === 'farthest-side') {
-        r = Math.max(x, width - x, y, height - y);
+        r = Math.max(
+          Math.abs(x),
+          Math.abs(width - x),
+          Math.abs(y),
+          Math.abs(height - y),
+        );
       } else if (size.value === 'closest-corner') {
         r = Math.min(
           distanceSquareRoot([0, 0], [x, y]),
@@ -1065,7 +1084,14 @@ function positonToCSSUnitValue(position: PositionNode) {
       if (y.value === 'left') {
         cx = 0;
       } else if (y.value === 'center') {
-        cy = 50;
+        if (
+          x?.type === 'position-keyword' &&
+          (x.value === 'top' || x.value === 'bottom')
+        ) {
+          cx = 50;
+        } else {
+          cy = 50;
+        }
       } else if (y.value === 'right') {
         cx = 100;
       } else if (y.value === 'top') {
@@ -1193,7 +1219,7 @@ function meshGradientFillColorEquals(a: string, b: string): boolean {
  */
 export function effectiveMeshGradientPointsNum(g: MeshGradient): number {
   if (g.pointsNum != null) {
-    return Math.min(9, Math.max(1, g.pointsNum));
+    return Math.min(10, Math.max(1, g.pointsNum));
   }
   if (g.colors.length < 9) {
     return Math.max(1, g.colors.length);
@@ -1260,10 +1286,9 @@ export { DEFAULT_MESH_GRADIENT_CORNER_POSITIONS } from './mesh-gradient-padding'
 export function isGradient(colorStr: string) {
   return (
     isString(colorStr) &&
-    (colorStr.indexOf('linear') > -1 ||
-      colorStr.indexOf('radial') > -1 ||
-      colorStr.indexOf('conic') > -1 ||
-      colorStr.indexOf('mesh-gradient') > -1)
+    /^\s*(?:(?:repeating-)?(?:linear|radial|conic)-gradient|mesh-gradient)\s*\(/i.test(
+      colorStr,
+    )
   );
 }
 
