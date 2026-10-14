@@ -10,6 +10,7 @@ import {
   Cursor,
   Ellipse,
   FillLayers,
+  Flex,
   GlobalTransform,
   Highlighted,
   Input,
@@ -43,7 +44,19 @@ import {
   regularPolygonPathInRect,
   snapToGrid,
 } from '../utils';
-import type { EllipseSerializedNode, FillAttributes, IconFontSerializedNode, PathSerializedNode, PolylineSerializedNode, RectSerializedNode, RoughAttributes, RoughEllipseSerializedNode, RoughPolylineSerializedNode, RoughRectSerializedNode, StrokeAttributes } from '../types/serialized-node';
+import type {
+  EllipseSerializedNode,
+  FillAttributes,
+  IconFontSerializedNode,
+  PathSerializedNode,
+  PolylineSerializedNode,
+  RectSerializedNode,
+  RoughAttributes,
+  RoughEllipseSerializedNode,
+  RoughPolylineSerializedNode,
+  RoughRectSerializedNode,
+  StrokeAttributes,
+} from '../types/serialized-node';
 import { DRAW_RECT_Z_INDEX } from '../context';
 import { DOMAdapter, TRANSFORMER_ANCHOR_STROKE_COLOR } from '..';
 
@@ -62,6 +75,11 @@ const PEN_TO_TYPE = {
 } as const;
 
 interface DrawRectSelection {
+  activePen?: Pen;
+  pointerDownViewportX: number;
+  pointerDownViewportY: number;
+  pointerDownCanvasX: number;
+  pointerDownCanvasY: number;
   rectBrush: RectSerializedNode;
   triangleBrush: PathSerializedNode;
   pentagonBrush: PathSerializedNode;
@@ -109,6 +127,7 @@ export class DrawRect extends System {
             Children,
             Renderable,
             FillLayers,
+            Flex,
             Opacity,
             Stroke,
             Rect,
@@ -166,6 +185,14 @@ export class DrawRect extends System {
         [Pen.DRAW_ICONFONT]: appState.penbarDrawIconfont,
       };
 
+      const previousSelection = this.selections.get(camera.__id);
+      if (
+        previousSelection?.activePen !== undefined &&
+        previousSelection.activePen !== pen
+      ) {
+        this.hideBrush(api, previousSelection);
+      }
+
       if (pen === Pen.DRAW_ARROW) {
         return;
       }
@@ -193,6 +220,11 @@ export class DrawRect extends System {
       let selection = this.selections.get(camera.__id);
       if (!selection) {
         selection = {
+          activePen: undefined,
+          pointerDownViewportX: 0,
+          pointerDownViewportY: 0,
+          pointerDownCanvasX: 0,
+          pointerDownCanvasY: 0,
           rectBrush: undefined,
           triangleBrush: undefined,
           pentagonBrush: undefined,
@@ -219,6 +251,27 @@ export class DrawRect extends System {
         }
       }
 
+      if (input.key === 'Escape' || input.pointerCancelled) {
+        this.hideBrush(api, selection);
+        return;
+      }
+
+      if (input.pointerDownTrigger) {
+        selection.activePen = pen;
+        [selection.pointerDownViewportX, selection.pointerDownViewportY] =
+          input.pointerDownViewport;
+        const origin = api.viewport2Canvas({
+          x: selection.pointerDownViewportX,
+          y: selection.pointerDownViewportY,
+        });
+        selection.pointerDownCanvasX = origin.x;
+        selection.pointerDownCanvasY = origin.y;
+      }
+
+      if (selection.activePen !== pen) {
+        return;
+      }
+
       // Dragging
       inputPoints.forEach((point) => {
         const inputPoint = point.write(InputPoint);
@@ -234,33 +287,49 @@ export class DrawRect extends System {
 
         const isSquare = input.shiftKey || pen === Pen.DRAW_ICONFONT;
         api.runAtNextTick(() => {
-          this.handleBrushing(api, pen, x, y, defaultDrawParams[pen === Pen.DRAW_ICONFONT ? Pen.DRAW_RECT : pen], isSquare);
+          this.handleBrushing(
+            api,
+            pen,
+            x,
+            y,
+            defaultDrawParams[pen === Pen.DRAW_ICONFONT ? Pen.DRAW_RECT : pen],
+            isSquare,
+          );
         });
       });
 
-      if (input.key === 'Escape') {
-        this.hideBrush(api, selection);
-      }
-
       if (input.pointerUpTrigger) {
-        const selection = this.selections.get(camera.__id);
-        if (isBrowser && selection.label.style.visibility === 'hidden') {
-          return;
-        }
-
-        const { x, y, width, height } = selection;
-
-        const brush = this.getBrush(selection, pen);
-
-        // Just click on the canvas, do nothing
-        if (!brush || (width === 0 && height === 0)) {
-          return;
-        }
-
+        const [releaseX, releaseY] = input.pointerViewport;
+        const isSquare = input.shiftKey || pen === Pen.DRAW_ICONFONT;
         api.runAtNextTick(() => {
+          if (
+            selection.activePen !== pen ||
+            api.getAppState().penbarSelected !== pen
+          ) {
+            return;
+          }
+          // The move and release can arrive in the same frame. Resolve the final
+          // geometry after all queued preview updates, using the release point.
+          this.handleBrushing(
+            api,
+            pen,
+            releaseX,
+            releaseY,
+            defaultDrawParams[pen === Pen.DRAW_ICONFONT ? Pen.DRAW_RECT : pen],
+            isSquare,
+          );
+          const { x, y, width, height } = selection;
+          const brush = this.getBrush(selection, pen);
           this.hideBrush(api, selection);
 
-          const maxZIndex = api.getNodes().reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
+          // A click never created a preview brush.
+          if (!brush || (width === 0 && height === 0)) {
+            return;
+          }
+
+          const maxZIndex = api
+            .getNodes()
+            .reduce((max, node) => Math.max(max, node.zIndex ?? 0), 0);
           const node:
             | RectSerializedNode
             | PathSerializedNode
@@ -270,62 +339,62 @@ export class DrawRect extends System {
             | RoughRectSerializedNode
             | RoughPolylineSerializedNode
             | IconFontSerializedNode = Object.assign(
-              {
-                id: uuidv4(),
-                type: PEN_TO_TYPE[pen],
-                version: 0,
-                zIndex: maxZIndex + 1,
-              },
-              defaultDrawParams[pen],
-              pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
-                ? {
+            {
+              id: uuidv4(),
+              type: PEN_TO_TYPE[pen],
+              version: 0,
+              zIndex: maxZIndex + 1,
+            },
+            defaultDrawParams[pen],
+            pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
+              ? {
                   points: `${x},${y} ${x + width},${y + height}`,
                 }
-                : pen === Pen.DRAW_TRIANGLE ||
-                  pen === Pen.DRAW_PENTAGON ||
-                  pen === Pen.DRAW_HEXAGON
-                  ? (() => {
-                    const sides =
-                      pen === Pen.DRAW_TRIANGLE
-                        ? 3
-                        : pen === Pen.DRAW_PENTAGON
-                          ? 5
-                          : 6;
-                    // Normalize the polygon geometry so its bounding box starts
-                    // at the local origin and x/y/width/height describe that box.
-                    // Otherwise the very first Transformer resize is incorrect.
-                    const polygon = regularPolygonInRect(sides, width, height);
-                    return polygon
-                      ? {
+              : pen === Pen.DRAW_TRIANGLE ||
+                pen === Pen.DRAW_PENTAGON ||
+                pen === Pen.DRAW_HEXAGON
+              ? (() => {
+                  const sides =
+                    pen === Pen.DRAW_TRIANGLE
+                      ? 3
+                      : pen === Pen.DRAW_PENTAGON
+                      ? 5
+                      : 6;
+                  // Normalize the polygon geometry so its bounding box starts
+                  // at the local origin and x/y/width/height describe that box.
+                  // Otherwise the very first Transformer resize is incorrect.
+                  const polygon = regularPolygonInRect(sides, width, height);
+                  return polygon
+                    ? {
                         x: x + polygon.offsetX,
                         y: y + polygon.offsetY,
                         width: polygon.width,
                         height: polygon.height,
                         d: polygon.d,
                       }
-                      : {
+                    : {
                         x,
                         y,
                         width,
                         height,
                         d: regularPolygonPathInRect(sides, width, height),
                       };
-                  })()
-                  : pen === Pen.DRAW_ICONFONT
-                    ? {
-                      x,
-                      y,
-                      width,
-                      height,
-                      lockAspectRatio: true,
-                    }
-                    : {
-                      x,
-                      y,
-                      width,
-                      height,
-                    },
-            );
+                })()
+              : pen === Pen.DRAW_ICONFONT
+              ? {
+                  x,
+                  y,
+                  width,
+                  height,
+                  lockAspectRatio: true,
+                }
+              : {
+                  x,
+                  y,
+                  width,
+                  height,
+                },
+          );
           api.setAppState({
             penbarSelected: Pen.SELECT,
           });
@@ -375,7 +444,7 @@ export class DrawRect extends System {
       pointerDownViewportY,
       pointerDownCanvasX,
       pointerDownCanvasY,
-    } = camera.read(ComputedCameraControl);
+    } = selection;
 
     // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
     const shouldShowSelectionBrush =
@@ -391,24 +460,24 @@ export class DrawRect extends System {
         pen === Pen.DRAW_RECT
           ? selection.rectBrush
           : pen === Pen.DRAW_TRIANGLE
-            ? selection.triangleBrush
-            : pen === Pen.DRAW_PENTAGON
-              ? selection.pentagonBrush
-              : pen === Pen.DRAW_HEXAGON
-                ? selection.hexagonBrush
-                : pen === Pen.DRAW_ROUGH_RECT
-                  ? selection.roughRectBrush
-                  : pen === Pen.DRAW_ELLIPSE
-                    ? selection.ellipseBrush
-                    : pen === Pen.DRAW_LINE
-                      ? selection.lineBrush
-                      : pen === Pen.DRAW_ROUGH_ELLIPSE
-                        ? selection.roughEllipseBrush
-                        : pen === Pen.DRAW_ROUGH_LINE
-                          ? selection.roughLineBrush
-                          : pen === Pen.DRAW_ICONFONT
-                            ? selection.iconFontBrush
-                            : selection.arrowBrush;
+          ? selection.triangleBrush
+          : pen === Pen.DRAW_PENTAGON
+          ? selection.pentagonBrush
+          : pen === Pen.DRAW_HEXAGON
+          ? selection.hexagonBrush
+          : pen === Pen.DRAW_ROUGH_RECT
+          ? selection.roughRectBrush
+          : pen === Pen.DRAW_ELLIPSE
+          ? selection.ellipseBrush
+          : pen === Pen.DRAW_LINE
+          ? selection.lineBrush
+          : pen === Pen.DRAW_ROUGH_ELLIPSE
+          ? selection.roughEllipseBrush
+          : pen === Pen.DRAW_ROUGH_LINE
+          ? selection.roughLineBrush
+          : pen === Pen.DRAW_ICONFONT
+          ? selection.iconFontBrush
+          : selection.arrowBrush;
       if (!brush) {
         // @ts-expect-error
         brush = Object.assign(
@@ -421,19 +490,19 @@ export class DrawRect extends System {
           },
           pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
             ? {
-              points: '0,0 0,0',
-            }
+                points: '0,0 0,0',
+              }
             : pen === Pen.DRAW_TRIANGLE ||
               pen === Pen.DRAW_PENTAGON ||
               pen === Pen.DRAW_HEXAGON
-              ? {
+            ? {
                 x: 0,
                 y: 0,
                 width: 0,
                 height: 0,
                 d: '',
               }
-              : {
+            : {
                 x: 0,
                 y: 0,
                 width: 0,
@@ -485,8 +554,7 @@ export class DrawRect extends System {
       let width = cx - x;
       let height = cy - y;
 
-      const isLine =
-        pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE;
+      const isLine = pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE;
       const isPolygon =
         pen === Pen.DRAW_TRIANGLE ||
         pen === Pen.DRAW_PENTAGON ||
@@ -516,12 +584,12 @@ export class DrawRect extends System {
         brush,
         pen === Pen.DRAW_LINE || pen === Pen.DRAW_ROUGH_LINE
           ? {
-            ...defaultDrawParams,
-            visibility: 'visible',
-            points: `${x},${y} ${cx},${cy}`,
-          }
+              ...defaultDrawParams,
+              visibility: 'visible',
+              points: `${x},${y} ${cx},${cy}`,
+            }
           : isPolygon
-            ? {
+          ? {
               ...defaultDrawParams,
               visibility: 'visible',
               x,
@@ -529,12 +597,16 @@ export class DrawRect extends System {
               width,
               height,
               d: regularPolygonPathInRect(
-                pen === Pen.DRAW_TRIANGLE ? 3 : pen === Pen.DRAW_PENTAGON ? 5 : 6,
+                pen === Pen.DRAW_TRIANGLE
+                  ? 3
+                  : pen === Pen.DRAW_PENTAGON
+                  ? 5
+                  : 6,
                 width,
                 height,
               ),
             }
-            : {
+          : {
               ...defaultDrawParams,
               visibility: 'visible',
               x,
@@ -558,12 +630,19 @@ export class DrawRect extends System {
   }
 
   private hideBrush(api: API, selection: DrawRectSelection) {
-    const pen = api.getAppState().penbarSelected;
-    const brush = this.getBrush(selection, pen);
+    const brush =
+      selection.activePen === undefined
+        ? undefined
+        : this.getBrush(selection, selection.activePen);
     if (brush) {
       api.updateNode(brush, { visibility: 'hidden' }, false);
     }
     hideLabel(selection.label);
+    selection.activePen = undefined;
+    selection.x = 0;
+    selection.y = 0;
+    selection.width = 0;
+    selection.height = 0;
   }
 
   private getBrush(selection: DrawRectSelection, pen: Pen) {
@@ -584,29 +663,32 @@ export class DrawRect extends System {
       pen === Pen.DRAW_RECT
         ? rectBrush
         : pen === Pen.DRAW_TRIANGLE
-          ? triangleBrush
-          : pen === Pen.DRAW_PENTAGON
-            ? pentagonBrush
-            : pen === Pen.DRAW_HEXAGON
-              ? hexagonBrush
-              : pen === Pen.DRAW_ROUGH_RECT
-                ? roughRectBrush
-                : pen === Pen.DRAW_ROUGH_ELLIPSE
-                  ? roughEllipseBrush
-                  : pen === Pen.DRAW_ELLIPSE
-                    ? ellipseBrush
-                    : pen === Pen.DRAW_LINE
-                      ? lineBrush
-                      : pen === Pen.DRAW_ROUGH_LINE
-                        ? roughLineBrush
-                        : pen === Pen.DRAW_ICONFONT
-                          ? iconFontBrush
-                          : arrowBrush;
+        ? triangleBrush
+        : pen === Pen.DRAW_PENTAGON
+        ? pentagonBrush
+        : pen === Pen.DRAW_HEXAGON
+        ? hexagonBrush
+        : pen === Pen.DRAW_ROUGH_RECT
+        ? roughRectBrush
+        : pen === Pen.DRAW_ROUGH_ELLIPSE
+        ? roughEllipseBrush
+        : pen === Pen.DRAW_ELLIPSE
+        ? ellipseBrush
+        : pen === Pen.DRAW_LINE
+        ? lineBrush
+        : pen === Pen.DRAW_ROUGH_LINE
+        ? roughLineBrush
+        : pen === Pen.DRAW_ICONFONT
+        ? iconFontBrush
+        : arrowBrush;
     return brush;
   }
 }
 
-export function initLabel(label: HTMLDivElement, style: Partial<CSSStyleDeclaration> = {}) {
+export function initLabel(
+  label: HTMLDivElement,
+  style: Partial<CSSStyleDeclaration> = {},
+) {
   if (isBrowser) {
     label.style.position = 'absolute';
     label.style.top = '0';
@@ -740,7 +822,12 @@ export function showLabel(
 export function showNameLabel(
   label: HTMLDivElement,
   api: API,
-  { x, y, text, viewportYOffset = 0 }: { x: number; y: number; text: string; viewportYOffset?: number },
+  {
+    x,
+    y,
+    text,
+    viewportYOffset = 0,
+  }: { x: number; y: number; text: string; viewportYOffset?: number },
 ) {
   if (isBrowser) {
     if (!api.getAppState().penbarNameLabelVisible) {
