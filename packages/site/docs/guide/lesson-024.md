@@ -10,6 +10,7 @@ head:
           },
       ]
 ---
+
 <script setup>
 import ZIndex from '../components/ZIndex.vue';
 import DragNDropImage from '../components/DragNDropImage.vue';
@@ -130,18 +131,40 @@ The implementation of reading from the clipboard determines which common file ty
 document.addEventListener('paste', this.handlePaste, { passive: false });
 ```
 
-Like writing to the clipboard, first try the [read] method, which only works under HTTPS and theoretically supports all types of data, not limited to plain text. Almost all modern browsers support this method, though they have limitations on data types, typically including text, HTML, and images. If this method is not supported, fall back to [readText]
+Like writing to the clipboard, first try the [read] method, which only works under HTTPS and theoretically supports all types of data, not limited to plain text. Almost all modern browsers support this method, though they have limitations on data types, typically including text, HTML, and images. If this method is unavailable or rejects the request, fall back to [readText].
 
 ```ts
 export const readSystemClipboard = async () => {
     const types: { [key in AllowedPasteMimeTypes]?: string | File } = {};
-    // 1.
-    const clipboardItems = await navigator.clipboard?.read();
-    // 2.
-    const readText = await navigator.clipboard?.readText();
-    if (readText) {
-        return { [MIME_TYPES.text]: readText };
+    try {
+        // Prefer read() so HTML and images remain available.
+        if (navigator.clipboard?.read) {
+            const clipboardItems = await navigator.clipboard.read();
+            for (const item of clipboardItems) {
+                for (const type of item.types) {
+                    try {
+                        if (
+                            type === MIME_TYPES.text ||
+                            type === MIME_TYPES.html
+                        ) {
+                            types[type] = await (
+                                await item.getType(type)
+                            ).text();
+                        }
+                        // Supported image types are converted to File objects.
+                    } catch {
+                        // Another clipboard item may still be readable.
+                    }
+                }
+            }
+            return types;
+        }
+    } catch (error) {
+        // read() may fail even when readText() is permitted.
+        if (!navigator.clipboard?.readText) throw error;
     }
+    const text = await navigator.clipboard?.readText?.();
+    return text ? { [MIME_TYPES.text]: text } : types;
 };
 ```
 
