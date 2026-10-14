@@ -483,6 +483,11 @@ Bevel 接头的计算方式大致和 Miter 相同（下图中间情况）。`d3`
 
 ![stroke-alignment - p27](/line-stroke-alignment.png)
 
+在 ECS 中，折线的描边对齐也会影响计算后的几何包围盒。修改 `strokeWidth`、
+`strokeAlignment`，移除描边几何组件，以及撤销、重做这些操作时，偏移后的顶点
+和包围盒会同步刷新。没有描边的折线保留原始顶点。连续重复的采样点使用共同
+顶点的偏移；全部重合的采样点保持有限坐标，并保留原始点序和数量供 SVG 导出。
+
 在 Shader 中我们将这个属性反映到沿法线拉伸的偏移量上，如果 `strokeAlignment` 取值为 `center` 时偏移量为 `0`：
 
 ```glsl

@@ -1300,7 +1300,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     });
   }
   if ('strokeAlignment' in updates && !isIconFontWireNode) {
-    safeAddComponent(entity, Stroke, { alignment: strokeAlignment });
+    safeAddComponent(entity, Stroke, { alignment: strokeAlignment ?? 'center' });
   }
   if ('strokeDasharray' in updates && !isIconFontWireNode) {
     safeAddComponent(entity, Stroke, {

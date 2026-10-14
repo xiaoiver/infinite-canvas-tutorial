@@ -95,6 +95,7 @@ export class ComputeBounds extends System {
           Line,
           Polyline,
           Path,
+          ComputedPoints,
           Text,
           Brush,
           VectorNetwork,

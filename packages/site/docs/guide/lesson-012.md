@@ -483,6 +483,13 @@ We previously implemented [Enhanced SVG: Stroke alignment] on Circle, Ellipse, a
 
 ![stroke-alignment - p27](/line-stroke-alignment.png)
 
+For ECS polylines, stroke alignment also affects the computed geometry bounds.
+Changing `strokeWidth` or `strokeAlignment`, removing the stroke geometry, and
+undoing or redoing those edits refresh the offset points and their bounds. A
+polyline without a stroke keeps its original points. Consecutive duplicate samples
+share the offset of their common vertex; a polyline made entirely of coincident samples
+stays finite. The original point order and count are retained for SVG export.
+
 In the Shader, we reflect this attribute in the offset along the normal stretch. If the `strokeAlignment` takes the value of `center`, the offset is `0`:
 
 ```glsl
