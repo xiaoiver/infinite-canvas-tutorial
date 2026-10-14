@@ -439,6 +439,12 @@ module.exports = {
       functions: 98,
       lines: 98,
     },
+    './packages/ecs/src/utils/clipboard.ts': {
+      statements: 50,
+      branches: 50,
+      functions: 70,
+      lines: 50,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [

@@ -7,6 +7,7 @@ head:
           { property: 'og:title', content: '课程 24 - 上下文菜单和剪贴板' },
       ]
 ---
+
 <script setup>
 import ZIndex from '../../components/ZIndex.vue';
 import DragNDropImage from '../../components/DragNDropImage.vue';
@@ -127,18 +128,40 @@ export async function copyTextToClipboard(
 document.addEventListener('paste', this.handlePaste, { passive: false });
 ```
 
-和写入剪贴板一样，先尝试 [read] 方法，该方法仅在 HTTPS 下生效，理论上支持所有类型数据，不局限于纯文本，几乎所有现代浏览器都支持了该方法，只是在数据类型上有所限制，通常包括文本、HTML 和图片。如果不支持该方法就降级到 [readText]
+和写入剪贴板一样，先尝试 [read] 方法，该方法仅在 HTTPS 下生效，理论上支持所有类型数据，不局限于纯文本，几乎所有现代浏览器都支持了该方法，只是在数据类型上有所限制，通常包括文本、HTML 和图片。如果该方法不可用或读取失败，就降级到 [readText]。
 
 ```ts
 export const readSystemClipboard = async () => {
     const types: { [key in AllowedPasteMimeTypes]?: string | File } = {};
-    // 1.
-    const clipboardItems = await navigator.clipboard?.read();
-    // 2.
-    const readText = await navigator.clipboard?.readText();
-    if (readText) {
-        return { [MIME_TYPES.text]: readText };
+    try {
+        // 优先用 read()，保留 HTML 和图片。
+        if (navigator.clipboard?.read) {
+            const clipboardItems = await navigator.clipboard.read();
+            for (const item of clipboardItems) {
+                for (const type of item.types) {
+                    try {
+                        if (
+                            type === MIME_TYPES.text ||
+                            type === MIME_TYPES.html
+                        ) {
+                            types[type] = await (
+                                await item.getType(type)
+                            ).text();
+                        }
+                        // 受支持的图片类型还会转换为 File 对象。
+                    } catch {
+                        // 其他剪贴板条目仍可能读取成功。
+                    }
+                }
+            }
+            return types;
+        }
+    } catch (error) {
+        // 即使 read() 失败，readText() 仍可能可用。
+        if (!navigator.clipboard?.readText) throw error;
     }
+    const text = await navigator.clipboard?.readText?.();
+    return text ? { [MIME_TYPES.text]: text } : types;
 };
 ```
 
