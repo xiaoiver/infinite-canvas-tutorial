@@ -4,6 +4,12 @@ import { test } from './isolated-webkit-test';
 import type { ThemeMode } from '@infinite-canvas-tutorial/ecs';
 import type { TopNavbar } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 
+declare global {
+  interface Window {
+    themeSetupStatus: string;
+  }
+}
+
 type Menu = HTMLElement & { selected: unknown[] };
 const accent = {
   type: 'color' as const,
@@ -23,25 +29,42 @@ async function ready(page: Page) {
       timeout: 45000,
     });
   }
-  await page.evaluate(async (accent) => {
-    for (const [id, api] of Object.entries(window.apis)) {
-      await api.edit(
-        (editor) => {
-          editor.setAppState({
-            themePreference: 'light',
-            variables: { accent },
-            topbarVisible: true,
-            snapToObjectsEnabled: true,
-            snapToPixelGridEnabled: true,
-          });
-          editor.updateNode(editor.getNodeById(id)!, {
-            fills: [{ type: 'solid', value: '$accent' }],
-          });
-        },
-        { capture: 'NEVER' },
-      );
-    }
+  await page.evaluate((accent) => {
+    window.themeSetupStatus = 'pending';
+    // Observe completion in the page, as in selection-edits setup. Chromium
+    // can reject a long async evaluate even without navigating or reloading.
+    void (async () => {
+      for (const [id, api] of Object.entries(window.apis)) {
+        const committed = await api.edit(
+          (editor) => {
+            editor.setAppState({
+              themePreference: 'light',
+              variables: { accent },
+              topbarVisible: true,
+              snapToObjectsEnabled: true,
+              snapToPixelGridEnabled: true,
+            });
+            editor.updateNode(editor.getNodeById(id)!, {
+              fills: [{ type: 'solid', value: '$accent' }],
+            });
+          },
+          { capture: 'NEVER' },
+        );
+        if (!committed) throw new Error(`Theme setup cancelled for ${id}`);
+      }
+    })().then(
+      () => {
+        window.themeSetupStatus = 'ready';
+      },
+      (error) => {
+        window.themeSetupStatus = String(error);
+      },
+    );
   }, accent);
+  await expect
+    .poll(() => page.evaluate(() => window.themeSetupStatus))
+    .not.toBe('pending');
+  expect(await page.evaluate(() => window.themeSetupStatus)).toBe('ready');
   const navbar = page
     .getByTestId('left-shortcuts')
     .locator('ic-spectrum-top-navbar');
