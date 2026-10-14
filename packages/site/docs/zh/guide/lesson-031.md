@@ -461,6 +461,8 @@ interface BindingAttributes {
 
 在下面的例子中，我们分别在灰色和绿色矩形上各定义了一个锚点 `[1, 0]` 和 `[0, 1]`
 
+端点坐标 `exitX/exitY` 和 `entryX/entryY` 必须是有限数字。如果其中一个坐标无效，端点会退回图形边界，而不会生成非有限坐标的路径。像素偏移 `exitDx/exitDy` 或 `entryDx/entryDy` 无效时会被忽略，有效锚点仍保持固定。
+
 <BindingConstraint />
 
 ## 路由规则 {#routing rules}

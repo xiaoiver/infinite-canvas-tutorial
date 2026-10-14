@@ -67,6 +67,12 @@ module.exports = {
       functions: 95,
       lines: 73,
     },
+    './packages/ecs/src/utils/binding/connection.ts': {
+      statements: 55,
+      branches: 52,
+      functions: 75,
+      lines: 55,
+    },
     './packages/ecs/src/utils/gradient.ts': {
       statements: 95,
       branches: 92,

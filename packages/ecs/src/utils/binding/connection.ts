@@ -29,9 +29,9 @@ export function getConnectionConstraint(edge: EdgeSerializedNode, terminal: Seri
 
   // Constraint on edge
   const x = (source) ? edge.exitX : edge.entryX;
-  if (!isNil(x)) {
+  if (typeof x === 'number' && Number.isFinite(x)) {
     const y = (source) ? edge.exitY : edge.entryY;
-    if (!isNil(y)) {
+    if (typeof y === 'number' && Number.isFinite(y)) {
       point = { x, y };
     }
   }
@@ -44,8 +44,8 @@ export function getConnectionConstraint(edge: EdgeSerializedNode, terminal: Seri
     perimeter = (source) ? edge.exitPerimeter : edge.entryPerimeter;
     dx = (source) ? edge.exitDx : edge.entryDx;
     dy = (source) ? edge.exitDy : edge.entryDy;
-    dx = isFinite(dx) ? dx : 0;
-    dy = isFinite(dy) ? dy : 0;
+    dx = Number.isFinite(dx) ? dx : 0;
+    dy = Number.isFinite(dy) ? dy : 0;
   }
 
   return {
@@ -120,16 +120,24 @@ export function getConnectionPoint(vertex: (SerializedNode & { width: number; he
   let point: IPointData | null = null;
 
   // 步骤1：如果有约束点信息，计算基于约束的连接点
-  if (!isNil(vertex) && !isNil(constraint.x) && !isNil(constraint.y)) {
+  if (
+    !isNil(vertex) &&
+    typeof constraint.x === 'number' &&
+    Number.isFinite(constraint.x) &&
+    typeof constraint.y === 'number' &&
+    Number.isFinite(constraint.y)
+  ) {
     const { x, y, width, height } = vertex;
     // const cx: IPointData = { x: x + width / 2, y: y + height / 2 };
 
     // 步骤2：计算相对坐标的实际点位置
     // constraint.x/y 是归一化坐标 (0-1范围)
     // constraint.dx, constraint.dy 是像素偏移
+    const dx = constraint.dx;
+    const dy = constraint.dy;
     const rawPoint = {
-      x: x + constraint.x * width + (constraint.dx ?? 0),
-      y: y + constraint.y * height + (constraint.dy ?? 0)
+      x: x + constraint.x * width + (typeof dx === 'number' && Number.isFinite(dx) ? dx : 0),
+      y: y + constraint.y * height + (typeof dy === 'number' && Number.isFinite(dy) ? dy : 0)
     };
     const rotation = vertex.rotation ?? 0;
     point = rotation === 0 ? rawPoint : rotatePoint(rawPoint, x, y, rotation);
