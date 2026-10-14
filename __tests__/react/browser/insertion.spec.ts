@@ -1,6 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 
+declare global {
+  interface Window {
+    pasteObservation: {
+      status: 'pending' | 'ready' | 'failed';
+      operation?: Promise<void>;
+      result?: { count: number; selected: string[]; ids: string[] };
+      error?: string;
+    };
+  }
+}
+
 async function ready(page: Page) {
   await page.goto('/');
   await expect(page.getByTestId('left-status')).toHaveText('ready', {
@@ -99,40 +110,66 @@ for (const kind of ['text', 'svg', 'nodes'] as const) {
     page.on('pageerror', (error) => errors.push(error.message));
     await ready(page);
     await page.bringToFront();
-    const inserted = await page.evaluate(async (kind) => {
-      const api = window.apis.left;
-      const data = new DataTransfer();
-      const source =
-        kind === 'text'
-          ? 'Pasted text'
-          : kind === 'svg'
-          ? '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="40" height="30" fill="red"/></svg>'
-          : JSON.stringify([
-              {
-                id: 'original',
-                type: 'rect',
-                x: 10,
-                y: 20,
-                width: 40,
-                height: 30,
-                zIndex: 2,
-              },
-            ]);
-      data.setData('text/plain', source);
-      await window.paste(
-        api,
-        api.getAppState(),
-        new ClipboardEvent('paste', { clipboardData: data }),
+    await page.evaluate((kind) => {
+      const observation: Window['pasteObservation'] = { status: 'pending' };
+      window.pasteObservation = observation;
+      // Retain the operation and its result in the page. The browser bridge
+      // only observes synchronous state, rather than owning the paste Promise.
+      observation.operation = (async () => {
+        const api = window.apis.left;
+        const data = new DataTransfer();
+        const source =
+          kind === 'text'
+            ? 'Pasted text'
+            : kind === 'svg'
+            ? '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="40" height="30" fill="red"/></svg>'
+            : JSON.stringify([
+                {
+                  id: 'original',
+                  type: 'rect',
+                  x: 10,
+                  y: 20,
+                  width: 40,
+                  height: 30,
+                  zIndex: 2,
+                },
+              ]);
+        data.setData('text/plain', source);
+        await window.paste(
+          api,
+          api.getAppState(),
+          new ClipboardEvent('paste', { clipboardData: data }),
+        );
+        const nodes = api
+          .getNodes()
+          .filter((node) => !node.isDeleted && node.id !== 'left');
+        return {
+          count: nodes.length,
+          selected: api.getAppState().layersSelected,
+          ids: nodes.map((node) => node.id),
+        };
+      })().then(
+        (result) => {
+          observation.result = result;
+          observation.status = 'ready';
+        },
+        (error) => {
+          observation.error = String(error);
+          observation.status = 'failed';
+        },
       );
-      const nodes = api
-        .getNodes()
-        .filter((node) => !node.isDeleted && node.id !== 'left');
-      return {
-        count: nodes.length,
-        selected: api.getAppState().layersSelected,
-        ids: nodes.map((node) => node.id),
-      };
     }, kind);
+    await expect
+      .poll(() => page.evaluate(() => window.pasteObservation.status))
+      .not.toBe('pending');
+    const observation = await page.evaluate(() => ({
+      status: window.pasteObservation.status,
+      result: window.pasteObservation.result,
+      error: window.pasteObservation.error,
+    }));
+    expect(observation.error).toBeUndefined();
+    expect(observation.status).toBe('ready');
+    const inserted = observation.result!;
     expect(inserted.count).toBe(kind === 'svg' ? 2 : 1);
     expect(inserted.selected).toHaveLength(1);
     expect(inserted.ids).toContain(inserted.selected[0]);
