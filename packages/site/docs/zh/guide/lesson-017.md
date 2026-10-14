@@ -92,6 +92,10 @@ rect.fill = 'linear-gradient(0deg, blue, green 40%, red)';
 rect.fill = 'radial-gradient(circle at center, red, blue, green 100%)';
 ```
 
+ECS 中，渐变函数名以及方向、形状、尺寸和位置关键字不区分大小写。识别时检查函数名，图片 URL 中包含 `linear` 或 `radial` 不会被误当作渐变。`top center`、`bottom center` 等双关键字位置会保留纵轴含义。圆形径向渐变的中心也可以位于边界外：`closest-side` 使用到最近边的距离，半径保持非负。
+
+解析器支持圆形径向渐变，椭圆和重复渐变尚未渲染。锥形渐变字符串目前使用默认角度及现有的 `circle at …` 位置写法，尚未实现 CSS 的 `from … at …` 语法。结构化 `ConicGradient.angle` 使用角度制，在普通填充与滤镜输入中保持相同方向。
+
 解析结果如下：
 
 ```js eval code=false
@@ -148,6 +152,8 @@ Mesh 填充在顶点里用 **`u_FillUVRect`**（`minX, minY, 1/width, 1/height`�
 在 **WebGPU** 路径下，GLSL 经 **naga** 转成 WGSL 时 **`inverse(mat3)` 不可用**，因此实现里用手写的 **`inverseMat3`**（伴随矩阵 / 行列式）替代内置 `inverse`。
 
 ## 使用 Mesh 实现渐变 {#mesh-gradient}
+
+ECS 网格渐变解析器会保留显式控制点位置，类型、扭曲和时间等可选参数支持序列化后再解析。在使用可变控制点数量的模式中，`points(10)` 会保留第十个 shader 槽位；固定网格模式 `gtype(2)` 仍使用 3×3 网格。uniform 打包结果包含对齐填充，共 92 个 float，写入 96 个 float 的缓冲区。
 
 以上基于 Canvas 和 SVG 实现的渐变表现力有限，无法展示复杂的效果。一些设计工具例如 Sketch / Figma 社区中有很多基于 Mesh 的实现，例如：
 

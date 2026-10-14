@@ -179,7 +179,7 @@ export class TexturePool {
     } else if (type === 'conic-gradient') {
       const { cx, cy, angle } = params;
       const { x, y } = computeConicGradient(min, width, height, cx, cy);
-      gradient = this.#ctx.createConicGradient(angle, x, y);
+      gradient = this.#ctx.createConicGradient((angle * Math.PI) / 180, x, y);
     }
 
     if (gradient) {

@@ -303,12 +303,13 @@ it('creates and reuses a conic gradient with precise centers and angles', () => 
   pool.getOrCreateGradient(params);
   pool.getOrCreateGradient(params);
   expect(create).toHaveBeenCalledTimes(1);
-  expect(create).toHaveBeenCalledWith(0.25, 10, 3);
+  expect(create).toHaveBeenCalledWith((0.25 * Math.PI) / 180, 10, 3);
   pool.getOrCreateGradient({
     ...params,
     gradients: [{ ...gradient, angle: 0.3 }],
   });
   expect(create).toHaveBeenCalledTimes(2);
+  expect(create).toHaveBeenLastCalledWith((0.3 * Math.PI) / 180, 10, 3);
 });
 
 it('evicts the least recently used gradient while keeping an actively reused entry', () => {
