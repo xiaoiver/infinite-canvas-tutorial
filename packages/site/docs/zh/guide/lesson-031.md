@@ -463,6 +463,8 @@ interface BindingAttributes {
 
 端点坐标 `exitX/exitY` 和 `entryX/entryY` 必须是有限数字。如果其中一个坐标无效，端点会退回图形边界，而不会生成非有限坐标的路径。像素偏移 `exitDx/exitDy` 或 `entryDx/entryDy` 无效时会被忽略，有效锚点仍保持固定。
 
+使用箭头工具时，点击一次确定起点，移动指针即可预览连线。预览会跟随水平或竖直移动，起点或终点位于画布空白处时也一样。再次点击完成连线，按 Escape 取消。
+
 <BindingConstraint />
 
 ## 路由规则 {#routing rules}
