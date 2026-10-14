@@ -445,6 +445,12 @@ module.exports = {
       functions: 70,
       lines: 50,
     },
+    './packages/ecs/src/systems/DrawBrush.ts': {
+      statements: 90,
+      branches: 85,
+      functions: 75,
+      lines: 95,
+    },
   },
   transform: {
     '^.+\\.[tj]s$': [
