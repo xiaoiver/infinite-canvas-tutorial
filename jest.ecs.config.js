@@ -68,10 +68,10 @@ module.exports = {
       lines: 95,
     },
     './packages/ecs/src/utils/icon-font.ts': {
-      statements: 73,
-      branches: 63,
+      statements: 85,
+      branches: 75,
       functions: 95,
-      lines: 73,
+      lines: 85,
     },
     './packages/ecs/src/utils/binding/connection.ts': {
       statements: 55,
