@@ -109,6 +109,10 @@ animation.finish();
 
 Scalars like `x` / `y` / `opacity` interpolate trivially. For `fill` / `stroke`, parse colors with something like `d3-color`, then interpolate each rgba channel.
 
+For linear gradients, matching stop counts interpolate each stop's position and color. Different stop counts use the combined stop positions from both gradients, retaining repeated positions that represent hard color transitions. This preserves nonuniform spacing when both keyframes contain the same gradient.
+
+In ECS, `fill` / `fillOpacity` and `stroke` / `strokeOpacity` update the first enabled paint layer together. Other layers and their enabled state are preserved. If no layer is enabled, animating a paint adds one; animating only opacity does not create a new layer.
+
 ```ts
 function interpolateValue(from: unknown, to: unknown, t: number) {
     if (isFiniteNumber(from) && isFiniteNumber(to)) {
@@ -220,6 +224,8 @@ Some libraries require matching segment structure before and after the morph, or
 
 Following Kute.js’s CubicMorph: convert path segments to cubic Béziers, use easy subdivision to normalize both paths to the same segment count, then interpolate control points per segment.
 
+Winding and start-point alignment apply only when both paths contain a single closed contour. Open paths retain their endpoint order, so translating a curve does not swap its endpoints or collapse the curve halfway through the animation.
+
 ```ts
 function mergePaths(
     left: { absolutePath: AbsoluteArray; curve: CurveArray | null },
@@ -243,18 +249,20 @@ function mergePaths(
         curves = equalizeSegments(curve1, curve2);
     }
 
+    const closed = [left.absolutePath, right.absolutePath].every(
+        (path) =>
+            path[path.length - 1]?.[0] === 'Z' &&
+            path.filter(([command]) => command === 'M').length === 1,
+    );
     const curve0 =
-        getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
+        closed && getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
             ? reverseCurve(curves[0])
             : (clonePath(curves[0]) as CurveArray);
 
     return [
         curve0,
-        getRotatedCurve(curves[1], curve0) as CurveArray,
-        (pathArray: CurveArray) => {
-            // need converting to path string?
-            return pathArray;
-        },
+        closed ? (getRotatedCurve(curves[1], curve0) as CurveArray) : curves[1],
+        (pathArray: CurveArray) => pathArray,
     ];
 }
 ```
@@ -406,7 +414,7 @@ Lottie effects are not mapped to ECS yet.
 
 ## Animation editor
 
-Inspired by products such as [lottielab] and [Jitter], we built a lightweight animation editor in the Web Components layer: the **Animation panel** on the right edits keyframes for the selected element, and the **Timeline panel** at the bottom shows the scene-wide timeline and drives the global playhead. Both share the same serializable keyframe data and the scene clock in `AppState`.
+Inspired by products such as [lottielab] and [Jitter], we built a lightweight animation editor in the Web Components layer: the **Animation panel** on the right edits keyframes for the selected element, and the **Timeline panel** at the bottom shows the scene-wide timeline and drives that canvas's playhead. Both share the same serializable keyframe data and the scene clock in `AppState`.
 
 ![source: https://jitter.video/](/jitter.png)
 
@@ -426,16 +434,18 @@ Typical workflow:
 
 ### Scene clock and editing mode {#animation-scene-clock}
 
-The Timeline is not just UI—it drives the **global playhead in `AppState`**, decoupled from each `AnimationController`:
+The Timeline drives the **canvas's playhead in `AppState`**, decoupled from each `AnimationController`. Canvases sharing an ECS world keep independent playheads, playback state, and scene durations:
 
-| Field                  | Meaning                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `animationEditing`     | When `true`, enters **deterministic scrub mode**: every controller is sampled at the same `animationCurrentTime` instead of free-running on its own |
-| `animationCurrentTime` | Global playhead position (milliseconds)                                                                                                             |
-| `animationPlaying`     | Whether the playhead advances automatically                                                                                                         |
-| `animationLoop`        | Whether playback wraps back to 0 at the end of the scene                                                                                            |
+| Field                  | Meaning                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `animationEditing`     | When `true`, enters **deterministic scrub mode**: every controller in this canvas is sampled at the same `animationCurrentTime` instead of free-running on its own |
+| `animationCurrentTime` | This canvas's playhead position (milliseconds)                                                                                                                     |
+| `animationPlaying`     | Whether the playhead advances automatically                                                                                                                        |
+| `animationLoop`        | Whether playback wraps back to 0 at the end of the scene                                                                                                           |
 
-When `animationEditing === true`, `AnimationSystem` runs `executeEditing`: while paused, each entity’s controller is fixed at `animationCurrentTime`; while playing, the playhead advances via `performance.now()` deltas and is written back to `animationCurrentTime`. After closing the Timeline or leaving editing mode, controllers that were paused resume autoplay from the current position rather than restarting from the beginning.
+When `animationEditing === true`, `AnimationSystem` samples only entities belonging to that canvas. While paused, controllers are fixed at `animationCurrentTime`; while playing, the playhead advances via `performance.now()` deltas. Paused wall-clock time is excluded when playback resumes, and scene duration is determined by that canvas's tracks.
+
+After leaving editing mode, controllers paused by the editor resume autoplay from the current position. Controllers already paused by the caller remain paused, and cancelled controllers are not restarted.
 
 Opening the Timeline automatically calls `setAnimationEditing(true)` so scrubbing and preview stay consistent.
 

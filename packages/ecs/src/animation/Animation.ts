@@ -374,9 +374,17 @@ function parseLinearGradientString(value: string): ParsedLinearGradient | null {
 function evalColorAtGradientOffset(
   stops: ParsedLinearGradientStop[],
   u: number,
+  occurrence = 0,
 ): Omit<ParsedLinearGradientStop, 'offset'> {
   const sorted = [...stops].sort((a, b) => a.offset - b.offset);
   const uu = clamp01(u);
+  // Repeated offsets describe a hard stop. Match both sides of that stop when
+  // aligning gradients, instead of flattening them into a single color.
+  const exact = sorted.filter((stop) => stop.offset === uu);
+  if (exact.length) {
+    const s = exact[Math.min(occurrence, exact.length - 1)];
+    return { r: s.r, g: s.g, b: s.b, a: s.a };
+  }
   if (sorted.length === 1) {
     const s = sorted[0];
     return { r: s.r, g: s.g, b: s.b, a: s.a };
@@ -405,28 +413,6 @@ function evalColorAtGradientOffset(
   }
   const s = sorted[0];
   return { r: s.r, g: s.g, b: s.b, a: s.a };
-}
-
-function resampleLinearGradientStops(
-  stops: ParsedLinearGradientStop[],
-  n: number,
-): ParsedLinearGradientStop[] {
-  if (stops.length === 0 || n < 1) {
-    return [];
-  }
-  const out: ParsedLinearGradientStop[] = [];
-  for (let i = 0; i < n; i++) {
-    const u = n === 1 ? stops[0].offset : i / (n - 1);
-    const c = evalColorAtGradientOffset(stops, u);
-    out.push({
-      offset: u,
-      r: c.r,
-      g: c.g,
-      b: c.b,
-      a: c.a,
-    });
-  }
-  return out;
 }
 
 function formatGradientStopPercent(offset: number): string {
@@ -467,21 +453,48 @@ function interpolateLinearGradientPaint(
   if (!a || !b) {
     return null;
   }
-  const n = Math.max(a.stops.length, b.stops.length, 2);
-  const sa = resampleLinearGradientStops(a.stops, n);
-  const sb = resampleLinearGradientStops(b.stops, n);
-  if (sa.length !== n || sb.length !== n) {
-    return null;
-  }
   const angleDeg = interpolateNumber(a.angleDeg, b.angleDeg, t);
-  const stops: ParsedLinearGradientStop[] = sa.map((s, i) => ({
-    offset: clamp01(interpolateNumber(s.offset, sb[i].offset, t)),
-    r: interpolateNumber(s.r, sb[i].r, t),
-    g: interpolateNumber(s.g, sb[i].g, t),
-    b: interpolateNumber(s.b, sb[i].b, t),
-    a: interpolateNumber(s.a, sb[i].a, t),
-  }));
-  stops.sort((x, y) => x.offset - y.offset);
+  if (a.stops.length === b.stops.length && a.stops.length >= 2) {
+    return serializeLinearGradient({
+      angleDeg,
+      stops: a.stops.map((stop, i) => ({
+        offset: interpolateNumber(stop.offset, b.stops[i].offset, t),
+        r: interpolateNumber(stop.r, b.stops[i].r, t),
+        g: interpolateNumber(stop.g, b.stops[i].g, t),
+        b: interpolateNumber(stop.b, b.stops[i].b, t),
+        a: interpolateNumber(stop.a, b.stops[i].a, t),
+      })),
+    });
+  }
+  // Preserve every breakpoint and its multiplicity. Uniform resampling loses
+  // nonuniform offsets, even when interpolating a gradient with itself.
+  const counts = new Map<number, number>();
+  for (const source of [a.stops, b.stops]) {
+    const local = new Map<number, number>();
+    for (const stop of source)
+      local.set(stop.offset, (local.get(stop.offset) ?? 0) + 1);
+    for (const [offset, count] of local)
+      counts.set(offset, Math.max(counts.get(offset) ?? 0, count));
+  }
+  const offsets = [...counts]
+    .sort(([x], [y]) => x - y)
+    .flatMap(([offset, count]) => Array<number>(count).fill(offset));
+  if (offsets.length === 1) offsets.push(offsets[0]);
+  let previous: number | undefined;
+  let occurrence = 0;
+  const stops: ParsedLinearGradientStop[] = offsets.map((offset) => {
+    occurrence = offset === previous ? occurrence + 1 : 0;
+    previous = offset;
+    const sa = evalColorAtGradientOffset(a.stops, offset, occurrence);
+    const sb = evalColorAtGradientOffset(b.stops, offset, occurrence);
+    return {
+      offset,
+      r: interpolateNumber(sa.r, sb.r, t),
+      g: interpolateNumber(sa.g, sb.g, t),
+      b: interpolateNumber(sa.b, sb.b, t),
+      a: interpolateNumber(sa.a, sb.a, t),
+    };
+  });
   return serializeLinearGradient({ angleDeg, stops });
 }
 
@@ -571,18 +584,21 @@ function mergePaths(
     curves = equalizeSegments(curve1, curve2);
   }
 
+  // Winding and start-point alignment apply to closed contours. Rotating an
+  // open curve can swap its endpoints and collapse it during interpolation.
+  const closed = [left.absolutePath, right.absolutePath].every(
+    (path) =>
+      path[path.length - 1]?.[0] === 'Z' &&
+      path.filter(([command]) => command === 'M').length === 1,
+  );
   const curve0 =
-    getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
+    closed && getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
       ? reverseCurve(curves[0])
       : (clonePath(curves[0]) as CurveArray);
-
   return [
     curve0,
-    getRotatedCurve(curves[1], curve0) as CurveArray,
-    (pathArray: CurveArray) => {
-      // need converting to path string?
-      return pathArray;
-    },
+    closed ? (getRotatedCurve(curves[1], curve0) as CurveArray) : curves[1],
+    (pathArray: CurveArray) => pathArray,
   ];
 }
 
