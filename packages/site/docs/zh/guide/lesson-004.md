@@ -657,6 +657,8 @@ if (duration === 0) {
 this.cancelLandmarkAnimation();
 
 let timeStart: number | undefined;
+const startPosition: vec2 = [this.#x, this.#y];
+const startZoomRotation: vec2 = [this.zoom, this.#rotation];
 const destPosition: vec2 = [x, y];
 const destZoomRotation: vec2 = [zoom, rotation];
 const animate = (timestamp: number) => {
@@ -690,8 +692,8 @@ const t = EASING_FUNCTION[easing](elapsed / duration);
 const interPosition = vec2.create();
 const interZoomRotation = vec2.fromValues(1, 0);
 
-vec2.lerp(interPosition, [this.#x, this.#y], destPosition, t);
-vec2.lerp(interZoomRotation, [this.zoom, this.#rotation], destZoomRotation, t);
+vec2.lerp(interPosition, startPosition, destPosition, t);
+vec2.lerp(interZoomRotation, startZoomRotation, destZoomRotation, t);
 
 this.#x = interPosition[0];
 this.#y = interPosition[1];
@@ -700,11 +702,13 @@ this.#rotation = interZoomRotation[1];
 this.updateMatrix();
 ```
 
-这里还有一个小优化点，过程中可以计算相机位置的偏移量，如果距离小于阈值则没必要进行后续的动画了，直接结束：
+动画开始时只记录一次起始状态。若每帧都从已更新的相机状态插值，缓动曲线会改变，结果也会依赖帧率。只有位置和缩放／旋转都达到目标值时才能提前结束；仅检查位置会跳过只改变缩放的动画：
 
 ```ts
-const dist = vec2.dist(interPosition, destPosition);
-if (dist <= EPSILON) {
+if (
+  vec2.dist(interPosition, destPosition) <= EPSILON &&
+  vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
+) {
     endAnimation();
     return;
 }

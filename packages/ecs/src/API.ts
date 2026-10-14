@@ -1369,8 +1369,6 @@ export class API {
       viewportX = 0,
       viewportY = 0,
     } = this.createLandmark(landmark);
-    const useFixedViewport = viewportX || viewportY;
-
     const endAnimation = () => {
       this.applyLandmark({ x, y, zoom, rotation, viewportX, viewportY });
       if (onfinish) {
@@ -1386,6 +1384,12 @@ export class API {
     }
 
     let timeStart: number | undefined;
+    const startingLandmark = this.#camera.read(ComputedCamera);
+    const startPosition: vec2 = [startingLandmark.x, startingLandmark.y];
+    const startZoomRotation: vec2 = [
+      startingLandmark.zoom,
+      startingLandmark.rotation,
+    ];
     const destPosition: vec2 = [x, y]; // in world space
     const destZoomRotation: vec2 = [zoom, rotation];
     const EPSILON = 0.0001;
@@ -1402,16 +1406,14 @@ export class API {
         return;
       }
 
-      const { x, y, zoom, rotation } = this.#camera.read(ComputedCamera);
-
       // use the same ease function in animation system
       const t = EASING_FUNCTION[easing](elapsed / duration);
 
       const interPosition = vec2.create();
       const interZoomRotation = vec2.fromValues(1, 0);
 
-      vec2.lerp(interPosition, [x, y], destPosition, t);
-      vec2.lerp(interZoomRotation, [zoom, rotation], destZoomRotation, t);
+      vec2.lerp(interPosition, startPosition, destPosition, t);
+      vec2.lerp(interZoomRotation, startZoomRotation, destZoomRotation, t);
 
       this.applyLandmark({
         x: interPosition[0],
@@ -1423,9 +1425,8 @@ export class API {
       });
 
       if (
-        useFixedViewport
-          ? vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
-          : vec2.dist(interPosition, destPosition) <= EPSILON
+        vec2.dist(interPosition, destPosition) <= EPSILON &&
+        vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
       ) {
         endAnimation();
         return;

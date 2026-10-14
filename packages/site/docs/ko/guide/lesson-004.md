@@ -657,6 +657,8 @@ if (duration === 0) {
 this.cancelLandmarkAnimation();
 
 let timeStart: number | undefined;
+const startPosition: vec2 = [this.#x, this.#y];
+const startZoomRotation: vec2 = [this.zoom, this.#rotation];
 const destPosition: vec2 = [x, y];
 const destZoomRotation: vec2 = [zoom, rotation];
 const animate = (timestamp: number) => {
@@ -690,8 +692,8 @@ const t = EASING_FUNCTION[easing](elapsed / duration);
 const interPosition = vec2.create();
 const interZoomRotation = vec2.fromValues(1, 0);
 
-vec2.lerp(interPosition, [this.#x, this.#y], destPosition, t);
-vec2.lerp(interZoomRotation, [this.zoom, this.#rotation], destZoomRotation, t);
+vec2.lerp(interPosition, startPosition, destPosition, t);
+vec2.lerp(interZoomRotation, startZoomRotation, destZoomRotation, t);
 
 this.#x = interPosition[0];
 this.#y = interPosition[1];
@@ -700,11 +702,13 @@ this.#rotation = interZoomRotation[1];
 this.updateMatrix();
 ```
 
-여기서 작은 최적화를 할 수 있습니다. 카메라 위치의 변위를 계산하여, 거리가 특정 임계값보다 작으면 후속 애니메이션을 수행하지 않고 바로 종료합니다.
+애니메이션이 시작될 때 시작 상태를 한 번만 저장합니다. 매 프레임 갱신된 카메라 상태에서 다시 보간하면 이징 곡선이 바뀌고 결과가 프레임 속도에 따라 달라집니다. 위치와 줌/회전이 모두 목표에 도달했을 때만 일찍 종료해야 합니다. 위치만 확인하면 줌만 변경하는 애니메이션이 건너뛰어집니다.
 
 ```ts
-const dist = vec2.dist(interPosition, destPosition);
-if (dist <= EPSILON) {
+if (
+  vec2.dist(interPosition, destPosition) <= EPSILON &&
+  vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
+) {
     endAnimation();
     return;
 }
