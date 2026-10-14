@@ -1,6 +1,9 @@
 import { Entity, System } from '@lastolivegames/becsy';
 import {
   AnimationPlayer,
+  Camera,
+  Canvas,
+  Children,
   FillLayers,
   StrokeLayers,
   Opacity,
@@ -9,7 +12,11 @@ import {
   Transform,
 } from '../components';
 import { safeAddComponent } from '../history';
-import { Canvas, inferXYWidthHeight, isGradient, PathSerializedNode } from '..';
+import type { API } from '../API';
+import type { PathSerializedNode } from '../types/serialized-node';
+import { inferXYWidthHeight } from '../utils/deserialize';
+import { isGradient } from '../utils/gradient';
+import { getSceneRoot } from './Transform';
 import { isFillLayerEnabled } from '../utils/fillLayers';
 import type {
   AnimationController,
@@ -63,145 +70,129 @@ export function computeTranslationWithTransformOrigin(input: {
   };
 }
 
+interface CanvasPlayback {
+  lastNow?: number;
+  editing: boolean;
+  playing: boolean;
+  resume: WeakSet<AnimationController>;
+}
+
 export class AnimationSystem extends System {
-  animations = this.query((q) =>
-    q.current
-      .with(AnimationPlayer)
-      .using(Canvas).read
-      .using(
-        Transform,
-        Opacity,
-        FillLayers,
-        StrokeLayers,
-        Stroke,
-        Path,
-        AnimationPlayer,
-      ).write,
+  animations = this.query(
+    (q) =>
+      q.current
+        .with(AnimationPlayer)
+        .using(Canvas, Camera, Children)
+        .read.using(
+          Transform,
+          Opacity,
+          FillLayers,
+          StrokeLayers,
+          Stroke,
+          Path,
+          AnimationPlayer,
+        ).write,
   );
 
   private readonly canvases = this.query((q) => q.current.with(Canvas).read);
 
-  /** Wall-clock timestamp of the previous frame, used to advance the scene playhead. */
-  #lastNow: number | undefined;
-  /** Whether the previous frame was in editing (scrub) mode, to detect transitions. */
-  #wasEditing = false;
+  private readonly playback = new WeakMap<API, CanvasPlayback>();
 
   execute(): void {
-    // 与 AnimationController.play/tick 默认时间基准一致（performance.now），避免与 UI 里无参
-    // controller.play() 混用 Date.now 导致 pause 后 resume 时 startTime 算错、像从头播放。
     const now = performance.now();
-
-    // The Animation/Timeline editor drives a single, deterministic scene playhead
-    // instead of letting every controller free-run. We read that state from the
-    // canvas-attached API; when no editor is active we keep the legacy behavior.
-    const api = this.getApi();
-    const appState = api?.getAppState?.();
-    const editing = !!appState?.animationEditing;
-
-    if (editing) {
-      this.executeEditing(now, api!, appState!);
-      this.#wasEditing = true;
-      return;
-    }
-
-    // Leaving editing mode: resume controllers that the editor had paused so that
-    // normal autoplay continues from the current position rather than restarting.
-    if (this.#wasEditing) {
-      this.animations.current.forEach((entity) => {
-        const controller = entity.write(AnimationPlayer).controller;
-        if (controller && controller.getPlayState() === 'paused') {
-          controller.play(now);
-        }
-      });
-      this.#wasEditing = false;
-    }
-    this.#lastNow = undefined;
-
+    const scenes = new Map<API | undefined, Entity[]>();
+    this.canvases.current.forEach((canvas) => {
+      const api = canvas.read(Canvas).api;
+      if (api) scenes.set(api, []);
+    });
     this.animations.current.forEach((entity) => {
-      const player = entity.write(AnimationPlayer);
-      const controller = player.controller;
-      if (!controller) {
+      const root = getSceneRoot(entity);
+      const canvas = root.has(Camera) ? root.read(Camera).canvas : undefined;
+      const api = canvas?.has(Canvas) ? canvas.read(Canvas).api : undefined;
+      const entities = scenes.get(api) ?? [];
+      entities.push(entity);
+      scenes.set(api, entities);
+    });
+
+    scenes.forEach((entities, api) => {
+      let state = api && this.playback.get(api);
+      if (api && !state) {
+        state = { editing: false, playing: false, resume: new WeakSet() };
+        this.playback.set(api, state);
+      }
+      if (api?.getAppState().animationEditing) {
+        this.executeEditing(now, api, entities, state!);
         return;
       }
-
-      if (controller.getPlayState() === 'idle') {
-        controller.play(now);
+      entities.forEach((entity) => {
+        const controller = entity.write(AnimationPlayer).controller;
+        if (!controller) return;
+        // Resume only controllers paused by this canvas's editor. Controllers
+        // explicitly paused before editing, or cancelled during it, stay stopped.
+        if (
+          state?.editing &&
+          state.resume.has(controller) &&
+          controller.getPlayState() === 'paused'
+        )
+          controller.play(now);
+        if (controller.getPlayState() === 'idle') controller.play(now);
+        this.applyValues(entity, controller, controller.tick(now));
+      });
+      if (state?.editing) {
+        state.editing = state.playing = false;
+        state.lastNow = undefined;
+        state.resume = new WeakSet();
       }
-
-      const snapshot = controller.tick(now);
-      this.applyValues(entity, controller, snapshot);
     });
   }
 
-  /** @returns the API attached to the first canvas, if any. */
-  private getApi():
-    | {
-      getAppState?: () => Record<string, unknown>;
-      setAppState?: (s: Record<string, unknown>) => void;
-    }
-    | undefined {
-    let api: unknown;
-    this.canvases.current.forEach((canvas) => {
-      if (!api) {
-        api = canvas.read(Canvas).api;
-      }
-    });
-    return api as
-      | {
-        getAppState?: () => Record<string, unknown>;
-        setAppState?: (s: Record<string, unknown>) => void;
-      }
-      | undefined;
-  }
-
-  /**
-   * Editor (scrub) mode: advance a single scene playhead when playing, otherwise
-   * sample every controller at the fixed `animationCurrentTime`.
-   */
+  /** Advance and sample only the tracks owned by this canvas. */
   private executeEditing(
     now: number,
-    api: { getAppState?: () => any; setAppState?: (s: any) => void },
-    appState: any,
+    api: API,
+    entities: Entity[],
+    state: CanvasPlayback,
   ) {
+    const appState = api.getAppState();
     const playing = !!appState.animationPlaying;
     const loop = !!appState.animationLoop;
     let playhead = isFiniteNumber(appState.animationCurrentTime)
       ? Math.max(0, appState.animationCurrentTime)
       : 0;
-
-    // Scene duration = longest active track end-time across all controllers.
     let sceneDuration = 0;
-    this.animations.current.forEach((entity) => {
+    entities.forEach((entity) => {
       const controller = entity.read(AnimationPlayer).controller;
-      if (controller) {
+      if (controller)
         sceneDuration = Math.max(sceneDuration, controller.getDuration());
-      }
     });
-
     if (playing) {
-      const dt = this.#lastNow === undefined ? 0 : Math.max(0, now - this.#lastNow);
+      const dt =
+        !state.playing || state.lastNow === undefined
+          ? 0
+          : Math.max(0, now - state.lastNow);
       playhead += dt;
       if (sceneDuration > 0 && playhead >= sceneDuration) {
-        if (loop) {
-          playhead = playhead % sceneDuration;
-        } else {
+        if (loop) playhead %= sceneDuration;
+        else {
           playhead = sceneDuration;
-          api.setAppState?.({ animationPlaying: false });
+          api.setAppState({ animationPlaying: false });
         }
       }
-      api.setAppState?.({ animationCurrentTime: playhead });
+      api.setAppState({ animationCurrentTime: playhead });
     }
-    this.#lastNow = now;
-
-    this.animations.current.forEach((entity) => {
-      const player = entity.write(AnimationPlayer);
-      const controller = player.controller;
-      if (!controller) {
-        return;
+    state.lastNow = now;
+    state.editing = true;
+    state.playing = !!api.getAppState().animationPlaying;
+    entities.forEach((entity) => {
+      const controller = entity.write(AnimationPlayer).controller;
+      if (!controller) return;
+      const playState = controller.getPlayState();
+      if (playState === 'running' || playState === 'idle') {
+        state.resume.add(controller);
+        controller.pause();
       }
       controller.seek(playhead);
-      const snapshot = controller.getSnapshot();
-      this.applyValues(entity, controller, snapshot);
+      this.applyValues(entity, controller, controller.getSnapshot());
     });
   }
 
@@ -288,86 +279,15 @@ function applyAnimatedValues(
       transform.rotation = nextRotation;
     }
 
-    if (
-      isFiniteNumber(values.opacity)
-      || isFiniteNumber(values.fillOpacity)
-      || isFiniteNumber(values.strokeOpacity)
-    ) {
-      const opacityPatch: Partial<Opacity> = {};
-      if (isFiniteNumber(values.opacity)) {
-        opacityPatch.opacity = values.opacity;
-      }
-      if (isFiniteNumber(values.fillOpacity)) {
-        if (entity.has(FillLayers)) {
-          const fl = entity.write(FillLayers);
-          const layers = [...fl.layers];
-          const i = layers.findIndex(isFillLayerEnabled);
-          if (i >= 0) {
-            layers[i] = {
-              ...layers[i]!,
-              opacity: values.fillOpacity,
-            };
-            fl.layers = layers;
-          }
-        }
-      }
-      if (isFiniteNumber(values.strokeOpacity)) {
-        if (entity.has(StrokeLayers)) {
-          const sl = entity.write(StrokeLayers);
-          const layers = [...sl.layers];
-          const i = layers.findIndex(isFillLayerEnabled);
-          if (i >= 0) {
-            layers[i] = {
-              ...layers[i]!,
-              opacity: values.strokeOpacity,
-            };
-            sl.layers = layers;
-          }
-        }
-      }
-      if (Object.keys(opacityPatch).length > 0) {
-        safeAddComponent(entity, Opacity, opacityPatch);
-      }
+    if (isFiniteNumber(values.opacity)) {
+      safeAddComponent(entity, Opacity, { opacity: values.opacity });
     }
-
-    if (typeof values.fill === 'string') {
-      if (isGradient(values.fill)) {
-        safeAddComponent(entity, FillLayers, {
-          layers: [{ type: 'gradient', value: values.fill }],
-        });
-      } else {
-        safeAddComponent(entity, FillLayers, {
-          layers: [{ type: 'solid', value: values.fill }],
-        });
-      }
-    }
-
+    applyAnimatedPaint(entity, FillLayers, values.fill, values.fillOpacity);
+    applyAnimatedPaint(entity, StrokeLayers, values.stroke, values.strokeOpacity);
     if (isFiniteNumber(values.strokeWidth)) {
       safeAddComponent(entity, Stroke, { width: values.strokeWidth });
-    }
-
-    if (typeof values.stroke === 'string') {
-      if (entity.has(StrokeLayers)) {
-        const sl = entity.write(StrokeLayers);
-        const layers = sl.layers.map((L) => ({ ...L }));
-        const i = layers.findIndex(isFillLayerEnabled);
-        if (i >= 0) {
-          const L = layers[i];
-          if (L && 'value' in L) {
-            layers[i] = { ...L, value: values.stroke };
-            sl.layers = layers;
-          }
-        } else {
-          sl.layers = [{ type: 'solid', value: values.stroke }];
-        }
-      } else {
-        safeAddComponent(entity, StrokeLayers, {
-          layers: [{ type: 'solid', value: values.stroke }],
-        });
-      }
-      if (!entity.has(Stroke)) {
-        safeAddComponent(entity, Stroke, { width: 1 });
-      }
+    } else if (typeof values.stroke === 'string' && !entity.has(Stroke)) {
+      safeAddComponent(entity, Stroke, { width: 1 });
     }
 
     if (isDasharray(values.strokeDasharray)) {
@@ -403,4 +323,33 @@ function applyAnimatedValues(
       safeAddComponent(entity, Path, { d: inferred.d });
     }
   }
+}
+
+/** Update the first enabled paint atomically, retaining all other layers. */
+function applyAnimatedPaint(
+  entity: Entity,
+  component: typeof FillLayers | typeof StrokeLayers,
+  paint: unknown,
+  opacity: unknown,
+) {
+  const hasPaint = typeof paint === 'string';
+  const hasOpacity = isFiniteNumber(opacity);
+  if (!hasPaint && !hasOpacity) return;
+  const layers = entity.has(component)
+    ? [...entity.read(component).layers]
+    : [];
+  const index = layers.findIndex(isFillLayerEnabled);
+  if (index < 0 && !hasPaint) return;
+  const previous = layers[index];
+  const next = hasPaint
+    ? {
+        ...previous,
+        type: isGradient(paint) ? ('gradient' as const) : ('solid' as const),
+        value: paint,
+      }
+    : { ...previous };
+  if (hasOpacity) next.opacity = opacity;
+  if (index < 0) layers.push(next);
+  else layers[index] = next;
+  safeAddComponent(entity, component, { layers });
 }

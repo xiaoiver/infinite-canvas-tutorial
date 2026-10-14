@@ -30,6 +30,7 @@ export default defineConfig({
     'image-fill.spec.ts',
     'image-decoding.spec.ts',
     'animation-export.spec.ts',
+    'animation-state.spec.ts',
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
     'gizmo.spec.ts',

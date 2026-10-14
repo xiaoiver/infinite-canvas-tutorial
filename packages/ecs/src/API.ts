@@ -1646,7 +1646,12 @@ export class API {
   /** Remove a keyframe (by index) of a node's animation. Keeps ≥1 keyframe. */
   removeNodeAnimationKeyframe(id: SerializedNode['id'], index: number) {
     const current = this.getNodeAnimation(id);
-    if (!current || current.keyframes.length <= 1) {
+    if (
+      !current ||
+      current.keyframes.length <= 1 ||
+      index < 0 ||
+      index >= current.keyframes.length
+    ) {
       return;
     }
     const keyframes = current.keyframes.filter((_, i) => i !== index);

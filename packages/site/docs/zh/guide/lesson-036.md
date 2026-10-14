@@ -110,6 +110,10 @@ animation.finish();
 
 像 `x/y/opacity` 这种数字很容易插值，对于 `fill/stroke` 这样的颜色值，需要先用 `d3-color` 解析出 rgba 各个分量再分别插值。
 
+线性渐变的色标数量相同时，逐个插值色标位置与颜色；数量不同时，使用两端色标位置的并集，并保留表示硬边过渡的重复位置。因此，两端关键帧使用同一渐变时，不均匀的色标间距不会被改成均匀分布。
+
+ECS 中，`fill` / `fillOpacity` 和 `stroke` / `strokeOpacity` 会同时更新第一个启用的绘制层，保留其他层及其启用状态。如果没有启用的层，颜色动画会新增一层；仅有透明度动画时不会创建新层。
+
 ```ts
 function interpolateValue(from: unknown, to: unknown, t: number) {
     if (isFiniteNumber(from) && isFiniteNumber(to)) {
@@ -221,6 +225,8 @@ api.animate(node, [{ strokeDashoffset: -20 }, { strokeDashoffset: 0 }], {
 
 参考 Kute.js 中的 CubicMorph，首先将 Path 定义中的各个部分转成三阶贝塞尔曲线表示，然后利用三阶贝塞尔曲线易于分割的特性，将变换前后的路径规范到相同数目的分段，最后对各个分段中的控制点进行插值实现动画效果
 
+只有两端路径都包含单个闭合轮廓时，才对齐绕向和起点。开放路径保留端点顺序，避免平移曲线时交换端点，导致动画中途曲线塌缩。
+
 ```ts
 function mergePaths(
     left: { absolutePath: AbsoluteArray; curve: CurveArray | null },
@@ -244,18 +250,20 @@ function mergePaths(
         curves = equalizeSegments(curve1, curve2);
     }
 
+    const closed = [left.absolutePath, right.absolutePath].every(
+        (path) =>
+            path[path.length - 1]?.[0] === 'Z' &&
+            path.filter(([command]) => command === 'M').length === 1,
+    );
     const curve0 =
-        getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
+        closed && getDrawDirection(curves[0]) !== getDrawDirection(curves[1])
             ? reverseCurve(curves[0])
             : (clonePath(curves[0]) as CurveArray);
 
     return [
         curve0,
-        getRotatedCurve(curves[1], curve0) as CurveArray,
-        (pathArray: CurveArray) => {
-            // need converting to path string?
-            return pathArray;
-        },
+        closed ? (getRotatedCurve(curves[1], curve0) as CurveArray) : curves[1],
+        (pathArray: CurveArray) => pathArray,
     ];
 }
 ```
@@ -404,7 +412,7 @@ Repeater（`ty: "rp"`）复制当前形状分组中位于它之前的操作符�
 
 ## 动画编辑器
 
-参考 [lottielab]、[Jitter] 等产品，我们在 Web Components 层实现了一套轻量动画编辑器：**右侧 Animation 面板**负责编辑当前选中元素的 keyframes，**底部 Timeline 面板**展示整场景的时间轴并驱动全局播放头。两者共用同一份可序列化的 Keyframes 数据与 `AppState` 里的场景时钟。
+参考 [lottielab]、[Jitter] 等产品，我们在 Web Components 层实现了一套轻量动画编辑器：**右侧 Animation 面板**负责编辑当前选中元素的 keyframes，**底部 Timeline 面板**展示整场景的时间轴并驱动当前画布的播放头。两者共用同一份可序列化的 Keyframes 数据与 `AppState` 里的场景时钟。
 
 ![source: https://jitter.video/](/jitter.png)
 
@@ -424,16 +432,18 @@ Taskbar 提供两个独立开关：
 
 ### 场景时钟与编辑模式 {#animation-scene-clock}
 
-Timeline 不只是 UI，它驱动 **`AppState` 中的全局播放头**，与每个 `AnimationController` 解耦：
+Timeline 驱动 **`AppState` 中当前画布的播放头**，与每个 `AnimationController` 解耦。共享同一个 ECS world 的多个画布，各自维护独立的播放头、播放状态和场景时长：
 
-| 字段                   | 含义                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| `animationEditing`     | 为 `true` 时进入**确定性 scrub 模式**：所有控制器按同一 `animationCurrentTime` 采样，而非各自 free-run |
-| `animationCurrentTime` | 全局播放头位置（毫秒）                                                                                 |
-| `animationPlaying`     | 是否自动推进播放头                                                                                     |
-| `animationLoop`        | 到达场景末尾是否回到 0                                                                                 |
+| 字段                   | 含义                                                                                                             |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `animationEditing`     | 为 `true` 时进入**确定性 scrub 模式**：当前画布的所有控制器按同一 `animationCurrentTime` 采样，而非各自 free-run |
+| `animationCurrentTime` | 当前画布的播放头位置（毫秒）                                                                                     |
+| `animationPlaying`     | 是否自动推进播放头                                                                                               |
+| `animationLoop`        | 到达场景末尾是否回到 0                                                                                           |
 
-`AnimationSystem` 在 `animationEditing === true` 时走 `executeEditing`：暂停状态下把每个 entity 的控制器固定在 `animationCurrentTime`；播放状态下用 `performance.now()` 的 delta 推进播放头，并写回 `animationCurrentTime`。关闭 Timeline 或离开编辑模式后，原先被 pause 的控制器会从当前位置继续 autoplay，而不是从头重播。
+`AnimationSystem` 在 `animationEditing === true` 时只采样属于当前画布的实体。暂停状态下把控制器固定在 `animationCurrentTime`；播放状态下用 `performance.now()` 的 delta 推进播放头。恢复播放时不会计入暂停期间经过的时间，场景时长也只由当前画布的轨道决定。
+
+离开编辑模式后，被编辑器暂停的控制器从当前位置继续 autoplay。调用方在进入编辑模式前已经暂停的控制器仍保持暂停，已取消的控制器不会自动重启。
 
 打开 Timeline 时会自动 `setAnimationEditing(true)`，保证 scrub 与预览行为一致。
 
@@ -464,7 +474,7 @@ interface Track {
 | ----------------- | ------------------------------------------------------------ |
 | 点击轨道标签      | `layersSelected = [track.id]`，高亮轨道，驱动 Animation 面板 |
 | 拖动 lane / ruler | scrub 播放头，画布实时预览该帧                               |
-| Play / Pause      | `toggleAnimationPlaying()`，在编辑模式下推进全局时钟         |
+| Play / Pause      | `toggleAnimationPlaying()`，在编辑模式下推进当前画布时钟     |
 | Loop              | `setAnimationLoop()`，到场景末尾是否回绕                     |
 
 ### Animation 面板（与 Timeline 配合） {#animation-panel}
