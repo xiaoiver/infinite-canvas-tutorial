@@ -169,6 +169,10 @@ const m = await import('@iconify/json/json/lucide.json');
 registerIconifyIconSet('lucide', m);
 ```
 
+Icon bodies accept single- or double-quoted SVG attributes. Paths, rectangles,
+circles, ellipses and lines may use self-closing tags or explicit closing tags;
+nested `<g>` fill and stroke attributes are inherited by their shapes.
+
 The icon JSON maps into our scene graph the same way as before: a Search icon becomes a `Group` with `Path` and `Circle` children, much like turning SVG into our shapes.
 
 ```json
