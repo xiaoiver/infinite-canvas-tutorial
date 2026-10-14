@@ -536,7 +536,11 @@ tf.rotatePivotPinned = true;
 4. During rotation, use this pivot (fall back to geometric center if unset), then keep the pivot's world position fixed while solving new OBB origin:
 
 ```ts
-const { obb, pivotWorld: [px, py], pivotLocal: [lx, ly] } = gesture;
+const {
+    obb,
+    pivotWorld: [px, py],
+    pivotLocal: [lx, ly],
+} = gesture;
 const rotation = obb.rotation + gesture.accumulated;
 const c = Math.cos(rotation);
 const s = Math.sin(rotation);
@@ -561,6 +565,39 @@ if (e.key === 'ArrowUp') {
     this.api.record();
 }
 ```
+
+## Align and distribute a selection {#align-distribute}
+
+The ECS API provides six alignment modes: `left`, `right`, `top`, `bottom`,
+`centerH`, and `centerV`. They use world-space geometry bounds, excluding stroke
+thickness. Only position changes: rotation, reflection, dimensions, path data,
+text metrics and Flex sizing preferences remain intact, including under rotated
+or scaled parents.
+
+```ts
+const ids = [...api.getAppState().layersSelected];
+await api.edit((editor) => {
+    editor.alignSelectedNodes('left', ids);
+});
+// Run a separate edit so derived geometry is refreshed between operations.
+await api.edit((editor) => {
+    editor.distributeSelectedNodesSpacing('horizontal', ids);
+});
+```
+
+Spacing accepts `horizontal` or `vertical`, sorts nodes along that world axis,
+and calculates equal edge-to-edge gaps from the selection's extent. Gaps may be
+negative for overlapping shapes. Duplicate IDs, deleted/missing/locked nodes and
+non-invertible parent transforms are skipped. A selected descendant travels with
+its selected ancestor instead of moving twice; at least two eligible top-level
+nodes are required. The methods return whether a node moved, and do not record
+an unchanged layout themselves.
+
+The properties panel submits these operations through `api.edit()`. It retains
+the canvas and IDs accepted by the click, resolves live nodes in the write phase,
+and commits one undo step. If deletion or locking leaves no change, the queued
+operation is cancelled without capturing unrelated pending edits. API callers
+can also pass an `AbortSignal` to `edit()` to cancel before mutation.
 
 ## Transformer for other shapes {#transformer-for-other-shapes}
 

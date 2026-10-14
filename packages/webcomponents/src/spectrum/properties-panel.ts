@@ -364,12 +364,40 @@ export class PropertiesPanel extends LitElement {
     });
   }
 
+  private async editSelectionLayout(
+    update: (api: ExtendedAPI, ids: string[]) => boolean,
+  ) {
+    const api = this.api;
+    if (!this.isConnected || !api) return;
+    // Preserve the accepted gesture's owner and selection, but resolve live
+    // nodes/geometry in the write phase (including deletions and locking).
+    const ids = [...api.getAppState().layersSelected];
+    const controller = new AbortController();
+    const dispose = api.onDestroy(() => controller.abort());
+    try {
+      await api.edit(
+        (editor) => {
+          if (!update(editor, ids)) controller.abort();
+        },
+        { signal: controller.signal },
+      );
+    } catch (error) {
+      if (!controller.signal.aborted) console.error(error);
+    } finally {
+      dispose();
+    }
+  }
+
   private handleAlign(alignment: NodeAlignment) {
-    this.api?.alignSelectedNodes(alignment);
+    return this.editSelectionLayout((api, ids) =>
+      api.alignSelectedNodes(alignment, ids),
+    );
   }
 
   private handleDistributeSpacing(axis: 'horizontal' | 'vertical') {
-    this.api?.distributeSelectedNodesSpacing(axis);
+    return this.editSelectionLayout((api, ids) =>
+      api.distributeSelectedNodesSpacing(axis, ids),
+    );
   }
 
   private renderWidthResizeHandle() {

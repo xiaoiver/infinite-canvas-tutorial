@@ -11,6 +11,7 @@ export default defineConfig({
     'design-variable-edits.spec.ts',
     'theme-preferences.spec.ts',
     'selection-edits.spec.ts',
+    'selection-layout.spec.ts',
     'image-tool.spec.ts',
     'crop-edits.spec.ts',
   ],

@@ -37,6 +37,12 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/API.ts': {
+      statements: 74,
+      branches: 55,
+      functions: 78,
+      lines: 73,
+    },
     './packages/ecs/src/utils/gradient.ts': {
       statements: 95,
       branches: 92,
