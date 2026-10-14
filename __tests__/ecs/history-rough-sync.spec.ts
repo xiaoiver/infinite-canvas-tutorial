@@ -152,23 +152,28 @@ it('preserves exact path endpoints when preserveVertices is enabled', async () =
   expect(state().sets).toEqual(strokes);
 });
 
-it('uses both x and y origins when exporting a translated rough line', () => {
+it('exports the same local endpoints as a translated rough line on canvas', async () => {
   const node = shape({
     type: 'rough-line',
     x: 20,
     y: 30,
-    x1: 20,
-    y1: 30,
-    x2: 80,
-    y2: 70,
+    x1: 0,
+    y1: 0,
+    x2: 60,
+    y2: 40,
     roughRoughness: 0,
   });
-  const sets = computeDrawableSets(node);
+  await load(node);
+  const sets = computeDrawableSets(api.getNodeById('rough'));
   const endpoints = sets.flatMap((set) =>
     set.ops.filter((op) => op.op === 'bcurveTo').map((op) => op.data.slice(-2)),
   );
   expect(endpoints.length).toBeGreaterThan(0);
   for (const point of endpoints) expect(point).toEqual([60, 40]);
+  const renderedEndpoints = state().sets.flatMap((set) =>
+    set.ops.filter((op) => op.op === 'bcurveTo').map((op) => op.data.slice(-2)),
+  );
+  expect(endpoints).toEqual(renderedEndpoints);
 });
 
 it.each(['dashed', 'zigzag-line'] as const)(

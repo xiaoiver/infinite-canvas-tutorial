@@ -19,6 +19,7 @@ import {
   SerializedNode,
   SerializedNodeAttributes,
   StrokeAttributes,
+  SerializedFillLayerItem,
   TextSerializedNode,
   VectorNetworkSerializedNode,
 } from '../../types/serialized-node';
@@ -40,6 +41,7 @@ import {
   parseGradient,
 } from '../gradient';
 import { isPattern, Pattern } from '../pattern';
+import { fillLayerOpacity, isFillLayerEnabled } from '../fillLayers';
 import { toCSSMixBlendMode } from '../blend-mode';
 import { generateGradientKey, generatePatternKey } from '../../resources';
 import { lineArrow } from '../marker';
@@ -646,7 +648,14 @@ export async function serializeNodesToSVGElements(
     const hasMarker =
       (markerStart && markerStart !== 'none') ||
       (markerEnd && markerEnd !== 'none');
+    const hasFillPattern = !!svgPatternFromLayers(
+      (nodeForExport as FillAttributes).fills,
+    );
+    const hasStrokePattern = !!svgPatternFromLayers(
+      (nodeForExport as StrokeAttributes).strokes,
+    );
     const hasFillImage =
+      !hasFillPattern &&
       restExportRec.fill &&
       isString(restExportRec.fill) &&
       (isUrl(restExportRec.fill) || isDataUrl(restExportRec.fill as string));
@@ -654,14 +663,10 @@ export async function serializeNodesToSVGElements(
       restExportRec.fill &&
       isString(restExportRec.fill) &&
       isGradient(restExportRec.fill as string);
-    const hasFillPattern =
-      restExportRec.fill && isPattern(restExportRec.fill);
     const hasStrokeGradient =
       restForExport.stroke &&
       isString(restForExport.stroke) &&
       isGradient(restForExport.stroke as string);
-    const hasStrokePattern =
-      restForExport.stroke && isPattern(restForExport.stroke);
     const hasClipMode = !!clipMode;
 
     const hasChildren = edges.some(([parentId]) => parentId === id);
@@ -740,10 +745,10 @@ export async function serializeNodesToSVGElements(
       await exportFillImage(nodeForExport, element, $g);
     }
     if (hasFillGradient || hasFillPattern) {
-      exportFillGradientOrPattern(nodeForExport, element, $g);
+      await exportFillGradientOrPattern(nodeForExport, element, $g);
     }
     if ((hasStrokeGradient || hasStrokePattern) && strokeDecorationsTarget) {
-      exportStrokeGradientOrPattern(
+      await exportStrokeGradientOrPattern(
         nodeForExport,
         strokeDecorationsTarget,
         ($g ?? element) as SVGElement,
@@ -794,7 +799,9 @@ export async function serializeNodesToSVGElements(
       exportRough(nodeForExport, $g);
     }
     if (content) {
-      exportText(nodeForExport as TextSerializedNode, $g, element);
+      // Paint definitions and child nodes belong to the wrapper. Only write
+      // glyphs into the text element so textContent cannot remove those defs.
+      exportText(nodeForExport as TextSerializedNode, element, element);
     }
 
     if (type === 'iconfont' || (type as string) === 'icon_font') {
@@ -1299,6 +1306,18 @@ export function createOrUpdateMultiGradient(
   return filterId;
 }
 
+function svgPatternFromLayers(
+  layers: SerializedFillLayerItem[] | undefined,
+): Pattern | undefined {
+  const layer = layers?.find(isFillLayerEnabled);
+  if (layer?.type !== 'pattern') return undefined;
+  return {
+    image: layer.value,
+    repetition: layer.repetition ?? 'repeat',
+    transform: layer.transform,
+  };
+}
+
 function create$Pattern(
   node: SerializedNode,
   $def: SVGDefsElement,
@@ -1317,9 +1336,10 @@ function create$Pattern(
   $pattern.id = patternId;
   $def.appendChild($pattern);
 
-  const { x, y, width: nodeWidth, height: nodeHeight } = node;
-  $pattern.setAttribute('x', `${x}`);
-  $pattern.setAttribute('y', `${y}`);
+  const { width: nodeWidth, height: nodeHeight } = node;
+  // The node's transform belongs to the outer group, including translation.
+  $pattern.setAttribute('x', '0');
+  $pattern.setAttribute('y', '0');
 
   // There is no equivalent to CSS no-repeat for SVG patterns
   // @see https://stackoverflow.com/a/33481956
@@ -1339,48 +1359,66 @@ function create$Pattern(
   return $pattern;
 }
 
-function createOrUpdatePattern(
+async function createOrUpdatePattern(
   node: SerializedNode,
   $def: SVGDefsElement,
   pattern: Pattern,
 ) {
-  const { width: nodeWidth, height: nodeHeight } = node;
-
-  const patternId = generatePatternKey({ pattern });
+  // SVG ids are document-wide, even when definitions live in sibling groups.
+  // A non-repeating axis also depends on this node's extent.
+  const patternId = `${generatePatternKey({ pattern })}-${hashCode(
+    JSON.stringify([
+      node.id,
+      node.width,
+      node.height,
+      pattern.width,
+      pattern.height,
+    ]),
+  )}`;
   const $existed = $def.querySelector(`#${patternId}`);
   if (!$existed) {
     const imageURL = pattern.image as string;
     if (imageURL) {
+      const canvas = await imageToCanvas(imageURL);
+      const width = pattern.width ?? canvas.width;
+      const height = pattern.height ?? canvas.height;
       const $image = createSVGElement('image');
       // use href instead of xlink:href
       // @see https://stackoverflow.com/a/13379007
-      $image.setAttribute('href', imageURL);
+      $image.setAttribute('href', canvas.toDataURL());
 
-      const $pattern = create$Pattern(node, $def, pattern, patternId);
+      const $pattern = create$Pattern(
+        node,
+        $def,
+        { ...pattern, width, height },
+        patternId,
+      );
 
-      $def.appendChild($pattern);
       $pattern.appendChild($image);
 
       $image.setAttribute('x', '0');
       $image.setAttribute('y', '0');
-      $image.setAttribute('width', `${pattern.width || nodeWidth}`);
-      $image.setAttribute('height', `${pattern.height || nodeHeight}`);
+      $image.setAttribute('width', `${width}`);
+      $image.setAttribute('height', `${height}`);
     }
   }
   return patternId;
 }
 
-export function exportFillGradientOrPattern(
+export async function exportFillGradientOrPattern(
   node: SerializedNode,
   $el: SVGElement,
   $g: SVGElement,
 ) {
   const $defs = ensureGroupDefs($g);
 
-  const fill = getPrimaryFillValue(node as FillAttributes) ?? '';
+  const fill =
+    svgPatternFromLayers((node as FillAttributes).fills) ??
+    getPrimaryFillValue(node as FillAttributes) ??
+    '';
 
   if (isPattern(fill)) {
-    const patternId = createOrUpdatePattern(node, $defs, fill);
+    const patternId = await createOrUpdatePattern(node, $defs, fill);
     $el?.setAttribute('fill', `url(#${patternId})`);
   } else {
     const gradients = parseGradient(fill as string);
@@ -1406,7 +1444,7 @@ function ensureGroupDefs($g: SVGElement): SVGDefsElement {
   return $defs;
 }
 
-export function exportStrokeGradientOrPattern(
+export async function exportStrokeGradientOrPattern(
   node: SerializedNode,
   $el: SVGElement,
   $g: SVGElement,
@@ -1415,15 +1453,16 @@ export function exportStrokeGradientOrPattern(
   const nrec = node as unknown as Record<string, unknown>;
   migrateLegacyStrokeWireInPlace(nrec);
   const stroke =
-    firstEnabledStrokePresentation(
-      (node as StrokeAttributes).strokes,
-    )?.stroke ?? '';
+    svgPatternFromLayers((node as StrokeAttributes).strokes) ??
+    firstEnabledStrokePresentation((node as StrokeAttributes).strokes)
+      ?.stroke ??
+    '';
   if (!stroke || String(stroke).trim() === '') {
     return;
   }
 
   if (isPattern(stroke)) {
-    const patternId = createOrUpdatePattern(node, $defs, stroke);
+    const patternId = await createOrUpdatePattern(node, $defs, stroke);
     $el?.setAttribute('stroke', `url(#${patternId})`);
   } else {
     const gradients = parseGradient(stroke as string);
@@ -1438,10 +1477,7 @@ export function exportStrokeGradientOrPattern(
         'stroke',
       );
       const existedFilter = $el?.getAttribute('filter') || '';
-      $el?.setAttribute(
-        'filter',
-        `${existedFilter} url(#${filterId})`.trim(),
-      );
+      $el?.setAttribute('filter', `${existedFilter} url(#${filterId})`.trim());
       $el?.setAttribute('stroke', 'black');
     }
   }
@@ -1731,15 +1767,24 @@ export function exportRough(node: SerializedNode, $g: SVGElement) {
   migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
   const pres = firstEnabledFillPresentation((node as FillAttributes).fills);
   const fill = pres?.fill ?? 'none';
-  const rawFo = pres?.fillOpacity ?? 1;
-  const fillOpacity =
-    typeof rawFo === 'number' && Number.isFinite(rawFo)
-      ? rawFo
-      : parseFloat(String(rawFo)) || 1;
-  const { strokeWidth } = node as PathSerializedNode;
-  const stroke =
-    firstEnabledStrokePresentation((node as StrokeAttributes).strokes)
-      ?.stroke ?? 'none';
+  const fillOpacity = fillLayerOpacity(pres?.fillOpacity as number | string);
+  const { strokeWidth = 1 } = node as PathSerializedNode;
+  const strokePres = firstEnabledStrokePresentation(
+    (node as StrokeAttributes).strokes,
+  );
+  const stroke = strokePres?.stroke ?? 'none';
+  const strokeOpacity = fillLayerOpacity(
+    strokePres?.strokeOpacity as number | string,
+  );
+  const { roughFillWeight } = node as RoughAttributes;
+  const fillWeight =
+    roughFillWeight == null || roughFillWeight === -1
+      ? strokeWidth / 2
+      : roughFillWeight;
+  const { opacity } = node as FillAttributes;
+  if (opacity != null && opacity !== 1) {
+    $g.setAttribute('opacity', String(fillLayerOpacity(opacity)));
+  }
   const roughFillStyle = (node as RoughAttributes).roughFillStyle;
 
   if (roughFillStyle === 'watercolor') {
@@ -1770,14 +1815,20 @@ export function exportRough(node: SerializedNode, $g: SVGElement) {
     $g.appendChild($path);
     if (type === 'fillSketch') {
       $path.setAttribute('stroke', fill as string);
-      $path.setAttribute('stroke-width', `${strokeWidth}`);
+      $path.setAttribute('stroke-width', `${fillWeight}`);
+      if (fillOpacity !== 1)
+        $path.setAttribute('stroke-opacity', String(fillOpacity));
       $path.setAttribute('fill', 'none');
     } else if (type === 'path') {
       $path.setAttribute('stroke', stroke as string);
       $path.setAttribute('fill', 'none');
       $path.setAttribute('stroke-width', `${strokeWidth}`);
+      if (strokeOpacity !== 1)
+        $path.setAttribute('stroke-opacity', String(strokeOpacity));
     } else if (type === 'fillPath') {
       $path.setAttribute('fill', fill as string);
+      if (fillOpacity !== 1)
+        $path.setAttribute('fill-opacity', String(fillOpacity));
       $path.setAttribute('stroke', 'none');
     }
   });
@@ -1861,7 +1912,9 @@ export function exportText(
         `${toFixedAndRemoveTrailingZeros(letterSpacing)}`,
       );
     }
-    $g.setAttribute('fill', fill as string);
+    if (!$g.hasAttribute('fill')) {
+      $g.setAttribute('fill', fill as string);
+    }
   } else {
     let styleCSSText = '';
     const fontStyleString = fontStringFromTextStyle({

@@ -37,6 +37,12 @@ module.exports = {
   // Ratchet the modules with deterministic behavioral tests. Keep every ECS
   // source file in the overall report, including modules not yet tested.
   coverageThreshold: {
+    './packages/ecs/src/utils/serialize/svg.ts': {
+      statements: 80,
+      branches: 65,
+      functions: 85,
+      lines: 80,
+    },
     './packages/ecs/src/utils/deserialize/entity.ts': {
       statements: 85,
       branches: 75,
