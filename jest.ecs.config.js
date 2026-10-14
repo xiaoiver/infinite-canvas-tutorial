@@ -56,10 +56,10 @@ module.exports = {
       lines: 100,
     },
     './packages/ecs/src/API.ts': {
-      statements: 80,
-      branches: 64,
-      functions: 81,
-      lines: 80,
+      statements: 82,
+      branches: 66,
+      functions: 82,
+      lines: 82,
     },
     './packages/ecs/src/utils/icon-font.ts': {
       statements: 73,
