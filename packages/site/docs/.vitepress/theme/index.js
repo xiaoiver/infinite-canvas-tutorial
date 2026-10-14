@@ -21,6 +21,7 @@ import * as Lesson10 from '@infinite-canvas-tutorial/lesson10';
 import * as Lesson12 from '@infinite-canvas-tutorial/lesson12';
 import * as Lesson13 from '@infinite-canvas-tutorial/lesson13';
 import * as ECS from '@infinite-canvas-tutorial/ecs';
+import HomePage from './HomePage.vue';
 
 const Utils = {
   createCanvas: async (Canvas, width, height, renderer = 'webgl') => {
@@ -110,7 +111,8 @@ const SiteLayout = defineComponent({
 export default {
   extends: DefaultTheme,
   Layout: SiteLayout,
-  async enhanceApp() {
+  async enhanceApp({ app }) {
+    app.component('HomePage', HomePage);
     // @see https://vitepress.dev/guide/ssr-compat#conditional-import
     if (!import.meta.env.SSR) {
       // @see https://shoelace.style/tutorials/integrating-with-nextjs/#defining-custom-elements
