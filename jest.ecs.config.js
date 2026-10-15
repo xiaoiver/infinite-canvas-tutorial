@@ -67,6 +67,12 @@ module.exports = {
       functions: 90,
       lines: 95,
     },
+    './packages/ecs/src/systems/ComputeTextMetrics.ts': {
+      statements: 85,
+      branches: 70,
+      functions: 90,
+      lines: 85,
+    },
     './packages/ecs/src/utils/icon-font.ts': {
       statements: 85,
       branches: 75,
