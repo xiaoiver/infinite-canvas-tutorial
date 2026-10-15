@@ -96,18 +96,18 @@ export const fontWeightMap = {
  * @param style
  * @returns Font style string, for passing to `TextMetrics.measureFont()`
  */
-export function fontStringFromTextStyle(style: Partial<Text>): string {
+export function fontStringFromTextStyle(
+  style: Omit<Partial<Text>, 'fontFamily'> & { fontFamily?: string | string[] },
+): string {
   // build canvas api font setting from individual components. Convert a numeric style.fontSize to px
   const fontSizeString =
     typeof style.fontSize === 'number' ? `${style.fontSize}px` : style.fontSize;
 
   // Clean-up fontFamily property by quoting each font name
   // this will support font names with spaces
-  let fontFamilies: string | string[] = style.fontFamily;
-
-  if (!Array.isArray(style.fontFamily)) {
-    fontFamilies = style.fontFamily.split(',');
-  }
+  const fontFamilies = Array.isArray(style.fontFamily)
+    ? [...style.fontFamily]
+    : (style.fontFamily ?? 'sans-serif').split(',');
 
   for (let i = fontFamilies.length - 1; i >= 0; i--) {
     // Trim any extra white-space
@@ -120,7 +120,7 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
     ) {
       fontFamily = `"${fontFamily}"`;
     }
-    (fontFamilies as string[])[i] = fontFamily;
+    fontFamilies[i] = fontFamily;
   }
 
   // eslint-disable-next-line max-len
@@ -128,7 +128,7 @@ export function fontStringFromTextStyle(style: Partial<Text>): string {
     style.fontWeight
       ? fontWeightMap[style.fontWeight] || style.fontWeight
       : 'normal'
-  } ${fontSizeString} ${(fontFamilies as string[]).join(',')}`;
+  } ${fontSizeString} ${fontFamilies.join(',')}`;
 }
 
 // export function textStyleFromFontString(fontString: string) {
@@ -500,17 +500,18 @@ function applyEllipsisToLine(
     return;
   }
   const line = lines[lineIndex] ?? '';
+  const graphemes = DOMAdapter.get().splitGraphemes(line);
   let lastLineWidth = 0;
-  let lastLineIndex = line.length;
-  for (let i = 0; i < line.length; i++) {
-    const w = charWidth(line[i]!);
+  let lastLineIndex = graphemes.length;
+  for (let i = 0; i < graphemes.length; i++) {
+    const w = charWidth(graphemes[i]!);
     if (lastLineWidth + w + ellipsisWidth > maxWidth) {
       lastLineIndex = i;
       break;
     }
     lastLineWidth += w;
   }
-  lines[lineIndex] = line.slice(0, lastLineIndex) + ellipsis;
+  lines[lineIndex] = graphemes.slice(0, lastLineIndex).join('') + ellipsis;
 }
 
 /** After slicing Pretext lines to `maxLines`, trim the last line and append an ellipsis. */
@@ -532,7 +533,9 @@ function applyEllipsisForTruncatedLines(
   const cache: CharacterWidthCache = {};
   const charW = (ch: string) =>
     getFromCache(ch, letterSpacing, cache, ctx, undefined, scale, style);
-  const ellipsisWidth = Array.from(ellipsis).reduce((p, c) => p + charW(c), 0);
+  const ellipsisWidth = DOMAdapter.get()
+    .splitGraphemes(ellipsis)
+    .reduce((p, c) => p + charW(c), 0);
   applyEllipsisToLine(
     lines,
     lastLineIndex,
@@ -586,7 +589,7 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
       style,
     );
   };
-  const ellipsisWidth = Array.from(ellipsis).reduce((prev, cur) => {
+  const ellipsisWidth = DOMAdapter.get().splitGraphemes(ellipsis).reduce((prev, cur) => {
     return prev + calcWidth(cur);
   }, 0);
 
@@ -601,12 +604,12 @@ function wordWrapInternal(text: string, style: Partial<Text>, scale: number) {
     );
   }
 
-  const chars = Array.from(text);
+  const chars = DOMAdapter.get().splitGraphemes(text);
   for (let i = 0; i < chars.length; i++) {
     const char = chars[i];
 
-    const prevChar = text[i - 1];
-    const nextChar = text[i + 1];
+    const prevChar = chars[i - 1];
+    const nextChar = chars[i + 1];
     const charWidth = calcWidth(char);
 
     if (isNewline(char)) {
@@ -664,7 +667,7 @@ function measureBitmapFont(bitmapFont: BitmapFont, fontSize: number) {
   const scale = fontSize / bitmapFont.baseMeasurementFontSize;
   return {
     scale,
-    lineHeight: lineHeight * scale,
+    lineHeight,
     fontMetrics: {
       actualBoundingBoxAscent: fontMetrics.ascent * scale,
       actualBoundingBoxDescent: fontMetrics.descent * scale,
@@ -734,13 +737,14 @@ function trimToBreakable(prev: string[]): string[] {
   const index = findBreakableIndex(prevLine);
   if (index === -1 || !prevLine) return next;
 
-  const trimmedChar = prevLine.slice(index, index + 1);
+  const graphemes = DOMAdapter.get().splitGraphemes(prevLine);
+  const trimmedChar = graphemes[index];
   const isTrimmedWithSpace = isBreakingSpace(trimmedChar);
 
   const trimFrom = index + 1;
   const trimTo = index + (isTrimmedWithSpace ? 0 : 1);
-  next[next.length - 1] += prevLine.slice(trimFrom, prevLine.length);
-  next[next.length - 2] = prevLine.slice(0, trimTo);
+  next[next.length - 1] += graphemes.slice(trimFrom).join('');
+  next[next.length - 2] = graphemes.slice(0, trimTo).join('');
 
   return next;
 }
@@ -767,9 +771,10 @@ function trimByKinsokuShorui(prev: string[]): string[] {
     return prev;
   }
 
-  const lastChar = prevLine[prevLine.length - 1];
+  const graphemes = DOMAdapter.get().splitGraphemes(prevLine);
+  const lastChar = graphemes[graphemes.length - 1];
 
-  next[next.length - 2] = prevLine.slice(0, -1);
+  next[next.length - 2] = graphemes.slice(0, -1).join('');
   next[next.length - 1] = lastChar + next[next.length - 1];
   return next;
 }
@@ -780,15 +785,16 @@ function canBreakInLastChar(char: string | undefined): boolean {
 }
 
 function sumTextWidthByCache(text: string, cache: { [key in string]: number }) {
-  return text.split('').reduce((sum: number, c) => {
+  return DOMAdapter.get().splitGraphemes(text).reduce((sum: number, c) => {
     if (!cache[c]) throw Error('cannot count the word without cache');
     return sum + cache[c];
   }, 0);
 }
 
 function findBreakableIndex(line: string): number {
-  for (let i = line.length - 1; i >= 0; i--) {
-    if (!LATIN_REGEX.test(line[i])) return i;
+  const graphemes = DOMAdapter.get().splitGraphemes(line);
+  for (let i = graphemes.length - 1; i >= 0; i--) {
+    if (!LATIN_REGEX.test(graphemes[i])) return i;
   }
   return -1;
 }
@@ -804,7 +810,7 @@ function getFromCache(
 ): number {
   let width = cache[key];
   if (typeof width !== 'number') {
-    const spacing = key.length * letterSpacing;
+    const spacing = letterSpacing;
     width =
       (bitmapFont
         ? bitmapFont.chars[key]?.xAdvance || 0
