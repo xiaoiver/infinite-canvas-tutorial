@@ -29,6 +29,7 @@ export type { TextPathGlyph } from './utils/glyph/measure-text-path';
 export {
   svgSvgElementToComputedCamera,
   svgElementsToSerializedNodes,
+  svgElementsToExtrudedNodes,
   serializedNodesToEntities,
   serializeNodesToSVGElements,
   applySvgDataAttributesToElement,

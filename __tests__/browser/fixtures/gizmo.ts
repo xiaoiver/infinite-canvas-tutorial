@@ -20,6 +20,7 @@ import {
   Mesh3D,
   Rect,
   Transform,
+  svgElementsToExtrudedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
@@ -47,7 +48,7 @@ class Bootstrap extends System {
     });
     api.createCamera({ zoom, x: 0, y: 0, rotation });
     api.setAppState({ penbarSelected: Pen.SELECT });
-    if (params.has('extrude')) {
+    if (params.has('extrude') || params.has('extrudePath')) {
       const commands = new Commands(this);
       commands.spawn(
         new Camera3D({
@@ -85,6 +86,17 @@ const resetDerivedUpdates = () => {
 };
 const harness = {
   api: () => api,
+  svgExtrusionState: () => {
+    const node = api.getNodeById('model');
+    const entity = api.getEntity(node);
+    const mesh = entity.read(Extrude3D).meshEntity!;
+    return {
+      type: node.type,
+      fillRule: node.type === 'path' ? node.fillRule : undefined,
+      depth: node.type === 'path' ? node.extrude3d : undefined,
+      triangles: mesh.read(Mesh3D).indices.length / 3,
+    };
+  },
   resetDerivedUpdates,
   derivedUpdates: () => ({ ...derivedUpdates }),
   settle: () => settleECSFrames(api, 3),
@@ -182,7 +194,17 @@ async function init() {
   };
   await api.edit(
     (editor) => {
-      const node: SerializedNode = params.has('extrude')
+      const node: SerializedNode = params.has('extrudePath')
+        ? svgElementsToExtrudedNodes(
+            [
+              new DOMParser().parseFromString(
+                '<svg xmlns="http://www.w3.org/2000/svg"><path id="model" d="M60 60 H100 V100 H60 Z M72 72 H88 V88 H72 Z" fill="#33aabb" fill-rule="evenodd"/></svg>',
+                'image/svg+xml',
+              ).documentElement.firstElementChild as SVGElement,
+            ],
+            20,
+          )[0]
+        : params.has('extrude')
         ? {
             id: 'model',
             type: 'rect',

@@ -5,14 +5,18 @@ import {
   TextDecorationStyle,
   Visibility,
 } from '../../components';
+import { defaultAttributes, fixTransform } from '../serialize';
 import {
-  defaultAttributes,
-  fixTransform,
-} from '../serialize';
-import { PathSerializedNode, SerializedNode, TextSerializedNode, AttenuationAttributes } from '../../types/serialized-node';
+  PathSerializedNode,
+  SerializedNode,
+  TextSerializedNode,
+  AttenuationAttributes,
+} from '../../types/serialized-node';
 import { migrateLegacyFillWireInPlace } from '../normalize-fill-wire';
 import { migrateLegacyStrokeWireInPlace } from '../normalize-stroke-wire';
 import { deserializePoints } from './points';
+import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
+import { pathExtrusionPaintSupported } from '../path-extrusion-paint';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -289,7 +293,9 @@ export function svgElementsToSerializedNodes(
         ...attributes,
       } as SerializedNode;
       migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
-      migrateLegacyStrokeWireInPlace(node as unknown as Record<string, unknown>);
+      migrateLegacyStrokeWireInPlace(
+        node as unknown as Record<string, unknown>,
+      );
       nodes.push(node);
 
       fixTransform((attributes as any).transform || '', node);
@@ -307,6 +313,25 @@ export function svgElementsToSerializedNodes(
   }
 
   return nodes;
+}
+
+/** Import closed, filled SVG paths and polygons as editable extrusion sources. */
+export function svgElementsToExtrudedNodes(
+  elements: SVGElement[],
+  depth: number,
+): SerializedNode[] {
+  if (!Number.isFinite(depth) || depth <= 0) {
+    throw new RangeError('SVG extrusion depth must be finite and positive');
+  }
+  return svgElementsToSerializedNodes(elements).map((node) => {
+    if (
+      node.type !== 'path' ||
+      !pathExtrusionPaintSupported(node.fills, node.strokes) ||
+      !buildPathExtrusionMesh(node.d, node.fillRule)
+    )
+      return node;
+    return { ...node, extrude3d: depth };
+  });
 }
 
 export function kebabToCamelCase(str: string) {
