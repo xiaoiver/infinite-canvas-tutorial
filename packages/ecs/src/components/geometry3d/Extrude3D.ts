@@ -1,8 +1,8 @@
 import { Entity, field } from '@lastolivegames/becsy';
 
 /**
- * Extrudes the host rect into a 3D box (Spline-style "3D shape" on a 2D layer).
- * {@link EnsureExtrudeMeshes} spawns a companion mesh; {@link SyncExtrude3D} keeps it aligned to rect bounds.
+ * Extrudes a supported 2D source into a 3D companion mesh.
+ * {@link EnsureExtrudeMeshes} spawns the mesh; {@link SyncExtrude3D} keeps it aligned.
  */
 export class Extrude3D {
   /** Extrusion depth in canvas world units (along view axis). */

@@ -20,6 +20,7 @@ import {
   system,
   type Entity,
   type RectSerializedNode,
+  type PathSerializedNode,
 } from '../../packages/ecs/src';
 import { createSelectionWorld } from '../helpers/ecs-selection';
 import { has3DMeshGizmoSelectedForCanvas } from '../../packages/ecs/src/utils/pick3d-bridge';
@@ -69,7 +70,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await world?.dispose();
 });
-async function reset(value = node()) {
+async function reset(value: RectSerializedNode | PathSerializedNode = node()) {
   await world.reset(api(), [value]);
   await world.edit(
     api(),
@@ -95,6 +96,31 @@ beforeEach(async () => {
     );
   }
   await reset();
+});
+
+it('moves a centered Path gizmo and commits the source origin once', async () => {
+  const vector: PathSerializedNode = {
+    id: 'box',
+    type: 'path',
+    zIndex: 0,
+    x: 60,
+    y: 60,
+    d: 'M60 60 L100 60 L100 100 L60 100 Z',
+    extrude3d: { depth: 20, z: 10 },
+    fills: [{ type: 'solid', value: '#ff0000' }],
+  };
+  await reset(vector);
+  const target = mesh();
+  expect(target.read(Transform3D).translation).toEqual([80, 80, 0]);
+  await world.pointer(api(), 'pointerdown', 125, 80);
+  expect(target.read(Selected3D).activeAxis).toBe('x');
+  await world.pointer(api(), 'pointermove', 145, 80);
+  expect(target.read(Transform3D).translation[0]).toBeCloseTo(100);
+  await world.pointer(api(), 'pointerup', 145, 80);
+  expect((api().getNodeById('box') as PathSerializedNode).x).toBeCloseTo(80);
+  await world.history(api(), 'undo');
+  await world.frames();
+  expect((api().getNodeById('box') as PathSerializedNode).x).toBe(60);
 });
 
 it('clears and restores the companion selection through the document API', async () => {

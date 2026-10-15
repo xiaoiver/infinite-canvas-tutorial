@@ -5,7 +5,11 @@ import {
   Extrude3D,
   Extrude3DTarget,
   FillLayers,
+  GlobalTransform,
   Material3D,
+  Mesh3D,
+  Path,
+  StrokeLayers,
   ToBeDeleted,
   Transform3D,
   Canvas,
@@ -20,9 +24,10 @@ import { resolveCanvasFromSceneGraph } from '../utils/canvas3d-scope';
 import { ensureCompanionGizmoWhenSourceSelected } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
 import { syncMaterial3D, syncTransform3D } from '../utils/sync3d';
+import { pathExtrusionGeometry } from '../utils/path-extrusion-source';
 
 /**
- * Keeps Extrude3D mesh companions aligned to their rect's canvas-space bounds.
+ * Keeps Extrude3D mesh companions aligned to their 2D sources.
  * Mesh entities are created by {@link EnsureExtrudeMeshes}.
  */
 export class SyncExtrude3D extends System {
@@ -44,14 +49,23 @@ export class SyncExtrude3D extends System {
             Extrude3DTarget,
             ComputedBounds,
             FillLayers,
+            GlobalTransform,
+            Path,
+            StrokeLayers,
             Camera,
             Canvas,
             Canvas3DScope,
             Children,
             Selected,
           )
-          .read.and.using(Material3D, Transform3D, ToBeDeleted, Selected3D)
-          .write,
+          .read.and.using(
+            Material3D,
+            Mesh3D,
+            Transform3D,
+            ToBeDeleted,
+            Selected3D,
+            Extrude3D,
+          ).write,
     );
   }
 
@@ -63,6 +77,27 @@ export class SyncExtrude3D extends System {
       const meshEntity = extrude.meshEntity;
       if (!meshEntity || !isEntityAlive(meshEntity)) {
         continue;
+      }
+
+      if (entity.has(Path)) {
+        const pathMesh = pathExtrusionGeometry(entity);
+        if (!pathMesh) {
+          meshEntity.add(ToBeDeleted);
+          entity.write(Extrude3D).meshEntity = undefined;
+          continue;
+        }
+        const { geometry } = pathMesh;
+        if (
+          meshEntity.read(Mesh3D).positions !== geometry.positions ||
+          meshEntity.read(Mesh3D).indices !== geometry.indices
+        ) {
+          Object.assign(meshEntity.write(Mesh3D), {
+            positions: geometry.positions,
+            normals: geometry.normals,
+            uvs: geometry.uvs ?? null,
+            indices: geometry.indices,
+          });
+        }
       }
 
       const dragging =

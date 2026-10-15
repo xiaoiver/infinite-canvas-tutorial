@@ -80,7 +80,7 @@ export function captureGizmoSource(
           if (
             !isEntityAlive(entity) ||
             !entity.has(Transform) ||
-            currentNode?.type !== 'rect'
+            (currentNode?.type !== 'rect' && currentNode?.type !== 'path')
           )
             return;
           frame.restoreOrigin(currentNode);
@@ -95,7 +95,7 @@ export function captureGizmoSource(
       },
       patch(pose, node) {
         const patch = resolve(pose);
-        if (!patch || node.type !== 'rect') return;
+        if (!patch || (node.type !== 'rect' && node.type !== 'path')) return;
         return {
           x: patch.x,
           y: patch.y,
