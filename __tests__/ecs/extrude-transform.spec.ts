@@ -6,6 +6,7 @@ import {
   Extrude3D,
   GlobalTransform,
   Mat3,
+  Path,
   Rect,
   Transform,
   type Entity,
@@ -184,5 +185,22 @@ it('does not manufacture geometry from missing components or empty bounds', () =
   other.values.delete(Extrude3D);
   expect(
     resolveExtrudeSourceTransform(other.entity, pose, true),
+  ).toBeUndefined();
+});
+
+it('rejects Path poses when the world matrix or supported contour is missing', () => {
+  const fixture = source();
+  fixture.values.set(Path, { d: 'M0 0 L20 0 L20 20', fillRule: 'nonzero' });
+  const rectPose = resolveExtrudeCompanionTransform(source().entity, true)!;
+  expect(
+    resolveExtrudeCompanionTransform(fixture.entity, true),
+  ).toBeUndefined();
+
+  fixture.values.set(GlobalTransform, { matrix: Mat3.IDENTITY });
+  expect(
+    resolveExtrudeCompanionTransform(fixture.entity, true),
+  ).toBeUndefined();
+  expect(
+    resolveExtrudeSourceTransform(fixture.entity, rectPose, true),
   ).toBeUndefined();
 });

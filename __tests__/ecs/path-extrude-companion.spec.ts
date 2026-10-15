@@ -16,6 +16,10 @@ import {
   type PathSerializedNode,
 } from '../../packages/ecs/src';
 import { shouldSuppress2DShapeRender } from '../../packages/ecs/src/utils/extrude3d';
+import {
+  resolveExtrudeCompanionTransform,
+  resolveExtrudeSourceTransform,
+} from '../../packages/ecs/src/utils/extrude3d-transform';
 import { entityIsDeclarative3DNode } from '../../packages/ecs/src/utils/mesh3d-node';
 import { captureGizmoSource } from '../../packages/ecs/src/systems/pick3d/gizmo-source';
 import { createDocumentWorld } from '../helpers/ecs-document';
@@ -197,6 +201,18 @@ it('round-trips Path gizmo movement and depth through the document wire', async 
   await world.history(api, 'undo');
   expect(companion.read(Transform3D).translation).toEqual([30, 40, 0]);
   expect(companion.read(Mesh3D).positions).toBe(positions);
+});
+
+it('round-trips Path origins in the legacy Y-up 3D space', async () => {
+  await world.reset(api, [path()]);
+  const pose = resolveExtrudeCompanionTransform(source(), false)!;
+  expect(pose.translation).toEqual([30, -40, 0]);
+  pose.translation = [90, -100, 15];
+  expect(resolveExtrudeSourceTransform(source(), pose, false)).toMatchObject({
+    x: 70,
+    y: 80,
+    extrude: { depth: 20, z: 25 },
+  });
 });
 
 it('maps local points through rotation and flip like the 2D source', async () => {
