@@ -46,3 +46,22 @@ test('an imported SVG hole produces a visible 3D companion and restores its 2D s
   ).toBe(false);
   expect(errors).toEqual([]);
 });
+
+test('an SVG ellipse renders its curved extrusion mesh', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?extrudePrimitive');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const state = await page.evaluate(() => window.gizmoTest.svgExtrusionState());
+  expect(state).toMatchObject({ type: 'path', depth: 20 });
+  expect(state.triangles).toBeGreaterThan(20);
+
+  const pixels = PNG.sync.read(await page.locator('#canvas').screenshot());
+  let teal = 0;
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const [r, g, b] = pixels.data.subarray(i, i + 3);
+    if (g > r * 1.3 && b > r * 1.3 && g > 20) teal++;
+  }
+  expect(teal).toBeGreaterThan(100);
+  expect(errors).toEqual([]);
+});

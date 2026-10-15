@@ -48,7 +48,11 @@ class Bootstrap extends System {
     });
     api.createCamera({ zoom, x: 0, y: 0, rotation });
     api.setAppState({ penbarSelected: Pen.SELECT });
-    if (params.has('extrude') || params.has('extrudePath')) {
+    if (
+      params.has('extrude') ||
+      params.has('extrudePath') ||
+      params.has('extrudePrimitive')
+    ) {
       const commands = new Commands(this);
       commands.spawn(
         new Camera3D({
@@ -194,39 +198,42 @@ async function init() {
   };
   await api.edit(
     (editor) => {
-      const node: SerializedNode = params.has('extrudePath')
-        ? svgElementsToExtrudedNodes(
-            [
-              new DOMParser().parseFromString(
-                '<svg xmlns="http://www.w3.org/2000/svg"><path id="model" d="M60 60 H100 V100 H60 Z M72 72 H88 V88 H72 Z" fill="#33aabb" fill-rule="evenodd"/></svg>',
-                'image/svg+xml',
-              ).documentElement.firstElementChild as SVGElement,
-            ],
-            20,
-          )[0]
-        : params.has('extrude')
-        ? {
-            id: 'model',
-            type: 'rect',
-            zIndex: 0,
-            x: 60,
-            y: 60,
-            width: 40,
-            height: 40,
-            extrude3d: { depth: 20, z: 10 },
-            fills: [{ type: 'solid', value: '#33aabb' }],
-          }
-        : {
-            id: 'model',
-            type: 'mesh3d',
-            zIndex: 0,
-            x: 60,
-            y: 60,
-            z,
-            width: 40,
-            height: 40,
-            scale3d: 20,
-          };
+      const node: SerializedNode =
+        params.has('extrudePath') || params.has('extrudePrimitive')
+          ? svgElementsToExtrudedNodes(
+              [
+                new DOMParser().parseFromString(
+                  params.has('extrudePrimitive')
+                    ? '<svg xmlns="http://www.w3.org/2000/svg"><ellipse id="model" cx="80" cy="80" rx="20" ry="15" fill="#33aabb"/></svg>'
+                    : '<svg xmlns="http://www.w3.org/2000/svg"><path id="model" d="M60 60 H100 V100 H60 Z M72 72 H88 V88 H72 Z" fill="#33aabb" fill-rule="evenodd"/></svg>',
+                  'image/svg+xml',
+                ).documentElement.firstElementChild as SVGElement,
+              ],
+              20,
+            )[0]
+          : params.has('extrude')
+          ? {
+              id: 'model',
+              type: 'rect',
+              zIndex: 0,
+              x: 60,
+              y: 60,
+              width: 40,
+              height: 40,
+              extrude3d: { depth: 20, z: 10 },
+              fills: [{ type: 'solid', value: '#33aabb' }],
+            }
+          : {
+              id: 'model',
+              type: 'mesh3d',
+              zIndex: 0,
+              x: 60,
+              y: 60,
+              z,
+              width: 40,
+              height: 40,
+              scale3d: 20,
+            };
       const nodes: SerializedNode[] = [node];
       if (params.has('yoga')) {
         node.parentId = 'layout';

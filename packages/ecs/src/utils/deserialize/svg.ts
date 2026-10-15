@@ -17,6 +17,8 @@ import { migrateLegacyStrokeWireInPlace } from '../normalize-stroke-wire';
 import { deserializePoints } from './points';
 import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
 import { pathExtrusionPaintSupported } from '../path-extrusion-paint';
+import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
+import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -64,10 +66,29 @@ export function svgElementsToSerializedNodes(
   zIndex = 0,
   overrideAttributes?: NamedNodeMap,
 ): SerializedNode[] {
+  return deserializeSvgElements(
+    elements,
+    defsChildren,
+    parentId,
+    zIndex,
+    overrideAttributes,
+    { fill: false, stroke: false },
+  );
+}
+
+function deserializeSvgElements(
+  elements: SVGElement[],
+  defsChildren: SVGElement[],
+  parentId: string | undefined,
+  zIndex: number,
+  overrideAttributes: NamedNodeMap | undefined,
+  paintFromGroups: { fill: boolean; stroke: boolean },
+): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
   for (const element of elements) {
     let type = element.tagName.toLowerCase();
+    let elementOverrideAttributes = overrideAttributes;
 
     let id = element.id || uuidv4();
 
@@ -81,7 +102,14 @@ export function svgElementsToSerializedNodes(
       if (href) {
         const def = defsChildren.find((d) => d.id === href.replace('#', ''));
         if (def) {
-          return svgElementsToSerializedNodes([def], defsChildren, parentId);
+          return deserializeSvgElements(
+            [def],
+            defsChildren,
+            parentId,
+            0,
+            undefined,
+            paintFromGroups,
+          );
         }
       }
       continue;
@@ -99,14 +127,14 @@ export function svgElementsToSerializedNodes(
       ) {
         inferedSingleElement = true;
         id = undefined;
-        overrideAttributes = element.attributes;
+        elementOverrideAttributes = element.attributes;
       }
     }
 
     if (!inferedSingleElement) {
       const attributes = [
         ...Array.from(element.attributes),
-        ...Array.from(overrideAttributes || []),
+        ...Array.from(elementOverrideAttributes || []),
       ].reduce((prev, attr) => {
         let attributeName = kebabToCamelCase(attr.name);
 
@@ -292,6 +320,26 @@ export function svgElementsToSerializedNodes(
         ...defaultAttributes[type],
         ...attributes,
       } as SerializedNode;
+      // A child without its own paint must inherit the group's paint rather
+      // than turning default opacity/`none` placeholders into a new layer.
+      if (
+        paintFromGroups.fill &&
+        !('fill' in attributes) &&
+        !('fillOpacity' in attributes) &&
+        !('fills' in attributes)
+      ) {
+        delete (node as unknown as Record<string, unknown>).fill;
+        delete (node as unknown as Record<string, unknown>).fillOpacity;
+      }
+      if (
+        paintFromGroups.stroke &&
+        !('stroke' in attributes) &&
+        !('strokeOpacity' in attributes) &&
+        !('strokes' in attributes)
+      ) {
+        delete (node as unknown as Record<string, unknown>).strokes;
+        delete (node as unknown as Record<string, unknown>).strokeOpacity;
+      }
       migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
       migrateLegacyStrokeWireInPlace(
         node as unknown as Record<string, unknown>,
@@ -301,12 +349,20 @@ export function svgElementsToSerializedNodes(
       fixTransform((attributes as any).transform || '', node);
     }
 
-    const children = svgElementsToSerializedNodes(
+    const children = deserializeSvgElements(
       Array.from(element.children) as SVGElement[],
       defsChildren,
       id,
       0,
-      overrideAttributes,
+      elementOverrideAttributes,
+      {
+        fill:
+          paintFromGroups.fill ||
+          (type === 'g' && element.hasAttribute('fill')),
+        stroke:
+          paintFromGroups.stroke ||
+          (type === 'g' && element.hasAttribute('stroke')),
+      },
     ).filter(Boolean);
 
     nodes.push(...children);
@@ -315,7 +371,7 @@ export function svgElementsToSerializedNodes(
   return nodes;
 }
 
-/** Import closed, filled SVG paths and polygons as editable extrusion sources. */
+/** Import closed, filled SVG shapes as editable extrusion sources. */
 export function svgElementsToExtrudedNodes(
   elements: SVGElement[],
   depth: number,
@@ -323,14 +379,22 @@ export function svgElementsToExtrudedNodes(
   if (!Number.isFinite(depth) || depth <= 0) {
     throw new RangeError('SVG extrusion depth must be finite and positive');
   }
-  return svgElementsToSerializedNodes(elements).map((node) => {
-    if (
-      node.type !== 'path' ||
-      !pathExtrusionPaintSupported(node.fills, node.strokes) ||
-      !buildPathExtrusionMesh(node.d, node.fillRule)
-    )
+  const nodes = svgElementsToSerializedNodes(elements);
+  const inherited = getComputedInheritGroupWireMap(nodes);
+  return nodes.map((node) => {
+    const paint = inherited.get(node.id) as
+      | Pick<PathSerializedNode, 'fills' | 'strokes'>
+      | undefined;
+    const paintSupported = pathExtrusionPaintSupported(
+      paint?.fills,
+      paint?.strokes,
+    );
+    if (node.type === 'path') {
+      if (paintSupported && buildPathExtrusionMesh(node.d, node.fillRule))
+        return { ...node, extrude3d: depth };
       return node;
-    return { ...node, extrude3d: depth };
+    }
+    return extrudeSvgPrimitive(node, depth, paintSupported);
   });
 }
 

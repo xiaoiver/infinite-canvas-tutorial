@@ -314,8 +314,9 @@ const vector: PathSerializedNode = {
 剪切变换会继续以 2D 显示。原 Path 文档节点保持可编辑，也支持 gizmo、撤销和
 重新载入。
 
-对于 SVG 的 `<path>` 与 `<polygon>`，可以通过 `svgElementsToExtrudedNodes` 导入为
-可编辑的挤出图形；其他元素继续保持 2D。该函数要求厚度为有限正数。
+对于 SVG 的 `<path>`、`<polygon>`、`<rect>`、`<circle>` 和 `<ellipse>`，可以通过
+`svgElementsToExtrudedNodes` 导入为可编辑的挤出图形；其他元素继续保持 2D。
+该函数要求厚度为有限正数。
 
 ```ts
 import { svgElementsToExtrudedNodes } from '@infinite-canvas-tutorial/ecs';
@@ -329,7 +330,9 @@ api.updateNodes(nodes);
 ```
 
 只有单层纯色填充、没有可见描边的闭合轮廓会挤出；SVG 的 `stroke="none"` 占位层
-会被忽略。导入会保留 `fill-rule`，包括 `evenodd` 孔洞。开放路径、实际描边、渐变、
+会被忽略。导入会保留 `fill-rule`（包括 `evenodd` 孔洞），并继承 SVG 分组的填充色。
+普通矩形保持可编辑的 Rect；圆角矩形和椭圆转换为可编辑的 Path。目前 SVG 导入器仅保留
+一个矩形圆角半径，不能准确还原不同的 `rx` 与 `ry`。开放路径、实际描边、渐变及
 不支持的 SVG 元素继续以 2D 显示。在画布中对 Path 施加剪切变换时也会保持 2D。
 SVG 自带的 transform 和 viewBox 缩放仍沿用原有导入行为；原导入器无法准确保留剪切，
 目前应避免导入带剪切变换的 SVG。

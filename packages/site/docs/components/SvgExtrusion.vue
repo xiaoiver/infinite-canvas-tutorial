@@ -11,10 +11,14 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { Event as CanvasEvent } from '@infinite-canvas-tutorial/webcomponents';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 
-const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 240">
-  <path id="ring" d="M40 45 H180 V185 H40 Z M85 90 H135 V140 H85 Z" fill="#3b82f6" fill-rule="evenodd"/>
-  <polygon id="triangle" points="235,170 310,45 385,170" fill="#f97316"/>
-  <path id="open-line" d="M240 195 H390" fill="none" stroke="#64748b" stroke-width="4"/>
+const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
+  <path id="ring" d="M40 30 H170 V160 H40 Z M80 70 H130 V120 H80 Z" fill="#3b82f6" fill-rule="evenodd"/>
+  <polygon id="triangle" points="230,155 295,30 360,155" fill="#f97316"/>
+  <rect id="box" x="390" y="40" width="65" height="105" fill="#22c55e"/>
+  <circle id="circle" cx="80" cy="230" r="28" fill="#a855f7"/>
+  <ellipse id="ellipse" cx="185" cy="230" rx="42" ry="26" fill="#ef4444"/>
+  <rect id="rounded" x="270" y="202" width="170" height="58" rx="18" fill="#06b6d4"/>
+  <path id="open-line" d="M40 290 H440" fill="none" stroke="#64748b" stroke-width="4"/>
 </svg>`;
 
 const wrapper = ref<HTMLElement | null>(null);
@@ -43,7 +47,7 @@ async function render() {
       ? svgElementsToExtrudedNodes(children, depth.value)
       : svgElementsToSerializedNodes(children);
     const nodes: SerializedNode[] = imported.map((node) =>
-      node.type === 'path' && node.extrude3d
+      (node.type === 'path' || node.type === 'rect') && node.extrude3d
         ? {
             ...node,
             extrude3d: {
@@ -57,10 +61,11 @@ async function render() {
       capture: 'NEVER',
     });
     const count = nodes.filter(
-      (node) => node.type === 'path' && node.extrude3d,
+      (node) =>
+        (node.type === 'path' || node.type === 'rect') && node.extrude3d,
     ).length;
     status.value = show3D.value
-      ? `${count} closed paths extruded; unsupported shapes stay in 2D.`
+      ? `${count} closed shapes extruded; unsupported shapes stay in 2D.`
       : 'All imported shapes are in 2D.';
   } catch (error) {
     status.value = error instanceof Error ? error.message : 'SVG import failed';
@@ -118,7 +123,7 @@ onUnmounted(() => {
     <div class="svg-extrusion-controls">
       <label>
         <input v-model="show3D" type="checkbox" @change="render" />
-        Extrude closed paths
+        Extrude filled shapes
       </label>
       <label>
         Depth {{ depth }}
