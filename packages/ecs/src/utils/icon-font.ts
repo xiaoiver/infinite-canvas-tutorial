@@ -374,10 +374,6 @@ export type ScaledIconPrimitive =
     style: IconSvgStyle;
   };
 
-/** 仅作后备：栈式解析失败时尝试平铺自闭合形状（与旧版一致） */
-const SELF_TAG_RE =
-  /<(path|circle|line|ellipse|rect)\b([^/]*?)\s*\/>/g;
-
 type Bounds = { minX: number; minY: number; maxX: number; maxY: number };
 
 type BoundLike = { minX: number; minY: number; maxX: number; maxY: number };
@@ -698,94 +694,8 @@ export function resolveIconifyBodyToScalablePrimitives(
     return items.length > 0 ? items : null;
   };
 
-  let items: { prim: ScaledIconPrimitive; b: BoundLike }[] | null = tryStackParse(
-    inner0,
-  );
-  if (!items || items.length === 0) {
-    const gMatch = body.match(/^\s*<g\s([^>]+)>([\s\S]*)<\/g>\s*$/i);
-    const rootAttrs = gMatch ? parseTagAttrs((gMatch[1] as string) ?? '') : {};
-    const gStyle: IconSvgStyle = gMatch ? pickVisualAttrs(rootAttrs) : {};
-    const inner = gMatch ? (gMatch[2] as string) : body;
-    if (!inner.trim()) {
-      return null;
-    }
-    const flat: { prim: ScaledIconPrimitive; b: BoundLike }[] = [];
-    for (const m of inner.matchAll(SELF_TAG_RE) as Iterable<RegExpMatchArray>) {
-      const tag = (m[1] as string).toLowerCase();
-      const at = parseTagAttrs((m[2] as string) || '');
-      const st = mergeSvgStyle(gStyle, pickVisualAttrs(at) as IconSvgStyle);
-      if (tag === 'path') {
-        const d = at.d?.trim();
-        if (!d) {
-          continue;
-        }
-        const b = aabbPath(d);
-        if (!isFiniteAabb(b)) {
-          continue;
-        }
-        flat.push({ prim: { kind: 'path', d, style: st }, b });
-      } else if (tag === 'circle') {
-        const cx = parseFloat(String(at['cx'] ?? 0));
-        const cy = parseFloat(String(at['cy'] ?? 0));
-        const r = parseFloat(String(at['r'] ?? 0));
-        if (!Number.isFinite(r) || r < 0) {
-          continue;
-        }
-        const b = aabbEllipse(cx, cy, r, r);
-        if (!isFiniteAabb(b)) {
-          continue;
-        }
-        flat.push({
-          prim: { kind: 'ellipse', cx, cy, rx: r, ry: r, style: st },
-          b,
-        });
-      } else if (tag === 'ellipse') {
-        const cx = parseFloat(String(at['cx'] ?? 0));
-        const cy = parseFloat(String(at['cy'] ?? 0));
-        const rx = parseFloat(String(at['rx'] ?? 0));
-        const ry = parseFloat(String(at['ry'] ?? 0));
-        if (rx < 0 || ry < 0) {
-          continue;
-        }
-        const b = aabbEllipse(cx, cy, rx, ry);
-        if (!isFiniteAabb(b)) {
-          continue;
-        }
-        flat.push({
-          prim: { kind: 'ellipse', cx, cy, rx, ry, style: st },
-          b,
-        });
-      } else if (tag === 'line') {
-        const x1 = parseFloat(String(at['x1'] ?? 0));
-        const y1 = parseFloat(String(at['y1'] ?? 0));
-        const x2 = parseFloat(String(at['x2'] ?? 0));
-        const y2 = parseFloat(String(at['y2'] ?? 0));
-        const b = aabbLine(x1, y1, x2, y2);
-        if (!isFiniteAabb(b)) {
-          continue;
-        }
-        flat.push({
-          prim: { kind: 'line', x1, y1, x2, y2, style: st },
-          b,
-        });
-      } else if (tag === 'rect') {
-        const d = rectElementToPathD(at);
-        if (!d) {
-          continue;
-        }
-        const b = aabbPath(d);
-        if (!isFiniteAabb(b)) {
-          continue;
-        }
-        flat.push({ prim: { kind: 'path', d, style: st }, b });
-      }
-    }
-    if (flat.length === 0) {
-      return null;
-    }
-    items = flat;
-  }
-  if (items.length === 0) {
+  const items = tryStackParse(inner0);
+  if (!items) {
     return null;
   }
   const combined: Bounds = { ...items[0]!.b };
