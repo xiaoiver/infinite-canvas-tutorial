@@ -9,12 +9,18 @@ import {
   ComputedBounds,
   Extrude3D,
   Extrude3DTarget,
+  FillLayers,
+  GlobalTransform,
   Material3D,
   Mesh3D,
+  Path,
+  StrokeLayers,
   ToBeDeleted,
   Transform3D,
 } from '../components';
 import { createUnitCubeGeometry } from '../utils/extrude3d-geometry';
+import { pathExtrusionGeometry } from '../utils/path-extrusion-source';
+import type { Mesh3DGeometryData } from '../utils/geometry3d/types';
 import {
   findCamera3DForCanvas,
   resolveCanvasFromSceneGraph,
@@ -47,7 +53,16 @@ export class EnsureExtrudeMeshes extends System {
     this.query(
       (q) =>
         q
-          .using(ComputedBounds, Canvas, Camera, Children)
+          .using(
+            ComputedBounds,
+            Canvas,
+            Camera,
+            Children,
+            Path,
+            FillLayers,
+            StrokeLayers,
+            GlobalTransform,
+          )
           .read.and.using(
             Extrude3D,
             Extrude3DTarget,
@@ -76,10 +91,14 @@ export class EnsureExtrudeMeshes extends System {
       if (extrude.meshEntity && isEntityAlive(extrude.meshEntity)) {
         return;
       }
+      const geometry = entity.has(Path)
+        ? pathExtrusionGeometry(entity)?.geometry
+        : unitCube;
+      if (!geometry) return;
       queuedSources.add(entity);
       pending.push({
         source: entity,
-        mesh: this.queueSpawnMesh(entity),
+        mesh: this.queueSpawnMesh(entity, geometry),
       });
     };
 
@@ -134,13 +153,14 @@ export class EnsureExtrudeMeshes extends System {
   }
 
   /** Queue mesh spawn; assign {@link Extrude3D.meshEntity} only after {@link Commands.execute}. */
-  private queueSpawnMesh(source: Entity): Entity {
+  private queueSpawnMesh(source: Entity, geometry: Mesh3DGeometryData): Entity {
     const canvas = resolveCanvasFromSceneGraph(source);
     const bundles = [
       new Mesh3D({
-        positions: unitCube.positions,
-        normals: unitCube.normals,
-        indices: unitCube.indices,
+        positions: geometry.positions,
+        normals: geometry.normals,
+        uvs: source.has(Path) ? geometry.uvs ?? null : null,
+        indices: geometry.indices,
       }),
       new Material3D({
         baseColor: [0.25, 0.55, 0.95, 1],

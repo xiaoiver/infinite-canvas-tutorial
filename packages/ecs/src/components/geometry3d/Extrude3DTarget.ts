@@ -1,6 +1,6 @@
 import { Entity, field } from '@lastolivegames/becsy';
 
-/** Marks a Mesh3D entity owned by a rect with {@link Extrude3D}. */
+/** Marks a Mesh3D entity owned by a 2D source with {@link Extrude3D}. */
 export class Extrude3DTarget {
   @field.ref declare source: Entity;
 

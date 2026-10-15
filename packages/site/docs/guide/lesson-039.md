@@ -316,6 +316,31 @@ are no scale handles yet; use rectangle dimensions and `depth` to change size.
 The existing world-AABB-based extrusion footprint is unchanged, so this does not
 add exact extrusion geometry for sheared or rotated rectangular footprints.
 
+### Extruding a closed Path {#extrude-path}
+
+A closed Path with one solid fill can use the same `extrude3d` option. Its front
+and back faces follow the filled contours, including holes; editing `d` or
+`fillRule` rebuilds the mesh while moving or rotating the source reuses it.
+
+```ts
+const vector: PathSerializedNode = {
+    id: 'extruded-vector',
+    type: 'path',
+    zIndex: 0,
+    x: 100,
+    y: 80,
+    d: 'M100 80 L200 80 L200 180 L100 180 Z M125 105 L125 155 L175 155 L175 105 Z',
+    fillRule: 'evenodd',
+    fills: [{ type: 'solid', value: '#3377dd' }],
+    extrude3d: { depth: 40, z: 0 },
+};
+```
+
+All subpaths must be closed. Open paths, stroke layers, multiple or non-solid
+fills, non-manifold contours and sheared transforms remain visible in 2D. The
+Path keeps its original document node and supports gizmo edits, undo and reload.
+SVG import and a dedicated UI for bulk extrusion are planned separately.
+
 ## Lighting {#lighting}
 
 Demonstrates `Light3D` with Blinn-Phong materials: ambient fill, a cool directional light, a warm spotlight orbiting the scene center, and three meshes (cube, sphere, cylinder) with different specular settings to compare highlights and shading.

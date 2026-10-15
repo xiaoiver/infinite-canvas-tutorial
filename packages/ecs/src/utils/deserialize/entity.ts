@@ -1375,6 +1375,11 @@ export function serializedNodesToEntities(
       );
       if (type === 'rough-path') {
         serializeRough(attributes as RoughAttributes, entityCommands);
+      } else {
+        const extrude = extrude3DFromWire(
+          (attributes as PathSerializedNode).extrude3d,
+        );
+        if (extrude) entityCommands.insert(new Extrude3D(extrude));
       }
     } else if (type === 'text') {
       const {

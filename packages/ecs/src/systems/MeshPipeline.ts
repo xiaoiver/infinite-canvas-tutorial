@@ -99,6 +99,7 @@ import { preloadRainDropTextures } from '../utils/rain-drop-texture-cache';
 import type { SerializedNode } from '../types/serialized-node';
 import { GridRenderer } from '../render-graph/GridRenderer';
 import { BatchManager } from './BatchManager';
+import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 import { getSceneRoot } from './Transform';
 import {
   pickWebmMimeType,
@@ -1186,7 +1187,7 @@ export class MeshPipeline extends System {
       }
       const pending = this.pendingRenderables.get(camera)!;
       pending.push({ type: 'remove', entity });
-      if (!entity.has(Extrude3D)) {
+      if (!shouldSuppress2DShapeRender(entity)) {
         pending.push({ type: 'add', entity });
       }
     });

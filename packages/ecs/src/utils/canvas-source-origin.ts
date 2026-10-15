@@ -13,6 +13,7 @@ import {
 export function resolveCanvasSourceOrigin(
   source: Entity,
   center: readonly number[],
+  localCenter?: readonly number[],
 ) {
   if (!source.has(Transform)) return;
   let inverseParent = mat3.create();
@@ -37,8 +38,8 @@ export function resolveCanvasSourceOrigin(
     inverseParent[7];
   const local = source.read(Transform);
   const rect = source.has(Rect) ? source.read(Rect) : undefined;
-  const cx = ((rect?.width ?? 0) * local.scale.x) / 2;
-  const cy = ((rect?.height ?? 0) * local.scale.y) / 2;
+  const cx = (localCenter?.[0] ?? (rect?.width ?? 0) / 2) * local.scale.x;
+  const cy = (localCenter?.[1] ?? (rect?.height ?? 0) / 2) * local.scale.y;
   const cos = Math.cos(local.rotation);
   const sin = Math.sin(local.rotation);
   return { x: x - (cx * cos - cy * sin), y: y - (cx * sin + cy * cos) };
