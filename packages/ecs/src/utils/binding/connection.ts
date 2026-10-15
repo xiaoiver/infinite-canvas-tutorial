@@ -320,13 +320,13 @@ function loopConnector(
     } else if (direction === DIRECTION_SOUTH) {
       y = sourceBounds.y + sourceBounds.height + 2 * dx;
     } else if (direction === DIRECTION_EAST) {
-      x = sourceBounds.x - 2 * dy;
-    } else {
       x = sourceBounds.x + sourceBounds.width + 2 * dy;
+    } else {
+      x = sourceBounds.x - 2 * dy;
     }
   } else if (!isNil(pt)) {
     x = sourceBounds.x + sourceBounds.width / 2;
-    dx = Math.max(Math.abs(x - pt.x), dy);
+    dx = Math.max(Math.abs(x - pt.x), dx);
     y = pt.y;
     dy = 0;
   }

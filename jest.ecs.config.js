@@ -74,10 +74,10 @@ module.exports = {
       lines: 85,
     },
     './packages/ecs/src/utils/binding/connection.ts': {
-      statements: 55,
-      branches: 52,
-      functions: 75,
-      lines: 55,
+      statements: 90,
+      branches: 90,
+      functions: 95,
+      lines: 90,
     },
     './packages/ecs/src/systems/DrawArrowConnect.ts': {
       statements: 92,
