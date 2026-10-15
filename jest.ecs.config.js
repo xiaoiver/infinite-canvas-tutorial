@@ -446,10 +446,10 @@ module.exports = {
       lines: 98,
     },
     './packages/ecs/src/utils/clipboard.ts': {
-      statements: 50,
-      branches: 50,
-      functions: 70,
-      lines: 50,
+      statements: 90,
+      branches: 80,
+      functions: 95,
+      lines: 90,
     },
     './packages/ecs/src/systems/DrawBrush.ts': {
       statements: 90,

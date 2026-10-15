@@ -35,11 +35,6 @@ export const ALLOWED_PASTE_MIME_TYPES = [
 ] as const;
 type AllowedPasteMimeTypes = (typeof ALLOWED_PASTE_MIME_TYPES)[number];
 
-const probablySupportsClipboardWriteText =
-  typeof navigator !== 'undefined' &&
-  'clipboard' in navigator &&
-  'writeText' in navigator.clipboard;
-
 // adapted from https://github.com/zenorocha/clipboard.js/blob/ce79f170aa655c408b6aab33c9472e8e4fa52e19/src/clipboard-action.js#L48
 const copyTextViaExecCommand = (text: string | null) => {
   // execCommand doesn't allow copying empty strings, so if we're
@@ -89,11 +84,12 @@ export async function copyTextToClipboard(
 ) {
   // @see https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/clipboard.ts#L445
   // (1) first try using Async Clipboard API
-  if (probablySupportsClipboardWriteText) {
+  const clipboard = typeof navigator === 'undefined' ? undefined : navigator.clipboard;
+  if (clipboard?.writeText) {
     try {
       // NOTE: doesn't work on FF on non-HTTPS domains, or when document
       // not focused
-      await navigator.clipboard.writeText(text || '');
+      await clipboard.writeText(text || '');
       return;
     } catch (error: any) {
       console.error(error);
@@ -256,6 +252,8 @@ export const createPasteEvent = ({
     console.warn('createPasteEvent: no types or files provided');
   }
 
+  const pasteFiles = [...(files ?? [])];
+
   const event = new ClipboardEvent('paste', {
     clipboardData: new DataTransfer(),
   });
@@ -263,8 +261,7 @@ export const createPasteEvent = ({
   if (types) {
     for (const [type, value] of Object.entries(types)) {
       if (typeof value !== 'string') {
-        files = files || [];
-        files.push(value);
+        pasteFiles.push(value);
         continue;
       }
       try {
@@ -278,9 +275,9 @@ export const createPasteEvent = ({
     }
   }
 
-  if (files) {
+  if (pasteFiles.length) {
     let idx = -1;
-    for (const file of files) {
+    for (const file of pasteFiles) {
       idx++;
       try {
         event.clipboardData?.items.add(file);
