@@ -8,6 +8,7 @@ import Cube from '../../components/Cube.vue'
 import CubePerspective from '../../components/CubePerspective.vue'
 import Lighting from '../../components/Lighting.vue'
 import GltfDuck from '../../components/GltfDuck.vue'
+import SvgExtrusion from '../../components/SvgExtrusion.vue'
 </script>
 
 # 课程 39 - 3D Mesh 渲染
@@ -311,7 +312,29 @@ const vector: PathSerializedNode = {
 
 每条子路径都必须闭合。开放路径、含描边图层、多层或非纯色填充、非流形轮廓及
 剪切变换会继续以 2D 显示。原 Path 文档节点保持可编辑，也支持 gizmo、撤销和
-重新载入。SVG 导入及批量挤出的专用界面将在后续阶段实现。
+重新载入。
+
+对于 SVG 的 `<path>` 与 `<polygon>`，可以通过 `svgElementsToExtrudedNodes` 导入为
+可编辑的挤出图形；其他元素继续保持 2D。该函数要求厚度为有限正数。
+
+```ts
+import { svgElementsToExtrudedNodes } from '@infinite-canvas-tutorial/ecs';
+
+const svg = new DOMParser().parseFromString(source, 'image/svg+xml');
+const nodes = svgElementsToExtrudedNodes(
+    Array.from(svg.documentElement.children) as SVGElement[],
+    40,
+);
+api.updateNodes(nodes);
+```
+
+只有单层纯色填充、没有可见描边的闭合轮廓会挤出；SVG 的 `stroke="none"` 占位层
+会被忽略。导入会保留 `fill-rule`，包括 `evenodd` 孔洞。开放路径、实际描边、渐变、
+不支持的 SVG 元素继续以 2D 显示。在画布中对 Path 施加剪切变换时也会保持 2D。
+SVG 自带的 transform 和 viewBox 缩放仍沿用原有导入行为；原导入器无法准确保留剪切，
+目前应避免导入带剪切变换的 SVG。
+
+<SvgExtrusion />
 
 ## 光照 {#lighting}
 

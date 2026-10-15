@@ -8,6 +8,7 @@ import Cube from '../components/Cube.vue'
 import CubePerspective from '../components/CubePerspective.vue'
 import Lighting from '../components/Lighting.vue'
 import GltfDuck from '../components/GltfDuck.vue'
+import SvgExtrusion from '../components/SvgExtrusion.vue'
 </script>
 
 # Lesson 39 - 3D Mesh Rendering
@@ -339,7 +340,29 @@ const vector: PathSerializedNode = {
 All subpaths must be closed. Open paths, stroke layers, multiple or non-solid
 fills, non-manifold contours and sheared transforms remain visible in 2D. The
 Path keeps its original document node and supports gizmo edits, undo and reload.
-SVG import and a dedicated UI for bulk extrusion are planned separately.
+SVG `<path>` and `<polygon>` elements can be imported as extrusion sources with
+`svgElementsToExtrudedNodes`. The helper preserves other imported shapes in 2D;
+invalid depth is rejected instead of silently changing it to a default.
+
+```ts
+import { svgElementsToExtrudedNodes } from '@infinite-canvas-tutorial/ecs';
+
+const svg = new DOMParser().parseFromString(source, 'image/svg+xml');
+const nodes = svgElementsToExtrudedNodes(
+    Array.from(svg.documentElement.children) as SVGElement[],
+    40,
+);
+api.updateNodes(nodes);
+```
+
+The converter accepts closed contours with one solid fill and no visible stroke;
+SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including
+`evenodd` holes. Open contours, stroked shapes, gradients and unsupported SVG
+shapes remain in 2D. Shearing a Path on the canvas also keeps it in 2D. SVG
+transforms and viewBox scaling follow the existing importer, which does not
+faithfully preserve shear; avoid sheared SVG input until that importer supports it.
+
+<SvgExtrusion />
 
 ## Lighting {#lighting}
 
