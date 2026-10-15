@@ -39,9 +39,10 @@ test('an imported SVG hole produces a visible 3D companion and restores its 2D s
     await window.gizmoTest.settle();
   });
   expect(
-    await page.evaluate(
-      () => window.gizmoTest.api().getNodeById('model').extrude3d,
-    ),
+    await page.evaluate(() => {
+      const node = window.gizmoTest.api().getNodeById('model');
+      return 'extrude3d' in node ? node.extrude3d : undefined;
+    }),
   ).toBe(false);
   expect(errors).toEqual([]);
 });
