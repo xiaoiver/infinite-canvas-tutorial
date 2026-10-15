@@ -1,7 +1,14 @@
 import type { Entity } from '@lastolivegames/becsy';
 import { mat4 } from 'gl-matrix';
-import { ComputedBounds, Extrude3D, type Transform3D } from '../components';
+import {
+  ComputedBounds,
+  Extrude3D,
+  GlobalTransform,
+  Path,
+  type Transform3D,
+} from '../components';
 import { resolveCanvasSourceOrigin } from './canvas-source-origin';
+import { pathExtrusionGeometry } from './path-extrusion-source';
 
 type Pose = Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
 const zero = (value: number) => (Math.abs(value) < 1e-7 ? 0 : value);
@@ -36,6 +43,22 @@ export function resolveExtrudeCompanionTransform(
   const height = bounds.maxY - bounds.minY;
   if (!(width > 0 && height > 0)) return;
   const { depth, z, rotation } = source.read(Extrude3D);
+  if (source.has(Path)) {
+    if (!source.has(GlobalTransform)) return;
+    const pathMesh = pathExtrusionGeometry(source);
+    if (!pathMesh) return;
+    const { m00, m01, m10, m11, m20, m21 } = source.read(GlobalTransform).matrix;
+    const [cx, cy] = pathMesh.center;
+    return {
+      translation: [
+        m00 * cx + m10 * cy + m20,
+        (m01 * cx + m11 * cy + m21) * (unifiedSpace ? 1 : -1),
+        z - depth / 2,
+      ],
+      rotation: euler(rotated(transformOBB.rotation, rotation)),
+      scale: [transformOBB.scaleX, transformOBB.scaleY, depth],
+    };
+  }
   return {
     translation: [
       (bounds.minX + bounds.maxX) / 2,
@@ -61,10 +84,12 @@ export function resolveExtrudeSourceTransform(
     pose.scale[2] <= 0
   )
     return;
+  const localCenter = source.has(Path) ? pathExtrusionGeometry(source)?.center : undefined;
+  if (source.has(Path) && !localCenter) return;
   const origin = resolveCanvasSourceOrigin(source, [
     pose.translation[0],
     pose.translation[1] * (unifiedSpace ? 1 : -1),
-  ]);
+  ], localCenter);
   if (!origin) return;
   const base = source.read(ComputedBounds).transformOBB.rotation;
   const localRotation = mat4.multiply(

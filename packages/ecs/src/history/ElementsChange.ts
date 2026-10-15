@@ -36,6 +36,7 @@ import type {
   SerializedFillLayerItem,
   Light3DNodeSerializedNode,
   Mesh3DNodeSerializedNode,
+  PathSerializedNode,
   RectSerializedNode,
   SerializedNode,
   SerializedNodeAttributes,
@@ -1875,9 +1876,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     safeAddComponent(entity, MaterialDirty);
   }
 
-  if ('extrude3d' in updates && entity.has(Rect)) {
+  if ('extrude3d' in updates && (entity.has(Rect) || entity.has(Path))) {
     const extrude = extrude3DFromWire(
-      (elNode as RectSerializedNode).extrude3d,
+      (elNode as RectSerializedNode | PathSerializedNode).extrude3d,
     );
     if (!extrude) {
       safeRemoveComponent(entity, Extrude3D);

@@ -1,5 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { Extrude3D } from '../components';
+import { Extrude3D, Mesh3D, Path, ToBeDeleted } from '../components';
 import type { Extrude3DAttributes } from '../types/serialized-node';
 import { parseColor } from './color';
 import {
@@ -9,12 +9,20 @@ import {
 
 const DEFAULT_EXTRUDE_DEPTH = 100;
 
-/** Spline-style: extruded rects skip 2D fill/stroke drawcalls; only the 3D mesh draws. */
+/** Keep unsupported Paths visible until a valid 3D companion is ready. */
 export function shouldSuppress2DShapeRender(entity: Entity): boolean {
-  return entity.has(Extrude3D);
+  if (!entity.has(Extrude3D)) return false;
+  if (!entity.has(Path)) return true;
+  const companion = entity.read(Extrude3D).meshEntity;
+  return (
+    !!companion?.alive &&
+    companion.has(Mesh3D) &&
+    !companion.has(ToBeDeleted) &&
+    companion.read(Mesh3D).positions.length > 0
+  );
 }
 
-/** Maps the host rect's first solid fill to {@link Material3D.baseColor}. */
+/** Maps the source's first solid fill to {@link Material3D.baseColor}. */
 export function extrudeMaterialBaseColorFromEntity(
   entity: Entity,
 ): [number, number, number, number] {

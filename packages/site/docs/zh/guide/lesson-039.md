@@ -290,6 +290,29 @@ const node: RectSerializedNode = {
 目前没有缩放把手，可通过矩形尺寸和 `depth` 改变大小。挤出底面仍沿用世界 AABB
 尺寸，本次未实现旋转或剪切矩形底面的精确挤出几何。
 
+### 挤出闭合 Path {#extrude-path}
+
+只有一层纯色填充的闭合 Path 也可以设置 `extrude3d`。前后封盖遵循实际填充轮廓，
+包括孔洞；修改 `d` 或 `fillRule` 会重建网格，平移或旋转则复用现有网格。
+
+```ts
+const vector: PathSerializedNode = {
+    id: 'extruded-vector',
+    type: 'path',
+    zIndex: 0,
+    x: 100,
+    y: 80,
+    d: 'M100 80 L200 80 L200 180 L100 180 Z M125 105 L125 155 L175 155 L175 105 Z',
+    fillRule: 'evenodd',
+    fills: [{ type: 'solid', value: '#3377dd' }],
+    extrude3d: { depth: 40, z: 0 },
+};
+```
+
+每条子路径都必须闭合。开放路径、含描边图层、多层或非纯色填充、非流形轮廓及
+剪切变换会继续以 2D 显示。原 Path 文档节点保持可编辑，也支持 gizmo、撤销和
+重新载入。SVG 导入及批量挤出的专用界面将在后续阶段实现。
+
 ## 光照 {#lighting}
 
 演示 Light3D 组件与 Blinn-Phong 材质配合：环境光打底、冷色平行光作填充，暖色聚光灯绕场景中心轨道运动，立方体 / 球体 / 圆柱三种几何体便于对比 specular 与明暗变化。

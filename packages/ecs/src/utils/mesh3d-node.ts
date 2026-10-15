@@ -11,6 +11,7 @@ import {
   Selected3D,
   Transform,
   Transform3D,
+  ToBeDeleted,
 } from '../components';
 import {
   createGeometry,
@@ -104,10 +105,15 @@ export function resolveMesh3DNodeScale(
 
 /** Declarative mesh or extrusion source/companion entity (no {@link Selected3D} read). */
 export function entityIsDeclarative3DNode(entity: Entity): boolean {
+  const extrusionMesh = entity.has(Extrude3D)
+    ? entity.read(Extrude3D).meshEntity
+    : undefined;
   return (
     entity.has(Mesh3DNode) ||
     entity.has(Mesh3DNodeTarget) ||
-    entity.has(Extrude3D) ||
+    (entity.has(Extrude3D) &&
+      (entity.has(Rect) ||
+        (!!extrusionMesh?.alive && !extrusionMesh.has(ToBeDeleted)))) ||
     entity.has(Extrude3DTarget)
   );
 }

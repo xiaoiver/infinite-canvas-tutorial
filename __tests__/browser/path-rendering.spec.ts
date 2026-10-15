@@ -149,25 +149,27 @@ for (const engine of ['ecs', 'core']) {
       await compare(page);
     });
 
-    for (const lineJoin of ['miter', 'round', 'bevel'] as const) {
-      test(`has no internal cracks or overdraw with ${lineJoin} joins`, async ({
-        page,
-      }) => {
-        // Multiple GPU readbacks can be slow on software-rendered CI workers.
-        test.setTimeout(120000);
-        for (const opacity of [1, 0.5]) {
-          await page.evaluate((options) => window.pathTest.render(options), {
-            d: 'M0 100 C0 -80 200 -80 200 100',
-            fill: false,
-            parentScale: 1,
-            lineJoin,
-            opacity,
-          });
-          await page.evaluate(() => window.pathTest.zoom(64));
-          await expectUniformStrokeInterior(page);
-        }
-      });
-    }
+    test.describe(() => {
+      // This also covers beforeEach, where a software-rendered page can stall.
+      test.setTimeout(120000);
+      for (const lineJoin of ['miter', 'round', 'bevel'] as const) {
+        test(`has no internal cracks or overdraw with ${lineJoin} joins`, async ({
+          page,
+        }) => {
+          for (const opacity of [1, 0.5]) {
+            await page.evaluate((options) => window.pathTest.render(options), {
+              d: 'M0 100 C0 -80 200 -80 200 100',
+              fill: false,
+              parentScale: 1,
+              lineJoin,
+              opacity,
+            });
+            await page.evaluate(() => window.pathTest.zoom(64));
+            await expectUniformStrokeInterior(page);
+          }
+        });
+      }
+    });
 
     test('keeps mirrored high-DPI arc joins uniform across precision levels', async ({
       page,

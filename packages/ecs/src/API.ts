@@ -744,7 +744,7 @@ export class API {
         return (
           node?.type !== 'mesh3d' &&
           !(
-            node?.type === 'rect' &&
+            (node?.type === 'rect' || node?.type === 'path') &&
             resolveExtrude3DDepth(node.extrude3d) !== undefined
           )
         );
@@ -754,7 +754,7 @@ export class API {
         return (
           node?.type !== 'mesh3d' &&
           !(
-            node?.type === 'rect' &&
+            (node?.type === 'rect' || node?.type === 'path') &&
             resolveExtrude3DDepth(node.extrude3d) !== undefined
           )
         );

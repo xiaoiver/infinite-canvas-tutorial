@@ -28,8 +28,11 @@ export function gizmoDocumentKey(api: API, source: Entity): string {
             node.scale3d ?? 100,
             node.geometry,
           ]
-        : node.type === 'rect'
-        ? [extrude3DFromWire(node.extrude3d)]
+        : node.type === 'rect' || node.type === 'path'
+        ? [
+            extrude3DFromWire(node.extrude3d),
+            ...(node.type === 'path' ? [node.d, node.fillRule] : []),
+          ]
         : []),
     ]);
     node = node.parentId ? api.getNodeById(node.parentId) : undefined;
