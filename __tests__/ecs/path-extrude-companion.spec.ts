@@ -5,6 +5,7 @@ import {
   ComputeCamera,
   EnsureExtrudeMeshes,
   Extrude3D,
+  ExportFormat,
   GlobalTransform,
   Material3D,
   Mesh3D,
@@ -335,6 +336,105 @@ it('maps local points through rotation and flip like the 2D source', async () =>
     'NEVER',
   );
   expect(companion.read(Mesh3D).indices).toBe(flippedIndices);
+});
+
+it('extrudes a Path through a sheared parent and keeps its world footprint', async () => {
+  await world.reset(api, [
+    { id: 'parent', type: 'g', zIndex: 0, x: 20, y: 30, scaleX: 2 },
+    path({
+      parentId: 'parent',
+      rotation: Math.PI / 4,
+      d: 'M10 20 L50 20 L10 60 Z',
+    }),
+  ]);
+  const companion = mesh();
+  const original = companion.read(Mesh3D).positions;
+  const sourceMatrix = source().read(GlobalTransform).matrix;
+  expect(
+    Math.abs(
+      sourceMatrix.m00 * sourceMatrix.m10 + sourceMatrix.m01 * sourceMatrix.m11,
+    ),
+  ).toBeGreaterThan(0.1);
+  const transform = companion.read(Transform3D);
+  const pose = {
+    translation: [...transform.translation] as [number, number, number],
+    rotation: [...transform.rotation] as [number, number, number],
+    scale: [...transform.scale] as [number, number, number],
+  };
+  expect(pose.scale).toEqual([1, 1, 20]);
+  const points = new Set<string>();
+  const { positions, normals } = companion.read(Mesh3D);
+  for (let i = 0; i < positions.length; i += 3) {
+    if (normals[i + 2] !== 1) continue;
+    const x = positions[i];
+    const y = positions[i + 1];
+    const angle = pose.rotation[2];
+    points.add(
+      `${Math.round(
+        (Math.cos(angle) * x - Math.sin(angle) * y + pose.translation[0]) *
+          1000,
+      )},${Math.round(
+        (Math.sin(angle) * x + Math.cos(angle) * y + pose.translation[1]) *
+          1000,
+      )}`,
+    );
+  }
+  for (const [x, y] of [
+    [0, 0],
+    [40, 0],
+    [0, 40],
+  ]) {
+    const worldX =
+      sourceMatrix.m00 * x + sourceMatrix.m10 * y + sourceMatrix.m20;
+    const worldY =
+      sourceMatrix.m01 * x + sourceMatrix.m11 * y + sourceMatrix.m21;
+    expect(
+      points.has(`${Math.round(worldX * 1000)},${Math.round(worldY * 1000)}`),
+    ).toBe(true);
+  }
+  const glb = api.export({
+    format: ExportFormat.GLB,
+    nodes: [api.getNodeById('vector')!],
+    download: false,
+  }) as Uint8Array;
+  expect(new DataView(glb.buffer, glb.byteOffset).getUint32(0, true)).toBe(
+    0x46546c67,
+  );
+  const gesture = captureGizmoSource(companion, api)!;
+  const nextPose = {
+    translation: [
+      pose.translation[0] + 20,
+      pose.translation[1] - 10,
+      pose.translation[2],
+    ] as [number, number, number],
+    rotation: [...pose.rotation] as [number, number, number],
+    scale: [...pose.scale] as [number, number, number],
+  };
+  const patch = gesture.patch(nextPose, api.getNodeById('vector'))!;
+  await world.edit(
+    api,
+    (editor) => editor.updateNode(editor.getNodeById('vector'), patch),
+    'NEVER',
+  );
+  expect(mesh().read(Transform3D).translation[0]).toBeCloseTo(
+    nextPose.translation[0],
+  );
+  expect(mesh().read(Transform3D).translation[1]).toBeCloseTo(
+    nextPose.translation[1],
+  );
+  expect(mesh().read(Mesh3D).positions).toBe(original);
+  await world.edit(
+    api,
+    (editor) => editor.updateNode(editor.getNodeById('vector'), { x: 120 }),
+    'NEVER',
+  );
+  expect(mesh().read(Mesh3D).positions).toBe(original);
+  await world.edit(
+    api,
+    (editor) => editor.updateNode(editor.getNodeById('parent'), { scaleX: 3 }),
+    'NEVER',
+  );
+  expect(mesh().read(Mesh3D).positions).not.toBe(original);
 });
 
 it('isolates companions across canvases', async () => {

@@ -28,6 +28,9 @@ function entity(values: Map<any, any>) {
   } as unknown as Entity;
 }
 function source(rotation: [number, number, number] = [0, 0, 0], base = 0) {
+  const sourceMatrix = mat3.fromRotation(mat3.create(), base);
+  sourceMatrix[6] = 60;
+  sourceMatrix[7] = 60;
   const values = new Map<any, any>([
     [
       Transform,
@@ -38,9 +41,11 @@ function source(rotation: [number, number, number] = [0, 0, 0], base = 0) {
       ComputedBounds,
       {
         geometryWorldBounds: { minX: 60, minY: 60, maxX: 100, maxY: 100 },
+        geometryBounds: { minX: 0, minY: 0, maxX: 40, maxY: 40 },
         transformOBB: { rotation: base },
       },
     ],
+    [GlobalTransform, { matrix: Mat3.fromGLMat3(sourceMatrix) }],
     [Extrude3D, { depth: 20, z: 10, rotation }],
   ]);
   return { entity: entity(values), values };
@@ -74,6 +79,23 @@ it.each([
 it.each([false, undefined])('disables extrusion for %s', (value) =>
   expect(extrude3DFromWire(value)).toBeUndefined(),
 );
+
+it('keeps local 3D rotation relative to a rounded Rect after its footprint is baked', () => {
+  const rotation: [number, number, number] = [0.2, -0.3, 0.4];
+  const base = 0.6;
+  const fixture = source(rotation, base);
+  fixture.values.get(Rect).cornerRadius = 8;
+  const pose = resolveExtrudeCompanionTransform(fixture.entity, true)!;
+  const expected = mat4.multiply(
+    mat4.create(),
+    mat4.fromZRotation(mat4.create(), base),
+    matrix(rotation),
+  );
+  near(matrix(pose.rotation), expected);
+  expect(pose.scale).toEqual([1, 1, 20]);
+  const patch = resolveExtrudeSourceTransform(fixture.entity, pose, true)!;
+  near(matrix(patch.extrude.rotation), matrix(rotation));
+});
 it('copies wire arrays and retains the compact legacy representation', () => {
   const rotation: [number, number, number] = [0.2, -0.3, 0.4];
   const options = { depth: 20, z: 15, rotation };
