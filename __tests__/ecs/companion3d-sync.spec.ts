@@ -243,6 +243,21 @@ it('updates the Rect bevel mesh when its bounds change', async () => {
   expect(capExtent()[1]).toBeCloseTo(0.475);
 });
 
+it('rebuilds the Rect mesh when its bevel profile changes', async () => {
+  await world.reset(api, [
+    rect({ extrude3d: { depth: 20, bevelSize: 2, bevelSegments: 4 } }),
+  ]);
+  const target = companion('box');
+  const rounded = target.read(Mesh3D).positions;
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('box'), {
+      extrude3d: { depth: 20, bevelSize: 2, bevelSegments: 1 },
+    }),
+  );
+  expect(companion('box')).toBe(target);
+  expect(target.read(Mesh3D).positions.length).toBeLessThan(rounded.length);
+});
+
 it('deletes a replaced extrusion companion while preserving the replacement', async () => {
   await world.reset(api, [rect()]);
   const old = companion('box');

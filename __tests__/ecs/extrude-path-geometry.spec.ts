@@ -16,7 +16,7 @@ function capArea(mesh: Mesh3DGeometryData, normalZ: number): number {
   const { positions: p, normals: n, indices } = mesh;
   for (let i = 0; i < indices.length; i += 3) {
     const [a, b, c] = [...indices.slice(i, i + 3)].map((index) => index * 3);
-    if (n[a + 2] !== normalZ) continue;
+    if ([a, b, c].some((index) => n[index + 2] !== normalZ)) continue;
     const cross =
       (p[b] - p[a]) * (p[c + 1] - p[a + 1]) -
       (p[b + 1] - p[a + 1]) * (p[c] - p[a]);
@@ -146,8 +146,10 @@ it.each([
   (contours, fillRule) => {
     const sharp = extrudePathContours(contours, 8, fillRule);
     const requested = extrudePathContours(contours, 8, fillRule, 1);
+    const rounded = extrudePathContours(contours, 8, fillRule, 1, 4);
     expect(sharp.ok).toBe(true);
     expect(requested).toEqual(sharp);
+    expect(rounded).toEqual(sharp);
   },
 );
 
@@ -193,6 +195,30 @@ it('bevels a hole while keeping a closed volume', () => {
 });
 
 it.each([
+  ['rectangle', [rect(0, 0, 20, 20)], 'nonzero', 324],
+  ['holed ring', [rect(0, 0, 20, 20), rect(7, 7, 6, 6)], 'evenodd', 260],
+] as [string, Point[][], CanvasFillRule, number][])(
+  'rounds the bevel of a %s while preserving its caps and closed volume',
+  (_name, contours, fillRule, area) => {
+    const result = extrudePathContours(contours, 8, fillRule, 1, 4);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { geometry } = result;
+    expect(capArea(geometry, 1)).toBeCloseTo(area);
+    expect(capArea(geometry, -1)).toBeCloseTo(area);
+    expect(
+      [...geometry.normals].some(
+        (normal, i) => i % 3 === 2 && normal > 0.3 && normal < 0.5,
+      ),
+    ).toBe(true);
+    expect(
+      new Set([...geometry.positions].filter((_, i) => i % 3 === 2)).size,
+    ).toBe(10);
+    assertClosed(geometry);
+  },
+);
+
+it.each([
   ['two islands', [rect(0, 0, 10, 10), rect(20, 0, 10, 10)], 128],
   [
     'nested island',
@@ -222,6 +248,18 @@ it('rejects nonfinite and negative bevel sizes', () => {
     reason: 'invalid-bevel',
   });
 });
+
+it.each([0, 1.5, 9, Infinity])(
+  'rejects invalid bevel segment count %s',
+  (segments) => {
+    expect(
+      extrudePathContours([rect(0, 0, 10, 10)], 8, 'nonzero', 1, segments),
+    ).toEqual({
+      ok: false,
+      reason: 'invalid-bevel',
+    });
+  },
+);
 
 it('rejects a self crossing that would create a non-manifold vertical edge', () => {
   expect(

@@ -190,7 +190,10 @@ export function exportMeshesToGlb(
       const face = triangles.slice(i, i + 3);
       const side =
         source.material.sideColor &&
-        face.every((index) => Math.abs(normals[index * 3 + 2]) < 1);
+        (face.every((index) => Math.abs(normals[index * 3 + 2]) < 1) ||
+          face.some(
+            (index) => positions[index * 3 + 2] !== positions[face[0] * 3 + 2],
+          ));
       (side ? sideIndices : frontIndices).push(...face);
     }
     const baseMaterial = material(

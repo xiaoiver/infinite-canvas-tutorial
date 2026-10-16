@@ -8,8 +8,11 @@ export class Extrude3D {
   /** Extrusion depth in canvas world units (along view axis). */
   @field.float32 declare depth: number;
 
-  /** Straight bevel size in canvas world units. */
+  /** Bevel size in canvas world units. */
   @field.float32 declare bevelSize: number;
+
+  /** One segment makes a straight bevel; more segments make a rounded profile. */
+  @field.int32 declare bevelSegments: number;
 
   /** Optional CSS color for the companion mesh's side walls and bevels. */
   @field.object declare sideColor: string | null;
@@ -29,6 +32,7 @@ export class Extrude3D {
     }
     this.depth ??= 100;
     this.bevelSize ??= 0;
+    this.bevelSegments ??= 1;
     this.sideColor ??= null;
     this.z ??= 0;
     this.rotation ??= [0, 0, 0];

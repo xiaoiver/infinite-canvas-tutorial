@@ -107,6 +107,7 @@ export function extrudePathContours(
   depth: number,
   fillRule: CanvasFillRule = 'nonzero',
   bevel = 0,
+  bevelSegments = 1,
 ): PathExtrusionResult {
   if (
     !Number.isFinite(depth) ||
@@ -119,6 +120,12 @@ export function extrudePathContours(
     !Number.isFinite(bevel) ||
     !Number.isFinite(Math.fround(bevel)) ||
     bevel < 0
+  )
+    return { ok: false, reason: 'invalid-bevel' };
+  if (
+    !Number.isInteger(bevelSegments) ||
+    bevelSegments < 1 ||
+    bevelSegments > 8
   )
     return { ok: false, reason: 'invalid-bevel' };
   if (!rawContours.length) return { ok: false, reason: 'empty-fill' };
@@ -279,6 +286,25 @@ export function extrudePathContours(
     addVertex(d[0], d[1], z1, ...normal, u0, v1);
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   };
+  const addProfileQuad = (
+    a: Point,
+    b: Point,
+    c: Point,
+    d: Point,
+    z0: number,
+    z1: number,
+    normal0: [number, number, number],
+    normal1: [number, number, number],
+    u0: number,
+    u1: number,
+  ) => {
+    const base = positions.length / 3;
+    addVertex(a[0], a[1], z0, ...normal0, u0, z0 + halfDepth);
+    addVertex(b[0], b[1], z0, ...normal0, u1, z0 + halfDepth);
+    addVertex(c[0], c[1], z1, ...normal1, u1, z1 + halfDepth);
+    addVertex(d[0], d[1], z1, ...normal1, u0, z1 + halfDepth);
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  };
 
   for (const [boundaryIndex, boundary] of boundaries.entries()) {
     let distance = 0;
@@ -298,20 +324,85 @@ export function extrudePathContours(
       if (chamfer) {
         const innerA = chamfer[i];
         const innerB = chamfer[(i + 1) % chamfer.length];
-        const diagonal = 1 / Math.sqrt(2);
-        addQuad(
-          innerA,
-          innerB,
-          b,
-          a,
-          -halfDepth,
-          -halfDepth + bevel,
-          [nx * diagonal, ny * diagonal, -diagonal],
-          distance,
-          distance + length,
-          0,
-          bevel,
-        );
+        if (bevelSegments === 1) {
+          const diagonal = 1 / Math.sqrt(2);
+          addQuad(
+            innerA,
+            innerB,
+            b,
+            a,
+            -halfDepth,
+            -halfDepth + bevel,
+            [nx * diagonal, ny * diagonal, -diagonal],
+            distance,
+            distance + length,
+            0,
+            bevel,
+          );
+        } else {
+          const ringPoint = (
+            outer: Point,
+            inner: Point,
+            step: number,
+          ): Point => {
+            if (step === 0) return outer;
+            if (step === bevelSegments) return inner;
+            const angle = (step * Math.PI) / (2 * bevelSegments);
+            const fraction = 1 - Math.cos(angle);
+            return [
+              outer[0] + (inner[0] - outer[0]) * fraction,
+              outer[1] + (inner[1] - outer[1]) * fraction,
+            ];
+          };
+          const ringZ = (step: number, front: boolean): number => {
+            if (step === bevelSegments) return front ? halfDepth : -halfDepth;
+            const rise =
+              bevel * Math.sin((step * Math.PI) / (2 * bevelSegments));
+            return front ? halfDepth - bevel + rise : -halfDepth + bevel - rise;
+          };
+          const ringNormal = (
+            step: number,
+            front: boolean,
+          ): [number, number, number] => {
+            if (step === bevelSegments) return [0, 0, front ? 1 : -1];
+            const angle = (step * Math.PI) / (2 * bevelSegments);
+            return [
+              nx * Math.cos(angle),
+              ny * Math.cos(angle),
+              (front ? 1 : -1) * Math.sin(angle),
+            ];
+          };
+          for (let step = 0; step < bevelSegments; step++) {
+            const outerA = ringPoint(a, innerA, step);
+            const outerB = ringPoint(b, innerB, step);
+            const nextA = ringPoint(a, innerA, step + 1);
+            const nextB = ringPoint(b, innerB, step + 1);
+            addProfileQuad(
+              nextA,
+              nextB,
+              outerB,
+              outerA,
+              ringZ(step + 1, false),
+              ringZ(step, false),
+              ringNormal(step + 1, false),
+              ringNormal(step, false),
+              distance,
+              distance + length,
+            );
+            addProfileQuad(
+              outerA,
+              outerB,
+              nextB,
+              nextA,
+              ringZ(step, true),
+              ringZ(step + 1, true),
+              ringNormal(step, true),
+              ringNormal(step + 1, true),
+              distance,
+              distance + length,
+            );
+          }
+        }
         addQuad(
           a,
           b,
@@ -325,19 +416,22 @@ export function extrudePathContours(
           bevel,
           depth - bevel,
         );
-        addQuad(
-          a,
-          b,
-          innerB,
-          innerA,
-          halfDepth - bevel,
-          halfDepth,
-          [nx * diagonal, ny * diagonal, diagonal],
-          distance,
-          distance + length,
-          depth - bevel,
-          depth,
-        );
+        if (bevelSegments === 1) {
+          const diagonal = 1 / Math.sqrt(2);
+          addQuad(
+            a,
+            b,
+            innerB,
+            innerA,
+            halfDepth - bevel,
+            halfDepth,
+            [nx * diagonal, ny * diagonal, diagonal],
+            distance,
+            distance + length,
+            depth - bevel,
+            depth,
+          );
+        }
       } else {
         addQuad(
           a,

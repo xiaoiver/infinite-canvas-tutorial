@@ -25,6 +25,7 @@ const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(0);
+const bevelSegments = ref(1);
 const useSideColor = ref(false);
 const sideColor = ref('#facc15');
 const show3D = ref(true);
@@ -58,6 +59,7 @@ async function render() {
             extrude3d: {
               depth: depth.value,
               bevelSize: bevelSize.value,
+              bevelSegments: bevelSegments.value,
               rotation: [0.4, -0.35, 0],
               ...(useSideColor.value ? { sideColor: sideColor.value } : {}),
             },
@@ -102,6 +104,7 @@ function reset() {
   show3D.value = true;
   depth.value = 35;
   bevelSize.value = 0;
+  bevelSegments.value = 1;
   useSideColor.value = false;
   sideColor.value = '#facc15';
   void render();
@@ -166,6 +169,18 @@ onUnmounted(() => {
           step="1"
           @change="render"
         />
+      </label>
+      <label>
+        Bevel profile
+        <select
+          v-model.number="bevelSegments"
+          :disabled="!bevelSize"
+          @change="render"
+        >
+          <option :value="1">Straight</option>
+          <option :value="4">Rounded</option>
+          <option :value="8">Smooth rounded</option>
+        </select>
       </label>
       <label>
         <input v-model="useSideColor" type="checkbox" @change="render" />

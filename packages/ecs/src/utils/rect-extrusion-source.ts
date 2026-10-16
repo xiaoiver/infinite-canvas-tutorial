@@ -12,7 +12,7 @@ const cache = new WeakMap<
 
 /** Unit box geometry with a world-size bevel, matching the companion pose scale. */
 export function rectExtrusionGeometry(source: Entity): Mesh3DGeometryData {
-  const { bevelSize, depth } = source.read(Extrude3D);
+  const { bevelSize, bevelSegments, depth } = source.read(Extrude3D);
   if (!(bevelSize > 0) || !source.has(ComputedBounds)) return unitCube;
   const { geometryWorldBounds: bounds } = source.read(ComputedBounds);
   const width = bounds.maxX - bounds.minX;
@@ -23,7 +23,7 @@ export function rectExtrusionGeometry(source: Entity): Mesh3DGeometryData {
     bevelSize * 2 >= Math.min(width, height, depth)
   )
     return unitCube;
-  const key = `${width},${height},${depth},${bevelSize}`;
+  const key = `${width},${height},${depth},${bevelSize},${bevelSegments}`;
   const previous = cache.get(source);
   if (previous?.key === key) return previous.geometry;
 
@@ -39,6 +39,7 @@ export function rectExtrusionGeometry(source: Entity): Mesh3DGeometryData {
     depth,
     'nonzero',
     bevelSize,
+    bevelSegments,
   );
   if (!result.ok) return unitCube;
   const geometry = result.geometry;

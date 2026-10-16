@@ -148,6 +148,21 @@ it('keeps a world-size bevel while depth changes and restores geometry on undo',
   expect(companion.read(Transform3D).scale[2]).toBe(20);
 });
 
+it('rebuilds the Path mesh when its bevel profile changes', async () => {
+  await world.reset(api, [
+    path({ extrude3d: { depth: 20, bevelSize: 2, bevelSegments: 4 } }),
+  ]);
+  const companion = mesh();
+  const rounded = companion.read(Mesh3D).positions;
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('vector'), {
+      extrude3d: { depth: 20, bevelSize: 2, bevelSegments: 1 },
+    }),
+  );
+  expect(mesh()).toBe(companion);
+  expect(companion.read(Mesh3D).positions.length).toBeLessThan(rounded.length);
+});
+
 it('rebuilds a beveled Path for a nonuniform source scale', async () => {
   await world.reset(api, [path({ extrude3d: { depth: 20, bevelSize: 2 } })]);
   const original = mesh().read(Mesh3D).positions;
