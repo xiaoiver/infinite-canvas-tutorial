@@ -347,7 +347,9 @@ api.updateNodes(nodes);
 只有合成变换包含剪切时才会采样；普通 viewBox 缩放仍保留矩形和曲线路径的原有形式。
 没有显式像素视口尺寸时，继续使用 viewBox 的原坐标。未挤出的 2D 图形仍使用原导入器，
 其源 SVG 剪切变换尚不能准确保留。
-`slice` 会应用缩放和对齐，但暂不按视口裁切。
+设置 `preserveAspectRatio="slice"` 后，可挤出的填充轮廓会按视口裁切，
+包括孔洞及被裁成多个独立区域的图形。完整位于视口内的矩形或曲线路径仍保持原有形式。
+不支持挤出的 2D 图形仍沿用普通导入器，此辅助函数不会裁切它们。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、
@@ -379,6 +381,7 @@ const glb = api.export({
 如需直接导出网格组件，可以使用底层的 `exportMeshesToGlb`。
 
 点击 **ViewBox + shear sample** 可以查看变换后的轮廓与偶奇填充孔洞，再关闭挤出对比 2D 轮廓。
+点击 **Slice clipping sample** 可以查看视口对孔洞、分离区域和曲线边缘的裁切。
 
 <SvgExtrusion />
 
