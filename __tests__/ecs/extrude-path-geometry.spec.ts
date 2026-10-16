@@ -1,6 +1,6 @@
 import { extrudePathContours } from '../../packages/ecs/src/utils/extrude3d-geometry';
 import type { Mesh3DGeometryData } from '../../packages/ecs/src/utils/geometry3d/types';
-import { insetConvexContour } from '../../packages/ecs/src/utils/geometry3d/inset-convex-contour';
+import { insetFillBoundaries } from '../../packages/ecs/src/utils/geometry3d/inset-fill-boundaries';
 
 type Point = [number, number];
 const rect = (x: number, y: number, w: number, h: number): Point[] => [
@@ -151,21 +151,64 @@ it.each([
   },
 );
 
-it('does not offset a concave contour with the convex inset helper', () => {
-  expect(
-    insetConvexContour(
-      [
-        [0, 0],
-        [10, 0],
-        [10, 5],
-        [5, 5],
-        [5, 10],
-        [0, 10],
-      ],
-      1,
-    ),
-  ).toBeUndefined();
+it('insets a topology-preserving concave contour', () => {
+  const contour: Point[] = [
+    [0, 0],
+    [10, 0],
+    [10, 5],
+    [5, 5],
+    [5, 10],
+    [0, 10],
+  ];
+  expect(insetFillBoundaries([contour], 1)).toEqual([
+    [
+      [1, 1],
+      [9, 1],
+      [9, 4],
+      [4, 4],
+      [4, 9],
+      [1, 9],
+    ],
+  ]);
+  const result = extrudePathContours([contour], 8, 'nonzero', 1);
+  expect(result).toMatchObject({ ok: true });
+  if (result.ok) {
+    expect(capArea(result.geometry, 1)).toBeCloseTo(39);
+    assertClosed(result.geometry);
+  }
 });
+
+it('bevels a hole while keeping a closed volume', () => {
+  const result = extrudePathContours(
+    [rect(0, 0, 20, 20), rect(7, 7, 6, 6)],
+    8,
+    'evenodd',
+    1,
+  );
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(capArea(result.geometry, 1)).toBeCloseTo(260);
+  expect(capArea(result.geometry, -1)).toBeCloseTo(260);
+  assertClosed(result.geometry);
+});
+
+it.each([
+  ['two islands', [rect(0, 0, 10, 10), rect(20, 0, 10, 10)], 128],
+  [
+    'nested island',
+    [rect(0, 0, 30, 30), rect(5, 5, 20, 20), rect(12, 12, 6, 6)],
+    316,
+  ],
+] as [string, Point[][], number][])(
+  'bevels %s without changing filled topology',
+  (_name, contours, area) => {
+    const result = extrudePathContours(contours, 8, 'evenodd', 1);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(capArea(result.geometry, 1)).toBeCloseTo(area);
+    assertClosed(result.geometry);
+  },
+);
 
 it('rejects nonfinite and negative bevel sizes', () => {
   expect(extrudePathContours([rect(0, 0, 10, 10)], 8, 'nonzero', -1)).toEqual({
