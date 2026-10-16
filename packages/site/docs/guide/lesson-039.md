@@ -380,7 +380,11 @@ Local `<use href="#id">` and legacy `xlink:href` references to supported shapes 
 groups create independent instances, including forward and repeated references.
 Instance pixel offsets, transform and inherited fill are applied before extrusion;
 each instance receives its own editable ID. Circular and unresolved references
-are skipped. `<symbol>` viewports and external references are not imported yet.
+are skipped. `<use>` can also reference a `<symbol>` with a `viewBox` when the
+instance provides explicit positive pixel `width` and `height`. The symbol's
+`preserveAspectRatio` supports `meet` alignments, `none`, and `slice` clipping
+of extruded outlines. Omitted instance dimensions and external references are
+not imported yet.
 Pass the root `<svg>` to apply an explicit pixel `width`/`height` and `viewBox`,
 including `preserveAspectRatio`. Filled extrusions also preserve SVG `skewX`,
 `skewY`, and sheared `matrix(...)` transforms from nested groups. These outlines
@@ -397,6 +401,8 @@ shapes still follow the ordinary importer and are not clipped by this helper.
 
 Choose **Repeated use sample** below to inspect two instances of the same
 definition with different fills, alongside an ordinary rectangle.
+Choose **Symbol viewport sample** to compare two viewport instances of one
+holed symbol.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple

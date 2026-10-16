@@ -11,6 +11,7 @@ import { parsePath } from '../curve/shape-path';
 import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
 import { clipFilledContoursToPolygon } from '../geometry3d/extrude-path';
 import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
+import { positivePixelLength, sliceAspectRatio, viewBoxMatrix } from './svg-viewbox';
 
 type Point = [number, number];
 type ProjectedPath = {
@@ -23,6 +24,9 @@ type ProjectedPath = {
 type ClipResult =
   | { kind: 'inside' | 'empty' | 'invalid' }
   | { kind: 'clipped'; path: ProjectedPath };
+type ViewportResult =
+  | { kind: 'none' | 'empty' | 'invalid' }
+  | { kind: 'polygon'; polygon: Point[] };
 
 const isIdentity = (m: Matrix) =>
   m.a === 1 && m.b === 0 && m.c === 0 && m.d === 1 && m.e === 0 && m.f === 0;
@@ -32,46 +36,18 @@ function transformAttribute(element: SVGElement): Matrix {
   return value ? compose(fromDefinition(fromTransformAttribute(value))) : identity();
 }
 
-function pixelLength(value: string | null): number | undefined {
-  if (!value || !/^\s*[+]?(?:\d+(?:\.\d*)?|\.\d+)(?:px)?\s*$/.test(value))
-    return;
-  const number = Number.parseFloat(value);
-  return Number.isFinite(number) && number > 0 ? number : undefined;
-}
-
 /** SVG's viewBox-to-viewport transform for explicit pixel dimensions. */
 function rootViewBox(root: SVGSVGElement): Matrix {
-  const viewBox = root.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
-  const width = pixelLength(root.getAttribute('width'));
-  const height = pixelLength(root.getAttribute('height'));
-  if (!viewBox || viewBox.length !== 4 || !width || !height) return identity();
-  const [x, y, vw, vh] = viewBox;
-  if (![x, y, vw, vh].every(Number.isFinite) || vw <= 0 || vh <= 0)
-    return identity();
-
-  const preserve = root.getAttribute('preserveAspectRatio')?.trim() || 'xMidYMid meet';
-  const tokens = preserve.replace(/^defer\s+/, '').split(/\s+/);
-  if (tokens[0] === 'none') {
-    const sx = width / vw, sy = height / vh;
-    return { a: sx, b: 0, c: 0, d: sy, e: -x * sx, f: -y * sy };
-  }
-  const align = /^(xMin|xMid|xMax)(YMin|YMid|YMax)$/.exec(tokens[0]);
-  if (!align) return identity();
-  const scale = tokens[1] === 'slice'
-    ? Math.max(width / vw, height / vh)
-    : Math.min(width / vw, height / vh);
-  const dx = (width - vw * scale) * ({ xMin: 0, xMid: 0.5, xMax: 1 }[align[1]] ?? 0.5);
-  const dy = (height - vh * scale) * ({ YMin: 0, YMid: 0.5, YMax: 1 }[align[2]] ?? 0.5);
-  return { a: scale, b: 0, c: 0, d: scale, e: dx - x * scale, f: dy - y * scale };
+  const width = positivePixelLength(root.getAttribute('width'));
+  const height = positivePixelLength(root.getAttribute('height'));
+  return width && height ? viewBoxMatrix(root, width, height) ?? identity() : identity();
 }
 
 /** The root viewport itself is transformed by the root SVG transform. */
 function sliceViewport(root: SVGSVGElement): Point[] | undefined {
-  const preserve = root.getAttribute('preserveAspectRatio')?.trim() || '';
-  const tokens = preserve.replace(/^defer\s+/, '').split(/\s+/);
-  if (tokens[0] === 'none' || tokens[1] !== 'slice') return;
-  const width = pixelLength(root.getAttribute('width'));
-  const height = pixelLength(root.getAttribute('height'));
+  if (!sliceAspectRatio(root)) return;
+  const width = positivePixelLength(root.getAttribute('width'));
+  const height = positivePixelLength(root.getAttribute('height'));
   if (!width || !height) return;
   const { a, b, c, d, e, f } = transformAttribute(root);
   return [[0, 0], [width, 0], [width, height], [0, height]].map(
@@ -82,7 +58,7 @@ function sliceViewport(root: SVGSVGElement): Point[] | undefined {
 function sourceTransform(
   element: SVGElement,
   root: SVGSVGElement | undefined,
-): { matrix: Matrix; hasShear: boolean } {
+): { matrix: Matrix; hasShear: boolean; clipViewports: Point[][] } {
   const chain: SVGElement[] = [];
   let current: SVGElement | null = element;
   while (current && (root ? current !== root : current.localName !== 'svg')) {
@@ -92,7 +68,22 @@ function sourceTransform(
   if (root) chain.unshift(root);
   let matrix = identity();
   let hasShear = false;
+  const clipViewports: Point[][] = [];
   for (const item of chain) {
+    const symbolViewport = item.getAttribute('data-svg-symbol-viewport');
+    if (symbolViewport) {
+      const [width, height] = symbolViewport.split(' ').map(Number);
+      const outerTransform = item.getAttribute('data-svg-symbol-transform');
+      const outerMatrix = outerTransform
+        ? compose([matrix, compose(fromDefinition(fromTransformAttribute(outerTransform)))])
+        : matrix;
+      const { a, b, c, d, e, f } = outerMatrix;
+      clipViewports.push(
+        [[0, 0], [width, 0], [width, height], [0, height]].map(
+          ([x, y]): Point => [a * x + c * y + e, b * x + d * y + f],
+        ),
+      );
+    }
     const part = transformAttribute(item);
     const x = Math.hypot(part.a, part.b), y = Math.hypot(part.c, part.d);
     if (x && y && Math.abs(part.a * part.c + part.b * part.d) > x * y * 1e-8)
@@ -101,7 +92,20 @@ function sourceTransform(
       ? compose([matrix, part, rootViewBox(root)])
       : compose([matrix, part]);
   }
-  return { matrix, hasShear };
+  return { matrix, hasShear, clipViewports };
+}
+
+function intersectViewports(viewports: Point[][]): ViewportResult {
+  if (!viewports.length) return { kind: 'none' };
+  let polygon = viewports[0];
+  for (const viewport of viewports.slice(1)) {
+    const intersection = clipFilledContoursToPolygon([polygon], 'nonzero', viewport);
+    if (!intersection) return { kind: 'invalid' };
+    if (!intersection.length) return { kind: 'empty' };
+    if (intersection.length !== 1) return { kind: 'invalid' };
+    polygon = intersection[0];
+  }
+  return { kind: 'polygon', polygon };
 }
 
 function pathForSource(node: SerializedNode, depth: number, radii?: { rx: number; ry: number }): string | undefined {
@@ -224,8 +228,8 @@ export function reprojectSvgExtrusion(
     if (!('extrude3d' in node) || !node.extrude3d) return node;
     const element = nodeElements.get(node.id);
     if (!element) return node;
-    const { matrix, hasShear } = sourceTransform(element, root);
-    if (!hasShear && isIdentity(viewport) && !slice) return node;
+    const { matrix, hasShear, clipViewports } = sourceTransform(element, root);
+    if (!hasShear && isIdentity(viewport) && !slice && !clipViewports.length) return node;
     // Baked coordinates leave the SVG group hierarchy, so carry inherited
     // visibility and paint onto the detached source node.
     let visibility = node.visibility;
@@ -241,9 +245,17 @@ export function reprojectSvgExtrusion(
       const source = pathForSource(plain, depth, rectRadii.get(node.id));
       if (!source) return node;
       const fillRule = node.type === 'path' ? node.fillRule ?? 'nonzero' : 'nonzero';
-      if (slice) {
+      const clippedViewport = intersectViewports([
+        ...(slice ? [slice] : []), ...clipViewports,
+      ]);
+      if (clippedViewport.kind === 'empty')
+        return { ...node, visibility: 'hidden', extrude3d: undefined };
+      if (clippedViewport.kind === 'invalid')
+        return { ...node, extrude3d: undefined };
+      if (clippedViewport.kind === 'polygon') {
         const clipped = clipProjectedPath(
-          source, plain.x ?? 0, plain.y ?? 0, matrix, slice, fillRule,
+          source, plain.x ?? 0, plain.y ?? 0, matrix,
+          clippedViewport.polygon, fillRule,
         );
         if (clipped.kind === 'empty')
           return { ...node, visibility: 'hidden', extrude3d: undefined };

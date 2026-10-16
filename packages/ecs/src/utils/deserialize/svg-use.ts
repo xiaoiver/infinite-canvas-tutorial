@@ -1,9 +1,10 @@
 import { v4 as uuidv4 } from 'uuid';
+import { positivePixelLength, sliceAspectRatio, viewBoxMatrix } from './svg-viewbox';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const XLINK_NS = 'http://www.w3.org/1999/xlink';
 const SUPPORTED_TARGETS = new Set([
-  'g', 'use', 'path', 'polygon', 'polyline', 'rect', 'circle', 'ellipse',
+  'g', 'use', 'symbol', 'path', 'polygon', 'polyline', 'rect', 'circle', 'ellipse',
 ]);
 
 function descendants(element: SVGElement): SVGElement[] {
@@ -78,7 +79,29 @@ export function expandSvgUses(
       if (transform || translate)
         wrapper.setAttribute('transform', [transform, translate].filter(Boolean).join(' '));
 
-      const clone = target.cloneNode(true) as SVGElement;
+      let clone = target.cloneNode(true) as SVGElement;
+      if (target.localName === 'symbol') {
+        const width = positivePixelLength(element.getAttribute('width'));
+        const height = positivePixelLength(element.getAttribute('height'));
+        if (!width || !height) return;
+        const viewport = viewBoxMatrix(target, width, height);
+        if (!viewport) return;
+        const group = element.ownerDocument.createElementNS(SVG_NS, 'g') as SVGElement;
+        for (const attribute of Array.from(clone.attributes)) {
+          if (!['viewBox', 'preserveAspectRatio', 'width', 'height'].includes(attribute.name))
+            group.setAttribute(attribute.name, attribute.value);
+        }
+        const { a, b, c, d, e, f } = viewport;
+        const transform = group.getAttribute('transform') || '';
+        if (sliceAspectRatio(target)) {
+          group.setAttribute('data-svg-symbol-viewport', `${width} ${height}`);
+          if (transform) group.setAttribute('data-svg-symbol-transform', transform);
+        }
+        group.setAttribute('transform', [transform, `matrix(${a} ${b} ${c} ${d} ${e} ${f})`]
+          .filter(Boolean).join(' '));
+        for (const child of Array.from(clone.children)) group.appendChild(child);
+        clone = group;
+      }
       const remapped = new Map<string, string>();
       for (const part of descendants(clone)) {
         if (part.localName === 'g')
