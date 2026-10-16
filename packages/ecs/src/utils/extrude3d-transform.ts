@@ -9,6 +9,7 @@ import {
 } from '../components';
 import { resolveCanvasSourceOrigin } from './canvas-source-origin';
 import { pathExtrusionGeometry } from './path-extrusion-source';
+import { rectExtrusionIsBaked } from './rect-extrusion-source';
 
 type Pose = Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
 const zero = (value: number) => (Math.abs(value) < 1e-7 ? 0 : value);
@@ -39,6 +40,7 @@ export function resolveExtrudeCompanionTransform(
   if (!source.has(ComputedBounds) || !source.has(Extrude3D)) return;
   const { geometryWorldBounds: bounds, transformOBB } =
     source.read(ComputedBounds);
+  const baseRotation = transformOBB.rotation;
   const width = bounds.maxX - bounds.minX;
   const height = bounds.maxY - bounds.minY;
   if (!(width > 0 && height > 0)) return;
@@ -47,26 +49,54 @@ export function resolveExtrudeCompanionTransform(
     if (!source.has(GlobalTransform)) return;
     const pathMesh = pathExtrusionGeometry(source);
     if (!pathMesh) return;
-    const { m00, m01, m10, m11, m20, m21 } = source.read(GlobalTransform).matrix;
+    const { m00, m01, m10, m11, m20, m21 } =
+      source.read(GlobalTransform).matrix;
     const [cx, cy] = pathMesh.center;
+    if (pathMesh.bakedTransform) {
+      const cos = Math.cos(baseRotation);
+      const sin = Math.sin(baseRotation);
+      return {
+        translation: [
+          m20 + cos * cx - sin * cy,
+          (m21 + sin * cx + cos * cy) * (unifiedSpace ? 1 : -1),
+          z - depth / 2,
+        ],
+        rotation: euler(rotated(baseRotation, rotation)),
+        scale: [1, 1, depth],
+      };
+    }
     return {
       translation: [
         m00 * cx + m10 * cy + m20,
         (m01 * cx + m11 * cy + m21) * (unifiedSpace ? 1 : -1),
         z - depth / 2,
       ],
-      rotation: euler(rotated(transformOBB.rotation, rotation)),
+      rotation: euler(rotated(baseRotation, rotation)),
       scale: [transformOBB.scaleX, transformOBB.scaleY, depth],
     };
   }
+  if (!source.has(GlobalTransform)) return;
+  const { geometryBounds } = source.read(ComputedBounds);
+  const [cx, cy] = [
+    (geometryBounds.minX + geometryBounds.maxX) / 2,
+    (geometryBounds.minY + geometryBounds.maxY) / 2,
+  ];
+  const { m00, m01, m10, m11, m20, m21 } = source.read(GlobalTransform).matrix;
+  const baked = rectExtrusionIsBaked(source);
   return {
     translation: [
-      (bounds.minX + bounds.maxX) / 2,
-      ((bounds.minY + bounds.maxY) / 2) * (unifiedSpace ? 1 : -1),
+      m00 * cx + m10 * cy + m20,
+      (m01 * cx + m11 * cy + m21) * (unifiedSpace ? 1 : -1),
       z - depth / 2,
     ],
-    rotation: euler(rotated(transformOBB.rotation, rotation)),
-    scale: [width, height, depth],
+    rotation: euler(rotated(baseRotation, rotation)),
+    scale: baked
+      ? [1, 1, depth]
+      : [
+          (geometryBounds.maxX - geometryBounds.minX) * Math.hypot(m00, m01),
+          (geometryBounds.maxY - geometryBounds.minY) * Math.hypot(m10, m11),
+          depth,
+        ],
   };
 }
 
@@ -84,12 +114,14 @@ export function resolveExtrudeSourceTransform(
     pose.scale[2] <= 0
   )
     return;
-  const localCenter = source.has(Path) ? pathExtrusionGeometry(source)?.center : undefined;
+  const pathMesh = source.has(Path) ? pathExtrusionGeometry(source) : undefined;
+  const localCenter = pathMesh?.sourceCenter ?? pathMesh?.center;
   if (source.has(Path) && !localCenter) return;
-  const origin = resolveCanvasSourceOrigin(source, [
-    pose.translation[0],
-    pose.translation[1] * (unifiedSpace ? 1 : -1),
-  ], localCenter);
+  const origin = resolveCanvasSourceOrigin(
+    source,
+    [pose.translation[0], pose.translation[1] * (unifiedSpace ? 1 : -1)],
+    localCenter,
+  );
   if (!origin) return;
   const base = source.read(ComputedBounds).transformOBB.rotation;
   const localRotation = mat4.multiply(

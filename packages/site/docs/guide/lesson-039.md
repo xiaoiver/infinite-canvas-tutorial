@@ -303,7 +303,8 @@ const node: RectSerializedNode = {
     `z` is the front plane's elevation; the companion center is at `z - depth / 2`.
 -   Ring rotation writes `extrude3d.rotation`: XYZ Euler angles in radians, relative
     to the source's existing world-space 2D rotation. It leaves the source's 2D
-    `rotation` intact. The companion composes `Rz(sourceAngle) × Rx(x) × Ry(y) × Rz(z)`.
+    `rotation` intact. For an ordinary rotated shape, the companion composes
+    `Rz(sourceAngle) × Rx(x) × Ry(y) × Rz(z)`.
 
 Release commits once; cancellation restores the preview. Undo/redo and document
 reload restore the same pose. Disabling extrusion or replacing its companion
@@ -314,14 +315,17 @@ an obsolete companion.
 Object values default to depth 100, elevation 0 and rotation `[0, 0, 0]`. An update
 replaces the whole option value: omitted fields return to those defaults. There
 are no scale handles yet; use rectangle dimensions and `depth` to change size.
-The existing world-AABB-based extrusion footprint is unchanged, so this does not
-add exact extrusion geometry for sheared or rotated rectangular footprints.
+Rect extrusion follows its local corners through rotation and scale. Rounded
+corners, reflections and shear from transformed parents are baked into the mesh,
+so their footprint remains aligned with the editable 2D source. A singular
+parent transform cannot produce a new mesh.
 
 ### Extruding a closed Path {#extrude-path}
 
 A closed Path with one solid fill can use the same `extrude3d` option. Its front
 and back faces follow the filled contours, including holes; editing `d` or
-`fillRule` rebuilds the mesh while moving or rotating the source reuses it.
+`fillRule` rebuilds the mesh. Translation reuses it. Shear from transformed
+parents is baked into the mesh, so changes to that linear transform rebuild it.
 
 ```ts
 const vector: PathSerializedNode = {
@@ -338,7 +342,7 @@ const vector: PathSerializedNode = {
 ```
 
 All subpaths must be closed. Open paths, stroke layers, multiple or non-solid
-fills, non-manifold contours and sheared transforms remain visible in 2D. The
+fills, non-manifold contours and singular transforms remain visible in 2D. The
 Path keeps its original document node and supports gizmo edits, undo and reload.
 
 `sideColor` is an optional CSS color for the walls; the front and back keep the
@@ -370,7 +374,7 @@ as elliptical corner arcs. A missing radius defaults to the other, and each
 radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
 importer still stores a single corner radius.
 Open contours, stroked shapes, gradients and unsupported SVG shapes remain in 2D.
-Shearing a Path on the canvas also keeps it in 2D. SVG
+SVG
 transforms and viewBox scaling follow the existing importer, which does not
 faithfully preserve shear; avoid sheared SVG input until that importer supports it.
 

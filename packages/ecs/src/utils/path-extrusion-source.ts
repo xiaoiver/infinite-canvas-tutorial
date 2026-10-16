@@ -26,6 +26,7 @@ function forTransform(
     mirrored?: PathExtrusionMesh;
   },
 ): PathExtrusionMesh | undefined {
+  if (entry.mesh?.bakedTransform) return entry.mesh;
   const { m00, m01, m10, m11 } = entity.read(GlobalTransform).matrix;
   if (m00 * m11 - m01 * m10 >= 0 || !entry.mesh) return entry.mesh;
   if (!entry.mirrored) {
@@ -48,7 +49,7 @@ function forTransform(
   return entry.mirrored;
 }
 
-/** A 3D pose cannot represent a sheared 2D source without a model matrix. */
+/** Reject singular or non-finite source transforms; shear is baked into geometry. */
 export function pathExtrusionTransformSupported(entity: Entity): boolean {
   if (!entity.has(GlobalTransform)) return false;
   const { m00, m01, m10, m11 } = entity.read(GlobalTransform).matrix;
@@ -58,7 +59,7 @@ export function pathExtrusionTransformSupported(entity: Entity): boolean {
     a > 0 &&
     b > 0 &&
     Number.isFinite(a * b) &&
-    Math.abs(m00 * m10 + m01 * m11) <= a * b * 1e-6
+    Math.abs(m00 * m11 - m01 * m10) > a * b * 1e-8
   );
 }
 
@@ -85,10 +86,15 @@ export function pathExtrusionGeometry(
   const { m00, m01, m10, m11 } = entity.read(GlobalTransform).matrix;
   const scaleX = Math.hypot(m00, m01);
   const scaleY = Math.hypot(m10, m11);
+  const bakedTransform =
+    Math.abs(m00 * m10 + m01 * m11) > scaleX * scaleY * 1e-6;
   const bevelKey =
-    bevelSize > 0
-      ? `${scaleX},${scaleY},${depth},${bevelSize},${bevelSegments}`
-      : '';
+    `${bakedTransform ? `${m00},${m01},${m10},${m11}` : ''}|` +
+    (bevelSize > 0
+      ? `${
+          bakedTransform ? '1,1' : `${scaleX},${scaleY}`
+        },${depth},${bevelSize},${bevelSegments}`
+      : '');
   const previous = cache.get(entity);
   if (
     previous?.d === d &&
@@ -97,12 +103,29 @@ export function pathExtrusionGeometry(
   )
     return forTransform(entity, previous);
 
+  // Keep the source angle in the 3D pose and bake only residual scale/shear.
+  const angle = Math.atan2(m01, m00);
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const residual: [number, number, number, number] = [
+    cos * m00 + sin * m01,
+    -sin * m00 + cos * m01,
+    cos * m10 + sin * m11,
+    -sin * m10 + cos * m11,
+  ];
   const mesh = buildPathExtrusionMesh(
     d,
     fillRule,
     bevelSize > 0
-      ? { scaleX, scaleY, depth, bevelSize, bevelSegments }
+      ? {
+          scaleX: bakedTransform ? 1 : scaleX,
+          scaleY: bakedTransform ? 1 : scaleY,
+          depth,
+          bevelSize,
+          bevelSegments,
+        }
       : undefined,
+    bakedTransform ? residual : undefined,
   );
   const entry = { d, fillRule, bevelKey, mesh };
   cache.set(entity, entry);

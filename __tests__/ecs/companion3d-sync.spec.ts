@@ -8,6 +8,7 @@ import {
   EnsureMesh3DNodes,
   Extrude3D,
   Extrude3DTarget,
+  GlobalTransform,
   Material3D,
   Mesh3DNode,
   Mesh3D,
@@ -241,6 +242,147 @@ it('updates the Rect bevel mesh when its bounds change', async () => {
   expect(target.read(Mesh3D).positions).not.toBe(initial);
   expect(capExtent()[0]).toBeCloseTo(-0.475);
   expect(capExtent()[1]).toBeCloseTo(0.475);
+});
+
+it('uses the actual rotated Rect footprint instead of its world AABB', async () => {
+  await world.reset(api, [rect({ rotation: Math.PI / 4 })]);
+  const pose = companion('box').read(Transform3D);
+  const { positions } = companion('box').read(Mesh3D);
+  const matrix = source('box').read(GlobalTransform).matrix;
+  expect(pose.scale[0]).toBeCloseTo(40);
+  expect(pose.scale[1]).toBeCloseTo(60);
+  expect(pose.scale[2]).toBe(20);
+  for (let i = 0; i < 4; i++) {
+    const localX = positions[i * 3] * pose.scale[0];
+    const localY = positions[i * 3 + 1] * pose.scale[1];
+    const actualX =
+      pose.translation[0] +
+      Math.cos(pose.rotation[2]) * localX -
+      Math.sin(pose.rotation[2]) * localY;
+    const actualY =
+      pose.translation[1] +
+      Math.sin(pose.rotation[2]) * localX +
+      Math.cos(pose.rotation[2]) * localY;
+    const x = i === 0 || i === 3 ? 0 : 40;
+    const y = i < 2 ? 0 : 60;
+    expect(actualX).toBeCloseTo(matrix.m00 * x + matrix.m10 * y + matrix.m20);
+    expect(actualY).toBeCloseTo(matrix.m01 * x + matrix.m11 * y + matrix.m21);
+  }
+});
+
+it('bakes sheared and rounded Rect footprints into editable extrusions', async () => {
+  await world.reset(api, [
+    { id: 'parent', type: 'g', zIndex: 0, x: 20, y: 30, scaleX: 2 },
+    rect({ parentId: 'parent', rotation: Math.PI / 4 }),
+  ]);
+  const target = companion('box');
+  const pose = target.read(Transform3D);
+  expect(pose.scale).toEqual([1, 1, 20]);
+  const matrix = source('box').read(GlobalTransform).matrix;
+  const { positions, normals } = target.read(Mesh3D);
+  const points = new Set<string>();
+  for (let i = 0; i < positions.length; i += 3) {
+    if (normals[i + 2] !== 1) continue;
+    const x = positions[i];
+    const y = positions[i + 1];
+    const angle = pose.rotation[2];
+    points.add(
+      `${Math.round(
+        (Math.cos(angle) * x - Math.sin(angle) * y + pose.translation[0]) *
+          1000,
+      )},${Math.round(
+        (Math.sin(angle) * x + Math.cos(angle) * y + pose.translation[1]) *
+          1000,
+      )}`,
+    );
+  }
+  for (const [x, y] of [
+    [0, 0],
+    [40, 0],
+    [40, 60],
+    [0, 60],
+  ]) {
+    const worldX = matrix.m00 * x + matrix.m10 * y + matrix.m20;
+    const worldY = matrix.m01 * x + matrix.m11 * y + matrix.m21;
+    expect(
+      points.has(`${Math.round(worldX * 1000)},${Math.round(worldY * 1000)}`),
+    ).toBe(true);
+  }
+  await world.edit(
+    api,
+    (editor) =>
+      editor.updateNode(editor.getNodeById('box'), { cornerRadius: 8 }),
+    'NEVER',
+  );
+  expect(target.read(Mesh3D).positions.length).toBeGreaterThan(72);
+  const roundedPositions = target.read(Mesh3D).positions;
+  await world.edit(
+    api,
+    (editor) =>
+      editor.updateNode(editor.getNodeById('box'), {
+        extrude3d: { depth: 30 },
+      }),
+    'NEVER',
+  );
+  expect(target.read(Mesh3D).positions).toBe(roundedPositions);
+  await world.edit(
+    api,
+    (editor) =>
+      editor.updateNode(editor.getNodeById('box'), {
+        extrude3d: { depth: 20, bevelSize: 1 },
+      }),
+    'NEVER',
+  );
+  expect(
+    [...target.read(Mesh3D).normals].some(
+      (value, index) => index % 3 === 2 && value > 0 && value < 1,
+    ),
+  ).toBe(true);
+  const original = target.read(Mesh3D).positions;
+  await world.edit(
+    api,
+    (editor) => editor.updateNode(editor.getNodeById('box'), { x: 50 }),
+    'NEVER',
+  );
+  expect(target.read(Mesh3D).positions).toBe(original);
+  await world.edit(
+    api,
+    (editor) => editor.updateNode(editor.getNodeById('parent'), { scaleX: 3 }),
+    'NEVER',
+  );
+  expect(target.read(Mesh3D).positions).not.toBe(original);
+  await world.edit(
+    api,
+    (editor) => editor.updateNode(editor.getNodeById('box'), { scaleX: -1 }),
+    'NEVER',
+  );
+  expect(target.read(Transform3D).scale).toEqual([1, 1, 20]);
+  const reflected = target.read(Mesh3D);
+  expect(reflected.indices.length).toBeGreaterThan(0);
+  for (let i = 0; i < reflected.indices.length; i += 3) {
+    const a = reflected.indices[i] * 3;
+    const b = reflected.indices[i + 1] * 3;
+    const c = reflected.indices[i + 2] * 3;
+    const ux = reflected.positions[b] - reflected.positions[a];
+    const uy = reflected.positions[b + 1] - reflected.positions[a + 1];
+    const uz = reflected.positions[b + 2] - reflected.positions[a + 2];
+    const vx = reflected.positions[c] - reflected.positions[a];
+    const vy = reflected.positions[c + 1] - reflected.positions[a + 1];
+    const vz = reflected.positions[c + 2] - reflected.positions[a + 2];
+    const dot =
+      (uy * vz - uz * vy) * reflected.normals[a] +
+      (uz * vx - ux * vz) * reflected.normals[a + 1] +
+      (ux * vy - uy * vx) * reflected.normals[a + 2];
+    expect(dot).toBeGreaterThan(0);
+  }
+});
+
+it('keeps a Rect with a singular parent transform out of the 3D mesh layer', async () => {
+  await world.reset(api, [
+    { id: 'parent', type: 'g', zIndex: 0, rotation: 0.4, scaleX: 0 },
+    rect({ parentId: 'parent' }),
+  ]);
+  expect(source('box').read(Extrude3D).meshEntity).toBeUndefined();
 });
 
 it('rebuilds the Rect mesh when its bevel profile changes', async () => {

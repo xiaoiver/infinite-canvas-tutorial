@@ -50,6 +50,36 @@ const elements = () => {
   ) as SVGElement[];
 };
 
+it('imports rotated SVG rectangles with their original center and dimensions', () => {
+  const dom = new JSDOM(
+    `<svg xmlns="http://www.w3.org/2000/svg">
+      <rect id="rotated" x="10" y="20" width="40" height="30"
+        transform="rotate(30 30 35)" fill="red"/>
+    </svg>`,
+    { contentType: 'image/svg+xml' },
+  );
+  const nodes = svgElementsToExtrudedNodes(
+    Array.from(
+      dom.window.document.querySelector('svg')!.children,
+    ) as SVGElement[],
+    24,
+  );
+  const node = nodes.find((item) => item.id === 'rotated')!;
+  expect(node).toMatchObject({
+    type: 'rect',
+    width: 40,
+    height: 30,
+    extrude3d: 24,
+  });
+  expect(node.rotation).toBeCloseTo(Math.PI / 6);
+  expect(
+    node.x + Math.cos(node.rotation!) * 20 - Math.sin(node.rotation!) * 15,
+  ).toBeCloseTo(30);
+  expect(
+    node.y + Math.sin(node.rotation!) * 20 + Math.cos(node.rotation!) * 15,
+  ).toBeCloseTo(35);
+});
+
 it('preserves independent SVG rect radii when creating extrusion paths', () => {
   const dom = new JSDOM(
     `<svg xmlns="http://www.w3.org/2000/svg">

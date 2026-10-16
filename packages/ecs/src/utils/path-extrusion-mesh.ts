@@ -6,6 +6,9 @@ import type { Mesh3DGeometryData } from './geometry3d/types';
 export interface PathExtrusionMesh {
   geometry: Mesh3DGeometryData;
   center: [number, number];
+  /** Local point corresponding to center when the source's affine transform is baked. */
+  sourceCenter?: [number, number];
+  bakedTransform?: boolean;
 }
 
 export interface PathBevelOptions {
@@ -22,6 +25,7 @@ export function buildPathExtrusionMesh(
   d: string,
   fillRule: CanvasFillRule = 'nonzero',
   bevel?: PathBevelOptions,
+  linear?: readonly [number, number, number, number],
 ): PathExtrusionMesh | undefined {
   try {
     const { subPaths } = parsePath(d);
@@ -37,7 +41,20 @@ export function buildPathExtrusionMesh(
     )
       return;
 
-    const contours = flattenPath(subPaths, 2);
+    const contours = flattenPath(
+      subPaths,
+      linear ? 2 * Math.max(1, Math.hypot(...linear)) : 2,
+    );
+    if (linear) {
+      const [m00, m01, m10, m11] = linear;
+      for (const contour of contours) {
+        for (const point of contour) {
+          const [x, y] = point;
+          point[0] = m00 * x + m10 * y;
+          point[1] = m01 * x + m11 * y;
+        }
+      }
+    }
     const useBevel =
       bevel &&
       bevel.bevelSize > 0 &&
@@ -86,6 +103,17 @@ export function buildPathExtrusionMesh(
     for (let i = 0; i < positions.length; i += 3) {
       positions[i] -= center[0];
       positions[i + 1] -= center[1];
+    }
+    if (linear) {
+      const [m00, m01, m10, m11] = linear;
+      const determinant = m00 * m11 - m01 * m10;
+      if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12)
+        return;
+      const sourceCenter: [number, number] = [
+        (m11 * center[0] - m10 * center[1]) / determinant,
+        (-m01 * center[0] + m00 * center[1]) / determinant,
+      ];
+      return { geometry, center, sourceCenter, bakedTransform: true };
     }
     return { geometry, center };
   } catch {
