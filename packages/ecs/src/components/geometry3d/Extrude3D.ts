@@ -8,7 +8,10 @@ export class Extrude3D {
   /** Extrusion depth in canvas world units (along view axis). */
   @field.float32 declare depth: number;
 
-  /** Optional CSS color for the companion mesh's side walls. */
+  /** Straight bevel size in canvas world units. */
+  @field.float32 declare bevelSize: number;
+
+  /** Optional CSS color for the companion mesh's side walls and bevels. */
   @field.object declare sideColor: string | null;
 
   /** Elevation of the unrotated front plane; the mesh center is z - depth / 2. */
@@ -25,6 +28,7 @@ export class Extrude3D {
       Object.assign(this, props);
     }
     this.depth ??= 100;
+    this.bevelSize ??= 0;
     this.sideColor ??= null;
     this.z ??= 0;
     this.rotation ??= [0, 0, 0];

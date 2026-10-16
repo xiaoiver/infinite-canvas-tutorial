@@ -1,6 +1,7 @@
 import libtess from 'libtess';
 import { triangulate } from '../tessy';
 import type { Mesh3DGeometryData } from './types';
+import { insetConvexContour } from './inset-convex-contour';
 
 type Point = [number, number];
 
@@ -10,6 +11,7 @@ export type PathExtrusionResult =
       ok: false;
       reason:
         | 'invalid-depth'
+        | 'invalid-bevel'
         | 'invalid-contour'
         | 'empty-fill'
         | 'tessellation-failed'
@@ -104,6 +106,7 @@ export function extrudePathContours(
   rawContours: Point[][],
   depth: number,
   fillRule: CanvasFillRule = 'nonzero',
+  bevel = 0,
 ): PathExtrusionResult {
   if (
     !Number.isFinite(depth) ||
@@ -112,6 +115,12 @@ export function extrudePathContours(
   ) {
     return { ok: false, reason: 'invalid-depth' };
   }
+  if (
+    !Number.isFinite(bevel) ||
+    !Number.isFinite(Math.fround(bevel)) ||
+    bevel < 0
+  )
+    return { ok: false, reason: 'invalid-bevel' };
   if (!rawContours.length) return { ok: false, reason: 'empty-fill' };
   const contours: Point[][] = [];
   for (const raw of rawContours) {
@@ -128,21 +137,34 @@ export function extrudePathContours(
   }
   if (!boundaries) return { ok: false, reason: 'tessellation-failed' };
   if (!boundaries.length) return { ok: false, reason: 'empty-fill' };
+  // The first bevel stage supports only a single convex exterior. Preserve
+  // sharp geometry when offsetting could collapse a cap or alter topology.
+  const inset =
+    bevel > 0 && bevel * 2 < depth && boundaries.length === 1
+      ? insetConvexContour(boundaries[0], bevel)
+      : undefined;
+  const capBoundaries = inset ? [inset] : boundaries;
+  const fail = (
+    reason: 'empty-fill' | 'tessellation-failed' | 'non-manifold',
+  ): PathExtrusionResult =>
+    inset
+      ? extrudePathContours(rawContours, depth, fillRule)
+      : { ok: false, reason };
 
   // Triangulating the resolved boundaries ensures that caps and walls describe
   // the same region even when source contours overlap or self-intersect.
   let triangles: number[];
   try {
-    triangles = triangulate(boundaries, 'nonzero');
+    triangles = triangulate(capBoundaries, 'nonzero');
   } catch {
-    return { ok: false, reason: 'tessellation-failed' };
+    return fail('tessellation-failed');
   }
-  if (!triangles.length) return { ok: false, reason: 'empty-fill' };
+  if (!triangles.length) return fail('empty-fill');
   if (
     triangles.length % 6 !== 0 ||
     triangles.some((n) => !Number.isFinite(n))
   ) {
-    return { ok: false, reason: 'tessellation-failed' };
+    return fail('tessellation-failed');
   }
 
   let minX = Infinity;
@@ -158,7 +180,7 @@ export function extrudePathContours(
     }
   }
   if (minX === maxX || minY === maxY) {
-    return { ok: false, reason: 'empty-fill' };
+    return fail('empty-fill');
   }
 
   const positions: number[] = [];
@@ -216,7 +238,7 @@ export function extrudePathContours(
     const c: Point = [triangles[i + 4], triangles[i + 5]];
     const cross = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
     if (!Number.isFinite(cross) || cross === 0) {
-      return { ok: false, reason: 'tessellation-failed' };
+      return fail('tessellation-failed');
     }
     const [first, second, third] = cross > 0 ? [a, b, c] : [a, c, b];
     indices.push(
@@ -229,7 +251,28 @@ export function extrudePathContours(
     );
   }
 
-  for (const boundary of boundaries) {
+  const addQuad = (
+    a: Point,
+    b: Point,
+    c: Point,
+    d: Point,
+    z0: number,
+    z1: number,
+    normal: [number, number, number],
+    u0: number,
+    u1: number,
+    v0: number,
+    v1: number,
+  ) => {
+    const base = positions.length / 3;
+    addVertex(a[0], a[1], z0, ...normal, u0, v0);
+    addVertex(b[0], b[1], z0, ...normal, u1, v0);
+    addVertex(c[0], c[1], z1, ...normal, u1, v1);
+    addVertex(d[0], d[1], z1, ...normal, u0, v1);
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  };
+
+  for (const [boundaryIndex, boundary] of boundaries.entries()) {
     let distance = 0;
     for (let i = 0; i < boundary.length; i++) {
       const a = boundary[i];
@@ -238,17 +281,70 @@ export function extrudePathContours(
       const dy = b[1] - a[1];
       const length = Math.hypot(dx, dy);
       if (!Number.isFinite(length) || length === 0) {
-        return { ok: false, reason: 'tessellation-failed' };
+        return fail('tessellation-failed');
       }
       // libtess emits exterior loops counter-clockwise and holes clockwise.
       const nx = dy / length;
       const ny = -dx / length;
-      const base = positions.length / 3;
-      addVertex(a[0], a[1], -halfDepth, nx, ny, 0, distance, 0);
-      addVertex(b[0], b[1], -halfDepth, nx, ny, 0, distance + length, 0);
-      addVertex(b[0], b[1], halfDepth, nx, ny, 0, distance + length, depth);
-      addVertex(a[0], a[1], halfDepth, nx, ny, 0, distance, depth);
-      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      const chamfer = boundaryIndex === 0 ? inset : undefined;
+      if (chamfer) {
+        const innerA = chamfer[i];
+        const innerB = chamfer[(i + 1) % chamfer.length];
+        const diagonal = 1 / Math.sqrt(2);
+        addQuad(
+          innerA,
+          innerB,
+          b,
+          a,
+          -halfDepth,
+          -halfDepth + bevel,
+          [nx * diagonal, ny * diagonal, -diagonal],
+          distance,
+          distance + length,
+          0,
+          bevel,
+        );
+        addQuad(
+          a,
+          b,
+          b,
+          a,
+          -halfDepth + bevel,
+          halfDepth - bevel,
+          [nx, ny, 0],
+          distance,
+          distance + length,
+          bevel,
+          depth - bevel,
+        );
+        addQuad(
+          a,
+          b,
+          innerB,
+          innerA,
+          halfDepth - bevel,
+          halfDepth,
+          [nx * diagonal, ny * diagonal, diagonal],
+          distance,
+          distance + length,
+          depth - bevel,
+          depth,
+        );
+      } else {
+        addQuad(
+          a,
+          b,
+          b,
+          a,
+          -halfDepth,
+          halfDepth,
+          [nx, ny, 0],
+          distance,
+          distance + length,
+          0,
+          depth,
+        );
+      }
       distance += length;
     }
   }
@@ -258,7 +354,7 @@ export function extrudePathContours(
     normals.some((n) => !Number.isFinite(Math.fround(n))) ||
     uvs.some((n) => !Number.isFinite(Math.fround(n)))
   ) {
-    return { ok: false, reason: 'tessellation-failed' };
+    return fail('tessellation-failed');
   }
 
   // A self crossing can create two solid lobes sharing a vertical edge. The
@@ -274,7 +370,7 @@ export function extrudePathContours(
     for (let j = 0; j < 3; j++) {
       const a = pointKey(indices[i + j]);
       const b = pointKey(indices[i + ((j + 1) % 3)]);
-      if (a === b) return { ok: false, reason: 'non-manifold' };
+      if (a === b) return fail('non-manifold');
       const forward = a < b;
       const key = forward ? `${a}|${b}` : `${b}|${a}`;
       const edge = edges.get(key) ?? { count: 0, balance: 0 };
@@ -288,7 +384,7 @@ export function extrudePathContours(
       ({ count, balance }) => count !== 2 || balance !== 0,
     )
   ) {
-    return { ok: false, reason: 'non-manifold' };
+    return fail('non-manifold');
   }
 
   return {

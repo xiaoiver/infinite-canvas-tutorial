@@ -28,6 +28,7 @@ import { ensureCompanionGizmoWhenSourceSelected } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
 import { syncMaterial3D, syncTransform3D } from '../utils/sync3d';
 import { pathExtrusionGeometry } from '../utils/path-extrusion-source';
+import { rectExtrusionGeometry } from '../utils/rect-extrusion-source';
 
 /**
  * Keeps Extrude3D mesh companions aligned to their 2D sources.
@@ -82,25 +83,24 @@ export class SyncExtrude3D extends System {
         continue;
       }
 
-      if (entity.has(Path)) {
-        const pathMesh = pathExtrusionGeometry(entity);
-        if (!pathMesh) {
-          meshEntity.add(ToBeDeleted);
-          entity.write(Extrude3D).meshEntity = undefined;
-          continue;
-        }
-        const { geometry } = pathMesh;
-        if (
-          meshEntity.read(Mesh3D).positions !== geometry.positions ||
-          meshEntity.read(Mesh3D).indices !== geometry.indices
-        ) {
-          Object.assign(meshEntity.write(Mesh3D), {
-            positions: geometry.positions,
-            normals: geometry.normals,
-            uvs: geometry.uvs ?? null,
-            indices: geometry.indices,
-          });
-        }
+      const geometry = entity.has(Path)
+        ? pathExtrusionGeometry(entity)?.geometry
+        : rectExtrusionGeometry(entity);
+      if (!geometry) {
+        meshEntity.add(ToBeDeleted);
+        entity.write(Extrude3D).meshEntity = undefined;
+        continue;
+      }
+      if (
+        meshEntity.read(Mesh3D).positions !== geometry.positions ||
+        meshEntity.read(Mesh3D).indices !== geometry.indices
+      ) {
+        Object.assign(meshEntity.write(Mesh3D), {
+          positions: geometry.positions,
+          normals: geometry.normals,
+          uvs: geometry.uvs ?? null,
+          indices: geometry.indices,
+        });
       }
 
       const dragging =

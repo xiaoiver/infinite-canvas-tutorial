@@ -1,5 +1,6 @@
 import { extrudePathContours } from '../../packages/ecs/src/utils/extrude3d-geometry';
 import type { Mesh3DGeometryData } from '../../packages/ecs/src/utils/geometry3d/types';
+import { insetConvexContour } from '../../packages/ecs/src/utils/geometry3d/inset-convex-contour';
 
 type Point = [number, number];
 const rect = (x: number, y: number, w: number, h: number): Point[] => [
@@ -108,6 +109,75 @@ it('points wall normals out of the solid, including into a hole', () => {
   }
   expect(outer).toBeGreaterThan(0);
   expect(inner).toBeGreaterThan(0);
+});
+
+it('chamfers both ends of a convex closed contour without opening the mesh', () => {
+  const result = extrudePathContours([rect(0, 0, 10, 10)], 8, 'nonzero', 1);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(capArea(result.geometry, 1)).toBeCloseTo(64);
+  expect(capArea(result.geometry, -1)).toBeCloseTo(64);
+  const { normals, positions } = result.geometry;
+  expect(
+    [...normals].some((value, i) => i % 3 === 2 && value > 0.6 && value < 0.8),
+  ).toBe(true);
+  expect(Math.max(...positions.filter((_, i) => i % 3 === 2))).toBe(4);
+  assertClosed(result.geometry);
+});
+
+it('bevels a sampled circular contour', () => {
+  const circle: Point[] = Array.from({ length: 48 }, (_, i) => [
+    10 * Math.cos((i * 2 * Math.PI) / 48),
+    10 * Math.sin((i * 2 * Math.PI) / 48),
+  ]);
+  const result = extrudePathContours([circle], 4, 'nonzero', 0.5);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(capArea(result.geometry, 1)).toBeLessThan(300);
+  expect(capArea(result.geometry, 1)).toBeGreaterThan(280);
+  assertClosed(result.geometry);
+});
+
+it.each([
+  [[rect(0, 0, 10, 10), rect(2, 2, 6, 6)], 'evenodd'],
+  [[rect(0, 0, 10, 1)], 'nonzero'],
+] as [Point[][], CanvasFillRule][])(
+  'keeps sharp geometry when beveling would change topology %#',
+  (contours, fillRule) => {
+    const sharp = extrudePathContours(contours, 8, fillRule);
+    const requested = extrudePathContours(contours, 8, fillRule, 1);
+    expect(sharp.ok).toBe(true);
+    expect(requested).toEqual(sharp);
+  },
+);
+
+it('does not offset a concave contour with the convex inset helper', () => {
+  expect(
+    insetConvexContour(
+      [
+        [0, 0],
+        [10, 0],
+        [10, 5],
+        [5, 5],
+        [5, 10],
+        [0, 10],
+      ],
+      1,
+    ),
+  ).toBeUndefined();
+});
+
+it('rejects nonfinite and negative bevel sizes', () => {
+  expect(extrudePathContours([rect(0, 0, 10, 10)], 8, 'nonzero', -1)).toEqual({
+    ok: false,
+    reason: 'invalid-bevel',
+  });
+  expect(
+    extrudePathContours([rect(0, 0, 10, 10)], 8, 'nonzero', Infinity),
+  ).toEqual({
+    ok: false,
+    reason: 'invalid-bevel',
+  });
 });
 
 it('rejects a self crossing that would create a non-manifold vertical edge', () => {

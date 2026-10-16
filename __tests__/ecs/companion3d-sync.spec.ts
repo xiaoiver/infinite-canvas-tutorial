@@ -221,6 +221,28 @@ it('creates one scoped extrusion and camera per canvas, then synchronizes their 
   ).toHaveLength(1);
 });
 
+it('updates the Rect bevel mesh when its bounds change', async () => {
+  await world.reset(api, [rect({ extrude3d: { depth: 20, bevelSize: 2 } })]);
+  const target = companion('box');
+  const capExtent = () => {
+    const { positions, normals } = target.read(Mesh3D);
+    const xs = [...positions].filter(
+      (_, i) => i % 3 === 0 && normals[i + 2] === 1,
+    );
+    return [Math.min(...xs), Math.max(...xs)];
+  };
+  expect(capExtent()[0]).toBeCloseTo(-0.45);
+  expect(capExtent()[1]).toBeCloseTo(0.45);
+  const initial = target.read(Mesh3D).positions;
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('box'), { width: 80 }),
+  );
+  expect(companion('box')).toBe(target);
+  expect(target.read(Mesh3D).positions).not.toBe(initial);
+  expect(capExtent()[0]).toBeCloseTo(-0.475);
+  expect(capExtent()[1]).toBeCloseTo(0.475);
+});
+
 it('deletes a replaced extrusion companion while preserving the replacement', async () => {
   await world.reset(api, [rect()]);
   const old = companion('box');

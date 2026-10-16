@@ -372,6 +372,12 @@ Shearing a Path on the canvas also keeps it in 2D. SVG
 transforms and viewBox scaling follow the existing importer, which does not
 faithfully preserve shear; avoid sheared SVG input until that importer supports it.
 
+Set `extrude3d.bevelSize` (in canvas units) for a straight bevel on both ends of
+convex Path and Rect extrusions. The demo exposes this as **Bevel**. The inset
+is checked before building the cap; contours with holes, concave corners or
+insufficient room retain their sharp edges. Changing depth or size rebuilds
+the companion mesh while keeping the source editable.
+
 The example's **Download GLB** button exports the generated 3D meshes as a
 self-contained glTF binary file. Use `api.export` to download all ready extruded
 shapes, or pass nodes to export only a selection (including children of selected

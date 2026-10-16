@@ -108,6 +108,15 @@ it('preserves side color when gizmo edits the extrusion pose', () => {
   });
 });
 
+it('preserves bevel size in wire values and across gizmo pose edits', () => {
+  const previous = { depth: 20, bevelSize: 2 };
+  expect(extrude3DFromWire(previous)?.bevelSize).toBe(2);
+  expect(extrude3DToWire(extrude3DFromWire(previous)!)).toMatchObject(previous);
+  expect(
+    extrude3DToWire({ depth: 30, z: 0, rotation: [0, 0, 0] }, previous),
+  ).toMatchObject({ depth: 30, bevelSize: 2 });
+});
+
 it.each([
   { rotation: [0.2, -0.3, 0.4], base: 0.6 },
   { rotation: [0.2, Math.PI / 2, 0.4], base: 0 },

@@ -123,6 +123,47 @@ it('updates side color without rebuilding the Path mesh and restores it on undo'
   expect(mesh().read(Material3D).sideColor).toEqual([0, 1, 0, 1]);
 });
 
+it('keeps a world-size bevel while depth changes and restores geometry on undo', async () => {
+  await world.reset(api, [path({ extrude3d: { depth: 20, bevelSize: 2 } })]);
+  const companion = mesh();
+  const capExtent = () => {
+    const { positions, normals } = companion.read(Mesh3D);
+    const xs = [...positions].filter(
+      (_, i) => i % 3 === 0 && normals[i + 2] === 1,
+    );
+    return [Math.min(...xs), Math.max(...xs)];
+  };
+  expect(capExtent()).toEqual([-18, 18]);
+  const beveled = companion.read(Mesh3D).positions;
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('vector'), {
+      extrude3d: { depth: 30, bevelSize: 2 },
+    }),
+  );
+  expect(mesh()).toBe(companion);
+  expect(companion.read(Mesh3D).positions).not.toBe(beveled);
+  expect(capExtent()).toEqual([-18, 18]);
+  await world.history(api, 'undo');
+  expect(capExtent()).toEqual([-18, 18]);
+  expect(companion.read(Transform3D).scale[2]).toBe(20);
+});
+
+it('rebuilds a beveled Path for a nonuniform source scale', async () => {
+  await world.reset(api, [path({ extrude3d: { depth: 20, bevelSize: 2 } })]);
+  const original = mesh().read(Mesh3D).positions;
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('vector'), { scaleX: 2 }),
+  );
+  const companion = mesh();
+  expect(companion.read(Mesh3D).positions).not.toBe(original);
+  const { positions, normals } = companion.read(Mesh3D);
+  const frontX = [...positions].filter(
+    (_, i) => i % 3 === 0 && normals[i + 2] === 1,
+  );
+  expect(Math.min(...frontX) * 2).toBeCloseTo(-38);
+  expect(Math.max(...frontX) * 2).toBeCloseTo(38);
+});
+
 it('rebuilds only after Path geometry changes and restores it through history', async () => {
   await world.reset(api, [path()]);
   const companion = mesh();
