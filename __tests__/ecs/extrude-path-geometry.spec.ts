@@ -208,17 +208,18 @@ it('bevels a hole while keeping a closed volume', () => {
 });
 
 it.each([
-  ['rectangle', [rect(0, 0, 20, 20)], 'nonzero', 324],
-  ['holed ring', [rect(0, 0, 20, 20), rect(7, 7, 6, 6)], 'evenodd', 260],
-] as [string, Point[][], CanvasFillRule, number][])(
+  ['rectangle', [rect(0, 0, 20, 20)], 'nonzero', 324, 88],
+  ['holed ring', [rect(0, 0, 20, 20), rect(7, 7, 6, 6)], 'evenodd', 260, 176],
+] as [string, Point[][], CanvasFillRule, number, number][])(
   'rounds the bevel of a %s while preserving its caps and closed volume',
-  (_name, contours, fillRule, area) => {
+  (_name, contours, fillRule, area, vertexCount) => {
     const result = extrudePathContours(contours, 8, fillRule, 1, 4);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     const { geometry } = result;
     expect(capArea(geometry, 1)).toBeCloseTo(area);
     expect(capArea(geometry, -1)).toBeCloseTo(area);
+    expect(geometry.positions.length / 3).toBe(vertexCount);
     expect(
       [...geometry.normals].some(
         (normal, i) => i % 3 === 2 && normal > 0.3 && normal < 0.5,

@@ -286,25 +286,17 @@ export function extrudePathContours(
     addVertex(d[0], d[1], z1, ...normal, u0, v1);
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   };
-  const addProfileQuad = (
-    a: Point,
-    b: Point,
-    c: Point,
-    d: Point,
-    z0: number,
-    z1: number,
-    normal0: [number, number, number],
-    normal1: [number, number, number],
-    u0: number,
-    u1: number,
-  ) => {
-    const base = positions.length / 3;
-    addVertex(a[0], a[1], z0, ...normal0, u0, z0 + halfDepth);
-    addVertex(b[0], b[1], z0, ...normal0, u1, z0 + halfDepth);
-    addVertex(c[0], c[1], z1, ...normal1, u1, z1 + halfDepth);
-    addVertex(d[0], d[1], z1, ...normal1, u0, z1 + halfDepth);
-    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
-  };
+  const roundedProfile =
+    insets && bevelSegments > 1
+      ? Array.from({ length: bevelSegments + 1 }, (_, step) => {
+          const angle = (step * Math.PI) / (2 * bevelSegments);
+          return {
+            fraction: step === bevelSegments ? 1 : 1 - Math.cos(angle),
+            radial: step === bevelSegments ? 0 : Math.cos(angle),
+            axial: step === bevelSegments ? 1 : Math.sin(angle),
+          };
+        })
+      : [];
 
   for (const [boundaryIndex, boundary] of boundaries.entries()) {
     let distance = 0;
@@ -339,85 +331,19 @@ export function extrudePathContours(
             0,
             bevel,
           );
-        } else {
-          const ringPoint = (
-            outer: Point,
-            inner: Point,
-            step: number,
-          ): Point => {
-            if (step === 0) return outer;
-            if (step === bevelSegments) return inner;
-            const angle = (step * Math.PI) / (2 * bevelSegments);
-            const fraction = 1 - Math.cos(angle);
-            return [
-              outer[0] + (inner[0] - outer[0]) * fraction,
-              outer[1] + (inner[1] - outer[1]) * fraction,
-            ];
-          };
-          const ringZ = (step: number, front: boolean): number => {
-            if (step === bevelSegments) return front ? halfDepth : -halfDepth;
-            const rise =
-              bevel * Math.sin((step * Math.PI) / (2 * bevelSegments));
-            return front ? halfDepth - bevel + rise : -halfDepth + bevel - rise;
-          };
-          const ringNormal = (
-            step: number,
-            front: boolean,
-          ): [number, number, number] => {
-            if (step === bevelSegments) return [0, 0, front ? 1 : -1];
-            const angle = (step * Math.PI) / (2 * bevelSegments);
-            return [
-              nx * Math.cos(angle),
-              ny * Math.cos(angle),
-              (front ? 1 : -1) * Math.sin(angle),
-            ];
-          };
-          for (let step = 0; step < bevelSegments; step++) {
-            const outerA = ringPoint(a, innerA, step);
-            const outerB = ringPoint(b, innerB, step);
-            const nextA = ringPoint(a, innerA, step + 1);
-            const nextB = ringPoint(b, innerB, step + 1);
-            addProfileQuad(
-              nextA,
-              nextB,
-              outerB,
-              outerA,
-              ringZ(step + 1, false),
-              ringZ(step, false),
-              ringNormal(step + 1, false),
-              ringNormal(step, false),
-              distance,
-              distance + length,
-            );
-            addProfileQuad(
-              outerA,
-              outerB,
-              nextB,
-              nextA,
-              ringZ(step, true),
-              ringZ(step + 1, true),
-              ringNormal(step, true),
-              ringNormal(step + 1, true),
-              distance,
-              distance + length,
-            );
-          }
-        }
-        addQuad(
-          a,
-          b,
-          b,
-          a,
-          -halfDepth + bevel,
-          halfDepth - bevel,
-          [nx, ny, 0],
-          distance,
-          distance + length,
-          bevel,
-          depth - bevel,
-        );
-        if (bevelSegments === 1) {
-          const diagonal = 1 / Math.sqrt(2);
+          addQuad(
+            a,
+            b,
+            b,
+            a,
+            -halfDepth + bevel,
+            halfDepth - bevel,
+            [nx, ny, 0],
+            distance,
+            distance + length,
+            bevel,
+            depth - bevel,
+          );
           addQuad(
             a,
             b,
@@ -430,6 +356,115 @@ export function extrudePathContours(
             distance + length,
             depth - bevel,
             depth,
+          );
+        } else {
+          // Each edge owns its hard corner, but adjacent profile bands share
+          // their ring vertices and the wall uses the same outer ring.
+          const frontA: number[] = [];
+          const frontB: number[] = [];
+          const backA: number[] = [];
+          const backB: number[] = [];
+          for (const [step, profile] of roundedProfile.entries()) {
+            const atA: Point =
+              step === 0
+                ? a
+                : step === bevelSegments
+                ? innerA
+                : [
+                    a[0] + (innerA[0] - a[0]) * profile.fraction,
+                    a[1] + (innerA[1] - a[1]) * profile.fraction,
+                  ];
+            const atB: Point =
+              step === 0
+                ? b
+                : step === bevelSegments
+                ? innerB
+                : [
+                    b[0] + (innerB[0] - b[0]) * profile.fraction,
+                    b[1] + (innerB[1] - b[1]) * profile.fraction,
+                  ];
+            const frontZ =
+              step === bevelSegments
+                ? halfDepth
+                : halfDepth - bevel + bevel * profile.axial;
+            const backZ =
+              step === bevelSegments
+                ? -halfDepth
+                : -halfDepth + bevel - bevel * profile.axial;
+            const xNormal = nx * profile.radial;
+            const yNormal = ny * profile.radial;
+            frontA.push(
+              addVertex(
+                atA[0],
+                atA[1],
+                frontZ,
+                xNormal,
+                yNormal,
+                profile.axial,
+                distance,
+                frontZ + halfDepth,
+              ),
+            );
+            frontB.push(
+              addVertex(
+                atB[0],
+                atB[1],
+                frontZ,
+                xNormal,
+                yNormal,
+                profile.axial,
+                distance + length,
+                frontZ + halfDepth,
+              ),
+            );
+            backA.push(
+              addVertex(
+                atA[0],
+                atA[1],
+                backZ,
+                xNormal,
+                yNormal,
+                -profile.axial,
+                distance,
+                backZ + halfDepth,
+              ),
+            );
+            backB.push(
+              addVertex(
+                atB[0],
+                atB[1],
+                backZ,
+                xNormal,
+                yNormal,
+                -profile.axial,
+                distance + length,
+                backZ + halfDepth,
+              ),
+            );
+          }
+          for (let step = 0; step < bevelSegments; step++) {
+            indices.push(
+              frontA[step],
+              frontB[step],
+              frontB[step + 1],
+              frontA[step],
+              frontB[step + 1],
+              frontA[step + 1],
+              backA[step + 1],
+              backB[step + 1],
+              backB[step],
+              backA[step + 1],
+              backB[step],
+              backA[step],
+            );
+          }
+          indices.push(
+            backA[0],
+            backB[0],
+            frontB[0],
+            backA[0],
+            frontB[0],
+            frontA[0],
           );
         }
       } else {
@@ -463,11 +498,15 @@ export function extrudePathContours(
   // resulting mesh is pinched, so reject it rather than return invalid volume.
   // This also catches cracks between the independently tessellated caps/walls.
   const edges = new Map<string, { count: number; balance: number }>();
-  const pointKey = (index: number): string =>
-    positions
-      .slice(index * 3, index * 3 + 3)
-      .map(Math.fround)
-      .join(',');
+  const pointKeys: string[] = [];
+  const pointKey = (index: number): string => {
+    const existing = pointKeys[index];
+    if (existing !== undefined) return existing;
+    const offset = index * 3;
+    return (pointKeys[index] = `${Math.fround(positions[offset])},${Math.fround(
+      positions[offset + 1],
+    )},${Math.fround(positions[offset + 2])}`);
+  };
   for (let i = 0; i < indices.length; i += 3) {
     for (let j = 0; j < 3; j++) {
       const a = pointKey(indices[i + j]);
