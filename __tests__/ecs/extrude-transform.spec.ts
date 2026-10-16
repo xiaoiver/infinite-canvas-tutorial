@@ -240,6 +240,17 @@ it('does not manufacture geometry from missing components or empty bounds', () =
   ).toBeUndefined();
 });
 
+it('does not resolve an extrusion pose without a source world transform', () => {
+  const rectangle = source();
+  rectangle.values.delete(GlobalTransform);
+  expect(resolveExtrudeCompanionTransform(rectangle.entity, true)).toBeUndefined();
+
+  const vector = source();
+  vector.values.set(Path, { d: 'M0 0 H40 V40 H0 Z', fillRule: 'nonzero' });
+  vector.values.delete(GlobalTransform);
+  expect(resolveExtrudeCompanionTransform(vector.entity, true)).toBeUndefined();
+});
+
 it('rejects Path poses when the world matrix or supported contour is missing', () => {
   const fixture = source();
   fixture.values.set(Path, { d: 'M0 0 L20 0 L20 20', fillRule: 'nonzero' });

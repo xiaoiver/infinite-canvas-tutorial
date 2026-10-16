@@ -376,6 +376,11 @@ as elliptical corner arcs. A missing radius defaults to the other, and each
 radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
 importer still stores a single corner radius.
 Open contours, stroked shapes, gradients and unsupported SVG shapes remain in 2D.
+Local `<use href="#id">` and legacy `xlink:href` references to supported shapes or
+groups create independent instances, including forward and repeated references.
+Instance pixel offsets, transform and inherited fill are applied before extrusion;
+each instance receives its own editable ID. Circular and unresolved references
+are skipped. `<symbol>` viewports and external references are not imported yet.
 Pass the root `<svg>` to apply an explicit pixel `width`/`height` and `viewBox`,
 including `preserveAspectRatio`. Filled extrusions also preserve SVG `skewX`,
 `skewY`, and sheared `matrix(...)` transforms from nested groups. These outlines
@@ -389,6 +394,9 @@ With `preserveAspectRatio="slice"`, filled extrusion outlines are clipped to
 the viewport, including holes and shapes split into separate islands. Shapes
 fully inside the viewport keep their Rect or curved Path form. Unsupported 2D
 shapes still follow the ordinary importer and are not clipped by this helper.
+
+Choose **Repeated use sample** below to inspect two instances of the same
+definition with different fills, alongside an ordinary rectangle.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple

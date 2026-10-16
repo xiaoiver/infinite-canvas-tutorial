@@ -392,6 +392,10 @@ it('extrudes a Path through a sheared parent and keeps its world footprint', asy
       points.has(`${Math.round(worldX * 1000)},${Math.round(worldY * 1000)}`),
     ).toBe(true);
   }
+  const legacyPose = resolveExtrudeCompanionTransform(source(), false)!;
+  expect(legacyPose.translation[0]).toBeCloseTo(pose.translation[0]);
+  expect(legacyPose.translation[1]).toBeCloseTo(-pose.translation[1]);
+  expect(legacyPose.scale).toEqual(pose.scale);
   const glb = api.export({
     format: ExportFormat.GLB,
     nodes: [api.getNodeById('vector')!],
