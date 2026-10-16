@@ -372,7 +372,7 @@ Shearing a Path on the canvas also keeps it in 2D. SVG
 transforms and viewBox scaling follow the existing importer, which does not
 faithfully preserve shear; avoid sheared SVG input until that importer supports it.
 
-Set `extrude3d.bevelSize` (in canvas units) for a straight bevel on both ends of
+Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple
 islands and concave corners are supported when the inward offset preserves the
 filled topology. If contours collide or a narrow region collapses, the shape
