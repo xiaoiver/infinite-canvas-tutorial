@@ -49,6 +49,16 @@ const useSample = [
   '</svg>',
 ].join('');
 
+const symbolSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
+  '<defs><symbol id="badge" viewBox="0 0 100 60">',
+  '<path id="badge-shape" d="M0 0 H100 V60 H0 Z M25 15 H75 V45 H25 Z" fill-rule="evenodd"/>',
+  '</symbol></defs>',
+  '<use id="badge-one" href="#badge" x="35" y="45" width="180" height="180" fill="#3b82f6"/>',
+  '<use id="badge-two" href="#badge" x="265" y="45" width="180" height="180" fill="#f97316"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -159,6 +169,12 @@ function loadUseSample() {
   void render();
 }
 
+function loadSymbolSample() {
+  svgSource = symbolSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -252,6 +268,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadUseSample">
         Repeated use sample
+      </button>
+      <button type="button" @click="loadSymbolSample">
+        Symbol viewport sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

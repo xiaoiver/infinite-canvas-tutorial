@@ -223,6 +223,161 @@ it('clips a referenced shape inside a sliced SVG viewport', () => {
     });
 });
 
+it('maps a symbol viewBox into repeated use viewports with independent paints', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><symbol id="badge" viewBox="0 0 100 50">' +
+    '<rect id="tile" width="100" height="50"/></symbol></defs>' +
+    '<use id="first-badge" href="#badge" x="10" y="20" width="200" height="200" fill="red"/>' +
+    '<use id="second-badge" href="#badge" x="240" y="20" width="200" height="200" fill="blue"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'first-badge--badge')).toMatchObject({
+    type: 'g', parentId: 'first-badge', x: 0, y: 50, scaleX: 2, scaleY: 2,
+  });
+  expect(nodes.find((node) => node.id === 'first-badge--tile')).toMatchObject({
+    type: 'rect', parentId: 'first-badge--badge', extrude3d: 16,
+  });
+  expect(nodes.find((node) => node.id === 'second-badge--tile')).toMatchObject({
+    type: 'rect', parentId: 'second-badge--badge', extrude3d: 16,
+  });
+  await world.reset(api, nodes);
+  for (const id of ['first-badge--tile', 'second-badge--tile']) {
+    const entity = api.getEntity(api.getNodeById(id))!;
+    expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+      .toBeGreaterThan(0);
+  }
+  const firstColor = api.getEntity(api.getNodeById('first-badge--tile'))!
+    .read(Extrude3D).meshEntity!.read(Material3D).baseColor;
+  const secondColor = api.getEntity(api.getNodeById('second-badge--tile'))!
+    .read(Extrude3D).meshEntity!.read(Material3D).baseColor;
+  expect(firstColor.slice(0, 3)).toEqual([1, 0, 0]);
+  expect(secondColor.slice(0, 3)).toEqual([0, 0, 1]);
+});
+
+it('honors symbol aspect-ratio alignment and nonuniform scaling', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><symbol id="aligned" viewBox="0 0 100 50" preserveAspectRatio="xMaxYMin meet">' +
+    '<path id="shape" d="M0 0 H100 V50 H0 Z"/></symbol>' +
+    '<symbol id="stretched" viewBox="0 0 100 50" preserveAspectRatio="none">' +
+    '<path id="wide" d="M0 0 H100 V50 H0 Z"/></symbol></defs>' +
+    '<use id="right" href="#aligned" width="300" height="100" fill="red"/>' +
+    '<use id="none" href="#stretched" width="300" height="100" fill="blue"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'right--aligned')).toMatchObject({
+    type: 'g', x: 100, y: 0, scaleX: 2, scaleY: 2,
+  });
+  expect(nodes.find((node) => node.id === 'none--stretched')).toMatchObject({
+    type: 'g', x: 0, y: 0, scaleX: 3, scaleY: 2,
+  });
+});
+
+it('combines root and symbol viewBoxes for a holed path extrusion', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 200 100">' +
+    '<defs><symbol id="ring" viewBox="0 0 100 50">' +
+    '<path id="outline" d="M0 0 H100 V50 H0 Z M25 10 H75 V40 H25 Z" fill-rule="evenodd"/>' +
+    '</symbol></defs>' +
+    '<use id="badge" href="#ring" x="10" y="20" width="100" height="100" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'badge--outline')).toMatchObject({
+    type: 'path', parentId: undefined, x: 20, y: 90,
+    scaleX: 2, scaleY: 2, fillRule: 'evenodd', extrude3d: 16,
+  });
+  await world.reset(api, nodes);
+  const entity = api.getEntity(api.getNodeById('badge--outline'))!;
+  expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+    .toBeGreaterThan(0);
+});
+
+it('clips symbol slice instances to their own viewport', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><symbol id="sliced" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">' +
+    '<rect id="partial" x="20" y="10" width="20" height="40"/>' +
+    '<rect id="inside" x="60" y="40" width="10" height="10"/>' +
+    '<rect id="outside" x="20" y="80" width="10" height="10"/>' +
+    '</symbol></defs>' +
+    '<use id="instance" href="#sliced" width="200" height="100" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'instance--partial')).toMatchObject({
+    type: 'path', x: 40, y: 0, width: 40, height: 50,
+    fillRule: 'evenodd', extrude3d: 16,
+  });
+  expect(nodes.find((node) => node.id === 'instance--inside')).toMatchObject({
+    type: 'rect', x: 120, y: 30, width: 10, height: 10,
+    scaleX: 2, scaleY: 2, extrude3d: 16,
+  });
+  expect(nodes.find((node) => node.id === 'instance--outside'))
+    .toMatchObject({ visibility: 'hidden' });
+});
+
+it('intersects root and symbol slice viewports', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100" ' +
+    'preserveAspectRatio="xMidYMid slice">' +
+    '<defs><symbol id="sliced" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">' +
+    '<rect id="full" width="100" height="100"/></symbol></defs>' +
+    '<use id="instance" href="#sliced" x="50" width="100" height="100" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 16).find((node) => node.id === 'instance--full'))
+    .toMatchObject({
+      type: 'path', x: 50, y: 0, width: 50, height: 100,
+      fillRule: 'evenodd', extrude3d: 16,
+    });
+});
+
+it('clips a symbol slice viewport after the symbol transform', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><symbol id="sliced" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice" ' +
+    'transform="translate(7 3)">' +
+    '<rect id="edge" x="90" y="20" width="20" height="20"/></symbol></defs>' +
+    '<use id="instance" href="#sliced" width="100" height="100" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 16).find((node) => node.id === 'instance--edge'))
+    .toMatchObject({
+      type: 'path', x: 97, y: 23, width: 10, height: 20,
+      fillRule: 'evenodd', extrude3d: 16,
+    });
+});
+
+it('skips symbols without an explicit viewport and retains siblings', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><symbol id="badge" viewBox="0 0 100 50"><rect width="100" height="50"/></symbol></defs>' +
+    '<use id="missing-size" href="#badge" fill="red"/>' +
+    '<rect id="following" width="10" height="10" fill="green"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 16).map((node) => node.id))
+    .toEqual(['following']);
+});
+
 it('stops cyclic use references while retaining later SVG nodes', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg">' +
