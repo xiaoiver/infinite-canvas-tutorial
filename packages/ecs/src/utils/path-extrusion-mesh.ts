@@ -14,6 +14,7 @@ export interface PathBevelOptions {
   scaleY: number;
   depth: number;
   bevelSize: number;
+  bevelSegments?: number;
 }
 
 /** Build a unit-depth mesh from closed Path data, or leave it in 2D. */
@@ -51,6 +52,7 @@ export function buildPathExtrusionMesh(
           bevel.depth,
           fillRule,
           bevel.bevelSize,
+          bevel.bevelSegments,
         )
       : extrudePathContours(contours, 1, fillRule);
     if (!result.ok) return;

@@ -379,6 +379,11 @@ filled topology. If contours collide or a narrow region collapses, the shape
 retains its sharp edges. Changing depth or size rebuilds the companion mesh
 while keeping the source editable.
 
+Set `extrude3d.bevelSegments` to `1` for a straight bevel (the default), or
+`2`–`8` for a rounded quarter-circle profile. More segments make the silhouette
+smoother and add mesh triangles. The demo's **Bevel profile** control lets you
+compare straight and rounded profiles on imported SVG shapes.
+
 The example's **Download GLB** button exports the generated 3D meshes as a
 self-contained glTF binary file. Use `api.export` to download all ready extruded
 shapes, or pass nodes to export only a selection (including children of selected

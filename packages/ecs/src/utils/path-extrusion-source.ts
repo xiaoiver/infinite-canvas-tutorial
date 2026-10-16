@@ -81,12 +81,14 @@ export function pathExtrusionGeometry(
   )
     return;
   const { d, fillRule } = entity.read(Path);
-  const { depth, bevelSize } = entity.read(Extrude3D);
+  const { depth, bevelSize, bevelSegments } = entity.read(Extrude3D);
   const { m00, m01, m10, m11 } = entity.read(GlobalTransform).matrix;
   const scaleX = Math.hypot(m00, m01);
   const scaleY = Math.hypot(m10, m11);
   const bevelKey =
-    bevelSize > 0 ? `${scaleX},${scaleY},${depth},${bevelSize}` : '';
+    bevelSize > 0
+      ? `${scaleX},${scaleY},${depth},${bevelSize},${bevelSegments}`
+      : '';
   const previous = cache.get(entity);
   if (
     previous?.d === d &&
@@ -98,7 +100,9 @@ export function pathExtrusionGeometry(
   const mesh = buildPathExtrusionMesh(
     d,
     fillRule,
-    bevelSize > 0 ? { scaleX, scaleY, depth, bevelSize } : undefined,
+    bevelSize > 0
+      ? { scaleX, scaleY, depth, bevelSize, bevelSegments }
+      : undefined,
   );
   const entry = { d, fillRule, bevelKey, mesh };
   cache.set(entity, entry);
