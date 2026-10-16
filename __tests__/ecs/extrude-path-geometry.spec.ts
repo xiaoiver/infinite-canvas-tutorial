@@ -143,6 +143,25 @@ it('accepts a sampled curved contour and repeated closing points', () => {
   assertClosed(result.geometry);
 });
 
+it('reuses cap vertices on a curved shape without merging hard wall normals', () => {
+  const segments = 128;
+  const circle: Point[] = Array.from({ length: segments }, (_, i) => [
+    10 * Math.cos((i * 2 * Math.PI) / segments),
+    10 * Math.sin((i * 2 * Math.PI) / segments),
+  ]);
+  const result = extrudePathContours([circle], 4);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  const { positions, normals, indices } = result.geometry;
+  // Two shared cap rings plus four vertices per flat-shaded wall segment.
+  expect(positions.length / 3).toBe(segments * 6);
+  expect(indices.length).toBe((segments - 2) * 6 + segments * 6);
+  expect(
+    normals.filter((_, i) => i % 3 === 2 && Math.abs(normals[i]) === 1),
+  ).toHaveLength(segments * 2);
+  assertClosed(result.geometry);
+});
+
 it.each([
   [[], 2, 'empty-fill'],
   [[rect(0, 0, 10, 10)], 0, 'invalid-depth'],
