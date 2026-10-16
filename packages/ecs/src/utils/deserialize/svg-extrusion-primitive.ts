@@ -7,14 +7,16 @@ import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
 function roundedRectPath(
   width: number,
   height: number,
-  radius: number,
+  radiusX: number,
+  radiusY: number,
 ): string {
-  const r = Math.min(radius, width / 2, height / 2);
+  const rx = Math.min(radiusX, width / 2);
+  const ry = Math.min(radiusY, height / 2);
   return (
-    `M${r} 0 H${width - r} A${r} ${r} 0 0 1 ${width} ${r} ` +
-    `V${height - r} A${r} ${r} 0 0 1 ${width - r} ${height} ` +
-    `H${r} A${r} ${r} 0 0 1 0 ${height - r} ` +
-    `V${r} A${r} ${r} 0 0 1 ${r} 0 Z`
+    `M${rx} 0 H${width - rx} A${rx} ${ry} 0 0 1 ${width} ${ry} ` +
+    `V${height - ry} A${rx} ${ry} 0 0 1 ${width - rx} ${height} ` +
+    `H${rx} A${rx} ${ry} 0 0 1 0 ${height - ry} ` +
+    `V${ry} A${rx} ${ry} 0 0 1 ${rx} 0 Z`
   );
 }
 
@@ -29,6 +31,7 @@ export function extrudeSvgPrimitive(
   node: SerializedNode,
   depth: number,
   paintSupported: boolean,
+  rectRadii?: { rx: number; ry: number },
 ): SerializedNode {
   if ((node.type !== 'rect' && node.type !== 'ellipse') || !paintSupported)
     return node;
@@ -44,10 +47,13 @@ export function extrudeSvgPrimitive(
 
   if (node.type === 'rect') {
     const radius = node.cornerRadius ?? 0;
-    if (!Number.isFinite(radius) || radius < 0) return node;
-    if (radius === 0) return { ...node, extrude3d: depth };
+    const { rx, ry } = rectRadii ?? { rx: radius, ry: radius };
+    if (!Number.isFinite(rx) || !Number.isFinite(ry) || rx < 0 || ry < 0)
+      return node;
+    if (rx === 0 || ry === 0)
+      return { ...node, cornerRadius: 0, extrude3d: depth };
 
-    const d = roundedRectPath(width, height, radius);
+    const d = roundedRectPath(width, height, rx, ry);
     if (!buildPathExtrusionMesh(d)) return node;
     const { cornerRadius: _cornerRadius, ...rest } = node;
     return {

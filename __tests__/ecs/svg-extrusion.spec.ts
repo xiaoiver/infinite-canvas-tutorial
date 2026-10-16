@@ -50,6 +50,36 @@ const elements = () => {
   ) as SVGElement[];
 };
 
+it('preserves independent SVG rect radii when creating extrusion paths', () => {
+  const dom = new JSDOM(
+    `<svg xmlns="http://www.w3.org/2000/svg">
+      <rect id="unequal" width="60" height="40" rx="12" ry="6" fill="red"/>
+      <rect id="rx-only" width="60" height="40" rx="8" fill="red"/>
+      <rect id="ry-only" width="60" height="40" ry="8" fill="red"/>
+      <rect id="clamped" width="60" height="40" rx="50" ry="30" fill="red"/>
+      <rect id="square" width="60" height="40" rx="12" ry="0" fill="red"/>
+    </svg>`,
+    { contentType: 'image/svg+xml' },
+  );
+  const input = Array.from(dom.window.document.querySelector('svg')!.children);
+  const nodes = svgElementsToExtrudedNodes(input as SVGElement[], 24);
+  const path = (id: string) => {
+    const node = nodes.find((item) => item.id === id);
+    expect(node).toMatchObject({ type: 'path', extrude3d: 24 });
+    return node?.type === 'path' ? node.d : '';
+  };
+
+  expect(path('unequal')).toContain('M12 0 H48 A12 6 0 0 1 60 6');
+  expect(path('rx-only')).toContain('A8 8 0 0 1');
+  expect(path('ry-only')).toContain('A8 8 0 0 1');
+  expect(path('clamped')).toContain('M30 0 H30 A30 20 0 0 1 60 20');
+  expect(nodes.find((node) => node.id === 'square')).toMatchObject({
+    type: 'rect',
+    cornerRadius: 0,
+    extrude3d: 24,
+  });
+});
+
 it('maps supported SVG paths, polygons, rectangles and ellipses to extrusion sources', () => {
   const input = elements();
   const ordinary = svgElementsToSerializedNodes(input);

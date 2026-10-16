@@ -83,6 +83,7 @@ function deserializeSvgElements(
   zIndex: number,
   overrideAttributes: NamedNodeMap | undefined,
   paintFromGroups: { fill: boolean; stroke: boolean },
+  rectRadii?: Map<string, { rx: number; ry: number }>,
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
@@ -109,6 +110,7 @@ function deserializeSvgElements(
             0,
             undefined,
             paintFromGroups,
+            rectRadii,
           );
         }
       }
@@ -197,6 +199,18 @@ function deserializeSvgElements(
         prev[attributeName] = value;
         return prev;
       }, {} as SerializedNode);
+
+      // The 2D Rect stores one corner radius. Preserve both SVG radii for the
+      // extrusion converter before the attributes above collapse rx and ry.
+      if (type === 'rect' && rectRadii) {
+        const rxValue = element.getAttribute('rx');
+        const ryValue = element.getAttribute('ry');
+        if (rxValue !== null || ryValue !== null) {
+          const rx = Number((rxValue ?? ryValue)!.replace('px', ''));
+          const ry = Number((ryValue ?? rxValue)!.replace('px', ''));
+          rectRadii.set(id, { rx, ry });
+        }
+      }
 
       if (type === 'circle') {
         type = 'ellipse';
@@ -363,6 +377,7 @@ function deserializeSvgElements(
           paintFromGroups.stroke ||
           (type === 'g' && element.hasAttribute('stroke')),
       },
+      rectRadii,
     ).filter(Boolean);
 
     nodes.push(...children);
@@ -379,7 +394,16 @@ export function svgElementsToExtrudedNodes(
   if (!Number.isFinite(depth) || depth <= 0) {
     throw new RangeError('SVG extrusion depth must be finite and positive');
   }
-  const nodes = svgElementsToSerializedNodes(elements);
+  const rectRadii = new Map<string, { rx: number; ry: number }>();
+  const nodes = deserializeSvgElements(
+    elements,
+    [],
+    undefined,
+    0,
+    undefined,
+    { fill: false, stroke: false },
+    rectRadii,
+  );
   const inherited = getComputedInheritGroupWireMap(nodes);
   return nodes.map((node) => {
     const paint = inherited.get(node.id) as
@@ -394,7 +418,12 @@ export function svgElementsToExtrudedNodes(
         return { ...node, extrude3d: depth };
       return node;
     }
-    return extrudeSvgPrimitive(node, depth, paintSupported);
+    return extrudeSvgPrimitive(
+      node,
+      depth,
+      paintSupported,
+      rectRadii.get(node.id),
+    );
   });
 }
 
