@@ -372,6 +372,26 @@ Shearing a Path on the canvas also keeps it in 2D. SVG
 transforms and viewBox scaling follow the existing importer, which does not
 faithfully preserve shear; avoid sheared SVG input until that importer supports it.
 
+The example's **Download GLB** button exports the generated 3D meshes as a
+self-contained glTF binary file. `exportMeshesToGlb` accepts mesh, material and
+pose components, so callers can export several extruded shapes together:
+
+```ts
+import { Extrude3D, Material3D, Mesh3D, Transform3D, exportMeshesToGlb } from '@infinite-canvas-tutorial/ecs';
+
+const source = api.getEntity(api.getNodeById('extruded-vector'));
+const companion = source.read(Extrude3D).meshEntity;
+const glb = exportMeshesToGlb([{
+    mesh: companion.read(Mesh3D),
+    material: companion.read(Material3D),
+    transform: companion.read(Transform3D),
+}]);
+```
+
+Export converts canvas Y-down coordinates to glTF Y-up coordinates and keeps
+the current 3D pose, solid fill and optional side color. It exports only ready
+mesh companions; unsupported 2D SVG shapes and textures are not included.
+
 <SvgExtrusion />
 
 ## Lighting {#lighting}

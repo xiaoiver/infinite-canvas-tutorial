@@ -2,6 +2,11 @@
 import {
   Pen,
   GPUResource,
+  Extrude3D,
+  Material3D,
+  Mesh3D,
+  Transform3D,
+  exportMeshesToGlb,
   svgElementsToExtrudedNodes,
   svgElementsToSerializedNodes,
   type API,
@@ -29,6 +34,7 @@ const show3D = ref(true);
 const status = ref('Loading canvas…');
 let svgSource = sample;
 let api: API | undefined;
+let importedNodes: SerializedNode[] = [];
 let onReady: ((event: CustomEvent<API>) => void) | undefined;
 
 function parseSVG() {
@@ -63,6 +69,7 @@ async function render() {
     await api.edit((editor) => editor.replaceDocument(nodes, 'remote'), {
       capture: 'NEVER',
     });
+    importedNodes = nodes;
     const count = nodes.filter(
       (node) =>
         (node.type === 'path' || node.type === 'rect') && node.extrude3d,
@@ -72,6 +79,47 @@ async function render() {
       : 'All imported shapes are in 2D.';
   } catch (error) {
     status.value = error instanceof Error ? error.message : 'SVG import failed';
+  }
+}
+
+function downloadGlb() {
+  if (!api) return;
+  const editorApi = api;
+  try {
+    const sources = importedNodes.flatMap((node) => {
+      const current = editorApi.getNodeById(node.id);
+      if (!current) return [];
+      const entity = editorApi.getEntity(current);
+      if (!entity?.has(Extrude3D)) return [];
+      const mesh = entity.read(Extrude3D).meshEntity;
+      if (
+        !mesh?.alive ||
+        !mesh.has(Mesh3D) ||
+        !mesh.has(Material3D) ||
+        !mesh.has(Transform3D)
+      )
+        return [];
+      return [
+        {
+          name: node.id,
+          mesh: mesh.read(Mesh3D),
+          material: mesh.read(Material3D),
+          transform: mesh.read(Transform3D),
+        },
+      ];
+    });
+    const glb = exportMeshesToGlb(sources);
+    const url = URL.createObjectURL(
+      new Blob([glb], { type: 'model/gltf-binary' }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'svg-extrusion.glb';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    status.value = `Downloaded ${sources.length} extruded shapes as GLB.`;
+  } catch (error) {
+    status.value = error instanceof Error ? error.message : 'GLB export failed';
   }
 }
 
@@ -153,6 +201,9 @@ onUnmounted(() => {
         <input type="file" accept=".svg,image/svg+xml" @change="upload" />
       </label>
       <button type="button" @click="reset">Reset sample</button>
+      <button type="button" :disabled="!show3D" @click="downloadGlb">
+        Download GLB
+      </button>
     </div>
     <p role="status">{{ status }}</p>
   </div>
