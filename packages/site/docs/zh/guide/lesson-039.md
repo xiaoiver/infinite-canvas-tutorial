@@ -351,6 +351,12 @@ api.updateNodes(nodes);
 `preserveAspectRatio` 支持
 `meet` 的各项对齐方式、`none`，以及挤出轮廓的 `slice` 裁切；
 最终尺寸缺失或无效时会跳过该实例；暂不导入外部引用。
+带显式正数像素宽高和 `viewBox` 的内嵌 `<svg>` 也会生成可编辑的视口分组。
+其 `x`/`y`、变换和 `preserveAspectRatio` 会作用于挤出后的子图形。
+本地 `<use>` 可以引用这样的 `<svg>`，并独立覆盖视口尺寸。内嵌 SVG 视口默认会裁切
+挤出轮廓（包括 `slice`）；设置 `overflow="visible"` 可保留超出视口的几何。
+完整位于视口内的图形保持分组关系，移动视口分组时其 3D 网格会一同移动；
+跨过边缘的图形则转换为裁切后的 Path。
 传入完整的 `<svg>` 根节点后，若有以像素指定的 `width`/`height` 和 `viewBox`，
 导入会应用视口缩放及 `preserveAspectRatio`。可挤出的填充图形也会保留嵌套分组中的
 `skewX`、`skewY` 和 `matrix(...)` 剪切变换；变换后的轮廓会采样为仍可编辑的折线路径。
@@ -365,6 +371,8 @@ api.updateNodes(nodes);
 以及中间的普通矩形。
 点击 **Symbol viewport sample** 可以比较同一个带孔洞的符号在两个视口中的效果：
 第一个使用符号自身的尺寸，第二个指定实例尺寸。
+点击 **Nested SVG viewport sample** 可以比较直接绘制的内嵌 SVG 视口与
+通过 `<use>` 引用的第二个实例；两者的挤出轮廓都会按各自视口裁切。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、

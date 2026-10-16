@@ -70,10 +70,10 @@ function sourceTransform(
   let hasShear = false;
   const clipViewports: Point[][] = [];
   for (const item of chain) {
-    const symbolViewport = item.getAttribute('data-svg-symbol-viewport');
-    if (symbolViewport) {
-      const [width, height] = symbolViewport.split(' ').map(Number);
-      const outerTransform = item.getAttribute('data-svg-symbol-transform');
+    const nestedViewport = item.getAttribute('data-svg-viewport');
+    if (nestedViewport) {
+      const [width, height] = nestedViewport.split(' ').map(Number);
+      const outerTransform = item.getAttribute('data-svg-viewport-transform');
       const outerMatrix = outerTransform
         ? compose([matrix, compose(fromDefinition(fromTransformAttribute(outerTransform)))])
         : matrix;
@@ -260,6 +260,10 @@ export function reprojectSvgExtrusion(
         if (clipped.kind === 'empty')
           return { ...node, visibility: 'hidden', extrude3d: undefined };
         if (clipped.kind === 'invalid') return { ...node, extrude3d: undefined };
+        // Fully contained shapes can keep their editable group hierarchy when
+        // no root transform or shear needs to be baked into the source.
+        if (clipped.kind === 'inside' && !hasShear && isIdentity(viewport) &&
+          (!root || isIdentity(transformAttribute(root)))) return node;
         if (clipped.kind === 'clipped') {
           const path = clipped.path;
           if (!buildPathExtrusionMesh(path.d, 'evenodd'))
