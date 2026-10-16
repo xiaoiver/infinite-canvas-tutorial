@@ -378,6 +378,8 @@ islands and concave corners are supported when the inward offset preserves the
 filled topology. If contours collide or a narrow region collapses, the shape
 retains its sharp edges. Changing depth or size rebuilds the companion mesh
 while keeping the source editable.
+Shapes with more than 4096 vertices across their resolved fill boundaries also
+stay sharp to bound mesh work.
 
 Set `extrude3d.bevelSegments` to `1` for a straight bevel (the default), or
 `2`–`8` for a rounded quarter-circle profile. More segments make the silhouette
