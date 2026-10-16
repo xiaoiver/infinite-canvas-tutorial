@@ -333,13 +333,18 @@ const vector: PathSerializedNode = {
     d: 'M100 80 L200 80 L200 180 L100 180 Z M125 105 L125 155 L175 155 L175 105 Z',
     fillRule: 'evenodd',
     fills: [{ type: 'solid', value: '#3377dd' }],
-    extrude3d: { depth: 40, z: 0 },
+    extrude3d: { depth: 40, z: 0, sideColor: '#facc15' },
 };
 ```
 
 All subpaths must be closed. Open paths, stroke layers, multiple or non-solid
 fills, non-manifold contours and sheared transforms remain visible in 2D. The
 Path keeps its original document node and supports gizmo edits, undo and reload.
+
+`sideColor` is an optional CSS color for the walls; the front and back keep the
+source fill. Omitting it makes all faces use the source fill color. The side
+color is a paint change, so editing it reuses the existing mesh geometry.
+
 SVG `<path>`, `<polygon>`, `<rect>`, `<circle>` and `<ellipse>` elements can be
 imported as extrusion sources with
 `svgElementsToExtrudedNodes`. The helper preserves other imported shapes in 2D;

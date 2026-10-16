@@ -3,7 +3,7 @@ import { mat4 } from 'gl-matrix';
 import type { Material3D } from '../../components/geometry3d/Material3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 56;
+export const MESH_MODEL_UNIFORM_FLOATS = 60;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -24,6 +24,7 @@ export class MeshModelUniforms {
     u_CanvasAnchor: this.data.subarray(44, 48),
     u_MaterialFlags: this.data.subarray(48, 52),
     u_PbrParams: this.data.subarray(52, 56),
+    u_SideColor: this.data.subarray(56, 60),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -76,6 +77,8 @@ export class MeshModelUniforms {
     this.set(51, material.bumpScale);
     this.set(52, material.metallic);
     this.set(53, material.roughness);
+    this.set(54, Number(material.sideColor !== null));
+    for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
     if (this.dirty) {
       this.buffer.setSubData(0, this.bytes);
       // A failed upload must be retried, even if inputs have not changed.

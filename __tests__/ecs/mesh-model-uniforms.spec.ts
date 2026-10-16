@@ -6,7 +6,7 @@ import { MeshModelUniforms } from '../../packages/ecs/src/systems/mesh3d/mesh-mo
 
 const ready = { mapReady: false, specularMapReady: false, bumpMapReady: false };
 function setup() {
-  const bytes = new Uint8Array(56 * 4);
+  const bytes = new Uint8Array(60 * 4);
   const setSubData = jest.fn((offset: number, data: Uint8Array) =>
     bytes.set(data, offset),
   );
@@ -87,7 +87,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   expect([...data.slice(32, 40)]).toEqual(
     [0.25, 1, 1, 1, 0.2, 0.4, 0.6, 4].map(Math.fround),
   );
-  expect([...data.slice(48)]).toEqual(
+  expect([...data.slice(48, 56)]).toEqual(
     [1, 1, 1, 2, 0.3, 0.8, 0, 0].map(Math.fround),
   );
   expect(legacy.u_MaterialFlags).toEqual(data.slice(48, 52));
@@ -97,6 +97,25 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   expect([...data.slice(48, 51)]).toEqual([0, 0, 0]);
   expect(setSubData).toHaveBeenCalledTimes(3);
   expect(invert).toHaveBeenCalledTimes(1);
+});
+
+it('uploads an optional side-wall color without rebuilding geometry or pose', () => {
+  const { uniforms, transform, material, data, setSubData } = setup();
+  const invert = jest.spyOn(mat4, 'invert');
+  uniforms.update(transform, material, ready);
+  material.sideColor = [0.2, 0.4, 0.6, 0.8];
+  uniforms.update(transform, material, ready);
+  expect(data[54]).toBe(1);
+  expect([...data.slice(56, 60)]).toEqual(
+    [0.2, 0.4, 0.6, 0.8].map(Math.fround),
+  );
+  uniforms.update(transform, material, ready);
+  expect(setSubData).toHaveBeenCalledTimes(2);
+  expect(invert).toHaveBeenCalledTimes(1);
+  material.sideColor = null;
+  uniforms.update(transform, material, ready);
+  expect(data[54]).toBe(0);
+  expect(setSubData).toHaveBeenCalledTimes(3);
 });
 
 it('retries failed uploads without rebuilding unchanged matrices', () => {

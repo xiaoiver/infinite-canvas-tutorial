@@ -10,6 +10,9 @@ export class Material3D {
    */
   @field.object declare baseColor: [number, number, number, number];
 
+  /** Optional side-wall color for an extruded mesh; null uses baseColor. */
+  @field.object declare sideColor: [number, number, number, number] | null;
+
   /**
    * Ambient light intensity (0..1).
    */
@@ -66,6 +69,7 @@ export class Material3D {
       Object.assign(this, material);
     }
     this.baseColor ??= [1, 1, 1, 1];
+    this.sideColor ??= null;
     this.ambient ??= 0.5;
     this.diffuse ??= 0.7;
     this.specular ??= 0.3;

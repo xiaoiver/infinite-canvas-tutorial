@@ -40,6 +40,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_MaterialFlags;
   // x: metallic, y: roughness (PBR metallic-roughness workflow)
   vec4 u_PbrParams;
+  vec4 u_SideColor;
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -49,12 +50,14 @@ layout(location = 2) in vec2 a_Uv3D;
 out vec3 v_Normal;
 out vec3 v_FragPos;
 out vec2 v_Uv;
+out float v_LocalNormalZ;
 
 void main() {
   vec4 worldPos = u_ModelMatrix3D * vec4(a_Position3D, 1.0);
   v_FragPos = worldPos.xyz;
   v_Normal = (u_NormalMatrix3D * vec4(a_Normal3D, 0.0)).xyz;
   v_Uv = a_Uv3D;
+  v_LocalNormalZ = a_Normal3D.z;
 
   if (u_SceneParams.z > 0.5) {
     // 2D VP: pan / zoom / Y-flip; perspective scales offsets from placement anchor.
@@ -113,6 +116,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_MaterialFlags;
   // x: metallic, y: roughness (PBR metallic-roughness workflow)
   vec4 u_PbrParams;
+  vec4 u_SideColor;
 };
 
 uniform sampler2D u_Map;
@@ -122,6 +126,7 @@ uniform sampler2D u_BumpMap;
 in vec3 v_Normal;
 in vec3 v_FragPos;
 in vec2 v_Uv;
+in float v_LocalNormalZ;
 
 out vec4 outputColor;
 
@@ -275,6 +280,9 @@ void main() {
   }
 
   vec4 baseColor = u_BaseColor;
+  if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 0.5) {
+    baseColor = u_SideColor;
+  }
   if (u_MaterialFlags.x > 0.5) {
     baseColor *= texture(SAMPLER_2D(u_Map), v_Uv);
   }
