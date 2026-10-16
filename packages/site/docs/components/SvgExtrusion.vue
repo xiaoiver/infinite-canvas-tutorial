@@ -24,8 +24,8 @@ const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
 
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
-const bevelSize = ref(0);
-const bevelSegments = ref(1);
+const bevelSize = ref(2);
+const bevelSegments = ref(4);
 const useSideColor = ref(false);
 const sideColor = ref('#facc15');
 const show3D = ref(true);
@@ -103,8 +103,8 @@ function reset() {
   svgSource = sample;
   show3D.value = true;
   depth.value = 35;
-  bevelSize.value = 0;
-  bevelSegments.value = 1;
+  bevelSize.value = 2;
+  bevelSegments.value = 4;
   useSideColor.value = false;
   sideColor.value = '#facc15';
   void render();
