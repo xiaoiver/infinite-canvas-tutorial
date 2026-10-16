@@ -347,9 +347,10 @@ api.updateNodes(nodes);
 包括前向引用和重复引用。实例的像素位移、变换及继承填充会在挤出前生效，
 且各自拥有可编辑的 ID。
 循环引用和无法解析的引用会被跳过。`<use>` 也可以引用带 `viewBox` 的 `<symbol>`，
-但实例需要显式指定正数像素 `width` 和 `height`。`preserveAspectRatio` 支持
+实例或符号本身需要指定正数像素 `width` 和 `height`；实例尺寸优先。
+`preserveAspectRatio` 支持
 `meet` 的各项对齐方式、`none`，以及挤出轮廓的 `slice` 裁切；
-暂不导入缺少实例宽高或外部引用。
+最终尺寸缺失或无效时会跳过该实例；暂不导入外部引用。
 传入完整的 `<svg>` 根节点后，若有以像素指定的 `width`/`height` 和 `viewBox`，
 导入会应用视口缩放及 `preserveAspectRatio`。可挤出的填充图形也会保留嵌套分组中的
 `skewX`、`skewY` 和 `matrix(...)` 剪切变换；变换后的轮廓会采样为仍可编辑的折线路径。
@@ -362,7 +363,8 @@ api.updateNodes(nodes);
 
 点击下方的 **Repeated use sample** 可以查看同一定义以不同填充色重复实例化，
 以及中间的普通矩形。
-点击 **Symbol viewport sample** 可以比较同一个带孔洞的符号在两个视口中的效果。
+点击 **Symbol viewport sample** 可以比较同一个带孔洞的符号在两个视口中的效果：
+第一个使用符号自身的尺寸，第二个指定实例尺寸。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、

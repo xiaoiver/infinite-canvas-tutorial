@@ -81,8 +81,12 @@ export function expandSvgUses(
 
       let clone = target.cloneNode(true) as SVGElement;
       if (target.localName === 'symbol') {
-        const width = positivePixelLength(element.getAttribute('width'));
-        const height = positivePixelLength(element.getAttribute('height'));
+        const width = positivePixelLength(
+          element.getAttribute('width') ?? target.getAttribute('width'),
+        );
+        const height = positivePixelLength(
+          element.getAttribute('height') ?? target.getAttribute('height'),
+        );
         if (!width || !height) return;
         const viewport = viewBoxMatrix(target, width, height);
         if (!viewport) return;

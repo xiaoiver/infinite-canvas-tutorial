@@ -258,6 +258,40 @@ it('maps a symbol viewBox into repeated use viewports with independent paints', 
   expect(secondColor.slice(0, 3)).toEqual([0, 0, 1]);
 });
 
+it('uses symbol dimensions when an instance omits one or both dimensions', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><symbol id="badge" viewBox="0 0 100 50" width="200" height="100">' +
+    '<rect id="tile" width="100" height="50"/></symbol></defs>' +
+    '<use id="intrinsic" href="#badge" x="10" fill="red"/>' +
+    '<use id="wide" href="#badge" x="240" width="300" fill="blue"/>' +
+    '<use id="tall" href="#badge" x="560" height="150" fill="green"/>' +
+    '<use id="invalid" href="#badge" width="0" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  const flatNodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  expect(flatNodes.map((node) => node.id)).toEqual(nodes.map((node) => node.id));
+  expect(nodes.find((node) => node.id === 'intrinsic--badge')).toMatchObject({
+    type: 'g', x: 0, y: 0, scaleX: 2, scaleY: 2,
+  });
+  expect(nodes.find((node) => node.id === 'wide--badge')).toMatchObject({
+    type: 'g', x: 50, y: 0, scaleX: 2, scaleY: 2,
+  });
+  expect(nodes.find((node) => node.id === 'tall--badge')).toMatchObject({
+    type: 'g', x: 0, y: 25, scaleX: 2, scaleY: 2,
+  });
+  expect(nodes.find((node) => node.id === 'invalid')).toBeUndefined();
+  await world.reset(api, nodes);
+  for (const id of ['intrinsic--tile', 'wide--tile', 'tall--tile']) {
+    const entity = api.getEntity(api.getNodeById(id))!;
+    expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+      .toBeGreaterThan(0);
+  }
+});
+
 it('honors symbol aspect-ratio alignment and nonuniform scaling', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg">' +

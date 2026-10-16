@@ -51,11 +51,11 @@ const useSample = [
 
 const symbolSample = [
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
-  '<defs><symbol id="badge" viewBox="0 0 100 60">',
+  '<defs><symbol id="badge" viewBox="0 0 100 60" width="180" height="180">',
   '<path id="badge-shape" d="M0 0 H100 V60 H0 Z M25 15 H75 V45 H25 Z" fill-rule="evenodd"/>',
   '</symbol></defs>',
-  '<use id="badge-one" href="#badge" x="35" y="45" width="180" height="180" fill="#3b82f6"/>',
-  '<use id="badge-two" href="#badge" x="265" y="45" width="180" height="180" fill="#f97316"/>',
+  '<use id="badge-one" href="#badge" x="35" y="45" fill="#3b82f6"/>',
+  '<use id="badge-two" href="#badge" x="265" y="45" width="160" height="160" fill="#f97316"/>',
   '</svg>',
 ].join('');
 
