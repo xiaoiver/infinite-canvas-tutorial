@@ -4,7 +4,6 @@ import {
   GPUResource,
   ExportFormat,
   svgElementsToExtrudedNodes,
-  svgElementsToSerializedNodes,
   type API,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
@@ -21,6 +20,16 @@ const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
   <rect id="rounded" x="270" y="202" width="170" height="58" rx="18" ry="10" fill="#06b6d4"/>
   <path id="open-line" d="M40 290 H440" fill="none" stroke="#64748b" stroke-width="4"/>
 </svg>`;
+
+const transformedSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="310" viewBox="0 0 240 155">',
+  '<g transform="skewX(18)" fill="#3b82f6">',
+  '<path d="M20 20 H85 V85 H20 Z M40 40 H65 V65 H40 Z" fill-rule="evenodd"/>',
+  '</g>',
+  '<rect x="125" y="28" width="62" height="55" rx="12" ry="6" transform="matrix(1 0.2 0 1 0 0)" fill="#22c55e"/>',
+  '<ellipse cx="125" cy="120" rx="32" ry="18" fill="#ef4444"/>',
+  '</svg>',
+].join('');
 
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
@@ -42,18 +51,22 @@ function parseSVG() {
     document.querySelector('parsererror')
   )
     throw new Error('Invalid SVG file');
-  return Array.from(document.documentElement.children) as SVGElement[];
+  return document.documentElement as unknown as SVGSVGElement;
 }
 
 async function render() {
   if (!api) return;
   try {
-    const children = parseSVG();
-    const imported = show3D.value
-      ? svgElementsToExtrudedNodes(children, depth.value)
-      : svgElementsToSerializedNodes(children);
-    const nodes: SerializedNode[] = imported.map((node) =>
-      (node.type === 'path' || node.type === 'rect') && node.extrude3d
+    const svg = parseSVG();
+    const imported = svgElementsToExtrudedNodes(svg, depth.value);
+    const nodes: SerializedNode[] = imported.map((node) => {
+      if (!show3D.value) {
+        const { extrude3d: _extrude3d, ...flat } = node as SerializedNode & {
+          extrude3d?: number;
+        };
+        return flat as SerializedNode;
+      }
+      return (node.type === 'path' || node.type === 'rect') && node.extrude3d
         ? {
             ...node,
             extrude3d: {
@@ -64,8 +77,8 @@ async function render() {
               ...(useSideColor.value ? { sideColor: sideColor.value } : {}),
             },
           }
-        : node,
-    );
+        : node;
+    });
     await api.edit((editor) => editor.replaceDocument(nodes, 'remote'), {
       capture: 'NEVER',
     });
@@ -107,6 +120,12 @@ function reset() {
   bevelSegments.value = 4;
   useSideColor.value = false;
   sideColor.value = '#facc15';
+  void render();
+}
+
+function loadTransformedSample() {
+  svgSource = transformedSample;
+  show3D.value = true;
   void render();
 }
 
@@ -195,6 +214,9 @@ onUnmounted(() => {
         <input type="file" accept=".svg,image/svg+xml" @change="upload" />
       </label>
       <button type="button" @click="reset">Reset sample</button>
+      <button type="button" @click="loadTransformedSample">
+        ViewBox + shear sample
+      </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB
       </button>

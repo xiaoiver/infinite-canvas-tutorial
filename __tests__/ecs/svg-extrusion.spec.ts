@@ -50,6 +50,106 @@ const elements = () => {
   ) as SVGElement[];
 };
 
+it('places the local bounds origin correctly under SVG scale and matrix transforms', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<rect id="scaled" x="10" y="20" width="30" height="40" transform="scale(2 3)"/>' +
+    '<rect id="turned" x="10" y="20" width="30" height="40" transform="matrix(0 2 -3 0 5 7)"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const input = Array.from(dom.window.document.documentElement.children) as SVGElement[];
+  const nodes = svgElementsToSerializedNodes(input);
+  expect(nodes.find((node) => node.id === 'scaled')).toMatchObject({
+    x: 20, y: 60, scaleX: 2, scaleY: 3,
+  });
+  expect(nodes.find((node) => node.id === 'turned')).toMatchObject({
+    x: -55, y: 27, scaleX: 2, scaleY: 3,
+  });
+});
+
+it('maps an explicit SVG viewBox into the extrusion viewport', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="10 20 100 50" width="300" height="100">' +
+    '<path id="square" d="M10 20 H20 V30 H10 Z" fill="red"/>' +
+    '<rect id="box-in-viewbox" x="30" y="20" width="10" height="10" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const node = svgElementsToExtrudedNodes(svg, 20).find((item) => item.id === 'square');
+  // Default xMidYMid meet: scale 2 and center 100-wide viewport in 300 pixels.
+  expect(node).toMatchObject({
+    type: 'path', x: 50, y: 0, width: 10, height: 10,
+    scaleX: 2, scaleY: 2, extrude3d: 20,
+  });
+  expect(node?.type === 'path' && node.d).toContain('H10');
+  expect(svgElementsToExtrudedNodes(svg, 20).find((item) => item.id === 'box-in-viewbox'))
+    .toMatchObject({ type: 'rect', x: 90, y: 0, width: 10, scaleX: 2, extrude3d: 20 });
+});
+
+it('preserves nested SVG skew and matrix shear on editable extrusion outlines', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<g id="group" fill="#ff0000" transform="skewX(45)">' +
+    '<path id="sheared" d="M0 0 H10 V10 H0 Z"/>' +
+    '<rect id="matrix" x="0" y="20" width="10" height="10" transform="matrix(1 0 .5 1 4 6)"/>' +
+    '</g>' +
+    '<g id="hidden" visibility="hidden" transform="skewX(20)">' +
+    '<rect id="hidden-a" x="0" y="40" width="10" height="10" fill="red"/>' +
+    '<rect id="hidden-b" x="20" y="40" width="10" height="10" fill="red"/>' +
+    '</g></svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 20);
+  const sheared = nodes.find((node) => node.id === 'sheared');
+  const matrix = nodes.find((node) => node.id === 'matrix');
+  expect(sheared).toMatchObject({
+    type: 'path', parentId: undefined, x: 0, y: 0,
+    width: 20, height: 10, extrude3d: 20,
+    fills: [{ value: '#ff0000' }],
+  });
+  expect(sheared?.type === 'path' && sheared.d).toContain('L20 10');
+  expect(matrix).toMatchObject({
+    type: 'path', parentId: undefined, x: 40, y: 26,
+    width: 25, height: 10, extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'hidden-a')).toMatchObject({
+    type: 'path', parentId: undefined, visibility: 'hidden',
+  });
+});
+
+it('applies nonuniform viewBox scaling and still keeps unsupported strokes in 2D', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100" preserveAspectRatio="none">' +
+    '<ellipse id="oval" cx="20" cy="20" rx="10" ry="5" fill="red"/>' +
+    '<path id="stroke" d="M0 0 H10 V10 H0 Z" fill="red" stroke="black"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 20);
+  expect(nodes.find((node) => node.id === 'oval')).toMatchObject({
+    type: 'path', x: 20, y: 15, width: 20, height: 10,
+    scaleX: 2, scaleY: 1, extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'stroke')).not.toHaveProperty('extrude3d');
+});
+
+it('applies root transforms after viewBox alignment', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="300" height="100" ' +
+    'preserveAspectRatio="xMaxYMin meet" transform="translate(7 3)">' +
+    '<path id="aligned" d="M0 0 H10 V10 H0 Z" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 20).find((node) => node.id === 'aligned'))
+    .toMatchObject({ type: 'path', x: 207, y: 3, scaleX: 1, scaleY: 1 });
+});
+
 it('imports rotated SVG rectangles with their original center and dimensions', () => {
   const dom = new JSDOM(
     `<svg xmlns="http://www.w3.org/2000/svg">
@@ -238,6 +338,27 @@ beforeAll(async () => {
   [api] = world.apis;
 });
 afterAll(async () => world?.dispose());
+
+it('builds a 3D companion for a sheared SVG path with an evenodd hole', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100">' +
+    '<g transform="skewY(12)" fill="#3366cc">' +
+    '<path id="sheared-ring" fill-rule="evenodd" d="M10 10 H70 V70 H10 Z M25 25 H55 V55 H25 Z"/>' +
+    '</g></svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 18);
+  const ring = nodes.find((node) => node.id === 'sheared-ring');
+  expect(ring).toMatchObject({
+    type: 'path', fillRule: 'evenodd', parentId: undefined, extrude3d: 18,
+  });
+  expect(ring?.type === 'path' && ring.d.match(/M/g)).toHaveLength(2);
+  await world.reset(api, nodes);
+  const entity = api.getEntity(api.getNodeById('sheared-ring'))!;
+  expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+    .toBeGreaterThan(0);
+});
 
 it('renders imported SVG contours as 3D companions while keeping other paths in 2D', async () => {
   await world.reset(api, svgElementsToExtrudedNodes(elements(), 24));

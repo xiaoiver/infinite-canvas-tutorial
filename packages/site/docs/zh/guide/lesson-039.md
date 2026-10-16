@@ -328,7 +328,7 @@ import { svgElementsToExtrudedNodes } from '@infinite-canvas-tutorial/ecs';
 
 const svg = new DOMParser().parseFromString(source, 'image/svg+xml');
 const nodes = svgElementsToExtrudedNodes(
-    Array.from(svg.documentElement.children) as SVGElement[],
+    svg.documentElement as unknown as SVGSVGElement,
     40,
 );
 api.updateNodes(nodes);
@@ -341,8 +341,13 @@ api.updateNodes(nodes);
 另一个使用相同的值，两个半径分别限制在对应尺寸的一半以内。普通 2D Rect
 导入器仍只存储一个圆角半径。开放路径、实际描边、渐变及
 不支持的 SVG 元素继续以 2D 显示。
-SVG 自带的 transform 和 viewBox 缩放仍沿用原有导入行为；原导入器无法准确保留剪切，
-目前应避免导入带剪切变换的 SVG。
+传入完整的 `<svg>` 根节点后，若有以像素指定的 `width`/`height` 和 `viewBox`，
+导入会应用视口缩放及 `preserveAspectRatio`。可挤出的填充图形也会保留嵌套分组中的
+`skewX`、`skewY` 和 `matrix(...)` 剪切变换；变换后的轮廓会采样为仍可编辑的折线路径。
+只有合成变换包含剪切时才会采样；普通 viewBox 缩放仍保留矩形和曲线路径的原有形式。
+没有显式像素视口尺寸时，继续使用 viewBox 的原坐标。未挤出的 2D 图形仍使用原导入器，
+其源 SVG 剪切变换尚不能准确保留。
+`slice` 会应用缩放和对齐，但暂不按视口裁切。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、
@@ -372,6 +377,8 @@ const glb = api.export({
 导出会把画布向下的 Y 轴转换为 glTF 向上的 Y 轴，并保留当前三维姿态、纯色填充及
 可选的侧壁颜色。只有已就绪的伴生网格会写入文件；不支持的二维 SVG 元素和纹理不会导出。
 如需直接导出网格组件，可以使用底层的 `exportMeshesToGlb`。
+
+点击 **ViewBox + shear sample** 可以查看变换后的轮廓与偶奇填充孔洞，再关闭挤出对比 2D 轮廓。
 
 <SvgExtrusion />
 
