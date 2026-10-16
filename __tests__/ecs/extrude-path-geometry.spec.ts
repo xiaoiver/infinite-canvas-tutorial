@@ -138,6 +138,19 @@ it('bevels a sampled circular contour', () => {
   assertClosed(result.geometry);
 });
 
+it('keeps a rounded bevel on a detailed SVG-like contour', () => {
+  const contour: Point[] = Array.from({ length: 1200 }, (_, i) => [
+    100 * Math.cos((i * 2 * Math.PI) / 1200),
+    100 * Math.sin((i * 2 * Math.PI) / 1200),
+  ]);
+  expect(insetFillBoundaries([contour], 1)?.[0]).toHaveLength(1200);
+  const result = extrudePathContours([contour], 10, 'nonzero', 1, 4);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  expect(capArea(result.geometry, 1)).toBeLessThan(31000);
+  expect(result.geometry.indices.length).toBeGreaterThan(1200 * 6);
+});
+
 it.each([
   [[rect(0, 0, 10, 10), rect(2, 2, 6, 6)], 'evenodd'],
   [[rect(0, 0, 10, 1)], 'nonzero'],

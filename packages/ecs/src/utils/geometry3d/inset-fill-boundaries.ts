@@ -1,5 +1,16 @@
+import Rbush from 'rbush';
+
 type Point = [number, number];
 type Edge = { a: Point; b: Point; tangent: Point; inward: Point };
+type IndexedEdge = {
+  edge: Edge;
+  loop: number;
+  index: number;
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+};
 
 const cross = (a: Point, b: Point, c: Point): number =>
   (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
@@ -68,18 +79,32 @@ function signedArea(contour: readonly Point[]): number {
   return twiceArea / 2;
 }
 
-/** Nonzero winding of the resolved fill boundaries. */
-function insideFill(point: Point, boundaries: readonly Point[][]): boolean {
+function indexEdge(edge: Edge, loop: number, index: number): IndexedEdge {
+  return {
+    edge,
+    loop,
+    index,
+    minX: Math.min(edge.a[0], edge.b[0]),
+    minY: Math.min(edge.a[1], edge.b[1]),
+    maxX: Math.max(edge.a[0], edge.b[0]),
+    maxY: Math.max(edge.a[1], edge.b[1]),
+  };
+}
+
+/** Nonzero winding using only edges that can cross a ray to the right. */
+function insideFill(point: Point, index: Rbush<IndexedEdge>): boolean {
   let winding = 0;
-  for (const contour of boundaries) {
-    for (let i = 0; i < contour.length; i++) {
-      const a = contour[i];
-      const b = contour[(i + 1) % contour.length];
-      if (a[1] <= point[1] && b[1] > point[1] && cross(a, b, point) > 0)
-        winding++;
-      else if (a[1] > point[1] && b[1] <= point[1] && cross(a, b, point) < 0)
-        winding--;
-    }
+  for (const { edge } of index.search({
+    minX: point[0],
+    minY: point[1],
+    maxX: Infinity,
+    maxY: point[1],
+  })) {
+    const { a, b } = edge;
+    if (a[1] <= point[1] && b[1] > point[1] && cross(a, b, point) > 0)
+      winding++;
+    else if (a[1] > point[1] && b[1] <= point[1] && cross(a, b, point) < 0)
+      winding--;
   }
   return winding !== 0;
 }
@@ -104,6 +129,15 @@ function distanceToEdge(point: Point, edge: Edge): number {
 
 function touchesSegment(point: Point, edge: Edge, epsilon: number): boolean {
   return distanceToEdge(point, edge) <= epsilon;
+}
+
+function distanceBetweenEdges(a: Edge, b: Edge): number {
+  return Math.min(
+    distanceToEdge(a.a, b),
+    distanceToEdge(a.b, b),
+    distanceToEdge(b.a, a),
+    distanceToEdge(b.b, a),
+  );
 }
 
 function intersects(a: Edge, b: Edge, epsilon: number): boolean {
@@ -140,12 +174,16 @@ export function insetFillBoundaries(
   distance: number,
 ): Point[][] | undefined {
   const count = boundaries.reduce((sum, contour) => sum + contour.length, 0);
-  // Validation below is quadratic. Large imported SVGs retain sharp edges.
-  if (!(distance > 0) || count < 3 || count > 1024) return;
+  // Keep mesh generation bounded even when an imported SVG is very detailed.
+  if (!(distance > 0) || count < 3 || count > 4096) return;
   const tolerance = Math.max(1e-5, distance * 1e-4);
   const originalEdges = boundaries.map(edgesOf);
   if (originalEdges.some((edges) => !edges)) return;
-  const allOriginal = (originalEdges as Edge[][]).flat();
+  const originalIndex = new Rbush<IndexedEdge>().load(
+    (originalEdges as Edge[][]).flatMap((edges, loop) =>
+      edges.map((edge, index) => indexEdge(edge, loop, index)),
+    ),
+  );
   const insets: Point[][] = [];
   const insetEdges: Edge[][] = [];
 
@@ -166,40 +204,44 @@ export function insetFillBoundaries(
     insetEdges.push(edges);
   }
 
-  for (let loop = 0; loop < insetEdges.length; loop++) {
+  const indexedInsetsByLoop = insetEdges.map((edges, loop) =>
+    edges.map((edge, index) => indexEdge(edge, loop, index)),
+  );
+  const indexedInsets = indexedInsetsByLoop.flat();
+  const insetIndex = new Rbush<IndexedEdge>().load(indexedInsets);
+  for (const [loop, inset] of insets.entries()) {
+    // With no crossings, one vertex fixes the entire loop's fill membership.
+    if (!insideFill(inset[0], originalIndex)) return;
     const edges = insetEdges[loop];
     for (let i = 0; i < edges.length; i++) {
       const edge = edges[i];
-      const midpoint: Point = [
-        (edge.a[0] + edge.b[0]) / 2,
-        (edge.a[1] + edge.b[1]) / 2,
-      ];
-      for (const sample of [edge.a, midpoint]) {
-        if (!insideFill(sample, boundaries)) return;
-        if (
-          allOriginal.some(
-            (original) =>
-              distanceToEdge(sample, original) < distance - tolerance,
-          )
-        )
+      const bounds = indexedInsetsByLoop[loop][i];
+      const near = originalIndex.search({
+        minX: bounds.minX - distance - tolerance,
+        minY: bounds.minY - distance - tolerance,
+        maxX: bounds.maxX + distance + tolerance,
+        maxY: bounds.maxY + distance + tolerance,
+      });
+      for (const original of near) {
+        if (intersects(edge, original.edge, tolerance)) return;
+        if (distanceBetweenEdges(edge, original.edge) < distance - tolerance)
           return;
       }
-      for (const original of allOriginal)
-        if (intersects(edge, original, tolerance)) return;
-      for (let otherLoop = loop; otherLoop < insetEdges.length; otherLoop++) {
-        const otherEdges = insetEdges[otherLoop];
-        for (
-          let j = otherLoop === loop ? i + 1 : 0;
-          j < otherEdges.length;
-          j++
-        ) {
-          if (
-            otherLoop === loop &&
-            (j === i + 1 || (i === 0 && j === edges.length - 1))
-          )
-            continue;
-          if (intersects(edge, otherEdges[j], tolerance)) return;
-        }
+      for (const other of insetIndex.search({
+        minX: bounds.minX - tolerance,
+        minY: bounds.minY - tolerance,
+        maxX: bounds.maxX + tolerance,
+        maxY: bounds.maxY + tolerance,
+      })) {
+        if (
+          other.loop < loop ||
+          (other.loop === loop && other.index <= i) ||
+          (other.loop === loop &&
+            (other.index === i + 1 ||
+              (i === 0 && other.index === edges.length - 1)))
+        )
+          continue;
+        if (intersects(edge, other.edge, tolerance)) return;
       }
     }
   }
