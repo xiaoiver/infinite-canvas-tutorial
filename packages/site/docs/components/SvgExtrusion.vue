@@ -2,11 +2,7 @@
 import {
   Pen,
   GPUResource,
-  Extrude3D,
-  Material3D,
-  Mesh3D,
-  Transform3D,
-  exportMeshesToGlb,
+  ExportFormat,
   svgElementsToExtrudedNodes,
   svgElementsToSerializedNodes,
   type API,
@@ -84,40 +80,9 @@ async function render() {
 
 function downloadGlb() {
   if (!api) return;
-  const editorApi = api;
   try {
-    const sources = importedNodes.flatMap((node) => {
-      const current = editorApi.getNodeById(node.id);
-      if (!current) return [];
-      const entity = editorApi.getEntity(current);
-      if (!entity?.has(Extrude3D)) return [];
-      const mesh = entity.read(Extrude3D).meshEntity;
-      if (
-        !mesh?.alive ||
-        !mesh.has(Mesh3D) ||
-        !mesh.has(Material3D) ||
-        !mesh.has(Transform3D)
-      )
-        return [];
-      return [
-        {
-          name: node.id,
-          mesh: mesh.read(Mesh3D),
-          material: mesh.read(Material3D),
-          transform: mesh.read(Transform3D),
-        },
-      ];
-    });
-    const glb = exportMeshesToGlb(sources);
-    const url = URL.createObjectURL(
-      new Blob([glb], { type: 'model/gltf-binary' }),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'svg-extrusion.glb';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    status.value = `Downloaded ${sources.length} extruded shapes as GLB.`;
+    api.export({ format: ExportFormat.GLB, nodes: importedNodes });
+    status.value = 'Downloaded extruded shapes as GLB.';
   } catch (error) {
     status.value = error instanceof Error ? error.message : 'GLB export failed';
   }
