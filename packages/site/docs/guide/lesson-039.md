@@ -340,7 +340,8 @@ const vector: PathSerializedNode = {
 All subpaths must be closed. Open paths, stroke layers, multiple or non-solid
 fills, non-manifold contours and sheared transforms remain visible in 2D. The
 Path keeps its original document node and supports gizmo edits, undo and reload.
-SVG `<path>` and `<polygon>` elements can be imported as extrusion sources with
+SVG `<path>`, `<polygon>`, `<rect>`, `<circle>` and `<ellipse>` elements can be
+imported as extrusion sources with
 `svgElementsToExtrudedNodes`. The helper preserves other imported shapes in 2D;
 invalid depth is rejected instead of silently changing it to a default.
 
@@ -357,8 +358,12 @@ api.updateNodes(nodes);
 
 The converter accepts closed contours with one solid fill and no visible stroke;
 SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including
-`evenodd` holes. Open contours, stroked shapes, gradients and unsupported SVG
-shapes remain in 2D. Shearing a Path on the canvas also keeps it in 2D. SVG
+`evenodd` holes, and inherits fill colors from SVG groups. Plain rectangles stay
+editable Rect nodes; rounded rectangles and ellipses become editable Paths.
+The current SVG importer uses one corner radius for rectangles, so distinct
+`rx` and `ry` values are not preserved.
+Open contours, stroked shapes, gradients and unsupported SVG shapes remain in 2D.
+Shearing a Path on the canvas also keeps it in 2D. SVG
 transforms and viewBox scaling follow the existing importer, which does not
 faithfully preserve shear; avoid sheared SVG input until that importer supports it.
 
