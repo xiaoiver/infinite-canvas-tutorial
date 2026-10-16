@@ -371,6 +371,11 @@ SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, includin
 `evenodd` holes, and inherits fill colors from SVG groups. Plain rectangles stay
 editable Rect nodes; rounded rectangles, ellipses and closed polylines become
 editable Paths. Open polylines keep their 2D form.
+Inline `style` declarations for fill, stroke, opacity, fill rule and stroke
+geometry override presentation attributes. `fill="currentColor"` and
+`stroke="currentColor"` resolve against the nearest `color` on the shape, group,
+`<use>` instance or SVG root; absent color defaults to black. A stroke supplied
+through `style` keeps that shape in 2D. External CSS stylesheets are not parsed.
 For extrusion, rounded rectangles preserve independent SVG `rx` and `ry` values
 as elliptical corner arcs. A missing radius defaults to the other, and each
 radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
@@ -415,6 +420,9 @@ holed symbol. The first uses the symbol's dimensions; the second sets its own.
 Choose **Nested SVG viewport sample** to compare an inline SVG viewport and a
 second instance referenced with `<use>`; their extruded outlines are clipped
 to each viewport.
+Choose **Paint style + currentColor sample** to compare inherited and
+instance-specific colors, an inline fill override and a styled stroke that
+stays in 2D.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple

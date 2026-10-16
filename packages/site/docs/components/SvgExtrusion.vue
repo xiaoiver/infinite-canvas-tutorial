@@ -69,6 +69,16 @@ const nestedViewportSample = [
   '</svg>',
 ].join('');
 
+const paintStyleSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310" style="color: #3b82f6">',
+  '<defs><path id="paint-tile" d="M0 0 H90 V90 H0 Z M25 25 H65 V65 H25 Z" fill="currentColor" fill-rule="evenodd"/></defs>',
+  '<use id="blue-tile" href="#paint-tile" x="35" y="60"/>',
+  '<use id="orange-tile" href="#paint-tile" x="185" y="60" style="color: #f97316"/>',
+  '<path id="styled-fill" d="M340 60 H430 V150 H340 Z" fill="none" style="fill: #22c55e"/>',
+  '<path id="styled-stroke" d="M55 210 H155 V275 H55 Z" fill="#a855f7" style="stroke: #1e293b; stroke-width: 5"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -191,6 +201,12 @@ function loadNestedViewportSample() {
   void render();
 }
 
+function loadPaintStyleSample() {
+  svgSource = paintStyleSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -290,6 +306,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadNestedViewportSample">
         Nested SVG viewport sample
+      </button>
+      <button type="button" @click="loadPaintStyleSample">
+        Paint style + currentColor sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

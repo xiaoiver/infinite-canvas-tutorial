@@ -338,6 +338,10 @@ api.updateNodes(nodes);
 只有单层纯色填充、没有可见描边的闭合轮廓会挤出；SVG 的 `stroke="none"` 占位层
 会被忽略。导入会保留 `fill-rule`（包括 `evenodd` 孔洞），并继承 SVG 分组的填充色。
 普通矩形保持可编辑的 Rect；圆角矩形、椭圆和闭合折线转换为可编辑的 Path。
+内联 `style` 中的填充、描边、不透明度、填充规则及描边几何属性优先于同名 SVG 属性。
+`fill="currentColor"` 和 `stroke="currentColor"` 会查找图形、分组、`<use>` 实例或
+SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style` 指定描边的图形仍保持
+2D。目前不会解析外部 CSS 样式表。
 未闭合的折线仍保持 2D。挤出导入时，
 圆角矩形会保留 SVG 中不同的 `rx` 与 `ry`，生成椭圆圆角；只指定其中一个时，
 另一个使用相同的值，两个半径分别限制在对应尺寸的一半以内。普通 2D Rect
@@ -373,6 +377,8 @@ api.updateNodes(nodes);
 第一个使用符号自身的尺寸，第二个指定实例尺寸。
 点击 **Nested SVG viewport sample** 可以比较直接绘制的内嵌 SVG 视口与
 通过 `<use>` 引用的第二个实例；两者的挤出轮廓都会按各自视口裁切。
+点击 **Paint style + currentColor sample** 可以比较继承颜色、实例独立颜色、
+内联填充覆盖，以及因内联描边而保持 2D 的图形。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、
