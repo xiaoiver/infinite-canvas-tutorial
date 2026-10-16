@@ -121,8 +121,8 @@ for (const extrude of [false, true]) {
     let green = 0;
     for (let i = 0; i < png.data.length; i += 4) {
       const [r, g, b] = png.data.subarray(i, i + 3);
-      // Extrusion faces may receive only the default ambient light.
-      if (g > 20 && g > r * 1.4 && g > b * 1.4) green++;
+      // A visible surface should retain its fill under the default lights.
+      if (g > 70 && g > r * 1.4 && g > b * 1.4) green++;
     }
     expect(green).toBeGreaterThan(100);
     await page.evaluate(async () => {
@@ -155,7 +155,7 @@ for (const extrude of [false, true]) {
     let darkGreen = 0;
     for (let i = 0; i < dark.data.length; i += 4) {
       const [r, g, b] = dark.data.subarray(i, i + 3);
-      if (g > 20 && g > r * 1.4 && g > b * 1.4) darkGreen++;
+      if (g > 70 && g > r * 1.4 && g > b * 1.4) darkGreen++;
     }
     expect(darkGreen).toBe(0);
     const lightingUpdates = await page.evaluate(() =>
@@ -174,7 +174,7 @@ for (const extrude of [false, true]) {
     let restoredGreen = 0;
     for (let i = 0; i < restored.data.length; i += 4) {
       const [r, g, b] = restored.data.subarray(i, i + 3);
-      if (g > 20 && g > r * 1.4 && g > b * 1.4) restoredGreen++;
+      if (g > 70 && g > r * 1.4 && g > b * 1.4) restoredGreen++;
     }
     expect(restoredGreen).toBeGreaterThan(100);
     if (!extrude) {

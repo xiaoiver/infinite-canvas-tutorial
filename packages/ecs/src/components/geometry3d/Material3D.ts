@@ -66,7 +66,7 @@ export class Material3D {
       Object.assign(this, material);
     }
     this.baseColor ??= [1, 1, 1, 1];
-    this.ambient ??= 0.1;
+    this.ambient ??= 0.5;
     this.diffuse ??= 0.7;
     this.specular ??= 0.3;
     this.shininess ??= 32;

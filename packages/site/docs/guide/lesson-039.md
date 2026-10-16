@@ -65,7 +65,7 @@ app.run();
 | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
 | **`Camera3D`**    | `projection: 'perspective' \| 'orthographic'`; when `linked`, `CameraSync` follows 2D pan/zoom                   |
 | **`Mesh3D`**      | `positions`, `normals`, optional `indices` (triangle mesh)                                                       |
-| **`Material3D`**  | Blinn-Phong: `baseColor`, `ambient`, `diffuse`, `specular`, `shininess`                                          |
+| **`Material3D`**  | Metallic-roughness PBR: `baseColor`, `metallic`, `roughness`, and ambient strength; legacy fields remain for compatibility |
 | **`Light3D`**     | `ambient` / `directional` / `point` / `spot`; see [Scene lighting example](/example/lighting)                    |
 | **`Transform3D`** | translation, Euler rotation, scale                                                                               |
 | **`Selected3D`**  | 3D selection state: gizmo mode, active axis/plane, drag reference point, etc. (see [3D transform Gizmo](#gizmo)) |
@@ -93,7 +93,7 @@ commands.spawn(
     new Mesh3D({ positions, normals, indices }),
     new Material3D({
         baseColor: [0.25, 0.55, 0.95, 1],
-        ambient: 0.15,
+        ambient: 0.45,
         diffuse: 0.75,
         specular: 0.4,
         shininess: 48,
@@ -371,7 +371,7 @@ faithfully preserve shear; avoid sheared SVG input until that importer supports 
 
 ## Lighting {#lighting}
 
-Demonstrates `Light3D` with Blinn-Phong materials: ambient fill, a cool directional light, a warm spotlight orbiting the scene center, and three meshes (cube, sphere, cylinder) with different specular settings to compare highlights and shading.
+Demonstrates `Light3D` with metallic-roughness materials: ambient fill, two directional lights, a warm spotlight orbiting the scene center, and three meshes (cube, sphere, cylinder) with different metallic and roughness settings. Mesh colors are converted from sRGB to linear space for lighting and back to sRGB for display.
 
 <Lighting />
 

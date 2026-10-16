@@ -63,7 +63,7 @@ export class Mesh3DNode {
     this.rotation3d ??= [0, 0, 0];
     this.scale3d ??= 100;
     this.baseColor ??= [1, 1, 1, 1];
-    this.ambient ??= 0.25;
+    this.ambient ??= 0.5;
     this.diffuse ??= 0.75;
     this.specular ??= 0.4;
     this.shininess ??= 48;
