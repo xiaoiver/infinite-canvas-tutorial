@@ -31,6 +31,14 @@ const transformedSample = [
   '</svg>',
 ].join('');
 
+const sliceSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="310" viewBox="0 0 240 240" preserveAspectRatio="xMidYMid slice">',
+  '<path d="M20 20 H110 V135 H20 Z M45 55 H85 V100 H45 Z" fill-rule="evenodd" fill="#3b82f6"/>',
+  '<path d="M125 10 H220 V150 H195 V35 H150 V150 H125 Z" fill="#f97316"/>',
+  '<ellipse cx="190" cy="195" rx="35" ry="30" fill="#a855f7"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -129,6 +137,12 @@ function loadTransformedSample() {
   void render();
 }
 
+function loadSliceSample() {
+  svgSource = sliceSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -216,6 +230,9 @@ onUnmounted(() => {
       <button type="button" @click="reset">Reset sample</button>
       <button type="button" @click="loadTransformedSample">
         ViewBox + shear sample
+      </button>
+      <button type="button" @click="loadSliceSample">
+        Slice clipping sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

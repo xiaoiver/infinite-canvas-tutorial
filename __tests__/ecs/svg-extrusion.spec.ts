@@ -150,6 +150,70 @@ it('applies root transforms after viewBox alignment', () => {
     .toMatchObject({ type: 'path', x: 207, y: 3, scaleX: 1, scaleY: 1 });
 });
 
+it('clips slice extrusions to the viewport while preserving fully contained shapes', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100" ' +
+    'preserveAspectRatio="xMidYMid slice">' +
+    '<rect id="partial" x="20" y="10" width="20" height="40" fill="red"/>' +
+    '<rect id="inside" x="60" y="40" width="10" height="10" fill="blue"/>' +
+    '<rect id="outside" x="20" y="80" width="10" height="10" fill="green"/>' +
+    '<ellipse id="curved" cx="50" cy="75" rx="10" ry="20" fill="purple"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 20);
+  expect(nodes.find((node) => node.id === 'partial')).toMatchObject({
+    type: 'path', x: 40, y: 0, width: 40, height: 50,
+    fillRule: 'evenodd', extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'inside')).toMatchObject({
+    type: 'rect', x: 120, y: 30, width: 10, height: 10,
+    scaleX: 2, scaleY: 2, extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'outside')).toMatchObject({
+    visibility: 'hidden',
+  });
+  expect(nodes.find((node) => node.id === 'outside')).not.toHaveProperty('extrude3d', 20);
+  const curved = nodes.find((node) => node.id === 'curved');
+  expect(curved).toMatchObject({ type: 'path', fillRule: 'evenodd', extrude3d: 20 });
+  expect(curved?.type === 'path' && curved.d.split('L').length).toBeGreaterThan(8);
+  expect(curved?.y).toBeCloseTo(60);
+  expect(curved?.height).toBeCloseTo(40);
+});
+
+it('clips an identity-scale slice within a transformed root viewport', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" ' +
+    'preserveAspectRatio="xMidYMid slice" transform="translate(7 3)">' +
+    '<rect id="edge" x="90" y="20" width="20" height="20" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 20).find((node) => node.id === 'edge'))
+    .toMatchObject({
+      type: 'path', x: 97, y: 23, width: 10, height: 20,
+      fillRule: 'evenodd', extrude3d: 20,
+    });
+});
+
+it('clips a slice viewport reflected by the root transform', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" ' +
+    'preserveAspectRatio="xMidYMid slice" transform="scale(-1 1)">' +
+    '<rect id="reflected-edge" x="90" y="20" width="20" height="20" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 20).find((node) => node.id === 'reflected-edge'))
+    .toMatchObject({
+      type: 'path', x: -100, y: 20, width: 10, height: 20,
+      fillRule: 'evenodd', extrude3d: 20,
+    });
+});
+
 it('imports rotated SVG rectangles with their original center and dimensions', () => {
   const dom = new JSDOM(
     `<svg xmlns="http://www.w3.org/2000/svg">
@@ -338,6 +402,34 @@ beforeAll(async () => {
   [api] = world.apis;
 });
 afterAll(async () => world?.dispose());
+
+it('extrudes slice-clipped holes and disconnected pieces', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100" ' +
+    'preserveAspectRatio="xMidYMid slice">' +
+    '<path id="ring-slice" fill="red" fill-rule="evenodd" d="M10 10 H90 V90 H10 Z M30 30 H70 V70 H30 Z"/>' +
+    '<path id="split-slice" fill="blue" d="M10 0 H90 V90 H70 V20 H30 V90 H10 Z"/>' +
+    '<path id="duplicate-slice" fill="green" d="M10 10 H90 V90 H10 Z M10 10 H90 V90 H10 Z"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 20);
+  const ring = nodes.find((node) => node.id === 'ring-slice');
+  const split = nodes.find((node) => node.id === 'split-slice');
+  const duplicate = nodes.find((node) => node.id === 'duplicate-slice');
+  expect(ring).toMatchObject({ type: 'path', fillRule: 'evenodd', extrude3d: 20 });
+  expect(split).toMatchObject({ type: 'path', fillRule: 'evenodd', extrude3d: 20 });
+  expect(duplicate).toMatchObject({ type: 'path', fillRule: 'evenodd', extrude3d: 20 });
+  expect(ring?.type === 'path' && ring.d.match(/M/g)).toHaveLength(2);
+  expect(split?.type === 'path' && split.d.match(/M/g)).toHaveLength(2);
+  await world.reset(api, nodes);
+  for (const id of ['ring-slice', 'split-slice', 'duplicate-slice']) {
+    const entity = api.getEntity(api.getNodeById(id))!;
+    expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+      .toBeGreaterThan(0);
+  }
+});
 
 it('builds a 3D companion for a sheared SVG path with an evenodd hole', async () => {
   const dom = new JSDOM(

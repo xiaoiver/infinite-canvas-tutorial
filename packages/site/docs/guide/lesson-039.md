@@ -379,10 +379,14 @@ including `preserveAspectRatio`. Filled extrusions also preserve SVG `skewX`,
 `skewY`, and sheared `matrix(...)` transforms from nested groups. These outlines
 become editable Paths with sampled line segments when the combined transform
 contains shear. Plain viewBox scaling keeps rectangles and curved Paths editable
-in their original form. SVGs without explicit pixel
-viewport dimensions keep their viewBox coordinates. Unsupported 2D shapes still
-use the ordinary SVG importer, which does not preserve source shear.
-The `slice` setting applies scale and alignment but does not clip to the viewport.
+in their original form. SVGs without explicit pixel viewport dimensions keep
+their viewBox coordinates. Unsupported 2D shapes still use the ordinary SVG
+importer, which does not preserve source shear.
+
+With `preserveAspectRatio="slice"`, filled extrusion outlines are clipped to
+the viewport, including holes and shapes split into separate islands. Shapes
+fully inside the viewport keep their Rect or curved Path form. Unsupported 2D
+shapes still follow the ordinary importer and are not clipped by this helper.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple
@@ -421,6 +425,8 @@ For lower-level mesh exports, use `exportMeshesToGlb` directly.
 
 Use **ViewBox + shear sample** to inspect the transformed outline and its
 evenodd hole, then turn extrusion off to compare the 2D footprint.
+Use **Slice clipping sample** to see a hole, two separated pieces and a curved
+edge cut by the SVG viewport.
 
 <SvgExtrusion />
 

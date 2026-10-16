@@ -1,4 +1,5 @@
 import libtess from 'libtess';
+import polygonClipping from 'polygon-clipping';
 import { triangulate } from '../tessy';
 import type { Mesh3DGeometryData } from './types';
 import { insetFillBoundaries } from './inset-fill-boundaries';
@@ -94,6 +95,39 @@ function filledBoundaries(
   }
   tess.gluTessEndPolygon();
   return failed ? null : loops;
+}
+
+/**
+ * Intersect the resolved fill with a convex SVG viewport. Resolve winding
+ * before clipping so evenodd holes, overlapping contours and nested islands
+ * retain the same visible region after the intersection.
+ */
+export function clipFilledContoursToPolygon(
+  contours: Point[][],
+  fillRule: CanvasFillRule,
+  clip: Point[],
+): Point[][] | undefined {
+  try {
+    const boundaries = filledBoundaries(contours, fillRule);
+    if (!boundaries) return;
+    if (!boundaries.length) return [];
+    // Boundary-only tessellation orients outer loops counterclockwise and
+    // holes clockwise. XOR of these nested loops reconstructs the fill,
+    // including islands within holes, without depending on ring orientation.
+    const rings = boundaries.map((boundary) => [
+      [...boundary, boundary[0]],
+    ]);
+    const filled = polygonClipping.xor(rings[0], ...rings.slice(1));
+    const viewport = [[...clip, clip[0]]];
+    const clipped = polygonClipping.intersection(filled, viewport);
+    return clipped.flatMap((polygon) =>
+      polygon.map((ring) =>
+        ring.slice(0, -1).map(([x, y]): Point => [x, y]),
+      ),
+    );
+  } catch {
+    return;
+  }
 }
 
 /**
