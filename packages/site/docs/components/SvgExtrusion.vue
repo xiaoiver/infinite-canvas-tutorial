@@ -14,6 +14,7 @@ import { ensureExampleWorld } from '../lib/ensure-example-world';
 const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
   <path id="ring" d="M40 30 H170 V160 H40 Z M80 70 H130 V120 H80 Z" fill="#3b82f6" fill-rule="evenodd"/>
   <polygon id="triangle" points="230,155 295,30 360,155" fill="#f97316"/>
+  <polyline id="closed-polyline" points="225,225 245,185 265,225 225,225" fill="#eab308"/>
   <rect id="box" x="390" y="40" width="65" height="105" transform="rotate(12 422.5 92.5)" fill="#22c55e"/>
   <circle id="circle" cx="80" cy="230" r="28" fill="#a855f7"/>
   <ellipse id="ellipse" cx="185" cy="230" rx="42" ry="26" fill="#ef4444"/>

@@ -319,7 +319,8 @@ const vector: PathSerializedNode = {
 `sideColor` 可选，用 CSS 颜色设置侧壁；前后封盖仍使用原图形的填充色。
 省略时所有表面都使用原填充色。修改侧壁颜色只更新材质，不重建网格。
 
-对于 SVG 的 `<path>`、`<polygon>`、`<rect>`、`<circle>` 和 `<ellipse>`，可以通过
+对于 SVG 的 `<path>`、`<polygon>`、`<rect>`、`<circle>`、`<ellipse>`，以及首尾点重合的
+`<polyline>`，可以通过
 `svgElementsToExtrudedNodes` 导入为可编辑的挤出图形；其他元素继续保持 2D。
 该函数要求厚度为有限正数。
 
@@ -336,7 +337,8 @@ api.updateNodes(nodes);
 
 只有单层纯色填充、没有可见描边的闭合轮廓会挤出；SVG 的 `stroke="none"` 占位层
 会被忽略。导入会保留 `fill-rule`（包括 `evenodd` 孔洞），并继承 SVG 分组的填充色。
-普通矩形保持可编辑的 Rect；圆角矩形和椭圆转换为可编辑的 Path。挤出导入时，
+普通矩形保持可编辑的 Rect；圆角矩形、椭圆和闭合折线转换为可编辑的 Path。
+未闭合的折线仍保持 2D。挤出导入时，
 圆角矩形会保留 SVG 中不同的 `rx` 与 `ry`，生成椭圆圆角；只指定其中一个时，
 另一个使用相同的值，两个半径分别限制在对应尺寸的一半以内。普通 2D Rect
 导入器仍只存储一个圆角半径。开放路径、实际描边、渐变及

@@ -349,7 +349,8 @@ Path keeps its original document node and supports gizmo edits, undo and reload.
 source fill. Omitting it makes all faces use the source fill color. The side
 color is a paint change, so editing it reuses the existing mesh geometry.
 
-SVG `<path>`, `<polygon>`, `<rect>`, `<circle>` and `<ellipse>` elements can be
+SVG `<path>`, `<polygon>`, `<rect>`, `<circle>` and `<ellipse>` elements, plus
+`<polyline>` elements whose first and last points coincide, can be
 imported as extrusion sources with
 `svgElementsToExtrudedNodes`. The helper preserves other imported shapes in 2D;
 invalid depth is rejected instead of silently changing it to a default.
@@ -368,7 +369,8 @@ api.updateNodes(nodes);
 The converter accepts closed contours with one solid fill and no visible stroke;
 SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including
 `evenodd` holes, and inherits fill colors from SVG groups. Plain rectangles stay
-editable Rect nodes; rounded rectangles and ellipses become editable Paths.
+editable Rect nodes; rounded rectangles, ellipses and closed polylines become
+editable Paths. Open polylines keep their 2D form.
 For extrusion, rounded rectangles preserve independent SVG `rx` and `ry` values
 as elliptical corner arcs. A missing radius defaults to the other, and each
 radius is clamped to half of its corresponding dimension. The ordinary 2D Rect

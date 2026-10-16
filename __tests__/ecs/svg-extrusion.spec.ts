@@ -150,6 +150,50 @@ it('applies root transforms after viewBox alignment', () => {
     .toMatchObject({ type: 'path', x: 207, y: 3, scaleX: 1, scaleY: 1 });
 });
 
+it('extrudes explicitly closed SVG polylines and leaves open or stroked ones in 2D', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<polyline id="closed" points="10,20 50,20 50,60 10,20" fill="red"/>' +
+    '<polyline id="open" points="70,20 110,20 110,60" fill="blue"/>' +
+    '<polyline id="stroked" points="130,20 170,20 170,60 130,20" fill="green" stroke="black"/>' +
+    '<polyline id="invalid" points="0,0 bad,20 20,20 0,0" fill="purple"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 20);
+  expect(nodes.find((node) => node.id === 'closed')).toMatchObject({
+    type: 'path', x: 10, y: 20, width: 40, height: 40,
+    d: 'M0 0 L40 0 L40 40 Z', fillRule: 'nonzero', extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'open')).toMatchObject({ type: 'polyline' });
+  expect(nodes.find((node) => node.id === 'stroked')).toMatchObject({ type: 'polyline' });
+  expect(nodes.find((node) => node.id === 'invalid')).toMatchObject({ type: 'polyline' });
+  await world.reset(api, [nodes.find((node) => node.id === 'closed')!]);
+  const entity = api.getEntity(api.getNodeById('closed'))!;
+  expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+    .toBeGreaterThan(0);
+});
+
+it('clips a closed SVG polyline after viewBox and group transforms', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 100 100" ' +
+    'preserveAspectRatio="xMidYMid slice">' +
+    '<g fill="red" transform="translate(10 0)">' +
+    '<polyline id="clipped-polyline" points="10,10 70,10 70,90 10,90 10,10"/>' +
+    '</g></svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const node = svgElementsToExtrudedNodes(svg, 20)
+    .find((item) => item.id === 'clipped-polyline');
+  expect(node).toMatchObject({
+    type: 'path', x: 40, y: 0, width: 120, height: 100,
+    fillRule: 'evenodd', extrude3d: 20,
+    fills: [{ value: 'red' }],
+  });
+});
+
 it('clips slice extrusions to the viewport while preserving fully contained shapes', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100" ' +
