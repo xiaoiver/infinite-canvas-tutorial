@@ -40,6 +40,15 @@ const sliceSample = [
   '</svg>',
 ].join('');
 
+const useSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
+  '<use id="first-star" href="#star" x="40" y="55" fill="#3b82f6"/>',
+  '<rect id="between-stars" x="175" y="85" width="70" height="70" rx="12" fill="#22c55e"/>',
+  '<defs><path id="star" d="M40 0 L50 28 L80 28 L56 47 L65 76 L40 58 L15 76 L24 47 L0 28 L30 28 Z"/></defs>',
+  '<use id="second-star" href="#star" x="305" y="55" transform="rotate(18 345 93)" fill="#f97316"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -144,6 +153,12 @@ function loadSliceSample() {
   void render();
 }
 
+function loadUseSample() {
+  svgSource = useSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -234,6 +249,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadSliceSample">
         Slice clipping sample
+      </button>
+      <button type="button" @click="loadUseSample">
+        Repeated use sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

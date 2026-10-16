@@ -20,6 +20,7 @@ import { pathExtrusionPaintSupported } from '../path-extrusion-paint';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
 import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
 import { reprojectSvgExtrusion } from './svg-extrusion-affine';
+import { expandSvgUses } from './svg-use';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -67,8 +68,9 @@ export function svgElementsToSerializedNodes(
   zIndex = 0,
   overrideAttributes?: NamedNodeMap,
 ): SerializedNode[] {
+  const expanded = expandSvgUses(elements, defsChildren);
   return deserializeSvgElements(
-    elements,
+    expanded.children,
     defsChildren,
     parentId,
     zIndex,
@@ -98,25 +100,9 @@ function deserializeSvgElements(
     if (type === 'svg') {
       type = 'g';
     } else if (type === 'defs') {
-      defsChildren.push(...(Array.from(element.childNodes) as SVGElement[]));
+      defsChildren.push(...(Array.from(element.children) as SVGElement[]));
       continue;
     } else if (type === 'use') {
-      const href = element.getAttribute('xlink:href');
-      if (href) {
-        const def = defsChildren.find((d) => d.id === href.replace('#', ''));
-        if (def) {
-          return deserializeSvgElements(
-            [def],
-            defsChildren,
-            parentId,
-            0,
-            undefined,
-            paintFromGroups,
-            rectRadii,
-            nodeElements,
-          );
-        }
-      }
       continue;
     } else if (type === 'tspan') {
       continue;
@@ -124,7 +110,11 @@ function deserializeSvgElements(
 
     // <g> maybe a single element, so we need to infer it, e.g. a rect with children
     let inferedSingleElement = false;
-    if (type === 'g') {
+    if (
+      type === 'g' &&
+      !element.hasAttribute('data-svg-use-instance') &&
+      !element.querySelector('[data-svg-use-instance]')
+    ) {
       // <g><defs></defs></g> e.g. a <polyline> with an arrow
       if (
         Array.from(element.children).filter((child) => child.tagName !== 'defs')
@@ -141,6 +131,7 @@ function deserializeSvgElements(
         ...Array.from(element.attributes),
         ...Array.from(elementOverrideAttributes || []),
       ].reduce((prev, attr) => {
+        if (attr.name === 'data-svg-use-instance') return prev;
         let attributeName = kebabToCamelCase(attr.name);
 
         let value: string | number = attr.value;
@@ -400,10 +391,7 @@ export function svgElementsToExtrudedNodes(
     throw new RangeError('SVG extrusion depth must be finite and positive');
   }
   const rectRadii = new Map<string, { rx: number; ry: number }>();
-  const root = Array.isArray(elements) ? undefined : elements as SVGSVGElement;
-  const children: SVGElement[] = root
-    ? Array.from(root.children) as SVGElement[]
-    : elements as SVGElement[];
+  const { root, children } = expandSvgUses(elements);
   const nodeElements = new Map<string, SVGElement>();
   const nodes = deserializeSvgElements(
     children,
