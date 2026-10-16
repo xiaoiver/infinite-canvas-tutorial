@@ -101,6 +101,28 @@ it('keeps local Path points and depth in the companion pose', async () => {
   expect(companion.read(Transform3D).rotation[2]).toBeCloseTo(Math.PI / 2);
 });
 
+it('updates side color without rebuilding the Path mesh and restores it on undo', async () => {
+  await world.reset(api, [
+    path({ extrude3d: { depth: 20, sideColor: '#00ff00' } }),
+  ]);
+  const companion = mesh();
+  const positions = companion.read(Mesh3D).positions;
+  expect(companion.read(Material3D).baseColor).toEqual([1, 0, 0, 1]);
+  expect(companion.read(Material3D).sideColor).toEqual([0, 1, 0, 1]);
+
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('vector'), {
+      extrude3d: { depth: 20, sideColor: '#0000ff' },
+    }),
+  );
+  expect(mesh()).toBe(companion);
+  expect(mesh().read(Mesh3D).positions).toBe(positions);
+  expect(mesh().read(Material3D).sideColor).toEqual([0, 0, 1, 1]);
+
+  await world.history(api, 'undo');
+  expect(mesh().read(Material3D).sideColor).toEqual([0, 1, 0, 1]);
+});
+
 it('rebuilds only after Path geometry changes and restores it through history', async () => {
   await world.reset(api, [path()]);
   const companion = mesh();

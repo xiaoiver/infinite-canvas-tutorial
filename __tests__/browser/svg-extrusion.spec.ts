@@ -65,3 +65,48 @@ test('an SVG ellipse renders its curved extrusion mesh', async ({ page }) => {
   expect(teal).toBeGreaterThan(100);
   expect(errors).toEqual([]);
 });
+
+test('side color paints only the walls without rebuilding SVG geometry', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const uploads = await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    await api.edit((editor) => editor.selectNodes([]), { capture: 'NEVER' });
+    await window.gizmoTest.settle();
+    await api.edit((editor) =>
+      editor.updateNode(editor.getNodeById('model'), {
+        extrude3d: { depth: 20, rotation: [0.6, -0.5, 0] },
+      }),
+    );
+    await window.gizmoTest.settle();
+    window.gizmoTest.trackGeometryUploads();
+    await api.edit((editor) =>
+      editor.updateNode(editor.getNodeById('model'), {
+        extrude3d: {
+          depth: 20,
+          rotation: [0.6, -0.5, 0],
+          sideColor: '#ff00ff',
+        },
+      }),
+    );
+    await window.gizmoTest.settle();
+    return window.gizmoTest.geometryUploads();
+  });
+  expect(uploads).toBe(0);
+
+  const pixels = PNG.sync.read(await page.locator('#canvas').screenshot());
+  let magenta = 0;
+  let teal = 0;
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const [r, g, b] = pixels.data.subarray(i, i + 3);
+    if (r > g * 1.4 && b > g * 1.4 && r > 40 && b > 40) magenta++;
+    if (g > r * 1.3 && b > r * 1.3 && g > 40) teal++;
+  }
+  expect(magenta).toBeGreaterThan(20);
+  expect(teal).toBeGreaterThan(20);
+  expect(errors).toEqual([]);
+});

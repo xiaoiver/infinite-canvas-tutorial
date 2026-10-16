@@ -427,6 +427,8 @@ export interface Extrude3DAttributes {
 export interface Extrude3DOptions {
   /** Thickness in canvas world units. Defaults to 100. */
   depth?: number;
+  /** CSS color for the side walls; front and back keep the source fill. */
+  sideColor?: string;
   /** Elevation relative to the original front plane; independent of thickness. */
   z?: number;
   /** Local XYZ Euler rotation, in radians, composed after the source's 2D rotation. */

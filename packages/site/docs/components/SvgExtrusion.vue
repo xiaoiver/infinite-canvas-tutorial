@@ -23,6 +23,8 @@ const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
 
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
+const useSideColor = ref(false);
+const sideColor = ref('#facc15');
 const show3D = ref(true);
 const status = ref('Loading canvas…');
 let svgSource = sample;
@@ -53,6 +55,7 @@ async function render() {
             extrude3d: {
               depth: depth.value,
               rotation: [0.4, -0.35, 0],
+              ...(useSideColor.value ? { sideColor: sideColor.value } : {}),
             },
           }
         : node,
@@ -83,6 +86,8 @@ function reset() {
   svgSource = sample;
   show3D.value = true;
   depth.value = 35;
+  useSideColor.value = false;
+  sideColor.value = '#facc15';
   void render();
 }
 
@@ -134,6 +139,14 @@ onUnmounted(() => {
           max="90"
           @change="render"
         />
+      </label>
+      <label>
+        <input v-model="useSideColor" type="checkbox" @change="render" />
+        Custom side color
+      </label>
+      <label v-if="useSideColor">
+        Side color
+        <input v-model="sideColor" type="color" @change="render" />
       </label>
       <label>
         Upload SVG

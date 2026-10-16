@@ -29,6 +29,11 @@ export function syncMaterial3D(
     const value = patch[key];
     if (key === 'baseColor')
       return !sameNumbers(current.baseColor, patch.baseColor!);
+    if (key === 'sideColor')
+      return current.sideColor === null
+        ? patch.sideColor !== null
+        : patch.sideColor === null ||
+            !sameNumbers(current.sideColor, patch.sideColor!);
     return (
       current[key] !== (typeof value === 'number' ? Math.fround(value) : value)
     );

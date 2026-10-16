@@ -91,6 +91,23 @@ it('copies wire arrays and retains the compact legacy representation', () => {
   });
 });
 
+it('preserves side color when gizmo edits the extrusion pose', () => {
+  const previous = {
+    depth: 20,
+    sideColor: '#22c55e',
+    z: 0,
+  };
+  expect(extrude3DFromWire(previous)?.sideColor).toBe('#22c55e');
+  expect(
+    extrude3DToWire({ depth: 25, z: 0, rotation: [0, 0, 0] }, previous),
+  ).toEqual({
+    depth: 25,
+    sideColor: '#22c55e',
+    z: 0,
+    rotation: [0, 0, 0],
+  });
+});
+
 it.each([
   { rotation: [0.2, -0.3, 0.4], base: 0.6 },
   { rotation: [0.2, Math.PI / 2, 0.4], base: 0 },

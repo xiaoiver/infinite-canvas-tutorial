@@ -168,7 +168,7 @@ async function init() {
     const buffer = createBuffer(descriptor);
     if (descriptor.usage === BufferUsage.UNIFORM) {
       const isScene = descriptor.viewOrSize === 188 * 4;
-      const isModel = descriptor.viewOrSize === 56 * 4;
+      const isModel = descriptor.viewOrSize === 60 * 4;
       if (isScene) sceneBuffers.add(buffer);
       if (isScene || isModel) {
         const upload = buffer.setSubData.bind(buffer);

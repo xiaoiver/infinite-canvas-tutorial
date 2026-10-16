@@ -306,13 +306,16 @@ const vector: PathSerializedNode = {
     d: 'M100 80 L200 80 L200 180 L100 180 Z M125 105 L125 155 L175 155 L175 105 Z',
     fillRule: 'evenodd',
     fills: [{ type: 'solid', value: '#3377dd' }],
-    extrude3d: { depth: 40, z: 0 },
+    extrude3d: { depth: 40, z: 0, sideColor: '#facc15' },
 };
 ```
 
 每条子路径都必须闭合。开放路径、含描边图层、多层或非纯色填充、非流形轮廓及
 剪切变换会继续以 2D 显示。原 Path 文档节点保持可编辑，也支持 gizmo、撤销和
 重新载入。
+
+`sideColor` 可选，用 CSS 颜色设置侧壁；前后封盖仍使用原图形的填充色。
+省略时所有表面都使用原填充色。修改侧壁颜色只更新材质，不重建网格。
 
 对于 SVG 的 `<path>`、`<polygon>`、`<rect>`、`<circle>` 和 `<ellipse>`，可以通过
 `svgElementsToExtrudedNodes` 导入为可编辑的挤出图形；其他元素继续保持 2D。

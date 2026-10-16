@@ -18,7 +18,10 @@ import {
   Selected,
   Selected3D,
 } from '../components';
-import { extrudeMaterialBaseColorFromEntity } from '../utils/extrude3d';
+import {
+  extrudeMaterialBaseColorFromEntity,
+  extrudeMaterialSideColorFromEntity,
+} from '../utils/extrude3d';
 import { resolveExtrudeCompanionTransform } from '../utils/extrude3d-transform';
 import { resolveCanvasFromSceneGraph } from '../utils/canvas3d-scope';
 import { ensureCompanionGizmoWhenSourceSelected } from '../utils/mesh3d-node';
@@ -115,6 +118,7 @@ export class SyncExtrude3D extends System {
 
       syncMaterial3D(meshEntity, {
         baseColor: extrudeMaterialBaseColorFromEntity(entity),
+        sideColor: extrudeMaterialSideColorFromEntity(entity),
       });
     }
   }
