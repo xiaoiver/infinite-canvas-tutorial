@@ -1,7 +1,7 @@
 import libtess from 'libtess';
 import { triangulate } from '../tessy';
 import type { Mesh3DGeometryData } from './types';
-import { insetConvexContour } from './inset-convex-contour';
+import { insetFillBoundaries } from './inset-fill-boundaries';
 
 type Point = [number, number];
 
@@ -137,17 +137,25 @@ export function extrudePathContours(
   }
   if (!boundaries) return { ok: false, reason: 'tessellation-failed' };
   if (!boundaries.length) return { ok: false, reason: 'empty-fill' };
-  // The first bevel stage supports only a single convex exterior. Preserve
-  // sharp geometry when offsetting could collapse a cap or alter topology.
-  const inset =
-    bevel > 0 && bevel * 2 < depth && boundaries.length === 1
-      ? insetConvexContour(boundaries[0], bevel)
+  // Keep vertex correspondence between each wall and its cap. When an inward
+  // offset changes topology, retain the sharp extrusion instead.
+  let insets =
+    bevel > 0 && bevel * 2 < depth
+      ? insetFillBoundaries(boundaries, bevel)
       : undefined;
-  const capBoundaries = inset ? [inset] : boundaries;
+  if (insets) {
+    try {
+      if (filledBoundaries(insets, 'nonzero')?.length !== boundaries.length)
+        insets = undefined;
+    } catch {
+      insets = undefined;
+    }
+  }
+  const capBoundaries = insets ?? boundaries;
   const fail = (
     reason: 'empty-fill' | 'tessellation-failed' | 'non-manifold',
   ): PathExtrusionResult =>
-    inset
+    insets
       ? extrudePathContours(rawContours, depth, fillRule)
       : { ok: false, reason };
 
@@ -286,7 +294,7 @@ export function extrudePathContours(
       // libtess emits exterior loops counter-clockwise and holes clockwise.
       const nx = dy / length;
       const ny = -dx / length;
-      const chamfer = boundaryIndex === 0 ? inset : undefined;
+      const chamfer = insets?.[boundaryIndex];
       if (chamfer) {
         const innerA = chamfer[i];
         const innerB = chamfer[(i + 1) % chamfer.length];

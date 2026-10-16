@@ -220,7 +220,7 @@ it('renders imported SVG contours as 3D companions while keeping other paths in 
   }
 });
 
-it('bevels supported SVG contours while leaving a holed ring sharp', async () => {
+it('bevels supported SVG contours, including a holed ring', async () => {
   const nodes = svgElementsToExtrudedNodes(elements(), 24).map((node) =>
     (node.type === 'path' || node.type === 'rect') && node.extrude3d
       ? { ...node, extrude3d: { depth: 24, bevelSize: 2 } }
@@ -234,10 +234,7 @@ it('bevels supported SVG contours while leaving a holed ring sharp', async () =>
       .meshEntity!.read(Mesh3D)
       .normals.filter((_, i) => i % 3 === 2);
   };
-  expect(
-    [...normalZ('ring')].every((value) => value === 0 || Math.abs(value) === 1),
-  ).toBe(true);
-  for (const id of ['circle', 'box']) {
+  for (const id of ['ring', 'circle', 'box']) {
     expect(
       [...normalZ(id)].some(
         (value) => Math.abs(value) > 0 && Math.abs(value) < 1,
