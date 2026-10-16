@@ -127,6 +127,19 @@ out vec4 outputColor;
 
 #define PI 3.141592653589793
 
+// CSS colors and image pixels are sRGB, while the lighting calculation is
+// linear. The shared 2D/3D render target is RGBA8 UNORM, so it does not perform
+// the final sRGB encoding for us.
+vec3 srgbToLinear(vec3 color) {
+  return mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)),
+    step(vec3(0.04045), color));
+}
+
+vec3 linearToSrgb(vec3 color) {
+  return mix(color * 12.92, 1.055 * pow(max(color, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055,
+    step(vec3(0.0031308), color));
+}
+
 float distanceAttenuation(float distanceToLight, float range) {
   if (range <= 0.0) {
     return 1.0;
@@ -265,7 +278,7 @@ void main() {
   if (u_MaterialFlags.x > 0.5) {
     baseColor *= texture(SAMPLER_2D(u_Map), v_Uv);
   }
-  vec3 albedo = baseColor.rgb;
+  vec3 albedo = srgbToLinear(baseColor.rgb);
 
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
   // Clamp roughness to a small minimum (0.04): at roughness 0 the GGX lobe
@@ -307,6 +320,6 @@ void main() {
   vec3 ambient = u_AmbientLight.rgb * u_LightParams.x * albedo;
 
   vec3 result = ambient + Lo;
-  outputColor = vec4(result, baseColor.a);
+  outputColor = vec4(linearToSrgb(result), baseColor.a);
 }
 `;

@@ -27,7 +27,7 @@ test('an imported SVG hole produces a visible 3D companion and restores its 2D s
   let teal = 0;
   for (let i = 0; i < pixels.data.length; i += 4) {
     const [r, g, b] = pixels.data.subarray(i, i + 3);
-    if (g > r * 1.3 && b > r * 1.3 && g > 20) teal++;
+    if (g > r * 1.3 && b > r * 1.3 && g > 70) teal++;
   }
   expect(teal).toBeGreaterThan(100);
 

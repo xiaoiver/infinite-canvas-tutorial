@@ -164,7 +164,7 @@ export class EnsureExtrudeMeshes extends System {
       }),
       new Material3D({
         baseColor: [0.25, 0.55, 0.95, 1],
-        ambient: 0.15,
+        ambient: 0.45,
         diffuse: 0.75,
         specular: 0.4,
         shininess: 48,

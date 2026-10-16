@@ -38,7 +38,7 @@ const sceneNodes: SerializedNode[] = [
     rotation3d: BASE_ROTATION,
     material3d: {
       baseColor: '#ffffff',
-      ambient: 0.25,
+      ambient: 0.5,
       diffuse: 0.75,
       specular: 0.4,
       shininess: 48,

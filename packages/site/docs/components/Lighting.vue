@@ -40,7 +40,7 @@ onMounted(async () => {
         id: 'light-ambient',
         type: 'light3d',
         lightType: 'ambient',
-        intensity: 0.35,
+        intensity: 0.7,
         zIndex: -3,
       },
       {
@@ -85,7 +85,7 @@ onMounted(async () => {
         rotation3d: [0.35, 0.5, 0],
         material3d: {
           baseColor: '#f25952',
-          ambient: 0.25,
+          ambient: 0.5,
           diffuse: 0.75,
           specular: 0.35,
           shininess: 32,
@@ -112,7 +112,7 @@ onMounted(async () => {
         rotation3d: [0.35, 0.5, 0],
         material3d: {
           baseColor: '#ebeff2',
-          ambient: 0.25,
+          ambient: 0.5,
           diffuse: 0.75,
           specular: 0.65,
           shininess: 96,
@@ -134,7 +134,7 @@ onMounted(async () => {
         rotation3d: [0.35, 0.5, 0],
         material3d: {
           baseColor: '#478cf2',
-          ambient: 0.25,
+          ambient: 0.5,
           diffuse: 0.75,
           specular: 0.45,
           shininess: 48,

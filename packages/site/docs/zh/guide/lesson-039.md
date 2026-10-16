@@ -65,7 +65,7 @@ app.run();
 | ----------------- | ------------------------------------------------------------------------------------------- |
 | **`Camera3D`**    | `projection: 'perspective' \| 'orthographic'`；`linked` 时由 `CameraSync` 跟随 2D 平移/缩放 |
 | **`Mesh3D`**      | `positions`、`normals`、可选 `indices`（三角网格）                                          |
-| **`Material3D`**  | Blinn-Phong：`baseColor`、`ambient`、`diffuse`、`specular`、`shininess`                     |
+| **`Material3D`**  | 金属度与粗糙度 PBR：`baseColor`、`metallic`、`roughness` 和环境光系数；旧字段保留兼容性       |
 | **`Light3D`**     | `ambient` / `directional` / `point` / `spot`；见 [场景光照示例](/zh/example/lighting)       |
 | **`Transform3D`** | 平移、欧拉角旋转、缩放                                                                      |
 | **`Selected3D`**  | 3D 选中态：当前 gizmo 模式、激活轴/平面、拖拽参考点等（见 [3D 变换 Gizmo](#gizmo)）         |
@@ -93,7 +93,7 @@ commands.spawn(
     new Mesh3D({ positions, normals, indices }),
     new Material3D({
         baseColor: [0.25, 0.55, 0.95, 1],
-        ambient: 0.15,
+        ambient: 0.45,
         diffuse: 0.75,
         specular: 0.4,
         shininess: 48,
@@ -338,7 +338,7 @@ SVG 自带的 transform 和 viewBox 缩放仍沿用原有导入行为；原导�
 
 ## 光照 {#lighting}
 
-演示 Light3D 组件与 Blinn-Phong 材质配合：环境光打底、冷色平行光作填充，暖色聚光灯绕场景中心轨道运动，立方体 / 球体 / 圆柱三种几何体便于对比 specular 与明暗变化。
+演示 Light3D 组件与金属度、粗糙度材质配合：环境光打底、两盏平行光补光，暖色聚光灯绕场景中心运动，立方体 / 球体 / 圆柱便于对比材质与明暗变化。Mesh 颜色先从 sRGB 转为线性空间参与光照，再转回 sRGB 显示。
 
 <Lighting />
 

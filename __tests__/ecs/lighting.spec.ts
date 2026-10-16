@@ -67,7 +67,7 @@ function buildLightingSceneNodes(): SerializedNode[] {
       id: 'light-ambient',
       type: 'light3d',
       lightType: 'ambient',
-      intensity: 0.35,
+      intensity: 0.7,
       zIndex: -3,
     },
     {
@@ -105,7 +105,7 @@ function buildLightingSceneNodes(): SerializedNode[] {
       x: 50,
       material3d: {
         baseColor: '#f25952',
-        ambient: 0.25,
+        ambient: 0.5,
         diffuse: 0.75,
         specular: 0.35,
         shininess: 32,
@@ -122,7 +122,7 @@ function buildLightingSceneNodes(): SerializedNode[] {
       x: 150,
       material3d: {
         baseColor: '#ebeff2',
-        ambient: 0.25,
+        ambient: 0.5,
         diffuse: 0.75,
         specular: 0.65,
         shininess: 96,
@@ -134,7 +134,7 @@ function buildLightingSceneNodes(): SerializedNode[] {
       x: 250,
       material3d: {
         baseColor: '#478cf2',
-        ambient: 0.25,
+        ambient: 0.5,
         diffuse: 0.75,
         specular: 0.45,
         shininess: 48,
@@ -217,5 +217,5 @@ describe('Lighting', () => {
     );
 
     await app.exit();
-  });
+  }, 120_000);
 });
