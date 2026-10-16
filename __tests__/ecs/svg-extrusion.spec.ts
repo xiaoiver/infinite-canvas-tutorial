@@ -3,6 +3,7 @@ import {
   ComputeBounds,
   ComputeCamera,
   EnsureExtrudeMeshes,
+  ExportFormat,
   Extrude3D,
   Material3D,
   Mesh3D,
@@ -217,4 +218,53 @@ it('renders imported SVG contours as 3D companions while keeping other paths in 
   ]) {
     expect(api.getEntity(api.getNodeById(id))!.has(Extrude3D)).toBe(false);
   }
+});
+
+it('exports ready SVG extrusions through API.export with scene, node, and group scopes', async () => {
+  await world.reset(api, svgElementsToExtrudedNodes(elements(), 24));
+  const exportNames = (nodes = [] as ReturnType<API['getNodes']>) => {
+    const bytes = api.export({
+      format: ExportFormat.GLB,
+      nodes,
+      download: false,
+    });
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    const glb = bytes as Uint8Array;
+    expect(new DataView(glb.buffer, glb.byteOffset).getUint32(0, true)).toBe(
+      0x46546c67,
+    );
+    const jsonLength = new DataView(glb.buffer, glb.byteOffset).getUint32(
+      12,
+      true,
+    );
+    const json = JSON.parse(
+      new TextDecoder().decode(glb.subarray(20, 20 + jsonLength)),
+    ) as { nodes: { name?: string }[] };
+    return json.nodes.map((node) => node.name).filter(Boolean);
+  };
+
+  expect(exportNames()).toEqual([
+    'Canvas',
+    'ring',
+    'triangle',
+    'box',
+    'rounded',
+    'circle',
+    'ellipse',
+    'grouped',
+    'grouped-circle',
+    'grouped-path',
+    'single',
+    'following-sibling',
+  ]);
+  expect(exportNames([api.getNodeById('box')!])).toEqual(['Canvas', 'box']);
+  expect(exportNames([api.getNodeById('cluster')!])).toEqual([
+    'Canvas',
+    'grouped',
+    'grouped-circle',
+    'grouped-path',
+  ]);
+  expect(() => exportNames([api.getNodeById('stroked')!])).toThrow(
+    'No ready extruded meshes to export',
+  );
 });

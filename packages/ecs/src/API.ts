@@ -80,6 +80,7 @@ import {
 } from './utils/normalize-stroke-wire';
 import { fillLayerOpacity, getEnabledFillLayers } from './utils/fillLayers';
 import { resolveExtrude3DDepth } from './utils/extrude3d';
+import { exportMeshesToGlb } from './utils/gltf/export-glb';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -106,6 +107,8 @@ import {
   Line,
   Locked,
   Mat3,
+  Material3D,
+  Mesh3D,
   Mesh3DNode,
   Extrude3D,
   OBB,
@@ -126,6 +129,7 @@ import {
   resolveThemeModeFromPreference,
   ToBeDeleted,
   Transform,
+  Transform3D,
   UI,
   VectorNetwork,
   AnimationPlayer,
@@ -210,6 +214,8 @@ export type DistributeSpacingAxis = 'horizontal' | 'vertical';
 
 export enum ExportFormat {
   SVG = 'svg',
+  /** Self-contained glTF binary of ready extruded Path and Rect meshes. */
+  GLB = 'glb',
   PNG = 'png',
   JPEG = 'jpeg',
   /** WebM（VP8/VP9），适合带引擎时间动画的滤镜 */
@@ -3131,8 +3137,84 @@ export class API {
     this.#history.clear();
   }
 
-  export(options: ExportOptions) {
+  export(options: ExportOptions & { format: ExportFormat.GLB }): Uint8Array;
+  export(options: ExportOptions): Uint8Array | void;
+  export(options: ExportOptions): Uint8Array | void {
     const { format, download = true, nodes = [] } = options;
+    if (format === ExportFormat.GLB) {
+      const scene = this.getNodes();
+      const byId = new Map(scene.map((node) => [node.id, node]));
+      const selectedIds = new Set(nodes.map((node) => node.id));
+      const included = (node: SerializedNode): boolean => {
+        if (!selectedIds.size) return true;
+        const visited = new Set<string>();
+        let current: SerializedNode | undefined = node;
+        while (current && !visited.has(current.id)) {
+          if (selectedIds.has(current.id)) return true;
+          visited.add(current.id);
+          current = current.parentId ? byId.get(current.parentId) : undefined;
+        }
+        return false;
+      };
+      const sources = scene.flatMap((node) => {
+        if (node.isDeleted || !included(node)) return [];
+        const entity = this.getEntity(node);
+        if (!entity?.alive || !entity.has(Extrude3D)) return [];
+        const mesh = entity.read(Extrude3D).meshEntity;
+        if (
+          !mesh?.alive ||
+          mesh.has(ToBeDeleted) ||
+          !mesh.has(Mesh3D) ||
+          !mesh.has(Material3D) ||
+          !mesh.has(Transform3D)
+        )
+          return [];
+        // Becsy reuses component views when reading another entity. Keep plain
+        // values so each exported source remains valid while collecting others.
+        const geometry = mesh.read(Mesh3D);
+        const meshData = {
+          positions: geometry.positions,
+          normals: geometry.normals,
+          uvs: geometry.uvs,
+          indices: geometry.indices,
+        };
+        const surface = mesh.read(Material3D);
+        const material = {
+          baseColor: surface.baseColor,
+          sideColor: surface.sideColor,
+          metallic: surface.metallic,
+          roughness: surface.roughness,
+        };
+        const pose = mesh.read(Transform3D);
+        const transform = {
+          translation: pose.translation,
+          rotation: pose.rotation,
+          scale: pose.scale,
+        };
+        return [
+          {
+            name: node.id,
+            mesh: meshData,
+            material,
+            transform,
+          },
+        ];
+      });
+      if (!sources.length)
+        throw new Error('No ready extruded meshes to export');
+      const glb = exportMeshesToGlb(sources);
+      if (download) {
+        const url = URL.createObjectURL(
+          new Blob([glb], { type: 'model/gltf-binary' }),
+        );
+        const link = DOMAdapter.get().getDocument().createElement('a');
+        link.href = url;
+        link.download = 'infinite-canvas.glb';
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      return glb;
+    }
     if (format === ExportFormat.SVG) {
       safeAddComponent(this.#canvas, VectorScreenshotRequest, {
         canvas: this.#canvas,

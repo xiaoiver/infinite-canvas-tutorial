@@ -341,22 +341,23 @@ SVG 自带的 transform 和 viewBox 缩放仍沿用原有导入行为；原导�
 目前应避免导入带剪切变换的 SVG。
 
 示例中的 **Download GLB** 按钮会将已生成的三维网格导出为独立的 glTF 二进制文件。
-`exportMeshesToGlb` 接收网格、材质和姿态组件，也可以一次导出多个挤出图形：
+使用 `api.export` 可下载画布中所有已就绪的挤出图形；指定 `nodes` 可只导出选区，
+包括选中分组的子图形：
 
 ```ts
-import { Extrude3D, Material3D, Mesh3D, Transform3D, exportMeshesToGlb } from '@infinite-canvas-tutorial/ecs';
+import { ExportFormat } from '@infinite-canvas-tutorial/ecs';
 
-const source = api.getEntity(api.getNodeById('extruded-vector'));
-const companion = source.read(Extrude3D).meshEntity;
-const glb = exportMeshesToGlb([{
-    mesh: companion.read(Mesh3D),
-    material: companion.read(Material3D),
-    transform: companion.read(Transform3D),
-}]);
+api.export({ format: ExportFormat.GLB });
+const glb = api.export({
+  format: ExportFormat.GLB,
+  nodes: [api.getNodeById('extruded-vector')!],
+  download: false,
+}); // Uint8Array
 ```
 
 导出会把画布向下的 Y 轴转换为 glTF 向上的 Y 轴，并保留当前三维姿态、纯色填充及
 可选的侧壁颜色。只有已就绪的伴生网格会写入文件；不支持的二维 SVG 元素和纹理不会导出。
+如需直接导出网格组件，可以使用底层的 `exportMeshesToGlb`。
 
 <SvgExtrusion />
 
