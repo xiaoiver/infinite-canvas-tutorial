@@ -106,7 +106,7 @@ function sourceTransform(
 
 function pathForSource(node: SerializedNode, depth: number, radii?: { rx: number; ry: number }): string | undefined {
   if (node.type === 'path') return node.d;
-  if (node.type !== 'rect' && node.type !== 'ellipse') return;
+  if (node.type !== 'rect' && node.type !== 'ellipse' && node.type !== 'polyline') return;
   const converted = extrudeSvgPrimitive(node, depth, true, radii);
   if (converted.type === 'path') return converted.d;
   if (converted.type === 'rect' && converted.width! > 0 && converted.height! > 0) {

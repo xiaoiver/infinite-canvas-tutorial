@@ -3,6 +3,21 @@ import type {
   SerializedNode,
 } from '../../types/serialized-node';
 import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
+import { deserializePoints } from './points';
+
+function closedPolylinePath(points: string | undefined): string | undefined {
+  if (!points) return;
+  const vertices = deserializePoints(points);
+  if (
+    vertices.length < 4 ||
+    vertices.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y))
+  ) return;
+  const first = vertices[0], last = vertices[vertices.length - 1];
+  if (Math.hypot(first[0] - last[0], first[1] - last[1]) > 1e-8) return;
+  return vertices.slice(0, -1).map(([x, y], index) =>
+    `${index ? 'L' : 'M'}${x} ${y}`,
+  ).join(' ') + ' Z';
+}
 
 function roundedRectPath(
   width: number,
@@ -33,8 +48,18 @@ export function extrudeSvgPrimitive(
   paintSupported: boolean,
   rectRadii?: { rx: number; ry: number },
 ): SerializedNode {
-  if ((node.type !== 'rect' && node.type !== 'ellipse') || !paintSupported)
+  if (!paintSupported)
     return node;
+
+  if (node.type === 'polyline') {
+    const d = closedPolylinePath(node.points);
+    const fillRule = (node as typeof node & { fillRule?: CanvasFillRule }).fillRule ?? 'nonzero';
+    if (!d || !buildPathExtrusionMesh(d, fillRule)) return node;
+    const { points: _points, ...rest } = node;
+    return { ...rest, type: 'path', d, fillRule, extrude3d: depth } as PathSerializedNode;
+  }
+
+  if (node.type !== 'rect' && node.type !== 'ellipse') return node;
 
   const { width, height } = node;
   if (
