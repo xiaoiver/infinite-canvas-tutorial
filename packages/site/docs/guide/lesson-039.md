@@ -386,6 +386,14 @@ dimensions override the symbol's dimensions. The symbol's
 `preserveAspectRatio` supports `meet` alignments, `none`, and `slice` clipping
 of extruded outlines. Missing or invalid effective dimensions skip that symbol
 instance. External references are not imported yet.
+Nested `<svg>` elements with explicit positive pixel dimensions and a `viewBox`
+also create editable viewport groups. Their `x`/`y`, transform and
+`preserveAspectRatio` affect extruded children. A local `<use>` may reference
+one of these SVG elements and override its viewport dimensions independently.
+Nested SVG viewports clip generated extrusion outlines by default, including
+with `slice`; set `overflow="visible"` to retain overhanging geometry.
+Fully contained shapes keep their group relationship, so moving the viewport
+group also moves their 3D meshes. Shapes crossing an edge become clipped Paths.
 Pass the root `<svg>` to apply an explicit pixel `width`/`height` and `viewBox`,
 including `preserveAspectRatio`. Filled extrusions also preserve SVG `skewX`,
 `skewY`, and sheared `matrix(...)` transforms from nested groups. These outlines
@@ -404,6 +412,9 @@ Choose **Repeated use sample** below to inspect two instances of the same
 definition with different fills, alongside an ordinary rectangle.
 Choose **Symbol viewport sample** to compare two viewport instances of one
 holed symbol. The first uses the symbol's dimensions; the second sets its own.
+Choose **Nested SVG viewport sample** to compare an inline SVG viewport and a
+second instance referenced with `<use>`; their extruded outlines are clipped
+to each viewport.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple

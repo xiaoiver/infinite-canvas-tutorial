@@ -59,6 +59,16 @@ const symbolSample = [
   '</svg>',
 ].join('');
 
+const nestedViewportSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
+  '<g fill="#3b82f6"><svg id="nested-card" x="20" y="35" width="180" height="180"',
+  ' viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">',
+  '<path id="card-shape" d="M0 0 H120 V100 H0 Z M30 25 H70 V75 H30 Z" fill-rule="evenodd"/>',
+  '</svg></g>',
+  '<use id="nested-copy" href="#nested-card" x="240" width="180" height="180" fill="#f97316"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -175,6 +185,12 @@ function loadSymbolSample() {
   void render();
 }
 
+function loadNestedViewportSample() {
+  svgSource = nestedViewportSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -271,6 +287,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadSymbolSample">
         Symbol viewport sample
+      </button>
+      <button type="button" @click="loadNestedViewportSample">
+        Nested SVG viewport sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

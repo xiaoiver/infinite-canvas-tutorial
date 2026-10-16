@@ -9,6 +9,7 @@ import {
   Mesh3D,
   PostUpdate,
   SyncExtrude3D,
+  Transform3D,
   system,
   svgElementsToExtrudedNodes,
   svgElementsToSerializedNodes,
@@ -355,8 +356,8 @@ it('clips symbol slice instances to their own viewport', () => {
     fillRule: 'evenodd', extrude3d: 16,
   });
   expect(nodes.find((node) => node.id === 'instance--inside')).toMatchObject({
-    type: 'rect', x: 120, y: 30, width: 10, height: 10,
-    scaleX: 2, scaleY: 2, extrude3d: 16,
+    type: 'rect', parentId: 'instance--sliced',
+    x: 60, y: 40, width: 10, height: 10, extrude3d: 16,
   });
   expect(nodes.find((node) => node.id === 'instance--outside'))
     .toMatchObject({ visibility: 'hidden' });
@@ -410,6 +411,168 @@ it('skips symbols without an explicit viewport and retains siblings', () => {
   const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
   expect(svgElementsToExtrudedNodes(svg, 16).map((node) => node.id))
     .toEqual(['following']);
+});
+
+it('maps an inline nested SVG viewBox without a use element', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<svg id="nested" x="20" y="30" width="200" height="100" ' +
+    'viewBox="0 0 100 100" preserveAspectRatio="none" fill="red">' +
+    '<path id="ring" d="M0 0 H100 V100 H0 Z M25 25 H75 V75 H25 Z" fill-rule="evenodd"/>' +
+    '</svg></svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  const flat = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  expect(flat.map((node) => node.id)).toEqual(nodes.map((node) => node.id));
+  expect(nodes.find((node) => node.id === 'nested')).toMatchObject({
+    type: 'g', x: 20, y: 30, scaleX: 2, scaleY: 1,
+  });
+  expect(nodes.find((node) => node.id === 'ring')).toMatchObject({
+    type: 'path', parentId: 'nested',
+    fillRule: 'evenodd', extrude3d: 16,
+  });
+  await world.reset(api, nodes);
+  const ring = api.getEntity(api.getNodeById('ring'))!;
+  const companion = ring.read(Extrude3D).meshEntity!;
+  expect(companion.read(Mesh3D).indices.length)
+    .toBeGreaterThan(0);
+  const originalX = companion.read(Transform3D).translation[0];
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('nested'), { x: 70 }), 'NEVER');
+  expect(ring.read(Extrude3D).meshEntity).toBe(companion);
+  expect(companion.read(Transform3D).translation[0]).toBeCloseTo(originalX + 50);
+});
+
+it('expands repeated references to an SVG viewport with independent dimensions', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><svg id="panel" x="5" y="7" width="100" height="50" viewBox="10 20 50 25">' +
+    '<rect id="tile" x="10" y="20" width="50" height="25"/></svg></defs>' +
+    '<use id="large" href="#panel" x="20" y="30" width="200" height="100" fill="red"/>' +
+    '<use id="small" href="#panel" x="260" y="30" fill="blue"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'large--panel')).toMatchObject({
+    type: 'g', parentId: 'large', x: -35, y: -73, scaleX: 4, scaleY: 4,
+  });
+  expect(nodes.find((node) => node.id === 'small--panel')).toMatchObject({
+    type: 'g', parentId: 'small', x: -15, y: -33, scaleX: 2, scaleY: 2,
+  });
+  await world.reset(api, nodes);
+  for (const id of ['large--tile', 'small--tile']) {
+    const entity = api.getEntity(api.getNodeById(id))!;
+    expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+      .toBeGreaterThan(0);
+  }
+  const largeColor = api.getEntity(api.getNodeById('large--tile'))!
+    .read(Extrude3D).meshEntity!.read(Material3D).baseColor;
+  const smallColor = api.getEntity(api.getNodeById('small--tile'))!
+    .read(Extrude3D).meshEntity!.read(Material3D).baseColor;
+  expect(largeColor.slice(0, 3)).toEqual([1, 0, 0]);
+  expect(smallColor.slice(0, 3)).toEqual([0, 0, 1]);
+});
+
+it('keeps an inline SVG available to a later use reference', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<svg id="source" x="10" width="100" height="50" viewBox="0 0 100 50">' +
+    '<rect id="tile" width="100" height="50" fill="red"/></svg>' +
+    '<use id="copy" href="#source" x="150" width="200" height="100"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.map((node) => node.id)).toEqual([
+    'source', 'tile', 'copy', 'copy--source', 'copy--tile',
+  ]);
+  expect(nodes.find((node) => node.id === 'copy--source')).toMatchObject({
+    type: 'g', parentId: 'copy', x: 10, y: 0, scaleX: 2, scaleY: 2,
+  });
+  await world.reset(api, nodes);
+  for (const id of ['tile', 'copy--tile']) {
+    const entity = api.getEntity(api.getNodeById(id))!;
+    expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
+      .toBeGreaterThan(0);
+  }
+});
+
+it('clips a sliced nested SVG viewport after its offset', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<svg id="nested" x="30" y="20" width="100" height="100" ' +
+    'viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">' +
+    '<rect id="edge" x="80" y="20" width="40" height="20" fill="red"/>' +
+    '</svg></svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 16).find((node) => node.id === 'edge'))
+    .toMatchObject({
+      type: 'path', x: 110, y: 40, width: 20, height: 20,
+      fillRule: 'evenodd', extrude3d: 16,
+    });
+});
+
+it('clips nested SVG overflow by default and honors visible overflow', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<svg id="clipped" width="100" height="100" viewBox="0 0 100 100" ' +
+    'preserveAspectRatio="none">' +
+    '<rect id="edge" x="80" y="20" width="40" height="20" fill="red"/></svg>' +
+    '<svg id="visible" x="150" width="100" height="100" viewBox="0 0 100 100" ' +
+    'preserveAspectRatio="none" overflow="hidden" style="overflow:visible">' +
+    '<rect id="overhang" x="80" y="20" width="40" height="20" fill="blue"/></svg>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'edge')).toMatchObject({
+    type: 'path', x: 80, y: 20, width: 20, height: 20,
+    fillRule: 'evenodd', extrude3d: 16,
+  });
+  expect(nodes.find((node) => node.id === 'overhang')).toMatchObject({
+    type: 'rect', parentId: 'visible', x: 80, y: 20,
+    width: 40, height: 20, extrude3d: 16,
+  });
+});
+
+it('clips an inline SVG and its later instance with separate inherited paints', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<g fill="blue"><svg id="card" x="20" y="35" width="180" height="180" ' +
+    'viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">' +
+    '<path id="shape" d="M0 0 H120 V100 H0 Z M30 25 H70 V75 H30 Z" fill-rule="evenodd"/>' +
+    '</svg></g>' +
+    '<use id="copy" href="#card" x="240" width="180" height="180" fill="red"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes.find((node) => node.id === 'shape')).toMatchObject({
+    type: 'path', x: 20, y: 35, width: 180, height: 180,
+    fillRule: 'evenodd', extrude3d: 16,
+  });
+  expect(nodes.find((node) => node.id === 'copy--shape')).toMatchObject({
+    type: 'path', x: 260, y: 35, width: 180, height: 180,
+    fillRule: 'evenodd', extrude3d: 16,
+  });
+  await world.reset(api, nodes);
+  const original = api.getEntity(api.getNodeById('shape'))!
+    .read(Extrude3D).meshEntity!;
+  const copy = api.getEntity(api.getNodeById('copy--shape'))!
+    .read(Extrude3D).meshEntity!;
+  expect(original.read(Mesh3D).indices.length).toBeGreaterThan(0);
+  expect(copy.read(Mesh3D).indices.length).toBeGreaterThan(0);
+  expect(original.read(Material3D).baseColor.slice(0, 3)).toEqual([0, 0, 1]);
+  expect(copy.read(Material3D).baseColor.slice(0, 3)).toEqual([1, 0, 0]);
 });
 
 it('stops cyclic use references while retaining later SVG nodes', () => {

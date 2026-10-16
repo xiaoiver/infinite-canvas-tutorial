@@ -131,7 +131,9 @@ function deserializeSvgElements(
         ...Array.from(element.attributes),
         ...Array.from(elementOverrideAttributes || []),
       ].reduce((prev, attr) => {
-        if (attr.name === 'data-svg-use-instance') return prev;
+        if (attr.name === 'data-svg-use-instance' ||
+          attr.name === 'data-svg-viewport' ||
+          attr.name === 'data-svg-viewport-transform') return prev;
         let attributeName = kebabToCamelCase(attr.name);
 
         let value: string | number = attr.value;
