@@ -4,7 +4,6 @@ import {
   fromTransformAttribute,
   translate,
   scale,
-  decomposeTSR,
   compose,
   fromDefinition,
   Matrix,
@@ -53,24 +52,22 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
         // Incorrect type definition sx, sy in d.ts
         // @ts-ignore
         const { cx, cy, angle } = d;
-        matrices.push(rotateDEG(angle, cx - minX, cy - minY));
+        matrices.push(rotateDEG(angle, cx, cy));
       } else if (type === 'matrix') {
+        matrices.push(fromDefinition(d));
+      } else if (type === 'skewX' || type === 'skewY') {
         matrices.push(fromDefinition(d));
       }
     });
     const matrix = compose(matrices);
 
-    const {
-      translate: { tx, ty },
-      scale: { sx, sy },
-      rotation: { angle },
-    } = decomposeTSR(matrix);
-
-    attributes.x = tx + minX;
-    attributes.y = ty + minY;
-    attributes.rotation = angle;
-    attributes.scaleX = sx;
-    attributes.scaleY = sy;
+    const { a, b, c, d, e, f } = matrix;
+    const scaleX = Math.hypot(a, b);
+    attributes.x = a * minX + c * minY + e;
+    attributes.y = b * minX + d * minY + f;
+    attributes.rotation = Math.atan2(b, a);
+    attributes.scaleX = scaleX;
+    attributes.scaleY = scaleX ? (a * d - b * c) / scaleX : Math.hypot(c, d);
   }
 
   const { type } = attributes;

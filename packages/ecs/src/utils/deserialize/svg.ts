@@ -19,6 +19,7 @@ import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
 import { pathExtrusionPaintSupported } from '../path-extrusion-paint';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
 import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
+import { reprojectSvgExtrusion } from './svg-extrusion-affine';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -84,6 +85,7 @@ function deserializeSvgElements(
   overrideAttributes: NamedNodeMap | undefined,
   paintFromGroups: { fill: boolean; stroke: boolean },
   rectRadii?: Map<string, { rx: number; ry: number }>,
+  nodeElements?: Map<string, SVGElement>,
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
@@ -111,6 +113,7 @@ function deserializeSvgElements(
             undefined,
             paintFromGroups,
             rectRadii,
+            nodeElements,
           );
         }
       }
@@ -359,6 +362,7 @@ function deserializeSvgElements(
         node as unknown as Record<string, unknown>,
       );
       nodes.push(node);
+      nodeElements?.set(node.id, element);
 
       fixTransform((attributes as any).transform || '', node);
     }
@@ -378,6 +382,7 @@ function deserializeSvgElements(
           (type === 'g' && element.hasAttribute('stroke')),
       },
       rectRadii,
+      nodeElements,
     ).filter(Boolean);
 
     nodes.push(...children);
@@ -388,24 +393,30 @@ function deserializeSvgElements(
 
 /** Import closed, filled SVG shapes as editable extrusion sources. */
 export function svgElementsToExtrudedNodes(
-  elements: SVGElement[],
+  elements: SVGElement[] | SVGSVGElement,
   depth: number,
 ): SerializedNode[] {
   if (!Number.isFinite(depth) || depth <= 0) {
     throw new RangeError('SVG extrusion depth must be finite and positive');
   }
   const rectRadii = new Map<string, { rx: number; ry: number }>();
+  const root = Array.isArray(elements) ? undefined : elements as SVGSVGElement;
+  const children: SVGElement[] = root
+    ? Array.from(root.children) as SVGElement[]
+    : elements as SVGElement[];
+  const nodeElements = new Map<string, SVGElement>();
   const nodes = deserializeSvgElements(
-    elements,
+    children,
     [],
     undefined,
     0,
     undefined,
     { fill: false, stroke: false },
     rectRadii,
+    nodeElements,
   );
   const inherited = getComputedInheritGroupWireMap(nodes);
-  return nodes.map((node) => {
+  const converted = nodes.map((node) => {
     const paint = inherited.get(node.id) as
       | Pick<PathSerializedNode, 'fills' | 'strokes'>
       | undefined;
@@ -425,6 +436,21 @@ export function svgElementsToExtrudedNodes(
       rectRadii.get(node.id),
     );
   });
+  return reprojectSvgExtrusion(
+    converted,
+    () => {
+      const plainChildren = children.map((element) => element.cloneNode(true) as SVGElement);
+      for (const child of plainChildren) {
+        child.removeAttribute('transform');
+        child.querySelectorAll('*').forEach((element) => element.removeAttribute('transform'));
+      }
+      return deserializeSvgElements(
+        plainChildren, [], undefined, 0, undefined,
+        { fill: false, stroke: false },
+      );
+    },
+    root, nodeElements, inherited, depth, rectRadii,
+  );
 }
 
 export function kebabToCamelCase(str: string) {
