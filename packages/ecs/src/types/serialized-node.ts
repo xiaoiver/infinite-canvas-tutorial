@@ -427,7 +427,9 @@ export interface Extrude3DAttributes {
 export interface Extrude3DOptions {
   /** Thickness in canvas world units. Defaults to 100. */
   depth?: number;
-  /** CSS color for the side walls; front and back keep the source fill. */
+  /** Straight bevel size in canvas world units; unsupported contours remain sharp. */
+  bevelSize?: number;
+  /** CSS color for the side walls and bevels; front and back keep the source fill. */
   sideColor?: string;
   /** Elevation relative to the original front plane; independent of thickness. */
   z?: number;

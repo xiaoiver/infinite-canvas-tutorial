@@ -24,6 +24,7 @@ const sample = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">
 
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
+const bevelSize = ref(0);
 const useSideColor = ref(false);
 const sideColor = ref('#facc15');
 const show3D = ref(true);
@@ -56,6 +57,7 @@ async function render() {
             ...node,
             extrude3d: {
               depth: depth.value,
+              bevelSize: bevelSize.value,
               rotation: [0.4, -0.35, 0],
               ...(useSideColor.value ? { sideColor: sideColor.value } : {}),
             },
@@ -99,6 +101,7 @@ function reset() {
   svgSource = sample;
   show3D.value = true;
   depth.value = 35;
+  bevelSize.value = 0;
   useSideColor.value = false;
   sideColor.value = '#facc15';
   void render();
@@ -150,6 +153,17 @@ onUnmounted(() => {
           type="range"
           min="8"
           max="90"
+          @change="render"
+        />
+      </label>
+      <label>
+        Bevel {{ bevelSize }}
+        <input
+          v-model.number="bevelSize"
+          type="range"
+          min="0"
+          max="3"
+          step="1"
           @change="render"
         />
       </label>

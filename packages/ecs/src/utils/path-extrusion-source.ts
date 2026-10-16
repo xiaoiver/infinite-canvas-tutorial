@@ -1,5 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { GlobalTransform, Path } from '../components';
+import { Extrude3D, GlobalTransform, Path } from '../components';
 import { getEnabledFillLayers } from './fillLayers';
 import { getEnabledStrokeLayers } from './strokeLayers';
 import {
@@ -13,6 +13,7 @@ const cache = new WeakMap<
   {
     d: string;
     fillRule: CanvasFillRule;
+    bevelKey: string;
     mesh?: PathExtrusionMesh;
     mirrored?: PathExtrusionMesh;
   }
@@ -65,7 +66,12 @@ export function pathExtrusionTransformSupported(entity: Entity): boolean {
 export function pathExtrusionGeometry(
   entity: Entity,
 ): PathExtrusionMesh | undefined {
-  if (!entity.has(Path) || !pathExtrusionTransformSupported(entity)) return;
+  if (
+    !entity.has(Path) ||
+    !entity.has(Extrude3D) ||
+    !pathExtrusionTransformSupported(entity)
+  )
+    return;
   // Preserve the 2D rendering of strokes, layered fills and unsupported paints.
   if (
     !pathExtrusionPaintSupported(
@@ -75,12 +81,26 @@ export function pathExtrusionGeometry(
   )
     return;
   const { d, fillRule } = entity.read(Path);
+  const { depth, bevelSize } = entity.read(Extrude3D);
+  const { m00, m01, m10, m11 } = entity.read(GlobalTransform).matrix;
+  const scaleX = Math.hypot(m00, m01);
+  const scaleY = Math.hypot(m10, m11);
+  const bevelKey =
+    bevelSize > 0 ? `${scaleX},${scaleY},${depth},${bevelSize}` : '';
   const previous = cache.get(entity);
-  if (previous?.d === d && previous.fillRule === fillRule)
+  if (
+    previous?.d === d &&
+    previous.fillRule === fillRule &&
+    previous.bevelKey === bevelKey
+  )
     return forTransform(entity, previous);
 
-  const mesh = buildPathExtrusionMesh(d, fillRule);
-  const entry = { d, fillRule, mesh };
+  const mesh = buildPathExtrusionMesh(
+    d,
+    fillRule,
+    bevelSize > 0 ? { scaleX, scaleY, depth, bevelSize } : undefined,
+  );
+  const entry = { d, fillRule, bevelKey, mesh };
   cache.set(entity, entry);
   return forTransform(entity, entry);
 }

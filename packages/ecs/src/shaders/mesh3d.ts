@@ -280,7 +280,7 @@ void main() {
   }
 
   vec4 baseColor = u_BaseColor;
-  if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 0.5) {
+  if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0) {
     baseColor = u_SideColor;
   }
   if (u_MaterialFlags.x > 0.5) {

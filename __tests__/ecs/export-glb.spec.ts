@@ -101,6 +101,23 @@ it('exports a holed Path with distinct cap and wall materials as a valid GLB', a
   expect([...roundTrip.positions].every(Number.isFinite)).toBe(true);
 });
 
+it('keeps beveled faces with the side material in GLB', () => {
+  const result = extrudePathContours([outer], 2, 'nonzero', 0.5);
+  expect(result.ok).toBe(true);
+  if (!result.ok) return;
+  const bytes = exportMeshesToGlb([
+    {
+      mesh: result.geometry,
+      material: new Material3D({ sideColor: [1, 0, 0, 1] }),
+      transform: new Transform3D(),
+    },
+  ]);
+  const { json } = readGlb(bytes);
+  const [caps, sides] = json.meshes[0].primitives;
+  expect(json.accessors[caps.indices].count).toBe(12);
+  expect(json.accessors[sides.indices].count).toBe(72);
+});
+
 it('rejects empty or malformed mesh data', () => {
   expect(() => exportMeshesToGlb([])).toThrow('No 3D meshes');
   const source = {

@@ -78,6 +78,13 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
   const options = value && typeof value === 'object' ? value : {};
   return {
     depth,
+    bevelSize:
+      typeof options.bevelSize === 'number' &&
+      Number.isFinite(options.bevelSize) &&
+      Number.isFinite(Math.fround(options.bevelSize)) &&
+      options.bevelSize > 0
+        ? options.bevelSize
+        : 0,
     sideColor: typeof options.sideColor === 'string' ? options.sideColor : null,
     z: Number.isFinite(options.z) ? options.z! : 0,
     rotation: (Array.isArray(options.rotation) &&
@@ -89,13 +96,23 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
 }
 
 export function extrude3DToWire(
-  pose: Pick<Extrude3D, 'depth' | 'z' | 'rotation'>,
+  pose: Pick<Extrude3D, 'depth' | 'z' | 'rotation'> &
+    Partial<Pick<Extrude3D, 'bevelSize'>>,
   previous?: Extrude3DAttributes['extrude3d'],
 ): Extrude3DAttributes['extrude3d'] {
   const sideColor =
     previous && typeof previous === 'object' ? previous.sideColor : undefined;
+  const bevelSize =
+    pose.bevelSize === undefined
+      ? previous && typeof previous === 'object'
+        ? previous.bevelSize
+        : undefined
+      : pose.bevelSize > 0
+      ? pose.bevelSize
+      : undefined;
   if (
     sideColor === undefined &&
+    bevelSize === undefined &&
     pose.z === 0 &&
     pose.rotation.every((angle) => angle === 0)
   ) {
@@ -108,5 +125,6 @@ export function extrude3DToWire(
     z: pose.z,
     rotation: [...pose.rotation],
     ...(sideColor === undefined ? {} : { sideColor }),
+    ...(bevelSize === undefined ? {} : { bevelSize }),
   };
 }

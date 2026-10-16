@@ -220,6 +220,32 @@ it('renders imported SVG contours as 3D companions while keeping other paths in 
   }
 });
 
+it('bevels supported SVG contours while leaving a holed ring sharp', async () => {
+  const nodes = svgElementsToExtrudedNodes(elements(), 24).map((node) =>
+    (node.type === 'path' || node.type === 'rect') && node.extrude3d
+      ? { ...node, extrude3d: { depth: 24, bevelSize: 2 } }
+      : node,
+  );
+  await world.reset(api, nodes);
+  const normalZ = (id: string) => {
+    const source = api.getEntity(api.getNodeById(id))!;
+    return source
+      .read(Extrude3D)
+      .meshEntity!.read(Mesh3D)
+      .normals.filter((_, i) => i % 3 === 2);
+  };
+  expect(
+    [...normalZ('ring')].every((value) => value === 0 || Math.abs(value) === 1),
+  ).toBe(true);
+  for (const id of ['circle', 'box']) {
+    expect(
+      [...normalZ(id)].some(
+        (value) => Math.abs(value) > 0 && Math.abs(value) < 1,
+      ),
+    ).toBe(true);
+  }
+});
+
 it('exports ready SVG extrusions through API.export with scene, node, and group scopes', async () => {
   await world.reset(api, svgElementsToExtrudedNodes(elements(), 24));
   const exportNames = (nodes = [] as ReturnType<API['getNodes']>) => {
