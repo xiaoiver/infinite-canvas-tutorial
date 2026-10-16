@@ -365,8 +365,10 @@ The converter accepts closed contours with one solid fill and no visible stroke;
 SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including
 `evenodd` holes, and inherits fill colors from SVG groups. Plain rectangles stay
 editable Rect nodes; rounded rectangles and ellipses become editable Paths.
-The current SVG importer uses one corner radius for rectangles, so distinct
-`rx` and `ry` values are not preserved.
+For extrusion, rounded rectangles preserve independent SVG `rx` and `ry` values
+as elliptical corner arcs. A missing radius defaults to the other, and each
+radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
+importer still stores a single corner radius.
 Open contours, stroked shapes, gradients and unsupported SVG shapes remain in 2D.
 Shearing a Path on the canvas also keeps it in 2D. SVG
 transforms and viewBox scaling follow the existing importer, which does not
