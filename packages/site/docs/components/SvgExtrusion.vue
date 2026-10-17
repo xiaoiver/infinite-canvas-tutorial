@@ -79,6 +79,19 @@ const paintStyleSample = [
   '</svg>',
 ].join('');
 
+const clippingSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
+  '<defs>',
+  '<path id="clip-tile" d="M-15 -15 H175 V175 H-15 Z"/>',
+  '<clipPath id="ring-window"><path d="M0 0 H160 V160 H0 Z M45 45 H115 V115 H45 Z" clip-rule="evenodd"/></clipPath>',
+  '<clipPath id="two-windows" clipPathUnits="objectBoundingBox"><rect x="0.1" y="0" width="0.28" height="1"/><circle cx="0.75" cy="0.5" r="0.25"/></clipPath>',
+  '</defs>',
+  '<use id="blue-cut" href="#clip-tile" x="30" y="30" fill="#3b82f6" clip-path="url(#ring-window)"/>',
+  '<use id="orange-cut" href="#clip-tile" x="280" y="30" fill="#f97316" style="clip-path: url(#ring-window)"/>',
+  '<rect id="windows" x="150" y="220" width="160" height="70" fill="#22c55e" clip-path="url(#two-windows)"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -207,6 +220,12 @@ function loadPaintStyleSample() {
   void render();
 }
 
+function loadClippingSample() {
+  svgSource = clippingSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -309,6 +328,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadPaintStyleSample">
         Paint style + currentColor sample
+      </button>
+      <button type="button" @click="loadClippingSample">
+        Clip paths + repeated use sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

@@ -361,6 +361,16 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 挤出轮廓（包括 `slice`）；设置 `overflow="visible"` 可保留超出视口的几何。
 完整位于视口内的图形保持分组关系，移动视口分组时其 3D 网格会一同移动；
 跨过边缘的图形则转换为裁切后的 Path。
+本地 `clip-path="url(#id)"` 和内联 CSS `clip-path` 也会裁切可挤出的轮廓。
+`<clipPath>` 可以包含 Path、多边形、折线、矩形、圆形、椭圆及嵌套分组。
+多个裁剪图形取并集，`clip-rule="evenodd"` 可以生成孔洞；分组和重复 `<use>`
+实例上的裁剪会跟随各自的变换。多级裁剪彼此相交，也会与 SVG 视口裁切相交。
+`clipPathUnits="objectBoundingBox"` 支持直接作用于单个图形的裁剪。
+被裁切的轮廓仍是可编辑的 Path；完整落在裁剪区域内的图形保持原节点及分组关系。
+无法解析或尚未支持的裁剪定义保持 2D。遮罩、滤镜、裁剪路径中的文本，以及分组上的
+`objectBoundingBox` 裁剪暂不转换为 3D。
+`display="none"` 或继承 `visibility="hidden"` 的元素不会生成 3D 网格；
+子元素可以显式设置 `visibility="visible"`。
 传入完整的 `<svg>` 根节点后，若有以像素指定的 `width`/`height` 和 `viewBox`，
 导入会应用视口缩放及 `preserveAspectRatio`。可挤出的填充图形也会保留嵌套分组中的
 `skewX`、`skewY` 和 `matrix(...)` 剪切变换；变换后的轮廓会采样为仍可编辑的折线路径。
@@ -379,6 +389,8 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 通过 `<use>` 引用的第二个实例；两者的挤出轮廓都会按各自视口裁切。
 点击 **Paint style + currentColor sample** 可以比较继承颜色、实例独立颜色、
 内联填充覆盖，以及因内联描边而保持 2D 的图形。
+点击 **Clip paths + repeated use sample** 可以查看两个分别裁剪、带孔洞的实例，
+以及通过对象包围盒中的多个图形共同裁剪出的形状。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、

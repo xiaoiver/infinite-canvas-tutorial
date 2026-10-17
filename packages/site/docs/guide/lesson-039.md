@@ -380,7 +380,8 @@ For extrusion, rounded rectangles preserve independent SVG `rx` and `ry` values
 as elliptical corner arcs. A missing radius defaults to the other, and each
 radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
 importer still stores a single corner radius.
-Open contours, stroked shapes, gradients and unsupported SVG shapes remain in 2D.
+Open contours, stroked shapes, gradients, paint servers and unsupported SVG
+shapes remain in 2D.
 Local `<use href="#id">` and legacy `xlink:href` references to supported shapes or
 groups create independent instances, including forward and repeated references.
 Instance pixel offsets, transform and inherited fill are applied before extrusion;
@@ -399,6 +400,18 @@ Nested SVG viewports clip generated extrusion outlines by default, including
 with `slice`; set `overflow="visible"` to retain overhanging geometry.
 Fully contained shapes keep their group relationship, so moving the viewport
 group also moves their 3D meshes. Shapes crossing an edge become clipped Paths.
+Local `clip-path="url(#id)"` and inline CSS `clip-path` now clip eligible 3D
+outlines too. A `<clipPath>` can contain Paths, polygons, polylines, rectangles,
+circles, ellipses and nested groups. Its shapes form a union; `clip-rule="evenodd"`
+can cut holes. Clips on groups and repeated `<use>` instances follow their
+transforms, and multiple ancestor clips intersect with each other and with SVG
+viewports. `clipPathUnits="objectBoundingBox"` works for a clip attached directly
+to one shape. A clipped outline becomes an editable Path; an outline wholly
+inside its clip keeps its original node and group relationship. Unresolved or
+unsupported clip definitions stay in 2D. Masks, filters, text inside clip paths
+and object-bounds clips on groups are not converted to 3D.
+Elements with `display="none"` or inherited `visibility="hidden"` do not produce
+3D meshes; a descendant can explicitly set `visibility="visible"`.
 Pass the root `<svg>` to apply an explicit pixel `width`/`height` and `viewBox`,
 including `preserveAspectRatio`. Filled extrusions also preserve SVG `skewX`,
 `skewY`, and sheared `matrix(...)` transforms from nested groups. These outlines
@@ -423,6 +436,8 @@ to each viewport.
 Choose **Paint style + currentColor sample** to compare inherited and
 instance-specific colors, an inline fill override and a styled stroke that
 stays in 2D.
+Choose **Clip paths + repeated use sample** to inspect two independently
+clipped instances with holes and a shape clipped by an object-bounds union.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple

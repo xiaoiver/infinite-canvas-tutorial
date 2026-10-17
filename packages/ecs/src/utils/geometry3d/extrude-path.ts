@@ -130,6 +130,49 @@ export function clipFilledContoursToPolygon(
   }
 }
 
+export type FilledContourShape = {
+  contours: Point[][];
+  fillRule: CanvasFillRule;
+};
+
+/** Union the shapes within each SVG clipPath, then intersect each clipPath. */
+export function clipFilledContoursToRegions(
+  contours: Point[][],
+  fillRule: CanvasFillRule,
+  regions: FilledContourShape[][],
+): { contours: Point[][]; inside: boolean } | undefined {
+  try {
+    const asPolygon = ({ contours, fillRule }: FilledContourShape) => {
+      const boundaries = filledBoundaries(contours, fillRule);
+      if (!boundaries) return;
+      if (!boundaries.length) return [];
+      const rings = boundaries.map((boundary) => [[...boundary, boundary[0]]]);
+      return polygonClipping.xor(rings[0], ...rings.slice(1));
+    };
+    const source = asPolygon({ contours, fillRule });
+    if (source === undefined) return;
+    if (!source.length) return { contours: [], inside: false };
+    let clipped = source;
+    for (const shapes of regions) {
+      const polygons = shapes.map(asPolygon);
+      if (polygons.some((polygon) => polygon === undefined)) return;
+      const nonempty = polygons.filter((polygon) => polygon?.length);
+      if (!nonempty.length) return { contours: [], inside: false };
+      const region = polygonClipping.union(nonempty[0]!, ...nonempty.slice(1));
+      clipped = polygonClipping.intersection(clipped, region);
+      if (!clipped.length) return { contours: [], inside: false };
+    }
+    const inside = !polygonClipping.difference(source, clipped).length;
+    return {
+      inside,
+      contours: clipped.flatMap((polygon) => polygon.map((ring) =>
+        ring.slice(0, -1).map(([x, y]): Point => [x, y]))),
+    };
+  } catch {
+    return;
+  }
+}
+
 /**
  * Build a closed, sharp-edged mesh centered on z=0 from already flattened,
  * closed Path contours in local coordinates. Curves must be sampled upstream.
