@@ -3,15 +3,22 @@ import {
   fromDefinition,
   fromTransformAttribute,
   identity,
+  scale,
+  translate,
   type Matrix,
 } from 'transformation-matrix';
 import type { PathSerializedNode, SerializedNode } from '../../types/serialized-node';
 import { flattenPath } from '../curve/adaptive';
 import { parsePath } from '../curve/shape-path';
 import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
-import { clipFilledContoursToPolygon } from '../geometry3d/extrude-path';
+import {
+  clipFilledContoursToPolygon,
+  clipFilledContoursToRegions,
+  type FilledContourShape,
+} from '../geometry3d/extrude-path';
 import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
 import { positivePixelLength, sliceAspectRatio, viewBoxMatrix } from './svg-viewbox';
+import { svgClipReference, type SvgClipDefinition } from './svg-clip';
 
 type Point = [number, number];
 type ProjectedPath = {
@@ -58,7 +65,12 @@ function sliceViewport(root: SVGSVGElement): Point[] | undefined {
 function sourceTransform(
   element: SVGElement,
   root: SVGSVGElement | undefined,
-): { matrix: Matrix; hasShear: boolean; clipViewports: Point[][] } {
+): {
+  matrix: Matrix;
+  hasShear: boolean;
+  clipViewports: Point[][];
+  clipReferences: { id: string; element: SVGElement; matrix: Matrix }[];
+} {
   const chain: SVGElement[] = [];
   let current: SVGElement | null = element;
   while (current && (root ? current !== root : current.localName !== 'svg')) {
@@ -69,6 +81,7 @@ function sourceTransform(
   let matrix = identity();
   let hasShear = false;
   const clipViewports: Point[][] = [];
+  const clipReferences: { id: string; element: SVGElement; matrix: Matrix }[] = [];
   for (const item of chain) {
     const nestedViewport = item.getAttribute('data-svg-viewport');
     if (nestedViewport) {
@@ -91,8 +104,11 @@ function sourceTransform(
     matrix = item === root
       ? compose([matrix, part, rootViewBox(root)])
       : compose([matrix, part]);
+    const reference = svgClipReference(item);
+    if (reference !== undefined)
+      clipReferences.push({ id: reference, element: item, matrix });
   }
-  return { matrix, hasShear, clipViewports };
+  return { matrix, hasShear, clipViewports, clipReferences };
 }
 
 function intersectViewports(viewports: Point[][]): ViewportResult {
@@ -219,6 +235,7 @@ export function reprojectSvgExtrusion(
   inherited: Map<string, Record<string, unknown>>,
   depth: number,
   rectRadii: Map<string, { rx: number; ry: number }>,
+  clipDefinitions: Map<string, SvgClipDefinition | undefined>,
 ): SerializedNode[] {
   const viewport = root ? rootViewBox(root) : identity();
   const slice = root ? sliceViewport(root) : undefined;
@@ -228,8 +245,9 @@ export function reprojectSvgExtrusion(
     if (!('extrude3d' in node) || !node.extrude3d) return node;
     const element = nodeElements.get(node.id);
     if (!element) return node;
-    const { matrix, hasShear, clipViewports } = sourceTransform(element, root);
-    if (!hasShear && isIdentity(viewport) && !slice && !clipViewports.length) return node;
+    const { matrix, hasShear, clipViewports, clipReferences } = sourceTransform(element, root);
+    if (!hasShear && isIdentity(viewport) && !slice && !clipViewports.length &&
+      !clipReferences.length) return node;
     // Baked coordinates leave the SVG group hierarchy, so carry inherited
     // visibility and paint onto the detached source node.
     let visibility = node.visibility;
@@ -252,6 +270,59 @@ export function reprojectSvgExtrusion(
         return { ...node, visibility: 'hidden', extrude3d: undefined };
       if (clippedViewport.kind === 'invalid')
         return { ...node, extrude3d: undefined };
+      if (clipReferences.length) {
+        const regions: FilledContourShape[][] = clippedViewport.kind === 'polygon'
+          ? [[{ contours: [clippedViewport.polygon], fillRule: 'nonzero' }]]
+          : [];
+        for (const reference of clipReferences) {
+          const definition = clipDefinitions.get(reference.id);
+          if (!definition) return { ...node, extrude3d: undefined };
+          let clipMatrix = reference.matrix;
+          if (definition.units === 'objectBoundingBox') {
+            if (reference.element !== element || !plain.width || !plain.height ||
+              plain.width <= 0 || plain.height <= 0)
+              return { ...node, extrude3d: undefined };
+            clipMatrix = compose([
+              clipMatrix,
+              translate(plain.x ?? 0, plain.y ?? 0),
+              scale(plain.width, plain.height),
+            ]);
+          }
+          regions.push(definition.shapes.map((shape) => ({
+            fillRule: shape.fillRule,
+            contours: shape.contours.map((contour) => contour.map(([x, y]): Point => [
+              clipMatrix.a * x + clipMatrix.c * y + clipMatrix.e,
+              clipMatrix.b * x + clipMatrix.d * y + clipMatrix.f,
+            ])),
+          })));
+        }
+        const contours = projectContours(source, plain.x ?? 0, plain.y ?? 0, matrix);
+        if (!contours) return { ...node, extrude3d: undefined };
+        const clipped = clipFilledContoursToRegions(contours, fillRule, regions);
+        if (!clipped) return { ...node, extrude3d: undefined };
+        if (!clipped.contours.length)
+          return { ...node, visibility: 'hidden', extrude3d: undefined };
+        if (clipped.inside && !hasShear && isIdentity(viewport) &&
+          (!root || isIdentity(transformAttribute(root)))) return node;
+        const path = pathFromContours(clipped.contours);
+        if (!path || !buildPathExtrusionMesh(path.d, 'evenodd'))
+          return { ...node, extrude3d: undefined };
+        const { cornerRadius: _cornerRadius, ...rest } = node as typeof node & { cornerRadius?: number };
+        return {
+          ...rest,
+          ...inherited.get(node.id),
+          visibility,
+          ...path,
+          type: 'path',
+          fillRule: 'evenodd',
+          parentId: undefined,
+          zIndex: index,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+          extrude3d: depth,
+        } as PathSerializedNode;
+      }
       if (clippedViewport.kind === 'polygon') {
         const clipped = clipProjectedPath(
           source, plain.x ?? 0, plain.y ?? 0, matrix,

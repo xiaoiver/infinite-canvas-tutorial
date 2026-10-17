@@ -1003,6 +1003,180 @@ it('uses SVG currentColor black when no color is declared', () => {
     .toMatchObject({ extrude3d: 12, fills: [{ type: 'solid', value: '#000000' }] });
 });
 
+it('clips an extrusion with a local SVG clipPath while retaining holes', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="window"><rect x="10" y="0" width="60" height="60"/></clipPath></defs>
+    <path id="clipped-ring" d="M0 0 H80 V80 H0 Z M20 20 H50 V50 H20 Z"
+      fill="red" fill-rule="evenodd" clip-path="url(#window)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const node = svgElementsToExtrudedNodes(svg, 16).find((item) => item.id === 'clipped-ring');
+  expect(node).toMatchObject({
+    type: 'path', x: 10, y: 0, width: 60, height: 60,
+    fillRule: 'evenodd', extrude3d: 16,
+  });
+  expect(node?.type === 'path' && node.d.match(/M/g)?.length).toBe(2);
+});
+
+it('unites clipPath shapes and applies a group clip in transformed user space', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="pair">
+      <rect x="10" width="20" height="40"/>
+      <rect x="50" width="20" height="40"/>
+    </clipPath></defs>
+    <g id="shifted" transform="translate(100 25)" style="clip-path: url(#pair)">
+      <path id="two-islands" d="M0 0 H80 V40 H0 Z" fill="blue"/>
+      <rect id="other" x="120" width="10" height="10" fill="green"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 12);
+  const island = nodes.find((node) => node.id === 'two-islands');
+  expect(island).toMatchObject({
+    type: 'path', x: 110, y: 25, width: 60, height: 40,
+    fillRule: 'evenodd', extrude3d: 12,
+  });
+  expect(island?.type === 'path' && island.d.match(/M/g)?.length).toBe(2);
+  expect(nodes.find((node) => node.id === 'other')).toMatchObject({
+    visibility: 'hidden', extrude3d: undefined,
+  });
+});
+
+it('applies objectBoundingBox clips to shapes and keeps unresolved clips in 2D', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="center" clipPathUnits="objectBoundingBox">
+      <rect x="0.25" y="0.25" width="0.5" height="0.5"/>
+    </clipPath>
+    <clipPath id="percentage" clipPathUnits="objectBoundingBox">
+      <rect x="25%" y="25%" width="50%" height="50%"/>
+    </clipPath>
+    <clipPath id="mixed" clipPathUnits="objectBoundingBox">
+      <rect x="0.1" width="0.2" height="1"/>
+      <circle cx="0.75" cy="0.5" r="0.2"/>
+    </clipPath></defs>
+    <rect id="bounded" x="20" y="30" width="100" height="80" fill="red" clip-path="url(#center)"/>
+    <rect id="percentage-bounded" x="20" y="30" width="100" height="80" fill="red" clip-path="url(#percentage)"/>
+    <rect id="mixed-bounded" x="20" y="30" width="100" height="80" fill="red" clip-path="url(#mixed)"/>
+    <rect id="unresolved" x="150" y="30" width="20" height="20" fill="red" clip-path="url(#missing)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 20);
+  expect(nodes.find((node) => node.id === 'bounded')).toMatchObject({
+    type: 'path', x: 45, y: 50, width: 50, height: 40, extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'percentage-bounded')).toMatchObject({
+    type: 'path', x: 45, y: 50, width: 50, height: 40, extrude3d: 20,
+  });
+  const mixed = nodes.find((node) => node.id === 'mixed-bounded');
+  expect(mixed).toMatchObject({ type: 'path', extrude3d: 20 });
+  expect(mixed?.type === 'path' && mixed.d.match(/M/g)?.length).toBe(2);
+  expect(nodes.find((node) => node.id === 'unresolved')).not.toHaveProperty('extrude3d', 20);
+});
+
+it('keeps an evenodd hole in a clipPath and clips repeated use instances independently', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <path id="tile" d="M0 0 H80 V80 H0 Z" fill="red"/>
+      <clipPath id="ring-clip">
+        <path d="M0 0 H60 V60 H0 Z M20 20 H40 V40 H20 Z" clip-rule="evenodd"/>
+      </clipPath>
+    </defs>
+    <use id="first-cut" href="#tile" x="10" y="15" clip-path="url(#ring-clip)"/>
+    <use id="second-cut" href="#tile" x="110" y="15" style="clip-path: url(#ring-clip)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const before = svg.outerHTML;
+  const nodes = svgElementsToExtrudedNodes(svg, 14);
+  for (const [id, x] of [['first-cut--tile', 10], ['second-cut--tile', 110]] as const) {
+    const node = nodes.find((item) => item.id === id);
+    expect(node).toMatchObject({
+      type: 'path', x, y: 15, width: 60, height: 60,
+      fillRule: 'evenodd', extrude3d: 14,
+    });
+    expect(node?.type === 'path' && node.d.match(/M/g)?.length).toBe(2);
+  }
+  expect(svg.outerHTML).toBe(before);
+});
+
+it('intersects a clipPath with a sliced root viewBox', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    width="100" height="100" viewBox="0 0 100 50" preserveAspectRatio="xMidYMid slice">
+    <defs><clipPath id="band"><rect x="30" y="0" width="40" height="50"/></clipPath></defs>
+    <path id="slice-and-clip" d="M0 0 H100 V50 H0 Z" fill="red" clip-path="url(#band)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 14).find((node) => node.id === 'slice-and-clip'))
+    .toMatchObject({ type: 'path', x: 10, y: 0, width: 80, height: 100, extrude3d: 14 });
+});
+
+it('inherits clip-rule and visibility through clipPath groups', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="grouped-clip">
+      <g clip-rule="evenodd">
+        <path d="M0 0 H80 V80 H0 Z M20 20 H60 V60 H20 Z"/>
+      </g>
+      <g visibility="hidden">
+        <rect x="90" width="20" height="20"/>
+      </g>
+    </clipPath></defs>
+    <path id="group-cut" d="M0 0 H120 V80 H0 Z" fill="red" clip-path="url(#grouped-clip)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const node = svgElementsToExtrudedNodes(svg, 12).find((item) => item.id === 'group-cut');
+  expect(node).toMatchObject({
+    type: 'path', x: 0, y: 0, width: 80, height: 80,
+    fillRule: 'evenodd', extrude3d: 12,
+  });
+  expect(node?.type === 'path' && node.d.match(/M/g)?.length).toBe(2);
+});
+
+it('composes transforms inside clipPath definitions', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="moved-clip" transform="translate(5 0)">
+      <g transform="translate(10 0)"><rect width="20" height="20"/></g>
+    </clipPath></defs>
+    <path id="moved-cut" d="M0 0 H80 V30 H0 Z" fill="red" clip-path="url(#moved-clip)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 12).find((node) => node.id === 'moved-cut'))
+    .toMatchObject({ type: 'path', x: 15, y: 0, width: 20, height: 20, extrude3d: 12 });
+});
+
+it('keeps editable group membership when a clipPath fully contains a shape', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="wide"><rect x="-10" y="-10" width="100" height="100"/></clipPath></defs>
+    <g id="clipped-group" clip-path="url(#wide)">
+      <rect id="inside-rect" x="10" y="10" width="20" height="20" fill="red"/>
+      <rect id="inside-other" x="40" y="10" width="20" height="20" fill="blue"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 12).find((node) => node.id === 'inside-rect'))
+    .toMatchObject({ type: 'rect', parentId: 'clipped-group', extrude3d: 12 });
+});
+
+it('does not extrude hidden SVG nodes and allows visibility overrides', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <rect id="display-none" width="20" height="20" fill="red" style="display: none"/>
+    <g id="hidden-group" visibility="hidden">
+      <rect id="still-hidden" x="30" width="20" height="20" fill="red"/>
+      <rect id="visible-override" x="60" width="20" height="20" fill="red" style="visibility: visible"/>
+    </g>
+    <rect id="masked" x="90" width="20" height="20" fill="red" mask="url(#mask)"/>
+    <rect id="filtered" x="120" width="20" height="20" fill="red" style="filter: url(#blur)"/>
+    <rect id="paint-server" x="150" width="20" height="20" fill="url(#pattern)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 12);
+  expect(nodes.find((node) => node.id === 'display-none')).toMatchObject({ visibility: 'hidden' });
+  expect(nodes.find((node) => node.id === 'display-none')).not.toHaveProperty('extrude3d', 12);
+  expect(nodes.find((node) => node.id === 'still-hidden')).toMatchObject({ visibility: 'hidden' });
+  expect(nodes.find((node) => node.id === 'still-hidden')).not.toHaveProperty('extrude3d', 12);
+  expect(nodes.find((node) => node.id === 'visible-override')).toMatchObject({ extrude3d: 12 });
+  for (const id of ['masked', 'filtered', 'paint-server'])
+    expect(nodes.find((node) => node.id === id)).not.toHaveProperty('extrude3d', 12);
+});
+
 let world: Awaited<ReturnType<typeof createDocumentWorld>>;
 let api: API;
 beforeAll(async () => {

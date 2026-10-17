@@ -21,6 +21,7 @@ import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
 import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
 import { reprojectSvgExtrusion } from './svg-extrusion-affine';
 import { expandSvgUses } from './svg-use';
+import { parseSvgClipPath } from './svg-clip';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -61,6 +62,47 @@ function svgPresentationAttributes(
     if (value) attributes.push({ name, value: value.trim(), owner: element });
   }
   return attributes;
+}
+
+function svgHidden(element: SVGElement, fallback: Element | null): boolean {
+  let visibility: string | undefined;
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    const svg = current as SVGElement;
+    if (svg.style?.display === 'none' || current.getAttribute('display') === 'none')
+      return true;
+    const ownVisibility = svg.style?.getPropertyValue('visibility') ||
+      current.getAttribute('visibility');
+    if (ownVisibility && ownVisibility !== 'inherit' && ownVisibility !== 'unset')
+      visibility ??= ownVisibility;
+  }
+  for (let current = fallback; current; current = current.parentElement) {
+    const svg = current as SVGElement;
+    if (svg.style?.display === 'none' || current.getAttribute('display') === 'none')
+      return true;
+    const ownVisibility = svg.style?.getPropertyValue('visibility') ||
+      current.getAttribute('visibility');
+    if (ownVisibility && ownVisibility !== 'inherit' && ownVisibility !== 'unset')
+      visibility ??= ownVisibility;
+  }
+  return visibility === 'hidden' || visibility === 'collapse';
+}
+
+function hasUnsupportedSvgEffects(element: SVGElement, fallback: Element | null): boolean {
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    const svg = current as SVGElement;
+    for (const name of ['mask', 'filter']) {
+      const value = svg.style?.getPropertyValue(name) || current.getAttribute(name);
+      if (value && value.trim() !== 'none') return true;
+    }
+  }
+  for (let current = fallback; current; current = current.parentElement) {
+    const svg = current as SVGElement;
+    for (const name of ['mask', 'filter']) {
+      const value = svg.style?.getPropertyValue(name) || current.getAttribute(name);
+      if (value && value.trim() !== 'none') return true;
+    }
+  }
+  return false;
 }
 
 export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
@@ -443,6 +485,14 @@ export function svgElementsToExtrudedNodes(
     ? svgColor(elements[0]?.parentElement)
     : '#000000';
   const nodeElements = new Map<string, SVGElement>();
+  const clipDefinitions = new Map<string, ReturnType<typeof parseSvgClipPath>>();
+  const allElements = root
+    ? [root, ...Array.from(root.querySelectorAll('*')) as SVGElement[]]
+    : children.flatMap((child) => [child, ...Array.from(child.querySelectorAll('*')) as SVGElement[]]);
+  for (const element of allElements) {
+    if (element.localName === 'clipPath' && element.id)
+      clipDefinitions.set(element.id, parseSvgClipPath(element));
+  }
   const nodes = deserializeSvgElements(
     children,
     [],
@@ -475,7 +525,7 @@ export function svgElementsToExtrudedNodes(
       rectRadii.get(node.id),
     );
   });
-  return reprojectSvgExtrusion(
+  const projected = reprojectSvgExtrusion(
     converted,
     () => {
       const plainChildren = children.map((element) => element.cloneNode(true) as SVGElement);
@@ -489,8 +539,18 @@ export function svgElementsToExtrudedNodes(
         undefined, undefined, fallbackColor,
       );
     },
-    root, nodeElements, inherited, depth, rectRadii,
+    root, nodeElements, inherited, depth, rectRadii, clipDefinitions,
   );
+  const fallbackParent = Array.isArray(elements) ? elements[0]?.parentElement : null;
+  return projected.map((node) => {
+    const element = nodeElements.get(node.id);
+    if (!element) return node;
+    if (svgHidden(element, fallbackParent))
+      return { ...node, visibility: 'hidden', extrude3d: undefined };
+    if (hasUnsupportedSvgEffects(element, fallbackParent))
+      return { ...node, extrude3d: undefined };
+    return node;
+  });
 }
 
 export function kebabToCamelCase(str: string) {
