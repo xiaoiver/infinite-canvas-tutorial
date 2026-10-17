@@ -31,6 +31,38 @@ const DOMINANT_BASELINE_MAP: Record<string, string> = {
   hanging: 'hanging',
 };
 
+const SVG_PAINT_STYLE_PROPERTIES = [
+  'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-opacity',
+  'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
+  'stroke-dasharray', 'stroke-dashoffset', 'opacity', 'visibility',
+  'vector-effect',
+] as const;
+const SVG_PAINT_PROPERTIES = new Set<string>(SVG_PAINT_STYLE_PROPERTIES);
+
+function svgColor(element: Element | null, fallback = '#000000'): string {
+  for (let current = element; current; current = current.parentElement) {
+    const color = (current as SVGElement).style?.getPropertyValue('color') ||
+      current.getAttribute('color');
+    if (color && !['inherit', 'currentcolor'].includes(color.trim().toLowerCase()))
+      return color.trim();
+  }
+  return fallback;
+}
+
+function svgPresentationAttributes(
+  element: SVGElement,
+): { name: string; value: string; owner: SVGElement }[] {
+  const attributes = Array.from(element.attributes).map(({ name, value }) => ({
+    name, value, owner: element,
+  }));
+  // CSS declarations have priority over SVG presentation attributes.
+  for (const name of SVG_PAINT_STYLE_PROPERTIES) {
+    const value = element.style?.getPropertyValue(name);
+    if (value) attributes.push({ name, value: value.trim(), owner: element });
+  }
+  return attributes;
+}
+
 export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
   const { viewBox, width, height } = element;
   const { x, y, width: vw, height: vh } = viewBox.baseVal;
@@ -69,6 +101,7 @@ export function svgElementsToSerializedNodes(
   overrideAttributes?: NamedNodeMap,
 ): SerializedNode[] {
   const expanded = expandSvgUses(elements, defsChildren);
+  const fallbackColor = svgColor(elements[0]?.parentElement);
   return deserializeSvgElements(
     expanded.children,
     defsChildren,
@@ -76,6 +109,9 @@ export function svgElementsToSerializedNodes(
     zIndex,
     overrideAttributes,
     { fill: false, stroke: false },
+    undefined,
+    undefined,
+    fallbackColor,
   );
 }
 
@@ -88,6 +124,7 @@ function deserializeSvgElements(
   paintFromGroups: { fill: boolean; stroke: boolean },
   rectRadii?: Map<string, { rx: number; ry: number }>,
   nodeElements?: Map<string, SVGElement>,
+  fallbackColor = '#000000',
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
@@ -128,15 +165,28 @@ function deserializeSvgElements(
 
     if (!inferedSingleElement) {
       const attributes = [
-        ...Array.from(element.attributes),
-        ...Array.from(elementOverrideAttributes || []),
+        ...svgPresentationAttributes(element),
+        ...(elementOverrideAttributes?.length
+          ? svgPresentationAttributes(
+              elementOverrideAttributes[0].ownerElement as SVGElement,
+            )
+          : []),
       ].reduce((prev, attr) => {
         if (attr.name === 'data-svg-use-instance' ||
           attr.name === 'data-svg-viewport' ||
-          attr.name === 'data-svg-viewport-transform') return prev;
+          attr.name === 'data-svg-viewport-transform' ||
+          attr.name === 'style' || attr.name === 'color') return prev;
         let attributeName = kebabToCamelCase(attr.name);
+        // A collapsed single-child group only supplies paint that the child
+        // has not specified itself.
+        if (attr.owner !== element && SVG_PAINT_PROPERTIES.has(attr.name) &&
+            attributeName in prev) return prev;
 
         let value: string | number = attr.value;
+        if ((attributeName === 'fill' || attributeName === 'stroke') &&
+            value.trim().toLowerCase() === 'currentcolor') {
+          value = svgColor(attr.owner, fallbackColor);
+        }
 
         // e.g. fill="url(#bgGradient)"
         if (value.startsWith('url(#')) {
@@ -233,11 +283,6 @@ function deserializeSvgElements(
           (attributes as TextSerializedNode).fontVariant =
             element.style.fontVariant;
         }
-        if (element.style.fill) {
-          (attributes as TextSerializedNode).fills = [
-            { type: 'solid', value: element.style.fill, opacity: 1 },
-          ];
-        }
         if (element.style.textDecoration) {
           // e.g. text-decoration: underline 4px wavy rgb(0, 0, 0) ;
           const [
@@ -303,12 +348,11 @@ function deserializeSvgElements(
       }
 
       // @see https://developer.mozilla.org/en-US/docs/Web/SVG/Reference/Attribute/visibility
-      const visibility = element.getAttribute('visibility');
-      if (visibility) {
-        attributes.visibility = visibility as Visibility['value'];
-      }
+      const visibility = attributes.visibility;
+      if (visibility) attributes.visibility = visibility as Visibility['value'];
 
-      const vectorEffect = element.getAttribute('vector-effect');
+      const vectorEffect = (attributes as unknown as Record<string, string>)
+        .vectorEffect;
       if (vectorEffect) {
         (attributes as AttenuationAttributes).sizeAttenuation =
           vectorEffect === 'non-scaling-size';
@@ -369,13 +413,14 @@ function deserializeSvgElements(
       {
         fill:
           paintFromGroups.fill ||
-          (type === 'g' && element.hasAttribute('fill')),
+          (type === 'g' && (element.hasAttribute('fill') || !!element.style?.fill)),
         stroke:
           paintFromGroups.stroke ||
-          (type === 'g' && element.hasAttribute('stroke')),
+          (type === 'g' && (element.hasAttribute('stroke') || !!element.style?.stroke)),
       },
       rectRadii,
       nodeElements,
+      fallbackColor,
     ).filter(Boolean);
 
     nodes.push(...children);
@@ -394,6 +439,9 @@ export function svgElementsToExtrudedNodes(
   }
   const rectRadii = new Map<string, { rx: number; ry: number }>();
   const { root, children } = expandSvgUses(elements);
+  const fallbackColor = Array.isArray(elements)
+    ? svgColor(elements[0]?.parentElement)
+    : '#000000';
   const nodeElements = new Map<string, SVGElement>();
   const nodes = deserializeSvgElements(
     children,
@@ -404,6 +452,7 @@ export function svgElementsToExtrudedNodes(
     { fill: false, stroke: false },
     rectRadii,
     nodeElements,
+    fallbackColor,
   );
   const inherited = getComputedInheritGroupWireMap(nodes);
   const converted = nodes.map((node) => {
@@ -437,6 +486,7 @@ export function svgElementsToExtrudedNodes(
       return deserializeSvgElements(
         plainChildren, [], undefined, 0, undefined,
         { fill: false, stroke: false },
+        undefined, undefined, fallbackColor,
       );
     },
     root, nodeElements, inherited, depth, rectRadii,

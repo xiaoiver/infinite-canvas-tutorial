@@ -931,6 +931,78 @@ it('maps supported SVG paths, polygons, rectangles and ellipses to extrusion sou
   expect(() => svgElementsToExtrudedNodes(input, Infinity)).toThrow(RangeError);
 });
 
+it('imports inline paint declarations with priority over presentation attributes', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <path id="styled" d="M0 0 H20 V20 H0 Z" fill="none" style="fill: #2563eb; fill-opacity: .4; fill-rule: evenodd"/>
+    <path id="outlined" d="M30 0 H50 V20 H30 Z" fill="red" stroke="none" style="stroke: #111; stroke-width: 3"/>
+    <g id="painted-group" style="fill: #22c55e; stroke: none">
+      <rect id="inherited" x="60" width="20" height="20"/>
+      <rect id="own-paint" x="90" width="20" height="20" style="fill: #f97316"/>
+    </g>
+    <g id="single-override" fill="red">
+      <path id="single-path" d="M120 0 H140 V20 H120 Z" style="fill: blue"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const before = svg.outerHTML;
+  const nodes = svgElementsToExtrudedNodes(svg, 18);
+  expect(nodes.find((node) => node.id === 'styled')).toMatchObject({
+    extrude3d: 18, fillRule: 'evenodd',
+    fills: [{ type: 'solid', value: '#2563eb', opacity: 0.4 }],
+  });
+  expect(nodes.find((node) => node.id === 'outlined')).not.toHaveProperty('extrude3d');
+  expect(nodes.find((node) => node.id === 'outlined')).toMatchObject({
+    strokeWidth: 3, strokes: [{ type: 'solid', value: '#111' }],
+  });
+  expect(nodes.find((node) => node.id === 'inherited')).toMatchObject({ extrude3d: 18 });
+  expect(nodes.find((node) => node.id === 'own-paint')).toMatchObject({
+    extrude3d: 18, fills: [{ type: 'solid', value: '#f97316' }],
+  });
+  expect(nodes.find((node) => node.id === 'single-override')).toMatchObject({
+    extrude3d: 18, fills: [{ type: 'solid', value: 'blue' }],
+  });
+  expect(svg.outerHTML).toBe(before);
+});
+
+it('resolves currentColor from the SVG root, groups, and independent use instances', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg" color="#111111" style="color: #a855f7">
+    <path id="root-color" d="M0 0 H20 V20 H0 Z" fill="currentColor"/>
+    <g id="group" color="#0ea5e9">
+      <path id="group-color" d="M30 0 H50 V20 H30 Z" style="fill: currentColor"/>
+    </g>
+    <defs><path id="tile" d="M0 0 H20 V20 H0 Z" fill="currentColor"/></defs>
+    <use id="first-colored" href="#tile" x="60" style="color: #ef4444"/>
+    <use id="second-colored" href="#tile" x="90" color="#22c55e"/>
+    <path id="outlined-color" d="M120 0 H140 V20 H120 Z" fill="red" stroke="currentColor"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 18);
+  const fill = (id: string) => (nodes.find((node) => node.id === id) as { fills?: { value: string }[] })?.fills?.[0]?.value;
+  expect(fill('root-color')).toBe('rgb(168, 85, 247)');
+  expect(fill('group')).toBe('#0ea5e9');
+  expect(fill('first-colored--tile')).toBe('rgb(239, 68, 68)');
+  expect(fill('second-colored--tile')).toBe('#22c55e');
+  expect(nodes.find((node) => node.id === 'outlined-color')).toMatchObject({
+    strokes: [{ type: 'solid', value: 'rgb(168, 85, 247)' }],
+  });
+  expect(nodes.find((node) => node.id === 'outlined-color')).not.toHaveProperty('extrude3d');
+  const flat = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  expect((flat.find((node) => node.id === 'root-color') as { fills?: { value: string }[] }).fills?.[0]?.value)
+    .toBe('rgb(168, 85, 247)');
+  expect((flat.find((node) => node.id === 'first-colored--tile') as { fills?: { value: string }[] }).fills?.[0]?.value)
+    .toBe('rgb(239, 68, 68)');
+});
+
+it('uses SVG currentColor black when no color is declared', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg"><path id="black" d="M0 0 H20 V20 H0 Z" fill="currentColor"/></svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 12).find((node) => node.id === 'black'))
+    .toMatchObject({ extrude3d: 12, fills: [{ type: 'solid', value: '#000000' }] });
+});
+
 let world: Awaited<ReturnType<typeof createDocumentWorld>>;
 let api: API;
 beforeAll(async () => {
