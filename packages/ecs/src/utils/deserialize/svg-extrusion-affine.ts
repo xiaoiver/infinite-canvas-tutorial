@@ -154,6 +154,59 @@ function projectContours(
   return contours;
 }
 
+function contourBounds(contours: Point[][]): { x: number; y: number; width: number; height: number } | undefined {
+  const points = contours.flat();
+  if (!points.length) return;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const [x, y] of points) {
+    minX = Math.min(minX, x); minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+  }
+  if (![minX, minY, maxX, maxY].every(Number.isFinite) ||
+    maxX <= minX || maxY <= minY) return;
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Bounds are measured in the clipped element's own user space, before its transform. */
+function objectBounds(
+  element: SVGElement,
+  plainByElement: Map<SVGElement, SerializedNode>,
+  depth: number,
+  rectRadii: Map<string, { rx: number; ry: number }>,
+): ReturnType<typeof contourBounds> {
+  const descendants = element.localName === 'g' || element.localName === 'svg'
+    ? Array.from(element.querySelectorAll('*')) as SVGElement[]
+    : [element];
+  const all: Point[][] = [];
+  for (const child of descendants) {
+    if (child.closest('defs') || child.localName === 'defs') continue;
+    if (child.localName === 'g' || child.localName === 'svg') continue;
+    if (child.localName === 'clipPath') continue;
+    if (!['path', 'polygon', 'polyline', 'rect', 'circle', 'ellipse'].includes(child.localName))
+      return;
+    let hidden = false;
+    for (let current: Element | null = child; current && current !== element;
+      current = current.parentElement) {
+      if ((current as SVGElement).style?.display === 'none' ||
+        current.getAttribute('display') === 'none') hidden = true;
+    }
+    if (hidden) continue;
+    const plain = plainByElement.get(child);
+    if (!plain) return;
+    const source = pathForSource(plain, depth, rectRadii.get(plain.id));
+    if (!source) return;
+    const chain: SVGElement[] = [];
+    for (let current: SVGElement | null = child; current && current !== element;
+      current = current.parentElement as unknown as SVGElement | null) chain.unshift(current);
+    let matrix = identity();
+    for (const item of chain) matrix = compose([matrix, transformAttribute(item)]);
+    const contours = projectContours(source, plain.x ?? 0, plain.y ?? 0, matrix);
+    if (!contours) return;
+    all.push(...contours);
+  }
+  return contourBounds(all);
+}
+
 function pathFromContours(
   contours: Point[][],
 ): ProjectedPath | undefined {
@@ -241,6 +294,8 @@ export function reprojectSvgExtrusion(
   const slice = root ? sliceViewport(root) : undefined;
   const byId = new Map(nodes.map((node) => [node.id, node]));
   let plainNodes: SerializedNode[] | undefined;
+  let plainByElement: Map<SVGElement, SerializedNode> | undefined;
+  const boundsCache = new Map<SVGElement, ReturnType<typeof contourBounds>>();
   return nodes.map((node, index) => {
     if (!('extrude3d' in node) || !node.extrude3d) return node;
     const element = nodeElements.get(node.id);
@@ -258,6 +313,13 @@ export function reprojectSvgExtrusion(
     }
     try {
       plainNodes ??= getPlainNodes();
+      if (!plainByElement) {
+        plainByElement = new Map();
+        for (const candidate of plainNodes) {
+          const sourceElement = nodeElements.get(candidate.id);
+          if (sourceElement) plainByElement.set(sourceElement, candidate);
+        }
+      }
       const plain = plainNodes[index];
       if (!plain) return node;
       const source = pathForSource(plain, depth, rectRadii.get(node.id));
@@ -279,13 +341,15 @@ export function reprojectSvgExtrusion(
           if (!definition) return { ...node, extrude3d: undefined };
           let clipMatrix = reference.matrix;
           if (definition.units === 'objectBoundingBox') {
-            if (reference.element !== element || !plain.width || !plain.height ||
-              plain.width <= 0 || plain.height <= 0)
-              return { ...node, extrude3d: undefined };
+            if (!boundsCache.has(reference.element))
+              boundsCache.set(reference.element,
+                objectBounds(reference.element, plainByElement, depth, rectRadii));
+            const bounds = boundsCache.get(reference.element);
+            if (!bounds) return { ...node, extrude3d: undefined };
             clipMatrix = compose([
               clipMatrix,
-              translate(plain.x ?? 0, plain.y ?? 0),
-              scale(plain.width, plain.height),
+              translate(bounds.x, bounds.y),
+              scale(bounds.width, bounds.height),
             ]);
           }
           regions.push(definition.shapes.map((shape) => ({

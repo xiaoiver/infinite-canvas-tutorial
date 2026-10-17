@@ -92,6 +92,19 @@ const clippingSample = [
   '</svg>',
 ].join('');
 
+const groupedClippingSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
+  '<defs><rect id="narrow-window" width="0.25" height="1"/>',
+  '<clipPath id="group-windows" clipPathUnits="objectBoundingBox">',
+  '<use href="#narrow-window" x="0.1"/><use href="#narrow-window" x="0.65"/>',
+  '</clipPath></defs>',
+  '<g transform="translate(20 60)" clip-path="url(#group-windows)">',
+  '<rect id="group-left" x="30" y="20" width="140" height="140" fill="#3b82f6"/>',
+  '<path id="group-right" d="M210 20 H350 V160 H210 Z M250 60 H310 V120 H250 Z"',
+  ' fill="#f97316" fill-rule="evenodd"/>',
+  '</g></svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -226,6 +239,12 @@ function loadClippingSample() {
   void render();
 }
 
+function loadGroupedClippingSample() {
+  svgSource = groupedClippingSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -317,9 +336,7 @@ onUnmounted(() => {
       <button type="button" @click="loadSliceSample">
         Slice clipping sample
       </button>
-      <button type="button" @click="loadUseSample">
-        Repeated use sample
-      </button>
+      <button type="button" @click="loadUseSample">Repeated use sample</button>
       <button type="button" @click="loadSymbolSample">
         Symbol viewport sample
       </button>
@@ -331,6 +348,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadClippingSample">
         Clip paths + repeated use sample
+      </button>
+      <button type="button" @click="loadGroupedClippingSample">
+        Group bounds + clip use sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB
