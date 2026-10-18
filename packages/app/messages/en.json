@@ -116,6 +116,7 @@
     "extrusionSideColor": "Side color",
     "extrusionSideColorPlaceholder": "Same as fill (or #RRGGBB)",
     "extrusionHint": "Closed, solid-filled paths and rectangles can be extruded.",
+    "extrusionUnsupported": "This path needs a closed outline, one solid fill and no visible stroke.",
     "home": "Home",
     "myProjects": "My Projects",
     "tools": "Tools",

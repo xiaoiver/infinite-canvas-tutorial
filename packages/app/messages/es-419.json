@@ -116,6 +116,7 @@
     "extrusionSideColor": "Color lateral",
     "extrusionSideColorPlaceholder": "Igual al relleno (o #RRGGBB)",
     "extrusionHint": "Se pueden extruir rutas cerradas con relleno sólido y rectángulos.",
+    "extrusionUnsupported": "Esta ruta necesita un contorno cerrado, un relleno sólido y ningún trazo visible.",
     "home": "Inicio",
     "myProjects": "Mis Proyectos",
     "tools": "Herramientas",

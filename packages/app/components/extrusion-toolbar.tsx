@@ -9,6 +9,7 @@ import type {
   Extrude3DOptions,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
+import { canExtrudePath } from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { canvasApiAtom, selectedNodesAtom } from '@/atoms/canvas-selection';
 import { Button } from '@/components/ui/button';
@@ -21,6 +22,14 @@ import {
 } from '@/components/ui/popover';
 
 type Extrusion = Extrude3DAttributes['extrude3d'];
+
+function canExtrudeSelectedNode(api: ExtendedAPI, nodeId: string): boolean {
+  const node = api.getNodeById(nodeId);
+  return (
+    node?.type === 'rect' ||
+    (node?.type === 'path' && canExtrudePath(node, api.getNodes()))
+  );
+}
 
 function optionsFrom(value: Extrusion): Extrude3DOptions | undefined {
   if (value === undefined || value === false) return;
@@ -70,6 +79,9 @@ function ExtrusionControls({
     String(initialOptions?.bevelSegments ?? 1),
   );
   const [sideColor, setSideColor] = useState(initialOptions?.sideColor ?? '');
+  const [canExtrude, setCanExtrude] = useState(() =>
+    canExtrudeSelectedNode(api, nodeId),
+  );
 
   const update = (extrude3d: Extrusion) => {
     const current = api.getNodeById(nodeId);
@@ -145,6 +157,7 @@ function ExtrusionControls({
         const extrusion =
           current && 'extrude3d' in current ? current.extrude3d : undefined;
         const options = optionsFrom(extrusion);
+        setCanExtrude(canExtrudeSelectedNode(api, nodeId));
         setValue(extrusion);
         setDepth(String(options?.depth ?? 40));
         setBevel(String(options?.bevelSize ?? 0));
@@ -165,6 +178,7 @@ function ExtrusionControls({
         <Button
           className="w-full"
           variant={active ? 'secondary' : 'default'}
+          disabled={!active && !canExtrude}
           onClick={() =>
             update(
               active
@@ -243,7 +257,11 @@ function ExtrusionControls({
             </div>
           </>
         )}
-        <p className="text-xs text-muted-foreground">{t('extrusionHint')}</p>
+        <p className="text-xs text-muted-foreground">
+          {!active && !canExtrude
+            ? t('extrusionUnsupported')
+            : t('extrusionHint')}
+        </p>
       </PopoverContent>
     </Popover>
   );
