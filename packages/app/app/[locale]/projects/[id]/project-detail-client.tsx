@@ -46,6 +46,7 @@ import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { Kbd, KbdGroup } from '@/components/ui/kbd';
 import { executeCopy, executePaste, executeCut } from '@infinite-canvas-tutorial/webcomponents/spectrum';
 import { CheckboardStyle } from '@infinite-canvas-tutorial/ecs';
+import { importExtrudedSvg } from '@/lib/import-extruded-svg';
 
 type Project = {
   id: string;
@@ -108,6 +109,7 @@ export function ProjectDetailClient({
   const [editingChatTitle, setEditingChatTitle] = useState('');
   const [addingChat, setAddingChat] = useState(false);
   const editingInputRef = useRef<HTMLInputElement>(null);
+  const svgInputRef = useRef<HTMLInputElement>(null);
   const chatListScrollRef = useRef<React.ElementRef<typeof ScrollAreaPrimitive.Root>>(null);
   const [canvasApi, setCanvasApi] = useAtom(canvasApiAtom);
   const [selectedNodes, setSelectedNodes] = useAtom(selectedNodesAtom);
@@ -334,6 +336,14 @@ export function ProjectDetailClient({
 
   const handleExport = (format: ExportFormat) => {
     if (!canvasApi) return;
+    if (format === ExportFormat.GLB) {
+      try {
+        canvasApi.export({ format });
+      } catch {
+        toast.error(t('glbExportFailed'));
+      }
+      return;
+    }
     const nodes = canvasApi
       .getAppState()
       .layersSelected.map((id) => canvasApi.getNodeById(id));
@@ -341,6 +351,26 @@ export function ProjectDetailClient({
       format,
       nodes: nodes.filter((n): n is SerializedNode => n != null),
     });
+  };
+
+  const handleImportSvg3D = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = '';
+    if (!file || !canvasApi) return;
+    try {
+      const center = canvasApi.viewport2Canvas({
+        x: canvasApi.element.clientWidth / 2,
+        y: canvasApi.element.clientHeight / 2,
+      });
+      const nodes = importExtrudedSvg(await file.text(), 40, center);
+      canvasApi.updateNodes(nodes);
+      const extruded = nodes.filter((node) => 'extrude3d' in node && node.extrude3d);
+      canvasApi.selectNodes([extruded[0] ?? nodes[0]]);
+      canvasApi.record();
+      toast.success(t('svgImportSuccess', { count: extruded.length }));
+    } catch {
+      toast.error(t('svgImportFailed'));
+    }
   };
 
   const handleEditOpenChange = () => {
@@ -393,6 +423,9 @@ export function ProjectDetailClient({
   const renderDropdownMenu = () => {
     return (<>
     <DropdownMenuSeparator />
+      <DropdownMenuItem disabled={!canvasApi} onClick={() => svgInputRef.current?.click()}>
+        {t('importSvg3D')}
+      </DropdownMenuItem>
       <DropdownMenuSub onOpenChange={handleEditOpenChange}>
         <DropdownMenuSubTrigger>
           {t('edit')}
@@ -482,6 +515,9 @@ export function ProjectDetailClient({
           <DropdownMenuItem onClick={() => handleExport(ExportFormat.JPEG)}>
             {t('exportAsJPEG')}
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleExport(ExportFormat.GLB)}>
+            {t('exportAsGLB')}
+          </DropdownMenuItem>
         </DropdownMenuSubContent>
       </DropdownMenuSub>
     </>);
@@ -538,6 +574,8 @@ export function ProjectDetailClient({
 
   return (
     <div className="flex flex-col h-screen">
+      <input ref={svgInputRef} type="file" accept=".svg,image/svg+xml" className="hidden"
+        aria-label={t('importSvg3D')} onChange={handleImportSvg3D} />
       <Topbar 
         leftMenuContent={renderDropdownMenu()}
         centerContent={renderProjectNameMenu()} />

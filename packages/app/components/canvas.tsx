@@ -9,6 +9,7 @@ import {
   SerializedNode,
   ThemeMode,
   AppState,
+  DefaultRenderer3DPlugin,
   registerIconifyIconSet,
 } from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
@@ -36,6 +37,7 @@ import materialIconTheme from '@iconify/json/json/material-icon-theme.json';
 const canvasRuntime = createCanvasRuntime({
   plugins: [
     FilterPlugin,
+    DefaultRenderer3DPlugin,
     LaserPointerPlugin,
     LassoPlugin,
     EraserPlugin,

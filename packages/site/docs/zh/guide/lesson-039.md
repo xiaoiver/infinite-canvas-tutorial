@@ -335,6 +335,11 @@ const nodes = svgElementsToExtrudedNodes(
 api.updateNodes(nodes);
 ```
 
+在在线 App 中，选中矩形或 Path 后可从顶部工具栏打开 **3D** 控件，开启挤出并
+调整厚度与倒角。项目菜单中的 **导入 SVG 为 3D** 会将可编辑的 SVG 图层放在
+画布中央，不支持挤出的图层仍保持 2D。通过 **导出为 → GLB（三维）** 可下载
+项目中已就绪的所有挤出网格。
+
 只有单层纯色填充、没有可见描边的闭合轮廓会挤出；SVG 的 `stroke="none"` 占位层
 会被忽略。导入会保留 `fill-rule`（包括 `evenodd` 孔洞），并继承 SVG 分组的填充色。
 普通矩形保持可编辑的 Rect；圆角矩形、椭圆和闭合折线转换为可编辑的 Path。
