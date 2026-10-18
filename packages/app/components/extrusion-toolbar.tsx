@@ -66,6 +66,10 @@ function ExtrusionControls({
   const [value, setValue] = useState<Extrusion>(initialValue);
   const [depth, setDepth] = useState(String(initialOptions?.depth ?? 40));
   const [bevel, setBevel] = useState(String(initialOptions?.bevelSize ?? 0));
+  const [bevelSegments, setBevelSegments] = useState(
+    String(initialOptions?.bevelSegments ?? 1),
+  );
+  const [sideColor, setSideColor] = useState(initialOptions?.sideColor ?? '');
 
   const update = (extrude3d: Extrusion) => {
     const current = api.getNodeById(nodeId);
@@ -76,15 +80,29 @@ function ExtrusionControls({
     setValue(extrude3d);
   };
 
-  const updateNumber = (field: 'depth' | 'bevelSize', text: string) => {
+  const updateNumber = (
+    field: 'depth' | 'bevelSize' | 'bevelSegments',
+    text: string,
+  ) => {
     const number = Number(text);
     if (
       !Number.isFinite(number) ||
-      (field === 'depth' ? number <= 0 : number < 0)
+      (field === 'depth' ? number <= 0 : number < 0) ||
+      (field === 'bevelSegments' &&
+        (!Number.isInteger(number) || number < 1 || number > 8))
     ) {
       const previous = optionsFrom(value);
-      (field === 'depth' ? setDepth : setBevel)(
-        String(previous?.[field] ?? (field === 'depth' ? 40 : 0)),
+      const reset =
+        field === 'depth'
+          ? setDepth
+          : field === 'bevelSize'
+          ? setBevel
+          : setBevelSegments;
+      reset(
+        String(
+          previous?.[field] ??
+            (field === 'depth' ? 40 : field === 'bevelSize' ? 0 : 1),
+        ),
       );
       return;
     }
@@ -94,8 +112,28 @@ function ExtrusionControls({
         ? optionsFrom(current.extrude3d)
         : undefined;
     if (!previous) return;
-    if ((previous[field] ?? (field === 'depth' ? 100 : 0)) === number) return;
+    if (
+      (previous[field] ??
+        (field === 'depth' ? 100 : field === 'bevelSize' ? 0 : 1)) === number
+    )
+      return;
     update({ ...previous, [field]: number });
+  };
+
+  const updateSideColor = (text: string) => {
+    const color = text.trim();
+    const current = api.getNodeById(nodeId);
+    const previous =
+      current && 'extrude3d' in current
+        ? optionsFrom(current.extrude3d)
+        : undefined;
+    if (!previous) return;
+    if (color && !/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(color)) {
+      setSideColor(previous.sideColor ?? '');
+      return;
+    }
+    if ((previous.sideColor ?? '') === color) return;
+    update({ ...previous, sideColor: color || undefined });
   };
 
   const active = !!optionsFrom(value);
@@ -110,6 +148,8 @@ function ExtrusionControls({
         setValue(extrusion);
         setDepth(String(options?.depth ?? 40));
         setBevel(String(options?.bevelSize ?? 0));
+        setBevelSegments(String(options?.bevelSegments ?? 1));
+        setSideColor(options?.sideColor ?? '');
       }}
     >
       <PopoverTrigger asChild>
@@ -162,6 +202,40 @@ function ExtrusionControls({
                 value={bevel}
                 onChange={(event) => setBevel(event.target.value)}
                 onBlur={() => updateNumber('bevelSize', bevel)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="extrusion-bevel-segments">
+                {t('extrusionBevelSegments')}
+              </Label>
+              <Input
+                id="extrusion-bevel-segments"
+                type="number"
+                min="1"
+                max="8"
+                step="1"
+                value={bevelSegments}
+                onChange={(event) => setBevelSegments(event.target.value)}
+                onBlur={() => updateNumber('bevelSegments', bevelSegments)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="extrusion-side-color">
+                {t('extrusionSideColor')}
+              </Label>
+              <Input
+                id="extrusion-side-color"
+                type="text"
+                placeholder={t('extrusionSideColorPlaceholder')}
+                value={sideColor}
+                onChange={(event) => setSideColor(event.target.value)}
+                onBlur={() => updateSideColor(sideColor)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') event.currentTarget.blur();
                 }}
