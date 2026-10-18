@@ -368,8 +368,9 @@ api.updateNodes(nodes);
 
 In the online App, select a rectangle or Path to open the **3D** control in the
 top toolbar. Enable extrusion, then edit its depth and bevel. The project menu
-also offers **Import SVG as 3D**, which centers editable SVG layers on the
-canvas and retains unsupported layers in 2D. Use **Export as → GLB (3D)** to
+also offers **Import SVG as 3D**, which centers the visible artwork on the
+canvas, even when it occupies only part of the SVG viewport, and retains
+unsupported layers in 2D. Use **Export as → GLB (3D)** to
 download all ready extruded meshes in the project. The App also lets you set a
 bevel profile (1–8 segments) and an optional hex side color; leave the
 side color blank to use the shape's fill.
