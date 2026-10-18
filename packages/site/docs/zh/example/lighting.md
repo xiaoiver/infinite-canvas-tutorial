@@ -35,7 +35,7 @@ api.updateNodes([
         z: -180,
         direction: [0, 1, 1],
         color: '#ffe6b3',
-        intensity: 2,
+        intensity: 6,
         range: 500,
         innerConeAngle: Math.PI / 8,
         outerConeAngle: Math.PI / 4,
@@ -59,7 +59,7 @@ api.updateNodes([
 ## 要点 {#notes}
 
 -   **光源组合**：没有显式光源时使用默认环境光和平行光；只要有显式光源，就仅使用这些光源。环境光只贡献颜色与强度，其他光源共用最多 8 个槽位，超出的光源不会渲染。
--   **坐标与范围**：位置与方向使用画布世界单位，z 值越小越靠近相机；`direction` 从光源指向场景。`range > 0` 时使用平方距离范围衰减，`range <= 0` 时关闭距离衰减。它不是物理逆平方衰减。
+-   **坐标与范围**：位置与方向使用画布世界单位；在本例的联动相机中，z 值越小越靠近观察者。`direction` 从光源指向场景。`range > 0` 时使用平方距离范围衰减，`range <= 0` 时关闭距离衰减。它不是物理逆平方衰减。
 -   **聚光灯**：`innerConeAngle` / `outerConeAngle` 使用弧度。外角必须大于内角；渲染器会对无效输入和相等角度做安全处理。
 -   **颜色与材质**：光源颜色、材质底色和贴图按 sRGB 输入，在线性空间计算直接光照，再做胶片映射并编码为 sRGB。`metallic` 和 `roughness` 控制 GGX 高光；`ambient` 仍是每个材质的环境填充系数。旧 `diffuse` / `specular` / `shininess` 字段不再影响着色。
 -   **边界**：目前没有阴影、环境贴图反射或间接光照。金属的环境填充只是近似效果，不等同于完整的基于图像的光照。

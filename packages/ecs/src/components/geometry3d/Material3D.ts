@@ -6,7 +6,8 @@ import { field } from '@lastolivegames/becsy';
  */
 export class Material3D {
   /**
-   * Base color [r, g, b, a], each in 0..1 range.
+   * Authored sRGB base color [r, g, b, a], each in 0..1 range. Lighting uses
+   * linear RGB; alpha is unchanged.
    */
   @field.object declare baseColor: [number, number, number, number];
 
@@ -19,12 +20,16 @@ export class Material3D {
   @field.float32 declare ambient: number;
 
   /**
-   * Diffuse light intensity (0..1).
+   * Legacy diffuse light intensity (0..1).
+   * @deprecated Retained for wire compatibility; metallic and roughness now
+   * control the direct-light response.
    */
   @field.float32 declare diffuse: number;
 
   /**
-   * Specular light intensity (0..1).
+   * Legacy specular light intensity (0..1).
+   * @deprecated Retained for wire compatibility; metallic and roughness now
+   * control the direct-light response.
    */
   @field.float32 declare specular: number;
 
