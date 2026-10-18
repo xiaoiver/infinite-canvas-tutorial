@@ -16,6 +16,28 @@ function glbJson(bytes: number[]) {
   );
 }
 
+test('App linked 3D camera renders an imported SVG extrusion', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(
+    '/gizmo.html?extrudePath&appCamera&width=800&height=800&zoom=0.35',
+  );
+  await expect(page.locator('#status')).toHaveText('Ready');
+  expect(
+    await page.evaluate(() => window.gizmoTest.svgExtrusionState().triangles),
+  ).toBeGreaterThan(0);
+  const pixels = PNG.sync.read(await page.locator('#canvas').screenshot());
+  let teal = 0;
+  for (let i = 0; i < pixels.data.length; i += 4) {
+    const [r, g, b] = pixels.data.subarray(i, i + 3);
+    if (g > r * 1.3 && b > r * 1.3 && g > 70) teal++;
+  }
+  expect(teal).toBeGreaterThan(100);
+  expect(errors).toEqual([]);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {

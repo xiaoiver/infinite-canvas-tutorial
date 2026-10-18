@@ -26,6 +26,7 @@ import {
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
 import { importExtrudedSvg } from '../../../packages/app/lib/import-extruded-svg';
+import { ensure3DCamera } from '../../../packages/app/lib/ensure-3d-camera';
 import { settleECSFrames } from './ecs-frames';
 
 let api: API;
@@ -51,9 +52,10 @@ class Bootstrap extends System {
     api.createCamera({ zoom, x: 0, y: 0, rotation });
     api.setAppState({ penbarSelected: Pen.SELECT });
     if (
-      params.has('extrude') ||
-      params.has('extrudePath') ||
-      params.has('extrudePrimitive')
+      !params.has('appCamera') &&
+      (params.has('extrude') ||
+        params.has('extrudePath') ||
+        params.has('extrudePrimitive'))
     ) {
       const commands = new Commands(this);
       commands.spawn(
@@ -192,6 +194,12 @@ window.gizmoTest = harness;
 async function init() {
   await app.run();
   while (!api.getCanvas().has(GPUResource)) await harness.settle();
+  if (params.has('appCamera')) {
+    const installation = ensure3DCamera(api);
+    if (ensure3DCamera(api) !== installation)
+      throw new Error('App 3D camera initialization was not idempotent');
+    await installation;
+  }
   // Observe actual scene/model UBO writes and mesh bindings, excluding gizmos.
   const device = api.getCanvas().read(GPUResource).device;
   const sceneBuffers = new WeakSet<object>();
