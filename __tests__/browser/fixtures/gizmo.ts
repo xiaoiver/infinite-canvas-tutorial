@@ -20,10 +20,12 @@ import {
   Mesh3D,
   Rect,
   Transform,
+  ExportFormat,
   svgElementsToExtrudedNodes,
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
+import { importExtrudedSvg } from '../../../packages/app/lib/import-extruded-svg';
 import { settleECSFrames } from './ecs-frames';
 
 let api: API;
@@ -90,6 +92,36 @@ const resetDerivedUpdates = () => {
 };
 const harness = {
   api: () => api,
+  importAndExportSvg: async (source: string) => {
+    const nodes = importExtrudedSvg(source, 24, { x: 100, y: 100 });
+    await api.edit((editor) => editor.replaceDocument(nodes, 'remote'));
+    await settleECSFrames(api, 3);
+    const initialGlb = api.export({
+      format: ExportFormat.GLB,
+      download: false,
+    });
+    const sourceNode = api
+      .getNodes()
+      .find((node) => 'extrude3d' in node && node.extrude3d);
+    if (!sourceNode) throw new Error('Imported SVG has no extrusion');
+    await api.edit((editor) =>
+      editor.updateNode(editor.getNodeById(sourceNode.id), {
+        extrude3d: {
+          depth: 32,
+          bevelSize: 3,
+          bevelSegments: 4,
+          sideColor: '#ff00ff',
+        },
+      }),
+    );
+    await settleECSFrames(api, 3);
+    const editedGlb = api.export({ format: ExportFormat.GLB, download: false });
+    return {
+      nodes: api.getNodes(),
+      initialGlb: Array.from(initialGlb),
+      editedGlb: Array.from(editedGlb),
+    };
+  },
   svgExtrusionState: () => {
     const node = api.getNodeById('model');
     const entity = api.getEntity(node);
