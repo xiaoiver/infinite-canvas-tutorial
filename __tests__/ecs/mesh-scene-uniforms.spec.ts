@@ -235,17 +235,26 @@ it('packs custom lights, clamps spot cones and clears removed slots without rebu
 
 it('sanitizes invalid light values before uploading them to the shader', () => {
   const { uniforms, camera, data } = setup();
-  uniforms.update(camera, 1, undefined, [new Light3D({
-    type: 'spot', color: [NaN, 2, -1], intensity: -4,
-    position: [NaN, 2, Infinity], direction: [0, 0, 0],
-    range: Infinity, innerConeAngle: NaN, outerConeAngle: NaN,
-  })]);
+  const light = new Light3D({
+    type: 'spot',
+    color: [NaN, 2, -1],
+    intensity: -4,
+    position: [NaN, 2, Infinity],
+    direction: [0, 0, 0],
+    range: Infinity,
+    innerConeAngle: NaN,
+    outerConeAngle: NaN,
+  });
+  uniforms.update(camera, 1, undefined, [light]);
   expect([...data.slice(60, 63)]).toEqual([0, 2, 0]);
   expect([...data.slice(92, 95)]).toEqual([-0.5, -0.7, -0.5].map(Math.fround));
   expect([...data.slice(124, 127)]).toEqual([0, 1, 0]);
   expect([...data.slice(156, 159)]).toEqual([3, 0, 0]);
   expect(data[95]).toBeCloseTo(Math.cos(Math.PI / 4));
   expect(data[159]).toBeCloseTo(Math.cos(Math.PI / 8));
+  light.intensity = NaN;
+  uniforms.update(camera, 1, undefined, [light]);
+  expect(data[157]).toBe(0);
 });
 
 it('caps punctual lights at eight while accumulating all ambient lights', () => {
