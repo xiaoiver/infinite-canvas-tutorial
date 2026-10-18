@@ -366,6 +366,12 @@ const nodes = svgElementsToExtrudedNodes(
 api.updateNodes(nodes);
 ```
 
+In the online App, select a rectangle or Path to open the **3D** control in the
+top toolbar. Enable extrusion, then edit its depth and bevel. The project menu
+also offers **Import SVG as 3D**, which centers editable SVG layers on the
+canvas and retains unsupported layers in 2D. Use **Export as → GLB (3D)** to
+download all ready extruded meshes in the project.
+
 The converter accepts closed contours with one solid fill and no visible stroke;
 SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including
 `evenodd` holes, and inherits fill colors from SVG groups. Plain rectangles stay

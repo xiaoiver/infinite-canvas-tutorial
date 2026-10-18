@@ -24,6 +24,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { ImageToolbar } from '@/components/image-toolbar';
 import { ColorToolbar } from '../color-toolbar';
+import { ExtrusionToolbar } from '../extrusion-toolbar';
 
 interface TopbarProps {
   /** 左侧菜单项，可选 */
@@ -144,6 +145,7 @@ export function Topbar({ leftMenuItems, leftMenuContent, centerContent, hideCent
             <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-4">
               <ImageToolbar />
               <ColorToolbar />
+              <ExtrusionToolbar />
               {centerContent && (
                 <div>
                   {centerContent}
