@@ -3,6 +3,65 @@ import { PNG } from 'pngjs';
 import { test } from '../isolated-webkit-test';
 import type {} from './fixtures/gizmo';
 
+function glbJson(bytes: number[]) {
+  const buffer = Uint8Array.from(bytes);
+  const view = new DataView(buffer.buffer);
+  expect(view.getUint32(0, true)).toBe(0x46546c67);
+  expect(view.getUint32(4, true)).toBe(2);
+  expect(view.getUint32(8, true)).toBe(buffer.byteLength);
+  const jsonLength = view.getUint32(12, true);
+  expect(view.getUint32(16, true)).toBe(0x4e4f534a);
+  return JSON.parse(
+    new TextDecoder().decode(buffer.subarray(20, 20 + jsonLength)),
+  );
+}
+
+test('App SVG import, extrusion editing and GLB export work together', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(() =>
+    window.gizmoTest.importAndExportSvg(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="200" height="100"
+      viewBox="0 0 200 100"><g fill="#33aabb">
+      <path d="M60 20 H140 V80 H60 Z M80 40 H120 V60 H80 Z" fill-rule="evenodd"/>
+      <path d="M10 10 L30 30" fill="none" stroke="black"/>
+      </g></svg>`),
+  );
+  const extruded = result.nodes.filter(
+    (node) => 'extrude3d' in node && node.extrude3d,
+  );
+  expect(extruded).toHaveLength(1);
+  expect(extruded[0]).toMatchObject({
+    type: 'path',
+    fillRule: 'evenodd',
+    extrude3d: {
+      depth: 32,
+      bevelSize: 3,
+      bevelSegments: 4,
+      sideColor: '#ff00ff',
+    },
+  });
+  expect(result.nodes.filter((node) => node.type === 'path')).toHaveLength(2);
+  const initial = glbJson(result.initialGlb);
+  const edited = glbJson(result.editedGlb);
+  expect(initial.meshes).toHaveLength(1);
+  expect(edited.meshes).toHaveLength(1);
+  expect(edited.meshes[0].primitives).toHaveLength(2);
+  expect(
+    edited.materials.some(
+      (material: { pbrMetallicRoughness: { baseColorFactor: number[] } }) =>
+        material.pbrMetallicRoughness.baseColorFactor[0] > 0.9 &&
+        material.pbrMetallicRoughness.baseColorFactor[1] < 0.1,
+    ),
+  ).toBe(true);
+  expect(result.editedGlb.length).toBeGreaterThan(result.initialGlb.length);
+  expect(errors).toEqual([]);
+});
+
 test('an imported SVG hole produces a visible 3D companion and restores its 2D source', async ({
   page,
 }) => {
