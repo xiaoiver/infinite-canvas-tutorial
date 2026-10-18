@@ -117,6 +117,7 @@ it.each([
   camera.projection = 'perspective';
   let entity: Entity | undefined = linked.entity;
   uniforms.update(camera, 2, entity, []);
+  expect(data[51]).toBeLessThan(0);
   if (input === 'vp') linked.computed.viewProjectionMatrix.m20 = 0.5;
   else if (input === 'view') linked.computed.viewMatrix.m20 = 2;
   else if (input === 'x' || input === 'y' || input === 'zoom')
@@ -150,7 +151,7 @@ it('updates linked orthographic VP and depth, ignoring perspective-only paramete
   uniforms.update(camera, 3, entity, []);
   expect(data[12]).toBe(0.25);
   expect(data[10]).toBe(0);
-  expect([...data.slice(48, 52)]).toEqual([0, 0, -1, 1]);
+  expect([...data.slice(48, 52)]).toEqual([0, 0, -1, -1]);
 });
 
 it('packs the actual eye for perspective and a constant direction for orthographic lighting', () => {

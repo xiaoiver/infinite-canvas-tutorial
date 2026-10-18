@@ -18,7 +18,7 @@ layout(std140) uniform SceneUniforms3D {
   mat4 u_ProjectionMatrix3D;
   mat4 u_ViewMatrix3D;
   mat4 u_CanvasViewProjection3D;
-  // z=1: linked perspective, z=-1: orthographic; xyw = eye or view direction
+  // z=1: linked perspective, z=-1: orthographic; xyw = effective eye or view direction
   vec4 u_SceneParams; // xyw: eye or view direction; z: projection mode
   vec4 u_AmbientLight;
   vec4 u_LightCount;
