@@ -373,6 +373,8 @@ canvas and retains unsupported layers in 2D. Use **Export as → GLB (3D)** to
 download all ready extruded meshes in the project. The App also lets you set a
 bevel profile (1–8 segments) and an optional hex side color; leave the
 side color blank to use the shape's fill.
+For a Path that cannot produce a mesh, the App disables the extrusion action
+and shows the closed outline, fill and stroke requirements.
 
 The converter accepts closed contours with one solid fill and no visible stroke;
 SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including

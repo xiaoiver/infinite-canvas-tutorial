@@ -116,6 +116,7 @@
     "extrusionSideColor": "侧面颜色",
     "extrusionSideColorPlaceholder": "留空沿用填充色，或输入 #RRGGBB",
     "extrusionHint": "闭合、纯色填充的路径和矩形可以挤出。",
+    "extrusionUnsupported": "此路径需要闭合轮廓、单层纯色填充且没有可见描边。",
     "home": "首页",
     "myProjects": "我的项目",
     "tools": "工具",

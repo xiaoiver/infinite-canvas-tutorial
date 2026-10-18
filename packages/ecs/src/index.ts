@@ -25,6 +25,7 @@ export * from './environment';
 export * from './context';
 export { safeAddComponent, safeRemoveComponent } from './history';
 export { requestTransformerRefreshForCanvas } from './utils/pick3d-bridge';
+export { canExtrudePath } from './utils/path-extrusion-eligibility';
 export { exportMeshesToGlb, type GlbMeshSource } from './utils/gltf/export-glb';
 export type { TextPathGlyph } from './utils/glyph/measure-text-path';
 export {
@@ -242,15 +243,41 @@ export {
 export { documentValueEqual } from './document';
 export { WorkerClient } from './WorkerClient';
 
-export { moveVectorHandle, setVectorVertexMirroring, vectorHandlesAtVertex } from './utils/vector-network-handles';
+export {
+  moveVectorHandle,
+  setVectorVertexMirroring,
+  vectorHandlesAtVertex,
+} from './utils/vector-network-handles';
 
 export { splitVectorNetworkIntersections } from './utils/vector-network-intersections';
-export { glueVertices, unglueVertex, vectorVertexEndpoints, getVectorSegmentPointAt } from './utils/vector-network-topology';
-export type { VectorEndpoint, VectorTopologyResult, VectorNetworkData } from './utils/vector-network-topology';
+export {
+  glueVertices,
+  unglueVertex,
+  vectorVertexEndpoints,
+  getVectorSegmentPointAt,
+} from './utils/vector-network-topology';
+export type {
+  VectorEndpoint,
+  VectorTopologyResult,
+  VectorNetworkData,
+} from './utils/vector-network-topology';
 export { vectorSegmentCubic } from './utils/vector-network-curve';
-export { cutVectorNetworkFace, uncutVectorNetworkEdge } from './utils/vector-network-face-topology';
-export type { VectorFaceTopologyResult, VectorFaceTopologyFailure } from './utils/vector-network-face-topology';
-export { glueVectorNetworkEdges, unglueVectorNetworkEdge, vectorEdgeUses } from './utils/vector-network-edge-topology';
-export type { VectorEdgeUse, VectorEdgeTopologyResult } from './utils/vector-network-edge-topology';
+export {
+  cutVectorNetworkFace,
+  uncutVectorNetworkEdge,
+} from './utils/vector-network-face-topology';
+export type {
+  VectorFaceTopologyResult,
+  VectorFaceTopologyFailure,
+} from './utils/vector-network-face-topology';
+export {
+  glueVectorNetworkEdges,
+  unglueVectorNetworkEdge,
+  vectorEdgeUses,
+} from './utils/vector-network-edge-topology';
+export type {
+  VectorEdgeUse,
+  VectorEdgeTopologyResult,
+} from './utils/vector-network-edge-topology';
 export { preferVectorNetworkEdge } from './utils/vector-network-edge-selection';
 export { buildVectorNetworkFillMesh } from './utils/vector-network-fill';
