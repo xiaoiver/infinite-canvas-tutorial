@@ -1073,6 +1073,87 @@ it('applies objectBoundingBox clips to shapes and keeps unresolved clips in 2D',
   expect(nodes.find((node) => node.id === 'unresolved')).not.toHaveProperty('extrude3d', 20);
 });
 
+it('uses a transformed group bounding box for objectBoundingBox clips', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="middle" clipPathUnits="objectBoundingBox">
+      <rect x="20%" width="60%" height="1"/>
+    </clipPath></defs>
+    <g id="group" transform="translate(100 20)" clip-path="url(#middle)">
+      <rect id="left" x="10" y="10" width="50" height="40" fill="red"/>
+      <g transform="translate(5 0)">
+        <rect id="right" x="70" y="10" width="40" height="40" fill="blue"/>
+      </g>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 12);
+  expect(nodes.find((node) => node.id === 'left')).toMatchObject({
+    type: 'path', x: 131, y: 30, width: 29, height: 40, extrude3d: 12,
+  });
+  expect(nodes.find((node) => node.id === 'right')).toMatchObject({
+    type: 'path', x: 175, y: 30, height: 40, extrude3d: 12,
+  });
+  expect(nodes.find((node) => node.id === 'right')?.width).toBeCloseTo(19);
+});
+
+it('measures a path bounding box for a direct objectBoundingBox clip', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="half" clipPathUnits="objectBoundingBox">
+      <rect width="50%" height="1"/>
+    </clipPath></defs>
+    <path id="triangle" d="M10 10 H110 L60 90 Z" fill="red"
+      clip-path="url(#half)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  expect(svgElementsToExtrudedNodes(svg, 12).find((node) => node.id === 'triangle'))
+    .toMatchObject({ type: 'path', x: 10, y: 10, width: 50, height: 80, extrude3d: 12 });
+});
+
+it('clips repeated group instances using each instance bounding box', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <g id="pair"><rect id="tile" width="40" height="30"/></g>
+      <clipPath id="half" clipPathUnits="objectBoundingBox">
+        <rect width="0.5" height="1"/>
+      </clipPath>
+    </defs>
+    <use id="first" href="#pair" x="10" fill="red" clip-path="url(#half)"/>
+    <use id="second" href="#pair" x="100" fill="blue" clip-path="url(#half)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 12);
+  expect(nodes.find((node) => node.id === 'first--tile')).toMatchObject({
+    type: 'path', x: 10, y: 0, width: 20, height: 30, extrude3d: 12,
+  });
+  expect(nodes.find((node) => node.id === 'second--tile')).toMatchObject({
+    type: 'path', x: 100, y: 0, width: 20, height: 30, extrude3d: 12,
+  });
+});
+
+it('resolves local use shapes within clipPath and rejects cyclic definitions', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <g id="window"><rect width="20" height="30"/></g>
+      <use id="window-alias" href="#window"/>
+      <clipPath id="pair"><use href="#window-alias" x="10"/>
+        <use href="#window" x="50" transform="translate(5 0)"/></clipPath>
+      <use id="cycle-a" href="#cycle-b"/>
+      <use id="cycle-b" href="#cycle-a"/>
+      <clipPath id="cycle"><use href="#cycle-a"/></clipPath>
+    </defs>
+    <rect id="cut" width="80" height="30" fill="red" clip-path="url(#pair)"/>
+    <rect id="fallback" x="100" width="40" height="30" fill="blue"
+      clip-path="url(#cycle)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 12);
+  const cut = nodes.find((node) => node.id === 'cut');
+  expect(cut).toMatchObject({ type: 'path', x: 10, y: 0, width: 65, height: 30,
+    extrude3d: 12 });
+  expect(cut?.type === 'path' && cut.d.match(/M/g)?.length).toBe(2);
+  expect(nodes.find((node) => node.id === 'fallback')).not.toHaveProperty('extrude3d', 12);
+});
+
 it('keeps an evenodd hole in a clipPath and clips repeated use instances independently', () => {
   const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
     <defs>

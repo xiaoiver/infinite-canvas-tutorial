@@ -61,15 +61,15 @@ app.run();
 
 ## Core components {#components}
 
-| Component         | Role                                                                                                             |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **`Camera3D`**    | `projection: 'perspective' \| 'orthographic'`; when `linked`, `CameraSync` follows 2D pan/zoom                   |
-| **`Mesh3D`**      | `positions`, `normals`, optional `indices` (triangle mesh)                                                       |
+| Component         | Role                                                                                                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| **`Camera3D`**    | `projection: 'perspective' \| 'orthographic'`; when `linked`, `CameraSync` follows 2D pan/zoom                             |
+| **`Mesh3D`**      | `positions`, `normals`, optional `indices` (triangle mesh)                                                                 |
 | **`Material3D`**  | Metallic-roughness PBR: `baseColor`, `metallic`, `roughness`, and ambient strength; legacy fields remain for compatibility |
-| **`Light3D`**     | `ambient` / `directional` / `point` / `spot`; see [Scene lighting example](/example/lighting)                    |
-| **`Transform3D`** | translation, Euler rotation, scale                                                                               |
-| **`Selected3D`**  | 3D selection state: gizmo mode, active axis/plane, drag reference point, etc. (see [3D transform Gizmo](#gizmo)) |
-| **`Mat4`**        | 4×4 matrix helpers (`perspective` / `ortho` / `lookAt`)                                                          |
+| **`Light3D`**     | `ambient` / `directional` / `point` / `spot`; see [Scene lighting example](/example/lighting)                              |
+| **`Transform3D`** | translation, Euler rotation, scale                                                                                         |
+| **`Selected3D`**  | 3D selection state: gizmo mode, active axis/plane, drag reference point, etc. (see [3D transform Gizmo](#gizmo))           |
+| **`Mat4`**        | 4×4 matrix helpers (`perspective` / `ortho` / `lookAt`)                                                                    |
 
 Spawn entities via ECS `commands.spawn`, for example:
 
@@ -402,14 +402,15 @@ Fully contained shapes keep their group relationship, so moving the viewport
 group also moves their 3D meshes. Shapes crossing an edge become clipped Paths.
 Local `clip-path="url(#id)"` and inline CSS `clip-path` now clip eligible 3D
 outlines too. A `<clipPath>` can contain Paths, polygons, polylines, rectangles,
-circles, ellipses and nested groups. Its shapes form a union; `clip-rule="evenodd"`
+circles, ellipses, nested groups and local `<use>` references to those shapes.
+Its shapes form a union; `clip-rule="evenodd"`
 can cut holes. Clips on groups and repeated `<use>` instances follow their
 transforms, and multiple ancestor clips intersect with each other and with SVG
-viewports. `clipPathUnits="objectBoundingBox"` works for a clip attached directly
-to one shape. A clipped outline becomes an editable Path; an outline wholly
+viewports. `clipPathUnits="objectBoundingBox"` uses the bounds of a single shape
+or a group's supported child shapes, including their transforms. A clipped outline becomes an editable Path; an outline wholly
 inside its clip keeps its original node and group relationship. Unresolved or
 unsupported clip definitions stay in 2D. Masks, filters, text inside clip paths
-and object-bounds clips on groups are not converted to 3D.
+and external clip references are not converted to 3D.
 Elements with `display="none"` or inherited `visibility="hidden"` do not produce
 3D meshes; a descendant can explicitly set `visibility="visible"`.
 Pass the root `<svg>` to apply an explicit pixel `width`/`height` and `viewBox`,
@@ -438,6 +439,8 @@ instance-specific colors, an inline fill override and a styled stroke that
 stays in 2D.
 Choose **Clip paths + repeated use sample** to inspect two independently
 clipped instances with holes and a shape clipped by an object-bounds union.
+Choose **Group bounds + clip use sample** to inspect an object-bounds clip on a
+transformed group whose two windows reuse one local definition.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple
@@ -463,9 +466,9 @@ import { ExportFormat } from '@infinite-canvas-tutorial/ecs';
 
 api.export({ format: ExportFormat.GLB });
 const glb = api.export({
-  format: ExportFormat.GLB,
-  nodes: [api.getNodeById('extruded-vector')!],
-  download: false,
+    format: ExportFormat.GLB,
+    nodes: [api.getNodeById('extruded-vector')!],
+    download: false,
 }); // Uint8Array
 ```
 

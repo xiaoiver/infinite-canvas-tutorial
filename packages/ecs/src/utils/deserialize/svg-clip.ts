@@ -135,6 +135,7 @@ function localTransform(element: SVGElement): Matrix | undefined {
 /** Resolve the supported clipPath geometry in its own local user space. */
 export function parseSvgClipPath(
   element: SVGElement,
+  definitions: Map<string, SVGElement> = new Map(),
 ): SvgClipDefinition | undefined {
   const units = element.getAttribute('clipPathUnits') || 'userSpaceOnUse';
   if (units !== 'userSpaceOnUse' && units !== 'objectBoundingBox') return;
@@ -144,6 +145,7 @@ export function parseSvgClipPath(
     parent: Matrix,
     inheritedRule: CanvasFillRule,
     inheritedVisibility: string,
+    referenced: Set<string>,
   ): boolean {
     if (
       node.getAttribute('display') === 'none' ||
@@ -175,9 +177,23 @@ export function parseSvgClipPath(
       ownVisibility && !['inherit', 'unset'].includes(ownVisibility)
         ? ownVisibility
         : inheritedVisibility;
+    if (node.localName === 'use') {
+      if (visibility === 'hidden' || visibility === 'collapse') return true;
+      const href = node.getAttribute('href') ||
+        node.getAttribute('xlink:href');
+      if (!href?.startsWith('#') || referenced.has(href)) return false;
+      const target = definitions.get(href.slice(1));
+      if (!target || !['path', 'polygon', 'polyline', 'rect', 'circle', 'ellipse', 'g', 'use']
+        .includes(target.localName)) return false;
+      const x = pixel(node.getAttribute('x'), 0, units === 'objectBoundingBox');
+      const y = pixel(node.getAttribute('y'), 0, units === 'objectBoundingBox');
+      if (x === undefined || y === undefined) return false;
+      return visit(target, compose([matrix, { a: 1, b: 0, c: 0, d: 1, e: x, f: y }]),
+        rule as CanvasFillRule, visibility, new Set(referenced).add(href));
+    }
     if (node.localName === 'g' || node.localName === 'clipPath')
       return Array.from(node.children).every((child) =>
-        visit(child as SVGElement, matrix, rule as CanvasFillRule, visibility),
+        visit(child as SVGElement, matrix, rule as CanvasFillRule, visibility, referenced),
       );
     if (visibility === 'hidden' || visibility === 'collapse') return true;
     let path: ReturnType<typeof shapePath>;
@@ -215,7 +231,7 @@ export function parseSvgClipPath(
       return false;
     }
   }
-  return visit(element, identity(), 'nonzero', 'visible')
+  return visit(element, identity(), 'nonzero', 'visible', new Set())
     ? { units, shapes }
     : undefined;
 }

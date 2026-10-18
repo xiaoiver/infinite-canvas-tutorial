@@ -65,7 +65,7 @@ app.run();
 | ----------------- | ------------------------------------------------------------------------------------------- |
 | **`Camera3D`**    | `projection: 'perspective' \| 'orthographic'`；`linked` 时由 `CameraSync` 跟随 2D 平移/缩放 |
 | **`Mesh3D`**      | `positions`、`normals`、可选 `indices`（三角网格）                                          |
-| **`Material3D`**  | 金属度与粗糙度 PBR：`baseColor`、`metallic`、`roughness` 和环境光系数；旧字段保留兼容性       |
+| **`Material3D`**  | 金属度与粗糙度 PBR：`baseColor`、`metallic`、`roughness` 和环境光系数；旧字段保留兼容性     |
 | **`Light3D`**     | `ambient` / `directional` / `point` / `spot`；见 [场景光照示例](/zh/example/lighting)       |
 | **`Transform3D`** | 平移、欧拉角旋转、缩放                                                                      |
 | **`Selected3D`**  | 3D 选中态：当前 gizmo 模式、激活轴/平面、拖拽参考点等（见 [3D 变换 Gizmo](#gizmo)）         |
@@ -362,13 +362,15 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 完整位于视口内的图形保持分组关系，移动视口分组时其 3D 网格会一同移动；
 跨过边缘的图形则转换为裁切后的 Path。
 本地 `clip-path="url(#id)"` 和内联 CSS `clip-path` 也会裁切可挤出的轮廓。
-`<clipPath>` 可以包含 Path、多边形、折线、矩形、圆形、椭圆及嵌套分组。
+`<clipPath>` 可以包含 Path、多边形、折线、矩形、圆形、椭圆、嵌套分组，
+也可以通过本地 `<use>` 复用这些图形。
 多个裁剪图形取并集，`clip-rule="evenodd"` 可以生成孔洞；分组和重复 `<use>`
 实例上的裁剪会跟随各自的变换。多级裁剪彼此相交，也会与 SVG 视口裁切相交。
-`clipPathUnits="objectBoundingBox"` 支持直接作用于单个图形的裁剪。
+`clipPathUnits="objectBoundingBox"` 支持单个图形以及分组裁剪，分组的包围盒
+会计入所支持子图形的变换。
 被裁切的轮廓仍是可编辑的 Path；完整落在裁剪区域内的图形保持原节点及分组关系。
-无法解析或尚未支持的裁剪定义保持 2D。遮罩、滤镜、裁剪路径中的文本，以及分组上的
-`objectBoundingBox` 裁剪暂不转换为 3D。
+无法解析或尚未支持的裁剪定义保持 2D。遮罩、滤镜、裁剪路径中的文本及外部裁剪引用
+暂不转换为 3D。
 `display="none"` 或继承 `visibility="hidden"` 的元素不会生成 3D 网格；
 子元素可以显式设置 `visibility="visible"`。
 传入完整的 `<svg>` 根节点后，若有以像素指定的 `width`/`height` 和 `viewBox`，
@@ -387,6 +389,8 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 第一个使用符号自身的尺寸，第二个指定实例尺寸。
 点击 **Nested SVG viewport sample** 可以比较直接绘制的内嵌 SVG 视口与
 通过 `<use>` 引用的第二个实例；两者的挤出轮廓都会按各自视口裁切。
+点击 **Group bounds + clip use sample** 可以查看变换分组上的包围盒裁剪，
+以及通过本地 `<use>` 复用的两个裁剪窗口。
 点击 **Paint style + currentColor sample** 可以比较继承颜色、实例独立颜色、
 内联填充覆盖，以及因内联描边而保持 2D 的图形。
 点击 **Clip paths + repeated use sample** 可以查看两个分别裁剪、带孔洞的实例，
@@ -411,9 +415,9 @@ import { ExportFormat } from '@infinite-canvas-tutorial/ecs';
 
 api.export({ format: ExportFormat.GLB });
 const glb = api.export({
-  format: ExportFormat.GLB,
-  nodes: [api.getNodeById('extruded-vector')!],
-  download: false,
+    format: ExportFormat.GLB,
+    nodes: [api.getNodeById('extruded-vector')!],
+    download: false,
 }); // Uint8Array
 ```
 

@@ -489,9 +489,11 @@ export function svgElementsToExtrudedNodes(
   const allElements = root
     ? [root, ...Array.from(root.querySelectorAll('*')) as SVGElement[]]
     : children.flatMap((child) => [child, ...Array.from(child.querySelectorAll('*')) as SVGElement[]]);
+  const definitions = new Map(allElements.filter((element) => element.id)
+    .map((element) => [element.id, element] as const));
   for (const element of allElements) {
     if (element.localName === 'clipPath' && element.id)
-      clipDefinitions.set(element.id, parseSvgClipPath(element));
+      clipDefinitions.set(element.id, parseSvgClipPath(element, definitions));
   }
   const nodes = deserializeSvgElements(
     children,
