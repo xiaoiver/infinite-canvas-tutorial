@@ -9,7 +9,18 @@ export const MESH_SCENE_UNIFORM_FLOATS = 188;
 const MAX_LIGHTS = 8;
 const defaultAmbient = new Light3D({ type: 'ambient' });
 const defaultDirectional = new Light3D({ type: 'directional' });
-const directionalFill = new Light3D({ type: 'directional', intensity: 0.75 });
+
+/** Light colors are authored in sRGB; scene radiance is accumulated in linear space. */
+function linearChannel(value: number): number {
+  const color = Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 0;
+  return color <= 0.04045 ? color / 12.92 : ((color + 0.055) / 1.055) ** 2.4;
+}
+
+function validDirection(direction: readonly number[]): number[] {
+  return direction.every(Number.isFinite) && Math.hypot(...direction) > 1e-8
+    ? [...direction]
+    : [...defaultDirectional.direction];
+}
 
 function same(a: readonly number[], b: readonly number[]): boolean {
   return a.length === b.length && a.every((value, i) => Object.is(value, b[i]));
@@ -125,36 +136,49 @@ export class MeshSceneUniforms {
       this.addLight(defaultAmbient);
       this.addLight(defaultDirectional);
     } else {
-      let hasDirectional = false;
       for (const entity of lights) {
         const light = entity.read(Light3D);
-        if (light.type === 'directional') hasDirectional = true;
         this.addLight(light);
       }
-      // Preserve the directional fill used for custom ambient/point/spot scenes.
-      if (!hasDirectional) this.addLight(directionalFill);
     }
     this.data.set(this.ambient, 52);
   }
 
   private addLight(light: Light3D): void {
+    const color = light.color.map(linearChannel);
+    const intensity = Number.isFinite(light.intensity)
+      ? Math.max(0, light.intensity)
+      : 0;
     if (light.type === 'ambient') {
-      for (let i = 0; i < 3; i++)
-        this.ambient[i] += light.color[i] * light.intensity;
+      for (let i = 0; i < 3; i++) this.ambient[i] += color[i] * intensity;
       return;
     }
     const count = this.data[56];
     if (count >= MAX_LIGHTS) return;
     const offset = count * 4;
-    this.data.set(light.position, 60 + offset);
-    this.data.set(light.direction, 92 + offset);
-    this.data.set(light.color, 124 + offset);
+    this.data.set(
+      light.position.map((value) => (Number.isFinite(value) ? value : 0)),
+      60 + offset,
+    );
+    this.data.set(validDirection(light.direction), 92 + offset);
+    this.data.set(color, 124 + offset);
     this.data[156 + offset] = LIGHT_3D_TYPE[light.type];
-    this.data[157 + offset] = light.intensity;
-    this.data[158 + offset] = light.range;
+    this.data[157 + offset] = intensity;
+    this.data[158 + offset] = Number.isFinite(light.range)
+      ? Math.max(0, light.range)
+      : 0;
     if (light.type === 'spot') {
-      const inner = Math.max(0, light.innerConeAngle);
-      const outer = Math.max(inner, light.outerConeAngle);
+      // Keep a representable gap between the two cosine values in float32.
+      const coneGap = 0.01;
+      const inner = Number.isFinite(light.innerConeAngle)
+        ? Math.max(0, Math.min(Math.PI - coneGap * 2, light.innerConeAngle))
+        : Math.PI / 8;
+      const outer = Number.isFinite(light.outerConeAngle)
+        ? Math.max(
+            inner + coneGap,
+            Math.min(Math.PI - coneGap, light.outerConeAngle),
+          )
+        : Math.PI / 4;
       this.data[95 + offset] = Math.cos(outer);
       this.data[159 + offset] = Math.cos(inner);
     }

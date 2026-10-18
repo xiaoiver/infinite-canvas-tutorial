@@ -497,7 +497,7 @@ edge cut by the SVG viewport.
 
 ## Lighting {#lighting}
 
-Demonstrates `Light3D` with metallic-roughness materials: ambient fill, two directional lights, a warm spotlight orbiting the scene center, and three meshes (cube, sphere, cylinder) with different metallic and roughness settings. Mesh colors are converted from sRGB to linear space for lighting and back to sRGB for display.
+Compare ambient, directional, point, and spot lights on a stationary cube, sphere, and cylinder. Switch lights, adjust intensity/range and the sphere's metallic/roughness values, or play the spotlight orbit. The renderer uses GGX direct lighting with sRGB-to-linear inputs and filmic tone mapping; the ambient term is a simple fill, without shadows or environment reflections. See the [lighting example](/example/lighting) for controls and API details.
 
 <Lighting />
 

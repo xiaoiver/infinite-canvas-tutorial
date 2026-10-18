@@ -3,8 +3,8 @@
  *
  * Direct lighting uses a Cook-Torrance microfacet BRDF (GGX/Trowbridge-Reitz
  * normal distribution, Smith geometry term, Schlick Fresnel) driven by the
- * material `metallic` and `roughness` parameters, mirroring three.js
- * `MeshStandardMaterial` / `MeshPhysicalMaterial`. The legacy
+ * material `metallic` and `roughness` parameters. Ambient is a simple fill,
+ * without image-based lighting or shadows. The legacy
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
  * specular map still modulates the specular response.
@@ -18,8 +18,8 @@ layout(std140) uniform SceneUniforms3D {
   mat4 u_ProjectionMatrix3D;
   mat4 u_ViewMatrix3D;
   mat4 u_CanvasViewProjection3D;
-  // z=1: linked perspective; xyw = camera eye (canvas space) for lighting
-  vec4 u_SceneParams;
+  // z=1: linked perspective, z=-1: orthographic; xyw = eye or view direction
+  vec4 u_SceneParams; // xyw: eye or view direction; z: projection mode
   vec4 u_AmbientLight;
   vec4 u_LightCount;
   vec4 u_LightPositions[MAX_3D_LIGHTS];
@@ -143,6 +143,13 @@ vec3 srgbToLinear(vec3 color) {
 vec3 linearToSrgb(vec3 color) {
   return mix(color * 12.92, 1.055 * pow(max(color, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055,
     step(vec3(0.0031308), color));
+}
+
+// Filmic mapping keeps bright direct lights from clipping abruptly in RGBA8.
+vec3 toneMapACES(vec3 color) {
+  vec3 x = max(color, vec3(0.0)) * 0.8;
+  return clamp((x * (2.51 * x + 0.03)) /
+    (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
 }
 
 float distanceAttenuation(float distanceToLight, float range) {
@@ -270,23 +277,21 @@ void main() {
   if (u_MaterialFlags.z > 0.5) {
     normal = perturbNormalFromBumpMap(normal, v_Uv, u_MaterialFlags.w);
   }
-  vec3 viewDir;
-  if (u_SceneParams.z > 0.5) {
-    viewDir = normalize(
-      vec3(u_SceneParams.x, u_SceneParams.y, u_SceneParams.w) - v_FragPos
-    );
-  } else {
-    viewDir = normalize(-v_FragPos);
-  }
+  vec3 cameraVector = vec3(u_SceneParams.x, u_SceneParams.y, u_SceneParams.w);
+  vec3 viewDir = u_SceneParams.z < -0.5
+    ? normalize(cameraVector)
+    : normalize(cameraVector - v_FragPos);
 
   vec4 baseColor = u_BaseColor;
   if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0) {
     baseColor = u_SideColor;
   }
-  if (u_MaterialFlags.x > 0.5) {
-    baseColor *= texture(SAMPLER_2D(u_Map), v_Uv);
-  }
   vec3 albedo = srgbToLinear(baseColor.rgb);
+  if (u_MaterialFlags.x > 0.5) {
+    vec4 texel = texture(SAMPLER_2D(u_Map), v_Uv);
+    albedo *= srgbToLinear(texel.rgb);
+    baseColor.a *= texel.a;
+  }
 
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
   // Clamp roughness to a small minimum (0.04): at roughness 0 the GGX lobe
@@ -328,6 +333,6 @@ void main() {
   vec3 ambient = u_AmbientLight.rgb * u_LightParams.x * albedo;
 
   vec3 result = ambient + Lo;
-  outputColor = vec4(linearToSrgb(result), baseColor.a);
+  outputColor = vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
 }
 `;

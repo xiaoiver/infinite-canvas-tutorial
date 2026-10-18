@@ -39,7 +39,8 @@ export class Material3D {
 
   /**
    * Metalness in the 0..1 range. 0 = dielectric, 1 = metal. Metals reflect the
-   * environment tinted by {@link baseColor} and have no diffuse contribution.
+   * direct light tinted by {@link baseColor} and have no direct diffuse contribution.
+   * The current ambient term is a simple fill, not an environment reflection.
    */
   @field.float32 declare metallic: number;
 

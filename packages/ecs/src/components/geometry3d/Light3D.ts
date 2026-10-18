@@ -19,7 +19,8 @@ export class Light3D {
   @field.object declare type: Light3DType;
 
   /**
-   * Light color [r, g, b], each in 0..1 range.
+   * Authored sRGB light color [r, g, b], each in 0..1 range. The renderer
+   * converts it to linear space before accumulating radiance.
    */
   @field.object declare color: [number, number, number];
 

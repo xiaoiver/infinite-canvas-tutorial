@@ -251,7 +251,7 @@ it('reads distinct live light components and refreshes light edits/deletion in t
   expect(scene.setSubData).toHaveBeenCalledTimes(uploads);
   await world.edit(api, (editor) => editor.deleteNodesById(['directional']));
   await world.frame();
-  expect(data[157]).toBe(0.75); // Ambient-only scene gets the default directional fill.
-  expect([...data.slice(124, 128)]).toEqual([1, 1, 1, 0]);
+  expect(data[56]).toBe(0); // Explicit ambient-only lighting has no directional fill.
+  expect([...data.slice(124, 128)]).toEqual([0, 0, 0, 0]);
   expect(gpu.bindings).toHaveLength(bindings);
 });
