@@ -12,20 +12,22 @@ export interface ShadowCasterBounds {
   model: Float32Array;
 }
 
-function worldCorners(meshes: readonly ShadowCasterBounds[]): vec3[] {
+function meshWorldCorners({ min, max, model }: ShadowCasterBounds): vec3[] {
   const points: vec3[] = [];
-  for (const { min, max, model } of meshes) {
-    for (let i = 0; i < 8; i++) {
-      const p = vec3.fromValues(
-        i & 1 ? max[0] : min[0],
-        i & 2 ? max[1] : min[1],
-        i & 4 ? max[2] : min[2],
-      );
-      vec3.transformMat4(p, p, model);
-      if (p.every(Number.isFinite)) points.push(p);
-    }
+  for (let i = 0; i < 8; i++) {
+    const p = vec3.fromValues(
+      i & 1 ? max[0] : min[0],
+      i & 2 ? max[1] : min[1],
+      i & 4 ? max[2] : min[2],
+    );
+    vec3.transformMat4(p, p, model);
+    if (p.every(Number.isFinite)) points.push(p);
   }
   return points;
+}
+
+function worldCorners(meshes: readonly ShadowCasterBounds[]): vec3[] {
+  return meshes.flatMap(meshWorldCorners);
 }
 
 /** Fit one orthographic directional shadow camera around the current meshes. */
@@ -101,8 +103,6 @@ export function fitSpotShadow(
     outerConeAngle >= (85 * Math.PI) / 180
   )
     return null;
-  const points = worldCorners(meshes);
-  if (!points.length) return null;
   const eye = vec3.fromValues(position[0], position[1], position[2]);
   const ray = vec3.fromValues(
     direction[0] / length,
@@ -111,12 +111,17 @@ export function fitSpotShadow(
   );
   let minDepth = Infinity;
   let maxDepth = 0;
-  for (const point of points) {
-    const depth = vec3.dot(vec3.subtract(vec3.create(), point, eye), ray);
-    if (depth > 0) {
-      minDepth = Math.min(minDepth, depth);
-      maxDepth = Math.max(maxDepth, depth);
+  for (const mesh of meshes) {
+    let meshMinDepth = Infinity;
+    let meshMaxDepth = -Infinity;
+    for (const point of meshWorldCorners(mesh)) {
+      const depth = vec3.dot(vec3.subtract(vec3.create(), point, eye), ray);
+      meshMinDepth = Math.min(meshMinDepth, depth);
+      meshMaxDepth = Math.max(meshMaxDepth, depth);
+      if (depth > 0) minDepth = Math.min(minDepth, depth);
     }
+    if (meshMinDepth <= 0 && meshMaxDepth > 0) minDepth = 0;
+    maxDepth = Math.max(maxDepth, meshMaxDepth);
   }
   if (!Number.isFinite(minDepth)) return null;
   const near = Math.max(0.1, minDepth * 0.5);
@@ -146,16 +151,30 @@ export function fitPointShadow(
   meshes: readonly ShadowCasterBounds[],
 ): Float32Array[] | null {
   if (position.length !== 3 || !position.every(Number.isFinite)) return null;
-  const points = worldCorners(meshes);
-  if (!points.length) return null;
   const eye = vec3.fromValues(position[0], position[1], position[2]);
-  const far = Math.max(...points.map((point) => vec3.distance(eye, point)));
+  let far = 0;
+  let nearestBounds = Infinity;
+  for (const mesh of meshes) {
+    const points = meshWorldCorners(mesh);
+    if (!points.length) continue;
+    const min = vec3.fromValues(Infinity, Infinity, Infinity);
+    const max = vec3.fromValues(-Infinity, -Infinity, -Infinity);
+    for (const point of points) {
+      far = Math.max(far, vec3.distance(eye, point));
+      vec3.min(min, min, point);
+      vec3.max(max, max, point);
+    }
+    const dx = Math.max(min[0] - eye[0], 0, eye[0] - max[0]);
+    const dy = Math.max(min[1] - eye[1], 0, eye[1] - max[1]);
+    const dz = Math.max(min[2] - eye[2], 0, eye[2] - max[2]);
+    nearestBounds = Math.min(nearestBounds, Math.hypot(dx, dy, dz));
+  }
   const limit =
     Number.isFinite(range) && range > 0 ? Math.min(range, far) : far;
   if (!Number.isFinite(limit) || limit <= 0.1) return null;
-  // A tiny near plane compresses perspective depth differences enough for
-  // receiver bias to erase shadows at ordinary canvas distances.
-  const near = Math.max(0.1, Math.min(5, limit * 0.02));
+  // Keep the depth-friendly near plane unless a mesh reaches closer to the
+  // light. Its world AABB gives a conservative lower bound even when rotated.
+  const near = Math.max(0.1, Math.min(5, limit * 0.02, nearestBounds * 0.5));
   const projection = mat4.perspective(
     mat4.create(),
     Math.PI / 2,
