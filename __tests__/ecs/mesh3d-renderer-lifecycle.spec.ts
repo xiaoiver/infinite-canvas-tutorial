@@ -172,7 +172,9 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
     resolveRenderTarget: (id: number) => id + 10,
   };
   const frame = renderer.scheduleShadowPass(builder as any, slot.canvas);
-  expect(frame).toMatchObject([{ lightIndex: 0, resolveID: 11 }]);
+  expect(frame).toMatchObject([
+    { lightIndex: 0, strength: 1, softness: 1, resolveID: 11 },
+  ]);
   expect(targets[0]).toMatchObject({ width: 1024, sampledForShaderRead: true });
   let execute: ((renderPass: any) => void) | undefined;
   setup!({
@@ -187,13 +189,21 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   light.castShadow = false;
   expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
   expect(targets).toHaveLength(2);
+  light.castShadow = true;
+  light.shadowStrength = 0;
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
+  expect(targets).toHaveLength(2);
+  light.shadowStrength = 0.5;
+  light.shadowSoftness = 2;
   light.type = 'spot';
   light.position = [0, 0, -100];
   light.direction = [0, 0, 1];
   light.range = 500;
   light.castShadow = true;
   const spotFrame = renderer.scheduleShadowPass(builder as any, slot.canvas);
-  expect(spotFrame).toMatchObject([{ lightIndex: 0, resolveID: 13 }]);
+  expect(spotFrame).toMatchObject([
+    { lightIndex: 0, strength: 0.5, softness: 2, resolveID: 13 },
+  ]);
   expect(targets[2]).toMatchObject({ width: 1024, sampledForShaderRead: true });
   setup!({
     setDebugName: jest.fn(),
@@ -281,6 +291,11 @@ it('schedules two independent shadow maps and ignores later casters', () => {
   expect(sceneBuffers[0]).not.toBe(sceneBuffers[6]);
   expect(sceneBuffers[0].setSubData).toHaveBeenCalledTimes(1);
   expect(sceneBuffers[6].setSubData).toHaveBeenCalledTimes(1);
+  lights[2].shadowStrength = 0;
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toMatchObject([
+    { lightIndex: 0 },
+    { lightIndex: 2 },
+  ]);
 });
 
 it('remembers geometry changes across skipped frames and uploads once on the next draw', () => {

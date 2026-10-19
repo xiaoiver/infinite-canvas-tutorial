@@ -33,6 +33,8 @@ function setup() {
           lightIndex: number;
           texelSize: number;
           faces?: Float32Array[];
+          strength?: number;
+          softness?: number;
         }[],
       ) =>
         uniforms.update(
@@ -162,6 +164,34 @@ it('uploads two shadow matrices and clears them when disabled', () => {
   expect(upload).toHaveBeenCalledTimes(calls + 1);
   uniforms.update(camera, 1, undefined, []);
   expect([...data.slice(188, 228)]).toEqual(Array(40).fill(0));
+  expect([...data.slice(420, 428)]).toEqual(Array(8).fill(0));
+});
+
+it('uploads independent shadow strength and softness without changing matrices', () => {
+  const { uniforms, camera, data, upload } = setup();
+  const matrix = new Float32Array(16);
+  const shadow = { viewProjection: matrix, lightIndex: 0, texelSize: 1 / 1024 };
+  uniforms.update(camera, 1, undefined, [], [shadow]);
+  expect([...data.slice(420, 428)]).toEqual([1, 1, 0, 0, 0, 0, 0, 0]);
+  const calls = upload.mock.calls.length;
+  uniforms.update(
+    camera,
+    1,
+    undefined,
+    [],
+    [{ ...shadow, strength: 0.5, softness: 2 }],
+  );
+  expect(upload).toHaveBeenCalledTimes(calls + 1);
+  expect([...data.slice(420, 424)]).toEqual([0.5, 2, 0, 0]);
+  expect([...data.slice(188, 204)]).toEqual([...matrix]);
+  uniforms.update(
+    camera,
+    1,
+    undefined,
+    [],
+    [{ ...shadow, strength: -1, softness: 9 }],
+  );
+  expect([...data.slice(420, 424)]).toEqual([0, 4, 0, 0]);
 });
 
 it('uploads all six point shadow matrices and clears the atlas mode', () => {
@@ -227,9 +257,8 @@ it('clears the second light and its point faces when that caster is disabled', (
   expect([...data.slice(324, 340)]).toEqual([...faces[0]]);
   uniforms.update(camera, 1, undefined, lights, [directional]);
   expect([...data.slice(224, 228)]).toEqual([0, 0, 0, 0]);
-  expect([...data.slice(324, MESH_SCENE_UNIFORM_FLOATS)]).toEqual(
-    Array(MESH_SCENE_UNIFORM_FLOATS - 324).fill(0),
-  );
+  expect([...data.slice(324, 420)]).toEqual(Array(96).fill(0));
+  expect([...data.slice(420, 428)]).toEqual([1, 1, 0, 0, 0, 0, 0, 0]);
 });
 
 it.each([

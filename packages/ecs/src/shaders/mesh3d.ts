@@ -30,6 +30,7 @@ layout(std140) uniform SceneUniforms3D {
   mat4 u_ShadowViewProjection[2];
   vec4 u_ShadowParams[2]; // x: light index + 1, y: shadow-map texel size, z: point
   mat4 u_ShadowFaces[12];
+  vec4 u_ShadowOptions[2]; // x: strength, y: PCF radius in texels
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -110,6 +111,7 @@ layout(std140) uniform SceneUniforms3D {
   mat4 u_ShadowViewProjection[2];
   vec4 u_ShadowParams[2];
   mat4 u_ShadowFaces[12];
+  vec4 u_ShadowOptions[2];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -293,7 +295,8 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
-      vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) * shadowParams.y,
+      vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) *
+        shadowParams.y * u_ShadowOptions[slot].y,
         vec2(shadowParams.y * 0.5), vec2(1.0 - shadowParams.y * 0.5));
       vec2 sampleUv = point ? (sampleLocal + tile) / vec2(3.0, 2.0) : sampleLocal;
       float stored = slot == 0
@@ -302,7 +305,7 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
       visibility += depth - bias <= stored ? 1.0 : 0.0;
     }
   }
-  return visibility / 9.0;
+  return mix(1.0, visibility / 9.0, u_ShadowOptions[slot].x);
 }
 
 // Cook-Torrance microfacet BRDF for a single analytic light.

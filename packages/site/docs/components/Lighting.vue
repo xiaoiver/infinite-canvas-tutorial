@@ -28,6 +28,8 @@ const copy = {
     ldr: 'LDR studio',
     off: 'Off',
     shadows: 'Cast shadows',
+    shadowStrength: 'Shadow strength',
+    shadowSoftness: 'Shadow softness',
     play: 'Animate spot',
     pause: 'Pause spot',
     all: 'All lights',
@@ -52,6 +54,8 @@ const copy = {
     ldr: 'LDR 摄影棚',
     off: '关闭',
     shadows: '投射阴影',
+    shadowStrength: '阴影强度',
+    shadowSoftness: '阴影柔化',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
     all: '全部光源',
@@ -73,6 +77,8 @@ const metallic = ref(1);
 const roughness = ref(0.25);
 const environment = ref<'hdr' | 'ldr' | 'off'>('hdr');
 const shadows = ref(true);
+const shadowStrength = ref(1);
+const shadowSoftness = ref(1);
 const playing = ref(false);
 const studioMap = '/lighting-studio.svg';
 const hdrStudioMap = '/lighting-studio.hdr';
@@ -265,7 +271,11 @@ function applyLights() {
         ...(preset.id === 'light-key' ||
         preset.id === 'light-point' ||
         preset.id === 'light-spot'
-          ? { castShadow: shadows.value }
+          ? {
+              castShadow: shadows.value,
+              shadowStrength: shadowStrength.value,
+              shadowSoftness: shadowSoftness.value,
+            }
           : {}),
       },
       false,
@@ -359,7 +369,18 @@ function syncAnimation() {
     raf = requestAnimationFrame(animate);
 }
 
-watch([mode, intensity, range, attenuation, shadows], applyLights);
+watch(
+  [
+    mode,
+    intensity,
+    range,
+    attenuation,
+    shadows,
+    shadowStrength,
+    shadowSoftness,
+  ],
+  applyLights,
+);
 watch([metallic, roughness, environment], applySphereMaterial);
 watch(environment, applyEnvironmentToOtherMeshes);
 watch([mode, playing], syncAnimation);
@@ -482,6 +503,26 @@ onUnmounted(() => {
       <label class="lighting-checkbox">
         <input v-model="shadows" type="checkbox" />
         <span>{{ t.shadows }}</span>
+      </label>
+      <label>
+        <span>{{ t.shadowStrength }}: {{ shadowStrength.toFixed(2) }}</span>
+        <input
+          v-model.number="shadowStrength"
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+        />
+      </label>
+      <label>
+        <span>{{ t.shadowSoftness }}: {{ shadowSoftness.toFixed(1) }}</span>
+        <input
+          v-model.number="shadowSoftness"
+          type="range"
+          min="0"
+          max="4"
+          step="0.25"
+        />
       </label>
       <button type="button" :aria-pressed="playing" @click="playing = !playing">
         {{ playing ? t.pause : t.play }}

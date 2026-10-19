@@ -6,7 +6,7 @@ import type { Mat3 } from '../../components/math/Mat3';
 import { buildCamera3DSceneUniforms } from '../../utils/mesh3d-scene';
 
 export const MAX_SHADOW_LIGHTS = 2;
-export const MESH_SCENE_UNIFORM_FLOATS = 420;
+export const MESH_SCENE_UNIFORM_FLOATS = 428;
 const MAX_LIGHTS = 8;
 const defaultAmbient = new Light3D({ type: 'ambient' });
 const defaultDirectional = new Light3D({ type: 'directional' });
@@ -55,6 +55,7 @@ export class MeshSceneUniforms {
     u_ShadowViewProjection: this.data.subarray(188, 220),
     u_ShadowParams: this.data.subarray(220, 228),
     u_ShadowFaces: this.data.subarray(228, 420),
+    u_ShadowOptions: this.data.subarray(420, MESH_SCENE_UNIFORM_FLOATS),
   };
 
   constructor(private readonly buffer: Buffer) {}
@@ -69,6 +70,8 @@ export class MeshSceneUniforms {
       lightIndex: number;
       texelSize: number;
       faces?: readonly Float32Array[];
+      strength?: number;
+      softness?: number;
     }[],
   ): Record<string, unknown> {
     const values = this.inputs;
@@ -139,6 +142,8 @@ export class MeshSceneUniforms {
       shadow.lightIndex + 1,
       shadow.texelSize,
       Number(!!shadow.faces),
+      shadow.strength ?? 1,
+      shadow.softness ?? 1,
       ...(shadow.faces?.flatMap((face) => [...face]) ?? []),
     ]) ?? [0];
     if (!same(shadowValues, this.shadowInputs)) {
@@ -148,6 +153,12 @@ export class MeshSceneUniforms {
         this.data[220 + slot * 4] = shadow.lightIndex + 1;
         this.data[221 + slot * 4] = shadow.texelSize;
         this.data[222 + slot * 4] = Number(!!shadow.faces);
+        this.data[420 + slot * 4] = Number.isFinite(shadow.strength)
+          ? Math.max(0, Math.min(1, shadow.strength!))
+          : 1;
+        this.data[421 + slot * 4] = Number.isFinite(shadow.softness)
+          ? Math.max(0, Math.min(4, shadow.softness!))
+          : 1;
         shadow.faces?.forEach((face, index) =>
           this.data.set(face, 228 + (slot * 6 + index) * 16),
         );

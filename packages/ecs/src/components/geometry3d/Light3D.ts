@@ -67,6 +67,12 @@ export class Light3D {
   /** Render a shadow map for this directional, point, or spot light. */
   @field.boolean declare castShadow: boolean;
 
+  /** Shadow darkness from 0 (none) to 1 (fully occluded). */
+  @field.float32 declare shadowStrength: number;
+
+  /** PCF sampling radius in shadow texels; 1 preserves the legacy filter. */
+  @field.float32 declare shadowSoftness: number;
+
   constructor(light?: Partial<Light3D>) {
     if (light) {
       Object.assign(this, light);
@@ -82,5 +88,7 @@ export class Light3D {
     this.innerConeAngle ??= Math.PI / 8;
     this.outerConeAngle ??= Math.PI / 4;
     this.castShadow ??= false;
+    this.shadowStrength ??= 1;
+    this.shadowSoftness ??= 1;
   }
 }

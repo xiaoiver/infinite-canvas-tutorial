@@ -131,6 +131,8 @@ export interface ShadowFrame {
   viewProjection: Float32Array;
   faces?: Float32Array[];
   lightIndex: number;
+  strength: number;
+  softness: number;
   resolveID: number;
 }
 
@@ -340,6 +342,8 @@ export class MeshPipeline3D extends System {
         lightIndex: frame.lightIndex,
         texelSize: 1 / (frame.faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE),
         faces: frame.faces,
+        strength: frame.strength,
+        softness: frame.softness,
       })),
     );
 
@@ -453,17 +457,26 @@ export class MeshPipeline3D extends System {
       lightIndex: number;
       viewProjection: Float32Array;
       faces: Float32Array[] | null;
+      strength: number;
+      softness: number;
     }[] = [];
     for (const entity of lights) {
       const light = entity.read(Light3D);
       if (light.type === 'ambient') continue;
       if (lightIndex >= 8) break;
+      const strength = Number.isFinite(light.shadowStrength)
+        ? Math.max(0, Math.min(1, light.shadowStrength))
+        : 1;
+      const softness = Number.isFinite(light.shadowSoftness)
+        ? Math.max(0, Math.min(4, light.shadowSoftness))
+        : 1;
       if (
         (light.type === 'directional' ||
           light.type === 'spot' ||
           light.type === 'point') &&
         light.castShadow &&
-        light.intensity > 0
+        light.intensity > 0 &&
+        strength > 0
       ) {
         const faces =
           light.type === 'point'
@@ -483,7 +496,14 @@ export class MeshPipeline3D extends System {
             ? fitDirectionalShadow(light.direction, bounds)
             : null);
         if (viewProjection) {
-          casters.push({ type: light.type, lightIndex, viewProjection, faces });
+          casters.push({
+            type: light.type,
+            lightIndex,
+            viewProjection,
+            faces,
+            strength,
+            softness,
+          });
           if (casters.length === MAX_SHADOW_LIGHTS) break;
         }
       }
@@ -504,7 +524,8 @@ export class MeshPipeline3D extends System {
         },
       );
     }
-    return casters.map(({ type, lightIndex, viewProjection, faces }, slot) => {
+    return casters.map((caster, slot) => {
+      const { type, lightIndex, viewProjection, faces, strength, softness } = caster;
       const matrices = faces ?? [viewProjection];
       const size = faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE;
       const targetWidth = faces ? size * POINT_SHADOW_COLUMNS : size;
@@ -572,6 +593,8 @@ export class MeshPipeline3D extends System {
         viewProjection,
         faces: faces ?? undefined,
         lightIndex,
+        strength,
+        softness,
         resolveID: builder.resolveRenderTarget(colorID),
       };
     });
