@@ -360,7 +360,8 @@ it('schedules two independent shadow maps and ignores later casters', () => {
     });
     execute(slot.gpu.pass);
   }
-  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(7);
+  // The cube is visible to the directional light and only one point face.
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(2);
   const sceneBuffers = (renderer as any).states.get(
     slot.canvas.read(Canvas).api,
   ).shadowSceneBuffers;

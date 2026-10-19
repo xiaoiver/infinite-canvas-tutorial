@@ -78,6 +78,9 @@ import {
   fitDirectionalShadow,
   fitPointShadow,
   fitSpotShadow,
+  intersectsShadowFrustum,
+  meshWorldCorners,
+  type ShadowCasterBounds,
   SHADOW_MAP_SIZE,
   POINT_SHADOW_FACE_SIZE,
   POINT_SHADOW_COLUMNS,
@@ -447,13 +450,17 @@ export class MeshPipeline3D extends System {
       (entity) => entity.read(Material3D).castShadow,
     );
     if (!shadowCasters.length) return [];
+    const boundsById = new Map<number, ShadowCasterBounds>();
     const bounds = meshes.flatMap((entity) => {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
       if (!gpu) return [];
       gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
-      return [
-        { ...gpu.localBounds, model: gpu.modelUniforms.getModelMatrix() },
-      ];
+      const bound = {
+        ...gpu.localBounds,
+        model: gpu.modelUniforms.getModelMatrix(),
+      };
+      boundsById.set(entity.__id, bound);
+      return [bound];
     });
     const lights = filterEntitiesForCanvas(
       this.lights3D.current,
@@ -529,6 +536,14 @@ export class MeshPipeline3D extends System {
       lightIndex++;
     }
     if (!casters.length) return [];
+    const casterCorners = new Map<
+      number,
+      ReturnType<typeof meshWorldCorners>
+    >();
+    for (const entity of shadowCasters) {
+      const bound = boundsById.get(entity.__id);
+      if (bound) casterCorners.set(entity.__id, meshWorldCorners(bound));
+    }
     if (!state.shadowSceneBuffers) {
       state.shadowSceneBuffers = Array.from(
         { length: MAX_SHADOW_LIGHTS * 6 },
@@ -596,6 +611,9 @@ export class MeshPipeline3D extends System {
               size,
             );
             for (const entity of shadowCasters) {
+              const corners = casterCorners.get(entity.__id);
+              if (corners && !intersectsShadowFrustum(corners, matrix))
+                continue;
               const gpu = state.meshGPUCache.get(
                 entity.__id,
                 entity.read(Mesh3D),

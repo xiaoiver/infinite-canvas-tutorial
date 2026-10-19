@@ -3,6 +3,8 @@ import {
   fitDirectionalShadow,
   fitPointShadow,
   fitSpotShadow,
+  intersectsShadowFrustum,
+  meshWorldCorners,
 } from '../../packages/ecs/src/systems/mesh3d/shadow-projection';
 import { POINT_SHADOW_FACES } from '../../packages/ecs/src/utils/geometry3d/point-shadow-faces';
 
@@ -138,6 +140,28 @@ it('keeps close point-shadow casters inside the near plane in large scenes', () 
   );
   expect(nearSurface[2]).toBeGreaterThan(-1);
   expect(nearSurface[2]).toBeLessThan(1);
+});
+
+it('culls point-shadow casters per face while keeping seam-crossing bounds', () => {
+  const front = {
+    min: [-1, -1, 10] as [number, number, number],
+    max: [1, 1, 20] as [number, number, number],
+    model: identity,
+  };
+  const seam = {
+    min: [5, -1, 5] as [number, number, number],
+    max: [15, 1, 15] as [number, number, number],
+    model: identity,
+  };
+  const faces = fitPointShadow([0, 0, 0], 100, [front, seam])!;
+  const frontCorners = meshWorldCorners(front);
+  const seamCorners = meshWorldCorners(seam);
+  expect(
+    faces.map((face) => intersectsShadowFrustum(frontCorners, face)),
+  ).toEqual([false, false, false, false, true, false]);
+  expect(
+    faces.map((face) => intersectsShadowFrustum(seamCorners, face)),
+  ).toEqual([true, false, false, false, true, false]);
 });
 
 it('keeps point-shadow tap directions continuous across all six face edges', () => {

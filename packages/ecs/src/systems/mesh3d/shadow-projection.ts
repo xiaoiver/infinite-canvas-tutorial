@@ -1,4 +1,4 @@
-import { mat4, vec3 } from 'gl-matrix';
+import { mat4, vec3, vec4 } from 'gl-matrix';
 import { POINT_SHADOW_FACES } from '../../utils/geometry3d/point-shadow-faces';
 
 export const SHADOW_MAP_SIZE = 1024;
@@ -12,7 +12,11 @@ export interface ShadowCasterBounds {
   model: Float32Array;
 }
 
-function meshWorldCorners({ min, max, model }: ShadowCasterBounds): vec3[] {
+export function meshWorldCorners({
+  min,
+  max,
+  model,
+}: ShadowCasterBounds): vec3[] {
   const points: vec3[] = [];
   for (let i = 0; i < 8; i++) {
     const p = vec3.fromValues(
@@ -24,6 +28,37 @@ function meshWorldCorners({ min, max, model }: ShadowCasterBounds): vec3[] {
     if (p.every(Number.isFinite)) points.push(p);
   }
   return points;
+}
+
+/** Keep a caster unless one shadow clip plane excludes all transformed bounds. */
+export function intersectsShadowFrustum(
+  corners: readonly vec3[],
+  viewProjection: Float32Array,
+): boolean {
+  if (corners.length !== 8) return true;
+  const outside = [true, true, true, true, true, true];
+  const clip = vec4.create();
+  for (const corner of corners) {
+    vec4.set(clip, corner[0], corner[1], corner[2], 1);
+    vec4.transformMat4(clip, clip, viewProjection);
+    const [x, y, z, w] = clip;
+    if (
+      !Number.isFinite(x) ||
+      !Number.isFinite(y) ||
+      !Number.isFinite(z) ||
+      !Number.isFinite(w)
+    )
+      return true;
+    const epsilon = 1e-4 * Math.max(1, Math.abs(w));
+    if (x >= -w - epsilon) outside[0] = false;
+    if (x <= w + epsilon) outside[1] = false;
+    if (y >= -w - epsilon) outside[2] = false;
+    if (y <= w + epsilon) outside[3] = false;
+    if (z >= -w - epsilon) outside[4] = false;
+    if (z <= w + epsilon) outside[5] = false;
+    if (outside.every((value) => !value)) return true;
+  }
+  return !outside.some(Boolean);
 }
 
 function worldCorners(meshes: readonly ShadowCasterBounds[]): vec3[] {
