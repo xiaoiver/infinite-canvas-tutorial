@@ -12,6 +12,16 @@
  * Supports multiple ambient, directional, point, and spot lights.
  */
 
+import { POINT_SHADOW_FACES } from '../utils/geometry3d/point-shadow-faces';
+
+const pointShadowAxes = (axis: 'right' | 'up') =>
+  POINT_SHADOW_FACES.map(
+    (face, index) =>
+      `${index ? 'else ' : ''}if (face == ${index}) return vec3(${face[axis]
+        .map((value) => value.toFixed(1))
+        .join(', ')});`,
+  ).join('\n  ');
+
 export const vert = /* glsl */ `
 #define MAX_3D_LIGHTS 8
 
@@ -266,6 +276,28 @@ float unpackShadowDepth(vec4 depthColor) {
   return dot(depthColor, vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0));
 }
 
+int pointShadowFace(vec3 ray) {
+  vec3 a = abs(ray);
+  if (a.x >= a.y && a.x >= a.z) return ray.x >= 0.0 ? 0 : 1;
+  if (a.y >= a.z) return ray.y >= 0.0 ? 2 : 3;
+  return ray.z >= 0.0 ? 4 : 5;
+}
+
+vec2 pointShadowTile(int face) {
+  // GLSL ES 1.00 has no integer modulo or integer min overload.
+  return vec2(float(face >= 3 ? face - 3 : face), float(face >= 3 ? 1 : 0));
+}
+
+vec3 pointShadowRight(int face) {
+  ${pointShadowAxes('right')}
+  return vec3(0.0);
+}
+
+vec3 pointShadowUp(int face) {
+  ${pointShadowAxes('up')}
+  return vec3(0.0);
+}
+
 float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   bool spot, int slot, int lightIndex) {
   vec4 shadowParams = u_ShadowParams[slot];
@@ -273,15 +305,13 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   vec3 receiver = position + normal * shadowOptions.w;
   bool point = shadowParams.z > 0.5;
   int face = 0;
-  vec2 tile = vec2(0.0);
+  vec3 ray = vec3(0.0);
+  float faceDistance = 0.0;
   if (point) {
-    vec3 ray = receiver - u_LightPositions[lightIndex].xyz;
-    vec3 a = abs(ray);
-    if (a.x >= a.y && a.x >= a.z) face = ray.x >= 0.0 ? 0 : 1;
-    else if (a.y >= a.z) face = ray.y >= 0.0 ? 2 : 3;
-    else face = ray.z >= 0.0 ? 4 : 5;
-    // GLSL ES 1.00 has no integer modulo or integer min overload.
-    tile = vec2(float(face >= 3 ? face - 3 : face), float(face >= 3 ? 1 : 0));
+    ray = receiver - u_LightPositions[lightIndex].xyz;
+    faceDistance = max(max(abs(ray.x), abs(ray.y)), abs(ray.z));
+    if (faceDistance < 1e-6) return 1.0;
+    face = pointShadowFace(ray);
   }
   vec4 clip = (point ? u_ShadowFaces[slot * 6 + face] :
     u_ShadowViewProjection[slot]) * vec4(receiver, 1.0);
@@ -300,14 +330,40 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
-      vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) *
-        shadowParams.y * shadowOptions.y,
+      vec2 offset = vec2(float(x), float(y)) * shadowParams.y * shadowOptions.y;
+      vec2 sampleLocal = localUv + offset;
+      int sampleFace = face;
+      float sampleDepth = depth;
+      bool outside = sampleLocal.x < 0.0 || sampleLocal.x > 1.0 ||
+        sampleLocal.y < 0.0 || sampleLocal.y > 1.0;
+      if (point && outside) {
+        // Move the lookup ray by one face texel, then reproject taps that cross
+        // a cube seam into the adjacent atlas tile instead of repeating an edge.
+        vec3 sampleReceiver = receiver + 2.0 * faceDistance *
+          (offset.x * pointShadowRight(face) + offset.y * pointShadowUp(face));
+        sampleFace = pointShadowFace(sampleReceiver - u_LightPositions[lightIndex].xyz);
+        vec4 sampleClip = u_ShadowFaces[slot * 6 + sampleFace] *
+          vec4(sampleReceiver, 1.0);
+        vec3 sampleProjected = sampleClip.xyz / sampleClip.w;
+        sampleLocal = sampleProjected.xy * 0.5 + 0.5;
+        sampleDepth = sampleProjected.z * 0.5 + 0.5;
+        outside = sampleLocal.x < 0.0 || sampleLocal.x > 1.0 ||
+          sampleLocal.y < 0.0 || sampleLocal.y > 1.0 ||
+          sampleDepth < 0.0 || sampleDepth > 1.0;
+      }
+      if (outside) {
+        visibility += 1.0;
+        continue;
+      }
+      sampleLocal = clamp(sampleLocal,
         vec2(shadowParams.y * 0.5), vec2(1.0 - shadowParams.y * 0.5));
-      vec2 sampleUv = point ? (sampleLocal + tile) / vec2(3.0, 2.0) : sampleLocal;
+      vec2 sampleUv = point
+        ? (sampleLocal + pointShadowTile(sampleFace)) / vec2(3.0, 2.0)
+        : sampleLocal;
       float stored = slot == 0
         ? unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap0), sampleUv))
         : unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap1), sampleUv));
-      visibility += depth - bias <= stored ? 1.0 : 0.0;
+      visibility += sampleDepth - bias <= stored ? 1.0 : 0.0;
     }
   }
   return mix(1.0, visibility / 9.0, shadowOptions.x);
