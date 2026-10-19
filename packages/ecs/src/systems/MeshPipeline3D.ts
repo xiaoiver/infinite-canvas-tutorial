@@ -451,9 +451,12 @@ export class MeshPipeline3D extends System {
       this.canvases.current.length || 1,
     );
     const candidates: {
-      light: Light3D;
       type: 'directional' | 'point' | 'spot';
       lightIndex: number;
+      position: [number, number, number];
+      direction: [number, number, number];
+      range: number;
+      outerConeAngle: number;
       strength: number;
       softness: number;
       biasScale: number;
@@ -470,10 +473,15 @@ export class MeshPipeline3D extends System {
         ? Math.max(0, Math.min(1, light.shadowStrength))
         : 1;
       if (strength <= 0) continue;
+      // Becsy reuses component read views across entities. Keep values, not
+      // the Light3D view, while mesh bounds are prepared below.
       candidates.push({
-        light,
         type: light.type,
         lightIndex: index,
+        position: [...light.position],
+        direction: [...light.direction],
+        range: light.range,
+        outerConeAngle: light.outerConeAngle,
         strength,
         softness: Number.isFinite(light.shadowSoftness)
           ? Math.max(0, Math.min(4, light.shadowSoftness))
@@ -515,23 +523,15 @@ export class MeshPipeline3D extends System {
       normalBias: number;
     }[] = [];
     for (const candidate of candidates) {
-      const { light, type } = candidate;
+      const { type, position, direction, range, outerConeAngle } = candidate;
       const faces =
-        type === 'point'
-          ? fitPointShadow(light.position, light.range, bounds)
-          : null;
+        type === 'point' ? fitPointShadow(position, range, bounds) : null;
       const viewProjection =
         faces?.[0] ??
         (type === 'spot'
-          ? fitSpotShadow(
-              light.position,
-              light.direction,
-              light.outerConeAngle,
-              light.range,
-              bounds,
-            )
+          ? fitSpotShadow(position, direction, outerConeAngle, range, bounds)
           : type === 'directional'
-          ? fitDirectionalShadow(light.direction, bounds)
+          ? fitDirectionalShadow(direction, bounds)
           : null);
       if (viewProjection) {
         casters.push({
