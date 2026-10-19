@@ -142,7 +142,7 @@ it('reuses geometry while updating pose/material uniforms and avoids duplicate h
   expect(buffers[0].setSubData).toHaveBeenCalledTimes(1);
 });
 
-it('schedules a sampled shadow map only for an enabled directional light', () => {
+it('schedules a sampled shadow map for enabled directional and spot lights', () => {
   const { renderer, queries, slots: [slot], entity } = fixture();
   const light = new Light3D({ type: 'directional', castShadow: true });
   queries.lights3D.current = [entity(new Map([
@@ -168,6 +168,27 @@ it('schedules a sampled shadow map only for an enabled directional light', () =>
   light.castShadow = false;
   expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toBeUndefined();
   expect(targets).toHaveLength(2);
+  light.type = 'spot';
+  light.position = [0, 0, -100];
+  light.direction = [0, 0, 1];
+  light.range = 500;
+  light.castShadow = true;
+  const spotFrame = renderer.scheduleShadowPass(builder as any, slot.canvas);
+  expect(spotFrame).toMatchObject({ lightIndex: 0, resolveID: 13 });
+  expect(targets[2]).toMatchObject({ width: 1024, sampledForShaderRead: true });
+  setup!({
+    setDebugName: jest.fn(), attachRenderTargetID: jest.fn(),
+    exec: (callback: (renderPass: any) => void) => { execute = callback; },
+  });
+  execute!(slot.gpu.pass);
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(2);
+  const invalid = new Light3D({ type: 'spot', castShadow: true });
+  invalid.direction = [0, 0, 0];
+  queries.lights3D.current.unshift(entity(new Map([
+    [Canvas3DScope, { canvas: slot.canvas }], [Light3D, invalid],
+  ]), 89));
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas))
+    .toMatchObject({ lightIndex: 1, resolveID: 15 });
 });
 
 it('remembers geometry changes across skipped frames and uploads once on the next draw', () => {

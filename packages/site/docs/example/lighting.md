@@ -7,7 +7,7 @@ description: 'Interactive ambient, directional, point, and spot lighting with ad
 
 # 3D scene lighting
 
-This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness` values, toggle studio environment lighting and directional shadows, then play or pause the spotlight orbit.
+This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness` values, toggle studio environment lighting and cast shadows, then play or pause the spotlight orbit.
 
 The implementation is in [`Lighting.vue`](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/packages/site/docs/components/Lighting.vue); see also [Lesson 39 — 3D mesh rendering](/guide/lesson-039).
 
@@ -47,6 +47,7 @@ api.updateNodes([
         range: 500,
         innerConeAngle: Math.PI / 8,
         outerConeAngle: Math.PI / 4,
+        castShadow: true,
     },
     {
         id: 'sphere',
@@ -76,8 +77,8 @@ api.updateNodes([
 -   **Spot cone**: `innerConeAngle` and `outerConeAngle` are in radians. The outer angle must exceed the inner angle; invalid or equal inputs are sanitized before rendering.
 -   **Color and materials**: CSS colors and textures enter as sRGB, lighting runs in linear space, and a filmic tone map precedes sRGB output. `metallic` and `roughness` drive GGX highlights. The material's `ambient` scales both the ambient fill and optional environment reflection; legacy `diffuse`, `specular`, and `shininess` no longer affect shading.
 -   **Environment lighting**: `material3d.environmentMap` accepts an equirectangular image URL. The renderer integrates the image into low-order spherical harmonics for diffuse light and samples reflected directions for specular light, softening reflections as roughness increases. The demo's studio panorama is an ordinary LDR SVG. When the image is ready, metals receive ambient energy from reflections rather than a flat diffuse fill. An omitted or failed image preserves the old ambient appearance.
--   **Directional shadows**: set `castShadow: true` on a directional `light3d` node. The first enabled directional light among the first eight direct lights casts shadows from all meshes onto other meshes, including a plane. The shadow map fits the current meshes and uses 3 × 3 PCF; disabling the light or the flag skips the shadow pass.
--   **Limits**: diffuse light uses a 64 × 32 sample of the panorama and second-order spherical harmonics; sharp diffuse details are lost. Reflections use a small angular filter, not HDR or a prefiltered GGX environment map. Shadows use one 1024 × 1024 map and do not cover point or spot lights; translucent objects cast opaque shadows.
+-   **Cast shadows**: set `castShadow: true` on a directional or spot `light3d` node. The first enabled eligible light among the first eight direct lights casts shadows from meshes onto other meshes, including a plane. The directional shadow map fits the meshes; the spot shadow map uses its cone and range. Both use 3 × 3 PCF. In the demo, select “Spot + ambient” to see spot shadows; “All lights” uses the earlier directional light.
+-   **Limits**: diffuse light uses a 64 × 32 sample of the panorama and second-order spherical harmonics; sharp diffuse details are lost. Reflections use a small angular filter, not HDR or a prefiltered GGX environment map. Shadows use one 1024 × 1024 map. Spot shadow cones of 85° or wider and point-light shadows are not supported; translucent objects cast opaque shadows.
 -   **Animation**: the example updates the spotlight via `api.updateNode`. It starts paused and stops requesting frames when offscreen or when the page is hidden.
 
 ## Compared to the cube example {#vs-cube}

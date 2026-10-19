@@ -62,7 +62,7 @@ import {
 } from './mesh3d-bridge';
 import { RenderGizmo3D } from './RenderGizmo3D';
 import { MeshGPUCache } from './mesh3d/mesh-gpu-cache';
-import { fitDirectionalShadow, SHADOW_MAP_SIZE } from './mesh3d/shadow-projection';
+import { fitDirectionalShadow, fitSpotShadow, SHADOW_MAP_SIZE } from './mesh3d/shadow-projection';
 import { ResourceScope } from '../resources/ResourceScope';
 import type { API } from '../API';
 
@@ -401,26 +401,10 @@ export class MeshPipeline3D extends System {
     }
   }
 
-  /** Add a depth-map pass before the shared 3D/2D pass when a directional light requests shadows. */
+  /** Add a depth-map pass before the shared 3D/2D pass for the first eligible light. */
   scheduleShadowPass(builder: RGGraphBuilder, canvas: Entity): ShadowFrame | undefined {
     const state = this.initPipeline(canvas);
     if (!state || !this.shouldComposite(canvas)) return undefined;
-    const lights = filterEntitiesForCanvas(
-      this.lights3D.current, canvas, this.canvases.current.length || 1,
-    );
-    let lightIndex = 0;
-    let direction: readonly number[] | undefined;
-    for (const entity of lights) {
-      const light = entity.read(Light3D);
-      if (light.type === 'ambient') continue;
-      if (lightIndex >= 8) break;
-      if (light.type === 'directional' && light.castShadow && light.intensity > 0) {
-        direction = light.direction;
-        break;
-      }
-      lightIndex++;
-    }
-    if (!direction) return undefined;
     const meshes = this.collectMeshEntities(canvas);
     const bounds = meshes.flatMap((entity) => {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
@@ -428,8 +412,32 @@ export class MeshPipeline3D extends System {
       gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
       return [{ ...gpu.localBounds, model: gpu.modelUniforms.getModelMatrix() }];
     });
-    const viewProjection = fitDirectionalShadow(direction, bounds);
-    if (!viewProjection) return undefined;
+    const lights = filterEntitiesForCanvas(
+      this.lights3D.current, canvas, this.canvases.current.length || 1,
+    );
+    let lightIndex = 0;
+    let shadowLight: Light3D | undefined;
+    let viewProjection: Float32Array | null = null;
+    for (const entity of lights) {
+      const light = entity.read(Light3D);
+      if (light.type === 'ambient') continue;
+      if (lightIndex >= 8) break;
+      if ((light.type === 'directional' || light.type === 'spot') &&
+          light.castShadow && light.intensity > 0) {
+        viewProjection = light.type === 'spot'
+          ? fitSpotShadow(
+              light.position, light.direction, light.outerConeAngle,
+              light.range, bounds,
+            )
+          : fitDirectionalShadow(light.direction, bounds);
+        if (viewProjection) {
+          shadowLight = light;
+          break;
+        }
+      }
+      lightIndex++;
+    }
+    if (!shadowLight || !viewProjection) return undefined;
     if (!state.shadowSceneBuffer) {
       const buffer = state.device.createBuffer({
         viewOrSize: 16 * 4,
@@ -448,10 +456,11 @@ export class MeshPipeline3D extends System {
     depth.setDimensions(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 1);
     depth.depthClearValue = 1;
     depth.stencilClearValue = 0;
-    const colorID = builder.createRenderTargetID(color, 'Directional Shadow Color');
-    const depthID = builder.createRenderTargetID(depth, 'Directional Shadow Depth');
+    const passName = shadowLight.type === 'spot' ? 'Spot Shadow' : 'Directional Shadow';
+    const colorID = builder.createRenderTargetID(color, `${passName} Color`);
+    const depthID = builder.createRenderTargetID(depth, `${passName} Depth`);
     builder.pushPass((pass) => {
-      pass.setDebugName('Directional Shadow Map');
+      pass.setDebugName(`${passName} Map`);
       pass.attachRenderTargetID(RGAttachmentSlot.Color0, colorID);
       pass.attachRenderTargetID(RGAttachmentSlot.DepthStencil, depthID);
       pass.exec((renderPass) => {

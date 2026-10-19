@@ -21,7 +21,7 @@ const copy = {
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
     environment: 'Studio environment',
-    shadows: 'Directional shadows',
+    shadows: 'Cast shadows',
     play: 'Animate spot',
     pause: 'Pause spot',
     all: 'All lights',
@@ -29,7 +29,7 @@ const copy = {
     directional: 'Directional + ambient',
     point: 'Point + ambient',
     spot: 'Spot + ambient',
-    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. The key light casts soft shadows on the floor when enabled. The studio panorama adds diffuse light and reflections.',
+    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. The key or spot light casts soft shadows on the floor when enabled. The studio panorama adds diffuse light and reflections.',
   },
   zh: {
     controls: '光照控制',
@@ -39,7 +39,7 @@ const copy = {
     metallic: '球体金属度',
     roughness: '球体粗糙度',
     environment: '摄影棚环境光照',
-    shadows: '平行光投射阴影',
+    shadows: '投射阴影',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
     all: '全部光源',
@@ -47,7 +47,7 @@ const copy = {
     directional: '平行光 + 环境光',
     point: '点光 + 环境光',
     spot: '聚光灯 + 环境光',
-    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。开启后主光源会在地板上投射柔和阴影。摄影棚全景图提供漫反射光和反射。',
+    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。开启后主光源或聚光灯会在地板上投射柔和阴影。摄影棚全景图提供漫反射光和反射。',
   },
 } as const;
 const t = computed(() => copy[props.locale]);
@@ -119,6 +119,7 @@ const sceneNodes: SerializedNode[] = [
     y: sceneCenter.y - spotLift,
     z: sceneCenter.z - spotBack,
     direction: [-90, spotLift, spotBack],
+    castShadow: true,
     color: '#ffe6b3',
     intensity: 6,
     range: 500,
@@ -235,7 +236,9 @@ function applyLights() {
         ...(preset.kind === 'point' || preset.kind === 'spot'
           ? { range: range.value }
           : {}),
-        ...(preset.id === 'light-key' ? { castShadow: shadows.value } : {}),
+        ...(preset.id === 'light-key' || preset.id === 'light-spot'
+          ? { castShadow: shadows.value }
+          : {}),
       },
       false,
     );

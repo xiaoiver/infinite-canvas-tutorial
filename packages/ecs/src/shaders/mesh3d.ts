@@ -8,7 +8,7 @@
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
  * specular map still modulates the specular response. The first directional
- * light with castShadow uses a packed-depth shadow map with 3x3 PCF.
+ * or spot light with castShadow uses a packed-depth shadow map with 3x3 PCF.
  * Supports multiple ambient, directional, point, and spot lights.
  */
 
@@ -239,7 +239,7 @@ float unpackShadowDepth(vec4 depthColor) {
   return dot(depthColor, vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0));
 }
 
-float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir) {
+float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir, bool spot) {
   vec4 clip = u_ShadowViewProjection * vec4(position, 1.0);
   vec3 projected = clip.xyz / clip.w;
   vec2 uv = projected.xy * 0.5 + 0.5;
@@ -249,7 +249,9 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir) {
   // Color-packed depth has a small raster/texel mismatch, amplified across the
   // 3x3 kernel on surfaces oblique to the light. Offset receivers enough to
   // avoid self-shadow stripes while retaining the much larger caster gap.
-  float bias = max(0.005, 0.008 * (1.0 - max(dot(normal, lightDir), 0.0)));
+  float slope = 1.0 - max(dot(normal, lightDir), 0.0);
+  float bias = spot ? max(0.004, 0.006 * slope)
+    : max(0.005, 0.008 * slope);
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
@@ -285,7 +287,7 @@ vec3 shadeLight(
   if (lightType == LIGHT_TYPE_DIRECTIONAL) {
     lightDir = normalize(-u_LightDirections[index].xyz);
     if (u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
-      attenuation *= shadowVisibility(v_FragPos, normal, lightDir);
+      attenuation *= shadowVisibility(v_FragPos, normal, lightDir, false);
   } else {
     vec3 toLight = u_LightPositions[index].xyz - v_FragPos;
     float distanceToLight = length(toLight);
@@ -299,6 +301,8 @@ vec3 shadeLight(
       float spotCos = dot(-lightDir, spotDirection);
       float cone = smoothstep(cosOuter, cosInner, spotCos);
       attenuation *= cone;
+      if (u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
+        attenuation *= shadowVisibility(v_FragPos, normal, lightDir, true);
     }
   }
 
