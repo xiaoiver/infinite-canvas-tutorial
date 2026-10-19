@@ -38,6 +38,7 @@ export class MeshModelUniforms {
       mapReady: boolean;
       specularMapReady: boolean;
       bumpMapReady: boolean;
+      environmentMapReady: boolean;
     },
   ): Record<string, unknown> {
     let poseChanged = !this.initialized;
@@ -78,6 +79,7 @@ export class MeshModelUniforms {
     this.set(52, material.metallic);
     this.set(53, material.roughness);
     this.set(54, Number(material.sideColor !== null));
+    this.set(55, Number(textureReady.environmentMapReady));
     for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
     if (this.dirty) {
       this.buffer.setSubData(0, this.bytes);

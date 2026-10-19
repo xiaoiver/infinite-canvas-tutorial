@@ -309,6 +309,8 @@ export class MeshPipeline3D extends System {
         this.resolveMaterialTexture(state, device, material.specularMap);
       const { texture: bumpTexture, ready: bumpMapReady } =
         this.resolveMaterialTexture(state, device, material.bumpMap);
+      const { texture: environmentTexture, ready: environmentMapReady } =
+        this.resolveMaterialTexture(state, device, material.environmentMap);
 
       const modelLegacy = gpuData.modelUniforms.update(
         meshEntity.read(Transform3D),
@@ -317,6 +319,7 @@ export class MeshPipeline3D extends System {
           mapReady,
           specularMapReady,
           bumpMapReady,
+          environmentMapReady,
         },
       );
 
@@ -332,6 +335,7 @@ export class MeshPipeline3D extends System {
         baseColorTexture,
         specularTexture,
         bumpTexture,
+        environmentTexture,
       );
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(

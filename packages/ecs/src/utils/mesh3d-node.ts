@@ -211,6 +211,7 @@ export function syncMesh3DNodeCompanionMaterial(
     map: node.map ?? imported?.map ?? null,
     specularMap: node.specularMap ?? null,
     bumpMap: node.bumpMap ?? null,
+    environmentMap: node.environmentMap ?? null,
     bumpScale: node.bumpScale,
   });
 }

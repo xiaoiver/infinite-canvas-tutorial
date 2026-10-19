@@ -42,6 +42,8 @@ export class Mesh3DNode {
 
   @field.object declare bumpMap: string | null;
 
+  @field.object declare environmentMap: string | null;
+
   @field.float32 declare bumpScale: number;
 
   /** Spawn {@link Camera3D} for this canvas when absent (first mesh3d wins). */
@@ -72,6 +74,7 @@ export class Mesh3DNode {
     this.map ??= null;
     this.specularMap ??= null;
     this.bumpMap ??= null;
+    this.environmentMap ??= null;
     this.bumpScale ??= 1;
   }
 }
