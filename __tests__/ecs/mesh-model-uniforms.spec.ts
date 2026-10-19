@@ -2,11 +2,20 @@ import { mat4 } from 'gl-matrix';
 import type { Buffer } from '../../packages/device-api/src';
 import { Material3D } from '../../packages/ecs/src/components/geometry3d/Material3D';
 import { Transform3D } from '../../packages/ecs/src/components/geometry3d/Transform3D';
-import { MeshModelUniforms } from '../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
+import {
+  MESH_MODEL_UNIFORM_FLOATS,
+  MeshModelUniforms,
+} from '../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
 
-const ready = { mapReady: false, specularMapReady: false, bumpMapReady: false };
+const ready = {
+  mapReady: false,
+  specularMapReady: false,
+  bumpMapReady: false,
+  environmentMapReady: false,
+  environmentIrradiance: null,
+};
 function setup() {
-  const bytes = new Uint8Array(60 * 4);
+  const bytes = new Uint8Array(MESH_MODEL_UNIFORM_FLOATS * 4);
   const setSubData = jest.fn((offset: number, data: Uint8Array) =>
     bytes.set(data, offset),
   );
@@ -82,19 +91,26 @@ it('updates all material inputs and late texture readiness without rebuilding ma
     mapReady: true,
     specularMapReady: true,
     bumpMapReady: true,
+    environmentMapReady: true,
+    environmentIrradiance: Float32Array.from({ length: 36 }, (_, i) =>
+      i === 0 ? 0.7 : 0,
+    ),
   };
   const legacy = uniforms.update(transform, material, textures);
   expect([...data.slice(32, 40)]).toEqual(
     [0.25, 1, 1, 1, 0.2, 0.4, 0.6, 4].map(Math.fround),
   );
   expect([...data.slice(48, 56)]).toEqual(
-    [1, 1, 1, 2, 0.3, 0.8, 0, 0].map(Math.fround),
+    [1, 1, 1, 2, 0.3, 0.8, 0, 1].map(Math.fround),
   );
+  expect(data[60]).toBeCloseTo(0.7);
   expect(legacy.u_MaterialFlags).toEqual(data.slice(48, 52));
   uniforms.update(transform, material, textures);
   expect(setSubData).toHaveBeenCalledTimes(2);
   uniforms.update(transform, material, ready);
   expect([...data.slice(48, 51)]).toEqual([0, 0, 0]);
+  expect(data[55]).toBe(0);
+  expect(data[60]).toBe(0);
   expect(setSubData).toHaveBeenCalledTimes(3);
   expect(invert).toHaveBeenCalledTimes(1);
 });
