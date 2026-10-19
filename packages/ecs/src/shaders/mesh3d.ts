@@ -228,7 +228,7 @@ vec3 sampleEnvironment(vec3 direction, int level) {
 vec3 environmentReflection(vec3 reflected, float roughness) {
   float lod = clamp(roughness, 0.0, 1.0) * 4.0;
   int low = int(floor(lod));
-  int high = min(low + 1, 4);
+  int high = low < 4 ? low + 1 : 4;
   return mix(sampleEnvironment(reflected, low),
     sampleEnvironment(reflected, high), fract(lod));
 }
@@ -265,7 +265,8 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
     if (a.x >= a.y && a.x >= a.z) face = ray.x >= 0.0 ? 0 : 1;
     else if (a.y >= a.z) face = ray.y >= 0.0 ? 2 : 3;
     else face = ray.z >= 0.0 ? 4 : 5;
-    tile = vec2(float(face % 3), float(face / 3));
+    // GLSL ES 1.00 has no integer modulo or integer min overload.
+    tile = vec2(float(face >= 3 ? face - 3 : face), float(face >= 3 ? 1 : 0));
   }
   vec4 clip = (point ? u_ShadowFaces[slot * 6 + face] :
     u_ShadowViewProjection[slot]) * vec4(position, 1.0);
