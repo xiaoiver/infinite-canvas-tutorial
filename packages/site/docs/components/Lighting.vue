@@ -28,6 +28,8 @@ const copy = {
     ldr: 'LDR studio',
     off: 'Off',
     shadows: 'Cast shadows',
+    sphereCastsShadow: 'Sphere casts shadow',
+    floorReceivesShadow: 'Floor receives shadow',
     shadowStrength: 'Shadow strength',
     shadowSoftness: 'Shadow softness',
     play: 'Animate spot',
@@ -37,7 +39,7 @@ const copy = {
     directional: 'Directional + ambient',
     point: 'Point + ambient',
     spot: 'Spot + ambient',
-    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. Directional, point, and spot lights can cast shadows. Compare HDR and LDR panoramas on the sphere.',
+    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. Toggle the sphere caster and floor receiver independently. Compare HDR and LDR panoramas on the sphere.',
   },
   zh: {
     controls: '光照控制',
@@ -54,6 +56,8 @@ const copy = {
     ldr: 'LDR 摄影棚',
     off: '关闭',
     shadows: '投射阴影',
+    sphereCastsShadow: '球体投射阴影',
+    floorReceivesShadow: '地板接收阴影',
     shadowStrength: '阴影强度',
     shadowSoftness: '阴影柔化',
     play: '播放聚光灯动画',
@@ -63,7 +67,7 @@ const copy = {
     directional: '平行光 + 环境光',
     point: '点光 + 环境光',
     spot: '聚光灯 + 环境光',
-    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。平行光、点光与聚光灯都可以投射阴影；切换 HDR 与 LDR 全景图可比较球体反射。',
+    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。可以分别切换球体投影与地板接影；切换 HDR 与 LDR 全景图可比较球体反射。',
   },
 } as const;
 const t = computed(() => copy[props.locale]);
@@ -77,6 +81,8 @@ const metallic = ref(1);
 const roughness = ref(0.25);
 const environment = ref<'hdr' | 'ldr' | 'off'>('hdr');
 const shadows = ref(true);
+const sphereCastsShadow = ref(true);
+const floorReceivesShadow = ref(true);
 const shadowStrength = ref(1);
 const shadowSoftness = ref(1);
 const playing = ref(false);
@@ -170,6 +176,8 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.7,
       metallic: 0,
       roughness: 0.95,
+      castShadow: false,
+      receiveShadow: true,
     },
   },
   {
@@ -210,6 +218,7 @@ const sceneNodes: SerializedNode[] = [
       metallic: 1,
       roughness: 0.25,
       environmentMap: hdrStudioMap,
+      castShadow: true,
     },
   },
   {
@@ -295,6 +304,26 @@ function applySphereMaterial() {
         metallic: metallic.value,
         roughness: roughness.value,
         environmentMap: environmentMap.value,
+        castShadow: sphereCastsShadow.value,
+      },
+    },
+    false,
+  );
+}
+
+function applyFloorMaterial() {
+  const node = api?.getNodeById('floor');
+  if (!node) return;
+  api!.updateNode(
+    node,
+    {
+      material3d: {
+        baseColor: '#d8dee8',
+        ambient: 0.7,
+        metallic: 0,
+        roughness: 0.95,
+        castShadow: false,
+        receiveShadow: floorReceivesShadow.value,
       },
     },
     false,
@@ -381,7 +410,11 @@ watch(
   ],
   applyLights,
 );
-watch([metallic, roughness, environment], applySphereMaterial);
+watch(
+  [metallic, roughness, environment, sphereCastsShadow],
+  applySphereMaterial,
+);
+watch(floorReceivesShadow, applyFloorMaterial);
 watch(environment, applyEnvironmentToOtherMeshes);
 watch([mode, playing], syncAnimation);
 
@@ -411,6 +444,7 @@ onMounted(async () => {
         if (disposed) return;
         applyLights();
         applySphereMaterial();
+        applyFloorMaterial();
         applyEnvironmentToOtherMeshes();
         placeSpot(0);
         syncAnimation();
@@ -503,6 +537,14 @@ onUnmounted(() => {
       <label class="lighting-checkbox">
         <input v-model="shadows" type="checkbox" />
         <span>{{ t.shadows }}</span>
+      </label>
+      <label class="lighting-checkbox">
+        <input v-model="sphereCastsShadow" type="checkbox" />
+        <span>{{ t.sphereCastsShadow }}</span>
+      </label>
+      <label class="lighting-checkbox">
+        <input v-model="floorReceivesShadow" type="checkbox" />
+        <span>{{ t.floorReceivesShadow }}</span>
       </label>
       <label>
         <span>{{ t.shadowStrength }}: {{ shadowStrength.toFixed(2) }}</span>

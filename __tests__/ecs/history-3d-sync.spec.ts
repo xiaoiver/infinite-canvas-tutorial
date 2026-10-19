@@ -81,6 +81,8 @@ const materialKeys = [
   'specularMap',
   'bumpMap',
   'bumpScale',
+  'castShadow',
+  'receiveShadow',
 ] as const;
 const state = (editor = api) => {
   const e = entity(editor);
@@ -188,6 +190,8 @@ it.each([
   ['metallic', 0.8],
   ['roughness', 0.2],
   ['bumpScale', 0],
+  ['castShadow', false],
+  ['receiveShadow', false],
   ['map', 'data:image/png;base64,base'],
   ['specularMap', 'data:image/png;base64,specular'],
   ['bumpMap', 'data:image/png;base64,bump'],

@@ -4,7 +4,7 @@ import type { Material3D } from '../../components/geometry3d/Material3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 60 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 64 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -26,7 +26,11 @@ export class MeshModelUniforms {
     u_MaterialFlags: this.data.subarray(48, 52),
     u_PbrParams: this.data.subarray(52, 56),
     u_SideColor: this.data.subarray(56, 60),
-    u_EnvironmentIrradiance: this.data.subarray(60, MESH_MODEL_UNIFORM_FLOATS),
+    u_EnvironmentIrradiance: this.data.subarray(
+      60,
+      60 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_ShadowReceive: this.data.subarray(60 + ENVIRONMENT_IRRADIANCE_FLOATS),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -61,6 +65,10 @@ export class MeshModelUniforms {
     for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
     for (let i = 0; i < ENVIRONMENT_IRRADIANCE_FLOATS; i++)
       this.set(60 + i, textureReady.environmentIrradiance?.[i] ?? 0);
+    this.set(
+      60 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number(material.receiveShadow),
+    );
     this.upload();
     return this.legacy;
   }
