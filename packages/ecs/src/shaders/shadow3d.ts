@@ -1,4 +1,4 @@
-/** Packed depth color pass for directional 3D shadows. */
+/** Packed depth color pass for directional and spot 3D shadows. */
 export const vert = /* glsl */ `
 layout(std140) uniform ShadowScene3D {
   mat4 u_ShadowLightViewProjection;
@@ -9,13 +9,13 @@ layout(std140) uniform ShadowModel3D {
 };
 
 layout(location = 0) in vec3 a_Position3D;
-out float v_ShadowDepth;
+out vec4 v_ShadowClip;
 
 void main() {
   vec4 clip = u_ShadowLightViewProjection * u_ShadowModelMatrix *
     vec4(a_Position3D, 1.0);
   gl_Position = clip;
-  v_ShadowDepth = clip.z / clip.w * 0.5 + 0.5;
+  v_ShadowClip = clip;
 }
 `;
 
@@ -28,7 +28,7 @@ layout(std140) uniform ShadowModel3D {
   mat4 u_ShadowModelMatrix;
 };
 
-in float v_ShadowDepth;
+in vec4 v_ShadowClip;
 out vec4 outputColor;
 
 vec4 packDepth(float depth) {
@@ -39,6 +39,6 @@ vec4 packDepth(float depth) {
 }
 
 void main() {
-  outputColor = packDepth(v_ShadowDepth);
+  outputColor = packDepth(v_ShadowClip.z / v_ShadowClip.w * 0.5 + 0.5);
 }
 `;

@@ -497,7 +497,7 @@ edge cut by the SVG viewport.
 
 ## Lighting {#lighting}
 
-Compare ambient, directional, point, and spot lights on a stationary cube, sphere, and cylinder. Switch lights, adjust intensity/range and the sphere's metallic/roughness values, enable studio environment lighting and directional shadows, or play the spotlight orbit. The renderer uses GGX direct lighting with sRGB-to-linear inputs and filmic tone mapping. The optional panorama provides spherical-harmonic diffuse lighting and approximate roughness-dependent reflections. A directional light with `castShadow: true` renders a 1024 × 1024 shadow map, fitted to the current meshes and filtered with 3 × 3 PCF. See the [lighting example](/example/lighting) for controls and API details.
+Compare ambient, directional, point, and spot lights on a stationary cube, sphere, and cylinder. Switch lights, adjust intensity/range and the sphere's metallic/roughness values, enable studio environment lighting and cast shadows, or play the spotlight orbit. The renderer uses GGX direct lighting with sRGB-to-linear inputs and filmic tone mapping. The optional panorama provides spherical-harmonic diffuse lighting and approximate roughness-dependent reflections. A directional or spot light with `castShadow: true` renders a 1024 × 1024 shadow map filtered with 3 × 3 PCF. The directional map fits the current meshes; the spot map uses the light's cone and range. See the [lighting example](/example/lighting) for controls and API details.
 
 <Lighting />
 
