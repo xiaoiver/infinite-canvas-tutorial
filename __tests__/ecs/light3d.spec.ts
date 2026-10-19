@@ -9,20 +9,25 @@ describe('Light3D', () => {
     expect(light.intensity).toBe(1);
     expect(light.direction).toEqual([-0.5, -0.7, -0.5]);
     expect(light.castShadow).toBe(false);
+    expect(light.attenuation).toBe('range');
+    expect(light.referenceDistance).toBe(100);
   });
 
   it('should support ambient, point, and spot lights', () => {
     expect(new Light3D({ type: 'ambient' }).type).toBe('ambient');
-    expect(new Light3D({ type: 'point', position: [1, 2, 3] }).position).toEqual(
-      [1, 2, 3],
-    );
     expect(
-      new Light3D({
-        type: 'spot',
-        direction: [0, -1, 0],
-        innerConeAngle: 0.2,
-        outerConeAngle: 0.5,
-      }).outerConeAngle,
-    ).toBe(0.5);
+      new Light3D({ type: 'point', position: [1, 2, 3] }).position,
+    ).toEqual([1, 2, 3]);
+    const spot = new Light3D({
+      type: 'spot',
+      direction: [0, -1, 0],
+      innerConeAngle: 0.2,
+      outerConeAngle: 0.5,
+      attenuation: 'inverse-square',
+      referenceDistance: 80,
+    });
+    expect(spot.outerConeAngle).toBe(0.5);
+    expect(spot.attenuation).toBe('inverse-square');
+    expect(spot.referenceDistance).toBe(80);
   });
 });

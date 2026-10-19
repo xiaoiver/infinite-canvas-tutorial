@@ -18,6 +18,9 @@ const copy = {
     mode: 'Light source',
     intensity: 'Intensity',
     range: 'Point and spot range',
+    attenuation: 'Distance falloff',
+    rangeFalloff: 'Smooth range (legacy)',
+    inverseSquare: 'Inverse square',
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
     environment: 'Studio environment',
@@ -39,6 +42,9 @@ const copy = {
     mode: '光源类型',
     intensity: '强度',
     range: '点光与聚光灯范围',
+    attenuation: '距离衰减',
+    rangeFalloff: '平滑范围（原有）',
+    inverseSquare: '逆平方',
     metallic: '球体金属度',
     roughness: '球体粗糙度',
     environment: '摄影棚环境光照',
@@ -62,6 +68,7 @@ const wrapper = ref<HTMLElement | null>(null);
 const mode = ref<LightMode>('all');
 const intensity = ref(1);
 const range = ref(500);
+const attenuation = ref<'range' | 'inverse-square'>('range');
 const metallic = ref(1);
 const roughness = ref(0.25);
 const environment = ref<'hdr' | 'ldr' | 'off'>('hdr');
@@ -249,7 +256,11 @@ function applyLights() {
             ? preset.intensity * intensity.value
             : 0,
         ...(preset.kind === 'point' || preset.kind === 'spot'
-          ? { range: range.value }
+          ? {
+              range: range.value,
+              attenuation: attenuation.value,
+              referenceDistance: 100,
+            }
           : {}),
         ...(preset.id === 'light-key' ||
         preset.id === 'light-point' ||
@@ -348,7 +359,7 @@ function syncAnimation() {
     raf = requestAnimationFrame(animate);
 }
 
-watch([mode, intensity, range, shadows], applyLights);
+watch([mode, intensity, range, attenuation, shadows], applyLights);
 watch([metallic, roughness, environment], applySphereMaterial);
 watch(environment, applyEnvironmentToOtherMeshes);
 watch([mode, playing], syncAnimation);
@@ -432,6 +443,13 @@ onUnmounted(() => {
           max="800"
           step="10"
         />
+      </label>
+      <label>
+        <span>{{ t.attenuation }}</span>
+        <select v-model="attenuation">
+          <option value="range">{{ t.rangeFalloff }}</option>
+          <option value="inverse-square">{{ t.inverseSquare }}</option>
+        </select>
       </label>
       <label>
         <span>{{ t.metallic }}: {{ metallic.toFixed(2) }}</span>

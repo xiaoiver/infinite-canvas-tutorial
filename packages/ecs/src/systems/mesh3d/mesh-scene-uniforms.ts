@@ -123,6 +123,8 @@ export class MeshSceneUniforms {
         ...light.position,
         ...light.direction,
         light.range,
+        Number(light.attenuation === 'inverse-square'),
+        light.referenceDistance,
         light.innerConeAngle,
         light.outerConeAngle,
       );
@@ -192,6 +194,14 @@ export class MeshSceneUniforms {
       light.position.map((value) => (Number.isFinite(value) ? value : 0)),
       60 + offset,
     );
+    this.data[63 + offset] =
+      (light.type === 'point' || light.type === 'spot') &&
+      light.attenuation === 'inverse-square'
+        ? Number.isFinite(light.referenceDistance) &&
+          light.referenceDistance > 0
+          ? light.referenceDistance
+          : 100
+        : 0;
     this.data.set(validDirection(light.direction), 92 + offset);
     this.data.set(color, 124 + offset);
     this.data[156 + offset] = LIGHT_3D_TYPE[light.type];

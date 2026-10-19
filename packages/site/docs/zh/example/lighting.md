@@ -81,10 +81,22 @@ api.updateNodes([
 ]);
 ```
 
+点光或聚光灯可设置 `attenuation: 'inverse-square'` 使用逆平方距离衰减，并以画布世界单位设置正数 `referenceDistance`。在此距离处，逆平方系数为 1；默认值为 100。交互示例可以切换两种衰减方式。
+
+```ts
+const lamp = api.getNodeById('lamp');
+if (lamp) {
+    api.updateNode(lamp, {
+        attenuation: 'inverse-square',
+        referenceDistance: 100,
+    });
+}
+```
+
 ## 要点 {#notes}
 
 -   **光源组合**：没有显式光源时使用默认环境光和平行光；只要有显式光源，就仅使用这些光源。环境光只贡献颜色与强度，其他光源共用最多 8 个槽位，超出的光源不会渲染。
--   **坐标与范围**：位置与方向使用画布世界单位；在本例的联动相机中，z 值越小越靠近观察者。`direction` 从光源指向场景。`range > 0` 时使用平方距离范围衰减，`range <= 0` 时关闭距离衰减。它不是物理逆平方衰减。
+-   **坐标与范围**：位置与方向使用画布世界单位；在本例的联动相机中，z 值越小越靠近观察者。`direction` 从光源指向场景。默认模式在 `range > 0` 时使用原有的平方范围衰减，`range <= 0` 时关闭距离衰减。设置 `attenuation: 'inverse-square'` 后，亮度随距离平方衰减，在小于 `referenceDistance` 的 10% 处封顶，并在正数 `range` 处平滑降为零。此时 `range <= 0` 仅关闭范围截断。世界单位由 `referenceDistance` 校准，并非物理 SI 光强单位。
 -   **聚光灯**：`innerConeAngle` / `outerConeAngle` 使用弧度。外角必须大于内角；渲染器会对无效输入和相等角度做安全处理。
 -   **颜色与材质**：光源颜色、材质底色和贴图按 sRGB 输入，在线性空间计算光照，再做胶片映射并编码为 sRGB。`metallic` 和 `roughness` 控制 GGX 高光；`ambient` 同时控制环境填充与可选的环境反射。旧 `diffuse` / `specular` / `shininess` 字段不再影响着色。
 -   **环境光照**：`material3d.environmentMap` 接受等距柱状 LDR 图片或 Radiance `.hdr` URL。HDR 辐亮度在线性空间处理；渲染器用二阶球谐函数计算漫反射，并生成五级 GGX 重要性采样后的粗糙度反射。缓存的 64 × 64 split-sum BRDF 查找表补充随视角与粗糙度变化的 GGX 遮蔽项。各级存入兼容 WebGL 与 WebGPU 的 RGBM 图集。示例可以切换生成的 HDR 摄影棚全景图与 LDR SVG。图片未设置或加载失败时保留原有环境填充。

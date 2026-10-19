@@ -165,7 +165,16 @@ vec3 toneMapACES(vec3 color) {
     (x * (2.43 * x + 0.59) + 0.14), 0.0, 1.0);
 }
 
-float distanceAttenuation(float distanceToLight, float range) {
+float distanceAttenuation(float distanceToLight, float range,
+  float referenceDistance) {
+  if (referenceDistance > 0.0) {
+    float boundedDistance = max(distanceToLight, referenceDistance * 0.1);
+    float inverseSquare = pow(referenceDistance / boundedDistance, 2.0);
+    if (range <= 0.0) return inverseSquare;
+    float fraction = distanceToLight / range;
+    float cutoff = max(1.0 - pow(fraction, 4.0), 0.0);
+    return inverseSquare * cutoff * cutoff;
+  }
   if (range <= 0.0) {
     return 1.0;
   }
@@ -325,7 +334,8 @@ vec3 shadeLight(
     if (distanceToLight > 1e-6) {
       lightDir = toLight / distanceToLight;
     }
-    attenuation *= distanceAttenuation(distanceToLight, range);
+    attenuation *= distanceAttenuation(distanceToLight, range,
+      u_LightPositions[index].w);
 
     if (lightType == LIGHT_TYPE_SPOT) {
       vec3 spotDirection = normalize(u_LightDirections[index].xyz);

@@ -1,6 +1,7 @@
 import { field } from '@lastolivegames/becsy';
 
 export type Light3DType = 'ambient' | 'directional' | 'point' | 'spot';
+export type Light3DAttenuation = 'range' | 'inverse-square';
 
 export const LIGHT_3D_TYPE = {
   directional: 1,
@@ -47,6 +48,12 @@ export class Light3D {
    */
   @field.float32 declare range: number;
 
+  /** Distance falloff for point and spot lights. `range` preserves legacy scenes. */
+  @field.object declare attenuation: Light3DAttenuation;
+
+  /** Intensity reference distance in canvas world units for inverse-square falloff. */
+  @field.float32 declare referenceDistance: number;
+
   /**
    * Full-intensity cone angle in radians for spot lights.
    */
@@ -57,7 +64,7 @@ export class Light3D {
    */
   @field.float32 declare outerConeAngle: number;
 
-  /** Render a shadow map for this directional, point, or spot light (first enabled light wins). */
+  /** Render a shadow map for this directional, point, or spot light. */
   @field.boolean declare castShadow: boolean;
 
   constructor(light?: Partial<Light3D>) {
@@ -70,6 +77,8 @@ export class Light3D {
     this.position ??= [0, 0, 0];
     this.direction ??= [-0.5, -0.7, -0.5];
     this.range ??= 0;
+    this.attenuation ??= 'range';
+    this.referenceDistance ??= 100;
     this.innerConeAngle ??= Math.PI / 8;
     this.outerConeAngle ??= Math.PI / 4;
     this.castShadow ??= false;
