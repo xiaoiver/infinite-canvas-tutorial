@@ -67,7 +67,7 @@ export class Material3D {
   /** Optional bump / height map (grayscale) for normal perturbation. */
   @field.object declare bumpMap: string | null;
 
-  /** Optional equirectangular sRGB environment image for reflected light. */
+  /** Optional equirectangular sRGB environment image for diffuse and reflected light. */
   @field.object declare environmentMap: string | null;
 
   /** Bump map strength (AntV G `bumpScale`, typically 1–10). */

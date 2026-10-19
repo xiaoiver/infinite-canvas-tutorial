@@ -2,8 +2,9 @@ import type { Buffer } from '@infinite-canvas-tutorial/device-api';
 import { mat4 } from 'gl-matrix';
 import type { Material3D } from '../../components/geometry3d/Material3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
+import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 60;
+export const MESH_MODEL_UNIFORM_FLOATS = 60 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -25,6 +26,7 @@ export class MeshModelUniforms {
     u_MaterialFlags: this.data.subarray(48, 52),
     u_PbrParams: this.data.subarray(52, 56),
     u_SideColor: this.data.subarray(56, 60),
+    u_EnvironmentIrradiance: this.data.subarray(60, MESH_MODEL_UNIFORM_FLOATS),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -39,6 +41,7 @@ export class MeshModelUniforms {
       specularMapReady: boolean;
       bumpMapReady: boolean;
       environmentMapReady: boolean;
+      environmentIrradiance: Float32Array | null;
     },
   ): Record<string, unknown> {
     let poseChanged = !this.initialized;
@@ -81,6 +84,8 @@ export class MeshModelUniforms {
     this.set(54, Number(material.sideColor !== null));
     this.set(55, Number(textureReady.environmentMapReady));
     for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
+    for (let i = 0; i < ENVIRONMENT_IRRADIANCE_FLOATS; i++)
+      this.set(60 + i, textureReady.environmentIrradiance?.[i] ?? 0);
     if (this.dirty) {
       this.buffer.setSubData(0, this.bytes);
       // A failed upload must be retried, even if inputs have not changed.

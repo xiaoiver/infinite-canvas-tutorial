@@ -20,7 +20,7 @@ const copy = {
     range: 'Point and spot range',
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
-    environment: 'Studio reflections',
+    environment: 'Studio environment',
     play: 'Animate spot',
     pause: 'Pause spot',
     all: 'All lights',
@@ -28,7 +28,7 @@ const copy = {
     directional: 'Directional + ambient',
     point: 'Point + ambient',
     spot: 'Spot + ambient',
-    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. Direct-light modes keep a dim ambient fill so the unlit faces remain visible.',
+    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. The studio panorama adds diffuse light to the cube and cylinder and reflections to all three meshes.',
   },
   zh: {
     controls: '光照控制',
@@ -37,7 +37,7 @@ const copy = {
     range: '点光与聚光灯范围',
     metallic: '球体金属度',
     roughness: '球体粗糙度',
-    environment: '摄影棚环境反射',
+    environment: '摄影棚环境光照',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
     all: '全部光源',
@@ -45,7 +45,7 @@ const copy = {
     directional: '平行光 + 环境光',
     point: '点光 + 环境光',
     spot: '聚光灯 + 环境光',
-    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。直接光照模式保留较弱的环境光，以便观察未受光的面。',
+    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。摄影棚全景图为立方体和圆柱提供漫反射环境光，也为三个物体提供反射。',
   },
 } as const;
 const t = computed(() => copy[props.locale]);
@@ -58,6 +58,7 @@ const metallic = ref(1);
 const roughness = ref(0.25);
 const environment = ref(true);
 const playing = ref(false);
+const studioMap = '/lighting-studio.svg';
 
 const sceneCenter = { x: 220, y: 180, z: 40 };
 const spotLift = 200;
@@ -135,6 +136,7 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.5,
       metallic: 0,
       roughness: 0.75,
+      environmentMap: studioMap,
     },
     camera3d: { linked: true, projection: 'perspective', clearColor: false },
   },
@@ -155,6 +157,7 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.5,
       metallic: 1,
       roughness: 0.25,
+      environmentMap: studioMap,
     },
   },
   {
@@ -174,6 +177,7 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.5,
       metallic: 0,
       roughness: 0.2,
+      environmentMap: studioMap,
     },
   },
 ];
@@ -225,11 +229,35 @@ function applySphereMaterial() {
         ambient: 0.5,
         metallic: metallic.value,
         roughness: roughness.value,
-        environmentMap: environment.value ? '/lighting-studio.svg' : null,
+        environmentMap: environment.value ? studioMap : null,
       },
     },
     false,
   );
+}
+
+function applyEnvironmentToOtherMeshes() {
+  if (!api) return;
+  for (const [id, baseColor, metallic, roughness] of [
+    ['cube-red', '#f25952', 0, 0.75],
+    ['cylinder-blue', '#478cf2', 0, 0.2],
+  ] as const) {
+    const node = api.getNodeById(id);
+    if (node)
+      api.updateNode(
+        node,
+        {
+          material3d: {
+            baseColor,
+            ambient: 0.5,
+            metallic,
+            roughness,
+            environmentMap: environment.value ? studioMap : null,
+          },
+        },
+        false,
+      );
+  }
 }
 
 function placeSpot(time: number) {
@@ -278,6 +306,7 @@ function syncAnimation() {
 
 watch([mode, intensity, range], applyLights);
 watch([metallic, roughness, environment], applySphereMaterial);
+watch(environment, applyEnvironmentToOtherMeshes);
 watch([mode, playing], syncAnimation);
 
 onMounted(async () => {
@@ -306,6 +335,7 @@ onMounted(async () => {
         if (disposed) return;
         applyLights();
         applySphereMaterial();
+        applyEnvironmentToOtherMeshes();
         placeSpot(0);
         syncAnimation();
       });

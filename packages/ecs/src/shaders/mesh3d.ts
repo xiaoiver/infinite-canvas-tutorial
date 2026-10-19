@@ -4,7 +4,8 @@
  * Direct lighting uses a Cook-Torrance microfacet BRDF (GGX/Trowbridge-Reitz
  * normal distribution, Smith geometry term, Schlick Fresnel) driven by the
  * material `metallic` and `roughness` parameters. Ambient is a simple fill,
- * with optional equirectangular environment reflections but no shadows. The legacy
+ * with optional equirectangular diffuse light and reflections. There are no
+ * cast shadows. The legacy
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
  * specular map still modulates the specular response.
@@ -41,6 +42,7 @@ layout(std140) uniform ModelUniforms3D {
   // x: metallic, y: roughness, z: side color, w: environment map ready
   vec4 u_PbrParams;
   vec4 u_SideColor;
+  vec4 u_EnvironmentIrradiance[9];
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -117,6 +119,7 @@ layout(std140) uniform ModelUniforms3D {
   // x: metallic, y: roughness, z: side color, w: environment map ready
   vec4 u_PbrParams;
   vec4 u_SideColor;
+  vec4 u_EnvironmentIrradiance[9];
 };
 
 uniform sampler2D u_Map;
@@ -209,6 +212,22 @@ vec3 environmentReflection(vec3 reflected, float roughness) {
   result += sampleEnvironment(reflected + spread * bitangent) * 0.15;
   result += sampleEnvironment(reflected - spread * bitangent) * 0.15;
   return result;
+}
+
+// Second-order spherical harmonics convolved with the Lambert cosine kernel
+// on the CPU. The same basis order is used in environment-irradiance.ts.
+vec3 environmentDiffuse(vec3 n) {
+  vec3 irradiance =
+    u_EnvironmentIrradiance[0].rgb * 0.282095 +
+    u_EnvironmentIrradiance[1].rgb * (0.488603 * n.y) +
+    u_EnvironmentIrradiance[2].rgb * (0.488603 * n.z) +
+    u_EnvironmentIrradiance[3].rgb * (0.488603 * n.x) +
+    u_EnvironmentIrradiance[4].rgb * (1.092548 * n.x * n.y) +
+    u_EnvironmentIrradiance[5].rgb * (1.092548 * n.y * n.z) +
+    u_EnvironmentIrradiance[6].rgb * (0.315392 * (3.0 * n.z * n.z - 1.0)) +
+    u_EnvironmentIrradiance[7].rgb * (1.092548 * n.x * n.z) +
+    u_EnvironmentIrradiance[8].rgb * (0.546274 * (n.x * n.x - n.y * n.y));
+  return max(irradiance, vec3(0.0));
 }
 
 // Cook-Torrance microfacet BRDF for a single analytic light.
@@ -357,10 +376,12 @@ void main() {
   if (u_PbrParams.w > 0.5) {
     // With a reflection source, metals receive ambient energy through their
     // specular response rather than a diffuse albedo fill.
-    ambient *= 1.0 - metallic;
+    vec3 fresnel = fresnelSchlick(max(dot(normal, viewDir), 0.0), F0);
+    vec3 diffuseWeight = (vec3(1.0) - fresnel) * (1.0 - metallic);
+    ambient *= diffuseWeight;
+    ambient += environmentDiffuse(normal) * albedo * diffuseWeight * u_LightParams.x;
     vec3 reflected = reflect(-viewDir, normal);
     vec3 env = environmentReflection(reflected, roughness);
-    vec3 fresnel = fresnelSchlick(max(dot(normal, viewDir), 0.0), F0);
     ambient += env * fresnel * specularScale * u_LightParams.x;
   }
 
