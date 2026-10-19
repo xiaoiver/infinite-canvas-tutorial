@@ -1,15 +1,15 @@
 ---
 title: '3D scene lighting (Light3D)'
-description: 'Ambient, directional, and spot lights with metallic-roughness PBR materials and an orbiting spotlight.'
+description: 'Interactive ambient, directional, point, and spot lighting with adjustable material parameters.'
 ---
 
 <!-- example-intro:en -->
 
 # 3D scene lighting
 
-This page demonstrates **`Light3D`** with **metallic-roughness PBR** materials (a Cook-Torrance microfacet BRDF, like three.js `MeshStandardMaterial`): ambient light as a base, a cool directional fill, and a warm **spot light** orbiting the scene center. Three objects with different `metallic` / `roughness` settings make it easy to compare a rough dielectric, a polished metal, and a smooth dielectric.
+This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness` values, then play or pause the spotlight orbit.
 
-Implementation references `packages/webcomponents/examples/main.ts` and [Lesson 39 — 3D mesh rendering](/guide/lesson-039).
+The implementation is in [`Lighting.vue`](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/packages/site/docs/components/Lighting.vue); see also [Lesson 39 — 3D mesh rendering](/guide/lesson-039).
 
 ## Interactive example
 
@@ -19,20 +19,57 @@ import Lighting from '../components/Lighting.vue'
 
 <Lighting />
 
+## Add lights to a scene {#api}
+
+`api.updateNodes` accepts lights beside mesh nodes. The spotlight's `direction` points from its position toward the objects; cone angles are in radians. Update its position or direction with `api.updateNode` to animate it.
+
+```ts
+api.updateNodes([
+    { id: 'ambient', type: 'light3d', lightType: 'ambient', intensity: 0.4 },
+    {
+        id: 'spot',
+        type: 'light3d',
+        lightType: 'spot',
+        x: 200,
+        y: 40,
+        z: -180,
+        direction: [0, 1, 1],
+        color: '#ffe6b3',
+        intensity: 6,
+        range: 500,
+        innerConeAngle: Math.PI / 8,
+        outerConeAngle: Math.PI / 4,
+    },
+    {
+        id: 'sphere',
+        type: 'mesh3d',
+        geometry: { type: 'sphere' },
+        x: 200,
+        y: 160,
+        z: 40,
+        width: 80,
+        height: 80,
+        scale3d: 70,
+        material3d: { baseColor: '#ebeff2', metallic: 1, roughness: 0.25 },
+        camera3d: { linked: true, projection: 'perspective' },
+    },
+]);
+```
+
 ## Notes {#notes}
 
--   **Light types**: `ambient` contributes color and intensity only; `directional`, `point`, and `spot` are packed into the scene light array (max 8 lights; see the `mesh3d` shader).
--   **Custom lights**: spawning any `Light3D` **replaces** the default ambient + directional bundle; if no `directional` is provided, the renderer adds a weak directional fill so meshes are not fully black.
--   **Coordinates**: `position` and `direction` use the same **canvas world units** as `Transform3D` (about 1 px in linked mode). `direction` points from the light toward the lit scene; the renderer normalizes it.
--   **Spot lights**: `innerConeAngle` and `outerConeAngle` are in radians; `range <= 0` disables distance attenuation (same as the webcomponents example).
--   **Materials**: `Material3D` uses a **metallic-roughness** workflow. `metallic` (0 = dielectric, 1 = metal) and `roughness` (0 = mirror-smooth, 1 = fully rough) drive the Cook-Torrance specular response; `baseColor` is the albedo (and reflectance tint for metals). The legacy `ambient`, `diffuse`, `specular`, and `shininess` fields are kept for backward compatibility — `ambient` still scales the ambient term, but `diffuse`/`specular`/`shininess` no longer affect shading.
--   **Animation**: each frame updates the spot via `spotLight.write(Light3D)`; `MeshPipeline3D` repacks lights when the component changes.
+-   **Light combinations**: with no explicit lights, the renderer supplies ambient and directional defaults. Once a light is supplied, only the explicit lights contribute. Up to 8 non-ambient lights render; additional lights are ignored.
+-   **Coordinates and range**: positions and directions use canvas world units; in this linked-camera example, smaller z values are closer to the viewer. `direction` points from the light toward the scene. Positive `range` uses a squared range falloff; `range <= 0` disables attenuation. This is not physical inverse-square falloff.
+-   **Spot cone**: `innerConeAngle` and `outerConeAngle` are in radians. The outer angle must exceed the inner angle; invalid or equal inputs are sanitized before rendering.
+-   **Color and materials**: CSS colors and textures enter as sRGB, direct lighting runs in linear space, and a filmic tone map precedes sRGB output. `metallic` and `roughness` drive GGX highlights. The material's `ambient` still scales a simple ambient fill; legacy `diffuse`, `specular`, and `shininess` no longer affect shading.
+-   **Limits**: there are no shadows, environment-map reflections, or indirect illumination yet. Ambient fill on metal is an approximation, not image-based lighting.
+-   **Animation**: the example updates the spotlight via `api.updateNode`. It starts paused and stops requesting frames when offscreen or when the page is hidden.
 
 ## Compared to the cube example {#vs-cube}
 
 | Topic        | [cube-perspective](/example/cube-perspective) | This page                                  |
 | ------------ | --------------------------------------------- | ------------------------------------------ |
 | Lights       | Renderer default ambient + directional        | Explicit multiple `Light3D` nodes          |
-| Objects      | Single white cube                             | Three cubes with different material params |
-| Motion       | Mesh rotation only                            | Mesh rotation + spotlight orbit            |
+| Objects      | Single white cube                             | Cube, sphere, and cylinder                 |
+| Motion       | Mesh rotation only                            | Optional spotlight orbit                   |
 | Default tool | Select                                        | Select (`Pick3D` requires the Select tool) |

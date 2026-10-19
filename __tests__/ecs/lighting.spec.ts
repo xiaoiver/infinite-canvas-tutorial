@@ -45,22 +45,11 @@ const SPOT_ORBIT = 90;
 function buildLightingSceneNodes(): SerializedNode[] {
   const spotX = SCENE_CENTER.x + SPOT_ORBIT;
   const spotY = SCENE_CENTER.y - SPOT_LIFT;
-  const spotZ = SCENE_CENTER.z + SPOT_BACK;
+  const spotZ = SCENE_CENTER.z - SPOT_BACK;
   const dx = SCENE_CENTER.x - spotX;
   const dy = SCENE_CENTER.y - spotY;
   const dz = SCENE_CENTER.z - spotZ;
   const len = Math.hypot(dx, dy, dz) || 1;
-
-  const cubeBase = {
-    type: 'mesh3d' as const,
-    y: 80,
-    width: 60,
-    height: 60,
-    z: 40,
-    zIndex: 0,
-    scale3d: 55,
-    rotation3d: [0.35, 0.5, 0] as [number, number, number],
-  };
 
   return [
     {
@@ -74,16 +63,28 @@ function buildLightingSceneNodes(): SerializedNode[] {
       id: 'light-key',
       type: 'light3d',
       lightType: 'directional',
-      direction: [-0.45, -0.65, -0.55],
-      intensity: 0.85,
+      direction: [0.45, 0.65, 0.55],
+      intensity: 1.8,
       zIndex: -3,
     },
     {
       id: 'light-fill',
       type: 'light3d',
       lightType: 'directional',
-      direction: [0.12, -0.28, 0.88],
-      intensity: 0.42,
+      direction: [-0.12, 0.28, -0.88],
+      intensity: 0.35,
+      zIndex: -3,
+    },
+    {
+      id: 'light-point',
+      type: 'light3d',
+      lightType: 'point',
+      x: 145,
+      y: 55,
+      z: -100,
+      color: '#a8d8ff',
+      intensity: 6,
+      range: 350,
       zIndex: -3,
     },
     {
@@ -95,20 +96,26 @@ function buildLightingSceneNodes(): SerializedNode[] {
       z: spotZ,
       direction: [dx / len, dy / len, dz / len],
       color: '#ffe6b3',
-      intensity: 1.4,
-      range: 0,
+      intensity: 6,
+      range: 350,
       zIndex: -3,
     },
     {
       id: 'cube-red',
-      ...cubeBase,
+      type: 'mesh3d',
       x: 50,
+      y: 80,
+      width: 60,
+      height: 60,
+      z: 40,
+      zIndex: 0,
+      scale3d: 55,
+      rotation3d: [0.35, 0.5, 0],
       material3d: {
         baseColor: '#f25952',
         ambient: 0.5,
-        diffuse: 0.75,
-        specular: 0.35,
-        shininess: 32,
+        metallic: 0,
+        roughness: 0.75,
       },
       camera3d: {
         linked: true,
@@ -117,34 +124,48 @@ function buildLightingSceneNodes(): SerializedNode[] {
       },
     },
     {
-      id: 'cube-white',
-      ...cubeBase,
+      id: 'sphere-white',
+      type: 'mesh3d',
+      geometry: { type: 'sphere', segments: [24, 16] },
       x: 150,
+      y: 80,
+      width: 60,
+      height: 60,
+      z: 40,
+      zIndex: 0,
+      scale3d: 55,
+      rotation3d: [0.35, 0.5, 0],
       material3d: {
         baseColor: '#ebeff2',
         ambient: 0.5,
-        diffuse: 0.75,
-        specular: 0.65,
-        shininess: 96,
+        metallic: 1,
+        roughness: 0.25,
       },
     },
     {
-      id: 'cube-blue',
-      ...cubeBase,
+      id: 'cylinder-blue',
+      type: 'mesh3d',
+      geometry: { type: 'cylinder', segments: 24 },
       x: 250,
+      y: 80,
+      width: 60,
+      height: 70,
+      z: 40,
+      zIndex: 0,
+      scale3d: [55, 65, 55],
+      rotation3d: [0.35, 0.5, 0],
       material3d: {
         baseColor: '#478cf2',
         ambient: 0.5,
-        diffuse: 0.75,
-        specular: 0.45,
-        shininess: 48,
+        metallic: 0,
+        roughness: 0.2,
       },
     },
   ];
 }
 
 describe('Lighting', () => {
-  it('should render three lit cubes with ambient, directional, and spot lights', async () => {
+  it('should render three materials under four explicit light types', async () => {
     const app = new App();
 
     let $canvas: HTMLCanvasElement;

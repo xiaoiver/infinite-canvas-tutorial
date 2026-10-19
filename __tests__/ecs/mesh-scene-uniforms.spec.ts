@@ -117,6 +117,7 @@ it.each([
   camera.projection = 'perspective';
   let entity: Entity | undefined = linked.entity;
   uniforms.update(camera, 2, entity, []);
+  expect(data[51]).toBeLessThan(0);
   if (input === 'vp') linked.computed.viewProjectionMatrix.m20 = 0.5;
   else if (input === 'view') linked.computed.viewMatrix.m20 = 2;
   else if (input === 'x' || input === 'y' || input === 'zoom')
@@ -150,7 +151,18 @@ it('updates linked orthographic VP and depth, ignoring perspective-only paramete
   uniforms.update(camera, 3, entity, []);
   expect(data[12]).toBe(0.25);
   expect(data[10]).toBe(0);
-  expect([...data.slice(48, 52)]).toEqual([0, 0, 0, 0]);
+  expect([...data.slice(48, 52)]).toEqual([0, 0, -1, -1]);
+});
+
+it('packs the actual eye for perspective and a constant direction for orthographic lighting', () => {
+  const { uniforms, camera, data } = setup();
+  camera.eye = [30, 20, 80];
+  camera.center = [10, 5, 0];
+  uniforms.update(camera, 2, undefined, []);
+  expect([...data.slice(48, 52)]).toEqual([30, 20, 0, 80]);
+  camera.projection = 'orthographic';
+  uniforms.update(camera, 2, undefined, []);
+  expect([...data.slice(48, 52)]).toEqual([20, 15, -1, 80]);
 });
 
 it('packs custom lights, clamps spot cones and clears removed slots without rebuilding matrices', () => {
@@ -177,14 +189,22 @@ it('packs custom lights, clamps spot cones and clears removed slots without rebu
     spot,
   ];
   const legacy = uniforms.update(camera, 2, undefined, lights);
-  expect([...data.slice(52, 56)]).toEqual(
-    [0.23, 0.26, 0.29, 1].map(Math.fround),
-  );
-  expect(data[56]).toBe(2); // spot + directional fill
+  const linear = (color: number) =>
+    color <= 0.04045 ? color / 12.92 : ((color + 0.055) / 1.055) ** 2.4;
+  expect(data[52]).toBeCloseTo(linear(0.1) * 0.3 + 0.2);
+  expect(data[53]).toBeCloseTo(linear(0.2) * 0.3 + 0.2);
+  expect(data[54]).toBeCloseTo(linear(0.3) * 0.3 + 0.2);
+  expect(data[56]).toBe(1); // explicit spot, with no injected directional light
   expect([...data.slice(60, 64)]).toEqual([2, 3, 4, 0]);
-  expect([...data.slice(92, 96)]).toEqual([0, -1, 0, 1]);
-  expect([...data.slice(124, 128)]).toEqual([1, 0.5, 0.25, 0]);
-  expect([...data.slice(156, 164)]).toEqual([3, 2, 40, 1, 1, 0.75, 0, 0]);
+  expect(data[92]).toBe(0);
+  expect(data[93]).toBe(-1);
+  expect(data[95]).toBeCloseTo(Math.cos(0.01), 6);
+  expect(data[159] - data[95]).toBeGreaterThan(1e-5);
+  expect(data[124]).toBe(1);
+  expect(data[125]).toBeCloseTo(linear(0.5));
+  expect(data[126]).toBeCloseTo(linear(0.25));
+  expect([...data.slice(156, 159)]).toEqual([3, 2, 40]);
+  expect(data[159]).toBe(1);
   spot.innerConeAngle = 0.5;
   spot.outerConeAngle = 0.25;
   spot.color[0] = 0.2;
@@ -193,11 +213,11 @@ it('packs custom lights, clamps spot cones and clears removed slots without rebu
   spot.intensity = 3;
   spot.range = 20;
   uniforms.update(camera, 2, undefined, lights);
-  expect(data[95]).toBeCloseTo(Math.cos(0.5));
+  expect(data[95]).toBeCloseTo(Math.cos(0.51), 6);
   expect(data[159]).toBeCloseTo(Math.cos(0.5));
   expect(data[60]).toBe(5);
   expect(data[92]).toBeCloseTo(0.4);
-  expect(data[124]).toBeCloseTo(0.2);
+  expect(data[124]).toBeCloseTo(linear(0.2));
   expect([...data.slice(156, 159)]).toEqual([3, 3, 20]);
   expect(legacy.u_LightPositions).toEqual(data.slice(60, 92));
   uniforms.update(camera, 2, undefined, lights);
@@ -211,6 +231,30 @@ it('packs custom lights, clamps spot cones and clears removed slots without rebu
   uniforms.update(camera, 2, undefined, []);
   expect([...data.slice(52, 56)]).toEqual([1, 1, 1, 1]);
   expect(projection).toHaveBeenCalledTimes(1);
+});
+
+it('sanitizes invalid light values before uploading them to the shader', () => {
+  const { uniforms, camera, data } = setup();
+  const light = new Light3D({
+    type: 'spot',
+    color: [NaN, 2, -1],
+    intensity: -4,
+    position: [NaN, 2, Infinity],
+    direction: [0, 0, 0],
+    range: Infinity,
+    innerConeAngle: NaN,
+    outerConeAngle: NaN,
+  });
+  uniforms.update(camera, 1, undefined, [light]);
+  expect([...data.slice(60, 63)]).toEqual([0, 2, 0]);
+  expect([...data.slice(92, 95)]).toEqual([-0.5, -0.7, -0.5].map(Math.fround));
+  expect([...data.slice(124, 127)]).toEqual([0, 1, 0]);
+  expect([...data.slice(156, 159)]).toEqual([3, 0, 0]);
+  expect(data[95]).toBeCloseTo(Math.cos(Math.PI / 4));
+  expect(data[159]).toBeCloseTo(Math.cos(Math.PI / 8));
+  light.intensity = NaN;
+  uniforms.update(camera, 1, undefined, [light]);
+  expect(data[157]).toBe(0);
 });
 
 it('caps punctual lights at eight while accumulating all ambient lights', () => {

@@ -36,7 +36,9 @@ export function buildCamera3DSceneUniforms(
       projMatrix: mat3ViewProjectionToMat4(vp, zScale),
       viewMatrix: Mat4.IDENTITY,
       canvasViewProjection: Mat4.IDENTITY,
-      sceneParams: [0, 0, 0, 0],
+      // The linked canvas projection views meshes from negative z.
+      // z=-1 marks a constant orthographic view direction for lighting.
+      sceneParams: [0, 0, -1, -1],
     };
   }
 
@@ -65,7 +67,9 @@ export function buildCamera3DSceneUniforms(
         computed.viewProjectionMatrix,
         0,
       ),
-      sceneParams: [computed.x, computed.y, 1, eyeZ],
+      // The linked-perspective XY warp views the near (smaller-z) faces.
+      // Shading therefore uses the effective eye on the negative-z side.
+      sceneParams: [computed.x, computed.y, 1, -eyeZ],
     };
   }
 
@@ -88,12 +92,25 @@ export function buildCamera3DSceneUniforms(
   }
   viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
 
+  const view = camera.projection === 'orthographic'
+    ? camera.eye.map((value, index) => value - camera.center[index])
+    : camera.eye;
+  const length = Math.hypot(...view);
+  const viewVector = length > 1e-8 && Number.isFinite(length)
+    ? view
+    : [0, 0, 1];
+
   return {
     mode: 'standard',
     projMatrix,
     viewMatrix,
     canvasViewProjection: Mat4.IDENTITY,
-    sceneParams: [0, 0, 0, 0],
+    sceneParams: [
+      viewVector[0],
+      viewVector[1],
+      camera.projection === 'orthographic' ? -1 : 0,
+      viewVector[2],
+    ],
   };
 }
 
