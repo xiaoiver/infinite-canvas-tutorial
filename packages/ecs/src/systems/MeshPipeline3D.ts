@@ -88,6 +88,7 @@ import type { API } from '../API';
 import {
   MeshSceneUniforms,
   MESH_SCENE_UNIFORM_FLOATS,
+  MAX_SHADOW_LIGHTS,
 } from './mesh3d/mesh-scene-uniforms';
 
 /** Async base-color texture state, cached per canvas owner + URL. */
@@ -301,8 +302,8 @@ export class MeshPipeline3D extends System {
     canvas: Entity,
     width: number,
     height: number,
-    shadowTexture?: Texture,
-    shadowFrame?: ShadowFrame,
+    shadowTextures: readonly Texture[] = [],
+    shadowFrames: readonly ShadowFrame[] = [],
   ): void {
     if (width <= 0 || height <= 0) {
       return;
@@ -334,19 +335,12 @@ export class MeshPipeline3D extends System {
       aspect,
       cam2d,
       filterEntitiesForCanvas(this.lights3D.current, canvas, canvasCount),
-      shadowTexture && shadowFrame
-        ? {
-            viewProjection: shadowFrame.viewProjection,
-            lightIndex: shadowFrame.lightIndex,
-            texelSize: 1 / SHADOW_MAP_SIZE,
-            ...(shadowFrame.faces
-              ? {
-                  texelSize: 1 / POINT_SHADOW_FACE_SIZE,
-                  faces: shadowFrame.faces,
-                }
-              : {}),
-          }
-        : undefined,
+      shadowFrames.slice(0, shadowTextures.length).map((frame) => ({
+        viewProjection: frame.viewProjection,
+        lightIndex: frame.lightIndex,
+        texelSize: 1 / (frame.faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE),
+        faces: frame.faces,
+      })),
     );
 
     renderPass.setViewport(0, 0, width, height);
@@ -402,7 +396,8 @@ export class MeshPipeline3D extends System {
         specularTexture,
         bumpTexture,
         environmentTexture,
-        shadowTexture ?? state.whiteTexture,
+        shadowTextures[0] ?? state.whiteTexture,
+        shadowTextures[1] ?? state.whiteTexture,
         state.shadowSampler,
         environmentMapReady
           ? this.resolveEnvironmentBrdf(state)
@@ -434,13 +429,10 @@ export class MeshPipeline3D extends System {
     }
   }
 
-  /** Add a depth-map pass before the shared 3D/2D pass for the first eligible light. */
-  scheduleShadowPass(
-    builder: RGGraphBuilder,
-    canvas: Entity,
-  ): ShadowFrame | undefined {
+  /** Add depth-map passes before the shared 3D/2D pass for up to two lights. */
+  scheduleShadowPass(builder: RGGraphBuilder, canvas: Entity): ShadowFrame[] {
     const state = this.initPipeline(canvas);
-    if (!state || !this.shouldComposite(canvas)) return undefined;
+    if (!state || !this.shouldComposite(canvas)) return [];
     const meshes = this.collectMeshEntities(canvas);
     const bounds = meshes.flatMap((entity) => {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
@@ -456,9 +448,12 @@ export class MeshPipeline3D extends System {
       this.canvases.current.length || 1,
     );
     let lightIndex = 0;
-    let shadowLight: Light3D | undefined;
-    let viewProjection: Float32Array | null = null;
-    let faces: Float32Array[] | null = null;
+    const casters: {
+      type: 'directional' | 'point' | 'spot';
+      lightIndex: number;
+      viewProjection: Float32Array;
+      faces: Float32Array[] | null;
+    }[] = [];
     for (const entity of lights) {
       const light = entity.read(Light3D);
       if (light.type === 'ambient') continue;
@@ -470,11 +465,11 @@ export class MeshPipeline3D extends System {
         light.castShadow &&
         light.intensity > 0
       ) {
-        faces =
+        const faces =
           light.type === 'point'
             ? fitPointShadow(light.position, light.range, bounds)
             : null;
-        viewProjection =
+        const viewProjection =
           faces?.[0] ??
           (light.type === 'spot'
             ? fitSpotShadow(
@@ -488,92 +483,98 @@ export class MeshPipeline3D extends System {
             ? fitDirectionalShadow(light.direction, bounds)
             : null);
         if (viewProjection) {
-          shadowLight = light;
-          break;
+          casters.push({ type: light.type, lightIndex, viewProjection, faces });
+          if (casters.length === MAX_SHADOW_LIGHTS) break;
         }
       }
       lightIndex++;
     }
-    if (!shadowLight || !viewProjection) return undefined;
+    if (!casters.length) return [];
     if (!state.shadowSceneBuffers) {
-      state.shadowSceneBuffers = Array.from({ length: 6 }, () => {
-        const buffer = state.device.createBuffer({
-          viewOrSize: 16 * 4,
-          usage: BufferUsage.UNIFORM,
-          hint: BufferFrequencyHint.DYNAMIC,
-        });
-        state.shadowResources.add(() => buffer.destroy());
-        return buffer;
-      });
-    }
-    const matrices = faces ?? [viewProjection];
-    const size = faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE;
-    const targetWidth = faces ? size * POINT_SHADOW_COLUMNS : size;
-    const targetHeight = faces ? size * POINT_SHADOW_ROWS : size;
-    const color = new RGRenderTargetDescription(Format.U8_RGBA_RT);
-    color.setDimensions(targetWidth, targetHeight, 1);
-    color.colorClearColor = TransparentWhite;
-    color.sampledForShaderRead = true;
-    const depth = new RGRenderTargetDescription(Format.D24_S8);
-    depth.setDimensions(targetWidth, targetHeight, 1);
-    depth.depthClearValue = 1;
-    depth.stencilClearValue = 0;
-    const passName =
-      shadowLight.type === 'spot'
-        ? 'Spot Shadow'
-        : shadowLight.type === 'point'
-        ? 'Point Shadow'
-        : 'Directional Shadow';
-    const colorID = builder.createRenderTargetID(color, `${passName} Color`);
-    const depthID = builder.createRenderTargetID(depth, `${passName} Depth`);
-    builder.pushPass((pass) => {
-      pass.setDebugName(`${passName} Map`);
-      pass.attachRenderTargetID(RGAttachmentSlot.Color0, colorID);
-      pass.attachRenderTargetID(RGAttachmentSlot.DepthStencil, depthID);
-      pass.exec((renderPass) => {
-        renderPass.setPipeline(state.shadowPipeline);
-        matrices.forEach((matrix, face) => {
-          const shadowSceneBuffer = state.shadowSceneBuffers![face];
-          shadowSceneBuffer.setSubData(0, new Uint8Array(matrix.buffer));
-          state.shadowProgram.setUniformsLegacy({
-            u_ShadowLightViewProjection: matrix,
+      state.shadowSceneBuffers = Array.from(
+        { length: MAX_SHADOW_LIGHTS * 6 },
+        () => {
+          const buffer = state.device.createBuffer({
+            viewOrSize: 16 * 4,
+            usage: BufferUsage.UNIFORM,
+            hint: BufferFrequencyHint.DYNAMIC,
           });
-          renderPass.setViewport(
-            (face % POINT_SHADOW_COLUMNS) * size,
-            Math.floor(face / POINT_SHADOW_COLUMNS) * size,
-            size,
-            size,
-          );
-          for (const entity of meshes) {
-            const gpu = state.meshGPUCache.get(
-              entity.__id,
-              entity.read(Mesh3D),
-            );
-            if (!gpu) continue;
-            gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+          state.shadowResources.add(() => buffer.destroy());
+          return buffer;
+        },
+      );
+    }
+    return casters.map(({ type, lightIndex, viewProjection, faces }, slot) => {
+      const matrices = faces ?? [viewProjection];
+      const size = faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE;
+      const targetWidth = faces ? size * POINT_SHADOW_COLUMNS : size;
+      const targetHeight = faces ? size * POINT_SHADOW_ROWS : size;
+      const color = new RGRenderTargetDescription(Format.U8_RGBA_RT);
+      color.setDimensions(targetWidth, targetHeight, 1);
+      color.colorClearColor = TransparentWhite;
+      color.sampledForShaderRead = true;
+      const depth = new RGRenderTargetDescription(Format.D24_S8);
+      depth.setDimensions(targetWidth, targetHeight, 1);
+      depth.depthClearValue = 1;
+      depth.stencilClearValue = 0;
+      const passName =
+        type === 'spot'
+          ? 'Spot Shadow'
+          : type === 'point'
+          ? 'Point Shadow'
+          : 'Directional Shadow';
+      const colorID = builder.createRenderTargetID(color, `${passName} Color`);
+      const depthID = builder.createRenderTargetID(depth, `${passName} Depth`);
+      builder.pushPass((pass) => {
+        pass.setDebugName(`${passName} Map ${slot + 1}`);
+        pass.attachRenderTargetID(RGAttachmentSlot.Color0, colorID);
+        pass.attachRenderTargetID(RGAttachmentSlot.DepthStencil, depthID);
+        pass.exec((renderPass) => {
+          renderPass.setPipeline(state.shadowPipeline);
+          matrices.forEach((matrix, face) => {
+            const shadowSceneBuffer =
+              state.shadowSceneBuffers![slot * 6 + face];
+            shadowSceneBuffer.setSubData(0, new Uint8Array(matrix.buffer));
             state.shadowProgram.setUniformsLegacy({
-              u_ShadowModelMatrix: gpu.modelUniforms.getModelMatrix(),
+              u_ShadowLightViewProjection: matrix,
             });
-            renderPass.setBindings(
-              gpu.shadowBindings.get(state.shadowPipeline, shadowSceneBuffer),
+            renderPass.setViewport(
+              (face % POINT_SHADOW_COLUMNS) * size,
+              Math.floor(face / POINT_SHADOW_COLUMNS) * size,
+              size,
+              size,
             );
-            renderPass.setVertexInput(
-              state.shadowInputLayout,
-              [{ buffer: gpu.vertexBuffer }],
-              gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
-            );
-            if (gpu.indexBuffer) renderPass.drawIndexed(gpu.indexCount);
-            else renderPass.draw(gpu.vertexCount);
-          }
+            for (const entity of meshes) {
+              const gpu = state.meshGPUCache.get(
+                entity.__id,
+                entity.read(Mesh3D),
+              );
+              if (!gpu) continue;
+              gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+              state.shadowProgram.setUniformsLegacy({
+                u_ShadowModelMatrix: gpu.modelUniforms.getModelMatrix(),
+              });
+              renderPass.setBindings(
+                gpu.shadowBindings.get(state.shadowPipeline, shadowSceneBuffer),
+              );
+              renderPass.setVertexInput(
+                state.shadowInputLayout,
+                [{ buffer: gpu.vertexBuffer }],
+                gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
+              );
+              if (gpu.indexBuffer) renderPass.drawIndexed(gpu.indexCount);
+              else renderPass.draw(gpu.vertexCount);
+            }
+          });
         });
       });
+      return {
+        viewProjection,
+        faces: faces ?? undefined,
+        lightIndex,
+        resolveID: builder.resolveRenderTarget(colorID),
+      };
     });
-    return {
-      viewProjection,
-      faces: faces ?? undefined,
-      lightIndex,
-      resolveID: builder.resolveRenderTarget(colorID),
-    };
   }
 
   /** Color clear descriptor for the 3D pass (first pass in the shared graph). */

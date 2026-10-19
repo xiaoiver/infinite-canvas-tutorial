@@ -5,7 +5,8 @@ import { LIGHT_3D_TYPE, Light3D } from '../../components/geometry3d/Light3D';
 import type { Mat3 } from '../../components/math/Mat3';
 import { buildCamera3DSceneUniforms } from '../../utils/mesh3d-scene';
 
-export const MESH_SCENE_UNIFORM_FLOATS = 304;
+export const MAX_SHADOW_LIGHTS = 2;
+export const MESH_SCENE_UNIFORM_FLOATS = 420;
 const MAX_LIGHTS = 8;
 const defaultAmbient = new Light3D({ type: 'ambient' });
 const defaultDirectional = new Light3D({ type: 'directional' });
@@ -51,9 +52,9 @@ export class MeshSceneUniforms {
     u_LightDirections: this.data.subarray(92, 124),
     u_LightColors: this.data.subarray(124, 156),
     u_LightParams3D: this.data.subarray(156, 188),
-    u_ShadowViewProjection: this.data.subarray(188, 204),
-    u_ShadowParams: this.data.subarray(204, 208),
-    u_ShadowFaces: this.data.subarray(208, 304),
+    u_ShadowViewProjection: this.data.subarray(188, 220),
+    u_ShadowParams: this.data.subarray(220, 228),
+    u_ShadowFaces: this.data.subarray(228, 420),
   };
 
   constructor(private readonly buffer: Buffer) {}
@@ -63,12 +64,12 @@ export class MeshSceneUniforms {
     aspect: number,
     cam2d: Entity | undefined,
     lights: readonly Entity[],
-    shadow?: {
+    shadows?: readonly {
       viewProjection: Float32Array;
       lightIndex: number;
       texelSize: number;
       faces?: readonly Float32Array[];
-    },
+    }[],
   ): Record<string, unknown> {
     const values = this.inputs;
     values.length = 0;
@@ -131,26 +132,24 @@ export class MeshSceneUniforms {
       this.lightInputs = values.slice();
       this.dirty = true;
     }
-    const shadowValues = shadow
-      ? [
-          ...shadow.viewProjection,
-          shadow.lightIndex + 1,
-          shadow.texelSize,
-          Number(!!shadow.faces),
-          ...(shadow.faces?.flatMap((face) => [...face]) ?? []),
-        ]
-      : [0];
+    const shadowValues = shadows?.flatMap((shadow) => [
+      ...shadow.viewProjection,
+      shadow.lightIndex + 1,
+      shadow.texelSize,
+      Number(!!shadow.faces),
+      ...(shadow.faces?.flatMap((face) => [...face]) ?? []),
+    ]) ?? [0];
     if (!same(shadowValues, this.shadowInputs)) {
       this.data.fill(0, 188, MESH_SCENE_UNIFORM_FLOATS);
-      if (shadow) {
-        this.data.set(shadow.viewProjection, 188);
-        this.data[204] = shadow.lightIndex + 1;
-        this.data[205] = shadow.texelSize;
-        this.data[206] = Number(!!shadow.faces);
+      shadows?.slice(0, MAX_SHADOW_LIGHTS).forEach((shadow, slot) => {
+        this.data.set(shadow.viewProjection, 188 + slot * 16);
+        this.data[220 + slot * 4] = shadow.lightIndex + 1;
+        this.data[221 + slot * 4] = shadow.texelSize;
+        this.data[222 + slot * 4] = Number(!!shadow.faces);
         shadow.faces?.forEach((face, index) =>
-          this.data.set(face, 208 + index * 16),
+          this.data.set(face, 228 + (slot * 6 + index) * 16),
         );
-      }
+      });
       this.shadowInputs = shadowValues;
       this.dirty = true;
     }
