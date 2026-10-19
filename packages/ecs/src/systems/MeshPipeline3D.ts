@@ -73,7 +73,7 @@ import {
   unregisterMeshPipeline3D,
 } from './mesh3d-bridge';
 import { RenderGizmo3D } from './RenderGizmo3D';
-import { MeshGPUCache } from './mesh3d/mesh-gpu-cache';
+import { MeshGPUCache, type MeshGPUData } from './mesh3d/mesh-gpu-cache';
 import {
   fitDirectionalShadow,
   fitPointShadow,
@@ -500,11 +500,14 @@ export class MeshPipeline3D extends System {
       (entity) => entity.read(Material3D).castShadow,
     );
     if (!shadowCasters.length) return [];
+    const casterIds = shadowCasters.map((entity) => entity.__id);
     const boundsById = new Map<number, ShadowCasterBounds>();
+    const gpuById = new Map<number, MeshGPUData>();
     const bounds = meshes.flatMap((entity) => {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
       if (!gpu) return [];
       gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+      gpuById.set(entity.__id, gpu);
       const bound = {
         ...gpu.localBounds,
         model: gpu.modelUniforms.getModelMatrix(),
@@ -552,9 +555,9 @@ export class MeshPipeline3D extends System {
       number,
       ReturnType<typeof meshWorldCorners>
     >();
-    for (const entity of shadowCasters) {
-      const bound = boundsById.get(entity.__id);
-      if (bound) casterCorners.set(entity.__id, meshWorldCorners(bound));
+    for (const id of casterIds) {
+      const bound = boundsById.get(id);
+      if (bound) casterCorners.set(id, meshWorldCorners(bound));
     }
     if (!state.shadowSceneBuffers) {
       state.shadowSceneBuffers = Array.from(
@@ -622,16 +625,14 @@ export class MeshPipeline3D extends System {
               size,
               size,
             );
-            for (const entity of shadowCasters) {
-              const corners = casterCorners.get(entity.__id);
+            for (const id of casterIds) {
+              const corners = casterCorners.get(id);
               if (corners && !intersectsShadowFrustum(corners, matrix))
                 continue;
-              const gpu = state.meshGPUCache.get(
-                entity.__id,
-                entity.read(Mesh3D),
-              );
+              // The pass executes after scheduling, when ECS read views may be
+              // invalid. Geometry and pose were captured for this frame above.
+              const gpu = gpuById.get(id);
               if (!gpu) continue;
-              gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
               state.shadowProgram.setUniformsLegacy({
                 u_ShadowModelMatrix: gpu.modelUniforms.getModelMatrix(),
               });
