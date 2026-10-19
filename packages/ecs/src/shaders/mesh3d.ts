@@ -440,6 +440,7 @@ vec3 shadeLight(
 }
 
 vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
+  if (abs(bumpScale) < 1e-6) return normal;
   vec3 dp1 = dFdx(v_FragPos);
   vec3 dp2 = dFdy(v_FragPos);
   vec2 duv1 = dFdx(uv);
@@ -449,6 +450,9 @@ vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
   vec3 tangent = dp1perp * duv2.x + dp2perp * duv1.x;
   vec3 bitangent = dp1perp * duv2.y + dp2perp * duv1.y;
   float maxLen = max(dot(tangent, tangent), dot(bitangent, bitangent));
+  // glTF meshes without UVs use zero coordinates; their tangent basis cannot
+  // be normalized. Keep the geometric normal instead of producing NaNs.
+  if (!(maxLen > 0.0)) return normal;
   float invmax = inversesqrt(maxLen);
   tangent *= invmax;
   bitangent *= invmax;
