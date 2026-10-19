@@ -8,6 +8,7 @@ describe('Light3D', () => {
     expect(light.color).toEqual([1, 1, 1]);
     expect(light.intensity).toBe(1);
     expect(light.direction).toEqual([-0.5, -0.7, -0.5]);
+    expect(light.castShadow).toBe(false);
   });
 
   it('should support ambient, point, and spot lights', () => {

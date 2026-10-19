@@ -57,6 +57,9 @@ export class Light3D {
    */
   @field.float32 declare outerConeAngle: number;
 
+  /** Render a shadow map for this directional light (first enabled light wins). */
+  @field.boolean declare castShadow: boolean;
+
   constructor(light?: Partial<Light3D>) {
     if (light) {
       Object.assign(this, light);
@@ -69,5 +72,6 @@ export class Light3D {
     this.range ??= 0;
     this.innerConeAngle ??= Math.PI / 8;
     this.outerConeAngle ??= Math.PI / 4;
+    this.castShadow ??= false;
   }
 }

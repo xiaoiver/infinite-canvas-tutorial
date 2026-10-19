@@ -94,6 +94,7 @@ const state = (editor = api) => {
       'range',
       'innerConeAngle',
       'outerConeAngle',
+      'castShadow',
     ]);
   const source = e.read(Mesh3DNode);
   const companion = source.meshEntity!;
@@ -231,6 +232,7 @@ it.each([
   ['range', 100],
   ['innerConeAngle', 0],
   ['outerConeAngle', 0.2],
+  ['castShadow', true],
 ] as const)(
   'restores light %s defaults through history and reload',
   async (key, value) => {

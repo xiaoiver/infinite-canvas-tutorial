@@ -3,14 +3,14 @@ import type { Entity } from '../../packages/ecs/src';
 import { Camera, Camera3D, Light3D } from '../../packages/ecs/src/components';
 import { Mat3 } from '../../packages/ecs/src/components/math/Mat3';
 import { Mat4 } from '../../packages/ecs/src/components/math/Mat4';
-import { MeshSceneUniforms } from '../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
+import { MeshSceneUniforms, MESH_SCENE_UNIFORM_FLOATS } from '../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
 import {
   buildCamera3DSceneUniforms,
   packSceneUniformBuffer,
 } from '../../packages/ecs/src/utils/mesh3d-scene';
 
 function setup() {
-  const bytes = new Uint8Array(188 * 4);
+  const bytes = new Uint8Array(MESH_SCENE_UNIFORM_FLOATS * 4);
   const upload = jest.fn((offset: number, value: Uint8Array) =>
     bytes.set(value, offset),
   );
@@ -25,12 +25,14 @@ function setup() {
         aspect: number,
         cam2d: Entity | undefined,
         lights: Light3D[],
+        shadow?: { viewProjection: Float32Array; lightIndex: number; texelSize: number },
       ) =>
         uniforms.update(
           camera,
           aspect,
           cam2d,
           lights.map((light) => ({ read: () => light } as unknown as Entity)),
+          shadow,
         ),
     },
     camera,
@@ -66,7 +68,35 @@ it('keeps camera matrices, typed views and uploads stable for equivalent inputs'
     expect(uniforms.update(new Camera3D(), 2, undefined, [])).toBe(legacy);
   expect(upload).toHaveBeenCalledTimes(1);
   expect(projection).toHaveBeenCalledTimes(1);
-  expect(legacy.u_LightParams3D).toEqual(data.slice(156));
+  expect(legacy.u_LightParams3D).toEqual(data.slice(156, 188));
+});
+
+it('uploads the selected shadow matrix and clears it when disabled', () => {
+  const { uniforms, camera, data, upload } = setup();
+  const light = new Light3D({ type: 'directional' });
+  const matrix = new Float32Array(16);
+  matrix[0] = 2;
+  matrix[5] = 3;
+  matrix[10] = 4;
+  matrix[15] = 1;
+  uniforms.update(camera, 1, undefined, [light], {
+    viewProjection: matrix, lightIndex: 1, texelSize: 1 / 1024,
+  });
+  expect([...data.slice(188, 204)]).toEqual([...matrix]);
+  expect([...data.slice(204, 206)]).toEqual([2, 1 / 1024]);
+  const calls = upload.mock.calls.length;
+  light.intensity = 2;
+  uniforms.update(camera, 1, undefined, [light], {
+    viewProjection: matrix, lightIndex: 1, texelSize: 1 / 1024,
+  });
+  expect(upload).toHaveBeenCalledTimes(calls + 1);
+  expect([...data.slice(188, 204)]).toEqual([...matrix]);
+  uniforms.update(camera, 1, undefined, [light], {
+    viewProjection: matrix, lightIndex: 1, texelSize: 1 / 1024,
+  });
+  expect(upload).toHaveBeenCalledTimes(calls + 1);
+  uniforms.update(camera, 1, undefined, []);
+  expect([...data.slice(188, 208)]).toEqual(Array(20).fill(0));
 });
 
 it.each([

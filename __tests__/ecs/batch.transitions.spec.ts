@@ -150,6 +150,16 @@ it('reuses compatible shared batches after all members have left', () => {
   expect(destroy).toHaveBeenCalledTimes(1);
 });
 
+it('keeps the same shared drawcall when a batchable shape is added again', () => {
+  const batch = manager();
+  const node = shape();
+  batch.add(node.entity);
+  const first = queued(batch)[0];
+  batch.add(node.entity);
+  expect(queued(batch)).toEqual([first]);
+  expect(first.shapes).toEqual([node.entity]);
+});
+
 it('keeps incompatible fills in separate batches', () => {
   const batch = manager();
   const red = shape(Rect, true, [

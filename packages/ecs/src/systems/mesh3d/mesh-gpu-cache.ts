@@ -5,6 +5,7 @@ import {
   type Device,
 } from '@infinite-canvas-tutorial/device-api';
 import { MeshDrawBindings } from './mesh-draw-bindings';
+import { ShadowDrawBindings } from './shadow-draw-bindings';
 import type { Mesh3D } from '../../components/geometry3d/Mesh3D';
 import { ResourceScope } from '../../resources/ResourceScope';
 import {
@@ -23,6 +24,8 @@ export interface MeshGPUData {
   modelUniformBuffer: Buffer;
   modelUniforms: MeshModelUniforms;
   bindings: MeshDrawBindings;
+  shadowBindings: ShadowDrawBindings;
+  localBounds: { min: [number, number, number]; max: [number, number, number] };
 }
 
 interface Entry {
@@ -111,8 +114,11 @@ export class MeshGPUCache {
           this.device,
           geometry.modelUniformBuffer,
         ),
+        shadowBindings: new ShadowDrawBindings(this.device, geometry.modelUniformBuffer),
+        localBounds: meshBounds(mesh.positions),
       };
       scope.add(() => data.bindings.destroy());
+      scope.add(() => data.shadowBindings.destroy());
     } catch (error) {
       // Keep the previous entry dirty for retry; never publish partial buffers.
       try {
@@ -136,4 +142,16 @@ export class MeshGPUCache {
     this.disposed = true;
     this.retain(new Set());
   }
+}
+
+function meshBounds(positions: Float32Array): MeshGPUData['localBounds'] {
+  const min: [number, number, number] = [Infinity, Infinity, Infinity];
+  const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < positions.length; i += 3) {
+    for (let axis = 0; axis < 3; axis++) {
+      min[axis] = Math.min(min[axis], positions[i + axis]);
+      max[axis] = Math.max(max[axis], positions[i + axis]);
+    }
+  }
+  return { min, max };
 }

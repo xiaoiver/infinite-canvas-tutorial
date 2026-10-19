@@ -34,5 +34,6 @@ export function light3DFromWire(node: Light3DNodeSerializedNode): Light3D {
     range: node.range,
     innerConeAngle: node.innerConeAngle,
     outerConeAngle: node.outerConeAngle,
+    castShadow: node.castShadow,
   });
 }

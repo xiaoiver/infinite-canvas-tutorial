@@ -19,6 +19,8 @@ function setup() {
     Texture,
     Texture,
     Texture,
+    Texture,
+    Sampler,
   ] = [
     {} as RenderPipeline,
     {} as Buffer,
@@ -27,6 +29,8 @@ function setup() {
     {} as Texture,
     {} as Texture,
     {} as Texture,
+    {} as Texture,
+    {} as Sampler,
   ];
   return { gpu, model, cache, args };
 }
@@ -39,6 +43,8 @@ it.each([
   'specular',
   'bump',
   'environment',
+  'shadow',
+  'shadow sampler',
 ])('reuses bindings until the %s resource changes', (kind) => {
   const { gpu, model, cache, args } = setup();
   const first = cache.get(...args);
@@ -52,6 +58,8 @@ it.each([
     'specular',
     'bump',
     'environment',
+    'shadow',
+    'shadow sampler',
   ].indexOf(kind);
   args[index] = {} as Texture & Sampler & Buffer & RenderPipeline;
   const second = cache.get(...args);
@@ -60,9 +68,10 @@ it.each([
   expect(gpu.mocks.createBindings).toHaveBeenLastCalledWith({
     pipeline: args[0],
     uniformBufferBindings: [{ buffer: args[1] }, { buffer: model }],
-    samplerBindings: args
-      .slice(3)
-      .map((texture) => ({ texture, sampler: args[2] })),
+    samplerBindings: [
+      ...args.slice(3, 7).map((texture) => ({ texture, sampler: args[2] })),
+      { texture: args[7], sampler: args[8] },
+    ],
   });
   expect(first.destroy).toHaveBeenCalledTimes(1);
   expect(cache.get(...args)).toBe(second);

@@ -5,7 +5,7 @@ import { LIGHT_3D_TYPE, Light3D } from '../../components/geometry3d/Light3D';
 import type { Mat3 } from '../../components/math/Mat3';
 import { buildCamera3DSceneUniforms } from '../../utils/mesh3d-scene';
 
-export const MESH_SCENE_UNIFORM_FLOATS = 188;
+export const MESH_SCENE_UNIFORM_FLOATS = 208;
 const MAX_LIGHTS = 8;
 const defaultAmbient = new Light3D({ type: 'ambient' });
 const defaultDirectional = new Light3D({ type: 'directional' });
@@ -37,6 +37,7 @@ export class MeshSceneUniforms {
   private readonly inputs: number[] = [];
   private cameraInputs: number[] = [];
   private lightInputs: number[] = [-1];
+  private shadowInputs: number[] = [];
   private readonly ambient = [0, 0, 0, 1];
   private dirty = true;
   private readonly legacy = {
@@ -50,6 +51,8 @@ export class MeshSceneUniforms {
     u_LightDirections: this.data.subarray(92, 124),
     u_LightColors: this.data.subarray(124, 156),
     u_LightParams3D: this.data.subarray(156, 188),
+    u_ShadowViewProjection: this.data.subarray(188, 204),
+    u_ShadowParams: this.data.subarray(204, 208),
   };
 
   constructor(private readonly buffer: Buffer) {}
@@ -59,6 +62,11 @@ export class MeshSceneUniforms {
     aspect: number,
     cam2d: Entity | undefined,
     lights: readonly Entity[],
+    shadow?: {
+      viewProjection: Float32Array;
+      lightIndex: number;
+      texelSize: number;
+    },
   ): Record<string, unknown> {
     const values = this.inputs;
     values.length = 0;
@@ -121,6 +129,19 @@ export class MeshSceneUniforms {
       this.lightInputs = values.slice();
       this.dirty = true;
     }
+    const shadowValues = shadow
+      ? [...shadow.viewProjection, shadow.lightIndex + 1, shadow.texelSize]
+      : [0];
+    if (!same(shadowValues, this.shadowInputs)) {
+      this.data.fill(0, 188, 208);
+      if (shadow) {
+        this.data.set(shadow.viewProjection, 188);
+        this.data[204] = shadow.lightIndex + 1;
+        this.data[205] = shadow.texelSize;
+      }
+      this.shadowInputs = shadowValues;
+      this.dirty = true;
+    }
     if (this.dirty) {
       this.buffer.setSubData(0, this.bytes);
       // Keep dirty on failure so unchanged inputs can retry the upload.
@@ -130,7 +151,7 @@ export class MeshSceneUniforms {
   }
 
   private packLights(lights: readonly Entity[]): void {
-    this.data.fill(0, 52);
+    this.data.fill(0, 52, 188);
     this.ambient.fill(0, 0, 3);
     if (!lights.length) {
       this.addLight(defaultAmbient);

@@ -3,6 +3,7 @@ import {
   Device,
   RenderPass,
   SwapChain,
+  Texture,
   TransparentBlack,
 } from '@infinite-canvas-tutorial/device-api';
 import {
@@ -484,9 +485,10 @@ export class BatchManager {
     uniformLegacyObject: Record<string, unknown>,
     width: number,
     height: number,
-    preamble: (renderPass: RenderPass) => void,
+    preamble: (renderPass: RenderPass, shadowTexture?: Texture) => void,
     sort: boolean,
     mainPassDebugName: string,
+    shadowResolveID?: number,
   ) {
     if (sort) {
       this.sort();
@@ -505,8 +507,10 @@ export class BatchManager {
           RGAttachmentSlot.DepthStencil,
           mainDepthTargetID,
         );
-        pass.exec((renderPass) => {
-          preamble(renderPass);
+        if (shadowResolveID !== undefined) pass.attachResolveTexture(shadowResolveID);
+        pass.exec((renderPass, scope) => {
+          if (shadowResolveID === undefined) preamble(renderPass);
+          else preamble(renderPass, scope.getResolveTextureForID(shadowResolveID));
           this.flushDrawcalls(
             renderPass,
             uniformBuffer,
@@ -545,9 +549,11 @@ export class BatchManager {
             RGAttachmentSlot.DepthStencil,
             mainDepthTargetID,
           );
-          pass.exec((renderPass) => {
+          if (shadowResolveID !== undefined) pass.attachResolveTexture(shadowResolveID);
+          pass.exec((renderPass, scope) => {
             if (firstNormal) {
-              preamble(renderPass);
+              if (shadowResolveID === undefined) preamble(renderPass);
+              else preamble(renderPass, scope.getResolveTextureForID(shadowResolveID));
               firstNormal = false;
             }
             this.flushDrawcalls(

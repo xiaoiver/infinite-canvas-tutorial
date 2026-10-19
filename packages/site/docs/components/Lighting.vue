@@ -21,6 +21,7 @@ const copy = {
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
     environment: 'Studio environment',
+    shadows: 'Directional shadows',
     play: 'Animate spot',
     pause: 'Pause spot',
     all: 'All lights',
@@ -28,7 +29,7 @@ const copy = {
     directional: 'Directional + ambient',
     point: 'Point + ambient',
     spot: 'Spot + ambient',
-    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. The studio panorama adds diffuse light to the cube and cylinder and reflections to all three meshes.',
+    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. The key light casts soft shadows on the floor when enabled. The studio panorama adds diffuse light and reflections.',
   },
   zh: {
     controls: '光照控制',
@@ -38,6 +39,7 @@ const copy = {
     metallic: '球体金属度',
     roughness: '球体粗糙度',
     environment: '摄影棚环境光照',
+    shadows: '平行光投射阴影',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
     all: '全部光源',
@@ -45,7 +47,7 @@ const copy = {
     directional: '平行光 + 环境光',
     point: '点光 + 环境光',
     spot: '聚光灯 + 环境光',
-    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。摄影棚全景图为立方体和圆柱提供漫反射环境光，也为三个物体提供反射。',
+    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。开启后主光源会在地板上投射柔和阴影。摄影棚全景图提供漫反射光和反射。',
   },
 } as const;
 const t = computed(() => copy[props.locale]);
@@ -57,6 +59,7 @@ const range = ref(500);
 const metallic = ref(1);
 const roughness = ref(0.25);
 const environment = ref(true);
+const shadows = ref(true);
 const playing = ref(false);
 const studioMap = '/lighting-studio.svg';
 
@@ -84,6 +87,7 @@ const sceneNodes: SerializedNode[] = [
     type: 'light3d',
     lightType: 'directional',
     direction: [0.45, 0.65, 0.55],
+    castShadow: true,
     intensity: 1.8,
     zIndex: -3,
   },
@@ -119,6 +123,25 @@ const sceneNodes: SerializedNode[] = [
     intensity: 6,
     range: 500,
     zIndex: -3,
+  },
+  {
+    id: 'floor',
+    type: 'mesh3d',
+    geometry: { type: 'plane' },
+    x: 0,
+    y: 0,
+    width: 440,
+    height: 350,
+    z: 100,
+    zIndex: -1,
+    scale3d: [440, 350, 1],
+    rotation3d: [0, Math.PI, 0],
+    material3d: {
+      baseColor: '#d8dee8',
+      ambient: 0.7,
+      metallic: 0,
+      roughness: 0.95,
+    },
   },
   {
     id: 'cube-red',
@@ -212,6 +235,7 @@ function applyLights() {
         ...(preset.kind === 'point' || preset.kind === 'spot'
           ? { range: range.value }
           : {}),
+        ...(preset.id === 'light-key' ? { castShadow: shadows.value } : {}),
       },
       false,
     );
@@ -304,7 +328,7 @@ function syncAnimation() {
     raf = requestAnimationFrame(animate);
 }
 
-watch([mode, intensity, range], applyLights);
+watch([mode, intensity, range, shadows], applyLights);
 watch([metallic, roughness, environment], applySphereMaterial);
 watch(environment, applyEnvironmentToOtherMeshes);
 watch([mode, playing], syncAnimation);
@@ -412,6 +436,10 @@ onUnmounted(() => {
       <label class="lighting-checkbox">
         <input v-model="environment" type="checkbox" />
         <span>{{ t.environment }}</span>
+      </label>
+      <label class="lighting-checkbox">
+        <input v-model="shadows" type="checkbox" />
+        <span>{{ t.shadows }}</span>
       </label>
       <button type="button" :aria-pressed="playing" @click="playing = !playing">
         {{ playing ? t.pause : t.play }}
