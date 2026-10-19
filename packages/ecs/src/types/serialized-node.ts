@@ -496,8 +496,12 @@ export interface Light3DNodeSerializedNode
   referenceDistance?: number;
   innerConeAngle?: number;
   outerConeAngle?: number;
-  /** Enable a shadow map for a directional light. */
+  /** Enable a shadow map for a directional, point, or spot light. */
   castShadow?: boolean;
+  /** Shadow darkness, clamped to 0..1; default 1. */
+  shadowStrength?: number;
+  /** PCF radius in texels, clamped to 0..4; default 1. */
+  shadowSoftness?: number;
 }
 
 export interface GSerializedNode
