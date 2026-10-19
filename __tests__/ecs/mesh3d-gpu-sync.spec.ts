@@ -5,6 +5,7 @@ import {
   Last,
   Mesh3D,
   Mesh3DNode,
+  Material3D,
   MeshPipeline3D,
   Extrude3D,
   System,
@@ -15,6 +16,10 @@ import {
 import { getMeshPipeline3D } from '../../packages/ecs/src/systems/mesh3d-bridge';
 import { createDocumentWorld } from '../helpers/ecs-document';
 import { fakeMeshGPU } from './helpers/mesh-gpu';
+
+jest.mock('../../packages/ecs/src/utils/load-image-bitmap', () => ({
+  loadImageBitmapUniversal: jest.fn(async () => ({ width: 4, height: 2 })),
+}));
 
 let world: Awaited<ReturnType<typeof createDocumentWorld>>;
 let api: API;
@@ -169,6 +174,37 @@ it('uploads in-place Mesh3D edits in the same frame and only once', async () => 
   expect(gpu.buffers).toHaveLength(count + 5);
   await world.frame();
   expect(gpu.buffers).toHaveLength(count + 5);
+});
+
+it('loads and clears an equirectangular material reflection without rebuilding geometry', async () => {
+  await world.reset(api, [
+    {
+      id: 'model',
+      type: 'mesh3d',
+      zIndex: 0,
+      x: 0,
+      y: 0,
+      width: 40,
+      height: 40,
+      material3d: { environmentMap: '/studio.png', metallic: 1 },
+    },
+  ]);
+  await world.frame();
+  expect(companion().read(Material3D).environmentMap).toBe('/studio.png');
+  const draw = gpu.draws.at(-1)!;
+  const model = draw.uniformBufferBindings[1].buffer;
+  expect(new Float32Array(model.bytes.buffer)[55]).toBe(1);
+  expect(draw.samplerBindings).toHaveLength(4);
+  const geometryBuffers = gpu.buffers.length;
+
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('model'), {
+      material3d: { environmentMap: null, metallic: 1 },
+    }),
+  );
+  expect(companion().read(Material3D).environmentMap).toBeNull();
+  expect(new Float32Array(model.bytes.buffer)[55]).toBe(0);
+  expect(gpu.buffers).toHaveLength(geometryBuffers);
 });
 
 it('updates procedural geometry immediately and releases a deleted mesh before another draw', async () => {

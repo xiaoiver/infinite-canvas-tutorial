@@ -497,7 +497,7 @@ edge cut by the SVG viewport.
 
 ## Lighting {#lighting}
 
-Compare ambient, directional, point, and spot lights on a stationary cube, sphere, and cylinder. Switch lights, adjust intensity/range and the sphere's metallic/roughness values, or play the spotlight orbit. The renderer uses GGX direct lighting with sRGB-to-linear inputs and filmic tone mapping; the ambient term is a simple fill, without shadows or environment reflections. See the [lighting example](/example/lighting) for controls and API details.
+Compare ambient, directional, point, and spot lights on a stationary cube, sphere, and cylinder. Switch lights, adjust intensity/range and the sphere's metallic/roughness values, enable studio environment reflections, or play the spotlight orbit. The renderer uses GGX direct lighting with sRGB-to-linear inputs and filmic tone mapping. The optional panorama provides approximate roughness-dependent reflections; cast shadows and diffuse indirect light are still unavailable. See the [lighting example](/example/lighting) for controls and API details.
 
 <Lighting />
 

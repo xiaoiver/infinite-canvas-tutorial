@@ -459,6 +459,8 @@ export type Material3DWire = {
   map?: string;
   specularMap?: string;
   bumpMap?: string;
+  /** Equirectangular environment image used for material reflections. */
+  environmentMap?: string | null;
   bumpScale?: number;
 };
 

@@ -45,7 +45,7 @@ export class Material3D {
   /**
    * Metalness in the 0..1 range. 0 = dielectric, 1 = metal. Metals reflect the
    * direct light tinted by {@link baseColor} and have no direct diffuse contribution.
-   * The current ambient term is a simple fill, not an environment reflection.
+   * Without an environment map, ambient remains a simple fill.
    */
   @field.float32 declare metallic: number;
 
@@ -67,6 +67,9 @@ export class Material3D {
   /** Optional bump / height map (grayscale) for normal perturbation. */
   @field.object declare bumpMap: string | null;
 
+  /** Optional equirectangular sRGB environment image for reflected light. */
+  @field.object declare environmentMap: string | null;
+
   /** Bump map strength (AntV G `bumpScale`, typically 1–10). */
   @field.float32 declare bumpScale: number;
 
@@ -85,6 +88,7 @@ export class Material3D {
     this.map ??= null;
     this.specularMap ??= null;
     this.bumpMap ??= null;
+    this.environmentMap ??= null;
     this.bumpScale ??= 1;
   }
 }

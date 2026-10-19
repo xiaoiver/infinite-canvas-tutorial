@@ -20,6 +20,7 @@ const copy = {
     range: 'Point and spot range',
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
+    environment: 'Studio reflections',
     play: 'Animate spot',
     pause: 'Pause spot',
     all: 'All lights',
@@ -36,6 +37,7 @@ const copy = {
     range: '点光与聚光灯范围',
     metallic: '球体金属度',
     roughness: '球体粗糙度',
+    environment: '摄影棚环境反射',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
     all: '全部光源',
@@ -54,6 +56,7 @@ const intensity = ref(1);
 const range = ref(500);
 const metallic = ref(1);
 const roughness = ref(0.25);
+const environment = ref(true);
 const playing = ref(false);
 
 const sceneCenter = { x: 220, y: 180, z: 40 };
@@ -222,6 +225,7 @@ function applySphereMaterial() {
         ambient: 0.5,
         metallic: metallic.value,
         roughness: roughness.value,
+        environmentMap: environment.value ? '/lighting-studio.svg' : null,
       },
     },
     false,
@@ -273,7 +277,7 @@ function syncAnimation() {
 }
 
 watch([mode, intensity, range], applyLights);
-watch([metallic, roughness], applySphereMaterial);
+watch([metallic, roughness, environment], applySphereMaterial);
 watch([mode, playing], syncAnimation);
 
 onMounted(async () => {
@@ -375,6 +379,10 @@ onUnmounted(() => {
           step="0.01"
         />
       </label>
+      <label class="lighting-checkbox">
+        <input v-model="environment" type="checkbox" />
+        <span>{{ t.environment }}</span>
+      </label>
       <button type="button" :aria-pressed="playing" @click="playing = !playing">
         {{ playing ? t.pause : t.play }}
       </button>
@@ -406,8 +414,15 @@ onUnmounted(() => {
   background: var(--vp-c-bg);
   color: var(--vp-c-text-1);
 }
-.lighting-controls input {
+.lighting-controls input[type='range'] {
   width: 130px;
+}
+.lighting-controls .lighting-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding-bottom: 7px;
 }
 .lighting-demo p {
   margin: 4px 0 12px;

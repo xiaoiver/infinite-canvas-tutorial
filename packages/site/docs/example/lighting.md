@@ -7,7 +7,7 @@ description: 'Interactive ambient, directional, point, and spot lighting with ad
 
 # 3D scene lighting
 
-This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness` values, then play or pause the spotlight orbit.
+This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness` values, toggle studio reflections, then play or pause the spotlight orbit.
 
 The implementation is in [`Lighting.vue`](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/packages/site/docs/components/Lighting.vue); see also [Lesson 39 — 3D mesh rendering](/guide/lesson-039).
 
@@ -50,7 +50,12 @@ api.updateNodes([
         width: 80,
         height: 80,
         scale3d: 70,
-        material3d: { baseColor: '#ebeff2', metallic: 1, roughness: 0.25 },
+        material3d: {
+            baseColor: '#ebeff2',
+            metallic: 1,
+            roughness: 0.25,
+            environmentMap: '/lighting-studio.svg',
+        },
         camera3d: { linked: true, projection: 'perspective' },
     },
 ]);
@@ -61,8 +66,9 @@ api.updateNodes([
 -   **Light combinations**: with no explicit lights, the renderer supplies ambient and directional defaults. Once a light is supplied, only the explicit lights contribute. Up to 8 non-ambient lights render; additional lights are ignored.
 -   **Coordinates and range**: positions and directions use canvas world units; in this linked-camera example, smaller z values are closer to the viewer. `direction` points from the light toward the scene. Positive `range` uses a squared range falloff; `range <= 0` disables attenuation. This is not physical inverse-square falloff.
 -   **Spot cone**: `innerConeAngle` and `outerConeAngle` are in radians. The outer angle must exceed the inner angle; invalid or equal inputs are sanitized before rendering.
--   **Color and materials**: CSS colors and textures enter as sRGB, direct lighting runs in linear space, and a filmic tone map precedes sRGB output. `metallic` and `roughness` drive GGX highlights. The material's `ambient` still scales a simple ambient fill; legacy `diffuse`, `specular`, and `shininess` no longer affect shading.
--   **Limits**: there are no shadows, environment-map reflections, or indirect illumination yet. Ambient fill on metal is an approximation, not image-based lighting.
+-   **Color and materials**: CSS colors and textures enter as sRGB, lighting runs in linear space, and a filmic tone map precedes sRGB output. `metallic` and `roughness` drive GGX highlights. The material's `ambient` scales both the ambient fill and optional environment reflection; legacy `diffuse`, `specular`, and `shininess` no longer affect shading.
+-   **Environment reflections**: `material3d.environmentMap` accepts an equirectangular image URL. The renderer samples reflected directions and softens them as roughness increases. The demo's studio panorama is an ordinary LDR SVG. When the image is ready, metals receive ambient energy from reflections rather than a flat diffuse fill. An omitted or failed image preserves the old ambient appearance.
+-   **Limits**: reflections use a small angular filter, not HDR or a prefiltered GGX environment map. There are no cast shadows or diffuse indirect illumination yet.
 -   **Animation**: the example updates the spotlight via `api.updateNode`. It starts paused and stops requesting frames when offscreen or when the page is hidden.
 
 ## Compared to the cube example {#vs-cube}

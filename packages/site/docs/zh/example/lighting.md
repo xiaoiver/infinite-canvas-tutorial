@@ -7,7 +7,7 @@ description: '可切换的环境光、平行光、点光和聚光灯，以及可
 
 # 3D 场景光照
 
-本页演示 `Light3D` 的四种光源：环境光、平行光、点光和聚光灯。立方体、球体、圆柱保持静止，方便比较光照；每种直接光照模式都保留一盏显式的弱环境光，便于观察未受光的面。球体的 `metallic` 与 `roughness` 可实时调节，点击播放后聚光灯会移动。
+本页演示 `Light3D` 的四种光源：环境光、平行光、点光和聚光灯。立方体、球体、圆柱保持静止，方便比较光照；每种直接光照模式都保留一盏显式的弱环境光，便于观察未受光的面。球体的 `metallic` 与 `roughness` 可实时调节，也可开启摄影棚环境反射；点击播放后聚光灯会移动。
 
 实现见 [`Lighting.vue`](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/packages/site/docs/components/Lighting.vue) 与[课程 39 — 3D Mesh 渲染](/zh/guide/lesson-039)。
 
@@ -50,7 +50,12 @@ api.updateNodes([
         width: 80,
         height: 80,
         scale3d: 70,
-        material3d: { baseColor: '#ebeff2', metallic: 1, roughness: 0.25 },
+        material3d: {
+            baseColor: '#ebeff2',
+            metallic: 1,
+            roughness: 0.25,
+            environmentMap: '/lighting-studio.svg',
+        },
         camera3d: { linked: true, projection: 'perspective' },
     },
 ]);
@@ -61,8 +66,9 @@ api.updateNodes([
 -   **光源组合**：没有显式光源时使用默认环境光和平行光；只要有显式光源，就仅使用这些光源。环境光只贡献颜色与强度，其他光源共用最多 8 个槽位，超出的光源不会渲染。
 -   **坐标与范围**：位置与方向使用画布世界单位；在本例的联动相机中，z 值越小越靠近观察者。`direction` 从光源指向场景。`range > 0` 时使用平方距离范围衰减，`range <= 0` 时关闭距离衰减。它不是物理逆平方衰减。
 -   **聚光灯**：`innerConeAngle` / `outerConeAngle` 使用弧度。外角必须大于内角；渲染器会对无效输入和相等角度做安全处理。
--   **颜色与材质**：光源颜色、材质底色和贴图按 sRGB 输入，在线性空间计算直接光照，再做胶片映射并编码为 sRGB。`metallic` 和 `roughness` 控制 GGX 高光；`ambient` 仍是每个材质的环境填充系数。旧 `diffuse` / `specular` / `shininess` 字段不再影响着色。
--   **边界**：目前没有阴影、环境贴图反射或间接光照。金属的环境填充只是近似效果，不等同于完整的基于图像的光照。
+-   **颜色与材质**：光源颜色、材质底色和贴图按 sRGB 输入，在线性空间计算光照，再做胶片映射并编码为 sRGB。`metallic` 和 `roughness` 控制 GGX 高光；`ambient` 同时控制环境填充与可选的环境反射。旧 `diffuse` / `specular` / `shininess` 字段不再影响着色。
+-   **环境反射**：`material3d.environmentMap` 接受等距柱状全景图 URL。渲染器沿反射方向采样，并随粗糙度增加柔化反射。示例使用普通 LDR SVG 摄影棚贴图。图片加载完成后，金属从反射获得环境能量，不再使用平坦的漫反射填充。图片未设置或加载失败时保留原有外观。
+-   **边界**：这里用少量方向采样近似柔化反射，还没有 HDR 或预过滤的 GGX 环境贴图；投射阴影和漫反射间接光照也尚未实现。
 -   **动画**：示例通过 `api.updateNode` 更新聚光灯位置与方向；默认暂停，离开视口或页面隐藏时自动停止帧更新。
 
 ## 与立方体示例的差异 {#vs-cube}

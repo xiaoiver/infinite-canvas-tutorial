@@ -49,6 +49,7 @@ export function queueMesh3DCompanion(
   const map = node.map ?? null;
   const specularMap = node.specularMap ?? null;
   const bumpMap = node.bumpMap ?? null;
+  const environmentMap = node.environmentMap ?? null;
   const bumpScale = node.bumpScale;
 
   const spec = normalizeGeometry(geometry);
@@ -83,6 +84,7 @@ export function queueMesh3DCompanion(
         map,
         specularMap,
         bumpMap,
+        environmentMap,
         bumpScale,
       }),
       new Transform3D(transformProps),

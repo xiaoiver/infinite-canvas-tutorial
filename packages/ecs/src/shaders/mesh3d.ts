@@ -4,7 +4,7 @@
  * Direct lighting uses a Cook-Torrance microfacet BRDF (GGX/Trowbridge-Reitz
  * normal distribution, Smith geometry term, Schlick Fresnel) driven by the
  * material `metallic` and `roughness` parameters. Ambient is a simple fill,
- * without image-based lighting or shadows. The legacy
+ * with optional equirectangular environment reflections but no shadows. The legacy
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
  * specular map still modulates the specular response.
@@ -38,7 +38,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_CanvasAnchor;
   // x: map, y: specularMap, z: bumpMap, w: bumpScale
   vec4 u_MaterialFlags;
-  // x: metallic, y: roughness (PBR metallic-roughness workflow)
+  // x: metallic, y: roughness, z: side color, w: environment map ready
   vec4 u_PbrParams;
   vec4 u_SideColor;
 };
@@ -114,7 +114,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_CanvasAnchor;
   // x: map, y: specularMap, z: bumpMap, w: bumpScale
   vec4 u_MaterialFlags;
-  // x: metallic, y: roughness (PBR metallic-roughness workflow)
+  // x: metallic, y: roughness, z: side color, w: environment map ready
   vec4 u_PbrParams;
   vec4 u_SideColor;
 };
@@ -122,6 +122,7 @@ layout(std140) uniform ModelUniforms3D {
 uniform sampler2D u_Map;
 uniform sampler2D u_SpecularMap;
 uniform sampler2D u_BumpMap;
+uniform sampler2D u_EnvironmentMap;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
@@ -186,6 +187,28 @@ float geometrySmith(float NdotV, float NdotL, float roughness) {
 // Schlick Fresnel approximation.
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 sampleEnvironment(vec3 direction) {
+  vec3 d = normalize(direction);
+  vec2 uv = vec2(atan(d.z, d.x) / (2.0 * PI) + 0.5,
+    asin(clamp(d.y, -1.0, 1.0)) / PI + 0.5);
+  return srgbToLinear(texture(SAMPLER_2D(u_EnvironmentMap), uv).rgb);
+}
+
+// A small angular filter softens reflections on rough materials. This accepts
+// ordinary LDR panoramas without requiring prefiltered mipmaps from the loader.
+vec3 environmentReflection(vec3 reflected, float roughness) {
+  vec3 axis = abs(reflected.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+  vec3 tangent = normalize(cross(reflected, axis));
+  vec3 bitangent = cross(reflected, tangent);
+  float spread = roughness * roughness * 0.9;
+  vec3 result = sampleEnvironment(reflected) * 0.4;
+  result += sampleEnvironment(reflected + spread * tangent) * 0.15;
+  result += sampleEnvironment(reflected - spread * tangent) * 0.15;
+  result += sampleEnvironment(reflected + spread * bitangent) * 0.15;
+  result += sampleEnvironment(reflected - spread * bitangent) * 0.15;
+  return result;
 }
 
 // Cook-Torrance microfacet BRDF for a single analytic light.
@@ -331,6 +354,15 @@ void main() {
 
   // Ambient term (legacy ambient field acts as an ambient strength).
   vec3 ambient = u_AmbientLight.rgb * u_LightParams.x * albedo;
+  if (u_PbrParams.w > 0.5) {
+    // With a reflection source, metals receive ambient energy through their
+    // specular response rather than a diffuse albedo fill.
+    ambient *= 1.0 - metallic;
+    vec3 reflected = reflect(-viewDir, normal);
+    vec3 env = environmentReflection(reflected, roughness);
+    vec3 fresnel = fresnelSchlick(max(dot(normal, viewDir), 0.0), F0);
+    ambient += env * fresnel * specularScale * u_LightParams.x;
+  }
 
   vec3 result = ambient + Lo;
   outputColor = vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
