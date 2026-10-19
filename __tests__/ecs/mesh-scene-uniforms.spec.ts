@@ -3,7 +3,10 @@ import type { Entity } from '../../packages/ecs/src';
 import { Camera, Camera3D, Light3D } from '../../packages/ecs/src/components';
 import { Mat3 } from '../../packages/ecs/src/components/math/Mat3';
 import { Mat4 } from '../../packages/ecs/src/components/math/Mat4';
-import { MeshSceneUniforms, MESH_SCENE_UNIFORM_FLOATS } from '../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
+import {
+  MeshSceneUniforms,
+  MESH_SCENE_UNIFORM_FLOATS,
+} from '../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
 import {
   buildCamera3DSceneUniforms,
   packSceneUniformBuffer,
@@ -25,7 +28,12 @@ function setup() {
         aspect: number,
         cam2d: Entity | undefined,
         lights: Light3D[],
-        shadow?: { viewProjection: Float32Array; lightIndex: number; texelSize: number },
+        shadow?: {
+          viewProjection: Float32Array;
+          lightIndex: number;
+          texelSize: number;
+          faces?: Float32Array[];
+        },
       ) =>
         uniforms.update(
           camera,
@@ -80,23 +88,54 @@ it('uploads the selected shadow matrix and clears it when disabled', () => {
   matrix[10] = 4;
   matrix[15] = 1;
   uniforms.update(camera, 1, undefined, [light], {
-    viewProjection: matrix, lightIndex: 1, texelSize: 1 / 1024,
+    viewProjection: matrix,
+    lightIndex: 1,
+    texelSize: 1 / 1024,
   });
   expect([...data.slice(188, 204)]).toEqual([...matrix]);
   expect([...data.slice(204, 206)]).toEqual([2, 1 / 1024]);
   const calls = upload.mock.calls.length;
   light.intensity = 2;
   uniforms.update(camera, 1, undefined, [light], {
-    viewProjection: matrix, lightIndex: 1, texelSize: 1 / 1024,
+    viewProjection: matrix,
+    lightIndex: 1,
+    texelSize: 1 / 1024,
   });
   expect(upload).toHaveBeenCalledTimes(calls + 1);
   expect([...data.slice(188, 204)]).toEqual([...matrix]);
   uniforms.update(camera, 1, undefined, [light], {
-    viewProjection: matrix, lightIndex: 1, texelSize: 1 / 1024,
+    viewProjection: matrix,
+    lightIndex: 1,
+    texelSize: 1 / 1024,
   });
   expect(upload).toHaveBeenCalledTimes(calls + 1);
   uniforms.update(camera, 1, undefined, []);
   expect([...data.slice(188, 208)]).toEqual(Array(20).fill(0));
+});
+
+it('uploads all six point shadow matrices and clears the atlas mode', () => {
+  const { uniforms, camera, data } = setup();
+  const faces = Array.from({ length: 6 }, (_, index) => {
+    const face = new Float32Array(16);
+    face[0] = index + 1;
+    return face;
+  });
+  uniforms.update(camera, 1, undefined, [new Light3D({ type: 'point' })], {
+    viewProjection: faces[0],
+    lightIndex: 0,
+    texelSize: 1 / 512,
+    faces,
+  });
+  expect([...data.slice(204, 208)]).toEqual([1, 1 / 512, 1, 0]);
+  faces.forEach((face, index) =>
+    expect([...data.slice(208 + index * 16, 224 + index * 16)]).toEqual([
+      ...face,
+    ]),
+  );
+  uniforms.update(camera, 1, undefined, []);
+  expect([...data.slice(204, MESH_SCENE_UNIFORM_FLOATS)]).toEqual(
+    Array(MESH_SCENE_UNIFORM_FLOATS - 204).fill(0),
+  );
 });
 
 it.each([

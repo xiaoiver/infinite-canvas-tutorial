@@ -8,7 +8,7 @@
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
  * specular map still modulates the specular response. The first directional
- * or spot light with castShadow uses a packed-depth shadow map with 3x3 PCF.
+ * spot, or point light with castShadow uses a packed-depth shadow map with 3x3 PCF.
  * Supports multiple ambient, directional, point, and spot lights.
  */
 
@@ -29,6 +29,7 @@ layout(std140) uniform SceneUniforms3D {
   vec4 u_LightParams3D[MAX_3D_LIGHTS];
   mat4 u_ShadowViewProjection;
   vec4 u_ShadowParams; // x: shadowed light index + 1, y: shadow-map texel size
+  mat4 u_ShadowFaces[6];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -108,6 +109,7 @@ layout(std140) uniform SceneUniforms3D {
   vec4 u_LightParams3D[MAX_3D_LIGHTS];
   mat4 u_ShadowViewProjection;
   vec4 u_ShadowParams;
+  mat4 u_ShadowFaces[6];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -197,26 +199,31 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-vec3 sampleEnvironment(vec3 direction) {
+vec3 sampleEnvironment(vec3 direction, int level) {
   vec3 d = normalize(direction);
   vec2 uv = vec2(atan(d.z, d.x) / (2.0 * PI) + 0.5,
     asin(clamp(d.y, -1.0, 1.0)) / PI + 0.5);
-  return srgbToLinear(texture(SAMPLER_2D(u_EnvironmentMap), uv).rgb);
+  float width = 128.0 / exp2(float(level));
+  float height = width * 0.5;
+  float top = 0.0;
+  for (int i = 0; i < 5; i++) {
+    if (i >= level) break;
+    top += 64.0 / exp2(float(i));
+  }
+  // The uploaded atlas is north-at-top; v=1 points to its top after flipY.
+  vec2 atlasUv = vec2((uv.x * (width - 1.0) + 0.5) / 128.0,
+    1.0 - (top + (1.0 - uv.y) * (height - 1.0) + 0.5) / 124.0);
+  vec4 rgbm = texture(SAMPLER_2D(u_EnvironmentMap), atlasUv);
+  return rgbm.rgb * rgbm.a * 16.0;
 }
 
-// A small angular filter softens reflections on rough materials. This accepts
-// ordinary LDR panoramas without requiring prefiltered mipmaps from the loader.
+// Five importance-sampled GGX levels are stored in one atlas for WebGL/WebGPU.
 vec3 environmentReflection(vec3 reflected, float roughness) {
-  vec3 axis = abs(reflected.y) < 0.95 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
-  vec3 tangent = normalize(cross(reflected, axis));
-  vec3 bitangent = cross(reflected, tangent);
-  float spread = roughness * roughness * 0.9;
-  vec3 result = sampleEnvironment(reflected) * 0.4;
-  result += sampleEnvironment(reflected + spread * tangent) * 0.15;
-  result += sampleEnvironment(reflected - spread * tangent) * 0.15;
-  result += sampleEnvironment(reflected + spread * bitangent) * 0.15;
-  result += sampleEnvironment(reflected - spread * bitangent) * 0.15;
-  return result;
+  float lod = clamp(roughness, 0.0, 1.0) * 4.0;
+  int low = int(floor(lod));
+  int high = min(low + 1, 4);
+  return mix(sampleEnvironment(reflected, low),
+    sampleEnvironment(reflected, high), fract(lod));
 }
 
 // Second-order spherical harmonics convolved with the Lambert cosine kernel
@@ -240,22 +247,35 @@ float unpackShadowDepth(vec4 depthColor) {
 }
 
 float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir, bool spot) {
-  vec4 clip = u_ShadowViewProjection * vec4(position, 1.0);
+  bool point = u_ShadowParams.z > 0.5;
+  int face = 0;
+  vec2 tile = vec2(0.0);
+  if (point) {
+    vec3 ray = position - u_LightPositions[int(u_ShadowParams.x) - 1].xyz;
+    vec3 a = abs(ray);
+    if (a.x >= a.y && a.x >= a.z) face = ray.x >= 0.0 ? 0 : 1;
+    else if (a.y >= a.z) face = ray.y >= 0.0 ? 2 : 3;
+    else face = ray.z >= 0.0 ? 4 : 5;
+    tile = vec2(float(face % 3), float(face / 3));
+  }
+  vec4 clip = (point ? u_ShadowFaces[face] : u_ShadowViewProjection) * vec4(position, 1.0);
   vec3 projected = clip.xyz / clip.w;
-  vec2 uv = projected.xy * 0.5 + 0.5;
+  vec2 localUv = projected.xy * 0.5 + 0.5;
   float depth = projected.z * 0.5 + 0.5;
-  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 ||
+  if (localUv.x < 0.0 || localUv.x > 1.0 || localUv.y < 0.0 || localUv.y > 1.0 ||
       depth < 0.0 || depth > 1.0) return 1.0;
   // Color-packed depth has a small raster/texel mismatch, amplified across the
   // 3x3 kernel on surfaces oblique to the light. Offset receivers enough to
   // avoid self-shadow stripes while retaining the much larger caster gap.
   float slope = 1.0 - max(dot(normal, lightDir), 0.0);
-  float bias = spot ? max(0.004, 0.006 * slope)
+  float bias = point ? max(0.0005, 0.001 * slope) : spot ? max(0.004, 0.006 * slope)
     : max(0.005, 0.008 * slope);
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
-      vec2 sampleUv = uv + vec2(float(x), float(y)) * u_ShadowParams.y;
+      vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) * u_ShadowParams.y,
+        vec2(u_ShadowParams.y * 0.5), vec2(1.0 - u_ShadowParams.y * 0.5));
+      vec2 sampleUv = point ? (sampleLocal + tile) / vec2(3.0, 2.0) : sampleLocal;
       float stored = unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap), sampleUv));
       visibility += depth - bias <= stored ? 1.0 : 0.0;
     }
@@ -295,6 +315,10 @@ vec3 shadeLight(
       lightDir = toLight / distanceToLight;
     }
     attenuation *= distanceAttenuation(distanceToLight, range);
+
+    if (lightType == LIGHT_TYPE_POINT && u_ShadowParams.z > 0.5 &&
+        u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
+      attenuation *= shadowVisibility(v_FragPos, normal, lightDir, false);
 
     if (lightType == LIGHT_TYPE_SPOT) {
       vec3 spotDirection = normalize(u_LightDirections[index].xyz);

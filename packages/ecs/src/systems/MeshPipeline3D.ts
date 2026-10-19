@@ -53,7 +53,14 @@ import type { RGGraphBuilder } from '../render-graph/interface';
 import { RGAttachmentSlot } from '../render-graph/interface';
 import { RGRenderTargetDescription } from '../render-graph/RenderTargetDescription';
 import { loadImageBitmapUniversal } from '../utils/load-image-bitmap';
-import { irradianceFromBitmap } from '../utils/environment-irradiance';
+import { DOMAdapter } from '../environment';
+import {
+  decodeRadianceHDR,
+  environmentFromBitmap,
+  ENV_ATLAS_HEIGHT,
+  ENV_ATLAS_WIDTH,
+  prefilterEnvironment,
+} from '../utils/environment-map';
 import {
   getMeshPipeline3D,
   registerMeshPipeline3D,
@@ -62,7 +69,15 @@ import {
 } from './mesh3d-bridge';
 import { RenderGizmo3D } from './RenderGizmo3D';
 import { MeshGPUCache } from './mesh3d/mesh-gpu-cache';
-import { fitDirectionalShadow, fitSpotShadow, SHADOW_MAP_SIZE } from './mesh3d/shadow-projection';
+import {
+  fitDirectionalShadow,
+  fitPointShadow,
+  fitSpotShadow,
+  SHADOW_MAP_SIZE,
+  POINT_SHADOW_FACE_SIZE,
+  POINT_SHADOW_COLUMNS,
+  POINT_SHADOW_ROWS,
+} from './mesh3d/shadow-projection';
 import { ResourceScope } from '../resources/ResourceScope';
 import type { API } from '../API';
 
@@ -98,7 +113,7 @@ interface MeshPipeline3DCanvasState {
   shadowProgram: Program;
   shadowPipeline: RenderPipeline;
   shadowInputLayout: InputLayout;
-  shadowSceneBuffer?: Buffer;
+  shadowSceneBuffers?: Buffer[];
   shadowResources: ResourceScope;
   /** Loaded base-color textures keyed by URL. */
   textureCache: Map<string, TextureCacheEntry>;
@@ -106,6 +121,7 @@ interface MeshPipeline3DCanvasState {
 
 export interface ShadowFrame {
   viewProjection: Float32Array;
+  faces?: Float32Array[];
   lightIndex: number;
   resolveID: number;
 }
@@ -316,6 +332,12 @@ export class MeshPipeline3D extends System {
             viewProjection: shadowFrame.viewProjection,
             lightIndex: shadowFrame.lightIndex,
             texelSize: 1 / SHADOW_MAP_SIZE,
+            ...(shadowFrame.faces
+              ? {
+                  texelSize: 1 / POINT_SHADOW_FACE_SIZE,
+                  faces: shadowFrame.faces,
+                }
+              : {}),
           }
         : undefined,
     );
@@ -402,7 +424,10 @@ export class MeshPipeline3D extends System {
   }
 
   /** Add a depth-map pass before the shared 3D/2D pass for the first eligible light. */
-  scheduleShadowPass(builder: RGGraphBuilder, canvas: Entity): ShadowFrame | undefined {
+  scheduleShadowPass(
+    builder: RGGraphBuilder,
+    canvas: Entity,
+  ): ShadowFrame | undefined {
     const state = this.initPipeline(canvas);
     if (!state || !this.shouldComposite(canvas)) return undefined;
     const meshes = this.collectMeshEntities(canvas);
@@ -410,26 +435,47 @@ export class MeshPipeline3D extends System {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
       if (!gpu) return [];
       gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
-      return [{ ...gpu.localBounds, model: gpu.modelUniforms.getModelMatrix() }];
+      return [
+        { ...gpu.localBounds, model: gpu.modelUniforms.getModelMatrix() },
+      ];
     });
     const lights = filterEntitiesForCanvas(
-      this.lights3D.current, canvas, this.canvases.current.length || 1,
+      this.lights3D.current,
+      canvas,
+      this.canvases.current.length || 1,
     );
     let lightIndex = 0;
     let shadowLight: Light3D | undefined;
     let viewProjection: Float32Array | null = null;
+    let faces: Float32Array[] | null = null;
     for (const entity of lights) {
       const light = entity.read(Light3D);
       if (light.type === 'ambient') continue;
       if (lightIndex >= 8) break;
-      if ((light.type === 'directional' || light.type === 'spot') &&
-          light.castShadow && light.intensity > 0) {
-        viewProjection = light.type === 'spot'
-          ? fitSpotShadow(
-              light.position, light.direction, light.outerConeAngle,
-              light.range, bounds,
-            )
-          : fitDirectionalShadow(light.direction, bounds);
+      if (
+        (light.type === 'directional' ||
+          light.type === 'spot' ||
+          light.type === 'point') &&
+        light.castShadow &&
+        light.intensity > 0
+      ) {
+        faces =
+          light.type === 'point'
+            ? fitPointShadow(light.position, light.range, bounds)
+            : null;
+        viewProjection =
+          faces?.[0] ??
+          (light.type === 'spot'
+            ? fitSpotShadow(
+                light.position,
+                light.direction,
+                light.outerConeAngle,
+                light.range,
+                bounds,
+              )
+            : light.type === 'directional'
+            ? fitDirectionalShadow(light.direction, bounds)
+            : null);
         if (viewProjection) {
           shadowLight = light;
           break;
@@ -438,25 +484,35 @@ export class MeshPipeline3D extends System {
       lightIndex++;
     }
     if (!shadowLight || !viewProjection) return undefined;
-    if (!state.shadowSceneBuffer) {
-      const buffer = state.device.createBuffer({
-        viewOrSize: 16 * 4,
-        usage: BufferUsage.UNIFORM,
-        hint: BufferFrequencyHint.DYNAMIC,
+    if (!state.shadowSceneBuffers) {
+      state.shadowSceneBuffers = Array.from({ length: 6 }, () => {
+        const buffer = state.device.createBuffer({
+          viewOrSize: 16 * 4,
+          usage: BufferUsage.UNIFORM,
+          hint: BufferFrequencyHint.DYNAMIC,
+        });
+        state.shadowResources.add(() => buffer.destroy());
+        return buffer;
       });
-      state.shadowResources.add(() => buffer.destroy());
-      state.shadowSceneBuffer = buffer;
     }
-    const shadowSceneBuffer = state.shadowSceneBuffer;
+    const matrices = faces ?? [viewProjection];
+    const size = faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE;
+    const targetWidth = faces ? size * POINT_SHADOW_COLUMNS : size;
+    const targetHeight = faces ? size * POINT_SHADOW_ROWS : size;
     const color = new RGRenderTargetDescription(Format.U8_RGBA_RT);
-    color.setDimensions(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 1);
+    color.setDimensions(targetWidth, targetHeight, 1);
     color.colorClearColor = TransparentWhite;
     color.sampledForShaderRead = true;
     const depth = new RGRenderTargetDescription(Format.D24_S8);
-    depth.setDimensions(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, 1);
+    depth.setDimensions(targetWidth, targetHeight, 1);
     depth.depthClearValue = 1;
     depth.stencilClearValue = 0;
-    const passName = shadowLight.type === 'spot' ? 'Spot Shadow' : 'Directional Shadow';
+    const passName =
+      shadowLight.type === 'spot'
+        ? 'Spot Shadow'
+        : shadowLight.type === 'point'
+        ? 'Point Shadow'
+        : 'Directional Shadow';
     const colorID = builder.createRenderTargetID(color, `${passName} Color`);
     const depthID = builder.createRenderTargetID(depth, `${passName} Depth`);
     builder.pushPass((pass) => {
@@ -464,33 +520,49 @@ export class MeshPipeline3D extends System {
       pass.attachRenderTargetID(RGAttachmentSlot.Color0, colorID);
       pass.attachRenderTargetID(RGAttachmentSlot.DepthStencil, depthID);
       pass.exec((renderPass) => {
-        shadowSceneBuffer.setSubData(0, new Uint8Array(viewProjection.buffer));
-        state.shadowProgram.setUniformsLegacy({
-          u_ShadowLightViewProjection: viewProjection,
-        });
-        renderPass.setViewport(0, 0, SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
         renderPass.setPipeline(state.shadowPipeline);
-        for (const entity of meshes) {
-          const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
-          if (!gpu) continue;
-          gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+        matrices.forEach((matrix, face) => {
+          const shadowSceneBuffer = state.shadowSceneBuffers![face];
+          shadowSceneBuffer.setSubData(0, new Uint8Array(matrix.buffer));
           state.shadowProgram.setUniformsLegacy({
-            u_ShadowModelMatrix: gpu.modelUniforms.getModelMatrix(),
+            u_ShadowLightViewProjection: matrix,
           });
-          renderPass.setBindings(gpu.shadowBindings.get(
-            state.shadowPipeline, shadowSceneBuffer,
-          ));
-          renderPass.setVertexInput(
-            state.shadowInputLayout,
-            [{ buffer: gpu.vertexBuffer }],
-            gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
+          renderPass.setViewport(
+            (face % POINT_SHADOW_COLUMNS) * size,
+            Math.floor(face / POINT_SHADOW_COLUMNS) * size,
+            size,
+            size,
           );
-          if (gpu.indexBuffer) renderPass.drawIndexed(gpu.indexCount);
-          else renderPass.draw(gpu.vertexCount);
-        }
+          for (const entity of meshes) {
+            const gpu = state.meshGPUCache.get(
+              entity.__id,
+              entity.read(Mesh3D),
+            );
+            if (!gpu) continue;
+            gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+            state.shadowProgram.setUniformsLegacy({
+              u_ShadowModelMatrix: gpu.modelUniforms.getModelMatrix(),
+            });
+            renderPass.setBindings(
+              gpu.shadowBindings.get(state.shadowPipeline, shadowSceneBuffer),
+            );
+            renderPass.setVertexInput(
+              state.shadowInputLayout,
+              [{ buffer: gpu.vertexBuffer }],
+              gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
+            );
+            if (gpu.indexBuffer) renderPass.drawIndexed(gpu.indexCount);
+            else renderPass.draw(gpu.vertexCount);
+          }
+        });
       });
     });
-    return { viewProjection, lightIndex, resolveID: builder.resolveRenderTarget(colorID) };
+    return {
+      viewProjection,
+      faces: faces ?? undefined,
+      lightIndex,
+      resolveID: builder.resolveRenderTarget(colorID),
+    };
   }
 
   /** Color clear descriptor for the 3D pass (first pass in the shared graph). */
@@ -609,11 +681,15 @@ export class MeshPipeline3D extends System {
         fragment: { glsl: shadowFrag, entryPoint: 'main' },
       });
       const shadowInputLayout = renderCache.createInputLayout({
-        vertexBufferDescriptors: [{
-          arrayStride: 3 * 4,
-          stepMode: VertexStepMode.VERTEX,
-          attributes: [{ format: Format.F32_RGB, offset: 0, shaderLocation: 0 }],
-        }],
+        vertexBufferDescriptors: [
+          {
+            arrayStride: 3 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RGB, offset: 0, shaderLocation: 0 },
+            ],
+          },
+        ],
         indexBufferFormat: Format.U32_R,
         program: shadowProgram,
       });
@@ -754,29 +830,71 @@ export class MeshPipeline3D extends System {
     };
     state.textureCache.set(key, entry);
 
-    void loadImageBitmapUniversal(url)
-      .then((bitmap) => {
+    void (
+      environment && /\.hdr(?:[?#]|$)/i.test(url)
+        ? fetch(url)
+            .then((response) => {
+              if (!response.ok) throw new Error(`HTTP ${response.status}`);
+              return response.arrayBuffer();
+            })
+            .then((data) => decodeRadianceHDR(new Uint8Array(data)))
+        : loadImageBitmapUniversal(url)
+    )
+      .then((source) => {
         if (state.textureCache.get(key) !== entry) {
           return;
         }
-        const loaded = device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: bitmap.width,
-          height: bitmap.height,
-          usage: TextureUsage.SAMPLED,
-          // Standard image row-0-at-top → GPU v=1; geometry UV uses 1-v for screen-top.
-          pixelStore: { unpackFlipY: true },
-        });
-        loaded.setImageData([bitmap]);
+        let loaded: Texture;
         if (environment) {
+          const linear =
+            typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap
+              ? environmentFromBitmap(source)
+              : source;
+          const filtered = prefilterEnvironment(linear);
+          const canvas = DOMAdapter.get().createCanvas(
+            ENV_ATLAS_WIDTH,
+            ENV_ATLAS_HEIGHT,
+          );
+          const context = canvas.getContext('2d') as
+            | CanvasRenderingContext2D
+            | OffscreenCanvasRenderingContext2D
+            | null;
+          if (!context)
+            throw new Error('A 2D canvas is required for environment maps');
+          const image = context.createImageData(
+            ENV_ATLAS_WIDTH,
+            ENV_ATLAS_HEIGHT,
+          );
+          image.data.set(filtered.pixels);
+          context.putImageData(image, 0, 0);
+          loaded = device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: ENV_ATLAS_WIDTH,
+            height: ENV_ATLAS_HEIGHT,
+            usage: TextureUsage.SAMPLED,
+            pixelStore: { unpackFlipY: true },
+          });
           try {
-            entry.irradiance = irradianceFromBitmap(bitmap);
+            loaded.setImageData([canvas]);
           } catch (error) {
-            console.warn(
-              '[MeshPipeline3D] could not read environment pixels',
-              url,
-              error,
-            );
+            loaded.destroy();
+            throw error;
+          }
+          entry.irradiance = filtered.irradiance;
+        } else {
+          const bitmap = source as ImageBitmap;
+          loaded = device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: bitmap.width,
+            height: bitmap.height,
+            usage: TextureUsage.SAMPLED,
+            pixelStore: { unpackFlipY: true },
+          });
+          try {
+            loaded.setImageData([bitmap]);
+          } catch (error) {
+            loaded.destroy();
+            throw error;
           }
         }
         entry.texture.destroy();

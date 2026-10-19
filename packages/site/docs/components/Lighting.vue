@@ -21,6 +21,9 @@ const copy = {
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
     environment: 'Studio environment',
+    hdr: 'HDR studio',
+    ldr: 'LDR studio',
+    off: 'Off',
     shadows: 'Cast shadows',
     play: 'Animate spot',
     pause: 'Pause spot',
@@ -29,7 +32,7 @@ const copy = {
     directional: 'Directional + ambient',
     point: 'Point + ambient',
     spot: 'Spot + ambient',
-    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. The key or spot light casts soft shadows on the floor when enabled. The studio panorama adds diffuse light and reflections.',
+    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. Directional, point, and spot lights can cast shadows. Compare HDR and LDR panoramas on the sphere.',
   },
   zh: {
     controls: '光照控制',
@@ -39,6 +42,9 @@ const copy = {
     metallic: '球体金属度',
     roughness: '球体粗糙度',
     environment: '摄影棚环境光照',
+    hdr: 'HDR 摄影棚',
+    ldr: 'LDR 摄影棚',
+    off: '关闭',
     shadows: '投射阴影',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
@@ -47,7 +53,7 @@ const copy = {
     directional: '平行光 + 环境光',
     point: '点光 + 环境光',
     spot: '聚光灯 + 环境光',
-    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。开启后主光源或聚光灯会在地板上投射柔和阴影。摄影棚全景图提供漫反射光和反射。',
+    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。平行光、点光与聚光灯都可以投射阴影；切换 HDR 与 LDR 全景图可比较球体反射。',
   },
 } as const;
 const t = computed(() => copy[props.locale]);
@@ -58,10 +64,18 @@ const intensity = ref(1);
 const range = ref(500);
 const metallic = ref(1);
 const roughness = ref(0.25);
-const environment = ref(true);
+const environment = ref<'hdr' | 'ldr' | 'off'>('hdr');
 const shadows = ref(true);
 const playing = ref(false);
 const studioMap = '/lighting-studio.svg';
+const hdrStudioMap = '/lighting-studio.hdr';
+const environmentMap = computed(() =>
+  environment.value === 'hdr'
+    ? hdrStudioMap
+    : environment.value === 'ldr'
+    ? studioMap
+    : null,
+);
 
 const sceneCenter = { x: 220, y: 180, z: 40 };
 const spotLift = 200;
@@ -70,7 +84,7 @@ const lightPresets = [
   { id: 'light-ambient', kind: 'ambient', intensity: 0.7 },
   { id: 'light-key', kind: 'directional', intensity: 1.8 },
   { id: 'light-fill', kind: 'directional', intensity: 0.35 },
-  { id: 'light-point', kind: 'point', intensity: 6 },
+  { id: 'light-point', kind: 'point', intensity: 18 },
   { id: 'light-spot', kind: 'spot', intensity: 6 },
 ] as const;
 
@@ -107,8 +121,9 @@ const sceneNodes: SerializedNode[] = [
     y: 105,
     z: -160,
     color: '#a8d8ff',
-    intensity: 6,
+    intensity: 18,
     range: 500,
+    castShadow: true,
     zIndex: -3,
   },
   {
@@ -160,7 +175,7 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.5,
       metallic: 0,
       roughness: 0.75,
-      environmentMap: studioMap,
+      environmentMap: hdrStudioMap,
     },
     camera3d: { linked: true, projection: 'perspective', clearColor: false },
   },
@@ -181,7 +196,7 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.5,
       metallic: 1,
       roughness: 0.25,
-      environmentMap: studioMap,
+      environmentMap: hdrStudioMap,
     },
   },
   {
@@ -201,7 +216,7 @@ const sceneNodes: SerializedNode[] = [
       ambient: 0.5,
       metallic: 0,
       roughness: 0.2,
-      environmentMap: studioMap,
+      environmentMap: hdrStudioMap,
     },
   },
 ];
@@ -236,7 +251,9 @@ function applyLights() {
         ...(preset.kind === 'point' || preset.kind === 'spot'
           ? { range: range.value }
           : {}),
-        ...(preset.id === 'light-key' || preset.id === 'light-spot'
+        ...(preset.id === 'light-key' ||
+        preset.id === 'light-point' ||
+        preset.id === 'light-spot'
           ? { castShadow: shadows.value }
           : {}),
       },
@@ -256,7 +273,7 @@ function applySphereMaterial() {
         ambient: 0.5,
         metallic: metallic.value,
         roughness: roughness.value,
-        environmentMap: environment.value ? studioMap : null,
+        environmentMap: environmentMap.value,
       },
     },
     false,
@@ -279,7 +296,7 @@ function applyEnvironmentToOtherMeshes() {
             ambient: 0.5,
             metallic,
             roughness,
-            environmentMap: environment.value ? studioMap : null,
+            environmentMap: environmentMap.value,
           },
         },
         false,
@@ -436,9 +453,13 @@ onUnmounted(() => {
           step="0.01"
         />
       </label>
-      <label class="lighting-checkbox">
-        <input v-model="environment" type="checkbox" />
+      <label>
         <span>{{ t.environment }}</span>
+        <select v-model="environment">
+          <option value="hdr">{{ t.hdr }}</option>
+          <option value="ldr">{{ t.ldr }}</option>
+          <option value="off">{{ t.off }}</option>
+        </select>
       </label>
       <label class="lighting-checkbox">
         <input v-model="shadows" type="checkbox" />
