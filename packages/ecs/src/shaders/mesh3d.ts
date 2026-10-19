@@ -4,11 +4,11 @@
  * Direct lighting uses a Cook-Torrance microfacet BRDF (GGX/Trowbridge-Reitz
  * normal distribution, Smith geometry term, Schlick Fresnel) driven by the
  * material `metallic` and `roughness` parameters. Ambient is a simple fill,
- * with optional equirectangular diffuse light and reflections. There are no
- * cast shadows. The legacy
+ * with optional equirectangular diffuse light and reflections. The legacy
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
- * specular map still modulates the specular response.
+ * specular map still modulates the specular response. The first directional
+ * light with castShadow uses a packed-depth shadow map with 3x3 PCF.
  * Supports multiple ambient, directional, point, and spot lights.
  */
 
@@ -27,6 +27,8 @@ layout(std140) uniform SceneUniforms3D {
   vec4 u_LightDirections[MAX_3D_LIGHTS];
   vec4 u_LightColors[MAX_3D_LIGHTS];
   vec4 u_LightParams3D[MAX_3D_LIGHTS];
+  mat4 u_ShadowViewProjection;
+  vec4 u_ShadowParams; // x: shadowed light index + 1, y: shadow-map texel size
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -104,6 +106,8 @@ layout(std140) uniform SceneUniforms3D {
   vec4 u_LightDirections[MAX_3D_LIGHTS];
   vec4 u_LightColors[MAX_3D_LIGHTS];
   vec4 u_LightParams3D[MAX_3D_LIGHTS];
+  mat4 u_ShadowViewProjection;
+  vec4 u_ShadowParams;
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -126,6 +130,7 @@ uniform sampler2D u_Map;
 uniform sampler2D u_SpecularMap;
 uniform sampler2D u_BumpMap;
 uniform sampler2D u_EnvironmentMap;
+uniform sampler2D u_ShadowMap;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
@@ -230,6 +235,32 @@ vec3 environmentDiffuse(vec3 n) {
   return max(irradiance, vec3(0.0));
 }
 
+float unpackShadowDepth(vec4 packed) {
+  return dot(packed, vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0));
+}
+
+float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir) {
+  vec4 clip = u_ShadowViewProjection * vec4(position, 1.0);
+  vec3 projected = clip.xyz / clip.w;
+  vec2 uv = projected.xy * 0.5 + 0.5;
+  float depth = projected.z * 0.5 + 0.5;
+  if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0 ||
+      depth < 0.0 || depth > 1.0) return 1.0;
+  // Color-packed depth has a small raster/texel mismatch, amplified across the
+  // 3x3 kernel on surfaces oblique to the light. Offset receivers enough to
+  // avoid self-shadow stripes while retaining the much larger caster gap.
+  float bias = max(0.005, 0.008 * (1.0 - max(dot(normal, lightDir), 0.0)));
+  float visibility = 0.0;
+  for (int y = -1; y <= 1; y++) {
+    for (int x = -1; x <= 1; x++) {
+      vec2 sampleUv = uv + vec2(float(x), float(y)) * u_ShadowParams.y;
+      float stored = unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap), sampleUv));
+      visibility += depth - bias <= stored ? 1.0 : 0.0;
+    }
+  }
+  return visibility / 9.0;
+}
+
 // Cook-Torrance microfacet BRDF for a single analytic light.
 vec3 shadeLight(
   int index,
@@ -253,6 +284,8 @@ vec3 shadeLight(
 
   if (lightType == LIGHT_TYPE_DIRECTIONAL) {
     lightDir = normalize(-u_LightDirections[index].xyz);
+    if (u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
+      attenuation *= shadowVisibility(v_FragPos, normal, lightDir);
   } else {
     vec3 toLight = u_LightPositions[index].xyz - v_FragPos;
     float distanceToLight = length(toLight);

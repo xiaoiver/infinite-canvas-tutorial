@@ -492,6 +492,8 @@ export interface Light3DNodeSerializedNode
   range?: number;
   innerConeAngle?: number;
   outerConeAngle?: number;
+  /** Enable a shadow map for a directional light. */
+  castShadow?: boolean;
 }
 
 export interface GSerializedNode

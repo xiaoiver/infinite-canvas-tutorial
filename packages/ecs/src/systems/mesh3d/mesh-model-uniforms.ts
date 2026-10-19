@@ -44,6 +44,38 @@ export class MeshModelUniforms {
       environmentIrradiance: Float32Array | null;
     },
   ): Record<string, unknown> {
+    this.updatePose(transform);
+    for (let i = 0; i < 4; i++) this.set(32 + i, material.baseColor[i]);
+    this.set(36, material.ambient);
+    this.set(37, material.diffuse);
+    this.set(38, material.specular);
+    this.set(39, material.shininess);
+    this.set(48, Number(textureReady.mapReady));
+    this.set(49, Number(textureReady.specularMapReady));
+    this.set(50, Number(textureReady.bumpMapReady));
+    this.set(51, material.bumpScale);
+    this.set(52, material.metallic);
+    this.set(53, material.roughness);
+    this.set(54, Number(material.sideColor !== null));
+    this.set(55, Number(textureReady.environmentMapReady));
+    for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
+    for (let i = 0; i < ENVIRONMENT_IRRADIANCE_FLOATS; i++)
+      this.set(60 + i, textureReady.environmentIrradiance?.[i] ?? 0);
+    this.upload();
+    return this.legacy;
+  }
+
+  /** Shadow pass only needs the first mat4; preserve cached material values. */
+  updatePoseOnly(transform: Transform3D): void {
+    this.updatePose(transform);
+    this.upload();
+  }
+
+  getModelMatrix(): Float32Array {
+    return this.model;
+  }
+
+  private updatePose(transform: Transform3D): void {
     let poseChanged = !this.initialized;
     for (let i = 0; i < 9; i++) {
       const value =
@@ -70,28 +102,14 @@ export class MeshModelUniforms {
       this.initialized = true;
       this.dirty = true;
     }
-    for (let i = 0; i < 4; i++) this.set(32 + i, material.baseColor[i]);
-    this.set(36, material.ambient);
-    this.set(37, material.diffuse);
-    this.set(38, material.specular);
-    this.set(39, material.shininess);
-    this.set(48, Number(textureReady.mapReady));
-    this.set(49, Number(textureReady.specularMapReady));
-    this.set(50, Number(textureReady.bumpMapReady));
-    this.set(51, material.bumpScale);
-    this.set(52, material.metallic);
-    this.set(53, material.roughness);
-    this.set(54, Number(material.sideColor !== null));
-    this.set(55, Number(textureReady.environmentMapReady));
-    for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
-    for (let i = 0; i < ENVIRONMENT_IRRADIANCE_FLOATS; i++)
-      this.set(60 + i, textureReady.environmentIrradiance?.[i] ?? 0);
+  }
+
+  private upload(): void {
     if (this.dirty) {
       this.buffer.setSubData(0, this.bytes);
       // A failed upload must be retried, even if inputs have not changed.
       this.dirty = false;
     }
-    return this.legacy;
   }
 
   private set(offset: number, value: number): void {
