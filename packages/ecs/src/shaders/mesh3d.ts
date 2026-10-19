@@ -384,6 +384,7 @@ vec3 shadeLight(
   vec4 params = u_LightParams3D[index];
   int lightType = int(params.x);
   float intensity = params.y;
+  if (intensity <= 0.0) return vec3(0.0);
   float range = params.z;
   float cosInner = params.w;
   float cosOuter = u_LightDirections[index].w;
@@ -409,6 +410,10 @@ vec3 shadeLight(
       attenuation *= cone;
     }
   }
+  float NdotL = max(dot(normal, lightDir), 0.0);
+  // No direct contribution is possible outside the light's range or cone, or
+  // on a surface facing away from it. Avoid the 3x3 shadow lookup there.
+  if (attenuation <= 0.0 || NdotL <= 0.0) return vec3(0.0);
   int shadowSlot = -1;
   if (index == int(u_ShadowParams[0].x) - 1) shadowSlot = 0;
   else if (index == int(u_ShadowParams[1].x) - 1) shadowSlot = 1;
@@ -418,7 +423,6 @@ vec3 shadeLight(
   }
 
   vec3 halfDir = normalize(lightDir + viewDir);
-  float NdotL = max(dot(normal, lightDir), 0.0);
   float NdotV = max(dot(normal, viewDir), 0.0);
   float NdotH = max(dot(normal, halfDir), 0.0);
   float HdotV = max(dot(halfDir, viewDir), 0.0);
