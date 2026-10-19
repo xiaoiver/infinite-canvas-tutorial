@@ -173,7 +173,14 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   };
   const frame = renderer.scheduleShadowPass(builder as any, slot.canvas);
   expect(frame).toMatchObject([
-    { lightIndex: 0, strength: 1, softness: 1, resolveID: 11 },
+    {
+      lightIndex: 0,
+      strength: 1,
+      softness: 1,
+      biasScale: 1,
+      normalBias: 0,
+      resolveID: 11,
+    },
   ]);
   expect(targets[0]).toMatchObject({
     width: 1024,
@@ -203,6 +210,8 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   expect(targets).toHaveLength(2);
   light.shadowStrength = 0.5;
   light.shadowSoftness = 2;
+  light.shadowBiasScale = 0.5;
+  light.shadowNormalBias = 2;
   light.type = 'spot';
   light.position = [0, 0, -100];
   light.direction = [0, 0, 1];
@@ -210,7 +219,14 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   light.castShadow = true;
   const spotFrame = renderer.scheduleShadowPass(builder as any, slot.canvas);
   expect(spotFrame).toMatchObject([
-    { lightIndex: 0, strength: 0.5, softness: 2, resolveID: 13 },
+    {
+      lightIndex: 0,
+      strength: 0.5,
+      softness: 2,
+      biasScale: 0.5,
+      normalBias: 2,
+      resolveID: 13,
+    },
   ]);
   expect(targets[2]).toMatchObject({ width: 1024, sampledForShaderRead: true });
   setup!({

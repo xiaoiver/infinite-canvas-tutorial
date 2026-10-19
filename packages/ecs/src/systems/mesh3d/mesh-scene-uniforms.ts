@@ -72,6 +72,8 @@ export class MeshSceneUniforms {
       faces?: readonly Float32Array[];
       strength?: number;
       softness?: number;
+      biasScale?: number;
+      normalBias?: number;
     }[],
   ): Record<string, unknown> {
     const values = this.inputs;
@@ -144,6 +146,8 @@ export class MeshSceneUniforms {
       Number(!!shadow.faces),
       shadow.strength ?? 1,
       shadow.softness ?? 1,
+      shadow.biasScale ?? 1,
+      shadow.normalBias ?? 0,
       ...(shadow.faces?.flatMap((face) => [...face]) ?? []),
     ]) ?? [0];
     if (!same(shadowValues, this.shadowInputs)) {
@@ -159,6 +163,12 @@ export class MeshSceneUniforms {
         this.data[421 + slot * 4] = Number.isFinite(shadow.softness)
           ? Math.max(0, Math.min(4, shadow.softness!))
           : 1;
+        this.data[422 + slot * 4] = Number.isFinite(shadow.biasScale)
+          ? Math.max(0, Math.min(4, shadow.biasScale!))
+          : 1;
+        this.data[423 + slot * 4] = Number.isFinite(shadow.normalBias)
+          ? Math.max(0, Math.min(10, shadow.normalBias!))
+          : 0;
         shadow.faces?.forEach((face, index) =>
           this.data.set(face, 228 + (slot * 6 + index) * 16),
         );

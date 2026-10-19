@@ -39,5 +39,7 @@ export function light3DFromWire(node: Light3DNodeSerializedNode): Light3D {
     castShadow: node.castShadow,
     shadowStrength: node.shadowStrength,
     shadowSoftness: node.shadowSoftness,
+    shadowBiasScale: node.shadowBiasScale,
+    shadowNormalBias: node.shadowNormalBias,
   });
 }

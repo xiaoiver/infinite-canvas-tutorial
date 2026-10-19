@@ -134,6 +134,8 @@ export interface ShadowFrame {
   lightIndex: number;
   strength: number;
   softness: number;
+  biasScale: number;
+  normalBias: number;
   resolveID: number;
 }
 
@@ -345,6 +347,8 @@ export class MeshPipeline3D extends System {
         faces: frame.faces,
         strength: frame.strength,
         softness: frame.softness,
+        biasScale: frame.biasScale,
+        normalBias: frame.normalBias,
       })),
     );
 
@@ -464,6 +468,8 @@ export class MeshPipeline3D extends System {
       faces: Float32Array[] | null;
       strength: number;
       softness: number;
+      biasScale: number;
+      normalBias: number;
     }[] = [];
     for (const entity of lights) {
       const light = entity.read(Light3D);
@@ -475,6 +481,12 @@ export class MeshPipeline3D extends System {
       const softness = Number.isFinite(light.shadowSoftness)
         ? Math.max(0, Math.min(4, light.shadowSoftness))
         : 1;
+      const biasScale = Number.isFinite(light.shadowBiasScale)
+        ? Math.max(0, Math.min(4, light.shadowBiasScale))
+        : 1;
+      const normalBias = Number.isFinite(light.shadowNormalBias)
+        ? Math.max(0, Math.min(10, light.shadowNormalBias))
+        : 0;
       if (
         (light.type === 'directional' ||
           light.type === 'spot' ||
@@ -508,6 +520,8 @@ export class MeshPipeline3D extends System {
             faces,
             strength,
             softness,
+            biasScale,
+            normalBias,
           });
           if (casters.length === MAX_SHADOW_LIGHTS) break;
         }
@@ -530,7 +544,16 @@ export class MeshPipeline3D extends System {
       );
     }
     return casters.map((caster, slot) => {
-      const { type, lightIndex, viewProjection, faces, strength, softness } = caster;
+      const {
+        type,
+        lightIndex,
+        viewProjection,
+        faces,
+        strength,
+        softness,
+        biasScale,
+        normalBias,
+      } = caster;
       const matrices = faces ?? [viewProjection];
       const size = faces ? POINT_SHADOW_FACE_SIZE : SHADOW_MAP_SIZE;
       const targetWidth = faces ? size * POINT_SHADOW_COLUMNS : size;
@@ -602,6 +625,8 @@ export class MeshPipeline3D extends System {
         lightIndex,
         strength,
         softness,
+        biasScale,
+        normalBias,
         resolveID: builder.resolveRenderTarget(colorID),
       };
     });

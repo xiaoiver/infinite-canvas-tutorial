@@ -11,6 +11,8 @@ describe('Light3D', () => {
     expect(light.castShadow).toBe(false);
     expect(light.shadowStrength).toBe(1);
     expect(light.shadowSoftness).toBe(1);
+    expect(light.shadowBiasScale).toBe(1);
+    expect(light.shadowNormalBias).toBe(0);
     expect(light.attenuation).toBe('range');
     expect(light.referenceDistance).toBe(100);
   });
@@ -29,11 +31,15 @@ describe('Light3D', () => {
       referenceDistance: 80,
       shadowStrength: 0.4,
       shadowSoftness: 2,
+      shadowBiasScale: 0.5,
+      shadowNormalBias: 2,
     });
     expect(spot.outerConeAngle).toBe(0.5);
     expect(spot.attenuation).toBe('inverse-square');
     expect(spot.referenceDistance).toBe(80);
     expect(spot.shadowStrength).toBeCloseTo(0.4);
     expect(spot.shadowSoftness).toBe(2);
+    expect(spot.shadowBiasScale).toBeCloseTo(0.5);
+    expect(spot.shadowNormalBias).toBe(2);
   });
 });
