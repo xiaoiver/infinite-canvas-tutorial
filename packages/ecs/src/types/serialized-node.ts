@@ -296,12 +296,12 @@ export interface BindedAttributes {
   constraints: ConstraintAttributes[];
   /**
    * Variable: STYLE_PORT_CONSTRAINT
-   * 
+   *
    * Defines the direction(s) that edges are allowed to connect to cells in.
-   * Possible values are "DIRECTION_NORTH, DIRECTION_SOUTH, 
+   * Possible values are "DIRECTION_NORTH, DIRECTION_SOUTH,
    * DIRECTION_EAST" and "DIRECTION_WEST". Value is
    * "portConstraint".
-   * 
+   *
    * e.g. "north,south"
    */
   portConstraint: string;
@@ -328,7 +328,7 @@ export interface BindingAttributes {
   entryDy: number;
   /**
    * Affect the routing rules. e.g. orth connector.
-   * 
+   *
    * @example
    * ┌──────┐        ┌──────┐
    * │ Node │ ─┐     │ Node │
@@ -490,6 +490,10 @@ export interface Light3DNodeSerializedNode
   direction?: [number, number, number];
   z?: number;
   range?: number;
+  /** Point/spot falloff. Legacy scenes default to `range`. */
+  attenuation?: 'range' | 'inverse-square';
+  /** World-unit distance where inverse-square intensity is 1×, default 100. */
+  referenceDistance?: number;
   innerConeAngle?: number;
   outerConeAngle?: number;
   /** Enable a shadow map for a directional light. */

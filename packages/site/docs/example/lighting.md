@@ -81,10 +81,22 @@ api.updateNodes([
 ]);
 ```
 
+For inverse-square falloff on a point or spot light, set `attenuation: 'inverse-square'` and choose a positive `referenceDistance` in canvas world units. At that distance the inverse-square factor is 1; the default is 100. The interactive example switches between the two falloff modes.
+
+```ts
+const lamp = api.getNodeById('lamp');
+if (lamp) {
+    api.updateNode(lamp, {
+        attenuation: 'inverse-square',
+        referenceDistance: 100,
+    });
+}
+```
+
 ## Notes {#notes}
 
 -   **Light combinations**: with no explicit lights, the renderer supplies ambient and directional defaults. Once a light is supplied, only the explicit lights contribute. Up to 8 non-ambient lights render; additional lights are ignored.
--   **Coordinates and range**: positions and directions use canvas world units; in this linked-camera example, smaller z values are closer to the viewer. `direction` points from the light toward the scene. Positive `range` uses a squared range falloff; `range <= 0` disables attenuation. This is not physical inverse-square falloff.
+-   **Coordinates and range**: positions and directions use canvas world units; in this linked-camera example, smaller z values are closer to the viewer. `direction` points from the light toward the scene. By default, positive `range` uses the legacy squared range falloff and `range <= 0` disables attenuation. With `attenuation: 'inverse-square'`, intensity falls with squared distance, is capped inside 10% of `referenceDistance`, and fades smoothly to zero at a positive `range`. `range <= 0` removes only that cutoff. These world units are calibrated by `referenceDistance`, not physical SI light units.
 -   **Spot cone**: `innerConeAngle` and `outerConeAngle` are in radians. The outer angle must exceed the inner angle; invalid or equal inputs are sanitized before rendering.
 -   **Color and materials**: CSS colors and textures enter as sRGB, lighting runs in linear space, and a filmic tone map precedes sRGB output. `metallic` and `roughness` drive GGX highlights. The material's `ambient` scales both the ambient fill and optional environment reflection; legacy `diffuse`, `specular`, and `shininess` no longer affect shading.
 -   **Environment lighting**: `material3d.environmentMap` accepts an equirectangular LDR image or Radiance `.hdr` URL. HDR radiance stays in linear space while the renderer builds second-order spherical harmonics for diffuse light and five importance-sampled GGX roughness levels for reflections. A cached 64 × 64 split-sum BRDF lookup adds view-angle and roughness-dependent GGX visibility to those reflections. The levels are packed into one RGBM atlas for both WebGL and WebGPU. The demo lets you compare a generated HDR studio panorama with an LDR SVG. An omitted or failed image preserves the old ambient appearance.

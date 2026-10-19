@@ -420,6 +420,26 @@ it('sanitizes invalid light values before uploading them to the shader', () => {
   expect(data[157]).toBe(0);
 });
 
+it('packs inverse-square reference distance and invalidates cached light uniforms', () => {
+  const { uniforms, camera, data, upload } = setup();
+  const point = new Light3D({ type: 'point', range: 500 });
+  uniforms.update(camera, 1, undefined, [point]);
+  expect(data[63]).toBe(0);
+  point.attenuation = 'inverse-square';
+  point.referenceDistance = 80;
+  uniforms.update(camera, 1, undefined, [point]);
+  expect(data[63]).toBe(80);
+  expect(upload).toHaveBeenCalledTimes(2);
+  uniforms.update(camera, 1, undefined, [point]);
+  expect(upload).toHaveBeenCalledTimes(2);
+  point.referenceDistance = NaN;
+  uniforms.update(camera, 1, undefined, [point]);
+  expect(data[63]).toBe(100);
+  point.attenuation = 'range';
+  uniforms.update(camera, 1, undefined, [point]);
+  expect(data[63]).toBe(0);
+});
+
 it('caps punctual lights at eight while accumulating all ambient lights', () => {
   const { uniforms, camera, data } = setup();
   const lights = Array.from(
