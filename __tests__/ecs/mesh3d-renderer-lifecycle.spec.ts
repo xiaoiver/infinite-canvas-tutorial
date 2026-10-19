@@ -277,6 +277,47 @@ it('skips mesh bounds work when no light can cast a shadow', () => {
   expect(getMesh).not.toHaveBeenCalled();
 });
 
+it('snapshots light data before another ECS component read invalidates it', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+  } = fixture();
+  let firstValid = true;
+  const firstLight = new Proxy(
+    new Light3D({ type: 'directional', castShadow: true }),
+    {
+      get(target, key) {
+        if (!firstValid) throw new Error('stale Light3D component');
+        return Reflect.get(target, key);
+      },
+    },
+  );
+  const first = entity(new Map([[Light3D, firstLight]]), 90);
+  const second = entity(
+    new Map([
+      [Light3D, new Light3D({ type: 'directional', castShadow: true })],
+    ]),
+    91,
+  );
+  const readSecond = second.read.bind(second);
+  (second as any).read = (type: any) => {
+    if (type === Light3D) firstValid = false;
+    return readSecond(type);
+  };
+  queries.lights3D.current = [first, second];
+  let target = 0;
+  const builder = {
+    createRenderTargetID: () => ++target,
+    pushPass: jest.fn(),
+    resolveRenderTarget: (id: number) => id,
+  };
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toHaveLength(
+    2,
+  );
+});
+
 it('draws every mesh in the color pass but only casters in the shadow pass', () => {
   const {
     renderer,
