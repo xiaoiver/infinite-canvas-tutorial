@@ -235,8 +235,8 @@ vec3 environmentDiffuse(vec3 n) {
   return max(irradiance, vec3(0.0));
 }
 
-float unpackShadowDepth(vec4 packed) {
-  return dot(packed, vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0));
+float unpackShadowDepth(vec4 depthColor) {
+  return dot(depthColor, vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0));
 }
 
 float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir) {

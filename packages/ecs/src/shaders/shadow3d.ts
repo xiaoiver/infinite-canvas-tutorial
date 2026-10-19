@@ -33,9 +33,9 @@ out vec4 outputColor;
 
 vec4 packDepth(float depth) {
   float d = clamp(depth, 0.0, 0.9999999);
-  vec4 packed = fract(d * vec4(16777216.0, 65536.0, 256.0, 1.0));
-  packed -= packed.xxyz * vec4(0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0);
-  return packed;
+  vec4 depthColor = fract(d * vec4(16777216.0, 65536.0, 256.0, 1.0));
+  depthColor -= depthColor.xxyz * vec4(0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0);
+  return depthColor;
 }
 
 void main() {
