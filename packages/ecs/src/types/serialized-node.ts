@@ -506,6 +506,10 @@ export interface Light3DNodeSerializedNode
   shadowStrength?: number;
   /** PCF radius in texels, clamped to 0..4; default 1. */
   shadowSoftness?: number;
+  /** Receiver depth-bias multiplier, clamped to 0..4; default 1. */
+  shadowBiasScale?: number;
+  /** Receiver normal offset in world units, clamped to 0..10; default 0. */
+  shadowNormalBias?: number;
 }
 
 export interface GSerializedNode

@@ -101,6 +101,8 @@ const state = (editor = api) => {
       'castShadow',
       'shadowStrength',
       'shadowSoftness',
+      'shadowBiasScale',
+      'shadowNormalBias',
     ]);
   const source = e.read(Mesh3DNode);
   const companion = source.meshEntity!;
@@ -245,6 +247,8 @@ it.each([
   ['castShadow', true],
   ['shadowStrength', 0.4],
   ['shadowSoftness', 2],
+  ['shadowBiasScale', 0.5],
+  ['shadowNormalBias', 2],
 ] as const)(
   'restores light %s defaults through history and reload',
   async (key, value) => {

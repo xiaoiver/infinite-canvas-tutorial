@@ -73,6 +73,12 @@ export class Light3D {
   /** PCF sampling radius in shadow texels; 1 preserves the legacy filter. */
   @field.float32 declare shadowSoftness: number;
 
+  /** Multiplier for the receiver depth bias; 1 preserves the default bias. */
+  @field.float32 declare shadowBiasScale: number;
+
+  /** Shift shadow receivers along their surface normal in canvas world units. */
+  @field.float32 declare shadowNormalBias: number;
+
   constructor(light?: Partial<Light3D>) {
     if (light) {
       Object.assign(this, light);
@@ -90,5 +96,7 @@ export class Light3D {
     this.castShadow ??= false;
     this.shadowStrength ??= 1;
     this.shadowSoftness ??= 1;
+    this.shadowBiasScale ??= 1;
+    this.shadowNormalBias ??= 0;
   }
 }

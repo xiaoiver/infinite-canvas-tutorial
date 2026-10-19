@@ -30,7 +30,7 @@ layout(std140) uniform SceneUniforms3D {
   mat4 u_ShadowViewProjection[2];
   vec4 u_ShadowParams[2]; // x: light index + 1, y: shadow-map texel size, z: point
   mat4 u_ShadowFaces[12];
-  vec4 u_ShadowOptions[2]; // x: strength, y: PCF radius in texels
+  vec4 u_ShadowOptions[2]; // x: strength, y: PCF radius, z: depth bias scale, w: normal bias
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -269,11 +269,13 @@ float unpackShadowDepth(vec4 depthColor) {
 float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   bool spot, int slot, int lightIndex) {
   vec4 shadowParams = u_ShadowParams[slot];
+  vec4 shadowOptions = u_ShadowOptions[slot];
+  vec3 receiver = position + normal * shadowOptions.w;
   bool point = shadowParams.z > 0.5;
   int face = 0;
   vec2 tile = vec2(0.0);
   if (point) {
-    vec3 ray = position - u_LightPositions[lightIndex].xyz;
+    vec3 ray = receiver - u_LightPositions[lightIndex].xyz;
     vec3 a = abs(ray);
     if (a.x >= a.y && a.x >= a.z) face = ray.x >= 0.0 ? 0 : 1;
     else if (a.y >= a.z) face = ray.y >= 0.0 ? 2 : 3;
@@ -282,7 +284,7 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
     tile = vec2(float(face >= 3 ? face - 3 : face), float(face >= 3 ? 1 : 0));
   }
   vec4 clip = (point ? u_ShadowFaces[slot * 6 + face] :
-    u_ShadowViewProjection[slot]) * vec4(position, 1.0);
+    u_ShadowViewProjection[slot]) * vec4(receiver, 1.0);
   vec3 projected = clip.xyz / clip.w;
   vec2 localUv = projected.xy * 0.5 + 0.5;
   float depth = projected.z * 0.5 + 0.5;
@@ -292,13 +294,14 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   // 3x3 kernel on surfaces oblique to the light. Offset receivers enough to
   // avoid self-shadow stripes while retaining the much larger caster gap.
   float slope = 1.0 - max(dot(normal, lightDir), 0.0);
-  float bias = point ? max(0.0005, 0.001 * slope) : spot ? max(0.004, 0.006 * slope)
-    : max(0.005, 0.008 * slope);
+  float bias = (point ? max(0.0005, 0.001 * slope) :
+    spot ? max(0.004, 0.006 * slope) : max(0.005, 0.008 * slope)) *
+    shadowOptions.z;
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
       vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) *
-        shadowParams.y * u_ShadowOptions[slot].y,
+        shadowParams.y * shadowOptions.y,
         vec2(shadowParams.y * 0.5), vec2(1.0 - shadowParams.y * 0.5));
       vec2 sampleUv = point ? (sampleLocal + tile) / vec2(3.0, 2.0) : sampleLocal;
       float stored = slot == 0
@@ -307,13 +310,14 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
       visibility += depth - bias <= stored ? 1.0 : 0.0;
     }
   }
-  return mix(1.0, visibility / 9.0, u_ShadowOptions[slot].x);
+  return mix(1.0, visibility / 9.0, shadowOptions.x);
 }
 
 // Cook-Torrance microfacet BRDF for a single analytic light.
 vec3 shadeLight(
   int index,
   vec3 normal,
+  vec3 shadowNormal,
   vec3 viewDir,
   vec3 albedo,
   vec3 F0,
@@ -353,7 +357,7 @@ vec3 shadeLight(
   if (index == int(u_ShadowParams[0].x) - 1) shadowSlot = 0;
   else if (index == int(u_ShadowParams[1].x) - 1) shadowSlot = 1;
   if (shadowSlot >= 0 && u_ShadowReceive.x > 0.5) {
-    attenuation *= shadowVisibility(v_FragPos, normal, lightDir,
+    attenuation *= shadowVisibility(v_FragPos, shadowNormal, lightDir,
       lightType == LIGHT_TYPE_SPOT, shadowSlot, index);
   }
 
@@ -403,7 +407,8 @@ vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
 }
 
 void main() {
-  vec3 normal = normalize(v_Normal);
+  vec3 shadowNormal = normalize(v_Normal);
+  vec3 normal = shadowNormal;
   if (u_MaterialFlags.z > 0.5) {
     normal = perturbNormalFromBumpMap(normal, v_Uv, u_MaterialFlags.w);
   }
@@ -450,6 +455,7 @@ void main() {
     Lo += shadeLight(
       i,
       normal,
+      shadowNormal,
       viewDir,
       albedo,
       F0,

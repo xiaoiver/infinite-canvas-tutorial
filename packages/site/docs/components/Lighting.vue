@@ -32,6 +32,8 @@ const copy = {
     floorReceivesShadow: 'Floor receives shadow',
     shadowStrength: 'Shadow strength',
     shadowSoftness: 'Shadow softness',
+    shadowBiasScale: 'Depth bias ×',
+    shadowNormalBias: 'Normal offset',
     play: 'Animate spot',
     pause: 'Pause spot',
     all: 'All lights',
@@ -60,6 +62,8 @@ const copy = {
     floorReceivesShadow: '地板接收阴影',
     shadowStrength: '阴影强度',
     shadowSoftness: '阴影柔化',
+    shadowBiasScale: '深度偏移倍率',
+    shadowNormalBias: '法线偏移',
     play: '播放聚光灯动画',
     pause: '暂停聚光灯动画',
     all: '全部光源',
@@ -85,6 +89,8 @@ const sphereCastsShadow = ref(true);
 const floorReceivesShadow = ref(true);
 const shadowStrength = ref(1);
 const shadowSoftness = ref(1);
+const shadowBiasScale = ref(1);
+const shadowNormalBias = ref(0);
 const playing = ref(false);
 const studioMap = '/lighting-studio.svg';
 const hdrStudioMap = '/lighting-studio.hdr';
@@ -284,6 +290,8 @@ function applyLights() {
               castShadow: shadows.value,
               shadowStrength: shadowStrength.value,
               shadowSoftness: shadowSoftness.value,
+              shadowBiasScale: shadowBiasScale.value,
+              shadowNormalBias: shadowNormalBias.value,
             }
           : {}),
       },
@@ -407,6 +415,8 @@ watch(
     shadows,
     shadowStrength,
     shadowSoftness,
+    shadowBiasScale,
+    shadowNormalBias,
   ],
   applyLights,
 );
@@ -563,6 +573,26 @@ onUnmounted(() => {
           type="range"
           min="0"
           max="4"
+          step="0.25"
+        />
+      </label>
+      <label>
+        <span>{{ t.shadowBiasScale }}: {{ shadowBiasScale.toFixed(2) }}</span>
+        <input
+          v-model.number="shadowBiasScale"
+          type="range"
+          min="0"
+          max="4"
+          step="0.1"
+        />
+      </label>
+      <label>
+        <span>{{ t.shadowNormalBias }}: {{ shadowNormalBias.toFixed(1) }}</span>
+        <input
+          v-model.number="shadowNormalBias"
+          type="range"
+          min="0"
+          max="10"
           step="0.25"
         />
       </label>
