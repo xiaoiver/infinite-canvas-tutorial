@@ -1,6 +1,9 @@
 import { mat4, vec3 } from 'gl-matrix';
 
 export const SHADOW_MAP_SIZE = 1024;
+export const POINT_SHADOW_FACE_SIZE = 512;
+export const POINT_SHADOW_COLUMNS = 3;
+export const POINT_SHADOW_ROWS = 2;
 
 export interface ShadowCasterBounds {
   min: readonly [number, number, number];
@@ -50,9 +53,8 @@ export function fitDirectionalShadow(
   );
   const eye = vec3.create();
   vec3.scaleAndAdd(eye, center, ray, -radius * 3);
-  const up: [number, number, number] = Math.abs(ray[1]) > 0.95
-    ? [0, 0, 1]
-    : [0, 1, 0];
+  const up: [number, number, number] =
+    Math.abs(ray[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0];
   const view = mat4.create();
   mat4.lookAt(view, eye, center, up);
   const min = vec3.fromValues(Infinity, Infinity, Infinity);
@@ -89,16 +91,22 @@ export function fitSpotShadow(
 ): Float32Array | null {
   const length = Math.hypot(...direction);
   if (
-    position.length !== 3 || !position.every(Number.isFinite) ||
-    !Number.isFinite(length) || length < 1e-8 ||
+    position.length !== 3 ||
+    !position.every(Number.isFinite) ||
+    !Number.isFinite(length) ||
+    length < 1e-8 ||
     !Number.isFinite(outerConeAngle) ||
-    outerConeAngle <= 0 || outerConeAngle >= 85 * Math.PI / 180
-  ) return null;
+    outerConeAngle <= 0 ||
+    outerConeAngle >= (85 * Math.PI) / 180
+  )
+    return null;
   const points = worldCorners(meshes);
   if (!points.length) return null;
   const eye = vec3.fromValues(position[0], position[1], position[2]);
   const ray = vec3.fromValues(
-    direction[0] / length, direction[1] / length, direction[2] / length,
+    direction[0] / length,
+    direction[1] / length,
+    direction[2] / length,
   );
   let minDepth = Infinity;
   let maxDepth = 0;
@@ -111,16 +119,78 @@ export function fitSpotShadow(
   }
   if (!Number.isFinite(minDepth)) return null;
   const near = Math.max(0.1, minDepth * 0.5);
-  const far = Number.isFinite(range) && range > 0
-    ? Math.min(range, maxDepth + Math.max(1, maxDepth * 0.05))
-    : maxDepth + Math.max(1, maxDepth * 0.05);
+  const far =
+    Number.isFinite(range) && range > 0
+      ? Math.min(range, maxDepth + Math.max(1, maxDepth * 0.05))
+      : maxDepth + Math.max(1, maxDepth * 0.05);
   if (far <= near + 0.01) return null;
   const target = vec3.add(vec3.create(), eye, ray);
-  const up: [number, number, number] = Math.abs(ray[1]) > 0.95
-    ? [0, 0, 1] : [0, 1, 0];
+  const up: [number, number, number] =
+    Math.abs(ray[1]) > 0.95 ? [0, 0, 1] : [0, 1, 0];
   const view = mat4.lookAt(mat4.create(), eye, target, up);
   const projection = mat4.perspective(
-    mat4.create(), outerConeAngle * 2, 1, near, far,
+    mat4.create(),
+    outerConeAngle * 2,
+    1,
+    near,
+    far,
   );
   return new Float32Array(mat4.multiply(mat4.create(), projection, view));
+}
+
+/** Six 90° cameras ordered +X, -X, +Y, -Y, +Z, -Z. */
+export function fitPointShadow(
+  position: readonly number[],
+  range: number,
+  meshes: readonly ShadowCasterBounds[],
+): Float32Array[] | null {
+  if (position.length !== 3 || !position.every(Number.isFinite)) return null;
+  const points = worldCorners(meshes);
+  if (!points.length) return null;
+  const eye = vec3.fromValues(position[0], position[1], position[2]);
+  const far = Math.max(...points.map((point) => vec3.distance(eye, point)));
+  const limit =
+    Number.isFinite(range) && range > 0 ? Math.min(range, far) : far;
+  if (!Number.isFinite(limit) || limit <= 0.1) return null;
+  // A tiny near plane compresses perspective depth differences enough for
+  // receiver bias to erase shadows at ordinary canvas distances.
+  const near = Math.max(0.1, Math.min(5, limit * 0.02));
+  const projection = mat4.perspective(
+    mat4.create(),
+    Math.PI / 2,
+    1,
+    near,
+    limit + 1,
+  );
+  const faces: [vec3, vec3][] = [
+    [
+      [1, 0, 0],
+      [0, -1, 0],
+    ],
+    [
+      [-1, 0, 0],
+      [0, -1, 0],
+    ],
+    [
+      [0, 1, 0],
+      [0, 0, 1],
+    ],
+    [
+      [0, -1, 0],
+      [0, 0, -1],
+    ],
+    [
+      [0, 0, 1],
+      [0, -1, 0],
+    ],
+    [
+      [0, 0, -1],
+      [0, -1, 0],
+    ],
+  ];
+  return faces.map(([direction, up]) => {
+    const target = vec3.add(vec3.create(), eye, direction);
+    const view = mat4.lookAt(mat4.create(), eye, target, up);
+    return new Float32Array(mat4.multiply(mat4.create(), projection, view));
+  });
 }

@@ -14,6 +14,22 @@ export function computeEnvironmentIrradiance(
   width: number,
   height: number,
 ): Float32Array {
+  const linear = new Float32Array(pixels.length);
+  for (let i = 0; i + 3 < pixels.length; i += 4) {
+    linear[i] = linearChannel(pixels[i]);
+    linear[i + 1] = linearChannel(pixels[i + 1]);
+    linear[i + 2] = linearChannel(pixels[i + 2]);
+    linear[i + 3] = pixels[i + 3] / 255;
+  }
+  return computeLinearEnvironmentIrradiance(linear, width, height);
+}
+
+/** Integrate a linear-light, north-at-top panorama (LDR or HDR). */
+export function computeLinearEnvironmentIrradiance(
+  pixels: Float32Array,
+  width: number,
+  height: number,
+): Float32Array {
   const coefficients = new Float32Array(ENVIRONMENT_IRRADIANCE_FLOATS);
   if (width <= 0 || height <= 0 || pixels.length < width * height * 4)
     return coefficients;
@@ -43,11 +59,7 @@ export function computeEnvironmentIrradiance(
         0.546274 * (nx * nx - ny * ny),
       ];
       const pixel = (y * width + x) * 4;
-      const color = [
-        linearChannel(pixels[pixel]),
-        linearChannel(pixels[pixel + 1]),
-        linearChannel(pixels[pixel + 2]),
-      ];
+      const color = [pixels[pixel], pixels[pixel + 1], pixels[pixel + 2]];
       for (let i = 0; i < 9; i++) {
         // Lambert convolution divided by PI: l=0: 1, l=1: 2/3, l=2: 1/4.
         const kernel = i === 0 ? 1 : i < 4 ? 2 / 3 : 1 / 4;

@@ -1,30 +1,42 @@
-import type { Bindings, Buffer, Device, RenderPipeline } from '@infinite-canvas-tutorial/device-api';
+import type {
+  Bindings,
+  Buffer,
+  Device,
+  RenderPipeline,
+} from '@infinite-canvas-tutorial/device-api';
 
 /** Per-mesh shadow bindings reuse the model UBO already owned by MeshGPUCache. */
 export class ShadowDrawBindings {
-  private bindings?: Bindings;
+  private bindings = new Map<Buffer, Bindings>();
   private pipeline?: RenderPipeline;
-  private sceneBuffer?: Buffer;
 
-  constructor(private readonly device: Device, private readonly modelBuffer: Buffer) {}
+  constructor(
+    private readonly device: Device,
+    private readonly modelBuffer: Buffer,
+  ) {}
 
   get(pipeline: RenderPipeline, sceneBuffer: Buffer): Bindings {
-    if (this.bindings && this.pipeline === pipeline && this.sceneBuffer === sceneBuffer)
-      return this.bindings;
+    if (this.pipeline === pipeline && this.bindings.has(sceneBuffer))
+      return this.bindings.get(sceneBuffer)!;
     const next = this.device.createBindings({
       pipeline,
-      uniformBufferBindings: [{ buffer: sceneBuffer }, { buffer: this.modelBuffer }],
+      uniformBufferBindings: [
+        { buffer: sceneBuffer },
+        { buffer: this.modelBuffer },
+      ],
       samplerBindings: [],
     });
-    this.bindings?.destroy();
-    this.bindings = next;
+    if (this.pipeline !== pipeline) {
+      for (const bindings of this.bindings.values()) bindings.destroy();
+      this.bindings.clear();
+    }
+    this.bindings.set(sceneBuffer, next);
     this.pipeline = pipeline;
-    this.sceneBuffer = sceneBuffer;
     return next;
   }
 
   destroy(): void {
-    this.bindings?.destroy();
-    this.bindings = undefined;
+    for (const bindings of this.bindings.values()) bindings.destroy();
+    this.bindings.clear();
   }
 }
