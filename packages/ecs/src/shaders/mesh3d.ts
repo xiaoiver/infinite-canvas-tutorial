@@ -133,6 +133,7 @@ uniform sampler2D u_SpecularMap;
 uniform sampler2D u_BumpMap;
 uniform sampler2D u_EnvironmentMap;
 uniform sampler2D u_ShadowMap;
+uniform sampler2D u_EnvironmentBrdf;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
@@ -197,6 +198,11 @@ float geometrySmith(float NdotV, float NdotL, float roughness) {
 // Schlick Fresnel approximation.
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+  return F0 + (max(vec3(1.0 - roughness), F0) - F0) *
+    pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 vec3 sampleEnvironment(vec3 direction, int level) {
@@ -437,13 +443,16 @@ void main() {
   if (u_PbrParams.w > 0.5) {
     // With a reflection source, metals receive ambient energy through their
     // specular response rather than a diffuse albedo fill.
-    vec3 fresnel = fresnelSchlick(max(dot(normal, viewDir), 0.0), F0);
+    float nDotV = max(dot(normal, viewDir), 0.0);
+    vec3 fresnel = fresnelSchlickRoughness(nDotV, F0, roughness);
     vec3 diffuseWeight = (vec3(1.0) - fresnel) * (1.0 - metallic);
     ambient *= diffuseWeight;
     ambient += environmentDiffuse(normal) * albedo * diffuseWeight * u_LightParams.x;
     vec3 reflected = reflect(-viewDir, normal);
     vec3 env = environmentReflection(reflected, roughness);
-    ambient += env * fresnel * specularScale * u_LightParams.x;
+    vec2 brdf = texture(SAMPLER_2D(u_EnvironmentBrdf),
+      vec2(nDotV, roughness)).rg;
+    ambient += env * (F0 * brdf.x + brdf.y) * specularScale * u_LightParams.x;
   }
 
   vec3 result = ambient + Lo;

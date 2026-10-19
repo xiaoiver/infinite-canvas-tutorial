@@ -21,6 +21,8 @@ function setup() {
     Texture,
     Texture,
     Sampler,
+    Texture,
+    Sampler,
   ] = [
     {} as RenderPipeline,
     {} as Buffer,
@@ -29,6 +31,8 @@ function setup() {
     {} as Texture,
     {} as Texture,
     {} as Texture,
+    {} as Texture,
+    {} as Sampler,
     {} as Texture,
     {} as Sampler,
   ];
@@ -45,6 +49,8 @@ it.each([
   'environment',
   'shadow',
   'shadow sampler',
+  'environment BRDF',
+  'BRDF sampler',
 ])('reuses bindings until the %s resource changes', (kind) => {
   const { gpu, model, cache, args } = setup();
   const first = cache.get(...args);
@@ -60,6 +66,8 @@ it.each([
     'environment',
     'shadow',
     'shadow sampler',
+    'environment BRDF',
+    'BRDF sampler',
   ].indexOf(kind);
   args[index] = {} as Texture & Sampler & Buffer & RenderPipeline;
   const second = cache.get(...args);
@@ -71,6 +79,7 @@ it.each([
     samplerBindings: [
       ...args.slice(3, 7).map((texture) => ({ texture, sampler: args[2] })),
       { texture: args[7], sampler: args[8] },
+      { texture: args[9], sampler: args[10] },
     ],
   });
   expect(first.destroy).toHaveBeenCalledTimes(1);

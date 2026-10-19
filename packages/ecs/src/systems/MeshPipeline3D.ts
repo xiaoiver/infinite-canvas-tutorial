@@ -53,6 +53,10 @@ import type { RGGraphBuilder } from '../render-graph/interface';
 import { RGAttachmentSlot } from '../render-graph/interface';
 import { RGRenderTargetDescription } from '../render-graph/RenderTargetDescription';
 import { loadImageBitmapUniversal } from '../utils/load-image-bitmap';
+import {
+  ENVIRONMENT_BRDF_SIZE,
+  environmentBrdfPixels,
+} from '../utils/environment-brdf';
 import { DOMAdapter } from '../environment';
 import {
   decodeRadianceHDR,
@@ -109,6 +113,9 @@ interface MeshPipeline3DCanvasState {
   whiteTexture: Texture;
   /** Shared sampler for base-color textures. */
   sampler: Sampler;
+  brdfSampler: Sampler;
+  brdfTexture?: Texture;
+  brdfResources: ResourceScope;
   shadowSampler: Sampler;
   shadowProgram: Program;
   shadowPipeline: RenderPipeline;
@@ -397,6 +404,10 @@ export class MeshPipeline3D extends System {
         environmentTexture,
         shadowTexture ?? state.whiteTexture,
         state.shadowSampler,
+        environmentMapReady
+          ? this.resolveEnvironmentBrdf(state)
+          : state.whiteTexture,
+        state.brdfSampler,
       );
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(
@@ -707,6 +718,8 @@ export class MeshPipeline3D extends System {
       });
       const shadowResources = new ResourceScope();
       resources.add(() => shadowResources.dispose());
+      const brdfResources = new ResourceScope();
+      resources.add(() => brdfResources.dispose());
 
       const sceneUniformBuffer = own(
         device.createBuffer({
@@ -744,6 +757,15 @@ export class MeshPipeline3D extends System {
         lodMinClamp: 0,
         lodMaxClamp: 0,
       });
+      const brdfSampler = renderCache.createSampler({
+        addressModeU: AddressMode.CLAMP_TO_EDGE,
+        addressModeV: AddressMode.CLAMP_TO_EDGE,
+        minFilter: FilterMode.BILINEAR,
+        magFilter: FilterMode.BILINEAR,
+        mipmapFilter: MipmapFilterMode.NO_MIP,
+        lodMinClamp: 0,
+        lodMaxClamp: 0,
+      });
 
       const state: MeshPipeline3DCanvasState = {
         device,
@@ -758,6 +780,8 @@ export class MeshPipeline3D extends System {
         meshGPUCache: new MeshGPUCache(device),
         whiteTexture,
         sampler,
+        brdfSampler,
+        brdfResources,
         shadowSampler,
         shadowProgram,
         shadowPipeline,
@@ -789,6 +813,25 @@ export class MeshPipeline3D extends System {
       }
       throw error;
     }
+  }
+
+  private resolveEnvironmentBrdf(state: MeshPipeline3DCanvasState): Texture {
+    if (state.brdfTexture) return state.brdfTexture;
+    const texture = state.device.createTexture({
+      format: Format.U8_RGBA_NORM,
+      width: ENVIRONMENT_BRDF_SIZE,
+      height: ENVIRONMENT_BRDF_SIZE,
+      usage: TextureUsage.SAMPLED,
+    });
+    try {
+      texture.setImageData([environmentBrdfPixels()]);
+    } catch (error) {
+      texture.destroy();
+      throw error;
+    }
+    state.brdfResources.add(() => texture.destroy());
+    state.brdfTexture = texture;
+    return texture;
   }
 
   /**
