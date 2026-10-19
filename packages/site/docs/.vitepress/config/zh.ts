@@ -503,6 +503,7 @@ export const zh = defineConfig({
           { text: '使用 vello 渲染', link: 'vello' },
           { text: 'Mermaid 水彩风格', link: 'mermaid-watercolor' },
           { text: '基于 Radiance Cascades 的全局光照', link: 'radiance-cascades' },
+          { text: 'WebMCP', link: 'webmcp' },
         ],
       },
     },
