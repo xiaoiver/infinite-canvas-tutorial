@@ -20,6 +20,14 @@ import { fakeMeshGPU } from './helpers/mesh-gpu';
 jest.mock('../../packages/ecs/src/utils/load-image-bitmap', () => ({
   loadImageBitmapUniversal: jest.fn(async () => ({ width: 4, height: 2 })),
 }));
+jest.mock('../../packages/ecs/src/utils/environment-irradiance', () => ({
+  ...jest.requireActual('../../packages/ecs/src/utils/environment-irradiance'),
+  irradianceFromBitmap: jest.fn(() => {
+    const result = new Float32Array(36);
+    result[0] = 0.7;
+    return result;
+  }),
+}));
 
 let world: Awaited<ReturnType<typeof createDocumentWorld>>;
 let api: API;
@@ -194,6 +202,7 @@ it('loads and clears an equirectangular material reflection without rebuilding g
   const draw = gpu.draws.at(-1)!;
   const model = draw.uniformBufferBindings[1].buffer;
   expect(new Float32Array(model.bytes.buffer)[55]).toBe(1);
+  expect(new Float32Array(model.bytes.buffer)[60]).toBeCloseTo(0.7);
   expect(draw.samplerBindings).toHaveLength(4);
   const geometryBuffers = gpu.buffers.length;
 
@@ -204,6 +213,7 @@ it('loads and clears an equirectangular material reflection without rebuilding g
   );
   expect(companion().read(Material3D).environmentMap).toBeNull();
   expect(new Float32Array(model.bytes.buffer)[55]).toBe(0);
+  expect(new Float32Array(model.bytes.buffer)[60]).toBe(0);
   expect(gpu.buffers).toHaveLength(geometryBuffers);
 });
 

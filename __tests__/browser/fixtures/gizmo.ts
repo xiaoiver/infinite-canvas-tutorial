@@ -28,6 +28,8 @@ import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
 import { importExtrudedSvg } from '../../../packages/app/lib/import-extruded-svg';
 import { ensure3DCamera } from '../../../packages/app/lib/ensure-3d-camera';
 import { settleECSFrames } from './ecs-frames';
+import { MESH_SCENE_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
+import { MESH_MODEL_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
 
 let api: API;
 const params = new URLSearchParams(location.search);
@@ -207,8 +209,8 @@ async function init() {
   device.createBuffer = (descriptor) => {
     const buffer = createBuffer(descriptor);
     if (descriptor.usage === BufferUsage.UNIFORM) {
-      const isScene = descriptor.viewOrSize === 188 * 4;
-      const isModel = descriptor.viewOrSize === 60 * 4;
+      const isScene = descriptor.viewOrSize === MESH_SCENE_UNIFORM_FLOATS * 4;
+      const isModel = descriptor.viewOrSize === MESH_MODEL_UNIFORM_FLOATS * 4;
       if (isScene) sceneBuffers.add(buffer);
       if (isScene || isModel) {
         const upload = buffer.setSubData.bind(buffer);

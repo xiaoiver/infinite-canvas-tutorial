@@ -49,6 +49,7 @@ import type { RenderCache } from '../utils/render-cache';
 import { makeAttachmentClearDescriptor } from '../render-graph/utils';
 import { vert, frag } from '../shaders/mesh3d';
 import { loadImageBitmapUniversal } from '../utils/load-image-bitmap';
+import { irradianceFromBitmap } from '../utils/environment-irradiance';
 import {
   getMeshPipeline3D,
   registerMeshPipeline3D,
@@ -69,6 +70,7 @@ import {
 interface TextureCacheEntry {
   texture: Texture;
   status: 'loading' | 'ready' | 'error';
+  irradiance: Float32Array | null;
 }
 
 /** Each canvas owns its uniforms, geometry cache and loaded textures. */
@@ -309,8 +311,16 @@ export class MeshPipeline3D extends System {
         this.resolveMaterialTexture(state, device, material.specularMap);
       const { texture: bumpTexture, ready: bumpMapReady } =
         this.resolveMaterialTexture(state, device, material.bumpMap);
-      const { texture: environmentTexture, ready: environmentMapReady } =
-        this.resolveMaterialTexture(state, device, material.environmentMap);
+      const {
+        texture: environmentTexture,
+        ready: environmentMapReady,
+        irradiance: environmentIrradiance,
+      } = this.resolveMaterialTexture(
+        state,
+        device,
+        material.environmentMap,
+        true,
+      );
 
       const modelLegacy = gpuData.modelUniforms.update(
         meshEntity.read(Transform3D),
@@ -320,6 +330,7 @@ export class MeshPipeline3D extends System {
           specularMapReady,
           bumpMapReady,
           environmentMapReady,
+          environmentIrradiance,
         },
       );
 
@@ -550,17 +561,20 @@ export class MeshPipeline3D extends System {
     state: MeshPipeline3DCanvasState,
     device: Device,
     url: string | null,
-  ): { texture: Texture; ready: boolean } {
+    environment = false,
+  ): { texture: Texture; ready: boolean; irradiance: Float32Array | null } {
     if (!url) {
-      return { texture: state.whiteTexture, ready: false };
+      return { texture: state.whiteTexture, ready: false, irradiance: null };
     }
 
-    const cached = state.textureCache.get(url);
+    const key = `${environment ? 'environment' : 'material'}:${url}`;
+    const cached = state.textureCache.get(key);
     if (cached) {
       return {
         texture:
           cached.status === 'ready' ? cached.texture : state.whiteTexture,
         ready: cached.status === 'ready',
+        irradiance: cached.status === 'ready' ? cached.irradiance : null,
       };
     }
 
@@ -571,12 +585,16 @@ export class MeshPipeline3D extends System {
       usage: TextureUsage.SAMPLED,
     });
     texture.setImageData([new Uint8Array([255, 255, 255, 255])]);
-    const entry: TextureCacheEntry = { texture, status: 'loading' };
-    state.textureCache.set(url, entry);
+    const entry: TextureCacheEntry = {
+      texture,
+      status: 'loading',
+      irradiance: null,
+    };
+    state.textureCache.set(key, entry);
 
     void loadImageBitmapUniversal(url)
       .then((bitmap) => {
-        if (state.textureCache.get(url) !== entry) {
+        if (state.textureCache.get(key) !== entry) {
           return;
         }
         const loaded = device.createTexture({
@@ -588,6 +606,17 @@ export class MeshPipeline3D extends System {
           pixelStore: { unpackFlipY: true },
         });
         loaded.setImageData([bitmap]);
+        if (environment) {
+          try {
+            entry.irradiance = irradianceFromBitmap(bitmap);
+          } catch (error) {
+            console.warn(
+              '[MeshPipeline3D] could not read environment pixels',
+              url,
+              error,
+            );
+          }
+        }
         entry.texture.destroy();
         entry.texture = loaded;
         entry.status = 'ready';
@@ -597,7 +626,7 @@ export class MeshPipeline3D extends System {
         entry.status = 'error';
       });
 
-    return { texture: state.whiteTexture, ready: false };
+    return { texture: state.whiteTexture, ready: false, irradiance: null };
   }
 
   execute() {

@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="512" viewBox="0 0 1024 512">
   <defs>
     <linearGradient id="room" x2="0" y2="1">
-      <stop stop-color="#a8b6c9"/>
-      <stop offset=".48" stop-color="#4c5970"/>
-      <stop offset="1" stop-color="#171d2c"/>
+      <stop stop-color="#d0dae5"/>
+      <stop offset=".48" stop-color="#929eb2"/>
+      <stop offset="1" stop-color="#515b6d"/>
     </linearGradient>
     <linearGradient id="panel" x2="1" y2="1">
       <stop stop-color="#fff"/>
@@ -14,5 +14,5 @@
   <path fill="#e8eef5" d="M48 52h146v180H48z"/>
   <path fill="url(#panel)" d="M310 18h82v240h-82z"/>
   <path fill="#f8d29a" d="M697 92h186v106H697z"/>
-  <path fill="#09101d" d="M0 366h1024v146H0z" opacity=".35"/>
+  <path fill="#344052" d="M0 366h1024v146H0z" opacity=".16"/>
 </svg>
