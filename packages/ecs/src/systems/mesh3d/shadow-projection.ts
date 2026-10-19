@@ -1,4 +1,5 @@
 import { mat4, vec3 } from 'gl-matrix';
+import { POINT_SHADOW_FACES } from '../../utils/geometry3d/point-shadow-faces';
 
 export const SHADOW_MAP_SIZE = 1024;
 export const POINT_SHADOW_FACE_SIZE = 512;
@@ -162,33 +163,7 @@ export function fitPointShadow(
     near,
     limit + 1,
   );
-  const faces: [vec3, vec3][] = [
-    [
-      [1, 0, 0],
-      [0, -1, 0],
-    ],
-    [
-      [-1, 0, 0],
-      [0, -1, 0],
-    ],
-    [
-      [0, 1, 0],
-      [0, 0, 1],
-    ],
-    [
-      [0, -1, 0],
-      [0, 0, -1],
-    ],
-    [
-      [0, 0, 1],
-      [0, -1, 0],
-    ],
-    [
-      [0, 0, -1],
-      [0, -1, 0],
-    ],
-  ];
-  return faces.map(([direction, up]) => {
+  return POINT_SHADOW_FACES.map(({ direction, up }) => {
     const target = vec3.add(vec3.create(), eye, direction);
     const view = mat4.lookAt(mat4.create(), eye, target, up);
     return new Float32Array(mat4.multiply(mat4.create(), projection, view));
