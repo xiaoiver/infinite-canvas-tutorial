@@ -51,6 +51,8 @@ export function queueMesh3DCompanion(
   const bumpMap = node.bumpMap ?? null;
   const environmentMap = node.environmentMap ?? null;
   const bumpScale = node.bumpScale;
+  const castShadow = node.castShadow;
+  const receiveShadow = node.receiveShadow;
 
   const spec = normalizeGeometry(geometry);
   const meshData = resolveMesh3DNodeGeometry(geometry);
@@ -86,6 +88,8 @@ export function queueMesh3DCompanion(
         bumpMap,
         environmentMap,
         bumpScale,
+        castShadow,
+        receiveShadow,
       }),
       new Transform3D(transformProps),
       new Mesh3DNodeTarget({ source: source.hold() }),

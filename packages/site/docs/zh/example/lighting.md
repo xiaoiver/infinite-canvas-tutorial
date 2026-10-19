@@ -7,7 +7,7 @@ description: '可切换的环境光、平行光、点光和聚光灯，以及可
 
 # 3D 场景光照
 
-本页演示 `Light3D` 的四种光源：环境光、平行光、点光和聚光灯。立方体、球体、圆柱保持静止，方便比较光照；每种直接光照模式都保留一盏显式的弱环境光，便于观察未受光的面。球体的 `metallic` 与 `roughness` 可实时调节，还能对比 HDR 与 LDR 摄影棚全景图、切换阴影；点击播放后聚光灯会移动。
+本页演示 `Light3D` 的四种光源：环境光、平行光、点光和聚光灯。立方体、球体、圆柱保持静止，方便比较光照；每种直接光照模式都保留一盏显式的弱环境光，便于观察未受光的面。球体的 `metallic` 与 `roughness` 可实时调节，还能对比 HDR 与 LDR 摄影棚全景图，分别切换灯光阴影、球体投影和地板接影；点击播放后聚光灯会移动。
 
 实现见 [`Lighting.vue`](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/packages/site/docs/components/Lighting.vue) 与[课程 39 — 3D Mesh 渲染](/zh/guide/lesson-039)。
 
@@ -75,6 +75,8 @@ api.updateNodes([
             metallic: 1,
             roughness: 0.25,
             environmentMap: '/lighting-studio.hdr',
+            castShadow: true,
+            receiveShadow: true,
         },
         camera3d: { linked: true, projection: 'perspective' },
     },
@@ -103,6 +105,7 @@ if (lamp) {
 -   **颜色与材质**：光源颜色、材质底色和贴图按 sRGB 输入，在线性空间计算光照，再做胶片映射并编码为 sRGB。`metallic` 和 `roughness` 控制 GGX 高光；`ambient` 同时控制环境填充与可选的环境反射。旧 `diffuse` / `specular` / `shininess` 字段不再影响着色。
 -   **环境光照**：`material3d.environmentMap` 接受等距柱状 LDR 图片或 Radiance `.hdr` URL。HDR 辐亮度在线性空间处理；渲染器用二阶球谐函数计算漫反射，并生成五级 GGX 重要性采样后的粗糙度反射。缓存的 64 × 64 split-sum BRDF 查找表补充随视角与粗糙度变化的 GGX 遮蔽项。各级存入兼容 WebGL 与 WebGPU 的 RGBM 图集。示例可以切换生成的 HDR 摄影棚全景图与 LDR SVG。图片未设置或加载失败时保留原有环境填充。
 -   **投射阴影**：为平行光、点光或聚光灯 `light3d` 设置 `castShadow: true`。前八盏直接光中最多两盏开启阴影的有效光源会让 Mesh 向其他 Mesh（包括地板）投射阴影，每盏光各用一张阴影图。平行光阴影图按 Mesh 范围拟合，聚光灯阴影图使用光锥与范围，点光使用六个 90° 视角组成 3 × 2 图集。三者均使用 3 × 3 PCF。`shadowStrength` 控制 0 到 1 的阴影深浅（默认 1）；为 0 时不会分配阴影图。`shadowSoftness` 控制 0 到 4 个纹素的 PCF 采样间距（默认 1），采样数量仍为 3 × 3。切换至“点光 + 环境光”或“聚光灯 + 环境光”可分别查看阴影；“全部光源”组合平行光与点光阴影。
+-   **Mesh 阴影开关**：`material3d.castShadow: false` 让 `mesh3d` 不进入任何阴影图，但仍正常显示。`material3d.receiveShadow: false` 让 Mesh 的直接光照不受阴影遮挡，但它仍可投影。`Material3D` 和 `mesh3d` 节点中两项默认都为 `true`。示例中地板不投影，球体投影和地板接影可以分别切换。没有任何投影 Mesh 时不会调度阴影图；环境光与环境贴图不受接影开关影响。
 -   **边界**：漫反射使用全景图的 128 × 64 缩略采样与二阶球谐函数，细节会丢失。反射图集最清晰的一层为 128 × 64，RGBM 可存储最高 16 的辐亮度。BRDF 查找表量化为 RGBA8，尺寸为 64 × 64。最多两盏光投射阴影：每张平行光或聚光灯阴影图为 1024 × 1024，点光阴影图包含六个 512 × 512 面。后续开启阴影的灯仍提供照明，但不投射阴影。暂不支持 85° 及以上的聚光灯阴影；半透明物体投射不透明阴影。
 -   **动画**：示例通过 `api.updateNode` 更新聚光灯位置与方向；默认暂停，离开视口或页面隐藏时自动停止帧更新。
 

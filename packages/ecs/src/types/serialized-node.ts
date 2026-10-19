@@ -462,6 +462,10 @@ export type Material3DWire = {
   /** Equirectangular environment image used for diffuse and reflected light. */
   environmentMap?: string | null;
   bumpScale?: number;
+  /** Draw this mesh into shadow maps (default true). */
+  castShadow?: boolean;
+  /** Apply shadow-map occlusion to this mesh (default true). */
+  receiveShadow?: boolean;
 };
 
 /** Declarative 3D mesh node (canvas-local coordinates). */

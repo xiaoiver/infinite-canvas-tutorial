@@ -7,7 +7,7 @@ description: 'Interactive ambient, directional, point, and spot lighting with ad
 
 # 3D scene lighting
 
-This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness`, compare HDR and LDR studio panoramas, toggle shadows, then play or pause the spotlight orbit.
+This page compares all four `Light3D` types: ambient, directional, point, and spot. The cube, sphere, and cylinder stay still so changes in lighting are easy to see. Each direct-light mode keeps a dim explicit ambient light so unlit faces remain visible. You can adjust the sphere's `metallic` and `roughness`, compare HDR and LDR studio panoramas, toggle light shadows, sphere casting, and floor reception independently, then play or pause the spotlight orbit.
 
 The implementation is in [`Lighting.vue`](https://github.com/xiaoiver/infinite-canvas-tutorial/blob/master/packages/site/docs/components/Lighting.vue); see also [Lesson 39 — 3D mesh rendering](/guide/lesson-039).
 
@@ -75,6 +75,8 @@ api.updateNodes([
             metallic: 1,
             roughness: 0.25,
             environmentMap: '/lighting-studio.hdr',
+            castShadow: true,
+            receiveShadow: true,
         },
         camera3d: { linked: true, projection: 'perspective' },
     },
@@ -103,6 +105,7 @@ if (lamp) {
 -   **Color and materials**: CSS colors and textures enter as sRGB, lighting runs in linear space, and a filmic tone map precedes sRGB output. `metallic` and `roughness` drive GGX highlights. The material's `ambient` scales both the ambient fill and optional environment reflection; legacy `diffuse`, `specular`, and `shininess` no longer affect shading.
 -   **Environment lighting**: `material3d.environmentMap` accepts an equirectangular LDR image or Radiance `.hdr` URL. HDR radiance stays in linear space while the renderer builds second-order spherical harmonics for diffuse light and five importance-sampled GGX roughness levels for reflections. A cached 64 × 64 split-sum BRDF lookup adds view-angle and roughness-dependent GGX visibility to those reflections. The levels are packed into one RGBM atlas for both WebGL and WebGPU. The demo lets you compare a generated HDR studio panorama with an LDR SVG. An omitted or failed image preserves the old ambient appearance.
 -   **Cast shadows**: set `castShadow: true` on a directional, point, or spot `light3d` node. Up to two enabled eligible lights among the first eight direct lights cast shadows from meshes onto other meshes, including a plane. Each light gets its own shadow map. Directional shadows fit the meshes, spot shadows use their cone and range, and point shadows use six 90° views packed into a 3 × 2 atlas. All use 3 × 3 PCF. `shadowStrength` controls darkness from 0 to 1 (default 1); at 0 the light does not allocate a shadow map. `shadowSoftness` controls the PCF sample spacing from 0 to 4 texels (default 1), while the sample count remains 3 × 3. Select “Point + ambient” or “Spot + ambient” to inspect one shadow type; “All lights” combines directional and point shadows.
+-   **Mesh shadow participation**: set `material3d.castShadow: false` to keep a `mesh3d` out of every shadow map while still rendering it. Set `material3d.receiveShadow: false` to keep direct lighting on that mesh unshadowed; it can still cast shadows. Both default to `true` on `Material3D` and `mesh3d` nodes. The demo keeps the floor from casting and lets you toggle the sphere caster and floor receiver separately. If no mesh casts shadows, no shadow map is scheduled. Ambient and environment lighting are unaffected by reception.
 -   **Limits**: diffuse light uses a 128 × 64 sample and second-order spherical harmonics, so fine detail is lost. The reflection atlas has 128 × 64 pixels at its sharpest level and RGBM stores radiance up to 16. The BRDF lookup is quantized to RGBA8 and 64 × 64 texels. At most two lights cast shadows: each directional/spot map is 1024 × 1024, or a point map uses six 512 × 512 faces. Further shadow-enabled lights still illuminate the scene without casting shadows. Spot shadow cones of 85° or wider are unsupported; translucent objects cast opaque shadows.
 -   **Animation**: the example updates the spotlight via `api.updateNode`. It starts paused and stops requesting frames when offscreen or when the page is hidden.
 

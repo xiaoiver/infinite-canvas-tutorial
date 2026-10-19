@@ -213,6 +213,8 @@ export function syncMesh3DNodeCompanionMaterial(
     bumpMap: node.bumpMap ?? null,
     environmentMap: node.environmentMap ?? null,
     bumpScale: node.bumpScale,
+    castShadow: node.castShadow,
+    receiveShadow: node.receiveShadow,
   });
 }
 

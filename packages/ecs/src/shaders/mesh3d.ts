@@ -47,6 +47,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_PbrParams;
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
+  vec4 u_ShadowReceive; // x: receives shadows
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -128,6 +129,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_PbrParams;
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
+  vec4 u_ShadowReceive; // x: receives shadows
 };
 
 uniform sampler2D u_Map;
@@ -350,7 +352,7 @@ vec3 shadeLight(
   int shadowSlot = -1;
   if (index == int(u_ShadowParams[0].x) - 1) shadowSlot = 0;
   else if (index == int(u_ShadowParams[1].x) - 1) shadowSlot = 1;
-  if (shadowSlot >= 0) {
+  if (shadowSlot >= 0 && u_ShadowReceive.x > 0.5) {
     attenuation *= shadowVisibility(v_FragPos, normal, lightDir,
       lightType == LIGHT_TYPE_SPOT, shadowSlot, index);
   }

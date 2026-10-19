@@ -175,7 +175,11 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   expect(frame).toMatchObject([
     { lightIndex: 0, strength: 1, softness: 1, resolveID: 11 },
   ]);
-  expect(targets[0]).toMatchObject({ width: 1024, sampledForShaderRead: true });
+  expect(targets[0]).toMatchObject({
+    width: 1024,
+    sampledForShaderRead: true,
+    colorClearColor: { r: 1, g: 1, b: 1, a: 1 },
+  });
   let execute: ((renderPass: any) => void) | undefined;
   setup!({
     setDebugName: jest.fn(),
@@ -186,6 +190,10 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   });
   execute!(slot.gpu.pass);
   expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(1);
+  slot.material.castShadow = false;
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
+  expect(targets).toHaveLength(2);
+  slot.material.castShadow = true;
   light.castShadow = false;
   expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
   expect(targets).toHaveLength(2);
@@ -228,6 +236,58 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   expect(
     renderer.scheduleShadowPass(builder as any, slot.canvas),
   ).toMatchObject([{ lightIndex: 1, resolveID: 15 }]);
+});
+
+it('draws every mesh in the color pass but only casters in the shadow pass', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+    draw,
+  } = fixture();
+  const receiver = entity(
+    new Map<any, any>([
+      [Canvas3DScope, { canvas: slot.canvas }],
+      [Mesh3D, new Mesh3D(createGeometry({ type: 'cube' }))],
+      [Material3D, new Material3D({ castShadow: false })],
+      [Transform3D, new Transform3D({ translation: [40, 0, 0] })],
+    ]),
+    99,
+  );
+  queries.meshes3D.current.push(receiver);
+  queries.lights3D.current = [
+    entity(
+      new Map([
+        [Canvas3DScope, { canvas: slot.canvas }],
+        [Light3D, new Light3D({ type: 'directional', castShadow: true })],
+      ]),
+      90,
+    ),
+  ];
+  let setup: ((pass: any) => void) | undefined;
+  const builder = {
+    createRenderTargetID: () => 1,
+    pushPass: (callback: (pass: any) => void) => {
+      setup = callback;
+    },
+    resolveRenderTarget: () => 1,
+  };
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toHaveLength(
+    1,
+  );
+  let execute!: (pass: any) => void;
+  setup!({
+    setDebugName: jest.fn(),
+    attachRenderTargetID: jest.fn(),
+    exec: (callback: (pass: any) => void) => {
+      execute = callback;
+    },
+  });
+  execute(slot.gpu.pass);
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(1);
+  draw();
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(3);
 });
 
 it('schedules two independent shadow maps and ignores later casters', () => {
@@ -292,10 +352,9 @@ it('schedules two independent shadow maps and ignores later casters', () => {
   expect(sceneBuffers[0].setSubData).toHaveBeenCalledTimes(1);
   expect(sceneBuffers[6].setSubData).toHaveBeenCalledTimes(1);
   lights[2].shadowStrength = 0;
-  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toMatchObject([
-    { lightIndex: 0 },
-    { lightIndex: 2 },
-  ]);
+  expect(
+    renderer.scheduleShadowPass(builder as any, slot.canvas),
+  ).toMatchObject([{ lightIndex: 0 }, { lightIndex: 2 }]);
 });
 
 it('remembers geometry changes across skipped frames and uploads once on the next draw', () => {

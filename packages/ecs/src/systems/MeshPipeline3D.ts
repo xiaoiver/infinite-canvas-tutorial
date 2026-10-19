@@ -20,6 +20,7 @@ import {
   AddressMode,
   FilterMode,
   MipmapFilterMode,
+  OpaqueWhite,
   TransparentBlack,
   VertexStepMode,
   TransparentWhite,
@@ -438,6 +439,10 @@ export class MeshPipeline3D extends System {
     const state = this.initPipeline(canvas);
     if (!state || !this.shouldComposite(canvas)) return [];
     const meshes = this.collectMeshEntities(canvas);
+    const shadowCasters = meshes.filter(
+      (entity) => entity.read(Material3D).castShadow,
+    );
+    if (!shadowCasters.length) return [];
     const bounds = meshes.flatMap((entity) => {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
       if (!gpu) return [];
@@ -532,7 +537,9 @@ export class MeshPipeline3D extends System {
       const targetHeight = faces ? size * POINT_SHADOW_ROWS : size;
       const color = new RGRenderTargetDescription(Format.U8_RGBA_RT);
       color.setDimensions(targetWidth, targetHeight, 1);
-      color.colorClearColor = TransparentWhite;
+      // Packed depth uses alpha as its most significant channel. Empty texels
+      // must decode to the far plane, not zero-depth transparent white.
+      color.colorClearColor = OpaqueWhite;
       color.sampledForShaderRead = true;
       const depth = new RGRenderTargetDescription(Format.D24_S8);
       depth.setDimensions(targetWidth, targetHeight, 1);
@@ -565,7 +572,7 @@ export class MeshPipeline3D extends System {
               size,
               size,
             );
-            for (const entity of meshes) {
+            for (const entity of shadowCasters) {
               const gpu = state.meshGPUCache.get(
                 entity.__id,
                 entity.read(Mesh3D),

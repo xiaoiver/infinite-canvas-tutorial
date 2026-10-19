@@ -46,6 +46,10 @@ export class Mesh3DNode {
 
   @field.float32 declare bumpScale: number;
 
+  @field.boolean declare castShadow: boolean;
+
+  @field.boolean declare receiveShadow: boolean;
+
   /** Spawn {@link Camera3D} for this canvas when absent (first mesh3d wins). */
   @field.object declare camera3d?: {
     linked?: boolean;
@@ -76,5 +80,7 @@ export class Mesh3DNode {
     this.bumpMap ??= null;
     this.environmentMap ??= null;
     this.bumpScale ??= 1;
+    this.castShadow ??= true;
+    this.receiveShadow ??= true;
   }
 }

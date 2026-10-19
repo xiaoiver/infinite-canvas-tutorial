@@ -134,6 +134,21 @@ it('uploads an optional side-wall color without rebuilding geometry or pose', ()
   expect(setSubData).toHaveBeenCalledTimes(3);
 });
 
+it('updates the receiver flag when shadow reception changes', () => {
+  const { uniforms, transform, material, data, setSubData } = setup();
+  const receiveOffset = MESH_MODEL_UNIFORM_FLOATS - 4;
+  uniforms.update(transform, material, ready);
+  expect(data[receiveOffset]).toBe(1);
+  material.receiveShadow = false;
+  const legacy = uniforms.update(transform, material, ready);
+  expect(data[receiveOffset]).toBe(0);
+  expect(legacy.u_ShadowReceive).toEqual(
+    data.slice(receiveOffset, receiveOffset + 4),
+  );
+  uniforms.update(transform, material, ready);
+  expect(setSubData).toHaveBeenCalledTimes(2);
+});
+
 it('retries failed uploads without rebuilding unchanged matrices', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
   const invert = jest.spyOn(mat4, 'invert');

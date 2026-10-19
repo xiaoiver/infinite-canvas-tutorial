@@ -73,6 +73,12 @@ export class Material3D {
   /** Bump map strength (AntV G `bumpScale`, typically 1–10). */
   @field.float32 declare bumpScale: number;
 
+  /** Whether this mesh is drawn into shadow maps. */
+  @field.boolean declare castShadow: boolean;
+
+  /** Whether direct lighting on this mesh is occluded by shadow maps. */
+  @field.boolean declare receiveShadow: boolean;
+
   constructor(material?: Partial<Material3D>) {
     if (material) {
       Object.assign(this, material);
@@ -90,5 +96,7 @@ export class Material3D {
     this.bumpMap ??= null;
     this.environmentMap ??= null;
     this.bumpScale ??= 1;
+    this.castShadow ??= true;
+    this.receiveShadow ??= true;
   }
 }
