@@ -824,9 +824,9 @@ export class MeshPipeline extends System {
         }
       }
 
-      const shadowFrame = composite3D
+      const shadowFrames = composite3D
         ? mesh3d!.scheduleShadowPass(builder, canvas)
-        : undefined;
+        : [];
 
       batchManager.scheduleFlush(
         builder,
@@ -836,17 +836,22 @@ export class MeshPipeline extends System {
         legacyObject,
         width,
         height,
-        (renderPass, shadowTexture) => {
+        (renderPass, shadowTextures) => {
           gridRenderer.render(device, renderPass, uniformBuffer, legacyObject);
           if (composite3D) {
             mesh3d!.drawMeshes(
-              renderPass, canvas, width, height, shadowTexture, shadowFrame,
+              renderPass,
+              canvas,
+              width,
+              height,
+              shadowTextures,
+              shadowFrames,
             );
           }
         },
         sort,
         mainPassDebugName,
-        shadowFrame?.resolveID,
+        shadowFrames.map((frame) => frame.resolveID),
       );
 
       const filterEffects = parseEffect(filter);

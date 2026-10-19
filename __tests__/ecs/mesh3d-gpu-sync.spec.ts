@@ -20,12 +20,15 @@ import { fakeMeshGPU } from './helpers/mesh-gpu';
 jest.mock('../../packages/ecs/src/utils/load-image-bitmap', () => ({
   loadImageBitmapUniversal: jest.fn(async () => ({ width: 4, height: 2 })),
 }));
-jest.mock('../../packages/ecs/src/utils/environment-irradiance', () => ({
-  ...jest.requireActual('../../packages/ecs/src/utils/environment-irradiance'),
-  irradianceFromBitmap: jest.fn(() => {
+jest.mock('../../packages/ecs/src/utils/environment-map', () => ({
+  ...jest.requireActual('../../packages/ecs/src/utils/environment-map'),
+  prefilterEnvironment: jest.fn(() => {
     const result = new Float32Array(36);
     result[0] = 0.7;
-    return result;
+    return {
+      pixels: new Uint8ClampedArray(128 * 124 * 4),
+      irradiance: result,
+    };
   }),
 }));
 
@@ -203,7 +206,7 @@ it('loads and clears an equirectangular material reflection without rebuilding g
   const model = draw.uniformBufferBindings[1].buffer;
   expect(new Float32Array(model.bytes.buffer)[55]).toBe(1);
   expect(new Float32Array(model.bytes.buffer)[60]).toBeCloseTo(0.7);
-  expect(draw.samplerBindings).toHaveLength(5);
+  expect(draw.samplerBindings).toHaveLength(7);
   const geometryBuffers = gpu.buffers.length;
 
   await world.edit(api, (editor) =>

@@ -426,16 +426,21 @@ it.each([false, true])(
       let nextTarget = 2;
       const passes: {
         targets: number[];
+        shadowResolves: number[];
         execute?: (...args: any[]) => void;
       }[] = [];
       const builder = {
         pushPass(build: (pass: any) => void) {
-          const record: (typeof passes)[number] = { targets: [] };
+          const record: (typeof passes)[number] = {
+            targets: [],
+            shadowResolves: [],
+          };
           build({
             setDebugName: () => {},
             attachRenderTargetID: (_slot: number, target: number) =>
               record.targets.push(target),
-            attachResolveTexture: () => {},
+            attachResolveTexture: (id: number) =>
+              record.shadowResolves.push(id),
             exec: (execute: (...args: any[]) => void) => {
               record.execute = execute;
             },
@@ -451,6 +456,7 @@ it.each([false, true])(
           return target + 100;
         },
       } as unknown as RGGraphBuilder;
+      const preamble = jest.fn(() => order.push('background'));
       batch.scheduleFlush(
         builder,
         0,
@@ -459,15 +465,26 @@ it.each([false, true])(
         {},
         200,
         100,
-        () => order.push('background'),
+        preamble,
         true,
         'main',
+        [41, 42],
       );
+      expect(
+        passes.some(
+          (pass) => pass.shadowResolves.join(',') === '41,42',
+        ),
+      ).toBe(true);
       passes.forEach((pass) =>
         pass.execute!(renderPass, {
           getResolveTextureForID: (id: number) => ({ id }),
         }),
       );
+      expect(preamble).toHaveBeenCalledTimes(1);
+      expect(preamble).toHaveBeenCalledWith(renderPass, [
+        { id: 41 },
+        { id: 42 },
+      ]);
     }
     try {
       frame();
@@ -540,6 +557,43 @@ it('schedules one normal pass and consumes dirty markers before GPU submission',
   expect(submitted).not.toHaveBeenCalled();
   const pass = {};
   callbacks[0](pass);
-  expect(preamble).toHaveBeenCalledWith(pass);
+  expect(preamble).toHaveBeenCalledWith(pass, []);
   expect(submitted).toHaveBeenCalledTimes(1);
+});
+
+it('attaches both shadow resolves and passes their textures to the mesh preamble', () => {
+  const batch = manager();
+  const attached: number[] = [];
+  let execute!: (pass: unknown, scope: unknown) => void;
+  const builder = {
+    pushPass: (setup: (pass: unknown) => void) =>
+      setup({
+        setDebugName: jest.fn(),
+        attachRenderTargetID: jest.fn(),
+        attachResolveTexture: (id: number) => attached.push(id),
+        exec: (callback: typeof execute) => {
+          execute = callback;
+        },
+      }),
+  };
+  const preamble = jest.fn();
+  batch.scheduleFlush(
+    builder as unknown as RGGraphBuilder,
+    0,
+    1,
+    null,
+    {},
+    200,
+    100,
+    preamble,
+    false,
+    'main',
+    [41, 42],
+  );
+  expect(attached).toEqual([41, 42]);
+  const pass = {};
+  execute(pass, {
+    getResolveTextureForID: (id: number) => ({ id }),
+  });
+  expect(preamble).toHaveBeenCalledWith(pass, [{ id: 41 }, { id: 42 }]);
 });

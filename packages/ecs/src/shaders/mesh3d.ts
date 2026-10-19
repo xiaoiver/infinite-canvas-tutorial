@@ -7,8 +7,8 @@
  * with optional equirectangular diffuse light and reflections. The legacy
  * ambient/diffuse/specular/shininess fields are retained for uniform-buffer
  * layout compatibility: `ambient` still scales the ambient term and an optional
- * specular map still modulates the specular response. The first directional
- * spot, or point light with castShadow uses a packed-depth shadow map with 3x3 PCF.
+ * specular map still modulates the specular response. Up to two directional,
+ * spot, or point lights with castShadow use packed-depth maps with 3x3 PCF.
  * Supports multiple ambient, directional, point, and spot lights.
  */
 
@@ -27,9 +27,9 @@ layout(std140) uniform SceneUniforms3D {
   vec4 u_LightDirections[MAX_3D_LIGHTS];
   vec4 u_LightColors[MAX_3D_LIGHTS];
   vec4 u_LightParams3D[MAX_3D_LIGHTS];
-  mat4 u_ShadowViewProjection;
-  vec4 u_ShadowParams; // x: shadowed light index + 1, y: shadow-map texel size
-  mat4 u_ShadowFaces[6];
+  mat4 u_ShadowViewProjection[2];
+  vec4 u_ShadowParams[2]; // x: light index + 1, y: shadow-map texel size, z: point
+  mat4 u_ShadowFaces[12];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -107,9 +107,9 @@ layout(std140) uniform SceneUniforms3D {
   vec4 u_LightDirections[MAX_3D_LIGHTS];
   vec4 u_LightColors[MAX_3D_LIGHTS];
   vec4 u_LightParams3D[MAX_3D_LIGHTS];
-  mat4 u_ShadowViewProjection;
-  vec4 u_ShadowParams;
-  mat4 u_ShadowFaces[6];
+  mat4 u_ShadowViewProjection[2];
+  vec4 u_ShadowParams[2];
+  mat4 u_ShadowFaces[12];
 };
 
 layout(std140) uniform ModelUniforms3D {
@@ -132,7 +132,8 @@ uniform sampler2D u_Map;
 uniform sampler2D u_SpecularMap;
 uniform sampler2D u_BumpMap;
 uniform sampler2D u_EnvironmentMap;
-uniform sampler2D u_ShadowMap;
+uniform sampler2D u_ShadowMap0;
+uniform sampler2D u_ShadowMap1;
 uniform sampler2D u_EnvironmentBrdf;
 
 in vec3 v_Normal;
@@ -227,7 +228,7 @@ vec3 sampleEnvironment(vec3 direction, int level) {
 vec3 environmentReflection(vec3 reflected, float roughness) {
   float lod = clamp(roughness, 0.0, 1.0) * 4.0;
   int low = int(floor(lod));
-  int high = min(low + 1, 4);
+  int high = low < 4 ? low + 1 : 4;
   return mix(sampleEnvironment(reflected, low),
     sampleEnvironment(reflected, high), fract(lod));
 }
@@ -252,19 +253,23 @@ float unpackShadowDepth(vec4 depthColor) {
   return dot(depthColor, vec4(1.0 / 16777216.0, 1.0 / 65536.0, 1.0 / 256.0, 1.0));
 }
 
-float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir, bool spot) {
-  bool point = u_ShadowParams.z > 0.5;
+float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
+  bool spot, int slot, int lightIndex) {
+  vec4 shadowParams = u_ShadowParams[slot];
+  bool point = shadowParams.z > 0.5;
   int face = 0;
   vec2 tile = vec2(0.0);
   if (point) {
-    vec3 ray = position - u_LightPositions[int(u_ShadowParams.x) - 1].xyz;
+    vec3 ray = position - u_LightPositions[lightIndex].xyz;
     vec3 a = abs(ray);
     if (a.x >= a.y && a.x >= a.z) face = ray.x >= 0.0 ? 0 : 1;
     else if (a.y >= a.z) face = ray.y >= 0.0 ? 2 : 3;
     else face = ray.z >= 0.0 ? 4 : 5;
-    tile = vec2(float(face % 3), float(face / 3));
+    // GLSL ES 1.00 has no integer modulo or integer min overload.
+    tile = vec2(float(face >= 3 ? face - 3 : face), float(face >= 3 ? 1 : 0));
   }
-  vec4 clip = (point ? u_ShadowFaces[face] : u_ShadowViewProjection) * vec4(position, 1.0);
+  vec4 clip = (point ? u_ShadowFaces[slot * 6 + face] :
+    u_ShadowViewProjection[slot]) * vec4(position, 1.0);
   vec3 projected = clip.xyz / clip.w;
   vec2 localUv = projected.xy * 0.5 + 0.5;
   float depth = projected.z * 0.5 + 0.5;
@@ -279,10 +284,12 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir, bool spot) {
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
-      vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) * u_ShadowParams.y,
-        vec2(u_ShadowParams.y * 0.5), vec2(1.0 - u_ShadowParams.y * 0.5));
+      vec2 sampleLocal = clamp(localUv + vec2(float(x), float(y)) * shadowParams.y,
+        vec2(shadowParams.y * 0.5), vec2(1.0 - shadowParams.y * 0.5));
       vec2 sampleUv = point ? (sampleLocal + tile) / vec2(3.0, 2.0) : sampleLocal;
-      float stored = unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap), sampleUv));
+      float stored = slot == 0
+        ? unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap0), sampleUv))
+        : unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap1), sampleUv));
       visibility += depth - bias <= stored ? 1.0 : 0.0;
     }
   }
@@ -312,8 +319,6 @@ vec3 shadeLight(
 
   if (lightType == LIGHT_TYPE_DIRECTIONAL) {
     lightDir = normalize(-u_LightDirections[index].xyz);
-    if (u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
-      attenuation *= shadowVisibility(v_FragPos, normal, lightDir, false);
   } else {
     vec3 toLight = u_LightPositions[index].xyz - v_FragPos;
     float distanceToLight = length(toLight);
@@ -322,18 +327,19 @@ vec3 shadeLight(
     }
     attenuation *= distanceAttenuation(distanceToLight, range);
 
-    if (lightType == LIGHT_TYPE_POINT && u_ShadowParams.z > 0.5 &&
-        u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
-      attenuation *= shadowVisibility(v_FragPos, normal, lightDir, false);
-
     if (lightType == LIGHT_TYPE_SPOT) {
       vec3 spotDirection = normalize(u_LightDirections[index].xyz);
       float spotCos = dot(-lightDir, spotDirection);
       float cone = smoothstep(cosOuter, cosInner, spotCos);
       attenuation *= cone;
-      if (u_ShadowParams.x > 0.5 && index == int(u_ShadowParams.x) - 1)
-        attenuation *= shadowVisibility(v_FragPos, normal, lightDir, true);
     }
+  }
+  int shadowSlot = -1;
+  if (index == int(u_ShadowParams[0].x) - 1) shadowSlot = 0;
+  else if (index == int(u_ShadowParams[1].x) - 1) shadowSlot = 1;
+  if (shadowSlot >= 0) {
+    attenuation *= shadowVisibility(v_FragPos, normal, lightDir,
+      lightType == LIGHT_TYPE_SPOT, shadowSlot, index);
   }
 
   vec3 halfDir = normalize(lightDir + viewDir);

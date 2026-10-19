@@ -290,7 +290,8 @@ export class BatchManager {
       return;
     }
     if (!drawcalls) {
-      const batchable = shape.read(Renderable).batchable &&
+      const batchable =
+        shape.read(Renderable).batchable &&
         !isNonNormalNodeLayerBlend(getNodeLayerBlendMode(this.api, shape));
       const changedBatching = batchable
         ? this.#nonBatchableDrawcallsCache.has(shape)
@@ -421,7 +422,11 @@ export class BatchManager {
         ) {
           previous.drawcalls.push(drawcall);
         } else {
-          segments.push({ type: 'layerBlend', drawcall, drawcalls: [drawcall] });
+          segments.push({
+            type: 'layerBlend',
+            drawcall,
+            drawcalls: [drawcall],
+          });
         }
       } else {
         normalBatch.push(drawcall);
@@ -485,10 +490,13 @@ export class BatchManager {
     uniformLegacyObject: Record<string, unknown>,
     width: number,
     height: number,
-    preamble: (renderPass: RenderPass, shadowTexture?: Texture) => void,
+    preamble: (
+      renderPass: RenderPass,
+      shadowTextures: readonly Texture[],
+    ) => void,
     sort: boolean,
     mainPassDebugName: string,
-    shadowResolveID?: number,
+    shadowResolveIDs: readonly number[] = [],
   ) {
     if (sort) {
       this.sort();
@@ -507,10 +515,12 @@ export class BatchManager {
           RGAttachmentSlot.DepthStencil,
           mainDepthTargetID,
         );
-        if (shadowResolveID !== undefined) pass.attachResolveTexture(shadowResolveID);
+        shadowResolveIDs.forEach((id) => pass.attachResolveTexture(id));
         pass.exec((renderPass, scope) => {
-          if (shadowResolveID === undefined) preamble(renderPass);
-          else preamble(renderPass, scope.getResolveTextureForID(shadowResolveID));
+          preamble(
+            renderPass,
+            shadowResolveIDs.map((id) => scope.getResolveTextureForID(id)),
+          );
           this.flushDrawcalls(
             renderPass,
             uniformBuffer,
@@ -549,11 +559,13 @@ export class BatchManager {
             RGAttachmentSlot.DepthStencil,
             mainDepthTargetID,
           );
-          if (shadowResolveID !== undefined) pass.attachResolveTexture(shadowResolveID);
+          shadowResolveIDs.forEach((id) => pass.attachResolveTexture(id));
           pass.exec((renderPass, scope) => {
             if (firstNormal) {
-              if (shadowResolveID === undefined) preamble(renderPass);
-              else preamble(renderPass, scope.getResolveTextureForID(shadowResolveID));
+              preamble(
+                renderPass,
+                shadowResolveIDs.map((id) => scope.getResolveTextureForID(id)),
+              );
               firstNormal = false;
             }
             this.flushDrawcalls(
@@ -606,7 +618,8 @@ export class BatchManager {
             const backdrop = scope.getResolveTextureForID(resolveTextureID);
             const src = scope.getResolveTextureForID(srcResolveTextureID);
             this.#blendCompositor ??= new NodeLayerBlendCompositor(
-              this.device, this.renderCache,
+              this.device,
+              this.renderCache,
             );
             const shape = segment.drawcall.shapes[0];
             this.#blendCompositor.composite(
