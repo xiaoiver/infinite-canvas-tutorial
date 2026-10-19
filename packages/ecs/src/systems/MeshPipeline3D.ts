@@ -445,6 +445,48 @@ export class MeshPipeline3D extends System {
   scheduleShadowPass(builder: RGGraphBuilder, canvas: Entity): ShadowFrame[] {
     const state = this.initPipeline(canvas);
     if (!state || !this.shouldComposite(canvas)) return [];
+    const lights = filterEntitiesForCanvas(
+      this.lights3D.current,
+      canvas,
+      this.canvases.current.length || 1,
+    );
+    const candidates: {
+      light: Light3D;
+      type: 'directional' | 'point' | 'spot';
+      lightIndex: number;
+      strength: number;
+      softness: number;
+      biasScale: number;
+      normalBias: number;
+    }[] = [];
+    let lightIndex = 0;
+    for (const entity of lights) {
+      const light = entity.read(Light3D);
+      if (light.type === 'ambient') continue;
+      if (lightIndex >= 8) break;
+      const index = lightIndex++;
+      if (!light.castShadow || !(light.intensity > 0)) continue;
+      const strength = Number.isFinite(light.shadowStrength)
+        ? Math.max(0, Math.min(1, light.shadowStrength))
+        : 1;
+      if (strength <= 0) continue;
+      candidates.push({
+        light,
+        type: light.type,
+        lightIndex: index,
+        strength,
+        softness: Number.isFinite(light.shadowSoftness)
+          ? Math.max(0, Math.min(4, light.shadowSoftness))
+          : 1,
+        biasScale: Number.isFinite(light.shadowBiasScale)
+          ? Math.max(0, Math.min(4, light.shadowBiasScale))
+          : 1,
+        normalBias: Number.isFinite(light.shadowNormalBias)
+          ? Math.max(0, Math.min(10, light.shadowNormalBias))
+          : 0,
+      });
+    }
+    if (!candidates.length) return [];
     const meshes = this.collectMeshEntities(canvas);
     const shadowCasters = meshes.filter(
       (entity) => entity.read(Material3D).castShadow,
@@ -462,12 +504,6 @@ export class MeshPipeline3D extends System {
       boundsById.set(entity.__id, bound);
       return [bound];
     });
-    const lights = filterEntitiesForCanvas(
-      this.lights3D.current,
-      canvas,
-      this.canvases.current.length || 1,
-    );
-    let lightIndex = 0;
     const casters: {
       type: 'directional' | 'point' | 'spot';
       lightIndex: number;
@@ -478,62 +514,38 @@ export class MeshPipeline3D extends System {
       biasScale: number;
       normalBias: number;
     }[] = [];
-    for (const entity of lights) {
-      const light = entity.read(Light3D);
-      if (light.type === 'ambient') continue;
-      if (lightIndex >= 8) break;
-      const strength = Number.isFinite(light.shadowStrength)
-        ? Math.max(0, Math.min(1, light.shadowStrength))
-        : 1;
-      const softness = Number.isFinite(light.shadowSoftness)
-        ? Math.max(0, Math.min(4, light.shadowSoftness))
-        : 1;
-      const biasScale = Number.isFinite(light.shadowBiasScale)
-        ? Math.max(0, Math.min(4, light.shadowBiasScale))
-        : 1;
-      const normalBias = Number.isFinite(light.shadowNormalBias)
-        ? Math.max(0, Math.min(10, light.shadowNormalBias))
-        : 0;
-      if (
-        (light.type === 'directional' ||
-          light.type === 'spot' ||
-          light.type === 'point') &&
-        light.castShadow &&
-        light.intensity > 0 &&
-        strength > 0
-      ) {
-        const faces =
-          light.type === 'point'
-            ? fitPointShadow(light.position, light.range, bounds)
-            : null;
-        const viewProjection =
-          faces?.[0] ??
-          (light.type === 'spot'
-            ? fitSpotShadow(
-                light.position,
-                light.direction,
-                light.outerConeAngle,
-                light.range,
-                bounds,
-              )
-            : light.type === 'directional'
-            ? fitDirectionalShadow(light.direction, bounds)
-            : null);
-        if (viewProjection) {
-          casters.push({
-            type: light.type,
-            lightIndex,
-            viewProjection,
-            faces,
-            strength,
-            softness,
-            biasScale,
-            normalBias,
-          });
-          if (casters.length === MAX_SHADOW_LIGHTS) break;
-        }
+    for (const candidate of candidates) {
+      const { light, type } = candidate;
+      const faces =
+        type === 'point'
+          ? fitPointShadow(light.position, light.range, bounds)
+          : null;
+      const viewProjection =
+        faces?.[0] ??
+        (type === 'spot'
+          ? fitSpotShadow(
+              light.position,
+              light.direction,
+              light.outerConeAngle,
+              light.range,
+              bounds,
+            )
+          : type === 'directional'
+          ? fitDirectionalShadow(light.direction, bounds)
+          : null);
+      if (viewProjection) {
+        casters.push({
+          type,
+          lightIndex: candidate.lightIndex,
+          viewProjection,
+          faces,
+          strength: candidate.strength,
+          softness: candidate.softness,
+          biasScale: candidate.biasScale,
+          normalBias: candidate.normalBias,
+        });
+        if (casters.length === MAX_SHADOW_LIGHTS) break;
       }
-      lightIndex++;
     }
     if (!casters.length) return [];
     const casterCorners = new Map<

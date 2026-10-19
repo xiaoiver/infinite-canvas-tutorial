@@ -254,6 +254,29 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   ).toMatchObject([{ lightIndex: 1, resolveID: 15 }]);
 });
 
+it('skips mesh bounds work when no light can cast a shadow', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    draw,
+    entity,
+  } = fixture();
+  draw();
+  const state = (renderer as any).states.get(slot.canvas.read(Canvas).api);
+  const getMesh = jest.spyOn(state.meshGPUCache, 'get');
+  const light = new Light3D({ type: 'directional', castShadow: false });
+  queries.lights3D.current = [
+    entity(new Map([[Light3D, new Light3D({ type: 'ambient' })]]), 89),
+    entity(new Map([[Light3D, light]]), 90),
+  ];
+  expect(renderer.scheduleShadowPass({} as any, slot.canvas)).toEqual([]);
+  light.castShadow = true;
+  light.shadowStrength = 0;
+  expect(renderer.scheduleShadowPass({} as any, slot.canvas)).toEqual([]);
+  expect(getMesh).not.toHaveBeenCalled();
+});
+
 it('draws every mesh in the color pass but only casters in the shadow pass', () => {
   const {
     renderer,
