@@ -80,6 +80,23 @@ it('fits a spotlight perspective frustum to receiver and caster depth', () => {
   ).toBeNull();
 });
 
+it('keeps a spotlight shadow caster visible when it crosses the light plane', () => {
+  const crossing = {
+    min: [-1, -1, -10] as [number, number, number],
+    max: [1, 1, 10] as [number, number, number],
+    model: identity,
+  };
+  const vp = fitSpotShadow([0, 0, 0], [0, 0, 1], Math.PI / 4, 50, [crossing]);
+  expect(vp).not.toBeNull();
+  const nearSurface = vec3.transformMat4(
+    vec3.create(),
+    vec3.fromValues(0, 0, 1),
+    vp!,
+  );
+  expect(nearSurface[2]).toBeGreaterThan(-1);
+  expect(nearSurface[2]).toBeLessThan(1);
+});
+
 it('covers six directions from a point light and rejects unusable inputs', () => {
   const bounds = {
     min: [-10, -10, -10] as [number, number, number],
@@ -104,6 +121,23 @@ it('covers six directions from a point light and rejects unusable inputs', () =>
   });
   expect(fitPointShadow([0, 0, 0], 50, [])).toBeNull();
   expect(fitPointShadow([NaN, 0, 0], 50, [bounds])).toBeNull();
+});
+
+it('keeps close point-shadow casters inside the near plane in large scenes', () => {
+  const tall = {
+    min: [-1, -1, 1] as [number, number, number],
+    max: [1, 1, 200] as [number, number, number],
+    model: identity,
+  };
+  const faces = fitPointShadow([0, 0, 0], 500, [tall]);
+  expect(faces).toHaveLength(6);
+  const nearSurface = vec3.transformMat4(
+    vec3.create(),
+    vec3.fromValues(0, 0, 1),
+    faces![4],
+  );
+  expect(nearSurface[2]).toBeGreaterThan(-1);
+  expect(nearSurface[2]).toBeLessThan(1);
 });
 
 it('keeps point-shadow tap directions continuous across all six face edges', () => {
