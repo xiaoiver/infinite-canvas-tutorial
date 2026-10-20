@@ -8,7 +8,8 @@ export interface GlbMeshSource {
   material: Pick<
     Material3D,
     'baseColor' | 'sideColor' | 'metallic' | 'roughness'
-  >;
+  > &
+    Partial<Pick<Material3D, 'alphaMode' | 'alphaCutoff'>>;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
   name?: string;
 }
@@ -58,7 +59,8 @@ export function exportMeshesToGlb(
       metallicFactor: number;
       roughnessFactor: number;
     };
-    alphaMode: 'OPAQUE' | 'BLEND';
+    alphaMode: 'OPAQUE' | 'MASK' | 'BLEND';
+    alphaCutoff?: number;
     doubleSided: boolean;
   }[] = [];
   const meshes: { primitives: Primitive[] }[] = [];
@@ -121,9 +123,15 @@ export function exportMeshesToGlb(
     color: readonly number[],
     metallic: number,
     roughness: number,
+    alphaMode: Material3D['alphaMode'] | undefined,
+    alphaCutoff: number | undefined,
   ): number => {
+    const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
+    const cutoff = alphaCutoff ?? 0.5;
     if (
       color.length !== 4 ||
+      !['opaque', 'mask', 'blend'].includes(mode) ||
+      !Number.isFinite(cutoff) ||
       [...color, metallic, roughness].some(
         (n) => !Number.isFinite(n) || n < 0 || n > 1,
       )
@@ -141,7 +149,10 @@ export function exportMeshesToGlb(
           metallicFactor: metallic,
           roughnessFactor: roughness,
         },
-        alphaMode: color[3] < 1 ? 'BLEND' : 'OPAQUE',
+        alphaMode: mode.toUpperCase() as 'OPAQUE' | 'MASK' | 'BLEND',
+        ...(mode === 'mask'
+          ? { alphaCutoff: Math.max(0, Math.min(1, cutoff)) }
+          : {}),
         doubleSided: true,
       }) - 1
     );
@@ -200,6 +211,8 @@ export function exportMeshesToGlb(
       source.material.baseColor,
       source.material.metallic,
       source.material.roughness,
+      source.material.alphaMode,
+      source.material.alphaCutoff,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -225,6 +238,8 @@ export function exportMeshesToGlb(
           source.material.sideColor,
           source.material.metallic,
           source.material.roughness,
+          source.material.alphaMode,
+          source.material.alphaCutoff,
         ),
       );
 

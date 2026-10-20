@@ -1435,6 +1435,6 @@ it('exports ready SVG extrusions through API.export with scene, node, and group 
     'grouped-path',
   ]);
   expect(() => exportNames([api.getNodeById('stroked')!])).toThrow(
-    'No ready extruded meshes to export',
+    'No ready 3D meshes to export',
   );
 });
