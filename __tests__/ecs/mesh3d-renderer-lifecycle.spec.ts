@@ -277,6 +277,49 @@ it('skips mesh bounds work when no light can cast a shadow', () => {
   expect(getMesh).not.toHaveBeenCalled();
 });
 
+it('does not allocate a shadow map without a receiving mesh', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+  } = fixture();
+  queries.lights3D.current = [
+    entity(
+      new Map([
+        [Light3D, new Light3D({ type: 'directional', castShadow: true })],
+      ]),
+      90,
+    ),
+  ];
+  const builder = {
+    createRenderTargetID: jest.fn().mockReturnValue(1),
+    pushPass: jest.fn(),
+    resolveRenderTarget: jest.fn().mockReturnValue(1),
+  };
+  slot.material.receiveShadow = false;
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
+  expect(builder.createRenderTargetID).not.toHaveBeenCalled();
+  queries.meshes3D.current.push(
+    entity(
+      new Map<any, any>([
+        [Canvas3DScope, { canvas: slot.canvas }],
+        [Mesh3D, new Mesh3D()],
+        [Material3D, new Material3D({ castShadow: false })],
+        [Transform3D, new Transform3D()],
+      ]),
+      99,
+    ),
+  );
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
+  expect(builder.createRenderTargetID).not.toHaveBeenCalled();
+  slot.material.receiveShadow = true;
+  expect(
+    renderer.scheduleShadowPass(builder as any, slot.canvas),
+  ).toMatchObject([{ lightIndex: 0 }]);
+  expect(builder.pushPass).toHaveBeenCalledTimes(1);
+});
+
 it('skips a spot shadow map when its cone contains no casting mesh', () => {
   const {
     renderer,
