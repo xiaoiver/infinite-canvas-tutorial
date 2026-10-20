@@ -545,6 +545,10 @@ export const en = defineConfig({
                     link: 'lighting',
                   },
                   {
+                    text: '3D Mesh Transparency',
+                    link: 'mesh3d-alpha',
+                  },
+                  {
                     text: 'Textured Earth',
                     link: 'earth',
                   },

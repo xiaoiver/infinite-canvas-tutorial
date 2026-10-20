@@ -142,6 +142,43 @@ it('reuses geometry while updating pose/material uniforms and avoids duplicate h
   expect(buffers[0].setSubData).toHaveBeenCalledTimes(1);
 });
 
+it('draws opaque meshes first and blends transparent meshes from far to near', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+    draw,
+  } = fixture();
+  const createMesh = (id: number, z: number, alphaMode: 'opaque' | 'blend') =>
+    entity(
+      new Map<any, any>([
+        [Canvas3DScope, { canvas: slot.canvas }],
+        [Mesh3D, new Mesh3D(createGeometry({ type: 'plane' }))],
+        [Material3D, new Material3D({ alphaMode })],
+        [Transform3D, new Transform3D({ translation: [0, 0, z] })],
+      ]),
+      id,
+    );
+  const opaque = createMesh(90, 0, 'opaque');
+  const far = createMesh(91, -2, 'blend');
+  slot.material.alphaMode = 'blend';
+  slot.transform.translation = [0, 0, 2];
+  queries.meshes3D.current = [slot.target, opaque, far];
+
+  draw();
+  const state = (renderer as any).states.get(slot.canvas.read(Canvas).api);
+  const vertices = [opaque, far, slot.target].map(
+    (mesh) => state.meshGPUCache.get(mesh.__id, mesh.read(Mesh3D)).vertexBuffer,
+  );
+  expect(
+    (slot.gpu.pass.setVertexInput as jest.Mock).mock.calls.map(
+      ([, buffers]) => buffers[0].buffer,
+    ),
+  ).toEqual(vertices);
+  expect(slot.gpu.pass.setPipeline).toHaveBeenCalledTimes(2);
+});
+
 it('schedules a sampled shadow map for enabled directional and spot lights', () => {
   const {
     renderer,
@@ -252,6 +289,58 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   expect(
     renderer.scheduleShadowPass(builder as any, slot.canvas),
   ).toMatchObject([{ lightIndex: 1, resolveID: 15 }]);
+});
+
+it('refreshes alpha-test inputs before drawing a shadow map', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+  } = fixture();
+  queries.lights3D.current = [
+    entity(new Map([[Light3D, new Light3D({ castShadow: true })]]), 90),
+  ];
+  slot.material.alphaMode = 'mask';
+  slot.material.alphaCutoff = 0.4;
+  slot.material.baseColor = [1, 1, 1, 0.3];
+  let setup: ((pass: any) => void) | undefined;
+  const builder = {
+    createRenderTargetID: jest.fn().mockReturnValue(1),
+    pushPass: (callback: (pass: any) => void) => {
+      setup = callback;
+    },
+    resolveRenderTarget: jest.fn().mockReturnValue(1),
+  };
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toHaveLength(1);
+  const state = (renderer as any).states.get(slot.canvas.read(Canvas).api);
+  const gpu = state.meshGPUCache.get(slot.target.__id, slot.mesh);
+  const model = new Float32Array(gpu.modelUniformBuffer.bytes.buffer);
+  expect(model[35]).toBeCloseTo(0.3);
+  expect(model[97]).toBe(1);
+  expect(model[98]).toBeCloseTo(0.4);
+  let execute: ((renderPass: any) => void) | undefined;
+  setup!({
+    setDebugName: jest.fn(),
+    attachRenderTargetID: jest.fn(),
+    exec: (callback: (renderPass: any) => void) => {
+      execute = callback;
+    },
+  });
+  execute!(slot.gpu.pass);
+  expect(slot.gpu.bindings.at(-1)?.samplerBindings).toHaveLength(1);
+  expect(slot.gpu.pass.setVertexInput).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.arrayContaining([
+      { buffer: gpu.vertexBuffer },
+      { buffer: gpu.uvBuffer },
+      { buffer: gpu.normalBuffer },
+    ]),
+    expect.anything(),
+  );
+  slot.material.alphaMode = 'opaque';
+  renderer.scheduleShadowPass(builder as any, slot.canvas);
+  expect(model[97]).toBe(0);
 });
 
 it('uses six shadow faces for a wide spotlight while keeping narrow cones on one map', () => {

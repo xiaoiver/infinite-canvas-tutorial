@@ -444,6 +444,8 @@ const glb = api.export({
 
 最多两盏设置 `castShadow: true` 的平行光、点光或聚光灯可同时投射阴影，并通过 3 × 3 PCF 过滤。每盏灯可设置 `shadowStrength`（0–1）、`shadowSoftness`（0–4 个纹素）、`shadowBiasScale`（0–4）和 `shadowNormalBias`（0–10 个画布单位）；默认值保持原有画面。每个 Mesh 可以用 `material3d.castShadow` 与 `material3d.receiveShadow` 分别关闭投影和接影（两者默认 `true`）。平行光阴影图按当前 Mesh 范围拟合；聚光灯外锥半角小于 85° 时使用一张透视阴影图，更宽的光锥和点光使用六面图集。PCF 采样跨越图集面接缝时改采样相邻面，不再重复边缘纹素。控件、阴影图尺寸与 API 说明见[光照示例](/zh/example/lighting)。
 
+贴图镂空和半透明表面可分别使用 `material3d.alphaMode` 的 `mask` 与 `blend`；阴影效果和排序限制见 [3D Mesh 透明度示例](/zh/example/mesh3d-alpha)。
+
 <Lighting locale="zh" />
 
 ## glTF 模型 {#gltf}

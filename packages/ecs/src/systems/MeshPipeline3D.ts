@@ -88,6 +88,7 @@ import {
 } from './mesh3d/shadow-projection';
 import { ResourceScope } from '../resources/ResourceScope';
 import type { API } from '../API';
+import { vec4 } from 'gl-matrix';
 
 import {
   MeshSceneUniforms,
@@ -111,6 +112,7 @@ interface MeshPipeline3DCanvasState {
   dispose: () => void;
   program: Program;
   pipeline: RenderPipeline;
+  blendPipeline: RenderPipeline;
   inputLayout: InputLayout;
   sceneUniformBuffer: Buffer;
   sceneUniforms: MeshSceneUniforms;
@@ -357,15 +359,11 @@ export class MeshPipeline3D extends System {
     );
 
     renderPass.setViewport(0, 0, width, height);
-    renderPass.setPipeline(state.pipeline);
-
-    for (const meshEntity of this.collectMeshEntities(canvas)) {
-      const gpuData = state.meshGPUCache.get(
-        meshEntity.__id,
-        meshEntity.read(Mesh3D),
-      );
-      if (!gpuData) continue;
-
+    const draw = (
+      meshEntity: Entity,
+      gpuData: MeshGPUData,
+      pipeline: RenderPipeline,
+    ) => {
       const material = meshEntity.read(Material3D);
       const { texture: baseColorTexture, ready: mapReady } =
         this.resolveMaterialTexture(state, device, material.map);
@@ -402,7 +400,7 @@ export class MeshPipeline3D extends System {
       });
 
       const bindings = gpuData.bindings.get(
-        state.pipeline,
+        pipeline,
         state.sceneUniformBuffer,
         state.sampler,
         baseColorTexture,
@@ -433,6 +431,46 @@ export class MeshPipeline3D extends System {
       } else {
         renderPass.draw(gpuData.vertexCount);
       }
+    };
+
+    const blended: { entity: Entity; gpu: MeshGPUData; depth: number }[] = [];
+    const view = sceneLegacy.u_ViewMatrix3D as Float32Array;
+    // Linked canvas cameras look from negative z; standalone cameras use
+    // their ordinary view direction. In either mode smaller keys are farther.
+    const depthSign = camera.linked && cam2d ? -1 : 1;
+    renderPass.setPipeline(state.pipeline);
+    for (const meshEntity of this.collectMeshEntities(canvas)) {
+      const gpu = state.meshGPUCache.get(
+        meshEntity.__id,
+        meshEntity.read(Mesh3D),
+      );
+      if (!gpu) continue;
+      if (meshEntity.read(Material3D).alphaMode === 'blend') {
+        gpu.modelUniforms.updatePoseOnly(meshEntity.read(Transform3D));
+        const { min, max } = gpu.localBounds;
+        const center = vec4.fromValues(
+          (min[0] + max[0]) / 2,
+          (min[1] + max[1]) / 2,
+          (min[2] + max[2]) / 2,
+          1,
+        );
+        vec4.transformMat4(center, center, gpu.modelUniforms.getModelMatrix());
+        vec4.transformMat4(center, center, view);
+        blended.push({
+          entity: meshEntity,
+          gpu,
+          depth: center[2] * depthSign,
+        });
+      } else {
+        draw(meshEntity, gpu, state.pipeline);
+      }
+    }
+    if (blended.length) {
+      // Draw farther translucent surfaces before nearer ones.
+      blended.sort((a, b) => a.depth - b.depth || a.entity.__id - b.entity.__id);
+      renderPass.setPipeline(state.blendPipeline);
+      for (const { entity, gpu } of blended)
+        draw(entity, gpu, state.blendPipeline);
     }
 
     // Draw 3D gizmos on top of meshes (depth disabled, always visible)
@@ -511,10 +549,25 @@ export class MeshPipeline3D extends System {
     const casterIds = shadowCasters.map((entity) => entity.__id);
     const boundsById = new Map<number, ShadowCasterBounds>();
     const gpuById = new Map<number, MeshGPUData>();
+    const shadowTextureById = new Map<number, Texture>();
     const bounds = meshes.flatMap((entity) => {
       const gpu = state.meshGPUCache.get(entity.__id, entity.read(Mesh3D));
       if (!gpu) return [];
-      gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+      const material = entity.read(Material3D);
+      if (material.castShadow) {
+        const { texture, ready } =
+          material.alphaMode === 'opaque'
+            ? { texture: state.whiteTexture, ready: false }
+            : this.resolveMaterialTexture(state, state.device, material.map);
+        gpu.modelUniforms.updateShadowMaterial(
+          entity.read(Transform3D),
+          entity.read(Material3D),
+          ready,
+        );
+        shadowTextureById.set(entity.__id, texture);
+      } else {
+        gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
+      }
       gpuById.set(entity.__id, gpu);
       const bound: ShadowCasterBounds = {
         ...gpu.localBounds,
@@ -668,15 +721,24 @@ export class MeshPipeline3D extends System {
               // invalid. Geometry and pose were captured for this frame above.
               const gpu = gpuById.get(id);
               if (!gpu) continue;
-              state.shadowProgram.setUniformsLegacy({
-                u_ShadowModelMatrix: gpu.modelUniforms.getModelMatrix(),
-              });
+              state.shadowProgram.setUniformsLegacy(
+                gpu.modelUniforms.getShadowUniforms(),
+              );
               renderPass.setBindings(
-                gpu.shadowBindings.get(state.shadowPipeline, shadowSceneBuffer),
+                gpu.shadowBindings.get(
+                  state.shadowPipeline,
+                  shadowSceneBuffer,
+                  shadowTextureById.get(id) ?? state.whiteTexture,
+                  state.sampler,
+                ),
               );
               renderPass.setVertexInput(
                 state.shadowInputLayout,
-                [{ buffer: gpu.vertexBuffer }],
+                [
+                  { buffer: gpu.vertexBuffer },
+                  { buffer: gpu.uvBuffer },
+                  { buffer: gpu.normalBuffer },
+                ],
                 gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
               );
               if (gpu.indexBuffer) renderPass.drawIndexed(gpu.indexCount);
@@ -809,6 +871,35 @@ export class MeshPipeline3D extends System {
         }),
       });
 
+      const blendPipeline = renderCache.createRenderPipeline({
+        inputLayout,
+        program,
+        colorAttachmentFormats: [Format.U8_RGBA_RT],
+        depthStencilAttachmentFormat: Format.D24_S8,
+        topology: PrimitiveTopology.TRIANGLES,
+        megaStateDescriptor: makeMegaState({
+          attachmentsState: [
+            {
+              channelWriteMask: ChannelWriteMask.ALL,
+              rgbBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.SRC_ALPHA,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+              alphaBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.ONE,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+            },
+          ],
+          blendConstant: TransparentBlack,
+          depthWrite: false,
+          depthCompare: CompareFunction.GREATER,
+          cullMode: CullMode.BACK,
+        }),
+      });
+
       const shadowProgram = renderCache.createProgram({
         vertex: { glsl: shadowVert, entryPoint: 'main' },
         fragment: { glsl: shadowFrag, entryPoint: 'main' },
@@ -820,6 +911,20 @@ export class MeshPipeline3D extends System {
             stepMode: VertexStepMode.VERTEX,
             attributes: [
               { format: Format.F32_RGB, offset: 0, shaderLocation: 0 },
+            ],
+          },
+          {
+            arrayStride: 2 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RG, offset: 0, shaderLocation: 1 },
+            ],
+          },
+          {
+            arrayStride: 3 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RGB, offset: 0, shaderLocation: 2 },
             ],
           },
         ],
@@ -896,6 +1001,7 @@ export class MeshPipeline3D extends System {
         dispose: () => {},
         program,
         pipeline,
+        blendPipeline,
         inputLayout,
         sceneUniformBuffer,
         sceneUniforms: new MeshSceneUniforms(sceneUniformBuffer),

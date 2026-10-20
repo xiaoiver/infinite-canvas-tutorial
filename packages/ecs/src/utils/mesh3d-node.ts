@@ -209,6 +209,8 @@ export function syncMesh3DNodeCompanionMaterial(
     metallic: node.metallic,
     roughness: node.roughness,
     map: node.map ?? imported?.map ?? null,
+    alphaMode: node.alphaMode,
+    alphaCutoff: node.alphaCutoff,
     specularMap: node.specularMap ?? null,
     bumpMap: node.bumpMap ?? null,
     environmentMap: node.environmentMap ?? null,

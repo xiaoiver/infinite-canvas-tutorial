@@ -1,5 +1,6 @@
 import { Entity, field } from '@lastolivegames/becsy';
 import type { Projection3D } from './Camera3D';
+import type { Material3DAlphaMode } from './Material3D';
 import type {
   Mesh3DGeometrySpec,
   Mesh3DNodeGeometry,
@@ -37,6 +38,10 @@ export class Mesh3DNode {
 
   /** Optional base-color texture (image URL or data URL). */
   @field.object declare map: string | null;
+
+  @field.object declare alphaMode: Material3DAlphaMode;
+
+  @field.float32 declare alphaCutoff: number;
 
   @field.object declare specularMap: string | null;
 
@@ -76,6 +81,8 @@ export class Mesh3DNode {
     this.metallic ??= 0;
     this.roughness ??= 1;
     this.map ??= null;
+    this.alphaMode ??= 'opaque';
+    this.alphaCutoff ??= 0.5;
     this.specularMap ??= null;
     this.bumpMap ??= null;
     this.environmentMap ??= null;

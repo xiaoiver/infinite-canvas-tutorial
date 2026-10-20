@@ -57,7 +57,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_PbrParams;
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
-  vec4 u_ShadowReceive; // x: receives shadows
+  vec4 u_ShadowReceive; // x: receives shadows, y: alpha mode, z: cutoff
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -139,7 +139,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_PbrParams;
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
-  vec4 u_ShadowReceive; // x: receives shadows
+  vec4 u_ShadowReceive; // x: receives shadows, y: alpha mode, z: cutoff
 };
 
 uniform sampler2D u_Map;
@@ -505,6 +505,9 @@ void main() {
     albedo *= srgbToLinear(texel.rgb);
     baseColor.a *= texel.a;
   }
+  if (u_ShadowReceive.y > 0.5 && u_ShadowReceive.y < 1.5 &&
+      baseColor.a < u_ShadowReceive.z) discard;
+  if (u_ShadowReceive.y < 1.5) baseColor.a = 1.0;
 
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
   // Clamp roughness to a small minimum (0.04): at roughness 0 the GGX lobe
