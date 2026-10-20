@@ -4,11 +4,14 @@ import { readAccessor, type GltfContainer } from './accessors';
 import { computeVertexNormals } from './compute-normals';
 import { normalizeMeshBoundsInPlace } from './normalize-bounds';
 import { resolveGltfAssetUrl } from './resolve-gltf-url';
+import type { Material3DAlphaMode } from '../../components/geometry3d/Material3D';
 
 export type GltfMeshBakeResult = Mesh3DGeometryData & {
   baseColor: [number, number, number, number];
   /** Resolved base-color texture URL from glTF materials, if any. */
   map: string | null;
+  alphaMode: Material3DAlphaMode;
+  alphaCutoff: number;
 };
 
 type GltfJson = GltfContainer['json'] & {
@@ -34,6 +37,8 @@ type GltfJson = GltfContainer['json'] & {
     }[];
   }[];
   materials?: {
+    alphaMode?: 'OPAQUE' | 'MASK' | 'BLEND';
+    alphaCutoff?: number;
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
       baseColorTexture?: { index?: number };
@@ -72,17 +77,40 @@ function readMaterialBaseColor(
   if (materialIndex == null) {
     return [1, 1, 1, 1];
   }
-  const factor = json.materials?.[materialIndex]?.pbrMetallicRoughness
-    ?.baseColorFactor;
+  const factor =
+    json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorFactor;
   if (!factor || factor.length < 3) {
     return [1, 1, 1, 1];
   }
-  return [
-    factor[0],
-    factor[1],
-    factor[2],
-    factor.length >= 4 ? factor[3] : 1,
-  ];
+  return [factor[0], factor[1], factor[2], factor.length >= 4 ? factor[3] : 1];
+}
+
+type ImportedMaterial = Pick<
+  GltfMeshBakeResult,
+  'baseColor' | 'map' | 'alphaMode' | 'alphaCutoff'
+>;
+
+function readMaterial(
+  json: GltfJson,
+  materialIndex: number,
+  baseUrl?: string,
+): ImportedMaterial {
+  const material = json.materials?.[materialIndex];
+  const cutoff = material?.alphaCutoff;
+  return {
+    baseColor: readMaterialBaseColor(json, materialIndex),
+    map: baseUrl ? readMaterialMapUrl(json, materialIndex, baseUrl) : null,
+    alphaMode:
+      material?.alphaMode === 'MASK'
+        ? 'mask'
+        : material?.alphaMode === 'BLEND'
+        ? 'blend'
+        : 'opaque',
+    alphaCutoff:
+      typeof cutoff === 'number' && Number.isFinite(cutoff)
+        ? Math.max(0, Math.min(1, cutoff))
+        : 0.5,
+  };
 }
 
 function nodeLocalMatrix(node: NonNullable<GltfJson['nodes']>[number]): mat4 {
@@ -100,7 +128,10 @@ function nodeLocalMatrix(node: NonNullable<GltfJson['nodes']>[number]): mat4 {
   return m;
 }
 
-function transformPositionsInPlace(positions: Float32Array, matrix: mat4): void {
+function transformPositionsInPlace(
+  positions: Float32Array,
+  matrix: mat4,
+): void {
   const v = vec3.create();
   for (let i = 0; i < positions.length; i += 3) {
     vec3.set(v, positions[i], positions[i + 1], positions[i + 2]);
@@ -139,8 +170,7 @@ function appendPrimitive(
   uvChunks: Float32Array[],
   idxChunks: number[],
   vertexOffset: { value: number },
-  baseColorOut: { value: [number, number, number, number] },
-  mapOut: { value: string | null },
+  materialOut: { value: ImportedMaterial; selected: boolean },
   baseUrl?: string,
 ): void {
   const mesh = json.meshes?.[meshIndex];
@@ -202,13 +232,13 @@ function appendPrimitive(
     normalChunks.push(normals);
     uvChunks.push(uvs);
 
-    if (prim.material !== undefined) {
-      if (baseColorOut.value[0] === 1) {
-        baseColorOut.value = readMaterialBaseColor(json, prim.material);
-      }
-      if (mapOut.value == null && baseUrl) {
-        mapOut.value = readMaterialMapUrl(json, prim.material, baseUrl);
-      }
+    if (
+      !materialOut.selected &&
+      prim.material !== undefined &&
+      json.materials?.[prim.material]
+    ) {
+      materialOut.value = readMaterial(json, prim.material, baseUrl);
+      materialOut.selected = true;
     }
 
     if (prim.indices !== undefined) {
@@ -250,8 +280,7 @@ function traverseNode(
   uvChunks: Float32Array[],
   idxChunks: number[],
   vertexOffset: { value: number },
-  baseColorOut: { value: [number, number, number, number] },
-  mapOut: { value: string | null },
+  materialOut: { value: ImportedMaterial; selected: boolean },
   baseUrl?: string,
   meshFilter?: number,
 ): void {
@@ -263,7 +292,10 @@ function traverseNode(
   const world = mat4.create();
   mat4.multiply(world, parentMatrix, local);
 
-  if (node.mesh !== undefined && (meshFilter == null || node.mesh === meshFilter)) {
+  if (
+    node.mesh !== undefined &&
+    (meshFilter == null || node.mesh === meshFilter)
+  ) {
     appendPrimitive(
       gltf,
       json,
@@ -274,8 +306,7 @@ function traverseNode(
       uvChunks,
       idxChunks,
       vertexOffset,
-      baseColorOut,
-      mapOut,
+      materialOut,
       baseUrl,
     );
   }
@@ -291,8 +322,7 @@ function traverseNode(
       uvChunks,
       idxChunks,
       vertexOffset,
-      baseColorOut,
-      mapOut,
+      materialOut,
       baseUrl,
       meshFilter,
     );
@@ -310,8 +340,15 @@ export function bakeGltfMesh(
   const uvChunks: Float32Array[] = [];
   const idxChunks: number[] = [];
   const vertexOffset = { value: 0 };
-  const baseColorOut = { value: [1, 1, 1, 1] as [number, number, number, number] };
-  const mapOut = { value: null as string | null };
+  const materialOut = {
+    value: {
+      baseColor: [1, 1, 1, 1] as [number, number, number, number],
+      map: null,
+      alphaMode: 'opaque',
+      alphaCutoff: 0.5,
+    } as ImportedMaterial,
+    selected: false,
+  };
   const identity = mat4.create();
 
   const sceneIndex = options?.scene ?? 0;
@@ -328,8 +365,7 @@ export function bakeGltfMesh(
         uvChunks,
         idxChunks,
         vertexOffset,
-        baseColorOut,
-        mapOut,
+        materialOut,
         options?.baseUrl,
         options?.mesh,
       );
@@ -345,8 +381,7 @@ export function bakeGltfMesh(
       uvChunks,
       idxChunks,
       vertexOffset,
-      baseColorOut,
-      mapOut,
+      materialOut,
       options?.baseUrl,
     );
   }
@@ -356,8 +391,7 @@ export function bakeGltfMesh(
       positions: new Float32Array(0),
       normals: new Float32Array(0),
       indices: new Uint32Array(0),
-      baseColor: baseColorOut.value,
-      map: mapOut.value,
+      ...materialOut.value,
     };
   }
 
@@ -404,7 +438,6 @@ export function bakeGltfMesh(
     normals,
     indices,
     uvs,
-    baseColor: baseColorOut.value,
-    map: mapOut.value,
+    ...materialOut.value,
   };
 }

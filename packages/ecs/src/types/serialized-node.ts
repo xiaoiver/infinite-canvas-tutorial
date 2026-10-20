@@ -457,6 +457,10 @@ export type Material3DWire = {
   roughness?: number;
   /** Base-color texture (image URL or data URL). */
   map?: string;
+  /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */
+  alphaMode?: 'opaque' | 'mask' | 'blend';
+  /** Alpha-test threshold in mask mode; defaults to 0.5. */
+  alphaCutoff?: number;
   specularMap?: string;
   bumpMap?: string;
   /** Equirectangular environment image used for diffuse and reflected light. */

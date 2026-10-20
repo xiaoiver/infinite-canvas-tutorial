@@ -276,7 +276,104 @@ async function init() {
               height: 40,
               scale3d: 20,
             };
-      const nodes: SerializedNode[] = [node];
+      const nodes: SerializedNode[] = params.has('alpha')
+        ? [
+            {
+              id: 'alpha-floor',
+              type: 'mesh3d',
+              zIndex: 0,
+              x: 0,
+              y: 0,
+              z: 100,
+              width: 200,
+              height: 200,
+              geometry: { type: 'plane' },
+              scale3d: [200, 200, 1],
+              rotation3d: [0, Math.PI, 0],
+              material3d: { baseColor: '#ffffff', castShadow: false },
+              camera3d: {
+                linked: true,
+                projection: 'perspective',
+                clearColor: false,
+              },
+            },
+            {
+              id: 'alpha-mask',
+              type: 'mesh3d',
+              zIndex: 1,
+              x: 20,
+              y: 20,
+              z: 20,
+              width: 70,
+              height: 70,
+              geometry: { type: 'plane' },
+              scale3d: [70, 70, 1],
+              rotation3d: [0, Math.PI, 0],
+              material3d: {
+                map:
+                  'data:image/svg+xml,' +
+                  encodeURIComponent(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="2"><rect width="1" height="2" fill="red"/></svg>',
+                  ),
+                alphaMode: 'mask',
+                alphaCutoff: 0.5,
+                castShadow: true,
+              },
+            },
+            {
+              id: 'alpha-near',
+              type: 'mesh3d',
+              zIndex: 2,
+              x: 120,
+              y: 55,
+              z: 0,
+              width: 60,
+              height: 80,
+              geometry: { type: 'plane' },
+              scale3d: [60, 80, 1],
+              rotation3d: [0, Math.PI, 0],
+              material3d: {
+                baseColor: [1, 0, 0, 0.6],
+                alphaMode: 'blend',
+                castShadow: false,
+              },
+            },
+            {
+              id: 'alpha-far',
+              type: 'mesh3d',
+              zIndex: 3,
+              x: 105,
+              y: 55,
+              z: 50,
+              width: 60,
+              height: 80,
+              geometry: { type: 'plane' },
+              scale3d: [60, 80, 1],
+              rotation3d: [0, Math.PI, 0],
+              material3d: {
+                baseColor: [0, 0, 1, 0.6],
+                alphaMode: 'blend',
+                castShadow: false,
+              },
+            },
+            {
+              id: 'alpha-ambient',
+              type: 'light3d',
+              zIndex: 4,
+              lightType: 'ambient',
+              intensity: 1,
+            },
+            {
+              id: 'alpha-sun',
+              type: 'light3d',
+              zIndex: 5,
+              lightType: 'directional',
+              direction: [0.3, 0.4, 0.6],
+              intensity: 1,
+              castShadow: true,
+            },
+          ]
+        : [node];
       if (params.has('yoga')) {
         node.parentId = 'layout';
         nodes.unshift({
@@ -294,7 +391,8 @@ async function init() {
         });
       }
       editor.replaceDocument(nodes, 'remote');
-      editor.selectNodes([editor.getNodeById('model')]);
+      if (!params.has('alpha'))
+        editor.selectNodes([editor.getNodeById('model')]);
     },
     { capture: 'NEVER' },
   );

@@ -3,11 +3,16 @@ import type {
   Buffer,
   Device,
   RenderPipeline,
+  Sampler,
+  Texture,
 } from '@infinite-canvas-tutorial/device-api';
 
 /** Per-mesh shadow bindings reuse the model UBO already owned by MeshGPUCache. */
 export class ShadowDrawBindings {
-  private bindings = new Map<Buffer, Bindings>();
+  private bindings = new Map<
+    Buffer,
+    { bindings: Bindings; texture: Texture; sampler: Sampler }
+  >();
   private pipeline?: RenderPipeline;
 
   constructor(
@@ -15,28 +20,39 @@ export class ShadowDrawBindings {
     private readonly modelBuffer: Buffer,
   ) {}
 
-  get(pipeline: RenderPipeline, sceneBuffer: Buffer): Bindings {
-    if (this.pipeline === pipeline && this.bindings.has(sceneBuffer))
-      return this.bindings.get(sceneBuffer)!;
+  get(
+    pipeline: RenderPipeline,
+    sceneBuffer: Buffer,
+    texture: Texture,
+    sampler: Sampler,
+  ): Bindings {
+    const cached = this.bindings.get(sceneBuffer);
+    if (
+      this.pipeline === pipeline &&
+      cached?.texture === texture &&
+      cached.sampler === sampler
+    )
+      return cached.bindings;
     const next = this.device.createBindings({
       pipeline,
       uniformBufferBindings: [
         { buffer: sceneBuffer },
         { buffer: this.modelBuffer },
       ],
-      samplerBindings: [],
+      samplerBindings: [{ texture, sampler }],
     });
     if (this.pipeline !== pipeline) {
-      for (const bindings of this.bindings.values()) bindings.destroy();
+      for (const { bindings } of this.bindings.values()) bindings.destroy();
       this.bindings.clear();
     }
-    this.bindings.set(sceneBuffer, next);
+    if (this.pipeline === pipeline) cached?.bindings.destroy();
+    this.bindings.set(sceneBuffer, { bindings: next, texture, sampler });
     this.pipeline = pipeline;
     return next;
   }
 
   destroy(): void {
-    for (const bindings of this.bindings.values()) bindings.destroy();
+    for (const { bindings } of this.bindings.values()) bindings.destroy();
     this.bindings.clear();
   }
 }

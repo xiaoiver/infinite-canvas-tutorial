@@ -1,5 +1,7 @@
 import { field } from '@lastolivegames/becsy';
 
+export type Material3DAlphaMode = 'opaque' | 'mask' | 'blend';
+
 /**
  * A 3D material component defining surface appearance.
  * @see https://docs.rs/bevy/latest/bevy/pbr/struct.StandardMaterial.html
@@ -61,6 +63,12 @@ export class Material3D {
    */
   @field.object declare map: string | null;
 
+  /** Opaque, alpha-tested cutout, or sorted alpha blending. */
+  @field.object declare alphaMode: Material3DAlphaMode;
+
+  /** Alpha-test threshold for `mask` materials, in the 0..1 range. */
+  @field.float32 declare alphaCutoff: number;
+
   /** Optional specular intensity texture (grayscale), multiplied into specular. */
   @field.object declare specularMap: string | null;
 
@@ -92,6 +100,8 @@ export class Material3D {
     this.metallic ??= 0;
     this.roughness ??= 1;
     this.map ??= null;
+    this.alphaMode ??= 'opaque';
+    this.alphaCutoff ??= 0.5;
     this.specularMap ??= null;
     this.bumpMap ??= null;
     this.environmentMap ??= null;

@@ -100,6 +100,7 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
   expect(companion().read(Material3D).map).toBe(
     'https://models.example/albedo.png',
   );
+  expect(companion().read(Material3D).alphaMode).toBe('opaque');
   const document = structuredClone(wire());
   await edit({ x: 20 });
   expect(companion().read(Material3D).baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
@@ -108,6 +109,64 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
   );
   expect(wire().material3d).toEqual(document.material3d);
   expect(fetchModel).toHaveBeenCalledTimes(1);
+});
+
+it.each(['MASK', 'BLEND'] as const)(
+  'inherits glTF %s alpha until a document override is authored',
+  async (mode) => {
+    const model = gltfScenes();
+    const materials = (
+      model.json as unknown as {
+        materials: { alphaMode?: string; alphaCutoff?: number }[];
+      }
+    ).materials;
+    materials[0].alphaMode = mode;
+    materials[0].alphaCutoff = 0.35;
+    fetchModel.mockResolvedValue(model);
+    await world.reset(api, [node()]);
+    await settle();
+    expect(companion().read(Material3D).alphaMode).toBe(mode.toLowerCase());
+    expect(companion().read(Material3D).alphaCutoff).toBeCloseTo(0.35);
+    expect(wire().material3d).toBeUndefined();
+
+    await edit({ material3d: { alphaMode: 'opaque' } });
+    expect(companion().read(Material3D).alphaMode).toBe('opaque');
+    expect(companion().read(Material3D).alphaCutoff).toBeCloseTo(0.35);
+
+    await edit({ material3d: { alphaCutoff: 0.8 } });
+    expect(companion().read(Material3D).alphaMode).toBe(mode.toLowerCase());
+    expect(companion().read(Material3D).alphaCutoff).toBeCloseTo(0.8);
+
+    await edit({ material3d: undefined });
+    expect(companion().read(Material3D).alphaMode).toBe(mode.toLowerCase());
+    expect(companion().read(Material3D).alphaCutoff).toBeCloseTo(0.35);
+    await edit({ geometry: 'cube' });
+    expect(companion().read(Material3D).alphaMode).toBe('opaque');
+    expect(companion().read(Material3D).alphaCutoff).toBeCloseTo(0.5);
+  },
+);
+
+it('uses one coherent material when flattening glTF primitives', async () => {
+  const model = gltfScenes();
+  const json = model.json as unknown as {
+    meshes: { primitives: { attributes: { POSITION: number }; material: number }[] }[];
+    materials: {
+      alphaMode?: string;
+      pbrMetallicRoughness: { baseColorFactor: number[] };
+    }[];
+  };
+  json.materials[0].alphaMode = 'MASK';
+  json.materials[0].pbrMetallicRoughness.baseColorFactor[0] = 1;
+  json.materials[1].alphaMode = 'BLEND';
+  json.meshes[0].primitives.push({ attributes: { POSITION: 0 }, material: 1 });
+  fetchModel.mockResolvedValue(model);
+  await world.reset(api, [node()]);
+  await settle();
+  expect(companion().read(Material3D).baseColor).toEqual([1, 0.4, 0.6, 0.8]);
+  expect(companion().read(Material3D).map).toBe(
+    'https://models.example/albedo.png',
+  );
+  expect(companion().read(Material3D).alphaMode).toBe('mask');
 });
 
 it('preserves custom material and restores glTF defaults when overrides are cleared', async () => {

@@ -463,6 +463,10 @@ export const zh = defineConfig({
                     link: 'lighting',
                   },
                   {
+                    text: '3D Mesh 透明度',
+                    link: 'mesh3d-alpha',
+                  },
+                  {
                     text: '贴图地球',
                     link: 'earth',
                   },

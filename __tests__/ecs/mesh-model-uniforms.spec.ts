@@ -149,6 +149,31 @@ it('updates the receiver flag when shadow reception changes', () => {
   expect(setSubData).toHaveBeenCalledTimes(2);
 });
 
+it('keeps alpha mode, cutoff and map readiness current before the shadow pass', () => {
+  const { uniforms, transform, material, data } = setup();
+  const offset = MESH_MODEL_UNIFORM_FLOATS - 4;
+  material.alphaMode = 'mask';
+  material.alphaCutoff = 0.35;
+  material.baseColor = [1, 1, 1, 0.8];
+  uniforms.updateShadowMaterial(transform, material, true);
+  expect(data[35]).toBeCloseTo(0.8);
+  expect(data[48]).toBe(1);
+  expect([...data.slice(offset + 1, offset + 3)]).toEqual([
+    1,
+    Math.fround(0.35),
+  ]);
+  material.alphaMode = 'blend';
+  uniforms.update(transform, material, ready);
+  expect(data[offset + 1]).toBe(2);
+  material.alphaMode = 'opaque';
+  uniforms.updateShadowMaterial(transform, material, false);
+  expect(data[offset + 1]).toBe(0);
+  expect(data[48]).toBe(0);
+  material.alphaCutoff = Number.NaN;
+  uniforms.updateShadowMaterial(transform, material, false);
+  expect(data[offset + 2]).toBe(0.5);
+});
+
 it('retries failed uploads without rebuilding unchanged matrices', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
   const invert = jest.spyOn(mat4, 'invert');

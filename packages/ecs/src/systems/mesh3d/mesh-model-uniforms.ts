@@ -54,7 +54,6 @@ export class MeshModelUniforms {
     this.set(37, material.diffuse);
     this.set(38, material.specular);
     this.set(39, material.shininess);
-    this.set(48, Number(textureReady.mapReady));
     this.set(49, Number(textureReady.specularMapReady));
     this.set(50, Number(textureReady.bumpMapReady));
     this.set(51, material.bumpScale);
@@ -69,8 +68,23 @@ export class MeshModelUniforms {
       60 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(material.receiveShadow),
     );
+    this.setAlpha(material, textureReady.mapReady);
     this.upload();
     return this.legacy;
+  }
+
+  /** Shadow maps render before the color pass; refresh alpha without loading IBL. */
+  updateShadowMaterial(
+    transform: Transform3D,
+    material: Material3D,
+    mapReady: boolean,
+  ): void {
+    this.updatePose(transform);
+    this.set(32 + 3, material.baseColor[3]);
+    this.set(54, Number(material.sideColor !== null));
+    for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
+    this.setAlpha(material, mapReady);
+    this.upload();
   }
 
   /** Shadow pass only needs the first mat4; preserve cached material values. */
@@ -81,6 +95,17 @@ export class MeshModelUniforms {
 
   getModelMatrix(): Float32Array {
     return this.model;
+  }
+
+  getShadowUniforms(): Record<string, unknown> {
+    return {
+      u_ShadowModelMatrix: this.model,
+      u_BaseColor: this.legacy.u_BaseColor,
+      u_MaterialFlags: this.legacy.u_MaterialFlags,
+      u_PbrParams: this.legacy.u_PbrParams,
+      u_SideColor: this.legacy.u_SideColor,
+      u_ShadowReceive: this.legacy.u_ShadowReceive,
+    };
   }
 
   private updatePose(transform: Transform3D): void {
@@ -125,5 +150,19 @@ export class MeshModelUniforms {
     this.values[offset] = value;
     this.data[offset] = value;
     this.dirty = true;
+  }
+
+  private setAlpha(material: Material3D, mapReady: boolean): void {
+    this.set(48, Number(mapReady));
+    this.set(
+      61 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      material.alphaMode === 'mask' ? 1 : material.alphaMode === 'blend' ? 2 : 0,
+    );
+    this.set(
+      62 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number.isFinite(material.alphaCutoff)
+        ? Math.max(0, Math.min(1, material.alphaCutoff))
+        : 0.5,
+    );
   }
 }
