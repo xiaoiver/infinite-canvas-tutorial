@@ -327,6 +327,20 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   float bias = (point ? max(0.0005, 0.001 * slope) :
     spot ? max(0.004, 0.006 * slope) : max(0.005, 0.008 * slope)) *
     shadowOptions.z;
+  if (shadowOptions.y <= 0.0) {
+    // A zero-width PCF kernel samples the same texel nine times. Use one
+    // lookup for hard shadows, including point-light atlas faces.
+    vec2 sampleLocal = clamp(localUv,
+      vec2(shadowParams.y * 0.5), vec2(1.0 - shadowParams.y * 0.5));
+    vec2 sampleUv = point
+      ? (sampleLocal + pointShadowTile(face)) / vec2(3.0, 2.0)
+      : sampleLocal;
+    float stored = slot == 0
+      ? unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap0), sampleUv))
+      : unpackShadowDepth(texture(SAMPLER_2D(u_ShadowMap1), sampleUv));
+    float visible = depth - bias <= stored ? 1.0 : 0.0;
+    return mix(1.0, visible, shadowOptions.x);
+  }
   float visibility = 0.0;
   for (int y = -1; y <= 1; y++) {
     for (int x = -1; x <= 1; x++) {
