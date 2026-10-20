@@ -318,6 +318,50 @@ it('snapshots light data before another ECS component read invalidates it', () =
   );
 });
 
+it('executes a scheduled shadow pass after mesh component reads expire', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+  } = fixture();
+  slot.transform.translation = [20, 0, 0];
+  queries.lights3D.current = [
+    entity(
+      new Map([
+        [Light3D, new Light3D({ type: 'directional', castShadow: true })],
+      ]),
+      90,
+    ),
+  ];
+  let setup!: (pass: any) => void;
+  const builder = {
+    createRenderTargetID: () => 1,
+    pushPass: (callback: (pass: any) => void) => {
+      setup = callback;
+    },
+    resolveRenderTarget: () => 1,
+  };
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toHaveLength(
+    1,
+  );
+  // Render-graph execution happens after the ECS scheduling phase. A reused
+  // component view must never be read by the deferred callback.
+  (slot.target as any).read = () => {
+    throw new Error('expired mesh component view');
+  };
+  let execute!: (pass: any) => void;
+  setup({
+    setDebugName: jest.fn(),
+    attachRenderTargetID: jest.fn(),
+    exec: (callback: (pass: any) => void) => {
+      execute = callback;
+    },
+  });
+  expect(() => execute(slot.gpu.pass)).not.toThrow();
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(1);
+});
+
 it('draws every mesh in the color pass but only casters in the shadow pass', () => {
   const {
     renderer,
