@@ -10,6 +10,8 @@ export interface ShadowCasterBounds {
   min: readonly [number, number, number];
   max: readonly [number, number, number];
   model: Float32Array;
+  /** Optional world-space corners computed once for this render frame. */
+  corners?: readonly vec3[];
 }
 
 export function meshWorldCorners({
@@ -61,8 +63,12 @@ export function intersectsShadowFrustum(
   return !outside.some(Boolean);
 }
 
-function worldCorners(meshes: readonly ShadowCasterBounds[]): vec3[] {
-  return meshes.flatMap(meshWorldCorners);
+function meshCorners(mesh: ShadowCasterBounds): readonly vec3[] {
+  return mesh.corners ?? meshWorldCorners(mesh);
+}
+
+function sceneWorldCorners(meshes: readonly ShadowCasterBounds[]): vec3[] {
+  return meshes.flatMap((mesh) => meshCorners(mesh));
 }
 
 /** Fit one orthographic directional shadow camera around the current meshes. */
@@ -72,7 +78,7 @@ export function fitDirectionalShadow(
 ): Float32Array | null {
   const length = Math.hypot(...direction);
   if (!meshes.length || !Number.isFinite(length) || length < 1e-8) return null;
-  const points = worldCorners(meshes);
+  const points = sceneWorldCorners(meshes);
   if (!points.length) return null;
   const worldMin = vec3.fromValues(Infinity, Infinity, Infinity);
   const worldMax = vec3.fromValues(-Infinity, -Infinity, -Infinity);
@@ -149,7 +155,7 @@ export function fitSpotShadow(
   for (const mesh of meshes) {
     let meshMinDepth = Infinity;
     let meshMaxDepth = -Infinity;
-    for (const point of meshWorldCorners(mesh)) {
+    for (const point of meshCorners(mesh)) {
       const depth = vec3.dot(vec3.subtract(vec3.create(), point, eye), ray);
       meshMinDepth = Math.min(meshMinDepth, depth);
       meshMaxDepth = Math.max(meshMaxDepth, depth);
@@ -190,7 +196,7 @@ export function fitPointShadow(
   let far = 0;
   let nearestBounds = Infinity;
   for (const mesh of meshes) {
-    const points = meshWorldCorners(mesh);
+    const points = meshCorners(mesh);
     if (!points.length) continue;
     const min = vec3.fromValues(Infinity, Infinity, Infinity);
     const max = vec3.fromValues(-Infinity, -Infinity, -Infinity);
