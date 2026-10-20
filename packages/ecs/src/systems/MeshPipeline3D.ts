@@ -508,10 +508,11 @@ export class MeshPipeline3D extends System {
       if (!gpu) return [];
       gpu.modelUniforms.updatePoseOnly(entity.read(Transform3D));
       gpuById.set(entity.__id, gpu);
-      const bound = {
+      const bound: ShadowCasterBounds = {
         ...gpu.localBounds,
         model: gpu.modelUniforms.getModelMatrix(),
       };
+      bound.corners = meshWorldCorners(bound);
       boundsById.set(entity.__id, bound);
       return [bound];
     });
@@ -553,11 +554,11 @@ export class MeshPipeline3D extends System {
     if (!casters.length) return [];
     const casterCorners = new Map<
       number,
-      ReturnType<typeof meshWorldCorners>
+      NonNullable<ShadowCasterBounds['corners']>
     >();
     for (const id of casterIds) {
       const bound = boundsById.get(id);
-      if (bound) casterCorners.set(id, meshWorldCorners(bound));
+      if (bound?.corners) casterCorners.set(id, bound.corners);
     }
     if (!state.shadowSceneBuffers) {
       state.shadowSceneBuffers = Array.from(
