@@ -5,6 +5,7 @@ import {
   fitSpotShadow,
   intersectsShadowFrustum,
   meshWorldCorners,
+  SHADOW_MAP_SIZE,
 } from '../../packages/ecs/src/systems/mesh3d/shadow-projection';
 import { POINT_SHADOW_FACES } from '../../packages/ecs/src/utils/geometry3d/point-shadow-faces';
 
@@ -39,6 +40,33 @@ it('fits all caster corners inside directional shadow clip space', () => {
         }
   }
 });
+
+it.each([{ direction: [0, 0, 1] }, { direction: [0.45, 0.65, 0.55] }])(
+  'keeps directional shadow texels fixed for light direction $direction',
+  ({ direction }) => {
+    const bounds = (x: number) => ({
+      min: [-1, -1, -1] as [number, number, number],
+      max: [1, 1, 1] as [number, number, number],
+      model: new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, 0, 0, 1]),
+    });
+    const worldOriginTexel = (x: number) => {
+      const vp = fitDirectionalShadow(direction, [bounds(x)])!;
+      const clip = vec3.transformMat4(vec3.create(), [0, 0, 0], vp);
+      return [
+        ((clip[0] + 1) * SHADOW_MAP_SIZE) / 2,
+        ((clip[1] + 1) * SHADOW_MAP_SIZE) / 2,
+      ];
+    };
+    const initial = worldOriginTexel(0);
+    const smallMove = worldOriginTexel(0.0005);
+    const moved = worldOriginTexel(0.02);
+    for (let axis = 0; axis < 2; axis++) {
+      expect(smallMove[axis]).toBeCloseTo(initial[axis], 3);
+      const pixelShift = moved[axis] - initial[axis];
+      expect(pixelShift).toBeCloseTo(Math.round(pixelShift), 3);
+    }
+  },
+);
 
 it('skips degenerate shadows', () => {
   expect(fitDirectionalShadow([1, 0, 0], [])).toBeNull();
