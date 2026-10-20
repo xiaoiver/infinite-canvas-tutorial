@@ -169,6 +169,9 @@ it('keeps alpha mode, cutoff and map readiness current before the shadow pass', 
   uniforms.updateShadowMaterial(transform, material, false);
   expect(data[offset + 1]).toBe(0);
   expect(data[48]).toBe(0);
+  material.alphaCutoff = Number.NaN;
+  uniforms.updateShadowMaterial(transform, material, false);
+  expect(data[offset + 2]).toBe(0.5);
 });
 
 it('retries failed uploads without rebuilding unchanged matrices', () => {
