@@ -42,6 +42,7 @@ it('exports a holed Path with distinct cap and wall materials as a valid GLB', a
     sideColor: [1, 0, 0, 0.5],
     metallic: 0.2,
     roughness: 0.8,
+    alphaMode: 'blend',
   });
   const source = {
     name: 'ring',
@@ -99,6 +100,48 @@ it('exports a holed Path with distinct cap and wall materials as a valid GLB', a
   const roundTrip = bakeGltfMesh(loaded as GltfContainer);
   expect(roundTrip.indices).toHaveLength(geometry.indices.length * 2);
   expect([...roundTrip.positions].every(Number.isFinite)).toBe(true);
+});
+
+it('preserves explicit alpha modes and mask cutoff through GLB export', async () => {
+  const geometry = createUnitCubeGeometry();
+  const bytes = exportMeshesToGlb([
+    ...(
+      [
+        { alphaMode: 'mask', alphaCutoff: 0.3 },
+        { alphaMode: 'blend', alphaCutoff: 0.5 },
+        { alphaMode: 'opaque', alphaCutoff: 0.5 },
+      ] as const
+    ).map((settings) => ({
+      mesh: geometry,
+      material: new Material3D({
+        baseColor: [0.4, 0.5, 0.6, 0.25],
+        ...settings,
+      }),
+      transform: new Transform3D(),
+    })),
+    {
+      mesh: geometry,
+      material: {
+        baseColor: [0.4, 0.5, 0.6, 0.25],
+        sideColor: null,
+        metallic: 0,
+        roughness: 1,
+      },
+      transform: new Transform3D(),
+    },
+  ]);
+  const { json } = readGlb(bytes);
+  expect(
+    json.materials.map((material: { alphaMode: string }) => material.alphaMode),
+  ).toEqual(['MASK', 'BLEND', 'OPAQUE', 'BLEND']);
+  expect(json.materials[0].alphaCutoff).toBeCloseTo(0.3);
+  expect(json.materials[1]).not.toHaveProperty('alphaCutoff');
+  const loaded = (await parse(bytes.buffer, GLTFLoader, {
+    gltf: { loadBuffers: true },
+  })) as GltfContainer;
+  const roundTrip = bakeGltfMesh(loaded);
+  expect(roundTrip.alphaMode).toBe('mask');
+  expect(roundTrip.alphaCutoff).toBeCloseTo(0.3);
 });
 
 it('keeps beveled faces with the side material in GLB', () => {

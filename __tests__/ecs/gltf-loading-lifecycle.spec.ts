@@ -9,6 +9,7 @@ import {
   Mesh3DNode,
   Mesh3D,
   Material3D,
+  ExportFormat,
   system,
   type API,
   type Mesh3DNodeSerializedNode,
@@ -128,6 +129,20 @@ it.each(['MASK', 'BLEND'] as const)(
     expect(companion().read(Material3D).alphaMode).toBe(mode.toLowerCase());
     expect(companion().read(Material3D).alphaCutoff).toBeCloseTo(0.35);
     expect(wire().material3d).toBeUndefined();
+    const glb = api.export({
+      format: ExportFormat.GLB,
+      download: false,
+    }) as Uint8Array;
+    const jsonLength = new DataView(glb.buffer, glb.byteOffset).getUint32(
+      12,
+      true,
+    );
+    const exported = JSON.parse(
+      new TextDecoder().decode(glb.subarray(20, 20 + jsonLength)),
+    );
+    expect(exported.materials[0].alphaMode).toBe(mode);
+    if (mode === 'MASK')
+      expect(exported.materials[0].alphaCutoff).toBeCloseTo(0.35);
 
     await edit({ material3d: { alphaMode: 'opaque' } });
     expect(companion().read(Material3D).alphaMode).toBe('opaque');
@@ -149,7 +164,9 @@ it.each(['MASK', 'BLEND'] as const)(
 it('uses one coherent material when flattening glTF primitives', async () => {
   const model = gltfScenes();
   const json = model.json as unknown as {
-    meshes: { primitives: { attributes: { POSITION: number }; material: number }[] }[];
+    meshes: {
+      primitives: { attributes: { POSITION: number }; material: number }[];
+    }[];
     materials: {
       alphaMode?: string;
       pbrMetallicRoughness: { baseColorFactor: number[] };

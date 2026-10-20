@@ -3159,8 +3159,12 @@ export class API {
       const sources = scene.flatMap((node) => {
         if (node.isDeleted || !included(node)) return [];
         const entity = this.getEntity(node);
-        if (!entity?.alive || !entity.has(Extrude3D)) return [];
-        const mesh = entity.read(Extrude3D).meshEntity;
+        if (!entity?.alive) return [];
+        const mesh = entity.has(Extrude3D)
+          ? entity.read(Extrude3D).meshEntity
+          : entity.has(Mesh3DNode)
+          ? entity.read(Mesh3DNode).meshEntity
+          : null;
         if (
           !mesh?.alive ||
           mesh.has(ToBeDeleted) ||
@@ -3184,6 +3188,8 @@ export class API {
           sideColor: surface.sideColor,
           metallic: surface.metallic,
           roughness: surface.roughness,
+          alphaMode: surface.alphaMode,
+          alphaCutoff: surface.alphaCutoff,
         };
         const pose = mesh.read(Transform3D);
         const transform = {
@@ -3200,8 +3206,7 @@ export class API {
           },
         ];
       });
-      if (!sources.length)
-        throw new Error('No ready extruded meshes to export');
+      if (!sources.length) throw new Error('No ready 3D meshes to export');
       const glb = exportMeshesToGlb(sources);
       if (download) {
         const url = URL.createObjectURL(
