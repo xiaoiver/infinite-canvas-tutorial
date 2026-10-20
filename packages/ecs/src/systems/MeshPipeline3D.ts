@@ -496,10 +496,15 @@ export class MeshPipeline3D extends System {
     }
     if (!candidates.length) return [];
     const meshes = this.collectMeshEntities(canvas);
-    const shadowCasters = meshes.filter(
-      (entity) => entity.read(Material3D).castShadow,
-    );
-    if (!shadowCasters.length) return [];
+    const shadowCasters: Entity[] = [];
+    const shadowReceiverIds: number[] = [];
+    for (const entity of meshes) {
+      const material = entity.read(Material3D);
+      if (material.castShadow) shadowCasters.push(entity);
+      if (material.receiveShadow) shadowReceiverIds.push(entity.__id);
+    }
+    // No shadow map can affect the scene without both a caster and receiver.
+    if (!shadowCasters.length || !shadowReceiverIds.length) return [];
     const casterIds = shadowCasters.map((entity) => entity.__id);
     const boundsById = new Map<number, ShadowCasterBounds>();
     const gpuById = new Map<number, MeshGPUData>();
@@ -516,6 +521,7 @@ export class MeshPipeline3D extends System {
       boundsById.set(entity.__id, bound);
       return [bound];
     });
+    if (!shadowReceiverIds.some((id) => gpuById.has(id))) return [];
     const casterCorners = new Map<
       number,
       NonNullable<ShadowCasterBounds['corners']>
