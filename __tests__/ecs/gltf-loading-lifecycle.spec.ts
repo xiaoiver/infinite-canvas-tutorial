@@ -1,5 +1,7 @@
 import { load } from '@loaders.gl/core';
+import { mat4 } from 'gl-matrix';
 import {
+  Camera3D,
   ComputeBounds,
   ComputeCamera,
   EnsureMesh3DNodes,
@@ -8,6 +10,7 @@ import {
   PostUpdate,
   Mesh3DNode,
   Mesh3D,
+  Transform3D,
   Material3D,
   ExportFormat,
   system,
@@ -16,6 +19,7 @@ import {
 } from '../../packages/ecs/src';
 import { clearGltfMeshCache } from '../../packages/ecs/src/utils/gltf/load-gltf-mesh';
 import { getMesh3DNodeParts } from '../../packages/ecs/src/utils/mesh3d-node';
+import { probePick3DAtViewport } from '../../packages/ecs/src/utils/pick3d-probe';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 import { createDocumentWorld } from '../helpers/ecs-document';
 import { deferred, gltfScenes } from '../helpers/gltf';
@@ -210,6 +214,27 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   expect(part.read(Mesh3D).positions).toEqual(
     companion().read(Mesh3D).positions,
   );
+  const vertices = part.read(Mesh3D).positions;
+  const pose = part.read(Transform3D);
+  const centroidX =
+    pose.translation[0] +
+    ((vertices[0] + vertices[3] + vertices[6]) / 3) * pose.scale[0];
+  const centroidY =
+    pose.translation[1] +
+    ((vertices[1] + vertices[4] + vertices[7]) / 3) * pose.scale[1];
+  const projection = mat4.ortho(mat4.create(), 0, 200, 200, 0, -100, 100);
+  const hit = probePick3DAtViewport(
+    centroidX,
+    centroidY,
+    200,
+    200,
+    new Camera3D({ linked: false }),
+    { mode: 'standard', projMatrix: projection, viewMatrix: mat4.create() },
+    [part],
+    [],
+  );
+  expect(hit.kind).toBe('mesh');
+  if (hit.kind === 'mesh') expect(hit.entity.isSame(companion())).toBe(true);
   await edit({ material3d: { alphaMode: 'opaque' } });
   expect(companion().read(Material3D).alphaMode).toBe('opaque');
   expect(part.read(Material3D).alphaMode).toBe('opaque');
