@@ -71,6 +71,22 @@ function sceneWorldCorners(meshes: readonly ShadowCasterBounds[]): vec3[] {
   return meshes.flatMap((mesh) => meshCorners(mesh));
 }
 
+function snapDirectionalAxis(
+  min: number,
+  max: number,
+  pad: number,
+  viewTranslation: number,
+): [number, number] {
+  const halfSpan = (max - min) * 0.5 + pad;
+  const texelSize = (halfSpan * 2) / SHADOW_MAP_SIZE;
+  // Remove the view translation before snapping so the texel grid stays
+  // anchored in world space even when the fitted light camera follows a mesh.
+  const worldCenter = (min + max) * 0.5 - viewTranslation;
+  const center =
+    Math.round(worldCenter / texelSize) * texelSize + viewTranslation;
+  return [center - halfSpan, center + halfSpan];
+}
+
 /** Fit one orthographic directional shadow camera around the current meshes. */
 export function fitDirectionalShadow(
   direction: readonly number[],
@@ -110,13 +126,15 @@ export function fitDirectionalShadow(
     vec3.max(max, max, viewPoint);
   }
   const pad = Math.max(1, radius * 0.05);
+  const [left, right] = snapDirectionalAxis(min[0], max[0], pad, view[12]);
+  const [bottom, top] = snapDirectionalAxis(min[1], max[1], pad, view[13]);
   const projection = mat4.create();
   mat4.ortho(
     projection,
-    min[0] - pad,
-    max[0] + pad,
-    min[1] - pad,
-    max[1] + pad,
+    left,
+    right,
+    bottom,
+    top,
     Math.max(0.01, -max[2] - pad),
     -min[2] + pad,
   );
