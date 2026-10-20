@@ -93,6 +93,7 @@ import {
   MeshSceneUniforms,
   MESH_SCENE_UNIFORM_FLOATS,
   MAX_SHADOW_LIGHTS,
+  spotConeAngles,
 } from './mesh3d/mesh-scene-uniforms';
 
 /** Async base-color texture state, cached per canvas owner + URL. */
@@ -456,6 +457,7 @@ export class MeshPipeline3D extends System {
       position: [number, number, number];
       direction: [number, number, number];
       range: number;
+      innerConeAngle: number;
       outerConeAngle: number;
       strength: number;
       softness: number;
@@ -481,6 +483,7 @@ export class MeshPipeline3D extends System {
         position: [...light.position],
         direction: [...light.direction],
         range: light.range,
+        innerConeAngle: light.innerConeAngle,
         outerConeAngle: light.outerConeAngle,
         strength,
         softness: Number.isFinite(light.shadowSoftness)
@@ -542,9 +545,26 @@ export class MeshPipeline3D extends System {
       normalBias: number;
     }[] = [];
     for (const candidate of candidates) {
-      const { type, position, direction, range, outerConeAngle } = candidate;
+      const { type, position, direction, range } = candidate;
+      const outerConeAngle = spotConeAngles(
+        candidate.innerConeAngle,
+        candidate.outerConeAngle,
+      ).outer;
+      // A perspective shadow camera becomes singular as the spotlight's full
+      // field of view approaches 180 degrees. Use the existing six-face map
+      // for wide cones; the spotlight shader still clips illumination to its
+      // authored cone, so the extra faces only provide depth coverage.
+      const wideSpot =
+        type === 'spot' && outerConeAngle >= (85 * Math.PI) / 180;
+      if (
+        wideSpot &&
+        (!direction.every(Number.isFinite) || Math.hypot(...direction) < 1e-8)
+      )
+        continue;
       const faces =
-        type === 'point' ? fitPointShadow(position, range, bounds) : null;
+        type === 'point' || wideSpot
+          ? fitPointShadow(position, range, bounds)
+          : null;
       const viewProjection =
         faces?.[0] ??
         (type === 'spot'

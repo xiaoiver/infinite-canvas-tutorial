@@ -254,6 +254,64 @@ it('schedules a sampled shadow map for enabled directional and spot lights', () 
   ).toMatchObject([{ lightIndex: 1, resolveID: 15 }]);
 });
 
+it('uses six shadow faces for a wide spotlight while keeping narrow cones on one map', () => {
+  const {
+    renderer,
+    queries,
+    slots: [slot],
+    entity,
+  } = fixture();
+  const light = new Light3D({
+    type: 'spot',
+    castShadow: true,
+    position: [0, 0, -100],
+    direction: [0, 0, 1],
+    outerConeAngle: Math.PI / 2,
+    range: 500,
+  });
+  queries.lights3D.current = [entity(new Map([[Light3D, light]]), 90)];
+  const targets: any[] = [];
+  let setup: ((pass: any) => void) | undefined;
+  const builder = {
+    createRenderTargetID: (description: any) => {
+      targets.push(description);
+      return targets.length;
+    },
+    pushPass: (callback: (pass: any) => void) => {
+      setup = callback;
+    },
+    resolveRenderTarget: (id: number) => id,
+  };
+
+  const [wide] = renderer.scheduleShadowPass(builder as any, slot.canvas);
+  expect(wide.faces).toHaveLength(6);
+  expect(targets[0]).toMatchObject({ width: 1536, height: 1024 });
+  let execute: ((renderPass: any) => void) | undefined;
+  setup!({
+    setDebugName: jest.fn(),
+    attachRenderTargetID: jest.fn(),
+    exec: (callback: (renderPass: any) => void) => {
+      execute = callback;
+    },
+  });
+  execute!(slot.gpu.pass);
+  expect(slot.gpu.pass.setViewport).toHaveBeenCalledTimes(6);
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalled();
+
+  light.outerConeAngle = Math.PI / 4;
+  const [narrow] = renderer.scheduleShadowPass(builder as any, slot.canvas);
+  expect(narrow.faces).toBeUndefined();
+  expect(targets[2]).toMatchObject({ width: 1024, height: 1024 });
+  // The shading cone widens invalid/equal authored inputs. The shadow map
+  // must use the same sanitized angle or it misses illuminated receivers.
+  light.innerConeAngle = Math.PI / 2;
+  const [sanitized] = renderer.scheduleShadowPass(builder as any, slot.canvas);
+  expect(sanitized.faces).toHaveLength(6);
+  light.direction = [0, 0, 0];
+  light.outerConeAngle = (120 * Math.PI) / 180;
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toEqual([]);
+});
+
 it('skips mesh bounds work when no light can cast a shadow', () => {
   const {
     renderer,

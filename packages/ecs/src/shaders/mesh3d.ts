@@ -324,8 +324,8 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   // 3x3 kernel on surfaces oblique to the light. Offset receivers enough to
   // avoid self-shadow stripes while retaining the much larger caster gap.
   float slope = 1.0 - max(dot(normal, lightDir), 0.0);
-  float bias = (point ? max(0.0005, 0.001 * slope) :
-    spot ? max(0.004, 0.006 * slope) : max(0.005, 0.008 * slope)) *
+  float bias = (spot ? max(0.004, 0.006 * slope) :
+    point ? max(0.0005, 0.001 * slope) : max(0.005, 0.008 * slope)) *
     shadowOptions.z;
   if (shadowOptions.y <= 0.0) {
     // A zero-width PCF kernel samples the same texel nine times. Use one

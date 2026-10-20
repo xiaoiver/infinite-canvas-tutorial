@@ -23,6 +23,19 @@ function validDirection(direction: readonly number[]): number[] {
     : [...defaultDirectional.direction];
 }
 
+/** Keep the spotlight's shading cone and shadow projection in agreement. */
+export function spotConeAngles(innerAngle: number, outerAngle: number) {
+  // Preserve a representable gap between the two cosine values in float32.
+  const coneGap = 0.01;
+  const inner = Number.isFinite(innerAngle)
+    ? Math.max(0, Math.min(Math.PI - coneGap * 2, innerAngle))
+    : Math.PI / 8;
+  const outer = Number.isFinite(outerAngle)
+    ? Math.max(inner + coneGap, Math.min(Math.PI - coneGap, outerAngle))
+    : Math.max(inner + coneGap, Math.PI / 4);
+  return { inner, outer };
+}
+
 function same(a: readonly number[], b: readonly number[]): boolean {
   return a.length === b.length && a.every((value, i) => Object.is(value, b[i]));
 }
@@ -231,17 +244,10 @@ export class MeshSceneUniforms {
       ? Math.max(0, light.range)
       : 0;
     if (light.type === 'spot') {
-      // Keep a representable gap between the two cosine values in float32.
-      const coneGap = 0.01;
-      const inner = Number.isFinite(light.innerConeAngle)
-        ? Math.max(0, Math.min(Math.PI - coneGap * 2, light.innerConeAngle))
-        : Math.PI / 8;
-      const outer = Number.isFinite(light.outerConeAngle)
-        ? Math.max(
-            inner + coneGap,
-            Math.min(Math.PI - coneGap, light.outerConeAngle),
-          )
-        : Math.PI / 4;
+      const { inner, outer } = spotConeAngles(
+        light.innerConeAngle,
+        light.outerConeAngle,
+      );
       this.data[95 + offset] = Math.cos(outer);
       this.data[159 + offset] = Math.cos(inner);
     }
