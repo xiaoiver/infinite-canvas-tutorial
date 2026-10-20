@@ -16,6 +16,8 @@ export function mesh3DNodeFromWire(node: Mesh3DNodeSerializedNode): Mesh3DNode {
   return new Mesh3DNode({
     ...material,
     baseColor: parseMesh3DBaseColor(material.baseColor),
+    baseColorOverridden: material.baseColor !== undefined,
+    mapOverridden: material.map !== undefined,
     geometry: normalizeGeometry(node.geometry),
     z: node.z,
     rotation3d: node.rotation3d && [...node.rotation3d],

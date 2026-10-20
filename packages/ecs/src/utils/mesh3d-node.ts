@@ -274,7 +274,8 @@ export function syncMesh3DNodeCompanionMaterial(
     (isGltfGeometrySpec(spec) && loaded?.key === geometrySpecKey(spec)
       ? loaded.material
       : undefined);
-  const hasCustomColor = node.baseColor.some((value) => value !== 1);
+  const hasCustomColor =
+    node.baseColorOverridden || node.baseColor.some((value) => value !== 1);
   syncMaterial3D(meshEntity, {
     baseColor: [
       ...(hasCustomColor
@@ -287,7 +288,7 @@ export function syncMesh3DNodeCompanionMaterial(
     shininess: node.shininess,
     metallic: node.metallic,
     roughness: node.roughness,
-    map: node.map ?? imported?.map ?? null,
+    map: node.mapOverridden ? node.map : node.map ?? imported?.map ?? null,
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,
     specularMap: node.specularMap ?? null,

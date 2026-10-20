@@ -240,6 +240,14 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   expect(part.read(Material3D).alphaMode).toBe('opaque');
   await edit({ material3d: undefined });
   expect(part.read(Material3D).alphaMode).toBe('blend');
+  await edit({ material3d: { baseColor: '#ffffff', map: null } });
+  expect(companion().read(Material3D).baseColor).toEqual([1, 1, 1, 1]);
+  expect(part.read(Material3D).baseColor).toEqual([1, 1, 1, 1]);
+  expect(companion().read(Material3D).map).toBeNull();
+  await edit({ material3d: undefined });
+  expect(companion().read(Material3D).map).toBe(
+    'https://models.example/albedo.png',
+  );
   const glb = api.export({ format: ExportFormat.GLB, download: false });
   const jsonLength = new DataView(glb.buffer, glb.byteOffset).getUint32(
     12,

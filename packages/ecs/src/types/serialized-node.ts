@@ -456,7 +456,7 @@ export type Material3DWire = {
   /** Perceptual roughness 0..1 (PBR metallic-roughness workflow). */
   roughness?: number;
   /** Base-color texture (image URL or data URL). */
-  map?: string;
+  map?: string | null;
   /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */
   alphaMode?: 'opaque' | 'mask' | 'blend';
   /** Alpha-test threshold in mask mode; defaults to 0.5. */
