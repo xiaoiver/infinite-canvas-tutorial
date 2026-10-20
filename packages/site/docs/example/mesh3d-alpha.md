@@ -63,4 +63,4 @@ api.updateNodes([
 
 The scene also needs a `Camera3D`, a light, and a receiving floor; see the [Lighting example](/example/lighting). Blended shadows are a single-layer approximation, so multiple overlapping glass casters do not accumulate physical transmittance.
 
-The current glTF loader flattens imported primitives into one mesh and does not carry through glTF material alpha modes. Set `material3d.alphaMode` on the imported mesh node explicitly.
+For a glTF mesh with one material, the loader inherits its `alphaMode` (`OPAQUE`, `MASK`, or `BLEND`) and `alphaCutoff`; an explicit `material3d` value overrides either property. The current loader flattens multiple primitives into one mesh and uses the first material for all of them, so different alpha modes within one imported model are not supported yet.

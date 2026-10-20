@@ -95,6 +95,8 @@ export function requestGltfMeshLoad(source: Entity): void {
         seedMesh3DNodeCompanionGeometryKey(source, {
           baseColor: baked.baseColor,
           map: baked.map,
+          alphaMode: baked.alphaMode,
+          alphaCutoff: baked.alphaCutoff,
         });
         if (companion.has(Material3D)) {
           syncMesh3DNodeCompanionMaterial(source, companion);
