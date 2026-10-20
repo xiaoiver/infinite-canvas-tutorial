@@ -516,11 +516,20 @@ export class MeshPipeline3D extends System {
       boundsById.set(entity.__id, bound);
       return [bound];
     });
+    const casterCorners = new Map<
+      number,
+      NonNullable<ShadowCasterBounds['corners']>
+    >();
+    for (const id of casterIds) {
+      const bound = boundsById.get(id);
+      if (bound?.corners) casterCorners.set(id, bound.corners);
+    }
     const casters: {
       type: 'directional' | 'point' | 'spot';
       lightIndex: number;
       viewProjection: Float32Array;
       faces: Float32Array[] | null;
+      visibleCasterIds: number[][];
       strength: number;
       softness: number;
       biasScale: number;
@@ -537,29 +546,30 @@ export class MeshPipeline3D extends System {
           : type === 'directional'
           ? fitDirectionalShadow(direction, bounds)
           : null);
-      if (viewProjection) {
-        casters.push({
-          type,
-          lightIndex: candidate.lightIndex,
-          viewProjection,
-          faces,
-          strength: candidate.strength,
-          softness: candidate.softness,
-          biasScale: candidate.biasScale,
-          normalBias: candidate.normalBias,
-        });
-        if (casters.length === MAX_SHADOW_LIGHTS) break;
-      }
+      if (!viewProjection) continue;
+      const visibleCasterIds = (faces ?? [viewProjection]).map((matrix) =>
+        casterIds.filter((id) => {
+          if (!gpuById.has(id)) return false;
+          const corners = casterCorners.get(id);
+          return !corners || intersectsShadowFrustum(corners, matrix);
+        }),
+      );
+      // A light with no caster in any face contributes only direct lighting.
+      if (!visibleCasterIds.some((ids) => ids.length)) continue;
+      casters.push({
+        type,
+        lightIndex: candidate.lightIndex,
+        viewProjection,
+        faces,
+        visibleCasterIds,
+        strength: candidate.strength,
+        softness: candidate.softness,
+        biasScale: candidate.biasScale,
+        normalBias: candidate.normalBias,
+      });
+      if (casters.length === MAX_SHADOW_LIGHTS) break;
     }
     if (!casters.length) return [];
-    const casterCorners = new Map<
-      number,
-      NonNullable<ShadowCasterBounds['corners']>
-    >();
-    for (const id of casterIds) {
-      const bound = boundsById.get(id);
-      if (bound?.corners) casterCorners.set(id, bound.corners);
-    }
     if (!state.shadowSceneBuffers) {
       state.shadowSceneBuffers = Array.from(
         { length: MAX_SHADOW_LIGHTS * 6 },
@@ -580,6 +590,7 @@ export class MeshPipeline3D extends System {
         lightIndex,
         viewProjection,
         faces,
+        visibleCasterIds,
         strength,
         softness,
         biasScale,
@@ -626,10 +637,7 @@ export class MeshPipeline3D extends System {
               size,
               size,
             );
-            for (const id of casterIds) {
-              const corners = casterCorners.get(id);
-              if (corners && !intersectsShadowFrustum(corners, matrix))
-                continue;
+            for (const id of visibleCasterIds[face]) {
               // The pass executes after scheduling, when ECS read views may be
               // invalid. Geometry and pose were captured for this frame above.
               const gpu = gpuById.get(id);
