@@ -15,6 +15,7 @@ import {
   type Mesh3DNodeSerializedNode,
 } from '../../packages/ecs/src';
 import { clearGltfMeshCache } from '../../packages/ecs/src/utils/gltf/load-gltf-mesh';
+import { getMesh3DNodeParts } from '../../packages/ecs/src/utils/mesh3d-node';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 import { createDocumentWorld } from '../helpers/ecs-document';
 import { deferred, gltfScenes } from '../helpers/gltf';
@@ -161,11 +162,17 @@ it.each(['MASK', 'BLEND'] as const)(
   },
 );
 
-it('uses one coherent material when flattening glTF primitives', async () => {
+it('keeps each glTF primitive material and alpha mode on a selectable part', async () => {
   const model = gltfScenes();
   const json = model.json as unknown as {
+    accessors: Record<string, unknown>[];
+    bufferViews: Record<string, unknown>[];
     meshes: {
-      primitives: { attributes: { POSITION: number }; material: number }[];
+      primitives: {
+        attributes: { POSITION: number };
+        material: number;
+        indices?: number;
+      }[];
     }[];
     materials: {
       alphaMode?: string;
@@ -175,6 +182,19 @@ it('uses one coherent material when flattening glTF primitives', async () => {
   json.materials[0].alphaMode = 'MASK';
   json.materials[0].pbrMetallicRoughness.baseColorFactor[0] = 1;
   json.materials[1].alphaMode = 'BLEND';
+  const indices = new Uint8Array([0, 1, 2]);
+  json.bufferViews.push({
+    buffer: model.buffers.length,
+    byteLength: indices.byteLength,
+  });
+  json.accessors.push({
+    bufferView: json.bufferViews.length - 1,
+    componentType: 5121,
+    count: 3,
+    type: 'SCALAR',
+  });
+  model.buffers.push({ arrayBuffer: indices.buffer });
+  json.meshes[0].primitives[0].indices = json.accessors.length - 1;
   json.meshes[0].primitives.push({ attributes: { POSITION: 0 }, material: 1 });
   fetchModel.mockResolvedValue(model);
   await world.reset(api, [node()]);
@@ -184,6 +204,34 @@ it('uses one coherent material when flattening glTF primitives', async () => {
     'https://models.example/albedo.png',
   );
   expect(companion().read(Material3D).alphaMode).toBe('mask');
+  const [part] = getMesh3DNodeParts(source());
+  expect(part.read(Material3D).baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(part.read(Material3D).alphaMode).toBe('blend');
+  expect(part.read(Mesh3D).positions).toEqual(
+    companion().read(Mesh3D).positions,
+  );
+  await edit({ material3d: { alphaMode: 'opaque' } });
+  expect(companion().read(Material3D).alphaMode).toBe('opaque');
+  expect(part.read(Material3D).alphaMode).toBe('opaque');
+  await edit({ material3d: undefined });
+  expect(part.read(Material3D).alphaMode).toBe('blend');
+  const glb = api.export({ format: ExportFormat.GLB, download: false });
+  const jsonLength = new DataView(glb.buffer, glb.byteOffset).getUint32(
+    12,
+    true,
+  );
+  const exported = JSON.parse(
+    new TextDecoder().decode(glb.subarray(20, 20 + jsonLength)),
+  );
+  expect(exported.meshes).toHaveLength(2);
+  expect(
+    exported.materials.map(
+      (material: { alphaMode?: string }) => material.alphaMode,
+    ),
+  ).toEqual(['MASK', 'BLEND']);
+  await edit({ geometry: 'cube' });
+  expect(getMesh3DNodeParts(source())).toHaveLength(0);
+  expect(companion().read(Mesh3D).positions.length).toBeGreaterThan(0);
 });
 
 it('preserves custom material and restores glTF defaults when overrides are cleared', async () => {

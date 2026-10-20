@@ -1,4 +1,5 @@
 import { System } from '@lastolivegames/becsy';
+import { Commands } from '../commands';
 import {
   Camera,
   Canvas,
@@ -7,6 +8,7 @@ import {
   ComputedBounds,
   GlobalTransform,
   Material3D,
+  Mesh3D,
   Mesh3DNode,
   Mesh3DNodeTarget,
   Rect,
@@ -21,6 +23,10 @@ import {
   syncMesh3DNodeCompanionFromSource,
   syncMesh3DNodeSourceFromCompanion,
   ensureCompanionGizmoWhenSourceSelected,
+  getMesh3DNodeParts,
+  syncMesh3DNodeParts,
+  takeMesh3DNodeParts,
+  setMesh3DNodeParts,
 } from '../utils/mesh3d-node';
 import { isEntityAlive } from './Transform';
 
@@ -28,6 +34,7 @@ import { isEntityAlive } from './Transform';
  * Keeps {@link Mesh3DNode} companion meshes aligned to their node's canvas-space placement.
  */
 export class SyncMesh3DNodes extends System {
+  private readonly commands = new Commands(this);
   private readonly sources = this.query((q) => q.current.with(Mesh3DNode).read);
 
   private readonly targets = this.query(
@@ -42,7 +49,6 @@ export class SyncMesh3DNodes extends System {
           .using(
             Camera,
             Canvas,
-            Canvas3DScope,
             Children,
             ComputedBounds,
             GlobalTransform,
@@ -51,6 +57,9 @@ export class SyncMesh3DNodes extends System {
           )
           .read.and.using(
             Mesh3DNode,
+            Mesh3D,
+            Canvas3DScope,
+            Mesh3DNodeTarget,
             Transform,
             Material3D,
             Transform3D,
@@ -70,6 +79,31 @@ export class SyncMesh3DNodes extends System {
         continue;
       }
 
+      const staged = takeMesh3DNodeParts(entity);
+      if (staged) {
+        const canvas = meshEntity.read(Canvas3DScope).canvas;
+        const spawned = staged.map((part) => ({
+          entity: this.commands
+            .spawn(
+              new Mesh3D({
+                positions: part.positions,
+                normals: part.normals,
+                indices: part.indices,
+                uvs: part.uvs ?? null,
+              }),
+              new Material3D(),
+              new Transform3D(),
+              new Mesh3DNodeTarget({ source: entity.hold() }),
+              new Canvas3DScope({ canvas }),
+            )
+            .id()
+            .hold(),
+          material: part,
+        }));
+        if (spawned.length) this.commands.execute();
+        setMesh3DNodeParts(entity, spawned);
+      }
+
       const dragging =
         meshEntity.has(Selected3D) && meshEntity.read(Selected3D).dragging;
 
@@ -82,6 +116,7 @@ export class SyncMesh3DNodes extends System {
       } else {
         syncMesh3DNodeCompanionFromSource(entity, meshEntity);
       }
+      syncMesh3DNodeParts(entity);
       const canvas = resolveCanvasFromSceneGraph(entity);
       if (canvas) {
         ensureCompanionGizmoWhenSourceSelected(entity, meshEntity, canvas);
@@ -98,11 +133,12 @@ export class SyncMesh3DNodes extends System {
       if (
         isEntityAlive(source) &&
         source.has(Mesh3DNode) &&
-        source.read(Mesh3DNode).meshEntity?.isSame(meshEntity)
+        (source.read(Mesh3DNode).meshEntity?.isSame(meshEntity) ||
+          getMesh3DNodeParts(source).some((part) => part.isSame(meshEntity)))
       ) {
         continue;
       }
-      meshEntity.add(ToBeDeleted);
+      if (!meshEntity.has(ToBeDeleted)) meshEntity.add(ToBeDeleted);
     }
   }
 }

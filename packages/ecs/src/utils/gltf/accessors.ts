@@ -9,7 +9,10 @@ export type GltfContainer = {
 export function readAccessor(
   gltf: GltfContainer,
   accessorIndex: number,
-): { array: Float32Array | Uint32Array | Uint16Array; components: number } {
+): {
+  array: Float32Array | Uint32Array | Uint16Array | Uint8Array;
+  components: number;
+} {
   const acc = gltf.json.accessors[accessorIndex] as {
     bufferView: number;
     byteOffset?: number;
@@ -35,12 +38,12 @@ export function readAccessor(
     acc.type === 'SCALAR'
       ? 1
       : acc.type === 'VEC2'
-        ? 2
-        : acc.type === 'VEC3'
-          ? 3
-          : acc.type === 'VEC4'
-            ? 4
-            : 3;
+      ? 2
+      : acc.type === 'VEC3'
+      ? 3
+      : acc.type === 'VEC4'
+      ? 4
+      : 3;
 
   if (acc.componentType === 5126 && acc.type === 'VEC2') {
     const count = acc.count;
@@ -86,6 +89,12 @@ export function readAccessor(
   if (acc.componentType === 5123) {
     return {
       array: new Uint16Array(ab, base, acc.count * comps),
+      components: comps,
+    };
+  }
+  if (acc.componentType === 5121) {
+    return {
+      array: new Uint8Array(ab, base, acc.count * comps),
       components: comps,
     };
   }

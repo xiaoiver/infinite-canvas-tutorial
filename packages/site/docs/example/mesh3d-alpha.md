@@ -63,6 +63,6 @@ api.updateNodes([
 
 The scene also needs a `Camera3D`, a light, and a receiving floor; see the [Lighting example](/example/lighting). Blended shadows are a single-layer approximation, so multiple overlapping glass casters do not accumulate physical transmittance.
 
-For a glTF mesh with one material, the loader inherits its `alphaMode` (`OPAQUE`, `MASK`, or `BLEND`) and `alphaCutoff`; an explicit `material3d` value overrides either property. The current loader flattens multiple primitives into one mesh and uses the first material for all of them, so different alpha modes within one imported model are not supported yet.
+For glTF imports, each triangle primitive keeps its own base color, texture, `alphaMode` (`OPAQUE`, `MASK`, or `BLEND`), and `alphaCutoff`. A node's explicit `material3d` values override the corresponding imported values across all primitives. Multiple primitives share one transform and are selected as one model. GLB export preserves each primitive's color and alpha mode; texture export is not supported yet.
 
 GLB export preserves an untextured mesh's explicit alpha mode and mask cutoff. The current exporter does not embed base-color textures, so a texture-shaped cutout cannot round-trip through GLB yet.

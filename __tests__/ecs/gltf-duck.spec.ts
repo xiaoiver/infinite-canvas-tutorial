@@ -2,6 +2,7 @@ import { readFileSync } from 'fs';
 import path from 'path';
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
+import { gltfScenes } from '../helpers/gltf';
 
 const dataDir = path.join(__dirname, '../../packages/site/docs/public/data');
 
@@ -59,4 +60,18 @@ describe('gltf duck mesh', () => {
     expect(Math.abs(minY + maxY)).toBeLessThan(0.05);
     expect(Math.abs(minZ + maxZ)).toBeLessThan(0.05);
   });
+});
+
+it('normalizes glTF scene primitives together so their relative placement survives', () => {
+  const model = gltfScenes();
+  const scenes = (model.json as unknown as { scenes: { nodes: number[] }[] }).scenes;
+  scenes[0].nodes.push(1);
+  const mesh = bakeGltfMesh(model, { scene: 0 });
+  expect(mesh.parts).toHaveLength(2);
+  expect(mesh.parts[0].baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
+  expect(mesh.parts[1].baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(mesh.parts[0].positions[7]).toBeCloseTo(0);
+  expect(mesh.parts[1].positions[7]).toBeCloseTo(0.5);
+  expect(mesh.parts[0].indices).toEqual(new Uint32Array([0, 1, 2]));
+  expect(mesh.parts[1].indices).toEqual(new Uint32Array([0, 1, 2]));
 });

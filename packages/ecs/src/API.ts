@@ -81,6 +81,7 @@ import {
 import { fillLayerOpacity, getEnabledFillLayers } from './utils/fillLayers';
 import { resolveExtrude3DDepth } from './utils/extrude3d';
 import { exportMeshesToGlb } from './utils/gltf/export-glb';
+import { getMesh3DNodeParts } from './utils/mesh3d-node';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -3165,46 +3166,48 @@ export class API {
           : entity.has(Mesh3DNode)
           ? entity.read(Mesh3DNode).meshEntity
           : null;
-        if (
-          !mesh?.alive ||
-          mesh.has(ToBeDeleted) ||
-          !mesh.has(Mesh3D) ||
-          !mesh.has(Material3D) ||
-          !mesh.has(Transform3D)
-        )
-          return [];
-        // Becsy reuses component views when reading another entity. Keep plain
-        // values so each exported source remains valid while collecting others.
-        const geometry = mesh.read(Mesh3D);
-        const meshData = {
-          positions: geometry.positions,
-          normals: geometry.normals,
-          uvs: geometry.uvs,
-          indices: geometry.indices,
-        };
-        const surface = mesh.read(Material3D);
-        const material = {
-          baseColor: surface.baseColor,
-          sideColor: surface.sideColor,
-          metallic: surface.metallic,
-          roughness: surface.roughness,
-          alphaMode: surface.alphaMode,
-          alphaCutoff: surface.alphaCutoff,
-        };
-        const pose = mesh.read(Transform3D);
-        const transform = {
-          translation: pose.translation,
-          rotation: pose.rotation,
-          scale: pose.scale,
-        };
-        return [
-          {
-            name: node.id,
+        const meshes = mesh
+          ? [mesh, ...(entity.has(Mesh3DNode) ? getMesh3DNodeParts(entity) : [])]
+          : [];
+        return meshes.flatMap((part, index) => {
+          if (
+            !part.alive ||
+            part.has(ToBeDeleted) ||
+            !part.has(Mesh3D) ||
+            !part.has(Material3D) ||
+            !part.has(Transform3D)
+          ) return [];
+          // Becsy reuses component views when reading another entity. Keep plain
+          // values so each exported source remains valid while collecting others.
+          const geometry = part.read(Mesh3D);
+          const meshData = {
+            positions: geometry.positions,
+            normals: geometry.normals,
+            uvs: geometry.uvs,
+            indices: geometry.indices,
+          };
+          const surface = part.read(Material3D);
+          const material = {
+            baseColor: surface.baseColor,
+            sideColor: surface.sideColor,
+            metallic: surface.metallic,
+            roughness: surface.roughness,
+            alphaMode: surface.alphaMode,
+            alphaCutoff: surface.alphaCutoff,
+          };
+          const pose = part.read(Transform3D);
+          const transform = {
+            translation: pose.translation,
+            rotation: pose.rotation,
+            scale: pose.scale,
+          };
+          return [{
+            name: index ? `${node.id}:part-${index}` : node.id,
             mesh: meshData,
             material,
             transform,
-          },
-        ];
+          }];
+        });
       });
       if (!sources.length) throw new Error('No ready 3D meshes to export');
       const glb = exportMeshesToGlb(sources);

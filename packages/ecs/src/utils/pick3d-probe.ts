@@ -1,5 +1,11 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { Camera3D, Mesh3D, Transform3D } from '../components';
+import {
+  Camera3D,
+  Mesh3D,
+  Mesh3DNode,
+  Mesh3DNodeTarget,
+  Transform3D,
+} from '../components';
 import type { GizmoAxis } from '../components/geometry3d/Selected3D';
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import {
@@ -119,6 +125,13 @@ export function probePick3DAtViewport(
   }
 
   if (closestEntity && closestHit) {
+    if (closestEntity.has(Mesh3DNodeTarget)) {
+      const source = closestEntity.read(Mesh3DNodeTarget).source;
+      if (source.alive && source.has(Mesh3DNode)) {
+        const primary = source.read(Mesh3DNode).meshEntity;
+        if (primary?.alive) closestEntity = primary;
+      }
+    }
     return { kind: 'mesh', entity: closestEntity, hit: closestHit };
   }
 
