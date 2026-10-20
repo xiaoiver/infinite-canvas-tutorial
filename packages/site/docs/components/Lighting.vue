@@ -18,6 +18,7 @@ const copy = {
     mode: 'Light source',
     intensity: 'Intensity',
     range: 'Point and spot range',
+    cone: 'Spot outer angle',
     attenuation: 'Distance falloff',
     rangeFalloff: 'Smooth range (legacy)',
     inverseSquare: 'Inverse square',
@@ -48,6 +49,7 @@ const copy = {
     mode: '光源类型',
     intensity: '强度',
     range: '点光与聚光灯范围',
+    cone: '聚光灯外锥半角',
     attenuation: '距离衰减',
     rangeFalloff: '平滑范围（原有）',
     inverseSquare: '逆平方',
@@ -80,6 +82,7 @@ const wrapper = ref<HTMLElement | null>(null);
 const mode = ref<LightMode>('all');
 const intensity = ref(1);
 const range = ref(500);
+const spotConeDegrees = ref(45);
 const attenuation = ref<'range' | 'inverse-square'>('range');
 const metallic = ref(1);
 const roughness = ref(0.25);
@@ -283,6 +286,9 @@ function applyLights() {
               referenceDistance: 100,
             }
           : {}),
+        ...(preset.kind === 'spot'
+          ? { outerConeAngle: (spotConeDegrees.value * Math.PI) / 180 }
+          : {}),
         ...(preset.id === 'light-key' ||
         preset.id === 'light-point' ||
         preset.id === 'light-spot'
@@ -411,6 +417,7 @@ watch(
     mode,
     intensity,
     range,
+    spotConeDegrees,
     attenuation,
     shadows,
     shadowStrength,
@@ -507,6 +514,16 @@ onUnmounted(() => {
           min="150"
           max="800"
           step="10"
+        />
+      </label>
+      <label>
+        <span>{{ t.cone }}: {{ spotConeDegrees }}°</span>
+        <input
+          v-model.number="spotConeDegrees"
+          type="range"
+          min="25"
+          max="120"
+          step="5"
         />
       </label>
       <label>
