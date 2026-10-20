@@ -298,7 +298,15 @@ export class Pick3D extends System {
     if (!layersChanged && previous?.selection === this.selectionRevision)
       return;
     if (layersChanged) {
-      const scopedMeshes = this.canvasMeshes(canvasEntity);
+      const scopedMeshes = this.canvasMeshes(canvasEntity).filter((entity) => {
+        if (!entity.has(Mesh3DNodeTarget)) return true;
+        const source = entity.read(Mesh3DNodeTarget).source;
+        return (
+          isEntityAlive(source) &&
+          source.has(Mesh3DNode) &&
+          !!source.read(Mesh3DNode).meshEntity?.isSame(entity)
+        );
+      });
       const layers = scopedMeshes.map((entity) => {
         const sourceNode = this.resolveMesh3DSourceNode(api, entity);
         const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;

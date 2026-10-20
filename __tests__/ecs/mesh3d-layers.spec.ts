@@ -5,6 +5,7 @@ import {
   Material3D,
   Mesh3D,
   Mesh3DNode,
+  Mesh3DNodeTarget,
   Selected3D,
   Transform3D,
   ToBeDeleted,
@@ -13,6 +14,7 @@ import {
   type Mesh3DNodeSerializedNode,
 } from '../../packages/ecs/src';
 import { createDocumentWorld } from '../helpers/ecs-document';
+import { setMesh3DNodeParts } from '../../packages/ecs/src/utils/mesh3d-node';
 
 const node = (id = 'model'): Mesh3DNodeSerializedNode => ({
   id,
@@ -123,6 +125,41 @@ it('does not scan layers for runtime pose/material changes', async () => {
     'NEVER',
   );
   expect(scan).not.toHaveBeenCalled();
+});
+
+it('lists a model with multiple material parts only once', async () => {
+  let extra: Entity;
+  await world.edit(
+    api,
+    (editor) => {
+      const source = editor.getEntity(editor.getNodeById('model')).hold();
+      extra = editor
+        .spawn3D(
+          new Mesh3D({ positions: new Float32Array(9) }),
+          new Material3D(),
+          new Transform3D(),
+          new Mesh3DNodeTarget({ source }),
+        )
+        .id()
+        .hold();
+      editor.getCommands().execute();
+      setMesh3DNodeParts(source, [
+        {
+          entity: extra,
+          material: {
+            baseColor: [1, 1, 1, 1],
+            map: null,
+            alphaMode: 'blend',
+            alphaCutoff: 0.5,
+          },
+        },
+      ]);
+    },
+    'NEVER',
+  );
+  expect(api.getMesh3DLayers().map((layer) => layer.id)).toEqual(['model']);
+  expect(api.getMesh3DLayerIdByEntity(mesh())).toBe('model');
+  expect(api.getMesh3DLayerIdByEntity(extra!)).toBeUndefined();
 });
 
 it('refreshes scope transfers without sharing selection between canvases', async () => {
