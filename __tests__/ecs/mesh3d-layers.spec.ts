@@ -1,3 +1,4 @@
+import { load } from '@loaders.gl/core';
 import {
   Canvas3DScope,
   DefaultRenderer3DPlugin,
@@ -5,7 +6,6 @@ import {
   Material3D,
   Mesh3D,
   Mesh3DNode,
-  Mesh3DNodeTarget,
   Selected3D,
   Transform3D,
   ToBeDeleted,
@@ -14,7 +14,11 @@ import {
   type Mesh3DNodeSerializedNode,
 } from '../../packages/ecs/src';
 import { createDocumentWorld } from '../helpers/ecs-document';
-import { setMesh3DNodeParts } from '../../packages/ecs/src/utils/mesh3d-node';
+import { getMesh3DNodeParts } from '../../packages/ecs/src/utils/mesh3d-node';
+import { gltfScenes } from '../helpers/gltf';
+
+jest.mock('@loaders.gl/core', () => ({ load: jest.fn() }));
+const fetchModel = load as jest.MockedFunction<typeof load>;
 
 const node = (id = 'model'): Mesh3DNodeSerializedNode => ({
   id,
@@ -41,6 +45,7 @@ afterAll(async () => {
   for (const editor of world.apis) expect(editor.getMesh3DLayers()).toEqual([]);
 });
 beforeEach(async () => {
+  fetchModel.mockReset();
   for (const editor of world.apis) await world.reset(editor, [node()]);
   await world.frame();
   await world.frame();
@@ -128,38 +133,28 @@ it('does not scan layers for runtime pose/material changes', async () => {
 });
 
 it('lists a model with multiple material parts only once', async () => {
-  let extra: Entity;
-  await world.edit(
-    api,
-    (editor) => {
-      const source = editor.getEntity(editor.getNodeById('model')).hold();
-      extra = editor
-        .spawn3D(
-          new Mesh3D({ positions: new Float32Array(9) }),
-          new Material3D(),
-          new Transform3D(),
-          new Mesh3DNodeTarget({ source }),
-        )
-        .id()
-        .hold();
-      editor.getCommands().execute();
-      setMesh3DNodeParts(source, [
-        {
-          entity: extra,
-          material: {
-            baseColor: [1, 1, 1, 1],
-            map: null,
-            alphaMode: 'blend',
-            alphaCutoff: 0.5,
-          },
-        },
-      ]);
+  const model = gltfScenes();
+  const json = model.json as unknown as {
+    meshes: {
+      primitives: { attributes: { POSITION: number }; material: number }[];
+    }[];
+  };
+  json.meshes[0].primitives.push({ attributes: { POSITION: 0 }, material: 1 });
+  fetchModel.mockResolvedValue(model);
+  await world.reset(api, [
+    {
+      ...node(),
+      geometry: { type: 'gltf', url: 'https://models.example/model.gltf' },
     },
-    'NEVER',
-  );
+  ]);
+  for (let i = 0; i < 4; i++) await world.frame();
+  const source = api.getEntity(api.getNodeById('model'));
+  const [extra] = getMesh3DNodeParts(source);
+  expect(extra).toBeDefined();
   expect(api.getMesh3DLayers().map((layer) => layer.id)).toEqual(['model']);
+  expect(api.getMesh3DLayers()[0].vertexCount).toBe(6);
   expect(api.getMesh3DLayerIdByEntity(mesh())).toBe('model');
-  expect(api.getMesh3DLayerIdByEntity(extra!)).toBeUndefined();
+  expect(api.getMesh3DLayerIdByEntity(extra)).toBeUndefined();
 });
 
 it('refreshes scope transfers without sharing selection between canvases', async () => {
