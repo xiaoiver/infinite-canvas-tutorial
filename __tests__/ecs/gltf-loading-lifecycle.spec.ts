@@ -132,6 +132,7 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
       emissiveFactor?: number[];
       extensions?: {
         KHR_materials_emissive_strength: { emissiveStrength: number };
+        KHR_materials_unlit?: Record<string, never>;
       };
       emissiveTexture?: { index: number };
       pbrMetallicRoughness: {
@@ -159,6 +160,7 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
   json.materials[0].emissiveFactor = [0.2, 0.4, 0.6];
   json.materials[0].extensions = {
     KHR_materials_emissive_strength: { emissiveStrength: 3 },
+    KHR_materials_unlit: {},
   };
   json.materials[0].emissiveTexture = { index: 0 };
   json.materials[0].pbrMetallicRoughness.baseColorTexture.extensions = {
@@ -171,6 +173,7 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
   expect(companion().read(Material3D).mapTexCoord).toBe(1);
   expect(companion().read(Material3D).emissiveFactor).toEqual([0.2, 0.4, 0.6]);
   expect(companion().read(Material3D).emissiveStrength).toBe(3);
+  expect(companion().read(Material3D).unlit).toBe(true);
   expect(companion().read(Material3D).emissiveMap).toBe(
     'https://models.example/albedo.png',
   );
@@ -195,15 +198,18 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
     material3d: {
       emissiveFactor: [0, 0, 0],
       emissiveStrength: 0,
+      unlit: false,
       emissiveMap: null,
     },
   });
   expect(companion().read(Material3D).emissiveFactor).toEqual([0, 0, 0]);
   expect(companion().read(Material3D).emissiveStrength).toBe(0);
+  expect(companion().read(Material3D).unlit).toBe(false);
   expect(companion().read(Material3D).emissiveMap).toBeNull();
   await edit({ material3d: undefined });
   expect(companion().read(Material3D).emissiveFactor).toEqual([0.2, 0.4, 0.6]);
   expect(companion().read(Material3D).emissiveStrength).toBe(3);
+  expect(companion().read(Material3D).unlit).toBe(true);
 });
 
 it('exports a loaded glTF texture through the asynchronous GLB API', async () => {

@@ -479,6 +479,8 @@ export type Material3DWire = {
   emissiveFactor?: [number, number, number];
   /** KHR_materials_emissive_strength multiplier; default 1. */
   emissiveStrength?: number;
+  /** Ignore scene lights and display base color directly. */
+  unlit?: boolean;
   /** sRGB emissive texture multiplied by emissiveFactor. */
   emissiveMap?: string | null;
   emissiveTexCoord?: 0 | 1;

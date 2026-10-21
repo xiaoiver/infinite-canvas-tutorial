@@ -235,3 +235,45 @@ test('emissive color and texture light an otherwise black mesh', async ({
   await update(redUrl, 4);
   await expect.poll(async () => (await sample())[1]).toBeLessThan(30);
 });
+
+test('unlit mesh keeps its base color with all scene lights disabled', async ({
+  page,
+}) => {
+  await page.goto('/gizmo.html?alpha');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    const mesh = api.getNodeById('alpha-mask');
+    if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+    api.updateNode(api.getNodeById('alpha-ambient'), { intensity: 0 }, false);
+    api.updateNode(api.getNodeById('alpha-sun'), { intensity: 0 }, false);
+    api.updateNode(
+      mesh,
+      {
+        material3d: {
+          baseColor: '#00ff00',
+          map: null,
+          ambient: 0,
+          unlit: false,
+        },
+      },
+      false,
+    );
+    await window.gizmoTest.settle();
+  });
+  const sample = async () =>
+    pixel(PNG.sync.read(await page.locator('#canvas').screenshot()), 75, 40);
+  await expect.poll(async () => (await sample())[1]).toBeLessThan(30);
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    const mesh = api.getNodeById('alpha-mask');
+    if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+    api.updateNode(
+      mesh,
+      { material3d: { ...mesh.material3d, unlit: true } },
+      false,
+    );
+    await window.gizmoTest.settle();
+  });
+  await expect.poll(async () => (await sample())[1]).toBeGreaterThan(230);
+});

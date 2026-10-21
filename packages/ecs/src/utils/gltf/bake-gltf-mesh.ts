@@ -50,6 +50,7 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   metallicRoughnessTextureTransform: Material3DTextureTransform | null;
   emissiveFactor: [number, number, number];
   emissiveStrength: number;
+  unlit: boolean;
   emissiveMap: string | null;
   emissiveTexCoord: 0 | 1;
   emissiveTextureTransform: Material3DTextureTransform | null;
@@ -90,8 +91,10 @@ type GltfJson = GltfContainer['json'] & {
     alphaMode?: 'OPAQUE' | 'MASK' | 'BLEND';
     alphaCutoff?: number;
     emissiveFactor?: number[];
+    unlit?: boolean;
     extensions?: {
       KHR_materials_emissive_strength?: { emissiveStrength?: number };
+      KHR_materials_unlit?: Record<string, never>;
     };
     emissiveTexture?: GltfTextureInfo;
     pbrMetallicRoughness?: {
@@ -178,6 +181,7 @@ type ImportedMaterial = Pick<
   | 'metallicRoughnessTextureTransform'
   | 'emissiveFactor'
   | 'emissiveStrength'
+  | 'unlit'
   | 'emissiveMap'
   | 'emissiveTexCoord'
   | 'emissiveTextureTransform'
@@ -230,6 +234,9 @@ function readMaterial(
         ? value
         : 1;
     })(),
+    unlit:
+      material?.unlit === true ||
+      material?.extensions?.KHR_materials_unlit !== undefined,
     emissiveMap: readMaterialTextureUrl(
       gltf,
       json,
@@ -528,6 +535,7 @@ export function bakeGltfMesh(
       metallicRoughnessTextureTransform: null,
       emissiveFactor: [0, 0, 0],
       emissiveStrength: 1,
+      unlit: false,
       emissiveMap: null,
       emissiveTexCoord: 0,
       emissiveTextureTransform: null,

@@ -108,6 +108,7 @@ export function requestGltfMeshLoad(source: Entity): void {
             primary.metallicRoughnessTextureTransform,
           emissiveFactor: primary.emissiveFactor,
           emissiveStrength: primary.emissiveStrength,
+          unlit: primary.unlit,
           emissiveMap: primary.emissiveMap,
           emissiveTexCoord: primary.emissiveTexCoord,
           emissiveTextureTransform: primary.emissiveTextureTransform,

@@ -64,7 +64,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_UvRotations; // x: base-color, y: PBR
   vec4 u_EmissiveFactor; // rgb: linear emission, w: emissive map ready
   vec4 u_EmissiveUvTransform;
-  vec4 u_EmissiveParams; // x: UV set, y: rotation, z: strength
+  vec4 u_EmissiveParams; // x: UV set, y: rotation, z: strength, w: unlit
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -513,16 +513,6 @@ vec2 transformUv(vec2 uv, vec4 transform, float rotation) {
 }
 
 void main() {
-  vec3 shadowNormal = normalize(v_Normal);
-  vec3 normal = shadowNormal;
-  if (u_MaterialFlags.z > 0.5) {
-    normal = perturbNormalFromBumpMap(normal, v_Uv, u_MaterialFlags.w);
-  }
-  vec3 cameraVector = vec3(u_SceneParams.x, u_SceneParams.y, u_SceneParams.w);
-  vec3 viewDir = u_SceneParams.z < -0.5
-    ? normalize(cameraVector)
-    : normalize(cameraVector - v_FragPos);
-
   vec4 baseColor = u_BaseColor;
   if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0) {
     baseColor = u_SideColor;
@@ -538,6 +528,23 @@ void main() {
   if (u_ShadowReceive.y > 0.5 && u_ShadowReceive.y < 1.5 &&
       baseColor.a < u_ShadowReceive.z) discard;
   if (u_ShadowReceive.y < 1.5) baseColor.a = 1.0;
+
+  // glTF unlit keeps the linear base-color texture product and alpha, then
+  // encodes it directly for display without scene lighting or tone mapping.
+  if (u_EmissiveParams.w > 0.5) {
+    outputColor = vec4(linearToSrgb(albedo), baseColor.a);
+    return;
+  }
+
+  vec3 shadowNormal = normalize(v_Normal);
+  vec3 normal = shadowNormal;
+  if (u_MaterialFlags.z > 0.5) {
+    normal = perturbNormalFromBumpMap(normal, v_Uv, u_MaterialFlags.w);
+  }
+  vec3 cameraVector = vec3(u_SceneParams.x, u_SceneParams.y, u_SceneParams.w);
+  vec3 viewDir = u_SceneParams.z < -0.5
+    ? normalize(cameraVector)
+    : normalize(cameraVector - v_FragPos);
 
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
   float roughnessFactor = u_PbrParams.y;

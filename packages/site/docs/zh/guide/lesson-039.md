@@ -445,6 +445,8 @@ const glb = await api.exportGlb({
 
 自发光表面可设置 `material3d.emissiveFactor` 与 `emissiveStrength`，无需增加场景光源。glTF 的 `KHR_materials_emissive_strength` 会随材质导入导出；可在[光照示例](/zh/example/lighting)中拖动立方体自发光强度滑块查看效果。
 
+需要保持纯色、不受光照影响时，可设置 `material3d.unlit`，它会跳过场景光照与色调映射，同时保留基础颜色贴图与 Alpha。导入、导出 GLB 时会保留 glTF 的 `KHR_materials_unlit`；可在[光照示例](/zh/example/lighting)中通过立方体开关与自发光对比。
+
 贴图镂空和半透明表面可分别使用 `material3d.alphaMode` 的 `mask` 与 `blend`；阴影效果和排序限制见 [3D Mesh 透明度示例](/zh/example/mesh3d-alpha)。
 
 <Lighting locale="zh" />
