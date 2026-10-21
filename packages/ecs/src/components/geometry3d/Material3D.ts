@@ -87,6 +87,9 @@ export class Material3D {
   /** Linear RGB emitted by the surface, independent of scene lights. */
   @field.object declare emissiveFactor: [number, number, number];
 
+  /** KHR_materials_emissive_strength multiplier; 1 preserves core glTF emission. */
+  @field.float32 declare emissiveStrength: number;
+
   /** Optional glTF emissive texture, sampled as sRGB and multiplied by emissiveFactor. */
   @field.object declare emissiveMap: string | null;
 
@@ -138,6 +141,7 @@ export class Material3D {
     this.mapTexCoord ??= 0;
     this.mapTextureTransform ??= null;
     this.emissiveFactor ??= [0, 0, 0];
+    this.emissiveStrength ??= 1;
     this.emissiveMap ??= null;
     this.emissiveTexCoord ??= 0;
     this.emissiveTextureTransform ??= null;

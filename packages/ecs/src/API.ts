@@ -3208,6 +3208,7 @@ export class API {
           metallicRoughnessTextureTransform:
             surface.metallicRoughnessTextureTransform,
           emissiveFactor: surface.emissiveFactor,
+          emissiveStrength: surface.emissiveStrength,
           emissiveMap: surface.emissiveMap,
           emissiveTexCoord: surface.emissiveTexCoord,
           emissiveTextureTransform: surface.emissiveTextureTransform,

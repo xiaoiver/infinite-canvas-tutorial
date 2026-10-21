@@ -81,6 +81,10 @@ export class Mesh3DNode {
 
   @field.boolean declare emissiveFactorOverridden: boolean;
 
+  @field.float32 declare emissiveStrength: number;
+
+  @field.boolean declare emissiveStrengthOverridden: boolean;
+
   @field.object declare emissiveMap: string | null;
 
   @field.boolean declare emissiveMapOverridden: boolean;
@@ -150,6 +154,8 @@ export class Mesh3DNode {
     this.mapOverridden ??= false;
     this.emissiveFactor ??= [0, 0, 0];
     this.emissiveFactorOverridden ??= false;
+    this.emissiveStrength ??= 1;
+    this.emissiveStrengthOverridden ??= false;
     this.emissiveMap ??= null;
     this.emissiveMapOverridden ??= false;
     this.emissiveTexCoord ??= null;

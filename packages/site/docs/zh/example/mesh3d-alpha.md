@@ -69,4 +69,4 @@ api.updateNodes([
 
 使用 `await api.exportGlb()` 获取并嵌入基础颜色与金属度/粗糙度贴图。PNG 和 JPEG 保留原始字节；SVG 等可解码格式会栅格化为 PNG。导出的 GLB 再次导入时会保留贴图。贴图 URL 需要允许 CORS 获取。同步的 `api.export({ format: ExportFormat.GLB })` 仍可用于无贴图导出，但不会嵌入贴图。
 
-现在也支持 glTF 发光材质。`material3d.emissiveFactor` 使用线性 RGB，默认值为 `[0, 0, 0]`；`material3d.emissiveMap` 按 sRGB 采样后与该系数相乘。例如 `{ emissiveFactor: [0, 1, 0], emissiveMap: '/glow.png' }` 会在贴图的绿色区域发出绿光。`emissiveTexCoord` 和 `emissiveTextureTransform` 可独立选择、变换其 UV。导出 GLB 时会保留发光系数、贴图、UV 集和变换。
+现在也支持 glTF 发光材质。`material3d.emissiveFactor` 使用线性 RGB，默认值为 `[0, 0, 0]`；`material3d.emissiveMap` 按 sRGB 采样后与该系数相乘。例如 `{ emissiveFactor: [0, 1, 0], emissiveMap: '/glow.png' }` 会提高贴图绿色区域的亮度。`emissiveTexCoord` 和 `emissiveTextureTransform` 可独立选择、变换其 UV。`emissiveStrength` 默认 1，支持通过 glTF `KHR_materials_emissive_strength` 设置大于 1 的非负值。导出 GLB 时会保留发光系数、强度、贴图、UV 集和变换。

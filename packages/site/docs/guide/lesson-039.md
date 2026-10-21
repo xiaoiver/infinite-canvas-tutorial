@@ -501,6 +501,8 @@ Compare ambient, directional, point, and spot lights on a stationary cube, spher
 
 Up to two directional, point, or spot lights with `castShadow: true` cast shadows at once, filtered with 3 × 3 PCF. Each light can set `shadowStrength` (0–1), `shadowSoftness` (0–4 texels), `shadowBiasScale` (0–4), and `shadowNormalBias` (0–10 canvas units); defaults preserve the original appearance. Each mesh can independently opt out of casting or receiving via `material3d.castShadow` and `material3d.receiveShadow` (both default to `true`). Directional maps fit the current meshes; spot cones below 85° half-angle use one perspective map, while wider cones and point lights use six atlas faces. PCF taps at atlas-face seams sample the neighboring face rather than repeating the border texel. See the [lighting example](/example/lighting) for controls, map sizes, and API details.
 
+For self-lit surfaces, `material3d.emissiveFactor` and `emissiveStrength` control emission without adding a scene light. glTF `KHR_materials_emissive_strength` imports and exports with the material; try the cube emission slider in the [lighting example](/example/lighting).
+
 For textured cutouts and translucent surfaces, `material3d.alphaMode` offers `mask` and `blend`; see the [3D mesh transparency example](/example/mesh3d-alpha) for their shadow behavior and ordering limits.
 
 <Lighting />
