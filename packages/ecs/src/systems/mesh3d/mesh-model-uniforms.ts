@@ -124,6 +124,7 @@ export class MeshModelUniforms {
       material.emissiveTextureTransform,
     );
     this.set(88 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveTexCoord);
+    this.set(90 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveStrength);
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),

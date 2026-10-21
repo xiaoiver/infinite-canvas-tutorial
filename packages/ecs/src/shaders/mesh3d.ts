@@ -64,7 +64,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_UvRotations; // x: base-color, y: PBR
   vec4 u_EmissiveFactor; // rgb: linear emission, w: emissive map ready
   vec4 u_EmissiveUvTransform;
-  vec4 u_EmissiveParams; // x: UV set, y: rotation
+  vec4 u_EmissiveParams; // x: UV set, y: rotation, z: strength
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -610,7 +610,7 @@ void main() {
     );
     emission *= srgbToLinear(texture(SAMPLER_2D(u_EmissiveMap), emissiveUv).rgb);
   }
-  vec3 result = ambient + Lo + emission;
+  vec3 result = ambient + Lo + emission * u_EmissiveParams.z;
   outputColor = vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
 }
 `;

@@ -230,6 +230,7 @@ it('uploads distinct texture transforms and refreshes mask UVs before the shadow
 it('uploads emissive color, texture readiness and its independent UV transform', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
   material.emissiveFactor = [0.2, 0.4, 0.6];
+  material.emissiveStrength = 3;
   material.emissiveTexCoord = 1;
   material.emissiveTextureTransform = {
     offset: [0.25, 0.5],
@@ -244,7 +245,7 @@ it('uploads emissive color, texture readiness and its independent UV transform',
   expect(legacy.u_EmissiveUvTransform).toEqual(
     Float32Array.of(0.25, 0.5, 2, 0.5),
   );
-  expect(legacy.u_EmissiveParams).toEqual(Float32Array.of(1, 0.3, 0, 0));
+  expect(legacy.u_EmissiveParams).toEqual(Float32Array.of(1, 0.3, 3, 0));
   uniforms.update(transform, material, { ...ready, emissiveMapReady: true });
   expect(setSubData).toHaveBeenCalledTimes(1);
   uniforms.update(transform, material, ready);

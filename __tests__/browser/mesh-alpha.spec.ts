@@ -193,31 +193,45 @@ test('emissive color and texture light an otherwise black mesh', async ({
   await expect(page.locator('#status')).toHaveText('Ready');
   const sample = async () =>
     pixel(PNG.sync.read(await page.locator('#canvas').screenshot()), 75, 40);
-  const update = async (emissiveMap: string | null) => {
-    await page.evaluate(async (url) => {
-      const api = window.gizmoTest.api();
-      const mesh = api.getNodeById('alpha-mask');
-      if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
-      api.updateNode(
-        mesh,
-        {
-          material3d: {
-            ...mesh.material3d,
-            baseColor: '#000000',
-            map: null,
-            alphaMode: 'opaque',
-            ambient: 0,
-            emissiveFactor: [0, 1, 0],
-            emissiveMap: url,
+  const update = async (
+    emissiveMap: string | null,
+    emissiveStrength: number,
+  ) => {
+    await page.evaluate(
+      async ({ url, strength }) => {
+        const api = window.gizmoTest.api();
+        const mesh = api.getNodeById('alpha-mask');
+        if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+        api.updateNode(
+          mesh,
+          {
+            material3d: {
+              ...mesh.material3d,
+              baseColor: '#000000',
+              map: null,
+              alphaMode: 'opaque',
+              ambient: 0,
+              emissiveFactor: [0, 0.2, 0],
+              emissiveStrength: strength,
+              emissiveMap: url,
+            },
           },
-        },
-        false,
-      );
-      await window.gizmoTest.settle();
-    }, emissiveMap);
+          false,
+        );
+        await window.gizmoTest.settle();
+      },
+      { url: emissiveMap, strength: emissiveStrength },
+    );
   };
-  await update(null);
+  await update(null, 0);
+  await expect.poll(async () => (await sample())[1]).toBeLessThan(30);
+  await update(null, 1);
   await expect.poll(async () => (await sample())[1]).toBeGreaterThan(100);
-  await update(redUrl);
+  const normal = (await sample())[1];
+  await update(null, 4);
+  await expect
+    .poll(async () => (await sample())[1])
+    .toBeGreaterThan(normal + 20);
+  await update(redUrl, 4);
   await expect.poll(async () => (await sample())[1]).toBeLessThan(30);
 });

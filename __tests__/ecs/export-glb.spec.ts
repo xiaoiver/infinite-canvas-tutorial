@@ -41,6 +41,7 @@ it('embeds an emissive-only texture in exported GLB', async () => {
     mesh: createUnitCubeGeometry(),
     material: new Material3D({
       emissiveFactor: [1, 0.5, 0],
+      emissiveStrength: 3,
       emissiveMap: png,
     }),
     transform: new Transform3D(),
@@ -50,6 +51,10 @@ it('embeds an emissive-only texture in exported GLB', async () => {
   const { json } = readGlb(exportMeshesToGlb([source], images));
   expect(json.images).toHaveLength(1);
   expect(json.materials[0].emissiveFactor).toEqual([1, 0.5, 0]);
+  expect(json.materials[0].extensions).toEqual({
+    KHR_materials_emissive_strength: { emissiveStrength: 3 },
+  });
+  expect(json.extensionsUsed).toContain('KHR_materials_emissive_strength');
   expect(json.materials[0].emissiveTexture).toEqual({ index: 0 });
 });
 
@@ -136,6 +141,7 @@ it('keeps distinct textures on separate material primitives', async () => {
         metallicRoughnessMap: blueUrl,
         metallicRoughnessTextureTransform: { offset: [0.75, 0] },
         emissiveFactor: [0.2, 0.5, 0.8],
+        emissiveStrength: 2.5,
         emissiveMap: blueUrl,
         emissiveTexCoord: 1,
         emissiveTextureTransform: { scale: [0.5, 1] },
@@ -191,6 +197,9 @@ it('keeps distinct textures on separate material primitives', async () => {
   ]);
   expect(json.extensionsUsed).toContain('KHR_texture_transform');
   expect(json.materials[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
+  expect(json.materials[0].extensions).toEqual({
+    KHR_materials_emissive_strength: { emissiveStrength: 2.5 },
+  });
   expect(json.materials[0].emissiveTexture).toEqual({
     index: 1,
     texCoord: 1,
@@ -227,6 +236,7 @@ it('keeps distinct textures on separate material primitives', async () => {
     bakeGltfMesh(loaded).parts[0].metallicRoughnessTextureTransform,
   ).toEqual({ offset: [0.75, 0], scale: [1, 1], rotation: 0 });
   expect(bakeGltfMesh(loaded).parts[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
+  expect(bakeGltfMesh(loaded).parts[0].emissiveStrength).toBe(2.5);
   expect(bakeGltfMesh(loaded).parts[0].emissiveMap).toBe(blueUrl);
   expect(bakeGltfMesh(loaded).parts[0].emissiveTexCoord).toBe(1);
   expect(bakeGltfMesh(loaded).parts[0].emissiveTextureTransform).toEqual({

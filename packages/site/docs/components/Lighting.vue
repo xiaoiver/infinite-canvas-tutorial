@@ -24,6 +24,7 @@ const copy = {
     inverseSquare: 'Inverse square',
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
+    emissiveStrength: 'Cube emission',
     environment: 'Studio environment',
     hdr: 'HDR studio',
     ldr: 'LDR studio',
@@ -42,7 +43,7 @@ const copy = {
     directional: 'Directional + ambient',
     point: 'Point + ambient',
     spot: 'Spot + ambient',
-    hint: 'The cube is a rough dielectric, the sphere is a metal, and the cylinder is a smooth dielectric. Toggle the sphere caster and floor receiver independently. Compare HDR and LDR panoramas on the sphere.',
+    hint: 'The cube is a rough dielectric with adjustable emission, the sphere is a metal, and the cylinder is a smooth dielectric. Toggle the sphere caster and floor receiver independently. Compare HDR and LDR panoramas on the sphere.',
   },
   zh: {
     controls: '光照控制',
@@ -55,6 +56,7 @@ const copy = {
     inverseSquare: '逆平方',
     metallic: '球体金属度',
     roughness: '球体粗糙度',
+    emissiveStrength: '立方体自发光强度',
     environment: '摄影棚环境光照',
     hdr: 'HDR 摄影棚',
     ldr: 'LDR 摄影棚',
@@ -73,7 +75,7 @@ const copy = {
     directional: '平行光 + 环境光',
     point: '点光 + 环境光',
     spot: '聚光灯 + 环境光',
-    hint: '立方体是粗糙电介质，球体是金属，圆柱是光滑电介质。可以分别切换球体投影与地板接影；切换 HDR 与 LDR 全景图可比较球体反射。',
+    hint: '立方体是可调自发光的粗糙电介质，球体是金属，圆柱是光滑电介质。可以分别切换球体投影与地板接影；切换 HDR 与 LDR 全景图可比较球体反射。',
   },
 } as const;
 const t = computed(() => copy[props.locale]);
@@ -86,6 +88,7 @@ const spotConeDegrees = ref(45);
 const attenuation = ref<'range' | 'inverse-square'>('range');
 const metallic = ref(1);
 const roughness = ref(0.25);
+const emissiveStrength = ref(0);
 const environment = ref<'hdr' | 'ldr' | 'off'>('hdr');
 const shadows = ref(true);
 const sphereCastsShadow = ref(true);
@@ -347,7 +350,6 @@ function applyFloorMaterial() {
 function applyEnvironmentToOtherMeshes() {
   if (!api) return;
   for (const [id, baseColor, metallic, roughness] of [
-    ['cube-red', '#f25952', 0, 0.75],
     ['cylinder-blue', '#478cf2', 0, 0.2],
   ] as const) {
     const node = api.getNodeById(id);
@@ -366,6 +368,26 @@ function applyEnvironmentToOtherMeshes() {
         false,
       );
   }
+}
+
+function applyCubeMaterial() {
+  const node = api?.getNodeById('cube-red');
+  if (!node) return;
+  api!.updateNode(
+    node,
+    {
+      material3d: {
+        baseColor: '#f25952',
+        ambient: 0.5,
+        metallic: 0,
+        roughness: 0.75,
+        environmentMap: environmentMap.value,
+        emissiveFactor: [1, 0.08, 0.02],
+        emissiveStrength: emissiveStrength.value,
+      },
+    },
+    false,
+  );
 }
 
 function placeSpot(time: number) {
@@ -433,6 +455,7 @@ watch(
 );
 watch(floorReceivesShadow, applyFloorMaterial);
 watch(environment, applyEnvironmentToOtherMeshes);
+watch([environment, emissiveStrength], applyCubeMaterial);
 watch([mode, playing], syncAnimation);
 
 onMounted(async () => {
@@ -463,6 +486,7 @@ onMounted(async () => {
         applySphereMaterial();
         applyFloorMaterial();
         applyEnvironmentToOtherMeshes();
+        applyCubeMaterial();
         placeSpot(0);
         syncAnimation();
       });
@@ -551,6 +575,16 @@ onUnmounted(() => {
           min="0.04"
           max="1"
           step="0.01"
+        />
+      </label>
+      <label>
+        <span>{{ t.emissiveStrength }}: {{ emissiveStrength.toFixed(2) }}</span>
+        <input
+          v-model.number="emissiveStrength"
+          type="range"
+          min="0"
+          max="6"
+          step="0.25"
         />
       </label>
       <label>

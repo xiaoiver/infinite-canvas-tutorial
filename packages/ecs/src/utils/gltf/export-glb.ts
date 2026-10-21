@@ -25,6 +25,7 @@ export interface GlbMeshSource {
         | 'metallicRoughnessTexCoord'
         | 'metallicRoughnessTextureTransform'
         | 'emissiveFactor'
+        | 'emissiveStrength'
         | 'emissiveMap'
         | 'emissiveTexCoord'
         | 'emissiveTextureTransform'
@@ -105,12 +106,16 @@ export function exportMeshesToGlb(
     doubleSided: boolean;
     emissiveFactor?: number[];
     emissiveTexture?: GlbTextureInfo;
+    extensions?: {
+      KHR_materials_emissive_strength: { emissiveStrength: number };
+    };
   }[] = [];
   const images: { bufferView: number; mimeType: GlbImageData['mimeType'] }[] =
     [];
   const textures: { source: number }[] = [];
   const textureIndices = new Map<string, number>();
   let usesTextureTransform = false;
+  let usesEmissiveStrength = false;
   const meshes: { primitives: Primitive[] }[] = [];
   const nodes: {
     name?: string;
@@ -201,6 +206,7 @@ export function exportMeshesToGlb(
       | null
       | undefined,
     emissiveFactor: readonly number[] | undefined,
+    emissiveStrength: number | undefined,
     emissiveMap: string | null | undefined,
     emissiveTexCoord: number | undefined,
     emissiveTextureTransform: Material3DTextureTransform | null | undefined,
@@ -217,6 +223,8 @@ export function exportMeshesToGlb(
           emissiveFactor.some(
             (value) => !Number.isFinite(value) || value < 0 || value > 1,
           ))) ||
+      (emissiveStrength !== undefined &&
+        (!Number.isFinite(emissiveStrength) || emissiveStrength < 0)) ||
       !['opaque', 'mask', 'blend'].includes(mode) ||
       !Number.isFinite(cutoff) ||
       [...color, metallic, roughness].some(
@@ -227,6 +235,8 @@ export function exportMeshesToGlb(
     const textureIndex = textureIndexFor(map);
     const pbrTextureIndex = textureIndexFor(metallicRoughnessMap);
     const emissiveTextureIndex = textureIndexFor(emissiveMap);
+    if (emissiveStrength !== undefined && emissiveStrength !== 1)
+      usesEmissiveStrength = true;
     const textureInfo = (
       index: number,
       texCoord: number | undefined,
@@ -288,6 +298,13 @@ export function exportMeshesToGlb(
         doubleSided: true,
         ...(emissiveFactor?.some((value) => value > 0)
           ? { emissiveFactor: [...emissiveFactor] }
+          : {}),
+        ...(emissiveStrength !== undefined && emissiveStrength !== 1
+          ? {
+              extensions: {
+                KHR_materials_emissive_strength: { emissiveStrength },
+              },
+            }
           : {}),
         ...(emissiveTextureIndex === undefined
           ? {}
@@ -381,6 +398,7 @@ export function exportMeshesToGlb(
       source.material.metallicRoughnessTexCoord,
       source.material.metallicRoughnessTextureTransform,
       source.material.emissiveFactor,
+      source.material.emissiveStrength,
       textureIfUv(
         source.material.emissiveMap,
         source.material.emissiveTexCoord,
@@ -424,6 +442,7 @@ export function exportMeshesToGlb(
           source.material.metallicRoughnessTexCoord,
           source.material.metallicRoughnessTextureTransform,
           source.material.emissiveFactor,
+          source.material.emissiveStrength,
           textureIfUv(
             source.material.emissiveMap,
             source.material.emissiveTexCoord,
@@ -465,8 +484,15 @@ export function exportMeshesToGlb(
   }
   const json = {
     asset: { version: '2.0', generator: 'Infinite Canvas' },
-    ...(usesTextureTransform
-      ? { extensionsUsed: ['KHR_texture_transform'] }
+    ...(usesTextureTransform || usesEmissiveStrength
+      ? {
+          extensionsUsed: [
+            ...(usesTextureTransform ? ['KHR_texture_transform'] : []),
+            ...(usesEmissiveStrength
+              ? ['KHR_materials_emissive_strength']
+              : []),
+          ],
+        }
       : {}),
     scene: 0,
     scenes: [{ nodes: [0] }],

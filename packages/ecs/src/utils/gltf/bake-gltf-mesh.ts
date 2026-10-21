@@ -49,6 +49,7 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   metallicRoughnessTexCoord: 0 | 1;
   metallicRoughnessTextureTransform: Material3DTextureTransform | null;
   emissiveFactor: [number, number, number];
+  emissiveStrength: number;
   emissiveMap: string | null;
   emissiveTexCoord: 0 | 1;
   emissiveTextureTransform: Material3DTextureTransform | null;
@@ -89,6 +90,9 @@ type GltfJson = GltfContainer['json'] & {
     alphaMode?: 'OPAQUE' | 'MASK' | 'BLEND';
     alphaCutoff?: number;
     emissiveFactor?: number[];
+    extensions?: {
+      KHR_materials_emissive_strength?: { emissiveStrength?: number };
+    };
     emissiveTexture?: GltfTextureInfo;
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
@@ -173,6 +177,7 @@ type ImportedMaterial = Pick<
   | 'mapTextureTransform'
   | 'metallicRoughnessTextureTransform'
   | 'emissiveFactor'
+  | 'emissiveStrength'
   | 'emissiveMap'
   | 'emissiveTexCoord'
   | 'emissiveTextureTransform'
@@ -218,6 +223,13 @@ function readMaterial(
         ? Math.max(0, Math.min(1, value))
         : 0;
     }) as [number, number, number],
+    emissiveStrength: (() => {
+      const value =
+        material?.extensions?.KHR_materials_emissive_strength?.emissiveStrength;
+      return typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? value
+        : 1;
+    })(),
     emissiveMap: readMaterialTextureUrl(
       gltf,
       json,
@@ -515,6 +527,7 @@ export function bakeGltfMesh(
       metallicRoughnessTexCoord: 0,
       metallicRoughnessTextureTransform: null,
       emissiveFactor: [0, 0, 0],
+      emissiveStrength: 1,
       emissiveMap: null,
       emissiveTexCoord: 0,
       emissiveTextureTransform: null,

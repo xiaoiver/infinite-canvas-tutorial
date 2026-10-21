@@ -231,6 +231,7 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
     scenes: { nodes: number[] }[];
     materials: {
       emissiveFactor?: number[];
+      extensions?: { KHR_materials_emissive_strength: { emissiveStrength: number } };
       emissiveTexture?: {
         index: number;
         extensions?: {
@@ -241,6 +242,9 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
   };
   json.scenes[0].nodes.push(1);
   json.materials[0].emissiveFactor = [0.5, 0.25, 0.1];
+  json.materials[0].extensions = {
+    KHR_materials_emissive_strength: { emissiveStrength: 2 },
+  };
   json.materials[0].emissiveTexture = {
     index: 0,
     extensions: {
@@ -249,6 +253,7 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
   };
   const baked = bakeGltfMesh(model, { baseUrl: '/data/model.gltf' });
   expect(baked.parts[0].emissiveFactor).toEqual([0.5, 0.25, 0.1]);
+  expect(baked.parts[0].emissiveStrength).toBe(2);
   expect(baked.parts[0].emissiveMap).toBe('/data/albedo.png');
   expect(baked.parts[0].emissiveTextureTransform).toEqual({
     offset: [0.25, 0.5],
@@ -256,5 +261,6 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
     rotation: 0.3,
   });
   expect(baked.parts[1].emissiveFactor).toEqual([0, 0, 0]);
+  expect(baked.parts[1].emissiveStrength).toBe(1);
   expect(baked.parts[1].emissiveMap).toBeNull();
 });
