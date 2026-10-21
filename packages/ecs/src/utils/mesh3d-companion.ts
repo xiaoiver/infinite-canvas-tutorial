@@ -53,6 +53,10 @@ export function queueMesh3DCompanion(
   const map = node.map ?? null;
   const mapTexCoord = node.mapTexCoord ?? 0;
   const mapTextureTransform = node.mapTextureTransform;
+  const emissiveFactor = [...node.emissiveFactor] as [number, number, number];
+  const emissiveMap = node.emissiveMap;
+  const emissiveTexCoord = node.emissiveTexCoord ?? 0;
+  const emissiveTextureTransform = node.emissiveTextureTransform;
   const alphaMode = node.alphaMode;
   const alphaCutoff = node.alphaCutoff;
   const specularMap = node.specularMap ?? null;
@@ -97,6 +101,10 @@ export function queueMesh3DCompanion(
         map,
         mapTexCoord,
         mapTextureTransform,
+        emissiveFactor,
+        emissiveMap,
+        emissiveTexCoord,
+        emissiveTextureTransform,
         alphaMode,
         alphaCutoff,
         specularMap,

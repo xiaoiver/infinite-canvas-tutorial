@@ -97,6 +97,9 @@ export async function loadGlbImages(
           hasUvs(material.metallicRoughnessTexCoord)
             ? [material.metallicRoughnessMap]
             : []),
+          ...(material.emissiveMap && hasUvs(material.emissiveTexCoord)
+            ? [material.emissiveMap]
+            : []),
         ];
       }),
     ),

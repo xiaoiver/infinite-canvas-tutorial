@@ -7,7 +7,7 @@ import type {
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 80 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 92 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -49,7 +49,19 @@ export class MeshModelUniforms {
       72 + ENVIRONMENT_IRRADIANCE_FLOATS,
       76 + ENVIRONMENT_IRRADIANCE_FLOATS,
     ),
-    u_UvRotations: this.data.subarray(76 + ENVIRONMENT_IRRADIANCE_FLOATS),
+    u_UvRotations: this.data.subarray(
+      76 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      80 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_EmissiveFactor: this.data.subarray(
+      80 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      84 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_EmissiveUvTransform: this.data.subarray(
+      84 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      88 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_EmissiveParams: this.data.subarray(88 + ENVIRONMENT_IRRADIANCE_FLOATS),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -63,6 +75,7 @@ export class MeshModelUniforms {
       mapReady: boolean;
       specularMapReady: boolean;
       bumpMapReady: boolean;
+      emissiveMapReady: boolean;
       metallicRoughnessMapReady: boolean;
       environmentMapReady: boolean;
       environmentIrradiance: Float32Array | null;
@@ -96,6 +109,21 @@ export class MeshModelUniforms {
       77 + ENVIRONMENT_IRRADIANCE_FLOATS,
       material.metallicRoughnessTextureTransform,
     );
+    for (let i = 0; i < 3; i++)
+      this.set(
+        80 + ENVIRONMENT_IRRADIANCE_FLOATS + i,
+        material.emissiveFactor[i],
+      );
+    this.set(
+      83 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number(textureReady.emissiveMapReady),
+    );
+    this.setTextureTransform(
+      84 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      89 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      material.emissiveTextureTransform,
+    );
+    this.set(88 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveTexCoord);
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),

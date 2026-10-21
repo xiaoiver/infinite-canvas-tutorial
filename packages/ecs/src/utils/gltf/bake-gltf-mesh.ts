@@ -48,6 +48,10 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   metallicRoughnessMap: string | null;
   metallicRoughnessTexCoord: 0 | 1;
   metallicRoughnessTextureTransform: Material3DTextureTransform | null;
+  emissiveFactor: [number, number, number];
+  emissiveMap: string | null;
+  emissiveTexCoord: 0 | 1;
+  emissiveTextureTransform: Material3DTextureTransform | null;
   metallic: number;
   roughness: number;
   alphaMode: Material3DAlphaMode;
@@ -84,6 +88,8 @@ type GltfJson = GltfContainer['json'] & {
   materials?: {
     alphaMode?: 'OPAQUE' | 'MASK' | 'BLEND';
     alphaCutoff?: number;
+    emissiveFactor?: number[];
+    emissiveTexture?: GltfTextureInfo;
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
       baseColorTexture?: GltfTextureInfo;
@@ -166,6 +172,10 @@ type ImportedMaterial = Pick<
   | 'metallicRoughnessTexCoord'
   | 'mapTextureTransform'
   | 'metallicRoughnessTextureTransform'
+  | 'emissiveFactor'
+  | 'emissiveMap'
+  | 'emissiveTexCoord'
+  | 'emissiveTextureTransform'
   | 'metallic'
   | 'roughness'
   | 'alphaMode'
@@ -185,6 +195,7 @@ function readMaterial(
     typeof value === 'number' && Number.isFinite(value)
       ? Math.max(0, Math.min(1, value))
       : 1;
+  const emissive = material?.emissiveFactor;
   return {
     baseColor: readMaterialBaseColor(json, materialIndex),
     map: readMaterialTextureUrl(gltf, json, factor?.baseColorTexture, baseUrl),
@@ -201,6 +212,20 @@ function readMaterial(
     metallicRoughnessTextureTransform: textureTransform(
       factor?.metallicRoughnessTexture,
     ),
+    emissiveFactor: [0, 1, 2].map((index) => {
+      const value = emissive?.[index];
+      return typeof value === 'number' && Number.isFinite(value)
+        ? Math.max(0, Math.min(1, value))
+        : 0;
+    }) as [number, number, number],
+    emissiveMap: readMaterialTextureUrl(
+      gltf,
+      json,
+      material?.emissiveTexture,
+      baseUrl,
+    ),
+    emissiveTexCoord: textureCoord(material?.emissiveTexture) === 1 ? 1 : 0,
+    emissiveTextureTransform: textureTransform(material?.emissiveTexture),
     metallic: unitFactor(factor?.metallicFactor),
     roughness: unitFactor(factor?.roughnessFactor),
     alphaMode:
@@ -362,6 +387,7 @@ function appendPrimitive(
       if (imported.mapTexCoord === 1) imported.map = null;
       if (imported.metallicRoughnessTexCoord === 1)
         imported.metallicRoughnessMap = null;
+      if (imported.emissiveTexCoord === 1) imported.emissiveMap = null;
     }
     if (
       !materialOut.selected &&
@@ -488,6 +514,10 @@ export function bakeGltfMesh(
       metallicRoughnessMap: null,
       metallicRoughnessTexCoord: 0,
       metallicRoughnessTextureTransform: null,
+      emissiveFactor: [0, 0, 0],
+      emissiveMap: null,
+      emissiveTexCoord: 0,
+      emissiveTextureTransform: null,
       metallic: 1,
       roughness: 1,
       alphaMode: 'opaque',

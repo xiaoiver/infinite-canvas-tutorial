@@ -36,6 +36,23 @@ function readGlb(bytes: Uint8Array) {
 const png =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==';
 
+it('embeds an emissive-only texture in exported GLB', async () => {
+  const source = {
+    mesh: createUnitCubeGeometry(),
+    material: new Material3D({
+      emissiveFactor: [1, 0.5, 0],
+      emissiveMap: png,
+    }),
+    transform: new Transform3D(),
+  };
+  const images = await loadGlbImages([source]);
+  expect(images.size).toBe(1);
+  const { json } = readGlb(exportMeshesToGlb([source], images));
+  expect(json.images).toHaveLength(1);
+  expect(json.materials[0].emissiveFactor).toEqual([1, 0.5, 0]);
+  expect(json.materials[0].emissiveTexture).toEqual({ index: 0 });
+});
+
 it('embeds a shared base-color texture once and imports it from the GLB buffer', async () => {
   const source = {
     mesh: createUnitCubeGeometry(),
@@ -118,6 +135,10 @@ it('keeps distinct textures on separate material primitives', async () => {
         },
         metallicRoughnessMap: blueUrl,
         metallicRoughnessTextureTransform: { offset: [0.75, 0] },
+        emissiveFactor: [0.2, 0.5, 0.8],
+        emissiveMap: blueUrl,
+        emissiveTexCoord: 1,
+        emissiveTextureTransform: { scale: [0.5, 1] },
         alphaMode: 'mask',
       }),
     },
@@ -169,6 +190,12 @@ it('keeps distinct textures on separate material primitives', async () => {
     { index: 0, texCoord: 1 },
   ]);
   expect(json.extensionsUsed).toContain('KHR_texture_transform');
+  expect(json.materials[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
+  expect(json.materials[0].emissiveTexture).toEqual({
+    index: 1,
+    texCoord: 1,
+    extensions: { KHR_texture_transform: { scale: [0.5, 1] } },
+  });
   expect(json.meshes[0].primitives[0].attributes.TEXCOORD_1).toBeDefined();
   const loaded = (await parse(bytes.buffer, GLTFLoader, {
     gltf: {
@@ -199,6 +226,14 @@ it('keeps distinct textures on separate material primitives', async () => {
   expect(
     bakeGltfMesh(loaded).parts[0].metallicRoughnessTextureTransform,
   ).toEqual({ offset: [0.75, 0], scale: [1, 1], rotation: 0 });
+  expect(bakeGltfMesh(loaded).parts[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
+  expect(bakeGltfMesh(loaded).parts[0].emissiveMap).toBe(blueUrl);
+  expect(bakeGltfMesh(loaded).parts[0].emissiveTexCoord).toBe(1);
+  expect(bakeGltfMesh(loaded).parts[0].emissiveTextureTransform).toEqual({
+    offset: [0, 0],
+    scale: [0.5, 1],
+    rotation: 0,
+  });
 });
 
 it('exports a holed Path with distinct cap and wall materials as a valid GLB', async () => {

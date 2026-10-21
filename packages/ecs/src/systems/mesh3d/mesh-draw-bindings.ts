@@ -32,6 +32,7 @@ export class MeshDrawBindings {
     shadowSampler: Sampler,
     environmentBrdf: Texture,
     brdfSampler: Sampler,
+    emissive: Texture,
   ): Bindings {
     if (this.disposed) throw new Error('Mesh draw bindings have been disposed');
     const inputs = [
@@ -48,6 +49,7 @@ export class MeshDrawBindings {
       shadowSampler,
       environmentBrdf,
       brdfSampler,
+      emissive,
     ];
     if (this.bindings && inputs.every((value, i) => value === this.inputs[i]))
       return this.bindings;
@@ -68,6 +70,7 @@ export class MeshDrawBindings {
         { texture: shadow0, sampler: shadowSampler },
         { texture: shadow1, sampler: shadowSampler },
         { texture: environmentBrdf, sampler: brdfSampler },
+        { texture: emissive, sampler },
       ],
     });
     const previous = this.bindings;

@@ -77,6 +77,21 @@ export class Mesh3DNode {
   /** Preserve an explicit null override of an imported glTF texture. */
   @field.boolean declare mapOverridden: boolean;
 
+  @field.object declare emissiveFactor: [number, number, number];
+
+  @field.boolean declare emissiveFactorOverridden: boolean;
+
+  @field.object declare emissiveMap: string | null;
+
+  @field.boolean declare emissiveMapOverridden: boolean;
+
+  @field.object declare emissiveTexCoord: 0 | 1 | null;
+
+  @field.object
+  declare emissiveTextureTransform: Material3DTextureTransform | null;
+
+  @field.boolean declare emissiveTextureTransformOverridden: boolean;
+
   /** Null inherits the imported glTF material (or opaque for primitives). */
   @field.object declare alphaMode: Material3DAlphaMode | null;
 
@@ -133,6 +148,13 @@ export class Mesh3DNode {
     this.mapTextureTransform ??= null;
     this.mapTextureTransformOverridden ??= false;
     this.mapOverridden ??= false;
+    this.emissiveFactor ??= [0, 0, 0];
+    this.emissiveFactorOverridden ??= false;
+    this.emissiveMap ??= null;
+    this.emissiveMapOverridden ??= false;
+    this.emissiveTexCoord ??= null;
+    this.emissiveTextureTransform ??= null;
+    this.emissiveTextureTransformOverridden ??= false;
     this.alphaMode ??= null;
     this.alphaCutoff ??= null;
     this.specularMap ??= null;

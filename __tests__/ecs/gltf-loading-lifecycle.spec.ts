@@ -129,6 +129,8 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
     bufferViews: Record<string, unknown>[];
     meshes: { primitives: { attributes: { TEXCOORD_1?: number } }[] }[];
     materials: {
+      emissiveFactor?: number[];
+      emissiveTexture?: { index: number };
       pbrMetallicRoughness: {
         baseColorTexture: {
           texCoord?: number;
@@ -151,6 +153,8 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
   json.meshes[0].primitives[0].attributes.TEXCOORD_1 =
     json.accessors.length - 1;
   json.materials[0].pbrMetallicRoughness.baseColorTexture.texCoord = 1;
+  json.materials[0].emissiveFactor = [0.2, 0.4, 0.6];
+  json.materials[0].emissiveTexture = { index: 0 };
   json.materials[0].pbrMetallicRoughness.baseColorTexture.extensions = {
     KHR_texture_transform: { offset: [0.25, 0.5], rotation: 0.5 },
   };
@@ -159,6 +163,10 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
   await settle();
   expect(companion().read(Mesh3D).uvs1).toEqual(uv1);
   expect(companion().read(Material3D).mapTexCoord).toBe(1);
+  expect(companion().read(Material3D).emissiveFactor).toEqual([0.2, 0.4, 0.6]);
+  expect(companion().read(Material3D).emissiveMap).toBe(
+    'https://models.example/albedo.png',
+  );
   expect(companion().read(Material3D).mapTextureTransform).toEqual({
     offset: [0.25, 0.5],
     scale: [1, 1],
@@ -176,6 +184,11 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
   ]);
   await edit({ material3d: { mapTextureTransform: null } });
   expect(companion().read(Material3D).mapTextureTransform).toBeNull();
+  await edit({ material3d: { emissiveFactor: [0, 0, 0], emissiveMap: null } });
+  expect(companion().read(Material3D).emissiveFactor).toEqual([0, 0, 0]);
+  expect(companion().read(Material3D).emissiveMap).toBeNull();
+  await edit({ material3d: undefined });
+  expect(companion().read(Material3D).emissiveFactor).toEqual([0.2, 0.4, 0.6]);
 });
 
 it('exports a loaded glTF texture through the asynchronous GLB API', async () => {

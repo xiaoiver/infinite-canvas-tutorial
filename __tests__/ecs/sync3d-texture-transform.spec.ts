@@ -91,3 +91,16 @@ it('treats omitted transform parameters as glTF identity defaults', () => {
   syncMaterial3D(entity, { metallicRoughnessTextureTransform: null });
   expect(write).toHaveBeenCalledTimes(6);
 });
+
+it('compares emissive color by value while preserving an explicit black override', () => {
+  const { entity, material, write } = fixture();
+  syncMaterial3D(entity, { emissiveFactor: [0, 0, 0] });
+  expect(write).not.toHaveBeenCalled();
+  syncMaterial3D(entity, { emissiveFactor: [0.2, 0.4, 0.6] });
+  expect(material.emissiveFactor).toEqual([0.2, 0.4, 0.6]);
+  expect(write).toHaveBeenCalledTimes(1);
+  syncMaterial3D(entity, { emissiveFactor: [0.2, 0.4, 0.6] });
+  expect(write).toHaveBeenCalledTimes(1);
+  syncMaterial3D(entity, { emissiveFactor: [0, 0, 0] });
+  expect(write).toHaveBeenCalledTimes(2);
+});
