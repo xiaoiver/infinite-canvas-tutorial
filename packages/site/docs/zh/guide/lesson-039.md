@@ -455,6 +455,8 @@ const glb = await api.exportGlb({
 
 通过声明式 `mesh3d` 的 `geometry: { type: 'gltf', url: '…' }` 加载外部 glTF/GLB。Khronos **Duck** 示例使用 `/data/` 下的 `.gltf` + `.bin`；网格会归一化到单位包围盒，再用 `scale3d` 缩放到画布尺寸。
 
+glTF 基础颜色系数使用线性 RGB，ECS 材质基础颜色则存储为 sRGB。导入时进行转换，导出 GLB 时转回线性 RGB，让材质颜色在往返后保持一致。
+
 <GltfDuck />
 
 ## 扩展阅读 {#extended-reading}

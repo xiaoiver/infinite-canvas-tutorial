@@ -5,6 +5,18 @@ import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors'
 import { gltfScenes } from '../helpers/gltf';
 
 const dataDir = path.join(__dirname, '../../packages/site/docs/public/data');
+const importedPrimaryColor = [
+  expect.closeTo(0.4845292, 6),
+  expect.closeTo(0.6651851, 6),
+  expect.closeTo(0.7977377, 6),
+  0.8,
+];
+const importedSecondaryColor = [
+  expect.closeTo(0.9063318, 6),
+  expect.closeTo(0.7977377, 6),
+  expect.closeTo(0.6651851, 6),
+  1,
+];
 
 function loadDuckContainer(): GltfContainer {
   const json = JSON.parse(
@@ -69,8 +81,8 @@ it('normalizes glTF scene primitives together so their relative placement surviv
   scenes[0].nodes.push(1);
   const mesh = bakeGltfMesh(model, { scene: 0 });
   expect(mesh.parts).toHaveLength(2);
-  expect(mesh.parts[0].baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
-  expect(mesh.parts[1].baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(mesh.parts[0].baseColor).toEqual(importedPrimaryColor);
+  expect(mesh.parts[1].baseColor).toEqual(importedSecondaryColor);
   expect(mesh.parts[0].metallic).toBe(1);
   expect(mesh.parts[0].roughness).toBe(1);
   expect(mesh.parts[0].positions[7]).toBeCloseTo(0);
@@ -270,6 +282,6 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
   expect(baked.parts[1].emissiveFactor).toEqual([0, 0, 0]);
   expect(baked.parts[1].emissiveStrength).toBe(1);
   expect(baked.parts[1].unlit).toBe(false);
-  expect(baked.parts[1].baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(baked.parts[1].baseColor).toEqual(importedSecondaryColor);
   expect(baked.parts[1].emissiveMap).toBeNull();
 });

@@ -25,6 +25,7 @@ import GltfDuck from '../components/GltfDuck.vue'
 -   **Async loading**: `EnsureMesh3DNodes` creates an empty companion mesh first; `LoadMesh3DGeometry` starts the fetch in PostUpdate and then writes `positions`, `normals`, `indices`, and `uvs`.
 -   **Normalization**: baking centers the mesh and scales it to a unit bounding box; on-canvas size comes from `scale3d` (and the `width` / `height` anchor).
 -   **Materials**: **Blinn-Phong** via `material3d`; glTF `baseColorTexture` (e.g. `DuckCM.png`) is resolved to `Material3D.map` and sampled in the `mesh3d` shader.
+-   **Color space**: glTF `baseColorFactor` stores linear RGB; the importer converts it to ECS sRGB `Material3D.baseColor` before the shader decodes it. Alpha stays unchanged. GLB export converts it back to linear RGB, preserving material color through a round-trip.
 -   **Camera**: `linked: true` + `perspective`, synced with 2D pan/zoom; use the Select or Hand tools to interact.
 -   **Asset paths**: VitePress static assets live in `docs/public/data/`; runtime URLs are `/data/…` (`.bin` files referenced inside `.gltf` must sit beside the `.gltf` file).
 

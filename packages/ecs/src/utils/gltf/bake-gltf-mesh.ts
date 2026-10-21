@@ -158,7 +158,6 @@ function readMaterialTextureUrl(
 function readMaterialBaseColor(
   json: GltfJson,
   materialIndex?: number,
-  unlit = false,
 ): [number, number, number, number] {
   if (materialIndex == null) {
     return [1, 1, 1, 1];
@@ -169,14 +168,18 @@ function readMaterialBaseColor(
     return [1, 1, 1, 1];
   }
   // glTF factors are linear. ECS baseColor is sRGB and the shader decodes it
-  // before multiplying by a texture. Match that storage convention for unlit
-  // imports so an unlit GLB also round-trips its displayed color.
-  const srgb = (value: number) =>
-    value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055;
+  // before multiplying by a texture. Convert on import to preserve both lit
+  // and unlit colors when exporting the mesh again.
+  const srgb = (value: number) => {
+    if (value === 0 || value === 1) return value;
+    return value <= 0.0031308
+      ? 12.92 * value
+      : 1.055 * value ** (1 / 2.4) - 0.055;
+  };
   return [
-    unlit ? srgb(factor[0]) : factor[0],
-    unlit ? srgb(factor[1]) : factor[1],
-    unlit ? srgb(factor[2]) : factor[2],
+    srgb(factor[0]),
+    srgb(factor[1]),
+    srgb(factor[2]),
     factor.length >= 4 ? factor[3] : 1,
   ];
 }
@@ -220,7 +223,7 @@ function readMaterial(
     material?.unlit === true ||
     material?.extensions?.KHR_materials_unlit !== undefined;
   return {
-    baseColor: readMaterialBaseColor(json, materialIndex, unlit),
+    baseColor: readMaterialBaseColor(json, materialIndex),
     map: readMaterialTextureUrl(gltf, json, factor?.baseColorTexture, baseUrl),
     mapTexCoord: textureCoord(factor?.baseColorTexture) === 1 ? 1 : 0,
     mapTextureTransform: textureTransform(factor?.baseColorTexture),

@@ -139,6 +139,7 @@ it('keeps distinct textures on separate material primitives', async () => {
       mesh,
       transform,
       material: new Material3D({
+        baseColor: [0.25, 0.5, 0.75, 1],
         map: png,
         mapTexCoord: 1,
         mapTextureTransform: {
@@ -206,6 +207,10 @@ it('keeps distinct textures on separate material primitives', async () => {
     { index: 0, texCoord: 1 },
   ]);
   expect(json.extensionsUsed).toContain('KHR_texture_transform');
+  expect(json.materials[0].pbrMetallicRoughness.baseColorFactor[0]).toBeCloseTo(
+    0.050876,
+    5,
+  );
   expect(json.materials[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
   expect(json.materials[0].extensions).toEqual({
     KHR_materials_emissive_strength: { emissiveStrength: 2.5 },
@@ -249,6 +254,9 @@ it('keeps distinct textures on separate material primitives', async () => {
   expect(bakeGltfMesh(loaded).parts[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
   expect(bakeGltfMesh(loaded).parts[0].emissiveStrength).toBe(2.5);
   expect(bakeGltfMesh(loaded).parts[1].unlit).toBe(true);
+  expect(bakeGltfMesh(loaded).parts[0].baseColor[0]).toBeCloseTo(0.25, 5);
+  expect(bakeGltfMesh(loaded).parts[0].baseColor[1]).toBeCloseTo(0.5, 5);
+  expect(bakeGltfMesh(loaded).parts[0].baseColor[2]).toBeCloseTo(0.75, 5);
   expect(bakeGltfMesh(loaded).parts[1].baseColor[0]).toBeCloseTo(0.5, 5);
   expect(bakeGltfMesh(loaded).parts[1].baseColor[3]).toBe(0.5);
   expect(bakeGltfMesh(loaded).parts[0].emissiveMap).toBe(blueUrl);
