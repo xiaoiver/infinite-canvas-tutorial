@@ -63,6 +63,6 @@ api.updateNodes([
 
 The scene also needs a `Camera3D`, a light, and a receiving floor; see the [Lighting example](/example/lighting). Blended shadows are a single-layer approximation, so multiple overlapping glass casters do not accumulate physical transmittance.
 
-For glTF imports, each triangle primitive keeps its own base color, texture, `alphaMode` (`OPAQUE`, `MASK`, or `BLEND`), and `alphaCutoff`. A node's explicit `material3d` values override the corresponding imported values across all primitives. Multiple primitives share one transform and are selected as one model. GLB export preserves each primitive's color and alpha mode.
+For glTF imports, each triangle primitive keeps its own base color, texture, metallic and roughness factors, `alphaMode` (`OPAQUE`, `MASK`, or `BLEND`), and `alphaCutoff`. Missing metallic and roughness factors use the glTF defaults of `1`. A node's explicit `material3d` values override the corresponding imported values across all primitives, including `metallic: 0` and `roughness: 1`. Multiple primitives share one transform and are selected as one model. GLB export preserves each primitive's color, PBR factors, and alpha mode.
 
 Use `await api.exportGlb()` to fetch and embed base-color textures. PNG and JPEG bytes are kept; other decodable image formats, including SVG, are rasterized to PNG. The returned GLB can be imported with its texture alpha intact. Texture URLs must be fetchable with CORS. The synchronous `api.export({ format: ExportFormat.GLB })` remains available for untextured exports and omits textures.
