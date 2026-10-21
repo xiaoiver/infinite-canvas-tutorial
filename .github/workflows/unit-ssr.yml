@@ -28,7 +28,7 @@ jobs:
       - name: Install headless-gl dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6 libxi-dev libxext-dev libx11-dev libgl1-mesa-dev
+          sudo apt-get install -y vulkan-tools mesa-utils xvfb libgl1-mesa-dri libglapi-mesa libosmesa6 libxi-dev libxext-dev libx11-dev libgl1-mesa-dev libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev
 
       - name: Install dependencies
         run: pnpm install
