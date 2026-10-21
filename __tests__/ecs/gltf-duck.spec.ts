@@ -64,14 +64,46 @@ describe('gltf duck mesh', () => {
 
 it('normalizes glTF scene primitives together so their relative placement survives', () => {
   const model = gltfScenes();
-  const scenes = (model.json as unknown as { scenes: { nodes: number[] }[] }).scenes;
+  const scenes = (model.json as unknown as { scenes: { nodes: number[] }[] })
+    .scenes;
   scenes[0].nodes.push(1);
   const mesh = bakeGltfMesh(model, { scene: 0 });
   expect(mesh.parts).toHaveLength(2);
   expect(mesh.parts[0].baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
   expect(mesh.parts[1].baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(mesh.parts[0].metallic).toBe(1);
+  expect(mesh.parts[0].roughness).toBe(1);
   expect(mesh.parts[0].positions[7]).toBeCloseTo(0);
   expect(mesh.parts[1].positions[7]).toBeCloseTo(0.5);
   expect(mesh.parts[0].indices).toEqual(new Uint32Array([0, 1, 2]));
   expect(mesh.parts[1].indices).toEqual(new Uint32Array([0, 1, 2]));
+});
+
+it('reads and clamps glTF PBR factors for each primitive', () => {
+  const model = gltfScenes();
+  const materials = (
+    model.json as unknown as {
+      materials: {
+        pbrMetallicRoughness: {
+          metallicFactor?: number;
+          roughnessFactor?: number;
+        };
+      }[];
+    }
+  ).materials;
+  materials[0].pbrMetallicRoughness.metallicFactor = 0.25;
+  materials[0].pbrMetallicRoughness.roughnessFactor = 0.7;
+  materials[1].pbrMetallicRoughness.metallicFactor = -1;
+  materials[1].pbrMetallicRoughness.roughnessFactor = 2;
+  const scenes = (model.json as unknown as { scenes: { nodes: number[] }[] })
+    .scenes;
+  scenes[0].nodes.push(1);
+  const mesh = bakeGltfMesh(model);
+  expect([mesh.metallic, mesh.roughness]).toEqual([0.25, 0.7]);
+  expect(
+    mesh.parts.map(({ metallic, roughness }) => [metallic, roughness]),
+  ).toEqual([
+    [0.25, 0.7],
+    [0, 1],
+  ]);
 });

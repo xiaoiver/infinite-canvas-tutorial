@@ -33,7 +33,7 @@ const proceduralGeometry = new WeakMap<Float32Array, string>();
 
 type ImportedMaterial = Pick<
   GltfMeshBakeResult,
-  'baseColor' | 'map' | 'alphaMode' | 'alphaCutoff'
+  'baseColor' | 'map' | 'metallic' | 'roughness' | 'alphaMode' | 'alphaCutoff'
 >;
 const companionGeometry = new WeakMap<
   Entity,
@@ -286,8 +286,14 @@ export function syncMesh3DNodeCompanionMaterial(
     diffuse: node.diffuse,
     specular: node.specular,
     shininess: node.shininess,
-    metallic: node.metallic,
-    roughness: node.roughness,
+    metallic:
+      node.metallicOverridden || node.metallic !== 0
+        ? node.metallic
+        : imported?.metallic ?? node.metallic,
+    roughness:
+      node.roughnessOverridden || node.roughness !== 1
+        ? node.roughness
+        : imported?.roughness ?? node.roughness,
     map: node.mapOverridden ? node.map : node.map ?? imported?.map ?? null,
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,

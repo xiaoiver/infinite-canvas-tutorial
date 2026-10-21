@@ -10,6 +10,8 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   baseColor: [number, number, number, number];
   /** Resolved base-color texture URL from glTF materials, if any. */
   map: string | null;
+  metallic: number;
+  roughness: number;
   alphaMode: Material3DAlphaMode;
   alphaCutoff: number;
   /** Individual primitive buffers, normalized in the same space as the whole scene. */
@@ -46,6 +48,8 @@ type GltfJson = GltfContainer['json'] & {
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
       baseColorTexture?: { index?: number };
+      metallicFactor?: number;
+      roughnessFactor?: number;
     };
   }[];
   textures?: { source?: number }[];
@@ -116,7 +120,7 @@ function readMaterialBaseColor(
 
 type ImportedMaterial = Pick<
   GltfMeshBakeResult,
-  'baseColor' | 'map' | 'alphaMode' | 'alphaCutoff'
+  'baseColor' | 'map' | 'metallic' | 'roughness' | 'alphaMode' | 'alphaCutoff'
 >;
 
 function readMaterial(
@@ -127,9 +131,16 @@ function readMaterial(
 ): ImportedMaterial {
   const material = json.materials?.[materialIndex];
   const cutoff = material?.alphaCutoff;
+  const factor = material?.pbrMetallicRoughness;
+  const unitFactor = (value: number | undefined) =>
+    typeof value === 'number' && Number.isFinite(value)
+      ? Math.max(0, Math.min(1, value))
+      : 1;
   return {
     baseColor: readMaterialBaseColor(json, materialIndex),
     map: readMaterialMapUrl(gltf, json, materialIndex, baseUrl),
+    metallic: unitFactor(factor?.metallicFactor),
+    roughness: unitFactor(factor?.roughnessFactor),
     alphaMode:
       material?.alphaMode === 'MASK'
         ? 'mask'
@@ -400,6 +411,8 @@ export function bakeGltfMesh(
     value: {
       baseColor: [1, 1, 1, 1] as [number, number, number, number],
       map: null,
+      metallic: 1,
+      roughness: 1,
       alphaMode: 'opaque',
       alphaCutoff: 0.5,
     } as ImportedMaterial,

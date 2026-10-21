@@ -109,6 +109,8 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
     'https://models.example/albedo.png',
   );
   expect(companion().read(Material3D).alphaMode).toBe('opaque');
+  expect(companion().read(Material3D).metallic).toBe(1);
+  expect(companion().read(Material3D).roughness).toBe(1);
   const document = structuredClone(wire());
   await edit({ x: 20 });
   expect(companion().read(Material3D).baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
@@ -202,12 +204,20 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
     }[];
     materials: {
       alphaMode?: string;
-      pbrMetallicRoughness: { baseColorFactor: number[] };
+      pbrMetallicRoughness: {
+        baseColorFactor: number[];
+        metallicFactor?: number;
+        roughnessFactor?: number;
+      };
     }[];
   };
   json.materials[0].alphaMode = 'MASK';
   json.materials[0].pbrMetallicRoughness.baseColorFactor[0] = 1;
+  json.materials[0].pbrMetallicRoughness.metallicFactor = 0.8;
+  json.materials[0].pbrMetallicRoughness.roughnessFactor = 0.2;
   json.materials[1].alphaMode = 'BLEND';
+  json.materials[1].pbrMetallicRoughness.metallicFactor = 0.3;
+  json.materials[1].pbrMetallicRoughness.roughnessFactor = 0.6;
   const indices = new Uint8Array([0, 1, 2]);
   json.bufferViews.push({
     buffer: model.buffers.length,
@@ -230,9 +240,13 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
     'https://models.example/albedo.png',
   );
   expect(companion().read(Material3D).alphaMode).toBe('mask');
+  expect(companion().read(Material3D).metallic).toBeCloseTo(0.8);
+  expect(companion().read(Material3D).roughness).toBeCloseTo(0.2);
   const [part] = getMesh3DNodeParts(source());
   expect(part.read(Material3D).baseColor).toEqual([0.8, 0.6, 0.4, 1]);
   expect(part.read(Material3D).alphaMode).toBe('blend');
+  expect(part.read(Material3D).metallic).toBeCloseTo(0.3);
+  expect(part.read(Material3D).roughness).toBeCloseTo(0.6);
   expect(part.read(Mesh3D).positions).toEqual(
     companion().read(Mesh3D).positions,
   );
@@ -262,6 +276,14 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   expect(part.read(Material3D).alphaMode).toBe('opaque');
   await edit({ material3d: undefined });
   expect(part.read(Material3D).alphaMode).toBe('blend');
+  await edit({ material3d: { metallic: 0, roughness: 1 } });
+  expect(companion().read(Material3D).metallic).toBe(0);
+  expect(part.read(Material3D).metallic).toBe(0);
+  expect(companion().read(Material3D).roughness).toBe(1);
+  expect(part.read(Material3D).roughness).toBe(1);
+  await edit({ material3d: undefined });
+  expect(companion().read(Material3D).metallic).toBeCloseTo(0.8);
+  expect(part.read(Material3D).roughness).toBeCloseTo(0.6);
   await edit({ material3d: { baseColor: '#ffffff', map: null } });
   expect(companion().read(Material3D).baseColor).toEqual([1, 1, 1, 1]);
   expect(part.read(Material3D).baseColor).toEqual([1, 1, 1, 1]);
@@ -284,6 +306,22 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
       (material: { alphaMode?: string }) => material.alphaMode,
     ),
   ).toEqual(['MASK', 'BLEND']);
+  expect(
+    exported.materials.map(
+      (material: {
+        pbrMetallicRoughness: {
+          metallicFactor: number;
+          roughnessFactor: number;
+        };
+      }) => [
+        Number(material.pbrMetallicRoughness.metallicFactor.toFixed(2)),
+        Number(material.pbrMetallicRoughness.roughnessFactor.toFixed(2)),
+      ],
+    ),
+  ).toEqual([
+    [0.8, 0.2],
+    [0.3, 0.6],
+  ]);
   await edit({ geometry: 'cube' });
   expect(getMesh3DNodeParts(source())).toHaveLength(0);
   expect(companion().read(Mesh3D).positions.length).toBeGreaterThan(0);

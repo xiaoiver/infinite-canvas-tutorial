@@ -97,6 +97,8 @@ export function requestGltfMeshLoad(source: Entity): void {
         seedMesh3DNodeCompanionGeometryKey(source, {
           baseColor: primary.baseColor,
           map: primary.map,
+          metallic: primary.metallic,
+          roughness: primary.roughness,
           alphaMode: primary.alphaMode,
           alphaCutoff: primary.alphaCutoff,
         });

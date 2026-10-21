@@ -36,8 +36,14 @@ export class Mesh3DNode {
   /** Metalness 0..1 (PBR metallic-roughness workflow). */
   @field.float32 declare metallic: number;
 
+  /** Preserve an explicit zero override of an imported glTF metalness. */
+  @field.boolean declare metallicOverridden: boolean;
+
   /** Perceptual roughness 0..1 (PBR metallic-roughness workflow). */
   @field.float32 declare roughness: number;
+
+  /** Preserve an explicit one override of an imported glTF roughness. */
+  @field.boolean declare roughnessOverridden: boolean;
 
   /** Optional base-color texture (image URL or data URL). */
   @field.object declare map: string | null;
@@ -88,7 +94,9 @@ export class Mesh3DNode {
     this.specular ??= 0.4;
     this.shininess ??= 48;
     this.metallic ??= 0;
+    this.metallicOverridden ??= false;
     this.roughness ??= 1;
+    this.roughnessOverridden ??= false;
     this.map ??= null;
     this.mapOverridden ??= false;
     this.alphaMode ??= null;
