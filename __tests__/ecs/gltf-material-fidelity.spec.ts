@@ -8,6 +8,7 @@ import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors'
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
 import { exportMeshesToGlb } from '../../packages/ecs/src/utils/gltf/export-glb';
 import { loadGlbImages } from '../../packages/ecs/src/utils/gltf/load-glb-images';
+import { gltfScenes } from '../helpers/gltf';
 
 const model = path.join(
   __dirname,
@@ -125,4 +126,65 @@ it('ignores a normal or occlusion texture when its second UV set is missing', as
   const baked = bakeGltfMesh(gltf);
   expect(baked.normalMap).toBeNull();
   expect(baked.occlusionMap).toBeNull();
+});
+
+it('transforms authored, strided TANGENT vectors and flips handedness for a mirrored node', async () => {
+  const gltf = gltfScenes();
+  const json = gltf.json as unknown as {
+    accessors: {
+      bufferView: number;
+      componentType: number;
+      count: number;
+      type: string;
+    }[];
+    bufferViews: { buffer: number; byteLength: number; byteStride?: number }[];
+    meshes: { primitives: { attributes: { TANGENT?: number } }[] }[];
+    nodes: { scale?: number[] }[];
+  };
+  const interleaved = new Float32Array([
+    1, 0, 0, 1, 99, 1, 0, 0, -1, 99, 1, 0, 0, 1, 99,
+  ]);
+  gltf.buffers.push({ arrayBuffer: interleaved.buffer });
+  json.bufferViews.push({
+    buffer: 1,
+    byteLength: interleaved.byteLength,
+    byteStride: 20,
+  });
+  json.accessors.push({
+    bufferView: 1,
+    componentType: 5126,
+    count: 3,
+    type: 'VEC4',
+  });
+  json.meshes[0].primitives[0].attributes.TANGENT = 1;
+  json.nodes[0].scale = [-2, 1, 1];
+
+  const baked = bakeGltfMesh(gltf);
+  expect(baked.tangents).toEqual(
+    new Float32Array([-1, 0, 0, -1, -1, 0, 0, 1, -1, 0, 0, -1]),
+  );
+  expect(baked.parts[0].tangents).toEqual(baked.tangents);
+
+  const exported = exportMeshesToGlb([
+    {
+      mesh: baked,
+      material: new Material3D(baked),
+      transform: new Transform3D(),
+    },
+  ]);
+  const reloaded = await load(exported);
+  const primitive = (
+    reloaded.json as unknown as {
+      meshes: { primitives: { attributes: { TANGENT?: number } }[] }[];
+    }
+  ).meshes[0].primitives[0];
+  expect(primitive.attributes.TANGENT).toBeDefined();
+  expect(bakeGltfMesh(reloaded).tangents).toEqual(baked.tangents);
+
+  const scenes = (json as unknown as { scenes: { nodes: number[] }[] }).scenes;
+  scenes[0].nodes.push(1);
+  const mixed = bakeGltfMesh(gltf);
+  expect(mixed.tangents).toBeUndefined();
+  expect(mixed.parts[0].tangents).toEqual(baked.tangents);
+  expect(mixed.parts[1].tangents).toBeUndefined();
 });

@@ -26,7 +26,7 @@ The Khronos **NormalTangentTest** GLB combines a base-color image, metallic-roug
 
 <GltfMaterial />
 
-The imported `normalTexture.scale` and `occlusionTexture.strength`, UV set selection, and `KHR_texture_transform` survive GLB export and reimport. Tangent space currently derives from screen-space position and UV derivatives; authored glTF `TANGENT` attributes are not used, so mirrored UV islands and sharp seams may differ from a reference renderer. The [model and textures](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/NormalTangentTest) are by Ed Mackey, copyright 2017 Analytical Graphics, Inc., [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+The imported `normalTexture.scale` and `occlusionTexture.strength`, UV set selection, `KHR_texture_transform`, and authored glTF `TANGENT` attributes survive GLB export and reimport. When tangents are present, normal mapping uses their handedness to shade mirrored UV islands and sharp seams. This sample does not contain authored tangents, so it uses screen-space derivatives. Derivatives are also used for a second normal-map UV set or a UV scale/rotation, whose basis may differ from the authored tangents. The [model and textures](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/NormalTangentTest) are by Ed Mackey, copyright 2017 Analytical Graphics, Inc., [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Notes {#notes}
 

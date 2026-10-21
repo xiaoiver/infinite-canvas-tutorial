@@ -76,12 +76,14 @@ layout(location = 0) in vec3 a_Position3D;
 layout(location = 1) in vec3 a_Normal3D;
 layout(location = 2) in vec2 a_Uv3D;
 layout(location = 3) in vec2 a_Uv1_3D;
+layout(location = 4) in vec4 a_Tangent3D;
 
 out vec3 v_Normal;
 out vec3 v_FragPos;
 out vec2 v_Uv;
 out vec2 v_Uv1;
 out float v_LocalNormalZ;
+out vec4 v_Tangent;
 
 void main() {
   vec4 worldPos = u_ModelMatrix3D * vec4(a_Position3D, 1.0);
@@ -90,6 +92,10 @@ void main() {
   v_Uv = a_Uv3D;
   v_Uv1 = a_Uv1_3D;
   v_LocalNormalZ = a_Normal3D.z;
+  v_Tangent = vec4(
+    (u_ModelMatrix3D * vec4(a_Tangent3D.xyz, 0.0)).xyz,
+    a_Tangent3D.w * sign(dot(cross(u_ModelMatrix3D[0].xyz, u_ModelMatrix3D[1].xyz), u_ModelMatrix3D[2].xyz))
+  );
 
   if (u_SceneParams.z > 0.5) {
     // 2D VP: pan / zoom / Y-flip; perspective scales offsets from placement anchor.
@@ -188,6 +194,7 @@ in vec3 v_FragPos;
 in vec2 v_Uv;
 in vec2 v_Uv1;
 in float v_LocalNormalZ;
+in vec4 v_Tangent;
 
 out vec4 outputColor;
 
@@ -520,6 +527,27 @@ vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
 
 vec3 perturbNormalFromNormalMap(vec3 normal, vec2 uv, float scale) {
   if (abs(scale) < 1e-6) return normal;
+  vec3 sampled = texture(SAMPLER_2D(u_NormalMap), uv).xyz * 2.0 - 1.0;
+  sampled.xy *= scale;
+  // glTF TANGENT is authored for TEXCOORD_0. A second UV set or a scale/rotation
+  // changes that basis, so derive it from the transformed UVs in those cases.
+  bool authored = abs(v_Tangent.w) > 0.5 && u_NormalParams.y < 0.5 &&
+    abs(u_NormalUvTransform.z - 1.0) < 1e-6 &&
+    abs(u_NormalUvTransform.w - 1.0) < 1e-6 &&
+    abs(u_NormalParams.z) < 1e-6;
+  if (authored) {
+    // Match the derivative fallback's whole-frame reversal on double-sided backs.
+    float face = u_TextureCoords.z > 0.5 && !gl_FrontFacing ? -1.0 : 1.0;
+    vec3 authoredTangent = v_Tangent.xyz * face;
+    vec3 tangent = authoredTangent - normal * dot(normal, authoredTangent);
+    float tangentLength = dot(tangent, tangent);
+    if (tangentLength > 1e-12) {
+      tangent *= inversesqrt(tangentLength);
+      vec3 bitangent = cross(normal, tangent) * sign(v_Tangent.w * face);
+      return normalize(tangent * sampled.x + bitangent * sampled.y +
+        normal * sampled.z);
+    }
+  }
   vec3 dp1 = dFdx(v_FragPos);
   vec3 dp2 = dFdy(v_FragPos);
   vec2 duv1 = dFdx(uv);
@@ -531,8 +559,6 @@ vec3 perturbNormalFromNormalMap(vec3 normal, vec2 uv, float scale) {
   float maxLen = max(dot(tangent, tangent), dot(bitangent, bitangent));
   if (!(maxLen > 1e-12)) return normal;
   float invmax = inversesqrt(maxLen);
-  vec3 sampled = texture(SAMPLER_2D(u_NormalMap), uv).xyz * 2.0 - 1.0;
-  sampled.xy *= scale;
   return normalize(tangent * invmax * sampled.x +
     bitangent * invmax * sampled.y + normal * sampled.z);
 }

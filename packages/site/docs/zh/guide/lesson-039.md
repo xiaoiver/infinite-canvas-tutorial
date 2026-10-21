@@ -457,7 +457,7 @@ const glb = await api.exportGlb({
 
 glTF 基础颜色系数使用线性 RGB，ECS 材质基础颜色则存储为 sRGB。导入时进行转换，导出 GLB 时转回线性 RGB，让材质颜色在往返后保持一致。
 
-导入还会保留 glTF 的 `doubleSided`、`normalTexture` 和 `occlusionTexture`，包括独立的 UV 集、变换与强度参数。法线贴图影响光照法线；遮蔽贴图只影响间接光。可在 [PBR 材质交互示例](/zh/example/gltf-duck#pbr-material) 中比较，并了解目前的切线空间限制。
+导入还会保留 glTF 的 `doubleSided`、`normalTexture`、`occlusionTexture` 和 `TANGENT` 属性，包括独立的 UV 集、变换与强度参数。法线贴图影响光照法线；遮蔽贴图只影响间接光。[PBR 材质交互示例](/zh/example/gltf-duck#pbr-material)说明何时使用原始切线或从 UV 推导切线空间。
 
 <GltfDuck />
 

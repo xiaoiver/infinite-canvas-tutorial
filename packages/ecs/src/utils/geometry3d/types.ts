@@ -1,6 +1,8 @@
 export interface Mesh3DGeometryData {
   positions: Float32Array;
   normals: Float32Array;
+  /** Optional glTF tangent (x, y, z, handedness) per vertex. */
+  tangents?: Float32Array;
   indices: Uint32Array;
   /** Optional (u, v) texture coordinates, interleaved. */
   uvs?: Float32Array;
@@ -52,6 +54,9 @@ export function mesh3DGeometryDataEquals(
   if (mesh.normals.length !== data.normals.length) {
     return false;
   }
+  if ((mesh.tangents?.length ?? 0) !== (data.tangents?.length ?? 0)) {
+    return false;
+  }
   if ((mesh.uvs?.length ?? 0) !== (data.uvs?.length ?? 0)) {
     return false;
   }
@@ -71,6 +76,11 @@ export function mesh3DGeometryDataEquals(
       if (mesh.uvs[i] !== data.uvs[i]) {
         return false;
       }
+    }
+  }
+  if (mesh.tangents && data.tangents) {
+    for (let i = 0; i < mesh.tangents.length; i++) {
+      if (mesh.tangents[i] !== data.tangents[i]) return false;
     }
   }
   if (mesh.uvs1 && data.uvs1) {

@@ -8,7 +8,7 @@ import type { Transform3D } from '../../components/geometry3d/Transform3D';
 
 export interface GlbMeshSource {
   mesh: Pick<Mesh3D, 'positions' | 'normals' | 'uvs' | 'indices'> &
-    Partial<Pick<Mesh3D, 'uvs1'>>;
+    Partial<Pick<Mesh3D, 'uvs1' | 'tangents'>>;
   material: Pick<
     Material3D,
     'baseColor' | 'sideColor' | 'metallic' | 'roughness'
@@ -49,7 +49,7 @@ type Accessor = {
   bufferView: number;
   componentType: 5125 | 5126;
   count: number;
-  type: 'SCALAR' | 'VEC2' | 'VEC3';
+  type: 'SCALAR' | 'VEC2' | 'VEC3' | 'VEC4';
   min?: number[];
   max?: number[];
 };
@@ -58,6 +58,7 @@ type Primitive = {
   attributes: {
     POSITION: number;
     NORMAL: number;
+    TANGENT?: number;
     TEXCOORD_0?: number;
     TEXCOORD_1?: number;
   };
@@ -85,6 +86,16 @@ const linear = (value: number) =>
 const finite = (values: ArrayLike<number>): boolean => {
   for (let i = 0; i < values.length; i++)
     if (!Number.isFinite(Math.fround(values[i]))) return false;
+  return true;
+};
+const validTangents = (tangents: Float32Array): boolean => {
+  for (let i = 0; i < tangents.length; i += 4) {
+    if (
+      Math.abs(Math.abs(tangents[i + 3]) - 1) > 1e-4 ||
+      !(Math.hypot(tangents[i], tangents[i + 1], tangents[i + 2]) > 1e-8)
+    )
+      return false;
+  }
   return true;
 };
 
@@ -390,16 +401,19 @@ export function exportMeshesToGlb(
   };
 
   for (const source of sources) {
-    const { positions, normals, uvs, uvs1, indices } = source.mesh;
+    const { positions, normals, tangents, uvs, uvs1, indices } = source.mesh;
     const count = positions.length / 3;
     if (
       !count ||
       !Number.isInteger(count) ||
       normals.length !== positions.length ||
+      (tangents && tangents.length !== count * 4) ||
       (uvs && uvs.length !== count * 2) ||
       (uvs1 && uvs1.length !== count * 2) ||
       !finite(positions) ||
       !finite(normals) ||
+      (tangents && !finite(tangents)) ||
+      (tangents && !validTangents(tangents)) ||
       (uvs && !finite(uvs)) ||
       (uvs1 && !finite(uvs1))
     )
@@ -425,6 +439,14 @@ export function exportMeshesToGlb(
       }),
       NORMAL: accessor(floats(normals), 34962, 5126, count, 'VEC3'),
     };
+    if (tangents)
+      attributes.TANGENT = accessor(
+        floats(tangents),
+        34962,
+        5126,
+        count,
+        'VEC4',
+      );
     if (uvs)
       attributes.TEXCOORD_0 = accessor(floats(uvs), 34962, 5126, count, 'VEC2');
     if (uvs1)

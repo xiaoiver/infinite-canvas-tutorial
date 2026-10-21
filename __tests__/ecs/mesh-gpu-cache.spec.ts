@@ -7,7 +7,7 @@ import { fakeMeshGPU } from './helpers/mesh-gpu';
 const cube = () => new Mesh3D(createGeometry({ type: 'cube' }));
 const floats = (buffer: unknown) =>
   new Float32Array((buffer as { bytes: Uint8Array }).bytes.buffer);
-const buffersPerMesh = 6;
+const buffersPerMesh = 7;
 
 it('reuses buffers across draws, keeps separate model uniforms, and coalesces geometry writes', () => {
   const gpu = fakeMeshGPU();
@@ -78,6 +78,26 @@ it.each(['valid', 'missing', 'invalid'] as const)(
   },
 );
 
+it('uploads authored tangents and uses zero handedness for missing tangents', () => {
+  const gpu = fakeMeshGPU();
+  const cache = new MeshGPUCache(gpu.device);
+  const mesh = cube();
+  const authored = new Float32Array(mesh.vertexCount * 4);
+  for (let i = 0; i < authored.length; i += 4) {
+    authored[i] = 1;
+    authored[i + 3] = i % 8 ? -1 : 1;
+  }
+  mesh.tangents = authored;
+  expect(floats(cache.get(1, mesh)!.tangentBuffer)).toEqual(authored);
+  mesh.tangents = new Float32Array([1]);
+  cache.invalidate([1]);
+  expect(floats(cache.get(1, mesh)!.tangentBuffer)).toEqual(
+    new Float32Array(mesh.vertexCount * 4),
+  );
+  cache.destroy();
+  gpu.scope.dispose();
+});
+
 it('reclaims empty/removed geometry and safely reuses an entity id', () => {
   const gpu = fakeMeshGPU();
   const cache = new MeshGPUCache(gpu.device);
@@ -97,7 +117,7 @@ it('reclaims empty/removed geometry and safely reuses an entity id', () => {
   gpu.scope.dispose();
 });
 
-it.each([0, 1, 2, 3, 4, 5])(
+it.each([0, 1, 2, 3, 4, 5, 6])(
   'rolls back allocation failure at buffer %i and retries the dirty mesh',
   (failAt) => {
     const gpu = fakeMeshGPU();

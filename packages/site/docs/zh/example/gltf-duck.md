@@ -26,7 +26,7 @@ Khronos **NormalTangentTest** GLB 同时包含基础颜色、金属度与粗糙�
 
 <GltfMaterial locale="zh" />
 
-导入的 `normalTexture.scale`、`occlusionTexture.strength`、UV 集选择和 `KHR_texture_transform` 均会在 GLB 导出再导入后保留。目前切线空间由屏幕空间位置与 UV 的导数推导，尚未使用 glTF 的 `TANGENT` 属性，因此镜像 UV 岛及硬边接缝处可能与参考渲染器略有差异。[模型与贴图](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/NormalTangentTest)由 Ed Mackey 制作，版权归 2017 Analytical Graphics, Inc. 所有，使用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 许可。
+导入的 `normalTexture.scale`、`occlusionTexture.strength`、UV 集选择、`KHR_texture_transform` 和 glTF `TANGENT` 属性均会在 GLB 导出再导入后保留。有切线时，法线贴图使用其手性符号处理镜像 UV 岛和硬边接缝。本示例模型没有切线，因此使用屏幕空间导数；法线贴图使用第二套 UV 或 UV 缩放、旋转时也会用导数推导切线空间，此时结果可能与原始切线不同。[模型与贴图](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/NormalTangentTest)由 Ed Mackey 制作，版权归 2017 Analytical Graphics, Inc. 所有，使用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 许可。
 
 ## 要点 {#notes}
 
