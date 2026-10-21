@@ -77,6 +77,7 @@ layout(location = 1) in vec3 a_Normal3D;
 layout(location = 2) in vec2 a_Uv3D;
 layout(location = 3) in vec2 a_Uv1_3D;
 layout(location = 4) in vec4 a_Tangent3D;
+layout(location = 5) in vec4 a_Color3D;
 
 out vec3 v_Normal;
 out vec3 v_FragPos;
@@ -84,6 +85,7 @@ out vec2 v_Uv;
 out vec2 v_Uv1;
 out float v_LocalNormalZ;
 out vec4 v_Tangent;
+out vec4 v_Color;
 
 void main() {
   vec4 worldPos = u_ModelMatrix3D * vec4(a_Position3D, 1.0);
@@ -92,6 +94,7 @@ void main() {
   v_Uv = a_Uv3D;
   v_Uv1 = a_Uv1_3D;
   v_LocalNormalZ = a_Normal3D.z;
+  v_Color = a_Color3D;
   v_Tangent = vec4(
     (u_ModelMatrix3D * vec4(a_Tangent3D.xyz, 0.0)).xyz,
     a_Tangent3D.w * sign(dot(cross(u_ModelMatrix3D[0].xyz, u_ModelMatrix3D[1].xyz), u_ModelMatrix3D[2].xyz))
@@ -195,6 +198,7 @@ in vec2 v_Uv;
 in vec2 v_Uv1;
 in float v_LocalNormalZ;
 in vec4 v_Tangent;
+in vec4 v_Color;
 
 out vec4 outputColor;
 
@@ -576,7 +580,9 @@ void main() {
   if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0) {
     baseColor = u_SideColor;
   }
-  vec3 albedo = srgbToLinear(baseColor.rgb);
+  // glTF COLOR_0 is linear; the authored ECS base color is sRGB.
+  vec3 albedo = srgbToLinear(baseColor.rgb) * v_Color.rgb;
+  baseColor.a *= v_Color.a;
   if (u_MaterialFlags.x > 0.5) {
     vec2 mapUv = transformUv(u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv,
                              u_MapUvTransform, u_UvRotations.x);

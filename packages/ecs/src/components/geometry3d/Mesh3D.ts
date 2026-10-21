@@ -30,6 +30,9 @@ export class Mesh3D {
   /** Optional tangent xyz and bitangent handedness for normal maps. */
   @field.object declare tangents: Float32Array | null;
 
+  /** Optional linear RGBA vertex colors. */
+  @field.object declare colors: Float32Array | null;
+
   /**
    * Optional UV coordinates (u, v) interleaved.
    */
@@ -50,6 +53,7 @@ export class Mesh3D {
     this.positions ??= new Float32Array(0);
     this.normals ??= new Float32Array(0);
     this.tangents ??= null;
+    this.colors ??= null;
     this.uvs ??= null;
     this.uvs1 ??= null;
     this.indices ??= null;

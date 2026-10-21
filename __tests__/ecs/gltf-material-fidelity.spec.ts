@@ -188,3 +188,165 @@ it('transforms authored, strided TANGENT vectors and flips handedness for a mirr
   expect(mixed.parts[0].tangents).toEqual(baked.tangents);
   expect(mixed.parts[1].tangents).toBeUndefined();
 });
+
+it('imports strided normalized COLOR_0, defaults uncolored parts to white, and exports colors', async () => {
+  const gltf = gltfScenes();
+  const json = gltf.json as unknown as {
+    accessors: {
+      bufferView: number;
+      componentType: number;
+      count: number;
+      type: string;
+      normalized?: boolean;
+    }[];
+    bufferViews: { buffer: number; byteLength: number; byteStride?: number }[];
+    meshes: { primitives: { attributes: { COLOR_0?: number } }[] }[];
+    scenes: { nodes: number[] }[];
+  };
+  const bytes = new Uint8Array([
+    255, 0, 0, 128, 9, 9, 9, 9, 0, 255, 0, 255, 9, 9, 9, 9, 0, 0, 255, 64, 9, 9,
+    9, 9,
+  ]);
+  gltf.buffers.push({ arrayBuffer: bytes.buffer });
+  json.bufferViews.push({
+    buffer: 1,
+    byteLength: bytes.byteLength,
+    byteStride: 8,
+  });
+  json.accessors.push({
+    bufferView: 1,
+    componentType: 5121,
+    count: 3,
+    type: 'VEC4',
+    normalized: true,
+  });
+  json.meshes[0].primitives[0].attributes.COLOR_0 = 1;
+  json.scenes[0].nodes.push(1);
+
+  const baked = bakeGltfMesh(gltf);
+  const expected = new Float32Array([
+    1,
+    0,
+    0,
+    128 / 255,
+    0,
+    1,
+    0,
+    1,
+    0,
+    0,
+    1,
+    64 / 255,
+  ]);
+  expect(baked.parts[0].colors).toEqual(expected);
+  expect(baked.parts[1].colors).toBeUndefined();
+  expect(baked.colors?.subarray(12)).toEqual(new Float32Array(12).fill(1));
+
+  const exported = exportMeshesToGlb([
+    {
+      mesh: baked.parts[0],
+      material: new Material3D(baked.parts[0]),
+      transform: new Transform3D(),
+    },
+  ]);
+  const roundTrip = await load(exported);
+  const primitive = (
+    roundTrip.json as unknown as {
+      meshes: { primitives: { attributes: { COLOR_0?: number } }[] }[];
+    }
+  ).meshes[0].primitives[0];
+  expect(primitive.attributes.COLOR_0).toBeDefined();
+  expect(bakeGltfMesh(roundTrip).colors).toEqual(expected);
+});
+
+it('pads float RGB vertex colors with opaque alpha', () => {
+  const gltf = gltfScenes();
+  const json = gltf.json as unknown as {
+    accessors: {
+      bufferView: number;
+      componentType: number;
+      count: number;
+      type: string;
+    }[];
+    bufferViews: { buffer: number; byteLength: number }[];
+    meshes: { primitives: { attributes: { COLOR_0?: number } }[] }[];
+  };
+  const rgb = new Float32Array([0.2, 0.4, 0.6, 1, 0.5, 0, 0, 0.5, 1]);
+  gltf.buffers.push({ arrayBuffer: rgb.buffer });
+  json.bufferViews.push({ buffer: 1, byteLength: rgb.byteLength });
+  json.accessors.push({
+    bufferView: 1,
+    componentType: 5126,
+    count: 3,
+    type: 'VEC3',
+  });
+  json.meshes[0].primitives[0].attributes.COLOR_0 = 1;
+  expect(bakeGltfMesh(gltf).colors).toEqual(
+    new Float32Array([0.2, 0.4, 0.6, 1, 1, 0.5, 0, 1, 0, 0.5, 1, 1]),
+  );
+});
+
+it('normalizes strided unsigned-short RGB vertex colors', () => {
+  const gltf = gltfScenes();
+  const json = gltf.json as unknown as {
+    accessors: {
+      bufferView: number;
+      componentType: number;
+      count: number;
+      type: string;
+      normalized?: boolean;
+    }[];
+    bufferViews: { buffer: number; byteLength: number; byteStride?: number }[];
+    meshes: { primitives: { attributes: { COLOR_0?: number } }[] }[];
+  };
+  const values = new Uint16Array([
+    65535, 32768, 0, 0, 0, 65535, 0, 0, 0, 0, 65535, 0,
+  ]);
+  gltf.buffers.push({ arrayBuffer: values.buffer });
+  json.bufferViews.push({
+    buffer: 1,
+    byteLength: values.byteLength,
+    byteStride: 8,
+  });
+  json.accessors.push({
+    bufferView: 1,
+    componentType: 5123,
+    count: 3,
+    type: 'VEC3',
+    normalized: true,
+  });
+  json.meshes[0].primitives[0].attributes.COLOR_0 = 1;
+  expect(bakeGltfMesh(gltf).colors?.subarray(0, 4)).toEqual(
+    new Float32Array([1, 32768 / 65535, 0, 1]),
+  );
+});
+
+it('loads the documented normalized vertex-color sample', () => {
+  const file = path.join(
+    __dirname,
+    '../../packages/site/docs/public/data/VertexColors.gltf',
+  );
+  const json = JSON.parse(
+    readFileSync(file, 'utf8'),
+  ) as GltfContainer['json'] & {
+    buffers: { uri: string }[];
+  };
+  const bytes = Buffer.from(json.buffers[0].uri.split(',')[1], 'base64');
+  const baked = bakeGltfMesh({
+    json,
+    buffers: [
+      {
+        arrayBuffer: bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength,
+        ),
+      },
+    ],
+  });
+  expect(baked.positions).toHaveLength(12);
+  expect(baked.colors).toHaveLength(16);
+  expect(baked.colors?.subarray(0, 4)).toEqual(
+    new Float32Array([1, 48 / 255, 48 / 255, 1]),
+  );
+  expect(baked.unlit).toBe(true);
+});

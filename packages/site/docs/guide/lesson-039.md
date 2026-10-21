@@ -517,6 +517,8 @@ glTF base-color factors use linear RGB, while ECS stores material base colors as
 
 The importer also preserves glTF `doubleSided`, `normalTexture`, `occlusionTexture`, and authored `TANGENT` attributes. Normal maps alter the lighting normal; occlusion affects indirect light only. The [interactive PBR model](/example/gltf-duck#pbr-material) explains when normal mapping uses authored tangents or derives them from UVs.
 
+glTF `COLOR_0` vertex colors (float or normalized unsigned byte/short, RGB or RGBA) multiply the material base color in linear space. The [interactive vertex-color model](/example/gltf-duck#vertex-colors) shows the result with and without scene lighting. Export preserves the colors as float RGBA.
+
 <GltfDuck />
 
 ## Further reading {#extended-reading}

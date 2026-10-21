@@ -16,6 +16,7 @@ Implementation references `packages/site/docs/components/GltfDuck.vue` and [Less
 <script setup>
 import GltfDuck from '../components/GltfDuck.vue'
 import GltfMaterial from '../components/GltfMaterial.vue'
+import GltfVertexColors from '../components/GltfVertexColors.vue'
 </script>
 
 <GltfDuck />
@@ -27,6 +28,14 @@ The Khronos **NormalTangentTest** GLB combines a base-color image, metallic-roug
 <GltfMaterial />
 
 The imported `normalTexture.scale` and `occlusionTexture.strength`, UV set selection, `KHR_texture_transform`, and authored glTF `TANGENT` attributes survive GLB export and reimport. When tangents are present, normal mapping uses their handedness to shade mirrored UV islands and sharp seams. This sample does not contain authored tangents, so it uses screen-space derivatives. Derivatives are also used for a second normal-map UV set or a UV scale/rotation, whose basis may differ from the authored tangents. The [model and textures](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/NormalTangentTest) are by Ed Mackey, copyright 2017 Analytical Graphics, Inc., [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+
+## Vertex colors {#vertex-colors}
+
+This small glTF uses normalized 8-bit `COLOR_0` at each corner of a plane. The colors blend across its surface. Toggle lighting to compare the unlit color with a lit material, and use the canvas tools to move or rotate it.
+
+<GltfVertexColors />
+
+`COLOR_0` can be RGB or RGBA. RGB defaults to alpha 1. Vertex RGB is linear and multiplies the material's base-color factor and texture in linear space; vertex alpha multiplies their alpha. Mixed scenes keep uncolored primitives white. GLB export writes the imported colors as floating-point RGBA so they survive another import.
 
 ## Notes {#notes}
 

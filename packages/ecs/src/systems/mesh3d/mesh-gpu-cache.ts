@@ -17,6 +17,7 @@ export interface MeshGPUData {
   vertexBuffer: Buffer;
   normalBuffer: Buffer;
   tangentBuffer: Buffer;
+  colorBuffer: Buffer;
   uvBuffer: Buffer;
   uv1Buffer: Buffer;
   indexBuffer: Buffer | null;
@@ -96,6 +97,12 @@ export class MeshGPUCache {
           mesh.tangents?.length === mesh.vertexCount * 4
             ? mesh.tangents
             : new Float32Array(mesh.vertexCount * 4),
+          BufferUsage.VERTEX,
+        ),
+        colorBuffer: buffer(
+          mesh.colors?.length === mesh.vertexCount * 4
+            ? mesh.colors
+            : new Float32Array(mesh.vertexCount * 4).fill(1),
           BufferUsage.VERTEX,
         ),
         // Optional UVs must still satisfy the shared input layout.

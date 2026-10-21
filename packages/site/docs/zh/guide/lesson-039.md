@@ -459,6 +459,8 @@ glTF 基础颜色系数使用线性 RGB，ECS 材质基础颜色则存储为 sRG
 
 导入还会保留 glTF 的 `doubleSided`、`normalTexture`、`occlusionTexture` 和 `TANGENT` 属性，包括独立的 UV 集、变换与强度参数。法线贴图影响光照法线；遮蔽贴图只影响间接光。[PBR 材质交互示例](/zh/example/gltf-duck#pbr-material)说明何时使用原始切线或从 UV 推导切线空间。
 
+glTF `COLOR_0` 顶点颜色（浮点数或归一化无符号字节/短整数，RGB 或 RGBA）在线性空间与材质基础色相乘。[顶点颜色交互示例](/zh/example/gltf-duck#vertex-colors)可对比有无场景光照的结果。导出时保留为浮点 RGBA。
+
 <GltfDuck />
 
 ## 扩展阅读 {#extended-reading}

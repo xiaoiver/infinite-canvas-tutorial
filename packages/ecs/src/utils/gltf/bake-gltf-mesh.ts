@@ -89,6 +89,7 @@ type GltfJson = GltfContainer['json'] & {
         POSITION: number;
         NORMAL?: number;
         TANGENT?: number;
+        COLOR_0?: number;
         TEXCOORD_0?: number;
         TEXCOORD_1?: number;
       };
@@ -412,6 +413,31 @@ function readTransformedTangents(
   return tangents;
 }
 
+function readVertexColors(
+  gltf: GltfContainer,
+  index: number | undefined,
+  vertexCount: number,
+): Float32Array | undefined {
+  if (index === undefined) return;
+  const accessor = readAccessor(gltf, index);
+  if (
+    !(accessor.array instanceof Float32Array) ||
+    ![3, 4].includes(accessor.components) ||
+    accessor.array.length !== vertexCount * accessor.components
+  )
+    return;
+  const colors = new Float32Array(vertexCount * 4);
+  for (let i = 0; i < vertexCount; i++) {
+    for (let channel = 0; channel < accessor.components; channel++) {
+      const value = accessor.array[i * accessor.components + channel];
+      if (!Number.isFinite(value) || value < 0 || value > 1) return;
+      colors[i * 4 + channel] = value;
+    }
+    if (accessor.components === 3) colors[i * 4 + 3] = 1;
+  }
+  return colors;
+}
+
 function appendPrimitive(
   gltf: GltfContainer,
   json: GltfJson,
@@ -420,6 +446,7 @@ function appendPrimitive(
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
   tangentChunks: (Float32Array | undefined)[],
+  colorChunks: (Float32Array | undefined)[],
   uvChunks: Float32Array[],
   uv1Chunks: Float32Array[],
   idxChunks: number[],
@@ -489,6 +516,7 @@ function appendPrimitive(
       vCount,
       worldMatrix,
     );
+    const colors = readVertexColors(gltf, prim.attributes.COLOR_0, vCount);
 
     let primitiveIndices: Uint32Array | undefined;
     if (prim.indices !== undefined) {
@@ -511,6 +539,7 @@ function appendPrimitive(
     posChunks.push(positions);
     normalChunks.push(normals);
     tangentChunks.push(tangents);
+    colorChunks.push(colors);
     uvChunks.push(uvs);
     uv1Chunks.push(uvs1);
 
@@ -564,6 +593,7 @@ function traverseNode(
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
   tangentChunks: (Float32Array | undefined)[],
+  colorChunks: (Float32Array | undefined)[],
   uvChunks: Float32Array[],
   uv1Chunks: Float32Array[],
   idxChunks: number[],
@@ -599,6 +629,7 @@ function traverseNode(
       posChunks,
       normalChunks,
       tangentChunks,
+      colorChunks,
       uvChunks,
       uv1Chunks,
       idxChunks,
@@ -618,6 +649,7 @@ function traverseNode(
       posChunks,
       normalChunks,
       tangentChunks,
+      colorChunks,
       uvChunks,
       uv1Chunks,
       idxChunks,
@@ -639,6 +671,7 @@ export function bakeGltfMesh(
   const posChunks: Float32Array[] = [];
   const normalChunks: Float32Array[] = [];
   const tangentChunks: (Float32Array | undefined)[] = [];
+  const colorChunks: (Float32Array | undefined)[] = [];
   const uvChunks: Float32Array[] = [];
   const uv1Chunks: Float32Array[] = [];
   const idxChunks: number[] = [];
@@ -695,6 +728,7 @@ export function bakeGltfMesh(
         posChunks,
         normalChunks,
         tangentChunks,
+        colorChunks,
         uvChunks,
         uv1Chunks,
         idxChunks,
@@ -714,6 +748,7 @@ export function bakeGltfMesh(
       posChunks,
       normalChunks,
       tangentChunks,
+      colorChunks,
       uvChunks,
       uv1Chunks,
       idxChunks,
@@ -738,6 +773,7 @@ export function bakeGltfMesh(
   const positions = new Float32Array(totalFloats);
   const normals = new Float32Array(totalFloats);
   const tangents = new Float32Array((totalFloats / 3) * 4);
+  const colors = new Float32Array((totalFloats / 3) * 4);
   const uvs = new Float32Array((totalFloats / 3) * 2);
   const uvs1 = new Float32Array(uvs.length);
   let offset = 0;
@@ -747,6 +783,14 @@ export function bakeGltfMesh(
     const chunkNormals = normalChunks[i];
     const chunkTangents = tangentChunks[i];
     if (chunkTangents) tangents.set(chunkTangents, (offset / 3) * 4);
+    const chunkColors = colorChunks[i];
+    if (chunkColors) colors.set(chunkColors, (offset / 3) * 4);
+    else
+      colors.fill(
+        1,
+        (offset / 3) * 4,
+        ((offset + posChunks[i].length) / 3) * 4,
+      );
     if (chunkNormals.length === posChunks[i].length) {
       normals.set(chunkNormals, offset);
     }
@@ -792,6 +836,7 @@ export function bakeGltfMesh(
       tangents: tangentChunks[i]
         ? tangents.subarray(start * 4, end * 4)
         : undefined,
+      colors: colorChunks[i] ? colors.subarray(start * 4, end * 4) : undefined,
       uvs: uvs.subarray(start * 2, end * 2),
       uvs1: range.hasUv1 ? uvs1.subarray(start * 2, end * 2) : undefined,
       indices: partIndices,
@@ -803,6 +848,7 @@ export function bakeGltfMesh(
     positions,
     normals,
     tangents: tangentChunks.every(Boolean) ? tangents : undefined,
+    colors: colorChunks.some(Boolean) ? colors : undefined,
     indices,
     uvs,
     uvs1: partRanges.some(({ hasUv1 }) => hasUv1) ? uvs1 : undefined,

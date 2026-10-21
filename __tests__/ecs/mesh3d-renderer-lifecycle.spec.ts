@@ -738,12 +738,12 @@ it('remembers geometry changes across skipped frames and uploads once on the nex
   renderer.execute();
   draw();
   draw();
-  expect(slot.gpu.buffers).toHaveLength(15); // scene + two complete mesh allocations
+  expect(slot.gpu.buffers).toHaveLength(17); // scene + two complete mesh allocations
   const vertices = (slot.gpu.pass.setVertexInput as jest.Mock).mock.calls.at(
     -1,
   )[1][0].buffer;
   expect(new Float32Array(vertices.bytes.buffer)[0]).toBe(12);
-  for (const buffer of slot.gpu.buffers.slice(1, 8))
+  for (const buffer of slot.gpu.buffers.slice(1, 9))
     expect(buffer.destroy).toHaveBeenCalledTimes(1);
 });
 
@@ -778,7 +778,7 @@ it.each([
     expect(buffer.destroy).not.toHaveBeenCalled();
   if (reason === 'scope moved') {
     draw(1);
-    expect(other.gpu.buffers).toHaveLength(15);
+    expect(other.gpu.buffers).toHaveLength(17);
   }
 });
 
@@ -863,7 +863,7 @@ it('keeps scene and model uniforms independent even when canvases share a device
   second.values.set(GPUResource, first.gpu);
   draw();
   draw(1);
-  expect(first.gpu.buffers).toHaveLength(16);
+  expect(first.gpu.buffers).toHaveLength(18);
   const a = first.gpu.draws[0].uniformBufferBindings;
   const b = second.gpu.draws[0].uniformBufferBindings;
   expect(a[0].buffer).not.toBe(b[0].buffer);

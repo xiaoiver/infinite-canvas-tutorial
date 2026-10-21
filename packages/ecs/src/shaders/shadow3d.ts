@@ -24,10 +24,12 @@ layout(location = 0) in vec3 a_Position3D;
 layout(location = 1) in vec2 a_Uv3D;
 layout(location = 2) in vec3 a_Normal3D;
 layout(location = 3) in vec2 a_Uv1_3D;
+layout(location = 4) in vec4 a_Color3D;
 out vec4 v_ShadowClip;
 out vec2 v_Uv;
 out vec2 v_Uv1;
 out float v_LocalNormalZ;
+out float v_ColorAlpha;
 
 void main() {
   vec4 clip = u_ShadowLightViewProjection * u_ShadowModelMatrix *
@@ -37,6 +39,7 @@ void main() {
   v_Uv = a_Uv3D;
   v_Uv1 = a_Uv1_3D;
   v_LocalNormalZ = a_Normal3D.z;
+  v_ColorAlpha = a_Color3D.a;
 }
 `;
 
@@ -66,6 +69,7 @@ in vec4 v_ShadowClip;
 in vec2 v_Uv;
 in vec2 v_Uv1;
 in float v_LocalNormalZ;
+in float v_ColorAlpha;
 out vec4 outputColor;
 
 vec4 packDepth(float depth) {
@@ -87,6 +91,7 @@ void main() {
   if (u_ShadowReceive.y > 0.5) {
     float alpha = u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0
       ? u_SideColor.a : u_BaseColor.a;
+    alpha *= v_ColorAlpha;
     if (u_MaterialFlags.x > 0.5)
       alpha *= texture(SAMPLER_2D(u_Map),
         transformUv(u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv,

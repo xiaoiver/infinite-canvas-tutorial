@@ -454,6 +454,7 @@ export class MeshPipeline3D extends System {
           { buffer: gpuData.uvBuffer },
           { buffer: gpuData.uv1Buffer },
           { buffer: gpuData.tangentBuffer },
+          { buffer: gpuData.colorBuffer },
         ],
         gpuData.indexBuffer ? { buffer: gpuData.indexBuffer } : null,
       );
@@ -788,6 +789,7 @@ export class MeshPipeline3D extends System {
                   { buffer: gpu.uvBuffer },
                   { buffer: gpu.normalBuffer },
                   { buffer: gpu.uv1Buffer },
+                  { buffer: gpu.colorBuffer },
                 ],
                 gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
               );
@@ -901,6 +903,13 @@ export class MeshPipeline3D extends System {
               { format: Format.F32_RGBA, offset: 0, shaderLocation: 4 },
             ],
           },
+          {
+            arrayStride: 4 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RGBA, offset: 0, shaderLocation: 5 },
+            ],
+          },
         ],
         indexBufferFormat: Format.U32_R,
         program,
@@ -978,6 +987,13 @@ export class MeshPipeline3D extends System {
             stepMode: VertexStepMode.VERTEX,
             attributes: [
               { format: Format.F32_RG, offset: 0, shaderLocation: 3 },
+            ],
+          },
+          {
+            arrayStride: 4 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RGBA, offset: 0, shaderLocation: 4 },
             ],
           },
         ],

@@ -161,6 +161,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
     clearMesh3DNodeParts(source);
     Object.assign(meshEntity.write(Mesh3D), emptyMesh3DGeometry());
     meshEntity.write(Mesh3D).tangents = null;
+    meshEntity.write(Mesh3D).colors = null;
     return true;
   }
 
@@ -179,6 +180,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
   meshEntity.write(Mesh3D).uvs = data.uvs ?? null;
   meshEntity.write(Mesh3D).uvs1 = data.uvs1 ?? null;
   meshEntity.write(Mesh3D).tangents = data.tangents ?? null;
+  meshEntity.write(Mesh3D).colors = data.colors ?? null;
   return true;
 }
 
