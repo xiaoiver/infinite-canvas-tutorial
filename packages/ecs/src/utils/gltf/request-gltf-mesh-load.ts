@@ -99,10 +99,13 @@ export function requestGltfMeshLoad(source: Entity): void {
           baseColor: primary.baseColor,
           map: primary.map,
           mapTexCoord: primary.mapTexCoord,
+          mapTextureTransform: primary.mapTextureTransform,
           metallic: primary.metallic,
           roughness: primary.roughness,
           metallicRoughnessMap: primary.metallicRoughnessMap,
           metallicRoughnessTexCoord: primary.metallicRoughnessTexCoord,
+          metallicRoughnessTextureTransform:
+            primary.metallicRoughnessTextureTransform,
           alphaMode: primary.alphaMode,
           alphaCutoff: primary.alphaCutoff,
         });

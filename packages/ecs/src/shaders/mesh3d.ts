@@ -59,6 +59,9 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_EnvironmentIrradiance[9];
   vec4 u_ShadowReceive; // x: shadows, y: alpha mode, z: cutoff, w: PBR map ready
   vec4 u_TextureCoords; // x: base-color UV set, y: PBR UV set
+  vec4 u_MapUvTransform; // xy: offset, zw: scale
+  vec4 u_PbrUvTransform;
+  vec4 u_UvRotations; // x: base-color, y: PBR
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -145,6 +148,9 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_EnvironmentIrradiance[9];
   vec4 u_ShadowReceive; // x: shadows, y: alpha mode, z: cutoff, w: PBR map ready
   vec4 u_TextureCoords; // x: base-color UV set, y: PBR UV set
+  vec4 u_MapUvTransform;
+  vec4 u_PbrUvTransform;
+  vec4 u_UvRotations;
 };
 
 uniform sampler2D u_Map;
@@ -491,6 +497,14 @@ vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
   );
 }
 
+vec2 transformUv(vec2 uv, vec4 transform, float rotation) {
+  vec2 scaled = uv * transform.zw;
+  float c = cos(rotation);
+  float s = sin(rotation);
+  return transform.xy + vec2(c * scaled.x - s * scaled.y,
+                             s * scaled.x + c * scaled.y);
+}
+
 void main() {
   vec3 shadowNormal = normalize(v_Normal);
   vec3 normal = shadowNormal;
@@ -508,7 +522,8 @@ void main() {
   }
   vec3 albedo = srgbToLinear(baseColor.rgb);
   if (u_MaterialFlags.x > 0.5) {
-    vec2 mapUv = u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv;
+    vec2 mapUv = transformUv(u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv,
+                             u_MapUvTransform, u_UvRotations.x);
     vec4 texel = texture(SAMPLER_2D(u_Map), mapUv);
     albedo *= srgbToLinear(texel.rgb);
     baseColor.a *= texel.a;
@@ -520,7 +535,8 @@ void main() {
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
   float roughnessFactor = u_PbrParams.y;
   if (u_ShadowReceive.w > 0.5) {
-    vec2 pbrUv = u_TextureCoords.y > 0.5 ? v_Uv1 : v_Uv;
+    vec2 pbrUv = transformUv(u_TextureCoords.y > 0.5 ? v_Uv1 : v_Uv,
+                             u_PbrUvTransform, u_UvRotations.y);
     vec4 pbrTexel = texture(SAMPLER_2D(u_MetallicRoughnessMap), pbrUv);
     metallic *= pbrTexel.b;
     roughnessFactor *= pbrTexel.g;

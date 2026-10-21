@@ -3202,8 +3202,11 @@ export class API {
           alphaCutoff: surface.alphaCutoff,
           map: surface.map,
           mapTexCoord: surface.mapTexCoord,
+          mapTextureTransform: surface.mapTextureTransform,
           metallicRoughnessMap: surface.metallicRoughnessMap,
           metallicRoughnessTexCoord: surface.metallicRoughnessTexCoord,
+          metallicRoughnessTextureTransform:
+            surface.metallicRoughnessTextureTransform,
         };
         const pose = part.read(Transform3D);
         const transform = {

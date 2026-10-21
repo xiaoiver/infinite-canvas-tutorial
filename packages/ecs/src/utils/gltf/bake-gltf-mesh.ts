@@ -4,16 +4,50 @@ import { readAccessor, type GltfContainer } from './accessors';
 import { computeVertexNormals } from './compute-normals';
 import { normalizeMeshBoundsInPlace } from './normalize-bounds';
 import { resolveGltfAssetUrl } from './resolve-gltf-url';
-import type { Material3DAlphaMode } from '../../components/geometry3d/Material3D';
+import type {
+  Material3DAlphaMode,
+  Material3DTextureTransform,
+} from '../../components/geometry3d/Material3D';
+
+type GltfTextureInfo = {
+  index?: number;
+  texCoord?: number;
+  extensions?: {
+    KHR_texture_transform?: Material3DTextureTransform & { texCoord?: number };
+  };
+};
+
+function textureCoord(info: GltfTextureInfo | undefined): number {
+  return (
+    info?.extensions?.KHR_texture_transform?.texCoord ?? info?.texCoord ?? 0
+  );
+}
+
+function textureTransform(
+  info: GltfTextureInfo | undefined,
+): Material3DTextureTransform | null {
+  const extension = info?.extensions?.KHR_texture_transform;
+  if (!extension) return null;
+  const { offset = [0, 0], scale = [1, 1], rotation = 0 } = extension;
+  if (
+    offset.length !== 2 ||
+    scale.length !== 2 ||
+    ![...offset, ...scale, rotation].every(Number.isFinite)
+  )
+    return null;
+  return { offset: [...offset], scale: [...scale], rotation };
+}
 
 export type GltfMeshBakeResult = Mesh3DGeometryData & {
   baseColor: [number, number, number, number];
   /** Resolved base-color texture URL from glTF materials, if any. */
   map: string | null;
   mapTexCoord: 0 | 1;
+  mapTextureTransform: Material3DTextureTransform | null;
   /** Resolved glTF metallic-roughness texture URL, if any. */
   metallicRoughnessMap: string | null;
   metallicRoughnessTexCoord: 0 | 1;
+  metallicRoughnessTextureTransform: Material3DTextureTransform | null;
   metallic: number;
   roughness: number;
   alphaMode: Material3DAlphaMode;
@@ -52,8 +86,8 @@ type GltfJson = GltfContainer['json'] & {
     alphaCutoff?: number;
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
-      baseColorTexture?: { index?: number; texCoord?: number };
-      metallicRoughnessTexture?: { index?: number; texCoord?: number };
+      baseColorTexture?: GltfTextureInfo;
+      metallicRoughnessTexture?: GltfTextureInfo;
       metallicFactor?: number;
       roughnessFactor?: number;
     };
@@ -65,15 +99,10 @@ type GltfJson = GltfContainer['json'] & {
 function readMaterialTextureUrl(
   gltf: GltfContainer,
   json: GltfJson,
-  textureInfo: { index?: number; texCoord?: number } | undefined,
+  textureInfo: GltfTextureInfo | undefined,
   baseUrl?: string,
 ): string | null {
-  if (
-    textureInfo?.texCoord !== undefined &&
-    textureInfo.texCoord !== 0 &&
-    textureInfo.texCoord !== 1
-  )
-    return null;
+  if (![0, 1].includes(textureCoord(textureInfo))) return null;
   const texIndex = textureInfo?.index;
   if (texIndex == null) {
     return null;
@@ -135,6 +164,8 @@ type ImportedMaterial = Pick<
   | 'metallicRoughnessMap'
   | 'mapTexCoord'
   | 'metallicRoughnessTexCoord'
+  | 'mapTextureTransform'
+  | 'metallicRoughnessTextureTransform'
   | 'metallic'
   | 'roughness'
   | 'alphaMode'
@@ -157,7 +188,8 @@ function readMaterial(
   return {
     baseColor: readMaterialBaseColor(json, materialIndex),
     map: readMaterialTextureUrl(gltf, json, factor?.baseColorTexture, baseUrl),
-    mapTexCoord: factor?.baseColorTexture?.texCoord === 1 ? 1 : 0,
+    mapTexCoord: textureCoord(factor?.baseColorTexture) === 1 ? 1 : 0,
+    mapTextureTransform: textureTransform(factor?.baseColorTexture),
     metallicRoughnessMap: readMaterialTextureUrl(
       gltf,
       json,
@@ -165,7 +197,10 @@ function readMaterial(
       baseUrl,
     ),
     metallicRoughnessTexCoord:
-      factor?.metallicRoughnessTexture?.texCoord === 1 ? 1 : 0,
+      textureCoord(factor?.metallicRoughnessTexture) === 1 ? 1 : 0,
+    metallicRoughnessTextureTransform: textureTransform(
+      factor?.metallicRoughnessTexture,
+    ),
     metallic: unitFactor(factor?.metallicFactor),
     roughness: unitFactor(factor?.roughnessFactor),
     alphaMode:
@@ -449,8 +484,10 @@ export function bakeGltfMesh(
       baseColor: [1, 1, 1, 1] as [number, number, number, number],
       map: null,
       mapTexCoord: 0,
+      mapTextureTransform: null,
       metallicRoughnessMap: null,
       metallicRoughnessTexCoord: 0,
+      metallicRoughnessTextureTransform: null,
       metallic: 1,
       roughness: 1,
       alphaMode: 'opaque',

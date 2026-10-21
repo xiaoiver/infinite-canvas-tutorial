@@ -162,4 +162,21 @@ test('base-color texture selects the second UV set for rendered mesh', async ({
   // The fixture plane has no TEXCOORD_1, so its fallback UV is (0, 0), the
   // opaque red texel. This probes the selector without altering the fixture.
   await expect.poll(redAtLeft).toBeGreaterThan(100);
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    const mesh = api.getNodeById('alpha-mask');
+    if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+    api.updateNode(
+      mesh,
+      {
+        material3d: {
+          ...mesh.material3d,
+          mapTextureTransform: { offset: [0.75, 0] },
+        },
+      },
+      false,
+    );
+    await window.gizmoTest.settle();
+  });
+  await expect.poll(redAtLeft).toBeLessThan(10);
 });
