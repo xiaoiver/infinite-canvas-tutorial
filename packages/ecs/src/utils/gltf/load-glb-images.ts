@@ -19,7 +19,10 @@ function imageMime(bytes: Uint8Array): GlbImageData['mimeType'] | null {
 
 async function rasterizeImage(blob: Blob): Promise<GlbImageData> {
   let bitmap: ImageBitmap | HTMLImageElement;
-  if (/^image\/svg\+xml(?:;|$)/i.test(blob.type) && typeof Image !== 'undefined') {
+  if (
+    /^image\/svg\+xml(?:;|$)/i.test(blob.type) &&
+    typeof Image !== 'undefined'
+  ) {
     const url = URL.createObjectURL(blob);
     try {
       bitmap = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -84,7 +87,11 @@ export async function loadGlbImages(
   const urls = [
     ...new Set(
       sources.flatMap(({ mesh, material }) =>
-        mesh.uvs && material.map ? [material.map] : [],
+        mesh.uvs
+          ? [material.map, material.metallicRoughnessMap].filter(
+              (url): url is string => !!url,
+            )
+          : [],
       ),
     ),
   ];

@@ -81,24 +81,28 @@ it('normalizes glTF scene primitives together so their relative placement surviv
 
 it('reads and clamps glTF PBR factors for each primitive', () => {
   const model = gltfScenes();
-  const materials = (
-    model.json as unknown as {
-      materials: {
-        pbrMetallicRoughness: {
-          metallicFactor?: number;
-          roughnessFactor?: number;
-        };
-      }[];
-    }
-  ).materials;
+  const json = model.json as unknown as {
+    materials: {
+      pbrMetallicRoughness: {
+        metallicFactor?: number;
+        roughnessFactor?: number;
+        metallicRoughnessTexture?: { index: number; texCoord?: number };
+      };
+    }[];
+    textures: { source: number }[];
+    images: { uri: string }[];
+    scenes: { nodes: number[] }[];
+  };
+  const materials = json.materials;
   materials[0].pbrMetallicRoughness.metallicFactor = 0.25;
   materials[0].pbrMetallicRoughness.roughnessFactor = 0.7;
   materials[1].pbrMetallicRoughness.metallicFactor = -1;
   materials[1].pbrMetallicRoughness.roughnessFactor = 2;
-  const scenes = (model.json as unknown as { scenes: { nodes: number[] }[] })
-    .scenes;
-  scenes[0].nodes.push(1);
-  const mesh = bakeGltfMesh(model);
+  json.images.push({ uri: 'surface.png' });
+  json.textures.push({ source: 1 });
+  materials[0].pbrMetallicRoughness.metallicRoughnessTexture = { index: 1 };
+  json.scenes[0].nodes.push(1);
+  const mesh = bakeGltfMesh(model, { baseUrl: '/data/model.gltf' });
   expect([mesh.metallic, mesh.roughness]).toEqual([0.25, 0.7]);
   expect(
     mesh.parts.map(({ metallic, roughness }) => [metallic, roughness]),
@@ -106,4 +110,8 @@ it('reads and clamps glTF PBR factors for each primitive', () => {
     [0.25, 0.7],
     [0, 1],
   ]);
+  expect(mesh.parts[0].metallicRoughnessMap).toBe('/data/surface.png');
+  expect(mesh.parts[1].metallicRoughnessMap).toBeNull();
+  materials[0].pbrMetallicRoughness.metallicRoughnessTexture!.texCoord = 1;
+  expect(bakeGltfMesh(model).metallicRoughnessMap).toBeNull();
 });

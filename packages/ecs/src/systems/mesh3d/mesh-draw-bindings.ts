@@ -23,6 +23,7 @@ export class MeshDrawBindings {
     sceneBuffer: Buffer,
     sampler: Sampler,
     baseColor: Texture,
+    metallicRoughness: Texture,
     specular: Texture,
     bump: Texture,
     environment: Texture,
@@ -38,6 +39,7 @@ export class MeshDrawBindings {
       sceneBuffer,
       sampler,
       baseColor,
+      metallicRoughness,
       specular,
       bump,
       environment,
@@ -59,6 +61,7 @@ export class MeshDrawBindings {
       ],
       samplerBindings: [
         { texture: baseColor, sampler },
+        { texture: metallicRoughness, sampler },
         { texture: specular, sampler },
         { texture: bump, sampler },
         { texture: environment, sampler },

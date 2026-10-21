@@ -57,7 +57,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_PbrParams;
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
-  vec4 u_ShadowReceive; // x: receives shadows, y: alpha mode, z: cutoff
+  vec4 u_ShadowReceive; // x: shadows, y: alpha mode, z: cutoff, w: PBR map ready
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -139,10 +139,11 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_PbrParams;
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
-  vec4 u_ShadowReceive; // x: receives shadows, y: alpha mode, z: cutoff
+  vec4 u_ShadowReceive; // x: shadows, y: alpha mode, z: cutoff, w: PBR map ready
 };
 
 uniform sampler2D u_Map;
+uniform sampler2D u_MetallicRoughnessMap;
 uniform sampler2D u_SpecularMap;
 uniform sampler2D u_BumpMap;
 uniform sampler2D u_EnvironmentMap;
@@ -510,10 +511,16 @@ void main() {
   if (u_ShadowReceive.y < 1.5) baseColor.a = 1.0;
 
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
+  float roughnessFactor = u_PbrParams.y;
+  if (u_ShadowReceive.w > 0.5) {
+    vec4 pbrTexel = texture(SAMPLER_2D(u_MetallicRoughnessMap), v_Uv);
+    metallic *= pbrTexel.b;
+    roughnessFactor *= pbrTexel.g;
+  }
   // Clamp roughness to a small minimum (0.04): at roughness 0 the GGX lobe
   // collapses to a delta, producing fireflies / division instabilities in the
   // analytic specular term, so we keep a tiny floor as is common in PBR shaders.
-  float roughness = clamp(u_PbrParams.y, 0.04, 1.0);
+  float roughness = clamp(roughnessFactor, 0.04, 1.0);
 
   // Optional specular map modulates the microfacet specular response.
   float specularScale = 1.0;

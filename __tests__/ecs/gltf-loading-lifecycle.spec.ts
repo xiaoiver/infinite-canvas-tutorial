@@ -208,8 +208,11 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
         baseColorFactor: number[];
         metallicFactor?: number;
         roughnessFactor?: number;
+        metallicRoughnessTexture?: { index: number };
       };
     }[];
+    images: { uri: string }[];
+    textures: { source: number }[];
   };
   json.materials[0].alphaMode = 'MASK';
   json.materials[0].pbrMetallicRoughness.baseColorFactor[0] = 1;
@@ -218,6 +221,14 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   json.materials[1].alphaMode = 'BLEND';
   json.materials[1].pbrMetallicRoughness.metallicFactor = 0.3;
   json.materials[1].pbrMetallicRoughness.roughnessFactor = 0.6;
+  json.images.push({ uri: 'primary-pbr.png' }, { uri: 'part-pbr.png' });
+  json.textures.push({ source: 1 }, { source: 2 });
+  json.materials[0].pbrMetallicRoughness.metallicRoughnessTexture = {
+    index: 1,
+  };
+  json.materials[1].pbrMetallicRoughness.metallicRoughnessTexture = {
+    index: 2,
+  };
   const indices = new Uint8Array([0, 1, 2]);
   json.bufferViews.push({
     buffer: model.buffers.length,
@@ -242,11 +253,17 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   expect(companion().read(Material3D).alphaMode).toBe('mask');
   expect(companion().read(Material3D).metallic).toBeCloseTo(0.8);
   expect(companion().read(Material3D).roughness).toBeCloseTo(0.2);
+  expect(companion().read(Material3D).metallicRoughnessMap).toBe(
+    'https://models.example/primary-pbr.png',
+  );
   const [part] = getMesh3DNodeParts(source());
   expect(part.read(Material3D).baseColor).toEqual([0.8, 0.6, 0.4, 1]);
   expect(part.read(Material3D).alphaMode).toBe('blend');
   expect(part.read(Material3D).metallic).toBeCloseTo(0.3);
   expect(part.read(Material3D).roughness).toBeCloseTo(0.6);
+  expect(part.read(Material3D).metallicRoughnessMap).toBe(
+    'https://models.example/part-pbr.png',
+  );
   expect(part.read(Mesh3D).positions).toEqual(
     companion().read(Mesh3D).positions,
   );
@@ -284,6 +301,16 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   await edit({ material3d: undefined });
   expect(companion().read(Material3D).metallic).toBeCloseTo(0.8);
   expect(part.read(Material3D).roughness).toBeCloseTo(0.6);
+  await edit({ material3d: { metallicRoughnessMap: null } });
+  expect(companion().read(Material3D).metallicRoughnessMap).toBeNull();
+  expect(part.read(Material3D).metallicRoughnessMap).toBeNull();
+  await edit({ material3d: undefined });
+  expect(companion().read(Material3D).metallicRoughnessMap).toBe(
+    'https://models.example/primary-pbr.png',
+  );
+  expect(part.read(Material3D).metallicRoughnessMap).toBe(
+    'https://models.example/part-pbr.png',
+  );
   await edit({ material3d: { baseColor: '#ffffff', map: null } });
   expect(companion().read(Material3D).baseColor).toEqual([1, 1, 1, 1]);
   expect(part.read(Material3D).baseColor).toEqual([1, 1, 1, 1]);

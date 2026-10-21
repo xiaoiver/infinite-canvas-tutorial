@@ -367,6 +367,14 @@ export class MeshPipeline3D extends System {
       const material = meshEntity.read(Material3D);
       const { texture: baseColorTexture, ready: mapReady } =
         this.resolveMaterialTexture(state, device, material.map);
+      const {
+        texture: metallicRoughnessTexture,
+        ready: metallicRoughnessMapReady,
+      } = this.resolveMaterialTexture(
+        state,
+        device,
+        material.metallicRoughnessMap,
+      );
       const { texture: specularTexture, ready: specularMapReady } =
         this.resolveMaterialTexture(state, device, material.specularMap);
       const { texture: bumpTexture, ready: bumpMapReady } =
@@ -387,6 +395,7 @@ export class MeshPipeline3D extends System {
         meshEntity.read(Material3D),
         {
           mapReady,
+          metallicRoughnessMapReady,
           specularMapReady,
           bumpMapReady,
           environmentMapReady,
@@ -404,6 +413,7 @@ export class MeshPipeline3D extends System {
         state.sceneUniformBuffer,
         state.sampler,
         baseColorTexture,
+        metallicRoughnessTexture,
         specularTexture,
         bumpTexture,
         environmentTexture,

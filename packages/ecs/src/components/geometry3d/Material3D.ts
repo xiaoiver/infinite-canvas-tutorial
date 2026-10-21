@@ -57,6 +57,9 @@ export class Material3D {
    */
   @field.float32 declare roughness: number;
 
+  /** glTF metallic-roughness texture: green scales roughness, blue scales metallic. */
+  @field.object declare metallicRoughnessMap: string | null;
+
   /**
    * Optional base-color texture (image URL or data URL). Sampled with the
    * mesh UV coordinates and multiplied by {@link baseColor}.
@@ -99,6 +102,7 @@ export class Material3D {
     this.shininess ??= 32;
     this.metallic ??= 0;
     this.roughness ??= 1;
+    this.metallicRoughnessMap ??= null;
     this.map ??= null;
     this.alphaMode ??= 'opaque';
     this.alphaCutoff ??= 0.5;

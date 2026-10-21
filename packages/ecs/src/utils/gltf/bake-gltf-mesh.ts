@@ -10,6 +10,8 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   baseColor: [number, number, number, number];
   /** Resolved base-color texture URL from glTF materials, if any. */
   map: string | null;
+  /** Resolved glTF metallic-roughness texture URL, if any. */
+  metallicRoughnessMap: string | null;
   metallic: number;
   roughness: number;
   alphaMode: Material3DAlphaMode;
@@ -47,7 +49,8 @@ type GltfJson = GltfContainer['json'] & {
     alphaCutoff?: number;
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
-      baseColorTexture?: { index?: number };
+      baseColorTexture?: { index?: number; texCoord?: number };
+      metallicRoughnessTexture?: { index?: number; texCoord?: number };
       metallicFactor?: number;
       roughnessFactor?: number;
     };
@@ -56,15 +59,16 @@ type GltfJson = GltfContainer['json'] & {
   images?: { uri?: string; bufferView?: number; mimeType?: string }[];
 };
 
-function readMaterialMapUrl(
+function readMaterialTextureUrl(
   gltf: GltfContainer,
   json: GltfJson,
-  materialIndex: number,
+  textureInfo: { index?: number; texCoord?: number } | undefined,
   baseUrl?: string,
 ): string | null {
-  const texIndex =
-    json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorTexture
-      ?.index;
+  // The baked mesh carries only TEXCOORD_0. Sampling a different UV set would
+  // silently render the wrong surface, so leave that texture unresolved.
+  if ((textureInfo?.texCoord ?? 0) !== 0) return null;
+  const texIndex = textureInfo?.index;
   if (texIndex == null) {
     return null;
   }
@@ -120,7 +124,13 @@ function readMaterialBaseColor(
 
 type ImportedMaterial = Pick<
   GltfMeshBakeResult,
-  'baseColor' | 'map' | 'metallic' | 'roughness' | 'alphaMode' | 'alphaCutoff'
+  | 'baseColor'
+  | 'map'
+  | 'metallicRoughnessMap'
+  | 'metallic'
+  | 'roughness'
+  | 'alphaMode'
+  | 'alphaCutoff'
 >;
 
 function readMaterial(
@@ -138,7 +148,13 @@ function readMaterial(
       : 1;
   return {
     baseColor: readMaterialBaseColor(json, materialIndex),
-    map: readMaterialMapUrl(gltf, json, materialIndex, baseUrl),
+    map: readMaterialTextureUrl(gltf, json, factor?.baseColorTexture, baseUrl),
+    metallicRoughnessMap: readMaterialTextureUrl(
+      gltf,
+      json,
+      factor?.metallicRoughnessTexture,
+      baseUrl,
+    ),
     metallic: unitFactor(factor?.metallicFactor),
     roughness: unitFactor(factor?.roughnessFactor),
     alphaMode:
@@ -411,6 +427,7 @@ export function bakeGltfMesh(
     value: {
       baseColor: [1, 1, 1, 1] as [number, number, number, number],
       map: null,
+      metallicRoughnessMap: null,
       metallic: 1,
       roughness: 1,
       alphaMode: 'opaque',

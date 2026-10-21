@@ -455,6 +455,8 @@ export type Material3DWire = {
   metallic?: number;
   /** Perceptual roughness 0..1 (PBR metallic-roughness workflow). */
   roughness?: number;
+  /** glTF metallic-roughness texture (green = roughness, blue = metallic). */
+  metallicRoughnessMap?: string | null;
   /** Base-color texture (image URL or data URL). */
   map?: string | null;
   /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */

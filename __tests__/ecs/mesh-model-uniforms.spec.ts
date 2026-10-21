@@ -9,6 +9,7 @@ import {
 
 const ready = {
   mapReady: false,
+  metallicRoughnessMapReady: false,
   specularMapReady: false,
   bumpMapReady: false,
   environmentMapReady: false,
@@ -89,6 +90,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   });
   const textures = {
     mapReady: true,
+    metallicRoughnessMapReady: true,
     specularMapReady: true,
     bumpMapReady: true,
     environmentMapReady: true,
@@ -104,6 +106,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
     [1, 1, 1, 2, 0.3, 0.8, 0, 1].map(Math.fround),
   );
   expect(data[60]).toBeCloseTo(0.7);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 1]).toBe(1);
   expect(legacy.u_MaterialFlags).toEqual(data.slice(48, 52));
   uniforms.update(transform, material, textures);
   expect(setSubData).toHaveBeenCalledTimes(2);
@@ -111,6 +114,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   expect([...data.slice(48, 51)]).toEqual([0, 0, 0]);
   expect(data[55]).toBe(0);
   expect(data[60]).toBe(0);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 1]).toBe(0);
   expect(setSubData).toHaveBeenCalledTimes(3);
   expect(invert).toHaveBeenCalledTimes(1);
 });
