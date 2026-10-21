@@ -180,3 +180,44 @@ test('base-color texture selects the second UV set for rendered mesh', async ({
   });
   await expect.poll(redAtLeft).toBeLessThan(10);
 });
+
+test('emissive color and texture light an otherwise black mesh', async ({
+  page,
+}) => {
+  const red = new PNG({ width: 1, height: 1 });
+  red.data.set([255, 0, 0, 255]);
+  const redUrl = `data:image/png;base64,${PNG.sync
+    .write(red)
+    .toString('base64')}`;
+  await page.goto('/gizmo.html?alpha');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const sample = async () =>
+    pixel(PNG.sync.read(await page.locator('#canvas').screenshot()), 75, 40);
+  const update = async (emissiveMap: string | null) => {
+    await page.evaluate(async (url) => {
+      const api = window.gizmoTest.api();
+      const mesh = api.getNodeById('alpha-mask');
+      if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+      api.updateNode(
+        mesh,
+        {
+          material3d: {
+            ...mesh.material3d,
+            baseColor: '#000000',
+            map: null,
+            alphaMode: 'opaque',
+            ambient: 0,
+            emissiveFactor: [0, 1, 0],
+            emissiveMap: url,
+          },
+        },
+        false,
+      );
+      await window.gizmoTest.settle();
+    }, emissiveMap);
+  };
+  await update(null);
+  await expect.poll(async () => (await sample())[1]).toBeGreaterThan(100);
+  await update(redUrl);
+  await expect.poll(async () => (await sample())[1]).toBeLessThan(30);
+});

@@ -84,6 +84,17 @@ export class Material3D {
 
   @field.object declare mapTextureTransform: Material3DTextureTransform | null;
 
+  /** Linear RGB emitted by the surface, independent of scene lights. */
+  @field.object declare emissiveFactor: [number, number, number];
+
+  /** Optional glTF emissive texture, sampled as sRGB and multiplied by emissiveFactor. */
+  @field.object declare emissiveMap: string | null;
+
+  @field.float32 declare emissiveTexCoord: number;
+
+  @field.object
+  declare emissiveTextureTransform: Material3DTextureTransform | null;
+
   /** Opaque, alpha-tested cutout, or sorted alpha blending. */
   @field.object declare alphaMode: Material3DAlphaMode;
 
@@ -126,6 +137,10 @@ export class Material3D {
     this.map ??= null;
     this.mapTexCoord ??= 0;
     this.mapTextureTransform ??= null;
+    this.emissiveFactor ??= [0, 0, 0];
+    this.emissiveMap ??= null;
+    this.emissiveTexCoord ??= 0;
+    this.emissiveTextureTransform ??= null;
     this.alphaMode ??= 'opaque';
     this.alphaCutoff ??= 0.5;
     this.specularMap ??= null;

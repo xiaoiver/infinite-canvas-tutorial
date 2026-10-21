@@ -3207,6 +3207,10 @@ export class API {
           metallicRoughnessTexCoord: surface.metallicRoughnessTexCoord,
           metallicRoughnessTextureTransform:
             surface.metallicRoughnessTextureTransform,
+          emissiveFactor: surface.emissiveFactor,
+          emissiveMap: surface.emissiveMap,
+          emissiveTexCoord: surface.emissiveTexCoord,
+          emissiveTextureTransform: surface.emissiveTextureTransform,
         };
         const pose = part.read(Transform3D);
         const transform = {

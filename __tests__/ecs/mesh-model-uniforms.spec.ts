@@ -6,17 +6,19 @@ import {
   MESH_MODEL_UNIFORM_FLOATS,
   MeshModelUniforms,
 } from '../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
+import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../packages/ecs/src/utils/environment-irradiance';
 
 const ready = {
   mapReady: false,
   metallicRoughnessMapReady: false,
+  emissiveMapReady: false,
   specularMapReady: false,
   bumpMapReady: false,
   environmentMapReady: false,
   environmentIrradiance: null,
 };
-const shadowOffset = MESH_MODEL_UNIFORM_FLOATS - 20;
-const textureCoordOffset = MESH_MODEL_UNIFORM_FLOATS - 16;
+const shadowOffset = 60 + ENVIRONMENT_IRRADIANCE_FLOATS;
+const textureCoordOffset = shadowOffset + 4;
 function setup() {
   const bytes = new Uint8Array(MESH_MODEL_UNIFORM_FLOATS * 4);
   const setSubData = jest.fn((offset: number, data: Uint8Array) =>
@@ -93,6 +95,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   const textures = {
     mapReady: true,
     metallicRoughnessMapReady: true,
+    emissiveMapReady: true,
     specularMapReady: true,
     bumpMapReady: true,
     environmentMapReady: true,
@@ -222,6 +225,30 @@ it('uploads distinct texture transforms and refreshes mask UVs before the shadow
     ...data.slice(textureCoordOffset + 4, textureCoordOffset + 8),
   ]).toEqual([0.5, 0.25, 1, 1]);
   expect(data[textureCoordOffset + 12]).toBe(0);
+});
+
+it('uploads emissive color, texture readiness and its independent UV transform', () => {
+  const { uniforms, transform, material, data, setSubData } = setup();
+  material.emissiveFactor = [0.2, 0.4, 0.6];
+  material.emissiveTexCoord = 1;
+  material.emissiveTextureTransform = {
+    offset: [0.25, 0.5],
+    scale: [2, 0.5],
+    rotation: 0.3,
+  };
+  const legacy = uniforms.update(transform, material, {
+    ...ready,
+    emissiveMapReady: true,
+  });
+  expect(legacy.u_EmissiveFactor).toEqual(Float32Array.of(0.2, 0.4, 0.6, 1));
+  expect(legacy.u_EmissiveUvTransform).toEqual(
+    Float32Array.of(0.25, 0.5, 2, 0.5),
+  );
+  expect(legacy.u_EmissiveParams).toEqual(Float32Array.of(1, 0.3, 0, 0));
+  uniforms.update(transform, material, { ...ready, emissiveMapReady: true });
+  expect(setSubData).toHaveBeenCalledTimes(1);
+  uniforms.update(transform, material, ready);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 9]).toBe(0);
 });
 
 it('retries failed uploads without rebuilding unchanged matrices', () => {

@@ -379,6 +379,8 @@ export class MeshPipeline3D extends System {
         this.resolveMaterialTexture(state, device, material.specularMap);
       const { texture: bumpTexture, ready: bumpMapReady } =
         this.resolveMaterialTexture(state, device, material.bumpMap);
+      const { texture: emissiveTexture, ready: emissiveMapReady } =
+        this.resolveMaterialTexture(state, device, material.emissiveMap);
       const {
         texture: environmentTexture,
         ready: environmentMapReady,
@@ -398,6 +400,7 @@ export class MeshPipeline3D extends System {
           metallicRoughnessMapReady,
           specularMapReady,
           bumpMapReady,
+          emissiveMapReady,
           environmentMapReady,
           environmentIrradiance,
         },
@@ -424,6 +427,7 @@ export class MeshPipeline3D extends System {
           ? this.resolveEnvironmentBrdf(state)
           : state.whiteTexture,
         state.brdfSampler,
+        emissiveTexture,
       );
       renderPass.setBindings(bindings);
       renderPass.setVertexInput(

@@ -30,6 +30,8 @@ export function syncMaterial3D(
     const value = patch[key];
     if (key === 'baseColor')
       return !sameNumbers(current.baseColor, patch.baseColor!);
+    if (key === 'emissiveFactor')
+      return !sameNumbers(current.emissiveFactor, patch.emissiveFactor!);
     if (key === 'sideColor')
       return current.sideColor === null
         ? patch.sideColor !== null

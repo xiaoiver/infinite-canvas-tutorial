@@ -68,3 +68,5 @@ api.updateNodes([
 基础颜色贴图和金属度/粗糙度贴图可以分别使用 `TEXCOORD_0` 或 `TEXCOORD_1`，导出 GLB 时会保留各自的 glTF `texCoord` 选择。自定义贴图可通过 `material3d.mapTexCoord` 或 `material3d.metallicRoughnessTexCoord` 指定 `0` 或 `1`。导入时会应用 `KHR_texture_transform` 的偏移、缩放、旋转和 UV 集覆盖，导出 GLB 时也会保留。自定义变换可设置 `material3d.mapTextureTransform` 或 `material3d.metallicRoughnessTextureTransform`，例如 `{ offset: [0.25, 0], scale: [0.5, 1], rotation: Math.PI / 4 }`；设置为 `null` 可清除导入的变换。导入时会跳过更高编号的 UV 集。
 
 使用 `await api.exportGlb()` 获取并嵌入基础颜色与金属度/粗糙度贴图。PNG 和 JPEG 保留原始字节；SVG 等可解码格式会栅格化为 PNG。导出的 GLB 再次导入时会保留贴图。贴图 URL 需要允许 CORS 获取。同步的 `api.export({ format: ExportFormat.GLB })` 仍可用于无贴图导出，但不会嵌入贴图。
+
+现在也支持 glTF 发光材质。`material3d.emissiveFactor` 使用线性 RGB，默认值为 `[0, 0, 0]`；`material3d.emissiveMap` 按 sRGB 采样后与该系数相乘。例如 `{ emissiveFactor: [0, 1, 0], emissiveMap: '/glow.png' }` 会在贴图的绿色区域发出绿光。`emissiveTexCoord` 和 `emissiveTextureTransform` 可独立选择、变换其 UV。导出 GLB 时会保留发光系数、贴图、UV 集和变换。

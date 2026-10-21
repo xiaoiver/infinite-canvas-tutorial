@@ -475,6 +475,16 @@ export type Material3DWire = {
     scale?: [number, number];
     rotation?: number;
   } | null;
+  /** Linear RGB emitted by the surface, default [0, 0, 0]. */
+  emissiveFactor?: [number, number, number];
+  /** sRGB emissive texture multiplied by emissiveFactor. */
+  emissiveMap?: string | null;
+  emissiveTexCoord?: 0 | 1;
+  emissiveTextureTransform?: {
+    offset?: [number, number];
+    scale?: [number, number];
+    rotation?: number;
+  } | null;
   /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */
   alphaMode?: 'opaque' | 'mask' | 'blend';
   /** Alpha-test threshold in mask mode; defaults to 0.5. */

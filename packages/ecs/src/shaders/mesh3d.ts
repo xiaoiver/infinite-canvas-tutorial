@@ -62,6 +62,9 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_MapUvTransform; // xy: offset, zw: scale
   vec4 u_PbrUvTransform;
   vec4 u_UvRotations; // x: base-color, y: PBR
+  vec4 u_EmissiveFactor; // rgb: linear emission, w: emissive map ready
+  vec4 u_EmissiveUvTransform;
+  vec4 u_EmissiveParams; // x: UV set, y: rotation
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -151,6 +154,9 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_MapUvTransform;
   vec4 u_PbrUvTransform;
   vec4 u_UvRotations;
+  vec4 u_EmissiveFactor;
+  vec4 u_EmissiveUvTransform;
+  vec4 u_EmissiveParams;
 };
 
 uniform sampler2D u_Map;
@@ -161,6 +167,7 @@ uniform sampler2D u_EnvironmentMap;
 uniform sampler2D u_ShadowMap0;
 uniform sampler2D u_ShadowMap1;
 uniform sampler2D u_EnvironmentBrdf;
+uniform sampler2D u_EmissiveMap;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
@@ -594,7 +601,16 @@ void main() {
     ambient += env * (F0 * brdf.x + brdf.y) * specularScale * u_LightParams.x;
   }
 
-  vec3 result = ambient + Lo;
+  vec3 emission = u_EmissiveFactor.rgb;
+  if (u_EmissiveFactor.w > 0.5) {
+    vec2 emissiveUv = transformUv(
+      u_EmissiveParams.x > 0.5 ? v_Uv1 : v_Uv,
+      u_EmissiveUvTransform,
+      u_EmissiveParams.y
+    );
+    emission *= srgbToLinear(texture(SAMPLER_2D(u_EmissiveMap), emissiveUv).rgb);
+  }
+  vec3 result = ambient + Lo + emission;
   outputColor = vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
 }
 `;

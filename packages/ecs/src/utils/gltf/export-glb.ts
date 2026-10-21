@@ -24,6 +24,10 @@ export interface GlbMeshSource {
         | 'metallicRoughnessMap'
         | 'metallicRoughnessTexCoord'
         | 'metallicRoughnessTextureTransform'
+        | 'emissiveFactor'
+        | 'emissiveMap'
+        | 'emissiveTexCoord'
+        | 'emissiveTextureTransform'
       >
     >;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
@@ -99,6 +103,8 @@ export function exportMeshesToGlb(
     alphaMode: 'OPAQUE' | 'MASK' | 'BLEND';
     alphaCutoff?: number;
     doubleSided: boolean;
+    emissiveFactor?: number[];
+    emissiveTexture?: GlbTextureInfo;
   }[] = [];
   const images: { bufferView: number; mimeType: GlbImageData['mimeType'] }[] =
     [];
@@ -194,6 +200,10 @@ export function exportMeshesToGlb(
       | Material3DTextureTransform
       | null
       | undefined,
+    emissiveFactor: readonly number[] | undefined,
+    emissiveMap: string | null | undefined,
+    emissiveTexCoord: number | undefined,
+    emissiveTextureTransform: Material3DTextureTransform | null | undefined,
   ): number => {
     const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
     const cutoff = alphaCutoff ?? 0.5;
@@ -201,6 +211,12 @@ export function exportMeshesToGlb(
       color.length !== 4 ||
       ![0, 1].includes(mapTexCoord ?? 0) ||
       ![0, 1].includes(metallicRoughnessTexCoord ?? 0) ||
+      ![0, 1].includes(emissiveTexCoord ?? 0) ||
+      (emissiveFactor &&
+        (emissiveFactor.length !== 3 ||
+          emissiveFactor.some(
+            (value) => !Number.isFinite(value) || value < 0 || value > 1,
+          ))) ||
       !['opaque', 'mask', 'blend'].includes(mode) ||
       !Number.isFinite(cutoff) ||
       [...color, metallic, roughness].some(
@@ -210,6 +226,7 @@ export function exportMeshesToGlb(
       throw new Error('Invalid 3D material');
     const textureIndex = textureIndexFor(map);
     const pbrTextureIndex = textureIndexFor(metallicRoughnessMap);
+    const emissiveTextureIndex = textureIndexFor(emissiveMap);
     const textureInfo = (
       index: number,
       texCoord: number | undefined,
@@ -269,6 +286,18 @@ export function exportMeshesToGlb(
           ? { alphaCutoff: Math.max(0, Math.min(1, cutoff)) }
           : {}),
         doubleSided: true,
+        ...(emissiveFactor?.some((value) => value > 0)
+          ? { emissiveFactor: [...emissiveFactor] }
+          : {}),
+        ...(emissiveTextureIndex === undefined
+          ? {}
+          : {
+              emissiveTexture: textureInfo(
+                emissiveTextureIndex,
+                emissiveTexCoord,
+                emissiveTextureTransform,
+              ),
+            }),
       }) - 1
     );
   };
@@ -351,6 +380,13 @@ export function exportMeshesToGlb(
       ),
       source.material.metallicRoughnessTexCoord,
       source.material.metallicRoughnessTextureTransform,
+      source.material.emissiveFactor,
+      textureIfUv(
+        source.material.emissiveMap,
+        source.material.emissiveTexCoord,
+      ),
+      source.material.emissiveTexCoord,
+      source.material.emissiveTextureTransform,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -387,6 +423,13 @@ export function exportMeshesToGlb(
           ),
           source.material.metallicRoughnessTexCoord,
           source.material.metallicRoughnessTextureTransform,
+          source.material.emissiveFactor,
+          textureIfUv(
+            source.material.emissiveMap,
+            source.material.emissiveTexCoord,
+          ),
+          source.material.emissiveTexCoord,
+          source.material.emissiveTextureTransform,
         ),
       );
 

@@ -42,6 +42,10 @@ type ImportedMaterial = Pick<
   | 'mapTexCoord'
   | 'metallicRoughnessTextureTransform'
   | 'mapTextureTransform'
+  | 'emissiveFactor'
+  | 'emissiveMap'
+  | 'emissiveTexCoord'
+  | 'emissiveTextureTransform'
   | 'alphaMode'
   | 'alphaCutoff'
 >;
@@ -328,6 +332,24 @@ export function syncMesh3DNodeCompanionMaterial(
       : node.mapOverridden || node.map
       ? null
       : imported?.mapTextureTransform ?? null,
+    emissiveFactor:
+      node.emissiveFactorOverridden ||
+      node.emissiveFactor.some((value) => value !== 0)
+        ? node.emissiveFactor
+        : imported?.emissiveFactor ?? node.emissiveFactor,
+    emissiveMap: node.emissiveMapOverridden
+      ? node.emissiveMap
+      : node.emissiveMap ?? imported?.emissiveMap ?? null,
+    emissiveTexCoord:
+      node.emissiveTexCoord ??
+      (node.emissiveMapOverridden || node.emissiveMap
+        ? 0
+        : imported?.emissiveTexCoord ?? 0),
+    emissiveTextureTransform: node.emissiveTextureTransformOverridden
+      ? node.emissiveTextureTransform
+      : node.emissiveMapOverridden || node.emissiveMap
+      ? null
+      : imported?.emissiveTextureTransform ?? null,
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,
     specularMap: node.specularMap ?? null,
