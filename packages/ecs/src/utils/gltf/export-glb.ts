@@ -9,7 +9,7 @@ export interface GlbMeshSource {
     Material3D,
     'baseColor' | 'sideColor' | 'metallic' | 'roughness'
   > &
-    Partial<Pick<Material3D, 'alphaMode' | 'alphaCutoff'>>;
+    Partial<Pick<Material3D, 'alphaMode' | 'alphaCutoff' | 'map'>>;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
   name?: string;
 }
@@ -30,6 +30,11 @@ type Primitive = {
   mode: 4;
 };
 
+export type GlbImageData = {
+  bytes: Uint8Array;
+  mimeType: 'image/png' | 'image/jpeg';
+};
+
 const align4 = (length: number) => Math.ceil(length / 4) * 4;
 const linear = (value: number) =>
   value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
@@ -39,9 +44,10 @@ const finite = (values: ArrayLike<number>): boolean => {
   return true;
 };
 
-/** Export untextured 3D meshes to a self-contained GLB in glTF's Y-up space. */
+/** Export 3D meshes to a self-contained GLB in glTF's Y-up space. */
 export function exportMeshesToGlb(
   sources: readonly GlbMeshSource[],
+  imageData: ReadonlyMap<string, GlbImageData> = new Map(),
 ): Uint8Array {
   if (!sources.length) throw new Error('No 3D meshes to export');
 
@@ -50,12 +56,13 @@ export function exportMeshesToGlb(
     buffer: 0;
     byteOffset: number;
     byteLength: number;
-    target: 34962 | 34963;
+    target?: 34962 | 34963;
   }[] = [];
   const accessors: Accessor[] = [];
   const materials: {
     pbrMetallicRoughness: {
       baseColorFactor: number[];
+      baseColorTexture?: { index: number };
       metallicFactor: number;
       roughnessFactor: number;
     };
@@ -63,6 +70,10 @@ export function exportMeshesToGlb(
     alphaCutoff?: number;
     doubleSided: boolean;
   }[] = [];
+  const images: { bufferView: number; mimeType: GlbImageData['mimeType'] }[] =
+    [];
+  const textures: { source: number }[] = [];
+  const textureIndices = new Map<string, number>();
   const meshes: { primitives: Primitive[] }[] = [];
   const nodes: {
     name?: string;
@@ -76,7 +87,7 @@ export function exportMeshesToGlb(
     { name: 'Canvas', rotation: [1, 0, 0, 0], children: [] },
   ];
   let byteLength = 0;
-  const append = (bytes: Uint8Array, target: 34962 | 34963): number => {
+  const append = (bytes: Uint8Array, target?: 34962 | 34963): number => {
     const offset = align4(byteLength);
     if (offset > byteLength) chunks.push(new Uint8Array(offset - byteLength));
     chunks.push(bytes);
@@ -86,7 +97,7 @@ export function exportMeshesToGlb(
         buffer: 0,
         byteOffset: offset,
         byteLength: bytes.length,
-        target,
+        ...(target ? { target } : {}),
       }) - 1
     );
   };
@@ -125,6 +136,7 @@ export function exportMeshesToGlb(
     roughness: number,
     alphaMode: Material3D['alphaMode'] | undefined,
     alphaCutoff: number | undefined,
+    map: string | null | undefined,
   ): number => {
     const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
     const cutoff = alphaCutoff ?? 0.5;
@@ -137,6 +149,22 @@ export function exportMeshesToGlb(
       )
     )
       throw new Error('Invalid 3D material');
+    let textureIndex: number | undefined;
+    if (map) {
+      const image = imageData.get(map);
+      if (image) {
+        textureIndex = textureIndices.get(map);
+        if (textureIndex === undefined) {
+          const imageIndex =
+            images.push({
+              bufferView: append(image.bytes),
+              mimeType: image.mimeType,
+            }) - 1;
+          textureIndex = textures.push({ source: imageIndex }) - 1;
+          textureIndices.set(map, textureIndex);
+        }
+      }
+    }
     return (
       materials.push({
         pbrMetallicRoughness: {
@@ -146,6 +174,9 @@ export function exportMeshesToGlb(
             linear(color[2]),
             color[3],
           ],
+          ...(textureIndex === undefined
+            ? {}
+            : { baseColorTexture: { index: textureIndex } }),
           metallicFactor: metallic,
           roughnessFactor: roughness,
         },
@@ -213,6 +244,7 @@ export function exportMeshesToGlb(
       source.material.roughness,
       source.material.alphaMode,
       source.material.alphaCutoff,
+      uvs ? source.material.map : null,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -240,6 +272,7 @@ export function exportMeshesToGlb(
           source.material.roughness,
           source.material.alphaMode,
           source.material.alphaCutoff,
+          uvs ? source.material.map : null,
         ),
       );
 
@@ -280,6 +313,7 @@ export function exportMeshesToGlb(
     nodes,
     meshes,
     materials,
+    ...(images.length ? { images, textures } : {}),
     buffers: [{ byteLength: bin.length }],
     bufferViews,
     accessors,

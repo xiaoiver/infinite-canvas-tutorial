@@ -55,3 +55,39 @@ test('mesh alpha cutout and camera-depth blend order render in WebGL', async ({
   expect(glassSwapped[2]).toBeGreaterThan(glassSwapped[0]);
   expect(errors).toEqual([]);
 });
+
+test('GLB export rasterizes an SVG cutout texture and keeps its alpha', async ({
+  page,
+}) => {
+  await page.goto('/gizmo.html?alpha');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const bytes = Uint8Array.from(
+    await page.evaluate(async () => {
+      const api = window.gizmoTest.api();
+      await window.gizmoTest.settle();
+      return Array.from(
+        await api.exportGlb({
+          nodes: [api.getNodeById('alpha-mask')],
+          download: false,
+        }),
+      );
+    }),
+  );
+  const view = new DataView(bytes.buffer);
+  const jsonLength = view.getUint32(12, true);
+  const json = JSON.parse(
+    new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)),
+  );
+  expect(json.images).toHaveLength(1);
+  expect(json.images[0].mimeType).toBe('image/png');
+  expect(json.materials[0].alphaMode).toBe('MASK');
+  const imageView = json.bufferViews[json.images[0].bufferView];
+  const imageOffset = 20 + jsonLength + 8 + imageView.byteOffset;
+  const image = PNG.sync.read(
+    Buffer.from(bytes.subarray(imageOffset, imageOffset + imageView.byteLength)),
+  );
+  expect(image.width).toBe(2);
+  expect(image.height).toBe(2);
+  expect(image.data[3]).toBe(255);
+  expect(image.data[7]).toBe(0);
+});

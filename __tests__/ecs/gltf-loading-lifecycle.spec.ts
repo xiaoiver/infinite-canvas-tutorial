@@ -27,6 +27,8 @@ import { deferred, gltfScenes } from '../helpers/gltf';
 jest.mock('@loaders.gl/core', () => ({ load: jest.fn() }));
 const fetchModel = load as jest.MockedFunction<typeof load>;
 const url = 'https://models.example/model.gltf';
+const png =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==';
 const node = (
   patch: Partial<Mesh3DNodeSerializedNode> = {},
 ): Mesh3DNodeSerializedNode => ({
@@ -115,6 +117,26 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
   );
   expect(wire().material3d).toEqual(document.material3d);
   expect(fetchModel).toHaveBeenCalledTimes(1);
+});
+
+it('exports a loaded glTF texture through the asynchronous GLB API', async () => {
+  const model = gltfScenes();
+  (model.json as unknown as { images: { uri: string }[] }).images[0].uri = png;
+  fetchModel.mockResolvedValue(model);
+  await world.reset(api, [node()]);
+  await settle();
+  const glb = await api.exportGlb({ download: false });
+  const jsonLength = new DataView(glb.buffer, glb.byteOffset).getUint32(
+    12,
+    true,
+  );
+  const exported = JSON.parse(
+    new TextDecoder().decode(glb.subarray(20, 20 + jsonLength)),
+  );
+  expect(exported.images).toHaveLength(1);
+  expect(exported.materials[0].pbrMetallicRoughness.baseColorTexture).toEqual({
+    index: 0,
+  });
 });
 
 it.each(['MASK', 'BLEND'] as const)(
