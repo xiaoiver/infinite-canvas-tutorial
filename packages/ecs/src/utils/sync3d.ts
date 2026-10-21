@@ -1,5 +1,6 @@
 import type { Entity } from '@lastolivegames/becsy';
 import { Material3D, Transform3D } from '../components';
+import type { Material3DTextureTransform } from '../components/geometry3d/Material3D';
 
 export function sameNumbers(
   a: readonly number[],
@@ -34,6 +35,19 @@ export function syncMaterial3D(
         ? patch.sideColor !== null
         : patch.sideColor === null ||
             !sameNumbers(current.sideColor, patch.sideColor!);
+    if (
+      key === 'mapTextureTransform' ||
+      key === 'metallicRoughnessTextureTransform'
+    ) {
+      const previous = current[key];
+      const next = value as Material3DTextureTransform | null;
+      if (previous === null || next === null) return previous !== next;
+      return (
+        !sameNumbers(previous.offset ?? [0, 0], next.offset ?? [0, 0]) ||
+        !sameNumbers(previous.scale ?? [1, 1], next.scale ?? [1, 1]) ||
+        (previous.rotation ?? 0) !== (next.rotation ?? 0)
+      );
+    }
     return (
       current[key] !== (typeof value === 'number' ? Math.fround(value) : value)
     );

@@ -48,8 +48,11 @@ export function queueMesh3DCompanion(
   const roughness = node.roughness;
   const metallicRoughnessMap = node.metallicRoughnessMap ?? null;
   const metallicRoughnessTexCoord = node.metallicRoughnessTexCoord ?? 0;
+  const metallicRoughnessTextureTransform =
+    node.metallicRoughnessTextureTransform;
   const map = node.map ?? null;
   const mapTexCoord = node.mapTexCoord ?? 0;
+  const mapTextureTransform = node.mapTextureTransform;
   const alphaMode = node.alphaMode;
   const alphaCutoff = node.alphaCutoff;
   const specularMap = node.specularMap ?? null;
@@ -90,8 +93,10 @@ export function queueMesh3DCompanion(
         roughness,
         metallicRoughnessMap,
         metallicRoughnessTexCoord,
+        metallicRoughnessTextureTransform,
         map,
         mapTexCoord,
+        mapTextureTransform,
         alphaMode,
         alphaCutoff,
         specularMap,

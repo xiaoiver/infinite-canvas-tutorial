@@ -40,6 +40,8 @@ type ImportedMaterial = Pick<
   | 'metallicRoughnessMap'
   | 'metallicRoughnessTexCoord'
   | 'mapTexCoord'
+  | 'metallicRoughnessTextureTransform'
+  | 'mapTextureTransform'
   | 'alphaMode'
   | 'alphaCutoff'
 >;
@@ -311,10 +313,21 @@ export function syncMesh3DNodeCompanionMaterial(
       (node.metallicRoughnessMapOverridden || node.metallicRoughnessMap
         ? 0
         : imported?.metallicRoughnessTexCoord ?? 0),
+    metallicRoughnessTextureTransform:
+      node.metallicRoughnessTextureTransformOverridden
+        ? node.metallicRoughnessTextureTransform
+        : node.metallicRoughnessMapOverridden || node.metallicRoughnessMap
+        ? null
+        : imported?.metallicRoughnessTextureTransform ?? null,
     map: node.mapOverridden ? node.map : node.map ?? imported?.map ?? null,
     mapTexCoord:
       node.mapTexCoord ??
       (node.mapOverridden || node.map ? 0 : imported?.mapTexCoord ?? 0),
+    mapTextureTransform: node.mapTextureTransformOverridden
+      ? node.mapTextureTransform
+      : node.mapOverridden || node.map
+      ? null
+      : imported?.mapTextureTransform ?? null,
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,
     specularMap: node.specularMap ?? null,

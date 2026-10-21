@@ -2,6 +2,13 @@ import { field } from '@lastolivegames/becsy';
 
 export type Material3DAlphaMode = 'opaque' | 'mask' | 'blend';
 
+/** glTF KHR_texture_transform coordinates, applied after UV-set selection. */
+export type Material3DTextureTransform = {
+  offset?: [number, number];
+  scale?: [number, number];
+  rotation?: number;
+};
+
 /**
  * A 3D material component defining surface appearance.
  * @see https://docs.rs/bevy/latest/bevy/pbr/struct.StandardMaterial.html
@@ -63,6 +70,9 @@ export class Material3D {
   /** UV set for the metallic-roughness texture: 0 or 1. */
   @field.float32 declare metallicRoughnessTexCoord: number;
 
+  @field.object
+  declare metallicRoughnessTextureTransform: Material3DTextureTransform | null;
+
   /**
    * Optional base-color texture (image URL or data URL). Sampled with the
    * mesh UV coordinates and multiplied by {@link baseColor}.
@@ -71,6 +81,8 @@ export class Material3D {
 
   /** UV set for the base-color texture: 0 or 1. */
   @field.float32 declare mapTexCoord: number;
+
+  @field.object declare mapTextureTransform: Material3DTextureTransform | null;
 
   /** Opaque, alpha-tested cutout, or sorted alpha blending. */
   @field.object declare alphaMode: Material3DAlphaMode;
@@ -110,8 +122,10 @@ export class Material3D {
     this.roughness ??= 1;
     this.metallicRoughnessMap ??= null;
     this.metallicRoughnessTexCoord ??= 0;
+    this.metallicRoughnessTextureTransform ??= null;
     this.map ??= null;
     this.mapTexCoord ??= 0;
+    this.mapTextureTransform ??= null;
     this.alphaMode ??= 'opaque';
     this.alphaCutoff ??= 0.5;
     this.specularMap ??= null;

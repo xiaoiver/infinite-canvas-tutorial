@@ -1,6 +1,9 @@
 import { Entity, field } from '@lastolivegames/becsy';
 import type { Projection3D } from './Camera3D';
-import type { Material3DAlphaMode } from './Material3D';
+import type {
+  Material3DAlphaMode,
+  Material3DTextureTransform,
+} from './Material3D';
 import type {
   Mesh3DGeometrySpec,
   Mesh3DNodeGeometry,
@@ -51,6 +54,12 @@ export class Mesh3DNode {
   /** Null inherits the imported PBR texture's UV set. */
   @field.object declare metallicRoughnessTexCoord: 0 | 1 | null;
 
+  /** Null inherits the imported PBR texture transform unless overridden. */
+  @field.object
+  declare metallicRoughnessTextureTransform: Material3DTextureTransform | null;
+
+  @field.boolean declare metallicRoughnessTextureTransformOverridden: boolean;
+
   /** Preserve an explicit null override of an imported glTF PBR texture. */
   @field.boolean declare metallicRoughnessMapOverridden: boolean;
 
@@ -59,6 +68,11 @@ export class Mesh3DNode {
 
   /** Null inherits the imported base-color texture's UV set. */
   @field.object declare mapTexCoord: 0 | 1 | null;
+
+  /** Null inherits the imported base-color texture transform unless overridden. */
+  @field.object declare mapTextureTransform: Material3DTextureTransform | null;
+
+  @field.boolean declare mapTextureTransformOverridden: boolean;
 
   /** Preserve an explicit null override of an imported glTF texture. */
   @field.boolean declare mapOverridden: boolean;
@@ -111,9 +125,13 @@ export class Mesh3DNode {
     this.roughnessOverridden ??= false;
     this.metallicRoughnessMap ??= null;
     this.metallicRoughnessTexCoord ??= null;
+    this.metallicRoughnessTextureTransform ??= null;
+    this.metallicRoughnessTextureTransformOverridden ??= false;
     this.metallicRoughnessMapOverridden ??= false;
     this.map ??= null;
     this.mapTexCoord ??= null;
+    this.mapTextureTransform ??= null;
+    this.mapTextureTransformOverridden ??= false;
     this.mapOverridden ??= false;
     this.alphaMode ??= null;
     this.alphaCutoff ??= null;

@@ -1,5 +1,8 @@
 import { mat4 } from 'gl-matrix';
-import type { Material3D } from '../../components/geometry3d/Material3D';
+import type {
+  Material3D,
+  Material3DTextureTransform,
+} from '../../components/geometry3d/Material3D';
 import type { Mesh3D } from '../../components/geometry3d/Mesh3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 
@@ -17,8 +20,10 @@ export interface GlbMeshSource {
         | 'alphaCutoff'
         | 'map'
         | 'mapTexCoord'
+        | 'mapTextureTransform'
         | 'metallicRoughnessMap'
         | 'metallicRoughnessTexCoord'
+        | 'metallicRoughnessTextureTransform'
       >
     >;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
@@ -44,6 +49,14 @@ type Primitive = {
   indices: number;
   material: number;
   mode: 4;
+};
+
+type GlbTextureInfo = {
+  index: number;
+  texCoord?: 1;
+  extensions?: {
+    KHR_texture_transform: Material3DTextureTransform;
+  };
 };
 
 export type GlbImageData = {
@@ -78,8 +91,8 @@ export function exportMeshesToGlb(
   const materials: {
     pbrMetallicRoughness: {
       baseColorFactor: number[];
-      baseColorTexture?: { index: number; texCoord?: 1 };
-      metallicRoughnessTexture?: { index: number; texCoord?: 1 };
+      baseColorTexture?: GlbTextureInfo;
+      metallicRoughnessTexture?: GlbTextureInfo;
       metallicFactor: number;
       roughnessFactor: number;
     };
@@ -91,6 +104,7 @@ export function exportMeshesToGlb(
     [];
   const textures: { source: number }[] = [];
   const textureIndices = new Map<string, number>();
+  let usesTextureTransform = false;
   const meshes: { primitives: Primitive[] }[] = [];
   const nodes: {
     name?: string;
@@ -173,8 +187,13 @@ export function exportMeshesToGlb(
     alphaCutoff: number | undefined,
     map: string | null | undefined,
     mapTexCoord: number | undefined,
+    mapTextureTransform: Material3DTextureTransform | null | undefined,
     metallicRoughnessMap: string | null | undefined,
     metallicRoughnessTexCoord: number | undefined,
+    metallicRoughnessTextureTransform:
+      | Material3DTextureTransform
+      | null
+      | undefined,
   ): number => {
     const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
     const cutoff = alphaCutoff ?? 0.5;
@@ -191,6 +210,30 @@ export function exportMeshesToGlb(
       throw new Error('Invalid 3D material');
     const textureIndex = textureIndexFor(map);
     const pbrTextureIndex = textureIndexFor(metallicRoughnessMap);
+    const textureInfo = (
+      index: number,
+      texCoord: number | undefined,
+      transform: Material3DTextureTransform | null | undefined,
+    ): GlbTextureInfo => {
+      if (transform) {
+        const offset = transform.offset ?? [0, 0];
+        const scale = transform.scale ?? [1, 1];
+        if (
+          offset.length !== 2 ||
+          scale.length !== 2 ||
+          ![...offset, ...scale, transform.rotation ?? 0].every(Number.isFinite)
+        )
+          throw new Error('Invalid 3D texture transform');
+        usesTextureTransform = true;
+      }
+      return {
+        index,
+        ...(texCoord === 1 ? { texCoord: 1 as const } : {}),
+        ...(transform
+          ? { extensions: { KHR_texture_transform: transform } }
+          : {}),
+      };
+    };
     return (
       materials.push({
         pbrMetallicRoughness: {
@@ -203,20 +246,20 @@ export function exportMeshesToGlb(
           ...(textureIndex === undefined
             ? {}
             : {
-                baseColorTexture: {
-                  index: textureIndex,
-                  ...(mapTexCoord === 1 ? { texCoord: 1 as const } : {}),
-                },
+                baseColorTexture: textureInfo(
+                  textureIndex,
+                  mapTexCoord,
+                  mapTextureTransform,
+                ),
               }),
           ...(pbrTextureIndex === undefined
             ? {}
             : {
-                metallicRoughnessTexture: {
-                  index: pbrTextureIndex,
-                  ...(metallicRoughnessTexCoord === 1
-                    ? { texCoord: 1 as const }
-                    : {}),
-                },
+                metallicRoughnessTexture: textureInfo(
+                  pbrTextureIndex,
+                  metallicRoughnessTexCoord,
+                  metallicRoughnessTextureTransform,
+                ),
               }),
           metallicFactor: metallic,
           roughnessFactor: roughness,
@@ -301,11 +344,13 @@ export function exportMeshesToGlb(
       source.material.alphaCutoff,
       textureIfUv(source.material.map, source.material.mapTexCoord),
       source.material.mapTexCoord,
+      source.material.mapTextureTransform,
       textureIfUv(
         source.material.metallicRoughnessMap,
         source.material.metallicRoughnessTexCoord,
       ),
       source.material.metallicRoughnessTexCoord,
+      source.material.metallicRoughnessTextureTransform,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -335,11 +380,13 @@ export function exportMeshesToGlb(
           source.material.alphaCutoff,
           textureIfUv(source.material.map, source.material.mapTexCoord),
           source.material.mapTexCoord,
+          source.material.mapTextureTransform,
           textureIfUv(
             source.material.metallicRoughnessMap,
             source.material.metallicRoughnessTexCoord,
           ),
           source.material.metallicRoughnessTexCoord,
+          source.material.metallicRoughnessTextureTransform,
         ),
       );
 
@@ -375,6 +422,9 @@ export function exportMeshesToGlb(
   }
   const json = {
     asset: { version: '2.0', generator: 'Infinite Canvas' },
+    ...(usesTextureTransform
+      ? { extensionsUsed: ['KHR_texture_transform'] }
+      : {}),
     scene: 0,
     scenes: [{ nodes: [0] }],
     nodes,

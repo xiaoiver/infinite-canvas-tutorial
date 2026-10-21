@@ -125,8 +125,16 @@ it('imports TEXCOORD_1 for a base-color texture independently of the PBR map', (
     meshes: { primitives: { attributes: { TEXCOORD_1?: number } }[] }[];
     materials: {
       pbrMetallicRoughness: {
-        baseColorTexture?: { index: number; texCoord?: number };
-        metallicRoughnessTexture?: { index: number; texCoord?: number };
+        baseColorTexture?: {
+          index: number;
+          texCoord?: number;
+          extensions?: { KHR_texture_transform: Record<string, unknown> };
+        };
+        metallicRoughnessTexture?: {
+          index: number;
+          texCoord?: number;
+          extensions?: { KHR_texture_transform: Record<string, unknown> };
+        };
       };
     }[];
   };
@@ -143,15 +151,35 @@ it('imports TEXCOORD_1 for a base-color texture independently of the PBR map', (
   model.buffers.push({ arrayBuffer: uv1.buffer });
   json.meshes[0].primitives[0].attributes.TEXCOORD_1 =
     json.accessors.length - 1;
-  json.materials[0].pbrMetallicRoughness.baseColorTexture!.texCoord = 1;
+  json.materials[0].pbrMetallicRoughness.baseColorTexture!.extensions = {
+    KHR_texture_transform: {
+      texCoord: 1,
+      offset: [0.25, 0.5],
+      scale: [2, 0.5],
+      rotation: Math.PI / 2,
+    },
+  };
   json.materials[0].pbrMetallicRoughness.metallicRoughnessTexture = {
     index: 0,
+    extensions: {
+      KHR_texture_transform: { offset: [0.75, 0] },
+    },
   };
   const baked = bakeGltfMesh(model, { baseUrl: '/data/model.gltf' });
   expect(baked.mapTexCoord).toBe(1);
   expect(baked.metallicRoughnessTexCoord).toBe(0);
   expect(baked.map).toBe('/data/albedo.png');
   expect(baked.metallicRoughnessMap).toBe('/data/albedo.png');
+  expect(baked.mapTextureTransform).toEqual({
+    offset: [0.25, 0.5],
+    scale: [2, 0.5],
+    rotation: Math.PI / 2,
+  });
+  expect(baked.metallicRoughnessTextureTransform).toEqual({
+    offset: [0.75, 0],
+    scale: [1, 1],
+    rotation: 0,
+  });
   expect(baked.parts[0].uvs1).toEqual(uv1);
   expect(baked.uvs1).toEqual(uv1);
 });

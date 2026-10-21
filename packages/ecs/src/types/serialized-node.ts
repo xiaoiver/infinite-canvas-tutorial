@@ -459,10 +459,22 @@ export type Material3DWire = {
   metallicRoughnessMap?: string | null;
   /** UV set used by the metallic-roughness texture. */
   metallicRoughnessTexCoord?: 0 | 1;
+  /** glTF KHR_texture_transform for the metallic-roughness texture. */
+  metallicRoughnessTextureTransform?: {
+    offset?: [number, number];
+    scale?: [number, number];
+    rotation?: number;
+  } | null;
   /** Base-color texture (image URL or data URL). */
   map?: string | null;
   /** UV set used by the base-color texture. */
   mapTexCoord?: 0 | 1;
+  /** glTF KHR_texture_transform for the base-color texture. */
+  mapTextureTransform?: {
+    offset?: [number, number];
+    scale?: [number, number];
+    rotation?: number;
+  } | null;
   /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */
   alphaMode?: 'opaque' | 'mask' | 'blend';
   /** Alpha-test threshold in mask mode; defaults to 0.5. */

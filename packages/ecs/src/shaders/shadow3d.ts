@@ -15,6 +15,9 @@ layout(std140) uniform ShadowModel3D {
   vec4 u_UnusedIrradiance[9];
   vec4 u_ShadowReceive;
   vec4 u_TextureCoords;
+  vec4 u_MapUvTransform;
+  vec4 u_PbrUvTransform;
+  vec4 u_UvRotations;
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -53,6 +56,9 @@ layout(std140) uniform ShadowModel3D {
   vec4 u_UnusedIrradiance[9];
   vec4 u_ShadowReceive;
   vec4 u_TextureCoords;
+  vec4 u_MapUvTransform;
+  vec4 u_PbrUvTransform;
+  vec4 u_UvRotations;
 };
 
 uniform sampler2D u_Map;
@@ -69,13 +75,22 @@ vec4 packDepth(float depth) {
   return depthColor;
 }
 
+vec2 transformUv(vec2 uv, vec4 transform, float rotation) {
+  vec2 scaled = uv * transform.zw;
+  float c = cos(rotation);
+  float s = sin(rotation);
+  return transform.xy + vec2(c * scaled.x - s * scaled.y,
+                             s * scaled.x + c * scaled.y);
+}
+
 void main() {
   if (u_ShadowReceive.y > 0.5) {
     float alpha = u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0
       ? u_SideColor.a : u_BaseColor.a;
     if (u_MaterialFlags.x > 0.5)
       alpha *= texture(SAMPLER_2D(u_Map),
-        u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv).a;
+        transformUv(u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv,
+                    u_MapUvTransform, u_UvRotations.x)).a;
     if (u_ShadowReceive.y < 1.5) {
       if (alpha < u_ShadowReceive.z) discard;
     } else {

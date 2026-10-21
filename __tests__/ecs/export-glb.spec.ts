@@ -111,7 +111,13 @@ it('keeps distinct textures on separate material primitives', async () => {
       material: new Material3D({
         map: png,
         mapTexCoord: 1,
+        mapTextureTransform: {
+          offset: [0.25, 0.5],
+          scale: [2, 0.5],
+          rotation: Math.PI / 2,
+        },
         metallicRoughnessMap: blueUrl,
+        metallicRoughnessTextureTransform: { offset: [0.75, 0] },
         alphaMode: 'mask',
       }),
     },
@@ -135,17 +141,41 @@ it('keeps distinct textures on separate material primitives', async () => {
       (material: { pbrMetallicRoughness: { baseColorTexture: unknown } }) =>
         material.pbrMetallicRoughness.baseColorTexture,
     ),
-  ).toEqual([{ index: 0, texCoord: 1 }, { index: 1 }]);
+  ).toEqual([
+    {
+      index: 0,
+      texCoord: 1,
+      extensions: {
+        KHR_texture_transform: {
+          offset: [0.25, 0.5],
+          scale: [2, 0.5],
+          rotation: Math.PI / 2,
+        },
+      },
+    },
+    { index: 1 },
+  ]);
   expect(
     json.materials.map(
       (material: {
         pbrMetallicRoughness: { metallicRoughnessTexture: unknown };
       }) => material.pbrMetallicRoughness.metallicRoughnessTexture,
     ),
-  ).toEqual([{ index: 1 }, { index: 0, texCoord: 1 }]);
+  ).toEqual([
+    {
+      index: 1,
+      extensions: { KHR_texture_transform: { offset: [0.75, 0] } },
+    },
+    { index: 0, texCoord: 1 },
+  ]);
+  expect(json.extensionsUsed).toContain('KHR_texture_transform');
   expect(json.meshes[0].primitives[0].attributes.TEXCOORD_1).toBeDefined();
   const loaded = (await parse(bytes.buffer, GLTFLoader, {
-    gltf: { loadBuffers: true, loadImages: false },
+    gltf: {
+      loadBuffers: true,
+      loadImages: false,
+      excludeExtensions: { KHR_texture_transform: false },
+    },
   })) as GltfContainer;
   expect(bakeGltfMesh(loaded).parts.map((part) => part.map)).toEqual([
     png,
@@ -161,6 +191,14 @@ it('keeps distinct textures on separate material primitives', async () => {
     bakeGltfMesh(loaded).parts.map((part) => part.metallicRoughnessTexCoord),
   ).toEqual([0, 1]);
   expect(bakeGltfMesh(loaded).parts[0].uvs1).toEqual(mesh.uvs1);
+  expect(bakeGltfMesh(loaded).parts[0].mapTextureTransform).toEqual({
+    offset: [0.25, 0.5],
+    scale: [2, 0.5],
+    rotation: Math.PI / 2,
+  });
+  expect(
+    bakeGltfMesh(loaded).parts[0].metallicRoughnessTextureTransform,
+  ).toEqual({ offset: [0.75, 0], scale: [1, 1], rotation: 0 });
 });
 
 it('exports a holed Path with distinct cap and wall materials as a valid GLB', async () => {

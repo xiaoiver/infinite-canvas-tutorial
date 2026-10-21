@@ -15,6 +15,8 @@ const ready = {
   environmentMapReady: false,
   environmentIrradiance: null,
 };
+const shadowOffset = MESH_MODEL_UNIFORM_FLOATS - 20;
+const textureCoordOffset = MESH_MODEL_UNIFORM_FLOATS - 16;
 function setup() {
   const bytes = new Uint8Array(MESH_MODEL_UNIFORM_FLOATS * 4);
   const setSubData = jest.fn((offset: number, data: Uint8Array) =>
@@ -106,7 +108,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
     [1, 1, 1, 2, 0.3, 0.8, 0, 1].map(Math.fround),
   );
   expect(data[60]).toBeCloseTo(0.7);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 5]).toBe(1);
+  expect(data[shadowOffset + 3]).toBe(1);
   expect(legacy.u_MaterialFlags).toEqual(data.slice(48, 52));
   uniforms.update(transform, material, textures);
   expect(setSubData).toHaveBeenCalledTimes(2);
@@ -114,7 +116,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   expect([...data.slice(48, 51)]).toEqual([0, 0, 0]);
   expect(data[55]).toBe(0);
   expect(data[60]).toBe(0);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 5]).toBe(0);
+  expect(data[shadowOffset + 3]).toBe(0);
   expect(setSubData).toHaveBeenCalledTimes(3);
   expect(invert).toHaveBeenCalledTimes(1);
 });
@@ -140,7 +142,7 @@ it('uploads an optional side-wall color without rebuilding geometry or pose', ()
 
 it('updates the receiver flag when shadow reception changes', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
-  const receiveOffset = MESH_MODEL_UNIFORM_FLOATS - 8;
+  const receiveOffset = shadowOffset;
   uniforms.update(transform, material, ready);
   expect(data[receiveOffset]).toBe(1);
   material.receiveShadow = false;
@@ -155,7 +157,7 @@ it('updates the receiver flag when shadow reception changes', () => {
 
 it('keeps alpha mode, cutoff and map readiness current before the shadow pass', () => {
   const { uniforms, transform, material, data } = setup();
-  const offset = MESH_MODEL_UNIFORM_FLOATS - 8;
+  const offset = shadowOffset;
   material.alphaMode = 'mask';
   material.mapTexCoord = 1;
   material.alphaCutoff = 0.35;
@@ -163,7 +165,7 @@ it('keeps alpha mode, cutoff and map readiness current before the shadow pass', 
   uniforms.updateShadowMaterial(transform, material, true);
   expect(data[35]).toBeCloseTo(0.8);
   expect(data[48]).toBe(1);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 4]).toBe(1);
+  expect(data[textureCoordOffset]).toBe(1);
   expect([...data.slice(offset + 1, offset + 3)]).toEqual([
     1,
     Math.fround(0.35),
@@ -185,13 +187,41 @@ it('tracks independent base-color and PBR UV selectors', () => {
   material.mapTexCoord = 1;
   material.metallicRoughnessTexCoord = 0;
   const legacy = uniforms.update(transform, material, ready);
-  expect([...data.slice(MESH_MODEL_UNIFORM_FLOATS - 4)]).toEqual([1, 0, 0, 0]);
+  expect([...data.slice(textureCoordOffset, textureCoordOffset + 4)]).toEqual([
+    1, 0, 0, 0,
+  ]);
   expect(legacy.u_TextureCoords).toEqual(
-    data.slice(MESH_MODEL_UNIFORM_FLOATS - 4),
+    data.slice(textureCoordOffset, textureCoordOffset + 4),
   );
   material.metallicRoughnessTexCoord = 1;
   uniforms.update(transform, material, ready);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 3]).toBe(1);
+  expect(data[textureCoordOffset + 1]).toBe(1);
+});
+
+it('uploads distinct texture transforms and refreshes mask UVs before the shadow pass', () => {
+  const { uniforms, transform, material, data } = setup();
+  material.mapTextureTransform = {
+    offset: [0.25, 0.5],
+    scale: [2, 3],
+    rotation: Math.PI / 2,
+  };
+  material.metallicRoughnessTextureTransform = {
+    offset: [0.75, 0],
+    scale: [0.5, 1],
+    rotation: -0.5,
+  };
+  const legacy = uniforms.update(transform, material, ready);
+  expect(legacy.u_MapUvTransform).toEqual(Float32Array.of(0.25, 0.5, 2, 3));
+  expect(legacy.u_PbrUvTransform).toEqual(Float32Array.of(0.75, 0, 0.5, 1));
+  expect(legacy.u_UvRotations).toEqual(
+    Float32Array.of(Math.fround(Math.PI / 2), -0.5, 0, 0),
+  );
+  material.mapTextureTransform = { offset: [0.5, 0.25] };
+  uniforms.updateShadowMaterial(transform, material, true);
+  expect([
+    ...data.slice(textureCoordOffset + 4, textureCoordOffset + 8),
+  ]).toEqual([0.5, 0.25, 1, 1]);
+  expect(data[textureCoordOffset + 12]).toBe(0);
 });
 
 it('retries failed uploads without rebuilding unchanged matrices', () => {

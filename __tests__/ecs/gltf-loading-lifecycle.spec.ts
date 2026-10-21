@@ -130,7 +130,10 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
     meshes: { primitives: { attributes: { TEXCOORD_1?: number } }[] }[];
     materials: {
       pbrMetallicRoughness: {
-        baseColorTexture: { texCoord?: number };
+        baseColorTexture: {
+          texCoord?: number;
+          extensions?: { KHR_texture_transform: Record<string, unknown> };
+        };
       };
     }[];
   };
@@ -148,17 +151,31 @@ it('keeps imported UV1 and restores texture coordinates after node overrides', a
   json.meshes[0].primitives[0].attributes.TEXCOORD_1 =
     json.accessors.length - 1;
   json.materials[0].pbrMetallicRoughness.baseColorTexture.texCoord = 1;
+  json.materials[0].pbrMetallicRoughness.baseColorTexture.extensions = {
+    KHR_texture_transform: { offset: [0.25, 0.5], rotation: 0.5 },
+  };
   fetchModel.mockResolvedValue(model);
   await world.reset(api, [node()]);
   await settle();
   expect(companion().read(Mesh3D).uvs1).toEqual(uv1);
   expect(companion().read(Material3D).mapTexCoord).toBe(1);
+  expect(companion().read(Material3D).mapTextureTransform).toEqual({
+    offset: [0.25, 0.5],
+    scale: [1, 1],
+    rotation: 0.5,
+  });
   await edit({ material3d: { map: 'custom.png' } });
   expect(companion().read(Material3D).mapTexCoord).toBe(0);
+  expect(companion().read(Material3D).mapTextureTransform).toBeNull();
   await edit({ material3d: { mapTexCoord: 0 } });
   expect(companion().read(Material3D).mapTexCoord).toBe(0);
   await edit({ material3d: undefined });
   expect(companion().read(Material3D).mapTexCoord).toBe(1);
+  expect(companion().read(Material3D).mapTextureTransform?.offset).toEqual([
+    0.25, 0.5,
+  ]);
+  await edit({ material3d: { mapTextureTransform: null } });
+  expect(companion().read(Material3D).mapTextureTransform).toBeNull();
 });
 
 it('exports a loaded glTF texture through the asynchronous GLB API', async () => {

@@ -9,6 +9,9 @@ const GLTF_LOAD_OPTIONS = {
   gltf: {
     loadBuffers: true,
     loadImages: true,
+    // Apply this extension in our shaders. loaders.gl otherwise rewrites UV
+    // accessors, which loses the original per-texture transform on export.
+    excludeExtensions: { KHR_texture_transform: false },
   },
   DracoLoader,
 };
