@@ -60,11 +60,17 @@ export class Material3D {
   /** glTF metallic-roughness texture: green scales roughness, blue scales metallic. */
   @field.object declare metallicRoughnessMap: string | null;
 
+  /** UV set for the metallic-roughness texture: 0 or 1. */
+  @field.float32 declare metallicRoughnessTexCoord: number;
+
   /**
    * Optional base-color texture (image URL or data URL). Sampled with the
    * mesh UV coordinates and multiplied by {@link baseColor}.
    */
   @field.object declare map: string | null;
+
+  /** UV set for the base-color texture: 0 or 1. */
+  @field.float32 declare mapTexCoord: number;
 
   /** Opaque, alpha-tested cutout, or sorted alpha blending. */
   @field.object declare alphaMode: Material3DAlphaMode;
@@ -103,7 +109,9 @@ export class Material3D {
     this.metallic ??= 0;
     this.roughness ??= 1;
     this.metallicRoughnessMap ??= null;
+    this.metallicRoughnessTexCoord ??= 0;
     this.map ??= null;
+    this.mapTexCoord ??= 0;
     this.alphaMode ??= 'opaque';
     this.alphaCutoff ??= 0.5;
     this.specularMap ??= null;

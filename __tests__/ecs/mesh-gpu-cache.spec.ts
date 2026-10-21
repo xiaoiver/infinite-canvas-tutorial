@@ -7,6 +7,7 @@ import { fakeMeshGPU } from './helpers/mesh-gpu';
 const cube = () => new Mesh3D(createGeometry({ type: 'cube' }));
 const floats = (buffer: unknown) =>
   new Float32Array((buffer as { bytes: Uint8Array }).bytes.buffer);
+const buffersPerMesh = 6;
 
 it('reuses buffers across draws, keeps separate model uniforms, and coalesces geometry writes', () => {
   const gpu = fakeMeshGPU();
@@ -16,7 +17,7 @@ it('reuses buffers across draws, keeps separate model uniforms, and coalesces ge
   const second = cache.get(2, mesh)!;
   expect(first.modelUniformBuffer).not.toBe(second.modelUniformBuffer);
   for (let i = 0; i < 5; i++) expect(cache.get(1, mesh)).toBe(first);
-  expect(gpu.buffers).toHaveLength(10);
+  expect(gpu.buffers).toHaveLength(buffersPerMesh * 2);
   mesh.positions[0] = 123;
   cache.invalidate([1, 100]);
   cache.invalidate([1]);
@@ -24,10 +25,10 @@ it('reuses buffers across draws, keeps separate model uniforms, and coalesces ge
   expect(floats(changed.vertexBuffer)[0]).toBe(123);
   expect(cache.get(1, mesh)).toBe(changed);
   expect(cache.get(2, mesh)).toBe(second);
-  expect(gpu.buffers).toHaveLength(15);
-  for (const buffer of gpu.buffers.slice(0, 5))
+  expect(gpu.buffers).toHaveLength(buffersPerMesh * 3);
+  for (const buffer of gpu.buffers.slice(0, buffersPerMesh))
     expect(buffer.destroy).toHaveBeenCalledTimes(1);
-  for (const buffer of gpu.buffers.slice(5))
+  for (const buffer of gpu.buffers.slice(buffersPerMesh))
     expect(buffer.destroy).not.toHaveBeenCalled();
   cache.destroy();
   cache.destroy();
@@ -50,12 +51,21 @@ it.each(['valid', 'missing', 'invalid'] as const)(
         : kind === 'invalid'
         ? new Float32Array([1])
         : null;
+    mesh.uvs1 =
+      kind === 'valid'
+        ? new Float32Array(mesh.vertexCount * 2).fill(0.75)
+        : kind === 'invalid'
+        ? new Float32Array([1])
+        : null;
     const data = cache.get(1, mesh)!;
     expect(data.indexBuffer).toBeNull();
     expect(data.indexCount).toBe(0);
     expect(data.vertexCount).toBe(mesh.vertexCount);
     expect([...floats(data.uvBuffer)]).toEqual(
       Array(mesh.vertexCount * 2).fill(kind === 'valid' ? 0.5 : 0),
+    );
+    expect([...floats(data.uv1Buffer)]).toEqual(
+      Array(mesh.vertexCount * 2).fill(kind === 'valid' ? 0.75 : 0),
     );
     expect(
       gpu.buffers.filter((buffer) => buffer.usage === BufferUsage.INDEX),
@@ -75,10 +85,10 @@ it('reclaims empty/removed geometry and safely reuses an entity id', () => {
   const first = cache.get(1, cube());
   cache.get(2, cube());
   expect(cache.get(1, new Mesh3D())).toBeNull();
-  for (const buffer of gpu.buffers.slice(0, 5))
+  for (const buffer of gpu.buffers.slice(0, buffersPerMesh))
     expect(buffer.destroy).toHaveBeenCalledTimes(1);
   cache.retain(new Set([2]));
-  for (const buffer of gpu.buffers.slice(5))
+  for (const buffer of gpu.buffers.slice(buffersPerMesh))
     expect(buffer.destroy).not.toHaveBeenCalled();
   expect(cache.get(1, cube())).not.toBe(first);
   cache.destroy();
@@ -87,7 +97,7 @@ it('reclaims empty/removed geometry and safely reuses an entity id', () => {
   gpu.scope.dispose();
 });
 
-it.each([0, 1, 2, 3, 4])(
+it.each([0, 1, 2, 3, 4, 5])(
   'rolls back allocation failure at buffer %i and retries the dirty mesh',
   (failAt) => {
     const gpu = fakeMeshGPU();
@@ -102,9 +112,9 @@ it.each([0, 1, 2, 3, 4])(
       throw new Error('allocation failed');
     });
     expect(() => cache.get(1, mesh)).toThrow('allocation failed');
-    for (const buffer of gpu.buffers.slice(0, 5))
+    for (const buffer of gpu.buffers.slice(0, buffersPerMesh))
       expect(buffer.destroy).not.toHaveBeenCalled();
-    for (const buffer of gpu.buffers.slice(5))
+    for (const buffer of gpu.buffers.slice(buffersPerMesh))
       expect(buffer.destroy).toHaveBeenCalledTimes(1);
     expect(cache.get(1, mesh)).not.toBe(previous);
     cache.destroy();

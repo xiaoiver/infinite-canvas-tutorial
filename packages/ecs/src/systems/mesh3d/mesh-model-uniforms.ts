@@ -4,7 +4,7 @@ import type { Material3D } from '../../components/geometry3d/Material3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 64 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 68 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -30,7 +30,11 @@ export class MeshModelUniforms {
       60,
       60 + ENVIRONMENT_IRRADIANCE_FLOATS,
     ),
-    u_ShadowReceive: this.data.subarray(60 + ENVIRONMENT_IRRADIANCE_FLOATS),
+    u_ShadowReceive: this.data.subarray(
+      60 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      64 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_TextureCoords: this.data.subarray(64 + ENVIRONMENT_IRRADIANCE_FLOATS),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -62,6 +66,11 @@ export class MeshModelUniforms {
     this.set(53, material.roughness);
     this.set(54, Number(material.sideColor !== null));
     this.set(55, Number(textureReady.environmentMapReady));
+    this.set(64 + ENVIRONMENT_IRRADIANCE_FLOATS, material.mapTexCoord);
+    this.set(
+      65 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      material.metallicRoughnessTexCoord,
+    );
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),
@@ -87,6 +96,7 @@ export class MeshModelUniforms {
     this.updatePose(transform);
     this.set(32 + 3, material.baseColor[3]);
     this.set(54, Number(material.sideColor !== null));
+    this.set(64 + ENVIRONMENT_IRRADIANCE_FLOATS, material.mapTexCoord);
     for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
     this.setAlpha(material, mapReady);
     this.upload();
@@ -110,6 +120,7 @@ export class MeshModelUniforms {
       u_PbrParams: this.legacy.u_PbrParams,
       u_SideColor: this.legacy.u_SideColor,
       u_ShadowReceive: this.legacy.u_ShadowReceive,
+      u_TextureCoords: this.legacy.u_TextureCoords,
     };
   }
 
@@ -161,7 +172,11 @@ export class MeshModelUniforms {
     this.set(48, Number(mapReady));
     this.set(
       61 + ENVIRONMENT_IRRADIANCE_FLOATS,
-      material.alphaMode === 'mask' ? 1 : material.alphaMode === 'blend' ? 2 : 0,
+      material.alphaMode === 'mask'
+        ? 1
+        : material.alphaMode === 'blend'
+        ? 2
+        : 0,
     );
     this.set(
       62 + ENVIRONMENT_IRRADIANCE_FLOATS,

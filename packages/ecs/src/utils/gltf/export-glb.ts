@@ -4,7 +4,8 @@ import type { Mesh3D } from '../../components/geometry3d/Mesh3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 
 export interface GlbMeshSource {
-  mesh: Pick<Mesh3D, 'positions' | 'normals' | 'uvs' | 'indices'>;
+  mesh: Pick<Mesh3D, 'positions' | 'normals' | 'uvs' | 'indices'> &
+    Partial<Pick<Mesh3D, 'uvs1'>>;
   material: Pick<
     Material3D,
     'baseColor' | 'sideColor' | 'metallic' | 'roughness'
@@ -12,7 +13,12 @@ export interface GlbMeshSource {
     Partial<
       Pick<
         Material3D,
-        'alphaMode' | 'alphaCutoff' | 'map' | 'metallicRoughnessMap'
+        | 'alphaMode'
+        | 'alphaCutoff'
+        | 'map'
+        | 'mapTexCoord'
+        | 'metallicRoughnessMap'
+        | 'metallicRoughnessTexCoord'
       >
     >;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
@@ -29,7 +35,12 @@ type Accessor = {
 };
 
 type Primitive = {
-  attributes: { POSITION: number; NORMAL: number; TEXCOORD_0?: number };
+  attributes: {
+    POSITION: number;
+    NORMAL: number;
+    TEXCOORD_0?: number;
+    TEXCOORD_1?: number;
+  };
   indices: number;
   material: number;
   mode: 4;
@@ -67,8 +78,8 @@ export function exportMeshesToGlb(
   const materials: {
     pbrMetallicRoughness: {
       baseColorFactor: number[];
-      baseColorTexture?: { index: number };
-      metallicRoughnessTexture?: { index: number };
+      baseColorTexture?: { index: number; texCoord?: 1 };
+      metallicRoughnessTexture?: { index: number; texCoord?: 1 };
       metallicFactor: number;
       roughnessFactor: number;
     };
@@ -161,12 +172,16 @@ export function exportMeshesToGlb(
     alphaMode: Material3D['alphaMode'] | undefined,
     alphaCutoff: number | undefined,
     map: string | null | undefined,
+    mapTexCoord: number | undefined,
     metallicRoughnessMap: string | null | undefined,
+    metallicRoughnessTexCoord: number | undefined,
   ): number => {
     const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
     const cutoff = alphaCutoff ?? 0.5;
     if (
       color.length !== 4 ||
+      ![0, 1].includes(mapTexCoord ?? 0) ||
+      ![0, 1].includes(metallicRoughnessTexCoord ?? 0) ||
       !['opaque', 'mask', 'blend'].includes(mode) ||
       !Number.isFinite(cutoff) ||
       [...color, metallic, roughness].some(
@@ -187,10 +202,22 @@ export function exportMeshesToGlb(
           ],
           ...(textureIndex === undefined
             ? {}
-            : { baseColorTexture: { index: textureIndex } }),
+            : {
+                baseColorTexture: {
+                  index: textureIndex,
+                  ...(mapTexCoord === 1 ? { texCoord: 1 as const } : {}),
+                },
+              }),
           ...(pbrTextureIndex === undefined
             ? {}
-            : { metallicRoughnessTexture: { index: pbrTextureIndex } }),
+            : {
+                metallicRoughnessTexture: {
+                  index: pbrTextureIndex,
+                  ...(metallicRoughnessTexCoord === 1
+                    ? { texCoord: 1 as const }
+                    : {}),
+                },
+              }),
           metallicFactor: metallic,
           roughnessFactor: roughness,
         },
@@ -204,16 +231,18 @@ export function exportMeshesToGlb(
   };
 
   for (const source of sources) {
-    const { positions, normals, uvs, indices } = source.mesh;
+    const { positions, normals, uvs, uvs1, indices } = source.mesh;
     const count = positions.length / 3;
     if (
       !count ||
       !Number.isInteger(count) ||
       normals.length !== positions.length ||
       (uvs && uvs.length !== count * 2) ||
+      (uvs1 && uvs1.length !== count * 2) ||
       !finite(positions) ||
       !finite(normals) ||
-      (uvs && !finite(uvs))
+      (uvs && !finite(uvs)) ||
+      (uvs1 && !finite(uvs1))
     )
       throw new Error('Invalid 3D mesh vertices');
     const triangles = indices
@@ -239,6 +268,18 @@ export function exportMeshesToGlb(
     };
     if (uvs)
       attributes.TEXCOORD_0 = accessor(floats(uvs), 34962, 5126, count, 'VEC2');
+    if (uvs1)
+      attributes.TEXCOORD_1 = accessor(
+        floats(uvs1),
+        34962,
+        5126,
+        count,
+        'VEC2',
+      );
+    const textureIfUv = (
+      url: string | null | undefined,
+      texCoord: number | undefined,
+    ) => (((texCoord ?? 0) === 1 ? uvs1 : uvs) ? url : null);
 
     const frontIndices: number[] = [];
     const sideIndices: number[] = [];
@@ -258,8 +299,13 @@ export function exportMeshesToGlb(
       source.material.roughness,
       source.material.alphaMode,
       source.material.alphaCutoff,
-      uvs ? source.material.map : null,
-      uvs ? source.material.metallicRoughnessMap : null,
+      textureIfUv(source.material.map, source.material.mapTexCoord),
+      source.material.mapTexCoord,
+      textureIfUv(
+        source.material.metallicRoughnessMap,
+        source.material.metallicRoughnessTexCoord,
+      ),
+      source.material.metallicRoughnessTexCoord,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -287,8 +333,13 @@ export function exportMeshesToGlb(
           source.material.roughness,
           source.material.alphaMode,
           source.material.alphaCutoff,
-          uvs ? source.material.map : null,
-          uvs ? source.material.metallicRoughnessMap : null,
+          textureIfUv(source.material.map, source.material.mapTexCoord),
+          source.material.mapTexCoord,
+          textureIfUv(
+            source.material.metallicRoughnessMap,
+            source.material.metallicRoughnessTexCoord,
+          ),
+          source.material.metallicRoughnessTexCoord,
         ),
       );
 

@@ -3189,6 +3189,7 @@ export class API {
           positions: geometry.positions,
           normals: geometry.normals,
           uvs: geometry.uvs,
+          uvs1: geometry.uvs1,
           indices: geometry.indices,
         };
         const surface = part.read(Material3D);
@@ -3200,7 +3201,9 @@ export class API {
           alphaMode: surface.alphaMode,
           alphaCutoff: surface.alphaCutoff,
           map: surface.map,
+          mapTexCoord: surface.mapTexCoord,
           metallicRoughnessMap: surface.metallicRoughnessMap,
+          metallicRoughnessTexCoord: surface.metallicRoughnessTexCoord,
         };
         const pose = part.read(Transform3D);
         const transform = {

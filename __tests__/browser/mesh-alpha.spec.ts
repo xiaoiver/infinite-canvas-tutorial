@@ -135,3 +135,31 @@ test('metallic-roughness texture blue channel changes lit mesh pixels', async ({
     .poll(async () => (await redPixel())[0] - before[0])
     .toBeGreaterThan(8);
 });
+
+test('base-color texture selects the second UV set for rendered mesh', async ({
+  page,
+}) => {
+  await page.goto('/gizmo.html?alpha');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  await page.evaluate(() => window.gizmoTest.settle());
+  const redAtLeft = async () => {
+    const image = PNG.sync.read(await page.locator('#canvas').screenshot());
+    const [red, , blue] = pixel(image, 35, 40);
+    return red - blue;
+  };
+  expect(await redAtLeft()).toBeLessThan(10);
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    const mesh = api.getNodeById('alpha-mask');
+    if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+    api.updateNode(
+      mesh,
+      { material3d: { ...mesh.material3d, mapTexCoord: 1 } },
+      false,
+    );
+    await window.gizmoTest.settle();
+  });
+  // The fixture plane has no TEXCOORD_1, so its fallback UV is (0, 0), the
+  // opaque red texel. This probes the selector without altering the fixture.
+  await expect.poll(redAtLeft).toBeGreaterThan(100);
+});

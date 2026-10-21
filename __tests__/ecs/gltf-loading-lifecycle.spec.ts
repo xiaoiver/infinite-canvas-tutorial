@@ -121,6 +121,46 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
   expect(fetchModel).toHaveBeenCalledTimes(1);
 });
 
+it('keeps imported UV1 and restores texture coordinates after node overrides', async () => {
+  const model = gltfScenes();
+  const uv1 = new Float32Array([0, 0, 1, 0, 0, 1]);
+  const json = model.json as unknown as {
+    accessors: Record<string, unknown>[];
+    bufferViews: Record<string, unknown>[];
+    meshes: { primitives: { attributes: { TEXCOORD_1?: number } }[] }[];
+    materials: {
+      pbrMetallicRoughness: {
+        baseColorTexture: { texCoord?: number };
+      };
+    }[];
+  };
+  json.bufferViews.push({
+    buffer: model.buffers.length,
+    byteLength: uv1.byteLength,
+  });
+  json.accessors.push({
+    bufferView: json.bufferViews.length - 1,
+    componentType: 5126,
+    count: 3,
+    type: 'VEC2',
+  });
+  model.buffers.push({ arrayBuffer: uv1.buffer });
+  json.meshes[0].primitives[0].attributes.TEXCOORD_1 =
+    json.accessors.length - 1;
+  json.materials[0].pbrMetallicRoughness.baseColorTexture.texCoord = 1;
+  fetchModel.mockResolvedValue(model);
+  await world.reset(api, [node()]);
+  await settle();
+  expect(companion().read(Mesh3D).uvs1).toEqual(uv1);
+  expect(companion().read(Material3D).mapTexCoord).toBe(1);
+  await edit({ material3d: { map: 'custom.png' } });
+  expect(companion().read(Material3D).mapTexCoord).toBe(0);
+  await edit({ material3d: { mapTexCoord: 0 } });
+  expect(companion().read(Material3D).mapTexCoord).toBe(0);
+  await edit({ material3d: undefined });
+  expect(companion().read(Material3D).mapTexCoord).toBe(1);
+});
+
 it('exports a loaded glTF texture through the asynchronous GLB API', async () => {
   const model = gltfScenes();
   (model.json as unknown as { images: { uri: string }[] }).images[0].uri = png;

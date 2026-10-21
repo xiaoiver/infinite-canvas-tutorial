@@ -92,14 +92,17 @@ export function requestGltfMeshLoad(source: Entity): void {
           indices: primary.indices,
         });
         meshWrite.uvs = primary.uvs ?? null;
+        meshWrite.uvs1 = primary.uvs1 ?? null;
 
         retryBySource.delete(source);
         seedMesh3DNodeCompanionGeometryKey(source, {
           baseColor: primary.baseColor,
           map: primary.map,
+          mapTexCoord: primary.mapTexCoord,
           metallic: primary.metallic,
           roughness: primary.roughness,
           metallicRoughnessMap: primary.metallicRoughnessMap,
+          metallicRoughnessTexCoord: primary.metallicRoughnessTexCoord,
           alphaMode: primary.alphaMode,
           alphaCutoff: primary.alphaCutoff,
         });

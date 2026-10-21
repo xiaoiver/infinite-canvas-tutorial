@@ -312,7 +312,9 @@ it('refreshes alpha-test inputs before drawing a shadow map', () => {
     },
     resolveRenderTarget: jest.fn().mockReturnValue(1),
   };
-  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toHaveLength(1);
+  expect(renderer.scheduleShadowPass(builder as any, slot.canvas)).toHaveLength(
+    1,
+  );
   const state = (renderer as any).states.get(slot.canvas.read(Canvas).api);
   const gpu = state.meshGPUCache.get(slot.target.__id, slot.mesh);
   const model = new Float32Array(gpu.modelUniformBuffer.bytes.buffer);
@@ -335,6 +337,7 @@ it('refreshes alpha-test inputs before drawing a shadow map', () => {
       { buffer: gpu.vertexBuffer },
       { buffer: gpu.uvBuffer },
       { buffer: gpu.normalBuffer },
+      { buffer: gpu.uv1Buffer },
     ]),
     expect.anything(),
   );
@@ -735,12 +738,12 @@ it('remembers geometry changes across skipped frames and uploads once on the nex
   renderer.execute();
   draw();
   draw();
-  expect(slot.gpu.buffers).toHaveLength(11); // scene + two complete mesh allocations
+  expect(slot.gpu.buffers).toHaveLength(13); // scene + two complete mesh allocations
   const vertices = (slot.gpu.pass.setVertexInput as jest.Mock).mock.calls.at(
     -1,
   )[1][0].buffer;
   expect(new Float32Array(vertices.bytes.buffer)[0]).toBe(12);
-  for (const buffer of slot.gpu.buffers.slice(1, 6))
+  for (const buffer of slot.gpu.buffers.slice(1, 7))
     expect(buffer.destroy).toHaveBeenCalledTimes(1);
 });
 
@@ -775,7 +778,7 @@ it.each([
     expect(buffer.destroy).not.toHaveBeenCalled();
   if (reason === 'scope moved') {
     draw(1);
-    expect(other.gpu.buffers).toHaveLength(11);
+    expect(other.gpu.buffers).toHaveLength(13);
   }
 });
 
@@ -860,7 +863,7 @@ it('keeps scene and model uniforms independent even when canvases share a device
   second.values.set(GPUResource, first.gpu);
   draw();
   draw(1);
-  expect(first.gpu.buffers).toHaveLength(12);
+  expect(first.gpu.buffers).toHaveLength(14);
   const a = first.gpu.draws[0].uniformBufferBindings;
   const b = second.gpu.draws[0].uniformBufferBindings;
   expect(a[0].buffer).not.toBe(b[0].buffer);
@@ -1072,6 +1075,6 @@ it('reuses the white binding through a failed load and replaces it when a textur
   expect(slot.gpu.bindings[2].samplerBindings[0].texture).toBe(
     slot.gpu.textures[0],
   );
-  expect(new Float32Array(slot.gpu.buffers[5].bytes.buffer)[48]).toBe(0);
+  expect(new Float32Array(slot.gpu.buffers[6].bytes.buffer)[48]).toBe(0);
   warn.mockRestore();
 });

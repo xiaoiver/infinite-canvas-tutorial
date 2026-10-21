@@ -17,6 +17,7 @@ export interface MeshGPUData {
   vertexBuffer: Buffer;
   normalBuffer: Buffer;
   uvBuffer: Buffer;
+  uv1Buffer: Buffer;
   indexBuffer: Buffer | null;
   indexCount: number;
   vertexCount: number;
@@ -97,6 +98,12 @@ export class MeshGPUCache {
             : new Float32Array(mesh.vertexCount * 2),
           BufferUsage.VERTEX,
         ),
+        uv1Buffer: buffer(
+          mesh.uvs1?.length === mesh.vertexCount * 2
+            ? mesh.uvs1
+            : new Float32Array(mesh.vertexCount * 2),
+          BufferUsage.VERTEX,
+        ),
         indexBuffer: mesh.indices?.length
           ? buffer(mesh.indices, BufferUsage.INDEX)
           : null,
@@ -114,7 +121,10 @@ export class MeshGPUCache {
           this.device,
           geometry.modelUniformBuffer,
         ),
-        shadowBindings: new ShadowDrawBindings(this.device, geometry.modelUniformBuffer),
+        shadowBindings: new ShadowDrawBindings(
+          this.device,
+          geometry.modelUniformBuffer,
+        ),
         localBounds: meshBounds(mesh.positions),
       };
       scope.add(() => data.bindings.destroy());

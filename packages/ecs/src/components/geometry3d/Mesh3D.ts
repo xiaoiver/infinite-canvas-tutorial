@@ -32,6 +32,9 @@ export class Mesh3D {
    */
   @field.object declare uvs: Float32Array | null;
 
+  /** Optional second UV coordinate set (TEXCOORD_1). */
+  @field.object declare uvs1: Float32Array | null;
+
   /**
    * Triangle indices.
    */
@@ -44,6 +47,7 @@ export class Mesh3D {
     this.positions ??= new Float32Array(0);
     this.normals ??= new Float32Array(0);
     this.uvs ??= null;
+    this.uvs1 ??= null;
     this.indices ??= null;
   }
 
