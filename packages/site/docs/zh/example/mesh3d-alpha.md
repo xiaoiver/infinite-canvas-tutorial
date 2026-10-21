@@ -63,6 +63,6 @@ api.updateNodes([
 
 场景还需要 `Camera3D`、光源和接收阴影的地板，参见[光照示例](/zh/example/lighting)。半透明阴影只做单层近似，多块玻璃重叠时不会按物理透射率累加。
 
-单材质 glTF Mesh 导入时会继承 `alphaMode`（`OPAQUE`、`MASK` 或 `BLEND`）与 `alphaCutoff`；节点上显式设置的 `material3d` 属性可分别覆盖它们。当前加载器会把多个图元合并为一个 Mesh，并对所有图元使用第一个材质，因此还不支持在同一导入模型中混用不同的 alpha 模式。
+导入 glTF 时，每个三角形图元会保留各自的基础颜色、贴图、`alphaMode`（`OPAQUE`、`MASK` 或 `BLEND`）和 `alphaCutoff`。节点上显式设置的 `material3d` 属性会覆盖所有图元对应的导入值。多个图元共用同一变换，选中时仍作为一个模型。导出 GLB 时保留各图元的颜色和透明模式；贴图导出暂未支持。
 
 导出 GLB 时会保留无贴图 Mesh 显式设置的 alpha 模式和裁切阈值。当前导出器尚未嵌入底色贴图，因此依赖贴图形成的镂空图形暂时无法通过 GLB 完整往返。

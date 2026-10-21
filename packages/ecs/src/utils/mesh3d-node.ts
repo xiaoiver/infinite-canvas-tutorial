@@ -1,6 +1,7 @@
 import type { Entity } from '@lastolivegames/becsy';
 import {
   ComputedBounds,
+  Material3D,
   Mesh3D,
   Mesh3DNode,
   Extrude3D,
@@ -25,7 +26,8 @@ import {
 import { resolveCanvasSourceOrigin } from './canvas-source-origin';
 import { sameNumbers, syncMaterial3D, syncTransform3D } from './sync3d';
 import { set3DMeshGizmoSelectedForCanvas } from './pick3d-bridge';
-import type { GltfMeshBakeResult } from './gltf/bake-gltf-mesh';
+import { isEntityAlive } from '../systems/Transform';
+import type { GltfMeshBakeResult, GltfMeshPart } from './gltf/bake-gltf-mesh';
 
 const proceduralGeometry = new WeakMap<Float32Array, string>();
 
@@ -37,6 +39,74 @@ const companionGeometry = new WeakMap<
   Entity,
   { key: string; material?: ImportedMaterial }
 >();
+const importedParts = new WeakMap<
+  Entity,
+  { primary: Entity; parts: { entity: Entity; material: ImportedMaterial }[] }
+>();
+const pendingParts = new WeakMap<Entity, GltfMeshPart[]>();
+
+export function stageMesh3DNodeParts(
+  source: Entity,
+  parts: GltfMeshPart[],
+): void {
+  pendingParts.set(source, parts);
+}
+
+export function takeMesh3DNodeParts(
+  source: Entity,
+): GltfMeshPart[] | undefined {
+  const parts = pendingParts.get(source);
+  pendingParts.delete(source);
+  return parts;
+}
+
+export function getMesh3DNodeParts(source: Entity): readonly Entity[] {
+  const entry = importedParts.get(source);
+  if (
+    !entry ||
+    !source.has(Mesh3DNode) ||
+    !source.read(Mesh3DNode).meshEntity?.isSame(entry.primary)
+  )
+    return [];
+  return entry.parts
+    .map(({ entity }) => entity)
+    .filter((entity) => isEntityAlive(entity) && !entity.has(ToBeDeleted));
+}
+
+export function syncMesh3DNodeParts(source: Entity): void {
+  const entry = importedParts.get(source);
+  if (!entry || !source.read(Mesh3DNode).meshEntity?.isSame(entry.primary))
+    return;
+  for (const { entity, material } of entry.parts) {
+    if (
+      isEntityAlive(entity) &&
+      entity.has(Transform3D) &&
+      entity.has(Material3D) &&
+      !entity.has(ToBeDeleted)
+    ) {
+      syncMesh3DNodeCompanionFromSource(source, entity, material);
+    }
+  }
+}
+
+export function setMesh3DNodeParts(
+  source: Entity,
+  parts: { entity: Entity; material: ImportedMaterial }[],
+): void {
+  clearMesh3DNodeParts(source);
+  const primary = source.read(Mesh3DNode).meshEntity;
+  if (parts.length && primary)
+    importedParts.set(source, { primary: primary.hold(), parts });
+}
+
+export function clearMesh3DNodeParts(source: Entity): void {
+  pendingParts.delete(source);
+  for (const { entity } of importedParts.get(source)?.parts ?? []) {
+    if (isEntityAlive(entity) && !entity.has(ToBeDeleted))
+      entity.add(ToBeDeleted);
+  }
+  importedParts.delete(source);
+}
 
 export function resolveMesh3DNodeGeometry(
   geometry: Mesh3DNodeGeometry = 'cube',
@@ -63,10 +133,12 @@ export function rebuildMesh3DNodeCompanionGeometry(
       return false;
     }
     companionGeometry.delete(source);
+    clearMesh3DNodeParts(source);
     Object.assign(meshEntity.write(Mesh3D), emptyMesh3DGeometry());
     return true;
   }
 
+  clearMesh3DNodeParts(source);
   const mesh = meshEntity.read(Mesh3D);
   if (proceduralGeometry.get(mesh.positions) === key) return false;
   const data = createGeometry(spec);
@@ -84,6 +156,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
 
 export function clearMesh3DNodeCompanionGeometryKey(source: Entity): void {
   companionGeometry.delete(source);
+  clearMesh3DNodeParts(source);
 }
 
 export function seedMesh3DNodeCompanionGeometryKey(
@@ -166,6 +239,7 @@ export function resolveMesh3DNodeCompanionTransform(
 export function syncMesh3DNodeCompanionFromSource(
   source: Entity,
   meshEntity: Entity,
+  importedMaterial?: ImportedMaterial,
 ): boolean {
   if (!source.has(Mesh3DNode)) {
     return false;
@@ -182,7 +256,7 @@ export function syncMesh3DNodeCompanionFromSource(
     scale: resolveMesh3DNodeScale(node.scale3d),
   });
 
-  syncMesh3DNodeCompanionMaterial(source, meshEntity);
+  syncMesh3DNodeCompanionMaterial(source, meshEntity, importedMaterial);
   return true;
 }
 
@@ -190,15 +264,18 @@ export function syncMesh3DNodeCompanionFromSource(
 export function syncMesh3DNodeCompanionMaterial(
   source: Entity,
   meshEntity: Entity,
+  importedMaterial?: ImportedMaterial,
 ): void {
   const node = source.read(Mesh3DNode);
   const loaded = companionGeometry.get(source);
   const spec = normalizeGeometry(node.geometry);
   const imported =
-    isGltfGeometrySpec(spec) && loaded?.key === geometrySpecKey(spec)
+    importedMaterial ??
+    (isGltfGeometrySpec(spec) && loaded?.key === geometrySpecKey(spec)
       ? loaded.material
-      : undefined;
-  const hasCustomColor = node.baseColor.some((value) => value !== 1);
+      : undefined);
+  const hasCustomColor =
+    node.baseColorOverridden || node.baseColor.some((value) => value !== 1);
   syncMaterial3D(meshEntity, {
     baseColor: [
       ...(hasCustomColor
@@ -211,7 +288,7 @@ export function syncMesh3DNodeCompanionMaterial(
     shininess: node.shininess,
     metallic: node.metallic,
     roughness: node.roughness,
-    map: node.map ?? imported?.map ?? null,
+    map: node.mapOverridden ? node.map : node.map ?? imported?.map ?? null,
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,
     specularMap: node.specularMap ?? null,

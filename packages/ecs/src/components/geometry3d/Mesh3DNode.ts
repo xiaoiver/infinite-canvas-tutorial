@@ -22,6 +22,9 @@ export class Mesh3DNode {
 
   @field.object declare baseColor: [number, number, number, number];
 
+  /** Preserve an explicit white override of an imported glTF base color. */
+  @field.boolean declare baseColorOverridden: boolean;
+
   @field.float32 declare ambient: number;
 
   @field.float32 declare diffuse: number;
@@ -38,6 +41,9 @@ export class Mesh3DNode {
 
   /** Optional base-color texture (image URL or data URL). */
   @field.object declare map: string | null;
+
+  /** Preserve an explicit null override of an imported glTF texture. */
+  @field.boolean declare mapOverridden: boolean;
 
   /** Null inherits the imported glTF material (or opaque for primitives). */
   @field.object declare alphaMode: Material3DAlphaMode | null;
@@ -76,6 +82,7 @@ export class Mesh3DNode {
     this.rotation3d ??= [0, 0, 0];
     this.scale3d ??= 100;
     this.baseColor ??= [1, 1, 1, 1];
+    this.baseColorOverridden ??= false;
     this.ambient ??= 0.5;
     this.diffuse ??= 0.75;
     this.specular ??= 0.4;
@@ -83,6 +90,7 @@ export class Mesh3DNode {
     this.metallic ??= 0;
     this.roughness ??= 1;
     this.map ??= null;
+    this.mapOverridden ??= false;
     this.alphaMode ??= null;
     this.alphaCutoff ??= null;
     this.specularMap ??= null;

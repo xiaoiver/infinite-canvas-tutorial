@@ -12,7 +12,11 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   map: string | null;
   alphaMode: Material3DAlphaMode;
   alphaCutoff: number;
+  /** Individual primitive buffers, normalized in the same space as the whole scene. */
+  parts: GltfMeshPart[];
 };
+
+export type GltfMeshPart = Mesh3DGeometryData & ImportedMaterial;
 
 type GltfJson = GltfContainer['json'] & {
   scenes?: { nodes?: number[] }[];
@@ -171,6 +175,12 @@ function appendPrimitive(
   idxChunks: number[],
   vertexOffset: { value: number },
   materialOut: { value: ImportedMaterial; selected: boolean },
+  partRanges: {
+    vertexStart: number;
+    vertexCount: number;
+    indexStart: number;
+    material: ImportedMaterial;
+  }[],
   baseUrl?: string,
 ): void {
   const mesh = json.meshes?.[meshIndex];
@@ -228,6 +238,24 @@ function appendPrimitive(
       uvs = new Float32Array(vCount * 2);
     }
 
+    let primitiveIndices: Uint32Array | undefined;
+    if (prim.indices !== undefined) {
+      const accessor = readAccessor(gltf, prim.indices);
+      if (accessor.components !== 1) continue;
+      if (accessor.array instanceof Uint32Array) {
+        primitiveIndices = accessor.array;
+      } else if (
+        accessor.array instanceof Uint16Array ||
+        accessor.array instanceof Uint8Array
+      ) {
+        primitiveIndices = Uint32Array.from(accessor.array);
+      } else {
+        continue;
+      }
+    }
+
+    const vertexStart = vertexOffset.value;
+    const indexStart = idxChunks.length;
     posChunks.push(positions);
     normalChunks.push(normals);
     uvChunks.push(uvs);
@@ -241,21 +269,9 @@ function appendPrimitive(
       materialOut.selected = true;
     }
 
-    if (prim.indices !== undefined) {
-      const idxAcc = readAccessor(gltf, prim.indices);
-      let idx: Uint32Array;
-      if (idxAcc.array instanceof Uint32Array) {
-        idx = idxAcc.array;
-      } else if (idxAcc.array instanceof Uint16Array) {
-        idx = new Uint32Array(idxAcc.array.length);
-        for (let i = 0; i < idxAcc.array.length; i++) {
-          idx[i] = idxAcc.array[i];
-        }
-      } else {
-        continue;
-      }
-      for (let i = 0; i < idx.length; i++) {
-        idxChunks.push(vertexOffset.value + idx[i]);
+    if (primitiveIndices) {
+      for (let i = 0; i < primitiveIndices.length; i++) {
+        idxChunks.push(vertexOffset.value + primitiveIndices[i]);
       }
     } else {
       for (let i = 0; i < vCount; i += 3) {
@@ -267,6 +283,12 @@ function appendPrimitive(
       }
     }
     vertexOffset.value += vCount;
+    partRanges.push({
+      vertexStart,
+      vertexCount: vCount,
+      indexStart,
+      material: readMaterial(json, prim.material ?? -1, baseUrl),
+    });
   }
 }
 
@@ -281,6 +303,12 @@ function traverseNode(
   idxChunks: number[],
   vertexOffset: { value: number },
   materialOut: { value: ImportedMaterial; selected: boolean },
+  partRanges: {
+    vertexStart: number;
+    vertexCount: number;
+    indexStart: number;
+    material: ImportedMaterial;
+  }[],
   baseUrl?: string,
   meshFilter?: number,
 ): void {
@@ -307,6 +335,7 @@ function traverseNode(
       idxChunks,
       vertexOffset,
       materialOut,
+      partRanges,
       baseUrl,
     );
   }
@@ -323,6 +352,7 @@ function traverseNode(
       idxChunks,
       vertexOffset,
       materialOut,
+      partRanges,
       baseUrl,
       meshFilter,
     );
@@ -349,6 +379,12 @@ export function bakeGltfMesh(
     } as ImportedMaterial,
     selected: false,
   };
+  const partRanges: {
+    vertexStart: number;
+    vertexCount: number;
+    indexStart: number;
+    material: ImportedMaterial;
+  }[] = [];
   const identity = mat4.create();
 
   const sceneIndex = options?.scene ?? 0;
@@ -366,6 +402,7 @@ export function bakeGltfMesh(
         idxChunks,
         vertexOffset,
         materialOut,
+        partRanges,
         options?.baseUrl,
         options?.mesh,
       );
@@ -382,6 +419,7 @@ export function bakeGltfMesh(
       idxChunks,
       vertexOffset,
       materialOut,
+      partRanges,
       options?.baseUrl,
     );
   }
@@ -391,6 +429,7 @@ export function bakeGltfMesh(
       positions: new Float32Array(0),
       normals: new Float32Array(0),
       indices: new Uint32Array(0),
+      parts: [],
       ...materialOut.value,
     };
   }
@@ -433,11 +472,29 @@ export function bakeGltfMesh(
 
   normalizeMeshBoundsInPlace(positions);
 
+  const parts = partRanges.map((range, i): GltfMeshPart => {
+    const start = range.vertexStart;
+    const end = start + range.vertexCount;
+    const partIndices = indices.slice(
+      range.indexStart,
+      partRanges[i + 1]?.indexStart ?? indices.length,
+    );
+    for (let j = 0; j < partIndices.length; j++) partIndices[j] -= start;
+    return {
+      positions: positions.subarray(start * 3, end * 3),
+      normals: normals.subarray(start * 3, end * 3),
+      uvs: uvs.subarray(start * 2, end * 2),
+      indices: partIndices,
+      ...range.material,
+    };
+  });
+
   return {
     positions,
     normals,
     indices,
     uvs,
+    parts,
     ...materialOut.value,
   };
 }

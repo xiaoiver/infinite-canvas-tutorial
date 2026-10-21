@@ -16,6 +16,7 @@ import {
 import {
   clearMesh3DNodeCompanionGeometryKey,
   seedMesh3DNodeCompanionGeometryKey,
+  stageMesh3DNodeParts,
   syncMesh3DNodeCompanionMaterial,
 } from '../mesh3d-node';
 import { loadGltfMeshFromSpec } from './load-gltf-mesh';
@@ -83,24 +84,26 @@ export function requestGltfMeshLoad(source: Entity): void {
         if (!companion || !isEntityAlive(companion) || !companion.has(Mesh3D)) {
           return;
         }
+        const primary = baked.parts.length > 1 ? baked.parts[0] : baked;
         const meshWrite = companion.write(Mesh3D);
         Object.assign(meshWrite, {
-          positions: baked.positions,
-          normals: baked.normals,
-          indices: baked.indices,
+          positions: primary.positions,
+          normals: primary.normals,
+          indices: primary.indices,
         });
-        meshWrite.uvs = baked.uvs ?? null;
+        meshWrite.uvs = primary.uvs ?? null;
 
         retryBySource.delete(source);
         seedMesh3DNodeCompanionGeometryKey(source, {
-          baseColor: baked.baseColor,
-          map: baked.map,
-          alphaMode: baked.alphaMode,
-          alphaCutoff: baked.alphaCutoff,
+          baseColor: primary.baseColor,
+          map: primary.map,
+          alphaMode: primary.alphaMode,
+          alphaCutoff: primary.alphaCutoff,
         });
         if (companion.has(Material3D)) {
           syncMesh3DNodeCompanionMaterial(source, companion);
         }
+        stageMesh3DNodeParts(source, baked.parts.slice(1));
       });
     })
     .catch((err) => {

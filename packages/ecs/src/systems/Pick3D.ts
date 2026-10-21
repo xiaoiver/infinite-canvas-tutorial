@@ -46,6 +46,7 @@ import {
   findCamera2DForCanvas,
   findCamera3DForCanvas,
 } from '../utils/canvas3d-scope';
+import { getMesh3DNodeParts } from '../utils/mesh3d-node';
 
 /**
  * 3D Picking System.
@@ -298,17 +299,35 @@ export class Pick3D extends System {
     if (!layersChanged && previous?.selection === this.selectionRevision)
       return;
     if (layersChanged) {
-      const scopedMeshes = this.canvasMeshes(canvasEntity);
+      const scopedMeshes = this.canvasMeshes(canvasEntity).filter((entity) => {
+        if (!entity.has(Mesh3DNodeTarget)) return true;
+        const source = entity.read(Mesh3DNodeTarget).source;
+        return (
+          isEntityAlive(source) &&
+          source.has(Mesh3DNode) &&
+          !!source.read(Mesh3DNode).meshEntity?.isSame(entity)
+        );
+      });
       const layers = scopedMeshes.map((entity) => {
         const sourceNode = this.resolveMesh3DSourceNode(api, entity);
         const id = sourceNode?.id ?? `mesh3d:${entity.__id}`;
         const mesh = entity.read(Mesh3D);
+        let vertexCount = mesh.vertexCount;
+        if (entity.has(Mesh3DNodeTarget)) {
+          const source = entity.read(Mesh3DNodeTarget).source;
+          if (isEntityAlive(source)) {
+            for (const part of getMesh3DNodeParts(source)) {
+              if (part.has(Mesh3D))
+                vertexCount += part.read(Mesh3D).vertexCount;
+            }
+          }
+        }
 
         return {
           id,
           name: sourceNode?.name || `3D Mesh ${entity.__id}`,
           sourceNodeId: sourceNode?.id,
-          vertexCount: mesh.vertexCount,
+          vertexCount,
           entity,
         };
       });

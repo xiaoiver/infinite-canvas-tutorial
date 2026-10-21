@@ -9,6 +9,10 @@ export default defineConfig({
   // sequentially; these tests own their page and have no shared beforeAll state.
   fullyParallel: true,
   workers: 1,
+  // Vite can reload the fixture between its ready check and test setup when a
+  // lazily imported test helper triggers dependency optimization. A retry keeps
+  // the first failure visible as flaky while still failing persistent errors.
+  retries: process.env.CI ? 1 : 0,
   forbidOnly: !!process.env.CI,
   reporter: 'list',
   use: {
