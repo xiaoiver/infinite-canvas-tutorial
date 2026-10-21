@@ -160,6 +160,7 @@ it('keeps distinct textures on separate material primitives', async () => {
       mesh,
       transform,
       material: new Material3D({
+        baseColor: [0.5, 0.25, 0.75, 0.5],
         map: blueUrl,
         metallicRoughnessMap: png,
         metallicRoughnessTexCoord: 1,
@@ -248,6 +249,8 @@ it('keeps distinct textures on separate material primitives', async () => {
   expect(bakeGltfMesh(loaded).parts[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
   expect(bakeGltfMesh(loaded).parts[0].emissiveStrength).toBe(2.5);
   expect(bakeGltfMesh(loaded).parts[1].unlit).toBe(true);
+  expect(bakeGltfMesh(loaded).parts[1].baseColor[0]).toBeCloseTo(0.5, 5);
+  expect(bakeGltfMesh(loaded).parts[1].baseColor[3]).toBe(0.5);
   expect(bakeGltfMesh(loaded).parts[0].emissiveMap).toBe(blueUrl);
   expect(bakeGltfMesh(loaded).parts[0].emissiveTexCoord).toBe(1);
   expect(bakeGltfMesh(loaded).parts[0].emissiveTextureTransform).toEqual({

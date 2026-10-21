@@ -259,6 +259,8 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
   expect(baked.parts[0].emissiveFactor).toEqual([0.5, 0.25, 0.1]);
   expect(baked.parts[0].emissiveStrength).toBe(2);
   expect(baked.parts[0].unlit).toBe(true);
+  expect(baked.parts[0].baseColor[0]).toBeCloseTo(0.4845, 4);
+  expect(baked.parts[0].baseColor[3]).toBe(0.8);
   expect(baked.parts[0].emissiveMap).toBe('/data/albedo.png');
   expect(baked.parts[0].emissiveTextureTransform).toEqual({
     offset: [0.25, 0.5],
@@ -268,5 +270,6 @@ it('imports per-primitive emissive factors, textures and their UV transform', ()
   expect(baked.parts[1].emissiveFactor).toEqual([0, 0, 0]);
   expect(baked.parts[1].emissiveStrength).toBe(1);
   expect(baked.parts[1].unlit).toBe(false);
+  expect(baked.parts[1].baseColor).toEqual([0.8, 0.6, 0.4, 1]);
   expect(baked.parts[1].emissiveMap).toBeNull();
 });
