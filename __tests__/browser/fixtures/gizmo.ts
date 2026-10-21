@@ -31,6 +31,7 @@ import { ensure3DCamera } from '../../../packages/app/lib/ensure-3d-camera';
 import { settleECSFrames } from './ecs-frames';
 import { MESH_SCENE_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
 import { MESH_MODEL_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
+import { getMeshPipeline3D } from '../../../packages/ecs/src/systems/mesh3d-bridge';
 
 let api: API;
 const params = new URLSearchParams(location.search);
@@ -149,12 +150,26 @@ const harness = {
   },
   materialFeatures: () => {
     const source = api.getEntity(api.getNodeById('material-model'));
-    const material = source.read(Mesh3DNode).meshEntity!.read(Material3D);
+    const mesh = source.read(Mesh3DNode).meshEntity!;
+    const material = mesh.read(Material3D);
+    const pipeline = getMeshPipeline3D(api.getCanvas()) as unknown as {
+      states: Map<
+        API,
+        {
+          textureCache: Map<string, { status: 'loading' | 'ready' | 'error' }>;
+        }
+      >;
+    };
+    const textures = pipeline?.states.get(api)?.textureCache;
     return {
       normalMap: !!material.normalMap,
       normalScale: material.normalScale,
+      normalTextureStatus: textures?.get(`material:${material.normalMap}`)
+        ?.status,
       occlusionMap: !!material.occlusionMap,
       occlusionStrength: material.occlusionStrength,
+      occlusionTextureStatus: textures?.get(`material:${material.occlusionMap}`)
+        ?.status,
     };
   },
   trackGeometryUploads: () => {

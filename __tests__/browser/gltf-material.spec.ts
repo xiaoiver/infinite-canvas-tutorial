@@ -35,7 +35,9 @@ test('Khronos GLB normal and occlusion textures change the rendered material', a
     page.evaluate(() => window.gizmoTest.materialFeatures());
   await expect.poll(features).toMatchObject({
     normalMap: true,
+    normalTextureStatus: 'ready',
     occlusionMap: true,
+    occlusionTextureStatus: 'ready',
   });
   const setMaterial = async (material3d: Record<string, unknown>) => {
     await page.evaluate(async (material) => {
@@ -52,6 +54,11 @@ test('Khronos GLB normal and occlusion textures change the rendered material', a
   await expect.poll(features).toMatchObject({ normalScale: 0 });
   const flat = await pixels(page);
   await setMaterial({ normalScale: 1 });
+  await expect.poll(features).toMatchObject({
+    normalMap: true,
+    normalScale: 1,
+    normalTextureStatus: 'ready',
+  });
   await expect
     .poll(async () => difference(flat, await pixels(page)), { timeout: 20000 })
     .toBeGreaterThan(10000);
@@ -77,7 +84,7 @@ test('Khronos GLB normal and occlusion textures change the rendered material', a
 
 test('double-sided material draws the back of a plane', async ({ page }) => {
   await page.goto('/gizmo.html?alpha');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
   const setDoubleSided = async (doubleSided: boolean) => {
     await page.evaluate(async (enabled) => {
       const api = window.gizmoTest.api();

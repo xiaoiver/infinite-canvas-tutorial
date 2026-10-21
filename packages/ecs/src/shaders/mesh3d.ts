@@ -23,6 +23,7 @@ const pointShadowAxes = (axis: 'right' | 'up') =>
   ).join('\n  ');
 
 export const vert = /* glsl */ `
+precision highp float;
 #define MAX_3D_LIGHTS 8
 
 layout(std140) uniform SceneUniforms3D {
@@ -116,6 +117,9 @@ void main() {
 `;
 
 export const frag = /* glsl */ `
+// World-space lighting squares camera-to-fragment distances. Fragment mediump
+// overflows on mobile/WebKit GPUs and can zero the normalized view direction.
+precision highp float;
 #define MAX_3D_LIGHTS 8
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2
