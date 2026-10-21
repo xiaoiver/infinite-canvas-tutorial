@@ -140,6 +140,12 @@ const harness = {
   resetDerivedUpdates,
   derivedUpdates: () => ({ ...derivedUpdates }),
   settle: () => settleECSFrames(api, 3),
+  materialGeometryVertices: () => {
+    const source = api.getEntity(api.getNodeById('material-model'));
+    return (
+      source.read(Mesh3DNode).meshEntity?.read(Mesh3D).positions.length ?? 0
+    );
+  },
   trackGeometryUploads: () => {
     const device = api.getCanvas().read(GPUResource).device;
     const createBuffer = device.createBuffer.bind(device);
@@ -276,7 +282,39 @@ async function init() {
               height: 40,
               scale3d: 20,
             };
-      const nodes: SerializedNode[] = params.has('alpha')
+      const nodes: SerializedNode[] = params.has('gltfMaterial')
+        ? [
+            {
+              id: 'material-model',
+              type: 'mesh3d',
+              x: 50,
+              y: 35,
+              width: 200,
+              height: 200,
+              scale3d: 170,
+              rotation3d: [0.2, 0.3, 0],
+              geometry: { type: 'gltf', url: '/data/NormalTangentTest.glb' },
+              camera3d: {
+                linked: true,
+                projection: 'perspective',
+                clearColor: false,
+              },
+            },
+            {
+              id: 'material-ambient',
+              type: 'light3d',
+              lightType: 'ambient',
+              intensity: 0.75,
+            },
+            {
+              id: 'material-sun',
+              type: 'light3d',
+              lightType: 'directional',
+              direction: [0.5, 0.4, 0.8],
+              intensity: 1.4,
+            },
+          ]
+        : params.has('alpha')
         ? [
             {
               id: 'alpha-floor',
@@ -391,7 +429,7 @@ async function init() {
         });
       }
       editor.replaceDocument(nodes, 'remote');
-      if (!params.has('alpha'))
+      if (!params.has('alpha') && !params.has('gltfMaterial'))
         editor.selectNodes([editor.getNodeById('model')]);
     },
     { capture: 'NEVER' },

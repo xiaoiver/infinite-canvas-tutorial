@@ -12,6 +12,8 @@ const ready = {
   mapReady: false,
   metallicRoughnessMapReady: false,
   emissiveMapReady: false,
+  normalMapReady: false,
+  occlusionMapReady: false,
   specularMapReady: false,
   bumpMapReady: false,
   environmentMapReady: false,
@@ -96,6 +98,8 @@ it('updates all material inputs and late texture readiness without rebuilding ma
     mapReady: true,
     metallicRoughnessMapReady: true,
     emissiveMapReady: true,
+    normalMapReady: false,
+    occlusionMapReady: false,
     specularMapReady: true,
     bumpMapReady: true,
     environmentMapReady: true,
@@ -250,7 +254,34 @@ it('uploads emissive color, texture readiness and its independent UV transform',
   uniforms.update(transform, material, { ...ready, emissiveMapReady: true });
   expect(setSubData).toHaveBeenCalledTimes(1);
   uniforms.update(transform, material, ready);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 9]).toBe(0);
+  expect(data[83 + ENVIRONMENT_IRRADIANCE_FLOATS]).toBe(0);
+});
+
+it('uploads double-sided, normal and occlusion settings without rebuilding geometry', () => {
+  const { uniforms, transform, material, setSubData } = setup();
+  material.doubleSided = true;
+  material.normalTexCoord = 1;
+  material.normalScale = 0.5;
+  material.normalTextureTransform = { offset: [0.25, 0.5], rotation: 0.3 };
+  material.occlusionTexCoord = 0;
+  material.occlusionStrength = 0.7;
+  material.occlusionTextureTransform = { scale: [2, 0.5], rotation: -0.2 };
+  const legacy = uniforms.update(transform, material, {
+    ...ready,
+    normalMapReady: true,
+    occlusionMapReady: true,
+  });
+  expect(legacy.u_TextureCoords).toEqual(Float32Array.of(0, 0, 1, 0));
+  expect(legacy.u_NormalUvTransform).toEqual(Float32Array.of(0.25, 0.5, 1, 1));
+  expect(legacy.u_OcclusionUvTransform).toEqual(Float32Array.of(0, 0, 2, 0.5));
+  expect(legacy.u_NormalParams).toEqual(Float32Array.of(1, 1, 0.3, 0.5));
+  expect(legacy.u_OcclusionParams).toEqual(Float32Array.of(1, 0, -0.2, 0.7));
+  uniforms.update(transform, material, {
+    ...ready,
+    normalMapReady: true,
+    occlusionMapReady: true,
+  });
+  expect(setSubData).toHaveBeenCalledTimes(1);
 });
 
 it('retries failed uploads without rebuilding unchanged matrices', () => {

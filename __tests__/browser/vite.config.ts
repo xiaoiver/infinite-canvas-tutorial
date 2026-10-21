@@ -31,6 +31,9 @@ export default defineConfig({
     esbuildOptions: { target: 'esnext' },
   },
   root: fileURLToPath(new URL('./fixtures', import.meta.url)),
+  publicDir: fileURLToPath(
+    new URL('../../packages/site/docs/public', import.meta.url),
+  ),
   resolve: {
     alias: {
       // Documentation fixtures mount the real shared example world.

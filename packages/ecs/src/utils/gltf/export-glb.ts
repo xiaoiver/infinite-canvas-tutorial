@@ -30,6 +30,15 @@ export interface GlbMeshSource {
         | 'emissiveMap'
         | 'emissiveTexCoord'
         | 'emissiveTextureTransform'
+        | 'doubleSided'
+        | 'normalMap'
+        | 'normalTexCoord'
+        | 'normalTextureTransform'
+        | 'normalScale'
+        | 'occlusionMap'
+        | 'occlusionTexCoord'
+        | 'occlusionTextureTransform'
+        | 'occlusionStrength'
       >
     >;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
@@ -105,6 +114,8 @@ export function exportMeshesToGlb(
     alphaMode: 'OPAQUE' | 'MASK' | 'BLEND';
     alphaCutoff?: number;
     doubleSided: boolean;
+    normalTexture?: GlbTextureInfo & { scale?: number };
+    occlusionTexture?: GlbTextureInfo & { strength?: number };
     emissiveFactor?: number[];
     emissiveTexture?: GlbTextureInfo;
     extensions?: {
@@ -195,26 +206,40 @@ export function exportMeshesToGlb(
   };
   const material = (
     color: readonly number[],
-    metallic: number,
-    roughness: number,
-    alphaMode: Material3D['alphaMode'] | undefined,
-    alphaCutoff: number | undefined,
-    map: string | null | undefined,
-    mapTexCoord: number | undefined,
-    mapTextureTransform: Material3DTextureTransform | null | undefined,
-    metallicRoughnessMap: string | null | undefined,
-    metallicRoughnessTexCoord: number | undefined,
-    metallicRoughnessTextureTransform:
-      | Material3DTextureTransform
-      | null
-      | undefined,
-    emissiveFactor: readonly number[] | undefined,
-    emissiveStrength: number | undefined,
-    unlit: boolean | undefined,
-    emissiveMap: string | null | undefined,
-    emissiveTexCoord: number | undefined,
-    emissiveTextureTransform: Material3DTextureTransform | null | undefined,
+    surface: GlbMeshSource['material'],
+    hasUvs: (coord: number | undefined) => boolean,
   ): number => {
+    const {
+      metallic,
+      roughness,
+      alphaMode,
+      alphaCutoff,
+      mapTexCoord,
+      mapTextureTransform,
+      metallicRoughnessTexCoord,
+      metallicRoughnessTextureTransform,
+      emissiveFactor,
+      emissiveStrength,
+      unlit,
+      emissiveTexCoord,
+      emissiveTextureTransform,
+      doubleSided,
+      normalTexCoord,
+      normalTextureTransform,
+      normalScale,
+      occlusionTexCoord,
+      occlusionTextureTransform,
+      occlusionStrength,
+    } = surface;
+    const map = hasUvs(mapTexCoord) ? surface.map : null;
+    const metallicRoughnessMap = hasUvs(metallicRoughnessTexCoord)
+      ? surface.metallicRoughnessMap
+      : null;
+    const emissiveMap = hasUvs(emissiveTexCoord) ? surface.emissiveMap : null;
+    const normalMap = hasUvs(normalTexCoord) ? surface.normalMap : null;
+    const occlusionMap = hasUvs(occlusionTexCoord)
+      ? surface.occlusionMap
+      : null;
     const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
     const cutoff = alphaCutoff ?? 0.5;
     if (
@@ -222,6 +247,13 @@ export function exportMeshesToGlb(
       ![0, 1].includes(mapTexCoord ?? 0) ||
       ![0, 1].includes(metallicRoughnessTexCoord ?? 0) ||
       ![0, 1].includes(emissiveTexCoord ?? 0) ||
+      ![0, 1].includes(normalTexCoord ?? 0) ||
+      ![0, 1].includes(occlusionTexCoord ?? 0) ||
+      (normalScale !== undefined && !Number.isFinite(normalScale)) ||
+      (occlusionStrength !== undefined &&
+        (!Number.isFinite(occlusionStrength) ||
+          occlusionStrength < 0 ||
+          occlusionStrength > 1)) ||
       (emissiveFactor &&
         (emissiveFactor.length !== 3 ||
           emissiveFactor.some(
@@ -239,6 +271,8 @@ export function exportMeshesToGlb(
     const textureIndex = textureIndexFor(map);
     const pbrTextureIndex = textureIndexFor(metallicRoughnessMap);
     const emissiveTextureIndex = textureIndexFor(emissiveMap);
+    const normalTextureIndex = textureIndexFor(normalMap);
+    const occlusionTextureIndex = textureIndexFor(occlusionMap);
     if (emissiveStrength !== undefined && emissiveStrength !== 1)
       usesEmissiveStrength = true;
     if (unlit) usesUnlit = true;
@@ -300,7 +334,35 @@ export function exportMeshesToGlb(
         ...(mode === 'mask'
           ? { alphaCutoff: Math.max(0, Math.min(1, cutoff)) }
           : {}),
-        doubleSided: true,
+        doubleSided: doubleSided ?? false,
+        ...(normalTextureIndex === undefined
+          ? {}
+          : {
+              normalTexture: {
+                ...textureInfo(
+                  normalTextureIndex,
+                  normalTexCoord,
+                  normalTextureTransform,
+                ),
+                ...(normalScale === undefined || normalScale === 1
+                  ? {}
+                  : { scale: normalScale }),
+              },
+            }),
+        ...(occlusionTextureIndex === undefined
+          ? {}
+          : {
+              occlusionTexture: {
+                ...textureInfo(
+                  occlusionTextureIndex,
+                  occlusionTexCoord,
+                  occlusionTextureTransform,
+                ),
+                ...(occlusionStrength === undefined || occlusionStrength === 1
+                  ? {}
+                  : { strength: occlusionStrength }),
+              },
+            }),
         ...(emissiveFactor?.some((value) => value > 0)
           ? { emissiveFactor: [...emissiveFactor] }
           : {}),
@@ -373,10 +435,8 @@ export function exportMeshesToGlb(
         count,
         'VEC2',
       );
-    const textureIfUv = (
-      url: string | null | undefined,
-      texCoord: number | undefined,
-    ) => (((texCoord ?? 0) === 1 ? uvs1 : uvs) ? url : null);
+    const hasUvs = (coord: number | undefined) =>
+      !!((coord ?? 0) === 1 ? uvs1 : uvs);
 
     const frontIndices: number[] = [];
     const sideIndices: number[] = [];
@@ -392,28 +452,8 @@ export function exportMeshesToGlb(
     }
     const baseMaterial = material(
       source.material.baseColor,
-      source.material.metallic,
-      source.material.roughness,
-      source.material.alphaMode,
-      source.material.alphaCutoff,
-      textureIfUv(source.material.map, source.material.mapTexCoord),
-      source.material.mapTexCoord,
-      source.material.mapTextureTransform,
-      textureIfUv(
-        source.material.metallicRoughnessMap,
-        source.material.metallicRoughnessTexCoord,
-      ),
-      source.material.metallicRoughnessTexCoord,
-      source.material.metallicRoughnessTextureTransform,
-      source.material.emissiveFactor,
-      source.material.emissiveStrength,
-      source.material.unlit,
-      textureIfUv(
-        source.material.emissiveMap,
-        source.material.emissiveTexCoord,
-      ),
-      source.material.emissiveTexCoord,
-      source.material.emissiveTextureTransform,
+      source.material,
+      hasUvs,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -435,31 +475,7 @@ export function exportMeshesToGlb(
     if (sideIndices.length && source.material.sideColor)
       primitive(
         sideIndices,
-        material(
-          source.material.sideColor,
-          source.material.metallic,
-          source.material.roughness,
-          source.material.alphaMode,
-          source.material.alphaCutoff,
-          textureIfUv(source.material.map, source.material.mapTexCoord),
-          source.material.mapTexCoord,
-          source.material.mapTextureTransform,
-          textureIfUv(
-            source.material.metallicRoughnessMap,
-            source.material.metallicRoughnessTexCoord,
-          ),
-          source.material.metallicRoughnessTexCoord,
-          source.material.metallicRoughnessTextureTransform,
-          source.material.emissiveFactor,
-          source.material.emissiveStrength,
-          source.material.unlit,
-          textureIfUv(
-            source.material.emissiveMap,
-            source.material.emissiveTexCoord,
-          ),
-          source.material.emissiveTexCoord,
-          source.material.emissiveTextureTransform,
-        ),
+        material(source.material.sideColor, source.material, hasUvs),
       );
 
     const pose = source.transform;

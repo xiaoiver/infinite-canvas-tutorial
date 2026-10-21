@@ -3213,6 +3213,15 @@ export class API {
           emissiveMap: surface.emissiveMap,
           emissiveTexCoord: surface.emissiveTexCoord,
           emissiveTextureTransform: surface.emissiveTextureTransform,
+          doubleSided: surface.doubleSided,
+          normalMap: surface.normalMap,
+          normalTexCoord: surface.normalTexCoord,
+          normalTextureTransform: surface.normalTextureTransform,
+          normalScale: surface.normalScale,
+          occlusionMap: surface.occlusionMap,
+          occlusionTexCoord: surface.occlusionTexCoord,
+          occlusionTextureTransform: surface.occlusionTextureTransform,
+          occlusionStrength: surface.occlusionStrength,
         };
         const pose = part.read(Transform3D);
         const transform = {

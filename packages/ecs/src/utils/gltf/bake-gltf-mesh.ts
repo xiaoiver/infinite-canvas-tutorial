@@ -54,6 +54,15 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   emissiveMap: string | null;
   emissiveTexCoord: 0 | 1;
   emissiveTextureTransform: Material3DTextureTransform | null;
+  doubleSided: boolean;
+  normalMap: string | null;
+  normalTexCoord: 0 | 1;
+  normalTextureTransform: Material3DTextureTransform | null;
+  normalScale: number;
+  occlusionMap: string | null;
+  occlusionTexCoord: 0 | 1;
+  occlusionTextureTransform: Material3DTextureTransform | null;
+  occlusionStrength: number;
   metallic: number;
   roughness: number;
   alphaMode: Material3DAlphaMode;
@@ -97,6 +106,9 @@ type GltfJson = GltfContainer['json'] & {
       KHR_materials_unlit?: Record<string, never>;
     };
     emissiveTexture?: GltfTextureInfo;
+    doubleSided?: boolean;
+    normalTexture?: GltfTextureInfo & { scale?: number };
+    occlusionTexture?: GltfTextureInfo & { strength?: number };
     pbrMetallicRoughness?: {
       baseColorFactor?: number[];
       baseColorTexture?: GltfTextureInfo;
@@ -199,6 +211,15 @@ type ImportedMaterial = Pick<
   | 'emissiveMap'
   | 'emissiveTexCoord'
   | 'emissiveTextureTransform'
+  | 'doubleSided'
+  | 'normalMap'
+  | 'normalTexCoord'
+  | 'normalTextureTransform'
+  | 'normalScale'
+  | 'occlusionMap'
+  | 'occlusionTexCoord'
+  | 'occlusionTextureTransform'
+  | 'occlusionStrength'
   | 'metallic'
   | 'roughness'
   | 'alphaMode'
@@ -219,6 +240,8 @@ function readMaterial(
       ? Math.max(0, Math.min(1, value))
       : 1;
   const emissive = material?.emissiveFactor;
+  const normalScale = material?.normalTexture?.scale;
+  const occlusionStrength = material?.occlusionTexture?.strength;
   const unlit =
     material?.unlit === true ||
     material?.extensions?.KHR_materials_unlit !== undefined;
@@ -260,6 +283,32 @@ function readMaterial(
     ),
     emissiveTexCoord: textureCoord(material?.emissiveTexture) === 1 ? 1 : 0,
     emissiveTextureTransform: textureTransform(material?.emissiveTexture),
+    doubleSided: material?.doubleSided === true,
+    normalMap: readMaterialTextureUrl(
+      gltf,
+      json,
+      material?.normalTexture,
+      baseUrl,
+    ),
+    normalTexCoord: textureCoord(material?.normalTexture) === 1 ? 1 : 0,
+    normalTextureTransform: textureTransform(material?.normalTexture),
+    normalScale:
+      typeof normalScale === 'number' && Number.isFinite(normalScale)
+        ? normalScale
+        : 1,
+    occlusionMap: readMaterialTextureUrl(
+      gltf,
+      json,
+      material?.occlusionTexture,
+      baseUrl,
+    ),
+    occlusionTexCoord: textureCoord(material?.occlusionTexture) === 1 ? 1 : 0,
+    occlusionTextureTransform: textureTransform(material?.occlusionTexture),
+    occlusionStrength:
+      typeof occlusionStrength === 'number' &&
+      Number.isFinite(occlusionStrength)
+        ? Math.max(0, Math.min(1, occlusionStrength))
+        : 1,
     metallic: unitFactor(factor?.metallicFactor),
     roughness: unitFactor(factor?.roughnessFactor),
     alphaMode:
@@ -422,6 +471,8 @@ function appendPrimitive(
       if (imported.metallicRoughnessTexCoord === 1)
         imported.metallicRoughnessMap = null;
       if (imported.emissiveTexCoord === 1) imported.emissiveMap = null;
+      if (imported.normalTexCoord === 1) imported.normalMap = null;
+      if (imported.occlusionTexCoord === 1) imported.occlusionMap = null;
     }
     if (
       !materialOut.selected &&
@@ -554,6 +605,15 @@ export function bakeGltfMesh(
       emissiveMap: null,
       emissiveTexCoord: 0,
       emissiveTextureTransform: null,
+      doubleSided: false,
+      normalMap: null,
+      normalTexCoord: 0,
+      normalTextureTransform: null,
+      normalScale: 1,
+      occlusionMap: null,
+      occlusionTexCoord: 0,
+      occlusionTextureTransform: null,
+      occlusionStrength: 1,
       metallic: 1,
       roughness: 1,
       alphaMode: 'opaque',

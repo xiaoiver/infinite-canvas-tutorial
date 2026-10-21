@@ -100,6 +100,25 @@ export class Mesh3DNode {
 
   @field.boolean declare emissiveTextureTransformOverridden: boolean;
 
+  /** Null inherits the imported glTF double-sided setting. */
+  @field.object declare doubleSided: boolean | null;
+
+  @field.object declare normalMap: string | null;
+  @field.boolean declare normalMapOverridden: boolean;
+  @field.object declare normalTexCoord: 0 | 1 | null;
+  @field.object
+  declare normalTextureTransform: Material3DTextureTransform | null;
+  @field.boolean declare normalTextureTransformOverridden: boolean;
+  @field.object declare normalScale: number | null;
+
+  @field.object declare occlusionMap: string | null;
+  @field.boolean declare occlusionMapOverridden: boolean;
+  @field.object declare occlusionTexCoord: 0 | 1 | null;
+  @field.object
+  declare occlusionTextureTransform: Material3DTextureTransform | null;
+  @field.boolean declare occlusionTextureTransformOverridden: boolean;
+  @field.object declare occlusionStrength: number | null;
+
   /** Null inherits the imported glTF material (or opaque for primitives). */
   @field.object declare alphaMode: Material3DAlphaMode | null;
 
@@ -167,6 +186,19 @@ export class Mesh3DNode {
     this.emissiveTexCoord ??= null;
     this.emissiveTextureTransform ??= null;
     this.emissiveTextureTransformOverridden ??= false;
+    this.doubleSided ??= null;
+    this.normalMap ??= null;
+    this.normalMapOverridden ??= false;
+    this.normalTexCoord ??= null;
+    this.normalTextureTransform ??= null;
+    this.normalTextureTransformOverridden ??= false;
+    this.normalScale ??= null;
+    this.occlusionMap ??= null;
+    this.occlusionMapOverridden ??= false;
+    this.occlusionTexCoord ??= null;
+    this.occlusionTextureTransform ??= null;
+    this.occlusionTextureTransformOverridden ??= false;
+    this.occlusionStrength ??= null;
     this.alphaMode ??= null;
     this.alphaCutoff ??= null;
     this.specularMap ??= null;
