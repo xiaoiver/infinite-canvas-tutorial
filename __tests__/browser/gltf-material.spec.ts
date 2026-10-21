@@ -20,6 +20,7 @@ const difference = (a: Buffer, b: Buffer) => {
 test('Khronos GLB normal and occlusion textures change the rendered material', async ({
   page,
 }) => {
+  test.setTimeout(90000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/gizmo.html?gltfMaterial&width=300&height=270');
@@ -30,7 +31,12 @@ test('Khronos GLB normal and occlusion textures change the rendered material', a
     )
     .toBeGreaterThan(1000);
   await page.evaluate(() => window.gizmoTest.settle());
-  const full = await pixels(page);
+  const features = () =>
+    page.evaluate(() => window.gizmoTest.materialFeatures());
+  await expect.poll(features).toMatchObject({
+    normalMap: true,
+    occlusionMap: true,
+  });
   const setMaterial = async (material3d: Record<string, unknown>) => {
     await page.evaluate(async (material) => {
       const api = window.gizmoTest.api();
@@ -42,12 +48,30 @@ test('Khronos GLB normal and occlusion textures change the rendered material', a
       await window.gizmoTest.settle();
     }, material3d);
   };
+  await setMaterial({ normalScale: 0 });
+  await expect.poll(features).toMatchObject({ normalScale: 0 });
+  const flat = await pixels(page);
+  await setMaterial({ normalScale: 1 });
+  await expect
+    .poll(async () => difference(flat, await pixels(page)), { timeout: 20000 })
+    .toBeGreaterThan(10000);
+  const full = await pixels(page);
   await setMaterial({ normalMap: null });
+  await expect.poll(features).toMatchObject({ normalMap: false });
+  await expect
+    .poll(async () => difference(full, await pixels(page)), { timeout: 20000 })
+    .toBeGreaterThan(10000);
   const noNormal = await pixels(page);
-  expect(difference(full, noNormal)).toBeGreaterThan(10000);
-  await setMaterial({ occlusionMap: null });
-  const noOcclusion = await pixels(page);
-  expect(difference(full, noOcclusion)).toBeGreaterThan(1000);
+  await setMaterial({ normalMap: null, occlusionMap: null });
+  await expect.poll(features).toMatchObject({
+    normalMap: false,
+    occlusionMap: false,
+  });
+  await expect
+    .poll(async () => difference(noNormal, await pixels(page)), {
+      timeout: 20000,
+    })
+    .toBeGreaterThan(1000);
   expect(errors).toEqual([]);
 });
 

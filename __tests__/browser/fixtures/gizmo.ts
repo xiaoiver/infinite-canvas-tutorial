@@ -18,6 +18,7 @@ import {
   Selected3D,
   GPUResource,
   Mesh3D,
+  Material3D,
   Rect,
   Transform,
   ExportFormat,
@@ -145,6 +146,16 @@ const harness = {
     return (
       source.read(Mesh3DNode).meshEntity?.read(Mesh3D).positions.length ?? 0
     );
+  },
+  materialFeatures: () => {
+    const source = api.getEntity(api.getNodeById('material-model'));
+    const material = source.read(Mesh3DNode).meshEntity!.read(Material3D);
+    return {
+      normalMap: !!material.normalMap,
+      normalScale: material.normalScale,
+      occlusionMap: !!material.occlusionMap,
+      occlusionStrength: material.occlusionStrength,
+    };
   },
   trackGeometryUploads: () => {
     const device = api.getCanvas().read(GPUResource).device;
