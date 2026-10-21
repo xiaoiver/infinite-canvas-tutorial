@@ -112,6 +112,7 @@ if (lamp) {
 -   **边界**：漫反射使用全景图的 128 × 64 缩略采样与二阶球谐函数，细节会丢失。反射图集最清晰的一层为 128 × 64，RGBM 可存储最高 16 的辐亮度。BRDF 查找表量化为 RGBA8，尺寸为 64 × 64。最多两盏光投射阴影：平行光和窄光锥聚光灯使用 1024 × 1024 阴影图，点光和宽光锥聚光灯使用六个 512 × 512 面。后续开启阴影的灯仍提供照明，但不投射阴影。透明裁切与半透明材质见[3D Mesh 透明度](/zh/example/mesh3d-alpha)。
 -   **自发光**：`material3d.emissiveFactor` 是 0–1 范围的线性 RGB，`emissiveStrength` 与其相乘，默认 1，也可设置大于 1 的非负值。导入、导出 GLB 时保留 glTF 的 `KHR_materials_emissive_strength`。自发光只会提高该表面的亮度，不会照亮邻近 Mesh，也不会产生泛光。
 -   **无光照材质**：开启“无光照立方体”后，基础颜色和贴图不受直接光、环境光、阴影、自发光或电影色调映射影响。`material3d.unlit` 默认 `false`；导入、导出 GLB 时保留 glTF 的 `KHR_materials_unlit`。Alpha 裁剪与混合仍生效。
+-   **导入材质贴图**：glTF 法线贴图会改变表面光照法线；遮蔽贴图只衰减环境光和环境反射。`doubleSided` 还会绘制背面并翻转其光照法线。可在[真实 GLB 的 PBR 材质示例](/zh/example/gltf-duck#pbr-material)中对比，并了解当前的切线空间限制。
 -   **动画**：示例通过 `api.updateNode` 更新聚光灯位置与方向；默认暂停，离开视口或页面隐藏时自动停止帧更新。
 
 ## 与立方体示例的差异 {#vs-cube}

@@ -7,7 +7,7 @@ import type {
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 92 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 108 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -61,7 +61,26 @@ export class MeshModelUniforms {
       84 + ENVIRONMENT_IRRADIANCE_FLOATS,
       88 + ENVIRONMENT_IRRADIANCE_FLOATS,
     ),
-    u_EmissiveParams: this.data.subarray(88 + ENVIRONMENT_IRRADIANCE_FLOATS),
+    u_EmissiveParams: this.data.subarray(
+      88 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      92 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_NormalUvTransform: this.data.subarray(
+      92 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      96 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_OcclusionUvTransform: this.data.subarray(
+      96 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      100 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_NormalParams: this.data.subarray(
+      100 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      104 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_OcclusionParams: this.data.subarray(
+      104 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      108 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -77,6 +96,8 @@ export class MeshModelUniforms {
       bumpMapReady: boolean;
       emissiveMapReady: boolean;
       metallicRoughnessMapReady: boolean;
+      normalMapReady: boolean;
+      occlusionMapReady: boolean;
       environmentMapReady: boolean;
       environmentIrradiance: Float32Array | null;
     },
@@ -126,6 +147,29 @@ export class MeshModelUniforms {
     this.set(88 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveTexCoord);
     this.set(90 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveStrength);
     this.set(91 + ENVIRONMENT_IRRADIANCE_FLOATS, Number(material.unlit));
+    this.set(66 + ENVIRONMENT_IRRADIANCE_FLOATS, Number(material.doubleSided));
+    this.setTextureTransform(
+      92 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      102 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      material.normalTextureTransform,
+    );
+    this.setTextureTransform(
+      96 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      106 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      material.occlusionTextureTransform,
+    );
+    this.set(
+      100 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number(textureReady.normalMapReady),
+    );
+    this.set(101 + ENVIRONMENT_IRRADIANCE_FLOATS, material.normalTexCoord);
+    this.set(103 + ENVIRONMENT_IRRADIANCE_FLOATS, material.normalScale);
+    this.set(
+      104 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number(textureReady.occlusionMapReady),
+    );
+    this.set(105 + ENVIRONMENT_IRRADIANCE_FLOATS, material.occlusionTexCoord);
+    this.set(107 + ENVIRONMENT_IRRADIANCE_FLOATS, material.occlusionStrength);
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),

@@ -39,7 +39,10 @@ export function syncMaterial3D(
             !sameNumbers(current.sideColor, patch.sideColor!);
     if (
       key === 'mapTextureTransform' ||
-      key === 'metallicRoughnessTextureTransform'
+      key === 'metallicRoughnessTextureTransform' ||
+      key === 'emissiveTextureTransform' ||
+      key === 'normalTextureTransform' ||
+      key === 'occlusionTextureTransform'
     ) {
       const previous = current[key];
       const next = value as Material3DTextureTransform | null;

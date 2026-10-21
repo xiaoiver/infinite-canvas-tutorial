@@ -206,7 +206,7 @@ it('loads and clears an equirectangular material reflection without rebuilding g
   const model = draw.uniformBufferBindings[1].buffer;
   expect(new Float32Array(model.bytes.buffer)[55]).toBe(1);
   expect(new Float32Array(model.bytes.buffer)[60]).toBeCloseTo(0.7);
-  expect(draw.samplerBindings).toHaveLength(9);
+  expect(draw.samplerBindings).toHaveLength(11);
   const geometryBuffers = gpu.buffers.length;
 
   await world.edit(api, (editor) =>

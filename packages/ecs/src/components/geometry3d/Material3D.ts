@@ -101,6 +101,23 @@ export class Material3D {
   @field.object
   declare emissiveTextureTransform: Material3DTextureTransform | null;
 
+  /** Render both faces; back-face lighting reverses the geometric normal. */
+  @field.boolean declare doubleSided: boolean;
+
+  /** glTF tangent-space normal texture (linear RGB). */
+  @field.object declare normalMap: string | null;
+  @field.float32 declare normalTexCoord: number;
+  @field.object
+  declare normalTextureTransform: Material3DTextureTransform | null;
+  @field.float32 declare normalScale: number;
+
+  /** glTF ambient-occlusion texture; red channel attenuates indirect light. */
+  @field.object declare occlusionMap: string | null;
+  @field.float32 declare occlusionTexCoord: number;
+  @field.object
+  declare occlusionTextureTransform: Material3DTextureTransform | null;
+  @field.float32 declare occlusionStrength: number;
+
   /** Opaque, alpha-tested cutout, or sorted alpha blending. */
   @field.object declare alphaMode: Material3DAlphaMode;
 
@@ -149,6 +166,15 @@ export class Material3D {
     this.emissiveMap ??= null;
     this.emissiveTexCoord ??= 0;
     this.emissiveTextureTransform ??= null;
+    this.doubleSided ??= false;
+    this.normalMap ??= null;
+    this.normalTexCoord ??= 0;
+    this.normalTextureTransform ??= null;
+    this.normalScale ??= 1;
+    this.occlusionMap ??= null;
+    this.occlusionTexCoord ??= 0;
+    this.occlusionTextureTransform ??= null;
+    this.occlusionStrength ??= 1;
     this.alphaMode ??= 'opaque';
     this.alphaCutoff ??= 0.5;
     this.specularMap ??= null;

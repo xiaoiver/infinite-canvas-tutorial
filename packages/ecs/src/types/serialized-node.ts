@@ -489,6 +489,24 @@ export type Material3DWire = {
     scale?: [number, number];
     rotation?: number;
   } | null;
+  /** Render front and back faces (glTF doubleSided). */
+  doubleSided?: boolean;
+  normalMap?: string | null;
+  normalTexCoord?: 0 | 1;
+  normalTextureTransform?: {
+    offset?: [number, number];
+    scale?: [number, number];
+    rotation?: number;
+  } | null;
+  normalScale?: number;
+  occlusionMap?: string | null;
+  occlusionTexCoord?: 0 | 1;
+  occlusionTextureTransform?: {
+    offset?: [number, number];
+    scale?: [number, number];
+    rotation?: number;
+  } | null;
+  occlusionStrength?: number;
   /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */
   alphaMode?: 'opaque' | 'mask' | 'blend';
   /** Alpha-test threshold in mask mode; defaults to 0.5. */

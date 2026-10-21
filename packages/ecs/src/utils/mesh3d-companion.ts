@@ -59,6 +59,15 @@ export function queueMesh3DCompanion(
   const emissiveMap = node.emissiveMap;
   const emissiveTexCoord = node.emissiveTexCoord ?? 0;
   const emissiveTextureTransform = node.emissiveTextureTransform;
+  const doubleSided = node.doubleSided ?? false;
+  const normalMap = node.normalMap;
+  const normalTexCoord = node.normalTexCoord ?? 0;
+  const normalTextureTransform = node.normalTextureTransform;
+  const normalScale = node.normalScale ?? 1;
+  const occlusionMap = node.occlusionMap;
+  const occlusionTexCoord = node.occlusionTexCoord ?? 0;
+  const occlusionTextureTransform = node.occlusionTextureTransform;
+  const occlusionStrength = node.occlusionStrength ?? 1;
   const alphaMode = node.alphaMode;
   const alphaCutoff = node.alphaCutoff;
   const specularMap = node.specularMap ?? null;
@@ -109,6 +118,15 @@ export function queueMesh3DCompanion(
         emissiveMap,
         emissiveTexCoord,
         emissiveTextureTransform,
+        doubleSided,
+        normalMap,
+        normalTexCoord,
+        normalTextureTransform,
+        normalScale,
+        occlusionMap,
+        occlusionTexCoord,
+        occlusionTextureTransform,
+        occlusionStrength,
         alphaMode,
         alphaCutoff,
         specularMap,

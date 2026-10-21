@@ -100,6 +100,12 @@ export async function loadGlbImages(
           ...(material.emissiveMap && hasUvs(material.emissiveTexCoord)
             ? [material.emissiveMap]
             : []),
+          ...(material.normalMap && hasUvs(material.normalTexCoord)
+            ? [material.normalMap]
+            : []),
+          ...(material.occlusionMap && hasUvs(material.occlusionTexCoord)
+            ? [material.occlusionMap]
+            : []),
         ];
       }),
     ),

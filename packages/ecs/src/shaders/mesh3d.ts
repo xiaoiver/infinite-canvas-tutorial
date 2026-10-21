@@ -23,6 +23,7 @@ const pointShadowAxes = (axis: 'right' | 'up') =>
   ).join('\n  ');
 
 export const vert = /* glsl */ `
+precision highp float;
 #define MAX_3D_LIGHTS 8
 
 layout(std140) uniform SceneUniforms3D {
@@ -65,6 +66,10 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_EmissiveFactor; // rgb: linear emission, w: emissive map ready
   vec4 u_EmissiveUvTransform;
   vec4 u_EmissiveParams; // x: UV set, y: rotation, z: strength, w: unlit
+  vec4 u_NormalUvTransform;
+  vec4 u_OcclusionUvTransform;
+  vec4 u_NormalParams; // x: ready, y: UV set, z: rotation, w: scale
+  vec4 u_OcclusionParams; // x: ready, y: UV set, z: rotation, w: strength
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -112,6 +117,9 @@ void main() {
 `;
 
 export const frag = /* glsl */ `
+// World-space lighting squares camera-to-fragment distances. Fragment mediump
+// overflows on mobile/WebKit GPUs and can zero the normalized view direction.
+precision highp float;
 #define MAX_3D_LIGHTS 8
 #define LIGHT_TYPE_DIRECTIONAL 1
 #define LIGHT_TYPE_POINT 2
@@ -157,6 +165,10 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_EmissiveFactor;
   vec4 u_EmissiveUvTransform;
   vec4 u_EmissiveParams;
+  vec4 u_NormalUvTransform;
+  vec4 u_OcclusionUvTransform;
+  vec4 u_NormalParams;
+  vec4 u_OcclusionParams;
 };
 
 uniform sampler2D u_Map;
@@ -168,6 +180,8 @@ uniform sampler2D u_ShadowMap0;
 uniform sampler2D u_ShadowMap1;
 uniform sampler2D u_EnvironmentBrdf;
 uniform sampler2D u_EmissiveMap;
+uniform sampler2D u_NormalMap;
+uniform sampler2D u_OcclusionMap;
 
 in vec3 v_Normal;
 in vec3 v_FragPos;
@@ -504,6 +518,25 @@ vec3 perturbNormalFromBumpMap(vec3 normal, vec2 uv, float bumpScale) {
   );
 }
 
+vec3 perturbNormalFromNormalMap(vec3 normal, vec2 uv, float scale) {
+  if (abs(scale) < 1e-6) return normal;
+  vec3 dp1 = dFdx(v_FragPos);
+  vec3 dp2 = dFdy(v_FragPos);
+  vec2 duv1 = dFdx(uv);
+  vec2 duv2 = dFdy(uv);
+  vec3 dp2perp = cross(dp2, normal);
+  vec3 dp1perp = cross(normal, dp1);
+  vec3 tangent = dp1perp * duv2.x + dp2perp * duv1.x;
+  vec3 bitangent = dp1perp * duv2.y + dp2perp * duv1.y;
+  float maxLen = max(dot(tangent, tangent), dot(bitangent, bitangent));
+  if (!(maxLen > 1e-12)) return normal;
+  float invmax = inversesqrt(maxLen);
+  vec3 sampled = texture(SAMPLER_2D(u_NormalMap), uv).xyz * 2.0 - 1.0;
+  sampled.xy *= scale;
+  return normalize(tangent * invmax * sampled.x +
+    bitangent * invmax * sampled.y + normal * sampled.z);
+}
+
 vec2 transformUv(vec2 uv, vec4 transform, float rotation) {
   vec2 scaled = uv * transform.zw;
   float c = cos(rotation);
@@ -537,8 +570,16 @@ void main() {
   }
 
   vec3 shadowNormal = normalize(v_Normal);
+  if (u_TextureCoords.z > 0.5 && !gl_FrontFacing) shadowNormal = -shadowNormal;
   vec3 normal = shadowNormal;
-  if (u_MaterialFlags.z > 0.5) {
+  if (u_NormalParams.x > 0.5) {
+    vec2 normalUv = transformUv(
+      u_NormalParams.y > 0.5 ? v_Uv1 : v_Uv,
+      u_NormalUvTransform,
+      u_NormalParams.z
+    );
+    normal = perturbNormalFromNormalMap(normal, normalUv, u_NormalParams.w);
+  } else if (u_MaterialFlags.z > 0.5) {
     normal = perturbNormalFromBumpMap(normal, v_Uv, u_MaterialFlags.w);
   }
   vec3 cameraVector = vec3(u_SceneParams.x, u_SceneParams.y, u_SceneParams.w);
@@ -606,6 +647,15 @@ void main() {
     vec2 brdf = texture(SAMPLER_2D(u_EnvironmentBrdf),
       vec2(nDotV, roughness)).rg;
     ambient += env * (F0 * brdf.x + brdf.y) * specularScale * u_LightParams.x;
+  }
+  if (u_OcclusionParams.x > 0.5) {
+    vec2 occlusionUv = transformUv(
+      u_OcclusionParams.y > 0.5 ? v_Uv1 : v_Uv,
+      u_OcclusionUvTransform,
+      u_OcclusionParams.z
+    );
+    float occlusion = texture(SAMPLER_2D(u_OcclusionMap), occlusionUv).r;
+    ambient *= mix(1.0, occlusion, clamp(u_OcclusionParams.w, 0.0, 1.0));
   }
 
   vec3 emission = u_EmissiveFactor.rgb;

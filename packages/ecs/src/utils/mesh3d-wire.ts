@@ -30,6 +30,12 @@ export function mesh3DNodeFromWire(node: Mesh3DNodeSerializedNode): Mesh3DNode {
     emissiveMapOverridden: material.emissiveMap !== undefined,
     emissiveTextureTransformOverridden:
       material.emissiveTextureTransform !== undefined,
+    normalMapOverridden: material.normalMap !== undefined,
+    normalTextureTransformOverridden:
+      material.normalTextureTransform !== undefined,
+    occlusionMapOverridden: material.occlusionMap !== undefined,
+    occlusionTextureTransformOverridden:
+      material.occlusionTextureTransform !== undefined,
     geometry: normalizeGeometry(node.geometry),
     z: node.z,
     rotation3d: node.rotation3d && [...node.rotation3d],

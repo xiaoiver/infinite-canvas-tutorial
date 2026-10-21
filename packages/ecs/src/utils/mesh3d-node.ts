@@ -48,6 +48,15 @@ type ImportedMaterial = Pick<
   | 'emissiveMap'
   | 'emissiveTexCoord'
   | 'emissiveTextureTransform'
+  | 'doubleSided'
+  | 'normalMap'
+  | 'normalTexCoord'
+  | 'normalTextureTransform'
+  | 'normalScale'
+  | 'occlusionMap'
+  | 'occlusionTexCoord'
+  | 'occlusionTextureTransform'
+  | 'occlusionStrength'
   | 'alphaMode'
   | 'alphaCutoff'
 >;
@@ -360,6 +369,36 @@ export function syncMesh3DNodeCompanionMaterial(
       : node.emissiveMapOverridden || node.emissiveMap
       ? null
       : imported?.emissiveTextureTransform ?? null,
+    doubleSided: node.doubleSided ?? imported?.doubleSided ?? false,
+    normalMap: node.normalMapOverridden
+      ? node.normalMap
+      : node.normalMap ?? imported?.normalMap ?? null,
+    normalTexCoord:
+      node.normalTexCoord ??
+      (node.normalMapOverridden || node.normalMap
+        ? 0
+        : imported?.normalTexCoord ?? 0),
+    normalTextureTransform: node.normalTextureTransformOverridden
+      ? node.normalTextureTransform
+      : node.normalMapOverridden || node.normalMap
+      ? null
+      : imported?.normalTextureTransform ?? null,
+    normalScale: node.normalScale ?? imported?.normalScale ?? 1,
+    occlusionMap: node.occlusionMapOverridden
+      ? node.occlusionMap
+      : node.occlusionMap ?? imported?.occlusionMap ?? null,
+    occlusionTexCoord:
+      node.occlusionTexCoord ??
+      (node.occlusionMapOverridden || node.occlusionMap
+        ? 0
+        : imported?.occlusionTexCoord ?? 0),
+    occlusionTextureTransform: node.occlusionTextureTransformOverridden
+      ? node.occlusionTextureTransform
+      : node.occlusionMapOverridden || node.occlusionMap
+      ? null
+      : imported?.occlusionTextureTransform ?? null,
+    occlusionStrength:
+      node.occlusionStrength ?? imported?.occlusionStrength ?? 1,
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,
     specularMap: node.specularMap ?? null,
