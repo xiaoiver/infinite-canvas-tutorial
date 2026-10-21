@@ -50,6 +50,7 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   metallicRoughnessTextureTransform: Material3DTextureTransform | null;
   emissiveFactor: [number, number, number];
   emissiveStrength: number;
+  unlit: boolean;
   emissiveMap: string | null;
   emissiveTexCoord: 0 | 1;
   emissiveTextureTransform: Material3DTextureTransform | null;
@@ -90,8 +91,10 @@ type GltfJson = GltfContainer['json'] & {
     alphaMode?: 'OPAQUE' | 'MASK' | 'BLEND';
     alphaCutoff?: number;
     emissiveFactor?: number[];
+    unlit?: boolean;
     extensions?: {
       KHR_materials_emissive_strength?: { emissiveStrength?: number };
+      KHR_materials_unlit?: Record<string, never>;
     };
     emissiveTexture?: GltfTextureInfo;
     pbrMetallicRoughness?: {
@@ -155,6 +158,7 @@ function readMaterialTextureUrl(
 function readMaterialBaseColor(
   json: GltfJson,
   materialIndex?: number,
+  unlit = false,
 ): [number, number, number, number] {
   if (materialIndex == null) {
     return [1, 1, 1, 1];
@@ -164,7 +168,17 @@ function readMaterialBaseColor(
   if (!factor || factor.length < 3) {
     return [1, 1, 1, 1];
   }
-  return [factor[0], factor[1], factor[2], factor.length >= 4 ? factor[3] : 1];
+  // glTF factors are linear. ECS baseColor is sRGB and the shader decodes it
+  // before multiplying by a texture. Match that storage convention for unlit
+  // imports so an unlit GLB also round-trips its displayed color.
+  const srgb = (value: number) =>
+    value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055;
+  return [
+    unlit ? srgb(factor[0]) : factor[0],
+    unlit ? srgb(factor[1]) : factor[1],
+    unlit ? srgb(factor[2]) : factor[2],
+    factor.length >= 4 ? factor[3] : 1,
+  ];
 }
 
 type ImportedMaterial = Pick<
@@ -178,6 +192,7 @@ type ImportedMaterial = Pick<
   | 'metallicRoughnessTextureTransform'
   | 'emissiveFactor'
   | 'emissiveStrength'
+  | 'unlit'
   | 'emissiveMap'
   | 'emissiveTexCoord'
   | 'emissiveTextureTransform'
@@ -201,8 +216,11 @@ function readMaterial(
       ? Math.max(0, Math.min(1, value))
       : 1;
   const emissive = material?.emissiveFactor;
+  const unlit =
+    material?.unlit === true ||
+    material?.extensions?.KHR_materials_unlit !== undefined;
   return {
-    baseColor: readMaterialBaseColor(json, materialIndex),
+    baseColor: readMaterialBaseColor(json, materialIndex, unlit),
     map: readMaterialTextureUrl(gltf, json, factor?.baseColorTexture, baseUrl),
     mapTexCoord: textureCoord(factor?.baseColorTexture) === 1 ? 1 : 0,
     mapTextureTransform: textureTransform(factor?.baseColorTexture),
@@ -230,6 +248,7 @@ function readMaterial(
         ? value
         : 1;
     })(),
+    unlit,
     emissiveMap: readMaterialTextureUrl(
       gltf,
       json,
@@ -528,6 +547,7 @@ export function bakeGltfMesh(
       metallicRoughnessTextureTransform: null,
       emissiveFactor: [0, 0, 0],
       emissiveStrength: 1,
+      unlit: false,
       emissiveMap: null,
       emissiveTexCoord: 0,
       emissiveTextureTransform: null,

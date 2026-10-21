@@ -25,6 +25,7 @@ const copy = {
     metallic: 'Sphere metalness',
     roughness: 'Sphere roughness',
     emissiveStrength: 'Cube emission',
+    unlit: 'Unlit cube',
     environment: 'Studio environment',
     hdr: 'HDR studio',
     ldr: 'LDR studio',
@@ -57,6 +58,7 @@ const copy = {
     metallic: '球体金属度',
     roughness: '球体粗糙度',
     emissiveStrength: '立方体自发光强度',
+    unlit: '无光照立方体',
     environment: '摄影棚环境光照',
     hdr: 'HDR 摄影棚',
     ldr: 'LDR 摄影棚',
@@ -89,6 +91,7 @@ const attenuation = ref<'range' | 'inverse-square'>('range');
 const metallic = ref(1);
 const roughness = ref(0.25);
 const emissiveStrength = ref(0);
+const unlitCube = ref(false);
 const environment = ref<'hdr' | 'ldr' | 'off'>('hdr');
 const shadows = ref(true);
 const sphereCastsShadow = ref(true);
@@ -384,6 +387,7 @@ function applyCubeMaterial() {
         environmentMap: environmentMap.value,
         emissiveFactor: [1, 0.08, 0.02],
         emissiveStrength: emissiveStrength.value,
+        unlit: unlitCube.value,
       },
     },
     false,
@@ -455,7 +459,7 @@ watch(
 );
 watch(floorReceivesShadow, applyFloorMaterial);
 watch(environment, applyEnvironmentToOtherMeshes);
-watch([environment, emissiveStrength], applyCubeMaterial);
+watch([environment, emissiveStrength, unlitCube], applyCubeMaterial);
 watch([mode, playing], syncAnimation);
 
 onMounted(async () => {
@@ -581,11 +585,16 @@ onUnmounted(() => {
         <span>{{ t.emissiveStrength }}: {{ emissiveStrength.toFixed(2) }}</span>
         <input
           v-model.number="emissiveStrength"
+          :disabled="unlitCube"
           type="range"
           min="0"
           max="6"
           step="0.25"
         />
+      </label>
+      <label class="lighting-checkbox">
+        <input v-model="unlitCube" type="checkbox" />
+        <span>{{ t.unlit }}</span>
       </label>
       <label>
         <span>{{ t.environment }}</span>

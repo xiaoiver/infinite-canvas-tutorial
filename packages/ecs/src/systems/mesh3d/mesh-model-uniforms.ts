@@ -125,6 +125,7 @@ export class MeshModelUniforms {
     );
     this.set(88 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveTexCoord);
     this.set(90 + ENVIRONMENT_IRRADIANCE_FLOATS, material.emissiveStrength);
+    this.set(91 + ENVIRONMENT_IRRADIANCE_FLOATS, Number(material.unlit));
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),

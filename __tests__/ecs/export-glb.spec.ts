@@ -42,20 +42,28 @@ it('embeds an emissive-only texture in exported GLB', async () => {
     material: new Material3D({
       emissiveFactor: [1, 0.5, 0],
       emissiveStrength: 3,
+      unlit: true,
       emissiveMap: png,
     }),
     transform: new Transform3D(),
   };
   const images = await loadGlbImages([source]);
   expect(images.size).toBe(1);
-  const { json } = readGlb(exportMeshesToGlb([source], images));
+  const bytes = exportMeshesToGlb([source], images);
+  const { json } = readGlb(bytes);
   expect(json.images).toHaveLength(1);
   expect(json.materials[0].emissiveFactor).toEqual([1, 0.5, 0]);
   expect(json.materials[0].extensions).toEqual({
     KHR_materials_emissive_strength: { emissiveStrength: 3 },
+    KHR_materials_unlit: {},
   });
   expect(json.extensionsUsed).toContain('KHR_materials_emissive_strength');
+  expect(json.extensionsUsed).toContain('KHR_materials_unlit');
   expect(json.materials[0].emissiveTexture).toEqual({ index: 0 });
+  const loaded = (await parse(bytes.buffer, GLTFLoader, {
+    gltf: { loadBuffers: true, loadImages: false },
+  })) as GltfContainer;
+  expect(bakeGltfMesh(loaded).unlit).toBe(true);
 });
 
 it('embeds a shared base-color texture once and imports it from the GLB buffer', async () => {
@@ -152,9 +160,11 @@ it('keeps distinct textures on separate material primitives', async () => {
       mesh,
       transform,
       material: new Material3D({
+        baseColor: [0.5, 0.25, 0.75, 0.5],
         map: blueUrl,
         metallicRoughnessMap: png,
         metallicRoughnessTexCoord: 1,
+        unlit: true,
         alphaMode: 'blend',
       }),
     },
@@ -205,6 +215,7 @@ it('keeps distinct textures on separate material primitives', async () => {
     texCoord: 1,
     extensions: { KHR_texture_transform: { scale: [0.5, 1] } },
   });
+  expect(json.materials[1].extensions).toEqual({ KHR_materials_unlit: {} });
   expect(json.meshes[0].primitives[0].attributes.TEXCOORD_1).toBeDefined();
   const loaded = (await parse(bytes.buffer, GLTFLoader, {
     gltf: {
@@ -237,6 +248,9 @@ it('keeps distinct textures on separate material primitives', async () => {
   ).toEqual({ offset: [0.75, 0], scale: [1, 1], rotation: 0 });
   expect(bakeGltfMesh(loaded).parts[0].emissiveFactor).toEqual([0.2, 0.5, 0.8]);
   expect(bakeGltfMesh(loaded).parts[0].emissiveStrength).toBe(2.5);
+  expect(bakeGltfMesh(loaded).parts[1].unlit).toBe(true);
+  expect(bakeGltfMesh(loaded).parts[1].baseColor[0]).toBeCloseTo(0.5, 5);
+  expect(bakeGltfMesh(loaded).parts[1].baseColor[3]).toBe(0.5);
   expect(bakeGltfMesh(loaded).parts[0].emissiveMap).toBe(blueUrl);
   expect(bakeGltfMesh(loaded).parts[0].emissiveTexCoord).toBe(1);
   expect(bakeGltfMesh(loaded).parts[0].emissiveTextureTransform).toEqual({

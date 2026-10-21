@@ -26,6 +26,7 @@ export function mesh3DNodeFromWire(node: Mesh3DNodeSerializedNode): Mesh3DNode {
     mapTextureTransformOverridden: material.mapTextureTransform !== undefined,
     emissiveFactorOverridden: material.emissiveFactor !== undefined,
     emissiveStrengthOverridden: material.emissiveStrength !== undefined,
+    unlitOverridden: material.unlit !== undefined,
     emissiveMapOverridden: material.emissiveMap !== undefined,
     emissiveTextureTransformOverridden:
       material.emissiveTextureTransform !== undefined,

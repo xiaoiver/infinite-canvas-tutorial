@@ -55,6 +55,7 @@ export function queueMesh3DCompanion(
   const mapTextureTransform = node.mapTextureTransform;
   const emissiveFactor = [...node.emissiveFactor] as [number, number, number];
   const emissiveStrength = node.emissiveStrength;
+  const unlit = node.unlit;
   const emissiveMap = node.emissiveMap;
   const emissiveTexCoord = node.emissiveTexCoord ?? 0;
   const emissiveTextureTransform = node.emissiveTextureTransform;
@@ -104,6 +105,7 @@ export function queueMesh3DCompanion(
         mapTextureTransform,
         emissiveFactor,
         emissiveStrength,
+        unlit,
         emissiveMap,
         emissiveTexCoord,
         emissiveTextureTransform,

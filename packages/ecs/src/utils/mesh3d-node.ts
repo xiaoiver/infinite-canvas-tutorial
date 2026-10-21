@@ -44,6 +44,7 @@ type ImportedMaterial = Pick<
   | 'mapTextureTransform'
   | 'emissiveFactor'
   | 'emissiveStrength'
+  | 'unlit'
   | 'emissiveMap'
   | 'emissiveTexCoord'
   | 'emissiveTextureTransform'
@@ -342,6 +343,10 @@ export function syncMesh3DNodeCompanionMaterial(
       node.emissiveStrengthOverridden || node.emissiveStrength !== 1
         ? node.emissiveStrength
         : imported?.emissiveStrength ?? node.emissiveStrength,
+    unlit:
+      node.unlitOverridden || node.unlit
+        ? node.unlit
+        : imported?.unlit ?? false,
     emissiveMap: node.emissiveMapOverridden
       ? node.emissiveMap
       : node.emissiveMap ?? imported?.emissiveMap ?? null,

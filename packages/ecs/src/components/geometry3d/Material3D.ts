@@ -90,6 +90,9 @@ export class Material3D {
   /** KHR_materials_emissive_strength multiplier; 1 preserves core glTF emission. */
   @field.float32 declare emissiveStrength: number;
 
+  /** Draw base color without scene lighting or tone mapping (KHR_materials_unlit). */
+  @field.boolean declare unlit: boolean;
+
   /** Optional glTF emissive texture, sampled as sRGB and multiplied by emissiveFactor. */
   @field.object declare emissiveMap: string | null;
 
@@ -142,6 +145,7 @@ export class Material3D {
     this.mapTextureTransform ??= null;
     this.emissiveFactor ??= [0, 0, 0];
     this.emissiveStrength ??= 1;
+    this.unlit ??= false;
     this.emissiveMap ??= null;
     this.emissiveTexCoord ??= 0;
     this.emissiveTextureTransform ??= null;

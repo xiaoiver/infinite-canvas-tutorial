@@ -503,6 +503,8 @@ Up to two directional, point, or spot lights with `castShadow: true` cast shadow
 
 For self-lit surfaces, `material3d.emissiveFactor` and `emissiveStrength` control emission without adding a scene light. glTF `KHR_materials_emissive_strength` imports and exports with the material; try the cube emission slider in the [lighting example](/example/lighting).
 
+For flat colors independent of illumination, `material3d.unlit` bypasses scene lights and tone mapping while retaining base-color texture and alpha. glTF `KHR_materials_unlit` is preserved on import and GLB export; compare it with emission using the cube toggle in the [lighting example](/example/lighting).
+
 For textured cutouts and translucent surfaces, `material3d.alphaMode` offers `mask` and `blend`; see the [3D mesh transparency example](/example/mesh3d-alpha) for their shadow behavior and ordering limits.
 
 <Lighting />
