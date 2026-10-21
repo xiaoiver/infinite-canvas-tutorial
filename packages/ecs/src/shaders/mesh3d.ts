@@ -58,15 +58,18 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
   vec4 u_ShadowReceive; // x: shadows, y: alpha mode, z: cutoff, w: PBR map ready
+  vec4 u_TextureCoords; // x: base-color UV set, y: PBR UV set
 };
 
 layout(location = 0) in vec3 a_Position3D;
 layout(location = 1) in vec3 a_Normal3D;
 layout(location = 2) in vec2 a_Uv3D;
+layout(location = 3) in vec2 a_Uv1_3D;
 
 out vec3 v_Normal;
 out vec3 v_FragPos;
 out vec2 v_Uv;
+out vec2 v_Uv1;
 out float v_LocalNormalZ;
 
 void main() {
@@ -74,6 +77,7 @@ void main() {
   v_FragPos = worldPos.xyz;
   v_Normal = (u_NormalMatrix3D * vec4(a_Normal3D, 0.0)).xyz;
   v_Uv = a_Uv3D;
+  v_Uv1 = a_Uv1_3D;
   v_LocalNormalZ = a_Normal3D.z;
 
   if (u_SceneParams.z > 0.5) {
@@ -140,6 +144,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_SideColor;
   vec4 u_EnvironmentIrradiance[9];
   vec4 u_ShadowReceive; // x: shadows, y: alpha mode, z: cutoff, w: PBR map ready
+  vec4 u_TextureCoords; // x: base-color UV set, y: PBR UV set
 };
 
 uniform sampler2D u_Map;
@@ -154,6 +159,7 @@ uniform sampler2D u_EnvironmentBrdf;
 in vec3 v_Normal;
 in vec3 v_FragPos;
 in vec2 v_Uv;
+in vec2 v_Uv1;
 in float v_LocalNormalZ;
 
 out vec4 outputColor;
@@ -502,7 +508,8 @@ void main() {
   }
   vec3 albedo = srgbToLinear(baseColor.rgb);
   if (u_MaterialFlags.x > 0.5) {
-    vec4 texel = texture(SAMPLER_2D(u_Map), v_Uv);
+    vec2 mapUv = u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv;
+    vec4 texel = texture(SAMPLER_2D(u_Map), mapUv);
     albedo *= srgbToLinear(texel.rgb);
     baseColor.a *= texel.a;
   }
@@ -513,7 +520,8 @@ void main() {
   float metallic = clamp(u_PbrParams.x, 0.0, 1.0);
   float roughnessFactor = u_PbrParams.y;
   if (u_ShadowReceive.w > 0.5) {
-    vec4 pbrTexel = texture(SAMPLER_2D(u_MetallicRoughnessMap), v_Uv);
+    vec2 pbrUv = u_TextureCoords.y > 0.5 ? v_Uv1 : v_Uv;
+    vec4 pbrTexel = texture(SAMPLER_2D(u_MetallicRoughnessMap), pbrUv);
     metallic *= pbrTexel.b;
     roughnessFactor *= pbrTexel.g;
   }

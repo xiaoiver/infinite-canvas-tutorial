@@ -90,6 +90,7 @@ export class SyncMesh3DNodes extends System {
                 normals: part.normals,
                 indices: part.indices,
                 uvs: part.uvs ?? null,
+                uvs1: part.uvs1 ?? null,
               }),
               new Material3D(),
               new Transform3D(),

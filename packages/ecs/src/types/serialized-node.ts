@@ -457,8 +457,12 @@ export type Material3DWire = {
   roughness?: number;
   /** glTF metallic-roughness texture (green = roughness, blue = metallic). */
   metallicRoughnessMap?: string | null;
+  /** UV set used by the metallic-roughness texture. */
+  metallicRoughnessTexCoord?: 0 | 1;
   /** Base-color texture (image URL or data URL). */
   map?: string | null;
+  /** UV set used by the base-color texture. */
+  mapTexCoord?: 0 | 1;
   /** Opaque (default), alpha-tested cutout, or sorted alpha blending. */
   alphaMode?: 'opaque' | 'mask' | 'blend';
   /** Alpha-test threshold in mask mode; defaults to 0.5. */

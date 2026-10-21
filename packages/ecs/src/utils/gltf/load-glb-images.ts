@@ -86,13 +86,19 @@ export async function loadGlbImages(
 ): Promise<Map<string, GlbImageData>> {
   const urls = [
     ...new Set(
-      sources.flatMap(({ mesh, material }) =>
-        mesh.uvs
-          ? [material.map, material.metallicRoughnessMap].filter(
-              (url): url is string => !!url,
-            )
-          : [],
-      ),
+      sources.flatMap(({ mesh, material }) => {
+        const hasUvs = (coord: number | undefined) =>
+          !!((coord ?? 0) === 1 ? mesh.uvs1 : mesh.uvs);
+        return [
+          ...(material.map && hasUvs(material.mapTexCoord)
+            ? [material.map]
+            : []),
+          ...(material.metallicRoughnessMap &&
+          hasUvs(material.metallicRoughnessTexCoord)
+            ? [material.metallicRoughnessMap]
+            : []),
+        ];
+      }),
     ),
   ];
   const images = await Promise.all(

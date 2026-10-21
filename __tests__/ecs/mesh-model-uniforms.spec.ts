@@ -106,7 +106,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
     [1, 1, 1, 2, 0.3, 0.8, 0, 1].map(Math.fround),
   );
   expect(data[60]).toBeCloseTo(0.7);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 1]).toBe(1);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 5]).toBe(1);
   expect(legacy.u_MaterialFlags).toEqual(data.slice(48, 52));
   uniforms.update(transform, material, textures);
   expect(setSubData).toHaveBeenCalledTimes(2);
@@ -114,7 +114,7 @@ it('updates all material inputs and late texture readiness without rebuilding ma
   expect([...data.slice(48, 51)]).toEqual([0, 0, 0]);
   expect(data[55]).toBe(0);
   expect(data[60]).toBe(0);
-  expect(data[MESH_MODEL_UNIFORM_FLOATS - 1]).toBe(0);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 5]).toBe(0);
   expect(setSubData).toHaveBeenCalledTimes(3);
   expect(invert).toHaveBeenCalledTimes(1);
 });
@@ -140,7 +140,7 @@ it('uploads an optional side-wall color without rebuilding geometry or pose', ()
 
 it('updates the receiver flag when shadow reception changes', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
-  const receiveOffset = MESH_MODEL_UNIFORM_FLOATS - 4;
+  const receiveOffset = MESH_MODEL_UNIFORM_FLOATS - 8;
   uniforms.update(transform, material, ready);
   expect(data[receiveOffset]).toBe(1);
   material.receiveShadow = false;
@@ -155,13 +155,15 @@ it('updates the receiver flag when shadow reception changes', () => {
 
 it('keeps alpha mode, cutoff and map readiness current before the shadow pass', () => {
   const { uniforms, transform, material, data } = setup();
-  const offset = MESH_MODEL_UNIFORM_FLOATS - 4;
+  const offset = MESH_MODEL_UNIFORM_FLOATS - 8;
   material.alphaMode = 'mask';
+  material.mapTexCoord = 1;
   material.alphaCutoff = 0.35;
   material.baseColor = [1, 1, 1, 0.8];
   uniforms.updateShadowMaterial(transform, material, true);
   expect(data[35]).toBeCloseTo(0.8);
   expect(data[48]).toBe(1);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 4]).toBe(1);
   expect([...data.slice(offset + 1, offset + 3)]).toEqual([
     1,
     Math.fround(0.35),
@@ -176,6 +178,20 @@ it('keeps alpha mode, cutoff and map readiness current before the shadow pass', 
   material.alphaCutoff = Number.NaN;
   uniforms.updateShadowMaterial(transform, material, false);
   expect(data[offset + 2]).toBe(0.5);
+});
+
+it('tracks independent base-color and PBR UV selectors', () => {
+  const { uniforms, transform, material, data } = setup();
+  material.mapTexCoord = 1;
+  material.metallicRoughnessTexCoord = 0;
+  const legacy = uniforms.update(transform, material, ready);
+  expect([...data.slice(MESH_MODEL_UNIFORM_FLOATS - 4)]).toEqual([1, 0, 0, 0]);
+  expect(legacy.u_TextureCoords).toEqual(
+    data.slice(MESH_MODEL_UNIFORM_FLOATS - 4),
+  );
+  material.metallicRoughnessTexCoord = 1;
+  uniforms.update(transform, material, ready);
+  expect(data[MESH_MODEL_UNIFORM_FLOATS - 3]).toBe(1);
 });
 
 it('retries failed uploads without rebuilding unchanged matrices', () => {

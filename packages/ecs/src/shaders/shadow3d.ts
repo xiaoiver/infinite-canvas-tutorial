@@ -14,13 +14,16 @@ layout(std140) uniform ShadowModel3D {
   vec4 u_SideColor;
   vec4 u_UnusedIrradiance[9];
   vec4 u_ShadowReceive;
+  vec4 u_TextureCoords;
 };
 
 layout(location = 0) in vec3 a_Position3D;
 layout(location = 1) in vec2 a_Uv3D;
 layout(location = 2) in vec3 a_Normal3D;
+layout(location = 3) in vec2 a_Uv1_3D;
 out vec4 v_ShadowClip;
 out vec2 v_Uv;
+out vec2 v_Uv1;
 out float v_LocalNormalZ;
 
 void main() {
@@ -29,6 +32,7 @@ void main() {
   gl_Position = clip;
   v_ShadowClip = clip;
   v_Uv = a_Uv3D;
+  v_Uv1 = a_Uv1_3D;
   v_LocalNormalZ = a_Normal3D.z;
 }
 `;
@@ -48,11 +52,13 @@ layout(std140) uniform ShadowModel3D {
   vec4 u_SideColor;
   vec4 u_UnusedIrradiance[9];
   vec4 u_ShadowReceive;
+  vec4 u_TextureCoords;
 };
 
 uniform sampler2D u_Map;
 in vec4 v_ShadowClip;
 in vec2 v_Uv;
+in vec2 v_Uv1;
 in float v_LocalNormalZ;
 out vec4 outputColor;
 
@@ -68,7 +74,8 @@ void main() {
     float alpha = u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0
       ? u_SideColor.a : u_BaseColor.a;
     if (u_MaterialFlags.x > 0.5)
-      alpha *= texture(SAMPLER_2D(u_Map), v_Uv).a;
+      alpha *= texture(SAMPLER_2D(u_Map),
+        u_TextureCoords.x > 0.5 ? v_Uv1 : v_Uv).a;
     if (u_ShadowReceive.y < 1.5) {
       if (alpha < u_ShadowReceive.z) discard;
     } else {

@@ -19,6 +19,7 @@ export function readAccessor(
     componentType: number;
     count: number;
     type: string;
+    normalized?: boolean;
   };
   const bv = gltf.json.bufferViews[acc.bufferView] as {
     buffer: number;
@@ -61,6 +62,27 @@ export function readAccessor(
       out[i * 2] = view.getFloat32(off, true);
       out[i * 2 + 1] = view.getFloat32(off + 4, true);
       off += stride;
+    }
+    return { array: out, components: 2 };
+  }
+
+  if (
+    acc.type === 'VEC2' &&
+    acc.normalized &&
+    (acc.componentType === 5121 || acc.componentType === 5123)
+  ) {
+    const short = acc.componentType === 5123;
+    const stride = bv.byteStride ?? (short ? 4 : 2);
+    const view = new DataView(ab);
+    const out = new Float32Array(acc.count * 2);
+    for (let i = 0; i < acc.count; i++) {
+      const offset = base + i * stride;
+      out[i * 2] =
+        (short ? view.getUint16(offset, true) : view.getUint8(offset)) /
+        (short ? 65535 : 255);
+      out[i * 2 + 1] =
+        (short ? view.getUint16(offset + 2, true) : view.getUint8(offset + 1)) /
+        (short ? 65535 : 255);
     }
     return { array: out, components: 2 };
   }

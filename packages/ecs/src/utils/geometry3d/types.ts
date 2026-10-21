@@ -4,6 +4,8 @@ export interface Mesh3DGeometryData {
   indices: Uint32Array;
   /** Optional (u, v) texture coordinates, interleaved. */
   uvs?: Float32Array;
+  /** Optional second (u, v) texture coordinate set. */
+  uvs1?: Float32Array;
 }
 
 export type Mesh3DGeometrySpec =
@@ -14,7 +16,9 @@ export type Mesh3DGeometrySpec =
   | { type: 'gltf'; url: string; mesh?: number };
 
 /** Shorthand primitive name or full parametric spec. */
-export type Mesh3DNodeGeometry = Mesh3DGeometrySpec['type'] | Mesh3DGeometrySpec;
+export type Mesh3DNodeGeometry =
+  | Mesh3DGeometrySpec['type']
+  | Mesh3DGeometrySpec;
 
 const PRIMITIVE_TYPES = new Set<Mesh3DGeometrySpec['type']>([
   'cube',
@@ -51,6 +55,9 @@ export function mesh3DGeometryDataEquals(
   if ((mesh.uvs?.length ?? 0) !== (data.uvs?.length ?? 0)) {
     return false;
   }
+  if ((mesh.uvs1?.length ?? 0) !== (data.uvs1?.length ?? 0)) {
+    return false;
+  }
   if ((mesh.indices?.length ?? 0) !== (data.indices?.length ?? 0)) {
     return false;
   }
@@ -66,6 +73,11 @@ export function mesh3DGeometryDataEquals(
       }
     }
   }
+  if (mesh.uvs1 && data.uvs1) {
+    for (let i = 0; i < mesh.uvs1.length; i++) {
+      if (mesh.uvs1[i] !== data.uvs1[i]) return false;
+    }
+  }
   return true;
 }
 
@@ -76,7 +88,10 @@ export function normalizeGeometry(
     return { type: 'cube' };
   }
   if (typeof geometry === 'string') {
-    if (geometry === 'gltf' || !PRIMITIVE_TYPES.has(geometry as Mesh3DGeometrySpec['type'])) {
+    if (
+      geometry === 'gltf' ||
+      !PRIMITIVE_TYPES.has(geometry as Mesh3DGeometrySpec['type'])
+    ) {
       return { type: 'cube' };
     }
     return { type: geometry as Exclude<Mesh3DGeometrySpec['type'], 'gltf'> };

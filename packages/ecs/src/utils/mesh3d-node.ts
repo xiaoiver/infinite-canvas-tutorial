@@ -38,6 +38,8 @@ type ImportedMaterial = Pick<
   | 'metallic'
   | 'roughness'
   | 'metallicRoughnessMap'
+  | 'metallicRoughnessTexCoord'
+  | 'mapTexCoord'
   | 'alphaMode'
   | 'alphaCutoff'
 >;
@@ -157,6 +159,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
   companionGeometry.set(source, { key });
   Object.assign(meshEntity.write(Mesh3D), data);
   meshEntity.write(Mesh3D).uvs = data.uvs ?? null;
+  meshEntity.write(Mesh3D).uvs1 = data.uvs1 ?? null;
   return true;
 }
 
@@ -303,7 +306,15 @@ export function syncMesh3DNodeCompanionMaterial(
     metallicRoughnessMap: node.metallicRoughnessMapOverridden
       ? node.metallicRoughnessMap
       : node.metallicRoughnessMap ?? imported?.metallicRoughnessMap ?? null,
+    metallicRoughnessTexCoord:
+      node.metallicRoughnessTexCoord ??
+      (node.metallicRoughnessMapOverridden || node.metallicRoughnessMap
+        ? 0
+        : imported?.metallicRoughnessTexCoord ?? 0),
     map: node.mapOverridden ? node.map : node.map ?? imported?.map ?? null,
+    mapTexCoord:
+      node.mapTexCoord ??
+      (node.mapOverridden || node.map ? 0 : imported?.mapTexCoord ?? 0),
     alphaMode: node.alphaMode ?? imported?.alphaMode ?? 'opaque',
     alphaCutoff: node.alphaCutoff ?? imported?.alphaCutoff ?? 0.5,
     specularMap: node.specularMap ?? null,

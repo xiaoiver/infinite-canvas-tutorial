@@ -115,3 +115,84 @@ it('reads and clamps glTF PBR factors for each primitive', () => {
   materials[0].pbrMetallicRoughness.metallicRoughnessTexture!.texCoord = 1;
   expect(bakeGltfMesh(model).metallicRoughnessMap).toBeNull();
 });
+
+it('imports TEXCOORD_1 for a base-color texture independently of the PBR map', () => {
+  const model = gltfScenes();
+  const uv1 = new Float32Array([0.25, 0.5, 0.75, 0.5, 0.25, 0.9]);
+  const json = model.json as unknown as {
+    accessors: Record<string, unknown>[];
+    bufferViews: Record<string, unknown>[];
+    meshes: { primitives: { attributes: { TEXCOORD_1?: number } }[] }[];
+    materials: {
+      pbrMetallicRoughness: {
+        baseColorTexture?: { index: number; texCoord?: number };
+        metallicRoughnessTexture?: { index: number; texCoord?: number };
+      };
+    }[];
+  };
+  json.bufferViews.push({
+    buffer: model.buffers.length,
+    byteLength: uv1.byteLength,
+  });
+  json.accessors.push({
+    bufferView: json.bufferViews.length - 1,
+    componentType: 5126,
+    count: 3,
+    type: 'VEC2',
+  });
+  model.buffers.push({ arrayBuffer: uv1.buffer });
+  json.meshes[0].primitives[0].attributes.TEXCOORD_1 =
+    json.accessors.length - 1;
+  json.materials[0].pbrMetallicRoughness.baseColorTexture!.texCoord = 1;
+  json.materials[0].pbrMetallicRoughness.metallicRoughnessTexture = {
+    index: 0,
+  };
+  const baked = bakeGltfMesh(model, { baseUrl: '/data/model.gltf' });
+  expect(baked.mapTexCoord).toBe(1);
+  expect(baked.metallicRoughnessTexCoord).toBe(0);
+  expect(baked.map).toBe('/data/albedo.png');
+  expect(baked.metallicRoughnessMap).toBe('/data/albedo.png');
+  expect(baked.parts[0].uvs1).toEqual(uv1);
+  expect(baked.uvs1).toEqual(uv1);
+});
+
+it('decodes normalized integer TEXCOORD_1 with an interleaved stride', () => {
+  const model = gltfScenes();
+  const bytes = new ArrayBuffer(3 * 8);
+  const view = new DataView(bytes);
+  const expected = [0, 1, 1, 0, 0.5, 0.5];
+  for (let i = 0; i < expected.length; i++)
+    view.setUint16(
+      Math.floor(i / 2) * 8 + (i % 2) * 2,
+      Math.round(expected[i] * 65535),
+      true,
+    );
+  const json = model.json as unknown as {
+    accessors: Record<string, unknown>[];
+    bufferViews: Record<string, unknown>[];
+    meshes: { primitives: { attributes: { TEXCOORD_1?: number } }[] }[];
+    materials: {
+      pbrMetallicRoughness: {
+        baseColorTexture: { texCoord?: number };
+      };
+    }[];
+  };
+  json.bufferViews.push({
+    buffer: model.buffers.length,
+    byteLength: bytes.byteLength,
+    byteStride: 8,
+  });
+  json.accessors.push({
+    bufferView: json.bufferViews.length - 1,
+    componentType: 5123,
+    count: 3,
+    type: 'VEC2',
+    normalized: true,
+  });
+  model.buffers.push({ arrayBuffer: bytes });
+  json.meshes[0].primitives[0].attributes.TEXCOORD_1 =
+    json.accessors.length - 1;
+  json.materials[0].pbrMetallicRoughness.baseColorTexture.texCoord = 1;
+  const baked = bakeGltfMesh(model, { baseUrl: '/data/model.gltf' });
+  baked.uvs1?.forEach((value, i) => expect(value).toBeCloseTo(expected[i], 4));
+});

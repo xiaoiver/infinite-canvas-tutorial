@@ -10,8 +10,10 @@ export type GltfMeshBakeResult = Mesh3DGeometryData & {
   baseColor: [number, number, number, number];
   /** Resolved base-color texture URL from glTF materials, if any. */
   map: string | null;
+  mapTexCoord: 0 | 1;
   /** Resolved glTF metallic-roughness texture URL, if any. */
   metallicRoughnessMap: string | null;
+  metallicRoughnessTexCoord: 0 | 1;
   metallic: number;
   roughness: number;
   alphaMode: Material3DAlphaMode;
@@ -38,6 +40,7 @@ type GltfJson = GltfContainer['json'] & {
         POSITION: number;
         NORMAL?: number;
         TEXCOORD_0?: number;
+        TEXCOORD_1?: number;
       };
       indices?: number;
       mode?: number;
@@ -65,9 +68,12 @@ function readMaterialTextureUrl(
   textureInfo: { index?: number; texCoord?: number } | undefined,
   baseUrl?: string,
 ): string | null {
-  // The baked mesh carries only TEXCOORD_0. Sampling a different UV set would
-  // silently render the wrong surface, so leave that texture unresolved.
-  if ((textureInfo?.texCoord ?? 0) !== 0) return null;
+  if (
+    textureInfo?.texCoord !== undefined &&
+    textureInfo.texCoord !== 0 &&
+    textureInfo.texCoord !== 1
+  )
+    return null;
   const texIndex = textureInfo?.index;
   if (texIndex == null) {
     return null;
@@ -127,6 +133,8 @@ type ImportedMaterial = Pick<
   | 'baseColor'
   | 'map'
   | 'metallicRoughnessMap'
+  | 'mapTexCoord'
+  | 'metallicRoughnessTexCoord'
   | 'metallic'
   | 'roughness'
   | 'alphaMode'
@@ -149,12 +157,15 @@ function readMaterial(
   return {
     baseColor: readMaterialBaseColor(json, materialIndex),
     map: readMaterialTextureUrl(gltf, json, factor?.baseColorTexture, baseUrl),
+    mapTexCoord: factor?.baseColorTexture?.texCoord === 1 ? 1 : 0,
     metallicRoughnessMap: readMaterialTextureUrl(
       gltf,
       json,
       factor?.metallicRoughnessTexture,
       baseUrl,
     ),
+    metallicRoughnessTexCoord:
+      factor?.metallicRoughnessTexture?.texCoord === 1 ? 1 : 0,
     metallic: unitFactor(factor?.metallicFactor),
     roughness: unitFactor(factor?.roughnessFactor),
     alphaMode:
@@ -225,6 +236,7 @@ function appendPrimitive(
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
   uvChunks: Float32Array[],
+  uv1Chunks: Float32Array[],
   idxChunks: number[],
   vertexOffset: { value: number },
   materialOut: { value: ImportedMaterial; selected: boolean },
@@ -232,6 +244,7 @@ function appendPrimitive(
     vertexStart: number;
     vertexCount: number;
     indexStart: number;
+    hasUv1: boolean;
     material: ImportedMaterial;
   }[],
   baseUrl?: string,
@@ -274,22 +287,17 @@ function appendPrimitive(
       normals = new Float32Array(positions.length);
     }
 
-    let uvs: Float32Array;
-    const uvIdx = prim.attributes.TEXCOORD_0;
-    if (uvIdx !== undefined) {
-      const uvAcc = readAccessor(gltf, uvIdx);
-      if (
-        uvAcc.components === 2 &&
-        uvAcc.array instanceof Float32Array &&
-        uvAcc.array.length === vCount * 2
-      ) {
-        uvs = new Float32Array(uvAcc.array);
-      } else {
-        uvs = new Float32Array(vCount * 2);
-      }
-    } else {
-      uvs = new Float32Array(vCount * 2);
-    }
+    const readUvs = (index: number | undefined): Float32Array => {
+      if (index === undefined) return new Float32Array(vCount * 2);
+      const accessor = readAccessor(gltf, index);
+      return accessor.components === 2 &&
+        accessor.array instanceof Float32Array &&
+        accessor.array.length === vCount * 2
+        ? new Float32Array(accessor.array)
+        : new Float32Array(vCount * 2);
+    };
+    const uvs = readUvs(prim.attributes.TEXCOORD_0);
+    const uvs1 = readUvs(prim.attributes.TEXCOORD_1);
 
     let primitiveIndices: Uint32Array | undefined;
     if (prim.indices !== undefined) {
@@ -312,13 +320,20 @@ function appendPrimitive(
     posChunks.push(positions);
     normalChunks.push(normals);
     uvChunks.push(uvs);
+    uv1Chunks.push(uvs1);
 
+    const imported = readMaterial(gltf, json, prim.material ?? -1, baseUrl);
+    if (prim.attributes.TEXCOORD_1 === undefined) {
+      if (imported.mapTexCoord === 1) imported.map = null;
+      if (imported.metallicRoughnessTexCoord === 1)
+        imported.metallicRoughnessMap = null;
+    }
     if (
       !materialOut.selected &&
       prim.material !== undefined &&
       json.materials?.[prim.material]
     ) {
-      materialOut.value = readMaterial(gltf, json, prim.material, baseUrl);
+      materialOut.value = imported;
       materialOut.selected = true;
     }
 
@@ -340,7 +355,8 @@ function appendPrimitive(
       vertexStart,
       vertexCount: vCount,
       indexStart,
-      material: readMaterial(gltf, json, prim.material ?? -1, baseUrl),
+      hasUv1: prim.attributes.TEXCOORD_1 !== undefined,
+      material: imported,
     });
   }
 }
@@ -353,6 +369,7 @@ function traverseNode(
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
   uvChunks: Float32Array[],
+  uv1Chunks: Float32Array[],
   idxChunks: number[],
   vertexOffset: { value: number },
   materialOut: { value: ImportedMaterial; selected: boolean },
@@ -360,6 +377,7 @@ function traverseNode(
     vertexStart: number;
     vertexCount: number;
     indexStart: number;
+    hasUv1: boolean;
     material: ImportedMaterial;
   }[],
   baseUrl?: string,
@@ -385,6 +403,7 @@ function traverseNode(
       posChunks,
       normalChunks,
       uvChunks,
+      uv1Chunks,
       idxChunks,
       vertexOffset,
       materialOut,
@@ -402,6 +421,7 @@ function traverseNode(
       posChunks,
       normalChunks,
       uvChunks,
+      uv1Chunks,
       idxChunks,
       vertexOffset,
       materialOut,
@@ -421,13 +441,16 @@ export function bakeGltfMesh(
   const posChunks: Float32Array[] = [];
   const normalChunks: Float32Array[] = [];
   const uvChunks: Float32Array[] = [];
+  const uv1Chunks: Float32Array[] = [];
   const idxChunks: number[] = [];
   const vertexOffset = { value: 0 };
   const materialOut = {
     value: {
       baseColor: [1, 1, 1, 1] as [number, number, number, number],
       map: null,
+      mapTexCoord: 0,
       metallicRoughnessMap: null,
+      metallicRoughnessTexCoord: 0,
       metallic: 1,
       roughness: 1,
       alphaMode: 'opaque',
@@ -439,6 +462,7 @@ export function bakeGltfMesh(
     vertexStart: number;
     vertexCount: number;
     indexStart: number;
+    hasUv1: boolean;
     material: ImportedMaterial;
   }[] = [];
   const identity = mat4.create();
@@ -455,6 +479,7 @@ export function bakeGltfMesh(
         posChunks,
         normalChunks,
         uvChunks,
+        uv1Chunks,
         idxChunks,
         vertexOffset,
         materialOut,
@@ -472,6 +497,7 @@ export function bakeGltfMesh(
       posChunks,
       normalChunks,
       uvChunks,
+      uv1Chunks,
       idxChunks,
       vertexOffset,
       materialOut,
@@ -494,6 +520,7 @@ export function bakeGltfMesh(
   const positions = new Float32Array(totalFloats);
   const normals = new Float32Array(totalFloats);
   const uvs = new Float32Array((totalFloats / 3) * 2);
+  const uvs1 = new Float32Array(uvs.length);
   let offset = 0;
   let uvOffset = 0;
   for (let i = 0; i < posChunks.length; i++) {
@@ -503,8 +530,10 @@ export function bakeGltfMesh(
       normals.set(chunkNormals, offset);
     }
     const chunkUvs = uvChunks[i];
+    const chunkUvs1 = uv1Chunks[i];
     if (chunkUvs.length === (posChunks[i].length / 3) * 2) {
       uvs.set(chunkUvs, uvOffset);
+      uvs1.set(chunkUvs1, uvOffset);
     }
     offset += posChunks[i].length;
     uvOffset += chunkUvs.length;
@@ -540,6 +569,7 @@ export function bakeGltfMesh(
       positions: positions.subarray(start * 3, end * 3),
       normals: normals.subarray(start * 3, end * 3),
       uvs: uvs.subarray(start * 2, end * 2),
+      uvs1: range.hasUv1 ? uvs1.subarray(start * 2, end * 2) : undefined,
       indices: partIndices,
       ...range.material,
     };
@@ -550,6 +580,7 @@ export function bakeGltfMesh(
     normals,
     indices,
     uvs,
+    uvs1: partRanges.some(({ hasUv1 }) => hasUv1) ? uvs1 : undefined,
     parts,
     ...materialOut.value,
   };

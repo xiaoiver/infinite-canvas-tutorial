@@ -65,6 +65,6 @@ api.updateNodes([
 
 导入 glTF 时，每个三角形图元会保留各自的基础颜色、贴图、金属度和粗糙度系数、`alphaMode`（`OPAQUE`、`MASK` 或 `BLEND`）和 `alphaCutoff`。可选的 `metallicRoughnessMap` 遵循 glTF 通道约定：绿色通道乘以粗糙度，蓝色通道乘以金属度；红色和 alpha 通道不参与计算。缺省的系数按 glTF 规范取 `1`。节点上显式设置的 `material3d` 属性会覆盖所有图元对应的导入值，包括 `metallic: 0`、`roughness: 1` 和 `metallicRoughnessMap: null`。多个图元共用同一变换，选中时仍作为一个模型。导出 GLB 时保留各图元的颜色、PBR 系数、PBR 贴图和透明模式。
 
-目前只使用 `TEXCOORD_0` 采样贴图。导入时会跳过要求其他 UV 集的贴图。
+基础颜色贴图和金属度/粗糙度贴图可以分别使用 `TEXCOORD_0` 或 `TEXCOORD_1`，导出 GLB 时会保留各自的 glTF `texCoord` 选择。自定义贴图可通过 `material3d.mapTexCoord` 或 `material3d.metallicRoughnessTexCoord` 指定 `0` 或 `1`。导入时会跳过更高编号的 UV 集；目前尚未应用 `KHR_texture_transform`。
 
 使用 `await api.exportGlb()` 获取并嵌入基础颜色与金属度/粗糙度贴图。PNG 和 JPEG 保留原始字节；SVG 等可解码格式会栅格化为 PNG。导出的 GLB 再次导入时会保留贴图。贴图 URL 需要允许 CORS 获取。同步的 `api.export({ format: ExportFormat.GLB })` 仍可用于无贴图导出，但不会嵌入贴图。

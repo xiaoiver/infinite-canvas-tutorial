@@ -432,6 +432,7 @@ export class MeshPipeline3D extends System {
           { buffer: gpuData.vertexBuffer },
           { buffer: gpuData.normalBuffer },
           { buffer: gpuData.uvBuffer },
+          { buffer: gpuData.uv1Buffer },
         ],
         gpuData.indexBuffer ? { buffer: gpuData.indexBuffer } : null,
       );
@@ -477,7 +478,9 @@ export class MeshPipeline3D extends System {
     }
     if (blended.length) {
       // Draw farther translucent surfaces before nearer ones.
-      blended.sort((a, b) => a.depth - b.depth || a.entity.__id - b.entity.__id);
+      blended.sort(
+        (a, b) => a.depth - b.depth || a.entity.__id - b.entity.__id,
+      );
       renderPass.setPipeline(state.blendPipeline);
       for (const { entity, gpu } of blended)
         draw(entity, gpu, state.blendPipeline);
@@ -748,6 +751,7 @@ export class MeshPipeline3D extends System {
                   { buffer: gpu.vertexBuffer },
                   { buffer: gpu.uvBuffer },
                   { buffer: gpu.normalBuffer },
+                  { buffer: gpu.uv1Buffer },
                 ],
                 gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
               );
@@ -847,6 +851,13 @@ export class MeshPipeline3D extends System {
               },
             ],
           },
+          {
+            arrayStride: 2 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RG, offset: 0, shaderLocation: 3 },
+            ],
+          },
         ],
         indexBufferFormat: Format.U32_R,
         program,
@@ -935,6 +946,13 @@ export class MeshPipeline3D extends System {
             stepMode: VertexStepMode.VERTEX,
             attributes: [
               { format: Format.F32_RGB, offset: 0, shaderLocation: 2 },
+            ],
+          },
+          {
+            arrayStride: 2 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RG, offset: 0, shaderLocation: 3 },
             ],
           },
         ],
