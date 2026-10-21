@@ -29,6 +29,18 @@ const fetchModel = load as jest.MockedFunction<typeof load>;
 const url = 'https://models.example/model.gltf';
 const png =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==';
+const importedPrimaryColor = [
+  expect.closeTo(0.4845292, 6),
+  expect.closeTo(0.6651851, 6),
+  expect.closeTo(0.7977377, 6),
+  0.8,
+];
+const importedSecondaryColor = [
+  expect.closeTo(0.9063318, 6),
+  expect.closeTo(0.7977377, 6),
+  expect.closeTo(0.6651851, 6),
+  1,
+];
 const node = (
   patch: Partial<Mesh3DNodeSerializedNode> = {},
 ): Mesh3DNodeSerializedNode => ({
@@ -104,7 +116,7 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
   expect(geometry()).toEqual([]);
   await settle();
   expect(geometry()).toHaveLength(9);
-  expect(companion().read(Material3D).baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
+  expect(companion().read(Material3D).baseColor).toEqual(importedPrimaryColor);
   expect(companion().read(Material3D).map).toBe(
     'https://models.example/albedo.png',
   );
@@ -113,7 +125,7 @@ it('deduplicates pending frames, applies on an ECS frame and retains imported ma
   expect(companion().read(Material3D).roughness).toBe(1);
   const document = structuredClone(wire());
   await edit({ x: 20 });
-  expect(companion().read(Material3D).baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
+  expect(companion().read(Material3D).baseColor).toEqual(importedPrimaryColor);
   expect(companion().read(Material3D).map).toBe(
     'https://models.example/albedo.png',
   );
@@ -337,7 +349,10 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
   fetchModel.mockResolvedValue(model);
   await world.reset(api, [node()]);
   await settle();
-  expect(companion().read(Material3D).baseColor).toEqual([1, 0.4, 0.6, 0.8]);
+  expect(companion().read(Material3D).baseColor).toEqual([
+    1,
+    ...importedPrimaryColor.slice(1),
+  ]);
   expect(companion().read(Material3D).map).toBe(
     'https://models.example/albedo.png',
   );
@@ -348,7 +363,7 @@ it('keeps each glTF primitive material and alpha mode on a selectable part', asy
     'https://models.example/primary-pbr.png',
   );
   const [part] = getMesh3DNodeParts(source());
-  expect(part.read(Material3D).baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(part.read(Material3D).baseColor).toEqual(importedSecondaryColor);
   expect(part.read(Material3D).alphaMode).toBe('blend');
   expect(part.read(Material3D).metallic).toBeCloseTo(0.3);
   expect(part.read(Material3D).roughness).toBeCloseTo(0.6);
@@ -454,7 +469,7 @@ it('preserves custom material and restores glTF defaults when overrides are clea
   expect(companion().read(Material3D).baseColor).toEqual([1, 0, 0, 1]);
   expect(companion().read(Material3D).map).toBe('custom.png');
   await edit({ material3d: undefined });
-  expect(companion().read(Material3D).baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
+  expect(companion().read(Material3D).baseColor).toEqual(importedPrimaryColor);
   expect(companion().read(Material3D).map).toBe(
     'https://models.example/albedo.png',
   );
@@ -573,7 +588,7 @@ it('keeps downloaded defaults across undo/redo and document reload without seria
   await edit({ material3d: { baseColor: '#00ff00', map: 'override.png' } });
   await world.history(api, 'undo');
   await settle();
-  expect(companion().read(Material3D).baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
+  expect(companion().read(Material3D).baseColor).toEqual(importedPrimaryColor);
   expect(companion().read(Material3D).map).toBe(
     'https://models.example/albedo.png',
   );
@@ -605,7 +620,9 @@ it('drops imported material when a loaded model is replaced by a primitive or an
   await edit({
     geometry: { type: 'gltf', url: 'https://models.example/other.gltf' },
   });
-  expect(companion().read(Material3D).baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(companion().read(Material3D).baseColor).toEqual(
+    importedSecondaryColor,
+  );
   expect(companion().read(Material3D).map).toBeNull();
 });
 

@@ -10,6 +10,18 @@ import { deferred, gltfScenes } from '../helpers/gltf';
 jest.mock('@loaders.gl/core', () => ({ load: jest.fn() }));
 const fetchModel = load as jest.MockedFunction<typeof load>;
 const url = 'https://models.example/scene/model.gltf';
+const importedPrimaryColor = [
+  expect.closeTo(0.4845292, 6),
+  expect.closeTo(0.6651851, 6),
+  expect.closeTo(0.7977377, 6),
+  0.8,
+];
+const importedSecondaryColor = [
+  expect.closeTo(0.9063318, 6),
+  expect.closeTo(0.7977377, 6),
+  expect.closeTo(0.6651851, 6),
+  1,
+];
 beforeEach(() => {
   clearGltfMeshCache();
   fetchModel.mockReset();
@@ -32,14 +44,14 @@ it('shares in-flight work and caches the real baked geometry and relative textur
     -0.5, -0.25, 0, 0.5, -0.25, 0, -0.5, 0.25, 0,
   ]);
   expect(Array.from(mesh.indices)).toEqual([0, 1, 2]);
-  expect(mesh.baseColor).toEqual([0.2, 0.4, 0.6, 0.8]);
+  expect(mesh.baseColor).toEqual(importedPrimaryColor);
   expect(mesh.map).toBe('https://models.example/scene/albedo.png');
 });
 
 it('keeps scene selections separate while reusing the implicit first scene', async () => {
   const first = await loadGltfMeshFromUrl(url);
   const second = await loadGltfMeshFromUrl(url, { scene: 1 });
-  expect(second.baseColor).toEqual([0.8, 0.6, 0.4, 1]);
+  expect(second.baseColor).toEqual(importedSecondaryColor);
   expect(second.positions).not.toEqual(first.positions);
   expect(await loadGltfMeshFromUrl(url, { scene: 0 })).toBe(first);
   expect(await loadGltfMeshFromUrl(url, { scene: 1 })).toBe(second);

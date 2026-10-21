@@ -513,6 +513,8 @@ For textured cutouts and translucent surfaces, `material3d.alphaMode` offers `ma
 
 Load an external glTF/GLB via declarative `mesh3d` geometry (`geometry: { type: 'gltf', url: '…' }`). The Khronos **Duck** sample uses a `.gltf` + `.bin` pair under `/data/`; meshes are centered and normalized to unit bounds, then scaled with `scale3d`.
 
+glTF base-color factors use linear RGB, while ECS stores material base colors as sRGB. Import converts between them; GLB export converts back to linear RGB so material colors remain stable across a round-trip.
+
 <GltfDuck />
 
 ## Further reading {#extended-reading}
