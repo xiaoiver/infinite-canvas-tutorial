@@ -469,6 +469,17 @@ it('rejects empty or malformed mesh data', () => {
       },
     ]),
   ).toThrow('Invalid 3D mesh indices');
+  expect(() =>
+    exportMeshesToGlb([
+      {
+        ...source,
+        mesh: {
+          ...createUnitCubeGeometry(),
+          tangents: new Float32Array(24 * 4),
+        },
+      },
+    ]),
+  ).toThrow('Invalid 3D mesh vertices');
 });
 
 it('exports a plain rectangle without a second material or missing UVs', () => {

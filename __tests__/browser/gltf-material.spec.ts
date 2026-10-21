@@ -82,6 +82,30 @@ test('Khronos GLB normal and occlusion textures change the rendered material', a
   expect(errors).toEqual([]);
 });
 
+test('authored tangent handedness changes normal-map lighting', async ({
+  page,
+}) => {
+  await page.goto('/gizmo.html?gltfTangent&width=300&height=190');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
+  await expect
+    .poll(() => page.evaluate(() => window.gizmoTest.tangentState()), {
+      timeout: 20000,
+    })
+    .toMatchObject([
+      { vertices: 4, handedness: 1, normalTextureStatus: 'ready' },
+      { vertices: 4, handedness: -1, normalTextureStatus: 'ready' },
+    ]);
+  await page.evaluate(() => window.gizmoTest.settle());
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const luminance = (cssX: number, cssY: number) => {
+    const x = Math.round((cssX / 300) * png.width);
+    const y = Math.round((cssY / 190) * png.height);
+    const offset = (y * png.width + x) * 4;
+    return png.data[offset] + png.data[offset + 1] + png.data[offset + 2];
+  };
+  expect(luminance(85, 95)).toBeGreaterThan(luminance(215, 95) + 60);
+});
+
 test('double-sided material draws the back of a plane', async ({ page }) => {
   await page.goto('/gizmo.html?alpha');
   await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });

@@ -88,6 +88,7 @@ export class SyncMesh3DNodes extends System {
               new Mesh3D({
                 positions: part.positions,
                 normals: part.normals,
+                tangents: part.tangents ?? null,
                 indices: part.indices,
                 uvs: part.uvs ?? null,
                 uvs1: part.uvs1 ?? null,

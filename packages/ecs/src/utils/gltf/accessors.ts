@@ -87,25 +87,28 @@ export function readAccessor(
     return { array: out, components: 2 };
   }
 
-  if (acc.componentType === 5126 && acc.type === 'VEC3') {
+  if (
+    acc.componentType === 5126 &&
+    (acc.type === 'VEC3' || acc.type === 'VEC4')
+  ) {
     const count = acc.count;
-    const stride = bv.byteStride ?? 12;
-    if (stride === 12) {
+    const elementSize = comps * 4;
+    const stride = bv.byteStride ?? elementSize;
+    if (stride === elementSize) {
       return {
-        array: new Float32Array(ab, base, count * 3),
-        components: 3,
+        array: new Float32Array(ab, base, count * comps),
+        components: comps,
       };
     }
-    const out = new Float32Array(count * 3);
+    const out = new Float32Array(count * comps);
     const view = new DataView(ab);
     let off = base;
     for (let i = 0; i < count; i++) {
-      out[i * 3] = view.getFloat32(off, true);
-      out[i * 3 + 1] = view.getFloat32(off + 4, true);
-      out[i * 3 + 2] = view.getFloat32(off + 8, true);
+      for (let c = 0; c < comps; c++)
+        out[i * comps + c] = view.getFloat32(off + c * 4, true);
       off += stride;
     }
-    return { array: out, components: 3 };
+    return { array: out, components: comps };
   }
 
   if (acc.componentType === 5123) {

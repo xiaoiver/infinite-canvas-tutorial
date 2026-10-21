@@ -3188,6 +3188,7 @@ export class API {
         const meshData = {
           positions: geometry.positions,
           normals: geometry.normals,
+          tangents: geometry.tangents,
           uvs: geometry.uvs,
           uvs1: geometry.uvs1,
           indices: geometry.indices,

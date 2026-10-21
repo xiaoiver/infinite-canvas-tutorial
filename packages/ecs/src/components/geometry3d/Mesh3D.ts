@@ -27,6 +27,9 @@ export class Mesh3D {
    */
   @field.object declare normals: Float32Array;
 
+  /** Optional tangent xyz and bitangent handedness for normal maps. */
+  @field.object declare tangents: Float32Array | null;
+
   /**
    * Optional UV coordinates (u, v) interleaved.
    */
@@ -46,6 +49,7 @@ export class Mesh3D {
     }
     this.positions ??= new Float32Array(0);
     this.normals ??= new Float32Array(0);
+    this.tangents ??= null;
     this.uvs ??= null;
     this.uvs1 ??= null;
     this.indices ??= null;

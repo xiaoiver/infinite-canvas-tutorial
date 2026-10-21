@@ -88,6 +88,7 @@ type GltfJson = GltfContainer['json'] & {
       attributes: {
         POSITION: number;
         NORMAL?: number;
+        TANGENT?: number;
         TEXCOORD_0?: number;
         TEXCOORD_1?: number;
       };
@@ -371,6 +372,46 @@ function transformNormalsInPlace(normals: Float32Array, matrix: mat4): void {
   }
 }
 
+function readTransformedTangents(
+  gltf: GltfContainer,
+  index: number | undefined,
+  vertexCount: number,
+  matrix: mat4,
+): Float32Array | undefined {
+  if (index === undefined) return;
+  const accessor = readAccessor(gltf, index);
+  if (
+    accessor.components !== 4 ||
+    !(accessor.array instanceof Float32Array) ||
+    accessor.array.length !== vertexCount * 4
+  )
+    return;
+  const determinant = mat4.determinant(matrix);
+  if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12) return;
+  const tangents = new Float32Array(accessor.array);
+  for (let i = 0; i < tangents.length; i += 4) {
+    const x = tangents[i];
+    const y = tangents[i + 1];
+    const z = tangents[i + 2];
+    const w = tangents[i + 3];
+    if (
+      ![x, y, z, w].every(Number.isFinite) ||
+      Math.abs(Math.abs(w) - 1) > 1e-4
+    )
+      return;
+    const tx = matrix[0] * x + matrix[4] * y + matrix[8] * z;
+    const ty = matrix[1] * x + matrix[5] * y + matrix[9] * z;
+    const tz = matrix[2] * x + matrix[6] * y + matrix[10] * z;
+    const length = Math.hypot(tx, ty, tz);
+    if (!(length > 1e-8) || !Number.isFinite(length)) return;
+    tangents[i] = tx / length;
+    tangents[i + 1] = ty / length;
+    tangents[i + 2] = tz / length;
+    tangents[i + 3] = Math.sign(w) * Math.sign(determinant);
+  }
+  return tangents;
+}
+
 function appendPrimitive(
   gltf: GltfContainer,
   json: GltfJson,
@@ -378,6 +419,7 @@ function appendPrimitive(
   worldMatrix: mat4,
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
+  tangentChunks: (Float32Array | undefined)[],
   uvChunks: Float32Array[],
   uv1Chunks: Float32Array[],
   idxChunks: number[],
@@ -441,6 +483,12 @@ function appendPrimitive(
     };
     const uvs = readUvs(prim.attributes.TEXCOORD_0);
     const uvs1 = readUvs(prim.attributes.TEXCOORD_1);
+    const tangents = readTransformedTangents(
+      gltf,
+      prim.attributes.TANGENT,
+      vCount,
+      worldMatrix,
+    );
 
     let primitiveIndices: Uint32Array | undefined;
     if (prim.indices !== undefined) {
@@ -462,6 +510,7 @@ function appendPrimitive(
     const indexStart = idxChunks.length;
     posChunks.push(positions);
     normalChunks.push(normals);
+    tangentChunks.push(tangents);
     uvChunks.push(uvs);
     uv1Chunks.push(uvs1);
 
@@ -514,6 +563,7 @@ function traverseNode(
   parentMatrix: mat4,
   posChunks: Float32Array[],
   normalChunks: Float32Array[],
+  tangentChunks: (Float32Array | undefined)[],
   uvChunks: Float32Array[],
   uv1Chunks: Float32Array[],
   idxChunks: number[],
@@ -548,6 +598,7 @@ function traverseNode(
       world,
       posChunks,
       normalChunks,
+      tangentChunks,
       uvChunks,
       uv1Chunks,
       idxChunks,
@@ -566,6 +617,7 @@ function traverseNode(
       world,
       posChunks,
       normalChunks,
+      tangentChunks,
       uvChunks,
       uv1Chunks,
       idxChunks,
@@ -586,6 +638,7 @@ export function bakeGltfMesh(
   const json = gltf.json as GltfJson;
   const posChunks: Float32Array[] = [];
   const normalChunks: Float32Array[] = [];
+  const tangentChunks: (Float32Array | undefined)[] = [];
   const uvChunks: Float32Array[] = [];
   const uv1Chunks: Float32Array[] = [];
   const idxChunks: number[] = [];
@@ -641,6 +694,7 @@ export function bakeGltfMesh(
         identity,
         posChunks,
         normalChunks,
+        tangentChunks,
         uvChunks,
         uv1Chunks,
         idxChunks,
@@ -659,6 +713,7 @@ export function bakeGltfMesh(
       identity,
       posChunks,
       normalChunks,
+      tangentChunks,
       uvChunks,
       uv1Chunks,
       idxChunks,
@@ -682,6 +737,7 @@ export function bakeGltfMesh(
   const totalFloats = posChunks.reduce((s, c) => s + c.length, 0);
   const positions = new Float32Array(totalFloats);
   const normals = new Float32Array(totalFloats);
+  const tangents = new Float32Array((totalFloats / 3) * 4);
   const uvs = new Float32Array((totalFloats / 3) * 2);
   const uvs1 = new Float32Array(uvs.length);
   let offset = 0;
@@ -689,6 +745,8 @@ export function bakeGltfMesh(
   for (let i = 0; i < posChunks.length; i++) {
     positions.set(posChunks[i], offset);
     const chunkNormals = normalChunks[i];
+    const chunkTangents = tangentChunks[i];
+    if (chunkTangents) tangents.set(chunkTangents, (offset / 3) * 4);
     if (chunkNormals.length === posChunks[i].length) {
       normals.set(chunkNormals, offset);
     }
@@ -731,6 +789,9 @@ export function bakeGltfMesh(
     return {
       positions: positions.subarray(start * 3, end * 3),
       normals: normals.subarray(start * 3, end * 3),
+      tangents: tangentChunks[i]
+        ? tangents.subarray(start * 4, end * 4)
+        : undefined,
       uvs: uvs.subarray(start * 2, end * 2),
       uvs1: range.hasUv1 ? uvs1.subarray(start * 2, end * 2) : undefined,
       indices: partIndices,
@@ -741,6 +802,7 @@ export function bakeGltfMesh(
   return {
     positions,
     normals,
+    tangents: tangentChunks.every(Boolean) ? tangents : undefined,
     indices,
     uvs,
     uvs1: partRanges.some(({ hasUv1 }) => hasUv1) ? uvs1 : undefined,

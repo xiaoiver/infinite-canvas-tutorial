@@ -515,7 +515,7 @@ Load an external glTF/GLB via declarative `mesh3d` geometry (`geometry: { type: 
 
 glTF base-color factors use linear RGB, while ECS stores material base colors as sRGB. Import converts between them; GLB export converts back to linear RGB so material colors remain stable across a round-trip.
 
-The importer also preserves glTF `doubleSided`, `normalTexture` and `occlusionTexture`, including their independent UV sets, transforms and intensity factors. Normal maps alter the lighting normal; occlusion affects indirect light only. Compare the [interactive PBR model](/example/gltf-duck#pbr-material) and its tangent-space limitation.
+The importer also preserves glTF `doubleSided`, `normalTexture`, `occlusionTexture`, and authored `TANGENT` attributes. Normal maps alter the lighting normal; occlusion affects indirect light only. The [interactive PBR model](/example/gltf-duck#pbr-material) explains when normal mapping uses authored tangents or derives them from UVs.
 
 <GltfDuck />
 

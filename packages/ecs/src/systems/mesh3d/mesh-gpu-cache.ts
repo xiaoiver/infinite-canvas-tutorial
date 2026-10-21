@@ -16,6 +16,7 @@ import {
 export interface MeshGPUData {
   vertexBuffer: Buffer;
   normalBuffer: Buffer;
+  tangentBuffer: Buffer;
   uvBuffer: Buffer;
   uv1Buffer: Buffer;
   indexBuffer: Buffer | null;
@@ -91,6 +92,12 @@ export class MeshGPUCache {
       const geometry = {
         vertexBuffer: buffer(mesh.positions, BufferUsage.VERTEX),
         normalBuffer: buffer(mesh.normals, BufferUsage.VERTEX),
+        tangentBuffer: buffer(
+          mesh.tangents?.length === mesh.vertexCount * 4
+            ? mesh.tangents
+            : new Float32Array(mesh.vertexCount * 4),
+          BufferUsage.VERTEX,
+        ),
         // Optional UVs must still satisfy the shared input layout.
         uvBuffer: buffer(
           mesh.uvs?.length === mesh.vertexCount * 2

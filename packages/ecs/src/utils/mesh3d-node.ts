@@ -160,6 +160,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
     companionGeometry.delete(source);
     clearMesh3DNodeParts(source);
     Object.assign(meshEntity.write(Mesh3D), emptyMesh3DGeometry());
+    meshEntity.write(Mesh3D).tangents = null;
     return true;
   }
 
@@ -177,6 +178,7 @@ export function rebuildMesh3DNodeCompanionGeometry(
   Object.assign(meshEntity.write(Mesh3D), data);
   meshEntity.write(Mesh3D).uvs = data.uvs ?? null;
   meshEntity.write(Mesh3D).uvs1 = data.uvs1 ?? null;
+  meshEntity.write(Mesh3D).tangents = data.tangents ?? null;
   return true;
 }
 

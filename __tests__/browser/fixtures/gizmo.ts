@@ -23,6 +23,7 @@ import {
   Transform,
   ExportFormat,
   svgElementsToExtrudedNodes,
+  exportMeshesToGlb,
 } from '@infinite-canvas-tutorial/ecs';
 import { YogaPlugin } from '@infinite-canvas-tutorial/yoga';
 import { BufferUsage } from '@infinite-canvas-tutorial/device-api';
@@ -191,6 +192,24 @@ const harness = {
     return uploads.filter((data) => arrays.includes(data as Float32Array))
       .length;
   },
+  tangentState: () => {
+    const pipeline = getMeshPipeline3D(api.getCanvas()) as unknown as {
+      states: Map<API, { textureCache: Map<string, { status: string }> }>;
+    };
+    return ['tangent-positive', 'tangent-negative'].map((id) => {
+      const source = api.getEntity(api.getNodeById(id));
+      const meshEntity = source.read(Mesh3DNode).meshEntity!;
+      const mesh = meshEntity.read(Mesh3D);
+      const material = meshEntity.read(Material3D);
+      return {
+        vertices: mesh.vertexCount,
+        handedness: mesh.tangents?.[3],
+        normalTextureStatus: pipeline?.states
+          .get(api)
+          ?.textureCache.get(`material:${material.normalMap}`)?.status,
+      };
+    });
+  },
   state: () => {
     const node = api.getNodeById('model');
     const entity = api.getEntity(node);
@@ -225,6 +244,61 @@ declare global {
   }
 }
 window.gizmoTest = harness;
+
+function authoredTangentGlb(handedness: number): string {
+  // A Y-facing normal texture lets opposite tangent handedness produce
+  // opposite lighting on otherwise identical quads.
+  const pngBase64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNo+N8AAAQCAgCpSbOxAAAAAElFTkSuQmCC';
+  const normalMap = `data:image/png;base64,${pngBase64}`;
+  const png = Uint8Array.from(atob(pngBase64), (char) => char.charCodeAt(0));
+  const mesh = {
+    positions: new Float32Array([
+      -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
+    ]),
+    normals: new Float32Array([0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1]),
+    tangents: new Float32Array([
+      1,
+      0,
+      0,
+      handedness,
+      1,
+      0,
+      0,
+      handedness,
+      1,
+      0,
+      0,
+      handedness,
+      1,
+      0,
+      0,
+      handedness,
+    ]),
+    uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
+    indices: new Uint32Array([0, 2, 1, 0, 3, 2]),
+  };
+  const bytes = exportMeshesToGlb(
+    [
+      {
+        mesh,
+        material: new Material3D({
+          baseColor: [0.7, 0.7, 0.7, 1],
+          metallic: 0,
+          roughness: 1,
+          doubleSided: true,
+          normalMap,
+        }),
+        transform: new Transform3D(),
+      },
+    ],
+    new Map([[normalMap, { bytes: png, mimeType: 'image/png' }]]),
+  );
+  return URL.createObjectURL(
+    new Blob([bytes as BlobPart], { type: 'model/gltf-binary' }),
+  );
+}
+
 async function init() {
   await app.run();
   while (!api.getCanvas().has(GPUResource)) await harness.settle();
@@ -270,6 +344,9 @@ async function init() {
     derivedUpdates.layerScans++;
     return setLayers(layers);
   };
+  const tangentUrls = params.has('gltfTangent')
+    ? [authoredTangentGlb(1), authoredTangentGlb(-1)]
+    : [];
   await api.edit(
     (editor) => {
       const node: SerializedNode =
@@ -308,7 +385,47 @@ async function init() {
               height: 40,
               scale3d: 20,
             };
-      const nodes: SerializedNode[] = params.has('gltfMaterial')
+      const nodes: SerializedNode[] = params.has('gltfTangent')
+        ? [
+            ...tangentUrls.map(
+              (url, index): SerializedNode => ({
+                id: index ? 'tangent-negative' : 'tangent-positive',
+                type: 'mesh3d',
+                zIndex: index,
+                x: index ? 165 : 35,
+                y: 45,
+                width: 100,
+                height: 100,
+                scale3d: 100,
+                geometry: { type: 'gltf', url },
+                ...(index
+                  ? {}
+                  : {
+                      camera3d: {
+                        linked: true,
+                        projection: 'perspective',
+                        clearColor: false,
+                      },
+                    }),
+              }),
+            ),
+            {
+              id: 'tangent-ambient',
+              type: 'light3d',
+              zIndex: 2,
+              lightType: 'ambient',
+              intensity: 0.1,
+            },
+            {
+              id: 'tangent-sun',
+              type: 'light3d',
+              zIndex: 3,
+              lightType: 'directional',
+              direction: [0, 1, 0.4],
+              intensity: 1.8,
+            },
+          ]
+        : params.has('gltfMaterial')
         ? [
             {
               id: 'material-model',
@@ -458,7 +575,11 @@ async function init() {
         });
       }
       editor.replaceDocument(nodes, 'remote');
-      if (!params.has('alpha') && !params.has('gltfMaterial'))
+      if (
+        !params.has('alpha') &&
+        !params.has('gltfMaterial') &&
+        !params.has('gltfTangent')
+      )
         editor.selectNodes([editor.getNodeById('model')]);
     },
     { capture: 'NEVER' },

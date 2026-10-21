@@ -453,6 +453,7 @@ export class MeshPipeline3D extends System {
           { buffer: gpuData.normalBuffer },
           { buffer: gpuData.uvBuffer },
           { buffer: gpuData.uv1Buffer },
+          { buffer: gpuData.tangentBuffer },
         ],
         gpuData.indexBuffer ? { buffer: gpuData.indexBuffer } : null,
       );
@@ -891,6 +892,13 @@ export class MeshPipeline3D extends System {
             stepMode: VertexStepMode.VERTEX,
             attributes: [
               { format: Format.F32_RG, offset: 0, shaderLocation: 3 },
+            ],
+          },
+          {
+            arrayStride: 4 * 4,
+            stepMode: VertexStepMode.VERTEX,
+            attributes: [
+              { format: Format.F32_RGBA, offset: 0, shaderLocation: 4 },
             ],
           },
         ],
