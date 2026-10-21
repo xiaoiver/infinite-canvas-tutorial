@@ -84,10 +84,54 @@ test('GLB export rasterizes an SVG cutout texture and keeps its alpha', async ({
   const imageView = json.bufferViews[json.images[0].bufferView];
   const imageOffset = 20 + jsonLength + 8 + imageView.byteOffset;
   const image = PNG.sync.read(
-    Buffer.from(bytes.subarray(imageOffset, imageOffset + imageView.byteLength)),
+    Buffer.from(
+      bytes.subarray(imageOffset, imageOffset + imageView.byteLength),
+    ),
   );
   expect(image.width).toBe(2);
   expect(image.height).toBe(2);
   expect(image.data[3]).toBe(255);
   expect(image.data[7]).toBe(0);
+});
+
+test('metallic-roughness texture blue channel changes lit mesh pixels', async ({
+  page,
+}) => {
+  const pbrMap = (metallic: number) => {
+    const image = new PNG({ width: 1, height: 1 });
+    image.data.set([0, 255, metallic, 255]);
+    return `data:image/png;base64,${PNG.sync.write(image).toString('base64')}`;
+  };
+  const metal = pbrMap(255);
+  const dielectric = pbrMap(0);
+  await page.goto('/gizmo.html?alpha');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const setMap = async (metallicRoughnessMap: string) => {
+    await page.evaluate(async (url) => {
+      const api = window.gizmoTest.api();
+      const mesh = api.getNodeById('alpha-mask');
+      if (mesh.type !== 'mesh3d') throw new Error('Missing test mesh');
+      api.updateNode(
+        mesh,
+        {
+          material3d: {
+            ...mesh.material3d,
+            metallic: 1,
+            roughness: 0.5,
+            metallicRoughnessMap: url,
+          },
+        },
+        false,
+      );
+      await window.gizmoTest.settle();
+    }, metallicRoughnessMap);
+  };
+  const redPixel = async () =>
+    pixel(PNG.sync.read(await page.locator('#canvas').screenshot()), 75, 40);
+  await setMap(metal);
+  const before = await redPixel();
+  await setMap(dielectric);
+  await expect
+    .poll(async () => (await redPixel())[0] - before[0])
+    .toBeGreaterThan(8);
 });

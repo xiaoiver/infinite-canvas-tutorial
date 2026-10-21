@@ -46,6 +46,7 @@ export function queueMesh3DCompanion(
   const shininess = node.shininess;
   const metallic = node.metallic;
   const roughness = node.roughness;
+  const metallicRoughnessMap = node.metallicRoughnessMap ?? null;
   const map = node.map ?? null;
   const alphaMode = node.alphaMode;
   const alphaCutoff = node.alphaCutoff;
@@ -85,6 +86,7 @@ export function queueMesh3DCompanion(
         shininess,
         metallic,
         roughness,
+        metallicRoughnessMap,
         map,
         alphaMode,
         alphaCutoff,

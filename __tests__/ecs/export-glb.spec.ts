@@ -39,7 +39,12 @@ const png =
 it('embeds a shared base-color texture once and imports it from the GLB buffer', async () => {
   const source = {
     mesh: createUnitCubeGeometry(),
-    material: new Material3D({ map: png, alphaMode: 'mask', alphaCutoff: 0.4 }),
+    material: new Material3D({
+      map: png,
+      metallicRoughnessMap: png,
+      alphaMode: 'mask',
+      alphaCutoff: 0.4,
+    }),
     transform: new Transform3D(),
   };
   const images = await loadGlbImages([source, source]);
@@ -66,12 +71,24 @@ it('embeds a shared base-color texture once and imports it from the GLB buffer',
         material.pbrMetallicRoughness.baseColorTexture,
     ),
   ).toEqual([{ index: 0 }, { index: 0 }]);
+  expect(
+    json.materials.map(
+      (material: {
+        pbrMetallicRoughness: { metallicRoughnessTexture: unknown };
+      }) => material.pbrMetallicRoughness.metallicRoughnessTexture,
+    ),
+  ).toEqual([{ index: 0 }, { index: 0 }]);
   const loaded = (await parse(bytes.buffer, GLTFLoader, {
     gltf: { loadBuffers: true, loadImages: false },
   })) as GltfContainer;
   const roundTrip = bakeGltfMesh(loaded);
   expect(roundTrip.map).toBe(png);
+  expect(roundTrip.metallicRoughnessMap).toBe(png);
   expect(roundTrip.parts.map((part) => part.map)).toEqual([png, png]);
+  expect(roundTrip.parts.map((part) => part.metallicRoughnessMap)).toEqual([
+    png,
+    png,
+  ]);
   expect(roundTrip.alphaMode).toBe('mask');
 });
 
@@ -87,12 +104,20 @@ it('keeps distinct textures on separate material primitives', async () => {
     {
       mesh,
       transform,
-      material: new Material3D({ map: png, alphaMode: 'mask' }),
+      material: new Material3D({
+        map: png,
+        metallicRoughnessMap: blueUrl,
+        alphaMode: 'mask',
+      }),
     },
     {
       mesh,
       transform,
-      material: new Material3D({ map: blueUrl, alphaMode: 'blend' }),
+      material: new Material3D({
+        map: blueUrl,
+        metallicRoughnessMap: png,
+        alphaMode: 'blend',
+      }),
     },
   ];
   const bytes = exportMeshesToGlb(sources, await loadGlbImages(sources));
@@ -105,6 +130,13 @@ it('keeps distinct textures on separate material primitives', async () => {
         material.pbrMetallicRoughness.baseColorTexture,
     ),
   ).toEqual([{ index: 0 }, { index: 1 }]);
+  expect(
+    json.materials.map(
+      (material: {
+        pbrMetallicRoughness: { metallicRoughnessTexture: unknown };
+      }) => material.pbrMetallicRoughness.metallicRoughnessTexture,
+    ),
+  ).toEqual([{ index: 1 }, { index: 0 }]);
   const loaded = (await parse(bytes.buffer, GLTFLoader, {
     gltf: { loadBuffers: true, loadImages: false },
   })) as GltfContainer;
@@ -112,6 +144,9 @@ it('keeps distinct textures on separate material primitives', async () => {
     png,
     blueUrl,
   ]);
+  expect(
+    bakeGltfMesh(loaded).parts.map((part) => part.metallicRoughnessMap),
+  ).toEqual([blueUrl, png]);
 });
 
 it('exports a holed Path with distinct cap and wall materials as a valid GLB', async () => {

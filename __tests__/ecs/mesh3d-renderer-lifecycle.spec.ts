@@ -1019,7 +1019,9 @@ it.each(['map', 'specularMap', 'bumpMap'] as const)(
     const loaded = slot.gpu.textures[2];
     const index = ['map', 'specularMap', 'bumpMap'].indexOf(field);
     const second = slot.gpu.bindings[1];
-    expect(second.samplerBindings[index].texture).toBe(loaded);
+    expect(second.samplerBindings[index === 0 ? 0 : index + 1].texture).toBe(
+      loaded,
+    );
     expect(first.destroy).toHaveBeenCalledTimes(1);
     const model = second.uniformBufferBindings[1].buffer;
     expect(new Float32Array(model.bytes.buffer)[48 + index]).toBe(1);

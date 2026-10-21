@@ -9,7 +9,12 @@ export interface GlbMeshSource {
     Material3D,
     'baseColor' | 'sideColor' | 'metallic' | 'roughness'
   > &
-    Partial<Pick<Material3D, 'alphaMode' | 'alphaCutoff' | 'map'>>;
+    Partial<
+      Pick<
+        Material3D,
+        'alphaMode' | 'alphaCutoff' | 'map' | 'metallicRoughnessMap'
+      >
+    >;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
   name?: string;
 }
@@ -63,6 +68,7 @@ export function exportMeshesToGlb(
     pbrMetallicRoughness: {
       baseColorFactor: number[];
       baseColorTexture?: { index: number };
+      metallicRoughnessTexture?: { index: number };
       metallicFactor: number;
       roughnessFactor: number;
     };
@@ -130,6 +136,24 @@ export function exportMeshesToGlb(
       type,
       ...bounds,
     }) - 1;
+  const textureIndexFor = (
+    url: string | null | undefined,
+  ): number | undefined => {
+    if (!url) return;
+    const image = imageData.get(url);
+    if (!image) return;
+    let index = textureIndices.get(url);
+    if (index === undefined) {
+      const imageIndex =
+        images.push({
+          bufferView: append(image.bytes),
+          mimeType: image.mimeType,
+        }) - 1;
+      index = textures.push({ source: imageIndex }) - 1;
+      textureIndices.set(url, index);
+    }
+    return index;
+  };
   const material = (
     color: readonly number[],
     metallic: number,
@@ -137,6 +161,7 @@ export function exportMeshesToGlb(
     alphaMode: Material3D['alphaMode'] | undefined,
     alphaCutoff: number | undefined,
     map: string | null | undefined,
+    metallicRoughnessMap: string | null | undefined,
   ): number => {
     const mode = alphaMode ?? (color[3] < 1 ? 'blend' : 'opaque');
     const cutoff = alphaCutoff ?? 0.5;
@@ -149,22 +174,8 @@ export function exportMeshesToGlb(
       )
     )
       throw new Error('Invalid 3D material');
-    let textureIndex: number | undefined;
-    if (map) {
-      const image = imageData.get(map);
-      if (image) {
-        textureIndex = textureIndices.get(map);
-        if (textureIndex === undefined) {
-          const imageIndex =
-            images.push({
-              bufferView: append(image.bytes),
-              mimeType: image.mimeType,
-            }) - 1;
-          textureIndex = textures.push({ source: imageIndex }) - 1;
-          textureIndices.set(map, textureIndex);
-        }
-      }
-    }
+    const textureIndex = textureIndexFor(map);
+    const pbrTextureIndex = textureIndexFor(metallicRoughnessMap);
     return (
       materials.push({
         pbrMetallicRoughness: {
@@ -177,6 +188,9 @@ export function exportMeshesToGlb(
           ...(textureIndex === undefined
             ? {}
             : { baseColorTexture: { index: textureIndex } }),
+          ...(pbrTextureIndex === undefined
+            ? {}
+            : { metallicRoughnessTexture: { index: pbrTextureIndex } }),
           metallicFactor: metallic,
           roughnessFactor: roughness,
         },
@@ -245,6 +259,7 @@ export function exportMeshesToGlb(
       source.material.alphaMode,
       source.material.alphaCutoff,
       uvs ? source.material.map : null,
+      uvs ? source.material.metallicRoughnessMap : null,
     );
     const primitives: Primitive[] = [];
     const primitive = (faceIndices: number[], materialIndex: number) => {
@@ -273,6 +288,7 @@ export function exportMeshesToGlb(
           source.material.alphaMode,
           source.material.alphaCutoff,
           uvs ? source.material.map : null,
+          uvs ? source.material.metallicRoughnessMap : null,
         ),
       );
 

@@ -3200,6 +3200,7 @@ export class API {
           alphaMode: surface.alphaMode,
           alphaCutoff: surface.alphaCutoff,
           map: surface.map,
+          metallicRoughnessMap: surface.metallicRoughnessMap,
         };
         const pose = part.read(Transform3D);
         const transform = {
@@ -3232,7 +3233,7 @@ export class API {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /** Export a self-contained GLB, fetching and embedding base-color textures. */
+  /** Export a self-contained GLB, fetching and embedding material textures. */
   async exportGlb(
     options: Pick<ExportOptions, 'download' | 'nodes'> = {},
   ): Promise<Uint8Array> {

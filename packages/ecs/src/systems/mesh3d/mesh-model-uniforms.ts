@@ -44,6 +44,7 @@ export class MeshModelUniforms {
       mapReady: boolean;
       specularMapReady: boolean;
       bumpMapReady: boolean;
+      metallicRoughnessMapReady: boolean;
       environmentMapReady: boolean;
       environmentIrradiance: Float32Array | null;
     },
@@ -61,6 +62,10 @@ export class MeshModelUniforms {
     this.set(53, material.roughness);
     this.set(54, Number(material.sideColor !== null));
     this.set(55, Number(textureReady.environmentMapReady));
+    this.set(
+      63 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number(textureReady.metallicRoughnessMapReady),
+    );
     for (let i = 0; i < 4; i++) this.set(56 + i, material.sideColor?.[i] ?? 0);
     for (let i = 0; i < ENVIRONMENT_IRRADIANCE_FLOATS; i++)
       this.set(60 + i, textureReady.environmentIrradiance?.[i] ?? 0);
