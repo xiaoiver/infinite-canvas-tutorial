@@ -80,7 +80,8 @@ import {
 } from './utils/normalize-stroke-wire';
 import { fillLayerOpacity, getEnabledFillLayers } from './utils/fillLayers';
 import { resolveExtrude3DDepth } from './utils/extrude3d';
-import { exportMeshesToGlb } from './utils/gltf/export-glb';
+import { exportMeshesToGlb, type GlbMeshSource } from './utils/gltf/export-glb';
+import { loadGlbImages } from './utils/gltf/load-glb-images';
 import { getMesh3DNodeParts } from './utils/mesh3d-node';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { v4 as uuidv4 } from 'uuid';
@@ -2136,7 +2137,12 @@ export class API {
       // Newly created entities already receive computed paint during deserialization.
       // Rewriting them here also unnecessarily requires startup systems to declare
       // write access to every presentation component.
-      if (!affected.has(node.id) || node.isDeleted || initializedIds.has(node.id)) continue;
+      if (
+        !affected.has(node.id) ||
+        node.isDeleted ||
+        initializedIds.has(node.id)
+      )
+        continue;
       const entity = this.#idEntityMap.get(node.id)?.id();
       if (entity)
         syncInheritedPresentation(
@@ -2238,7 +2244,9 @@ export class API {
   updateNodes(nodes: SerializedNode[], updateAppState = true) {
     if (!nodes.length) return;
     const initializedIds = new Set(
-      nodes.filter((node) => !this.#idEntityMap.has(node.id)).map((node) => node.id),
+      nodes
+        .filter((node) => !this.#idEntityMap.has(node.id))
+        .map((node) => node.id),
     );
     const wasUpdatingNodes = this.#updatingNodes;
     this.#updatingNodes = true;
@@ -2262,8 +2270,7 @@ export class API {
           this.commands,
           this.#idEntityMap,
           {
-            lookupNodes:
-              this.#mergeSceneWithBatchForEdgeLookup(nodes),
+            lookupNodes: this.#mergeSceneWithBatchForEdgeLookup(nodes),
             variables: this.getAppState().variables,
             themeMode: this.getAppState().themeMode,
             canvas: this.#canvas,
@@ -2304,7 +2311,8 @@ export class API {
     } finally {
       this.#updatingNodes = wasUpdatingNodes;
     }
-    if (!wasUpdatingNodes) this.#refreshInheritedPresentation(nodes, initializedIds);
+    if (!wasUpdatingNodes)
+      this.#refreshInheritedPresentation(nodes, initializedIds);
   }
 
   /**
@@ -3138,88 +3146,112 @@ export class API {
     this.#history.clear();
   }
 
+  private collectGlbSources(nodes: SerializedNode[]): GlbMeshSource[] {
+    const scene = this.getNodes();
+    const byId = new Map(scene.map((node) => [node.id, node]));
+    const selectedIds = new Set(nodes.map((node) => node.id));
+    const included = (node: SerializedNode): boolean => {
+      if (!selectedIds.size) return true;
+      const visited = new Set<string>();
+      let current: SerializedNode | undefined = node;
+      while (current && !visited.has(current.id)) {
+        if (selectedIds.has(current.id)) return true;
+        visited.add(current.id);
+        current = current.parentId ? byId.get(current.parentId) : undefined;
+      }
+      return false;
+    };
+    const sources = scene.flatMap((node) => {
+      if (node.isDeleted || !included(node)) return [];
+      const entity = this.getEntity(node);
+      if (!entity?.alive) return [];
+      const mesh = entity.has(Extrude3D)
+        ? entity.read(Extrude3D).meshEntity
+        : entity.has(Mesh3DNode)
+        ? entity.read(Mesh3DNode).meshEntity
+        : null;
+      const meshes = mesh
+        ? [mesh, ...(entity.has(Mesh3DNode) ? getMesh3DNodeParts(entity) : [])]
+        : [];
+      return meshes.flatMap((part, index) => {
+        if (
+          !part.alive ||
+          part.has(ToBeDeleted) ||
+          !part.has(Mesh3D) ||
+          !part.has(Material3D) ||
+          !part.has(Transform3D)
+        )
+          return [];
+        // Becsy reuses component views when reading another entity. Keep plain
+        // values so each exported source remains valid while collecting others.
+        const geometry = part.read(Mesh3D);
+        const meshData = {
+          positions: geometry.positions,
+          normals: geometry.normals,
+          uvs: geometry.uvs,
+          indices: geometry.indices,
+        };
+        const surface = part.read(Material3D);
+        const material = {
+          baseColor: surface.baseColor,
+          sideColor: surface.sideColor,
+          metallic: surface.metallic,
+          roughness: surface.roughness,
+          alphaMode: surface.alphaMode,
+          alphaCutoff: surface.alphaCutoff,
+          map: surface.map,
+        };
+        const pose = part.read(Transform3D);
+        const transform = {
+          translation: pose.translation,
+          rotation: pose.rotation,
+          scale: pose.scale,
+        };
+        return [
+          {
+            name: index ? `${node.id}:part-${index}` : node.id,
+            mesh: meshData,
+            material,
+            transform,
+          },
+        ];
+      });
+    });
+    if (!sources.length) throw new Error('No ready 3D meshes to export');
+    return sources;
+  }
+
+  private downloadGlb(glb: Uint8Array): void {
+    const url = URL.createObjectURL(
+      new Blob([glb], { type: 'model/gltf-binary' }),
+    );
+    const link = DOMAdapter.get().getDocument().createElement('a');
+    link.href = url;
+    link.download = 'infinite-canvas.glb';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  /** Export a self-contained GLB, fetching and embedding base-color textures. */
+  async exportGlb(
+    options: Pick<ExportOptions, 'download' | 'nodes'> = {},
+  ): Promise<Uint8Array> {
+    const { download = true, nodes = [] } = options;
+    const sources = this.collectGlbSources(nodes);
+    const images = await loadGlbImages(sources);
+    const glb = exportMeshesToGlb(sources, images);
+    if (download) this.downloadGlb(glb);
+    return glb;
+  }
+
   export(options: ExportOptions & { format: ExportFormat.GLB }): Uint8Array;
   export(options: ExportOptions): Uint8Array | void;
   export(options: ExportOptions): Uint8Array | void {
     const { format, download = true, nodes = [] } = options;
     if (format === ExportFormat.GLB) {
-      const scene = this.getNodes();
-      const byId = new Map(scene.map((node) => [node.id, node]));
-      const selectedIds = new Set(nodes.map((node) => node.id));
-      const included = (node: SerializedNode): boolean => {
-        if (!selectedIds.size) return true;
-        const visited = new Set<string>();
-        let current: SerializedNode | undefined = node;
-        while (current && !visited.has(current.id)) {
-          if (selectedIds.has(current.id)) return true;
-          visited.add(current.id);
-          current = current.parentId ? byId.get(current.parentId) : undefined;
-        }
-        return false;
-      };
-      const sources = scene.flatMap((node) => {
-        if (node.isDeleted || !included(node)) return [];
-        const entity = this.getEntity(node);
-        if (!entity?.alive) return [];
-        const mesh = entity.has(Extrude3D)
-          ? entity.read(Extrude3D).meshEntity
-          : entity.has(Mesh3DNode)
-          ? entity.read(Mesh3DNode).meshEntity
-          : null;
-        const meshes = mesh
-          ? [mesh, ...(entity.has(Mesh3DNode) ? getMesh3DNodeParts(entity) : [])]
-          : [];
-        return meshes.flatMap((part, index) => {
-          if (
-            !part.alive ||
-            part.has(ToBeDeleted) ||
-            !part.has(Mesh3D) ||
-            !part.has(Material3D) ||
-            !part.has(Transform3D)
-          ) return [];
-          // Becsy reuses component views when reading another entity. Keep plain
-          // values so each exported source remains valid while collecting others.
-          const geometry = part.read(Mesh3D);
-          const meshData = {
-            positions: geometry.positions,
-            normals: geometry.normals,
-            uvs: geometry.uvs,
-            indices: geometry.indices,
-          };
-          const surface = part.read(Material3D);
-          const material = {
-            baseColor: surface.baseColor,
-            sideColor: surface.sideColor,
-            metallic: surface.metallic,
-            roughness: surface.roughness,
-            alphaMode: surface.alphaMode,
-            alphaCutoff: surface.alphaCutoff,
-          };
-          const pose = part.read(Transform3D);
-          const transform = {
-            translation: pose.translation,
-            rotation: pose.rotation,
-            scale: pose.scale,
-          };
-          return [{
-            name: index ? `${node.id}:part-${index}` : node.id,
-            mesh: meshData,
-            material,
-            transform,
-          }];
-        });
-      });
-      if (!sources.length) throw new Error('No ready 3D meshes to export');
-      const glb = exportMeshesToGlb(sources);
+      const glb = exportMeshesToGlb(this.collectGlbSources(nodes));
       if (download) {
-        const url = URL.createObjectURL(
-          new Blob([glb], { type: 'model/gltf-binary' }),
-        );
-        const link = DOMAdapter.get().getDocument().createElement('a');
-        link.href = url;
-        link.download = 'infinite-canvas.glb';
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.downloadGlb(glb);
       }
       return glb;
     }

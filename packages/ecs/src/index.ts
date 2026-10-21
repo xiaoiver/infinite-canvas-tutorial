@@ -26,7 +26,12 @@ export * from './context';
 export { safeAddComponent, safeRemoveComponent } from './history';
 export { requestTransformerRefreshForCanvas } from './utils/pick3d-bridge';
 export { canExtrudePath } from './utils/path-extrusion-eligibility';
-export { exportMeshesToGlb, type GlbMeshSource } from './utils/gltf/export-glb';
+export {
+  exportMeshesToGlb,
+  type GlbMeshSource,
+  type GlbImageData,
+} from './utils/gltf/export-glb';
+export { loadGlbImages } from './utils/gltf/load-glb-images';
 export type { TextPathGlyph } from './utils/glyph/measure-text-path';
 export {
   svgSvgElementToComputedCamera,

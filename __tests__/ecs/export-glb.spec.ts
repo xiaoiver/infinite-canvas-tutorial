@@ -1,10 +1,12 @@
 import { parse } from '@loaders.gl/core';
+import { PNG } from 'pngjs';
 import { GLTFLoader } from '../../packages/ecs/node_modules/@loaders.gl/gltf';
 import { Material3D } from '../../packages/ecs/src/components/geometry3d/Material3D';
 import { Transform3D } from '../../packages/ecs/src/components/geometry3d/Transform3D';
 import { extrudePathContours } from '../../packages/ecs/src/utils/geometry3d/extrude-path';
 import { createUnitCubeGeometry } from '../../packages/ecs/src/utils/geometry3d/unit-cube';
 import { exportMeshesToGlb } from '../../packages/ecs/src/utils/gltf/export-glb';
+import { loadGlbImages } from '../../packages/ecs/src/utils/gltf/load-glb-images';
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 
@@ -30,6 +32,87 @@ function readGlb(bytes: Uint8Array) {
   );
   return { view, json, binOffset };
 }
+
+const png =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==';
+
+it('embeds a shared base-color texture once and imports it from the GLB buffer', async () => {
+  const source = {
+    mesh: createUnitCubeGeometry(),
+    material: new Material3D({ map: png, alphaMode: 'mask', alphaCutoff: 0.4 }),
+    transform: new Transform3D(),
+  };
+  const images = await loadGlbImages([source, source]);
+  expect(images.size).toBe(1);
+  const bytes = exportMeshesToGlb([source, source], images);
+  const { json, binOffset } = readGlb(bytes);
+  expect(json.images).toHaveLength(1);
+  expect(json.textures).toEqual([{ source: 0 }]);
+  expect(json.images[0].mimeType).toBe('image/png');
+  expect(json.images[0]).not.toHaveProperty('uri');
+  const view = json.bufferViews[json.images[0].bufferView];
+  expect(view).not.toHaveProperty('target');
+  expect(
+    Array.from(
+      bytes.subarray(
+        binOffset + 8 + view.byteOffset,
+        binOffset + 16 + view.byteOffset,
+      ),
+    ),
+  ).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+  expect(
+    json.materials.map(
+      (material: { pbrMetallicRoughness: { baseColorTexture: unknown } }) =>
+        material.pbrMetallicRoughness.baseColorTexture,
+    ),
+  ).toEqual([{ index: 0 }, { index: 0 }]);
+  const loaded = (await parse(bytes.buffer, GLTFLoader, {
+    gltf: { loadBuffers: true, loadImages: false },
+  })) as GltfContainer;
+  const roundTrip = bakeGltfMesh(loaded);
+  expect(roundTrip.map).toBe(png);
+  expect(roundTrip.parts.map((part) => part.map)).toEqual([png, png]);
+  expect(roundTrip.alphaMode).toBe('mask');
+});
+
+it('keeps distinct textures on separate material primitives', async () => {
+  const blue = new PNG({ width: 1, height: 1 });
+  blue.data.set([0, 0, 255, 255]);
+  const blueUrl = `data:image/png;base64,${PNG.sync
+    .write(blue)
+    .toString('base64')}`;
+  const mesh = createUnitCubeGeometry();
+  const transform = new Transform3D();
+  const sources = [
+    {
+      mesh,
+      transform,
+      material: new Material3D({ map: png, alphaMode: 'mask' }),
+    },
+    {
+      mesh,
+      transform,
+      material: new Material3D({ map: blueUrl, alphaMode: 'blend' }),
+    },
+  ];
+  const bytes = exportMeshesToGlb(sources, await loadGlbImages(sources));
+  const { json } = readGlb(bytes);
+  expect(json.images).toHaveLength(2);
+  expect(json.textures).toHaveLength(2);
+  expect(
+    json.materials.map(
+      (material: { pbrMetallicRoughness: { baseColorTexture: unknown } }) =>
+        material.pbrMetallicRoughness.baseColorTexture,
+    ),
+  ).toEqual([{ index: 0 }, { index: 1 }]);
+  const loaded = (await parse(bytes.buffer, GLTFLoader, {
+    gltf: { loadBuffers: true, loadImages: false },
+  })) as GltfContainer;
+  expect(bakeGltfMesh(loaded).parts.map((part) => part.map)).toEqual([
+    png,
+    blueUrl,
+  ]);
+});
 
 it('exports a holed Path with distinct cap and wall materials as a valid GLB', async () => {
   const result = extrudePathContours([outer, hole], 2, 'evenodd');

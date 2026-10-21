@@ -415,23 +415,22 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 控件可用于比较两种效果。
 
 示例中的 **Download GLB** 按钮会将已生成的三维网格导出为独立的 glTF 二进制文件。
-使用 `api.export` 可下载画布中所有已就绪的挤出图形；指定 `nodes` 可只导出选区，
+使用 `api.exportGlb` 可下载画布中所有已就绪的挤出图形；指定 `nodes` 可只导出选区，
 包括选中分组的子图形：
 
 ```ts
-import { ExportFormat } from '@infinite-canvas-tutorial/ecs';
-
-api.export({ format: ExportFormat.GLB });
-const glb = api.export({
-    format: ExportFormat.GLB,
+await api.exportGlb();
+const glb = await api.exportGlb({
     nodes: [api.getNodeById('extruded-vector')!],
     download: false,
 }); // Uint8Array
 ```
 
 导出会把画布向下的 Y 轴转换为 glTF 向上的 Y 轴，并保留当前三维姿态、纯色填充及
-可选的侧壁颜色。只有已就绪的伴生网格会写入文件；不支持的二维 SVG 元素和纹理不会导出。
-如需直接导出网格组件，可以使用底层的 `exportMeshesToGlb`。
+可选的侧壁颜色。只有已就绪的伴生网格会写入文件；不支持的二维 SVG 元素不会导出。
+基础颜色贴图会嵌入为 PNG 或 JPEG（其他可解码格式转换为 PNG），贴图 URL 需要允许 CORS 获取。
+同步的 `api.export({ format: ExportFormat.GLB })` 仍可用于无贴图导出。
+如需直接导出网格组件，可以调用底层的 `exportMeshesToGlb(sources, await loadGlbImages(sources))`。
 
 点击 **ViewBox + shear sample** 可以查看变换后的轮廓与偶奇填充孔洞，再关闭挤出对比 2D 轮廓。
 点击 **Slice clipping sample** 可以查看视口对孔洞、分离区域和曲线边缘的裁切。

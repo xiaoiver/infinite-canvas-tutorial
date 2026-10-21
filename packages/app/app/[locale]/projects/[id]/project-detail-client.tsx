@@ -337,11 +337,7 @@ export function ProjectDetailClient({
   const handleExport = (format: ExportFormat) => {
     if (!canvasApi) return;
     if (format === ExportFormat.GLB) {
-      try {
-        canvasApi.export({ format });
-      } catch {
-        toast.error(t('glbExportFailed'));
-      }
+      void canvasApi.exportGlb().catch(() => toast.error(t('glbExportFailed')));
       return;
     }
     const nodes = canvasApi

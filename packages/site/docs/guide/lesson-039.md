@@ -468,16 +468,13 @@ smoother and add mesh triangles. The demo's **Bevel profile** control lets you
 compare straight and rounded profiles on imported SVG shapes.
 
 The example's **Download GLB** button exports the generated 3D meshes as a
-self-contained glTF binary file. Use `api.export` to download all ready extruded
+self-contained glTF binary file. Use `api.exportGlb` to download all ready extruded
 shapes, or pass nodes to export only a selection (including children of selected
 groups):
 
 ```ts
-import { ExportFormat } from '@infinite-canvas-tutorial/ecs';
-
-api.export({ format: ExportFormat.GLB });
-const glb = api.export({
-    format: ExportFormat.GLB,
+await api.exportGlb();
+const glb = await api.exportGlb({
     nodes: [api.getNodeById('extruded-vector')!],
     download: false,
 }); // Uint8Array
@@ -485,8 +482,11 @@ const glb = api.export({
 
 Export converts canvas Y-down coordinates to glTF Y-up coordinates and keeps
 the current 3D pose, solid fill and optional side color. It exports only ready
-mesh companions; unsupported 2D SVG shapes and textures are not included.
-For lower-level mesh exports, use `exportMeshesToGlb` directly.
+mesh companions; unsupported 2D SVG shapes are not included. Base-color textures
+are embedded as PNG or JPEG (other decodable formats are converted to PNG).
+Texture URLs must allow CORS fetches. The synchronous `api.export({ format:
+ExportFormat.GLB })` remains available for untextured exports.
+For lower-level mesh exports, call `exportMeshesToGlb(sources, await loadGlbImages(sources))`.
 
 Use **ViewBox + shear sample** to inspect the transformed outline and its
 evenodd hole, then turn extrusion off to compare the 2D footprint.

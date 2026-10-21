@@ -2,7 +2,6 @@
 import {
   Pen,
   GPUResource,
-  ExportFormat,
   svgElementsToExtrudedNodes,
   type API,
   type SerializedNode,
@@ -169,10 +168,10 @@ async function render() {
   }
 }
 
-function downloadGlb() {
+async function downloadGlb() {
   if (!api) return;
   try {
-    api.export({ format: ExportFormat.GLB, nodes: importedNodes });
+    await api.exportGlb({ nodes: importedNodes });
     status.value = 'Downloaded extruded shapes as GLB.';
   } catch (error) {
     status.value = error instanceof Error ? error.message : 'GLB export failed';

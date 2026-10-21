@@ -49,13 +49,14 @@ type GltfJson = GltfContainer['json'] & {
     };
   }[];
   textures?: { source?: number }[];
-  images?: { uri?: string }[];
+  images?: { uri?: string; bufferView?: number; mimeType?: string }[];
 };
 
 function readMaterialMapUrl(
+  gltf: GltfContainer,
   json: GltfJson,
   materialIndex: number,
-  baseUrl: string,
+  baseUrl?: string,
 ): string | null {
   const texIndex =
     json.materials?.[materialIndex]?.pbrMetallicRoughness?.baseColorTexture
@@ -67,11 +68,35 @@ function readMaterialMapUrl(
   if (imageIndex == null) {
     return null;
   }
-  const uri = json.images?.[imageIndex]?.uri;
-  if (!uri) {
-    return null;
+  const image = json.images?.[imageIndex];
+  if (image?.uri) {
+    return baseUrl
+      ? resolveGltfAssetUrl(baseUrl, image.uri)
+      : image.uri.startsWith('data:')
+      ? image.uri
+      : null;
   }
-  return resolveGltfAssetUrl(baseUrl, uri);
+  if (
+    image?.bufferView == null ||
+    !/^image\/(png|jpeg)$/.test(image.mimeType ?? '')
+  )
+    return null;
+  const view = json.bufferViews[image.bufferView] as {
+    buffer: number;
+    byteOffset?: number;
+    byteLength: number;
+  };
+  const buffer = gltf.buffers[view?.buffer];
+  if (!buffer?.arrayBuffer) return null;
+  const bytes = new Uint8Array(
+    buffer.arrayBuffer,
+    (buffer.byteOffset ?? 0) + (view.byteOffset ?? 0),
+    view.byteLength,
+  );
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += 8192)
+    chunks.push(String.fromCharCode(...bytes.subarray(i, i + 8192)));
+  return `data:${image.mimeType};base64,${btoa(chunks.join(''))}`;
 }
 
 function readMaterialBaseColor(
@@ -95,6 +120,7 @@ type ImportedMaterial = Pick<
 >;
 
 function readMaterial(
+  gltf: GltfContainer,
   json: GltfJson,
   materialIndex: number,
   baseUrl?: string,
@@ -103,7 +129,7 @@ function readMaterial(
   const cutoff = material?.alphaCutoff;
   return {
     baseColor: readMaterialBaseColor(json, materialIndex),
-    map: baseUrl ? readMaterialMapUrl(json, materialIndex, baseUrl) : null,
+    map: readMaterialMapUrl(gltf, json, materialIndex, baseUrl),
     alphaMode:
       material?.alphaMode === 'MASK'
         ? 'mask'
@@ -265,7 +291,7 @@ function appendPrimitive(
       prim.material !== undefined &&
       json.materials?.[prim.material]
     ) {
-      materialOut.value = readMaterial(json, prim.material, baseUrl);
+      materialOut.value = readMaterial(gltf, json, prim.material, baseUrl);
       materialOut.selected = true;
     }
 
@@ -287,7 +313,7 @@ function appendPrimitive(
       vertexStart,
       vertexCount: vCount,
       indexStart,
-      material: readMaterial(json, prim.material ?? -1, baseUrl),
+      material: readMaterial(gltf, json, prim.material ?? -1, baseUrl),
     });
   }
 }
