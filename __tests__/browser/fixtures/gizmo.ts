@@ -287,6 +287,7 @@ async function init() {
             {
               id: 'material-model',
               type: 'mesh3d',
+              zIndex: 0,
               x: 50,
               y: 35,
               width: 200,
@@ -303,12 +304,14 @@ async function init() {
             {
               id: 'material-ambient',
               type: 'light3d',
+              zIndex: 1,
               lightType: 'ambient',
               intensity: 0.75,
             },
             {
               id: 'material-sun',
               type: 'light3d',
+              zIndex: 2,
               lightType: 'directional',
               direction: [0.5, 0.4, 0.8],
               intensity: 1.4,
