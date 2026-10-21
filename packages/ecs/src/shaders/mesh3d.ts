@@ -94,7 +94,7 @@ void main() {
   v_LocalNormalZ = a_Normal3D.z;
   v_Tangent = vec4(
     (u_ModelMatrix3D * vec4(a_Tangent3D.xyz, 0.0)).xyz,
-    a_Tangent3D.w * sign(determinant(mat3(u_ModelMatrix3D)))
+    a_Tangent3D.w * sign(dot(cross(u_ModelMatrix3D[0].xyz, u_ModelMatrix3D[1].xyz), u_ModelMatrix3D[2].xyz))
   );
 
   if (u_SceneParams.z > 0.5) {
