@@ -17,6 +17,7 @@ const wrapper = ref<HTMLElement | null>(null);
 const preset = ref<AxonometricPreset>('isometric');
 const height = ref(380);
 const distance = ref(650);
+const tool = ref<Pen.SELECT | Pen.HAND>(Pen.SELECT);
 let api: API | undefined;
 let onReady: ((event: CustomEvent<API>) => void) | undefined;
 
@@ -30,6 +31,11 @@ function applyCamera() {
   });
 }
 watch([preset, height, distance], applyCamera);
+
+function setTool(next: Pen.SELECT | Pen.HAND) {
+  tool.value = next;
+  api?.setAppState({ penbarSelected: next });
+}
 
 const scene: SerializedNode[] = [
   { id: 'iso-ambient', type: 'light3d', lightType: 'ambient', intensity: 0.7 },
@@ -108,6 +114,14 @@ onUnmounted(() => {
 
 <template>
   <div class="isometric-controls">
+    <div class="isometric-tools">
+      <button :aria-pressed="tool === Pen.SELECT" @click="setTool(Pen.SELECT)">
+        {{ props.locale === 'zh' ? '选择' : 'Select' }}
+      </button>
+      <button :aria-pressed="tool === Pen.HAND" @click="setTool(Pen.HAND)">
+        {{ props.locale === 'zh' ? '平移 / 旋转' : 'Pan / orbit' }}
+      </button>
+    </div>
     <label
       >{{ props.locale === 'zh' ? '视角' : 'View' }}
       <select v-model="preset">
@@ -146,6 +160,13 @@ onUnmounted(() => {
       {{ distance }}
     </label>
   </div>
+  <p class="isometric-hint">
+    {{
+      props.locale === 'zh'
+        ? '使用“平移 / 旋转”拖动画布；按住 Shift 拖动可转动视角。滚轮缩放，Shift + 滚轮平移；双指可平移与缩放。'
+        : 'Drag with Pan / orbit to move the view; hold Shift while dragging to orbit. Wheel zooms, Shift + wheel pans, and two fingers pan or pinch to zoom.'
+    }}
+  </p>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px" />
 </template>
 
@@ -160,5 +181,22 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+.isometric-tools {
+  display: flex;
+  gap: 0.3rem;
+}
+.isometric-tools button {
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 0.3rem;
+}
+.isometric-tools button[aria-pressed='true'] {
+  color: var(--vp-c-brand-1);
+  border-color: var(--vp-c-brand-1);
+}
+.isometric-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.9em;
 }
 </style>
