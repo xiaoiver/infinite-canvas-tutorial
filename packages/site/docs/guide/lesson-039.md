@@ -526,6 +526,8 @@ The importer also preserves glTF `doubleSided`, `normalTexture`, `occlusionTextu
 
 glTF `COLOR_0` vertex colors (float or normalized unsigned byte/short, RGB or RGBA) multiply the material base color in linear space. The [interactive vertex-color model](/example/gltf-duck#vertex-colors) shows the result with and without scene lighting. Export preserves the colors as float RGBA.
 
+The importer accepts triangle lists, triangle strips (`mode: 5`) and triangle fans (`mode: 6`), with or without indices. It converts them to triangle lists for rendering and GLB export. Mirrored node transforms also correct triangle winding so single-sided surfaces remain visible.
+
 <GltfDuck />
 
 ## Further reading {#extended-reading}
