@@ -210,6 +210,16 @@ const harness = {
       };
     });
   },
+  colorState: () =>
+    ['color-red', 'color-blue'].map((id) => {
+      const source = api.getEntity(api.getNodeById(id));
+      return source.read(Mesh3DNode).meshEntity!.read(Mesh3D).colors?.length;
+    }),
+  colorAssetState: () => {
+    const source = api.getEntity(api.getNodeById('color-asset'));
+    const mesh = source.read(Mesh3DNode).meshEntity!;
+    return Array.from(mesh.read(Mesh3D).colors?.subarray(0, 4) ?? []);
+  },
   state: () => {
     const node = api.getNodeById('model');
     const entity = api.getEntity(node);
@@ -299,6 +309,30 @@ function authoredTangentGlb(handedness: number): string {
   );
 }
 
+function vertexColorGlb(color: [number, number, number]): string {
+  const mesh = {
+    positions: new Float32Array([
+      -0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0,
+    ]),
+    normals: new Float32Array([0, 0, -1, 0, 0, -1, 0, 0, -1, 0, 0, -1]),
+    colors: new Float32Array(
+      Array.from({ length: 4 }, () => [...color, 1]).flat(),
+    ),
+    uvs: null,
+    indices: new Uint32Array([0, 2, 1, 0, 3, 2]),
+  };
+  const bytes = exportMeshesToGlb([
+    {
+      mesh,
+      material: new Material3D({ unlit: true, doubleSided: true }),
+      transform: new Transform3D(),
+    },
+  ]);
+  return URL.createObjectURL(
+    new Blob([bytes as BlobPart], { type: 'model/gltf-binary' }),
+  );
+}
+
 async function init() {
   await app.run();
   while (!api.getCanvas().has(GPUResource)) await harness.settle();
@@ -347,6 +381,11 @@ async function init() {
   const tangentUrls = params.has('gltfTangent')
     ? [authoredTangentGlb(1), authoredTangentGlb(-1)]
     : [];
+  const colorUrls = params.has('gltfColor')
+    ? [vertexColorGlb([1, 0, 0]), vertexColorGlb([0, 0, 1])]
+    : params.has('gltfColorAsset')
+    ? ['/data/VertexColors.gltf']
+    : [];
   await api.edit(
     (editor) => {
       const node: SerializedNode =
@@ -385,7 +424,7 @@ async function init() {
               height: 40,
               scale3d: 20,
             };
-      const nodes: SerializedNode[] = params.has('gltfTangent')
+      let nodes: SerializedNode[] = params.has('gltfTangent')
         ? [
             ...tangentUrls.map(
               (url, index): SerializedNode => ({
@@ -558,6 +597,34 @@ async function init() {
             },
           ]
         : [node];
+      if (colorUrls.length) {
+        nodes = colorUrls.map(
+          (url, index): SerializedNode => ({
+            id: params.has('gltfColorAsset')
+              ? 'color-asset'
+              : index
+              ? 'color-blue'
+              : 'color-red',
+            type: 'mesh3d',
+            zIndex: index,
+            x: index ? 165 : 35,
+            y: 45,
+            width: 100,
+            height: 100,
+            scale3d: 100,
+            geometry: { type: 'gltf', url },
+            ...(index
+              ? {}
+              : {
+                  camera3d: {
+                    linked: true,
+                    projection: 'perspective',
+                    clearColor: false,
+                  },
+                }),
+          }),
+        );
+      }
       if (params.has('yoga')) {
         node.parentId = 'layout';
         nodes.unshift({
@@ -578,7 +645,8 @@ async function init() {
       if (
         !params.has('alpha') &&
         !params.has('gltfMaterial') &&
-        !params.has('gltfTangent')
+        !params.has('gltfTangent') &&
+        !colorUrls.length
       )
         editor.selectNodes([editor.getNodeById('model')]);
     },

@@ -3,6 +3,8 @@ export interface Mesh3DGeometryData {
   normals: Float32Array;
   /** Optional glTF tangent (x, y, z, handedness) per vertex. */
   tangents?: Float32Array;
+  /** Optional linear RGBA vertex colors (glTF COLOR_0). */
+  colors?: Float32Array;
   indices: Uint32Array;
   /** Optional (u, v) texture coordinates, interleaved. */
   uvs?: Float32Array;
@@ -57,6 +59,9 @@ export function mesh3DGeometryDataEquals(
   if ((mesh.tangents?.length ?? 0) !== (data.tangents?.length ?? 0)) {
     return false;
   }
+  if ((mesh.colors?.length ?? 0) !== (data.colors?.length ?? 0)) {
+    return false;
+  }
   if ((mesh.uvs?.length ?? 0) !== (data.uvs?.length ?? 0)) {
     return false;
   }
@@ -81,6 +86,11 @@ export function mesh3DGeometryDataEquals(
   if (mesh.tangents && data.tangents) {
     for (let i = 0; i < mesh.tangents.length; i++) {
       if (mesh.tangents[i] !== data.tangents[i]) return false;
+    }
+  }
+  if (mesh.colors && data.colors) {
+    for (let i = 0; i < mesh.colors.length; i++) {
+      if (mesh.colors[i] !== data.colors[i]) return false;
     }
   }
   if (mesh.uvs1 && data.uvs1) {

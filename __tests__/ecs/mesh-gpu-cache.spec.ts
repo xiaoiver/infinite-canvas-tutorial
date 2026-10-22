@@ -7,7 +7,7 @@ import { fakeMeshGPU } from './helpers/mesh-gpu';
 const cube = () => new Mesh3D(createGeometry({ type: 'cube' }));
 const floats = (buffer: unknown) =>
   new Float32Array((buffer as { bytes: Uint8Array }).bytes.buffer);
-const buffersPerMesh = 7;
+const buffersPerMesh = 8;
 
 it('reuses buffers across draws, keeps separate model uniforms, and coalesces geometry writes', () => {
   const gpu = fakeMeshGPU();
@@ -94,6 +94,21 @@ it('uploads authored tangents and uses zero handedness for missing tangents', ()
   expect(floats(cache.get(1, mesh)!.tangentBuffer)).toEqual(
     new Float32Array(mesh.vertexCount * 4),
   );
+  cache.destroy();
+  gpu.scope.dispose();
+});
+
+it('uploads linear vertex colors and uses white for a mesh without colors', () => {
+  const gpu = fakeMeshGPU();
+  const cache = new MeshGPUCache(gpu.device);
+  const mesh = cube();
+  expect(floats(cache.get(1, mesh)!.colorBuffer)).toEqual(
+    new Float32Array(mesh.vertexCount * 4).fill(1),
+  );
+  const colors = new Float32Array(mesh.vertexCount * 4).fill(0.25);
+  mesh.colors = colors;
+  cache.invalidate([1]);
+  expect(floats(cache.get(1, mesh)!.colorBuffer)).toEqual(colors);
   cache.destroy();
   gpu.scope.dispose();
 });

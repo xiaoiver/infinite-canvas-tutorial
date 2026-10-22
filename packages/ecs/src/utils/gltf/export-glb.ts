@@ -8,7 +8,7 @@ import type { Transform3D } from '../../components/geometry3d/Transform3D';
 
 export interface GlbMeshSource {
   mesh: Pick<Mesh3D, 'positions' | 'normals' | 'uvs' | 'indices'> &
-    Partial<Pick<Mesh3D, 'uvs1' | 'tangents'>>;
+    Partial<Pick<Mesh3D, 'uvs1' | 'tangents' | 'colors'>>;
   material: Pick<
     Material3D,
     'baseColor' | 'sideColor' | 'metallic' | 'roughness'
@@ -59,6 +59,7 @@ type Primitive = {
     POSITION: number;
     NORMAL: number;
     TANGENT?: number;
+    COLOR_0?: number;
     TEXCOORD_0?: number;
     TEXCOORD_1?: number;
   };
@@ -401,19 +402,23 @@ export function exportMeshesToGlb(
   };
 
   for (const source of sources) {
-    const { positions, normals, tangents, uvs, uvs1, indices } = source.mesh;
+    const { positions, normals, tangents, colors, uvs, uvs1, indices } =
+      source.mesh;
     const count = positions.length / 3;
     if (
       !count ||
       !Number.isInteger(count) ||
       normals.length !== positions.length ||
       (tangents && tangents.length !== count * 4) ||
+      (colors && colors.length !== count * 4) ||
       (uvs && uvs.length !== count * 2) ||
       (uvs1 && uvs1.length !== count * 2) ||
       !finite(positions) ||
       !finite(normals) ||
       (tangents && !finite(tangents)) ||
       (tangents && !validTangents(tangents)) ||
+      (colors &&
+        (!finite(colors) || colors.some((value) => value < 0 || value > 1))) ||
       (uvs && !finite(uvs)) ||
       (uvs1 && !finite(uvs1))
     )
@@ -447,6 +452,8 @@ export function exportMeshesToGlb(
         count,
         'VEC4',
       );
+    if (colors)
+      attributes.COLOR_0 = accessor(floats(colors), 34962, 5126, count, 'VEC4');
     if (uvs)
       attributes.TEXCOORD_0 = accessor(floats(uvs), 34962, 5126, count, 'VEC2');
     if (uvs1)

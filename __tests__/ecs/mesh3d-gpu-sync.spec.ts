@@ -182,9 +182,9 @@ it('uploads in-place Mesh3D edits in the same frame and only once', async () => 
     -1,
   )[1][0].buffer;
   expect(new Float32Array(vertices.bytes.buffer)[0]).toBe(77);
-  expect(gpu.buffers).toHaveLength(count + 7);
+  expect(gpu.buffers).toHaveLength(count + 8);
   await world.frame();
-  expect(gpu.buffers).toHaveLength(count + 7);
+  expect(gpu.buffers).toHaveLength(count + 8);
 });
 
 it('loads and clears an equirectangular material reflection without rebuilding geometry', async () => {
@@ -236,7 +236,7 @@ it('updates procedural geometry immediately and releases a deleted mesh before a
   await world.edit(api, (editor) =>
     editor.updateNode(editor.getNodeById('model'), { geometry: 'sphere' }),
   );
-  expect(gpu.buffers).toHaveLength(count + 7);
+  expect(gpu.buffers).toHaveLength(count + 8);
   const vertices = (gpu.pass.setVertexInput as jest.Mock).mock.calls.at(
     -1,
   )[1][0].buffer;

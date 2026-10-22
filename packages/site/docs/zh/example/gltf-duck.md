@@ -16,6 +16,7 @@ description: '加载 glTF/GLB 模型，展示 PBR 光照、法线与环境遮蔽
 <script setup>
 import GltfDuck from '../../components/GltfDuck.vue'
 import GltfMaterial from '../../components/GltfMaterial.vue'
+import GltfVertexColors from '../../components/GltfVertexColors.vue'
 </script>
 
 <GltfDuck />
@@ -27,6 +28,14 @@ Khronos **NormalTangentTest** GLB 同时包含基础颜色、金属度与粗糙�
 <GltfMaterial locale="zh" />
 
 导入的 `normalTexture.scale`、`occlusionTexture.strength`、UV 集选择、`KHR_texture_transform` 和 glTF `TANGENT` 属性均会在 GLB 导出再导入后保留。有切线时，法线贴图使用其手性符号处理镜像 UV 岛和硬边接缝。本示例模型没有切线，因此使用屏幕空间导数；法线贴图使用第二套 UV 或 UV 缩放、旋转时也会用导数推导切线空间，此时结果可能与原始切线不同。[模型与贴图](https://github.com/KhronosGroup/glTF-Sample-Models/tree/master/2.0/NormalTangentTest)由 Ed Mackey 制作，版权归 2017 Analytical Graphics, Inc. 所有，使用 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) 许可。
+
+## 顶点颜色 {#vertex-colors}
+
+这个小型 glTF 在平面的四个角使用归一化 8 位 `COLOR_0`，颜色会在表面插值。切换光照可比较自发光与受光材质，也可以使用画布工具移动或旋转图形。
+
+<GltfVertexColors locale="zh" />
+
+`COLOR_0` 支持 RGB 或 RGBA；RGB 的 alpha 默认为 1。顶点 RGB 是线性颜色，会在线性空间与材质基础色及贴图相乘；顶点 alpha 也会与它们的 alpha 相乘。混合场景中，没有顶点颜色的图元使用白色。GLB 导出会把导入的颜色保存为浮点 RGBA，便于再次导入。
 
 ## 要点 {#notes}
 

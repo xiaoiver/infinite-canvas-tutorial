@@ -106,6 +106,51 @@ test('authored tangent handedness changes normal-map lighting', async ({
   expect(luminance(85, 95)).toBeGreaterThan(luminance(215, 95) + 60);
 });
 
+test('imported COLOR_0 colors shade an unlit mesh', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?gltfColor&width=300&height=190');
+  await expect(page.locator('#status')).toHaveText('Ready', {
+    timeout: 20000,
+  });
+  await expect
+    .poll(() => page.evaluate(() => window.gizmoTest.colorState()))
+    .toEqual([16, 16]);
+  await page.evaluate(() => window.gizmoTest.settle());
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const color = (x: number, y: number) => {
+    const px = Math.round((x / 300) * png.width);
+    const py = Math.round((y / 190) * png.height);
+    const offset = (py * png.width + px) * 4;
+    return Array.from(png.data.subarray(offset, offset + 3));
+  };
+  const left = color(85, 95);
+  const right = color(215, 95);
+  expect(errors).toEqual([]);
+  expect(left[0]).toBeGreaterThan(left[2] + 100);
+  expect(right[2]).toBeGreaterThan(right[0] + 100);
+});
+
+test('the documented normalized COLOR_0 asset loads and renders', async ({
+  page,
+}) => {
+  await page.goto('/gizmo.html?gltfColorAsset&width=300&height=190');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
+  await expect
+    .poll(() => page.evaluate(() => window.gizmoTest.colorAssetState()))
+    .toEqual([1, Math.fround(48 / 255), Math.fround(48 / 255), 1]);
+  await page.evaluate(() => window.gizmoTest.settle());
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const x = Math.round((85 / 300) * png.width);
+  const y = Math.round((95 / 190) * png.height);
+  const offset = (y * png.width + x) * 4;
+  const rgb = png.data.subarray(offset, offset + 3);
+  expect(Math.max(...rgb) - Math.min(...rgb)).toBeGreaterThan(25);
+});
+
 test('double-sided material draws the back of a plane', async ({ page }) => {
   await page.goto('/gizmo.html?alpha');
   await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });

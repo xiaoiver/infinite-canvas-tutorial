@@ -94,6 +94,7 @@ export function requestGltfMeshLoad(source: Entity): void {
         meshWrite.uvs = primary.uvs ?? null;
         meshWrite.uvs1 = primary.uvs1 ?? null;
         meshWrite.tangents = primary.tangents ?? null;
+        meshWrite.colors = primary.colors ?? null;
 
         retryBySource.delete(source);
         seedMesh3DNodeCompanionGeometryKey(source, {

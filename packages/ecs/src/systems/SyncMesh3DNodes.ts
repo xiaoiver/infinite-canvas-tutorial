@@ -89,6 +89,7 @@ export class SyncMesh3DNodes extends System {
                 positions: part.positions,
                 normals: part.normals,
                 tangents: part.tangents ?? null,
+                colors: part.colors ?? null,
                 indices: part.indices,
                 uvs: part.uvs ?? null,
                 uvs1: part.uvs1 ?? null,
