@@ -1,6 +1,11 @@
 import { readFileSync } from 'fs';
 import path from 'path';
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
+import { exportMeshesToGlb } from '../../packages/ecs/src/utils/gltf/export-glb';
+import { Material3D } from '../../packages/ecs/src/components/geometry3d/Material3D';
+import { Transform3D } from '../../packages/ecs/src/components/geometry3d/Transform3D';
+import { parse } from '@loaders.gl/core';
+import { GLTFLoader } from '../../packages/ecs/node_modules/@loaders.gl/gltf';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 import { gltfScenes } from '../helpers/gltf';
 
@@ -90,6 +95,111 @@ it('normalizes glTF scene primitives together so their relative placement surviv
   expect(mesh.parts[0].indices).toEqual(new Uint32Array([0, 1, 2]));
   expect(mesh.parts[1].indices).toEqual(new Uint32Array([0, 1, 2]));
 });
+
+it.each([
+  {
+    mode: 4,
+    indexed: true,
+    mirrored: true,
+    order: [0, 1, 2],
+    triangles: [0, 2, 1],
+  },
+  {
+    mode: 5,
+    indexed: false,
+    mirrored: false,
+    order: [0, 1, 2, 3],
+    triangles: [0, 1, 2, 2, 1, 3],
+  },
+  {
+    mode: 5,
+    indexed: true,
+    mirrored: true,
+    order: [0, 1, 2, 3],
+    triangles: [0, 2, 1, 2, 3, 1],
+  },
+  {
+    mode: 6,
+    indexed: false,
+    mirrored: false,
+    order: [0, 1, 3, 2],
+    triangles: [0, 1, 2, 0, 2, 3],
+  },
+  {
+    mode: 6,
+    indexed: true,
+    mirrored: true,
+    order: [0, 1, 3, 2],
+    triangles: [0, 3, 1, 0, 2, 3],
+  },
+])(
+  'imports glTF mode $mode (indexed=$indexed, mirrored=$mirrored) and exports triangles',
+  async ({ mode, indexed, mirrored, order, triangles }) => {
+    const corners = [
+      [0, 0, 0],
+      [1, 0, 0],
+      [0, 1, 0],
+      [1, 1, 0],
+    ];
+    const positions = new Float32Array(
+      (indexed ? corners : order.map((index) => corners[index])).flat(),
+    );
+    const sourceIndices = new Uint16Array(order);
+    const json = {
+      accessors: [
+        { bufferView: 0, componentType: 5126, count: 4, type: 'VEC3' },
+        {
+          bufferView: 1,
+          componentType: 5123,
+          count: sourceIndices.length,
+          type: 'SCALAR',
+        },
+      ],
+      bufferViews: [
+        { buffer: 0, byteLength: positions.byteLength },
+        { buffer: 1, byteLength: sourceIndices.byteLength },
+      ],
+      scenes: [{ nodes: [0] }],
+      nodes: [{ mesh: 0, scale: mirrored ? [-1, 1, 1] : [1, 1, 1] }],
+      meshes: [
+        {
+          primitives: [
+            {
+              attributes: { POSITION: 0 },
+              mode,
+              ...(indexed ? { indices: 1 } : {}),
+            },
+          ],
+        },
+      ],
+    };
+    const gltf: GltfContainer = {
+      json,
+      buffers: [
+        { arrayBuffer: positions.buffer },
+        { arrayBuffer: sourceIndices.buffer },
+      ],
+    };
+
+    const baked = bakeGltfMesh(gltf);
+    expect([...baked.indices]).toEqual(triangles);
+    expect([...baked.parts[0].indices]).toEqual(triangles);
+    for (let i = 2; i < baked.normals.length; i += 3)
+      expect(baked.normals[i]).toBeCloseTo(1);
+
+    const exported = exportMeshesToGlb([
+      {
+        mesh: baked,
+        material: new Material3D(baked),
+        transform: new Transform3D(),
+      },
+    ]);
+    const roundTrip = (await parse(exported, GLTFLoader, {
+      gltf: { loadBuffers: true, loadImages: false },
+    })) as GltfContainer;
+    expect([...bakeGltfMesh(roundTrip).indices]).toEqual(triangles);
+  },
+);
 
 it('reads and clamps glTF PBR factors for each primitive', () => {
   const model = gltfScenes();

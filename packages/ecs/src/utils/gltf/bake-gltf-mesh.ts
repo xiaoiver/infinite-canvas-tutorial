@@ -438,6 +438,35 @@ function readVertexColors(
   return colors;
 }
 
+/** Append glTF triangle, strip and fan primitives as a Mesh3D triangle list. */
+function appendTriangleIndices(
+  target: number[],
+  mode: number,
+  source: Uint32Array | undefined,
+  vertexCount: number,
+  vertexOffset: number,
+  flipWinding: boolean,
+): void {
+  const count = source?.length ?? vertexCount;
+  const at = (index: number) => source?.[index] ?? index;
+  const append = (a: number, b: number, c: number) => {
+    target.push(
+      vertexOffset + a,
+      vertexOffset + (flipWinding ? c : b),
+      vertexOffset + (flipWinding ? b : c),
+    );
+  };
+
+  for (let i = 0; i + 2 < count; i += mode === 4 ? 3 : 1) {
+    if (mode === 4) append(at(i), at(i + 1), at(i + 2));
+    else if (mode === 5) {
+      // Every second strip triangle reverses its local order.
+      if (i % 2 === 0) append(at(i), at(i + 1), at(i + 2));
+      else append(at(i + 1), at(i), at(i + 2));
+    } else append(at(0), at(i + 1), at(i + 2));
+  }
+}
+
 function appendPrimitive(
   gltf: GltfContainer,
   json: GltfJson,
@@ -466,9 +495,8 @@ function appendPrimitive(
     return;
   }
   for (const prim of mesh.primitives ?? []) {
-    if ((prim.mode ?? 4) !== 4) {
-      continue;
-    }
+    const mode = prim.mode ?? 4;
+    if (mode !== 4 && mode !== 5 && mode !== 6) continue;
     const posIdx = prim.attributes.POSITION;
     if (posIdx === undefined) {
       continue;
@@ -534,6 +562,12 @@ function appendPrimitive(
       }
     }
 
+    if (
+      (primitiveIndices?.length ?? vCount) < 3 ||
+      primitiveIndices?.some((index) => index >= vCount)
+    )
+      continue;
+
     const vertexStart = vertexOffset.value;
     const indexStart = idxChunks.length;
     posChunks.push(positions);
@@ -561,19 +595,14 @@ function appendPrimitive(
       materialOut.selected = true;
     }
 
-    if (primitiveIndices) {
-      for (let i = 0; i < primitiveIndices.length; i++) {
-        idxChunks.push(vertexOffset.value + primitiveIndices[i]);
-      }
-    } else {
-      for (let i = 0; i < vCount; i += 3) {
-        idxChunks.push(
-          vertexOffset.value + i,
-          vertexOffset.value + i + 1,
-          vertexOffset.value + i + 2,
-        );
-      }
-    }
+    appendTriangleIndices(
+      idxChunks,
+      mode,
+      primitiveIndices,
+      vCount,
+      vertexOffset.value,
+      mat4.determinant(worldMatrix) < 0,
+    );
     vertexOffset.value += vCount;
     partRanges.push({
       vertexStart,
