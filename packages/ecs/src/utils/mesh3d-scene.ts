@@ -77,7 +77,11 @@ export function buildCamera3DSceneUniforms(
   let viewMatrix: Mat4;
   if (camera.projection === 'orthographic') {
     const distance = Math.abs(camera.eye[2] - camera.center[2]);
-    const halfH = distance;
+    const halfH =
+      camera.orthographicHeight > 0 &&
+      Number.isFinite(camera.orthographicHeight)
+        ? camera.orthographicHeight / 2
+        : distance;
     const halfW = halfH * aspect;
     projMatrix = Mat4.ortho(
       -halfW,
@@ -87,18 +91,27 @@ export function buildCamera3DSceneUniforms(
       camera.near,
       camera.far,
     );
+    if (
+      camera.orthographicHeight > 0 &&
+      Number.isFinite(camera.orthographicHeight)
+    ) {
+      // The shared mesh pass uses GREATER depth testing over a 2D depth layer.
+      // Reverse Z and shift into its upper half so nearby meshes cover the floor.
+      projMatrix.m22 = -projMatrix.m22;
+      projMatrix.m32 = -projMatrix.m32 + 1;
+    }
   } else {
     projMatrix = Mat4.perspective(camera.fovy, aspect, camera.near, camera.far);
   }
   viewMatrix = Mat4.lookAt(camera.eye, camera.center, camera.up);
 
-  const view = camera.projection === 'orthographic'
-    ? camera.eye.map((value, index) => value - camera.center[index])
-    : camera.eye;
+  const view =
+    camera.projection === 'orthographic'
+      ? camera.eye.map((value, index) => value - camera.center[index])
+      : camera.eye;
   const length = Math.hypot(...view);
-  const viewVector = length > 1e-8 && Number.isFinite(length)
-    ? view
-    : [0, 0, 1];
+  const viewVector =
+    length > 1e-8 && Number.isFinite(length) ? view : [0, 0, 1];
 
   return {
     mode: 'standard',

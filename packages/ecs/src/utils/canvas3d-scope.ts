@@ -1,5 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { Camera, Canvas3DScope, Children } from '../components';
+import { Camera, Camera3D, Canvas3DScope, Children } from '../components';
 import { isEntityAlive } from '../systems/Transform';
 
 /** Walk scene graph to the owning 2D {@link Camera} canvas. */
@@ -47,6 +47,8 @@ export function findCamera3DForCanvas(
   canvas: Entity,
   canvasCount: number,
 ): Entity | undefined {
+  // The explicit canvas view wins even if a mesh spawned a camera earlier.
+  if (canvas.has(Camera3D)) return canvas;
   for (const camera of cameras3D) {
     if (!isEntityAlive(camera)) {
       continue;
