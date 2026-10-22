@@ -4,6 +4,18 @@ import type {} from './fixtures/shader-compiler';
 
 const wasm = resolve('rust/glsl-wgsl-compiler/pkg/glsl_wgsl_compiler_bg.wasm');
 
+test('compiles the 3D lighting shaders through the WebGPU path', async ({
+  page,
+}) => {
+  await page.goto('/shader-compiler.html');
+  await page.waitForFunction(() => !!window.shaderCompilerRegression);
+  const [vertex, fragment] = await page.evaluate(() =>
+    window.shaderCompilerRegression.compileMesh(),
+  );
+  expect(vertex).toContain('@vertex');
+  expect(fragment).toContain('@fragment');
+});
+
 test('loads the bundled compiler only when needed and compiles real GLSL', async ({
   page,
 }) => {

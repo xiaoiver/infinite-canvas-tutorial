@@ -22,6 +22,22 @@ const pointShadowAxes = (axis: 'right' | 'up') =>
         .join(', ')});`,
   ).join('\n  ');
 
+// GLSL ES 1.00 fragment shaders require constant uniform-array indices.
+// Keep native indexing on WebGL2/WebGPU and emit bounded lookups on WebGL1.
+const uniformLookup = (name: string, type: 'vec4' | 'mat4', count: number) => `
+${type} read${name.slice(2)}(int index) {
+#if __VERSION__ >= 300
+  return ${name}[index];
+#else
+  ${Array.from(
+    { length: count - 1 },
+    (_, i) => `if (index == ${i}) return ${name}[${i}];`,
+  ).join('\n  ')}
+  return ${name}[${count - 1}];
+#endif
+}
+`;
+
 export const vert = /* glsl */ `
 precision highp float;
 #define MAX_3D_LIGHTS 8
@@ -202,6 +218,15 @@ in vec4 v_Color;
 
 out vec4 outputColor;
 
+${uniformLookup('u_LightPositions', 'vec4', 8)}
+${uniformLookup('u_LightDirections', 'vec4', 8)}
+${uniformLookup('u_LightColors', 'vec4', 8)}
+${uniformLookup('u_LightParams3D', 'vec4', 8)}
+${uniformLookup('u_ShadowParams', 'vec4', 2)}
+${uniformLookup('u_ShadowOptions', 'vec4', 2)}
+${uniformLookup('u_ShadowViewProjection', 'mat4', 2)}
+${uniformLookup('u_ShadowFaces', 'mat4', 12)}
+
 #define PI 3.141592653589793
 
 // CSS colors and image pixels are sRGB, while the lighting calculation is
@@ -345,21 +370,22 @@ vec3 pointShadowUp(int face) {
 
 float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
   bool spot, int slot, int lightIndex) {
-  vec4 shadowParams = u_ShadowParams[slot];
-  vec4 shadowOptions = u_ShadowOptions[slot];
+  vec4 shadowParams = readShadowParams(slot);
+  vec4 shadowOptions = readShadowOptions(slot);
+  vec3 lightPosition = readLightPositions(lightIndex).xyz;
   vec3 receiver = position + normal * shadowOptions.w;
   bool point = shadowParams.z > 0.5;
   int face = 0;
   vec3 ray = vec3(0.0);
   float faceDistance = 0.0;
   if (point) {
-    ray = receiver - u_LightPositions[lightIndex].xyz;
+    ray = receiver - lightPosition;
     faceDistance = max(max(abs(ray.x), abs(ray.y)), abs(ray.z));
     if (faceDistance < 1e-6) return 1.0;
     face = pointShadowFace(ray);
   }
-  vec4 clip = (point ? u_ShadowFaces[slot * 6 + face] :
-    u_ShadowViewProjection[slot]) * vec4(receiver, 1.0);
+  vec4 clip = (point ? readShadowFaces(slot * 6 + face) :
+    readShadowViewProjection(slot)) * vec4(receiver, 1.0);
   vec3 projected = clip.xyz / clip.w;
   vec2 localUv = projected.xy * 0.5 + 0.5;
   float depth = projected.z * 0.5 + 0.5;
@@ -400,8 +426,8 @@ float shadowVisibility(vec3 position, vec3 normal, vec3 lightDir,
         // a cube seam into the adjacent atlas tile instead of repeating an edge.
         vec3 sampleReceiver = receiver + 2.0 * faceDistance *
           (offset.x * pointShadowRight(face) + offset.y * pointShadowUp(face));
-        sampleFace = pointShadowFace(sampleReceiver - u_LightPositions[lightIndex].xyz);
-        vec4 sampleClip = u_ShadowFaces[slot * 6 + sampleFace] *
+        sampleFace = pointShadowFace(sampleReceiver - lightPosition);
+        vec4 sampleClip = readShadowFaces(slot * 6 + sampleFace) *
           vec4(sampleReceiver, 1.0);
         vec3 sampleProjected = sampleClip.xyz / sampleClip.w;
         sampleLocal = sampleProjected.xy * 0.5 + 0.5;
@@ -440,30 +466,32 @@ vec3 shadeLight(
   float roughness,
   float specularScale
 ) {
-  vec4 params = u_LightParams3D[index];
+  vec4 params = readLightParams3D(index);
   int lightType = int(params.x);
   float intensity = params.y;
   if (intensity <= 0.0) return vec3(0.0);
   float range = params.z;
   float cosInner = params.w;
-  float cosOuter = u_LightDirections[index].w;
-  vec3 lightColor = u_LightColors[index].rgb * intensity;
+  vec4 direction = readLightDirections(index);
+  vec4 position = readLightPositions(index);
+  float cosOuter = direction.w;
+  vec3 lightColor = readLightColors(index).rgb * intensity;
   vec3 lightDir = vec3(0.0, 0.0, 1.0);
   float attenuation = 1.0;
 
   if (lightType == LIGHT_TYPE_DIRECTIONAL) {
-    lightDir = normalize(-u_LightDirections[index].xyz);
+    lightDir = normalize(-direction.xyz);
   } else {
-    vec3 toLight = u_LightPositions[index].xyz - v_FragPos;
+    vec3 toLight = position.xyz - v_FragPos;
     float distanceToLight = length(toLight);
     if (distanceToLight > 1e-6) {
       lightDir = toLight / distanceToLight;
     }
     attenuation *= distanceAttenuation(distanceToLight, range,
-      u_LightPositions[index].w);
+      position.w);
 
     if (lightType == LIGHT_TYPE_SPOT) {
-      vec3 spotDirection = normalize(u_LightDirections[index].xyz);
+      vec3 spotDirection = normalize(direction.xyz);
       float spotCos = dot(-lightDir, spotDirection);
       float cone = smoothstep(cosOuter, cosInner, spotCos);
       attenuation *= cone;
@@ -575,7 +603,7 @@ vec2 transformUv(vec2 uv, vec4 transform, float rotation) {
                              s * scaled.x + c * scaled.y);
 }
 
-void main() {
+vec4 shadeMaterial() {
   vec4 baseColor = u_BaseColor;
   if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0) {
     baseColor = u_SideColor;
@@ -597,8 +625,7 @@ void main() {
   // glTF unlit keeps the linear base-color texture product and alpha, then
   // encodes it directly for display without scene lighting or tone mapping.
   if (u_EmissiveParams.w > 0.5) {
-    outputColor = vec4(linearToSrgb(albedo), baseColor.a);
-    return;
+    return vec4(linearToSrgb(albedo), baseColor.a);
   }
 
   vec3 shadowNormal = normalize(v_Normal);
@@ -700,6 +727,12 @@ void main() {
     emission *= srgbToLinear(texture(SAMPLER_2D(u_EmissiveMap), emissiveUv).rgb);
   }
   vec3 result = ambient + Lo + emission * u_EmissiveParams.z;
-  outputColor = vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
+  return vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
+}
+
+void main() {
+  // The WebGL1 bridge copies outputColor to gl_FragColor at main's end.
+  // Keep material early returns in the helper so that copy always runs.
+  outputColor = shadeMaterial();
 }
 `;

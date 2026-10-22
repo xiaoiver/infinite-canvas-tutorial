@@ -297,6 +297,12 @@ listed in lesson 36. Lottie tests run in Chromium and the separate WebKit suite.
 
 ## 3D gizmo projection and gestures
 
+`webgl1-3d.spec.ts` rejects WebGL2 context creation to exercise the real WebGL1
+fallback in Chromium and WebKit. It checks unlit imported vertex colors,
+authored tangent handedness, multiple lights, and both directional and point
+shadow maps. Pixel comparisons detect missing draws and incorrect lighting;
+console errors also catch GLSL ES 1.00 compilation failures.
+
 `mesh-gpu-cache.spec.ts` checks real WebGL geometry uploads for mesh and extrusion
 pose/material edits. It verifies visible green material pixels, zero mesh geometry
 allocations during those edits, and one replacement upload after switching a mesh

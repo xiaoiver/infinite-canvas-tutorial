@@ -507,6 +507,13 @@ For flat colors independent of illumination, `material3d.unlit` bypasses scene l
 
 For textured cutouts and translucent surfaces, `material3d.alphaMode` offers `mask` and `blend`; see the [3D mesh transparency example](/example/mesh3d-alpha) for their shadow behavior and ordering limits.
 
+WebGL1 fragment shaders require constant indices when reading uniform arrays.
+The renderer generates bounded lookups for light data and shadow matrices on
+WebGL1; WebGL2 and WebGPU retain native indexing. Material shading returns its
+color to `main()` so the WebGL1 output conversion also runs for unlit materials.
+Browser regressions force WebGL1 and check vertex colors, tangent-space normal
+maps, multiple lights, and directional/point shadows.
+
 <Lighting />
 
 ## glTF model {#gltf}
