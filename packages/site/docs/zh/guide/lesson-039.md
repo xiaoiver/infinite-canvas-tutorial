@@ -451,6 +451,11 @@ const glb = await api.exportGlb({
 
 <Lighting locale="zh" />
 
+WebGL1 片元着色器读取 uniform 数组时需要使用常量索引。渲染器会为灯光数据和阴影矩阵
+生成有界的读取分支；WebGL2 和 WebGPU 保留原生索引。材质计算通过辅助函数把颜色返回
+`main()`，确保无光照材质也会执行 WebGL1 的最终颜色输出转换。浏览器回归会强制使用
+WebGL1，检查顶点色、切线空间法线贴图、多光源以及平行光和点光源阴影。
+
 ## glTF 模型 {#gltf}
 
 通过声明式 `mesh3d` 的 `geometry: { type: 'gltf', url: '…' }` 加载外部 glTF/GLB。Khronos **Duck** 示例使用 `/data/` 下的 `.gltf` + `.bin`；网格会归一化到单位包围盒，再用 `scale3d` 缩放到画布尺寸。

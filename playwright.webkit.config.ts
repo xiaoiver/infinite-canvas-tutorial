@@ -43,6 +43,7 @@ export default defineConfig({
     'gizmo-worlds.spec.ts',
     'mesh-gpu-cache.spec.ts',
     'gltf-material.spec.ts',
+    'webgl1-3d.spec.ts',
     'interaction-precision.spec.ts',
     'size-label.spec.ts',
     'lasso.spec.ts',
