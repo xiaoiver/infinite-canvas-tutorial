@@ -12,9 +12,16 @@ import {
   Cursor,
   ComputedCameraControl,
   Mat3,
+  Camera3D,
 } from '../components';
 import { API } from '../API';
 import { safeAddComponent } from '../history';
+import {
+  isNavigableCamera3D,
+  orbitCamera3D,
+  panCamera3D,
+  zoomCamera3D,
+} from '../utils/isometric-navigation';
 
 const MIN_ZOOM = 0.02;
 const MAX_ZOOM = 4;
@@ -41,6 +48,7 @@ export class CameraControl extends System {
           )
           .write.and.using(Input).read,
     );
+    this.query((q) => q.using(Camera3D).write);
   }
 
   execute() {
@@ -61,6 +69,9 @@ export class CameraControl extends System {
 
       const canvas = camera.canvas.hold();
       const { api, inputPoints } = canvas.read(Canvas);
+      const { width, height } = canvas.read(Canvas);
+      const camera3D = canvas.has(Camera3D) ? canvas.read(Camera3D) : undefined;
+      const navigate3D = camera3D && isNavigableCamera3D(camera3D);
       const pen = api.getAppState().penbarSelected;
 
       const cameraControl = entity.write(ComputedCameraControl);
@@ -158,7 +169,20 @@ export class CameraControl extends System {
 
         if (pen === Pen.HAND) {
           cursor.value = 'grabbing';
-          if (cameraControl.rotate) {
+          if (navigate3D) {
+            if (cameraControl.rotate) {
+              orbitCamera3D(canvas.write(Camera3D), x - prevX, y - prevY);
+            } else {
+              panCamera3D(
+                canvas.write(Camera3D),
+                [prevX, prevY],
+                [x, y],
+                width,
+                height,
+              );
+            }
+            inputPoint.prevPoint = [x, y];
+          } else if (cameraControl.rotate) {
             this.rotateCamera(entity);
           } else {
             this.moveCamera(entity);
@@ -179,7 +203,34 @@ export class CameraControl extends System {
       }
 
       if (input.wheelTrigger) {
-        if (input.metaKey || input.ctrlKey) {
+        if (navigate3D) {
+          if (
+            !input.shiftKey &&
+            (input.metaKey ||
+              input.ctrlKey ||
+              Math.abs(input.deltaY) >= Math.abs(input.deltaX))
+          ) {
+            zoomCamera3D(
+              canvas.write(Camera3D),
+              pointerViewport,
+              input.deltaY,
+              width,
+              height,
+              api.getAppState().cameraZoomFactor,
+            );
+          } else {
+            panCamera3D(
+              canvas.write(Camera3D),
+              pointerViewport,
+              [
+                pointerViewport[0] - input.deltaX,
+                pointerViewport[1] - input.deltaY,
+              ],
+              width,
+              height,
+            );
+          }
+        } else if (input.metaKey || input.ctrlKey) {
           this.zoomByClientPoint(
             entity,
             api,
@@ -192,11 +243,24 @@ export class CameraControl extends System {
       }
 
       if (input.touchPanDeltaX !== 0 || input.touchPanDeltaY !== 0) {
-        this.panByViewportDelta(
-          entity,
-          -input.touchPanDeltaX,
-          -input.touchPanDeltaY,
-        );
+        if (navigate3D) {
+          panCamera3D(
+            canvas.write(Camera3D),
+            pointerViewport,
+            [
+              pointerViewport[0] + input.touchPanDeltaX,
+              pointerViewport[1] + input.touchPanDeltaY,
+            ],
+            width,
+            height,
+          );
+        } else {
+          this.panByViewportDelta(
+            entity,
+            -input.touchPanDeltaX,
+            -input.touchPanDeltaY,
+          );
+        }
       }
     });
   }

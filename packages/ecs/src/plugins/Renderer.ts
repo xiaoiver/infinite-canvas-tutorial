@@ -20,6 +20,7 @@ import {
   PropagateTransforms,
   ComputeVisibility,
   ComputeCamera,
+  CameraControl,
   CameraSync,
   ExportSVG,
   Select,
@@ -178,7 +179,9 @@ function createRendererPlugin(options: RendererPluginOptions = {}): Plugin {
     system((s) => s.after(PropagateTransforms, Sort))(ComputeBounds);
 
     // Linked Camera3D sync; PenPlugin/Renderer3DPlugin schedule Select/Pick3D after this.
-    system((s) => s.after(ComputeCamera).before(Last))(CameraSync);
+    system((s) => s.after(ComputeCamera, CameraControl).before(Last))(
+      CameraSync,
+    );
 
     system(Last)(SetCursor);
 
