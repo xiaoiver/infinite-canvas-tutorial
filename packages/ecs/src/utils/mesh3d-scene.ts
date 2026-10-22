@@ -96,9 +96,10 @@ export function buildCamera3DSceneUniforms(
       Number.isFinite(camera.orthographicHeight)
     ) {
       // The shared mesh pass uses GREATER depth testing over a 2D depth layer.
-      // Reverse Z and shift into its upper half so nearby meshes cover the floor.
-      projMatrix.m22 = -projMatrix.m22;
-      projMatrix.m32 = -projMatrix.m32 + 1;
+      // Reverse Z into [0.75, 1] so nearby meshes cover the floor without
+      // clipping the camera's near half or changing the shared 2D depth pass.
+      projMatrix.m22 = -projMatrix.m22 / 4;
+      projMatrix.m32 = (3 - projMatrix.m32) / 4;
     }
   } else {
     projMatrix = Mat4.perspective(camera.fovy, aspect, camera.near, camera.far);

@@ -113,7 +113,7 @@ it('preserves legacy linked defaults and distance-based free orthographic sizing
   ).projMatrix.toFloat32Array();
   expect(newProjection[0]).toBe(oldProjection[0]);
   expect(newProjection[5]).toBe(oldProjection[5]);
-  expect(newProjection[10]).toBe(-oldProjection[10]);
+  expect(newProjection[10]).toBeCloseTo(-oldProjection[10] / 4);
 });
 
 it('keeps an explicit 3D camera local to its canvas', () => {
