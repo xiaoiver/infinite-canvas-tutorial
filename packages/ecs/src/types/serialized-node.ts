@@ -443,6 +443,17 @@ export type Camera3DNodeConfig = {
   linked?: boolean;
   projection?: 'perspective' | 'orthographic';
   clearColor?: boolean;
+  /** Free orthographic camera preset; uses a Z-up world. */
+  preset?: 'isometric' | 'dimetric-2-1';
+  /** Look-at target in 3D world coordinates. */
+  center?: [number, number, number];
+  /** Optional manual pose; overrides the preset eye. */
+  eye?: [number, number, number];
+  up?: [number, number, number];
+  /** Eye distance from the target; does not affect orthographic zoom. */
+  distance?: number;
+  /** Visible world height. Zero or absent retains legacy distance-based sizing. */
+  orthographicHeight?: number;
 };
 
 export type Material3DWire = {

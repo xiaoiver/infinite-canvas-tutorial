@@ -9,6 +9,28 @@ import { Mat4 } from '../math/Mat4';
  */
 export type Projection3D = 'perspective' | 'orthographic';
 
+export type AxonometricPreset = 'isometric' | 'dimetric-2-1';
+
+/** Camera pose for a Z-up axonometric view. Distance changes clipping, not scale. */
+export function axonometricCameraPose(
+  preset: AxonometricPreset,
+  center: [number, number, number],
+  distance: number,
+): Pick<Camera3D, 'eye' | 'center' | 'up'> {
+  const elevation =
+    preset === 'isometric' ? Math.atan(1 / Math.sqrt(2)) : Math.PI / 6;
+  const horizontal = (Math.cos(elevation) * distance) / Math.SQRT2;
+  return {
+    eye: [
+      center[0] + horizontal,
+      center[1] + horizontal,
+      center[2] + Math.sin(elevation) * distance,
+    ],
+    center: [...center],
+    up: [0, 0, 1],
+  };
+}
+
 /**
  * Map 2D canvas world coordinates (Y down, same as SerializedNode x/y) to unified 3D space (Y up).
  */
@@ -188,6 +210,9 @@ export class Camera3D {
    */
   @field.float32 declare baseDistance: number;
 
+  /** Visible world height for a free orthographic camera. Zero preserves legacy distance-based sizing. */
+  @field.float32 declare orthographicHeight: number;
+
   constructor(camera?: Partial<Camera3D>) {
     if (camera) {
       Object.assign(this, camera);
@@ -203,6 +228,7 @@ export class Camera3D {
     this.clearColor ??= true;
     this.linked ??= false;
     this.baseDistance ??= 5;
+    this.orthographicHeight ??= 0;
     // Default to orthographic when linked to 2D camera (unified space).
     this.projection ??= this.linked ? 'orthographic' : 'perspective';
   }

@@ -541,6 +541,10 @@ export const en = defineConfig({
                     link: 'cube-perspective',
                   },
                   {
+                    text: 'Isometric 3D View',
+                    link: 'isometric-view',
+                  },
+                  {
                     text: 'Lighting',
                     link: 'lighting',
                   },

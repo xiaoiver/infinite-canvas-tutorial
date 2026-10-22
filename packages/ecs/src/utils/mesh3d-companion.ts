@@ -10,7 +10,8 @@ import {
   ToBeDeleted,
   Transform3D,
 } from '../components';
-import type { Projection3D } from '../components/geometry3d/Camera3D';
+import { axonometricCameraPose } from '../components/geometry3d/Camera3D';
+import type { Camera3DNodeConfig } from '../types/serialized-node';
 import {
   resolveMesh3DNodeCanvasCenter,
   resolveMesh3DNodeGeometry,
@@ -21,11 +22,31 @@ import {
 import { isGltfGeometrySpec, normalizeGeometry } from './geometry3d';
 import { isEntityAlive } from '../systems/Transform';
 
-export type Mesh3DCameraConfig = {
-  linked?: boolean;
-  projection?: Projection3D;
-  clearColor?: boolean;
-};
+export type Mesh3DCameraConfig = Camera3DNodeConfig;
+
+export function resolveMesh3DCameraConfig(
+  cam: Mesh3DCameraConfig,
+): Partial<Camera3D> {
+  const pose = cam.preset
+    ? axonometricCameraPose(
+        cam.preset,
+        cam.center ?? [0, 0, 0],
+        Number.isFinite(cam.distance) && (cam.distance ?? 0) > 0
+          ? cam.distance!
+          : 500,
+      )
+    : {};
+  return {
+    linked: cam.preset ? false : cam.linked ?? !cam.eye,
+    projection: cam.preset ? 'orthographic' : cam.projection ?? 'perspective',
+    clearColor: cam.clearColor ?? false,
+    orthographicHeight: cam.orthographicHeight ?? (cam.preset ? 500 : 0),
+    ...pose,
+    ...(cam.center ? { center: cam.center } : {}),
+    ...(cam.eye ? { eye: cam.eye } : {}),
+    ...(cam.up ? { up: cam.up } : {}),
+  };
+}
 
 /** Queue a companion {@link Mesh3D} for a declarative {@link Mesh3DNode} source. */
 export function queueMesh3DCompanion(
@@ -150,11 +171,7 @@ export function queueCamera3DFromMesh3DNode(
 ): void {
   const cam = camera3d ?? {};
   commands.spawn(
-    new Camera3D({
-      linked: cam.linked ?? true,
-      projection: cam.projection ?? 'perspective',
-      clearColor: cam.clearColor ?? false,
-    }),
+    new Camera3D(resolveMesh3DCameraConfig(cam)),
     new Canvas3DScope({ canvas }),
   );
 }

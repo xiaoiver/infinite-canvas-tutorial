@@ -459,6 +459,10 @@ export const zh = defineConfig({
                     link: 'cube-perspective',
                   },
                   {
+                    text: '等距 3D 视图',
+                    link: 'isometric-view',
+                  },
+                  {
                     text: '场景光照',
                     link: 'lighting',
                   },

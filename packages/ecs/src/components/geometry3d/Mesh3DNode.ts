@@ -1,5 +1,5 @@
 import { Entity, field } from '@lastolivegames/becsy';
-import type { Projection3D } from './Camera3D';
+import type { Camera3DNodeConfig } from '../../types/serialized-node';
 import type {
   Material3DAlphaMode,
   Material3DTextureTransform,
@@ -138,11 +138,7 @@ export class Mesh3DNode {
   @field.boolean declare receiveShadow: boolean;
 
   /** Spawn {@link Camera3D} for this canvas when absent (first mesh3d wins). */
-  @field.object declare camera3d?: {
-    linked?: boolean;
-    projection?: Projection3D;
-    clearColor?: boolean;
-  };
+  @field.object declare camera3d?: Camera3DNodeConfig;
 
   /** Companion mesh entity; managed by {@link EnsureMesh3DNodes}. */
   @field.ref declare meshEntity?: Entity;

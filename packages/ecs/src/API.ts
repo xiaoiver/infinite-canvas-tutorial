@@ -59,6 +59,7 @@ import type { AnimationGifQuality } from './utils/animationExportCodec';
 export type { AnimationGifQuality } from './utils/animationExportCodec';
 import { getRegisteredIconifyIconFamilies as getRegisteredIconifyIconFamiliesList } from './utils/icon-font';
 import type {
+  Camera3DNodeConfig,
   BrushSerializedNode,
   FillAttributes,
   GSerializedNode,
@@ -84,11 +85,13 @@ import { exportMeshesToGlb, type GlbMeshSource } from './utils/gltf/export-glb';
 import { loadGlbImages } from './utils/gltf/load-glb-images';
 import { getMesh3DNodeParts } from './utils/mesh3d-node';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
+import { resolveMesh3DCameraConfig } from './utils/mesh3d-companion';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
   Brush,
   Camera,
+  Camera3D,
   Canvas,
   Canvas3DScope,
   CheckboardStyle,
@@ -452,6 +455,17 @@ export class API {
       ...bundles,
       new Canvas3DScope({ canvas: this.#canvas }),
     );
+  }
+
+  /** Configure this canvas's 3D view. The canvas camera takes priority over mesh cameras. */
+  setCamera3D(config: Camera3DNodeConfig) {
+    const camera = new Camera3D(resolveMesh3DCameraConfig(config));
+    if (this.#canvas.has(Camera3D)) {
+      Object.assign(this.#canvas.write(Camera3D), camera);
+    } else {
+      this.commands.entity(this.#canvas).insert(camera);
+      this.commands.execute();
+    }
   }
 
   getAppState() {
