@@ -9,6 +9,8 @@ This scene combines a cube, ground plane, lighting, and an extruded SVG path wit
 
 Select a mesh to use its 3D gizmo. Choose **Pan / orbit** to drag the view; hold Shift while dragging to orbit at a constrained elevation. The wheel zooms around the ground point under the cursor, Shift + wheel pans, and two fingers pan or pinch to zoom. These camera gestures change only this canvas's 3D view, not the 2D source or undo history. Changing a preset or slider resets the camera pose.
 
+Picking follows the visible 3D depth order, so a cube in front of the ground receives the click. A mesh press takes priority over overlapping 2D source bounds, and selected object names stay screen aligned while the camera moves.
+
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
 </script>

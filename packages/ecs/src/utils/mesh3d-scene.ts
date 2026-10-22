@@ -14,6 +14,8 @@ import type { Mesh3DPickScene } from './ray-casting';
 /** Scene matrices uploaded to mesh3d / gizmo shaders (std140 52 floats). */
 export interface Camera3DSceneUniforms {
   mode: 'linkedPerspective' | 'linkedOrthographic' | 'standard';
+  /** Free orthographic views use GREATER depth and put the near plane at clip Z=1. */
+  reverseDepth?: boolean;
   projMatrix: Mat4;
   viewMatrix: Mat4;
   canvasViewProjection: Mat4;
@@ -116,6 +118,10 @@ export function buildCamera3DSceneUniforms(
 
   return {
     mode: 'standard',
+    reverseDepth:
+      camera.projection === 'orthographic' &&
+      camera.orthographicHeight > 0 &&
+      Number.isFinite(camera.orthographicHeight),
     projMatrix,
     viewMatrix,
     canvasViewProjection: Mat4.IDENTITY,
@@ -148,6 +154,7 @@ export function sceneUniformsToPickScene(
   }
   return {
     mode: 'standard',
+    reverseDepth: uniforms.reverseDepth,
     projMatrix: uniforms.projMatrix.toFloat32Array(),
     viewMatrix: uniforms.viewMatrix.toFloat32Array(),
   };

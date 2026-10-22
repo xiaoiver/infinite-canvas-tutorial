@@ -88,6 +88,7 @@ import {
   buildPickSceneForViewport,
   probePick3DAtViewport,
 } from '../utils/pick3d-probe';
+import { isNavigableCamera3D } from '../utils/isometric-navigation';
 import {
   filterEntitiesForCanvas,
   findCamera2DForCanvas,
@@ -451,6 +452,23 @@ export class Select extends System {
     }
     const probe = this.probePick3DAt(canvas, viewportX, viewportY);
     return probe?.kind === 'gizmo';
+  }
+
+  /** In a tilted view a mesh's screen position is not its 2D source bounds. */
+  private shouldSuppress2DPress(
+    canvas: Entity,
+    viewportX: number,
+    viewportY: number,
+  ): boolean {
+    const probe = this.probePick3DAt(canvas, viewportX, viewportY);
+    if (!probe || probe.kind === 'none') return false;
+    if (probe.kind === 'gizmo') return true;
+    const camera = findCamera3DForCanvas(
+      this.cameras3D.current,
+      canvas,
+      this.canvases.current.length || 1,
+    );
+    return !!camera && isNavigableCamera3D(camera.read(Camera3D));
   }
 
   private probePick3DAt(
@@ -2121,7 +2139,7 @@ export class Select extends System {
         // Gizmos render above the document. A handle can overlap a node's 2D
         // bounds, where reselecting that node would remove Selected3D before
         // Pick3D sees this press. Give the visible handle first refusal.
-        if (this.shouldSuppress2DMove(canvas, x, y)) {
+        if (this.shouldSuppress2DPress(canvas, x, y)) {
           selection.mode = SelectionMode.IDLE;
           delete selection.resizePointerOffset;
           selection.pointerMoveViewportX = NaN;

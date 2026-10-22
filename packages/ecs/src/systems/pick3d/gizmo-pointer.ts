@@ -50,7 +50,13 @@ export function beginGizmoPointerGesture(
     const inverse = mat4.invert(mat4.create(), vp);
     if (!inverse) return;
     const ray = (p: GizmoViewportPoint) =>
-      screenToRay(...p, frame.width, frame.height, inverse as Float32Array);
+      screenToRay(
+        ...p,
+        frame.width,
+        frame.height,
+        inverse as Float32Array,
+        frame.scene.mode === 'standard' && frame.scene.reverseDepth,
+      );
     const gesture = beginGizmoGesture(pose, axis, kind, ray(pointer));
     if (!gesture) return;
     return { ...gesture, update: (p) => updateGizmoGesture(gesture, ray(p)) };

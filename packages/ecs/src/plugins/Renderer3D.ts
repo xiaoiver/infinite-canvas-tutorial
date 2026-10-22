@@ -38,6 +38,7 @@ import {
   SyncMesh3DNodes,
   Pick3D,
   RenderGizmo3D,
+  RenderNameLabel,
   Select,
 } from '../systems';
 import { Last, PostUpdate, PreUpdate } from '../systems/stages';
@@ -93,6 +94,9 @@ function createRenderer3DPlugin(options: Renderer3DPluginOptions = {}): Plugin {
     system((s) =>
       s.inAnyOrderWith(s.allSystems).after(CameraSync, Select).before(Last),
     )(Pick3D);
+
+    // 3D name labels read the selected mesh and its current camera pose.
+    system((s) => s.after(Pick3D).before(Last))(RenderNameLabel);
 
     // 3D gizmo rendering: runs alongside the 3D render system.
     system(PreUpdate)(RenderGizmo3D);

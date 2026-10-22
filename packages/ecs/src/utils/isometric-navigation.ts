@@ -23,7 +23,7 @@ export function camera3DPlanePoint(
   planeZ = 0,
 ): [number, number, number] | null {
   if (width <= 0 || height <= 0) return null;
-  const { projMatrix, viewMatrix } = buildCamera3DSceneUniforms(
+  const { projMatrix, viewMatrix, reverseDepth } = buildCamera3DSceneUniforms(
     camera,
     width / height,
   );
@@ -34,7 +34,14 @@ export function camera3DPlanePoint(
   );
   const inverse = mat4.invert(mat4.create(), viewProjection);
   if (!inverse) return null;
-  const ray = screenToRay(viewport[0], viewport[1], width, height, inverse);
+  const ray = screenToRay(
+    viewport[0],
+    viewport[1],
+    width,
+    height,
+    inverse,
+    reverseDepth,
+  );
   if (Math.abs(ray.direction[2]) < 1e-6) return null;
   const t = (planeZ - ray.origin[2]) / ray.direction[2];
   if (!Number.isFinite(t)) return null;
