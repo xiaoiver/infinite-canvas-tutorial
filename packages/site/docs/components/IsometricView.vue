@@ -66,6 +66,7 @@ const scene: SerializedNode[] = [
   },
   {
     id: 'iso-cube',
+    name: 'Cube',
     type: 'mesh3d',
     geometry: { type: 'cube' },
     x: 125,
@@ -83,7 +84,9 @@ function svgNodes(): SerializedNode[] {
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 490 360"><path id="iso-ring" d="M290 115 H390 V215 H290 Z M318 143 H362 V187 H318 Z" fill="#ee9950" fill-rule="evenodd"/></svg>',
     'image/svg+xml',
   ).documentElement as unknown as SVGSVGElement;
-  return svgElementsToExtrudedNodes(svg, 50);
+  return svgElementsToExtrudedNodes(svg, 50).map((node) =>
+    node.id === 'iso-ring' ? { ...node, name: 'Extruded SVG ring' } : node,
+  );
 }
 
 onMounted(async () => {
@@ -95,6 +98,7 @@ onMounted(async () => {
       penbarSelected: Pen.SELECT,
       penbarAll: [Pen.SELECT, Pen.HAND],
       penbarVisible: false,
+      penbarNameLabelVisible: true,
       taskbarVisible: false,
     });
     api.runAtNextTick(() => {

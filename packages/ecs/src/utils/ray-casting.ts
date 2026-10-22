@@ -36,6 +36,7 @@ export interface AABB {
  * @param viewportWidth - Viewport width in pixels
  * @param viewportHeight - Viewport height in pixels
  * @param invViewProjection - Inverse of the combined view-projection matrix (column-major Float32Array or number[])
+ * @param reverseDepth - Whether clip Z=1 is the camera's near plane.
  */
 export function screenToRay(
   viewportX: number,
@@ -43,15 +44,14 @@ export function screenToRay(
   viewportWidth: number,
   viewportHeight: number,
   invViewProjection: Float32Array | number[],
+  reverseDepth = false,
 ): Ray {
   // Convert viewport to NDC [-1, 1]
   const ndcX = (2 * viewportX) / viewportWidth - 1;
   const ndcY = 1 - (2 * viewportY) / viewportHeight; // flip Y
 
-  // Near point in NDC (z = -1 in OpenGL convention)
-  const nearNDC = glVec4.fromValues(ndcX, ndcY, -1, 1);
-  // Far point in NDC (z = 1)
-  const farNDC = glVec4.fromValues(ndcX, ndcY, 1, 1);
+  const nearNDC = glVec4.fromValues(ndcX, ndcY, reverseDepth ? 1 : -1, 1);
+  const farNDC = glVec4.fromValues(ndcX, ndcY, reverseDepth ? -1 : 1, 1);
 
   const invVP = invViewProjection as unknown as glMat4;
 
@@ -287,6 +287,7 @@ export type Mesh3DPickScene =
       mode: 'standard';
       projMatrix: Float32Array;
       viewMatrix: Float32Array;
+      reverseDepth?: boolean;
     }
   | {
       mode: 'orthographic2d';
@@ -571,6 +572,7 @@ export function pickMeshAtViewport(
     viewportWidth,
     viewportHeight,
     invVP,
+    scene.mode === 'standard' && scene.reverseDepth,
   );
   return rayMeshIntersection(ray, positions, indices, modelMatrix);
 }
