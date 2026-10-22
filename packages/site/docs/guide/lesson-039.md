@@ -528,6 +528,8 @@ glTF `COLOR_0` vertex colors (float or normalized unsigned byte/short, RGB or RG
 
 The importer accepts triangle lists, triangle strips (`mode: 5`) and triangle fans (`mode: 6`), with or without indices. It converts them to triangle lists for rendering and GLB export. Mirrored node transforms also correct triangle winding so single-sided surfaces remain visible.
 
+Sparse glTF accessors are supported for positions, normals, UVs, colors, tangents, and triangle indices. Missing base data starts at zero; sparse values replace only the listed elements. The imported mesh is exported as ordinary dense GLB buffers.
+
 <GltfDuck />
 
 ## Further reading {#extended-reading}
