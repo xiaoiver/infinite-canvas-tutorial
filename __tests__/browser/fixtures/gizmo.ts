@@ -1,6 +1,7 @@
 import {
   API,
   App,
+  Canvas,
   Commands,
   DefaultPlugins,
   DefaultRenderer3DPlugin,
@@ -33,6 +34,8 @@ import { settleECSFrames } from './ecs-frames';
 import { MESH_SCENE_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-scene-uniforms';
 import { MESH_MODEL_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
 import { getMeshPipeline3D } from '../../../packages/ecs/src/systems/mesh3d-bridge';
+import { buildPickSceneForViewport } from '../../../packages/ecs/src/utils/pick3d-probe';
+import { projectMesh3DViewportBounds } from '../../../packages/ecs/src/utils/isometric-marquee';
 
 let api: API;
 const params = new URLSearchParams(location.search);
@@ -99,6 +102,27 @@ const resetDerivedUpdates = () => {
 };
 const harness = {
   api: () => api,
+  projectedBounds: (id: string) => {
+    const canvas = api.getCanvas();
+    const { width, height } = canvas.read(Canvas);
+    const camera = canvas.read(Camera3D);
+    const scene = buildPickSceneForViewport(
+      camera,
+      width,
+      height,
+      width,
+      height,
+    )!;
+    const source = api.getEntity(api.getNodeById(id));
+    const mesh = source.read(Mesh3DNode).meshEntity!;
+    return projectMesh3DViewportBounds(
+      mesh.read(Mesh3D).positions,
+      mesh.read(Transform3D),
+      scene,
+      width,
+      height,
+    );
+  },
   importAndExportSvg: async (source: string) => {
     const nodes = importExtrudedSvg(source, 24, { x: 100, y: 100 });
     await api.edit((editor) => editor.replaceDocument(nodes, 'remote'));

@@ -167,8 +167,8 @@ onUnmounted(() => {
   <p class="isometric-hint">
     {{
       props.locale === 'zh'
-        ? '使用“平移 / 旋转”拖动画布；按住 Shift 拖动可转动视角。滚轮缩放，Shift + 滚轮平移；双指可平移与缩放。'
-        : 'Drag with Pan / orbit to move the view; hold Shift while dragging to orbit. Wheel zooms, Shift + wheel pans, and two fingers pan or pinch to zoom.'
+        ? '使用“选择”从空白处拖动可框选图形；按住 Shift 可从地板开始框选。使用“平移 / 旋转”拖动画布；按住 Shift 拖动可转动视角。滚轮缩放，Shift + 滚轮平移；双指可平移与缩放。'
+        : 'With Select, drag from empty space to marquee-select meshes, or hold Shift to start over the ground. With Pan / orbit, drag to move the view or hold Shift to orbit. Wheel zooms, Shift + wheel pans, and two fingers pan or pinch to zoom.'
     }}
   </p>
   <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px" />

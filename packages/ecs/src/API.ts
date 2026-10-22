@@ -784,44 +784,58 @@ export class API {
     });
   }
 
-  selectMesh3DLayer(id: string) {
-    const entity = this.#mesh3DLayerEntities.get(id);
-    const layer = this.#mesh3DLayers.find((item) => item.id === id);
-    if (!isEntityAlive(entity) || !layer) {
-      return false;
-    }
-
+  /** Select one or more registered 3D layers without using their flat 2D bounds. */
+  selectMesh3DLayers(ids: string[]) {
+    const layers = ids
+      .filter((id, index) => ids.indexOf(id) === index)
+      .map((id) => ({
+        id,
+        entity: this.#mesh3DLayerEntities.get(id),
+        layer: this.#mesh3DLayers.find((item) => item.id === id),
+      }))
+      .filter((entry) => isEntityAlive(entry.entity) && !!entry.layer);
+    const selectedIds = layers.map(({ id }) => id);
+    const selectedSet = new Set(selectedIds);
     const prevAppState = this.getAppState();
     this.clear2DSelectionComponents(prevAppState.layersSelected);
 
-    this.#selectedMesh3DLayerIds.forEach((selectedId) => {
-      const selectedEntity = this.#mesh3DLayerEntities.get(selectedId);
+    this.#mesh3DLayerEntities.forEach((selectedEntity, selectedId) => {
       if (
         isEntityAlive(selectedEntity) &&
-        !selectedEntity.isSame(entity) &&
+        !selectedSet.has(selectedId) &&
         selectedEntity.has(Selected3D)
       ) {
         selectedEntity.remove(Selected3D);
       }
     });
 
-    if (!entity.has(Selected3D)) {
-      entity.add(Selected3D, {
-        mode: 'transform',
-        activeAxis: 'none',
-        activePartKind: null,
-        dragging: false,
-      });
+    for (const { entity } of layers) {
+      if (entity && !entity.has(Selected3D)) {
+        entity.add(Selected3D, {
+          mode: 'transform',
+          activeAxis: 'none',
+          activePartKind: null,
+          dragging: false,
+        });
+      }
     }
 
-    const selectedChanged = this.setSelectedMesh3DLayerIds([id]);
+    const selectedChanged = this.setSelectedMesh3DLayerIds(selectedIds);
     this.setAppState({
       ...prevAppState,
-      layersSelected: layer.sourceNodeId ? [layer.sourceNodeId] : [],
+      layersSelected: layers
+        .map(({ layer }) => layer?.sourceNodeId)
+        .filter((id): id is string => !!id),
       layersHighlighted: [],
     });
+    set3DMeshGizmoSelectedForCanvas(this.#canvas, selectedIds.length > 0);
 
     return selectedChanged;
+  }
+
+  selectMesh3DLayer(id: string) {
+    if (!this.#mesh3DLayerEntities.has(id)) return false;
+    return this.selectMesh3DLayers([id]);
   }
 
   selectMesh3DLayerByEntity(entity: Entity) {
