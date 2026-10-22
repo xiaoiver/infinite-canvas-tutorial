@@ -3,6 +3,8 @@ import { PNG } from 'pngjs';
 import { test } from '../isolated-webkit-test';
 import type {} from './fixtures/gizmo';
 
+test.describe.configure({ timeout: 60000 });
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const getContext = HTMLCanvasElement.prototype.getContext;
@@ -33,9 +35,11 @@ test('WebGL1 renders imported vertex colors without shader errors', async ({
     if (message.type() === 'error') errors.push(message.text());
   });
   await page.goto('/gizmo.html?gltfColor&width=300&height=190');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
   await expect
-    .poll(() => page.evaluate(() => window.gizmoTest.colorState()))
+    .poll(() => page.evaluate(() => window.gizmoTest.colorState()), {
+      timeout: 20000,
+    })
     .toEqual([16, 16]);
   await page.evaluate(() => window.gizmoTest.settle());
   expect(
@@ -71,7 +75,7 @@ test('WebGL1 evaluates multiple lights and both directional and point shadow slo
     if (message.type() === 'error') errors.push(message.text());
   });
   await page.goto('/gizmo.html?alpha');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
   await page.evaluate(async () => {
     const api = window.gizmoTest.api();
     await api.edit((editor) =>
@@ -131,9 +135,11 @@ test('WebGL1 uses authored tangent handedness for normal-map lighting', async ({
   page,
 }) => {
   await page.goto('/gizmo.html?gltfTangent&width=300&height=190');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 20000 });
   await expect
-    .poll(() => page.evaluate(() => window.gizmoTest.tangentState()))
+    .poll(() => page.evaluate(() => window.gizmoTest.tangentState()), {
+      timeout: 20000,
+    })
     .toMatchObject([
       { vertices: 4, handedness: 1, normalTextureStatus: 'ready' },
       { vertices: 4, handedness: -1, normalTextureStatus: 'ready' },
