@@ -2,6 +2,7 @@ import {
   CameraSync,
   ComputeBounds,
   ComputeCamera,
+  Extrude3D,
   EnsureExtrudeMeshes,
   EnsureMesh3DNodes,
   Last,
@@ -11,6 +12,7 @@ import {
   Pick3D,
   PostUpdate,
   Select,
+  Selected,
   Selected3D,
   Transform3D,
   SyncExtrude3D,
@@ -206,4 +208,59 @@ it('marquee-selects projected meshes live without selecting the ground or flat s
   expect(api.getAppState().layersSelected).not.toContain('flat');
   await world.pointer(api, 'pointerup', bothEndX, bothEndY, { shiftKey: true });
   expect(api.getSelectedMesh3DLayerIds().sort()).toEqual(['cube-a', 'cube-b']);
+});
+
+it('marquee-selects an extruded Path without selecting its flat source', async () => {
+  const [api] = world.apis;
+  await world.reset(api, [
+    {
+      id: 'extruded-path',
+      type: 'path',
+      zIndex: 0,
+      x: 60,
+      y: 60,
+      d: 'M60 60 L100 60 L100 100 L60 100 Z',
+      extrude3d: { depth: 20, z: 10 },
+      fills: [{ type: 'solid', value: '#ee9950' }],
+    },
+  ]);
+  await world.edit(
+    api,
+    (editor) => {
+      editor.setCamera3D({
+        preset: 'dimetric-2-1',
+        center: [100, 100, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      });
+    },
+    'NEVER',
+  );
+  await world.frames(3);
+  const source = api.getEntity(api.getNodeById('extruded-path'));
+  const mesh = source.read(Extrude3D).meshEntity!;
+  const scene = buildPickSceneForViewport(
+    api.getCanvas().read(Camera3D),
+    200,
+    200,
+    200,
+    200,
+  )!;
+  const bounds = projectMesh3DViewportBounds(
+    mesh.read(Mesh3D).positions,
+    mesh.read(Transform3D),
+    scene,
+    200,
+    200,
+  )!;
+  const startX = Math.floor(bounds.minX - 3);
+  const startY = Math.floor(bounds.minY - 3);
+  const endX = Math.ceil(bounds.maxX + 3);
+  const endY = Math.ceil(bounds.maxY + 3);
+  await world.pointer(api, 'pointerdown', startX, startY, { shiftKey: true });
+  await world.pointer(api, 'pointermove', endX, endY, { shiftKey: true });
+  expect(api.getSelectedMesh3DLayerIds()).toEqual(['extruded-path']);
+  expect(mesh.has(Selected3D)).toBe(true);
+  expect(source.has(Selected)).toBe(false);
+  await world.pointer(api, 'pointerup', endX, endY, { shiftKey: true });
 });
