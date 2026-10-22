@@ -13,10 +13,19 @@ test('Shift marquee over the ground selects projected meshes while dragging', as
     await api.edit((editor) => {
       editor.replaceDocument(
         [
-          { id: 'flat', type: 'rect', x: 0, y: 0, width: 200, height: 200 },
+          {
+            id: 'flat',
+            type: 'rect',
+            zIndex: 0,
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 200,
+          },
           {
             id: 'ground',
             type: 'mesh3d',
+            zIndex: 1,
             geometry: { type: 'plane' },
             x: 0,
             y: 0,
@@ -28,6 +37,7 @@ test('Shift marquee over the ground selects projected meshes while dragging', as
           {
             id: 'cube',
             type: 'mesh3d',
+            zIndex: 2,
             geometry: { type: 'cube' },
             x: 55,
             y: 75,
