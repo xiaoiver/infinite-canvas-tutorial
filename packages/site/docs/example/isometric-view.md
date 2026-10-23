@@ -13,7 +13,9 @@ Picking follows the visible 3D depth order, so a cube in front of the ground rec
 
 With **Select**, drag from empty space to marquee-select 3D objects. Hold **Shift** to start a marquee over the ground or another mesh. The rectangle uses each mesh's projected screen bounds and updates selection while dragging. Objects must be fully enclosed, so a small marquee does not select the large ground mesh.
 
-Choose **Draw box** and drag on the canvas to place a 3D box. **Edit plane Z** sets the height of its bottom face; **Box depth** sets its extrusion above that plane. The four-corner preview follows the plane under the pointer, even after changing the camera pose. Release to create a selectable mesh. A tap or a very short drag creates nothing. This example gesture creates boxes; direct editing of SVG path anchors in the tilted view is still planned.
+Choose **Draw box** and drag on the canvas to place a 3D box. **Edit plane Z** sets the height of its bottom face; **Box depth** sets its extrusion above that plane. The four-corner preview follows the plane under the pointer, even after changing the camera pose. Release to create a selectable mesh. A tap or a very short drag creates nothing.
+
+Choose **Edit SVG anchors** to drag the orange ring's outer vertices or the inner hole's vertices directly on the tilted top face. The source Path and its extruded mesh update together as you drag. The camera can still pan and orbit from the background. This first editor handles unrotated Path extrusions; 3D rotated source planes and editing other imported SVG shapes need additional plane mapping.
 
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
@@ -37,4 +39,4 @@ api.setCamera3D({
 
 For custom drawing gestures, `api.viewport2WorldOnPlane({ x, y }, planeZ)` intersects a viewport pointer with a constant-Z plane. `api.world3D2Viewport([x, y, z])` projects a world point back into viewport pixels for overlays. Both use the render camera matrix and return `null` without a free orthographic canvas camera or for invalid input. Convert browser coordinates with `api.client2Viewport` first.
 
-The SVG source remains editable in the 2D canvas. The tilted 3D view previews its extruded mesh; direct editing of the source's 2D anchors in this view is still planned.
+For extruded Path anchors, `api.pathLocal2Viewport3D(node, [x, y])` projects a local Path point on the front face. `api.viewport2PathLocal3D(node, { x, y })` intersects that face and applies the inverse global 2D transform. These return `null` for unsupported sources, singular transforms, or a 3D rotated extrusion. They work with imported SVG paths and ordinary Path nodes. Use `normalizePathCommands`, `collectPathControlHandles`, `setPathHandlePoint`, and `toPathData` to edit `d`; update the node during the drag and call `api.record()` once on release.

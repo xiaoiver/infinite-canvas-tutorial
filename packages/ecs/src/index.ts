@@ -27,6 +27,14 @@ export { safeAddComponent, safeRemoveComponent } from './history';
 export { requestTransformerRefreshForCanvas } from './utils/pick3d-bridge';
 export { canExtrudePath } from './utils/path-extrusion-eligibility';
 export {
+  collectPathControlHandles,
+  normalizePathCommands,
+  setPathHandlePoint,
+  toPathData,
+  type PathCommand,
+  type PathControlHandleMeta,
+} from './utils/path-edit';
+export {
   exportMeshesToGlb,
   type GlbMeshSource,
   type GlbImageData,
