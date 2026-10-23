@@ -44,8 +44,9 @@
 -   阶段 A 已在 [#527](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/527) 完成：相机预设、独立视图高度和双语示例。
 -   阶段 B 的导航基础已在 [#528](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/528) 完成：拖动平移、受限俯角旋转、地面锚点缩放，以及双指手势。相机手势属于视图状态，不进入文档撤销历史。
 -   [#529](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/529) 已完成倾斜视图的反向深度拾取、3D 按下优先级与屏幕朝向的名称标签。
--   当前推进按 Mesh 屏幕投影范围进行实时框选，并支持 Shift 从地板上开始框选。
--   后续仍需处理指定编辑平面的直接绘制与 2D 锚点编辑、完整的移动端手势与视觉回归，以及阶段 C 的插画式表现。
+-   [#530](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/530) 已完成按 Mesh 屏幕投影范围进行实时框选，并支持 Shift 从地板上开始框选。
+-   当前推进指定 Z 编辑平面上的直接盒子绘制，以及双向投影 API。
+-   后续仍需处理 2D 锚点编辑、完整的移动端手势与视觉回归，以及阶段 C 的插画式表现。
 
 ## 测试与性能门槛
 

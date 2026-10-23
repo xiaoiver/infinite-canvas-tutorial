@@ -86,6 +86,11 @@ import { loadGlbImages } from './utils/gltf/load-glb-images';
 import { getMesh3DNodeParts } from './utils/mesh3d-node';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { resolveMesh3DCameraConfig } from './utils/mesh3d-companion';
+import {
+  camera3DPlanePoint,
+  camera3DViewportPoint,
+  isNavigableCamera3D,
+} from './utils/isometric-navigation';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
@@ -466,6 +471,29 @@ export class API {
       this.commands.entity(this.#canvas).insert(camera);
       this.commands.execute();
     }
+  }
+
+  /** Intersect a viewport pointer with a Z plane in this canvas's free 3D view. */
+  viewport2WorldOnPlane(
+    { x, y }: IPointData,
+    planeZ = 0,
+  ): [number, number, number] | null {
+    if (!this.#canvas.has(Camera3D)) return null;
+    const camera = this.#canvas.read(Camera3D);
+    if (!isNavigableCamera3D(camera)) return null;
+    const { width, height } = this.#canvas.read(Canvas);
+    return camera3DPlanePoint(camera, [x, y], width, height, planeZ);
+  }
+
+  /** Project a 3D world point into CSS viewport pixels of this canvas. */
+  world3D2Viewport(
+    point: readonly [number, number, number],
+  ): [number, number] | null {
+    if (!this.#canvas.has(Camera3D)) return null;
+    const camera = this.#canvas.read(Camera3D);
+    if (!isNavigableCamera3D(camera)) return null;
+    const { width, height } = this.#canvas.read(Canvas);
+    return camera3DViewportPoint(camera, point, width, height);
   }
 
   getAppState() {
