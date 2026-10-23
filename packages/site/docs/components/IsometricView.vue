@@ -26,6 +26,7 @@ const distance = ref(650);
 const editPlaneZ = ref(0);
 const boxDepth = ref(48);
 const previewPoints = ref('');
+const ringTilted = ref(false);
 const pathHandles = ref<
   { x: number; y: number; meta: PathControlHandleMeta; control: boolean }[]
 >([]);
@@ -84,6 +85,24 @@ function ringNode() {
   return node?.type === 'path' && node.extrude3d ? node : undefined;
 }
 
+function toggleRingTilt() {
+  const editor = api;
+  if (!editor) return;
+  ringTilted.value = !ringTilted.value;
+  const tilted = ringTilted.value;
+  editor.runAtNextTick(() => {
+    const node = editor.getNodeById('iso-ring');
+    if (node?.type !== 'path') return;
+    editor.updateNode(node, {
+      extrude3d: {
+        depth: 50,
+        rotation: tilted ? [0.35, -0.25, 0.2] : [0, 0, 0],
+      },
+    });
+    editor.record();
+  });
+}
+
 function refreshPathHandles() {
   if (!api || tool.value !== 'edit-path-3d') return;
   syncPreviewBounds();
@@ -113,6 +132,10 @@ function refreshPathHandles() {
 }
 
 function animatePathHandles() {
+  const extrude = ringNode()?.extrude3d;
+  ringTilted.value =
+    typeof extrude === 'object' &&
+    !!extrude.rotation?.some((angle) => angle !== 0);
   refreshPathHandles();
   anchorFrame = requestAnimationFrame(animatePathHandles);
 }
@@ -159,7 +182,12 @@ function onAnchorDown(event: PointerEvent, meta: PathControlHandleMeta) {
     finished: false,
     cancelled: false,
   };
-  (event.currentTarget as Element).setPointerCapture(event.pointerId);
+  // The handle can disappear temporarily if a dragged contour invalidates the
+  // extrusion. Keep pointer capture on the persistent overlay so pointerup
+  // still commits the edit and undo can restore the last valid shape.
+  (event.currentTarget as SVGCircleElement).ownerSVGElement?.setPointerCapture(
+    event.pointerId,
+  );
 }
 
 function onAnchorMove(event: PointerEvent) {
@@ -431,6 +459,9 @@ onUnmounted(() => {
       >
         {{ props.locale === 'zh' ? '编辑 SVG 锚点' : 'Edit SVG anchors' }}
       </button>
+      <button :aria-pressed="ringTilted" @click="toggleRingTilt">
+        {{ props.locale === 'zh' ? '倾斜 SVG' : 'Tilt SVG' }}
+      </button>
     </div>
     <label
       >{{ props.locale === 'zh' ? '视角' : 'View' }}
@@ -481,8 +512,8 @@ onUnmounted(() => {
   <p class="isometric-hint">
     {{
       props.locale === 'zh'
-        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。选择工具可框选，Shift 可从地板开始框选。平移工具拖动视图，Shift + 拖动转动视角；滚轮缩放，双指平移或缩放。'
-        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Select can marquee meshes, and Shift starts a marquee over the ground. Pan / orbit moves the view; Shift + drag orbits. Wheel zooms, and two fingers pan or pinch to zoom.'
+        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。“倾斜 SVG”可验证旋转后的前表面锚点编辑。选择工具可框选，Shift 可从地板开始框选。平移工具拖动视图，Shift + 拖动转动视角；滚轮缩放，双指平移或缩放。'
+        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Tilt SVG lets you edit anchors on the rotated front face. Select can marquee meshes, and Shift starts a marquee over the ground. Pan / orbit moves the view; Shift + drag orbits. Wheel zooms, and two fingers pan or pinch to zoom.'
     }}
   </p>
   <div class="isometric-canvas">
@@ -498,6 +529,9 @@ onUnmounted(() => {
     <svg
       class="isometric-preview"
       aria-hidden="true"
+      @pointermove="onAnchorMove"
+      @pointerup="onAnchorUp"
+      @pointercancel="onAnchorCancel"
       :style="{
         left: `${previewBounds.left}px`,
         top: `${previewBounds.top}px`,
@@ -515,9 +549,6 @@ onUnmounted(() => {
         :cy="handle.y"
         r="7"
         @pointerdown="onAnchorDown($event, handle.meta)"
-        @pointermove="onAnchorMove"
-        @pointerup="onAnchorUp"
-        @pointercancel="onAnchorCancel"
       />
     </svg>
   </div>

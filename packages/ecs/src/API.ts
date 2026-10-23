@@ -87,10 +87,16 @@ import { getMesh3DNodeParts } from './utils/mesh3d-node';
 import { set3DMeshGizmoSelectedForCanvas } from './utils/pick3d-bridge';
 import { resolveMesh3DCameraConfig } from './utils/mesh3d-companion';
 import {
+  camera3DPlaneHit,
   camera3DPlanePoint,
   camera3DViewportPoint,
   isNavigableCamera3D,
 } from './utils/isometric-navigation';
+import {
+  pathAnchor3DLocalPoint,
+  pathAnchor3DPlane,
+  pathAnchor3DWorldPoint,
+} from './utils/path-anchor3d-plane';
 import { v4 as uuidv4 } from 'uuid';
 import {
   AABB,
@@ -496,56 +502,38 @@ export class API {
     return camera3DViewportPoint(camera, point, width, height);
   }
 
-  /** Project a source Path point on the front face of its unrotated extrusion. */
+  /** Project a source Path point on its companion mesh's front face. */
   pathLocal2Viewport3D(
     node: SerializedNode,
     point: readonly [number, number],
   ): [number, number] | null {
-    const entity = this.getEntity(node);
-    if (
-      !entity?.has(Path) ||
-      !entity.has(Extrude3D) ||
-      !entity.has(GlobalTransform)
-    )
-      return null;
-    const { z, rotation } = entity.read(Extrude3D);
-    if (rotation.some((angle) => angle !== 0)) return null;
-    const { m00, m01, m10, m11, m20, m21 } =
-      entity.read(GlobalTransform).matrix;
-    return this.world3D2Viewport([
-      m00 * point[0] + m10 * point[1] + m20,
-      m01 * point[0] + m11 * point[1] + m21,
-      z,
-    ]);
+    const source = this.getEntity(node);
+    const plane = source && pathAnchor3DPlane(source);
+    return plane
+      ? this.world3D2Viewport(pathAnchor3DWorldPoint(plane, point))
+      : null;
   }
 
-  /** Map a viewport pointer back to an unrotated extruded Path's local plane. */
+  /** Map a viewport pointer back to an extruded Path's local front plane. */
   viewport2PathLocal3D(
     node: SerializedNode,
     viewport: IPointData,
   ): [number, number] | null {
-    const entity = this.getEntity(node);
-    if (
-      !entity?.has(Path) ||
-      !entity.has(Extrude3D) ||
-      !entity.has(GlobalTransform)
-    )
-      return null;
-    const { z, rotation } = entity.read(Extrude3D);
-    if (rotation.some((angle) => angle !== 0)) return null;
-    const { m00, m01, m10, m11, m20, m21 } =
-      entity.read(GlobalTransform).matrix;
-    const determinant = m00 * m11 - m01 * m10;
-    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12)
-      return null;
-    const world = this.viewport2WorldOnPlane(viewport, z);
-    if (!world) return null;
-    const x = world[0] - m20;
-    const y = world[1] - m21;
-    return [
-      (m11 * x - m10 * y) / determinant,
-      (m00 * y - m01 * x) / determinant,
-    ];
+    const source = this.getEntity(node);
+    const plane = source && pathAnchor3DPlane(source);
+    if (!plane || !this.#canvas.has(Camera3D)) return null;
+    const camera = this.#canvas.read(Camera3D);
+    if (!isNavigableCamera3D(camera)) return null;
+    const { width, height } = this.#canvas.read(Canvas);
+    const hit = camera3DPlaneHit(
+      camera,
+      [viewport.x, viewport.y],
+      width,
+      height,
+      plane.origin,
+      plane.normal,
+    );
+    return hit ? pathAnchor3DLocalPoint(plane, hit) : null;
   }
 
   getAppState() {

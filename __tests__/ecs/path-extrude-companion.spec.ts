@@ -1,3 +1,4 @@
+import { vec3 } from 'gl-matrix';
 import {
   Canvas,
   Canvas3DScope,
@@ -16,6 +17,12 @@ import {
   type API,
   type PathSerializedNode,
 } from '../../packages/ecs/src';
+import {
+  normalizePathCommands,
+  setPathHandlePoint,
+  toPathData,
+} from '../../packages/ecs/src/utils/path-edit';
+import { computeModelMatrix } from '../../packages/ecs/src/utils/ray-casting';
 import { shouldSuppress2DShapeRender } from '../../packages/ecs/src/utils/extrude3d';
 import {
   resolveExtrudeCompanionTransform,
@@ -439,6 +446,72 @@ it('extrudes a Path through a sheared parent and keeps its world footprint', asy
     'NEVER',
   );
   expect(mesh().read(Mesh3D).positions).not.toBe(original);
+});
+
+it('maps rotated Path anchors onto the actual front cap through parent shear', async () => {
+  await world.reset(api, [
+    { id: 'parent', type: 'g', zIndex: 0, x: 20, y: 30, scaleX: 2 },
+    path({
+      parentId: 'parent',
+      rotation: Math.PI / 4,
+      d: 'M10 20 L50 20 L10 60 Z',
+      extrude3d: { depth: 20, z: 10, rotation: [0.35, -0.25, 0.2] },
+    }),
+  ]);
+  await world.edit(
+    api,
+    (editor) =>
+      editor.setCamera3D({
+        preset: 'isometric',
+        center: [50, 50, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      }),
+    'NEVER',
+  );
+  await world.frame();
+  const node = api.getNodeById('vector') as PathSerializedNode;
+  const commands = normalizePathCommands(node.d);
+  const first: [number, number] = [commands[0][1], commands[0][2]];
+  const viewport = api.pathLocal2Viewport3D(node, first)!;
+  expect(viewport).not.toBeNull();
+  const companion = mesh();
+  const pose = companion.read(Transform3D);
+  const model = computeModelMatrix(pose.translation, pose.rotation, pose.scale);
+  const { positions } = companion.read(Mesh3D);
+  let nearestFrontVertex = Infinity;
+  for (let i = 0; i < positions.length; i += 3) {
+    if (Math.abs(positions[i + 2] - 0.5) > 1e-5) continue;
+    const worldPoint = vec3.transformMat4(
+      vec3.create(),
+      [positions[i], positions[i + 1], positions[i + 2]],
+      model,
+    );
+    const projected = api.world3D2Viewport([
+      worldPoint[0],
+      worldPoint[1],
+      worldPoint[2],
+    ])!;
+    nearestFrontVertex = Math.min(
+      nearestFrontVertex,
+      Math.hypot(viewport[0] - projected[0], viewport[1] - projected[1]),
+    );
+  }
+  expect(nearestFrontVertex).toBeLessThan(0.001);
+  const pointer = { x: viewport[0] + 12, y: viewport[1] - 8 };
+  const moved = api.viewport2PathLocal3D(node, pointer)!;
+  expect(moved).not.toBeNull();
+  const projected = api.pathLocal2Viewport3D(node, moved)!;
+  expect(projected[0]).toBeCloseTo(pointer.x, 3);
+  expect(projected[1]).toBeCloseTo(pointer.y, 3);
+  setPathHandlePoint(commands, { commandIndex: 0, coordOffset: 1 }, ...moved);
+  const before = companion.read(Mesh3D).positions;
+  await world.edit(api, (editor) =>
+    editor.updateNode(node, {
+      d: toPathData(commands),
+    }),
+  );
+  expect(companion.read(Mesh3D).positions).not.toBe(before);
 });
 
 it('isolates companions across canvases', async () => {
