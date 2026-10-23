@@ -301,3 +301,99 @@ it('marquee-selects an extruded Path without selecting its flat source', async (
   expect(source.has(Selected)).toBe(false);
   await world.pointer(api, 'pointerup', endX, endY, { shiftKey: true });
 });
+
+it('round-trips editable Path anchors through the extrusion face and updates its mesh', async () => {
+  const [api] = world.apis;
+  await world.reset(api, [
+    {
+      id: 'editable-path',
+      type: 'path',
+      x: 60,
+      y: 60,
+      rotation: Math.PI / 6,
+      scaleX: 1.2,
+      scaleY: 0.8,
+      d: 'M60 60 L100 60 L100 100 L60 100 Z',
+      extrude3d: { depth: 20, z: 25 },
+      fills: [{ type: 'solid', value: '#ee9950' }],
+    },
+  ]);
+  const node = api.getNodeById('editable-path');
+  await world.edit(
+    api,
+    (editor) =>
+      editor.setCamera3D({
+        preset: 'isometric',
+        center: [100, 100, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      }),
+    'NEVER',
+  );
+  await world.frames(3);
+  const source = api.getEntity(node);
+  const mesh = source.read(Extrude3D).meshEntity!;
+  const before = mesh.read(Mesh3D).positions.slice();
+  const viewport = api.pathLocal2Viewport3D(node, [60, 60])!;
+  const local = api.viewport2PathLocal3D(node, {
+    x: viewport[0],
+    y: viewport[1],
+  })!;
+  expect(local[0]).toBeCloseTo(60, 3);
+  expect(local[1]).toBeCloseTo(60, 3);
+  const moved = api.viewport2PathLocal3D(node, {
+    x: viewport[0] + 10,
+    y: viewport[1] + 4,
+  })!;
+  await world.edit(
+    api,
+    (editor) =>
+      editor.updateNode(node, {
+        d: `M${moved[0]} ${moved[1]} L100 60 L100 100 L60 100 Z`,
+      }),
+    'NEVER',
+  );
+  await world.frames(3);
+  expect(Array.from(mesh.read(Mesh3D).positions)).not.toEqual(
+    Array.from(before),
+  );
+  const projected = api.pathLocal2Viewport3D(
+    api.getNodeById('editable-path'),
+    moved,
+  )!;
+  expect(projected[0]).toBeCloseTo(viewport[0] + 10, 3);
+  expect(projected[1]).toBeCloseTo(viewport[1] + 4, 3);
+  expect(api.viewport2PathLocal3D(node, { x: 0, y: 0 })).not.toBeNull();
+  expect(
+    api.pathLocal2Viewport3D({ id: 'missing', type: 'path' }, [0, 0]),
+  ).toBeNull();
+  expect(
+    api.viewport2PathLocal3D(
+      { id: 'missing', type: 'path' },
+      {
+        x: 0,
+        y: 0,
+      },
+    ),
+  ).toBeNull();
+  await world.edit(
+    api,
+    (editor) =>
+      editor.updateNode(node, {
+        extrude3d: { depth: 20, z: 25, rotation: [0.1, 0, 0] },
+      }),
+    'NEVER',
+  );
+  expect(api.pathLocal2Viewport3D(node, [60, 60])).toBeNull();
+  expect(api.viewport2PathLocal3D(node, { x: 0, y: 0 })).toBeNull();
+  await world.edit(
+    api,
+    (editor) =>
+      editor.updateNode(node, {
+        extrude3d: { depth: 20, z: 25 },
+        scaleX: 0,
+      }),
+    'NEVER',
+  );
+  expect(api.viewport2PathLocal3D(node, { x: 0, y: 0 })).toBeNull();
+});

@@ -496,6 +496,58 @@ export class API {
     return camera3DViewportPoint(camera, point, width, height);
   }
 
+  /** Project a source Path point on the front face of its unrotated extrusion. */
+  pathLocal2Viewport3D(
+    node: SerializedNode,
+    point: readonly [number, number],
+  ): [number, number] | null {
+    const entity = this.getEntity(node);
+    if (
+      !entity?.has(Path) ||
+      !entity.has(Extrude3D) ||
+      !entity.has(GlobalTransform)
+    )
+      return null;
+    const { z, rotation } = entity.read(Extrude3D);
+    if (rotation.some((angle) => angle !== 0)) return null;
+    const { m00, m01, m10, m11, m20, m21 } =
+      entity.read(GlobalTransform).matrix;
+    return this.world3D2Viewport([
+      m00 * point[0] + m10 * point[1] + m20,
+      m01 * point[0] + m11 * point[1] + m21,
+      z,
+    ]);
+  }
+
+  /** Map a viewport pointer back to an unrotated extruded Path's local plane. */
+  viewport2PathLocal3D(
+    node: SerializedNode,
+    viewport: IPointData,
+  ): [number, number] | null {
+    const entity = this.getEntity(node);
+    if (
+      !entity?.has(Path) ||
+      !entity.has(Extrude3D) ||
+      !entity.has(GlobalTransform)
+    )
+      return null;
+    const { z, rotation } = entity.read(Extrude3D);
+    if (rotation.some((angle) => angle !== 0)) return null;
+    const { m00, m01, m10, m11, m20, m21 } =
+      entity.read(GlobalTransform).matrix;
+    const determinant = m00 * m11 - m01 * m10;
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-12)
+      return null;
+    const world = this.viewport2WorldOnPlane(viewport, z);
+    if (!world) return null;
+    const x = world[0] - m20;
+    const y = world[1] - m21;
+    return [
+      (m11 * x - m10 * y) / determinant,
+      (m00 * y - m01 * x) / determinant,
+    ];
+  }
+
   getAppState() {
     return this.stateManagement.getAppState();
   }

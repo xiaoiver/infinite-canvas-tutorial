@@ -13,7 +13,9 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 使用「选择」工具从空白处拖动可框选 3D 图形；按住 **Shift** 可以从地板或其他 Mesh 上开始框选。选框按 Mesh 投影到屏幕后的范围实时更新选择，完整包围的图形才会被选中，因此小选框不会把大块地板一并选中。
 
-选择「绘制盒子」并在画布上拖动，即可创建 3D 盒子。「编辑平面 Z」设定底面的高度，「盒子深度」设定向上延伸的厚度。四角预览始终投影在指定平面上，改变视角后也跟随指针。松手后生成可选中的 Mesh；轻点或很短的拖动不会创建图形。此示例支持直接绘制盒子，倾斜视图中编辑 SVG 路径锚点仍需后续实现。
+选择「绘制盒子」并在画布上拖动，即可创建 3D 盒子。「编辑平面 Z」设定底面的高度，「盒子深度」设定向上延伸的厚度。四角预览始终投影在指定平面上，改变视角后也跟随指针。松手后生成可选中的 Mesh；轻点或很短的拖动不会创建图形。
+
+选择「编辑 SVG 锚点」，可直接在倾斜的顶面上拖动橙色环的外轮廓或内部孔洞锚点。拖动时源 Path 与挤出 Mesh 会同步变化，空白区域仍可平移、旋转相机。当前先支持未施加 3D 旋转的 Path 挤出；旋转后的源平面及其他 SVG 图元还需要额外的平面映射。
 
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
@@ -37,4 +39,4 @@ api.setCamera3D({
 
 自定义绘制手势时，可调用 `api.viewport2WorldOnPlane({ x, y }, planeZ)` 将视口坐标投到固定 Z 平面，再用 `api.world3D2Viewport([x, y, z])` 取得覆盖层所需的视口坐标。两者使用与渲染一致的相机矩阵；若没有自由正交画布相机或输入无效，则返回 `null`。浏览器事件坐标需先经 `api.client2Viewport` 转换。
 
-SVG 源图形仍可在原有 2D 画布中编辑。倾斜视图用于预览挤出 Mesh；在该视图中直接编辑源图形的 2D 锚点仍需后续实现。
+对于挤出 Path 锚点，`api.pathLocal2Viewport3D(node, [x, y])` 将 Path 局部坐标投到前表面；`api.viewport2PathLocal3D(node, { x, y })` 与该表面求交后，应用 2D 全局变换的逆矩阵。源图形不支持、变换不可逆或挤出有 3D 旋转时返回 `null`。这两个方法同时适用于导入的 SVG Path 和普通 Path。可用 `normalizePathCommands`、`collectPathControlHandles`、`setPathHandlePoint` 和 `toPathData` 编辑 `d`；拖动中更新节点，松手时调用一次 `api.record()`。

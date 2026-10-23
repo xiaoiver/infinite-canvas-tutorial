@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import {
   Pen,
+  collectPathControlHandles,
+  normalizePathCommands,
+  setPathHandlePoint,
   svgElementsToExtrudedNodes,
+  toPathData,
   type API,
   type AxonometricPreset,
+  type PathCommand,
+  type PathControlHandleMeta,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
@@ -20,8 +26,12 @@ const distance = ref(650);
 const editPlaneZ = ref(0);
 const boxDepth = ref(48);
 const previewPoints = ref('');
+const pathHandles = ref<
+  { x: number; y: number; meta: PathControlHandleMeta; control: boolean }[]
+>([]);
 const previewBounds = ref({ left: 0, top: 0, width: 0, height: 0 });
-const tool = ref<Pen.SELECT | Pen.HAND | Pen.DRAW_BOX_3D>(Pen.SELECT);
+type Tool = Pen.SELECT | Pen.HAND | Pen.DRAW_BOX_3D | 'edit-path-3d';
+const tool = ref<Tool>(Pen.SELECT);
 let drawStart:
   | {
       pointerId: number;
@@ -31,6 +41,20 @@ let drawStart:
   | undefined;
 let api: API | undefined;
 let onReady: ((event: CustomEvent<API>) => void) | undefined;
+let pathEdit:
+  | {
+      pointerId: number;
+      meta: PathControlHandleMeta;
+      commands: PathCommand[];
+      originalD: string;
+      startViewport: [number, number];
+      moved: boolean;
+      queued: boolean;
+      finished: boolean;
+      cancelled: boolean;
+    }
+  | undefined;
+let anchorFrame = 0;
 
 function applyCamera() {
   api?.setCamera3D({
@@ -43,11 +67,137 @@ function applyCamera() {
 }
 watch([preset, height, distance], applyCamera);
 
-function setTool(next: Pen.SELECT | Pen.HAND | Pen.DRAW_BOX_3D) {
+function setTool(next: Tool) {
+  if (pathEdit) finishPathEdit(true);
   drawStart = undefined;
   previewPoints.value = '';
   tool.value = next;
-  api?.setAppState({ penbarSelected: next });
+  pathHandles.value = [];
+  api?.setAppState({
+    penbarSelected: next === 'edit-path-3d' ? Pen.HAND : next,
+  });
+  if (next === 'edit-path-3d') refreshPathHandles();
+}
+
+function ringNode() {
+  const node = api?.getNodeById('iso-ring');
+  return node?.type === 'path' && node.extrude3d ? node : undefined;
+}
+
+function refreshPathHandles() {
+  if (!api || tool.value !== 'edit-path-3d') return;
+  syncPreviewBounds();
+  const node = ringNode();
+  const commands =
+    pathEdit?.commands ?? (node ? normalizePathCommands(node.d) : []);
+  const next = node
+    ? collectPathControlHandles(commands).flatMap(({ x, y, meta }) => {
+        const point = api!.pathLocal2Viewport3D(node, [x, y]);
+        if (!point) return [];
+        const command = commands[meta.commandIndex];
+        return [
+          {
+            x: point[0],
+            y: point[1],
+            meta,
+            control:
+              command[0] === 'C'
+                ? meta.coordOffset !== 5
+                : command[0] === 'Q' && meta.coordOffset === 1,
+          },
+        ];
+      })
+    : [];
+  if (JSON.stringify(pathHandles.value) !== JSON.stringify(next))
+    pathHandles.value = next;
+}
+
+function animatePathHandles() {
+  refreshPathHandles();
+  anchorFrame = requestAnimationFrame(animatePathHandles);
+}
+
+function queuePathEdit() {
+  const edit = pathEdit;
+  const editor = api;
+  if (!edit || !editor || edit.queued) return;
+  edit.queued = true;
+  editor.runAtNextTick(() => {
+    edit.queued = false;
+    const node = editor.getNodeById('iso-ring');
+    if (node?.type !== 'path') return;
+    const d = edit.cancelled ? edit.originalD : toPathData(edit.commands);
+    if (node.d !== d) editor.updateNode(node, { d });
+    if (edit.finished && !edit.cancelled && d !== edit.originalD)
+      editor.record();
+    if (pathEdit === edit && edit.finished) pathEdit = undefined;
+  });
+}
+
+function finishPathEdit(cancelled: boolean) {
+  if (!pathEdit) return;
+  pathEdit.cancelled = cancelled;
+  pathEdit.finished = true;
+  queuePathEdit();
+}
+
+function onAnchorDown(event: PointerEvent, meta: PathControlHandleMeta) {
+  const node = ringNode();
+  const viewport = pointerViewport(event);
+  if (!node || !viewport || event.button !== 0 || !event.isPrimary || pathEdit)
+    return;
+  event.stopPropagation();
+  event.preventDefault();
+  pathEdit = {
+    pointerId: event.pointerId,
+    meta,
+    commands: normalizePathCommands(node.d),
+    originalD: node.d,
+    startViewport: viewport,
+    moved: false,
+    queued: false,
+    finished: false,
+    cancelled: false,
+  };
+  (event.currentTarget as Element).setPointerCapture(event.pointerId);
+}
+
+function onAnchorMove(event: PointerEvent) {
+  const edit = pathEdit;
+  const node = ringNode();
+  if (!edit || !node || edit.pointerId !== event.pointerId || edit.finished)
+    return;
+  event.stopPropagation();
+  const viewport = pointerViewport(event);
+  if (!viewport) return;
+  if (
+    !edit.moved &&
+    Math.hypot(
+      viewport[0] - edit.startViewport[0],
+      viewport[1] - edit.startViewport[1],
+    ) < 3
+  )
+    return;
+  edit.moved = true;
+  const point = api!.viewport2PathLocal3D(node, {
+    x: viewport[0],
+    y: viewport[1],
+  });
+  if (!point) return;
+  setPathHandlePoint(edit.commands, edit.meta, point[0], point[1]);
+  refreshPathHandles();
+  queuePathEdit();
+}
+
+function onAnchorUp(event: PointerEvent) {
+  const edit = pathEdit;
+  if (edit?.pointerId !== event.pointerId) return;
+  onAnchorMove(event);
+  finishPathEdit(!edit.moved);
+}
+
+function onAnchorCancel(event: PointerEvent) {
+  if (pathEdit?.pointerId === event.pointerId) finishPathEdit(true);
 }
 
 function pointerViewport(event: PointerEvent): [number, number] | null {
@@ -60,12 +210,19 @@ function syncPreviewBounds() {
   if (!api || !wrapper.value) return;
   const canvas = api.getCanvasElement().getBoundingClientRect();
   const host = wrapper.value.getBoundingClientRect();
-  previewBounds.value = {
+  const next = {
     left: canvas.left - host.left,
     top: canvas.top - host.top,
     width: canvas.width,
     height: canvas.height,
   };
+  const prev = previewBounds.value;
+  if (
+    (Object.keys(next) as (keyof typeof next)[]).some(
+      (key) => next[key] !== prev[key],
+    )
+  )
+    previewBounds.value = next;
 }
 
 function onPointerDown(event: PointerEvent) {
@@ -237,12 +394,16 @@ onMounted(async () => {
     api.runAtNextTick(() => {
       applyCamera();
       api?.updateNodes([...scene, ...svgNodes()]);
+      // Establish a document baseline so a single anchor drag can be undone.
+      api?.record();
     });
+    anchorFrame = requestAnimationFrame(animatePathHandles);
   };
   canvas.addEventListener(Event.READY, onReady as EventListener);
   await ensureExampleWorld();
 });
 onUnmounted(() => {
+  cancelAnimationFrame(anchorFrame);
   if (wrapper.value && onReady)
     wrapper.value.removeEventListener(Event.READY, onReady as EventListener);
   api = undefined;
@@ -263,6 +424,12 @@ onUnmounted(() => {
         @click="setTool(Pen.DRAW_BOX_3D)"
       >
         {{ props.locale === 'zh' ? '绘制盒子' : 'Draw box' }}
+      </button>
+      <button
+        :aria-pressed="tool === 'edit-path-3d'"
+        @click="setTool('edit-path-3d')"
+      >
+        {{ props.locale === 'zh' ? '编辑 SVG 锚点' : 'Edit SVG anchors' }}
       </button>
     </div>
     <label
@@ -314,8 +481,8 @@ onUnmounted(() => {
   <p class="isometric-hint">
     {{
       props.locale === 'zh'
-        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；可调整深度。选择工具可框选，Shift 可从地板开始框选。平移工具拖动视图，Shift + 拖动转动视角；滚轮缩放，双指平移或缩放。'
-        : 'Choose Draw box to drag a base on the selected Z plane; adjust its depth above. Select can marquee meshes, and Shift starts a marquee over the ground. Pan / orbit moves the view; Shift + drag orbits. Wheel zooms, and two fingers pan or pinch to zoom.'
+        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。选择工具可框选，Shift 可从地板开始框选。平移工具拖动视图，Shift + 拖动转动视角；滚轮缩放，双指平移或缩放。'
+        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Select can marquee meshes, and Shift starts a marquee over the ground. Pan / orbit moves the view; Shift + drag orbits. Wheel zooms, and two fingers pan or pinch to zoom.'
     }}
   </p>
   <div class="isometric-canvas">
@@ -339,6 +506,19 @@ onUnmounted(() => {
       }"
     >
       <polygon v-if="previewPoints" :points="previewPoints" />
+      <circle
+        v-for="handle in pathHandles"
+        :key="`${handle.meta.commandIndex}-${handle.meta.coordOffset}`"
+        class="path-anchor"
+        :class="{ control: handle.control }"
+        :cx="handle.x"
+        :cy="handle.y"
+        r="7"
+        @pointerdown="onAnchorDown($event, handle.meta)"
+        @pointermove="onAnchorMove"
+        @pointerup="onAnchorUp"
+        @pointercancel="onAnchorCancel"
+      />
     </svg>
   </div>
 </template>
@@ -390,5 +570,16 @@ onUnmounted(() => {
   fill: #43a98a66;
   stroke: #238b6d;
   stroke-width: 2;
+}
+.isometric-preview .path-anchor {
+  fill: white;
+  stroke: #db6b24;
+  stroke-width: 2;
+  pointer-events: all;
+  cursor: move;
+  touch-action: none;
+}
+.isometric-preview .path-anchor.control {
+  fill: #db6b24;
 }
 </style>
