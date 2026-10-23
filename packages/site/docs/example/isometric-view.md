@@ -11,6 +11,8 @@ Select a mesh to use its 3D gizmo. Choose **Pan / orbit** to drag the view; hold
 
 Picking follows the visible 3D depth order, so a cube in front of the ground receives the click. A mesh press takes priority over overlapping 2D source bounds, and selected object names stay screen aligned while the camera moves.
 
+With **Select**, drag from empty space to marquee-select 3D objects. Hold **Shift** to start a marquee over the ground or another mesh. The rectangle uses each mesh's projected screen bounds and updates selection while dragging. Objects must be fully enclosed, so a small marquee does not select the large ground mesh.
+
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
 </script>

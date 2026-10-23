@@ -2,19 +2,26 @@ import {
   CameraSync,
   ComputeBounds,
   ComputeCamera,
+  Extrude3D,
   EnsureExtrudeMeshes,
   EnsureMesh3DNodes,
   Last,
   Mesh3DNode,
+  Mesh3D,
+  Camera3D,
   Pick3D,
   PostUpdate,
   Select,
+  Selected,
   Selected3D,
+  Transform3D,
   SyncExtrude3D,
   SyncMesh3DNodes,
   system,
 } from '../../packages/ecs/src';
 import { createSelectionWorld } from '../helpers/ecs-selection';
+import { buildPickSceneForViewport } from '../../packages/ecs/src/utils/pick3d-probe';
+import { projectMesh3DViewportBounds } from '../../packages/ecs/src/utils/isometric-marquee';
 
 let world: Awaited<ReturnType<typeof createSelectionWorld>>;
 
@@ -99,4 +106,161 @@ it('gives a tilted 3D mesh press priority over an overlapping 2D selection', asy
   await world.pointer(api, 'pointermove', 115, 110);
   await world.pointer(api, 'pointerup', 115, 110);
   expect(api.getNodeById('flat')).toEqual(before);
+});
+
+it('marquee-selects projected meshes live without selecting the ground or flat source bounds', async () => {
+  const [api] = world.apis;
+  await world.reset(api, [
+    { id: 'flat', type: 'rect', x: 0, y: 0, width: 200, height: 200 },
+    {
+      id: 'ground',
+      type: 'mesh3d',
+      geometry: { type: 'plane' },
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 200,
+      z: -50,
+      scale3d: [200, 200, 1],
+    },
+    {
+      id: 'cube-a',
+      type: 'mesh3d',
+      geometry: { type: 'cube' },
+      x: 55,
+      y: 75,
+      width: 30,
+      height: 30,
+      scale3d: 30,
+    },
+    {
+      id: 'cube-b',
+      type: 'mesh3d',
+      geometry: { type: 'cube' },
+      x: 125,
+      y: 75,
+      width: 30,
+      height: 30,
+      scale3d: 30,
+    },
+  ]);
+  await world.edit(
+    api,
+    (editor) => {
+      editor.setCamera3D({
+        preset: 'isometric',
+        center: [100, 100, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      });
+    },
+    'NEVER',
+  );
+  await world.frames(3);
+
+  const bounds = (id: string) => {
+    const entity = api.getEntity(api.getNodeById(id)).read(Mesh3DNode)
+      .meshEntity!;
+    const scene = buildPickSceneForViewport(
+      api.getCanvas().read(Camera3D),
+      200,
+      200,
+      200,
+      200,
+    )!;
+    return projectMesh3DViewportBounds(
+      entity.read(Mesh3D).positions,
+      entity.read(Transform3D),
+      scene,
+      200,
+      200,
+    )!;
+  };
+  const first = bounds('cube-a');
+  const second = bounds('cube-b');
+  const startX = Math.floor(Math.min(first.minX, second.minX) - 3);
+  const startY = Math.floor(Math.min(first.minY, second.minY) - 3);
+  const firstEndX = Math.ceil(first.maxX + 3);
+  const firstEndY = Math.ceil(first.maxY + 3);
+  const bothEndX = Math.ceil(Math.max(first.maxX, second.maxX) + 3);
+  const bothEndY = Math.ceil(Math.max(first.maxY, second.maxY) + 3);
+  expect(startX).toBeGreaterThanOrEqual(0);
+  expect(startY).toBeGreaterThanOrEqual(0);
+  expect(bothEndX).toBeLessThanOrEqual(200);
+  expect(bothEndY).toBeLessThanOrEqual(200);
+
+  await world.pointer(api, 'pointerdown', startX, startY, { shiftKey: true });
+  await world.pointer(api, 'pointermove', firstEndX, firstEndY, {
+    shiftKey: true,
+  });
+  expect(api.getSelectedMesh3DLayerIds()).toEqual(['cube-a']);
+  expect(api.getAppState().layersSelected).toEqual(['cube-a']);
+  expect(
+    api
+      .getEntity(api.getNodeById('ground'))
+      .read(Mesh3DNode)
+      .meshEntity!.has(Selected3D),
+  ).toBe(false);
+  await world.pointer(api, 'pointermove', bothEndX, bothEndY, {
+    shiftKey: true,
+  });
+  expect(api.getSelectedMesh3DLayerIds().sort()).toEqual(['cube-a', 'cube-b']);
+  expect(api.getAppState().layersSelected).not.toContain('flat');
+  await world.pointer(api, 'pointerup', bothEndX, bothEndY, { shiftKey: true });
+  expect(api.getSelectedMesh3DLayerIds().sort()).toEqual(['cube-a', 'cube-b']);
+});
+
+it('marquee-selects an extruded Path without selecting its flat source', async () => {
+  const [api] = world.apis;
+  await world.reset(api, [
+    {
+      id: 'extruded-path',
+      type: 'path',
+      zIndex: 0,
+      x: 60,
+      y: 60,
+      d: 'M60 60 L100 60 L100 100 L60 100 Z',
+      extrude3d: { depth: 20, z: 10 },
+      fills: [{ type: 'solid', value: '#ee9950' }],
+    },
+  ]);
+  await world.edit(
+    api,
+    (editor) => {
+      editor.setCamera3D({
+        preset: 'dimetric-2-1',
+        center: [100, 100, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      });
+    },
+    'NEVER',
+  );
+  await world.frames(3);
+  const source = api.getEntity(api.getNodeById('extruded-path'));
+  const mesh = source.read(Extrude3D).meshEntity!;
+  const scene = buildPickSceneForViewport(
+    api.getCanvas().read(Camera3D),
+    200,
+    200,
+    200,
+    200,
+  )!;
+  const bounds = projectMesh3DViewportBounds(
+    mesh.read(Mesh3D).positions,
+    mesh.read(Transform3D),
+    scene,
+    200,
+    200,
+  )!;
+  const startX = Math.floor(bounds.minX - 3);
+  const startY = Math.floor(bounds.minY - 3);
+  const endX = Math.ceil(bounds.maxX + 3);
+  const endY = Math.ceil(bounds.maxY + 3);
+  await world.pointer(api, 'pointerdown', startX, startY, { shiftKey: true });
+  await world.pointer(api, 'pointermove', endX, endY, { shiftKey: true });
+  expect(api.getSelectedMesh3DLayerIds()).toEqual(['extruded-path']);
+  expect(mesh.has(Selected3D)).toBe(true);
+  expect(source.has(Selected)).toBe(false);
+  await world.pointer(api, 'pointerup', endX, endY, { shiftKey: true });
 });

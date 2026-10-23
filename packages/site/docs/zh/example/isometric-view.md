@@ -11,6 +11,8 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 拾取遵循画面中的 3D 遮挡顺序，因此立方体挡住地板时会优先选中立方体。按下 Mesh 时会优先处理 3D 命中，不会误拖动重叠的 2D 源图形；选中对象的名称会随相机移动，并始终面向屏幕。
 
+使用「选择」工具从空白处拖动可框选 3D 图形；按住 **Shift** 可以从地板或其他 Mesh 上开始框选。选框按 Mesh 投影到屏幕后的范围实时更新选择，完整包围的图形才会被选中，因此小选框不会把大块地板一并选中。
+
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
 </script>

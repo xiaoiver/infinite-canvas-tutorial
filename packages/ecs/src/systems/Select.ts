@@ -90,6 +90,11 @@ import {
 } from '../utils/pick3d-probe';
 import { isNavigableCamera3D } from '../utils/isometric-navigation';
 import {
+  containsViewportBounds,
+  projectMesh3DViewportBounds,
+  type ViewportBounds,
+} from '../utils/isometric-marquee';
+import {
   filterEntitiesForCanvas,
   findCamera2DForCanvas,
   findCamera3DForCanvas,
@@ -463,12 +468,18 @@ export class Select extends System {
     const probe = this.probePick3DAt(canvas, viewportX, viewportY);
     if (!probe || probe.kind === 'none') return false;
     if (probe.kind === 'gizmo') return true;
+    return !!this.getNavigableCamera3D(canvas);
+  }
+
+  private getNavigableCamera3D(canvas: Entity): Entity | undefined {
     const camera = findCamera3DForCanvas(
       this.cameras3D.current,
       canvas,
       this.canvases.current.length || 1,
     );
-    return !!camera && isNavigableCamera3D(camera.read(Camera3D));
+    return camera && isNavigableCamera3D(camera.read(Camera3D))
+      ? camera
+      : undefined;
   }
 
   private probePick3DAt(
@@ -2139,6 +2150,19 @@ export class Select extends System {
         // Gizmos render above the document. A handle can overlap a node's 2D
         // bounds, where reselecting that node would remove Selected3D before
         // Pick3D sees this press. Give the visible handle first refusal.
+        // Shift + drag starts a projected marquee even over a 3D ground mesh.
+        // A Shift + click still reaches Pick3D for normal point selection.
+        if (
+          input.shiftKey &&
+          this.getNavigableCamera3D(canvas) &&
+          this.probePick3DAt(canvas, x, y)?.kind !== 'gizmo'
+        ) {
+          selection.mode = SelectionMode.READY_TO_BRUSH;
+          api.selectNodes([]);
+          selection.pointerMoveViewportX = NaN;
+          selection.pointerMoveViewportY = NaN;
+          return;
+        }
         if (this.shouldSuppress2DPress(canvas, x, y)) {
           selection.mode = SelectionMode.IDLE;
           delete selection.resizePointerOffset;
@@ -2878,6 +2902,15 @@ export class Select extends System {
       const y = parseFloat(brush.getAttribute('y') || '0');
       const width = parseFloat(brush.getAttribute('width') || '0');
       const height = parseFloat(brush.getAttribute('height') || '0');
+      if (
+        this.applyProjectedBrushSelection(api, selection, {
+          minX: x,
+          minY: y,
+          maxX: x + width,
+          maxY: y + height,
+        })
+      )
+        return;
       const { x: minX, y: minY } = api.viewport2Canvas({
         x,
         y,
@@ -2904,6 +2937,82 @@ export class Select extends System {
       }
       this.saveSelectedOBB(api, selection);
     }
+  }
+
+  private applyProjectedBrushSelection(
+    api: API,
+    selection: SelectOBB,
+    marquee: ViewportBounds,
+  ): boolean {
+    const canvas = api.getCanvas();
+    const cameraEntity = this.getNavigableCamera3D(canvas);
+    if (!cameraEntity) return false;
+    const { width, height } = canvas.read(Canvas);
+    if (width <= 0 || height <= 0) return true;
+    const scene = buildPickSceneForViewport(
+      cameraEntity.read(Camera3D),
+      width,
+      height,
+      width,
+      height,
+    );
+    if (!scene) return true;
+
+    const groups = new Map<string, ViewportBounds>();
+    const meshes = filterEntitiesForCanvas(
+      this.meshes3D.current,
+      canvas,
+      this.canvases.current.length || 1,
+    );
+    for (const entity of meshes) {
+      if (entity.has(ToBeDeleted)) continue;
+      let layerEntity = entity;
+      if (entity.has(Mesh3DNodeTarget)) {
+        const source = entity.read(Mesh3DNodeTarget).source;
+        const primary = isEntityAlive(source) && source.has(Mesh3DNode)
+          ? source.read(Mesh3DNode).meshEntity
+          : undefined;
+        if (!isEntityAlive(primary)) continue;
+        layerEntity = primary;
+      } else if (entity.has(Extrude3DTarget)) {
+        const source = entity.read(Extrude3DTarget).source;
+        const primary = isEntityAlive(source) && source.has(Extrude3D)
+          ? source.read(Extrude3D).meshEntity
+          : undefined;
+        if (!isEntityAlive(primary)) continue;
+        layerEntity = primary;
+      }
+      const id = api.getMesh3DLayerIdByEntity(layerEntity);
+      if (!id) continue;
+      const bounds = projectMesh3DViewportBounds(
+        entity.read(Mesh3D).positions,
+        entity.read(Transform3D),
+        scene,
+        width,
+        height,
+      );
+      if (!bounds) continue;
+      const prev = groups.get(id);
+      groups.set(id, prev ? {
+        minX: Math.min(prev.minX, bounds.minX),
+        minY: Math.min(prev.minY, bounds.minY),
+        maxX: Math.max(prev.maxX, bounds.maxX),
+        maxY: Math.max(prev.maxY, bounds.maxY),
+      } : bounds);
+    }
+
+    const ids = [...groups]
+      .filter(([, bounds]) => containsViewportBounds(marquee, bounds))
+      .map(([id]) => id);
+    const selected = api.getSelectedMesh3DLayerIds();
+    if (
+      ids.length !== selected.length ||
+      ids.some((id) => !selected.includes(id))
+    ) {
+      api.selectMesh3DLayers(ids);
+      this.saveSelectedOBB(api, selection);
+    }
+    return true;
   }
 
   private saveSelectedOBB(api: API, selection: SelectOBB) {

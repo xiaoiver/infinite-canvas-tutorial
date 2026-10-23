@@ -96,6 +96,50 @@ it('skips idle scans and selection hover writes, while keeping held layer entiti
   expect(other.getSelectedMesh3DLayerIds()).toEqual([]);
 });
 
+it('selects multiple 3D layers together and removes stale gizmo selections', async () => {
+  await world.reset(api, [node('first'), node('second')]);
+  await world.frame();
+  await world.frame();
+  await world.edit(
+    api,
+    () => {
+      expect(
+        api.selectMesh3DLayers(['first', 'first', 'missing', 'second']),
+      ).toBe(true);
+    },
+    'NEVER',
+  );
+  expect([...api.getSelectedMesh3DLayerIds()].sort()).toEqual([
+    'first',
+    'second',
+  ]);
+  expect([...api.getAppState().layersSelected].sort()).toEqual([
+    'first',
+    'second',
+  ]);
+  expect(mesh(api, 'first').has(Selected3D)).toBe(true);
+  expect(mesh(api, 'second').has(Selected3D)).toBe(true);
+
+  await world.edit(
+    api,
+    () => {
+      expect(api.selectMesh3DLayers(['second'])).toBe(true);
+    },
+    'NEVER',
+  );
+  expect(mesh(api, 'first').has(Selected3D)).toBe(false);
+  expect(mesh(api, 'second').has(Selected3D)).toBe(true);
+  await world.edit(
+    api,
+    () => {
+      expect(api.selectMesh3DLayers([])).toBe(true);
+    },
+    'NEVER',
+  );
+  expect(mesh(api, 'second').has(Selected3D)).toBe(false);
+  expect(api.getSelectedMesh3DLayerIds()).toEqual([]);
+});
+
 it('refreshes renamed layers through undo/redo and geometry vertex counts', async () => {
   await world.edit(api, (editor) =>
     editor.updateNode(editor.getNodeById('model'), { name: 'Renamed' }),
