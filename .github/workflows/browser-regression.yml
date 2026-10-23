@@ -33,6 +33,10 @@ jobs:
   browser-tests:
     name: ${{ matrix.browser }} (${{ matrix.group }})
     runs-on: ubuntu-latest
+    # The matching Playwright image already contains browser binaries and OS
+    # libraries. Installing them via apt on every shard can exceed job timeout
+    # when the hosted runner's package mirror is slow.
+    container: mcr.microsoft.com/playwright:v1.55.1-noble
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -92,7 +96,6 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
       - name: Run browser tests
         # Let Playwright fail and flush reports before the runner kills the job.
         run: >-

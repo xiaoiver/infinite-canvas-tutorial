@@ -15,7 +15,7 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 选择「绘制盒子」并在画布上拖动，即可创建 3D 盒子。「编辑平面 Z」设定底面的高度，「盒子深度」设定向上延伸的厚度。四角预览始终投影在指定平面上，改变视角后也跟随指针。松手后生成可选中的 Mesh；轻点或很短的拖动不会创建图形。
 
-选择「编辑 SVG 锚点」，可直接在倾斜的顶面上拖动橙色环的外轮廓或内部孔洞锚点。拖动时源 Path 与挤出 Mesh 会同步变化，空白区域仍可平移、旋转相机。当前先支持未施加 3D 旋转的 Path 挤出；旋转后的源平面及其他 SVG 图元还需要额外的平面映射。
+选择「编辑 SVG 锚点」，可直接在前表面拖动橙色环的外轮廓或内部孔洞锚点。拖动时源 Path 与挤出 Mesh 会同步变化。点击「倾斜 SVG」为挤出图形添加 3D 旋转，然后仍可在旋转后的前表面拖动锚点；空白区域可平移、旋转相机。此示例中的其他 SVG 图元尚不能作为 Path 锚点编辑。
 
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
@@ -39,4 +39,4 @@ api.setCamera3D({
 
 自定义绘制手势时，可调用 `api.viewport2WorldOnPlane({ x, y }, planeZ)` 将视口坐标投到固定 Z 平面，再用 `api.world3D2Viewport([x, y, z])` 取得覆盖层所需的视口坐标。两者使用与渲染一致的相机矩阵；若没有自由正交画布相机或输入无效，则返回 `null`。浏览器事件坐标需先经 `api.client2Viewport` 转换。
 
-对于挤出 Path 锚点，`api.pathLocal2Viewport3D(node, [x, y])` 将 Path 局部坐标投到前表面；`api.viewport2PathLocal3D(node, { x, y })` 与该表面求交后，应用 2D 全局变换的逆矩阵。源图形不支持、变换不可逆或挤出有 3D 旋转时返回 `null`。这两个方法同时适用于导入的 SVG Path 和普通 Path。可用 `normalizePathCommands`、`collectPathControlHandles`、`setPathHandlePoint` 和 `toPathData` 编辑 `d`；拖动中更新节点，松手时调用一次 `api.record()`。
+对于挤出 Path 锚点，`api.pathLocal2Viewport3D(node, [x, y])` 将 Path 局部坐标投到伴随 Mesh 的前表面；`api.viewport2PathLocal3D(node, { x, y })` 使用渲染相机的射线与该表面求交，再反算包含父级剪切和 3D 旋转的源图形局部坐标。伴随 Mesh 尚未就绪、源变换不可逆或视线与表面平行时返回 `null`。这两个方法同时适用于导入的 SVG Path 和普通 Path。可用 `normalizePathCommands`、`collectPathControlHandles`、`setPathHandlePoint` 和 `toPathData` 编辑 `d`；拖动中更新节点，松手时调用一次 `api.record()`。

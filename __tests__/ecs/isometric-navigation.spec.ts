@@ -1,7 +1,9 @@
 import { Camera3D } from '../../packages/ecs/src/components';
 import { resolveMesh3DCameraConfig } from '../../packages/ecs/src/utils/mesh3d-companion';
 import {
+  camera3DPlaneHit,
   camera3DPlanePoint,
+  camera3DViewportRay,
   camera3DViewportPoint,
   isNavigableCamera3D,
   orbitCamera3D,
@@ -97,4 +99,24 @@ it('round-trips viewport corners through a specified edit plane', () => {
   }
   expect(camera3DPlanePoint(camera, [20, 20], 800, 400, NaN)).toBeNull();
   expect(camera3DViewportPoint(camera, [0, 0, Infinity], 800, 400)).toBeNull();
+});
+
+it('intersects a rotated edit plane using the rendered camera ray', () => {
+  const camera = createCamera();
+  const point: [number, number, number] = [210, 140, 35];
+  const normal: [number, number, number] = [0.3, -0.2, 1];
+  const viewport = camera3DViewportPoint(camera, point, 800, 400)!;
+  const hit = camera3DPlaneHit(camera, viewport, 800, 400, point, normal)!;
+  expectSamePoint(hit, point);
+  const ray = camera3DViewportRay(camera, viewport, 800, 400)!;
+  expect(
+    camera3DPlaneHit(camera, viewport, 800, 400, point, [
+      -ray.direction[1],
+      ray.direction[0],
+      0,
+    ]),
+  ).toBeNull();
+  expect(
+    camera3DPlaneHit(camera, viewport, 800, 400, [NaN, 0, 0], normal),
+  ).toBeNull();
 });

@@ -380,12 +380,26 @@ it('round-trips editable Path anchors through the extrusion face and updates its
     api,
     (editor) =>
       editor.updateNode(node, {
-        extrude3d: { depth: 20, z: 25, rotation: [0.1, 0, 0] },
+        extrude3d: { depth: 20, z: 25, rotation: [0.35, -0.25, 0.2] },
       }),
     'NEVER',
   );
-  expect(api.pathLocal2Viewport3D(node, [60, 60])).toBeNull();
-  expect(api.viewport2PathLocal3D(node, { x: 0, y: 0 })).toBeNull();
+  await world.frames(3);
+  const tilted = api.pathLocal2Viewport3D(node, moved)!;
+  expect(tilted).not.toBeNull();
+  const tiltedLocal = api.viewport2PathLocal3D(node, {
+    x: tilted[0],
+    y: tilted[1],
+  })!;
+  expect(tiltedLocal[0]).toBeCloseTo(moved[0], 3);
+  expect(tiltedLocal[1]).toBeCloseTo(moved[1], 3);
+  const tiltedDrag = api.viewport2PathLocal3D(node, {
+    x: tilted[0] + 8,
+    y: tilted[1] - 5,
+  })!;
+  const tiltedProjected = api.pathLocal2Viewport3D(node, tiltedDrag)!;
+  expect(tiltedProjected[0]).toBeCloseTo(tilted[0] + 8, 3);
+  expect(tiltedProjected[1]).toBeCloseTo(tilted[1] - 5, 3);
   await world.edit(
     api,
     (editor) =>

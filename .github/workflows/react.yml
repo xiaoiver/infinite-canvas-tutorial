@@ -53,6 +53,9 @@ jobs:
     name: react-${{ matrix.react }} / ${{ matrix.group.browser }} (${{ matrix.group.shard }})
     needs: checks
     runs-on: ubuntu-latest
+    # Reuse the Playwright version's browser and OS dependency image instead of
+    # downloading Ubuntu packages independently on every compatibility shard.
+    container: mcr.microsoft.com/playwright:v1.55.1-noble
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -92,7 +95,6 @@ jobs:
         with:
           name: react-build-${{ matrix.react }}
           path: packages
-      - run: pnpm exec playwright install --with-deps ${{ matrix.group.browser }}
       - name: Run browser shard
         run: >-
           pnpm exec playwright test -c ${{ matrix.group.config }}
