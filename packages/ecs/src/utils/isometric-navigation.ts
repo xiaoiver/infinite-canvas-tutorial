@@ -28,7 +28,8 @@ export function camera3DPlanePoint(
     width <= 0 ||
     height <= 0 ||
     !Number.isFinite(planeZ) ||
-    !viewport.every(Number.isFinite)
+    !Number.isFinite(viewport[0]) ||
+    !Number.isFinite(viewport[1])
   )
     return null;
   const { projMatrix, viewMatrix, reverseDepth } = buildCamera3DSceneUniforms(
@@ -72,7 +73,9 @@ export function camera3DViewportPoint(
     !Number.isFinite(height) ||
     width <= 0 ||
     height <= 0 ||
-    !point.every(Number.isFinite)
+    !Number.isFinite(point[0]) ||
+    !Number.isFinite(point[1]) ||
+    !Number.isFinite(point[2])
   )
     return null;
   const { projMatrix, viewMatrix } = buildCamera3DSceneUniforms(
