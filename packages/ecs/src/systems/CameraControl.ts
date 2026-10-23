@@ -73,6 +73,8 @@ export class CameraControl extends System {
       const camera3D = canvas.has(Camera3D) ? canvas.read(Camera3D) : undefined;
       const navigate3D = camera3D && isNavigableCamera3D(camera3D);
       const pen = api.getAppState().penbarSelected;
+      const orbit3D = pen === Pen.ORBIT_3D && navigate3D;
+      const navigationPen = pen === Pen.HAND || orbit3D;
 
       const cameraControl = entity.write(ComputedCameraControl);
 
@@ -126,10 +128,10 @@ export class CameraControl extends System {
           cameraControl.pointerDownCanvasY = wy;
         }
 
-        if (pen === Pen.HAND) {
+        if (navigationPen) {
           cursor.value = 'grabbing';
 
-          cameraControl.rotate = input.shiftKey;
+          cameraControl.rotate = !!orbit3D || input.shiftKey;
           mat3.copy(
             cameraControl.startInvertViewProjectionMatrix,
             viewProjectionMatrixInv,
@@ -167,7 +169,7 @@ export class CameraControl extends System {
           return;
         }
 
-        if (pen === Pen.HAND) {
+        if (navigationPen) {
           cursor.value = 'grabbing';
           if (navigate3D) {
             if (cameraControl.rotate) {
@@ -196,7 +198,7 @@ export class CameraControl extends System {
         (pen === Pen.SELECT && input.key === 'Escape')
       ) {
         this.releaseInputPoints(entity, canvas, cameraControl);
-        if (pen === Pen.HAND) {
+        if (navigationPen) {
           cursor.value = 'grab';
           cameraControl.rotate = false;
         }

@@ -7,6 +7,8 @@ import { API } from '../API';
 export enum Pen {
   SELECT = 'select',
   HAND = 'hand',
+  /** Orbit a free orthographic 3D camera without a keyboard modifier. */
+  ORBIT_3D = 'orbit-3d',
   DRAW_POINT = 'draw-point',
   DRAW_RECT = 'draw-rect',
   /** Plane-based 3D drawing; integrations can provide the shape gesture. */

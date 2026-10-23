@@ -102,6 +102,10 @@ const resetDerivedUpdates = () => {
 };
 const harness = {
   api: () => api,
+  camera3DState: () => {
+    const camera = api.getCanvas().read(Camera3D);
+    return { eye: [...camera.eye], center: [...camera.center] };
+  },
   projectedBounds: (id: string) => {
     const canvas = api.getCanvas();
     const { width, height } = canvas.read(Canvas);

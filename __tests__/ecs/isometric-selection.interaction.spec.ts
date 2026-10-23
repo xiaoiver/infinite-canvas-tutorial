@@ -9,6 +9,7 @@ import {
   Mesh3DNode,
   Mesh3D,
   Camera3D,
+  Pen,
   Pick3D,
   PostUpdate,
   Select,
@@ -53,6 +54,65 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await world?.dispose();
+});
+
+it('orbits with a touch drag in orbit mode and pans in hand mode', async () => {
+  const [api] = world.apis;
+  await world.reset(api, []);
+  await world.edit(
+    api,
+    (editor) => {
+      editor.setCamera3D({
+        preset: 'isometric',
+        center: [100, 100, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      });
+      editor.setAppState({ penbarSelected: Pen.ORBIT_3D });
+    },
+    'NEVER',
+  );
+  const camera = () => api.getCanvas().read(Camera3D);
+  const originalCenter = Array.from(camera().center);
+  const originalEye = Array.from(camera().eye);
+  const originalDistance = Math.hypot(
+    ...originalEye.map((value, index) => value - originalCenter[index]),
+  );
+  await world.pointer(api, 'pointerdown', 100, 100, { pointerType: 'touch' });
+  await world.pointer(api, 'pointermove', 125, 110, { pointerType: 'touch' });
+  await world.pointer(api, 'pointerup', 125, 110, { pointerType: 'touch' });
+  expect(Array.from(camera().center)).toEqual(originalCenter);
+  expect(Array.from(camera().eye)).not.toEqual(originalEye);
+  expect(
+    Math.hypot(
+      ...camera().eye.map((value, index) => value - camera().center[index]),
+    ),
+  ).toBeCloseTo(originalDistance, 3);
+
+  await world.edit(
+    api,
+    (editor) => editor.setAppState({ penbarSelected: Pen.HAND }),
+    'NEVER',
+  );
+  const orbitEye = Array.from(camera().eye);
+  await world.pointer(api, 'pointerdown', 100, 100, { pointerType: 'touch' });
+  await world.pointer(api, 'pointermove', 125, 110, { pointerType: 'touch' });
+  await world.pointer(api, 'pointerup', 125, 110, { pointerType: 'touch' });
+  expect(Array.from(camera().center)).not.toEqual(originalCenter);
+  for (let axis = 0; axis < 3; axis++) {
+    expect(camera().eye[axis] - camera().center[axis]).toBeCloseTo(
+      orbitEye[axis] - originalCenter[axis],
+      6,
+    );
+  }
+  await world.edit(
+    api,
+    (editor) => {
+      editor.setCamera3D({ linked: true, projection: 'orthographic' });
+      editor.setAppState({ penbarSelected: Pen.SELECT });
+    },
+    'NEVER',
+  );
 });
 
 it('projects a viewport drag onto a canvas-owned edit plane and back', async () => {
