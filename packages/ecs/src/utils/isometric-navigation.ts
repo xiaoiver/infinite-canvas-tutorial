@@ -1,4 +1,4 @@
-import { mat4 } from 'gl-matrix';
+import { mat4, vec4 } from 'gl-matrix';
 import type { Camera3D } from '../components';
 import { buildCamera3DSceneUniforms } from './mesh3d-scene';
 import { screenToRay } from './ray-casting';
@@ -22,7 +22,16 @@ export function camera3DPlanePoint(
   height: number,
   planeZ = 0,
 ): [number, number, number] | null {
-  if (width <= 0 || height <= 0) return null;
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    !Number.isFinite(planeZ) ||
+    !Number.isFinite(viewport[0]) ||
+    !Number.isFinite(viewport[1])
+  )
+    return null;
   const { projMatrix, viewMatrix, reverseDepth } = buildCamera3DSceneUniforms(
     camera,
     width / height,
@@ -44,12 +53,44 @@ export function camera3DPlanePoint(
   );
   if (Math.abs(ray.direction[2]) < 1e-6) return null;
   const t = (planeZ - ray.origin[2]) / ray.direction[2];
-  if (!Number.isFinite(t)) return null;
+  if (!Number.isFinite(t) || t < 0) return null;
   return [
     ray.origin[0] + ray.direction[0] * t,
     ray.origin[1] + ray.direction[1] * t,
     planeZ,
   ];
+}
+
+/** Project a world point with the same matrix used by the free 3D render pass. */
+export function camera3DViewportPoint(
+  camera: Camera3D,
+  point: readonly [number, number, number],
+  width: number,
+  height: number,
+): [number, number] | null {
+  if (
+    !Number.isFinite(width) ||
+    !Number.isFinite(height) ||
+    width <= 0 ||
+    height <= 0 ||
+    !Number.isFinite(point[0]) ||
+    !Number.isFinite(point[1]) ||
+    !Number.isFinite(point[2])
+  )
+    return null;
+  const { projMatrix, viewMatrix } = buildCamera3DSceneUniforms(
+    camera,
+    width / height,
+  );
+  const clip = vec4.fromValues(...point, 1);
+  vec4.transformMat4(clip, clip, viewMatrix.toFloat32Array());
+  vec4.transformMat4(clip, clip, projMatrix.toFloat32Array());
+  if (clip[3] <= 1e-8) return null;
+  const projected: [number, number] = [
+    ((clip[0] / clip[3] + 1) * width) / 2,
+    ((1 - clip[1] / clip[3]) * height) / 2,
+  ];
+  return projected.every(Number.isFinite) ? projected : null;
 }
 
 /** Keep the ground point under the pointer while panning the camera. */

@@ -9,6 +9,8 @@ export enum Pen {
   HAND = 'hand',
   DRAW_POINT = 'draw-point',
   DRAW_RECT = 'draw-rect',
+  /** Plane-based 3D drawing; integrations can provide the shape gesture. */
+  DRAW_BOX_3D = 'draw-box-3d',
   DRAW_TRIANGLE = 'draw-triangle',
   DRAW_PENTAGON = 'draw-pentagon',
   DRAW_HEXAGON = 'draw-hexagon',

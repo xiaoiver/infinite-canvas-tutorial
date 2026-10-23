@@ -55,6 +55,43 @@ afterAll(async () => {
   await world?.dispose();
 });
 
+it('projects a viewport drag onto a canvas-owned edit plane and back', async () => {
+  const [api] = world.apis;
+  await world.reset(api, []);
+  expect(api.viewport2WorldOnPlane({ x: 100, y: 100 })).toBeNull();
+  expect(api.world3D2Viewport([100, 100, 0])).toBeNull();
+  await world.edit(
+    api,
+    (editor) =>
+      editor.setCamera3D({
+        preset: 'isometric',
+        center: [100, 100, 0],
+        distance: 500,
+        orthographicHeight: 200,
+      }),
+    'NEVER',
+  );
+  const start = api.viewport2WorldOnPlane({ x: 70, y: 90 }, 20);
+  const end = api.viewport2WorldOnPlane({ x: 140, y: 145 }, 20);
+  expect(start).not.toBeNull();
+  expect(end).not.toBeNull();
+  expect(start![2]).toBe(20);
+  expect(end![2]).toBe(20);
+  const projected = api.world3D2Viewport(end!);
+  expect(projected![0]).toBeCloseTo(140, 3);
+  expect(projected![1]).toBeCloseTo(145, 3);
+  expect(api.viewport2WorldOnPlane({ x: 0, y: 0 }, Infinity)).toBeNull();
+  expect(api.world3D2Viewport([NaN, 0, 0])).toBeNull();
+  await world.edit(
+    api,
+    (editor) =>
+      editor.setCamera3D({ linked: true, projection: 'orthographic' }),
+    'NEVER',
+  );
+  expect(api.viewport2WorldOnPlane({ x: 100, y: 100 })).toBeNull();
+  expect(api.world3D2Viewport([100, 100, 0])).toBeNull();
+});
+
 it('gives a tilted 3D mesh press priority over an overlapping 2D selection', async () => {
   const [api] = world.apis;
   await world.reset(api, [

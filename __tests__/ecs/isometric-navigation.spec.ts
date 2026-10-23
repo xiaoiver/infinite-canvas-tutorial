@@ -2,6 +2,7 @@ import { Camera3D } from '../../packages/ecs/src/components';
 import { resolveMesh3DCameraConfig } from '../../packages/ecs/src/utils/mesh3d-companion';
 import {
   camera3DPlanePoint,
+  camera3DViewportPoint,
   isNavigableCamera3D,
   orbitCamera3D,
   panCamera3D,
@@ -76,4 +77,24 @@ it('only enables navigation for a free orthographic camera with explicit height'
   expect(
     isNavigableCamera3D(new Camera3D({ projection: 'orthographic' })),
   ).toBe(false);
+});
+
+it('round-trips viewport corners through a specified edit plane', () => {
+  const camera = createCamera();
+  for (const planeZ of [-25, 0, 80]) {
+    for (const pointer of [
+      [0, 0],
+      [345, 198],
+      [799, 399],
+    ] as const) {
+      const world = camera3DPlanePoint(camera, pointer, 800, 400, planeZ);
+      expect(world).not.toBeNull();
+      expect(world![2]).toBe(planeZ);
+      const projected = camera3DViewportPoint(camera, world!, 800, 400);
+      expect(projected![0]).toBeCloseTo(pointer[0], 3);
+      expect(projected![1]).toBeCloseTo(pointer[1], 3);
+    }
+  }
+  expect(camera3DPlanePoint(camera, [20, 20], 800, 400, NaN)).toBeNull();
+  expect(camera3DViewportPoint(camera, [0, 0, Infinity], 800, 400)).toBeNull();
 });

@@ -17,7 +17,18 @@ const wrapper = ref<HTMLElement | null>(null);
 const preset = ref<AxonometricPreset>('isometric');
 const height = ref(380);
 const distance = ref(650);
-const tool = ref<Pen.SELECT | Pen.HAND>(Pen.SELECT);
+const editPlaneZ = ref(0);
+const boxDepth = ref(48);
+const previewPoints = ref('');
+const previewBounds = ref({ left: 0, top: 0, width: 0, height: 0 });
+const tool = ref<Pen.SELECT | Pen.HAND | Pen.DRAW_BOX_3D>(Pen.SELECT);
+let drawStart:
+  | {
+      pointerId: number;
+      world: [number, number, number];
+      viewport: [number, number];
+    }
+  | undefined;
 let api: API | undefined;
 let onReady: ((event: CustomEvent<API>) => void) | undefined;
 
@@ -32,9 +43,131 @@ function applyCamera() {
 }
 watch([preset, height, distance], applyCamera);
 
-function setTool(next: Pen.SELECT | Pen.HAND) {
+function setTool(next: Pen.SELECT | Pen.HAND | Pen.DRAW_BOX_3D) {
+  drawStart = undefined;
+  previewPoints.value = '';
   tool.value = next;
   api?.setAppState({ penbarSelected: next });
+}
+
+function pointerViewport(event: PointerEvent): [number, number] | null {
+  if (!api) return null;
+  const point = api.client2Viewport({ x: event.clientX, y: event.clientY });
+  return [point.x, point.y];
+}
+
+function syncPreviewBounds() {
+  if (!api || !wrapper.value) return;
+  const canvas = api.getCanvasElement().getBoundingClientRect();
+  const host = wrapper.value.getBoundingClientRect();
+  previewBounds.value = {
+    left: canvas.left - host.left,
+    top: canvas.top - host.top,
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+function onPointerDown(event: PointerEvent) {
+  if (
+    tool.value !== Pen.DRAW_BOX_3D ||
+    !api ||
+    event.button !== 0 ||
+    !event.isPrimary
+  )
+    return;
+  const viewport = pointerViewport(event);
+  if (!viewport) return;
+  const world = api.viewport2WorldOnPlane(
+    { x: viewport[0], y: viewport[1] },
+    editPlaneZ.value,
+  );
+  if (!world) return;
+  syncPreviewBounds();
+  drawStart = { pointerId: event.pointerId, world, viewport };
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  event.preventDefault();
+}
+
+function drawGeometry(event: PointerEvent) {
+  if (!api || !drawStart || event.pointerId !== drawStart.pointerId)
+    return null;
+  syncPreviewBounds();
+  const viewport = pointerViewport(event);
+  if (!viewport) return null;
+  const end = api.viewport2WorldOnPlane(
+    { x: viewport[0], y: viewport[1] },
+    editPlaneZ.value,
+  );
+  if (!end) return null;
+  const [startX, startY, z] = drawStart.world;
+  const x = Math.min(startX, end[0]);
+  const y = Math.min(startY, end[1]);
+  const width = Math.abs(end[0] - startX);
+  const height = Math.abs(end[1] - startY);
+  const corners: [number, number, number][] = [
+    [x, y, z],
+    [x + width, y, z],
+    [x + width, y + height, z],
+    [x, y + height, z],
+  ];
+  const projected = corners.map((point) => api!.world3D2Viewport(point));
+  previewPoints.value = projected.every(Boolean)
+    ? projected.map((point) => point!.join(',')).join(' ')
+    : '';
+  return { x, y, width, height, viewport };
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (tool.value === Pen.DRAW_BOX_3D) drawGeometry(event);
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (!drawStart || event.pointerId !== drawStart.pointerId) return;
+  const geometry = drawGeometry(event);
+  const start = drawStart;
+  drawStart = undefined;
+  previewPoints.value = '';
+  if (!geometry || !api || tool.value !== Pen.DRAW_BOX_3D) return;
+  const { x, y, width, height, viewport } = geometry;
+  if (
+    Math.hypot(
+      viewport[0] - start.viewport[0],
+      viewport[1] - start.viewport[1],
+    ) < 8 ||
+    width < 2 ||
+    height < 2
+  )
+    return;
+  const depth = boxDepth.value;
+  if (!Number.isFinite(depth) || depth <= 0) return;
+  const node: SerializedNode = {
+    id: crypto.randomUUID(),
+    name: 'Drawn box',
+    type: 'mesh3d',
+    geometry: { type: 'cube' },
+    x,
+    y,
+    width,
+    height,
+    z: start.world[2] + depth / 2,
+    scale3d: [width, height, depth],
+    material3d: { baseColor: '#43a98a', roughness: 0.8, castShadow: true },
+  };
+  const editor = api;
+  setTool(Pen.SELECT);
+  editor.runAtNextTick(() => {
+    editor.updateNode(node);
+    editor.selectNodes([node]);
+    editor.record();
+  });
+}
+
+function onPointerCancel(event: PointerEvent) {
+  if (drawStart?.pointerId === event.pointerId) {
+    drawStart = undefined;
+    previewPoints.value = '';
+  }
 }
 
 const scene: SerializedNode[] = [
@@ -96,7 +229,7 @@ onMounted(async () => {
     api = event.detail;
     api.setAppState({
       penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.SELECT, Pen.HAND],
+      penbarAll: [Pen.SELECT, Pen.HAND, Pen.DRAW_BOX_3D],
       penbarVisible: false,
       penbarNameLabelVisible: true,
       taskbarVisible: false,
@@ -124,6 +257,12 @@ onUnmounted(() => {
       </button>
       <button :aria-pressed="tool === Pen.HAND" @click="setTool(Pen.HAND)">
         {{ props.locale === 'zh' ? '平移 / 旋转' : 'Pan / orbit' }}
+      </button>
+      <button
+        :aria-pressed="tool === Pen.DRAW_BOX_3D"
+        @click="setTool(Pen.DRAW_BOX_3D)"
+      >
+        {{ props.locale === 'zh' ? '绘制盒子' : 'Draw box' }}
       </button>
     </div>
     <label
@@ -163,15 +302,45 @@ onUnmounted(() => {
       />
       {{ distance }}
     </label>
+    <label
+      >{{ props.locale === 'zh' ? '编辑平面 Z' : 'Edit plane Z' }}
+      <input v-model.number="editPlaneZ" type="number" step="10" />
+    </label>
+    <label
+      >{{ props.locale === 'zh' ? '盒子深度' : 'Box depth' }}
+      <input v-model.number="boxDepth" type="number" min="1" step="10" />
+    </label>
   </div>
   <p class="isometric-hint">
     {{
       props.locale === 'zh'
-        ? '使用“选择”从空白处拖动可框选图形；按住 Shift 可从地板开始框选。使用“平移 / 旋转”拖动画布；按住 Shift 拖动可转动视角。滚轮缩放，Shift + 滚轮平移；双指可平移与缩放。'
-        : 'With Select, drag from empty space to marquee-select meshes, or hold Shift to start over the ground. With Pan / orbit, drag to move the view or hold Shift to orbit. Wheel zooms, Shift + wheel pans, and two fingers pan or pinch to zoom.'
+        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；可调整深度。选择工具可框选，Shift 可从地板开始框选。平移工具拖动视图，Shift + 拖动转动视角；滚轮缩放，双指平移或缩放。'
+        : 'Choose Draw box to drag a base on the selected Z plane; adjust its depth above. Select can marquee meshes, and Shift starts a marquee over the ground. Pan / orbit moves the view; Shift + drag orbits. Wheel zooms, and two fingers pan or pinch to zoom.'
     }}
   </p>
-  <ic-spectrum-canvas ref="wrapper" style="width: 100%; height: 400px" />
+  <div class="isometric-canvas">
+    <ic-spectrum-canvas
+      ref="wrapper"
+      style="width: 100%; height: 400px"
+      :class="{ 'drawing-box': tool === Pen.DRAW_BOX_3D }"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerCancel"
+    />
+    <svg
+      class="isometric-preview"
+      aria-hidden="true"
+      :style="{
+        left: `${previewBounds.left}px`,
+        top: `${previewBounds.top}px`,
+        width: `${previewBounds.width}px`,
+        height: `${previewBounds.height}px`,
+      }"
+    >
+      <polygon v-if="previewPoints" :points="previewPoints" />
+    </svg>
+  </div>
 </template>
 
 <style scoped>
@@ -202,5 +371,24 @@ onUnmounted(() => {
 .isometric-hint {
   margin: 0 0 0.75rem;
   font-size: 0.9em;
+}
+.isometric-canvas {
+  position: relative;
+}
+.isometric-canvas ic-spectrum-canvas {
+  display: block;
+}
+.drawing-box {
+  cursor: crosshair;
+  touch-action: none;
+}
+.isometric-preview {
+  position: absolute;
+  pointer-events: none;
+}
+.isometric-preview polygon {
+  fill: #43a98a66;
+  stroke: #238b6d;
+  stroke-width: 2;
 }
 </style>
