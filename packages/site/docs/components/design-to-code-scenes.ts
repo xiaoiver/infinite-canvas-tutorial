@@ -8,7 +8,9 @@ import type {
 export interface InterfaceScene {
   id: string;
   title: string;
+  titleZh: string;
   description: string;
+  descriptionZh: string;
   componentName: string;
   nodes: SerializedNode[];
   variables: DesignVariablesMap;
@@ -303,8 +305,10 @@ function dashboard(): InterfaceScene {
   return {
     id: 'dashboard',
     title: 'Analytics dashboard',
+    titleZh: '运营数据面板',
     description:
       'A SaaS workspace with navigation, KPIs, a revenue chart and recent activity.',
+    descriptionZh: '包含导航、关键指标、营收图表和最近动态的 SaaS 工作台。',
     componentName: 'AnalyticsDashboard',
     nodes,
     variables: dashboardVariables,
@@ -512,8 +516,10 @@ function pricing(): InterfaceScene {
   return {
     id: 'pricing',
     title: 'Pricing page',
+    titleZh: '订阅定价页',
     description:
       'A product pricing page with navigation, a hero and three plan cards.',
+    descriptionZh: '包含导航、主视觉和三种订阅方案卡片的产品定价页。',
     componentName: 'PricingPage',
     nodes,
     variables: pricingVariables,

@@ -110,7 +110,7 @@ function downloadCode() {
             notice = '';
           "
         >
-          {{ item.title }}
+          {{ locale === 'zh' ? item.titleZh : item.title }}
         </button>
       </div>
       <div
@@ -137,7 +137,9 @@ function downloadCode() {
       </div>
     </div>
 
-    <p class="interface-demo-description">{{ scene.description }}</p>
+    <p class="interface-demo-description">
+      {{ locale === 'zh' ? scene.descriptionZh : scene.description }}
+    </p>
     <div
       ref="preview"
       class="interface-demo-preview"
