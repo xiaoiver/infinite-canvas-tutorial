@@ -50,6 +50,7 @@
 -   [#534](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/534) 提供触屏可用的独立视角旋转工具。
 -   [#541](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/541) 将多选 Mesh/挤出图形的 Gizmo 合并为选区中心的一个手柄，平移和旋转使用同一撤销步骤。本轮补充共同旋转以及拖动时切换选区的回归；多选缩放尚未实现。
 -   触摸与触控笔验收覆盖文档中的共用 Gizmo 和 SVG 锚点：移动 Chromium 使用可信触摸/触控笔手势，移动 WebKit 使用原生触摸点击与触摸指针事件拖动。SVG 锚点层阻止页面触摸手势抢占拖动；iOS Safari 真机仍需验收。
+-   阶段 C 首轮加入可关闭的 3D 锚定标注：立方体标签取实时 Mesh 中心，挤出 SVG 标签取可编辑 Path 顶点。随相机和轮廓变化更新，屏幕外标注隐藏。标注位于 SVG 覆盖层，不参与深度遮挡；轮廓线、平面色阶和 WebGL 效果仍待实现。
 -   当前以固定的等距/二轴测场景验证 Mesh 与挤出 Path 的可见性、光照/阴影和相机变化时的网格上传。阶段 B 完成后，再推进阶段 C 的可选轮廓、标注与效果示例。
 
 ## 测试与性能门槛

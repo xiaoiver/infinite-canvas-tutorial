@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
+  Mesh3DNode,
   Pen,
+  Transform3D,
   canExtrudePath,
   collectPathControlHandles,
   normalizePathCommands,
@@ -32,6 +34,16 @@ const pathHandles = ref<
   { x: number; y: number; meta: PathControlHandleMeta; control: boolean }[]
 >([]);
 const previewBounds = ref({ left: 0, top: 0, width: 0, height: 0 });
+const showCallouts = ref(false);
+type Callout = {
+  id: string;
+  title: string;
+  anchorX: number;
+  anchorY: number;
+  labelX: number;
+  labelY: number;
+};
+const callouts = ref<Callout[]>([]);
 type Tool =
   | Pen.SELECT
   | Pen.HAND
@@ -143,7 +155,66 @@ function animatePathHandles() {
     typeof extrude === 'object' &&
     !!extrude.rotation?.some((angle) => angle !== 0);
   refreshPathHandles();
+  if (showCallouts.value) refreshCallouts();
   anchorFrame = requestAnimationFrame(animatePathHandles);
+}
+
+function refreshCallouts() {
+  if (!api) return;
+  syncPreviewBounds();
+  const { width, height } = previewBounds.value;
+  const cube = api.getNodeById('iso-cube');
+  const cubeEntity = cube && api.getEntity(cube);
+  const mesh = cubeEntity?.has(Mesh3DNode)
+    ? cubeEntity.read(Mesh3DNode).meshEntity
+    : undefined;
+  const cubePosition = mesh?.has(Transform3D)
+    ? mesh.read(Transform3D).translation
+    : undefined;
+  const cubeAnchor = cubePosition && api.world3D2Viewport(cubePosition);
+  const ring = ringNode();
+  const firstVertex =
+    ring && collectPathControlHandles(normalizePathCommands(ring.d))[0];
+  const ringAnchor =
+    ring && firstVertex
+      ? api.pathLocal2Viewport3D(ring, [firstVertex.x, firstVertex.y])
+      : null;
+  const next: Callout[] = [];
+  for (const [id, title, point, side] of [
+    [
+      'cube',
+      props.locale === 'zh' ? '立方体 Mesh' : 'Cube mesh',
+      cubeAnchor,
+      'right',
+    ],
+    [
+      'ring',
+      props.locale === 'zh' ? '挤出 SVG' : 'Extruded SVG',
+      ringAnchor,
+      'left',
+    ],
+  ] as const) {
+    if (!point || !point.every(Number.isFinite)) continue;
+    const [anchorX, anchorY] = point;
+    if (anchorX < 0 || anchorX > width || anchorY < 0 || anchorY > height)
+      continue;
+    next.push({
+      id,
+      title,
+      anchorX,
+      anchorY,
+      labelX: Math.max(
+        4,
+        Math.min(width - 144, anchorX + (side === 'right' ? 20 : -164)),
+      ),
+      labelY: Math.max(
+        4,
+        Math.min(height - 40, anchorY + (side === 'right' ? -54 : 18)),
+      ),
+    });
+  }
+  if (JSON.stringify(callouts.value) !== JSON.stringify(next))
+    callouts.value = next;
 }
 
 function queuePathEdit() {
@@ -484,6 +555,12 @@ onUnmounted(() => {
       <button :aria-pressed="ringTilted" @click="toggleRingTilt">
         {{ props.locale === 'zh' ? '倾斜 SVG' : 'Tilt SVG' }}
       </button>
+      <button
+        :aria-pressed="showCallouts"
+        @click="showCallouts = !showCallouts"
+      >
+        {{ props.locale === 'zh' ? '显示标注' : 'Show callouts' }}
+      </button>
     </div>
     <label
       >{{ props.locale === 'zh' ? '视角' : 'View' }}
@@ -573,6 +650,41 @@ onUnmounted(() => {
         @pointerdown="onAnchorDown($event, handle.meta)"
       />
     </svg>
+    <svg
+      v-if="showCallouts"
+      class="isometric-callouts"
+      aria-hidden="true"
+      :style="{
+        left: `${previewBounds.left}px`,
+        top: `${previewBounds.top}px`,
+        width: `${previewBounds.width}px`,
+        height: `${previewBounds.height}px`,
+      }"
+    >
+      <g
+        v-for="callout in callouts"
+        :key="callout.id"
+        :data-callout="callout.id"
+      >
+        <line
+          :x1="callout.anchorX"
+          :y1="callout.anchorY"
+          :x2="callout.labelX + (callout.id === 'cube' ? 0 : 140)"
+          :y2="callout.labelY + 19"
+        />
+        <circle :cx="callout.anchorX" :cy="callout.anchorY" r="4" />
+        <rect
+          :x="callout.labelX"
+          :y="callout.labelY"
+          width="140"
+          height="38"
+          rx="7"
+        />
+        <text :x="callout.labelX + 12" :y="callout.labelY + 24">
+          {{ callout.title }}
+        </text>
+      </g>
+    </svg>
   </div>
 </template>
 
@@ -636,5 +748,29 @@ onUnmounted(() => {
 }
 .isometric-preview .path-anchor.control {
   fill: #db6b24;
+}
+.isometric-callouts {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+}
+.isometric-callouts line {
+  stroke: var(--vp-c-brand-1);
+  stroke-width: 1.5;
+}
+.isometric-callouts circle {
+  fill: var(--vp-c-brand-1);
+  stroke: var(--vp-c-bg);
+  stroke-width: 2;
+}
+.isometric-callouts rect {
+  fill: var(--vp-c-bg);
+  stroke: var(--vp-c-brand-1);
+  stroke-width: 1;
+}
+.isometric-callouts text {
+  fill: var(--vp-c-text-1);
+  font-size: 13px;
+  font-weight: 600;
 }
 </style>

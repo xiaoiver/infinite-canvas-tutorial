@@ -17,6 +17,8 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 选择「编辑 SVG 锚点」，可直接在前表面拖动橙色环的外轮廓或内部孔洞锚点。拖动时源 Path 与挤出 Mesh 会同步变化。点击「倾斜 SVG」为挤出图形添加 3D 旋转，然后仍可在旋转后的前表面拖动锚点；空白区域可平移、旋转相机。此示例中的其他 SVG 图元尚不能作为 Path 锚点编辑。
 
+开启「显示标注」可以为立方体和挤出 SVG 显示引导线与屏幕朝向的标签。锚点来自实时 3D Mesh 或 Path 顶点，因此标注会跟随视角、Mesh 变换及 SVG 锚点编辑；锚点移出视口后会隐藏。编辑时可关闭标注。这一层使用 DOM/SVG 覆盖，不参与 3D 深度遮挡。
+
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
 </script>

@@ -17,6 +17,8 @@ Choose **Draw box** and drag on the canvas to place a 3D box. **Edit plane Z** s
 
 Choose **Edit SVG anchors** to drag the orange ring's outer vertices or the inner hole's vertices directly on its front face. The source Path and its extruded mesh update together as you drag. Click **Tilt SVG** to rotate the extrusion in 3D, then drag the same anchors on the rotated face. The camera can still pan and orbit from the background. Other imported SVG primitives are not editable as Path anchors in this example.
 
+Turn on **Show callouts** to label the cube and the extruded SVG. Each screen-facing label has a leader anchored to the live 3D mesh or Path vertex. It follows camera movement, mesh transforms, and SVG anchor edits; labels for anchors outside the viewport are hidden. Turn the overlay off when editing without annotations. These are DOM/SVG overlays and do not participate in 3D depth testing.
+
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
 </script>

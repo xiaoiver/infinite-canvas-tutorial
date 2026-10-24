@@ -78,6 +78,11 @@ const probe = {
     cube: api!.getNodeById('iso-cube').x,
     ring: api!.getNodeById('iso-ring').x,
   }),
+  moveCube: async (deltaX: number) => {
+    const cube = api!.getNodeById('iso-cube');
+    api!.updateNode(cube, { x: cube.x + deltaX });
+    await settleECSFrames(api!, 3);
+  },
   groupXHandle: () => {
     const editor = api!;
     const cube = editor
