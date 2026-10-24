@@ -35,6 +35,9 @@ import {
 import { beginGizmoPointerGesture } from './pick3d/gizmo-pointer';
 import { isEntityAlive } from './Transform';
 import { GizmoSession } from './pick3d/gizmo-session';
+import { GizmoGroupSession } from './pick3d/gizmo-group-session';
+import { groupGizmoPose } from '../utils/gizmo-group';
+import { copyGizmoPose } from './pick3d/gizmo-gesture';
 import { gizmoViewKey } from './pick3d/gizmo-context';
 import type { API } from '../API';
 import {
@@ -79,7 +82,7 @@ export class Pick3D extends System {
   ].map((type) =>
     this.query((q) => q.addedOrChanged.and.removed.with(type).trackWrites),
   );
-  private readonly sessions = new Map<API, GizmoSession>();
+  private readonly sessions = new Map<API, GizmoSession | GizmoGroupSession>();
   private cameras3D = this.query((q) => q.current.with(Camera3D).read);
   private cameras2D = this.query(
     (q) => q.current.with(Camera, ComputedCamera).read,
@@ -378,8 +381,16 @@ export class Pick3D extends System {
     );
 
     if (probe.kind === 'gizmo') {
+      const group =
+        scopedSelected.length > 1
+          ? groupGizmoPose(
+              scopedSelected.map((entity) =>
+                copyGizmoPose(entity.read(Transform3D)),
+              ),
+            )
+          : undefined;
       const gesture = beginGizmoPointerGesture(
-        probe.entity.read(Transform3D),
+        group ?? probe.entity.read(Transform3D),
         probe.axis,
         probe.partKind,
         probe.frame,
@@ -390,24 +401,36 @@ export class Pick3D extends System {
         const cameraEntity = this.resolveCamera3D(canvasEntity)!.entity.hold();
         const viewKey = gizmoViewKey(pickScene, width, height);
         const canvas = canvasEntity.hold();
+        const viewIsCurrent = () => {
+          if (!isEntityAlive(canvas) || !canvas.has(Canvas)) return false;
+          const current = this.resolveCamera3D(canvas);
+          if (!current || !current.entity.isSame(cameraEntity)) return false;
+          const size = this.getViewportSize(canvas);
+          const scene = this.buildPickScene(
+            current.entity.read(Camera3D),
+            size.width,
+            size.height,
+            canvas,
+          );
+          return (
+            !!scene && gizmoViewKey(scene, size.width, size.height) === viewKey
+          );
+        };
         this.sessions.set(
           api,
-          new GizmoSession(probe.entity.hold(), gesture, api, () => {
-            if (!isEntityAlive(canvas) || !canvas.has(Canvas)) return false;
-            const current = this.resolveCamera3D(canvas);
-            if (!current || !current.entity.isSame(cameraEntity)) return false;
-            const size = this.getViewportSize(canvas);
-            const scene = this.buildPickScene(
-              current.entity.read(Camera3D),
-              size.width,
-              size.height,
-              canvas,
-            );
-            return (
-              !!scene &&
-              gizmoViewKey(scene, size.width, size.height) === viewKey
-            );
-          }),
+          group
+            ? new GizmoGroupSession(
+                scopedSelected.map((entity) => entity.hold()),
+                gesture,
+                api,
+                viewIsCurrent,
+              )
+            : new GizmoSession(
+                probe.entity.hold(),
+                gesture,
+                api,
+                viewIsCurrent,
+              ),
         );
         set3DGizmoDragging(api, true);
       }

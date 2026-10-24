@@ -9,6 +9,7 @@ import {
 } from '../../packages/ecs/src/components';
 import { RenderGizmo3D } from '../../packages/ecs/src/systems/RenderGizmo3D';
 import { fakeGizmoGPU } from './helpers/gizmo-gpu';
+import { getGizmoMeshParts } from '../../packages/ecs/src/utils/gizmo-interaction';
 
 // Test ownership with real resources/cache and controlled query snapshots. Real
 // schedule/access masks and rendered pixels are covered by browser gizmo tests.
@@ -54,7 +55,10 @@ function fixture(count = 1) {
     const selectedValues = new Map<any, any>([
       [Canvas3DScope, { canvas }],
       [Selected3D, { activeAxis: 'none', activePartKind: null }],
-      [Transform3D, { translation: [0, 0, 0], rotation: [0, 0, 0] }],
+      [
+        Transform3D,
+        { translation: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      ],
     ]);
     const selected = entity(selectedValues, id);
     const camera = entity(
@@ -102,6 +106,36 @@ it('isolates canvas resources and releases them before their GPU owners', () => 
     const disposed = gpu.releases.filter((entry) => entry.startsWith('buffer'));
     expect(disposed).toHaveLength(gpu.buffers.length);
   }
+});
+
+it('draws one centered gizmo for a multi-selection', () => {
+  const {
+    queries,
+    slots: [slot],
+    draw,
+  } = fixture();
+  const transform = slot.selectedValues.get(Transform3D);
+  transform.translation = [0, 0, 0];
+  const values = new Map<any, any>([
+    [Canvas3DScope, { canvas: slot.canvas }],
+    [Selected3D, { activeAxis: 'none', activePartKind: null }],
+    [
+      Transform3D,
+      { translation: [40, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    ],
+  ]);
+  const second = {
+    __id: 99,
+    has: (type: any) => values.has(type),
+    read: (type: any) => values.get(type),
+  } as Entity;
+  queries.selected3D.current.push(second);
+  draw();
+  expect(slot.gpu.draws).toHaveLength(getGizmoMeshParts().length);
+  const uniform =
+    slot.gpu.mocks.createProgram.mock.results[0].value.setUniformsLegacy.mock
+      .calls[0][0];
+  expect(uniform.u_ModelMatrix3D[12]).toBeCloseTo(20);
 });
 
 it.each(['renderCache', 'scope', 'device'] as const)(
