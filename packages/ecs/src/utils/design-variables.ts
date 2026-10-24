@@ -314,7 +314,10 @@ export function buildDesignVariableRefreshPatch(
 
 export function isDesignVariableReference(value: unknown): value is string {
   return (
-    typeof value === 'string' && /^\$[A-Za-z_-][A-Za-z0-9_.-]*$/.test(value)
+    typeof value === 'string' &&
+    value.startsWith('$') &&
+    value.length > 1 &&
+    !/^\$[-+]?\d/.test(value)
   );
 }
 

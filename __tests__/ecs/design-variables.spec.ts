@@ -15,6 +15,7 @@ describe('design variables', () => {
   it('detects $ references', () => {
     expect(isDesignVariableReference('$color.bg')).toBe(true);
     expect(isDesignVariableReference('$--primary')).toBe(true);
+    expect(isDesignVariableReference('$brand/primary')).toBe(true);
     expect(isDesignVariableReference('$')).toBe(false);
     expect(isDesignVariableReference('red')).toBe(false);
     expect(isDesignVariableReference('$48,295')).toBe(false);
