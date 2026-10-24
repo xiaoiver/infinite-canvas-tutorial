@@ -54,6 +54,12 @@ WebKit suite uses an iPhone profile and native touchscreen taps; drag tests use
 DOM PointerEvents because Playwright does not expose native WebKit touch drags.
 Physical iOS Safari still requires a device check.
 
+The isometric documentation component has mobile Chromium tests for trusted
+touch and pen drags of SVG anchors and the shared 3D gizmo. Mobile WebKit
+checks native touch activation and the touch PointerEvent drag path. The SVG
+overlay uses `touch-action: none` so page scrolling cannot cancel an anchor
+gesture. Physical iOS Safari remains a separate device check.
+
 Object-snapping regressions cover independent grid/object switches, one-pixel
 movement and release, references off the grid, zoom-independent CSS-pixel
 thresholds, equal spacing, hidden references, nested groups and rotated parents.
