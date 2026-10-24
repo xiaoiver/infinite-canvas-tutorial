@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import type { Highlighter } from 'shiki';
 import {
   Pen,
   downloadIcDocument,
@@ -18,6 +19,7 @@ const canvasElement = ref<HTMLElement | null>(null);
 const sceneId = ref(interfaceScenes[0].id);
 const framework = ref<CodeFramework>('html-css');
 const code = ref('');
+const highlightedCode = ref('');
 const ready = ref(false);
 const notice = ref('');
 const scene = computed(
@@ -28,6 +30,22 @@ let api: API | undefined;
 let disposeSubscription: (() => void) | undefined;
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 let onReady: ((event: CustomEvent<API>) => void) | undefined;
+let highlighterPromise: Promise<Highlighter> | undefined;
+
+function getHighlighter() {
+  highlighterPromise ??= import('shiki/bundle/web')
+    .then(({ createHighlighter }) =>
+      createHighlighter({
+        themes: ['github-light', 'github-dark'],
+        langs: ['html', 'tsx'],
+      }),
+    )
+    .catch((error) => {
+      highlighterPromise = undefined;
+      throw error;
+    });
+  return highlighterPromise;
+}
 
 function fitCamera() {
   if (!api || !canvasElement.value) return;
@@ -152,6 +170,24 @@ function downloadDesign() {
 }
 
 watch(framework, refreshCode);
+watch([code, framework], async ([source, format], _previous, onCleanup) => {
+  let cancelled = false;
+  onCleanup(() => {
+    cancelled = true;
+  });
+  highlightedCode.value = '';
+  if (!source) return;
+  try {
+    const highlighter = await getHighlighter();
+    const html = highlighter.codeToHtml(source, {
+      lang: format === 'html-css' ? 'html' : 'tsx',
+      themes: { light: 'github-light', dark: 'github-dark' },
+    });
+    if (!cancelled) highlightedCode.value = html;
+  } catch {
+    // Keep the generated code readable if highlighting cannot load.
+  }
+});
 
 onMounted(async () => {
   const canvas = canvasElement.value;
@@ -261,7 +297,10 @@ onUnmounted(() => {
     <p v-if="notice" class="interface-demo-notice" role="status">
       {{ notice }}
     </p>
-    <pre class="interface-demo-code"><code>{{ code }}</code></pre>
+    <div class="interface-demo-code">
+      <div v-if="highlightedCode" v-html="highlightedCode" />
+      <pre v-else><code>{{ code }}</code></pre>
+    </div>
   </div>
 </template>
 
@@ -329,5 +368,18 @@ onUnmounted(() => {
   padding: 16px;
   border-radius: 0;
   font-size: 12px;
+  background: var(--vp-code-block-bg);
+}
+.interface-demo-code :deep(pre) {
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  font-size: inherit;
+}
+:global(.dark .interface-demo-code .shiki) {
+  color: var(--shiki-dark) !important;
+}
+:global(.dark .interface-demo-code .shiki span) {
+  color: var(--shiki-dark) !important;
 }
 </style>
