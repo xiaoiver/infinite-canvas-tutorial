@@ -111,7 +111,7 @@
     "use-stick-to-bottom": "^1.1.2",
     "y-indexeddb": "^9.0.12",
     "yjs": "^13.6.20",
-    "zod": "^4.3.6"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
