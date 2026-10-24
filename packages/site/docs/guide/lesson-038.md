@@ -382,11 +382,11 @@ export function Design() {
 
 ### Practical interface examples {#practical-interface-examples}
 
-The following examples use two actual `.ic` style scene graphs: an analytics dashboard and a SaaS pricing page. Both include nested flex layouts and semantic color variables. Switch between designs and export targets to inspect the generated source. The preview renders the **generated HTML/CSS**, so it tests the same output you download rather than a separate mockup.
+The following examples load an analytics dashboard and a SaaS pricing page into the **IC editor canvas**. Both scenes include nested flex layouts and semantic color variables. Select and edit nodes on the canvas, then refresh, copy, or download code generated from the canvas's current document with `API.exportCode`. Switch designs to load another editable scene.
 
 <DesignToCodeInterfaces />
 
-Download the HTML file and open it directly in a browser. For React, put the downloaded `.tsx` in a project with Tailwind CSS and render its exported `AnalyticsDashboard` or `PricingPage` component. The generator currently emits presentation markup; wire navigation, actions and live data to your application logic after export. Fixed widths in these examples are intentional for comparing the two outputs; adapt the generated layout for your responsive breakpoints.
+Download the `.ic` file to continue editing the design in the [online app](https://app.infinitecanvas.cc/) via **Import from… > .ic**. Download the HTML file and open it directly in a browser. For React, put the downloaded `.tsx` in a project with Tailwind CSS and render its exported `AnalyticsDashboard` or `PricingPage` component. The generator currently emits presentation markup; wire navigation, actions and live data to your application logic after export. Fixed widths in these examples are intentional for comparing the two outputs; adapt the generated layout for your responsive breakpoints.
 
 ### Reverse: code → design {#design-to-code-reverse}
 

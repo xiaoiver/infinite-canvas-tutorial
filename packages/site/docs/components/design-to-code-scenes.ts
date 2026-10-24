@@ -328,7 +328,7 @@ function pricing(): InterfaceScene {
   box('pricing-page', undefined, {
     name: 'Orbit pricing page',
     width: 1050,
-    height: 720,
+    height: 820,
     padding: 32,
     gap: 60,
     fills: [{ type: 'solid', value: '$color.background' }],

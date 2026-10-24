@@ -1,34 +1,46 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import {
-  serializedNodesToCode,
+  Pen,
+  downloadIcDocument,
+  type API,
   type CodeFramework,
 } from '@infinite-canvas-tutorial/ecs';
+import { Event } from '@infinite-canvas-tutorial/webcomponents';
+import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { interfaceScenes } from './design-to-code-scenes';
 
 const props = withDefaults(defineProps<{ locale?: 'en' | 'zh' }>(), {
   locale: 'en',
 });
 
+const canvasElement = ref<HTMLElement | null>(null);
 const sceneId = ref(interfaceScenes[0].id);
 const framework = ref<CodeFramework>('html-css');
+const code = ref('');
+const ready = ref(false);
 const notice = ref('');
-const preview = ref<HTMLElement | null>(null);
-const previewScale = ref(1);
-let resizeObserver: ResizeObserver | undefined;
 const scene = computed(
   () => interfaceScenes.find((item) => item.id === sceneId.value)!,
 );
 
-onMounted(() => {
-  if (!preview.value) return;
-  resizeObserver = new ResizeObserver(([entry]) => {
-    previewScale.value = Math.min(1, entry.contentRect.width / 1050);
-  });
-  resizeObserver.observe(preview.value);
-});
+let api: API | undefined;
+let disposeSubscription: (() => void) | undefined;
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+let onReady: ((event: CustomEvent<API>) => void) | undefined;
 
-onUnmounted(() => resizeObserver?.disconnect());
+function fitCamera() {
+  if (!api || !canvasElement.value) return;
+  const zoom = Math.min(
+    0.52,
+    Math.max(0.2, (canvasElement.value.clientWidth - 128) / 1050),
+  );
+  api.setAppState({
+    cameraZoom: zoom,
+    cameraX: -64 / zoom,
+    cameraY: -64 / zoom,
+  });
+}
 
 function htmlDocument(fragment: string) {
   return `<!doctype html>
@@ -44,31 +56,72 @@ ${fragment}</body>
 </html>`;
 }
 
-const html = computed(() =>
-  htmlDocument(
-    serializedNodesToCode(scene.value.nodes, {
-      framework: 'html-css',
-      variablesMode: 'css-var',
-      variables: scene.value.variables,
-    }),
-  ),
-);
-
-const code = computed(() =>
-  framework.value === 'html-css'
-    ? html.value
-    : serializedNodesToCode(scene.value.nodes, {
-        framework: 'react-tailwind',
-        variablesMode: 'resolved',
-        componentStructure: 'preserve',
-        componentName: scene.value.componentName,
-        variables: scene.value.variables,
+function generateCode() {
+  if (!api) return '';
+  if (framework.value === 'html-css') {
+    return htmlDocument(
+      api.exportCode(undefined, {
+        framework: 'html-css',
+        variablesMode: 'css-var',
       }),
-);
+    );
+  }
+  return api.exportCode(undefined, {
+    framework: 'react-tailwind',
+    variablesMode: 'resolved',
+    componentStructure: 'preserve',
+    componentName: scene.value.componentName,
+  });
+}
+
+function refreshCode() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = undefined;
+  code.value = generateCode();
+}
+
+function scheduleCodeRefresh() {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(refreshCode, 250);
+}
+
+async function loadScene(id: string) {
+  if (!api) return;
+  const next = interfaceScenes.find((item) => item.id === id);
+  if (!next) return;
+  sceneId.value = id;
+  ready.value = false;
+  code.value = '';
+  try {
+    await api.edit(
+      (editor) => {
+        editor.setAppState(
+          {
+            variables: next.variables,
+            penbarSelected: Pen.SELECT,
+            penbarAll: [Pen.HAND, Pen.SELECT],
+            topbarVisible: true,
+          },
+          { replaceVariables: true },
+        );
+        editor.replaceDocument(next.nodes, 'remote');
+      },
+      { capture: 'NEVER' },
+    );
+    fitCamera();
+    refreshCode();
+    ready.value = true;
+    notice.value = '';
+  } catch (error) {
+    notice.value = error instanceof Error ? error.message : String(error);
+  }
+}
 
 async function copyCode() {
+  const current = generateCode();
+  code.value = current;
   try {
-    await navigator.clipboard.writeText(code.value);
+    await navigator.clipboard.writeText(current);
     notice.value = props.locale === 'zh' ? '已复制代码' : 'Code copied';
   } catch {
     notice.value =
@@ -79,16 +132,51 @@ async function copyCode() {
 }
 
 function downloadCode() {
+  const current = generateCode();
+  code.value = current;
   const extension = framework.value === 'html-css' ? 'html' : 'tsx';
-  const url = URL.createObjectURL(
-    new Blob([code.value], { type: 'text/plain' }),
-  );
+  const url = URL.createObjectURL(new Blob([current], { type: 'text/plain' }));
   const link = document.createElement('a');
   link.href = url;
   link.download = `${scene.value.id}.${extension}`;
   link.click();
   URL.revokeObjectURL(url);
 }
+
+function downloadDesign() {
+  if (!api) return;
+  downloadIcDocument(
+    api.exportIcDocument(window.location.origin),
+    `${scene.value.id}.ic`,
+  );
+}
+
+watch(framework, refreshCode);
+
+onMounted(async () => {
+  const canvas = canvasElement.value;
+  if (!canvas) return;
+  onReady = (event) => {
+    api = event.detail;
+    disposeSubscription = api.subscribe((_snapshot, changes) => {
+      if (changes.nodesChanged || changes.appStateChanged)
+        scheduleCodeRefresh();
+    });
+    void loadScene(sceneId.value);
+  };
+  canvas.addEventListener(Event.READY, onReady);
+  canvas.addEventListener(Event.RESIZED, fitCamera);
+  await ensureExampleWorld();
+});
+
+onUnmounted(() => {
+  const canvas = canvasElement.value;
+  if (canvas && onReady) canvas.removeEventListener(Event.READY, onReady);
+  canvas?.removeEventListener(Event.RESIZED, fitCamera);
+  if (refreshTimer) clearTimeout(refreshTimer);
+  disposeSubscription?.();
+  api = undefined;
+});
 </script>
 
 <template>
@@ -105,10 +193,7 @@ function downloadCode() {
           type="button"
           :aria-pressed="sceneId === item.id"
           :class="{ active: sceneId === item.id }"
-          @click="
-            sceneId = item.id;
-            notice = '';
-          "
+          @click="loadScene(item.id)"
         >
           {{ locale === 'zh' ? item.titleZh : item.title }}
         </button>
@@ -140,31 +225,36 @@ function downloadCode() {
     <p class="interface-demo-description">
       {{ locale === 'zh' ? scene.descriptionZh : scene.description }}
     </p>
-    <div
-      ref="preview"
-      class="interface-demo-preview"
-      :style="{ height: `${720 * previewScale}px` }"
-      :aria-label="
-        locale === 'zh' ? '生成的界面预览' : 'Generated interface preview'
-      "
-    >
-      <iframe
-        :title="scene.title"
-        :srcdoc="html"
-        sandbox=""
-        loading="lazy"
-        :style="{ transform: `scale(${previewScale})` }"
+    <div class="interface-demo-canvas">
+      <ic-spectrum-canvas
+        ref="canvasElement"
+        style="width: 100%; height: 560px"
+        renderer="webgl"
+        app-state='{"topbarVisible":true,"cameraZoom":0.52,"cameraX":-123,"cameraY":-123}'
       />
     </div>
 
     <div class="interface-demo-codebar">
-      <strong>{{ locale === 'zh' ? '生成的代码' : 'Generated code' }}</strong>
+      <strong>{{
+        locale === 'zh'
+          ? '从当前画布生成的代码'
+          : 'Code from the current canvas'
+      }}</strong>
       <div>
-        <button type="button" @click="copyCode">
+        <button type="button" :disabled="!ready" @click="loadScene(sceneId)">
+          {{ locale === 'zh' ? '重置画布' : 'Reset canvas' }}
+        </button>
+        <button type="button" :disabled="!ready" @click="refreshCode">
+          {{ locale === 'zh' ? '更新代码' : 'Refresh code' }}
+        </button>
+        <button type="button" :disabled="!ready" @click="copyCode">
           {{ locale === 'zh' ? '复制' : 'Copy' }}
         </button>
-        <button type="button" @click="downloadCode">
+        <button type="button" :disabled="!ready" @click="downloadCode">
           {{ locale === 'zh' ? '下载' : 'Download' }}
+        </button>
+        <button type="button" :disabled="!ready" @click="downloadDesign">
+          {{ locale === 'zh' ? '下载 .ic' : 'Download .ic' }}
         </button>
       </div>
     </div>
@@ -210,23 +300,19 @@ function downloadCode() {
   background: #4f5ee9;
   border-color: #4f5ee9;
 }
+.interface-demo button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
 .interface-demo-description {
   margin: 0;
   padding: 0 16px 12px;
   color: var(--vp-c-text-2);
   font-size: 13px;
 }
-.interface-demo-preview {
-  overflow: hidden;
+.interface-demo-canvas {
   background: #f4f6fb;
   border-block: 1px solid var(--vp-c-divider);
-}
-.interface-demo-preview iframe {
-  display: block;
-  width: 1050px;
-  height: 720px;
-  border: 0;
-  transform-origin: top left;
 }
 .interface-demo-codebar {
   padding-block: 10px;
