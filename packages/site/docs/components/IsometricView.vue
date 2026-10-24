@@ -224,9 +224,9 @@ function onAnchorMove(event: PointerEvent) {
   const candidate = { ...node, d };
   // A transient invalid contour removes the companion mesh and its edit plane.
   // Keep the last valid shape so the next pointer move can still be projected.
-  const scene = api!.getNodes().map((item) =>
-    item.id === candidate.id ? candidate : item,
-  );
+  const scene = api!
+    .getNodes()
+    .map((item) => (item.id === candidate.id ? candidate : item));
   if (!canExtrudePath(candidate, scene)) return;
   edit.commands = commands;
   refreshPathHandles();
@@ -607,6 +607,7 @@ onUnmounted(() => {
 }
 .isometric-canvas {
   position: relative;
+  touch-action: none;
 }
 .isometric-canvas ic-spectrum-canvas {
   display: block;
@@ -618,6 +619,7 @@ onUnmounted(() => {
 .isometric-preview {
   position: absolute;
   pointer-events: none;
+  touch-action: none;
 }
 .isometric-preview polygon {
   fill: #43a98a66;
