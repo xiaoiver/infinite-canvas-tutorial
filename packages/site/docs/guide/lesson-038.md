@@ -7,6 +7,7 @@ description: 'Design tokens, variables, themes, componentized generation, and ic
 import IconLucide from '../components/IconLucide.vue'
 import IconButton from '../components/IconButton.vue'
 import ComponentsInstances from '../components/ComponentsInstances.vue'
+import DesignToCodeInterfaces from '../components/DesignToCodeInterfaces.vue'
 </script>
 
 # Lesson 38 - From design to code
@@ -378,6 +379,14 @@ export function Design() {
 ```
 
 `componentStructure: 'flatten'` is the fallback: it expands every instance via `expandRefSerializedNodes` into concrete DOM with no component definitions. The HTML/CSS emitter always flattens, since HTML has no component concept.
+
+### Practical interface examples {#practical-interface-examples}
+
+The following examples use two actual `.ic` style scene graphs: an analytics dashboard and a SaaS pricing page. Both include nested flex layouts and semantic color variables. Switch between designs and export targets to inspect the generated source. The preview renders the **generated HTML/CSS**, so it tests the same output you download rather than a separate mockup.
+
+<DesignToCodeInterfaces />
+
+Download the HTML file and open it directly in a browser. For React, put the downloaded `.tsx` in a project with Tailwind CSS and render its exported `AnalyticsDashboard` or `PricingPage` component. The generator currently emits presentation markup; wire navigation, actions and live data to your application logic after export. Fixed widths in these examples are intentional for comparing the two outputs; adapt the generated layout for your responsive breakpoints.
 
 ### Reverse: code → design {#design-to-code-reverse}
 

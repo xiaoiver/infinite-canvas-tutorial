@@ -14,8 +14,12 @@ import {
 describe('design variables', () => {
   it('detects $ references', () => {
     expect(isDesignVariableReference('$color.bg')).toBe(true);
+    expect(isDesignVariableReference('$--primary')).toBe(true);
+    expect(isDesignVariableReference('$brand/primary')).toBe(true);
     expect(isDesignVariableReference('$')).toBe(false);
     expect(isDesignVariableReference('red')).toBe(false);
+    expect(isDesignVariableReference('$48,295')).toBe(false);
+    expect(isDesignVariableReference('$29')).toBe(false);
   });
 
   it('resolves color and number tokens', () => {
@@ -92,18 +96,10 @@ describe('design variables', () => {
       },
     };
     expect(
-      resolveDesignVariableValue(
-        '$--primary',
-        variables,
-        ThemeMode.LIGHT,
-      ),
+      resolveDesignVariableValue('$--primary', variables, ThemeMode.LIGHT),
     ).toBe('#AAAAAA');
     expect(
-      resolveDesignVariableValue(
-        '$--primary',
-        variables,
-        ThemeMode.DARK,
-      ),
+      resolveDesignVariableValue('$--primary', variables, ThemeMode.DARK),
     ).toBe('#FF8400');
   });
 

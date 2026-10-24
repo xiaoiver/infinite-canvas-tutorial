@@ -110,9 +110,7 @@ export function pickThemedValueFromVariableEntries(
     top.sort((a, b) => a.i - b.i);
     return top[top.length - 1].e.value;
   }
-  const d = entries.find(
-    (e) => !e.theme || Object.keys(e.theme).length === 0,
-  );
+  const d = entries.find((e) => !e.theme || Object.keys(e.theme).length === 0);
   return (d ?? entries[0]).value;
 }
 
@@ -223,9 +221,10 @@ export function coerceDesignVariableType(
 /**
  * 同时取 Light / Dark 下解析结果（Pencil 式双列编辑）。
  */
-export function getDesignVariableLightDarkValues(
-  def: DesignVariable,
-): { light: string | number; dark: string | number } {
+export function getDesignVariableLightDarkValues(def: DesignVariable): {
+  light: string | number;
+  dark: string | number;
+} {
   return {
     light: resolveDesignVariableDefinitionScalar(def, ThemeMode.LIGHT),
     dark: resolveDesignVariableDefinitionScalar(def, ThemeMode.DARK),
@@ -244,8 +243,14 @@ export function setDesignVariableLightDarkColumn(
   return {
     ...def,
     value: [
-      { value: mode === ThemeMode.LIGHT ? newValue : light, theme: { Mode: 'Light' } },
-      { value: mode === ThemeMode.DARK ? newValue : dark, theme: { Mode: 'Dark' } },
+      {
+        value: mode === ThemeMode.LIGHT ? newValue : light,
+        theme: { Mode: 'Light' },
+      },
+      {
+        value: mode === ThemeMode.DARK ? newValue : dark,
+        theme: { Mode: 'Dark' },
+      },
     ],
   };
 }
@@ -308,7 +313,12 @@ export function buildDesignVariableRefreshPatch(
 }
 
 export function isDesignVariableReference(value: unknown): value is string {
-  return typeof value === 'string' && value.startsWith('$') && value.length > 1;
+  return (
+    typeof value === 'string' &&
+    value.startsWith('$') &&
+    value.length > 1 &&
+    !/^\$[-+]?\d/.test(value)
+  );
 }
 
 /** 从 `$token` 或字面量得到变量键名；非变量引用时返回空串 */
@@ -404,7 +414,9 @@ function mapPaintStackToCssVarPlaceholders(stack: unknown): {
       layerChanged = true;
     }
     if (typeof L.opacity === 'string' && isDesignVariableReference(L.opacity)) {
-      L.opacity = `var(${designTokenKeyToCssCustomProperty(L.opacity.slice(1))})`;
+      L.opacity = `var(${designTokenKeyToCssCustomProperty(
+        L.opacity.slice(1),
+      )})`;
       layerChanged = true;
     }
     if (layerChanged) {
@@ -533,7 +545,10 @@ export function resolveDesignVariableNumber(
   fallback: number,
 ): number {
   const resolved = resolveDesignVariableValue(value, variables, themeMode);
-  const number = typeof resolved === 'number' ? resolved : parseFloat(String(resolved ?? ''));
+  const number =
+    typeof resolved === 'number'
+      ? resolved
+      : parseFloat(String(resolved ?? ''));
   return Number.isFinite(number) ? number : fallback;
 }
 
