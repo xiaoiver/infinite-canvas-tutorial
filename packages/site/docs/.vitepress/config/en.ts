@@ -593,6 +593,7 @@ export const en = defineConfig({
           { text: 'Use vello', link: 'vello' },
           { text: 'Mermaid watercolor', link: 'mermaid-watercolor' },
           { text: 'Radiance cascades', link: 'radiance-cascades' },
+          { text: 'WebMCP', link: 'webmcp' },
         ],
       },
     },
