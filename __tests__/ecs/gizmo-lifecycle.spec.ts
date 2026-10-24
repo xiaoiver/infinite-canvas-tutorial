@@ -114,6 +114,41 @@ it('drags the X arrow and commits the release position to document/history', asy
   expect(api.getNodeById('model').x).toBeCloseTo(80);
 });
 
+it('drags one shared gizmo for two selected meshes and undoes both together', async () => {
+  await world.reset(api, [node(), { ...node(), id: 'other', x: 100 }]);
+  await world.frames(3);
+  expect(api.getMesh3DLayers().map((layer) => layer.id).sort()).toEqual([
+    'model',
+    'other',
+  ]);
+  await world.edit(
+    api,
+    (editor) => editor.selectMesh3DLayers(['model', 'other']),
+    'NEVER',
+  );
+  await world.frames(3);
+  api.clearHistory();
+  const other = api
+    .getEntity(api.getNodeById('other'))
+    .read(Mesh3DNode).meshEntity!;
+  expect(api.getSelectedMesh3DLayerIds().sort()).toEqual(['model', 'other']);
+  expect(mesh().has(Selected3D)).toBe(true);
+  expect(other.has(Selected3D)).toBe(true);
+  await world.pointer(api, 'pointerdown', 145, 80);
+  expect(mesh().read(Selected3D).dragging).toBe(true);
+  expect(other.read(Selected3D).dragging).toBe(true);
+  await world.pointer(api, 'pointermove', 155, 80);
+  await world.pointer(api, 'pointerup', 165, 80);
+  const first = api.getNodeById('model');
+  const second = api.getNodeById('other');
+  expect(first.x).toBeGreaterThan(60);
+  expect(second.x! - 100).toBeCloseTo(first.x! - 60);
+  await world.history(api, 'undo');
+  await world.frames();
+  expect(api.getNodeById('model').x).toBe(60);
+  expect(api.getNodeById('other').x).toBe(100);
+});
+
 it('cancels a Y-arrow preview without changing the document', async () => {
   await world.pointer(api, 'pointerdown', 80, 125);
   expect(mesh().read(Selected3D).dragging).toBe(true);
