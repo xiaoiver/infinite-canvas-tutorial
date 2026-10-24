@@ -1750,6 +1750,9 @@ importers:
       react-dom:
         specifier: 19.2.3
         version: 19.2.3(react@19.2.3)
+      shiki:
+        specifier: ^3.21.0
+        version: 3.21.0
       stats.js:
         specifier: ^0.17.0
         version: 0.17.0
