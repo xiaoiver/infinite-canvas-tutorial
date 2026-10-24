@@ -209,14 +209,16 @@ const harness = {
       return createBuffer(descriptor);
     };
   },
-  geometryUploads: () => {
-    const entity = api.getEntity(api.getNodeById('model'));
-    const mesh = (
-      entity.has(Extrude3D)
-        ? entity.read(Extrude3D).meshEntity!
-        : entity.read(Mesh3DNode).meshEntity!
-    ).read(Mesh3D);
-    const arrays = [mesh.positions, mesh.normals, mesh.uvs, mesh.indices];
+  geometryUploads: (ids: string[] = ['model']) => {
+    const arrays = ids.flatMap((id) => {
+      const entity = api.getEntity(api.getNodeById(id));
+      const mesh = (
+        entity.has(Extrude3D)
+          ? entity.read(Extrude3D).meshEntity!
+          : entity.read(Mesh3DNode).meshEntity!
+      ).read(Mesh3D);
+      return [mesh.positions, mesh.normals, mesh.uvs, mesh.indices];
+    });
     return uploads.filter((data) => arrays.includes(data as Float32Array))
       .length;
   },
