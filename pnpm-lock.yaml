@@ -45,7 +45,6 @@ overrides:
   shell-quote@<1.11.0: ^1.11.0
   linkify-it@<5.0.2: ^5.0.2
   body-parser@>=2 <2.4.0: ^2.4.0
-  zod: ^4.6.6
   vite: ^6.4.4
   '@babel/core@<7.29.6': ^7.29.6
   ws@>=8 <8.21.0: ^8.21.0
@@ -1738,7 +1737,7 @@ importers:
         version: 1.7.4(@vueuse/core@12.8.2(typescript@5.9.3))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vue@3.5.42(typescript@5.9.3))
       openai:
         specifier: ^4.8.0
-        version: 4.86.1(encoding@0.1.13)(ws@8.21.3)(zod@4.6.7)
+        version: 4.86.1(encoding@0.1.13)(ws@8.21.3)(zod@3.25.76)
       opentype.js:
         specifier: ^1.3.4
         version: 1.3.4
@@ -1999,37 +1998,37 @@ packages:
     resolution: {integrity: sha512-KUb9KGtzq/O5iaX6oO0OnehnCDmHr9R70mOGw6+xztpbK7MlXeNfFrc/vxlmzo59CrlAQj7PCmylS/Pao9H2Eg==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/gateway@3.0.25':
     resolution: {integrity: sha512-j0AQeA7hOVqwImykQlganf/Euj3uEXf0h3G0O4qKTDpEwE+EZGIPnVimCWht5W91lAetPZSfavDyvfpuPDd2PQ==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/gateway@3.0.36':
     resolution: {integrity: sha512-2r1Q6azvqMYxQ1hqfWZmWg4+8MajoldD/ty65XdhCaCoBfvDu7trcvxXDfTSU+3/wZ1JIDky46SWYFOHnTbsBw==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/google@3.0.20':
     resolution: {integrity: sha512-bVGsulEr6JiipAFlclo9bjL5WaUV0iCSiiekLt+PY6pwmtJeuU2GaD9DoE3OqR8LN2W779mU13IhVEzlTupf8g==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/openai@3.0.25':
     resolution: {integrity: sha512-DsaN46R98+D1W3lU3fKuPU3ofacboLaHlkAwxJPgJ8eup1AJHmPK1N1y10eJJbJcF6iby8Tf/vanoZxc9JPUfw==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/provider-utils@4.0.52':
     resolution: {integrity: sha512-cUimyIz1jjwYoF9n6HO7sU+UBW7Nu3T4lW7562yRvEhM9/8JqlW4cecxSpkiafjRzAphZG2NfJ3/Ch5cHoCIhg==}
     engines: {node: '>=18.17'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   '@ai-sdk/provider@3.0.16':
     resolution: {integrity: sha512-9Av6kg0t/IN/dcYAAmEJ4B9OPhcEJqwSR+GfHEA8olRkindXpUHadc3p3cyvgFUQFTVm1G5thtsmgZ9yVb2w3A==}
@@ -3528,7 +3527,7 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@cfworker/json-schema': ^4.1.1
-      zod: ^4.6.6
+      zod: ^3.25 || ^4.0
     peerDependenciesMeta:
       '@cfworker/json-schema':
         optional: true
@@ -6408,13 +6407,13 @@ packages:
     resolution: {integrity: sha512-5wYcMQmOaNU71wGv4XX1db3zvn4uLjLbTKIo6cQZPWOJElA0882XI7Eawx6TCd5jbjOvKMIP+KLWbpVomAFT2g==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   ai@6.0.73:
     resolution: {integrity: sha512-p2/ICXIjAM4+bIFHEkAB+l58zq+aTmxAkotsb6doNt/CEms72zt6gxv2ky1fQDwU4ecMOcmMh78VJUSEKECzlg==}
     engines: {node: '>=18'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.76 || ^4.1.8
 
   ajv-formats@3.0.1:
     resolution: {integrity: sha512-8iUql50EUR+uUcdRQ3HDqa6EVyo3docL8g5WJ3FNcWmu62IbkGUue/pEyLBW8VGKKucTPgqeks4fIU1DA4yowQ==}
@@ -10283,7 +10282,7 @@ packages:
     hasBin: true
     peerDependencies:
       ws: ^8.21.0
-      zod: ^4.6.6
+      zod: ^3.23.8
     peerDependenciesMeta:
       ws:
         optional: true
@@ -12309,13 +12308,16 @@ packages:
   zod-to-json-schema@3.25.1:
     resolution: {integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25 || ^4
 
   zod-validation-error@4.0.2:
     resolution: {integrity: sha512-Q6/nZLe6jxuU80qb/4uJ4t5v2VEZ44lzQjPDhYJNztRQ4wyWc6VF3D3Kb/fAuPetZQnhS3hnajCf9CsWesghLQ==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
-      zod: ^4.6.6
+      zod: ^3.25.0 || ^4.0.0
+
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
@@ -14262,7 +14264,7 @@ snapshots:
     dependencies:
       '@chevrotain/types': 11.1.2
 
-  '@modelcontextprotocol/sdk@1.32.1(zod@4.6.7)':
+  '@modelcontextprotocol/sdk@1.32.1(zod@3.25.76)':
     dependencies:
       '@hono/node-server': 1.19.17(hono@4.13.13)
       ajv: 8.18.0
@@ -14279,8 +14281,8 @@ snapshots:
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.1
       raw-body: 3.0.2
-      zod: 4.6.7
-      zod-to-json-schema: 3.25.1(zod@4.6.7)
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
 
@@ -22290,7 +22292,7 @@ snapshots:
       powershell-utils: 0.1.0
       wsl-utils: 0.3.1
 
-  openai@4.86.1(encoding@0.1.13)(ws@8.21.3)(zod@4.6.7):
+  openai@4.86.1(encoding@0.1.13)(ws@8.21.3)(zod@3.25.76):
     dependencies:
       '@types/node': 18.19.71
       '@types/node-fetch': 2.6.12
@@ -22301,7 +22303,7 @@ snapshots:
       node-fetch: 2.7.0(encoding@0.1.13)
     optionalDependencies:
       ws: 8.21.3
-      zod: 4.6.7
+      zod: 3.25.76
     transitivePeerDependencies:
       - encoding
 
@@ -23263,7 +23265,7 @@ snapshots:
       '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7)
       '@babel/preset-typescript': 7.28.5(@babel/core@7.29.7)
       '@dotenvx/dotenvx': 1.52.0
-      '@modelcontextprotocol/sdk': 1.32.1(zod@4.6.7)
+      '@modelcontextprotocol/sdk': 1.32.1(zod@3.25.76)
       '@types/validate-npm-package-name': 4.0.2
       browserslist: 4.29.0
       commander: 14.0.3
@@ -23290,8 +23292,8 @@ snapshots:
       ts-morph: 26.0.0
       tsconfig-paths: 4.2.0
       validate-npm-package-name: 7.0.2
-      zod: 4.6.7
-      zod-to-json-schema: 3.25.1(zod@4.6.7)
+      zod: 3.25.76
+      zod-to-json-schema: 3.25.1(zod@3.25.76)
     transitivePeerDependencies:
       - '@cfworker/json-schema'
       - '@types/node'
@@ -24695,13 +24697,15 @@ snapshots:
 
   yoga-layout@3.2.1: {}
 
-  zod-to-json-schema@3.25.1(zod@4.6.7):
+  zod-to-json-schema@3.25.1(zod@3.25.76):
     dependencies:
-      zod: 4.6.7
+      zod: 3.25.76
 
   zod-validation-error@4.0.2(zod@4.6.7):
     dependencies:
       zod: 4.6.7
+
+  zod@3.25.76: {}
 
   zod@4.6.7: {}
 
