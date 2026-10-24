@@ -37,6 +37,7 @@ export default defineConfig({
     'group-inheritance.spec.ts',
     'rough-properties.spec.ts',
     'gizmo.spec.ts',
+    'isometric-visual.spec.ts',
     'gizmo-extrude.spec.ts',
     'gizmo-invalidation.spec.ts',
     'gizmo-layout.spec.ts',
