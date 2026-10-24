@@ -39,3 +39,12 @@ it('rejects open, stroked and layered Paths before enabling extrusion', () => {
   expect(canExtrudePath(stroked, [stroked])).toBe(false);
   expect(canExtrudePath(layered, [layered])).toBe(false);
 });
+
+it('rejects a collapsed SVG ring contour during anchor editing', () => {
+  const ring: PathSerializedNode = {
+    ...closed,
+    d: 'M24 30L100 0L100 100L0 100ZM28 28L72 28L72 72L28 72Z',
+    fillRule: 'evenodd',
+  };
+  expect(canExtrudePath(ring, [ring])).toBe(false);
+});

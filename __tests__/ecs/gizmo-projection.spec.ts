@@ -116,10 +116,23 @@ it.each([false, true])(
         frame,
         anchor.map((value, i) => value + right[i] * frame.scale) as GizmoPoint,
       )!;
-      expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeCloseTo(150, 2);
+      expect(Math.hypot(b[0] - a[0], b[1] - a[1])).toBeCloseTo(56, 2);
     }
   },
 );
+
+it('caps free-camera gizmo size in a compact viewport', () => {
+  const scene = standard(true);
+  const frame = createGizmoFrame(scene, [0, 0, 0], 800, 400)!;
+  const center = projectGizmoPoint(frame, [0, 0, 0])!;
+  const right: GizmoPoint = [
+    scene.viewMatrix[0] * frame.scale,
+    scene.viewMatrix[4] * frame.scale,
+    scene.viewMatrix[8] * frame.scale,
+  ];
+  const tip = projectGizmoPoint(frame, right)!;
+  expect(Math.hypot(tip[0] - center[0], tip[1] - center[1])).toBeCloseTo(80, 2);
+});
 
 it('keeps linked orthographic size and ignores perspective FOV for linked display size', () => {
   const scene = linked(400, 240, 2, 0, Math.PI / 2);

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   Pen,
+  canExtrudePath,
   collectPathControlHandles,
   normalizePathCommands,
   setPathHandlePoint,
@@ -217,7 +218,17 @@ function onAnchorMove(event: PointerEvent) {
     y: viewport[1],
   });
   if (!point) return;
-  setPathHandlePoint(edit.commands, edit.meta, point[0], point[1]);
+  const commands = edit.commands.map((command) => [...command] as PathCommand);
+  setPathHandlePoint(commands, edit.meta, point[0], point[1]);
+  const d = toPathData(commands);
+  const candidate = { ...node, d };
+  // A transient invalid contour removes the companion mesh and its edit plane.
+  // Keep the last valid shape so the next pointer move can still be projected.
+  const scene = api!.getNodes().map((item) =>
+    item.id === candidate.id ? candidate : item,
+  );
+  if (!canExtrudePath(candidate, scene)) return;
+  edit.commands = commands;
   refreshPathHandles();
   queuePathEdit();
 }

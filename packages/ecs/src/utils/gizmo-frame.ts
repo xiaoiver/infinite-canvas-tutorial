@@ -82,7 +82,12 @@ export function createGizmoFrame(
   const pixelsPerUnit = Math.hypot(step[0] - center[0], step[1] - center[1]);
   if (pixelsPerUnit < 1e-6) return;
   // Preserve the linked gizmo's original default size, independent of depth/FOV.
-  const pixels = scene.mode === 'standard' ? 150 : 150 * Math.tan(Math.PI / 8);
+  // Keep the free-camera gizmo usable inside compact embedded canvases. The
+  // same frame is shared by rendering and picking, so handle hit areas follow.
+  const pixels =
+    scene.mode === 'standard'
+      ? Math.min(150, Math.max(56, height * 0.2))
+      : 150 * Math.tan(Math.PI / 8);
   frame.scale = pixels / pixelsPerUnit;
   if (scene.mode === 'linkedPerspective') {
     frame.zBias = computeLinkedPerspectiveZGizmoScreenBias(
