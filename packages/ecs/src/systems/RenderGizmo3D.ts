@@ -12,6 +12,8 @@ import {
 import { Selected3D } from '../components/geometry3d/Selected3D';
 import { ResourceScope } from '../resources/ResourceScope';
 import { createGizmoFrame } from '../utils/gizmo-frame';
+import { groupGizmoPose } from '../utils/gizmo-group';
+import { copyGizmoPose } from './pick3d/gizmo-gesture';
 import {
   filterEntitiesForCanvas,
   findCamera2DForCanvas,
@@ -125,9 +127,16 @@ export class RenderGizmo3D extends System {
     const scene = buildCamera3DSceneUniforms(camera, aspect, cam2d);
     const pickScene = sceneUniformsToPickScene(scene);
     const instances: GizmoDrawInstance[] = [];
-    for (const entity of this.selected(canvas)) {
+    const selected = this.selected(canvas);
+    const group =
+      selected.length > 1
+        ? groupGizmoPose(
+            selected.map((entity) => copyGizmoPose(entity.read(Transform3D))),
+          )
+        : undefined;
+    for (const entity of group ? selected.slice(0, 1) : selected) {
       if (!entity.has(Selected3D)) continue;
-      const { translation, rotation } = entity.read(Transform3D);
+      const { translation, rotation } = group ?? entity.read(Transform3D);
       const frame = createGizmoFrame(
         pickScene,
         translation,
@@ -156,10 +165,16 @@ export class RenderGizmo3D extends System {
     for (const [api, state] of this.states) {
       const canvas = active.get(api);
       if (!canvas || !this.matches(state, canvas)) state.dispose();
-      else
+      else {
+        const selected = this.selected(canvas);
         state.resources.retainObjects(
-          new Set(this.selected(canvas).map((entity) => entity.__id)),
+          new Set(
+            (selected.length > 1 ? selected.slice(0, 1) : selected).map(
+              (entity) => entity.__id,
+            ),
+          ),
         );
+      }
     }
   }
 

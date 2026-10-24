@@ -19,6 +19,8 @@ import {
   type RayHitResult,
 } from './ray-casting';
 import { createGizmoFrame, type GizmoFrame } from './gizmo-frame';
+import { groupGizmoPose } from './gizmo-group';
+import { copyGizmoPose } from '../systems/pick3d/gizmo-gesture';
 import { type GizmoPartKind } from './gizmo-geometry';
 import {
   buildGizmoModelMatrix,
@@ -74,9 +76,17 @@ export function probePick3DAtViewport(
     return { kind: 'none' };
   }
 
-  for (const entity of selected) {
+  const group =
+    selected.length > 1
+      ? groupGizmoPose(
+          selected
+            .filter((entity) => entity.has(Transform3D))
+            .map((entity) => copyGizmoPose(entity.read(Transform3D))),
+        )
+      : undefined;
+  for (const entity of group ? selected.slice(0, 1) : selected) {
     if (!entity.has(Transform3D) || !entity.has(Selected3D)) continue;
-    const transform = entity.read(Transform3D);
+    const transform = group ?? entity.read(Transform3D);
     const hit = hitTestGizmoPart(
       viewportX,
       viewportY,
