@@ -234,6 +234,28 @@ describe('design-to-code (codegen)', () => {
   });
 
   describe('html-css emitter', () => {
+    it('keeps literal prices in generated text', () => {
+      const nodes: SerializedNode[] = [
+        {
+          id: 'price',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+          content: '$48,295',
+        } as SerializedNode,
+      ];
+      expect(
+        serializedNodesToCode(nodes, {
+          framework: 'html-css',
+          variablesMode: 'css-var',
+        }),
+      ).toContain('$48,295');
+      expect(
+        serializedNodesToCode(nodes, { framework: 'react-tailwind' }),
+      ).toContain('$48,295');
+    });
+
     it('emits inline-styled html with iconify web component', () => {
       const nodes: SerializedNode[] = [
         {
