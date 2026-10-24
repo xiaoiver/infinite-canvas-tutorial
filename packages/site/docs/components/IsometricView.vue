@@ -31,7 +31,12 @@ const pathHandles = ref<
   { x: number; y: number; meta: PathControlHandleMeta; control: boolean }[]
 >([]);
 const previewBounds = ref({ left: 0, top: 0, width: 0, height: 0 });
-type Tool = Pen.SELECT | Pen.HAND | Pen.DRAW_BOX_3D | 'edit-path-3d';
+type Tool =
+  | Pen.SELECT
+  | Pen.HAND
+  | Pen.ORBIT_3D
+  | Pen.DRAW_BOX_3D
+  | 'edit-path-3d';
 const tool = ref<Tool>(Pen.SELECT);
 let drawStart:
   | {
@@ -414,7 +419,7 @@ onMounted(async () => {
     api = event.detail;
     api.setAppState({
       penbarSelected: Pen.SELECT,
-      penbarAll: [Pen.SELECT, Pen.HAND, Pen.DRAW_BOX_3D],
+      penbarAll: [Pen.SELECT, Pen.HAND, Pen.ORBIT_3D, Pen.DRAW_BOX_3D],
       penbarVisible: false,
       penbarNameLabelVisible: true,
       taskbarVisible: false,
@@ -445,7 +450,13 @@ onUnmounted(() => {
         {{ props.locale === 'zh' ? '选择' : 'Select' }}
       </button>
       <button :aria-pressed="tool === Pen.HAND" @click="setTool(Pen.HAND)">
-        {{ props.locale === 'zh' ? '平移 / 旋转' : 'Pan / orbit' }}
+        {{ props.locale === 'zh' ? '平移' : 'Pan' }}
+      </button>
+      <button
+        :aria-pressed="tool === Pen.ORBIT_3D"
+        @click="setTool(Pen.ORBIT_3D)"
+      >
+        {{ props.locale === 'zh' ? '旋转视角' : 'Orbit' }}
       </button>
       <button
         :aria-pressed="tool === Pen.DRAW_BOX_3D"
@@ -512,8 +523,8 @@ onUnmounted(() => {
   <p class="isometric-hint">
     {{
       props.locale === 'zh'
-        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。“倾斜 SVG”可验证旋转后的前表面锚点编辑。选择工具可框选，Shift 可从地板开始框选。平移工具拖动视图，Shift + 拖动转动视角；滚轮缩放，双指平移或缩放。'
-        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Tilt SVG lets you edit anchors on the rotated front face. Select can marquee meshes, and Shift starts a marquee over the ground. Pan / orbit moves the view; Shift + drag orbits. Wheel zooms, and two fingers pan or pinch to zoom.'
+        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。“倾斜 SVG”可验证旋转后的前表面锚点编辑。选择工具可框选，Shift 可从地板开始框选。选择“平移”或“旋转视角”后可直接拖动，触屏也适用；滚轮缩放，双指平移或缩放。'
+        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Tilt SVG lets you edit anchors on the rotated front face. Select can marquee meshes, and Shift starts a marquee over the ground. Choose Pan or Orbit to drag the view directly, including by touch. Wheel zooms, and two fingers pan or pinch to zoom.'
     }}
   </p>
   <div class="isometric-canvas">
