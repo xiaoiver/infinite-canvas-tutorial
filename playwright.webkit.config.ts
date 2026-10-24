@@ -14,6 +14,7 @@ export default defineConfig({
     'isolated-browser.spec.ts',
     'shader-compiler.spec.ts',
     'touch-webkit.spec.ts',
+    'isometric-touch-webkit.spec.ts',
     'dash-rendering.spec.ts',
     'ecs-dash-rendering.spec.ts',
     'path-rendering.spec.ts',
