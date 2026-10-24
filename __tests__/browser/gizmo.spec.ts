@@ -190,6 +190,72 @@ test('3D gizmo commits a pointer gesture once and restores the rendered pose thr
   expect(errors).toEqual([]);
 });
 
+test('a shared gizmo rotates two selected 3D meshes with one undo step', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    await api.edit((editor) =>
+      editor.updateNode({
+        id: 'other',
+        type: 'mesh3d',
+        zIndex: 1,
+        x: 100,
+        y: 60,
+        width: 40,
+        height: 40,
+        scale3d: 20,
+      }),
+    );
+    await window.gizmoTest.settle();
+    await api.edit((editor) => editor.selectMesh3DLayers(['model', 'other']), {
+      capture: 'NEVER',
+    });
+    await window.gizmoTest.settle();
+    api.clearHistory();
+  });
+  const radius = 100 * Math.tan(Math.PI / 8) * 1.5 * 0.825;
+  await page.mouse.move(100 + radius / Math.SQRT2, 80 + radius / Math.SQRT2);
+  await page.mouse.down();
+  await expect
+    .poll(() => page.evaluate(() => window.gizmoTest.state().partKind))
+    .toBe('rotate');
+  await page.mouse.move(100, 80 + radius, { steps: 4 });
+  await page.mouse.up();
+  await page.evaluate(() => window.gizmoTest.settle());
+  const rotated = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const first = api.getNodeById('model');
+    const second = api.getNodeById('other');
+    if (first.type !== 'mesh3d' || second.type !== 'mesh3d')
+      throw new Error('Expected two mesh3d nodes');
+    return {
+      first,
+      second,
+    };
+  });
+  expect(rotated.first.rotation3d?.[2]).toBeCloseTo(Math.PI / 4, 1);
+  expect(rotated.second.rotation3d?.[2]).toBeCloseTo(Math.PI / 4, 1);
+  expect(rotated.first.y).toBeLessThan(60);
+  expect(rotated.second.y).toBeGreaterThan(60);
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    api.undo();
+    await window.gizmoTest.settle();
+  });
+  expect(
+    await page.evaluate(() => {
+      const api = window.gizmoTest.api();
+      return [api.getNodeById('model').x, api.getNodeById('other').x];
+    }),
+  ).toEqual([60, 100]);
+  expect(errors).toEqual([]);
+});
+
 test('Escape cancels the preview and a later pointer release does not commit it', async ({
   page,
 }) => {
