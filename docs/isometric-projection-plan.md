@@ -47,7 +47,8 @@
 -   [#530](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/530) 已完成按 Mesh 屏幕投影范围进行实时框选，并支持 Shift 从地板上开始框选。
 -   [#531](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/531) 已完成指定 Z 编辑平面上的直接盒子绘制及双向投影 API。
 -   [#532](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/532) 已让等距视图直接编辑挤出 Path/SVG 的外轮廓和孔洞锚点；[#533](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/533) 扩展到施加 3D 旋转和父级剪切的情况。
--   当前补齐触屏可用的独立视角旋转工具和浏览器交互验证。其后完成固定场景的视觉回归，再进入阶段 C 的可选轮廓、标注与效果示例。
+-   [#534](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/534) 提供触屏可用的独立视角旋转工具。
+-   当前以固定的等距/二轴测场景验证 Mesh 与挤出 Path 的可见性、光照/阴影和相机变化时的网格上传。阶段 B 完成后，再推进阶段 C 的可选轮廓、标注与效果示例。
 
 ## 测试与性能门槛
 
