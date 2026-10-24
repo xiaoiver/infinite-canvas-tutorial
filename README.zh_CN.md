@@ -502,6 +502,9 @@ pnpm run dev
 -   使用 Gizmo 为 3D 图形添加平移、旋转交互
 -   基于 raycast 的拾取
 -   光照
+-   [可交互的等距视图](https://infinitecanvas.cc/zh/example/isometric-view)：严格等距与 2:1 二轴测正交相机、画布导航、Mesh 和挤出 SVG/Path 的选择、多选共用 Gizmo，以及 Path 锚点编辑。
+
+[等距投影实施计划](./docs/isometric-projection-plan.md)记录了已完成的相机和编辑工作。下一步是补齐触摸与触控笔交互验收，再加入可选的插画风格轮廓、锚定标签和效果。当前共用 Gizmo 支持多选平移和旋转；多选缩放属于后续工作。
 
 |               Gizmo               |               Textured earth               |
 | :-------------------------------: | :----------------------------------------: |

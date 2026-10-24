@@ -117,10 +117,12 @@ it('drags the X arrow and commits the release position to document/history', asy
 it('drags one shared gizmo for two selected meshes and undoes both together', async () => {
   await world.reset(api, [node(), { ...node(), id: 'other', x: 100 }]);
   await world.frames(3);
-  expect(api.getMesh3DLayers().map((layer) => layer.id).sort()).toEqual([
-    'model',
-    'other',
-  ]);
+  expect(
+    api
+      .getMesh3DLayers()
+      .map((layer) => layer.id)
+      .sort(),
+  ).toEqual(['model', 'other']);
   await world.edit(
     api,
     (editor) => editor.selectMesh3DLayers(['model', 'other']),
@@ -128,9 +130,8 @@ it('drags one shared gizmo for two selected meshes and undoes both together', as
   );
   await world.frames(3);
   api.clearHistory();
-  const other = api
-    .getEntity(api.getNodeById('other'))
-    .read(Mesh3DNode).meshEntity!;
+  const other = api.getEntity(api.getNodeById('other')).read(Mesh3DNode)
+    .meshEntity!;
   expect(api.getSelectedMesh3DLayerIds().sort()).toEqual(['model', 'other']);
   expect(mesh().has(Selected3D)).toBe(true);
   expect(other.has(Selected3D)).toBe(true);
@@ -147,6 +148,67 @@ it('drags one shared gizmo for two selected meshes and undoes both together', as
   await world.frames();
   expect(api.getNodeById('model').x).toBe(60);
   expect(api.getNodeById('other').x).toBe(100);
+});
+
+it('rotates two meshes around one gizmo pivot and restores both through undo', async () => {
+  await world.reset(api, [node(), { ...node(), id: 'other', x: 100 }]);
+  await world.frames(3);
+  await world.edit(
+    api,
+    (editor) => editor.selectMesh3DLayers(['model', 'other']),
+    'NEVER',
+  );
+  await world.frames(3);
+  api.clearHistory();
+  const radius = 100 * Math.tan(Math.PI / 8) * 1.5 * 0.825;
+  await world.pointer(
+    api,
+    'pointerdown',
+    100 + radius / Math.SQRT2,
+    80 + radius / Math.SQRT2,
+  );
+  expect(mesh().read(Selected3D).activePartKind).toBe('rotate');
+  expect(mesh().read(Selected3D).activeAxis).toBe('z');
+  await world.pointer(api, 'pointerup', 100, 80 + radius);
+  const first = api.getNodeById('model') as Mesh3DNodeSerializedNode;
+  const second = api.getNodeById('other') as Mesh3DNodeSerializedNode;
+  expect(first.x).toBeCloseTo(100 - 20 / Math.SQRT2 - 20);
+  expect(second.x).toBeCloseTo(100 + 20 / Math.SQRT2 - 20);
+  expect(first.y).toBeCloseTo(60 - 20 / Math.SQRT2);
+  expect(second.y).toBeCloseTo(60 + 20 / Math.SQRT2);
+  expect(first.rotation3d![2]).toBeCloseTo(Math.PI / 4);
+  expect(second.rotation3d![2]).toBeCloseTo(Math.PI / 4);
+  await world.history(api, 'undo');
+  await world.frames();
+  expect(api.getNodeById('model').x).toBe(60);
+  expect(api.getNodeById('other').x).toBe(100);
+  expect(mesh().read(Transform3D).rotation[2]).toBeCloseTo(0);
+});
+
+it('cancels a shared gizmo preview when the selected set changes', async () => {
+  await world.reset(api, [node(), { ...node(), id: 'other', x: 100 }]);
+  await world.frames(3);
+  await world.edit(
+    api,
+    (editor) => editor.selectMesh3DLayers(['model', 'other']),
+    'NEVER',
+  );
+  await world.frames(3);
+  api.clearHistory();
+  await world.pointer(api, 'pointerdown', 145, 80);
+  await world.pointer(api, 'pointermove', 155, 80);
+  expect(mesh().read(Transform3D).translation[0]).toBeCloseTo(90);
+  await world.edit(
+    api,
+    (editor) => editor.selectMesh3DLayers(['other']),
+    'NEVER',
+  );
+  await world.frames();
+  await world.pointer(api, 'pointerup', 165, 80);
+  expect(api.getNodeById('model').x).toBe(60);
+  expect(api.getNodeById('other').x).toBe(100);
+  expect(api.getSelectedMesh3DLayerIds()).toEqual(['other']);
+  expect(api.getHistoryState().canUndo).toBe(false);
 });
 
 it('cancels a Y-arrow preview without changing the document', async () => {
