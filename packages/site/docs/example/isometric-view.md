@@ -25,6 +25,8 @@ Turn on **Show outlines** for a dark silhouette around the cube and the orange S
 
 Turn on **Rim light** to tint visible surfaces near their view-facing edges. The material shader derives the tint from the surface normal and view direction, after normal lighting and tone mapping. It follows camera orbit and uses the mesh's existing depth and alpha rules; it is a surface highlight, not a blurred glow outside the silhouette. Mesh nodes accept `material3d: { rimLightStrength: 0.9, rimLightColor: '#9ad9ff' }`, and extruded Path/rect nodes accept the same fields in `extrude3d`. Strength is 0 (off) to 1. Unlit materials ignore it, and standard glTF export does not retain it.
 
+Turn on **Moving spotlight** to sweep a warm light across the cube, SVG ring and ground. The light is an ordinary shadow-casting `light3d` node: each animation frame changes its position and direction, while mesh geometry stays in place. It starts off, stops when the tab is hidden, and can be turned off on slower devices. The motion is a preview effect and does not add an undo step for every frame.
+
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
 </script>
