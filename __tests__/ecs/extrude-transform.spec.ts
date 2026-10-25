@@ -173,6 +173,29 @@ it('keeps extrusion outlines through pose edits and clamps width', () => {
   );
 });
 
+it('keeps rim light through extrusion pose edits and clamps strength', () => {
+  const previous = {
+    depth: 20,
+    rimLightStrength: 0.9,
+    rimLightColor: '#ffd18a',
+  };
+  expect(extrude3DFromWire(previous)?.rimLightStrength).toBe(0.9);
+  expect(extrude3DFromWire(previous)?.rimLightColor).toBe('#ffd18a');
+  expect(
+    extrude3DToWire({ depth: 30, z: 0, rotation: [0, 0, 0] }, previous),
+  ).toMatchObject({
+    depth: 30,
+    rimLightStrength: 0.9,
+    rimLightColor: '#ffd18a',
+  });
+  expect(
+    extrude3DFromWire({ depth: 20, rimLightStrength: 3 })?.rimLightStrength,
+  ).toBe(1);
+  expect(
+    extrude3DFromWire({ depth: 20, rimLightStrength: -1 })?.rimLightStrength,
+  ).toBe(0);
+});
+
 it.each([
   { rotation: [0.2, -0.3, 0.4], base: 0.6 },
   { rotation: [0.2, Math.PI / 2, 0.4], base: 0 },

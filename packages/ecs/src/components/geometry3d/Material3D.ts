@@ -32,6 +32,12 @@ export class Material3D {
   /** Authored sRGB outline color. */
   @field.object declare outlineColor: [number, number, number, number];
 
+  /** View-dependent lit rim strength in 0..1; zero disables it. */
+  @field.float32 declare rimLightStrength: number;
+
+  /** Authored sRGB rim light color. */
+  @field.object declare rimLightColor: [number, number, number, number];
+
   /**
    * Ambient light intensity (0..1).
    */
@@ -160,6 +166,8 @@ export class Material3D {
     this.toneSteps ??= 0;
     this.outlineWidth ??= 0;
     this.outlineColor ??= [0.08, 0.12, 0.2, 1];
+    this.rimLightStrength ??= 0;
+    this.rimLightColor ??= [0.55, 0.8, 1, 1];
     this.ambient ??= 0.5;
     this.diffuse ??= 0.7;
     this.specular ??= 0.3;

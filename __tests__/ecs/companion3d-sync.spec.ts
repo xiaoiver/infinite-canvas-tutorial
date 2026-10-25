@@ -222,6 +222,51 @@ it('creates one scoped extrusion and camera per canvas, then synchronizes their 
   ).toHaveLength(1);
 });
 
+it('syncs rim light on mesh and extrusion companions without rebuilding geometry', async () => {
+  await world.reset(api, [
+    mesh({
+      material3d: { rimLightStrength: 0.75, rimLightColor: '#9ad9ff' },
+    }),
+    rect({
+      extrude3d: {
+        depth: 20,
+        rimLightStrength: 0.9,
+        rimLightColor: '#ffd18a',
+      },
+    }),
+  ]);
+  const cube = companion();
+  const ring = companion('box');
+  expect(cube.read(Material3D).rimLightStrength).toBeCloseTo(0.75);
+  expect(cube.read(Material3D).rimLightColor).toEqual([
+    154 / 255,
+    217 / 255,
+    1,
+    1,
+  ]);
+  expect(ring.read(Material3D).rimLightStrength).toBeCloseTo(0.9);
+  expect(ring.read(Material3D).rimLightColor).toEqual([
+    1,
+    209 / 255,
+    138 / 255,
+    1,
+  ]);
+  clearWrites();
+  await world.edit(api, (editor) => {
+    editor.updateNode(editor.getNodeById('model'), {
+      material3d: { rimLightStrength: 0, rimLightColor: '#9ad9ff' },
+    });
+    editor.updateNode(editor.getNodeById('box'), {
+      extrude3d: { depth: 20, rimLightStrength: 0 },
+    });
+  });
+  expect(companion()).toBe(cube);
+  expect(companion('box')).toBe(ring);
+  expect(cube.read(Material3D).rimLightStrength).toBe(0);
+  expect(ring.read(Material3D).rimLightStrength).toBe(0);
+  expect(writes.geometry).toEqual([]);
+});
+
 it('updates the Rect bevel mesh when its bounds change', async () => {
   await world.reset(api, [rect({ extrude3d: { depth: 20, bevelSize: 2 } })]);
   const target = companion('box');

@@ -31,6 +31,10 @@ export class Mesh3DNode {
 
   @field.object declare outlineColor: [number, number, number, number];
 
+  @field.float32 declare rimLightStrength: number;
+
+  @field.object declare rimLightColor: [number, number, number, number];
+
   /** Preserve an explicit white override of an imported glTF base color. */
   @field.boolean declare baseColorOverridden: boolean;
 
@@ -161,6 +165,8 @@ export class Mesh3DNode {
     this.toneSteps ??= 0;
     this.outlineWidth ??= 0;
     this.outlineColor ??= [0.08, 0.12, 0.2, 1];
+    this.rimLightStrength ??= 0;
+    this.rimLightColor ??= [0.55, 0.8, 1, 1];
     this.baseColorOverridden ??= false;
     this.ambient ??= 0.5;
     this.diffuse ??= 0.75;

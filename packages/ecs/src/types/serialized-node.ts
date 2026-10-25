@@ -439,6 +439,10 @@ export interface Extrude3DOptions {
   outlineWidth?: number;
   /** CSS color for the silhouette outline. */
   outlineColor?: string;
+  /** Optional view-dependent rim light, 0 disables it and 1 is full strength. */
+  rimLightStrength?: number;
+  /** CSS color for the rim light. */
+  rimLightColor?: string;
   /** Elevation relative to the original front plane; independent of thickness. */
   z?: number;
   /** Local XYZ Euler rotation, in radians, composed after the source's 2D rotation. */
@@ -470,6 +474,10 @@ export type Material3DWire = {
   outlineWidth?: number;
   /** CSS color or normalized RGBA for the silhouette outline. */
   outlineColor?: string | [number, number, number, number];
+  /** Optional view-dependent rim light, 0 disables it and 1 is full strength. */
+  rimLightStrength?: number;
+  /** CSS color or normalized RGBA for the rim light. */
+  rimLightColor?: string | [number, number, number, number];
   ambient?: number;
   diffuse?: number;
   specular?: number;

@@ -22,6 +22,7 @@ import {
 import {
   extrudeMaterialBaseColorFromEntity,
   extrudeMaterialOutlineColorFromEntity,
+  extrudeMaterialRimLightColorFromEntity,
   extrudeMaterialSideColorFromEntity,
 } from '../utils/extrude3d';
 import { resolveExtrudeCompanionTransform } from '../utils/extrude3d-transform';
@@ -125,6 +126,8 @@ export class SyncExtrude3D extends System {
         toneSteps: entity.read(Extrude3D).toneSteps,
         outlineWidth: entity.read(Extrude3D).outlineWidth,
         outlineColor: extrudeMaterialOutlineColorFromEntity(entity),
+        rimLightStrength: entity.read(Extrude3D).rimLightStrength,
+        rimLightColor: extrudeMaterialRimLightColorFromEntity(entity),
       });
     }
   }

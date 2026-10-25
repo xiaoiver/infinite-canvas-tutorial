@@ -2,6 +2,51 @@ import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 import type {} from './fixtures/isometric-docs';
 
+test('rim light follows 3D materials and can be undone', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  const canvas = page.locator('ic-spectrum-canvas');
+  const before = PNG.sync.read(await canvas.screenshot()).data;
+  const toggle = page.getByRole('button', { name: '边缘光' });
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.rimStrengths()))
+    .toEqual([0.9, 0.9]);
+  await page.evaluate(() => window.isometricDocs.settle());
+  const after = PNG.sync.read(await canvas.screenshot()).data;
+  let changed = 0;
+  for (let i = 0; i < before.length; i += 4) {
+    if (
+      Math.abs(before[i] - after[i]) +
+        Math.abs(before[i + 1] - after[i + 1]) +
+        Math.abs(before[i + 2] - after[i + 2]) >
+      40
+    )
+      changed++;
+  }
+  expect(changed).toBeGreaterThan(300);
+  await page.getByRole('button', { name: '倾斜 SVG' }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.rimStrengths()))
+    .toEqual([0.9, 0.9]);
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.rimStrengths()))
+    .toEqual([0, 0]);
+  await page.evaluate(() => window.isometricDocs.undo());
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.rimStrengths()))
+    .toEqual([0.9, 0.9]);
+  expect(errors).toEqual([]);
+});
+
 test('opaque 3D outlines follow materials and remain undoable', async ({
   page,
 }) => {

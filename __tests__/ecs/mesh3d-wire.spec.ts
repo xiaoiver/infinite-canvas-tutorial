@@ -48,3 +48,28 @@ it('parses a mesh outline color separately from the base color', () => {
   expect(material.outlineColor).toEqual([30 / 255, 50 / 255, 100 / 255, 1]);
   expect(material.baseColor).not.toEqual(material.outlineColor);
 });
+
+it.each([
+  [undefined, 0],
+  [-1, 0],
+  [0, 0],
+  [0.9, 0.9],
+  [2, 1],
+  [Number.NaN, 0],
+])('normalizes mesh rimLightStrength %s to %s', (strength, expected) => {
+  expect(
+    mesh3DNodeFromWire({
+      ...cube,
+      material3d: { rimLightStrength: strength },
+    }).rimLightStrength,
+  ).toBeCloseTo(expected);
+});
+
+it('parses rim light color separately from the base color', () => {
+  const material = mesh3DNodeFromWire({
+    ...cube,
+    material3d: { baseColor: '#4774df', rimLightColor: '#9ad9ff' },
+  });
+  expect(material.rimLightColor).toEqual([154 / 255, 217 / 255, 1, 1]);
+  expect(material.baseColor).not.toEqual(material.rimLightColor);
+});

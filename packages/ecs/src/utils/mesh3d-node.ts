@@ -310,6 +310,8 @@ export function syncMesh3DNodeCompanionMaterial(
     toneSteps: node.toneSteps,
     outlineWidth: node.outlineWidth,
     outlineColor: [...node.outlineColor],
+    rimLightStrength: node.rimLightStrength,
+    rimLightColor: [...node.rimLightColor],
     baseColor: [
       ...(hasCustomColor
         ? node.baseColor

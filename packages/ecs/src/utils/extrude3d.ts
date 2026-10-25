@@ -59,6 +59,15 @@ export function extrudeMaterialOutlineColorFromEntity(
   return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
 }
 
+export function extrudeMaterialRimLightColorFromEntity(
+  entity: Entity,
+): [number, number, number, number] {
+  const color = entity.read(Extrude3D).rimLightColor;
+  if (!color) return [0.55, 0.8, 1, 1];
+  const rgb = parseColor(color);
+  return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
+}
+
 export function resolveExtrude3DDepth(
   value: Extrude3DAttributes['extrude3d'],
 ): number | undefined {
@@ -113,6 +122,12 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
         : 0,
     outlineColor:
       typeof options.outlineColor === 'string' ? options.outlineColor : null,
+    rimLightStrength:
+      Number.isFinite(options.rimLightStrength) && options.rimLightStrength! > 0
+        ? Math.min(options.rimLightStrength!, 1)
+        : 0,
+    rimLightColor:
+      typeof options.rimLightColor === 'string' ? options.rimLightColor : null,
     z: Number.isFinite(options.z) ? options.z! : 0,
     rotation: (Array.isArray(options.rotation) &&
     options.rotation.length === 3 &&
@@ -127,7 +142,11 @@ export function extrude3DToWire(
     Partial<
       Pick<
         Extrude3D,
-        'bevelSize' | 'bevelSegments' | 'toneSteps' | 'outlineWidth'
+        | 'bevelSize'
+        | 'bevelSegments'
+        | 'toneSteps'
+        | 'outlineWidth'
+        | 'rimLightStrength'
       >
     >,
   previous?: Extrude3DAttributes['extrude3d'],
@@ -137,6 +156,18 @@ export function extrude3DToWire(
   const outlineColor =
     previous && typeof previous === 'object'
       ? previous.outlineColor
+      : undefined;
+  const rimLightColor =
+    previous && typeof previous === 'object'
+      ? previous.rimLightColor
+      : undefined;
+  const rimLightStrength =
+    pose.rimLightStrength === undefined
+      ? previous && typeof previous === 'object'
+        ? previous.rimLightStrength
+        : undefined
+      : pose.rimLightStrength > 0
+      ? pose.rimLightStrength
       : undefined;
   const outlineWidth =
     pose.outlineWidth === undefined
@@ -174,6 +205,8 @@ export function extrude3DToWire(
     sideColor === undefined &&
     outlineColor === undefined &&
     outlineWidth === undefined &&
+    rimLightColor === undefined &&
+    rimLightStrength === undefined &&
     toneSteps === undefined &&
     bevelSize === undefined &&
     bevelSegments === undefined &&
@@ -191,6 +224,8 @@ export function extrude3DToWire(
     ...(sideColor === undefined ? {} : { sideColor }),
     ...(outlineColor === undefined ? {} : { outlineColor }),
     ...(outlineWidth === undefined ? {} : { outlineWidth }),
+    ...(rimLightColor === undefined ? {} : { rimLightColor }),
+    ...(rimLightStrength === undefined ? {} : { rimLightStrength }),
     ...(toneSteps === undefined ? {} : { toneSteps }),
     ...(bevelSize === undefined ? {} : { bevelSize }),
     ...(bevelSegments === undefined ? {} : { bevelSegments }),

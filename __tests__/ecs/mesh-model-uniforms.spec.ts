@@ -327,6 +327,28 @@ it('uploads outline color and CSS-pixel width without rebuilding geometry', () =
   expect(invert).toHaveBeenCalledTimes(1);
 });
 
+it('uploads optional rim light without changing the pose', () => {
+  const { uniforms, transform, material, setSubData } = setup();
+  const invert = jest.spyOn(mat4, 'invert');
+  const initial = uniforms.update(transform, material, ready);
+  expect(initial.u_StylizationParams).toEqual(Float32Array.of(0, 0, 0, 0));
+  material.rimLightStrength = 0.9;
+  material.rimLightColor = [0.2, 0.4, 0.8, 1];
+  const lit = uniforms.update(transform, material, ready);
+  expect(lit.u_StylizationParams).toEqual(Float32Array.of(0, 0.9, 0, 0));
+  expect(lit.u_RimColor).toEqual(Float32Array.of(0.2, 0.4, 0.8, 1));
+  material.rimLightStrength = 2;
+  expect(
+    uniforms.update(transform, material, ready).u_StylizationParams,
+  ).toEqual(Float32Array.of(0, 1, 0, 0));
+  material.rimLightStrength = Number.NaN;
+  expect(
+    uniforms.update(transform, material, ready).u_StylizationParams,
+  ).toEqual(Float32Array.of(0, 0, 0, 0));
+  expect(setSubData).toHaveBeenCalledTimes(4);
+  expect(invert).toHaveBeenCalledTimes(1);
+});
+
 it('retries failed uploads without rebuilding unchanged matrices', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
   const invert = jest.spyOn(mat4, 'invert');
