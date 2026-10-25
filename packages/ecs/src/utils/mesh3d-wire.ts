@@ -22,6 +22,13 @@ export function mesh3DNodeFromWire(node: Mesh3DNodeSerializedNode): Mesh3DNode {
       material.toneSteps! <= 8
         ? material.toneSteps
         : 0,
+    outlineWidth:
+      Number.isFinite(material.outlineWidth) && material.outlineWidth! > 0
+        ? Math.min(material.outlineWidth!, 8)
+        : 0,
+    outlineColor: material.outlineColor
+      ? parseMesh3DBaseColor(material.outlineColor)
+      : [0.08, 0.12, 0.2, 1],
     baseColorOverridden: material.baseColor !== undefined,
     metallicOverridden: material.metallic !== undefined,
     roughnessOverridden: material.roughness !== undefined,

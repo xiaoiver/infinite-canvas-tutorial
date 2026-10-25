@@ -19,7 +19,9 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 开启「显示标注」可以为立方体和挤出 SVG 显示引导线与屏幕朝向的标签。锚点来自实时 3D Mesh 或 Path 顶点，因此标注会跟随视角、Mesh 变换及 SVG 锚点编辑；锚点移出视口后会隐藏。编辑时可关闭标注。这一层使用 DOM/SVG 覆盖，不参与 3D 深度遮挡。
 
-开启「分层色阶」后，立方体与挤出 SVG 的受光亮度被分为四档。分档在 3D 材质着色器完成光照和色调映射后执行，因此几何、阴影、拾取及深度顺序仍沿用原来的流程；关闭后恢复连续的 PBR 光照。`unlit` 材质不会应用色阶。Mesh 节点可设置 `material3d.toneSteps`，挤出 Path/矩形可设置 `extrude3d: { toneSteps }`；有效值为 2–8，设为 0 或省略即关闭。该选项尚不绘制轮廓线；标准 glTF 导出仍使用 PBR 材质，不能保留分层色阶设置。
+开启「分层色阶」后，立方体与挤出 SVG 的受光亮度被分为四档。分档在 3D 材质着色器完成光照和色调映射后执行，因此几何、阴影、拾取及深度顺序仍沿用原来的流程；关闭后恢复连续的 PBR 光照。`unlit` 材质不会应用色阶。Mesh 节点可设置 `material3d.toneSteps`，挤出 Path/矩形可设置 `extrude3d: { toneSteps }`；有效值为 2–8，设为 0 或省略即关闭。
+
+开启「显示轮廓」后，立方体和橙色 SVG 环的边缘会出现深色轮廓，包括孔洞内侧。渲染器沿屏幕方向扩张背面，并用现有 3D 深度缓冲测试，因此前景几何会遮住后方的轮廓。Mesh 节点可设置 `material3d: { outlineWidth: 2, outlineColor: '#1e3264' }`；挤出 Path/矩形可在 `extrude3d` 中设置同样的字段。线宽单位是屏幕像素，范围为 0（关闭）到 8。目前仅支持自由 3D 相机下的不透明 Mesh，半透明与遮罩材质不绘制轮廓。标准 glTF 导出仍使用 PBR 材质，不能保留色阶和轮廓设置。
 
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'

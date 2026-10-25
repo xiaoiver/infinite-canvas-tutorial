@@ -69,6 +69,7 @@ test('mobile WebKit taps and drags an isometric SVG anchor', async ({
     .first();
   const svg = page.locator('svg.isometric-preview');
   await expect(anchor).toBeVisible();
+  await anchor.scrollIntoViewIfNeeded();
   const box = (await anchor.boundingBox())!;
   const start = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
   await page.touchscreen.tap(start.x, start.y);

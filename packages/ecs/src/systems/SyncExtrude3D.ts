@@ -21,6 +21,7 @@ import {
 } from '../components';
 import {
   extrudeMaterialBaseColorFromEntity,
+  extrudeMaterialOutlineColorFromEntity,
   extrudeMaterialSideColorFromEntity,
 } from '../utils/extrude3d';
 import { resolveExtrudeCompanionTransform } from '../utils/extrude3d-transform';
@@ -122,6 +123,8 @@ export class SyncExtrude3D extends System {
         baseColor: extrudeMaterialBaseColorFromEntity(entity),
         sideColor: extrudeMaterialSideColorFromEntity(entity),
         toneSteps: entity.read(Extrude3D).toneSteps,
+        outlineWidth: entity.read(Extrude3D).outlineWidth,
+        outlineColor: extrudeMaterialOutlineColorFromEntity(entity),
       });
     }
   }

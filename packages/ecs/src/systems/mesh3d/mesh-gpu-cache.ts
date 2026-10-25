@@ -27,6 +27,7 @@ export interface MeshGPUData {
   modelUniformBuffer: Buffer;
   modelUniforms: MeshModelUniforms;
   bindings: MeshDrawBindings;
+  outlineBindings: MeshDrawBindings;
   shadowBindings: ShadowDrawBindings;
   localBounds: { min: [number, number, number]; max: [number, number, number] };
 }
@@ -135,6 +136,10 @@ export class MeshGPUCache {
           this.device,
           geometry.modelUniformBuffer,
         ),
+        outlineBindings: new MeshDrawBindings(
+          this.device,
+          geometry.modelUniformBuffer,
+        ),
         shadowBindings: new ShadowDrawBindings(
           this.device,
           geometry.modelUniformBuffer,
@@ -142,6 +147,7 @@ export class MeshGPUCache {
         localBounds: meshBounds(mesh.positions),
       };
       scope.add(() => data.bindings.destroy());
+      scope.add(() => data.outlineBindings.destroy());
       scope.add(() => data.shadowBindings.destroy());
     } catch (error) {
       // Keep the previous entry dirty for retry; never publish partial buffers.

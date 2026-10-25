@@ -2,6 +2,53 @@ import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 import type {} from './fixtures/isometric-docs';
 
+test('opaque 3D outlines follow materials and remain undoable', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  const canvas = page.locator('ic-spectrum-canvas');
+  const original = PNG.sync.read(await canvas.screenshot()).data;
+  const toggle = page.getByRole('button', { name: '显示轮廓' });
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.outlineWidths()))
+    .toEqual([2, 2]);
+  await page.evaluate(() => window.isometricDocs.settle());
+  const outlined = PNG.sync.read(await canvas.screenshot()).data;
+  let changed = 0;
+  for (let i = 0; i < original.length; i += 4) {
+    if (
+      Math.abs(original[i] - outlined[i]) +
+        Math.abs(original[i + 1] - outlined[i + 1]) +
+        Math.abs(original[i + 2] - outlined[i + 2]) >
+      40
+    )
+      changed++;
+  }
+  expect(changed).toBeGreaterThan(300);
+  await page.getByRole('button', { name: '倾斜 SVG' }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.outlineWidths()))
+    .toEqual([2, 2]);
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.outlineWidths()))
+    .toEqual([0, 0]);
+  await page.evaluate(() => window.isometricDocs.undo());
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.outlineWidths()))
+    .toEqual([2, 2]);
+  expect(errors).toEqual([]);
+});
+
 test('stepped tones affect both 3D objects and can be turned off', async ({
   page,
 }) => {

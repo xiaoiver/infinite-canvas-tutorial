@@ -94,6 +94,19 @@ const probe = {
       .read(Extrude3D).meshEntity!;
     return [cube.read(Material3D).toneSteps, ring.read(Material3D).toneSteps];
   },
+  outlineWidths: () => {
+    const editor = api!;
+    const cube = editor
+      .getEntity(editor.getNodeById('iso-cube'))
+      .read(Mesh3DNode).meshEntity!;
+    const ring = editor
+      .getEntity(editor.getNodeById('iso-ring'))
+      .read(Extrude3D).meshEntity!;
+    return [
+      cube.read(Material3D).outlineWidth,
+      ring.read(Material3D).outlineWidth,
+    ];
+  },
   groupXHandle: () => {
     const editor = api!;
     const cube = editor

@@ -308,6 +308,8 @@ export function syncMesh3DNodeCompanionMaterial(
     node.baseColorOverridden || node.baseColor.some((value) => value !== 1);
   syncMaterial3D(meshEntity, {
     toneSteps: node.toneSteps,
+    outlineWidth: node.outlineWidth,
+    outlineColor: [...node.outlineColor],
     baseColor: [
       ...(hasCustomColor
         ? node.baseColor

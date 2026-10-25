@@ -2,6 +2,7 @@ import { expect } from '@playwright/test';
 import { PNG } from 'pngjs';
 import { test } from '../isolated-webkit-test';
 import type {} from './fixtures/gizmo';
+import type {} from './fixtures/isometric-docs';
 
 test.describe.configure({ timeout: 60000 });
 
@@ -25,6 +26,30 @@ const difference = (a: Buffer, b: Buffer) => {
       total += Math.abs(a[i + channel] - b[i + channel]);
   return total;
 };
+
+test('WebGL1 draws depth-tested outlines in the isometric example', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text());
+  });
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  const canvas = page.locator('ic-spectrum-canvas');
+  const before = PNG.sync.read(await canvas.screenshot()).data;
+  await page.getByRole('button', { name: '显示轮廓' }).click();
+  await page.evaluate(() => window.isometricDocs.settle());
+  const after = PNG.sync.read(await canvas.screenshot()).data;
+  expect(difference(before, after)).toBeGreaterThan(5000);
+  expect(errors).toEqual([]);
+});
 
 test('WebGL1 renders imported vertex colors without shader errors', async ({
   page,
