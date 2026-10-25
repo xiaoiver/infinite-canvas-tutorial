@@ -179,6 +179,36 @@ it('draws opaque meshes first and blends transparent meshes from far to near', (
   expect(slot.gpu.pass.setPipeline).toHaveBeenCalledTimes(2);
 });
 
+it('draws an outlined opaque mesh after its color pass and reuses its GPU bindings', () => {
+  const {
+    renderer,
+    slots: [slot],
+    draw,
+  } = fixture();
+  slot.material.outlineWidth = 2;
+  slot.material.outlineColor = [0.1, 0.2, 0.3, 1];
+  draw();
+  const state = (renderer as any).states.get(slot.canvas.read(Canvas).api);
+  expect(
+    (slot.gpu.pass.setPipeline as jest.Mock).mock.calls.map(([pipeline]) =>
+      pipeline,
+    ),
+  ).toEqual([state.pipeline, state.outlinePipeline]);
+  expect(slot.gpu.pass.drawIndexed).toHaveBeenCalledTimes(2);
+  expect(slot.gpu.bindings).toHaveLength(2);
+  const bindings = [...slot.gpu.bindings];
+  draw();
+  expect(slot.gpu.bindings).toEqual(bindings);
+  slot.material.outlineWidth = 0;
+  (slot.gpu.pass.setPipeline as jest.Mock).mockClear();
+  draw();
+  expect(
+    (slot.gpu.pass.setPipeline as jest.Mock).mock.calls.map(([pipeline]) =>
+      pipeline,
+    ),
+  ).toEqual([state.pipeline]);
+});
+
 it('schedules a sampled shadow map for enabled directional and spot lights', () => {
   const {
     renderer,
