@@ -86,9 +86,10 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_OcclusionUvTransform;
   vec4 u_NormalParams; // x: ready, y: UV set, z: rotation, w: scale
   vec4 u_OcclusionParams; // x: ready, y: UV set, z: rotation, w: strength
-  vec4 u_StylizationParams; // x: lit luminance bands (0 keeps PBR)
+  vec4 u_StylizationParams; // x: lit luminance bands, y: rim light strength
   vec4 u_OutlineParams; // x: width in device pixels, yz: viewport size
   vec4 u_OutlineColor;
+  vec4 u_RimColor;
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -214,6 +215,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_StylizationParams;
   vec4 u_OutlineParams;
   vec4 u_OutlineColor;
+  vec4 u_RimColor;
 };
 
 uniform sampler2D u_Map;
@@ -756,6 +758,13 @@ vec4 shadeMaterial() {
     float bands = u_StylizationParams.x;
     float stepped = (floor(min(luminance, 0.9999) * bands) + 0.5) / bands;
     mapped = clamp(mapped * (stepped / max(luminance, 1e-4)), 0.0, 1.0);
+  }
+  if (u_StylizationParams.y > 0.0) {
+    // Work in display-linear color after tone mapping; the authored rim color
+    // is sRGB. Geometry, shadows, alpha, and depth remain unchanged.
+    float facing = clamp(dot(shadowNormal, viewDir), 0.0, 1.0);
+    float rim = pow(1.0 - facing, 2.0) * u_StylizationParams.y * u_RimColor.a;
+    mapped = mix(mapped, srgbToLinear(u_RimColor.rgb), clamp(rim, 0.0, 1.0));
   }
   return vec4(linearToSrgb(mapped), baseColor.a);
 }

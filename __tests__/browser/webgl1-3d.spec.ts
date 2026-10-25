@@ -48,6 +48,10 @@ test('WebGL1 draws depth-tested outlines in the isometric example', async ({
   await page.evaluate(() => window.isometricDocs.settle());
   const after = PNG.sync.read(await canvas.screenshot()).data;
   expect(difference(before, after)).toBeGreaterThan(5000);
+  await page.getByRole('button', { name: '边缘光' }).click();
+  await page.evaluate(() => window.isometricDocs.settle());
+  const rim = PNG.sync.read(await canvas.screenshot()).data;
+  expect(difference(after, rim)).toBeGreaterThan(5000);
   expect(errors).toEqual([]);
 });
 

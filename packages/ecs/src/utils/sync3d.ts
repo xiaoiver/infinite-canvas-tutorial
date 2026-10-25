@@ -28,7 +28,11 @@ export function syncMaterial3D(
   const current = entity.read(Material3D);
   const changed = (Object.keys(patch) as (keyof Material3D)[]).some((key) => {
     const value = patch[key];
-    if (key === 'baseColor' || key === 'outlineColor')
+    if (
+      key === 'baseColor' ||
+      key === 'outlineColor' ||
+      key === 'rimLightColor'
+    )
       return !sameNumbers(current[key], patch[key]!);
     if (key === 'emissiveFactor')
       return !sameNumbers(current.emissiveFactor, patch.emissiveFactor!);

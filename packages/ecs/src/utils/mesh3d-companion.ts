@@ -69,6 +69,13 @@ export function queueMesh3DCompanion(
     number,
     number,
   ];
+  const rimLightStrength = node.rimLightStrength;
+  const rimLightColor = [...node.rimLightColor] as [
+    number,
+    number,
+    number,
+    number,
+  ];
   const ambient = node.ambient;
   const diffuse = node.diffuse;
   const specular = node.specular;
@@ -132,6 +139,8 @@ export function queueMesh3DCompanion(
         toneSteps,
         outlineWidth,
         outlineColor,
+        rimLightStrength,
+        rimLightColor,
         ambient,
         diffuse,
         specular,

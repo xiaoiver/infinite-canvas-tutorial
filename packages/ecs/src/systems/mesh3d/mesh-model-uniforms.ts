@@ -7,7 +7,7 @@ import type {
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 120 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 124 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -92,6 +92,10 @@ export class MeshModelUniforms {
     u_OutlineColor: this.data.subarray(
       116 + ENVIRONMENT_IRRADIANCE_FLOATS,
       120 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_RimColor: this.data.subarray(
+      120 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      124 + ENVIRONMENT_IRRADIANCE_FLOATS,
     ),
   };
 
@@ -191,6 +195,13 @@ export class MeshModelUniforms {
         ? material.toneSteps
         : 0,
     );
+    this.set(
+      109 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number.isFinite(material.rimLightStrength) &&
+        material.rimLightStrength > 0
+        ? Math.min(material.rimLightStrength, 1)
+        : 0,
+    );
     const outlineWidth =
       Number.isFinite(material.outlineWidth) && material.outlineWidth > 0
         ? Math.min(material.outlineWidth, 8) * viewport[2]
@@ -208,6 +219,11 @@ export class MeshModelUniforms {
       this.set(
         116 + ENVIRONMENT_IRRADIANCE_FLOATS + i,
         material.outlineColor[i],
+      );
+    for (let i = 0; i < 4; i++)
+      this.set(
+        120 + ENVIRONMENT_IRRADIANCE_FLOATS + i,
+        material.rimLightColor[i],
       );
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,

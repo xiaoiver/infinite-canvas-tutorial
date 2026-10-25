@@ -37,6 +37,7 @@ const previewBounds = ref({ left: 0, top: 0, width: 0, height: 0 });
 const showCallouts = ref(false);
 const steppedTones = ref(false);
 const showOutlines = ref(false);
+const showRimLight = ref(false);
 type Callout = {
   id: string;
   title: string;
@@ -175,6 +176,34 @@ function toggleOutlines() {
   });
 }
 
+function toggleRimLight() {
+  const editor = api;
+  if (!editor) return;
+  const rimLightStrength = showRimLight.value ? 0 : 0.9;
+  editor.runAtNextTick(() => {
+    const cube = editor.getNodeById('iso-cube');
+    const ring = ringNode();
+    if (cube?.type !== 'mesh3d' || !ring) return;
+    editor.updateNode(cube, {
+      material3d: {
+        ...cube.material3d,
+        rimLightStrength,
+        rimLightColor: '#9ad9ff',
+      },
+    });
+    editor.updateNode(ring, {
+      extrude3d: {
+        ...(typeof ring.extrude3d === 'object'
+          ? ring.extrude3d
+          : { depth: 50 }),
+        rimLightStrength,
+        rimLightColor: '#ffd18a',
+      },
+    });
+    editor.record();
+  });
+}
+
 function refreshPathHandles() {
   if (!api || tool.value !== 'edit-path-3d') return;
   syncPreviewBounds();
@@ -210,6 +239,8 @@ function animatePathHandles() {
     cube?.type === 'mesh3d' && (cube.material3d?.toneSteps ?? 0) >= 2;
   showOutlines.value =
     cube?.type === 'mesh3d' && (cube.material3d?.outlineWidth ?? 0) > 0;
+  showRimLight.value =
+    cube?.type === 'mesh3d' && (cube.material3d?.rimLightStrength ?? 0) > 0;
   ringTilted.value =
     typeof extrude === 'object' &&
     !!extrude.rotation?.some((angle) => angle !== 0);
@@ -625,6 +656,9 @@ onUnmounted(() => {
       </button>
       <button :aria-pressed="showOutlines" @click="toggleOutlines">
         {{ props.locale === 'zh' ? '显示轮廓' : 'Show outlines' }}
+      </button>
+      <button :aria-pressed="showRimLight" @click="toggleRimLight">
+        {{ props.locale === 'zh' ? '边缘光' : 'Rim light' }}
       </button>
     </div>
     <label

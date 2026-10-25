@@ -2,9 +2,9 @@ import { expect, type Page } from '@playwright/test';
 import { test } from '../isolated-webkit-test';
 import type {} from './fixtures/lasso';
 
-// Mounting the complete docs UI plus several gestures needs more than the
-// 30-second budget of the small renderer fixtures on software WebGL.
-test.setTimeout(60000);
+// WebKit's software WebGL startup may block a single page evaluation for over
+// 10 seconds. Leave enough time for readiness and the subsequent gestures.
+test.setTimeout(120000);
 
 type Point = [number, number];
 const outline: Point[] = [
@@ -104,7 +104,7 @@ test.beforeEach(async ({ page }) => {
         expect(errors).toEqual([]);
         return page.evaluate(() => window.lassoTest?.ready());
       },
-      { timeout: 20000 },
+      { timeout: 60000 },
     )
     .toBe(true);
   await settle(page);

@@ -24,6 +24,10 @@ export class Extrude3D {
 
   @field.object declare outlineColor: string | null;
 
+  @field.float32 declare rimLightStrength: number;
+
+  @field.object declare rimLightColor: string | null;
+
   /** Elevation of the unrotated front plane; the mesh center is z - depth / 2. */
   @field.float32 declare z: number;
 
@@ -44,6 +48,8 @@ export class Extrude3D {
     this.toneSteps ??= 0;
     this.outlineWidth ??= 0;
     this.outlineColor ??= null;
+    this.rimLightStrength ??= 0;
+    this.rimLightColor ??= null;
     this.z ??= 0;
     this.rotation ??= [0, 0, 0];
   }

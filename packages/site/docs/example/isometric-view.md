@@ -23,6 +23,8 @@ Turn on **Stepped tones** to quantize lit luminance into four bands on both obje
 
 Turn on **Show outlines** for a dark silhouette around the cube and the orange SVG ring, including its hole. The renderer expands back faces in screen space and tests them against the existing 3D depth buffer, so foreground geometry hides outlines behind it. Mesh nodes accept `material3d: { outlineWidth: 2, outlineColor: '#1e3264' }`; extruded Path/rect nodes accept the same fields in `extrude3d`. Width is in screen pixels, from 0 (off) to 8. This pass supports opaque meshes in a free 3D camera; alpha blended and alpha masked materials are excluded. Standard glTF export uses PBR materials and does not retain the tone or outline settings.
 
+Turn on **Rim light** to tint visible surfaces near their view-facing edges. The material shader derives the tint from the surface normal and view direction, after normal lighting and tone mapping. It follows camera orbit and uses the mesh's existing depth and alpha rules; it is a surface highlight, not a blurred glow outside the silhouette. Mesh nodes accept `material3d: { rimLightStrength: 0.9, rimLightColor: '#9ad9ff' }`, and extruded Path/rect nodes accept the same fields in `extrude3d`. Strength is 0 (off) to 1. Unlit materials ignore it, and standard glTF export does not retain it.
+
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
 </script>

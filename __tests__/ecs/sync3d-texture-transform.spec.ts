@@ -104,3 +104,14 @@ it('compares emissive color by value while preserving an explicit black override
   syncMaterial3D(entity, { emissiveFactor: [0, 0, 0] });
   expect(write).toHaveBeenCalledTimes(2);
 });
+
+it('compares rim light color by value across companion updates', () => {
+  const { entity, material, write } = fixture();
+  syncMaterial3D(entity, { rimLightColor: [0.55, 0.8, 1, 1] });
+  expect(write).not.toHaveBeenCalled();
+  syncMaterial3D(entity, { rimLightColor: [1, 0.5, 0.25, 1] });
+  expect(material.rimLightColor).toEqual([1, 0.5, 0.25, 1]);
+  expect(write).toHaveBeenCalledTimes(1);
+  syncMaterial3D(entity, { rimLightColor: [1, 0.5, 0.25, 1] });
+  expect(write).toHaveBeenCalledTimes(1);
+});

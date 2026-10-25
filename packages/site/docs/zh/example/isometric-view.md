@@ -23,6 +23,8 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 开启「显示轮廓」后，立方体和橙色 SVG 环的边缘会出现深色轮廓，包括孔洞内侧。渲染器沿屏幕方向扩张背面，并用现有 3D 深度缓冲测试，因此前景几何会遮住后方的轮廓。Mesh 节点可设置 `material3d: { outlineWidth: 2, outlineColor: '#1e3264' }`；挤出 Path/矩形可在 `extrude3d` 中设置同样的字段。线宽单位是屏幕像素，范围为 0（关闭）到 8。目前仅支持自由 3D 相机下的不透明 Mesh，半透明与遮罩材质不绘制轮廓。标准 glTF 导出仍使用 PBR 材质，不能保留色阶和轮廓设置。
 
+开启「边缘光」后，立方体和 SVG 环靠近视角边缘的可见表面会染上亮色。材质着色器根据表面法线与视线方向，在常规光照和色调映射之后计算这一效果；它会随视角旋转变化，并沿用 Mesh 原有的深度与透明度规则。这是表面高光，不会在轮廓外产生模糊光晕。Mesh 节点可设置 `material3d: { rimLightStrength: 0.9, rimLightColor: '#9ad9ff' }`，挤出 Path/矩形可在 `extrude3d` 中设置相同字段。强度范围为 0（关闭）到 1；`unlit` 材质不会应用该效果，标准 glTF 导出也不保留它。
+
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
 </script>

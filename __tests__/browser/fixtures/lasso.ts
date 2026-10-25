@@ -36,7 +36,15 @@ function mount() {
 mount();
 
 const harness = {
-  ready: () => !!api && api.getNodes().length >= 2,
+  ready: () => {
+    // WebKit can initialize the canvas before the fixture observes ic-ready.
+    // Its context provider already owns the same API once the scene is drawn.
+    const canvas = document.querySelector('ic-spectrum-canvas') as
+      | (HTMLElement & { apiProvider?: { value?: API } })
+      | null;
+    api ??= canvas?.apiProvider?.value;
+    return !!api && api.getNodes().length >= 2;
+  },
   settle,
   state: () => api.getAppState(),
   highlighted: () =>
