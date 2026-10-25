@@ -780,6 +780,17 @@ onUnmounted(() => {
   color: var(--vp-c-brand-1);
   border-color: var(--vp-c-brand-1);
 }
+@media (max-width: 640px) {
+  .isometric-tools {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.2rem;
+  }
+  .isometric-tools button {
+    flex: none;
+  }
+}
 .isometric-hint {
   margin: 0 0 0.75rem;
   font-size: 0.9em;
