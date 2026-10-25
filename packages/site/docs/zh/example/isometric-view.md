@@ -19,7 +19,7 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 开启「显示标注」可以为立方体和挤出 SVG 显示引导线与屏幕朝向的标签。锚点来自实时 3D Mesh 或 Path 顶点，因此标注会跟随视角、Mesh 变换及 SVG 锚点编辑；锚点移出视口后会隐藏。编辑时可关闭标注。这一层使用 DOM/SVG 覆盖，不参与 3D 深度遮挡。
 
-开启「分层色阶」后，立方体与挤出 SVG 的受光亮度被分为四档。分档在 3D 材质着色器完成光照和色调映射后执行，因此几何、阴影、拾取及深度顺序仍沿用原来的流程；关闭后恢复连续的 PBR 光照。`unlit` 材质不会应用色阶。Mesh 节点可设置 `material3d.toneSteps`，挤出 Path/矩形可设置 `extrude3d: { toneSteps }`；有效值为 2–8，设为 0 或省略即关闭。该选项尚不绘制轮廓线。
+开启「分层色阶」后，立方体与挤出 SVG 的受光亮度被分为四档。分档在 3D 材质着色器完成光照和色调映射后执行，因此几何、阴影、拾取及深度顺序仍沿用原来的流程；关闭后恢复连续的 PBR 光照。`unlit` 材质不会应用色阶。Mesh 节点可设置 `material3d.toneSteps`，挤出 Path/矩形可设置 `extrude3d: { toneSteps }`；有效值为 2–8，设为 0 或省略即关闭。该选项尚不绘制轮廓线；标准 glTF 导出仍使用 PBR 材质，不能保留分层色阶设置。
 
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
