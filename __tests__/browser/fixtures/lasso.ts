@@ -13,24 +13,25 @@ const drawn: string[] = [];
 const settle = () => settleECSFrames(api, 4);
 
 let app: ReturnType<typeof createApp>;
+const demo = document.querySelector('#demo')!;
+demo.addEventListener(
+  'ic-ready',
+  (event) => {
+    api = (event as CustomEvent<API>).detail;
+  },
+  true,
+);
+demo.addEventListener(
+  'ic-lasso-drawn',
+  (event) => {
+    drawn.push((event as CustomEvent<{ node: SerializedNode }>).detail.node.id);
+  },
+  true,
+);
 function mount() {
   api = undefined;
   app = createApp(LassoDemo);
   app.mount('#demo');
-  document.querySelector('ic-spectrum-canvas')!.addEventListener(
-    'ic-ready',
-    (event) => {
-      api = (event as CustomEvent<API>).detail;
-    },
-    true,
-  );
-  document
-    .querySelector('ic-spectrum-canvas')!
-    .addEventListener('ic-lasso-drawn', (event) => {
-      drawn.push(
-        (event as CustomEvent<{ node: SerializedNode }>).detail.node.id,
-      );
-    });
 }
 mount();
 
