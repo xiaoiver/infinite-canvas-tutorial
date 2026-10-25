@@ -316,6 +316,14 @@ it('uploads outline color and CSS-pixel width without rebuilding geometry', () =
   expect(
     uniforms.update(transform, material, ready, [1280, 800, 2]).u_OutlineParams,
   ).toEqual(Float32Array.of(0, 0, 0, 0));
+  material.outlineWidth = Number.NaN;
+  expect(
+    uniforms.update(transform, material, ready, [1280, 800, 2]).u_OutlineParams,
+  ).toEqual(Float32Array.of(0, 0, 0, 0));
+  material.outlineWidth = 12;
+  expect(
+    uniforms.update(transform, material, ready, [1280, 800, 2]).u_OutlineParams,
+  ).toEqual(Float32Array.of(16, 1280, 800, 0));
   expect(invert).toHaveBeenCalledTimes(1);
 });
 
