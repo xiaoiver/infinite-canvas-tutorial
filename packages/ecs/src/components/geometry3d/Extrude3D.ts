@@ -17,6 +17,9 @@ export class Extrude3D {
   /** Optional CSS color for the companion mesh's side walls and bevels. */
   @field.object declare sideColor: string | null;
 
+  /** Optional number of lit luminance bands; zero keeps continuous PBR shading. */
+  @field.float32 declare toneSteps: number;
+
   /** Elevation of the unrotated front plane; the mesh center is z - depth / 2. */
   @field.float32 declare z: number;
 
@@ -34,6 +37,7 @@ export class Extrude3D {
     this.bevelSize ??= 0;
     this.bevelSegments ??= 1;
     this.sideColor ??= null;
+    this.toneSteps ??= 0;
     this.z ??= 0;
     this.rotation ??= [0, 0, 0];
   }

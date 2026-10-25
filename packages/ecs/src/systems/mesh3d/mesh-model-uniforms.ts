@@ -7,7 +7,7 @@ import type {
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 108 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 112 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -80,6 +80,10 @@ export class MeshModelUniforms {
     u_OcclusionParams: this.data.subarray(
       104 + ENVIRONMENT_IRRADIANCE_FLOATS,
       108 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_StylizationParams: this.data.subarray(
+      108 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      112 + ENVIRONMENT_IRRADIANCE_FLOATS,
     ),
   };
 
@@ -170,6 +174,14 @@ export class MeshModelUniforms {
     );
     this.set(105 + ENVIRONMENT_IRRADIANCE_FLOATS, material.occlusionTexCoord);
     this.set(107 + ENVIRONMENT_IRRADIANCE_FLOATS, material.occlusionStrength);
+    this.set(
+      108 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      Number.isInteger(material.toneSteps) &&
+        material.toneSteps >= 2 &&
+        material.toneSteps <= 8
+        ? material.toneSteps
+        : 0,
+    );
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),

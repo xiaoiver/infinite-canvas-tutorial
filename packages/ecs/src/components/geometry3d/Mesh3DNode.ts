@@ -25,6 +25,8 @@ export class Mesh3DNode {
 
   @field.object declare baseColor: [number, number, number, number];
 
+  @field.float32 declare toneSteps: number;
+
   /** Preserve an explicit white override of an imported glTF base color. */
   @field.boolean declare baseColorOverridden: boolean;
 
@@ -152,6 +154,7 @@ export class Mesh3DNode {
     this.rotation3d ??= [0, 0, 0];
     this.scale3d ??= 100;
     this.baseColor ??= [1, 1, 1, 1];
+    this.toneSteps ??= 0;
     this.baseColorOverridden ??= false;
     this.ambient ??= 0.5;
     this.diffuse ??= 0.75;

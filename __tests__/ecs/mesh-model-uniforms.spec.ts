@@ -284,6 +284,24 @@ it('uploads double-sided, normal and occlusion settings without rebuilding geome
   expect(setSubData).toHaveBeenCalledTimes(1);
 });
 
+it('updates optional tone bands in the model uniform without changing the pose', () => {
+  const { uniforms, transform, material, setSubData } = setup();
+  const invert = jest.spyOn(mat4, 'invert');
+  expect(
+    uniforms.update(transform, material, ready).u_StylizationParams,
+  ).toEqual(Float32Array.of(0, 0, 0, 0));
+  material.toneSteps = 4;
+  expect(
+    uniforms.update(transform, material, ready).u_StylizationParams,
+  ).toEqual(Float32Array.of(4, 0, 0, 0));
+  material.toneSteps = 1;
+  expect(
+    uniforms.update(transform, material, ready).u_StylizationParams,
+  ).toEqual(Float32Array.of(0, 0, 0, 0));
+  expect(setSubData).toHaveBeenCalledTimes(3);
+  expect(invert).toHaveBeenCalledTimes(1);
+});
+
 it('retries failed uploads without rebuilding unchanged matrices', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
   const invert = jest.spyOn(mat4, 'invert');

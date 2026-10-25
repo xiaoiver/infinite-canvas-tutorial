@@ -19,6 +19,8 @@ Choose **Edit SVG anchors** to drag the orange ring's outer vertices or the inne
 
 Turn on **Show callouts** to label the cube and the extruded SVG. Each screen-facing label has a leader anchored to the live 3D mesh or Path vertex. It follows camera movement, mesh transforms, and SVG anchor edits; labels for anchors outside the viewport are hidden. Turn the overlay off when editing without annotations. These are DOM/SVG overlays and do not participate in 3D depth testing.
 
+Turn on **Stepped tones** to quantize lit luminance into four bands on both objects. This is applied in the 3D material shader after lighting and tone mapping, so geometry, shadows, picking, and depth ordering remain the same. Turn it off to restore continuous PBR shading. The unlit material mode ignores this setting. Mesh nodes accept `material3d.toneSteps`, and extruded Path/rect nodes accept `extrude3d: { toneSteps }`; valid values are 2–8, while 0 or an omitted value disables banding. This does not add a silhouette outline. Standard glTF export uses PBR materials and does not retain the banding setting.
+
 <script setup>
 import IsometricView from '../components/IsometricView.vue'
 </script>

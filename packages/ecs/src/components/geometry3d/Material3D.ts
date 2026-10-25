@@ -23,6 +23,9 @@ export class Material3D {
   /** Optional side-wall color for an extruded mesh; null uses baseColor. */
   @field.object declare sideColor: [number, number, number, number] | null;
 
+  /** Optional number of lit luminance bands; zero keeps continuous PBR shading. */
+  @field.float32 declare toneSteps: number;
+
   /**
    * Ambient light intensity (0..1).
    */
@@ -148,6 +151,7 @@ export class Material3D {
     }
     this.baseColor ??= [1, 1, 1, 1];
     this.sideColor ??= null;
+    this.toneSteps ??= 0;
     this.ambient ??= 0.5;
     this.diffuse ??= 0.7;
     this.specular ??= 0.3;

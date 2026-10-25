@@ -92,6 +92,12 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
         ? options.bevelSegments!
         : 1,
     sideColor: typeof options.sideColor === 'string' ? options.sideColor : null,
+    toneSteps:
+      Number.isInteger(options.toneSteps) &&
+      options.toneSteps! >= 2 &&
+      options.toneSteps! <= 8
+        ? options.toneSteps!
+        : 0,
     z: Number.isFinite(options.z) ? options.z! : 0,
     rotation: (Array.isArray(options.rotation) &&
     options.rotation.length === 3 &&
@@ -103,11 +109,19 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
 
 export function extrude3DToWire(
   pose: Pick<Extrude3D, 'depth' | 'z' | 'rotation'> &
-    Partial<Pick<Extrude3D, 'bevelSize' | 'bevelSegments'>>,
+    Partial<Pick<Extrude3D, 'bevelSize' | 'bevelSegments' | 'toneSteps'>>,
   previous?: Extrude3DAttributes['extrude3d'],
 ): Extrude3DAttributes['extrude3d'] {
   const sideColor =
     previous && typeof previous === 'object' ? previous.sideColor : undefined;
+  const toneSteps =
+    pose.toneSteps === undefined
+      ? previous && typeof previous === 'object'
+        ? previous.toneSteps
+        : undefined
+      : pose.toneSteps >= 2
+      ? pose.toneSteps
+      : undefined;
   const bevelSize =
     pose.bevelSize === undefined
       ? previous && typeof previous === 'object'
@@ -126,6 +140,7 @@ export function extrude3DToWire(
       : undefined;
   if (
     sideColor === undefined &&
+    toneSteps === undefined &&
     bevelSize === undefined &&
     bevelSegments === undefined &&
     pose.z === 0 &&
@@ -140,6 +155,7 @@ export function extrude3DToWire(
     z: pose.z,
     rotation: [...pose.rotation],
     ...(sideColor === undefined ? {} : { sideColor }),
+    ...(toneSteps === undefined ? {} : { toneSteps }),
     ...(bevelSize === undefined ? {} : { bevelSize }),
     ...(bevelSegments === undefined ? {} : { bevelSegments }),
   };
