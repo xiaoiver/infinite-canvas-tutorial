@@ -87,6 +87,8 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_NormalParams; // x: ready, y: UV set, z: rotation, w: scale
   vec4 u_OcclusionParams; // x: ready, y: UV set, z: rotation, w: strength
   vec4 u_StylizationParams; // x: lit luminance bands (0 keeps PBR)
+  vec4 u_OutlineParams; // x: width in device pixels, yz: viewport size
+  vec4 u_OutlineColor;
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -139,6 +141,20 @@ void main() {
   } else {
     gl_Position = u_ProjectionMatrix3D * u_ViewMatrix3D * worldPos;
   }
+#ifdef OUTLINE_PASS
+  // Move the back-face hull outwards in screen pixels without changing depth.
+  vec4 offsetClip = u_ProjectionMatrix3D * u_ViewMatrix3D *
+    vec4(worldPos.xyz + normalize(v_Normal) * 0.01, 1.0);
+  vec2 ndcDelta = offsetClip.xy / offsetClip.w -
+    gl_Position.xy / gl_Position.w;
+  vec2 pixelDelta = ndcDelta * u_OutlineParams.yz;
+  float pixelLength = length(pixelDelta);
+  if (pixelLength > 1e-6) {
+    vec2 direction = pixelDelta / pixelLength;
+    gl_Position.xy += direction * u_OutlineParams.x *
+      vec2(2.0 / u_OutlineParams.y, 2.0 / u_OutlineParams.z) * gl_Position.w;
+  }
+#endif
 }
 `;
 
@@ -196,6 +212,8 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_NormalParams;
   vec4 u_OcclusionParams;
   vec4 u_StylizationParams;
+  vec4 u_OutlineParams;
+  vec4 u_OutlineColor;
 };
 
 uniform sampler2D u_Map;
@@ -606,6 +624,9 @@ vec2 transformUv(vec2 uv, vec4 transform, float rotation) {
 }
 
 vec4 shadeMaterial() {
+#ifdef OUTLINE_PASS
+  return u_OutlineColor;
+#endif
   vec4 baseColor = u_BaseColor;
   if (u_PbrParams.z > 0.5 && abs(v_LocalNormalZ) < 1.0) {
     baseColor = u_SideColor;

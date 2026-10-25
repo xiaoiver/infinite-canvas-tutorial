@@ -62,6 +62,13 @@ export function queueMesh3DCompanion(
   const scale3d = node.scale3d;
   const baseColor = [...node.baseColor] as [number, number, number, number];
   const toneSteps = node.toneSteps;
+  const outlineWidth = node.outlineWidth;
+  const outlineColor = [...node.outlineColor] as [
+    number,
+    number,
+    number,
+    number,
+  ];
   const ambient = node.ambient;
   const diffuse = node.diffuse;
   const specular = node.specular;
@@ -123,6 +130,8 @@ export function queueMesh3DCompanion(
       new Material3D({
         baseColor,
         toneSteps,
+        outlineWidth,
+        outlineColor,
         ambient,
         diffuse,
         specular,

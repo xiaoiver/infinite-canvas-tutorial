@@ -36,6 +36,7 @@ const pathHandles = ref<
 const previewBounds = ref({ left: 0, top: 0, width: 0, height: 0 });
 const showCallouts = ref(false);
 const steppedTones = ref(false);
+const showOutlines = ref(false);
 type Callout = {
   id: string;
   title: string;
@@ -146,6 +147,34 @@ function toggleSteppedTones() {
   });
 }
 
+function toggleOutlines() {
+  const editor = api;
+  if (!editor) return;
+  const outlineWidth = showOutlines.value ? 0 : 2;
+  editor.runAtNextTick(() => {
+    const cube = editor.getNodeById('iso-cube');
+    const ring = ringNode();
+    if (cube?.type !== 'mesh3d' || !ring) return;
+    editor.updateNode(cube, {
+      material3d: {
+        ...cube.material3d,
+        outlineWidth,
+        outlineColor: '#1e3264',
+      },
+    });
+    editor.updateNode(ring, {
+      extrude3d: {
+        ...(typeof ring.extrude3d === 'object'
+          ? ring.extrude3d
+          : { depth: 50 }),
+        outlineWidth,
+        outlineColor: '#643819',
+      },
+    });
+    editor.record();
+  });
+}
+
 function refreshPathHandles() {
   if (!api || tool.value !== 'edit-path-3d') return;
   syncPreviewBounds();
@@ -179,6 +208,8 @@ function animatePathHandles() {
   const cube = api?.getNodeById('iso-cube');
   steppedTones.value =
     cube?.type === 'mesh3d' && (cube.material3d?.toneSteps ?? 0) >= 2;
+  showOutlines.value =
+    cube?.type === 'mesh3d' && (cube.material3d?.outlineWidth ?? 0) > 0;
   ringTilted.value =
     typeof extrude === 'object' &&
     !!extrude.rotation?.some((angle) => angle !== 0);
@@ -591,6 +622,9 @@ onUnmounted(() => {
       </button>
       <button :aria-pressed="steppedTones" @click="toggleSteppedTones">
         {{ props.locale === 'zh' ? '分层色阶' : 'Stepped tones' }}
+      </button>
+      <button :aria-pressed="showOutlines" @click="toggleOutlines">
+        {{ props.locale === 'zh' ? '显示轮廓' : 'Show outlines' }}
       </button>
     </div>
     <label

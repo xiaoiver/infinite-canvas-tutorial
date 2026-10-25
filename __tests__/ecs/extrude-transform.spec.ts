@@ -158,6 +158,21 @@ it('keeps tone bands through extrusion pose edits and validates wire values', ()
   ).toBe(20);
 });
 
+it('keeps extrusion outlines through pose edits and clamps width', () => {
+  const previous = { depth: 20, outlineWidth: 2, outlineColor: '#643819' };
+  expect(extrude3DFromWire(previous)?.outlineWidth).toBe(2);
+  expect(extrude3DFromWire(previous)?.outlineColor).toBe('#643819');
+  expect(
+    extrude3DToWire({ depth: 30, z: 0, rotation: [0, 0, 0] }, previous),
+  ).toMatchObject({ depth: 30, outlineWidth: 2, outlineColor: '#643819' });
+  expect(extrude3DFromWire({ depth: 20, outlineWidth: 20 })?.outlineWidth).toBe(
+    8,
+  );
+  expect(extrude3DFromWire({ depth: 20, outlineWidth: -1 })?.outlineWidth).toBe(
+    0,
+  );
+});
+
 it.each([
   { rotation: [0.2, -0.3, 0.4], base: 0.6 },
   { rotation: [0.2, Math.PI / 2, 0.4], base: 0 },

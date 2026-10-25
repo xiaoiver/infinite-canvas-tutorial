@@ -50,6 +50,15 @@ export function extrudeMaterialSideColorFromEntity(
   ];
 }
 
+export function extrudeMaterialOutlineColorFromEntity(
+  entity: Entity,
+): [number, number, number, number] {
+  const color = entity.read(Extrude3D).outlineColor;
+  if (!color) return [0.08, 0.12, 0.2, 1];
+  const rgb = parseColor(color);
+  return [rgb.r / 255, rgb.g / 255, rgb.b / 255, rgb.opacity];
+}
+
 export function resolveExtrude3DDepth(
   value: Extrude3DAttributes['extrude3d'],
 ): number | undefined {
@@ -98,6 +107,12 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
       options.toneSteps! <= 8
         ? options.toneSteps!
         : 0,
+    outlineWidth:
+      Number.isFinite(options.outlineWidth) && options.outlineWidth! > 0
+        ? Math.min(options.outlineWidth!, 8)
+        : 0,
+    outlineColor:
+      typeof options.outlineColor === 'string' ? options.outlineColor : null,
     z: Number.isFinite(options.z) ? options.z! : 0,
     rotation: (Array.isArray(options.rotation) &&
     options.rotation.length === 3 &&
@@ -109,11 +124,28 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
 
 export function extrude3DToWire(
   pose: Pick<Extrude3D, 'depth' | 'z' | 'rotation'> &
-    Partial<Pick<Extrude3D, 'bevelSize' | 'bevelSegments' | 'toneSteps'>>,
+    Partial<
+      Pick<
+        Extrude3D,
+        'bevelSize' | 'bevelSegments' | 'toneSteps' | 'outlineWidth'
+      >
+    >,
   previous?: Extrude3DAttributes['extrude3d'],
 ): Extrude3DAttributes['extrude3d'] {
   const sideColor =
     previous && typeof previous === 'object' ? previous.sideColor : undefined;
+  const outlineColor =
+    previous && typeof previous === 'object'
+      ? previous.outlineColor
+      : undefined;
+  const outlineWidth =
+    pose.outlineWidth === undefined
+      ? previous && typeof previous === 'object'
+        ? previous.outlineWidth
+        : undefined
+      : pose.outlineWidth > 0
+      ? pose.outlineWidth
+      : undefined;
   const toneSteps =
     pose.toneSteps === undefined
       ? previous && typeof previous === 'object'
@@ -140,6 +172,8 @@ export function extrude3DToWire(
       : undefined;
   if (
     sideColor === undefined &&
+    outlineColor === undefined &&
+    outlineWidth === undefined &&
     toneSteps === undefined &&
     bevelSize === undefined &&
     bevelSegments === undefined &&
@@ -155,6 +189,8 @@ export function extrude3DToWire(
     z: pose.z,
     rotation: [...pose.rotation],
     ...(sideColor === undefined ? {} : { sideColor }),
+    ...(outlineColor === undefined ? {} : { outlineColor }),
+    ...(outlineWidth === undefined ? {} : { outlineWidth }),
     ...(toneSteps === undefined ? {} : { toneSteps }),
     ...(bevelSize === undefined ? {} : { bevelSize }),
     ...(bevelSegments === undefined ? {} : { bevelSegments }),

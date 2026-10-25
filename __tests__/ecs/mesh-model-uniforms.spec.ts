@@ -302,6 +302,23 @@ it('updates optional tone bands in the model uniform without changing the pose',
   expect(invert).toHaveBeenCalledTimes(1);
 });
 
+it('uploads outline color and CSS-pixel width without rebuilding geometry', () => {
+  const { uniforms, transform, material, setSubData } = setup();
+  const invert = jest.spyOn(mat4, 'invert');
+  material.outlineWidth = 2;
+  material.outlineColor = [0.1, 0.2, 0.3, 1];
+  const legacy = uniforms.update(transform, material, ready, [1280, 800, 2]);
+  expect(legacy.u_OutlineParams).toEqual(Float32Array.of(4, 1280, 800, 0));
+  expect(legacy.u_OutlineColor).toEqual(Float32Array.of(0.1, 0.2, 0.3, 1));
+  uniforms.update(transform, material, ready, [1280, 800, 2]);
+  expect(setSubData).toHaveBeenCalledTimes(1);
+  material.outlineWidth = 0;
+  expect(
+    uniforms.update(transform, material, ready, [1280, 800, 2]).u_OutlineParams,
+  ).toEqual(Float32Array.of(0, 0, 0, 0));
+  expect(invert).toHaveBeenCalledTimes(1);
+});
+
 it('retries failed uploads without rebuilding unchanged matrices', () => {
   const { uniforms, transform, material, data, setSubData } = setup();
   const invert = jest.spyOn(mat4, 'invert');

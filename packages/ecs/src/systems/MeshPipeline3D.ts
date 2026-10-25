@@ -111,7 +111,9 @@ interface MeshPipeline3DCanvasState {
   owner: ResourceScope;
   dispose: () => void;
   program: Program;
+  outlineProgram: Program;
   pipeline: RenderPipeline;
+  outlinePipeline: RenderPipeline;
   doubleSidedPipeline: RenderPipeline;
   blendPipeline: RenderPipeline;
   doubleSidedBlendPipeline: RenderPipeline;
@@ -414,6 +416,7 @@ export class MeshPipeline3D extends System {
           environmentMapReady,
           environmentIrradiance,
         },
+        [width, height, width / (logicalW || width)],
       );
 
       state.program.setUniformsLegacy({
@@ -464,9 +467,14 @@ export class MeshPipeline3D extends System {
       } else {
         renderPass.draw(gpuData.vertexCount);
       }
+      return modelLegacy;
     };
 
     const blended: { entity: Entity; gpu: MeshGPUData; depth: number }[] = [];
+    const outlined: {
+      gpu: MeshGPUData;
+      modelLegacy: Record<string, unknown>;
+    }[] = [];
     const view = sceneLegacy.u_ViewMatrix3D as Float32Array;
     // Linked canvas cameras look from negative z; standalone cameras use
     // their ordinary view direction. In either mode smaller keys are farther.
@@ -494,14 +502,63 @@ export class MeshPipeline3D extends System {
           depth: center[2] * depthSign,
         });
       } else {
-        draw(
+        const material = meshEntity.read(Material3D);
+        const outlineWidth = material.outlineWidth;
+        const opaque = material.alphaMode === 'opaque';
+        const modelLegacy = draw(
           meshEntity,
           gpu,
           meshEntity.read(Material3D).doubleSided
             ? state.doubleSidedPipeline
             : state.pipeline,
         );
+        if (!camera.linked && opaque && outlineWidth > 0)
+          outlined.push({ gpu, modelLegacy });
       }
+    }
+    for (const { gpu, modelLegacy } of outlined) {
+      state.outlineProgram.setUniformsLegacy({
+        ...sceneLegacy,
+        ...modelLegacy,
+      });
+      if (activePipeline !== state.outlinePipeline) {
+        renderPass.setPipeline(state.outlinePipeline);
+        activePipeline = state.outlinePipeline;
+      }
+      renderPass.setBindings(
+        gpu.outlineBindings.get(
+          state.outlinePipeline,
+          state.sceneUniformBuffer,
+          state.sampler,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.shadowSampler,
+          state.whiteTexture,
+          state.brdfSampler,
+          state.whiteTexture,
+          state.whiteTexture,
+          state.whiteTexture,
+        ),
+      );
+      renderPass.setVertexInput(
+        state.inputLayout,
+        [
+          { buffer: gpu.vertexBuffer },
+          { buffer: gpu.normalBuffer },
+          { buffer: gpu.uvBuffer },
+          { buffer: gpu.uv1Buffer },
+          { buffer: gpu.tangentBuffer },
+          { buffer: gpu.colorBuffer },
+        ],
+        gpu.indexBuffer ? { buffer: gpu.indexBuffer } : null,
+      );
+      if (gpu.indexBuffer) renderPass.drawIndexed(gpu.indexCount);
+      else renderPass.draw(gpu.vertexCount);
     }
     if (blended.length) {
       // Draw farther translucent surfaces before nearer ones.
@@ -853,6 +910,13 @@ export class MeshPipeline3D extends System {
         vertex: { glsl: vert, entryPoint: 'main' },
         fragment: { glsl: frag, entryPoint: 'main' },
       });
+      const outlineProgram = renderCache.createProgram({
+        vertex: { glsl: `#define OUTLINE_PASS 1\n${vert}`, entryPoint: 'main' },
+        fragment: {
+          glsl: `#define OUTLINE_PASS 1\n${frag}`,
+          entryPoint: 'main',
+        },
+      });
 
       const inputLayout = renderCache.createInputLayout({
         vertexBufferDescriptors: [
@@ -954,6 +1018,33 @@ export class MeshPipeline3D extends System {
       const doubleSidedPipeline = createColorPipeline(false, true);
       const blendPipeline = createColorPipeline(true, false);
       const doubleSidedBlendPipeline = createColorPipeline(true, true);
+      const outlinePipeline = renderCache.createRenderPipeline({
+        inputLayout,
+        program: outlineProgram,
+        colorAttachmentFormats: [Format.U8_RGBA_RT],
+        depthStencilAttachmentFormat: Format.D24_S8,
+        topology: PrimitiveTopology.TRIANGLES,
+        megaStateDescriptor: makeMegaState({
+          attachmentsState: [
+            {
+              channelWriteMask: ChannelWriteMask.ALL,
+              rgbBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.SRC_ALPHA,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+              alphaBlendState: {
+                blendMode: BlendMode.ADD,
+                blendSrcFactor: BlendFactor.ONE,
+                blendDstFactor: BlendFactor.ONE_MINUS_SRC_ALPHA,
+              },
+            },
+          ],
+          depthWrite: false,
+          depthCompare: CompareFunction.GREATER,
+          cullMode: CullMode.FRONT,
+        }),
+      });
 
       const shadowProgram = renderCache.createProgram({
         vertex: { glsl: shadowVert, entryPoint: 'main' },
@@ -1081,7 +1172,9 @@ export class MeshPipeline3D extends System {
         owner,
         dispose: () => {},
         program,
+        outlineProgram,
         pipeline,
+        outlinePipeline,
         doubleSidedPipeline,
         blendPipeline,
         doubleSidedBlendPipeline,

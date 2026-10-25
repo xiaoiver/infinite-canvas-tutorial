@@ -26,3 +26,25 @@ it.each([
 it('keeps continuous PBR shading as the default for a material-free mesh', () => {
   expect(mesh3DNodeFromWire(cube).toneSteps).toBe(0);
 });
+
+it.each([
+  [undefined, 0],
+  [-1, 0],
+  [0, 0],
+  [2, 2],
+  [12, 8],
+  [Number.NaN, 0],
+])('normalizes mesh outlineWidth %s to %s', (outlineWidth, expected) => {
+  expect(
+    mesh3DNodeFromWire({ ...cube, material3d: { outlineWidth } }).outlineWidth,
+  ).toBe(expected);
+});
+
+it('parses a mesh outline color separately from the base color', () => {
+  const material = mesh3DNodeFromWire({
+    ...cube,
+    material3d: { baseColor: '#4774df', outlineColor: '#1e3264' },
+  });
+  expect(material.outlineColor).toEqual([30 / 255, 50 / 255, 100 / 255, 1]);
+  expect(material.baseColor).not.toEqual(material.outlineColor);
+});

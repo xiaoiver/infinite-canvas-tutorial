@@ -7,7 +7,7 @@ import type {
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
 import { ENVIRONMENT_IRRADIANCE_FLOATS } from '../../utils/environment-irradiance';
 
-export const MESH_MODEL_UNIFORM_FLOATS = 112 + ENVIRONMENT_IRRADIANCE_FLOATS;
+export const MESH_MODEL_UNIFORM_FLOATS = 120 + ENVIRONMENT_IRRADIANCE_FLOATS;
 
 /** One cache per model UBO; never retain mutable ECS component views. */
 export class MeshModelUniforms {
@@ -85,6 +85,14 @@ export class MeshModelUniforms {
       108 + ENVIRONMENT_IRRADIANCE_FLOATS,
       112 + ENVIRONMENT_IRRADIANCE_FLOATS,
     ),
+    u_OutlineParams: this.data.subarray(
+      112 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      116 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
+    u_OutlineColor: this.data.subarray(
+      116 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      120 + ENVIRONMENT_IRRADIANCE_FLOATS,
+    ),
   };
 
   constructor(private readonly buffer: Buffer) {
@@ -105,6 +113,7 @@ export class MeshModelUniforms {
       environmentMapReady: boolean;
       environmentIrradiance: Float32Array | null;
     },
+    viewport: readonly [number, number, number] = [1, 1, 1],
   ): Record<string, unknown> {
     this.updatePose(transform);
     for (let i = 0; i < 4; i++) this.set(32 + i, material.baseColor[i]);
@@ -182,6 +191,24 @@ export class MeshModelUniforms {
         ? material.toneSteps
         : 0,
     );
+    const outlineWidth =
+      Number.isFinite(material.outlineWidth) && material.outlineWidth > 0
+        ? Math.min(material.outlineWidth, 8) * viewport[2]
+        : 0;
+    this.set(112 + ENVIRONMENT_IRRADIANCE_FLOATS, outlineWidth);
+    this.set(
+      113 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      outlineWidth ? viewport[0] : 0,
+    );
+    this.set(
+      114 + ENVIRONMENT_IRRADIANCE_FLOATS,
+      outlineWidth ? viewport[1] : 0,
+    );
+    for (let i = 0; i < 4; i++)
+      this.set(
+        116 + ENVIRONMENT_IRRADIANCE_FLOATS + i,
+        material.outlineColor[i],
+      );
     this.set(
       63 + ENVIRONMENT_IRRADIANCE_FLOATS,
       Number(textureReady.metallicRoughnessMapReady),

@@ -20,6 +20,10 @@ export class Extrude3D {
   /** Optional number of lit luminance bands; zero keeps continuous PBR shading. */
   @field.float32 declare toneSteps: number;
 
+  @field.float32 declare outlineWidth: number;
+
+  @field.object declare outlineColor: string | null;
+
   /** Elevation of the unrotated front plane; the mesh center is z - depth / 2. */
   @field.float32 declare z: number;
 
@@ -38,6 +42,8 @@ export class Extrude3D {
     this.bevelSegments ??= 1;
     this.sideColor ??= null;
     this.toneSteps ??= 0;
+    this.outlineWidth ??= 0;
+    this.outlineColor ??= null;
     this.z ??= 0;
     this.rotation ??= [0, 0, 0];
   }
