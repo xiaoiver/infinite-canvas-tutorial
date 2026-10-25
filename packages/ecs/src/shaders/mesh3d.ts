@@ -86,6 +86,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_OcclusionUvTransform;
   vec4 u_NormalParams; // x: ready, y: UV set, z: rotation, w: scale
   vec4 u_OcclusionParams; // x: ready, y: UV set, z: rotation, w: strength
+  vec4 u_StylizationParams; // x: lit luminance bands (0 keeps PBR)
 };
 
 layout(location = 0) in vec3 a_Position3D;
@@ -194,6 +195,7 @@ layout(std140) uniform ModelUniforms3D {
   vec4 u_OcclusionUvTransform;
   vec4 u_NormalParams;
   vec4 u_OcclusionParams;
+  vec4 u_StylizationParams;
 };
 
 uniform sampler2D u_Map;
@@ -727,7 +729,14 @@ vec4 shadeMaterial() {
     emission *= srgbToLinear(texture(SAMPLER_2D(u_EmissiveMap), emissiveUv).rgb);
   }
   vec3 result = ambient + Lo + emission * u_EmissiveParams.z;
-  return vec4(linearToSrgb(toneMapACES(result)), baseColor.a);
+  vec3 mapped = toneMapACES(result);
+  if (u_StylizationParams.x >= 2.0) {
+    float luminance = dot(mapped, vec3(0.2126, 0.7152, 0.0722));
+    float bands = u_StylizationParams.x;
+    float stepped = (floor(min(luminance, 0.9999) * bands) + 0.5) / bands;
+    mapped = clamp(mapped * (stepped / max(luminance, 1e-4)), 0.0, 1.0);
+  }
+  return vec4(linearToSrgb(mapped), baseColor.a);
 }
 
 void main() {

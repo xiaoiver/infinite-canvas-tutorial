@@ -1,5 +1,57 @@
 import { expect, test } from '@playwright/test';
+import { PNG } from 'pngjs';
 import type {} from './fixtures/isometric-docs';
+
+test('stepped tones affect both 3D objects and can be turned off', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  const canvas = page.locator('ic-spectrum-canvas');
+  const original = PNG.sync.read(await canvas.screenshot()).data;
+  const toggle = page.getByRole('button', { name: '分层色阶' });
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.toneSteps()))
+    .toEqual([4, 4]);
+  await page.evaluate(() => window.isometricDocs.settle());
+  const image = PNG.sync.read(await canvas.screenshot());
+  const stepped = image.data;
+  let changed = 0;
+  for (let i = 0; i < original.length; i += 4) {
+    if (
+      Math.abs(original[i] - stepped[i]) +
+        Math.abs(original[i + 1] - stepped[i + 1]) +
+        Math.abs(original[i + 2] - stepped[i + 2]) >
+      40
+    )
+      changed++;
+  }
+  expect(changed).toBeGreaterThan(200);
+  // The cube's unlit-facing side should remain blue, not collapse to black.
+  const cubeSide = (200 * image.width + 350) * 4;
+  expect(stepped[cubeSide + 2]).toBeGreaterThan(80);
+  await page.getByRole('button', { name: '倾斜 SVG' }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.toneSteps()))
+    .toEqual([4, 4]);
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.toneSteps()))
+    .toEqual([0, 0]);
+  await page.evaluate(() => window.isometricDocs.undo());
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.toneSteps()))
+    .toEqual([4, 4]);
+  expect(errors).toEqual([]);
+});
 
 test('3D callouts follow the camera and edited SVG vertices', async ({
   page,

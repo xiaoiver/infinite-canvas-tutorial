@@ -433,6 +433,8 @@ export interface Extrude3DOptions {
   bevelSegments?: number;
   /** CSS color for the side walls and bevels; front and back keep the source fill. */
   sideColor?: string;
+  /** Quantize lit luminance into 2–8 bands; 0 or omitted keeps PBR shading. */
+  toneSteps?: number;
   /** Elevation relative to the original front plane; independent of thickness. */
   z?: number;
   /** Local XYZ Euler rotation, in radians, composed after the source's 2D rotation. */
@@ -458,6 +460,8 @@ export type Camera3DNodeConfig = {
 
 export type Material3DWire = {
   baseColor?: string | [number, number, number, number];
+  /** Quantize lit luminance into 2–8 bands; 0 or omitted keeps PBR shading. */
+  toneSteps?: number;
   ambient?: number;
   diffuse?: number;
   specular?: number;
