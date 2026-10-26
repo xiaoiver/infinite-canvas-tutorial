@@ -231,6 +231,7 @@ export interface CodeNode {
     strokeMiterlimit?: number;
     strokeDasharray?: string;
     strokeDashoffset?: number;
+    strokeAlignment?: { type: 'inner' | 'outer'; id: string };
     markerStart?: CodeVectorMarker;
     markerEnd?: CodeVectorMarker;
   };

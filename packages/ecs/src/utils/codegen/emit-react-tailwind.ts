@@ -500,13 +500,26 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
         const side = marker === path.markerStart ? 'start' : 'end';
         return `${state.indent.repeat(depth + 2)}<marker id={${JSON.stringify(marker.id)}} markerUnits="userSpaceOnUse" markerWidth={${formatNumber(marker.size)}} markerHeight={${formatNumber(marker.size)}} viewBox={${JSON.stringify(`${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`)}} refX={0} refY={0} orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(marker.d)}} fill={${JSON.stringify(marker.fill ? stroke : 'none')}}${attr('fillOpacity', marker.fill && path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} strokeWidth={${formatNumber(marker.strokeWidth)}}${attr('strokeLinecap', marker.strokeLinecap)}${attr('strokeLinejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
       });
-    const definitions = [...gradients, ...markers];
+    const alignment = path.strokeAlignment;
+    const alignmentDefinition = alignment
+      ? alignment.type === 'inner'
+        ? `${state.indent.repeat(depth + 2)}<clipPath id={${JSON.stringify(alignment.id)}} clipPathUnits="userSpaceOnUse">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(path.d)}} clipRule={${JSON.stringify(path.fillRule)}} />\n${state.indent.repeat(depth + 2)}</clipPath>`
+        : `${state.indent.repeat(depth + 2)}<mask id={${JSON.stringify(alignment.id)}} maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" maskType="luminance" x={${formatNumber(path.viewBoxX - (path.strokeWidth ?? 0))}} y={${formatNumber(path.viewBoxY - (path.strokeWidth ?? 0))}} width={${formatNumber(path.width + 2 * (path.strokeWidth ?? 0))}} height={${formatNumber(path.height + 2 * (path.strokeWidth ?? 0))}}>\n${state.indent.repeat(depth + 3)}<rect x={${formatNumber(path.viewBoxX - (path.strokeWidth ?? 0))}} y={${formatNumber(path.viewBoxY - (path.strokeWidth ?? 0))}} width={${formatNumber(path.width + 2 * (path.strokeWidth ?? 0))}} height={${formatNumber(path.height + 2 * (path.strokeWidth ?? 0))}} fill="white" />\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(path.d)}} fill="black" fillRule={${JSON.stringify(path.fillRule)}} />\n${state.indent.repeat(depth + 2)}</mask>`
+      : undefined;
+    const definitions = [
+      ...gradients,
+      ...markers,
+      ...(alignmentDefinition ? [alignmentDefinition] : []),
+    ];
     const defs = definitions.length
       ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
     const svgStyle = hasChildren
       ? ' style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}'
       : `${className}${styleExpr}`;
+    const alignedStroke = alignment
+      ? `${state.indent.repeat(depth + 1)}<path d={${JSON.stringify(path.d)}} fill="none" stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', 2 * (path.strokeWidth ?? 0))}${attr('strokeLinecap', path.strokeLinecap)}${attr('strokeLinejoin', path.strokeLinejoin)}${attr('strokeMiterlimit', path.strokeMiterlimit)}${attr('strokeDasharray', path.strokeDasharray)}${attr('strokeDashoffset', path.strokeDashoffset)}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clipPath' : 'mask', `url(#${alignment.id})`)} />\n`
+      : '';
     const svg = `${pad}<svg viewBox={${JSON.stringify(
       `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
     )}} aria-hidden="true"${svgStyle}>\n${defs}${state.indent.repeat(
@@ -514,7 +527,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
       fill,
     )}}${attr('fillOpacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
-      stroke,
+      alignment ? 'none' : stroke,
     )}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', path.strokeWidth)}${attr(
       'strokeLinecap',
       path.strokeLinecap,
@@ -524,7 +537,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     )}${attr('strokeDasharray', path.strokeDasharray)}${attr(
       'strokeDashoffset',
       path.strokeDashoffset,
-    )}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)} />\n${pad}</svg>`;
+    )}${attr('markerStart', !alignment && path.markerStart ? `url(#${path.markerStart.id})` : undefined)}${attr('markerEnd', !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined)} />\n${alignedStroke}${pad}</svg>`;
     if (!hasChildren) return svg;
     const tag = node.element?.tag ?? 'div';
     const semanticAttr =

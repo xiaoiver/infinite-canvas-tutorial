@@ -7,6 +7,56 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('keeps inner and outer stroke alignment on closed paths', () => {
+      const base = {
+        id: 'ring',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        zIndex: 0,
+        d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z M 25 25 L 25 75 L 75 75 L 75 25 Z',
+        fillRule: 'evenodd',
+        fills: [{ type: 'solid', value: '#ffffff' }],
+        strokes: [{ type: 'solid', value: '#000000' }],
+        strokeWidth: 4,
+      } as SerializedNode;
+      const inner = serializedNodesToCode([
+        { ...base, strokeAlignment: 'inner' } as SerializedNode,
+      ]);
+      expect(inner).toContain('<clipPath id={"ic-stroke-72-69-6e-67"}');
+      expect(inner).toContain('clipRule={"evenodd"}');
+      expect(inner).toContain('stroke={"none"}');
+      expect(inner).toContain('strokeWidth={8}');
+      expect(inner).toContain('clipPath={"url(#ic-stroke-72-69-6e-67)"}');
+      const outer = serializedNodesToCode([
+        { ...base, strokeAlignment: 'outer' } as SerializedNode,
+      ]);
+      expect(outer).toContain('<mask id={"ic-stroke-72-69-6e-67"}');
+      expect(outer).toContain('<rect x={-4} y={-4} width={108} height={108} fill="white"');
+      expect(outer).toContain('fill="black" fillRule={"evenodd"}');
+      expect(outer).toContain('mask={"url(#ic-stroke-72-69-6e-67)"}');
+      const html = serializedNodesToCode(
+        [{ ...base, strokeAlignment: 'outer' } as SerializedNode],
+        { framework: 'html-css' },
+      );
+      expect(html).toContain('<mask id="ic-stroke-72-69-6e-67"');
+      expect(html).toContain('fill="black" fill-rule="evenodd"');
+      expect(html).toContain('stroke-width="8"');
+      expect(html).toContain('mask="url(#ic-stroke-72-69-6e-67)"');
+
+      const open = serializedNodesToCode([
+        {
+          ...base,
+          d: 'M 0 0 L 100 100',
+          strokeAlignment: 'inner',
+        } as SerializedNode,
+      ]);
+      expect(open).not.toContain('<clipPath');
+      expect(open).toContain('strokeWidth={4}');
+    });
+
     it('exports single linear fills and radial strokes on vector paths', () => {
       const node = {
         id: 'gradient-path',

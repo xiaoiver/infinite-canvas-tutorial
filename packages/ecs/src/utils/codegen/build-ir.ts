@@ -25,6 +25,7 @@ import { toCSSMixBlendMode } from '../blend-mode';
 import { hasUnsupportedPaintFillOverride } from './paint-fill-override';
 import { singleCssGradientFill } from './gradient-fill';
 import { pathGeometryBounds } from '../path-rendering';
+import { parsePath } from '../curve/shape-path';
 import {
   computeLinearGradient,
   computeRadialGradient,
@@ -470,6 +471,25 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
           height,
         )
       : undefined;
+  const alignment = node.strokeAlignment;
+  let strokeAlignment: NonNullable<CodeNode['vectorPath']>['strokeAlignment'];
+  if (
+    node.type === 'path' &&
+    (stroke || strokeGradient) &&
+    strokeWidth > 0 &&
+    (alignment === 'inner' || alignment === 'outer')
+  ) {
+    const subpaths = parsePath(d).subPaths;
+    if (subpaths.length > 0 && subpaths.every((subpath) => subpath.autoClose)) {
+      const encodedId = Array.from(node.id as string)
+        .map((character) => character.codePointAt(0)!.toString(16))
+        .join('-');
+      strokeAlignment = {
+        type: alignment,
+        id: `ic-stroke-${encodedId}`,
+      };
+    }
+  }
   return {
     d,
     viewBoxX,
@@ -527,6 +547,7 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
       Number.isFinite(node.strokeDashoffset)
         ? node.strokeDashoffset
         : undefined,
+    strokeAlignment,
     markerStart:
       (stroke || strokeGradient) && strokeWidth > 0
         ? vectorMarker(node, 'start', strokeWidth)
@@ -1485,6 +1506,7 @@ function hasUnsupportedVectorRefOverrides(nodes: AnyNode[]): boolean {
     'strokeMiterlimit',
     'strokeDasharray',
     'strokeDashoffset',
+    'strokeAlignment',
     'markerStart',
     'markerEnd',
     'markerFactor',
