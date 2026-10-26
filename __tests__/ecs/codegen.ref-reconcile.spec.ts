@@ -101,7 +101,7 @@ describe('design-to-code expanded ref reconciliation', () => {
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;
-    (ref as { dropShadowBlurRadius?: number }).dropShadowBlurRadius = 12;
+    (ref as { padding?: number }).padding = 20;
     const expanded = expandRefSerializedNodes(
       structuredClone(unsupportedSource),
       unsupportedSource,
@@ -114,8 +114,52 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(recovered.some((node) => node.type === 'ref')).toBe(false);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
       type: 'rect',
+      padding: 20,
+    });
+  });
+
+  it('preserves a drop shadow as one React prop and separate .ic overrides', () => {
+    const current = structuredClone(baseline);
+    const card = current.find((node) => node.id === 'growth')!;
+    card.dropShadowColor = '#19243d';
+    card.dropShadowOffsetX = 2;
+    card.dropShadowOffsetY = 6;
+    card.dropShadowBlurRadius = 12;
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      dropShadowColor: '#19243d',
+      dropShadowOffsetX: 2,
+      dropShadowOffsetY: 6,
       dropShadowBlurRadius: 12,
     });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('planCardDropShadow?: string');
+    expect(react).toContain('planCardDropShadow = "none"');
+    expect(react).toContain('boxShadow: planCardDropShadow');
+    expect(react).toContain('planCardDropShadow="2px 6px 12px #19243d"');
+  });
+
+  it('combines a partial shadow override with the template in css-var mode', () => {
+    const shadowSource = structuredClone(source);
+    const template = shadowSource.find((node) => node.id === 'card-template')!;
+    template.dropShadowColor = '$color.shadow';
+    template.dropShadowOffsetY = 4;
+    template.dropShadowBlurRadius = 5;
+    const ref = shadowSource.find((node) => node.id === 'growth')!;
+    if (ref.type !== 'ref') throw new Error('Missing instance');
+    ref.dropShadowBlurRadius = 12;
+    const react = serializedNodesToCode(shadowSource, {
+      variablesMode: 'css-var',
+      variables: { 'color.shadow': { type: 'color', value: '#19243d' } },
+    });
+    expect(react).toContain(
+      'planCardDropShadow="0px 4px 12px var(--color-shadow)"',
+    );
+    expect(react).toContain(
+      'planCardDropShadow = "0px 4px 5px var(--color-shadow)"',
+    );
+    expect(react).not.toContain('shadow-[');
   });
 
   it('preserves instance opacity and text weight as component props', () => {

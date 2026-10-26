@@ -64,8 +64,17 @@ const probe = {
       if (node?.type !== 'rect') throw new Error('Growth card is missing');
       editor.updateNode(node, {
         dropShadowColor: '#000000',
+        dropShadowOffsetY: 6,
         dropShadowBlurRadius: 12,
       });
+    });
+  },
+  setPricingCardPadding: async (padding: number) => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth');
+      if (node?.type !== 'rect') throw new Error('Growth card is missing');
+      editor.updateNode(node, { padding });
     });
   },
   setPricingAmountTypography: async () => {

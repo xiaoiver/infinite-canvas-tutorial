@@ -37,6 +37,7 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
+  boxShadow: 'boxShadow',
 };
 
 interface TwResult {
@@ -163,7 +164,7 @@ function genTailwind(
         );
     }
   }
-  if (style.boxShadow) {
+  if (style.boxShadow && !skip.has('boxShadow')) {
     const s = style.boxShadow;
     if (needsInline(s.color, mode)) {
       inline.push([
