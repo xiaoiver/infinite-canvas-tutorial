@@ -20,6 +20,7 @@ const PROP_KEYS = [
   'fontFamily',
   'textAlign',
   'letterSpacing',
+  'lineHeight',
   'anchorX',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);

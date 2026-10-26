@@ -358,7 +358,7 @@ The three variable modes match the SVG export semantics:
 
 ### Components and instances {#design-to-code-components}
 
-With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, `fontSize`, `fontWeight`, `fontStyle`, `fontFamily`, `textAlign`, `letterSpacing`, `opacity`, `cornerRadius`, explicit `width`/`height`, `strokeWidth`, and `strokes`) seen across instances are lifted into props with the template value as default:
+With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, `fontSize`, `fontWeight`, `fontStyle`, `fontFamily`, `textAlign`, `letterSpacing`, `lineHeight`, `opacity`, `cornerRadius`, explicit `width`/`height`, `strokeWidth`, and `strokes`) seen across instances are lifted into props with the template value as default. Numeric `lineHeight` values are pixel heights in `.ic`, so React output adds `px` instead of treating them as unitless multipliers:
 
 ```tsx
 interface RoundButtonProps {

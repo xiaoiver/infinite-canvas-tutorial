@@ -125,6 +125,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText('planCardAmountFontFamily="Georgia"');
   await expect(code).toContainText('planCardAmountTextAlign="center"');
   await expect(code).toContainText('planCardAmountLetterSpacing={1.50}');
+  await expect(code).toContainText('planCardAmountLineHeight={48}');
   const [styledDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 .ic' }).click(),
@@ -147,6 +148,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
         fontFamily: 'Georgia',
         textAlign: 'center',
         letterSpacing: 1.5,
+        lineHeight: 48,
         anchorX: expect.any(Number),
       },
     },
@@ -163,6 +165,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText('font-family: Georgia');
   await expect(code).toContainText('text-align: center');
   await expect(code).toContainText('letter-spacing: 1.50px');
+  await expect(code).toContainText('line-height: 48px');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.evaluate(() => window.designToCodeDocs.setPricingCardShadow());
   await expect(code).not.toContainText('export function PricingPlanCard');

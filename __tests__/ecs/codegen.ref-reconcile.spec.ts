@@ -151,6 +151,7 @@ describe('design-to-code expanded ref reconciliation', () => {
     price.fontFamily = 'Georgia';
     price.textAlign = 'center';
     price.letterSpacing = 1.5;
+    price.lineHeight = 48;
     price.anchorX = 28.5;
     const recovered = reconcileRefInstances(source, baseline, current);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
@@ -161,6 +162,7 @@ describe('design-to-code expanded ref reconciliation', () => {
           fontFamily: 'Georgia',
           textAlign: 'center',
           letterSpacing: 1.5,
+          lineHeight: 48,
           anchorX: 28.5,
         },
       },
@@ -177,14 +179,34 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain(
       "priceLetterSpacing?: CSSProperties['letterSpacing']",
     );
+    expect(react).toContain("priceLineHeight?: CSSProperties['lineHeight']");
     expect(react).toContain('fontStyle: priceFontStyle');
     expect(react).toContain('fontFamily: priceFontFamily');
     expect(react).toContain('textAlign: priceTextAlign');
     expect(react).toContain('letterSpacing: priceLetterSpacing');
+    expect(react).toContain('priceLineHeight = 0');
+    expect(react).toContain(
+      'lineHeight: typeof priceLineHeight === "number" ? (priceLineHeight > 0 ? priceLineHeight + "px" : undefined) : priceLineHeight',
+    );
     expect(react).toContain('priceFontStyle="italic"');
     expect(react).toContain('priceFontFamily="Georgia"');
     expect(react).toContain('priceTextAlign="center"');
     expect(react).toContain('priceLetterSpacing={1.50}');
+    expect(react).toContain('priceLineHeight={48}');
+  });
+
+  it('uses the template line height as a pixel-valued prop default', () => {
+    const withLineHeight = structuredClone(source);
+    const price = withLineHeight.find((node) => node.id === 'price')!;
+    if (price.type !== 'text') throw new Error('Missing text template');
+    price.lineHeight = 24;
+    const ref = withLineHeight.find((node) => node.id === 'growth')!;
+    if (ref.type !== 'ref') throw new Error('Missing instance');
+    ref.descendants = { price: { lineHeight: 40 } };
+    const react = serializedNodesToCode(withLineHeight);
+    expect(react).toContain('priceLineHeight = 24');
+    expect(react).toContain('priceLineHeight={40}');
+    expect(react).not.toContain('leading-[24px]');
   });
 
   it('falls back for an anchor move without a text alignment edit', () => {

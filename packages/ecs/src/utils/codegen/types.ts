@@ -123,7 +123,8 @@ export type CodeBindingTarget =
   | 'fontStyle'
   | 'fontFamily'
   | 'textAlign'
-  | 'letterSpacing';
+  | 'letterSpacing'
+  | 'lineHeight';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

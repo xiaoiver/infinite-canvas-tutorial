@@ -6,6 +6,21 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('keeps zero line height as automatic text leading', () => {
+      const code = serializedNodesToCode([
+        {
+          id: 'auto-leading',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 0,
+          content: 'Automatic leading',
+          lineHeight: 0,
+        } as SerializedNode,
+      ]);
+      expect(code).not.toContain('leading-[0px]');
+    });
+
     it('emits a single rect as a div with tailwind classes', () => {
       const nodes: SerializedNode[] = [
         {
