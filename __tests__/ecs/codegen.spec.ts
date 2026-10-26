@@ -23,6 +23,7 @@ describe('design-to-code (codegen)', () => {
         strokeWidth: 2,
         strokeLinecap: 'round',
         strokeLinejoin: 'round',
+        strokeMiterlimit: 4,
         strokeDasharray: '4,2',
       } as SerializedNode;
       const react = serializedNodesToCode([node]);
@@ -33,6 +34,7 @@ describe('design-to-code (codegen)', () => {
       );
       expect(react).toContain('stroke={"#0000ff"} strokeWidth={2}');
       expect(react).toContain('strokeLinecap={"round"}');
+      expect(react).toContain('strokeMiterlimit={4}');
       expect(react).toContain('strokeDasharray={"4,2"}');
       expect(react).not.toContain('bg-[#ff0000]');
       expect(
@@ -50,6 +52,7 @@ describe('design-to-code (codegen)', () => {
       expect(html).toContain('<svg viewBox="0 0 100 60"');
       expect(html).toContain('fill-rule="evenodd"');
       expect(html).toContain('stroke-linecap="round"');
+      expect(html).toContain('stroke-miterlimit="4"');
       expect(html).toContain('stroke-dasharray="4,2"');
       expect(html).not.toContain('background-color: #ff0000');
 

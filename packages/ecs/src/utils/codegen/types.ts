@@ -224,6 +224,7 @@ export interface CodeNode {
     strokeWidth?: number;
     strokeLinecap?: 'butt' | 'round' | 'square';
     strokeLinejoin?: 'miter' | 'round' | 'bevel';
+    strokeMiterlimit?: number;
     strokeDasharray?: string;
     strokeDashoffset?: number;
   };

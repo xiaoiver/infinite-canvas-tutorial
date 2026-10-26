@@ -82,10 +82,10 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     )}${attr('stroke-linecap', path.strokeLinecap)}${attr(
       'stroke-linejoin',
       path.strokeLinejoin,
-    )}${attr('stroke-dasharray', path.strokeDasharray)}${attr(
-      'stroke-dashoffset',
-      path.strokeDashoffset,
-    )} />\n${pad}</svg>`;
+    )}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr(
+      'stroke-dasharray',
+      path.strokeDasharray,
+    )}${attr('stroke-dashoffset', path.strokeDashoffset)} />\n${pad}</svg>`;
   }
   const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
   const semanticAttr =

@@ -389,7 +389,7 @@ For a non-flex container, children use their local canvas `x` / `y` as CSS `left
 
 Node-level `visibility` becomes CSS `visibility`, so hidden nodes keep their layout space. The default `inherited` state uses CSS inheritance. Changing a reusable instance's visibility becomes a component prop, including edits to descendants.
 
-Leaf paths with valid `d` data export as inline SVG instead of a rectangular placeholder. The first enabled solid fill and stroke retain their color and opacity, along with fill rule, stroke width, line cap, line join, and dash settings. Path paint or geometry overrides on a reusable instance expand that instance so the SVG reflects the edit. Gradient or layered paints, markers, path children, and path filters need separate SVG handling and are not represented by this mapping.
+Leaf paths with valid `d` data export as inline SVG instead of a rectangular placeholder. The first enabled solid fill and stroke retain their color and opacity, along with fill rule, stroke width, line cap, line join, miter limit, and dash settings. Path paint or geometry overrides on a reusable instance expand that instance so the SVG reflects the edit. Gradient or layered paints, stroke alignment, markers, path children, and path filters need separate SVG handling and are not represented by this mapping.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 

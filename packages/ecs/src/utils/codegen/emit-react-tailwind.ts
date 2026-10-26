@@ -484,9 +484,12 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       'strokeLinecap',
       path.strokeLinecap,
     )}${attr('strokeLinejoin', path.strokeLinejoin)}${attr(
-      'strokeDasharray',
-      path.strokeDasharray,
-    )}${attr('strokeDashoffset', path.strokeDashoffset)} />\n${pad}</svg>`;
+      'strokeMiterlimit',
+      path.strokeMiterlimit,
+    )}${attr('strokeDasharray', path.strokeDasharray)}${attr(
+      'strokeDashoffset',
+      path.strokeDashoffset,
+    )} />\n${pad}</svg>`;
   }
 
   if (node.role === 'icon' && node.icon) {

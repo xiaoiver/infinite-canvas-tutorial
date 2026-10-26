@@ -308,6 +308,12 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     )
       ? (node.strokeLinejoin as 'miter' | 'round' | 'bevel')
       : undefined,
+    strokeMiterlimit:
+      typeof node.strokeMiterlimit === 'number' &&
+      Number.isFinite(node.strokeMiterlimit) &&
+      node.strokeMiterlimit > 0
+        ? node.strokeMiterlimit
+        : undefined,
     strokeDasharray:
       typeof node.strokeDasharray === 'string' &&
       node.strokeDasharray !== '0,0' &&
@@ -1261,6 +1267,7 @@ function hasUnsupportedPathRefOverrides(nodes: AnyNode[]): boolean {
     'strokeWidth',
     'strokeLinecap',
     'strokeLinejoin',
+    'strokeMiterlimit',
     'strokeDasharray',
     'strokeDashoffset',
   ];
