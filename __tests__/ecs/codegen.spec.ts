@@ -214,14 +214,45 @@ describe('design-to-code (codegen)', () => {
           id: 'path-label',
           type: 'text',
           parentId: 'badge-path',
-          x: 0,
-          y: 0,
+          x: 8,
+          y: 12,
           zIndex: 1,
           content: 'Label',
         } as SerializedNode,
       ]);
-      expect(withChild).not.toContain('<svg');
+      expect(withChild).toContain('<div className="relative w-[100px] h-[60px] overflow-visible"');
+      expect(withChild).toContain('<svg viewBox={"0 0 100 60"}');
+      expect(withChild).toContain('pointerEvents: "none"');
+      expect(withChild).toContain('<path d={"M 0 0 C 30 0 70 60 100 60 Z"}');
+      expect(withChild).toContain('absolute left-[8px] top-[12px]');
       expect(withChild).toContain('Label');
+      expect(
+        ts.transpileModule(withChild, {
+          fileName: 'Design.tsx',
+          reportDiagnostics: true,
+          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+        }).diagnostics?.filter(
+          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+        ),
+      ).toEqual([]);
+      const withChildHtml = serializedNodesToCode(
+        [
+          node,
+          {
+            id: 'path-label',
+            type: 'text',
+            parentId: 'badge-path',
+            x: 8,
+            y: 12,
+            zIndex: 1,
+            content: 'Label',
+          } as SerializedNode,
+        ],
+        { framework: 'html-css' },
+      );
+      expect(withChildHtml).toContain('<svg viewBox="0 0 100 60"');
+      expect(withChildHtml).toContain('position: absolute; inset: 0');
+      expect(withChildHtml).toContain('left: 8px; top: 12px');
 
       const offset = {
         ...node,

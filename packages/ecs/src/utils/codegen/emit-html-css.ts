@@ -62,6 +62,7 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   const style = styleAttr(node, state);
   if (node.vectorPath) {
     const path = node.vectorPath;
+    const hasChildren = node.children.length > 0;
     const fill = path.fillGradient
       ? `url(#${path.fillGradient.id})`
       : path.fill
@@ -101,9 +102,12 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     const defs = definitions.length
       ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
-    return `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
+    const svgStyle = hasChildren
+      ? ' style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none"'
+      : style;
+    const svg = `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
       path.height,
-    )}" aria-hidden="true"${style}>\n${defs}${state.indent.repeat(
+    )}" aria-hidden="true"${svgStyle}>\n${defs}${state.indent.repeat(
       depth + 1,
     )}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}"${attr('fill-opacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fill-rule="${
       path.fillRule
@@ -117,6 +121,22 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       'stroke-dasharray',
       path.strokeDasharray,
     )}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', path.markerStart && `url(#${path.markerStart.id})`)}${attr('marker-end', path.markerEnd && `url(#${path.markerEnd.id})`)} />\n${pad}</svg>`;
+    if (!hasChildren) return svg;
+    const tag = node.element?.tag ?? 'div';
+    const semanticAttr =
+      tag === 'button'
+        ? ' type="button"'
+        : tag === 'a' && node.element?.tag === 'a'
+          ? ` href="${escapeAttr(node.element.href)}"`
+          : '';
+    const children = node.children
+      .map((child) => renderNode(child, state, depth + 1))
+      .join('\n');
+    const nestedSvg = svg
+      .split('\n')
+      .map((line) => `${state.indent}${line}`)
+      .join('\n');
+    return `${pad}<${tag}${semanticAttr}${style}>\n${nestedSvg}\n${children}\n${pad}</${tag}>`;
   }
   const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
   const semanticAttr =
