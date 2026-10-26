@@ -464,6 +464,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
 
   if (node.vectorPath) {
     const path = node.vectorPath;
+    const hasChildren = node.children.length > 0;
     const fill = path.fillGradient
       ? `url(#${path.fillGradient.id})`
       : path.fill
@@ -503,9 +504,12 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     const defs = definitions.length
       ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
-    return `${pad}<svg viewBox={${JSON.stringify(
+    const svgStyle = hasChildren
+      ? ' style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}'
+      : `${className}${styleExpr}`;
+    const svg = `${pad}<svg viewBox={${JSON.stringify(
       `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
-    )}} aria-hidden="true"${className}${styleExpr}>\n${defs}${state.indent.repeat(
+    )}} aria-hidden="true"${svgStyle}>\n${defs}${state.indent.repeat(
       depth + 1,
     )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
       fill,
@@ -521,6 +525,22 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       'strokeDashoffset',
       path.strokeDashoffset,
     )}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)} />\n${pad}</svg>`;
+    if (!hasChildren) return svg;
+    const tag = node.element?.tag ?? 'div';
+    const semanticAttr =
+      tag === 'button'
+        ? ' type="button"'
+        : tag === 'a' && node.element?.tag === 'a'
+          ? ` href=${JSON.stringify(node.element.href)}`
+          : '';
+    const children = node.children
+      .map((child) => renderNode(child, state, depth + 1))
+      .join('\n');
+    const nestedSvg = svg
+      .split('\n')
+      .map((line) => `${state.indent}${line}`)
+      .join('\n');
+    return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${nestedSvg}\n${children}\n${pad}</${tag}>`;
   }
 
   if (node.role === 'icon' && node.icon) {

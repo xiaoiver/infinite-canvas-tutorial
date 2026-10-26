@@ -762,7 +762,7 @@ function buildCodeNode(
   const role = decideRole(node);
   const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   const style = buildStyle(node, role, children.length > 0);
-  const vectorPath = children.length === 0 ? buildVectorPath(node) : undefined;
+  const vectorPath = buildVectorPath(node);
   if (vectorPath) {
     style.width = vectorPath.width;
     style.height = vectorPath.height;
