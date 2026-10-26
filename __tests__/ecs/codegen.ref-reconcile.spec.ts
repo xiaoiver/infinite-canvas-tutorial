@@ -193,6 +193,38 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(html).toContain('fill="url(#ic-gradient-');
   });
 
+  it('expands a reusable path when stroke alignment changes', () => {
+    const nodes = [
+      {
+        id: 'outline-template',
+        type: 'path',
+        name: 'Outline',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 40,
+        zIndex: 0,
+        d: 'M 0 0 L 40 0 L 40 40 Z',
+        strokeWidth: 2,
+        strokes: [{ type: 'solid', value: '#000000' }],
+      },
+      {
+        id: 'outline-instance',
+        type: 'ref',
+        ref: 'outline-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        strokeAlignment: 'inner',
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<Outline');
+    expect(react).toContain('<clipPath');
+    expect(react).toContain('strokeWidth={4}');
+  });
+
   it('keeps a child visibility edit as a component prop', () => {
     const current = structuredClone(baseline);
     current.find((node) => node.id === 'growth__price')!.visibility = 'hidden';
