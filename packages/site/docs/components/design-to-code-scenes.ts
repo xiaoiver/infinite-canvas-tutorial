@@ -12,6 +12,8 @@ export interface InterfaceScene {
   description: string;
   descriptionZh: string;
   componentName: string;
+  width: number;
+  height: number;
   nodes: SerializedNode[];
   variables: DesignVariablesMap;
 }
@@ -310,6 +312,8 @@ function dashboard(): InterfaceScene {
       'A SaaS workspace with navigation, KPIs, a revenue chart and recent activity.',
     descriptionZh: '包含导航、关键指标、营收图表和最近动态的 SaaS 工作台。',
     componentName: 'AnalyticsDashboard',
+    width: 1050,
+    height: 720,
     nodes,
     variables: dashboardVariables,
   };
@@ -521,9 +525,321 @@ function pricing(): InterfaceScene {
       'A product pricing page with navigation, a hero and three plan cards.',
     descriptionZh: '包含导航、主视觉和三种订阅方案卡片的产品定价页。',
     componentName: 'PricingPage',
+    width: 1050,
+    height: 820,
     nodes,
     variables: pricingVariables,
   };
 }
 
-export const interfaceScenes = [dashboard(), pricing()];
+const checkoutVariables: DesignVariablesMap = {
+  'color.background': { type: 'color', value: '#f4f6fb' },
+  'color.surface': { type: 'color', value: '#ffffff' },
+  'color.ink': { type: 'color', value: '#19243d' },
+  'color.muted': { type: 'color', value: '#68758e' },
+  'color.accent': { type: 'color', value: '#455ee6' },
+  'color.accent-soft': { type: 'color', value: '#e8edff' },
+  'color.line': { type: 'color', value: '#e4e9f2' },
+};
+
+function checkout(): InterfaceScene {
+  const { nodes, box, label } = createScene();
+  box('checkout-screen', undefined, {
+    name: 'Northstar mobile checkout',
+    width: 390,
+    height: 844,
+    padding: 24,
+    gap: 14,
+    fills: [{ type: 'solid', value: '$color.background' }],
+  });
+
+  box('checkout-header', 'checkout-screen', {
+    width: 342,
+    height: 40,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  });
+  box('checkout-back', 'checkout-header', {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cornerRadius: 11,
+    fills: [{ type: 'solid', value: '$color.surface' }],
+  });
+  label('checkout-back-label', 'checkout-back', '←', '$color.ink', 20, 600);
+  label('checkout-title', 'checkout-header', 'Checkout', '$color.ink', 20, 700);
+  label('checkout-step', 'checkout-header', 'Step 2 of 3', '$color.muted', 11);
+
+  box('checkout-progress', 'checkout-screen', {
+    width: 342,
+    height: 5,
+    cornerRadius: 3,
+    fills: [{ type: 'solid', value: '$color.line' }],
+  });
+  box('checkout-progress-filled', 'checkout-progress', {
+    width: 228,
+    height: 5,
+    cornerRadius: 3,
+    fills: [{ type: 'solid', value: '$color.accent' }],
+  });
+
+  box('checkout-intro', 'checkout-screen', {
+    width: 342,
+    height: 54,
+    gap: 6,
+  });
+  label(
+    'checkout-heading',
+    'checkout-intro',
+    'Review your order',
+    '$color.ink',
+    22,
+    700,
+  );
+  label(
+    'checkout-subheading',
+    'checkout-intro',
+    'A few details before your new bag arrives.',
+    '$color.muted',
+    11,
+  );
+
+  box('checkout-product', 'checkout-screen', {
+    width: 342,
+    height: 125,
+    padding: 14,
+    gap: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    cornerRadius: 16,
+    fills: [{ type: 'solid', value: '$color.surface' }],
+  });
+  box('checkout-product-art', 'checkout-product', {
+    width: 96,
+    height: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cornerRadius: 12,
+    fills: [{ type: 'solid', value: '$color.accent-soft' }],
+  });
+  box('checkout-bag-handle', 'checkout-product-art', {
+    width: 22,
+    height: 8,
+    cornerRadius: 5,
+    fills: [{ type: 'solid', value: '$color.ink' }],
+  });
+  box('checkout-bag', 'checkout-product-art', {
+    width: 52,
+    height: 57,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    padding: 8,
+    cornerRadius: 12,
+    fills: [{ type: 'solid', value: '$color.accent' }],
+  });
+  box('checkout-bag-pocket', 'checkout-bag', {
+    width: 34,
+    height: 16,
+    cornerRadius: 6,
+    fills: [{ type: 'solid', value: '$color.accent-soft' }],
+  });
+  box('checkout-product-copy', 'checkout-product', {
+    width: 196,
+    gap: 7,
+  });
+  label(
+    'checkout-product-name',
+    'checkout-product-copy',
+    'Everyday Backpack',
+    '$color.ink',
+    15,
+    700,
+  );
+  label(
+    'checkout-product-variant',
+    'checkout-product-copy',
+    'Indigo · One size',
+    '$color.muted',
+    12,
+  );
+  label(
+    'checkout-product-price',
+    'checkout-product-copy',
+    '$89.00',
+    '$color.ink',
+    17,
+    700,
+  );
+
+  box('checkout-address', 'checkout-screen', {
+    width: 342,
+    height: 108,
+    padding: 16,
+    gap: 8,
+    cornerRadius: 16,
+    fills: [{ type: 'solid', value: '$color.surface' }],
+  });
+  box('checkout-address-heading', 'checkout-address', {
+    width: 310,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  });
+  label(
+    'checkout-address-title',
+    'checkout-address-heading',
+    'Shipping address',
+    '$color.ink',
+    14,
+    700,
+  );
+  label(
+    'checkout-address-edit',
+    'checkout-address-heading',
+    'Edit',
+    '$color.accent',
+    12,
+    600,
+  );
+  label(
+    'checkout-recipient',
+    'checkout-address',
+    'Maya Chen',
+    '$color.ink',
+    12,
+    600,
+  );
+  label(
+    'checkout-street',
+    'checkout-address',
+    '280 Market St · San Francisco, CA',
+    '$color.muted',
+    11,
+  );
+
+  box('checkout-delivery', 'checkout-screen', {
+    width: 342,
+    height: 96,
+    padding: 16,
+    gap: 9,
+    cornerRadius: 16,
+    fills: [{ type: 'solid', value: '$color.surface' }],
+  });
+  label(
+    'checkout-delivery-title',
+    'checkout-delivery',
+    'Delivery',
+    '$color.ink',
+    14,
+    700,
+  );
+  box('checkout-delivery-row', 'checkout-delivery', {
+    width: 310,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  });
+  label(
+    'checkout-delivery-method',
+    'checkout-delivery-row',
+    'Standard · 3–5 business days',
+    '$color.muted',
+    11,
+  );
+  label(
+    'checkout-delivery-price',
+    'checkout-delivery-row',
+    'FREE',
+    '$color.accent',
+    11,
+    700,
+  );
+
+  box('checkout-summary', 'checkout-screen', {
+    width: 342,
+    height: 138,
+    padding: 16,
+    gap: 8,
+    cornerRadius: 16,
+    fills: [{ type: 'solid', value: '$color.surface' }],
+  });
+  label(
+    'checkout-summary-title',
+    'checkout-summary',
+    'Order summary',
+    '$color.ink',
+    14,
+    700,
+  );
+  for (const [id, title, value, emphasized] of [
+    ['subtotal', 'Subtotal', '$89.00', false],
+    ['shipping', 'Shipping', 'Free', false],
+    ['total', 'Total', '$89.00', true],
+  ] as const) {
+    box(`checkout-${id}-row`, 'checkout-summary', {
+      width: 310,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+    });
+    label(
+      `checkout-${id}-label`,
+      `checkout-${id}-row`,
+      title,
+      emphasized ? '$color.ink' : '$color.muted',
+      emphasized ? 13 : 11,
+      emphasized ? 700 : 400,
+    );
+    label(
+      `checkout-${id}-value`,
+      `checkout-${id}-row`,
+      value,
+      '$color.ink',
+      emphasized ? 13 : 11,
+      emphasized ? 700 : 500,
+    );
+  }
+
+  box('checkout-pay', 'checkout-screen', {
+    width: 342,
+    height: 52,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cornerRadius: 13,
+    fills: [{ type: 'solid', value: '$color.accent' }],
+  });
+  label(
+    'checkout-pay-label',
+    'checkout-pay',
+    'Pay $89.00  →',
+    '$color.surface',
+    15,
+    700,
+  );
+  box('checkout-security', 'checkout-screen', {
+    width: 342,
+    alignItems: 'center',
+  });
+  label(
+    'checkout-security-label',
+    'checkout-security',
+    'Secure checkout · Payments are encrypted',
+    '$color.muted',
+    11,
+  );
+
+  return {
+    id: 'checkout',
+    title: 'Mobile checkout',
+    titleZh: '移动端结账页',
+    description:
+      'A mobile commerce checkout with a product card, address, delivery details and order summary.',
+    descriptionZh: '包含商品、收货地址、配送方式和订单汇总的移动端结账界面。',
+    componentName: 'CheckoutScreen',
+    width: 390,
+    height: 844,
+    nodes,
+    variables: checkoutVariables,
+  };
+}
+
+export const interfaceScenes = [dashboard(), pricing(), checkout()];

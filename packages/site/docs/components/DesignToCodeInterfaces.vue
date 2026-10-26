@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { Highlighter } from 'shiki';
 import {
   Pen,
@@ -49,14 +49,25 @@ function getHighlighter() {
 
 function fitCamera() {
   if (!api || !canvasElement.value) return;
-  const zoom = Math.min(
-    0.52,
-    Math.max(0.2, (canvasElement.value.clientWidth - 128) / 1050),
-  );
+  const { width, height } = scene.value;
+  const { clientWidth, clientHeight } = canvasElement.value;
+  const mobile = width < 500;
+  const zoom = mobile
+    ? Math.max(
+        0.2,
+        Math.min(
+          0.72,
+          (clientWidth - 64) / width,
+          (clientHeight - 96) / height,
+        ),
+      )
+    : Math.min(0.52, Math.max(0.2, (clientWidth - 128) / width));
+  const left = mobile ? Math.max(32, (clientWidth - width * zoom) / 2) : 64;
+  const top = mobile ? Math.max(64, (clientHeight - height * zoom) / 2) : 64;
   api.setAppState({
     cameraZoom: zoom,
-    cameraX: -64 / zoom,
-    cameraY: -64 / zoom,
+    cameraX: -left / zoom,
+    cameraY: -top / zoom,
   });
 }
 
@@ -126,6 +137,7 @@ async function loadScene(id: string) {
       },
       { capture: 'NEVER' },
     );
+    await nextTick();
     fitCamera();
     refreshCode();
     ready.value = true;
@@ -264,7 +276,10 @@ onUnmounted(() => {
     <div class="interface-demo-canvas">
       <ic-spectrum-canvas
         ref="canvasElement"
-        style="width: 100%; height: 560px"
+        :style="{
+          width: '100%',
+          height: scene.width < 500 ? '720px' : '560px',
+        }"
         renderer="webgl"
         app-state='{"topbarVisible":true,"cameraZoom":0.52,"cameraX":-123,"cameraY":-123}'
       />
