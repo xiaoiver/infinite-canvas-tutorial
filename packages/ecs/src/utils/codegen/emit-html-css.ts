@@ -11,7 +11,11 @@ import {
 } from '../design-variables';
 import type { ThemeMode } from '../../components/Theme';
 import { formatNumber } from '../serialize/points';
-import { styleIRToCssDeclarations, styleValueToCss } from './emit-style';
+import {
+  solidFillColorToCss,
+  styleIRToCssDeclarations,
+  styleValueToCss,
+} from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
 
 interface HtmlState {
@@ -56,6 +60,33 @@ function styleAttr(node: CodeNode, state: HtmlState): string {
 function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   const pad = state.indent.repeat(depth);
   const style = styleAttr(node, state);
+  if (node.vectorPath) {
+    const path = node.vectorPath;
+    const fill = path.fill
+      ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
+      : 'none';
+    const stroke = path.stroke
+      ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
+      : 'none';
+    const attr = (name: string, value: string | number | undefined) =>
+      value === undefined ? '' : ` ${name}="${escapeAttr(String(value))}"`;
+    return `${pad}<svg viewBox="0 0 ${formatNumber(path.width)} ${formatNumber(
+      path.height,
+    )}" aria-hidden="true"${style}>\n${state.indent.repeat(
+      depth + 1,
+    )}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}" fill-rule="${
+      path.fillRule
+    }" stroke="${escapeAttr(stroke)}"${attr(
+      'stroke-width',
+      path.strokeWidth,
+    )}${attr('stroke-linecap', path.strokeLinecap)}${attr(
+      'stroke-linejoin',
+      path.strokeLinejoin,
+    )}${attr('stroke-dasharray', path.strokeDasharray)}${attr(
+      'stroke-dashoffset',
+      path.strokeDashoffset,
+    )} />\n${pad}</svg>`;
+  }
   const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
   const semanticAttr =
     tag === 'button'

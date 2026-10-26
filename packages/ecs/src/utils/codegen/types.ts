@@ -97,7 +97,7 @@ export interface StyleIR {
   /** Local canvas transform; rotation is stored in radians. */
   transform?: string;
   /** Rectangular or elliptical `clipMode: clip` clips descendant content. */
-  overflow?: 'hidden';
+  overflow?: 'hidden' | 'visible';
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;
@@ -211,6 +211,22 @@ export interface CodeNode {
   icon?: { name: StyleValue; family: string };
   /** `role === 'image'` 的资源 URL。 */
   image?: StyleValue;
+  /** Local SVG path geometry for a canvas `path` node. */
+  vectorPath?: {
+    d: string;
+    width: number;
+    height: number;
+    fill?: StyleValue;
+    fillOpacity?: StyleValue;
+    fillRule: 'nonzero' | 'evenodd';
+    stroke?: StyleValue;
+    strokeOpacity?: StyleValue;
+    strokeWidth?: number;
+    strokeLinecap?: 'butt' | 'round' | 'square';
+    strokeLinejoin?: 'miter' | 'round' | 'bevel';
+    strokeDasharray?: string;
+    strokeDashoffset?: number;
+  };
   /** preserve 模式下：该节点是某 `reusable` 组件的实例。 */
   instanceOf?: string;
   /** 实例传入的 props（prop 名 → 取值）。 */

@@ -52,6 +52,38 @@ const source: SerializedNode[] = [
 describe('design-to-code expanded ref reconciliation', () => {
   const baseline = expandRefSerializedNodes(structuredClone(source), source);
 
+  it('expands a path paint override to keep SVG fill on the instance', () => {
+    const nodes = [
+      {
+        id: 'shape-template',
+        type: 'path',
+        name: 'BadgeShape',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 40,
+        zIndex: 0,
+        d: 'M 0 0 L 40 0 L 40 40 Z',
+        fills: [{ type: 'solid', value: '#ff0000' }],
+      },
+      {
+        id: 'shape-instance',
+        type: 'ref',
+        ref: 'shape-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        fills: [{ type: 'solid', value: '#0000ff' }],
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<BadgeShape');
+    expect(react).toContain('fill={"#0000ff"}');
+    const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+    expect(html).toContain('fill="#0000ff"');
+  });
+
   it('keeps a child visibility edit as a component prop', () => {
     const current = structuredClone(baseline);
     current.find((node) => node.id === 'growth__price')!.visibility = 'hidden';

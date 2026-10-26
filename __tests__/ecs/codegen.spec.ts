@@ -1,4 +1,5 @@
 import type { SerializedNode } from '../../packages/ecs/src';
+import * as ts from 'typescript';
 import {
   serializedNodesToCode,
   buildCodeIR,
@@ -6,6 +7,68 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('exports a solid-filled stroked path as vector geometry', () => {
+      const node = {
+        id: 'badge-path',
+        type: 'path',
+        x: 10,
+        y: 20,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        d: 'M 0 0 C 30 0 70 60 100 60 Z',
+        fillRule: 'evenodd',
+        fills: [{ type: 'solid', value: '#ff0000', opacity: 0.5 }],
+        strokes: [{ type: 'solid', value: '#0000ff' }],
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        strokeDasharray: '4,2',
+      } as SerializedNode;
+      const react = serializedNodesToCode([node]);
+      expect(react).toContain('<svg viewBox={"0 0 100 60"}');
+      expect(react).toContain('<path d={"M 0 0 C 30 0 70 60 100 60 Z"}');
+      expect(react).toContain(
+        'fill={"color-mix(in srgb, #ff0000 50%, transparent)"}',
+      );
+      expect(react).toContain('stroke={"#0000ff"} strokeWidth={2}');
+      expect(react).toContain('strokeLinecap={"round"}');
+      expect(react).toContain('strokeDasharray={"4,2"}');
+      expect(react).not.toContain('bg-[#ff0000]');
+      expect(
+        ts
+          .transpileModule(react, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
+      ).toEqual([]);
+      const html = serializedNodesToCode([node], { framework: 'html-css' });
+      expect(html).toContain('<svg viewBox="0 0 100 60"');
+      expect(html).toContain('fill-rule="evenodd"');
+      expect(html).toContain('stroke-linecap="round"');
+      expect(html).toContain('stroke-dasharray="4,2"');
+      expect(html).not.toContain('background-color: #ff0000');
+
+      const withChild = serializedNodesToCode([
+        node,
+        {
+          id: 'path-label',
+          type: 'text',
+          parentId: 'badge-path',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+          content: 'Label',
+        } as SerializedNode,
+      ]);
+      expect(withChild).not.toContain('<svg');
+      expect(withChild).toContain('Label');
+    });
+
     it('preserves hidden and explicitly visible nodes without removing layout space', () => {
       const nodes = [
         {

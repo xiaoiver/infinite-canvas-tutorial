@@ -344,6 +344,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
 | `rect` with one CSS gradient fill                    | CSS `background-image`                                |
 | `ellipse`                                            | CSS `border-radius: 50%`                              |
+| Leaf `path` with solid fill and stroke               | Inline SVG `<path>` with vector geometry              |
 | `rect` / `ellipse` + `clipMode: clip`                | CSS `overflow: hidden` on the clipping element        |
 | `rotation` / `scaleX` / `scaleY`                     | CSS `transform` around the local top-left corner      |
 | node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
@@ -387,6 +388,8 @@ Rectangles and ellipses with `clipMode: clip` now clip their children in generat
 For a non-flex container, children use their local canvas `x` / `y` as CSS `left` / `top` positions. Flex children remain in normal flex flow. A preserved component instance inside a non-flex container gets a positioned wrapper; moving a child inside an instance expands that instance to retain the edit. When multiple top-level nodes all have explicit sizes, the export also adds a relative frame and keeps their spacing, including rotated and flipped bounds. Roots without measurable sizes retain normal document flow.
 
 Node-level `visibility` becomes CSS `visibility`, so hidden nodes keep their layout space. The default `inherited` state uses CSS inheritance. Changing a reusable instance's visibility becomes a component prop, including edits to descendants.
+
+Leaf paths with valid `d` data export as inline SVG instead of a rectangular placeholder. The first enabled solid fill and stroke retain their color and opacity, along with fill rule, stroke width, line cap, line join, and dash settings. Path paint or geometry overrides on a reusable instance expand that instance so the SVG reflects the edit. Gradient or layered paints, markers, path children, and path filters need separate SVG handling and are not represented by this mapping.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 
