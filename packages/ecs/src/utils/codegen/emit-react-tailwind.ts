@@ -29,6 +29,7 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   imageSrc: 'src',
   mixBlendMode: 'mixBlendMode',
   backgroundColor: 'backgroundColor',
+  backgroundImage: 'backgroundImage',
   color: 'color',
   fontSize: 'fontSize',
   borderRadius: 'borderRadius',
@@ -194,6 +195,11 @@ function genTailwind(
     else
       classes.push(`bg-[${tw(styleValueToCss(style.backgroundColor, mode))}]`);
   }
+  if (style.backgroundImage && !skip.has('backgroundImage'))
+    inline.push([
+      'backgroundImage',
+      JSON.stringify(styleValueToCss(style.backgroundImage, mode)),
+    ]);
   if (style.borderRadius && !skip.has('borderRadius')) {
     if (needsInline(style.borderRadius, mode))
       addInline('borderRadius', style.borderRadius);

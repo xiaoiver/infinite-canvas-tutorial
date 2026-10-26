@@ -74,6 +74,48 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('$39');
   });
 
+  it('preserves edits to a reusable card gradient as a component prop', () => {
+    const gradientSource = structuredClone(source);
+    const original = 'linear-gradient(90deg, #1d4ed8, #38bdf8)';
+    const edited = 'linear-gradient(90deg, #7c3aed, #f472b6)';
+    Object.assign(gradientSource.find((node) => node.id === 'card-template')!, {
+      fills: [{ type: 'gradient', value: original }],
+    });
+    const gradientBaseline = expandRefSerializedNodes(
+      structuredClone(gradientSource),
+      gradientSource,
+    );
+    const current = structuredClone(gradientBaseline);
+    Object.assign(current.find((node) => node.id === 'growth')!, {
+      fills: [{ type: 'gradient', value: edited }],
+    });
+    const recovered = reconcileRefInstances(
+      gradientSource,
+      gradientBaseline,
+      current,
+    );
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      fills: [{ type: 'gradient', value: edited }],
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('planCardFills?: string');
+    expect(react).toContain('backgroundImage: planCardFills');
+    expect(react).toContain(`planCardFills="${edited}"`);
+    expect(
+      serializedNodesToCode(recovered, { framework: 'html-css' }),
+    ).toContain(`background-image: ${edited}`);
+
+    Object.assign(current.find((node) => node.id === 'growth')!, {
+      fills: [{ type: 'solid', value: '#7c3aed' }],
+    });
+    expect(
+      reconcileRefInstances(gradientSource, gradientBaseline, current).some(
+        (node) => node.type === 'ref',
+      ),
+    ).toBe(false);
+  });
+
   it('preserves an explicitly sized card after resize', () => {
     const current = structuredClone(baseline);
     const card = current.find((node) => node.id === 'growth')!;

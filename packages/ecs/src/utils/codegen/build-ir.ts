@@ -22,7 +22,8 @@ import type { ThemeMode } from '../../components/Theme';
 import { toComponentName, toPropName } from './string-utils';
 import { boxToCss, styleValueToCss, textDecorationToCss } from './emit-style';
 import { toCSSMixBlendMode } from '../blend-mode';
-import { hasUnsupportedImageFillOverride } from './image-fill-override';
+import { hasUnsupportedPaintFillOverride } from './paint-fill-override';
+import { singleCssGradientFill } from './gradient-fill';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -320,6 +321,9 @@ function buildStyle(
     if (fillColor) style.color = fillColor;
   } else if (role !== 'image' && fillColor) {
     style.backgroundColor = fillColor;
+  } else if (role === 'container') {
+    const gradient = singleCssGradientFill(fills);
+    if (gradient) style.backgroundImage = { literal: gradient };
   }
 
   // 描边 → border
@@ -464,7 +468,7 @@ function buildCodeNode(
         continue;
       }
       const target =
-        OVERRIDABLE_KEY_TO_TARGET[attr] ?? colorTargetFor(attr, role);
+        OVERRIDABLE_KEY_TO_TARGET[attr] ?? colorTargetFor(attr, role, node);
       if (!target) {
         continue;
       }
@@ -485,9 +489,15 @@ function buildCodeNode(
 function colorTargetFor(
   attr: string,
   role: CodeNodeRole,
+  node: AnyNode,
 ): CodeBindingTarget | undefined {
   if (attr === 'fills' || attr === 'fill') {
     if (role === 'image') return 'imageSrc';
+    if (
+      role === 'container' &&
+      singleCssGradientFill(asArray<SerializedFillLayerItem>(node.fills))
+    )
+      return 'backgroundImage';
     return role === 'text' || role === 'icon' ? 'color' : 'backgroundColor';
   }
   if (attr === 'strokes' || attr === 'stroke') {
@@ -522,7 +532,12 @@ function overrideStyleValue(
       return (
         primaryImageFromLayers(fills) ?? toStyleValue(patch.fill as string)
       );
-    return primaryColorFromLayers(fills) ?? toStyleValue(patch.fill as string);
+    const gradient = singleCssGradientFill(fills);
+    return (
+      (gradient ? { literal: gradient } : undefined) ??
+      primaryColorFromLayers(fills) ??
+      toStyleValue(patch.fill as string)
+    );
   }
   if (attr === 'strokes' || attr === 'stroke') {
     const strokes = asArray<SerializedFillLayerItem>(patch.strokes);
@@ -631,11 +646,12 @@ function templateDefaultValue(
     return { literal: box ? boxToCss(box) : '0px' };
   }
   if (attr === 'fills' || attr === 'fill') {
+    const fills = asArray<SerializedFillLayerItem>(desc.fills);
+    const gradient = singleCssGradientFill(fills);
     return (
-      primaryImageFromLayers(asArray<SerializedFillLayerItem>(desc.fills)) ??
-      primaryColorFromLayers(asArray<SerializedFillLayerItem>(desc.fills)) ?? {
-        literal: '#000000',
-      }
+      primaryImageFromLayers(fills) ??
+      (gradient ? { literal: gradient } : undefined) ??
+      primaryColorFromLayers(fills) ?? { literal: '#000000' }
     );
   }
   if (attr === 'strokes' || attr === 'stroke') {
@@ -692,7 +708,7 @@ export function buildCodeIR(
 
   if (
     componentStructure === 'flatten' ||
-    hasUnsupportedImageRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedPaintRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
@@ -910,7 +926,7 @@ function buildPreserve(
   return { components, roots, variables, themeMode, variablesMode };
 }
 
-function hasUnsupportedImageRefOverrides(nodes: AnyNode[]): boolean {
+function hasUnsupportedPaintRefOverrides(nodes: AnyNode[]): boolean {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   return nodes.some((node) => {
     if (node.type !== 'ref') return false;
@@ -918,7 +934,11 @@ function hasUnsupportedImageRefOverrides(nodes: AnyNode[]): boolean {
     if (!template) return false;
     if (
       'fills' in node &&
-      hasUnsupportedImageFillOverride(template.fills, node.fills)
+      hasUnsupportedPaintFillOverride(
+        template.fills,
+        node.fills,
+        decideRole(template) === 'container',
+      )
     )
       return true;
     const descendants = node.descendants as
@@ -929,7 +949,11 @@ function hasUnsupportedImageRefOverrides(nodes: AnyNode[]): boolean {
       return (
         child &&
         'fills' in patch &&
-        hasUnsupportedImageFillOverride(child.fills, patch.fills)
+        hasUnsupportedPaintFillOverride(
+          child.fills,
+          patch.fills,
+          decideRole(child) === 'container',
+        )
       );
     });
   });
@@ -972,7 +996,7 @@ function buildComponentProps(
     }
     const role = decideRole(desc);
     const target =
-      OVERRIDABLE_KEY_TO_TARGET[attr] ?? colorTargetFor(attr, role);
+      OVERRIDABLE_KEY_TO_TARGET[attr] ?? colorTargetFor(attr, role, desc);
     if (!target) {
       continue;
     }

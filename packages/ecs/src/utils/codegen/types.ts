@@ -94,6 +94,7 @@ export interface StyleIR {
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;
+  backgroundImage?: StyleValue;
   borderRadius?: StyleValue;
   borderWidth?: StyleValue;
   borderColor?: StyleValue;
@@ -139,6 +140,7 @@ export type CodeBindingTarget =
   | 'imageSrc'
   | 'mixBlendMode'
   | 'backgroundColor'
+  | 'backgroundImage'
   | 'color'
   | 'fontSize'
   | 'borderRadius'
