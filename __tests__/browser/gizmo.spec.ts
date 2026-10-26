@@ -155,6 +155,57 @@ test('the visible arrow wins where it overlaps a rotation ring', async ({
   ).toBeCloseTo(80);
 });
 
+test('linked 3D gizmo scales one Mesh through the offset diamond', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const before = await page.evaluate(() => window.gizmoTest.state());
+  const canvas = page.locator('#canvas');
+  const box = (await canvas.boundingBox())!;
+  const png = PNG.sync.read(await canvas.screenshot());
+  const ratio = png.width / box.width;
+  let count = 0;
+  let sumX = 0;
+  let sumY = 0;
+  for (let y = 0; y < png.height; y++)
+    for (let x = 0; x < png.width; x++) {
+      const offset = (y * png.width + x) * 4;
+      const [r, g, b] = png.data.subarray(offset, offset + 3);
+      if (r > 180 && g > 120 && b < 120 && g < r - 20) {
+        count++;
+        sumX += x;
+        sumY += y;
+      }
+    }
+  expect(count).toBeGreaterThan(20);
+  const handle = {
+    x: box.x + sumX / count / ratio,
+    y: box.y + sumY / count / ratio,
+  };
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await expect
+    .poll(() => page.evaluate(() => window.gizmoTest.state().partKind))
+    .toBe('scale');
+  await page.mouse.move(handle.x, handle.y - 60, { steps: 4 });
+  await page.mouse.up();
+  await page.evaluate(() => window.gizmoTest.settle());
+  const after = await page.evaluate(() => window.gizmoTest.state());
+  expect(after.scale[0]).toBeGreaterThan(before.scale[0] * 1.3);
+  expect(after.node.type === 'mesh3d' && after.node.scale3d).toBeGreaterThan(
+    26,
+  );
+  await page.evaluate(() => window.gizmoTest.api().undo());
+  await page.evaluate(() => window.gizmoTest.settle());
+  expect((await page.evaluate(() => window.gizmoTest.state())).scale).toEqual(
+    before.scale,
+  );
+  expect(errors).toEqual([]);
+});
+
 test('3D gizmo commits a pointer gesture once and restores the rendered pose through undo/redo', async ({
   page,
 }) => {

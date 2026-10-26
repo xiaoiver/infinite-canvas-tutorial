@@ -797,8 +797,8 @@ onUnmounted(() => {
   <p class="isometric-hint">
     {{
       props.locale === 'zh'
-        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。“倾斜 SVG”可验证旋转后的前表面锚点编辑。选择工具可框选，Shift 可从地板开始框选。选择“平移”或“旋转视角”后可直接拖动，触屏也适用；滚轮缩放，双指平移或缩放。'
-        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Tilt SVG lets you edit anchors on the rotated front face. Select can marquee meshes, and Shift starts a marquee over the ground. Choose Pan or Orbit to drag the view directly, including by touch. Wheel zooms, and two fingers pan or pinch to zoom.'
+        ? '选择“绘制盒子”，在指定 Z 平面上拖出底面；或选择“编辑 SVG 锚点”，拖动橙色环的外轮廓与孔洞锚点。“倾斜 SVG”可验证旋转后的前表面锚点编辑。多选后上下拖动共用 Gizmo 的黄色菱形，可围绕选区中心等比缩放。选择工具可框选，Shift 可从地板开始框选。选择“平移”或“旋转视角”后可直接拖动，触屏也适用；滚轮缩放，双指平移或缩放。'
+        : 'Choose Draw box to drag a base on the selected Z plane, or Edit SVG anchors to drag the orange ring’s outer and hole vertices. Tilt SVG lets you edit anchors on the rotated front face. Drag the shared gizmo’s yellow diamond up or down to scale a selection uniformly around its center. Select can marquee meshes, and Shift starts a marquee over the ground. Choose Pan or Orbit to drag the view directly, including by touch. Wheel zooms, and two fingers pan or pinch to zoom.'
     }}
   </p>
   <div class="isometric-canvas">

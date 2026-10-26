@@ -20,6 +20,7 @@ import {
   beginGizmoGestureAtPoint,
   updateGizmoGesture,
   updateGizmoGestureAtPoint,
+  copyGizmoPose,
   type GizmoPose,
 } from './gizmo-gesture';
 
@@ -41,6 +42,30 @@ export function beginGizmoPointerGesture(
 ): GizmoPointerGesture | undefined {
   if (axis === 'none' || (kind === 'rotate' && !isRotateGizmoAxis(axis)))
     return;
+  if (kind === 'scale') {
+    if (axis !== 'xyz') return;
+    const initial = copyGizmoPose(pose);
+    return {
+      initial,
+      axis,
+      kind,
+      update: (point) => {
+        // A screen-space distance is stable across camera presets and zoom.
+        const factor = Math.max(
+          0.05,
+          Math.min(20, Math.exp(((pointer[1] - point[1]) * Math.LN2) / 120)),
+        );
+        return {
+          ...initial,
+          scale: initial.scale.map((value) => value * factor) as [
+            number,
+            number,
+            number,
+          ],
+        };
+      },
+    };
+  }
   if (frame.scene.mode !== 'linkedPerspective') {
     const vp = mat4.multiply(
       mat4.create(),

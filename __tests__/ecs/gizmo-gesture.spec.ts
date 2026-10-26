@@ -5,6 +5,8 @@ import {
   type GizmoPose,
 } from '../../packages/ecs/src/systems/pick3d/gizmo-gesture';
 import type { Ray } from '../../packages/ecs/src/utils/ray-casting';
+import { beginGizmoPointerGesture } from '../../packages/ecs/src/systems/pick3d/gizmo-pointer';
+import type { GizmoFrame } from '../../packages/ecs/src/utils/gizmo-frame';
 
 const pose = (): GizmoPose => ({
   translation: [0, 0, 0],
@@ -107,4 +109,20 @@ it('tracks rotation across the ±π boundary and can return to its starting pose
   const final = updateGizmoGesture(gesture, ray(20, 0))!;
   expect(gesture.angle).toBeCloseTo(2 * Math.PI);
   final.rotation.forEach((value) => expect(value).toBeCloseTo(0));
+});
+
+it('scales from pointer distance in CSS pixels without changing the source pose', () => {
+  const initial = pose();
+  const gesture = beginGizmoPointerGesture(
+    initial,
+    'xyz',
+    'scale',
+    {} as GizmoFrame,
+    [100, 200],
+    [0, 0, 0],
+  )!;
+  expect(gesture.update([100, 80])?.scale).toEqual([4, 6, 8]);
+  expect(gesture.update([100, 320])?.scale).toEqual([1, 1.5, 2]);
+  expect(gesture.update([100, 200])).toEqual(initial);
+  expect(initial).toEqual(pose());
 });

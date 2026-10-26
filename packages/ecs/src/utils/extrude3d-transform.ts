@@ -105,13 +105,16 @@ export function resolveExtrudeSourceTransform(
   source: Entity,
   pose: Pose,
   unifiedSpace: boolean,
+  scaleMultiplier = 1,
 ) {
   if (!source.has(Extrude3D) || !source.has(ComputedBounds)) return;
   if (
     ![...pose.translation, ...pose.rotation, ...pose.scale].every(
       Number.isFinite,
     ) ||
-    pose.scale[2] <= 0
+    pose.scale[2] <= 0 ||
+    !Number.isFinite(scaleMultiplier) ||
+    scaleMultiplier <= 0
   )
     return;
   const pathMesh = source.has(Path) ? pathExtrusionGeometry(source) : undefined;
@@ -121,6 +124,7 @@ export function resolveExtrudeSourceTransform(
     source,
     [pose.translation[0], pose.translation[1] * (unifiedSpace ? 1 : -1)],
     localCenter,
+    scaleMultiplier,
   );
   if (!origin) return;
   const base = source.read(ComputedBounds).transformOBB.rotation;

@@ -58,6 +58,103 @@ test('moving spotlight updates light and shadows without rebuilding the cube', a
   expect(errors).toEqual([]);
 });
 
+test('the shared 3D scale handle resizes a Mesh and extruded SVG in one undo step', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  await page.evaluate(() => window.isometricDocs.selectGroup());
+  const before = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  const handle = await page.evaluate(() =>
+    window.isometricDocs.groupScaleHandle(),
+  );
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await page.mouse.move(handle.x, handle.y - 35, { steps: 3 });
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await page.evaluate(() => window.isometricDocs.settle());
+  expect(
+    await page.evaluate(() => window.isometricDocs.groupScaleState()),
+  ).toEqual(before);
+  await page.evaluate(() => window.isometricDocs.selectGroup());
+  const resumed = await page.evaluate(() =>
+    window.isometricDocs.groupScaleHandle(),
+  );
+  await page.mouse.move(resumed.x, resumed.y);
+  await page.mouse.down();
+  await page.mouse.move(resumed.x, resumed.y - 60, { steps: 5 });
+  await page.evaluate(() => window.isometricDocs.settle());
+  const preview = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  expect(preview.cube.scale[0]).toBeGreaterThan(before.cube.scale[0] * 1.3);
+  expect(preview.ring.scale[2]).toBeGreaterThan(before.ring.scale[2] * 1.3);
+  expect(preview.ring.documentScale).toEqual(before.ring.documentScale);
+  await page.mouse.up();
+  await page.evaluate(() => window.isometricDocs.settle());
+  const after = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  expect(after.cube.scale[0]).toBeGreaterThan(before.cube.scale[0] * 1.3);
+  expect(after.ring.scale[2]).toBeGreaterThan(before.ring.scale[2] * 1.3);
+  expect(after.ring.documentScale[0]).toBeGreaterThan(1.3);
+  expect(after.ring.documentScale[1]).toBeGreaterThan(1.3);
+  await page.evaluate(() => window.isometricDocs.undo());
+  const undone = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  expect(undone.cube.scale).toEqual(before.cube.scale);
+  expect(undone.ring.scale).toEqual(before.ring.scale);
+  expect(undone.ring.documentScale).toEqual(before.ring.documentScale);
+  expect(errors).toEqual([]);
+});
+
+test('group scaling preserves a flipped SVG source', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  await page.evaluate(() => window.isometricDocs.flipRing());
+  await page.evaluate(() => window.isometricDocs.selectGroup());
+  const before = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  expect(before.ring.documentScale[0]).toBe(-1);
+  const handle = await page.evaluate(() =>
+    window.isometricDocs.groupScaleHandle(),
+  );
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await page.mouse.move(handle.x, handle.y - 60, { steps: 5 });
+  await page.mouse.up();
+  await page.evaluate(() => window.isometricDocs.settle());
+  const after = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  expect(after.ring.documentScale[0]).toBeLessThan(-1.3);
+  expect(after.ring.documentScale[1]).toBeGreaterThan(1.3);
+  await page.evaluate(() => window.isometricDocs.undo());
+  expect(
+    await page.evaluate(() => window.isometricDocs.groupScaleState()),
+  ).toEqual(before);
+  expect(errors).toEqual([]);
+});
+
 test('rim light follows 3D materials and can be undone', async ({ page }) => {
   test.setTimeout(90000);
   const errors: string[] = [];
