@@ -143,6 +143,62 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('priceFontWeight={800}');
   });
 
+  it('preserves instance text styling as component props', () => {
+    const current = structuredClone(baseline);
+    const price = current.find((node) => node.id === 'growth__price')!;
+    if (price.type !== 'text') throw new Error('Missing text clone');
+    price.fontStyle = 'italic';
+    price.fontFamily = 'Georgia';
+    price.textAlign = 'center';
+    price.letterSpacing = 1.5;
+    price.anchorX = 28.5;
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      descendants: {
+        price: {
+          fontStyle: 'italic',
+          fontFamily: 'Georgia',
+          textAlign: 'center',
+          letterSpacing: 1.5,
+          anchorX: 28.5,
+        },
+      },
+    });
+    expect(
+      expandRefSerializedNodes(recovered, recovered).find(
+        (node) => node.id === 'growth__price',
+      ),
+    ).toMatchObject({ anchorX: 28.5, textAlign: 'center' });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain("priceFontStyle?: CSSProperties['fontStyle']");
+    expect(react).toContain('priceFontFamily?: string');
+    expect(react).toContain("priceTextAlign?: CSSProperties['textAlign']");
+    expect(react).toContain(
+      "priceLetterSpacing?: CSSProperties['letterSpacing']",
+    );
+    expect(react).toContain('fontStyle: priceFontStyle');
+    expect(react).toContain('fontFamily: priceFontFamily');
+    expect(react).toContain('textAlign: priceTextAlign');
+    expect(react).toContain('letterSpacing: priceLetterSpacing');
+    expect(react).toContain('priceFontStyle="italic"');
+    expect(react).toContain('priceFontFamily="Georgia"');
+    expect(react).toContain('priceTextAlign="center"');
+    expect(react).toContain('priceLetterSpacing={1.50}');
+  });
+
+  it('falls back for an anchor move without a text alignment edit', () => {
+    const current = structuredClone(baseline);
+    const price = current.find((node) => node.id === 'growth__price')!;
+    if (price.type !== 'text') throw new Error('Missing text clone');
+    price.anchorX = 20;
+    expect(
+      reconcileRefInstances(source, baseline, current).some(
+        (node) => node.type === 'ref',
+      ),
+    ).toBe(false);
+  });
+
   it('preserves edited stroke width and color as instance props', () => {
     const current = structuredClone(baseline);
     const card = current.find((node) => node.id === 'growth')!;

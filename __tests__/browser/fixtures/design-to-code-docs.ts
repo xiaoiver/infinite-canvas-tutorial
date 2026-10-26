@@ -68,6 +68,19 @@ const probe = {
       });
     });
   },
+  setPricingAmountTypography: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth__plan-card-amount');
+      if (node?.type !== 'text') throw new Error('Growth price is missing');
+      editor.updateNode(node, {
+        fontStyle: 'italic',
+        fontFamily: 'Georgia',
+        textAlign: 'center',
+        letterSpacing: 1.5,
+      });
+    });
+  },
 };
 declare global {
   interface Window {

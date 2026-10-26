@@ -32,6 +32,10 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   borderColor: 'borderColor',
   opacity: 'opacity',
   fontWeight: 'fontWeight',
+  fontStyle: 'fontStyle',
+  fontFamily: 'fontFamily',
+  textAlign: 'textAlign',
+  letterSpacing: 'letterSpacing',
 };
 
 interface TwResult {
@@ -192,10 +196,13 @@ function genTailwind(
   }
   if (style.fontWeight !== undefined && !skip.has('fontWeight'))
     classes.push(`font-[${style.fontWeight}]`);
-  if (style.fontStyle === 'italic') classes.push('italic');
-  if (style.fontFamily) classes.push(`font-[${tw(style.fontFamily)}]`);
-  if (style.textAlign) classes.push(`text-${style.textAlign}`);
-  if (style.letterSpacing)
+  if (style.fontStyle === 'italic' && !skip.has('fontStyle'))
+    classes.push('italic');
+  if (style.fontFamily && !skip.has('fontFamily'))
+    classes.push(`font-[${tw(style.fontFamily)}]`);
+  if (style.textAlign && !skip.has('textAlign'))
+    classes.push(`text-${style.textAlign}`);
+  if (style.letterSpacing && !skip.has('letterSpacing'))
     classes.push(
       `tracking-[${tw(styleValueToCss(style.letterSpacing, mode, true))}]`,
     );
@@ -373,8 +380,10 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
         'opacity',
       ].includes(p.target)
         ? 'number'
-        : p.target === 'fontWeight'
-        ? "CSSProperties['fontWeight']"
+        : ['fontWeight', 'fontStyle', 'textAlign', 'letterSpacing'].includes(
+            p.target,
+          )
+        ? `CSSProperties['${p.target}']`
         : 'string';
       return `${state.indent}${p.name}?: ${tsType};`;
     })
@@ -427,7 +436,11 @@ export function emitReactTailwind(
   const imports: string[] = [];
   if (
     ir.components.some((component) =>
-      component.props.some((prop) => prop.target === 'fontWeight'),
+      component.props.some((prop) =>
+        ['fontWeight', 'fontStyle', 'textAlign', 'letterSpacing'].includes(
+          prop.target,
+        ),
+      ),
     )
   ) {
     imports.push(`import type { CSSProperties } from 'react';`);

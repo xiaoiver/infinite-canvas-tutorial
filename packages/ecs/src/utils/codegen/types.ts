@@ -119,7 +119,11 @@ export type CodeBindingTarget =
   | 'borderWidth'
   | 'borderColor'
   | 'opacity'
-  | 'fontWeight';
+  | 'fontWeight'
+  | 'fontStyle'
+  | 'fontFamily'
+  | 'textAlign'
+  | 'letterSpacing';
 
 export interface CodeBinding {
   target: CodeBindingTarget;
