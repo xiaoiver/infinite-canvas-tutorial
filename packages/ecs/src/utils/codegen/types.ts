@@ -104,6 +104,8 @@ export interface StyleIR {
     color: StyleValue;
   };
   opacity?: number;
+  /** Opacity of the single image fill, multiplied with node opacity for `<img>`. */
+  imageFillOpacity?: StyleValue;
   color?: StyleValue;
   fontSize?: StyleValue;
   fontWeight?: string | number;

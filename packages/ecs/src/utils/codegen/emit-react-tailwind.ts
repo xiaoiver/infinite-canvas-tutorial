@@ -9,7 +9,7 @@
  */
 import { formatNumber } from '../serialize/points';
 import { pascalCase } from './string-utils';
-import { styleValueToCss } from './emit-style';
+import { combinedImageOpacityCss, styleValueToCss } from './emit-style';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -224,8 +224,14 @@ function genTailwind(
       );
     }
   }
-  if (style.opacity !== undefined && !skip.has('opacity'))
-    classes.push(`opacity-[${formatNumber(style.opacity)}]`);
+  if (!skip.has('opacity')) {
+    const opacity = combinedImageOpacityCss(style, mode);
+    if (opacity !== undefined) {
+      if (Number.isFinite(Number(opacity)))
+        classes.push(`opacity-[${opacity}]`);
+      else inline.push(['opacity', JSON.stringify(opacity)]);
+    }
+  }
 
   if (style.color && !skip.has('color')) {
     if (needsInline(style.color, mode)) addInline('color', style.color);
@@ -310,6 +316,15 @@ function renderAttributes(
         'lineHeight',
         `typeof ${b.prop} === "number" ? (${b.prop} > 0 ? ${b.prop} + "px" : undefined) : ${b.prop}`,
       ]);
+    } else if (b.target === 'opacity' && node.style.imageFillOpacity) {
+      const fill = node.style.imageFillOpacity;
+      const opacity =
+        typeof fill.literal === 'number'
+          ? `${b.prop} * ${formatNumber(fill.literal)}`
+          : `${JSON.stringify('calc(')} + ${b.prop} + ${JSON.stringify(
+              ` * ${styleValueToCss(fill, state.mode)})`,
+            )}`;
+      inline.push(['opacity', opacity]);
     } else {
       inline.push([TARGET_TO_CSS_KEY[b.target], b.prop]);
     }

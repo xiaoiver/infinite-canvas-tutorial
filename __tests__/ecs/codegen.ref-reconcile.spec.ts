@@ -292,6 +292,95 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(changedFitHtml).toContain('object-position: left top');
   });
 
+  it('combines image fill opacity with node opacity in flat and reusable exports', () => {
+    const imageSource: SerializedNode[] = [
+      {
+        id: 'photo-template',
+        type: 'rect',
+        name: 'PhotoCard',
+        x: 0,
+        y: 0,
+        width: 160,
+        height: 100,
+        zIndex: 0,
+        reusable: true,
+        fills: [
+          { type: 'image', value: 'https://example.com/a.png', opacity: 0.5 },
+        ],
+      } as SerializedNode,
+      {
+        id: 'photo-instance',
+        type: 'ref',
+        ref: 'photo-template',
+        x: 200,
+        y: 0,
+        zIndex: 1,
+        opacity: 0.6,
+        fills: [
+          { type: 'image', value: 'https://example.com/b.png', opacity: 0.5 },
+        ],
+      } as SerializedNode,
+    ];
+    const react = serializedNodesToCode(imageSource);
+    expect(react).toContain('photoCardOpacity={0.60}');
+    expect(react).toContain('opacity: photoCardOpacity * 0.50');
+    expect(react).toContain('photoCardFills="https://example.com/b.png"');
+    const html = serializedNodesToCode(imageSource, {
+      framework: 'html-css',
+    });
+    expect(html).toContain('opacity: 0.30');
+
+    const changedPaint = structuredClone(imageSource);
+    Object.assign(changedPaint.find((node) => node.id === 'photo-instance')!, {
+      fills: [
+        { type: 'image', value: 'https://example.com/b.png', opacity: 0.25 },
+      ],
+    });
+    const changedReact = serializedNodesToCode(changedPaint);
+    expect(changedReact).not.toContain('export function PhotoCard');
+    expect(changedReact).toContain('opacity-[0.15]');
+    const changedHtml = serializedNodesToCode(changedPaint, {
+      framework: 'html-css',
+    });
+    expect(changedHtml).toContain('opacity: 0.15');
+
+    const baseline = expandRefSerializedNodes(
+      structuredClone(imageSource),
+      imageSource,
+    );
+    const edited = structuredClone(baseline);
+    Object.assign(edited.find((node) => node.id === 'photo-instance')!, {
+      fills: [
+        { type: 'image', value: 'https://example.com/b.png', opacity: 0.25 },
+      ],
+    });
+    expect(
+      reconcileRefInstances(imageSource, baseline, edited).some(
+        (node) => node.type === 'ref',
+      ),
+    ).toBe(false);
+
+    const variableOpacitySource = structuredClone(imageSource);
+    for (const node of variableOpacitySource) {
+      if (node.type === 'ref' || node.id === 'photo-template') {
+        node.fills = [
+          {
+            type: 'image',
+            value: 'https://example.com/a.png',
+            opacity: '$opacity.image',
+          },
+        ];
+      }
+    }
+    const variableHtml = serializedNodesToCode(variableOpacitySource, {
+      framework: 'html-css',
+      variablesMode: 'css-var',
+    });
+    expect(variableHtml).toContain(
+      'opacity: calc(0.60 * var(--opacity-image))',
+    );
+  });
+
   it('keeps flex alignment and direction edits as instance props', () => {
     const current = structuredClone(baseline);
     const card = current.find((node) => node.id === 'growth')!;

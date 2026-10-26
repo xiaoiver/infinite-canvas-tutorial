@@ -361,7 +361,7 @@ The three variable modes match the SVG export semantics:
 
 With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, typography, `opacity`, `cornerRadius`, explicit `width`/`height`, `minWidth`/`maxWidth`/`minHeight`/`maxHeight`, `padding`, `margin`, flex gaps, `flexDirection`, `alignItems`, `justifyContent`, `flexWrap`, `alignSelf`, `flexGrow`, `flexShrink`, `flexBasis`, `strokeWidth`, `strokes`, and drop-shadow fields) seen across instances are lifted into props with the template value as default. Numeric `lineHeight` values are pixel heights in `.ic`, so React output adds `px` instead of treating them as unitless multipliers. Spacing arrays become CSS shorthand strings, and the shadow fields combine into one `boxShadow` prop:
 
-For a reusable image, changing only the image URL binds the instance's `fills` override to the component's `<img src>` prop. Changing the fill type, fit, or position expands the instance so the generated element and `object-fit` / `object-position` reflect the edit.
+For a reusable image, changing only the image URL binds the instance's `fills` override to the component's `<img src>` prop. Changing the fill type, fit, position, or fill opacity expands the instance so the generated element and styles reflect the edit. For a single image fill, the exported `<img>` opacity combines the fill opacity with the node opacity.
 
 ```tsx
 interface RoundButtonProps {

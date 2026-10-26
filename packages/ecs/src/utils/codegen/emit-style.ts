@@ -39,6 +39,24 @@ export function boxToCss(v: [number, number, number, number]): string {
   )}px ${formatNumber(l)}px`;
 }
 
+/** A single image fill and its node share one `<img>` opacity in generated code. */
+export function combinedImageOpacityCss(
+  style: StyleIR,
+  mode: CodeVariablesMode,
+): string | undefined {
+  const fill = style.imageFillOpacity;
+  if (!fill)
+    return style.opacity === undefined
+      ? undefined
+      : formatNumber(style.opacity);
+  if (typeof fill.literal === 'number')
+    return formatNumber((style.opacity ?? 1) * fill.literal);
+  const fillCss = styleValueToCss(fill, mode);
+  return style.opacity === undefined
+    ? fillCss
+    : `calc(${formatNumber(style.opacity)} * ${fillCss})`;
+}
+
 /**
  * 把 {@link StyleIR} 转为 CSS 属性键值对（键为 kebab-case CSS 属性名）。
  * 供 HTML/CSS emitter 直接使用，也是 React inline style 的基础。
@@ -108,7 +126,8 @@ export function styleIRToCssDeclarations(
       )}px ${styleValueToCss(s.color, mode)}`,
     );
   }
-  if (style.opacity !== undefined) push('opacity', formatNumber(style.opacity));
+  const opacity = combinedImageOpacityCss(style, mode);
+  if (opacity !== undefined) push('opacity', opacity);
 
   if (style.color) push('color', styleValueToCss(style.color, mode));
   if (style.fontSize)
