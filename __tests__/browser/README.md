@@ -314,6 +314,10 @@ pose/material edits. It verifies visible green material pixels, zero mesh geomet
 allocations during those edits, and one replacement upload after switching a mesh
 to a sphere. It also checks zero model-uniform uploads and layer-list scans during
 idle/camera-only frames, plus layer renaming and selection after idle frames.
+Its isometric camera case orbits 12 extruded Paths with holes through ten view
+angles, checks that geometry arrays retain identity and no GPU geometry buffer is
+reallocated, and attaches the measured ECS frame-boundary durations as JSON.
+These durations are diagnostic samples, without an absolute CI time threshold.
 The ECS tests separately verify same-frame in-place geometry edits,
 allocation rollback, deferred uniforms, multi-canvas ownership and disposal.
 
