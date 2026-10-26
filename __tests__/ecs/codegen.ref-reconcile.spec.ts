@@ -101,7 +101,7 @@ describe('design-to-code expanded ref reconciliation', () => {
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;
-    (ref as { justifyContent?: string }).justifyContent = 'center';
+    (ref as { flexGrow?: number }).flexGrow = 1;
     const expanded = expandRefSerializedNodes(
       structuredClone(unsupportedSource),
       unsupportedSource,
@@ -114,8 +114,52 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(recovered.some((node) => node.type === 'ref')).toBe(false);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
       type: 'rect',
-      justifyContent: 'center',
+      flexGrow: 1,
     });
+  });
+
+  it('keeps flex alignment and direction edits as instance props', () => {
+    const current = structuredClone(baseline);
+    const card = current.find((node) => node.id === 'growth')!;
+    Object.assign(card, {
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+    });
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flexWrap: 'wrap',
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain(
+      "planCardFlexDirection?: CSSProperties['flexDirection']",
+    );
+    expect(react).toContain("planCardAlignItems?: CSSProperties['alignItems']");
+    expect(react).toContain(
+      "planCardJustifyContent?: CSSProperties['justifyContent']",
+    );
+    expect(react).toContain("planCardFlexWrap?: CSSProperties['flexWrap']");
+    expect(react).toContain('planCardJustifyContent="space-between"');
+    expect(react).toContain('justifyContent: planCardJustifyContent');
+    expect(react).not.toContain('justify-between');
+  });
+
+  it('still expands an instance if a flex edit also moves a child manually', () => {
+    const current = structuredClone(baseline);
+    Object.assign(current.find((node) => node.id === 'growth')!, {
+      justifyContent: 'space-between',
+    });
+    current.find((node) => node.id === 'growth__price')!.x = 12;
+    expect(
+      reconcileRefInstances(source, baseline, current).some(
+        (node) => node.type === 'ref',
+      ),
+    ).toBe(false);
   });
 
   it('preserves instance spacing and CSS shorthand box values', () => {

@@ -213,21 +213,23 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await page.evaluate(() =>
     window.designToCodeDocs.setPricingCardJustification(),
   );
-  await expect(code).not.toContainText('export function PricingPlanCard');
-  await expect(code).toContainText('justify-between');
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText(
+    'pricingPlanCardJustifyContent="space-between"',
+  );
   const [expandedDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 .ic' }).click(),
   ]);
-  const expandedDocument = JSON.parse(
+  const alignedDocument = JSON.parse(
     await readFile((await expandedDownload.path())!, 'utf8'),
   );
   expect(
-    expandedDocument.elements.find(
+    alignedDocument.elements.find(
       (node: { id: string }) => node.id === 'plan-growth',
     ),
   ).toMatchObject({
-    type: 'rect',
+    type: 'ref',
     width: 320,
     opacity: 0.7,
     padding: 20,

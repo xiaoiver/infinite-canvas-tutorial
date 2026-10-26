@@ -58,6 +58,10 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   gap: 'gap',
   rowGap: 'rowGap',
   columnGap: 'columnGap',
+  flexDirection: 'flexDirection',
+  alignItems: 'alignItems',
+  justifyContent: 'justifyContent',
+  flexWrap: 'flexWrap',
 };
 
 const SHADOW_KEYS = new Set([
@@ -441,6 +445,20 @@ function templateDefaultValue(
   }
   if (attr === 'opacity') {
     return toStyleValue(desc.opacity as number) ?? { literal: 1 };
+  }
+  if (attr === 'flexDirection') {
+    return toStyleValue(desc.flexDirection as string) ?? { literal: 'row' };
+  }
+  if (attr === 'alignItems') {
+    return toStyleValue(desc.alignItems as string) ?? { literal: 'stretch' };
+  }
+  if (attr === 'justifyContent') {
+    return (
+      toStyleValue(desc.justifyContent as string) ?? { literal: 'flex-start' }
+    );
+  }
+  if (attr === 'flexWrap') {
+    return toStyleValue(desc.flexWrap as string) ?? { literal: 'nowrap' };
   }
   if (attr === 'fontWeight') {
     return toStyleValue(desc.fontWeight as string | number) ?? { literal: 400 };
