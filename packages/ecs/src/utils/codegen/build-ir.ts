@@ -20,7 +20,7 @@ import {
 import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 import type { ThemeMode } from '../../components/Theme';
 import { toComponentName, toPropName } from './string-utils';
-import { boxToCss, styleValueToCss } from './emit-style';
+import { boxToCss, styleValueToCss, textDecorationToCss } from './emit-style';
 import { toCSSMixBlendMode } from '../blend-mode';
 import { hasUnsupportedImageFillOverride } from './image-fill-override';
 import type {
@@ -54,6 +54,7 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
+  textDecoration: 'textDecoration',
   dropShadow: 'boxShadow',
   padding: 'padding',
   margin: 'margin',
@@ -81,6 +82,12 @@ const SHADOW_KEYS = new Set([
   'dropShadowOffsetY',
   'dropShadowBlurRadius',
 ]);
+const DECORATION_KEYS = new Set([
+  'decorationLine',
+  'decorationStyle',
+  'decorationColor',
+  'decorationThickness',
+]);
 
 function shadowStyleValue(
   template: AnyNode,
@@ -103,6 +110,17 @@ function shadowStyleValue(
   };
 }
 
+function textDecorationStyleValue(
+  template: AnyNode,
+  patch: Record<string, unknown> | undefined,
+  mode: CodeVariablesMode,
+): StyleValue {
+  const decoration = textDecorationFromNode({ ...template, ...patch });
+  return {
+    literal: decoration ? textDecorationToCss(decoration, mode) : 'none',
+  };
+}
+
 function asArray<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
 }
@@ -118,6 +136,30 @@ function toStyleValue(
     return { token: designVariableRefKeyFromWire(raw) };
   }
   return { literal: raw };
+}
+
+function textDecorationFromNode(node: AnyNode): StyleIR['textDecoration'] {
+  const line = node.decorationLine;
+  const thickness = Number(node.decorationThickness ?? 0);
+  if (
+    !['underline', 'overline', 'line-through'].includes(line as string) ||
+    !Number.isFinite(thickness) ||
+    thickness <= 0
+  )
+    return undefined;
+  const decorationStyle = node.decorationStyle;
+  return {
+    line: line as NonNullable<StyleIR['textDecoration']>['line'],
+    style: (['solid', 'double', 'dotted', 'dashed', 'wavy'].includes(
+      decorationStyle as string,
+    )
+      ? decorationStyle
+      : 'solid') as NonNullable<StyleIR['textDecoration']>['style'],
+    color: toStyleValue(node.decorationColor as string) ?? {
+      literal: 'black',
+    },
+    thickness,
+  };
 }
 
 /** 取填充/描边栈里第一层启用的 solid 颜色（含 `$token`）。 */
@@ -324,6 +366,7 @@ function buildStyle(
     if (ls) style.letterSpacing = ls;
     const lh = toStyleValue(node.lineHeight as number);
     if (lh && lh.literal !== 0) style.lineHeight = lh;
+    style.textDecoration = textDecorationFromNode(node);
   }
 
   return style;
@@ -706,6 +749,10 @@ function buildPreserve(
         set.add(`${templateId}::dropShadow`);
         continue;
       }
+      if (DECORATION_KEYS.has(attr)) {
+        set.add(`${templateId}::textDecoration`);
+        continue;
+      }
       if (
         attr in OVERRIDABLE_KEY_TO_TARGET ||
         attr === 'fills' ||
@@ -721,6 +768,10 @@ function buildPreserve(
       for (const attr of Object.keys(patch)) {
         if (SHADOW_KEYS.has(attr)) {
           set.add(`${descId}::dropShadow`);
+          continue;
+        }
+        if (DECORATION_KEYS.has(attr)) {
+          set.add(`${descId}::textDecoration`);
           continue;
         }
         if (
@@ -877,6 +928,8 @@ function buildComponentProps(
       defaultValue:
         attr === 'dropShadow'
           ? shadowStyleValue(desc, undefined, variablesMode)
+          : attr === 'textDecoration'
+          ? textDecorationStyleValue(desc, undefined, variablesMode)
           : templateDefaultValue(template, descId, attr, byId) ?? {
               literal: '',
             },
@@ -919,6 +972,16 @@ function buildInstanceNode(
     const descNode = byId.get(descId);
     if (descNode && Object.keys(patch).some((key) => SHADOW_KEYS.has(key))) {
       props[propNameFor(descNode, 'dropShadow')] = shadowStyleValue(
+        descNode,
+        patch,
+        variablesMode,
+      );
+    }
+    if (
+      descNode &&
+      Object.keys(patch).some((key) => DECORATION_KEYS.has(key))
+    ) {
+      props[propNameFor(descNode, 'textDecoration')] = textDecorationStyleValue(
         descNode,
         patch,
         variablesMode,

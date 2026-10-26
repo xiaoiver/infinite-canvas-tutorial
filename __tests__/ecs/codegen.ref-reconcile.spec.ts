@@ -652,6 +652,69 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).not.toContain('leading-[24px]');
   });
 
+  it('preserves text decoration as one component prop', () => {
+    const current = structuredClone(baseline);
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      decorationLine: 'underline',
+      decorationStyle: 'wavy',
+      decorationColor: '#ff00ff',
+      decorationThickness: 2,
+    });
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      descendants: {
+        price: {
+          decorationLine: 'underline',
+          decorationStyle: 'wavy',
+          decorationColor: '#ff00ff',
+          decorationThickness: 2,
+        },
+      },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain(
+      "priceTextDecoration?: CSSProperties['textDecoration']",
+    );
+    expect(react).toContain('textDecoration: priceTextDecoration');
+    expect(react).toContain('priceTextDecoration="wavy underline #ff00ff 2px"');
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('text-decoration: wavy underline #ff00ff 2px');
+
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      decorationThickness: 0,
+    });
+    const withoutThickness = reconcileRefInstances(source, baseline, current);
+    expect(serializedNodesToCode(withoutThickness)).toContain(
+      'priceTextDecoration="none"',
+    );
+    expect(
+      serializedNodesToCode(withoutThickness, { framework: 'html-css' }),
+    ).not.toContain('text-decoration:');
+
+    const decoratedSource = structuredClone(source);
+    Object.assign(decoratedSource.find((node) => node.id === 'price')!, {
+      decorationLine: 'underline',
+      decorationColor: '$color.accent',
+      decorationThickness: 2,
+    });
+    const decoratedRef = decoratedSource.find((node) => node.id === 'growth')!;
+    if (decoratedRef.type !== 'ref') throw new Error('Missing ref');
+    decoratedRef.descendants = {
+      ...decoratedRef.descendants,
+      price: {
+        ...decoratedRef.descendants?.price,
+        decorationStyle: 'dashed',
+      },
+    };
+    const cssVarReact = serializedNodesToCode(decoratedSource, {
+      variablesMode: 'css-var',
+    });
+    expect(cssVarReact).toContain(
+      'priceTextDecoration="dashed underline var(--color-accent) 2px"',
+    );
+  });
+
   it('falls back for an anchor move without a text alignment edit', () => {
     const current = structuredClone(baseline);
     const price = current.find((node) => node.id === 'growth__price')!;

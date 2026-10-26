@@ -9,7 +9,11 @@
  */
 import { formatNumber } from '../serialize/points';
 import { pascalCase } from './string-utils';
-import { combinedImageOpacityCss, styleValueToCss } from './emit-style';
+import {
+  combinedImageOpacityCss,
+  styleValueToCss,
+  textDecorationToCss,
+} from './emit-style';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -39,6 +43,7 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
+  textDecoration: 'textDecoration',
   boxShadow: 'boxShadow',
   padding: 'padding',
   margin: 'margin',
@@ -250,6 +255,11 @@ function genTailwind(
     classes.push(`font-[${style.fontWeight}]`);
   if (style.fontStyle === 'italic' && !skip.has('fontStyle'))
     classes.push('italic');
+  if (style.textDecoration && !skip.has('textDecoration'))
+    inline.push([
+      'textDecoration',
+      JSON.stringify(textDecorationToCss(style.textDecoration, mode)),
+    ]);
   if (style.fontFamily && !skip.has('fontFamily'))
     classes.push(`font-[${tw(style.fontFamily)}]`);
   if (style.textAlign && !skip.has('textAlign'))
@@ -470,6 +480,7 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
             'textAlign',
             'letterSpacing',
             'lineHeight',
+            'textDecoration',
             'flexDirection',
             'alignItems',
             'justifyContent',
@@ -542,6 +553,7 @@ export function emitReactTailwind(
           'textAlign',
           'letterSpacing',
           'lineHeight',
+          'textDecoration',
           'flexDirection',
           'alignItems',
           'justifyContent',
