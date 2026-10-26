@@ -23,6 +23,7 @@ import type {
 const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   text: 'content',
   imageSrc: 'src',
+  mixBlendMode: 'mixBlendMode',
   backgroundColor: 'backgroundColor',
   color: 'color',
   fontSize: 'fontSize',
@@ -176,6 +177,8 @@ function genTailwind(
     inline.push(['objectFit', JSON.stringify(style.objectFit)]);
   if (style.objectPosition)
     inline.push(['objectPosition', JSON.stringify(style.objectPosition)]);
+  if (style.mixBlendMode && !skip.has('mixBlendMode'))
+    inline.push(['mixBlendMode', JSON.stringify(style.mixBlendMode)]);
 
   if (style.backgroundColor && !skip.has('backgroundColor')) {
     if (needsInline(style.backgroundColor, mode))
@@ -473,6 +476,7 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
             'flexWrap',
             'alignSelf',
             'flexBasis',
+            'mixBlendMode',
             'minWidth',
             'maxWidth',
             'minHeight',
@@ -544,6 +548,7 @@ export function emitReactTailwind(
           'flexWrap',
           'alignSelf',
           'flexBasis',
+          'mixBlendMode',
           'minWidth',
           'maxWidth',
           'minHeight',

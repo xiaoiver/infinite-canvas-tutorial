@@ -106,6 +106,7 @@ export interface StyleIR {
   opacity?: number;
   /** Opacity of the single image fill, multiplied with node opacity for `<img>`. */
   imageFillOpacity?: StyleValue;
+  mixBlendMode?: string;
   color?: StyleValue;
   fontSize?: StyleValue;
   fontWeight?: string | number;
@@ -122,6 +123,7 @@ export type CodeNodeRole = 'container' | 'text' | 'icon' | 'image' | 'shape';
 export type CodeBindingTarget =
   | 'text'
   | 'imageSrc'
+  | 'mixBlendMode'
   | 'backgroundColor'
   | 'color'
   | 'fontSize'
