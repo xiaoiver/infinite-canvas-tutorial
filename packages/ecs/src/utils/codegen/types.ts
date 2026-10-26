@@ -31,6 +31,23 @@ export type CodeVariablesMode = 'resolved' | 'preserve-token' | 'css-var';
  */
 export type CodeComponentStructure = 'preserve' | 'flatten';
 
+/** Optional semantic HTML for a scene node. Actions remain unbound until the app wires them. */
+export type CodeSemanticElement =
+  | { tag: 'button' }
+  | { tag: 'a'; href: string }
+  | {
+      tag:
+        | 'main'
+        | 'nav'
+        | 'header'
+        | 'footer'
+        | 'section'
+        | 'aside'
+        | 'h1'
+        | 'h2'
+        | 'p';
+    };
+
 /** 一个样式取值：要么是字面量，要么是设计变量引用（`token` 为去掉 `$` 的键名）。 */
 export interface StyleValue {
   literal?: string | number;
@@ -110,6 +127,8 @@ export interface CodeNode {
   /** 源 `.ic` 节点 id。 */
   id: string;
   name?: string;
+  /** HTML element to emit instead of the default div/span. */
+  element?: CodeSemanticElement;
   style: StyleIR;
   children: CodeNode[];
   /** `role === 'text'` 时的文本内容（字面量或变量引用）。 */
@@ -158,6 +177,8 @@ export interface CodegenOptions {
   themeMode?: ThemeMode;
   /** React emitter 顶层组件名，默认 `Design`。 */
   componentName?: string;
+  /** Node-id keyed semantic elements for exported HTML/JSX. */
+  semanticElements?: Record<string, CodeSemanticElement>;
   /** 缩进字符串，默认两个空格。 */
   indent?: string;
 }

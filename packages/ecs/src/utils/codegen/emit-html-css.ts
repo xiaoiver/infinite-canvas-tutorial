@@ -28,7 +28,25 @@ function escapeAttr(s: string): string {
 }
 
 function styleAttr(node: CodeNode, state: HtmlState): string {
-  const decls = styleIRToCssDeclarations(node.style, state.mode);
+  const tag = node.element?.tag;
+  const reset: Array<[string, string]> =
+    tag === 'button'
+      ? [
+          ['appearance', 'none'],
+          ['border', '0'],
+          ['padding', '0'],
+          ['font', 'inherit'],
+          ['cursor', 'pointer'],
+        ]
+      : tag === 'a'
+      ? [
+          ['color', 'inherit'],
+          ['text-decoration', 'none'],
+        ]
+      : tag === 'h1' || tag === 'h2' || tag === 'p'
+      ? [['margin', '0']]
+      : [];
+  const decls = [...reset, ...styleIRToCssDeclarations(node.style, state.mode)];
   if (!decls.length) return '';
   const css = decls.map(([k, v]) => `${k}: ${v}`).join('; ');
   return ` style="${escapeAttr(css)}"`;
@@ -37,6 +55,13 @@ function styleAttr(node: CodeNode, state: HtmlState): string {
 function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   const pad = state.indent.repeat(depth);
   const style = styleAttr(node, state);
+  const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
+  const semanticAttr =
+    tag === 'button'
+      ? ' type="button"'
+      : tag === 'a' && node.element?.tag === 'a'
+      ? ` href="${escapeAttr(node.element.href)}"`
+      : '';
 
   if (node.role === 'icon' && node.icon) {
     const name = node.icon.name.literal ? String(node.icon.name.literal) : '';
@@ -61,17 +86,17 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     : '';
 
   if (node.role === 'text' && node.children.length === 0) {
-    return `${pad}<span${style}>${text}</span>`;
+    return `${pad}<${tag}${semanticAttr}${style}>${text}</${tag}>`;
   }
 
   if (node.children.length === 0) {
-    return `${pad}<div${style}>${text}</div>`;
+    return `${pad}<${tag}${semanticAttr}${style}>${text}</${tag}>`;
   }
   const children = node.children
     .map((c) => renderNode(c, state, depth + 1))
     .join('\n');
   const leading = text ? `${state.indent.repeat(depth + 1)}${text}\n` : '';
-  return `${pad}<div${style}>\n${leading}${children}\n${pad}</div>`;
+  return `${pad}<${tag}${semanticAttr}${style}>\n${leading}${children}\n${pad}</${tag}>`;
 }
 
 /** 把 Code IR 输出为 HTML + CSS 源码字符串。 */

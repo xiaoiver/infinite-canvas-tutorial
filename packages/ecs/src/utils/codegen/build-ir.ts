@@ -27,6 +27,7 @@ import type {
   CodeIR,
   CodeNode,
   CodeNodeRole,
+  CodeSemanticElement,
   CodegenOptions,
   CodeVariablesMode,
   StyleIR,
@@ -245,6 +246,7 @@ function buildStyle(
 
 interface BuildContext {
   childrenByParent: Map<string | undefined, AnyNode[]>;
+  semanticElements: Record<string, CodeSemanticElement>;
   /** 模板 id → 该模板被实例覆盖过的 (key) 集合，用于推断 props。 */
   overridesByTemplate: Map<string, Set<string>>;
 }
@@ -266,6 +268,7 @@ function buildCodeNode(
     role,
     id: node.id,
     name: typeof node.name === 'string' ? node.name : undefined,
+    element: ctx.semanticElements[node.id],
     style,
     children: [],
   };
@@ -423,7 +426,10 @@ export function buildCodeIR(
     const expanded = expandRefSerializedNodes(working, working);
     return {
       components: [],
-      roots: buildRootsExcludingReusable(expanded as AnyNode[]),
+      roots: buildRootsExcludingReusable(
+        expanded as AnyNode[],
+        options.semanticElements ?? {},
+      ),
       variables,
       themeMode,
       variablesMode,
@@ -435,11 +441,15 @@ export function buildCodeIR(
     variables,
     themeMode,
     variablesMode,
+    options.semanticElements ?? {},
   );
 }
 
 /** 由扁平节点表构建顶层树，跳过 `reusable` 模板根（flatten 模式仍保留实例展开结果）。 */
-function buildRootsExcludingReusable(nodes: AnyNode[]): CodeNode[] {
+function buildRootsExcludingReusable(
+  nodes: AnyNode[],
+  semanticElements: Record<string, CodeSemanticElement>,
+): CodeNode[] {
   const byId = new Map<string, AnyNode>(nodes.map((n) => [n.id, n]));
   const childrenByParent = new Map<string | undefined, AnyNode[]>();
   for (const n of nodes) {
@@ -449,6 +459,7 @@ function buildRootsExcludingReusable(nodes: AnyNode[]): CodeNode[] {
   }
   const ctx: BuildContext = {
     childrenByParent,
+    semanticElements,
     overridesByTemplate: new Map(),
   };
   const roots = sortChildren(
@@ -462,6 +473,7 @@ function buildPreserve(
   variables: DesignVariablesMap,
   themeMode: ThemeMode | undefined,
   variablesMode: CodeVariablesMode,
+  semanticElements: Record<string, CodeSemanticElement>,
 ): CodeIR {
   const byId = new Map<string, AnyNode>(nodes.map((n) => [n.id, n]));
   const childrenByParent = new Map<string | undefined, AnyNode[]>();
@@ -517,7 +529,11 @@ function buildPreserve(
     overridesByTemplate.set(templateId, set);
   }
 
-  const ctx: BuildContext = { childrenByParent, overridesByTemplate };
+  const ctx: BuildContext = {
+    childrenByParent,
+    semanticElements,
+    overridesByTemplate,
+  };
 
   // 2) 组件定义（reusable 根）
   const components: CodeComponentDef[] = [];
