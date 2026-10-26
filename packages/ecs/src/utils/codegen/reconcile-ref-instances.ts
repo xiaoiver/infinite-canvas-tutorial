@@ -4,6 +4,7 @@ import type {
   SerializedNode,
 } from '../../types/serialized-node';
 import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
+import { hasUnsupportedImageFillOverride } from './image-fill-override';
 
 const PROP_KEYS = [
   'content',
@@ -210,6 +211,8 @@ export function reconcileRefInstances(
           : node.id.slice(ref.id.length + '__'.length);
       const template = sourceById.get(templateId) as NodeRecord | undefined;
       if (!before || !after || !template) return flattened();
+      if (hasUnsupportedImageFillOverride(template.fills, after.fills))
+        return flattened();
       if (hasUnsupportedChange(before, after, node.id === ref.id, template))
         return flattened();
     }

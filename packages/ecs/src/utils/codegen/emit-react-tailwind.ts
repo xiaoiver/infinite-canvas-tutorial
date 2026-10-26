@@ -22,6 +22,7 @@ import type {
 
 const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   text: 'content',
+  imageSrc: 'src',
   backgroundColor: 'backgroundColor',
   color: 'color',
   fontSize: 'fontSize',
@@ -171,6 +172,10 @@ function genTailwind(
     classes.push(`min-h-[${formatNumber(style.minHeight)}px]`);
   if (style.maxHeight !== undefined && !skip.has('maxHeight'))
     classes.push(`max-h-[${formatNumber(style.maxHeight)}px]`);
+  if (style.objectFit)
+    inline.push(['objectFit', JSON.stringify(style.objectFit)]);
+  if (style.objectPosition)
+    inline.push(['objectPosition', JSON.stringify(style.objectPosition)]);
 
   if (style.backgroundColor && !skip.has('backgroundColor')) {
     if (needsInline(style.backgroundColor, mode))
@@ -298,7 +303,8 @@ function renderAttributes(
   const gapBinding = (node.bindings ?? []).find((b) => b.target === 'gap');
   if (gapBinding) inline.push(['gap', gapBinding.prop]);
   for (const b of node.bindings ?? []) {
-    if (b.target === 'text' || b.target === 'gap') continue;
+    if (b.target === 'text' || b.target === 'imageSrc' || b.target === 'gap')
+      continue;
     if (b.target === 'lineHeight') {
       inline.push([
         'lineHeight',
@@ -362,8 +368,15 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
   }
 
   if (node.role === 'image') {
-    const src = node.image ? styleValueToCss(node.image, state.mode) : '';
-    return `${pad}<img src=${JSON.stringify(src)} alt=${JSON.stringify(
+    const imageBinding = (node.bindings ?? []).find(
+      (binding) => binding.target === 'imageSrc',
+    );
+    const src = imageBinding
+      ? `{${imageBinding.prop}}`
+      : JSON.stringify(
+          node.image ? styleValueToCss(node.image, state.mode) : '',
+        );
+    return `${pad}<img src=${src} alt=${JSON.stringify(
       node.name ?? '',
     )}${className}${styleExpr} />`;
   }
