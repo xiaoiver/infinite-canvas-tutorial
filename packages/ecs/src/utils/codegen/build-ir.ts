@@ -45,6 +45,7 @@ import type {
   CodeVariablesMode,
   CodeVectorMarker,
   CodeVectorGradient,
+  CodeVectorImage,
   StyleIR,
   StyleValue,
 } from './types';
@@ -409,6 +410,38 @@ function vectorGradient(
   return { id: `ic-gradient-${encodedId}-${kind}`, geometry, stops };
 }
 
+function vectorImage(
+  node: AnyNode,
+  kind: 'fill' | 'stroke',
+  layers: SerializedFillLayerItem[],
+): CodeVectorImage | undefined {
+  if (layers.length !== 1 || layers[0].type !== 'image') return undefined;
+  const image = layers[0];
+  if (
+    !image.value.trim() ||
+    (image.blendMode !== undefined && image.blendMode !== 'normal') ||
+    ![undefined, '50% 50%', 'center', 'center center'].includes(
+      image.objectPosition,
+    )
+  )
+    return undefined;
+  const fit = image.objectFit ?? 'fill';
+  if (!['fill', 'contain', 'cover'].includes(fit)) return undefined;
+  const encodedId = Array.from(node.id as string)
+    .map((character) => character.codePointAt(0)!.toString(16))
+    .join('-');
+  return {
+    id: `ic-image-${encodedId}-${kind}`,
+    href: image.value,
+    preserveAspectRatio:
+      fit === 'cover'
+        ? 'xMidYMid slice'
+        : fit === 'contain'
+          ? 'xMidYMid meet'
+          : 'none',
+  };
+}
+
 function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const d = vectorPathData(node);
   if (!d) return undefined;
@@ -436,6 +469,8 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const strokeLayer = strokes.find((stroke) => stroke.type === 'solid');
   const gradientFillLayer = fills.find((fill) => fill.type === 'gradient');
   const gradientStrokeLayer = strokes.find((stroke) => stroke.type === 'gradient');
+  const imageFillLayer = fills.find((fill) => fill.type === 'image');
+  const imageStrokeLayer = strokes.find((stroke) => stroke.type === 'image');
   const fill =
     node.type === 'path'
       ? (fillLayer?.type === 'solid' && toStyleValue(fillLayer.value)) ||
@@ -471,11 +506,15 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
           height,
         )
       : undefined;
+  const fillImage =
+    node.type === 'path' ? vectorImage(node, 'fill', fills) : undefined;
+  const strokeImage =
+    strokeWidth > 0 ? vectorImage(node, 'stroke', strokes) : undefined;
   const alignment = node.strokeAlignment;
   let strokeAlignment: NonNullable<CodeNode['vectorPath']>['strokeAlignment'];
   if (
     node.type === 'path' &&
-    (stroke || strokeGradient) &&
+    (stroke || strokeGradient || strokeImage) &&
     strokeWidth > 0 &&
     (alignment === 'inner' || alignment === 'outer')
   ) {
@@ -498,11 +537,13 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     height,
     fill,
     fillGradient,
-    fillOpacity: fill || fillGradient
+    fillImage,
+    fillOpacity: fill || fillGradient || fillImage
       ? toStyleValue(
-          (fillLayer?.opacity ?? gradientFillLayer?.opacity ?? node.fillOpacity) as
-            | string
-            | number,
+          (fillLayer?.opacity ??
+            gradientFillLayer?.opacity ??
+            imageFillLayer?.opacity ??
+            node.fillOpacity) as string | number,
         )
       : undefined,
     fillRule:
@@ -511,15 +552,19 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
         : 'nonzero',
     stroke: strokeWidth > 0 ? stroke : undefined,
     strokeGradient,
-    strokeOpacity: stroke || strokeGradient
+    strokeImage,
+    strokeOpacity: stroke || strokeGradient || strokeImage
       ? toStyleValue(
           (strokeLayer?.opacity ??
             gradientStrokeLayer?.opacity ??
+            imageStrokeLayer?.opacity ??
             node.strokeOpacity) as string | number,
         )
       : undefined,
     strokeWidth:
-      (stroke || strokeGradient) && strokeWidth > 0 ? strokeWidth : undefined,
+      (stroke || strokeGradient || strokeImage) && strokeWidth > 0
+        ? strokeWidth
+        : undefined,
     strokeLinecap: ['butt', 'round', 'square'].includes(
       node.strokeLinecap as string,
     )
@@ -573,11 +618,11 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
           }
         : undefined,
     markerStart:
-      (stroke || strokeGradient) && strokeWidth > 0
+      (stroke || strokeGradient || strokeImage) && strokeWidth > 0
         ? vectorMarker(node, 'start', strokeWidth)
         : undefined,
     markerEnd:
-      (stroke || strokeGradient) && strokeWidth > 0
+      (stroke || strokeGradient || strokeImage) && strokeWidth > 0
         ? vectorMarker(node, 'end', strokeWidth)
         : undefined,
   };

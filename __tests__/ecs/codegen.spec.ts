@@ -7,6 +7,82 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('exports single image paints on vector fills and strokes', () => {
+      const path = {
+        id: 'photo-path',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        d: 'M 10 20 L 110 20 L 110 80 Z',
+        fills: [
+          {
+            type: 'image',
+            value: 'https://example.com/photo.png?a=1&b=2',
+            objectFit: 'cover',
+            opacity: 0.6,
+          },
+        ],
+        strokes: [
+          {
+            type: 'image',
+            value: 'https://example.com/border.png',
+            objectFit: 'contain',
+          },
+        ],
+        strokeWidth: 3,
+      } as SerializedNode;
+      const react = serializedNodesToCode([path]);
+      expect(react).toContain('<pattern id={"ic-image-70-68-6f-74-6f-2d-70-61-74-68-fill"}');
+      expect(react).toContain('preserveAspectRatio={"xMidYMid slice"}');
+      expect(react).toContain('preserveAspectRatio={"xMidYMid meet"}');
+      expect(react).toContain('href={"https://example.com/photo.png?a=1&b=2"}');
+      expect(react).toContain('fill={"url(#ic-image-70-68-6f-74-6f-2d-70-61-74-68-fill)"}');
+      expect(react).toContain('stroke={"url(#ic-image-70-68-6f-74-6f-2d-70-61-74-68-stroke)"}');
+      expect(react).toContain('fillOpacity={"0.60"}');
+      expect(react).toContain('strokeWidth={3}');
+      expect(
+        ts.transpileModule(react, {
+          fileName: 'Design.tsx',
+          reportDiagnostics: true,
+          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+        }).diagnostics?.filter(
+          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+        ),
+      ).toEqual([]);
+      const html = serializedNodesToCode([path], { framework: 'html-css' });
+      expect(html).toContain('href="https://example.com/photo.png?a=1&amp;b=2"');
+      expect(html).toContain('preserveAspectRatio="xMidYMid slice"');
+      expect(html).toContain('fill-opacity="0.60"');
+
+      const stretched = serializedNodesToCode([
+        {
+          ...path,
+          id: 'stretched',
+          fills: [{ type: 'image', value: 'data:image/png;base64,AAA' }],
+          strokes: [],
+        } as SerializedNode,
+      ]);
+      expect(stretched).toContain('preserveAspectRatio={"none"}');
+      const unsupportedPosition = serializedNodesToCode([
+        {
+          ...path,
+          id: 'offset-image',
+          fills: [
+            {
+              type: 'image',
+              value: 'https://example.com/photo.png',
+              objectPosition: '20% 80%',
+            },
+          ],
+          strokes: [],
+        } as SerializedNode,
+      ]);
+      expect(unsupportedPosition).not.toContain('<pattern');
+    });
+
     it('applies a vector shadow to the SVG artwork without shadowing children', () => {
       const path = {
         id: 'shadow-path',
