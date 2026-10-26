@@ -75,6 +75,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     .toBe('pricing-page');
   await expect(code).toContainText('PricingPage');
   await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).not.toContainText('pricingPlanCardOpacity');
   expect((await code.innerText()).match(/<PricingPlanCard/g)).toHaveLength(3);
   await page.evaluate(() => window.designToCodeDocs.editPricingAmount('$39'));
   await expect(code).toContainText('$39');
@@ -111,6 +112,34 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     ),
   ).toMatchObject({ type: 'ref', width: 320, strokeWidth: 2 });
   await page.evaluate(() => window.designToCodeDocs.setPricingCardOpacity(0.7));
+  await page.evaluate(() =>
+    window.designToCodeDocs.setPricingAmountWeight(800),
+  );
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('pricingPlanCardOpacity={0.70}');
+  await expect(code).toContainText('planCardAmountFontWeight={800}');
+  const [styledDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const styledDocument = JSON.parse(
+    await readFile((await styledDownload.path())!, 'utf8'),
+  );
+  expect(
+    styledDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({
+    type: 'ref',
+    width: 320,
+    opacity: 0.7,
+    descendants: { 'plan-card-amount': { fontWeight: 800 } },
+  });
+  await page.getByRole('button', { name: 'HTML/CSS' }).click();
+  await expect(code).toContainText('opacity: 0.70');
+  await expect(code).toContainText('font-weight: 800');
+  await page.getByRole('button', { name: 'React + Tailwind' }).click();
+  await page.evaluate(() => window.designToCodeDocs.setPricingCardShadow());
   await expect(code).not.toContainText('export function PricingPlanCard');
   const [expandedDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -123,7 +152,12 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     expandedDocument.elements.find(
       (node: { id: string }) => node.id === 'plan-growth',
     ),
-  ).toMatchObject({ type: 'rect', width: 320, opacity: 0.7 });
+  ).toMatchObject({
+    type: 'rect',
+    width: 320,
+    opacity: 0.7,
+    dropShadowBlurRadius: 12,
+  });
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))

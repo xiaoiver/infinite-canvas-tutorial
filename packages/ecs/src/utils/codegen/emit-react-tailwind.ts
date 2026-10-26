@@ -30,6 +30,8 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   height: 'height',
   borderWidth: 'borderWidth',
   borderColor: 'borderColor',
+  opacity: 'opacity',
+  fontWeight: 'fontWeight',
 };
 
 interface TwResult {
@@ -175,7 +177,7 @@ function genTailwind(
       );
     }
   }
-  if (style.opacity !== undefined)
+  if (style.opacity !== undefined && !skip.has('opacity'))
     classes.push(`opacity-[${formatNumber(style.opacity)}]`);
 
   if (style.color && !skip.has('color')) {
@@ -188,7 +190,7 @@ function genTailwind(
     else
       classes.push(`text-[${tw(styleValueToCss(style.fontSize, mode, true))}]`);
   }
-  if (style.fontWeight !== undefined)
+  if (style.fontWeight !== undefined && !skip.has('fontWeight'))
     classes.push(`font-[${style.fontWeight}]`);
   if (style.fontStyle === 'italic') classes.push('italic');
   if (style.fontFamily) classes.push(`font-[${tw(style.fontFamily)}]`);
@@ -363,10 +365,16 @@ function renderIcon(
 function renderComponent(def: CodeComponentDef, state: EmitState): string {
   const propsType = def.props
     .map((p) => {
-      const tsType = ['fontSize', 'width', 'height', 'borderWidth'].includes(
-        p.target,
-      )
+      const tsType = [
+        'fontSize',
+        'width',
+        'height',
+        'borderWidth',
+        'opacity',
+      ].includes(p.target)
         ? 'number'
+        : p.target === 'fontWeight'
+        ? "CSSProperties['fontWeight']"
         : 'string';
       return `${state.indent}${p.name}?: ${tsType};`;
     })
@@ -417,6 +425,13 @@ export function emitReactTailwind(
 
   // imports（在确定用到哪些图标后再生成）
   const imports: string[] = [];
+  if (
+    ir.components.some((component) =>
+      component.props.some((prop) => prop.target === 'fontWeight'),
+    )
+  ) {
+    imports.push(`import type { CSSProperties } from 'react';`);
+  }
   if (state.lucideIcons.size) {
     imports.push(
       `import { ${[...state.lucideIcons]

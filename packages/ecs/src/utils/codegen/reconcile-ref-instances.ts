@@ -14,6 +14,8 @@ const PROP_KEYS = [
   'height',
   'strokeWidth',
   'strokes',
+  'opacity',
+  'fontWeight',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);
 const ROOT_POSITION_KEYS = new Set(['parentId', 'x', 'y', 'zIndex', 'name']);
@@ -87,9 +89,9 @@ function hasUnsupportedChange(
 
 /**
  * Recover a scene's reusable/ref source graph after the editor has expanded
- * instances for rendering. Supported text, color, explicit size, and solid
- * border edits become ref overrides. Other instance or template edits fall
- * back to the visible expanded graph so the export matches the canvas.
+ * instances for rendering. Supported text, color, font weight, opacity,
+ * explicit size, and solid border edits become ref overrides. Other instance
+ * or template edits fall back to the visible expanded graph.
  */
 export function reconcileRefInstances(
   source: readonly SerializedNode[],
