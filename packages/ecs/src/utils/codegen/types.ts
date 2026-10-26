@@ -111,6 +111,8 @@ export interface StyleIR {
   fontSize?: StyleValue;
   fontWeight?: string | number;
   fontStyle?: string;
+  fontVariant?: string;
+  fontKerning?: 'normal' | 'none';
   fontFamily?: string;
   textAlign?: 'left' | 'center' | 'right' | 'justify';
   letterSpacing?: StyleValue;
@@ -141,6 +143,8 @@ export type CodeBindingTarget =
   | 'opacity'
   | 'fontWeight'
   | 'fontStyle'
+  | 'fontVariant'
+  | 'fontKerning'
   | 'fontFamily'
   | 'textAlign'
   | 'letterSpacing'

@@ -50,6 +50,8 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   opacity: 'opacity',
   fontWeight: 'fontWeight',
   fontStyle: 'fontStyle',
+  fontVariant: 'fontVariant',
+  fontKerning: 'fontKerning',
   fontFamily: 'fontFamily',
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
@@ -360,6 +362,10 @@ function buildStyle(
       style.fontWeight = node.fontWeight as string | number;
     if (node.fontStyle && node.fontStyle !== 'normal')
       style.fontStyle = node.fontStyle as string;
+    if (typeof node.fontVariant === 'string')
+      style.fontVariant = node.fontVariant;
+    if (typeof node.fontKerning === 'boolean')
+      style.fontKerning = node.fontKerning ? 'normal' : 'none';
     if (typeof node.fontFamily === 'string') style.fontFamily = node.fontFamily;
     if (node.textAlign) style.textAlign = node.textAlign as never;
     const ls = toStyleValue(node.letterSpacing as number);
@@ -514,6 +520,9 @@ function overrideStyleValue(
       literal: toCSSMixBlendMode(patch.blendMode as never) ?? 'normal',
     };
   }
+  if (attr === 'fontKerning') {
+    return { literal: patch.fontKerning === false ? 'none' : 'normal' };
+  }
   return toStyleValue(patch[attr] as string | number);
 }
 
@@ -578,6 +587,12 @@ function templateDefaultValue(
   }
   if (attr === 'fontStyle') {
     return toStyleValue(desc.fontStyle as string) ?? { literal: 'normal' };
+  }
+  if (attr === 'fontVariant') {
+    return toStyleValue(desc.fontVariant as string) ?? { literal: 'normal' };
+  }
+  if (attr === 'fontKerning') {
+    return { literal: desc.fontKerning === false ? 'none' : 'normal' };
   }
   if (attr === 'fontFamily' || attr === 'textAlign') {
     return toStyleValue(desc[attr] as string) ?? { literal: 'inherit' };

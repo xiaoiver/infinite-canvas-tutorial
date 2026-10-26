@@ -146,6 +146,8 @@ export function styleIRToCssDeclarations(
   if (style.fontWeight !== undefined)
     push('font-weight', String(style.fontWeight));
   if (style.fontStyle) push('font-style', style.fontStyle);
+  if (style.fontVariant) push('font-variant', style.fontVariant);
+  if (style.fontKerning) push('font-kerning', style.fontKerning);
   if (style.fontFamily) push('font-family', style.fontFamily);
   if (style.textAlign) push('text-align', style.textAlign);
   if (style.letterSpacing)
