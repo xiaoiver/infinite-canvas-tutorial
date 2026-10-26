@@ -316,6 +316,48 @@ describe('design-to-code (codegen)', () => {
   });
 
   describe('buildCodeIR', () => {
+    it('lets serialized zero-size flex containers grow around their children', () => {
+      const nodes: SerializedNode[] = [
+        {
+          id: 'card',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 200,
+          height: 0,
+          zIndex: 1,
+          display: 'flex',
+          gap: 8,
+        } as SerializedNode,
+        {
+          id: 'title',
+          parentId: 'card',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+          content: 'Shipping address',
+        } as SerializedNode,
+        {
+          id: 'empty',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          zIndex: 2,
+        } as SerializedNode,
+      ];
+      const ir = buildCodeIR(nodes);
+      expect(ir.roots[0].style).toMatchObject({ width: 200, gap: 8 });
+      expect(ir.roots[0].style.height).toBeUndefined();
+      expect(ir.roots[1].style).toMatchObject({ width: 0, height: 0 });
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('width: 200px');
+      expect(html).toContain('<div style="width: 0px; height: 0px"></div>');
+      expect(html).not.toContain('width: 200px; height: 0px');
+    });
+
     it('produces a framework-agnostic tree with structured style', () => {
       const ir = buildCodeIR(
         [

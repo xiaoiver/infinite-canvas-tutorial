@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{ locale?: 'en' | 'zh' }>(), {
 const canvasElement = ref<HTMLElement | null>(null);
 const sceneId = ref(interfaceScenes[0].id);
 const framework = ref<CodeFramework>('html-css');
+const outputView = ref<'code' | 'preview'>('code');
 const code = ref('');
 const highlightedCode = ref('');
 const ready = ref(false);
@@ -181,7 +182,10 @@ function downloadDesign() {
   );
 }
 
-watch(framework, refreshCode);
+watch(framework, (format) => {
+  if (format !== 'html-css') outputView.value = 'code';
+  refreshCode();
+});
 watch([code, framework], async ([source, format], _previous, onCleanup) => {
   let cancelled = false;
   onCleanup(() => {
@@ -291,6 +295,29 @@ onUnmounted(() => {
           ? '从当前画布生成的代码'
           : 'Code from the current canvas'
       }}</strong>
+      <div
+        class="interface-demo-tabs"
+        role="group"
+        :aria-label="locale === 'zh' ? '输出视图' : 'Output view'"
+      >
+        <button
+          type="button"
+          :aria-pressed="outputView === 'code'"
+          :class="{ active: outputView === 'code' }"
+          @click="outputView = 'code'"
+        >
+          {{ locale === 'zh' ? '代码' : 'Code' }}
+        </button>
+        <button
+          type="button"
+          :disabled="!ready || framework !== 'html-css'"
+          :aria-pressed="outputView === 'preview'"
+          :class="{ active: outputView === 'preview' }"
+          @click="outputView = 'preview'"
+        >
+          {{ locale === 'zh' ? 'HTML 预览' : 'HTML preview' }}
+        </button>
+      </div>
       <div>
         <button type="button" :disabled="!ready" @click="loadScene(sceneId)">
           {{ locale === 'zh' ? '重置画布' : 'Reset canvas' }}
@@ -312,9 +339,19 @@ onUnmounted(() => {
     <p v-if="notice" class="interface-demo-notice" role="status">
       {{ notice }}
     </p>
-    <div class="interface-demo-code">
+    <div v-if="outputView === 'code'" class="interface-demo-code">
       <div v-if="highlightedCode" v-html="highlightedCode" />
       <pre v-else><code>{{ code }}</code></pre>
+    </div>
+    <div v-else class="interface-demo-preview">
+      <iframe
+        :key="scene.id"
+        :title="locale === 'zh' ? '生成的 HTML 预览' : 'Generated HTML preview'"
+        :srcdoc="code"
+        :width="scene.width"
+        :height="scene.height"
+        sandbox=""
+      />
     </div>
   </div>
 </template>
@@ -384,6 +421,18 @@ onUnmounted(() => {
   border-radius: 0;
   font-size: 12px;
   background: var(--vp-code-block-bg);
+}
+.interface-demo-preview {
+  max-height: 520px;
+  overflow: auto;
+  padding: 16px;
+  background: #e8ebf2;
+}
+.interface-demo-preview iframe {
+  display: block;
+  margin-inline: auto;
+  border: 0;
+  background: #fff;
 }
 .interface-demo-code :deep(pre) {
   margin: 0;
