@@ -11,6 +11,7 @@ export enum Location {
   BARYCENTRIC = WireframeLocation.BARYCENTRIC,
   POSITION = 1,
   UV_OFFSET = 2,
+  GLYPH_BOUNDS = 3,
 }
 
 export const vert = /* wgsl */ `  
@@ -39,8 +40,10 @@ layout(std140) uniform ShapeUniforms {
 ${wireframe_vert_declaration}
 layout(location = ${Location.POSITION}) in vec3 a_Position;
 layout(location = ${Location.UV_OFFSET}) in vec4 a_UvOffset;
+layout(location = ${Location.GLYPH_BOUNDS}) in vec4 a_GlyphBounds;
 
 out vec2 v_Uv;
+out vec4 v_GlyphBounds;
 #ifdef USE_FILLIMAGE
 out vec2 v_FillUv;
 #endif
@@ -64,6 +67,7 @@ void main() {
   }
 
   v_Uv = a_UvOffset.xy / u_AtlasSize;
+  v_GlyphBounds = a_GlyphBounds / vec4(u_AtlasSize, u_AtlasSize);
   vec2 offset = a_UvOffset.zw;
 
   vec2 localPos = a_Position.xy + offset * scale;
@@ -108,6 +112,7 @@ out vec4 outputColor;
 
 ${wireframe_frag_declaration}
 in vec2 v_Uv;
+in vec4 v_GlyphBounds;
 #ifdef USE_FILLIMAGE
 in vec2 v_FillUv;
 #endif
@@ -186,6 +191,25 @@ void main() {
       opacity *= strokeAlpha;
     } else {
       highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
+      #ifdef USE_SDF
+        // One screen pixel can span multiple atlas texels at small zoom levels.
+        // Sample four subpixels, keeping every lookup inside this glyph's tile.
+        vec2 uvDx = dFdx(v_Uv);
+        vec2 uvDy = dFdy(v_Uv);
+        if (max(length(uvDx * u_AtlasSize), length(uvDy * u_AtlasSize)) > 8.0) {
+          vec2 lo = v_GlyphBounds.xy + 0.5 / u_AtlasSize;
+          vec2 hi = v_GlyphBounds.zw - 0.5 / u_AtlasSize;
+          float width = max(gamma_scaled * 0.5, 1.0 / 256.0);
+          uvDx *= 0.25;
+          uvDy *= 0.25;
+          alpha = 0.25 * (
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv - uvDx - uvDy, lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv + uvDx - uvDy, lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv - uvDx + uvDy, lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv + uvDx + uvDy, lo, hi)).a)
+          );
+        }
+      #endif
       opacity *= alpha;
       outputColor = fillColor;
     }

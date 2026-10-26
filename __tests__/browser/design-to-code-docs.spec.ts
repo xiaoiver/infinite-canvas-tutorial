@@ -8,6 +8,13 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   test.setTimeout(90000);
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (
+      message.type() === 'error' &&
+      /ERROR:|program not valid|WebGL: INVALID_OPERATION/.test(message.text())
+    )
+      errors.push(message.text());
+  });
   await page.goto('/design-to-code-docs.html');
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()), {
@@ -339,5 +346,11 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))
     .toBe('dashboard');
   await expect(code).toContainText('AnalyticsDashboard');
+  await page.evaluate(() => window.designToCodeDocs.setZoom(0.3));
+  await expect
+    .poll(() =>
+      page.evaluate(() => window.designToCodeDocs.camera()?.cameraZoom),
+    )
+    .toBeCloseTo(0.3);
   expect(errors).toEqual([]);
 });

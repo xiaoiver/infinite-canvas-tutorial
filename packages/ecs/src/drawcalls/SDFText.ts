@@ -87,7 +87,9 @@ import {
 import { measureText } from '../systems/ComputeTextMetrics';
 import { safeAddComponent } from '../history';
 
-function firstStopColorFromGradients(grads: Gradient[] | undefined): string | null {
+function firstStopColorFromGradients(
+  grads: Gradient[] | undefined,
+): string | null {
   if (!grads?.length) {
     return null;
   }
@@ -124,7 +126,11 @@ function resolveSdfTextFillColorCss(shape: Entity): string {
 }
 
 /** WebGL readPixels：缓冲区首行对应纹理底边；转为自上而下以便与 Canvas 字形遮罩对齐。 */
-function flipUint8RgbaRowsVertical(data: Uint8Array, width: number, height: number): void {
+function flipUint8RgbaRowsVertical(
+  data: Uint8Array,
+  width: number,
+  height: number,
+): void {
   const rowStride = width * 4;
   const half = Math.floor(height / 2);
   const tmp = new Uint8Array(rowStride);
@@ -271,7 +277,11 @@ export class SDFText extends Drawcall {
     // changes quad layout; including it in the atlas key rerasterizes the
     // entire alphabet and uploads a growing atlas on every resize frame.
     const fontStack = JSON.stringify([
-      fontFamily, fontWeight, fontStyle, esdt, fill,
+      fontFamily,
+      fontWeight,
+      fontStyle,
+      esdt,
+      fill,
     ]);
 
     // const hasEmoji = containsEmoji(content);
@@ -280,6 +290,7 @@ export class SDFText extends Drawcall {
     const indices: number[] = [];
     const positions: number[] = [];
     const uvOffsets: number[] = [];
+    const glyphBounds: number[] = [];
     let indicesOff = 0;
     let fontScale: number;
 
@@ -312,6 +323,7 @@ export class SDFText extends Drawcall {
         indicesOffset,
         indexBuffer,
         charUVOffsetBuffer,
+        charGlyphBoundsBuffer,
         charPositionsBuffer,
       } = this.buildTextBuffers({
         object,
@@ -326,6 +338,7 @@ export class SDFText extends Drawcall {
       indicesOff = indicesOffset;
 
       uvOffsets.push(...charUVOffsetBuffer);
+      glyphBounds.push(...charGlyphBoundsBuffer);
       positions.push(...charPositionsBuffer);
       indices.push(...indexBuffer);
     });
@@ -348,6 +361,13 @@ export class SDFText extends Drawcall {
     this.vertexBufferDatas[1] = new Float32Array(uvOffsets);
     this.vertexBuffers[1] = this.device.createBuffer({
       viewOrSize: this.vertexBufferDatas[1],
+      usage: BufferUsage.VERTEX,
+      hint: BufferFrequencyHint.STATIC,
+    });
+    this.vertexBuffers[2]?.destroy();
+    this.vertexBufferDatas[2] = new Float32Array(glyphBounds);
+    this.vertexBuffers[2] = this.device.createBuffer({
+      viewOrSize: this.vertexBufferDatas[2],
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.STATIC,
     });
@@ -379,6 +399,17 @@ export class SDFText extends Drawcall {
         attributes: [
           {
             shaderLocation: Location.UV_OFFSET, // a_UvOffset
+            offset: 0,
+            format: Format.F32_RGBA,
+          },
+        ],
+      },
+      {
+        arrayStride: 4 * 4,
+        stepMode: VertexStepMode.VERTEX,
+        attributes: [
+          {
+            shaderLocation: Location.GLYPH_BOUNDS,
             offset: 0,
             format: Format.F32_RGBA,
           },
@@ -444,9 +475,7 @@ export class SDFText extends Drawcall {
 
     if (useFillImage) {
       let didGradientRaster = false;
-      let fillGradients:
-        | ReturnType<typeof parseGradient>
-        | undefined;
+      let fillGradients: ReturnType<typeof parseGradient> | undefined;
       if (shape.has(FillLayers)) {
         const one = getSingleEnabledFillLayer(shape);
         if (one?.type === 'gradient') {
@@ -498,7 +527,9 @@ export class SDFText extends Drawcall {
           );
 
           const meshLayers = fillGradients.filter(isMeshGradientGradient);
-          const cssLayers = fillGradients.filter((g) => !isMeshGradientGradient(g));
+          const cssLayers = fillGradients.filter(
+            (g) => !isMeshGradientGradient(g),
+          );
           const fillOpacityMul = getFirstFillLayerOpacityMul(shape);
 
           let rasterCanvas: HTMLCanvasElement | OffscreenCanvas | null = null;
@@ -686,10 +717,7 @@ export class SDFText extends Drawcall {
         this.#uniformBuffer.setSubData(
           0,
           new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(bakeModel),
-              ...bakeBuf,
-            ]).buffer,
+            new Float32Array([...paddingMat3(bakeModel), ...bakeBuf]).buffer,
           ),
         );
         this.#bakeProgram.setUniformsLegacy({
@@ -1028,17 +1056,23 @@ export class SDFText extends Drawcall {
       : 0;
     const zIndex = globalRenderOrder / ZINDEX_FACTOR;
     const fillCss = resolveSdfTextFillColorCss(shape);
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
-      fillCss && fillCss !== 'none' ? fillCss : 'transparent',
-    );
+    const {
+      r: fr,
+      g: fg,
+      b: fb,
+      opacity: fo,
+    } = parseColor(fillCss && fillCss !== 'none' ? fillCss : 'transparent');
 
     const opacity = this.getOpacity(shape);
 
     const strokeColor = resolveGpuStrokeColor(shape);
     const width = shape.has(Stroke) ? shape.read(Stroke).width : 0;
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
-      strokeColor ?? 'transparent',
-    );
+    const {
+      r: sr,
+      g: sg,
+      b: sb,
+      opacity: so,
+    } = parseColor(strokeColor ?? 'transparent');
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
@@ -1048,8 +1082,8 @@ export class SDFText extends Drawcall {
       offsetY,
       blurRadius,
     } = shape.has(DropShadow)
-        ? shape.read(DropShadow)
-        : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
+      ? shape.read(DropShadow)
+      : { color: null, offsetX: 0, offsetY: 0, blurRadius: 0 };
     const {
       r: dsR,
       g: dsG,
@@ -1071,12 +1105,7 @@ export class SDFText extends Drawcall {
 
     const u_ZIndexStrokeWidth = [zIndex, width, fontSize, 0];
 
-    const u_Opacity = [
-      opacity,
-      1,
-      strokeUniformOpacityMul,
-      sizeAttenuation,
-    ];
+    const u_Opacity = [opacity, 1, strokeUniformOpacityMul, sizeAttenuation];
 
     const u_DropShadowColor = [dsR / 255, dsG / 255, dsB / 255, dsO];
     const u_DropShadow = [offsetX, offsetY, blurRadius, 0];
@@ -1161,13 +1190,12 @@ export class SDFText extends Drawcall {
       x = metrics.width / 2;
     }
 
-    const {
-      fontBoundingBoxAscent = 0,
-    } = metrics.fontMetrics;
+    const { fontBoundingBoxAscent = 0 } = metrics.fontMetrics;
     y = fontBoundingBoxAscent;
     if (path) x = y = 0;
 
     const charUVOffsetBuffer: number[] = [];
+    const charGlyphBoundsBuffer: number[] = [];
     const charPositionsBuffer: number[] = [];
     const indexBuffer: number[] = [];
 
@@ -1175,20 +1203,22 @@ export class SDFText extends Drawcall {
 
     const positionedGlyphs = path
       ? metrics.pathGlyphs.map((glyph) => ({
-          ...glyph, fontStack, scale: fontScale,
+          ...glyph,
+          fontStack,
+          scale: fontScale,
         }))
       : this.#glyphManager.layout(
-        lines,
-        fontStack,
-        lineHeight,
-        textAlign,
-        letterSpacing,
-        bitmapFont,
-        fontScale,
-        bitmapFontKerning,
-        0,
-        (lineHeight - metrics.fontMetrics.fontSize) / 2,
-      );
+          lines,
+          fontStack,
+          lineHeight,
+          textAlign,
+          letterSpacing,
+          bitmapFont,
+          fontScale,
+          bitmapFontKerning,
+          0,
+          (lineHeight - metrics.fontMetrics.fontSize) / 2,
+        );
 
     let positions: GlyphPositions;
     if (bitmapFont) {
@@ -1215,6 +1245,14 @@ export class SDFText extends Drawcall {
 
     getGlyphQuads(positionedGlyphs, positions, this.useBitmapFont).forEach(
       (quad, index, total) => {
+        const bounds = [
+          quad.tex.x,
+          quad.tex.y,
+          quad.tex.x + quad.tex.w,
+          quad.tex.y + quad.tex.h,
+        ];
+        for (let vertex = 0; vertex < 4; vertex++)
+          charGlyphBoundsBuffer.push(...bounds);
         // interleaved uv & offsets
         charUVOffsetBuffer.push(quad.tex.x, quad.tex.y, quad.tl.x, quad.tl.y);
         charUVOffsetBuffer.push(
@@ -1262,6 +1300,7 @@ export class SDFText extends Drawcall {
     return {
       indexBuffer,
       charUVOffsetBuffer,
+      charGlyphBoundsBuffer,
       charPositionsBuffer,
       indicesOffset: i,
     };

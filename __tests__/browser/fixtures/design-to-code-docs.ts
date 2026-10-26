@@ -17,6 +17,7 @@ const probe = {
   scene: () => api?.getNodes().find((node) => !node.parentId)?.id,
   nodes: () => api?.getNodes() ?? [],
   camera: () => api?.getAppState(),
+  setZoom: (cameraZoom: number) => api?.setAppState({ cameraZoom }),
   editPay: async (content: string) => {
     if (!api) throw new Error('Editor is not ready');
     await api.edit((editor) => {
