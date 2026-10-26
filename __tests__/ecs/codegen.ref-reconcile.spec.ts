@@ -101,7 +101,7 @@ describe('design-to-code expanded ref reconciliation', () => {
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;
-    (ref as { flexGrow?: number }).flexGrow = 1;
+    (ref as { flex?: number }).flex = 1;
     const expanded = expandRefSerializedNodes(
       structuredClone(unsupportedSource),
       unsupportedSource,
@@ -114,8 +114,44 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(recovered.some((node) => node.type === 'ref')).toBe(false);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
       type: 'rect',
-      flexGrow: 1,
+      flex: 1,
     });
+  });
+
+  it('preserves flex item sizing and alignment on an instance child', () => {
+    const current = structuredClone(baseline);
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      alignSelf: 'center',
+      flexGrow: 2,
+      flexShrink: 0,
+      flexBasis: 120,
+    });
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      descendants: {
+        price: {
+          alignSelf: 'center',
+          flexGrow: 2,
+          flexShrink: 0,
+          flexBasis: 120,
+        },
+      },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain("priceAlignSelf?: CSSProperties['alignSelf']");
+    expect(react).toContain('priceFlexGrow?: number');
+    expect(react).toContain('priceFlexShrink?: number');
+    expect(react).toContain("priceFlexBasis?: CSSProperties['flexBasis']");
+    expect(react).toContain('priceFlexBasis={120}');
+    expect(react).toContain('flexBasis: priceFlexBasis');
+    expect(react).not.toContain('basis-[120px]');
+
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('align-self: center');
+    expect(html).toContain('flex-grow: 2');
+    expect(html).toContain('flex-shrink: 0');
+    expect(html).toContain('flex-basis: 120px');
   });
 
   it('keeps flex alignment and direction edits as instance props', () => {

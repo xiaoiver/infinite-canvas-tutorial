@@ -236,6 +236,36 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     justifyContent: 'space-between',
     dropShadowBlurRadius: 12,
   });
+  await page.evaluate(() => window.designToCodeDocs.setPricingPriceFlexItem());
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('planCardPriceFlexBasis={140}');
+  await expect(code).toContainText('planCardPriceFlexGrow={1}');
+  const [flexDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const flexDocument = JSON.parse(
+    await readFile((await flexDownload.path())!, 'utf8'),
+  );
+  expect(
+    flexDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({
+    type: 'ref',
+    descendants: {
+      'plan-card-price': {
+        alignSelf: 'center',
+        flexGrow: 1,
+        flexShrink: 0,
+        flexBasis: 140,
+      },
+    },
+  });
+  await page.getByRole('button', { name: 'HTML/CSS' }).click();
+  await expect(code).toContainText('flex-basis: 140px');
+  await expect(code).toContainText('align-self: center');
+  await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))

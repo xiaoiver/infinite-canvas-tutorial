@@ -66,6 +66,9 @@ export function styleIRToCssDeclarations(
     push('flex-grow', formatNumber(style.flexGrow));
   if (style.flexShrink !== undefined)
     push('flex-shrink', formatNumber(style.flexShrink));
+  if (style.flexBasis !== undefined)
+    push('flex-basis', `${formatNumber(style.flexBasis)}px`);
+  if (style.alignSelf) push('align-self', style.alignSelf);
 
   if (style.padding) push('padding', boxToCss(style.padding));
   if (style.margin) push('margin', boxToCss(style.margin));
