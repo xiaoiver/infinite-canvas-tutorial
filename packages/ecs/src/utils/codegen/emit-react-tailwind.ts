@@ -194,7 +194,7 @@ function genTailwind(
     inline.push(['transform', JSON.stringify(style.transform)]);
     inline.push(['transformOrigin', JSON.stringify('0 0')]);
   }
-  if (style.overflow) classes.push('overflow-hidden');
+  if (style.overflow) classes.push(`overflow-${style.overflow}`);
   if (style.objectFit)
     inline.push(['objectFit', JSON.stringify(style.objectFit)]);
   if (style.objectPosition)
@@ -461,6 +461,36 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
   }
 
   const { className, styleExpr } = renderAttributes(node, state);
+
+  if (node.vectorPath) {
+    const path = node.vectorPath;
+    const fill = path.fill
+      ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
+      : 'none';
+    const stroke = path.stroke
+      ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
+      : 'none';
+    const attr = (name: string, value: string | number | undefined) =>
+      value === undefined ? '' : ` ${name}={${JSON.stringify(value)}}`;
+    return `${pad}<svg viewBox={${JSON.stringify(
+      `0 0 ${formatNumber(path.width)} ${formatNumber(path.height)}`,
+    )}} aria-hidden="true"${className}${styleExpr}>\n${state.indent.repeat(
+      depth + 1,
+    )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
+      fill,
+    )}} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
+      stroke,
+    )}}${attr('strokeWidth', path.strokeWidth)}${attr(
+      'strokeLinecap',
+      path.strokeLinecap,
+    )}${attr('strokeLinejoin', path.strokeLinejoin)}${attr(
+      'strokeMiterlimit',
+      path.strokeMiterlimit,
+    )}${attr('strokeDasharray', path.strokeDasharray)}${attr(
+      'strokeDashoffset',
+      path.strokeDashoffset,
+    )} />\n${pad}</svg>`;
+  }
 
   if (node.role === 'icon' && node.icon) {
     return renderIcon(node, state, pad, className, styleExpr);

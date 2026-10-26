@@ -24,6 +24,7 @@ import { boxToCss, styleValueToCss, textDecorationToCss } from './emit-style';
 import { toCSSMixBlendMode } from '../blend-mode';
 import { hasUnsupportedPaintFillOverride } from './paint-fill-override';
 import { singleCssGradientFill } from './gradient-fill';
+import { pathGeometryBounds } from '../path-rendering';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -244,6 +245,87 @@ function decideRole(node: AnyNode): CodeNodeRole {
     default:
       return 'shape';
   }
+}
+
+function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
+  if (node.type !== 'path' || typeof node.d !== 'string' || !node.d.trim())
+    return undefined;
+  let bounds: ReturnType<typeof pathGeometryBounds>;
+  try {
+    bounds = pathGeometryBounds(node.d);
+  } catch {
+    return undefined;
+  }
+  if (
+    ![bounds.minX, bounds.minY, bounds.maxX, bounds.maxY].every(Number.isFinite)
+  )
+    return undefined;
+  const dimension = (raw: unknown, span: number) =>
+    typeof raw === 'number' && Number.isFinite(raw) && raw > 0
+      ? raw
+      : Math.max(1, span);
+  const fills = asArray<SerializedFillLayerItem>(node.fills).filter(
+    (fill) => fill.enabled !== false,
+  );
+  const strokes = asArray<SerializedFillLayerItem>(node.strokes).filter(
+    (stroke) => stroke.enabled !== false,
+  );
+  const fillLayer = fills.find((fill) => fill.type === 'solid');
+  const strokeLayer = strokes.find((stroke) => stroke.type === 'solid');
+  const fill =
+    (fillLayer?.type === 'solid' && toStyleValue(fillLayer.value)) ||
+    toStyleValue(node.fill as string);
+  const stroke =
+    (strokeLayer?.type === 'solid' && toStyleValue(strokeLayer.value)) ||
+    toStyleValue(node.stroke as string);
+  const strokeWidth =
+    typeof node.strokeWidth === 'number' ? node.strokeWidth : 1;
+  return {
+    d: node.d,
+    width: dimension(node.width, bounds.maxX - bounds.minX),
+    height: dimension(node.height, bounds.maxY - bounds.minY),
+    fill,
+    fillOpacity: fill
+      ? toStyleValue(
+          (fillLayer?.opacity ?? node.fillOpacity) as string | number,
+        )
+      : undefined,
+    fillRule: node.fillRule === 'evenodd' ? 'evenodd' : 'nonzero',
+    stroke: strokeWidth > 0 ? stroke : undefined,
+    strokeOpacity: stroke
+      ? toStyleValue(
+          (strokeLayer?.opacity ?? node.strokeOpacity) as string | number,
+        )
+      : undefined,
+    strokeWidth: stroke && strokeWidth > 0 ? strokeWidth : undefined,
+    strokeLinecap: ['butt', 'round', 'square'].includes(
+      node.strokeLinecap as string,
+    )
+      ? (node.strokeLinecap as 'butt' | 'round' | 'square')
+      : undefined,
+    strokeLinejoin: ['miter', 'round', 'bevel'].includes(
+      node.strokeLinejoin as string,
+    )
+      ? (node.strokeLinejoin as 'miter' | 'round' | 'bevel')
+      : undefined,
+    strokeMiterlimit:
+      typeof node.strokeMiterlimit === 'number' &&
+      Number.isFinite(node.strokeMiterlimit) &&
+      node.strokeMiterlimit > 0
+        ? node.strokeMiterlimit
+        : undefined,
+    strokeDasharray:
+      typeof node.strokeDasharray === 'string' &&
+      node.strokeDasharray !== '0,0' &&
+      node.strokeDasharray !== '0'
+        ? node.strokeDasharray
+        : undefined,
+    strokeDashoffset:
+      typeof node.strokeDashoffset === 'number' &&
+      Number.isFinite(node.strokeDashoffset)
+        ? node.strokeDashoffset
+        : undefined,
+  };
 }
 
 /** 把节点上的样式相关字段映射为结构化 {@link StyleIR}。 */
@@ -470,6 +552,18 @@ function buildCodeNode(
   const role = decideRole(node);
   const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   const style = buildStyle(node, role, children.length > 0);
+  const vectorPath = children.length === 0 ? buildVectorPath(node) : undefined;
+  if (vectorPath) {
+    style.width = vectorPath.width;
+    style.height = vectorPath.height;
+    style.overflow = 'visible';
+    delete style.backgroundColor;
+    delete style.backgroundImage;
+    delete style.solidFillOpacity;
+    delete style.borderWidth;
+    delete style.borderColor;
+    delete style.boxShadow;
+  }
   if (inFreeLayout) positionFreeChild(style, node);
   else if (children.length > 0 && node.display !== 'flex')
     style.position = 'relative';
@@ -480,6 +574,7 @@ function buildCodeNode(
     element: ctx.semanticElements[node.id],
     style,
     children: [],
+    vectorPath,
   };
 
   if (role === 'text') {
@@ -777,6 +872,7 @@ export function buildCodeIR(
     hasUnsupportedTransformRefOverrides(working as AnyNode[]) ||
     hasUnsupportedClipRefOverrides(working as AnyNode[]) ||
     hasUnsupportedFreeLayoutRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedPathRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
@@ -1155,6 +1251,34 @@ function hasUnsupportedFreeLayoutRefOverrides(nodes: AnyNode[]): boolean {
           ('y' in patch && patch.y !== template.y))
       );
     });
+  });
+}
+
+/** Vector paint and geometry edits need an expanded path, not a CSS box prop. */
+function hasUnsupportedPathRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const keys = [
+    'd',
+    'fills',
+    'fill',
+    'fillRule',
+    'strokes',
+    'stroke',
+    'strokeWidth',
+    'strokeLinecap',
+    'strokeLinejoin',
+    'strokeMiterlimit',
+    'strokeDasharray',
+    'strokeDashoffset',
+  ];
+  const changed = (template: AnyNode | undefined, patch: AnyNode) =>
+    template?.type === 'path' && keys.some((key) => key in patch);
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    if (changed(byId.get(node.ref as string), node)) return true;
+    return Object.entries(
+      (node.descendants ?? {}) as Record<string, AnyNode>,
+    ).some(([id, patch]) => changed(byId.get(id), patch));
   });
 }
 
