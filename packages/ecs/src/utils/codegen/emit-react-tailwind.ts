@@ -473,7 +473,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     const attr = (name: string, value: string | number | undefined) =>
       value === undefined ? '' : ` ${name}={${JSON.stringify(value)}}`;
     return `${pad}<svg viewBox={${JSON.stringify(
-      `0 0 ${formatNumber(path.width)} ${formatNumber(path.height)}`,
+      `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
     )}} aria-hidden="true"${className}${styleExpr}>\n${state.indent.repeat(
       depth + 1,
     )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(

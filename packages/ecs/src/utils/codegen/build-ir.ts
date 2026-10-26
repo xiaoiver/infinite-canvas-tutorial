@@ -316,6 +316,10 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     typeof node.strokeWidth === 'number' ? node.strokeWidth : 1;
   return {
     d,
+    viewBoxX:
+      bounds.minX - (bounds.maxX === bounds.minX ? 0.5 : 0),
+    viewBoxY:
+      bounds.minY - (bounds.maxY === bounds.minY ? 0.5 : 0),
     width: dimension(node.width, bounds.maxX - bounds.minX),
     height: dimension(node.height, bounds.maxY - bounds.minY),
     fill,

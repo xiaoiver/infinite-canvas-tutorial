@@ -392,7 +392,7 @@ Node-level `visibility` becomes CSS `visibility`, so hidden nodes keep their lay
 
 Leaf paths with valid `d` data export as inline SVG instead of a rectangular placeholder. The first enabled solid fill and stroke retain their color and opacity, along with fill rule, stroke width, line cap, line join, miter limit, and dash settings. Path paint or geometry overrides on a reusable instance expand that instance so the SVG reflects the edit. Gradient or layered paints, stroke alignment, markers, path children, and path filters need separate SVG handling and are not represented by this mapping.
 
-Leaf lines and polylines use the same SVG pipeline. Their local endpoints or point list become an open path with no fill, so thin horizontal or vertical strokes remain visible in generated code. Geometry or paint edits to a reusable line or polyline instance also expand that instance. Arrow markers and other line effects still need separate handling.
+Leaf lines and polylines use the same SVG pipeline. Their local endpoints or point list become an open path with no fill. The SVG viewBox follows the geometry's local origin and centers a zero-width or zero-height axis, so offset paths and thin horizontal or vertical strokes remain visible in generated code. Geometry or paint edits to a reusable line or polyline instance also expand that instance. Arrow markers and other line effects still need separate handling.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 

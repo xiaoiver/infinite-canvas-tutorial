@@ -214,6 +214,8 @@ export interface CodeNode {
   /** Local SVG geometry for a canvas Path, Line, or Polyline. */
   vectorPath?: {
     d: string;
+    viewBoxX: number;
+    viewBoxY: number;
     width: number;
     height: number;
     fill?: StyleValue;

@@ -25,11 +25,11 @@ describe('design-to-code (codegen)', () => {
         strokeLinecap: 'round',
       } as SerializedNode;
       const react = serializedNodesToCode([line]);
-      expect(react).toContain('<svg viewBox={"0 0 100 1"}');
+      expect(react).toContain('<svg viewBox={"0 -0.50 100 1"}');
       expect(react).toContain('<path d={"M 0 0 L 100 0"} fill={"none"}');
       expect(react).toContain('stroke={"#2563eb"} strokeWidth={4}');
       const html = serializedNodesToCode([line], { framework: 'html-css' });
-      expect(html).toContain('viewBox="0 0 100 1"');
+      expect(html).toContain('viewBox="0 -0.50 100 1"');
       expect(html).toContain('d="M 0 0 L 100 0" fill="none"');
 
       const polyline = {
@@ -48,6 +48,20 @@ describe('design-to-code (codegen)', () => {
       expect(code).toContain('d={"M 0 0 L 20 10 L 40 0"}');
       expect(code).toContain('fill={"none"}');
       expect(code).toContain('stroke={"#ef4444"}');
+
+      const vertical = {
+        ...line,
+        id: 'vertical-line',
+        width: 0,
+        height: 40,
+        x1: 10,
+        y1: 20,
+        x2: 10,
+        y2: 60,
+      } as SerializedNode;
+      expect(serializedNodesToCode([vertical])).toContain(
+        '<svg viewBox={"9.50 20 1 40"}',
+      );
     });
 
     it('exports a solid-filled stroked path as vector geometry', () => {
@@ -113,6 +127,15 @@ describe('design-to-code (codegen)', () => {
       ]);
       expect(withChild).not.toContain('<svg');
       expect(withChild).toContain('Label');
+
+      const offset = {
+        ...node,
+        id: 'offset-path',
+        d: 'M 10 20 L 110 20 L 110 80 Z',
+      } as SerializedNode;
+      expect(serializedNodesToCode([offset])).toContain(
+        '<svg viewBox={"10 20 100 60"}',
+      );
     });
 
     it('preserves hidden and explicitly visible nodes without removing layout space', () => {
