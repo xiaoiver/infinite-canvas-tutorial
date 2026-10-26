@@ -7,6 +7,49 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('exports thin lines and polylines as stroked vectors', () => {
+      const line = {
+        id: 'horizontal-line',
+        type: 'line',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 0,
+        x1: 0,
+        y1: 0,
+        x2: 100,
+        y2: 0,
+        zIndex: 0,
+        strokes: [{ type: 'solid', value: '#2563eb' }],
+        strokeWidth: 4,
+        strokeLinecap: 'round',
+      } as SerializedNode;
+      const react = serializedNodesToCode([line]);
+      expect(react).toContain('<svg viewBox={"0 0 100 1"}');
+      expect(react).toContain('<path d={"M 0 0 L 100 0"} fill={"none"}');
+      expect(react).toContain('stroke={"#2563eb"} strokeWidth={4}');
+      const html = serializedNodesToCode([line], { framework: 'html-css' });
+      expect(html).toContain('viewBox="0 0 100 1"');
+      expect(html).toContain('d="M 0 0 L 100 0" fill="none"');
+
+      const polyline = {
+        id: 'sparkline',
+        type: 'polyline',
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 10,
+        zIndex: 0,
+        points: '0,0 20,10 40,0',
+        strokes: [{ type: 'solid', value: '#ef4444' }],
+        strokeWidth: 2,
+      } as SerializedNode;
+      const code = serializedNodesToCode([polyline]);
+      expect(code).toContain('d={"M 0 0 L 20 10 L 40 0"}');
+      expect(code).toContain('fill={"none"}');
+      expect(code).toContain('stroke={"#ef4444"}');
+    });
+
     it('exports a solid-filled stroked path as vector geometry', () => {
       const node = {
         id: 'badge-path',

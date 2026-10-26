@@ -247,12 +247,44 @@ function decideRole(node: AnyNode): CodeNodeRole {
   }
 }
 
+function vectorPathData(node: AnyNode): string | undefined {
+  if (node.type === 'path')
+    return typeof node.d === 'string' && node.d.trim() ? node.d : undefined;
+  if (node.type === 'line') {
+    const coords = [node.x1, node.y1, node.x2, node.y2];
+    if (
+      !coords.every(
+        (value) => typeof value === 'number' && Number.isFinite(value),
+      )
+    )
+      return undefined;
+    return `M ${coords[0]} ${coords[1]} L ${coords[2]} ${coords[3]}`;
+  }
+  if (node.type === 'polyline' && typeof node.points === 'string') {
+    const numbers = node.points
+      .trim()
+      .split(/[,\s]+/)
+      .map(Number);
+    if (
+      numbers.length < 4 ||
+      numbers.length % 2 !== 0 ||
+      !numbers.every(Number.isFinite)
+    )
+      return undefined;
+    let d = `M ${numbers[0]} ${numbers[1]}`;
+    for (let i = 2; i < numbers.length; i += 2)
+      d += ` L ${numbers[i]} ${numbers[i + 1]}`;
+    return d;
+  }
+  return undefined;
+}
+
 function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
-  if (node.type !== 'path' || typeof node.d !== 'string' || !node.d.trim())
-    return undefined;
+  const d = vectorPathData(node);
+  if (!d) return undefined;
   let bounds: ReturnType<typeof pathGeometryBounds>;
   try {
-    bounds = pathGeometryBounds(node.d);
+    bounds = pathGeometryBounds(d);
   } catch {
     return undefined;
   }
@@ -273,15 +305,17 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const fillLayer = fills.find((fill) => fill.type === 'solid');
   const strokeLayer = strokes.find((stroke) => stroke.type === 'solid');
   const fill =
-    (fillLayer?.type === 'solid' && toStyleValue(fillLayer.value)) ||
-    toStyleValue(node.fill as string);
+    node.type === 'path'
+      ? (fillLayer?.type === 'solid' && toStyleValue(fillLayer.value)) ||
+        toStyleValue(node.fill as string)
+      : undefined;
   const stroke =
     (strokeLayer?.type === 'solid' && toStyleValue(strokeLayer.value)) ||
     toStyleValue(node.stroke as string);
   const strokeWidth =
     typeof node.strokeWidth === 'number' ? node.strokeWidth : 1;
   return {
-    d: node.d,
+    d,
     width: dimension(node.width, bounds.maxX - bounds.minX),
     height: dimension(node.height, bounds.maxY - bounds.minY),
     fill,
@@ -290,7 +324,10 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
           (fillLayer?.opacity ?? node.fillOpacity) as string | number,
         )
       : undefined,
-    fillRule: node.fillRule === 'evenodd' ? 'evenodd' : 'nonzero',
+    fillRule:
+      node.type === 'path' && node.fillRule === 'evenodd'
+        ? 'evenodd'
+        : 'nonzero',
     stroke: strokeWidth > 0 ? stroke : undefined,
     strokeOpacity: stroke
       ? toStyleValue(
@@ -872,7 +909,7 @@ export function buildCodeIR(
     hasUnsupportedTransformRefOverrides(working as AnyNode[]) ||
     hasUnsupportedClipRefOverrides(working as AnyNode[]) ||
     hasUnsupportedFreeLayoutRefOverrides(working as AnyNode[]) ||
-    hasUnsupportedPathRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedVectorRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
@@ -1254,11 +1291,16 @@ function hasUnsupportedFreeLayoutRefOverrides(nodes: AnyNode[]): boolean {
   });
 }
 
-/** Vector paint and geometry edits need an expanded path, not a CSS box prop. */
-function hasUnsupportedPathRefOverrides(nodes: AnyNode[]): boolean {
+/** Vector paint and geometry edits need an expanded SVG, not a CSS box prop. */
+function hasUnsupportedVectorRefOverrides(nodes: AnyNode[]): boolean {
   const byId = new Map(nodes.map((node) => [node.id, node]));
   const keys = [
     'd',
+    'points',
+    'x1',
+    'y1',
+    'x2',
+    'y2',
     'fills',
     'fill',
     'fillRule',
@@ -1272,7 +1314,8 @@ function hasUnsupportedPathRefOverrides(nodes: AnyNode[]): boolean {
     'strokeDashoffset',
   ];
   const changed = (template: AnyNode | undefined, patch: AnyNode) =>
-    template?.type === 'path' && keys.some((key) => key in patch);
+    ['path', 'line', 'polyline'].includes(template?.type as string) &&
+    keys.some((key) => key in patch);
   return nodes.some((node) => {
     if (node.type !== 'ref') return false;
     if (changed(byId.get(node.ref as string), node)) return true;

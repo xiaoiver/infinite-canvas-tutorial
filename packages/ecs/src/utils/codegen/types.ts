@@ -211,7 +211,7 @@ export interface CodeNode {
   icon?: { name: StyleValue; family: string };
   /** `role === 'image'` 的资源 URL。 */
   image?: StyleValue;
-  /** Local SVG path geometry for a canvas `path` node. */
+  /** Local SVG geometry for a canvas Path, Line, or Polyline. */
   vectorPath?: {
     d: string;
     width: number;

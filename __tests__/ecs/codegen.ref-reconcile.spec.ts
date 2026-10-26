@@ -52,6 +52,40 @@ const source: SerializedNode[] = [
 describe('design-to-code expanded ref reconciliation', () => {
   const baseline = expandRefSerializedNodes(structuredClone(source), source);
 
+  it('expands a line endpoint edit rather than keeping stale component geometry', () => {
+    const nodes = [
+      {
+        id: 'line-template',
+        type: 'line',
+        name: 'Connector',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 1,
+        x1: 0,
+        y1: 0,
+        x2: 40,
+        y2: 0,
+        zIndex: 0,
+        strokeWidth: 2,
+        strokes: [{ type: 'solid', value: '#000000' }],
+      },
+      {
+        id: 'line-instance',
+        type: 'ref',
+        ref: 'line-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        x2: 25,
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<Connector');
+    expect(react).toContain('d={"M 0 0 L 25 0"}');
+  });
+
   it('expands a path paint override to keep SVG fill on the instance', () => {
     const nodes = [
       {
