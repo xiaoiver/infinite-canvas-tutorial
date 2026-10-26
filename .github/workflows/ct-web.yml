@@ -23,8 +23,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps
+      - name: Install Chromium for component tests
+        # The hosted runner has browser runtime libraries. --with-deps runs a
+        # large apt transaction that can consume the entire 60-minute budget.
+        run: pnpm exec playwright install chromium
 
       - name: Build
         # UI component tests only need workspace packages, not the VitePress site (OOM-prone).
