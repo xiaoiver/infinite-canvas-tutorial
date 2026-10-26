@@ -334,6 +334,13 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText('max-height: 52px');
   await expect(code).toContainText('mix-blend-mode: multiply');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
+  await page.evaluate(() => window.designToCodeDocs.setPricingAmountWrap());
+  await expect(code).toContainText('whitespace-pre-wrap');
+  await expect(code).toContainText('max-w-[140px]');
+  await page.getByRole('button', { name: 'HTML/CSS' }).click();
+  await expect(code).toContainText('white-space: pre-wrap');
+  await expect(code).toContainText('max-width: 140px');
+  await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))

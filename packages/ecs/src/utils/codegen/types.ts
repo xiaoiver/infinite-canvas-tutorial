@@ -115,6 +115,9 @@ export interface StyleIR {
   fontKerning?: 'normal' | 'none';
   fontFamily?: string;
   textAlign?: 'left' | 'center' | 'right' | 'justify';
+  /** Canvas text preserves hard breaks; wrapped text also has a fixed line width. */
+  whiteSpace?: 'pre' | 'pre-wrap';
+  textWrapWidth?: number;
   letterSpacing?: StyleValue;
   lineHeight?: StyleValue;
   textDecoration?: {
@@ -147,6 +150,7 @@ export type CodeBindingTarget =
   | 'fontKerning'
   | 'fontFamily'
   | 'textAlign'
+  | 'textWrapWidth'
   | 'letterSpacing'
   | 'lineHeight'
   | 'textDecoration'

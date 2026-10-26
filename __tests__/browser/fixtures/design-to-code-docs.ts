@@ -157,6 +157,18 @@ const probe = {
       });
     });
   },
+  setPricingAmountWrap: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth__plan-card-amount');
+      if (node?.type !== 'text') throw new Error('Growth price is missing');
+      editor.updateNode(node, {
+        content: 'A longer price label\nwith two lines',
+        wordWrap: true,
+        wordWrapWidth: 140,
+      });
+    });
+  },
 };
 declare global {
   interface Window {

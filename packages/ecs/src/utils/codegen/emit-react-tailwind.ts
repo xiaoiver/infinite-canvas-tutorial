@@ -43,6 +43,7 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   fontKerning: 'fontKerning',
   fontFamily: 'fontFamily',
   textAlign: 'textAlign',
+  textWrapWidth: 'maxWidth',
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
   textDecoration: 'textDecoration',
@@ -270,6 +271,19 @@ function genTailwind(
     classes.push(`font-[${tw(style.fontFamily)}]`);
   if (style.textAlign && !skip.has('textAlign'))
     classes.push(`text-${style.textAlign}`);
+  if (style.whiteSpace) {
+    classes.push(
+      style.whiteSpace === 'pre-wrap'
+        ? 'whitespace-pre-wrap'
+        : 'whitespace-pre',
+    );
+  }
+  if (style.textWrapWidth !== undefined) {
+    classes.push('inline-block');
+    inline.push(['overflowWrap', JSON.stringify('anywhere')]);
+    if (!skip.has('textWrapWidth'))
+      classes.push(`max-w-[${formatNumber(style.textWrapWidth)}px]`);
+  }
   if (style.letterSpacing && !skip.has('letterSpacing'))
     classes.push(
       `tracking-[${tw(styleValueToCss(style.letterSpacing, mode, true))}]`,
@@ -469,6 +483,7 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
     .map((p) => {
       const tsType = [
         'fontSize',
+        'textWrapWidth',
         'width',
         'height',
         'borderWidth',

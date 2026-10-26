@@ -54,6 +54,7 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   fontKerning: 'fontKerning',
   fontFamily: 'fontFamily',
   textAlign: 'textAlign',
+  wordWrapWidth: 'textWrapWidth',
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
   textDecoration: 'textDecoration',
@@ -368,6 +369,13 @@ function buildStyle(
       style.fontKerning = node.fontKerning ? 'normal' : 'none';
     if (typeof node.fontFamily === 'string') style.fontFamily = node.fontFamily;
     if (node.textAlign) style.textAlign = node.textAlign as never;
+    style.whiteSpace = node.wordWrap ? 'pre-wrap' : 'pre';
+    if (
+      node.wordWrap === true &&
+      typeof node.wordWrapWidth === 'number' &&
+      node.wordWrapWidth > 0
+    )
+      style.textWrapWidth = node.wordWrapWidth;
     const ls = toStyleValue(node.letterSpacing as number);
     if (ls) style.letterSpacing = ls;
     const lh = toStyleValue(node.lineHeight as number);
@@ -594,6 +602,9 @@ function templateDefaultValue(
   if (attr === 'fontKerning') {
     return { literal: desc.fontKerning === false ? 'none' : 'normal' };
   }
+  if (attr === 'wordWrapWidth') {
+    return toStyleValue(desc.wordWrapWidth as number) ?? { literal: 0 };
+  }
   if (attr === 'fontFamily' || attr === 'textAlign') {
     return toStyleValue(desc[attr] as string) ?? { literal: 'inherit' };
   }
@@ -670,7 +681,8 @@ export function buildCodeIR(
 
   if (
     componentStructure === 'flatten' ||
-    hasUnsupportedImageRefOverrides(working as AnyNode[])
+    hasUnsupportedImageRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
     return {
@@ -909,6 +921,25 @@ function hasUnsupportedImageRefOverrides(nodes: AnyNode[]): boolean {
         hasUnsupportedImageFillOverride(child.fills, patch.fills)
       );
     });
+  });
+}
+
+/** `wordWrap` changes the element's layout mode, so a width-only prop cannot express it. */
+function hasUnsupportedTextWrapRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const unsupported = (template: AnyNode | undefined, patch: AnyNode) =>
+    !!template &&
+    ('wordWrap' in patch ||
+      ('wordWrapWidth' in patch &&
+        (template.wordWrap !== true ||
+          typeof template.wordWrapWidth !== 'number' ||
+          template.wordWrapWidth <= 0)));
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    if (unsupported(byId.get(node.ref as string), node)) return true;
+    return Object.entries(
+      (node.descendants ?? {}) as Record<string, AnyNode>,
+    ).some(([id, patch]) => unsupported(byId.get(id), patch));
   });
 }
 

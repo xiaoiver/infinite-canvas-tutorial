@@ -335,22 +335,23 @@ const code = serializedNodesToCode(nodes, {
 
 ### Concept mapping {#design-to-code-mapping}
 
-| `.ic` concept                                             | Code output                                           |
-| --------------------------------------------------------- | ----------------------------------------------------- |
-| `rect`/`g` + `display: flex`                              | `<div>` + flex utilities (`flex items-center …`)      |
-| Flex direction, alignment, sizing, gaps, and padding     | Tailwind flex utilities / CSS                         |
-| `cornerRadius` / `fills` / `strokes` / `dropShadow`       | `rounded-* / bg-* / border / shadow-*`                |
-| `rect` with an image fill                                | `<img src>` with `object-fit` / `object-position`     |
-| node-level `blendMode`                                    | CSS `mix-blend-mode`                                  |
-| `text` + `content`                                        | text node; `$token` content → variable                |
-| text decoration line, style, color, and thickness        | CSS `text-decoration`                                 |
-| `fontVariant` / `fontKerning`                             | CSS `font-variant` / `font-kerning`                    |
-| `iconfont` (lucide)                                       | `lucide-react` `<Search />`                           |
-| `iconfont` (other families)                               | `@iconify/react` `<Icon icon="family:name" />`        |
-| `$color.bg` variable                                      | `bg-[var(--color-bg)]` (css-var) / literal (resolved) |
-| `reusable` root                                           | a React component definition                          |
-| `ref` + `descendants` overrides                           | a component instance with props                       |
-| `name`                                                    | component / prop / class name                         |
+| `.ic` concept                                        | Code output                                           |
+| ---------------------------------------------------- | ----------------------------------------------------- |
+| `rect`/`g` + `display: flex`                         | `<div>` + flex utilities (`flex items-center …`)      |
+| Flex direction, alignment, sizing, gaps, and padding | Tailwind flex utilities / CSS                         |
+| `cornerRadius` / `fills` / `strokes` / `dropShadow`  | `rounded-* / bg-* / border / shadow-*`                |
+| `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
+| node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
+| `text` + `content`                                   | text node; `$token` content → variable                |
+| text decoration line, style, color, and thickness    | CSS `text-decoration`                                 |
+| `fontVariant` / `fontKerning`                        | CSS `font-variant` / `font-kerning`                   |
+| `wordWrap` / `wordWrapWidth`                         | `white-space`, `overflow-wrap`, and `max-width`       |
+| `iconfont` (lucide)                                  | `lucide-react` `<Search />`                           |
+| `iconfont` (other families)                          | `@iconify/react` `<Icon icon="family:name" />`        |
+| `$color.bg` variable                                 | `bg-[var(--color-bg)]` (css-var) / literal (resolved) |
+| `reusable` root                                      | a React component definition                          |
+| `ref` + `descendants` overrides                      | a component instance with props                       |
+| `name`                                               | component / prop / class name                         |
 
 ### Variable modes {#design-to-code-variable-modes}
 
@@ -363,6 +364,8 @@ The three variable modes match the SVG export semantics:
 ### Components and instances {#design-to-code-components}
 
 With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, typography including `fontVariant` and `fontKerning`, text decoration, `opacity`, `cornerRadius`, explicit `width`/`height`, `minWidth`/`maxWidth`/`minHeight`/`maxHeight`, `padding`, `margin`, flex gaps, `flexDirection`, `alignItems`, `justifyContent`, `flexWrap`, `alignSelf`, `flexGrow`, `flexShrink`, `flexBasis`, `strokeWidth`, `strokes`, and drop-shadow fields) seen across instances are lifted into props with the template value as default. Numeric `lineHeight` values are pixel heights in `.ic`, so React output adds `px` instead of treating them as unitless multipliers. Boolean `fontKerning` becomes CSS `normal` or `none`. Spacing arrays become CSS shorthand strings, the text-decoration fields combine into one prop, and the shadow fields combine into one `boxShadow` prop. A decoration with zero thickness renders as `none`, matching the canvas:
+
+Text exports preserve explicit line breaks with `white-space: pre`. When `wordWrap` is enabled with a positive `wordWrapWidth`, the output uses `pre-wrap`, `overflow-wrap: anywhere`, and that width as a maximum. Editing the wrap width of an already wrapped reusable text becomes a component prop. Switching wrapping on or off expands the instance so the exported layout follows the edit. The canvas does not currently apply its `whiteSpace` setting in text measurement; `maxLines` and custom `textOverflow` truncation are not yet mapped to CSS.
 
 For a reusable image, changing only the image URL binds the instance's `fills` override to the component's `<img src>` prop. Changing the fill type, fit, position, or fill opacity expands the instance so the generated element and styles reflect the edit. For a single image fill, the exported `<img>` opacity combines the fill opacity with the node opacity.
 
