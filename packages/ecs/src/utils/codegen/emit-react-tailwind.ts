@@ -38,6 +38,11 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
   boxShadow: 'boxShadow',
+  padding: 'padding',
+  margin: 'margin',
+  gap: 'gap',
+  rowGap: 'rowGap',
+  columnGap: 'columnGap',
 };
 
 interface TwResult {
@@ -109,19 +114,19 @@ function genTailwind(
     if (style.flexWrap === 'wrap') classes.push('flex-wrap');
     else if (style.flexWrap === 'wrap-reverse')
       classes.push('flex-wrap-reverse');
-    if (style.gap !== undefined)
+    if (style.gap !== undefined && !skip.has('gap'))
       classes.push(`gap-[${formatNumber(style.gap)}px]`);
-    if (style.rowGap !== undefined)
+    if (style.rowGap !== undefined && !skip.has('rowGap'))
       classes.push(`gap-y-[${formatNumber(style.rowGap)}px]`);
-    if (style.columnGap !== undefined)
+    if (style.columnGap !== undefined && !skip.has('columnGap'))
       classes.push(`gap-x-[${formatNumber(style.columnGap)}px]`);
   }
   if (style.flexGrow !== undefined)
     classes.push(style.flexGrow === 1 ? 'grow' : `grow-[${style.flexGrow}]`);
   if (style.flexShrink === 0) classes.push('shrink-0');
 
-  pushBox(classes, 'p', style.padding);
-  pushBox(classes, 'm', style.margin);
+  if (!skip.has('padding')) pushBox(classes, 'p', style.padding);
+  if (!skip.has('margin')) pushBox(classes, 'm', style.margin);
 
   if (style.width !== undefined && !skip.has('width'))
     classes.push(`w-[${formatNumber(style.width)}px]`);
@@ -258,8 +263,11 @@ function renderAttributes(
   if (node.element?.tag === 'a') classes.unshift('no-underline');
 
   // 样式绑定 → inline style 引用 prop 标识符
+  // `gap` must precede its longhands so row/column overrides win.
+  const gapBinding = (node.bindings ?? []).find((b) => b.target === 'gap');
+  if (gapBinding) inline.push(['gap', gapBinding.prop]);
   for (const b of node.bindings ?? []) {
-    if (b.target === 'text') continue;
+    if (b.target === 'text' || b.target === 'gap') continue;
     if (b.target === 'lineHeight') {
       inline.push([
         'lineHeight',
@@ -387,6 +395,9 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
         'height',
         'borderWidth',
         'opacity',
+        'gap',
+        'rowGap',
+        'columnGap',
       ].includes(p.target)
         ? 'number'
         : [

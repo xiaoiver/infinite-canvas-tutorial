@@ -77,6 +77,14 @@ const probe = {
       editor.updateNode(node, { padding });
     });
   },
+  setPricingCardJustification: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth');
+      if (node?.type !== 'rect') throw new Error('Growth card is missing');
+      editor.updateNode(node, { justifyContent: 'space-between' });
+    });
+  },
   setPricingAmountTypography: async () => {
     if (!api) throw new Error('Editor is not ready');
     await api.edit((editor) => {

@@ -193,7 +193,28 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText('box-shadow: 0px 6px 12px #000000');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.evaluate(() => window.designToCodeDocs.setPricingCardPadding(20));
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('pricingPlanCardPadding="20px"');
+  const [spacingDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const spacingDocument = JSON.parse(
+    await readFile((await spacingDownload.path())!, 'utf8'),
+  );
+  expect(
+    spacingDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({ type: 'ref', padding: 20 });
+  await page.getByRole('button', { name: 'HTML/CSS' }).click();
+  await expect(code).toContainText('padding: 20px');
+  await page.getByRole('button', { name: 'React + Tailwind' }).click();
+  await page.evaluate(() =>
+    window.designToCodeDocs.setPricingCardJustification(),
+  );
   await expect(code).not.toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('justify-between');
   const [expandedDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 .ic' }).click(),
@@ -210,6 +231,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     width: 320,
     opacity: 0.7,
     padding: 20,
+    justifyContent: 'space-between',
     dropShadowBlurRadius: 12,
   });
   await page.getByRole('button', { name: '运营数据面板' }).click();

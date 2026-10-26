@@ -101,7 +101,7 @@ describe('design-to-code expanded ref reconciliation', () => {
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;
-    (ref as { padding?: number }).padding = 20;
+    (ref as { justifyContent?: string }).justifyContent = 'center';
     const expanded = expandRefSerializedNodes(
       structuredClone(unsupportedSource),
       unsupportedSource,
@@ -114,8 +114,54 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(recovered.some((node) => node.type === 'ref')).toBe(false);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
       type: 'rect',
-      padding: 20,
+      justifyContent: 'center',
     });
+  });
+
+  it('preserves instance spacing and CSS shorthand box values', () => {
+    const current = structuredClone(baseline);
+    const card = current.find((node) => node.id === 'growth')!;
+    const price = current.find((node) => node.id === 'growth__price')!;
+    card.padding = [8, 16];
+    card.gap = 12;
+    card.rowGap = 3;
+    card.columnGap = 5;
+    price.margin = [1, 2, 3, 4];
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      padding: [8, 16],
+      gap: 12,
+      rowGap: 3,
+      columnGap: 5,
+      descendants: { price: { margin: [1, 2, 3, 4] } },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('planCardPadding?: string');
+    expect(react).toContain('planCardGap?: number');
+    expect(react).toContain('priceMargin?: string');
+    expect(react).toContain('padding: planCardPadding');
+    expect(react).toContain('gap: planCardGap');
+    expect(react).toContain('rowGap: planCardRowGap');
+    expect(react).toContain('columnGap: planCardColumnGap');
+    expect(react).toContain('margin: priceMargin');
+    expect(react).toContain('planCardPadding="8px 16px"');
+    expect(react).toContain('planCardGap={12}');
+    expect(react).toContain('planCardRowGap={3}');
+    expect(react).toContain('planCardColumnGap={5}');
+    expect(react).toContain('priceMargin="1px 2px 3px 4px"');
+  });
+
+  it('emits gap before row-gap when the source override lists row-gap first', () => {
+    const direct = structuredClone(source);
+    const ref = direct.find((node) => node.id === 'growth')!;
+    if (ref.type !== 'ref') throw new Error('Missing instance');
+    ref.rowGap = 3;
+    ref.gap = 12;
+    const react = serializedNodesToCode(direct);
+    expect(react.indexOf('gap: planCardGap')).toBeLessThan(
+      react.indexOf('rowGap: planCardRowGap'),
+    );
   });
 
   it('preserves a drop shadow as one React prop and separate .ic overrides', () => {

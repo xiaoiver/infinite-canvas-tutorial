@@ -20,7 +20,7 @@ import {
 import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 import type { ThemeMode } from '../../components/Theme';
 import { toComponentName, toPropName } from './string-utils';
-import { styleValueToCss } from './emit-style';
+import { boxToCss, styleValueToCss } from './emit-style';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -53,6 +53,11 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
   dropShadow: 'boxShadow',
+  padding: 'padding',
+  margin: 'margin',
+  gap: 'gap',
+  rowGap: 'rowGap',
+  columnGap: 'columnGap',
 };
 
 const SHADOW_KEYS = new Set([
@@ -411,6 +416,10 @@ function overrideStyleValue(
       primaryColorFromLayers(strokes) ?? toStyleValue(patch.stroke as string)
     );
   }
+  if (attr === 'padding' || attr === 'margin') {
+    const box = normalizeBox(patch[attr] as number | number[] | undefined);
+    return box ? { literal: boxToCss(box) } : undefined;
+  }
   return toStyleValue(patch[attr] as string | number);
 }
 
@@ -448,6 +457,10 @@ function templateDefaultValue(
         literal: 'normal',
       }
     );
+  }
+  if (attr === 'padding' || attr === 'margin') {
+    const box = normalizeBox(desc[attr] as number | number[] | undefined);
+    return { literal: box ? boxToCss(box) : '0px' };
   }
   if (attr === 'fills' || attr === 'fill') {
     return (
