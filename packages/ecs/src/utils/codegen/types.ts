@@ -236,6 +236,8 @@ export interface CodeComponentDef {
 export interface CodeIR {
   components: CodeComponentDef[];
   roots: CodeNode[];
+  /** Bounding frame for multiple explicitly sized scene roots. */
+  rootFrame?: { width: number; height: number };
   variables: DesignVariablesMap;
   themeMode?: ThemeMode;
   variablesMode: CodeVariablesMode;
