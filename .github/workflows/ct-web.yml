@@ -2,6 +2,10 @@ name: component-testing
 
 on: [push]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   component-testing-webcomponents:
     name: Component Testing WebComponents
