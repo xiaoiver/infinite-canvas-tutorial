@@ -472,9 +472,18 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       : 'none';
     const attr = (name: string, value: string | number | undefined) =>
       value === undefined ? '' : ` ${name}={${JSON.stringify(value)}}`;
+    const markers = [path.markerStart, path.markerEnd]
+      .filter((marker) => marker !== undefined)
+      .map((marker) => {
+        const side = marker === path.markerStart ? 'start' : 'end';
+        return `${state.indent.repeat(depth + 2)}<marker id={${JSON.stringify(marker.id)}} markerUnits="userSpaceOnUse" markerWidth={${formatNumber(marker.size)}} markerHeight={${formatNumber(marker.size)}} viewBox={${JSON.stringify(`${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`)}} refX={0} refY={0} orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(marker.d)}} fill={${JSON.stringify(marker.fill ? stroke : 'none')}} stroke={${JSON.stringify(stroke)}} strokeWidth={${formatNumber(marker.strokeWidth)}}${attr('strokeLinecap', marker.strokeLinecap)}${attr('strokeLinejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
+      });
+    const defs = markers.length
+      ? `${state.indent.repeat(depth + 1)}<defs>\n${markers.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
+      : '';
     return `${pad}<svg viewBox={${JSON.stringify(
       `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
-    )}} aria-hidden="true"${className}${styleExpr}>\n${state.indent.repeat(
+    )}} aria-hidden="true"${className}${styleExpr}>\n${defs}${state.indent.repeat(
       depth + 1,
     )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
       fill,
@@ -489,7 +498,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     )}${attr('strokeDasharray', path.strokeDasharray)}${attr(
       'strokeDashoffset',
       path.strokeDashoffset,
-    )} />\n${pad}</svg>`;
+    )}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)} />\n${pad}</svg>`;
   }
 
   if (node.role === 'icon' && node.icon) {

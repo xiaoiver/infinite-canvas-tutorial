@@ -86,6 +86,42 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('d={"M 0 0 L 25 0"}');
   });
 
+  it('expands a marker override rather than keeping stale reusable arrowheads', () => {
+    const nodes = [
+      {
+        id: 'arrow-template',
+        type: 'line',
+        name: 'Arrow',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 1,
+        x1: 0,
+        y1: 0,
+        x2: 40,
+        y2: 0,
+        zIndex: 0,
+        strokeWidth: 2,
+        strokes: [{ type: 'solid', value: '#000000' }],
+        markerEnd: 'line',
+      },
+      {
+        id: 'arrow-instance',
+        type: 'ref',
+        ref: 'arrow-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        markerEnd: 'triangle',
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<Arrow');
+    expect(react).toContain('markerEnd={"url(#ic-marker-61-72-72-6f-77-2d-69-6e-73-74-61-6e-63-65-end)"}');
+    expect(react).toContain(' Z"} fill={"#000000"}');
+  });
+
   it('expands a path paint override to keep SVG fill on the instance', () => {
     const nodes = [
       {

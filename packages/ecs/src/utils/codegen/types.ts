@@ -229,6 +229,8 @@ export interface CodeNode {
     strokeMiterlimit?: number;
     strokeDasharray?: string;
     strokeDashoffset?: number;
+    markerStart?: CodeVectorMarker;
+    markerEnd?: CodeVectorMarker;
   };
   /** preserve 模式下：该节点是某 `reusable` 组件的实例。 */
   instanceOf?: string;
@@ -236,6 +238,17 @@ export interface CodeNode {
   props?: Record<string, StyleValue>;
   /** 组件 body 内：该节点的某些位置由 prop 驱动（见 {@link CodeBinding}）。 */
   bindings?: CodeBinding[];
+}
+
+export interface CodeVectorMarker {
+  id: string;
+  d: string;
+  fill: boolean;
+  size: number;
+  offset: number;
+  strokeWidth: number;
+  strokeLinecap?: 'butt' | 'round' | 'square';
+  strokeLinejoin?: 'miter' | 'round' | 'bevel';
 }
 
 export interface CodeComponentProp {
