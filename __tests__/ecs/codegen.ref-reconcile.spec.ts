@@ -74,16 +74,21 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('$39');
   });
 
-  it('uses the expanded document after an unsupported card resize', () => {
+  it('preserves an explicitly sized card after resize', () => {
     const current = structuredClone(baseline);
     const card = current.find((node) => node.id === 'growth')!;
     card.width = 220;
     const recovered = reconcileRefInstances(source, baseline, current);
-    expect(recovered.some((node) => node.id === 'card-template')).toBe(false);
-    expect(recovered.find((node) => node.id === 'growth')?.width).toBe(220);
+    expect(recovered.some((node) => node.id === 'card-template')).toBe(true);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      width: 220,
+    });
     const react = serializedNodesToCode(recovered);
-    expect(react).not.toContain('export function PlanCard');
-    expect(react).toContain('w-[220px]');
+    expect(react).toContain('export function PlanCard');
+    expect(react).toContain('planCardWidth?: number');
+    expect(react).toContain('width: planCardWidth');
+    expect(react).toContain('planCardWidth={220}');
   });
 
   it('falls back when a text child is moved outside its template layout', () => {
@@ -96,7 +101,7 @@ describe('design-to-code expanded ref reconciliation', () => {
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;
-    (ref as { strokeWidth?: number }).strokeWidth = 2;
+    (ref as { opacity?: number }).opacity = 0.7;
     const expanded = expandRefSerializedNodes(
       structuredClone(unsupportedSource),
       unsupportedSource,
@@ -106,6 +111,43 @@ describe('design-to-code expanded ref reconciliation', () => {
       expanded,
       expanded,
     );
+    expect(recovered.some((node) => node.type === 'ref')).toBe(false);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'rect',
+      opacity: 0.7,
+    });
+  });
+
+  it('preserves edited stroke width and color as instance props', () => {
+    const current = structuredClone(baseline);
+    const card = current.find((node) => node.id === 'growth')!;
+    card.strokeWidth = 2;
+    card.strokes = [{ type: 'solid', value: '#9655ff' }];
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      strokeWidth: 2,
+      strokes: [{ type: 'solid', value: '#9655ff' }],
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('planCardStrokeWidth?: number');
+    expect(react).toContain('planCardStrokes?: string');
+    expect(react).toContain('borderWidth: planCardStrokeWidth');
+    expect(react).toContain('borderColor: planCardStrokes');
+    expect(react).toContain('borderStyle: "solid"');
+    expect(react).toContain('planCardStrokeWidth={2}');
+    expect(react).toContain('planCardStrokes="#9655ff"');
+  });
+
+  it('flattens a layered stroke that cannot be represented by one CSS border', () => {
+    const current = structuredClone(baseline);
+    const card = current.find((node) => node.id === 'growth')!;
+    card.strokeWidth = 2;
+    card.strokes = [
+      { type: 'solid', value: '#9655ff' },
+      { type: 'solid', value: '#ffffff' },
+    ];
+    const recovered = reconcileRefInstances(source, baseline, current);
     expect(recovered.some((node) => node.type === 'ref')).toBe(false);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
       type: 'rect',
