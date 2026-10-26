@@ -9,6 +9,8 @@ This scene combines a cube, ground plane, lighting, and an extruded SVG path wit
 
 Select a mesh to use its 3D gizmo. Choose **Pan** to move the view or **Orbit** to turn it at a constrained elevation. Both tools work with a mouse, pen, or one-finger touch drag. Shift + drag with Pan also orbits. The wheel zooms around the ground point under the cursor, Shift + wheel pans, and two fingers pan or pinch to zoom. These camera gestures change only this canvas's 3D view, not the 2D source or undo history. Changing a preset or slider resets the camera pose.
 
+Click **Auto orbit** to turn the camera slowly from its current pose while preserving its elevation, target and orthographic view height. Click again to hold the current view. Choosing a tool, pressing the canvas or using the wheel stops the preview so you can edit immediately. The animation pauses while the tab is hidden and can run alongside the moving spotlight. Both previews share one rate-limited frame loop and do not add document undo entries.
+
 Select multiple 3D objects to get one gizmo at their center. Drag its yellow diamond upward to enlarge the selection or downward to shrink it uniformly. Mesh scale, the SVG Path's 2D scale, and extrusion depth are saved together as one undo step; dragging leaves the SVG hole intact. Escape cancels the preview.
 
 Picking follows the visible 3D depth order, so a cube in front of the ground receives the click. A mesh press takes priority over overlapping 2D source bounds, and selected object names stay screen aligned while the camera moves.

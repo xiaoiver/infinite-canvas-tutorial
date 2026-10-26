@@ -69,6 +69,8 @@ const probe = {
     return layers.has('iso-cube') && layers.has('iso-ring');
   },
   settle: () => settleECSFrames(api!, 3),
+  cameraEye: () => [...api!.getCanvas().read(Camera3D).eye],
+  documentNodes: () => api!.getNodes(),
   sweepLight: () => {
     const node = api?.getNodeById('iso-sweep-light');
     if (!node || node.type !== 'light3d') return null;

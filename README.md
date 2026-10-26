@@ -499,7 +499,7 @@ If you want to use it in your own project, you can refer to:
 -   3D Gizmo
 -   Picking with raycast
 -   Lighting: ambient, spot, directional lights
--   [Interactive isometric view](https://infinitecanvas.cc/example/isometric-view): orthographic isometric and 2:1 dimetric cameras, navigation, Mesh and extruded SVG/Path selection, one shared gizmo for multi-selection, Path anchor editing, optional 3D-anchored callouts, stepped lighting tones, depth-tested silhouette outlines, view-dependent rim lighting, and a moving spotlight preview.
+-   [Interactive isometric view](https://infinitecanvas.cc/example/isometric-view): orthographic isometric and 2:1 dimetric cameras, navigation, Mesh and extruded SVG/Path selection, one shared gizmo for multi-selection, Path anchor editing, optional 3D-anchored callouts, stepped lighting tones, depth-tested silhouette outlines, view-dependent rim lighting, a moving spotlight preview, and automatic camera orbit.
 
 The [isometric implementation plan](./docs/isometric-projection-plan.md) tracks the completed camera, editing and illustration work. Browser regressions cover touch and pen drags of the shared gizmo and SVG anchors, including mobile WebKit's touch event path; physical iOS Safari still needs a device check. The shared gizmo translates, rotates, and uniformly scales a selection.
 
