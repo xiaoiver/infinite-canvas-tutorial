@@ -27,10 +27,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps
-
       - name: Run Playwright tests
+        # playwright.config.ts uses the Chrome channel preinstalled on ubuntu-latest.
+        # Installing every Playwright browser and its OS packages is unnecessary.
         run: pnpm exec playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
 
       - name: Upload blob report to GitHub Actions Artifacts
