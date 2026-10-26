@@ -145,7 +145,11 @@ export type CodeBindingTarget =
   | 'alignSelf'
   | 'flexGrow'
   | 'flexShrink'
-  | 'flexBasis';
+  | 'flexBasis'
+  | 'minWidth'
+  | 'maxWidth'
+  | 'minHeight'
+  | 'maxHeight';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

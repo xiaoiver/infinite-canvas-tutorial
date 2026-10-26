@@ -66,6 +66,10 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   flexGrow: 'flexGrow',
   flexShrink: 'flexShrink',
   flexBasis: 'flexBasis',
+  minWidth: 'minWidth',
+  maxWidth: 'maxWidth',
+  minHeight: 'minHeight',
+  maxHeight: 'maxHeight',
 };
 
 const SHADOW_KEYS = new Set([
@@ -478,6 +482,12 @@ function templateDefaultValue(
   }
   if (attr === 'flexBasis') {
     return toStyleValue(desc.flexBasis as number) ?? { literal: 'auto' };
+  }
+  if (attr === 'minWidth' || attr === 'minHeight') {
+    return toStyleValue(desc[attr] as number) ?? { literal: 'auto' };
+  }
+  if (attr === 'maxWidth' || attr === 'maxHeight') {
+    return toStyleValue(desc[attr] as number) ?? { literal: 'none' };
   }
   if (attr === 'fontWeight') {
     return toStyleValue(desc.fontWeight as string | number) ?? { literal: 400 };

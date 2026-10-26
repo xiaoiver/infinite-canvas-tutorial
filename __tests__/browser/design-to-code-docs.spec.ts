@@ -262,9 +262,39 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
       },
     },
   });
+  await page.evaluate(() =>
+    window.designToCodeDocs.setPricingActionConstraints(),
+  );
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('planCardActionMinWidth={250}');
+  await expect(code).toContainText('planCardActionMaxHeight={52}');
+  const [constraintsDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const constrainedDocument = JSON.parse(
+    await readFile((await constraintsDownload.path())!, 'utf8'),
+  );
+  expect(
+    constrainedDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({
+    type: 'ref',
+    descendants: {
+      'plan-card-action': {
+        minWidth: 250,
+        maxWidth: 300,
+        minHeight: 40,
+        maxHeight: 52,
+      },
+    },
+  });
   await page.getByRole('button', { name: 'HTML/CSS' }).click();
   await expect(code).toContainText('flex-basis: 140px');
   await expect(code).toContainText('align-self: center');
+  await expect(code).toContainText('min-width: 250px');
+  await expect(code).toContainText('max-height: 52px');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect
