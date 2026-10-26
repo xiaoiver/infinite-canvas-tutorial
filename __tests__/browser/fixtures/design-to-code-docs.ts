@@ -85,6 +85,19 @@ const probe = {
       editor.updateNode(node, { justifyContent: 'space-between' });
     });
   },
+  setPricingPriceFlexItem: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth__plan-card-price');
+      if (node?.type !== 'rect') throw new Error('Growth price row is missing');
+      editor.updateNode(node, {
+        alignSelf: 'center',
+        flexGrow: 1,
+        flexShrink: 0,
+        flexBasis: 140,
+      });
+    });
+  },
   setPricingAmountTypography: async () => {
     if (!api) throw new Error('Editor is not ready');
     await api.edit((editor) => {

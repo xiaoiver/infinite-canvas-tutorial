@@ -72,6 +72,8 @@ describe('design-to-code (codegen)', () => {
           zIndex: 1,
           content: 'Button',
           fontSize: 16,
+          alignSelf: 'flex-end',
+          flexBasis: 80,
           fills: [{ type: 'solid', value: '#ffffff', opacity: 1 }],
         } as SerializedNode,
       ];
@@ -81,6 +83,8 @@ describe('design-to-code (codegen)', () => {
       expect(code).toContain('justify-center');
       expect(code).toContain('gap-[10px]');
       expect(code).toContain('p-[10px]');
+      expect(code).toContain('self-end');
+      expect(code).toContain('basis-[80px]');
       expect(code).toContain('<span');
       expect(code).toContain('Button');
       expect(code).toContain('text-[#ffffff]');

@@ -60,6 +60,13 @@ export interface StyleIR {
   display?: 'flex';
   flexDirection?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
   alignItems?: 'center' | 'flex-start' | 'flex-end' | 'stretch' | 'baseline';
+  alignSelf?:
+    | 'auto'
+    | 'center'
+    | 'flex-start'
+    | 'flex-end'
+    | 'stretch'
+    | 'baseline';
   justifyContent?:
     | 'center'
     | 'flex-start'
@@ -134,7 +141,11 @@ export type CodeBindingTarget =
   | 'flexDirection'
   | 'alignItems'
   | 'justifyContent'
-  | 'flexWrap';
+  | 'flexWrap'
+  | 'alignSelf'
+  | 'flexGrow'
+  | 'flexShrink'
+  | 'flexBasis';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

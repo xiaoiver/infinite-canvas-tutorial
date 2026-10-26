@@ -47,6 +47,10 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   alignItems: 'alignItems',
   justifyContent: 'justifyContent',
   flexWrap: 'flexWrap',
+  alignSelf: 'alignSelf',
+  flexGrow: 'flexGrow',
+  flexShrink: 'flexShrink',
+  flexBasis: 'flexBasis',
 };
 
 interface TwResult {
@@ -130,9 +134,23 @@ function genTailwind(
     if (style.columnGap !== undefined && !skip.has('columnGap'))
       classes.push(`gap-x-[${formatNumber(style.columnGap)}px]`);
   }
-  if (style.flexGrow !== undefined)
+  if (style.flexGrow !== undefined && !skip.has('flexGrow'))
     classes.push(style.flexGrow === 1 ? 'grow' : `grow-[${style.flexGrow}]`);
-  if (style.flexShrink === 0) classes.push('shrink-0');
+  if (style.flexShrink === 0 && !skip.has('flexShrink'))
+    classes.push('shrink-0');
+  if (style.flexBasis !== undefined && !skip.has('flexBasis'))
+    classes.push(`basis-[${formatNumber(style.flexBasis)}px]`);
+  if (style.alignSelf && !skip.has('alignSelf')) {
+    const alignSelf: Record<string, string> = {
+      auto: 'self-auto',
+      center: 'self-center',
+      'flex-start': 'self-start',
+      'flex-end': 'self-end',
+      stretch: 'self-stretch',
+      baseline: 'self-baseline',
+    };
+    classes.push(alignSelf[style.alignSelf]);
+  }
 
   if (!skip.has('padding')) pushBox(classes, 'p', style.padding);
   if (!skip.has('margin')) pushBox(classes, 'm', style.margin);
@@ -407,6 +425,8 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
         'gap',
         'rowGap',
         'columnGap',
+        'flexGrow',
+        'flexShrink',
       ].includes(p.target)
         ? 'number'
         : [
@@ -419,6 +439,8 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
             'alignItems',
             'justifyContent',
             'flexWrap',
+            'alignSelf',
+            'flexBasis',
           ].includes(p.target)
         ? `CSSProperties['${p.target}']`
         : 'string';
@@ -484,6 +506,8 @@ export function emitReactTailwind(
           'alignItems',
           'justifyContent',
           'flexWrap',
+          'alignSelf',
+          'flexBasis',
         ].includes(prop.target),
       ),
     )

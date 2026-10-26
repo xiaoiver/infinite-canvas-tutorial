@@ -62,6 +62,10 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   alignItems: 'alignItems',
   justifyContent: 'justifyContent',
   flexWrap: 'flexWrap',
+  alignSelf: 'alignSelf',
+  flexGrow: 'flexGrow',
+  flexShrink: 'flexShrink',
+  flexBasis: 'flexBasis',
 };
 
 const SHADOW_KEYS = new Set([
@@ -212,6 +216,9 @@ function buildStyle(
   if (typeof node.flexGrow === 'number' && node.flexGrow)
     style.flexGrow = node.flexGrow;
   if (typeof node.flexShrink === 'number') style.flexShrink = node.flexShrink;
+  if (node.alignSelf && node.alignSelf !== 'auto')
+    style.alignSelf = node.alignSelf as never;
+  if (typeof node.flexBasis === 'number') style.flexBasis = node.flexBasis;
 
   const padding = normalizeBox(node.padding as number | number[] | undefined);
   if (padding) style.padding = padding;
@@ -459,6 +466,18 @@ function templateDefaultValue(
   }
   if (attr === 'flexWrap') {
     return toStyleValue(desc.flexWrap as string) ?? { literal: 'nowrap' };
+  }
+  if (attr === 'alignSelf') {
+    return toStyleValue(desc.alignSelf as string) ?? { literal: 'auto' };
+  }
+  if (attr === 'flexGrow') {
+    return toStyleValue(desc.flexGrow as number) ?? { literal: 0 };
+  }
+  if (attr === 'flexShrink') {
+    return toStyleValue(desc.flexShrink as number) ?? { literal: 1 };
+  }
+  if (attr === 'flexBasis') {
+    return toStyleValue(desc.flexBasis as number) ?? { literal: 'auto' };
   }
   if (attr === 'fontWeight') {
     return toStyleValue(desc.fontWeight as string | number) ?? { literal: 400 };
