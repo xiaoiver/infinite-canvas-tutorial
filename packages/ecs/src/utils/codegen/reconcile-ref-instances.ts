@@ -25,6 +25,11 @@ const PROP_KEYS = [
   'dropShadowOffsetX',
   'dropShadowOffsetY',
   'dropShadowBlurRadius',
+  'padding',
+  'margin',
+  'gap',
+  'rowGap',
+  'columnGap',
   'anchorX',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);

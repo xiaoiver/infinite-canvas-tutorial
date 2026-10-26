@@ -125,7 +125,12 @@ export type CodeBindingTarget =
   | 'textAlign'
   | 'letterSpacing'
   | 'lineHeight'
-  | 'boxShadow';
+  | 'boxShadow'
+  | 'padding'
+  | 'margin'
+  | 'gap'
+  | 'rowGap'
+  | 'columnGap';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

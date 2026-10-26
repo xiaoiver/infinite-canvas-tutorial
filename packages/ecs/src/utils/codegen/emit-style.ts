@@ -26,7 +26,7 @@ export function styleValueToCss(
   return String(lit ?? '');
 }
 
-function box(v: [number, number, number, number]): string {
+export function boxToCss(v: [number, number, number, number]): string {
   const [t, r, b, l] = v;
   if (t === r && r === b && b === l) {
     return `${formatNumber(t)}px`;
@@ -67,8 +67,8 @@ export function styleIRToCssDeclarations(
   if (style.flexShrink !== undefined)
     push('flex-shrink', formatNumber(style.flexShrink));
 
-  if (style.padding) push('padding', box(style.padding));
-  if (style.margin) push('margin', box(style.margin));
+  if (style.padding) push('padding', boxToCss(style.padding));
+  if (style.margin) push('margin', boxToCss(style.margin));
 
   if (style.width !== undefined)
     push('width', `${formatNumber(style.width)}px`);
