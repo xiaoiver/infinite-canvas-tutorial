@@ -57,6 +57,16 @@ export function combinedImageOpacityCss(
     : `calc(${formatNumber(style.opacity)} * ${fillCss})`;
 }
 
+export function textDecorationToCss(
+  decoration: NonNullable<StyleIR['textDecoration']>,
+  mode: CodeVariablesMode,
+): string {
+  return `${decoration.style} ${decoration.line} ${styleValueToCss(
+    decoration.color,
+    mode,
+  )} ${formatNumber(decoration.thickness)}px`;
+}
+
 /**
  * 把 {@link StyleIR} 转为 CSS 属性键值对（键为 kebab-case CSS 属性名）。
  * 供 HTML/CSS emitter 直接使用，也是 React inline style 的基础。
@@ -142,6 +152,8 @@ export function styleIRToCssDeclarations(
     push('letter-spacing', styleValueToCss(style.letterSpacing, mode, true));
   if (style.lineHeight)
     push('line-height', styleValueToCss(style.lineHeight, mode, true));
+  if (style.textDecoration)
+    push('text-decoration', textDecorationToCss(style.textDecoration, mode));
 
   return out;
 }

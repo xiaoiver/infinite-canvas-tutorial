@@ -115,6 +115,12 @@ export interface StyleIR {
   textAlign?: 'left' | 'center' | 'right' | 'justify';
   letterSpacing?: StyleValue;
   lineHeight?: StyleValue;
+  textDecoration?: {
+    line: 'underline' | 'overline' | 'line-through';
+    style: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
+    color: StyleValue;
+    thickness: number;
+  };
 }
 
 export type CodeNodeRole = 'container' | 'text' | 'icon' | 'image' | 'shape';
@@ -139,6 +145,7 @@ export type CodeBindingTarget =
   | 'textAlign'
   | 'letterSpacing'
   | 'lineHeight'
+  | 'textDecoration'
   | 'boxShadow'
   | 'padding'
   | 'margin'

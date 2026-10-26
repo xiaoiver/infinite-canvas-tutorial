@@ -343,6 +343,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect` with an image fill                                | `<img src>` with `object-fit` / `object-position`     |
 | node-level `blendMode`                                    | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                        | text node; `$token` content → variable                |
+| text decoration line, style, color, and thickness        | CSS `text-decoration`                                 |
 | `iconfont` (lucide)                                       | `lucide-react` `<Search />`                           |
 | `iconfont` (other families)                               | `@iconify/react` `<Icon icon="family:name" />`        |
 | `$color.bg` variable                                      | `bg-[var(--color-bg)]` (css-var) / literal (resolved) |
@@ -360,7 +361,7 @@ The three variable modes match the SVG export semantics:
 
 ### Components and instances {#design-to-code-components}
 
-With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, typography, `opacity`, `cornerRadius`, explicit `width`/`height`, `minWidth`/`maxWidth`/`minHeight`/`maxHeight`, `padding`, `margin`, flex gaps, `flexDirection`, `alignItems`, `justifyContent`, `flexWrap`, `alignSelf`, `flexGrow`, `flexShrink`, `flexBasis`, `strokeWidth`, `strokes`, and drop-shadow fields) seen across instances are lifted into props with the template value as default. Numeric `lineHeight` values are pixel heights in `.ic`, so React output adds `px` instead of treating them as unitless multipliers. Spacing arrays become CSS shorthand strings, and the shadow fields combine into one `boxShadow` prop:
+With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, typography and text decoration, `opacity`, `cornerRadius`, explicit `width`/`height`, `minWidth`/`maxWidth`/`minHeight`/`maxHeight`, `padding`, `margin`, flex gaps, `flexDirection`, `alignItems`, `justifyContent`, `flexWrap`, `alignSelf`, `flexGrow`, `flexShrink`, `flexBasis`, `strokeWidth`, `strokes`, and drop-shadow fields) seen across instances are lifted into props with the template value as default. Numeric `lineHeight` values are pixel heights in `.ic`, so React output adds `px` instead of treating them as unitless multipliers. Spacing arrays become CSS shorthand strings, the text-decoration fields combine into one prop, and the shadow fields combine into one `boxShadow` prop. A decoration with zero thickness renders as `none`, matching the canvas:
 
 For a reusable image, changing only the image URL binds the instance's `fills` override to the component's `<img src>` prop. Changing the fill type, fit, position, or fill opacity expands the instance so the generated element and styles reflect the edit. For a single image fill, the exported `<img>` opacity combines the fill opacity with the node opacity.
 
@@ -392,7 +393,7 @@ The following examples load an analytics dashboard, a SaaS pricing page, and a m
 
 The examples pass a node-ID keyed `semanticElements` map to `API.exportCode`. It turns selected canvas rectangles and text into HTML landmarks, headings, and `<button type="button">` controls in both exports. The map belongs to this demo's export configuration; wire button actions and navigation in your application.
 
-The pricing page uses one `reusable` plan-card template and three `ref` instances. The editor expands instances to render and edit them; this demo reconciles text, color, typography, opacity, explicit size and size constraints, spacing, flex alignment and item sizing, solid border, and drop-shadow edits back into instance overrides for the React and `.ic` downloads. The Growth card demonstrates an accent border. Numeric `flexBasis` and size constraint values become pixel values in HTML/CSS and React styles. If a card's structure or an unsupported property changes, the export uses its expanded nodes so the result still matches the canvas.
+The pricing page uses one `reusable` plan-card template and three `ref` instances. The editor expands instances to render and edit them; this demo reconciles text, color, typography and text decoration, opacity, explicit size and size constraints, spacing, flex alignment and item sizing, solid border, and drop-shadow edits back into instance overrides for the React and `.ic` downloads. The Growth card demonstrates an accent border. Numeric `flexBasis` and size constraint values become pixel values in HTML/CSS and React styles. If a card's structure or an unsupported property changes, the export uses its expanded nodes so the result still matches the canvas.
 
 <DesignToCodeInterfaces />
 
