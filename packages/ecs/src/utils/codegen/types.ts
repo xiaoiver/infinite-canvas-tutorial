@@ -232,6 +232,12 @@ export interface CodeNode {
     strokeDasharray?: string;
     strokeDashoffset?: number;
     strokeAlignment?: { type: 'inner' | 'outer'; id: string };
+    dropShadow?: {
+      offsetX: number;
+      offsetY: number;
+      blur: number;
+      color: StyleValue;
+    };
     markerStart?: CodeVectorMarker;
     markerEnd?: CodeVectorMarker;
   };

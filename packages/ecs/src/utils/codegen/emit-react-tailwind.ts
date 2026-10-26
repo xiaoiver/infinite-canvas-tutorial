@@ -14,6 +14,7 @@ import {
   solidFillColorToCss,
   styleValueToCss,
   textDecorationToCss,
+  vectorDropShadowToCss,
 } from './emit-style';
 import type {
   CodeBindingTarget,
@@ -514,17 +515,25 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     const defs = definitions.length
       ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
+    const shadow = path.dropShadow
+      ? vectorDropShadowToCss(path.dropShadow, state.mode)
+      : undefined;
+    const pathPad = state.indent.repeat(depth + (shadow ? 2 : 1));
+    const artworkOpen = shadow
+      ? `${state.indent.repeat(depth + 1)}<g style={{ filter: ${JSON.stringify(shadow)} }}>\n`
+      : '';
+    const artworkClose = shadow
+      ? `${state.indent.repeat(depth + 1)}</g>\n`
+      : '';
     const svgStyle = hasChildren
       ? ' style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}'
       : `${className}${styleExpr}`;
     const alignedStroke = alignment
-      ? `${state.indent.repeat(depth + 1)}<path d={${JSON.stringify(path.d)}} fill="none" stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', 2 * (path.strokeWidth ?? 0))}${attr('strokeLinecap', path.strokeLinecap)}${attr('strokeLinejoin', path.strokeLinejoin)}${attr('strokeMiterlimit', path.strokeMiterlimit)}${attr('strokeDasharray', path.strokeDasharray)}${attr('strokeDashoffset', path.strokeDashoffset)}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clipPath' : 'mask', `url(#${alignment.id})`)} />\n`
+      ? `${pathPad}<path d={${JSON.stringify(path.d)}} fill="none" stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', 2 * (path.strokeWidth ?? 0))}${attr('strokeLinecap', path.strokeLinecap)}${attr('strokeLinejoin', path.strokeLinejoin)}${attr('strokeMiterlimit', path.strokeMiterlimit)}${attr('strokeDasharray', path.strokeDasharray)}${attr('strokeDashoffset', path.strokeDashoffset)}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clipPath' : 'mask', `url(#${alignment.id})`)} />\n`
       : '';
     const svg = `${pad}<svg viewBox={${JSON.stringify(
       `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
-    )}} aria-hidden="true"${svgStyle}>\n${defs}${state.indent.repeat(
-      depth + 1,
-    )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
+    )}} aria-hidden="true"${svgStyle}>\n${defs}${artworkOpen}${pathPad}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
       fill,
     )}}${attr('fillOpacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
       alignment ? 'none' : stroke,
@@ -537,7 +546,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     )}${attr('strokeDasharray', path.strokeDasharray)}${attr(
       'strokeDashoffset',
       path.strokeDashoffset,
-    )}${attr('markerStart', !alignment && path.markerStart ? `url(#${path.markerStart.id})` : undefined)}${attr('markerEnd', !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined)} />\n${alignedStroke}${pad}</svg>`;
+    )}${attr('markerStart', !alignment && path.markerStart ? `url(#${path.markerStart.id})` : undefined)}${attr('markerEnd', !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined)} />\n${alignedStroke}${artworkClose}${pad}</svg>`;
     if (!hasChildren) return svg;
     const tag = node.element?.tag ?? 'div';
     const semanticAttr =

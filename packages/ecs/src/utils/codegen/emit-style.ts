@@ -4,7 +4,12 @@
  */
 import { designTokenKeyToCssCustomProperty } from '../design-variables';
 import { formatNumber } from '../serialize/points';
-import type { CodeVariablesMode, StyleIR, StyleValue } from './types';
+import type {
+  CodeNode,
+  CodeVariablesMode,
+  StyleIR,
+  StyleValue,
+} from './types';
 
 /** 把一个 {@link StyleValue} 渲染为 CSS 值字符串。`px` 决定数字字面量是否补 `px`。 */
 export function styleValueToCss(
@@ -40,6 +45,13 @@ export function solidFillColorToCss(
       ? `calc(${styleValueToCss(opacity, mode)} * 100%)`
       : `${formatNumber(literal * 100)}%`;
   return `color-mix(in srgb, ${cssColor} ${weight}, transparent)`;
+}
+
+export function vectorDropShadowToCss(
+  shadow: NonNullable<NonNullable<CodeNode['vectorPath']>['dropShadow']>,
+  mode: CodeVariablesMode,
+): string {
+  return `drop-shadow(${formatNumber(shadow.offsetX)}px ${formatNumber(shadow.offsetY)}px ${formatNumber(shadow.blur)}px ${styleValueToCss(shadow.color, mode)})`;
 }
 
 export function boxToCss(v: [number, number, number, number]): string {
