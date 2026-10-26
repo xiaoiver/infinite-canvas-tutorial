@@ -6,6 +6,59 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('keeps local positions in a free-layout frame without disturbing flex children', () => {
+      const nodes = [
+        {
+          id: 'frame',
+          type: 'rect',
+          x: 200,
+          y: 100,
+          width: 300,
+          height: 180,
+          zIndex: 0,
+        },
+        {
+          id: 'badge',
+          type: 'ellipse',
+          parentId: 'frame',
+          x: 25,
+          y: 45,
+          width: 40,
+          height: 40,
+          zIndex: 1,
+        },
+        {
+          id: 'flex-row',
+          type: 'rect',
+          parentId: 'frame',
+          x: 80,
+          y: 20,
+          width: 120,
+          height: 60,
+          display: 'flex',
+          zIndex: 2,
+        },
+        {
+          id: 'label',
+          type: 'text',
+          parentId: 'flex-row',
+          x: 14,
+          y: 12,
+          content: 'Hello',
+          zIndex: 3,
+        },
+      ] as SerializedNode[];
+      const react = serializedNodesToCode(nodes);
+      expect(react).toContain('className="relative');
+      expect(react).toContain('absolute left-[25px] top-[45px]');
+      expect(react).toContain('absolute left-[80px] top-[20px]');
+      expect(react).not.toContain('left-[14px]');
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('position: relative');
+      expect(html).toContain('position: absolute; left: 25px; top: 45px');
+      expect(html).not.toContain('left: 14px');
+    });
+
     it('clips children to a rounded rectangle or ellipse', () => {
       for (const type of ['rect', 'ellipse'] as const) {
         const nodes = [
