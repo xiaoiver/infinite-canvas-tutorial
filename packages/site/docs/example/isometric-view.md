@@ -9,7 +9,7 @@ This scene combines a cube, ground plane, lighting, and an extruded SVG path wit
 
 Select a mesh to use its 3D gizmo. Choose **Pan** to move the view or **Orbit** to turn it at a constrained elevation. Both tools work with a mouse, pen, or one-finger touch drag. Shift + drag with Pan also orbits. The wheel zooms around the ground point under the cursor, Shift + wheel pans, and two fingers pan or pinch to zoom. These camera gestures change only this canvas's 3D view, not the 2D source or undo history. Changing a preset or slider resets the camera pose.
 
-Click **Auto orbit** to turn the camera slowly from its current pose while preserving its elevation, target and orthographic view height. Click again to hold the current view. Choosing a tool, pressing the canvas or using the wheel stops the preview so you can edit immediately. The animation pauses while the tab is hidden and can run alongside the moving spotlight. Both previews share one rate-limited frame loop and do not add document undo entries.
+Click **Auto orbit** to turn the camera slowly from its current pose while preserving its elevation, target and orthographic view height. Click again to hold the current view. Choosing a tool, pressing the canvas or using the wheel stops the preview so you can edit immediately. The animation pauses while the tab is hidden or the example is outside the viewport, and can run alongside the moving spotlight. Both previews share one rate-limited frame loop and do not add document undo entries.
 
 Select multiple 3D objects to get one gizmo at their center. Drag its yellow diamond upward to enlarge the selection or downward to shrink it uniformly. Mesh scale, the SVG Path's 2D scale, and extrusion depth are saved together as one undo step; dragging leaves the SVG hole intact. Escape cancels the preview.
 
@@ -29,7 +29,7 @@ Turn on **Show outlines** for a dark silhouette around the cube and the orange S
 
 Turn on **Rim light** to tint visible surfaces near their view-facing edges. The material shader derives the tint from the surface normal and view direction, after normal lighting and tone mapping. It follows camera orbit and uses the mesh's existing depth and alpha rules; it is a surface highlight, not a blurred glow outside the silhouette. Mesh nodes accept `material3d: { rimLightStrength: 0.9, rimLightColor: '#9ad9ff' }`, and extruded Path/rect nodes accept the same fields in `extrude3d`. Strength is 0 (off) to 1. Unlit materials ignore it, and standard glTF export does not retain it.
 
-Turn on **Moving spotlight** to sweep a warm light across the cube, SVG ring and ground. The light is an ordinary shadow-casting `light3d` node: each animation frame changes its position and direction, while mesh geometry stays in place. It starts off, stops when the tab is hidden, and can be turned off on slower devices. The motion is a preview effect and does not add an undo step for every frame.
+Turn on **Moving spotlight** to sweep a warm light across the cube, SVG ring and ground. The light is an ordinary shadow-casting `light3d` node: each animation frame changes its position and direction, while mesh geometry stays in place. It starts off, pauses when the tab is hidden or the example leaves the viewport, and can be turned off on slower devices. The motion is a preview effect and does not add an undo step for every frame.
 
 <script setup>
 import IsometricView from '../components/IsometricView.vue'

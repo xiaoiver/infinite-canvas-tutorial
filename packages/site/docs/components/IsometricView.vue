@@ -81,6 +81,8 @@ let pathEdit:
   | undefined;
 let anchorFrame = 0;
 let animationFrame = 0;
+let visibilityObserver: IntersectionObserver | undefined;
+let previewInView = true;
 let lightElapsed = 0;
 let animationLastFrame = 0;
 let orbitPose:
@@ -277,7 +279,7 @@ function placeOrbit() {
 }
 
 function animateScene(now: number) {
-  if ((!sweepLight.value && !autoOrbit.value) || document.hidden || !api) {
+  if ((!sweepLight.value && !autoOrbit.value) || !previewActive()) {
     animationFrame = 0;
     return;
   }
@@ -304,8 +306,19 @@ function syncAnimation() {
   if (animationFrame) cancelAnimationFrame(animationFrame);
   animationFrame = 0;
   animationLastFrame = 0;
-  if ((sweepLight.value || autoOrbit.value) && !document.hidden && api)
+  if ((sweepLight.value || autoOrbit.value) && previewActive())
     animationFrame = requestAnimationFrame(animateScene);
+}
+
+function previewActive() {
+  return !!api && previewInView && !document.hidden;
+}
+
+function syncPreviewActivity() {
+  if (anchorFrame) cancelAnimationFrame(anchorFrame);
+  anchorFrame = 0;
+  if (previewActive()) anchorFrame = requestAnimationFrame(animatePathHandles);
+  syncAnimation();
 }
 
 function toggleSweepLight() {
@@ -348,7 +361,7 @@ function toggleAutoOrbit() {
 }
 
 function onVisibilityChange() {
-  syncAnimation();
+  syncPreviewActivity();
 }
 
 function refreshPathHandles() {
@@ -380,6 +393,10 @@ function refreshPathHandles() {
 }
 
 function animatePathHandles() {
+  if (!previewActive()) {
+    anchorFrame = 0;
+    return;
+  }
   const extrude = ringNode()?.extrude3d;
   const cube = api?.getNodeById('iso-cube');
   steppedTones.value =
@@ -751,6 +768,13 @@ function svgNodes(): SerializedNode[] {
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
+  if (typeof IntersectionObserver !== 'undefined') {
+    visibilityObserver = new IntersectionObserver(([entry]) => {
+      previewInView = entry.isIntersecting;
+      syncPreviewActivity();
+    });
+    visibilityObserver.observe(canvas);
+  }
   onReady = (event) => {
     api = event.detail;
     api.setAppState({
@@ -765,15 +789,15 @@ onMounted(async () => {
       api?.updateNodes([...scene, ...svgNodes()]);
       // Establish a document baseline so a single anchor drag can be undone.
       api?.record();
-      api?.runAtNextTick(syncAnimation);
+      api?.runAtNextTick(syncPreviewActivity);
     });
-    anchorFrame = requestAnimationFrame(animatePathHandles);
   };
   canvas.addEventListener(Event.READY, onReady as EventListener);
   document.addEventListener('visibilitychange', onVisibilityChange);
   await ensureExampleWorld();
 });
 onUnmounted(() => {
+  visibilityObserver?.disconnect();
   cancelAnimationFrame(anchorFrame);
   if (animationFrame) cancelAnimationFrame(animationFrame);
   document.removeEventListener('visibilitychange', onVisibilityChange);

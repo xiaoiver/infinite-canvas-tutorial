@@ -54,6 +54,70 @@ test('auto orbit shares the animation clock with the spotlight and yields to edi
   expect(errors).toEqual([]);
 });
 
+test('offscreen isometric previews pause and resume camera, light, and callouts', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  await page.getByRole('button', { name: '显示标注' }).click();
+  const cubeAnchor = page.locator('[data-callout="cube"] circle');
+  await expect(cubeAnchor).toBeVisible();
+  const initialEye = await page.evaluate(() =>
+    window.isometricDocs.cameraEye(),
+  );
+  await page.getByRole('button', { name: '自动环绕' }).click();
+  await page.getByRole('button', { name: '动态聚光灯' }).click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.cameraEye()[0]))
+    .not.toBeCloseTo(initialEye[0], 1);
+  await page.evaluate(async () => {
+    const canvas = document.querySelector('ic-spectrum-canvas')!;
+    const offscreen = new Promise<void>((resolve) => {
+      const observer = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) {
+          observer.disconnect();
+          resolve();
+        }
+      });
+      observer.observe(canvas);
+    });
+    const spacer = document.createElement('div');
+    spacer.id = 'visibility-spacer';
+    spacer.style.height = '1400px';
+    document.body.insertBefore(spacer, document.querySelector('#demo'));
+    await offscreen;
+  });
+  const eye = await page.evaluate(() => window.isometricDocs.cameraEye());
+  const light = await page.evaluate(() => window.isometricDocs.sweepLight());
+  const anchor = await cubeAnchor.getAttribute('cx');
+  await page.evaluate(() => window.isometricDocs.moveCube(25));
+  await page.evaluate(() => window.isometricDocs.settle());
+  expect(await page.evaluate(() => window.isometricDocs.cameraEye())).toEqual(
+    eye,
+  );
+  expect(await page.evaluate(() => window.isometricDocs.sweepLight())).toEqual(
+    light,
+  );
+  expect(await cubeAnchor.getAttribute('cx')).toBe(anchor);
+  await page.evaluate(() =>
+    document.querySelector('#visibility-spacer')!.remove(),
+  );
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.cameraEye()[0]))
+    .not.toBeCloseTo(eye[0], 1);
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.sweepLight()?.x))
+    .not.toBeCloseTo(light!.x, 1);
+  await expect.poll(() => cubeAnchor.getAttribute('cx')).not.toBe(anchor);
+  expect(errors).toEqual([]);
+});
+
 test('moving spotlight updates light and shadows without rebuilding the cube', async ({
   page,
 }) => {
