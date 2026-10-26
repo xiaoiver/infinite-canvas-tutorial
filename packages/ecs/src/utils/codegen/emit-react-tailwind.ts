@@ -26,6 +26,10 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   color: 'color',
   fontSize: 'fontSize',
   borderRadius: 'borderRadius',
+  width: 'width',
+  height: 'height',
+  borderWidth: 'borderWidth',
+  borderColor: 'borderColor',
 };
 
 interface TwResult {
@@ -111,9 +115,9 @@ function genTailwind(
   pushBox(classes, 'p', style.padding);
   pushBox(classes, 'm', style.margin);
 
-  if (style.width !== undefined)
+  if (style.width !== undefined && !skip.has('width'))
     classes.push(`w-[${formatNumber(style.width)}px]`);
-  if (style.height !== undefined)
+  if (style.height !== undefined && !skip.has('height'))
     classes.push(`h-[${formatNumber(style.height)}px]`);
   if (style.minWidth !== undefined)
     classes.push(`min-w-[${formatNumber(style.minWidth)}px]`);
@@ -139,10 +143,11 @@ function genTailwind(
       );
   }
   if (style.borderWidth) {
-    classes.push(
-      `border-[${tw(styleValueToCss(style.borderWidth, mode, true))}]`,
-    );
-    if (style.borderColor) {
+    if (!skip.has('borderWidth'))
+      classes.push(
+        `border-[${tw(styleValueToCss(style.borderWidth, mode, true))}]`,
+      );
+    if (style.borderColor && !skip.has('borderColor')) {
       if (needsInline(style.borderColor, mode))
         addInline('borderColor', style.borderColor);
       else
@@ -246,6 +251,8 @@ function renderAttributes(
     if (b.target === 'text') continue;
     inline.push([TARGET_TO_CSS_KEY[b.target], b.prop]);
   }
+  if ((node.bindings ?? []).some((b) => b.target === 'borderWidth'))
+    inline.push(['borderStyle', JSON.stringify('solid')]);
 
   const className = classes.length ? ` className="${classes.join(' ')}"` : '';
   let styleExpr = '';
@@ -356,7 +363,11 @@ function renderIcon(
 function renderComponent(def: CodeComponentDef, state: EmitState): string {
   const propsType = def.props
     .map((p) => {
-      const tsType = p.target === 'fontSize' ? 'number' : 'string';
+      const tsType = ['fontSize', 'width', 'height', 'borderWidth'].includes(
+        p.target,
+      )
+        ? 'number'
+        : 'string';
       return `${state.indent}${p.name}?: ${tsType};`;
     })
     .join('\n');

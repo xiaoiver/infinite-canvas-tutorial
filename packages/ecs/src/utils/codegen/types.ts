@@ -113,7 +113,11 @@ export type CodeBindingTarget =
   | 'backgroundColor'
   | 'color'
   | 'fontSize'
-  | 'borderRadius';
+  | 'borderRadius'
+  | 'width'
+  | 'height'
+  | 'borderWidth'
+  | 'borderColor';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

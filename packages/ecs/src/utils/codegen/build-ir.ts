@@ -41,6 +41,9 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   content: 'text',
   fontSize: 'fontSize',
   cornerRadius: 'borderRadius',
+  width: 'width',
+  height: 'height',
+  strokeWidth: 'borderWidth',
 };
 
 function asArray<T>(v: unknown): T[] {
@@ -334,6 +337,9 @@ function colorTargetFor(
   if (attr === 'fills' || attr === 'fill') {
     return role === 'text' || role === 'icon' ? 'color' : 'backgroundColor';
   }
+  if (attr === 'strokes' || attr === 'stroke') {
+    return role === 'container' || role === 'shape' ? 'borderColor' : undefined;
+  }
   return undefined;
 }
 
@@ -360,6 +366,12 @@ function overrideStyleValue(
     const fills = asArray<SerializedFillLayerItem>(patch.fills);
     return primaryColorFromLayers(fills) ?? toStyleValue(patch.fill as string);
   }
+  if (attr === 'strokes' || attr === 'stroke') {
+    const strokes = asArray<SerializedFillLayerItem>(patch.strokes);
+    return (
+      primaryColorFromLayers(strokes) ?? toStyleValue(patch.stroke as string)
+    );
+  }
   return toStyleValue(patch[attr] as string | number);
 }
 
@@ -384,6 +396,12 @@ function templateDefaultValue(
       primaryColorFromLayers(asArray<SerializedFillLayerItem>(desc.fills)) ?? {
         literal: '#000000',
       }
+    );
+  }
+  if (attr === 'strokes' || attr === 'stroke') {
+    return (
+      primaryColorFromLayers(asArray<SerializedFillLayerItem>(desc.strokes)) ??
+      toStyleValue(desc.stroke as string) ?? { literal: '#000000' }
     );
   }
   return toStyleValue(desc[attr] as string | number) ?? { literal: 0 };
@@ -521,7 +539,9 @@ function buildPreserve(
       if (
         attr in OVERRIDABLE_KEY_TO_TARGET ||
         attr === 'fills' ||
-        attr === 'fill'
+        attr === 'fill' ||
+        attr === 'strokes' ||
+        attr === 'stroke'
       ) {
         set.add(`${templateId}::${attr}`);
       }
@@ -532,7 +552,9 @@ function buildPreserve(
         if (
           attr in OVERRIDABLE_KEY_TO_TARGET ||
           attr === 'fills' ||
-          attr === 'fill'
+          attr === 'fill' ||
+          attr === 'strokes' ||
+          attr === 'stroke'
         ) {
           set.add(`${descId}::${attr}`);
         }
@@ -693,7 +715,9 @@ function buildInstanceNode(
       if (
         !(attr in OVERRIDABLE_KEY_TO_TARGET) &&
         attr !== 'fills' &&
-        attr !== 'fill'
+        attr !== 'fill' &&
+        attr !== 'strokes' &&
+        attr !== 'stroke'
       ) {
         continue;
       }

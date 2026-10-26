@@ -41,6 +41,14 @@ const probe = {
       editor.updateNode(node, { width });
     });
   },
+  setPricingCardOpacity: async (opacity: number) => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth');
+      if (node?.type !== 'rect') throw new Error('Growth card is missing');
+      editor.updateNode(node, { opacity });
+    });
+  },
 };
 declare global {
   interface Window {

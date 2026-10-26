@@ -523,7 +523,13 @@ function pricing(): InterfaceScene {
   for (const plan of plans) {
     const highlighted = plan.id === 'growth';
     instance(`plan-${plan.id}`, 'plans', 'plan-card-template', {
-      ...(highlighted ? { fills: [{ type: 'solid', value: '#273456' }] } : {}),
+      ...(highlighted
+        ? {
+            fills: [{ type: 'solid', value: '#273456' }],
+            strokes: [{ type: 'solid', value: '$color.highlight' }],
+            strokeWidth: 2,
+          }
+        : {}),
       descendants: {
         'plan-card-name': { content: plan.name },
         'plan-card-detail': { content: plan.detail },

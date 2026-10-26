@@ -5,7 +5,17 @@ import type {
 } from '../../types/serialized-node';
 import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 
-const PROP_KEYS = ['content', 'fills', 'fontSize', 'cornerRadius'] as const;
+const PROP_KEYS = [
+  'content',
+  'fills',
+  'fontSize',
+  'cornerRadius',
+  'width',
+  'height',
+  'strokeWidth',
+  'strokes',
+] as const;
+const DIMENSION_KEYS = new Set(['width', 'height']);
 const ROOT_POSITION_KEYS = new Set(['parentId', 'x', 'y', 'zIndex', 'name']);
 const TEXT_LAYOUT_KEYS = new Set(['width', 'height']);
 const TRANSIENT_KEYS = new Set(['version', 'versionNonce', 'updated']);
@@ -22,6 +32,18 @@ const REF_IDENTITY_KEYS = new Set([
 ]);
 
 type NodeRecord = SerializedNode & Record<string, unknown>;
+
+function hasUnsupportedStrokes(strokes: unknown): boolean {
+  if (strokes === undefined) return false;
+  if (!Array.isArray(strokes) || strokes.length > 1) return true;
+  return strokes.some(
+    (layer) =>
+      layer.type !== 'solid' ||
+      layer.enabled === false ||
+      (layer.opacity !== undefined && layer.opacity !== 1) ||
+      (layer.blendMode !== undefined && layer.blendMode !== 'normal'),
+  );
+}
 
 function descendantIds(rootId: string, nodes: readonly SerializedNode[]) {
   const childrenByParent = new Map<string, string[]>();
@@ -65,9 +87,9 @@ function hasUnsupportedChange(
 
 /**
  * Recover a scene's reusable/ref source graph after the editor has expanded
- * instances for rendering. Text and color edits become ref overrides. Other
- * instance or template edits fall back to the visible expanded graph so the
- * exported markup continues to match the canvas.
+ * instances for rendering. Supported text, color, explicit size, and solid
+ * border edits become ref overrides. Other instance or template edits fall
+ * back to the visible expanded graph so the export matches the canvas.
  */
 export function reconcileRefInstances(
   source: readonly SerializedNode[],
@@ -116,6 +138,10 @@ export function reconcileRefInstances(
   const recovered: RefSerializedNode[] = [];
   for (const ref of refs) {
     if (
+      hasUnsupportedStrokes(ref.strokes) ||
+      Object.values(ref.descendants ?? {}).some((patch) =>
+        hasUnsupportedStrokes(patch.strokes),
+      ) ||
       Object.keys(ref).some(
         (key) =>
           !REF_IDENTITY_KEYS.has(key) &&
@@ -175,17 +201,22 @@ export function reconcileRefInstances(
       const template = sourceById.get(templateId) as NodeRecord | undefined;
       const rendered = currentById.get(node.id) as NodeRecord | undefined;
       if (!template || !rendered) return flattened();
+      if (hasUnsupportedStrokes(rendered.strokes)) return flattened();
       const patch = {
         ...(node.id === ref.id ? next : descendants[templateId]),
       } as Record<string, unknown>;
       for (const key of PROP_KEYS) {
+        if (DIMENSION_KEYS.has(key) && template[key] === undefined) {
+          delete patch[key];
+          continue;
+        }
         if (documentValueEqual(rendered[key], template[key])) delete patch[key];
         else patch[key] = structuredClone(rendered[key]);
       }
       if (node.id === ref.id) {
         for (const key of PROP_KEYS) {
-          if (key in patch) (next as NodeRecord)[key] = patch[key];
-          else delete (next as NodeRecord)[key];
+          if (key in patch) Reflect.set(next, key, patch[key]);
+          else Reflect.deleteProperty(next, key);
         }
       } else {
         const overrides = Object.fromEntries(

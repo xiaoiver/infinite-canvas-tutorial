@@ -95,7 +95,22 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     descendants: { 'plan-card-amount': { content: '$39' } },
   });
   await page.evaluate(() => window.designToCodeDocs.resizePricingCard(320));
-  await expect(code).toContainText('w-[320px]');
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('pricingPlanCardWidth={320}');
+  await expect(code).toContainText('pricingPlanCardStrokeWidth={2}');
+  const [resizedDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const resizedDocument = JSON.parse(
+    await readFile((await resizedDownload.path())!, 'utf8'),
+  );
+  expect(
+    resizedDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({ type: 'ref', width: 320, strokeWidth: 2 });
+  await page.evaluate(() => window.designToCodeDocs.setPricingCardOpacity(0.7));
   await expect(code).not.toContainText('export function PricingPlanCard');
   const [expandedDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -108,7 +123,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     expandedDocument.elements.find(
       (node: { id: string }) => node.id === 'plan-growth',
     ),
-  ).toMatchObject({ type: 'rect', width: 320 });
+  ).toMatchObject({ type: 'rect', width: 320, opacity: 0.7 });
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))
