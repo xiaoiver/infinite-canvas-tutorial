@@ -234,7 +234,8 @@ export function reconcileRefInstances(
           after.fills,
           template.type === 'rect' ||
             template.type === 'rough-rect' ||
-            template.type === 'g',
+            template.type === 'g' ||
+            template.type === 'ellipse',
         )
       )
         return flattened();

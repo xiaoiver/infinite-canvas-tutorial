@@ -127,6 +127,37 @@ describe('design-to-code (codegen)', () => {
       );
     });
 
+    it('keeps ellipse geometry in HTML and React exports', () => {
+      const ellipse = {
+        id: 'avatar',
+        type: 'ellipse',
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        width: 80,
+        height: 40,
+        fills: [{ type: 'solid', value: '#2563eb' }],
+      } as SerializedNode;
+      const react = serializedNodesToCode([ellipse]);
+      expect(react).toContain('w-[80px]');
+      expect(react).toContain('h-[40px]');
+      expect(react).toContain('rounded-[50%]');
+      const html = serializedNodesToCode([ellipse], {
+        framework: 'html-css',
+      });
+      expect(html).toContain('border-radius: 50%');
+      expect(html).toContain('width: 80px');
+      expect(html).toContain('height: 40px');
+
+      const gradient = {
+        ...ellipse,
+        fills: [{ type: 'gradient', value: 'radial-gradient(red, blue)' }],
+      } as SerializedNode;
+      expect(serializedNodesToCode([gradient])).toContain(
+        'backgroundImage: "radial-gradient(red, blue)"',
+      );
+    });
+
     it('keeps a solid fill opacity on the paint instead of the whole node', () => {
       const card = {
         id: 'translucent-card',

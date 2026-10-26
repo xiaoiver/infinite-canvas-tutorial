@@ -330,7 +330,7 @@ function buildStyle(
     if (fillColor) style.color = fillColor;
   } else if (role !== 'image' && fillColor) {
     style.backgroundColor = fillColor;
-  } else if (role === 'container') {
+  } else if (role === 'container' || node.type === 'ellipse') {
     const gradient = singleCssGradientFill(fills);
     if (gradient) style.backgroundImage = { literal: gradient };
   }
@@ -344,7 +344,9 @@ function buildStyle(
     if (strokeColor) style.borderColor = strokeColor;
   }
 
-  if (node.cornerRadius !== undefined) {
+  if (node.type === 'ellipse') {
+    style.borderRadius = { literal: '50%' };
+  } else if (node.cornerRadius !== undefined) {
     const r = toStyleValue(node.cornerRadius as number);
     if (r) style.borderRadius = r;
   }
@@ -503,7 +505,7 @@ function colorTargetFor(
   if (attr === 'fills' || attr === 'fill') {
     if (role === 'image') return 'imageSrc';
     if (
-      role === 'container' &&
+      (role === 'container' || node.type === 'ellipse') &&
       singleCssGradientFill(asArray<SerializedFillLayerItem>(node.fills))
     )
       return 'backgroundImage';
@@ -946,7 +948,7 @@ function hasUnsupportedPaintRefOverrides(nodes: AnyNode[]): boolean {
       hasUnsupportedPaintFillOverride(
         template.fills,
         node.fills,
-        decideRole(template) === 'container',
+        decideRole(template) === 'container' || template.type === 'ellipse',
       )
     )
       return true;
@@ -961,7 +963,7 @@ function hasUnsupportedPaintRefOverrides(nodes: AnyNode[]): boolean {
         hasUnsupportedPaintFillOverride(
           child.fills,
           patch.fills,
-          decideRole(child) === 'container',
+          decideRole(child) === 'container' || child.type === 'ellipse',
         )
       );
     });

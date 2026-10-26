@@ -116,6 +116,37 @@ describe('design-to-code expanded ref reconciliation', () => {
     ).toBe(false);
   });
 
+  it('preserves a reusable ellipse gradient value override', () => {
+    const nodes = [
+      {
+        id: 'dot-template',
+        name: 'StatusDot',
+        type: 'ellipse',
+        x: 0,
+        y: 0,
+        width: 20,
+        height: 20,
+        zIndex: 0,
+        reusable: true,
+        fills: [{ type: 'gradient', value: 'radial-gradient(red, blue)' }],
+      },
+      {
+        id: 'dot-instance',
+        type: 'ref',
+        ref: 'dot-template',
+        x: 20,
+        y: 0,
+        zIndex: 1,
+        fills: [{ type: 'gradient', value: 'radial-gradient(green, blue)' }],
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('export function StatusDot');
+    expect(react).toContain('backgroundImage: statusDotFills');
+    expect(react).toContain('rounded-[50%]');
+    expect(react).toContain('statusDotFills="radial-gradient(green, blue)"');
+  });
+
   it('expands translucent solid fill edits so fill opacity is not lost', () => {
     const translucentSource = structuredClone(source);
     Object.assign(
