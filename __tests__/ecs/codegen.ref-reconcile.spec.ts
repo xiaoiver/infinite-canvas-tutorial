@@ -225,6 +225,40 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('strokeWidth={4}');
   });
 
+  it('expands a reusable path when its vector shadow changes', () => {
+    const nodes = [
+      {
+        id: 'shadow-template',
+        type: 'path',
+        name: 'ShadowShape',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 40,
+        zIndex: 0,
+        d: 'M 0 0 L 40 0 L 40 40 Z',
+        fills: [{ type: 'solid', value: '#ff0000' }],
+        dropShadowColor: '#000000',
+        dropShadowOffsetX: 2,
+        dropShadowOffsetY: 2,
+        dropShadowBlurRadius: 2,
+      },
+      {
+        id: 'shadow-instance',
+        type: 'ref',
+        ref: 'shadow-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        dropShadowBlurRadius: 8,
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<ShadowShape');
+    expect(react).toContain('drop-shadow(2px 2px 8px #000000)');
+  });
+
   it('keeps a child visibility edit as a component prop', () => {
     const current = structuredClone(baseline);
     current.find((node) => node.id === 'growth__price')!.visibility = 'hidden';

@@ -7,6 +7,51 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('applies a vector shadow to the SVG artwork without shadowing children', () => {
+      const path = {
+        id: 'shadow-path',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 60,
+        zIndex: 0,
+        d: 'M 0 0 L 80 0 L 40 60 Z',
+        fills: [{ type: 'solid', value: '#2563eb' }],
+        dropShadowColor: '#112233',
+        dropShadowOffsetX: 2,
+        dropShadowOffsetY: 4,
+        dropShadowBlurRadius: 6,
+      } as SerializedNode;
+      const react = serializedNodesToCode([path]);
+      expect(react).toContain(
+        '<g style={{ filter: "drop-shadow(2px 4px 6px #112233)" }}>',
+      );
+      expect(react).not.toContain('boxShadow');
+      const html = serializedNodesToCode([path], { framework: 'html-css' });
+      expect(html).toContain(
+        '<g style="filter: drop-shadow(2px 4px 6px #112233)">',
+      );
+      expect(html).not.toContain('box-shadow');
+
+      const withChild = serializedNodesToCode([
+        path,
+        {
+          id: 'caption',
+          type: 'text',
+          parentId: 'shadow-path',
+          x: 8,
+          y: 8,
+          zIndex: 1,
+          content: 'Caption',
+        } as SerializedNode,
+      ]);
+      expect(withChild).toContain('<g style={{ filter: "drop-shadow(');
+      expect(withChild).toContain('</svg>\n      <span');
+      expect(withChild).not.toContain('boxShadow');
+      expect(withChild).toContain('Caption');
+    });
+
     it('keeps inner and outer stroke alignment on closed paths', () => {
       const base = {
         id: 'ring',

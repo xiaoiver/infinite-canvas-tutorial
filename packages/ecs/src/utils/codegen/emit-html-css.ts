@@ -15,6 +15,7 @@ import {
   solidFillColorToCss,
   styleIRToCssDeclarations,
   styleValueToCss,
+  vectorDropShadowToCss,
 } from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
 
@@ -112,17 +113,25 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     const defs = definitions.length
       ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
+    const shadow = path.dropShadow
+      ? vectorDropShadowToCss(path.dropShadow, state.mode)
+      : undefined;
+    const pathPad = state.indent.repeat(depth + (shadow ? 2 : 1));
+    const artworkOpen = shadow
+      ? `${state.indent.repeat(depth + 1)}<g style="filter: ${escapeAttr(shadow)}">\n`
+      : '';
+    const artworkClose = shadow
+      ? `${state.indent.repeat(depth + 1)}</g>\n`
+      : '';
     const svgStyle = hasChildren
       ? ' style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none"'
       : style;
     const alignedStroke = alignment
-      ? `${state.indent.repeat(depth + 1)}<path d="${escapeAttr(path.d)}" fill="none" stroke="${escapeAttr(stroke)}"${attr('stroke-opacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('stroke-width', 2 * (path.strokeWidth ?? 0))}${attr('stroke-linecap', path.strokeLinecap)}${attr('stroke-linejoin', path.strokeLinejoin)}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr('stroke-dasharray', path.strokeDasharray)}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', path.markerStart && `url(#${path.markerStart.id})`)}${attr('marker-end', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clip-path' : 'mask', `url(#${alignment.id})`)} />\n`
+      ? `${pathPad}<path d="${escapeAttr(path.d)}" fill="none" stroke="${escapeAttr(stroke)}"${attr('stroke-opacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('stroke-width', 2 * (path.strokeWidth ?? 0))}${attr('stroke-linecap', path.strokeLinecap)}${attr('stroke-linejoin', path.strokeLinejoin)}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr('stroke-dasharray', path.strokeDasharray)}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', path.markerStart && `url(#${path.markerStart.id})`)}${attr('marker-end', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clip-path' : 'mask', `url(#${alignment.id})`)} />\n`
       : '';
     const svg = `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
       path.height,
-    )}" aria-hidden="true"${svgStyle}>\n${defs}${state.indent.repeat(
-      depth + 1,
-    )}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}"${attr('fill-opacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fill-rule="${
+    )}" aria-hidden="true"${svgStyle}>\n${defs}${artworkOpen}${pathPad}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}"${attr('fill-opacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fill-rule="${
       path.fillRule
     }" stroke="${alignment ? 'none' : escapeAttr(stroke)}"${attr('stroke-opacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr(
       'stroke-width',
@@ -133,7 +142,7 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     )}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr(
       'stroke-dasharray',
       path.strokeDasharray,
-    )}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', !alignment && path.markerStart ? `url(#${path.markerStart.id})` : undefined)}${attr('marker-end', !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined)} />\n${alignedStroke}${pad}</svg>`;
+    )}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', !alignment && path.markerStart ? `url(#${path.markerStart.id})` : undefined)}${attr('marker-end', !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined)} />\n${alignedStroke}${artworkClose}${pad}</svg>`;
     if (!hasChildren) return svg;
     const tag = node.element?.tag ?? 'div';
     const semanticAttr =

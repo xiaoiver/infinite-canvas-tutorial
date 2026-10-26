@@ -548,6 +548,30 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
         ? node.strokeDashoffset
         : undefined,
     strokeAlignment,
+    dropShadow:
+      typeof node.dropShadowColor === 'string' &&
+      node.dropShadowColor.trim() !== '' &&
+      node.dropShadowColor !== 'none'
+        ? {
+            offsetX:
+              typeof node.dropShadowOffsetX === 'number' &&
+              Number.isFinite(node.dropShadowOffsetX)
+                ? node.dropShadowOffsetX
+                : 0,
+            offsetY:
+              typeof node.dropShadowOffsetY === 'number' &&
+              Number.isFinite(node.dropShadowOffsetY)
+                ? node.dropShadowOffsetY
+                : 0,
+            blur:
+              typeof node.dropShadowBlurRadius === 'number' &&
+              Number.isFinite(node.dropShadowBlurRadius) &&
+              node.dropShadowBlurRadius > 0
+                ? node.dropShadowBlurRadius
+                : 0,
+            color: toStyleValue(node.dropShadowColor)!,
+          }
+        : undefined,
     markerStart:
       (stroke || strokeGradient) && strokeWidth > 0
         ? vectorMarker(node, 'start', strokeWidth)
@@ -1507,6 +1531,7 @@ function hasUnsupportedVectorRefOverrides(nodes: AnyNode[]): boolean {
     'strokeDasharray',
     'strokeDashoffset',
     'strokeAlignment',
+    ...SHADOW_KEYS,
     'markerStart',
     'markerEnd',
     'markerFactor',
