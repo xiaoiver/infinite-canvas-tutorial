@@ -78,6 +78,7 @@ const probe = {
         fontFamily: 'Georgia',
         textAlign: 'center',
         letterSpacing: 1.5,
+        lineHeight: 48,
       });
     });
   },

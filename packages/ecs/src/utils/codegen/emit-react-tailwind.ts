@@ -36,6 +36,7 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   fontFamily: 'fontFamily',
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
+  lineHeight: 'lineHeight',
 };
 
 interface TwResult {
@@ -206,7 +207,7 @@ function genTailwind(
     classes.push(
       `tracking-[${tw(styleValueToCss(style.letterSpacing, mode, true))}]`,
     );
-  if (style.lineHeight)
+  if (style.lineHeight && !skip.has('lineHeight'))
     classes.push(
       `leading-[${tw(styleValueToCss(style.lineHeight, mode, true))}]`,
     );
@@ -258,7 +259,14 @@ function renderAttributes(
   // 样式绑定 → inline style 引用 prop 标识符
   for (const b of node.bindings ?? []) {
     if (b.target === 'text') continue;
-    inline.push([TARGET_TO_CSS_KEY[b.target], b.prop]);
+    if (b.target === 'lineHeight') {
+      inline.push([
+        'lineHeight',
+        `typeof ${b.prop} === "number" ? (${b.prop} > 0 ? ${b.prop} + "px" : undefined) : ${b.prop}`,
+      ]);
+    } else {
+      inline.push([TARGET_TO_CSS_KEY[b.target], b.prop]);
+    }
   }
   if ((node.bindings ?? []).some((b) => b.target === 'borderWidth'))
     inline.push(['borderStyle', JSON.stringify('solid')]);
@@ -380,9 +388,13 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
         'opacity',
       ].includes(p.target)
         ? 'number'
-        : ['fontWeight', 'fontStyle', 'textAlign', 'letterSpacing'].includes(
-            p.target,
-          )
+        : [
+            'fontWeight',
+            'fontStyle',
+            'textAlign',
+            'letterSpacing',
+            'lineHeight',
+          ].includes(p.target)
         ? `CSSProperties['${p.target}']`
         : 'string';
       return `${state.indent}${p.name}?: ${tsType};`;
@@ -437,9 +449,13 @@ export function emitReactTailwind(
   if (
     ir.components.some((component) =>
       component.props.some((prop) =>
-        ['fontWeight', 'fontStyle', 'textAlign', 'letterSpacing'].includes(
-          prop.target,
-        ),
+        [
+          'fontWeight',
+          'fontStyle',
+          'textAlign',
+          'letterSpacing',
+          'lineHeight',
+        ].includes(prop.target),
       ),
     )
   ) {

@@ -50,6 +50,7 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   fontFamily: 'fontFamily',
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
+  lineHeight: 'lineHeight',
 };
 
 function asArray<T>(v: unknown): T[] {
@@ -247,7 +248,7 @@ function buildStyle(
     const ls = toStyleValue(node.letterSpacing as number);
     if (ls) style.letterSpacing = ls;
     const lh = toStyleValue(node.lineHeight as number);
-    if (lh) style.lineHeight = lh;
+    if (lh && lh.literal !== 0) style.lineHeight = lh;
   }
 
   return style;

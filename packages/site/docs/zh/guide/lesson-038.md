@@ -362,7 +362,7 @@ const code = serializedNodesToCode(nodes, {
 
 ### 组件与实例 {#design-to-code-components}
 
-在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、`fontSize`、`fontWeight`、`fontStyle`、`fontFamily`、`textAlign`、`letterSpacing`、`opacity`、`cornerRadius`、显式 `width` / `height`、`strokeWidth` 和 `strokes`）会被提升为 props，默认值取自模板：
+在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、`fontSize`、`fontWeight`、`fontStyle`、`fontFamily`、`textAlign`、`letterSpacing`、`lineHeight`、`opacity`、`cornerRadius`、显式 `width` / `height`、`strokeWidth` 和 `strokes`）会被提升为 props，默认值取自模板。`.ic` 中数值型 `lineHeight` 表示像素高度，因此 React 导出会补 `px`，不会将其当成无单位的行高倍率：
 
 ```tsx
 interface RoundButtonProps {
