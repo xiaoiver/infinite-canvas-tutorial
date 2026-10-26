@@ -343,6 +343,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
 | `rect` with one CSS gradient fill                    | CSS `background-image`                                |
 | `ellipse`                                            | CSS `border-radius: 50%`                              |
+| `rotation` / `scaleX` / `scaleY`                     | CSS `transform` around the local top-left corner      |
 | node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                   | text node; `$token` content → variable                |
 | text decoration line, style, color, and thickness    | CSS `text-decoration`                                 |
@@ -375,6 +376,8 @@ For a reusable image, changing only the image URL binds the instance's `fills` o
 A rectangle with one enabled `linear-gradient(...)` or `radial-gradient(...)` fill exports that gradient as `background-image`. Editing only its gradient value on an instance becomes a component prop. Other gradient formats, layered fills, fill opacity, and per-fill blend modes are not mapped to one CSS background image.
 
 A single solid fill with opacity below 1 exports through CSS `color-mix`, preserving the fill alpha without dimming child elements. Node opacity remains a separate CSS `opacity`. Editing a translucent fill on a reusable instance expands that instance so the generated paint retains its opacity.
+
+Node rotation (stored in radians) and `scaleX` / `scaleY` export as a CSS `rotate(...) scale(...)` transform with origin `0 0`, matching the canvas's local transform order. Editing an instance transform expands that instance so the changed geometry is included in the export.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 

@@ -347,6 +347,7 @@ const code = serializedNodesToCode(nodes, {
 | 带图片填充的 `rect`                                 | `<img src>` 与 `object-fit` / `object-position`       |
 | 单层 CSS 渐变填充的 `rect`                          | CSS `background-image`                                |
 | `ellipse`                                           | CSS `border-radius: 50%`                              |
+| `rotation` / `scaleX` / `scaleY`                    | 围绕局部左上角的 CSS `transform`                      |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
 | 文本装饰的线条、样式、颜色与粗细                    | CSS `text-decoration`                                 |
@@ -379,6 +380,8 @@ const code = serializedNodesToCode(nodes, {
 矩形只有一层启用的 `linear-gradient(...)` 或 `radial-gradient(...)` 填充时，会导出为 CSS `background-image`。实例仅修改渐变值时会生成组件参数。其他渐变格式、多层填充、填充透明度和单层混合模式暂不映射为单个 CSS 背景图。
 
 单层纯色填充的透明度会通过 CSS `color-mix` 导出，不会连同子元素一起变淡。节点整体透明度仍使用独立的 CSS `opacity`。可复用实例修改半透明填充时会展开，以保留生成样式中的填充透明度。
+
+节点旋转（弧度）与 `scaleX` / `scaleY` 会导出为以 `0 0` 为原点的 CSS `rotate(...) scale(...)`，顺序与画布局部变换一致。实例修改变换后会展开，以包含修改后的几何效果。
 
 节点级 `blendMode` 会导出为 CSS `mix-blend-mode`；实例修改它时也会生成组件参数。`light` 对应 CSS 的 `lighten`；没有 CSS 等价物的模式与 SVG 导出一致，按 `normal` 处理。填充层自身的 `blendMode` 用于该节点内部的多层填充合成，不会作为节点级 `mix-blend-mode` 导出。
 

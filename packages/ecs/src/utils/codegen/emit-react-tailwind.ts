@@ -183,6 +183,10 @@ function genTailwind(
     classes.push(`min-h-[${formatNumber(style.minHeight)}px]`);
   if (style.maxHeight !== undefined && !skip.has('maxHeight'))
     classes.push(`max-h-[${formatNumber(style.maxHeight)}px]`);
+  if (style.transform) {
+    inline.push(['transform', JSON.stringify(style.transform)]);
+    inline.push(['transformOrigin', JSON.stringify('0 0')]);
+  }
   if (style.objectFit)
     inline.push(['objectFit', JSON.stringify(style.objectFit)]);
   if (style.objectPosition)

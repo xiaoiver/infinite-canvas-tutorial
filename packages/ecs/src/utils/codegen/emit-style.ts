@@ -129,6 +129,10 @@ export function styleIRToCssDeclarations(
     push('min-height', `${formatNumber(style.minHeight)}px`);
   if (style.maxHeight !== undefined)
     push('max-height', `${formatNumber(style.maxHeight)}px`);
+  if (style.transform) {
+    push('transform', style.transform);
+    push('transform-origin', '0 0');
+  }
   if (style.objectFit) push('object-fit', style.objectFit);
   if (style.objectPosition) push('object-position', style.objectPosition);
   if (style.mixBlendMode) push('mix-blend-mode', style.mixBlendMode);

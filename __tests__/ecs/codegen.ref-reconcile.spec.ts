@@ -147,6 +147,30 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('statusDotFills="radial-gradient(green, blue)"');
   });
 
+  it('expands a rotated instance instead of dropping its transform', () => {
+    const directRef = structuredClone(source);
+    Object.assign(directRef.find((node) => node.id === 'growth')!, {
+      rotation: Math.PI / 2,
+      scaleX: -1,
+    });
+    const directCode = serializedNodesToCode(directRef);
+    expect(directCode).not.toContain('export function PlanCard');
+    expect(directCode).toContain(
+      'transform: "rotate(1.570796rad) scale(-1, 1)"',
+    );
+
+    const current = structuredClone(baseline);
+    Object.assign(current.find((node) => node.id === 'growth')!, {
+      rotation: Math.PI / 2,
+      scaleX: -1,
+    });
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.some((node) => node.type === 'ref')).toBe(false);
+    expect(serializedNodesToCode(recovered)).toContain(
+      'transform: "rotate(1.570796rad) scale(-1, 1)"',
+    );
+  });
+
   it('expands translucent solid fill edits so fill opacity is not lost', () => {
     const translucentSource = structuredClone(source);
     Object.assign(

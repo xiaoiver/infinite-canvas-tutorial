@@ -91,6 +91,8 @@ export interface StyleIR {
   maxWidth?: number;
   minHeight?: number;
   maxHeight?: number;
+  /** Local canvas transform; rotation is stored in radians. */
+  transform?: string;
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;

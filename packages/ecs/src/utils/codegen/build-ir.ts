@@ -253,6 +253,18 @@ function buildStyle(
 ): StyleIR {
   const style: StyleIR = {};
 
+  const rotation = Number.isFinite(node.rotation)
+    ? (node.rotation as number)
+    : 0;
+  const scaleX = Number.isFinite(node.scaleX) ? (node.scaleX as number) : 1;
+  const scaleY = Number.isFinite(node.scaleY) ? (node.scaleY as number) : 1;
+  const cssNumber = (value: number) => String(Number(value.toFixed(6)));
+  const transforms: string[] = [];
+  if (rotation !== 0) transforms.push(`rotate(${cssNumber(rotation)}rad)`);
+  if (scaleX !== 1 || scaleY !== 1)
+    transforms.push(`scale(${cssNumber(scaleX)}, ${cssNumber(scaleY)})`);
+  if (transforms.length) style.transform = transforms.join(' ');
+
   // flex 布局
   if (node.display === 'flex') {
     style.display = 'flex';
@@ -720,6 +732,7 @@ export function buildCodeIR(
   if (
     componentStructure === 'flatten' ||
     hasUnsupportedPaintRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedTransformRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
@@ -967,6 +980,25 @@ function hasUnsupportedPaintRefOverrides(nodes: AnyNode[]): boolean {
         )
       );
     });
+  });
+}
+
+/** Transform changes need a complete instance body; a style prop alone misses the root. */
+function hasUnsupportedTransformRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const changed = (template: AnyNode | undefined, patch: AnyNode) =>
+    !!template &&
+    (['rotation', 'scaleX', 'scaleY'] as const).some(
+      (key) =>
+        key in patch &&
+        !Object.is(patch[key], template[key] ?? (key === 'rotation' ? 0 : 1)),
+    );
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    if (changed(byId.get(node.ref as string), node)) return true;
+    return Object.entries(
+      (node.descendants ?? {}) as Record<string, AnyNode>,
+    ).some(([id, patch]) => changed(byId.get(id), patch));
   });
 }
 
