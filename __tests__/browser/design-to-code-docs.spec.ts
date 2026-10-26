@@ -115,9 +115,16 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await page.evaluate(() =>
     window.designToCodeDocs.setPricingAmountWeight(800),
   );
+  await page.evaluate(() =>
+    window.designToCodeDocs.setPricingAmountTypography(),
+  );
   await expect(code).toContainText('export function PricingPlanCard');
   await expect(code).toContainText('pricingPlanCardOpacity={0.70}');
   await expect(code).toContainText('planCardAmountFontWeight={800}');
+  await expect(code).toContainText('planCardAmountFontStyle="italic"');
+  await expect(code).toContainText('planCardAmountFontFamily="Georgia"');
+  await expect(code).toContainText('planCardAmountTextAlign="center"');
+  await expect(code).toContainText('planCardAmountLetterSpacing={1.50}');
   const [styledDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 .ic' }).click(),
@@ -133,11 +140,29 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     type: 'ref',
     width: 320,
     opacity: 0.7,
-    descendants: { 'plan-card-amount': { fontWeight: 800 } },
+    descendants: {
+      'plan-card-amount': {
+        fontWeight: 800,
+        fontStyle: 'italic',
+        fontFamily: 'Georgia',
+        textAlign: 'center',
+        letterSpacing: 1.5,
+        anchorX: expect.any(Number),
+      },
+    },
   });
+  expect(
+    styledDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ).descendants['plan-card-amount'].anchorX,
+  ).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'HTML/CSS' }).click();
   await expect(code).toContainText('opacity: 0.70');
   await expect(code).toContainText('font-weight: 800');
+  await expect(code).toContainText('font-style: italic');
+  await expect(code).toContainText('font-family: Georgia');
+  await expect(code).toContainText('text-align: center');
+  await expect(code).toContainText('letter-spacing: 1.50px');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.evaluate(() => window.designToCodeDocs.setPricingCardShadow());
   await expect(code).not.toContainText('export function PricingPlanCard');

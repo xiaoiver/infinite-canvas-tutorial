@@ -46,6 +46,10 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   strokeWidth: 'borderWidth',
   opacity: 'opacity',
   fontWeight: 'fontWeight',
+  fontStyle: 'fontStyle',
+  fontFamily: 'fontFamily',
+  textAlign: 'textAlign',
+  letterSpacing: 'letterSpacing',
 };
 
 function asArray<T>(v: unknown): T[] {
@@ -398,6 +402,19 @@ function templateDefaultValue(
   }
   if (attr === 'fontWeight') {
     return toStyleValue(desc.fontWeight as string | number) ?? { literal: 400 };
+  }
+  if (attr === 'fontStyle') {
+    return toStyleValue(desc.fontStyle as string) ?? { literal: 'normal' };
+  }
+  if (attr === 'fontFamily' || attr === 'textAlign') {
+    return toStyleValue(desc[attr] as string) ?? { literal: 'inherit' };
+  }
+  if (attr === 'letterSpacing') {
+    return (
+      toStyleValue(desc.letterSpacing as string | number) ?? {
+        literal: 'normal',
+      }
+    );
   }
   if (attr === 'fills' || attr === 'fill') {
     return (

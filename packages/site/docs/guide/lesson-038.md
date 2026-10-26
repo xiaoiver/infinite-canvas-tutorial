@@ -358,7 +358,7 @@ The three variable modes match the SVG export semantics:
 
 ### Components and instances {#design-to-code-components}
 
-With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, `fontSize`, `fontWeight`, `opacity`, `cornerRadius`, explicit `width`/`height`, `strokeWidth`, and `strokes`) seen across instances are lifted into props with the template value as default:
+With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, `fontSize`, `fontWeight`, `fontStyle`, `fontFamily`, `textAlign`, `letterSpacing`, `opacity`, `cornerRadius`, explicit `width`/`height`, `strokeWidth`, and `strokes`) seen across instances are lifted into props with the template value as default:
 
 ```tsx
 interface RoundButtonProps {
@@ -386,7 +386,7 @@ The following examples load an analytics dashboard, a SaaS pricing page, and a m
 
 The examples pass a node-ID keyed `semanticElements` map to `API.exportCode`. It turns selected canvas rectangles and text into HTML landmarks, headings, and `<button type="button">` controls in both exports. The map belongs to this demo's export configuration; wire button actions and navigation in your application.
 
-The pricing page uses one `reusable` plan-card template and three `ref` instances. The editor expands instances to render and edit them; this demo reconciles text, color, font weight, opacity, explicit size, and solid border edits back into instance overrides for the React and `.ic` downloads. The Growth card demonstrates an accent border. If a card's structure or an unsupported property changes, the export uses its expanded nodes so the result still matches the canvas.
+The pricing page uses one `reusable` plan-card template and three `ref` instances. The editor expands instances to render and edit them; this demo reconciles text, color, typography, opacity, explicit size, and solid border edits back into instance overrides for the React and `.ic` downloads. The Growth card demonstrates an accent border. If a card's structure or an unsupported property changes, the export uses its expanded nodes so the result still matches the canvas.
 
 <DesignToCodeInterfaces />
 

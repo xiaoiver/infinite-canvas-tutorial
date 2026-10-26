@@ -16,6 +16,11 @@ const PROP_KEYS = [
   'strokes',
   'opacity',
   'fontWeight',
+  'fontStyle',
+  'fontFamily',
+  'textAlign',
+  'letterSpacing',
+  'anchorX',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);
 const ROOT_POSITION_KEYS = new Set(['parentId', 'x', 'y', 'zIndex', 'name']);
@@ -77,6 +82,11 @@ function hasUnsupportedChange(
   const keys = new Set([...Object.keys(baseline), ...Object.keys(current)]);
   for (const key of keys) {
     if (key === 'id' || key === 'type' || TRANSIENT_KEYS.has(key)) continue;
+    if (key === 'anchorX' && baseline.type === 'text') {
+      if (documentValueEqual(baseline[key], current[key])) continue;
+      if (!documentValueEqual(baseline.textAlign, current.textAlign)) continue;
+      return true;
+    }
     if (PROP_KEYS.some((prop) => prop === key)) continue;
     if (root && ROOT_POSITION_KEYS.has(key)) continue;
     if (baseline.type === 'text' && TEXT_LAYOUT_KEYS.has(key)) continue;
@@ -89,9 +99,10 @@ function hasUnsupportedChange(
 
 /**
  * Recover a scene's reusable/ref source graph after the editor has expanded
- * instances for rendering. Supported text, color, font weight, opacity,
- * explicit size, and solid border edits become ref overrides. Other instance
- * or template edits fall back to the visible expanded graph.
+ * instances for rendering. Supported text, color, typography, opacity,
+ * explicit size, and solid border edits become ref overrides. Text alignment
+ * also preserves the editor's adjusted anchor. Other instance or template
+ * edits fall back to the visible expanded graph.
  */
 export function reconcileRefInstances(
   source: readonly SerializedNode[],
@@ -148,11 +159,14 @@ export function reconcileRefInstances(
         (key) =>
           !REF_IDENTITY_KEYS.has(key) &&
           !TRANSIENT_KEYS.has(key) &&
-          !PROP_KEYS.some((prop) => prop === key),
+          (!PROP_KEYS.some((prop) => prop === key) ||
+            (key === 'anchorX' && !('textAlign' in ref))),
       ) ||
       Object.values(ref.descendants ?? {}).some((patch) =>
         Object.keys(patch).some(
-          (key) => !PROP_KEYS.some((prop) => prop === key),
+          (key) =>
+            !PROP_KEYS.some((prop) => prop === key) ||
+            (key === 'anchorX' && !('textAlign' in patch)),
         ),
       )
     )
@@ -208,6 +222,14 @@ export function reconcileRefInstances(
         ...(node.id === ref.id ? next : descendants[templateId]),
       } as Record<string, unknown>;
       for (const key of PROP_KEYS) {
+        if (
+          key === 'anchorX' &&
+          template[key] === undefined &&
+          rendered[key] === 0
+        ) {
+          delete patch[key];
+          continue;
+        }
         if (DIMENSION_KEYS.has(key) && template[key] === undefined) {
           delete patch[key];
           continue;
