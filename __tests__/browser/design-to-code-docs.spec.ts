@@ -168,6 +168,31 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText('line-height: 48px');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.evaluate(() => window.designToCodeDocs.setPricingCardShadow());
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText(
+    'pricingPlanCardDropShadow="0px 6px 12px #000000"',
+  );
+  const [shadowDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const shadowDocument = JSON.parse(
+    await readFile((await shadowDownload.path())!, 'utf8'),
+  );
+  expect(
+    shadowDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({
+    type: 'ref',
+    dropShadowColor: '#000000',
+    dropShadowOffsetY: 6,
+    dropShadowBlurRadius: 12,
+  });
+  await page.getByRole('button', { name: 'HTML/CSS' }).click();
+  await expect(code).toContainText('box-shadow: 0px 6px 12px #000000');
+  await page.getByRole('button', { name: 'React + Tailwind' }).click();
+  await page.evaluate(() => window.designToCodeDocs.setPricingCardPadding(20));
   await expect(code).not.toContainText('export function PricingPlanCard');
   const [expandedDownload] = await Promise.all([
     page.waitForEvent('download'),
@@ -184,6 +209,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     type: 'rect',
     width: 320,
     opacity: 0.7,
+    padding: 20,
     dropShadowBlurRadius: 12,
   });
   await page.getByRole('button', { name: '运营数据面板' }).click();

@@ -124,7 +124,8 @@ export type CodeBindingTarget =
   | 'fontFamily'
   | 'textAlign'
   | 'letterSpacing'
-  | 'lineHeight';
+  | 'lineHeight'
+  | 'boxShadow';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

@@ -20,6 +20,7 @@ import {
 import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 import type { ThemeMode } from '../../components/Theme';
 import { toComponentName, toPropName } from './string-utils';
+import { styleValueToCss } from './emit-style';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -36,7 +37,7 @@ import type {
 
 type AnyNode = SerializedNode & Record<string, unknown>;
 
-/** `descendants` 中可识别为 prop 的属性键 → 绑定目标。 */
+/** 实例覆盖键（含合成的 `dropShadow`）→ prop 绑定目标。 */
 const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   content: 'text',
   fontSize: 'fontSize',
@@ -51,7 +52,36 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
   lineHeight: 'lineHeight',
+  dropShadow: 'boxShadow',
 };
+
+const SHADOW_KEYS = new Set([
+  'dropShadowColor',
+  'dropShadowOffsetX',
+  'dropShadowOffsetY',
+  'dropShadowBlurRadius',
+]);
+
+function shadowStyleValue(
+  template: AnyNode,
+  patch: Record<string, unknown> | undefined,
+  mode: CodeVariablesMode,
+): StyleValue {
+  const shadow = { ...template, ...patch };
+  const color = toStyleValue(shadow.dropShadowColor as string);
+  if (!color || color.literal === 'none') return { literal: 'none' };
+  const px = (raw: unknown) =>
+    styleValueToCss(
+      toStyleValue(raw as string | number) ?? { literal: 0 },
+      mode,
+      true,
+    );
+  return {
+    literal: `${px(shadow.dropShadowOffsetX)} ${px(
+      shadow.dropShadowOffsetY,
+    )} ${px(shadow.dropShadowBlurRadius)} ${styleValueToCss(color, mode)}`,
+  };
+}
 
 function asArray<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
@@ -221,7 +251,7 @@ function buildStyle(
     typeof node.dropShadowBlurRadius === 'number'
   ) {
     const color = toStyleValue(node.dropShadowColor as string);
-    if (color) {
+    if (color && color.literal !== 'none') {
       style.boxShadow = {
         offsetX: (node.dropShadowOffsetX as number) ?? 0,
         offsetY: (node.dropShadowOffsetY as number) ?? 0,
@@ -261,6 +291,7 @@ interface BuildContext {
   templateToComponentName: Map<string, string>;
   /** 模板 id → 该模板被实例覆盖过的 (key) 集合，用于推断 props。 */
   overridesByTemplate: Map<string, Set<string>>;
+  variablesMode: CodeVariablesMode;
 }
 
 function sortChildren(nodes: AnyNode[]): AnyNode[] {
@@ -278,6 +309,7 @@ function buildCodeNode(
       node as RefSerializedNode,
       ctx.templateToComponentName,
       ctx.byId,
+      ctx.variablesMode,
     );
     if (instance) return instance;
   }
@@ -483,6 +515,7 @@ export function buildCodeIR(
       roots: buildRootsExcludingReusable(
         expanded as AnyNode[],
         options.semanticElements ?? {},
+        variablesMode,
       ),
       variables,
       themeMode,
@@ -503,6 +536,7 @@ export function buildCodeIR(
 function buildRootsExcludingReusable(
   nodes: AnyNode[],
   semanticElements: Record<string, CodeSemanticElement>,
+  variablesMode: CodeVariablesMode,
 ): CodeNode[] {
   const byId = new Map<string, AnyNode>(nodes.map((n) => [n.id, n]));
   const childrenByParent = new Map<string | undefined, AnyNode[]>();
@@ -517,6 +551,7 @@ function buildRootsExcludingReusable(
     byId,
     templateToComponentName: new Map(),
     overridesByTemplate: new Map(),
+    variablesMode,
   };
   const roots = sortChildren(
     nodes.filter((n) => !n.parentId || !byId.has(n.parentId)),
@@ -562,6 +597,10 @@ function buildPreserve(
       ) {
         continue;
       }
+      if (SHADOW_KEYS.has(attr)) {
+        set.add(`${templateId}::dropShadow`);
+        continue;
+      }
       if (
         attr in OVERRIDABLE_KEY_TO_TARGET ||
         attr === 'fills' ||
@@ -575,6 +614,10 @@ function buildPreserve(
     const descendants = refn.descendants ?? {};
     for (const [descId, patch] of Object.entries(descendants)) {
       for (const attr of Object.keys(patch)) {
+        if (SHADOW_KEYS.has(attr)) {
+          set.add(`${descId}::dropShadow`);
+          continue;
+        }
         if (
           attr in OVERRIDABLE_KEY_TO_TARGET ||
           attr === 'fills' ||
@@ -613,6 +656,7 @@ function buildPreserve(
     byId,
     templateToComponentName,
     overridesByTemplate,
+    variablesMode,
   };
   const components: CodeComponentDef[] = [];
   for (const n of nodes) {
@@ -621,7 +665,7 @@ function buildPreserve(
 
     const bindings = overridesByTemplate.get(n.id) ?? new Set<string>();
     const root = buildCodeNode(n, ctx, bindings);
-    const props = buildComponentProps(n, bindings, byId);
+    const props = buildComponentProps(n, bindings, byId, variablesMode);
     components.push({ name, templateId: n.id, root, props });
   }
 
@@ -656,6 +700,7 @@ function buildPreserve(
         },
         templateToComponentName,
         byId,
+        variablesMode,
       );
       if (instance) {
         roots.push(instance);
@@ -675,6 +720,7 @@ function buildComponentProps(
   template: AnyNode,
   bindings: Set<string>,
   byId: Map<string, AnyNode>,
+  variablesMode: CodeVariablesMode,
 ): CodeComponentProp[] {
   const props: CodeComponentProp[] = [];
   const seen = new Set<string>();
@@ -698,9 +744,12 @@ function buildComponentProps(
     props.push({
       name,
       target,
-      defaultValue: templateDefaultValue(template, descId, attr, byId) ?? {
-        literal: '',
-      },
+      defaultValue:
+        attr === 'dropShadow'
+          ? shadowStyleValue(desc, undefined, variablesMode)
+          : templateDefaultValue(template, descId, attr, byId) ?? {
+              literal: '',
+            },
     });
   }
   return props;
@@ -712,6 +761,7 @@ function buildInstanceNode(
   },
   templateToComponentName: Map<string, string>,
   byId: Map<string, AnyNode>,
+  variablesMode: CodeVariablesMode,
 ): CodeNode | undefined {
   const componentName = templateToComponentName.get(refn.ref);
   if (!componentName) {
@@ -737,6 +787,13 @@ function buildInstanceNode(
 
   const collectFrom = (descId: string, patch: Record<string, unknown>) => {
     const descNode = byId.get(descId);
+    if (descNode && Object.keys(patch).some((key) => SHADOW_KEYS.has(key))) {
+      props[propNameFor(descNode, 'dropShadow')] = shadowStyleValue(
+        descNode,
+        patch,
+        variablesMode,
+      );
+    }
     for (const attr of Object.keys(patch)) {
       if (
         !(attr in OVERRIDABLE_KEY_TO_TARGET) &&

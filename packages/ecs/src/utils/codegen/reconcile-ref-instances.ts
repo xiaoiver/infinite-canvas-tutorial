@@ -21,6 +21,10 @@ const PROP_KEYS = [
   'textAlign',
   'letterSpacing',
   'lineHeight',
+  'dropShadowColor',
+  'dropShadowOffsetX',
+  'dropShadowOffsetY',
+  'dropShadowBlurRadius',
   'anchorX',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);
@@ -101,9 +105,9 @@ function hasUnsupportedChange(
 /**
  * Recover a scene's reusable/ref source graph after the editor has expanded
  * instances for rendering. Supported text, color, typography, opacity,
- * explicit size, and solid border edits become ref overrides. Text alignment
- * also preserves the editor's adjusted anchor. Other instance or template
- * edits fall back to the visible expanded graph.
+ * explicit size, solid border, and drop shadow edits become ref overrides.
+ * Text alignment also preserves the editor's adjusted anchor. Other instance
+ * or template edits fall back to the visible expanded graph.
  */
 export function reconcileRefInstances(
   source: readonly SerializedNode[],
