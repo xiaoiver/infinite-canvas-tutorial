@@ -70,7 +70,7 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       : 'none';
     const attr = (name: string, value: string | number | undefined) =>
       value === undefined ? '' : ` ${name}="${escapeAttr(String(value))}"`;
-    return `${pad}<svg viewBox="0 0 ${formatNumber(path.width)} ${formatNumber(
+    return `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
       path.height,
     )}" aria-hidden="true"${style}>\n${state.indent.repeat(
       depth + 1,

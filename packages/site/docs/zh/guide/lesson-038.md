@@ -348,6 +348,7 @@ const code = serializedNodesToCode(nodes, {
 | 单层 CSS 渐变填充的 `rect`                          | CSS `background-image`                                |
 | `ellipse`                                           | CSS `border-radius: 50%`                              |
 | 带纯色填充与描边的叶子 `path`                       | 保留矢量轮廓的内联 SVG `<path>`                       |
+| 带纯色描边的叶子 `line` / `polyline`                | 保留开放线段的内联 SVG `<path>`                       |
 | `rect` / `ellipse` + `clipMode: clip`               | 在裁剪元素上使用 CSS `overflow: hidden`               |
 | `rotation` / `scaleX` / `scaleY`                    | 围绕局部左上角的 CSS `transform`                      |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
@@ -391,6 +392,8 @@ const code = serializedNodesToCode(nodes, {
 节点级 `visibility` 会导出为 CSS `visibility`，隐藏节点仍占据布局空间。默认的 `inherited` 状态对应 CSS 继承。复用组件实例及其子节点修改可见性时，会生成组件参数。
 
 没有子节点且 `d` 数据有效的 Path 会导出为内联 SVG，不再用矩形占位。首层启用的纯色填充和描边会保留颜色与透明度，并导出填充规则、描边宽度、端帽、连接、斜接限制和虚线参数。复用实例修改 Path 的填描或几何时会展开实例，确保 SVG 对应编辑结果。渐变、多层填描、描边对齐、标记、Path 子节点和滤镜仍需单独实现。
+
+没有子节点的 Line 与 Polyline 复用同一套 SVG 导出：局部端点或点列表会转换为无填充的开放路径。SVG 视口会跟随几何的局部原点，并让零宽或零高的轴居中，因此偏移的 Path、细水平线和竖线也能正常显示。复用实例修改线段几何或描边时也会展开。箭头标记和其他线条效果仍需单独实现。
 
 矩形和椭圆的 `clipMode: clip` 会在导出的 HTML 和 React 代码中裁剪子内容。圆角矩形保留圆角，椭圆使用 `border-radius: 50%`。复用实例修改裁剪模式时会展开实例以保留该修改。`erase` 和 `soft` 蒙版无法直接映射为 CSS `overflow`，暂不作为裁剪导出。
 
