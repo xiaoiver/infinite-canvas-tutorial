@@ -715,6 +715,45 @@ describe('design-to-code expanded ref reconciliation', () => {
     );
   });
 
+  it('preserves font variant and kerning edits as CSS-valued props', () => {
+    const current = structuredClone(baseline);
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      fontVariant: 'small-caps',
+      fontKerning: false,
+    });
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      descendants: {
+        price: { fontVariant: 'small-caps', fontKerning: false },
+      },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain("priceFontVariant?: CSSProperties['fontVariant']");
+    expect(react).toContain("priceFontKerning?: CSSProperties['fontKerning']");
+    expect(react).toContain('priceFontVariant="small-caps"');
+    expect(react).toContain('priceFontKerning="none"');
+    expect(react).toContain('fontVariant: priceFontVariant');
+    expect(react).toContain('fontKerning: priceFontKerning');
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('font-variant: small-caps');
+    expect(html).toContain('font-kerning: none');
+
+    const defaults = structuredClone(source);
+    Object.assign(defaults.find((node) => node.id === 'price')!, {
+      fontKerning: true,
+    });
+    const ref = defaults.find((node) => node.id === 'growth')!;
+    if (ref.type !== 'ref') throw new Error('Missing ref');
+    ref.descendants = {
+      ...ref.descendants,
+      price: { ...ref.descendants?.price, fontKerning: false },
+    };
+    expect(serializedNodesToCode(defaults)).toContain(
+      'priceFontKerning = "normal"',
+    );
+  });
+
   it('falls back for an anchor move without a text alignment edit', () => {
     const current = structuredClone(baseline);
     const price = current.find((node) => node.id === 'growth__price')!;

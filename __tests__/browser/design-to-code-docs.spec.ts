@@ -121,6 +121,9 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await page.evaluate(() =>
     window.designToCodeDocs.setPricingAmountDecoration(),
   );
+  await page.evaluate(() =>
+    window.designToCodeDocs.setPricingAmountFontFeatures(),
+  );
   await expect(code).toContainText('export function PricingPlanCard');
   await expect(code).toContainText('pricingPlanCardOpacity={0.70}');
   await expect(code).toContainText('planCardAmountFontWeight={800}');
@@ -132,6 +135,8 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText(
     'planCardAmountTextDecoration="wavy underline #ffcc66 2px"',
   );
+  await expect(code).toContainText('planCardAmountFontVariant="small-caps"');
+  await expect(code).toContainText('planCardAmountFontKerning="none"');
   const [styledDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 .ic' }).click(),
@@ -159,6 +164,8 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
         decorationStyle: 'wavy',
         decorationColor: '#ffcc66',
         decorationThickness: 2,
+        fontVariant: 'small-caps',
+        fontKerning: false,
         anchorX: expect.any(Number),
       },
     },
@@ -179,6 +186,8 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toContainText(
     'text-decoration: wavy underline #ffcc66 2px',
   );
+  await expect(code).toContainText('font-variant: small-caps');
+  await expect(code).toContainText('font-kerning: none');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.evaluate(() => window.designToCodeDocs.setPricingCardShadow());
   await expect(code).toContainText('export function PricingPlanCard');

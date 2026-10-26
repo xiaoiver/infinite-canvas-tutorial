@@ -39,6 +39,8 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   opacity: 'opacity',
   fontWeight: 'fontWeight',
   fontStyle: 'fontStyle',
+  fontVariant: 'fontVariant',
+  fontKerning: 'fontKerning',
   fontFamily: 'fontFamily',
   textAlign: 'textAlign',
   letterSpacing: 'letterSpacing',
@@ -255,6 +257,10 @@ function genTailwind(
     classes.push(`font-[${style.fontWeight}]`);
   if (style.fontStyle === 'italic' && !skip.has('fontStyle'))
     classes.push('italic');
+  if (style.fontVariant && !skip.has('fontVariant'))
+    inline.push(['fontVariant', JSON.stringify(style.fontVariant)]);
+  if (style.fontKerning && !skip.has('fontKerning'))
+    inline.push(['fontKerning', JSON.stringify(style.fontKerning)]);
   if (style.textDecoration && !skip.has('textDecoration'))
     inline.push([
       'textDecoration',
@@ -477,6 +483,8 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
         : [
             'fontWeight',
             'fontStyle',
+            'fontVariant',
+            'fontKerning',
             'textAlign',
             'letterSpacing',
             'lineHeight',
@@ -550,6 +558,8 @@ export function emitReactTailwind(
         [
           'fontWeight',
           'fontStyle',
+          'fontVariant',
+          'fontKerning',
           'textAlign',
           'letterSpacing',
           'lineHeight',

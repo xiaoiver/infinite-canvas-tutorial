@@ -19,6 +19,8 @@ const PROP_KEYS = [
   'blendMode',
   'fontWeight',
   'fontStyle',
+  'fontVariant',
+  'fontKerning',
   'fontFamily',
   'textAlign',
   'letterSpacing',
