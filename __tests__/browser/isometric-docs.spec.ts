@@ -2,6 +2,58 @@ import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 import type {} from './fixtures/isometric-docs';
 
+test('auto orbit shares the animation clock with the spotlight and yields to editing', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  const initialEye = await page.evaluate(() =>
+    window.isometricDocs.cameraEye(),
+  );
+  const initialDocument = await page.evaluate(() =>
+    window.isometricDocs.documentNodes(),
+  );
+  const orbit = page.getByRole('button', { name: '自动环绕' });
+  const spotlight = page.getByRole('button', { name: '动态聚光灯' });
+  await orbit.click();
+  await expect(orbit).toHaveAttribute('aria-pressed', 'true');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.cameraEye()[0]))
+    .not.toBeCloseTo(initialEye[0], 1);
+  expect(
+    await page.evaluate(() => window.isometricDocs.documentNodes()),
+  ).toEqual(initialDocument);
+  await spotlight.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.sweepLight()))
+    .toMatchObject({ intensity: 8, castShadow: true });
+  await orbit.click();
+  await expect(orbit).toHaveAttribute('aria-pressed', 'false');
+  const stoppedEye = await page.evaluate(() =>
+    window.isometricDocs.cameraEye(),
+  );
+  await page.evaluate(() => window.isometricDocs.settle());
+  expect(await page.evaluate(() => window.isometricDocs.cameraEye())).toEqual(
+    stoppedEye,
+  );
+  expect(await page.evaluate(() => window.isometricDocs.cubeMeshStable())).toBe(
+    true,
+  );
+  await orbit.click();
+  const canvas = page.locator('ic-spectrum-canvas');
+  const box = (await canvas.boundingBox())!;
+  await page.mouse.click(box.x + 15, box.y + box.height - 15);
+  await expect(orbit).toHaveAttribute('aria-pressed', 'false');
+  await spotlight.click();
+  expect(errors).toEqual([]);
+});
+
 test('moving spotlight updates light and shadows without rebuilding the cube', async ({
   page,
 }) => {

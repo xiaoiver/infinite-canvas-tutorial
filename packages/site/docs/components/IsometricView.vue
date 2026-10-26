@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+  Camera3D,
   Mesh3DNode,
   Pen,
   Transform3D,
@@ -39,6 +40,7 @@ const steppedTones = ref(false);
 const showOutlines = ref(false);
 const showRimLight = ref(false);
 const sweepLight = ref(false);
+const autoOrbit = ref(false);
 type Callout = {
   id: string;
   title: string;
@@ -78,9 +80,19 @@ let pathEdit:
     }
   | undefined;
 let anchorFrame = 0;
-let lightFrame = 0;
+let animationFrame = 0;
 let lightElapsed = 0;
-let lightLastFrame = 0;
+let animationLastFrame = 0;
+let orbitPose:
+  | {
+      center: [number, number, number];
+      distance: number;
+      elevation: number;
+      azimuth: number;
+      orthographicHeight: number;
+      clearColor: boolean;
+    }
+  | undefined;
 
 function applyCamera() {
   api?.setCamera3D({
@@ -91,9 +103,13 @@ function applyCamera() {
     clearColor: false,
   });
 }
-watch([preset, height, distance], applyCamera);
+watch([preset, height, distance], () => {
+  stopAutoOrbit();
+  applyCamera();
+});
 
 function setTool(next: Tool) {
+  stopAutoOrbit();
   if (pathEdit) finishPathEdit(true);
   drawStart = undefined;
   previewPoints.value = '';
@@ -235,38 +251,104 @@ function placeSweepLight(time: number) {
   );
 }
 
-function animateSweepLight(now: number) {
-  if (!sweepLight.value || document.hidden || !api) {
-    lightFrame = 0;
-    return;
-  }
-  if (lightLastFrame && now - lightLastFrame < 33) {
-    lightFrame = requestAnimationFrame(animateSweepLight);
-    return;
-  }
-  if (lightLastFrame) lightElapsed += Math.min(now - lightLastFrame, 50) / 1000;
-  lightLastFrame = now;
-  placeSweepLight(lightElapsed);
-  lightFrame = requestAnimationFrame(animateSweepLight);
+function placeOrbit() {
+  if (!api || !orbitPose) return;
+  const {
+    center,
+    distance,
+    elevation,
+    azimuth,
+    orthographicHeight,
+    clearColor,
+  } = orbitPose;
+  const horizontal = distance * Math.cos(elevation);
+  api.setCamera3D({
+    projection: 'orthographic',
+    center,
+    eye: [
+      center[0] + horizontal * Math.cos(azimuth),
+      center[1] + horizontal * Math.sin(azimuth),
+      center[2] + distance * Math.sin(elevation),
+    ],
+    up: [0, 0, 1],
+    orthographicHeight,
+    clearColor,
+  });
 }
 
-function syncSweepLight() {
-  if (lightFrame) cancelAnimationFrame(lightFrame);
-  lightFrame = 0;
-  lightLastFrame = 0;
-  if (sweepLight.value && !document.hidden && api)
-    lightFrame = requestAnimationFrame(animateSweepLight);
-  else if (!sweepLight.value) placeSweepLight(lightElapsed);
+function animateScene(now: number) {
+  if ((!sweepLight.value && !autoOrbit.value) || document.hidden || !api) {
+    animationFrame = 0;
+    return;
+  }
+  if (animationLastFrame && now - animationLastFrame < 33) {
+    animationFrame = requestAnimationFrame(animateScene);
+    return;
+  }
+  const delta = animationLastFrame
+    ? Math.min(now - animationLastFrame, 50) / 1000
+    : 0;
+  animationLastFrame = now;
+  if (sweepLight.value) {
+    lightElapsed += delta;
+    placeSweepLight(lightElapsed);
+  }
+  if (autoOrbit.value && orbitPose) {
+    orbitPose.azimuth += delta * 0.35;
+    placeOrbit();
+  }
+  animationFrame = requestAnimationFrame(animateScene);
+}
+
+function syncAnimation() {
+  if (animationFrame) cancelAnimationFrame(animationFrame);
+  animationFrame = 0;
+  animationLastFrame = 0;
+  if ((sweepLight.value || autoOrbit.value) && !document.hidden && api)
+    animationFrame = requestAnimationFrame(animateScene);
 }
 
 function toggleSweepLight() {
   sweepLight.value = !sweepLight.value;
   placeSweepLight(lightElapsed);
-  syncSweepLight();
+  syncAnimation();
+}
+
+function stopAutoOrbit() {
+  if (!autoOrbit.value) return;
+  autoOrbit.value = false;
+  orbitPose = undefined;
+  syncAnimation();
+}
+
+function toggleAutoOrbit() {
+  if (autoOrbit.value) {
+    stopAutoOrbit();
+    return;
+  }
+  const editor = api;
+  if (!editor) return;
+  const canvas = editor.getCanvas();
+  if (!canvas.has(Camera3D)) return;
+  const camera = canvas.read(Camera3D);
+  const center = [...camera.center] as [number, number, number];
+  const offset = camera.eye.map((value, axis) => value - center[axis]);
+  const distance = Math.hypot(...offset);
+  if (!Number.isFinite(distance) || distance <= 0) return;
+  orbitPose = {
+    center,
+    distance,
+    elevation: Math.atan2(offset[2], Math.hypot(offset[0], offset[1])),
+    azimuth: Math.atan2(offset[1], offset[0]),
+    orthographicHeight: camera.orthographicHeight,
+    clearColor: camera.clearColor,
+  };
+  autoOrbit.value = true;
+  syncAnimation();
 }
 
 function onVisibilityChange() {
-  syncSweepLight();
+  syncAnimation();
 }
 
 function refreshPathHandles() {
@@ -397,6 +479,7 @@ function finishPathEdit(cancelled: boolean) {
 }
 
 function onAnchorDown(event: PointerEvent, meta: PathControlHandleMeta) {
+  stopAutoOrbit();
   const node = ringNode();
   const viewport = pointerViewport(event);
   if (!node || !viewport || event.button !== 0 || !event.isPrimary || pathEdit)
@@ -496,6 +579,7 @@ function syncPreviewBounds() {
 }
 
 function onPointerDown(event: PointerEvent) {
+  stopAutoOrbit();
   if (
     tool.value !== Pen.DRAW_BOX_3D ||
     !api ||
@@ -681,7 +765,7 @@ onMounted(async () => {
       api?.updateNodes([...scene, ...svgNodes()]);
       // Establish a document baseline so a single anchor drag can be undone.
       api?.record();
-      api?.runAtNextTick(syncSweepLight);
+      api?.runAtNextTick(syncAnimation);
     });
     anchorFrame = requestAnimationFrame(animatePathHandles);
   };
@@ -691,7 +775,7 @@ onMounted(async () => {
 });
 onUnmounted(() => {
   cancelAnimationFrame(anchorFrame);
-  if (lightFrame) cancelAnimationFrame(lightFrame);
+  if (animationFrame) cancelAnimationFrame(animationFrame);
   document.removeEventListener('visibilitychange', onVisibilityChange);
   if (wrapper.value && onReady)
     wrapper.value.removeEventListener(Event.READY, onReady as EventListener);
@@ -746,6 +830,9 @@ onUnmounted(() => {
       </button>
       <button :aria-pressed="sweepLight" @click="toggleSweepLight">
         {{ props.locale === 'zh' ? '动态聚光灯' : 'Moving spotlight' }}
+      </button>
+      <button :aria-pressed="autoOrbit" @click="toggleAutoOrbit">
+        {{ props.locale === 'zh' ? '自动环绕' : 'Auto orbit' }}
       </button>
     </div>
     <label
@@ -810,6 +897,7 @@ onUnmounted(() => {
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointercancel="onPointerCancel"
+      @wheel="stopAutoOrbit"
     />
     <svg
       class="isometric-preview"
