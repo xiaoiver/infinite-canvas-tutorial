@@ -106,6 +106,7 @@ export function styleIRToCssDeclarations(
     if (style.columnGap !== undefined)
       push('column-gap', `${formatNumber(style.columnGap)}px`);
   }
+  if (style.display === 'inline-block') push('display', 'inline-block');
   if (style.flexGrow !== undefined)
     push('flex-grow', formatNumber(style.flexGrow));
   if (style.flexShrink !== undefined)
@@ -129,6 +130,10 @@ export function styleIRToCssDeclarations(
     push('min-height', `${formatNumber(style.minHeight)}px`);
   if (style.maxHeight !== undefined)
     push('max-height', `${formatNumber(style.maxHeight)}px`);
+  if (style.transform) {
+    push('transform', style.transform);
+    push('transform-origin', '0 0');
+  }
   if (style.objectFit) push('object-fit', style.objectFit);
   if (style.objectPosition) push('object-position', style.objectPosition);
   if (style.mixBlendMode) push('mix-blend-mode', style.mixBlendMode);
@@ -177,7 +182,7 @@ export function styleIRToCssDeclarations(
   if (style.textAlign) push('text-align', style.textAlign);
   if (style.whiteSpace) push('white-space', style.whiteSpace);
   if (style.textWrapWidth !== undefined) {
-    push('display', 'inline-block');
+    if (style.display !== 'inline-block') push('display', 'inline-block');
     push('overflow-wrap', 'anywhere');
     push('max-width', `${formatNumber(style.textWrapWidth)}px`);
   }

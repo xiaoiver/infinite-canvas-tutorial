@@ -158,6 +158,48 @@ describe('design-to-code (codegen)', () => {
       );
     });
 
+    it('exports rotation and flip around the canvas local origin', () => {
+      const rotated = {
+        id: 'rotated-card',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        width: 100,
+        height: 40,
+        rotation: Math.PI / 4,
+        scaleX: -1,
+        scaleY: 0.5,
+      } as SerializedNode;
+      const react = serializedNodesToCode([rotated]);
+      expect(react).toContain(
+        'transform: "rotate(0.785398rad) scale(-1, 0.5)"',
+      );
+      expect(react).toContain('transformOrigin: "0 0"');
+      const html = serializedNodesToCode([rotated], {
+        framework: 'html-css',
+      });
+      expect(html).toContain('transform: rotate(0.785398rad) scale(-1, 0.5)');
+      expect(html).toContain('transform-origin: 0 0');
+
+      expect(
+        serializedNodesToCode([
+          { ...rotated, rotation: 0, scaleX: 1, scaleY: 1 } as SerializedNode,
+        ]),
+      ).not.toContain('transformOrigin');
+
+      const text = {
+        ...rotated,
+        id: 'rotated-label',
+        type: 'text',
+        content: 'Tilted',
+      } as SerializedNode;
+      expect(serializedNodesToCode([text])).toContain('inline-block');
+      expect(
+        serializedNodesToCode([text], { framework: 'html-css' }),
+      ).toContain('display: inline-block');
+    });
+
     it('keeps a solid fill opacity on the paint instead of the whole node', () => {
       const card = {
         id: 'translucent-card',

@@ -150,6 +150,7 @@ function genTailwind(
     if (style.columnGap !== undefined && !skip.has('columnGap'))
       classes.push(`gap-x-[${formatNumber(style.columnGap)}px]`);
   }
+  if (style.display === 'inline-block') classes.push('inline-block');
   if (style.flexGrow !== undefined && !skip.has('flexGrow'))
     classes.push(style.flexGrow === 1 ? 'grow' : `grow-[${style.flexGrow}]`);
   if (style.flexShrink === 0 && !skip.has('flexShrink'))
@@ -183,6 +184,10 @@ function genTailwind(
     classes.push(`min-h-[${formatNumber(style.minHeight)}px]`);
   if (style.maxHeight !== undefined && !skip.has('maxHeight'))
     classes.push(`max-h-[${formatNumber(style.maxHeight)}px]`);
+  if (style.transform) {
+    inline.push(['transform', JSON.stringify(style.transform)]);
+    inline.push(['transformOrigin', JSON.stringify('0 0')]);
+  }
   if (style.objectFit)
     inline.push(['objectFit', JSON.stringify(style.objectFit)]);
   if (style.objectPosition)
@@ -304,7 +309,7 @@ function genTailwind(
     );
   }
   if (style.textWrapWidth !== undefined) {
-    classes.push('inline-block');
+    if (style.display !== 'inline-block') classes.push('inline-block');
     inline.push(['overflowWrap', JSON.stringify('anywhere')]);
     if (!skip.has('textWrapWidth'))
       classes.push(`max-w-[${formatNumber(style.textWrapWidth)}px]`);
