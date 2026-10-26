@@ -58,6 +58,9 @@ export interface StyleValue {
 /** 结构化、框架无关的样式。颜色/尺寸等可能携带设计变量引用。 */
 export interface StyleIR {
   display?: 'flex' | 'inline-block';
+  position?: 'relative' | 'absolute';
+  left?: number;
+  top?: number;
   flexDirection?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
   alignItems?: 'center' | 'flex-start' | 'flex-end' | 'stretch' | 'baseline';
   alignSelf?:

@@ -52,6 +52,30 @@ const source: SerializedNode[] = [
 describe('design-to-code expanded ref reconciliation', () => {
   const baseline = expandRefSerializedNodes(structuredClone(source), source);
 
+  it('positions a preserved component inside a free-layout parent', () => {
+    const nodes = structuredClone(source);
+    const parent = nodes.find((node) => node.id === 'page')!;
+    delete parent.display;
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    instance.x = 42;
+    instance.y = 64;
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('absolute left-[42px] top-[64px]');
+    expect(react).toContain('<PlanCard');
+    expect(react).not.toContain('growthX');
+  });
+
+  it('expands an instance whose free-layout child moved', () => {
+    const nodes = structuredClone(source);
+    delete nodes.find((node) => node.id === 'card-template')!.display;
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    if (instance.type !== 'ref') throw new Error('Missing instance');
+    instance.descendants = { price: { x: 30, y: 12 } };
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<PlanCard');
+    expect(react).toContain('absolute left-[30px] top-[12px]');
+  });
+
   it('expands a component instance when its clipping mode changes', () => {
     const nodes = structuredClone(source);
     const instance = nodes.find((node) => node.id === 'growth')!;

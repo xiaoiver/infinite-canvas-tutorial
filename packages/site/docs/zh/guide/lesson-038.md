@@ -384,6 +384,8 @@ const code = serializedNodesToCode(nodes, {
 
 节点旋转（弧度）与 `scaleX` / `scaleY` 会导出为以 `0 0` 为原点的 CSS `rotate(...) scale(...)`，顺序与画布局部变换一致。实例修改变换后会展开，以包含修改后的几何效果。
 
+非 flex 容器中的子节点会把画布局部 `x` / `y` 导出为相对于容器的 CSS `left` / `top`；flex 子节点仍按正常 flex 流布局。非 flex 容器里的复用组件实例会增加定位包装元素，修改实例内部子节点的位置时则展开实例以保留编辑。顶层节点的场景坐标尚未导出，因此分别导出的多个顶层节点暂时无法保留彼此间距。
+
 矩形和椭圆的 `clipMode: clip` 会在导出的 HTML 和 React 代码中裁剪子内容。圆角矩形保留圆角，椭圆使用 `border-radius: 50%`。复用实例修改裁剪模式时会展开实例以保留该修改。`erase` 和 `soft` 蒙版无法直接映射为 CSS `overflow`，暂不作为裁剪导出。
 
 节点级 `blendMode` 会导出为 CSS `mix-blend-mode`；实例修改它时也会生成组件参数。`light` 对应 CSS 的 `lighten`；没有 CSS 等价物的模式与 SVG 导出一致，按 `normal` 处理。填充层自身的 `blendMode` 用于该节点内部的多层填充合成，不会作为节点级 `mix-blend-mode` 导出。

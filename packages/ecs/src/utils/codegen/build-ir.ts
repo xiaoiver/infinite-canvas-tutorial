@@ -450,6 +450,7 @@ function buildCodeNode(
   node: AnyNode,
   ctx: BuildContext,
   bindingsForTemplate?: Set<string>,
+  inFreeLayout = false,
 ): CodeNode {
   if (node.type === 'ref') {
     const instance = buildInstanceNode(
@@ -458,11 +459,17 @@ function buildCodeNode(
       ctx.byId,
       ctx.variablesMode,
     );
-    if (instance) return instance;
+    if (instance) {
+      if (inFreeLayout) positionFreeChild(instance.style, node);
+      return instance;
+    }
   }
   const role = decideRole(node);
   const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   const style = buildStyle(node, role, children.length > 0);
+  if (inFreeLayout) positionFreeChild(style, node);
+  else if (children.length > 0 && node.display !== 'flex')
+    style.position = 'relative';
   const codeNode: CodeNode = {
     role,
     id: node.id,
@@ -511,9 +518,18 @@ function buildCodeNode(
   }
 
   codeNode.children = children.map((c) =>
-    buildCodeNode(c, ctx, bindingsForTemplate),
+    buildCodeNode(c, ctx, bindingsForTemplate, node.display !== 'flex'),
   );
   return codeNode;
+}
+
+/** Canvas coordinates are local to the parent when Yoga is not laying out children. */
+function positionFreeChild(style: StyleIR, node: AnyNode): void {
+  style.position = 'absolute';
+  style.left =
+    typeof node.x === 'number' && Number.isFinite(node.x) ? node.x : 0;
+  style.top =
+    typeof node.y === 'number' && Number.isFinite(node.y) ? node.y : 0;
 }
 
 function colorTargetFor(
@@ -741,6 +757,7 @@ export function buildCodeIR(
     hasUnsupportedPaintRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTransformRefOverrides(working as AnyNode[]) ||
     hasUnsupportedClipRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedFreeLayoutRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
@@ -1021,6 +1038,31 @@ function hasUnsupportedClipRefOverrides(nodes: AnyNode[]): boolean {
     return Object.entries(
       (node.descendants ?? {}) as Record<string, AnyNode>,
     ).some(([id, patch]) => changed(byId.get(id), patch));
+  });
+}
+
+/** Template child coordinates and display mode cannot be changed by current style props. */
+function hasUnsupportedFreeLayoutRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const displayChanged = (template: AnyNode | undefined, patch: AnyNode) =>
+    !!template && 'display' in patch && patch.display !== template.display;
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    if (displayChanged(byId.get(node.ref as string), node)) return true;
+    return Object.entries(
+      (node.descendants ?? {}) as Record<string, AnyNode>,
+    ).some(([id, patch]) => {
+      const template = byId.get(id);
+      if (!template) return false;
+      if (displayChanged(template, patch)) return true;
+      const parent = byId.get(template.parentId as string);
+      return (
+        !!parent &&
+        parent.display !== 'flex' &&
+        (('x' in patch && patch.x !== template.x) ||
+          ('y' in patch && patch.y !== template.y))
+      );
+    });
   });
 }
 
