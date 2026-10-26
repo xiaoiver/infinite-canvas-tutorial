@@ -118,6 +118,9 @@ export interface StyleIR {
   /** Canvas text preserves hard breaks; wrapped text also has a fixed line width. */
   whiteSpace?: 'pre' | 'pre-wrap';
   textWrapWidth?: number;
+  /** Canvas applies this limit only to wrapped text with a positive wrap width. */
+  maxLines?: number;
+  textOverflow?: 'ellipsis' | 'clip';
   letterSpacing?: StyleValue;
   lineHeight?: StyleValue;
   textDecoration?: {

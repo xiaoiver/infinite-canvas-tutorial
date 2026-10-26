@@ -156,6 +156,15 @@ export function styleIRToCssDeclarations(
     push('overflow-wrap', 'anywhere');
     push('max-width', `${formatNumber(style.textWrapWidth)}px`);
   }
+  if (style.maxLines !== undefined && style.textOverflow === 'ellipsis') {
+    push('display', '-webkit-box');
+    push('-webkit-box-orient', 'vertical');
+    push('-webkit-line-clamp', String(style.maxLines));
+    push('overflow', 'hidden');
+  } else if (style.maxLines !== undefined && style.textOverflow === 'clip') {
+    push('max-height', `calc(${style.maxLines} * 1lh)`);
+    push('overflow', 'hidden');
+  }
   if (style.letterSpacing)
     push('letter-spacing', styleValueToCss(style.letterSpacing, mode, true));
   if (style.lineHeight)

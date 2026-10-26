@@ -284,6 +284,15 @@ function genTailwind(
     if (!skip.has('textWrapWidth'))
       classes.push(`max-w-[${formatNumber(style.textWrapWidth)}px]`);
   }
+  if (style.maxLines !== undefined && style.textOverflow === 'ellipsis') {
+    inline.push(['display', JSON.stringify('-webkit-box')]);
+    inline.push(['WebkitBoxOrient', JSON.stringify('vertical')]);
+    inline.push(['WebkitLineClamp', String(style.maxLines)]);
+    inline.push(['overflow', JSON.stringify('hidden')]);
+  } else if (style.maxLines !== undefined && style.textOverflow === 'clip') {
+    inline.push(['maxHeight', JSON.stringify(`calc(${style.maxLines} * 1lh)`)]);
+    inline.push(['overflow', JSON.stringify('hidden')]);
+  }
   if (style.letterSpacing && !skip.has('letterSpacing'))
     classes.push(
       `tracking-[${tw(styleValueToCss(style.letterSpacing, mode, true))}]`,

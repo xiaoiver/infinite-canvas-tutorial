@@ -808,6 +808,43 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(directReact).toContain('whitespace-pre');
   });
 
+  it('expands a reusable text when its truncation settings change', () => {
+    const wrappedSource = structuredClone(source);
+    Object.assign(wrappedSource.find((node) => node.id === 'price')!, {
+      wordWrap: true,
+      wordWrapWidth: 80,
+      maxLines: 2,
+      textOverflow: 'ellipsis',
+    });
+    const wrappedBaseline = expandRefSerializedNodes(
+      structuredClone(wrappedSource),
+      wrappedSource,
+    );
+    const current = structuredClone(wrappedBaseline);
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      maxLines: 1,
+      textOverflow: 'clip',
+    });
+    const recovered = reconcileRefInstances(
+      wrappedSource,
+      wrappedBaseline,
+      current,
+    );
+    expect(recovered.some((node) => node.type === 'ref')).toBe(false);
+    expect(serializedNodesToCode(recovered)).toContain(
+      'maxHeight: "calc(1 * 1lh)"',
+    );
+
+    const directRef = structuredClone(wrappedSource);
+    const growth = directRef.find((node) => node.id === 'growth')!;
+    if (growth.type !== 'ref') throw new Error('Missing ref');
+    growth.descendants = {
+      ...growth.descendants,
+      price: { ...growth.descendants?.price, maxLines: 1 },
+    };
+    expect(serializedNodesToCode(directRef)).toContain('WebkitLineClamp: 1');
+  });
+
   it('falls back for an anchor move without a text alignment edit', () => {
     const current = structuredClone(baseline);
     const price = current.find((node) => node.id === 'growth__price')!;
