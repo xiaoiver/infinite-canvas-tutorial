@@ -24,6 +24,7 @@ export * from './string-utils';
 export { buildCodeIR } from './build-ir';
 export { emitReactTailwind } from './emit-react-tailwind';
 export { emitHtmlCss } from './emit-html-css';
+export { reconcileRefInstances } from './reconcile-ref-instances';
 
 /**
  * 主转译函数：`.ic` 节点 → 目标框架源码字符串。
