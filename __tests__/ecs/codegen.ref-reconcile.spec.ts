@@ -65,6 +65,21 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).not.toContain('growthX');
   });
 
+  it('keeps a top-level component instance beside a sized scene root', () => {
+    const nodes = structuredClone(source);
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    delete instance.parentId;
+    instance.x = 450;
+    instance.y = 25;
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('className="relative" style={{ width: 630, height: 300 }}');
+    expect(react).toContain('absolute left-[450px] top-[25px]');
+    expect(react).toContain('<PlanCard');
+    const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+    expect(html).toContain('position: relative; width: 630px; height: 300px');
+    expect(html).toContain('position: absolute; left: 450px; top: 25px');
+  });
+
   it('expands an instance whose free-layout child moved', () => {
     const nodes = structuredClone(source);
     delete nodes.find((node) => node.id === 'card-template')!.display;

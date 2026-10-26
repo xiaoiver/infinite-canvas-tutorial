@@ -761,13 +761,15 @@ export function buildCodeIR(
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
+    const roots = buildRootsExcludingReusable(
+      expanded as AnyNode[],
+      options.semanticElements ?? {},
+      variablesMode,
+    );
     return {
       components: [],
-      roots: buildRootsExcludingReusable(
-        expanded as AnyNode[],
-        options.semanticElements ?? {},
-        variablesMode,
-      ),
+      roots,
+      rootFrame: positionSceneRoots(roots, expanded as AnyNode[]),
       variables,
       themeMode,
       variablesMode,
@@ -808,6 +810,49 @@ function buildRootsExcludingReusable(
     nodes.filter((n) => !n.parentId || !byId.has(n.parentId)),
   ).filter((n) => !n.reusable);
   return roots.map((n) => buildCodeNode(n, ctx));
+}
+
+/** Keep spacing between scene roots when all have a measurable frame. */
+function positionSceneRoots(
+  roots: CodeNode[],
+  nodes: AnyNode[],
+): CodeIR['rootFrame'] {
+  if (roots.length < 2) return undefined;
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const frames = roots.map((root) => {
+    const node = byId.get(root.id);
+    const template = node?.type === 'ref' ? byId.get(node.ref as string) : null;
+    const x = node?.x;
+    const y = node?.y;
+    const width = node?.width ?? template?.width;
+    const height = node?.height ?? template?.height;
+    if (
+      ![x, y, width, height].every(
+        (value) => typeof value === 'number' && Number.isFinite(value),
+      ) ||
+      (width as number) <= 0 ||
+      (height as number) <= 0
+    )
+      return undefined;
+    return {
+      x: x as number,
+      y: y as number,
+      width: width as number,
+      height: height as number,
+    };
+  });
+  if (frames.some((frame) => !frame)) return undefined;
+  const sized = frames as Array<NonNullable<(typeof frames)[number]>>;
+  const minX = Math.min(...sized.map((frame) => frame.x));
+  const minY = Math.min(...sized.map((frame) => frame.y));
+  const maxX = Math.max(...sized.map((frame) => frame.x + frame.width));
+  const maxY = Math.max(...sized.map((frame) => frame.y + frame.height));
+  roots.forEach((root, index) => {
+    root.style.position = 'absolute';
+    root.style.left = sized[index].x - minX;
+    root.style.top = sized[index].y - minY;
+  });
+  return { width: maxX - minX, height: maxY - minY };
 }
 
 function buildPreserve(
@@ -972,7 +1017,14 @@ function buildPreserve(
     roots.push(buildCodeNode(n, ctx));
   }
 
-  return { components, roots, variables, themeMode, variablesMode };
+  return {
+    components,
+    roots,
+    rootFrame: positionSceneRoots(roots, nodes),
+    variables,
+    themeMode,
+    variablesMode,
+  };
 }
 
 function hasUnsupportedPaintRefOverrides(nodes: AnyNode[]): boolean {

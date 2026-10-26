@@ -6,6 +6,46 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('keeps relative spacing between multiple sized scene roots', () => {
+      const nodes = [
+        {
+          id: 'first',
+          type: 'rect',
+          x: -40,
+          y: 20,
+          width: 80,
+          height: 60,
+          zIndex: 0,
+        },
+        {
+          id: 'second',
+          type: 'ellipse',
+          x: 100,
+          y: 65,
+          width: 50,
+          height: 50,
+          zIndex: 1,
+        },
+      ] as SerializedNode[];
+      const react = serializedNodesToCode(nodes);
+      expect(react).toContain(
+        'className="relative" style={{ width: 190, height: 95 }}',
+      );
+      expect(react).toContain('absolute left-[0px] top-[0px]');
+      expect(react).toContain('absolute left-[140px] top-[45px]');
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('position: relative; width: 190px; height: 95px');
+      expect(html).toContain('position: absolute; left: 140px; top: 45px');
+
+      expect(serializedNodesToCode([nodes[0]])).not.toContain('height: 95');
+      expect(
+        serializedNodesToCode([
+          nodes[0],
+          { ...nodes[1], width: undefined } as SerializedNode,
+        ]),
+      ).not.toContain('className="relative"');
+    });
+
     it('keeps local positions in a free-layout frame without disturbing flex children', () => {
       const nodes = [
         {

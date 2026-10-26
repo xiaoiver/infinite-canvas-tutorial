@@ -602,12 +602,19 @@ export function emitReactTailwind(
   const componentBlocks = ir.components.map((c) => renderComponent(c, state));
 
   const rootBody = ir.roots.map((n) => renderNode(n, state, 2)).join('\n');
-  const rootWrapped =
-    ir.roots.length === 1
-      ? rootBody
-      : `${indent.repeat(2)}<>\n${ir.roots
-          .map((n) => renderNode(n, state, 3))
-          .join('\n')}\n${indent.repeat(2)}</>`;
+  const rootWrapped = ir.rootFrame
+    ? `${indent.repeat(
+        2,
+      )}<div className="relative" style={{ width: ${formatNumber(
+        ir.rootFrame.width,
+      )}, height: ${formatNumber(ir.rootFrame.height)} }}>\n${ir.roots
+        .map((n) => renderNode(n, state, 3))
+        .join('\n')}\n${indent.repeat(2)}</div>`
+    : ir.roots.length === 1
+    ? rootBody
+    : `${indent.repeat(2)}<>\n${ir.roots
+        .map((n) => renderNode(n, state, 3))
+        .join('\n')}\n${indent.repeat(2)}</>`;
 
   const topComponent = `export function ${
     pascalCase(topName) || 'Design'
