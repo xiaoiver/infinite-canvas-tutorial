@@ -344,6 +344,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect`/`g` + `display: flex`                              | `<div>` + flex 工具类（`flex items-center …`）        |
 | Flex 方向、对齐、尺寸、间距和内边距                    | Tailwind flex 工具类 / CSS                            |
 | `cornerRadius` / `fills` / `strokes` / `dropShadow`       | `rounded-* / bg-* / border / shadow-*`                |
+| 带图片填充的 `rect`                                      | `<img src>` 与 `object-fit` / `object-position`      |
 | `text` + `content`                                        | 文本节点；`$token` 文本 → 变量                        |
 | `iconfont`（lucide）                                      | `lucide-react` `<Search />`                           |
 | `iconfont`（其他族）                                      | `@iconify/react` `<Icon icon="family:name" />`        |
@@ -363,6 +364,8 @@ const code = serializedNodesToCode(nodes, {
 ### 组件与实例 {#design-to-code-components}
 
 在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、排版、`opacity`、`cornerRadius`、显式 `width` / `height`、`minWidth` / `maxWidth` / `minHeight` / `maxHeight`、`padding`、`margin`、flex 间距、`flexDirection`、`alignItems`、`justifyContent`、`flexWrap`、`alignSelf`、`flexGrow`、`flexShrink`、`flexBasis`、`strokeWidth`、`strokes` 和投影字段）会被提升为 props，默认值取自模板。`.ic` 中数值型 `lineHeight` 表示像素高度，因此 React 导出会补 `px`，不会将其当成无单位的行高倍率。四边间距数组会转为 CSS 简写字符串，投影字段会合并为一个 `boxShadow` prop：
+
+对于可复用图片，仅修改图片 URL 时，实例的 `fills` 覆盖会绑定到组件的 `<img src>` 参数。修改填充类型或图片绘制选项时，实例会展开，使生成的元素和 `object-fit` / `object-position` 与编辑结果一致。
 
 ```tsx
 interface RoundButtonProps {

@@ -202,6 +202,96 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(html).toContain('max-height: 120px');
   });
 
+  it('binds an image fill override to the component image source', () => {
+    const imageSource: SerializedNode[] = [
+      {
+        id: 'photo-template',
+        type: 'rect',
+        name: 'PhotoCard',
+        x: 0,
+        y: 0,
+        width: 160,
+        height: 100,
+        zIndex: 0,
+        reusable: true,
+        fills: [{ type: 'image', value: 'https://example.com/default.png' }],
+      } as SerializedNode,
+      {
+        id: 'photo-instance',
+        type: 'ref',
+        ref: 'photo-template',
+        x: 200,
+        y: 0,
+        zIndex: 1,
+        fills: [{ type: 'image', value: 'https://example.com/first.png' }],
+      } as SerializedNode,
+    ];
+    const baseline = expandRefSerializedNodes(
+      structuredClone(imageSource),
+      imageSource,
+    );
+    const current = structuredClone(baseline);
+    Object.assign(current.find((node) => node.id === 'photo-instance')!, {
+      fills: [{ type: 'image', value: 'https://example.com/second.png' }],
+    });
+    const recovered = reconcileRefInstances(imageSource, baseline, current);
+    expect(
+      recovered.find((node) => node.id === 'photo-instance'),
+    ).toMatchObject({
+      type: 'ref',
+      fills: [{ type: 'image', value: 'https://example.com/second.png' }],
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('photoCardFills?: string');
+    expect(react).toContain('src={photoCardFills}');
+    expect(react).toContain('photoCardFills="https://example.com/second.png"');
+    expect(react).not.toContain('style={{ src:');
+
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('src="https://example.com/second.png"');
+
+    Object.assign(current.find((node) => node.id === 'photo-instance')!, {
+      fills: [{ type: 'solid', value: '#ff0000' }],
+    });
+    expect(
+      reconcileRefInstances(imageSource, baseline, current).some(
+        (node) => node.type === 'ref',
+      ),
+    ).toBe(false);
+    const changedFillSource = structuredClone(imageSource);
+    Object.assign(
+      changedFillSource.find((node) => node.id === 'photo-instance')!,
+      { fills: [{ type: 'solid', value: '#ff0000' }] },
+    );
+    const changedFillReact = serializedNodesToCode(changedFillSource);
+    expect(changedFillReact).not.toContain('export function PhotoCard');
+    expect(changedFillReact).toContain('bg-[#ff0000]');
+
+    const changedFitSource = structuredClone(imageSource);
+    Object.assign(
+      changedFitSource.find((node) => node.id === 'photo-instance')!,
+      {
+        fills: [
+          {
+            type: 'image',
+            value: 'https://example.com/first.png',
+            objectFit: 'cover',
+            objectPosition: 'left top',
+          },
+        ],
+      },
+    );
+    const changedFitReact = serializedNodesToCode(changedFitSource);
+    expect(changedFitReact).not.toContain('export function PhotoCard');
+    expect(changedFitReact).toContain('objectFit: "cover"');
+    expect(changedFitReact).toContain('objectPosition: "left top"');
+    const changedFitHtml = serializedNodesToCode(changedFitSource, {
+      framework: 'html-css',
+    });
+    expect(changedFitHtml).toContain('object-fit: cover');
+    expect(changedFitHtml).toContain('object-position: left top');
+  });
+
   it('keeps flex alignment and direction edits as instance props', () => {
     const current = structuredClone(baseline);
     const card = current.find((node) => node.id === 'growth')!;

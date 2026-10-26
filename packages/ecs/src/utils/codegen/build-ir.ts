@@ -21,6 +21,7 @@ import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 import type { ThemeMode } from '../../components/Theme';
 import { toComponentName, toPropName } from './string-utils';
 import { boxToCss, styleValueToCss } from './emit-style';
+import { hasUnsupportedImageFillOverride } from './image-fill-override';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -243,6 +244,15 @@ function buildStyle(
   if (typeof node.maxWidth === 'number') style.maxWidth = node.maxWidth;
   if (typeof node.minHeight === 'number') style.minHeight = node.minHeight;
   if (typeof node.maxHeight === 'number') style.maxHeight = node.maxHeight;
+  if (role === 'image') {
+    const imageFill = asArray<SerializedFillLayerItem>(node.fills).find(
+      (fill) => fill.type === 'image' && fill.enabled !== false,
+    );
+    if (imageFill?.type === 'image') {
+      style.objectFit = imageFill.objectFit;
+      style.objectPosition = imageFill.objectPosition;
+    }
+  }
 
   const fills = asArray<SerializedFillLayerItem>(node.fills);
   const fillColor = primaryColorFromLayers(fills);
@@ -394,6 +404,7 @@ function colorTargetFor(
   role: CodeNodeRole,
 ): CodeBindingTarget | undefined {
   if (attr === 'fills' || attr === 'fill') {
+    if (role === 'image') return 'imageSrc';
     return role === 'text' || role === 'icon' ? 'color' : 'backgroundColor';
   }
   if (attr === 'strokes' || attr === 'stroke') {
@@ -417,12 +428,17 @@ function propNameFor(node: AnyNode, attr: string): string {
 function overrideStyleValue(
   patch: Record<string, unknown> | undefined,
   attr: string,
+  role: CodeNodeRole,
 ): StyleValue | undefined {
   if (!patch) {
     return undefined;
   }
   if (attr === 'fills' || attr === 'fill') {
     const fills = asArray<SerializedFillLayerItem>(patch.fills);
+    if (role === 'image')
+      return (
+        primaryImageFromLayers(fills) ?? toStyleValue(patch.fill as string)
+      );
     return primaryColorFromLayers(fills) ?? toStyleValue(patch.fill as string);
   }
   if (attr === 'strokes' || attr === 'stroke') {
@@ -511,6 +527,7 @@ function templateDefaultValue(
   }
   if (attr === 'fills' || attr === 'fill') {
     return (
+      primaryImageFromLayers(asArray<SerializedFillLayerItem>(desc.fills)) ??
       primaryColorFromLayers(asArray<SerializedFillLayerItem>(desc.fills)) ?? {
         literal: '#000000',
       }
@@ -568,7 +585,10 @@ export function buildCodeIR(
     );
   }
 
-  if (componentStructure === 'flatten') {
+  if (
+    componentStructure === 'flatten' ||
+    hasUnsupportedImageRefOverrides(working as AnyNode[])
+  ) {
     const expanded = expandRefSerializedNodes(working, working);
     return {
       components: [],
@@ -776,6 +796,31 @@ function buildPreserve(
   return { components, roots, variables, themeMode, variablesMode };
 }
 
+function hasUnsupportedImageRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    const template = byId.get(node.ref as string);
+    if (!template) return false;
+    if (
+      'fills' in node &&
+      hasUnsupportedImageFillOverride(template.fills, node.fills)
+    )
+      return true;
+    const descendants = node.descendants as
+      | Record<string, Record<string, unknown>>
+      | undefined;
+    return Object.entries(descendants ?? {}).some(([id, patch]) => {
+      const child = byId.get(id);
+      return (
+        child &&
+        'fills' in patch &&
+        hasUnsupportedImageFillOverride(child.fills, patch.fills)
+      );
+    });
+  });
+}
+
 function buildComponentProps(
   template: AnyNode,
   bindings: Set<string>,
@@ -864,7 +909,11 @@ function buildInstanceNode(
       ) {
         continue;
       }
-      const sv = overrideStyleValue(patch, attr);
+      const sv = overrideStyleValue(
+        patch,
+        attr,
+        descNode ? decideRole(descNode) : 'shape',
+      );
       if (sv && descNode) {
         props[propNameFor(descNode, attr)] = sv;
       }

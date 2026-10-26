@@ -85,6 +85,8 @@ export function styleIRToCssDeclarations(
     push('min-height', `${formatNumber(style.minHeight)}px`);
   if (style.maxHeight !== undefined)
     push('max-height', `${formatNumber(style.maxHeight)}px`);
+  if (style.objectFit) push('object-fit', style.objectFit);
+  if (style.objectPosition) push('object-position', style.objectPosition);
 
   if (style.backgroundColor)
     push('background-color', styleValueToCss(style.backgroundColor, mode));

@@ -91,6 +91,8 @@ export interface StyleIR {
   maxWidth?: number;
   minHeight?: number;
   maxHeight?: number;
+  objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+  objectPosition?: string;
   backgroundColor?: StyleValue;
   borderRadius?: StyleValue;
   borderWidth?: StyleValue;
@@ -117,6 +119,7 @@ export type CodeNodeRole = 'container' | 'text' | 'icon' | 'image' | 'shape';
 /** 组件实例的某条属性覆盖会绑定到一个 prop；emitter 据此把 prop 注入对应位置。 */
 export type CodeBindingTarget =
   | 'text'
+  | 'imageSrc'
   | 'backgroundColor'
   | 'color'
   | 'fontSize'

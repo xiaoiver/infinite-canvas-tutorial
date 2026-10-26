@@ -340,6 +340,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect`/`g` + `display: flex`                              | `<div>` + flex utilities (`flex items-center …`)      |
 | Flex direction, alignment, sizing, gaps, and padding     | Tailwind flex utilities / CSS                         |
 | `cornerRadius` / `fills` / `strokes` / `dropShadow`       | `rounded-* / bg-* / border / shadow-*`                |
+| `rect` with an image fill                                | `<img src>` with `object-fit` / `object-position`     |
 | `text` + `content`                                        | text node; `$token` content → variable                |
 | `iconfont` (lucide)                                       | `lucide-react` `<Search />`                           |
 | `iconfont` (other families)                               | `@iconify/react` `<Icon icon="family:name" />`        |
@@ -359,6 +360,8 @@ The three variable modes match the SVG export semantics:
 ### Components and instances {#design-to-code-components}
 
 With `componentStructure: 'preserve'` (the default, and Pencil's selling point), each `reusable` root becomes a component and every `ref` becomes an instance. Overridable attributes (`content`, `fills`, typography, `opacity`, `cornerRadius`, explicit `width`/`height`, `minWidth`/`maxWidth`/`minHeight`/`maxHeight`, `padding`, `margin`, flex gaps, `flexDirection`, `alignItems`, `justifyContent`, `flexWrap`, `alignSelf`, `flexGrow`, `flexShrink`, `flexBasis`, `strokeWidth`, `strokes`, and drop-shadow fields) seen across instances are lifted into props with the template value as default. Numeric `lineHeight` values are pixel heights in `.ic`, so React output adds `px` instead of treating them as unitless multipliers. Spacing arrays become CSS shorthand strings, and the shadow fields combine into one `boxShadow` prop:
+
+For a reusable image, changing only the image URL binds the instance's `fills` override to the component's `<img src>` prop. Changing the fill type or image paint options expands the instance so the generated element and `object-fit` / `object-position` reflect the edited image.
 
 ```tsx
 interface RoundButtonProps {
