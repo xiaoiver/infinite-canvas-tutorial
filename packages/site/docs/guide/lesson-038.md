@@ -382,7 +382,7 @@ export function Design() {
 
 ### Practical interface examples {#practical-interface-examples}
 
-The following examples load an analytics dashboard, a SaaS pricing page, and a mobile checkout screen into the **IC editor canvas**. All three scenes use nested flex layouts and semantic color variables; the checkout uses a narrow 390 × 844 artboard. Select and edit nodes on the canvas, then refresh, copy, or download code generated from the canvas's current document with `API.exportCode`. Switch designs to load another editable scene.
+The following examples load an analytics dashboard, a SaaS pricing page, and a mobile checkout screen into the **IC editor canvas**. All three scenes use nested flex layouts and semantic color variables; the checkout uses a narrow 390 × 844 artboard. Select and edit nodes on the canvas, then refresh, copy, or download code generated from the canvas's current document with `API.exportCode`. With HTML/CSS selected, use **HTML preview** to view the generated page at its artboard size in a sandboxed frame. Switch designs to load another editable scene.
 
 <DesignToCodeInterfaces />
 

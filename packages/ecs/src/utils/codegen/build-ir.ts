@@ -139,7 +139,11 @@ function decideRole(node: AnyNode): CodeNodeRole {
 }
 
 /** 把节点上的样式相关字段映射为结构化 {@link StyleIR}。 */
-function buildStyle(node: AnyNode, role: CodeNodeRole): StyleIR {
+function buildStyle(
+  node: AnyNode,
+  role: CodeNodeRole,
+  hasChildren: boolean,
+): StyleIR {
   const style: StyleIR = {};
 
   // flex 布局
@@ -164,10 +168,15 @@ function buildStyle(node: AnyNode, role: CodeNodeRole): StyleIR {
   const margin = normalizeBox(node.margin as number | number[] | undefined);
   if (margin) style.margin = margin;
 
+  // 反序列化会把未指定尺寸的 flex 容器补为 0；有子节点时应让 CSS 按内容计算。
+  const autoSizedContainer =
+    role === 'container' && node.display === 'flex' && hasChildren;
   // 尺寸：容器/图片/形状写显式宽高；文本随内容，不强制尺寸
   if (role !== 'text') {
-    if (typeof node.width === 'number') style.width = node.width;
-    if (typeof node.height === 'number') style.height = node.height;
+    if (typeof node.width === 'number' && (!autoSizedContainer || node.width))
+      style.width = node.width;
+    if (typeof node.height === 'number' && (!autoSizedContainer || node.height))
+      style.height = node.height;
   }
   if (typeof node.minWidth === 'number') style.minWidth = node.minWidth;
   if (typeof node.maxWidth === 'number') style.maxWidth = node.maxWidth;
@@ -251,7 +260,8 @@ function buildCodeNode(
   bindingsForTemplate?: Set<string>,
 ): CodeNode {
   const role = decideRole(node);
-  const style = buildStyle(node, role);
+  const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
+  const style = buildStyle(node, role, children.length > 0);
   const codeNode: CodeNode = {
     role,
     id: node.id,
@@ -298,7 +308,6 @@ function buildCodeNode(
     }
   }
 
-  const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   codeNode.children = children.map((c) =>
     buildCodeNode(c, ctx, bindingsForTemplate),
   );
