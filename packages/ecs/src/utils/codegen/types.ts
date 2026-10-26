@@ -130,7 +130,11 @@ export type CodeBindingTarget =
   | 'margin'
   | 'gap'
   | 'rowGap'
-  | 'columnGap';
+  | 'columnGap'
+  | 'flexDirection'
+  | 'alignItems'
+  | 'justifyContent'
+  | 'flexWrap';
 
 export interface CodeBinding {
   target: CodeBindingTarget;

@@ -43,6 +43,10 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   gap: 'gap',
   rowGap: 'rowGap',
   columnGap: 'columnGap',
+  flexDirection: 'flexDirection',
+  alignItems: 'alignItems',
+  justifyContent: 'justifyContent',
+  flexWrap: 'flexWrap',
 };
 
 interface TwResult {
@@ -76,7 +80,7 @@ function genTailwind(
 
   if (style.display === 'flex') {
     classes.push('flex');
-    switch (style.flexDirection) {
+    switch (skip.has('flexDirection') ? undefined : style.flexDirection) {
       case 'row-reverse':
         classes.push('flex-row-reverse');
         break;
@@ -99,7 +103,7 @@ function genTailwind(
       stretch: 'items-stretch',
       baseline: 'items-baseline',
     };
-    if (style.alignItems && align[style.alignItems])
+    if (!skip.has('alignItems') && style.alignItems && align[style.alignItems])
       classes.push(align[style.alignItems]);
     const justify: Record<string, string> = {
       center: 'justify-center',
@@ -109,10 +113,15 @@ function genTailwind(
       'space-around': 'justify-around',
       'space-evenly': 'justify-evenly',
     };
-    if (style.justifyContent && justify[style.justifyContent])
+    if (
+      !skip.has('justifyContent') &&
+      style.justifyContent &&
+      justify[style.justifyContent]
+    )
       classes.push(justify[style.justifyContent]);
-    if (style.flexWrap === 'wrap') classes.push('flex-wrap');
-    else if (style.flexWrap === 'wrap-reverse')
+    if (!skip.has('flexWrap') && style.flexWrap === 'wrap')
+      classes.push('flex-wrap');
+    else if (!skip.has('flexWrap') && style.flexWrap === 'wrap-reverse')
       classes.push('flex-wrap-reverse');
     if (style.gap !== undefined && !skip.has('gap'))
       classes.push(`gap-[${formatNumber(style.gap)}px]`);
@@ -406,6 +415,10 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
             'textAlign',
             'letterSpacing',
             'lineHeight',
+            'flexDirection',
+            'alignItems',
+            'justifyContent',
+            'flexWrap',
           ].includes(p.target)
         ? `CSSProperties['${p.target}']`
         : 'string';
@@ -467,6 +480,10 @@ export function emitReactTailwind(
           'textAlign',
           'letterSpacing',
           'lineHeight',
+          'flexDirection',
+          'alignItems',
+          'justifyContent',
+          'flexWrap',
         ].includes(prop.target),
       ),
     )

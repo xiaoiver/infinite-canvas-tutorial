@@ -30,6 +30,10 @@ const PROP_KEYS = [
   'gap',
   'rowGap',
   'columnGap',
+  'flexDirection',
+  'alignItems',
+  'justifyContent',
+  'flexWrap',
   'anchorX',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);
