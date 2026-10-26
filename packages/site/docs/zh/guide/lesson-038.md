@@ -345,6 +345,7 @@ const code = serializedNodesToCode(nodes, {
 | Flex 方向、对齐、尺寸、间距和内边距                 | Tailwind flex 工具类 / CSS                            |
 | `cornerRadius` / `fills` / `strokes` / `dropShadow` | `rounded-* / bg-* / border / shadow-*`                |
 | 带图片填充的 `rect`                                 | `<img src>` 与 `object-fit` / `object-position`       |
+| 单层 CSS 渐变填充的 `rect`                          | CSS `background-image`                                |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
 | 文本装饰的线条、样式、颜色与粗细                    | CSS `text-decoration`                                 |
@@ -373,6 +374,8 @@ const code = serializedNodesToCode(nodes, {
 文本导出通过 `white-space: pre` 保留显式换行。开启 `wordWrap` 且 `wordWrapWidth` 为正数时，会使用 `pre-wrap`、`overflow-wrap: anywhere`，并把该宽度作为最大宽度。正数 `maxLines` 会为默认的 `ellipsis` 添加 CSS 多行省略，为 `clip` 添加按行高裁剪。已开启换行的可复用文本如果只修改换行宽度，会生成组件 prop；切换换行开关或修改截断配置则会展开实例，以匹配编辑后的布局。当前画布测量尚未应用 `whiteSpace` 属性；自定义 `textOverflow` 标记字符串尚无对应的标准 CSS 实现。
 
 对于可复用图片，仅修改图片 URL 时，实例的 `fills` 覆盖会绑定到组件的 `<img src>` 参数。修改填充类型、适配方式、位置或填充透明度时，实例会展开，使生成的元素与样式对应编辑结果。对于单层图片填充，导出的 `<img>` 透明度会合并填充透明度与节点整体透明度。
+
+矩形只有一层启用的 `linear-gradient(...)` 或 `radial-gradient(...)` 填充时，会导出为 CSS `background-image`。实例仅修改渐变值时会生成组件参数。其他渐变格式、多层填充、填充透明度和单层混合模式暂不映射为单个 CSS 背景图。
 
 节点级 `blendMode` 会导出为 CSS `mix-blend-mode`；实例修改它时也会生成组件参数。`light` 对应 CSS 的 `lighten`；没有 CSS 等价物的模式与 SVG 导出一致，按 `normal` 处理。填充层自身的 `blendMode` 用于该节点内部的多层填充合成，不会作为节点级 `mix-blend-mode` 导出。
 

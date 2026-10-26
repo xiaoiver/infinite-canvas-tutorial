@@ -119,6 +119,8 @@ export function styleIRToCssDeclarations(
 
   if (style.backgroundColor)
     push('background-color', styleValueToCss(style.backgroundColor, mode));
+  if (style.backgroundImage)
+    push('background-image', styleValueToCss(style.backgroundImage, mode));
   if (style.borderRadius)
     push('border-radius', styleValueToCss(style.borderRadius, mode, true));
   if (style.borderWidth) {

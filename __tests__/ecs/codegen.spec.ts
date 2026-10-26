@@ -85,6 +85,48 @@ describe('design-to-code (codegen)', () => {
       expect(unwrapped).not.toContain('WebkitLineClamp');
     });
 
+    it('exports a single CSS gradient fill as a background image', () => {
+      for (const gradient of [
+        'linear-gradient(90deg, #1d4ed8, #38bdf8)',
+        'radial-gradient(circle at center, #ffffff, #1d4ed8)',
+      ]) {
+        const node = {
+          id: 'gradient-card',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 180,
+          height: 100,
+          zIndex: 0,
+          fills: [{ type: 'gradient', value: gradient }],
+        } as SerializedNode;
+        expect(serializedNodesToCode([node])).toContain(
+          `backgroundImage: "${gradient}"`,
+        );
+        expect(
+          serializedNodesToCode([node], { framework: 'html-css' }),
+        ).toContain(`background-image: ${gradient}`);
+      }
+
+      const unsupported = {
+        id: 'layered-card',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        fills: [
+          {
+            type: 'gradient',
+            value: 'linear-gradient(red, blue)',
+            opacity: 0.5,
+          },
+        ],
+      } as SerializedNode;
+      expect(serializedNodesToCode([unsupported])).not.toContain(
+        'backgroundImage',
+      );
+    });
+
     it('emits a single rect as a div with tailwind classes', () => {
       const nodes: SerializedNode[] = [
         {

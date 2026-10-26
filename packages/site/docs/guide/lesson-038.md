@@ -341,6 +341,7 @@ const code = serializedNodesToCode(nodes, {
 | Flex direction, alignment, sizing, gaps, and padding | Tailwind flex utilities / CSS                         |
 | `cornerRadius` / `fills` / `strokes` / `dropShadow`  | `rounded-* / bg-* / border / shadow-*`                |
 | `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
+| `rect` with one CSS gradient fill                    | CSS `background-image`                                |
 | node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                   | text node; `$token` content → variable                |
 | text decoration line, style, color, and thickness    | CSS `text-decoration`                                 |
@@ -369,6 +370,8 @@ With `componentStructure: 'preserve'` (the default, and Pencil's selling point),
 Text exports preserve explicit line breaks with `white-space: pre`. When `wordWrap` is enabled with a positive `wordWrapWidth`, the output uses `pre-wrap`, `overflow-wrap: anywhere`, and that width as a maximum. A positive `maxLines` adds CSS line clamping for `ellipsis` (the default) or a clipped line-height limit for `clip`. Editing the wrap width of an already wrapped reusable text becomes a component prop. Switching wrapping on or off, or changing its truncation settings, expands the instance so the exported layout follows the edit. The canvas does not currently apply its `whiteSpace` setting in text measurement; custom `textOverflow` marker strings have no equivalent in standard CSS.
 
 For a reusable image, changing only the image URL binds the instance's `fills` override to the component's `<img src>` prop. Changing the fill type, fit, position, or fill opacity expands the instance so the generated element and styles reflect the edit. For a single image fill, the exported `<img>` opacity combines the fill opacity with the node opacity.
+
+A rectangle with one enabled `linear-gradient(...)` or `radial-gradient(...)` fill exports that gradient as `background-image`. Editing only its gradient value on an instance becomes a component prop. Other gradient formats, layered fills, fill opacity, and per-fill blend modes are not mapped to one CSS background image.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 
