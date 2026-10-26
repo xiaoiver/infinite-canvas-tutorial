@@ -826,8 +826,11 @@ function positionSceneRoots(
     const y = node?.y;
     const width = node?.width ?? template?.width;
     const height = node?.height ?? template?.height;
+    const rotation = node?.rotation ?? template?.rotation ?? 0;
+    const scaleX = node?.scaleX ?? template?.scaleX ?? 1;
+    const scaleY = node?.scaleY ?? template?.scaleY ?? 1;
     if (
-      ![x, y, width, height].every(
+      ![x, y, width, height, rotation, scaleX, scaleY].every(
         (value) => typeof value === 'number' && Number.isFinite(value),
       ) ||
       (width as number) <= 0 ||
@@ -839,14 +842,32 @@ function positionSceneRoots(
       y: y as number,
       width: width as number,
       height: height as number,
+      rotation: rotation as number,
+      scaleX: scaleX as number,
+      scaleY: scaleY as number,
     };
   });
   if (frames.some((frame) => !frame)) return undefined;
   const sized = frames as Array<NonNullable<(typeof frames)[number]>>;
-  const minX = Math.min(...sized.map((frame) => frame.x));
-  const minY = Math.min(...sized.map((frame) => frame.y));
-  const maxX = Math.max(...sized.map((frame) => frame.x + frame.width));
-  const maxY = Math.max(...sized.map((frame) => frame.y + frame.height));
+  // CSS `rotate(...) scale(...)` around 0 0 matches the canvas local transform.
+  const corners = sized.flatMap((frame) => {
+    const cos = Math.cos(frame.rotation);
+    const sin = Math.sin(frame.rotation);
+    return [
+      [0, 0],
+      [frame.width, 0],
+      [0, frame.height],
+      [frame.width, frame.height],
+    ].map(([x, y]) => ({
+      x: frame.x + cos * frame.scaleX * x - sin * frame.scaleY * y,
+      y: frame.y + sin * frame.scaleX * x + cos * frame.scaleY * y,
+    }));
+  });
+  // Round outward so CSS transform serialization cannot clip a subpixel edge.
+  const minX = Math.floor(Math.min(...corners.map((corner) => corner.x)));
+  const minY = Math.floor(Math.min(...corners.map((corner) => corner.y)));
+  const maxX = Math.ceil(Math.max(...corners.map((corner) => corner.x)));
+  const maxY = Math.ceil(Math.max(...corners.map((corner) => corner.y)));
   roots.forEach((root, index) => {
     root.style.position = 'absolute';
     root.style.left = sized[index].x - minX;

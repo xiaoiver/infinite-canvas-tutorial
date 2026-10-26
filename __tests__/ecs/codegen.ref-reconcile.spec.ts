@@ -72,12 +72,27 @@ describe('design-to-code expanded ref reconciliation', () => {
     instance.x = 450;
     instance.y = 25;
     const react = serializedNodesToCode(nodes);
-    expect(react).toContain('className="relative" style={{ width: 630, height: 300 }}');
+    expect(react).toContain(
+      'className="relative" style={{ width: 630, height: 300 }}',
+    );
     expect(react).toContain('absolute left-[450px] top-[25px]');
     expect(react).toContain('<PlanCard');
     const html = serializedNodesToCode(nodes, { framework: 'html-css' });
     expect(html).toContain('position: relative; width: 630px; height: 300px');
     expect(html).toContain('position: absolute; left: 450px; top: 25px');
+  });
+
+  it('includes a rotated component instance in the scene frame', () => {
+    const nodes = structuredClone(source);
+    nodes.find((node) => node.id === 'card-template')!.rotation = Math.PI / 2;
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    delete instance.parentId;
+    instance.x = 450;
+    instance.y = 25;
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('style={{ width: 450, height: 300 }}');
+    expect(react).toContain('absolute left-[450px] top-[25px]');
+    expect(react).toContain('rotate(1.570796rad)');
   });
 
   it('expands an instance whose free-layout child moved', () => {

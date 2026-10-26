@@ -46,6 +46,38 @@ describe('design-to-code (codegen)', () => {
       ).not.toContain('className="relative"');
     });
 
+    it('sizes the multi-root frame around rotated and flipped geometry', () => {
+      const nodes = [
+        {
+          id: 'rotated',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 50,
+          rotation: Math.PI / 2,
+          zIndex: 0,
+        },
+        {
+          id: 'flipped',
+          type: 'rect',
+          x: 120,
+          y: 10,
+          width: 40,
+          height: 30,
+          scaleX: -1,
+          zIndex: 1,
+        },
+      ] as SerializedNode[];
+      const react = serializedNodesToCode(nodes);
+      expect(react).toContain('style={{ width: 170, height: 100 }}');
+      expect(react).toContain('absolute left-[50px] top-[0px]');
+      expect(react).toContain('absolute left-[170px] top-[10px]');
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('position: relative; width: 170px; height: 100px');
+      expect(html).toContain('position: absolute; left: 50px; top: 0px');
+    });
+
     it('keeps local positions in a free-layout frame without disturbing flex children', () => {
       const nodes = [
         {
