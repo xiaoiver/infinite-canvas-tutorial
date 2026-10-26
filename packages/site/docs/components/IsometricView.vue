@@ -38,6 +38,7 @@ const showCallouts = ref(false);
 const steppedTones = ref(false);
 const showOutlines = ref(false);
 const showRimLight = ref(false);
+const sweepLight = ref(false);
 type Callout = {
   id: string;
   title: string;
@@ -77,6 +78,9 @@ let pathEdit:
     }
   | undefined;
 let anchorFrame = 0;
+let lightFrame = 0;
+let lightElapsed = 0;
+let lightLastFrame = 0;
 
 function applyCamera() {
   api?.setCamera3D({
@@ -202,6 +206,67 @@ function toggleRimLight() {
     });
     editor.record();
   });
+}
+
+function placeSweepLight(time: number) {
+  const editor = api;
+  const light = editor?.getNodeById('iso-sweep-light');
+  if (!editor || light?.type !== 'light3d') return;
+  const x = 245 + Math.cos(time * 0.8) * 140;
+  const y = 180 + Math.sin(time * 0.8) * 105;
+  const z = 170;
+  const delta: [number, number, number] = [245 - x, 180 - y, -z];
+  const length = Math.hypot(...delta);
+  editor.updateNode(
+    light,
+    {
+      x,
+      y,
+      z,
+      direction: delta.map((value) => value / length) as [
+        number,
+        number,
+        number,
+      ],
+      intensity: sweepLight.value ? 8 : 0,
+      castShadow: sweepLight.value,
+    },
+    false,
+  );
+}
+
+function animateSweepLight(now: number) {
+  if (!sweepLight.value || document.hidden || !api) {
+    lightFrame = 0;
+    return;
+  }
+  if (lightLastFrame && now - lightLastFrame < 33) {
+    lightFrame = requestAnimationFrame(animateSweepLight);
+    return;
+  }
+  if (lightLastFrame) lightElapsed += Math.min(now - lightLastFrame, 50) / 1000;
+  lightLastFrame = now;
+  placeSweepLight(lightElapsed);
+  lightFrame = requestAnimationFrame(animateSweepLight);
+}
+
+function syncSweepLight() {
+  if (lightFrame) cancelAnimationFrame(lightFrame);
+  lightFrame = 0;
+  lightLastFrame = 0;
+  if (sweepLight.value && !document.hidden && api)
+    lightFrame = requestAnimationFrame(animateSweepLight);
+  else if (!sweepLight.value) placeSweepLight(lightElapsed);
+}
+
+function toggleSweepLight() {
+  sweepLight.value = !sweepLight.value;
+  placeSweepLight(lightElapsed);
+  syncSweepLight();
+}
+
+function onVisibilityChange() {
+  syncSweepLight();
 }
 
 function refreshPathHandles() {
@@ -543,6 +608,21 @@ const scene: SerializedNode[] = [
     castShadow: true,
   },
   {
+    id: 'iso-sweep-light',
+    type: 'light3d',
+    lightType: 'spot',
+    x: 385,
+    y: 180,
+    z: 170,
+    direction: [-140, 0, -170],
+    color: '#ffd4a0',
+    intensity: 0,
+    range: 400,
+    innerConeAngle: 0.45,
+    outerConeAngle: 0.8,
+    castShadow: false,
+  },
+  {
     id: 'iso-ground',
     type: 'mesh3d',
     geometry: { type: 'plane' },
@@ -601,14 +681,18 @@ onMounted(async () => {
       api?.updateNodes([...scene, ...svgNodes()]);
       // Establish a document baseline so a single anchor drag can be undone.
       api?.record();
+      api?.runAtNextTick(syncSweepLight);
     });
     anchorFrame = requestAnimationFrame(animatePathHandles);
   };
   canvas.addEventListener(Event.READY, onReady as EventListener);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   await ensureExampleWorld();
 });
 onUnmounted(() => {
   cancelAnimationFrame(anchorFrame);
+  if (lightFrame) cancelAnimationFrame(lightFrame);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
   if (wrapper.value && onReady)
     wrapper.value.removeEventListener(Event.READY, onReady as EventListener);
   api = undefined;
@@ -659,6 +743,9 @@ onUnmounted(() => {
       </button>
       <button :aria-pressed="showRimLight" @click="toggleRimLight">
         {{ props.locale === 'zh' ? '边缘光' : 'Rim light' }}
+      </button>
+      <button :aria-pressed="sweepLight" @click="toggleSweepLight">
+        {{ props.locale === 'zh' ? '动态聚光灯' : 'Moving spotlight' }}
       </button>
     </div>
     <label

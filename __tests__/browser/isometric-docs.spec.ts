@@ -2,6 +2,62 @@ import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 import type {} from './fixtures/isometric-docs';
 
+test('moving spotlight updates light and shadows without rebuilding the cube', async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/isometric-docs.html');
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.ready()), {
+      timeout: 30000,
+    })
+    .toBe(true);
+  expect(await page.evaluate(() => window.isometricDocs.cubeMeshStable())).toBe(
+    true,
+  );
+  expect(
+    await page.evaluate(() => window.isometricDocs.sweepLight()),
+  ).toMatchObject({
+    intensity: 0,
+    castShadow: false,
+  });
+  const canvas = page.locator('ic-spectrum-canvas');
+  const unlit = PNG.sync.read(await canvas.screenshot()).data;
+
+  const toggle = page.getByRole('button', { name: '动态聚光灯' });
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.sweepLight()))
+    .toMatchObject({ intensity: 8, castShadow: true });
+  const firstX = (await page.evaluate(() => window.isometricDocs.sweepLight()))!
+    .x;
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.sweepLight()?.x))
+    .not.toBeCloseTo(firstX, 1);
+  expect(await page.evaluate(() => window.isometricDocs.cubeMeshStable())).toBe(
+    true,
+  );
+  const lit = PNG.sync.read(await canvas.screenshot()).data;
+  let changed = 0;
+  for (let i = 0; i < unlit.length; i += 4)
+    if (
+      Math.abs(unlit[i] - lit[i]) +
+        Math.abs(unlit[i + 1] - lit[i + 1]) +
+        Math.abs(unlit[i + 2] - lit[i + 2]) >
+      40
+    )
+      changed++;
+  expect(changed).toBeGreaterThan(500);
+
+  await toggle.click();
+  await expect
+    .poll(() => page.evaluate(() => window.isometricDocs.sweepLight()))
+    .toMatchObject({ intensity: 0, castShadow: false });
+  expect(errors).toEqual([]);
+});
+
 test('rim light follows 3D materials and can be undone', async ({ page }) => {
   test.setTimeout(90000);
   const errors: string[] = [];

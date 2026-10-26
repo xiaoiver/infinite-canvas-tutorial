@@ -3,6 +3,7 @@ import IsometricView from '../../../packages/site/docs/components/IsometricView.
 import {
   Camera3D,
   Extrude3D,
+  Light3D,
   Material3D,
   Mesh3DNode,
   Transform3D,
@@ -19,6 +20,7 @@ import {
 import { settleECSFrames } from './ecs-frames';
 
 let api: API | undefined;
+let initialCubeMesh: ReturnType<API['getEntity']> | undefined;
 let lastAnchorPointer: { pointerType: string; trusted: boolean } | undefined;
 const anchorEvents: string[] = [];
 for (const phase of [
@@ -67,6 +69,23 @@ const probe = {
     return layers.has('iso-cube') && layers.has('iso-ring');
   },
   settle: () => settleECSFrames(api!, 3),
+  sweepLight: () => {
+    const node = api?.getNodeById('iso-sweep-light');
+    if (!node || node.type !== 'light3d') return null;
+    const component = api!.getEntity(node).read(Light3D);
+    return {
+      x: node.x,
+      intensity: component.intensity,
+      castShadow: component.castShadow,
+    };
+  },
+  cubeMeshStable: () => {
+    const cube = api?.getNodeById('iso-cube');
+    if (!cube) return false;
+    const mesh = api!.getEntity(cube).read(Mesh3DNode).meshEntity;
+    if (!initialCubeMesh) initialCubeMesh = mesh;
+    return !!mesh && mesh === initialCubeMesh;
+  },
   selectGroup: async () => {
     await api!.edit(
       (editor) => editor.selectMesh3DLayers(['iso-cube', 'iso-ring']),

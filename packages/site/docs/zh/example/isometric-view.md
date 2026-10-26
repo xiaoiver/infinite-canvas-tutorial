@@ -25,6 +25,8 @@ description: '交互比较严格等距与 2:1 二轴测正交相机。'
 
 开启「边缘光」后，立方体和 SVG 环靠近视角边缘的可见表面会染上亮色。材质着色器根据表面法线与视线方向，在常规光照和色调映射之后计算这一效果；它会随视角旋转变化，并沿用 Mesh 原有的深度与透明度规则。这是表面高光，不会在轮廓外产生模糊光晕。Mesh 节点可设置 `material3d: { rimLightStrength: 0.9, rimLightColor: '#9ad9ff' }`，挤出 Path/矩形可在 `extrude3d` 中设置相同字段。强度范围为 0（关闭）到 1；`unlit` 材质不会应用该效果，标准 glTF 导出也不保留它。
 
+开启「动态聚光灯」后，暖色光会扫过立方体、SVG 环与地面。光源是普通的投影 `light3d` 节点：动画每帧只改变其位置和方向，Mesh 几何保持不变。默认关闭；标签页隐藏时暂停，也可在低性能设备上手动关闭。运动仅用于预览，不会每帧增加撤销记录。
+
 <script setup>
 import IsometricView from '../../components/IsometricView.vue'
 </script>
