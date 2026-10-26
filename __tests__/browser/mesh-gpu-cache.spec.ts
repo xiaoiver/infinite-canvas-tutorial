@@ -202,3 +202,96 @@ for (const extrude of [false, true]) {
     expect(errors).toEqual([]);
   });
 }
+
+test('orbits a multi-Path isometric scene without rebuilding extrusion geometry', async ({
+  page,
+}, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?appCamera&width=640&height=400');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    const ids = Array.from({ length: 12 }, (_, i) => `path-${i}`);
+    await api.edit((editor) => {
+      editor.replaceDocument(
+        ids.map((id, i) => ({
+          id,
+          type: 'path' as const,
+          zIndex: i,
+          x: 90 + (i % 4) * 75,
+          y: 70 + Math.floor(i / 4) * 75,
+          d: 'M0 0 H36 V36 H0 Z M10 10 H26 V26 H10 Z',
+          fillRule: 'evenodd' as const,
+          fills: [{ type: 'solid' as const, value: '#dd8833' }],
+          extrude3d: { depth: 24, z: 0 },
+        })),
+        'remote',
+      );
+      editor.setCamera3D({
+        preset: 'isometric',
+        center: [200, 150, 0],
+        distance: 500,
+        orthographicHeight: 300,
+      });
+    });
+    await window.gizmoTest.settle();
+    const baseline = ids.map((id) => window.gizmoTest.meshGeometry(id));
+    const initialEye = window.gizmoTest.camera3DState().eye;
+    window.gizmoTest.trackGeometryUploads();
+    const frameBoundaryMs: number[] = [];
+    let stable = true;
+    const center: [number, number, number] = [200, 150, 0];
+    const elevation = Math.atan(1 / Math.sqrt(2));
+    for (let i = 0; i < 10; i++) {
+      const azimuth = (25 + i * 5) * (Math.PI / 180);
+      api.setCamera3D({
+        projection: 'orthographic',
+        center,
+        eye: [
+          center[0] + 500 * Math.cos(elevation) * Math.cos(azimuth),
+          center[1] + 500 * Math.cos(elevation) * Math.sin(azimuth),
+          center[2] + 500 * Math.sin(elevation),
+        ],
+        up: [0, 0, 1],
+        orthographicHeight: 300,
+      });
+      const start = performance.now();
+      await window.gizmoTest.frame();
+      frameBoundaryMs.push(performance.now() - start);
+      stable &&= ids.every((id, index) =>
+        window.gizmoTest
+          .meshGeometry(id)
+          .every((array, component) => array === baseline[index][component]),
+      );
+    }
+    await window.gizmoTest.settle();
+    stable &&= ids.every((id, index) =>
+      window.gizmoTest
+        .meshGeometry(id)
+        .every((array, component) => array === baseline[index][component]),
+    );
+    return {
+      paths: ids.length,
+      cameraMoved: window.gizmoTest
+        .camera3DState()
+        .eye.some((value, axis) => value !== initialEye[axis]),
+      geometryStable: stable,
+      geometryUploads: window.gizmoTest.geometryUploads(ids),
+      frameBoundaryMs,
+    };
+  });
+  await testInfo.attach('isometric-camera-frame-boundaries.json', {
+    body: Buffer.from(JSON.stringify(result, null, 2)),
+    contentType: 'application/json',
+  });
+  expect(result.paths).toBe(12);
+  expect(result.cameraMoved).toBe(true);
+  expect(result.geometryStable).toBe(true);
+  expect(result.geometryUploads).toBe(0);
+  expect(result.frameBoundaryMs).toHaveLength(10);
+  expect(
+    result.frameBoundaryMs.every((ms) => Number.isFinite(ms) && ms > 0),
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});

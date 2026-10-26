@@ -171,6 +171,7 @@ const harness = {
   resetDerivedUpdates,
   derivedUpdates: () => ({ ...derivedUpdates }),
   settle: () => settleECSFrames(api, 3),
+  frame: () => settleECSFrames(api, 1),
   materialGeometryVertices: () => {
     const source = api.getEntity(api.getNodeById('material-model'));
     return (
@@ -209,16 +210,17 @@ const harness = {
       return createBuffer(descriptor);
     };
   },
+  meshGeometry: (id: string) => {
+    const entity = api.getEntity(api.getNodeById(id));
+    const mesh = (
+      entity.has(Extrude3D)
+        ? entity.read(Extrude3D).meshEntity!
+        : entity.read(Mesh3DNode).meshEntity!
+    ).read(Mesh3D);
+    return [mesh.positions, mesh.normals, mesh.uvs, mesh.indices];
+  },
   geometryUploads: (ids: string[] = ['model']) => {
-    const arrays = ids.flatMap((id) => {
-      const entity = api.getEntity(api.getNodeById(id));
-      const mesh = (
-        entity.has(Extrude3D)
-          ? entity.read(Extrude3D).meshEntity!
-          : entity.read(Mesh3DNode).meshEntity!
-      ).read(Mesh3D);
-      return [mesh.positions, mesh.normals, mesh.uvs, mesh.indices];
-    });
+    const arrays = ids.flatMap((id) => harness.meshGeometry(id));
     return uploads.filter((data) => arrays.includes(data as Float32Array))
       .length;
   },
