@@ -49,6 +49,7 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   height: 'height',
   strokeWidth: 'borderWidth',
   opacity: 'opacity',
+  visibility: 'visibility',
   fontWeight: 'fontWeight',
   fontStyle: 'fontStyle',
   fontVariant: 'fontVariant',
@@ -388,6 +389,8 @@ function buildStyle(
   if (typeof node.opacity === 'number' && node.opacity !== 1) {
     style.opacity = node.opacity;
   }
+  if (node.visibility === 'hidden' || node.visibility === 'visible')
+    style.visibility = node.visibility;
 
   // 文本排版
   if (role === 'text') {
@@ -600,6 +603,14 @@ function overrideStyleValue(
       literal: toCSSMixBlendMode(patch.blendMode as never) ?? 'normal',
     };
   }
+  if (attr === 'visibility') {
+    return {
+      literal:
+        patch.visibility === 'inherited'
+          ? 'inherit'
+          : (patch.visibility as string),
+    };
+  }
   if (attr === 'fontKerning') {
     return { literal: patch.fontKerning === false ? 'none' : 'normal' };
   }
@@ -624,6 +635,14 @@ function templateDefaultValue(
   }
   if (attr === 'opacity') {
     return toStyleValue(desc.opacity as number) ?? { literal: 1 };
+  }
+  if (attr === 'visibility') {
+    return {
+      literal:
+        desc.visibility === 'hidden' || desc.visibility === 'visible'
+          ? desc.visibility
+          : 'inherit',
+    };
   }
   if (attr === 'blendMode') {
     return {

@@ -114,6 +114,7 @@ export interface StyleIR {
     color: StyleValue;
   };
   opacity?: number;
+  visibility?: 'hidden' | 'visible';
   /** Opacity of the single image fill, multiplied with node opacity for `<img>`. */
   imageFillOpacity?: StyleValue;
   mixBlendMode?: string;
@@ -158,6 +159,7 @@ export type CodeBindingTarget =
   | 'borderWidth'
   | 'borderColor'
   | 'opacity'
+  | 'visibility'
   | 'fontWeight'
   | 'fontStyle'
   | 'fontVariant'

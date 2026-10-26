@@ -350,6 +350,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect` / `ellipse` + `clipMode: clip`               | 在裁剪元素上使用 CSS `overflow: hidden`               |
 | `rotation` / `scaleX` / `scaleY`                    | 围绕局部左上角的 CSS `transform`                      |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
+| `visibility: hidden` / `visible`                    | CSS 可见性，保留布局空间                              |
 | `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
 | 文本装饰的线条、样式、颜色与粗细                    | CSS `text-decoration`                                 |
 | `fontVariant` / `fontKerning`                       | CSS `font-variant` / `font-kerning`                   |
@@ -372,7 +373,7 @@ const code = serializedNodesToCode(nodes, {
 
 ### 组件与实例 {#design-to-code-components}
 
-在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、包括 `fontVariant` 和 `fontKerning` 的排版属性、文本装饰、`opacity`、`cornerRadius`、显式 `width` / `height`、`minWidth` / `maxWidth` / `minHeight` / `maxHeight`、`padding`、`margin`、flex 间距、`flexDirection`、`alignItems`、`justifyContent`、`flexWrap`、`alignSelf`、`flexGrow`、`flexShrink`、`flexBasis`、`strokeWidth`、`strokes` 和投影字段）会被提升为 props，默认值取自模板。`.ic` 中数值型 `lineHeight` 表示像素高度，因此 React 导出会补 `px`，不会将其当成无单位的行高倍率。布尔型 `fontKerning` 会转为 CSS 的 `normal` 或 `none`。四边间距数组会转为 CSS 简写字符串，文本装饰字段会合并为一个参数，投影字段会合并为一个 `boxShadow` prop。装饰线粗细为 0 时导出 `none`，与画布语义一致：
+在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、包括 `fontVariant` 和 `fontKerning` 的排版属性、文本装饰、`opacity`、`visibility`、`cornerRadius`、显式 `width` / `height`、`minWidth` / `maxWidth` / `minHeight` / `maxHeight`、`padding`、`margin`、flex 间距、`flexDirection`、`alignItems`、`justifyContent`、`flexWrap`、`alignSelf`、`flexGrow`、`flexShrink`、`flexBasis`、`strokeWidth`、`strokes` 和投影字段）会被提升为 props，默认值取自模板。`.ic` 中数值型 `lineHeight` 表示像素高度，因此 React 导出会补 `px`，不会将其当成无单位的行高倍率。布尔型 `fontKerning` 会转为 CSS 的 `normal` 或 `none`。四边间距数组会转为 CSS 简写字符串，文本装饰字段会合并为一个参数，投影字段会合并为一个 `boxShadow` prop。装饰线粗细为 0 时导出 `none`，与画布语义一致：
 
 文本导出通过 `white-space: pre` 保留显式换行。开启 `wordWrap` 且 `wordWrapWidth` 为正数时，会使用 `pre-wrap`、`overflow-wrap: anywhere`，并把该宽度作为最大宽度。正数 `maxLines` 会为默认的 `ellipsis` 添加 CSS 多行省略，为 `clip` 添加按行高裁剪。已开启换行的可复用文本如果只修改换行宽度，会生成组件 prop；切换换行开关或修改截断配置则会展开实例，以匹配编辑后的布局。当前画布测量尚未应用 `whiteSpace` 属性；自定义 `textOverflow` 标记字符串尚无对应的标准 CSS 实现。
 
@@ -385,6 +386,8 @@ const code = serializedNodesToCode(nodes, {
 节点旋转（弧度）与 `scaleX` / `scaleY` 会导出为以 `0 0` 为原点的 CSS `rotate(...) scale(...)`，顺序与画布局部变换一致。实例修改变换后会展开，以包含修改后的几何效果。
 
 非 flex 容器中的子节点会把画布局部 `x` / `y` 导出为相对于容器的 CSS `left` / `top`；flex 子节点仍按正常 flex 流布局。非 flex 容器里的复用组件实例会增加定位包装元素，修改实例内部子节点的位置时则展开实例以保留编辑。多个顶层节点都有明确尺寸时，导出代码还会创建相对定位的外框，保留它们之间的间距，包括旋转和翻转后的边界。尺寸无法测量的顶层节点仍按普通文档流排列。
+
+节点级 `visibility` 会导出为 CSS `visibility`，隐藏节点仍占据布局空间。默认的 `inherited` 状态对应 CSS 继承。复用组件实例及其子节点修改可见性时，会生成组件参数。
 
 矩形和椭圆的 `clipMode: clip` 会在导出的 HTML 和 React 代码中裁剪子内容。圆角矩形保留圆角，椭圆使用 `border-radius: 50%`。复用实例修改裁剪模式时会展开实例以保留该修改。`erase` 和 `soft` 蒙版无法直接映射为 CSS `overflow`，暂不作为裁剪导出。
 
