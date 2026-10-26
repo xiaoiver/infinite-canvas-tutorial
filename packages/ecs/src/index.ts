@@ -199,6 +199,7 @@ export {
   buildCodeIR,
   emitReactTailwind,
   emitHtmlCss,
+  reconcileRefInstances,
   type CodeFramework,
   type CodeVariablesMode,
   type CodeComponentStructure,

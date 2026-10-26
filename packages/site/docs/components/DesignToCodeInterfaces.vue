@@ -4,8 +4,10 @@ import type { Highlighter } from 'shiki';
 import {
   Pen,
   downloadIcDocument,
+  reconcileRefInstances,
   type API,
   type CodeFramework,
+  type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
@@ -32,6 +34,16 @@ let disposeSubscription: (() => void) | undefined;
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 let onReady: ((event: CustomEvent<API>) => void) | undefined;
 let highlighterPromise: Promise<Highlighter> | undefined;
+let expandedBaseline: SerializedNode[] = [];
+
+function codeSource() {
+  if (!api) return [];
+  return reconcileRefInstances(
+    scene.value.nodes,
+    expandedBaseline,
+    api.getNodes(),
+  );
+}
 
 function getHighlighter() {
   highlighterPromise ??= import('shiki/bundle/web')
@@ -97,7 +109,7 @@ function generateCode() {
       }),
     );
   }
-  return api.exportCode(undefined, {
+  return api.exportCode(codeSource(), {
     framework: 'react-tailwind',
     variablesMode: 'resolved',
     componentStructure: 'preserve',
@@ -122,6 +134,7 @@ async function loadScene(id: string) {
   const next = interfaceScenes.find((item) => item.id === id);
   if (!next) return;
   sceneId.value = id;
+  expandedBaseline = [];
   ready.value = false;
   code.value = '';
   try {
@@ -140,6 +153,7 @@ async function loadScene(id: string) {
       },
       { capture: 'NEVER' },
     );
+    expandedBaseline = structuredClone(api.getNodes());
     await nextTick();
     fitCamera();
     refreshCode();
@@ -178,10 +192,9 @@ function downloadCode() {
 
 function downloadDesign() {
   if (!api) return;
-  downloadIcDocument(
-    api.exportIcDocument(window.location.origin),
-    `${scene.value.id}.ic`,
-  );
+  const document = api.exportIcDocument(window.location.origin);
+  document.elements = codeSource();
+  downloadIcDocument(document, `${scene.value.id}.ic`);
 }
 
 watch(framework, (format) => {

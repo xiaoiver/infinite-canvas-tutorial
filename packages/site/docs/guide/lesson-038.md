@@ -386,6 +386,8 @@ The following examples load an analytics dashboard, a SaaS pricing page, and a m
 
 The examples pass a node-ID keyed `semanticElements` map to `API.exportCode`. It turns selected canvas rectangles and text into HTML landmarks, headings, and `<button type="button">` controls in both exports. The map belongs to this demo's export configuration; wire button actions and navigation in your application.
 
+The pricing page uses one `reusable` plan-card template and three `ref` instances. The editor expands instances to render and edit them; this demo reconciles supported text and color edits back into instance overrides for the React and `.ic` downloads. If a card's structure or size changes, the export uses its expanded nodes so the result still matches the canvas.
+
 <DesignToCodeInterfaces />
 
 Download the `.ic` file to continue editing the design in the [online app](https://app.infinitecanvas.cc/) via **Import from… > .ic**. Download the HTML file and open it directly in a browser. For React, put the downloaded `.tsx` in a project with Tailwind CSS and render its exported `AnalyticsDashboard`, `PricingPage`, or `CheckoutScreen` component. The generator currently emits presentation markup; wire navigation, checkout actions, payments, and live data to your application logic after export. The desktop and mobile artboards use fixed widths for a clear design handoff; adapt the generated layout for your responsive breakpoints.

@@ -390,6 +390,8 @@ export function Design() {
 
 这些示例在调用 `API.exportCode` 时按节点 ID 传入 `semanticElements`，让部分画布矩形和文字在两种导出结果中变成 HTML 页面区域、标题与 `<button type="button">` 控件。这份映射属于示例的导出配置；按钮行为和导航仍需在应用中接入。
 
+定价页使用一个 `reusable` 套餐卡片模板和三个 `ref` 实例。编辑器会展开实例以便渲染和编辑；此示例会把支持的文字、颜色修改还原为实例覆盖项，供 React 与 `.ic` 下载使用。若卡片结构或尺寸被修改，导出会使用展开后的节点，让结果继续与画布一致。
+
 <DesignToCodeInterfaces locale="zh" />
 
 下载 `.ic` 文件后，可在[在线应用](https://app.infinitecanvas.cc/)中通过 **Import from… > .ic** 继续编辑设计。下载 HTML 文件后可直接用浏览器打开。React 版本需要放入已配置 Tailwind CSS 的项目，并渲染导出的 `AnalyticsDashboard`、`PricingPage` 或 `CheckoutScreen` 组件。目前生成的是展示层代码；导航、结账动作、支付及实时数据仍需在应用中接入。桌面与移动画板使用固定宽度，正式使用时可根据断点调整布局。

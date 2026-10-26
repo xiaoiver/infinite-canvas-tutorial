@@ -247,6 +247,8 @@ function buildStyle(
 interface BuildContext {
   childrenByParent: Map<string | undefined, AnyNode[]>;
   semanticElements: Record<string, CodeSemanticElement>;
+  byId: Map<string, AnyNode>;
+  templateToComponentName: Map<string, string>;
   /** 模板 id → 该模板被实例覆盖过的 (key) 集合，用于推断 props。 */
   overridesByTemplate: Map<string, Set<string>>;
 }
@@ -261,6 +263,14 @@ function buildCodeNode(
   ctx: BuildContext,
   bindingsForTemplate?: Set<string>,
 ): CodeNode {
+  if (node.type === 'ref') {
+    const instance = buildInstanceNode(
+      node as RefSerializedNode,
+      ctx.templateToComponentName,
+      ctx.byId,
+    );
+    if (instance) return instance;
+  }
   const role = decideRole(node);
   const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   const style = buildStyle(node, role, children.length > 0);
@@ -460,6 +470,8 @@ function buildRootsExcludingReusable(
   const ctx: BuildContext = {
     childrenByParent,
     semanticElements,
+    byId,
+    templateToComponentName: new Map(),
     overridesByTemplate: new Map(),
   };
   const roots = sortChildren(
@@ -529,14 +541,7 @@ function buildPreserve(
     overridesByTemplate.set(templateId, set);
   }
 
-  const ctx: BuildContext = {
-    childrenByParent,
-    semanticElements,
-    overridesByTemplate,
-  };
-
-  // 2) 组件定义（reusable 根）
-  const components: CodeComponentDef[] = [];
+  // 2) 先分配所有模板名，嵌套在普通容器中的 ref 才能解析为组件调用。
   const usedNames = new Set<string>();
   const templateToComponentName = new Map<string, string>();
   for (const n of nodes) {
@@ -552,6 +557,19 @@ function buildPreserve(
     }
     usedNames.add(name);
     templateToComponentName.set(n.id, name);
+  }
+
+  const ctx: BuildContext = {
+    childrenByParent,
+    semanticElements,
+    byId,
+    templateToComponentName,
+    overridesByTemplate,
+  };
+  const components: CodeComponentDef[] = [];
+  for (const n of nodes) {
+    if (!n.reusable) continue;
+    const name = templateToComponentName.get(n.id)!;
 
     const bindings = overridesByTemplate.get(n.id) ?? new Set<string>();
     const root = buildCodeNode(n, ctx, bindings);

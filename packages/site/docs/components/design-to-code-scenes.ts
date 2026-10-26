@@ -2,6 +2,7 @@ import type {
   DesignVariablesMap,
   CodeSemanticElement,
   RectSerializedNode,
+  RefSerializedNode,
   SerializedNode,
   TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
@@ -66,7 +67,25 @@ function createScene() {
     } as TextSerializedNode);
   }
 
-  return { nodes, box, label };
+  function instance(
+    id: string,
+    parentId: string,
+    templateId: string,
+    attributes: Partial<RefSerializedNode> = {},
+  ) {
+    nodes.push({
+      id,
+      parentId,
+      type: 'ref',
+      ref: templateId,
+      x: 0,
+      y: 0,
+      zIndex: zIndex++,
+      ...attributes,
+    } as RefSerializedNode);
+  }
+
+  return { nodes, box, label, instance };
 }
 
 const dashboardVariables: DesignVariablesMap = {
@@ -340,7 +359,7 @@ const pricingVariables: DesignVariablesMap = {
 };
 
 function pricing(): InterfaceScene {
-  const { nodes, box, label } = createScene();
+  const { nodes, box, label, instance } = createScene();
   box('pricing-page', undefined, {
     name: 'Orbit pricing page',
     width: 1050,
@@ -441,84 +460,90 @@ function pricing(): InterfaceScene {
       action: 'Talk to sales',
     },
   ];
+  // Keep the editable master outside the page artboard. Its three instances
+  // share the card layout while overriding copy and accent colors.
+  box('plan-card-template', undefined, {
+    name: 'PricingPlanCard',
+    x: 3000,
+    width: 316,
+    height: 354,
+    padding: 24,
+    gap: 14,
+    cornerRadius: 17,
+    fills: [{ type: 'solid', value: '$color.surface' }],
+    reusable: true,
+  });
+  label(
+    'plan-card-name',
+    'plan-card-template',
+    'Starter',
+    '$color.text',
+    19,
+    700,
+  );
+  label(
+    'plan-card-detail',
+    'plan-card-template',
+    'For side projects and experiments',
+    '$color.muted',
+    12,
+  );
+  box('plan-card-price', 'plan-card-template', {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  });
+  label('plan-card-amount', 'plan-card-price', '$0', '$color.text', 35, 700);
+  label('plan-card-period', 'plan-card-price', '/ month', '$color.muted', 12);
+  box('plan-card-action', 'plan-card-template', {
+    width: 268,
+    height: 43,
+    alignItems: 'center',
+    justifyContent: 'center',
+    cornerRadius: 9,
+    fills: [{ type: 'solid', value: '#34435e' }],
+  });
+  label(
+    'plan-card-action-label',
+    'plan-card-action',
+    'Start for free',
+    '$color.text',
+    13,
+    700,
+  );
+  for (const [index, feature] of plans[0].features.entries()) {
+    label(
+      `plan-card-feature-${index}`,
+      'plan-card-template',
+      `✓  ${feature}`,
+      '$color.muted',
+      12,
+    );
+  }
   for (const plan of plans) {
     const highlighted = plan.id === 'growth';
-    box(`plan-${plan.id}`, 'plans', {
-      width: 316,
-      height: 354,
-      padding: 24,
-      gap: 14,
-      cornerRadius: 17,
-      fills: [
-        { type: 'solid', value: highlighted ? '#273456' : '$color.surface' },
-      ],
-      strokes: highlighted
-        ? [{ type: 'solid', value: '$color.highlight' }]
-        : [],
-      strokeWidth: highlighted ? 2 : 0,
+    instance(`plan-${plan.id}`, 'plans', 'plan-card-template', {
+      ...(highlighted ? { fills: [{ type: 'solid', value: '#273456' }] } : {}),
+      descendants: {
+        'plan-card-name': { content: plan.name },
+        'plan-card-detail': { content: plan.detail },
+        'plan-card-amount': { content: plan.price },
+        'plan-card-action-label': { content: plan.action },
+        ...(highlighted
+          ? {
+              'plan-card-action': {
+                fills: [{ type: 'solid', value: '$color.highlight' }],
+              },
+            }
+          : {}),
+        ...Object.fromEntries(
+          plan.features.map((feature, index) => [
+            `plan-card-feature-${index}`,
+            { content: `✓  ${feature}` },
+          ]),
+        ),
+      },
     });
-    label(
-      `plan-${plan.id}-name`,
-      `plan-${plan.id}`,
-      plan.name,
-      '$color.text',
-      19,
-      700,
-    );
-    label(
-      `plan-${plan.id}-detail`,
-      `plan-${plan.id}`,
-      plan.detail,
-      '$color.muted',
-      12,
-    );
-    box(`plan-${plan.id}-price`, `plan-${plan.id}`, {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    });
-    label(
-      `plan-${plan.id}-amount`,
-      `plan-${plan.id}-price`,
-      plan.price,
-      '$color.text',
-      35,
-      700,
-    );
-    label(
-      `plan-${plan.id}-period`,
-      `plan-${plan.id}-price`,
-      '/ month',
-      '$color.muted',
-      12,
-    );
-    box(`plan-${plan.id}-action`, `plan-${plan.id}`, {
-      width: 268,
-      height: 43,
-      alignItems: 'center',
-      justifyContent: 'center',
-      cornerRadius: 9,
-      fills: [
-        { type: 'solid', value: highlighted ? '$color.highlight' : '#34435e' },
-      ],
-    });
-    label(
-      `plan-${plan.id}-action-label`,
-      `plan-${plan.id}-action`,
-      plan.action,
-      '$color.text',
-      13,
-      700,
-    );
-    for (const [index, feature] of plan.features.entries()) {
-      label(
-        `plan-${plan.id}-feature-${index}`,
-        `plan-${plan.id}`,
-        `✓  ${feature}`,
-        '$color.muted',
-        12,
-      );
-    }
   }
   box('pricing-footer', 'pricing-page', { width: 986, alignItems: 'center' });
   label(
@@ -534,8 +559,8 @@ function pricing(): InterfaceScene {
     title: 'Pricing page',
     titleZh: '订阅定价页',
     description:
-      'A product pricing page with navigation, a hero and three plan cards.',
-    descriptionZh: '包含导航、主视觉和三种订阅方案卡片的产品定价页。',
+      'A pricing page with three editable instances of one reusable plan card.',
+    descriptionZh: '包含三个可编辑组件实例的产品定价页。',
     componentName: 'PricingPage',
     width: 1050,
     height: 820,
@@ -547,9 +572,10 @@ function pricing(): InterfaceScene {
       hero: { tag: 'header' },
       'hero-title': { tag: 'h1' },
       plans: { tag: 'section' },
-      'plan-starter-action': { tag: 'button' },
-      'plan-growth-action': { tag: 'button' },
-      'plan-scale-action': { tag: 'button' },
+      'plan-card-action': { tag: 'button' },
+      'plan-starter__plan-card-action': { tag: 'button' },
+      'plan-growth__plan-card-action': { tag: 'button' },
+      'plan-scale__plan-card-action': { tag: 'button' },
       'pricing-footer': { tag: 'footer' },
     },
   };

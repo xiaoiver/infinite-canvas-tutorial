@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import type {} from './fixtures/design-to-code-docs';
 
 test('mobile checkout stays editable on the IC canvas and exports current HTML and React', async ({
@@ -73,6 +74,41 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))
     .toBe('pricing-page');
   await expect(code).toContainText('PricingPage');
+  await expect(code).toContainText('export function PricingPlanCard');
+  expect((await code.innerText()).match(/<PricingPlanCard/g)).toHaveLength(3);
+  await page.evaluate(() => window.designToCodeDocs.editPricingAmount('$39'));
+  await expect(code).toContainText('$39');
+  await expect(code).toContainText('export function PricingPlanCard');
+  const [componentDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const componentDocument = JSON.parse(
+    await readFile((await componentDownload.path())!, 'utf8'),
+  );
+  expect(
+    componentDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({
+    type: 'ref',
+    descendants: { 'plan-card-amount': { content: '$39' } },
+  });
+  await page.evaluate(() => window.designToCodeDocs.resizePricingCard(320));
+  await expect(code).toContainText('w-[320px]');
+  await expect(code).not.toContainText('export function PricingPlanCard');
+  const [expandedDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const expandedDocument = JSON.parse(
+    await readFile((await expandedDownload.path())!, 'utf8'),
+  );
+  expect(
+    expandedDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({ type: 'rect', width: 320 });
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))
