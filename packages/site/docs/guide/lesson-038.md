@@ -343,6 +343,7 @@ const code = serializedNodesToCode(nodes, {
 | `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
 | `rect` with one CSS gradient fill                    | CSS `background-image`                                |
 | `ellipse`                                            | CSS `border-radius: 50%`                              |
+| `rect` / `ellipse` + `clipMode: clip`                | CSS `overflow: hidden` on the clipping element        |
 | `rotation` / `scaleX` / `scaleY`                     | CSS `transform` around the local top-left corner      |
 | node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                   | text node; `$token` content → variable                |
@@ -378,6 +379,8 @@ A rectangle with one enabled `linear-gradient(...)` or `radial-gradient(...)` fi
 A single solid fill with opacity below 1 exports through CSS `color-mix`, preserving the fill alpha without dimming child elements. Node opacity remains a separate CSS `opacity`. Editing a translucent fill on a reusable instance expands that instance so the generated paint retains its opacity.
 
 Node rotation (stored in radians) and `scaleX` / `scaleY` export as a CSS `rotate(...) scale(...)` transform with origin `0 0`, matching the canvas's local transform order. Editing an instance transform expands that instance so the changed geometry is included in the export.
+
+Rectangles and ellipses with `clipMode: clip` now clip their children in generated HTML and React code. Rounded rectangles retain their corner radius, and ellipses use `border-radius: 50%`. Changing a reusable instance's clip mode expands that instance so its clipping state is preserved. `erase` and `soft` masks do not have a direct CSS overflow equivalent and are not exported as clipping.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 

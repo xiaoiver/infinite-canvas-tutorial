@@ -93,6 +93,8 @@ export interface StyleIR {
   maxHeight?: number;
   /** Local canvas transform; rotation is stored in radians. */
   transform?: string;
+  /** Rectangular or elliptical `clipMode: clip` clips descendant content. */
+  overflow?: 'hidden';
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;
