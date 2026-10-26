@@ -16,6 +16,7 @@ const PROP_KEYS = [
   'strokeWidth',
   'strokes',
   'opacity',
+  'visibility',
   'blendMode',
   'fontWeight',
   'fontStyle',

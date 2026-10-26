@@ -6,6 +6,40 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('preserves hidden and explicitly visible nodes without removing layout space', () => {
+      const nodes = [
+        {
+          id: 'hidden-frame',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 50,
+          visibility: 'hidden',
+          zIndex: 0,
+        },
+        {
+          id: 'visible-label',
+          type: 'text',
+          parentId: 'hidden-frame',
+          x: 0,
+          y: 0,
+          content: 'Visible',
+          visibility: 'visible',
+          zIndex: 1,
+        },
+      ] as SerializedNode[];
+      const react = serializedNodesToCode(nodes);
+      expect(react).toContain(
+        'className="relative w-[100px] h-[50px] invisible"',
+      );
+      expect(react).toContain('visible');
+      expect(react).not.toContain('display: "none"');
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('visibility: hidden');
+      expect(html).toContain('visibility: visible');
+    });
+
     it('keeps relative spacing between multiple sized scene roots', () => {
       const nodes = [
         {

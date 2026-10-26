@@ -169,6 +169,7 @@ export function styleIRToCssDeclarations(
   }
   const opacity = combinedImageOpacityCss(style, mode);
   if (opacity !== undefined) push('opacity', opacity);
+  if (style.visibility) push('visibility', style.visibility);
 
   if (style.color)
     push(

@@ -52,6 +52,30 @@ const source: SerializedNode[] = [
 describe('design-to-code expanded ref reconciliation', () => {
   const baseline = expandRefSerializedNodes(structuredClone(source), source);
 
+  it('keeps a child visibility edit as a component prop', () => {
+    const current = structuredClone(baseline);
+    current.find((node) => node.id === 'growth__price')!.visibility = 'hidden';
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      descendants: { price: { visibility: 'hidden' } },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain("priceVisibility?: CSSProperties['visibility']");
+    expect(react).toContain('visibility: priceVisibility');
+    expect(react).toContain('priceVisibility="hidden"');
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('visibility: hidden');
+
+    const inherited = structuredClone(recovered);
+    const ref = inherited.find((node) => node.id === 'growth');
+    if (ref?.type !== 'ref') throw new Error('Missing instance');
+    ref.descendants = { price: { visibility: 'inherited' } };
+    expect(serializedNodesToCode(inherited)).toContain(
+      'priceVisibility="inherit"',
+    );
+  });
+
   it('positions a preserved component inside a free-layout parent', () => {
     const nodes = structuredClone(source);
     const parent = nodes.find((node) => node.id === 'page')!;

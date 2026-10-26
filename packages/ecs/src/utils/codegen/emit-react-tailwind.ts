@@ -39,6 +39,7 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   borderWidth: 'borderWidth',
   borderColor: 'borderColor',
   opacity: 'opacity',
+  visibility: 'visibility',
   fontWeight: 'fontWeight',
   fontStyle: 'fontStyle',
   fontVariant: 'fontVariant',
@@ -200,6 +201,8 @@ function genTailwind(
     inline.push(['objectPosition', JSON.stringify(style.objectPosition)]);
   if (style.mixBlendMode && !skip.has('mixBlendMode'))
     inline.push(['mixBlendMode', JSON.stringify(style.mixBlendMode)]);
+  if (style.visibility && !skip.has('visibility'))
+    classes.push(style.visibility === 'hidden' ? 'invisible' : 'visible');
 
   if (style.backgroundColor && !skip.has('backgroundColor')) {
     if (style.solidFillOpacity)
@@ -559,6 +562,7 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
             'alignSelf',
             'flexBasis',
             'mixBlendMode',
+            'visibility',
             'minWidth',
             'maxWidth',
             'minHeight',
