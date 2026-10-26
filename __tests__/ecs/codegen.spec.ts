@@ -7,6 +7,54 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('exports line, triangle, and diamond arrow markers with the stroke color', () => {
+      const node = {
+        id: 'arrow-a',
+        type: 'polyline',
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 40,
+        zIndex: 0,
+        points: '0,0 40,40 80,0',
+        strokes: [{ type: 'solid', value: '#123456', opacity: 0.5 }],
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        markerStart: 'triangle',
+        markerEnd: 'diamond',
+        markerFactor: 3,
+      } as SerializedNode;
+      const react = serializedNodesToCode([node]);
+      expect(react).toContain('<defs>');
+      expect(react).toContain('orient="auto-start-reverse"');
+      expect(react).toContain('orient="auto"');
+      expect(react).toContain('markerStart={"url(#ic-marker-61-72-72-6f-77-2d-61-start)"}');
+      expect(react).toContain('markerEnd={"url(#ic-marker-61-72-72-6f-77-2d-61-end)"}');
+      expect(react).toContain('stroke={"color-mix(in srgb, #123456 50%, transparent)"}');
+      expect(react).toContain('markerWidth={18}');
+      expect(react).toContain(' L -6 0 L -3 2.4000000000000004 Z');
+      expect(
+        ts.transpileModule(react, {
+          fileName: 'Design.tsx',
+          reportDiagnostics: true,
+          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+        }).diagnostics?.filter(
+          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+        ),
+      ).toEqual([]);
+
+      const html = serializedNodesToCode([node], { framework: 'html-css' });
+      expect(html).toContain('<marker id="ic-marker-61-72-72-6f-77-2d-61-start"');
+      expect(html).toContain('marker-start="url(#ic-marker-61-72-72-6f-77-2d-61-start)"');
+      expect(html).toContain('marker-end="url(#ic-marker-61-72-72-6f-77-2d-61-end)"');
+
+      const open = serializedNodesToCode([
+        { ...node, id: 'open-arrow', markerStart: 'line', markerEnd: 'none' },
+      ]);
+      expect(open).toContain('fill={"none"} stroke={"color-mix(');
+      expect(open).not.toContain('markerEnd=');
+    });
+
     it('exports thin lines and polylines as stroked vectors', () => {
       const line = {
         id: 'horizontal-line',

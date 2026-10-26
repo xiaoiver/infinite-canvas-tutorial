@@ -35,6 +35,7 @@ import type {
   CodeSemanticElement,
   CodegenOptions,
   CodeVariablesMode,
+  CodeVectorMarker,
   StyleIR,
   StyleValue,
 } from './types';
@@ -279,6 +280,52 @@ function vectorPathData(node: AnyNode): string | undefined {
   return undefined;
 }
 
+function vectorMarker(
+  node: AnyNode,
+  side: 'start' | 'end',
+  strokeWidth: number,
+): CodeVectorMarker | undefined {
+  const type = node[side === 'start' ? 'markerStart' : 'markerEnd'];
+  if (!['line', 'triangle', 'diamond'].includes(type as string))
+    return undefined;
+  const factor =
+    typeof node.markerFactor === 'number' &&
+    Number.isFinite(node.markerFactor) &&
+    node.markerFactor > 0
+      ? node.markerFactor
+      : 3;
+  const radius = strokeWidth * factor;
+  const size = radius * factor;
+  const tipX = -radius * Math.cos(Math.PI / 6);
+  const tipY = radius * 0.5;
+  const d =
+    type === 'diamond'
+      ? `M 0 0 L ${-radius * 0.5} ${-radius * 0.4} L ${-radius} 0 L ${-radius * 0.5} ${radius * 0.4} Z`
+      : `M ${tipX} ${-tipY} L 0 0 L ${tipX} ${tipY}${type === 'triangle' ? ' Z' : ''}`;
+  // Use a reversible, CSS-safe encoding so unrelated nodes never share a marker ID.
+  const encodedId = Array.from(node.id as string)
+    .map((character) => character.codePointAt(0)!.toString(16))
+    .join('-');
+  return {
+    id: `ic-marker-${encodedId}-${side}`,
+    d,
+    fill: type !== 'line',
+    size,
+    offset: radius,
+    strokeWidth,
+    strokeLinecap: ['butt', 'round', 'square'].includes(
+      node.strokeLinecap as string,
+    )
+      ? (node.strokeLinecap as CodeVectorMarker['strokeLinecap'])
+      : undefined,
+    strokeLinejoin: ['miter', 'round', 'bevel'].includes(
+      node.strokeLinejoin as string,
+    )
+      ? (node.strokeLinejoin as CodeVectorMarker['strokeLinejoin'])
+      : undefined,
+  };
+}
+
 function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const d = vectorPathData(node);
   if (!d) return undefined;
@@ -365,6 +412,14 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
       typeof node.strokeDashoffset === 'number' &&
       Number.isFinite(node.strokeDashoffset)
         ? node.strokeDashoffset
+        : undefined,
+    markerStart:
+      stroke && strokeWidth > 0
+        ? vectorMarker(node, 'start', strokeWidth)
+        : undefined,
+    markerEnd:
+      stroke && strokeWidth > 0
+        ? vectorMarker(node, 'end', strokeWidth)
         : undefined,
   };
 }
@@ -1316,6 +1371,9 @@ function hasUnsupportedVectorRefOverrides(nodes: AnyNode[]): boolean {
     'strokeMiterlimit',
     'strokeDasharray',
     'strokeDashoffset',
+    'markerStart',
+    'markerEnd',
+    'markerFactor',
   ];
   const changed = (template: AnyNode | undefined, patch: AnyNode) =>
     ['path', 'line', 'polyline'].includes(template?.type as string) &&

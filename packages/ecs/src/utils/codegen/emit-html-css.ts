@@ -70,9 +70,18 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       : 'none';
     const attr = (name: string, value: string | number | undefined) =>
       value === undefined ? '' : ` ${name}="${escapeAttr(String(value))}"`;
+    const markers = [path.markerStart, path.markerEnd]
+      .filter((marker) => marker !== undefined)
+      .map((marker) => {
+        const side = marker === path.markerStart ? 'start' : 'end';
+        return `${state.indent.repeat(depth + 2)}<marker id="${marker.id}" markerUnits="userSpaceOnUse" markerWidth="${formatNumber(marker.size)}" markerHeight="${formatNumber(marker.size)}" viewBox="${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}" refX="0" refY="0" orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d="${escapeAttr(marker.d)}" fill="${marker.fill ? escapeAttr(stroke) : 'none'}" stroke="${escapeAttr(stroke)}" stroke-width="${formatNumber(marker.strokeWidth)}"${attr('stroke-linecap', marker.strokeLinecap)}${attr('stroke-linejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
+      });
+    const defs = markers.length
+      ? `${state.indent.repeat(depth + 1)}<defs>\n${markers.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
+      : '';
     return `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
       path.height,
-    )}" aria-hidden="true"${style}>\n${state.indent.repeat(
+    )}" aria-hidden="true"${style}>\n${defs}${state.indent.repeat(
       depth + 1,
     )}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}" fill-rule="${
       path.fillRule
@@ -85,7 +94,7 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     )}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr(
       'stroke-dasharray',
       path.strokeDasharray,
-    )}${attr('stroke-dashoffset', path.strokeDashoffset)} />\n${pad}</svg>`;
+    )}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', path.markerStart && `url(#${path.markerStart.id})`)}${attr('marker-end', path.markerEnd && `url(#${path.markerEnd.id})`)} />\n${pad}</svg>`;
   }
   const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
   const semanticAttr =
