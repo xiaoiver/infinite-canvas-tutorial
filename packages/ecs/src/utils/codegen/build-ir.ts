@@ -245,12 +245,24 @@ function buildStyle(
   if (typeof node.minHeight === 'number') style.minHeight = node.minHeight;
   if (typeof node.maxHeight === 'number') style.maxHeight = node.maxHeight;
   if (role === 'image') {
-    const imageFill = asArray<SerializedFillLayerItem>(node.fills).find(
-      (fill) => fill.type === 'image' && fill.enabled !== false,
+    const activeFills = asArray<SerializedFillLayerItem>(node.fills).filter(
+      (fill) => fill.enabled !== false,
     );
+    const imageFill = activeFills.find((fill) => fill.type === 'image');
     if (imageFill?.type === 'image') {
       style.objectFit = imageFill.objectFit;
       style.objectPosition = imageFill.objectPosition;
+      if (
+        activeFills.length === 1 &&
+        imageFill.opacity !== undefined &&
+        imageFill.opacity !== 1
+      ) {
+        const opacity = imageFill.opacity;
+        style.imageFillOpacity =
+          typeof opacity === 'number' || Number.isNaN(Number(opacity))
+            ? toStyleValue(opacity)
+            : { literal: Number(opacity) };
+      }
     }
   }
 
