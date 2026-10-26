@@ -51,6 +51,10 @@ const TARGET_TO_CSS_KEY: Record<CodeBindingTarget, string> = {
   flexGrow: 'flexGrow',
   flexShrink: 'flexShrink',
   flexBasis: 'flexBasis',
+  minWidth: 'minWidth',
+  maxWidth: 'maxWidth',
+  minHeight: 'minHeight',
+  maxHeight: 'maxHeight',
 };
 
 interface TwResult {
@@ -159,13 +163,13 @@ function genTailwind(
     classes.push(`w-[${formatNumber(style.width)}px]`);
   if (style.height !== undefined && !skip.has('height'))
     classes.push(`h-[${formatNumber(style.height)}px]`);
-  if (style.minWidth !== undefined)
+  if (style.minWidth !== undefined && !skip.has('minWidth'))
     classes.push(`min-w-[${formatNumber(style.minWidth)}px]`);
-  if (style.maxWidth !== undefined)
+  if (style.maxWidth !== undefined && !skip.has('maxWidth'))
     classes.push(`max-w-[${formatNumber(style.maxWidth)}px]`);
-  if (style.minHeight !== undefined)
+  if (style.minHeight !== undefined && !skip.has('minHeight'))
     classes.push(`min-h-[${formatNumber(style.minHeight)}px]`);
-  if (style.maxHeight !== undefined)
+  if (style.maxHeight !== undefined && !skip.has('maxHeight'))
     classes.push(`max-h-[${formatNumber(style.maxHeight)}px]`);
 
   if (style.backgroundColor && !skip.has('backgroundColor')) {
@@ -441,6 +445,10 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
             'flexWrap',
             'alignSelf',
             'flexBasis',
+            'minWidth',
+            'maxWidth',
+            'minHeight',
+            'maxHeight',
           ].includes(p.target)
         ? `CSSProperties['${p.target}']`
         : 'string';
@@ -508,6 +516,10 @@ export function emitReactTailwind(
           'flexWrap',
           'alignSelf',
           'flexBasis',
+          'minWidth',
+          'maxWidth',
+          'minHeight',
+          'maxHeight',
         ].includes(prop.target),
       ),
     )

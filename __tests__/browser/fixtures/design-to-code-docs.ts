@@ -98,6 +98,19 @@ const probe = {
       });
     });
   },
+  setPricingActionConstraints: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth__plan-card-action');
+      if (node?.type !== 'rect') throw new Error('Growth action is missing');
+      editor.updateNode(node, {
+        minWidth: 250,
+        maxWidth: 300,
+        minHeight: 40,
+        maxHeight: 52,
+      });
+    });
+  },
   setPricingAmountTypography: async () => {
     if (!api) throw new Error('Editor is not ready');
     await api.edit((editor) => {

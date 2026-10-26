@@ -38,6 +38,10 @@ const PROP_KEYS = [
   'flexGrow',
   'flexShrink',
   'flexBasis',
+  'minWidth',
+  'maxWidth',
+  'minHeight',
+  'maxHeight',
   'anchorX',
 ] as const;
 const DIMENSION_KEYS = new Set(['width', 'height']);

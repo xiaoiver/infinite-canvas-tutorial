@@ -154,6 +154,54 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(html).toContain('flex-basis: 120px');
   });
 
+  it('preserves instance size constraints without fixed template classes', () => {
+    const boundedSource = structuredClone(source);
+    Object.assign(boundedSource.find((node) => node.id === 'card-template')!, {
+      minWidth: 120,
+      maxWidth: 250,
+      minHeight: 70,
+      maxHeight: 130,
+    });
+    const boundedBaseline = expandRefSerializedNodes(
+      structuredClone(boundedSource),
+      boundedSource,
+    );
+    const current = structuredClone(boundedBaseline);
+    Object.assign(current.find((node) => node.id === 'growth')!, {
+      minWidth: 150,
+      maxWidth: 220,
+      minHeight: 80,
+      maxHeight: 120,
+    });
+    const recovered = reconcileRefInstances(
+      boundedSource,
+      boundedBaseline,
+      current,
+    );
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      minWidth: 150,
+      maxWidth: 220,
+      minHeight: 80,
+      maxHeight: 120,
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain("planCardMinWidth?: CSSProperties['minWidth']");
+    expect(react).toContain("planCardMaxWidth?: CSSProperties['maxWidth']");
+    expect(react).toContain("planCardMinHeight?: CSSProperties['minHeight']");
+    expect(react).toContain("planCardMaxHeight?: CSSProperties['maxHeight']");
+    expect(react).toContain('planCardMinWidth={150}');
+    expect(react).toContain('minWidth: planCardMinWidth');
+    expect(react).not.toContain('min-w-[120px]');
+    expect(react).not.toContain('max-w-[250px]');
+
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('min-width: 150px');
+    expect(html).toContain('max-width: 220px');
+    expect(html).toContain('min-height: 80px');
+    expect(html).toContain('max-height: 120px');
+  });
+
   it('keeps flex alignment and direction edits as instance props', () => {
     const current = structuredClone(baseline);
     const card = current.find((node) => node.id === 'growth')!;
