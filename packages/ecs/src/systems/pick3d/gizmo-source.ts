@@ -5,6 +5,7 @@ import {
   Mesh3DNode,
   Mesh3DNodeTarget,
   Transform,
+  Transform3D,
 } from '../../components';
 import type { SerializedNode } from '../../types/serialized-node';
 import { resolveMesh3DNodeSourceTransform } from '../../utils/mesh3d-node';
@@ -51,6 +52,7 @@ export function captureGizmoSource(
   const frame = new GizmoSourceFrame(entity, api?.getNodeByEntity(entity));
   if (extrusion) {
     const { depth, z, rotation, bevelSize } = entity.read(Extrude3D);
+    const initialMeshScale = [...mesh.read(Transform3D).scale];
     const initial = {
       depth,
       z,
@@ -95,7 +97,8 @@ export function captureGizmoSource(
         Object.assign(entity.write(Extrude3D), initial);
       },
       patch(pose, node) {
-        const factor = pose.scale[2] / initial.depth;
+        // Depth can be edited independently; XY determines uniform source scaling.
+        const factor = pose.scale[0] / initialMeshScale[0];
         const patch = resolveExtrudeSourceTransform(
           entity,
           pose,
