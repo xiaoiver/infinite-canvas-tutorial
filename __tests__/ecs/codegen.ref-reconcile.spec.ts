@@ -101,7 +101,7 @@ describe('design-to-code expanded ref reconciliation', () => {
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;
-    (ref as { opacity?: number }).opacity = 0.7;
+    (ref as { dropShadowBlurRadius?: number }).dropShadowBlurRadius = 12;
     const expanded = expandRefSerializedNodes(
       structuredClone(unsupportedSource),
       unsupportedSource,
@@ -114,8 +114,33 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(recovered.some((node) => node.type === 'ref')).toBe(false);
     expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
       type: 'rect',
-      opacity: 0.7,
+      dropShadowBlurRadius: 12,
     });
+  });
+
+  it('preserves instance opacity and text weight as component props', () => {
+    const current = structuredClone(baseline);
+    const card = current.find((node) => node.id === 'growth')!;
+    const price = current.find((node) => node.id === 'growth__price')!;
+    if (price.type !== 'text') throw new Error('Missing text clone');
+    card.opacity = 0.7;
+    price.fontWeight = 800;
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      opacity: 0.7,
+      descendants: { price: { fontWeight: 800 } },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('planCardOpacity?: number');
+    expect(react).toContain("import type { CSSProperties } from 'react';");
+    expect(react).toContain("priceFontWeight?: CSSProperties['fontWeight']");
+    expect(react).toContain('planCardOpacity = 1');
+    expect(react).toContain('priceFontWeight = 400');
+    expect(react).toContain('opacity: planCardOpacity');
+    expect(react).toContain('fontWeight: priceFontWeight');
+    expect(react).toContain('planCardOpacity={0.70}');
+    expect(react).toContain('priceFontWeight={800}');
   });
 
   it('preserves edited stroke width and color as instance props', () => {

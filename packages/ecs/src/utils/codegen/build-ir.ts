@@ -44,6 +44,8 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   width: 'width',
   height: 'height',
   strokeWidth: 'borderWidth',
+  opacity: 'opacity',
+  fontWeight: 'fontWeight',
 };
 
 function asArray<T>(v: unknown): T[] {
@@ -390,6 +392,12 @@ function templateDefaultValue(
     return (
       toStyleValue((desc as TextSerializedNode).content) ?? { literal: '' }
     );
+  }
+  if (attr === 'opacity') {
+    return toStyleValue(desc.opacity as number) ?? { literal: 1 };
+  }
+  if (attr === 'fontWeight') {
+    return toStyleValue(desc.fontWeight as string | number) ?? { literal: 400 };
   }
   if (attr === 'fills' || attr === 'fill') {
     return (

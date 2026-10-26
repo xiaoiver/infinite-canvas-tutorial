@@ -49,6 +49,25 @@ const probe = {
       editor.updateNode(node, { opacity });
     });
   },
+  setPricingAmountWeight: async (fontWeight: number) => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth__plan-card-amount');
+      if (node?.type !== 'text') throw new Error('Growth price is missing');
+      editor.updateNode(node, { fontWeight });
+    });
+  },
+  setPricingCardShadow: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    await api.edit((editor) => {
+      const node = editor.getNodeById('plan-growth');
+      if (node?.type !== 'rect') throw new Error('Growth card is missing');
+      editor.updateNode(node, {
+        dropShadowColor: '#000000',
+        dropShadowBlurRadius: 12,
+      });
+    });
+  },
 };
 declare global {
   interface Window {
