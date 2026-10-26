@@ -86,6 +86,13 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('w-[220px]');
   });
 
+  it('falls back when a text child is moved outside its template layout', () => {
+    const current = structuredClone(baseline);
+    current.find((node) => node.id === 'growth__price')!.x = 12;
+    const recovered = reconcileRefInstances(source, baseline, current);
+    expect(recovered.some((node) => node.type === 'ref')).toBe(false);
+  });
+
   it('uses the expanded document for unsupported source overrides', () => {
     const unsupportedSource = structuredClone(source);
     const ref = unsupportedSource.find((node) => node.id === 'growth')!;

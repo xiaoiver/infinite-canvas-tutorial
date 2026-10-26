@@ -7,7 +7,7 @@ import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 
 const PROP_KEYS = ['content', 'fills', 'fontSize', 'cornerRadius'] as const;
 const ROOT_POSITION_KEYS = new Set(['parentId', 'x', 'y', 'zIndex', 'name']);
-const TEXT_LAYOUT_KEYS = new Set(['x', 'y', 'width', 'height']);
+const TEXT_LAYOUT_KEYS = new Set(['width', 'height']);
 const TRANSIENT_KEYS = new Set(['version', 'versionNonce', 'updated']);
 const REF_IDENTITY_KEYS = new Set([
   'id',
