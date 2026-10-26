@@ -33,7 +33,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(preview.locator('body')).toContainText('Pay $79.00');
   const bounds = await preview.locator('body').evaluate(() => {
     const find = (content: string) => {
-      const node = [...document.querySelectorAll('span')].find(
+      const node = Array.from(document.querySelectorAll('span')).find(
         (span) => span.textContent === content,
       );
       if (!node) throw new Error(`Missing preview text: ${content}`);
