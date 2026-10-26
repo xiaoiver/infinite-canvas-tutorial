@@ -754,6 +754,60 @@ describe('design-to-code expanded ref reconciliation', () => {
     );
   });
 
+  it('preserves wrap width edits on an already wrapped reusable text', () => {
+    const wrappedSource = structuredClone(source);
+    Object.assign(wrappedSource.find((node) => node.id === 'price')!, {
+      wordWrap: true,
+      wordWrapWidth: 80,
+    });
+    const wrappedBaseline = expandRefSerializedNodes(
+      structuredClone(wrappedSource),
+      wrappedSource,
+    );
+    const current = structuredClone(wrappedBaseline);
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      wordWrapWidth: 120,
+    });
+    const recovered = reconcileRefInstances(
+      wrappedSource,
+      wrappedBaseline,
+      current,
+    );
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      descendants: { price: { wordWrapWidth: 120 } },
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain('priceWordWrapWidth?: number');
+    expect(react).toContain('priceWordWrapWidth={120}');
+    expect(react).toContain('maxWidth: priceWordWrapWidth');
+    expect(react).toContain('whitespace-pre-wrap');
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('max-width: 120px');
+
+    Object.assign(current.find((node) => node.id === 'growth__price')!, {
+      wordWrap: false,
+    });
+    const flattened = reconcileRefInstances(
+      wrappedSource,
+      wrappedBaseline,
+      current,
+    );
+    expect(flattened.some((node) => node.type === 'ref')).toBe(false);
+    expect(serializedNodesToCode(flattened)).toContain('whitespace-pre');
+
+    const directRef = structuredClone(wrappedSource);
+    const growth = directRef.find((node) => node.id === 'growth')!;
+    if (growth.type !== 'ref') throw new Error('Missing ref');
+    growth.descendants = {
+      ...growth.descendants,
+      price: { ...growth.descendants?.price, wordWrap: false },
+    };
+    const directReact = serializedNodesToCode(directRef);
+    expect(directReact).not.toContain('export function PlanCard');
+    expect(directReact).toContain('whitespace-pre');
+  });
+
   it('falls back for an anchor move without a text alignment edit', () => {
     const current = structuredClone(baseline);
     const price = current.find((node) => node.id === 'growth__price')!;

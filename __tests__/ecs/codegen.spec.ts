@@ -21,6 +21,34 @@ describe('design-to-code (codegen)', () => {
       expect(code).not.toContain('leading-[0px]');
     });
 
+    it('preserves hard line breaks and maps a wrapped text width', () => {
+      const text = {
+        id: 'copy',
+        type: 'text',
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        content: 'First line\nSecond line and more',
+        wordWrap: true,
+        wordWrapWidth: 120,
+      } as SerializedNode;
+      const react = serializedNodesToCode([text]);
+      expect(react).toContain('whitespace-pre-wrap');
+      expect(react).toContain('inline-block');
+      expect(react).toContain('max-w-[120px]');
+      expect(react).toContain('overflowWrap: "anywhere"');
+      const html = serializedNodesToCode([text], { framework: 'html-css' });
+      expect(html).toContain('white-space: pre-wrap');
+      expect(html).toContain('max-width: 120px');
+      expect(html).toContain('overflow-wrap: anywhere');
+
+      const unwrapped = serializedNodesToCode([
+        { ...text, wordWrap: false } as SerializedNode,
+      ]);
+      expect(unwrapped).toContain('whitespace-pre');
+      expect(unwrapped).not.toContain('max-w-[120px]');
+    });
+
     it('emits a single rect as a div with tailwind classes', () => {
       const nodes: SerializedNode[] = [
         {
@@ -307,13 +335,15 @@ describe('design-to-code (codegen)', () => {
         semanticElements,
       });
       expect(html).toContain('<main');
-      expect(html).toContain('<h1 style="margin: 0">Checkout</h1>');
+      expect(html).toContain(
+        '<h1 style="margin: 0; white-space: pre">Checkout</h1>',
+      );
       expect(html).toContain('<button type="button"');
       expect(html).toContain('appearance: none; border: 0; padding: 0');
       expect(html).toContain('href="/help?topic=pay&amp;lang=en"');
       const react = serializedNodesToCode(nodes, { semanticElements });
       expect(react).toContain('<main');
-      expect(react).toContain('<h1>Checkout</h1>');
+      expect(react).toContain('<h1 className="whitespace-pre">Checkout</h1>');
       expect(react).toContain('<button type="button"');
       expect(react).toContain('href="/help?topic=pay&lang=en"');
     });

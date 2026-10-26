@@ -339,22 +339,23 @@ const code = serializedNodesToCode(nodes, {
 
 ### 概念映射 {#design-to-code-mapping}
 
-| `.ic` 概念                                                | 代码产物                                              |
-| --------------------------------------------------------- | ----------------------------------------------------- |
-| `rect`/`g` + `display: flex`                              | `<div>` + flex 工具类（`flex items-center …`）        |
-| Flex 方向、对齐、尺寸、间距和内边距                    | Tailwind flex 工具类 / CSS                            |
-| `cornerRadius` / `fills` / `strokes` / `dropShadow`       | `rounded-* / bg-* / border / shadow-*`                |
-| 带图片填充的 `rect`                                      | `<img src>` 与 `object-fit` / `object-position`      |
-| 节点级 `blendMode`                                        | CSS `mix-blend-mode`                                  |
-| `text` + `content`                                        | 文本节点；`$token` 文本 → 变量                        |
-| 文本装饰的线条、样式、颜色与粗细                          | CSS `text-decoration`                                 |
-| `fontVariant` / `fontKerning`                             | CSS `font-variant` / `font-kerning`                    |
-| `iconfont`（lucide）                                      | `lucide-react` `<Search />`                           |
-| `iconfont`（其他族）                                      | `@iconify/react` `<Icon icon="family:name" />`        |
-| `$color.bg` 变量                                          | `bg-[var(--color-bg)]`（css-var）/ 字面量（resolved） |
-| `reusable` 根                                             | 一个 React 组件定义                                   |
-| `ref` + `descendants` 覆盖                                | 组件实例 + props                                      |
-| `name`                                                    | 组件名 / prop 名 / class 名                           |
+| `.ic` 概念                                          | 代码产物                                              |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| `rect`/`g` + `display: flex`                        | `<div>` + flex 工具类（`flex items-center …`）        |
+| Flex 方向、对齐、尺寸、间距和内边距                 | Tailwind flex 工具类 / CSS                            |
+| `cornerRadius` / `fills` / `strokes` / `dropShadow` | `rounded-* / bg-* / border / shadow-*`                |
+| 带图片填充的 `rect`                                 | `<img src>` 与 `object-fit` / `object-position`       |
+| 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
+| `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
+| 文本装饰的线条、样式、颜色与粗细                    | CSS `text-decoration`                                 |
+| `fontVariant` / `fontKerning`                       | CSS `font-variant` / `font-kerning`                   |
+| `wordWrap` / `wordWrapWidth`                        | `white-space`、`overflow-wrap` 与 `max-width`         |
+| `iconfont`（lucide）                                | `lucide-react` `<Search />`                           |
+| `iconfont`（其他族）                                | `@iconify/react` `<Icon icon="family:name" />`        |
+| `$color.bg` 变量                                    | `bg-[var(--color-bg)]`（css-var）/ 字面量（resolved） |
+| `reusable` 根                                       | 一个 React 组件定义                                   |
+| `ref` + `descendants` 覆盖                          | 组件实例 + props                                      |
+| `name`                                              | 组件名 / prop 名 / class 名                           |
 
 ### 变量模式 {#design-to-code-variable-modes}
 
@@ -367,6 +368,8 @@ const code = serializedNodesToCode(nodes, {
 ### 组件与实例 {#design-to-code-components}
 
 在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、包括 `fontVariant` 和 `fontKerning` 的排版属性、文本装饰、`opacity`、`cornerRadius`、显式 `width` / `height`、`minWidth` / `maxWidth` / `minHeight` / `maxHeight`、`padding`、`margin`、flex 间距、`flexDirection`、`alignItems`、`justifyContent`、`flexWrap`、`alignSelf`、`flexGrow`、`flexShrink`、`flexBasis`、`strokeWidth`、`strokes` 和投影字段）会被提升为 props，默认值取自模板。`.ic` 中数值型 `lineHeight` 表示像素高度，因此 React 导出会补 `px`，不会将其当成无单位的行高倍率。布尔型 `fontKerning` 会转为 CSS 的 `normal` 或 `none`。四边间距数组会转为 CSS 简写字符串，文本装饰字段会合并为一个参数，投影字段会合并为一个 `boxShadow` prop。装饰线粗细为 0 时导出 `none`，与画布语义一致：
+
+文本导出通过 `white-space: pre` 保留显式换行。开启 `wordWrap` 且 `wordWrapWidth` 为正数时，会使用 `pre-wrap`、`overflow-wrap: anywhere`，并把该宽度作为最大宽度。已开启换行的可复用文本如果只修改换行宽度，会生成组件 prop；切换换行开关则会展开实例，以匹配编辑后的布局。当前画布测量尚未应用 `whiteSpace` 属性，`maxLines` 和自定义 `textOverflow` 截断也尚未映射为 CSS。
 
 对于可复用图片，仅修改图片 URL 时，实例的 `fills` 覆盖会绑定到组件的 `<img src>` 参数。修改填充类型、适配方式、位置或填充透明度时，实例会展开，使生成的元素与样式对应编辑结果。对于单层图片填充，导出的 `<img>` 透明度会合并填充透明度与节点整体透明度。
 

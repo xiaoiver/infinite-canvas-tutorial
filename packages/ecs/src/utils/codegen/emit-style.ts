@@ -150,6 +150,12 @@ export function styleIRToCssDeclarations(
   if (style.fontKerning) push('font-kerning', style.fontKerning);
   if (style.fontFamily) push('font-family', style.fontFamily);
   if (style.textAlign) push('text-align', style.textAlign);
+  if (style.whiteSpace) push('white-space', style.whiteSpace);
+  if (style.textWrapWidth !== undefined) {
+    push('display', 'inline-block');
+    push('overflow-wrap', 'anywhere');
+    push('max-width', `${formatNumber(style.textWrapWidth)}px`);
+  }
   if (style.letterSpacing)
     push('letter-spacing', styleValueToCss(style.letterSpacing, mode, true));
   if (style.lineHeight)

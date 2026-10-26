@@ -23,6 +23,7 @@ const PROP_KEYS = [
   'fontKerning',
   'fontFamily',
   'textAlign',
+  'wordWrapWidth',
   'letterSpacing',
   'lineHeight',
   'decorationLine',
@@ -116,6 +117,15 @@ function hasUnsupportedChange(
       if (documentValueEqual(baseline[key], current[key])) continue;
       if (!documentValueEqual(baseline.textAlign, current.textAlign)) continue;
       return true;
+    }
+    if (
+      key === 'wordWrapWidth' &&
+      baseline.type === 'text' &&
+      (template.wordWrap !== true ||
+        typeof template.wordWrapWidth !== 'number' ||
+        template.wordWrapWidth <= 0)
+    ) {
+      if (!documentValueEqual(baseline[key], current[key])) return true;
     }
     if (PROP_KEYS.some((prop) => prop === key)) continue;
     if (root && ROOT_POSITION_KEYS.has(key)) continue;
