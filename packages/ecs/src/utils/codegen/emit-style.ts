@@ -105,6 +105,7 @@ export function styleIRToCssDeclarations(
     push('max-height', `${formatNumber(style.maxHeight)}px`);
   if (style.objectFit) push('object-fit', style.objectFit);
   if (style.objectPosition) push('object-position', style.objectPosition);
+  if (style.mixBlendMode) push('mix-blend-mode', style.mixBlendMode);
 
   if (style.backgroundColor)
     push('background-color', styleValueToCss(style.backgroundColor, mode));

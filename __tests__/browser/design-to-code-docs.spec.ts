@@ -290,11 +290,27 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
       },
     },
   });
+  await page.evaluate(() => window.designToCodeDocs.setPricingCardBlendMode());
+  await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('pricingPlanCardBlendMode="multiply"');
+  const [blendDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 .ic' }).click(),
+  ]);
+  const blendedDocument = JSON.parse(
+    await readFile((await blendDownload.path())!, 'utf8'),
+  );
+  expect(
+    blendedDocument.elements.find(
+      (node: { id: string }) => node.id === 'plan-growth',
+    ),
+  ).toMatchObject({ type: 'ref', blendMode: 'multiply' });
   await page.getByRole('button', { name: 'HTML/CSS' }).click();
   await expect(code).toContainText('flex-basis: 140px');
   await expect(code).toContainText('align-self: center');
   await expect(code).toContainText('min-width: 250px');
   await expect(code).toContainText('max-height: 52px');
+  await expect(code).toContainText('mix-blend-mode: multiply');
   await page.getByRole('button', { name: 'React + Tailwind' }).click();
   await page.getByRole('button', { name: '运营数据面板' }).click();
   await expect

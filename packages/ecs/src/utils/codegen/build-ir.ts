@@ -21,6 +21,7 @@ import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
 import type { ThemeMode } from '../../components/Theme';
 import { toComponentName, toPropName } from './string-utils';
 import { boxToCss, styleValueToCss } from './emit-style';
+import { toCSSMixBlendMode } from '../blend-mode';
 import { hasUnsupportedImageFillOverride } from './image-fill-override';
 import type {
   CodeBindingTarget,
@@ -67,6 +68,7 @@ const OVERRIDABLE_KEY_TO_TARGET: Record<string, CodeBindingTarget> = {
   flexGrow: 'flexGrow',
   flexShrink: 'flexShrink',
   flexBasis: 'flexBasis',
+  blendMode: 'mixBlendMode',
   minWidth: 'minWidth',
   maxWidth: 'maxWidth',
   minHeight: 'minHeight',
@@ -244,6 +246,7 @@ function buildStyle(
   if (typeof node.maxWidth === 'number') style.maxWidth = node.maxWidth;
   if (typeof node.minHeight === 'number') style.minHeight = node.minHeight;
   if (typeof node.maxHeight === 'number') style.maxHeight = node.maxHeight;
+  style.mixBlendMode = toCSSMixBlendMode(node.blendMode as never) ?? undefined;
   if (role === 'image') {
     const activeFills = asArray<SerializedFillLayerItem>(node.fills).filter(
       (fill) => fill.enabled !== false,
@@ -463,6 +466,11 @@ function overrideStyleValue(
     const box = normalizeBox(patch[attr] as number | number[] | undefined);
     return box ? { literal: boxToCss(box) } : undefined;
   }
+  if (attr === 'blendMode') {
+    return {
+      literal: toCSSMixBlendMode(patch.blendMode as never) ?? 'normal',
+    };
+  }
   return toStyleValue(patch[attr] as string | number);
 }
 
@@ -484,6 +492,11 @@ function templateDefaultValue(
   }
   if (attr === 'opacity') {
     return toStyleValue(desc.opacity as number) ?? { literal: 1 };
+  }
+  if (attr === 'blendMode') {
+    return {
+      literal: toCSSMixBlendMode(desc.blendMode as never) ?? 'normal',
+    };
   }
   if (attr === 'flexDirection') {
     return toStyleValue(desc.flexDirection as string) ?? { literal: 'row' };

@@ -91,6 +91,52 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('planCardWidth={220}');
   });
 
+  it('preserves node blend mode as an instance CSS prop', () => {
+    const blendedSource = structuredClone(source);
+    Object.assign(blendedSource.find((node) => node.id === 'card-template')!, {
+      blendMode: 'screen',
+    });
+    Object.assign(blendedSource.find((node) => node.id === 'growth')!, {
+      blendMode: 'light',
+    });
+    const blendedBaseline = expandRefSerializedNodes(
+      structuredClone(blendedSource),
+      blendedSource,
+    );
+    const current = structuredClone(blendedBaseline);
+    Object.assign(current.find((node) => node.id === 'growth')!, {
+      blendMode: 'multiply',
+    });
+    const recovered = reconcileRefInstances(
+      blendedSource,
+      blendedBaseline,
+      current,
+    );
+    expect(recovered.find((node) => node.id === 'growth')).toMatchObject({
+      type: 'ref',
+      blendMode: 'multiply',
+    });
+    const react = serializedNodesToCode(recovered);
+    expect(react).toContain(
+      "planCardBlendMode?: CSSProperties['mixBlendMode']",
+    );
+    expect(react).toContain('planCardBlendMode = "screen"');
+    expect(react).toContain('mixBlendMode: planCardBlendMode');
+    expect(react).toContain('planCardBlendMode="multiply"');
+    const html = serializedNodesToCode(recovered, { framework: 'html-css' });
+    expect(html).toContain('mix-blend-mode: multiply');
+
+    const aliased = serializedNodesToCode(blendedSource);
+    expect(aliased).toContain('planCardBlendMode="lighten"');
+    const normal = structuredClone(blendedSource);
+    Object.assign(normal.find((node) => node.id === 'growth')!, {
+      blendMode: 'normal',
+    });
+    expect(serializedNodesToCode(normal)).toContain(
+      'planCardBlendMode="normal"',
+    );
+  });
+
   it('falls back when a text child is moved outside its template layout', () => {
     const current = structuredClone(baseline);
     current.find((node) => node.id === 'growth__price')!.x = 12;
