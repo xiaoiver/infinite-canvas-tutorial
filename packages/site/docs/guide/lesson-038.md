@@ -339,6 +339,7 @@ const code = serializedNodesToCode(nodes, {
 | ---------------------------------------------------- | ----------------------------------------------------- |
 | `rect`/`g` + `display: flex`                         | `<div>` + flex utilities (`flex items-center …`)      |
 | Flex direction, alignment, sizing, gaps, and padding | Tailwind flex utilities / CSS                         |
+| Child `x` / `y` inside a non-flex container          | Absolute positioning relative to that container       |
 | `cornerRadius` / `fills` / `strokes` / `dropShadow`  | `rounded-* / bg-* / border / shadow-*`                |
 | `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
 | `rect` with one CSS gradient fill                    | CSS `background-image`                                |
@@ -381,6 +382,8 @@ A single solid fill with opacity below 1 exports through CSS `color-mix`, preser
 Node rotation (stored in radians) and `scaleX` / `scaleY` export as a CSS `rotate(...) scale(...)` transform with origin `0 0`, matching the canvas's local transform order. Editing an instance transform expands that instance so the changed geometry is included in the export.
 
 Rectangles and ellipses with `clipMode: clip` now clip their children in generated HTML and React code. Rounded rectangles retain their corner radius, and ellipses use `border-radius: 50%`. Changing a reusable instance's clip mode expands that instance so its clipping state is preserved. `erase` and `soft` masks do not have a direct CSS overflow equivalent and are not exported as clipping.
+
+For a non-flex container, children use their local canvas `x` / `y` as CSS `left` / `top` positions. Flex children remain in normal flex flow. A preserved component instance inside a non-flex container gets a positioned wrapper; moving a child inside an instance expands that instance to retain the edit. When multiple top-level nodes all have explicit sizes, the export also adds a relative frame and keeps their spacing, including rotated and flipped bounds. Roots without measurable sizes retain normal document flow.
 
 Node-level `blendMode` becomes CSS `mix-blend-mode`, including a component prop when an instance changes it. `light` maps to CSS `lighten`; modes without a CSS equivalent follow SVG export and render as `normal`. A fill layer's own `blendMode` blends with other fills in that node and is not treated as node-level `mix-blend-mode`.
 

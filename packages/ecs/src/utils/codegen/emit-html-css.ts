@@ -10,6 +10,7 @@ import {
   type DesignVariablesMap,
 } from '../design-variables';
 import type { ThemeMode } from '../../components/Theme';
+import { formatNumber } from '../serialize/points';
 import { styleIRToCssDeclarations, styleValueToCss } from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
 
@@ -112,8 +113,17 @@ export function emitHtmlCss(ir: CodeIR, indent = '  '): string {
     blocks.push(`<style>\n${indent}${root}\n</style>`);
   }
 
-  for (const n of ir.roots) {
-    blocks.push(renderNode(n, state, 0));
+  if (ir.rootFrame) {
+    const { width, height } = ir.rootFrame;
+    blocks.push(
+      `<div style="position: relative; width: ${formatNumber(
+        width,
+      )}px; height: ${formatNumber(height)}px">\n${ir.roots
+        .map((node) => renderNode(node, state, 1))
+        .join('\n')}\n</div>`,
+    );
+  } else {
+    for (const n of ir.roots) blocks.push(renderNode(n, state, 0));
   }
   return blocks.join('\n') + '\n';
 }

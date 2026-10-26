@@ -151,6 +151,11 @@ function genTailwind(
       classes.push(`gap-x-[${formatNumber(style.columnGap)}px]`);
   }
   if (style.display === 'inline-block') classes.push('inline-block');
+  if (style.position) classes.push(style.position);
+  if (style.left !== undefined)
+    classes.push(`left-[${formatNumber(style.left)}px]`);
+  if (style.top !== undefined)
+    classes.push(`top-[${formatNumber(style.top)}px]`);
   if (style.flexGrow !== undefined && !skip.has('flexGrow'))
     classes.push(style.flexGrow === 1 ? 'grow' : `grow-[${style.flexGrow}]`);
   if (style.flexShrink === 0 && !skip.has('flexShrink'))
@@ -446,7 +451,10 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
           : `${k}=${JSON.stringify(val)}`;
       })
       .join(' ');
-    return `${pad}<${node.instanceOf}${props ? ' ' + props : ''} />`;
+    const component = `<${node.instanceOf}${props ? ' ' + props : ''} />`;
+    if (!node.style.position) return `${pad}${component}`;
+    const { className, styleExpr } = renderAttributes(node, state);
+    return `${pad}<div${className}${styleExpr}>${component}</div>`;
   }
 
   const { className, styleExpr } = renderAttributes(node, state);
@@ -594,12 +602,19 @@ export function emitReactTailwind(
   const componentBlocks = ir.components.map((c) => renderComponent(c, state));
 
   const rootBody = ir.roots.map((n) => renderNode(n, state, 2)).join('\n');
-  const rootWrapped =
-    ir.roots.length === 1
-      ? rootBody
-      : `${indent.repeat(2)}<>\n${ir.roots
-          .map((n) => renderNode(n, state, 3))
-          .join('\n')}\n${indent.repeat(2)}</>`;
+  const rootWrapped = ir.rootFrame
+    ? `${indent.repeat(
+        2,
+      )}<div className="relative" style={{ width: ${formatNumber(
+        ir.rootFrame.width,
+      )}, height: ${formatNumber(ir.rootFrame.height)} }}>\n${ir.roots
+        .map((n) => renderNode(n, state, 3))
+        .join('\n')}\n${indent.repeat(2)}</div>`
+    : ir.roots.length === 1
+    ? rootBody
+    : `${indent.repeat(2)}<>\n${ir.roots
+        .map((n) => renderNode(n, state, 3))
+        .join('\n')}\n${indent.repeat(2)}</>`;
 
   const topComponent = `export function ${
     pascalCase(topName) || 'Design'

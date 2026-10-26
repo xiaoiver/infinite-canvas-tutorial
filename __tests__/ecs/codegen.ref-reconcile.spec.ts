@@ -52,6 +52,60 @@ const source: SerializedNode[] = [
 describe('design-to-code expanded ref reconciliation', () => {
   const baseline = expandRefSerializedNodes(structuredClone(source), source);
 
+  it('positions a preserved component inside a free-layout parent', () => {
+    const nodes = structuredClone(source);
+    const parent = nodes.find((node) => node.id === 'page')!;
+    delete parent.display;
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    instance.x = 42;
+    instance.y = 64;
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('absolute left-[42px] top-[64px]');
+    expect(react).toContain('<PlanCard');
+    expect(react).not.toContain('growthX');
+  });
+
+  it('keeps a top-level component instance beside a sized scene root', () => {
+    const nodes = structuredClone(source);
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    delete instance.parentId;
+    instance.x = 450;
+    instance.y = 25;
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain(
+      'className="relative" style={{ width: 630, height: 300 }}',
+    );
+    expect(react).toContain('absolute left-[450px] top-[25px]');
+    expect(react).toContain('<PlanCard');
+    const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+    expect(html).toContain('position: relative; width: 630px; height: 300px');
+    expect(html).toContain('position: absolute; left: 450px; top: 25px');
+  });
+
+  it('includes a rotated component instance in the scene frame', () => {
+    const nodes = structuredClone(source);
+    nodes.find((node) => node.id === 'card-template')!.rotation = Math.PI / 2;
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    delete instance.parentId;
+    instance.x = 450;
+    instance.y = 25;
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('style={{ width: 450, height: 300 }}');
+    expect(react).toContain('absolute left-[450px] top-[25px]');
+    expect(react).toContain('rotate(1.570796rad)');
+  });
+
+  it('expands an instance whose free-layout child moved', () => {
+    const nodes = structuredClone(source);
+    delete nodes.find((node) => node.id === 'card-template')!.display;
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    if (instance.type !== 'ref') throw new Error('Missing instance');
+    instance.descendants = { price: { x: 30, y: 12 } };
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<PlanCard');
+    expect(react).toContain('absolute left-[30px] top-[12px]');
+  });
+
   it('expands a component instance when its clipping mode changes', () => {
     const nodes = structuredClone(source);
     const instance = nodes.find((node) => node.id === 'growth')!;

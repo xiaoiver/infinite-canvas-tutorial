@@ -107,6 +107,9 @@ export function styleIRToCssDeclarations(
       push('column-gap', `${formatNumber(style.columnGap)}px`);
   }
   if (style.display === 'inline-block') push('display', 'inline-block');
+  if (style.position) push('position', style.position);
+  if (style.left !== undefined) push('left', `${formatNumber(style.left)}px`);
+  if (style.top !== undefined) push('top', `${formatNumber(style.top)}px`);
   if (style.flexGrow !== undefined)
     push('flex-grow', formatNumber(style.flexGrow));
   if (style.flexShrink !== undefined)

@@ -450,6 +450,7 @@ function buildCodeNode(
   node: AnyNode,
   ctx: BuildContext,
   bindingsForTemplate?: Set<string>,
+  inFreeLayout = false,
 ): CodeNode {
   if (node.type === 'ref') {
     const instance = buildInstanceNode(
@@ -458,11 +459,17 @@ function buildCodeNode(
       ctx.byId,
       ctx.variablesMode,
     );
-    if (instance) return instance;
+    if (instance) {
+      if (inFreeLayout) positionFreeChild(instance.style, node);
+      return instance;
+    }
   }
   const role = decideRole(node);
   const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   const style = buildStyle(node, role, children.length > 0);
+  if (inFreeLayout) positionFreeChild(style, node);
+  else if (children.length > 0 && node.display !== 'flex')
+    style.position = 'relative';
   const codeNode: CodeNode = {
     role,
     id: node.id,
@@ -511,9 +518,18 @@ function buildCodeNode(
   }
 
   codeNode.children = children.map((c) =>
-    buildCodeNode(c, ctx, bindingsForTemplate),
+    buildCodeNode(c, ctx, bindingsForTemplate, node.display !== 'flex'),
   );
   return codeNode;
+}
+
+/** Canvas coordinates are local to the parent when Yoga is not laying out children. */
+function positionFreeChild(style: StyleIR, node: AnyNode): void {
+  style.position = 'absolute';
+  style.left =
+    typeof node.x === 'number' && Number.isFinite(node.x) ? node.x : 0;
+  style.top =
+    typeof node.y === 'number' && Number.isFinite(node.y) ? node.y : 0;
 }
 
 function colorTargetFor(
@@ -741,16 +757,19 @@ export function buildCodeIR(
     hasUnsupportedPaintRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTransformRefOverrides(working as AnyNode[]) ||
     hasUnsupportedClipRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedFreeLayoutRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
+    const roots = buildRootsExcludingReusable(
+      expanded as AnyNode[],
+      options.semanticElements ?? {},
+      variablesMode,
+    );
     return {
       components: [],
-      roots: buildRootsExcludingReusable(
-        expanded as AnyNode[],
-        options.semanticElements ?? {},
-        variablesMode,
-      ),
+      roots,
+      rootFrame: positionSceneRoots(roots, expanded as AnyNode[]),
       variables,
       themeMode,
       variablesMode,
@@ -791,6 +810,70 @@ function buildRootsExcludingReusable(
     nodes.filter((n) => !n.parentId || !byId.has(n.parentId)),
   ).filter((n) => !n.reusable);
   return roots.map((n) => buildCodeNode(n, ctx));
+}
+
+/** Keep spacing between scene roots when all have a measurable frame. */
+function positionSceneRoots(
+  roots: CodeNode[],
+  nodes: AnyNode[],
+): CodeIR['rootFrame'] {
+  if (roots.length < 2) return undefined;
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const frames = roots.map((root) => {
+    const node = byId.get(root.id);
+    const template = node?.type === 'ref' ? byId.get(node.ref as string) : null;
+    const x = node?.x;
+    const y = node?.y;
+    const width = node?.width ?? template?.width;
+    const height = node?.height ?? template?.height;
+    const rotation = node?.rotation ?? template?.rotation ?? 0;
+    const scaleX = node?.scaleX ?? template?.scaleX ?? 1;
+    const scaleY = node?.scaleY ?? template?.scaleY ?? 1;
+    if (
+      ![x, y, width, height, rotation, scaleX, scaleY].every(
+        (value) => typeof value === 'number' && Number.isFinite(value),
+      ) ||
+      (width as number) <= 0 ||
+      (height as number) <= 0
+    )
+      return undefined;
+    return {
+      x: x as number,
+      y: y as number,
+      width: width as number,
+      height: height as number,
+      rotation: rotation as number,
+      scaleX: scaleX as number,
+      scaleY: scaleY as number,
+    };
+  });
+  if (frames.some((frame) => !frame)) return undefined;
+  const sized = frames as Array<NonNullable<(typeof frames)[number]>>;
+  // CSS `rotate(...) scale(...)` around 0 0 matches the canvas local transform.
+  const corners = sized.flatMap((frame) => {
+    const cos = Math.cos(frame.rotation);
+    const sin = Math.sin(frame.rotation);
+    return [
+      [0, 0],
+      [frame.width, 0],
+      [0, frame.height],
+      [frame.width, frame.height],
+    ].map(([x, y]) => ({
+      x: frame.x + cos * frame.scaleX * x - sin * frame.scaleY * y,
+      y: frame.y + sin * frame.scaleX * x + cos * frame.scaleY * y,
+    }));
+  });
+  // Round outward so CSS transform serialization cannot clip a subpixel edge.
+  const minX = Math.floor(Math.min(...corners.map((corner) => corner.x)));
+  const minY = Math.floor(Math.min(...corners.map((corner) => corner.y)));
+  const maxX = Math.ceil(Math.max(...corners.map((corner) => corner.x)));
+  const maxY = Math.ceil(Math.max(...corners.map((corner) => corner.y)));
+  roots.forEach((root, index) => {
+    root.style.position = 'absolute';
+    root.style.left = sized[index].x - minX;
+    root.style.top = sized[index].y - minY;
+  });
+  return { width: maxX - minX, height: maxY - minY };
 }
 
 function buildPreserve(
@@ -955,7 +1038,14 @@ function buildPreserve(
     roots.push(buildCodeNode(n, ctx));
   }
 
-  return { components, roots, variables, themeMode, variablesMode };
+  return {
+    components,
+    roots,
+    rootFrame: positionSceneRoots(roots, nodes),
+    variables,
+    themeMode,
+    variablesMode,
+  };
 }
 
 function hasUnsupportedPaintRefOverrides(nodes: AnyNode[]): boolean {
@@ -1021,6 +1111,31 @@ function hasUnsupportedClipRefOverrides(nodes: AnyNode[]): boolean {
     return Object.entries(
       (node.descendants ?? {}) as Record<string, AnyNode>,
     ).some(([id, patch]) => changed(byId.get(id), patch));
+  });
+}
+
+/** Template child coordinates and display mode cannot be changed by current style props. */
+function hasUnsupportedFreeLayoutRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const displayChanged = (template: AnyNode | undefined, patch: AnyNode) =>
+    !!template && 'display' in patch && patch.display !== template.display;
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    if (displayChanged(byId.get(node.ref as string), node)) return true;
+    return Object.entries(
+      (node.descendants ?? {}) as Record<string, AnyNode>,
+    ).some(([id, patch]) => {
+      const template = byId.get(id);
+      if (!template) return false;
+      if (displayChanged(template, patch)) return true;
+      const parent = byId.get(template.parentId as string);
+      return (
+        !!parent &&
+        parent.display !== 'flex' &&
+        (('x' in patch && patch.x !== template.x) ||
+          ('y' in patch && patch.y !== template.y))
+      );
+    });
   });
 }
 
