@@ -154,6 +154,45 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(html).toContain('fill="#0000ff"');
   });
 
+  it('expands a gradient paint override on a reusable path', () => {
+    const nodes = [
+      {
+        id: 'gradient-template',
+        type: 'path',
+        name: 'GradientBadge',
+        reusable: true,
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 40,
+        zIndex: 0,
+        d: 'M 0 0 L 40 0 L 40 40 Z',
+        fills: [{ type: 'solid', value: '#ff0000' }],
+      },
+      {
+        id: 'gradient-instance',
+        type: 'ref',
+        ref: 'gradient-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        fills: [
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #ffffff 0%, #000000 100%)',
+          },
+        ],
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<GradientBadge');
+    expect(react).toContain('<linearGradient');
+    expect(react).toContain('fill={"url(#ic-gradient-');
+    const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+    expect(html).toContain('<linearGradient');
+    expect(html).toContain('fill="url(#ic-gradient-');
+  });
+
   it('keeps a child visibility edit as a component prop', () => {
     const current = structuredClone(baseline);
     current.find((node) => node.id === 'growth__price')!.visibility = 'hidden';

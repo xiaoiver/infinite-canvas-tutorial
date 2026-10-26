@@ -25,6 +25,13 @@ import { toCSSMixBlendMode } from '../blend-mode';
 import { hasUnsupportedPaintFillOverride } from './paint-fill-override';
 import { singleCssGradientFill } from './gradient-fill';
 import { pathGeometryBounds } from '../path-rendering';
+import {
+  computeLinearGradient,
+  computeRadialGradient,
+  isGradient,
+  parseGradient,
+} from '../gradient';
+import { isCssGradient } from './gradient-fill';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -36,6 +43,7 @@ import type {
   CodegenOptions,
   CodeVariablesMode,
   CodeVectorMarker,
+  CodeVectorGradient,
   StyleIR,
   StyleValue,
 } from './types';
@@ -326,6 +334,80 @@ function vectorMarker(
   };
 }
 
+function vectorGradient(
+  node: AnyNode,
+  kind: 'fill' | 'stroke',
+  layers: SerializedFillLayerItem[],
+  min: [number, number],
+  width: number,
+  height: number,
+): CodeVectorGradient | undefined {
+  const active = layers.filter((layer) => layer.enabled !== false);
+  const layer = active.length === 1 ? active[0] : undefined;
+  const value =
+    layer?.type === 'gradient' &&
+    (layer.blendMode === undefined || layer.blendMode === 'normal')
+      ? layer.value
+      : active.length === 0 && isCssGradient(node[kind])
+        ? (node[kind] as string)
+        : undefined;
+  if (!value) return undefined;
+  let gradients: ReturnType<typeof parseGradient>;
+  try {
+    gradients = parseGradient(value);
+  } catch {
+    return undefined;
+  }
+  if (gradients?.length !== 1) return undefined;
+  const gradient = gradients[0];
+  if (
+    (gradient.type !== 'linear-gradient' &&
+      gradient.type !== 'radial-gradient') ||
+    gradient.steps.length === 0
+  )
+    return undefined;
+  const stops = gradient.steps.map((step) => ({
+    offset:
+      step.offset.type === '%'
+        ? step.offset.value / 100
+        : step.offset.value <= 1
+          ? step.offset.value
+          : step.offset.value / 100,
+    color: step.color,
+  }));
+  if (
+    !stops.every(
+      (stop) => Number.isFinite(stop.offset) && stop.color.trim() !== '',
+    )
+  )
+    return undefined;
+  const encodedId = Array.from(node.id as string)
+    .map((character) => character.codePointAt(0)!.toString(16))
+    .join('-');
+  const geometry =
+    gradient.type === 'linear-gradient'
+      ? {
+          type: 'linear' as const,
+          ...computeLinearGradient(min, width, height, gradient.angle),
+        }
+      : (() => {
+          const { x, y, r } = computeRadialGradient(
+            min,
+            width,
+            height,
+            gradient.cx,
+            gradient.cy,
+            gradient.size,
+          );
+          return { type: 'radial' as const, cx: x, cy: y, r };
+        })();
+  if (!Object.values(geometry).every((coordinate) =>
+    typeof coordinate === 'number' ? Number.isFinite(coordinate) : true,
+  ))
+    return undefined;
+  return { id: `ic-gradient-${encodedId}-${kind}`, geometry, stops };
+}
+
 function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const d = vectorPathData(node);
   if (!d) return undefined;
@@ -351,28 +433,56 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   );
   const fillLayer = fills.find((fill) => fill.type === 'solid');
   const strokeLayer = strokes.find((stroke) => stroke.type === 'solid');
+  const gradientFillLayer = fills.find((fill) => fill.type === 'gradient');
+  const gradientStrokeLayer = strokes.find((stroke) => stroke.type === 'gradient');
   const fill =
     node.type === 'path'
       ? (fillLayer?.type === 'solid' && toStyleValue(fillLayer.value)) ||
-        toStyleValue(node.fill as string)
+        (typeof node.fill === 'string' && isGradient(node.fill)
+          ? undefined
+          : toStyleValue(node.fill as string))
       : undefined;
   const stroke =
     (strokeLayer?.type === 'solid' && toStyleValue(strokeLayer.value)) ||
-    toStyleValue(node.stroke as string);
+    (typeof node.stroke === 'string' && isGradient(node.stroke)
+      ? undefined
+      : toStyleValue(node.stroke as string));
   const strokeWidth =
     typeof node.strokeWidth === 'number' ? node.strokeWidth : 1;
+  const width = dimension(node.width, bounds.maxX - bounds.minX);
+  const height = dimension(node.height, bounds.maxY - bounds.minY);
+  const viewBoxX =
+    bounds.minX - (bounds.maxX === bounds.minX ? 0.5 : 0);
+  const viewBoxY =
+    bounds.minY - (bounds.maxY === bounds.minY ? 0.5 : 0);
+  const fillGradient =
+    node.type === 'path'
+      ? vectorGradient(node, 'fill', fills, [viewBoxX, viewBoxY], width, height)
+      : undefined;
+  const strokeGradient =
+    strokeWidth > 0
+      ? vectorGradient(
+          node,
+          'stroke',
+          strokes,
+          [viewBoxX, viewBoxY],
+          width,
+          height,
+        )
+      : undefined;
   return {
     d,
-    viewBoxX:
-      bounds.minX - (bounds.maxX === bounds.minX ? 0.5 : 0),
-    viewBoxY:
-      bounds.minY - (bounds.maxY === bounds.minY ? 0.5 : 0),
-    width: dimension(node.width, bounds.maxX - bounds.minX),
-    height: dimension(node.height, bounds.maxY - bounds.minY),
+    viewBoxX,
+    viewBoxY,
+    width,
+    height,
     fill,
-    fillOpacity: fill
+    fillGradient,
+    fillOpacity: fill || fillGradient
       ? toStyleValue(
-          (fillLayer?.opacity ?? node.fillOpacity) as string | number,
+          (fillLayer?.opacity ?? gradientFillLayer?.opacity ?? node.fillOpacity) as
+            | string
+            | number,
         )
       : undefined,
     fillRule:
@@ -380,12 +490,16 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
         ? 'evenodd'
         : 'nonzero',
     stroke: strokeWidth > 0 ? stroke : undefined,
-    strokeOpacity: stroke
+    strokeGradient,
+    strokeOpacity: stroke || strokeGradient
       ? toStyleValue(
-          (strokeLayer?.opacity ?? node.strokeOpacity) as string | number,
+          (strokeLayer?.opacity ??
+            gradientStrokeLayer?.opacity ??
+            node.strokeOpacity) as string | number,
         )
       : undefined,
-    strokeWidth: stroke && strokeWidth > 0 ? strokeWidth : undefined,
+    strokeWidth:
+      (stroke || strokeGradient) && strokeWidth > 0 ? strokeWidth : undefined,
     strokeLinecap: ['butt', 'round', 'square'].includes(
       node.strokeLinecap as string,
     )
@@ -414,11 +528,11 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
         ? node.strokeDashoffset
         : undefined,
     markerStart:
-      stroke && strokeWidth > 0
+      (stroke || strokeGradient) && strokeWidth > 0
         ? vectorMarker(node, 'start', strokeWidth)
         : undefined,
     markerEnd:
-      stroke && strokeWidth > 0
+      (stroke || strokeGradient) && strokeWidth > 0
         ? vectorMarker(node, 'end', strokeWidth)
         : undefined,
   };
