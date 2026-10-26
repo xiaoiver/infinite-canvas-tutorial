@@ -49,6 +49,42 @@ describe('design-to-code (codegen)', () => {
       expect(unwrapped).not.toContain('max-w-[120px]');
     });
 
+    it('exports wrapped line limits for ellipsis and clip', () => {
+      const text = {
+        id: 'summary',
+        type: 'text',
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        content: 'A long summary that spans several lines',
+        wordWrap: true,
+        wordWrapWidth: 120,
+        maxLines: 2,
+      } as SerializedNode;
+      const react = serializedNodesToCode([text]);
+      expect(react).toContain('WebkitLineClamp: 2');
+      expect(react).toContain('WebkitBoxOrient: "vertical"');
+      expect(react).toContain('overflow: "hidden"');
+      const html = serializedNodesToCode([text], { framework: 'html-css' });
+      expect(html).toContain('-webkit-line-clamp: 2');
+      expect(html).toContain('display: -webkit-box');
+
+      const clipped = { ...text, textOverflow: 'clip' } as SerializedNode;
+      expect(serializedNodesToCode([clipped])).toContain(
+        'maxHeight: "calc(2 * 1lh)"',
+      );
+      const clippedHtml = serializedNodesToCode([clipped], {
+        framework: 'html-css',
+      });
+      expect(clippedHtml).toContain('max-height: calc(2 * 1lh)');
+      expect(clippedHtml).not.toContain('-webkit-line-clamp');
+
+      const unwrapped = serializedNodesToCode([
+        { ...text, wordWrap: false } as SerializedNode,
+      ]);
+      expect(unwrapped).not.toContain('WebkitLineClamp');
+    });
+
     it('emits a single rect as a div with tailwind classes', () => {
       const nodes: SerializedNode[] = [
         {

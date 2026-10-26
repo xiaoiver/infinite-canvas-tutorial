@@ -374,8 +374,19 @@ function buildStyle(
       node.wordWrap === true &&
       typeof node.wordWrapWidth === 'number' &&
       node.wordWrapWidth > 0
-    )
+    ) {
       style.textWrapWidth = node.wordWrapWidth;
+      if (
+        typeof node.maxLines === 'number' &&
+        Number.isFinite(node.maxLines) &&
+        node.maxLines > 0
+      ) {
+        style.maxLines = Math.floor(node.maxLines);
+        if (node.textOverflow === undefined || node.textOverflow === 'ellipsis')
+          style.textOverflow = 'ellipsis';
+        else if (node.textOverflow === 'clip') style.textOverflow = 'clip';
+      }
+    }
     const ls = toStyleValue(node.letterSpacing as number);
     if (ls) style.letterSpacing = ls;
     const lh = toStyleValue(node.lineHeight as number);
@@ -930,6 +941,8 @@ function hasUnsupportedTextWrapRefOverrides(nodes: AnyNode[]): boolean {
   const unsupported = (template: AnyNode | undefined, patch: AnyNode) =>
     !!template &&
     ('wordWrap' in patch ||
+      'maxLines' in patch ||
+      'textOverflow' in patch ||
       ('wordWrapWidth' in patch &&
         (template.wordWrap !== true ||
           typeof template.wordWrapWidth !== 'number' ||
