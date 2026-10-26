@@ -219,9 +219,11 @@ export interface CodeNode {
     width: number;
     height: number;
     fill?: StyleValue;
+    fillGradient?: CodeVectorGradient;
     fillOpacity?: StyleValue;
     fillRule: 'nonzero' | 'evenodd';
     stroke?: StyleValue;
+    strokeGradient?: CodeVectorGradient;
     strokeOpacity?: StyleValue;
     strokeWidth?: number;
     strokeLinecap?: 'butt' | 'round' | 'square';
@@ -249,6 +251,14 @@ export interface CodeVectorMarker {
   strokeWidth: number;
   strokeLinecap?: 'butt' | 'round' | 'square';
   strokeLinejoin?: 'miter' | 'round' | 'bevel';
+}
+
+export interface CodeVectorGradient {
+  id: string;
+  geometry:
+    | { type: 'linear'; x1: number; y1: number; x2: number; y2: number }
+    | { type: 'radial'; cx: number; cy: number; r: number };
+  stops: { offset: number; color: string }[];
 }
 
 export interface CodeComponentProp {

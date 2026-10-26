@@ -62,30 +62,52 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   const style = styleAttr(node, state);
   if (node.vectorPath) {
     const path = node.vectorPath;
-    const fill = path.fill
-      ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
-      : 'none';
-    const stroke = path.stroke
-      ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
-      : 'none';
+    const fill = path.fillGradient
+      ? `url(#${path.fillGradient.id})`
+      : path.fill
+        ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
+        : 'none';
+    const stroke = path.strokeGradient
+      ? `url(#${path.strokeGradient.id})`
+      : path.stroke
+        ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
+        : 'none';
     const attr = (name: string, value: string | number | undefined) =>
       value === undefined ? '' : ` ${name}="${escapeAttr(String(value))}"`;
+    const gradients = [path.fillGradient, path.strokeGradient]
+      .filter((gradient) => gradient !== undefined)
+      .map((gradient) => {
+        const g = gradient.geometry;
+        const tag = g.type === 'linear' ? 'linearGradient' : 'radialGradient';
+        const geometry =
+          g.type === 'linear'
+            ? `${attr('x1', formatNumber(g.x1))}${attr('y1', formatNumber(g.y1))}${attr('x2', formatNumber(g.x2))}${attr('y2', formatNumber(g.y2))}`
+            : `${attr('cx', formatNumber(g.cx))}${attr('cy', formatNumber(g.cy))}${attr('r', formatNumber(g.r))}`;
+        const stops = gradient.stops
+          .map(
+            (stop) =>
+              `${state.indent.repeat(depth + 3)}<stop offset="${formatNumber(stop.offset)}" stop-color="${escapeAttr(stop.color)}" />`,
+          )
+          .join('\n');
+        return `${state.indent.repeat(depth + 2)}<${tag} id="${gradient.id}" gradientUnits="userSpaceOnUse"${geometry}>\n${stops}\n${state.indent.repeat(depth + 2)}</${tag}>`;
+      });
     const markers = [path.markerStart, path.markerEnd]
       .filter((marker) => marker !== undefined)
       .map((marker) => {
         const side = marker === path.markerStart ? 'start' : 'end';
-        return `${state.indent.repeat(depth + 2)}<marker id="${marker.id}" markerUnits="userSpaceOnUse" markerWidth="${formatNumber(marker.size)}" markerHeight="${formatNumber(marker.size)}" viewBox="${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}" refX="0" refY="0" orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d="${escapeAttr(marker.d)}" fill="${marker.fill ? escapeAttr(stroke) : 'none'}" stroke="${escapeAttr(stroke)}" stroke-width="${formatNumber(marker.strokeWidth)}"${attr('stroke-linecap', marker.strokeLinecap)}${attr('stroke-linejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
+        return `${state.indent.repeat(depth + 2)}<marker id="${marker.id}" markerUnits="userSpaceOnUse" markerWidth="${formatNumber(marker.size)}" markerHeight="${formatNumber(marker.size)}" viewBox="${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}" refX="0" refY="0" orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d="${escapeAttr(marker.d)}" fill="${marker.fill ? escapeAttr(stroke) : 'none'}"${attr('fill-opacity', marker.fill && path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke="${escapeAttr(stroke)}"${attr('stroke-opacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke-width="${formatNumber(marker.strokeWidth)}"${attr('stroke-linecap', marker.strokeLinecap)}${attr('stroke-linejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
       });
-    const defs = markers.length
-      ? `${state.indent.repeat(depth + 1)}<defs>\n${markers.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
+    const definitions = [...gradients, ...markers];
+    const defs = definitions.length
+      ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
     return `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
       path.height,
     )}" aria-hidden="true"${style}>\n${defs}${state.indent.repeat(
       depth + 1,
-    )}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}" fill-rule="${
+    )}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}"${attr('fill-opacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fill-rule="${
       path.fillRule
-    }" stroke="${escapeAttr(stroke)}"${attr(
+    }" stroke="${escapeAttr(stroke)}"${attr('stroke-opacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr(
       'stroke-width',
       path.strokeWidth,
     )}${attr('stroke-linecap', path.strokeLinecap)}${attr(

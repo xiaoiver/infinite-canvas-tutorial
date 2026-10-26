@@ -7,6 +7,53 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('exports single linear fills and radial strokes on vector paths', () => {
+      const node = {
+        id: 'gradient-path',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        d: 'M 10 20 L 110 20 L 110 80 Z',
+        fills: [
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #ff0000 0%, #0000ff 100%)',
+            opacity: 0.5,
+          },
+        ],
+        strokes: [
+          {
+            type: 'gradient',
+            value:
+              'radial-gradient(circle at 50% 50%, #ffffff 0%, #000000 100%)',
+            opacity: 0.75,
+          },
+        ],
+        strokeWidth: 3,
+      } as SerializedNode;
+      const react = serializedNodesToCode([node]);
+      expect(react).toContain('<linearGradient');
+      expect(react).toContain('<radialGradient');
+      expect(react).toContain('gradientUnits="userSpaceOnUse"');
+      expect(react).toContain('stopColor={"#ff0000"}');
+      expect(react).toContain('stopColor={"#000000"}');
+      expect(react).toContain('fill={"url(#ic-gradient-67-72-61-64-69-65-6e-74-2d-70-61-74-68-fill)"}');
+      expect(react).toContain('stroke={"url(#ic-gradient-67-72-61-64-69-65-6e-74-2d-70-61-74-68-stroke)"}');
+      expect(react).toContain('fillOpacity={"0.50"}');
+      expect(react).toContain('strokeOpacity={"0.75"}');
+      expect(react).toContain('strokeWidth={3}');
+      const html = serializedNodesToCode([node], { framework: 'html-css' });
+      expect(html).toContain('<linearGradient');
+      expect(html).toContain('<radialGradient');
+      expect(html).toContain('fill-opacity="0.50"');
+      expect(html).toContain('stroke-opacity="0.75"');
+      expect(html).toContain('stop-color="#ff0000"');
+      expect(html).toContain('stroke-width="3"');
+    });
+
     it('exports line, triangle, and diamond arrow markers with the stroke color', () => {
       const node = {
         id: 'arrow-a',

@@ -464,22 +464,44 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
 
   if (node.vectorPath) {
     const path = node.vectorPath;
-    const fill = path.fill
-      ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
-      : 'none';
-    const stroke = path.stroke
-      ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
-      : 'none';
+    const fill = path.fillGradient
+      ? `url(#${path.fillGradient.id})`
+      : path.fill
+        ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
+        : 'none';
+    const stroke = path.strokeGradient
+      ? `url(#${path.strokeGradient.id})`
+      : path.stroke
+        ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
+        : 'none';
     const attr = (name: string, value: string | number | undefined) =>
       value === undefined ? '' : ` ${name}={${JSON.stringify(value)}}`;
+    const gradients = [path.fillGradient, path.strokeGradient]
+      .filter((gradient) => gradient !== undefined)
+      .map((gradient) => {
+        const g = gradient.geometry;
+        const tag = g.type === 'linear' ? 'linearGradient' : 'radialGradient';
+        const geometry =
+          g.type === 'linear'
+            ? `${attr('x1', g.x1)}${attr('y1', g.y1)}${attr('x2', g.x2)}${attr('y2', g.y2)}`
+            : `${attr('cx', g.cx)}${attr('cy', g.cy)}${attr('r', g.r)}`;
+        const stops = gradient.stops
+          .map(
+            (stop) =>
+              `${state.indent.repeat(depth + 3)}<stop offset={${formatNumber(stop.offset)}} stopColor={${JSON.stringify(stop.color)}} />`,
+          )
+          .join('\n');
+        return `${state.indent.repeat(depth + 2)}<${tag} id={${JSON.stringify(gradient.id)}} gradientUnits="userSpaceOnUse"${geometry}>\n${stops}\n${state.indent.repeat(depth + 2)}</${tag}>`;
+      });
     const markers = [path.markerStart, path.markerEnd]
       .filter((marker) => marker !== undefined)
       .map((marker) => {
         const side = marker === path.markerStart ? 'start' : 'end';
-        return `${state.indent.repeat(depth + 2)}<marker id={${JSON.stringify(marker.id)}} markerUnits="userSpaceOnUse" markerWidth={${formatNumber(marker.size)}} markerHeight={${formatNumber(marker.size)}} viewBox={${JSON.stringify(`${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`)}} refX={0} refY={0} orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(marker.d)}} fill={${JSON.stringify(marker.fill ? stroke : 'none')}} stroke={${JSON.stringify(stroke)}} strokeWidth={${formatNumber(marker.strokeWidth)}}${attr('strokeLinecap', marker.strokeLinecap)}${attr('strokeLinejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
+        return `${state.indent.repeat(depth + 2)}<marker id={${JSON.stringify(marker.id)}} markerUnits="userSpaceOnUse" markerWidth={${formatNumber(marker.size)}} markerHeight={${formatNumber(marker.size)}} viewBox={${JSON.stringify(`${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`)}} refX={0} refY={0} orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(marker.d)}} fill={${JSON.stringify(marker.fill ? stroke : 'none')}}${attr('fillOpacity', marker.fill && path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} strokeWidth={${formatNumber(marker.strokeWidth)}}${attr('strokeLinecap', marker.strokeLinecap)}${attr('strokeLinejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
       });
-    const defs = markers.length
-      ? `${state.indent.repeat(depth + 1)}<defs>\n${markers.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
+    const definitions = [...gradients, ...markers];
+    const defs = definitions.length
+      ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
       : '';
     return `${pad}<svg viewBox={${JSON.stringify(
       `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
@@ -487,9 +509,9 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       depth + 1,
     )}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
       fill,
-    )}} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
+    )}}${attr('fillOpacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
       stroke,
-    )}}${attr('strokeWidth', path.strokeWidth)}${attr(
+    )}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', path.strokeWidth)}${attr(
       'strokeLinecap',
       path.strokeLinecap,
     )}${attr('strokeLinejoin', path.strokeLinejoin)}${attr(
