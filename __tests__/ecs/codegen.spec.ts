@@ -6,6 +6,44 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('clips children to a rounded rectangle or ellipse', () => {
+      for (const type of ['rect', 'ellipse'] as const) {
+        const nodes = [
+          {
+            id: 'mask',
+            type,
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 80,
+            cornerRadius: type === 'rect' ? 16 : undefined,
+            clipMode: 'clip',
+            zIndex: 0,
+          },
+          {
+            id: 'oversized-child',
+            type: 'rect',
+            parentId: 'mask',
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 160,
+            zIndex: 1,
+          },
+        ] as SerializedNode[];
+        const react = serializedNodesToCode(nodes);
+        const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+        expect(react).toContain('overflow-hidden');
+        expect(html).toContain('overflow: hidden');
+        expect(html).toContain(
+          type === 'ellipse' ? 'border-radius: 50%' : 'border-radius: 16px',
+        );
+        expect(
+          serializedNodesToCode([{ ...nodes[0], clipMode: 'erase' }]),
+        ).not.toContain('overflow-hidden');
+      }
+    });
+
     it('keeps zero line height as automatic text leading', () => {
       const code = serializedNodesToCode([
         {

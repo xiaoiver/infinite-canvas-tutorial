@@ -188,6 +188,7 @@ function genTailwind(
     inline.push(['transform', JSON.stringify(style.transform)]);
     inline.push(['transformOrigin', JSON.stringify('0 0')]);
   }
+  if (style.overflow) classes.push('overflow-hidden');
   if (style.objectFit)
     inline.push(['objectFit', JSON.stringify(style.objectFit)]);
   if (style.objectPosition)

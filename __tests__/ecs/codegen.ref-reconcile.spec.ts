@@ -52,6 +52,15 @@ const source: SerializedNode[] = [
 describe('design-to-code expanded ref reconciliation', () => {
   const baseline = expandRefSerializedNodes(structuredClone(source), source);
 
+  it('expands a component instance when its clipping mode changes', () => {
+    const nodes = structuredClone(source);
+    const instance = nodes.find((node) => node.id === 'growth')!;
+    instance.clipMode = 'clip';
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('<PlanCard');
+    expect(react).toContain('overflow-hidden');
+  });
+
   it('recovers a nested instance and its edited text as a component prop', () => {
     const current = structuredClone(baseline);
     const price = current.find((node) => node.id === 'growth__price')!;

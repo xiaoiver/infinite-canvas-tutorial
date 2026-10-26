@@ -364,6 +364,11 @@ function buildStyle(
     const r = toStyleValue(node.cornerRadius as number);
     if (r) style.borderRadius = r;
   }
+  if (
+    node.clipMode === 'clip' &&
+    (node.type === 'rect' || node.type === 'ellipse')
+  )
+    style.overflow = 'hidden';
 
   if (
     typeof node.dropShadowColor === 'string' ||
@@ -735,6 +740,7 @@ export function buildCodeIR(
     componentStructure === 'flatten' ||
     hasUnsupportedPaintRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTransformRefOverrides(working as AnyNode[]) ||
+    hasUnsupportedClipRefOverrides(working as AnyNode[]) ||
     hasUnsupportedTextWrapRefOverrides(working as AnyNode[])
   ) {
     const expanded = expandRefSerializedNodes(working, working);
@@ -995,6 +1001,20 @@ function hasUnsupportedTransformRefOverrides(nodes: AnyNode[]): boolean {
         key in patch &&
         !Object.is(patch[key], template[key] ?? (key === 'rotation' ? 0 : 1)),
     );
+  return nodes.some((node) => {
+    if (node.type !== 'ref') return false;
+    if (changed(byId.get(node.ref as string), node)) return true;
+    return Object.entries(
+      (node.descendants ?? {}) as Record<string, AnyNode>,
+    ).some(([id, patch]) => changed(byId.get(id), patch));
+  });
+}
+
+/** A clip change alters descendant visibility and cannot be represented by a paint prop. */
+function hasUnsupportedClipRefOverrides(nodes: AnyNode[]): boolean {
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  const changed = (template: AnyNode | undefined, patch: AnyNode) =>
+    !!template && 'clipMode' in patch && patch.clipMode !== template.clipMode;
   return nodes.some((node) => {
     if (node.type !== 'ref') return false;
     if (changed(byId.get(node.ref as string), node)) return true;

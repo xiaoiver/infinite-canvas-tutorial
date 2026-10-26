@@ -347,6 +347,7 @@ const code = serializedNodesToCode(nodes, {
 | 带图片填充的 `rect`                                 | `<img src>` 与 `object-fit` / `object-position`       |
 | 单层 CSS 渐变填充的 `rect`                          | CSS `background-image`                                |
 | `ellipse`                                           | CSS `border-radius: 50%`                              |
+| `rect` / `ellipse` + `clipMode: clip`               | 在裁剪元素上使用 CSS `overflow: hidden`               |
 | `rotation` / `scaleX` / `scaleY`                    | 围绕局部左上角的 CSS `transform`                      |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
@@ -382,6 +383,8 @@ const code = serializedNodesToCode(nodes, {
 单层纯色填充的透明度会通过 CSS `color-mix` 导出，不会连同子元素一起变淡。节点整体透明度仍使用独立的 CSS `opacity`。可复用实例修改半透明填充时会展开，以保留生成样式中的填充透明度。
 
 节点旋转（弧度）与 `scaleX` / `scaleY` 会导出为以 `0 0` 为原点的 CSS `rotate(...) scale(...)`，顺序与画布局部变换一致。实例修改变换后会展开，以包含修改后的几何效果。
+
+矩形和椭圆的 `clipMode: clip` 会在导出的 HTML 和 React 代码中裁剪子内容。圆角矩形保留圆角，椭圆使用 `border-radius: 50%`。复用实例修改裁剪模式时会展开实例以保留该修改。`erase` 和 `soft` 蒙版无法直接映射为 CSS `overflow`，暂不作为裁剪导出。
 
 节点级 `blendMode` 会导出为 CSS `mix-blend-mode`；实例修改它时也会生成组件参数。`light` 对应 CSS 的 `lighten`；没有 CSS 等价物的模式与 SVG 导出一致，按 `normal` 处理。填充层自身的 `blendMode` 用于该节点内部的多层填充合成，不会作为节点级 `mix-blend-mode` 导出。
 
