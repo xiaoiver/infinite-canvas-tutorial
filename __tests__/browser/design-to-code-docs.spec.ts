@@ -31,6 +31,13 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await page.getByRole('button', { name: 'HTML 预览' }).click();
   const preview = page.frameLocator('iframe[title="生成的 HTML 预览"]');
   await expect(preview.locator('body')).toContainText('Pay $79.00');
+  await expect(preview.getByRole('main')).toBeVisible();
+  await expect(
+    preview.getByRole('button', { name: /Pay \$79\.00/ }),
+  ).toBeVisible();
+  await expect(
+    preview.getByRole('heading', { name: 'Checkout' }),
+  ).toBeVisible();
   const bounds = await preview.locator('body').evaluate(() => {
     const find = (content: string) => {
       const node = Array.from(document.querySelectorAll('span')).find(
@@ -60,6 +67,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await expect(code).toBeVisible();
   await expect(code).toContainText('CheckoutScreen');
   await expect(code).toContainText('Pay $79.00');
+  await expect(code).toContainText('<button type="button"');
   await page.getByRole('button', { name: '订阅定价页' }).click();
   await expect
     .poll(() => page.evaluate(() => window.designToCodeDocs.scene()))

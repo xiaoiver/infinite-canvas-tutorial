@@ -1,5 +1,6 @@
 import type {
   DesignVariablesMap,
+  CodeSemanticElement,
   RectSerializedNode,
   SerializedNode,
   TextSerializedNode,
@@ -16,6 +17,7 @@ export interface InterfaceScene {
   height: number;
   nodes: SerializedNode[];
   variables: DesignVariablesMap;
+  semanticElements: Record<string, CodeSemanticElement>;
 }
 
 function createScene() {
@@ -316,6 +318,16 @@ function dashboard(): InterfaceScene {
     height: 720,
     nodes,
     variables: dashboardVariables,
+    semanticElements: {
+      sidebar: { tag: 'aside' },
+      navigation: { tag: 'nav' },
+      main: { tag: 'main' },
+      header: { tag: 'header' },
+      heading: { tag: 'h1' },
+      'export-button': { tag: 'button' },
+      activity: { tag: 'section' },
+      footer: { tag: 'footer' },
+    },
   };
 }
 
@@ -529,6 +541,17 @@ function pricing(): InterfaceScene {
     height: 820,
     nodes,
     variables: pricingVariables,
+    semanticElements: {
+      'pricing-nav': { tag: 'nav' },
+      'nav-cta': { tag: 'button' },
+      hero: { tag: 'header' },
+      'hero-title': { tag: 'h1' },
+      plans: { tag: 'section' },
+      'plan-starter-action': { tag: 'button' },
+      'plan-growth-action': { tag: 'button' },
+      'plan-scale-action': { tag: 'button' },
+      'pricing-footer': { tag: 'footer' },
+    },
   };
 }
 
@@ -839,6 +862,16 @@ function checkout(): InterfaceScene {
     height: 844,
     nodes,
     variables: checkoutVariables,
+    semanticElements: {
+      'checkout-screen': { tag: 'main' },
+      'checkout-header': { tag: 'header' },
+      'checkout-back': { tag: 'button' },
+      'checkout-title': { tag: 'h1' },
+      'checkout-address': { tag: 'section' },
+      'checkout-delivery': { tag: 'section' },
+      'checkout-summary': { tag: 'section' },
+      'checkout-pay': { tag: 'button' },
+    },
   };
 }
 

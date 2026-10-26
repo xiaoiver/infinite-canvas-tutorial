@@ -93,6 +93,7 @@ function generateCode() {
       api.exportCode(undefined, {
         framework: 'html-css',
         variablesMode: 'css-var',
+        semanticElements: scene.value.semanticElements,
       }),
     );
   }
@@ -101,6 +102,7 @@ function generateCode() {
     variablesMode: 'resolved',
     componentStructure: 'preserve',
     componentName: scene.value.componentName,
+    semanticElements: scene.value.semanticElements,
   });
 }
 

@@ -384,6 +384,8 @@ export function Design() {
 
 The following examples load an analytics dashboard, a SaaS pricing page, and a mobile checkout screen into the **IC editor canvas**. All three scenes use nested flex layouts and semantic color variables; the checkout uses a narrow 390 × 844 artboard. Select and edit nodes on the canvas, then refresh, copy, or download code generated from the canvas's current document with `API.exportCode`. With HTML/CSS selected, use **HTML preview** to view the generated page at its artboard size in a sandboxed frame. Switch designs to load another editable scene.
 
+The examples pass a node-ID keyed `semanticElements` map to `API.exportCode`. It turns selected canvas rectangles and text into HTML landmarks, headings, and `<button type="button">` controls in both exports. The map belongs to this demo's export configuration; wire button actions and navigation in your application.
+
 <DesignToCodeInterfaces />
 
 Download the `.ic` file to continue editing the design in the [online app](https://app.infinitecanvas.cc/) via **Import from… > .ic**. Download the HTML file and open it directly in a browser. For React, put the downloaded `.tsx` in a project with Tailwind CSS and render its exported `AnalyticsDashboard`, `PricingPage`, or `CheckoutScreen` component. The generator currently emits presentation markup; wire navigation, checkout actions, payments, and live data to your application logic after export. The desktop and mobile artboards use fixed widths for a clear design handoff; adapt the generated layout for your responsive breakpoints.

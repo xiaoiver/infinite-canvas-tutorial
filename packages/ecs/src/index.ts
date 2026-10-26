@@ -203,6 +203,7 @@ export {
   type CodeVariablesMode,
   type CodeComponentStructure,
   type CodegenOptions,
+  type CodeSemanticElement,
   type CodeIR,
   type CodeNode,
   type CodeComponentDef,

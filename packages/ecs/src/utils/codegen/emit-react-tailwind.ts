@@ -238,6 +238,8 @@ function renderAttributes(
     if (b.target !== 'text') skip.add(b.target);
   }
   const { classes, inline } = genTailwind(node.style, state.mode, skip);
+  if (node.element?.tag === 'button') classes.unshift('cursor-pointer');
+  if (node.element?.tag === 'a') classes.unshift('no-underline');
 
   // 样式绑定 → inline style 引用 prop 标识符
   for (const b of node.bindings ?? []) {
@@ -302,23 +304,30 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     )}${className}${styleExpr} />`;
   }
 
+  const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
+  const semanticAttr =
+    tag === 'button'
+      ? ' type="button"'
+      : tag === 'a' && node.element?.tag === 'a'
+      ? ` href=${JSON.stringify(node.element.href)}`
+      : '';
+
   if (node.role === 'text' && node.children.length === 0) {
-    return `${pad}<span${className}${styleExpr}>${textExpr(
+    return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>${textExpr(
       node,
       state,
-    )}</span>`;
+    )}</${tag}>`;
   }
 
-  const tag = 'div';
   const inner = textExpr(node, state);
   if (node.children.length === 0) {
-    return `${pad}<${tag}${className}${styleExpr}>${inner}</${tag}>`;
+    return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>${inner}</${tag}>`;
   }
   const childrenStr = node.children
     .map((c) => renderNode(c, state, depth + 1))
     .join('\n');
   const leading = inner ? `${state.indent.repeat(depth + 1)}${inner}\n` : '';
-  return `${pad}<${tag}${className}${styleExpr}>\n${leading}${childrenStr}\n${pad}</${tag}>`;
+  return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${leading}${childrenStr}\n${pad}</${tag}>`;
 }
 
 function renderIcon(

@@ -234,6 +234,71 @@ describe('design-to-code (codegen)', () => {
   });
 
   describe('html-css emitter', () => {
+    it('emits semantic controls and landmarks when node ids are annotated', () => {
+      const nodes: SerializedNode[] = [
+        {
+          id: 'page',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 320,
+          height: 200,
+          zIndex: 1,
+          display: 'flex',
+        } as SerializedNode,
+        {
+          id: 'title',
+          parentId: 'page',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 2,
+          content: 'Checkout',
+        } as SerializedNode,
+        {
+          id: 'pay',
+          parentId: 'page',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 120,
+          height: 40,
+          zIndex: 3,
+          display: 'flex',
+          fills: [{ type: 'solid', value: '#455ee6' }],
+        } as SerializedNode,
+        {
+          id: 'help',
+          parentId: 'page',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 4,
+          content: 'Help',
+        } as SerializedNode,
+      ];
+      const semanticElements = {
+        page: { tag: 'main' as const },
+        title: { tag: 'h1' as const },
+        pay: { tag: 'button' as const },
+        help: { tag: 'a' as const, href: '/help?topic=pay&lang=en' },
+      };
+      const html = serializedNodesToCode(nodes, {
+        framework: 'html-css',
+        semanticElements,
+      });
+      expect(html).toContain('<main');
+      expect(html).toContain('<h1 style="margin: 0">Checkout</h1>');
+      expect(html).toContain('<button type="button"');
+      expect(html).toContain('appearance: none; border: 0; padding: 0');
+      expect(html).toContain('href="/help?topic=pay&amp;lang=en"');
+      const react = serializedNodesToCode(nodes, { semanticElements });
+      expect(react).toContain('<main');
+      expect(react).toContain('<h1>Checkout</h1>');
+      expect(react).toContain('<button type="button"');
+      expect(react).toContain('href="/help?topic=pay&lang=en"');
+    });
+
     it('keeps literal prices in generated text', () => {
       const nodes: SerializedNode[] = [
         {
