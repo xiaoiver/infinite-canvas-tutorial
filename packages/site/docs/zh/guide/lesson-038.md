@@ -346,6 +346,7 @@ const code = serializedNodesToCode(nodes, {
 | `cornerRadius` / `fills` / `strokes` / `dropShadow` | `rounded-* / bg-* / border / shadow-*`                |
 | 带图片填充的 `rect`                                 | `<img src>` 与 `object-fit` / `object-position`       |
 | 单层 CSS 渐变填充的 `rect`                          | CSS `background-image`                                |
+| `ellipse`                                           | CSS `border-radius: 50%`                              |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
 | 文本装饰的线条、样式、颜色与粗细                    | CSS `text-decoration`                                 |

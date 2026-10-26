@@ -342,6 +342,7 @@ const code = serializedNodesToCode(nodes, {
 | `cornerRadius` / `fills` / `strokes` / `dropShadow`  | `rounded-* / bg-* / border / shadow-*`                |
 | `rect` with an image fill                            | `<img src>` with `object-fit` / `object-position`     |
 | `rect` with one CSS gradient fill                    | CSS `background-image`                                |
+| `ellipse`                                            | CSS `border-radius: 50%`                              |
 | node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
 | `text` + `content`                                   | text node; `$token` content → variable                |
 | text decoration line, style, color, and thickness    | CSS `text-decoration`                                 |
