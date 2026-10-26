@@ -27,7 +27,13 @@ export function gizmoPartUsesLinkedZScreenBias(
 
 /** The display is drawn without depth testing: arrows are above rings and planes. */
 export function gizmoPartDrawLayer(kind: GizmoPartKind, axis: string): number {
-  return kind === 'rotate' ? 1 : axis.length === 2 ? 0 : 2;
+  return kind === 'scale'
+    ? 3
+    : kind === 'rotate'
+    ? 1
+    : axis.length === 2
+    ? 0
+    : 2;
 }
 
 /** Translate handles stay world-aligned; rotate rings follow object euler. */
@@ -58,7 +64,11 @@ export function rotationPlaneNormal(
   glMat4.rotateY(m, m, rotation[1]);
   glMat4.rotateZ(m, m, rotation[2]);
   const local =
-    axis === 'x' ? glVec3.fromValues(1, 0, 0) : axis === 'y' ? glVec3.fromValues(0, 1, 0) : glVec3.fromValues(0, 0, 1);
+    axis === 'x'
+      ? glVec3.fromValues(1, 0, 0)
+      : axis === 'y'
+      ? glVec3.fromValues(0, 1, 0)
+      : glVec3.fromValues(0, 0, 1);
   const out = glVec3.create();
   glVec3.transformMat4(out, local, m);
   glVec3.normalize(out, out);
@@ -81,14 +91,14 @@ export function angleOnRotationPlane(
     axis === 'x'
       ? glVec3.fromValues(0, 1, 0)
       : axis === 'y'
-        ? glVec3.fromValues(1, 0, 0)
-        : glVec3.fromValues(1, 0, 0);
+      ? glVec3.fromValues(1, 0, 0)
+      : glVec3.fromValues(1, 0, 0);
   const vLocal =
     axis === 'x'
       ? glVec3.fromValues(0, 0, 1)
       : axis === 'y'
-        ? glVec3.fromValues(0, 0, 1)
-        : glVec3.fromValues(0, 1, 0);
+      ? glVec3.fromValues(0, 0, 1)
+      : glVec3.fromValues(0, 1, 0);
 
   const u = glVec3.create();
   const v = glVec3.create();

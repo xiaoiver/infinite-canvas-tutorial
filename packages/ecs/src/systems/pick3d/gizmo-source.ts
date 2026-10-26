@@ -5,6 +5,7 @@ import {
   Mesh3DNode,
   Mesh3DNodeTarget,
   Transform,
+  Transform3D,
 } from '../../components';
 import type { SerializedNode } from '../../types/serialized-node';
 import { resolveMesh3DNodeSourceTransform } from '../../utils/mesh3d-node';
@@ -50,10 +51,12 @@ export function captureGizmoSource(
   if (!owns()) return;
   const frame = new GizmoSourceFrame(entity, api?.getNodeByEntity(entity));
   if (extrusion) {
-    const { depth, z, rotation } = entity.read(Extrude3D);
+    const { depth, z, rotation, bevelSize } = entity.read(Extrude3D);
+    const initialMeshScale = [...mesh.read(Transform3D).scale];
     const initial = {
       depth,
       z,
+      bevelSize,
       rotation: [...rotation] as [number, number, number],
     };
     const unifiedSpace = mesh.read(Extrude3DTarget).unifiedSpace;
@@ -94,12 +97,28 @@ export function captureGizmoSource(
         Object.assign(entity.write(Extrude3D), initial);
       },
       patch(pose, node) {
-        const patch = resolve(pose);
+        // Depth can be edited independently; XY determines uniform source scaling.
+        const factor = pose.scale[0] / initialMeshScale[0];
+        const patch = resolveExtrudeSourceTransform(
+          entity,
+          pose,
+          unifiedSpace,
+          factor,
+        );
         if (!patch || (node.type !== 'rect' && node.type !== 'path')) return;
         return {
           x: patch.x,
           y: patch.y,
-          extrude3d: extrude3DToWire(patch.extrude, node.extrude3d),
+          ...(Math.abs(factor - 1) > 1e-7
+            ? {
+                scaleX: (node.scaleX ?? 1) * factor,
+                scaleY: (node.scaleY ?? 1) * factor,
+              }
+            : {}),
+          extrude3d: extrude3DToWire(
+            { ...patch.extrude, bevelSize: initial.bevelSize * factor },
+            node.extrude3d,
+          ),
         };
       },
     };

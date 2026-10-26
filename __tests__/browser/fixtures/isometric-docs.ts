@@ -98,6 +98,91 @@ const probe = {
     cube: api!.getNodeById('iso-cube').x,
     ring: api!.getNodeById('iso-ring').x,
   }),
+  groupScaleState: () => {
+    const cube = api!.getNodeById('iso-cube');
+    const ring = api!.getNodeById('iso-ring');
+    if (cube.type !== 'mesh3d' || ring.type !== 'path')
+      throw new Error('Isometric scene is not ready');
+    const cubePose = api!
+      .getEntity(cube)
+      .read(Mesh3DNode)
+      .meshEntity!.read(Transform3D);
+    const cubePosition = [...cubePose.translation];
+    const cubeScale = [...cubePose.scale];
+    const ringPose = api!
+      .getEntity(ring)
+      .read(Extrude3D)
+      .meshEntity!.read(Transform3D);
+    return {
+      cube: {
+        position: cubePosition,
+        scale: cubeScale,
+        documentScale: cube.scale3d,
+      },
+      ring: {
+        position: [...ringPose.translation],
+        scale: [...ringPose.scale],
+        documentScale: [ring.scaleX ?? 1, ring.scaleY ?? 1],
+        depth: typeof ring.extrude3d === 'object' ? ring.extrude3d.depth : null,
+      },
+    };
+  },
+  groupScaleHandle: () => {
+    const editor = api!;
+    const cube = editor
+      .getEntity(editor.getNodeById('iso-cube'))
+      .read(Mesh3DNode).meshEntity!;
+    const ring = editor
+      .getEntity(editor.getNodeById('iso-ring'))
+      .read(Extrude3D).meshEntity!;
+    const selected = [cube, ring];
+    const center = selected.reduce<[number, number, number]>(
+      (sum, entity) => {
+        const point = entity.read(Transform3D).translation;
+        return [
+          sum[0] + point[0] / 2,
+          sum[1] + point[1] / 2,
+          sum[2] + point[2] / 2,
+        ];
+      },
+      [0, 0, 0],
+    );
+    const rect = editor.getCanvasElement().getBoundingClientRect();
+    const camera = editor.getCanvas().read(Camera3D);
+    const scene = buildPickSceneForViewport(
+      camera,
+      rect.width,
+      rect.height,
+      rect.width,
+      rect.height,
+    )!;
+    const frame = createGizmoFrame(scene, center, rect.width, rect.height)!;
+    const point = projectGizmoPoint(frame, [
+      center[0] + frame.scale * 0.8,
+      center[1] - frame.scale * 0.8,
+      center[2] + frame.scale * 0.8,
+    ])!;
+    const hit = probePick3DAtViewport(
+      point[0],
+      point[1],
+      rect.width,
+      rect.height,
+      camera,
+      scene,
+      selected,
+      selected,
+    );
+    if (hit.kind !== 'gizmo' || hit.partKind !== 'scale')
+      throw new Error('Could not hit the shared scale handle');
+    return { x: rect.left + point[0], y: rect.top + point[1] };
+  },
+  flipRing: async () => {
+    const ring = api!.getNodeById('iso-ring');
+    if (ring.type !== 'path') throw new Error('SVG ring is not ready');
+    api!.updateNode(ring, { scaleX: -1 });
+    api!.record();
+    await settleECSFrames(api!, 3);
+  },
   moveCube: async (deltaX: number) => {
     const cube = api!.getNodeById('iso-cube');
     api!.updateNode(cube, { x: cube.x + deltaX });

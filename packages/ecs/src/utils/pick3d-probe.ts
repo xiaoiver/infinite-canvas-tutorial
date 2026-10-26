@@ -22,6 +22,7 @@ import { createGizmoFrame, type GizmoFrame } from './gizmo-frame';
 import { groupGizmoPose } from './gizmo-group';
 import { copyGizmoPose } from '../systems/pick3d/gizmo-gesture';
 import { type GizmoPartKind } from './gizmo-geometry';
+import { createScaleGizmo } from './gizmo-geometry';
 import {
   buildGizmoModelMatrix,
   getGizmoMeshParts,
@@ -40,6 +41,10 @@ export type Pick3DProbeResult =
       frame: GizmoFrame;
       hit: RayHitResult;
     };
+
+// Give the small visible diamond a touch-sized pick volume without enlarging
+// the rendered gizmo or changing its depth ordering.
+const scalePickMesh = createScaleGizmo(0.3);
 
 export function buildPickSceneForViewport(
   camera: Camera3D,
@@ -179,6 +184,7 @@ function hitTestGizmoPart(
     .reverse();
 
   for (const part of parts) {
+    const pickPart = part.kind === 'scale' ? scalePickMesh : part;
     const gizmoModel = buildGizmoModelMatrix(
       translation,
       rotation,
@@ -193,8 +199,8 @@ function hitTestGizmoPart(
       vy,
       viewportWidth,
       viewportHeight,
-      part.positions,
-      part.indices,
+      pickPart.positions,
+      pickPart.indices,
       gizmoModel as unknown as Float32Array,
       anchor,
       pickScene,

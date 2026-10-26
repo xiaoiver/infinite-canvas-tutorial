@@ -159,8 +159,8 @@ function createPlaneQuad(
   return { positions, normals, indices };
 }
 
-/** Translate arrow/plane vs rotation ring (combined gizmo uses both). */
-export type GizmoPartKind = 'translate' | 'rotate';
+/** Translate arrows/planes, rotation rings, and uniform scale handle. */
+export type GizmoPartKind = 'translate' | 'rotate' | 'scale';
 
 export interface GizmoMeshData {
   positions: Float32Array;
@@ -169,13 +169,58 @@ export interface GizmoMeshData {
   /** Color for this gizmo part [r, g, b, a]. */
   color: [number, number, number, number];
   /** Which axis or plane this part represents. */
-  axis: 'x' | 'y' | 'z' | 'xy' | 'xz' | 'yz';
+  axis: 'x' | 'y' | 'z' | 'xy' | 'xz' | 'yz' | 'xyz';
   kind: GizmoPartKind;
 }
 
-/** Translate handles + rotation rings (Spline-style combined gizmo). */
+/** Translate handles, rotation rings, and a uniform scale handle. */
 export function createCombinedTransformGizmo(): GizmoMeshData[] {
-  return [...createTranslateGizmo(), ...createRotateGizmo()];
+  return [
+    ...createTranslateGizmo(),
+    ...createRotateGizmo(),
+    createScaleGizmo(),
+  ];
+}
+
+/** Offset diamond: dragging vertically scales the selection uniformly. */
+export function createScaleGizmo(size = 0.18): GizmoMeshData {
+  const normals = new Float32Array([
+    size,
+    0,
+    0,
+    -size,
+    0,
+    0,
+    0,
+    size,
+    0,
+    0,
+    -size,
+    0,
+    0,
+    0,
+    size,
+    0,
+    0,
+    -size,
+  ]);
+  const positions = new Float32Array(normals);
+  for (let i = 0; i < positions.length; i += 3) {
+    positions[i] += 0.8;
+    positions[i + 1] -= 0.8;
+    positions[i + 2] += 0.8;
+  }
+  const indices = new Uint32Array([
+    0, 2, 4, 2, 1, 4, 1, 3, 4, 3, 0, 4, 2, 0, 5, 1, 2, 5, 3, 1, 5, 0, 3, 5,
+  ]);
+  return {
+    positions,
+    normals,
+    indices,
+    color: [1, 0.78, 0.16, 1],
+    axis: 'xyz',
+    kind: 'scale',
+  };
 }
 
 /**
@@ -193,7 +238,10 @@ export function createTranslateGizmo(
 ): GizmoMeshData[] {
   const parts: GizmoMeshData[] = [];
 
-  const axes: Array<{ axis: 'x' | 'y' | 'z'; color: [number, number, number, number] }> = [
+  const axes: Array<{
+    axis: 'x' | 'y' | 'z';
+    color: [number, number, number, number];
+  }> = [
     { axis: 'x', color: [1, 0.15, 0.15, 1] },
     { axis: 'y', color: [0.15, 1, 0.15, 1] },
     { axis: 'z', color: [0.2, 0.45, 1, 1] },
@@ -201,9 +249,20 @@ export function createTranslateGizmo(
 
   for (const { axis, color } of axes) {
     // Shaft (cylinder)
-    const shaft = createCylinderAlongAxis(axis, shaftRadius, shaftLength, segments);
+    const shaft = createCylinderAlongAxis(
+      axis,
+      shaftRadius,
+      shaftLength,
+      segments,
+    );
     // Cone (arrow tip)
-    const cone = createConeAlongAxis(axis, coneRadius, coneHeight, shaftLength, segments);
+    const cone = createConeAlongAxis(
+      axis,
+      coneRadius,
+      coneHeight,
+      shaftLength,
+      segments,
+    );
 
     // Merge shaft + cone into one mesh
     const mergedPositions = [...shaft.positions, ...cone.positions];
@@ -225,7 +284,10 @@ export function createTranslateGizmo(
   }
 
   // Plane handles
-  const planes: Array<{ plane: 'xy' | 'xz' | 'yz'; color: [number, number, number, number] }> = [
+  const planes: Array<{
+    plane: 'xy' | 'xz' | 'yz';
+    color: [number, number, number, number];
+  }> = [
     { plane: 'xy', color: [0.2, 0.45, 1, 0.35] },
     { plane: 'xz', color: [0.15, 1, 0.15, 0.35] },
     { plane: 'yz', color: [1, 0.15, 0.15, 0.35] },
@@ -260,7 +322,10 @@ export function createRotateGizmo(
   tube = 0.05,
   segments = 48,
 ): GizmoMeshData[] {
-  const axes: Array<{ axis: 'x' | 'y' | 'z'; color: [number, number, number, number] }> = [
+  const axes: Array<{
+    axis: 'x' | 'y' | 'z';
+    color: [number, number, number, number];
+  }> = [
     { axis: 'x', color: [1, 0.15, 0.15, 1] },
     { axis: 'y', color: [0.15, 1, 0.15, 1] },
     { axis: 'z', color: [0.2, 0.45, 1, 1] },

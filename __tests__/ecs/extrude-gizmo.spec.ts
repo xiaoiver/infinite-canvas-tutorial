@@ -24,6 +24,8 @@ import {
 } from '../../packages/ecs/src';
 import { createSelectionWorld } from '../helpers/ecs-selection';
 import { has3DMeshGizmoSelectedForCanvas } from '../../packages/ecs/src/utils/pick3d-bridge';
+import { captureGizmoSource } from '../../packages/ecs/src/systems/pick3d/gizmo-source';
+import { copyGizmoPose } from '../../packages/ecs/src/systems/pick3d/gizmo-gesture';
 
 const node = (patch: Partial<RectSerializedNode> = {}): RectSerializedNode => ({
   id: 'box',
@@ -96,6 +98,30 @@ beforeEach(async () => {
     );
   }
   await reset();
+});
+
+it('writes uniform source scale and bevel size around an extruded rect center', async () => {
+  await reset(node({ extrude3d: { depth: 20, z: 10, bevelSize: 2 } }));
+  const initial = copyGizmoPose(mesh().read(Transform3D));
+  const binding = captureGizmoSource(mesh(), api())!;
+  const patch = binding.patch(
+    {
+      ...initial,
+      scale: initial.scale.map((value) => value * 2) as [
+        number,
+        number,
+        number,
+      ],
+    },
+    wire(),
+  ) as Partial<RectSerializedNode>;
+  expect(patch).toMatchObject({
+    x: 40,
+    y: 40,
+    scaleX: 2,
+    scaleY: 2,
+    extrude3d: { depth: 40, z: 20, bevelSize: 4 },
+  });
 });
 
 it('moves a centered Path gizmo and commits the source origin once', async () => {

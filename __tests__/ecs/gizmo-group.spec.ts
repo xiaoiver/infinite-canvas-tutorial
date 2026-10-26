@@ -56,3 +56,21 @@ it('rotates member positions and orientations around the shared center', () => {
   expect(a.scale).toEqual(first.scale);
   expect(b.scale).toEqual(second.scale);
 });
+
+it('uniformly scales member positions and dimensions around the shared center', () => {
+  const initial = groupGizmoPose([first, second])!;
+  const current = {
+    ...initial,
+    scale: [2, 2, 2] as [number, number, number],
+  };
+  expect(groupMemberPose(first, initial, current)).toEqual({
+    ...first,
+    translation: [-5, 0, 0],
+    scale: [4, 6, 8],
+  });
+  expect(groupMemberPose(second, initial, current)).toEqual({
+    ...second,
+    translation: [15, 0, 0],
+    scale: [10, 12, 14],
+  });
+});

@@ -29,20 +29,26 @@ function eulerFromMatrix(matrix: mat4): [number, number, number] {
     : [Math.atan2(matrix[6], matrix[5]), y, 0];
 }
 
-/** Apply a group gesture to one member without changing its own scale. */
+/** Apply a group gesture around the shared pivot. */
 export function groupMemberPose(
   member: GizmoPose,
   initial: GizmoPose,
   current: GizmoPose,
 ): GizmoPose {
+  const factor = current.scale[0] / initial.scale[0];
   if (current.rotation.every((angle, axis) => angle === initial.rotation[axis]))
     return {
       translation: member.translation.map(
         (value, axis) =>
-          value + current.translation[axis] - initial.translation[axis],
+          current.translation[axis] +
+          (value - initial.translation[axis]) * factor,
       ) as [number, number, number],
       rotation: [...member.rotation],
-      scale: [...member.scale],
+      scale: member.scale.map((value) => value * factor) as [
+        number,
+        number,
+        number,
+      ],
     };
   const initialRotation = rotationMatrix(initial.rotation);
   const currentRotation = rotationMatrix(current.rotation);
@@ -61,11 +67,15 @@ export function groupMemberPose(
   );
   return {
     translation: [
-      current.translation[0] + offset[0],
-      current.translation[1] + offset[1],
-      current.translation[2] + offset[2],
+      current.translation[0] + offset[0] * factor,
+      current.translation[1] + offset[1] * factor,
+      current.translation[2] + offset[2] * factor,
     ],
     rotation: eulerFromMatrix(orientation),
-    scale: [...member.scale],
+    scale: member.scale.map((value) => value * factor) as [
+      number,
+      number,
+      number,
+    ],
   };
 }

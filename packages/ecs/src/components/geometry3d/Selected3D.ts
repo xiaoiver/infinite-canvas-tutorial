@@ -3,15 +3,15 @@ import { field } from '@lastolivegames/becsy';
 /**
  * The active gizmo manipulation mode.
  */
-/** `transform` = combined translate + rotate gizmo (default). */
+/** `transform` = combined translate, rotate, and uniform-scale gizmo (default). */
 export type GizmoMode = 'transform' | 'translate' | 'rotate' | 'scale';
 
-export type GizmoPartKind = 'translate' | 'rotate';
+export type GizmoPartKind = 'translate' | 'rotate' | 'scale';
 
 /**
  * Which axis or plane is currently being interacted with.
  */
-export type GizmoAxis = 'x' | 'y' | 'z' | 'xy' | 'xz' | 'yz' | 'none';
+export type GizmoAxis = 'x' | 'y' | 'z' | 'xy' | 'xz' | 'yz' | 'xyz' | 'none';
 
 /**
  * Component attached to a 3D entity when it is selected in 3D space.
@@ -29,7 +29,7 @@ export class Selected3D {
   @field.object declare activeAxis: GizmoAxis;
 
   /**
-   * Whether the active handle is a translate or rotate part (combined gizmo).
+   * The active part of the combined gizmo.
    */
   @field.object declare activePartKind: GizmoPartKind | null;
 

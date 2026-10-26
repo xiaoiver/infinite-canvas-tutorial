@@ -48,7 +48,8 @@
 -   [#531](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/531) 已完成指定 Z 编辑平面上的直接盒子绘制及双向投影 API。
 -   [#532](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/532) 已让等距视图直接编辑挤出 Path/SVG 的外轮廓和孔洞锚点；[#533](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/533) 扩展到施加 3D 旋转和父级剪切的情况。
 -   [#534](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/534) 提供触屏可用的独立视角旋转工具。
--   [#541](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/541) 将多选 Mesh/挤出图形的 Gizmo 合并为选区中心的一个手柄，平移和旋转使用同一撤销步骤。本轮补充共同旋转以及拖动时切换选区的回归；多选缩放尚未实现。
+-   [#541](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/541) 将多选 Mesh/挤出图形的 Gizmo 合并为选区中心的一个手柄，平移和旋转使用同一撤销步骤。本轮补充共同旋转以及拖动时切换选区的回归。
+-   共用 Gizmo 已增加黄色等比缩放手柄。拖动时 Mesh 和挤出 Path/矩形围绕选区中心同步预览；提交时将挤出图形的 2D 缩放、厚度及倒角尺寸写回源节点，合成一次撤销记录。反向缩放、单轴缩放和 iOS Safari 真机手势仍需后续验收。
 -   触摸与触控笔验收覆盖文档中的共用 Gizmo 和 SVG 锚点：移动 Chromium 使用可信触摸/触控笔手势，移动 WebKit 使用原生触摸点击与触摸指针事件拖动。SVG 锚点层阻止页面触摸手势抢占拖动；iOS Safari 真机仍需验收。
 -   阶段 C 首轮加入可关闭的 3D 锚定标注：立方体标签取实时 Mesh 中心，挤出 SVG 标签取可编辑 Path 顶点。随相机和轮廓变化更新，屏幕外标注隐藏。标注位于 SVG 覆盖层，不参与深度遮挡。
 -   阶段 C 第二轮为 Mesh 与挤出 Path/矩形加入可关闭的分层色阶。2–8 档亮度在 3D 材质着色器中处理，保留原有阴影和深度测试，默认关闭；示例可切换四档。

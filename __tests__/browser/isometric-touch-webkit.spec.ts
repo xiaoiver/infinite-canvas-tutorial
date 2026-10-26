@@ -112,3 +112,29 @@ test('mobile WebKit drags one shared isometric gizmo and undoes both meshes', as
   ).toEqual(before);
   expect(errors).toEqual([]);
 });
+
+test('mobile WebKit scales an isometric Mesh and SVG with the shared handle', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await ready(page);
+  const before = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  const point = await page.evaluate(() =>
+    window.isometricDocs.groupScaleHandle(),
+  );
+  const canvas = page.locator('ic-spectrum-canvas canvas');
+  await pointerDrag(page, canvas, canvas, point, [0, -60]);
+  const after = await page.evaluate(() =>
+    window.isometricDocs.groupScaleState(),
+  );
+  expect(after.cube.scale[0]).toBeGreaterThan(before.cube.scale[0] * 1.3);
+  expect(after.ring.documentScale[0]).toBeGreaterThan(1.3);
+  await page.evaluate(() => window.isometricDocs.undo());
+  expect(
+    await page.evaluate(() => window.isometricDocs.groupScaleState()),
+  ).toEqual(before);
+  expect(errors).toEqual([]);
+});
