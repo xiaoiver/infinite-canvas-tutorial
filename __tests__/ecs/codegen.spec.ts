@@ -187,6 +187,17 @@ describe('design-to-code (codegen)', () => {
           { ...rotated, rotation: 0, scaleX: 1, scaleY: 1 } as SerializedNode,
         ]),
       ).not.toContain('transformOrigin');
+
+      const text = {
+        ...rotated,
+        id: 'rotated-label',
+        type: 'text',
+        content: 'Tilted',
+      } as SerializedNode;
+      expect(serializedNodesToCode([text])).toContain('inline-block');
+      expect(
+        serializedNodesToCode([text], { framework: 'html-css' }),
+      ).toContain('display: inline-block');
     });
 
     it('keeps a solid fill opacity on the paint instead of the whole node', () => {

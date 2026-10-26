@@ -150,6 +150,7 @@ function genTailwind(
     if (style.columnGap !== undefined && !skip.has('columnGap'))
       classes.push(`gap-x-[${formatNumber(style.columnGap)}px]`);
   }
+  if (style.display === 'inline-block') classes.push('inline-block');
   if (style.flexGrow !== undefined && !skip.has('flexGrow'))
     classes.push(style.flexGrow === 1 ? 'grow' : `grow-[${style.flexGrow}]`);
   if (style.flexShrink === 0 && !skip.has('flexShrink'))
@@ -308,7 +309,7 @@ function genTailwind(
     );
   }
   if (style.textWrapWidth !== undefined) {
-    classes.push('inline-block');
+    if (style.display !== 'inline-block') classes.push('inline-block');
     inline.push(['overflowWrap', JSON.stringify('anywhere')]);
     if (!skip.has('textWrapWidth'))
       classes.push(`max-w-[${formatNumber(style.textWrapWidth)}px]`);

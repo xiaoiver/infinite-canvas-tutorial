@@ -264,6 +264,8 @@ function buildStyle(
   if (scaleX !== 1 || scaleY !== 1)
     transforms.push(`scale(${cssNumber(scaleX)}, ${cssNumber(scaleY)})`);
   if (transforms.length) style.transform = transforms.join(' ');
+  if (role === 'text' && style.transform && node.display !== 'flex')
+    style.display = 'inline-block';
 
   // flex 布局
   if (node.display === 'flex') {
