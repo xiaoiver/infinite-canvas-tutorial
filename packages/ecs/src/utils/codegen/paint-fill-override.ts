@@ -10,13 +10,18 @@ export function hasUnsupportedPaintFillOverride(
   if (documentValueEqual(templateFills, renderedFills)) return false;
   const template = Array.isArray(templateFills) ? templateFills : [];
   const rendered = Array.isArray(renderedFills) ? renderedFills : [];
+  const translucentSolid = (fills: typeof template) =>
+    fills.length === 1 &&
+    fills[0].type === 'solid' &&
+    fills[0].opacity !== undefined &&
+    Number(fills[0].opacity) !== 1;
   if (
     !template.some(
       (fill) => fill.type === 'image' || fill.type === 'gradient',
     ) &&
     !rendered.some((fill) => fill.type === 'image' || fill.type === 'gradient')
   )
-    return false;
+    return translucentSolid(template) || translucentSolid(rendered);
   if (
     template.length !== 1 ||
     rendered.length !== 1 ||

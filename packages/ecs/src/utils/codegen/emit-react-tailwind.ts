@@ -11,6 +11,7 @@ import { formatNumber } from '../serialize/points';
 import { pascalCase } from './string-utils';
 import {
   combinedImageOpacityCss,
+  solidFillColorToCss,
   styleValueToCss,
   textDecorationToCss,
 } from './emit-style';
@@ -190,7 +191,18 @@ function genTailwind(
     inline.push(['mixBlendMode', JSON.stringify(style.mixBlendMode)]);
 
   if (style.backgroundColor && !skip.has('backgroundColor')) {
-    if (needsInline(style.backgroundColor, mode))
+    if (style.solidFillOpacity)
+      inline.push([
+        'backgroundColor',
+        JSON.stringify(
+          solidFillColorToCss(
+            style.backgroundColor,
+            style.solidFillOpacity,
+            mode,
+          ),
+        ),
+      ]);
+    else if (needsInline(style.backgroundColor, mode))
       addInline('backgroundColor', style.backgroundColor);
     else
       classes.push(`bg-[${tw(styleValueToCss(style.backgroundColor, mode))}]`);
@@ -251,7 +263,14 @@ function genTailwind(
   }
 
   if (style.color && !skip.has('color')) {
-    if (needsInline(style.color, mode)) addInline('color', style.color);
+    if (style.solidFillOpacity)
+      inline.push([
+        'color',
+        JSON.stringify(
+          solidFillColorToCss(style.color, style.solidFillOpacity, mode),
+        ),
+      ]);
+    else if (needsInline(style.color, mode)) addInline('color', style.color);
     else classes.push(`text-[${tw(styleValueToCss(style.color, mode))}]`);
   }
   if (style.fontSize && !skip.has('fontSize')) {

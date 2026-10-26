@@ -26,6 +26,22 @@ export function styleValueToCss(
   return String(lit ?? '');
 }
 
+/** Keep fill opacity on the paint, so text and child elements stay opaque. */
+export function solidFillColorToCss(
+  color: StyleValue,
+  opacity: StyleValue | undefined,
+  mode: CodeVariablesMode,
+): string {
+  const cssColor = styleValueToCss(color, mode);
+  if (!opacity) return cssColor;
+  const literal = Number(opacity.literal);
+  const weight =
+    opacity.token || !Number.isFinite(literal)
+      ? `calc(${styleValueToCss(opacity, mode)} * 100%)`
+      : `${formatNumber(literal * 100)}%`;
+  return `color-mix(in srgb, ${cssColor} ${weight}, transparent)`;
+}
+
 export function boxToCss(v: [number, number, number, number]): string {
   const [t, r, b, l] = v;
   if (t === r && r === b && b === l) {
@@ -118,7 +134,10 @@ export function styleIRToCssDeclarations(
   if (style.mixBlendMode) push('mix-blend-mode', style.mixBlendMode);
 
   if (style.backgroundColor)
-    push('background-color', styleValueToCss(style.backgroundColor, mode));
+    push(
+      'background-color',
+      solidFillColorToCss(style.backgroundColor, style.solidFillOpacity, mode),
+    );
   if (style.backgroundImage)
     push('background-image', styleValueToCss(style.backgroundImage, mode));
   if (style.borderRadius)
@@ -142,7 +161,11 @@ export function styleIRToCssDeclarations(
   const opacity = combinedImageOpacityCss(style, mode);
   if (opacity !== undefined) push('opacity', opacity);
 
-  if (style.color) push('color', styleValueToCss(style.color, mode));
+  if (style.color)
+    push(
+      'color',
+      solidFillColorToCss(style.color, style.solidFillOpacity, mode),
+    );
   if (style.fontSize)
     push('font-size', styleValueToCss(style.fontSize, mode, true));
   if (style.fontWeight !== undefined)

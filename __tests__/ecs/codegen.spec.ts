@@ -127,6 +127,55 @@ describe('design-to-code (codegen)', () => {
       );
     });
 
+    it('keeps a solid fill opacity on the paint instead of the whole node', () => {
+      const card = {
+        id: 'translucent-card',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        zIndex: 0,
+        width: 100,
+        height: 40,
+        opacity: 0.8,
+        fills: [{ type: 'solid', value: '#2563eb', opacity: 0.5 }],
+      } as SerializedNode;
+      const react = serializedNodesToCode([card]);
+      expect(react).toContain(
+        'backgroundColor: "color-mix(in srgb, #2563eb 50%, transparent)"',
+      );
+      expect(react).toContain('opacity-[0.80]');
+      const html = serializedNodesToCode([card], {
+        framework: 'html-css',
+      });
+      expect(html).toContain(
+        'background-color: color-mix(in srgb, #2563eb 50%, transparent)',
+      );
+      expect(html).toContain('opacity: 0.80');
+
+      const text = {
+        ...card,
+        id: 'translucent-label',
+        type: 'text',
+        content: 'Label',
+      } as SerializedNode;
+      expect(serializedNodesToCode([text])).toContain(
+        'color: "color-mix(in srgb, #2563eb 50%, transparent)"',
+      );
+
+      const tokenHtml = serializedNodesToCode(
+        [
+          {
+            ...card,
+            fills: [{ type: 'solid', value: '$color.surface', opacity: 0.25 }],
+          } as SerializedNode,
+        ],
+        { framework: 'html-css', variablesMode: 'css-var' },
+      );
+      expect(tokenHtml).toContain(
+        'color-mix(in srgb, var(--color-surface) 25%, transparent)',
+      );
+    });
+
     it('emits a single rect as a div with tailwind classes', () => {
       const nodes: SerializedNode[] = [
         {

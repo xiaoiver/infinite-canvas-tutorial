@@ -317,6 +317,15 @@ function buildStyle(
 
   const fills = asArray<SerializedFillLayerItem>(node.fills);
   const fillColor = primaryColorFromLayers(fills);
+  const activeFills = fills.filter((fill) => fill.enabled !== false);
+  if (
+    fillColor &&
+    activeFills.length === 1 &&
+    activeFills[0].type === 'solid' &&
+    activeFills[0].opacity !== undefined &&
+    Number(activeFills[0].opacity) !== 1
+  )
+    style.solidFillOpacity = toStyleValue(activeFills[0].opacity);
   if (role === 'text' || role === 'icon') {
     if (fillColor) style.color = fillColor;
   } else if (role !== 'image' && fillColor) {

@@ -94,6 +94,8 @@ export interface StyleIR {
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;
+  /** Opacity of the only enabled solid fill, applied to its paint rather than children. */
+  solidFillOpacity?: StyleValue;
   backgroundImage?: StyleValue;
   borderRadius?: StyleValue;
   borderWidth?: StyleValue;

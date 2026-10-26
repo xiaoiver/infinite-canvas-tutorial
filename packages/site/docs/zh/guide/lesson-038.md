@@ -377,6 +377,8 @@ const code = serializedNodesToCode(nodes, {
 
 矩形只有一层启用的 `linear-gradient(...)` 或 `radial-gradient(...)` 填充时，会导出为 CSS `background-image`。实例仅修改渐变值时会生成组件参数。其他渐变格式、多层填充、填充透明度和单层混合模式暂不映射为单个 CSS 背景图。
 
+单层纯色填充的透明度会通过 CSS `color-mix` 导出，不会连同子元素一起变淡。节点整体透明度仍使用独立的 CSS `opacity`。可复用实例修改半透明填充时会展开，以保留生成样式中的填充透明度。
+
 节点级 `blendMode` 会导出为 CSS `mix-blend-mode`；实例修改它时也会生成组件参数。`light` 对应 CSS 的 `lighten`；没有 CSS 等价物的模式与 SVG 导出一致，按 `normal` 处理。填充层自身的 `blendMode` 用于该节点内部的多层填充合成，不会作为节点级 `mix-blend-mode` 导出。
 
 ```tsx
