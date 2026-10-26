@@ -139,6 +139,16 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(serializedNodesToCode(recovered)).toContain(
       'backgroundColor: "color-mix(in srgb, #7c3aed 50%, transparent)"',
     );
+
+    const directRef = structuredClone(translucentSource);
+    Object.assign(directRef.find((node) => node.id === 'growth')!, {
+      fills: [{ type: 'solid', value: '#7c3aed', opacity: 0.5 }],
+    });
+    const directCode = serializedNodesToCode(directRef);
+    expect(directCode).not.toContain('export function PlanCard');
+    expect(directCode).toContain(
+      'backgroundColor: "color-mix(in srgb, #7c3aed 50%, transparent)"',
+    );
   });
 
   it('preserves an explicitly sized card after resize', () => {
