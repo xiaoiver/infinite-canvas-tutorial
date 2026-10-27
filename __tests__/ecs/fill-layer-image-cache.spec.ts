@@ -90,6 +90,34 @@ it('decodes URL patterns once and caches SVG tiles at their intrinsic size', asy
   expect(pixel(tile, 7, 3)).toEqual([0, 128, 0, 255]);
   expect(getOrScheduleFillLayerPatternSource(source)).toBe(tile);
 });
+
+it('uses the decoded image directly when pattern tiles need no resizing', () => {
+  const ordinaryUrl = url();
+  const ordinary = bitmap('red');
+  setFillLayerDecodedBitmapForUrl(ordinaryUrl, ordinary);
+  expect(getOrScheduleFillLayerPatternSource(ordinaryUrl)).toBe(ordinary);
+
+  const svgUrl = url();
+  const svg = bitmap('blue', 8, 4);
+  setFillLayerDecodedBitmapForUrl(svgUrl, svg, { width: 8, height: 4 });
+  expect(getOrScheduleFillLayerPatternSource(svgUrl)).toBe(svg);
+  expect(createImage).not.toHaveBeenCalled();
+});
+
+it('keeps decoded pattern pixels when an intrinsic-size tile cannot be made', () => {
+  const source = url();
+  const decoded = bitmap('red', 80, 40);
+  setFillLayerDecodedBitmapForUrl(source, decoded, { width: 8, height: 4 });
+  jest.spyOn(DOMAdapter.get(), 'createCanvas').mockReturnValue({
+    getContext: () => null,
+  } as unknown as HTMLCanvasElement);
+  expect(getOrScheduleFillLayerPatternSource(source)).toBe(decoded);
+});
+
+it('leaves an empty pattern URL unresolved without starting a decode', () => {
+  expect(getOrScheduleFillLayerPatternSource('')).toBe('');
+  expect(createImage).not.toHaveBeenCalled();
+});
 let createImage: jest.Mock;
 beforeEach(() => {
   globalThis.Image = undefined;
