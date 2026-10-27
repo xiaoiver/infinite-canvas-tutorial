@@ -9,6 +9,7 @@
  */
 import { formatNumber } from '../serialize/points';
 import { renderVectorSvg } from './render-vector-svg';
+import { renderVectorImageStrokeOverlay } from './render-vector-image-stroke-overlay';
 import { renderPaintOverlays } from './emit-paint-overlays';
 import { pascalCase } from './string-utils';
 import {
@@ -500,7 +501,21 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
   if (node.vectorPath) {
     const path = node.vectorPath;
     const hasChildren = node.children.length > 0;
-    const svgStyle = hasChildren
+    const overlay = renderVectorImageStrokeOverlay(path, {
+      dialect: 'jsx',
+      mode: state.mode,
+      indent: state.indent,
+      depth: depth + 1,
+    });
+    const needsWrapper = hasChildren || !!overlay;
+    const wrapperAttrs =
+      overlay && !node.style.position
+        ? renderAttributes(
+            { ...node, style: { ...node.style, position: 'relative' } },
+            state,
+          )
+        : { className, styleExpr };
+    const svgStyle = needsWrapper
       ? ' style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}'
       : `${className}${styleExpr}`;
     const svg = renderVectorSvg(path, {
@@ -510,7 +525,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       depth,
       svgStyle,
     });
-    if (!hasChildren) return svg;
+    if (!needsWrapper) return svg;
     const tag = node.element?.tag ?? 'div';
     const semanticAttr =
       tag === 'button'
@@ -525,7 +540,11 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       .split('\n')
       .map((line) => `${state.indent}${line}`)
       .join('\n');
-    return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${nestedSvg}\n${children}\n${pad}</${tag}>`;
+    return `${pad}<${tag}${semanticAttr}${wrapperAttrs.className}${
+      wrapperAttrs.styleExpr
+    }>\n${nestedSvg}${overlay ? `\n${overlay}` : ''}${
+      children ? `\n${children}` : ''
+    }\n${pad}</${tag}>`;
   }
 
   if (node.role === 'icon' && node.icon) {

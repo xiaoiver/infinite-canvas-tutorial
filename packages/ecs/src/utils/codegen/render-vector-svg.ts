@@ -160,14 +160,19 @@ export function renderVectorSvg(
       : undefined;
   const strokeServer = path.strokeGradient ?? path.strokeImage;
   const fill = fillPaint(path);
-  const stroke = strokeServer
-    ? `url(#${strokeServer.id})`
-    : path.stroke
-    ? solidFillColorToCss(path.stroke, path.strokeOpacity, mode)
-    : 'none';
+  const stroke =
+    path.strokeImage?.rendering === 'foreignObject'
+      ? 'none'
+      : strokeServer
+      ? `url(#${strokeServer.id})`
+      : path.stroke
+      ? solidFillColorToCss(path.stroke, path.strokeOpacity, mode)
+      : 'none';
   const fillOpacity = paintOpacity(path);
   const strokeOpacity =
-    strokeServer && path.strokeOpacity
+    strokeServer &&
+    path.strokeImage?.rendering !== 'foreignObject' &&
+    path.strokeOpacity
       ? styleValueToCss(path.strokeOpacity, mode)
       : undefined;
 
@@ -270,14 +275,14 @@ export function renderVectorSvg(
     paint: string;
     opacity?: string;
   }> = [];
-  if (path.markerStart)
+  if (path.markerStart && path.strokeImage?.rendering !== 'foreignObject')
     markerEntries.push({
       marker: path.markerStart,
       side: 'start',
       paint: stroke,
       opacity: strokeOpacity,
     });
-  if (path.markerEnd)
+  if (path.markerEnd && path.strokeImage?.rendering !== 'foreignObject')
     markerEntries.push({
       marker: path.markerEnd,
       side: 'end',
@@ -413,13 +418,19 @@ export function renderVectorSvg(
     ['stroke-dashoffset', path.strokeDashoffset],
     [
       'marker-start',
-      !alignment && path.markerStart
+      !alignment &&
+      path.strokeImage?.rendering !== 'foreignObject' &&
+      path.markerStart
         ? `url(#${path.markerStart.id})`
         : undefined,
     ],
     [
       'marker-end',
-      !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined,
+      !alignment &&
+      path.strokeImage?.rendering !== 'foreignObject' &&
+      path.markerEnd
+        ? `url(#${path.markerEnd.id})`
+        : undefined,
     ],
   ];
   const strokeAttrs: Attribute[] = [
@@ -433,8 +444,18 @@ export function renderVectorSvg(
     ['stroke-miterlimit', path.strokeMiterlimit],
     ['stroke-dasharray', path.strokeDasharray],
     ['stroke-dashoffset', path.strokeDashoffset],
-    ['marker-start', path.markerStart && `url(#${path.markerStart.id})`],
-    ['marker-end', path.markerEnd && `url(#${path.markerEnd.id})`],
+    [
+      'marker-start',
+      path.strokeImage?.rendering !== 'foreignObject' && path.markerStart
+        ? `url(#${path.markerStart.id})`
+        : undefined,
+    ],
+    [
+      'marker-end',
+      path.strokeImage?.rendering !== 'foreignObject' && path.markerEnd
+        ? `url(#${path.markerEnd.id})`
+        : undefined,
+    ],
     [
       alignment?.type === 'inner' ? 'clip-path' : 'mask',
       alignment && `url(#${alignment.id})`,
