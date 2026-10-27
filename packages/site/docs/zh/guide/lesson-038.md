@@ -370,7 +370,7 @@ const code = serializedNodesToCode(nodes, {
 三种变量模式与 SVG 导出语义保持一致：
 
 -   `resolved`（默认）：把 `$token` 解析为字面量（如 `bg-[#FFFFFF]`）。
--   `css-var`：样式输出 `var(--token)`（如 `bg-[var(--color-bg)]`）；HTML/CSS emitter 还会注入 `:root { … }` 块。CSS 自定义属性不能替换文本节点，所以文本内容变量会解析为当前值。
+-   `css-var`：样式输出 `var(--token)`（如 `bg-[var(--color-bg)]`）；HTML/CSS 和 React 导出都会包含 `:root { … }` 块。CSS 自定义属性不能替换文本节点，所以文本内容变量会解析为当前值。
 -   `preserve-token`：保留 `$token`（写入 inline `style`，便于再加工）。
 
 ### 组件与实例 {#design-to-code-components}

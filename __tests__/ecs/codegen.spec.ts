@@ -1,5 +1,6 @@
 import type { SerializedNode } from '../../packages/ecs/src';
 import * as ts from 'typescript';
+import { ThemeMode } from '../../packages/ecs/src/components/Theme';
 import {
   serializedNodesToCode,
   buildCodeIR,
@@ -2170,6 +2171,7 @@ describe('design-to-code (codegen)', () => {
       expect(code).toContain('bg-[#FFFFFF]');
       expect(code).not.toContain('$color.bg');
       expect(code).not.toContain('var(--color-bg)');
+      expect(code).not.toContain('<style>');
     });
 
     it('css-var mode emits var(--token) class', () => {
@@ -2178,6 +2180,24 @@ describe('design-to-code (codegen)', () => {
         variables,
       });
       expect(code).toContain('bg-[var(--color-bg)]');
+      expect(code).toContain('<style>{":root{--color-bg:#FFFFFF}"}</style>');
+    });
+
+    it('uses the selected theme for React CSS variables', () => {
+      const code = serializedNodesToCode(nodes, {
+        variablesMode: 'css-var',
+        themeMode: ThemeMode.DARK,
+        variables: {
+          'color.bg': {
+            type: 'color',
+            value: [
+              { value: '#FFFFFF', theme: { Mode: 'Light' } },
+              { value: '#121212', theme: { Mode: 'Dark' } },
+            ],
+          },
+        },
+      });
+      expect(code).toContain('<style>{":root{--color-bg:#121212}"}</style>');
     });
 
     it('preserve-token mode keeps $token via inline style', () => {
