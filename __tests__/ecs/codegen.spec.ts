@@ -80,6 +80,49 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('blends supported rectangle backgrounds with lower fill layers', () => {
+      const node = {
+        id: 'blended-background',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 80,
+        zIndex: 0,
+        fills: [
+          { type: 'solid', value: '#ff0000' },
+          { type: 'solid', value: '#0000ff', blendMode: 'multiply' },
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #000000 0%, #ffffff 100%)',
+            blendMode: 'screen',
+          },
+        ],
+      } as SerializedNode;
+      const react = serializedNodesToCode([node]);
+      expect(react).toContain(
+        'backgroundBlendMode: "screen, multiply, normal"',
+      );
+      expect(react.indexOf('#ffffff')).toBeLessThan(
+        react.indexOf('#0000ff'),
+      );
+      const html = serializedNodesToCode([node], { framework: 'html-css' });
+      expect(html).toContain('background-blend-mode: screen, multiply, normal');
+      expect(html.indexOf('#ffffff')).toBeLessThan(html.indexOf('#0000ff'));
+
+      const unsupported = serializedNodesToCode([
+        {
+          ...node,
+          fills: [
+            { type: 'solid', value: '#ff0000' },
+            { type: 'solid', value: '#0000ff', blendMode: 'linearBurn' },
+          ],
+        } as SerializedNode,
+      ]);
+      expect(unsupported).not.toContain('backgroundBlendMode');
+      expect(unsupported).not.toContain('backgroundImage');
+    });
+
     it('exports image-filled ellipses with their round mask and children', () => {
       const ellipse = {
         id: 'avatar',

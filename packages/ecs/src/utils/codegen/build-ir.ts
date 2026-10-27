@@ -808,23 +808,29 @@ function buildStyle(
     (node.type === 'rect' || node.type === 'ellipse') &&
     activeFills.length > 1 &&
     activeFills.every(
-      (fill) =>
-        (fill.blendMode === undefined || fill.blendMode === 'normal') &&
+      (fill, index) =>
+        (index === 0 ||
+          fill.blendMode === undefined ||
+          fill.blendMode === 'normal' ||
+          toCSSMixBlendMode(fill.blendMode) !== null) &&
         ((fill.type === 'solid' && !!toStyleValue(fill.value)) ||
           (fill.type === 'gradient' &&
             isCssGradient(fill.value) &&
             (fill.opacity === undefined || Number(fill.opacity) === 1))),
     )
   )
-    style.backgroundLayers = activeFills.map((fill) =>
-      fill.type === 'gradient'
-        ? { type: 'gradient', value: fill.value }
+    style.backgroundLayers = activeFills.map((fill, index) => {
+      const blendMode =
+        index > 0 ? (toCSSMixBlendMode(fill.blendMode) ?? undefined) : undefined;
+      return fill.type === 'gradient'
+        ? { type: 'gradient', value: fill.value, blendMode }
         : {
             type: 'solid',
             color: toStyleValue(fill.value as string)!,
             opacity: toStyleValue(fill.opacity as number | string),
-          },
-    );
+            blendMode,
+          };
+    });
   if (
     fillColor &&
     activeFills.length === 1 &&
