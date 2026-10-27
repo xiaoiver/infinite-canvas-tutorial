@@ -29,7 +29,7 @@ import { useTheme } from 'next-themes';
 import { useParams } from 'next/navigation';
 import { useAtom } from 'jotai';
 import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
-import { CanvasYjsManager } from '@/lib/yjs/canvas-yjs-manager';
+import { CanvasYjsManager, validCanvasNodes } from '@/lib/yjs/canvas-yjs-manager';
 import { ensure3DCamera } from '@/lib/ensure-3d-camera';
 import type { ModelContext } from '@/lib/webmcp/canvas-tools';
 import ZoomToolbar from './zoom-toolbar';
@@ -162,7 +162,11 @@ const Canvas = ({
 
     // 从 Yjs 加载已保存的节点（如果有）
     const savedNodes = manager.loadNodes();
-    const nodes: SerializedNode[] = initialData || savedNodes;
+    const sourceNodes = initialData || savedNodes;
+    const nodes = validCanvasNodes(sourceNodes);
+    if (nodes.length !== sourceNodes.length) {
+      console.warn(`Ignored ${sourceNodes.length - nodes.length} canvas node(s) without an ID.`);
+    }
 
     api.setAppState({
       language: locale,
