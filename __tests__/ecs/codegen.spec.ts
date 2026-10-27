@@ -80,6 +80,37 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('keeps positioned conic gradients above lower fill layers', () => {
+      for (const type of ['rect', 'ellipse'] as const) {
+        const node = {
+          id: `conic-${type}`,
+          type,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 80,
+          zIndex: 0,
+          fills: [
+            { type: 'solid', value: '#ff0000' },
+            {
+              type: 'gradient',
+              value: 'conic-gradient(circle at 25% 75%, blue, transparent)',
+            },
+          ],
+        } as SerializedNode;
+        for (const framework of ['react-tailwind', 'html-css'] as const) {
+          const code = serializedNodesToCode([node], { framework });
+          expect(code).toContain(
+            'conic-gradient(at 25% 75%, blue, transparent)',
+          );
+          expect(code.indexOf('conic-gradient(')).toBeLessThan(
+            code.indexOf('#ff0000'),
+          );
+          expect(code).not.toContain('conic-gradient(circle');
+        }
+      }
+    });
+
     it('exports layered image backgrounds with fit, position, blend, and children', () => {
       for (const type of ['rect', 'ellipse'] as const) {
         const nodes = [
@@ -1171,6 +1202,7 @@ describe('design-to-code (codegen)', () => {
       for (const gradient of [
         'linear-gradient(90deg, #1d4ed8, #38bdf8)',
         'radial-gradient(circle at center, #ffffff, #1d4ed8)',
+        'conic-gradient(#1d4ed8, #38bdf8, #1d4ed8)',
       ]) {
         const node = {
           id: 'gradient-card',
@@ -1189,6 +1221,41 @@ describe('design-to-code (codegen)', () => {
           serializedNodesToCode([node], { framework: 'html-css' }),
         ).toContain(`background-image: ${gradient}`);
       }
+
+      const positioned = {
+        id: 'conic-card',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        width: 180,
+        height: 100,
+        zIndex: 0,
+        fills: [
+          {
+            type: 'gradient',
+            value: 'conic-gradient(circle at 25% 75%, red, blue)',
+          },
+        ],
+      } as SerializedNode;
+      expect(serializedNodesToCode([positioned])).toContain(
+        'backgroundImage: "conic-gradient(at 25% 75%, red, blue)"',
+      );
+      expect(
+        serializedNodesToCode([positioned], { framework: 'html-css' }),
+      ).toContain('background-image: conic-gradient(at 25% 75%, red, blue)');
+      expect(
+        serializedNodesToCode([
+          {
+            ...positioned,
+            fills: [
+              {
+                type: 'gradient',
+                value: 'conic-gradient(circle 10px at 25% 75%, red, blue)',
+              },
+            ],
+          } as SerializedNode,
+        ]),
+      ).not.toContain('backgroundImage');
 
       const unsupported = {
         id: 'layered-card',

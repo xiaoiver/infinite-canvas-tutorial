@@ -23,7 +23,11 @@ import { toComponentName, toPropName } from './string-utils';
 import { boxToCss, styleValueToCss, textDecorationToCss } from './emit-style';
 import { toCSSMixBlendMode } from '../blend-mode';
 import { hasUnsupportedPaintFillOverride } from './paint-fill-override';
-import { singleCssGradientFill } from './gradient-fill';
+import {
+  cssBackgroundGradient,
+  isCssGradient,
+  singleCssGradientFill,
+} from './gradient-fill';
 import { pathGeometryBounds } from '../path-rendering';
 import { parsePath } from '../curve/shape-path';
 import {
@@ -32,7 +36,6 @@ import {
   isGradient,
   parseGradient,
 } from '../gradient';
-import { isCssGradient } from './gradient-fill';
 import type {
   CodeBindingTarget,
   CodeComponentDef,
@@ -253,7 +256,7 @@ function supportsCssBackgroundLayers(
       if (fill.type === 'solid') return !!toStyleValue(fill.value);
       if (fill.type === 'gradient')
         return (
-          isCssGradient(fill.value) &&
+          !!cssBackgroundGradient(fill.value) &&
           (fill.opacity === undefined || Number(fill.opacity) === 1)
         );
       if (fill.type === 'image')
@@ -850,7 +853,11 @@ function buildStyle(
       const blendMode =
         index > 0 ? toCSSMixBlendMode(fill.blendMode) ?? undefined : undefined;
       return fill.type === 'gradient'
-        ? { type: 'gradient', value: fill.value, blendMode }
+        ? {
+            type: 'gradient',
+            value: cssBackgroundGradient(fill.value)!,
+            blendMode,
+          }
         : fill.type === 'image'
         ? {
             type: 'image',
