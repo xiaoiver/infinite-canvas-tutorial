@@ -31,6 +31,7 @@ import { useAtom } from 'jotai';
 import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
 import { CanvasYjsManager } from '@/lib/yjs/canvas-yjs-manager';
 import { ensure3DCamera } from '@/lib/ensure-3d-camera';
+import type { ModelContext } from '@/lib/webmcp/canvas-tools';
 import ZoomToolbar from './zoom-toolbar';
 import lucide from '@iconify/json/json/lucide.json';
 import materialIconTheme from '@iconify/json/json/material-icon-theme.json';
@@ -54,6 +55,8 @@ const canvasRuntime = createCanvasRuntime({
 
 interface CanvasProps {
   id?: string;
+  /** Only authorized project pages expose their canvas to WebMCP. */
+  enableWebMcp?: boolean;
   initialData?: SerializedNode[];
   initialAppState?: Partial<AppState>;
   /** 在首帧写入节点之前执行（例如注册 LUT），须在此完成异步准备 */
@@ -62,6 +65,7 @@ interface CanvasProps {
 
 const Canvas = ({
   id = 'default',
+  enableWebMcp = false,
   initialData,
   initialAppState,
   prepareCanvas,
@@ -239,6 +243,20 @@ const Canvas = ({
         api.selectNodes([nodes[0]]);
       }
       api.record();
+      if (enableWebMcp) {
+        const context = (document as Document & { modelContext?: ModelContext })
+          .modelContext;
+        if (context) {
+          void import('@/lib/webmcp/canvas-tools')
+            .then(({ registerCanvasWebMcp }) =>
+              registerCanvasWebMcp(api, id, signal, context),
+            )
+            .catch((error) => {
+              if (!signal.aborted)
+                console.warn('WebMCP registration failed:', error);
+            });
+        }
+      }
     });
   };
 
