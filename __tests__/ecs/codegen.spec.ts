@@ -614,6 +614,102 @@ describe('design-to-code (codegen)', () => {
       expect(htmlPaths[3]).toContain('stroke="#222222"');
     });
 
+    it('exports normal vector stroke layers in canvas order', () => {
+      const path = {
+        id: 'stroke-layers',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        d: 'M 0 0 L 100 0 L 100 60 Z',
+        fills: [{ type: 'solid', value: '#ffffff' }],
+        strokes: [
+          { type: 'solid', value: '#ff0000', opacity: 0.5 },
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #00ff00 0%, #0000ff 100%)',
+            opacity: 0.75,
+          },
+          { type: 'image', value: '/stroke.png', objectFit: 'cover' },
+        ],
+        strokeWidth: 3,
+        strokeLinecap: 'round',
+        strokeDasharray: '4,2',
+      } as SerializedNode;
+      for (const framework of ['react-tailwind', 'html-css'] as const) {
+        const code = serializedNodesToCode([path], { framework });
+        const paths = [...code.matchAll(/^\s*<path .* \/>$/gm)].map(
+          ([line]) => line,
+        );
+        expect(paths).toHaveLength(4);
+        expect(paths[0]).toContain('#ffffff');
+        expect(paths[1]).toContain('color-mix(in srgb, #ff0000 50%, transparent)');
+        expect(paths[2]).toContain('ic-gradient-73-74-72-6f-6b-65-2d-6c-61-79-65-72-73-stroke-1');
+        expect(paths[3]).toContain('ic-image-73-74-72-6f-6b-65-2d-6c-61-79-65-72-73-stroke-2');
+        expect(paths.slice(1).every((line) => line.includes('stroke'))).toBe(
+          true,
+        );
+        expect(code).toContain('/stroke.png');
+        if (framework === 'react-tailwind') {
+          expect(paths[2]).toContain('strokeOpacity={"0.75"}');
+          expect(paths[1]).toContain('strokeDasharray={"4,2"}');
+        } else {
+          expect(paths[2]).toContain('stroke-opacity="0.75"');
+          expect(paths[1]).toContain('stroke-dasharray="4,2"');
+        }
+      }
+      const layeredFills = serializedNodesToCode([
+        {
+          ...path,
+          fills: [
+            { type: 'solid', value: '#ffffff' },
+            { type: 'solid', value: '#222222' },
+          ],
+        } as SerializedNode,
+      ]);
+      const layeredPaths = [...layeredFills.matchAll(/^\s*<path .* \/>$/gm)].map(
+        ([line]) => line,
+      );
+      expect(layeredPaths).toHaveLength(5);
+      expect(layeredPaths[0]).toContain('#ffffff');
+      expect(layeredPaths[1]).toContain('#222222');
+      expect(layeredPaths[2]).toContain('#ff0000');
+    });
+
+    it('exports multiple solid strokes on lines and polylines', () => {
+      for (const type of ['line', 'polyline'] as const) {
+        const node = {
+          id: `stroked-${type}`,
+          type,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 60,
+          zIndex: 0,
+          ...(type === 'line'
+            ? { x1: 0, y1: 0, x2: 100, y2: 60 }
+            : { points: '0,0 100,60' }),
+          strokes: [
+            { type: 'solid', value: '#ff0000' },
+            { type: 'solid', value: '#0000ff' },
+          ],
+          strokeWidth: 4,
+        } as SerializedNode;
+        const code = serializedNodesToCode([node]);
+        const paths = [...code.matchAll(/^\s*<path .* \/>$/gm)].map(
+          ([line]) => line,
+        );
+        expect(paths).toHaveLength(2);
+        expect(paths[0]).toContain('#ff0000');
+        expect(paths[1]).toContain('#0000ff');
+        expect(paths.every((line) => line.includes('strokeWidth={4}'))).toBe(
+          true,
+        );
+      }
+    });
+
     it('isolates vector fill layer blending from the surrounding canvas', () => {
       const path = {
         id: 'blend-layers',

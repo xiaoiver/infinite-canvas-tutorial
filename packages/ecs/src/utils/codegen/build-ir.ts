@@ -50,6 +50,7 @@ import type {
   CodeVectorGradient,
   CodeVectorImage,
   CodeVectorFillLayer,
+  CodeVectorStrokeLayer,
   StyleIR,
   StyleValue,
 } from './types';
@@ -626,13 +627,52 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   )
     ? fillLayers
     : undefined;
+  const strokeLayers =
+    strokeWidth > 0 &&
+    strokes.length > 1 &&
+    node.strokeAlignment !== 'inner' &&
+    node.strokeAlignment !== 'outer' &&
+    !vectorMarker(node, 'start', strokeWidth) &&
+    !vectorMarker(node, 'end', strokeWidth) &&
+    strokes.every(
+      (layer) =>
+        layer.blendMode === undefined || layer.blendMode === 'normal',
+    )
+      ? strokes.map((layer, index): CodeVectorStrokeLayer => ({
+          stroke:
+            layer.type === 'solid' ? toStyleValue(layer.value) : undefined,
+          strokeGradient: vectorGradient(
+            node,
+            'stroke',
+            [layer],
+            [viewBoxX, viewBoxY],
+            width,
+            height,
+            `stroke-${index}`,
+          ),
+          strokeImage: vectorImage(
+            node,
+            'stroke',
+            [layer],
+            `stroke-${index}`,
+          ),
+          strokeOpacity: toStyleValue(
+            (layer.opacity ?? node.strokeOpacity) as string | number,
+          ),
+        }))
+      : undefined;
+  const supportedStrokeLayers = strokeLayers?.every(
+    (layer) => layer.stroke || layer.strokeGradient || layer.strokeImage,
+  )
+    ? strokeLayers
+    : undefined;
   const fill = supportedFillLayers ? undefined : singleFill;
   const fillGradient =
     node.type === 'path' && !supportedFillLayers
       ? vectorGradient(node, 'fill', fills, [viewBoxX, viewBoxY], width, height)
       : undefined;
   const strokeGradient =
-    strokeWidth > 0
+    strokeWidth > 0 && !supportedStrokeLayers
       ? vectorGradient(
           node,
           'stroke',
@@ -647,7 +687,9 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
       ? vectorImage(node, 'fill', fills)
       : undefined;
   const strokeImage =
-    strokeWidth > 0 ? vectorImage(node, 'stroke', strokes) : undefined;
+    strokeWidth > 0 && !supportedStrokeLayers
+      ? vectorImage(node, 'stroke', strokes)
+      : undefined;
   const alignment = node.strokeAlignment;
   let strokeAlignment: NonNullable<CodeNode['vectorPath']>['strokeAlignment'];
   if (
@@ -689,10 +731,11 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
       node.type === 'path' && node.fillRule === 'evenodd'
         ? 'evenodd'
         : 'nonzero',
-    stroke: strokeWidth > 0 ? stroke : undefined,
+    stroke: strokeWidth > 0 && !supportedStrokeLayers ? stroke : undefined,
     strokeGradient,
     strokeImage,
-    strokeOpacity: stroke || strokeGradient || strokeImage
+    strokeLayers: supportedStrokeLayers,
+    strokeOpacity: !supportedStrokeLayers && (stroke || strokeGradient || strokeImage)
       ? toStyleValue(
           (strokeLayer?.opacity ??
             gradientStrokeLayer?.opacity ??
@@ -701,7 +744,8 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
         )
       : undefined,
     strokeWidth:
-      (stroke || strokeGradient || strokeImage) && strokeWidth > 0
+      (supportedStrokeLayers || stroke || strokeGradient || strokeImage) &&
+      strokeWidth > 0
         ? strokeWidth
         : undefined,
     strokeLinecap: ['butt', 'round', 'square'].includes(

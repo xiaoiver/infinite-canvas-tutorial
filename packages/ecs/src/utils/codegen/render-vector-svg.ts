@@ -8,6 +8,7 @@ import type {
   CodeNode,
   CodeVariablesMode,
   CodeVectorFillLayer,
+  CodeVectorStrokeLayer,
 } from './types';
 
 type VectorPath = NonNullable<CodeNode['vectorPath']>;
@@ -74,6 +75,18 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     (layer.fillGradient || layer.fillImage) && layer.fillOpacity
       ? styleValueToCss(layer.fillOpacity, mode)
       : undefined;
+  const strokePaint = (layer: CodeVectorStrokeLayer) => {
+    const server = layer.strokeGradient ?? layer.strokeImage;
+    return server
+      ? `url(#${server.id})`
+      : layer.stroke
+        ? solidFillColorToCss(layer.stroke, layer.strokeOpacity, mode)
+        : 'none';
+  };
+  const strokePaintOpacity = (layer: CodeVectorStrokeLayer) =>
+    (layer.strokeGradient || layer.strokeImage) && layer.strokeOpacity
+      ? styleValueToCss(layer.strokeOpacity, mode)
+      : undefined;
   const strokeServer = path.strokeGradient ?? path.strokeImage;
   const fill = fillPaint(path);
   const stroke = strokeServer
@@ -91,6 +104,7 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     path.fillGradient,
     path.strokeGradient,
     ...(path.fillLayers?.map((layer) => layer.fillGradient) ?? []),
+    ...(path.strokeLayers?.map((layer) => layer.strokeGradient) ?? []),
   ]
     .filter((gradient) => gradient !== undefined)
     .map((gradient) => {
@@ -136,6 +150,7 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     path.fillImage,
     path.strokeImage,
     ...(path.fillLayers?.map((layer) => layer.fillImage) ?? []),
+    ...(path.strokeLayers?.map((layer) => layer.strokeImage) ?? []),
   ]
     .filter((image) => image !== undefined)
     .map((image) => {
@@ -265,9 +280,9 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     ['fill', fill],
     ['fill-opacity', fillOpacity],
     ['fill-rule', path.fillRule],
-    ['stroke', alignment ? 'none' : stroke],
+    ['stroke', alignment || path.strokeLayers ? 'none' : stroke],
     ['stroke-opacity', strokeOpacity],
-    ['stroke-width', path.strokeWidth],
+    ['stroke-width', path.strokeLayers ? undefined : path.strokeWidth],
     ['stroke-linecap', path.strokeLinecap],
     ['stroke-linejoin', path.strokeLinejoin],
     ['stroke-miterlimit', path.strokeMiterlimit],
@@ -331,12 +346,34 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
   const isolatedFills = blendedFills
     ? `${pad(artworkLevel)}<g${dialect === 'jsx' ? ' style={{ isolation: "isolate" }}' : ' style="isolation: isolate"'}>\n${fillArtwork}\n${pad(artworkLevel)}</g>`
     : fillArtwork;
+  const strokeArtwork = path.strokeLayers
+    ?.map((layer) =>
+      leaf(
+        'path',
+        [
+          ['d', path.d],
+          ['fill', 'none'],
+          ['stroke', strokePaint(layer)],
+          ['stroke-opacity', strokePaintOpacity(layer)],
+          ['stroke-width', path.strokeWidth],
+          ['stroke-linecap', path.strokeLinecap],
+          ['stroke-linejoin', path.strokeLinejoin],
+          ['stroke-miterlimit', path.strokeMiterlimit],
+          ['stroke-dasharray', path.strokeDasharray],
+          ['stroke-dashoffset', path.strokeDashoffset],
+        ],
+        artworkLevel,
+      ),
+    )
+    .join('\n');
+  const renderBasePath = path.fillLayers
+    ? !!path.strokeWidth && !path.strokeLayers
+    : fill !== 'none' || !path.strokeLayers;
   const artwork = [
     ...(isolatedFills ? [isolatedFills] : []),
-    ...(!path.fillLayers || path.strokeWidth
-      ? [leaf('path', pathAttrs, artworkLevel)]
-      : []),
+    ...(renderBasePath ? [leaf('path', pathAttrs, artworkLevel)] : []),
     ...(alignment ? [leaf('path', strokeAttrs, artworkLevel)] : []),
+    ...(strokeArtwork ? [strokeArtwork] : []),
   ].join('\n');
   const shadowStyle = shadow
     ? dialect === 'jsx'

@@ -248,6 +248,8 @@ export interface CodeNode {
     strokeGradient?: CodeVectorGradient;
     strokeImage?: CodeVectorImage;
     strokeOpacity?: StyleValue;
+    /** Center-aligned normal-blend stroke layers, ordered bottom to top. */
+    strokeLayers?: CodeVectorStrokeLayer[];
     strokeWidth?: number;
     strokeLinecap?: 'butt' | 'round' | 'square';
     strokeLinejoin?: 'miter' | 'round' | 'bevel';
@@ -306,6 +308,13 @@ export interface CodeVectorFillLayer {
   fillOpacity?: StyleValue;
   /** CSS mix-blend-mode applied against the layers below this one. */
   blendMode?: string;
+}
+
+export interface CodeVectorStrokeLayer {
+  stroke?: StyleValue;
+  strokeGradient?: CodeVectorGradient;
+  strokeImage?: CodeVectorImage;
+  strokeOpacity?: StyleValue;
 }
 
 export interface CodeComponentProp {
