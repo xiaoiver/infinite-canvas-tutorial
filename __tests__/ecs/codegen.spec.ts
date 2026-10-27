@@ -26,9 +26,7 @@ describe('design-to-code (codegen)', () => {
         } as SerializedNode;
         const react = serializedNodesToCode([node]);
         expect(react).toContain('backgroundImage:');
-        expect(react.indexOf('#0000ff')).toBeLessThan(
-          react.indexOf('#ff0000'),
-        );
+        expect(react.indexOf('#0000ff')).toBeLessThan(react.indexOf('#ff0000'));
         expect(react).toContain('color-mix(in srgb, #0000ff 25%, transparent)');
         expect(react).toContain('color-mix(in srgb, #ff0000 50%, transparent)');
         expect(react).not.toContain('#00ff00');
@@ -136,7 +134,9 @@ describe('design-to-code (codegen)', () => {
           const html = serializedNodesToCode([node], {
             framework: 'html-css',
           });
-          expect(html).toContain('background-image: url(&quot;/tile.png&quot;)');
+          expect(html).toContain(
+            'background-image: url(&quot;/tile.png&quot;)',
+          );
           expect(html).toContain('background-size: auto');
           expect(html).toContain(`background-repeat: ${repetition}`);
         }
@@ -153,9 +153,14 @@ describe('design-to-code (codegen)', () => {
           { type: 'pattern', value: '/tile.png', transform: 'rotate(30)' },
         ],
       } as SerializedNode;
-      expect(serializedNodesToCode([transformed])).not.toContain(
-        'backgroundImage',
-      );
+      const transformedReact = serializedNodesToCode([transformed]);
+      const transformedHtml = serializedNodesToCode([transformed], {
+        framework: 'html-css',
+      });
+      expect(transformedReact).toContain('backgroundImage:');
+      expect(transformedReact).toContain('transform: "matrix(');
+      expect(transformedHtml).toContain('transform: matrix(');
+      expect(transformedHtml).toContain('background-image: url(');
     });
 
     it('stacks natural-size image and tiled pattern above a solid fill', () => {
@@ -195,9 +200,7 @@ describe('design-to-code (codegen)', () => {
       expect(react.indexOf('/photo.png')).toBeLessThan(
         react.indexOf('/tile.png'),
       );
-      expect(react.indexOf('/tile.png')).toBeLessThan(
-        react.indexOf('#ff0000'),
-      );
+      expect(react.indexOf('/tile.png')).toBeLessThan(react.indexOf('#ff0000'));
       expect(react).toContain('backgroundSize: "auto, auto, 100% 100%"');
       expect(react).toContain(
         'backgroundPosition: "right bottom, 0% 0%, 0% 0%"',
@@ -205,7 +208,9 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain(
         'backgroundRepeat: "no-repeat, repeat-x, no-repeat"',
       );
-      expect(react).toContain('backgroundBlendMode: "multiply, normal, normal"');
+      expect(react).toContain(
+        'backgroundBlendMode: "multiply, normal, normal"',
+      );
       expect(react).toContain('Label');
       expect(react).not.toContain('<img');
       const html = serializedNodesToCode(nodes, { framework: 'html-css' });
@@ -298,6 +303,76 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('keeps per-paint opacity and scale-down sizing behind child content', () => {
+      for (const type of ['rect', 'ellipse'] as const) {
+        const nodes = [
+          {
+            id: `paint-${type}`,
+            type,
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 80,
+            zIndex: 0,
+            fills: [
+              { type: 'solid', value: '#ffffff' },
+              {
+                type: 'gradient',
+                value: 'linear-gradient(red, blue)',
+                opacity: 0.4,
+              },
+              {
+                type: 'image',
+                value: '/photo.png',
+                objectFit: 'scale-down',
+                objectPosition: '20% 80%',
+                opacity: 0.6,
+              },
+              {
+                type: 'pattern',
+                value: '/tile.png',
+                repetition: 'repeat-x',
+                opacity: 0.5,
+              },
+            ],
+          },
+          {
+            id: `caption-${type}`,
+            type: 'text',
+            parentId: `paint-${type}`,
+            x: 4,
+            y: 4,
+            zIndex: 1,
+            content: 'Caption',
+            fontSize: 16,
+          },
+        ] as SerializedNode[];
+        const react = serializedNodesToCode(nodes);
+        expect(react).toContain('zIndex: -1');
+        expect(react).toContain('objectFit: "scale-down"');
+        expect(react).toContain('objectPosition: "20% 80%"');
+        expect(react).toContain('backgroundRepeat: "repeat-x"');
+        expect(react).toContain('opacity: "0.40"');
+        expect(react).toContain('opacity: "0.60"');
+        expect(react).toContain('opacity: "0.50"');
+        expect(react.indexOf('/photo.png')).toBeLessThan(
+          react.indexOf('/tile.png'),
+        );
+        expect(react.indexOf('/tile.png')).toBeLessThan(
+          react.indexOf('Caption'),
+        );
+        if (type === 'ellipse') expect(react).toContain('rounded-[50%]');
+        const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+        expect(html).toContain('object-fit: scale-down');
+        expect(html).toContain('background-repeat: repeat-x');
+        expect(html).toContain('opacity: 0.40');
+        expect(html).toContain('opacity: 0.60');
+        expect(html).toContain('opacity: 0.50');
+        expect(html).toContain('Caption');
+        if (type === 'ellipse') expect(html).toContain('border-radius: 50%');
+      }
+    });
+
     it('blends supported rectangle backgrounds with lower fill layers', () => {
       const node = {
         id: 'blended-background',
@@ -321,9 +396,7 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain(
         'backgroundBlendMode: "screen, multiply, normal"',
       );
-      expect(react.indexOf('#ffffff')).toBeLessThan(
-        react.indexOf('#0000ff'),
-      );
+      expect(react.indexOf('#ffffff')).toBeLessThan(react.indexOf('#0000ff'));
       const html = serializedNodesToCode([node], { framework: 'html-css' });
       expect(html).toContain('background-blend-mode: screen, multiply, normal');
       expect(html.indexOf('#ffffff')).toBeLessThan(html.indexOf('#0000ff'));
@@ -386,12 +459,16 @@ describe('design-to-code (codegen)', () => {
       const react = serializedNodesToCode(nodes);
       expect(react).toContain('rounded-[50%]');
       expect(react).toContain('overflow-hidden');
-      expect(react).toContain('<img src="https://example.com/avatar.png" alt=""');
+      expect(react).toContain(
+        '<img src="https://example.com/avatar.png" alt=""',
+      );
       expect(react.indexOf('<img')).toBeLessThan(react.indexOf('>A<'));
       const html = serializedNodesToCode(nodes, { framework: 'html-css' });
       expect(html).toContain('border-radius: 50%');
       expect(html).toContain('overflow: hidden');
-      expect(html).toContain('<img src="https://example.com/avatar.png" alt=""');
+      expect(html).toContain(
+        '<img src="https://example.com/avatar.png" alt=""',
+      );
       expect(html.indexOf('<img')).toBeLessThan(html.indexOf('>A<'));
     });
 
@@ -435,7 +512,9 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain('relative');
       expect(react).toContain('isolate');
       expect(react).toContain('overflow-hidden');
-      expect(react).toContain('<img src="https://example.com/photo.png" alt=""');
+      expect(react).toContain(
+        '<img src="https://example.com/photo.png" alt=""',
+      );
       expect(react).toContain('objectFit: "cover"');
       expect(react).toContain('objectPosition: "left top"');
       expect(react).toContain('opacity: "0.50"');
@@ -443,13 +522,15 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain('opacity-[0.80]');
       expect(react).not.toContain('opacity-[0.40]');
       expect(
-        ts.transpileModule(react, {
-          fileName: 'Design.tsx',
-          reportDiagnostics: true,
-          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
-        }).diagnostics?.filter(
-          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-        ),
+        ts
+          .transpileModule(react, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
       ).toEqual([]);
       const html = serializedNodesToCode(nodes, { framework: 'html-css' });
       expect(html).toContain('isolation: isolate');
@@ -489,25 +570,35 @@ describe('design-to-code (codegen)', () => {
         strokeWidth: 3,
       } as SerializedNode;
       const react = serializedNodesToCode([path]);
-      expect(react).toContain('<pattern id={"ic-image-70-68-6f-74-6f-2d-70-61-74-68-fill"}');
+      expect(react).toContain(
+        '<pattern id={"ic-image-70-68-6f-74-6f-2d-70-61-74-68-fill"}',
+      );
       expect(react).toContain('preserveAspectRatio={"xMidYMid slice"}');
       expect(react).toContain('preserveAspectRatio={"xMidYMid meet"}');
       expect(react).toContain('href={"https://example.com/photo.png?a=1&b=2"}');
-      expect(react).toContain('fill={"url(#ic-image-70-68-6f-74-6f-2d-70-61-74-68-fill)"}');
-      expect(react).toContain('stroke={"url(#ic-image-70-68-6f-74-6f-2d-70-61-74-68-stroke)"}');
+      expect(react).toContain(
+        'fill={"url(#ic-image-70-68-6f-74-6f-2d-70-61-74-68-fill)"}',
+      );
+      expect(react).toContain(
+        'stroke={"url(#ic-image-70-68-6f-74-6f-2d-70-61-74-68-stroke)"}',
+      );
       expect(react).toContain('fillOpacity={"0.60"}');
       expect(react).toContain('strokeWidth={3}');
       expect(
-        ts.transpileModule(react, {
-          fileName: 'Design.tsx',
-          reportDiagnostics: true,
-          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
-        }).diagnostics?.filter(
-          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-        ),
+        ts
+          .transpileModule(react, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
       ).toEqual([]);
       const html = serializedNodesToCode([path], { framework: 'html-css' });
-      expect(html).toContain('href="https://example.com/photo.png?a=1&amp;b=2"');
+      expect(html).toContain(
+        'href="https://example.com/photo.png?a=1&amp;b=2"',
+      );
       expect(html).toContain('preserveAspectRatio="xMidYMid slice"');
       expect(html).toContain('fill-opacity="0.60"');
 
@@ -645,9 +736,15 @@ describe('design-to-code (codegen)', () => {
         );
         expect(paths).toHaveLength(4);
         expect(paths[0]).toContain('#ffffff');
-        expect(paths[1]).toContain('color-mix(in srgb, #ff0000 50%, transparent)');
-        expect(paths[2]).toContain('ic-gradient-73-74-72-6f-6b-65-2d-6c-61-79-65-72-73-stroke-1');
-        expect(paths[3]).toContain('ic-image-73-74-72-6f-6b-65-2d-6c-61-79-65-72-73-stroke-2');
+        expect(paths[1]).toContain(
+          'color-mix(in srgb, #ff0000 50%, transparent)',
+        );
+        expect(paths[2]).toContain(
+          'ic-gradient-73-74-72-6f-6b-65-2d-6c-61-79-65-72-73-stroke-1',
+        );
+        expect(paths[3]).toContain(
+          'ic-image-73-74-72-6f-6b-65-2d-6c-61-79-65-72-73-stroke-2',
+        );
         expect(paths.slice(1).every((line) => line.includes('stroke'))).toBe(
           true,
         );
@@ -669,9 +766,9 @@ describe('design-to-code (codegen)', () => {
           ],
         } as SerializedNode,
       ]);
-      const layeredPaths = [...layeredFills.matchAll(/^\s*<path .* \/>$/gm)].map(
-        ([line]) => line,
-      );
+      const layeredPaths = [
+        ...layeredFills.matchAll(/^\s*<path .* \/>$/gm),
+      ].map(([line]) => line);
       expect(layeredPaths).toHaveLength(5);
       expect(layeredPaths[0]).toContain('#ffffff');
       expect(layeredPaths[1]).toContain('#222222');
@@ -710,6 +807,46 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('keeps separate arrow markers and CSS blend modes on stroke layers', () => {
+      const node = {
+        id: 'layer-arrow',
+        type: 'polyline',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        points: '0,0 50,60 100,0',
+        strokes: [
+          { type: 'solid', value: '#ff0000' },
+          { type: 'solid', value: '#0000ff', blendMode: 'screen' },
+        ],
+        strokeWidth: 3,
+        markerStart: 'triangle',
+        markerEnd: 'diamond',
+      } as SerializedNode;
+      const react = serializedNodesToCode([node]);
+      expect(react).toContain('<g style={{ isolation: "isolate" }}>');
+      expect(react).toContain('style={{ mixBlendMode: "screen" }}');
+      for (const side of ['start', 'end']) {
+        for (const index of [0, 1]) {
+          const id = `ic-marker-6c-61-79-65-72-2d-61-72-72-6f-77-${side}-${index}`;
+          expect(react).toContain(`id={"${id}"}`);
+          expect(react).toContain(
+            `marker${side === 'start' ? 'Start' : 'End'}={"url(#${id})"}`,
+          );
+        }
+      }
+      expect(react).toContain('fill={"#ff0000"}');
+      expect(react).toContain('fill={"#0000ff"}');
+      const html = serializedNodesToCode([node], { framework: 'html-css' });
+      expect(html).toContain('style="isolation: isolate"');
+      expect(html).toContain('style="mix-blend-mode: screen"');
+      expect(html).toContain(
+        'marker-start="url(#ic-marker-6c-61-79-65-72-2d-61-72-72-6f-77-start-1)"',
+      );
+    });
+
     it('isolates vector fill layer blending from the surrounding canvas', () => {
       const path = {
         id: 'blend-layers',
@@ -740,19 +877,25 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain('<g style={{ isolation: "isolate" }}>');
       expect(react).toContain('style={{ mixBlendMode: "multiply" }}');
       expect(react).toContain('style={{ mixBlendMode: "screen" }}');
-      expect(react).toContain('ic-gradient-62-6c-65-6e-64-2d-6c-61-79-65-72-73-fill-1');
-      expect(react).toContain('ic-image-62-6c-65-6e-64-2d-6c-61-79-65-72-73-fill-2');
+      expect(react).toContain(
+        'ic-gradient-62-6c-65-6e-64-2d-6c-61-79-65-72-73-fill-1',
+      );
+      expect(react).toContain(
+        'ic-image-62-6c-65-6e-64-2d-6c-61-79-65-72-73-fill-2',
+      );
       expect(react.indexOf('</g>')).toBeLessThan(
         react.indexOf('stroke={"#222222"}'),
       );
       expect(
-        ts.transpileModule(react, {
-          fileName: 'Design.tsx',
-          reportDiagnostics: true,
-          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
-        }).diagnostics?.filter(
-          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-        ),
+        ts
+          .transpileModule(react, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
       ).toEqual([]);
       const html = serializedNodesToCode([path], { framework: 'html-css' });
       expect(html).toContain('<g style="isolation: isolate">');
@@ -844,7 +987,9 @@ describe('design-to-code (codegen)', () => {
         { ...base, strokeAlignment: 'outer' } as SerializedNode,
       ]);
       expect(outer).toContain('<mask id={"ic-stroke-72-69-6e-67"}');
-      expect(outer).toContain('<rect x={-4} y={-4} width={108} height={108} fill="white"');
+      expect(outer).toContain(
+        '<rect x={-4} y={-4} width={108} height={108} fill="white"',
+      );
       expect(outer).toContain('fill="black" fillRule={"evenodd"}');
       expect(outer).toContain('mask={"url(#ic-stroke-72-69-6e-67)"}');
       const html = serializedNodesToCode(
@@ -893,17 +1038,21 @@ describe('design-to-code (codegen)', () => {
         const react = serializedNodesToCode([
           { ...base, strokeAlignment: alignment } as SerializedNode,
         ]);
-        const strokePaths = [...react.matchAll(/^\s*<path .*strokeWidth=\{8\}.* \/>$/gm)].map(
-          ([line]) => line,
-        );
+        const strokePaths = [
+          ...react.matchAll(/^\s*<path .*strokeWidth=\{8\}.* \/>$/gm),
+        ].map(([line]) => line);
         expect(strokePaths).toHaveLength(2);
         expect(strokePaths[0]).toContain('#ff0000');
-        expect(strokePaths[1]).toContain('ic-gradient-6c-61-79-65-72-65-64-2d-72-69-6e-67-stroke-1');
+        expect(strokePaths[1]).toContain(
+          'ic-gradient-6c-61-79-65-72-65-64-2d-72-69-6e-67-stroke-1',
+        );
         expect(strokePaths[1]).toContain('strokeOpacity={"0.75"}');
         const maskAttribute = alignment === 'inner' ? 'clipPath' : 'mask';
         expect(
           strokePaths.every((line) =>
-            line.includes(`${maskAttribute}={"url(#ic-stroke-6c-61-79-65-72-65-64-2d-72-69-6e-67)"}`),
+            line.includes(
+              `${maskAttribute}={"url(#ic-stroke-6c-61-79-65-72-65-64-2d-72-69-6e-67)"}`,
+            ),
           ),
         ).toBe(true);
         const html = serializedNodesToCode(
@@ -911,7 +1060,16 @@ describe('design-to-code (codegen)', () => {
           { framework: 'html-css' },
         );
         expect(html.match(/stroke-width="8"/g)).toHaveLength(2);
-        expect(html.match(new RegExp(`${alignment === 'inner' ? 'clip-path' : 'mask'}="url\\(#ic-stroke-6c-61-79-65-72-65-64-2d-72-69-6e-67\\)"`, 'g'))).toHaveLength(2);
+        expect(
+          html.match(
+            new RegExp(
+              `${
+                alignment === 'inner' ? 'clip-path' : 'mask'
+              }="url\\(#ic-stroke-6c-61-79-65-72-65-64-2d-72-69-6e-67\\)"`,
+              'g',
+            ),
+          ),
+        ).toHaveLength(2);
       }
       const open = serializedNodesToCode([
         {
@@ -957,8 +1115,12 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain('gradientUnits="userSpaceOnUse"');
       expect(react).toContain('stopColor={"#ff0000"}');
       expect(react).toContain('stopColor={"#000000"}');
-      expect(react).toContain('fill={"url(#ic-gradient-67-72-61-64-69-65-6e-74-2d-70-61-74-68-fill)"}');
-      expect(react).toContain('stroke={"url(#ic-gradient-67-72-61-64-69-65-6e-74-2d-70-61-74-68-stroke)"}');
+      expect(react).toContain(
+        'fill={"url(#ic-gradient-67-72-61-64-69-65-6e-74-2d-70-61-74-68-fill)"}',
+      );
+      expect(react).toContain(
+        'stroke={"url(#ic-gradient-67-72-61-64-69-65-6e-74-2d-70-61-74-68-stroke)"}',
+      );
       expect(react).toContain('fillOpacity={"0.50"}');
       expect(react).toContain('strokeOpacity={"0.75"}');
       expect(react).toContain('strokeWidth={3}');
@@ -992,25 +1154,39 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain('<defs>');
       expect(react).toContain('orient="auto-start-reverse"');
       expect(react).toContain('orient="auto"');
-      expect(react).toContain('markerStart={"url(#ic-marker-61-72-72-6f-77-2d-61-start)"}');
-      expect(react).toContain('markerEnd={"url(#ic-marker-61-72-72-6f-77-2d-61-end)"}');
-      expect(react).toContain('stroke={"color-mix(in srgb, #123456 50%, transparent)"}');
+      expect(react).toContain(
+        'markerStart={"url(#ic-marker-61-72-72-6f-77-2d-61-start)"}',
+      );
+      expect(react).toContain(
+        'markerEnd={"url(#ic-marker-61-72-72-6f-77-2d-61-end)"}',
+      );
+      expect(react).toContain(
+        'stroke={"color-mix(in srgb, #123456 50%, transparent)"}',
+      );
       expect(react).toContain('markerWidth={18}');
       expect(react).toContain(' L -6 0 L -3 2.4000000000000004 Z');
       expect(
-        ts.transpileModule(react, {
-          fileName: 'Design.tsx',
-          reportDiagnostics: true,
-          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
-        }).diagnostics?.filter(
-          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-        ),
+        ts
+          .transpileModule(react, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
       ).toEqual([]);
 
       const html = serializedNodesToCode([node], { framework: 'html-css' });
-      expect(html).toContain('<marker id="ic-marker-61-72-72-6f-77-2d-61-start"');
-      expect(html).toContain('marker-start="url(#ic-marker-61-72-72-6f-77-2d-61-start)"');
-      expect(html).toContain('marker-end="url(#ic-marker-61-72-72-6f-77-2d-61-end)"');
+      expect(html).toContain(
+        '<marker id="ic-marker-61-72-72-6f-77-2d-61-start"',
+      );
+      expect(html).toContain(
+        'marker-start="url(#ic-marker-61-72-72-6f-77-2d-61-start)"',
+      );
+      expect(html).toContain(
+        'marker-end="url(#ic-marker-61-72-72-6f-77-2d-61-end)"',
+      );
 
       const open = serializedNodesToCode([
         { ...node, id: 'open-arrow', markerStart: 'line', markerEnd: 'none' },
@@ -1137,20 +1313,24 @@ describe('design-to-code (codegen)', () => {
           content: 'Label',
         } as SerializedNode,
       ]);
-      expect(withChild).toContain('<div className="relative w-[100px] h-[60px] overflow-visible"');
+      expect(withChild).toContain(
+        '<div className="relative w-[100px] h-[60px] overflow-visible"',
+      );
       expect(withChild).toContain('<svg viewBox={"0 0 100 60"}');
       expect(withChild).toContain('pointerEvents: "none"');
       expect(withChild).toContain('<path d={"M 0 0 C 30 0 70 60 100 60 Z"}');
       expect(withChild).toContain('absolute left-[8px] top-[12px]');
       expect(withChild).toContain('Label');
       expect(
-        ts.transpileModule(withChild, {
-          fileName: 'Design.tsx',
-          reportDiagnostics: true,
-          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
-        }).diagnostics?.filter(
-          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
-        ),
+        ts
+          .transpileModule(withChild, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
       ).toEqual([]);
       const withChildHtml = serializedNodesToCode(
         [
@@ -1516,11 +1696,13 @@ describe('design-to-code (codegen)', () => {
         ]),
       ).not.toContain('backgroundImage');
 
-      const unsupported = {
+      const translucent = {
         id: 'layered-card',
         type: 'rect',
         x: 0,
         y: 0,
+        width: 100,
+        height: 80,
         zIndex: 0,
         fills: [
           {
@@ -1530,9 +1712,9 @@ describe('design-to-code (codegen)', () => {
           },
         ],
       } as SerializedNode;
-      expect(serializedNodesToCode([unsupported])).not.toContain(
-        'backgroundImage',
-      );
+      const react = serializedNodesToCode([translucent]);
+      expect(react).toContain('opacity: "0.50"');
+      expect(react).toContain('backgroundImage: "linear-gradient(red, blue)"');
     });
 
     it('keeps ellipse geometry in HTML and React exports', () => {

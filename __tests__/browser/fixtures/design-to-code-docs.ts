@@ -1,5 +1,7 @@
 import { createApp } from 'vue';
 import type { API } from '../../../packages/ecs/src';
+import type { SerializedNode } from '../../../packages/ecs/src';
+import { serializedNodesToCode } from '../../../packages/ecs/src/utils/codegen';
 import DesignToCodeInterfaces from '../../../packages/site/docs/components/DesignToCodeInterfaces.vue';
 
 let api: API | undefined;
@@ -14,6 +16,51 @@ root.addEventListener(
 createApp(DesignToCodeInterfaces, { locale: 'zh' }).mount(root);
 
 const probe = {
+  paintMarkup: (
+    kind: 'opacity' | 'scale-down' | 'pattern' | 'pattern-rotate',
+  ) => {
+    const tile = `data:image/svg+xml,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#00ff00"/></svg>',
+    )}`;
+    const fills =
+      kind === 'opacity'
+        ? [
+            { type: 'solid', value: '#ff0000' },
+            {
+              type: 'gradient',
+              value: 'linear-gradient(90deg, #0000ff, #0000ff)',
+              opacity: 0.5,
+            },
+          ]
+        : kind === 'scale-down'
+        ? [
+            { type: 'solid', value: '#ff0000' },
+            { type: 'image', value: tile, objectFit: 'scale-down' },
+          ]
+        : [
+            { type: 'solid', value: '#ff0000' },
+            {
+              type: 'pattern',
+              value: tile,
+              repetition: 'no-repeat',
+              transform:
+                kind === 'pattern-rotate'
+                  ? 'rotate(90, 20, 20)'
+                  : 'translate(10, 10)',
+            },
+          ];
+    const node = {
+      id: `paint-${kind}`,
+      type: 'rect',
+      x: 0,
+      y: 0,
+      zIndex: 0,
+      width: 60,
+      height: 60,
+      fills,
+    } as SerializedNode;
+    return serializedNodesToCode([node], { framework: 'html-css' });
+  },
   scene: () => api?.getNodes().find((node) => !node.parentId)?.id,
   nodes: () => api?.getNodes() ?? [],
   camera: () => api?.getAppState(),

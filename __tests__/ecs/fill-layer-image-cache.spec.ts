@@ -7,6 +7,7 @@ import {
 } from '../../packages/ecs/src';
 import {
   getFillLayerDecodedBitmap,
+  getOrScheduleFillLayerPatternSource,
   setFillLayerDecodedBitmapForUrl,
   rasterizeFillLayerImageUrlForTexture,
   resolveFillLayerImageRasterPixelSize,
@@ -70,6 +71,25 @@ it.each(['none', 'scale-down'] as const)(
     expect(pixel(c, 3, 8)[3]).toBe(0);
   },
 );
+
+it('decodes URL patterns once and caches SVG tiles at their intrinsic size', async () => {
+  const source = url();
+  const request = deferred<ImageBitmap>();
+  createImage.mockReturnValue(request.promise);
+  const dirty = jest.fn();
+  expect(getOrScheduleFillLayerPatternSource(source, dirty)).toBe(source);
+  await settle();
+  expect(createImage).toHaveBeenCalledTimes(1);
+  const decoded = bitmap('green', 80, 40);
+  setFillLayerDecodedBitmapForUrl(source, decoded, { width: 8, height: 4 });
+  request.resolve(decoded);
+  await settle();
+  expect(dirty).toHaveBeenCalledTimes(1);
+  const tile = getOrScheduleFillLayerPatternSource(source) as HTMLCanvasElement;
+  expect([tile.width, tile.height]).toEqual([8, 4]);
+  expect(pixel(tile, 7, 3)).toEqual([0, 128, 0, 255]);
+  expect(getOrScheduleFillLayerPatternSource(source)).toBe(tile);
+});
 let createImage: jest.Mock;
 beforeEach(() => {
   globalThis.Image = undefined;

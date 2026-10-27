@@ -12,10 +12,8 @@ import {
 import type { ThemeMode } from '../../components/Theme';
 import { formatNumber } from '../serialize/points';
 import { renderVectorSvg } from './render-vector-svg';
-import {
-  styleIRToCssDeclarations,
-  styleValueToCss,
-} from './emit-style';
+import { renderPaintOverlays } from './emit-paint-overlays';
+import { styleIRToCssDeclarations, styleValueToCss } from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
 
 interface HtmlState {
@@ -93,8 +91,8 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       tag === 'button'
         ? ' type="button"'
         : tag === 'a' && node.element?.tag === 'a'
-          ? ` href="${escapeAttr(node.element.href)}"`
-          : '';
+        ? ` href="${escapeAttr(node.element.href)}"`
+        : '';
     const children = node.children
       .map((child) => renderNode(child, state, depth + 1))
       .join('\n');
@@ -138,14 +136,21 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
           : []),
         ...(node.style.imageFillOpacity
           ? [
-              `opacity: ${styleValueToCss(node.style.imageFillOpacity, state.mode)}`,
+              `opacity: ${styleValueToCss(
+                node.style.imageFillOpacity,
+                state.mode,
+              )}`,
             ]
           : []),
       ].join('; ');
       const children = node.children
         .map((child) => renderNode(child, state, depth + 1))
         .join('\n');
-      return `${pad}<${tag}${semanticAttr}${style}>\n${state.indent.repeat(depth + 1)}<img src="${escapeAttr(src)}" alt="" style="${escapeAttr(imageCss)}" />\n${children}\n${pad}</${tag}>`;
+      return `${pad}<${tag}${semanticAttr}${style}>\n${state.indent.repeat(
+        depth + 1,
+      )}<img src="${escapeAttr(src)}" alt="" style="${escapeAttr(
+        imageCss,
+      )}" />\n${children}\n${pad}</${tag}>`;
     }
     return `${pad}<img src="${escapeAttr(src)}" alt="${escapeAttr(
       node.name ?? '',
@@ -164,14 +169,25 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     return `${pad}<${tag}${semanticAttr}${style}>${text}</${tag}>`;
   }
 
+  const paints = renderPaintOverlays(
+    node.style,
+    state.mode,
+    'html',
+    state.indent,
+    depth,
+  );
   if (node.children.length === 0) {
+    if (paints)
+      return `${pad}<${tag}${semanticAttr}${style}>\n${paints}\n${pad}</${tag}>`;
     return `${pad}<${tag}${semanticAttr}${style}>${text}</${tag}>`;
   }
   const children = node.children
     .map((c) => renderNode(c, state, depth + 1))
     .join('\n');
   const leading = text ? `${state.indent.repeat(depth + 1)}${text}\n` : '';
-  return `${pad}<${tag}${semanticAttr}${style}>\n${leading}${children}\n${pad}</${tag}>`;
+  return `${pad}<${tag}${semanticAttr}${style}>\n${
+    paints ? `${paints}\n` : ''
+  }${leading}${children}\n${pad}</${tag}>`;
 }
 
 /** 把 Code IR 输出为 HTML + CSS 源码字符串。 */

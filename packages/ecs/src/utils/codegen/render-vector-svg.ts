@@ -8,6 +8,7 @@ import type {
   CodeNode,
   CodeVariablesMode,
   CodeVectorFillLayer,
+  CodeVectorMarker,
   CodeVectorStrokeLayer,
 } from './types';
 
@@ -27,13 +28,18 @@ function escapeAttribute(value: string): string {
 }
 
 /** Shared SVG artwork for the HTML and React code emitters. */
-export function renderVectorSvg(path: VectorPath, options: RenderOptions): string {
+export function renderVectorSvg(
+  path: VectorPath,
+  options: RenderOptions,
+): string {
   const { dialect, mode, indent, depth, svgStyle } = options;
   const pad = (level: number) => indent.repeat(level);
   const attr = ([name, value]: Attribute): string => {
     if (value === undefined) return '';
     if (dialect === 'html')
-      return ` ${name}="${escapeAttribute(typeof value === 'number' ? formatNumber(value) : value)}"`;
+      return ` ${name}="${escapeAttribute(
+        typeof value === 'number' ? formatNumber(value) : value,
+      )}"`;
     const jsxName = name.replace(/-([a-z])/g, (_, letter: string) =>
       letter.toUpperCase(),
     );
@@ -51,7 +57,9 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
       (name === 'fill' && (value === 'white' || value === 'black'))
     )
       return ` ${jsxName}="${escapeAttribute(String(value))}"`;
-    return ` ${jsxName}={${typeof value === 'number' ? formatNumber(value) : JSON.stringify(value)}}`;
+    return ` ${jsxName}={${
+      typeof value === 'number' ? formatNumber(value) : JSON.stringify(value)
+    }}`;
   };
   const attrs = (values: Attribute[]) => values.map(attr).join('');
   const leaf = (
@@ -60,16 +68,20 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     level: number,
     extraAttrs = '',
   ) => `${pad(level)}<${tag}${attrs(values)}${extraAttrs} />`;
-  const wrap = (tag: string, values: Attribute[], body: string, level: number) =>
-    `${pad(level)}<${tag}${attrs(values)}>\n${body}\n${pad(level)}</${tag}>`;
+  const wrap = (
+    tag: string,
+    values: Attribute[],
+    body: string,
+    level: number,
+  ) => `${pad(level)}<${tag}${attrs(values)}>\n${body}\n${pad(level)}</${tag}>`;
 
   const fillPaint = (layer: CodeVectorFillLayer) => {
     const server = layer.fillGradient ?? layer.fillImage;
     return server
       ? `url(#${server.id})`
       : layer.fill
-        ? solidFillColorToCss(layer.fill, layer.fillOpacity, mode)
-        : 'none';
+      ? solidFillColorToCss(layer.fill, layer.fillOpacity, mode)
+      : 'none';
   };
   const paintOpacity = (layer: CodeVectorFillLayer) =>
     (layer.fillGradient || layer.fillImage) && layer.fillOpacity
@@ -80,8 +92,8 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     return server
       ? `url(#${server.id})`
       : layer.stroke
-        ? solidFillColorToCss(layer.stroke, layer.strokeOpacity, mode)
-        : 'none';
+      ? solidFillColorToCss(layer.stroke, layer.strokeOpacity, mode)
+      : 'none';
   };
   const strokePaintOpacity = (layer: CodeVectorStrokeLayer) =>
     (layer.strokeGradient || layer.strokeImage) && layer.strokeOpacity
@@ -92,8 +104,8 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
   const stroke = strokeServer
     ? `url(#${strokeServer.id})`
     : path.stroke
-      ? solidFillColorToCss(path.stroke, path.strokeOpacity, mode)
-      : 'none';
+    ? solidFillColorToCss(path.stroke, path.strokeOpacity, mode)
+    : 'none';
   const fillOpacity = paintOpacity(path);
   const strokeOpacity =
     strokeServer && path.strokeOpacity
@@ -109,7 +121,8 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     .filter((gradient) => gradient !== undefined)
     .map((gradient) => {
       const geometry = gradient.geometry;
-      const tag = geometry.type === 'linear' ? 'linearGradient' : 'radialGradient';
+      const tag =
+        geometry.type === 'linear' ? 'linearGradient' : 'radialGradient';
       const coordinates: Attribute[] =
         geometry.type === 'linear'
           ? [
@@ -162,11 +175,7 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
       ];
       return wrap(
         'pattern',
-        [
-          ['id', image.id],
-          ['patternUnits', 'userSpaceOnUse'],
-          ...box,
-        ],
+        [['id', image.id], ['patternUnits', 'userSpaceOnUse'], ...box],
         leaf(
           'image',
           [
@@ -179,42 +188,79 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
         depth + 2,
       );
     });
-  const markers = [path.markerStart, path.markerEnd]
-    .filter((marker) => marker !== undefined)
-    .map((marker) => {
-      const side = marker === path.markerStart ? 'start' : 'end';
-      return wrap(
-        'marker',
-        [
-          ['id', marker.id],
-          ['markerUnits', 'userSpaceOnUse'],
-          ['markerWidth', marker.size],
-          ['markerHeight', marker.size],
-          [
-            'viewBox',
-            `${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`,
-          ],
-          ['refX', 0],
-          ['refY', 0],
-          ['orient', side === 'start' ? 'auto-start-reverse' : 'auto'],
-        ],
-        leaf(
-          'path',
-          [
-            ['d', marker.d],
-            ['fill', marker.fill ? stroke : 'none'],
-            ['fill-opacity', marker.fill ? strokeOpacity : undefined],
-            ['stroke', stroke],
-            ['stroke-opacity', strokeOpacity],
-            ['stroke-width', marker.strokeWidth],
-            ['stroke-linecap', marker.strokeLinecap],
-            ['stroke-linejoin', marker.strokeLinejoin],
-          ],
-          depth + 3,
-        ),
-        depth + 2,
-      );
+  const markerEntries: Array<{
+    marker: CodeVectorMarker;
+    side: 'start' | 'end';
+    paint: string;
+    opacity?: string;
+  }> = [];
+  if (path.markerStart)
+    markerEntries.push({
+      marker: path.markerStart,
+      side: 'start',
+      paint: stroke,
+      opacity: strokeOpacity,
     });
+  if (path.markerEnd)
+    markerEntries.push({
+      marker: path.markerEnd,
+      side: 'end',
+      paint: stroke,
+      opacity: strokeOpacity,
+    });
+  for (const layer of path.strokeLayers ?? []) {
+    const paint = strokePaint(layer);
+    const opacity = strokePaintOpacity(layer);
+    if (layer.markerStart)
+      markerEntries.push({
+        marker: layer.markerStart,
+        side: 'start',
+        paint,
+        opacity,
+      });
+    if (layer.markerEnd)
+      markerEntries.push({
+        marker: layer.markerEnd,
+        side: 'end',
+        paint,
+        opacity,
+      });
+  }
+  const markers = markerEntries.map(({ marker, side, paint, opacity }) => {
+    return wrap(
+      'marker',
+      [
+        ['id', marker.id],
+        ['markerUnits', 'userSpaceOnUse'],
+        ['markerWidth', marker.size],
+        ['markerHeight', marker.size],
+        [
+          'viewBox',
+          `${formatNumber(-marker.offset)} ${formatNumber(
+            -marker.offset,
+          )} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`,
+        ],
+        ['refX', 0],
+        ['refY', 0],
+        ['orient', side === 'start' ? 'auto-start-reverse' : 'auto'],
+      ],
+      leaf(
+        'path',
+        [
+          ['d', marker.d],
+          ['fill', marker.fill ? paint : 'none'],
+          ['fill-opacity', marker.fill ? opacity : undefined],
+          ['stroke', paint],
+          ['stroke-opacity', opacity],
+          ['stroke-width', marker.strokeWidth],
+          ['stroke-linecap', marker.strokeLinecap],
+          ['stroke-linejoin', marker.strokeLinejoin],
+        ],
+        depth + 3,
+      ),
+      depth + 2,
+    );
+  });
   const alignment = path.strokeAlignment;
   const margin = path.strokeWidth ?? 0;
   const maskBox: Attribute[] = [
@@ -344,11 +390,21 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     })
     .join('\n');
   const isolatedFills = blendedFills
-    ? `${pad(artworkLevel)}<g${dialect === 'jsx' ? ' style={{ isolation: "isolate" }}' : ' style="isolation: isolate"'}>\n${fillArtwork}\n${pad(artworkLevel)}</g>`
+    ? `${pad(artworkLevel)}<g${
+        dialect === 'jsx'
+          ? ' style={{ isolation: "isolate" }}'
+          : ' style="isolation: isolate"'
+      }>\n${fillArtwork}\n${pad(artworkLevel)}</g>`
     : fillArtwork;
+  const blendedStrokes = path.strokeLayers?.some((layer) => layer.blendMode);
   const strokeArtwork = path.strokeLayers
-    ?.map((layer) =>
-      leaf(
+    ?.map((layer) => {
+      const style = layer.blendMode
+        ? dialect === 'jsx'
+          ? ` style={{ mixBlendMode: ${JSON.stringify(layer.blendMode)} }}`
+          : ` style="mix-blend-mode: ${escapeAttribute(layer.blendMode)}"`
+        : '';
+      return leaf(
         'path',
         [
           ['d', path.d],
@@ -365,14 +421,27 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
           ['stroke-dasharray', path.strokeDasharray],
           ['stroke-dashoffset', path.strokeDashoffset],
           [
+            'marker-start',
+            layer.markerStart && `url(#${layer.markerStart.id})`,
+          ],
+          ['marker-end', layer.markerEnd && `url(#${layer.markerEnd.id})`],
+          [
             alignment?.type === 'inner' ? 'clip-path' : 'mask',
             alignment && `url(#${alignment.id})`,
           ],
         ],
-        artworkLevel,
-      ),
-    )
+        artworkLevel + (blendedStrokes ? 1 : 0),
+        style,
+      );
+    })
     .join('\n');
+  const isolatedStrokes = blendedStrokes
+    ? `${pad(artworkLevel)}<g${
+        dialect === 'jsx'
+          ? ' style={{ isolation: "isolate" }}'
+          : ' style="isolation: isolate"'
+      }>\n${strokeArtwork}\n${pad(artworkLevel)}</g>`
+    : strokeArtwork;
   const renderBasePath = path.fillLayers
     ? !!path.strokeWidth && !path.strokeLayers
     : fill !== 'none' || !path.strokeLayers;
@@ -382,7 +451,7 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     ...(alignment && !path.strokeLayers
       ? [leaf('path', strokeAttrs, artworkLevel)]
       : []),
-    ...(strokeArtwork ? [strokeArtwork] : []),
+    ...(isolatedStrokes ? [isolatedStrokes] : []),
   ].join('\n');
   const shadowStyle = shadow
     ? dialect === 'jsx'
@@ -390,8 +459,15 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
       : ` style="filter: ${escapeAttribute(shadow)}"`
     : '';
   const content = shadow
-    ? `${defs}${pad(depth + 1)}<g${shadowStyle}>\n${artwork}\n${pad(depth + 1)}</g>`
+    ? `${defs}${pad(depth + 1)}<g${shadowStyle}>\n${artwork}\n${pad(
+        depth + 1,
+      )}</g>`
     : `${defs}${artwork}`;
-  const viewBox = `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`;
-  return `${pad(depth)}<svg${attr(['viewBox', viewBox])} aria-hidden="true"${svgStyle}>\n${content}\n${pad(depth)}</svg>`;
+  const viewBox = `${formatNumber(path.viewBoxX)} ${formatNumber(
+    path.viewBoxY,
+  )} ${formatNumber(path.width)} ${formatNumber(path.height)}`;
+  return `${pad(depth)}<svg${attr([
+    'viewBox',
+    viewBox,
+  ])} aria-hidden="true"${svgStyle}>\n${content}\n${pad(depth)}</svg>`;
 }

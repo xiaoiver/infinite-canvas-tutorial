@@ -127,6 +127,20 @@ it('returns a transparent placeholder for an unresolved URL', () => {
   ).toBe(0);
 });
 
+it('applies a pattern transform before tiling its source image', () => {
+  const canvas = pool.getOrCreatePattern({
+    pattern: {
+      image: source('red'),
+      repetition: 'no-repeat',
+      transform: 'translate(3, 2)',
+    },
+    width: 8,
+    height: 8,
+  });
+  expect(pixel(canvas, 3, 2)).toEqual([255, 0, 0, 255]);
+  expect(pixel(canvas, 1, 1)[3]).toBe(0);
+});
+
 it('releases gradient and pattern entries on destroy', () => {
   const ctx = canvases[0].getContext('2d');
   const gradient = jest.spyOn(ctx, 'createRadialGradient');

@@ -120,6 +120,8 @@ export interface StyleIR {
         }
     ) & { blendMode?: string }
   >;
+  /** Paints needing independent opacity or image sizing, ordered bottom to top. */
+  paintOverlays?: CodePaintOverlay[];
   /** Opacity of the only enabled solid fill, applied to its paint rather than children. */
   solidFillOpacity?: StyleValue;
   backgroundImage?: StyleValue;
@@ -160,6 +162,23 @@ export interface StyleIR {
     thickness: number;
   };
 }
+
+export type CodePaintOverlay = (
+  | { type: 'solid'; color: StyleValue }
+  | { type: 'gradient'; value: string }
+  | {
+      type: 'image';
+      value: string;
+      objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+      objectPosition?: string;
+    }
+  | {
+      type: 'pattern';
+      value: string;
+      repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
+      transform?: string;
+    }
+) & { opacity?: StyleValue; blendMode?: string };
 
 export type CodeNodeRole = 'container' | 'text' | 'icon' | 'image' | 'shape';
 
@@ -315,6 +334,9 @@ export interface CodeVectorStrokeLayer {
   strokeGradient?: CodeVectorGradient;
   strokeImage?: CodeVectorImage;
   strokeOpacity?: StyleValue;
+  blendMode?: string;
+  markerStart?: CodeVectorMarker;
+  markerEnd?: CodeVectorMarker;
 }
 
 export interface CodeComponentProp {

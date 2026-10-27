@@ -60,6 +60,7 @@ import { getRainFxAnimationExportContext } from '../utils/rain-fx/rain-fx-export
 import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
 import {
   getFillLayerDecodedBitmap,
+  getOrScheduleFillLayerPatternSource,
   resolveImageFillRasterOptions,
   rasterizeFillLayerImageUrlForTexture,
   resolveFillLayerImageRasterPixelSize,
@@ -327,9 +328,15 @@ export class Mesh extends PathDrawcall {
     if (layer.type === 'pattern') {
       const pw = Math.max(1, Math.ceil(width));
       const ph = Math.max(1, Math.ceil(height));
+      const image =
+        typeof layer.value === 'string'
+          ? getOrScheduleFillLayerPatternSource(layer.value, () =>
+              safeAddComponent(instance, MaterialDirty),
+            )
+          : layer.value;
       const canvas = this.texturePool.getOrCreatePattern({
         pattern: {
-          image: layer.value,
+          image,
           repetition: layer.repetition ?? 'repeat',
           transform: layer.transform ?? '',
         },
@@ -461,11 +468,7 @@ export class Mesh extends PathDrawcall {
     if ((fl0 == null) !== (fl1 == null)) {
       return false;
     }
-    if (
-      fl0 &&
-      fl1 &&
-      JSON.stringify(fl0) !== JSON.stringify(fl1)
-    ) {
+    if (fl0 && fl1 && JSON.stringify(fl0) !== JSON.stringify(fl1)) {
       return false;
     }
     const node0 = this.api.getNodeByEntity(this.shapes[0]);
@@ -806,8 +809,7 @@ export class Mesh extends PathDrawcall {
       if (bindings.samplerBindings) {
         midDesc.samplerBindings = bindings.samplerBindings;
       }
-      this.#bindingsMultiFillMidPass =
-        this.renderCache.createBindings(midDesc);
+      this.#bindingsMultiFillMidPass = this.renderCache.createBindings(midDesc);
     }
 
     if (this.#fillLayerTextures.length > 0 && bindings.samplerBindings) {
@@ -826,18 +828,17 @@ export class Mesh extends PathDrawcall {
       );
       if (useMultiFillMidDepthPipeline && this.#pipelineMultiFillMidPass) {
         const layerSamplerMid = this.createSampler();
-        this.#fillLayerBindingsMidPass = this.#fillLayerTextures.map(
-          (tex) =>
-            this.renderCache.createBindings({
-              pipeline: this.#pipelineMultiFillMidPass!,
-              uniformBufferBindings: bindings.uniformBufferBindings!,
-              samplerBindings: [
-                {
-                  texture: tex,
-                  sampler: layerSamplerMid,
-                },
-              ],
-            }),
+        this.#fillLayerBindingsMidPass = this.#fillLayerTextures.map((tex) =>
+          this.renderCache.createBindings({
+            pipeline: this.#pipelineMultiFillMidPass!,
+            uniformBufferBindings: bindings.uniformBufferBindings!,
+            samplerBindings: [
+              {
+                texture: tex,
+                sampler: layerSamplerMid,
+              },
+            ],
+          }),
         );
       }
     }
@@ -936,8 +937,8 @@ export class Mesh extends PathDrawcall {
             ? this.#fillLayerBindingsMidPass[i]!
             : this.#fillLayerBindings[i]!
           : isMidFillPass && this.#bindingsMultiFillMidPass
-            ? this.#bindingsMultiFillMidPass
-            : this.bindings!;
+          ? this.#bindingsMultiFillMidPass
+          : this.bindings!;
         renderPass.setBindings(fillBindings);
         if (this.useStencil || this.parentClipMode) {
           renderPass.setStencilReference(STENCIL_CLIP_REF);
@@ -1036,12 +1037,19 @@ export class Mesh extends PathDrawcall {
     ) {
       const L = enabledFill[0];
       fill = L.type === 'solid' ? L.value : '#ffffff';
-    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+    } else if (
+      !multiFill &&
+      this.#usePrecomposedMultiFill &&
+      shape.has(FillLayers)
+    ) {
       fill = '#ffffff';
     }
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
-      fill != null && fill !== '' ? fill : 'transparent',
-    );
+    const {
+      r: fr,
+      g: fg,
+      b: fb,
+      opacity: fo,
+    } = parseColor(fill != null && fill !== '' ? fill : 'transparent');
 
     const opacity = this.getOpacity(shape);
 
@@ -1050,9 +1058,12 @@ export class Mesh extends PathDrawcall {
     const alignment = shape.has(Stroke)
       ? shape.read(Stroke).alignment
       : 'center';
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
-      strokeColor ?? 'transparent',
-    );
+    const {
+      r: sr,
+      g: sg,
+      b: sb,
+      opacity: so,
+    } = parseColor(strokeColor ?? 'transparent');
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
@@ -1066,8 +1077,12 @@ export class Mesh extends PathDrawcall {
       (shape.has(FillLayers) &&
         (fillLayersNeedFillImage(enabledFill) || this.#usePrecomposedMultiFill))
     ) {
-      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } =
-        getSdfGeometryBoundsForFilter(shape);
+      const {
+        minX: gMinX,
+        minY: gMinY,
+        maxX: gMaxX,
+        maxY: gMaxY,
+      } = getSdfGeometryBoundsForFilter(shape);
       const geometryWidth = gMaxX - gMinX;
       const geometryHeight = gMaxY - gMinY;
       minX = gMinX;
@@ -1075,8 +1090,12 @@ export class Mesh extends PathDrawcall {
       invWidth = geometryWidth === 0 ? 0 : 1 / geometryWidth;
       invHeight = geometryHeight === 0 ? 0 : 1 / geometryHeight;
     } else if (this.useFillImage) {
-      const { minX: gMinX, minY: gMinY, maxX: gMaxX, maxY: gMaxY } =
-        getSdfGeometryBoundsForFilter(shape);
+      const {
+        minX: gMinX,
+        minY: gMinY,
+        maxX: gMaxX,
+        maxY: gMaxY,
+      } = getSdfGeometryBoundsForFilter(shape);
       const geometryWidth = gMaxX - gMinX;
       const geometryHeight = gMaxY - gMinY;
       minX = gMinX;
@@ -1120,7 +1139,11 @@ export class Mesh extends PathDrawcall {
       } else {
         fa = fo * lo;
       }
-    } else if (!multiFill && this.#usePrecomposedMultiFill && shape.has(FillLayers)) {
+    } else if (
+      !multiFill &&
+      this.#usePrecomposedMultiFill &&
+      shape.has(FillLayers)
+    ) {
       frN = 1;
       fgN = 1;
       fbN = 1;
@@ -1147,8 +1170,12 @@ export class Mesh extends PathDrawcall {
     ];
     const bounds = this.#blurRaster?.bounds;
     const u_FillUVRect = bounds
-      ? [bounds.minX, bounds.minY,
-        1 / (bounds.maxX - bounds.minX), 1 / (bounds.maxY - bounds.minY)]
+      ? [
+          bounds.minX,
+          bounds.minY,
+          1 / (bounds.maxX - bounds.minX),
+          1 / (bounds.maxY - bounds.minY),
+        ]
       : [minX, minY, invWidth, invHeight];
 
     if (this.isWatercolorRoughMesh()) {

@@ -222,6 +222,46 @@ function scheduleFillLayerUrlDecode(url: string, onDecoded?: () => void): void {
   fillLayerDecodeInflight.set(url, p);
 }
 
+/** Resolve a pattern's source image, invalidating its material after async decode. */
+export function getOrScheduleFillLayerDecodedBitmap(
+  url: string,
+  onDecoded?: () => void,
+): ImageBitmap | undefined {
+  const cached = getFillLayerDecodedBitmap(url);
+  if (!cached && url) scheduleFillLayerUrlDecode(url, onDecoded);
+  return cached;
+}
+
+const patternTileByBitmap = new WeakMap<ImageBitmap, CanvasImageSource>();
+
+/** SVGs may be decoded above intrinsic resolution; tile at CSS intrinsic size. */
+export function getOrScheduleFillLayerPatternSource(
+  url: string,
+  onDecoded?: () => void,
+): CanvasImageSource | string {
+  const bitmap = getOrScheduleFillLayerDecodedBitmap(url, onDecoded);
+  if (!bitmap) return url;
+  const intrinsic = bitmapIntrinsicSize.get(bitmap);
+  if (
+    !intrinsic ||
+    (bitmap.width === intrinsic.width && bitmap.height === intrinsic.height)
+  )
+    return bitmap;
+  let tile = patternTileByBitmap.get(bitmap);
+  if (!tile) {
+    const canvas = DOMAdapter.get().createCanvas(
+      intrinsic.width,
+      intrinsic.height,
+    );
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return bitmap;
+    ctx.drawImage(bitmap, 0, 0, intrinsic.width, intrinsic.height);
+    tile = canvas as CanvasImageSource;
+    patternTileByBitmap.set(bitmap, tile);
+  }
+  return tile;
+}
+
 /**
  * 将 FillLayers 的 `image` 层 URL 栅格到画布：已解码缓存 → 同步路径 → 否则启动异步解码并在完成时调用 `onDecoded`（用于打 `MaterialDirty`）。
  */
