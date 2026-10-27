@@ -13,6 +13,7 @@ import { pascalCase } from './string-utils';
 import {
   combinedImageOpacityCss,
   paintBackgroundLayersToCss,
+  paintBackgroundBlendModesToCss,
   solidFillColorToCss,
   styleValueToCss,
   textDecorationToCss,
@@ -232,6 +233,9 @@ function genTailwind(
       'backgroundImage',
       JSON.stringify(styleValueToCss(style.backgroundImage, mode)),
     ]);
+  const backgroundBlendModes = paintBackgroundBlendModesToCss(style);
+  if (backgroundBlendModes)
+    inline.push(['backgroundBlendMode', JSON.stringify(backgroundBlendModes)]);
   if (style.borderRadius && !skip.has('borderRadius')) {
     if (needsInline(style.borderRadius, mode))
       addInline('borderRadius', style.borderRadius);

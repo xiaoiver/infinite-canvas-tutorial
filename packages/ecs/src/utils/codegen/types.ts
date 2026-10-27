@@ -104,8 +104,10 @@ export interface StyleIR {
   backgroundColor?: StyleValue;
   /** CSS paint layers, ordered from bottom to top. */
   backgroundLayers?: Array<
-    | { type: 'solid'; color: StyleValue; opacity?: StyleValue }
-    | { type: 'gradient'; value: string }
+    (
+      | { type: 'solid'; color: StyleValue; opacity?: StyleValue }
+      | { type: 'gradient'; value: string }
+    ) & { blendMode?: string }
   >;
   /** Opacity of the only enabled solid fill, applied to its paint rather than children. */
   solidFillOpacity?: StyleValue;

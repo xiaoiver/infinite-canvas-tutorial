@@ -63,6 +63,15 @@ export function paintBackgroundLayersToCss(
     .join(', ');
 }
 
+export function paintBackgroundBlendModesToCss(style: StyleIR): string | undefined {
+  if (!style.backgroundLayers?.some((layer) => layer.blendMode))
+    return undefined;
+  return [...style.backgroundLayers]
+    .reverse()
+    .map((layer) => layer.blendMode ?? 'normal')
+    .join(', ');
+}
+
 export function vectorDropShadowToCss(
   shadow: NonNullable<NonNullable<CodeNode['vectorPath']>['dropShadow']>,
   mode: CodeVariablesMode,
@@ -180,6 +189,9 @@ export function styleIRToCssDeclarations(
   if (backgroundLayers) push('background-image', backgroundLayers);
   else if (style.backgroundImage)
     push('background-image', styleValueToCss(style.backgroundImage, mode));
+  const backgroundBlendModes = paintBackgroundBlendModesToCss(style);
+  if (backgroundBlendModes)
+    push('background-blend-mode', backgroundBlendModes);
   if (style.borderRadius)
     push('border-radius', styleValueToCss(style.borderRadius, mode, true));
   if (style.borderWidth) {
