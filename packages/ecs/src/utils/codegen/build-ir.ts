@@ -237,6 +237,36 @@ function normalizeBox(
   return undefined;
 }
 
+function supportsCssBackgroundLayers(
+  activeFills: SerializedFillLayerItem[],
+): boolean {
+  return (
+    activeFills.length > 1 &&
+    activeFills.every((fill, index) => {
+      if (
+        index > 0 &&
+        fill.blendMode !== undefined &&
+        fill.blendMode !== 'normal' &&
+        toCSSMixBlendMode(fill.blendMode) === null
+      )
+        return false;
+      if (fill.type === 'solid') return !!toStyleValue(fill.value);
+      if (fill.type === 'gradient')
+        return (
+          isCssGradient(fill.value) &&
+          (fill.opacity === undefined || Number(fill.opacity) === 1)
+        );
+      if (fill.type === 'image')
+        return (
+          !!fill.value.trim() &&
+          ['fill', 'contain', 'cover'].includes(fill.objectFit ?? 'fill') &&
+          (fill.opacity === undefined || Number(fill.opacity) === 1)
+        );
+      return false;
+    })
+  );
+}
+
 function decideRole(node: AnyNode): CodeNodeRole {
   switch (node.type) {
     case 'text':
@@ -245,7 +275,15 @@ function decideRole(node: AnyNode): CodeNodeRole {
       return 'icon';
     case 'g':
       return 'container';
-    case 'rect':
+    case 'rect': {
+      const fills = asArray<SerializedFillLayerItem>(node.fills).filter(
+        (fill) => fill.enabled !== false,
+      );
+      if (fills.some((fill) => fill.type === 'image')) {
+        return supportsCssBackgroundLayers(fills) ? 'container' : 'image';
+      }
+      return 'container';
+    }
     case 'rough-rect': {
       const fills = asArray<SerializedFillLayerItem>(node.fills);
       if (fills.some((l) => l.type === 'image' && l.enabled !== false)) {
@@ -806,24 +844,24 @@ function buildStyle(
   const activeFills = fills.filter((fill) => fill.enabled !== false);
   if (
     (node.type === 'rect' || node.type === 'ellipse') &&
-    activeFills.length > 1 &&
-    activeFills.every(
-      (fill, index) =>
-        (index === 0 ||
-          fill.blendMode === undefined ||
-          fill.blendMode === 'normal' ||
-          toCSSMixBlendMode(fill.blendMode) !== null) &&
-        ((fill.type === 'solid' && !!toStyleValue(fill.value)) ||
-          (fill.type === 'gradient' &&
-            isCssGradient(fill.value) &&
-            (fill.opacity === undefined || Number(fill.opacity) === 1))),
-    )
+    supportsCssBackgroundLayers(activeFills)
   )
     style.backgroundLayers = activeFills.map((fill, index) => {
       const blendMode =
-        index > 0 ? (toCSSMixBlendMode(fill.blendMode) ?? undefined) : undefined;
+        index > 0 ? toCSSMixBlendMode(fill.blendMode) ?? undefined : undefined;
       return fill.type === 'gradient'
         ? { type: 'gradient', value: fill.value, blendMode }
+        : fill.type === 'image'
+        ? {
+            type: 'image',
+            value: fill.value,
+            objectFit:
+              fill.objectFit === 'contain' || fill.objectFit === 'cover'
+                ? fill.objectFit
+                : 'fill',
+            objectPosition: fill.objectPosition,
+            blendMode,
+          }
         : {
             type: 'solid',
             color: toStyleValue(fill.value as string)!,

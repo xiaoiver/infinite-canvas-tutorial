@@ -107,6 +107,12 @@ export interface StyleIR {
     (
       | { type: 'solid'; color: StyleValue; opacity?: StyleValue }
       | { type: 'gradient'; value: string }
+      | {
+          type: 'image';
+          value: string;
+          objectFit?: 'fill' | 'contain' | 'cover';
+          objectPosition?: string;
+        }
     ) & { blendMode?: string }
   >;
   /** Opacity of the only enabled solid fill, applied to its paint rather than children. */
