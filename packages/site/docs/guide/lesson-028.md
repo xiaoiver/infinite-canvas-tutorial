@@ -7,6 +7,7 @@ head:
           { property: 'og:title', content: 'Lesson 28 - Integrating with AI' },
       ]
 ---
+
 <script setup>
 import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 </script>
@@ -251,7 +252,15 @@ We can use [fal-ai/topaz/upscale/image] or [SeedVR2] in fal.ai. In browser side,
 
 ![Image upscaler with LiteRT.js](/image-upscaler.jpg)
 
-## [WIP] MCP
+## WebMCP for the project canvas {#webmcp}
+
+The signed-in project editor registers six [WebMCP imperative tools] when `document.modelContext` is available: `get_canvas_summary`, `get_selection`, `get_nodes`, `export_canvas_code`, `create_shape`, and `update_node`. For example, an agent can read the current selection, create a rectangle, then change its width. The two write tools use the same `api.edit()` path as the editor, so edits enter undo history and canvas collaboration.
+
+WebMCP currently requires a supporting browser (Chrome 149 origin trial, or the `chrome://flags/#enable-webmcp-testing` development flag). Open a project that you own and sign in before trying the tools. Other browsers continue to work as ordinary editors. Tools are removed when the canvas closes or the project changes. The first version can create and edit rectangles and ellipses; node reads return a limited set of properties and code export is capped at 32,000 characters.
+
+WebMCP operates inside an open browser tab. A standalone MCP server for desktop agents is a separate, future integration.
+
+### Other MCP integrations
 
 [MCP: What It Is and Why It Matters]：
 
@@ -279,6 +288,7 @@ The bi-directional MCP vector canvas you’ve been dreaming about. see [pencil.d
 [MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
+[WebMCP imperative tools]: https://developer.chrome.com/docs/ai/webmcp/imperative-api
 [Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
 [whatfontis]: https://www.whatfontis.com/API-identify-fonts-from-image.html#font_Examples_good
 [Match fonts]: https://helpx.adobe.com/photoshop/desktop/text-typography/select-manage-fonts/match-fonts.html

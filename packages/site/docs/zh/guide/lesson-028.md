@@ -4,6 +4,7 @@ description: '与 AI 结合，使用聊天对话框配合生图模型，例如 g
 head:
     - ['meta', { property: 'og:title', content: '课程 28 - 与 AI 结合' }]
 ---
+
 <script setup>
 import WhenCanvasMeetsChat from '../../components/WhenCanvasMeetsChat.vue'
 import SAM from '../../components/SAM.vue'
@@ -249,7 +250,15 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 
 ![Image upscaler with LiteRT.js](/image-upscaler.jpg)
 
-## [WIP] MCP
+## 项目画布的 WebMCP {#webmcp}
+
+登录后的项目编辑器会在浏览器提供 `document.modelContext` 时注册六个 [WebMCP imperative tools]：`get_canvas_summary`、`get_selection`、`get_nodes`、`export_canvas_code`、`create_shape` 和 `update_node`。例如代理可以先读取选区，再创建矩形并修改其宽度。两个写入工具通过编辑器的 `api.edit()` 执行，因此能够进入撤销历史并通知画布协作层。
+
+目前需要支持 WebMCP 的浏览器（Chrome 149 origin trial，或打开 `chrome://flags/#enable-webmcp-testing` 开发开关）。登录并打开自己有权限的项目后即可使用；其他浏览器仍可正常编辑。关闭画布或切换项目时，工具会注销。首版支持创建和修改矩形、椭圆；节点读取只返回有限属性，代码导出上限为 32,000 字符。
+
+WebMCP 只服务于当前打开的浏览器标签页。供桌面代理连接的独立 MCP server 属于后续工作。
+
+### 其他 MCP 集成
 
 来自 [MCP: What It Is and Why It Matters]：
 
@@ -277,6 +286,7 @@ The bi-directional MCP vector canvas you’ve been dreaming about. see [pencil.d
 [MCP: What It Is and Why It Matters]: https://addyo.substack.com/p/mcp-what-it-is-and-why-it-matters
 [Figma MCP Server]: https://github.com/GLips/Figma-Context-MCP
 [Figma API]: https://www.figma.com/developers/api
+[WebMCP imperative tools]: https://developer.chrome.com/docs/ai/webmcp/imperative-api
 [Editing Text in Images with AI]: https://medium.com/data-science/editing-text-in-images-with-ai-03dee75d8b9c
 [whatfontis]: https://www.whatfontis.com/API-identify-fonts-from-image.html#font_Examples_good
 [Match fonts]: https://helpx.adobe.com/photoshop/desktop/text-typography/select-manage-fonts/match-fonts.html

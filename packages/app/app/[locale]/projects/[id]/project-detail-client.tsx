@@ -586,7 +586,7 @@ export function ProjectDetailClient({
           <PromptInputProvider>
           <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={800}>
-            <Canvas id={project.id} initialData={project.canvasData || undefined} />
+            <Canvas id={project.id} initialData={project.canvasData || undefined} enableWebMcp />
           </ResizablePanel>
           <ResizableHandle
             className="translate-x-px border-none [&>div]:shrink-0"
