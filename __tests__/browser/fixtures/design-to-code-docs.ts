@@ -16,6 +16,43 @@ root.addEventListener(
 createApp(DesignToCodeInterfaces, { locale: 'zh' }).mount(root);
 
 const probe = {
+  vectorStrokeMarkup: (kind: 'center' | 'arrow' | 'inner' | 'outer') => {
+    const image = `data:image/svg+xml,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#00ff00"/>${
+        kind === 'center'
+          ? '<rect x="40" width="40" height="80" fill="#0000ff"/>'
+          : ''
+      }</svg>`,
+    )}`;
+    const node = {
+      id: `vector-stroke-${kind}`,
+      type: 'path',
+      x: 0,
+      y: 0,
+      zIndex: 0,
+      width: 60,
+      height: 60,
+      d:
+        kind === 'center' || kind === 'arrow'
+          ? 'M 10 30 H 50'
+          : 'M 10 10 H 50 V 50 H 10 Z',
+      strokes: [
+        {
+          type: 'image',
+          value: image,
+          objectFit: 'none',
+          objectPosition: '20% 80%',
+        },
+      ],
+      strokeWidth: 8,
+      strokeLinecap: 'round',
+      ...(kind === 'arrow' ? { markerEnd: 'triangle' } : {}),
+      ...(kind === 'inner' || kind === 'outer'
+        ? { strokeAlignment: kind }
+        : {}),
+    } as SerializedNode;
+    return serializedNodesToCode([node], { framework: 'html-css' });
+  },
   paintMarkup: (
     kind:
       | 'opacity'
@@ -28,7 +65,8 @@ const probe = {
       | 'vector-opacity'
       | 'vector-blend'
       | 'vector-clip'
-      | 'vector-hole',
+      | 'vector-hole'
+      | 'vector-offset',
   ) => {
     const tile = `data:image/svg+xml,${encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#00ff00"/></svg>',
@@ -52,7 +90,7 @@ const probe = {
                 : kind === 'vector-scale-down'
                 ? 'scale-down'
                 : 'none',
-            objectPosition: '20% 80%',
+            objectPosition: kind === 'vector-offset' ? '20% 20%' : '20% 80%',
             ...(kind === 'vector-opacity' ? { opacity: 0.5 } : {}),
             ...(kind === 'vector-blend' ? { blendMode: 'multiply' } : {}),
           },
@@ -91,6 +129,8 @@ const probe = {
             d:
               kind === 'vector-clip'
                 ? 'M 0 0 H 60 L 0 60 Z'
+                : kind === 'vector-offset'
+                ? 'M 10 10 H 50 V 50 H 10 Z'
                 : kind === 'vector-hole'
                 ? 'M 0 0 H 60 V 60 H 0 Z M 20 20 H 40 V 40 H 20 Z'
                 : 'M 0 0 H 60 V 60 H 0 Z',

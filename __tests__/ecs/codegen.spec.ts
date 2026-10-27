@@ -698,6 +698,59 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('exports positioned image strokes as masked HTML in both dialects', () => {
+      const path = {
+        id: 'positioned-stroke',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 60,
+        height: 60,
+        zIndex: 0,
+        d: 'M 10 10 H 50 V 50 H 10 Z',
+        strokes: [
+          {
+            type: 'image',
+            value: 'https://example.com/border.png?a=1&b=2',
+            objectFit: 'none',
+            objectPosition: '20% 80%',
+            opacity: 0.5,
+          },
+        ],
+        strokeWidth: 8,
+        strokeAlignment: 'outer',
+        markerEnd: 'triangle',
+      } as SerializedNode;
+      const react = serializedNodesToCode([path]);
+      expect(react).toContain('maskImage:');
+      expect(react).toContain('WebkitMaskImage:');
+      expect(react).toContain('objectFit: "none"');
+      expect(react).toContain('objectPosition: "20% 80%"');
+      expect(react).toContain('opacity: "0.50"');
+      expect(react).toContain(
+        '<img src={"https://example.com/border.png?a=1&b=2"}',
+      );
+      expect(react).not.toContain('<pattern');
+      expect(
+        ts
+          .transpileModule(react, {
+            fileName: 'Design.tsx',
+            reportDiagnostics: true,
+            compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+          })
+          .diagnostics?.filter(
+            (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+          ),
+      ).toEqual([]);
+      const html = serializedNodesToCode([path], { framework: 'html-css' });
+      expect(html).toContain('mask-image:');
+      expect(html).toContain('-webkit-mask-image:');
+      expect(html).toContain('object-fit: none');
+      expect(html).toContain('object-position: 20% 80%');
+      expect(html).toContain('opacity: 0.50');
+      expect(html).toContain('border.png?a=1&amp;b=2');
+    });
+
     it('keeps normal vector fill layers in canvas order', () => {
       const path = {
         id: 'layers',

@@ -12,6 +12,7 @@ import {
 import type { ThemeMode } from '../../components/Theme';
 import { formatNumber } from '../serialize/points';
 import { renderVectorSvg } from './render-vector-svg';
+import { renderVectorImageStrokeOverlay } from './render-vector-image-stroke-overlay';
 import { renderPaintOverlays } from './emit-paint-overlays';
 import { styleIRToCssDeclarations, styleValueToCss } from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
@@ -75,7 +76,21 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   if (node.vectorPath) {
     const path = node.vectorPath;
     const hasChildren = node.children.length > 0;
-    const svgStyle = hasChildren
+    const overlay = renderVectorImageStrokeOverlay(path, {
+      dialect: 'html',
+      mode: state.mode,
+      indent: state.indent,
+      depth: depth + 1,
+    });
+    const needsWrapper = hasChildren || !!overlay;
+    const wrapperStyle =
+      overlay && !node.style.position
+        ? styleAttr(
+            { ...node, style: { ...node.style, position: 'relative' } },
+            state,
+          )
+        : style;
+    const svgStyle = needsWrapper
       ? ' style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none"'
       : style;
     const svg = renderVectorSvg(path, {
@@ -85,7 +100,7 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       depth,
       svgStyle,
     });
-    if (!hasChildren) return svg;
+    if (!needsWrapper) return svg;
     const tag = node.element?.tag ?? 'div';
     const semanticAttr =
       tag === 'button'
@@ -100,7 +115,9 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       .split('\n')
       .map((line) => `${state.indent}${line}`)
       .join('\n');
-    return `${pad}<${tag}${semanticAttr}${style}>\n${nestedSvg}\n${children}\n${pad}</${tag}>`;
+    return `${pad}<${tag}${semanticAttr}${wrapperStyle}>\n${nestedSvg}${
+      overlay ? `\n${overlay}` : ''
+    }${children ? `\n${children}` : ''}\n${pad}</${tag}>`;
   }
   const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
   const semanticAttr =
