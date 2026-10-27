@@ -222,6 +222,8 @@ export interface CodeNode {
     fillGradient?: CodeVectorGradient;
     fillImage?: CodeVectorImage;
     fillOpacity?: StyleValue;
+    /** Normal-blend fill layers, ordered from bottom to top. */
+    fillLayers?: CodeVectorFillLayer[];
     fillRule: 'nonzero' | 'evenodd';
     stroke?: StyleValue;
     strokeGradient?: CodeVectorGradient;
@@ -276,6 +278,13 @@ export interface CodeVectorImage {
   preserveAspectRatio:
     | 'none'
     | `x${'Min' | 'Mid' | 'Max'}Y${'Min' | 'Mid' | 'Max'} ${'meet' | 'slice'}`;
+}
+
+export interface CodeVectorFillLayer {
+  fill?: StyleValue;
+  fillGradient?: CodeVectorGradient;
+  fillImage?: CodeVectorImage;
+  fillOpacity?: StyleValue;
 }
 
 export interface CodeComponentProp {

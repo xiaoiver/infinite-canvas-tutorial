@@ -4,7 +4,11 @@ import {
   styleValueToCss,
   vectorDropShadowToCss,
 } from './emit-style';
-import type { CodeNode, CodeVariablesMode } from './types';
+import type {
+  CodeNode,
+  CodeVariablesMode,
+  CodeVectorFillLayer,
+} from './types';
 
 type VectorPath = NonNullable<CodeNode['vectorPath']>;
 type Attribute = [string, string | number | undefined];
@@ -54,28 +58,36 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
   const wrap = (tag: string, values: Attribute[], body: string, level: number) =>
     `${pad(level)}<${tag}${attrs(values)}>\n${body}\n${pad(level)}</${tag}>`;
 
-  const fillServer = path.fillGradient ?? path.fillImage;
+  const fillPaint = (layer: CodeVectorFillLayer) => {
+    const server = layer.fillGradient ?? layer.fillImage;
+    return server
+      ? `url(#${server.id})`
+      : layer.fill
+        ? solidFillColorToCss(layer.fill, layer.fillOpacity, mode)
+        : 'none';
+  };
+  const paintOpacity = (layer: CodeVectorFillLayer) =>
+    (layer.fillGradient || layer.fillImage) && layer.fillOpacity
+      ? styleValueToCss(layer.fillOpacity, mode)
+      : undefined;
   const strokeServer = path.strokeGradient ?? path.strokeImage;
-  const fill = fillServer
-    ? `url(#${fillServer.id})`
-    : path.fill
-      ? solidFillColorToCss(path.fill, path.fillOpacity, mode)
-      : 'none';
+  const fill = fillPaint(path);
   const stroke = strokeServer
     ? `url(#${strokeServer.id})`
     : path.stroke
       ? solidFillColorToCss(path.stroke, path.strokeOpacity, mode)
       : 'none';
-  const fillOpacity =
-    fillServer && path.fillOpacity
-      ? styleValueToCss(path.fillOpacity, mode)
-      : undefined;
+  const fillOpacity = paintOpacity(path);
   const strokeOpacity =
     strokeServer && path.strokeOpacity
       ? styleValueToCss(path.strokeOpacity, mode)
       : undefined;
 
-  const gradients = [path.fillGradient, path.strokeGradient]
+  const gradients = [
+    path.fillGradient,
+    path.strokeGradient,
+    ...(path.fillLayers?.map((layer) => layer.fillGradient) ?? []),
+  ]
     .filter((gradient) => gradient !== undefined)
     .map((gradient) => {
       const geometry = gradient.geometry;
@@ -116,7 +128,11 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
         depth + 2,
       );
     });
-  const images = [path.fillImage, path.strokeImage]
+  const images = [
+    path.fillImage,
+    path.strokeImage,
+    ...(path.fillLayers?.map((layer) => layer.fillImage) ?? []),
+  ]
     .filter((image) => image !== undefined)
     .map((image) => {
       const box: Attribute[] = [
@@ -287,7 +303,22 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     : undefined;
   const artworkLevel = depth + (shadow ? 2 : 1);
   const artwork = [
-    leaf('path', pathAttrs, artworkLevel),
+    ...(path.fillLayers?.map((layer) =>
+      leaf(
+        'path',
+        [
+          ['d', path.d],
+          ['fill', fillPaint(layer)],
+          ['fill-opacity', paintOpacity(layer)],
+          ['fill-rule', path.fillRule],
+          ['stroke', 'none'],
+        ],
+        artworkLevel,
+      ),
+    ) ?? []),
+    ...(!path.fillLayers || path.strokeWidth
+      ? [leaf('path', pathAttrs, artworkLevel)]
+      : []),
     ...(alignment ? [leaf('path', strokeAttrs, artworkLevel)] : []),
   ].join('\n');
   const shadowStyle = shadow
