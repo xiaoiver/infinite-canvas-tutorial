@@ -355,12 +355,19 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
           ['fill', 'none'],
           ['stroke', strokePaint(layer)],
           ['stroke-opacity', strokePaintOpacity(layer)],
-          ['stroke-width', path.strokeWidth],
+          [
+            'stroke-width',
+            alignment ? 2 * (path.strokeWidth ?? 0) : path.strokeWidth,
+          ],
           ['stroke-linecap', path.strokeLinecap],
           ['stroke-linejoin', path.strokeLinejoin],
           ['stroke-miterlimit', path.strokeMiterlimit],
           ['stroke-dasharray', path.strokeDasharray],
           ['stroke-dashoffset', path.strokeDashoffset],
+          [
+            alignment?.type === 'inner' ? 'clip-path' : 'mask',
+            alignment && `url(#${alignment.id})`,
+          ],
         ],
         artworkLevel,
       ),
@@ -372,7 +379,9 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
   const artwork = [
     ...(isolatedFills ? [isolatedFills] : []),
     ...(renderBasePath ? [leaf('path', pathAttrs, artworkLevel)] : []),
-    ...(alignment ? [leaf('path', strokeAttrs, artworkLevel)] : []),
+    ...(alignment && !path.strokeLayers
+      ? [leaf('path', strokeAttrs, artworkLevel)]
+      : []),
     ...(strokeArtwork ? [strokeArtwork] : []),
   ].join('\n');
   const shadowStyle = shadow

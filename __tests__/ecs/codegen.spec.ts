@@ -867,6 +867,63 @@ describe('design-to-code (codegen)', () => {
       expect(open).toContain('strokeWidth={4}');
     });
 
+    it('clips every stroke layer for inner and outer closed-path alignment', () => {
+      const base = {
+        id: 'layered-ring',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+        zIndex: 0,
+        d: 'M 0 0 L 100 0 L 100 100 L 0 100 Z M 25 25 L 25 75 L 75 75 L 75 25 Z',
+        fillRule: 'evenodd',
+        fills: [{ type: 'solid', value: '#ffffff' }],
+        strokes: [
+          { type: 'solid', value: '#ff0000', opacity: 0.5 },
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #00ff00 0%, #0000ff 100%)',
+            opacity: 0.75,
+          },
+        ],
+        strokeWidth: 4,
+      } as SerializedNode;
+      for (const alignment of ['inner', 'outer'] as const) {
+        const react = serializedNodesToCode([
+          { ...base, strokeAlignment: alignment } as SerializedNode,
+        ]);
+        const strokePaths = [...react.matchAll(/^\s*<path .*strokeWidth=\{8\}.* \/>$/gm)].map(
+          ([line]) => line,
+        );
+        expect(strokePaths).toHaveLength(2);
+        expect(strokePaths[0]).toContain('#ff0000');
+        expect(strokePaths[1]).toContain('ic-gradient-6c-61-79-65-72-65-64-2d-72-69-6e-67-stroke-1');
+        expect(strokePaths[1]).toContain('strokeOpacity={"0.75"}');
+        const maskAttribute = alignment === 'inner' ? 'clipPath' : 'mask';
+        expect(
+          strokePaths.every((line) =>
+            line.includes(`${maskAttribute}={"url(#ic-stroke-6c-61-79-65-72-65-64-2d-72-69-6e-67)"}`),
+          ),
+        ).toBe(true);
+        const html = serializedNodesToCode(
+          [{ ...base, strokeAlignment: alignment } as SerializedNode],
+          { framework: 'html-css' },
+        );
+        expect(html.match(/stroke-width="8"/g)).toHaveLength(2);
+        expect(html.match(new RegExp(`${alignment === 'inner' ? 'clip-path' : 'mask'}="url\\(#ic-stroke-6c-61-79-65-72-65-64-2d-72-69-6e-67\\)"`, 'g'))).toHaveLength(2);
+      }
+      const open = serializedNodesToCode([
+        {
+          ...base,
+          d: 'M 0 0 L 100 100',
+          strokeAlignment: 'inner',
+        } as SerializedNode,
+      ]);
+      expect(open).not.toContain('<clipPath');
+      expect(open.match(/strokeWidth=\{4\}/g)).toHaveLength(2);
+    });
+
     it('exports single linear fills and radial strokes on vector paths', () => {
       const node = {
         id: 'gradient-path',
