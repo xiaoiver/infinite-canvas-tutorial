@@ -63,7 +63,8 @@
     "@loaders.gl/gltf": "^4.4.1",
     "@loaders.gl/images": "^4.2.2",
     "@loaders.gl/obj": "^4.4.1",
-    "@loaders.gl/ply": "^4.2.2"
+    "@loaders.gl/ply": "^4.2.2",
+    "fflate": "^0.8.3"
   },
   "devDependencies": {
     "@ant-design/icons-vue": "^7.0.1",

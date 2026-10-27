@@ -431,7 +431,7 @@ export function Design() {
 
 <DesignToCodeInterfaces locale="zh" />
 
-下载 `.ic` 文件后，可在[在线应用](https://app.infinitecanvas.cc/)中通过 **Import from… > .ic** 继续编辑设计。下载 HTML 文件后可直接用浏览器打开。React 版本需要放入已配置 Tailwind CSS 的项目，并渲染导出的 `AnalyticsDashboard`、`PricingPage` 或 `CheckoutScreen` 组件。目前生成的是展示层代码；导航、结账动作、支付及实时数据仍需在应用中接入。桌面与移动画板使用固定宽度，正式使用时可根据断点调整布局。
+下载 `.ic` 文件后，可在[在线应用](https://app.infinitecanvas.cc/)中通过 **Import from… > .ic** 继续编辑设计。下载 HTML 文件后可直接用浏览器打开。选择 **下载 React 工程** 可从当前画布获取包含 Vite、React 19 和 Tailwind CSS 4 的 ZIP。解压后执行 `pnpm install` 和 `pnpm dev` 即可运行，导出的组件位于 `src/App.tsx`；也可以只下载 `.tsx` 文件，放入现有项目。目前生成的是展示层代码；导航、结账动作、支付及实时数据仍需在应用中接入。桌面与移动画板使用固定宽度，正式使用时可根据断点调整布局。
 
 ### 反向：code → design {#design-to-code-reverse}
 

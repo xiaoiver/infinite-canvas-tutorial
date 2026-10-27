@@ -12,6 +12,10 @@ import {
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { interfaceScenes } from './design-to-code-scenes';
+import {
+  reactStarterArchive,
+  reactStarterFiles,
+} from './design-to-code-starter';
 
 const props = withDefaults(defineProps<{ locale?: 'en' | 'zh' }>(), {
   locale: 'en',
@@ -190,6 +194,26 @@ function downloadCode() {
   URL.revokeObjectURL(url);
 }
 
+function downloadReactStarter() {
+  if (!api || framework.value !== 'react-tailwind') return;
+  const source = generateCode();
+  code.value = source;
+  const files = reactStarterFiles(
+    source,
+    scene.value.componentName,
+    scene.value.id,
+  );
+  const archive = reactStarterArchive(files);
+  const url = URL.createObjectURL(
+    new Blob([new Uint8Array(archive)], { type: 'application/zip' }),
+  );
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${scene.value.id}-react.zip`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function downloadDesign() {
   if (!api) return;
   const document = api.exportIcDocument(window.location.origin);
@@ -345,6 +369,14 @@ onUnmounted(() => {
         </button>
         <button type="button" :disabled="!ready" @click="downloadCode">
           {{ locale === 'zh' ? '下载' : 'Download' }}
+        </button>
+        <button
+          v-if="framework === 'react-tailwind'"
+          type="button"
+          :disabled="!ready"
+          @click="downloadReactStarter"
+        >
+          {{ locale === 'zh' ? '下载 React 工程' : 'Download React project' }}
         </button>
         <button type="button" :disabled="!ready" @click="downloadDesign">
           {{ locale === 'zh' ? '下载 .ic' : 'Download .ic' }}

@@ -1653,6 +1653,9 @@ importers:
       '@loaders.gl/ply':
         specifier: ^4.2.2
         version: 4.3.4(@loaders.gl/core@4.5.2)
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
     devDependencies:
       '@ant-design/icons-vue':
         specifier: ^7.0.1
