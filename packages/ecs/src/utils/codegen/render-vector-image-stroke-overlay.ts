@@ -1,7 +1,7 @@
 import { mat3 } from 'gl-matrix';
 import { parseObjectPosition } from '../fill-layer-image-object-fit';
 import { formatNumber } from '../serialize/points';
-import { transformPath } from '../serialize/transform';
+import { transformPath } from '../serialize/path-transform';
 import { styleValueToCss } from './emit-style';
 import type {
   CodeNode,

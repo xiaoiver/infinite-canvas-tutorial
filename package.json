@@ -42,7 +42,8 @@
     "test:browser": "playwright test -c playwright.browser.config.ts",
     "test:browser:webkit": "playwright test -c playwright.webkit.config.ts",
     "lint": "eslint . --max-warnings=0",
-    "test:tooling": "node --test __tests__/tooling/*.test.mjs"
+    "test:tooling": "node --test __tests__/tooling/*.test.mjs",
+    "test:cli": "node node_modules/typescript/bin/tsc -p packages/ecs/tsconfig.build.json --module commonjs --outDir packages/ecs/lib && node node_modules/typescript/bin/tsc -p packages/cli/tsconfig.build.json && node --test packages/cli/test/*.test.mjs"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",

@@ -1,0 +1,117 @@
+import { path2Absolute, path2String } from '@antv/util';
+import { mat3, vec2 } from 'gl-matrix';
+
+const DECIMAL_ROUND_EPS = 1e-8;
+
+/** 将单坐标量化为指定位数十进制，供 icon 缩放后的 path/ellipse/line 与 SVG 导出共用。 */
+export function roundNumberToDecimals(
+  n: number,
+  decimalPlaces: number,
+): number {
+  if (!Number.isFinite(n)) {
+    return n;
+  }
+  const f = 10 ** decimalPlaces;
+  const o = Math.round(n * f) / f;
+  if (Object.is(o, -0) || (Math.abs(o) < DECIMAL_ROUND_EPS && f >= 1)) {
+    return 0;
+  }
+  return o;
+}
+
+export function transformPath(d: string, transform: mat3) {
+  const absoluteArray = path2Absolute(d);
+
+  absoluteArray.forEach((segment) => {
+    const [command] = segment;
+    if (command === 'M' || command === 'L' || command === 'T') {
+      const [newX, newY] = vec2.transformMat3(
+        vec2.create(),
+        [segment[1], segment[2]],
+        transform,
+      );
+      segment[1] = newX;
+      segment[2] = newY;
+    } else if (command === 'H') {
+      const [newX] = vec2.transformMat3(
+        vec2.create(),
+        [segment[1], 0],
+        transform,
+      );
+      segment[1] = newX;
+    } else if (command === 'V') {
+      const [, newY] = vec2.transformMat3(
+        vec2.create(),
+        [0, segment[1]],
+        transform,
+      );
+      segment[1] = newY;
+    } else if (command === 'A') {
+      // SVG 弧的 rx、ry 在用户坐标系中的长度；仅变换终点会导致曲率与线段不一致。
+      // 用 2×2 线性部分的列范数作为各轴缩放因子（与均匀 scale(s,s)、axis-aligned scale(sx,sy) 一致）。
+      const a = transform[0]!;
+      const b = transform[1]!;
+      const c = transform[3]!;
+      const d = transform[4]!;
+      const scaleX = Math.hypot(a, b);
+      const scaleY = Math.hypot(c, d);
+      segment[1] = (segment[1] as number) * scaleX;
+      segment[2] = (segment[2] as number) * scaleY;
+      const [newX, newY] = vec2.transformMat3(
+        vec2.create(),
+        [segment[6] as number, segment[7] as number],
+        transform,
+      );
+      segment[6] = newX;
+      segment[7] = newY;
+    } else if (command === 'C') {
+      const [newX1, newY1] = vec2.transformMat3(
+        vec2.create(),
+        [segment[1], segment[2]],
+        transform,
+      );
+      segment[1] = newX1;
+      segment[2] = newY1;
+      const [newX2, newY2] = vec2.transformMat3(
+        vec2.create(),
+        [segment[3], segment[4]],
+        transform,
+      );
+      segment[3] = newX2;
+      segment[4] = newY2;
+      const [newX3, newY3] = vec2.transformMat3(
+        vec2.create(),
+        [segment[5], segment[6]],
+        transform,
+      );
+      segment[5] = newX3;
+      segment[6] = newY3;
+    } else if (command === 'Q' || command === 'S') {
+      const [newX1, newY1] = vec2.transformMat3(
+        vec2.create(),
+        [segment[1], segment[2]],
+        transform,
+      );
+      segment[1] = newX1;
+      segment[2] = newY1;
+      const [newX2, newY2] = vec2.transformMat3(
+        vec2.create(),
+        [segment[3], segment[4]],
+        transform,
+      );
+      segment[3] = newX2;
+      segment[4] = newY2;
+    }
+  });
+
+  absoluteArray.forEach((segment) => {
+    for (let i = 1; i < segment.length; i++) {
+      const v = segment[i] as number;
+      if (typeof v === 'number' && Number.isFinite(v)) {
+        segment[i] = roundNumberToDecimals(v, 2);
+      }
+    }
+  });
+
+  return path2String(absoluteArray);
+}

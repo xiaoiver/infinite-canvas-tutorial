@@ -27,6 +27,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm test:tooling
+      - run: pnpm test:cli
       - run: pnpm lint
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
 

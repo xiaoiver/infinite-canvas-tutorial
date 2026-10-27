@@ -1,0 +1,24 @@
+{
+  "name": "@infinite-canvas-tutorial/cli",
+  "version": "0.0.1",
+  "description": "Offline commands for Infinite Canvas documents",
+  "license": "MIT",
+  "bin": {
+    "ic": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "@infinite-canvas-tutorial/ecs": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "20.17.6",
+    "typescript": "5.8.3"
+  }
+}

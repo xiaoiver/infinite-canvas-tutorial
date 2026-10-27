@@ -10,6 +10,14 @@
       "types": "./lib/index.d.ts",
       "import": "./esm/index.js",
       "require": "./lib/index.js"
+    },
+    "./codegen": {
+      "types": "./lib/utils/codegen/index.d.ts",
+      "default": "./lib/utils/codegen/index.js"
+    },
+    "./document": {
+      "types": "./lib/format/ic-document-core.d.ts",
+      "default": "./lib/format/ic-document-core.js"
     }
   },
   "files": [

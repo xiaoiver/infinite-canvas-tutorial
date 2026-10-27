@@ -430,6 +430,20 @@ The three React exports are also rendered in a browser test with React 19 and Ta
 
 Download the `.ic` file to continue editing the design in the [online app](https://app.infinitecanvas.cc/) via **Import from… > .ic**. Download the HTML file and open it directly in a browser. For React, choose **Download React project** to get a Vite, React 19, and Tailwind CSS 4 starter ZIP from the current canvas. Extract it, then run `pnpm install` and `pnpm dev`; the exported component lives in `src/App.tsx`. The starter bundles the Inter font locally when the design uses it. Temporary `blob:` images from the current canvas are copied into `public/assets` and referenced by local paths; data URLs stay inline and remote URLs remain remote. Its `src/responsive.css` adds narrow-screen layouts for these three examples while preserving the artboard-sized component in `src/App.tsx`. You can also download just the `.tsx` file for an existing project. The generator currently emits presentation markup; wire navigation, checkout actions, payments, and live data to your application logic after export.
 
+### Command line {#cli}
+
+The repository also includes an offline CLI for `.ic` files. After building the ECS and CLI workspace packages, use it to validate a document, inspect its structure, or generate code without starting a canvas:
+
+```sh
+corepack pnpm --filter @infinite-canvas-tutorial/ecs build:cjs
+corepack pnpm --filter @infinite-canvas-tutorial/cli build
+node packages/cli/dist/cli.js validate design.ic
+node packages/cli/dist/cli.js inspect design.ic --json
+node packages/cli/dist/cli.js codegen design.ic --framework react-tailwind --variables-mode css-var --output Design.tsx
+```
+
+The CLI outputs the same React component or HTML/CSS fragment as the editor's code generator. It uses the document's variables and theme, does not access an online project, and rejects temporary `blob:` images that cannot survive outside the browser.
+
 ### Reverse: code → design {#design-to-code-reverse}
 
 The reverse direction (parse JSX/HTML AST back into `.ic` nodes) is harder and more ambiguous, so it is left as a second phase. The recommended first milestone is an **idempotent round-trip** of code that this transpiler emits (design → code → design without information loss) before extending to arbitrary hand-written code.

@@ -479,6 +479,18 @@ api.importIcDocument(await (await fetch('/scene.ic')).text());
 
 ### 命令行 {#cli}
 
+仓库也提供离线处理 `.ic` 文件的 CLI。构建 ECS 与 CLI 工作区包后，无需启动画布即可校验文档、查看结构或生成代码：
+
+```sh
+corepack pnpm --filter @infinite-canvas-tutorial/ecs build:cjs
+corepack pnpm --filter @infinite-canvas-tutorial/cli build
+node packages/cli/dist/cli.js validate design.ic
+node packages/cli/dist/cli.js inspect design.ic --json
+node packages/cli/dist/cli.js codegen design.ic --framework react-tailwind --variables-mode css-var --output Design.tsx
+```
+
+CLI 生成的 React 组件或 HTML/CSS 片段与编辑器代码生成器一致，并使用文档里的变量和主题。它不会访问在线项目；无法跨浏览器进程使用的临时 `blob:` 图片会被拒绝。
+
 ## 扩展阅读 {#extended-reading}
 
 -   [pencil-design-skill]
