@@ -2356,6 +2356,79 @@ describe('design-to-code (codegen)', () => {
       ).toContain('$48,295');
     });
 
+    it('resolves text variables on nodes and reusable instance overrides', () => {
+      const nodes: SerializedNode[] = [
+        {
+          id: 'title',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 0,
+          content: '$copy.title',
+        } as SerializedNode,
+        {
+          id: 'price',
+          type: 'text',
+          x: 0,
+          y: 20,
+          zIndex: 1,
+          content: '$29',
+        } as SerializedNode,
+        {
+          id: 'button-template',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+          width: 120,
+          height: 40,
+          reusable: true,
+        } as SerializedNode,
+        {
+          id: 'button-label',
+          parentId: 'button-template',
+          type: 'text',
+          x: 0,
+          y: 0,
+          zIndex: 2,
+          content: 'Default',
+        } as SerializedNode,
+        {
+          id: 'button-instance',
+          type: 'ref',
+          ref: 'button-template',
+          x: 0,
+          y: 0,
+          zIndex: 3,
+          descendants: { 'button-label': { content: '$copy.action' } },
+        } as SerializedNode,
+      ];
+      const variables = {
+        'copy.title': { type: 'string' as const, value: 'Welcome' },
+        'copy.action': { type: 'string' as const, value: 'Continue' },
+      };
+      for (const framework of ['html-css', 'react-tailwind'] as const) {
+        for (const variablesMode of ['resolved', 'css-var'] as const) {
+          const code = serializedNodesToCode(nodes, {
+            framework,
+            variablesMode,
+            variables,
+          });
+          expect(code).toContain('Welcome');
+          expect(code).toContain('Continue');
+          expect(code).toContain('$29');
+          expect(code).not.toContain('$copy.title');
+          expect(code).not.toContain('$copy.action');
+        }
+      }
+      const preserved = serializedNodesToCode(nodes, {
+        variablesMode: 'preserve-token',
+        variables,
+      });
+      expect(preserved).toContain('$copy.title');
+      expect(preserved).toContain('$copy.action');
+    });
+
     it('emits inline-styled html with iconify web component', () => {
       const nodes: SerializedNode[] = [
         {

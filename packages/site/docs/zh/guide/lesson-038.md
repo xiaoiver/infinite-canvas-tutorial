@@ -353,7 +353,7 @@ const code = serializedNodesToCode(nodes, {
 | `rotation` / `scaleX` / `scaleY`                    | 围绕局部左上角的 CSS `transform`                      |
 | 节点级 `blendMode`                                  | CSS `mix-blend-mode`                                  |
 | `visibility: hidden` / `visible`                    | CSS 可见性，保留布局空间                              |
-| `text` + `content`                                  | 文本节点；`$token` 文本 → 变量                        |
+| `text` + `content`                                  | 文本节点；已定义的 `$token` → 当前文本值              |
 | 文本装饰的线条、样式、颜色与粗细                    | CSS `text-decoration`                                 |
 | `fontVariant` / `fontKerning`                       | CSS `font-variant` / `font-kerning`                   |
 | `wordWrap` / `wordWrapWidth`                        | `white-space`、`overflow-wrap` 与 `max-width`         |
@@ -370,7 +370,7 @@ const code = serializedNodesToCode(nodes, {
 三种变量模式与 SVG 导出语义保持一致：
 
 -   `resolved`（默认）：把 `$token` 解析为字面量（如 `bg-[#FFFFFF]`）。
--   `css-var`：输出 `var(--token)`（如 `bg-[var(--color-bg)]`）；HTML/CSS emitter 还会注入 `:root { … }` 块。
+-   `css-var`：样式输出 `var(--token)`（如 `bg-[var(--color-bg)]`）；HTML/CSS emitter 还会注入 `:root { … }` 块。CSS 自定义属性不能替换文本节点，所以文本内容变量会解析为当前值。
 -   `preserve-token`：保留 `$token`（写入 inline `style`，便于再加工）。
 
 ### 组件与实例 {#design-to-code-components}

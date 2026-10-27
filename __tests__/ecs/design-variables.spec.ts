@@ -90,6 +90,35 @@ describe('design variables', () => {
     );
   });
 
+  it('resolves text content while preserving literal prices', () => {
+    const nodes = [
+      { id: 'title', type: 'text', content: '$copy.title' },
+      { id: 'price', type: 'text', content: '$29' },
+      {
+        id: 'instance',
+        type: 'ref',
+        ref: 'template',
+        descendants: { label: { content: '$copy.action' } },
+      },
+    ];
+    const variables = {
+      'copy.title': { type: 'string' as const, value: 'Welcome' },
+      'copy.action': { type: 'string' as const, value: 'Continue' },
+    };
+    for (const mode of ['resolved', 'css-var'] as const) {
+      const exported = prepareSerializedNodesForSvgExport(
+        nodes as any,
+        variables,
+        mode,
+      ).nodes as typeof nodes;
+      expect(exported[0].content).toBe('Welcome');
+      expect(exported[1].content).toBe('$29');
+      expect(exported[2].descendants?.label.content).toBe('Continue');
+    }
+    expect(nodes[0].content).toBe('$copy.title');
+    expect(nodes[2].descendants?.label.content).toBe('$copy.action');
+  });
+
   it('prepareSerializedNodesForSvgExport css-var', () => {
     const nodes = [
       {
