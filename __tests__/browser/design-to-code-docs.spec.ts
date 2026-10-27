@@ -242,7 +242,10 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   const appSource = strFromU8(project['src/App.tsx']);
   expect(appSource).toContain('export function PricingPlanCard');
   expect(appSource).toContain('$39');
-  expect(strFromU8(project['src/main.tsx'])).toContain('<PricingPage />');
+  const mainSource = strFromU8(project['src/main.tsx']);
+  expect(mainSource).toContain('<PricingPage />');
+  expect(mainSource).toContain("import '@fontsource/inter/400.css'");
+  expect(mainSource).toContain("import '@fontsource/inter/700.css'");
   expect(strFromU8(project['src/index.css'])).toContain(
     '@import "tailwindcss"',
   );
@@ -251,6 +254,7 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   expect(manifest.dependencies).toMatchObject({
     react: '19.2.3',
     'react-dom': '19.2.3',
+    '@fontsource/inter': '5.3.0',
   });
   expect(manifest.devDependencies).toHaveProperty('tailwindcss');
   const [componentDownload] = await Promise.all([
