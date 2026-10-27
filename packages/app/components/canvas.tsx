@@ -31,10 +31,7 @@ import { useAtom } from 'jotai';
 import { selectedNodesAtom, canvasApiAtom } from '@/atoms/canvas-selection';
 import { CanvasYjsManager } from '@/lib/yjs/canvas-yjs-manager';
 import { ensure3DCamera } from '@/lib/ensure-3d-camera';
-import {
-  registerCanvasWebMcp,
-  type ModelContext,
-} from '@/lib/webmcp/canvas-tools';
+import type { ModelContext } from '@/lib/webmcp/canvas-tools';
 import ZoomToolbar from './zoom-toolbar';
 import lucide from '@iconify/json/json/lucide.json';
 import materialIconTheme from '@iconify/json/json/material-icon-theme.json';
@@ -249,10 +246,16 @@ const Canvas = ({
       if (enableWebMcp) {
         const context = (document as Document & { modelContext?: ModelContext })
           .modelContext;
-        void registerCanvasWebMcp(api, id, signal, context).catch((error) => {
-          if (!signal.aborted)
-            console.warn('WebMCP registration failed:', error);
-        });
+        if (context) {
+          void import('@/lib/webmcp/canvas-tools')
+            .then(({ registerCanvasWebMcp }) =>
+              registerCanvasWebMcp(api, id, signal, context),
+            )
+            .catch((error) => {
+              if (!signal.aborted)
+                console.warn('WebMCP registration failed:', error);
+            });
+        }
       }
     });
   };
