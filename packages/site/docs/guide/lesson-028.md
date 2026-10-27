@@ -258,6 +258,35 @@ The signed-in project editor registers six [WebMCP imperative tools] when `docum
 
 WebMCP currently requires a supporting browser (Chrome 149 origin trial, or the `chrome://flags/#enable-webmcp-testing` development flag). Open a project that you own and sign in before trying the tools. Other browsers continue to work as ordinary editors. Tools are removed when the canvas closes or the project changes. The first version can create and edit rectangles and ellipses; node reads return a limited set of properties and code export is capped at 32,000 characters.
 
+On the project page, you can inspect the tools from DevTools and try a complete edit:
+
+```js
+const tools = await document.modelContext.getTools();
+const findTool = (name) => tools.find((tool) => tool.name === name);
+const summary = await document.modelContext.executeTool(
+    findTool('get_canvas_summary'),
+    {},
+);
+console.log(JSON.parse(summary));
+
+const created = JSON.parse(
+    await document.modelContext.executeTool(findTool('create_shape'), {
+        type: 'rect',
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+        fill: '#3b82f6',
+    }),
+);
+await document.modelContext.executeTool(findTool('update_node'), {
+    id: created.id,
+    width: 240,
+});
+```
+
+Undo in the editor restores the rectangle's previous width. The tools are scoped to the current project and do not expose canvas data from other projects.
+
 WebMCP operates inside an open browser tab. A standalone MCP server for desktop agents is a separate, future integration.
 
 ### Other MCP integrations

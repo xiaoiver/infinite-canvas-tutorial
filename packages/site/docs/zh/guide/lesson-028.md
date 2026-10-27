@@ -256,6 +256,35 @@ Adobe Photoshop 提供了 [Match fonts] 功能：
 
 目前需要支持 WebMCP 的浏览器（Chrome 149 origin trial，或打开 `chrome://flags/#enable-webmcp-testing` 开发开关）。登录并打开自己有权限的项目后即可使用；其他浏览器仍可正常编辑。关闭画布或切换项目时，工具会注销。首版支持创建和修改矩形、椭圆；节点读取只返回有限属性，代码导出上限为 32,000 字符。
 
+在项目页面打开开发者工具，可以查看已注册的工具并尝试一次完整编辑：
+
+```js
+const tools = await document.modelContext.getTools();
+const findTool = (name) => tools.find((tool) => tool.name === name);
+const summary = await document.modelContext.executeTool(
+    findTool('get_canvas_summary'),
+    {},
+);
+console.log(JSON.parse(summary));
+
+const created = JSON.parse(
+    await document.modelContext.executeTool(findTool('create_shape'), {
+        type: 'rect',
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+        fill: '#3b82f6',
+    }),
+);
+await document.modelContext.executeTool(findTool('update_node'), {
+    id: created.id,
+    width: 240,
+});
+```
+
+随后使用编辑器的撤销操作，可以恢复矩形修改前的宽度。工具只读取和修改当前项目的画布。
+
 WebMCP 只服务于当前打开的浏览器标签页。供桌面代理连接的独立 MCP server 属于后续工作。
 
 ### 其他 MCP 集成
