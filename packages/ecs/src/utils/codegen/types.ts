@@ -312,13 +312,24 @@ export interface CodeVectorGradient {
   stops: { offset: number; color: string }[];
 }
 
-export interface CodeVectorImage {
-  id: string;
-  href: string;
-  preserveAspectRatio:
-    | 'none'
-    | `x${'Min' | 'Mid' | 'Max'}Y${'Min' | 'Mid' | 'Max'} ${'meet' | 'slice'}`;
-}
+export type CodeVectorImage =
+  | {
+      id: string;
+      href: string;
+      rendering: 'pattern';
+      preserveAspectRatio:
+        | 'none'
+        | `x${'Min' | 'Mid' | 'Max'}Y${'Min' | 'Mid' | 'Max'} ${
+            | 'meet'
+            | 'slice'}`;
+    }
+  | {
+      id: string;
+      href: string;
+      rendering: 'foreignObject';
+      objectFit: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
+      objectPosition: string;
+    };
 
 export interface CodeVectorFillLayer {
   fill?: StyleValue;

@@ -8,6 +8,7 @@ import type {
   CodeNode,
   CodeVariablesMode,
   CodeVectorFillLayer,
+  CodeVectorImage,
   CodeVectorMarker,
   CodeVectorStrokeLayer,
 } from './types';
@@ -73,18 +74,76 @@ export function renderVectorSvg(
     values: Attribute[],
     body: string,
     level: number,
-  ) => `${pad(level)}<${tag}${attrs(values)}>\n${body}\n${pad(level)}</${tag}>`;
+    extraAttrs = '',
+  ) =>
+    `${pad(level)}<${tag}${attrs(values)}${extraAttrs}>\n${body}\n${pad(
+      level,
+    )}</${tag}>`;
+
+  const imageBox: Attribute[] = [
+    ['x', path.viewBoxX],
+    ['y', path.viewBoxY],
+    ['width', path.width],
+    ['height', path.height],
+  ];
+  const renderForeignImage = (
+    image: Extract<CodeVectorImage, { rendering: 'foreignObject' }>,
+    opacity: string | undefined,
+    level: number,
+    extraAttrs = '',
+  ) => {
+    const containerStyle =
+      dialect === 'jsx'
+        ? ' style={{ width: "100%", height: "100%" }}'
+        : ' style="width: 100%; height: 100%"';
+    const imageStyle =
+      dialect === 'jsx'
+        ? ` style={{ display: "block", width: "100%", height: "100%", objectFit: ${JSON.stringify(
+            image.objectFit,
+          )}, objectPosition: ${JSON.stringify(image.objectPosition)} }}`
+        : ` style="display: block; width: 100%; height: 100%; object-fit: ${escapeAttribute(
+            image.objectFit,
+          )}; object-position: ${escapeAttribute(image.objectPosition)}"`;
+    return wrap(
+      'foreignObject',
+      [
+        ...imageBox,
+        ['clip-path', `url(#${image.id}-clip)`],
+        ['opacity', opacity],
+      ],
+      wrap(
+        'div',
+        [['xmlns', 'http://www.w3.org/1999/xhtml']],
+        leaf(
+          'img',
+          [
+            ['src', image.href],
+            ['alt', ''],
+          ],
+          level + 2,
+          imageStyle,
+        ),
+        level + 1,
+        containerStyle,
+      ),
+      level,
+      extraAttrs,
+    );
+  };
 
   const fillPaint = (layer: CodeVectorFillLayer) => {
     const server = layer.fillGradient ?? layer.fillImage;
-    return server
+    return layer.fillImage?.rendering === 'foreignObject'
+      ? 'none'
+      : server
       ? `url(#${server.id})`
       : layer.fill
       ? solidFillColorToCss(layer.fill, layer.fillOpacity, mode)
       : 'none';
   };
   const paintOpacity = (layer: CodeVectorFillLayer) =>
-    (layer.fillGradient || layer.fillImage) && layer.fillOpacity
+    (layer.fillGradient || layer.fillImage?.rendering === 'pattern') &&
+    layer.fillOpacity
       ? styleValueToCss(layer.fillOpacity, mode)
       : undefined;
   const strokePaint = (layer: CodeVectorStrokeLayer) => {
@@ -165,22 +224,16 @@ export function renderVectorSvg(
     ...(path.fillLayers?.map((layer) => layer.fillImage) ?? []),
     ...(path.strokeLayers?.map((layer) => layer.strokeImage) ?? []),
   ]
-    .filter((image) => image !== undefined)
+    .filter((image) => image?.rendering === 'pattern')
     .map((image) => {
-      const box: Attribute[] = [
-        ['x', path.viewBoxX],
-        ['y', path.viewBoxY],
-        ['width', path.width],
-        ['height', path.height],
-      ];
       return wrap(
         'pattern',
-        [['id', image.id], ['patternUnits', 'userSpaceOnUse'], ...box],
+        [['id', image.id], ['patternUnits', 'userSpaceOnUse'], ...imageBox],
         leaf(
           'image',
           [
             ['href', image.href],
-            ...box,
+            ...imageBox,
             ['preserveAspectRatio', image.preserveAspectRatio],
           ],
           depth + 3,
@@ -188,6 +241,29 @@ export function renderVectorSvg(
         depth + 2,
       );
     });
+  const imageClips = [
+    path.fillImage,
+    ...(path.fillLayers?.map((layer) => layer.fillImage) ?? []),
+  ]
+    .filter((image) => image?.rendering === 'foreignObject')
+    .map((image) =>
+      wrap(
+        'clipPath',
+        [
+          ['id', `${image.id}-clip`],
+          ['clipPathUnits', 'userSpaceOnUse'],
+        ],
+        leaf(
+          'path',
+          [
+            ['d', path.d],
+            ['clip-rule', path.fillRule],
+          ],
+          depth + 3,
+        ),
+        depth + 2,
+      ),
+    );
   const markerEntries: Array<{
     marker: CodeVectorMarker;
     side: 'start' | 'end';
@@ -314,6 +390,7 @@ export function renderVectorSvg(
   const definitions = [
     ...gradients,
     ...images,
+    ...imageClips,
     ...markers,
     ...(alignmentDefinition ? [alignmentDefinition] : []),
   ];
@@ -375,18 +452,27 @@ export function renderVectorSvg(
           ? ` style={{ mixBlendMode: ${JSON.stringify(layer.blendMode)} }}`
           : ` style="mix-blend-mode: ${escapeAttribute(layer.blendMode)}"`
         : '';
-      return leaf(
-        'path',
-        [
-          ['d', path.d],
-          ['fill', fillPaint(layer)],
-          ['fill-opacity', paintOpacity(layer)],
-          ['fill-rule', path.fillRule],
-          ['stroke', 'none'],
-        ],
-        artworkLevel + (blendedFills ? 1 : 0),
-        style,
-      );
+      return layer.fillImage?.rendering === 'foreignObject'
+        ? renderForeignImage(
+            layer.fillImage,
+            layer.fillOpacity
+              ? styleValueToCss(layer.fillOpacity, mode)
+              : undefined,
+            artworkLevel + (blendedFills ? 1 : 0),
+            style,
+          )
+        : leaf(
+            'path',
+            [
+              ['d', path.d],
+              ['fill', fillPaint(layer)],
+              ['fill-opacity', paintOpacity(layer)],
+              ['fill-rule', path.fillRule],
+              ['stroke', 'none'],
+            ],
+            artworkLevel + (blendedFills ? 1 : 0),
+            style,
+          );
     })
     .join('\n');
   const isolatedFills = blendedFills
@@ -447,6 +533,17 @@ export function renderVectorSvg(
     : fill !== 'none' || !path.strokeLayers;
   const artwork = [
     ...(isolatedFills ? [isolatedFills] : []),
+    ...(path.fillImage?.rendering === 'foreignObject'
+      ? [
+          renderForeignImage(
+            path.fillImage,
+            path.fillOpacity
+              ? styleValueToCss(path.fillOpacity, mode)
+              : undefined,
+            artworkLevel,
+          ),
+        ]
+      : []),
     ...(renderBasePath ? [leaf('path', pathAttrs, artworkLevel)] : []),
     ...(alignment && !path.strokeLayers
       ? [leaf('path', strokeAttrs, artworkLevel)]

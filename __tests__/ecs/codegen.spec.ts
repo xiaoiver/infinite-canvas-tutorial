@@ -611,7 +611,7 @@ describe('design-to-code (codegen)', () => {
         } as SerializedNode,
       ]);
       expect(stretched).toContain('preserveAspectRatio={"none"}');
-      const unsupportedPosition = serializedNodesToCode([
+      const positionedImage = serializedNodesToCode([
         {
           ...path,
           id: 'offset-image',
@@ -625,7 +625,49 @@ describe('design-to-code (codegen)', () => {
           strokes: [],
         } as SerializedNode,
       ]);
-      expect(unsupportedPosition).not.toContain('<pattern');
+      expect(positionedImage).not.toContain('<pattern');
+      expect(positionedImage).toContain('<foreignObject');
+      expect(positionedImage).toContain('objectPosition: "20% 80%"');
+      expect(positionedImage).toContain('<clipPath');
+
+      for (const fit of ['none', 'scale-down'] as const) {
+        const fitted = {
+          ...path,
+          fills: [
+            {
+              type: 'image',
+              value: 'https://example.com/photo.png',
+              objectFit: fit,
+              objectPosition: '20% 80%',
+              opacity: 0.4,
+            },
+          ],
+          strokes: [],
+        } as SerializedNode;
+        const fittedReact = serializedNodesToCode([fitted]);
+        const fittedHtml = serializedNodesToCode([fitted], {
+          framework: 'html-css',
+        });
+        expect(fittedReact).toContain('<foreignObject');
+        expect(fittedReact).toContain(`objectFit: "${fit}"`);
+        expect(fittedReact).toContain('opacity={"0.40"}');
+        expect(fittedHtml).toContain('<foreignObject');
+        expect(fittedHtml).toContain(`object-fit: ${fit}`);
+        expect(fittedHtml).toContain('object-position: 20% 80%');
+        expect(fittedHtml).toContain('opacity="0.40"');
+        expect(
+          ts
+            .transpileModule(fittedReact, {
+              fileName: 'Design.tsx',
+              reportDiagnostics: true,
+              compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+            })
+            .diagnostics?.filter(
+              (diagnostic) =>
+                diagnostic.category === ts.DiagnosticCategory.Error,
+            ),
+        ).toEqual([]);
+      }
 
       for (const [position, fit, alignment] of [
         ['left top', 'cover', 'xMinYMin slice'],
