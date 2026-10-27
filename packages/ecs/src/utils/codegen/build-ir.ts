@@ -805,6 +805,20 @@ function buildStyle(
   const fillColor = primaryColorFromLayers(fills);
   const activeFills = fills.filter((fill) => fill.enabled !== false);
   if (
+    (node.type === 'rect' || node.type === 'ellipse') &&
+    activeFills.length > 1 &&
+    activeFills.every(
+      (fill) =>
+        fill.type === 'solid' &&
+        (fill.blendMode === undefined || fill.blendMode === 'normal') &&
+        !!toStyleValue(fill.value),
+    )
+  )
+    style.backgroundLayers = activeFills.map((fill) => ({
+      color: toStyleValue(fill.value as string)!,
+      opacity: toStyleValue(fill.opacity as number | string),
+    }));
+  if (
     fillColor &&
     activeFills.length === 1 &&
     activeFills[0].type === 'solid' &&
@@ -812,13 +826,15 @@ function buildStyle(
     Number(activeFills[0].opacity) !== 1
   )
     style.solidFillOpacity = toStyleValue(activeFills[0].opacity);
-  if (role === 'text' || role === 'icon') {
-    if (fillColor) style.color = fillColor;
-  } else if (role !== 'image' && fillColor) {
-    style.backgroundColor = fillColor;
-  } else if (role === 'container' || node.type === 'ellipse') {
-    const gradient = singleCssGradientFill(fills);
-    if (gradient) style.backgroundImage = { literal: gradient };
+  if (!style.backgroundLayers) {
+    if (role === 'text' || role === 'icon') {
+      if (fillColor) style.color = fillColor;
+    } else if (role !== 'image' && fillColor) {
+      style.backgroundColor = fillColor;
+    } else if (role === 'container' || node.type === 'ellipse') {
+      const gradient = singleCssGradientFill(fills);
+      if (gradient) style.backgroundImage = { literal: gradient };
+    }
   }
 
   // 描边 → border

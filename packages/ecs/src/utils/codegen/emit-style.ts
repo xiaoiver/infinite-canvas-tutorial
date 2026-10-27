@@ -47,6 +47,21 @@ export function solidFillColorToCss(
   return `color-mix(in srgb, ${cssColor} ${weight}, transparent)`;
 }
 
+/** CSS background images are listed top-first; canvas fill layers are bottom-first. */
+export function solidBackgroundLayersToCss(
+  style: StyleIR,
+  mode: CodeVariablesMode,
+): string | undefined {
+  if (!style.backgroundLayers?.length) return undefined;
+  return [...style.backgroundLayers]
+    .reverse()
+    .map((layer) => {
+      const color = solidFillColorToCss(layer.color, layer.opacity, mode);
+      return `linear-gradient(${color}, ${color})`;
+    })
+    .join(', ');
+}
+
 export function vectorDropShadowToCss(
   shadow: NonNullable<NonNullable<CodeNode['vectorPath']>['dropShadow']>,
   mode: CodeVariablesMode,
@@ -160,7 +175,9 @@ export function styleIRToCssDeclarations(
       'background-color',
       solidFillColorToCss(style.backgroundColor, style.solidFillOpacity, mode),
     );
-  if (style.backgroundImage)
+  const backgroundLayers = solidBackgroundLayersToCss(style, mode);
+  if (backgroundLayers) push('background-image', backgroundLayers);
+  else if (style.backgroundImage)
     push('background-image', styleValueToCss(style.backgroundImage, mode));
   if (style.borderRadius)
     push('border-radius', styleValueToCss(style.borderRadius, mode, true));

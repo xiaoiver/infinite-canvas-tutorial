@@ -7,6 +7,43 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('keeps solid rectangle and ellipse fill layers in paint order', () => {
+      const fills = [
+        { type: 'solid', value: '#ff0000', opacity: 0.5 },
+        { type: 'solid', value: '#00ff00', enabled: false },
+        { type: 'solid', value: '#0000ff', opacity: 0.25 },
+      ];
+      for (const type of ['rect', 'ellipse'] as const) {
+        const node = {
+          id: `layered-${type}`,
+          type,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 80,
+          zIndex: 0,
+          fills,
+        } as SerializedNode;
+        const react = serializedNodesToCode([node]);
+        expect(react).toContain('backgroundImage:');
+        expect(react.indexOf('#0000ff')).toBeLessThan(
+          react.indexOf('#ff0000'),
+        );
+        expect(react).toContain('color-mix(in srgb, #0000ff 25%, transparent)');
+        expect(react).toContain('color-mix(in srgb, #ff0000 50%, transparent)');
+        expect(react).not.toContain('#00ff00');
+        expect(react).not.toContain('backgroundColor:');
+        if (type === 'ellipse') expect(react).toContain('rounded-[50%]');
+        const html = serializedNodesToCode([node], {
+          framework: 'html-css',
+        });
+        expect(html).toContain('background-image:');
+        expect(html.indexOf('#0000ff')).toBeLessThan(html.indexOf('#ff0000'));
+        expect(html).not.toContain('#00ff00');
+        if (type === 'ellipse') expect(html).toContain('border-radius: 50%');
+      }
+    });
+
     it('exports image-filled ellipses with their round mask and children', () => {
       const ellipse = {
         id: 'avatar',

@@ -21,7 +21,12 @@ export function hasUnsupportedPaintFillOverride(
     ) &&
     !rendered.some((fill) => fill.type === 'image' || fill.type === 'gradient')
   )
-    return translucentSolid(template) || translucentSolid(rendered);
+    return (
+      translucentSolid(template) ||
+      translucentSolid(rendered) ||
+      template.filter((fill) => fill.enabled !== false).length > 1 ||
+      rendered.filter((fill) => fill.enabled !== false).length > 1
+    );
   if (
     template.length !== 1 ||
     rendered.length !== 1 ||

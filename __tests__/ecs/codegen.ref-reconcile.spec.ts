@@ -764,6 +764,43 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(changedFitHtml).toContain('object-position: left top');
   });
 
+  it('expands a reusable rectangle when a solid fill layer changes', () => {
+    const templateFills = [
+      { type: 'solid', value: '#ff0000' },
+      { type: 'solid', value: '#0000ff', opacity: 0.5 },
+    ];
+    const nodes: SerializedNode[] = [
+      {
+        id: 'layered-template',
+        type: 'rect',
+        name: 'LayeredCard',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 80,
+        zIndex: 0,
+        reusable: true,
+        fills: templateFills,
+      } as SerializedNode,
+      {
+        id: 'layered-instance',
+        type: 'ref',
+        ref: 'layered-template',
+        x: 120,
+        y: 0,
+        zIndex: 1,
+        fills: [templateFills[0], { type: 'solid', value: '#00ff00' }],
+      } as SerializedNode,
+    ];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('export function LayeredCard');
+    expect(react).toContain('backgroundImage:');
+    expect(react).toContain('#00ff00');
+    const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+    expect(html).toContain('background-image:');
+    expect(html).toContain('#00ff00');
+  });
+
   it('combines image fill opacity with node opacity in flat and reusable exports', () => {
     const imageSource: SerializedNode[] = [
       {

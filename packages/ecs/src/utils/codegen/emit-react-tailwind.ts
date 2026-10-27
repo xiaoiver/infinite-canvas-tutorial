@@ -12,6 +12,7 @@ import { renderVectorSvg } from './render-vector-svg';
 import { pascalCase } from './string-utils';
 import {
   combinedImageOpacityCss,
+  solidBackgroundLayersToCss,
   solidFillColorToCss,
   styleValueToCss,
   textDecorationToCss,
@@ -223,7 +224,10 @@ function genTailwind(
     else
       classes.push(`bg-[${tw(styleValueToCss(style.backgroundColor, mode))}]`);
   }
-  if (style.backgroundImage && !skip.has('backgroundImage'))
+  const backgroundLayers = solidBackgroundLayersToCss(style, mode);
+  if (backgroundLayers && !skip.has('backgroundImage'))
+    inline.push(['backgroundImage', JSON.stringify(backgroundLayers)]);
+  else if (style.backgroundImage && !skip.has('backgroundImage'))
     inline.push([
       'backgroundImage',
       JSON.stringify(styleValueToCss(style.backgroundImage, mode)),
