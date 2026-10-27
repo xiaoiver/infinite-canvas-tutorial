@@ -223,6 +223,10 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
     .toBe('pricing-page');
   await expect(code).toContainText('PricingPage');
   await expect(code).toContainText('export function PricingPlanCard');
+  await expect(code).toContainText('planCardActionFills="#7969f5"');
+  await expect(code).not.toContainText(
+    'planCardActionFills="$color.highlight"',
+  );
   await expect(code).not.toContainText('pricingPlanCardOpacity');
   expect((await code.innerText()).match(/<PricingPlanCard/g)).toHaveLength(3);
   await page.evaluate(() => window.designToCodeDocs.editPricingAmount('$39'));
@@ -244,8 +248,13 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   expect(appSource).toContain('$39');
   const mainSource = strFromU8(project['src/main.tsx']);
   expect(mainSource).toContain('<PricingPage />');
+  expect(mainSource).toContain('ic-starter--pricing');
+  expect(mainSource).toContain("import './responsive.css'");
   expect(mainSource).toContain("import '@fontsource/inter/400.css'");
   expect(mainSource).toContain("import '@fontsource/inter/700.css'");
+  expect(strFromU8(project['src/responsive.css'])).toContain(
+    '.ic-starter--pricing section { flex-direction: column',
+  );
   expect(strFromU8(project['src/index.css'])).toContain(
     '@import "tailwindcss"',
   );

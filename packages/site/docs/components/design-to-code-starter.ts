@@ -1,4 +1,5 @@
 import { strToU8, zipSync } from 'fflate';
+import { responsiveStarterCss } from './design-to-code-responsive';
 
 /** Files for a standalone Vite project generated from the current IC scene. */
 export function reactStarterFiles(
@@ -62,19 +63,20 @@ export function reactStarterFiles(
       2,
     )}\n`,
     'src/index.css': '@import "tailwindcss";\n',
+    'src/responsive.css': responsiveStarterCss(sceneId),
     'src/App.tsx': source,
-    'src/main.tsx': `import { createRoot } from 'react-dom/client';\nimport { ${componentName} } from './App';\nimport './index.css';\n${
+    'src/main.tsx': `import { createRoot } from 'react-dom/client';\nimport { ${componentName} } from './App';\nimport './index.css';\nimport './responsive.css';\n${
       usesInter
         ? [400, 500, 600, 700, 800]
             .map((weight) => `import '@fontsource/inter/${weight}.css';`)
             .join('\n') + '\n'
         : ''
-    }\nconst root = document.getElementById('root');\nif (!root) throw new Error('Missing React root');\ncreateRoot(root).render(<${componentName} />);\n`,
+    }\nconst root = document.getElementById('root');\nif (!root) throw new Error('Missing React root');\ncreateRoot(root).render(<div className="ic-starter ic-starter--${sceneId}"><${componentName} /></div>);\n`,
     'README.md': `# ${componentName}\n\nGenerated from the current IC canvas.\n\nRun with Node.js 20 or newer:\n\n\`\`\`sh\ncorepack pnpm install\ncorepack pnpm dev\n\`\`\`\n\nThe exported component is in \`src/App.tsx\`.${
       usesInter
         ? ' Inter font files are bundled locally in the production build.'
         : ''
-    } Connect buttons, navigation, data, and responsive layouts to your application as needed.\n`,
+    } The sample's narrow-screen layout rules are in \`src/responsive.css\`. Connect buttons, navigation, data, and responsive layouts to your application as needed.\n`,
   };
 }
 

@@ -54,6 +54,42 @@ describe('design variables', () => {
     expect(nodes[0].fills?.[0]?.value).toBe('$color.bg');
   });
 
+  it('resolves design variables in reusable instance overrides', () => {
+    const nodes = [
+      {
+        id: 'instance',
+        type: 'ref',
+        ref: 'template',
+        fills: [{ type: 'solid', value: '$color.bg' }],
+        descendants: {
+          action: {
+            fills: [{ type: 'solid', value: '$color.accent' }],
+          },
+        },
+      },
+    ];
+    const variables = {
+      'color.bg': { type: 'color' as const, value: '#eee' },
+      'color.accent': { type: 'color' as const, value: '#7969f5' },
+    };
+    const resolved = resolveSerializedNodesDesignVariables(
+      nodes as any,
+      variables,
+    )[0] as (typeof nodes)[number];
+    expect(resolved.fills[0].value).toBe('#eee');
+    expect(resolved.descendants.action.fills[0].value).toBe('#7969f5');
+    expect(nodes[0].descendants.action.fills[0].value).toBe('$color.accent');
+
+    const cssVars = prepareSerializedNodesForSvgExport(
+      nodes as any,
+      variables,
+      'css-var',
+    ).nodes[0] as (typeof nodes)[number];
+    expect(cssVars.descendants.action.fills[0].value).toBe(
+      'var(--color-accent)',
+    );
+  });
+
   it('prepareSerializedNodesForSvgExport css-var', () => {
     const nodes = [
       {
