@@ -12,7 +12,17 @@ import type { SerializedNode } from '@infinite-canvas-tutorial/ecs';
 // 用于标识本地操作的唯一标识符
 const LOCAL_ORIGIN = Math.random().toString();
 
+/** Cached entries without an ID cannot participate in document history. */
+export function validCanvasNodes<T extends { id?: unknown }>(nodes: readonly T[]): T[] {
+    return nodes.filter(hasValidCanvasNodeId);
+}
+
+function hasValidCanvasNodeId(node: { id?: unknown } | null | undefined): boolean {
+    return typeof node?.id === 'string' && node.id.length > 0;
+}
+
 interface NodeWithVersion {
+    id?: string;
     version?: number;
     isDeleted?: boolean;
     [key: string]: any;
@@ -58,7 +68,7 @@ export class CanvasYjsManager {
     recordLocalOps(nodes: readonly NodeWithVersion[]): void {
         this.doc.transact(() => {
             // 过滤掉已删除的节点
-            const validNodes = nodes.filter((e) => !e.isDeleted);
+            const validNodes = validCanvasNodes(nodes.filter((e) => !e.isDeleted));
 
             // 同步数组长度
             while (this.yArray.length < validNodes.length) {
@@ -79,20 +89,14 @@ export class CanvasYjsManager {
                 }
 
                 const elem = validNodes[i];
-                const currentVersion = map.get('version');
-
-                // 如果版本相同，跳过更新
-                if (currentVersion === elem.version) {
-                    continue;
+                // New maps and new nodes both have an undefined version. The
+                // old equality check left the new maps empty on first write.
+                for (const key of Array.from(map.keys())) {
+                    if (!(key in elem)) map.delete(key);
                 }
-
-                // 更新所有属性
                 for (const [key, value] of Object.entries(elem)) {
                     const src = map.get(key);
-                    if (
-                        (typeof src === 'object' && !deepEqual(src, value)) ||
-                        src !== value
-                    ) {
+                    if (!deepEqual(src, value)) {
                         map.set(key, value);
                     }
                 }
@@ -109,9 +113,19 @@ export class CanvasYjsManager {
             return [];
         }
 
-        return this.yArray
+        const cached = this.yArray
             .toArray()
             .map((map: Y.Map<any>) => map.toJSON()) as SerializedNode[];
+        const valid = validCanvasNodes(cached);
+        if (valid.length !== cached.length) {
+            console.warn(`Ignored ${cached.length - valid.length} cached canvas node(s) without an ID.`);
+            this.doc.transact(() => {
+                for (let i = cached.length - 1; i >= 0; i--) {
+                    if (!hasValidCanvasNodeId(cached[i])) this.yArray.delete(i, 1);
+                }
+            }, LOCAL_ORIGIN);
+        }
+        return valid;
     }
 
     /**

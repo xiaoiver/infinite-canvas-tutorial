@@ -233,6 +233,35 @@ it('applies edits and history before derived data/rendering while preserving lat
       minX: 35,
       maxX: 115,
     });
+    const created = api.edit((editor) =>
+      editor.updateNode({
+        id: 'webmcp-created',
+        type: 'rect',
+        zIndex: 1,
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 100,
+        fills: [{ type: 'solid', value: '#3b82f6' }],
+      }),
+    );
+    await app.world.execute();
+    expect(await created).toBe(true);
+    expect(api.getNodeById('webmcp-created')).toBeDefined();
+    const selected = api.edit((editor) =>
+      editor.selectNodes([editor.getNodeById('webmcp-created')]),
+    );
+    await app.world.execute();
+    expect(await selected).toBe(true);
+    const deselected = api.edit((editor) => editor.selectNodes([]));
+    await app.world.execute();
+    expect(await deselected).toBe(true);
+    api.undo();
+    await app.world.execute();
+    expect(api.getNodeById('webmcp-created')).toBeDefined();
+    api.undo();
+    await app.world.execute();
+    expect(api.getNodeById('webmcp-created')).toBeUndefined();
   } finally {
     await app.exit();
     DOMAdapter.set(previousAdapter);
