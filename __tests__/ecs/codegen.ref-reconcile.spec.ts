@@ -843,6 +843,37 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(html).toContain('#00ff00');
   });
 
+  it('expands a reusable rectangle when its pattern repeat changes', () => {
+    const nodes = [
+      {
+        id: 'pattern-template',
+        type: 'rect',
+        name: 'PatternCard',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 80,
+        zIndex: 0,
+        reusable: true,
+        fills: [{ type: 'pattern', value: '/tile.png', repetition: 'repeat' }],
+      },
+      {
+        id: 'pattern-instance',
+        type: 'ref',
+        ref: 'pattern-template',
+        x: 120,
+        y: 0,
+        zIndex: 1,
+        fills: [{ type: 'pattern', value: '/tile.png', repetition: 'repeat-y' }],
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).not.toContain('export function PatternCard');
+    expect(react).toContain('backgroundRepeat: "repeat-y"');
+    const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+    expect(html).toContain('background-repeat: repeat-y');
+  });
+
   it('combines image fill opacity with node opacity in flat and reusable exports', () => {
     const imageSource: SerializedNode[] = [
       {

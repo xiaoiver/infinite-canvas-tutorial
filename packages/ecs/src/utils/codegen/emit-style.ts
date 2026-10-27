@@ -57,7 +57,7 @@ export function paintBackgroundLayersToCss(
     .reverse()
     .map((layer) => {
       if (layer.type === 'gradient') return layer.value;
-      if (layer.type === 'image') {
+      if (layer.type === 'image' || layer.type === 'pattern') {
         const escaped = layer.value
           .replace(/\\/g, '\\\\')
           .replace(/"/g, '\\"')
@@ -70,27 +70,40 @@ export function paintBackgroundLayersToCss(
     .join(', ');
 }
 
-/** Keep each CSS background aligned with its fill's image fit and position. */
+/** Keep each CSS background aligned with its image fit or pattern tiling. */
 export function paintBackgroundLayerLayoutToCss(
   style: StyleIR,
 ): { size: string; position: string; repeat: string } | undefined {
-  if (!style.backgroundLayers?.some((layer) => layer.type === 'image'))
+  if (
+    !style.backgroundLayers?.some(
+      (layer) => layer.type === 'image' || layer.type === 'pattern',
+    )
+  )
     return undefined;
   const layers = [...style.backgroundLayers].reverse();
   return {
     size: layers
-      .map((layer) =>
-        layer.type === 'image' && layer.objectFit !== 'fill'
-          ? layer.objectFit ?? '100% 100%'
-          : '100% 100%',
-      )
+      .map((layer) => {
+        if (layer.type === 'pattern') return 'auto';
+        if (
+          layer.type !== 'image' ||
+          !layer.objectFit ||
+          layer.objectFit === 'fill'
+        )
+          return '100% 100%';
+        return layer.objectFit === 'none' ? 'auto' : layer.objectFit;
+      })
       .join(', '),
     position: layers
       .map((layer) =>
         layer.type === 'image' ? layer.objectPosition ?? '50% 50%' : '0% 0%',
       )
       .join(', '),
-    repeat: layers.map(() => 'no-repeat').join(', '),
+    repeat: layers
+      .map((layer) =>
+        layer.type === 'pattern' ? layer.repetition ?? 'repeat' : 'no-repeat',
+      )
+      .join(', '),
   };
 }
 

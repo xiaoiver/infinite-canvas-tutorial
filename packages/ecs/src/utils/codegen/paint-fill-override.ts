@@ -10,6 +10,8 @@ export function hasUnsupportedPaintFillOverride(
   if (documentValueEqual(templateFills, renderedFills)) return false;
   const template = Array.isArray(templateFills) ? templateFills : [];
   const rendered = Array.isArray(renderedFills) ? renderedFills : [];
+  if ([...template, ...rendered].some((fill) => fill.type === 'pattern'))
+    return true;
   const translucentSolid = (fills: typeof template) =>
     fills.length === 1 &&
     fills[0].type === 'solid' &&

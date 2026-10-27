@@ -111,6 +111,112 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('exports untransformed pattern fills with native tile size', () => {
+      for (const type of ['rect', 'ellipse'] as const) {
+        for (const repetition of [
+          'repeat',
+          'repeat-x',
+          'repeat-y',
+          'no-repeat',
+        ] as const) {
+          const node = {
+            id: `pattern-${type}-${repetition}`,
+            type,
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 80,
+            zIndex: 0,
+            fills: [{ type: 'pattern', value: '/tile.png', repetition }],
+          } as SerializedNode;
+          const react = serializedNodesToCode([node]);
+          expect(react).toContain('url(\\"/tile.png\\")');
+          expect(react).toContain('backgroundSize: "auto"');
+          expect(react).toContain(`backgroundRepeat: "${repetition}"`);
+          const html = serializedNodesToCode([node], {
+            framework: 'html-css',
+          });
+          expect(html).toContain('background-image: url(&quot;/tile.png&quot;)');
+          expect(html).toContain('background-size: auto');
+          expect(html).toContain(`background-repeat: ${repetition}`);
+        }
+      }
+      const transformed = {
+        id: 'transformed-pattern',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 80,
+        zIndex: 0,
+        fills: [
+          { type: 'pattern', value: '/tile.png', transform: 'rotate(30)' },
+        ],
+      } as SerializedNode;
+      expect(serializedNodesToCode([transformed])).not.toContain(
+        'backgroundImage',
+      );
+    });
+
+    it('stacks natural-size image and tiled pattern above a solid fill', () => {
+      const nodes = [
+        {
+          id: 'tiled-photo',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 120,
+          height: 80,
+          zIndex: 0,
+          fills: [
+            { type: 'solid', value: '#ff0000' },
+            { type: 'pattern', value: '/tile.png', repetition: 'repeat-x' },
+            {
+              type: 'image',
+              value: '/photo.png',
+              objectFit: 'none',
+              objectPosition: 'right bottom',
+              blendMode: 'multiply',
+            },
+          ],
+        },
+        {
+          id: 'tiled-label',
+          type: 'text',
+          parentId: 'tiled-photo',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+          content: 'Label',
+          fontSize: 16,
+        },
+      ] as SerializedNode[];
+      const react = serializedNodesToCode(nodes);
+      expect(react.indexOf('/photo.png')).toBeLessThan(
+        react.indexOf('/tile.png'),
+      );
+      expect(react.indexOf('/tile.png')).toBeLessThan(
+        react.indexOf('#ff0000'),
+      );
+      expect(react).toContain('backgroundSize: "auto, auto, 100% 100%"');
+      expect(react).toContain(
+        'backgroundPosition: "right bottom, 0% 0%, 0% 0%"',
+      );
+      expect(react).toContain(
+        'backgroundRepeat: "no-repeat, repeat-x, no-repeat"',
+      );
+      expect(react).toContain('backgroundBlendMode: "multiply, normal, normal"');
+      expect(react).toContain('Label');
+      expect(react).not.toContain('<img');
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('background-size: auto, auto, 100% 100%');
+      expect(html).toContain(
+        'background-repeat: no-repeat, repeat-x, no-repeat',
+      );
+      expect(html).toContain('Label');
+      expect(html).not.toContain('<img');
+    });
+
     it('exports layered image backgrounds with fit, position, blend, and children', () => {
       for (const type of ['rect', 'ellipse'] as const) {
         const nodes = [
