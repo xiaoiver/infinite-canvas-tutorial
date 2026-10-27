@@ -48,7 +48,7 @@ export function solidFillColorToCss(
 }
 
 /** CSS background images are listed top-first; canvas fill layers are bottom-first. */
-export function solidBackgroundLayersToCss(
+export function paintBackgroundLayersToCss(
   style: StyleIR,
   mode: CodeVariablesMode,
 ): string | undefined {
@@ -56,6 +56,7 @@ export function solidBackgroundLayersToCss(
   return [...style.backgroundLayers]
     .reverse()
     .map((layer) => {
+      if (layer.type === 'gradient') return layer.value;
       const color = solidFillColorToCss(layer.color, layer.opacity, mode);
       return `linear-gradient(${color}, ${color})`;
     })
@@ -175,7 +176,7 @@ export function styleIRToCssDeclarations(
       'background-color',
       solidFillColorToCss(style.backgroundColor, style.solidFillOpacity, mode),
     );
-  const backgroundLayers = solidBackgroundLayersToCss(style, mode);
+  const backgroundLayers = paintBackgroundLayersToCss(style, mode);
   if (backgroundLayers) push('background-image', backgroundLayers);
   else if (style.backgroundImage)
     push('background-image', styleValueToCss(style.backgroundImage, mode));

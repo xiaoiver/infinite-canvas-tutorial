@@ -809,15 +809,22 @@ function buildStyle(
     activeFills.length > 1 &&
     activeFills.every(
       (fill) =>
-        fill.type === 'solid' &&
         (fill.blendMode === undefined || fill.blendMode === 'normal') &&
-        !!toStyleValue(fill.value),
+        ((fill.type === 'solid' && !!toStyleValue(fill.value)) ||
+          (fill.type === 'gradient' &&
+            isCssGradient(fill.value) &&
+            (fill.opacity === undefined || Number(fill.opacity) === 1))),
     )
   )
-    style.backgroundLayers = activeFills.map((fill) => ({
-      color: toStyleValue(fill.value as string)!,
-      opacity: toStyleValue(fill.opacity as number | string),
-    }));
+    style.backgroundLayers = activeFills.map((fill) =>
+      fill.type === 'gradient'
+        ? { type: 'gradient', value: fill.value }
+        : {
+            type: 'solid',
+            color: toStyleValue(fill.value as string)!,
+            opacity: toStyleValue(fill.opacity as number | string),
+          },
+    );
   if (
     fillColor &&
     activeFills.length === 1 &&
