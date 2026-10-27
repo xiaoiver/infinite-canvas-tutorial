@@ -244,7 +244,8 @@ function supportsCssBackgroundLayers(
   activeFills: SerializedFillLayerItem[],
 ): boolean {
   return (
-    activeFills.length > 1 &&
+    (activeFills.length > 1 ||
+      (activeFills.length === 1 && activeFills[0].type === 'pattern')) &&
     activeFills.every((fill, index) => {
       if (
         index > 0 &&
@@ -262,7 +263,15 @@ function supportsCssBackgroundLayers(
       if (fill.type === 'image')
         return (
           !!fill.value.trim() &&
-          ['fill', 'contain', 'cover'].includes(fill.objectFit ?? 'fill') &&
+          ['fill', 'contain', 'cover', 'none'].includes(
+            fill.objectFit ?? 'fill',
+          ) &&
+          (fill.opacity === undefined || Number(fill.opacity) === 1)
+        );
+      if (fill.type === 'pattern')
+        return (
+          !!fill.value.trim() &&
+          !fill.transform &&
           (fill.opacity === undefined || Number(fill.opacity) === 1)
         );
       return false;
@@ -863,10 +872,19 @@ function buildStyle(
             type: 'image',
             value: fill.value,
             objectFit:
-              fill.objectFit === 'contain' || fill.objectFit === 'cover'
+              fill.objectFit === 'contain' ||
+              fill.objectFit === 'cover' ||
+              fill.objectFit === 'none'
                 ? fill.objectFit
                 : 'fill',
             objectPosition: fill.objectPosition,
+            blendMode,
+          }
+        : fill.type === 'pattern'
+        ? {
+            type: 'pattern',
+            value: fill.value,
+            repetition: fill.repetition,
             blendMode,
           }
         : {

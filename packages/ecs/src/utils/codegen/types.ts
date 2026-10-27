@@ -110,8 +110,13 @@ export interface StyleIR {
       | {
           type: 'image';
           value: string;
-          objectFit?: 'fill' | 'contain' | 'cover';
+          objectFit?: 'fill' | 'contain' | 'cover' | 'none';
           objectPosition?: string;
+        }
+      | {
+          type: 'pattern';
+          value: string;
+          repetition?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat';
         }
     ) & { blendMode?: string }
   >;
