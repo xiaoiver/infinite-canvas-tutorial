@@ -432,17 +432,20 @@ Download the `.ic` file to continue editing the design in the [online app](https
 
 ### Command line {#cli}
 
-The repository also includes an offline CLI for `.ic` files. After building the ECS and CLI workspace packages, use it to validate a document, inspect its structure, or generate code without starting a canvas:
+The repository also includes an offline CLI for `.ic` files (Node.js 20+). Export the design from the editor with **Export as… > .ic** and save it as `design.ic`. From the repository root, build its workspace dependencies in order, then run:
 
 ```sh
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @infinite-canvas-tutorial/device-api build:cjs
 corepack pnpm --filter @infinite-canvas-tutorial/ecs build:cjs
 corepack pnpm --filter @infinite-canvas-tutorial/cli build
 node packages/cli/dist/cli.js validate design.ic
 node packages/cli/dist/cli.js inspect design.ic --json
-node packages/cli/dist/cli.js codegen design.ic --framework react-tailwind --variables-mode css-var --output Design.tsx
+node packages/cli/dist/cli.js codegen design.ic --framework react-tailwind --variables-mode css-var --component-name Design --output Design.tsx
+node packages/cli/dist/cli.js codegen design.ic --framework html-css --output design.html
 ```
 
-The CLI outputs the same React component or HTML/CSS fragment as the editor's code generator. It uses the document's variables and theme, does not access an online project, and rejects temporary `blob:` images that cannot survive outside the browser.
+`inspect --json` reports node and root counts, reusable nodes, variables, and asset URL counts. Omitting `--output` prints generated code to stdout; invalid documents or options return a nonzero exit status with an error message. The CLI outputs the same React component or HTML/CSS fragment as the editor's code generator. It uses the document's variables and theme, does not access an online project, and rejects temporary `blob:` images that cannot survive outside the browser. Use data URLs or durable image URLs in exported documents.
 
 ### Reverse: code → design {#design-to-code-reverse}
 
