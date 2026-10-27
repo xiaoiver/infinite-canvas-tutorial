@@ -1,5 +1,6 @@
 import { isString } from '@antv/util';
 import { DOMAdapter } from '../environment';
+import { parsePatternTransform } from '../utils/pattern-transform';
 import {
   computeConicGradient,
   computeRadialGradient,
@@ -61,7 +62,7 @@ export class TexturePool {
     height: number;
   }) {
     const { pattern, width, height } = params;
-    const { image, repetition } = pattern;
+    const { image, repetition, transform } = pattern;
 
     this.#canvas.width = width;
     this.#canvas.height = height;
@@ -78,23 +79,15 @@ export class TexturePool {
       canvasPattern = cached;
     } else {
       canvasPattern = image && this.#ctx.createPattern(image, repetition);
+      if (canvasPattern && transform) {
+        const parsed = parsePatternTransform(transform);
+        if (parsed) {
+          const matrix = this.#ctx.getTransform();
+          Object.assign(matrix, parsed);
+          canvasPattern.setTransform(matrix);
+        }
+      }
       if (canvasPattern) cachePaint(this.#patternCache, key, canvasPattern);
-
-      // @see https://developer.mozilla.org/en-US/docs/Web/API/CanvasPattern/setTransform
-      // if (transform) {
-      //   const mat = parsedTransformToMat4(
-      //     parseTransform(transform),
-      //     new DisplayObject({}),
-      //   );
-      //   canvasPattern.setTransform({
-      //     a: mat[0],
-      //     b: mat[1],
-      //     c: mat[4],
-      //     d: mat[5],
-      //     e: mat[12],
-      //     f: mat[13],
-      //   });
-      // }
     }
 
     // createPattern can return null while its image is not decoded yet. Keep

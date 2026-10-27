@@ -30,6 +30,7 @@ import {
 } from './gradient-fill';
 import { pathGeometryBounds } from '../path-rendering';
 import { parsePath } from '../curve/shape-path';
+import { parsePatternTransform } from '../pattern-transform';
 import {
   computeLinearGradient,
   computeRadialGradient,
@@ -51,6 +52,7 @@ import type {
   CodeVectorImage,
   CodeVectorFillLayer,
   CodeVectorStrokeLayer,
+  CodePaintOverlay,
   StyleIR,
   StyleValue,
 } from './types';
@@ -280,6 +282,47 @@ function supportsCssBackgroundLayers(
   );
 }
 
+function supportsPaintOverlays(
+  node: AnyNode,
+  activeFills: SerializedFillLayerItem[],
+): boolean {
+  return (
+    activeFills.length > 0 &&
+    !(activeFills.length === 1 && activeFills[0].type === 'image') &&
+    activeFills.some(
+      (fill) =>
+        (fill.type !== 'solid' &&
+          fill.opacity !== undefined &&
+          Number(fill.opacity) !== 1) ||
+        (fill.type === 'image' && fill.objectFit === 'scale-down') ||
+        (fill.type === 'pattern' && !!fill.transform),
+    ) &&
+    activeFills.every((fill, index) => {
+      if (
+        index > 0 &&
+        fill.blendMode !== undefined &&
+        fill.blendMode !== 'normal' &&
+        toCSSMixBlendMode(fill.blendMode) === null
+      )
+        return false;
+      if (fill.type === 'solid') return !!toStyleValue(fill.value);
+      if (fill.type === 'gradient') return !!cssBackgroundGradient(fill.value);
+      if (fill.type === 'image') return !!fill.value.trim();
+      if (fill.type === 'pattern')
+        return (
+          !!fill.value.trim() &&
+          (!fill.transform ||
+            (typeof node.width === 'number' &&
+              node.width > 0 &&
+              typeof node.height === 'number' &&
+              node.height > 0 &&
+              !!parsePatternTransform(fill.transform)))
+        );
+      return false;
+    })
+  );
+}
+
 function decideRole(node: AnyNode): CodeNodeRole {
   switch (node.type) {
     case 'text':
@@ -293,7 +336,10 @@ function decideRole(node: AnyNode): CodeNodeRole {
         (fill) => fill.enabled !== false,
       );
       if (fills.some((fill) => fill.type === 'image')) {
-        return supportsCssBackgroundLayers(fills) ? 'container' : 'image';
+        return supportsCssBackgroundLayers(fills) ||
+          supportsPaintOverlays(node, fills)
+          ? 'container'
+          : 'image';
       }
       return 'container';
     }
@@ -354,6 +400,7 @@ function vectorMarker(
   node: AnyNode,
   side: 'start' | 'end',
   strokeWidth: number,
+  layerIndex?: number,
 ): CodeVectorMarker | undefined {
   const type = node[side === 'start' ? 'markerStart' : 'markerEnd'];
   if (!['line', 'triangle', 'diamond'].includes(type as string))
@@ -370,14 +417,20 @@ function vectorMarker(
   const tipY = radius * 0.5;
   const d =
     type === 'diamond'
-      ? `M 0 0 L ${-radius * 0.5} ${-radius * 0.4} L ${-radius} 0 L ${-radius * 0.5} ${radius * 0.4} Z`
-      : `M ${tipX} ${-tipY} L 0 0 L ${tipX} ${tipY}${type === 'triangle' ? ' Z' : ''}`;
+      ? `M 0 0 L ${-radius * 0.5} ${-radius * 0.4} L ${-radius} 0 L ${
+          -radius * 0.5
+        } ${radius * 0.4} Z`
+      : `M ${tipX} ${-tipY} L 0 0 L ${tipX} ${tipY}${
+          type === 'triangle' ? ' Z' : ''
+        }`;
   // Use a reversible, CSS-safe encoding so unrelated nodes never share a marker ID.
   const encodedId = Array.from(node.id as string)
     .map((character) => character.codePointAt(0)!.toString(16))
     .join('-');
   return {
-    id: `ic-marker-${encodedId}-${side}`,
+    id: `ic-marker-${encodedId}-${side}${
+      layerIndex === undefined ? '' : `-${layerIndex}`
+    }`,
     d,
     fill: type !== 'line',
     size,
@@ -412,8 +465,8 @@ function vectorGradient(
     (layer.blendMode === undefined || layer.blendMode === 'normal')
       ? layer.value
       : active.length === 0 && isCssGradient(node[kind])
-        ? (node[kind] as string)
-        : undefined;
+      ? (node[kind] as string)
+      : undefined;
   if (!value) return undefined;
   let gradients: ReturnType<typeof parseGradient>;
   try {
@@ -434,8 +487,8 @@ function vectorGradient(
       step.offset.type === '%'
         ? step.offset.value / 100
         : step.offset.value <= 1
-          ? step.offset.value
-          : step.offset.value / 100,
+        ? step.offset.value
+        : step.offset.value / 100,
     color: step.color,
   }));
   if (
@@ -464,9 +517,11 @@ function vectorGradient(
           );
           return { type: 'radial' as const, cx: x, cy: y, r };
         })();
-  if (!Object.values(geometry).every((coordinate) =>
-    typeof coordinate === 'number' ? Number.isFinite(coordinate) : true,
-  ))
+  if (
+    !Object.values(geometry).every((coordinate) =>
+      typeof coordinate === 'number' ? Number.isFinite(coordinate) : true,
+    )
+  )
     return undefined;
   return { id: `ic-gradient-${encodedId}-${idSuffix}`, geometry, stops };
 }
@@ -482,8 +537,7 @@ function svgImageAlignment(
     horizontal: boolean,
   ): 'Min' | 'Mid' | 'Max' | undefined => {
     if (token === 'center' || token === '50%') return 'Mid';
-    if (token === '0%' || token === (horizontal ? 'left' : 'top'))
-      return 'Min';
+    if (token === '0%' || token === (horizontal ? 'left' : 'top')) return 'Min';
     if (token === '100%' || token === (horizontal ? 'right' : 'bottom'))
       return 'Max';
     return undefined;
@@ -500,9 +554,12 @@ function svgImageAlignment(
   // CSS also accepts keyword pairs with the vertical keyword first.
   const reversedY = axis(parts[0], false);
   const reversedX = axis(parts[1], true);
-  if (reversedX && reversedY &&
-      ['top', 'bottom'].includes(parts[0]) &&
-      ['left', 'right', 'center'].includes(parts[1]))
+  if (
+    reversedX &&
+    reversedY &&
+    ['top', 'bottom'].includes(parts[0]) &&
+    ['left', 'right', 'center'].includes(parts[1])
+  )
     return `x${reversedX}Y${reversedY}`;
   return undefined;
 }
@@ -534,8 +591,8 @@ function vectorImage(
       fit === 'cover'
         ? `${alignment} slice`
         : fit === 'contain'
-          ? `${alignment} meet`
-          : 'none',
+        ? `${alignment} meet`
+        : 'none',
   };
 }
 
@@ -565,7 +622,9 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const fillLayer = fills.find((fill) => fill.type === 'solid');
   const strokeLayer = strokes.find((stroke) => stroke.type === 'solid');
   const gradientFillLayer = fills.find((fill) => fill.type === 'gradient');
-  const gradientStrokeLayer = strokes.find((stroke) => stroke.type === 'gradient');
+  const gradientStrokeLayer = strokes.find(
+    (stroke) => stroke.type === 'gradient',
+  );
   const imageFillLayer = fills.find((fill) => fill.type === 'image');
   const imageStrokeLayer = strokes.find((stroke) => stroke.type === 'image');
   const singleFill =
@@ -584,10 +643,8 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     typeof node.strokeWidth === 'number' ? node.strokeWidth : 1;
   const width = dimension(node.width, bounds.maxX - bounds.minX);
   const height = dimension(node.height, bounds.maxY - bounds.minY);
-  const viewBoxX =
-    bounds.minX - (bounds.maxX === bounds.minX ? 0.5 : 0);
-  const viewBoxY =
-    bounds.minY - (bounds.maxY === bounds.minY ? 0.5 : 0);
+  const viewBoxX = bounds.minX - (bounds.maxX === bounds.minX ? 0.5 : 0);
+  const viewBoxY = bounds.minY - (bounds.maxY === bounds.minY ? 0.5 : 0);
   const fillLayers =
     node.type === 'path' &&
     fills.length > 1 &&
@@ -617,7 +674,7 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
             fillOpacity: toStyleValue(layer.opacity as string | number),
             blendMode:
               index > 0
-                ? (toCSSMixBlendMode(layer.blendMode) ?? undefined)
+                ? toCSSMixBlendMode(layer.blendMode) ?? undefined
                 : undefined,
           };
         })
@@ -630,34 +687,43 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const strokeLayers =
     strokeWidth > 0 &&
     strokes.length > 1 &&
-    !vectorMarker(node, 'start', strokeWidth) &&
-    !vectorMarker(node, 'end', strokeWidth) &&
     strokes.every(
-      (layer) =>
-        layer.blendMode === undefined || layer.blendMode === 'normal',
+      (layer, index) =>
+        index === 0 ||
+        layer.blendMode === undefined ||
+        layer.blendMode === 'normal' ||
+        toCSSMixBlendMode(layer.blendMode) !== null,
     )
-      ? strokes.map((layer, index): CodeVectorStrokeLayer => ({
-          stroke:
-            layer.type === 'solid' ? toStyleValue(layer.value) : undefined,
-          strokeGradient: vectorGradient(
-            node,
-            'stroke',
-            [layer],
-            [viewBoxX, viewBoxY],
-            width,
-            height,
-            `stroke-${index}`,
-          ),
-          strokeImage: vectorImage(
-            node,
-            'stroke',
-            [layer],
-            `stroke-${index}`,
-          ),
-          strokeOpacity: toStyleValue(
-            (layer.opacity ?? node.strokeOpacity) as string | number,
-          ),
-        }))
+      ? strokes.map(
+          (layer, index): CodeVectorStrokeLayer => ({
+            stroke:
+              layer.type === 'solid' ? toStyleValue(layer.value) : undefined,
+            strokeGradient: vectorGradient(
+              node,
+              'stroke',
+              [{ ...layer, blendMode: 'normal' }],
+              [viewBoxX, viewBoxY],
+              width,
+              height,
+              `stroke-${index}`,
+            ),
+            strokeImage: vectorImage(
+              node,
+              'stroke',
+              [{ ...layer, blendMode: 'normal' }],
+              `stroke-${index}`,
+            ),
+            strokeOpacity: toStyleValue(
+              (layer.opacity ?? node.strokeOpacity) as string | number,
+            ),
+            blendMode:
+              index > 0
+                ? toCSSMixBlendMode(layer.blendMode) ?? undefined
+                : undefined,
+            markerStart: vectorMarker(node, 'start', strokeWidth, index),
+            markerEnd: vectorMarker(node, 'end', strokeWidth, index),
+          }),
+        )
       : undefined;
   const supportedStrokeLayers = strokeLayers?.every(
     (layer) => layer.stroke || layer.strokeGradient || layer.strokeImage,
@@ -717,14 +783,15 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     fillGradient,
     fillImage,
     fillLayers: supportedFillLayers,
-    fillOpacity: fill || fillGradient || fillImage
-      ? toStyleValue(
-          (fillLayer?.opacity ??
-            gradientFillLayer?.opacity ??
-            imageFillLayer?.opacity ??
-            node.fillOpacity) as string | number,
-        )
-      : undefined,
+    fillOpacity:
+      fill || fillGradient || fillImage
+        ? toStyleValue(
+            (fillLayer?.opacity ??
+              gradientFillLayer?.opacity ??
+              imageFillLayer?.opacity ??
+              node.fillOpacity) as string | number,
+          )
+        : undefined,
     fillRule:
       node.type === 'path' && node.fillRule === 'evenodd'
         ? 'evenodd'
@@ -733,14 +800,15 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     strokeGradient,
     strokeImage,
     strokeLayers: supportedStrokeLayers,
-    strokeOpacity: !supportedStrokeLayers && (stroke || strokeGradient || strokeImage)
-      ? toStyleValue(
-          (strokeLayer?.opacity ??
-            gradientStrokeLayer?.opacity ??
-            imageStrokeLayer?.opacity ??
-            node.strokeOpacity) as string | number,
-        )
-      : undefined,
+    strokeOpacity:
+      !supportedStrokeLayers && (stroke || strokeGradient || strokeImage)
+        ? toStyleValue(
+            (strokeLayer?.opacity ??
+              gradientStrokeLayer?.opacity ??
+              imageStrokeLayer?.opacity ??
+              node.strokeOpacity) as string | number,
+          )
+        : undefined,
     strokeWidth:
       (supportedStrokeLayers || stroke || strokeGradient || strokeImage) &&
       strokeWidth > 0
@@ -799,11 +867,15 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
           }
         : undefined,
     markerStart:
-      (stroke || strokeGradient || strokeImage) && strokeWidth > 0
+      !supportedStrokeLayers &&
+      (stroke || strokeGradient || strokeImage) &&
+      strokeWidth > 0
         ? vectorMarker(node, 'start', strokeWidth)
         : undefined,
     markerEnd:
-      (stroke || strokeGradient || strokeImage) && strokeWidth > 0
+      !supportedStrokeLayers &&
+      (stroke || strokeGradient || strokeImage) &&
+      strokeWidth > 0
         ? vectorMarker(node, 'end', strokeWidth)
         : undefined,
   };
@@ -937,6 +1009,46 @@ function buildStyle(
           };
     });
   if (
+    (node.type === 'rect' || node.type === 'ellipse') &&
+    supportsPaintOverlays(node, activeFills)
+  ) {
+    style.paintOverlays = activeFills.map((fill, index): CodePaintOverlay => {
+      const shared = {
+        opacity: toStyleValue(fill.opacity as number | string),
+        blendMode:
+          index > 0
+            ? toCSSMixBlendMode(fill.blendMode) ?? undefined
+            : undefined,
+      };
+      if (fill.type === 'solid')
+        return { type: 'solid', color: toStyleValue(fill.value)!, ...shared };
+      if (fill.type === 'gradient')
+        return {
+          type: 'gradient',
+          value: cssBackgroundGradient(fill.value)!,
+          ...shared,
+        };
+      if (fill.type === 'image')
+        return {
+          type: 'image',
+          value: fill.value,
+          objectFit: fill.objectFit,
+          objectPosition: fill.objectPosition,
+          ...shared,
+        };
+      return {
+        type: 'pattern',
+        value: fill.value,
+        repetition: fill.repetition,
+        transform: fill.transform,
+        ...shared,
+      };
+    });
+    style.backgroundLayers = undefined;
+    style.position ??= 'relative';
+    style.isolation = 'isolate';
+  }
+  if (
     fillColor &&
     activeFills.length === 1 &&
     activeFills[0].type === 'solid' &&
@@ -944,7 +1056,7 @@ function buildStyle(
     Number(activeFills[0].opacity) !== 1
   )
     style.solidFillOpacity = toStyleValue(activeFills[0].opacity);
-  if (!style.backgroundLayers) {
+  if (!style.backgroundLayers && !style.paintOverlays) {
     if (role === 'text' || role === 'icon') {
       if (fillColor) style.color = fillColor;
     } else if (role !== 'image' && fillColor) {

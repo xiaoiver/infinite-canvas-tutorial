@@ -9,6 +9,7 @@
  */
 import { formatNumber } from '../serialize/points';
 import { renderVectorSvg } from './render-vector-svg';
+import { renderPaintOverlays } from './emit-paint-overlays';
 import { pascalCase } from './string-utils';
 import {
   combinedImageOpacityCss,
@@ -515,8 +516,8 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       tag === 'button'
         ? ' type="button"'
         : tag === 'a' && node.element?.tag === 'a'
-          ? ` href=${JSON.stringify(node.element.href)}`
-          : '';
+        ? ` href=${JSON.stringify(node.element.href)}`
+        : '';
     const children = node.children
       .map((child) => renderNode(child, state, depth + 1))
       .join('\n');
@@ -546,8 +547,8 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
         tag === 'button'
           ? ' type="button"'
           : tag === 'a' && node.element?.tag === 'a'
-            ? ` href=${JSON.stringify(node.element.href)}`
-            : '';
+          ? ` href=${JSON.stringify(node.element.href)}`
+          : '';
       const imageStyle = [
         'position: "absolute"',
         'inset: 0',
@@ -564,14 +565,18 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
           : []),
         ...(node.style.imageFillOpacity
           ? [
-              `opacity: ${JSON.stringify(styleValueToCss(node.style.imageFillOpacity, state.mode))}`,
+              `opacity: ${JSON.stringify(
+                styleValueToCss(node.style.imageFillOpacity, state.mode),
+              )}`,
             ]
           : []),
       ].join(', ');
       const children = node.children
         .map((child) => renderNode(child, state, depth + 1))
         .join('\n');
-      return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${state.indent.repeat(depth + 1)}<img src=${src} alt="" style={{ ${imageStyle} }} />\n${children}\n${pad}</${tag}>`;
+      return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${state.indent.repeat(
+        depth + 1,
+      )}<img src=${src} alt="" style={{ ${imageStyle} }} />\n${children}\n${pad}</${tag}>`;
     }
     return `${pad}<img src=${src} alt=${JSON.stringify(
       node.name ?? '',
@@ -594,14 +599,25 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
   }
 
   const inner = textExpr(node, state);
+  const paints = renderPaintOverlays(
+    node.style,
+    state.mode,
+    'jsx',
+    state.indent,
+    depth,
+  );
   if (node.children.length === 0) {
+    if (paints)
+      return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${paints}\n${pad}</${tag}>`;
     return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>${inner}</${tag}>`;
   }
   const childrenStr = node.children
     .map((c) => renderNode(c, state, depth + 1))
     .join('\n');
   const leading = inner ? `${state.indent.repeat(depth + 1)}${inner}\n` : '';
-  return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${leading}${childrenStr}\n${pad}</${tag}>`;
+  return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${
+    paints ? `${paints}\n` : ''
+  }${leading}${childrenStr}\n${pad}</${tag}>`;
 }
 
 function renderIcon(

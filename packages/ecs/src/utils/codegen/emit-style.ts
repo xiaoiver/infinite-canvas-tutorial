@@ -4,12 +4,7 @@
  */
 import { designTokenKeyToCssCustomProperty } from '../design-variables';
 import { formatNumber } from '../serialize/points';
-import type {
-  CodeNode,
-  CodeVariablesMode,
-  StyleIR,
-  StyleValue,
-} from './types';
+import type { CodeNode, CodeVariablesMode, StyleIR, StyleValue } from './types';
 
 /** 把一个 {@link StyleValue} 渲染为 CSS 值字符串。`px` 决定数字字面量是否补 `px`。 */
 export function styleValueToCss(
@@ -48,6 +43,14 @@ export function solidFillColorToCss(
 }
 
 /** CSS background images are listed top-first; canvas fill layers are bottom-first. */
+export function paintBackgroundUrlToCss(value: string): string {
+  const escaped = value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/[\n\r\f]/g, '\\A ');
+  return `url("${escaped}")`;
+}
+
 export function paintBackgroundLayersToCss(
   style: StyleIR,
   mode: CodeVariablesMode,
@@ -57,13 +60,8 @@ export function paintBackgroundLayersToCss(
     .reverse()
     .map((layer) => {
       if (layer.type === 'gradient') return layer.value;
-      if (layer.type === 'image' || layer.type === 'pattern') {
-        const escaped = layer.value
-          .replace(/\\/g, '\\\\')
-          .replace(/"/g, '\\"')
-          .replace(/[\n\r\f]/g, '\\A ');
-        return `url("${escaped}")`;
-      }
+      if (layer.type === 'image' || layer.type === 'pattern')
+        return paintBackgroundUrlToCss(layer.value);
       const color = solidFillColorToCss(layer.color, layer.opacity, mode);
       return `linear-gradient(${color}, ${color})`;
     })
@@ -107,7 +105,9 @@ export function paintBackgroundLayerLayoutToCss(
   };
 }
 
-export function paintBackgroundBlendModesToCss(style: StyleIR): string | undefined {
+export function paintBackgroundBlendModesToCss(
+  style: StyleIR,
+): string | undefined {
   if (!style.backgroundLayers?.some((layer) => layer.blendMode))
     return undefined;
   return [...style.backgroundLayers]
@@ -120,7 +120,9 @@ export function vectorDropShadowToCss(
   shadow: NonNullable<NonNullable<CodeNode['vectorPath']>['dropShadow']>,
   mode: CodeVariablesMode,
 ): string {
-  return `drop-shadow(${formatNumber(shadow.offsetX)}px ${formatNumber(shadow.offsetY)}px ${formatNumber(shadow.blur)}px ${styleValueToCss(shadow.color, mode)})`;
+  return `drop-shadow(${formatNumber(shadow.offsetX)}px ${formatNumber(
+    shadow.offsetY,
+  )}px ${formatNumber(shadow.blur)}px ${styleValueToCss(shadow.color, mode)})`;
 }
 
 export function boxToCss(v: [number, number, number, number]): string {
@@ -240,8 +242,7 @@ export function styleIRToCssDeclarations(
     push('background-repeat', backgroundLayout.repeat);
   }
   const backgroundBlendModes = paintBackgroundBlendModesToCss(style);
-  if (backgroundBlendModes)
-    push('background-blend-mode', backgroundBlendModes);
+  if (backgroundBlendModes) push('background-blend-mode', backgroundBlendModes);
   if (style.borderRadius)
     push('border-radius', styleValueToCss(style.borderRadius, mode, true));
   if (style.borderWidth) {

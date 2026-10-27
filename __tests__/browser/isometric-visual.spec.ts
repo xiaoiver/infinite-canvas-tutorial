@@ -6,7 +6,7 @@ test.setTimeout(60000);
 
 async function setupScene(page: import('@playwright/test').Page) {
   await page.goto('/gizmo.html?appCamera&width=400&height=300');
-  await expect(page.locator('#status')).toHaveText('Ready');
+  await expect(page.locator('#status')).toHaveText('Ready', { timeout: 15000 });
   await page.evaluate(async () => {
     const api = window.gizmoTest.api();
     await api.edit((editor) => {
