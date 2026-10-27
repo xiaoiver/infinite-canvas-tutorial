@@ -193,21 +193,29 @@ void main() {
       highp float alpha = smoothstep(buff - gamma_scaled, buff + gamma_scaled, dist);
       #ifdef USE_SDF
         // One screen pixel can span multiple atlas texels at small zoom levels.
-        // Sample four subpixels, keeping every lookup inside this glyph's tile.
+        // Sample a centered 3x3 footprint. A 2x2 grid can miss a thin stroke
+        // between its rows (notably the waist of '8') and leave a bright seam.
         vec2 uvDx = dFdx(v_Uv);
         vec2 uvDy = dFdy(v_Uv);
-        if (max(length(uvDx * u_AtlasSize), length(uvDy * u_AtlasSize)) > 8.0) {
+        float footprint = max(length(uvDx * u_AtlasSize), length(uvDy * u_AtlasSize));
+        if (footprint > 2.5) {
           vec2 lo = v_GlyphBounds.xy + 0.5 / u_AtlasSize;
           vec2 hi = v_GlyphBounds.zw - 0.5 / u_AtlasSize;
           float width = max(gamma_scaled * 0.5, 1.0 / 256.0);
-          uvDx *= 0.25;
-          uvDy *= 0.25;
-          alpha = 0.25 * (
+          uvDx /= 3.0;
+          uvDy /= 3.0;
+          float filteredAlpha = (1.0 / 9.0) * (
             smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv - uvDx - uvDy, lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv        - uvDy, lo, hi)).a) +
             smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv + uvDx - uvDy, lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv - uvDx,        lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv,               lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv + uvDx,        lo, hi)).a) +
             smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv - uvDx + uvDy, lo, hi)).a) +
+            smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv        + uvDy, lo, hi)).a) +
             smoothstep(buff - width, buff + width, texture(SAMPLER_2D(u_Texture), clamp(v_Uv + uvDx + uvDy, lo, hi)).a)
           );
+          alpha = mix(alpha, filteredAlpha, smoothstep(2.5, 3.5, footprint));
         }
       #endif
       opacity *= alpha;
