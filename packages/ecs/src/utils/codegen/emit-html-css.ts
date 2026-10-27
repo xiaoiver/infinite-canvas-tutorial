@@ -59,7 +59,21 @@ function styleAttr(node: CodeNode, state: HtmlState): string {
 
 function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   const pad = state.indent.repeat(depth);
-  const style = styleAttr(node, state);
+  const imageWithChildren = node.role === 'image' && node.children.length > 0;
+  const style = styleAttr(
+    imageWithChildren
+      ? {
+          ...node,
+          style: {
+            ...node.style,
+            objectFit: undefined,
+            objectPosition: undefined,
+            imageFillOpacity: undefined,
+          },
+        }
+      : node,
+    state,
+  );
   if (node.vectorPath) {
     const path = node.vectorPath;
     const hasChildren = node.children.length > 0;
@@ -107,6 +121,32 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
 
   if (node.role === 'image') {
     const src = node.image ? styleValueToCss(node.image, state.mode) : '';
+    if (imageWithChildren) {
+      const imageCss = [
+        'position: absolute',
+        'inset: 0',
+        'width: 100%',
+        'height: 100%',
+        'z-index: -1',
+        'border-radius: inherit',
+        'pointer-events: none',
+        ...(node.style.objectFit
+          ? [`object-fit: ${node.style.objectFit}`]
+          : []),
+        ...(node.style.objectPosition
+          ? [`object-position: ${node.style.objectPosition}`]
+          : []),
+        ...(node.style.imageFillOpacity
+          ? [
+              `opacity: ${styleValueToCss(node.style.imageFillOpacity, state.mode)}`,
+            ]
+          : []),
+      ].join('; ');
+      const children = node.children
+        .map((child) => renderNode(child, state, depth + 1))
+        .join('\n');
+      return `${pad}<${tag}${semanticAttr}${style}>\n${state.indent.repeat(depth + 1)}<img src="${escapeAttr(src)}" alt="" style="${escapeAttr(imageCss)}" />\n${children}\n${pad}</${tag}>`;
+    }
     return `${pad}<img src="${escapeAttr(src)}" alt="${escapeAttr(
       node.name ?? '',
     )}"${style} />`;

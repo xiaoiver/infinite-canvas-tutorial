@@ -150,6 +150,7 @@ export function styleIRToCssDeclarations(
     push('transform-origin', '0 0');
   }
   if (style.overflow) push('overflow', style.overflow);
+  if (style.isolation) push('isolation', style.isolation);
   if (style.objectFit) push('object-fit', style.objectFit);
   if (style.objectPosition) push('object-position', style.objectPosition);
   if (style.mixBlendMode) push('mix-blend-mode', style.mixBlendMode);

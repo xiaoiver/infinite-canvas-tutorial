@@ -196,6 +196,7 @@ function genTailwind(
     inline.push(['transformOrigin', JSON.stringify('0 0')]);
   }
   if (style.overflow) classes.push(`overflow-${style.overflow}`);
+  if (style.isolation) classes.push('isolate');
   if (style.objectFit)
     inline.push(['objectFit', JSON.stringify(style.objectFit)]);
   if (style.objectPosition)
@@ -461,7 +462,21 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     return `${pad}<div${className}${styleExpr}>${component}</div>`;
   }
 
-  const { className, styleExpr } = renderAttributes(node, state);
+  const imageWithChildren = node.role === 'image' && node.children.length > 0;
+  const { className, styleExpr } = renderAttributes(
+    imageWithChildren
+      ? {
+          ...node,
+          style: {
+            ...node.style,
+            objectFit: undefined,
+            objectPosition: undefined,
+            imageFillOpacity: undefined,
+          },
+        }
+      : node,
+    state,
+  );
 
   if (node.vectorPath) {
     const path = node.vectorPath;
@@ -507,6 +522,39 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       : JSON.stringify(
           node.image ? styleValueToCss(node.image, state.mode) : '',
         );
+    if (imageWithChildren) {
+      const tag = node.element?.tag ?? 'div';
+      const semanticAttr =
+        tag === 'button'
+          ? ' type="button"'
+          : tag === 'a' && node.element?.tag === 'a'
+            ? ` href=${JSON.stringify(node.element.href)}`
+            : '';
+      const imageStyle = [
+        'position: "absolute"',
+        'inset: 0',
+        'width: "100%"',
+        'height: "100%"',
+        'zIndex: -1',
+        'borderRadius: "inherit"',
+        'pointerEvents: "none"',
+        ...(node.style.objectFit
+          ? [`objectFit: ${JSON.stringify(node.style.objectFit)}`]
+          : []),
+        ...(node.style.objectPosition
+          ? [`objectPosition: ${JSON.stringify(node.style.objectPosition)}`]
+          : []),
+        ...(node.style.imageFillOpacity
+          ? [
+              `opacity: ${JSON.stringify(styleValueToCss(node.style.imageFillOpacity, state.mode))}`,
+            ]
+          : []),
+      ].join(', ');
+      const children = node.children
+        .map((child) => renderNode(child, state, depth + 1))
+        .join('\n');
+      return `${pad}<${tag}${semanticAttr}${className}${styleExpr}>\n${state.indent.repeat(depth + 1)}<img src=${src} alt="" style={{ ${imageStyle} }} />\n${children}\n${pad}</${tag}>`;
+    }
     return `${pad}<img src=${src} alt=${JSON.stringify(
       node.name ?? '',
     )}${className}${styleExpr} />`;
