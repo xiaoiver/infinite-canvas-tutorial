@@ -350,7 +350,7 @@ const code = serializedNodesToCode(nodes, {
 | `rotation` / `scaleX` / `scaleY`                     | CSS `transform` around the local top-left corner      |
 | node-level `blendMode`                               | CSS `mix-blend-mode`                                  |
 | `visibility: hidden` / `visible`                     | CSS visibility without removing layout space          |
-| `text` + `content`                                   | text node; `$token` content → variable                |
+| `text` + `content`                                   | text node; known `$token` content → text value        |
 | text decoration line, style, color, and thickness    | CSS `text-decoration`                                 |
 | `fontVariant` / `fontKerning`                        | CSS `font-variant` / `font-kerning`                   |
 | `wordWrap` / `wordWrapWidth`                         | `white-space`, `overflow-wrap`, and `max-width`       |
@@ -367,7 +367,7 @@ const code = serializedNodesToCode(nodes, {
 The three variable modes match the SVG export semantics:
 
 -   `resolved` (default): resolve `$token` to literals (e.g. `bg-[#FFFFFF]`).
--   `css-var`: emit `var(--token)` (e.g. `bg-[var(--color-bg)]`); the HTML/CSS emitter also injects a `:root { … }` block.
+-   `css-var`: emit `var(--token)` for styles (e.g. `bg-[var(--color-bg)]`); the HTML/CSS emitter also injects a `:root { … }` block. Text content tokens resolve to their current values because CSS custom properties cannot replace text nodes.
 -   `preserve-token`: keep `$token` (routed to an inline `style` for post-processing).
 
 ### Components and instances {#design-to-code-components}

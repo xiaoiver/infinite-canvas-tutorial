@@ -15,6 +15,7 @@ import {
   designVariableRefKeyFromWire,
   isDesignVariableReference,
   resolveSerializedNodesDesignVariables,
+  resolveSerializedNodesTextVariables,
   type DesignVariablesMap,
 } from '../design-variables';
 import { expandRefSerializedNodes } from '../deserialize/expand-ref-nodes';
@@ -1517,6 +1518,8 @@ export function buildCodeIR(
       variables,
       themeMode,
     );
+  } else if (variablesMode === 'css-var') {
+    working = resolveSerializedNodesTextVariables(nodes, variables, themeMode);
   }
 
   if (

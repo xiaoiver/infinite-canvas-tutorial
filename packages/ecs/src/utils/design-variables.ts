@@ -534,7 +534,9 @@ export function prepareSerializedNodesForSvgExport(
     return { nodes };
   }
   return {
-    nodes: nodes.map((n) => mapSerializedNodeToCssVarPlaceholders(n)),
+    nodes: resolveSerializedNodesTextVariables(nodes, variables, themeMode).map(
+      (n) => mapSerializedNodeToCssVarPlaceholders(n),
+    ),
     cssRootStyle: buildDesignVariablesCssRootBlock(variables, themeMode),
   };
 }
@@ -606,6 +608,39 @@ export function resolveFillLayerItemsForEcs(
   });
 }
 
+/** CSS custom properties cannot substitute text nodes, so resolve text at export time. */
+export function resolveSerializedNodesTextVariables(
+  nodes: SerializedNode[],
+  variables: DesignVariablesMap | undefined,
+  themeMode?: ThemeMode,
+): SerializedNode[] {
+  if (!variables || Object.keys(variables).length === 0) return nodes;
+  const resolveContent = (fields: Record<string, unknown>) => {
+    const content = fields.content;
+    if (typeof content !== 'string') return fields;
+    const value = resolveDesignVariableValue(content, variables, themeMode);
+    return value === content ? fields : { ...fields, content: String(value) };
+  };
+  return nodes.map((node) => {
+    const fields = node as unknown as Record<string, unknown>;
+    const resolved = resolveContent(fields);
+    if (node.type !== 'ref' || !fields.descendants) {
+      return resolved as unknown as SerializedNode;
+    }
+    const patches = fields.descendants as Record<
+      string,
+      Record<string, unknown>
+    >;
+    const descendants = Object.fromEntries(
+      Object.entries(patches).map(([id, patch]) => [id, resolveContent(patch)]),
+    );
+    if (Object.keys(patches).every((id) => descendants[id] === patches[id])) {
+      return resolved as unknown as SerializedNode;
+    }
+    return { ...resolved, descendants } as SerializedNode;
+  });
+}
+
 /**
  * 拷贝节点及 ref 后代覆盖项，并解析已知字段上的 `$` 引用（用于导出等只读路径）。
  */
@@ -617,6 +652,11 @@ export function resolveSerializedNodesDesignVariables(
   if (!variables || Object.keys(variables).length === 0) {
     return nodes;
   }
+  const textResolvedNodes = resolveSerializedNodesTextVariables(
+    nodes,
+    variables,
+    themeMode,
+  );
   const resolveFields = (fields: Record<string, unknown>) => {
     let changed = false;
     const next = { ...fields };
@@ -661,7 +701,7 @@ export function resolveSerializedNodesDesignVariables(
     }
     return { next, changed };
   };
-  return nodes.map((node) => {
+  return textResolvedNodes.map((node) => {
     const fields = node as unknown as Record<string, unknown>;
     const result = resolveFields(fields);
     const descendants = fields.descendants;
