@@ -441,6 +441,48 @@ describe('design-to-code expanded ref reconciliation', () => {
     expect(react).toContain('statusDotFills="radial-gradient(green, blue)"');
   });
 
+  it('binds a positioned conic gradient edit on a reusable ellipse', () => {
+    const nodes = [
+      {
+        id: 'conic-template',
+        name: 'ConicBadge',
+        type: 'ellipse',
+        x: 0,
+        y: 0,
+        width: 40,
+        height: 40,
+        zIndex: 0,
+        reusable: true,
+        fills: [
+          {
+            type: 'gradient',
+            value: 'conic-gradient(circle at 25% 75%, red, blue)',
+          },
+        ],
+      },
+      {
+        id: 'conic-instance',
+        type: 'ref',
+        ref: 'conic-template',
+        x: 50,
+        y: 0,
+        zIndex: 1,
+        fills: [
+          {
+            type: 'gradient',
+            value: 'conic-gradient(circle at 25% 75%, green, blue)',
+          },
+        ],
+      },
+    ] as SerializedNode[];
+    const react = serializedNodesToCode(nodes);
+    expect(react).toContain('backgroundImage: conicBadgeFills');
+    expect(react).toContain(
+      'conicBadgeFills="conic-gradient(at 25% 75%, green, blue)"',
+    );
+    expect(react).not.toContain('conic-gradient(circle');
+  });
+
   it('expands a rotated instance instead of dropping its transform', () => {
     const directRef = structuredClone(source);
     Object.assign(directRef.find((node) => node.id === 'growth')!, {
