@@ -108,6 +108,12 @@
   },
   "toolbar": {
     "extrusion": "3D",
+    "extrusionMaterial": "材质",
+    "extrusionMatte": "哑光",
+    "extrusionGlossy": "亮面",
+    "extrusionMetal": "金属",
+    "convertIconTo3D": "将图标转换为 3D",
+    "iconExtrusionUnsupported": "此图标没有可转换的填充或描边轮廓。",
     "extrude": "挤出图形",
     "removeExtrusion": "取消挤出",
     "extrusionDepth": "厚度",

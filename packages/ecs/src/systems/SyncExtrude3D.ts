@@ -123,6 +123,8 @@ export class SyncExtrude3D extends System {
       syncMaterial3D(meshEntity, {
         baseColor: extrudeMaterialBaseColorFromEntity(entity),
         sideColor: extrudeMaterialSideColorFromEntity(entity),
+        metallic: extrude.metallic,
+        roughness: extrude.roughness,
         toneSteps: entity.read(Extrude3D).toneSteps,
         outlineWidth: entity.read(Extrude3D).outlineWidth,
         outlineColor: extrudeMaterialOutlineColorFromEntity(entity),

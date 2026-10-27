@@ -212,6 +212,7 @@ export {
   type StyleValue,
 } from './utils/codegen';
 export * from './utils/icon-font';
+export * from './utils/icon-3d';
 export * from './utils/group-presentation';
 export * from './utils/normalize-fill-wire';
 export * from './utils/normalize-stroke-wire';

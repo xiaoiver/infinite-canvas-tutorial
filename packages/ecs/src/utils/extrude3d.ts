@@ -110,6 +110,14 @@ export function extrude3DFromWire(value: Extrude3DAttributes['extrude3d']) {
         ? options.bevelSegments!
         : 1,
     sideColor: typeof options.sideColor === 'string' ? options.sideColor : null,
+    metallic:
+      typeof options.metallic === 'number' && Number.isFinite(options.metallic)
+        ? Math.min(1, Math.max(0, options.metallic))
+        : 0,
+    roughness:
+      typeof options.roughness === 'number' && Number.isFinite(options.roughness)
+        ? Math.min(1, Math.max(0, options.roughness))
+        : 1,
     toneSteps:
       Number.isInteger(options.toneSteps) &&
       options.toneSteps! >= 2 &&
@@ -153,6 +161,10 @@ export function extrude3DToWire(
 ): Extrude3DAttributes['extrude3d'] {
   const sideColor =
     previous && typeof previous === 'object' ? previous.sideColor : undefined;
+  const metallic =
+    previous && typeof previous === 'object' ? previous.metallic : undefined;
+  const roughness =
+    previous && typeof previous === 'object' ? previous.roughness : undefined;
   const outlineColor =
     previous && typeof previous === 'object'
       ? previous.outlineColor
@@ -203,6 +215,8 @@ export function extrude3DToWire(
       : undefined;
   if (
     sideColor === undefined &&
+    metallic === undefined &&
+    roughness === undefined &&
     outlineColor === undefined &&
     outlineWidth === undefined &&
     rimLightColor === undefined &&
@@ -222,6 +236,8 @@ export function extrude3DToWire(
     z: pose.z,
     rotation: [...pose.rotation],
     ...(sideColor === undefined ? {} : { sideColor }),
+    ...(metallic === undefined ? {} : { metallic }),
+    ...(roughness === undefined ? {} : { roughness }),
     ...(outlineColor === undefined ? {} : { outlineColor }),
     ...(outlineWidth === undefined ? {} : { outlineWidth }),
     ...(rimLightColor === undefined ? {} : { rimLightColor }),

@@ -7,9 +7,14 @@ import { useTranslations } from 'next-intl';
 import type {
   Extrude3DAttributes,
   Extrude3DOptions,
+  Icon3DMaterial,
   SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
-import { canExtrudePath } from '@infinite-canvas-tutorial/ecs';
+import {
+  canExtrudePath,
+  iconFontToExtrudedPaths,
+  ICON_3D_MATERIALS,
+} from '@infinite-canvas-tutorial/ecs';
 import type { ExtendedAPI } from '@infinite-canvas-tutorial/webcomponents';
 import { canvasApiAtom, selectedNodesAtom } from '@/atoms/canvas-selection';
 import { Button } from '@/components/ui/button';
@@ -55,9 +60,195 @@ export function ExtrusionToolbar() {
   const api = useAtomValue(canvasApiAtom);
   const selected = useAtomValue(selectedNodesAtom);
   const node = selected.length === 1 ? selected[0] : undefined;
-  const eligible = node?.type === 'rect' || node?.type === 'path';
+  const groupPaths =
+    node?.type === 'g' && api
+      ? api
+          .getNodes()
+          .filter(
+            (child) =>
+              child.parentId === node.id &&
+              child.type === 'path' &&
+              !!child.extrude3d,
+          )
+      : [];
+  const eligible =
+    node?.type === 'rect' ||
+    node?.type === 'path' ||
+    node?.type === 'iconfont' ||
+    groupPaths.length > 0;
   if (!eligible || !node || !api) return null;
+  if (node.type === 'iconfont')
+    return <IconExtrusionControls key={node.id} api={api} nodeId={node.id} />;
+  if (node.type === 'g')
+    return (
+      <GroupExtrusionControls
+        key={node.id}
+        api={api}
+        pathIds={groupPaths.map((path) => path.id)}
+      />
+    );
   return <ExtrusionControls key={node.id} api={api} nodeId={node.id} />;
+}
+
+function GroupExtrusionControls({
+  api,
+  pathIds,
+}: {
+  api: ExtendedAPI;
+  pathIds: string[];
+}) {
+  const t = useTranslations('toolbar');
+  const first = api.getNodeById(pathIds[0]);
+  const initial =
+    first && 'extrude3d' in first ? optionsFrom(first.extrude3d) : undefined;
+  const [depth, setDepth] = useState(initial?.depth ?? 40);
+  const [material, setMaterial] = useState<Icon3DMaterial>(
+    initial?.metallic === 1
+      ? 'metal'
+      : initial?.roughness === 0.18
+      ? 'glossy'
+      : 'matte',
+  );
+  const update = (nextDepth: number, nextMaterial: Icon3DMaterial) => {
+    void api.edit((editor) => {
+      for (const id of pathIds) {
+        const child = editor.getNodeById(id);
+        if (child?.type !== 'path') continue;
+        const previous = optionsFrom(child.extrude3d);
+        if (previous)
+          editor.updateNode(child, {
+            extrude3d: {
+              ...previous,
+              depth: nextDepth,
+              ...ICON_3D_MATERIALS[nextMaterial],
+            },
+          });
+      }
+    });
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="default" size="sm" aria-label={t('extrusion')}>
+          <Box className="size-4" /> {t('extrusion')}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="space-y-3" align="center">
+        <div className="space-y-1">
+          <Label htmlFor="group-extrusion-depth">{t('extrusionDepth')}</Label>
+          <Input
+            id="group-extrusion-depth"
+            type="number"
+            min="1"
+            value={depth}
+            onChange={(event) => setDepth(Number(event.target.value) || 1)}
+            onBlur={() => {
+              const next = Math.max(1, depth);
+              setDepth(next);
+              update(next, material);
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="group-extrusion-material">
+            {t('extrusionMaterial')}
+          </Label>
+          <select
+            id="group-extrusion-material"
+            className="w-full rounded-md border bg-background p-2 text-sm"
+            value={material}
+            onChange={(event) => {
+              const next = event.target.value as Icon3DMaterial;
+              setMaterial(next);
+              update(Math.max(1, depth), next);
+            }}
+          >
+            <option value="matte">{t('extrusionMatte')}</option>
+            <option value="glossy">{t('extrusionGlossy')}</option>
+            <option value="metal">{t('extrusionMetal')}</option>
+          </select>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function IconExtrusionControls({
+  api,
+  nodeId,
+}: {
+  api: ExtendedAPI;
+  nodeId: string;
+}) {
+  const t = useTranslations('toolbar');
+  const [depth, setDepth] = useState(40);
+  const [material, setMaterial] = useState<Icon3DMaterial>('matte');
+  const [error, setError] = useState(false);
+  const convert = () => {
+    const current = api.getNodeById(nodeId);
+    if (current?.type !== 'iconfont') return;
+    const converted = iconFontToExtrudedPaths(current, {
+      depth,
+      ...ICON_3D_MATERIALS[material],
+    });
+    if (!converted) {
+      setError(true);
+      return;
+    }
+    void api.edit((editor) => {
+      editor.deleteNodesById([nodeId]);
+      editor.updateNodes([converted.group, ...converted.paths]);
+      editor.selectNodes([converted.group]);
+    });
+  };
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" aria-label={t('extrusion')}>
+          <Box className="size-4" /> {t('extrusion')}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="space-y-3" align="center">
+        <div className="space-y-1">
+          <Label htmlFor="icon-extrusion-depth">{t('extrusionDepth')}</Label>
+          <Input
+            id="icon-extrusion-depth"
+            type="number"
+            min="1"
+            value={depth}
+            onChange={(event) =>
+              setDepth(Math.max(1, Number(event.target.value) || 1))
+            }
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="icon-extrusion-material">
+            {t('extrusionMaterial')}
+          </Label>
+          <select
+            id="icon-extrusion-material"
+            className="w-full rounded-md border bg-background p-2 text-sm"
+            value={material}
+            onChange={(event) =>
+              setMaterial(event.target.value as Icon3DMaterial)
+            }
+          >
+            <option value="matte">{t('extrusionMatte')}</option>
+            <option value="glossy">{t('extrusionGlossy')}</option>
+            <option value="metal">{t('extrusionMetal')}</option>
+          </select>
+        </div>
+        <Button className="w-full" onClick={convert}>
+          {t('convertIconTo3D')}
+        </Button>
+        {error && (
+          <p className="text-xs text-destructive">
+            {t('iconExtrusionUnsupported')}
+          </p>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function ExtrusionControls({
@@ -79,6 +270,7 @@ function ExtrusionControls({
     String(initialOptions?.bevelSegments ?? 1),
   );
   const [sideColor, setSideColor] = useState(initialOptions?.sideColor ?? '');
+  const [material, setMaterial] = useState<Icon3DMaterial>('matte');
   const [canExtrude, setCanExtrude] = useState(() =>
     canExtrudeSelectedNode(api, nodeId),
   );
@@ -163,6 +355,13 @@ function ExtrusionControls({
         setBevel(String(options?.bevelSize ?? 0));
         setBevelSegments(String(options?.bevelSegments ?? 1));
         setSideColor(options?.sideColor ?? '');
+        setMaterial(
+          options?.metallic === 1
+            ? 'metal'
+            : options?.roughness === 0.18
+            ? 'glossy'
+            : 'matte',
+        );
       }}
     >
       <PopoverTrigger asChild>
@@ -191,6 +390,31 @@ function ExtrusionControls({
         </Button>
         {active && (
           <>
+            <div className="space-y-1">
+              <Label htmlFor="extrusion-material">
+                {t('extrusionMaterial')}
+              </Label>
+              <select
+                id="extrusion-material"
+                className="w-full rounded-md border bg-background p-2 text-sm"
+                value={material}
+                onChange={(event) => {
+                  const next = event.target.value as Icon3DMaterial;
+                  setMaterial(next);
+                  const current = api.getNodeById(nodeId);
+                  const previous =
+                    current && 'extrude3d' in current
+                      ? optionsFrom(current.extrude3d)
+                      : undefined;
+                  if (previous)
+                    update({ ...previous, ...ICON_3D_MATERIALS[next] });
+                }}
+              >
+                <option value="matte">{t('extrusionMatte')}</option>
+                <option value="glossy">{t('extrusionGlossy')}</option>
+                <option value="metal">{t('extrusionMetal')}</option>
+              </select>
+            </div>
             <div className="space-y-1">
               <Label htmlFor="extrusion-depth">{t('extrusionDepth')}</Label>
               <Input

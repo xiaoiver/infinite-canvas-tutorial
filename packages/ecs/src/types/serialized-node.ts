@@ -433,6 +433,10 @@ export interface Extrude3DOptions {
   bevelSegments?: number;
   /** CSS color for the side walls and bevels; front and back keep the source fill. */
   sideColor?: string;
+  /** PBR metalness shared by caps and walls, 0..1. */
+  metallic?: number;
+  /** PBR perceptual roughness shared by caps and walls, 0..1. */
+  roughness?: number;
   /** Quantize lit luminance into 2–8 bands; 0 or omitted keeps PBR shading. */
   toneSteps?: number;
   /** Optional screen-space silhouette width in CSS pixels; zero disables it. */
