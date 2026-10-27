@@ -254,6 +254,14 @@ function decideRole(node: AnyNode): CodeNodeRole {
       // flex 容器或有子节点者视作容器
       return 'container';
     }
+    case 'ellipse': {
+      const fills = asArray<SerializedFillLayerItem>(node.fills).filter(
+        (fill) => fill.enabled !== false,
+      );
+      return fills.length === 1 && fills[0].type === 'image'
+        ? 'image'
+        : 'shape';
+    }
     default:
       return 'shape';
   }

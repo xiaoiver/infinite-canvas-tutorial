@@ -7,6 +7,60 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('exports image-filled ellipses with their round mask and children', () => {
+      const ellipse = {
+        id: 'avatar',
+        type: 'ellipse',
+        x: 0,
+        y: 0,
+        width: 80,
+        height: 80,
+        zIndex: 0,
+        clipMode: 'clip',
+        fills: [
+          {
+            type: 'image',
+            value: 'https://example.com/avatar.png',
+            objectFit: 'cover',
+          },
+        ],
+      } as SerializedNode;
+      const leafReact = serializedNodesToCode([ellipse]);
+      expect(leafReact).toContain('<img src="https://example.com/avatar.png"');
+      expect(leafReact).toContain('rounded-[50%]');
+      expect(leafReact).toContain('objectFit: "cover"');
+      const leafHtml = serializedNodesToCode([ellipse], {
+        framework: 'html-css',
+      });
+      expect(leafHtml).toContain('<img src="https://example.com/avatar.png"');
+      expect(leafHtml).toContain('border-radius: 50%');
+      expect(leafHtml).toContain('object-fit: cover');
+
+      const nodes = [
+        ellipse,
+        {
+          id: 'badge',
+          type: 'text',
+          parentId: 'avatar',
+          x: 20,
+          y: 20,
+          zIndex: 1,
+          content: 'A',
+          fontSize: 20,
+        } as SerializedNode,
+      ];
+      const react = serializedNodesToCode(nodes);
+      expect(react).toContain('rounded-[50%]');
+      expect(react).toContain('overflow-hidden');
+      expect(react).toContain('<img src="https://example.com/avatar.png" alt=""');
+      expect(react.indexOf('<img')).toBeLessThan(react.indexOf('>A<'));
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('border-radius: 50%');
+      expect(html).toContain('overflow: hidden');
+      expect(html).toContain('<img src="https://example.com/avatar.png" alt=""');
+      expect(html.indexOf('<img')).toBeLessThan(html.indexOf('>A<'));
+    });
+
     it('keeps children above an image-filled rectangle', () => {
       const nodes = [
         {
