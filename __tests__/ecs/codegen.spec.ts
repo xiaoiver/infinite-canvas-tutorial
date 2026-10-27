@@ -2180,7 +2180,12 @@ describe('design-to-code (codegen)', () => {
         variables,
       });
       expect(code).toContain('bg-[var(--color-bg)]');
-      expect(code).toContain('<style>{":root{--color-bg:#FFFFFF}"}</style>');
+      const scope = code.match(/className="(ic-codegen-vars-[a-z0-9]+)"/)?.[1];
+      expect(scope).toBeDefined();
+      expect(code).toContain(
+        `<style>{".${scope}{display:contents;--color-bg:#FFFFFF}"}</style>`,
+      );
+      expect(code).not.toContain(':root{');
     });
 
     it('uses the selected theme for React CSS variables', () => {
@@ -2197,7 +2202,37 @@ describe('design-to-code (codegen)', () => {
           },
         },
       });
-      expect(code).toContain('<style>{":root{--color-bg:#121212}"}</style>');
+      expect(code).toMatch(
+        /<style>\{"\.ic-codegen-vars-[a-z0-9]+\{display:contents;--color-bg:#121212\}"\}<\/style>/,
+      );
+    });
+
+    it('keeps different exported color palettes independent', () => {
+      const first = serializedNodesToCode(nodes, {
+        variablesMode: 'css-var',
+        variables,
+      });
+      const second = serializedNodesToCode(nodes, {
+        variablesMode: 'css-var',
+        variables: {
+          'color.bg': { type: 'color', value: '#121212' },
+        },
+      });
+      const firstScope = first.match(
+        /className="(ic-codegen-vars-[a-z0-9]+)"/,
+      )?.[1];
+      const secondScope = second.match(
+        /className="(ic-codegen-vars-[a-z0-9]+)"/,
+      )?.[1];
+      expect(firstScope).toBeDefined();
+      expect(secondScope).toBeDefined();
+      expect(firstScope).not.toBe(secondScope);
+      expect(first).toContain(
+        `.${firstScope}{display:contents;--color-bg:#FFFFFF}`,
+      );
+      expect(second).toContain(
+        `.${secondScope}{display:contents;--color-bg:#121212}`,
+      );
     });
 
     it('preserve-token mode keeps $token via inline style', () => {

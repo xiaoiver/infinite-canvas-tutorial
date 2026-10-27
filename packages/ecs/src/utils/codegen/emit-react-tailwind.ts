@@ -6,7 +6,7 @@
  *   inline style 中保留 `$token`；`resolved` 模式输出字面量；
  * - `iconfont` → `lucide-react`（lucide 族）或 `@iconify/react`（其他族）；
  * - `reusable` → 函数组件定义，`ref` 实例 → 组件调用并以 props 传入覆盖项。
- * - `css-var` 模式在顶层组件中输出变量定义，使其可直接渲染。
+ * - `css-var` 模式在顶层组件中输出局部变量定义，使其可直接渲染且不会覆盖其他导出组件。
  */
 import { formatNumber } from '../serialize/points';
 import { buildDesignVariablesCssRootBlock } from '../design-variables';
@@ -83,6 +83,14 @@ interface TwResult {
   classes: string[];
   /** preserve-token 模式无法进类名的 token → inline style（值已是 JS 字面量表达式）。 */
   inline: Array<[string, string]>;
+}
+
+function variableScopeClass(css: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < css.length; i++) {
+    hash = Math.imul(hash ^ css.charCodeAt(i), 0x01000193);
+  }
+  return `ic-codegen-vars-${(hash >>> 0).toString(36)}`;
 }
 
 /** token 在 preserve-token 模式下不能进 arbitrary 类名，需回退 inline。 */
@@ -776,13 +784,16 @@ export function emitReactTailwind(
     ir.variablesMode === 'css-var' && Object.keys(ir.variables).length > 0
       ? buildDesignVariablesCssRootBlock(ir.variables, ir.themeMode)
       : undefined;
+  const scopeClass = cssVariables && variableScopeClass(cssVariables);
   const rootWithVariables = cssVariables
     ? `${indent.repeat(2)}<>\n${indent.repeat(3)}<style>{${JSON.stringify(
-        cssVariables,
-      )}}</style>\n${rootWrapped
+        cssVariables.replace(/^:root\{/, `.${scopeClass}{display:contents;`),
+      )}}</style>\n${indent.repeat(
+        3,
+      )}<div className="${scopeClass}">\n${rootWrapped
         .split('\n')
-        .map((line) => `${indent}${line}`)
-        .join('\n')}\n${indent.repeat(2)}</>`
+        .map((line) => `${indent.repeat(2)}${line}`)
+        .join('\n')}\n${indent.repeat(3)}</div>\n${indent.repeat(2)}</>`
     : rootWrapped;
 
   const topComponent = `export function ${
