@@ -102,8 +102,11 @@ export interface StyleIR {
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;
-  /** Solid paint layers, ordered from bottom to top. */
-  backgroundLayers?: { color: StyleValue; opacity?: StyleValue }[];
+  /** CSS paint layers, ordered from bottom to top. */
+  backgroundLayers?: Array<
+    | { type: 'solid'; color: StyleValue; opacity?: StyleValue }
+    | { type: 'gradient'; value: string }
+  >;
   /** Opacity of the only enabled solid fill, applied to its paint rather than children. */
   solidFillOpacity?: StyleValue;
   backgroundImage?: StyleValue;

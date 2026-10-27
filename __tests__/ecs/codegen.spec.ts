@@ -44,6 +44,42 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('combines solid and CSS gradient backgrounds in paint order', () => {
+      const fills = [
+        { type: 'solid', value: '#ff0000' },
+        {
+          type: 'gradient',
+          value: 'linear-gradient(90deg, transparent 0%, #ffffff 100%)',
+        },
+        { type: 'solid', value: '#0000ff', opacity: 0.25 },
+      ];
+      for (const type of ['rect', 'ellipse'] as const) {
+        const node = {
+          id: `mixed-${type}`,
+          type,
+          x: 0,
+          y: 0,
+          width: 100,
+          height: 80,
+          zIndex: 0,
+          fills,
+        } as SerializedNode;
+        for (const framework of ['react-tailwind', 'html-css'] as const) {
+          const code = serializedNodesToCode([node], { framework });
+          expect(code).toContain(
+            'linear-gradient(90deg, transparent 0%, #ffffff 100%)',
+          );
+          expect(code.indexOf('#0000ff')).toBeLessThan(
+            code.indexOf('linear-gradient(90deg'),
+          );
+          expect(code.indexOf('linear-gradient(90deg')).toBeLessThan(
+            code.indexOf('#ff0000'),
+          );
+          expect(code).not.toContain('backgroundColor:');
+        }
+      }
+    });
+
     it('exports image-filled ellipses with their round mask and children', () => {
       const ellipse = {
         id: 'avatar',
