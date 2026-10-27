@@ -2235,6 +2235,44 @@ describe('design-to-code (codegen)', () => {
       );
     });
 
+    it('provides CSS variables to reusable components rendered on their own', () => {
+      const componentNodes = [
+        {
+          id: 'card',
+          type: 'rect',
+          name: 'ColorCard',
+          x: 0,
+          y: 0,
+          zIndex: 0,
+          width: 100,
+          height: 100,
+          reusable: true,
+          fills: [{ type: 'solid', value: '$color.bg' }],
+        },
+        {
+          id: 'card-instance',
+          type: 'ref',
+          ref: 'card',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+        },
+      ] as SerializedNode[];
+      const code = serializedNodesToCode(componentNodes, {
+        variablesMode: 'css-var',
+        variables,
+      });
+      const scope = code.match(/function (IcDesignTokens_[a-z0-9]+)\(/)?.[1];
+      expect(scope).toBeDefined();
+      expect(code).toContain(
+        `export function ColorCard() {\n  return (\n    <${scope}>`,
+      );
+      expect(code).toContain(
+        `export function Design() {\n  return (\n    <${scope}>`,
+      );
+      expect(code).toContain('<style>');
+    });
+
     it('preserve-token mode keeps $token via inline style', () => {
       const code = serializedNodesToCode(nodes, {
         variablesMode: 'preserve-token',

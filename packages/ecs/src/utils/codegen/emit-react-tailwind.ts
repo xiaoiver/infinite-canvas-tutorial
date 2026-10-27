@@ -406,6 +406,15 @@ interface EmitState {
   indent: string;
   lucideIcons: Set<string>;
   usesIconify: boolean;
+  tokenScopeName?: string;
+}
+
+function wrapInTokenScope(body: string, state: EmitState): string {
+  if (!state.tokenScopeName) return body;
+  return `${state.indent.repeat(2)}<${state.tokenScopeName}>\n${body
+    .split('\n')
+    .map((line) => `${state.indent}${line}`)
+    .join('\n')}\n${state.indent.repeat(2)}</${state.tokenScopeName}>`;
 }
 
 function renderAttributes(
@@ -746,7 +755,7 @@ function renderComponent(def: CodeComponentDef, state: EmitState): string {
     ? `interface ${def.name}Props {\n${propsType}\n}\n\nexport function ${def.name}({ ${defaults} }: ${def.name}Props) {`
     : `export function ${def.name}() {`;
 
-  const body = renderNode(def.root, state, 2);
+  const body = wrapInTokenScope(renderNode(def.root, state, 2), state);
   return `${header}\n${state.indent}return (\n${body}\n${state.indent});\n}`;
 }
 
@@ -756,11 +765,20 @@ export function emitReactTailwind(
   indent = '  ',
   topName = 'Design',
 ): string {
+  const cssVariables =
+    ir.variablesMode === 'css-var' && Object.keys(ir.variables).length > 0
+      ? buildDesignVariablesCssRootBlock(ir.variables, ir.themeMode)
+      : undefined;
+  const scopeClass = cssVariables && variableScopeClass(cssVariables);
+  const tokenScopeName = scopeClass
+    ? `IcDesignTokens_${scopeClass.slice('ic-codegen-vars-'.length)}`
+    : undefined;
   const state: EmitState = {
     mode: ir.variablesMode,
     indent,
     lucideIcons: new Set(),
     usesIconify: false,
+    tokenScopeName,
   };
 
   const componentBlocks = ir.components.map((c) => renderComponent(c, state));
@@ -780,21 +798,24 @@ export function emitReactTailwind(
         .map((n) => renderNode(n, state, 3))
         .join('\n')}\n${indent.repeat(2)}</>`;
 
-  const cssVariables =
-    ir.variablesMode === 'css-var' && Object.keys(ir.variables).length > 0
-      ? buildDesignVariablesCssRootBlock(ir.variables, ir.themeMode)
+  const rootWithVariables = wrapInTokenScope(rootWrapped, state);
+
+  // A reusable component also works on its own; nested instances share the
+  // parent's scope and avoid emitting duplicate style elements.
+  const variableScope =
+    cssVariables && scopeClass && tokenScopeName
+      ? `const ${tokenScopeName}Context = createContext(false);\n\nfunction ${tokenScopeName}({ children }: { children: ReactNode }) {\n${indent}if (useContext(${tokenScopeName}Context)) return <>{children}</>;\n${indent}return (\n${indent.repeat(
+          2,
+        )}<>\n${indent.repeat(3)}<style>{${JSON.stringify(
+          cssVariables.replace(/^:root\{/, `.${scopeClass}{display:contents;`),
+        )}}</style>\n${indent.repeat(
+          3,
+        )}<div className="${scopeClass}">\n${indent.repeat(
+          4,
+        )}<${tokenScopeName}Context.Provider value={true}>{children}</${tokenScopeName}Context.Provider>\n${indent.repeat(
+          3,
+        )}</div>\n${indent.repeat(2)}</>\n${indent});\n}`
       : undefined;
-  const scopeClass = cssVariables && variableScopeClass(cssVariables);
-  const rootWithVariables = cssVariables
-    ? `${indent.repeat(2)}<>\n${indent.repeat(3)}<style>{${JSON.stringify(
-        cssVariables.replace(/^:root\{/, `.${scopeClass}{display:contents;`),
-      )}}</style>\n${indent.repeat(
-        3,
-      )}<div className="${scopeClass}">\n${rootWrapped
-        .split('\n')
-        .map((line) => `${indent.repeat(2)}${line}`)
-        .join('\n')}\n${indent.repeat(3)}</div>\n${indent.repeat(2)}</>`
-    : rootWrapped;
 
   const topComponent = `export function ${
     pascalCase(topName) || 'Design'
@@ -802,6 +823,10 @@ export function emitReactTailwind(
 
   // imports（在确定用到哪些图标后再生成）
   const imports: string[] = [];
+  if (variableScope) {
+    imports.push(`import { createContext, useContext } from 'react';`);
+    imports.push(`import type { ReactNode } from 'react';`);
+  }
   if (
     ir.components.some((component) =>
       component.props.some((prop) =>
@@ -844,6 +869,7 @@ export function emitReactTailwind(
 
   const parts: string[] = [];
   if (imports.length) parts.push(imports.join('\n'));
+  if (variableScope) parts.push(variableScope);
   if (componentBlocks.length) parts.push(componentBlocks.join('\n\n'));
   parts.push(topComponent);
   return parts.join('\n\n') + '\n';
