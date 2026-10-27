@@ -7,7 +7,7 @@ import type {
   SerializedFillLayerItem,
   SerializedNode,
 } from '../types/serialized-node';
-import { ThemeMode } from '../components/Theme';
+import { ThemeMode } from '../format/modes';
 
 export type DesignVariableType = 'color' | 'number' | 'string';
 

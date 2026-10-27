@@ -1,10 +1,10 @@
 import { field, Type } from '@lastolivegames/becsy';
-import { TRANSFORMER_ANCHOR_STROKE_COLOR, TRANSFORMER_MASK_FILL_COLOR } from '../systems/RenderTransformer';
-
-export enum ThemeMode {
-  LIGHT = 'light',
-  DARK = 'dark',
-}
+import {
+  TRANSFORMER_ANCHOR_STROKE_COLOR,
+  TRANSFORMER_MASK_FILL_COLOR,
+} from '../systems/RenderTransformer';
+import { ThemeMode } from '../format/modes';
+export { ThemeMode } from '../format/modes';
 
 /** 用户主题偏好；{@link ThemeMode} 为当前画布/面板实际生效模式 */
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -20,14 +20,13 @@ export function resolveThemeModeFromPreference(
   }
   if (
     typeof globalThis === 'undefined' ||
-    typeof (globalThis as Window & typeof globalThis).matchMedia !==
-      'function'
+    typeof (globalThis as Window & typeof globalThis).matchMedia !== 'function'
   ) {
     return ThemeMode.LIGHT;
   }
-  return (globalThis as Window & typeof globalThis)
-    .matchMedia('(prefers-color-scheme: dark)')
-    .matches
+  return (globalThis as Window & typeof globalThis).matchMedia(
+    '(prefers-color-scheme: dark)',
+  ).matches
     ? ThemeMode.DARK
     : ThemeMode.LIGHT;
 }

@@ -1,4 +1,4 @@
-import { BrushPoint } from '../../components/geometry/Brush';
+import type { BrushPoint } from '../../components/geometry/Brush';
 
 export function formatNumber(n: number) {
   if (Number.isInteger(n)) {
@@ -9,11 +9,16 @@ export function formatNumber(n: number) {
 }
 
 export function serializePoints(points: [number, number][]) {
-  return points.map(([x, y]) => `${formatNumber(x)},${formatNumber(y)}`).join(' ');
+  return points
+    .map(([x, y]) => `${formatNumber(x)},${formatNumber(y)}`)
+    .join(' ');
 }
 
 export function serializeBrushPoints(points: BrushPoint[]) {
   return points
-    .map(({ x, y, radius }) => `${formatNumber(x)},${formatNumber(y)},${formatNumber(radius)}`)
+    .map(
+      ({ x, y, radius }) =>
+        `${formatNumber(x)},${formatNumber(y)},${formatNumber(radius)}`,
+    )
     .join(' ');
 }

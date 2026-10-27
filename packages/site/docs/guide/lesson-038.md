@@ -430,6 +430,23 @@ The three React exports are also rendered in a browser test with React 19 and Ta
 
 Download the `.ic` file to continue editing the design in the [online app](https://app.infinitecanvas.cc/) via **Import from… > .ic**. Download the HTML file and open it directly in a browser. For React, choose **Download React project** to get a Vite, React 19, and Tailwind CSS 4 starter ZIP from the current canvas. Extract it, then run `pnpm install` and `pnpm dev`; the exported component lives in `src/App.tsx`. The starter bundles the Inter font locally when the design uses it. Temporary `blob:` images from the current canvas are copied into `public/assets` and referenced by local paths; data URLs stay inline and remote URLs remain remote. Its `src/responsive.css` adds narrow-screen layouts for these three examples while preserving the artboard-sized component in `src/App.tsx`. You can also download just the `.tsx` file for an existing project. The generator currently emits presentation markup; wire navigation, checkout actions, payments, and live data to your application logic after export.
 
+### Command line {#cli}
+
+The repository also includes an offline CLI for `.ic` files (Node.js 20+). Export the design from the editor with **Export as… > .ic** and save it as `design.ic`. From the repository root, build its workspace dependencies in order, then run:
+
+```sh
+corepack pnpm install --frozen-lockfile
+corepack pnpm --filter @infinite-canvas-tutorial/device-api build:cjs
+corepack pnpm --filter @infinite-canvas-tutorial/ecs build:cjs
+corepack pnpm --filter @infinite-canvas-tutorial/cli build
+node packages/cli/dist/cli.js validate design.ic
+node packages/cli/dist/cli.js inspect design.ic --json
+node packages/cli/dist/cli.js codegen design.ic --framework react-tailwind --variables-mode css-var --component-name Design --output Design.tsx
+node packages/cli/dist/cli.js codegen design.ic --framework html-css --output design.html
+```
+
+`inspect --json` reports node and root counts, reusable nodes, variables, and asset URL counts. Omitting `--output` prints generated code to stdout; invalid documents or options return a nonzero exit status with an error message. The CLI outputs the same React component or HTML/CSS fragment as the editor's code generator. It uses the document's variables and theme, does not access an online project, and rejects temporary `blob:` images that cannot survive outside the browser. Use data URLs or durable image URLs in exported documents.
+
 ### Reverse: code → design {#design-to-code-reverse}
 
 The reverse direction (parse JSX/HTML AST back into `.ic` nodes) is harder and more ambiguous, so it is left as a second phase. The recommended first milestone is an **idempotent round-trip** of code that this transpiler emits (design → code → design without information loss) before extending to arbitrary hand-written code.

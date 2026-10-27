@@ -1,10 +1,6 @@
 import { field, Type } from '@lastolivegames/becsy';
-
-export enum CheckboardStyle {
-  NONE = 'none',
-  GRID = 'grid',
-  DOTS = 'dots',
-}
+import { CheckboardStyle } from '../format/modes';
+export { CheckboardStyle } from '../format/modes';
 
 export class Grid {
   /**

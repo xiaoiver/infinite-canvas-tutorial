@@ -502,6 +502,19 @@ importers:
         specifier: ^1.6.28
         version: 1.6.28
 
+  packages/cli:
+    dependencies:
+      '@infinite-canvas-tutorial/ecs':
+        specifier: workspace:*
+        version: link:../ecs
+    devDependencies:
+      '@types/node':
+        specifier: 20.17.6
+        version: 20.17.6
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+
   packages/core:
     dependencies:
       '@antv/g-device-api':
