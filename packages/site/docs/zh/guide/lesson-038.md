@@ -377,7 +377,7 @@ const code = serializedNodesToCode(nodes, {
 
 在 `componentStructure: 'preserve'`（默认，也是 Pencil 的卖点）下，每个 `reusable` 根会成为一个组件，每个 `ref` 成为一次实例调用。各实例上出现过的可覆盖属性（`content`、`fills`、包括 `fontVariant` 和 `fontKerning` 的排版属性、文本装饰、`opacity`、`visibility`、`cornerRadius`、显式 `width` / `height`、`minWidth` / `maxWidth` / `minHeight` / `maxHeight`、`padding`、`margin`、flex 间距、`flexDirection`、`alignItems`、`justifyContent`、`flexWrap`、`alignSelf`、`flexGrow`、`flexShrink`、`flexBasis`、`strokeWidth`、`strokes` 和投影字段）会被提升为 props，默认值取自模板。`.ic` 中数值型 `lineHeight` 表示像素高度，因此 React 导出会补 `px`，不会将其当成无单位的行高倍率。布尔型 `fontKerning` 会转为 CSS 的 `normal` 或 `none`。四边间距数组会转为 CSS 简写字符串，文本装饰字段会合并为一个参数，投影字段会合并为一个 `boxShadow` prop。装饰线粗细为 0 时导出 `none`，与画布语义一致：
 
-文本导出通过 `white-space: pre` 保留显式换行。开启 `wordWrap` 且 `wordWrapWidth` 为正数时，会使用 `pre-wrap`、`overflow-wrap: anywhere`，并把该宽度作为最大宽度。正数 `maxLines` 会为默认的 `ellipsis` 添加 CSS 多行省略，为 `clip` 添加按行高裁剪。已开启换行的可复用文本如果只修改换行宽度，会生成组件 prop；切换换行开关或修改截断配置则会展开实例，以匹配编辑后的布局。当前画布测量尚未应用 `whiteSpace` 属性；自定义 `textOverflow` 标记字符串尚无对应的标准 CSS 实现。
+未显式设置 `lineHeight` 时，文本导出使用无单位的 `1.2` 行高，使浏览器的 flex 间距接近画布的文本测量结果；显式设置的数值行高仍以像素导出。`white-space: pre` 会保留显式换行。开启 `wordWrap` 且 `wordWrapWidth` 为正数时，会使用 `pre-wrap`、`overflow-wrap: anywhere`，并把该宽度作为最大宽度。正数 `maxLines` 会为默认的 `ellipsis` 添加 CSS 多行省略，为 `clip` 添加按行高裁剪。已开启换行的可复用文本如果只修改换行宽度，会生成组件 prop；切换换行开关或修改截断配置则会展开实例，以匹配编辑后的布局。当前画布测量尚未应用 `whiteSpace` 属性；自定义 `textOverflow` 标记字符串尚无对应的标准 CSS 实现。
 
 对于可复用图片，仅修改图片 URL 时，实例的 `fills` 覆盖会绑定到组件的 `<img src>` 参数。修改填充类型、适配方式、位置或填充透明度时，实例会展开，使生成的元素与样式对应编辑结果。没有子节点的单层图片会在 `<img>` 上合并填充透明度与节点整体透明度。单层图片填充的椭圆会导出为圆角 `<img>`。带子节点的图片填充矩形和椭圆会使用定位容器，将装饰性 `<img>` 放在子节点后方；容器承担节点整体透明度，图片承担填充透明度、适配方式和位置。
 
@@ -387,7 +387,7 @@ const code = serializedNodesToCode(nodes, {
 
 节点旋转（弧度）与 `scaleX` / `scaleY` 会导出为以 `0 0` 为原点的 CSS `rotate(...) scale(...)`，顺序与画布局部变换一致。实例修改变换后会展开，以包含修改后的几何效果。
 
-非 flex 容器中的子节点会把画布局部 `x` / `y` 导出为相对于容器的 CSS `left` / `top`；flex 子节点仍按正常 flex 流布局。非 flex 容器里的复用组件实例会增加定位包装元素，修改实例内部子节点的位置时则展开实例以保留编辑。多个顶层节点都有明确尺寸时，导出代码还会创建相对定位的外框，保留它们之间的间距，包括旋转和翻转后的边界。尺寸无法测量的顶层节点仍按普通文档流排列。
+非 flex 容器中的子节点会把画布局部 `x` / `y` 导出为相对于容器的 CSS `left` / `top`；flex 子节点仍按正常 flex 流布局。Yoga 默认的 `flexShrink` 为 `0`，因此节点未指定其他值时，导出会设置 `flex-shrink: 0`。非 flex 容器里的复用组件实例会增加定位包装元素，修改实例内部子节点的位置时则展开实例以保留编辑。多个顶层节点都有明确尺寸时，导出代码还会创建相对定位的外框，保留它们之间的间距，包括旋转和翻转后的边界。尺寸无法测量的顶层节点仍按普通文档流排列。
 
 节点级 `visibility` 会导出为 CSS `visibility`，隐藏节点仍占据布局空间。默认的 `inherited` 状态对应 CSS 继承。复用组件实例及其子节点修改可见性时，会生成组件参数。
 

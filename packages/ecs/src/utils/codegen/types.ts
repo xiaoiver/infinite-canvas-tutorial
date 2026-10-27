@@ -155,6 +155,8 @@ export interface StyleIR {
   textOverflow?: 'ellipsis' | 'clip';
   letterSpacing?: StyleValue;
   lineHeight?: StyleValue;
+  /** Unitless browser fallback approximating the canvas default text metrics. */
+  lineHeightRatio?: number;
   textDecoration?: {
     line: 'underline' | 'overline' | 'line-through';
     style: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';

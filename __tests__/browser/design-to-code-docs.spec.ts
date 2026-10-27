@@ -56,10 +56,32 @@ test('all three editable interface scenes render populated HTML previews', async
     })
     .toBe('dashboard');
 
-  for (const [label, id, heading, width] of [
-    ['运营数据面板', 'dashboard', 'Overview', 1050],
-    ['订阅定价页', 'pricing-page', 'A plan for every ambition', 1050],
-    ['移动端结账页', 'checkout-screen', 'Checkout', 390],
+  for (const [label, id, heading, width, parityIds] of [
+    [
+      '运营数据面板',
+      'dashboard',
+      'Overview',
+      1050,
+      ['brand', 'metric-revenue-trend', 'day-Mon', 'activity-heading'],
+    ],
+    [
+      '订阅定价页',
+      'pricing-page',
+      'A plan for every ambition',
+      1050,
+      ['pricing-brand', 'hero-title', 'plan-growth__plan-card-name'],
+    ],
+    [
+      '移动端结账页',
+      'checkout-screen',
+      'Checkout',
+      390,
+      [
+        'checkout-product-variant',
+        'checkout-shipping-label',
+        'checkout-security-label',
+      ],
+    ],
   ] as const) {
     const tab = page.getByRole('button', { name: label });
     await tab.click();
@@ -73,6 +95,40 @@ test('all three editable interface scenes render populated HTML previews', async
     const preview = page.frameLocator('iframe[title="生成的 HTML 预览"]');
     await expect(preview.getByRole('heading', { name: heading })).toBeVisible();
     await expect(preview.getByRole('button').first()).toBeVisible();
+    const canvasPositions = await page.evaluate((ids) => {
+      const nodes = window.designToCodeDocs.nodes();
+      return ids.map((id) => {
+        const node = nodes.find((item) => item.id === id);
+        const bounds = window.designToCodeDocs.nodeBounds(id);
+        if (node?.type !== 'text' || !bounds)
+          throw new Error(`Missing canvas text: ${id}`);
+        return { id, text: node.content, x: bounds.minX, y: bounds.minY };
+      });
+    }, parityIds);
+    const previewPositions = await preview
+      .locator('body')
+      .evaluate((body, expected) => {
+        const root = Array.from(body.children).find(
+          (element) => element instanceof HTMLElement,
+        );
+        if (!root) throw new Error('Missing preview root');
+        const origin = root.getBoundingClientRect();
+        return expected.map(({ id, text }) => {
+          const element = Array.from(body.querySelectorAll('*')).find(
+            (candidate) =>
+              candidate.children.length === 0 &&
+              candidate.textContent?.trim() === text.trim(),
+          );
+          if (!element) throw new Error(`Missing preview text: ${id}`);
+          const rect = element.getBoundingClientRect();
+          return { x: rect.x - origin.x, y: rect.y - origin.y };
+        });
+      }, canvasPositions);
+    for (const [index, canvas] of canvasPositions.entries()) {
+      const previewText = previewPositions[index];
+      expect(Math.abs(previewText.x - canvas.x), canvas.id).toBeLessThan(3);
+      expect(Math.abs(previewText.y - canvas.y), canvas.id).toBeLessThan(8);
+    }
     const png = PNG.sync.read(await iframe.screenshot({ scale: 'css' }));
     let painted = 0;
     const colors = new Set<number>();
