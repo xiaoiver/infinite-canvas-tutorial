@@ -856,7 +856,9 @@ export class SDFText extends Drawcall {
     const sampler = this.renderCache.createSampler({
       addressModeU: AddressMode.CLAMP_TO_EDGE,
       addressModeV: AddressMode.CLAMP_TO_EDGE,
-      minFilter: FilterMode.POINT,
+      // Locally generated SDFs need continuous samples when zoomed out;
+      // preserve bitmap fonts' existing sampling behavior.
+      minFilter: this.useBitmapFont ? FilterMode.POINT : FilterMode.BILINEAR,
       magFilter: FilterMode.BILINEAR,
       mipmapFilter: MipmapFilterMode.LINEAR,
       lodMinClamp: 0,

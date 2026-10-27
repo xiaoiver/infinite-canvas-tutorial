@@ -64,6 +64,15 @@ const probe = {
   scene: () => api?.getNodes().find((node) => !node.parentId)?.id,
   nodes: () => api?.getNodes() ?? [],
   camera: () => api?.getAppState(),
+  ordersValueBounds: () => {
+    const node = api?.getNodeById('metric-orders-value');
+    if (!api || !node) return;
+    const bounds = api.getBounds([node]);
+    return {
+      min: api.canvas2Viewport({ x: bounds.minX, y: bounds.minY }),
+      max: api.canvas2Viewport({ x: bounds.maxX, y: bounds.maxY }),
+    };
+  },
   setZoom: (cameraZoom: number) => api?.setAppState({ cameraZoom }),
   editPay: async (content: string) => {
     if (!api) throw new Error('Editor is not ready');
