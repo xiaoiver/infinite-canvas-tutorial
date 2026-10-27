@@ -108,13 +108,13 @@ test('all three editable interface scenes render populated HTML previews', async
     const previewPositions = await preview
       .locator('body')
       .evaluate((body, expected) => {
-        const root = [...body.children].find(
+        const root = Array.from(body.children).find(
           (element) => element instanceof HTMLElement,
         );
         if (!root) throw new Error('Missing preview root');
         const origin = root.getBoundingClientRect();
         return expected.map(({ id, text }) => {
-          const element = [...body.querySelectorAll('*')].find(
+          const element = Array.from(body.querySelectorAll('*')).find(
             (candidate) =>
               candidate.children.length === 0 &&
               candidate.textContent?.trim() === text.trim(),
