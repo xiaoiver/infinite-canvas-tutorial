@@ -641,6 +641,9 @@ importers:
       bidi-js:
         specifier: ^1.0.3
         version: 1.0.3
+      clipper-lib:
+        specifier: ^6.4.2
+        version: 6.4.2
       d3-color:
         specifier: ^3.1.0
         version: 3.1.0
@@ -699,6 +702,9 @@ importers:
       '@types/bezier-js':
         specifier: ^4.1.3
         version: 4.1.3
+      '@types/clipper-lib':
+        specifier: ^6.4.0
+        version: 6.4.0
       '@types/d3-color':
         specifier: ^3.1.0
         version: 3.1.0
@@ -5450,6 +5456,9 @@ packages:
 
   '@types/bezier-js@4.1.3':
     resolution: {integrity: sha512-FNVVCu5mx/rJCWBxLTcL7oOajmGtWtBTDjq6DSUWUI12GeePivrZZXz+UgE0D6VYsLEjvExRO03z4hVtu3pTEQ==}
+
+  '@types/clipper-lib@6.4.0':
+    resolution: {integrity: sha512-y8WVQWLCIJobtcxk8SJj1f7OGVbQEL7RmfGtrWDkAKFxq2U6F0/7/hLYvDWlUnBayvnRYkq+QVZaUzm13mu+Ng==}
 
   '@types/command-line-args@5.2.3':
     resolution: {integrity: sha512-uv0aG6R0Y8WHZLTamZwtfsDLVRnOa+n+n5rEvFWL5Na5gZ8V2Teab/duDPFzIIIhs9qizDpcavCusCLJZu62Kw==}
@@ -16332,6 +16341,8 @@ snapshots:
       '@babel/types': 7.29.0
 
   '@types/bezier-js@4.1.3': {}
+
+  '@types/clipper-lib@6.4.0': {}
 
   '@types/command-line-args@5.2.3': {}
 

@@ -9,6 +9,7 @@ import CubePerspective from '../components/CubePerspective.vue'
 import Lighting from '../components/Lighting.vue'
 import GltfDuck from '../components/GltfDuck.vue'
 import SvgExtrusion from '../components/SvgExtrusion.vue'
+import IconExtrusion from '../components/IconExtrusion.vue'
 </script>
 
 # Lesson 39 - 3D Mesh Rendering
@@ -344,6 +345,35 @@ const vector: PathSerializedNode = {
 All subpaths must be closed. Open paths, stroke layers, multiple or non-solid
 fills, non-manifold contours and singular transforms remain visible in 2D. The
 Path keeps its original document node and supports gizmo edits, undo and reload.
+
+### Turning icons into 3D {#icon-to-3d}
+
+<IconExtrusion />
+
+In the App, select an Icon and open **3D → Convert icon to 3D**. Choose a depth and
+a material preset (matte, glossy or metal). The conversion expands SVG strokes,
+including their caps and joins, into closed contours. Filled parts and holes become
+editable Paths inside one group. Select the group to change depth or material for
+all parts; select a Path to edit its outline or bevel. Undo restores the IconFont.
+The conversion is a snapshot of the icon geometry.
+
+After registering an icon set with `registerIconifyIconSet`, code can use the same
+conversion:
+
+```ts
+const result = iconFontToExtrudedPaths(iconNode, {
+    depth: 40,
+    bevelSize: 2,
+    metallic: 1,
+    roughness: 0.25,
+});
+if (result) api.updateNodes([result.group, ...result.paths]);
+```
+
+`metallic` and `roughness` are PBR parameters between 0 and 1. These presets use
+the existing lighting pipeline. Transparent glass and refraction are not yet
+supported. SVG filters, gradients and unsupported paints may require manual
+outline cleanup before extrusion.
 
 `sideColor` is an optional CSS color for the walls; the front and back keep the
 source fill. Omitting it makes all faces use the source fill color. The side

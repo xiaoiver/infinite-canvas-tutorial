@@ -9,6 +9,7 @@ import CubePerspective from '../../components/CubePerspective.vue'
 import Lighting from '../../components/Lighting.vue'
 import GltfDuck from '../../components/GltfDuck.vue'
 import SvgExtrusion from '../../components/SvgExtrusion.vue'
+import IconExtrusion from '../../components/IconExtrusion.vue'
 </script>
 
 # 课程 39 - 3D Mesh 渲染
@@ -315,6 +316,30 @@ const vector: PathSerializedNode = {
 每条子路径都必须闭合。开放路径、含描边图层、多层或非纯色填充、非流形轮廓
 以及不可逆的退化变换会继续以 2D 显示。原 Path 文档节点保持可编辑，也支持 gizmo、撤销和
 重新载入。
+
+### 将图标转换为 3D {#icon-to-3d}
+
+<IconExtrusion />
+
+在在线 App 中选中 Icon，打开 **3D → 将图标转换为 3D**，设置厚度和材质预设
+（哑光、亮面、金属）。转换会将 SVG 描边及端点、转角展开为闭合轮廓；填充和孔洞
+转换为分组内可编辑的 Path。选中分组可统一修改厚度和材质，选中单个 Path 可修改
+轮廓或倒角。撤销可恢复原 IconFont。转换结果是当时的几何快照。
+
+注册图标集后，也可以调用 `iconFontToExtrudedPaths`：
+
+```ts
+const result = iconFontToExtrudedPaths(iconNode, {
+    depth: 40,
+    bevelSize: 2,
+    metallic: 1,
+    roughness: 0.25,
+});
+if (result) api.updateNodes([result.group, ...result.paths]);
+```
+
+`metallic` 和 `roughness` 是 0 到 1 的 PBR 材质参数，预设沿用现有光照管线。
+当前不支持透明玻璃及折射。含 SVG 滤镜、渐变或不支持的填充的图标可能需要先整理轮廓。
 
 `sideColor` 可选，用 CSS 颜色设置侧壁；前后封盖仍使用原图形的填充色。
 省略时所有表面都使用原填充色。修改侧壁颜色只更新材质，不重建网格。

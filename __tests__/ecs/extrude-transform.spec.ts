@@ -113,6 +113,15 @@ it('copies wire arrays and retains the compact legacy representation', () => {
   });
 });
 
+it('keeps PBR material values through pose updates and clamps invalid input', () => {
+  const material = { depth: 40, metallic: 1, roughness: 0.25 };
+  expect(extrude3DFromWire(material)).toMatchObject({ metallic: 1, roughness: 0.25 });
+  expect(extrude3DToWire({ depth: 50, z: 0, rotation: [0, 0.2, 0] }, material))
+    .toMatchObject({ depth: 50, metallic: 1, roughness: 0.25 });
+  expect(extrude3DFromWire({ depth: 40, metallic: 2, roughness: -1 }))
+    .toMatchObject({ metallic: 1, roughness: 0 });
+});
+
 it('preserves side color when gizmo edits the extrusion pose', () => {
   const previous = {
     depth: 20,

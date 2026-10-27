@@ -108,6 +108,12 @@
   },
   "toolbar": {
     "extrusion": "3D",
+    "extrusionMaterial": "Material",
+    "extrusionMatte": "Mate",
+    "extrusionGlossy": "Brillante",
+    "extrusionMetal": "Metal",
+    "convertIconTo3D": "Convertir ícono a 3D",
+    "iconExtrusionUnsupported": "Este ícono no tiene rellenos ni trazos compatibles.",
     "extrude": "Extruir forma",
     "removeExtrusion": "Quitar extrusión",
     "extrusionDepth": "Profundidad",
