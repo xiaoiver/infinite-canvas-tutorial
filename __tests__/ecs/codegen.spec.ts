@@ -80,6 +80,87 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('exports layered image backgrounds with fit, position, blend, and children', () => {
+      for (const type of ['rect', 'ellipse'] as const) {
+        const nodes = [
+          {
+            id: `photo-${type}`,
+            type,
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 80,
+            zIndex: 0,
+            fills: [
+              { type: 'solid', value: '#ff0000' },
+              {
+                type: 'image',
+                value: 'https://example.com/photo.png?a=1&b=2',
+                objectFit: 'contain',
+                objectPosition: '20% 80%',
+                blendMode: 'multiply',
+              },
+              {
+                type: 'gradient',
+                value: 'linear-gradient(90deg, transparent, #ffffff)',
+                blendMode: 'screen',
+              },
+            ],
+          },
+          {
+            id: `label-${type}`,
+            type: 'text',
+            parentId: `photo-${type}`,
+            x: 10,
+            y: 10,
+            zIndex: 1,
+            content: 'Photo',
+            fontSize: 16,
+          },
+        ] as SerializedNode[];
+        const react = serializedNodesToCode(nodes);
+        expect(react).toContain('backgroundImage:');
+        expect(react).toContain(
+          'url(\\"https://example.com/photo.png?a=1&b=2\\")',
+        );
+        expect(react).toContain(
+          'backgroundSize: "100% 100%, contain, 100% 100%"',
+        );
+        expect(react).toContain('backgroundPosition: "0% 0%, 20% 80%, 0% 0%"');
+        expect(react).toContain(
+          'backgroundRepeat: "no-repeat, no-repeat, no-repeat"',
+        );
+        expect(react).toContain(
+          'backgroundBlendMode: "screen, multiply, normal"',
+        );
+        expect(react.indexOf('linear-gradient(90deg')).toBeLessThan(
+          react.indexOf('url('),
+        );
+        expect(react.indexOf('url(')).toBeLessThan(react.indexOf('#ff0000'));
+        expect(react).toContain('Photo');
+        expect(react).not.toContain('<img');
+        if (type === 'ellipse') expect(react).toContain('rounded-[50%]');
+
+        const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+        expect(html).toContain(
+          'url(&quot;https://example.com/photo.png?a=1&amp;b=2&quot;)',
+        );
+        expect(html).toContain(
+          'background-size: 100% 100%, contain, 100% 100%',
+        );
+        expect(html).toContain('background-position: 0% 0%, 20% 80%, 0% 0%');
+        expect(html).toContain(
+          'background-repeat: no-repeat, no-repeat, no-repeat',
+        );
+        expect(html).toContain(
+          'background-blend-mode: screen, multiply, normal',
+        );
+        expect(html).toContain('Photo');
+        expect(html).not.toContain('<img');
+        if (type === 'ellipse') expect(html).toContain('border-radius: 50%');
+      }
+    });
+
     it('blends supported rectangle backgrounds with lower fill layers', () => {
       const node = {
         id: 'blended-background',

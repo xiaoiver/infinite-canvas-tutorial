@@ -57,10 +57,41 @@ export function paintBackgroundLayersToCss(
     .reverse()
     .map((layer) => {
       if (layer.type === 'gradient') return layer.value;
+      if (layer.type === 'image') {
+        const escaped = layer.value
+          .replace(/\\/g, '\\\\')
+          .replace(/"/g, '\\"')
+          .replace(/[\n\r\f]/g, '\\A ');
+        return `url("${escaped}")`;
+      }
       const color = solidFillColorToCss(layer.color, layer.opacity, mode);
       return `linear-gradient(${color}, ${color})`;
     })
     .join(', ');
+}
+
+/** Keep each CSS background aligned with its fill's image fit and position. */
+export function paintBackgroundLayerLayoutToCss(
+  style: StyleIR,
+): { size: string; position: string; repeat: string } | undefined {
+  if (!style.backgroundLayers?.some((layer) => layer.type === 'image'))
+    return undefined;
+  const layers = [...style.backgroundLayers].reverse();
+  return {
+    size: layers
+      .map((layer) =>
+        layer.type === 'image' && layer.objectFit !== 'fill'
+          ? layer.objectFit ?? '100% 100%'
+          : '100% 100%',
+      )
+      .join(', '),
+    position: layers
+      .map((layer) =>
+        layer.type === 'image' ? layer.objectPosition ?? '50% 50%' : '0% 0%',
+      )
+      .join(', '),
+    repeat: layers.map(() => 'no-repeat').join(', '),
+  };
 }
 
 export function paintBackgroundBlendModesToCss(style: StyleIR): string | undefined {
@@ -189,6 +220,12 @@ export function styleIRToCssDeclarations(
   if (backgroundLayers) push('background-image', backgroundLayers);
   else if (style.backgroundImage)
     push('background-image', styleValueToCss(style.backgroundImage, mode));
+  const backgroundLayout = paintBackgroundLayerLayoutToCss(style);
+  if (backgroundLayout) {
+    push('background-size', backgroundLayout.size);
+    push('background-position', backgroundLayout.position);
+    push('background-repeat', backgroundLayout.repeat);
+  }
   const backgroundBlendModes = paintBackgroundBlendModesToCss(style);
   if (backgroundBlendModes)
     push('background-blend-mode', backgroundBlendModes);
