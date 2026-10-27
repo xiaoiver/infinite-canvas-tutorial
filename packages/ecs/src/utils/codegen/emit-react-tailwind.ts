@@ -466,13 +466,15 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
   if (node.vectorPath) {
     const path = node.vectorPath;
     const hasChildren = node.children.length > 0;
-    const fill = path.fillGradient
-      ? `url(#${path.fillGradient.id})`
+    const fillServer = path.fillGradient ?? path.fillImage;
+    const strokeServer = path.strokeGradient ?? path.strokeImage;
+    const fill = fillServer
+      ? `url(#${fillServer.id})`
       : path.fill
         ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
         : 'none';
-    const stroke = path.strokeGradient
-      ? `url(#${path.strokeGradient.id})`
+    const stroke = strokeServer
+      ? `url(#${strokeServer.id})`
       : path.stroke
         ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
         : 'none';
@@ -495,11 +497,17 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
           .join('\n');
         return `${state.indent.repeat(depth + 2)}<${tag} id={${JSON.stringify(gradient.id)}} gradientUnits="userSpaceOnUse"${geometry}>\n${stops}\n${state.indent.repeat(depth + 2)}</${tag}>`;
       });
+    const images = [path.fillImage, path.strokeImage]
+      .filter((image) => image !== undefined)
+      .map(
+        (image) =>
+          `${state.indent.repeat(depth + 2)}<pattern id={${JSON.stringify(image.id)}} patternUnits="userSpaceOnUse" x={${formatNumber(path.viewBoxX)}} y={${formatNumber(path.viewBoxY)}} width={${formatNumber(path.width)}} height={${formatNumber(path.height)}}>\n${state.indent.repeat(depth + 3)}<image href={${JSON.stringify(image.href)}} x={${formatNumber(path.viewBoxX)}} y={${formatNumber(path.viewBoxY)}} width={${formatNumber(path.width)}} height={${formatNumber(path.height)}} preserveAspectRatio={${JSON.stringify(image.preserveAspectRatio)}} />\n${state.indent.repeat(depth + 2)}</pattern>`,
+      );
     const markers = [path.markerStart, path.markerEnd]
       .filter((marker) => marker !== undefined)
       .map((marker) => {
         const side = marker === path.markerStart ? 'start' : 'end';
-        return `${state.indent.repeat(depth + 2)}<marker id={${JSON.stringify(marker.id)}} markerUnits="userSpaceOnUse" markerWidth={${formatNumber(marker.size)}} markerHeight={${formatNumber(marker.size)}} viewBox={${JSON.stringify(`${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`)}} refX={0} refY={0} orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(marker.d)}} fill={${JSON.stringify(marker.fill ? stroke : 'none')}}${attr('fillOpacity', marker.fill && path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} strokeWidth={${formatNumber(marker.strokeWidth)}}${attr('strokeLinecap', marker.strokeLinecap)}${attr('strokeLinejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
+        return `${state.indent.repeat(depth + 2)}<marker id={${JSON.stringify(marker.id)}} markerUnits="userSpaceOnUse" markerWidth={${formatNumber(marker.size)}} markerHeight={${formatNumber(marker.size)}} viewBox={${JSON.stringify(`${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}`)}} refX={0} refY={0} orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d={${JSON.stringify(marker.d)}} fill={${JSON.stringify(marker.fill ? stroke : 'none')}}${attr('fillOpacity', marker.fill && strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} strokeWidth={${formatNumber(marker.strokeWidth)}}${attr('strokeLinecap', marker.strokeLinecap)}${attr('strokeLinejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
       });
     const alignment = path.strokeAlignment;
     const alignmentDefinition = alignment
@@ -509,6 +517,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       : undefined;
     const definitions = [
       ...gradients,
+      ...images,
       ...markers,
       ...(alignmentDefinition ? [alignmentDefinition] : []),
     ];
@@ -529,15 +538,15 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       ? ' style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}'
       : `${className}${styleExpr}`;
     const alignedStroke = alignment
-      ? `${pathPad}<path d={${JSON.stringify(path.d)}} fill="none" stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', 2 * (path.strokeWidth ?? 0))}${attr('strokeLinecap', path.strokeLinecap)}${attr('strokeLinejoin', path.strokeLinejoin)}${attr('strokeMiterlimit', path.strokeMiterlimit)}${attr('strokeDasharray', path.strokeDasharray)}${attr('strokeDashoffset', path.strokeDashoffset)}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clipPath' : 'mask', `url(#${alignment.id})`)} />\n`
+      ? `${pathPad}<path d={${JSON.stringify(path.d)}} fill="none" stroke={${JSON.stringify(stroke)}}${attr('strokeOpacity', strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', 2 * (path.strokeWidth ?? 0))}${attr('strokeLinecap', path.strokeLinecap)}${attr('strokeLinejoin', path.strokeLinejoin)}${attr('strokeMiterlimit', path.strokeMiterlimit)}${attr('strokeDasharray', path.strokeDasharray)}${attr('strokeDashoffset', path.strokeDashoffset)}${attr('markerStart', path.markerStart && `url(#${path.markerStart.id})`)}${attr('markerEnd', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clipPath' : 'mask', `url(#${alignment.id})`)} />\n`
       : '';
     const svg = `${pad}<svg viewBox={${JSON.stringify(
       `${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(path.height)}`,
     )}} aria-hidden="true"${svgStyle}>\n${defs}${artworkOpen}${pathPad}<path d={${JSON.stringify(path.d)}} fill={${JSON.stringify(
       fill,
-    )}}${attr('fillOpacity', path.fillGradient && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
+    )}}${attr('fillOpacity', fillServer && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fillRule={${JSON.stringify(path.fillRule)}} stroke={${JSON.stringify(
       alignment ? 'none' : stroke,
-    )}}${attr('strokeOpacity', path.strokeGradient && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', path.strokeWidth)}${attr(
+    )}}${attr('strokeOpacity', strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('strokeWidth', path.strokeWidth)}${attr(
       'strokeLinecap',
       path.strokeLinecap,
     )}${attr('strokeLinejoin', path.strokeLinejoin)}${attr(

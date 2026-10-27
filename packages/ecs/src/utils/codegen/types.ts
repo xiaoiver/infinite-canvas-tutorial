@@ -220,10 +220,12 @@ export interface CodeNode {
     height: number;
     fill?: StyleValue;
     fillGradient?: CodeVectorGradient;
+    fillImage?: CodeVectorImage;
     fillOpacity?: StyleValue;
     fillRule: 'nonzero' | 'evenodd';
     stroke?: StyleValue;
     strokeGradient?: CodeVectorGradient;
+    strokeImage?: CodeVectorImage;
     strokeOpacity?: StyleValue;
     strokeWidth?: number;
     strokeLinecap?: 'butt' | 'round' | 'square';
@@ -266,6 +268,12 @@ export interface CodeVectorGradient {
     | { type: 'linear'; x1: number; y1: number; x2: number; y2: number }
     | { type: 'radial'; cx: number; cy: number; r: number };
   stops: { offset: number; color: string }[];
+}
+
+export interface CodeVectorImage {
+  id: string;
+  href: string;
+  preserveAspectRatio: 'none' | 'xMidYMid meet' | 'xMidYMid slice';
 }
 
 export interface CodeComponentProp {
