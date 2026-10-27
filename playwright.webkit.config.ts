@@ -32,6 +32,7 @@ export default defineConfig({
     'image-decoding.spec.ts',
     'animation-export.spec.ts',
     'svg-export.spec.ts',
+    'vector-image-codegen.spec.ts',
     'svg-extrusion.spec.ts',
     'animation-state.spec.ts',
     'gradient-geometry.spec.ts',

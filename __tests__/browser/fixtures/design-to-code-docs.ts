@@ -17,41 +17,86 @@ createApp(DesignToCodeInterfaces, { locale: 'zh' }).mount(root);
 
 const probe = {
   paintMarkup: (
-    kind: 'opacity' | 'scale-down' | 'pattern' | 'pattern-rotate',
+    kind:
+      | 'opacity'
+      | 'scale-down'
+      | 'pattern'
+      | 'pattern-rotate'
+      | 'vector-none'
+      | 'vector-scale-down'
+      | 'vector-contain'
+      | 'vector-opacity'
+      | 'vector-blend'
+      | 'vector-clip'
+      | 'vector-hole',
   ) => {
     const tile = `data:image/svg+xml,${encodeURIComponent(
       '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#00ff00"/></svg>',
     )}`;
-    const fills =
-      kind === 'opacity'
-        ? [
-            { type: 'solid', value: '#ff0000' },
-            {
-              type: 'gradient',
-              value: 'linear-gradient(90deg, #0000ff, #0000ff)',
-              opacity: 0.5,
-            },
-          ]
-        : kind === 'scale-down'
-        ? [
-            { type: 'solid', value: '#ff0000' },
-            { type: 'image', value: tile, objectFit: 'scale-down' },
-          ]
-        : [
-            { type: 'solid', value: '#ff0000' },
-            {
-              type: 'pattern',
-              value: tile,
-              repetition: 'no-repeat',
-              transform:
-                kind === 'pattern-rotate'
-                  ? 'rotate(90, 20, 20)'
-                  : 'translate(10, 10)',
-            },
-          ];
+    const tallTile = `data:image/svg+xml,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="16"><rect width="8" height="16" fill="#00ff00"/></svg>',
+    )}`;
+    const vector = kind.startsWith('vector-');
+    const fills = vector
+      ? [
+          { type: 'solid', value: '#ff0000' },
+          {
+            type: 'image',
+            value:
+              kind === 'vector-contain' || kind === 'vector-hole'
+                ? tallTile
+                : tile,
+            objectFit:
+              kind === 'vector-contain' || kind === 'vector-hole'
+                ? 'contain'
+                : kind === 'vector-scale-down'
+                ? 'scale-down'
+                : 'none',
+            objectPosition: '20% 80%',
+            ...(kind === 'vector-opacity' ? { opacity: 0.5 } : {}),
+            ...(kind === 'vector-blend' ? { blendMode: 'multiply' } : {}),
+          },
+        ]
+      : kind === 'opacity'
+      ? [
+          { type: 'solid', value: '#ff0000' },
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #0000ff, #0000ff)',
+            opacity: 0.5,
+          },
+        ]
+      : kind === 'scale-down'
+      ? [
+          { type: 'solid', value: '#ff0000' },
+          { type: 'image', value: tile, objectFit: 'scale-down' },
+        ]
+      : [
+          { type: 'solid', value: '#ff0000' },
+          {
+            type: 'pattern',
+            value: tile,
+            repetition: 'no-repeat',
+            transform:
+              kind === 'pattern-rotate'
+                ? 'rotate(90, 20, 20)'
+                : 'translate(10, 10)',
+          },
+        ];
     const node = {
       id: `paint-${kind}`,
-      type: 'rect',
+      type: vector ? 'path' : 'rect',
+      ...(vector
+        ? {
+            d:
+              kind === 'vector-clip'
+                ? 'M 0 0 H 60 L 0 60 Z'
+                : kind === 'vector-hole'
+                ? 'M 0 0 H 60 V 60 H 0 Z M 20 20 H 40 V 40 H 20 Z'
+                : 'M 0 0 H 60 V 60 H 0 Z',
+            ...(kind === 'vector-hole' ? { fillRule: 'evenodd' } : {}),
+          }
+        : {}),
       x: 0,
       y: 0,
       zIndex: 0,

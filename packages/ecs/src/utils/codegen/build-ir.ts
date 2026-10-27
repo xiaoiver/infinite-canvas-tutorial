@@ -578,22 +578,31 @@ function vectorImage(
     (image.blendMode !== undefined && image.blendMode !== 'normal')
   )
     return undefined;
-  const alignment = svgImageAlignment(image.objectPosition);
-  if (!alignment) return undefined;
   const fit = image.objectFit ?? 'fill';
-  if (!['fill', 'contain', 'cover'].includes(fit)) return undefined;
   const encodedId = Array.from(node.id as string)
     .map((character) => character.codePointAt(0)!.toString(16))
     .join('-');
+  const id = `ic-image-${encodedId}-${idSuffix}`;
+  const alignment = svgImageAlignment(image.objectPosition);
+  if (alignment && ['fill', 'contain', 'cover'].includes(fit))
+    return {
+      id,
+      href: image.value,
+      rendering: 'pattern',
+      preserveAspectRatio:
+        fit === 'cover'
+          ? `${alignment} slice`
+          : fit === 'contain'
+          ? `${alignment} meet`
+          : 'none',
+    };
+  if (kind !== 'fill') return undefined;
   return {
-    id: `ic-image-${encodedId}-${idSuffix}`,
+    id,
     href: image.value,
-    preserveAspectRatio:
-      fit === 'cover'
-        ? `${alignment} slice`
-        : fit === 'contain'
-        ? `${alignment} meet`
-        : 'none',
+    rendering: 'foreignObject',
+    objectFit: fit,
+    objectPosition: image.objectPosition ?? '50% 50%',
   };
 }
 
