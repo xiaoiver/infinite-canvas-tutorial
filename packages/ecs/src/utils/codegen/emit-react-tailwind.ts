@@ -10,6 +10,7 @@
 import { formatNumber } from '../serialize/points';
 import { renderVectorSvg } from './render-vector-svg';
 import { renderVectorImageStrokeOverlay } from './render-vector-image-stroke-overlay';
+import { renderVectorMixedStrokes } from './render-vector-mixed-strokes';
 import { renderPaintOverlays } from './emit-paint-overlays';
 import { pascalCase } from './string-utils';
 import {
@@ -507,9 +508,16 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       indent: state.indent,
       depth: depth + 1,
     });
-    const needsWrapper = hasChildren || !!overlay;
+    const mixed = renderVectorMixedStrokes(path, {
+      dialect: 'jsx',
+      mode: state.mode,
+      indent: state.indent,
+      depth: depth + 1,
+    });
+    const paintLayers = mixed?.strokes ?? overlay;
+    const needsWrapper = hasChildren || !!paintLayers;
     const wrapperAttrs =
-      overlay && !node.style.position
+      paintLayers && !node.style.position
         ? renderAttributes(
             { ...node, style: { ...node.style, position: 'relative' } },
             state,
@@ -518,7 +526,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     const svgStyle = needsWrapper
       ? ' style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none" }}'
       : `${className}${styleExpr}`;
-    const svg = renderVectorSvg(path, {
+    const svg = renderVectorSvg(mixed?.fill ?? path, {
       dialect: 'jsx',
       mode: state.mode,
       indent: state.indent,
@@ -540,11 +548,17 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       .split('\n')
       .map((line) => `${state.indent}${line}`)
       .join('\n');
+    const artwork = `${nestedSvg}${paintLayers ? `\n${paintLayers}` : ''}`;
+    const shadowedArtwork = mixed?.shadow
+      ? `${state.indent.repeat(
+          depth + 1,
+        )}<div style={{ position: "absolute", inset: 0, overflow: "visible", filter: ${JSON.stringify(
+          mixed.shadow,
+        )} }}>\n${artwork}\n${state.indent.repeat(depth + 1)}</div>`
+      : artwork;
     return `${pad}<${tag}${semanticAttr}${wrapperAttrs.className}${
       wrapperAttrs.styleExpr
-    }>\n${nestedSvg}${overlay ? `\n${overlay}` : ''}${
-      children ? `\n${children}` : ''
-    }\n${pad}</${tag}>`;
+    }>\n${shadowedArtwork}${children ? `\n${children}` : ''}\n${pad}</${tag}>`;
   }
 
   if (node.role === 'icon' && node.icon) {

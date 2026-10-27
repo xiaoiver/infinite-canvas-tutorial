@@ -904,6 +904,64 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('exports mixed vector image strokes in canvas order', () => {
+      const path = {
+        id: 'mixed-image-strokes',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 60,
+        height: 60,
+        zIndex: 0,
+        d: 'M 10 30 H 50',
+        strokes: [
+          { type: 'solid', value: '#ff0000' },
+          {
+            type: 'image',
+            value: 'https://example.com/stroke.png',
+            objectFit: 'none',
+            objectPosition: '20% 80%',
+            blendMode: 'multiply',
+          },
+          { type: 'solid', value: '#0000ff' },
+        ],
+        strokeWidth: 8,
+        markerEnd: 'triangle',
+      } as SerializedNode;
+      for (const framework of ['react-tailwind', 'html-css'] as const) {
+        const code = serializedNodesToCode([path], { framework });
+        const red = code.indexOf('#ff0000');
+        const image = code.indexOf('https://example.com/stroke.png');
+        const blue = code.indexOf('#0000ff');
+        expect(red).toBeGreaterThan(-1);
+        expect(image).toBeGreaterThan(red);
+        expect(blue).toBeGreaterThan(image);
+        expect(code).toContain('stroke.png');
+        expect(code).not.toContain('stroke={"url(#ic-image');
+        if (framework === 'react-tailwind') {
+          expect(code).toContain('maskImage:');
+          expect(code).toContain('mixBlendMode: "multiply"');
+          expect(code).toContain('isolation: "isolate"');
+          expect(
+            ts
+              .transpileModule(code, {
+                fileName: 'Design.tsx',
+                reportDiagnostics: true,
+                compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+              })
+              .diagnostics?.filter(
+                (diagnostic) =>
+                  diagnostic.category === ts.DiagnosticCategory.Error,
+              ),
+          ).toEqual([]);
+        } else {
+          expect(code).toContain('mask-image:');
+          expect(code).toContain('mix-blend-mode: multiply');
+          expect(code).toContain('isolation: isolate');
+        }
+      }
+    });
+
     it('keeps separate arrow markers and CSS blend modes on stroke layers', () => {
       const node = {
         id: 'layer-arrow',

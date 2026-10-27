@@ -3,7 +3,12 @@ import { parseObjectPosition } from '../fill-layer-image-object-fit';
 import { formatNumber } from '../serialize/points';
 import { transformPath } from '../serialize/transform';
 import { styleValueToCss } from './emit-style';
-import type { CodeNode, CodeVariablesMode, CodeVectorMarker } from './types';
+import type {
+  CodeNode,
+  CodeVariablesMode,
+  CodeVectorMarker,
+  CodeVectorStrokeLayer,
+} from './types';
 
 type VectorPath = NonNullable<CodeNode['vectorPath']>;
 type ForeignImage = Extract<
@@ -23,17 +28,20 @@ export function renderVectorImageStrokeOverlay(
     mode: CodeVariablesMode;
     indent: string;
     depth: number;
+    layer?: CodeVectorStrokeLayer;
   },
 ): string | undefined {
-  const image = path.strokeImage;
+  const image = options.layer?.strokeImage ?? path.strokeImage;
   if (image?.rendering !== 'foreignObject') return undefined;
   const paint: ForeignImage = image;
   const { dialect, mode, indent, depth } = options;
+  const markerStart = options.layer?.markerStart ?? path.markerStart;
+  const markerEnd = options.layer?.markerEnd ?? path.markerEnd;
   const pad = (level: number) => indent.repeat(level);
   const margin = Math.max(
     path.strokeWidth ?? 0,
-    path.markerStart?.size ?? 0,
-    path.markerEnd?.size ?? 0,
+    markerStart?.size ?? 0,
+    markerEnd?.size ?? 0,
   );
   const width = path.width + 2 * margin;
   const height = path.height + 2 * margin;
@@ -88,8 +96,8 @@ export function renderVectorImageStrokeOverlay(
   )}${svgAttr('height', height)}${svgAttr(
     'viewBox',
     `0 0 ${formatNumber(width)} ${formatNumber(height)}`,
-  )}><defs>${marker(path.markerStart, 'start')}${marker(
-    path.markerEnd,
+  )}><defs>${marker(markerStart, 'start')}${marker(
+    markerEnd,
     'end',
   )}${alignmentDef}</defs><path${svgAttr(
     'd',
@@ -105,14 +113,15 @@ export function renderVectorImageStrokeOverlay(
     path.strokeDasharray,
   )}${svgAttr('stroke-dashoffset', path.strokeDashoffset)}${svgAttr(
     'marker-start',
-    path.markerStart ? 'url(#start)' : undefined,
-  )}${svgAttr('marker-end', path.markerEnd ? 'url(#end)' : undefined)}${svgAttr(
+    markerStart ? 'url(#start)' : undefined,
+  )}${svgAttr('marker-end', markerEnd ? 'url(#end)' : undefined)}${svgAttr(
     alignment?.type === 'inner' ? 'clip-path' : 'mask',
     alignment ? 'url(#align)' : undefined,
   )}/></svg>`;
   const maskUrl = `data:image/svg+xml,${encodeURIComponent(maskSvg)}`;
-  const opacity = path.strokeOpacity
-    ? styleValueToCss(path.strokeOpacity, mode)
+  const strokeOpacity = options.layer?.strokeOpacity ?? path.strokeOpacity;
+  const opacity = strokeOpacity
+    ? styleValueToCss(strokeOpacity, mode)
     : undefined;
   const objectPosition = parseObjectPosition(paint.objectPosition);
   const x = `${formatNumber(objectPosition.x * 100)}%`;
@@ -133,6 +142,9 @@ export function renderVectorImageStrokeOverlay(
       'WebkitMaskSize: "100% 100%"',
       'maskRepeat: "no-repeat"',
       'WebkitMaskRepeat: "no-repeat"',
+      ...(options.layer?.blendMode
+        ? [`mixBlendMode: ${JSON.stringify(options.layer.blendMode)}`]
+        : []),
       ...(opacity ? [`opacity: ${JSON.stringify(opacity)}`] : []),
     ];
     const imageStyle = naturalSize
@@ -182,6 +194,9 @@ export function renderVectorImageStrokeOverlay(
     '-webkit-mask-size: 100% 100%',
     'mask-repeat: no-repeat',
     '-webkit-mask-repeat: no-repeat',
+    ...(options.layer?.blendMode
+      ? [`mix-blend-mode: ${options.layer.blendMode}`]
+      : []),
     ...(opacity ? [`opacity: ${opacity}`] : []),
   ];
   const imageStyle = naturalSize

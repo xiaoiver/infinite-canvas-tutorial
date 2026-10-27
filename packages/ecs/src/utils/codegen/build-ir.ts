@@ -596,8 +596,6 @@ function vectorImage(
           ? `${alignment} meet`
           : 'none',
     };
-  // Layered image strokes need their own paint-order and blend handling.
-  if (kind === 'stroke' && idSuffix !== kind) return undefined;
   return {
     id,
     href: image.value,

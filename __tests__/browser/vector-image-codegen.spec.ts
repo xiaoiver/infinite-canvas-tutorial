@@ -95,3 +95,40 @@ test('vector image strokes keep geometry, arrows and stroke alignment', async ({
   expect(await sample(markup.outer, 43, 20)).toEqual([0, 255, 0]);
   expect(await sample(markup.outer, 2, 20)).toEqual([255, 255, 255]);
 });
+
+test('layered vector image strokes preserve paint order and blending', async ({
+  page,
+}) => {
+  await page.goto('/design-to-code-docs.html');
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => typeof window.designToCodeDocs?.vectorLayeredStrokeMarkup,
+        ),
+      { timeout: 30000 },
+    )
+    .toBe('function');
+  const markup = await page.evaluate(() => ({
+    top: window.designToCodeDocs.vectorLayeredStrokeMarkup('image-top'),
+    bottom: window.designToCodeDocs.vectorLayeredStrokeMarkup('image-bottom'),
+    blend: window.designToCodeDocs.vectorLayeredStrokeMarkup('blended'),
+    shadow: window.designToCodeDocs.vectorLayeredStrokeMarkup('shadow'),
+  }));
+  const sample = async (html: string, y = 2) => {
+    await page.setContent(html);
+    await page.addStyleTag({ content: 'body { margin: 0; }' });
+    await page.evaluate(() =>
+      Promise.all(
+        Array.from(document.images, (image) => image.decode().catch(() => {})),
+      ),
+    );
+    const png = PNG.sync.read(await page.screenshot({ scale: 'css' }));
+    const offset = (y * png.width + 20) * 4;
+    return [...png.data.slice(offset, offset + 3)];
+  };
+  expect(await sample(markup.top)).toEqual([0, 255, 0]);
+  expect(await sample(markup.bottom)).toEqual([255, 0, 0]);
+  expect(await sample(markup.blend)).toEqual([0, 0, 0]);
+  expect(await sample(markup.shadow, 14)).toEqual([0, 0, 0]);
+});

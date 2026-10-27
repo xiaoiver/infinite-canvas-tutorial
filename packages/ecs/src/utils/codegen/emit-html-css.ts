@@ -13,6 +13,7 @@ import type { ThemeMode } from '../../components/Theme';
 import { formatNumber } from '../serialize/points';
 import { renderVectorSvg } from './render-vector-svg';
 import { renderVectorImageStrokeOverlay } from './render-vector-image-stroke-overlay';
+import { renderVectorMixedStrokes } from './render-vector-mixed-strokes';
 import { renderPaintOverlays } from './emit-paint-overlays';
 import { styleIRToCssDeclarations, styleValueToCss } from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
@@ -82,9 +83,16 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       indent: state.indent,
       depth: depth + 1,
     });
-    const needsWrapper = hasChildren || !!overlay;
+    const mixed = renderVectorMixedStrokes(path, {
+      dialect: 'html',
+      mode: state.mode,
+      indent: state.indent,
+      depth: depth + 1,
+    });
+    const paintLayers = mixed?.strokes ?? overlay;
+    const needsWrapper = hasChildren || !!paintLayers;
     const wrapperStyle =
-      overlay && !node.style.position
+      paintLayers && !node.style.position
         ? styleAttr(
             { ...node, style: { ...node.style, position: 'relative' } },
             state,
@@ -93,7 +101,7 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
     const svgStyle = needsWrapper
       ? ' style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none"'
       : style;
-    const svg = renderVectorSvg(path, {
+    const svg = renderVectorSvg(mixed?.fill ?? path, {
       dialect: 'html',
       mode: state.mode,
       indent: state.indent,
@@ -115,9 +123,17 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
       .split('\n')
       .map((line) => `${state.indent}${line}`)
       .join('\n');
-    return `${pad}<${tag}${semanticAttr}${wrapperStyle}>\n${nestedSvg}${
-      overlay ? `\n${overlay}` : ''
-    }${children ? `\n${children}` : ''}\n${pad}</${tag}>`;
+    const artwork = `${nestedSvg}${paintLayers ? `\n${paintLayers}` : ''}`;
+    const shadowedArtwork = mixed?.shadow
+      ? `${state.indent.repeat(
+          depth + 1,
+        )}<div style="position: absolute; inset: 0; overflow: visible; filter: ${escapeAttr(
+          mixed.shadow,
+        )}">\n${artwork}\n${state.indent.repeat(depth + 1)}</div>`
+      : artwork;
+    return `${pad}<${tag}${semanticAttr}${wrapperStyle}>\n${shadowedArtwork}${
+      children ? `\n${children}` : ''
+    }\n${pad}</${tag}>`;
   }
   const tag = node.element?.tag ?? (node.role === 'text' ? 'span' : 'div');
   const semanticAttr =
