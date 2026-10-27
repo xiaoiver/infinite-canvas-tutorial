@@ -632,6 +632,8 @@ describe('design-to-code (codegen)', () => {
         ['bottom right', 'contain', 'xMaxYMax meet'],
         ['100% 0%', 'cover', 'xMaxYMin slice'],
         ['top', 'contain', 'xMidYMin meet'],
+        ['center left', 'contain', 'xMinYMid meet'],
+        ['center right', 'cover', 'xMaxYMid slice'],
       ] as const) {
         const positioned = {
           ...path,

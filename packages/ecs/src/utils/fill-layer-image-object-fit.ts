@@ -77,7 +77,10 @@ export function parseObjectPosition(position: string): { x: number; y: number } 
   if (ka === 'x' && kb === 'y') {
     x = parsePositionToken(a) ?? 0.5;
     y = parsePositionToken(b) ?? 0.5;
-  } else if (ka === 'y' && kb === 'x') {
+  } else if (
+    (ka === 'y' && kb === 'x') ||
+    (a.toLowerCase() === 'center' && kb === 'x')
+  ) {
     y = parsePositionToken(a) ?? 0.5;
     x = parsePositionToken(b) ?? 0.5;
   } else {
