@@ -109,6 +109,57 @@ describe('design-to-code (codegen)', () => {
       }
     });
 
+    it('keeps normal vector fill layers in canvas order', () => {
+      const path = {
+        id: 'layers',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        d: 'M 0 0 L 100 0 L 100 60 Z',
+        fills: [
+          { type: 'solid', value: '#ff0000', opacity: 0.25 },
+          { type: 'solid', value: '#00ff00', enabled: false },
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #ffffff 0%, #000000 100%)',
+            opacity: 0.5,
+          },
+          {
+            type: 'image',
+            value: 'https://example.com/texture.png',
+            objectFit: 'cover',
+            opacity: 0.75,
+          },
+        ],
+        strokes: [{ type: 'solid', value: '#222222' }],
+        strokeWidth: 2,
+      } as SerializedNode;
+      const react = serializedNodesToCode([path]);
+      const reactPaths = [...react.matchAll(/^\s*<path .* \/>$/gm)].map(
+        ([line]) => line,
+      );
+      expect(reactPaths).toHaveLength(4);
+      expect(reactPaths[0]).toContain('#ff0000');
+      expect(reactPaths[1]).toContain('ic-gradient-6c-61-79-65-72-73-fill-1');
+      expect(reactPaths[1]).toContain('fillOpacity={"0.50"}');
+      expect(reactPaths[2]).toContain('ic-image-6c-61-79-65-72-73-fill-2');
+      expect(reactPaths[2]).toContain('fillOpacity={"0.75"}');
+      expect(reactPaths[3]).toContain('stroke={"#222222"}');
+      expect(react).not.toContain('#00ff00');
+      const html = serializedNodesToCode([path], { framework: 'html-css' });
+      const htmlPaths = [...html.matchAll(/^\s*<path .* \/>$/gm)].map(
+        ([line]) => line,
+      );
+      expect(htmlPaths).toHaveLength(4);
+      expect(htmlPaths[0]).toContain('#ff0000');
+      expect(htmlPaths[1]).toContain('ic-gradient-6c-61-79-65-72-73-fill-1');
+      expect(htmlPaths[2]).toContain('ic-image-6c-61-79-65-72-73-fill-2');
+      expect(htmlPaths[3]).toContain('stroke="#222222"');
+    });
+
     it('applies a vector shadow to the SVG artwork without shadowing children', () => {
       const path = {
         id: 'shadow-path',

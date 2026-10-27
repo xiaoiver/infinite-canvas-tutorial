@@ -46,6 +46,7 @@ import type {
   CodeVectorMarker,
   CodeVectorGradient,
   CodeVectorImage,
+  CodeVectorFillLayer,
   StyleIR,
   StyleValue,
 } from './types';
@@ -343,6 +344,7 @@ function vectorGradient(
   min: [number, number],
   width: number,
   height: number,
+  idSuffix: string = kind,
 ): CodeVectorGradient | undefined {
   const active = layers.filter((layer) => layer.enabled !== false);
   const layer = active.length === 1 ? active[0] : undefined;
@@ -407,7 +409,7 @@ function vectorGradient(
     typeof coordinate === 'number' ? Number.isFinite(coordinate) : true,
   ))
     return undefined;
-  return { id: `ic-gradient-${encodedId}-${kind}`, geometry, stops };
+  return { id: `ic-gradient-${encodedId}-${idSuffix}`, geometry, stops };
 }
 
 function svgImageAlignment(
@@ -450,6 +452,7 @@ function vectorImage(
   node: AnyNode,
   kind: 'fill' | 'stroke',
   layers: SerializedFillLayerItem[],
+  idSuffix: string = kind,
 ): CodeVectorImage | undefined {
   if (layers.length !== 1 || layers[0].type !== 'image') return undefined;
   const image = layers[0];
@@ -466,7 +469,7 @@ function vectorImage(
     .map((character) => character.codePointAt(0)!.toString(16))
     .join('-');
   return {
-    id: `ic-image-${encodedId}-${kind}`,
+    id: `ic-image-${encodedId}-${idSuffix}`,
     href: image.value,
     preserveAspectRatio:
       fit === 'cover'
@@ -506,7 +509,7 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const gradientStrokeLayer = strokes.find((stroke) => stroke.type === 'gradient');
   const imageFillLayer = fills.find((fill) => fill.type === 'image');
   const imageStrokeLayer = strokes.find((stroke) => stroke.type === 'image');
-  const fill =
+  const singleFill =
     node.type === 'path'
       ? (fillLayer?.type === 'solid' && toStyleValue(fillLayer.value)) ||
         (typeof node.fill === 'string' && isGradient(node.fill)
@@ -526,8 +529,36 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     bounds.minX - (bounds.maxX === bounds.minX ? 0.5 : 0);
   const viewBoxY =
     bounds.minY - (bounds.maxY === bounds.minY ? 0.5 : 0);
+  const fillLayers =
+    node.type === 'path' &&
+    fills.length > 1 &&
+    fills.every(
+      (layer) => layer.blendMode === undefined || layer.blendMode === 'normal',
+    )
+      ? fills.map((layer, index): CodeVectorFillLayer => ({
+          fill:
+            layer.type === 'solid' ? toStyleValue(layer.value) : undefined,
+          fillGradient: vectorGradient(
+            node,
+            'fill',
+            [layer],
+            [viewBoxX, viewBoxY],
+            width,
+            height,
+            `fill-${index}`,
+          ),
+          fillImage: vectorImage(node, 'fill', [layer], `fill-${index}`),
+          fillOpacity: toStyleValue(layer.opacity as string | number),
+        }))
+      : undefined;
+  const supportedFillLayers = fillLayers?.every(
+    (layer) => layer.fill || layer.fillGradient || layer.fillImage,
+  )
+    ? fillLayers
+    : undefined;
+  const fill = supportedFillLayers ? undefined : singleFill;
   const fillGradient =
-    node.type === 'path'
+    node.type === 'path' && !supportedFillLayers
       ? vectorGradient(node, 'fill', fills, [viewBoxX, viewBoxY], width, height)
       : undefined;
   const strokeGradient =
@@ -542,7 +573,9 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
         )
       : undefined;
   const fillImage =
-    node.type === 'path' ? vectorImage(node, 'fill', fills) : undefined;
+    node.type === 'path' && !supportedFillLayers
+      ? vectorImage(node, 'fill', fills)
+      : undefined;
   const strokeImage =
     strokeWidth > 0 ? vectorImage(node, 'stroke', strokes) : undefined;
   const alignment = node.strokeAlignment;
@@ -573,6 +606,7 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     fill,
     fillGradient,
     fillImage,
+    fillLayers: supportedFillLayers,
     fillOpacity: fill || fillGradient || fillImage
       ? toStyleValue(
           (fillLayer?.opacity ??
