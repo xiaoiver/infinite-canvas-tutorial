@@ -6,6 +6,11 @@ on:
   push:
     branches:
       - master
+# Master can receive several merges while a build is running. Keep their
+# production deployments in order so an older build cannot take the alias last.
+concurrency:
+  group: vercel-production
+  cancel-in-progress: false
 jobs:
   Deploy-Production:
     runs-on: ubuntu-latest
