@@ -53,8 +53,12 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     return ` ${jsxName}={${typeof value === 'number' ? formatNumber(value) : JSON.stringify(value)}}`;
   };
   const attrs = (values: Attribute[]) => values.map(attr).join('');
-  const leaf = (tag: string, values: Attribute[], level: number) =>
-    `${pad(level)}<${tag}${attrs(values)} />`;
+  const leaf = (
+    tag: string,
+    values: Attribute[],
+    level: number,
+    extraAttrs = '',
+  ) => `${pad(level)}<${tag}${attrs(values)}${extraAttrs} />`;
   const wrap = (tag: string, values: Attribute[], body: string, level: number) =>
     `${pad(level)}<${tag}${attrs(values)}>\n${body}\n${pad(level)}</${tag}>`;
 
@@ -302,9 +306,15 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
     ? vectorDropShadowToCss(path.dropShadow, mode)
     : undefined;
   const artworkLevel = depth + (shadow ? 2 : 1);
-  const artwork = [
-    ...(path.fillLayers?.map((layer) =>
-      leaf(
+  const blendedFills = path.fillLayers?.some((layer) => layer.blendMode);
+  const fillArtwork = path.fillLayers
+    ?.map((layer) => {
+      const style = layer.blendMode
+        ? dialect === 'jsx'
+          ? ` style={{ mixBlendMode: ${JSON.stringify(layer.blendMode)} }}`
+          : ` style="mix-blend-mode: ${escapeAttribute(layer.blendMode)}"`
+        : '';
+      return leaf(
         'path',
         [
           ['d', path.d],
@@ -313,9 +323,16 @@ export function renderVectorSvg(path: VectorPath, options: RenderOptions): strin
           ['fill-rule', path.fillRule],
           ['stroke', 'none'],
         ],
-        artworkLevel,
-      ),
-    ) ?? []),
+        artworkLevel + (blendedFills ? 1 : 0),
+        style,
+      );
+    })
+    .join('\n');
+  const isolatedFills = blendedFills
+    ? `${pad(artworkLevel)}<g${dialect === 'jsx' ? ' style={{ isolation: "isolate" }}' : ' style="isolation: isolate"'}>\n${fillArtwork}\n${pad(artworkLevel)}</g>`
+    : fillArtwork;
+  const artwork = [
+    ...(isolatedFills ? [isolatedFills] : []),
     ...(!path.fillLayers || path.strokeWidth
       ? [leaf('path', pathAttrs, artworkLevel)]
       : []),

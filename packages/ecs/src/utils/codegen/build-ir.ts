@@ -533,23 +533,35 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
     node.type === 'path' &&
     fills.length > 1 &&
     fills.every(
-      (layer) => layer.blendMode === undefined || layer.blendMode === 'normal',
+      (layer, index) =>
+        index === 0 ||
+        layer.blendMode === undefined ||
+        layer.blendMode === 'normal' ||
+        toCSSMixBlendMode(layer.blendMode) !== null,
     )
-      ? fills.map((layer, index): CodeVectorFillLayer => ({
-          fill:
-            layer.type === 'solid' ? toStyleValue(layer.value) : undefined,
-          fillGradient: vectorGradient(
-            node,
-            'fill',
-            [layer],
-            [viewBoxX, viewBoxY],
-            width,
-            height,
-            `fill-${index}`,
-          ),
-          fillImage: vectorImage(node, 'fill', [layer], `fill-${index}`),
-          fillOpacity: toStyleValue(layer.opacity as string | number),
-        }))
+      ? fills.map((layer, index): CodeVectorFillLayer => {
+          // Paint parsing is independent of how the layer blends with its backdrop.
+          const paintLayer = { ...layer, blendMode: 'normal' as const };
+          return {
+            fill:
+              layer.type === 'solid' ? toStyleValue(layer.value) : undefined,
+            fillGradient: vectorGradient(
+              node,
+              'fill',
+              [paintLayer],
+              [viewBoxX, viewBoxY],
+              width,
+              height,
+              `fill-${index}`,
+            ),
+            fillImage: vectorImage(node, 'fill', [paintLayer], `fill-${index}`),
+            fillOpacity: toStyleValue(layer.opacity as string | number),
+            blendMode:
+              index > 0
+                ? (toCSSMixBlendMode(layer.blendMode) ?? undefined)
+                : undefined,
+          };
+        })
       : undefined;
   const supportedFillLayers = fillLayers?.every(
     (layer) => layer.fill || layer.fillGradient || layer.fillImage,
