@@ -228,6 +228,31 @@ test('mobile checkout stays editable on the IC canvas and exports current HTML a
   await page.evaluate(() => window.designToCodeDocs.editPricingAmount('$39'));
   await expect(code).toContainText('$39');
   await expect(code).toContainText('export function PricingPlanCard');
+  const [projectDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '下载 React 工程' }).click(),
+  ]);
+  expect(projectDownload.suggestedFilename()).toBe('pricing-react.zip');
+  const { unzipSync, strFromU8 } = await import(
+    '../../packages/site/node_modules/fflate/esm/index.mjs'
+  );
+  const project = unzipSync(
+    new Uint8Array(await readFile((await projectDownload.path())!)),
+  );
+  const appSource = strFromU8(project['src/App.tsx']);
+  expect(appSource).toContain('export function PricingPlanCard');
+  expect(appSource).toContain('$39');
+  expect(strFromU8(project['src/main.tsx'])).toContain('<PricingPage />');
+  expect(strFromU8(project['src/index.css'])).toContain(
+    '@import "tailwindcss"',
+  );
+  const manifest = JSON.parse(strFromU8(project['package.json']));
+  expect(manifest.scripts.build).toBe('tsc --noEmit && vite build');
+  expect(manifest.dependencies).toMatchObject({
+    react: '19.2.3',
+    'react-dom': '19.2.3',
+  });
+  expect(manifest.devDependencies).toHaveProperty('tailwindcss');
   const [componentDownload] = await Promise.all([
     page.waitForEvent('download'),
     page.getByRole('button', { name: '下载 .ic' }).click(),
