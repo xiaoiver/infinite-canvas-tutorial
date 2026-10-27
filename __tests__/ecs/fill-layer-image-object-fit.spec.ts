@@ -19,6 +19,9 @@ describe('parseObjectPosition', () => {
     expect(parseObjectPosition('25% 75%')).toEqual({ x: 0.25, y: 0.75 });
     expect(parseObjectPosition('top left')).toEqual({ x: 0, y: 0 });
     expect(parseObjectPosition('left top')).toEqual({ x: 0, y: 0 });
+    expect(parseObjectPosition('center left')).toEqual({ x: 0, y: 0.5 });
+    expect(parseObjectPosition('center right')).toEqual({ x: 1, y: 0.5 });
+    expect(parseObjectPosition('center top')).toEqual({ x: 0.5, y: 0 });
   });
 });
 
@@ -86,6 +89,12 @@ describe('computeObjectFitDrawRect', () => {
   it('objectPosition top left', () => {
     const r = computeObjectFitDrawRect(80, 40, destW, destH, 'none', 'top left');
     expect(r).toEqual({ dx: 0, dy: 0, dw: 80, dh: 40 });
+  });
+
+  it('uses the horizontal axis for center left', () => {
+    expect(
+      computeObjectFitDrawRect(80, 40, destW, destH, 'none', 'center left'),
+    ).toEqual({ dx: 0, dy: 30, dw: 80, dh: 40 });
   });
 });
 

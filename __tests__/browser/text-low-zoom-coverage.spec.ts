@@ -35,17 +35,17 @@ test('dashboard digits retain their center stroke at low zoom', async ({
   );
   const dpr = 2;
   const right = Math.round(bounds!.max.x * dpr);
-  const top = Math.round(bounds!.min.y * dpr) + 5;
-  let waistInk = 0;
-  // This region follows the last digit in "1,248". Missing coverage at the
-  // waist makes the 8 look split by a pale horizontal line at small zoom.
-  for (let y = top; y < top + 14; y++) {
-    for (let x = right - 14; x < right; x++) {
+  const waistTop = Math.round(bounds!.min.y * dpr) + 18;
+  // Sample the center of the final 8 rather than its upper loop. A blank row
+  // through the waist would make the glyph appear split at small zoom.
+  for (let y = waistTop; y < waistTop + 5; y++) {
+    let rowInk = 0;
+    for (let x = right - 17; x < right + 3; x++) {
       const offset = (y * png.width + x) * 4;
       const brightness =
         (png.data[offset] + png.data[offset + 1] + png.data[offset + 2]) / 3;
-      if (brightness < 70) waistInk++;
+      if (brightness < 70) rowInk++;
     }
+    expect(rowInk).toBeGreaterThanOrEqual(2);
   }
-  expect(waistInk).toBeGreaterThanOrEqual(55);
 });

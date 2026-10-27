@@ -551,14 +551,15 @@ function svgImageAlignment(
   const x = axis(parts[0], true);
   const y = axis(parts[1], false);
   if (x && y) return `x${x}Y${y}`;
-  // CSS also accepts keyword pairs with the vertical keyword first.
+  // CSS also accepts vertical-first keyword pairs, including `center left`.
   const reversedY = axis(parts[0], false);
   const reversedX = axis(parts[1], true);
   if (
     reversedX &&
     reversedY &&
-    ['top', 'bottom'].includes(parts[0]) &&
-    ['left', 'right', 'center'].includes(parts[1])
+    ((['top', 'bottom'].includes(parts[0]) &&
+      ['left', 'right', 'center'].includes(parts[1])) ||
+      (parts[0] === 'center' && ['left', 'right'].includes(parts[1])))
   )
     return `x${reversedX}Y${reversedY}`;
   return undefined;
