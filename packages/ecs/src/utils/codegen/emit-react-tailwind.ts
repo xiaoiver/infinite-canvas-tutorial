@@ -6,8 +6,10 @@
  *   inline style 中保留 `$token`；`resolved` 模式输出字面量；
  * - `iconfont` → `lucide-react`（lucide 族）或 `@iconify/react`（其他族）；
  * - `reusable` → 函数组件定义，`ref` 实例 → 组件调用并以 props 传入覆盖项。
+ * - `css-var` 模式在顶层组件中输出变量定义，使其可直接渲染。
  */
 import { formatNumber } from '../serialize/points';
+import { buildDesignVariablesCssRootBlock } from '../design-variables';
 import { renderVectorSvg } from './render-vector-svg';
 import { renderVectorImageStrokeOverlay } from './render-vector-image-stroke-overlay';
 import { renderVectorMixedStrokes } from './render-vector-mixed-strokes';
@@ -770,9 +772,22 @@ export function emitReactTailwind(
         .map((n) => renderNode(n, state, 3))
         .join('\n')}\n${indent.repeat(2)}</>`;
 
+  const cssVariables =
+    ir.variablesMode === 'css-var' && Object.keys(ir.variables).length > 0
+      ? buildDesignVariablesCssRootBlock(ir.variables, ir.themeMode)
+      : undefined;
+  const rootWithVariables = cssVariables
+    ? `${indent.repeat(2)}<>\n${indent.repeat(3)}<style>{${JSON.stringify(
+        cssVariables,
+      )}}</style>\n${rootWrapped
+        .split('\n')
+        .map((line) => `${indent}${line}`)
+        .join('\n')}\n${indent.repeat(2)}</>`
+    : rootWrapped;
+
   const topComponent = `export function ${
     pascalCase(topName) || 'Design'
-  }() {\n${indent}return (\n${rootWrapped}\n${indent});\n}`;
+  }() {\n${indent}return (\n${rootWithVariables}\n${indent});\n}`;
 
   // imports（在确定用到哪些图标后再生成）
   const imports: string[] = [];

@@ -367,7 +367,7 @@ const code = serializedNodesToCode(nodes, {
 The three variable modes match the SVG export semantics:
 
 -   `resolved` (default): resolve `$token` to literals (e.g. `bg-[#FFFFFF]`).
--   `css-var`: emit `var(--token)` for styles (e.g. `bg-[var(--color-bg)]`); the HTML/CSS emitter also injects a `:root { … }` block. Text content tokens resolve to their current values because CSS custom properties cannot replace text nodes.
+-   `css-var`: emit `var(--token)` for styles (e.g. `bg-[var(--color-bg)]`); both HTML/CSS and React exports include a `:root { … }` block. Text content tokens resolve to their current values because CSS custom properties cannot replace text nodes.
 -   `preserve-token`: keep `$token` (routed to an inline `style` for post-processing).
 
 ### Components and instances {#design-to-code-components}
