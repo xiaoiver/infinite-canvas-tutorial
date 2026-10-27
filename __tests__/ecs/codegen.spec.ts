@@ -160,6 +160,68 @@ describe('design-to-code (codegen)', () => {
       expect(htmlPaths[3]).toContain('stroke="#222222"');
     });
 
+    it('isolates vector fill layer blending from the surrounding canvas', () => {
+      const path = {
+        id: 'blend-layers',
+        type: 'path',
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 60,
+        zIndex: 0,
+        d: 'M 0 0 L 100 0 L 100 60 Z',
+        fills: [
+          { type: 'solid', value: '#ff0000' },
+          {
+            type: 'gradient',
+            value: 'linear-gradient(90deg, #ffffff 0%, #000000 100%)',
+            blendMode: 'multiply',
+          },
+          {
+            type: 'image',
+            value: 'https://example.com/texture.png',
+            blendMode: 'screen',
+          },
+        ],
+        strokes: [{ type: 'solid', value: '#222222' }],
+        strokeWidth: 2,
+      } as SerializedNode;
+      const react = serializedNodesToCode([path]);
+      expect(react).toContain('<g style={{ isolation: "isolate" }}>');
+      expect(react).toContain('style={{ mixBlendMode: "multiply" }}');
+      expect(react).toContain('style={{ mixBlendMode: "screen" }}');
+      expect(react).toContain('ic-gradient-62-6c-65-6e-64-2d-6c-61-79-65-72-73-fill-1');
+      expect(react).toContain('ic-image-62-6c-65-6e-64-2d-6c-61-79-65-72-73-fill-2');
+      expect(react.indexOf('</g>')).toBeLessThan(
+        react.indexOf('stroke={"#222222"}'),
+      );
+      expect(
+        ts.transpileModule(react, {
+          fileName: 'Design.tsx',
+          reportDiagnostics: true,
+          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+        }).diagnostics?.filter(
+          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+        ),
+      ).toEqual([]);
+      const html = serializedNodesToCode([path], { framework: 'html-css' });
+      expect(html).toContain('<g style="isolation: isolate">');
+      expect(html).toContain('style="mix-blend-mode: multiply"');
+      expect(html).toContain('style="mix-blend-mode: screen"');
+
+      const unsupported = serializedNodesToCode([
+        {
+          ...path,
+          fills: [
+            { type: 'solid', value: '#ff0000' },
+            { type: 'solid', value: '#0000ff', blendMode: 'linearBurn' },
+          ],
+        } as SerializedNode,
+      ]);
+      expect(unsupported).not.toContain('isolation:');
+      expect(unsupported).not.toContain('mixBlendMode:');
+    });
+
     it('applies a vector shadow to the SVG artwork without shadowing children', () => {
       const path = {
         id: 'shadow-path',

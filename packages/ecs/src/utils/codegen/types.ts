@@ -285,6 +285,8 @@ export interface CodeVectorFillLayer {
   fillGradient?: CodeVectorGradient;
   fillImage?: CodeVectorImage;
   fillOpacity?: StyleValue;
+  /** CSS mix-blend-mode applied against the layers below this one. */
+  blendMode?: string;
 }
 
 export interface CodeComponentProp {
