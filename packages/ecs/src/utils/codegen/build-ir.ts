@@ -410,6 +410,42 @@ function vectorGradient(
   return { id: `ic-gradient-${encodedId}-${kind}`, geometry, stops };
 }
 
+function svgImageAlignment(
+  position: string | undefined,
+): `x${'Min' | 'Mid' | 'Max'}Y${'Min' | 'Mid' | 'Max'}` | undefined {
+  if (position === undefined) return 'xMidYMid';
+  const parts = position.trim().toLowerCase().split(/\s+/);
+  if (parts.length < 1 || parts.length > 2) return undefined;
+  const axis = (
+    token: string,
+    horizontal: boolean,
+  ): 'Min' | 'Mid' | 'Max' | undefined => {
+    if (token === 'center' || token === '50%') return 'Mid';
+    if (token === '0%' || token === (horizontal ? 'left' : 'top'))
+      return 'Min';
+    if (token === '100%' || token === (horizontal ? 'right' : 'bottom'))
+      return 'Max';
+    return undefined;
+  };
+  if (parts.length === 1) {
+    const x = axis(parts[0], true);
+    if (x) return `x${x}YMid`;
+    const y = axis(parts[0], false);
+    return y ? `xMidY${y}` : undefined;
+  }
+  const x = axis(parts[0], true);
+  const y = axis(parts[1], false);
+  if (x && y) return `x${x}Y${y}`;
+  // CSS also accepts keyword pairs with the vertical keyword first.
+  const reversedY = axis(parts[0], false);
+  const reversedX = axis(parts[1], true);
+  if (reversedX && reversedY &&
+      ['top', 'bottom'].includes(parts[0]) &&
+      ['left', 'right', 'center'].includes(parts[1]))
+    return `x${reversedX}Y${reversedY}`;
+  return undefined;
+}
+
 function vectorImage(
   node: AnyNode,
   kind: 'fill' | 'stroke',
@@ -419,12 +455,11 @@ function vectorImage(
   const image = layers[0];
   if (
     !image.value.trim() ||
-    (image.blendMode !== undefined && image.blendMode !== 'normal') ||
-    ![undefined, '50% 50%', 'center', 'center center'].includes(
-      image.objectPosition,
-    )
+    (image.blendMode !== undefined && image.blendMode !== 'normal')
   )
     return undefined;
+  const alignment = svgImageAlignment(image.objectPosition);
+  if (!alignment) return undefined;
   const fit = image.objectFit ?? 'fill';
   if (!['fill', 'contain', 'cover'].includes(fit)) return undefined;
   const encodedId = Array.from(node.id as string)
@@ -435,9 +470,9 @@ function vectorImage(
     href: image.value,
     preserveAspectRatio:
       fit === 'cover'
-        ? 'xMidYMid slice'
+        ? `${alignment} slice`
         : fit === 'contain'
-          ? 'xMidYMid meet'
+          ? `${alignment} meet`
           : 'none',
   };
 }
