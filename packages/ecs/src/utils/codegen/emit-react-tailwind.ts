@@ -363,6 +363,8 @@ function genTailwind(
     classes.push(
       `leading-[${tw(styleValueToCss(style.lineHeight, mode, true))}]`,
     );
+  else if (style.lineHeightRatio !== undefined && !skip.has('lineHeight'))
+    inline.push(['lineHeight', formatNumber(style.lineHeightRatio)]);
 
   return { classes, inline };
 }
@@ -478,7 +480,8 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       })
       .join(' ');
     const component = `<${node.instanceOf}${props ? ' ' + props : ''} />`;
-    if (!node.style.position) return `${pad}${component}`;
+    if (!node.style.position && node.style.flexShrink === undefined)
+      return `${pad}${component}`;
     const { className, styleExpr } = renderAttributes(node, state);
     return `${pad}<div${className}${styleExpr}>${component}</div>`;
   }

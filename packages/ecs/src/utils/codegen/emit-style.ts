@@ -298,6 +298,8 @@ export function styleIRToCssDeclarations(
     push('letter-spacing', styleValueToCss(style.letterSpacing, mode, true));
   if (style.lineHeight)
     push('line-height', styleValueToCss(style.lineHeight, mode, true));
+  else if (style.lineHeightRatio !== undefined)
+    push('line-height', formatNumber(style.lineHeightRatio));
   if (style.textDecoration)
     push('text-decoration', textDecorationToCss(style.textDecoration, mode));
 

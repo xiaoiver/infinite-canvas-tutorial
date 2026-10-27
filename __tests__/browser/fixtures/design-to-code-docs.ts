@@ -190,6 +190,10 @@ const probe = {
   },
   scene: () => api?.getNodes().find((node) => !node.parentId)?.id,
   nodes: () => api?.getNodes() ?? [],
+  nodeBounds: (id: string) => {
+    const node = api?.getNodeById(id);
+    return node && api?.getBounds([node]);
+  },
   camera: () => api?.getAppState(),
   ordersValueBounds: () => {
     const node = api?.getNodeById('metric-orders-value');

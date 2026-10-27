@@ -1714,7 +1714,7 @@ describe('design-to-code (codegen)', () => {
     });
 
     it('keeps zero line height as automatic text leading', () => {
-      const code = serializedNodesToCode([
+      const nodes = [
         {
           id: 'auto-leading',
           type: 'text',
@@ -1724,8 +1724,49 @@ describe('design-to-code (codegen)', () => {
           content: 'Automatic leading',
           lineHeight: 0,
         } as SerializedNode,
-      ]);
+      ];
+      const code = serializedNodesToCode(nodes);
       expect(code).not.toContain('leading-[0px]');
+      expect(code).toContain('lineHeight: 1.2');
+      expect(serializedNodesToCode(nodes, { framework: 'html-css' })).toContain(
+        'line-height: 1.2',
+      );
+    });
+
+    it('keeps Yoga default flex items from shrinking in exported CSS', () => {
+      const nodes = [
+        {
+          id: 'column',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          zIndex: 0,
+          width: 100,
+          height: 100,
+          display: 'flex',
+          flexDirection: 'column',
+        },
+        {
+          id: 'fixed-child',
+          type: 'rect',
+          parentId: 'column',
+          x: 0,
+          y: 0,
+          zIndex: 1,
+          width: 100,
+          height: 120,
+        },
+      ] as SerializedNode[];
+      expect(serializedNodesToCode(nodes)).toContain('shrink-0');
+      expect(serializedNodesToCode(nodes, { framework: 'html-css' })).toContain(
+        'flex-shrink: 0',
+      );
+      expect(
+        serializedNodesToCode([
+          nodes[0],
+          { ...nodes[1], flexShrink: 1 } as SerializedNode,
+        ]),
+      ).not.toContain('shrink-0');
     });
 
     it('preserves hard line breaks and maps a wrapped text width', () => {
@@ -2280,15 +2321,15 @@ describe('design-to-code (codegen)', () => {
         semanticElements,
       });
       expect(html).toContain('<main');
-      expect(html).toContain(
-        '<h1 style="margin: 0; white-space: pre">Checkout</h1>',
-      );
+      expect(html).toContain('<h1 style="margin: 0; flex-shrink: 0;');
+      expect(html).toContain('line-height: 1.20">Checkout</h1>');
       expect(html).toContain('<button type="button"');
       expect(html).toContain('appearance: none; border: 0; padding: 0');
       expect(html).toContain('href="/help?topic=pay&amp;lang=en"');
       const react = serializedNodesToCode(nodes, { semanticElements });
       expect(react).toContain('<main');
-      expect(react).toContain('<h1 className="whitespace-pre">Checkout</h1>');
+      expect(react).toContain('<h1 className="shrink-0 whitespace-pre"');
+      expect(react).toContain('lineHeight: 1.20 }}>Checkout</h1>');
       expect(react).toContain('<button type="button"');
       expect(react).toContain('href="/help?topic=pay&lang=en"');
     });

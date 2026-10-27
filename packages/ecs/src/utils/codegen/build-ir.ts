@@ -1154,6 +1154,7 @@ function buildStyle(
     if (ls) style.letterSpacing = ls;
     const lh = toStyleValue(node.lineHeight as number);
     if (lh && lh.literal !== 0) style.lineHeight = lh;
+    else style.lineHeightRatio = 1.2;
     style.textDecoration = textDecorationFromNode(node);
   }
 
@@ -1190,12 +1191,16 @@ function buildCodeNode(
     );
     if (instance) {
       if (inFreeLayout) positionFreeChild(instance.style, node);
+      else if (node.parentId) instance.style.flexShrink = node.flexShrink ?? 0;
       return instance;
     }
   }
   const role = decideRole(node);
   const children = sortChildren(ctx.childrenByParent.get(node.id) ?? []);
   const style = buildStyle(node, role, children.length > 0);
+  // Yoga uses flex-shrink: 0 by default, while CSS flex items default to 1.
+  if (!inFreeLayout && node.parentId && style.flexShrink === undefined)
+    style.flexShrink = 0;
   const vectorPath = buildVectorPath(node);
   if (vectorPath) {
     style.width = vectorPath.width;
@@ -1413,7 +1418,7 @@ function templateDefaultValue(
     return toStyleValue(desc.flexGrow as number) ?? { literal: 0 };
   }
   if (attr === 'flexShrink') {
-    return toStyleValue(desc.flexShrink as number) ?? { literal: 1 };
+    return toStyleValue(desc.flexShrink as number) ?? { literal: 0 };
   }
   if (attr === 'flexBasis') {
     return toStyleValue(desc.flexBasis as number) ?? { literal: 'auto' };
