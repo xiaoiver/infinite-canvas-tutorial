@@ -80,10 +80,15 @@ export function reactStarterFiles(
   };
 }
 
-export function reactStarterArchive(files: Record<string, string>): Uint8Array {
+export function reactStarterArchive(
+  files: Record<string, string | Uint8Array>,
+): Uint8Array {
   return zipSync(
     Object.fromEntries(
-      Object.entries(files).map(([name, content]) => [name, strToU8(content)]),
+      Object.entries(files).map(([name, content]) => [
+        name,
+        typeof content === 'string' ? strToU8(content) : content,
+      ]),
     ),
     { level: 6 },
   );

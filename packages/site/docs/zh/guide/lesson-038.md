@@ -431,7 +431,7 @@ export function Design() {
 
 <DesignToCodeInterfaces locale="zh" />
 
-下载 `.ic` 文件后，可在[在线应用](https://app.infinitecanvas.cc/)中通过 **Import from… > .ic** 继续编辑设计。下载 HTML 文件后可直接用浏览器打开。选择 **下载 React 工程** 可从当前画布获取包含 Vite、React 19 和 Tailwind CSS 4 的 ZIP。解压后执行 `pnpm install` 和 `pnpm dev` 即可运行，导出的组件位于 `src/App.tsx`；设计使用 Inter 时，工程会在构建时打包字体文件。工程中的 `src/responsive.css` 为这三个示例提供窄屏布局，`src/App.tsx` 仍保留画板尺寸。也可以只下载 `.tsx` 文件，放入现有项目。目前生成的是展示层代码；导航、结账动作、支付及实时数据仍需在应用中接入。
+下载 `.ic` 文件后，可在[在线应用](https://app.infinitecanvas.cc/)中通过 **Import from… > .ic** 继续编辑设计。下载 HTML 文件后可直接用浏览器打开。选择 **下载 React 工程** 可从当前画布获取包含 Vite、React 19 和 Tailwind CSS 4 的 ZIP。解压后执行 `pnpm install` 和 `pnpm dev` 即可运行，导出的组件位于 `src/App.tsx`；设计使用 Inter 时，工程会在构建时打包字体文件。当前画布使用的临时 `blob:` 图片会复制到 `public/assets`，代码改用本地路径；data URL 继续内联，远程 URL 保持原样。工程中的 `src/responsive.css` 为这三个示例提供窄屏布局，`src/App.tsx` 仍保留画板尺寸。也可以只下载 `.tsx` 文件，放入现有项目。目前生成的是展示层代码；导航、结账动作、支付及实时数据仍需在应用中接入。
 
 ### 反向：code → design {#design-to-code-reverse}
 
