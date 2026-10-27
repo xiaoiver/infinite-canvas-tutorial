@@ -11,11 +11,10 @@ import {
 } from '../design-variables';
 import type { ThemeMode } from '../../components/Theme';
 import { formatNumber } from '../serialize/points';
+import { renderVectorSvg } from './render-vector-svg';
 import {
-  solidFillColorToCss,
   styleIRToCssDeclarations,
   styleValueToCss,
-  vectorDropShadowToCss,
 } from './emit-style';
 import type { CodeIR, CodeNode, CodeVariablesMode } from './types';
 
@@ -64,94 +63,16 @@ function renderNode(node: CodeNode, state: HtmlState, depth: number): string {
   if (node.vectorPath) {
     const path = node.vectorPath;
     const hasChildren = node.children.length > 0;
-    const fillServer = path.fillGradient ?? path.fillImage;
-    const strokeServer = path.strokeGradient ?? path.strokeImage;
-    const fill = fillServer
-      ? `url(#${fillServer.id})`
-      : path.fill
-        ? solidFillColorToCss(path.fill, path.fillOpacity, state.mode)
-        : 'none';
-    const stroke = strokeServer
-      ? `url(#${strokeServer.id})`
-      : path.stroke
-        ? solidFillColorToCss(path.stroke, path.strokeOpacity, state.mode)
-        : 'none';
-    const attr = (name: string, value: string | number | undefined) =>
-      value === undefined ? '' : ` ${name}="${escapeAttr(String(value))}"`;
-    const gradients = [path.fillGradient, path.strokeGradient]
-      .filter((gradient) => gradient !== undefined)
-      .map((gradient) => {
-        const g = gradient.geometry;
-        const tag = g.type === 'linear' ? 'linearGradient' : 'radialGradient';
-        const geometry =
-          g.type === 'linear'
-            ? `${attr('x1', formatNumber(g.x1))}${attr('y1', formatNumber(g.y1))}${attr('x2', formatNumber(g.x2))}${attr('y2', formatNumber(g.y2))}`
-            : `${attr('cx', formatNumber(g.cx))}${attr('cy', formatNumber(g.cy))}${attr('r', formatNumber(g.r))}`;
-        const stops = gradient.stops
-          .map(
-            (stop) =>
-              `${state.indent.repeat(depth + 3)}<stop offset="${formatNumber(stop.offset)}" stop-color="${escapeAttr(stop.color)}" />`,
-          )
-          .join('\n');
-        return `${state.indent.repeat(depth + 2)}<${tag} id="${gradient.id}" gradientUnits="userSpaceOnUse"${geometry}>\n${stops}\n${state.indent.repeat(depth + 2)}</${tag}>`;
-      });
-    const images = [path.fillImage, path.strokeImage]
-      .filter((image) => image !== undefined)
-      .map(
-        (image) =>
-          `${state.indent.repeat(depth + 2)}<pattern id="${image.id}" patternUnits="userSpaceOnUse" x="${formatNumber(path.viewBoxX)}" y="${formatNumber(path.viewBoxY)}" width="${formatNumber(path.width)}" height="${formatNumber(path.height)}">\n${state.indent.repeat(depth + 3)}<image href="${escapeAttr(image.href)}" x="${formatNumber(path.viewBoxX)}" y="${formatNumber(path.viewBoxY)}" width="${formatNumber(path.width)}" height="${formatNumber(path.height)}" preserveAspectRatio="${image.preserveAspectRatio}" />\n${state.indent.repeat(depth + 2)}</pattern>`,
-      );
-    const markers = [path.markerStart, path.markerEnd]
-      .filter((marker) => marker !== undefined)
-      .map((marker) => {
-        const side = marker === path.markerStart ? 'start' : 'end';
-        return `${state.indent.repeat(depth + 2)}<marker id="${marker.id}" markerUnits="userSpaceOnUse" markerWidth="${formatNumber(marker.size)}" markerHeight="${formatNumber(marker.size)}" viewBox="${formatNumber(-marker.offset)} ${formatNumber(-marker.offset)} ${formatNumber(marker.size)} ${formatNumber(marker.size)}" refX="0" refY="0" orient="${side === 'start' ? 'auto-start-reverse' : 'auto'}">\n${state.indent.repeat(depth + 3)}<path d="${escapeAttr(marker.d)}" fill="${marker.fill ? escapeAttr(stroke) : 'none'}"${attr('fill-opacity', marker.fill && strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke="${escapeAttr(stroke)}"${attr('stroke-opacity', strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)} stroke-width="${formatNumber(marker.strokeWidth)}"${attr('stroke-linecap', marker.strokeLinecap)}${attr('stroke-linejoin', marker.strokeLinejoin)} />\n${state.indent.repeat(depth + 2)}</marker>`;
-      });
-    const alignment = path.strokeAlignment;
-    const alignmentDefinition = alignment
-      ? alignment.type === 'inner'
-        ? `${state.indent.repeat(depth + 2)}<clipPath id="${alignment.id}" clipPathUnits="userSpaceOnUse">\n${state.indent.repeat(depth + 3)}<path d="${escapeAttr(path.d)}" clip-rule="${path.fillRule}" />\n${state.indent.repeat(depth + 2)}</clipPath>`
-        : `${state.indent.repeat(depth + 2)}<mask id="${alignment.id}" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" mask-type="luminance" x="${formatNumber(path.viewBoxX - (path.strokeWidth ?? 0))}" y="${formatNumber(path.viewBoxY - (path.strokeWidth ?? 0))}" width="${formatNumber(path.width + 2 * (path.strokeWidth ?? 0))}" height="${formatNumber(path.height + 2 * (path.strokeWidth ?? 0))}">\n${state.indent.repeat(depth + 3)}<rect x="${formatNumber(path.viewBoxX - (path.strokeWidth ?? 0))}" y="${formatNumber(path.viewBoxY - (path.strokeWidth ?? 0))}" width="${formatNumber(path.width + 2 * (path.strokeWidth ?? 0))}" height="${formatNumber(path.height + 2 * (path.strokeWidth ?? 0))}" fill="white" />\n${state.indent.repeat(depth + 3)}<path d="${escapeAttr(path.d)}" fill="black" fill-rule="${path.fillRule}" />\n${state.indent.repeat(depth + 2)}</mask>`
-      : undefined;
-    const definitions = [
-      ...gradients,
-      ...images,
-      ...markers,
-      ...(alignmentDefinition ? [alignmentDefinition] : []),
-    ];
-    const defs = definitions.length
-      ? `${state.indent.repeat(depth + 1)}<defs>\n${definitions.join('\n')}\n${state.indent.repeat(depth + 1)}</defs>\n`
-      : '';
-    const shadow = path.dropShadow
-      ? vectorDropShadowToCss(path.dropShadow, state.mode)
-      : undefined;
-    const pathPad = state.indent.repeat(depth + (shadow ? 2 : 1));
-    const artworkOpen = shadow
-      ? `${state.indent.repeat(depth + 1)}<g style="filter: ${escapeAttr(shadow)}">\n`
-      : '';
-    const artworkClose = shadow
-      ? `${state.indent.repeat(depth + 1)}</g>\n`
-      : '';
     const svgStyle = hasChildren
       ? ' style="position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none"'
       : style;
-    const alignedStroke = alignment
-      ? `${pathPad}<path d="${escapeAttr(path.d)}" fill="none" stroke="${escapeAttr(stroke)}"${attr('stroke-opacity', strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr('stroke-width', 2 * (path.strokeWidth ?? 0))}${attr('stroke-linecap', path.strokeLinecap)}${attr('stroke-linejoin', path.strokeLinejoin)}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr('stroke-dasharray', path.strokeDasharray)}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', path.markerStart && `url(#${path.markerStart.id})`)}${attr('marker-end', path.markerEnd && `url(#${path.markerEnd.id})`)}${attr(alignment.type === 'inner' ? 'clip-path' : 'mask', `url(#${alignment.id})`)} />\n`
-      : '';
-    const svg = `${pad}<svg viewBox="${formatNumber(path.viewBoxX)} ${formatNumber(path.viewBoxY)} ${formatNumber(path.width)} ${formatNumber(
-      path.height,
-    )}" aria-hidden="true"${svgStyle}>\n${defs}${artworkOpen}${pathPad}<path d="${escapeAttr(path.d)}" fill="${escapeAttr(fill)}"${attr('fill-opacity', fillServer && path.fillOpacity ? styleValueToCss(path.fillOpacity, state.mode) : undefined)} fill-rule="${
-      path.fillRule
-    }" stroke="${alignment ? 'none' : escapeAttr(stroke)}"${attr('stroke-opacity', strokeServer && path.strokeOpacity ? styleValueToCss(path.strokeOpacity, state.mode) : undefined)}${attr(
-      'stroke-width',
-      path.strokeWidth,
-    )}${attr('stroke-linecap', path.strokeLinecap)}${attr(
-      'stroke-linejoin',
-      path.strokeLinejoin,
-    )}${attr('stroke-miterlimit', path.strokeMiterlimit)}${attr(
-      'stroke-dasharray',
-      path.strokeDasharray,
-    )}${attr('stroke-dashoffset', path.strokeDashoffset)}${attr('marker-start', !alignment && path.markerStart ? `url(#${path.markerStart.id})` : undefined)}${attr('marker-end', !alignment && path.markerEnd ? `url(#${path.markerEnd.id})` : undefined)} />\n${alignedStroke}${artworkClose}${pad}</svg>`;
+    const svg = renderVectorSvg(path, {
+      dialect: 'html',
+      mode: state.mode,
+      indent: state.indent,
+      depth,
+      svgStyle,
+    });
     if (!hasChildren) return svg;
     const tag = node.element?.tag ?? 'div';
     const semanticAttr =
