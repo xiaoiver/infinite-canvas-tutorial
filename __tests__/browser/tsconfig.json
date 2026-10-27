@@ -5,6 +5,14 @@
     "rootDir": "../..",
     "baseUrl": "../..",
     "paths": {
+      "react": ["packages/site/node_modules/@types/react/index.d.ts"],
+      "react/jsx-runtime": [
+        "packages/site/node_modules/@types/react/jsx-runtime.d.ts"
+      ],
+      "react-dom": ["packages/site/node_modules/@types/react-dom/index.d.ts"],
+      "react-dom/client": [
+        "packages/site/node_modules/@types/react-dom/client.d.ts"
+      ],
       "vue": ["packages/site/node_modules/vue/dist/vue.d.ts"],
       "@infinite-canvas-tutorial/ecs": [
         "packages/ecs/src/index.ts"
