@@ -273,7 +273,9 @@ export interface CodeVectorGradient {
 export interface CodeVectorImage {
   id: string;
   href: string;
-  preserveAspectRatio: 'none' | 'xMidYMid meet' | 'xMidYMid slice';
+  preserveAspectRatio:
+    | 'none'
+    | `x${'Min' | 'Mid' | 'Max'}Y${'Min' | 'Mid' | 'Max'} ${'meet' | 'slice'}`;
 }
 
 export interface CodeComponentProp {

@@ -81,6 +81,32 @@ describe('design-to-code (codegen)', () => {
         } as SerializedNode,
       ]);
       expect(unsupportedPosition).not.toContain('<pattern');
+
+      for (const [position, fit, alignment] of [
+        ['left top', 'cover', 'xMinYMin slice'],
+        ['bottom right', 'contain', 'xMaxYMax meet'],
+        ['100% 0%', 'cover', 'xMaxYMin slice'],
+        ['top', 'contain', 'xMidYMin meet'],
+      ] as const) {
+        const positioned = {
+          ...path,
+          fills: [
+            {
+              type: 'image',
+              value: 'https://example.com/photo.png',
+              objectFit: fit,
+              objectPosition: position,
+            },
+          ],
+          strokes: [],
+        } as SerializedNode;
+        expect(serializedNodesToCode([positioned])).toContain(
+          `preserveAspectRatio={"${alignment}"}`,
+        );
+        expect(
+          serializedNodesToCode([positioned], { framework: 'html-css' }),
+        ).toContain(`preserveAspectRatio="${alignment}"`);
+      }
     });
 
     it('applies a vector shadow to the SVG artwork without shadowing children', () => {
