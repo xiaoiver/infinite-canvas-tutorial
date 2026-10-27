@@ -16,6 +16,48 @@ root.addEventListener(
 createApp(DesignToCodeInterfaces, { locale: 'zh' }).mount(root);
 
 const probe = {
+  vectorLayeredStrokeMarkup: (
+    kind: 'image-top' | 'image-bottom' | 'blended' | 'shadow',
+  ) => {
+    const image = `data:image/svg+xml,${encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#00ff00"/></svg>',
+    )}`;
+    const imageStroke = {
+      type: 'image',
+      value: image,
+      objectFit: 'none',
+      objectPosition: '20% 80%',
+      ...(kind === 'blended' ? { blendMode: 'multiply' } : {}),
+    };
+    const solidStroke = { type: 'solid', value: '#ff0000' };
+    return serializedNodesToCode(
+      [
+        {
+          id: `layered-stroke-${kind}`,
+          type: 'path',
+          x: 0,
+          y: 0,
+          zIndex: 0,
+          width: 60,
+          height: 60,
+          d: 'M 10 30 H 50',
+          strokes:
+            kind === 'image-bottom'
+              ? [imageStroke, solidStroke]
+              : [solidStroke, imageStroke],
+          strokeWidth: 8,
+          ...(kind === 'shadow'
+            ? {
+                dropShadowColor: '#000000',
+                dropShadowOffsetY: 12,
+                dropShadowBlurRadius: 0,
+              }
+            : {}),
+        } as SerializedNode,
+      ],
+      { framework: 'html-css' },
+    );
+  },
   vectorStrokeMarkup: (kind: 'center' | 'arrow' | 'inner' | 'outer') => {
     const image = `data:image/svg+xml,${encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="#00ff00"/>${
