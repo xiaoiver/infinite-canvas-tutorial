@@ -7,6 +7,72 @@ import {
 
 describe('design-to-code (codegen)', () => {
   describe('react-tailwind emitter', () => {
+    it('keeps children above an image-filled rectangle', () => {
+      const nodes = [
+        {
+          id: 'photo-card',
+          type: 'rect',
+          x: 0,
+          y: 0,
+          width: 240,
+          height: 120,
+          zIndex: 0,
+          display: 'flex',
+          alignItems: 'center',
+          cornerRadius: 12,
+          clipMode: 'clip',
+          opacity: 0.8,
+          fills: [
+            {
+              type: 'image',
+              value: 'https://example.com/photo.png',
+              objectFit: 'cover',
+              objectPosition: 'left top',
+              opacity: 0.5,
+            },
+          ],
+        },
+        {
+          id: 'caption',
+          type: 'text',
+          parentId: 'photo-card',
+          x: 10,
+          y: 10,
+          zIndex: 1,
+          content: 'Caption',
+          fontSize: 18,
+        },
+      ] as SerializedNode[];
+      const react = serializedNodesToCode(nodes);
+      expect(react).toContain('relative');
+      expect(react).toContain('isolate');
+      expect(react).toContain('overflow-hidden');
+      expect(react).toContain('<img src="https://example.com/photo.png" alt=""');
+      expect(react).toContain('objectFit: "cover"');
+      expect(react).toContain('objectPosition: "left top"');
+      expect(react).toContain('opacity: "0.50"');
+      expect(react.indexOf('<img')).toBeLessThan(react.indexOf('Caption'));
+      expect(react).toContain('opacity-[0.80]');
+      expect(react).not.toContain('opacity-[0.40]');
+      expect(
+        ts.transpileModule(react, {
+          fileName: 'Design.tsx',
+          reportDiagnostics: true,
+          compilerOptions: { jsx: ts.JsxEmit.ReactJSX },
+        }).diagnostics?.filter(
+          (diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error,
+        ),
+      ).toEqual([]);
+      const html = serializedNodesToCode(nodes, { framework: 'html-css' });
+      expect(html).toContain('isolation: isolate');
+      expect(html).toContain('overflow: hidden');
+      expect(html).toContain('<img src="https://example.com/photo.png" alt=""');
+      expect(html).toContain('object-fit: cover');
+      expect(html).toContain('object-position: left top');
+      expect(html).toContain('opacity: 0.50');
+      expect(html.indexOf('<img')).toBeLessThan(html.indexOf('Caption'));
+    });
+
     it('exports single image paints on vector fills and strokes', () => {
       const path = {
         id: 'photo-path',

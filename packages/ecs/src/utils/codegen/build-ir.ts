@@ -948,6 +948,10 @@ function buildCodeNode(
   if (inFreeLayout) positionFreeChild(style, node);
   else if (children.length > 0 && node.display !== 'flex')
     style.position = 'relative';
+  if (role === 'image' && children.length > 0) {
+    style.position ??= 'relative';
+    style.isolation = 'isolate';
+  }
   const codeNode: CodeNode = {
     role,
     id: node.id,

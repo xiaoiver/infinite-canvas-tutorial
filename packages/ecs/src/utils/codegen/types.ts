@@ -98,6 +98,7 @@ export interface StyleIR {
   transform?: string;
   /** Rectangular or elliptical `clipMode: clip` clips descendant content. */
   overflow?: 'hidden' | 'visible';
+  isolation?: 'isolate';
   objectFit?: 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
   objectPosition?: string;
   backgroundColor?: StyleValue;
