@@ -28,6 +28,7 @@ export default defineConfig({
   ],
   optimizeDeps: {
     exclude: ['loro-crdt'],
+    include: ['react', 'react/jsx-runtime', 'react-dom', 'react-dom/client'],
     esbuildOptions: { target: 'esnext' },
   },
   root: fileURLToPath(new URL('./fixtures', import.meta.url)),
@@ -36,6 +37,12 @@ export default defineConfig({
   ),
   resolve: {
     alias: {
+      'react-dom': fileURLToPath(
+        new URL('../../packages/site/node_modules/react-dom', import.meta.url),
+      ),
+      react: fileURLToPath(
+        new URL('../../packages/site/node_modules/react', import.meta.url),
+      ),
       // Documentation fixtures mount the real shared example world.
       // Resolve its plugins from source so CI needs no generated esm/lib folders.
       ...Object.fromEntries(

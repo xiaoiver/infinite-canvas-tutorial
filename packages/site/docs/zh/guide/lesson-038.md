@@ -427,6 +427,8 @@ export function Design() {
 
 定价页使用一个 `reusable` 套餐卡片模板和三个 `ref` 实例。编辑器会展开实例以便渲染和编辑；此示例会把文字、颜色、排版与文本装饰、透明度、显式尺寸与尺寸约束、间距、Flex 对齐与子项尺寸、纯色描边和投影修改还原为实例覆盖项，供 React 与 `.ic` 下载使用。Growth 卡片展示了强调色描边。数值型 `flexBasis` 和尺寸约束在 HTML/CSS 和 React 样式中按像素输出。若卡片结构或不支持的属性被修改，导出会使用展开后的节点，让结果继续与画布一致。
 
+这三个示例的 React 导出也会在 React 19 与 Tailwind CSS 4 环境中运行浏览器测试，并将关键文字位置与 HTML 预览对照，防止生成器改动破坏实际渲染。
+
 <DesignToCodeInterfaces locale="zh" />
 
 下载 `.ic` 文件后，可在[在线应用](https://app.infinitecanvas.cc/)中通过 **Import from… > .ic** 继续编辑设计。下载 HTML 文件后可直接用浏览器打开。React 版本需要放入已配置 Tailwind CSS 的项目，并渲染导出的 `AnalyticsDashboard`、`PricingPage` 或 `CheckoutScreen` 组件。目前生成的是展示层代码；导航、结账动作、支付及实时数据仍需在应用中接入。桌面与移动画板使用固定宽度，正式使用时可根据断点调整布局。

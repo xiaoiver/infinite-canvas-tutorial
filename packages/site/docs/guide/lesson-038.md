@@ -424,6 +424,8 @@ The examples pass a node-ID keyed `semanticElements` map to `API.exportCode`. It
 
 The pricing page uses one `reusable` plan-card template and three `ref` instances. The editor expands instances to render and edit them; this demo reconciles text, color, typography and text decoration, opacity, explicit size and size constraints, spacing, flex alignment and item sizing, solid border, and drop-shadow edits back into instance overrides for the React and `.ic` downloads. The Growth card demonstrates an accent border. Numeric `flexBasis` and size constraint values become pixel values in HTML/CSS and React styles. If a card's structure or an unsupported property changes, the export uses its expanded nodes so the result still matches the canvas.
 
+The three React exports are also rendered in a browser test with React 19 and Tailwind CSS 4. The test checks key text positions against the HTML preview so these examples remain runnable as the generator changes.
+
 <DesignToCodeInterfaces />
 
 Download the `.ic` file to continue editing the design in the [online app](https://app.infinitecanvas.cc/) via **Import from… > .ic**. Download the HTML file and open it directly in a browser. For React, put the downloaded `.tsx` in a project with Tailwind CSS and render its exported `AnalyticsDashboard`, `PricingPage`, or `CheckoutScreen` component. The generator currently emits presentation markup; wire navigation, checkout actions, payments, and live data to your application logic after export. The desktop and mobile artboards use fixed widths for a clear design handoff; adapt the generated layout for your responsive breakpoints.
