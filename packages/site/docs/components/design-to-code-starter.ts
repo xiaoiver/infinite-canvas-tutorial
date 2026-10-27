@@ -14,6 +14,8 @@ export function reactStarterFiles(
     dependencies['lucide-react'] = '0.545.0';
   if (source.includes("from '@iconify/react'"))
     dependencies['@iconify/react'] = '^6.0.0';
+  const usesInter = source.includes('font-[Inter');
+  if (usesInter) dependencies['@fontsource/inter'] = '5.3.0';
   const packageJson = {
     name: `${sceneId}-react`,
     private: true,
@@ -61,8 +63,18 @@ export function reactStarterFiles(
     )}\n`,
     'src/index.css': '@import "tailwindcss";\n',
     'src/App.tsx': source,
-    'src/main.tsx': `import { createRoot } from 'react-dom/client';\nimport { ${componentName} } from './App';\nimport './index.css';\n\nconst root = document.getElementById('root');\nif (!root) throw new Error('Missing React root');\ncreateRoot(root).render(<${componentName} />);\n`,
-    'README.md': `# ${componentName}\n\nGenerated from the current IC canvas.\n\nRun with Node.js 20 or newer:\n\n\`\`\`sh\ncorepack pnpm install\ncorepack pnpm dev\n\`\`\`\n\nThe exported component is in \`src/App.tsx\`. Connect buttons, navigation, data, and responsive layouts to your application as needed.\n`,
+    'src/main.tsx': `import { createRoot } from 'react-dom/client';\nimport { ${componentName} } from './App';\nimport './index.css';\n${
+      usesInter
+        ? [400, 500, 600, 700, 800]
+            .map((weight) => `import '@fontsource/inter/${weight}.css';`)
+            .join('\n') + '\n'
+        : ''
+    }\nconst root = document.getElementById('root');\nif (!root) throw new Error('Missing React root');\ncreateRoot(root).render(<${componentName} />);\n`,
+    'README.md': `# ${componentName}\n\nGenerated from the current IC canvas.\n\nRun with Node.js 20 or newer:\n\n\`\`\`sh\ncorepack pnpm install\ncorepack pnpm dev\n\`\`\`\n\nThe exported component is in \`src/App.tsx\`.${
+      usesInter
+        ? ' Inter font files are bundled locally in the production build.'
+        : ''
+    } Connect buttons, navigation, data, and responsive layouts to your application as needed.\n`,
   };
 }
 
