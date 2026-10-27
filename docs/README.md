@@ -10,6 +10,8 @@
 
 等距投影的现状、相机设计和分阶段验收计划见 [isometric-projection-plan.md](./isometric-projection-plan.md)。
 
+CLI 与 WebMCP 的现状、运行时边界和分阶段验收计划见 [cli-webmcp-plan.md](./cli-webmcp-plan.md)。
+
 测试覆盖率的分批计划、当前基线和 CI 门槛见 [ECS 测试覆盖率推进](./ecs-test-coverage.md)。
 
 ## 已确认的重构路线
