@@ -12,6 +12,7 @@ import {
 import { Event } from '@infinite-canvas-tutorial/webcomponents';
 import { ensureExampleWorld } from '../lib/ensure-example-world';
 import { interfaceScenes } from './design-to-code-scenes';
+import { bundleBlobAssets } from './design-to-code-assets';
 import {
   reactStarterArchive,
   reactStarterFiles,
@@ -29,6 +30,7 @@ const code = ref('');
 const highlightedCode = ref('');
 const ready = ref(false);
 const notice = ref('');
+const downloadingStarter = ref(false);
 const scene = computed(
   () => interfaceScenes.find((item) => item.id === sceneId.value)!,
 );
@@ -194,24 +196,38 @@ function downloadCode() {
   URL.revokeObjectURL(url);
 }
 
-function downloadReactStarter() {
-  if (!api || framework.value !== 'react-tailwind') return;
+async function downloadReactStarter() {
+  if (!api || framework.value !== 'react-tailwind' || downloadingStarter.value)
+    return;
   const source = generateCode();
   code.value = source;
-  const files = reactStarterFiles(
-    source,
-    scene.value.componentName,
-    scene.value.id,
-  );
-  const archive = reactStarterArchive(files);
-  const url = URL.createObjectURL(
-    new Blob([new Uint8Array(archive)], { type: 'application/zip' }),
-  );
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `${scene.value.id}-react.zip`;
-  link.click();
-  URL.revokeObjectURL(url);
+  const { componentName, id } = scene.value;
+  downloadingStarter.value = true;
+  try {
+    const assets = await bundleBlobAssets(source);
+    const files = {
+      ...reactStarterFiles(assets.source, componentName, id),
+      ...assets.files,
+    };
+    const archive = reactStarterArchive(files);
+    const url = URL.createObjectURL(
+      new Blob([new Uint8Array(archive)], { type: 'application/zip' }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${id}-react.zip`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notice.value = '';
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    notice.value =
+      props.locale === 'zh'
+        ? `React 工程下载失败：${detail}`
+        : `React project download failed: ${detail}`;
+  } finally {
+    downloadingStarter.value = false;
+  }
 }
 
 function downloadDesign() {
@@ -373,7 +389,7 @@ onUnmounted(() => {
         <button
           v-if="framework === 'react-tailwind'"
           type="button"
-          :disabled="!ready"
+          :disabled="!ready || downloadingStarter"
           @click="downloadReactStarter"
         >
           {{ locale === 'zh' ? '下载 React 工程' : 'Download React project' }}

@@ -189,6 +189,21 @@ const probe = {
     return serializedNodesToCode([node], { framework: 'html-css' });
   },
   scene: () => api?.getNodes().find((node) => !node.parentId)?.id,
+  setDashboardBlobImage: async () => {
+    if (!api) throw new Error('Editor is not ready');
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><rect width="16" height="16" fill="red"/></svg>';
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+    await api.edit((editor) => {
+      for (const id of ['metric-revenue', 'metric-orders']) {
+        const node = editor.getNodeById(id);
+        if (!node || node.type !== 'rect')
+          throw new Error(`Dashboard card is missing: ${id}`);
+        editor.updateNode(node, { fills: [{ type: 'image', value: url }] });
+      }
+    });
+    return { url, svg };
+  },
   nodes: () => api?.getNodes() ?? [],
   nodeBounds: (id: string) => {
     const node = api?.getNodeById(id);
