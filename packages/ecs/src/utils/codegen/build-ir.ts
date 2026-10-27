@@ -630,8 +630,6 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   const strokeLayers =
     strokeWidth > 0 &&
     strokes.length > 1 &&
-    node.strokeAlignment !== 'inner' &&
-    node.strokeAlignment !== 'outer' &&
     !vectorMarker(node, 'start', strokeWidth) &&
     !vectorMarker(node, 'end', strokeWidth) &&
     strokes.every(
@@ -694,7 +692,7 @@ function buildVectorPath(node: AnyNode): CodeNode['vectorPath'] {
   let strokeAlignment: NonNullable<CodeNode['vectorPath']>['strokeAlignment'];
   if (
     node.type === 'path' &&
-    (stroke || strokeGradient || strokeImage) &&
+    (supportedStrokeLayers || stroke || strokeGradient || strokeImage) &&
     strokeWidth > 0 &&
     (alignment === 'inner' || alignment === 'outer')
   ) {
