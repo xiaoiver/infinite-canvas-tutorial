@@ -299,6 +299,78 @@ test('SVG user-space pattern renders repeated dots as a 2D fill', async ({ page 
   }, { timeout: 10_000 }).toBeGreaterThan(30);
 });
 
+test('zoomed SVG pattern keeps its tile spacing and rerasterizes the tile', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const url = await page.evaluate(async () => {
+    await window.gizmoTest.showSvgArtwork(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+      <defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+        <circle cx="10" cy="10" r="4" fill="red"/>
+      </pattern></defs>
+      <rect width="80" height="80" fill="url(#dots)"/>
+    </svg>`);
+    const rect = window.gizmoTest.api().getNodes().find((node) => node.type === 'rect');
+    const fill = rect?.type === 'rect' ? rect.fills?.[0] : undefined;
+    if (!fill || fill.type !== 'pattern') throw new Error('Expected an SVG pattern');
+    return fill.value;
+  });
+  await page.evaluate(async () => {
+    window.gizmoTest.api().gotoLandmark({ x: 100, y: 100, zoom: 3 }, { duration: 0 });
+    await window.gizmoTest.settle();
+  });
+  await expect.poll(() => page.evaluate((source) =>
+    window.gizmoTest.svgFillRasterSize(source)?.width ?? 0, url),
+  ).toBeGreaterThanOrEqual(80);
+  const points = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const rect = api.getNodes().find((node) => node.type === 'rect')!;
+    return [50, 60, 70].map((x) => api.canvas2Viewport({
+      x: rect.x + x, y: rect.y + 50,
+    }));
+  });
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const [first, gap, second] = points.map((point) =>
+    canvasRgbAt(png, point.x, point.y));
+  for (const [r, g, b] of [first, second]) {
+    expect(r).toBeGreaterThan(150);
+    expect(r).toBeGreaterThan(g * 2);
+    expect(r).toBeGreaterThan(b * 2);
+  }
+  expect(gap[1]).toBeGreaterThan(140);
+  expect(gap[2]).toBeGreaterThan(140);
+});
+
+test('zoomed opaque SVG pattern has no visible tile seams', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const url = await page.evaluate(async () => {
+    await window.gizmoTest.showSvgArtwork(`<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+      <defs><pattern id="solid" width="20" height="20" patternUnits="userSpaceOnUse">
+        <rect width="20" height="20" fill="red"/>
+      </pattern></defs>
+      <rect width="100" height="100" fill="url(#solid)"/>
+    </svg>`);
+    const rect = window.gizmoTest.api().getNodes().find((node) => node.type === 'rect' && node.width === 100);
+    const fill = rect?.type === 'rect' ? rect.fills?.[0] : undefined;
+    if (!fill || fill.type !== 'pattern') throw new Error('Expected an SVG pattern');
+    window.gizmoTest.api().gotoLandmark({ x: 100, y: 100, zoom: 3 }, { duration: 0 });
+    await window.gizmoTest.settle();
+    return fill.value;
+  });
+  await expect.poll(() => page.evaluate((source) =>
+    window.gizmoTest.svgFillRasterSize(source)?.width ?? 0, url),
+  ).toBeGreaterThanOrEqual(80);
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    let missing = 0;
+    for (let x = 20; x < 130; x++) {
+      const [r, g, b] = canvasRgbAt(png, x, 100);
+      if (r < 150 || g > 80 || b > 80) missing++;
+    }
+    return missing;
+  }, { timeout: 10_000 }).toBe(0);
+});
+
 test('SVG circular radial gradient keeps its colors and local center in 2D', async ({ page }) => {
   await page.goto('/gizmo.html?extrudePath');
   await expect(page.locator('#status')).toHaveText('Ready');

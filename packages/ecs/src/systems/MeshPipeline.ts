@@ -375,7 +375,8 @@ export class MeshPipeline extends System {
           (entity.has(Rect) || entity.has(Circle) || entity.has(Ellipse) ||
             entity.has(Path) || entity.has(Polyline) || entity.has(VectorNetwork)) &&
           getEnabledFillLayers(entity).some((fill) =>
-            fill.type === 'image' && isLikelySvgResourceUrl(fill.value)))
+            (fill.type === 'image' || fill.type === 'pattern') &&
+            typeof fill.value === 'string' && isLikelySvgResourceUrl(fill.value)))
         safeAddComponent(entity, MaterialDirty);
       if (entity.has(Parent))
         for (const child of entity.read(Parent).children) visit(child);
