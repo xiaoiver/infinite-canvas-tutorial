@@ -139,6 +139,64 @@ it('keeps SVG pattern origins aligned across shapes with different geometry orig
     .not.toBe('pattern');
 });
 
+it('embeds local pattern and use references while rejecting cycles and external links', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+      <g id="mark"><circle cx="4" cy="4" r="3" fill="red"/></g>
+      <pattern id="base" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use xlink:href="#mark" x="2" y="3"/>
+      </pattern>
+      <pattern id="derived" href="#base" x="5" patternTransform="translate(1 0)"/>
+      <pattern id="cycle-a" href="#cycle-b"/>
+      <pattern id="cycle-b" href="#cycle-a"/>
+      <pattern id="external" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use href="https://example.com/mark.svg#mark"/>
+      </pattern>
+      <g id="recursive"><use href="#recursive"/></g>
+      <pattern id="use-cycle" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use href="#recursive"/>
+      </pattern>
+      <pattern id="remote" href="https://example.com/pattern.svg#base"/>
+    </defs>
+    <rect id="linked" width="80" height="80" fill="url(#derived)"/>
+    <rect id="cyclic" x="90" width="20" height="20" fill="url(#cycle-a)"/>
+    <rect id="external-link" x="120" width="20" height="20" fill="url(#external)"/>
+    <rect id="recursive-use" x="150" width="20" height="20" fill="url(#use-cycle)"/>
+    <rect id="remote-pattern" x="180" width="20" height="20" fill="url(#remote)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  const linked = nodes.find((node) => node.id === 'linked')?.fills?.[0];
+  expect(linked).toMatchObject({ type: 'pattern', transform: 'translate(1 0) translate(5 0)' });
+  const embedded = decodeURIComponent(String(linked?.value).split(',')[1]);
+  expect(embedded).toContain('<circle');
+  expect(embedded).toContain('translate(2 3)');
+  expect(embedded).not.toContain('<use');
+  for (const id of ['cyclic', 'external-link', 'recursive-use', 'remote-pattern']) {
+    expect(nodes.find((node) => node.id === id)?.fills?.[0]?.type).not.toBe('pattern');
+  }
+});
+
+it('resolves a pattern and its local use target declared after the filled shape', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <rect id="first" width="40" height="40" fill="url(#derived)"/>
+    <defs>
+      <pattern id="derived" href="#base"/>
+      <pattern id="base" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use href="#mark" x="2"/>
+      </pattern>
+      <circle id="mark" cx="5" cy="5" r="3" fill="red"/>
+    </defs>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const node = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[])
+    .find((item) => item.id === 'first');
+  expect(node?.fills?.[0]?.type).toBe('pattern');
+  expect(decodeURIComponent(String(node?.fills?.[0]?.value).split(',')[1]))
+    .toContain('<circle');
+});
+
 it('places the local bounds origin correctly under SVG scale and matrix transforms', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg">' +

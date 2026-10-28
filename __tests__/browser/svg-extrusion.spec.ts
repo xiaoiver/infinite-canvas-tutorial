@@ -288,15 +288,58 @@ test('SVG user-space pattern renders repeated dots as a 2D fill', async ({ page 
     </svg>
   `));
   expect(result.extrudedNodes).toBe(0);
+  const points = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const rect = api.getNodes().find((node) => node.type === 'rect')!;
+    const bounds = api.getGeometryBounds([rect]);
+    return [10, 20, 30].map((x) => api.canvas2Viewport({
+      x: bounds.minX + x, y: bounds.minY + 10,
+    }));
+  });
   await expect.poll(async () => {
     const png = PNG.sync.read(await page.locator('#canvas').screenshot());
-    let red = 0;
-    for (let i = 0; i < png.data.length; i += 4) {
-      const [r, g, b] = png.data.subarray(i, i + 3);
-      if (r > 150 && r > g * 2 && r > b * 2) red++;
-    }
-    return red;
-  }, { timeout: 10_000 }).toBeGreaterThan(30);
+    return points.map((point) => {
+      const [r, g, b] = canvasRgbAt(png, point.x, point.y);
+      return r > 150 && r > g * 2 && r > b * 2;
+    });
+  }, { timeout: 10_000 }).toEqual([true, false, true]);
+});
+
+test('SVG pattern inheritance and local use render repeated marks', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const fill = await page.evaluate(async () => {
+    await window.gizmoTest.showSvgArtwork(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+        <rect width="80" height="80" fill="url(#derived)"/>
+        <defs>
+          <circle id="mark" cx="4" cy="4" r="3" fill="red"/>
+          <pattern id="base" width="20" height="20" patternUnits="userSpaceOnUse">
+            <use href="#mark" x="6" y="6"/>
+          </pattern>
+          <pattern id="derived" href="#base"/>
+        </defs>
+      </svg>
+    `);
+    const rect = window.gizmoTest.api().getNodes().find((node) => node.type === 'rect');
+    return rect?.type === 'rect' ? rect.fills?.[0] : undefined;
+  });
+  expect(fill?.type).toBe('pattern');
+  const points = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const rect = api.getNodes().find((node) => node.type === 'rect')!;
+    const bounds = api.getGeometryBounds([rect]);
+    return [10, 20, 30].map((x) => api.canvas2Viewport({
+      x: bounds.minX + x, y: bounds.minY + 10,
+    }));
+  });
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    return points.map((point) => {
+      const [r, g, b] = canvasRgbAt(png, point.x, point.y);
+      return r > 150 && r > g * 2 && r > b * 2;
+    });
+  }, { timeout: 10_000 }).toEqual([true, false, true]);
 });
 
 test('SVG patternTransform moves the repeated tile in the rendered fill', async ({ page }) => {

@@ -29,8 +29,8 @@ import { sliceAspectRatio } from './svg-viewbox';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
 import { isPattern, type Pattern } from '../pattern';
-import { parsePatternTransform } from '../pattern-transform';
 import { parseColor } from '../color';
+import { deserializePattern } from './svg-pattern';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -131,43 +131,17 @@ function solidSvgPaint(value: string): boolean {
     !/^(?:url\(|var\(|linear-gradient\(|radial-gradient\()/.test(color);
 }
 
-/** Keep self-contained, user-space SVG tiles as editable 2D pattern fills. */
-function deserializePattern(element: SVGElement): Pattern | undefined {
-  if (element.localName !== 'pattern' ||
-      element.getAttribute('patternUnits') !== 'userSpaceOnUse' ||
-      (element.getAttribute('patternContentUnits') ?? 'userSpaceOnUse') !== 'userSpaceOnUse' ||
-      element.hasAttribute('href') || element.hasAttribute('xlink:href')) return undefined;
-  const transform = element.getAttribute('patternTransform') ?? undefined;
-  if (transform && !parsePatternTransform(transform)) return undefined;
-  const width = Number(element.getAttribute('width'));
-  const height = Number(element.getAttribute('height'));
-  if (!Number.isFinite(width) || !Number.isFinite(height) ||
-      width <= 0 || height <= 0 || width > 1024 || height > 1024 ||
-      !Number.isInteger(width) || !Number.isInteger(height)) return undefined;
-  const x = Number(element.getAttribute('x') ?? 0);
-  const y = Number(element.getAttribute('y') ?? 0);
-  if (!Number.isFinite(x) || !Number.isFinite(y)) return undefined;
-  const allowed = new Set(['g', 'rect', 'circle', 'ellipse', 'path', 'polygon', 'polyline', 'line']);
-  if (Array.from(element.querySelectorAll('*')).some((child) =>
-    !allowed.has(child.localName) ||
-    Array.from(child.attributes).some(({ name, value }) =>
-      name === 'href' || name === 'xlink:href' ||
-      /url\s*\(|currentcolor/i.test(value)),
-  )) return undefined;
-  const tile = element.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  tile.setAttribute('width', String(width));
-  tile.setAttribute('height', String(height));
-  tile.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  for (const child of Array.from(element.children)) tile.appendChild(child.cloneNode(true));
-  const serializer = element.ownerDocument.defaultView?.XMLSerializer ?? XMLSerializer;
-  const markup = new serializer().serializeToString(tile);
-  return {
-    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`,
-    repetition: 'repeat',
-    // patternTransform maps the tile's (x, y) origin into SVG user space.
-    transform: [transform, x || y ? `translate(${x} ${y})` : '']
-      .filter(Boolean).join(' '),
-  };
+function collectSvgDefinitions(elements: SVGElement[]): SVGElement[] {
+  const definitions: SVGElement[] = [];
+  for (const element of elements) {
+    const groups = element.localName === 'defs'
+      ? [element, ...Array.from(element.querySelectorAll('defs'))]
+      : Array.from(element.querySelectorAll('defs'));
+    for (const group of groups) {
+      definitions.push(...Array.from(group.children) as SVGElement[]);
+    }
+  }
+  return definitions;
 }
 
 function svgStrokeDashes(element: SVGElement): number[] | null {
@@ -366,7 +340,7 @@ export function svgElementsToSerializedNodes(
   const fallbackColor = svgColor(elements[0]?.parentElement);
   return deserializeSvgElements(
     expanded.children,
-    defsChildren,
+    [...defsChildren, ...collectSvgDefinitions(expanded.children)],
     parentId,
     zIndex,
     overrideAttributes,
@@ -402,7 +376,9 @@ function deserializeSvgElements(
     if (type === 'svg') {
       type = 'g';
     } else if (type === 'defs') {
-      defsChildren.push(...(Array.from(element.children) as SVGElement[]));
+      for (const child of Array.from(element.children) as SVGElement[]) {
+        if (!defsChildren.includes(child)) defsChildren.push(child);
+      }
       continue;
     } else if (type === 'use') {
       continue;
@@ -465,7 +441,7 @@ function deserializeSvgElements(
             const id = value.replace('url(#', '').replace(')', '');
             const def = defsChildren.find((d) => d.id === id);
             if (def?.localName === 'pattern' && attributeName === 'fill') {
-              const pattern = deserializePattern(def);
+              const pattern = deserializePattern(def, defsChildren);
               if (pattern) {
                 (prev as unknown as Record<string, unknown>).fill = pattern;
                 return prev;
@@ -785,7 +761,7 @@ export function svgElementsToExtrudedNodes(
   }
   const nodes = deserializeSvgElements(
     children,
-    [],
+    collectSvgDefinitions(children),
     undefined,
     0,
     undefined,
