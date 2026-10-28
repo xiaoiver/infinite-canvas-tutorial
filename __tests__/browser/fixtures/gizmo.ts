@@ -146,23 +146,40 @@ const harness = {
     const cacheAfterReplace = recentPathExtrusionMeshCacheStats();
     await settleECSFrames(api, 3);
     const settledMs = performance.now() - importStart;
+    api.clearHistory();
     const node = api
       .getNodes()
       .find((item) => 'extrude3d' in item && item.extrude3d);
     if (!node) throw new Error('No extruded node to edit');
+    const originalX = node.x ?? 0;
     const editStart = performance.now();
     await api.edit((editor) =>
-      editor.updateNode(editor.getNodeById(node.id), { x: (node.x ?? 0) + 10 }),
+      editor.updateNode(editor.getNodeById(node.id), { x: originalX + 10 }),
     );
     const editedMs = performance.now() - editStart;
     await settleECSFrames(api, 3);
+    const editSettledMs = performance.now() - editStart;
+    const exportStart = performance.now();
+    const glb = api.export({ format: ExportFormat.GLB, download: false });
+    const exportedMs = performance.now() - exportStart;
+    const undoStart = performance.now();
+    api.undo();
+    await settleECSFrames(api, 3);
+    const undoSettledMs = performance.now() - undoStart;
+    const restoredX = api.getNodeById(node.id)?.x;
+    if (restoredX !== originalX)
+      throw new Error(`SVG edit did not undo: ${restoredX} !== ${originalX}`);
     return {
       nodes: nodes.length,
       parsedMs,
       replacedMs,
       settledMs,
       editedMs,
-      editSettledMs: performance.now() - editStart,
+      editSettledMs,
+      exportedMs,
+      glbBytes: glb.byteLength,
+      undoSettledMs,
+      restoredX,
       cacheBefore,
       cacheAfterImport,
       cacheAfterReplace,

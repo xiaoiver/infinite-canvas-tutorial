@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test';
+import type { ExportFormat } from '@infinite-canvas-tutorial/ecs';
 import { PNG } from 'pngjs';
 import { test } from '../isolated-webkit-test';
 import type {} from './fixtures/gizmo';
@@ -104,6 +105,22 @@ test('layered Tiger SVG keeps its eye visible over the orange face', async ({
     }
   }
   expect(green).toBeGreaterThan(10);
+});
+
+test('Vercel SVG exports modern RGB strokes as a valid GLB', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(async () => {
+    const source = await fetch('/vercel.svg').then((response) => response.text());
+    const artwork = await window.gizmoTest.showSvgArtwork(source);
+    const glb = window.gizmoTest.api().export({
+      format: 'glb' as ExportFormat.GLB,
+      download: false,
+    });
+    return { ...artwork, bytes: glb.byteLength };
+  });
+  expect(result.extrudedNodes).toBeGreaterThan(0);
+  expect(result.bytes).toBeGreaterThan(1000);
 });
 
 test('App SVG import, extrusion editing and GLB export work together', async ({

@@ -20,6 +20,7 @@ function sample(instances: number, segments: number) {
 }
 
 test('profile real browser SVG import', async ({ page }, testInfo) => {
+  test.setTimeout(120_000);
   await page.goto('/gizmo.html?extrudePath');
   await expect(page.locator('#status')).toHaveText('Ready');
   const source = sample(20, 1000);
@@ -56,12 +57,25 @@ test('profile real browser SVG import', async ({ page }, testInfo) => {
       )),
     });
   }
-  const tiger = await page.evaluate(
-    (source) => window.gizmoTest.profileSvgArtworkEdit(source),
-    await page.evaluate(() =>
-      fetch('/Ghostscript_Tiger.svg').then((response) => response.text()),
-    ),
-  );
+  const roundTrips = [];
+  for (const name of [
+    'vercel.svg',
+    'maslow-hierarchy.svg',
+    'Ghostscript_Tiger.svg',
+  ]) {
+    await page.goto('/gizmo.html?extrudePath');
+    await expect(page.locator('#status')).toHaveText('Ready');
+    const source = await page.evaluate(
+      (asset) => fetch(`/${asset}`).then((response) => response.text()),
+      name,
+    );
+    const result = await page.evaluate(
+      (value) => window.gizmoTest.profileSvgArtworkEdit(value),
+      source,
+    ).catch((error) => { throw new Error(`${name}: ${error}`); });
+    expect(result.glbBytes).toBeGreaterThan(0);
+    roundTrips.push({ name, ...result });
+  }
   const visiblePixels = [];
   for (const zoom of [1, 0.5, 2]) {
     await page.evaluate(async (value) => {
@@ -99,7 +113,7 @@ test('profile real browser SVG import', async ({ page }, testInfo) => {
     });
   }
   console.log(
-    JSON.stringify({ result, variants, artwork, tiger, visiblePixels, top }),
+    JSON.stringify({ result, variants, artwork, roundTrips, visiblePixels, top }),
   );
   expect(result.nodes).toBeGreaterThan(0);
 });

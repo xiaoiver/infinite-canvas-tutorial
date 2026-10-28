@@ -507,9 +507,13 @@ When imported SVG layers overlap, their extruded front faces retain the SVG
 paint order, including layers inside nested groups. Later layers remain visible
 over earlier ones in the linked 3D view.
 GLB export lists the extrusion nodes in the same front-to-back traversal order,
-which our glTF importer retains. glTF does not require external viewers to draw
-coplanar opaque meshes in that order, so they may still show depth conflicts
-when several layers have exactly the same elevation.
+which our glTF importer retains. For opaque, flat extrusions on one plane, the
+export also separates overlapping layers in depth by at most 5% of the
+thinnest extrusion. This gives glTF viewers distinct depth-buffer values without
+moving the editable shapes in the canvas. Separate shapes stay on their original
+plane; scenes with tilted extrusions, transparency, mixed elevations or standalone
+3D meshes keep their authored transforms. Extremely large or distant models can
+still lose small depth differences to the viewer's depth-buffer precision.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple

@@ -1,4 +1,6 @@
 import { JSDOM } from 'jsdom';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { parse } from '@loaders.gl/core';
 import { GLTFLoader } from '../../packages/ecs/node_modules/@loaders.gl/gltf';
 import {
@@ -1685,11 +1687,17 @@ it('exports overlapping SVG layers in front-to-back glTF scene order', async () 
   const jsonLength = new DataView(bytes.buffer, bytes.byteOffset).getUint32(12, true);
   const json = JSON.parse(
     new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)),
-  ) as { nodes: { name?: string; children?: number[] }[] };
+  ) as { nodes: { name?: string; children?: number[]; matrix?: number[] }[] };
   expect(json.nodes[0].children!.map((index) => json.nodes[index].name)).toEqual([
     'blue',
     'red',
   ]);
+  const blue = json.nodes.find((node) => node.name === 'blue')!;
+  const red = json.nodes.find((node) => node.name === 'red')!;
+  // The glTF root flips canvas Z. Distinct node planes let independent glTF
+  // viewers resolve the overlap through the depth buffer, not draw order.
+  expect(blue.matrix![14]).toBeLessThan(red.matrix![14]);
+  expect(red.matrix![14] - blue.matrix![14]).toBeGreaterThan(0.01);
 
   const gltf = (await parse(
     bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
@@ -1700,4 +1708,48 @@ it('exports overlapping SVG layers in front-to-back glTF scene order', async () 
   expect(baked.parts).toHaveLength(2);
   expect(baked.parts[0].baseColor[2]).toBeGreaterThan(0.9);
   expect(baked.parts[1].baseColor[0]).toBeGreaterThan(0.9);
+});
+
+it('does not move separate or intentionally elevated SVG extrusions in GLB', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+      '<rect id="left" x="0" width="20" height="20" fill="red"/>' +
+      '<rect id="right" x="40" width="20" height="20" fill="blue"/>' +
+      '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement,
+    24,
+  );
+  await world.reset(api, nodes);
+  const readZ = () => {
+    const bytes = api.export({ format: ExportFormat.GLB, download: false });
+    const length = new DataView(bytes.buffer, bytes.byteOffset).getUint32(12, true);
+    const json = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + length))) as {
+      nodes: { name?: string; matrix?: number[] }[];
+    };
+    return Object.fromEntries(json.nodes.slice(1).map((node) => [node.name, node.matrix![14]]));
+  };
+  expect(readZ().left).toBe(readZ().right);
+  await world.edit(api, (editor) => editor.updateNode(editor.getNodeById('right'), {
+    x: 10,
+    extrude3d: { depth: 24, z: 4 },
+  }));
+  expect(readZ().left).toBe(-12);
+  expect(readZ().right).toBe(-8);
+});
+
+it('exports the repository Vercel SVG with modern space-separated RGB strokes', async () => {
+  const source = readFileSync(
+    join(__dirname, '../../packages/site/docs/public/vercel.svg'),
+    'utf8',
+  );
+  const svg = new JSDOM(source, { contentType: 'image/svg+xml' })
+    .window.document.documentElement as unknown as SVGSVGElement;
+  await world.reset(api, svgElementsToExtrudedNodes(svg, 24));
+  const bytes = api.export({ format: ExportFormat.GLB, download: false });
+  expect(new DataView(bytes.buffer, bytes.byteOffset).getUint32(0, true))
+    .toBe(0x46546c67);
+  expect(bytes.byteLength).toBeGreaterThan(1000);
 });
