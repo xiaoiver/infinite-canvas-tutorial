@@ -393,7 +393,7 @@ test('SVG pattern origin stays aligned across a positioned Rect and Path', async
     const rects = api.getNodes().filter((node) => node.type === 'rect')
       .sort((a, b) => a.x - b.x);
     const path = api.getNodes().find((node) => node.type === 'path')!;
-    const samples: [typeof path, number][] = [
+    const samples: [(typeof rects)[number] | typeof path, number][] = [
       [rects[0], 7], [rects[0], 2],
       [rects[1], 17], [rects[1], 7],
       [path, 17], [path, 7],
