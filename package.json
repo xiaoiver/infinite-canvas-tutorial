@@ -28,6 +28,7 @@
     "test:ecs": "jest -c ./jest.ecs.config.js --coverage",
     "bench:path-extrusion": "node node_modules/typescript/bin/tsc -p packages/ecs/tsconfig.build.json --module commonjs --outDir packages/ecs/lib && node scripts/bench-path-extrusion.cjs",
     "bench:svg-import": "jest -c jest.ecs.config.js --runTestsByPath scripts/svg-import.bench.spec.ts --testMatch '**/scripts/*.bench.spec.ts' --runInBand --coverage=false",
+    "bench:svg-import:browser": "playwright test -c playwright.svg-import-bench.config.ts",
     "dev:react-tests": "vite --config __tests__/react/browser/vite.config.ts",
     "test:react:browser": "playwright test -c playwright.react.config.ts",
     "test:react:browser:webkit": "playwright test -c playwright.react-webkit.config.ts",

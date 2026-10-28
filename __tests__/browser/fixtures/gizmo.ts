@@ -102,6 +102,23 @@ const resetDerivedUpdates = () => {
 };
 const harness = {
   api: () => api,
+  profileSvgImport: (source: string) => {
+    const parseStart = performance.now();
+    const svg = new DOMParser().parseFromString(source, 'image/svg+xml')
+      .documentElement as unknown as SVGSVGElement;
+    const parsedMs = performance.now() - parseStart;
+    const importStart = performance.now();
+    const nodes = svgElementsToExtrudedNodes(svg, 24);
+    const importedMs = performance.now() - importStart;
+    const paths = nodes.filter((node) => node.type === 'path');
+    return {
+      parsedMs,
+      importedMs,
+      nodes: nodes.length,
+      uniquePaths: new Set(paths.map((node) => node.d)).size,
+      pathLengths: [...new Set(paths.map((node) => node.d.length))],
+    };
+  },
   camera3DState: () => {
     const camera = api.getCanvas().read(Camera3D);
     return { eye: [...camera.eye], center: [...camera.center] };

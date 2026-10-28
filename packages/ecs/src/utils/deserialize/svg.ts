@@ -7,6 +7,7 @@ import {
   Path,
 } from '../../components';
 import { defaultAttributes, fixTransform, shiftPath } from '../serialize';
+import type { PathTransformCache } from '../serialize/transform';
 import {
   PathSerializedNode,
   SerializedNode,
@@ -287,6 +288,7 @@ function deserializeSvgElements(
   rectRadii?: Map<string, { rx: number; ry: number }>,
   nodeElements?: Map<string, SVGElement>,
   fallbackColor = '#000000',
+  pathCache: PathTransformCache = new Map(),
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
@@ -563,7 +565,7 @@ function deserializeSvgElements(
       nodes.push(node);
       nodeElements?.set(node.id, element);
 
-      fixTransform((attributes as any).transform || '', node);
+      fixTransform((attributes as any).transform || '', node, pathCache);
     }
 
     const children = deserializeSvgElements(
@@ -583,6 +585,7 @@ function deserializeSvgElements(
       rectRadii,
       nodeElements,
       fallbackColor,
+      pathCache,
     ).filter(Boolean);
 
     nodes.push(...children);
@@ -601,6 +604,7 @@ export function svgElementsToExtrudedNodes(
   }
   const rectRadii = new Map<string, { rx: number; ry: number }>();
   const { root, children } = expandSvgUses(elements);
+  const pathCache: PathTransformCache = new Map();
   const fallbackColor = Array.isArray(elements)
     ? svgColor(elements[0]?.parentElement)
     : '#000000';
@@ -625,6 +629,7 @@ export function svgElementsToExtrudedNodes(
     rectRadii,
     nodeElements,
     fallbackColor,
+    pathCache,
   );
   const fallbackParent = Array.isArray(elements) ? elements[0]?.parentElement : null;
   const { nodes: strokeNodes, strokeIds } = expandSvgStrokeNodes(
@@ -674,7 +679,7 @@ export function svgElementsToExtrudedNodes(
       const plain = deserializeSvgElements(
         plainChildren, [], undefined, 0, undefined,
         { fill: false, stroke: false },
-        undefined, undefined, fallbackColor,
+        undefined, undefined, fallbackColor, pathCache,
       );
       return expandSvgStrokeNodes(
         plain, getComputedInheritGroupWireMap(plain), nodeElements,
