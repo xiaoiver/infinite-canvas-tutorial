@@ -29,6 +29,7 @@ import { sliceAspectRatio } from './svg-viewbox';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
 import type { Pattern } from '../pattern';
+import { parsePatternTransform } from '../pattern-transform';
 import { parseColor } from '../color';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
@@ -133,8 +134,9 @@ function deserializePattern(element: SVGElement): Pattern | undefined {
   if (element.localName !== 'pattern' ||
       element.getAttribute('patternUnits') !== 'userSpaceOnUse' ||
       (element.getAttribute('patternContentUnits') ?? 'userSpaceOnUse') !== 'userSpaceOnUse' ||
-      element.hasAttribute('href') || element.hasAttribute('xlink:href') ||
-      element.hasAttribute('patternTransform')) return undefined;
+      element.hasAttribute('href') || element.hasAttribute('xlink:href')) return undefined;
+  const transform = element.getAttribute('patternTransform') ?? undefined;
+  if (transform && !parsePatternTransform(transform)) return undefined;
   const width = Number(element.getAttribute('width'));
   const height = Number(element.getAttribute('height'));
   if (!Number.isFinite(width) || !Number.isFinite(height) ||
@@ -155,10 +157,12 @@ function deserializePattern(element: SVGElement): Pattern | undefined {
   tile.setAttribute('height', String(height));
   tile.setAttribute('viewBox', `0 0 ${width} ${height}`);
   for (const child of Array.from(element.children)) tile.appendChild(child.cloneNode(true));
-  const markup = new XMLSerializer().serializeToString(tile);
+  const serializer = element.ownerDocument.defaultView?.XMLSerializer ?? XMLSerializer;
+  const markup = new serializer().serializeToString(tile);
   return {
     image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`,
     repetition: 'repeat',
+    ...(transform ? { transform } : {}),
   };
 }
 

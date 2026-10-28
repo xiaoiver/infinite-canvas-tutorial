@@ -70,6 +70,33 @@ it('keeps CSS gradients out of the solid-color extrusion path', () => {
   )).toBe(true);
 });
 
+it('imports supported SVG pattern transforms as editable 2D fills', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="moved" width="20" height="20" patternUnits="userSpaceOnUse"
+        patternTransform="translate(5 2) rotate(15)">
+        <rect width="10" height="20" fill="red"/>
+      </pattern>
+      <pattern id="unsupported" width="20" height="20" patternUnits="userSpaceOnUse"
+        patternTransform="perspective(5)">
+        <rect width="10" height="20" fill="red"/>
+      </pattern>
+    </defs>
+    <rect id="moved-rect" width="80" height="60" fill="url(#moved)"/>
+    <rect id="unsupported-rect" width="80" height="60" fill="url(#unsupported)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  const moved = nodes.find((node) => node.id === 'moved-rect');
+  const unsupported = nodes.find((node) => node.id === 'unsupported-rect');
+  expect(moved?.fills?.[0]).toMatchObject({
+    type: 'pattern', transform: 'translate(5 2) rotate(15)',
+  });
+  expect(unsupported?.fills?.[0]?.type).not.toBe('pattern');
+  expect(svgElementsToExtrudedNodes(svg, 12).find((node) => node.id === 'moved-rect'))
+    .not.toHaveProperty('extrude3d', 12);
+});
+
 it('places the local bounds origin correctly under SVG scale and matrix transforms', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg">' +

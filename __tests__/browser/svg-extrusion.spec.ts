@@ -299,6 +299,35 @@ test('SVG user-space pattern renders repeated dots as a 2D fill', async ({ page 
   }, { timeout: 10_000 }).toBeGreaterThan(30);
 });
 
+test('SVG patternTransform moves the repeated tile in the rendered fill', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  await page.evaluate(() => window.gizmoTest.showSvgArtwork(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+      <defs><pattern id="stripes" width="20" height="20" patternUnits="userSpaceOnUse"
+        patternTransform="translate(5 0)">
+        <rect width="20" height="20" fill="white"/>
+        <rect width="5" height="20" fill="red"/>
+      </pattern></defs>
+      <rect width="80" height="80" fill="url(#stripes)"/>
+    </svg>
+  `));
+  const points = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const rect = api.getNodes().find((node) => node.type === 'rect')!;
+    return [2, 7, 12, 22, 27].map((x) => api.canvas2Viewport({
+      x: rect.x + x, y: rect.y + 30,
+    }));
+  });
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    return points.map((point) => {
+      const [r, g, b] = canvasRgbAt(png, point.x, point.y);
+      return r > 150 && r > g * 2 && r > b * 2;
+    });
+  }, { timeout: 10_000 }).toEqual([false, true, false, false, true]);
+});
+
 test('zoomed SVG pattern keeps its tile spacing and rerasterizes the tile', async ({ page }) => {
   await page.goto('/gizmo.html?extrudePath');
   await expect(page.locator('#status')).toHaveText('Ready');
