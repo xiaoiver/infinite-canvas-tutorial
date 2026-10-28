@@ -56,7 +56,7 @@ test('App SVG import, extrusion editing and GLB export work together', async ({
   const extruded = result.nodes.filter(
     (node) => 'extrude3d' in node && node.extrude3d,
   );
-  expect(extruded).toHaveLength(1);
+  expect(extruded).toHaveLength(2);
   expect(extruded[0]).toMatchObject({
     type: 'path',
     fillRule: 'evenodd',
@@ -68,10 +68,14 @@ test('App SVG import, extrusion editing and GLB export work together', async ({
     },
   });
   expect(result.nodes.filter((node) => node.type === 'path')).toHaveLength(2);
+  expect(extruded[1]).toMatchObject({
+    type: 'path', fillRule: 'evenodd',
+    fills: [{ type: 'solid', value: 'black' }],
+  });
   const initial = glbJson(result.initialGlb);
   const edited = glbJson(result.editedGlb);
-  expect(initial.meshes).toHaveLength(1);
-  expect(edited.meshes).toHaveLength(1);
+  expect(initial.meshes).toHaveLength(2);
+  expect(edited.meshes).toHaveLength(2);
   expect(edited.meshes[0].primitives).toHaveLength(2);
   expect(
     edited.materials.some(

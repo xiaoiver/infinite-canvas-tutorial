@@ -101,7 +101,7 @@
       "esbuild": "^0.25.12",
       "playwright": "1.55.1",
       "lodash-es": ">=4.18.0",
-      "qs": "^6.16.0",
+      "qs": "^6.16.1",
       "rollup": ">=4.59.0",
       "tar": "^7.5.21",
       "serialize-javascript": ">=7.0.5",
@@ -165,6 +165,7 @@
     },
     "patchedDependencies": {
       "braces@3.0.3": "patches/braces@3.0.3.patch",
+      "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch",
       "http-cache-semantics@4.1.1": "patches/http-cache-semantics@4.1.1.patch",
       "sprintf-js@1.0.3": "patches/sprintf-js@1.0.3.patch"
     },
@@ -173,7 +174,8 @@
         "CVE-2026-93687",
         "CVE-2026-93748",
         "CVE-2026-97058",
-        "CVE-2023-54404"
+        "CVE-2023-54404",
+        "CVE-2026-93753"
       ]
     }
   },

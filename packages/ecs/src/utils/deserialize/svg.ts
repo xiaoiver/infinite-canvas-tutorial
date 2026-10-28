@@ -4,8 +4,9 @@ import {
   TextDecorationLine,
   TextDecorationStyle,
   Visibility,
+  Path,
 } from '../../components';
-import { defaultAttributes, fixTransform } from '../serialize';
+import { defaultAttributes, fixTransform, shiftPath } from '../serialize';
 import {
   PathSerializedNode,
   SerializedNode,
@@ -17,8 +18,11 @@ import { migrateLegacyStrokeWireInPlace } from '../normalize-stroke-wire';
 import { deserializePoints } from './points';
 import { buildPathExtrusionMesh } from '../path-extrusion-mesh';
 import { pathExtrusionPaintSupported } from '../path-extrusion-paint';
+import { getEnabledFillLayersFromItems, type FillLayerItem } from '../fillLayers';
+import { getEnabledStrokeLayersFromItems } from '../strokeLayers';
+import { strokeOutline } from '../stroke-outline';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
-import { extrudeSvgPrimitive } from './svg-extrusion-primitive';
+import { extrudeSvgPrimitive, svgPrimitiveStrokePath } from './svg-extrusion-primitive';
 import { reprojectSvgExtrusion } from './svg-extrusion-affine';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
@@ -103,6 +107,122 @@ function hasUnsupportedSvgEffects(element: SVGElement, fallback: Element | null)
     }
   }
   return false;
+}
+
+function inheritedSvgAttribute(element: SVGElement, name: string, fallback: string): string {
+  for (let current: Element | null = element; current; current = current.parentElement) {
+    const svg = current as SVGElement;
+    const value = svg.style?.getPropertyValue(name) || current.getAttribute(name);
+    if (value && value.trim() !== 'inherit') return value.trim();
+  }
+  return fallback;
+}
+
+function solidSvgPaint(value: string): boolean {
+  const color = value.trim().toLowerCase();
+  return !!color && color !== 'none' && color !== 'transparent' &&
+    !/^(?:url\(|var\(|linear-gradient\(|radial-gradient\()/.test(color);
+}
+
+/** Expand a supported stroke into a second editable extrusion source. */
+function expandSvgStrokeNodes(
+  nodes: SerializedNode[],
+  inherited: Map<string, Record<string, unknown>>,
+  nodeElements: Map<string, SVGElement>,
+  depth: number,
+  rectRadii: Map<string, { rx: number; ry: number }>,
+  fallbackParent: Element | null,
+): { nodes: SerializedNode[]; strokeIds: Map<string, string> } {
+  const usedIds = new Set(nodes.map((node) => node.id));
+  const strokeIds = new Map<string, string>();
+  const expanded: SerializedNode[] = [];
+  for (const node of nodes) {
+    const element = nodeElements.get(node.id);
+    const paint = inherited.get(node.id);
+    const strokes = getEnabledStrokeLayersFromItems(paint?.strokes as FillLayerItem[] | undefined)
+      .filter((layer) => String(layer.value ?? '').trim().toLowerCase() !== 'none');
+    const fills = paint?.fills as FillLayerItem[] | undefined;
+    const visibleFills = getEnabledFillLayersFromItems(fills)
+      .filter((layer) => String(layer.value ?? '').trim().toLowerCase() !== 'none');
+    if (!element || hasUnsupportedSvgEffects(element, fallbackParent) ||
+      strokes.length !== 1 || strokes[0].type !== 'solid' ||
+      !solidSvgPaint(String(strokes[0].value ?? '')) ||
+      (visibleFills.length > 0 && !pathExtrusionPaintSupported(fills, [{ type: 'solid', value: 'none' }]))) {
+      expanded.push(node);
+      continue;
+    }
+    const widthText = inheritedSvgAttribute(element, 'stroke-width', '1');
+    const width = /^(?:\d*\.)?\d+(?:px)?$/.test(widthText)
+      ? Number(widthText.replace(/px$/, '')) : NaN;
+    const dash = inheritedSvgAttribute(element, 'stroke-dasharray', 'none');
+    const dashed = dash !== 'none' && dash.split(/[ ,]+/).some((value) => Number(value) !== 0);
+    const linecap = inheritedSvgAttribute(element, 'stroke-linecap', 'butt') as CanvasLineCap;
+    const linejoin = inheritedSvgAttribute(element, 'stroke-linejoin', 'miter') as CanvasLineJoin;
+    const miterlimit = Number(inheritedSvgAttribute(element, 'stroke-miterlimit', '4'));
+    if (!Number.isFinite(width) || width <= 0 || dashed ||
+      inheritedSvgAttribute(element, 'vector-effect', 'none') === 'non-scaling-stroke' ||
+      !['butt', 'round', 'square'].includes(linecap) ||
+      !['miter', 'round', 'bevel'].includes(linejoin)) {
+      expanded.push(node);
+      continue;
+    }
+    const source = svgPrimitiveStrokePath(node, depth, rectRadii.get(node.id));
+    let outline = '';
+    try {
+      if (source) outline = strokeOutline(source, width, linecap, linejoin, miterlimit);
+    } catch {
+      // Keep the original 2D SVG node when the contour cannot be expanded.
+    }
+    if (!outline || !buildPathExtrusionMesh(outline, 'evenodd')) {
+      expanded.push(node);
+      continue;
+    }
+    const { minX, minY, maxX, maxY } = Path.getGeometryBounds({ d: outline });
+    if (![minX, minY, maxX, maxY].every(Number.isFinite) ||
+      maxX <= minX || maxY <= minY) {
+      expanded.push(node);
+      continue;
+    }
+    const outlinePosition = {
+      x: (node.x ?? 0) + minX,
+      y: (node.y ?? 0) + minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      d: shiftPath(outline, -minX, -minY),
+    };
+    const strokePaint = [{ ...strokes[0] }];
+    const noStroke = [{ type: 'solid' as const, value: 'none' }];
+    // Keep the front and back caps just outside a filled source. Otherwise
+    // the overlapping half of a centered stroke fights the fill in the depth buffer.
+    const separation = Math.max(0.01, depth * 0.002);
+    const strokeExtrusion = {
+      depth: depth + separation * 2,
+      z: separation,
+    };
+    if (visibleFills.length) {
+      let strokeId = `${node.id}--stroke`;
+      for (let suffix = 2; usedIds.has(strokeId); suffix++)
+        strokeId = `${node.id}--stroke-${suffix}`;
+      usedIds.add(strokeId);
+      expanded.push({ ...node, strokes: noStroke, strokeWidth: 0 } as SerializedNode);
+      expanded.push({
+        ...node, ...outlinePosition, id: strokeId, type: 'path', fillRule: 'evenodd',
+        fills: strokePaint, strokes: noStroke, strokeWidth: 0,
+        name: `${node.name ?? node.id} stroke`, zIndex: node.zIndex + 0.5,
+        extrude3d: strokeExtrusion,
+      } as PathSerializedNode);
+      nodeElements.set(strokeId, element);
+      strokeIds.set(node.id, strokeId);
+    } else {
+      expanded.push({
+        ...node, ...outlinePosition, type: 'path', fillRule: 'evenodd',
+        fills: strokePaint, strokes: noStroke, strokeWidth: 0,
+        extrude3d: depth,
+      } as PathSerializedNode);
+      strokeIds.set(node.id, node.id);
+    }
+  }
+  return { nodes: expanded, strokeIds };
 }
 
 export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
@@ -506,8 +626,15 @@ export function svgElementsToExtrudedNodes(
     nodeElements,
     fallbackColor,
   );
-  const inherited = getComputedInheritGroupWireMap(nodes);
-  const converted = nodes.map((node) => {
+  const fallbackParent = Array.isArray(elements) ? elements[0]?.parentElement : null;
+  const { nodes: strokeNodes, strokeIds } = expandSvgStrokeNodes(
+    nodes, getComputedInheritGroupWireMap(nodes), nodeElements,
+    depth, rectRadii, fallbackParent,
+  );
+  const sourceIdByElement = new Map(nodes.map((node) =>
+    [nodeElements.get(node.id), node.id] as const).filter((entry) => entry[0]));
+  const inherited = getComputedInheritGroupWireMap(strokeNodes);
+  const converted = strokeNodes.map((node) => {
     const paint = inherited.get(node.id) as
       | Pick<PathSerializedNode, 'fills' | 'strokes'>
       | undefined;
@@ -517,7 +644,7 @@ export function svgElementsToExtrudedNodes(
     );
     if (node.type === 'path') {
       if (paintSupported && buildPathExtrusionMesh(node.d, node.fillRule))
-        return { ...node, extrude3d: depth };
+        return { ...node, extrude3d: node.extrude3d || depth };
       return node;
     }
     return extrudeSvgPrimitive(
@@ -530,29 +657,54 @@ export function svgElementsToExtrudedNodes(
   const projected = reprojectSvgExtrusion(
     converted,
     () => {
-      const plainChildren = children.map((element) => element.cloneNode(true) as SVGElement);
+      const plainChildren = children.map((element) => {
+        const clone = element.cloneNode(true) as SVGElement;
+        const originals = [element, ...Array.from(element.querySelectorAll('*')) as SVGElement[]];
+        const copies = [clone, ...Array.from(clone.querySelectorAll('*')) as SVGElement[]];
+        for (let index = 0; index < originals.length; index++) {
+          const id = sourceIdByElement.get(originals[index]);
+          if (id && !copies[index].id) copies[index].setAttribute('id', id);
+        }
+        return clone;
+      });
       for (const child of plainChildren) {
         child.removeAttribute('transform');
         child.querySelectorAll('*').forEach((element) => element.removeAttribute('transform'));
       }
-      return deserializeSvgElements(
+      const plain = deserializeSvgElements(
         plainChildren, [], undefined, 0, undefined,
         { fill: false, stroke: false },
         undefined, undefined, fallbackColor,
       );
+      return expandSvgStrokeNodes(
+        plain, getComputedInheritGroupWireMap(plain), nodeElements,
+        depth, rectRadii, fallbackParent,
+      ).nodes;
     },
     root, nodeElements, inherited, depth, rectRadii, clipDefinitions,
   );
-  const fallbackParent = Array.isArray(elements) ? elements[0]?.parentElement : null;
-  return projected.map((node) => {
-    const element = nodeElements.get(node.id);
-    if (!element) return node;
-    if (svgHidden(element, fallbackParent))
-      return { ...node, visibility: 'hidden', extrude3d: undefined };
-    if (hasUnsupportedSvgEffects(element, fallbackParent))
-      return { ...node, extrude3d: undefined };
-    return node;
-  });
+  const byId = new Map(projected.map((node) => [node.id, node]));
+  const originalById = new Map(nodes.map((node) => [node.id, node]));
+  const failed = new Set<string>();
+  for (const [sourceId, strokeId] of strokeIds) {
+    const stroke = byId.get(strokeId);
+    const fill = strokeId !== sourceId ? byId.get(sourceId) : undefined;
+    if (!stroke || !('extrude3d' in stroke) || !stroke.extrude3d ||
+      (fill && (!('extrude3d' in fill) || !fill.extrude3d))) failed.add(sourceId);
+  }
+  const failedStrokeIds = new Set([...failed].map((id) => strokeIds.get(id)));
+  return projected
+    .filter((node) => !failedStrokeIds.has(node.id) || failed.has(node.id))
+    .map((node) => failed.has(node.id) ? originalById.get(node.id)! : node)
+    .map((node) => {
+      const element = nodeElements.get(node.id);
+      if (!element) return node;
+      if (svgHidden(element, fallbackParent))
+        return { ...node, visibility: 'hidden', extrude3d: undefined };
+      if (hasUnsupportedSvgEffects(element, fallbackParent))
+        return { ...node, extrude3d: undefined };
+      return node;
+    });
 }
 
 export function kebabToCamelCase(str: string) {

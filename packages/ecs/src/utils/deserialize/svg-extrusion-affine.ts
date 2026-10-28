@@ -317,7 +317,10 @@ export function reprojectSvgExtrusion(
         plainByElement = new Map();
         for (const candidate of plainNodes) {
           const sourceElement = nodeElements.get(candidate.id);
-          if (sourceElement) plainByElement.set(sourceElement, candidate);
+          // A filled shape may also have a generated stroke sibling. The
+          // SVG objectBoundingBox still belongs to the original shape.
+          if (sourceElement && !plainByElement.has(sourceElement))
+            plainByElement.set(sourceElement, candidate);
         }
       }
       const plain = plainNodes[index];
@@ -384,7 +387,7 @@ export function reprojectSvgExtrusion(
           rotation: 0,
           scaleX: 1,
           scaleY: 1,
-          extrude3d: depth,
+          extrude3d: node.extrude3d,
         } as PathSerializedNode;
       }
       if (clippedViewport.kind === 'polygon') {
@@ -416,7 +419,7 @@ export function reprojectSvgExtrusion(
             rotation: 0,
             scaleX: 1,
             scaleY: 1,
-            extrude3d: depth,
+            extrude3d: node.extrude3d,
           } as PathSerializedNode;
         }
       }
@@ -461,7 +464,7 @@ export function reprojectSvgExtrusion(
         rotation: 0,
         scaleX: 1,
         scaleY: 1,
-        extrude3d: depth,
+        extrude3d: node.extrude3d,
       } as PathSerializedNode;
     } catch {
       return { ...node, extrude3d: undefined };

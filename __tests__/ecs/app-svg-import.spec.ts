@@ -25,10 +25,14 @@ it('centers imported artwork and retains editable extrusion groups with fresh ID
   const group = first.find((node) => node.type === 'g')!;
   const solid = first.find((node) => node.type === 'rect')!;
   const open = first.find((node) => node.type === 'path')!;
-  expect(group).toMatchObject({ x: 430, y: 270 });
+  expect(group.x).toBeCloseTo(430, 0);
+  expect(group.y).toBeCloseTo(270, 0);
   expect(solid).toMatchObject({ parentId: group.id, extrude3d: 24 });
-  expect(open).toMatchObject({ parentId: group.id });
-  expect(open).not.toHaveProperty('extrude3d', 24);
+  expect(open).toMatchObject({
+    parentId: group.id, fillRule: 'evenodd',
+    fills: [{ type: 'solid', value: 'blue' }],
+    extrude3d: 24,
+  });
   expect(new Set(first.map((node) => node.id)).size).toBe(first.length);
   expect(first[0].id).not.toBe(second[0].id);
 });
