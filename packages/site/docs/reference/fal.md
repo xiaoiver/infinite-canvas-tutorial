@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'fal.ai plugin that implements image-generation APIs for the canvas.'
 ---
+
 Use [fal.ai] to implement [AI API]
 
 -   [upload] Upload File to CDN and return an URL

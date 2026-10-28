@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '套索插件，用手绘轮廓做区域选择。'
 ---
+
 <script setup>
 import Lasso from '../../components/Lasso.vue'
 </script>

@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: 'Mermaid plugin that turns diagram text into a canvas scene graph. See Lesson 32.'
 ---
 
 <script setup>

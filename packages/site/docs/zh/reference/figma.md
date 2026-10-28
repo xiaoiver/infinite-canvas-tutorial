@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '把 Figma 文件导入为画布场景图，再把场景导出回 Figma。'
 ---
 
 # Figma

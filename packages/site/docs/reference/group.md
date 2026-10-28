@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Group shape reference for nesting children and composing transforms.'
 ---
+
 # Group
 
 在场景图中作为其他图形的容器。参考 SVG [g]。

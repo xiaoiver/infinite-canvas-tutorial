@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'DOM adapters so the canvas can run in the browser, Node.js, or a Web Worker.'
 ---
+
 We want the canvas to run in different environments like browsers, Node.js, WebWorker, etc. Since different environments provide different functionalities, we referenced Pixi.js's implementation and provide an `Adapter` interface along with default `BrowserAdapter` and `WebWorkerAdapter` for developers to choose from.
 
 ```ts

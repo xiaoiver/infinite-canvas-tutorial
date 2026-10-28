@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'fal.ai 插件，为画布提供图像生成 API。'
 ---
+
 使用 [fal.ai] 实现 [AI 相关 API]，包括：
 
 -   [upload] 上传本地文件

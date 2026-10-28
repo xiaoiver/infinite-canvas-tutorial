@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Canvas API for reading and updating app state, theme, and the scene after you have an app instance.'
 ---
+
 After [Getting the API], you can call the related methods:
 
 ## get/setAppState

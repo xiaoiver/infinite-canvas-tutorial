@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Eraser plugin for removing or splitting strokes on the canvas.'
 ---
+
 <script setup>
 import Eraser from '../components/Eraser.vue'
 </script>

@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js ellipse: sketch-style ellipse rendering.'
 ---
+
 # RoughEllipse
 
 See SVG [ellipse].

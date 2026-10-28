@@ -1,3 +1,7 @@
+---
+description: 'Animated geometric look at the Pythagorean theorem on the canvas.'
+---
+
 <script setup>
 import PythagoreanTheorem from '../components/PythagoreanTheorem.vue'
 </script>

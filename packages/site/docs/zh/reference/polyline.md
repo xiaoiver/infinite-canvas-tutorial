@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Polyline 图形参考：带宽度、连接和端点样式的开放折线。'
 ---
+
 # Polyline
 
 参考 SVG [polyline]。

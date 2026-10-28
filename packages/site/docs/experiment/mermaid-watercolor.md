@@ -1,3 +1,7 @@
+---
+description: 'Render a Mermaid flowchart with a watercolor look.'
+---
+
 <script setup>
 import MermaidWatercolor from '../components/MermaidWatercolor.vue'
 </script>

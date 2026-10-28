@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Path 图形参考：类 SVG 路径的填充与描边。'
 ---
+
 <script setup>
 import Holes from '../../components/Holes.vue';
 import FillRule from '../../components/FillRule.vue';

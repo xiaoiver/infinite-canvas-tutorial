@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Ellipse 图形参考：半径、样式与场景图用法。'
 ---
+
 # Ellipse
 
 参考 SVG [ellipse]。

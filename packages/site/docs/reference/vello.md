@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Vello tile-based GPU renderer integration. See Lesson 35.'
 ---
+
 <script setup>
 import Vello from '../components/Vello.vue'
 </script>

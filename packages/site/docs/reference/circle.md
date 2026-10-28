@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Circle shape reference: geometry, fill, stroke, and how circles sit in the scene graph.'
 ---
+
 # Circle
 
 See SVG [circle].

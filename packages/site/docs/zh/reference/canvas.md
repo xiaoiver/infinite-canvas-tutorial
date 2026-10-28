@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '画布 API：取得应用实例后读取和更新应用状态、主题与场景。'
 ---
+
 在 [获取 API] 后，可以调用相关方法：
 
 ## get/setAppState

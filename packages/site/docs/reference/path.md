@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Path shape reference for SVG-like paths, fills, and strokes.'
 ---
+
 <script setup>
 import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';

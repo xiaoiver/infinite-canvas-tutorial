@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: 'Create an ECS app with the default plugin set and run it in the browser. See Lesson 18.'
 ---
 
 First, create a global App with the default plugin set. For more details, see: [Lesson 18 - Refactor with ECS]

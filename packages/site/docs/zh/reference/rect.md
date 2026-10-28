@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rect 图形参考，包括圆角和填充。'
 ---
+
 # Rect
 
 参考 SVG [rect]。

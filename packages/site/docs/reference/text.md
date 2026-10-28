@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Text shape reference: font, layout, fill, and editing on the canvas.'
 ---
+
 # Text
 
 See SVG [text], supporting features like Bitmap Font, MSDF, Emoji, and bidirectional text.

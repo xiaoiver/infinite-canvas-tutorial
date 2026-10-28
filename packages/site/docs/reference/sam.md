@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Segment Anything plugin for image segmentation through the canvas AI API.'
 ---
+
 Use SAM to implement [AI API]
 
 ```ts

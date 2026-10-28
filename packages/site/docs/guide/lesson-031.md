@@ -1,7 +1,8 @@
 ---
 outline: deep
-description: ''
+description: 'Bind connectors to shapes so edges follow nodes when they move, including orthogonal, curved, and arrow bindings.'
 ---
+
 <script setup>
 import Binding from '../components/Binding.vue'
 import BindingWithEllipse from '../components/BindingWithEllipse.vue'

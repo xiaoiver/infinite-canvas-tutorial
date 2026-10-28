@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Group 图形参考：嵌套子节点并组合变换。'
 ---
+
 # Group
 
 在场景图中作为其他图形的容器。参考 SVG [g]。

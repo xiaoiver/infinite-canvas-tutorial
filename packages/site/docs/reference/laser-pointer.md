@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Laser pointer plugin for ephemeral presentation highlights that are not stored in the document.'
 ---
+
 <script setup>
 import LaserPointer from '../components/LaserPointer.vue'
 </script>

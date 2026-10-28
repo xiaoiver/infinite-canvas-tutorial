@@ -1,18 +1,20 @@
 ---
 outline: deep
+description: '把画布导出为图片，包括 2D 内容与 3D Mesh。详见课程 10 和课程 39。'
 ---
+
 触发导出行为，详见：[课程 10 - 导入和导出图片]和[课程 39 - 3D]
 
 ```ts
 api.export({ format: ExportFormat.PNG, download: true, nodes: [] });
 
 export enum ExportFormat {
-  SVG = 'svg',
-  PNG = 'png',
-  JPEG = 'jpeg',
-  WEBM = 'webm',
-  GIF = 'gif',
-  GLB = 'glb',
+    SVG = 'svg',
+    PNG = 'png',
+    JPEG = 'jpeg',
+    WEBM = 'webm',
+    GIF = 'gif',
+    GLB = 'glb',
 }
 ```
 

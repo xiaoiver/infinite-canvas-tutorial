@@ -1,3 +1,7 @@
+---
+description: 'Mesh-gradient experiment for multi-stop color fields on the canvas.'
+---
+
 See [Mesh Gradient]
 
 <script setup>

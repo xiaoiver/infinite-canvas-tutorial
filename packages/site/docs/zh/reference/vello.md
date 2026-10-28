@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '接入基于瓦片的 GPU 渲染器 Vello。详见课程 35。'
 ---
+
 <script setup>
 import Vello from '../../components/Vello.vue'
 </script>

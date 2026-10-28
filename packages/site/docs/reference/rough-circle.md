@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js circle: hand-drawn circle strokes and fills.'
 ---
+
 # RoughCircle
 
 See SVG [circle].

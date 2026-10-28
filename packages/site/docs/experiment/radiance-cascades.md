@@ -1,6 +1,7 @@
 ---
 layout: 'doc'
 aside: false
+description: 'Real-time global illumination with radiance cascades, shown on a Mermaid flowchart.'
 ---
 
 <script setup>

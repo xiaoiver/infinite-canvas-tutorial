@@ -1,7 +1,9 @@
 ---
 layout: 'doc'
 aside: false
+description: 'Try the Vello GPU renderer on the canvas. See Lesson 35.'
 ---
+
 <script setup>
 import Vello from '../components/Vello.vue'
 </script>

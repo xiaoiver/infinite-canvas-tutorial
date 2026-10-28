@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js 椭圆：草图风格的椭圆渲染。'
 ---
+
 # RoughEllipse
 
 参考 SVG [ellipse]。

@@ -1,3 +1,7 @@
+---
+description: 'Build CanvasGradient fills, upload them as textures, and paint them onto canvas shapes.'
+---
+
 <script setup>
 import Gradient from '../components/Gradient.vue'
 </script>

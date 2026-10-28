@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Base shape class shared by canvas nodes, including translate, scale, rotate, and skew.'
 ---
+
 # Base Shape Class
 
 Shape is the base class for all shapes, providing the following common properties and methods.

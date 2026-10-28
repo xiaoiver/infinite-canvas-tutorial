@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'draw.io 插件：把 mxGraph 数据转换成画布节点。'
 ---
+
 <script setup>
 import Drawio from '../../components/Drawio.vue'
 </script>

@@ -1,12 +1,13 @@
 ---
 outline: deep
+description: 'Camera API for pan, zoom, rotation, and projection on the infinite canvas. See Lesson 4.'
 ---
+
 For camera-related content, refer to: [Lesson 4 - Camera]. After [Getting the API], you can call the related methods:
 
 ```ts
 api.createLandmark();
 ```
-
 
 ## get/setState {#get-set-camera-state}
 
