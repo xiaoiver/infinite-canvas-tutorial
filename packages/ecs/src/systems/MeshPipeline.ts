@@ -118,7 +118,12 @@ import {
   makeBackbufferDescSimple,
   opaqueWhiteFullClearRenderPassDescriptor,
 } from '../render-graph/utils';
-import { getFirstGradientFillLayerValue } from '../utils/fillLayers';
+import {
+  getEnabledFillLayers,
+  getFirstGradientFillLayerValue,
+} from '../utils/fillLayers';
+import { isLikelySvgResourceUrl } from '../utils/fillImageSvgReraster';
+import { svgFillImageZoomBucket } from '../utils/fillImageTextureSize';
 import { getFirstGradientStrokeLayerValue } from '../utils/strokeLayers';
 
 type GPURenderer = {
@@ -355,6 +360,28 @@ export class MeshPipeline extends System {
       entity: Entity;
     }[]
   > = new WeakMap();
+  private svgFillRasterZoomBuckets = new WeakMap<Entity, number>();
+
+  /** Recreate SVG fill textures only when camera zoom needs a larger raster bucket. */
+  private updateSvgFillRasterZoom(camera: Entity) {
+    const bucket = svgFillImageZoomBucket(camera.read(ComputedCamera).zoom);
+    const previous = this.svgFillRasterZoomBuckets.get(camera);
+    if (previous === bucket) return;
+    this.svgFillRasterZoomBuckets.set(camera, bucket);
+    // The shared SVG bitmap cache retains its larger raster when zoom falls.
+    if (previous === undefined || bucket < previous || !camera.has(Parent)) return;
+    const visit = (entity: Entity) => {
+      if (entity.has(Renderable) && entity.has(FillLayers) &&
+          (entity.has(Rect) || entity.has(Circle) || entity.has(Ellipse) ||
+            entity.has(Path) || entity.has(Polyline) || entity.has(VectorNetwork)) &&
+          getEnabledFillLayers(entity).some((fill) =>
+            fill.type === 'image' && isLikelySvgResourceUrl(fill.value)))
+        safeAddComponent(entity, MaterialDirty);
+      if (entity.has(Parent))
+        for (const child of entity.read(Parent).children) visit(child);
+    };
+    for (const child of camera.read(Parent).children) visit(child);
+  }
 
   constructor() {
     super();
@@ -1263,6 +1290,8 @@ export class MeshPipeline extends System {
 
       const { cameras } = canvas.read(Canvas);
       cameras.forEach((camera) => {
+        if (this.cameras.addedOrChanged.includes(camera))
+          this.updateSvgFillRasterZoom(camera);
         if (!toRender && this.pendingRenderables.get(camera)) {
           const pendingRenderables = this.pendingRenderables.get(camera);
           toRender = !!pendingRenderables.length;

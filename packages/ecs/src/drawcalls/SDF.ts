@@ -54,7 +54,11 @@ import {
   filterRasterPostEffects,
   getRasterFilterPadding,
 } from '../utils/filter';
-import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
+import {
+  isLikelySvgResourceUrl,
+  scheduleFillImageSvgRerasterIfNeeded,
+} from '../utils/fillImageSvgReraster';
+import { svgFillImageZoomBucket } from '../utils/fillImageTextureSize';
 import {
   getFillLayerDecodedBitmap,
   getOrScheduleFillLayerPatternSource,
@@ -74,6 +78,7 @@ import {
 } from '../utils/solidShapeRasterForFilter';
 import {
   Circle,
+  ComputedCamera,
   Ellipse,
   FillLayers,
   FillTexture,
@@ -312,6 +317,12 @@ export class SDF extends Drawcall {
         width,
         height,
         rasterOpts.objectFit,
+        isLikelySvgResourceUrl(layer.value) &&
+          this.api?.getCamera()?.has(ComputedCamera)
+          ? svgFillImageZoomBucket(
+              this.api.getCamera().read(ComputedCamera).zoom,
+            )
+          : 1,
       );
       const fromUrl = rasterizeFillLayerImageUrlForTexture(
         layer.value,
