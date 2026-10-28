@@ -23,6 +23,7 @@ import { createDocumentWorld } from '../helpers/ecs-document';
 import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
+import { strokeOutline } from '../../packages/ecs/src/utils/stroke-outline';
 
 const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120">
   <path id="ring" d="M10 10 H110 V110 H10 Z M35 35 H85 V85 H35 Z" fill="#3366cc" fill-rule="evenodd"/>
@@ -798,20 +799,37 @@ it('expands open SVG strokes with their inherited width and distinct end caps', 
       .meshEntity!.read(Mesh3D).indices.length).toBeGreaterThan(0);
 });
 
-it('keeps dashed and non-scaling SVG strokes in 2D', () => {
+it('extrudes positive SVG dash patterns and keeps unsupported strokes in 2D', () => {
+  const straight = strokeOutline('M0 0 H40', 4, 'butt', 'miter', 4, [5, 3]);
+  const shifted = strokeOutline('M0 0 H40', 4, 'butt', 'miter', 4, [5, 3], 2);
+  expect(straight.match(/M/g)).toHaveLength(5);
+  expect(shifted.match(/M/g)).toHaveLength(6);
+  expect(straight).toContain('M5 2L0 2');
+  expect(shifted).toContain('M3 2L0 2');
+  expect(buildPathExtrusionMesh(straight)).toBeDefined();
+  const closed = strokeOutline('M0 0 H20 V20 H0 Z', 4, 'butt', 'miter', 4, [15, 5], 5);
+  expect(closed.match(/M/g)).toHaveLength(4);
+
   const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
-    <path id="dashed" d="M0 0 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="5 3"/>
+    <path id="dashed" d="M0 0 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="5 3" stroke-dashoffset="2"/>
+    <path id="odd-pattern" d="M0 60 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="3 2 4"/>
     <path id="non-scaling" d="M0 20 H40" fill="none" stroke="blue" stroke-width="8" vector-effect="non-scaling-stroke"/>
     <path id="gradient" d="M0 40 H40" fill="none" stroke="url(#paint)" stroke-width="8"/>
+    <path id="zero-dash" d="M0 80 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="0 4" stroke-linecap="round"/>
   </svg>`, { contentType: 'image/svg+xml' });
   const nodes = svgElementsToExtrudedNodes(
     dom.window.document.documentElement as unknown as SVGSVGElement, 12,
   );
-  expect(nodes.map((node) => node.id)).toEqual(['dashed', 'non-scaling', 'gradient']);
-  expect(nodes.every((node) => !('extrude3d' in node))).toBe(true);
-  expect(nodes.find((node) => node.id === 'dashed')).toMatchObject({
-    type: 'path', strokeWidth: 8,
-  });
+  expect(nodes.map((node) => node.id)).toEqual([
+    'dashed', 'odd-pattern', 'non-scaling', 'gradient', 'zero-dash',
+  ]);
+  for (const id of ['dashed', 'odd-pattern']) {
+    const node = nodes.find((item) => item.id === id);
+    expect(node).toMatchObject({ type: 'path', extrude3d: 12 });
+    expect(node?.type === 'path' && buildPathExtrusionMesh(node.d)).toBeDefined();
+  }
+  for (const id of ['non-scaling', 'gradient', 'zero-dash'])
+    expect(nodes.find((node) => node.id === id)).not.toHaveProperty('extrude3d');
 });
 
 it('restores the original 2D paint when clipping an expanded stroke fails', () => {

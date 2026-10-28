@@ -125,6 +125,16 @@ function solidSvgPaint(value: string): boolean {
     !/^(?:url\(|var\(|linear-gradient\(|radial-gradient\()/.test(color);
 }
 
+function svgStrokeDashes(element: SVGElement): number[] | null {
+  const value = inheritedSvgAttribute(element, 'stroke-dasharray', 'none');
+  if (value.toLowerCase() === 'none') return [];
+  const parts = value.trim().split(/[\s,]+/);
+  const dashes = parts.map((part) => Number(part.replace(/px$/, '')));
+  if (parts.some((part) => !/^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(?:px)?$/i.test(part)) ||
+    dashes.some((dash) => !Number.isFinite(dash) || dash < 0)) return null;
+  return dashes.every((dash) => dash === 0) ? [] : dashes;
+}
+
 /** Expand a supported stroke into a second editable extrusion source. */
 function expandSvgStrokeNodes(
   nodes: SerializedNode[],
@@ -155,12 +165,14 @@ function expandSvgStrokeNodes(
     const widthText = inheritedSvgAttribute(element, 'stroke-width', '1');
     const width = /^(?:\d*\.)?\d+(?:px)?$/.test(widthText)
       ? Number(widthText.replace(/px$/, '')) : NaN;
-    const dash = inheritedSvgAttribute(element, 'stroke-dasharray', 'none');
-    const dashed = dash !== 'none' && dash.split(/[ ,]+/).some((value) => Number(value) !== 0);
+    const dashes = svgStrokeDashes(element);
+    const dashOffsetText = inheritedSvgAttribute(element, 'stroke-dashoffset', '0');
+    const dashOffset = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(?:px)?$/i.test(dashOffsetText)
+      ? Number(dashOffsetText.replace(/px$/, '')) : NaN;
     const linecap = inheritedSvgAttribute(element, 'stroke-linecap', 'butt') as CanvasLineCap;
     const linejoin = inheritedSvgAttribute(element, 'stroke-linejoin', 'miter') as CanvasLineJoin;
     const miterlimit = Number(inheritedSvgAttribute(element, 'stroke-miterlimit', '4'));
-    if (!Number.isFinite(width) || width <= 0 || dashed ||
+    if (!Number.isFinite(width) || width <= 0 || !dashes || !Number.isFinite(dashOffset) ||
       inheritedSvgAttribute(element, 'vector-effect', 'none') === 'non-scaling-stroke' ||
       !['butt', 'round', 'square'].includes(linecap) ||
       !['miter', 'round', 'bevel'].includes(linejoin)) {
@@ -170,7 +182,9 @@ function expandSvgStrokeNodes(
     const source = svgPrimitiveStrokePath(node, depth, rectRadii.get(node.id));
     let outline = '';
     try {
-      if (source) outline = strokeOutline(source, width, linecap, linejoin, miterlimit);
+      if (source) outline = strokeOutline(
+        source, width, linecap, linejoin, miterlimit, dashes, dashOffset,
+      );
     } catch {
       // Keep the original 2D SVG node when the contour cannot be expanded.
     }

@@ -112,7 +112,7 @@ const strokeSample = [
   '<path id="square-line" d="M185 70 L275 70 L275 145" stroke-linecap="square" stroke-linejoin="bevel"/>',
   '</g>',
   '<path id="filled-outline" d="M335 60 H420 V145 H335 Z" fill="#f97316" stroke="#1e293b" stroke-width="12"/>',
-  '<path id="dashed-2d" d="M45 230 H430" fill="none" stroke="#64748b" stroke-width="12" stroke-dasharray="18 12"/>',
+  '<path id="dashed-3d" d="M45 230 H430" fill="none" stroke="#64748b" stroke-width="12" stroke-dasharray="18 12" stroke-dashoffset="6" stroke-linecap="round"/>',
   '</svg>',
 ].join('');
 
