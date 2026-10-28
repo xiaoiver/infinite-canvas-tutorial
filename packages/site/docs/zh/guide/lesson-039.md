@@ -439,6 +439,12 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 点击 **Clip paths + repeated use sample** 可以查看两个分别裁剪、带孔洞的实例，
 以及通过对象包围盒中的多个图形共同裁剪出的形状。
 
+SVG 预检会判断轮廓能否生成网格。近期缓存最多保留 256 份、合计 8 MiB 的 CPU
+几何数组，使异步画布更新创建 3D 伴生网格时能够复用预检结果；旧条目会被逐出。
+GPU 几何另由每个画布独立缓存。运行 `pnpm bench:svg-import:browser` 可用仓库中的
+[Ghostscript Tiger SVG](/Ghostscript_Tiger.svg) 等实际素材查看导入和编辑耗时。
+也可以下载该 SVG，通过上方的 **Upload SVG** 导入，检查可编辑图层和不同缩放倍率。
+
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、
 多个独立轮廓和凹角。若轮廓相交或狭窄区域塌陷，则保留直边。改变深度或尺寸会

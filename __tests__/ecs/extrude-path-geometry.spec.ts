@@ -1,7 +1,10 @@
 import { extrudePathContours } from '../../packages/ecs/src/utils/extrude3d-geometry';
 import type { Mesh3DGeometryData } from '../../packages/ecs/src/utils/geometry3d/types';
 import { insetFillBoundaries } from '../../packages/ecs/src/utils/geometry3d/inset-fill-boundaries';
-import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
+import {
+  buildPathExtrusionMesh,
+  recentPathExtrusionMeshCacheStats,
+} from '../../packages/ecs/src/utils/path-extrusion-mesh';
 
 it('shares identical Path meshes and separates geometry-changing inputs', () => {
   const d = 'M2 3 L43 3 L43 44 L2 44 Z';
@@ -33,6 +36,21 @@ it('shares identical Path meshes and separates geometry-changing inputs', () => 
     transformed,
   );
   expect(transformed).not.toBe(original);
+});
+
+it('retains recent preflight meshes across async work with bounded memory', async () => {
+  const path = 'M0 0 H11 V11 H0 Z';
+  const first = buildPathExtrusionMesh(path)!;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  const hits = recentPathExtrusionMeshCacheStats().hits;
+  expect(buildPathExtrusionMesh(path)).toBe(first);
+  expect(recentPathExtrusionMeshCacheStats().hits).toBe(hits + 1);
+  for (let index = 0; index < 270; index++)
+    buildPathExtrusionMesh(`M${index + 1000} 0 H${index + 1011} V11 H${index + 1000} Z`);
+  const stats = recentPathExtrusionMeshCacheStats();
+  expect(stats.entries).toBeLessThanOrEqual(256);
+  expect(stats.geometryBytes).toBeLessThanOrEqual(8 * 1024 * 1024);
+  expect(buildPathExtrusionMesh(path)).not.toBe(first);
 });
 
 type Point = [number, number];

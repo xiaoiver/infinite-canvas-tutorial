@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { PNG } from 'pngjs';
 
 function sample(instances: number, segments: number) {
   const points = Array.from({ length: segments }, (_, index) => {
@@ -17,7 +18,7 @@ function sample(instances: number, segments: number) {
   ).join('')}</svg>`;
 }
 
-test('profile real browser SVG import', async ({ page }) => {
+test('profile real browser SVG import', async ({ page }, testInfo) => {
   await page.goto('/gizmo.html?extrudePath');
   await expect(page.locator('#status')).toHaveText('Ready');
   const source = sample(20, 1000);
@@ -54,6 +55,50 @@ test('profile real browser SVG import', async ({ page }) => {
       )),
     });
   }
-  console.log(JSON.stringify({ result, variants, top }));
+  const tiger = await page.evaluate(
+    (source) => window.gizmoTest.profileSvgArtworkEdit(source),
+    await page.evaluate(() =>
+      fetch('/Ghostscript_Tiger.svg').then((response) => response.text()),
+    ),
+  );
+  const visiblePixels = [];
+  for (const zoom of [1, 0.5, 2]) {
+    await page.evaluate(async (value) => {
+      window.gizmoTest.api().gotoLandmark({ zoom: value }, { duration: 0 });
+      await window.gizmoTest.settle();
+    }, zoom);
+    const png = PNG.sync.read(
+      await page.locator('#canvas').screenshot({
+        path: testInfo.outputPath(`tiger-zoom-${zoom}.png`),
+      }),
+    );
+    let dark = 0;
+    for (let i = 0; i < png.data.length; i += 4)
+      if (png.data[i] + png.data[i + 1] + png.data[i + 2] < 450) dark++;
+    visiblePixels.push({ zoom, dark });
+    expect(dark).toBeGreaterThan(200);
+  }
+  const artwork = [];
+  for (const name of [
+    'Ghostscript_Tiger.svg',
+    'vercel.svg',
+    'maslow-hierarchy.svg',
+  ]) {
+    const source = await page.evaluate(
+      (asset) => fetch(`/${asset}`).then((response) => response.text()),
+      name,
+    );
+    artwork.push({
+      name,
+      bytes: source.length,
+      ...(await page.evaluate(
+        (value) => window.gizmoTest.profileSvgImport(value),
+        source,
+      )),
+    });
+  }
+  console.log(
+    JSON.stringify({ result, variants, artwork, tiger, visiblePixels, top }),
+  );
   expect(result.nodes).toBeGreaterThan(0);
 });
