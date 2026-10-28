@@ -16,6 +16,14 @@ function glbJson(bytes: number[]) {
   );
 }
 
+/** Canvas fixtures are 200 CSS pixels; mobile screenshots use device pixels. */
+function canvasRgbAt(png: PNG, x: number, y: number): [number, number, number] {
+  const px = Math.floor((x + 0.5) * png.width / 200);
+  const py = Math.floor((y + 0.5) * png.height / 200);
+  const offset = (py * png.width + px) * 4;
+  return [...png.data.subarray(offset, offset + 3)] as [number, number, number];
+}
+
 test('App linked 3D camera renders an imported SVG extrusion', async ({
   page,
 }) => {
@@ -50,9 +58,21 @@ test('overlapping SVG extrusions preserve the source paint order', async ({
     </svg>
   `));
   const png = PNG.sync.read(await page.locator('#canvas').screenshot());
-  const offset = (100 * png.width + 100) * 4;
-  const [red, , blue] = png.data.subarray(offset, offset + 3);
+  const [red, , blue] = canvasRgbAt(png, 100, 100);
   expect(blue).toBeGreaterThan(red * 1.3);
+  await page.evaluate(async () => {
+    const api = window.gizmoTest.api();
+    const layers = api.getNodes().filter((node) => node.type === 'rect');
+    const bottom = layers[0];
+    await api.edit((editor) => editor.updateNode(
+      editor.getNodeById(bottom.id),
+      { zIndex: Math.max(...layers.map((node) => node.zIndex)) + 1 },
+    ));
+    await window.gizmoTest.settle();
+  });
+  const reordered = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const [newRed, , newBlue] = canvasRgbAt(reordered, 100, 100);
+  expect(newRed).toBeGreaterThan(newBlue * 1.3);
 });
 
 test('layered Tiger SVG keeps its eye visible over the orange face', async ({
@@ -78,8 +98,7 @@ test('layered Tiger SVG keeps its eye visible over the orange face', async ({
   let green = 0;
   for (let y = 80; y < 180; y++) {
     for (let x = 120; x < 200; x++) {
-      const offset = (y * png.width + x) * 4;
-      const [red, channelGreen, blue] = png.data.subarray(offset, offset + 3);
+      const [red, channelGreen, blue] = canvasRgbAt(png, x, y);
       if (channelGreen > red * 1.25 && channelGreen > blue * 1.25 && channelGreen > 60)
         green++;
     }
