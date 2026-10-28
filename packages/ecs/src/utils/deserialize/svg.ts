@@ -29,6 +29,7 @@ import { sliceAspectRatio } from './svg-viewbox';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
 import type { Pattern } from '../pattern';
+import { parseColor } from '../color';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -459,8 +460,9 @@ function deserializeSvgElements(
                 (prev as unknown as Record<string, unknown>).fill = pattern;
                 return prev;
               }
-            } else if (def?.localName === 'linearGradient' ||
-                def?.localName === 'radialGradient') {
+            } else if (def?.localName === 'radialGradient' && attributeName === 'fill') {
+              value = deserializeSvgRadialGradient(def, element) ?? 'none';
+            } else if (def?.localName === 'linearGradient') {
               value = deserializeGradient(def as SVGGradientElement);
             }
           }
@@ -658,7 +660,7 @@ function deserializeSvgElements(
       migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
       if ('fills' in node && Array.isArray(node.fills)) {
         node.fills = node.fills.map((layer) =>
-          layer.type === 'solid' && /^linear-gradient\(/i.test(layer.value)
+          layer.type === 'solid' && /^(?:linear|radial)-gradient\(/i.test(layer.value)
             ? { ...layer, type: 'gradient' as const } : layer,
         );
       }
@@ -831,6 +833,56 @@ export function toNumber(
     return length.baseVal;
   }
   return length.baseVal.valueInSpecifiedUnits;
+}
+
+/** The paint system currently has circular gradients, so retain only SVG
+ * gradients that map to a circle in a rectangle's local user coordinates. */
+function deserializeSvgRadialGradient(
+  gradient: SVGElement,
+  target: SVGElement,
+): string | undefined {
+  if (target.localName !== 'rect' ||
+      gradient.getAttribute('gradientUnits') !== 'userSpaceOnUse' ||
+      gradient.hasAttribute('gradientTransform') ||
+      gradient.hasAttribute('href') || gradient.hasAttribute('xlink:href') ||
+      (gradient.getAttribute('spreadMethod') ?? 'pad') !== 'pad') return;
+  const length = (value: string | null) => {
+    if (value === null ||
+        !/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?(?:px)?$/i.test(value)) return;
+    const number = Number(value.replace(/px$/i, ''));
+    return Number.isFinite(number) ? number : undefined;
+  };
+  const cx = length(gradient.getAttribute('cx'));
+  const cy = length(gradient.getAttribute('cy'));
+  const radius = length(gradient.getAttribute('r'));
+  const x = length(target.getAttribute('x') ?? '0');
+  const y = length(target.getAttribute('y') ?? '0');
+  if (cx === undefined || cy === undefined || radius === undefined ||
+      radius <= 0 || x === undefined || y === undefined ||
+      (gradient.hasAttribute('fx') && length(gradient.getAttribute('fx')) !== cx) ||
+      (gradient.hasAttribute('fy') && length(gradient.getAttribute('fy')) !== cy) ||
+      (gradient.hasAttribute('fr') && length(gradient.getAttribute('fr')) !== 0)) return;
+  const stops = Array.from(gradient.children);
+  if (stops.length < 2 || stops.some((stop) => stop.localName !== 'stop')) return;
+  const colors = stops.map((stop) => {
+    const rawOffset = stop.getAttribute('offset');
+    const offset = rawOffset?.endsWith('%')
+      ? Number(rawOffset.slice(0, -1)) / 100 : Number(rawOffset);
+    const rawColor = (stop as SVGElement).style?.getPropertyValue('stop-color') ||
+      stop.getAttribute('stop-color') || 'black';
+    const rawOpacity = (stop as SVGElement).style?.getPropertyValue('stop-opacity') ||
+      stop.getAttribute('stop-opacity') || '1';
+    const opacity = Number(rawOpacity);
+    if (!Number.isFinite(offset) || offset < 0 || offset > 1 ||
+        !Number.isFinite(opacity) || opacity < 0 || opacity > 1 ||
+        /(?:url\(|var\(|currentcolor)/i.test(rawColor)) return;
+    const { r, g, b, opacity: colorOpacity } = parseColor(rawColor);
+    const color = opacity === 1 && colorOpacity === 1
+      ? rawColor : `rgba(${r}, ${g}, ${b}, ${opacity * colorOpacity})`;
+    return `${color} ${offset * 100}%`;
+  });
+  if (colors.some((color) => color === undefined)) return;
+  return `radial-gradient(circle ${radius}px at ${cx - x}px ${cy - y}px, ${colors.join(', ')})`;
 }
 
 /**

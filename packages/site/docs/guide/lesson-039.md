@@ -441,6 +441,9 @@ gradients, paint servers and unsupported SVG shapes remain in 2D.
 Self-contained `<pattern>` fills with integer pixel tiles and `patternUnits="userSpaceOnUse"`
 are imported as repeating 2D fills. The tile can contain basic SVG shapes; linked
 resources, pattern transforms and nonzero pattern origins are not yet supported.
+Circular `<radialGradient>` fills on rectangles are also retained in 2D when they
+use `userSpaceOnUse`, explicit numeric center and radius, and a centered focal
+point. Elliptical gradients and gradient transforms are not yet supported.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Expanded stroke contours retain six decimal places while their coordinates are
 normalized, so very thin details do not collapse before the final mesh check.
