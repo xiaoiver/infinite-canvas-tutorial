@@ -13,7 +13,8 @@ export function pathExtrusionPaintSupported(
     enabledFills[0].type !== 'solid' ||
     !enabledFills[0].value?.trim() ||
     enabledFills[0].value.trim().toLowerCase() === 'none' ||
-    enabledFills[0].value.trim().toLowerCase().startsWith('url(')
+    /^(?:url\(|var\(|(?:repeating-)?(?:linear|radial|conic)-gradient\()/i
+      .test(enabledFills[0].value.trim())
   )
     return false;
   return getEnabledStrokeLayersFromItems(strokes).every(

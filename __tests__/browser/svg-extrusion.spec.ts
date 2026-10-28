@@ -235,6 +235,42 @@ test('Vercel SVG exports modern RGB strokes as a valid GLB', async ({ page }) =>
   expect(result.bytes).toBeGreaterThan(1000);
 });
 
+test('mixed Maslow SVG keeps its 2D layers visible while exporting 3D layers', async ({ page }) => {
+  test.setTimeout(60_000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(async () => {
+    const source = await fetch('/maslow-hierarchy.svg').then((response) => response.text());
+    const artwork = await window.gizmoTest.showSvgArtwork(source);
+    const api = window.gizmoTest.api();
+    const glb = api.export({ format: 'glb' as ExportFormat.GLB, download: false });
+    const background = api.getNodes().find((node) => node.type === 'rect' && node.width === 800);
+    return {
+      ...artwork,
+      textNodes: api.getNodes().filter((node) => node.type === 'text').length,
+      glbBytes: glb.byteLength,
+      backgroundFill: background?.type === 'rect' ? background.fills?.[0]?.type : undefined,
+      backgroundExtruded: !!(background && 'extrude3d' in background && background.extrude3d),
+    };
+  });
+  expect(result.extrudedNodes).toBeGreaterThan(0);
+  expect(result.extrudedNodes).toBeLessThan(result.nodes);
+  expect(result.textNodes).toBeGreaterThan(0);
+  expect(result.glbBytes).toBeGreaterThan(1000);
+  expect(result.backgroundFill).toBe('gradient');
+  expect(result.backgroundExtruded).toBe(false);
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  let colored = 0;
+  for (let i = 0; i < png.data.length; i += 4) {
+    const rgb = png.data.subarray(i, i + 3);
+    if (Math.max(...rgb) - Math.min(...rgb) > 50) colored++;
+  }
+  expect(colored).toBeGreaterThan(100);
+  expect(errors).toEqual([]);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {
