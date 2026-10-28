@@ -25,6 +25,7 @@ import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
 import { pathExtrusionPaintSupported } from '../../packages/ecs/src/utils/path-extrusion-paint';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 import { strokeOutline } from '../../packages/ecs/src/utils/stroke-outline';
+import { parsePatternTransform } from '../../packages/ecs/src/utils/pattern-transform';
 
 const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120">
   <path id="ring" d="M10 10 H110 V110 H10 Z M35 35 H85 V85 H35 Z" fill="#3366cc" fill-rule="evenodd"/>
@@ -95,6 +96,105 @@ it('imports supported SVG pattern transforms as editable 2D fills', () => {
   expect(unsupported?.fills?.[0]?.type).not.toBe('pattern');
   expect(svgElementsToExtrudedNodes(svg, 12).find((node) => node.id === 'moved-rect'))
     .not.toHaveProperty('extrude3d', 12);
+});
+
+it('keeps SVG pattern origins aligned across shapes with different geometry origins', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <pattern id="offset" x="5" y="-3" width="20" height="20"
+        patternUnits="userSpaceOnUse" patternTransform="translate(3 2)">
+        <rect width="5" height="20" fill="red"/>
+      </pattern>
+      <pattern id="invalid" x="bad" width="20" height="20"
+        patternUnits="userSpaceOnUse"><rect width="5" height="20" fill="red"/></pattern>
+    </defs>
+    <rect id="at-zero" width="20" height="20" fill="url(#offset)"/>
+    <rect id="moved-rect" x="30" y="10" width="20" height="20" fill="url(#offset)"/>
+    <path id="moved-path" d="M40 20 H60 V40 H40 Z" fill="url(#offset)"/>
+    <rect id="invalid-origin" x="70" width="20" height="20" fill="url(#invalid)"/>
+    <g id="inherited-group" fill="url(#offset)" fill-opacity="0.6">
+      <rect id="inherited-rect" x="30" y="10" width="20" height="20"/>
+      <path id="inherited-path" d="M40 20 H60 V40 H40 Z"/>
+      <rect id="overridden" x="70" width="20" height="20" fill="blue"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  const patternPosition = (id: string) => {
+    const fill = nodes.find((node) => node.id === id)?.fills?.[0];
+    expect(fill?.type).toBe('pattern');
+    return parsePatternTransform(fill?.transform ?? '');
+  };
+  expect(patternPosition('at-zero')).toMatchObject({ e: 8, f: -1 });
+  expect(patternPosition('moved-rect')).toMatchObject({ e: -22, f: -11 });
+  expect(patternPosition('moved-path')).toMatchObject({ e: -32, f: -21 });
+  expect(patternPosition('inherited-rect')).toMatchObject({ e: -22, f: -11 });
+  expect(patternPosition('inherited-path')).toMatchObject({ e: -32, f: -21 });
+  expect(nodes.find((node) => node.id === 'inherited-rect')?.fills?.[0])
+    .toMatchObject({ opacity: 0.6 });
+  expect(nodes.find((node) => node.id === 'inherited-group')?.fills).toBeUndefined();
+  expect(nodes.find((node) => node.id === 'overridden')?.fills?.[0])
+    .toMatchObject({ type: 'solid', value: 'blue', opacity: 0.6 });
+  expect(nodes.find((node) => node.id === 'invalid-origin')?.fills?.[0]?.type)
+    .not.toBe('pattern');
+});
+
+it('embeds local pattern and use references while rejecting cycles and external links', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    <defs>
+      <g id="mark"><circle cx="4" cy="4" r="3" fill="red"/></g>
+      <pattern id="base" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use xlink:href="#mark" x="2" y="3"/>
+      </pattern>
+      <pattern id="derived" href="#base" x="5" patternTransform="translate(1 0)"/>
+      <pattern id="cycle-a" href="#cycle-b"/>
+      <pattern id="cycle-b" href="#cycle-a"/>
+      <pattern id="external" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use href="https://example.com/mark.svg#mark"/>
+      </pattern>
+      <g id="recursive"><use href="#recursive"/></g>
+      <pattern id="use-cycle" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use href="#recursive"/>
+      </pattern>
+      <pattern id="remote" href="https://example.com/pattern.svg#base"/>
+    </defs>
+    <rect id="linked" width="80" height="80" fill="url(#derived)"/>
+    <rect id="cyclic" x="90" width="20" height="20" fill="url(#cycle-a)"/>
+    <rect id="external-link" x="120" width="20" height="20" fill="url(#external)"/>
+    <rect id="recursive-use" x="150" width="20" height="20" fill="url(#use-cycle)"/>
+    <rect id="remote-pattern" x="180" width="20" height="20" fill="url(#remote)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  const linked = nodes.find((node) => node.id === 'linked')?.fills?.[0];
+  expect(linked).toMatchObject({ type: 'pattern', transform: 'translate(1 0) translate(5 0)' });
+  const embedded = decodeURIComponent(String(linked?.value).split(',')[1]);
+  expect(embedded).toContain('<circle');
+  expect(embedded).toContain('translate(2 3)');
+  expect(embedded).not.toContain('<use');
+  for (const id of ['cyclic', 'external-link', 'recursive-use', 'remote-pattern']) {
+    expect(nodes.find((node) => node.id === id)?.fills?.[0]?.type).not.toBe('pattern');
+  }
+});
+
+it('resolves a pattern and its local use target declared after the filled shape', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <rect id="first" width="40" height="40" fill="url(#derived)"/>
+    <defs>
+      <pattern id="derived" href="#base"/>
+      <pattern id="base" width="20" height="20" patternUnits="userSpaceOnUse">
+        <use href="#mark" x="2"/>
+      </pattern>
+      <circle id="mark" cx="5" cy="5" r="3" fill="red"/>
+    </defs>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const node = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[])
+    .find((item) => item.id === 'first');
+  expect(node?.fills?.[0]?.type).toBe('pattern');
+  expect(decodeURIComponent(String(node?.fills?.[0]?.value).split(',')[1]))
+    .toContain('<circle');
 });
 
 it('places the local bounds origin correctly under SVG scale and matrix transforms', () => {

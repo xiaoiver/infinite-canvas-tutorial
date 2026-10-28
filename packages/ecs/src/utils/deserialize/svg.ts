@@ -28,9 +28,9 @@ import { reprojectSvgExtrusion, sourceTransform } from './svg-extrusion-affine';
 import { sliceAspectRatio } from './svg-viewbox';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
-import type { Pattern } from '../pattern';
-import { parsePatternTransform } from '../pattern-transform';
+import { isPattern, type Pattern } from '../pattern';
 import { parseColor } from '../color';
+import { deserializePattern } from './svg-pattern';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -48,6 +48,8 @@ const SVG_PAINT_STYLE_PROPERTIES = [
   'vector-effect',
 ] as const;
 const SVG_PAINT_PROPERTIES = new Set<string>(SVG_PAINT_STYLE_PROPERTIES);
+
+type InheritedSvgPattern = { paint: Pattern; fillOpacity?: number };
 
 function svgColor(element: Element | null, fallback = '#000000'): string {
   for (let current = element; current; current = current.parentElement) {
@@ -129,41 +131,17 @@ function solidSvgPaint(value: string): boolean {
     !/^(?:url\(|var\(|linear-gradient\(|radial-gradient\()/.test(color);
 }
 
-/** Keep self-contained, user-space SVG tiles as editable 2D pattern fills. */
-function deserializePattern(element: SVGElement): Pattern | undefined {
-  if (element.localName !== 'pattern' ||
-      element.getAttribute('patternUnits') !== 'userSpaceOnUse' ||
-      (element.getAttribute('patternContentUnits') ?? 'userSpaceOnUse') !== 'userSpaceOnUse' ||
-      element.hasAttribute('href') || element.hasAttribute('xlink:href')) return undefined;
-  const transform = element.getAttribute('patternTransform') ?? undefined;
-  if (transform && !parsePatternTransform(transform)) return undefined;
-  const width = Number(element.getAttribute('width'));
-  const height = Number(element.getAttribute('height'));
-  if (!Number.isFinite(width) || !Number.isFinite(height) ||
-      width <= 0 || height <= 0 || width > 1024 || height > 1024 ||
-      !Number.isInteger(width) || !Number.isInteger(height)) return undefined;
-  const x = Number(element.getAttribute('x') ?? 0);
-  const y = Number(element.getAttribute('y') ?? 0);
-  if (x !== 0 || y !== 0) return undefined;
-  const allowed = new Set(['g', 'rect', 'circle', 'ellipse', 'path', 'polygon', 'polyline', 'line']);
-  if (Array.from(element.querySelectorAll('*')).some((child) =>
-    !allowed.has(child.localName) ||
-    Array.from(child.attributes).some(({ name, value }) =>
-      name === 'href' || name === 'xlink:href' ||
-      /url\s*\(|currentcolor/i.test(value)),
-  )) return undefined;
-  const tile = element.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  tile.setAttribute('width', String(width));
-  tile.setAttribute('height', String(height));
-  tile.setAttribute('viewBox', `0 0 ${width} ${height}`);
-  for (const child of Array.from(element.children)) tile.appendChild(child.cloneNode(true));
-  const serializer = element.ownerDocument.defaultView?.XMLSerializer ?? XMLSerializer;
-  const markup = new serializer().serializeToString(tile);
-  return {
-    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`,
-    repetition: 'repeat',
-    ...(transform ? { transform } : {}),
-  };
+function collectSvgDefinitions(elements: SVGElement[]): SVGElement[] {
+  const definitions: SVGElement[] = [];
+  for (const element of elements) {
+    const groups = element.localName === 'defs'
+      ? [element, ...Array.from(element.querySelectorAll('defs'))]
+      : Array.from(element.querySelectorAll('defs'));
+    for (const group of groups) {
+      definitions.push(...Array.from(group.children) as SVGElement[]);
+    }
+  }
+  return definitions;
 }
 
 function svgStrokeDashes(element: SVGElement): number[] | null {
@@ -362,7 +340,7 @@ export function svgElementsToSerializedNodes(
   const fallbackColor = svgColor(elements[0]?.parentElement);
   return deserializeSvgElements(
     expanded.children,
-    defsChildren,
+    [...defsChildren, ...collectSvgDefinitions(expanded.children)],
     parentId,
     zIndex,
     overrideAttributes,
@@ -384,19 +362,23 @@ function deserializeSvgElements(
   nodeElements?: Map<string, SVGElement>,
   fallbackColor = '#000000',
   pathCache: PathTransformCache = new Map(),
+  inheritedPattern?: InheritedSvgPattern,
 ): SerializedNode[] {
   const nodes: SerializedNode[] = [];
 
   for (const element of elements) {
     let type = element.tagName.toLowerCase();
     let elementOverrideAttributes = overrideAttributes;
+    let patternForChildren = inheritedPattern;
 
     let id = element.id || uuidv4();
 
     if (type === 'svg') {
       type = 'g';
     } else if (type === 'defs') {
-      defsChildren.push(...(Array.from(element.children) as SVGElement[]));
+      for (const child of Array.from(element.children) as SVGElement[]) {
+        if (!defsChildren.includes(child)) defsChildren.push(child);
+      }
       continue;
     } else if (type === 'use') {
       continue;
@@ -459,7 +441,7 @@ function deserializeSvgElements(
             const id = value.replace('url(#', '').replace(')', '');
             const def = defsChildren.find((d) => d.id === id);
             if (def?.localName === 'pattern' && attributeName === 'fill') {
-              const pattern = deserializePattern(def);
+              const pattern = deserializePattern(def, defsChildren);
               if (pattern) {
                 (prev as unknown as Record<string, unknown>).fill = pattern;
                 return prev;
@@ -513,6 +495,33 @@ function deserializeSvgElements(
         prev[attributeName] = value;
         return prev;
       }, {} as SerializedNode);
+
+      const rawAttributes = attributes as unknown as Record<string, unknown>;
+      const ownFill = rawAttributes.fill;
+      const ownOpacity = typeof rawAttributes.fillOpacity === 'number'
+        ? rawAttributes.fillOpacity : undefined;
+      if (type === 'g') {
+        if ('fill' in attributes) {
+          patternForChildren = isPattern(ownFill)
+            ? { paint: ownFill, fillOpacity: ownOpacity ?? inheritedPattern?.fillOpacity }
+            : undefined;
+          if (!isPattern(ownFill) && ownOpacity === undefined &&
+              inheritedPattern?.fillOpacity !== undefined) {
+            rawAttributes.fillOpacity = inheritedPattern.fillOpacity;
+          }
+        } else if (inheritedPattern && ownOpacity !== undefined) {
+          patternForChildren = { ...inheritedPattern, fillOpacity: ownOpacity };
+        }
+      } else if (ownFill === undefined && !('fills' in attributes) &&
+          inheritedPattern) {
+        // Group patterns must be rebased for each child, just like a pattern
+        // specified on that child directly.
+        rawAttributes.fill = inheritedPattern.paint;
+      }
+      if (type !== 'g' && !('fillOpacity' in attributes) &&
+          inheritedPattern?.fillOpacity !== undefined) {
+        rawAttributes.fillOpacity = inheritedPattern.fillOpacity;
+      }
 
       // The 2D Rect stores one corner radius. Preserve both SVG radii for the
       // extrusion converter before the attributes above collapse rx and ry.
@@ -663,6 +672,13 @@ function deserializeSvgElements(
         delete (node as unknown as Record<string, unknown>).strokeOpacity;
       }
       migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+      if (type === 'g' && patternForChildren &&
+          (isPattern(ownFill) || ownFill === undefined)) {
+        // The SVG pattern is materialized on each descendant so its user-space
+        // coordinates survive geometry rebasing. Do not leave a stale group
+        // paint that would appear editable but no longer affect its children.
+        delete (node as unknown as Record<string, unknown>).fills;
+      }
       if ('fills' in node && Array.isArray(node.fills)) {
         node.fills = node.fills.map((layer) =>
           layer.type === 'solid' && /^(?:linear|radial)-gradient\(/i.test(layer.value)
@@ -675,7 +691,20 @@ function deserializeSvgElements(
       nodes.push(node);
       nodeElements?.set(node.id, element);
 
-      fixTransform((attributes as any).transform || '', node, pathCache);
+      const { minX, minY } = fixTransform(
+        (attributes as any).transform || '', node, pathCache,
+      );
+      // Geometry is rebased to (0, 0) by fixTransform. Keep the imported
+      // pattern in the same SVG user-space position after that rebase.
+      if ((minX || minY) && Number.isFinite(minX) &&
+          Number.isFinite(minY) && 'fills' in node && Array.isArray(node.fills)) {
+        node.fills = node.fills.map((layer) => layer.type === 'pattern'
+          ? {
+              ...layer,
+              transform: `translate(${-minX} ${-minY}) ${layer.transform ?? ''}`.trim(),
+            }
+          : layer);
+      }
     }
 
     const children = deserializeSvgElements(
@@ -696,6 +725,7 @@ function deserializeSvgElements(
       nodeElements,
       fallbackColor,
       pathCache,
+      patternForChildren,
     ).filter(Boolean);
 
     nodes.push(...children);
@@ -731,7 +761,7 @@ export function svgElementsToExtrudedNodes(
   }
   const nodes = deserializeSvgElements(
     children,
-    [],
+    collectSvgDefinitions(children),
     undefined,
     0,
     undefined,

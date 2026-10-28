@@ -128,6 +128,8 @@ export function fixTransform(
 
   // @ts-ignore
   delete attributes.transform;
+
+  return { minX, minY };
 }
 
 export function shiftPath(d: string, dx: number, dy: number, decimals = 2) {
