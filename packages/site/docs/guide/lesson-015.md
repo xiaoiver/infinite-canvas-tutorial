@@ -4,6 +4,7 @@ description: 'Master complex text rendering including TextMetrics, shaping with 
 head:
     - ['meta', { property: 'og:title', content: 'Lesson 15 - Text rendering' }]
 ---
+
 <script setup>
 import MSDFText from '../components/MSDFText.vue';
 import BitmapFont from '../components/BitmapFont.vue';
@@ -563,7 +564,11 @@ The single SDF needs to be merged into a large image to be used as a texture lat
 
 ![glyph atlas with potpack](https://miro.medium.com/v2/resize:fit:1024/format:webp/0*YcJm5NJXJCIO20ds.png)
 
-It should be noted that this atlas contains all the fonts used in the scene, so when `fontFamily/Weight` changes, old text changes, and new text is added, it needs to be re-generated, but the font size change should not re-generate. Therefore, to avoid frequent re-generation, for each font, the default is to generate SDF for commonly used characters from 32 to 128.
+The atlas stores the glyphs currently used by a text batch. Its first build also
+includes a space glyph so empty text has valid metrics. A new character or a
+font family, weight, style or fill change can rebuild the atlas; changing font
+size alone reuses it. Generating only visible characters avoids baking 96
+unused ASCII glyphs for every text style when importing an SVG with many labels.
 
 This texture only needs to use one channel, if it is in WebGL, you can use `gl.ALPHA` format, but there is no corresponding format in WebGPU. Therefore, we use `Format.U8_R_NORM` format, which is `gl.LUMINANCE` in WebGL and [r8unorm] in WebGPU.
 

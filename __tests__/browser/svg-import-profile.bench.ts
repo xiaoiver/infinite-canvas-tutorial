@@ -69,12 +69,23 @@ test('profile real browser SVG import', async ({ page }, testInfo) => {
       (asset) => fetch(`/${asset}`).then((response) => response.text()),
       name,
     );
+    await cdp.send('Profiler.start');
     const result = await page.evaluate(
       (value) => window.gizmoTest.profileSvgArtworkEdit(value),
       source,
     ).catch((error) => { throw new Error(`${name}: ${error}`); });
+    const { profile: artworkProfile } = await cdp.send('Profiler.stop');
     expect(result.glbBytes).toBeGreaterThan(0);
-    roundTrips.push({ name, ...result });
+    const hotspots = artworkProfile.nodes
+      .filter((node) => node.hitCount)
+      .sort((a, b) => (b.hitCount ?? 0) - (a.hitCount ?? 0))
+      .slice(0, 8)
+      .map((node) => ({
+        name: node.callFrame.functionName,
+        url: node.callFrame.url.split('/').pop(),
+        hits: node.hitCount,
+      }));
+    roundTrips.push({ name, ...result, hotspots });
   }
   const visiblePixels = [];
   for (const zoom of [1, 0.5, 2]) {

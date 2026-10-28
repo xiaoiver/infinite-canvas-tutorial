@@ -43,7 +43,7 @@ function fixture() {
     return texture;
   });
   const manager = new GlyphManager();
-  const generate = (text = 'A', stack = 'sans') =>
+  const generate = (text = 'A', stack = 'sans', preloadAscii = true) =>
     manager.generateAtlas(
       stack,
       'sans-serif',
@@ -53,6 +53,7 @@ function fixture() {
       { createTexture } as unknown as Device,
       false,
       'red',
+      preloadAscii,
     );
   return { manager, generate, createTexture, textures };
 }
@@ -74,6 +75,21 @@ it('preloads ASCII once, deduplicates graphemes and reuses unchanged atlas data'
     height: atlas.image.height,
   });
   expect(textures[0].setImageData).toHaveBeenCalledWith([atlas.image.data]);
+  manager.destroy();
+});
+
+it('starts an SVG text atlas with only its visible glyphs and grows on demand', () => {
+  const { manager, generate, textures } = fixture();
+  generate('A👩‍🚀👩‍🚀', 'svg', false);
+  expect(draw).toHaveBeenCalledTimes(3); // space, A, composed emoji
+  expect(Object.keys(manager.getMap().svg)).toEqual([' ', 'A', '👩‍🚀']);
+  const first = manager.getAtlas();
+  generate('AB👩‍🚀', 'svg', false);
+  expect(draw).toHaveBeenCalledTimes(4);
+  expect(manager.getAtlas()).not.toBe(first);
+  expect(textures[0].destroy).toHaveBeenCalledTimes(1);
+  generate('', 'empty', false);
+  expect(manager.getMap().empty[' ']).toBeDefined();
   manager.destroy();
 });
 

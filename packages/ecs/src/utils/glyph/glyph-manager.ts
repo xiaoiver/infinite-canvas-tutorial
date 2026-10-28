@@ -139,10 +139,14 @@ export class GlyphManager {
     device: Device,
     esdt: boolean,
     fill: string,
+    preloadAscii = false,
   ) {
     let newChars: string[] = [];
     if (!this.glyphMap[fontStack]) {
-      newChars = getDefaultCharacterSet();
+      // Empty editable text still needs an atlas and space metrics. Rendering
+      // only the characters present avoids baking 96 unused glyphs for every
+      // SVG text style during initial import.
+      newChars = preloadAscii ? getDefaultCharacterSet() : [' '];
     }
 
     const existedChars = Object.keys(this.glyphMap[fontStack] || {});
