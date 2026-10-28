@@ -62,7 +62,7 @@ function sliceViewport(root: SVGSVGElement): Point[] | undefined {
   );
 }
 
-function sourceTransform(
+export function sourceTransform(
   element: SVGElement,
   root: SVGSVGElement | undefined,
 ): {
@@ -289,6 +289,7 @@ export function reprojectSvgExtrusion(
   depth: number,
   rectRadii: Map<string, { rx: number; ry: number }>,
   clipDefinitions: Map<string, SvgClipDefinition | undefined>,
+  alreadyProjected: Set<string> = new Set(),
 ): SerializedNode[] {
   const viewport = root ? rootViewBox(root) : identity();
   const slice = root ? sliceViewport(root) : undefined;
@@ -298,6 +299,7 @@ export function reprojectSvgExtrusion(
   const boundsCache = new Map<SVGElement, ReturnType<typeof contourBounds>>();
   return nodes.map((node, index) => {
     if (!('extrude3d' in node) || !node.extrude3d) return node;
+    if (alreadyProjected.has(node.id)) return node;
     const element = nodeElements.get(node.id);
     if (!element) return node;
     const { matrix, hasShear, clipViewports, clipReferences } = sourceTransform(element, root);

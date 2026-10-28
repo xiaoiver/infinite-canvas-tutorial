@@ -431,9 +431,13 @@ radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
 importer still stores a single corner radius.
 Resolvable positive-length SVG dash patterns, including odd-length patterns and
 `stroke-dashoffset`, are expanded into separate editable solid contours.
-A zero-length dash with a round cap creates an extruded dot. Zero-length gaps,
-zero-length dashes with other caps, non-scaling strokes, gradients, paint servers
-and unsupported SVG shapes remain in 2D.
+A zero-length dash with a round cap creates an extruded dot. A
+`non-scaling-stroke` keeps its specified width through SVG group transforms and
+`viewBox` scaling: the importer projects the centerline first, then expands it
+into an editable 3D outline. This width is baked at import time, so subsequent
+editor zoom scales the 3D mesh normally. Non-scaling strokes under clip paths
+or sliced viewports, zero-length gaps, zero-length dashes with other caps,
+gradients, paint servers and unsupported SVG shapes remain in 2D.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Expanded stroke contours retain six decimal places while their coordinates are
 normalized, so very thin details do not collapse before the final mesh check.
@@ -492,7 +496,8 @@ to each viewport.
 Choose **Paint style + currentColor sample** to compare inherited and
 instance-specific colors, an inline fill override and a styled stroke.
 Choose **Stroke caps + joins sample** to compare round and square caps, a
-filled shape with a separate 3D outline, an extruded dashed stroke and round dots.
+filled shape with a separate 3D outline, a non-scaling stroke under a group
+transform, an extruded dashed stroke and round dots.
 Choose **Clip paths + repeated use sample** to inspect two independently
 clipped instances with holes and a shape clipped by an object-bounds union.
 Choose **Group bounds + clip use sample** to inspect an object-bounds clip on a

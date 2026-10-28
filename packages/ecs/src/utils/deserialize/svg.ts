@@ -24,7 +24,7 @@ import { getEnabledStrokeLayersFromItems } from '../strokeLayers';
 import { strokeOutline } from '../stroke-outline';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
 import { extrudeSvgPrimitive, svgPrimitiveStrokePath } from './svg-extrusion-primitive';
-import { reprojectSvgExtrusion } from './svg-extrusion-affine';
+import { reprojectSvgExtrusion, sourceTransform } from './svg-extrusion-affine';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
 
@@ -143,9 +143,11 @@ function expandSvgStrokeNodes(
   depth: number,
   rectRadii: Map<string, { rx: number; ry: number }>,
   fallbackParent: Element | null,
-): { nodes: SerializedNode[]; strokeIds: Map<string, string> } {
+  root?: SVGSVGElement,
+): { nodes: SerializedNode[]; strokeIds: Map<string, string>; projectedIds: Set<string> } {
   const usedIds = new Set(nodes.map((node) => node.id));
   const strokeIds = new Map<string, string>();
+  const projectedIds = new Set<string>();
   const expanded: SerializedNode[] = [];
   for (const node of nodes) {
     const element = nodeElements.get(node.id);
@@ -173,17 +175,39 @@ function expandSvgStrokeNodes(
     const linejoin = inheritedSvgAttribute(element, 'stroke-linejoin', 'miter') as CanvasLineJoin;
     const miterlimit = Number(inheritedSvgAttribute(element, 'stroke-miterlimit', '4'));
     if (!Number.isFinite(width) || width <= 0 || !dashes || !Number.isFinite(dashOffset) ||
-      inheritedSvgAttribute(element, 'vector-effect', 'none') === 'non-scaling-stroke' ||
       !['butt', 'round', 'square'].includes(linecap) ||
       !['miter', 'round', 'bevel'].includes(linejoin)) {
       expanded.push(node);
       continue;
     }
-    const source = svgPrimitiveStrokePath(node, depth, rectRadii.get(node.id));
+    const nonScaling = inheritedSvgAttribute(element, 'vector-effect', 'none') ===
+      'non-scaling-stroke';
+    let source = svgPrimitiveStrokePath(node, depth, rectRadii.get(node.id));
+    let projected: Parameters<typeof strokeOutline>[7];
+    if (nonScaling) {
+      const transform = sourceTransform(element, root);
+      // Project the centerline first, then expand it at the specified width.
+      // Clipping in this already projected space needs a separate path, so
+      // retain those SVG sources in 2D for now.
+      if (transform.clipViewports.length || transform.clipReferences.length ||
+        (root?.getAttribute('preserveAspectRatio')?.includes('slice'))) {
+        expanded.push(node);
+        continue;
+      }
+      const clone = element.cloneNode(false) as SVGElement;
+      clone.removeAttribute('transform');
+      const local = deserializeSvgElements(
+        [clone], [], undefined, 0, undefined, { fill: false, stroke: false },
+      )[0];
+      source = local && svgPrimitiveStrokePath(local, depth, rectRadii.get(node.id));
+      if (source) projected = {
+        matrix: transform.matrix, x: local.x ?? 0, y: local.y ?? 0,
+      };
+    }
     let outline = '';
     try {
       if (source) outline = strokeOutline(
-        source, width, linecap, linejoin, miterlimit, dashes, dashOffset,
+        source, width, linecap, linejoin, miterlimit, dashes, dashOffset, projected,
       );
     } catch {
       // Keep the original 2D SVG node when the contour cannot be expanded.
@@ -201,8 +225,8 @@ function expandSvgStrokeNodes(
         continue;
       }
       outlinePosition = {
-        x: (node.x ?? 0) + minX,
-        y: (node.y ?? 0) + minY,
+        x: (projected ? 0 : node.x ?? 0) + minX,
+        y: (projected ? 0 : node.y ?? 0) + minY,
         width: maxX - minX,
         height: maxY - minY,
         d: shiftPath(outline, -minX, -minY, 6),
@@ -231,20 +255,24 @@ function expandSvgStrokeNodes(
         ...node, ...outlinePosition, id: strokeId, type: 'path', fillRule: 'evenodd',
         fills: strokePaint, strokes: noStroke, strokeWidth: 0,
         name: `${node.name ?? node.id} stroke`, zIndex: node.zIndex + 0.5,
+        ...(projected ? { parentId: undefined, rotation: 0, scaleX: 1, scaleY: 1 } : {}),
         extrude3d: strokeExtrusion,
       } as PathSerializedNode);
       nodeElements.set(strokeId, element);
       strokeIds.set(node.id, strokeId);
+      if (projected) projectedIds.add(strokeId);
     } else {
       expanded.push({
         ...node, ...outlinePosition, type: 'path', fillRule: 'evenodd',
         fills: strokePaint, strokes: noStroke, strokeWidth: 0,
+        ...(projected ? { parentId: undefined, rotation: 0, scaleX: 1, scaleY: 1 } : {}),
         extrude3d: depth,
       } as PathSerializedNode);
       strokeIds.set(node.id, node.id);
+      if (projected) projectedIds.add(node.id);
     }
   }
-  return { nodes: expanded, strokeIds };
+  return { nodes: expanded, strokeIds, projectedIds };
 }
 
 export function svgSvgElementToComputedCamera(element: SVGSVGElement) {
@@ -653,9 +681,9 @@ export function svgElementsToExtrudedNodes(
     pathCache,
   );
   const fallbackParent = Array.isArray(elements) ? elements[0]?.parentElement : null;
-  const { nodes: strokeNodes, strokeIds } = expandSvgStrokeNodes(
+  const { nodes: strokeNodes, strokeIds, projectedIds } = expandSvgStrokeNodes(
     nodes, getComputedInheritGroupWireMap(nodes), nodeElements,
-    depth, rectRadii, fallbackParent,
+    depth, rectRadii, fallbackParent, root,
   );
   const generatedStrokeIds = new Set(strokeIds.values());
   const sourceIdByElement = new Map(nodes.map((node) =>
@@ -709,10 +737,10 @@ export function svgElementsToExtrudedNodes(
       );
       return expandSvgStrokeNodes(
         plain, getComputedInheritGroupWireMap(plain), nodeElements,
-        depth, rectRadii, fallbackParent,
+        depth, rectRadii, fallbackParent, root,
       ).nodes;
     },
-    root, nodeElements, inherited, depth, rectRadii, clipDefinitions,
+    root, nodeElements, inherited, depth, rectRadii, clipDefinitions, projectedIds,
   );
   const byId = new Map(projected.map((node) => [node.id, node]));
   const originalById = new Map(nodes.map((node) => [node.id, node]));

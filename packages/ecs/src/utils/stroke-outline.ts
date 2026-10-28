@@ -1,6 +1,7 @@
 import ClipperLib from 'clipper-lib';
 import { flattenPath } from './curve/adaptive';
 import { parsePath } from './curve/shape-path';
+import type { Matrix } from 'transformation-matrix';
 
 const SCALE = 1000;
 type Point = [number, number];
@@ -89,6 +90,7 @@ export function strokeOutline(
   miterlimit = 4,
   dasharray: number[] = [],
   dashoffset = 0,
+  projected?: { matrix: Matrix; x: number; y: number },
 ): string {
   if (!Number.isFinite(width) || width <= 0) return '';
   const dashSequence = dasharray.length % 2 ? [...dasharray, ...dasharray] : dasharray;
@@ -98,7 +100,17 @@ export function strokeOutline(
     (linecap !== 'round' && dashSequence.some((value) => value === 0)))
     return '';
   const { subPaths } = parsePath(d);
-  const contours = flattenPath(subPaths, 4, width / 2);
+  const matrix = projected?.matrix;
+  const scale = matrix ? Math.max(1, Math.hypot(matrix.a, matrix.b),
+    Math.hypot(matrix.c, matrix.d)) : 1;
+  if (matrix && (![matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f]
+    .every(Number.isFinite) || Math.abs(matrix.a * matrix.d - matrix.b * matrix.c) < 1e-12))
+    return '';
+  const contours = flattenPath(subPaths, 4 * scale, width / (2 * scale))
+    .map((contour) => matrix ? contour.map(([x, y]): Point => [
+      matrix.a * (x + projected.x) + matrix.c * (y + projected.y) + matrix.e,
+      matrix.b * (x + projected.x) + matrix.d * (y + projected.y) + matrix.f,
+    ]) : contour);
   const offset = new ClipperLib.ClipperOffset(
     Math.max(2, Number.isFinite(miterlimit) ? miterlimit : 4),
     SCALE / 8,
