@@ -448,6 +448,8 @@ paths and polygons, including elliptical gradients, shifted focal points and
 gradient transforms, use a rasterized SVG image fill. The shape remains editable,
 while its gradient stops are baked into that image rather than separately editable
 paint controls.
+SVG image fills are redrawn from the vector source as you zoom in, up to the
+texture size limit, so their edges stay sharper at higher magnification.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Expanded stroke contours retain six decimal places while their coordinates are
 normalized, so very thin details do not collapse before the final mesh check.

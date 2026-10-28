@@ -301,6 +301,7 @@ export function resolveFillLayerImageRasterPixelSize(
   geomW: number,
   geomH: number,
   objectFit?: FillLayerImageRasterOptions['objectFit'],
+  zoomBucket = 1,
 ): { width: number; height: number } {
   const src = fillLayerDecodedBitmapByUrl.get(url);
   const srcW = src ? Math.max(1, Math.floor(src.width)) : 1;
@@ -310,7 +311,7 @@ export function resolveFillLayerImageRasterPixelSize(
     srcH,
     geomW,
     geomH,
-    getDevicePixelRatioForRaster(),
+    getDevicePixelRatioForRaster() * zoomBucket,
     undefined,
     objectFit ?? 'fill',
   );

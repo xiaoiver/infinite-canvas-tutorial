@@ -57,7 +57,11 @@ import {
   getRasterFilterPadding,
 } from '../utils/filter';
 import { getRainFxAnimationExportContext } from '../utils/rain-fx/rain-fx-export-context';
-import { scheduleFillImageSvgRerasterIfNeeded } from '../utils/fillImageSvgReraster';
+import {
+  isLikelySvgResourceUrl,
+  scheduleFillImageSvgRerasterIfNeeded,
+} from '../utils/fillImageSvgReraster';
+import { svgFillImageZoomBucket } from '../utils/fillImageTextureSize';
 import {
   getFillLayerDecodedBitmap,
   getOrScheduleFillLayerPatternSource,
@@ -72,6 +76,7 @@ import { safeAddComponent } from '../history';
 import { getSdfGeometryBoundsForFilter } from '../utils/solidShapeRasterForFilter';
 import {
   ComputedPoints,
+  ComputedCamera,
   Ellipse,
   FillLayers,
   FillTexture,
@@ -295,6 +300,12 @@ export class Mesh extends PathDrawcall {
         width,
         height,
         rasterOpts.objectFit,
+        isLikelySvgResourceUrl(layer.value) &&
+          this.api?.getCamera()?.has(ComputedCamera)
+          ? svgFillImageZoomBucket(
+              this.api.getCamera().read(ComputedCamera).zoom,
+            )
+          : 1,
       );
       const fromUrl = rasterizeFillLayerImageUrlForTexture(
         layer.value,

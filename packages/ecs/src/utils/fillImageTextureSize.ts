@@ -5,6 +5,12 @@ import { getSdfGeometryBoundsForFilter } from './solidShapeRasterForFilter';
 /** 避免 SVG 等小 intrinsic 位图在放大后处理时糊成一片；与 {@link resolveFillImageTexturePixelSize} 配合使用。 */
 export const FILL_IMAGE_RASTER_MAX_EDGE = 4096;
 
+/** Increase SVG fill resolution only when zoom crosses a power-of-two boundary. */
+export function svgFillImageZoomBucket(zoom: number): number {
+  if (!Number.isFinite(zoom) || zoom <= 1) return 1;
+  return Math.min(64, 2 ** Math.ceil(Math.log2(zoom)));
+}
+
 /**
  * 几何在画布上的像素宽高；与 {@link getSdfGeometryBoundsForFilter} 一致（`ComputedBounds` 未就绪时从 Rect 等回退）。
  */

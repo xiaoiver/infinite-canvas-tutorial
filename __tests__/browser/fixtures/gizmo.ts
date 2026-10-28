@@ -37,6 +37,7 @@ import { getMeshPipeline3D } from '../../../packages/ecs/src/systems/mesh3d-brid
 import { buildPickSceneForViewport } from '../../../packages/ecs/src/utils/pick3d-probe';
 import { recentPathExtrusionMeshCacheStats } from '../../../packages/ecs/src/utils/path-extrusion-mesh';
 import { projectMesh3DViewportBounds } from '../../../packages/ecs/src/utils/isometric-marquee';
+import { getFillLayerDecodedBitmap } from '../../../packages/ecs/src/utils/fill-layer-image-url-raster';
 
 let api: API;
 const params = new URLSearchParams(location.search);
@@ -103,6 +104,10 @@ const resetDerivedUpdates = () => {
 };
 const harness = {
   api: () => api,
+  svgFillRasterSize: (url: string) => {
+    const bitmap = getFillLayerDecodedBitmap(url);
+    return bitmap ? { width: bitmap.width, height: bitmap.height } : undefined;
+  },
   profileSvgImport: (source: string) => {
     const parseStart = performance.now();
     const svg = new DOMParser().parseFromString(source, 'image/svg+xml')

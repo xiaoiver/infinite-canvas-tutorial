@@ -416,6 +416,41 @@ test('SVG radial image fills align with Path and circle geometry', async ({ page
   }, { timeout: 10_000 }).toBeLessThan(35);
 });
 
+for (const shape of ['rect', 'path'] as const) test(`zooming into an SVG ${shape} fill rerasterizes its vector source`, async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const url = await page.evaluate(async (shape) => {
+    await window.gizmoTest.showSvgArtwork(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80">
+      <defs><radialGradient id="g" fx="0.2" fy="0.3">
+        <stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/>
+      </radialGradient></defs>
+      ${shape === 'rect'
+        ? '<rect width="80" height="80" fill="url(#g)"/>'
+        : '<path d="M0 0 H80 V80 H0 Z" fill="url(#g)"/>'}
+    </svg>`);
+    const node = window.gizmoTest.api().getNodes().find((node) => node.type === shape);
+    const fill = node && 'fills' in node ? node.fills?.[0] : undefined;
+    if (!fill || fill.type !== 'image') throw new Error('Expected an SVG image fill');
+    return fill.value;
+  }, shape);
+  await expect.poll(() => page.evaluate((source) =>
+    window.gizmoTest.svgFillRasterSize(source)?.width ?? 0, url),
+  ).toBeGreaterThanOrEqual(80);
+  await page.evaluate(async () => {
+    window.gizmoTest.api().gotoLandmark({ x: 100, y: 100, zoom: 3 }, { duration: 0 });
+    await window.gizmoTest.settle();
+  });
+  await expect.poll(() => page.evaluate((source) =>
+    window.gizmoTest.svgFillRasterSize(source)?.width ?? 0, url),
+  ).toBeGreaterThanOrEqual(320);
+  await page.evaluate(async () => {
+    window.gizmoTest.api().gotoLandmark({ x: 100, y: 100, zoom: 3.4 }, { duration: 0 });
+    await window.gizmoTest.settle();
+  });
+  expect(await page.evaluate((source) =>
+    window.gizmoTest.svgFillRasterSize(source)?.width, url)).toBe(320);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {
