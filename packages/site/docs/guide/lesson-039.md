@@ -493,6 +493,15 @@ clipped instances with holes and a shape clipped by an object-bounds union.
 Choose **Group bounds + clip use sample** to inspect an object-bounds clip on a
 transformed group whose two windows reuse one local definition.
 
+SVG preflight checks whether each contour can form a mesh. The resulting CPU
+geometry is kept in a recent cache of at most 256 meshes and 8 MiB of geometry
+arrays, so it can be reused when the asynchronous canvas update creates the 3D
+companions. Older entries are evicted; GPU geometry has its own per-canvas cache.
+Run `pnpm bench:svg-import:browser` to inspect import and edit timings for the
+repository's [Ghostscript Tiger SVG](/Ghostscript_Tiger.svg) and other
+representative artwork. You can also download that SVG and use **Upload SVG**
+above to inspect the editable layers and compare different zoom levels.
+
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple
 islands and concave corners are supported when the inward offset preserves the

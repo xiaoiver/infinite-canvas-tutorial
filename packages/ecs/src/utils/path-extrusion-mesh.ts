@@ -21,11 +21,50 @@ export interface PathBevelOptions {
 }
 
 // Repeated SVG <use> instances and import preflights often request exactly
-// the same mesh. Weak references let source-owned meshes outlive this lookup
-// without retaining their buffers after the last source is removed.
+// the same mesh. Weak references keep the broad lookup from owning meshes.
+// A small bounded strong tier bridges the async gap between SVG preflight and
+// companion creation, where a GC can otherwise discard every preflight mesh.
 const sharedMeshes = new Map<string, WeakRef<PathExtrusionMesh>>();
 const MAX_SHARED_MESHES = 64;
 const MAX_SHARED_KEY_LENGTH = 20_000;
+const recentMeshes = new Map<
+  string,
+  { mesh: PathExtrusionMesh; bytes: number }
+>();
+const MAX_RECENT_MESHES = 256;
+const MAX_RECENT_MESH_BYTES = 8 * 1024 * 1024;
+let recentMeshBytes = 0;
+let recentMeshHits = 0;
+
+function retainRecentMesh(key: string, mesh: PathExtrusionMesh): void {
+  const bytes = Object.values(mesh.geometry).reduce(
+    (total, view) => total + (view?.byteLength ?? 0),
+    0,
+  );
+  if (bytes > MAX_RECENT_MESH_BYTES) return;
+  const previous = recentMeshes.get(key);
+  if (previous) recentMeshBytes -= previous.bytes;
+  recentMeshes.delete(key);
+  recentMeshes.set(key, { mesh, bytes });
+  recentMeshBytes += bytes;
+  while (
+    recentMeshes.size > MAX_RECENT_MESHES ||
+    recentMeshBytes > MAX_RECENT_MESH_BYTES
+  ) {
+    const oldest = recentMeshes.keys().next().value!;
+    recentMeshBytes -= recentMeshes.get(oldest)!.bytes;
+    recentMeshes.delete(oldest);
+  }
+}
+
+/** Retained geometry only; string keys and device buffers are excluded. */
+export function recentPathExtrusionMeshCacheStats() {
+  return {
+    entries: recentMeshes.size,
+    geometryBytes: recentMeshBytes,
+    hits: recentMeshHits,
+  };
+}
 
 function meshKey(
   d: string,
@@ -58,6 +97,7 @@ function rememberMesh(
     sharedMeshes.set(key, new WeakRef(mesh));
     if (sharedMeshes.size > MAX_SHARED_MESHES)
       sharedMeshes.delete(sharedMeshes.keys().next().value!);
+    retainRecentMesh(key, mesh);
   }
   return mesh;
 }
@@ -73,10 +113,13 @@ export function buildPathExtrusionMesh(
 ): PathExtrusionMesh | undefined {
   const key = meshKey(d, fillRule, bevel, linear);
   if (key) {
-    const cached = sharedMeshes.get(key)?.deref();
+    const recent = recentMeshes.get(key)?.mesh;
+    const cached = recent ?? sharedMeshes.get(key)?.deref();
     if (cached) {
+      if (recent) recentMeshHits++;
       sharedMeshes.delete(key);
       sharedMeshes.set(key, new WeakRef(cached));
+      retainRecentMesh(key, cached);
       return cached;
     }
     sharedMeshes.delete(key);

@@ -35,6 +35,7 @@ import { MESH_SCENE_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mes
 import { MESH_MODEL_UNIFORM_FLOATS } from '../../../packages/ecs/src/systems/mesh3d/mesh-model-uniforms';
 import { getMeshPipeline3D } from '../../../packages/ecs/src/systems/mesh3d-bridge';
 import { buildPickSceneForViewport } from '../../../packages/ecs/src/utils/pick3d-probe';
+import { recentPathExtrusionMeshCacheStats } from '../../../packages/ecs/src/utils/path-extrusion-mesh';
 import { projectMesh3DViewportBounds } from '../../../packages/ecs/src/utils/isometric-marquee';
 
 let api: API;
@@ -115,8 +116,45 @@ const harness = {
       parsedMs,
       importedMs,
       nodes: nodes.length,
+      extrudedNodes: nodes.filter(
+        (node) => 'extrude3d' in node && node.extrude3d,
+      ).length,
       uniquePaths: new Set(paths.map((node) => node.d)).size,
-      pathLengths: [...new Set(paths.map((node) => node.d.length))],
+      longestPath: paths.reduce((max, node) => Math.max(max, node.d.length), 0),
+    };
+  },
+  profileSvgArtworkEdit: async (source: string) => {
+    const cacheBefore = recentPathExtrusionMeshCacheStats();
+    const importStart = performance.now();
+    const nodes = importExtrudedSvg(source, 24, { x: 100, y: 100 });
+    const parsedMs = performance.now() - importStart;
+    const cacheAfterImport = recentPathExtrusionMeshCacheStats();
+    await api.edit((editor) => editor.replaceDocument(nodes, 'remote'));
+    const replacedMs = performance.now() - importStart;
+    const cacheAfterReplace = recentPathExtrusionMeshCacheStats();
+    await settleECSFrames(api, 3);
+    const settledMs = performance.now() - importStart;
+    const node = api
+      .getNodes()
+      .find((item) => 'extrude3d' in item && item.extrude3d);
+    if (!node) throw new Error('No extruded node to edit');
+    const editStart = performance.now();
+    await api.edit((editor) =>
+      editor.updateNode(editor.getNodeById(node.id), { x: (node.x ?? 0) + 10 }),
+    );
+    const editedMs = performance.now() - editStart;
+    await settleECSFrames(api, 3);
+    return {
+      nodes: nodes.length,
+      parsedMs,
+      replacedMs,
+      settledMs,
+      editedMs,
+      editSettledMs: performance.now() - editStart,
+      cacheBefore,
+      cacheAfterImport,
+      cacheAfterReplace,
+      cacheAfterEdit: recentPathExtrusionMeshCacheStats(),
     };
   },
   camera3DState: () => {
