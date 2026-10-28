@@ -443,7 +443,10 @@ are imported as repeating 2D fills. The tile can contain basic SVG shapes; linke
 resources, pattern transforms and nonzero pattern origins are not yet supported.
 Circular `<radialGradient>` fills on rectangles are also retained in 2D when they
 use `userSpaceOnUse`, explicit numeric center and radius, and a centered focal
-point. Elliptical gradients and gradient transforms are not yet supported.
+point. Other self-contained radial gradients on rectangles, including elliptical
+gradients, shifted focal points and gradient transforms, use a rasterized SVG
+image fill. The rectangle remains editable, while its gradient stops are baked
+into that image rather than separately editable paint controls.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Expanded stroke contours retain six decimal places while their coordinates are
 normalized, so very thin details do not collapse before the final mesh check.

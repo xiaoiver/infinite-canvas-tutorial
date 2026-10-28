@@ -461,7 +461,8 @@ function deserializeSvgElements(
                 return prev;
               }
             } else if (def?.localName === 'radialGradient' && attributeName === 'fill') {
-              value = deserializeSvgRadialGradient(def, element) ?? 'none';
+              value = deserializeSvgRadialGradient(def, element) ??
+                deserializeSvgRadialGradientImage(def, element) ?? 'none';
             } else if (def?.localName === 'linearGradient') {
               value = deserializeGradient(def as SVGGradientElement);
             }
@@ -883,6 +884,54 @@ function deserializeSvgRadialGradient(
   });
   if (colors.some((color) => color === undefined)) return;
   return `radial-gradient(circle ${radius}px at ${cx - x}px ${cy - y}px, ${colors.join(', ')})`;
+}
+
+/** Preserve SVG radial geometry that the circular CSS paint model cannot express.
+ * The SVG image has the rectangle's local bounds, while the rectangle remains
+ * the editable canvas node and clips the image at its corners. */
+function deserializeSvgRadialGradientImage(
+  gradient: SVGElement,
+  target: SVGElement,
+): string | undefined {
+  if (target.localName !== 'rect' ||
+      gradient.hasAttribute('href') || gradient.hasAttribute('xlink:href') ||
+      Array.from(gradient.children).some((child) => child.localName !== 'stop') ||
+      Array.from(gradient.querySelectorAll('*')).some((child) =>
+        Array.from(child.attributes).some(({ name, value }) =>
+          name === 'href' || name === 'xlink:href' || /url\s*\(|currentcolor/i.test(value)),
+      )) return;
+  const numericLength = (value: string | null, fallback = 0) => {
+    if (value === null) return fallback;
+    if (!/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?(?:px)?$/i.test(value)) return;
+    const number = Number(value.replace(/px$/i, ''));
+    return Number.isFinite(number) ? number : undefined;
+  };
+  const x = numericLength(target.getAttribute('x'));
+  const y = numericLength(target.getAttribute('y'));
+  const width = numericLength(target.getAttribute('width'));
+  const height = numericLength(target.getAttribute('height'));
+  if (x === undefined || y === undefined || width === undefined ||
+      height === undefined || width <= 0 || height <= 0 ||
+      width > 4096 || height > 4096) return;
+  const svg = gradient.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', String(width));
+  svg.setAttribute('height', String(height));
+  svg.setAttribute('viewBox', `${x} ${y} ${width} ${height}`);
+  const defs = gradient.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  const paint = gradient.cloneNode(true) as SVGElement;
+  paint.setAttribute('id', 'paint');
+  defs.appendChild(paint);
+  svg.appendChild(defs);
+  const rect = gradient.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', String(x));
+  rect.setAttribute('y', String(y));
+  rect.setAttribute('width', String(width));
+  rect.setAttribute('height', String(height));
+  rect.setAttribute('fill', 'url(#paint)');
+  svg.appendChild(rect);
+  const markup = new XMLSerializer().serializeToString(svg);
+  if (markup.length > 64_000) return;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`;
 }
 
 /**
