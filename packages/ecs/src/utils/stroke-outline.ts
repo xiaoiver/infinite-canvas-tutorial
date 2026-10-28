@@ -18,7 +18,8 @@ function dashedContours(
   const result: Point[][] = [];
   let phase = ((offset % period) + period) % period;
   let dashIndex = 0;
-  while (phase >= sequence[dashIndex]) phase -= sequence[dashIndex++];
+  while (phase > 0 && phase >= sequence[dashIndex])
+    phase -= sequence[dashIndex++];
   let remaining = sequence[dashIndex] - phase;
   let current: Point[] = [];
   let iterations = 0;
@@ -32,6 +33,9 @@ function dashedContours(
       // A microscopic dash pattern can otherwise consume unbounded CPU time.
       if (++iterations > 30000) return [];
       if (remaining <= 1e-8) {
+        if (dashIndex % 2 === 0 && sequence[dashIndex] === 0)
+          result.push([[from[0] + (to[0] - from[0]) * position / length,
+            from[1] + (to[1] - from[1]) * position / length]]);
         if (dashIndex % 2 === 0 && current.length > 1) result.push(current);
         current = [];
         dashIndex = (dashIndex + 1) % sequence.length;
@@ -52,6 +56,14 @@ function dashedContours(
     }
   }
   if (current.length > 1) result.push(current);
+  if (remaining <= 1e-8 && dashIndex % 2 === 1 &&
+    sequence[(dashIndex + 1) % sequence.length] === 0) {
+    const endpoint = path[path.length - 1];
+    const firstDot = result.find((contour) => contour.length === 1);
+    if (!closed || !firstDot || Math.hypot(
+      firstDot[0][0] - endpoint[0], firstDot[0][1] - endpoint[1],
+    ) > 1e-6) result.push([endpoint]);
+  }
   // A dash crossing the closing vertex is one continuous stroke with a join.
   if (
     closed &&
@@ -79,10 +91,11 @@ export function strokeOutline(
   dashoffset = 0,
 ): string {
   if (!Number.isFinite(width) || width <= 0) return '';
-  if (
-    dasharray.some((value) => !Number.isFinite(value) || value <= 1 / SCALE) ||
-    !Number.isFinite(dashoffset)
-  )
+  const dashSequence = dasharray.length % 2 ? [...dasharray, ...dasharray] : dasharray;
+  if (!Number.isFinite(dashoffset) || dashSequence.some((value, index) =>
+    !Number.isFinite(value) || value < 0 ||
+    (index % 2 === 1 ? value <= 1 / SCALE : value > 0 && value <= 1 / SCALE)) ||
+    (linecap !== 'round' && dashSequence.some((value) => value === 0)))
     return '';
   const { subPaths } = parsePath(d);
   const contours = flattenPath(subPaths, 4, width / 2);
