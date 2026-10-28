@@ -38,6 +38,55 @@ test('App linked 3D camera renders an imported SVG extrusion', async ({
   expect(errors).toEqual([]);
 });
 
+test('overlapping SVG extrusions preserve the source paint order', async ({
+  page,
+}) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  await page.evaluate(() => window.gizmoTest.showSvgArtwork(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+      <g><rect x="20" y="20" width="120" height="120" fill="#ff0000"/></g>
+      <g><rect x="60" y="60" width="120" height="120" fill="#0000ff"/></g>
+    </svg>
+  `));
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const offset = (100 * png.width + 100) * 4;
+  const [red, , blue] = png.data.subarray(offset, offset + 3);
+  expect(blue).toBeGreaterThan(red * 1.3);
+});
+
+test('layered Tiger SVG keeps its eye visible over the orange face', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const source = await page.evaluate(() =>
+    fetch('/Ghostscript_Tiger.svg').then((response) => response.text()),
+  );
+  const artwork = await page.evaluate(
+    (svg) => window.gizmoTest.showSvgArtwork(svg),
+    source,
+  );
+  expect(artwork.extrudedNodes).toBeGreaterThan(100);
+  await page.evaluate(async () => {
+    window.gizmoTest.api().gotoLandmark({ zoom: 2 }, { duration: 0 });
+    await window.gizmoTest.settle();
+  });
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot({
+    path: testInfo.outputPath('tiger-layered-eye.png'),
+  }));
+  let green = 0;
+  for (let y = 80; y < 180; y++) {
+    for (let x = 120; x < 200; x++) {
+      const offset = (y * png.width + x) * 4;
+      const [red, channelGreen, blue] = png.data.subarray(offset, offset + 3);
+      if (channelGreen > red * 1.25 && channelGreen > blue * 1.25 && channelGreen > 60)
+        green++;
+    }
+  }
+  expect(green).toBeGreaterThan(10);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {

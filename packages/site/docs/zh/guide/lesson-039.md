@@ -445,6 +445,8 @@ SVG 预检会判断轮廓能否生成网格。近期缓存最多保留 256 份�
 GPU 几何另由每个画布独立缓存。运行 `pnpm bench:svg-import:browser` 可用仓库中的
 [Ghostscript Tiger SVG](/Ghostscript_Tiger.svg) 等实际素材查看导入和编辑耗时。
 也可以下载该 SVG，通过上方的 **Upload SVG** 导入，检查可编辑图层和不同缩放倍率。
+导入的 SVG 图层相互重叠时，挤出体正面仍按原 SVG 的绘制顺序显示，嵌套分组内的
+图层也是如此；后绘制的图层会盖在先绘制的图层上。
 
 设置 `extrude3d.bevelSize`（单位为画布单位）可为 Path 和 Rect 挤出的前后两端
 添加倒角，示例中可用 **Bevel** 滑块调整。内缩后拓扑保持稳定时，也支持孔洞、

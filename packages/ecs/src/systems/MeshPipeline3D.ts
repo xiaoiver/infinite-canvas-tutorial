@@ -33,6 +33,7 @@ import {
   Canvas3DScope,
   ComputedCamera,
   Extrude3D,
+  GlobalRenderOrder,
   GPUResource,
   Light3D,
   Mesh3D,
@@ -194,6 +195,7 @@ export class MeshPipeline3D extends System {
             Camera3D,
             ComputedCamera,
             Extrude3D,
+            GlobalRenderOrder,
             Light3D,
             Mesh3D,
             Material3D,
@@ -271,7 +273,22 @@ export class MeshPipeline3D extends System {
       }
     }
 
-    return out;
+    // Coplanar SVG extrusions rely on the 2D painter order: with the reverse
+    // depth comparison, the first opaque fragment at equal depth wins.
+    const layerOrder = new Map<number, number>();
+    for (const source of this.extrudeSources.current) {
+      const mesh = source.read(Extrude3D).meshEntity;
+      if (mesh && source.has(GlobalRenderOrder))
+        layerOrder.set(mesh.__id, source.read(GlobalRenderOrder).value);
+    }
+    if (layerOrder.size < 2) return out;
+    const ordered = out
+      .filter((entity) => layerOrder.has(entity.__id))
+      .sort((a, b) => layerOrder.get(b.__id)! - layerOrder.get(a.__id)!);
+    let next = 0;
+    return out.map((entity) =>
+      layerOrder.has(entity.__id) ? ordered[next++] : entity,
+    );
   }
 
   /** True when {@link canvas} has 3D content to draw. */
