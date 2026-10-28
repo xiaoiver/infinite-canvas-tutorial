@@ -22,6 +22,7 @@ import {
 import { createDocumentWorld } from '../helpers/ecs-document';
 import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
+import { pathExtrusionPaintSupported } from '../../packages/ecs/src/utils/path-extrusion-paint';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 import { strokeOutline } from '../../packages/ecs/src/utils/stroke-outline';
 
@@ -58,6 +59,16 @@ const elements = () => {
     dom.window.document.querySelector('svg')!.children,
   ) as SVGElement[];
 };
+
+it('keeps CSS gradients out of the solid-color extrusion path', () => {
+  const noStroke = [{ type: 'solid' as const, value: 'none' }];
+  expect(pathExtrusionPaintSupported(
+    [{ type: 'solid', value: 'linear-gradient(45deg, red, blue)' }], noStroke,
+  )).toBe(false);
+  expect(pathExtrusionPaintSupported(
+    [{ type: 'solid', value: '#f9f9f9' }], noStroke,
+  )).toBe(true);
+});
 
 it('places the local bounds origin correctly under SVG scale and matrix transforms', () => {
   const dom = new JSDOM(

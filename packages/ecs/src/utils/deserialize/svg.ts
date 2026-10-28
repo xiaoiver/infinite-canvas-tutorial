@@ -614,6 +614,12 @@ function deserializeSvgElements(
         delete (node as unknown as Record<string, unknown>).strokeOpacity;
       }
       migrateLegacyFillWireInPlace(node as unknown as Record<string, unknown>);
+      if ('fills' in node && Array.isArray(node.fills)) {
+        node.fills = node.fills.map((layer) =>
+          layer.type === 'solid' && /^linear-gradient\(/i.test(layer.value)
+            ? { ...layer, type: 'gradient' as const } : layer,
+        );
+      }
       migrateLegacyStrokeWireInPlace(
         node as unknown as Record<string, unknown>,
       );
