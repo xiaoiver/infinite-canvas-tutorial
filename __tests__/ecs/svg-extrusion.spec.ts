@@ -832,13 +832,81 @@ it('extrudes positive SVG dash patterns and keeps unsupported strokes in 2D', ()
   expect(nodes.map((node) => node.id)).toEqual([
     'dashed', 'odd-pattern', 'non-scaling', 'gradient', 'zero-dash', 'zero-gap',
   ]);
-  for (const id of ['dashed', 'odd-pattern', 'zero-dash']) {
+  for (const id of ['dashed', 'odd-pattern', 'zero-dash', 'non-scaling']) {
     const node = nodes.find((item) => item.id === id);
     expect(node).toMatchObject({ type: 'path', extrude3d: 12 });
     expect(node?.type === 'path' && buildPathExtrusionMesh(node.d)).toBeDefined();
   }
-  for (const id of ['non-scaling', 'gradient', 'zero-gap'])
+  for (const id of ['gradient', 'zero-gap'])
     expect(nodes.find((node) => node.id === id)).not.toHaveProperty('extrude3d');
+});
+
+it('bakes non-scaling SVG stroke width after viewBox and group transforms', async () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    width="200" height="100" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <g transform="scale(2 1)">
+      <path id="horizontal" d="M10 20 H30" fill="none" stroke="red"
+        stroke-width="4" vector-effect="non-scaling-stroke"/>
+      <path id="vertical" d="M20 10 V30" fill="none" stroke="red"
+        stroke-width="4" vector-effect="non-scaling-stroke"/>
+      <rect id="filled" x="35" y="10" width="20" height="20" fill="blue"
+        stroke="red" stroke-width="4" vector-effect="non-scaling-stroke"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 12,
+  );
+  expect(nodes.find((node) => node.id === 'horizontal')).toMatchObject({
+    type: 'path', x: 40, y: 18, width: 80, height: 4,
+    parentId: undefined, scaleX: 1, scaleY: 1, extrude3d: 12,
+  });
+  expect(nodes.find((node) => node.id === 'vertical')).toMatchObject({
+    type: 'path', x: 78, y: 10, width: 4, height: 20,
+    parentId: undefined, scaleX: 1, scaleY: 1, extrude3d: 12,
+  });
+  expect(nodes.find((node) => node.id === 'filled--stroke')).toMatchObject({
+    type: 'path', x: 138, y: 8, width: 84, height: 24,
+    parentId: undefined, scaleX: 1, scaleY: 1,
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
+  });
+  expect(nodes.find((node) => node.id === 'filled')).toMatchObject({
+    extrude3d: 12,
+  });
+  await world.reset(api, nodes);
+  for (const id of ['horizontal', 'vertical', 'filled', 'filled--stroke']) {
+    const mesh = api.getEntity(api.getNodeById(id))!.read(Extrude3D).meshEntity!;
+    expect(mesh.read(Mesh3D).indices.length).toBeGreaterThan(0);
+  }
+});
+
+it('bakes sheared non-scaling strokes and keeps clipped ones in 2D', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="cut"><rect width="30" height="30"/></clipPath></defs>
+    <g transform="matrix(1 0 1 1 0 0)">
+      <path id="sheared" d="M0 0 V20" fill="none" stroke="red"
+        stroke-width="4" vector-effect="non-scaling-stroke"/>
+      <path id="clipped" d="M0 0 V20" fill="none" stroke="red"
+        stroke-width="4" vector-effect="non-scaling-stroke" clip-path="url(#cut)"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 12,
+  );
+  const sheared = nodes.find((node) => node.id === 'sheared');
+  expect(sheared).toMatchObject({
+    type: 'path', parentId: undefined, scaleX: 1, scaleY: 1, extrude3d: 12,
+  });
+  expect(sheared?.width).toBeCloseTo(20 + 2 * Math.SQRT2, 1);
+  expect(sheared?.height).toBeCloseTo(20 + 2 * Math.SQRT2, 1);
+  expect(nodes.find((node) => node.id === 'clipped')).not.toHaveProperty('extrude3d');
+  const slice = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    width="100" height="50" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+    <path id="slice-line" d="M0 20 H100" fill="none" stroke="red"
+      stroke-width="4" vector-effect="non-scaling-stroke"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  expect(svgElementsToExtrudedNodes(
+    slice.window.document.documentElement as unknown as SVGSVGElement, 12,
+  ).find((node) => node.id === 'slice-line')).not.toHaveProperty('extrude3d');
 });
 
 it('restores the original 2D paint when clipping an expanded stroke fails', () => {
