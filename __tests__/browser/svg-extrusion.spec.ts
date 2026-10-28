@@ -328,6 +328,49 @@ test('SVG circular radial gradient keeps its colors and local center in 2D', asy
   expect(edgeBlue).toBeGreaterThan(edgeRed * 2);
 });
 
+test('SVG elliptical radial fill matches the native paint with a shifted focus', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(async () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="60">
+      <defs><radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"
+        fx="0.2" fy="0.35" gradientTransform="rotate(12 0.5 0.5)">
+        <stop offset="0" stop-color="#ff0000"/>
+        <stop offset="1" stop-color="#0000ff"/>
+      </radialGradient></defs>
+      <rect width="120" height="60" fill="url(#glow)"/>
+    </svg>`;
+    const artwork = await window.gizmoTest.showSvgArtwork(source);
+    const rect = window.gizmoTest.api().getNodes().find((node) => node.type === 'rect');
+    const image = new Image();
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 120;
+    canvas.height = 60;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const samples = [[15, 30], [40, 20], [75, 30], [105, 40]];
+    return {
+      ...artwork,
+      fillType: rect?.type === 'rect' ? rect.fills?.[0]?.type : undefined,
+      samples,
+      expected: samples.map(([x, y]) =>
+        Array.from(context.getImageData(x, y, 1, 1).data).slice(0, 3)),
+    };
+  });
+  expect(result.extrudedNodes).toBe(0);
+  expect(result.fillType).toBe('image');
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    return Math.max(...result.samples.map(([x, y], index) => {
+      const actual = canvasRgbAt(png, 40 + x, 70 + y);
+      const expected = result.expected[index];
+      return Math.max(...actual.map((value, channel) => Math.abs(value - expected[channel])));
+    }));
+  }, { timeout: 10_000 }).toBeLessThan(35);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {
