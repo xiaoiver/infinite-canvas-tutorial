@@ -186,7 +186,7 @@ it('reclaims empty/removed geometry and safely reuses an entity id', () => {
   gpu.scope.dispose();
 });
 
-it.each([0, 1, 2, 3, 4, 5, 6])(
+it.each([0, 1, 2, 3, 4, 5, 6, 7])(
   'rolls back allocation failure at buffer %i and retries the dirty mesh',
   (failAt) => {
     const gpu = fakeMeshGPU();
@@ -230,6 +230,30 @@ it('preserves an allocation failure when rollback also throws', () => {
     });
   expect(() => cache.get(1, cube())).toThrow('allocation failed');
   expect(gpu.buffers[0].destroy).toHaveBeenCalledTimes(1);
+  cache.get(1, cube());
+  cache.destroy();
+  gpu.scope.dispose();
+});
+
+it('preserves a model allocation error when shared geometry rollback throws', () => {
+  const gpu = fakeMeshGPU();
+  const cache = new MeshGPUCache(gpu.device);
+  const allocate = gpu.mocks.createBuffer.getMockImplementation()!;
+  gpu.mocks.createBuffer.mockImplementationOnce((descriptor) => {
+    const result = allocate(descriptor);
+    result.destroy.mockImplementation(() => {
+      throw new Error('cleanup failed');
+    });
+    return result;
+  });
+  for (let i = 1; i < 7; i++)
+    gpu.mocks.createBuffer.mockImplementationOnce(allocate);
+  gpu.mocks.createBuffer.mockImplementationOnce(() => {
+    throw new Error('model allocation failed');
+  });
+  expect(() => cache.get(1, cube())).toThrow('model allocation failed');
+  expect(gpu.buffers[0].destroy).toHaveBeenCalledTimes(1);
+  expect(cache.stats()).toMatchObject({ instances: 0, uniqueGeometries: 0 });
   cache.get(1, cube());
   cache.destroy();
   gpu.scope.dispose();
