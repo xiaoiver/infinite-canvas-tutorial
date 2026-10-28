@@ -303,25 +303,24 @@ export function extrudePathContours(
   // Triangles on the same cap share positions, normals and UVs. Keep front and
   // back separate because their normals point in opposite directions; walls
   // also need separate vertices for their flat, outward-facing normals.
-  const capVertices = [new Map<string, number>(), new Map<string, number>()];
-  const capVertex = (point: Point, front: boolean): number => {
-    const vertices = capVertices[front ? 0 : 1];
-    const key = `${Math.fround(point[0])},${Math.fround(point[1])}`;
-    const existing = vertices.get(key);
+  const capVertices = new Map<number, Map<number, [number, number]>>();
+  const capVertexPair = (point: Point): [number, number] => {
+    const x = Math.fround(point[0]);
+    const y = Math.fround(point[1]);
+    let column = capVertices.get(x);
+    const existing = column?.get(y);
     if (existing !== undefined) return existing;
     const [u, v] = capUv(point);
-    const index = addVertex(
-      point[0],
-      point[1],
-      front ? halfDepth : -halfDepth,
-      0,
-      0,
-      front ? 1 : -1,
-      u,
-      v,
-    );
-    vertices.set(key, index);
-    return index;
+    const pair: [number, number] = [
+      addVertex(point[0], point[1], halfDepth, 0, 0, 1, u, v),
+      addVertex(point[0], point[1], -halfDepth, 0, 0, -1, u, v),
+    ];
+    if (!column) {
+      column = new Map();
+      capVertices.set(x, column);
+    }
+    column.set(y, pair);
+    return pair;
   };
 
   for (let i = 0; i < triangles.length; i += 6) {
@@ -333,13 +332,16 @@ export function extrudePathContours(
       return fail('tessellation-failed');
     }
     const [first, second, third] = cross > 0 ? [a, b, c] : [a, c, b];
+    const [frontFirst, backFirst] = capVertexPair(first);
+    const [frontSecond, backSecond] = capVertexPair(second);
+    const [frontThird, backThird] = capVertexPair(third);
     indices.push(
-      capVertex(first, true),
-      capVertex(second, true),
-      capVertex(third, true),
-      capVertex(third, false),
-      capVertex(second, false),
-      capVertex(first, false),
+      frontFirst,
+      frontSecond,
+      frontThird,
+      backThird,
+      backSecond,
+      backFirst,
     );
   }
 
