@@ -16,6 +16,7 @@ import {
   type API,
 } from '../../packages/ecs/src';
 import { createDocumentWorld } from '../helpers/ecs-document';
+import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
 
 const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120">
   <path id="ring" d="M10 10 H110 V110 H10 Z M35 35 H85 V85 H35 Z" fill="#3366cc" fill-rule="evenodd"/>
@@ -647,6 +648,39 @@ it('preserves nested SVG skew and matrix shear on editable extrusion outlines', 
   expect(nodes.find((node) => node.id === 'hidden-a')).toMatchObject({
     type: 'path', parentId: undefined, visibility: 'hidden',
   });
+});
+
+it('preserves a thin SVG stroke as valid editable extrusion geometry', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<path id="detail" d="M29.27 102.332s.569.478.345.71c-.228.231-18.43-7.905-23.275-1.413 0 0 2.644-7.071 22.93.703z" fill="white" stroke="black" stroke-width=".015"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  const stroke = nodes.find((node) => node.id === 'detail--stroke');
+  expect(stroke).toMatchObject({ type: 'path', fillRule: 'evenodd' });
+  if (stroke?.type !== 'path') throw new Error('Missing editable stroke');
+  expect(stroke.extrude3d).toBeTruthy();
+  expect(buildPathExtrusionMesh(stroke.d, stroke.fillRule)).toBeDefined();
+});
+
+it('keeps an unresolvable hairline stroke in 2D', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<path id="hairline" d="M0 0 L10 0" fill="none" stroke="red" stroke-width=".000000001"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 16);
+  expect(nodes).toHaveLength(1);
+  expect(nodes[0]).toMatchObject({
+    id: 'hairline', type: 'path',
+    strokes: [expect.objectContaining({ type: 'solid', value: 'red' })],
+  });
+  expect(nodes[0]).not.toHaveProperty('extrude3d');
 });
 
 it('applies nonuniform viewBox scaling to a fill and its expanded stroke', () => {
