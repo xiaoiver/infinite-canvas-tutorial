@@ -438,6 +438,9 @@ into an editable 3D outline. This width is baked at import time, so subsequent
 editor zoom scales the 3D mesh normally. Non-scaling strokes under clip paths
 or sliced viewports, zero-length gaps, zero-length dashes with other caps,
 gradients, paint servers and unsupported SVG shapes remain in 2D.
+Self-contained `<pattern>` fills with integer pixel tiles and `patternUnits="userSpaceOnUse"`
+are imported as repeating 2D fills. The tile can contain basic SVG shapes; linked
+resources, pattern transforms and nonzero pattern origins are not yet supported.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Expanded stroke contours retain six decimal places while their coordinates are
 normalized, so very thin details do not collapse before the final mesh check.

@@ -247,12 +247,15 @@ test('mixed Maslow SVG keeps its 2D layers visible while exporting 3D layers', a
     const api = window.gizmoTest.api();
     const glb = api.export({ format: 'glb' as ExportFormat.GLB, download: false });
     const background = api.getNodes().find((node) => node.type === 'rect' && node.width === 800);
+    const pattern = api.getNodes().find((node) => node.type === 'rect' && node.width === 80);
     return {
       ...artwork,
       textNodes: api.getNodes().filter((node) => node.type === 'text').length,
       glbBytes: glb.byteLength,
       backgroundFill: background?.type === 'rect' ? background.fills?.[0]?.type : undefined,
       backgroundExtruded: !!(background && 'extrude3d' in background && background.extrude3d),
+      patternFill: pattern?.type === 'rect' ? pattern.fills?.[0]?.type : undefined,
+      patternExtruded: !!(pattern && 'extrude3d' in pattern && pattern.extrude3d),
     };
   });
   expect(result.extrudedNodes).toBeGreaterThan(0);
@@ -261,6 +264,8 @@ test('mixed Maslow SVG keeps its 2D layers visible while exporting 3D layers', a
   expect(result.glbBytes).toBeGreaterThan(1000);
   expect(result.backgroundFill).toBe('gradient');
   expect(result.backgroundExtruded).toBe(false);
+  expect(result.patternFill).toBe('pattern');
+  expect(result.patternExtruded).toBe(false);
   const png = PNG.sync.read(await page.locator('#canvas').screenshot());
   let colored = 0;
   for (let i = 0; i < png.data.length; i += 4) {
@@ -269,6 +274,29 @@ test('mixed Maslow SVG keeps its 2D layers visible while exporting 3D layers', a
   }
   expect(colored).toBeGreaterThan(100);
   expect(errors).toEqual([]);
+});
+
+test('SVG user-space pattern renders repeated dots as a 2D fill', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(() => window.gizmoTest.showSvgArtwork(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+      <defs><pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse">
+        <circle cx="10" cy="10" r="4" fill="red"/>
+      </pattern></defs>
+      <rect width="100" height="100" fill="url(#dots)"/>
+    </svg>
+  `));
+  expect(result.extrudedNodes).toBe(0);
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    let red = 0;
+    for (let i = 0; i < png.data.length; i += 4) {
+      const [r, g, b] = png.data.subarray(i, i + 3);
+      if (r > 150 && r > g * 2 && r > b * 2) red++;
+    }
+    return red;
+  }, { timeout: 10_000 }).toBeGreaterThan(30);
 });
 
 test('App SVG import, extrusion editing and GLB export work together', async ({

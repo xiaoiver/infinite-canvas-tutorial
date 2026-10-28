@@ -28,6 +28,7 @@ import { reprojectSvgExtrusion, sourceTransform } from './svg-extrusion-affine';
 import { sliceAspectRatio } from './svg-viewbox';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
+import type { Pattern } from '../pattern';
 
 const DOMINANT_BASELINE_MAP: Record<string, string> = {
   auto: 'alphabetic',
@@ -124,6 +125,40 @@ function solidSvgPaint(value: string): boolean {
   const color = value.trim().toLowerCase();
   return !!color && color !== 'none' && color !== 'transparent' &&
     !/^(?:url\(|var\(|linear-gradient\(|radial-gradient\()/.test(color);
+}
+
+/** Keep self-contained, user-space SVG tiles as editable 2D pattern fills. */
+function deserializePattern(element: SVGElement): Pattern | undefined {
+  if (element.localName !== 'pattern' ||
+      element.getAttribute('patternUnits') !== 'userSpaceOnUse' ||
+      (element.getAttribute('patternContentUnits') ?? 'userSpaceOnUse') !== 'userSpaceOnUse' ||
+      element.hasAttribute('href') || element.hasAttribute('xlink:href') ||
+      element.hasAttribute('patternTransform')) return undefined;
+  const width = Number(element.getAttribute('width'));
+  const height = Number(element.getAttribute('height'));
+  if (!Number.isFinite(width) || !Number.isFinite(height) ||
+      width <= 0 || height <= 0 || width > 1024 || height > 1024 ||
+      !Number.isInteger(width) || !Number.isInteger(height)) return undefined;
+  const x = Number(element.getAttribute('x') ?? 0);
+  const y = Number(element.getAttribute('y') ?? 0);
+  if (x !== 0 || y !== 0) return undefined;
+  const allowed = new Set(['g', 'rect', 'circle', 'ellipse', 'path', 'polygon', 'polyline', 'line']);
+  if (Array.from(element.querySelectorAll('*')).some((child) =>
+    !allowed.has(child.localName) ||
+    Array.from(child.attributes).some(({ name, value }) =>
+      name === 'href' || name === 'xlink:href' ||
+      /url\s*\(|currentcolor/i.test(value)),
+  )) return undefined;
+  const tile = element.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  tile.setAttribute('width', String(width));
+  tile.setAttribute('height', String(height));
+  tile.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  for (const child of Array.from(element.children)) tile.appendChild(child.cloneNode(true));
+  const markup = new XMLSerializer().serializeToString(tile);
+  return {
+    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(markup)}`,
+    repetition: 'repeat',
+  };
 }
 
 function svgStrokeDashes(element: SVGElement): number[] | null {
@@ -418,7 +453,14 @@ function deserializeSvgElements(
           } else {
             const id = value.replace('url(#', '').replace(')', '');
             const def = defsChildren.find((d) => d.id === id);
-            if (def) {
+            if (def?.localName === 'pattern' && attributeName === 'fill') {
+              const pattern = deserializePattern(def);
+              if (pattern) {
+                (prev as unknown as Record<string, unknown>).fill = pattern;
+                return prev;
+              }
+            } else if (def?.localName === 'linearGradient' ||
+                def?.localName === 'radialGradient') {
               value = deserializeGradient(def as SVGGradientElement);
             }
           }
