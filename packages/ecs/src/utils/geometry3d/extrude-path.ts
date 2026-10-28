@@ -574,23 +574,39 @@ export function extrudePathContours(
   // A self crossing can create two solid lobes sharing a vertical edge. The
   // resulting mesh is pinched, so reject it rather than return invalid volume.
   // This also catches cracks between the independently tessellated caps/walls.
-  const edges = new Map<string, { count: number; balance: number }>();
-  const pointKeys: string[] = [];
-  const pointKey = (index: number): string => {
-    const existing = pointKeys[index];
+  const vertexCount = positions.length / 3;
+  const edges = new Map<number | string, { count: number; balance: number }>();
+  const coordinateIds = new Map<string, number>();
+  const pointIds: number[] = [];
+  const pointId = (index: number): number => {
+    const existing = pointIds[index];
     if (existing !== undefined) return existing;
     const offset = index * 3;
-    return (pointKeys[index] = `${Math.fround(positions[offset])},${Math.fround(
+    const key = `${Math.fround(positions[offset])},${Math.fround(
       positions[offset + 1],
-    )},${Math.fround(positions[offset + 2])}`);
+    )},${Math.fround(positions[offset + 2])}`;
+    let id = coordinateIds.get(key);
+    if (id === undefined) {
+      id = coordinateIds.size;
+      coordinateIds.set(key, id);
+    }
+    pointIds[index] = id;
+    return id;
   };
+  // Intern the float32 coordinates once, then use compact numeric edge keys.
+  // Fall back to strings only when packing two IDs could exceed safe integers.
+  const numericEdgeKeys = vertexCount <= Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER));
   for (let i = 0; i < indices.length; i += 3) {
     for (let j = 0; j < 3; j++) {
-      const a = pointKey(indices[i + j]);
-      const b = pointKey(indices[i + ((j + 1) % 3)]);
+      const a = pointId(indices[i + j]);
+      const b = pointId(indices[i + ((j + 1) % 3)]);
       if (a === b) return fail('non-manifold');
       const forward = a < b;
-      const key = forward ? `${a}|${b}` : `${b}|${a}`;
+      const low = forward ? a : b;
+      const high = forward ? b : a;
+      const key = numericEdgeKeys
+        ? low * vertexCount + high
+        : `${low}|${high}`;
       const edge = edges.get(key) ?? { count: 0, balance: 0 };
       edge.count++;
       edge.balance += forward ? 1 : -1;
