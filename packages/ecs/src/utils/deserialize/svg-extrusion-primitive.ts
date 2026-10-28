@@ -19,6 +19,35 @@ function closedPolylinePath(points: string | undefined): string | undefined {
   ).join(' ') + ' Z';
 }
 
+/** The unfilled centerline/outline used when expanding a SVG stroke. */
+export function svgPrimitiveStrokePath(
+  node: SerializedNode,
+  depth: number,
+  rectRadii?: { rx: number; ry: number },
+): string | undefined {
+  if (node.type === 'path') return node.d;
+  if (node.type === 'line') {
+    const { x1, y1, x2, y2 } = node;
+    if (![x1, y1, x2, y2].every(Number.isFinite)) return;
+    return `M${x1} ${y1} L${x2} ${y2}`;
+  }
+  if (node.type === 'polyline') {
+    const points = deserializePoints(node.points);
+    if (points.length < 2 || points.some(([x, y]) =>
+      !Number.isFinite(x) || !Number.isFinite(y))) return;
+    const closed = points.length > 2 &&
+      Math.hypot(points[0][0] - points[points.length - 1][0],
+        points[0][1] - points[points.length - 1][1]) < 1e-8;
+    return points.map(([x, y], index) => `${index ? 'L' : 'M'}${x} ${y}`)
+      .join(' ') + (closed ? ' Z' : '');
+  }
+  if (node.type !== 'rect' && node.type !== 'ellipse') return;
+  const converted = extrudeSvgPrimitive(node, depth, true, rectRadii);
+  if (converted.type === 'path') return converted.d;
+  if (converted.type === 'rect' && converted.width! > 0 && converted.height! > 0)
+    return `M0 0 H${converted.width} V${converted.height} H0 Z`;
+}
+
 function roundedRectPath(
   width: number,
   height: number,

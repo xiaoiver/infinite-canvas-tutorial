@@ -380,8 +380,7 @@ source fill. Omitting it makes all faces use the source fill color. The side
 color is a paint change, so editing it reuses the existing mesh geometry.
 
 SVG `<path>`, `<polygon>`, `<rect>`, `<circle>` and `<ellipse>` elements, plus
-`<polyline>` elements whose first and last points coincide, can be
-imported as extrusion sources with
+closed `<polyline>` elements, can be imported as filled extrusion sources with
 `svgElementsToExtrudedNodes`. The helper preserves other imported shapes in 2D;
 invalid depth is rejected instead of silently changing it to a default.
 
@@ -407,22 +406,28 @@ side color blank to use the shape's fill.
 For a Path that cannot produce a mesh, the App disables the extrusion action
 and shows the closed outline, fill and stroke requirements.
 
-The converter accepts closed contours with one solid fill and no visible stroke;
-SVG's `stroke="none"` placeholder is ignored. It preserves `fill-rule`, including
-`evenodd` holes, and inherits fill colors from SVG groups. Plain rectangles stay
-editable Rect nodes; rounded rectangles, ellipses and closed polylines become
-editable Paths. Open polylines keep their 2D form.
+The converter accepts closed contours with one solid fill. A solid SVG stroke on
+`<path>`, `<line>`, `<polyline>`, `<polygon>`, `<rect>`, `<circle>` or `<ellipse>` is
+expanded into a closed, editable Path. Stroke-only open lines and paths can
+therefore be extruded. When a shape has both fill and stroke, the stroke becomes
+a separate Path above the filled source; both retain the SVG group transform and
+can be exported to GLB. Round and square caps and round, bevel and miter joins
+are preserved. SVG's `stroke="none"` placeholder is ignored. The converter
+preserves `fill-rule`, including `evenodd` holes, and inherits paint and stroke
+width from SVG groups. Plain filled rectangles stay editable Rect nodes; rounded
+rectangles, ellipses and closed polylines become editable Paths.
 Inline `style` declarations for fill, stroke, opacity, fill rule and stroke
 geometry override presentation attributes. `fill="currentColor"` and
 `stroke="currentColor"` resolve against the nearest `color` on the shape, group,
 `<use>` instance or SVG root; absent color defaults to black. A stroke supplied
-through `style` keeps that shape in 2D. External CSS stylesheets are not parsed.
+through `style` can also be expanded. External CSS stylesheets are not parsed.
 For extrusion, rounded rectangles preserve independent SVG `rx` and `ry` values
 as elliptical corner arcs. A missing radius defaults to the other, and each
 radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
 importer still stores a single corner radius.
-Open contours, stroked shapes, gradients, paint servers and unsupported SVG
-shapes remain in 2D.
+Unfilled open contours without a solid stroke, dashed strokes, non-scaling
+strokes, gradients, paint servers and unsupported SVG shapes remain in 2D.
+If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Local `<use href="#id">` and legacy `xlink:href` references to supported shapes or
 groups create independent instances, including forward and repeated references.
 Instance pixel offsets, transform and inherited fill are applied before extrusion;
@@ -476,8 +481,9 @@ Choose **Nested SVG viewport sample** to compare an inline SVG viewport and a
 second instance referenced with `<use>`; their extruded outlines are clipped
 to each viewport.
 Choose **Paint style + currentColor sample** to compare inherited and
-instance-specific colors, an inline fill override and a styled stroke that
-stays in 2D.
+instance-specific colors, an inline fill override and a styled stroke.
+Choose **Stroke caps + joins sample** to compare round and square caps, a
+filled shape with a separate 3D outline, and a dashed stroke kept in 2D.
 Choose **Clip paths + repeated use sample** to inspect two independently
 clipped instances with holes and a shape clipped by an object-bounds union.
 Choose **Group bounds + clip use sample** to inspect an object-bounds clip on a

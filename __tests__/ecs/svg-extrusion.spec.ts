@@ -623,7 +623,7 @@ it('preserves nested SVG skew and matrix shear on editable extrusion outlines', 
   });
 });
 
-it('applies nonuniform viewBox scaling and still keeps unsupported strokes in 2D', () => {
+it('applies nonuniform viewBox scaling to a fill and its expanded stroke', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100" preserveAspectRatio="none">' +
     '<ellipse id="oval" cx="20" cy="20" rx="10" ry="5" fill="red"/>' +
@@ -637,7 +637,19 @@ it('applies nonuniform viewBox scaling and still keeps unsupported strokes in 2D
     type: 'path', x: 20, y: 15, width: 20, height: 10,
     scaleX: 2, scaleY: 1, extrude3d: 20,
   });
-  expect(nodes.find((node) => node.id === 'stroke')).not.toHaveProperty('extrude3d');
+  expect(nodes.find((node) => node.id === 'stroke')).toMatchObject({
+    type: 'path', scaleX: 2, scaleY: 1, extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'stroke--stroke')).toMatchObject({
+    type: 'path', scaleX: 2, scaleY: 1,
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
+    fills: [{ type: 'solid', value: 'black' }],
+  });
+  const raised = nodes.find((node) => node.id === 'stroke--stroke');
+  if (raised?.type !== 'path' || typeof raised.extrude3d !== 'object')
+    throw new Error('Missing raised stroke extrusion');
+  expect(raised.extrude3d.z).toBeGreaterThan(0);
+  expect(raised.extrude3d.depth).toBeGreaterThan(20);
 });
 
 it('applies root transforms after viewBox alignment', () => {
@@ -653,7 +665,7 @@ it('applies root transforms after viewBox alignment', () => {
     .toMatchObject({ type: 'path', x: 207, y: 3, scaleX: 1, scaleY: 1 });
 });
 
-it('extrudes explicitly closed SVG polylines and leaves open or stroked ones in 2D', async () => {
+it('extrudes closed SVG polylines and expands their solid strokes', async () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg">' +
     '<polyline id="closed" points="10,20 50,20 50,60 10,20" fill="red"/>' +
@@ -670,12 +682,145 @@ it('extrudes explicitly closed SVG polylines and leaves open or stroked ones in 
     d: 'M0 0 L40 0 L40 40 Z', fillRule: 'nonzero', extrude3d: 20,
   });
   expect(nodes.find((node) => node.id === 'open')).toMatchObject({ type: 'polyline' });
-  expect(nodes.find((node) => node.id === 'stroked')).toMatchObject({ type: 'polyline' });
+  expect(nodes.find((node) => node.id === 'stroked')).toMatchObject({
+    type: 'path', extrude3d: 20,
+  });
+  expect(nodes.find((node) => node.id === 'stroked--stroke')).toMatchObject({
+    type: 'path', fillRule: 'evenodd',
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
+  });
   expect(nodes.find((node) => node.id === 'invalid')).toMatchObject({ type: 'polyline' });
   await world.reset(api, [nodes.find((node) => node.id === 'closed')!]);
   const entity = api.getEntity(api.getNodeById('closed'))!;
   expect(entity.read(Extrude3D).meshEntity?.read(Mesh3D).indices.length)
     .toBeGreaterThan(0);
+});
+
+it('expands open SVG strokes with their inherited width and distinct end caps', async () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <g id="lines" fill="none" stroke="#2563eb" stroke-width="10">
+      <line id="butt" x1="10" y1="20" x2="30" y2="20"/>
+      <line id="round" x1="10" y1="50" x2="30" y2="50" stroke-linecap="round"/>
+      <line id="square" x1="10" y1="80" x2="30" y2="80" stroke-linecap="square"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToExtrudedNodes(svg, 12);
+  const bounds = (id: string) => {
+    const node = nodes.find((item) => item.id === id);
+    expect(node).toMatchObject({
+      type: 'path', parentId: 'lines', fillRule: 'evenodd', extrude3d: 12,
+      fills: [{ type: 'solid', value: '#2563eb' }],
+    });
+    const numbers = node?.type === 'path'
+      ? [...node.d.matchAll(/-?\d+(?:\.\d+)?/g)].map((match) => Number(match[0]))
+      : [];
+    return {
+      minX: Math.min(...numbers.filter((_, index) => index % 2 === 0)) + (node?.x ?? 0),
+      maxX: Math.max(...numbers.filter((_, index) => index % 2 === 0)) + (node?.x ?? 0),
+    };
+  };
+  expect(bounds('butt')).toEqual({ minX: 10, maxX: 30 });
+  expect(bounds('square')).toEqual({ minX: 5, maxX: 35 });
+  expect(bounds('round').minX).toBeGreaterThanOrEqual(5);
+  expect(bounds('round').minX).toBeLessThan(5.2);
+  expect(bounds('round').maxX).toBeGreaterThan(34.8);
+  expect(bounds('round').maxX).toBeLessThanOrEqual(35);
+  await world.reset(api, nodes);
+  for (const id of ['butt', 'round', 'square'])
+    expect(api.getEntity(api.getNodeById(id))!.read(Extrude3D)
+      .meshEntity!.read(Mesh3D).indices.length).toBeGreaterThan(0);
+});
+
+it('keeps dashed and non-scaling SVG strokes in 2D', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <path id="dashed" d="M0 0 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="5 3"/>
+    <path id="non-scaling" d="M0 20 H40" fill="none" stroke="blue" stroke-width="8" vector-effect="non-scaling-stroke"/>
+    <path id="gradient" d="M0 40 H40" fill="none" stroke="url(#paint)" stroke-width="8"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 12,
+  );
+  expect(nodes.map((node) => node.id)).toEqual(['dashed', 'non-scaling', 'gradient']);
+  expect(nodes.every((node) => !('extrude3d' in node))).toBe(true);
+  expect(nodes.find((node) => node.id === 'dashed')).toMatchObject({
+    type: 'path', strokeWidth: 8,
+  });
+});
+
+it('restores the original 2D paint when clipping an expanded stroke fails', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <path id="unresolved" d="M0 0 H40 V40 H0 Z" fill="red"
+      stroke="blue" stroke-width="8" clip-path="url(#missing)"/>
+    <path id="gradient-fill" d="M50 0 H90 V40 H50 Z" fill="url(#paint)"
+      stroke="blue" stroke-width="8"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 12,
+  );
+  expect(nodes.map((node) => node.id)).toEqual(['unresolved', 'gradient-fill']);
+  expect(nodes.find((node) => node.id === 'unresolved')).toMatchObject({
+    type: 'path', strokes: [{ type: 'solid', value: 'blue' }],
+  });
+  expect(nodes.every((node) => !('extrude3d' in node) || !node.extrude3d)).toBe(true);
+});
+
+it('clips a filled SVG shape and its expanded stroke to the same region', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><clipPath id="left"><rect x="0" y="0" width="25" height="50"/></clipPath></defs>
+    <g transform="translate(10 5)" clip-path="url(#left)">
+      <rect id="cut" width="40" height="40" fill="red" stroke="blue" stroke-width="6"/>
+    </g>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 16,
+  );
+  expect(nodes.find((node) => node.id === 'cut')).toMatchObject({
+    type: 'path', extrude3d: 16, fillRule: 'evenodd',
+  });
+  expect(nodes.find((node) => node.id === 'cut--stroke')).toMatchObject({
+    type: 'path', fillRule: 'evenodd',
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
+    fills: [{ type: 'solid', value: 'blue' }],
+  });
+});
+
+it('gives repeated SVG use instances independent editable stroke outlines', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs><path id="tile" d="M0 0 H30 V30 H0 Z" fill="white"
+      stroke="currentColor" stroke-width="4"/></defs>
+    <use id="left" href="#tile" x="10" color="red"/>
+    <use id="right" href="#tile" x="70" color="blue"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 12,
+  );
+  expect(nodes.find((node) => node.id === 'left--tile--stroke')).toMatchObject({
+    type: 'path', parentId: 'left', fills: [{ type: 'solid', value: 'red' }],
+  });
+  expect(nodes.find((node) => node.id === 'right--tile--stroke')).toMatchObject({
+    type: 'path', parentId: 'right', fills: [{ type: 'solid', value: 'blue' }],
+  });
+  expect(nodes.filter((node) => 'extrude3d' in node && node.extrude3d))
+    .toHaveLength(4);
+});
+
+it('reprojects an SVG stroke without a source id through its viewBox', () => {
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 100 100" width="200" height="200">
+    <path d="M10 10 H40 V40 H10 Z" fill="red" stroke="blue" stroke-width="6"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const nodes = svgElementsToExtrudedNodes(
+    dom.window.document.documentElement as unknown as SVGSVGElement, 12,
+  );
+  expect(nodes).toHaveLength(2);
+  expect(new Set(nodes.map((node) => node.id)).size).toBe(2);
+  expect(nodes[0]).toMatchObject({ type: 'path', extrude3d: 12, scaleX: 2 });
+  expect(nodes[1]).toMatchObject({
+    type: 'path', scaleX: 2,
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
+    fills: [{ type: 'solid', value: 'blue' }],
+  });
 });
 
 it('clips a closed SVG polyline after viewBox and group transforms', () => {
@@ -841,13 +986,21 @@ it('maps supported SVG paths, polygons, rectangles and ellipses to extrusion sou
   ).toEqual([
     'ring',
     'triangle',
+    'stroked',
+    'stroked--stroke',
     'box',
     'rounded',
     'circle',
     'ellipse',
+    'stroked-ellipse',
+    'stroked-ellipse--stroke',
     'grouped',
     'grouped-circle',
     'grouped-path',
+    'grouped-stroked-circle',
+    'grouped-stroked-circle--stroke',
+    'grouped-stroked-rect',
+    'grouped-stroked-rect--stroke',
     'single',
     'following-sibling',
   ]);
@@ -891,7 +1044,7 @@ it('maps supported SVG paths, polygons, rectangles and ellipses to extrusion sou
     height: 30,
   });
   expect(nodes.find((node) => node.id === 'stroked-ellipse')).toMatchObject({
-    type: 'ellipse',
+    type: 'path', extrude3d: 24,
   });
   expect(nodes.find((node) => node.id === 'invalid-rect')).toMatchObject({
     type: 'rect',
@@ -915,12 +1068,8 @@ it('maps supported SVG paths, polygons, rectangles and ellipses to extrusion sou
     type: 'ellipse',
     parentId: 'cluster',
   });
-  expect(
-    nodes.find((node) => node.id === 'grouped-stroked-circle'),
-  ).toMatchObject({
-    type: 'ellipse',
-    parentId: 'outlined',
-  });
+  expect(nodes.find((node) => node.id === 'grouped-stroked-circle'))
+    .toMatchObject({ type: 'path', parentId: 'outlined', extrude3d: 24 });
   expect(nodes.find((node) => node.id === 'single')).toMatchObject({
     fills: [{ value: '#ff0000' }],
   });
@@ -950,9 +1099,14 @@ it('imports inline paint declarations with priority over presentation attributes
     extrude3d: 18, fillRule: 'evenodd',
     fills: [{ type: 'solid', value: '#2563eb', opacity: 0.4 }],
   });
-  expect(nodes.find((node) => node.id === 'outlined')).not.toHaveProperty('extrude3d');
+  expect(nodes.find((node) => node.id === 'outlined')).toHaveProperty('extrude3d', 18);
   expect(nodes.find((node) => node.id === 'outlined')).toMatchObject({
-    strokeWidth: 3, strokes: [{ type: 'solid', value: '#111' }],
+    strokeWidth: 0, strokes: [{ type: 'solid', value: 'none' }],
+  });
+  expect(nodes.find((node) => node.id === 'outlined--stroke')).toMatchObject({
+    type: 'path',
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
+    fills: [{ type: 'solid', value: '#111' }],
   });
   expect(nodes.find((node) => node.id === 'inherited')).toMatchObject({ extrude3d: 18 });
   expect(nodes.find((node) => node.id === 'own-paint')).toMatchObject({
@@ -982,10 +1136,10 @@ it('resolves currentColor from the SVG root, groups, and independent use instanc
   expect(fill('group')).toBe('#0ea5e9');
   expect(fill('first-colored--tile')).toBe('rgb(239, 68, 68)');
   expect(fill('second-colored--tile')).toBe('#22c55e');
-  expect(nodes.find((node) => node.id === 'outlined-color')).toMatchObject({
-    strokes: [{ type: 'solid', value: 'rgb(168, 85, 247)' }],
+  expect(nodes.find((node) => node.id === 'outlined-color--stroke')).toMatchObject({
+    fills: [{ type: 'solid', value: 'rgb(168, 85, 247)' }],
+    extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
   });
-  expect(nodes.find((node) => node.id === 'outlined-color')).not.toHaveProperty('extrude3d');
   const flat = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
   expect((flat.find((node) => node.id === 'root-color') as { fills?: { value: string }[] }).fills?.[0]?.value)
     .toBe('rgb(168, 85, 247)');
@@ -1355,15 +1509,17 @@ it('renders imported SVG contours as 3D companions while keeping other paths in 
   expect(inheritedColor[2]).toBeCloseTo(170 / 255);
   for (const id of [
     'open',
-    'stroked',
     'unfilled',
-    'stroked-ellipse',
     'invalid-rect',
     'grouped-unfilled',
-    'grouped-stroked-circle',
-    'grouped-stroked-rect',
   ]) {
     expect(api.getEntity(api.getNodeById(id))!.has(Extrude3D)).toBe(false);
+  }
+  for (const id of ['stroked', 'stroked--stroke', 'stroked-ellipse',
+    'stroked-ellipse--stroke', 'grouped-stroked-circle',
+    'grouped-stroked-circle--stroke', 'grouped-stroked-rect',
+    'grouped-stroked-rect--stroke']) {
+    expect(api.getEntity(api.getNodeById(id))!.has(Extrude3D)).toBe(true);
   }
 });
 
@@ -1417,13 +1573,21 @@ it('exports ready SVG extrusions through API.export with scene, node, and group 
     'Canvas',
     'ring',
     'triangle',
+    'stroked',
+    'stroked--stroke',
     'box',
     'rounded',
     'circle',
     'ellipse',
+    'stroked-ellipse',
+    'stroked-ellipse--stroke',
     'grouped',
     'grouped-circle',
     'grouped-path',
+    'grouped-stroked-circle',
+    'grouped-stroked-circle--stroke',
+    'grouped-stroked-rect',
+    'grouped-stroked-rect--stroke',
     'single',
     'following-sibling',
   ]);
@@ -1434,7 +1598,6 @@ it('exports ready SVG extrusions through API.export with scene, node, and group 
     'grouped-circle',
     'grouped-path',
   ]);
-  expect(() => exportNames([api.getNodeById('stroked')!])).toThrow(
-    'No ready 3D meshes to export',
-  );
+  expect(exportNames([api.getNodeById('stroked')!]))
+    .toEqual(['Canvas', 'stroked']);
 });
