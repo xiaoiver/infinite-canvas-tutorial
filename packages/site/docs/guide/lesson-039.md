@@ -506,6 +506,10 @@ above to inspect the editable layers and compare different zoom levels.
 When imported SVG layers overlap, their extruded front faces retain the SVG
 paint order, including layers inside nested groups. Later layers remain visible
 over earlier ones in the linked 3D view.
+GLB export lists the extrusion nodes in the same front-to-back traversal order,
+which our glTF importer retains. glTF does not require external viewers to draw
+coplanar opaque meshes in that order, so they may still show depth conflicts
+when several layers have exactly the same elevation.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple
