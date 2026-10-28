@@ -4,6 +4,7 @@ description: 'WebGL/WebGPU 하드웨어 추상화 레이어를 활용한 캔버�
 head:
     - ['meta', { property: 'og:title', content: '1강 - 캔버스 초기화' }]
 ---
+
 # 1강 - 캔버스 초기화
 
 이번 강의에서는 다음 내용을 중점적으로 다룹니다.

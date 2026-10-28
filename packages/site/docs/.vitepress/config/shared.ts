@@ -1,6 +1,8 @@
 import { defineConfig } from 'vitepress';
 import { applyPageSeo, filterSitemapItems } from './seo';
 import { search } from './zh';
+import { search as searchKo } from './ko';
+import { search as searchJa } from './ja';
 
 export const adsenseClient =
   process.env.ADSENSE_ENABLED === 'true'
@@ -29,6 +31,8 @@ export const shared = defineConfig({
         indexName: 'infinitecanvas',
         locales: {
           zh: search,
+          ko: searchKo,
+          ja: searchJa,
         },
       },
     },

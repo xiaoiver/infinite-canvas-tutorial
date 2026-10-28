@@ -84,6 +84,32 @@ describe('hreflangAlternates', () => {
   it('does not advertise the orphan zh lesson-040', () => {
     assert.deepEqual(hreflangAlternates('zh/guide/lesson-040.md', site), []);
   });
+
+  it('includes Japanese only when that page exists', () => {
+    const withJa: SeoSiteConfig = {
+      ...site,
+      pages: [...pages, 'ja/index.md', 'ja/guide/lesson-001.md'],
+    };
+    assert.deepEqual(
+      hreflangAlternates('guide/lesson-001.md', withJa).map(
+        (item) => item.hreflang,
+      ),
+      ['en-US', 'zh-Hans', 'ko-KR', 'ja-JP'],
+    );
+    assert.deepEqual(
+      hreflangAlternates('ja/index.md', withJa).map((item) => item.href),
+      [
+        'https://infinitecanvas.cc/',
+        'https://infinitecanvas.cc/zh/',
+        'https://infinitecanvas.cc/ko/',
+        'https://infinitecanvas.cc/ja/',
+      ],
+    );
+    const lesson5 = hreflangAlternates('guide/lesson-005.md', withJa).map(
+      (item) => item.hreflang,
+    );
+    assert.deepEqual(lesson5, ['en-US', 'zh-Hans']);
+  });
 });
 
 describe('applyPageSeo', () => {

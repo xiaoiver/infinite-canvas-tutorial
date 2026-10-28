@@ -4,6 +4,7 @@ description: '변환(translate, scale, rotate, skew)과 씬 그래프 아키텍�
 head:
     - ['meta', { property: 'og:title', content: '3강 - 씬 그래프와 변환' }]
 ---
+
 # 3강 - 씬 그래프와 변환
 
 지난 강의에서 원을 그렸습니다. 이번 강의에서는 다음 내용을 중점적으로 다룹니다.
