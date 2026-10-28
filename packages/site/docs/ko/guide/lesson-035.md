@@ -1,9 +1,11 @@
 ---
-
 outline: deep
 description: '타일 기반 렌더링을 소개합니다. 원리, 성능 최적화 전략, 무한 캔버스 애플리케이션에서의 사례를 다룹니다.'
-head: - ['meta', { property: 'og:title', content: '35강 - 타일 기반 렌더링' }]
----<script setup>
+head:
+    - ['meta', { property: 'og:title', content: '35강 - 타일 기반 렌더링' }]
+---
+
+<script setup>
 import Vello from '../../components/Vello.vue'
 import VelloBlur from '../../components/VelloBlur.vue'
 import VelloDropShadow from '../../components/VelloDropShadow.vue'

@@ -38,8 +38,9 @@ jobs:
 
       - name: Build site
         env:
-          # VitePress bundles many demo deps (vello wasm, lottie, etc.) and exceeds the default ~4GB heap.
-          NODE_OPTIONS: --max-old-space-size=6144
+          # VitePress bundles demo deps plus every locale page. Three extra guides
+          # push the heap past 6GB (measured peak ~10GB RSS); public runners have 16GB.
+          NODE_OPTIONS: --max-old-space-size=12288
           # 配置了 ADSENSE_CLIENT 时默认启用；也可通过 vars/secrets.ADSENSE_ENABLED 显式控制
           ADSENSE_ENABLED: ${{ secrets.ADSENSE_CLIENT != '' && 'true' || vars.ADSENSE_ENABLED || secrets.ADSENSE_ENABLED }}
           ADSENSE_CLIENT: ${{ secrets.ADSENSE_CLIENT }}

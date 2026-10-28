@@ -219,3 +219,74 @@ describe('filterSitemapItems', () => {
     ]);
   });
 });
+
+describe('new guide locales', () => {
+  const withNew: SeoSiteConfig = {
+    ...site,
+    pages: [
+      ...pages,
+      'zh-Hant/index.md',
+      'zh-Hant/guide/lesson-001.md',
+      'es/index.md',
+      'es/guide/lesson-001.md',
+      'pt-BR/index.md',
+      'pt-BR/guide/lesson-001.md',
+    ],
+  };
+
+  it('builds clean canonical URLs for hyphenated locale folders', () => {
+    assert.equal(
+      canonicalUrl('zh-Hant/index.md', true),
+      'https://infinitecanvas.cc/zh-Hant/',
+    );
+    assert.equal(
+      canonicalUrl('pt-BR/guide/lesson-001.md', true),
+      'https://infinitecanvas.cc/pt-BR/guide/lesson-001',
+    );
+    assert.equal(
+      canonicalUrl('es/guide/lesson-001.md', true),
+      'https://infinitecanvas.cc/es/guide/lesson-001',
+    );
+  });
+
+  it('advertises Traditional Chinese, Spanish, and Brazilian Portuguese when the page exists', () => {
+    assert.deepEqual(
+      hreflangAlternates('guide/lesson-001.md', withNew).map(
+        (item) => item.hreflang,
+      ),
+      ['en-US', 'zh-Hans', 'zh-Hant', 'ko-KR', 'es-ES', 'pt-BR'],
+    );
+    assert.deepEqual(
+      hreflangAlternates('pt-BR/index.md', withNew).map((item) => item.href),
+      [
+        'https://infinitecanvas.cc/',
+        'https://infinitecanvas.cc/zh/',
+        'https://infinitecanvas.cc/zh-Hant/',
+        'https://infinitecanvas.cc/ko/',
+        'https://infinitecanvas.cc/es/',
+        'https://infinitecanvas.cc/pt-BR/',
+      ],
+    );
+  });
+
+  it('sets Open Graph locales for the new languages', () => {
+    const cases = [
+      ['zh-Hant/index.md', '一個無限畫布教程', 'zh_TW'],
+      ['es/index.md', 'Un tutorial de lienzo infinito', 'es_ES'],
+      ['pt-BR/index.md', 'Um tutorial de tela infinita', 'pt_BR'],
+    ] as const;
+    for (const [path, title, og] of cases) {
+      const data = page(path, '', 'desc');
+      applyPageSeo(data, withNew);
+      const locale = data.frontmatter.head?.find(
+        (entry) => entry[1].property === 'og:locale',
+      );
+      const ogTitle = data.frontmatter.head?.find(
+        (entry) => entry[1].property === 'og:title',
+      );
+      assert.equal(locale?.[1].content, og);
+      assert.equal(ogTitle?.[1].content, title);
+    }
+  });
+});
+
