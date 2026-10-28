@@ -1,4 +1,6 @@
 import { JSDOM } from 'jsdom';
+import { parse } from '@loaders.gl/core';
+import { GLTFLoader } from '../../packages/ecs/node_modules/@loaders.gl/gltf';
 import {
   ComputeBounds,
   ComputeCamera,
@@ -17,6 +19,8 @@ import {
 } from '../../packages/ecs/src';
 import { createDocumentWorld } from '../helpers/ecs-document';
 import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
+import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
+import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
 
 const markup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120">
   <path id="ring" d="M10 10 H110 V110 H10 Z M35 35 H85 V85 H35 Z" fill="#3366cc" fill-rule="evenodd"/>
@@ -1660,4 +1664,40 @@ it('exports ready SVG extrusions through API.export with scene, node, and group 
   ]);
   expect(exportNames([api.getNodeById('stroked')!]))
     .toEqual(['Canvas', 'stroked']);
+});
+
+it('exports overlapping SVG layers in front-to-back glTF scene order', async () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+      '<rect id="red" x="0" y="0" width="40" height="40" fill="red"/>' +
+      '<rect id="blue" x="20" y="20" width="40" height="40" fill="blue"/>' +
+      '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  await world.reset(
+    api,
+    svgElementsToExtrudedNodes(
+      dom.window.document.documentElement as unknown as SVGSVGElement,
+      24,
+    ),
+  );
+  const bytes = api.export({ format: ExportFormat.GLB, download: false });
+  const jsonLength = new DataView(bytes.buffer, bytes.byteOffset).getUint32(12, true);
+  const json = JSON.parse(
+    new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength)),
+  ) as { nodes: { name?: string; children?: number[] }[] };
+  expect(json.nodes[0].children!.map((index) => json.nodes[index].name)).toEqual([
+    'blue',
+    'red',
+  ]);
+
+  const gltf = (await parse(
+    bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    GLTFLoader,
+    { gltf: { loadBuffers: true, loadImages: false } },
+  )) as GltfContainer;
+  const baked = bakeGltfMesh(gltf);
+  expect(baked.parts).toHaveLength(2);
+  expect(baked.parts[0].baseColor[2]).toBeGreaterThan(0.9);
+  expect(baked.parts[1].baseColor[0]).toBeGreaterThan(0.9);
 });

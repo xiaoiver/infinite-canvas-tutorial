@@ -43,6 +43,8 @@ export interface GlbMeshSource {
     >;
   transform: Pick<Transform3D, 'translation' | 'rotation' | 'scale'>;
   name?: string;
+  /** Optional canvas paint order for coplanar extrusion companions. */
+  painterOrder?: number;
 }
 
 type Accessor = {
@@ -154,6 +156,7 @@ export function exportMeshesToGlb(
     // converts them to glTF's Y-up, Z-toward-viewer coordinate system.
     { name: 'Canvas', rotation: [1, 0, 0, 0], children: [] },
   ];
+  const painterOrders = new Map<number, number>();
   let byteLength = 0;
   const append = (bytes: Uint8Array, target?: 34962 | 34963): number => {
     const offset = align4(byteLength);
@@ -529,6 +532,21 @@ export function exportMeshesToGlb(
         matrix: Array.from(matrix),
       }) - 1;
     nodes[0].children!.push(nodeIndex);
+    if (source.painterOrder !== undefined && Number.isFinite(source.painterOrder))
+      painterOrders.set(nodeIndex, source.painterOrder);
+  }
+
+  // glTF does not require a draw order for opaque coplanar meshes, but scene
+  // traversal order is useful to viewers that preserve it and to our importer.
+  if (painterOrders.size > 1) {
+    const children = nodes[0].children!;
+    const ordered = children
+      .filter((index) => painterOrders.has(index))
+      .sort((a, b) => painterOrders.get(b)! - painterOrders.get(a)!);
+    let next = 0;
+    nodes[0].children = children.map((index) =>
+      painterOrders.has(index) ? ordered[next++] : index,
+    );
   }
 
   const bin = new Uint8Array(align4(byteLength));
