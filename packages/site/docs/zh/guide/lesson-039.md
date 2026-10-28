@@ -394,7 +394,9 @@ SVG 根节点上最近的 `color`；没有指定时使用黑色。通过 `style`
 零长度虚线段、没有纯色描边的开放路径、渐变及不支持的
 SVG 元素继续以 2D 显示。
 使用 `patternUnits="userSpaceOnUse"`、整数像素尺寸和内嵌基本图形的
-`<pattern>` 会导入为重复的 2D 填充；暂不支持外部资源、图案变换和非零图案原点。
+`<pattern>` 会导入为重复的 2D 填充。支持的 `patternTransform`（`matrix`、
+`translate`、`scale`、`rotate` 和 `skew`）会保留在可编辑填充中；暂不支持
+外部资源和非零图案原点。
 放大画布时，SVG 图案瓦片会从矢量源重新绘制；重复间距仍保持画布坐标中的
 原始尺寸，栅格尺寸受纹理上限约束。
 矩形上的圆形 `<radialGradient>` 使用 `userSpaceOnUse`、明确的数字圆心与半径，
