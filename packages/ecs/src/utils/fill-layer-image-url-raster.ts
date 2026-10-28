@@ -232,32 +232,34 @@ export function getOrScheduleFillLayerDecodedBitmap(
   return cached;
 }
 
-const patternTileByBitmap = new WeakMap<ImageBitmap, CanvasImageSource>();
+const patternTileByBitmap = new WeakMap<ImageBitmap, Map<string, CanvasImageSource>>();
 
-/** SVGs may be decoded above intrinsic resolution; tile at CSS intrinsic size. */
+/** Preserve the SVG tile's world-space size when its fill texture is supersampled. */
 export function getOrScheduleFillLayerPatternSource(
   url: string,
   onDecoded?: () => void,
+  rasterScale = 1,
 ): CanvasImageSource | string {
   const bitmap = getOrScheduleFillLayerDecodedBitmap(url, onDecoded);
   if (!bitmap) return url;
-  const intrinsic = bitmapIntrinsicSize.get(bitmap);
-  if (
-    !intrinsic ||
-    (bitmap.width === intrinsic.width && bitmap.height === intrinsic.height)
-  )
-    return bitmap;
-  let tile = patternTileByBitmap.get(bitmap);
+  const intrinsic = bitmapIntrinsicSize.get(bitmap) ?? bitmap;
+  const width = Math.max(1, Math.round(intrinsic.width * rasterScale));
+  const height = Math.max(1, Math.round(intrinsic.height * rasterScale));
+  if (bitmap.width === width && bitmap.height === height) return bitmap;
+  let tiles = patternTileByBitmap.get(bitmap);
+  if (!tiles) {
+    tiles = new Map();
+    patternTileByBitmap.set(bitmap, tiles);
+  }
+  const key = `${width}x${height}`;
+  let tile = tiles.get(key);
   if (!tile) {
-    const canvas = DOMAdapter.get().createCanvas(
-      intrinsic.width,
-      intrinsic.height,
-    );
+    const canvas = DOMAdapter.get().createCanvas(width, height);
     const ctx = canvas.getContext('2d');
     if (!ctx) return bitmap;
-    ctx.drawImage(bitmap, 0, 0, intrinsic.width, intrinsic.height);
+    ctx.drawImage(bitmap, 0, 0, width, height);
     tile = canvas as CanvasImageSource;
-    patternTileByBitmap.set(bitmap, tile);
+    tiles.set(key, tile);
   }
   return tile;
 }

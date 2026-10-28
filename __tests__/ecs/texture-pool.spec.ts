@@ -87,6 +87,37 @@ it('reuses a pattern for the same image and repetition across target sizes', () 
   expect(pixel(larger, 10, 10)).toEqual([255, 0, 0, 255]);
 });
 
+it('keeps SVG tile spacing when the source raster reaches its size cap', () => {
+  const tile = createCanvas(4, 4);
+  const ctx = tile.getContext('2d');
+  ctx.fillStyle = 'red';
+  ctx.fillRect(0, 0, 2, 4);
+  ctx.fillStyle = 'blue';
+  ctx.fillRect(2, 0, 2, 4);
+  const result = pool.getOrCreatePattern({
+    pattern: { image: tile as unknown as HTMLCanvasElement, repetition: 'repeat' },
+    width: 16,
+    height: 8,
+    rasterScale: 4,
+    tileScale: 2,
+  });
+  expect(pixel(result, 1, 2)).toEqual([255, 0, 0, 255]);
+  expect(pixel(result, 5, 2)).toEqual([0, 0, 255, 255]);
+  expect(pixel(result, 9, 2)).toEqual([255, 0, 0, 255]);
+  const shifted = pool.getOrCreatePattern({
+    pattern: {
+      image: tile as unknown as HTMLCanvasElement,
+      repetition: 'repeat',
+      transform: 'translate(1, 0)',
+    },
+    width: 16,
+    height: 8,
+    rasterScale: 4,
+    tileScale: 2,
+  });
+  expect(pixel(shifted, 1, 2)).toEqual([0, 0, 255, 255]);
+});
+
 it.each(['repeat', 'repeat-x', 'repeat-y', 'no-repeat'] as const)(
   'renders %s with the expected transparent area',
   (repetition) => {

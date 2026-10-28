@@ -441,6 +441,9 @@ gradients, paint servers and unsupported SVG shapes remain in 2D.
 Self-contained `<pattern>` fills with integer pixel tiles and `patternUnits="userSpaceOnUse"`
 are imported as repeating 2D fills. The tile can contain basic SVG shapes; linked
 resources, pattern transforms and nonzero pattern origins are not yet supported.
+As the canvas zooms in, SVG pattern tiles are redrawn from their vector source.
+The tile spacing stays fixed in canvas coordinates, with raster size capped at
+the texture limit.
 Circular `<radialGradient>` fills on rectangles are also retained in 2D when they
 use `userSpaceOnUse`, explicit numeric center and radius, and a centered focal
 point. Other self-contained radial gradients on rectangles, circles, ellipses,

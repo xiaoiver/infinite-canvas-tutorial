@@ -60,8 +60,11 @@ export class TexturePool {
     pattern: Pattern;
     width: number;
     height: number;
+    /** Pixels per world unit in the destination texture and source tile. */
+    rasterScale?: number;
+    tileScale?: number;
   }) {
-    const { pattern, width, height } = params;
+    const { pattern, width, height, rasterScale = 1, tileScale = 1 } = params;
     const { image, repetition, transform } = pattern;
 
     this.#canvas.width = width;
@@ -73,17 +76,25 @@ export class TexturePool {
     }
 
     let canvasPattern: CanvasPattern | null = null;
-    const key = generatePatternKey(params);
+    const key = `${generatePatternKey(params)}:${rasterScale}:${tileScale}`;
     const cached = cachedPaint(this.#patternCache, key);
     if (cached) {
       canvasPattern = cached;
     } else {
       canvasPattern = image && this.#ctx.createPattern(image, repetition);
-      if (canvasPattern && transform) {
-        const parsed = parsePatternTransform(transform);
+      if (canvasPattern && (transform || rasterScale !== tileScale)) {
+        const parsed = parsePatternTransform(transform ?? '');
         if (parsed) {
+          const ratio = rasterScale / tileScale;
           const matrix = this.#ctx.getTransform();
-          Object.assign(matrix, parsed);
+          Object.assign(matrix, {
+            a: parsed.a * ratio,
+            b: parsed.b * ratio,
+            c: parsed.c * ratio,
+            d: parsed.d * ratio,
+            e: parsed.e * rasterScale,
+            f: parsed.f * rasterScale,
+          });
           canvasPattern.setTransform(matrix);
         }
       }

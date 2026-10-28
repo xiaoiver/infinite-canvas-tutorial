@@ -7,10 +7,17 @@ import {
 } from './fill-layer-image-object-fit';
 import {
   getFillLayerDecodedBitmap,
+  getFillLayerDecodedBitmapIntrinsicSize,
+  getOrScheduleFillLayerPatternSource,
   setFillLayerDecodedBitmapForUrl,
 } from './fill-layer-image-url-raster';
 import { getEnabledFillLayers } from './fillLayers';
-import { FILL_IMAGE_RASTER_MAX_EDGE } from './fillImageTextureSize';
+import {
+  FILL_IMAGE_RASTER_MAX_EDGE,
+  getDevicePixelRatioForRaster,
+  resolveFillImageTexturePixelSize,
+  svgFillImageZoomBucket,
+} from './fillImageTextureSize';
 
 const pendingRaster = new WeakMap<Entity, { key: string }>();
 const svgIntrinsicSize = new WeakMap<
@@ -152,8 +159,12 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
   sourceW: number;
   sourceH: number;
   rasterOptions?: FillLayerImageRasterOptions;
+  fillType?: 'image' | 'pattern';
 }): void {
-  const { entity, url, targetW, targetH, sourceW, sourceH, rasterOptions } = o;
+  const {
+    entity, url, targetW, targetH, sourceW, sourceH, rasterOptions,
+    fillType = 'image',
+  } = o;
   if (!isLikelySvgResourceUrl(url)) {
     return;
   }
@@ -173,7 +184,7 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
   // Apply each layer's object-fit/position only when drawing its own texture.
   if (Math.max(sourceW, sourceH) >= FILL_IMAGE_RASTER_MAX_EDGE) return;
   // 含 intrinsic 尺寸：主题刷新后小图会换实例，与旧 key 解耦，避免已调度成功却不再重跑
-  const key = `${url}\0${targetW}\0${targetH}\0${sourceW}\0${sourceH}`;
+  const key = `${fillType}\0${url}\0${targetW}\0${targetH}\0${sourceW}\0${sourceH}`;
   if (pendingRaster.get(entity)?.key === key) {
     return;
   }
@@ -198,7 +209,7 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
       )
         return;
       const stillHasUrl = getEnabledFillLayers(entity).some(
-        (l) => l.type === 'image' && l.value === url,
+        (l) => l.type === fillType && l.value === url,
       );
       if (!stillHasUrl) return;
       safeAddComponent(entity, MaterialDirty);
@@ -222,4 +233,42 @@ export function scheduleFillImageSvgRerasterIfNeeded(o: {
       if (pendingRaster.get(entity) === request) pendingRaster.delete(entity);
     }
   })();
+}
+
+/** Rasterize SVG pattern tiles and the shape texture at the same zoom bucket. */
+export function prepareSvgPatternFill(o: {
+  entity: Entity;
+  url: string;
+  geomW: number;
+  geomH: number;
+  zoom: number;
+  onDecoded: () => void;
+}) {
+  const { entity, url, geomW, geomH, zoom, onDecoded } = o;
+  const { width, height } = resolveFillImageTexturePixelSize(
+    1, 1, geomW, geomH,
+    getDevicePixelRatioForRaster() * svgFillImageZoomBucket(zoom),
+  );
+  const rasterScale = geomW > 0 && geomH > 0
+    ? Math.min(width / geomW, height / geomH) : 1;
+  const bitmap = getFillLayerDecodedBitmap(url);
+  const intrinsic = bitmap && getFillLayerDecodedBitmapIntrinsicSize(url);
+  const tileScale = intrinsic
+    ? Math.min(rasterScale,
+        FILL_IMAGE_RASTER_MAX_EDGE / intrinsic.width,
+        FILL_IMAGE_RASTER_MAX_EDGE / intrinsic.height)
+    : Math.min(rasterScale, 64);
+  const image = getOrScheduleFillLayerPatternSource(url, onDecoded, tileScale);
+  if (bitmap) {
+    scheduleFillImageSvgRerasterIfNeeded({
+      entity,
+      url,
+      targetW: Math.max(1, Math.round(intrinsic!.width * tileScale)),
+      targetH: Math.max(1, Math.round(intrinsic!.height * tileScale)),
+      sourceW: bitmap.width,
+      sourceH: bitmap.height,
+      fillType: 'pattern',
+    });
+  }
+  return { image, width, height, rasterScale, tileScale };
 }
