@@ -76,6 +76,118 @@ test('overlapping SVG extrusions preserve the source paint order', async ({
   expect(newRed).toBeGreaterThan(newBlue * 1.3);
 });
 
+test('an independent GLB depth pass keeps the upper SVG layer visible', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const pixels = await page.evaluate(async () => {
+    await window.gizmoTest.showSvgArtwork(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+        <rect id="red" width="40" height="40" fill="red"/>
+        <rect id="blue" x="20" y="20" width="40" height="40" fill="blue"/>
+      </svg>
+    `, { x: 30, y: 30 });
+    const bytes = window.gizmoTest.api().export({
+      format: 'glb' as ExportFormat.GLB,
+      download: false,
+    });
+    const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const jsonLength = data.getUint32(12, true);
+    const binOffset = 20 + jsonLength + 8;
+    const json = JSON.parse(new TextDecoder().decode(bytes.subarray(20, 20 + jsonLength))) as {
+      nodes: { name?: string; children?: number[]; matrix?: number[]; mesh?: number }[];
+      meshes: { primitives: { attributes: { POSITION: number }; indices: number; material: number }[] }[];
+      accessors: { bufferView: number; byteOffset?: number; count: number }[];
+      bufferViews: { byteOffset?: number }[];
+      materials: { pbrMetallicRoughness: { baseColorFactor: number[] } }[];
+    };
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 64;
+    const gl = canvas.getContext('webgl', { antialias: false });
+    if (!gl) throw new Error('WebGL is required for the GLB depth check');
+    const shader = (type: number, source: string) => {
+      const handle = gl.createShader(type)!;
+      gl.shaderSource(handle, source);
+      gl.compileShader(handle);
+      if (!gl.getShaderParameter(handle, gl.COMPILE_STATUS))
+        throw new Error(gl.getShaderInfoLog(handle) ?? 'Shader failed');
+      return handle;
+    };
+    const program = gl.createProgram()!;
+    gl.attachShader(program, shader(gl.VERTEX_SHADER, `
+      attribute vec3 position;
+      uniform mat4 model;
+      void main() {
+        vec4 p = model * vec4(position, 1.0);
+        // The exported Canvas root rotates 180 degrees around X.
+        p.yz = -p.yz;
+        gl_Position = vec4((p.x - 30.0) / 30.0,
+          (p.y + 30.0) / 30.0, -p.z / 50.0, 1.0);
+      }
+    `));
+    gl.attachShader(program, shader(gl.FRAGMENT_SHADER, `
+      precision highp float;
+      uniform vec4 color;
+      void main() { gl_FragColor = color; }
+    `));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+      throw new Error(gl.getProgramInfoLog(program) ?? 'Program failed');
+    gl.useProgram(program);
+    gl.viewport(0, 0, 64, 64);
+    gl.enable(gl.DEPTH_TEST);
+    gl.depthFunc(gl.LESS);
+    gl.disable(gl.DITHER);
+    gl.clearColor(1, 1, 1, 1);
+    const buffer = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    const positionLocation = gl.getAttribLocation(program, 'position');
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+    const modelLocation = gl.getUniformLocation(program, 'model');
+    const colorLocation = gl.getUniformLocation(program, 'color');
+    const accessorOffset = (index: number) => {
+      const accessor = json.accessors[index];
+      return binOffset + (json.bufferViews[accessor.bufferView].byteOffset ?? 0) +
+        (accessor.byteOffset ?? 0);
+    };
+    // Draw the lower red node first. If the caps were still coplanar, LESS
+    // would reject the blue node and this pixel would remain red.
+    const children = json.nodes[0].children!.slice().reverse();
+    const redZ = json.nodes[children[0]].matrix![14];
+    const draw = (flatten: boolean) => {
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      for (const index of children) {
+        const node = json.nodes[index];
+        const matrix = node.matrix!.slice();
+        if (flatten && index === children[1]) matrix[14] = redZ;
+        gl.uniformMatrix4fv(modelLocation, false, matrix);
+        for (const primitive of json.meshes[node.mesh!].primitives) {
+          const positions = accessorOffset(primitive.attributes.POSITION);
+          const indices = accessorOffset(primitive.indices);
+          const count = json.accessors[primitive.indices].count;
+          const vertices = new Float32Array(count * 3);
+          for (let i = 0; i < count; i++) {
+            const vertex = data.getUint32(indices + i * 4, true);
+            for (let axis = 0; axis < 3; axis++)
+              vertices[i * 3 + axis] = data.getFloat32(positions + vertex * 12 + axis * 4, true);
+          }
+          gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+          gl.uniform4fv(colorLocation,
+            json.materials[primitive.material].pbrMetallicRoughness.baseColorFactor);
+          gl.drawArrays(gl.TRIANGLES, 0, count);
+        }
+      }
+      const pixel = new Uint8Array(4);
+      gl.readPixels(27, 37, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+      if (gl.getError() !== gl.NO_ERROR) throw new Error('GLB depth draw failed');
+      return Array.from(pixel.subarray(0, 3));
+    };
+    return { coplanar: draw(true), separated: draw(false) };
+  });
+  expect(pixels.coplanar[0]).toBeGreaterThan(pixels.coplanar[2] * 2);
+  expect(pixels.separated[2]).toBeGreaterThan(pixels.separated[0] * 2);
+});
+
 test('layered Tiger SVG keeps its eye visible over the orange face', async ({
   page,
 }, testInfo) => {

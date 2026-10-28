@@ -2,6 +2,7 @@
 outline: deep
 description: '掌握复杂的文本渲染技术，包括TextMetrics、HarfBuzz shaping、文本分段、BiDi支持、SDF图集生成以及国际化排版的emoji处理。'
 ---
+
 <script setup>
 import MSDFText from '../../components/MSDFText.vue';
 import BitmapFont from '../../components/BitmapFont.vue';
@@ -564,7 +565,10 @@ function edt(data, width, height, f, d, v, z) {
 
 ![glyph atlas with potpack](https://miro.medium.com/v2/resize:fit:1024/format:webp/0*YcJm5NJXJCIO20ds.png)
 
-需要注意，这个 Atlas 包含了场景中使用的所有字体下的所有文本，因此当 `fontFamily/Weight` 改变、旧文本变更、新文本加入时都需要重新生成，但字号改变不应该重新生成。因此为了避免重新生成过于频繁，对于每一种字体，默认为 32-128 的常用字符生成。
+Atlas 保存当前文本批次实际使用的字形，首次构建时还会加入空格，以便空文本
+仍有可用的度量。新增字符，或改变字体、字重、字形和填充色时可能重新构建；
+单独调整字号会复用 Atlas。导入带有多种文字样式的 SVG 时，只生成实际字符，
+可避免为每种样式预先生成 96 个未使用的 ASCII 字形。
 
 该纹理只需要使用一个通道即可，如果是 WebGL 下可以使用 `gl.ALPHA` 格式，但是 WebGPU 中并没有对应的格式。因此我们使用 `Format.U8_R_NORM` 格式，在 WebGL 中为 `gl.LUMINANCE`，在 WebGPU 中为 [r8unorm]。
 
