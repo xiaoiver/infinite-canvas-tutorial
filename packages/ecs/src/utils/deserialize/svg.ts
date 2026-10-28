@@ -174,23 +174,30 @@ function expandSvgStrokeNodes(
     } catch {
       // Keep the original 2D SVG node when the contour cannot be expanded.
     }
-    if (!outline || !buildPathExtrusionMesh(outline, 'evenodd')) {
+    if (!outline) {
       expanded.push(node);
       continue;
     }
-    const { minX, minY, maxX, maxY } = Path.getGeometryBounds({ d: outline });
-    if (![minX, minY, maxX, maxY].every(Number.isFinite) ||
-      maxX <= minX || maxY <= minY) {
+    let outlinePosition: Pick<PathSerializedNode, 'x' | 'y' | 'width' | 'height' | 'd'>;
+    try {
+      const { minX, minY, maxX, maxY } = Path.getGeometryBounds({ d: outline });
+      if (![minX, minY, maxX, maxY].every(Number.isFinite) ||
+        maxX <= minX || maxY <= minY) {
+        expanded.push(node);
+        continue;
+      }
+      outlinePosition = {
+        x: (node.x ?? 0) + minX,
+        y: (node.y ?? 0) + minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        d: shiftPath(outline, -minX, -minY, 6),
+      };
+    } catch {
+      // Keep the source in 2D when its outline cannot be normalized.
       expanded.push(node);
       continue;
     }
-    const outlinePosition = {
-      x: (node.x ?? 0) + minX,
-      y: (node.y ?? 0) + minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      d: shiftPath(outline, -minX, -minY),
-    };
     const strokePaint = [{ ...strokes[0] }];
     const noStroke = [{ type: 'solid' as const, value: 'none' }];
     // Keep the front and back caps just outside a filled source. Otherwise
@@ -636,6 +643,7 @@ export function svgElementsToExtrudedNodes(
     nodes, getComputedInheritGroupWireMap(nodes), nodeElements,
     depth, rectRadii, fallbackParent,
   );
+  const generatedStrokeIds = new Set(strokeIds.values());
   const sourceIdByElement = new Map(nodes.map((node) =>
     [nodeElements.get(node.id), node.id] as const).filter((entry) => entry[0]));
   const inherited = getComputedInheritGroupWireMap(strokeNodes);
@@ -650,6 +658,10 @@ export function svgElementsToExtrudedNodes(
     if (node.type === 'path') {
       if (paintSupported && buildPathExtrusionMesh(node.d, node.fillRule))
         return { ...node, extrude3d: node.extrude3d || depth };
+      // A generated stroke that cannot form a mesh restores its original
+      // source in the final fallback pass below.
+      if (generatedStrokeIds.has(node.id))
+        return { ...node, extrude3d: undefined };
       return node;
     }
     return extrudeSvgPrimitive(

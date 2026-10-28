@@ -130,7 +130,7 @@ export function fixTransform(
   delete attributes.transform;
 }
 
-export function shiftPath(d: string, dx: number, dy: number) {
+export function shiftPath(d: string, dx: number, dy: number, decimals = 2) {
   const absoluteArray = path2Absolute(d);
   const hasDx = dx !== 0;
   const hasDy = dy !== 0;
@@ -209,7 +209,7 @@ export function shiftPath(d: string, dx: number, dy: number) {
     for (let i = 1; i < segment.length; i++) {
       const v = segment[i] as number;
       if (typeof v === 'number' && Number.isFinite(v)) {
-        segment[i] = roundNumberToDecimals(v, 2);
+        segment[i] = roundNumberToDecimals(v, decimals);
       }
     }
   });

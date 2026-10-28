@@ -432,6 +432,8 @@ importer still stores a single corner radius.
 Unfilled open contours without a solid stroke, dashed strokes, non-scaling
 strokes, gradients, paint servers and unsupported SVG shapes remain in 2D.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
+Expanded stroke contours retain six decimal places while their coordinates are
+normalized, so very thin details do not collapse before the final mesh check.
 Local `<use href="#id">` and legacy `xlink:href` references to supported shapes or
 groups create independent instances, including forward and repeated references.
 Instance pixel offsets, transform and inherited fill are applied before extrusion;
