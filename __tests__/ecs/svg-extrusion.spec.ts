@@ -173,6 +173,32 @@ it('retains both group and child transforms in a referenced group', () => {
   });
 });
 
+it('keeps repeated Path geometry local while applying each use transform', () => {
+  const dom = new JSDOM(
+    '<svg xmlns="http://www.w3.org/2000/svg">' +
+    '<defs><path id="motif" d="M10 20 H30 V40 H10 Z" fill="red"/></defs>' +
+    '<use id="first" href="#motif" x="5" y="7"/>' +
+    '<use id="second" href="#motif" x="50" y="70"/>' +
+    '</svg>',
+    { contentType: 'image/svg+xml' },
+  );
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const paths = svgElementsToExtrudedNodes(svg, 16).filter(
+    (node) => node.type === 'path',
+  );
+  expect(paths).toHaveLength(2);
+  expect(paths[0]).toMatchObject({
+    x: 10, y: 20, width: 20, height: 20, extrude3d: 16,
+  });
+  expect(paths[1]).toMatchObject({
+    x: 10, y: 20, width: 20, height: 20, extrude3d: 16,
+  });
+  expect(paths[0].d).toBe(paths[1].d);
+  expect(paths[0].parentId).toBe('first');
+  expect(paths[1].parentId).toBe('second');
+  expect(paths[0].d).toBe('M0 0H20V20H0Z');
+});
+
 it('retains an outer single-child group transform around a use instance', () => {
   const dom = new JSDOM(
     '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="100" viewBox="0 0 100 100">' +

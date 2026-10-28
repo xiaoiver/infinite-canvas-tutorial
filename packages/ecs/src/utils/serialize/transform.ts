@@ -18,7 +18,22 @@ import type { ComputedTextMetrics } from '../../components';
 import { roundNumberToDecimals } from './path-transform';
 export { roundNumberToDecimals, transformPath } from './path-transform';
 
-export function fixTransform(transform: string, attributes: SerializedNode) {
+export type PathTransformCache = Map<
+  string,
+  {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    shifted: string;
+  }
+>;
+
+export function fixTransform(
+  transform: string,
+  attributes: SerializedNode,
+  pathCache?: PathTransformCache,
+) {
   let metrics: Partial<ComputedTextMetrics>;
   if (attributes.type === 'text') {
     metrics = measureText(attributes);
@@ -30,7 +45,11 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
     attributes.ideographicBaseline = metrics.fontMetrics.ideographicBaseline;
   }
 
-  const { minX, minY, maxX, maxY } = getGeometryBounds(attributes, metrics);
+  const sourcePath = attributes.type === 'path' ? attributes.d : undefined;
+  const cachedPath =
+    sourcePath === undefined ? undefined : pathCache?.get(sourcePath);
+  const { minX, minY, maxX, maxY } =
+    cachedPath ?? getGeometryBounds(attributes, metrics);
 
   attributes.x = minX;
   attributes.y = minY;
@@ -88,7 +107,15 @@ export function fixTransform(transform: string, attributes: SerializedNode) {
       }),
     );
   } else if (type === 'path') {
-    attributes.d = shiftPath(attributes.d, -minX, -minY);
+    attributes.d = cachedPath?.shifted ?? shiftPath(attributes.d, -minX, -minY);
+    if (!cachedPath && sourcePath !== undefined)
+      pathCache?.set(sourcePath, {
+        minX,
+        minY,
+        maxX,
+        maxY,
+        shifted: attributes.d,
+      });
   } else if (type === 'text') {
     attributes.anchorX = (attributes.anchorX ?? 0) - minX;
     attributes.anchorY = (attributes.anchorY ?? 0) - minY;
