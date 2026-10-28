@@ -4,6 +4,7 @@ description: '카메라의 개념, 투영 변환, 카메라 변환을 이해합�
 head:
     - ['meta', { property: 'og:title', content: '4강 - 카메라' }]
 ---
+
 # 4강 - 카메라
 
 이번 강의에서는 다음 내용을 중점적으로 다룹니다.
@@ -710,8 +711,8 @@ this.updateMatrix();
 
 ```ts
 if (
-  vec2.dist(interPosition, destPosition) <= EPSILON &&
-  vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
+    vec2.dist(interPosition, destPosition) <= EPSILON &&
+    vec2.dist(interZoomRotation, destZoomRotation) <= EPSILON
 ) {
     endAnimation();
     return;

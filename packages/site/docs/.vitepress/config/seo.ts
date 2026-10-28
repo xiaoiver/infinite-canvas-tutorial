@@ -7,7 +7,7 @@
 
 export const SITE_ORIGIN = 'https://infinitecanvas.cc';
 
-export type SeoLocale = 'root' | 'zh' | 'ko';
+export type SeoLocale = 'root' | 'zh' | 'ko' | 'ja';
 
 export type SeoHeadTag = [string, Record<string, string>];
 
@@ -43,6 +43,7 @@ export const HREFLANG: Record<SeoLocale, string> = {
   root: 'en-US',
   zh: 'zh-Hans',
   ko: 'ko-KR',
+  ja: 'ja-JP',
 };
 
 /** Open Graph locale uses underscore language_TERRITORY tags. */
@@ -50,6 +51,7 @@ export const OG_LOCALE: Record<SeoLocale, string> = {
   root: 'en_US',
   zh: 'zh_CN',
   ko: 'ko_KR',
+  ja: 'ja_JP',
 };
 
 /** Locale `<title>` used when a page has no heading of its own (home, some API pages). */
@@ -57,6 +59,7 @@ export const LOCALE_TITLE: Record<SeoLocale, string> = {
   root: 'An infinite canvas tutorial',
   zh: '一个无限画布教程',
   ko: '무한 캔버스 튜토리얼',
+  ja: '無限キャンバスチュートリアル',
 };
 
 /**
@@ -80,7 +83,7 @@ export function outputPath(
 
 export function localeOf(relativePath: string): SeoLocale {
   const prefix = relativePath.split('/')[0];
-  if (prefix === 'zh' || prefix === 'ko') return prefix;
+  if (prefix === 'zh' || prefix === 'ko' || prefix === 'ja') return prefix;
   return 'root';
 }
 
@@ -140,7 +143,7 @@ export function hreflangAlternates(
   );
   const cleanUrls = site.cleanUrls === true;
   const found: HreflangAlternate[] = [];
-  for (const locale of ['root', 'zh', 'ko'] as const) {
+  for (const locale of ['root', 'zh', 'ko', 'ja'] as const) {
     const source = withLocale(key, locale);
     if (!published.has(source)) continue;
     if (isNoindexSource(source)) continue;

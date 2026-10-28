@@ -11,6 +11,7 @@ import { adsenseClient, shared } from './shared';
 import { en } from './en';
 import { zh } from './zh';
 import { ko } from './ko';
+import { ja } from './ja';
 import { resolve } from 'path';
 import { writeAdsTxt } from '../adsense-ads-txt';
 
@@ -38,6 +39,7 @@ export default defineConfig({
     },
     zh: { label: '简体中文', ...zh },
     ko: { label: '한국어', ...ko },
+    ja: { label: '日本語', ...ja },
   },
   vue: {
     template: {
@@ -54,9 +56,12 @@ export default defineConfig({
       alias: [
         {
           find: 'd3-color',
-          replacement: resolve(__dirname, '../../../node_modules/d3-color/dist/d3-color.min.js')
-        }
-      ]
+          replacement: resolve(
+            __dirname,
+            '../../../node_modules/d3-color/dist/d3-color.min.js',
+          ),
+        },
+      ],
     },
     build: {
       chunkSizeWarningLimit: 800,

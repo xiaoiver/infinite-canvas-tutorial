@@ -11,13 +11,19 @@ const gallery = [
       en: 'Halftone post-processing',
       zh: '半调网点',
       ko: '하프톤',
+      ja: 'ハーフトーン',
     },
   },
   {
     src: '/gallery/pixelate.png',
     width: 1042,
     height: 480,
-    alt: { en: 'Pixelate effect', zh: '像素化', ko: '픽셀화' },
+    alt: {
+      en: 'Pixelate effect',
+      zh: '像素化',
+      ko: '픽셀화',
+      ja: 'ピクセル化',
+    },
   },
   {
     src: '/gallery/radiance-cascades.png',
@@ -27,31 +33,52 @@ const gallery = [
       en: 'Radiance cascades lighting',
       zh: '辐射级联光照',
       ko: '래디언스 캐스케이드',
+      ja: 'ラディアンスキャスケード',
     },
   },
   {
     src: '/gallery/vello.png',
     width: 1532,
     height: 782,
-    alt: { en: 'Vello GPU rendering', zh: 'Vello GPU 渲染', ko: 'Vello GPU 렌더링' },
+    alt: {
+      en: 'Vello GPU rendering',
+      zh: 'Vello GPU 渲染',
+      ko: 'Vello GPU 렌더링',
+      ja: 'Vello GPU レンダリング',
+    },
   },
   {
     src: '/gallery/iconfont.png',
     width: 1272,
     height: 662,
-    alt: { en: 'Icon fonts on the canvas', zh: '画布上的图标字体', ko: '캔버스 위의 아이콘 폰트' },
+    alt: {
+      en: 'Icon fonts on the canvas',
+      zh: '画布上的图标字体',
+      ko: '캔버스 위의 아이콘 폰트',
+      ja: 'キャンバス上のアイコンフォント',
+    },
   },
   {
     src: '/gallery/mermaid.png',
     width: 730,
     height: 696,
-    alt: { en: 'Mermaid diagrams', zh: 'Mermaid 图表', ko: 'Mermaid 다이어그램' },
+    alt: {
+      en: 'Mermaid diagrams',
+      zh: 'Mermaid 图表',
+      ko: 'Mermaid 다이어그램',
+      ja: 'Mermaid ダイアグラム',
+    },
   },
   {
     src: '/gallery/orth-connector.png',
     width: 872,
     height: 510,
-    alt: { en: 'Orthogonal connectors', zh: '正交连线', ko: '직교 연결선' },
+    alt: {
+      en: 'Orthogonal connectors',
+      zh: '正交连线',
+      ko: '직교 연결선',
+      ja: '直交コネクタ',
+    },
   },
 ];
 
@@ -186,7 +213,6 @@ const pages = {
     secondary: { label: '1강부터 시작', href: '/guide/lesson-001' },
     heroAlt: '무한 캔버스 앱. 보드 위에 사진과 스케치가 있습니다',
     tracksTitle: '세 가지 읽는 길',
-    note: '한국어 번역은 4강까지 있습니다. 나머지 강의는 영어 원문으로 이어집니다.',
     tracks: [
       {
         title: 'GPU로 그리기',
@@ -197,19 +223,23 @@ const pages = {
         height: 582,
         links: [
           { label: '원 그리기', href: '/guide/lesson-002' },
-          { label: '씬 그래프', href: '/guide/lesson-003' },
-          { label: '카메라', href: '/guide/lesson-004' },
+          { label: '타원과 사각형', href: '/guide/lesson-009' },
+          { label: '텍스트 렌더링', href: '/guide/lesson-015' },
+          { label: '후처리', href: '/guide/lesson-030' },
         ],
       },
       {
         title: '도구와 인터페이스',
-        text: 'Web Components, 트랜스포머, 브러시, 클립보드.',
+        text: '트랜스포머, 브러시, 클립보드.',
         image: '/gallery/brush-with-eraser.png',
         imageAlt: '브러시와 지우개',
         width: 980,
         height: 454,
         links: [
-          { label: 'Web UI 영어 원문', href: '/guide/lesson-007', locale: 'en' },
+          { label: 'Web UI', href: '/guide/lesson-007' },
+          { label: '트랜스포머', href: '/guide/lesson-021' },
+          { label: '브러시', href: '/guide/lesson-025' },
+          { label: '클립보드', href: '/guide/lesson-024' },
         ],
       },
       {
@@ -220,13 +250,78 @@ const pages = {
         width: 1974,
         height: 990,
         links: [
-          { label: 'AI 영어 원문', href: '/guide/lesson-028', locale: 'en' },
+          { label: 'AI 통합', href: '/guide/lesson-028' },
+          { label: '텍스트로 다이어그램', href: '/guide/lesson-032' },
         ],
       },
     ],
     galleryTitle: '캔버스 위의 효과',
-    moreTitle: '',
-    more: [],
+    moreTitle: '문서에 더 있습니다',
+    more: [
+      { label: '예제 (EN)', href: '/example/solar-system', locale: 'en' },
+      { label: '레퍼런스 (EN)', href: '/reference/canvas', locale: 'en' },
+      { label: '실험 (EN)', href: '/experiment/particles', locale: 'en' },
+    ],
+  },
+  ja: {
+    base: '/ja',
+    locale: 'ja',
+    eyebrow: 'WebGL / WebGPU',
+    title: '無限キャンバスチュートリアル',
+    lede: '空のキャンバスから始め、ページ内で動く例を使って Figma のような無限キャンバスを作ります。',
+    primary: { label: 'アプリを開く', href: 'https://app.infinitecanvas.cc/' },
+    secondary: { label: '第1課から始める', href: '/guide/lesson-001' },
+    heroAlt: '無限キャンバスのアプリ。ボードには写真とスケッチがあります',
+    tracksTitle: '三つの読み方',
+    tracks: [
+      {
+        title: 'GPU で描く',
+        text: 'SDF と WebGPU で円、文字、ストローク、ポストプロセスを扱います。',
+        image: '/gallery/watercolor.png',
+        imageAlt: '水彩スタイルのレンダリング',
+        width: 1062,
+        height: 582,
+        links: [
+          { label: '円を描く', href: '/guide/lesson-002' },
+          { label: '楕円と矩形', href: '/guide/lesson-009' },
+          { label: 'テキストレンダリング', href: '/guide/lesson-015' },
+          { label: 'ポストプロセス', href: '/guide/lesson-030' },
+        ],
+      },
+      {
+        title: 'ツールとインターフェース',
+        text: 'トランスフォーマー、ブラシ、クリップボード。',
+        image: '/gallery/brush-with-eraser.png',
+        imageAlt: 'ブラシと消しゴム',
+        width: 980,
+        height: 454,
+        links: [
+          { label: 'Web UI', href: '/guide/lesson-007' },
+          { label: 'トランスフォーマー', href: '/guide/lesson-021' },
+          { label: 'ブラシ', href: '/guide/lesson-025' },
+          { label: 'クリップボード', href: '/guide/lesson-024' },
+        ],
+      },
+      {
+        title: 'モデルと一緒に描く',
+        text: '図形を生成し、画像をベクターにし、キャンバスと対話します。',
+        image: '/gallery/liquid-metal.png',
+        imageAlt: 'リキッドメタルの文字とマテリアル',
+        width: 1974,
+        height: 990,
+        links: [
+          { label: 'AI との連携', href: '/guide/lesson-028' },
+          { label: 'テキストからダイアグラム', href: '/guide/lesson-032' },
+        ],
+      },
+    ],
+    galleryTitle: 'キャンバス上の効果',
+    moreTitle: 'ドキュメントにはほかにも',
+    more: [
+      { label: 'サンプル (EN)', href: '/example/solar-system', locale: 'en' },
+      { label: 'リファレンス (EN)', href: '/reference/canvas', locale: 'en' },
+      { label: '実験 (EN)', href: '/experiment/particles', locale: 'en' },
+    ],
   },
 };
 
@@ -236,6 +331,7 @@ const page = computed(() => {
   const value = lang.value || '';
   if (value.startsWith('zh')) return pages.zh;
   if (value.startsWith('ko')) return pages.ko;
+  if (value.startsWith('ja')) return pages.ja;
   return pages.en;
 });
 
@@ -446,8 +542,11 @@ function hrefOf(link) {
   border: 1px solid var(--vp-c-divider);
   border-radius: 12px;
   background-color: var(--vp-c-bg-soft);
-  background-image:
-    linear-gradient(to right, var(--vp-c-divider) 1px, transparent 1px),
+  background-image: linear-gradient(
+      to right,
+      var(--vp-c-divider) 1px,
+      transparent 1px
+    ),
     linear-gradient(to bottom, var(--vp-c-divider) 1px, transparent 1px);
   background-size: 28px 28px;
 }
