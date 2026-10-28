@@ -371,6 +371,51 @@ test('SVG elliptical radial fill matches the native paint with a shifted focus',
   }, { timeout: 10_000 }).toBeLessThan(35);
 });
 
+test('SVG radial image fills align with Path and circle geometry', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(async () => {
+    const source = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="80">
+      <defs><radialGradient id="g" cx="0.5" cy="0.5" r="0.5" fx="0.3" fy="0.3">
+        <stop offset="0" stop-color="red"/><stop offset="1" stop-color="blue"/>
+      </radialGradient></defs>
+      <path d="M10 10 H70 V70 H10 Z M30 30 H50 V50 H30 Z" fill-rule="evenodd" fill="url(#g)"/>
+      <circle cx="120" cy="40" r="30" fill="url(#g)"/>
+    </svg>`;
+    const artwork = await window.gizmoTest.showSvgArtwork(source);
+    const nodes = window.gizmoTest.api().getNodes();
+    const path = nodes.find((node) => node.type === 'path');
+    const circle = nodes.find((node) => node.type === 'ellipse');
+    const image = new Image();
+    image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`;
+    await image.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = 160;
+    canvas.height = 80;
+    const context = canvas.getContext('2d')!;
+    context.drawImage(image, 0, 0);
+    const samples = [[20, 20], [60, 60], [105, 40], [135, 40]];
+    return {
+      ...artwork,
+      fillTypes: [path, circle].map((node) => node?.fills?.[0]?.type),
+      offset: [path!.x - 10, path!.y - 10],
+      samples,
+      expected: samples.map(([x, y]) =>
+        Array.from(context.getImageData(x, y, 1, 1).data).slice(0, 3)),
+    };
+  });
+  expect(result.extrudedNodes).toBe(0);
+  expect(result.fillTypes).toEqual(['image', 'image']);
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    return Math.max(...result.samples.map(([x, y], index) => {
+      const actual = canvasRgbAt(png, x + result.offset[0], y + result.offset[1]);
+      const expected = result.expected[index];
+      return Math.max(...actual.map((value, channel) => Math.abs(value - expected[channel])));
+    }));
+  }, { timeout: 10_000 }).toBeLessThan(35);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {

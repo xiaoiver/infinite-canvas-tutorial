@@ -886,33 +886,72 @@ function deserializeSvgRadialGradient(
   return `radial-gradient(circle ${radius}px at ${cx - x}px ${cy - y}px, ${colors.join(', ')})`;
 }
 
-/** Preserve SVG radial geometry that the circular CSS paint model cannot express.
- * The SVG image has the rectangle's local bounds, while the rectangle remains
- * the editable canvas node and clips the image at its corners. */
-function deserializeSvgRadialGradientImage(
-  gradient: SVGElement,
+/** The fill texture is mapped to the same local geometry bounds after import. */
+function svgRadialFillBounds(
   target: SVGElement,
-): string | undefined {
-  if (target.localName !== 'rect' ||
-      gradient.hasAttribute('href') || gradient.hasAttribute('xlink:href') ||
-      Array.from(gradient.children).some((child) => child.localName !== 'stop') ||
-      Array.from(gradient.querySelectorAll('*')).some((child) =>
-        Array.from(child.attributes).some(({ name, value }) =>
-          name === 'href' || name === 'xlink:href' || /url\s*\(|currentcolor/i.test(value)),
-      )) return;
+): { x: number; y: number; width: number; height: number } | undefined {
   const numericLength = (value: string | null, fallback = 0) => {
     if (value === null) return fallback;
     if (!/^[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?(?:px)?$/i.test(value)) return;
     const number = Number(value.replace(/px$/i, ''));
     return Number.isFinite(number) ? number : undefined;
   };
-  const x = numericLength(target.getAttribute('x'));
-  const y = numericLength(target.getAttribute('y'));
-  const width = numericLength(target.getAttribute('width'));
-  const height = numericLength(target.getAttribute('height'));
-  if (x === undefined || y === undefined || width === undefined ||
-      height === undefined || width <= 0 || height <= 0 ||
-      width > 4096 || height > 4096) return;
+  const kind = target.localName;
+  let bounds: { x: number; y: number; width: number; height: number } | undefined;
+  if (kind === 'rect') {
+    const x = numericLength(target.getAttribute('x'));
+    const y = numericLength(target.getAttribute('y'));
+    const width = numericLength(target.getAttribute('width'));
+    const height = numericLength(target.getAttribute('height'));
+    if ([x, y, width, height].every((value) => value !== undefined))
+      bounds = { x: x!, y: y!, width: width!, height: height! };
+  } else if (kind === 'circle' || kind === 'ellipse') {
+    const cx = numericLength(target.getAttribute('cx'));
+    const cy = numericLength(target.getAttribute('cy'));
+    const rx = numericLength(target.getAttribute(kind === 'circle' ? 'r' : 'rx'));
+    const ry = kind === 'circle' ? rx : numericLength(target.getAttribute('ry'));
+    if ([cx, cy, rx, ry].every((value) => value !== undefined))
+      bounds = { x: cx! - rx!, y: cy! - ry!, width: 2 * rx!, height: 2 * ry! };
+  } else if (kind === 'path') {
+    try {
+      const { minX, minY, maxX, maxY } = Path.getGeometryBounds({
+        d: target.getAttribute('d') || '',
+      });
+      bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    } catch { return; }
+  } else if (kind === 'polygon' || kind === 'polyline') {
+    const points = deserializePoints(target.getAttribute('points') || '');
+    if (points.length < 3) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of points) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+    bounds = { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+  if (!bounds || ![bounds.x, bounds.y, bounds.width, bounds.height].every(Number.isFinite) ||
+      bounds.width <= 0 || bounds.height <= 0 ||
+      bounds.width > 4096 || bounds.height > 4096) return;
+  return bounds;
+}
+
+/** Preserve SVG radial geometry that the circular CSS paint model cannot express.
+ * The editable shape clips the paint image to its original outline. */
+function deserializeSvgRadialGradientImage(
+  gradient: SVGElement,
+  target: SVGElement,
+): string | undefined {
+  if (gradient.hasAttribute('href') || gradient.hasAttribute('xlink:href') ||
+      Array.from(gradient.children).some((child) => child.localName !== 'stop') ||
+      Array.from(gradient.querySelectorAll('*')).some((child) =>
+        Array.from(child.attributes).some(({ name, value }) =>
+          name === 'href' || name === 'xlink:href' || /url\s*\(|currentcolor/i.test(value)),
+      )) return;
+  const bounds = svgRadialFillBounds(target);
+  if (!bounds) return;
+  const { x, y, width, height } = bounds;
   const svg = gradient.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('width', String(width));
   svg.setAttribute('height', String(height));
