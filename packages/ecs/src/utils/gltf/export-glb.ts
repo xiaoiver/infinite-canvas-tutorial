@@ -5,6 +5,7 @@ import type {
 } from '../../components/geometry3d/Material3D';
 import type { Mesh3D } from '../../components/geometry3d/Mesh3D';
 import type { Transform3D } from '../../components/geometry3d/Transform3D';
+import { extrusionLayerOffsets } from './extrusion-layer-offsets';
 
 export interface GlbMeshSource {
   mesh: Pick<Mesh3D, 'positions' | 'normals' | 'uvs' | 'indices'> &
@@ -157,6 +158,7 @@ export function exportMeshesToGlb(
     { name: 'Canvas', rotation: [1, 0, 0, 0], children: [] },
   ];
   const painterOrders = new Map<number, number>();
+  const layerOffsets = extrusionLayerOffsets(sources);
   let byteLength = 0;
   const append = (bytes: Uint8Array, target?: 34962 | 34963): number => {
     const offset = align4(byteLength);
@@ -404,7 +406,7 @@ export function exportMeshesToGlb(
     );
   };
 
-  for (const source of sources) {
+  for (const [sourceIndex, source] of sources.entries()) {
     const { positions, normals, tangents, colors, uvs, uvs1, indices } =
       source.mesh;
     const count = positions.length / 3;
@@ -523,6 +525,9 @@ export function exportMeshesToGlb(
     mat4.rotateY(matrix, matrix, pose.rotation[1]);
     mat4.rotateZ(matrix, matrix, pose.rotation[2]);
     mat4.scale(matrix, matrix, pose.scale);
+    // The root node flips canvas Z into glTF Z. A negative canvas-space
+    // offset moves later SVG layers toward the default glTF viewer.
+    matrix[14] += layerOffsets.get(sourceIndex) ?? 0;
     if (!finite(matrix)) throw new Error('Invalid 3D mesh transform');
     const meshIndex = meshes.push({ primitives }) - 1;
     const nodeIndex =
