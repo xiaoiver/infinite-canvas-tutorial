@@ -2,6 +2,7 @@ import { BufferUsage } from '../../packages/device-api/src';
 import { Mesh3D } from '../../packages/ecs/src/components/geometry3d/Mesh3D';
 import { MeshGPUCache } from '../../packages/ecs/src/systems/mesh3d/mesh-gpu-cache';
 import { createGeometry } from '../../packages/ecs/src/utils/geometry3d';
+import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
 import { fakeMeshGPU } from './helpers/mesh-gpu';
 
 const cube = () => new Mesh3D(createGeometry({ type: 'cube' }));
@@ -16,25 +17,78 @@ it('reuses buffers across draws, keeps separate model uniforms, and coalesces ge
   const first = cache.get(1, mesh)!;
   const second = cache.get(2, mesh)!;
   expect(first.modelUniformBuffer).not.toBe(second.modelUniformBuffer);
+  expect(first.vertexBuffer).toBe(second.vertexBuffer);
   for (let i = 0; i < 5; i++) expect(cache.get(1, mesh)).toBe(first);
-  expect(gpu.buffers).toHaveLength(buffersPerMesh * 2);
+  expect(gpu.buffers).toHaveLength(buffersPerMesh + 1);
+  expect(cache.stats()).toMatchObject({ instances: 2, uniqueGeometries: 1 });
   mesh.positions[0] = 123;
   cache.invalidate([1, 100]);
   cache.invalidate([1]);
   const changed = cache.get(1, mesh)!;
   expect(floats(changed.vertexBuffer)[0]).toBe(123);
+  expect(changed.vertexBuffer).not.toBe(second.vertexBuffer);
   expect(cache.get(1, mesh)).toBe(changed);
   expect(cache.get(2, mesh)).toBe(second);
-  expect(gpu.buffers).toHaveLength(buffersPerMesh * 3);
-  for (const buffer of gpu.buffers.slice(0, buffersPerMesh))
-    expect(buffer.destroy).toHaveBeenCalledTimes(1);
-  for (const buffer of gpu.buffers.slice(buffersPerMesh))
+  expect(gpu.buffers).toHaveLength(buffersPerMesh * 2 + 1);
+  expect(cache.stats()).toMatchObject({ instances: 2, uniqueGeometries: 2 });
+  expect(gpu.buffers[7].destroy).toHaveBeenCalledTimes(1);
+  for (const buffer of gpu.buffers.filter((_, index) => index !== 7))
     expect(buffer.destroy).not.toHaveBeenCalled();
   cache.destroy();
   cache.destroy();
   for (const buffer of gpu.buffers)
     expect(buffer.destroy).toHaveBeenCalledTimes(1);
   expect(() => cache.get(1, mesh)).toThrow('disposed');
+  gpu.scope.dispose();
+});
+
+it('shares repeated Path uploads and releases geometry after the last instance', () => {
+  const gpu = fakeMeshGPU();
+  const cache = new MeshGPUCache(gpu.device);
+  const d = 'M0 0 L100 0 L100 100 L0 100 Z';
+  const geometry = buildPathExtrusionMesh(d)!.geometry;
+  const meshes = Array.from({ length: 20 }, () => new Mesh3D(geometry));
+  const data = meshes.map((mesh, index) => cache.get(index, mesh)!);
+  expect(new Set(data.map((item) => item.vertexBuffer)).size).toBe(1);
+  expect(new Set(data.map((item) => item.modelUniformBuffer)).size).toBe(20);
+  expect(gpu.buffers).toHaveLength(7 + 20);
+  expect(cache.stats()).toMatchObject({ instances: 20, uniqueGeometries: 1 });
+  const geometryBytes = cache.stats().geometryBytes;
+  expect(geometryBytes).toBeGreaterThan(0);
+
+  cache.retain(new Set([19]));
+  expect(cache.stats()).toMatchObject({
+    instances: 1,
+    uniqueGeometries: 1,
+    geometryBytes,
+  });
+  expect(data[19].vertexBuffer.destroy).not.toHaveBeenCalled();
+  cache.retain(new Set());
+  expect(cache.stats()).toMatchObject({
+    instances: 0,
+    uniqueGeometries: 0,
+    geometryBytes: 0,
+  });
+  for (const buffer of gpu.buffers)
+    expect(buffer.destroy).toHaveBeenCalledTimes(1);
+  cache.destroy();
+  gpu.scope.dispose();
+});
+
+it('keeps meshes with different normal arrays in separate GPU geometries', () => {
+  const gpu = fakeMeshGPU();
+  const cache = new MeshGPUCache(gpu.device);
+  const original = cube();
+  const changed = new Mesh3D({
+    positions: original.positions,
+    normals: new Float32Array(original.normals).fill(0),
+    indices: original.indices,
+  });
+  const first = cache.get(1, original)!;
+  const second = cache.get(2, changed)!;
+  expect(first.vertexBuffer).not.toBe(second.vertexBuffer);
+  expect(cache.stats()).toMatchObject({ instances: 2, uniqueGeometries: 2 });
+  cache.destroy();
   gpu.scope.dispose();
 });
 
@@ -132,7 +186,7 @@ it('reclaims empty/removed geometry and safely reuses an entity id', () => {
   gpu.scope.dispose();
 });
 
-it.each([0, 1, 2, 3, 4, 5, 6])(
+it.each([0, 1, 2, 3, 4, 5, 6, 7])(
   'rolls back allocation failure at buffer %i and retries the dirty mesh',
   (failAt) => {
     const gpu = fakeMeshGPU();
@@ -176,6 +230,30 @@ it('preserves an allocation failure when rollback also throws', () => {
     });
   expect(() => cache.get(1, cube())).toThrow('allocation failed');
   expect(gpu.buffers[0].destroy).toHaveBeenCalledTimes(1);
+  cache.get(1, cube());
+  cache.destroy();
+  gpu.scope.dispose();
+});
+
+it('preserves a model allocation error when shared geometry rollback throws', () => {
+  const gpu = fakeMeshGPU();
+  const cache = new MeshGPUCache(gpu.device);
+  const allocate = gpu.mocks.createBuffer.getMockImplementation()!;
+  gpu.mocks.createBuffer.mockImplementationOnce((descriptor) => {
+    const result = allocate(descriptor);
+    result.destroy.mockImplementation(() => {
+      throw new Error('cleanup failed');
+    });
+    return result;
+  });
+  for (let i = 1; i < 7; i++)
+    gpu.mocks.createBuffer.mockImplementationOnce(allocate);
+  gpu.mocks.createBuffer.mockImplementationOnce(() => {
+    throw new Error('model allocation failed');
+  });
+  expect(() => cache.get(1, cube())).toThrow('model allocation failed');
+  expect(gpu.buffers[0].destroy).toHaveBeenCalledTimes(1);
+  expect(cache.stats()).toMatchObject({ instances: 0, uniqueGeometries: 0 });
   cache.get(1, cube());
   cache.destroy();
   gpu.scope.dispose();

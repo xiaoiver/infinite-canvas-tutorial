@@ -214,6 +214,10 @@ buffers during pose/material edits. Only `Mesh3D` writes invalidate geometry;
 when editing arrays directly, acquire the component with `entity.write(Mesh3D)`
 first. The cache consumes those writes after companion synchronization, retains
 them across skipped draws, and uploads the replacement once on the next draw.
+Meshes with identical geometry arrays share the uploaded geometry within one
+canvas, while each mesh keeps its own model uniform and draw bindings. An
+in-place geometry edit uploads a new generation; other instances retain their
+previous GPU snapshot until they are updated or removed.
 Each canvas owns its cache and scene uniforms. Removing a mesh or moving it to
 another canvas releases the old buffers, and disposing the canvas releases its
 resources before the device. Failed allocations are rolled back and can be
