@@ -273,8 +273,13 @@ export class MeshPipeline3D extends System {
       }
     }
 
-    // Coplanar SVG extrusions rely on the 2D painter order: with the reverse
-    // depth comparison, the first opaque fragment at equal depth wins.
+    return out;
+  }
+
+  /** Sort only the color pass; shadow and bounds passes do not use paint order. */
+  private sortCoplanarExtrusions(out: Entity[]): Entity[] {
+    // With the reverse depth comparison, the first opaque fragment at equal
+    // depth wins. Source paint order therefore determines coplanar visibility.
     const layerOrder = new Map<number, number>();
     for (const source of this.extrudeSources.current) {
       const mesh = source.read(Extrude3D).meshEntity;
@@ -496,7 +501,7 @@ export class MeshPipeline3D extends System {
     // Linked canvas cameras look from negative z; standalone cameras use
     // their ordinary view direction. In either mode smaller keys are farther.
     const depthSign = camera.linked && cam2d ? -1 : 1;
-    for (const meshEntity of this.collectMeshEntities(canvas)) {
+    for (const meshEntity of this.sortCoplanarExtrusions(this.collectMeshEntities(canvas))) {
       const gpu = state.meshGPUCache.get(
         meshEntity.__id,
         meshEntity.read(Mesh3D),
