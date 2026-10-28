@@ -431,7 +431,8 @@ radius is clamped to half of its corresponding dimension. The ordinary 2D Rect
 importer still stores a single corner radius.
 Resolvable positive-length SVG dash patterns, including odd-length patterns and
 `stroke-dashoffset`, are expanded into separate editable solid contours.
-Zero-length dash or gap entries, non-scaling strokes, gradients, paint servers
+A zero-length dash with a round cap creates an extruded dot. Zero-length gaps,
+zero-length dashes with other caps, non-scaling strokes, gradients, paint servers
 and unsupported SVG shapes remain in 2D.
 If a stroke cannot generate a valid closed mesh, its original 2D node is kept.
 Expanded stroke contours retain six decimal places while their coordinates are
@@ -491,7 +492,7 @@ to each viewport.
 Choose **Paint style + currentColor sample** to compare inherited and
 instance-specific colors, an inline fill override and a styled stroke.
 Choose **Stroke caps + joins sample** to compare round and square caps, a
-filled shape with a separate 3D outline, and an extruded dashed stroke.
+filled shape with a separate 3D outline, an extruded dashed stroke and round dots.
 Choose **Clip paths + repeated use sample** to inspect two independently
 clipped instances with holes and a shape clipped by an object-bounds union.
 Choose **Group bounds + clip use sample** to inspect an object-bounds clip on a

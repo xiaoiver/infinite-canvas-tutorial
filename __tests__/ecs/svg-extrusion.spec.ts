@@ -695,6 +695,7 @@ it('applies nonuniform viewBox scaling to a fill and its expanded stroke', () =>
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="200" height="100" preserveAspectRatio="none">' +
     '<ellipse id="oval" cx="20" cy="20" rx="10" ry="5" fill="red"/>' +
     '<path id="stroke" d="M0 0 H10 V10 H0 Z" fill="red" stroke="black"/>' +
+    '<path id="dots" d="M40 40 H80" fill="none" stroke="blue" stroke-width="4" stroke-dasharray="0 10" stroke-linecap="round"/>' +
     '</svg>',
     { contentType: 'image/svg+xml' },
   );
@@ -712,6 +713,9 @@ it('applies nonuniform viewBox scaling to a fill and its expanded stroke', () =>
     extrude3d: { depth: expect.any(Number), z: expect.any(Number) },
     fills: [{ type: 'solid', value: 'black' }],
   });
+  const dots = nodes.find((node) => node.id === 'dots');
+  expect(dots).toMatchObject({ type: 'path', scaleX: 2, scaleY: 1, extrude3d: 20 });
+  expect(dots?.type === 'path' && buildPathExtrusionMesh(dots.d)).toBeDefined();
   const raised = nodes.find((node) => node.id === 'stroke--stroke');
   if (raised?.type !== 'path' || typeof raised.extrude3d !== 'object')
     throw new Error('Missing raised stroke extrusion');
@@ -809,6 +813,10 @@ it('extrudes positive SVG dash patterns and keeps unsupported strokes in 2D', ()
   expect(buildPathExtrusionMesh(straight)).toBeDefined();
   const closed = strokeOutline('M0 0 H20 V20 H0 Z', 4, 'butt', 'miter', 4, [15, 5], 5);
   expect(closed.match(/M/g)).toHaveLength(4);
+  const dots = strokeOutline('M0 0 H20', 4, 'round', 'miter', 4, [0, 5]);
+  expect(dots.match(/M/g)).toHaveLength(5);
+  expect(buildPathExtrusionMesh(dots)).toBeDefined();
+  expect(strokeOutline('M0 0 H20', 4, 'butt', 'miter', 4, [0, 5])).toBe('');
 
   const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
     <path id="dashed" d="M0 0 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="5 3" stroke-dashoffset="2"/>
@@ -816,19 +824,20 @@ it('extrudes positive SVG dash patterns and keeps unsupported strokes in 2D', ()
     <path id="non-scaling" d="M0 20 H40" fill="none" stroke="blue" stroke-width="8" vector-effect="non-scaling-stroke"/>
     <path id="gradient" d="M0 40 H40" fill="none" stroke="url(#paint)" stroke-width="8"/>
     <path id="zero-dash" d="M0 80 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="0 4" stroke-linecap="round"/>
+    <path id="zero-gap" d="M0 100 H40" fill="none" stroke="red" stroke-width="8" stroke-dasharray="4 0" stroke-linecap="round"/>
   </svg>`, { contentType: 'image/svg+xml' });
   const nodes = svgElementsToExtrudedNodes(
     dom.window.document.documentElement as unknown as SVGSVGElement, 12,
   );
   expect(nodes.map((node) => node.id)).toEqual([
-    'dashed', 'odd-pattern', 'non-scaling', 'gradient', 'zero-dash',
+    'dashed', 'odd-pattern', 'non-scaling', 'gradient', 'zero-dash', 'zero-gap',
   ]);
-  for (const id of ['dashed', 'odd-pattern']) {
+  for (const id of ['dashed', 'odd-pattern', 'zero-dash']) {
     const node = nodes.find((item) => item.id === id);
     expect(node).toMatchObject({ type: 'path', extrude3d: 12 });
     expect(node?.type === 'path' && buildPathExtrusionMesh(node.d)).toBeDefined();
   }
-  for (const id of ['non-scaling', 'gradient', 'zero-dash'])
+  for (const id of ['non-scaling', 'gradient', 'zero-gap'])
     expect(nodes.find((node) => node.id === id)).not.toHaveProperty('extrude3d');
 });
 

@@ -132,7 +132,7 @@ function svgStrokeDashes(element: SVGElement): number[] | null {
   const dashes = parts.map((part) => Number(part.replace(/px$/, '')));
   if (parts.some((part) => !/^(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(?:px)?$/i.test(part)) ||
     dashes.some((dash) => !Number.isFinite(dash) || dash < 0)) return null;
-  return dashes.every((dash) => dash === 0) ? [] : dashes;
+  return dashes.every((dash) => dash === 0) ? null : dashes;
 }
 
 /** Expand a supported stroke into a second editable extrusion source. */
