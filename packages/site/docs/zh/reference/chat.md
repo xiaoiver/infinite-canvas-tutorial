@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '聊天框插件，把对话界面接到无限画布上。'
 ---
+
 <script setup>
 import WhenCanvasMeetsChat from '../../components/WhenCanvasMeetsChat.vue'
 </script>

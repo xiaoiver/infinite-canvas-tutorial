@@ -1,0 +1,7 @@
+# Origin robots.txt for https://infinitecanvas.cc
+# Cloudflare may prepend content-signal comments in front of this file.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://infinitecanvas.cc/sitemap.xml

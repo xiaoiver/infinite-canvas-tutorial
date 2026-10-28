@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Lasso plugin for freehand region selection on the canvas.'
 ---
+
 <script setup>
 import Lasso from '../components/Lasso.vue'
 </script>

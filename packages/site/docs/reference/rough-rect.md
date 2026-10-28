@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js rectangle: hand-drawn rectangles.'
 ---
+
 # RoughRect
 
 See SVG [rect].

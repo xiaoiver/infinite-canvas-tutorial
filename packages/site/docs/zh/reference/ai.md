@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '通过接口在画布上做图像生成、分割和放大。详见课程 28；正式环境应把这些能力放在服务端。'
 ---
+
 通过实现相关接口提供各种 AI 功能，详见：[课程 28 - 与 AI 结合]。另外，在实际使用时应当将这些功能封装在服务端，以 API 形式提供给应用。
 
 ## upload
@@ -261,7 +263,7 @@ const result = await fal.subscribe('fal-ai/qwen-image-layered', {
 }): Promise<Image>;
 ```
 
-### Tensorflow
+### TensorFlow
 
 使用 [upscalerjs] 实现，基于 tensorflow.js，详见：[Upscaler 插件]
 

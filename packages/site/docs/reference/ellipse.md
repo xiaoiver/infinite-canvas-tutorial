@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Ellipse shape reference: radii, style, and scene-graph usage.'
 ---
+
 # Ellipse
 
 See SVG [ellipse].

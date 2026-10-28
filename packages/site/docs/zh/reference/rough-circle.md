@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js 圆：手绘风格的圆形描边与填充。'
 ---
+
 # RoughCircle
 
 参考 SVG [circle]。

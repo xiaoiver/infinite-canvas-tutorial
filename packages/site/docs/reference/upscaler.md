@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'UpscalerJS plugin that implements the upscaleImage AI API.'
 ---
+
 Use [UpscalerJS] implementing [AI API] `upscaleImage`
 
 -   Running in WebWorker with tensorflow.js runtime

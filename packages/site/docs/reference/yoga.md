@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Yoga flex layout on canvas nodes: alignment, justification, gap, and sizing.'
 ---
+
 <script setup>
 import YogaGap from '../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../components/YogaFlexBasisGrowShrink.vue'

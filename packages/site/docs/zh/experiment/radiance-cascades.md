@@ -1,6 +1,7 @@
 ---
 layout: 'doc'
 aside: false
+description: '用 Radiance Cascades 做实时全局光照，并点亮 Mermaid 流程图。'
 ---
 
 <script setup>

@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: ''
+description: 'Embed HTML and iframes, such as code blocks, video, and ShaderToy, so they pan and zoom with the camera.'
 head:
     - [
           'meta',
@@ -10,6 +10,7 @@ head:
           },
       ]
 ---
+
 <script setup>
 import HTML from '../components/HTML.vue'
 import Iframe from '../components/Iframe.vue'

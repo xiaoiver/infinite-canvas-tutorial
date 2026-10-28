@@ -1,6 +1,6 @@
 ---
 outline: deep
-description: ''
+description: '设计变量与主题、组件化生成和图标字体，以及从设计导出到代码的路径。'
 ---
 
 <script setup>

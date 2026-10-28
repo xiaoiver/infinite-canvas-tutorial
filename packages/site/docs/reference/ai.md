@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'AI interfaces for image generation, segmentation, and upscaling on the canvas. See Lesson 28; production apps should call these from a server.'
 ---
+
 Various AI functionalities are provided by implementing relevant interfaces. For details, see: [Lesson 28 - Integration with AI]. In practice, these functionalities should be encapsulated on the server side and provided to applications via API.
 
 ## upload
@@ -261,7 +263,7 @@ const result = await fal.subscribe('fal-ai/qwen-image-layered', {
 }): Promise<Image>;
 ```
 
-### Tensorflow
+### TensorFlow
 
 Use [upscalerjs] based on tensorflow.js, see: [Upscaler Plugin]
 

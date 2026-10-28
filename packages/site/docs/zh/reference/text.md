@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Text 图形参考：字体、排版、填充，以及画布上的文本编辑。'
 ---
+
 # Text
 
 参考 SVG [text]，支持 Bitmap Font、MSDF、Emoji、双向文本等特性。

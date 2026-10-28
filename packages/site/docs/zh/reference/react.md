@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: '面向 Spectrum 画布的 React 18/19 绑定，包括类型化事件、hooks 和共享的应用生命周期。'
 ---
 
 <script setup>
@@ -250,16 +251,20 @@ function EditorSurface() {
 }
 
 export function Editor() {
-    return <CanvasProvider><EditorSurface /></CanvasProvider>;
+    return (
+        <CanvasProvider>
+            <EditorSurface />
+        </CanvasProvider>
+    );
 }
 ```
 
-| 按键 | 操作 |
-| --- | --- |
-| Ctrl/⌘+Z | 撤销 |
-| Ctrl/⌘+Shift+Z、Ctrl+Y | 重做 |
-| Ctrl/⌘+A | 全选未删除的节点，不增加撤销记录 |
-| Delete、Backspace | 删除当前选区，作为一次可撤销编辑 |
+| 按键                   | 操作                             |
+| ---------------------- | -------------------------------- |
+| Ctrl/⌘+Z               | 撤销                             |
+| Ctrl/⌘+Shift+Z、Ctrl+Y | 重做                             |
+| Ctrl/⌘+A               | 全选未删除的节点，不增加撤销记录 |
+| Delete、Backspace      | 删除当前选区，作为一次可撤销编辑 |
 
 请将返回的 props 一起展开到同一个元素上，包括 `onKeyDownCapture` 和
 `data-canvas-shortcuts`。捕获阶段处理可避免底层 Web Component 重复执行同一条命令。
@@ -296,10 +301,16 @@ function ViewControls() {
     return (
         <div>
             <output aria-label="缩放比例">{Math.round(zoom * 100)}%</output>
-            <button disabled={status !== 'ready'} onClick={() => actions.zoomTo(1)}>
+            <button
+                disabled={status !== 'ready'}
+                onClick={() => actions.zoomTo(1)}
+            >
                 重置缩放
             </button>
-            <button disabled={status !== 'ready'} onClick={() => actions.fitToScreen()}>
+            <button
+                disabled={status !== 'ready'}
+                onClick={() => actions.fitToScreen()}
+            >
                 适应全部图形
             </button>
         </div>

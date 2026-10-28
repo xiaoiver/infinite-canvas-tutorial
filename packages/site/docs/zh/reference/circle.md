@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Circle 图形参考：几何、填充、描边，以及它在场景图中的用法。'
 ---
+
 # Circle
 
 参考 SVG [circle]。

@@ -1,18 +1,20 @@
 ---
 outline: deep
+description: 'Export the canvas to an image, including 2D content and 3D meshes. See Lessons 10 and 39.'
 ---
+
 See [Lesson 10 - Importing and exporting images] and [Lesson 39 - 3D] for more information.
 
 ```ts
 api.export({ format: ExportFormat.PNG, download: true, nodes: [] });
 
 export enum ExportFormat {
-  SVG = 'svg',
-  PNG = 'png',
-  JPEG = 'jpeg',
-  WEBM = 'webm',
-  GIF = 'gif',
-  GLB = 'glb',
+    SVG = 'svg',
+    PNG = 'png',
+    JPEG = 'jpeg',
+    WEBM = 'webm',
+    GIF = 'gif',
+    GLB = 'glb',
 }
 ```
 

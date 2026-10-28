@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Chat box plugin that connects a conversation UI to the infinite canvas.'
 ---
+
 <script setup>
 import WhenCanvasMeetsChat from '../components/WhenCanvasMeetsChat.vue'
 </script>

@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '画布节点上的 Yoga 弹性布局：对齐、主轴分布、间距和尺寸。'
 ---
+
 <script setup>
 import YogaGap from '../../components/YogaGap.vue'
 import YogaFlexBasisGrowShrink from '../../components/YogaFlexBasisGrowShrink.vue'

@@ -1,3 +1,7 @@
+---
+description: '网格渐变实验，在画布上做多色标的颜色场。'
+---
+
 参考 [Mesh Gradient]
 
 <script setup>

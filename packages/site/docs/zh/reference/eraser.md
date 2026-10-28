@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '橡皮擦插件，用于擦除或切开画布上的笔迹。'
 ---
+
 <script setup>
 import Eraser from '../../components/Eraser.vue'
 </script>

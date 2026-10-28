@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: 'Import a Figma file into the canvas scene graph and export the scene back to Figma.'
 ---
 
 # Figma

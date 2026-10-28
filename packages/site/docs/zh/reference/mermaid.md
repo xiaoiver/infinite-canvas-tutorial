@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: 'Mermaid 插件，把图表文本变成画布场景图。详见课程 32。'
 ---
 
 <script setup>

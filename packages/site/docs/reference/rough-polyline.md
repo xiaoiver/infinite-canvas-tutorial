@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js polyline: sketch-style open strokes.'
 ---
+
 # RoughPolyline
 
 See SVG [polyline].

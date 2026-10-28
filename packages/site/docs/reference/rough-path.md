@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js path: hand-drawn rendering of SVG paths.'
 ---
+
 <script setup>
 import Holes from '../components/Holes.vue';
 import FillRule from '../components/FillRule.vue';

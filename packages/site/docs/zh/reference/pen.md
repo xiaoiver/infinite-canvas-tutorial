@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '画笔工具的状态、绘制模式，以及如何用 AppState 控制它们。'
 ---
+
 <script setup>
 import TextEditor from '../../components/TextEditor.vue';
 import DrawRect from '../../components/DrawRect.vue';

@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js 折线：草图风格的开放笔迹。'
 ---
+
 # RoughPolyline
 
 参考 SVG [polyline]。

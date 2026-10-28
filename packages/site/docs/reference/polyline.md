@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Polyline shape reference for open strokes with width, joins, and caps.'
 ---
+
 # Polyline
 
 See SVG [polyline].

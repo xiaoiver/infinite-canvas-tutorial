@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'LaMa plugin for object-removal inpainting through the canvas AI API.'
 ---
+
 [AI API]
 
 ```ts

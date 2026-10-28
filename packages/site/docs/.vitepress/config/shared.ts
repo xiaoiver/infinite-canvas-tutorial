@@ -1,9 +1,7 @@
 import { defineConfig } from 'vitepress';
+import { applyPageSeo, filterSitemapItems } from './seo';
 import { search } from './zh';
 
-const title = 'Infinite Canvas Tutorial';
-const description =
-  'An in-depth and open-source infinite canvas tutorial built with HTML5 Canvas, WebGL/WebGPU, ECS, SDF rendering, collaboration via CRDT/Yjs—empowering developers to craft Figma‑like interactive workspaces.';
 export const adsenseClient =
   process.env.ADSENSE_ENABLED === 'true'
     ? process.env.ADSENSE_CLIENT?.trim()
@@ -41,6 +39,9 @@ export const shared = defineConfig({
   },
   sitemap: {
     hostname: 'https://infinitecanvas.cc',
+    transformItems(items) {
+      return filterSitemapItems(items);
+    },
   },
   head: [
     // [
@@ -50,8 +51,6 @@ export const shared = defineConfig({
     ['link', { rel: 'icon', type: 'image/png', href: '/canvas-mini.png' }],
     ['meta', { name: 'theme-color', content: '#5f67ee' }],
     ['meta', { property: 'og:type', content: 'website' }],
-    ['meta', { property: 'og:locale', content: 'en-US' }],
-    ['meta', { property: 'og:title', content: 'Infinite Canvas Tutorial' }],
     ['meta', { property: 'og:site', content: 'https://infinitecanvas.cc' }],
     ['meta', { property: 'og:site_name', content: 'Infinite Canvas Tutorial' }],
     [
@@ -61,26 +60,24 @@ export const shared = defineConfig({
         content: 'https://infinitecanvas.cc/canvas.png',
       },
     ],
-    ['meta', { property: 'og:url', content: 'https://infinitecanvas.cc' }],
-    ['meta', { property: 'og:description', content: description }],
-
-    // Twitter
     ['meta', { name: 'twitter:card', content: 'summary_large_image' }],
     ['meta', { name: 'twitter:site', content: '@YuqiP45780' }],
-    ['meta', { name: 'twitter:title', content: title }],
-    ['meta', { name: 'twitter:description', content: description }],
+    [
+      'meta',
+      {
+        name: 'twitter:image',
+        content: 'https://infinitecanvas.cc/canvas.png',
+      },
+    ],
   ],
-  // @see https://vitepress.dev/reference/site-config#example-adding-a-canonical-url-link
-  transformPageData(pageData) {
-    const canonicalUrl = `https://infinitecanvas.cc/${pageData.relativePath}`
-      .replace(/index\.md$/, '')
-      .replace(/\.md$/, '.html');
-
-    pageData.frontmatter.head ??= [];
-    pageData.frontmatter.head.push([
-      'link',
-      { rel: 'canonical', href: canonicalUrl },
-    ]);
+  // Per-page canonical, Open Graph, Twitter, and hreflang. Runs in dev and SSG,
+  // so client navigations and crawlers see the same tags. cleanUrls stays extensionless.
+  transformPageData(pageData, { siteConfig }) {
+    applyPageSeo(pageData, {
+      pages: siteConfig.pages,
+      cleanUrls: siteConfig.cleanUrls === true,
+      rewrites: siteConfig.rewrites,
+    });
   },
   ignoreDeadLinks: true,
 });

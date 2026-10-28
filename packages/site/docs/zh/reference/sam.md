@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Segment Anything 插件，通过画布 AI API 做图像分割。'
 ---
+
 使用 SAM 实现 [AI 相关 API] 中的分割图片部分
 
 ```ts

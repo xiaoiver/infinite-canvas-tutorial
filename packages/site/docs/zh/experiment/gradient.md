@@ -1,3 +1,7 @@
+---
+description: '用 CanvasGradient 生成渐变，再作为纹理填到画布图形上。'
+---
+
 <script setup>
 import Gradient from '../../components/Gradient.vue'
 </script>

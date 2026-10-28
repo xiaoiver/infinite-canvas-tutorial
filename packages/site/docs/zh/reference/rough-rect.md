@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rough.js 矩形：手绘风格的矩形。'
 ---
+
 # RoughRect
 
 参考 SVG [rect]。

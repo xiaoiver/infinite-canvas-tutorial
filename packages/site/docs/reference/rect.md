@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Rectangle shape reference, including corner radius and fill.'
 ---
+
 # Rect
 
 See SVG [rect].

@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'Pen and brush tool state, drawing modes, and how to control them through AppState.'
 ---
+
 <script setup>
 import TextEditor from '../components/TextEditor.vue';
 import DrawRect from '../components/DrawRect.vue';

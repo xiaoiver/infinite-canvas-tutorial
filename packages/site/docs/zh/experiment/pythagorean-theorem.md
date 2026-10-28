@@ -1,3 +1,7 @@
+---
+description: '在画布上用动画演示勾股定理的几何关系。'
+---
+
 <script setup>
 import PythagoreanTheorem from '../../components/PythagoreanTheorem.vue'
 </script>

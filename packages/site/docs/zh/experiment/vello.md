@@ -1,7 +1,9 @@
 ---
 layout: 'doc'
 aside: false
+description: '在画布上试用 Vello GPU 渲染器。详见课程 35。'
 ---
+
 <script setup>
 import Vello from '../../components/Vello.vue'
 </script>

@@ -1,3 +1,7 @@
+---
+description: '用水彩风格绘制 Mermaid 流程图。'
+---
+
 <script setup>
 import MermaidWatercolor from '../../components/MermaidWatercolor.vue'
 </script>

@@ -1,5 +1,6 @@
 ---
 outline: deep
+description: 'React 18/19 bindings for the Spectrum canvas, including typed events, hooks, and a shared app lifecycle.'
 ---
 
 <script setup>
@@ -264,16 +265,20 @@ function EditorSurface() {
 }
 
 export function Editor() {
-    return <CanvasProvider><EditorSurface /></CanvasProvider>;
+    return (
+        <CanvasProvider>
+            <EditorSurface />
+        </CanvasProvider>
+    );
 }
 ```
 
-| Key | Action |
-| --- | --- |
-| Ctrl/⌘+Z | Undo |
-| Ctrl/⌘+Shift+Z, Ctrl+Y | Redo |
-| Ctrl/⌘+A | Select all undeleted nodes without adding an undo entry |
-| Delete, Backspace | Delete the current selection as one undoable edit |
+| Key                    | Action                                                  |
+| ---------------------- | ------------------------------------------------------- |
+| Ctrl/⌘+Z               | Undo                                                    |
+| Ctrl/⌘+Shift+Z, Ctrl+Y | Redo                                                    |
+| Ctrl/⌘+A               | Select all undeleted nodes without adding an undo entry |
+| Delete, Backspace      | Delete the current selection as one undoable edit       |
 
 Keep all returned props on the same element, including `onKeyDownCapture` and
 `data-canvas-shortcuts`. Capture prevents the Web Component from processing the
@@ -315,10 +320,16 @@ function ViewControls() {
     return (
         <div>
             <output aria-label="Zoom">{Math.round(zoom * 100)}%</output>
-            <button disabled={status !== 'ready'} onClick={() => actions.zoomTo(1)}>
+            <button
+                disabled={status !== 'ready'}
+                onClick={() => actions.zoomTo(1)}
+            >
                 Reset zoom
             </button>
-            <button disabled={status !== 'ready'} onClick={() => actions.fitToScreen()}>
+            <button
+                disabled={status !== 'ready'}
+                onClick={() => actions.fitToScreen()}
+            >
                 Fit all shapes
             </button>
         </div>

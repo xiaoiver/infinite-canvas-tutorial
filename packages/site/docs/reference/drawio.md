@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: 'draw.io plugin that converts mxGraph data into canvas nodes.'
 ---
+
 <script setup>
 import Drawio from '../components/Drawio.vue'
 </script>

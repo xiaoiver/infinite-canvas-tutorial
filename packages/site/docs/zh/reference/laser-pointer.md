@@ -1,6 +1,8 @@
 ---
 outline: deep
+description: '激光笔插件，用于演示时的临时高亮，不写入文档。'
 ---
+
 <script setup>
 import LaserPointer from '../../components/LaserPointer.vue'
 </script>

@@ -1,9 +1,10 @@
 ---
 outline: deep
-description: ''
+description: '在画布中嵌入 HTML 和 iframe（代码块、视频、ShaderToy 等），并让它们随相机平移和缩放。'
 head:
     - ['meta', { property: 'og:title', content: '课程 29 - 嵌入 HTML 内容' }]
 ---
+
 <script setup>
 import HTML from '../../components/HTML.vue'
 import Iframe from '../../components/Iframe.vue'

@@ -1,7 +1,8 @@
 ---
 outline: deep
-description: ''
+description: '为图形建立连接关系，让连线在节点移动时跟随，包括正交、曲线和箭头绑定。'
 ---
+
 <script setup>
 import Binding from '../../components/Binding.vue'
 import BindingWithEllipse from '../../components/BindingWithEllipse.vue'
