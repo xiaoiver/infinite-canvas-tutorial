@@ -1,9 +1,14 @@
 ---
-
 outline: deep
 description: 'Frame과 클리핑: 스텐실 버퍼로 clip/erase를 구현하고, PNG/SVG로 내보낼 때 clip-path와 mask를 처리합니다.'
-head: - ['meta', { property: 'og:title', content: '34강 - Group, Frame 과 클리핑' }]
----<script setup>
+head:
+    - [
+          'meta',
+          { property: 'og:title', content: '34강 - Group, Frame 과 클리핑' },
+      ]
+---
+
+<script setup>
 import ClipPath from '../../components/ClipPath.vue'
 import Mask from '../../components/Mask.vue'
 import ClipPathSoft from '../../components/ClipPathSoft.vue'
