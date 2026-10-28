@@ -35,15 +35,71 @@ export interface MeshGPUData {
 interface Entry {
   data: MeshGPUData;
   dirty: boolean;
+  geometry: SharedGeometry;
   dispose: () => void;
+}
+
+type GeometryKey = Pick<
+  Mesh3D,
+  'positions' | 'normals' | 'tangents' | 'colors' | 'uvs' | 'uvs1' | 'indices'
+>;
+type GeometryBuffers = Pick<
+  MeshGPUData,
+  | 'vertexBuffer'
+  | 'normalBuffer'
+  | 'tangentBuffer'
+  | 'colorBuffer'
+  | 'uvBuffer'
+  | 'uv1Buffer'
+  | 'indexBuffer'
+  | 'indexCount'
+  | 'vertexCount'
+  | 'localBounds'
+>;
+interface SharedGeometry {
+  key: GeometryKey;
+  buffers: GeometryBuffers;
+  bytes: number;
+  references: number;
+  active: boolean;
+  dispose: () => void;
+}
+
+function geometryMatches(key: GeometryKey, mesh: Mesh3D): boolean {
+  return (
+    key.positions === mesh.positions &&
+    key.normals === mesh.normals &&
+    key.tangents === mesh.tangents &&
+    key.colors === mesh.colors &&
+    key.uvs === mesh.uvs &&
+    key.uvs1 === mesh.uvs1 &&
+    key.indices === mesh.indices
+  );
 }
 
 /** Geometry invalidation is independent of pose/material uniform updates. */
 export class MeshGPUCache {
   private entries = new Map<number, Entry>();
+  private geometry = new Map<Float32Array, SharedGeometry[]>();
   private disposed = false;
 
   constructor(private device: Device) {}
+
+  /** Live GPU allocation estimate, excluding device-specific alignment. */
+  stats(): {
+    instances: number;
+    uniqueGeometries: number;
+    geometryBytes: number;
+    modelUniformBytes: number;
+  } {
+    const shared = [...this.geometry.values()].flat();
+    return {
+      instances: this.entries.size,
+      uniqueGeometries: shared.length,
+      geometryBytes: shared.reduce((total, item) => total + item.bytes, 0),
+      modelUniformBytes: this.entries.size * MESH_MODEL_UNIFORM_FLOATS * 4,
+    };
+  }
 
   invalidate(ids: Iterable<number>): void {
     for (const id of ids) {
@@ -73,25 +129,86 @@ export class MeshGPUCache {
     }
     if (previous && !previous.dirty) return previous.data;
 
+    // An in-place write can retain the same typed-array identities. Re-upload
+    // that mesh without changing another instance's existing GPU snapshot.
+    const fresh = !!previous && geometryMatches(previous.geometry.key, mesh);
+    if (fresh) previous.geometry.active = false;
+    const geometry = this.acquireGeometry(mesh, fresh);
     const scope = new ResourceScope();
-    const buffer = (
-      viewOrSize: Float32Array | Uint32Array | number,
-      usage: BufferUsage,
-    ) => {
-      const resource = this.device.createBuffer({
-        viewOrSize,
-        usage,
-        hint:
-          usage === BufferUsage.UNIFORM
-            ? BufferFrequencyHint.DYNAMIC
-            : BufferFrequencyHint.STATIC,
+    scope.add(() => this.releaseGeometry(geometry));
+    let data: MeshGPUData;
+    try {
+      const modelUniformBuffer = this.device.createBuffer({
+        viewOrSize: MESH_MODEL_UNIFORM_FLOATS * 4,
+        usage: BufferUsage.UNIFORM,
+        hint: BufferFrequencyHint.DYNAMIC,
       });
+      scope.add(() => modelUniformBuffer.destroy());
+      const bindings = new MeshDrawBindings(this.device, modelUniformBuffer);
+      scope.add(() => bindings.destroy());
+      const outlineBindings = new MeshDrawBindings(
+        this.device,
+        modelUniformBuffer,
+      );
+      scope.add(() => outlineBindings.destroy());
+      const shadowBindings = new ShadowDrawBindings(
+        this.device,
+        modelUniformBuffer,
+      );
+      scope.add(() => shadowBindings.destroy());
+      data = {
+        ...geometry.buffers,
+        modelUniformBuffer,
+        modelUniforms: new MeshModelUniforms(modelUniformBuffer),
+        bindings,
+        outlineBindings,
+        shadowBindings,
+      };
+    } catch (error) {
+      // Keep the previous entry dirty for retry; never publish partial buffers.
+      try {
+        scope.dispose();
+      } catch {
+        /* Preserve the allocation error after attempting every release. */
+      }
+      throw error;
+    }
+    this.entries.set(id, {
+      data,
+      dirty: false,
+      geometry,
+      dispose: () => scope.dispose(),
+    });
+    previous?.dispose();
+    return data;
+  }
+
+  private acquireGeometry(mesh: Mesh3D, fresh: boolean): SharedGeometry {
+    const matching = this.geometry.get(mesh.positions) ?? [];
+    if (!fresh) {
+      for (let i = matching.length - 1; i >= 0; i--) {
+        const shared = matching[i];
+        if (shared.active && geometryMatches(shared.key, mesh)) {
+          shared.references++;
+          return shared;
+        }
+      }
+    }
+    const scope = new ResourceScope();
+    let bytes = 0;
+    const buffer = (view: Float32Array | Uint32Array, usage: BufferUsage) => {
+      const resource = this.device.createBuffer({
+        viewOrSize: view,
+        usage,
+        hint: BufferFrequencyHint.STATIC,
+      });
+      bytes += view.byteLength;
       scope.add(() => resource.destroy());
       return resource;
     };
-    let data: MeshGPUData;
+    let buffers: GeometryBuffers;
     try {
-      const geometry = {
+      buffers = {
         vertexBuffer: buffer(mesh.positions, BufferUsage.VERTEX),
         normalBuffer: buffer(mesh.normals, BufferUsage.VERTEX),
         tangentBuffer: buffer(
@@ -124,33 +241,9 @@ export class MeshGPUCache {
           : null,
         indexCount: mesh.indices?.length ?? 0,
         vertexCount: mesh.vertexCount,
-        modelUniformBuffer: buffer(
-          MESH_MODEL_UNIFORM_FLOATS * 4,
-          BufferUsage.UNIFORM,
-        ),
-      };
-      data = {
-        ...geometry,
-        modelUniforms: new MeshModelUniforms(geometry.modelUniformBuffer),
-        bindings: new MeshDrawBindings(
-          this.device,
-          geometry.modelUniformBuffer,
-        ),
-        outlineBindings: new MeshDrawBindings(
-          this.device,
-          geometry.modelUniformBuffer,
-        ),
-        shadowBindings: new ShadowDrawBindings(
-          this.device,
-          geometry.modelUniformBuffer,
-        ),
         localBounds: meshBounds(mesh.positions),
       };
-      scope.add(() => data.bindings.destroy());
-      scope.add(() => data.outlineBindings.destroy());
-      scope.add(() => data.shadowBindings.destroy());
     } catch (error) {
-      // Keep the previous entry dirty for retry; never publish partial buffers.
       try {
         scope.dispose();
       } catch {
@@ -158,13 +251,37 @@ export class MeshGPUCache {
       }
       throw error;
     }
-    this.entries.set(id, {
-      data,
-      dirty: false,
+    const key: GeometryKey = {
+      positions: mesh.positions,
+      normals: mesh.normals,
+      tangents: mesh.tangents,
+      colors: mesh.colors,
+      uvs: mesh.uvs,
+      uvs1: mesh.uvs1,
+      indices: mesh.indices,
+    };
+    const shared: SharedGeometry = {
+      key,
+      buffers,
+      bytes,
+      references: 1,
+      active: true,
       dispose: () => scope.dispose(),
-    });
-    previous?.dispose();
-    return data;
+    };
+    matching.push(shared);
+    this.geometry.set(mesh.positions, matching);
+    return shared;
+  }
+
+  private releaseGeometry(shared: SharedGeometry): void {
+    if (--shared.references > 0) return;
+    const bucket = this.geometry.get(shared.key.positions);
+    if (bucket) {
+      const index = bucket.indexOf(shared);
+      if (index !== -1) bucket.splice(index, 1);
+      if (!bucket.length) this.geometry.delete(shared.key.positions);
+    }
+    shared.dispose();
   }
 
   destroy(): void {

@@ -69,7 +69,8 @@ test('App SVG import, extrusion editing and GLB export work together', async ({
   });
   expect(result.nodes.filter((node) => node.type === 'path')).toHaveLength(2);
   expect(extruded[1]).toMatchObject({
-    type: 'path', fillRule: 'evenodd',
+    type: 'path',
+    fillRule: 'evenodd',
     fills: [{ type: 'solid', value: 'black' }],
   });
   const initial = glbJson(result.initialGlb);
@@ -85,6 +86,29 @@ test('App SVG import, extrusion editing and GLB export work together', async ({
     ),
   ).toBe(true);
   expect(result.editedGlb.length).toBeGreaterThan(result.initialGlb.length);
+  expect(errors).toEqual([]);
+});
+
+test('repeated SVG instances keep separate editable meshes and GLB exports', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(() =>
+    window.gizmoTest.importAndExportSvg(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="240" height="80">
+        <defs><path id="tile" d="M0 0 H50 V50 H0 Z" fill="#33aabb"/></defs>
+        <use href="#tile" x="0"/><use href="#tile" x="80"/>
+        <use href="#tile" x="160"/>
+      </svg>`),
+  );
+  expect(
+    result.nodes.filter((node) => 'extrude3d' in node && node.extrude3d),
+  ).toHaveLength(3);
+  expect(glbJson(result.initialGlb).meshes).toHaveLength(3);
+  expect(glbJson(result.editedGlb).meshes).toHaveLength(3);
   expect(errors).toEqual([]);
 });
 
