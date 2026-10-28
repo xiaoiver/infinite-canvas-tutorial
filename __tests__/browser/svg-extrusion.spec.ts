@@ -328,6 +328,49 @@ test('SVG patternTransform moves the repeated tile in the rendered fill', async 
   }, { timeout: 10_000 }).toEqual([false, true, false, false, true]);
 });
 
+test('SVG pattern origin stays aligned across a positioned Rect and Path', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  await page.evaluate(() => window.gizmoTest.showSvgArtwork(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">
+      <defs><pattern id="stripes" x="5" width="20" height="20"
+        patternUnits="userSpaceOnUse">
+        <rect width="20" height="20" fill="white"/>
+        <rect width="5" height="20" fill="red"/>
+      </pattern></defs>
+      <g fill="url(#stripes)">
+        <rect x="0" y="0" width="20" height="20"/>
+        <rect x="30" y="0" width="20" height="20"/>
+        <path d="M30 30 H50 V50 H30 Z"/>
+      </g>
+    </svg>
+  `));
+  const points = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const rects = api.getNodes().filter((node) => node.type === 'rect')
+      .sort((a, b) => a.x - b.x);
+    const path = api.getNodes().find((node) => node.type === 'path')!;
+    const samples: [typeof path, number][] = [
+      [rects[0], 7], [rects[0], 2],
+      [rects[1], 17], [rects[1], 7],
+      [path, 17], [path, 7],
+    ];
+    return samples.map(([node, dx]) => {
+      const bounds = api.getGeometryBounds([node]);
+      return api.canvas2Viewport({
+        x: bounds.minX + Number(dx), y: bounds.minY + 10,
+      });
+    });
+  });
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    return points.map((point) => {
+      const [r, g, b] = canvasRgbAt(png, point.x, point.y);
+      return r > 150 && r > g * 2 && r > b * 2;
+    });
+  }, { timeout: 10_000 }).toEqual([true, false, true, false, true, false]);
+});
+
 test('zoomed SVG pattern keeps its tile spacing and rerasterizes the tile', async ({ page }) => {
   await page.goto('/gizmo.html?extrudePath');
   await expect(page.locator('#status')).toHaveText('Ready');

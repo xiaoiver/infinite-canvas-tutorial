@@ -440,7 +440,10 @@ or sliced viewports, zero-length gaps, zero-length dashes with other caps,
 gradients, paint servers and unsupported SVG shapes remain in 2D.
 Self-contained `<pattern>` fills with integer pixel tiles and `patternUnits="userSpaceOnUse"`
 are imported as repeating 2D fills. The tile can contain basic SVG shapes; linked
-resources and nonzero pattern origins are not yet supported. Supported
+resources are not yet supported. Numeric `x` and `y` pattern origins remain
+aligned when the same pattern fills shapes at different positions, including
+fills inherited from a group. Inherited pattern fills become editable fills on
+the individual child shapes. Supported
 `patternTransform` functions (`matrix`, `translate`, `scale`, `rotate` and `skew`)
 remain editable on the imported fill.
 As the canvas zooms in, SVG pattern tiles are redrawn from their vector source.
