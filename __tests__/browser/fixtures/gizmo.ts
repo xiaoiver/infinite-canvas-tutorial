@@ -123,6 +123,18 @@ const harness = {
       longestPath: paths.reduce((max, node) => Math.max(max, node.d.length), 0),
     };
   },
+  showSvgArtwork: async (
+    source: string,
+    center = { x: 100, y: 100 },
+  ) => {
+    const nodes = importExtrudedSvg(source, 24, center);
+    await api.edit((editor) => editor.replaceDocument(nodes, 'remote'));
+    await settleECSFrames(api, 3);
+    return {
+      nodes: nodes.length,
+      extrudedNodes: nodes.filter((node) => 'extrude3d' in node && node.extrude3d).length,
+    };
+  },
   profileSvgArtworkEdit: async (source: string) => {
     const cacheBefore = recentPathExtrusionMeshCacheStats();
     const importStart = performance.now();

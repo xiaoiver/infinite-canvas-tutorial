@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { PNG } from 'pngjs';
+import { writeFileSync } from 'node:fs';
 
 function sample(instances: number, segments: number) {
   const points = Array.from({ length: segments }, (_, index) => {
@@ -101,4 +102,54 @@ test('profile real browser SVG import', async ({ page }, testInfo) => {
     JSON.stringify({ result, variants, artwork, tiger, visiblePixels, top }),
   );
   expect(result.nodes).toBeGreaterThan(0);
+});
+
+test('capture larger SVG extrusion contour views', async ({ page }, testInfo) => {
+  test.setTimeout(60_000);
+  await page.goto('/gizmo.html?extrudePath&width=600&height=400');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const source = await page.evaluate(() =>
+    fetch('/Ghostscript_Tiger.svg').then((response) => response.text()),
+  );
+  const artwork = await page.evaluate(
+    (svg) => window.gizmoTest.showSvgArtwork(svg, { x: 300, y: 200 }),
+    source,
+  );
+  expect(artwork.extrudedNodes).toBeGreaterThan(0);
+  for (const zoom of [1, 2, 3]) {
+    await page.evaluate(async (value) => {
+      window.gizmoTest.api().gotoLandmark({
+        zoom: value,
+        x: 300 - 300 / value,
+        y: 200 - 200 / value,
+      }, { duration: 0 });
+      await window.gizmoTest.settle();
+    }, zoom);
+    await page.locator('#canvas').screenshot({
+      path: testInfo.outputPath(`tiger-contours-zoom-${zoom}.png`),
+    });
+    const reference = await page.evaluate(async ({ svg, zoom: value }) => {
+      const image = new Image();
+      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+      await image.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 400;
+      const context = canvas.getContext('2d')!;
+      context.fillStyle = '#fff';
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(
+        image,
+        300 - 100 * value,
+        200 - 100 * value,
+        200 * value,
+        200 * value,
+      );
+      return canvas.toDataURL('image/png').split(',')[1];
+    }, { svg: source, zoom });
+    writeFileSync(
+      testInfo.outputPath(`tiger-svg-reference-zoom-${zoom}.png`),
+      Buffer.from(reference, 'base64'),
+    );
+  }
 });

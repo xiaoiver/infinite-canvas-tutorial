@@ -503,6 +503,9 @@ Run `pnpm bench:svg-import:browser` to inspect import and edit timings for the
 repository's [Ghostscript Tiger SVG](/Ghostscript_Tiger.svg) and other
 representative artwork. You can also download that SVG and use **Upload SVG**
 above to inspect the editable layers and compare different zoom levels.
+When imported SVG layers overlap, their extruded front faces retain the SVG
+paint order, including layers inside nested groups. Later layers remain visible
+over earlier ones in the linked 3D view.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
 Path and Rect extrusions. The demo exposes this as **Bevel**. Holes, multiple
