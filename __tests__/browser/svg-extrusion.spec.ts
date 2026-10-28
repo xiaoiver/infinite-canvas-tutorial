@@ -299,6 +299,35 @@ test('SVG user-space pattern renders repeated dots as a 2D fill', async ({ page 
   }, { timeout: 10_000 }).toBeGreaterThan(30);
 });
 
+test('SVG circular radial gradient keeps its colors and local center in 2D', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const result = await page.evaluate(async () => {
+    const artwork = await window.gizmoTest.showSvgArtwork(`
+      <svg xmlns="http://www.w3.org/2000/svg" width="120" height="140">
+        <defs><radialGradient id="glow" gradientUnits="userSpaceOnUse"
+          cx="60" cy="70" r="50">
+          <stop offset="0" stop-color="red"/>
+          <stop offset="1" stop-color="blue"/>
+        </radialGradient></defs>
+        <rect x="10" y="20" width="100" height="100" fill="url(#glow)"/>
+      </svg>
+    `);
+    const rect = window.gizmoTest.api().getNodes().find((node) => node.type === 'rect');
+    return { ...artwork, fill: rect?.type === 'rect' ? rect.fills?.[0] : undefined };
+  });
+  expect(result.extrudedNodes).toBe(0);
+  expect(result.fill).toMatchObject({
+    type: 'gradient',
+    value: 'radial-gradient(circle 50px at 50px 50px, red 0%, blue 100%)',
+  });
+  const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+  const [centerRed, , centerBlue] = canvasRgbAt(png, 100, 100);
+  const [edgeRed, , edgeBlue] = canvasRgbAt(png, 140, 100);
+  expect(centerRed).toBeGreaterThan(centerBlue * 2);
+  expect(edgeBlue).toBeGreaterThan(edgeRed * 2);
+});
+
 test('App SVG import, extrusion editing and GLB export work together', async ({
   page,
 }) => {
