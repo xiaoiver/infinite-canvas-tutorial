@@ -1,6 +1,39 @@
 import { extrudePathContours } from '../../packages/ecs/src/utils/extrude3d-geometry';
 import type { Mesh3DGeometryData } from '../../packages/ecs/src/utils/geometry3d/types';
 import { insetFillBoundaries } from '../../packages/ecs/src/utils/geometry3d/inset-fill-boundaries';
+import { buildPathExtrusionMesh } from '../../packages/ecs/src/utils/path-extrusion-mesh';
+
+it('shares identical Path meshes and separates geometry-changing inputs', () => {
+  const d = 'M2 3 L43 3 L43 44 L2 44 Z';
+  const original = buildPathExtrusionMesh(d)!;
+  expect(buildPathExtrusionMesh(d)).toBe(original);
+  expect(buildPathExtrusionMesh(d, 'evenodd')).not.toBe(original);
+  expect(buildPathExtrusionMesh('M2 3 L44 3 L44 44 L2 44 Z')).not.toBe(
+    original,
+  );
+  const bevel = {
+    scaleX: 1,
+    scaleY: 1,
+    depth: 10,
+    bevelSize: 1,
+    bevelSegments: 2,
+  };
+  const beveled = buildPathExtrusionMesh(d, 'nonzero', bevel)!;
+  expect(buildPathExtrusionMesh(d, 'nonzero', { ...bevel })).toBe(beveled);
+  expect(
+    buildPathExtrusionMesh(d, 'nonzero', { ...bevel, bevelSize: 2 }),
+  ).not.toBe(beveled);
+  const transformed = buildPathExtrusionMesh(
+    d,
+    'nonzero',
+    undefined,
+    [1, 0.25, 0, 1],
+  )!;
+  expect(buildPathExtrusionMesh(d, 'nonzero', undefined, [1, 0.25, 0, 1])).toBe(
+    transformed,
+  );
+  expect(transformed).not.toBe(original);
+});
 
 type Point = [number, number];
 const rect = (x: number, y: number, w: number, h: number): Point[] => [

@@ -202,6 +202,22 @@ it('rebuilds only after Path geometry changes and restores it through history', 
   expect(companion.read(Mesh3D).positions).toEqual(original);
 });
 
+it('shares repeated Path geometry while edits leave other instances intact', async () => {
+  await world.reset(api, [path(), path({ id: 'copy', x: 160 })]);
+  const original = mesh().read(Mesh3D).positions;
+  const copy = api.getEntity(api.getNodeById('copy'))!.read(Extrude3D)
+    .meshEntity!;
+  expect(copy.read(Mesh3D).positions).toBe(original);
+
+  await world.edit(api, (editor) =>
+    editor.updateNode(editor.getNodeById('copy'), {
+      d: 'M10 20 L70 20 L70 60 L10 60 Z',
+    }),
+  );
+  expect(copy.read(Mesh3D).positions).not.toBe(original);
+  expect(mesh().read(Mesh3D).positions).toBe(original);
+});
+
 it('uses the Path fill rule for a hole instead of filling its bounding box', async () => {
   await world.reset(api, [
     path({
