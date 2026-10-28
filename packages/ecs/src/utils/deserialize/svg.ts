@@ -25,6 +25,7 @@ import { strokeOutline } from '../stroke-outline';
 import { getComputedInheritGroupWireMap } from '../inherit-group-wire';
 import { extrudeSvgPrimitive, svgPrimitiveStrokePath } from './svg-extrusion-primitive';
 import { reprojectSvgExtrusion, sourceTransform } from './svg-extrusion-affine';
+import { sliceAspectRatio } from './svg-viewbox';
 import { expandSvgUses } from './svg-use';
 import { parseSvgClipPath } from './svg-clip';
 
@@ -185,24 +186,29 @@ function expandSvgStrokeNodes(
     let source = svgPrimitiveStrokePath(node, depth, rectRadii.get(node.id));
     let projected: Parameters<typeof strokeOutline>[7];
     if (nonScaling) {
-      const transform = sourceTransform(element, root);
-      // Project the centerline first, then expand it at the specified width.
-      // Clipping in this already projected space needs a separate path, so
-      // retain those SVG sources in 2D for now.
-      if (transform.clipViewports.length || transform.clipReferences.length ||
-        (root?.getAttribute('preserveAspectRatio')?.includes('slice'))) {
+      try {
+        const transform = sourceTransform(element, root);
+        // Project the centerline first, then expand it at the specified width.
+        // Clipping in this already projected space needs a separate path, so
+        // retain those SVG sources in 2D for now.
+        if (transform.clipViewports.length || transform.clipReferences.length ||
+          (root && sliceAspectRatio(root))) {
+          expanded.push(node);
+          continue;
+        }
+        const clone = element.cloneNode(false) as SVGElement;
+        clone.removeAttribute('transform');
+        const local = deserializeSvgElements(
+          [clone], [], undefined, 0, undefined, { fill: false, stroke: false },
+        )[0];
+        source = local && svgPrimitiveStrokePath(local, depth, rectRadii.get(node.id));
+        if (source) projected = {
+          matrix: transform.matrix, x: local.x ?? 0, y: local.y ?? 0,
+        };
+      } catch {
         expanded.push(node);
         continue;
       }
-      const clone = element.cloneNode(false) as SVGElement;
-      clone.removeAttribute('transform');
-      const local = deserializeSvgElements(
-        [clone], [], undefined, 0, undefined, { fill: false, stroke: false },
-      )[0];
-      source = local && svgPrimitiveStrokePath(local, depth, rectRadii.get(node.id));
-      if (source) projected = {
-        matrix: transform.matrix, x: local.x ?? 0, y: local.y ?? 0,
-      };
     }
     let outline = '';
     try {

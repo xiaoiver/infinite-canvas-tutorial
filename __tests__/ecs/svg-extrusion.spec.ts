@@ -899,6 +899,14 @@ it('bakes sheared non-scaling strokes and keeps clipped ones in 2D', () => {
   expect(sheared?.width).toBeCloseTo(20 + 2 * Math.SQRT2, 1);
   expect(sheared?.height).toBeCloseTo(20 + 2 * Math.SQRT2, 1);
   expect(nodes.find((node) => node.id === 'clipped')).not.toHaveProperty('extrude3d');
+  const slice = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg"
+    width="100" height="50" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid slice">
+    <path id="slice-line" d="M0 20 H100" fill="none" stroke="red"
+      stroke-width="4" vector-effect="non-scaling-stroke"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  expect(svgElementsToExtrudedNodes(
+    slice.window.document.documentElement as unknown as SVGSVGElement, 12,
+  ).find((node) => node.id === 'slice-line')).not.toHaveProperty('extrude3d');
 });
 
 it('restores the original 2D paint when clipping an expanded stroke fails', () => {
