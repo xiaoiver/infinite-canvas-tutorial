@@ -20,13 +20,67 @@ export interface PathBevelOptions {
   bevelSegments?: number;
 }
 
-/** Build a unit-depth mesh from closed Path data, or leave it in 2D. */
+// Repeated SVG <use> instances and import preflights often request exactly
+// the same mesh. Weak references let source-owned meshes outlive this lookup
+// without retaining their buffers after the last source is removed.
+const sharedMeshes = new Map<string, WeakRef<PathExtrusionMesh>>();
+const MAX_SHARED_MESHES = 64;
+const MAX_SHARED_KEY_LENGTH = 20_000;
+
+function meshKey(
+  d: string,
+  fillRule: CanvasFillRule,
+  bevel?: PathBevelOptions,
+  linear?: readonly [number, number, number, number],
+): string | undefined {
+  if (d.length > MAX_SHARED_KEY_LENGTH) return;
+  const key = JSON.stringify([
+    d,
+    fillRule,
+    bevel && [
+      bevel.scaleX,
+      bevel.scaleY,
+      bevel.depth,
+      bevel.bevelSize,
+      bevel.bevelSegments ?? 1,
+    ],
+    linear,
+  ]);
+  return key.length <= MAX_SHARED_KEY_LENGTH ? key : undefined;
+}
+
+function rememberMesh(
+  key: string | undefined,
+  mesh: PathExtrusionMesh,
+): PathExtrusionMesh {
+  if (key) {
+    sharedMeshes.delete(key);
+    sharedMeshes.set(key, new WeakRef(mesh));
+    if (sharedMeshes.size > MAX_SHARED_MESHES)
+      sharedMeshes.delete(sharedMeshes.keys().next().value!);
+  }
+  return mesh;
+}
+
+/** Build a unit-depth mesh from closed Path data, or leave it in 2D.
+ * Returned geometry may be shared by identical inputs and must remain read-only.
+ */
 export function buildPathExtrusionMesh(
   d: string,
   fillRule: CanvasFillRule = 'nonzero',
   bevel?: PathBevelOptions,
   linear?: readonly [number, number, number, number],
 ): PathExtrusionMesh | undefined {
+  const key = meshKey(d, fillRule, bevel, linear);
+  if (key) {
+    const cached = sharedMeshes.get(key)?.deref();
+    if (cached) {
+      sharedMeshes.delete(key);
+      sharedMeshes.set(key, new WeakRef(cached));
+      return cached;
+    }
+    sharedMeshes.delete(key);
+  }
   try {
     const { subPaths } = parsePath(d);
     if (
@@ -113,9 +167,14 @@ export function buildPathExtrusionMesh(
         (m11 * center[0] - m10 * center[1]) / determinant,
         (-m01 * center[0] + m00 * center[1]) / determinant,
       ];
-      return { geometry, center, sourceCenter, bakedTransform: true };
+      return rememberMesh(key, {
+        geometry,
+        center,
+        sourceCenter,
+        bakedTransform: true,
+      });
     }
-    return { geometry, center };
+    return rememberMesh(key, { geometry, center });
   } catch {
     // Invalid path data keeps its 2D representation.
   }
