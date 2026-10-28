@@ -510,9 +510,10 @@ GLB export lists the extrusion nodes in the same front-to-back traversal order,
 which our glTF importer retains. For opaque, flat extrusions on one plane, the
 export also separates overlapping layers in depth by at most 5% of the
 thinnest extrusion. This gives glTF viewers distinct depth-buffer values without
-moving the editable shapes in the canvas. Separate shapes stay on their original
-plane; scenes with tilted extrusions, transparency, mixed elevations or standalone
-3D meshes keep their authored transforms. Extremely large or distant models can
+moving the editable shapes in the canvas. Each nonintersecting stack is handled
+independently, so a distant 3D mesh does not disable the spacing. A stack whose
+projected bounds overlap a tilted or transparent extrusion, another elevation, or a standalone
+3D mesh keeps its authored transforms. Extremely large or distant models can
 still lose small depth differences to the viewer's depth-buffer precision.
 
 Set `extrude3d.bevelSize` (in canvas units) for a bevel on both ends of
