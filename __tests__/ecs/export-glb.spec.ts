@@ -5,7 +5,7 @@ import { Material3D } from '../../packages/ecs/src/components/geometry3d/Materia
 import { Transform3D } from '../../packages/ecs/src/components/geometry3d/Transform3D';
 import { extrudePathContours } from '../../packages/ecs/src/utils/geometry3d/extrude-path';
 import { createUnitCubeGeometry } from '../../packages/ecs/src/utils/geometry3d/unit-cube';
-import { exportMeshesToGlb } from '../../packages/ecs/src/utils/gltf/export-glb';
+import { exportMeshesToGlb, type GlbMeshSource } from '../../packages/ecs/src/utils/gltf/export-glb';
 import { loadGlbImages } from '../../packages/ecs/src/utils/gltf/load-glb-images';
 import { bakeGltfMesh } from '../../packages/ecs/src/utils/gltf/bake-gltf-mesh';
 import type { GltfContainer } from '../../packages/ecs/src/utils/gltf/accessors';
@@ -35,6 +35,50 @@ function readGlb(bytes: Uint8Array) {
 
 const png =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==';
+
+it('separates independent SVG stacks without moving intersecting 3D objects', () => {
+  const cube = createUnitCubeGeometry();
+  const source = (
+    name: string,
+    x: number,
+    y: number,
+    z: number,
+    painterOrder?: number,
+  ): GlbMeshSource => ({
+    name,
+    mesh: cube,
+    material: new Material3D({ baseColor: [1, 0, 0, 1] }),
+    transform: new Transform3D({ translation: [x, y, z], scale: [40, 40, 24] }),
+    painterOrder,
+  });
+  const layers = [
+    source('a', 0, 0, -12, 0),
+    source('b', 10, 10, -12, 1),
+    source('c', 200, 0, -12, 2),
+    source('d', 210, 10, -12, 3),
+  ];
+  const positions = (sources: GlbMeshSource[]) => {
+    const { json } = readGlb(exportMeshesToGlb(sources));
+    return Object.fromEntries(json.nodes.slice(1).map(
+      (node: { name: string; matrix: number[] }) => [node.name, node.matrix[14]],
+    ));
+  };
+  const remote = positions([...layers, source('mesh', 500, 0, -12)]);
+  expect(remote.b).toBeLessThan(remote.a);
+  expect(remote.d).toBeLessThan(remote.c);
+  expect(remote.mesh).toBe(-12);
+
+  const near = positions([...layers, source('mesh', 0, 0, -12)]);
+  expect(near.a).toBe(-12);
+  expect(near.b).toBe(-12);
+  expect(near.d).toBeLessThan(near.c);
+
+  const elevated = positions([...layers, source('elevated', 200, 0, -8, 4)]);
+  expect(elevated.b).toBeLessThan(elevated.a);
+  expect(elevated.c).toBe(-12);
+  expect(elevated.d).toBe(-12);
+  expect(elevated.elevated).toBe(-8);
+});
 
 it('embeds an emissive-only texture in exported GLB', async () => {
   const source = {
