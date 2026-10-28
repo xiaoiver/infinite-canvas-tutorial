@@ -52,6 +52,13 @@ export const OG_LOCALE: Record<SeoLocale, string> = {
   ko: 'ko_KR',
 };
 
+/** Locale `<title>` used when a page has no heading of its own (home, some API pages). */
+export const LOCALE_TITLE: Record<SeoLocale, string> = {
+  root: 'An infinite canvas tutorial',
+  zh: '一个无限画布教程',
+  ko: '무한 캔버스 튜토리얼',
+};
+
 /**
  * Pages that are build artifacts or orphan drafts, not documents we want indexed.
  * - collaboration/README.md is an internal note, not a lesson
@@ -194,7 +201,7 @@ export function applyPageSeo(pageData: SeoPageData, site: SeoSiteConfig): void {
   const ogTitle =
     metaContent(existing, 'property', 'og:title') ||
     pageData.title?.trim() ||
-    'Infinite Canvas Tutorial';
+    LOCALE_TITLE[locale];
   const description = pageData.description?.trim() ?? '';
   const head = stripManagedHead(existing);
 

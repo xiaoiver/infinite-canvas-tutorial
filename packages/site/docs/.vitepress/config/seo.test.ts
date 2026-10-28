@@ -136,6 +136,15 @@ describe('applyPageSeo', () => {
     );
   });
 
+  it('uses the locale title when the page has no heading', () => {
+    const data = page('zh/index.md', '', '中文简介');
+    applyPageSeo(data, site);
+    const ogTitle = data.frontmatter.head?.find(
+      (entry) => entry[1].property === 'og:title',
+    );
+    assert.equal(ogTitle?.[1].content, '一个无限画布教程');
+  });
+
   it('is idempotent and noindexes orphan pages', () => {
     const data = page(
       'collaboration/README.md',
