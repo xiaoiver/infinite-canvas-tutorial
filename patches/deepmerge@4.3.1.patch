@@ -1,0 +1,26 @@
+diff --git a/index.js b/index.js
+--- a/index.js
++++ b/index.js
+@@ -33,5 +33,8 @@ function getEnumerableOwnPropertySymbols(target) {
+ }
+ 
+ function getKeys(target) {
+-	return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target))
++	return Object.keys(target).filter(function(key) {
++		// These keys can mutate the destination's prototype during assignment.
++		return key !== '__proto__' && key !== 'constructor' && key !== 'prototype'
++	}).concat(getEnumerableOwnPropertySymbols(target))
+ }
+diff --git a/dist/cjs.js b/dist/cjs.js
+--- a/dist/cjs.js
++++ b/dist/cjs.js
+@@ -58,5 +58,8 @@ function getEnumerableOwnPropertySymbols(target) {
+ }
+ 
+ function getKeys(target) {
+-	return Object.keys(target).concat(getEnumerableOwnPropertySymbols(target))
++	return Object.keys(target).filter(function(key) {
++		// These keys can mutate the destination's prototype during assignment.
++		return key !== '__proto__' && key !== 'constructor' && key !== 'prototype'
++	}).concat(getEnumerableOwnPropertySymbols(target))
+ }

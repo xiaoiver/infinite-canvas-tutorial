@@ -74,6 +74,9 @@ patchedDependencies:
   braces@3.0.3:
     hash: 6jf4dl35conit5pkwr4o6gkdo4
     path: patches/braces@3.0.3.patch
+  deepmerge@4.3.1:
+    hash: mh3miyyogknh3byljr5xf5l2qa
+    path: patches/deepmerge@4.3.1.patch
   http-cache-semantics@4.1.1:
     hash: rfihoegwxeojuc2vvxkr5omlw4
     path: patches/http-cache-semantics@4.1.1.patch
@@ -18666,7 +18669,7 @@ snapshots:
 
   deep-is@0.1.4: {}
 
-  deepmerge@4.3.1: {}
+  deepmerge@4.3.1(patch_hash=mh3miyyogknh3byljr5xf5l2qa): {}
 
   default-browser-id@5.0.1: {}
 
@@ -20612,7 +20615,7 @@ snapshots:
       babel-jest: 29.7.0(@babel/core@7.29.7)
       chalk: 4.1.2
       ci-info: 3.9.0
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=mh3miyyogknh3byljr5xf5l2qa)
       glob: 7.2.3
       graceful-fs: 4.2.11
       jest-circus: 29.7.0
@@ -23301,7 +23304,7 @@ snapshots:
       commander: 14.0.3
       cosmiconfig: 9.0.0(typescript@5.9.3)
       dedent: 1.7.1
-      deepmerge: 4.3.1
+      deepmerge: 4.3.1(patch_hash=mh3miyyogknh3byljr5xf5l2qa)
       diff: 8.0.3
       execa: 9.6.1
       fast-glob: 3.3.3

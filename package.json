@@ -165,6 +165,7 @@
     },
     "patchedDependencies": {
       "braces@3.0.3": "patches/braces@3.0.3.patch",
+      "deepmerge@4.3.1": "patches/deepmerge@4.3.1.patch",
       "http-cache-semantics@4.1.1": "patches/http-cache-semantics@4.1.1.patch",
       "sprintf-js@1.0.3": "patches/sprintf-js@1.0.3.patch"
     },
