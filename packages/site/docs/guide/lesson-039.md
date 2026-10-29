@@ -447,6 +447,8 @@ gradients. An `<image>` in the tile can contain an embedded PNG, JPEG, WebP or
 AVIF data URL. The pattern stays editable as a 2D fill; its gradient stops and
 image content are embedded in the tile resource. External references, cyclic
 references, external images and other paint servers remain unsupported.
+Use the **Gradient + image pattern sample** button in the demo below to inspect
+both tile paints on the editor canvas.
 Numeric `x` and `y` pattern origins remain
 aligned when the same pattern fills shapes at different positions, including
 fills inherited from a group. Inherited pattern fills become editable fills on
