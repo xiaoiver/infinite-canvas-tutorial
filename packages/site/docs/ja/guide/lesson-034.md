@@ -1,9 +1,17 @@
 ---
-
 outline: deep
 description: 'Frame とクリップ: ステンシルバッファで clip/erase を実装し、PNG/SVG へ書き出すときの clip-path と mask の扱いを説明します。'
-head: - ['meta', { property: 'og:title', content: '第 34 課 - Group、Frame とクリップ' }]
----<script setup>
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: '第 34 課 - Group、Frame とクリップ',
+          },
+      ]
+---
+
+<script setup>
 import ClipPath from '../../components/ClipPath.vue'
 import Mask from '../../components/Mask.vue'
 import ClipPathSoft from '../../components/ClipPathSoft.vue'
