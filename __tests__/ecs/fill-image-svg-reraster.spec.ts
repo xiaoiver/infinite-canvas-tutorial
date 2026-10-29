@@ -6,6 +6,7 @@ import {
 } from '../../packages/ecs/src';
 import {
   isLikelySvgResourceUrl,
+  prepareSvgPatternFill,
   rasterizeSvgUrlToImageBitmap,
   resetFillImageSvgRerasterSchedule,
   scheduleFillImageSvgRerasterIfNeeded,
@@ -13,7 +14,9 @@ import {
 import {
   getFillLayerDecodedBitmap,
   getFillLayerDecodedBitmapIntrinsicSize,
+  setFillLayerDecodedBitmapForUrl,
 } from '../../packages/ecs/src/utils/fill-layer-image-url-raster';
+import { DOMAdapter } from '../../packages/ecs/src/environment';
 
 const original = {
   Image: globalThis.Image,
@@ -481,4 +484,57 @@ it('uses the loaded SVG aspect ratio when the renderer only knows a 1x1 placehol
     width: 20,
     height: 10,
   });
+});
+
+it('loads an uncached SVG pattern tile and invalidates its material on decode', async () => {
+  const source = url();
+  const t = target(source);
+  t.setLayers([{ type: 'pattern', value: source }]);
+  const decoded = bitmap(20, 10);
+  jest.spyOn(DOMAdapter.get(), 'createImage').mockResolvedValueOnce(decoded);
+  const onDecoded = jest.fn();
+  const paint = prepareSvgPatternFill({
+    entity: t.entity, url: source, geomW: 100, geomH: 50, zoom: 1,
+    onDecoded,
+  });
+  expect(paint).toMatchObject({
+    image: source, width: 100, height: 50, rasterScale: 1, tileScale: 1,
+  });
+  await settle();
+  expect(getFillLayerDecodedBitmap(source)).toBe(decoded);
+  expect(onDecoded).toHaveBeenCalledTimes(1);
+});
+
+it('rerasterizes SVG pattern tiles at the zoom bucket while preserving tile spacing', async () => {
+  const source = url();
+  const t = target(source);
+  t.setLayers([{ type: 'pattern', value: source }]);
+  setFillLayerDecodedBitmapForUrl(source, bitmap(20, 10), {
+    width: 20, height: 10,
+  });
+  const oldDpr = (globalThis as { devicePixelRatio?: number }).devicePixelRatio;
+  (globalThis as { devicePixelRatio?: number }).devicePixelRatio = 2;
+  try {
+    const paint = prepareSvgPatternFill({
+      entity: t.entity, url: source, geomW: 100, geomH: 50, zoom: 2.1,
+      onDecoded: jest.fn(),
+    });
+    expect(paint).toMatchObject({
+      width: 800, height: 400, rasterScale: 8, tileScale: 8,
+    });
+    expect(paint.image).toMatchObject({ width: 160, height: 80 });
+    expect(images).toHaveLength(1);
+    await complete(0);
+    expect(getFillLayerDecodedBitmap(source)).toMatchObject({
+      width: 160, height: 80,
+    });
+    const sameBucket = prepareSvgPatternFill({
+      entity: t.entity, url: source, geomW: 100, geomH: 50, zoom: 2.5,
+      onDecoded: jest.fn(),
+    });
+    expect(sameBucket).toMatchObject({ width: 800, height: 400, tileScale: 8 });
+    expect(images).toHaveLength(1);
+  } finally {
+    (globalThis as { devicePixelRatio?: number }).devicePixelRatio = oldDpr;
+  }
 });
