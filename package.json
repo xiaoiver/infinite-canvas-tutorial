@@ -46,7 +46,11 @@
     "test:browser:webkit": "playwright test -c playwright.webkit.config.ts",
     "lint": "eslint . --max-warnings=0",
     "test:tooling": "node --test __tests__/tooling/*.test.mjs",
-    "test:cli": "node scripts/build-device-api.mjs commonjs && node node_modules/typescript/bin/tsc -p packages/ecs/tsconfig.build.json --module commonjs --outDir packages/ecs/lib && node node_modules/typescript/bin/tsc -p packages/cli/tsconfig.build.json && node --test packages/cli/test/*.test.mjs"
+    "test:cli": "node scripts/build-device-api.mjs commonjs && node node_modules/typescript/bin/tsc -p packages/ecs/tsconfig.build.json --module commonjs --outDir packages/ecs/lib && node node_modules/typescript/bin/tsc -p packages/cli/tsconfig.build.json && node --test packages/cli/test/*.test.mjs",
+    "example:workflow": "vite --config examples/workflow-canvas/vite.config.ts",
+    "build:workflow": "vite build --config examples/workflow-canvas/vite.config.ts",
+    "test:workflow": "playwright test -c examples/workflow-canvas/playwright.config.ts",
+    "test:workflow:docs": "playwright test -c examples/workflow-canvas/playwright.docs.config.ts"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",

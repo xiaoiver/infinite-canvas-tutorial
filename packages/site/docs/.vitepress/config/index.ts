@@ -17,6 +17,7 @@ import { es } from './es';
 import { ptBR } from './pt-BR';
 import { resolve } from 'path';
 import { writeAdsTxt } from '../adsense-ads-txt';
+import { buildWorkflowExample, workflowExample } from './workflow-example';
 
 export default defineConfig({
   markdown: {
@@ -31,8 +32,9 @@ export default defineConfig({
   },
   cleanUrls: true,
   extends: config,
-  buildEnd(siteConfig) {
+  async buildEnd(siteConfig) {
     writeAdsTxt(siteConfig.outDir);
+    await buildWorkflowExample(siteConfig.outDir);
   },
   ...shared,
   locales: {
@@ -90,6 +92,7 @@ export default defineConfig({
       ],
     },
     plugins: [
+      workflowExample(),
       VueMacros({
         plugins: {
           vueJsx: vueJsx(),

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#141815" />
+    <title>FRAME — 节点创作工作台</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23c7ed9b'/%3E%3Cpath d='M9 24V8h15v4H13v3h9v4h-9v5' fill='%23171b18'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <a class="wordmark" href="./" aria-label="FRAME 首页"
+          ><span class="brand-mark">F</span>FRAME<span class="beta"
+            >LAB</span
+          ></a
+        >
+        <span class="top-divider"></span>
+        <div class="breadcrumb">
+          <span>我的工作空间</span><span class="slash">/</span
+          ><strong>荒野来信</strong><span class="project-tag">创作画布</span>
+        </div>
+        <div class="top-actions">
+          <span class="local-status"><i></i>本地演示</span
+          ><button
+            id="export"
+            class="button subtle"
+            title="导出当前节点和连线为 JSON"
+          >
+            导出工作流 <span>↗</span></button
+          ><button id="run" class="button primary">
+            <span>▶</span> 演示运行</button
+          ><button class="avatar" id="about" aria-label="关于这个示例">
+            Y
+          </button>
+        </div>
+      </header>
+      <nav class="rail" aria-label="画布工具">
+        <div class="rail-top">
+          <button
+            class="rail-button add-button"
+            id="add"
+            aria-label="添加创作分支"
+            title="添加一个六节点工作流"
+          >
+            ＋</button
+          ><span class="rail-rule"></span
+          ><button
+            class="rail-button active"
+            data-tool="select"
+            aria-label="选择工具"
+            aria-pressed="true"
+            title="选择与拖动 (V)"
+          >
+            ↖</button
+          ><button
+            class="rail-button"
+            data-tool="hand"
+            aria-label="平移工具"
+            aria-pressed="false"
+            title="平移 (H / 空格)"
+          >
+            ✋</button
+          ><button
+            class="rail-button"
+            id="layout"
+            aria-label="重置节点布局"
+            title="重置当前规模的节点布局"
+          >
+            ▦
+          </button>
+        </div>
+        <div class="rail-bottom">
+          <span class="rail-label">TOOLS</span
+          ><button
+            class="rail-button"
+            id="help"
+            aria-label="操作帮助"
+            title="操作帮助"
+          >
+            ?
+          </button>
+          <div class="engine-dot" title="WebGL 渲染器"></div>
+        </div>
+      </nav>
+      <main id="stage" aria-label="工作流画布">
+        <canvas
+          id="canvas"
+          tabindex="0"
+          aria-label="节点画布。拖动节点移动；拖动空白处平移；滚轮缩放；F 聚焦工作流；空格切换平移。"
+        ></canvas>
+        <div class="stage-heading">
+          <div class="eyebrow">
+            <span class="tiny-cross">✳</span> YOUR NEXT BIG IDEA
+          </div>
+          <h1>让灵感，<span>流动起来。</span></h1>
+          <p>荒野来信 <span>·</span> A cinematic desert journey</p>
+        </div>
+        <div class="scene-label">
+          <i></i><span id="scene-label">01 — THE OPEN ROAD</span
+          ><span class="scene-line"></span><span>创作流程</span>
+        </div>
+        <div class="canvas-controls">
+          <span class="live-pill"><i></i>WEBGL 2</span
+          ><button
+            id="fit"
+            class="icon-button"
+            title="聚焦当前工作流 (F)"
+            aria-label="聚焦当前工作流"
+          >
+            ⛶
+          </button>
+        </div>
+        <div class="performance" aria-label="实时性能监测">
+          <div class="performance-title">
+            <span><i></i>LIVE PERFORMANCE</span
+            ><span id="metrics-state">等待引擎</span>
+          </div>
+          <div class="metrics">
+            <div>
+              <strong id="fps">—</strong
+              ><span>FPS <small>已完成帧</small></span>
+            </div>
+            <div>
+              <strong id="frame-time">—</strong
+              ><span>ms <small>P95 帧耗时</small></span>
+            </div>
+            <canvas
+              id="sparkline"
+              width="144"
+              height="48"
+              aria-label="最近的引擎帧耗时曲线"
+            ></canvas>
+          </div>
+          <div class="scene-stats">
+            <span><b id="node-count">24</b> 节点</span
+            ><span><b id="edge-count">24</b> 连线</span
+            ><span><b id="visible-count">—</b> 视口内</span>
+          </div>
+          <div class="stress-controls">
+            <label for="scale">场景规模</label
+            ><select id="scale">
+              <option value="24">24 节点 · 创作</option>
+              <option value="120">120 节点</option>
+              <option value="600">600 节点</option>
+              <option value="2400">2,400 节点 · 压力</option></select
+            ><button
+              id="benchmark"
+              title="进行 10 秒自动缩放平移，并报告实测结果"
+            >
+              性能巡航 ↗
+            </button>
+          </div>
+          <p id="benchmark-result" class="benchmark-result" hidden></p>
+        </div>
+        <div class="bottom-controls">
+          <div class="zoom-control">
+            <button id="zoom-out" aria-label="缩小">−</button
+            ><output id="zoom">65%</output
+            ><button id="zoom-in" aria-label="放大">＋</button><span></span
+            ><button
+              id="overview"
+              title="查看全部节点"
+              aria-label="查看全部节点"
+            >
+              ⛶
+            </button>
+          </div>
+          <div class="hint"><kbd>Space</kbd> 平移 <span>·</span> 滚轮缩放</div>
+        </div>
+        <div class="minimap-wrap">
+          <div class="minimap-title">
+            <span>OVERVIEW</span><span id="minimap-count">4 FLOWS</span>
+          </div>
+          <canvas
+            id="minimap"
+            width="200"
+            height="108"
+            aria-label="点击缩略图导航"
+          ></canvas>
+        </div>
+        <div class="loading" id="loading" role="status">
+          <div class="loader"></div>
+          <span>正在准备创作画布…</span>
+        </div>
+        <div class="toast" id="toast" role="status" hidden></div>
+      </main>
+      <aside class="inspector" aria-label="节点参数">
+        <div class="inspector-tabs">
+          <button class="selected" id="properties-tab" aria-pressed="true">
+            节点参数</button
+          ><span>WORKFLOW / 001</span>
+        </div>
+        <div class="inspector-content">
+          <div class="node-type">
+            <span id="selected-icon">↗</span
+            ><span id="selected-type">VIDEO GENERATION</span><i></i>
+          </div>
+          <h2 id="selected-title">Bring it to life</h2>
+          <p class="inspector-description" id="selected-description">
+            从一张画面，到一个有呼吸的镜头。
+          </p>
+          <div class="inspector-preview">
+            <canvas id="inspector-art" width="480" height="300"></canvas
+            ><span class="preview-badge">PREVIEW <i></i></span
+            ><button id="preview" aria-label="预览演示镜头">▶</button
+            ><span class="preview-time">00:08 / 00:08</span>
+          </div>
+          <div class="section-heading">
+            <span>生成设置</span><span class="section-count">01</span>
+          </div>
+          <label class="field-label" for="model">模型 <span>MODEL</span></label
+          ><select id="model" class="field">
+            <option>Kling 2.1</option>
+            <option>Veo 3</option>
+            <option>Seedance 1.0</option>
+          </select>
+          <label class="field-label" for="prompt"
+            >镜头描述 <span>PROMPT</span></label
+          ><textarea id="prompt" class="field" rows="4">
+镜头缓缓向前推进，跟随公路上的车。落日余晖，轻微的胶片颗粒，安静而辽阔。</textarea
+          >
+          <div class="field-row">
+            <div>
+              <label class="field-label" for="duration">时长</label
+              ><select id="duration" class="field">
+                <option>8 秒</option>
+                <option>5 秒</option>
+                <option>10 秒</option>
+              </select>
+            </div>
+            <div>
+              <label class="field-label" for="ratio">画面比例</label
+              ><select id="ratio" class="field">
+                <option>16:9</option>
+                <option>9:16</option>
+                <option>1:1</option>
+              </select>
+            </div>
+          </div>
+          <div class="range-label">
+            <label for="motion">运动幅度</label
+            ><output id="motion-value">0.65</output>
+          </div>
+          <input id="motion" type="range" min="0" max="100" value="65" />
+          <button id="apply" class="button apply-button">
+            应用到当前节点 <span>↗</span>
+          </button>
+          <div class="inspector-note">
+            <span>↳</span>
+            <p>
+              本示例聚焦画布交互与渲染性能。素材为本地程序绘制，模型参数不调用在线生成服务。
+            </p>
+          </div>
+          <div class="section-heading renderer-heading">
+            <span>画布引擎</span><span class="section-count">02</span>
+          </div>
+          <div class="renderer-info">
+            <span class="renderer-logo">∞</span>
+            <div>Infinite Canvas<span>ECS · WebGL · 共享纹理</span></div>
+            <span class="renderer-status">●</span>
+          </div>
+        </div>
+        <div class="inspector-footer">
+          <span class="status-dot"></span
+          ><span id="selection-id">NODE / 004</span
+          ><span id="node-status">READY</span>
+        </div>
+      </aside>
+    </div>
+    <dialog id="help-dialog">
+      <button id="close-help" class="close-dialog" aria-label="关闭帮助">
+        ×
+      </button>
+      <div class="eyebrow">A LITTLE ROOM FOR BIG IDEAS</div>
+      <h2>你的创作，无需边界。</h2>
+      <p>
+        拖动卡片调整工作流，点击节点查看参数。拖动空白处或按住空格平移；滚轮以指针为中心缩放。
+      </p>
+      <dl>
+        <dt>V / H</dt>
+        <dd>选择 / 平移工具</dd>
+        <dt>F</dt>
+        <dd>聚焦当前工作流</dd>
+        <dt>＋ / −</dt>
+        <dd>缩放画布</dd>
+        <dt>性能巡航</dt>
+        <dd>10 秒相机轨迹，记录真实引擎帧率与 P95 帧耗时</dd>
+      </dl>
+      <p class="dialog-note">
+        性能因设备、浏览器与视口而异。帧耗时测量完整 ECS
+        world.execute，包含异步等待，并非 GPU timer。
+      </p>
+    </dialog>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

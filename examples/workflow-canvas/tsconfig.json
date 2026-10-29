@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "moduleResolution": "Bundler",
+    "baseUrl": "../..",
+    "types": [
+      "vite/client"
+    ],
+    "paths": {
+      "@infinite-canvas-tutorial/ecs": [
+        "packages/ecs/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/device-api": [
+        "packages/device-api/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "./cards.ts",
+    "./engine.ts",
+    "./graph.ts",
+    "./main.ts"
+  ]
+}

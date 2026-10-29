@@ -1,4 +1,14 @@
-# React framework starters
+# Examples
+
+## Workflow canvas
+
+[FRAME](./workflow-canvas/README.md) is a source-based ECS/WebGL media workflow
+example with draggable nodes, curved connections, a parameter inspector, and
+live performance measurements. Switch between 24 and 2,400 nodes, navigate the
+minimap, or run an automatic camera tour. No external model service is required.
+From the repository root, run `pnpm example:workflow`.
+
+## React framework starters
 
 These independent projects target the future first `@infinite-canvas-tutorial/react`
 0.1.0 npm release. The package has not been published yet; registry installation

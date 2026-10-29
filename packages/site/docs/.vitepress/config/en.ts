@@ -270,6 +270,7 @@ export const en = defineConfig({
           {
             text: 'Example',
             items: [
+              { text: 'FRAME node workflow canvas', link: 'workflow-canvas' },
               { text: 'WebGPU', link: 'webgpu' },
               { text: 'A polar system', link: 'solar-system' },
               {
