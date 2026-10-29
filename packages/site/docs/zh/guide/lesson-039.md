@@ -410,22 +410,13 @@ const glb = await api.exportGlb({
 
 ## 光照 {#lighting}
 
-在静止的立方体、球体和圆柱上对比环境光、平行光、点光和聚光灯。可切换光源、调整强度与范围、修改球体金属度与粗糙度、开启摄影棚环境光照和投射阴影，或播放聚光灯轨道动画。点光与聚光灯可使用原有的平滑范围衰减，也可设置参考距离，改用逆平方衰减。渲染器对直接光照使用 GGX，并在线性空间计算颜色、以胶片映射处理亮部。可选的 LDR 全景图或 Radiance HDR 图片提供球谐漫反射光照，以及结合 split-sum BRDF 查找表的预过滤反射。
+在下面的场景中对比环境光、平行光、点光和聚光灯。调整球体的金属度与粗糙度，切换环境贴图，或试用阴影和移动的聚光灯。
 
-最多两盏设置 `castShadow: true` 的平行光、点光或聚光灯可同时投射阴影，并通过 3 × 3 PCF 过滤。每盏灯可设置 `shadowStrength`（0–1）、`shadowSoftness`（0–4 个纹素）、`shadowBiasScale`（0–4）和 `shadowNormalBias`（0–10 个画布单位）；默认值保持原有画面。每个 Mesh 可以用 `material3d.castShadow` 与 `material3d.receiveShadow` 分别关闭投影和接影（两者默认 `true`）。平行光阴影图按当前 Mesh 范围拟合；聚光灯外锥半角小于 85° 时使用一张透视阴影图，更宽的光锥和点光使用六面图集。PCF 采样跨越图集面接缝时改采样相邻面，不再重复边缘纹素。控件、阴影图尺寸与 API 说明见[光照示例](/zh/example/lighting)。
+场景最多使用 8 盏直接光，其中最多 2 盏符合条件的光源可投影。自发光使用 `material3d.emissiveFactor` / `emissiveStrength`，无光照材质使用 `material3d.unlit`；镂空和透明使用 `alphaMode`。
 
-自发光表面可设置 `material3d.emissiveFactor` 与 `emissiveStrength`，无需增加场景光源。glTF 的 `KHR_materials_emissive_strength` 会随材质导入导出；可在[光照示例](/zh/example/lighting)中拖动立方体自发光强度滑块查看效果。
-
-需要保持纯色、不受光照影响时，可设置 `material3d.unlit`，它会跳过场景光照与色调映射，同时保留基础颜色贴图与 Alpha。导入、导出 GLB 时会保留 glTF 的 `KHR_materials_unlit`；可在[光照示例](/zh/example/lighting)中通过立方体开关与自发光对比。
-
-贴图镂空和半透明表面可分别使用 `material3d.alphaMode` 的 `mask` 与 `blend`；阴影效果和排序限制见 [3D Mesh 透明度示例](/zh/example/mesh3d-alpha)。
+参数、限制与实现细节见[光照参考](/zh/guide/lighting-reference)；API 与控件操作见[光照示例](/zh/example/lighting)。
 
 <Lighting locale="zh" />
-
-WebGL1 片元着色器读取 uniform 数组时需要使用常量索引。渲染器会为灯光数据和阴影矩阵
-生成有界的读取分支；WebGL2 和 WebGPU 保留原生索引。材质计算通过辅助函数把颜色返回
-`main()`，确保无光照材质也会执行 WebGL1 的最终颜色输出转换。浏览器回归会强制使用
-WebGL1，检查顶点色、切线空间法线贴图、多光源以及平行光和点光源阴影。
 
 ## glTF 模型 {#gltf}
 
