@@ -276,6 +276,41 @@ test('mixed Maslow SVG keeps its 2D layers visible while exporting 3D layers', a
   expect(errors).toEqual([]);
 });
 
+test('standalone Canvas2D repeats an SVG tile with transparent gaps', async ({ page }) => {
+  const samples = await page.evaluate(async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="4" fill="red"/></svg>';
+    const img = new Image();
+    img.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    await img.decode();
+    const bitmap = await createImageBitmap(img);
+    try {
+      return [1, 3].map((scale) => {
+        const tile = document.createElement('canvas');
+        tile.width = tile.height = 20 * scale;
+        const tileContext = tile.getContext('2d')!;
+        tileContext.drawImage(bitmap, 0, 0, tile.width, tile.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 60 * scale;
+        const ctx = canvas.getContext('2d')!;
+        const pattern = ctx.createPattern(tile, 'repeat');
+        if (!pattern) throw new Error('Could not create canvas pattern');
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return [10, 20, 30].map((x) =>
+          Array.from(ctx.getImageData(x * scale, 10 * scale, 1, 1).data),
+        );
+      });
+    } finally {
+      bitmap.close();
+    }
+  });
+  for (const [first, gap, second] of samples) {
+    expect(first).toEqual([255, 0, 0, 255]);
+    expect(gap[3]).toBe(0);
+    expect(second).toEqual([255, 0, 0, 255]);
+  }
+});
+
 test.describe('SVG pattern rasterization', () => {
   test.beforeEach(({ browserName }, testInfo) => {
     // The solid tile case works in WebKit; the other SVG pattern cases can
