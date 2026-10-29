@@ -12,6 +12,9 @@ import { en } from './en';
 import { zh } from './zh';
 import { ko } from './ko';
 import { ja } from './ja';
+import { zhHant } from './zh-Hant';
+import { es } from './es';
+import { ptBR } from './pt-BR';
 import { resolve } from 'path';
 import { writeAdsTxt } from '../adsense-ads-txt';
 
@@ -38,8 +41,11 @@ export default defineConfig({
       ...en,
     },
     zh: { label: '简体中文', ...zh },
+    'zh-Hant': { label: '繁體中文', ...zhHant },
     ko: { label: '한국어', ...ko },
     ja: { label: '日本語', ...ja },
+    es: { label: 'Español', ...es },
+    'pt-BR': { label: 'Português (Brasil)', ...ptBR },
   },
   vue: {
     template: {

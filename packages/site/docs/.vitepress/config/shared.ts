@@ -3,6 +3,9 @@ import { applyPageSeo, filterSitemapItems } from './seo';
 import { search } from './zh';
 import { search as searchKo } from './ko';
 import { search as searchJa } from './ja';
+import { search as searchZhHant } from './zh-Hant';
+import { search as searchEs } from './es';
+import { search as searchPtBR } from './pt-BR';
 
 export const adsenseClient =
   process.env.ADSENSE_ENABLED === 'true'
@@ -31,8 +34,11 @@ export const shared = defineConfig({
         indexName: 'infinitecanvas',
         locales: {
           zh: search,
+          'zh-Hant': searchZhHant,
           ko: searchKo,
           ja: searchJa,
+          es: searchEs,
+          'pt-BR': searchPtBR,
         },
       },
     },
