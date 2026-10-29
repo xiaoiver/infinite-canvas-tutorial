@@ -458,22 +458,11 @@ edge cut by the SVG viewport.
 
 ## Lighting {#lighting}
 
-Compare ambient, directional, point, and spot lights on a stationary cube, sphere, and cylinder. Switch lights, adjust intensity/range and the sphere's metallic/roughness values, enable studio environment lighting and cast shadows, or play the spotlight orbit. Point and spot lights can use the original smooth range falloff or opt into inverse-square falloff with a configurable reference distance. The renderer uses GGX direct lighting with sRGB-to-linear inputs and filmic tone mapping. An LDR panorama or Radiance HDR image provides spherical-harmonic diffuse lighting and prefiltered reflections with a split-sum BRDF lookup.
+Compare ambient, directional, point and spot lights in the scene below. Adjust the sphere’s metallic and roughness values, switch environment maps, and experiment with shadows or the moving spotlight.
 
-Up to two directional, point, or spot lights with `castShadow: true` cast shadows at once, filtered with 3 × 3 PCF. Each light can set `shadowStrength` (0–1), `shadowSoftness` (0–4 texels), `shadowBiasScale` (0–4), and `shadowNormalBias` (0–10 canvas units); defaults preserve the original appearance. Each mesh can independently opt out of casting or receiving via `material3d.castShadow` and `material3d.receiveShadow` (both default to `true`). Directional maps fit the current meshes; spot cones below 85° half-angle use one perspective map, while wider cones and point lights use six atlas faces. PCF taps at atlas-face seams sample the neighboring face rather than repeating the border texel. See the [lighting example](/example/lighting) for controls, map sizes, and API details.
+A scene can use up to eight direct lights; up to two eligible lights can cast shadows. Use `material3d.emissiveFactor` / `emissiveStrength` for emission, `material3d.unlit` for an unlit surface, and `alphaMode` for cutouts or transparency.
 
-For self-lit surfaces, `material3d.emissiveFactor` and `emissiveStrength` control emission without adding a scene light. glTF `KHR_materials_emissive_strength` imports and exports with the material; try the cube emission slider in the [lighting example](/example/lighting).
-
-For flat colors independent of illumination, `material3d.unlit` bypasses scene lights and tone mapping while retaining base-color texture and alpha. glTF `KHR_materials_unlit` is preserved on import and GLB export; compare it with emission using the cube toggle in the [lighting example](/example/lighting).
-
-For textured cutouts and translucent surfaces, `material3d.alphaMode` offers `mask` and `blend`; see the [3D mesh transparency example](/example/mesh3d-alpha) for their shadow behavior and ordering limits.
-
-WebGL1 fragment shaders require constant indices when reading uniform arrays.
-The renderer generates bounded lookups for light data and shadow matrices on
-WebGL1; WebGL2 and WebGPU retain native indexing. Material shading returns its
-color to `main()` so the WebGL1 output conversion also runs for unlit materials.
-Browser regressions force WebGL1 and check vertex colors, tangent-space normal
-maps, multiple lights, and directional/point shadows.
+See the [lighting reference](/guide/lighting-reference) for parameters, limits and implementation details, or open the [lighting example](/example/lighting) for the API and controls.
 
 <Lighting />
 

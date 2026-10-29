@@ -5,9 +5,21 @@ description: 'Compare true isometric and 2:1 dimetric orthographic camera preset
 
 # Isometric 3D view
 
-This scene combines a cube, ground plane, lighting, and an extruded SVG path with a hole. Switch between **true isometric** (45° azimuth, 35.264° elevation) and **2:1 dimetric** (45° azimuth, 30° elevation). View height controls the scale; camera distance changes the pose and clipping range without changing the orthographic scale.
+Compare **true isometric** (45° azimuth, 35.264° elevation) and **2:1 dimetric** (45° azimuth, 30° elevation). View height controls orthographic scale.
 
-Select a mesh to use its 3D gizmo. Choose **Pan** to move the view or **Orbit** to turn it at a constrained elevation. Both tools work with a mouse, pen, or one-finger touch drag. Shift + drag with Pan also orbits. The wheel zooms around the ground point under the cursor, Shift + wheel pans, and two fingers pan or pinch to zoom. These camera gestures change only this canvas's 3D view, not the 2D source or undo history. Changing a preset or slider resets the camera pose.
+Select an object to use its 3D gizmo; use Pan or Orbit to adjust the camera. The wheel zooms, and two fingers pan or pinch to zoom. You can also draw boxes, edit SVG anchors and switch lighting or style effects.
+
+<script setup>
+import IsometricView from '../components/IsometricView.vue'
+</script>
+
+<IsometricView />
+
+::: details More interaction and style details
+
+Camera distance changes the pose and clipping range without changing orthographic scale. Changing a preset or slider resets the pose. Camera gestures affect only this canvas's 3D view, not the 2D source or undo history.
+
+Pan and Orbit support a mouse, pen or one-finger drag. Shift + drag with Pan also orbits; the wheel zooms around the ground point under the cursor, and Shift + wheel pans.
 
 Click **Auto orbit** to turn the camera slowly from its current pose while preserving its elevation, target and orthographic view height. Click again to hold the current view. Choosing a tool, pressing the canvas or using the wheel stops the preview so you can edit immediately. The animation pauses while the tab is hidden or the example is outside the viewport, and can run alongside the moving spotlight. Both previews share one rate-limited frame loop and do not add document undo entries.
 
@@ -31,11 +43,7 @@ Turn on **Rim light** to tint visible surfaces near their view-facing edges. The
 
 Turn on **Moving spotlight** to sweep a warm light across the cube, SVG ring and ground. The light is an ordinary shadow-casting `light3d` node: each animation frame changes its position and direction, while mesh geometry stays in place. It starts off, pauses when the tab is hidden or the example leaves the viewport, and can be turned off on slower devices. The motion is a preview effect and does not add an undo step for every frame.
 
-<script setup>
-import IsometricView from '../components/IsometricView.vue'
-</script>
-
-<IsometricView />
+:::
 
 ## Camera API
 
