@@ -725,6 +725,7 @@ if (import.meta.hot)
 declare global {
   interface Window {
     workflowDemo: {
+      connections(): ReturnType<Engine['connections']>;
       snapshot(): {
         nodes: number;
         edges: number;
@@ -740,6 +741,7 @@ declare global {
   }
 }
 window.workflowDemo = {
+  connections: () => engine?.connections() ?? [],
   snapshot: () => ({
     nodes: graph.nodes.length,
     edges: graph.edges.length,

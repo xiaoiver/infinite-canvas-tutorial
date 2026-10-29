@@ -16,6 +16,7 @@ import {
   Rect,
   Polyline,
   Path,
+  ComputedPoints,
   Visibility,
   Name,
   DropShadow,
@@ -35,6 +36,7 @@ import {
   CheckboardStyle,
   StrokeAttenuation,
   type SerializedNode,
+  inferXYWidthHeight,
 } from '@infinite-canvas-tutorial/ecs';
 import {
   edgePath,
@@ -43,6 +45,17 @@ import {
   type WorkflowNode,
   type NodeKind,
 } from './graph';
+
+type Point = { x: number; y: number };
+export interface ConnectionSnapshot {
+  id: string;
+  fromId: string;
+  toId: string;
+  start: Point;
+  end: Point;
+  sourcePort: Point;
+  targetPort: Point;
+}
 
 export interface FrameSample {
   elapsed: number;
@@ -144,17 +157,23 @@ export async function createEngine(
     id: string,
     from: WorkflowNode,
     to: WorkflowNode,
-  ): SerializedNode => ({
-    id,
-    type: 'path',
-    d: edgePath(from, to),
-    zIndex: 0,
-    fills: [],
-    strokes: [{ type: 'solid', value: '#7d9870' }],
-    strokeWidth: 1.7,
-    strokeLinecap: 'round',
-    editable: false,
-  });
+  ): SerializedNode => {
+    const path: SerializedNode = {
+      id,
+      type: 'path',
+      d: edgePath(from, to),
+      zIndex: 0,
+      fills: [],
+      strokes: [{ type: 'solid', value: '#7d9870' }],
+      strokeWidth: 1.7,
+      strokeLinecap: 'round',
+      editable: false,
+    };
+    // Creation normalizes world-space paths into local geometry + translation.
+    // Updates must use that same representation, including the new translation.
+    inferXYWidthHeight(path);
+    return path;
+  };
   let current: Graph | undefined;
   let selected: string | undefined;
   function selectionNode(node: WorkflowNode): SerializedNode {
@@ -200,6 +219,47 @@ export async function createEngine(
         nodes: nodes.filter((n) => n.id.startsWith('node-')).length,
         edges: nodes.filter((n) => n.id.startsWith('edge-')).length,
       };
+    },
+    // Read the same sampled geometry and world transforms used for rendering.
+    // This keeps interaction tests independent of the input path strings.
+    connections(): ConnectionSnapshot[] {
+      return (current?.edges.slice(0, 6) ?? []).flatMap((connection) => {
+        const pathNode = api.getNodeById(connection.id);
+        const fromNode = api.getNodeById(connection.from);
+        const toNode = api.getNodeById(connection.to);
+        const path = pathNode && api.getEntity(pathNode);
+        const from = fromNode && api.getEntity(fromNode);
+        const to = toNode && api.getEntity(toNode);
+        if (!path?.has(ComputedPoints) || !from || !to) return [];
+        const points = path.read(ComputedPoints).points?.[0];
+        if (!points?.length) return [];
+        const worldPoint = (
+          matrix: GlobalTransform['matrix'],
+          x: number,
+          y: number,
+        ): Point => ({
+          x: matrix.m00 * x + matrix.m10 * y + matrix.m20,
+          y: matrix.m01 * x + matrix.m11 * y + matrix.m21,
+        });
+        const start = points[0];
+        const end = points[points.length - 1];
+        const matrix = path.read(GlobalTransform).matrix;
+        return [
+          {
+            id: connection.id,
+            fromId: connection.from,
+            toId: connection.to,
+            start: worldPoint(matrix, start[0], start[1]),
+            end: worldPoint(matrix, end[0], end[1]),
+            sourcePort: worldPoint(
+              from.read(GlobalTransform).matrix,
+              from.read(Rect).width - 3,
+              46,
+            ),
+            targetPort: worldPoint(to.read(GlobalTransform).matrix, 3, 46),
+          },
+        ];
+      });
     },
     async load(graph: Graph) {
       const previous = current;
@@ -258,18 +318,18 @@ export async function createEngine(
     },
     move(node: WorkflowNode) {
       const byId = new Map(current!.nodes.map((n) => [n.id, n]));
+      // The UI may already hold a later pointer position. Keep the card and
+      // every attached curve on the same immutable queued movement snapshot.
+      byId.set(node.id, node);
       const attached = current!.edges.filter(
         (e) => e.from === node.id || e.to === node.id,
       );
-      return mutate((editor) =>
-        editor.updateNodes([
-          card(node),
-          ...attached.map((e) =>
-            edge(e.id, byId.get(e.from)!, byId.get(e.to)!),
-          ),
-          ...(selected === node.id ? [selectionNode(node)] : []),
-        ]),
-      );
+      const updates = [
+        card(node),
+        ...attached.map((e) => edge(e.id, byId.get(e.from)!, byId.get(e.to)!)),
+        ...(selected === node.id ? [selectionNode(node)] : []),
+      ];
+      return mutate((editor) => editor.updateNodes(updates));
     },
     async dispose() {
       disposed = true;

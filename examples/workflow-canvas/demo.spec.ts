@@ -61,6 +61,87 @@ test('renders WebGL nodes, moves a selected card, persists settings and exports 
   expect(errors).toEqual([]);
 });
 
+test('keeps rendered curve endpoints connected while dragging source and target nodes', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await ready(page);
+  const widths = Object.fromEntries(
+    makeGraph(24).nodes.map((node) => [node.id, node.width]),
+  );
+  async function expectConnected() {
+    await expect
+      .poll(
+        async () => {
+          const state = await page.evaluate(() => ({
+            positions: window.workflowDemo.snapshot().positions,
+            connections: window.workflowDemo.connections(),
+          }));
+          if (state.connections.length !== 6) return Infinity;
+          const positions = new Map(
+            state.positions.map((node) => [node.id, node]),
+          );
+          const gaps = state.connections.flatMap((connection) => {
+            const from = positions.get(connection.fromId)!;
+            const to = positions.get(connection.toId)!;
+            return [
+              Math.hypot(
+                connection.start.x - connection.sourcePort.x,
+                connection.start.y - connection.sourcePort.y,
+              ),
+              Math.hypot(
+                connection.end.x - connection.targetPort.x,
+                connection.end.y - connection.targetPort.y,
+              ),
+              Math.hypot(
+                connection.sourcePort.x - from.x - widths[from.id] + 3,
+                connection.sourcePort.y - from.y - 46,
+              ),
+              Math.hypot(
+                connection.targetPort.x - to.x - 3,
+                connection.targetPort.y - to.y - 46,
+              ),
+            ];
+          });
+          return Math.max(...gaps);
+        },
+        {
+          timeout: 5000,
+          message: 'rendered curves must touch their current card ports',
+        },
+      )
+      .toBeLessThan(0.05);
+  }
+  await expectConnected();
+  // The image node has two incoming and two outgoing curves. Check during
+  // each gesture, after release, in both directions and at another zoom.
+  for (const [id, dx, dy] of [
+    ['node-0-2', 75, -45],
+    ['node-0-2', -95, 65],
+    ['node-0-0', 45, 30],
+    ['node-0-3', -50, 55],
+  ] as const) {
+    const before = await snapshot(page);
+    const node = before.positions.find((item) => item.id === id)!;
+    const bounds = (await page.locator('#canvas').boundingBox())!;
+    const x = bounds.x + (node.x - before.view.x + 90) * before.view.zoom;
+    const y = bounds.y + (node.y - before.view.y + 30) * before.view.zoom;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    for (let step = 1; step <= 3; step++) {
+      await page.mouse.move(x + (dx * step) / 3, y + (dy * step) / 3, {
+        steps: 2,
+      });
+      await expectConnected();
+    }
+    await page.mouse.up();
+    await expectConnected();
+    if (id === 'node-0-0') await page.locator('#zoom-in').click();
+  }
+  expect(errors).toEqual([]);
+});
+
 test('zooms around the pointer, pans, and cancels a performance tour on navigation', async ({
   page,
 }) => {
