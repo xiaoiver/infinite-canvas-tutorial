@@ -98,6 +98,46 @@ it('imports supported SVG pattern transforms as editable 2D fills', () => {
     .not.toHaveProperty('extrude3d', 12);
 });
 
+it('embeds local gradients and data images in editable SVG pattern tiles', () => {
+  const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4z8DwHwAFAAH/e+m+7wAAAABJRU5ErkJggg==';
+  const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="base"><stop stop-color="red"/><stop offset="1" stop-color="blue"/></linearGradient>
+      <linearGradient id="shade" href="#base" x2="1"/>
+      <pattern id="paint" width="20" height="20" patternUnits="userSpaceOnUse">
+        <rect width="20" height="20" fill="url(#shade)"/>
+        <image x="5" y="5" width="10" height="10" href="${image}"/>
+      </pattern>
+      <pattern id="external" width="20" height="20" patternUnits="userSpaceOnUse">
+        <image width="10" height="10" href="https://example.com/image.png"/>
+      </pattern>
+      <linearGradient id="nested"><stop stop-color="red"><script>bad()</script></stop></linearGradient>
+      <pattern id="unsafe" width="20" height="20" patternUnits="userSpaceOnUse">
+        <rect width="20" height="20" fill="url(#nested)"/>
+      </pattern>
+    </defs>
+    <rect id="painted" width="40" height="40" fill="url(#paint)"/>
+    <rect id="rejected" width="40" height="40" fill="url(#external)"/>
+    <rect id="unsafe-rect" width="40" height="40" fill="url(#unsafe)"/>
+  </svg>`, { contentType: 'image/svg+xml' });
+  const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
+  const nodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
+  const painted = nodes.find((node) => node.id === 'painted');
+  const fill = painted?.fills?.[0];
+  expect(fill?.type).toBe('pattern');
+  if (fill?.type !== 'pattern') throw new Error('Expected pattern fill');
+  const tile = decodeURIComponent(fill.value.slice(fill.value.indexOf(',') + 1));
+  expect(tile).toContain('<defs>');
+  expect(tile).toContain('id="base"');
+  expect(tile).toContain('id="shade"');
+  expect(tile).toContain('fill="url(#shade)"');
+  expect(tile).toContain(image);
+  expect(nodes.find((node) => node.id === 'rejected')?.fills?.[0]?.type)
+    .not.toBe('pattern');
+  expect(nodes.find((node) => node.id === 'unsafe-rect')?.fills?.[0]?.type)
+    .not.toBe('pattern');
+});
+
 it('keeps SVG pattern origins aligned across shapes with different geometry origins', () => {
   const dom = new JSDOM(`<svg xmlns="http://www.w3.org/2000/svg">
     <defs>

@@ -118,6 +118,20 @@ const strokeSample = [
   '</svg>',
 ].join('');
 
+const patternPaintSample = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 310">',
+  '<defs><linearGradient id="tile-shade"><stop stop-color="#2563eb"/>',
+  '<stop offset="1" stop-color="#22c55e"/></linearGradient>',
+  '<pattern id="painted-tile" width="40" height="40" patternUnits="userSpaceOnUse">',
+  '<rect width="40" height="40" fill="url(#tile-shade)"/>',
+  '<image x="12" y="12" width="16" height="16" href="data:image/png;base64,',
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4z8DwHwAFAAH/e+m+7wAAAABJRU5ErkJggg=="/>',
+  '</pattern></defs>',
+  '<rect id="pattern-card" x="35" y="35" width="250" height="220" fill="url(#painted-tile)"/>',
+  '<path id="solid-companion" d="M335 70 H445 V180 H335 Z" fill="#f97316"/>',
+  '</svg>',
+].join('');
+
 const wrapper = ref<HTMLElement | null>(null);
 const depth = ref(35);
 const bevelSize = ref(2);
@@ -269,6 +283,12 @@ function loadStrokeSample() {
   void render();
 }
 
+function loadPatternPaintSample() {
+  svgSource = patternPaintSample;
+  show3D.value = true;
+  void render();
+}
+
 onMounted(async () => {
   const canvas = wrapper.value;
   if (!canvas) return;
@@ -378,6 +398,9 @@ onUnmounted(() => {
       </button>
       <button type="button" @click="loadStrokeSample">
         Stroke caps + joins sample
+      </button>
+      <button type="button" @click="loadPatternPaintSample">
+        Gradient + image pattern sample
       </button>
       <button type="button" :disabled="!show3D" @click="downloadGlb">
         Download GLB

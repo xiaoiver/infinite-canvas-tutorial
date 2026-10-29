@@ -441,8 +441,14 @@ gradients, paint servers and unsupported SVG shapes remain in 2D.
 `<pattern>` fills with integer pixel tiles and `patternUnits="userSpaceOnUse"`
 are imported as repeating 2D fills. The tile can contain basic SVG shapes and
 local `<use>` references to those shapes. A local `href` on a pattern can inherit
-tile content and attributes from another pattern. External references, cyclic
-references, linked images and paint servers inside tiles remain unsupported.
+tile content and attributes from another pattern. Tile shapes can use local
+linear or radial gradients in their `fill` or `stroke`, including inherited
+gradients. An `<image>` in the tile can contain an embedded PNG, JPEG, WebP or
+AVIF data URL. The pattern stays editable as a 2D fill; its gradient stops and
+image content are embedded in the tile resource. External references, cyclic
+references, external images and other paint servers remain unsupported.
+Use the **Gradient + image pattern sample** button in the demo below to inspect
+both tile paints on the editor canvas.
 Numeric `x` and `y` pattern origins remain
 aligned when the same pattern fills shapes at different positions, including
 fills inherited from a group. Inherited pattern fills become editable fills on
