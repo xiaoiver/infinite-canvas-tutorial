@@ -169,7 +169,8 @@ function collectGradientDefinition(
       collected.size >= MAX_TILE_ELEMENTS) return false;
   const target = findLocalReference(owner, id, definitions);
   if (!target || !['linearGradient', 'radialGradient'].includes(target.localName) ||
-      Array.from(target.children).some((child) => child.localName !== 'stop') ||
+      Array.from(target.children).some((child) =>
+        child.localName !== 'stop' || child.children.length > 0) ||
       target.children.length > MAX_TILE_ELEMENTS) return false;
   for (const part of [target, ...Array.from(target.querySelectorAll('*'))] as SVGElement[]) {
     for (const attr of Array.from(part.attributes)) {

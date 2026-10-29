@@ -111,9 +111,14 @@ it('embeds local gradients and data images in editable SVG pattern tiles', () =>
       <pattern id="external" width="20" height="20" patternUnits="userSpaceOnUse">
         <image width="10" height="10" href="https://example.com/image.png"/>
       </pattern>
+      <linearGradient id="nested"><stop stop-color="red"><script>bad()</script></stop></linearGradient>
+      <pattern id="unsafe" width="20" height="20" patternUnits="userSpaceOnUse">
+        <rect width="20" height="20" fill="url(#nested)"/>
+      </pattern>
     </defs>
     <rect id="painted" width="40" height="40" fill="url(#paint)"/>
     <rect id="rejected" width="40" height="40" fill="url(#external)"/>
+    <rect id="unsafe-rect" width="40" height="40" fill="url(#unsafe)"/>
   </svg>`, { contentType: 'image/svg+xml' });
   const svg = dom.window.document.documentElement as unknown as SVGSVGElement;
   const nodes = svgElementsToSerializedNodes(Array.from(svg.children) as SVGElement[]);
@@ -128,6 +133,8 @@ it('embeds local gradients and data images in editable SVG pattern tiles', () =>
   expect(tile).toContain('fill="url(#shade)"');
   expect(tile).toContain(image);
   expect(nodes.find((node) => node.id === 'rejected')?.fills?.[0]?.type)
+    .not.toBe('pattern');
+  expect(nodes.find((node) => node.id === 'unsafe-rect')?.fills?.[0]?.type)
     .not.toBe('pattern');
 });
 
