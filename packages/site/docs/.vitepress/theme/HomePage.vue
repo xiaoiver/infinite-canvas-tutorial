@@ -12,6 +12,9 @@ const gallery = [
       zh: '半调网点',
       ko: '하프톤',
       ja: 'ハーフトーン',
+      'zh-Hant': '半調網點',
+      es: 'Semitono',
+      'pt-BR': 'Meio-tom',
     },
   },
   {
@@ -23,6 +26,9 @@ const gallery = [
       zh: '像素化',
       ko: '픽셀화',
       ja: 'ピクセル化',
+      'zh-Hant': '像素化',
+      es: 'Pixelado',
+      'pt-BR': 'Pixelização',
     },
   },
   {
@@ -34,6 +40,9 @@ const gallery = [
       zh: '辐射级联光照',
       ko: '래디언스 캐스케이드',
       ja: 'ラディアンスキャスケード',
+      'zh-Hant': '輻射級聯光照',
+      es: 'Iluminación por radiance cascades',
+      'pt-BR': 'Iluminação por radiance cascades',
     },
   },
   {
@@ -45,6 +54,9 @@ const gallery = [
       zh: 'Vello GPU 渲染',
       ko: 'Vello GPU 렌더링',
       ja: 'Vello GPU レンダリング',
+      'zh-Hant': 'Vello GPU 渲染',
+      es: 'Renderizado GPU con Vello',
+      'pt-BR': 'Renderização GPU com Vello',
     },
   },
   {
@@ -56,6 +68,9 @@ const gallery = [
       zh: '画布上的图标字体',
       ko: '캔버스 위의 아이콘 폰트',
       ja: 'キャンバス上のアイコンフォント',
+      'zh-Hant': '畫布上的圖示字型',
+      es: 'Fuentes de iconos en el lienzo',
+      'pt-BR': 'Fontes de ícones na tela',
     },
   },
   {
@@ -67,6 +82,9 @@ const gallery = [
       zh: 'Mermaid 图表',
       ko: 'Mermaid 다이어그램',
       ja: 'Mermaid ダイアグラム',
+      'zh-Hant': 'Mermaid 圖表',
+      es: 'Diagramas Mermaid',
+      'pt-BR': 'Diagramas Mermaid',
     },
   },
   {
@@ -78,6 +96,9 @@ const gallery = [
       zh: '正交连线',
       ko: '직교 연결선',
       ja: '直交コネクタ',
+      'zh-Hant': '正交連線',
+      es: 'Conectores ortogonales',
+      'pt-BR': 'Conectores ortogonais',
     },
   },
 ];
@@ -323,15 +344,199 @@ const pages = {
       { label: '実験 (EN)', href: '/experiment/particles', locale: 'en' },
     ],
   },
+
+  'zh-Hant': {
+    base: '/zh-Hant',
+    locale: 'zh-Hant',
+    eyebrow: 'WebGL / WebGPU',
+    title: '一個無限畫布教程',
+    lede: '從空白畫布開始，用頁面裡可執行的範例，做成接近 Figma 的無限畫布。',
+    primary: { label: '開啟應用', href: 'https://app.infinitecanvas.cc/' },
+    secondary: { label: '從第 1 課開始', href: '/guide/lesson-001' },
+    heroAlt: '無限畫布應用，畫板上有圖片和一幅素描',
+    tracksTitle: '三條閱讀路線',
+    tracks: [
+      {
+        title: '在 GPU 上作畫',
+        text: '用 SDF 與 WebGPU 畫圓、文字、筆畫，並做後處理。',
+        image: '/gallery/watercolor.png',
+        imageAlt: '水彩風格渲染',
+        width: 1062,
+        height: 582,
+        links: [
+          { label: '繪製圓', href: '/guide/lesson-002' },
+          { label: '橢圓與矩形', href: '/guide/lesson-009' },
+          { label: '文字渲染', href: '/guide/lesson-015' },
+          { label: '後處理', href: '/guide/lesson-030' },
+        ],
+      },
+      {
+        title: '工具與介面',
+        text: 'Transformer、筆刷與剪貼簿。',
+        image: '/gallery/brush-with-eraser.png',
+        imageAlt: '筆刷和橡皮擦',
+        width: 980,
+        height: 454,
+        links: [
+          { label: 'Web UI', href: '/guide/lesson-007' },
+          { label: 'Transformer', href: '/guide/lesson-021' },
+          { label: '筆刷', href: '/guide/lesson-025' },
+          { label: '剪貼簿', href: '/guide/lesson-024' },
+        ],
+      },
+      {
+        title: '讓模型參與繪製',
+        text: '生成圖形、把圖片變成向量，並和畫布對話。',
+        image: '/gallery/liquid-metal.png',
+        imageAlt: '液態金屬文字與材質',
+        width: 1974,
+        height: 990,
+        links: [
+          { label: '整合 AI', href: '/guide/lesson-028' },
+          { label: '文字轉圖表', href: '/guide/lesson-032' },
+        ],
+      },
+    ],
+    galleryTitle: '畫布上的效果',
+    moreTitle: '文件裡還有',
+    more: [
+      { label: '範例 (EN)', href: '/example/solar-system', locale: 'en' },
+      { label: '參考 (EN)', href: '/reference/canvas', locale: 'en' },
+      { label: '實驗 (EN)', href: '/experiment/particles', locale: 'en' },
+    ],
+  },
+  es: {
+    base: '/es',
+    locale: 'es',
+    eyebrow: 'WebGL / WebGPU',
+    title: 'Un tutorial de lienzo infinito',
+    lede: 'Empieza con un lienzo en blanco y, con ejemplos que se ejecutan en la página, construye un lienzo infinito parecido a Figma.',
+    primary: { label: 'Abrir la app', href: 'https://app.infinitecanvas.cc/' },
+    secondary: { label: 'Empezar por la lección 1', href: '/guide/lesson-001' },
+    heroAlt: 'La app de lienzo infinito, con imágenes y un boceto en el tablero',
+    tracksTitle: 'Tres maneras de recorrer las lecciones',
+    tracks: [
+      {
+        title: 'Dibujar en la GPU',
+        text: 'Círculos, texto, trazos y posprocesado con SDF y WebGPU.',
+        image: '/gallery/watercolor.png',
+        imageAlt: 'Renderizado con estilo de acuarela',
+        width: 1062,
+        height: 582,
+        links: [
+          { label: 'Dibujar un círculo', href: '/guide/lesson-002' },
+          { label: 'Elipse y rectángulo', href: '/guide/lesson-009' },
+          { label: 'Renderizado de texto', href: '/guide/lesson-015' },
+          { label: 'Posprocesado', href: '/guide/lesson-030' },
+        ],
+      },
+      {
+        title: 'Herramientas e interfaz',
+        text: 'Transformer, pinceles y portapapeles.',
+        image: '/gallery/brush-with-eraser.png',
+        imageAlt: 'Pincel y borrador',
+        width: 980,
+        height: 454,
+        links: [
+          { label: 'Web UI', href: '/guide/lesson-007' },
+          { label: 'Transformer', href: '/guide/lesson-021' },
+          { label: 'Pinceles', href: '/guide/lesson-025' },
+          { label: 'Portapapeles', href: '/guide/lesson-024' },
+        ],
+      },
+      {
+        title: 'Dibujar con un modelo',
+        text: 'Genera formas, vectoriza una imagen y habla con el lienzo.',
+        image: '/gallery/liquid-metal.png',
+        imageAlt: 'Texto y materiales de metal líquido',
+        width: 1974,
+        height: 990,
+        links: [
+          { label: 'Integración con IA', href: '/guide/lesson-028' },
+          { label: 'De texto a diagrama', href: '/guide/lesson-032' },
+        ],
+      },
+    ],
+    galleryTitle: 'Desde el lienzo',
+    moreTitle: 'También en la documentación',
+    more: [
+      { label: 'Ejemplos (EN)', href: '/example/solar-system', locale: 'en' },
+      { label: 'Referencia (EN)', href: '/reference/canvas', locale: 'en' },
+      { label: 'Experimentos (EN)', href: '/experiment/particles', locale: 'en' },
+    ],
+  },
+  'pt-BR': {
+    base: '/pt-BR',
+    locale: 'pt-BR',
+    eyebrow: 'WebGL / WebGPU',
+    title: 'Um tutorial de tela infinita',
+    lede: 'Comece com uma tela em branco e, com exemplos que rodam na página, construa uma tela infinita no estilo do Figma.',
+    primary: { label: 'Abrir o app', href: 'https://app.infinitecanvas.cc/' },
+    secondary: { label: 'Começar pela lição 1', href: '/guide/lesson-001' },
+    heroAlt: 'O app de tela infinita, com imagens e um esboço no quadro',
+    tracksTitle: 'Três caminhos pelas lições',
+    tracks: [
+      {
+        title: 'Desenhar na GPU',
+        text: 'Círculos, texto, traços e pós-processamento com SDF e WebGPU.',
+        image: '/gallery/watercolor.png',
+        imageAlt: 'Renderização em estilo aquarela',
+        width: 1062,
+        height: 582,
+        links: [
+          { label: 'Desenhar um círculo', href: '/guide/lesson-002' },
+          { label: 'Elipse e retângulo', href: '/guide/lesson-009' },
+          { label: 'Renderização de texto', href: '/guide/lesson-015' },
+          { label: 'Pós-processamento', href: '/guide/lesson-030' },
+        ],
+      },
+      {
+        title: 'Ferramentas e interface',
+        text: 'Transformer, pincéis e área de transferência.',
+        image: '/gallery/brush-with-eraser.png',
+        imageAlt: 'Pincel e borracha',
+        width: 980,
+        height: 454,
+        links: [
+          { label: 'Web UI', href: '/guide/lesson-007' },
+          { label: 'Transformer', href: '/guide/lesson-021' },
+          { label: 'Pincéis', href: '/guide/lesson-025' },
+          { label: 'Área de transferência', href: '/guide/lesson-024' },
+        ],
+      },
+      {
+        title: 'Desenhar com um modelo',
+        text: 'Gere formas, vetorize uma imagem e converse com a tela.',
+        image: '/gallery/liquid-metal.png',
+        imageAlt: 'Texto e materiais de metal líquido',
+        width: 1974,
+        height: 990,
+        links: [
+          { label: 'Integração com IA', href: '/guide/lesson-028' },
+          { label: 'De texto a diagrama', href: '/guide/lesson-032' },
+        ],
+      },
+    ],
+    galleryTitle: 'Da tela',
+    moreTitle: 'Também na documentação',
+    more: [
+      { label: 'Exemplos (EN)', href: '/example/solar-system', locale: 'en' },
+      { label: 'Referência (EN)', href: '/reference/canvas', locale: 'en' },
+      { label: 'Experimentos (EN)', href: '/experiment/particles', locale: 'en' },
+    ],
+  },
 };
 
 const { lang } = useData();
 
 const page = computed(() => {
   const value = lang.value || '';
+  if (value.startsWith('zh-Hant')) return pages['zh-Hant'];
   if (value.startsWith('zh')) return pages.zh;
   if (value.startsWith('ko')) return pages.ko;
   if (value.startsWith('ja')) return pages.ja;
+  if (value.startsWith('es')) return pages.es;
+  if (value.startsWith('pt')) return pages['pt-BR'];
   return pages.en;
 });
 
