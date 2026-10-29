@@ -277,11 +277,14 @@ test('mixed Maslow SVG keeps its 2D layers visible while exporting 3D layers', a
 });
 
 test.describe('SVG pattern rasterization', () => {
-  test.beforeEach(({ browserName }) => {
-    // WebKit's Linux renderer terminates the page while rasterizing SVG data
-    // URL pattern tiles. The parser and texture behavior remain covered by
-    // ECS unit tests; keep pixel coverage in Chromium until WebKit supports it.
-    test.skip(browserName === 'webkit', 'WebKit crashes on SVG pattern tile rasterization');
+  test.beforeEach(({ browserName }, testInfo) => {
+    // The solid tile case works in WebKit; the other SVG pattern cases can
+    // still render blank or crash during rerasterization.
+    test.skip(
+      browserName === 'webkit' &&
+        testInfo.title !== 'zoomed opaque SVG pattern has no visible tile seams',
+      'WebKit SVG pattern rasterization is not yet reliable',
+    );
   });
 
 test('SVG user-space pattern renders repeated dots as a 2D fill', async ({ page }) => {
