@@ -1,9 +1,17 @@
 ---
-
 outline: deep
 description: 'タイルベースレンダリングの紹介です。原理、性能最適化の方針、無限キャンバスアプリケーションでの例を扱います。'
-head: - ['meta', { property: 'og:title', content: '第 35 課 - タイルベースレンダリング' }]
----<script setup>
+head:
+    - [
+          'meta',
+          {
+              property: 'og:title',
+              content: '第 35 課 - タイルベースレンダリング',
+          },
+      ]
+---
+
+<script setup>
 import Vello from '../../components/Vello.vue'
 import VelloBlur from '../../components/VelloBlur.vue'
 import VelloDropShadow from '../../components/VelloDropShadow.vue'
