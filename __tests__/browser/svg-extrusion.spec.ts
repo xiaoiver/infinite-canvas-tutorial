@@ -494,6 +494,43 @@ test('zoomed opaque SVG pattern has no visible tile seams', async ({ page }) => 
   }, { timeout: 10_000 }).toBe(0);
 });
 
+test('SVG pattern tiles render local gradients and embedded images', async ({ page }) => {
+  await page.goto('/gizmo.html?extrudePath');
+  await expect(page.locator('#status')).toHaveText('Ready');
+  const image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4AWP4z8DwHwAFAAH/e+m+7wAAAABJRU5ErkJggg==';
+  await page.evaluate((src) => window.gizmoTest.showSvgArtwork(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="40">
+      <defs>
+        <linearGradient id="shade"><stop stop-color="blue"/>
+          <stop offset="1" stop-color="lime"/></linearGradient>
+        <pattern id="tile" width="20" height="20" patternUnits="userSpaceOnUse">
+          <rect width="20" height="20" fill="url(#shade)"/>
+          <image x="6" y="6" width="8" height="8" href="${src}"/>
+        </pattern>
+      </defs>
+      <rect width="80" height="40" fill="url(#tile)"/>
+    </svg>
+  `), image);
+  const points = await page.evaluate(() => {
+    const api = window.gizmoTest.api();
+    const rect = api.getNodes().find((node) => node.type === 'rect')!;
+    const bounds = api.getGeometryBounds([rect]);
+    return [2, 10, 18, 30].map((x) => api.canvas2Viewport({
+      x: bounds.minX + x, y: bounds.minY + 10,
+    }));
+  });
+  await expect.poll(async () => {
+    const png = PNG.sync.read(await page.locator('#canvas').screenshot());
+    const colors = points.map((point) => canvasRgbAt(png, point.x, point.y));
+    return [
+      colors[0][2] > colors[0][1] * 2,
+      colors[1][0] > colors[1][1] * 2,
+      colors[2][1] > colors[2][2] * 2,
+      colors[3][0] > colors[3][1] * 2,
+    ];
+  }, { timeout: 10_000 }).toEqual([true, true, true, true]);
+});
+
 });
 
 test('SVG circular radial gradient keeps its colors and local center in 2D', async ({ page }) => {
