@@ -8,6 +8,7 @@ import { RssPlugin } from 'vitepress-plugin-rss';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import { adsenseClient, shared } from './shared';
+import { rssFeedSizeGuardPlugin, rssPluginOptions } from './rss-feed.mjs';
 import { en } from './en';
 import { zh } from './zh';
 import { ko } from './ko';
@@ -98,16 +99,8 @@ export default defineConfig({
           vueJsx: vueJsx(),
         },
       }),
-      RssPlugin({
-        title: 'An infinite canvas tutorial',
-        baseUrl: 'https://infinitecanvas.cc',
-        copyright: 'Copyright (c) 2024-present xiaoiver',
-        author: {
-          name: 'xiaoiver',
-          email: 'pyqiverson@gmail.com',
-          link: 'https://github.com/xiaoiver',
-        },
-      }),
+      RssPlugin(rssPluginOptions),
+      rssFeedSizeGuardPlugin(),
       wasm(),
       topLevelAwait(),
     ],
