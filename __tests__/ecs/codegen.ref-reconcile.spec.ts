@@ -268,6 +268,7 @@ describe('design-to-code expanded ref reconciliation', () => {
       descendants: { price: { visibility: 'hidden' } },
     });
     const react = serializedNodesToCode(recovered);
+    expect(react).toContain("import type { CSSProperties } from 'react';");
     expect(react).toContain("priceVisibility?: CSSProperties['visibility']");
     expect(react).toContain('visibility: priceVisibility');
     expect(react).toContain('priceVisibility="hidden"');
