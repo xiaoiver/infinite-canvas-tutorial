@@ -561,7 +561,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
       tag === 'button'
         ? ' type="button"'
         : tag === 'a' && node.element?.tag === 'a'
-        ? ` href=${JSON.stringify(node.element.href)}`
+        ? ` href={${JSON.stringify(node.element.href)}}`
         : '';
     const children = node.children
       .map((child) => renderNode(child, state, depth + 1))
@@ -602,7 +602,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
         tag === 'button'
           ? ' type="button"'
           : tag === 'a' && node.element?.tag === 'a'
-          ? ` href=${JSON.stringify(node.element.href)}`
+          ? ` href={${JSON.stringify(node.element.href)}}`
           : '';
       const imageStyle = [
         'position: "absolute"',
@@ -643,7 +643,7 @@ function renderNode(node: CodeNode, state: EmitState, depth: number): string {
     tag === 'button'
       ? ' type="button"'
       : tag === 'a' && node.element?.tag === 'a'
-      ? ` href=${JSON.stringify(node.element.href)}`
+      ? ` href={${JSON.stringify(node.element.href)}}`
       : '';
 
   if (node.role === 'text' && node.children.length === 0) {
