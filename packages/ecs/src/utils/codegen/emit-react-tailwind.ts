@@ -846,6 +846,7 @@ export function emitReactTailwind(
           'alignSelf',
           'flexBasis',
           'mixBlendMode',
+          'visibility',
           'minWidth',
           'maxWidth',
           'minHeight',
