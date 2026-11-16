@@ -2424,7 +2424,7 @@ describe('design-to-code (codegen)', () => {
       expect(react).toContain('<h1 className="shrink-0 whitespace-pre"');
       expect(react).toContain('lineHeight: 1.20 }}>Checkout</h1>');
       expect(react).toContain('<button type="button"');
-      expect(react).toContain('href="/help?topic=pay&lang=en"');
+      expect(react).toContain('href={"/help?topic=pay&lang=en"}');
     });
 
     it('keeps literal prices in generated text', () => {
