@@ -20,6 +20,6 @@ jobs:
         with:
           node-version: 20
       - run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Verify patched dependency vulnerabilities
-        run: node --test __tests__/tooling/security-patches.test.mjs
+      - name: Verify patched and upgraded dependencies
+        run: node --test __tests__/tooling/security-patches.test.mjs __tests__/tooling/dependency-compat.test.mjs
       - run: pnpm audit --audit-level=low
