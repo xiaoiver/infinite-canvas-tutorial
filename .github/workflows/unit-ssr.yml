@@ -9,7 +9,8 @@ concurrency:
 jobs:
   unit-ssr-for-visual-regression:
     name: Unit & SSR for Visual Regression
-    runs-on: ubuntu-latest
+    # Pin the image: headless-gl dependencies require libglapi-mesa (not available on Ubuntu 26.04).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
 
