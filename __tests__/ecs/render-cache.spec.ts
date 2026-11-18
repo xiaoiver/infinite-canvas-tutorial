@@ -239,6 +239,8 @@ it('does not retain a failed allocation and allows retry with the same key', () 
 
 it('forgets retiring per-drawcall bindings before teardown and reallocates the same descriptor', () => {
   const { cache, resources } = fixture();
+  cache.releaseBindings(undefined);
+  cache.releaseBindings({} as any);
   const descriptor = {
     pipeline: { id: 1 },
     uniformBufferBindings: [{ buffer: { id: 2 } }],
