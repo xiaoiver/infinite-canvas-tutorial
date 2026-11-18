@@ -1,0 +1,45 @@
+name: Docs site build
+
+on:
+  pull_request:
+    paths:
+      - 'packages/site/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docs-build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install canvas native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev libpixman-1-dev
+      - run: pnpm install --frozen-lockfile
+      # Match the documentation publishing build without its deployment steps.
+      - name: Build packages
+        run: pnpm -r --filter '!@infinite-canvas-tutorial/app' --filter '!@infinite-canvas-tutorial/site' run build
+      - name: Build documentation site
+        env:
+          NODE_OPTIONS: --max-old-space-size=12288
+        run: pnpm --filter '@infinite-canvas-tutorial/site' run build
+      - name: Check text LOD routes
+        run: |
+          test -f packages/site/docs/.vitepress/dist/example/text-lod.html
+          test -f packages/site/docs/.vitepress/dist/zh/example/text-lod.html

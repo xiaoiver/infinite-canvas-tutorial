@@ -255,6 +255,10 @@ export const zh = defineConfig({
                     link: 'sdf-text',
                   },
                   {
+                    text: '文字 LOD',
+                    link: 'text-lod',
+                  },
+                  {
                     text: '使用 Bitmap Font 绘制文本',
                     link: 'bitmap-font',
                   },
