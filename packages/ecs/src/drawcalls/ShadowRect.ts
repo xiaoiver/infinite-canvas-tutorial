@@ -239,10 +239,10 @@ export class ShadowRect extends Drawcall {
             return [
               matrix.m00,
               matrix.m01,
-              matrix.m02,
               matrix.m10,
               matrix.m11,
-              matrix.m12,
+              matrix.m20,
+              matrix.m21,
             ];
           })
           .flat(),

@@ -205,7 +205,7 @@ export class SDFText extends Drawcall {
     const stroke = resolveGpuStrokeColor(shape) ?? 'none';
 
     const font = shape.has(ComputedTextMetrics)
-      ? shape.read(ComputedTextMetrics)
+      ? shape.read(ComputedTextMetrics).font
       : '';
     const blurRadius = shape.has(DropShadow)
       ? shape.read(DropShadow).blurRadius

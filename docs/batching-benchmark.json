@@ -1,0 +1,160 @@
+[
+  {
+    "count": 1000,
+    "batchable": false,
+    "visible": 1000,
+    "drawcalls": 1000,
+    "vertices": 4000,
+    "cpuP50": 28,
+    "cpuP95": 35.19999999925494,
+    "samples": 89,
+    "dpr": 1,
+    "size": [240, 160],
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36",
+    "resources": [
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 1,
+          "Texture": 5,
+          "Program": 0,
+          "Shader": 0,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 0
+        }
+      },
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 3003,
+          "Texture": 1007,
+          "Program": 2,
+          "Shader": 4,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 2
+        }
+      }
+    ]
+  },
+  {
+    "count": 1000,
+    "batchable": true,
+    "visible": 1000,
+    "drawcalls": 1,
+    "vertices": 4000,
+    "pageSizes": [1000],
+    "cpuP50": 3.400000002235174,
+    "cpuP95": 4.699999999254942,
+    "samples": 89,
+    "dpr": 1,
+    "size": [240, 160],
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36",
+    "resources": [
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 1,
+          "Texture": 5,
+          "Program": 0,
+          "Shader": 0,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 0
+        }
+      },
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 7,
+          "Texture": 7,
+          "Program": 2,
+          "Shader": 4,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 2
+        }
+      }
+    ]
+  },
+  {
+    "count": 10000,
+    "batchable": false,
+    "visible": 10000,
+    "drawcalls": 10000,
+    "vertices": 40000,
+    "cpuP50": 689.5,
+    "cpuP95": 835.4000000022352,
+    "samples": 89,
+    "dpr": 1,
+    "size": [240, 160],
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36",
+    "resources": [
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 1,
+          "Texture": 5,
+          "Program": 0,
+          "Shader": 0,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 0
+        }
+      },
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 30003,
+          "Texture": 10007,
+          "Program": 2,
+          "Shader": 4,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 2
+        }
+      }
+    ]
+  },
+  {
+    "count": 10000,
+    "batchable": true,
+    "visible": 10000,
+    "drawcalls": 3,
+    "vertices": 40000,
+    "pageSizes": [4096, 4096, 1808],
+    "cpuP50": 24,
+    "cpuP95": 38.5,
+    "samples": 89,
+    "dpr": 1,
+    "size": [240, 160],
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36",
+    "resources": [
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 1,
+          "Texture": 5,
+          "Program": 0,
+          "Shader": 0,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 0
+        }
+      },
+      {
+        "side": "offscreen",
+        "live": {
+          "Buffer": 15,
+          "Texture": 7,
+          "Program": 2,
+          "Shader": 4,
+          "Framebuffer": 6,
+          "Renderbuffer": 0,
+          "VertexArray": 2
+        }
+      }
+    ]
+  }
+]

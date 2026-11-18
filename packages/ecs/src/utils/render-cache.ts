@@ -168,6 +168,8 @@ export class RenderCache {
     bindingsDescriptorHash,
   );
 
+  private bindingKeys = new WeakMap<Bindings, BindingsDescriptor>();
+
   private renderPipelinesCache = new HashMap<
     RenderPipelineDescriptor,
     RenderPipeline
@@ -194,6 +196,7 @@ export class RenderCache {
       const descriptorCopy = bindingsDescriptorCopy(descriptor);
       bindings = this.device.createBindings(descriptorCopy);
       this.bindingsCache.add(descriptorCopy, bindings);
+      this.bindingKeys.set(bindings, descriptorCopy);
     }
     return bindings;
   }
@@ -201,14 +204,11 @@ export class RenderCache {
   /** Forget bindings owned by a retiring drawcall before its buffers/textures die. */
   releaseBindings(bindings: Bindings): void {
     if (!bindings) return;
-    for (const bucket of this.bindingsCache.buckets.values()) {
-      const index = bucket.values.indexOf(bindings);
-      if (index !== -1) {
-        this.bindingsCache.delete(bucket.keys[index]);
-        bindings.destroy();
-        return;
-      }
-    }
+    const key = this.bindingKeys.get(bindings);
+    if (!key) return;
+    this.bindingsCache.delete(key);
+    this.bindingKeys.delete(bindings);
+    bindings.destroy();
   }
 
   createRenderPipeline(descriptor: RenderPipelineDescriptor): RenderPipeline {
@@ -270,6 +270,7 @@ export class RenderCache {
     for (const program of this.programCache.values()) program.destroy();
     for (const sampler of this.samplerCache.values()) sampler.destroy();
     this.bindingsCache.clear();
+    this.bindingKeys = new WeakMap();
     this.renderPipelinesCache.clear();
     this.inputLayoutsCache.clear();
     this.programCache.clear();

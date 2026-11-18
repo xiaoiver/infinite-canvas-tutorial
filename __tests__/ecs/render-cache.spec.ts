@@ -237,21 +237,20 @@ it('does not retain a failed allocation and allows retry with the same key', () 
   expect(resources[0].destroy).toHaveBeenCalledTimes(1);
 });
 
-it('forgets retiring per-drawcall bindings before teardown and reallocates the same descriptor', () => {
-  const { cache, resources } = fixture();
+it('evicts bindings to private buffers before their owner is destroyed', () => {
+  const { cache } = fixture();
+  const descriptor = {
+    uniformBufferBindings: [{ buffer: { id: 900 } as any, binding: 0 }],
+  };
+  const first = cache.createBindings(descriptor);
   cache.releaseBindings(undefined);
   cache.releaseBindings({} as any);
-  const descriptor = {
-    pipeline: { id: 1 },
-    uniformBufferBindings: [{ buffer: { id: 2 } }],
-  } as any;
-  const first = cache.createBindings(descriptor);
   cache.releaseBindings(first);
   cache.releaseBindings(first);
-  expect(resources[0].destroy).toHaveBeenCalledTimes(1);
+  expect(first.destroy).toHaveBeenCalledTimes(1);
   const next = cache.createBindings(descriptor);
   expect(next).not.toBe(first);
   cache.destroy();
-  expect(resources[0].destroy).toHaveBeenCalledTimes(1);
-  expect(resources[1].destroy).toHaveBeenCalledTimes(1);
+  expect(first.destroy).toHaveBeenCalledTimes(1);
+  expect(next.destroy).toHaveBeenCalledTimes(1);
 });

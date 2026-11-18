@@ -234,6 +234,16 @@ export class MeshPipeline extends System {
         ).trackWrites,
   );
 
+  private batchingFlags = this.query(
+    (q) => q.addedOrChanged.with(Renderable).trackWrites,
+  );
+  private batchTransforms = this.query(
+    (q) => q.addedOrChanged.with(GlobalTransform).trackWrites,
+  );
+  private batchOrders = this.query(
+    (q) => q.addedOrChanged.with(GlobalRenderOrder).trackWrites,
+  );
+
   private lines = this.query((q) => q.added.and.removed.with(Line));
   private polylines = this.query((q) => q.added.and.removed.with(Polyline));
   private paths = this.query((q) => q.added.and.removed.with(Path));
@@ -529,6 +539,7 @@ export class MeshPipeline extends System {
     if (!canvas.has(RasterScreenshotRequest)) {
       return;
     }
+    // Component views are transient; rendering and async preload may rebind them.
     const { nodes, rainWarmupSec, rainCaptureTimeSec } = canvas.read(
       RasterScreenshotRequest,
     );
@@ -1152,6 +1163,13 @@ export class MeshPipeline extends System {
       ...this.lods.addedChangedOrRemoved,
       ...this.textMetrics.addedOrChanged,
       ...this.lodHierarchy.changed.filter((e) => e.has(ComputedLOD)),
+      ...this.batchingFlags.addedOrChanged,
+      ...this.batchTransforms.addedOrChanged.filter((e) =>
+        entityMatchesRenderableQuery(e),
+      ),
+      ...this.batchOrders.addedOrChanged.filter((e) =>
+        entityMatchesRenderableQuery(e),
+      ),
     ]).forEach((entity) => {
       const camera = getSceneRoot(entity);
 
@@ -1230,6 +1248,36 @@ export class MeshPipeline extends System {
         entity,
       });
     });
+
+    // Style changes can keep the same renderer constructor but change batch eligibility.
+    const reassigned = new Set<Entity>([
+      ...this.fillLayers.addedChangedOrRemoved,
+      ...this.strokeLayers.addedChangedOrRemoved,
+      ...this.fillTextures.addedChangedOrRemoved,
+      ...this.strokes.addedChangedOrRemoved,
+      ...this.opacities.addedChangedOrRemoved,
+      ...this.sizeAttenuations.addedChangedOrRemoved,
+      ...this.strokeAttenuations.addedChangedOrRemoved,
+      ...this.dropShadows.addedChangedOrRemoved,
+      ...this.innerShadows.addedChangedOrRemoved,
+      ...this.wireframes.addedChangedOrRemoved,
+      ...this.roughs.addedChangedOrRemoved,
+      ...this.filters.addedChangedOrRemoved,
+      ...this.nodeLayerBlendModes.addedChangedOrRemoved,
+      ...this.clipModes.addedChangedOrRemoved,
+    ]);
+    const queue = (entity: Entity) => {
+      if (entityMatchesRenderableQuery(entity)) {
+        const camera = getSceneRoot(entity);
+        if (!this.pendingRenderables.has(camera))
+          this.pendingRenderables.set(camera, []);
+        this.pendingRenderables.get(camera)!.push({ type: 'add', entity });
+      }
+      // Effect/clip ancestors can change eligibility of otherwise untouched children.
+      if (entity.has(Parent))
+        for (const child of entity.read(Parent).children) queue(child);
+    };
+    reassigned.forEach(queue);
 
     // Handle some special cases.
     [

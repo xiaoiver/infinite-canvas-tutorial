@@ -5,6 +5,7 @@ let mockDrawcalls: any[] = [];
 jest.mock('../../packages/ecs/src/drawcalls', () => {
   class Drawcall {
     shapes: any[] = [];
+    dirtyInstances = new Set<any>();
     destroyed = false;
     constructor() {
       mockDrawcalls.push(this);
@@ -47,9 +48,21 @@ describe('BatchManager resource ownership', () => {
     } as any;
   }
   function manager() {
-    return new BatchManager(null, null, null, null, {
+    const batch = new BatchManager(null, null, null, null, {
       getNodeByEntity: (node: any) => node,
     } as any);
+    // Resources are allocated when the ordered plan is consumed.
+    const add = batch.add.bind(batch),
+      remove = batch.remove.bind(batch);
+    batch.add = (...args) => {
+      add(...args);
+      batch.buildFlushSegments();
+    };
+    batch.remove = (...args) => {
+      remove(...args);
+      batch.buildFlushSegments();
+    };
+    return batch;
   }
 
   it('releases cached non-batched drawcalls even after culling and clearing', () => {
@@ -66,12 +79,12 @@ describe('BatchManager resource ownership', () => {
     );
   });
 
-  it('releases shared batched drawcalls exactly once', () => {
+  it('keeps unverified multipass renderers private and releases them exactly once', () => {
     const batch = manager();
     batch.add(shape(true));
     batch.add(shape(true));
     batch.destroy();
-    expect(mockDrawcalls).toHaveLength(2);
+    expect(mockDrawcalls).toHaveLength(4);
     mockDrawcalls.forEach((drawcall) =>
       expect(drawcall.destroy).toHaveBeenCalledTimes(1),
     );
@@ -103,21 +116,19 @@ describe('BatchManager resource ownership', () => {
     batch.destroy();
   });
 
-  it('moves nodes out of instancing when blend mode changes and releases both caches', () => {
+  it('reuses private renderers across blend edits and releases them once', () => {
     const batch = manager();
     const node = shape(true);
     batch.add(node);
-    const shared = [...mockDrawcalls];
     node.blendMode = 'multiply';
     batch.add(node);
-    shared.forEach((d) => expect(d.shapes).not.toContain(node));
-    expect(mockDrawcalls).toHaveLength(4);
-    expect(batch.buildFlushSegments()).toHaveLength(1);
+    expect(mockDrawcalls).toHaveLength(2);
+    mockDrawcalls.forEach((d) => expect(d.destroy).not.toHaveBeenCalled());
+    expect(batch.buildFlushSegments().map((s) => s.type)).toEqual([
+      'layerBlend',
+    ]);
     batch.remove(node);
-    mockDrawcalls
-      .slice(2)
-      .forEach((d) => expect(d.destroy).toHaveBeenCalledTimes(1));
     batch.destroy();
-    shared.forEach((d) => expect(d.destroy).toHaveBeenCalledTimes(1));
+    mockDrawcalls.forEach((d) => expect(d.destroy).toHaveBeenCalledTimes(1));
   });
 });
