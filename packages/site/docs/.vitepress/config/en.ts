@@ -337,6 +337,10 @@ export const en = defineConfig({
                     link: 'sdf-text',
                   },
                   {
+                    text: 'Text LOD',
+                    link: 'text-lod',
+                  },
+                  {
                     text: 'Use Bitmap Font to draw text',
                     link: 'bitmap-font',
                   },

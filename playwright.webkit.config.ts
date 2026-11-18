@@ -24,6 +24,7 @@ export default defineConfig({
     'filter-blur.spec.ts',
     'text-path.spec.ts',
     'ecs-text.spec.ts',
+    'text-lod-demo.spec.ts',
     'ecs-text-resize.spec.ts',
     'ecs-text-path.spec.ts',
     'ecs-blend-mode.spec.ts',
