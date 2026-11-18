@@ -1,4 +1,5 @@
 export * from './Renderable';
+export * from './ComputedLOD';
 export * from './Stroke';
 export * from './Fill';
 export * from './Opacity';

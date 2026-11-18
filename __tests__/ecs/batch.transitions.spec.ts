@@ -1,4 +1,5 @@
 import {
+  ComputedLOD,
   Children,
   ClipMode,
   Filter,
@@ -31,6 +32,7 @@ import {
   Mesh,
   SDF,
   SDFText,
+  TextProxy,
   ShadowRect,
   SmoothPolyline,
   StampBrush,
@@ -67,10 +69,17 @@ function shape(
   return { entity, data, node };
 }
 const managers: BatchManager[] = [];
-function manager() {
-  const batch = new BatchManager(null, null, null, null, {
-    getNodeByEntity: (entity: Entity) => (entity as any).node,
-  } as API);
+function manager(intent: 'screen' | 'export' = 'screen') {
+  const batch = new BatchManager(
+    null,
+    null,
+    null,
+    null,
+    {
+      getNodeByEntity: (entity: Entity) => (entity as any).node,
+    } as API,
+    intent,
+  );
   managers.push(batch);
   return batch;
 }
@@ -689,4 +698,89 @@ it('releases every private renderer when several nodes return to a shared page',
   });
   expect(queued(batch)).toHaveLength(1);
   releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
+});
+
+it('releases each old text LOD representation across culling, switching and export', () => {
+  const batch = manager();
+  const text = shape(Text, true, [ComputedLOD, { level: 'text-proxy' }]);
+  batch.add(text.entity);
+  const proxy = queued(batch)[0];
+  expect(proxy).toBeInstanceOf(TextProxy);
+  batch.remove(text.entity, false);
+  expect(queued(batch)).toEqual([]);
+  batch.add(text.entity);
+  expect(queued(batch)[0]).toBe(proxy);
+  text.data.set(ComputedLOD, { level: 'full' });
+  batch.add(text.entity);
+  const full = queued(batch)[0];
+  expect(proxy.destroyed).toBe(true);
+  expect(full).toBeInstanceOf(SDFText);
+  text.data.set(ComputedLOD, { level: 'text-proxy' });
+  batch.add(text.entity);
+  expect(queued(batch)[0]).toBeInstanceOf(TextProxy);
+  expect(full.destroyed).toBe(true);
+  const exportBatch = new BatchManager(
+    null,
+    null,
+    null,
+    null,
+    { getNodeByEntity: () => ({}) } as API,
+    'export',
+  );
+  exportBatch.add(text.entity);
+  expect(queued(exportBatch)[0]).toBeInstanceOf(SDFText);
+  expect(queued(batch)[0]).toBeInstanceOf(TextProxy);
+  exportBatch.destroy();
+});
+
+it('keeps screen dirty markers when an isolated full export consumes an LOD entity', () => {
+  const node = shape(
+    Text,
+    true,
+    [ComputedLOD, { level: 'text-proxy' }],
+    [GeometryDirty, {}],
+    [MaterialDirty, {}],
+  );
+  const exportBatch = manager('export');
+  exportBatch.add(node.entity);
+  const builder = {
+    pushPass: (setup) =>
+      setup({
+        setDebugName: jest.fn(),
+        attachRenderTargetID: jest.fn(),
+        exec: jest.fn(),
+      }),
+  } as unknown as RGGraphBuilder;
+  exportBatch.scheduleFlush(
+    builder,
+    0,
+    1,
+    null,
+    {},
+    240,
+    160,
+    jest.fn(),
+    false,
+    'export',
+  );
+  expect(queued(exportBatch)[0]).toBeInstanceOf(SDFText);
+  expect(node.entity.has(GeometryDirty)).toBe(true);
+  expect(node.entity.has(MaterialDirty)).toBe(true);
+  const screen = manager();
+  screen.add(node.entity);
+  screen.scheduleFlush(
+    builder,
+    0,
+    1,
+    null,
+    {},
+    240,
+    160,
+    jest.fn(),
+    false,
+    'screen',
+  );
+  expect(queued(screen)[0]).toBeInstanceOf(TextProxy);
+  expect(node.entity.has(GeometryDirty)).toBe(false);
+  expect(node.entity.has(MaterialDirty)).toBe(false);
 });

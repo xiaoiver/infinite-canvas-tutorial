@@ -23,10 +23,12 @@ import {
   SmoothPolyline,
   Mesh,
   SDFText,
+  TextProxy,
   StampBrush,
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
+  ComputedLOD,
   Children,
   ClipMode,
   Filter,
@@ -68,7 +70,7 @@ import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
  *
  * e.g. 3 drawcalls for a Rect with drop shadow.
  */
-function getDrawcallCtors(shape: Entity) {
+function getDrawcallCtors(shape: Entity, intent: 'screen' | 'export') {
   if (shouldSuppress2DShapeRender(shape)) {
     return [];
   }
@@ -101,7 +103,15 @@ function getDrawcallCtors(shape: Entity) {
       SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
     }
   } else if (shape.has(Text)) {
-    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
+    if (
+      intent === 'screen' &&
+      shape.has(ComputedLOD) &&
+      shape.read(ComputedLOD).level === 'text-proxy'
+    ) {
+      SHAPE_DRAWCALL_CTORS.push(TextProxy);
+    } else {
+      SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
+    }
   } else if (shape.has(Brush)) {
     SHAPE_DRAWCALL_CTORS.push(StampBrush);
   } else if (shape.has(VectorNetwork)) {
@@ -135,10 +145,11 @@ export class BatchManager {
     private readonly renderCache: RenderCache,
     private readonly texturePool: TexturePool,
     private readonly api: API,
+    private readonly intent: 'screen' | 'export' = 'screen',
   ) {}
 
   private collectDrawcallCtors(shape: Entity) {
-    return getDrawcallCtors(shape).filter((Ctor) => {
+    return getDrawcallCtors(shape, this.intent).filter((Ctor) => {
       // Not every renderer needs a geometry-specific channel check.
       return (
         !(Ctor as typeof Drawcall & { check?: (s: Entity) => boolean }).check ||
@@ -403,6 +414,8 @@ export class BatchManager {
         }
       }
     }
+    // Export's private full plan must not consume the screen representation's markers.
+    if (this.intent === 'export') return;
     geometry.forEach((shape) => safeRemoveComponent(shape, GeometryDirty));
     material.forEach((shape) => safeRemoveComponent(shape, MaterialDirty));
   }

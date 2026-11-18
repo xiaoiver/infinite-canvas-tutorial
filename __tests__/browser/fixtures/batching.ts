@@ -10,6 +10,7 @@ import {
   GPUResource,
   Renderable,
   MeshPipeline,
+  Pen,
   Screenshot,
   ExportFormat,
 } from '@infinite-canvas-tutorial/ecs';
@@ -115,7 +116,7 @@ const harness = {
     await frames();
     return snapshot();
   },
-  async export(partial: boolean) {
+  async export(partial: boolean, id = 'r1') {
     const canvas = api.getCanvas();
     const dataURL = await new Promise<string>((resolve, reject) => {
       const timer = setTimeout(
@@ -133,13 +134,26 @@ const harness = {
         api.export({
           format: ExportFormat.PNG,
           download: false,
-          nodes: partial ? [api.getNodeById('r1')] : [],
+          nodes: partial ? [api.getNodeById(id)] : [],
         });
         poll();
       });
     });
     await frames();
     return dataURL;
+  },
+  async enableLOD(enabled: boolean) {
+    api.setTextLODEnabled(enabled);
+    await frames();
+    return snapshot();
+  },
+  async select(id?: string) {
+    await api.edit((e) => {
+      e.setAppState({ penbarSelected: id ? Pen.SELECT : Pen.HAND });
+      e.selectNodes(id ? [e.getNodeById(id)] : []);
+    });
+    await frames();
+    return snapshot();
   },
   async flags(batchable: boolean) {
     await api.edit((e) => {

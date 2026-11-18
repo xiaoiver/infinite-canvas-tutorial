@@ -297,3 +297,85 @@ test('full and partial raster exports match the existing path and restore the or
     ['r0', 'r1', 'r2'],
   ]);
 });
+
+test('LOD transitions remain painter-order barriers between solid batches and exports stay full', async ({
+  page,
+}) => {
+  const result = await page.evaluate(async () => {
+    const h = window.batching;
+    const nodes = [
+      {
+        id: 'r0',
+        type: 'rect',
+        x: 10,
+        y: 10,
+        width: 100,
+        height: 100,
+        zIndex: 0,
+        opacity: 0.5,
+        fills: [{ type: 'solid', value: 'red' }],
+      },
+      {
+        id: 'r1',
+        type: 'text',
+        x: 20,
+        y: 25,
+        width: 100,
+        height: 12,
+        zIndex: 1,
+        content: 'Small label',
+        fontFamily: 'sans-serif',
+        fontSize: 8,
+        fills: [{ type: 'solid', value: 'black' }],
+      },
+      {
+        id: 'r2',
+        type: 'rect',
+        x: 10,
+        y: 10,
+        width: 100,
+        height: 100,
+        zIndex: 2,
+        opacity: 0.5,
+        fills: [{ type: 'solid', value: 'blue' }],
+      },
+    ];
+    await h.scene(nodes, true);
+    await h.camera(0.5);
+    const proxy = await h.enableLOD(true);
+    const selected = await h.select('r1');
+    const restored = await h.select();
+    const proxyFullExport = await h.export(false);
+    const proxyPartialExport = await h.export(true);
+    const afterExport = await h.camera(0.5);
+    await h.enableLOD(false);
+    const fullExport = await h.export(false);
+    const partialExport = await h.export(true);
+    return {
+      proxy,
+      selected,
+      restored,
+      afterExport,
+      proxyFullExport,
+      proxyPartialExport,
+      fullExport,
+      partialExport,
+    };
+  });
+  for (const state of [result.proxy, result.restored, result.afterExport]) {
+    expect(state.groups.map((g) => g.ctor)).toEqual([
+      'SDF',
+      'TextProxy',
+      'SDF',
+    ]);
+    expect(state.groups.map((g) => g.nodes)).toEqual([['r0'], ['r1'], ['r2']]);
+    expect(state.groups.map((g) => g.instanced)).toEqual([true, false, true]);
+  }
+  expect(
+    result.selected.groups
+      .filter((g) => g.nodes.some((id) => ['r0', 'r1', 'r2'].includes(id)))
+      .map((g) => g.ctor),
+  ).toEqual(['SDF', 'SDFText', 'SDF']);
+  expect(result.proxyFullExport).toBe(result.fullExport);
+  expect(result.proxyPartialExport).toBe(result.partialExport);
+});

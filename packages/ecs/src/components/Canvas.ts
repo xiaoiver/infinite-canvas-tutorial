@@ -42,6 +42,9 @@ export enum VectorNetworkEditMode {
 }
 
 export class Canvas {
+  /** Experimental ordinary-text LOD. Runtime only; CSS px thresholds are 6 / 8. */
+  @field({ type: Type.boolean, default: false }) declare textLOD: boolean;
+
   /**
    * The canvas element. Pass in HTMLCanvasElement in the browser environment, OffscreenCanvas in the WebWorker environment,
    * and node-canvas in the Node.js environment.
