@@ -90,6 +90,18 @@ function nearestAncestorClipOutsideAlpha(shape: Entity): number {
 }
 
 export abstract class Drawcall {
+  /** null means this renderer has no verified multi-object drawing path. */
+  static batchKey(_shape: Entity): string | null {
+    return null;
+  }
+  get instanceCapacity() {
+    return this.maxInstances;
+  }
+  get isInstanced() {
+    return this.instanced;
+  }
+  dirtyInstances = new Set<Entity>();
+
   uid = uid();
 
   shapes: Entity[] = [];
@@ -192,6 +204,7 @@ export abstract class Drawcall {
   }
 
   destroy() {
+    this.dirtyInstances.clear();
     if (this.program) {
       this.indexBuffer?.destroy();
       this.vertexBuffers.forEach((buffer) => buffer.destroy());

@@ -1033,6 +1033,7 @@ export class Mesh extends PathDrawcall {
   }
 
   destroy(): void {
+    this.renderCache?.releaseBindings(this.bindings);
     this.disposeFillImageResources();
     this.destroyFullPostProcessingChain();
     super.destroy();

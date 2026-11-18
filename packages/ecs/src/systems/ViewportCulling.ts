@@ -140,7 +140,7 @@ export class ViewportCulling extends System {
               entity,
             },
             (a, b) => a.entity === b.entity,
-          )
+          );
         }
         return;
       }
@@ -200,9 +200,9 @@ export class ViewportCulling extends System {
       const rBush = camera.read(RBush).value;
       const viewport = this.getOrCreateViewport(camera);
 
-      const entitiesInViewport = rBush
-        .search(viewport)
-        .map((bush) => bush.entity);
+      const entitiesInViewport = new Set(
+        rBush.search(viewport).map((bush) => bush.entity),
+      );
 
       entitiesToCull.get(camera)?.forEach((entity) => {
         if (!entity.has(ComputedVisibility)) {
@@ -216,11 +216,11 @@ export class ViewportCulling extends System {
         }
 
         // Inherit visibility from parent
-        if (visible && entitiesInViewport.includes(entity)) {
+        if (visible && entitiesInViewport.has(entity)) {
           if (entity.has(Culled)) {
             entity.remove(Culled);
           }
-        } else if (!visible || !entitiesInViewport.includes(entity)) {
+        } else if (!visible || !entitiesInViewport.has(entity)) {
           if (!entity.has(Culled)) {
             entity.add(Culled);
           }
