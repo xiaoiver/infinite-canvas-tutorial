@@ -23,10 +23,12 @@ import {
   SmoothPolyline,
   Mesh,
   SDFText,
+  TextProxy,
   StampBrush,
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
+  ComputedLOD,
   Brush,
   Circle,
   Ellipse,
@@ -64,7 +66,7 @@ import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
  *
  * e.g. 3 drawcalls for a Rect with drop shadow.
  */
-function getDrawcallCtors(shape: Entity) {
+function getDrawcallCtors(shape: Entity, intent: 'screen' | 'export') {
   if (shouldSuppress2DShapeRender(shape)) {
     return [];
   }
@@ -97,7 +99,15 @@ function getDrawcallCtors(shape: Entity) {
       SHAPE_DRAWCALL_CTORS.push(Mesh, SmoothPolyline);
     }
   } else if (shape.has(Text)) {
-    SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
+    if (
+      intent === 'screen' &&
+      shape.has(ComputedLOD) &&
+      shape.read(ComputedLOD).level === 'text-proxy'
+    ) {
+      SHAPE_DRAWCALL_CTORS.push(TextProxy);
+    } else {
+      SHAPE_DRAWCALL_CTORS.push(SmoothPolyline, SDFText);
+    }
   } else if (shape.has(Brush)) {
     SHAPE_DRAWCALL_CTORS.push(StampBrush);
   } else if (shape.has(VectorNetwork)) {
@@ -152,10 +162,11 @@ export class BatchManager {
     private readonly renderCache: RenderCache,
     private readonly texturePool: TexturePool,
     private readonly api: API,
+    private readonly intent: 'screen' | 'export' = 'screen',
   ) {}
 
   private collectDrawcallCtors(shape: Entity) {
-    return getDrawcallCtors(shape)
+    return getDrawcallCtors(shape, this.intent)
       .map((DrawcallCtor) => {
         if (
           // @ts-ignore
@@ -292,6 +303,11 @@ export class BatchManager {
     if (!drawcalls) {
       const batchable =
         shape.read(Renderable).batchable &&
+        !(
+          this.intent === 'screen' &&
+          shape.has(ComputedLOD) &&
+          shape.read(ComputedLOD).level === 'text-proxy'
+        ) &&
         !isNonNormalNodeLayerBlend(getNodeLayerBlendMode(this.api, shape));
       const changedBatching = batchable
         ? this.#nonBatchableDrawcallsCache.has(shape)
@@ -335,6 +351,16 @@ export class BatchManager {
         drawcall.remove(shape);
         if (drawcall.shapes.length === 0) {
           this.#removeFromFrame(drawcall);
+          // LOD retains only the active representation, including opt-in instancing.
+          if (destroy && shape.has(ComputedLOD)) {
+            drawcall.destroy();
+            this.#ownedDrawcalls.delete(drawcall);
+            for (const key of Object.keys(this.#instancesCache)) {
+              this.#instancesCache[key] = this.#instancesCache[key].filter(
+                (group) => !group.includes(drawcall),
+              );
+            }
+          }
         }
       });
       this.#batchableDrawcallsCache.delete(shape);
@@ -462,6 +488,7 @@ export class BatchManager {
     materialDirtyDrawcalls.forEach(
       (drawcall) => (drawcall.materialDirty = true),
     );
+    if (this.intent === 'export') return;
     geometryDirtyShapes.forEach((shape) =>
       safeRemoveComponent(shape, GeometryDirty),
     );

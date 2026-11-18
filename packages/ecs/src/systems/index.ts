@@ -24,6 +24,7 @@ export * from './ComputeTextMetrics';
 export * from './ComputeBounds';
 export * from './ComputeVisibility';
 export * from './ViewportCulling';
+export * from './ComputeLOD';
 export * from './SetCursor';
 export * from './ExportSVG';
 export * from './Select';

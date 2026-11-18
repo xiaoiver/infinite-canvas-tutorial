@@ -198,6 +198,19 @@ export class RenderCache {
     return bindings;
   }
 
+  /** Forget bindings owned by a retiring drawcall before its buffers/textures die. */
+  releaseBindings(bindings: Bindings): void {
+    if (!bindings) return;
+    for (const bucket of this.bindingsCache.buckets.values()) {
+      const index = bucket.values.indexOf(bindings);
+      if (index !== -1) {
+        this.bindingsCache.delete(bucket.keys[index]);
+        bindings.destroy();
+        return;
+      }
+    }
+  }
+
   createRenderPipeline(descriptor: RenderPipelineDescriptor): RenderPipeline {
     const normalized = {
       ...descriptor,

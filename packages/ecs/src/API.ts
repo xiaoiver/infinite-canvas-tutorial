@@ -1054,6 +1054,13 @@ export class API {
     });
   }
 
+  /** Queue a runtime-only experimental text LOD switch for this canvas. Defaults to false. */
+  setTextLODEnabled(enabled: boolean) {
+    this.runAtNextTick(() => {
+      this.#canvas.write(Canvas).textLOD = enabled;
+    });
+  }
+
   getCanvas() {
     return this.#canvas;
   }

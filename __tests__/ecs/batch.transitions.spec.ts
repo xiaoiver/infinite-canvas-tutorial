@@ -1,4 +1,5 @@
 import {
+  ComputedLOD,
   Brush,
   Circle,
   DropShadow,
@@ -24,6 +25,7 @@ import {
 } from '../../packages/ecs/src';
 import { BatchManager } from '../../packages/ecs/src/systems/BatchManager';
 import {
+  TextProxy,
   Drawcall,
   Mesh,
   SDF,
@@ -596,4 +598,29 @@ it('attaches both shadow resolves and passes their textures to the mesh preamble
     getResolveTextureForID: (id: number) => ({ id }),
   });
   expect(preamble).toHaveBeenCalledWith(pass, [{ id: 41 }, { id: 42 }]);
+});
+
+it('releases each old text LOD representation across culling, switching and export', () => {
+  const batch = manager();
+  const text = shape(Text, true, [ComputedLOD, { level: 'text-proxy' }]);
+  batch.add(text.entity);
+  const proxy = queued(batch)[0];
+  expect(proxy).toBeInstanceOf(TextProxy);
+  batch.remove(text.entity, false);
+  expect(queued(batch)).toEqual([]);
+  batch.add(text.entity);
+  expect(queued(batch)[0]).toBe(proxy);
+  text.data.set(ComputedLOD, { level: 'full' });
+  batch.add(text.entity);
+  expect(proxy.destroyed).toBe(true);
+  const full = queued(batch)[0];
+  expect(full).toBeInstanceOf(SDFText);
+  text.data.set(ComputedLOD, { level: 'text-proxy' });
+  batch.add(text.entity);
+  expect(full.destroyed).toBe(true);
+  const exportBatch = new BatchManager(null, null, null, null, { getNodeByEntity: () => ({}) } as API, 'export');
+  exportBatch.add(text.entity);
+  expect(queued(exportBatch)[0]).toBeInstanceOf(SDFText);
+  expect(queued(batch)[0]).toBeInstanceOf(TextProxy);
+  exportBatch.destroy();
 });

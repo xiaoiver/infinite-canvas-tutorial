@@ -1035,6 +1035,7 @@ export class SDFText extends Drawcall {
   }
 
   destroy(): void {
+    this.renderCache?.releaseBindings(this.bindings);
     this.destroyFullPostProcessingChain();
     this.#bakeBindings?.destroy();
     this.#bakeBindings = null;
