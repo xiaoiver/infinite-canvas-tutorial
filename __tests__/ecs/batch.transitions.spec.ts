@@ -1,4 +1,7 @@
 import {
+  Children,
+  ClipMode,
+  Filter,
   Brush,
   Circle,
   DropShadow,
@@ -160,7 +163,7 @@ it('keeps the same shared drawcall when a batchable shape is added again', () =>
   expect(first.shapes).toEqual([node.entity]);
 });
 
-it('keeps incompatible fills in separate batches', () => {
+it('carries different solid colors in one compatible batch', () => {
   const batch = manager();
   const red = shape(Rect, true, [
     FillLayers,
@@ -173,8 +176,7 @@ it('keeps incompatible fills in separate batches', () => {
   batch.add(red.entity);
   batch.add(blue.entity);
   expect(queued(batch).map((d) => d.shapes)).toEqual([
-    [red.entity],
-    [blue.entity],
+    [red.entity, blue.entity],
   ]);
 });
 
@@ -242,7 +244,7 @@ it('keeps hidden UIs out of the frame on repeated add and shows them once', () =
   expect(queued(batch)).toEqual([ordinary]);
   batch.showUIs();
   batch.showUIs();
-  expect(queued(batch)).toEqual([ordinary, ui]);
+  expect(queued(batch)).toEqual([ui, ordinary]);
 });
 
 it('clears hidden frame entries without destroying cached drawcalls', () => {
@@ -269,17 +271,17 @@ it('moves a blended node out of instancing and back without retaining stale memb
   const shared = queued(batch)[0];
   a.node.blendMode = 'multiply';
   batch.add(a.entity);
-  const blended = queued(batch)[1];
+  const blended = queued(batch)[0];
   const release = jest.spyOn(blended, 'destroy');
   expect(shared.shapes).toEqual([b.entity]);
   expect(batch.buildFlushSegments().map((s) => s.type)).toEqual([
-    'normal',
     'layerBlend',
+    'normal',
   ]);
   a.node.blendMode = 'normal';
   batch.add(a.entity);
   expect(queued(batch)).toEqual([shared]);
-  expect(shared.shapes).toEqual([b.entity, a.entity]);
+  expect(shared.shapes).toEqual([a.entity, b.entity]);
   expect(release).toHaveBeenCalledTimes(1);
 });
 
@@ -471,9 +473,7 @@ it.each([false, true])(
         [41, 42],
       );
       expect(
-        passes.some(
-          (pass) => pass.shadowResolves.join(',') === '41,42',
-        ),
+        passes.some((pass) => pass.shadowResolves.join(',') === '41,42'),
       ).toBe(true);
       passes.forEach((pass) =>
         pass.execute!(renderPass, {
@@ -596,4 +596,97 @@ it('attaches both shadow resolves and passes their textures to the mesh preamble
     getResolveTextureForID: (id: number) => ({ id }),
   });
   expect(preamble).toHaveBeenCalledWith(pass, [{ id: 41 }, { id: 42 }]);
+});
+
+it('does not merge across an unsupported renderer and follows subsequent painter reordering', () => {
+  const batch = manager();
+  const a = shape(Rect, true, [FractionalIndex, { value: 'a0' }]);
+  const text = shape(Text, true, [FractionalIndex, { value: 'a1' }]);
+  const b = shape(Rect, true, [FractionalIndex, { value: 'a2' }]);
+  [b, text, a].forEach((n) => batch.add(n.entity));
+  batch.sort();
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity],
+    [text.entity],
+    [b.entity],
+  ]);
+  text.data.get(FractionalIndex).value = 'a3';
+  batch.add(text.entity);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity],
+    [text.entity],
+  ]);
+});
+
+it.each([ClipMode, Filter])(
+  'uses private rendering under effect/clip ancestors (%p)',
+  (component) => {
+    const parent = shape(Rect, false, [component, {}]);
+    const a = shape(Rect, true, [Children, { parent: parent.entity }]);
+    const b = shape(Rect, true, [Children, { parent: parent.entity }]);
+    const batch = manager();
+    [a, b].forEach((n) => batch.add(n.entity));
+    expect(queued(batch).every((d) => !d.isInstanced)).toBe(true);
+    parent.data.delete(component);
+    [a, b].forEach((n) => batch.add(n.entity));
+    expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity, b.entity]]);
+  },
+);
+
+it('rechecks material eligibility even when renderer constructors stay unchanged', () => {
+  const batch = manager();
+  const a = shape(),
+    b = shape();
+  [a, b].forEach((n) => batch.add(n.entity));
+  const shared = queued(batch)[0];
+  a.data.set(FillLayers, {
+    layers: [{ type: 'gradient', value: 'linear-gradient(red, blue)' }],
+  });
+  batch.add(a.entity);
+  expect(queued(batch).map((d) => [d.isInstanced, d.shapes])).toEqual([
+    [false, [a.entity]],
+    [true, [b.entity]],
+  ]);
+  const privateDraw = queued(batch)[0];
+  const release = jest.spyOn(privateDraw, 'destroy');
+  a.data.delete(FillLayers);
+  batch.add(a.entity);
+  expect(queued(batch)).toEqual([shared]);
+  expect(shared.shapes).toEqual([a.entity, b.entity]);
+  expect(release).toHaveBeenCalledTimes(1);
+});
+
+it('pages native instances at a bounded capacity and drops excess empty pages', () => {
+  const batch = manager();
+  const nodes = Array.from({ length: 4097 }, () => shape().entity);
+  nodes.forEach((n) => batch.add(n));
+  const pages = queued(batch);
+  expect(pages.map((p) => p.shapes.length)).toEqual([4096, 1]);
+  const releases = pages.map((p) => jest.spyOn(p, 'destroy'));
+  nodes.forEach((n) => batch.remove(n, false));
+  expect(queued(batch)).toEqual([]);
+  expect(pages.every((p) => p.shapes.length === 0 || p.destroyed)).toBe(true);
+  expect(releases.filter((release) => release.mock.calls.length)).toHaveLength(
+    1,
+  );
+  batch.add(nodes[0]);
+  batch.remove(nodes[0]);
+  expect(queued(batch)).toEqual([]);
+  batch.add(nodes[1]);
+  expect(queued(batch)[0].shapes).toEqual([nodes[1]]);
+  batch.destroy();
+  releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
+});
+
+it('releases every private renderer when several nodes return to a shared page', () => {
+  const batch = manager();
+  const nodes = [shape(Rect, false), shape(Rect, false)];
+  nodes.forEach((n) => batch.add(n.entity));
+  const releases = queued(batch).map((d) => jest.spyOn(d, 'destroy'));
+  nodes.forEach((n) => {
+    n.data.get(Renderable).batchable = true;
+    batch.add(n.entity);
+  });
+  expect(queued(batch)).toHaveLength(1);
+  releases.forEach((release) => expect(release).toHaveBeenCalledTimes(1));
 });

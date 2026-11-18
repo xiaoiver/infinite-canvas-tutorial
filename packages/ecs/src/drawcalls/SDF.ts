@@ -78,6 +78,9 @@ import {
   shouldBakeStrokeIntoRasterFilterTexture,
 } from '../utils/solidShapeRasterForFilter';
 import {
+  Wireframe,
+  DropShadow,
+  StrokeLayers,
   Circle,
   ComputedCamera,
   Ellipse,
@@ -101,7 +104,38 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SDF extends Drawcall {
-  // protected maxInstances: number = 1000;
+  protected maxInstances = 4096;
+  #instanceCapacity = 0;
+  #instanceRows = new WeakMap<Entity, number>();
+
+  static override batchKey(shape: Entity): string | null {
+    if (
+      shape.hasSomeOf(FillTexture, DropShadow, InnerShadow) ||
+      (shape.has(Wireframe) && shape.read(Wireframe).enabled)
+    )
+      return null;
+    const fills = getEnabledFillLayers(shape);
+    if (
+      fills.length > 1 ||
+      fills.some(
+        (l) => l.type !== 'solid' || (l.blendMode && l.blendMode !== 'normal'),
+      )
+    )
+      return null;
+    const strokes = shape.has(StrokeLayers)
+      ? shape.read(StrokeLayers).layers.filter((l) => l.enabled !== false)
+      : [];
+    if (
+      strokes.length > 1 ||
+      strokes.some(
+        (l) => l.type !== 'solid' || (l.blendMode && l.blendMode !== 'normal'),
+      ) ||
+      SDF.useDash(shape) ||
+      getFirstGradientStrokeLayerValue(shape) != null
+    )
+      return null;
+    return 'solid';
+  }
 
   #uniformBuffer: Buffer;
   #texture: Texture;
@@ -148,7 +182,7 @@ export class SDF extends Drawcall {
   }
 
   protected override get useFillImage() {
-    return super.useFillImage || this.blurPadding > 0;
+    return !this.instanced && (super.useFillImage || this.blurPadding > 0);
   }
 
   protected override get extraShaderDefines(): string {
@@ -355,22 +389,24 @@ export class SDF extends Drawcall {
       return raw;
     }
     if (layer.type === 'pattern') {
-      const prepared = typeof layer.value === 'string' &&
-        isLikelySvgResourceUrl(layer.value)
-        ? prepareSvgPatternFill({
-            entity: instance,
-            url: layer.value,
-            geomW: width,
-            geomH: height,
-            zoom: this.api?.getCamera()?.has(ComputedCamera)
-              ? this.api.getCamera().read(ComputedCamera).zoom : 1,
-            onDecoded: () => safeAddComponent(instance, MaterialDirty),
-          })
-        : undefined;
+      const prepared =
+        typeof layer.value === 'string' && isLikelySvgResourceUrl(layer.value)
+          ? prepareSvgPatternFill({
+              entity: instance,
+              url: layer.value,
+              geomW: width,
+              geomH: height,
+              zoom: this.api?.getCamera()?.has(ComputedCamera)
+                ? this.api.getCamera().read(ComputedCamera).zoom
+                : 1,
+              onDecoded: () => safeAddComponent(instance, MaterialDirty),
+            })
+          : undefined;
       const pw = prepared?.width ?? Math.max(1, Math.ceil(width));
       const ph = prepared?.height ?? Math.max(1, Math.ceil(height));
       const image =
-        prepared?.image ?? (typeof layer.value === 'string'
+        prepared?.image ??
+        (typeof layer.value === 'string'
           ? getOrScheduleFillLayerPatternSource(layer.value, () =>
               safeAddComponent(instance, MaterialDirty),
             )
@@ -443,6 +479,13 @@ export class SDF extends Drawcall {
   }
 
   validate(shape: Entity) {
+    if (this.instanced)
+      return (
+        super.validate(shape) &&
+        SDF.batchKey(shape) !== null &&
+        (!this.shapes.length ||
+          SDF.batchKey(shape) === SDF.batchKey(this.shapes[0]))
+      );
     const result = super.validate(shape);
     if (!result) {
       return false;
@@ -512,48 +555,49 @@ export class SDF extends Drawcall {
 
   createGeometry(): void {
     this.indexBufferData = new Uint32Array([0, 1, 2, 0, 2, 3]);
-    if (this.indexBuffer) {
-      this.indexBuffer.destroy();
-    }
-    this.indexBuffer = this.device.createBuffer({
-      viewOrSize: this.indexBufferData,
-      usage: BufferUsage.INDEX,
-      hint: BufferFrequencyHint.STATIC,
-    });
+    if (!this.instanced || !this.indexBuffer) {
+      this.indexBuffer?.destroy();
+      this.indexBuffer = this.device.createBuffer({
+        viewOrSize: this.indexBufferData,
+        usage: BufferUsage.INDEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
 
-    this.vertexBufferDatas[0] = new Float32Array([-1, -1, 1, -1, 1, 1, -1, 1]);
-    if (this.vertexBuffers[0]) {
-      this.vertexBuffers[0].destroy();
-    }
-    this.vertexBuffers[0] = this.device.createBuffer({
-      viewOrSize: this.vertexBufferDatas[0],
-      usage: BufferUsage.VERTEX,
-      hint: BufferFrequencyHint.STATIC,
-    });
-
-    if (this.instanced) {
-      if (this.vertexBuffers[1]) {
-        this.vertexBuffers[1].destroy();
-        this.vertexBuffers[2].destroy();
+      this.vertexBufferDatas[0] = new Float32Array([
+        -1, -1, 1, -1, 1, 1, -1, 1,
+      ]);
+      if (this.vertexBuffers[0]) {
+        this.vertexBuffers[0].destroy();
       }
-
-      this.vertexBufferDatas[1] = new Float32Array(
-        new Array(32 * this.shapes.length).fill(0),
-      );
-      this.vertexBuffers[1] = this.device.createBuffer({
-        viewOrSize: this.vertexBufferDatas[1],
+      this.vertexBuffers[0] = this.device.createBuffer({
+        viewOrSize: this.vertexBufferDatas[0],
         usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
+        hint: BufferFrequencyHint.STATIC,
       });
-
-      this.vertexBufferDatas[2] = new Float32Array(
-        new Array(6 * this.shapes.length).fill(0),
+    }
+    if (this.instanced) {
+      const capacity = Math.max(
+        16,
+        2 ** Math.ceil(Math.log2(this.shapes.length || 1)),
       );
-      this.vertexBuffers[2] = this.device.createBuffer({
-        viewOrSize: this.vertexBufferDatas[2],
-        usage: BufferUsage.VERTEX,
-        hint: BufferFrequencyHint.DYNAMIC,
-      });
+      if (capacity > this.#instanceCapacity) {
+        this.vertexBuffers[1]?.destroy();
+        this.vertexBuffers[2]?.destroy();
+        this.#instanceCapacity = capacity;
+        for (const [slot, stride] of [
+          [1, 32],
+          [2, 6],
+        ]) {
+          this.vertexBufferDatas[slot] = new Float32Array(capacity * stride);
+          this.vertexBuffers[slot] = this.device.createBuffer({
+            viewOrSize: this.vertexBufferDatas[slot],
+            usage: BufferUsage.VERTEX,
+            hint: BufferFrequencyHint.DYNAMIC,
+          });
+        }
+      }
+      this.#instanceRows = new WeakMap(this.shapes.map((shape, i) => [shape, i]));
+      this.shapes.forEach((shape) => this.dirtyInstances.add(shape));
     }
 
     this.vertexBufferDescriptors = [
@@ -1085,36 +1129,41 @@ export class SDF extends Drawcall {
     let drawLegacy: Record<string, unknown> = { ...sceneUniformLegacyObject };
 
     if (this.instanced) {
-      const instancedData: number[] = [];
-      this.shapes.forEach((shape, i, total) => {
-        const [buffer] = this.generateBuffer(shape, i, total.length);
-        instancedData.push(...buffer);
-      });
-      this.vertexBufferDatas[1] = new Float32Array(instancedData);
-      this.vertexBuffers[1].setSubData(
-        0,
-        new Uint8Array(this.vertexBufferDatas[1].buffer),
-      );
-
-      this.vertexBufferDatas[2] = new Float32Array(
-        this.shapes
-          .map((shape) => {
-            const { matrix } = shape.read(GlobalTransform);
-            return [
-              matrix.m00,
-              matrix.m01,
-              matrix.m02,
-              matrix.m10,
-              matrix.m11,
-              matrix.m12,
-            ];
-          })
-          .flat(),
-      );
-      this.vertexBuffers[2].setSubData(
-        0,
-        new Uint8Array(this.vertexBufferDatas[2].buffer),
-      );
+      const ranges: [number, number][] = [];
+      const rows = [...this.dirtyInstances]
+        .map((shape) => this.#instanceRows.get(shape))
+        .filter((i) => i !== undefined)
+        .sort((a, b) => a - b);
+      for (const i of rows) {
+        const shape = this.shapes[i];
+        const [data] = this.generateBuffer(shape, i, this.shapes.length);
+        this.vertexBufferDatas[1].set(data.slice(0, 32), i * 32);
+        const { matrix: m } = shape.read(GlobalTransform);
+        this.vertexBufferDatas[2].set(
+          [m.m00, m.m01, m.m10, m.m11, m.m20, m.m21],
+          i * 6,
+        );
+        const previous = ranges[ranges.length - 1];
+        if (previous && previous[1] === i) previous[1] = i + 1;
+        else ranges.push([i, i + 1]);
+      }
+      for (const [start, end] of ranges) {
+        for (const [slot, stride] of [
+          [1, 32],
+          [2, 6],
+        ]) {
+          const data = this.vertexBufferDatas[slot];
+          this.vertexBuffers[slot].setSubData(
+            start * stride * 4,
+            new Uint8Array(
+              data.buffer,
+              start * stride * 4,
+              (end - start) * stride * 4,
+            ),
+          );
+        }
+      }
+      this.dirtyInstances.clear();
     } else {
       const shape = this.shapes[0];
       const multi = getMultiFillLayers(shape);
@@ -1383,6 +1432,7 @@ export class SDF extends Drawcall {
   }
 
   destroy(): void {
+    if (!this.instanced) this.renderCache?.releaseBindings(this.bindings);
     this.disposeFillImageResources();
     this.destroyFullPostProcessingChain();
     this.#bakedStrokeIntoFilterTexture = false;

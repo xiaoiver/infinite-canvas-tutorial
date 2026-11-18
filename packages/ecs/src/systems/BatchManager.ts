@@ -27,6 +27,10 @@ import {
   // Custom as CustomDrawcall,
 } from '../drawcalls';
 import {
+  Children,
+  ClipMode,
+  Filter,
+  NodeLayerBlendMode,
   Brush,
   Circle,
   Ellipse,
@@ -111,40 +115,19 @@ export type BatchFlushSegment =
   | { type: 'normal'; drawcalls: Drawcall[] }
   | { type: 'layerBlend'; drawcall: Drawcall; drawcalls: Drawcall[] };
 
+/** Resource reuse and painter-order planning are separate responsibilities. */
 export class BatchManager {
-  /**
-   * Drawcalls to flush in the next frame.
-   */
   #drawcallsToFlush: Drawcall[] = [];
-  // WeakMap caches cannot be enumerated during teardown.
   #ownedDrawcalls = new Set<Drawcall>();
   #blendCompositor?: NodeLayerBlendCompositor;
-
-  /**
-   * Cache drawcalls for non batchable shape.
-   */
-  #nonBatchableDrawcallsCache: WeakMap<Entity, Drawcall[]> = new WeakMap();
-
-  #batchableDrawcallsCache: WeakMap<Entity, Drawcall[]> = new WeakMap();
-
-  #instancesCache: Record<
-    | 'circle'
-    | 'ellipse'
-    | 'rect'
-    | 'line'
-    | 'polyline'
-    | 'path'
-    | 'text'
-    | 'rough-circle'
-    | 'rough-ellipse'
-    | 'rough-rect'
-    | 'rough-line'
-    | 'rough-polyline'
-    | 'rough-path'
-    | 'vector-network'
-    | 'text',
-    Drawcall[][]
-  > = Object.create(null);
+  #active = new Map<Entity, Drawcall[] | null>();
+  #nonBatchableDrawcallsCache = new WeakMap<Entity, Drawcall[]>();
+  #instancesCache = new Map<string, Drawcall[][]>();
+  #ctorIds = new Map<typeof Drawcall, number>();
+  #dirty = false;
+  #changed = new Set<Entity>();
+  #ordered = false;
+  #hideUIs = false;
 
   constructor(
     private readonly device: Device,
@@ -155,24 +138,25 @@ export class BatchManager {
   ) {}
 
   private collectDrawcallCtors(shape: Entity) {
-    return getDrawcallCtors(shape)
-      .map((DrawcallCtor) => {
-        if (
-          // @ts-ignore
-          !DrawcallCtor.check ||
-          // @ts-ignore
-          (DrawcallCtor.check && DrawcallCtor.check(shape))
-        ) {
-          return DrawcallCtor;
-        }
-      })
-      .filter((drawcallCtor) => !!drawcallCtor);
+    return getDrawcallCtors(shape).filter((Ctor) => {
+      // Not every renderer needs a geometry-specific channel check.
+      return (
+        !(Ctor as typeof Drawcall & { check?: (s: Entity) => boolean }).check ||
+        (Ctor as typeof Drawcall & { check: (s: Entity) => boolean }).check(
+          shape,
+        )
+      );
+    });
   }
 
-  private createDrawcalls(shape: Entity, instanced = false) {
-    return this.collectDrawcallCtors(shape).map((DrawcallCtor, index) => {
-      // @ts-ignore
-      const drawcall = new DrawcallCtor(
+  private createDrawcalls(
+    shape: Entity,
+    ctors: (typeof Drawcall)[],
+    instanced = false,
+  ) {
+    return ctors.map((Ctor, index) => {
+      // @ts-ignore abstract constructor: only concrete renderers occur in this list.
+      const drawcall: Drawcall = new Ctor(
         this.device,
         this.swapChain,
         this.renderCache,
@@ -180,233 +164,197 @@ export class BatchManager {
         instanced,
         index,
         this.api,
-      ) as Drawcall;
+      );
       this.#ownedDrawcalls.add(drawcall);
       drawcall.add(shape);
       return drawcall;
     });
   }
 
-  private getOrCreateNonBatchableDrawcalls(shape: Entity) {
-    let existed = this.#nonBatchableDrawcallsCache.get(shape);
-    const desiredCtors = this.collectDrawcallCtors(shape);
-    if (existed) {
-      const ctorMismatch =
-        existed.length !== desiredCtors.length ||
-        existed.some((d, i) => d.constructor !== desiredCtors[i]);
-      if (ctorMismatch) {
-        this.remove(shape);
-        existed = undefined;
-      } else {
-        return existed;
-      }
+  private retire(drawcalls: Drawcall[]) {
+    for (const d of drawcalls) {
+      if (!d.destroyed) d.destroy();
+      this.#ownedDrawcalls.delete(d);
     }
-    existed = this.createDrawcalls(shape);
-    this.#nonBatchableDrawcallsCache.set(shape, existed);
-    return existed;
   }
 
-  private getOrCreateBatchableDrawcalls(shape: Entity) {
-    let existed: Drawcall[] | undefined =
-      this.#batchableDrawcallsCache.get(shape);
-    const desiredCtors = this.collectDrawcallCtors(shape);
-    if (existed) {
-      const ctorMismatch =
-        existed.length !== desiredCtors.length ||
-        existed.some((d, i) => d.constructor !== desiredCtors[i]);
-      if (ctorMismatch) {
-        this.remove(shape);
-        existed = undefined;
-      } else {
-        return existed;
-      }
+  private getOrCreateNonBatchableDrawcalls(
+    shape: Entity,
+    ctors: (typeof Drawcall)[],
+  ) {
+    let cached = this.#nonBatchableDrawcallsCache.get(shape);
+    if (
+      cached &&
+      (cached.length !== ctors.length ||
+        cached.some((d, i) => d.constructor !== ctors[i]))
+    ) {
+      this.retire(cached);
+      cached = undefined;
     }
-    if (!existed) {
-      const geometryCtor = shape.has(Circle)
-        ? shape.has(Rough)
-          ? 'rough-circle'
-          : 'circle'
-        : shape.has(Ellipse)
-        ? shape.has(Rough)
-          ? 'rough-ellipse'
-          : 'ellipse'
-        : shape.has(Rect)
-        ? shape.has(Rough)
-          ? 'rough-rect'
-          : 'rect'
-        : shape.has(Polyline)
-        ? shape.has(Rough)
-          ? 'rough-polyline'
-          : 'polyline'
-        : shape.has(Line)
-        ? shape.has(Rough)
-          ? 'rough-line'
-          : 'line'
-        : shape.has(Path)
-        ? shape.has(Rough)
-          ? 'rough-path'
-          : 'path'
-        : shape.has(Text)
-        ? 'text'
-        : shape.has(VectorNetwork)
-        ? 'vector-network'
-        : shape.has(Brush)
-        ? 'brush'
-        : undefined;
-
-      let instancedDrawcalls = this.#instancesCache[geometryCtor];
-      if (!instancedDrawcalls) {
-        instancedDrawcalls = [];
-      }
-
-      const ctors = this.collectDrawcallCtors(shape);
-      existed = instancedDrawcalls.find(
-        (drawcalls) =>
-          drawcalls.length === ctors.length &&
-          drawcalls.every(
-            (drawcall, i) =>
-              drawcall.constructor === ctors[i] && drawcall.validate(shape),
-          ),
-      );
-
-      if (!existed) {
-        existed = this.createDrawcalls(shape, true) || [];
-        instancedDrawcalls.push(existed);
-        this.#instancesCache[geometryCtor] = instancedDrawcalls;
-      }
-
-      existed.forEach((drawcall) => {
-        drawcall.add(shape);
-      });
-
-      this.#batchableDrawcallsCache.set(shape, existed);
+    if (!cached) {
+      cached = this.createDrawcalls(shape, ctors);
+      this.#nonBatchableDrawcallsCache.set(shape, cached);
     }
-
-    return existed;
+    return cached;
   }
 
+  private batchKey(shape: Entity, ctors: (typeof Drawcall)[]): string | null {
+    // Multi-pass nodes are atomic painter-order items. Their channels cannot be
+    // grouped independently without interleaving another node's shadows/fills.
+    if (
+      !shape.read(Renderable).batchable ||
+      ctors.length !== 1 ||
+      shape.has(UI) ||
+      isNonNormalNodeLayerBlend(getNodeLayerBlendMode(this.api, shape))
+    )
+      return null;
+    const Ctor = ctors[0];
+    const material = Ctor.batchKey?.(shape);
+    if (material == null) return null;
+    let ancestor: Entity = shape;
+    while (ancestor) {
+      if (ancestor.hasSomeOf(ClipMode, Filter, NodeLayerBlendMode)) return null;
+      ancestor = ancestor.has(Children) ? ancestor.read(Children).parent : null;
+    }
+    if (!this.#ctorIds.has(Ctor)) this.#ctorIds.set(Ctor, this.#ctorIds.size);
+    return `${this.#ctorIds.get(Ctor)}:${material}`;
+  }
+
+  /** Mark an item for reassignment, including same-constructor material edits. */
   add(shape: Entity, drawcalls?: Drawcall[]) {
     if (shouldSuppress2DShapeRender(shape)) {
+      this.remove(shape);
       return;
     }
-    if (!drawcalls) {
-      const batchable =
-        shape.read(Renderable).batchable &&
-        !isNonNormalNodeLayerBlend(getNodeLayerBlendMode(this.api, shape));
-      const changedBatching = batchable
-        ? this.#nonBatchableDrawcallsCache.has(shape)
-        : this.#batchableDrawcallsCache.has(shape);
-      if (changedBatching) this.remove(shape);
-      if (batchable) {
-        drawcalls = this.getOrCreateBatchableDrawcalls(shape);
-      } else {
-        drawcalls = this.getOrCreateNonBatchableDrawcalls(shape);
-      }
-    }
-    if (!drawcalls.length) {
-      return;
-    }
-    for (const drawcall of drawcalls) {
-      if (
-        !this.#drawcallsToFlush.includes(drawcall) &&
-        !this.#hidedUIs.includes(drawcall)
-      ) {
-        this.#drawcallsToFlush.push(drawcall);
-      }
-    }
+    this.#active.set(shape, drawcalls ?? null);
+    this.#changed.add(shape);
+    this.#dirty = true;
   }
 
-  #removeFromFrame(drawcall: Drawcall) {
-    for (const queue of [this.#drawcallsToFlush, this.#hidedUIs]) {
-      const index = queue.indexOf(drawcall);
-      if (index !== -1) queue.splice(index, 1);
-    }
-  }
-
-  /**
-   * Called when a shape is:
-   * * removed from the scene graph.
-   * * culled from viewport.
-   * * invisible.
-   */
+  /** Remove the item immediately; culling may retain its private full renderer. */
   remove(shape: Entity, destroy = true) {
-    if (this.#batchableDrawcallsCache.has(shape)) {
-      this.#batchableDrawcallsCache.get(shape)!.forEach((drawcall) => {
-        drawcall.remove(shape);
-        if (drawcall.shapes.length === 0) {
-          this.#removeFromFrame(drawcall);
-        }
-      });
-      this.#batchableDrawcallsCache.delete(shape);
-    }
-    this.#nonBatchableDrawcallsCache.get(shape)?.forEach((drawcall) => {
-      if (destroy) {
-        drawcall.destroy();
-        this.#ownedDrawcalls.delete(drawcall);
-      }
-
-      this.#removeFromFrame(drawcall);
-    });
-
+    this.#active.delete(shape);
     if (destroy) {
+      const cached = this.#nonBatchableDrawcallsCache.get(shape);
+      if (cached) this.retire(cached);
       this.#nonBatchableDrawcallsCache.delete(shape);
     }
+    this.#dirty = true;
   }
 
-  #hidedUIs: Drawcall[] = [];
-  hideUIs() {
-    [...this.#drawcallsToFlush].forEach((drawcall) => {
-      if (drawcall.shapes.some((shape) => shape.has(UI))) {
-        this.#drawcallsToFlush.splice(
-          this.#drawcallsToFlush.indexOf(drawcall),
-          1,
-        );
-        this.#hidedUIs.push(drawcall);
+  private plan() {
+    if (!this.#dirty) return;
+    const entries = [...this.#active];
+    if (this.#ordered) entries.sort(([a], [b]) => sortByFractionalIndex(a, b));
+    const nextPools = new Map<string, Drawcall[][]>();
+    const cursors = new Map<string, number>();
+    const plans: { key: string | null; calls: Drawcall[]; shapes: Entity[] }[] =
+      [];
+    for (const [shape, explicit] of entries) {
+      const ctors = explicit ? [] : this.collectDrawcallCtors(shape);
+      const key = explicit ? null : this.batchKey(shape, ctors);
+      if (key !== null) {
+        const cached = this.#nonBatchableDrawcallsCache.get(shape);
+        if (cached) {
+          this.retire(cached);
+          this.#nonBatchableDrawcallsCache.delete(shape);
+        }
       }
-    });
-  }
-
-  showUIs() {
-    this.#hidedUIs.forEach((drawcall) => {
+      const previous = plans[plans.length - 1];
       if (
-        !drawcall.destroyed &&
-        drawcall.shapes.length > 0 &&
-        !this.#drawcallsToFlush.includes(drawcall)
+        key !== null &&
+        previous?.key === key &&
+        previous.shapes.length <
+          (previous.calls[0].instanceCapacity ?? Infinity)
       ) {
-        this.#drawcallsToFlush.push(drawcall);
+        previous.shapes.push(shape);
+        if (this.#changed.has(shape))
+          previous.calls[0].dirtyInstances.add(shape);
+        continue;
       }
-    });
-    this.#hidedUIs = [];
+      let calls: Drawcall[];
+      if (key !== null) {
+        const index = cursors.get(key) ?? 0;
+        cursors.set(key, index + 1);
+        calls =
+          this.#instancesCache.get(key)?.[index] ??
+          this.createDrawcalls(shape, ctors, true);
+        if (!nextPools.has(key)) nextPools.set(key, []);
+        nextPools.get(key)!.push(calls);
+      } else {
+        calls = explicit ?? this.getOrCreateNonBatchableDrawcalls(shape, ctors);
+      }
+      plans.push({ key, calls, shapes: [shape] });
+    }
+    const retained = new Set([...nextPools.values()].flat());
+    for (const [key, groups] of this.#instancesCache) {
+      for (const group of groups) {
+        if (retained.has(group)) continue;
+        // One empty page per supported key is enough for culling/reentry reuse.
+        if (key && !nextPools.has(key)) {
+          group.forEach((d) => {
+            d.shapes = [];
+            d.dirtyInstances.clear();
+            d.geometryDirty = true;
+          });
+          nextPools.set(key, [group]);
+        } else this.retire(group);
+      }
+    }
+    this.#instancesCache = nextPools;
+    this.#drawcallsToFlush = [];
+    for (const { calls, shapes } of plans) {
+      for (const d of calls) {
+        if (
+          d.shapes.length !== shapes.length ||
+          d.shapes.some((s, i) => s !== shapes[i])
+        ) {
+          d.shapes = [...shapes];
+          d.geometryDirty = true;
+        }
+        for (const shape of shapes)
+          if (this.#changed.has(shape)) d.dirtyInstances.add(shape);
+        if (!this.#hideUIs || !shapes.some((s) => s.has(UI)))
+          this.#drawcallsToFlush.push(d);
+      }
+    }
+    this.#changed.clear();
+    this.#dirty = false;
+  }
+
+  hideUIs() {
+    this.#hideUIs = true;
+    this.#dirty = true;
+  }
+  showUIs() {
+    this.#hideUIs = false;
+    this.#dirty = true;
   }
 
   destroy() {
     this.#blendCompositor?.destroy();
     this.#blendCompositor = undefined;
-    this.#ownedDrawcalls.forEach((drawcall) => {
-      if (!drawcall.destroyed) drawcall.destroy();
-    });
-    this.#ownedDrawcalls.clear();
+    this.retire([...this.#ownedDrawcalls]);
     this.#nonBatchableDrawcallsCache = new WeakMap();
-    this.#batchableDrawcallsCache = new WeakMap();
-    this.#instancesCache = Object.create(null);
-    this.#hidedUIs = [];
+    this.#instancesCache.clear();
     this.clear();
   }
 
   clear() {
+    this.#active.clear();
+    this.#changed.clear();
     this.#drawcallsToFlush = [];
-    this.#hidedUIs = [];
+    this.#hideUIs = false;
+    this.#dirty = true;
   }
 
   sort() {
-    this.#drawcallsToFlush.sort((a, b) => {
-      const aShape = a.shapes[0];
-      const bShape = b.shapes[0];
-      return sortByFractionalIndex(aShape, bShape);
-    });
+    this.#ordered = true;
+    this.#dirty = true;
   }
 
   buildFlushSegments(): BatchFlushSegment[] {
+    this.plan();
     const segments: BatchFlushSegment[] = [];
     let normalBatch: Drawcall[] = [];
     for (const drawcall of this.#drawcallsToFlush) {
@@ -439,35 +387,24 @@ export class BatchManager {
   }
 
   #prepareFlushDirtyFlags() {
-    const geometryDirtyDrawcalls: Drawcall[] = [];
-    const materialDirtyDrawcalls: Drawcall[] = [];
-    const geometryDirtyShapes: Entity[] = [];
-    const materialDirtyShapes: Entity[] = [];
-    this.#drawcallsToFlush.forEach((drawcall) => {
-      drawcall.shapes.forEach((shape) => {
+    this.plan();
+    const geometry = new Set<Entity>();
+    const material = new Set<Entity>();
+    for (const drawcall of this.#drawcallsToFlush) {
+      for (const shape of drawcall.shapes) {
         if (shape.has(GeometryDirty)) {
-          geometryDirtyShapes.push(shape);
-          geometryDirtyDrawcalls.push(drawcall);
+          drawcall.geometryDirty = true;
+          geometry.add(shape);
         }
         if (shape.has(MaterialDirty)) {
-          materialDirtyShapes.push(shape);
-          materialDirtyDrawcalls.push(drawcall);
+          if (drawcall.isInstanced) drawcall.dirtyInstances.add(shape);
+          else drawcall.materialDirty = true;
+          material.add(shape);
         }
-      });
-    });
-
-    geometryDirtyDrawcalls.forEach(
-      (drawcall) => (drawcall.geometryDirty = true),
-    );
-    materialDirtyDrawcalls.forEach(
-      (drawcall) => (drawcall.materialDirty = true),
-    );
-    geometryDirtyShapes.forEach((shape) =>
-      safeRemoveComponent(shape, GeometryDirty),
-    );
-    materialDirtyShapes.forEach((shape) =>
-      safeRemoveComponent(shape, MaterialDirty),
-    );
+      }
+    }
+    geometry.forEach((shape) => safeRemoveComponent(shape, GeometryDirty));
+    material.forEach((shape) => safeRemoveComponent(shape, MaterialDirty));
   }
 
   flushDrawcalls(
@@ -498,7 +435,7 @@ export class BatchManager {
     mainPassDebugName: string,
     shadowResolveIDs: readonly number[] = [],
   ) {
-    if (sort) {
+    if (sort && !this.#ordered) {
       this.sort();
     }
     this.#prepareFlushDirtyFlags();
@@ -650,6 +587,7 @@ export class BatchManager {
   }
 
   stats() {
+    this.plan();
     return {
       drawcallCount: this.#drawcallsToFlush.length,
     };
