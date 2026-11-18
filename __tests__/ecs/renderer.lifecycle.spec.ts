@@ -6,6 +6,8 @@ import {
 } from '../../packages/ecs/src/components';
 import { ResourceScope } from '../../packages/ecs/src/resources/ResourceScope';
 
+const mockBatchManagers: any[] = [];
+
 jest.mock('../../packages/ecs/node_modules/@lastolivegames/becsy', () => ({
   ...jest.requireActual(
     '../../packages/ecs/node_modules/@lastolivegames/becsy',
@@ -48,6 +50,9 @@ jest.mock('../../packages/ecs/src/render-graph/GridRenderer', () => ({
 }));
 jest.mock('../../packages/ecs/src/systems/BatchManager', () => ({
   BatchManager: class {
+    constructor() {
+      mockBatchManagers.push(this);
+    }
     destroy = jest.fn();
     showUIs = jest.fn();
     hideUIs = jest.fn();
@@ -111,37 +116,57 @@ describe('renderer lifecycle', () => {
     expect(gpu.renderGraph.destroy).not.toHaveBeenCalled();
   });
 
-  it('releases temporary export resources even when rendering throws', () => {
-    const gpu = resource();
-    const pipeline = new MeshPipeline();
-    (pipeline as any).setupDevice = { getOffscreenGPUResource: () => gpu };
-    const create = jest.spyOn(pipeline as any, 'createRenderer');
-    const values = new Map<any, any>([
-      [
-        Canvas,
-        {
-          api: {
-            getAppState: () => ({ filter: '' }),
-            getBounds: () => ({ minX: 0, minY: 0, maxX: 0, maxY: 0 }),
+  it.each(['error', 'empty'])(
+    'releases isolated export resources and preserves the screen renderer (%s)',
+    (outcome) => {
+      const gpu = resource();
+      const pipeline = new MeshPipeline();
+      (pipeline as any).setupDevice = { getOffscreenGPUResource: () => gpu };
+      if (outcome === 'empty')
+        gpu.swapChain.getCanvas = () => ({ width: 0, height: 0 } as any);
+      const camera = {};
+      const screen = {
+        batchManager: { showUIs: jest.fn(), destroy: jest.fn() },
+      };
+      pipeline.renderers.set(camera as any, screen as any);
+      const create = jest.spyOn(pipeline as any, 'createRenderer');
+      const values = new Map<any, any>([
+        [
+          Canvas,
+          {
+            api: {
+              getAppState: () => ({ filter: '' }),
+              getBounds: () => ({ minX: 0, minY: 0, maxX: 0, maxY: 0 }),
+            },
           },
-        },
-      ],
-      [GPUResource, gpu],
-      [RasterScreenshotRequest, { nodes: [{ id: '1' }] }],
-    ]);
-    const canvas = {
-      has: (type: any) => values.has(type),
-      read: (type: any) => values.get(type),
-    };
-    expect(() => (pipeline as any).renderCamera(canvas, {})).toThrow(
-      'render failed',
-    );
-    const renderer = create.mock.results[0].value;
-    expect(renderer.batchManager.showUIs).toHaveBeenCalledTimes(1);
-    expect(renderer.batchManager.destroy).toHaveBeenCalledTimes(1);
-    expect(renderer.uniformBuffer.destroy).toHaveBeenCalledTimes(1);
-    expect(pipeline.renderers.size).toBe(0);
-    gpu.scope.dispose();
-    expect(renderer.uniformBuffer.destroy).toHaveBeenCalledTimes(1);
-  });
+        ],
+        [GPUResource, gpu],
+        [RasterScreenshotRequest, { nodes: [{ id: '1' }] }],
+      ]);
+      const canvas = {
+        has: (type: any) => values.has(type),
+        read: (type: any) => values.get(type),
+      };
+      const render = () => (pipeline as any).renderCamera(canvas, camera);
+      if (outcome === 'error') expect(render).toThrow('render failed');
+      else expect(render).not.toThrow();
+      const renderer = create.mock.results[0].value;
+      // Export uses a disposable, isolated plan; restoring UI on the shared screen
+      // manager would violate that isolation. Check ownership instead of that call.
+      const exportBatch = mockBatchManagers[mockBatchManagers.length - 1];
+      expect(exportBatch).not.toBe(renderer.batchManager);
+      expect(exportBatch.hideUIs).toHaveBeenCalledTimes(1);
+      expect(exportBatch.destroy).toHaveBeenCalledTimes(1);
+      expect(pipeline.renderers.get(camera as any)).toBe(screen);
+      expect(screen.batchManager.destroy).not.toHaveBeenCalled();
+      expect(screen.batchManager.showUIs).not.toHaveBeenCalled();
+      expect((pipeline as any).screenRedraw.has(camera)).toBe(true);
+      expect((pipeline as any).partialRasterRenderers.size).toBe(0);
+      expect(renderer.batchManager.destroy).toHaveBeenCalledTimes(1);
+      expect(renderer.uniformBuffer.destroy).toHaveBeenCalledTimes(1);
+      expect(pipeline.renderers.size).toBe(1);
+      gpu.scope.dispose();
+      expect(renderer.uniformBuffer.destroy).toHaveBeenCalledTimes(1);
+    },
+  );
 });
