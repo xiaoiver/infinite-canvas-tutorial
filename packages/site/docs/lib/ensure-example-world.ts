@@ -1,5 +1,6 @@
 import {
   App,
+  type AppOptions,
   DefaultPlugins,
   DefaultRendererPlugin,
   DefaultRenderer3DPlugin,
@@ -19,6 +20,8 @@ import {
 } from '@infinite-canvas-tutorial/vello';
 
 export type EnsureExampleWorldOptions = {
+  /** Optional capacity for standalone test fixtures; the first caller owns the world. */
+  appOptions?: AppOptions;
   vello?: boolean;
   velloFonts?: string[];
 };
@@ -89,7 +92,7 @@ export async function ensureExampleWorld(
     const interaction =
       extraPlugins.length > 0 ? extraPlugins : DEFAULT_INTERACTION_PLUGINS;
 
-    await new App()
+    await new App(options?.appOptions)
       .addPlugins(...rendererPlugins, ...interaction)
       .run();
   })();

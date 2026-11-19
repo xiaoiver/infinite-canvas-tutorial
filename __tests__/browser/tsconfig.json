@@ -5,15 +5,21 @@
     "rootDir": "../..",
     "baseUrl": "../..",
     "paths": {
-      "react": ["packages/site/node_modules/@types/react/index.d.ts"],
+      "react": [
+        "packages/site/node_modules/@types/react/index.d.ts"
+      ],
       "react/jsx-runtime": [
         "packages/site/node_modules/@types/react/jsx-runtime.d.ts"
       ],
-      "react-dom": ["packages/site/node_modules/@types/react-dom/index.d.ts"],
+      "react-dom": [
+        "packages/site/node_modules/@types/react-dom/index.d.ts"
+      ],
       "react-dom/client": [
         "packages/site/node_modules/@types/react-dom/client.d.ts"
       ],
-      "vue": ["packages/site/node_modules/vue/dist/vue.d.ts"],
+      "vue": [
+        "packages/site/node_modules/vue/dist/vue.d.ts"
+      ],
       "@infinite-canvas-tutorial/ecs": [
         "packages/ecs/src/index.ts"
       ],
@@ -25,6 +31,42 @@
       ],
       "yjs": [
         "packages/site/node_modules/yjs/dist/src/index.d.ts"
+      ],
+      "@infinite-canvas-tutorial/filter": [
+        "packages/plugin-filter/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/webcomponents": [
+        "packages/webcomponents/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/eraser": [
+        "packages/plugin-eraser/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/laser-pointer": [
+        "packages/plugin-laser-pointer/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/lasso": [
+        "packages/plugin-lasso/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/vello": [
+        "packages/plugin-vello/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/webcomponents/spectrum": [
+        "packages/webcomponents/src/spectrum/index.ts"
+      ],
+      "@infinite-canvas-tutorial/eraser/spectrum": [
+        "packages/plugin-eraser/src/spectrum/index.ts"
+      ],
+      "@infinite-canvas-tutorial/laser-pointer/spectrum": [
+        "packages/plugin-laser-pointer/src/spectrum/index.ts"
+      ],
+      "@infinite-canvas-tutorial/lasso/spectrum": [
+        "packages/plugin-lasso/src/spectrum/index.ts"
+      ],
+      "@infinite-canvas-tutorial/figma": [
+        "packages/plugin-figma/src/index.ts"
+      ],
+      "@infinite-canvas-tutorial/mermaid": [
+        "packages/plugin-mermaid/src/index.ts"
       ]
     },
     "module": "ESNext",
