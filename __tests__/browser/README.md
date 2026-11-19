@@ -364,3 +364,14 @@ without persisting those geometry fields to the document. The tests check safe
 cancellation, preserved layout, ignored late release, and a fresh drag followed
 by Escape back to the computed origin. Both browsers run these cases; ECS tests
 also cover ancestor changes, per-axis rollback and independent canvases.
+
+The Path instancing documentation fixture mounts the actual bilingual Vue demo
+with both Core and ECS canvases. It starts the shared example world with an
+explicit capacity of 16,384 entities; the production example and App defaults
+are unchanged. Counters wrap only each canvas's own WebGL context and device
+frame methods, and restore them on unmount. Regression checks compare real
+submissions, original document data, raster exports and teardown. The external
+Core device retains its startup fallback resources; lifecycle checks snapshot
+that baseline and require every later native allocation to be released. The ECS
+world also retains its shared export device until the world exits; each ECS
+canvas releases all of its own native resources.

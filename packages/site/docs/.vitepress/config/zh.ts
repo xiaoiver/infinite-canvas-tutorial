@@ -248,6 +248,10 @@ export const zh = defineConfig({
                 link: 'vector-network-cube',
               },
               {
+                text: 'Path 合批',
+                link: 'path-instancing',
+              },
+              {
                 text: '文本',
                 items: [
                   {

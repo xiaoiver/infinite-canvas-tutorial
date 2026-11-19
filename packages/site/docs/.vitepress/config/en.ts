@@ -330,6 +330,10 @@ export const en = defineConfig({
                 link: 'vector-network-cube',
               },
               {
+                text: 'Path instancing',
+                link: 'path-instancing',
+              },
+              {
                 text: 'Text',
                 items: [
                   {
