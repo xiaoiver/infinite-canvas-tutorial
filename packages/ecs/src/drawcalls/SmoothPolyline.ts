@@ -15,15 +15,12 @@ import {
   TextureUsage,
 } from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
-import { mat3 } from 'gl-matrix';
 import { ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
 import { PathDrawcall } from './PathDrawcall';
 import { vert, frag, Location, JointType } from '../shaders/polyline';
 import {
   hasValidDecoration,
   hasValidStrokeEntity,
-  paddingMat3,
-  parseColor,
   parseGradient,
   parsePath,
   isMeshGradientGradient,
@@ -60,7 +57,6 @@ import {
   GlobalTransform,
   Line,
   Marker,
-  Mat3,
   Path,
   Polyline,
   Rect,
@@ -635,26 +631,11 @@ export class SmoothPolyline extends PathDrawcall {
     //   this.geometryDirty
     // ) {
     const { matrix } = this.shapes[0].read(GlobalTransform);
-    const u_ModelMatrix = [
-      matrix.m00,
-      matrix.m01,
-      matrix.m02,
-      matrix.m10,
-      matrix.m11,
-      matrix.m12,
-      matrix.m20,
-      matrix.m21,
-      matrix.m22,
-    ] as mat3;
     const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
-    this.#uniformBuffer.setSubData(
-      0,
-      new Uint8Array(
-        new Float32Array([
-          ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
-          ...buffer,
-        ]).buffer,
-      ),
+    const u_ModelMatrix = this.objectUniforms.update(
+      this.#uniformBuffer,
+      matrix,
+      buffer,
     );
     const uniformLegacyObject: Record<string, unknown> = {
       u_ModelMatrix,
@@ -702,7 +683,7 @@ export class SmoothPolyline extends PathDrawcall {
       : 0;
 
     const fill = getFirstSolidFillLayerValue(shape);
-    const { r: fr, g: fg, b: fb, opacity: fo } = parseColor(
+    const { r: fr, g: fg, b: fb, opacity: fo } = this.getUniformColor(
       fill != null ? fill : 'transparent',
     );
 
@@ -724,7 +705,7 @@ export class SmoothPolyline extends PathDrawcall {
           dashoffset: 0,
           dashcap: 'none' as const,
         };
-    const { r: sr, g: sg, b: sb, opacity: so } = parseColor(
+    const { r: sr, g: sg, b: sb, opacity: so } = this.getUniformColor(
       strokeColor ?? 'transparent',
     );
     let strokeWidth = width;
@@ -780,7 +761,7 @@ export class SmoothPolyline extends PathDrawcall {
         style: decorationStyle,
       } = instance.read(TextDecoration);
       const { fontMetrics } = instance.read(ComputedTextMetrics);
-      const decorationColorRGB = parseColor(decorationColor);
+      const decorationColorRGB = this.getUniformColor(decorationColor);
       u_StrokeColor = [
         decorationColorRGB.r / 255,
         decorationColorRGB.g / 255,

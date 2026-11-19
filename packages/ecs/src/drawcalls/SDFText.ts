@@ -35,7 +35,6 @@ import {
   BitmapFont,
   GlyphPositions,
   containsEmoji,
-  parseColor,
 } from '../utils';
 import {
   ComputedBounds,
@@ -714,14 +713,13 @@ export class SDFText extends Drawcall {
           ? shape.read(Text).bitmapFont.pages[0]
           : this.#glyphManager.getAtlas().image;
         const [bakeBuf, bakeLegacy] = this.generateBuffer(shape, atlasImage);
-        this.#uniformBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array([...paddingMat3(bakeModel), ...bakeBuf]).buffer,
-          ),
+        const bakeUniformModel = this.objectUniforms.update(
+          this.#uniformBuffer,
+          bakeModel,
+          bakeBuf,
         );
         this.#bakeProgram.setUniformsLegacy({
-          u_ModelMatrix: Mat3.toGLMat3(bakeModel),
+          u_ModelMatrix: bakeUniformModel,
           ...bakeLegacy,
         });
 
@@ -976,17 +974,6 @@ export class SDFText extends Drawcall {
     //   this.geometryDirty
     // ) {
     const { matrix } = this.shapes[0].read(GlobalTransform);
-    const u_ModelMatrix = [
-      matrix.m00,
-      matrix.m01,
-      matrix.m02,
-      matrix.m10,
-      matrix.m11,
-      matrix.m12,
-      matrix.m20,
-      matrix.m21,
-      matrix.m22,
-    ] as mat3;
 
     const [buffer, legacyObject] = this.generateBuffer(
       this.shapes[0],
@@ -994,14 +981,10 @@ export class SDFText extends Drawcall {
         ? this.shapes[0].read(Text).bitmapFont.pages[0]
         : this.#glyphManager.getAtlas().image,
     );
-    this.#uniformBuffer.setSubData(
-      0,
-      new Uint8Array(
-        new Float32Array([
-          ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
-          ...buffer,
-        ]).buffer,
-      ),
+    const u_ModelMatrix = this.objectUniforms.update(
+      this.#uniformBuffer,
+      matrix,
+      buffer,
     );
 
     this.program.setUniformsLegacy({
@@ -1064,7 +1047,9 @@ export class SDFText extends Drawcall {
       g: fg,
       b: fb,
       opacity: fo,
-    } = parseColor(fillCss && fillCss !== 'none' ? fillCss : 'transparent');
+    } = this.getUniformColor(
+      fillCss && fillCss !== 'none' ? fillCss : 'transparent',
+    );
 
     const opacity = this.getOpacity(shape);
 
@@ -1075,7 +1060,7 @@ export class SDFText extends Drawcall {
       g: sg,
       b: sb,
       opacity: so,
-    } = parseColor(strokeColor ?? 'transparent');
+    } = this.getUniformColor(strokeColor ?? 'transparent');
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
@@ -1092,7 +1077,7 @@ export class SDFText extends Drawcall {
       g: dsG,
       b: dsB,
       opacity: dsO,
-    } = parseColor(dropShadowColor);
+    } = this.getUniformColor(dropShadowColor);
 
     const { width: atlasWidth, height: atlasHeight } = image;
 

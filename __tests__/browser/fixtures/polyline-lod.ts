@@ -22,12 +22,56 @@ import {
 import { SmoothPolyline } from '../../../packages/ecs/src/drawcalls/SmoothPolyline';
 import { settleECSFrames } from './ecs-frames';
 // Benchmark-only native submission counters, including empty planned drawcalls and final passes.
-const nativeWork = { drawcalls: 0, indices: 0, arrayVertices: 0 };
+const nativeWork = {
+  drawcalls: 0,
+  indices: 0,
+  arrayVertices: 0,
+  bufferUploads: 0,
+  bufferBytes: 0,
+  uniformUploads: 0,
+  uniformBytes: 0,
+};
+const boundBuffers = new WeakMap<object, Map<number, object | null>>();
+const uniformBuffers = new WeakSet<object>();
+const resetNativeWork = () => {
+  for (const key of Object.keys(nativeWork) as (keyof typeof nativeWork)[])
+    nativeWork[key] = 0;
+};
 for (const prototype of [
   window.WebGLRenderingContext?.prototype,
   window.WebGL2RenderingContext?.prototype,
 ]) {
   if (!prototype) continue;
+  const bind = prototype.bindBuffer;
+  prototype.bindBuffer = function (target, buffer) {
+    let bound = boundBuffers.get(this);
+    if (!bound) boundBuffers.set(this, (bound = new Map()));
+    bound.set(target, buffer);
+    return bind.call(this, target, buffer);
+  };
+  const allocate = prototype.bufferData;
+  (prototype as any).bufferData = function (...args: any[]) {
+    const buffer = boundBuffers.get(this)?.get(args[0]);
+    if (buffer && args[0] === this.UNIFORM_BUFFER) uniformBuffers.add(buffer);
+    return (allocate as any).apply(this, args);
+  };
+  const upload = prototype.bufferSubData;
+  (prototype as any).bufferSubData = function (...args: any[]) {
+    const data = args[2];
+    const stride = data.BYTES_PER_ELEMENT ?? 1;
+    const bytes =
+      args[4] !== undefined
+        ? args[4] * stride
+        : data.byteLength - (args[3] ?? 0) * stride;
+    nativeWork.bufferUploads++;
+    nativeWork.bufferBytes += bytes;
+    const buffer = boundBuffers.get(this)?.get(args[0]);
+    if (buffer && uniformBuffers.has(buffer)) {
+      nativeWork.uniformUploads++;
+      nativeWork.uniformBytes += bytes;
+    }
+    return (upload as any).apply(this, args);
+  };
   for (const name of [
     'drawElements',
     'drawElementsInstanced',
@@ -111,6 +155,18 @@ SmoothPolyline.prototype.createGeometry = function () {
   return create.call(this);
 };
 const harness = {
+  resetWork: resetNativeWork,
+  async document(nodes: SerializedNode[]) {
+    await api.edit(
+      (e) => {
+        e.selectNodes([]);
+        e.highlightNodes([]);
+        e.replaceDocument(nodes, 'remote');
+      },
+      { capture: 'NEVER' },
+    );
+    await frames();
+  },
   async seed(count = 1, mixed = false) {
     await api.edit(
       (e) => {
@@ -167,8 +223,8 @@ const harness = {
     await api.edit((e) => e.setAppState({ cameraX: x }), { capture: 'NEVER' });
     await frames();
   },
-  async patch(patch: Record<string, unknown>) {
-    await api.edit((e) => e.updateNode(e.getNodeById('line'), patch));
+  async patch(patch: Record<string, unknown>, id = 'line') {
+    await api.edit((e) => e.updateNode(e.getNodeById(id), patch));
     await frames();
   },
   async mutatePoints() {
@@ -210,11 +266,12 @@ const harness = {
             : (d as any).indexBufferData?.length ?? 0),
         0,
       ),
+      native: { ...nativeWork },
       document: api.getNodes(),
       resources: window.lifecycleProbes?.resources(),
     };
   },
-  async export(partial: boolean) {
+  async export(partial: boolean, id = 'line') {
     const canvas = api.getCanvas();
     const result = await new Promise<string>((resolve, reject) => {
       const timer = setTimeout(
@@ -232,7 +289,7 @@ const harness = {
         api.export({
           format: ExportFormat.PNG,
           download: false,
-          nodes: partial ? [api.getNodeById('line')] : [],
+          nodes: partial ? [api.getNodeById(id)] : [],
         });
         poll();
       });
@@ -256,7 +313,7 @@ const harness = {
     const submissions: (typeof nativeWork)[] = [];
     const original = app.world.execute.bind(app.world);
     app.world.execute = async (...args: Parameters<typeof original>) => {
-      Object.assign(nativeWork, { drawcalls: 0, indices: 0, arrayVertices: 0 });
+      resetNativeWork();
       const t = performance.now();
       await original(...args);
       times.push(performance.now() - t);

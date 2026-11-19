@@ -18,7 +18,6 @@ import {
   type RenderPipeline,
 } from '@infinite-canvas-tutorial/device-api';
 import { Entity } from '@lastolivegames/becsy';
-import { mat3 } from 'gl-matrix';
 import earcut from 'earcut';
 import { buildPathFillMesh } from '../utils/path-fill-mesh';
 import { ZINDEX_FACTOR, STENCIL_CLIP_REF } from './Drawcall';
@@ -27,7 +26,6 @@ import { vert, frag, Location } from '../shaders/mesh';
 import {
   buildVectorNetworkFillMesh,
   isClockWise,
-  paddingMat3,
   parseColor,
   parseGradient,
   isMeshGradientGradient,
@@ -91,7 +89,6 @@ import {
   TesselationMethod,
   Circle,
   ComputedRough,
-  Mat3,
   VectorNetwork,
 } from '../components';
 
@@ -906,17 +903,6 @@ export class Mesh extends PathDrawcall {
         this.generateWireframe();
       }
       const { matrix } = shape.read(GlobalTransform);
-      const u_ModelMatrix = [
-        matrix.m00,
-        matrix.m01,
-        matrix.m02,
-        matrix.m10,
-        matrix.m11,
-        matrix.m12,
-        matrix.m20,
-        matrix.m21,
-        matrix.m22,
-      ] as mat3;
       const needLayerTex = fillLayersNeedFillImage(multi);
       for (let i = 0; i < multi.length; i++) {
         const isMidFillPass = multi.length > 1 && i < multi.length - 1;
@@ -928,14 +914,10 @@ export class Mesh extends PathDrawcall {
           kind: 'fill-layer',
           layerIndex: i,
         });
-        this.#uniformBuffer.setSubData(
-          0,
-          new Uint8Array(
-            new Float32Array([
-              ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
-              ...buffer,
-            ]).buffer,
-          ),
+        const u_ModelMatrix = this.objectUniforms.update(
+          this.#uniformBuffer,
+          matrix,
+          buffer,
         );
         const uniformLegacyObject: Record<string, unknown> = {
           u_ModelMatrix,
@@ -976,26 +958,11 @@ export class Mesh extends PathDrawcall {
 
     const { matrix } = this.shapes[0].read(GlobalTransform);
     const [buffer, legacyObject] = this.generateBuffer(this.shapes[0]);
-    const u_ModelMatrix = [
-      matrix.m00,
-      matrix.m01,
-      matrix.m02,
-      matrix.m10,
-      matrix.m11,
-      matrix.m12,
-      matrix.m20,
-      matrix.m21,
-      matrix.m22,
-    ] as mat3;
 
-    this.#uniformBuffer.setSubData(
-      0,
-      new Uint8Array(
-        new Float32Array([
-          ...paddingMat3(Mat3.fromGLMat3(u_ModelMatrix)),
-          ...buffer,
-        ]).buffer,
-      ),
+    const u_ModelMatrix = this.objectUniforms.update(
+      this.#uniformBuffer,
+      matrix,
+      buffer,
     );
     const uniformLegacyObject: Record<string, unknown> = {
       u_ModelMatrix,
@@ -1076,7 +1043,7 @@ export class Mesh extends PathDrawcall {
       g: fg,
       b: fb,
       opacity: fo,
-    } = parseColor(fill != null && fill !== '' ? fill : 'transparent');
+    } = this.getUniformColor(fill != null && fill !== '' ? fill : 'transparent');
 
     const opacity = this.getOpacity(shape);
 
@@ -1090,7 +1057,7 @@ export class Mesh extends PathDrawcall {
       g: sg,
       b: sb,
       opacity: so,
-    } = parseColor(strokeColor ?? 'transparent');
+    } = this.getUniformColor(strokeColor ?? 'transparent');
     const { strokeColorAlphaMul, strokeUniformOpacityMul } =
       strokePaintAlphaMultipliers(shape);
 
