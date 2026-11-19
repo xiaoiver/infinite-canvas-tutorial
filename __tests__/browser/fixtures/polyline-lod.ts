@@ -30,6 +30,9 @@ const nativeWork = {
   bufferBytes: 0,
   uniformUploads: 0,
   uniformBytes: 0,
+  arrayBufferBinds: 0,
+  elementBufferBinds: 0,
+  vertexAttribPointers: 0,
 };
 const boundBuffers = new WeakMap<object, Map<number, object | null>>();
 const uniformBuffers = new WeakSet<object>();
@@ -44,10 +47,17 @@ for (const prototype of [
   if (!prototype) continue;
   const bind = prototype.bindBuffer;
   prototype.bindBuffer = function (target, buffer) {
+    if (target === this.ARRAY_BUFFER) nativeWork.arrayBufferBinds++;
+    if (target === this.ELEMENT_ARRAY_BUFFER) nativeWork.elementBufferBinds++;
     let bound = boundBuffers.get(this);
     if (!bound) boundBuffers.set(this, (bound = new Map()));
     bound.set(target, buffer);
     return bind.call(this, target, buffer);
+  };
+  const pointer = prototype.vertexAttribPointer;
+  prototype.vertexAttribPointer = function (...args) {
+    nativeWork.vertexAttribPointers++;
+    return pointer.apply(this, args);
   };
   const allocate = prototype.bufferData;
   (prototype as any).bufferData = function (...args: any[]) {

@@ -1,0 +1,230 @@
+{
+  "baselineCommit": "b87079f4d3b1eee62f0e81763332337d7606e4b1",
+  "baselineMeasuredCommit": "57c49f28241a2ea296c87d7fa851a5520a69eb23 (same tree as merge b87079f4)",
+  "baselineTree": "e7b7e12d348bc12af325518ba7a00585024fe3ca",
+  "method": "Same new native-call instrumentation temporarily copied into the clean baseline and restored afterward. Baseline then optimized; sequential fresh Chromium launches, no overlapping local checks. Counters are the last completed measured frame. CPU includes instrumentation overhead.",
+  "baseline": [
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192,
+        "arrayBufferBinds": 5201,
+        "elementBufferBinds": 800,
+        "vertexAttribPointers": 5201
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 17.200000002980232,
+      "cpuP95": 31,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192,
+        "arrayBufferBinds": 5201,
+        "elementBufferBinds": 800,
+        "vertexAttribPointers": 5201
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 18,
+      "cpuP95": 27.900000005960464,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ],
+  "optimized": [
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192,
+        "arrayBufferBinds": 3601,
+        "elementBufferBinds": 800,
+        "vertexAttribPointers": 5201
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 15.799999997019768,
+      "cpuP95": 23.099999994039536,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192,
+        "arrayBufferBinds": 3601,
+        "elementBufferBinds": 800,
+        "vertexAttribPointers": 5201
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 16.100000008940697,
+      "cpuP95": 20.200000002980232,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ]
+}
