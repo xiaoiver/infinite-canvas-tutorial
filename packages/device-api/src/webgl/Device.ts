@@ -2396,6 +2396,9 @@ export class Device_GL implements SwapChain, Device {
       for (let i = 0; i < inputLayout.vertexBufferDescriptors.length; i++) {
         const vertexBufferDescriptor = inputLayout.vertexBufferDescriptors[i];
         const { arrayStride, attributes } = vertexBufferDescriptor;
+        // All attributes in this slot reference the same ARRAY_BUFFER. Keep the
+        // binding local to this submission: layouts/VAOs are shared by geometries.
+        let bufferBound = false;
 
         for (const attribute of attributes) {
           const { shaderLocation, offset } = attribute;
@@ -2417,10 +2420,13 @@ export class Device_GL implements SwapChain, Device {
               normalized: boolean;
             };
 
-            gl.bindBuffer(
-              gl.ARRAY_BUFFER,
-              getPlatformBuffer(vertexBuffer.buffer),
-            );
+            if (!bufferBound) {
+              gl.bindBuffer(
+                gl.ARRAY_BUFFER,
+                getPlatformBuffer(vertexBuffer.buffer),
+              );
+              bufferBound = true;
+            }
 
             const bufferOffset = (vertexBuffer.offset || 0) + offset;
 
