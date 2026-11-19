@@ -1784,13 +1784,21 @@ export class Select extends System {
     requestTransformerRefreshForCanvas(api.getCanvas());
   }
 
-  private handleBrushing(api: API, viewportX: number, viewportY: number) {
+  private handleBrushing(
+    api: API,
+    viewportX: number,
+    viewportY: number,
+    press?: [number, number],
+  ) {
     const camera = api.getCamera();
     const selection = this.selections.get(camera.__id);
 
-    const { pointerDownViewportX, pointerDownViewportY } = camera.read(
-      ComputedCameraControl,
-    );
+    const control = camera.read(ComputedCameraControl);
+    // CameraControl clears its start coordinates before Select on pointerup.
+    const [pointerDownViewportX, pointerDownViewportY] = press ?? [
+      control.pointerDownViewportX,
+      control.pointerDownViewportY,
+    ];
 
     // Use a threshold to avoid showing the selection brush when the pointer is moved a little.
     const shouldShowSelectionBrush =
@@ -1815,6 +1823,7 @@ export class Select extends System {
       // Select elements in the brush
       this.applyBrushSelection(api, selection, false);
     }
+    return shouldShowSelectionBrush;
   }
 
   execute() {
@@ -2590,6 +2599,19 @@ export class Select extends System {
       }
 
       if (input.pointerUpTrigger && !selection.vectorDragCancelled) {
+        // Release can remove InputPoints before the drag loop sees its final
+        // position, including an entire gesture delivered between two frames.
+        if (
+          !input.pointerCancelled &&
+          (selection.mode === SelectionMode.READY_TO_BRUSH ||
+            selection.mode === SelectionMode.BRUSH)
+        ) {
+          const [x, y] = input.pointerViewport;
+          const [startX, startY] = input.pointerDownViewport;
+          if (this.handleBrushing(api, x, y, [startX, startY])) {
+            selection.mode = SelectionMode.BRUSH;
+          }
+        }
         this.finishSelectionGesture(api, selection);
 
         cursor.value = 'default';

@@ -1,9 +1,10 @@
 import type { Plugin, PluginContext } from './interfaces';
-import { AABB, RBushNodeAABB } from '../shapes';
+import { AABB, RBushNodeAABB, type Shape } from '../shapes';
 
 export class Culling implements Plugin {
   #context: PluginContext;
   #viewport = new AABB();
+  #indexed = new WeakMap<Shape, RBushNodeAABB>();
 
   apply(context: PluginContext) {
     const { hooks, rBushRoot } = context;
@@ -20,31 +21,24 @@ export class Culling implements Plugin {
        */
 
       [...removed, ...modified].forEach((shape) => {
-        if (shape.renderable) {
-          rBushRoot.remove(
-            {
-              shape,
-              minX: 0,
-              minY: 0,
-              maxX: 0,
-              maxY: 0,
-            },
-            (a, b) => a.shape === b.shape,
-          );
-        }
+        const indexed = this.#indexed.get(shape);
+        if (indexed) rBushRoot.remove(indexed);
+        this.#indexed.delete(shape);
       });
 
       const bulk: RBushNodeAABB[] = [];
       modified.forEach((shape) => {
         if (shape.renderable) {
           const bounds = shape.getBounds();
-          bulk.push({
+          const indexed: RBushNodeAABB = {
             minX: bounds.minX,
             minY: bounds.minY,
             maxX: bounds.maxX,
             maxY: bounds.maxY,
             shape,
-          });
+          };
+          this.#indexed.set(shape, indexed);
+          bulk.push(indexed);
         }
       });
       rBushRoot.load(bulk);

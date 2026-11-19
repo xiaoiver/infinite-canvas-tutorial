@@ -21,7 +21,10 @@ export enum Location {
   INNER_SHADOW = 11,
 }
 
+// Packed attenuation flags use bits 22/23; mediump can overflow even when
+// multiplied by zero while unpacking an ordinary unattenuated shape.
 export const vert = /* wgsl */ `
+precision highp float;
 #define SHIFT_RIGHT23 1.0 / 8388608.0
 #define SHIFT_LEFT23 8388608.0
 #define SHIFT_RIGHT22 1.0 / 4194304.0
@@ -166,6 +169,7 @@ void main() {
 `;
 
 export const frag = /* wgsl */ `
+precision highp float;
 #define SHIFT_RIGHT23 1.0 / 8388608.0
 #define SHIFT_LEFT23 8388608.0
 

@@ -254,7 +254,7 @@ export class Renderer implements Plugin {
         this.#uniformLegacyObject,
       );
 
-      this.#batchManager.clear();
+      this.#batchManager.clear(!!context.pathInstancing, !this.#enableCapture);
       this.#zIndexCounter = 1;
     });
 
@@ -326,9 +326,15 @@ export class Renderer implements Plugin {
       };
     });
 
-    // trigger re-render here
-    callback();
-
-    return this.#capturePromise;
+    const promise = this.#capturePromise;
+    try {
+      callback();
+      return await promise;
+    } finally {
+      this.#enableCapture = false;
+      this.#captureOptions = undefined;
+      this.#resolveCapturePromise = undefined;
+      this.#capturePromise = undefined;
+    }
   }
 }

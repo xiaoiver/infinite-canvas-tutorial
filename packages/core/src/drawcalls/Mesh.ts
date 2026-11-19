@@ -107,8 +107,19 @@ export class Mesh extends PathDrawcall {
     const points = rawPoints.flat(2);
 
     if (points.length === 0) {
+      this.points = [];
+      this.indexBufferData = new Uint32Array();
+      this.indexBuffer?.destroy();
+      this.indexBuffer = undefined;
+      this.vertexBuffers.forEach((buffer) => buffer.destroy());
+      this.vertexBuffers = [];
+      this.vertexBufferDatas = [];
+      this.vertexBufferDescriptors = [];
+      this.barycentricBuffer?.destroy();
+      this.barycentricBuffer = undefined;
       return;
     }
+    if (!this.program) this.materialDirty = true;
 
     if (tessellationMethod === TesselationMethod.EARCUT) {
       let holes = [];
@@ -307,6 +318,7 @@ export class Mesh extends PathDrawcall {
   }
 
   destroy(): void {
+    if (this.destroyed) return;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();

@@ -62,6 +62,7 @@ export function PathWrapper<TBase extends GConstructor>(Base: TBase) {
       const { d, tessellationMethod, fillRule } = attributes;
 
       this.d = d;
+      this.batchable = attributes.batchable ?? false;
       this.tessellationMethod = tessellationMethod ?? TesselationMethod.EARCUT;
       this.fillRule = fillRule ?? 'nonzero';
     }

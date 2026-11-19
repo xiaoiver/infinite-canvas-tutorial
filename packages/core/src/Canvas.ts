@@ -103,6 +103,8 @@ export interface CanvasConfig {
     [Theme.LIGHT]: Partial<ThemeColors>;
     [Theme.DARK]: Partial<ThemeColors>;
   }>;
+  /** Experimental ordered instancing for repeated solid Path fills; defaults off. */
+  pathInstancing?: boolean;
   plugins?: Partial<{
     selector: Partial<SelectorPluginOptions>;
     dragndrop: Partial<DragndropPluginOptions>;
@@ -152,6 +154,7 @@ export class Canvas {
     const {
       canvas,
       renderer = 'webgl',
+      pathInstancing = false,
       shaderCompilerPath = '',
       devicePixelRatio,
       mode = CanvasMode.HAND,
@@ -191,6 +194,7 @@ export class Canvas {
       canvas,
       renderer,
       shaderCompilerPath,
+      pathInstancing,
       devicePixelRatio: dpr,
       themeColors,
       supportsPointerEvents,
@@ -300,6 +304,7 @@ export class Canvas {
 
     this.#shapesCurrentFrame.clear();
     const modified: Shape[] = [];
+    const transformed = new Set<Shape>();
     // Dirty check first.
     traverse(this.#root, (shape) => {
       if (shape.sortDirtyFlag) {
@@ -309,8 +314,8 @@ export class Canvas {
 
       this.#shapesCurrentFrame.add(shape);
 
-      if (shape.transformDirtyFlag) {
-        // FIXME: affect children cascade
+      if (shape.transformDirtyFlag || transformed.has(shape.parent)) {
+        transformed.add(shape);
         shape.boundsDirtyFlag = true;
         shape.renderDirtyFlag = true;
       }
@@ -379,17 +384,17 @@ export class Canvas {
   }
 
   async toDataURL(options: Partial<DataURLOptions> = {}) {
-    const dataURL = await this.#rendererPlugin.toDataURL(options, () => {
-      this.#renderDirtyFlag = true;
-      this.render();
-    });
-
-    if (!options.grid) {
-      this.#renderDirtyFlag = true;
-      this.render();
+    try {
+      return await this.#rendererPlugin.toDataURL(options, () => {
+        this.#renderDirtyFlag = true;
+        this.render();
+      });
+    } finally {
+      if (!options.grid || this.pathInstancing) {
+        this.#renderDirtyFlag = true;
+        this.render();
+      }
     }
-
-    return dataURL;
   }
 
   appendChild(shape: Shape) {
@@ -400,6 +405,16 @@ export class Canvas {
   removeChild(shape: Shape) {
     this.#renderDirtyFlag = true;
     return this.#root.removeChild(shape);
+  }
+
+  get pathInstancing() {
+    return this.#pluginContext.pathInstancing ?? false;
+  }
+  set pathInstancing(enabled: boolean) {
+    if (this.pathInstancing !== enabled) {
+      this.#pluginContext.pathInstancing = enabled;
+      this.#renderDirtyFlag = true;
+    }
   }
 
   get checkboardStyle() {

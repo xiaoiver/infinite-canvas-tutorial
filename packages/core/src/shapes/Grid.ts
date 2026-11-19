@@ -1,3 +1,4 @@
+import { destroyInputLayout } from '../utils/destroy-input-layout';
 import {
   VertexStepMode,
   type Device,
@@ -115,7 +116,7 @@ export class Grid {
     this.#program?.destroy();
     this.#buffer?.destroy();
     this.#pipeline?.destroy();
-    this.#inputLayout?.destroy();
+    if (this.#inputLayout) destroyInputLayout(this.#inputLayout);
     this.#bindings?.destroy();
   }
 }

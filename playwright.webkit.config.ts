@@ -19,6 +19,7 @@ export default defineConfig({
     'ecs-dash-rendering.spec.ts',
     'path-rendering.spec.ts',
     'path-instances.spec.ts',
+    'core-path-instances.spec.ts',
     'ecs-path-fill.spec.ts',
     'ecs-filter-chain.spec.ts',
     'filter-alpha.spec.ts',
