@@ -1,0 +1,629 @@
+{
+  "baselineCommit": "b87079f4d3b1eee62f0e81763332337d7606e4b1",
+  "baselineMeasuredCommit": "57c49f28241a2ea296c87d7fa851a5520a69eb23 (same tree as merge b87079f4)",
+  "method": "Serial isolated runs: baseline micro, optimized micro, baseline frames, optimized frames; no concurrent local checks. Mixed-frame counters include existing native probe overhead. Micro runs include Jest VM overhead.",
+  "microBaseline": {
+    "node": "v24.22.3",
+    "platform": "linux",
+    "results": [
+      {
+        "engine": "core",
+        "mode": "stable",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 75.42650599999979,
+        "p95Ms": 121.02898300000015,
+        "measured": [
+          {
+            "ms": 67.86484999999993,
+            "points": 9900000
+          },
+          {
+            "ms": 75.42650599999979,
+            "points": 9900000
+          },
+          {
+            "ms": 70.29649999999992,
+            "points": 9900000
+          },
+          {
+            "ms": 71.48656500000016,
+            "points": 9900000
+          },
+          {
+            "ms": 69.76211700000022,
+            "points": 9900000
+          },
+          {
+            "ms": 70.973074,
+            "points": 9900000
+          },
+          {
+            "ms": 121.02898300000015,
+            "points": 9900000
+          },
+          {
+            "ms": 96.82419400000026,
+            "points": 9900000
+          },
+          {
+            "ms": 101.19147099999964,
+            "points": 9900000
+          },
+          {
+            "ms": 90.7992749999994,
+            "points": 9900000
+          }
+        ]
+      },
+      {
+        "engine": "core",
+        "mode": "alternating",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 107.1897200000003,
+        "p95Ms": 113.33765200000016,
+        "measured": [
+          {
+            "ms": 107.1897200000003,
+            "points": 18600000
+          },
+          {
+            "ms": 108.00189499999942,
+            "points": 18600000
+          },
+          {
+            "ms": 107.53421600000001,
+            "points": 18600000
+          },
+          {
+            "ms": 106.90084000000024,
+            "points": 18600000
+          },
+          {
+            "ms": 113.33765200000016,
+            "points": 18600000
+          },
+          {
+            "ms": 104.6577440000001,
+            "points": 18600000
+          },
+          {
+            "ms": 104.32080799999949,
+            "points": 18600000
+          },
+          {
+            "ms": 101.54342999999972,
+            "points": 18600000
+          },
+          {
+            "ms": 107.10000500000024,
+            "points": 18600000
+          },
+          {
+            "ms": 110.77010000000064,
+            "points": 18600000
+          }
+        ]
+      },
+      {
+        "engine": "ecs",
+        "mode": "stable",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 76.07346400000006,
+        "p95Ms": 116.72583200000008,
+        "measured": [
+          {
+            "ms": 103.70029599999998,
+            "points": 9900000
+          },
+          {
+            "ms": 116.72583200000008,
+            "points": 9900000
+          },
+          {
+            "ms": 110.32730999999967,
+            "points": 9900000
+          },
+          {
+            "ms": 78.65045999999984,
+            "points": 9900000
+          },
+          {
+            "ms": 72.44174399999974,
+            "points": 9900000
+          },
+          {
+            "ms": 76.07346400000006,
+            "points": 9900000
+          },
+          {
+            "ms": 73.91250600000058,
+            "points": 9900000
+          },
+          {
+            "ms": 69.57915199999934,
+            "points": 9900000
+          },
+          {
+            "ms": 69.27802200000042,
+            "points": 9900000
+          },
+          {
+            "ms": 70.90619100000004,
+            "points": 9900000
+          }
+        ]
+      },
+      {
+        "engine": "ecs",
+        "mode": "alternating",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 108.03535199999988,
+        "p95Ms": 122.71774000000005,
+        "measured": [
+          {
+            "ms": 101.81114199999956,
+            "points": 18600000
+          },
+          {
+            "ms": 101.84809899999982,
+            "points": 18600000
+          },
+          {
+            "ms": 100.68533000000025,
+            "points": 18600000
+          },
+          {
+            "ms": 107.3971019999999,
+            "points": 18600000
+          },
+          {
+            "ms": 122.71774000000005,
+            "points": 18600000
+          },
+          {
+            "ms": 110.67201699999987,
+            "points": 18600000
+          },
+          {
+            "ms": 104.52424200000041,
+            "points": 18600000
+          },
+          {
+            "ms": 111.24951599999986,
+            "points": 18600000
+          },
+          {
+            "ms": 113.3335189999998,
+            "points": 18600000
+          },
+          {
+            "ms": 108.03535199999988,
+            "points": 18600000
+          }
+        ]
+      }
+    ]
+  },
+  "microOptimized": {
+    "node": "v24.22.3",
+    "platform": "linux",
+    "results": [
+      {
+        "engine": "core",
+        "mode": "stable",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 59.56357099999968,
+        "p95Ms": 61.99759600000016,
+        "measured": [
+          {
+            "ms": 58.994185000000016,
+            "points": 9900000
+          },
+          {
+            "ms": 59.925992999999835,
+            "points": 9900000
+          },
+          {
+            "ms": 61.99759600000016,
+            "points": 9900000
+          },
+          {
+            "ms": 59.62029699999994,
+            "points": 9900000
+          },
+          {
+            "ms": 59.373451999999816,
+            "points": 9900000
+          },
+          {
+            "ms": 59.56357099999968,
+            "points": 9900000
+          },
+          {
+            "ms": 59.876438999999664,
+            "points": 9900000
+          },
+          {
+            "ms": 59.41859299999987,
+            "points": 9900000
+          },
+          {
+            "ms": 59.206400999999914,
+            "points": 9900000
+          },
+          {
+            "ms": 58.810267000000295,
+            "points": 9900000
+          }
+        ]
+      },
+      {
+        "engine": "core",
+        "mode": "alternating",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 104.60477700000047,
+        "p95Ms": 111.81491000000005,
+        "measured": [
+          {
+            "ms": 111.81491000000005,
+            "points": 18600000
+          },
+          {
+            "ms": 99.79645600000003,
+            "points": 18600000
+          },
+          {
+            "ms": 103.79734400000007,
+            "points": 18600000
+          },
+          {
+            "ms": 106.65504799999962,
+            "points": 18600000
+          },
+          {
+            "ms": 102.41868999999951,
+            "points": 18600000
+          },
+          {
+            "ms": 103.48465299999953,
+            "points": 18600000
+          },
+          {
+            "ms": 110.75496699999985,
+            "points": 18600000
+          },
+          {
+            "ms": 104.11943900000006,
+            "points": 18600000
+          },
+          {
+            "ms": 104.60477700000047,
+            "points": 18600000
+          },
+          {
+            "ms": 104.8665460000002,
+            "points": 18600000
+          }
+        ]
+      },
+      {
+        "engine": "ecs",
+        "mode": "stable",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 60.97326900000007,
+        "p95Ms": 64.26635999999962,
+        "measured": [
+          {
+            "ms": 64.26635999999962,
+            "points": 9900000
+          },
+          {
+            "ms": 60.04575699999987,
+            "points": 9900000
+          },
+          {
+            "ms": 60.85062299999936,
+            "points": 9900000
+          },
+          {
+            "ms": 61.84885200000008,
+            "points": 9900000
+          },
+          {
+            "ms": 60.481870999999956,
+            "points": 9900000
+          },
+          {
+            "ms": 62.283642999999756,
+            "points": 9900000
+          },
+          {
+            "ms": 60.345062000000325,
+            "points": 9900000
+          },
+          {
+            "ms": 59.927709000000505,
+            "points": 9900000
+          },
+          {
+            "ms": 60.97326900000007,
+            "points": 9900000
+          },
+          {
+            "ms": 61.651921000000584,
+            "points": 9900000
+          }
+        ]
+      },
+      {
+        "engine": "ecs",
+        "mode": "alternating",
+        "iterations": 100000,
+        "samples": 10,
+        "p50Ms": 110.44999199999984,
+        "p95Ms": 119.52600400000028,
+        "measured": [
+          {
+            "ms": 106.422955,
+            "points": 18600000
+          },
+          {
+            "ms": 112.72402299999976,
+            "points": 18600000
+          },
+          {
+            "ms": 110.44999199999984,
+            "points": 18600000
+          },
+          {
+            "ms": 107.50048400000014,
+            "points": 18600000
+          },
+          {
+            "ms": 110.57879799999955,
+            "points": 18600000
+          },
+          {
+            "ms": 114.37708399999974,
+            "points": 18600000
+          },
+          {
+            "ms": 106.65951399999994,
+            "points": 18600000
+          },
+          {
+            "ms": 103.16152199999942,
+            "points": 18600000
+          },
+          {
+            "ms": 119.52600400000028,
+            "points": 18600000
+          },
+          {
+            "ms": 104.20829499999945,
+            "points": 18600000
+          }
+        ]
+      }
+    ]
+  },
+  "framesBaseline": [
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 18.200000002980232,
+      "cpuP95": 38.900000005960464,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 17.5,
+      "cpuP95": 26.400000005960464,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ],
+  "framesOptimized": [
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 17.299999997019768,
+      "cpuP95": 34.20000000298023,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4,
+        "bufferUploads": 1,
+        "bufferBytes": 192,
+        "uniformUploads": 1,
+        "uniformBytes": 192
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 16.400000005960464,
+      "cpuP95": 21.599999994039536,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ]
+}

@@ -27,6 +27,7 @@ export class PathGeometryCache {
   private levels = new Map<string, PathPoints>();
   private scale = 0;
   private radius = 0;
+  private current: PathPoints | undefined;
 
   get(d: string, scale: number, strokeRadius = 0): PathPoints {
     if (!this.subPaths || d !== this.d) {
@@ -34,10 +35,17 @@ export class PathGeometryCache {
       this.subPaths = parsePath(d || '').subPaths;
       this.levels.clear();
       this.scale = this.radius = 0;
+      this.current = undefined;
     }
-    this.scale = precisionBucket(scale, this.scale);
-    this.radius =
+    const nextScale = precisionBucket(scale, this.scale);
+    const nextRadius =
       strokeRadius > 0 ? precisionBucket(strokeRadius, this.radius) : 0;
+    // The current level is already most recent. Panning within the same
+    // precision bucket needs no string key or LRU mutation.
+    if (this.current && nextScale === this.scale && nextRadius === this.radius)
+      return this.current;
+    this.scale = nextScale;
+    this.radius = nextRadius;
     const key = `${this.scale}:${this.radius}`;
     let points = this.levels.get(key);
     if (!points) points = flattenPath(this.subPaths, this.scale, this.radius);
@@ -46,6 +54,7 @@ export class PathGeometryCache {
     // Bound retained CPU geometry while allowing quick zoom-out/zoom-in reuse.
     if (this.levels.size > 4)
       this.levels.delete(this.levels.keys().next().value);
+    this.current = points;
     return points;
   }
 }

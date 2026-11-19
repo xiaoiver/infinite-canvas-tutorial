@@ -162,3 +162,61 @@ test.describe('projected geometry at DPR 3', () => {
     expect(defects).toBeLessThan(150);
   });
 });
+
+test('path cache precision transitions preserve raster exports and invalidate source edits', async ({
+  page,
+}) => {
+  await page.evaluate(async () => {
+    await window.polylineLOD.document([
+      {
+        id: 'curve',
+        type: 'path',
+        x: 30,
+        y: 30,
+        width: 300,
+        height: 300,
+        d: 'M0 0 C0 300 300 -300 300 0 Z',
+        strokeWidth: 6,
+        fills: [{ type: 'solid', value: '#00ff00', opacity: 1 }],
+        strokes: [{ type: 'solid', value: '#0000ff', opacity: 1 }],
+      },
+    ] as any);
+    await window.polylineLOD.zoom(0.2);
+  });
+  for (const partial of [false, true]) {
+    const initial = await page.evaluate(
+      (p) => window.polylineLOD.export(p, 'curve'),
+      partial,
+    );
+    await page.evaluate(async () => {
+      await window.polylineLOD.zoom(8);
+      await window.polylineLOD.zoom(0.2);
+    });
+    expect(
+      await page.evaluate(
+        (p) => window.polylineLOD.export(p, 'curve'),
+        partial,
+      ),
+    ).toBe(initial);
+    await page.evaluate(() =>
+      window.polylineLOD.patch({ d: 'M0 0 Q150 300 300 0 Z' }, 'curve'),
+    );
+    expect(
+      await page.evaluate(
+        (p) => window.polylineLOD.export(p, 'curve'),
+        partial,
+      ),
+    ).not.toBe(initial);
+    await page.evaluate(() =>
+      window.polylineLOD.patch({ d: 'M0 0 C0 300 300 -300 300 0 Z' }, 'curve'),
+    );
+    expect(
+      await page.evaluate(
+        (p) => window.polylineLOD.export(p, 'curve'),
+        partial,
+      ),
+    ).toBe(initial);
+  }
+  await page.evaluate(() => window.polylineLOD.destroy());
+  expect(await page.evaluate(() => window.lifecycleProbes.leaks())).toEqual([]);
+});
