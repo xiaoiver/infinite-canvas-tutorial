@@ -1,5 +1,6 @@
 import {
   ComputedLOD,
+  ComputedTextMetrics,
   Children,
   ClipMode,
   Filter,
@@ -783,4 +784,84 @@ it('keeps screen dirty markers when an isolated full export consumes an LOD enti
   expect(queued(screen)[0]).toBeInstanceOf(TextProxy);
   expect(node.entity.has(GeometryDirty)).toBe(false);
   expect(node.entity.has(MaterialDirty)).toBe(false);
+});
+
+it('pages text proxies by native line rows and keeps full-text barriers atomic', () => {
+  const batch = manager();
+  const proxy = (lines: number, batchable = true) =>
+    shape(
+      Text,
+      batchable,
+      [ComputedLOD, { level: 'text-proxy' }],
+      [FillLayers, { layers: [{ type: 'solid', value: 'red' }] }],
+      [
+        ComputedTextMetrics,
+        {
+          width: 10,
+          lineHeight: 12,
+          lines: Array(lines).fill('text'),
+          lineMetrics: Array.from({ length: lines }, () => ({ width: 10 })),
+          fontMetrics: { fontSize: 10, fontBoundingBoxAscent: 8 },
+        },
+      ],
+    );
+  const a = proxy(2000),
+    b = proxy(2000),
+    c = proxy(200);
+  [a, b, c].forEach((n) => batch.add(n.entity));
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity],
+    [c.entity],
+  ]);
+  expect(queued(batch).every((d) => d.isInstanced)).toBe(true);
+  b.data.set(ComputedLOD, { level: 'full' });
+  batch.add(b.entity);
+  expect(queued(batch).map((d) => d.constructor)).toEqual([
+    TextProxy,
+    SDFText,
+    TextProxy,
+  ]);
+  b.data.set(ComputedLOD, { level: 'text-proxy' });
+  batch.add(b.entity);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity],
+    [c.entity],
+  ]);
+  const privateText = proxy(2, false);
+  batch.add(privateText.entity);
+  expect(queued(batch).at(-1).isInstanced).toBe(false);
+});
+
+it('keeps proxy ownership separate when moving between camera managers or deleting before flush', () => {
+  const a = manager(),
+    b = manager();
+  const node = shape(
+    Text,
+    true,
+    [ComputedLOD, { level: 'text-proxy' }],
+    [FillLayers, { layers: [{ type: 'solid', value: 'blue' }] }],
+    [
+      ComputedTextMetrics,
+      {
+        width: 10,
+        lineHeight: 12,
+        lines: ['text'],
+        lineMetrics: [{ width: 10 }],
+        fontMetrics: { fontSize: 10, fontBoundingBoxAscent: 8 },
+      },
+    ],
+  );
+  a.add(node.entity);
+  const first = queued(a)[0];
+  a.remove(node.entity);
+  b.add(node.entity);
+  expect(queued(a)).toEqual([]);
+  expect(queued(b)[0]).not.toBe(first);
+  b.remove(node.entity);
+  a.add(node.entity);
+  expect(queued(a)[0]).toBe(first);
+  expect(queued(b)).toEqual([]);
+  a.add(node.entity);
+  a.remove(node.entity);
+  expect(queued(a)).toEqual([]);
 });

@@ -4,6 +4,7 @@ import {
   ComputedLOD,
   Culled,
   Pen,
+  Renderable,
   type API,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
@@ -145,6 +146,8 @@ async function reset() {
         e.selectNodes([]);
         e.highlightNodes([]);
         e.replaceDocument(next, 'remote');
+        for (const node of next)
+          e.getEntity(node).write(Renderable).batchable = true;
         e.setAppState({
           penbarSelected: Pen.SELECT,
           penbarAll: [Pen.SELECT, Pen.HAND],

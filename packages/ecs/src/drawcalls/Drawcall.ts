@@ -94,6 +94,10 @@ export abstract class Drawcall {
   static batchKey(_shape: Entity): string | null {
     return null;
   }
+  /** Number of native instance rows used by one scene object. */
+  static instanceCount(_shape: Entity): number {
+    return 1;
+  }
   get instanceCapacity() {
     return this.maxInstances;
   }

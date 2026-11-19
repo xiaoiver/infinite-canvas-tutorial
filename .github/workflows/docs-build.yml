@@ -4,7 +4,12 @@ on:
   pull_request:
     paths:
       - 'packages/site/**'
+      - 'packages/ecs/**'
+      - 'packages/device-api/**'
+      - 'packages/webcomponents/**'
       - 'pnpm-lock.yaml'
+      - '__tests__/site-production/**'
+      - 'playwright.site-production.config.ts'
       - '.github/workflows/docs-build.yml'
 
 permissions:
@@ -43,3 +48,16 @@ jobs:
         run: |
           test -f packages/site/docs/.vitepress/dist/example/text-lod.html
           test -f packages/site/docs/.vitepress/dist/zh/example/text-lod.html
+      - name: Typecheck production checks
+        run: pnpm exec tsc -p __tests__/site-production/tsconfig.json
+      - name: Install production smoke browser
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Check built documentation interactions
+        run: pnpm exec playwright test -c playwright.site-production.config.ts
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() }}
+        with:
+          name: site-production-failure
+          path: .test-results/site-production/
+          include-hidden-files: true
+          if-no-files-found: warn
