@@ -1,0 +1,26 @@
+{
+  "outcome": "test-timeout",
+  "phase": "scene configuration",
+  "requestedConfiguration": {
+    "backend": "core",
+    "count": 10000,
+    "textCount": 2000,
+    "layout": "grouped",
+    "enabled": false
+  },
+  "testBudgetMs": 1200000,
+  "completedRowsBeforeTimeout": 12,
+  "completedRowsCount": 1000,
+  "sourceHead": "6f87c6693ba7ba97b7d1ee859ec94808cabf258a",
+  "sourceTree": "8cdcfa80a2f06949b0f8c3ea48f10b2ace12c823",
+  "environment": {
+    "browserVersion": "140.0.7339.186",
+    "nodeVersion": "v24.22.3",
+    "platform": "linux",
+    "cpuModel": "AMD EPYC 9V74 80-Core Processor",
+    "cpuCount": 9,
+    "memoryMiB": 9967
+  },
+  "error": "Test timeout of 1200000ms exceeded; page.evaluate configure did not complete.",
+  "limitations": "No valid 10000-object frame sample was produced. This does not establish an OOM or prove the glyph atlas is the only cause."
+}

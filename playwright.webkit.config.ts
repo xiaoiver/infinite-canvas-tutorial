@@ -21,6 +21,7 @@ export default defineConfig({
     'path-instances.spec.ts',
     'core-path-instances.spec.ts',
     'path-instancing-demo.spec.ts',
+    'mixed-renderer.spec.ts',
     'ecs-path-fill.spec.ts',
     'ecs-filter-chain.spec.ts',
     'filter-alpha.spec.ts',
