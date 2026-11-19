@@ -259,8 +259,12 @@ export class BatchManager {
     if (this.#ordered) entries.sort(([a], [b]) => sortByFractionalIndex(a, b));
     const nextPools = new Map<string, Drawcall[][]>();
     const cursors = new Map<string, number>();
-    const plans: { key: string | null; calls: Drawcall[]; shapes: Entity[] }[] =
-      [];
+    const plans: {
+      key: string | null;
+      calls: Drawcall[];
+      shapes: Entity[];
+      instances: number;
+    }[] = [];
     for (const [shape, explicit] of entries) {
       const ctors = explicit ? [] : this.collectDrawcallCtors(shape);
       const key = explicit ? null : this.batchKey(shape, ctors);
@@ -271,14 +275,16 @@ export class BatchManager {
           this.#nonBatchableDrawcallsCache.delete(shape);
         }
       }
+      const instances = key === null ? 1 : ctors[0].instanceCount(shape);
       const previous = plans[plans.length - 1];
       if (
         key !== null &&
         previous?.key === key &&
-        previous.shapes.length <
+        previous.instances + instances <=
           (previous.calls[0].instanceCapacity ?? Infinity)
       ) {
         previous.shapes.push(shape);
+        previous.instances += instances;
         if (this.#changed.has(shape))
           previous.calls[0].dirtyInstances.add(shape);
         continue;
@@ -295,7 +301,7 @@ export class BatchManager {
       } else {
         calls = explicit ?? this.getOrCreateNonBatchableDrawcalls(shape, ctors);
       }
-      plans.push({ key, calls, shapes: [shape] });
+      plans.push({ key, calls, shapes: [shape], instances });
     }
     const retained = new Set([...nextPools.values()].flat());
     for (const [key, groups] of this.#instancesCache) {

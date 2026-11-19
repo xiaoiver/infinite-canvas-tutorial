@@ -15,10 +15,12 @@ import {
   ComputedBounds,
   GPUResource,
   MeshPipeline,
+  Renderable,
   ExportFormat,
   Screenshot,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
+import { TextProxy } from '../../../packages/ecs/src/drawcalls/TextProxy';
 import { settleECSFrames } from './ecs-frames';
 
 let api: API;
@@ -79,24 +81,48 @@ const mode = () => {
   return entity?.has(ComputedLOD) ? entity.read(ComputedLOD).level : 'full';
 };
 const harness = {
-  async seed(count = 1) {
+  async seed(count = 1, batchable = false) {
     await api.edit(
       (editor) => {
         editor.selectNodes([]);
         editor.highlightNodes([]);
         editor.replaceDocument(
-          Array.from({ length: count }, (_, i) =>
-            node(
+          Array.from({ length: count }, (_, i) => ({
+            ...node(
               i === 0 ? 'text' : `text-${i}`,
               (i % 100) * 300 + 30,
               Math.floor(i / 100) * 60 + 30,
             ),
-          ),
+          })),
           'remote',
         );
+        for (const node of editor.getNodes())
+          editor.getEntity(node).write(Renderable).batchable = batchable;
       },
       { capture: 'NEVER' },
     );
+    await frames();
+  },
+  async document(nodes: (SerializedNode & { batchable?: boolean })[]) {
+    await api.edit(
+      (e) => {
+        e.selectNodes([]);
+        e.highlightNodes([]);
+        e.replaceDocument(
+          nodes.map(
+            ({ batchable: _flag, ...node }) => node,
+          ) as SerializedNode[],
+          'remote',
+        );
+        for (const node of nodes)
+          e.getEntity(node).write(Renderable).batchable = !!node.batchable;
+      },
+      { capture: 'NEVER' },
+    );
+    await frames();
+  },
+  async camera(x: number, y = 0) {
+    await api.edit((e) => e.setAppState({ cameraX: x, cameraY: y }));
     await frames();
   },
   async enable(value: boolean) {
@@ -110,7 +136,13 @@ const harness = {
     await frames();
   },
   async patch(patch: Record<string, unknown>) {
-    await api.edit((e) => e.updateNode(e.getNodeById('text'), patch));
+    await api.edit((e) => {
+      const node = e.getNodeById('text');
+      const { batchable, ...data } = patch;
+      if (Object.keys(data).length) e.updateNode(node, data);
+      if (typeof batchable === 'boolean')
+        e.getEntity(node).write(Renderable).batchable = batchable;
+    });
     await frames();
   },
   async select(value: boolean) {
@@ -140,7 +172,11 @@ const harness = {
       ctors: draws.map((d) => d.constructor.name),
       drawcalls: draws.length,
       vertices: draws.reduce(
-        (sum, d) => sum + (((d as any).indexBufferData?.length ?? 0) / 6) * 4,
+        (sum, d) =>
+          sum +
+          (d instanceof TextProxy
+            ? d.lineInstanceCount * 4
+            : (((d as any).indexBufferData?.length ?? 0) / 6) * 4),
         0,
       ),
       nodes: api.getNodes(),
@@ -200,6 +236,14 @@ const harness = {
     await frames();
     return harness.state();
   },
+  async deleteAllDuringZoom() {
+    await api.edit((e) => {
+      e.setAppState({ cameraZoom: 0.9 });
+      e.deleteNodesById(e.getNodes().map((n) => n.id));
+    });
+    await frames();
+    return queued().flatMap((d) => d.shapes).length;
+  },
   async deleteDuringZoom() {
     await api.edit((e) => {
       e.setAppState({ cameraZoom: 0.9 });
@@ -208,12 +252,17 @@ const harness = {
     await frames();
     return queued().flatMap((d) => d.shapes).length;
   },
-  async benchmark(count: number, enabled: boolean, samples = 90) {
+  async benchmark(
+    count: number,
+    enabled: boolean,
+    samples = 90,
+    batchable = false,
+  ) {
     await harness.enable(enabled);
     // Entire 100-column document fits in 800x600, so report actual visible draws.
     await harness.zoom(0.024);
     console.log(`text-lod benchmark: seeding ${count}, enabled=${enabled}`);
-    await harness.seed(count);
+    await harness.seed(count, batchable);
     console.log(`text-lod benchmark: sampling ${count}, enabled=${enabled}`);
     const times: number[] = [];
     const original = app.world.execute.bind(app.world);
@@ -236,6 +285,7 @@ const harness = {
     return {
       count,
       enabled,
+      batchable,
       visible: new Set(draws.flatMap((d) => d.shapes)).size,
       cpuP50: measured[Math.floor(measured.length * 0.5)],
       cpuP95: measured[Math.floor(measured.length * 0.95)],

@@ -1,0 +1,221 @@
+{
+  "date": "2026-11-19",
+  "baseCommit": "f8dd205b6dff4195f0234400529002ba16aa9aae",
+  "implementation": "working-tree TextProxy line instancing",
+  "backend": "Chromium / SwiftShader WebGL",
+  "node": "v24.22.3",
+  "incompleteRuns": [
+    {
+      "count": 10000,
+      "mode": "full",
+      "status": "interrupted during seeding; no visible count or frame samples obtained"
+    },
+    {
+      "count": 10000,
+      "mode": "batched",
+      "status": "initial attempt invalidated by development HMR navigation; discarded and rerun separately with stable sources"
+    }
+  ],
+  "runs": [
+    {
+      "count": 1000,
+      "enabled": false,
+      "batchable": false,
+      "visible": 1000,
+      "cpuP50": 32.20000000298023,
+      "cpuP95": 57.79999999701977,
+      "drawcalls": 1000,
+      "vertices": 164000,
+      "samples": 89,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 5003,
+            "Texture": 1007,
+            "Program": 2,
+            "Shader": 4,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 2
+          }
+        }
+      ],
+      "dpr": 1,
+      "size": [800, 600],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+    },
+    {
+      "count": 1000,
+      "enabled": true,
+      "batchable": false,
+      "visible": 1000,
+      "cpuP50": 36,
+      "cpuP95": 71,
+      "drawcalls": 1000,
+      "vertices": 8000,
+      "samples": 89,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3003,
+            "Texture": 7,
+            "Program": 3,
+            "Shader": 6,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 3
+          }
+        }
+      ],
+      "dpr": 1,
+      "size": [800, 600],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+    },
+    {
+      "count": 1000,
+      "enabled": true,
+      "batchable": true,
+      "visible": 1000,
+      "cpuP50": 12.299999997019768,
+      "cpuP95": 18,
+      "drawcalls": 1,
+      "vertices": 8000,
+      "samples": 89,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 6,
+            "Texture": 7,
+            "Program": 4,
+            "Shader": 8,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 4
+          }
+        }
+      ],
+      "dpr": 1,
+      "size": [800, 600],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+    },
+    {
+      "count": 10000,
+      "enabled": true,
+      "batchable": false,
+      "visible": 10000,
+      "cpuP50": 730.8999999910593,
+      "cpuP95": 850.2999999970198,
+      "drawcalls": 10000,
+      "vertices": 80000,
+      "samples": 89,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 30003,
+            "Texture": 7,
+            "Program": 3,
+            "Shader": 6,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 3
+          }
+        }
+      ],
+      "dpr": 1,
+      "size": [800, 600],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+    },
+    {
+      "count": 10000,
+      "enabled": true,
+      "batchable": true,
+      "visible": 10000,
+      "cpuP50": 130.90000000596046,
+      "cpuP95": 174.90000000596046,
+      "drawcalls": 5,
+      "vertices": 80000,
+      "samples": 89,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 18,
+            "Texture": 7,
+            "Program": 4,
+            "Shader": 8,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 4
+          }
+        }
+      ],
+      "dpr": 1,
+      "size": [800, 600],
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.186 Safari/537.36"
+    }
+  ]
+}

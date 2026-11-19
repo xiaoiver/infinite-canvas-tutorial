@@ -25,6 +25,7 @@ export default defineConfig({
     'text-path.spec.ts',
     'ecs-text.spec.ts',
     'text-lod-demo.spec.ts',
+    'text-proxy-instancing.spec.ts',
     'ecs-text-resize.spec.ts',
     'ecs-text-path.spec.ts',
     'ecs-blend-mode.spec.ts',
