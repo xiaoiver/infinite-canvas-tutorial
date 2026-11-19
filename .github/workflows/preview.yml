@@ -37,7 +37,12 @@ jobs:
         run: npm install --global vercel@latest
       
       - name: Build and Deploy to Vercel
+        env:
+          # The Next.js webpack build exceeded its ~2 GiB heap on production CI.
+          # Keep preview and production on the same explicit build heap budget.
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
+          node -e "console.log('Build runtime:', process.version, 'heap limit MiB:', Math.round(require('node:v8').getHeapStatistics().heap_size_limit / 1024 / 1024))"
           npx vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
           npx vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
