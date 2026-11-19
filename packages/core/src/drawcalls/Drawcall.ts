@@ -83,14 +83,24 @@ export abstract class Drawcall {
   ): void;
 
   destroy() {
-    if (this.program) {
-      this.indexBuffer?.destroy();
-      this.vertexBuffers.forEach((buffer) => buffer.destroy());
-      this.vertexBuffers = [];
-      this.vertexBufferDatas = [];
-      this.vertexBufferDescriptors = [];
-    }
+    if (this.destroyed) return;
+    this.releaseBindings();
+    this.indexBuffer?.destroy();
+    this.indexBuffer = undefined;
+    this.vertexBuffers.forEach((buffer) => buffer.destroy());
+    this.vertexBuffers = [];
+    this.vertexBufferDatas = [];
+    this.vertexBufferDescriptors = [];
+    this.barycentricBuffer?.destroy();
+    this.barycentricBuffer = undefined;
     this.destroyed = true;
+  }
+
+  private releaseBindings() {
+    if (!this.bindings) return;
+    if (!this.renderCache.releaseBindings(this.bindings))
+      this.bindings.destroy();
+    this.bindings = undefined;
   }
 
   validate(shape: Shape) {
@@ -113,6 +123,7 @@ export abstract class Drawcall {
     }
 
     if (this.materialDirty) {
+      this.releaseBindings();
       let defines = this.geometryDefines;
       if (this.instanced) {
         defines += '#define USE_INSTANCES\n';
@@ -246,6 +257,7 @@ export abstract class Drawcall {
       }
     }
 
+    this.barycentricBuffer?.destroy();
     this.barycentricBuffer = this.device.createBuffer({
       viewOrSize: barycentricBufferData,
       usage: BufferUsage.VERTEX,

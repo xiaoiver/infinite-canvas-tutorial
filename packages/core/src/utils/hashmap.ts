@@ -70,6 +70,7 @@ export class HashMap<K, V> {
     if (bi === -1) return;
     bucket.keys.splice(bi, 1);
     bucket.values.splice(bi, 1);
+    if (bucket.keys.length === 0) this.buckets.delete(this.keyHashFunc(k));
   }
 
   clear(): void {

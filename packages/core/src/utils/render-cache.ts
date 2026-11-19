@@ -1,3 +1,4 @@
+import { destroyInputLayout } from './destroy-input-layout';
 import type {
   AttachmentState,
   Bindings,
@@ -183,13 +184,34 @@ export class RenderCache {
     nullHashFunc,
   );
 
+  private bindingKeys = new WeakMap<Bindings, BindingsDescriptor>();
+  private bindingRefs = new WeakMap<Bindings, number>();
+
+  /** Release one drawcall's reference; separated instanced runs can share bindings. */
+  releaseBindings(bindings: Bindings): boolean {
+    if (!bindings) return false;
+    const key = this.bindingKeys.get(bindings);
+    if (!key) return false;
+    const refs = (this.bindingRefs.get(bindings) ?? 1) - 1;
+    if (refs > 0) this.bindingRefs.set(bindings, refs);
+    else {
+      this.bindingsCache.delete(key);
+      this.bindingKeys.delete(bindings);
+      this.bindingRefs.delete(bindings);
+      bindings.destroy();
+    }
+    return true;
+  }
+
   createBindings(descriptor: BindingsDescriptor): Bindings {
     let bindings = this.bindingsCache.get(descriptor);
     if (bindings === null) {
       const descriptorCopy = bindingsDescriptorCopy(descriptor);
       bindings = this.device.createBindings(descriptorCopy);
       this.bindingsCache.add(descriptorCopy, bindings);
+      this.bindingKeys.set(bindings, descriptorCopy);
     }
+    this.bindingRefs.set(bindings, (this.bindingRefs.get(bindings) ?? 0) + 1);
     return bindings;
   }
 
@@ -242,7 +264,7 @@ export class RenderCache {
     for (const renderPipeline of this.renderPipelinesCache.values())
       renderPipeline.destroy();
     for (const inputLayout of this.inputLayoutsCache.values())
-      inputLayout.destroy();
+      destroyInputLayout(inputLayout);
     for (const program of this.programCache.values()) program.destroy();
     for (const sampler of this.samplerCache.values()) sampler.destroy();
     this.bindingsCache.clear();

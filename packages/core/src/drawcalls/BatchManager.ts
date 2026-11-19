@@ -25,6 +25,14 @@ import { RenderCache } from '../utils/render-cache';
 import { Mesh } from './Mesh';
 import { SDFText } from './SDFText';
 import { TexturePool } from '../TexturePool';
+import { PathInstances, PATH_INSTANCE_PAGE_SIZE } from './PathInstances';
+
+type OrderedPage = {
+  key: string;
+  drawcalls: Drawcall[];
+  shapes: Shape[];
+  batchable: boolean;
+};
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -82,6 +90,15 @@ export class BatchManager {
 
   #instancesCache = new WeakMap<typeof Shape, Drawcall[][]>();
 
+  #ordered = false;
+  #allowPathInstances = false;
+  #frameShapes: Shape[] = [];
+  #orderedPages: OrderedPage[] = [];
+  #orderedInputShapes: Shape[] = [];
+  #orderedPlanDirty = true;
+  #ctorIds = new WeakMap<typeof Drawcall, number>();
+  #nextCtorId = 0;
+
   #renderCache: RenderCache;
 
   #texturePool: TexturePool;
@@ -123,6 +140,16 @@ export class BatchManager {
 
   private getOrCreateNonBatchableDrawcalls(shape: Shape) {
     let existed = this.#nonBatchableDrawcallsCache[shape.uid];
+    if (existed && shape instanceof Path) {
+      const ctors = this.collectDrawcallCtors(shape);
+      if (
+        existed.length !== ctors.length ||
+        existed.some((d, i) => d.constructor !== ctors[i])
+      ) {
+        existed.forEach((d) => d.destroy());
+        existed = undefined;
+      }
+    }
     if (!existed) {
       existed = this.createDrawcalls(shape) || [];
       this.#nonBatchableDrawcallsCache[shape.uid] = existed;
@@ -165,7 +192,11 @@ export class BatchManager {
   }
 
   add(shape: Shape) {
-    if (shape.batchable) {
+    if (this.#ordered) {
+      this.#frameShapes.push(shape);
+      return;
+    }
+    if (shape.batchable && !(shape instanceof Path)) {
       const drawcalls = this.getOrCreateBatchableDrawcalls(shape);
       if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
         this.#drawcallsToFlush.push(...drawcalls);
@@ -184,17 +215,26 @@ export class BatchManager {
    * * invisible.
    */
   remove(shape: Shape) {
-    if (shape.batchable) {
+    if (this.#ordered) return; // The next ordered plan contains visible members only.
+    if (shape.batchable && !(shape instanceof Path)) {
       this.getOrCreateBatchableDrawcalls(shape).forEach((drawcall) => {
         drawcall.remove(shape);
       });
       delete this.#batchableDrawcallsCache[shape.uid];
     } else {
+      if (shape instanceof Path)
+        this.#nonBatchableDrawcallsCache[shape.uid]?.forEach((d) =>
+          d.destroy(),
+        );
       delete this.#nonBatchableDrawcallsCache[shape.uid];
     }
   }
 
   destroy() {
+    this.#orderedPages.forEach((page) =>
+      page.drawcalls.forEach((d) => d.destroy()),
+    );
+    this.#orderedPages = [];
     for (const key in this.#nonBatchableDrawcallsCache) {
       this.#nonBatchableDrawcallsCache[key].forEach((drawcall) => {
         if (!drawcall.destroyed) {
@@ -213,8 +253,159 @@ export class BatchManager {
     this.#texturePool.destroy();
   }
 
-  clear() {
+  clear(ordered = false, allowPathInstances = ordered) {
+    if (this.#ordered !== ordered) {
+      // Changing planning modes must not retain unreachable batch resources.
+      const unique = new Set<Drawcall>([
+        ...Object.values(this.#nonBatchableDrawcallsCache).flat(),
+        ...Object.values(this.#batchableDrawcallsCache).flat(),
+        ...this.#orderedPages.flatMap((p) => p.drawcalls),
+      ]);
+      unique.forEach((d) => {
+        if (!d.destroyed) d.destroy();
+      });
+      this.#nonBatchableDrawcallsCache = Object.create(null);
+      this.#batchableDrawcallsCache = Object.create(null);
+      this.#instancesCache = new WeakMap();
+      this.#orderedPages = [];
+      this.#orderedInputShapes = [];
+      this.#orderedPlanDirty = true;
+    }
+    if (this.#allowPathInstances !== allowPathInstances)
+      this.#orderedPlanDirty = true;
+    this.#ordered = ordered;
+    this.#allowPathInstances = allowPathInstances;
+    this.#frameShapes = [];
     this.#drawcallsToFlush = [];
+  }
+
+  private planOrdered() {
+    // A camera-only frame can change adaptive precision, but not compatibility.
+    // Drawcall.prepareGeometry still runs below. Dirty shapes, visible membership
+    // and capture intent invalidate this plan before any renderer is submitted.
+    if (
+      !this.#orderedPlanDirty &&
+      this.#frameShapes.length === this.#orderedInputShapes.length &&
+      this.#frameShapes.every(
+        (shape, i) =>
+          shape === this.#orderedInputShapes[i] &&
+          !shape.renderDirtyFlag &&
+          !shape.geometryDirtyFlag &&
+          !shape.materialDirtyFlag,
+      )
+    ) {
+      this.#drawcallsToFlush = this.#orderedPages.flatMap((p) => p.drawcalls);
+      return;
+    }
+    const pools = new Map<string, { pages: OrderedPage[]; cursor: number }>();
+    for (const page of this.#orderedPages) {
+      const pool = pools.get(page.key) ?? { pages: [], cursor: 0 };
+      pool.pages.push(page);
+      pools.set(page.key, pool);
+    }
+    const next: OrderedPage[] = [];
+    for (const shape of this.#frameShapes) {
+      const pathKey = this.#allowPathInstances
+        ? PathInstances.batchKey(shape)
+        : null;
+      const ctors =
+        pathKey === null ? this.collectDrawcallCtors(shape) : [PathInstances];
+      if (!ctors?.length) continue;
+      // Unsupported Paths remain individual full meshes, even if batchable was
+      // explicitly requested. Mesh's ordinary shader has no instance attributes.
+      const batchable =
+        shape.batchable && !(shape instanceof Path && pathKey === null);
+      const ctorKey = ctors
+        .map((ctor) => {
+          if (!this.#ctorIds.has(ctor))
+            this.#ctorIds.set(ctor, this.#nextCtorId++);
+          return this.#ctorIds.get(ctor);
+        })
+        .join(',');
+      const key =
+        pathKey === null
+          ? `${ctorKey}:${batchable ? 'batch' : shape.uid}`
+          : `path:${pathKey}`;
+      let page = next[next.length - 1];
+      const compatible =
+        page?.key === key &&
+        page.batchable &&
+        (!page.key.startsWith('path:') ||
+          page.shapes.length < PATH_INSTANCE_PAGE_SIZE) &&
+        page.drawcalls.every((d) => {
+          const previous = d.shapes;
+          d.shapes = page.shapes;
+          try {
+            return d.validate(shape);
+          } finally {
+            d.shapes = previous;
+          }
+        });
+      if (!compatible) {
+        const pool = pathKey === null ? pools.get(key) : undefined;
+        const reused = pool?.pages[pool.cursor++];
+        page = {
+          key,
+          batchable,
+          shapes: [],
+          drawcalls:
+            pathKey !== null
+              ? []
+              : reused?.drawcalls ??
+                ctors.map((Ctor, index) => {
+                  // Constructors share this signature; concrete subclasses implement the abstract API.
+                  // @ts-expect-error - Drawcall is abstract.
+                  return new Ctor(
+                    this.device,
+                    this.#renderCache,
+                    this.#texturePool,
+                    batchable,
+                    index,
+                  );
+                }),
+        };
+        next.push(page);
+      }
+      page.shapes.push(shape);
+    }
+    for (const page of next) {
+      if (page.key.startsWith('path:')) {
+        const instanced = page.shapes.length > 1;
+        if (!instanced) page.key = `single:${page.shapes[0].uid}:${page.key}`;
+        page.batchable = instanced;
+        const pool = pools.get(page.key);
+        const reused = pool?.pages[pool.cursor++];
+        const Ctor = instanced ? PathInstances : Mesh;
+        page.drawcalls = reused?.drawcalls ?? [
+          new Ctor(
+            this.device,
+            this.#renderCache,
+            this.#texturePool,
+            instanced,
+            0,
+          ),
+        ];
+      }
+      for (const d of page.drawcalls) {
+        if (
+          d.shapes.length !== page.shapes.length ||
+          page.shapes.some((s, i) => s !== d.shapes[i])
+        ) {
+          d.geometryDirty = true;
+          // All page-local paint/binding state belongs to the current first member.
+          if (d.shapes[0] !== page.shapes[0]) d.materialDirty = true;
+        }
+        d.shapes = page.shapes;
+        this.#drawcallsToFlush.push(d);
+      }
+    }
+    for (const pool of pools.values())
+      for (let i = pool.cursor; i < pool.pages.length; i++) {
+        pool.pages[i].drawcalls.forEach((d) => d.destroy());
+      }
+    this.#orderedPages = next;
+    this.#orderedInputShapes = this.#frameShapes;
+    this.#orderedPlanDirty = false;
   }
 
   flush(
@@ -222,6 +413,7 @@ export class BatchManager {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
+    if (this.#ordered) this.planOrdered();
     const geometryDirtyDrawcalls = [];
     const materialDirtyDrawcalls = [];
     const geometryDirtyShapes = [];
