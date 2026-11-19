@@ -56,6 +56,7 @@ jest.mock('../../packages/ecs/src/systems/BatchManager', () => ({
     destroy = jest.fn();
     showUIs = jest.fn();
     hideUIs = jest.fn();
+    setPathInstancingEnabled = jest.fn();
   },
 }));
 

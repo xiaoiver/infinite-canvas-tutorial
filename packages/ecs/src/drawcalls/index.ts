@@ -6,3 +6,4 @@ export * from './Mesh';
 export * from './SDFText';
 export * from './TextProxy';
 export * from './StampBrush';
+export * from './PathInstances';

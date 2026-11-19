@@ -12,7 +12,7 @@ import {
   Parent,
   RBush,
 } from '../components';
-import { getDescendants, getSceneRoot } from './Transform';
+import { getDescendants, getSceneRoot, isEntityAlive } from './Transform';
 
 export class ViewportCulling extends System {
   bounds = this.query(
@@ -32,6 +32,7 @@ export class ViewportCulling extends System {
    * Map of camera entity id to its viewport's AABB.
    */
   #cameraViewportMap: WeakMap<Entity, AABB> = new WeakMap();
+  #indexedCamera = new WeakMap<Entity, Entity>();
 
   constructor() {
     super();
@@ -47,9 +48,10 @@ export class ViewportCulling extends System {
    * Since the entity is deleted, we need to remove it from the RBush.
    */
   remove(entity: Entity) {
-    const camera = getSceneRoot(entity);
+    const camera = this.#indexedCamera.get(entity) ?? getSceneRoot(entity);
+    this.#indexedCamera.delete(entity);
 
-    if (camera === entity) {
+    if (camera === entity || !isEntityAlive(camera) || !camera.has(RBush)) {
       return;
     }
 
@@ -103,6 +105,30 @@ export class ViewportCulling extends System {
 
     this.bounds.addedOrChanged.forEach((entity) => {
       const camera = getSceneRoot(entity);
+      // Bounds updates can arrive after reparenting: remove the old spatial
+      // index entry before inserting into the new camera's tree.
+      const previous = this.#indexedCamera.get(entity);
+      if (
+        previous &&
+        previous !== camera &&
+        isEntityAlive(previous) &&
+        previous.has(RBush)
+      ) {
+        previous
+          .read(RBush)
+          .value.remove(
+            {
+              minX: Infinity,
+              minY: Infinity,
+              maxX: -Infinity,
+              maxY: -Infinity,
+              entity,
+            },
+            (a, b) => a.entity === b.entity,
+          );
+      }
+      this.#indexedCamera.delete(entity);
+      if (!isEntityAlive(camera)) return;
       if (camera === entity || !camera.has(Camera)) {
         // delete rbush node
         if (camera.has(RBush)) {
@@ -124,10 +150,13 @@ export class ViewportCulling extends System {
         modified.set(camera, new Set());
       }
       modified.get(camera)?.add(entity);
+      this.#indexedCamera.set(entity, camera);
     });
 
     this.bounds.removed.forEach((entity) => {
-      const camera = getSceneRoot(entity);
+      const camera = this.#indexedCamera.get(entity) ?? getSceneRoot(entity);
+      this.#indexedCamera.delete(entity);
+      if (!isEntityAlive(camera)) return;
       if (camera === entity || !camera.has(Camera)) {
         if (camera.has(RBush)) {
           const rBush = camera.read(RBush).value;

@@ -1,5 +1,7 @@
 import {
   ComputedLOD,
+  GlobalTransform,
+  Mat3,
   ComputedTextMetrics,
   Children,
   ClipMode,
@@ -35,6 +37,7 @@ import {
   SDF,
   SDFText,
   TextProxy,
+  PathInstances,
   ShadowRect,
   SmoothPolyline,
   StampBrush,
@@ -900,4 +903,105 @@ it('plans and flushes normal and blended nodes without scanning the API document
   batch.add(blended.entity);
   expect(batch.buildFlushSegments().map((s) => s.type)).toEqual(['normal']);
   expect(lookup).not.toHaveBeenCalled();
+});
+
+function solidPath(d = 'M0 0 L20 0 L20 20 Z') {
+  return shape(
+    Path,
+    true,
+    [Path, { d, fillRule: 'nonzero', tessellationMethod: 0 }],
+    [GlobalTransform, { matrix: Mat3.copy(Mat3.IDENTITY) }],
+    [FillLayers, { layers: [{ type: 'solid', value: 'red' }] }],
+  );
+}
+it('opts repeated filled Paths in only on screen and preserves painter barriers', () => {
+  const batch = manager(),
+    a = solidPath(),
+    b = solidPath(),
+    barrier = shape(Rect, false);
+  batch.add(a.entity);
+  batch.add(b.entity);
+  expect(queued(batch).map((d) => d.constructor)).toEqual([Mesh, Mesh]);
+  batch.setPathInstancingEnabled(true);
+  expect(queued(batch).map((d) => d.constructor)).toEqual([PathInstances]);
+  expect(queued(batch)[0].shapes).toEqual([a.entity, b.entity]);
+  batch.remove(b.entity);
+  batch.add(barrier.entity);
+  batch.add(b.entity);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity],
+    [barrier.entity],
+    [b.entity],
+  ]);
+  const exp = manager('export');
+  exp.setPathInstancingEnabled(true);
+  exp.add(a.entity);
+  exp.add(b.entity);
+  expect(queued(exp).map((d) => d.constructor)).toEqual([Mesh, Mesh]);
+  batch.setPathInstancingEnabled(false);
+  expect(queued(batch)[0]).toBeInstanceOf(Mesh);
+  expect(queued(batch)[0]).not.toBeInstanceOf(PathInstances);
+});
+it('shares only exact geometry and linear transforms, while carrying translation and paint per instance', () => {
+  const batch = manager();
+  batch.setPathInstancingEnabled(true);
+  const a = solidPath(),
+    b = solidPath(),
+    c = solidPath('M0 0 L25 0 L20 20 Z');
+  b.data.get(GlobalTransform).matrix.m20 = 20;
+  b.data.set(FillLayers, {
+    layers: [{ type: 'solid', value: 'blue', opacity: 0.5 }],
+  });
+  for (const s of [a, b, c]) batch.add(s.entity);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity],
+    [c.entity],
+  ]);
+  b.data.get(GlobalTransform).matrix.m00 = 2;
+  batch.add(b.entity);
+  expect(queued(batch).map((d) => d.shapes)).toEqual([
+    [a.entity],
+    [b.entity],
+    [c.entity],
+  ]);
+  b.data.set(Stroke, { width: 2 });
+  batch.add(b.entity);
+  expect(
+    queued(batch).find((d) => d.shapes.includes(b.entity)),
+  ).not.toBeInstanceOf(PathInstances);
+});
+it('falls back for complex paints and clipped/effected ancestors', () => {
+  const batch = manager();
+  batch.setPathInstancingEnabled(true);
+  const a = solidPath();
+  a.data.set(FillLayers, {
+    layers: [{ type: 'gradient', value: 'linear-gradient(red,blue)' }],
+  });
+  batch.add(a.entity);
+  expect(queued(batch)[0]).not.toBeInstanceOf(PathInstances);
+  a.data.set(FillLayers, { layers: [{ type: 'solid', value: 'red' }] });
+  const parent = shape(Rect, false, [Filter, { value: 'blur(2px)' }]);
+  a.data.set(Children, { parent: parent.entity });
+  batch.add(a.entity);
+  expect(queued(batch)[0]).not.toBeInstanceOf(PathInstances);
+});
+it('splits Path instance capacity and retires every unused geometry-specific page', () => {
+  const batch = manager();
+  batch.setPathInstancingEnabled(true);
+  const nodes = Array.from({ length: 4097 }, () => solidPath());
+  for (const s of nodes) batch.add(s.entity);
+  const old = queued(batch);
+  expect(old.map((d) => d.shapes.length)).toEqual([4096, 1]);
+  const destroy = old.map((d) => jest.spyOn(d, 'destroy'));
+  for (const s of nodes) batch.remove(s.entity);
+  expect(queued(batch)).toEqual([]);
+  for (const d of destroy) expect(d).toHaveBeenCalledTimes(1);
+  for (let i = 0; i < 20; i++) {
+    const s = solidPath(`M0 0 L${i + 1} 0 L1 1 Z`);
+    batch.add(s.entity);
+    const d = queued(batch)[0];
+    batch.remove(s.entity);
+    queued(batch);
+    expect(d.destroyed).toBe(true);
+  }
 });

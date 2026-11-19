@@ -1068,6 +1068,13 @@ export class API {
     });
   }
 
+  /** Experimental screen-only Path fill instancing; disabled by default. */
+  setPathInstancingEnabled(enabled: boolean) {
+    this.runAtNextTick(() => {
+      this.#canvas.write(Canvas).pathInstancing = enabled;
+    });
+  }
+
   getCanvas() {
     return this.#canvas;
   }

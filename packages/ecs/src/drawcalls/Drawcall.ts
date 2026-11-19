@@ -96,6 +96,9 @@ export abstract class Drawcall {
   static batchKey(_shape: Entity): string | null {
     return null;
   }
+  /** Geometry-specific keys can be unbounded; such renderers retire empty pages. */
+  static retainEmptyPage = true;
+
   /** Number of native instance rows used by one scene object. */
   static instanceCount(_shape: Entity): number {
     return 1;
