@@ -9,7 +9,7 @@ boundaries and available screen optimizations differ.
 Use pnpm 9.15.9, install workspace dependencies, then run:
 
 ```sh
-pnpm bench:mixed-renderers
+MIXED_BENCH_TIMEOUT_MS=3600000 pnpm bench:mixed-renderers
 # A smaller development run:
 MIXED_BENCH_COUNTS=100 MIXED_BENCH_BACKENDS=ecs pnpm bench:mixed-renderers
 # Reproduce the balanced 10,000-object stress profile (may time out):
@@ -21,7 +21,8 @@ Playwright starts the renderer-only Vite fixture on `127.0.0.1:4175` and writes
 runner uses Chromium with software WebGL2, DPR 1, a 960 × 640 CSS-pixel canvas,
 and one worker. Every backend/count/order/switch combination gets a fresh page;
 errors, missing draws, unexpected visibility and retained owned resources fail
-the run. The benchmark has a separate 20-minute budget and is not part of the
+the run. The default run budget is 20 minutes; the full software-WebGL matrix may need
+the explicit one-hour budget above or separate filtered cohorts. It is not part of the
 normal browser CI workload. Small browser regressions validate the harness in
 Chromium and WebKit.
 
@@ -58,6 +59,15 @@ Chromium and WebKit.
 
 ## Measurement contract
 
+ECS initialization adds at most 1,000 nodes per awaited edit. A single edit with
+10,000 mixed nodes exceeded Becsy's 131,072-entry shape-change log. The complete
+scene and original painter order are checked before settling and measurement;
+no object count is reduced. This fixture does not change App or library limits.
+The runner reports setup completion and operation start separately, logs browser
+errors, rejects page failures immediately and records whether the source working
+tree was dirty at run start. Use a clean commit and do not edit runtime sources
+during a measurement.
+
 Each operation warms up 15 frames and records 30 frames. Percentiles use sorted
 samples at `floor(n × 0.50)` and `floor(n × 0.95)`; raw CPU samples and every
 native-work sample are retained.
@@ -83,7 +93,7 @@ The runner reports actual visible object counts and text-proxy counts. It does
 not infer polyline simplification from a predicted count: submitted indices and
 vertices expose its real geometry workload. Camera-only samples should still
 include the scene uniform upload. The harness restores its context wrappers at
-teardown. ECS must release all native resources after world exit; the external
+teardown. ECS must release all native resources after world exit; the
 Core device retains its documented startup fallback resources, so tests require
 an exact return to the baseline captured immediately after device creation.
 
@@ -117,4 +127,5 @@ The default 200-label cap keeps text population fixed when increasing geometry.
 start. `MIXED_BENCH_TIMEOUT_MS` changes the explicit run budget. A filtered or
 capped run must retain those qualifiers when reporting results.
 
-Results will be added after the complete capped matrix is measured.
+[Measured results](mixed-renderer-results.md) include the complete 48-row capped
+matrix, raw samples, resource counts, source provenance and failed attempts.
