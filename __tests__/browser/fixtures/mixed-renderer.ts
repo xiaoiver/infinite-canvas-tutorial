@@ -294,14 +294,30 @@ async function configure(
     api!.setTextLODEnabled(enabled);
     api!.setPolylineLODEnabled(enabled);
     await api!.edit(
-      (e) => {
-        e.replaceDocument(nodes, 'remote');
-        for (const node of nodes)
-          e.getEntity(node).write(Renderable).batchable = true;
-        e.setAppState({ cameraZoom: baseZoom, cameraX: 0, cameraY: 0 });
-      },
+      (e) => e.setAppState({ cameraZoom: baseZoom, cameraX: 0, cameraY: 0 }),
       { capture: 'NEVER' },
     );
+    // Keep initialization within Becsy's per-frame shape-change log capacity.
+    // The complete scene is present before settling, warmup and measurement.
+    for (let start = 0; start < nodes.length; start += 1000) {
+      const batch = nodes.slice(start, start + 1000);
+      await api!.edit(
+        (e) => {
+          e.updateNodes(structuredClone(batch));
+          for (const node of batch)
+            e.getEntity(node).write(Renderable).batchable = true;
+        },
+        { capture: 'NEVER' },
+      );
+    }
+    const document = api!.getNodes();
+    if (
+      document.length !== nodes.length ||
+      document.some((node, i) => node.id !== nodes[i].id)
+    )
+      throw new Error(
+        'Staged scene creation changed document membership or order.',
+      );
     await settleECSFrames(api!, 5);
   }
   // Sample an actual completed frame after asynchronous setup has settled.

@@ -76,6 +76,29 @@ for (const backend of ['core', 'ecs']) {
     }
     const capped = await load('grouped', true, 4);
     expect(capped.state.textProxy).toBe(backend === 'ecs' ? 4 : 0);
+    if (backend === 'ecs') {
+      // Cross the staged-creation boundary using the same real renderer.
+      await page.goto('/mixed-renderer.html?backend=ecs');
+      await expect(page.locator('output')).toHaveText('Ready');
+      const large = await page.evaluate(() =>
+        window.mixedRenderer.configure(1500, 'grouped', true),
+      );
+      expect(large.visible).toBe(1500);
+      expect(large.textProxy).toBe(200);
+      expect(large.primitiveCounts).toEqual({
+        rect: 325,
+        ellipse: 325,
+        text: 200,
+        polyline: 325,
+        path: 325,
+      });
+      await page.evaluate(() => window.mixedRenderer.destroy());
+      expect(
+        (await page.evaluate(() => window.lifecycleProbes.resources())).every(
+          (context) => Object.values(context.live).every((n) => n === 0),
+        ),
+      ).toBe(true);
+    }
     expect(errors).toEqual([]);
   });
 }
