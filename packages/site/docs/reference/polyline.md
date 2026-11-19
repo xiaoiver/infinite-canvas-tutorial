@@ -7,6 +7,17 @@ description: 'Polyline shape reference for open strokes with width, joins, and c
 
 See SVG [polyline].
 
+## ECS geometry LOD
+
+The ECS API has an experimental per-canvas `api.setPolylineLODEnabled(true)` switch, defaulting to false. It simplifies ordinary open solid polylines with round joins using a 0.25 CSS px centerline budget. Selected, hovered or editing shapes, complex styles and raster exports keep the original points. It is independent of batching and text LOD. The Core example below uses a separate renderer and is unaffected.
+
+```ts
+api.setPolylineLODEnabled(true);
+api.setPolylineLODEnabled(false); // Restore all source samples.
+```
+
+## Core example
+
 ```ts
 const polyline = new Polyline({
     points: [

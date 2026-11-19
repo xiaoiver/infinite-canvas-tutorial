@@ -72,6 +72,9 @@ import {
   VectorNetwork,
 } from '../components';
 import { lineArrow } from '../utils';
+import { pathScreenMetrics } from '../utils/path-rendering';
+import { PolylineGeometryCache, PolylinePoints } from '../utils/polyline-lod';
+import { supportsPolylineLOD } from '../utils/polyline-lod-eligibility';
 
 const epsilon = 1e-4;
 const circleEllipsePointsNum = 64;
@@ -115,6 +118,43 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SmoothPolyline extends PathDrawcall {
+  private polylineCaches = new WeakMap<Entity, PolylineGeometryCache>();
+  private polylinePoints = new WeakMap<Entity, PolylinePoints>();
+
+  protected override prepareGeometry(uniforms: Record<string, unknown>) {
+    super.prepareGeometry(uniforms);
+    for (const shape of this.shapes) {
+      if (!shape.has(Polyline) || shape.has(Rough)) continue;
+      // Edits while interaction forces full must invalidate retained coarse levels too.
+      if (this.geometryDirty) this.polylineCaches.delete(shape);
+      const source = shape.read(Polyline).points;
+      let points = source;
+      if (uniforms.u_PolylineLOD && supportsPolylineLOD(shape)) {
+        const { matrix: m } = shape.read(GlobalTransform);
+        const dpr = Number(uniforms.u_PolylineLODDPR);
+        const affine =
+          [m.m00, m.m01, m.m10, m.m11, m.m20, m.m21].every(Number.isFinite) &&
+          m.m02 === 0 && m.m12 === 0 && m.m22 === 1 &&
+          Math.abs(m.m00 * m.m11 - m.m01 * m.m10) > 1e-12;
+        const { scale } = pathScreenMetrics(uniforms, {
+          a: m.m00, b: m.m01, c: m.m10, d: m.m11,
+        });
+        if (affine && Number.isFinite(dpr) && dpr > 0) {
+          let cache = this.polylineCaches.get(shape);
+          if (!cache) {
+            cache = new PolylineGeometryCache();
+            this.polylineCaches.set(shape, cache);
+          }
+          points = cache.get(source, scale / dpr);
+        }
+      }
+      if (this.polylinePoints.get(shape) !== points) {
+        this.polylinePoints.set(shape, points);
+        this.geometryDirty = true;
+      }
+    }
+  }
+
   #strokeGradientTexture: Texture | null = null;
   #strokeGradientFromPostChain = false;
   #rawStrokeGradientTexture: Texture | null = null;
@@ -216,6 +256,7 @@ export class SmoothPolyline extends PathDrawcall {
           shape.has(Polyline) ||
           shape.has(Line)),
         this.pathPoints.get(shape),
+        this.polylinePoints.get(shape),
       );
 
       pointsBuffer.push(...pBuffer);
@@ -926,6 +967,7 @@ export function updateBuffer(
   object: Entity,
   useRoughStroke = true,
   pathPoints?: [number, number][][],
+  polylinePoints?: PolylinePoints,
 ) {
   const {
     linecap,
@@ -957,7 +999,7 @@ export function updateBuffer(
       })
       .flat(2);
   } else if (object.has(Polyline)) {
-    points = object.read(Polyline).points.reduce((prev, cur) => {
+    points = (polylinePoints ?? object.read(Polyline).points).reduce((prev, cur) => {
       prev.push(cur[0], cur[1]);
       return prev;
     }, [] as number[]);
