@@ -55,7 +55,7 @@ import { sortByFractionalIndex } from './Sort';
 import { safeRemoveComponent } from '../history';
 import { API } from '../API';
 import {
-  getNodeLayerBlendMode,
+  getRenderNodeLayerBlendMode,
   isNonNormalNodeLayerBlend,
 } from '../utils/nodeLayerBlend';
 import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
@@ -216,7 +216,7 @@ export class BatchManager {
       !shape.read(Renderable).batchable ||
       ctors.length !== 1 ||
       shape.has(UI) ||
-      isNonNormalNodeLayerBlend(getNodeLayerBlendMode(this.api, shape))
+      isNonNormalNodeLayerBlend(getRenderNodeLayerBlendMode(shape))
     )
       return null;
     const Ctor = ctors[0];
@@ -582,7 +582,7 @@ export class BatchManager {
               renderPass,
               backdrop,
               src,
-              getNodeLayerBlendMode(this.api, shape),
+              getRenderNodeLayerBlendMode(shape),
               width,
               height,
               shape.has(Opacity) ? shape.read(Opacity).opacity : 1,

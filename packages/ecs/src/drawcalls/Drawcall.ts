@@ -28,7 +28,7 @@ import {
   fillLayersShouldPrecompose,
   getEnabledFillLayers,
   uid,
-  getNodeLayerBlendMode,
+  getRenderNodeLayerBlendMode,
   isNonNormalNodeLayerBlend,
 } from '../utils';
 import { Location } from '../shaders/wireframe';
@@ -322,7 +322,7 @@ export abstract class Drawcall {
       return false;
     }
     return isNonNormalNodeLayerBlend(
-      getNodeLayerBlendMode(this.api, this.shapes[0]),
+      getRenderNodeLayerBlendMode(this.shapes[0]),
     );
   }
 
