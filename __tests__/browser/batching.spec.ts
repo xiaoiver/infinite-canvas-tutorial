@@ -369,7 +369,8 @@ test('LOD transitions remain painter-order barriers between solid batches and ex
       'SDF',
     ]);
     expect(state.groups.map((g) => g.nodes)).toEqual([['r0'], ['r1'], ['r2']]);
-    expect(state.groups.map((g) => g.instanced)).toEqual([true, false, true]);
+    // TextProxy now has a native instance path, but remains a separate ordered run.
+    expect(state.groups.map((g) => g.instanced)).toEqual([true, true, true]);
   }
   expect(
     result.selected.groups

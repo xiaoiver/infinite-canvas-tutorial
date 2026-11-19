@@ -42,7 +42,7 @@ Pixel regressions compare the private and instanced proxy paths for overlapping 
 
 An isolated production build of the real Vue documentation component initially threw in d3-color because the temporary reproduction config omitted the site's existing UMD alias. Matching that alias, top-level-await transform and public assets makes both language interaction regressions pass locally. This does not establish the cause of the cloud-browser production-site block (dynamic resource loading/client interception); no renderer initialization behavior was changed based on that unconfirmed cause.
 
-The documentation build CI now serves the **full VitePress output** and checks the actual English and Chinese page routes, including a narrow viewport, startup, LOD toggles, hysteresis, selection and module failures. This covers the production chunk graph rather than only the development fixture:
+The documentation build CI now serves the **full VitePress output** and checks the actual English and Chinese page routes, including a narrow viewport, startup, LOD toggles, hysteresis, selection and module failures. This covers the production chunk graph rather than only the development fixture. The first full-site CI trace confirmed startup and proxy rendering, then exceeded the generic five-second wait while restoring 400 cold glyph renderers; its post-failure screenshot already showed all 400 full labels. That measured 7.4-second cold transition now has a bounded 15-second phase wait, with other interaction waits unchanged:
 
 ```sh
 # First build workspace packages and the documentation site as in docs-build.yml.

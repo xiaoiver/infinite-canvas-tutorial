@@ -28,7 +28,8 @@ for (const zh of [false, true]) {
     await expect(toggle).toBeEnabled({ timeout: 30000 });
     await expect(proxy).toHaveText('400');
     await toggle.uncheck();
-    await expect(full).toHaveText('400');
+    // Cold restoration creates 400 glyph renderers (7.4s in the production CI trace).
+    await expect(full).toHaveText('400', { timeout: 15000 });
     await expect(proxy).toHaveText('0');
     await toggle.check();
     await expect(proxy).toHaveText('400');
