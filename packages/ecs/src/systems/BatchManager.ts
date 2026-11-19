@@ -24,6 +24,7 @@ import {
   Mesh,
   SDFText,
   TextProxy,
+  PathInstances,
   StampBrush,
   // Custom as CustomDrawcall,
 } from '../drawcalls';
@@ -135,6 +136,7 @@ export class BatchManager {
   #instancesCache = new Map<string, Drawcall[][]>();
   #ctorIds = new Map<typeof Drawcall, number>();
   #dirty = false;
+  #pathInstancing = false;
   #changed = new Set<Entity>();
   #ordered = false;
   #hideUIs = false;
@@ -148,7 +150,17 @@ export class BatchManager {
     private readonly intent: 'screen' | 'export' = 'screen',
   ) {}
 
+  setPathInstancingEnabled(enabled: boolean) {
+    enabled = enabled && this.intent === 'screen';
+    if (enabled !== this.#pathInstancing) {
+      this.#pathInstancing = enabled;
+      this.#dirty = true;
+    }
+  }
+
   private collectDrawcallCtors(shape: Entity) {
+    if (this.#pathInstancing && this.batchKey(shape, [PathInstances]) !== null)
+      return [PathInstances];
     return getDrawcallCtors(shape, this.intent).filter((Ctor) => {
       // Not every renderer needs a geometry-specific channel check.
       return (
@@ -308,7 +320,10 @@ export class BatchManager {
       for (const group of groups) {
         if (retained.has(group)) continue;
         // One empty page per supported key is enough for culling/reentry reuse.
-        if (key && !nextPools.has(key)) {
+        if (
+          key && !nextPools.has(key) &&
+          (group[0].constructor as typeof Drawcall).retainEmptyPage
+        ) {
           group.forEach((d) => {
             d.shapes = [];
             d.dirtyInstances.clear();

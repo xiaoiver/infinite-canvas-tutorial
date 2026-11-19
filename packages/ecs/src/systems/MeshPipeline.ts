@@ -255,7 +255,9 @@ export class MeshPipeline extends System {
 
   private lines = this.query((q) => q.added.and.removed.with(Line));
   private polylines = this.query((q) => q.added.and.removed.with(Polyline));
-  private paths = this.query((q) => q.added.and.removed.with(Path));
+  private paths = this.query(
+    (q) => q.addedOrChanged.and.removed.with(Path).trackWrites,
+  );
   private vectorNetworks = this.query((q) =>
     q.added.and.removed.with(VectorNetwork),
   );
@@ -823,6 +825,9 @@ export class MeshPipeline extends System {
       : renderer.batchManager;
 
     try {
+      batchManager.setPathInstancingEnabled(
+        !raster && canvas.read(Canvas).pathInstancing,
+      );
       if (raster) batchManager.hideUIs();
       const { width, height } = swapChain.getCanvas();
       if (width <= 0 || height <= 0) {
@@ -1169,12 +1174,14 @@ export class MeshPipeline extends System {
       ...this.renderables.changed,
       ...this.polylines.added,
       ...this.lines.added,
-      ...this.paths.added,
+      ...this.paths.addedOrChanged,
       ...this.vectorNetworks.added,
       ...this.culleds.removed,
       ...this.lods.addedChangedOrRemoved,
       ...this.textMetrics.addedOrChanged,
-      ...this.lodHierarchy.changed.filter((e) => e.has(ComputedLOD)),
+      ...this.lodHierarchy.changed.filter(
+        (e) => e.has(ComputedLOD) || e.has(Path),
+      ),
       ...this.batchingFlags.addedOrChanged,
       ...this.batchTransforms.addedOrChanged.filter((e) =>
         entityMatchesRenderableQuery(e),
@@ -1194,6 +1201,10 @@ export class MeshPipeline extends System {
           .push({ type: 'remove', entity });
       }
       this.renderableCameras.set(entity, camera);
+
+      if (this.paths.addedOrChanged.includes(entity)) {
+        safeAddComponent(entity, GeometryDirty);
+      }
 
       if (this.textMetrics.addedOrChanged.includes(entity)) {
         safeAddComponent(entity, GeometryDirty);

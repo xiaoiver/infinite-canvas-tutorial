@@ -15,6 +15,13 @@ import {
   Polyline,
   GeometryDirty,
   Editable,
+  Path,
+  Children,
+  Transform,
+  RBush,
+  Selected,
+  Highlighted,
+  type Entity,
   Pen,
   CheckboardStyle,
   type SerializedNode,
@@ -164,18 +171,140 @@ SmoothPolyline.prototype.createGeometry = function () {
   builds++;
   return create.call(this);
 };
+let migrationCameras: { primary: Entity; secondary: Entity } | undefined;
 const harness = {
-  resetWork: resetNativeWork,
-  async document(nodes: SerializedNode[]) {
+  constructors: () => draws().map((d) => d.constructor.name),
+  spatialMembership: () =>
+    [...pipeline.renderers.keys()].map((camera) =>
+      camera
+        .read(RBush)
+        .value.all()
+        .map((n) => api.getNodeByEntity(n.entity)?.id)
+        .filter(Boolean),
+    ),
+  interaction: () => ({
+    selected: api.getEntity(api.getNodeById('line')).has(Selected),
+    highlighted: api.getEntity(api.getNodeById('line')).has(Highlighted),
+  }),
+  async history(action: 'undo' | 'redo') {
+    api[action]();
+    await frames();
+  },
+  async movePathCamera(back: boolean) {
     await api.edit(
       (e) => {
-        e.selectNodes([]);
-        e.highlightNodes([]);
-        e.replaceDocument(nodes, 'remote');
+        const entity = e.getEntity(e.getNodeById('line'));
+        if (!migrationCameras) {
+          const primary = entity.read(Children).parent.hold();
+          migrationCameras = {
+            primary,
+            secondary: e.createCamera({ zoom: 1, x: 0, y: 0 }),
+          };
+        }
+        entity.write(Children).parent = back
+          ? migrationCameras.primary
+          : migrationCameras.secondary;
+        entity.write(Transform).rotation = entity.read(Transform).rotation;
       },
       { capture: 'NEVER' },
     );
     await frames();
+    return [...pipeline.renderers.values()].map((r) =>
+      r.batchManager
+        .buildFlushSegments()
+        .flatMap((s) => s.drawcalls)
+        .flatMap((d) => d.shapes)
+        .filter((s) => !!api.getNodeByEntity(s))
+        .map((s) => api.getNodeByEntity(s).id),
+    );
+  },
+  async mutatePath(d: string) {
+    await api.edit((e) => {
+      e.getEntity(e.getNodeById('line')).write(Path).d = d;
+    });
+    await frames();
+  },
+  resetWork: resetNativeWork,
+  async document(nodes: (SerializedNode & { batchable?: boolean })[]) {
+    await api.edit(
+      (e) => {
+        e.selectNodes([]);
+        e.highlightNodes([]);
+        e.replaceDocument(
+          nodes.map(
+            ({ batchable: _flag, ...node }) => node,
+          ) as SerializedNode[],
+          'remote',
+        );
+        for (const node of nodes)
+          if (node.batchable !== undefined)
+            e.getEntity(e.getNodeById(node.id)).write(Renderable).batchable =
+              !!node.batchable;
+      },
+      { capture: 'NEVER' },
+    );
+    await frames();
+  },
+  async pathInstancing(enabled: boolean) {
+    api.setPathInstancingEnabled(enabled);
+    await frames();
+  },
+  async seedPaths(count = 600, variants = 1) {
+    const nodes = Array.from({ length: count }, (_, i) => ({
+      id: i === 0 ? 'line' : `n${i}`,
+      type: 'path' as const,
+      zIndex: i,
+      x: 20 + (i % 40) * 24,
+      y: 20 + Math.floor(i / 40) * 24,
+      width: 20,
+      height: 20,
+      d: `M0 0 L${
+        16 + ((i % variants) / variants) * 4
+      } 0 L20 20 L10 14 L0 20 Z`,
+      fills: [
+        {
+          type: 'solid' as const,
+          value: i % 2 ? '#ff0033' : '#0066ff',
+          opacity: 0.5 + (i % 4) * 0.1,
+        },
+      ],
+    }));
+    if (count > 1024) {
+      // Respect the fixture world's per-frame component-change log capacity.
+      await harness.document([]);
+      for (let i = 0; i < nodes.length; i += 512) {
+        const chunk = nodes.slice(i, i + 512);
+        await api.edit(
+          (e) => {
+            e.updateNodes(chunk);
+            for (const n of chunk)
+              e.getEntity(e.getNodeById(n.id)).write(Renderable).batchable =
+                true;
+          },
+          { capture: 'NEVER' },
+        );
+        await frames();
+      }
+      return;
+    }
+    await harness.document(nodes);
+    await api.edit(
+      (e) => {
+        for (const n of e.getNodes())
+          e.getEntity(n).write(Renderable).batchable = true;
+      },
+      { capture: 'NEVER' },
+    );
+    await frames();
+  },
+  async clearPaths() {
+    const ids = api.getNodes().map((n) => n.id);
+    for (let i = 0; i < ids.length; i += 512) {
+      await api.edit((e) => e.deleteNodesById(ids.slice(i, i + 512)), {
+        capture: 'NEVER',
+      });
+      await frames();
+    }
   },
   async seed(count = 1, mixed = false) {
     await api.edit(
@@ -319,41 +448,65 @@ const harness = {
     await harness.enable(enabled);
     await harness.zoom(0.2);
     await harness.seed(count, true);
-    const times: number[] = [];
-    const submissions: (typeof nativeWork)[] = [];
-    const original = app.world.execute.bind(app.world);
-    app.world.execute = async (...args: Parameters<typeof original>) => {
-      resetNativeWork();
-      const t = performance.now();
-      await original(...args);
-      times.push(performance.now() - t);
-      submissions.push({ ...nativeWork });
-    };
-    try {
-      for (let i = 0; i < samples + 15; i++)
-        await api.edit((e) => e.setAppState({ cameraX: (i % 2) * 0.1 }), {
-          capture: 'NEVER',
-        });
-    } finally {
-      app.world.execute = original;
-    }
-    const measured = times.slice(15).sort((a, b) => a - b);
-    return {
-      count,
-      enabled,
-      native: submissions[submissions.length - 1],
-      ...harness.state(),
-      cpuP50: measured[Math.floor(measured.length * 0.5)],
-      cpuP95: measured[Math.floor(measured.length * 0.95)],
-      samples: measured.length,
-      dpr: devicePixelRatio,
-      size: [800, 600],
-    };
+    return measureCameraFrames(count, enabled, samples);
+  },
+  async benchmarkPaths(
+    count: number,
+    enabled: boolean,
+    variants = 1,
+    samples = 30,
+  ) {
+    await harness.pathInstancing(enabled);
+    await harness.zoom(Math.min(0.75, 600 / (Math.ceil(count / 40) * 24 + 40)));
+    await harness.seedPaths(count, variants);
+    return measureCameraFrames(count, enabled, samples);
   },
   async destroy() {
     await app.exit();
   },
 };
+async function measureCameraFrames(
+  count: number,
+  enabled: boolean,
+  samples: number,
+) {
+  const times: number[] = [];
+  const submissions: (typeof nativeWork)[] = [];
+  const original = app.world.execute.bind(app.world);
+  let pending: Promise<void> | undefined;
+  app.world.execute = (...args: Parameters<typeof original>) => {
+    pending = (async () => {
+      resetNativeWork();
+      const t = performance.now();
+      await original(...args);
+      times.push(performance.now() - t);
+      submissions.push({ ...nativeWork });
+    })();
+    return pending;
+  };
+  try {
+    for (let i = 0; i < samples + 15; i++)
+      await api.edit((e) => e.setAppState({ cameraX: (i % 2) * 0.1 }), {
+        capture: 'NEVER',
+      });
+  } finally {
+    app.world.execute = original;
+    // edit() can resolve before execute() finishes; measure the final frame too.
+    await pending;
+  }
+  const measured = times.slice(15).sort((a, b) => a - b);
+  return {
+    count,
+    enabled,
+    ...harness.state(),
+    native: submissions[submissions.length - 1],
+    cpuP50: measured[Math.floor(measured.length * 0.5)],
+    cpuP95: measured[Math.floor(measured.length * 0.95)],
+    samples: measured.length,
+    dpr: devicePixelRatio,
+    size: [800, 600],
+  };
+}
 Object.assign(window, { polylineLOD: harness });
 try {
   await app.run();
