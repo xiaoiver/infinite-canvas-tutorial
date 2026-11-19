@@ -42,6 +42,9 @@ export enum VectorNetworkEditMode {
 }
 
 export class Canvas {
+  /** Experimental render-only simplification for ordinary open polylines. */
+  @field({ type: Type.boolean, default: false }) declare polylineLOD: boolean;
+
   /** Experimental ordinary-text LOD. Runtime only; CSS px thresholds are 6 / 8. */
   @field({ type: Type.boolean, default: false }) declare textLOD: boolean;
 

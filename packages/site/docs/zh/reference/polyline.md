@@ -7,6 +7,17 @@ description: 'Polyline 图形参考：带宽度、连接和端点样式的开放
 
 参考 SVG [polyline]。
 
+## ECS 几何 LOD
+
+ECS API 提供实验性的画布运行时开关 `api.setPolylineLODEnabled(true)`，默认关闭。对于实色、圆角连接的普通开放折线，以 0.25 CSS px 的中心线误差预算简化采样点。选中、悬停、编辑、复杂样式和栅格导出仍使用原始点。它与合批和文字 LOD 独立；下方 Core 示例使用另一套渲染器，不受此开关影响。
+
+```ts
+api.setPolylineLODEnabled(true);
+api.setPolylineLODEnabled(false); // 恢复全部原始采样点。
+```
+
+## Core 示例
+
 ```ts
 const polyline = new Polyline({
     points: [

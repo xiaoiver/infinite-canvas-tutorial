@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Polyline LOD regression and benchmark</title>
+  </head>
+  <body style="margin: 0">
+    <section id="lod">
+      <canvas
+        width="800"
+        height="600"
+        style="width: 800px; height: 600px"
+      ></canvas>
+      <div
+        id="html-layer"
+        style="position: absolute; inset: 0; pointer-events: none"
+      ></div>
+      <div
+        id="svg-layer"
+        style="position: absolute; inset: 0; pointer-events: none"
+      ></div>
+    </section>
+    <output id="status">Starting</output>
+    <script type="module" src="./polyline-lod.ts"></script>
+  </body>
+</html>

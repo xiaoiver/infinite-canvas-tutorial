@@ -1061,6 +1061,13 @@ export class API {
     });
   }
 
+  /** Runtime only; original points, interaction and exports keep full precision. */
+  setPolylineLODEnabled(enabled: boolean) {
+    this.runAtNextTick(() => {
+      this.#canvas.write(Canvas).polylineLOD = enabled;
+    });
+  }
+
   getCanvas() {
     return this.#canvas;
   }

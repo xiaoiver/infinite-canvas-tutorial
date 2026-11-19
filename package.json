@@ -26,6 +26,7 @@
     "deploy": "npx wrangler pages deploy ./packages/site/docs/.vitepress/dist",
     "cov": "jest -c ./jest.ecs.config.js --coverage",
     "test:ecs": "jest -c ./jest.ecs.config.js --coverage",
+    "bench:polyline-lod": "playwright test -c playwright.polyline-lod-bench.config.ts",
     "bench:text-lod": "playwright test -c playwright.text-lod-bench.config.ts",
     "bench:batching": "playwright test -c playwright.batching-bench.config.ts",
     "bench:path-extrusion": "node node_modules/typescript/bin/tsc -p packages/ecs/tsconfig.build.json --module commonjs --outDir packages/ecs/lib && node scripts/bench-path-extrusion.cjs",
