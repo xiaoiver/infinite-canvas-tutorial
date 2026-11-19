@@ -112,6 +112,20 @@ describe.each([
     expect(cache.get(paths[1], 2)).not.toBe(edited);
   });
 
+  it('keeps the current hit coherent across stroke radius, empty paths and source edits', () => {
+    const cache = new implementation.PathGeometryCache();
+    const fill = cache.get(paths[0], 2, 0);
+    const stroke = cache.get(paths[0], 2, 1);
+    expect(stroke).not.toBe(fill);
+    for (let i = 0; i < 20; i++)
+      expect(cache.get(paths[0], 1.99, 0.99)).toBe(stroke);
+    expect(cache.get(paths[0], 2, 0)).toBe(fill);
+    const empty = cache.get('', 2, 0);
+    expect(empty).toEqual([]);
+    expect(cache.get('', 1.99)).toBe(empty);
+    expect(cache.get(paths[0], 2, 0)).not.toBe(fill);
+  });
+
   it('derives scale from the pass viewport, projection and full parent transform', () => {
     const uniforms = {
       u_ProjectionMatrix: [2 / 200, 0, 0, 0, -2 / 100, 0, -1, 1, 1],
