@@ -15,6 +15,9 @@ test('mixed Core/ECS workload baseline', async ({ browser }) => {
   const sourceTree = execFileSync('git', ['rev-parse', 'HEAD^{tree}'], {
     encoding: 'utf8',
   }).trim();
+  const sourceDirty = Boolean(
+    execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(),
+  );
   const textCap = Number(process.env.MIXED_BENCH_TEXT_CAP ?? 200);
   const destination =
     process.env.MIXED_BENCH_OUTPUT ??
@@ -60,29 +63,88 @@ test('mixed Core/ECS workload baseline', async ({ browser }) => {
             viewport: { width: 1000, height: 720 },
           });
           const errors: string[] = [];
-          page.on('pageerror', (e) => errors.push(e.message));
-          await page.addInitScript(installProbes);
-          await page.goto(
-            `http://127.0.0.1:4175/mixed-renderer.html?backend=${backend}`,
-          );
-          await expect(page.locator('output')).toHaveText('Ready');
-          const setupWallMs = await page.evaluate(
-            async ({ count, layout, enabled, textCap }) => {
-              const start = performance.now();
-              await window.mixedRenderer.configure(
+          let rejectPageFailure!: (error: Error) => void;
+          const pageFailure = new Promise<never>((_, reject) => {
+            rejectPageFailure = reject;
+          });
+          // Keep failures handled even between awaited steps; checked still rejects.
+          void pageFailure.catch(() => {});
+          const checked = <T>(operation: Promise<T>) =>
+            Promise.race([operation, pageFailure]);
+          page.on('pageerror', (error) => {
+            errors.push(error.message);
+            console.error(
+              JSON.stringify({
+                event: 'page-error',
+                backend,
                 count,
                 layout,
                 enabled,
-                textCap,
+                error: error.stack ?? error.message,
+              }),
+            );
+            rejectPageFailure(error);
+          });
+          page.on('crash', () =>
+            rejectPageFailure(new Error('Benchmark page crashed')),
+          );
+          page.on('console', (message) => {
+            if (message.type() === 'error')
+              console.error(
+                JSON.stringify({
+                  event: 'browser-console-error',
+                  text: message.text(),
+                }),
               );
-              return performance.now() - start;
-            },
-            { count, layout, enabled, textCap },
+          });
+          await page.addInitScript(installProbes);
+          await checked(
+            page.goto(
+              `http://127.0.0.1:4175/mixed-renderer.html?backend=${backend}`,
+            ),
+          );
+          await checked(expect(page.locator('output')).toHaveText('Ready'));
+          const setupWallMs = await checked(
+            page.evaluate(
+              async ({ count, layout, enabled, textCap }) => {
+                const start = performance.now();
+                await window.mixedRenderer.configure(
+                  count,
+                  layout,
+                  enabled,
+                  textCap,
+                );
+                return performance.now() - start;
+              },
+              { count, layout, enabled, textCap },
+            ),
+          );
+          console.log(
+            JSON.stringify({
+              event: 'setup-complete',
+              backend,
+              count,
+              layout,
+              enabled,
+              setupWallMs,
+            }),
           );
           for (const operation of ['pan', 'zoom', 'edit'] as const) {
-            const result = await page.evaluate(
-              (operation) => window.mixedRenderer.measure(operation),
-              operation,
+            console.log(
+              JSON.stringify({
+                event: 'operation-start',
+                backend,
+                count,
+                layout,
+                enabled,
+                operation,
+              }),
+            );
+            const result = await checked(
+              page.evaluate(
+                (operation) => window.mixedRenderer.measure(operation),
+                operation,
+              ),
             );
             expect(result.visible).toBe(count);
             expect(result.webglError).toBe(0);
@@ -101,6 +163,7 @@ test('mixed Core/ECS workload baseline', async ({ browser }) => {
               memoryMiB: Math.round(totalmem() / 1024 / 1024),
               sourceHead,
               sourceTree,
+              sourceDirty,
               setupWallMs,
             };
             results.push(row);
@@ -120,8 +183,8 @@ test('mixed Core/ECS workload baseline', async ({ browser }) => {
             mkdirSync(dirname(destination), { recursive: true });
             writeFileSync(destination, JSON.stringify(results, null, 2));
           }
-          const baseline = await page.evaluate(() =>
-            window.mixedRenderer.destroy(),
+          const baseline = await checked(
+            page.evaluate(() => window.mixedRenderer.destroy()),
           );
           const resources = await page.evaluate(() =>
             window.lifecycleProbes.resources(),
