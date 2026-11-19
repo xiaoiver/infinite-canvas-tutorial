@@ -147,9 +147,41 @@ Local verification:
     submitted indices, one camera upload, and return to the device baseline.
 -   Browser/core TypeScript, ESM/CJS core builds, changed-file ESLint, format and
     Markdown checks passed. Browser CI tooling verifies Chromium/WebKit coverage.
--   Local WebKit cannot start with the host's missing libraries. Its new suite is
-    included in CI. Native headless-GL tests, native WebGPU, physical devices and a
-    live collaboration session with core instancing enabled were not run locally.
+-   Local WebKit was initially unavailable; the CI follow-up below records its
+    successful verification after supplying the WPE runtime. Native headless-GL
+    tests, native WebGPU, physical devices and a live collaboration session with
+    core instancing enabled were not run locally.
 
 No dependencies, production capacity settings, deployment configuration,
 assertion tolerances, timeouts or retry policies changed.
+
+## WebKit CI follow-up
+
+The first CI run exposed two real rendering/input problems:
+
+-   Core SDF shapes unpack attenuation flags using bits 22/23. The default
+    `mediump` precision can overflow the unpacking arithmetic and make ordinary
+    rectangles disappear in WebKit. Both SDF shader stages now request `highp`.
+    The existing rectangle/Path barrier test reproduces the failure with the old
+    shader and passes after this change, including the nonempty-image assertion.
+-   ECS CameraControl releases its transient input points before Select processes
+    pointerup. A complete drag delivered between frames, or a final move sharing
+    a frame with release, could therefore leave the marquee uncommitted. Select
+    now applies the release position with the retained original press before
+    finishing the brush. Cancellation and the existing movement threshold remain.
+
+All 16 core/ECS instancing cases pass in both Chromium and iPhone-profile WebKit.
+The full selection interaction suite passes 40 cases, including six new tests
+for mouse/touch/pen coalesced drags, final release coordinates, cancellation and
+sub-threshold motion. A further 115 tests pass across path editing, crop/hierarchy,
+vector editing, snapping and camera-pan suites. An initial combined local Jest
+process was killed (exit 137); running each suite in a fresh process completed.
+No browser assertions, retry policy or timeouts were relaxed; the native marquee
+case is unchanged.
+
+For local reproduction, missing WPE libraries were extracted from official Debian
+packages into the local Playwright browser cache. Local launches bypassed the
+combined host-library precheck with `PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=1`
+after supplying the actual WPE dependencies. The project dependencies and CI
+configuration were unchanged. The recorded Path-only benchmark was not rerun:
+its workload uses neither SDF shapes nor ECS input.
