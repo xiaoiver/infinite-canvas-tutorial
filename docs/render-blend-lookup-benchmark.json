@@ -1,0 +1,607 @@
+{
+  "baselineTree": "8698b48d6269cc2d297f550fbf77eb40254b57ec",
+  "baselineCommit": "85dc47296a35b8f51cfcea89624b7e3120e91a8e",
+  "initialMixedBaseline": [
+    {
+      "count": 150,
+      "enabled": false,
+      "native": {
+        "drawcalls": 201,
+        "indices": 399750,
+        "arrayVertices": 4
+      },
+      "builds": 100,
+      "visible": 150,
+      "drawcalls": 200,
+      "vertices": 240450,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 853,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 6.200000002980232,
+      "cpuP95": 10.299999997019768,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 26550
+    },
+    {
+      "count": 150,
+      "enabled": true,
+      "native": {
+        "drawcalls": 201,
+        "indices": 31500,
+        "arrayVertices": 4
+      },
+      "builds": 102,
+      "visible": 150,
+      "drawcalls": 200,
+      "vertices": 19500,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 853,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 7,
+      "cpuP95": 14.600000008940697,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 2000
+    },
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 26.700000002980232,
+      "cpuP95": 43.8999999910593,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 25.900000005960464,
+      "cpuP95": 32.79999999701977,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ],
+  "initialMixedAfterDiagnostic": [
+    {
+      "count": 150,
+      "enabled": false,
+      "native": {
+        "drawcalls": 201,
+        "indices": 399750,
+        "arrayVertices": 4
+      },
+      "builds": 100,
+      "visible": 150,
+      "drawcalls": 200,
+      "vertices": 240450,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 853,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 6.5,
+      "cpuP95": 20.69999998807907,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 26550
+    },
+    {
+      "count": 150,
+      "enabled": true,
+      "native": {
+        "drawcalls": 201,
+        "indices": 31500,
+        "arrayVertices": 4
+      },
+      "builds": 102,
+      "visible": 150,
+      "drawcalls": 200,
+      "vertices": 19500,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 853,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 7,
+      "cpuP95": 13.599999994039536,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 2000
+    },
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 21.900000005960464,
+      "cpuP95": 40.3999999910593,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 20.400000005960464,
+      "cpuP95": 31.700000002980232,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ],
+  "initialAfterNote": "A TypeScript check overlapped the late phase; diagnostic only, not the headline comparison.",
+  "focusedBaseline": [
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 22.30000001192093,
+      "cpuP95": 43.20000000298023,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 20.19999998807907,
+      "cpuP95": 32.79999999701977,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ],
+  "focusedAfter": [
+    {
+      "count": 600,
+      "enabled": false,
+      "native": {
+        "drawcalls": 801,
+        "indices": 1599000,
+        "arrayVertices": 4
+      },
+      "builds": 400,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 961800,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 18.900000005960464,
+      "cpuP95": 33.1000000089407,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 106200
+    },
+    {
+      "count": 600,
+      "enabled": true,
+      "native": {
+        "drawcalls": 801,
+        "indices": 126000,
+        "arrayVertices": 4
+      },
+      "builds": 402,
+      "visible": 600,
+      "drawcalls": 800,
+      "vertices": 78000,
+      "resources": [
+        {
+          "side": "offscreen",
+          "live": {
+            "Buffer": 1,
+            "Texture": 5,
+            "Program": 0,
+            "Shader": 0,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 0
+          }
+        },
+        {
+          "side": "lod",
+          "live": {
+            "Buffer": 3403,
+            "Texture": 7,
+            "Program": 5,
+            "Shader": 10,
+            "Framebuffer": 6,
+            "Renderbuffer": 0,
+            "VertexArray": 5
+          }
+        }
+      ],
+      "cpuP50": 20.799999997019768,
+      "cpuP95": 27.5,
+      "samples": 29,
+      "dpr": 1,
+      "size": [800, 600],
+      "browserVersion": "140.0.7339.186",
+      "nodeVersion": "v24.22.3",
+      "platform": "linux",
+      "polylineAndPathSegmentInstances": 8000
+    }
+  ],
+  "profile90Pans": {
+    "before": {
+      "buildFlushSegments": {
+        "selfMs": 195.31,
+        "inclusiveMs": 301.43
+      },
+      "getNodeByEntity": {
+        "selfMs": 103.94,
+        "inclusiveMs": 103.94
+      }
+    },
+    "after": {
+      "buildFlushSegments": {
+        "selfMs": 4.64,
+        "inclusiveMs": 4.64
+      }
+    }
+  }
+}

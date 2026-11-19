@@ -27,7 +27,6 @@ import {
   parseGradient,
   isMeshGradientGradient,
   parseEffect,
-  getNodeLayerBlendMode,
   isNonNormalNodeLayerBlend,
 } from '../utils';
 import {
@@ -541,8 +540,8 @@ export class SDF extends Drawcall {
       return false;
     }
 
-    const bm0 = getNodeLayerBlendMode(this.api, this.shapes[0]);
-    const bm1 = getNodeLayerBlendMode(this.api, shape);
+    const bm0 = node0?.blendMode;
+    const bm1 = node1?.blendMode;
     if ((bm0 ?? 'normal') !== (bm1 ?? 'normal')) {
       return false;
     }

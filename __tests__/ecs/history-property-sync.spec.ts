@@ -24,6 +24,7 @@ import {
 } from '../../packages/ecs/src';
 import { createDocumentWorld } from '../helpers/ecs-document';
 import './filter-test-setup';
+import { getRenderNodeLayerBlendMode } from '../../packages/ecs/src/utils/nodeLayerBlend';
 
 const textNode = (
   patch: Partial<TextSerializedNode> = {},
@@ -457,12 +458,16 @@ describe('effect synchronization', () => {
   it('switches blend mode back to normal and restores the component on undo', async () => {
     await update({ blendMode: 'multiply' });
     expect(entity().read(NodeLayerBlendMode).mode).toBe('multiply');
+    expect(getRenderNodeLayerBlendMode(entity())).toBe('multiply');
     await update({ blendMode: 'normal' });
     expect(entity().has(NodeLayerBlendMode)).toBe(false);
+    expect(getRenderNodeLayerBlendMode(entity())).toBeUndefined();
     await world.history(api, 'undo');
     expect(entity().read(NodeLayerBlendMode).mode).toBe('multiply');
+    expect(getRenderNodeLayerBlendMode(entity())).toBe('multiply');
     await world.history(api, 'redo');
     expect(entity().has(NodeLayerBlendMode)).toBe(false);
+    expect(getRenderNodeLayerBlendMode(entity())).toBeUndefined();
   });
 
   it('clears a filter immediately and restores it on undo', async () => {

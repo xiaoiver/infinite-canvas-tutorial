@@ -319,3 +319,79 @@ test('three translucent paint layers preserve alpha through intermediate texture
       ).toBeLessThanOrEqual(3);
   }
 });
+
+test('updates render blend modes immediately through edits, undo and redo', async ({
+  page,
+}) => {
+  const results = await page.evaluate(async () => {
+    const h = window.blendTest,
+      api = h.api();
+    await h.renderNodes([
+      {
+        id: 'bottom',
+        type: 'rect',
+        x: 0,
+        y: 0,
+        width: 160,
+        height: 160,
+        fills: [{ type: 'solid', value: '#2480db' }],
+        zIndex: 0,
+      },
+      {
+        id: 'top',
+        type: 'rect',
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 160,
+        fills: [{ type: 'solid', value: '#d255a4' }],
+        opacity: 0.7,
+        zIndex: 1,
+      },
+    ]);
+    api.clearHistory();
+    const actual = document.getElementById('actual') as HTMLCanvasElement;
+    const sample = async (mode: 'normal' | 'multiply' | 'screen') => {
+      await h.settle();
+      const image = new Image();
+      image.src = actual.toDataURL();
+      await image.decode();
+      const scratch = document.createElement('canvas');
+      scratch.width = 320;
+      scratch.height = 160;
+      const c = scratch.getContext('2d')!;
+      c.drawImage(image, 0, 0);
+      const gpu = Array.from(c.getImageData(40, 40, 1, 1).data);
+      c.clearRect(0, 0, 320, 160);
+      c.globalCompositeOperation = 'source-over';
+      c.globalAlpha = 1;
+      c.fillStyle = '#2480db';
+      c.fillRect(0, 0, 80, 80);
+      c.globalCompositeOperation = mode === 'normal' ? 'source-over' : mode;
+      c.globalAlpha = 0.7;
+      c.fillStyle = '#d255a4';
+      c.fillRect(20, 20, 80, 80);
+      return {
+        mode,
+        gpu,
+        reference: Array.from(c.getImageData(40, 40, 1, 1).data),
+      };
+    };
+    const results = [await sample('normal')];
+    for (const blendMode of ['multiply', 'screen', 'normal'] as const) {
+      await api.edit((e) => e.updateNode(e.getNodeById('top'), { blendMode }));
+      results.push(await sample(blendMode));
+    }
+    api.undo();
+    results.push(await sample('screen'));
+    api.redo();
+    results.push(await sample('normal'));
+    return results;
+  });
+  for (const { mode, gpu, reference } of results)
+    for (let channel = 0; channel < 4; channel++)
+      expect(
+        Math.abs(gpu[channel] - reference[channel]),
+        `${mode} channel ${channel}`,
+      ).toBeLessThanOrEqual(3);
+});

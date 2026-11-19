@@ -15,6 +15,7 @@ import {
   Opacity,
   Line,
   MaterialDirty,
+  NodeLayerBlendMode,
   Path,
   Polyline,
   Rect,
@@ -54,7 +55,18 @@ function shape(
     [Renderable, { batchable }],
     ...extra,
   ]);
+  // Model the existing wire-to-ECS blend-mode synchronization.
   const node: { blendMode?: string } = {};
+  let blendMode: string | undefined;
+  Object.defineProperty(node, 'blendMode', {
+    enumerable: true,
+    get: () => blendMode,
+    set: (mode: string | undefined) => {
+      blendMode = mode;
+      if (mode && mode !== 'normal') data.set(NodeLayerBlendMode, { mode });
+      else data.delete(NodeLayerBlendMode);
+    },
+  });
   const entity = {
     has: (component: unknown) => data.has(component),
     hasSomeOf: (...components: unknown[]) =>
@@ -864,4 +876,28 @@ it('keeps proxy ownership separate when moving between camera managers or deleti
   a.add(node.entity);
   a.remove(node.entity);
   expect(queued(a)).toEqual([]);
+});
+
+it('plans and flushes normal and blended nodes without scanning the API document', () => {
+  const lookup = jest.fn(() => {
+    throw new Error('render-time document scan');
+  });
+  const batch = new BatchManager(null, null, null, null, {
+    getNodeByEntity: lookup,
+  } as unknown as API);
+  managers.push(batch);
+  const normal = shape(Rect, false);
+  const blended = shape(Rect, false);
+  blended.node.blendMode = 'multiply';
+  batch.add(normal.entity);
+  batch.add(blended.entity);
+  for (let i = 0; i < 20; i++)
+    expect(batch.buildFlushSegments().map((s) => s.type)).toEqual([
+      'normal',
+      'layerBlend',
+    ]);
+  blended.node.blendMode = 'normal';
+  batch.add(blended.entity);
+  expect(batch.buildFlushSegments().map((s) => s.type)).toEqual(['normal']);
+  expect(lookup).not.toHaveBeenCalled();
 });
