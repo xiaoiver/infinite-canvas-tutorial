@@ -58,9 +58,11 @@ export class GlyphManager {
   constructor() {}
 
   destroy() {
-    if (this.glyphAtlasTexture) {
-      this.glyphAtlasTexture.destroy();
-    }
+    this.glyphAtlasTexture?.destroy();
+    this.glyphAtlasTexture = undefined;
+    this.glyphAtlas = undefined;
+    this.glyphMap = {};
+    this.sdfGeneratorCache = {};
   }
 
   getMap() {
@@ -131,23 +133,24 @@ export class GlyphManager {
     device: Device,
     esdt: boolean,
     fill: string,
+    preloadAscii = false,
   ) {
-    let newChars: string[] = [];
-    if (!this.glyphMap[fontStack]) {
-      newChars = getDefaultCharacterSet();
+    const existedChars = new Set(Object.keys(this.glyphMap[fontStack] ?? {}));
+    // Space metrics are needed even by empty editable text. ASCII warming is
+    // explicit; ordinary labels only rasterize their requested graphemes.
+    const newChars = new Set<string>(
+      this.glyphMap[fontStack]
+        ? []
+        : preloadAscii
+        ? getDefaultCharacterSet()
+        : [' '],
+    );
+    for (const char of DOMAdapter.get().splitGraphemes(text)) {
+      if (!existedChars.has(char)) newChars.add(char);
     }
 
-    const existedChars = Object.keys(this.glyphMap[fontStack] || {});
-    Array.from(new Set(DOMAdapter.get().splitGraphemes(text))).forEach(
-      (char) => {
-        if (existedChars.indexOf(char) === -1) {
-          newChars.push(char);
-        }
-      },
-    );
-
-    if (newChars.length) {
-      const glyphMap = newChars
+    if (newChars.size) {
+      const glyphMap = Array.from(newChars)
         .map((char) => {
           return this.generateSDF(
             fontStack,
@@ -159,28 +162,21 @@ export class GlyphManager {
             fill,
           );
         })
-        .reduce((prev, cur) => {
+        .reduce<Record<string, StyleGlyph>>((prev, cur) => {
           prev[cur.id] = cur;
           return prev;
-        }, {}) as StyleGlyph;
+        }, {});
 
-      // @ts-ignore
-      this.glyphMap[fontStack] = {
-        ...this.glyphMap[fontStack],
-        ...glyphMap,
+      // Publish the map, packing and texture together only after upload succeeds.
+      // A failed allocation/upload must leave the previous atlas usable for retry.
+      const nextMap = {
+        ...this.glyphMap,
+        [fontStack]: { ...this.glyphMap[fontStack], ...glyphMap },
       };
-      this.glyphAtlas = new GlyphAtlas(this.glyphMap);
-      const {
-        width: atlasWidth,
-        height: atlasHeight,
-        data,
-      } = this.glyphAtlas.image;
+      const nextAtlas = new GlyphAtlas(nextMap);
+      const { width: atlasWidth, height: atlasHeight, data } = nextAtlas.image;
 
-      if (this.glyphAtlasTexture) {
-        this.glyphAtlasTexture.destroy();
-      }
-
-      this.glyphAtlasTexture = device.createTexture({
+      const nextTexture = device.createTexture({
         ...makeTextureDescriptor2D(
           Format.U8_RGBA_NORM,
           atlasWidth,
@@ -192,7 +188,17 @@ export class GlyphManager {
         //   unpackAlignment: 4,
         // },
       });
-      this.glyphAtlasTexture.setImageData([data]);
+      try {
+        nextTexture.setImageData([data]);
+      } catch (error) {
+        nextTexture.destroy();
+        throw error;
+      }
+      const previousTexture = this.glyphAtlasTexture;
+      this.glyphMap = nextMap;
+      this.glyphAtlas = nextAtlas;
+      this.glyphAtlasTexture = nextTexture;
+      previousTexture?.destroy();
     }
   }
 

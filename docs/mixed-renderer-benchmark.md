@@ -103,7 +103,8 @@ An exploratory same-canvas sequence that replaced the complete mixed document
 several times found retained Core full-text buffers/textures after destruction.
 The legacy nonbatchable removal path drops cached text drawcalls without
 releasing them; source comparison shows this deletion behavior predates #684.
-A full parent-commit browser reproduction and a separate fix remain pending.
+The parent reproduction and drawcall-ownership fix are now complete in #688;
+[the follow-up](glyph-atlas.md) records the subsequent Core/ECS atlas work.
 This benchmark uses a fresh page per configuration, enforces that contract, and
 checks teardown against each page's exact startup baseline. It does not claim
 that repeated whole-document replacement is covered or fixed.
