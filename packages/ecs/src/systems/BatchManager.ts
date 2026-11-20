@@ -168,9 +168,14 @@ export class BatchManager {
     }
   }
 
-  private collectDrawcallCtors(shape: Entity) {
-    if (this.#pathInstancing && this.batchKey(shape, [PathInstances]) !== null)
-      return [PathInstances];
+  private resolveDrawcalls(shape: Entity): {
+    ctors: (typeof Drawcall)[];
+    key: string | null;
+  } {
+    if (this.#pathInstancing && shape.has(Path)) {
+      const key = this.batchKey(shape, [PathInstances]);
+      if (key !== null) return { ctors: [PathInstances], key };
+    }
     const ctors = getDrawcallCtors(shape, this.intent).filter((Ctor) => {
       // Not every renderer needs a geometry-specific channel check.
       return (
@@ -180,14 +185,11 @@ export class BatchManager {
         )
       );
     });
-    if (
-      this.#textBatching &&
-      ctors.length === 1 &&
-      ctors[0] === SDFText &&
-      this.batchKey(shape, [TextBatch]) !== null
-    )
-      return [TextBatch];
-    return ctors;
+    if (this.#textBatching && ctors.length === 1 && ctors[0] === SDFText) {
+      const key = this.batchKey(shape, [TextBatch]);
+      if (key !== null) return { ctors: [TextBatch], key };
+    }
+    return { ctors, key: this.batchKey(shape, ctors) };
   }
 
   private createDrawcalls(
@@ -302,8 +304,9 @@ export class BatchManager {
         if (group[0] instanceof TextBatch)
           textPages.set(group[0].shapes[0], group);
     for (const [shape, explicit] of entries) {
-      const ctors = explicit ? [] : this.collectDrawcallCtors(shape);
-      const key = explicit ? null : this.batchKey(shape, ctors);
+      const { ctors, key } = explicit
+        ? { ctors: [], key: null }
+        : this.resolveDrawcalls(shape);
       if (key !== null) {
         const cached = this.#nonBatchableDrawcallsCache.get(shape);
         if (cached) {

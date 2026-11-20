@@ -9,6 +9,8 @@ import './mixed-renderer';
 // Bootstrap the TLA renderer fixture before entering the drawcall import graph.
 import { SDFText as CoreText } from '../../../packages/core/src/drawcalls/SDFText';
 import { SDFText as ECSText } from '../../../packages/ecs/src/drawcalls/SDFText';
+import { TextBatch as CoreTextBatch } from '../../../packages/core/src/drawcalls/TextBatch';
+import { TextBatch as ECSTextBatch } from '../../../packages/ecs/src/drawcalls/TextBatch';
 
 // Test/benchmark instrumentation only. ASCII is an explicit comparison control.
 const ascii = new URLSearchParams(location.search).get('ascii') === '1';
@@ -16,7 +18,9 @@ let glyphDraws = 0,
   atlasUploads = 0,
   uploadedBytes = 0,
   atlasCpuMs = 0,
-  textGeometryBuilds = 0;
+  textGeometryBuilds = 0,
+  textBatchKeyChecks = 0,
+  textLayoutChecks = 0;
 const restore: (() => void)[] = [];
 // Private-atlas control keeps the real rendering/resource path but isolates keys.
 const privateAtlas =
@@ -39,6 +43,27 @@ for (const ctor of [CoreSDF, ECSSDF]) {
   };
   restore.push(() => {
     ctor.prototype.draw = draw;
+  });
+}
+// Observe compatibility and snapshot work, preserving the real planner and methods.
+for (const ctor of [CoreTextBatch, ECSTextBatch]) {
+  const target = ctor as unknown as {
+    batchKey: (...args: any[]) => string | null;
+    prototype: { layoutValues: (...args: any[]) => unknown };
+  };
+  const key = target.batchKey,
+    layout = target.prototype.layoutValues;
+  target.batchKey = function (...args) {
+    textBatchKeyChecks++;
+    return key.apply(this, args);
+  };
+  target.prototype.layoutValues = function (...args) {
+    textLayoutChecks++;
+    return layout.apply(this, args);
+  };
+  restore.push(() => {
+    target.batchKey = key;
+    target.prototype.layoutValues = layout;
   });
 }
 // Count real SDF geometry construction without replacing its GPU path.
@@ -90,6 +115,8 @@ window.glyphAtlasProbe = () => ({
   uploadedBytes,
   atlasCpuMs,
   textGeometryBuilds,
+  textBatchKeyChecks,
+  textLayoutChecks,
 });
 declare global {
   interface Window {
@@ -102,6 +129,8 @@ declare global {
       uploadedBytes: number;
       atlasCpuMs: number;
       textGeometryBuilds: number;
+      textBatchKeyChecks: number;
+      textLayoutChecks: number;
     };
   }
 }

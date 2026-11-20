@@ -85,6 +85,17 @@ test('Core/ECS ordered full text batching', async ({ browser }) => {
         const glyphsAfterEdits = await page.evaluate(() =>
           window.glyphAtlasProbe(),
         );
+        if (mode === 'on') {
+          expect(glyphsAfterFrames.textBatchKeyChecks).toBe(
+            setup.glyphs.textBatchKeyChecks,
+          );
+          expect(
+            glyphsAfterEdits.textBatchKeyChecks -
+              glyphsAfterFrames.textBatchKeyChecks,
+          ).toBe(
+            setup.state.primitiveCounts.text * (edits.samples + edits.warmup),
+          );
+        }
         const baseline = await page.evaluate(() =>
           window.mixedRenderer.destroy(),
         );
