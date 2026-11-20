@@ -93,6 +93,8 @@ import {
   Stroke,
 } from '../components';
 
+const NO_INSTANCE_UNIFORMS = Object.freeze({});
+
 const strokeAlignmentMap = {
   center: 0,
   inner: 1,
@@ -592,7 +594,9 @@ export class SDF extends Drawcall {
           });
         }
       }
-      this.#instanceRows = new WeakMap(this.shapes.map((shape, i) => [shape, i]));
+      this.#instanceRows = new WeakMap(
+        this.shapes.map((shape, i) => [shape, i]),
+      );
       this.shapes.forEach((shape) => this.dirtyInstances.add(shape));
     }
 
@@ -1133,12 +1137,16 @@ export class SDF extends Drawcall {
       for (const i of rows) {
         const shape = this.shapes[i];
         const [data] = this.generateBuffer(shape, i, this.shapes.length);
-        this.vertexBufferDatas[1].set(data.slice(0, 32), i * 32);
+        this.vertexBufferDatas[1].set(data, i * 32);
         const { matrix: m } = shape.read(GlobalTransform);
-        this.vertexBufferDatas[2].set(
-          [m.m00, m.m01, m.m10, m.m11, m.m20, m.m21],
-          i * 6,
-        );
+        const matrices = this.vertexBufferDatas[2],
+          offset = i * 6;
+        matrices[offset] = m.m00;
+        matrices[offset + 1] = m.m01;
+        matrices[offset + 2] = m.m10;
+        matrices[offset + 3] = m.m11;
+        matrices[offset + 4] = m.m20;
+        matrices[offset + 5] = m.m21;
         const previous = ranges[ranges.length - 1];
         if (previous && previous[1] === i) previous[1] = i + 1;
         else ranges.push([i, i + 1]);
@@ -1417,26 +1425,38 @@ export class SDF extends Drawcall {
       ? shape.read(GlobalRenderOrder).value
       : 0;
 
-    let position: [number, number, number, number] = [0, 0, 0, 0];
-    let size: [number, number, number, number] = [0, 0, 0, 0];
+    let px = 0,
+      py = 0,
+      pz = 0,
+      sx = 0,
+      sy = 0;
     let type: number = 0;
     let cornerRadius = 0;
     const zIndex = (globalRenderOrder + (1 / total) * index) / ZINDEX_FACTOR;
 
     if (shape.has(Circle)) {
       const { cx, cy, r } = shape.read(Circle);
-      position = [cx, cy, zIndex, 0];
-      size = [r, r, 0, 0];
+      pz = zIndex;
+      px = cx;
+      py = cy;
+      sx = r;
+      sy = r;
       type = 0;
     } else if (shape.has(Ellipse)) {
       const { cx, cy, rx, ry } = shape.read(Ellipse);
-      position = [cx, cy, zIndex, 0];
-      size = [rx, ry, 0, 0];
+      pz = zIndex;
+      px = cx;
+      py = cy;
+      sx = rx;
+      sy = ry;
       type = 1;
     } else if (shape.has(Rect)) {
       const { x, y, width, height, cornerRadius: r } = shape.read(Rect);
-      position = [x + width / 2, y + height / 2, zIndex, 0];
-      size = [width / 2, height / 2, 0, 0];
+      pz = zIndex;
+      px = x + width / 2;
+      py = y + height / 2;
+      sx = width / 2;
+      sy = height / 2;
       type = 2;
       cornerRadius = r;
     }
@@ -1468,7 +1488,9 @@ export class SDF extends Drawcall {
       g: fg,
       b: fb,
       opacity: fo,
-    } = this.getUniformColor(fill != null && fill !== '' ? fill : 'transparent');
+    } = this.getUniformColor(
+      fill != null && fill !== '' ? fill : 'transparent',
+    );
 
     const opacity = this.getOpacity(shape);
 
@@ -1507,11 +1529,12 @@ export class SDF extends Drawcall {
 
     if (this.#blurRaster) {
       const b = this.#blurRaster.bounds;
-      position = [(b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, zIndex, 0];
-      size = [(b.maxX - b.minX) / 2, (b.maxY - b.minY) / 2, 0, 0];
+      pz = zIndex;
+      px = (b.minX + b.maxX) / 2;
+      py = (b.minY + b.maxY) / 2;
+      sx = (b.maxX - b.minX) / 2;
+      sy = (b.maxY - b.minY) / 2;
     }
-    const u_Position = position;
-    const u_Size = size;
     let frN = fr / 255;
     let fgN = fg / 255;
     let fbN = fb / 255;
@@ -1552,13 +1575,6 @@ export class SDF extends Drawcall {
       fbN = 1;
       fa = 1;
     }
-    const u_FillColor = this.#blurRaster ? [1, 1, 1, 1] : [frN, fgN, fbN, fa];
-    const u_StrokeColor = [
-      sr / 255,
-      sg / 255,
-      sb / 255,
-      so * strokeColorAlphaMul,
-    ];
     let strokeWidthForSdf = SDF.useDash(shape) ? 0 : width;
     if (getFirstGradientStrokeLayerValue(shape) != null) {
       strokeWidthForSdf = 0;
@@ -1583,48 +1599,59 @@ export class SDF extends Drawcall {
     ) {
       filterExtras[3] = 1;
     }
-    const u_ZIndexStrokeWidth = [
-      globalRenderOrder / ZINDEX_FACTOR,
-      strokeWidthForSdf,
-      cornerRadius,
-      strokeAlignmentMap[alignment],
-    ];
-
     const LEFT_SHIFT22 = 4194304.0;
     const LEFT_SHIFT23 = 8388608.0;
     const compressed =
       (shape.has(SizeAttenuation) ? 1 : 0) * LEFT_SHIFT23 +
       (shape.has(StrokeAttenuation) ? 1 : 0) * LEFT_SHIFT22 +
       type;
-    const u_Opacity = [opacity, 1, strokeUniformOpacityMul, compressed];
-    const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
-    const u_InnerShadow = [offsetX, offsetY, blurRadius, 0];
-
-    const flat: number[] = [
-      ...u_Position,
-      ...u_Size,
-      ...u_FillColor,
-      ...u_StrokeColor,
-      ...u_ZIndexStrokeWidth,
-      ...u_Opacity,
-      ...u_InnerShadowColor,
-      ...u_InnerShadow,
+    const flat = [
+      px,
+      py,
+      pz,
+      0,
+      sx,
+      sy,
+      0,
+      0,
+      this.#blurRaster ? 1 : frN,
+      this.#blurRaster ? 1 : fgN,
+      this.#blurRaster ? 1 : fbN,
+      this.#blurRaster ? 1 : fa,
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so * strokeColorAlphaMul,
+      globalRenderOrder / ZINDEX_FACTOR,
+      strokeWidthForSdf,
+      cornerRadius,
+      strokeAlignmentMap[alignment],
+      opacity,
+      1,
+      strokeUniformOpacityMul,
+      compressed,
+      isr / 255,
+      isg / 255,
+      isb / 255,
+      iso,
+      offsetX,
+      offsetY,
+      blurRadius,
+      0,
     ];
-    if (!this.instanced) {
-      flat.push(...filterExtras);
-    }
-
+    if (this.instanced) return [flat, NO_INSTANCE_UNIFORMS];
+    flat.push(...filterExtras);
     return [
       flat,
       {
-        u_Position,
-        u_Size,
-        u_FillColor,
-        u_StrokeColor,
-        u_ZIndexStrokeWidth,
-        u_Opacity,
-        u_InnerShadowColor,
-        u_InnerShadow,
+        u_Position: flat.slice(0, 4),
+        u_Size: flat.slice(4, 8),
+        u_FillColor: flat.slice(8, 12),
+        u_StrokeColor: flat.slice(12, 16),
+        u_ZIndexStrokeWidth: flat.slice(16, 20),
+        u_Opacity: flat.slice(20, 24),
+        u_InnerShadowColor: flat.slice(24, 28),
+        u_InnerShadow: flat.slice(28, 32),
         u_FilterExtras: filterExtras,
       },
     ];

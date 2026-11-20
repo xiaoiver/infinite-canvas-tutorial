@@ -23,6 +23,8 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
 import { isPattern, isString, paddingMat3 } from '../utils';
 
+const NO_INSTANCE_UNIFORMS = Object.freeze({});
+
 const strokeAlignmentMap = {
   center: 0,
   inner: 1,
@@ -105,18 +107,14 @@ export class SDF extends Drawcall {
         this.vertexBuffers[2].destroy();
       }
 
-      this.vertexBufferDatas[1] = new Float32Array(
-        new Array(32 * this.shapes.length).fill(0),
-      );
+      this.vertexBufferDatas[1] = new Float32Array(32 * this.shapes.length);
       this.vertexBuffers[1] = this.device.createBuffer({
         viewOrSize: this.vertexBufferDatas[1],
         usage: BufferUsage.VERTEX,
         hint: BufferFrequencyHint.DYNAMIC,
       });
 
-      this.vertexBufferDatas[2] = new Float32Array(
-        new Array(6 * this.shapes.length).fill(0),
-      );
+      this.vertexBufferDatas[2] = new Float32Array(6 * this.shapes.length);
       this.vertexBuffers[2] = this.device.createBuffer({
         viewOrSize: this.vertexBufferDatas[2],
         usage: BufferUsage.VERTEX,
@@ -343,33 +341,26 @@ export class SDF extends Drawcall {
       this.geometryDirty
     ) {
       if (this.instanced) {
-        const instancedData: number[] = [];
+        const data = this.vertexBufferDatas[1];
+        const matrices = this.vertexBufferDatas[2];
         this.shapes.forEach((shape, i, total) => {
           const [buffer] = this.generateBuffer(shape, i, total.length);
-          instancedData.push(...buffer);
+          data.set(buffer, i * 32);
+          const m = shape.worldTransform;
+          const offset = i * 6;
+          matrices[offset] = m.a;
+          matrices[offset + 1] = m.b;
+          matrices[offset + 2] = m.c;
+          matrices[offset + 3] = m.d;
+          matrices[offset + 4] = m.tx;
+          matrices[offset + 5] = m.ty;
         });
-        this.vertexBufferDatas[1] = new Float32Array(instancedData);
-        this.vertexBuffers[1].setSubData(
-          0,
-          new Uint8Array(this.vertexBufferDatas[1].buffer),
-        );
-
-        this.vertexBufferDatas[2] = new Float32Array(
-          this.shapes
-            .map((shape) => [
-              shape.worldTransform.a,
-              shape.worldTransform.b,
-              shape.worldTransform.c,
-              shape.worldTransform.d,
-              shape.worldTransform.tx,
-              shape.worldTransform.ty,
-            ])
-            .flat(),
-        );
-        this.vertexBuffers[2].setSubData(
-          0,
-          new Uint8Array(this.vertexBufferDatas[2].buffer),
-        );
+        for (const slot of [1, 2]) {
+          this.vertexBuffers[slot].setSubData(
+            0,
+            new Uint8Array(this.vertexBufferDatas[slot].buffer),
+          );
+        }
       } else {
         const { worldTransform } = this.shapes[0];
         const [buffer, legacyObject] = this.generateBuffer(
@@ -442,42 +433,43 @@ export class SDF extends Drawcall {
       strokeAttenuation,
     } = shape;
 
-    let position: [number, number, number, number] = [0, 0, 0, 0];
-    let size: [number, number, number, number] = [0, 0, 0, 0];
+    let px = 0,
+      py = 0,
+      pz = 0,
+      sx = 0,
+      sy = 0;
     let type: number = 0;
     let cornerRadius = 0;
     const zIndex =
       (shape.globalRenderOrder + (1 / total) * index) / ZINDEX_FACTOR;
     if (shape instanceof Circle) {
       const { cx, cy, r } = shape;
-      position = [cx, cy, zIndex, 0];
-      size = [r, r, 0, 0];
+      pz = zIndex;
+      px = cx;
+      py = cy;
+      sx = r;
+      sy = r;
       type = 0;
     } else if (shape instanceof Ellipse) {
       const { cx, cy, rx, ry } = shape;
-      position = [cx, cy, zIndex, 0];
-      size = [rx, ry, 0, 0];
+      pz = zIndex;
+      px = cx;
+      py = cy;
+      sx = rx;
+      sy = ry;
       type = 1;
     } else if (shape instanceof Rect) {
       const { x, y, width, height, cornerRadius: r } = shape;
-      position = [x + width / 2, y + height / 2, zIndex, 0];
-      size = [width / 2, height / 2, 0, 0];
+      pz = zIndex;
+      px = x + width / 2;
+      py = y + height / 2;
+      sx = width / 2;
+      sy = height / 2;
       type = 2;
       cornerRadius = r;
     }
 
     const { r: fr, g: fg, b: fb, opacity: fo } = fillRGB || {};
-
-    const u_Position = position;
-    const u_Size = size;
-    const u_FillColor = [fr / 255, fg / 255, fb / 255, fo];
-    const u_StrokeColor = [sr / 255, sg / 255, sb / 255, so];
-    const u_ZIndexStrokeWidth = [
-      shape.globalRenderOrder / ZINDEX_FACTOR,
-      SDF.useDash(shape) ? 0 : strokeWidth,
-      cornerRadius,
-      strokeAlignmentMap[strokeAlignment],
-    ];
 
     const LEFT_SHIFT22 = 4194304.0;
     const LEFT_SHIFT23 = 8388608.0;
@@ -485,35 +477,54 @@ export class SDF extends Drawcall {
       (sizeAttenuation ? 1 : 0) * LEFT_SHIFT23 +
       (strokeAttenuation ? 1 : 0) * LEFT_SHIFT22 +
       type;
-    const u_Opacity = [opacity, fillOpacity, strokeOpacity, compressed];
-    const u_InnerShadowColor = [isr / 255, isg / 255, isb / 255, iso];
-    const u_InnerShadow = [
+    const flat = [
+      px,
+      py,
+      pz,
+      0,
+      sx,
+      sy,
+      0,
+      0,
+      fr / 255,
+      fg / 255,
+      fb / 255,
+      fo,
+      sr / 255,
+      sg / 255,
+      sb / 255,
+      so,
+      shape.globalRenderOrder / ZINDEX_FACTOR,
+      SDF.useDash(shape) ? 0 : strokeWidth,
+      cornerRadius,
+      strokeAlignmentMap[strokeAlignment],
+      opacity,
+      fillOpacity,
+      strokeOpacity,
+      compressed,
+      isr / 255,
+      isg / 255,
+      isb / 255,
+      iso,
       innerShadowOffsetX,
       innerShadowOffsetY,
       innerShadowBlurRadius,
       0,
     ];
-
+    // Instance attributes consume only the packed row. Full draws still own
+    // independent legacy arrays, including when submission is deferred.
+    if (this.instanced) return [flat, NO_INSTANCE_UNIFORMS];
     return [
-      [
-        ...u_Position,
-        ...u_Size,
-        ...u_FillColor,
-        ...u_StrokeColor,
-        ...u_ZIndexStrokeWidth,
-        ...u_Opacity,
-        ...u_InnerShadowColor,
-        ...u_InnerShadow,
-      ],
+      flat,
       {
-        u_Position,
-        u_Size,
-        u_FillColor,
-        u_StrokeColor,
-        u_ZIndexStrokeWidth,
-        u_Opacity,
-        u_InnerShadowColor,
-        u_InnerShadow,
+        u_Position: flat.slice(0, 4),
+        u_Size: flat.slice(4, 8),
+        u_FillColor: flat.slice(8, 12),
+        u_StrokeColor: flat.slice(12, 16),
+        u_ZIndexStrokeWidth: flat.slice(16, 20),
+        u_Opacity: flat.slice(20, 24),
+        u_InnerShadowColor: flat.slice(24, 28),
+        u_InnerShadow: flat.slice(28, 32),
       },
     ];
   }
