@@ -222,10 +222,8 @@ export class BatchManager {
       });
       delete this.#batchableDrawcallsCache[shape.uid];
     } else {
-      if (shape instanceof Path)
-        this.#nonBatchableDrawcallsCache[shape.uid]?.forEach((d) =>
-          d.destroy(),
-        );
+      // Every non-batched drawcall belongs exclusively to this shape.
+      this.#nonBatchableDrawcallsCache[shape.uid]?.forEach((d) => d.destroy());
       delete this.#nonBatchableDrawcallsCache[shape.uid];
     }
   }
