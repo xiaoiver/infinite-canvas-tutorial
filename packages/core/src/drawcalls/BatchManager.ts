@@ -1,3 +1,5 @@
+import { TextBatch } from './TextBatch';
+import { TEXT_BATCH_GLYPHS } from '../utils/text-batching';
 import { Buffer, Device, RenderPass } from '@antv/g-device-api';
 import {
   Drawcall,
@@ -32,6 +34,7 @@ type OrderedPage = {
   drawcalls: Drawcall[];
   shapes: Shape[];
   batchable: boolean;
+  glyphs: number;
 };
 
 /**
@@ -91,6 +94,7 @@ export class BatchManager {
   #instancesCache = new WeakMap<typeof Shape, Drawcall[][]>();
 
   #ordered = false;
+  #allowTextBatches = false;
   #allowPathInstances = false;
   #frameShapes: Shape[] = [];
   #orderedPages: OrderedPage[] = [];
@@ -196,7 +200,11 @@ export class BatchManager {
       this.#frameShapes.push(shape);
       return;
     }
-    if (shape.batchable && !(shape instanceof Path)) {
+    if (
+      shape.batchable &&
+      !(shape instanceof Path) &&
+      !(shape instanceof Text)
+    ) {
       const drawcalls = this.getOrCreateBatchableDrawcalls(shape);
       if (this.#drawcallsToFlush.indexOf(drawcalls[0]) === -1) {
         this.#drawcallsToFlush.push(...drawcalls);
@@ -215,8 +223,16 @@ export class BatchManager {
    * * invisible.
    */
   remove(shape: Shape) {
-    if (this.#ordered) return; // The next ordered plan contains visible members only.
-    if (shape.batchable && !(shape instanceof Path)) {
+    if (this.#ordered) {
+      this.#frameShapes = this.#frameShapes.filter((s) => s !== shape);
+      this.#orderedPlanDirty = true;
+      return;
+    }
+    if (
+      shape.batchable &&
+      !(shape instanceof Path) &&
+      !(shape instanceof Text)
+    ) {
       this.getOrCreateBatchableDrawcalls(shape).forEach((drawcall) => {
         drawcall.remove(shape);
       });
@@ -251,7 +267,11 @@ export class BatchManager {
     this.#texturePool.destroy();
   }
 
-  clear(ordered = false, allowPathInstances = ordered) {
+  clear(
+    ordered = false,
+    allowPathInstances = ordered,
+    allowTextBatches = false,
+  ) {
     if (this.#ordered !== ordered) {
       // Changing planning modes must not retain unreachable batch resources.
       const unique = new Set<Drawcall>([
@@ -269,6 +289,9 @@ export class BatchManager {
       this.#orderedInputShapes = [];
       this.#orderedPlanDirty = true;
     }
+    if (this.#allowTextBatches !== allowTextBatches)
+      this.#orderedPlanDirty = true;
+    this.#allowTextBatches = allowTextBatches;
     if (this.#allowPathInstances !== allowPathInstances)
       this.#orderedPlanDirty = true;
     this.#ordered = ordered;
@@ -303,16 +326,23 @@ export class BatchManager {
     }
     const next: OrderedPage[] = [];
     for (const shape of this.#frameShapes) {
+      const textKey = this.#allowTextBatches ? TextBatch.batchKey(shape) : null;
       const pathKey = this.#allowPathInstances
         ? PathInstances.batchKey(shape)
         : null;
       const ctors =
-        pathKey === null ? this.collectDrawcallCtors(shape) : [PathInstances];
+        textKey !== null
+          ? [TextBatch]
+          : pathKey === null
+          ? this.collectDrawcallCtors(shape)
+          : [PathInstances];
       if (!ctors?.length) continue;
       // Unsupported Paths remain individual full meshes, even if batchable was
       // explicitly requested. Mesh's ordinary shader has no instance attributes.
       const batchable =
-        shape.batchable && !(shape instanceof Path && pathKey === null);
+        shape.batchable &&
+        !(shape instanceof Path && pathKey === null) &&
+        !(shape instanceof Text && textKey === null);
       const ctorKey = ctors
         .map((ctor) => {
           if (!this.#ctorIds.has(ctor))
@@ -321,7 +351,9 @@ export class BatchManager {
         })
         .join(',');
       const key =
-        pathKey === null
+        textKey !== null
+          ? `text:${textKey}`
+          : pathKey === null
           ? `${ctorKey}:${batchable ? 'batch' : shape.uid}`
           : `path:${pathKey}`;
       let page = next[next.length - 1];
@@ -330,7 +362,10 @@ export class BatchManager {
         page.batchable &&
         (!page.key.startsWith('path:') ||
           page.shapes.length < PATH_INSTANCE_PAGE_SIZE) &&
+        (textKey === null ||
+          page.glyphs + TextBatch.glyphCount(shape) <= TEXT_BATCH_GLYPHS) &&
         page.drawcalls.every((d) => {
+          if (textKey !== null) return true; // Exact material key checked above; budget is per page.
           const previous = d.shapes;
           d.shapes = page.shapes;
           try {
@@ -346,6 +381,7 @@ export class BatchManager {
           key,
           batchable,
           shapes: [],
+          glyphs: 0,
           drawcalls:
             pathKey !== null
               ? []
@@ -365,6 +401,7 @@ export class BatchManager {
         next.push(page);
       }
       page.shapes.push(shape);
+      if (textKey !== null) page.glyphs += TextBatch.glyphCount(shape);
     }
     for (const page of next) {
       if (page.key.startsWith('path:')) {

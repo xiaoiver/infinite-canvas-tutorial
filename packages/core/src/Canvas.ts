@@ -105,6 +105,8 @@ export interface CanvasConfig {
   }>;
   /** Experimental ordered instancing for repeated solid Path fills; defaults off. */
   pathInstancing?: boolean;
+  /** Experimental ordered ordinary-text geometry batching; defaults off. */
+  textBatching?: boolean;
   plugins?: Partial<{
     selector: Partial<SelectorPluginOptions>;
     dragndrop: Partial<DragndropPluginOptions>;
@@ -155,6 +157,7 @@ export class Canvas {
       canvas,
       renderer = 'webgl',
       pathInstancing = false,
+      textBatching = false,
       shaderCompilerPath = '',
       devicePixelRatio,
       mode = CanvasMode.HAND,
@@ -195,6 +198,7 @@ export class Canvas {
       renderer,
       shaderCompilerPath,
       pathInstancing,
+      textBatching,
       devicePixelRatio: dpr,
       themeColors,
       supportsPointerEvents,
@@ -390,7 +394,7 @@ export class Canvas {
         this.render();
       });
     } finally {
-      if (!options.grid || this.pathInstancing) {
+      if (!options.grid || this.pathInstancing || this.textBatching) {
         this.#renderDirtyFlag = true;
         this.render();
       }
@@ -405,6 +409,16 @@ export class Canvas {
   removeChild(shape: Shape) {
     this.#renderDirtyFlag = true;
     return this.#root.removeChild(shape);
+  }
+
+  get textBatching() {
+    return this.#pluginContext.textBatching ?? false;
+  }
+  set textBatching(enabled: boolean) {
+    if (this.textBatching !== enabled) {
+      this.#pluginContext.textBatching = enabled;
+      this.#renderDirtyFlag = true;
+    }
   }
 
   get pathInstancing() {

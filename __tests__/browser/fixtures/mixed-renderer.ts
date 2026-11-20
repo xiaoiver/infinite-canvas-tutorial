@@ -183,8 +183,8 @@ function coreShape(node: SerializedNode): Shape {
     return new Rect({ ...paint, x, y, width: 20, height: 20 });
   if (node.type === 'ellipse')
     return new Circle({ ...paint, cx: x + 10, cy: y + 10, r: 10 });
-  if (node.type === 'text')
-    return new Text({
+  if (node.type === 'text') {
+    const text = new Text({
       ...paint,
       x,
       y,
@@ -193,6 +193,9 @@ function coreShape(node: SerializedNode): Shape {
       fontSize: 12,
       textBaseline: 'top',
     });
+    text.batchable = true;
+    return text;
+  }
   if (node.type === 'polyline') {
     const shape = new Polyline({
       ...paint,
@@ -523,7 +526,104 @@ async function removeTexts(count: number) {
   }
   return state();
 }
+async function textPresence(mode: 'hidden' | 'culled' | 'visible') {
+  const textNodes = nodes.filter((n) => n.type === 'text');
+  if (core) {
+    shapes.forEach((s, i) => {
+      if (!(s instanceof Text)) return;
+      s.visible = mode !== 'hidden';
+      s.x = mode === 'culled' ? 100000 : nodes[i].x;
+    });
+    core.render();
+  } else {
+    await api!.edit(
+      (e) =>
+        e.updateNodes(
+          textNodes.map((n) => ({
+            ...n,
+            visibility: mode === 'hidden' ? 'hidden' : 'visible',
+            x: mode === 'culled' ? 100000 : n.x,
+          })),
+        ),
+      { capture: 'NEVER' },
+    );
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
+function textPicking() {
+  if (core) {
+    const list = core
+      .elementsFromBBox(0, 0, 960, 640)
+      .filter((s) => s instanceof Text);
+    return {
+      document: shapes
+        .filter((s) => s instanceof Text)
+        .map((s) => (s as Text).content),
+      hits: list.map((s) => shapes.indexOf(s)),
+    };
+  }
+  return {
+    document: api!
+      .getNodes()
+      .filter((n) => n.type === 'text')
+      .map((n) => (n as TextSerializedNode).content),
+    hits: api!
+      .elementsFromBBox(0, 0, 960, 640)
+      .filter((e) => textNodesIds().has(api!.getNodeByEntity(e)?.id))
+      .map((e) => api!.getNodeByEntity(e).id),
+  };
+}
+function textNodesIds() {
+  return new Set(nodes.filter((n) => n.type === 'text').map((n) => n.id));
+}
+async function textScenario(kind: 'overlap' | 'transform') {
+  let j = 0;
+  nodes = nodes.map((node) =>
+    node.type !== 'text'
+      ? node
+      : {
+          ...node,
+          x: 120 + (j++ % 5) * 3,
+          y: 120 + Math.floor(j / 5) * 4,
+          opacity: 0.6,
+          rotation: kind === 'transform' ? 30 : 0,
+        },
+  );
+  if (core) {
+    nodes.forEach((node, i) => {
+      if (node.type !== 'text') return;
+      const text = shapes[i] as Text;
+      text.x = node.x;
+      text.y = node.y;
+      text.opacity = node.opacity!;
+      text.rotation = (node.rotation! * Math.PI) / 180;
+    });
+    core.render();
+  } else {
+    await api!.edit(
+      (e) => e.updateNodes(nodes.filter((n) => n.type === 'text')),
+      { capture: 'NEVER' },
+    );
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
+async function textBatching(enabled: boolean) {
+  if (core) {
+    core.textBatching = enabled;
+    core.render();
+  } else {
+    api!.setTextBatchingEnabled(enabled);
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
 const harness = {
+  textPresence,
+  textPicking,
+  textScenario,
+  textBatching,
   configure,
   measure,
   state,

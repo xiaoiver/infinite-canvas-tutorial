@@ -30,6 +30,9 @@ import {
   type API,
   type Entity,
 } from '../../packages/ecs/src';
+import { TextBatch } from '../../packages/ecs/src/drawcalls/TextBatch';
+import * as textBatching from '../../packages/ecs/src/utils/text-batching';
+import { textBatchingContract } from '../contracts/text-batching';
 import { BatchManager } from '../../packages/ecs/src/systems/BatchManager';
 import {
   Drawcall,
@@ -72,6 +75,8 @@ function shape(
   });
   const entity = {
     has: (component: unknown) => data.has(component),
+    hasAllOf: (...components: unknown[]) =>
+      components.every((c) => data.has(c)),
     hasSomeOf: (...components: unknown[]) =>
       components.some((component) => data.has(component)),
     read: (component: unknown) => {
@@ -1004,4 +1009,99 @@ it('splits Path instance capacity and retires every unused geometry-specific pag
     queued(batch);
     expect(d.destroyed).toBe(true);
   }
+});
+
+textBatchingContract(textBatching);
+function ordinaryLabel(content = 'AB') {
+  return shape(
+    Text,
+    true,
+    [
+      Text,
+      {
+        content,
+        fontFamily: 'sans-serif',
+        fontWeight: 400,
+        fontStyle: 'normal',
+        fontSize: 12,
+        fontVariant: 'normal',
+        esdt: true,
+      },
+    ],
+    [GlobalTransform, { matrix: Mat3.copy(Mat3.IDENTITY) }],
+    [
+      ComputedTextMetrics,
+      {
+        width: 20,
+        height: 14,
+        lineHeight: 14,
+        lines: ['AB'],
+        lineMetrics: [{ width: 20 }],
+        fontMetrics: { fontSize: 12, fontBoundingBoxAscent: 10 },
+      },
+    ],
+    [FillLayers, { layers: [{ type: 'solid', value: 'red' }] }],
+  );
+}
+it('opts ordinary text in on screen, splits glyph capacity and retires migrated pages', () => {
+  const batch = manager(),
+    a = ordinaryLabel('A'.repeat(2048)),
+    b = ordinaryLabel('B'.repeat(2048)),
+    c = ordinaryLabel('C');
+  [a, b, c].forEach((n) => batch.add(n.entity));
+  expect(queued(batch).map((d) => d.constructor)).toEqual([
+    SDFText,
+    SDFText,
+    SDFText,
+  ]);
+  batch.setTextBatchingEnabled(true);
+  const pages = queued(batch);
+  expect(pages.map((d) => d.shapes)).toEqual([
+    [a.entity, b.entity],
+    [c.entity],
+  ]);
+  expect(pages.every((d) => d instanceof TextBatch && !d.isInstanced)).toBe(
+    true,
+  );
+  b.data.get(Text).content = '中文';
+  batch.add(b.entity);
+  expect(queued(batch).map((d) => d.constructor)).toEqual([
+    TextBatch,
+    SDFText,
+    TextBatch,
+  ]);
+  batch.setTextBatchingEnabled(false);
+  expect(queued(batch).every((d) => d.constructor === SDFText)).toBe(true);
+  expect(pages.every((d) => d.destroyed)).toBe(true);
+  const exp = manager('export');
+  exp.setTextBatchingEnabled(true);
+  exp.add(a.entity);
+  expect(queued(exp)[0].constructor).toBe(SDFText);
+  batch.setTextBatchingEnabled(true);
+  batch.remove(a.entity);
+  batch.remove(b.entity);
+  batch.remove(c.entity);
+  expect(queued(batch)).toEqual([]);
+});
+it('keeps ordinary text barriers for paint, opacity, UI, ancestors and LOD', () => {
+  const batch = manager();
+  batch.setTextBatchingEnabled(true);
+  const a = ordinaryLabel(),
+    b = ordinaryLabel();
+  b.data.set(Opacity, { opacity: 0.5 });
+  [a, b].forEach((n) => batch.add(n.entity));
+  expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity], [b.entity]]);
+  b.data.set(UI, {});
+  batch.add(b.entity);
+  expect(queued(batch)[1].constructor).toBe(SDFText);
+  b.data.delete(UI);
+  b.data.set(Children, {
+    parent: shape(Rect, false, [Opacity, { opacity: 0.4 }]).entity,
+  });
+  batch.add(b.entity);
+  expect(queued(batch)[1].constructor).toBe(SDFText);
+  b.data.delete(Children);
+  b.data.set(ComputedLOD, { level: 'text-proxy' });
+  batch.add(b.entity);
+  expect(queued(batch)[1].constructor).toBe(TextProxy);
 });

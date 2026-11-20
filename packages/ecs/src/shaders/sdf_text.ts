@@ -51,7 +51,7 @@ out vec2 v_FillUv;
 void main() {
   ${wireframe_vert}
 
-  #ifdef USE_INSTANCES
+  #if defined(USE_INSTANCES) || defined(USE_TEXT_BATCH)
     float zIndex = a_Position.z;
   #else
     float zIndex = u_ZIndexStrokeWidth.x;
