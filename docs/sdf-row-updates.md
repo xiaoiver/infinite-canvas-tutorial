@@ -113,3 +113,10 @@ in the normal browser suite.
 -   All four ordinary benchmark modes and both diagnostic backends passed.
 -   Full local headless-gl SSR was not run: this Node 24 dependency cache lacks its
     optional native binding. The PR's repository CI must still pass before merging.
+
+The first repository CI run found an older `batching.spec.ts` expectation that a
+material edit always uploads both a 128-byte attribute row and a 24-byte matrix
+row. The test now requires only the changed attribute row, then separately checks
+an unchanged edit (zero uploads) and a transform edit (one 24-byte matrix row),
+with zero allocations throughout. All seven batching browser cases passed locally.
+This updates the observed contract without changing runtime source or thresholds.
