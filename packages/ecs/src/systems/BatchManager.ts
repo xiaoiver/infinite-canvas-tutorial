@@ -1,3 +1,4 @@
+import { TextBatch } from '../drawcalls/TextBatch';
 import {
   Buffer,
   Device,
@@ -137,6 +138,7 @@ export class BatchManager {
   #ctorIds = new Map<typeof Drawcall, number>();
   #dirty = false;
   #pathInstancing = false;
+  #textBatching = false;
   #changed = new Set<Entity>();
   #ordered = false;
   #hideUIs = false;
@@ -150,6 +152,14 @@ export class BatchManager {
     private readonly intent: 'screen' | 'export' = 'screen',
   ) {}
 
+  setTextBatchingEnabled(enabled: boolean) {
+    enabled = enabled && this.intent === 'screen';
+    if (enabled !== this.#textBatching) {
+      this.#textBatching = enabled;
+      this.#dirty = true;
+    }
+  }
+
   setPathInstancingEnabled(enabled: boolean) {
     enabled = enabled && this.intent === 'screen';
     if (enabled !== this.#pathInstancing) {
@@ -161,7 +171,7 @@ export class BatchManager {
   private collectDrawcallCtors(shape: Entity) {
     if (this.#pathInstancing && this.batchKey(shape, [PathInstances]) !== null)
       return [PathInstances];
-    return getDrawcallCtors(shape, this.intent).filter((Ctor) => {
+    const ctors = getDrawcallCtors(shape, this.intent).filter((Ctor) => {
       // Not every renderer needs a geometry-specific channel check.
       return (
         !(Ctor as typeof Drawcall & { check?: (s: Entity) => boolean }).check ||
@@ -170,6 +180,14 @@ export class BatchManager {
         )
       );
     });
+    if (
+      this.#textBatching &&
+      ctors.length === 1 &&
+      ctors[0] === SDFText &&
+      this.batchKey(shape, [TextBatch]) !== null
+    )
+      return [TextBatch];
+    return ctors;
   }
 
   private createDrawcalls(
@@ -321,7 +339,8 @@ export class BatchManager {
         if (retained.has(group)) continue;
         // One empty page per supported key is enough for culling/reentry reuse.
         if (
-          key && !nextPools.has(key) &&
+          key &&
+          !nextPools.has(key) &&
           (group[0].constructor as typeof Drawcall).retainEmptyPage
         ) {
           group.forEach((d) => {

@@ -254,7 +254,11 @@ export class Renderer implements Plugin {
         this.#uniformLegacyObject,
       );
 
-      this.#batchManager.clear(!!context.pathInstancing, !this.#enableCapture);
+      this.#batchManager.clear(
+        !!(context.pathInstancing || context.textBatching),
+        !this.#enableCapture && !!context.pathInstancing,
+        !this.#enableCapture && !!context.textBatching,
+      );
       this.#zIndexCounter = 1;
     });
 

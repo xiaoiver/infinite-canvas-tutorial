@@ -825,6 +825,9 @@ export class MeshPipeline extends System {
       : renderer.batchManager;
 
     try {
+      batchManager.setTextBatchingEnabled(
+        !raster && canvas.read(Canvas).textBatching,
+      );
       batchManager.setPathInstancingEnabled(
         !raster && canvas.read(Canvas).pathInstancing,
       );

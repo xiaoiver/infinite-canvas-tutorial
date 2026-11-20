@@ -282,6 +282,8 @@ export class SDFText extends Drawcall {
     return !!this.shapes[0].read(Text).bitmapFont;
   }
 
+  protected bakeGlyphVertices(_shape: Entity, _positions: number[]): void {}
+
   createGeometry(): void {
     const {
       fontFamily,
@@ -420,6 +422,7 @@ export class SDFText extends Drawcall {
         bitmapFont,
         fontScale,
       });
+      this.bakeGlyphVertices(object, charPositionsBuffer);
       indicesOff = indicesOffset;
 
       uvOffsets.push(...charUVOffsetBuffer);

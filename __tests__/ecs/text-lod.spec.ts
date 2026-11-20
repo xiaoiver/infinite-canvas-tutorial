@@ -314,3 +314,17 @@ it('restores full for anomalous per-line metrics rather than silently dropping t
   );
   expect(level()).toBe('full');
 });
+
+it('keeps text batching canvas-local, queued and outside document history', async () => {
+  const [a, b] = world.apis;
+  const before = JSON.stringify(a.getNodes());
+  expect(a.getCanvas().read(Canvas).textBatching).toBe(false);
+  a.setTextBatchingEnabled(true);
+  await world.frame();
+  expect(a.getCanvas().read(Canvas).textBatching).toBe(true);
+  expect(b.getCanvas().read(Canvas).textBatching).toBe(false);
+  expect(JSON.stringify(a.getNodes())).toBe(before);
+  a.setTextBatchingEnabled(false);
+  await world.frame();
+  expect(a.getCanvas().read(Canvas).textBatching).toBe(false);
+});
