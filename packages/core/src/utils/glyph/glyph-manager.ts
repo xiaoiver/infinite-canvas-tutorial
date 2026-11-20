@@ -134,22 +134,21 @@ export class GlyphManager {
     esdt: boolean,
     fill: string,
     preloadAscii = false,
+    seed?: Readonly<Record<string, StyleGlyph>>,
   ) {
-    const existedChars = new Set(Object.keys(this.glyphMap[fontStack] ?? {}));
+    // A fresh snapshot may borrow immutable CPU glyphs from the same raster configuration.
+    const retained = this.glyphMap[fontStack] ?? seed ?? {};
+    const existedChars = new Set(Object.keys(retained));
     // Space metrics are needed even by empty editable text. ASCII warming is
     // explicit; ordinary labels only rasterize their requested graphemes.
-    const newChars = new Set<string>(
-      this.glyphMap[fontStack]
-        ? []
-        : preloadAscii
-        ? getDefaultCharacterSet()
-        : [' '],
-    );
+    const initialChars = this.glyphMap[fontStack]
+      ? [] : preloadAscii ? getDefaultCharacterSet() : [' '];
+    const newChars = new Set(initialChars.filter((char) => !existedChars.has(char)));
     for (const char of DOMAdapter.get().splitGraphemes(text)) {
       if (!existedChars.has(char)) newChars.add(char);
     }
 
-    if (newChars.size) {
+    if (newChars.size || (!this.glyphAtlasTexture && seed)) {
       const glyphMap = Array.from(newChars)
         .map((char) => {
           return this.generateSDF(
@@ -171,7 +170,7 @@ export class GlyphManager {
       // A failed allocation/upload must leave the previous atlas usable for retry.
       const nextMap = {
         ...this.glyphMap,
-        [fontStack]: { ...this.glyphMap[fontStack], ...glyphMap },
+        [fontStack]: { ...retained, ...glyphMap },
       };
       const nextAtlas = new GlyphAtlas(nextMap);
       const { width: atlasWidth, height: atlasHeight, data } = nextAtlas.image;

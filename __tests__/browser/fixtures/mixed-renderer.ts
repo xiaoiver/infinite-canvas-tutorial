@@ -28,6 +28,7 @@ import {
   Pen,
   CheckboardStyle,
   type SerializedNode,
+  type TextSerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
 import { settleECSFrames } from './ecs-frames';
 import { mixedFrameProbe } from './mixed-frame-probe';
@@ -429,16 +430,28 @@ async function destroy() {
   return baseline;
 }
 // Shared by glyph-atlas correctness tests; the baseline benchmark does not call these.
-async function editText(content?: string) {
-  if (content !== undefined)
+async function editText(content?: string | string[]) {
+  if (content !== undefined) {
+    let textIndex = 0;
     nodes = nodes.map((node) =>
-      node.type === 'text' ? { ...node, content } : node,
+      node.type === 'text'
+        ? {
+            ...node,
+            content: Array.isArray(content)
+              ? content[textIndex++ % content.length]
+              : content,
+          }
+        : node,
     );
+  }
   if (core) {
     core.camera.zoom = 1;
     if (content !== undefined)
-      for (const shape of shapes)
-        if (shape instanceof Text) shape.content = content;
+      for (let i = 0; i < shapes.length; i++)
+        if (shapes[i] instanceof Text)
+          (shapes[i] as Text).content = (
+            nodes[i] as TextSerializedNode
+          ).content;
     core.render();
   } else {
     await api!.edit(
@@ -474,7 +487,52 @@ async function raster() {
     });
   });
 }
-const harness = { configure, measure, state, destroy, editText, raster };
+async function editOneText(index: number, content: string) {
+  const node = nodes.filter((n) => n.type === 'text')[index];
+  if (!node) throw new Error('No text at index');
+  const updated = { ...node, content };
+  const i = nodes.indexOf(node);
+  nodes[i] = updated;
+  if (core) {
+    (shapes[i] as Text).content = content;
+    core.render();
+  } else {
+    await api!.edit((e) => e.updateNodes([updated]), { capture: 'NEVER' });
+    await settleECSFrames(api!, 2);
+  }
+  return state();
+}
+async function removeTexts(count: number) {
+  const remove = new Set<SerializedNode>(
+    nodes.filter((n) => n.type === 'text').slice(0, count),
+  );
+  if (core) {
+    shapes = shapes.filter((shape, i) => {
+      if (!remove.has(nodes[i])) return true;
+      core!.removeChild(shape);
+      return false;
+    });
+    nodes = nodes.filter((n) => !remove.has(n));
+    core.render();
+  } else {
+    await api!.edit((e) => e.deleteNodesById([...remove].map((n) => n.id)), {
+      capture: 'NEVER',
+    });
+    nodes = nodes.filter((n) => !remove.has(n));
+    await settleECSFrames(api!, 2);
+  }
+  return state();
+}
+const harness = {
+  configure,
+  measure,
+  state,
+  destroy,
+  editText,
+  raster,
+  editOneText,
+  removeTexts,
+};
 declare global {
   interface Window {
     mixedRenderer: typeof harness;
