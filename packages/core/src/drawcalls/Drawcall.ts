@@ -116,6 +116,8 @@ export abstract class Drawcall {
     uniformBuffer: Buffer,
     uniformLegacyObject: Record<string, unknown>,
   ) {
+    // A retired drawcall can still be referenced by the current frame's queue.
+    if (this.destroyed) return;
     this.prepareGeometry(uniformLegacyObject);
 
     if (this.geometryDirty) {

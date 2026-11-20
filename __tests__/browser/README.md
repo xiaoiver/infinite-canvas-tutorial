@@ -381,3 +381,12 @@ ECS, with grouped and interleaved painter order. Small Chromium/WebKit tests
 verify visible pixels, ordering controls, real native work and teardown. The
 full 1,000/10,000-object matrix runs separately with `pnpm bench:mixed-renderers`;
 see [the measurement contract](../../docs/mixed-renderer-benchmark.md).
+
+The Core text lifetime regression uses full glyph and underline drawcalls with
+both the default legacy planner and the ordered planner. Repeated document replacement,
+culling and scene-graph reentry must release shape-owned buffers/textures, keep
+pixels and picking stable, and preserve complete raster exports. Native object
+counts must return to the device startup baseline after canvas destruction;
+program/input-layout caches may remain live while the canvas is running. The
+companion unit suite checks multiple owned drawcalls, removal before the queued
+submission, fresh drawcalls on reentry, and shared-batch survivor ownership.
