@@ -734,6 +734,47 @@ async function textBatching(enabled: boolean) {
   }
   return state();
 }
+async function solidDepthScene() {
+  // With ten interleaved nodes, an ellipse immediately precedes the second text.
+  // Removing the first text changes numeric ranks without dirtying that ellipse.
+  nodes = nodes.map((node, i) =>
+    i === 6
+      ? { ...node, x: 120, y: 120 }
+      : i === 7
+      ? {
+          ...node,
+          x: 120,
+          y: 120,
+          content: 'MMMM',
+          fontSize: 24,
+          fills: [{ type: 'solid' as const, value: '#ef4444' }],
+        }
+      : node,
+  );
+  if (core) {
+    const circle = shapes[6] as Circle,
+      text = shapes[7] as Text;
+    circle.cx = 130;
+    circle.cy = 130;
+    text.x = 120;
+    text.y = 120;
+    text.content = 'MMMM';
+    text.fontSize = 24;
+    text.fill = '#ef4444';
+    core.camera.zoom = 1;
+    core.render();
+  } else {
+    await api!.edit(
+      (e) => {
+        e.setAppState({ cameraZoom: 1 });
+        e.updateNodes([nodes[6], nodes[7]]);
+      },
+      { capture: 'NEVER' },
+    );
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
 // Pixel parity between independent full SDF draws and instance rows.
 async function solidStyles() {
   let ordinal = 0;
@@ -906,6 +947,7 @@ async function profile(enabled: boolean) {
   }
 }
 const harness = {
+  solidDepthScene,
   solidStyles,
   solidBatching,
   profile,

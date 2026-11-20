@@ -234,6 +234,7 @@ for (const backend of ['core', 'ecs']) {
     const after = await page.evaluate(() => window.glyphAtlasProbe());
     expect(frames.visible).toBe(1000);
     expect(frames.native.drawcalls).toBe(407);
+    expect(frames.native.bufferBytes).toBe(backend === 'core' ? 1456 : 8008);
     expect(frames.webglError).toBe(0);
     expect(after.textBatchKeyChecks - camera.textBatchKeyChecks).toBe(600);
     expect(after.textLayoutChecks - camera.textLayoutChecks).toBe(204);

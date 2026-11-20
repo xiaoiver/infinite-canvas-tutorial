@@ -22,6 +22,7 @@ import { Circle, Ellipse, Rect, Shape } from '../shapes';
 import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
 import { isPattern, isString, paddingMat3 } from '../utils';
+import { InstanceBuffer } from '../utils/instance-buffer';
 
 const NO_INSTANCE_UNIFORMS = Object.freeze({});
 
@@ -36,6 +37,9 @@ export class SDF extends Drawcall {
 
   #uniformBuffer: Buffer;
   #texture: Texture;
+  #attributes?: InstanceBuffer;
+  #matrices?: InstanceBuffer;
+  #fullRenderOrder?: number;
 
   static useDash(shape: Shape) {
     const { strokeDasharray } = shape;
@@ -336,31 +340,69 @@ export class SDF extends Drawcall {
   }
 
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
+    if (this.destroyed) return;
+    const depthChanged = this.instanced
+      ? this.shapes.some((shape, i) => {
+          const data = this.vertexBufferDatas[1];
+          return (
+            !data ||
+            !Object.is(
+              data[i * 32 + 16],
+              Math.fround(shape.globalRenderOrder / ZINDEX_FACTOR),
+            ) ||
+            !Object.is(
+              data[i * 32 + 2],
+              Math.fround(
+                (shape.globalRenderOrder + (1 / this.shapes.length) * i) /
+                  ZINDEX_FACTOR,
+              ),
+            )
+          );
+        })
+      : this.#fullRenderOrder !== this.shapes[0]?.globalRenderOrder;
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
-      this.geometryDirty
+      this.geometryDirty ||
+      depthChanged
     ) {
       if (this.instanced) {
-        const data = this.vertexBufferDatas[1];
-        const matrices = this.vertexBufferDatas[2];
-        this.shapes.forEach((shape, i, total) => {
-          const [buffer] = this.generateBuffer(shape, i, total.length);
-          data.set(buffer, i * 32);
-          const m = shape.worldTransform;
-          const offset = i * 6;
-          matrices[offset] = m.a;
-          matrices[offset + 1] = m.b;
-          matrices[offset + 2] = m.c;
-          matrices[offset + 3] = m.d;
-          matrices[offset + 4] = m.tx;
-          matrices[offset + 5] = m.ty;
-        });
-        for (const slot of [1, 2]) {
-          this.vertexBuffers[slot].setSubData(
-            0,
-            new Uint8Array(this.vertexBufferDatas[slot].buffer),
+        if (
+          !this.#attributes?.matches(
+            this.vertexBufferDatas[1],
+            this.vertexBuffers[1],
+          )
+        ) {
+          this.#attributes?.dispose();
+          this.#attributes = new InstanceBuffer(
+            this.vertexBufferDatas[1],
+            this.vertexBuffers[1],
+            32,
           );
         }
+        if (
+          !this.#matrices?.matches(
+            this.vertexBufferDatas[2],
+            this.vertexBuffers[2],
+          )
+        ) {
+          this.#matrices?.dispose();
+          this.#matrices = new InstanceBuffer(
+            this.vertexBufferDatas[2],
+            this.vertexBuffers[2],
+            6,
+          );
+        }
+        this.shapes.forEach((shape, i, total) => {
+          const [buffer] = this.generateBuffer(shape, i, total.length);
+          this.#attributes.write(i, buffer);
+          const m = shape.worldTransform;
+          this.#matrices.set(i, 0, m.a);
+          this.#matrices.set(i, 1, m.b);
+          this.#matrices.set(i, 2, m.c);
+          this.#matrices.set(i, 3, m.d);
+          this.#matrices.set(i, 4, m.tx);
+          this.#matrices.set(i, 5, m.ty);
+        });
       } else {
         const { worldTransform } = this.shapes[0];
         const [buffer, legacyObject] = this.generateBuffer(
@@ -383,13 +425,21 @@ export class SDF extends Drawcall {
           uniformLegacyObject.u_FillImage = this.#texture;
         }
         this.program.setUniformsLegacy(uniformLegacyObject);
+        this.#fullRenderOrder = this.shapes[0].globalRenderOrder;
       }
 
       if (this.useWireframe && this.geometryDirty) {
+        this.#attributes?.flush(this.shapes.length);
+        this.#matrices?.flush(this.shapes.length);
+        this.#attributes?.dispose();
+        this.#matrices?.dispose();
+        this.#attributes = this.#matrices = undefined;
         this.generateWireframe();
       }
     }
 
+    this.#attributes?.flush(this.shapes.length);
+    this.#matrices?.flush(this.shapes.length);
     this.program.setUniformsLegacy(uniformLegacyObject);
     renderPass.setPipeline(this.pipeline);
 
@@ -405,6 +455,9 @@ export class SDF extends Drawcall {
   }
 
   destroy(): void {
+    this.#attributes?.dispose();
+    this.#matrices?.dispose();
+    this.#attributes = this.#matrices = undefined;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();

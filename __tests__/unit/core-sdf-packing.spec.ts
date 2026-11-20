@@ -141,9 +141,7 @@ it('keeps allocated instance storage through paint and transform updates, then r
   expect([...new Float32Array(buffers[3].data.buffer)].slice(0, 6)).toEqual([
     2, 3, 4, 5, 6, 7,
   ]);
-  expect(buffers[2].setSubData.mock.calls.at(-1)[1].byteLength).toBe(
-    2 * 32 * 4,
-  );
+  expect(buffers[2].setSubData.mock.calls.at(-1)[1].byteLength).toBe(32 * 4);
   draw.shapes = [b];
   draw.createGeometry();
   draw.render(pass, {});

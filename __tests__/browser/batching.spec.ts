@@ -208,7 +208,7 @@ test('same-constructor material changes migrate between full and solid pages wit
   expect(result.restored.groups).toHaveLength(1);
 });
 
-test('camera-only frames upload no instance data; one material edit updates one row without allocations', async ({
+test('camera and unchanged edits skip instance uploads; paint and transform rows update independently', async ({
   page,
 }) => {
   const result = await page.evaluate(async () => {
@@ -228,12 +228,26 @@ test('camera-only frames upload no instance data; one material edit updates one 
       bytes: window.batchUploads.bytes,
       allocations: window.batchUploads.allocations,
     };
-    return { camera, edit };
+    window.batchUploads.reset();
+    await h.edit('r1', { opacity: 0.3 });
+    const unchanged = {
+      calls: window.batchUploads.calls,
+      bytes: window.batchUploads.bytes,
+      allocations: window.batchUploads.allocations,
+    };
+    window.batchUploads.reset();
+    await h.edit('r1', { x: 35 });
+    const transform = {
+      calls: window.batchUploads.calls,
+      bytes: window.batchUploads.bytes,
+      allocations: window.batchUploads.allocations,
+    };
+    return { camera, edit, unchanged, transform };
   });
   expect(result.camera).toEqual({ calls: 0, bytes: 0, allocations: 0 });
-  expect(result.edit.allocations).toBe(0);
-  expect(result.edit.calls).toBe(2);
-  expect(result.edit.bytes).toBe(152);
+  expect(result.edit).toEqual({ calls: 1, bytes: 128, allocations: 0 });
+  expect(result.unchanged).toEqual({ calls: 0, bytes: 0, allocations: 0 });
+  expect(result.transform).toEqual({ calls: 1, bytes: 24, allocations: 0 });
 });
 
 test('flag changes, visibility and culling reentry, and same-frame deletion retain no stale instances', async ({

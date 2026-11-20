@@ -18,17 +18,19 @@ it('preserves affine translation, uploads only changed rows, and grows buffers w
               m01: 3,
               m10: 4,
               m11: 5,
-              m20: 10 + row,
+              m20: translations?.get(nodes[row]) ?? 10 + row,
               m21: 20 + row,
             },
           };
         },
       } as unknown as Entity),
   );
+  const values = new Map(nodes.map((node) => [node, new Array(32).fill(7)]));
+  const translations = new Map(nodes.map((node, row) => [node, 10 + row]));
   // GPU upload boundary; colors/opacity and shader results are tested in Chromium.
   jest
     .spyOn(draw, 'generateBuffer')
-    .mockReturnValue([new Array(32).fill(7), {}]);
+    .mockImplementation((node: any) => [values.get(node), {}]);
   Object.assign(draw, { program: { setUniformsLegacy: jest.fn() } });
   draw.shapes = nodes.slice(0, 3);
   draw.createGeometry();
@@ -44,6 +46,12 @@ it('preserves affine translation, uploads only changed rows, and grows buffers w
   );
   draw.dirtyInstances.add(nodes[1]);
   draw.render(gpu.pass, null, {});
+  instanceBuffers.forEach((buffer) =>
+    expect(buffer.setSubData).not.toHaveBeenCalled(),
+  );
+  values.get(nodes[1])[8] = 9;
+  draw.dirtyInstances.add(nodes[1]);
+  draw.render(gpu.pass, null, {});
   expect(
     instanceBuffers.map((buffer) =>
       buffer.setSubData.mock.calls.map(([offset, data]) => [
@@ -51,7 +59,19 @@ it('preserves affine translation, uploads only changed rows, and grows buffers w
         data.byteLength,
       ]),
     ),
-  ).toEqual([[[128, 128]], [[24, 24]]]);
+  ).toEqual([[[128, 128]], []]);
+  instanceBuffers.forEach((buffer) => buffer.setSubData.mockClear());
+  translations.set(nodes[1], 12);
+  draw.dirtyInstances.add(nodes[1]);
+  draw.render(gpu.pass, null, {});
+  expect(
+    instanceBuffers.map((buffer) =>
+      buffer.setSubData.mock.calls.map(([offset, data]) => [
+        offset,
+        data.byteLength,
+      ]),
+    ),
+  ).toEqual([[], [[24, 24]]]);
   draw.shapes = nodes;
   draw.createGeometry();
   expect(gpu.buffers).toHaveLength(6);
@@ -64,7 +84,7 @@ it('preserves affine translation, uploads only changed rows, and grows buffers w
   expect(gpu.buffers).toHaveLength(6);
   expect(
     [...new Float32Array(gpu.buffers[5].bytes.buffer)].slice(0, 12),
-  ).toEqual([2, 3, 4, 5, 11, 21, 2, 3, 4, 5, 10, 20]);
+  ).toEqual([2, 3, 4, 5, 12, 21, 2, 3, 4, 5, 10, 20]);
   draw.destroy();
   gpu.buffers.forEach((buffer) =>
     expect(buffer.destroy).toHaveBeenCalledTimes(1),

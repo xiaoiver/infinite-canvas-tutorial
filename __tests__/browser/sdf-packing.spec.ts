@@ -61,3 +61,29 @@ for (const backend of ['core', 'ecs'])
         resources.every((c) => Object.values(c.live).every((n) => n === 0)),
       ).toBe(true);
   });
+
+for (const backend of ['core', 'ecs'])
+  test(`${backend} unchanged SDF pages preserve foreground depth after another text is deleted`, async ({
+    page,
+  }) => {
+    await page.addInitScript(installProbes);
+    await page.goto(`/glyph-atlas.html?backend=${backend}`);
+    await expect(page.locator('output')).toHaveText('Ready');
+    await page.evaluate(() => window.mixedRenderer.textBatching(true));
+    await page.evaluate(() =>
+      window.mixedRenderer.configure(10, 'interleaved', false),
+    );
+    await page.evaluate(() => window.mixedRenderer.solidDepthScene());
+    await page.evaluate(() => window.mixedRenderer.removeTexts(1));
+    const image = async () =>
+      PNG.sync.read(await page.locator('canvas').screenshot({ scale: 'css' }));
+    const after = await image();
+    await page.evaluate(() => window.mixedRenderer.solidBatching(false));
+    const full = await image();
+    expect(
+      pixelmatch(after.data, full.data, null, after.width, after.height, {
+        threshold: 0.1,
+      }),
+    ).toBeLessThan(64);
+    await page.evaluate(() => window.mixedRenderer.destroy());
+  });

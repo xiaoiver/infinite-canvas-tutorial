@@ -1,3 +1,4 @@
+import { InstanceBuffer } from '../utils/instance-buffer';
 import {
   type RenderPass,
   Buffer,
@@ -104,6 +105,8 @@ const strokeAlignmentMap = {
 export class SDF extends Drawcall {
   protected maxInstances = 4096;
   #instanceCapacity = 0;
+  #attributes?: InstanceBuffer;
+  #matrices?: InstanceBuffer;
   #instanceRows = new WeakMap<Entity, number>();
 
   static override batchKey(shape: Entity): string | null {
@@ -1126,10 +1129,36 @@ export class SDF extends Drawcall {
     uniformBuffer: Buffer,
     sceneUniformLegacyObject: Record<string, unknown>,
   ) {
+    if (this.destroyed) return;
     let drawLegacy: Record<string, unknown> = { ...sceneUniformLegacyObject };
 
     if (this.instanced) {
-      const ranges: [number, number][] = [];
+      if (
+        !this.#attributes?.matches(
+          this.vertexBufferDatas[1],
+          this.vertexBuffers[1],
+        )
+      ) {
+        this.#attributes?.dispose();
+        this.#attributes = new InstanceBuffer(
+          this.vertexBufferDatas[1],
+          this.vertexBuffers[1],
+          32,
+        );
+      }
+      if (
+        !this.#matrices?.matches(
+          this.vertexBufferDatas[2],
+          this.vertexBuffers[2],
+        )
+      ) {
+        this.#matrices?.dispose();
+        this.#matrices = new InstanceBuffer(
+          this.vertexBufferDatas[2],
+          this.vertexBuffers[2],
+          6,
+        );
+      }
       const rows = [...this.dirtyInstances]
         .map((shape) => this.#instanceRows.get(shape))
         .filter((i) => i !== undefined)
@@ -1137,37 +1166,18 @@ export class SDF extends Drawcall {
       for (const i of rows) {
         const shape = this.shapes[i];
         const [data] = this.generateBuffer(shape, i, this.shapes.length);
-        this.vertexBufferDatas[1].set(data, i * 32);
+        this.#attributes.write(i, data);
         const { matrix: m } = shape.read(GlobalTransform);
-        const matrices = this.vertexBufferDatas[2],
-          offset = i * 6;
-        matrices[offset] = m.m00;
-        matrices[offset + 1] = m.m01;
-        matrices[offset + 2] = m.m10;
-        matrices[offset + 3] = m.m11;
-        matrices[offset + 4] = m.m20;
-        matrices[offset + 5] = m.m21;
-        const previous = ranges[ranges.length - 1];
-        if (previous && previous[1] === i) previous[1] = i + 1;
-        else ranges.push([i, i + 1]);
-      }
-      for (const [start, end] of ranges) {
-        for (const [slot, stride] of [
-          [1, 32],
-          [2, 6],
-        ]) {
-          const data = this.vertexBufferDatas[slot];
-          this.vertexBuffers[slot].setSubData(
-            start * stride * 4,
-            new Uint8Array(
-              data.buffer,
-              start * stride * 4,
-              (end - start) * stride * 4,
-            ),
-          );
-        }
+        this.#matrices.set(i, 0, m.m00);
+        this.#matrices.set(i, 1, m.m01);
+        this.#matrices.set(i, 2, m.m10);
+        this.#matrices.set(i, 3, m.m11);
+        this.#matrices.set(i, 4, m.m20);
+        this.#matrices.set(i, 5, m.m21);
       }
       this.dirtyInstances.clear();
+      this.#attributes.flush(this.shapes.length);
+      this.#matrices.flush(this.shapes.length);
     } else {
       const shape = this.shapes[0];
       const multi = getMultiFillLayers(shape);
@@ -1402,6 +1412,9 @@ export class SDF extends Drawcall {
   }
 
   destroy(): void {
+    this.#attributes?.dispose();
+    this.#matrices?.dispose();
+    this.#attributes = this.#matrices = undefined;
     if (!this.instanced) this.renderCache?.releaseBindings(this.bindings);
     this.disposeFillImageResources();
     this.destroyFullPostProcessingChain();
