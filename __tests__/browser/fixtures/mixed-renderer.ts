@@ -734,6 +734,94 @@ async function textBatching(enabled: boolean) {
   }
   return state();
 }
+// Pixel parity between independent full SDF draws and instance rows.
+async function solidStyles() {
+  let ordinal = 0;
+  nodes = nodes.map((node) => {
+    if (node.type !== 'rect' && node.type !== 'ellipse') return node;
+    const i = ordinal++;
+    return {
+      ...node,
+      opacity: 0.55 + (i % 3) * 0.2,
+      fills: [
+        {
+          type: 'solid' as const,
+          value: ['#ef444480', '#2563eb', '#10b981'][i % 3],
+        },
+      ],
+      strokes: [{ type: 'solid' as const, value: '#7c3aed' }],
+      strokeWidth: 2,
+      strokeAlignment: (['center', 'inner', 'outer'] as const)[i % 3],
+      cornerRadius: 4,
+      sizeAttenuation: i % 2 === 0,
+      strokeAttenuation: i % 2 !== 0,
+      ...(node.type === 'rect'
+        ? {
+            innerShadowColor: i % 7 === 0 ? '#11182780' : 'transparent',
+            innerShadowOffsetX: 1,
+            innerShadowOffsetY: 2,
+            innerShadowBlurRadius: i % 7 === 0 ? 2 : 0,
+          }
+        : {}),
+    };
+  });
+  if (core) {
+    core.camera.zoom = 1;
+    nodes.forEach((node, i) => {
+      if (node.type !== 'rect' && node.type !== 'ellipse') return;
+      const shape = shapes[i];
+      shape.fill = node.fills[0].value;
+      shape.stroke = node.strokes[0].value;
+      shape.strokeWidth = node.strokeWidth;
+      shape.strokeAlignment = node.strokeAlignment;
+      shape.opacity = node.opacity;
+      shape.sizeAttenuation = node.sizeAttenuation;
+      shape.strokeAttenuation = node.strokeAttenuation;
+      if (node.type === 'rect') {
+        shape.innerShadowColor = node.innerShadowColor;
+        shape.innerShadowOffsetX = node.innerShadowOffsetX;
+        shape.innerShadowOffsetY = node.innerShadowOffsetY;
+        shape.innerShadowBlurRadius = node.innerShadowBlurRadius;
+      }
+      if (shape instanceof Rect) shape.cornerRadius = 4;
+    });
+    core.render();
+  } else {
+    await api!.edit(
+      (e) => {
+        e.setAppState({ cameraZoom: 1 });
+        e.updateNodes(
+          nodes.filter((n) => n.type === 'rect' || n.type === 'ellipse'),
+        );
+      },
+      { capture: 'NEVER' },
+    );
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
+async function solidBatching(enabled: boolean) {
+  if (core) {
+    nodes.forEach((node, i) => {
+      if (node.type === 'rect' || node.type === 'ellipse') {
+        shapes[i].batchable = enabled;
+        shapes[i].renderDirtyFlag = true;
+      }
+    });
+    core.render();
+  } else {
+    await api!.edit(
+      (e) => {
+        for (const node of nodes)
+          if (node.type === 'rect' || node.type === 'ellipse')
+            e.getEntity(node).write(Renderable).batchable = enabled;
+      },
+      { capture: 'NEVER' },
+    );
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
 // Installed only on explicit diagnostic request, after the renderer import graph
 // has initialized. Normal benchmark runs have no method wrappers or timing scopes.
 async function profile(enabled: boolean) {
@@ -818,6 +906,8 @@ async function profile(enabled: boolean) {
   }
 }
 const harness = {
+  solidStyles,
+  solidBatching,
   profile,
   reorderText,
   textOrder,
