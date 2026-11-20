@@ -390,3 +390,10 @@ counts must return to the device startup baseline after canvas destruction;
 program/input-layout caches may remain live while the canvas is running. The
 companion unit suite checks multiple owned drawcalls, removal before the queued
 submission, fresh drawcalls on reentry, and shared-batch survivor ownership.
+
+The Core/ECS glyph-atlas regression compares requested-glyph generation with an
+explicit ASCII-preload control at readable zoom. It checks native-resource
+teardown, unchanged camera-only atlas work, new Greek/CJK character edits and
+complete PNG exports in both backends. Pixel comparisons account for edge
+antialiasing after atlas repacking. The separate `pnpm bench:glyph-atlas` command
+measures cold atlas work and steady-state frames with the mixed-scene contract.

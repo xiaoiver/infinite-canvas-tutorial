@@ -54,6 +54,7 @@
     "build:workflow": "vite build --config examples/workflow-canvas/vite.config.ts",
     "test:workflow": "playwright test -c examples/workflow-canvas/playwright.config.ts",
     "test:workflow:docs": "playwright test -c examples/workflow-canvas/playwright.docs.config.ts",
+    "bench:glyph-atlas": "playwright test -c playwright.glyph-atlas-bench.config.ts",
     "bench:mixed-renderers": "playwright test -c playwright.mixed-renderer-bench.config.ts"
   },
   "devDependencies": {

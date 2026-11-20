@@ -141,25 +141,18 @@ export class GlyphManager {
     fill: string,
     preloadAscii = false,
   ) {
-    let newChars: string[] = [];
-    if (!this.glyphMap[fontStack]) {
-      // Empty editable text still needs an atlas and space metrics. Rendering
-      // only the characters present avoids baking 96 unused glyphs for every
-      // SVG text style during initial import.
-      newChars = preloadAscii ? getDefaultCharacterSet() : [' '];
+    const existedChars = new Set(Object.keys(this.glyphMap[fontStack] ?? {}));
+    // Space metrics are needed even by empty editable text. ASCII warming is
+    // explicit; ordinary labels only rasterize their requested graphemes.
+    const newChars = new Set<string>(
+      this.glyphMap[fontStack] ? [] : preloadAscii ? getDefaultCharacterSet() : [' '],
+    );
+    for (const char of DOMAdapter.get().splitGraphemes(text)) {
+      if (!existedChars.has(char)) newChars.add(char);
     }
 
-    const existedChars = Object.keys(this.glyphMap[fontStack] || {});
-    Array.from(new Set(DOMAdapter.get().splitGraphemes(text))).forEach(
-      (char) => {
-        if (existedChars.indexOf(char) === -1) {
-          newChars.push(char);
-        }
-      },
-    );
-
-    if (newChars.length) {
-      const glyphMap = Array.from(new Set(newChars))
+    if (newChars.size) {
+      const glyphMap = Array.from(newChars)
         .map((char) => {
           return this.generateSDF(
             fontStack,

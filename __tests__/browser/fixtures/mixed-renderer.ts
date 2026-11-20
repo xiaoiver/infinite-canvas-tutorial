@@ -20,6 +20,8 @@ import {
   System,
   system,
   GPUResource,
+  Screenshot,
+  ExportFormat,
   Renderable,
   Culled,
   ComputedLOD,
@@ -426,7 +428,53 @@ async function destroy() {
   else await app!.exit();
   return baseline;
 }
-const harness = { configure, measure, state, destroy };
+// Shared by glyph-atlas correctness tests; the baseline benchmark does not call these.
+async function editText(content?: string) {
+  if (content !== undefined)
+    nodes = nodes.map((node) =>
+      node.type === 'text' ? { ...node, content } : node,
+    );
+  if (core) {
+    core.camera.zoom = 1;
+    if (content !== undefined)
+      for (const shape of shapes)
+        if (shape instanceof Text) shape.content = content;
+    core.render();
+  } else {
+    await api!.edit(
+      (e) => {
+        e.setAppState({ cameraZoom: 1 });
+        if (content !== undefined)
+          e.updateNodes(nodes.filter((n) => n.type === 'text'));
+      },
+      { capture: 'NEVER' },
+    );
+    await settleECSFrames(api!, 2);
+  }
+  return state();
+}
+async function raster() {
+  if (core) return core.toDataURL({ grid: false });
+  const canvas = api!.getCanvas();
+  return new Promise<string>((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Glyph raster export timeout')),
+      10000,
+    );
+    const poll = () => {
+      if (canvas.has(Screenshot)) {
+        clearTimeout(timer);
+        resolve(canvas.read(Screenshot).dataURL);
+      } else api!.runAtNextTick(poll);
+    };
+    api!.runAtNextTick(() => {
+      if (canvas.has(Screenshot)) canvas.remove(Screenshot);
+      api!.export({ format: ExportFormat.PNG, download: false });
+      poll();
+    });
+  });
+}
+const harness = { configure, measure, state, destroy, editText, raster };
 declare global {
   interface Window {
     mixedRenderer: typeof harness;
