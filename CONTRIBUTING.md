@@ -6,13 +6,13 @@ This project aims to provide a step-by-step guide to building an infinite canvas
 
 Contributions of all kinds are welcome, including:
 
-- Fixing bugs
-- Improving documentation
-- Correcting typos or inaccuracies
-- Adding examples
-- Improving code quality
-- Suggesting new tutorial topics
-- Enhancing developer experience
+-   Fixing bugs
+-   Improving documentation
+-   Correcting typos or inaccuracies
+-   Adding examples
+-   Improving code quality
+-   Suggesting new tutorial topics
+-   Enhancing developer experience
 
 ---
 
@@ -59,10 +59,10 @@ This repository is primarily an educational resource.
 
 When contributing, please prioritize:
 
-- Clarity over cleverness
-- Readability over micro-optimizations
-- Educational value over abstraction
-- Incremental improvements
+-   Clarity over cleverness
+-   Readability over micro-optimizations
+-   Educational value over abstraction
+-   Incremental improvements
 
 Code should be easy for readers to understand, even if a more sophisticated implementation exists.
 
@@ -74,11 +74,11 @@ Documentation improvements are highly appreciated.
 
 Examples include:
 
-- Fixing grammar or spelling mistakes
-- Clarifying explanations
-- Improving diagrams
-- Adding references and learning resources
-- Updating outdated content
+-   Fixing grammar or spelling mistakes
+-   Clarifying explanations
+-   Improving diagrams
+-   Adding references and learning resources
+-   Updating outdated content
 
 Small documentation fixes can be submitted directly as Pull Requests.
 
@@ -88,10 +88,10 @@ Small documentation fixes can be submitted directly as Pull Requests.
 
 When adding or modifying tutorial content:
 
-- Keep examples focused and self-contained.
-- Explain why a technique is used, not only how.
-- Prefer practical examples over theoretical discussions.
-- Avoid introducing unnecessary dependencies.
+-   Keep examples focused and self-contained.
+-   Explain why a technique is used, not only how.
+-   Prefer practical examples over theoretical discussions.
+-   Avoid introducing unnecessary dependencies.
 
 If a topic significantly expands the scope of the tutorial, please open an Issue for discussion first.
 
@@ -99,12 +99,12 @@ If a topic significantly expands the scope of the tutorial, please open an Issue
 
 To keep the tutorial consistent:
 
-- Use clear and concise language.
-- Introduce concepts incrementally.
-- Prefer diagrams and visual explanations when possible.
-- Include runnable examples whenever appropriate.
-- Explain trade-offs and alternative approaches.
-- Link to external resources only when they provide substantial additional value.
+-   Use clear and concise language.
+-   Introduce concepts incrementally.
+-   Prefer diagrams and visual explanations when possible.
+-   Include runnable examples whenever appropriate.
+-   Explain trade-offs and alternative approaches.
+-   Link to external resources only when they provide substantial additional value.
 
 A good tutorial section should answer:
 
@@ -121,15 +121,24 @@ Please follow the existing code style used throughout the repository.
 
 General guidelines:
 
-- Use TypeScript whenever possible.
-- Keep functions small and focused.
-- Prefer descriptive variable names.
-- Avoid premature optimization.
-- Add comments only when they improve understanding.
+-   Use TypeScript whenever possible.
+-   Keep functions small and focused.
+-   Prefer descriptive variable names.
+-   Avoid premature optimization.
+-   Add comments only when they improve understanding.
 
 Format code before submitting a Pull Request.
 
 ---
+
+### Core and ECS parity
+
+When changing rendering behavior, evaluate Core and ECS together. Check feature
+eligibility, runtime switches, interaction geometry, exports and resource ownership
+in both implementations. Describe each backend's changes and validation in the
+Pull Request. If one backend already meets the contract, cite its implementation
+and tests. Use the same qualified workload for performance checks and report each
+backend separately, preserving their measurement boundaries.
 
 ## Pull Request Process
 
@@ -146,9 +155,9 @@ git checkout -b feature/my-change
 
 Please include:
 
-- What changed
-- Why the change is needed
-- Screenshots or demos when applicable
+-   What changed
+-   Why the change is needed
+-   Screenshots or demos when applicable
 
 Try to keep Pull Requests focused on a single topic. Smaller PRs are generally easier to review and merge.
 
@@ -160,23 +169,23 @@ When opening an Issue, please provide:
 
 ### Bug Reports
 
-- Environment information
-- Steps to reproduce
-- Expected behavior
-- Actual behavior
-- Screenshots if applicable
+-   Environment information
+-   Steps to reproduce
+-   Expected behavior
+-   Actual behavior
+-   Screenshots if applicable
 
 ### Feature Requests
 
-- Problem statement
-- Proposed solution
-- Alternative approaches considered
+-   Problem statement
+-   Proposed solution
+-   Alternative approaches considered
 
 ### Tutorial Improvements
 
-- The section or chapter involved
-- What is unclear or incorrect
-- Suggested improvements
+-   The section or chapter involved
+-   What is unclear or incorrect
+-   Suggested improvements
 
 ---
 
@@ -188,10 +197,10 @@ We welcome contributors from all backgrounds and experience levels.
 
 Examples of positive participation:
 
-- Giving constructive feedback
-- Asking thoughtful questions
-- Helping improve documentation
-- Respecting differing viewpoints
+-   Giving constructive feedback
+-   Asking thoughtful questions
+-   Helping improve documentation
+-   Respecting differing viewpoints
 
 Harassment, personal attacks, or disrespectful behavior will not be tolerated.
 

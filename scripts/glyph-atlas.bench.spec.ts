@@ -23,11 +23,13 @@ test('Core/ECS cold glyph atlas work and steady-state frames', async ({
   };
   const results = [];
   mkdirSync(dirname(destination), { recursive: true });
+  writeFileSync(destination, '[]\n');
   for (const backend of ['core', 'ecs']) {
     for (const mode of (process.env.GLYPH_BENCH_MODES ?? 'default,ascii').split(
       ',',
     )) {
       expect(['default', 'ascii']).toContain(mode);
+      console.log(JSON.stringify({ event: 'setup-start', backend, mode }));
       const page = await browser.newPage({
         viewport: { width: 1000, height: 720 },
         deviceScaleFactor: 1,
