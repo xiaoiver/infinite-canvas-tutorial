@@ -23,6 +23,7 @@ import {
   Screenshot,
   ExportFormat,
   Renderable,
+  GlobalRenderOrder,
   Culled,
   ComputedLOD,
   Pen,
@@ -32,6 +33,8 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { settleECSFrames } from './ecs-frames';
 import { mixedFrameProbe } from './mixed-frame-probe';
+import { Sort } from '../../../packages/ecs/src/systems/Sort';
+import { MeshPipeline } from '../../../packages/ecs/src/systems/MeshPipeline';
 
 const element = document.querySelector('canvas')!;
 const backend =
@@ -51,6 +54,33 @@ let textLimit = 200;
 let editIndices: number[] = [];
 const probe = mixedFrameProbe(element);
 let baseline = [] as ReturnType<typeof window.lifecycleProbes.resources>;
+// Fixture-only order propagation counters. Core counts assignments; ECS observes
+// the renderer's GlobalRenderOrder change query after Sort has executed.
+let orderSignals = 0,
+  sortInputs = 0;
+let restoreOrderProbe = () => {};
+if (backend === 'ecs') {
+  const sort = Sort.prototype.execute,
+    mesh = MeshPipeline.prototype.execute;
+  Sort.prototype.execute = function () {
+    sortInputs += (
+      this as unknown as {
+        fractionalIndexes: { addedChangedOrRemoved: unknown[] };
+      }
+    ).fractionalIndexes.addedChangedOrRemoved.length;
+    return sort.call(this);
+  };
+  MeshPipeline.prototype.execute = function () {
+    orderSignals += (
+      this as unknown as { batchOrders: { addedOrChanged: unknown[] } }
+    ).batchOrders.addedOrChanged.length;
+    return mesh.call(this);
+  };
+  restoreOrderProbe = () => {
+    Sort.prototype.execute = sort;
+    MeshPipeline.prototype.execute = mesh;
+  };
+}
 if (backend === 'core') {
   const original = WebGLDeviceContribution.prototype.createSwapChain;
   WebGLDeviceContribution.prototype.createSwapChain = async function (...args) {
@@ -232,6 +262,8 @@ function state() {
     }
   return {
     visible,
+    orderSignals,
+    sortInputs,
     webglError: probe.webglError(),
     allocatedBufferBytes: probe.allocatedBufferBytes(),
     primitiveCounts: nodes.reduce((counts, node) => {
@@ -289,6 +321,18 @@ async function configure(
   if (core) {
     for (const shape of shapes) core.removeChild(shape);
     shapes = nodes.map(coreShape);
+    for (const shape of shapes) {
+      let order = shape.globalRenderOrder;
+      Object.defineProperty(shape, 'globalRenderOrder', {
+        enumerable: true,
+        configurable: true,
+        get: () => order,
+        set: (next: number) => {
+          orderSignals++;
+          order = next;
+        },
+      });
+    }
     for (const shape of shapes) core.appendChild(shape);
     core.pathInstancing = enabled;
     core.camera.zoom = baseZoom;
@@ -428,8 +472,12 @@ async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
 }
 async function destroy() {
   probe.dispose();
-  if (core) core.destroy();
-  else await app!.exit();
+  try {
+    if (core) core.destroy();
+    else await app!.exit();
+  } finally {
+    restoreOrderProbe();
+  }
   return baseline;
 }
 // Shared by glyph-atlas correctness tests; the baseline benchmark does not call these.
@@ -629,6 +677,32 @@ async function textScenario(kind: 'overlap' | 'transform') {
   }
   return state();
 }
+async function reorderText() {
+  const node = nodes.find((n) => n.type === 'text')!;
+  const i = nodes.indexOf(node);
+  if (core) {
+    shapes[i].zIndex = nodes.length + 1;
+    core.render();
+  } else {
+    await api!.edit((e) => e.bringToFront(e.getNodeById(node.id)), {
+      capture: 'NEVER',
+    });
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
+function textOrder() {
+  return nodes
+    .filter((n) => n.type === 'text')
+    .map((n) => {
+      const order = core
+        ? shapes[nodes.indexOf(n)].globalRenderOrder
+        : api!.getEntity(api!.getNodeById(n.id)).read(GlobalRenderOrder).value;
+      return { id: n.id, order };
+    })
+    .sort((a, b) => a.order - b.order)
+    .map((n) => n.id);
+}
 async function textBatching(enabled: boolean) {
   if (core) {
     core.textBatching = enabled;
@@ -640,6 +714,8 @@ async function textBatching(enabled: boolean) {
   return state();
 }
 const harness = {
+  reorderText,
+  textOrder,
   paintText,
   textPresence,
   textPicking,

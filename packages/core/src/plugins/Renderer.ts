@@ -295,7 +295,8 @@ export class Renderer implements Plugin {
 
     hooks.render.tap((shape) => {
       if (shape.renderable) {
-        shape.globalRenderOrder = this.#zIndexCounter++;
+        const order = this.#zIndexCounter++;
+        if (shape.globalRenderOrder !== order) shape.globalRenderOrder = order;
         this.#batchManager.add(shape);
       }
     });

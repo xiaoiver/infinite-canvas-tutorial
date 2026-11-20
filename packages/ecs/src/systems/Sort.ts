@@ -59,13 +59,14 @@ export class Sort extends System {
           }
         })
         .forEach((entity) => {
+          // Full-node edits can refresh fractional keys without changing rank.
+          // Avoid invalidating every render batch through trackWrites.
+          const value = i++;
           if (!entity.has(GlobalRenderOrder)) {
-            entity.add(GlobalRenderOrder);
+            entity.add(GlobalRenderOrder, { value });
+          } else if (entity.read(GlobalRenderOrder).value !== value) {
+            entity.write(GlobalRenderOrder).value = value;
           }
-
-          Object.assign(entity.write(GlobalRenderOrder), {
-            value: i++,
-          });
         });
     }
   }

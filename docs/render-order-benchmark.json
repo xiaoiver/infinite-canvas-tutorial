@@ -1,0 +1,3193 @@
+{
+  "runtimeSource": {
+    "localCommit": "b65f2b0d9ff999644febb80e25a22ee3e8dae619",
+    "publishedCommit": "c9f1d7933799d886113778137eb3faf04b38dcce",
+    "tree": "a5b4d4672839eaac92847641325ef36a7e9fc92a",
+    "base": "7ec558135bc55f2aadc6968407bcc1311f28ed82"
+  },
+  "measurement": "Serial software-WebGL cohort, 1000 actually visible objects / 200 full texts, 30 samples after 15 warmup; no concurrent local tests or publication payload preparation. Each backend retains its existing timing boundary. This is not a controlled cross-commit latency comparison.",
+  "diagnostic": {
+    "baselineRuntime": "ac8fab354897186f0235c9c03636020f63d35688",
+    "provenance": "Exploratory before/after runs had the same counter-only fixture modifications, with only the two runtime guards added for the after run; neither exploratory worktree was clean. Final clean-source browser regressions independently assert zero paint order signals and 204 layout checks across three edit frames in both backends.",
+    "counterSemantics": "Core orderSignals counts globalRenderOrder property assignments; ECS counts MeshPipeline batchOrders addedOrChanged query events and may include both an added and changed event for one entity. sortInputs counts Sort fractionalIndexes query entries. They are not identical definitions of raw writes.",
+    "before": [
+      {
+        "backend": "core",
+        "visible": 1000,
+        "drawcalls": 407,
+        "editedFrames": 3,
+        "keyChecks": 600,
+        "layoutChecks": 204,
+        "geometryBuilds": 5,
+        "orderSignals": 3000,
+        "sortInputs": 0
+      },
+      {
+        "backend": "ecs",
+        "visible": 1000,
+        "drawcalls": 407,
+        "editedFrames": 3,
+        "keyChecks": 600,
+        "layoutChecks": 600,
+        "geometryBuilds": 5,
+        "orderSignals": 3030,
+        "sortInputs": 30
+      }
+    ],
+    "after": [
+      {
+        "backend": "core",
+        "visible": 1000,
+        "drawcalls": 407,
+        "editedFrames": 3,
+        "keyChecks": 600,
+        "layoutChecks": 204,
+        "geometryBuilds": 5,
+        "orderSignals": 0,
+        "sortInputs": 0
+      },
+      {
+        "backend": "ecs",
+        "visible": 1000,
+        "drawcalls": 407,
+        "editedFrames": 3,
+        "keyChecks": 600,
+        "layoutChecks": 204,
+        "geometryBuilds": 5,
+        "orderSignals": 0,
+        "sortInputs": 30
+      }
+    ],
+    "probeSource": "import {test,expect} from '@playwright/test';\nimport {writeFileSync} from 'node:fs';\nimport {installProbes} from '../__tests__/browser/fixtures/probes';\nimport type {} from '../__tests__/browser/fixtures/glyph-atlas';\ntest('profile compatibility and snapshots',async({browser})=>{\n test.setTimeout(120000);const results=[];\n for(const backend of ['core','ecs']){\n const page=await browser.newPage();await page.addInitScript(installProbes);\n await page.goto(`/glyph-atlas.html?backend=${backend}`);await expect(page.locator('output')).toHaveText('Ready');\n await page.evaluate(()=>window.mixedRenderer.textBatching(true));await page.evaluate(()=>window.mixedRenderer.configure(1000,'grouped',false));\n const before=await page.evaluate(()=>({...window.glyphAtlasProbe(),...window.mixedRenderer.state()}));\n const frame=await page.evaluate(()=>window.mixedRenderer.measure('edit',2,1));\n const after=await page.evaluate(()=>({...window.glyphAtlasProbe(),...window.mixedRenderer.state()}));\n const result={backend,visible:frame.visible,drawcalls:frame.native.drawcalls,editedFrames:3,keyChecks:after.textBatchKeyChecks-before.textBatchKeyChecks,layoutChecks:after.textLayoutChecks-before.textLayoutChecks,geometryBuilds:after.textGeometryBuilds-before.textGeometryBuilds,orderSignals:after.orderSignals-before.orderSignals,sortInputs:after.sortInputs-before.sortInputs};results.push(result);console.log(result);\n await page.evaluate(()=>window.mixedRenderer.destroy());await page.close();\n }\n writeFileSync(process.env.ORDER_PROBE_OUTPUT??'.test-results/order-before.json',JSON.stringify(results,null,2)+'\\n');\n});\n"
+  },
+  "validation": {
+    "coreTargetedTests": 51,
+    "ecsTargetedTests": 119,
+    "chromiumCases": 38,
+    "webkitCases": 38,
+    "types": ["browser", "core", "ecs"],
+    "changedFileLint": "passed normal hooks",
+    "benchmark": "all four modes passed",
+    "localFullSSR": "not run: optional headless-gl binding unavailable in Node 24 dependency cache"
+  },
+  "results": [
+    {
+      "head": "b65f2b0d9ff999644febb80e25a22ee3e8dae619",
+      "tree": "a5b4d4672839eaac92847641325ef36a7e9fc92a",
+      "dirty": false,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "backend": "core",
+      "mode": "off",
+      "setupWallMs": 517.1000000014901,
+      "state": {
+        "visible": 1000,
+        "orderSignals": 1000,
+        "sortInputs": 0,
+        "webglError": 0,
+        "allocatedBufferBytes": 1931220,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 603,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 2411,
+              "Texture": 62,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ]
+      },
+      "glyphs": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 210,
+        "atlasUploads": 55,
+        "uploadedBytes": 1811520,
+        "atlasCpuMs": 116.90000002086163,
+        "textGeometryBuilds": 200,
+        "textBatchKeyChecks": 0,
+        "textLayoutChecks": 0
+      },
+      "frames": {
+        "backend": "core",
+        "operation": "pan",
+        "count": 1000,
+        "editedCount": 0,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          6.100000001490116, 6.300000004470348, 12.600000001490116, 6,
+          9.799999997019768, 9.600000001490116, 18.69999999552965,
+          14.200000002980232, 47, 15.399999998509884, 21.799999997019768,
+          16.400000005960464, 6.5, 12.299999997019768, 15.100000001490116,
+          15.399999998509884, 16.69999999552965, 9.900000005960464,
+          12.899999998509884, 12.799999997019768, 5.899999998509884, 6.5,
+          12.700000002980232, 5.100000001490116, 3.600000001490116,
+          7.899999998509884, 6.399999998509884, 8.699999995529652, 8.5,
+          9.100000001490116
+        ],
+        "cpuP50": 9.900000005960464,
+        "cpuP95": 21.799999997019768,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": false,
+          "polylineLOD": false
+        },
+        "visible": 1000,
+        "orderSignals": 1000,
+        "sortInputs": 0,
+        "webglError": 0,
+        "allocatedBufferBytes": 1931220,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 603,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 2411,
+              "Texture": 62,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          }
+        ]
+      },
+      "edits": {
+        "backend": "core",
+        "operation": "edit",
+        "count": 1000,
+        "editedCount": 10,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          7.100000001490116, 16.5, 17.899999998509884, 10.100000001490116, 7.5,
+          10.700000002980232, 11, 6, 10.399999998509884, 10.5,
+          8.200000002980232, 7.299999997019768, 47.399999998509884,
+          8.299999997019768, 6.799999997019768, 11.199999995529652,
+          11.400000005960464, 9.200000002980232, 8.399999998509884,
+          7.799999997019768, 8.100000001490116, 10, 6.700000002980232,
+          16.80000000447035, 16.099999994039536, 8.600000001490116,
+          8.600000001490116, 5.299999997019768, 12.200000002980232, 11
+        ],
+        "cpuP50": 10,
+        "cpuP95": 17.899999998509884,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": false,
+          "polylineLOD": false
+        },
+        "visible": 1000,
+        "orderSignals": 1000,
+        "sortInputs": 0,
+        "webglError": 0,
+        "allocatedBufferBytes": 1931220,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 603,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 11,
+          "bufferBytes": 61744,
+          "uniformUploads": 7,
+          "uniformBytes": 944
+        },
+        "resources": [
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 2411,
+              "Texture": 62,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          }
+        ]
+      },
+      "glyphsAfterFrames": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 210,
+        "atlasUploads": 55,
+        "uploadedBytes": 1811520,
+        "atlasCpuMs": 116.90000002086163,
+        "textGeometryBuilds": 200,
+        "textBatchKeyChecks": 0,
+        "textLayoutChecks": 0
+      },
+      "glyphsAfterEdits": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 210,
+        "atlasUploads": 55,
+        "uploadedBytes": 1811520,
+        "atlasCpuMs": 116.90000002086163,
+        "textGeometryBuilds": 200,
+        "textBatchKeyChecks": 0,
+        "textLayoutChecks": 0
+      },
+      "teardownPassed": true
+    },
+    {
+      "head": "b65f2b0d9ff999644febb80e25a22ee3e8dae619",
+      "tree": "a5b4d4672839eaac92847641325ef36a7e9fc92a",
+      "dirty": false,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "backend": "core",
+      "mode": "on",
+      "setupWallMs": 420.20000000298023,
+      "state": {
+        "visible": 1000,
+        "orderSignals": 1000,
+        "sortInputs": 0,
+        "webglError": 0,
+        "allocatedBufferBytes": 1892956,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 403,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 1611,
+              "Texture": 8,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ]
+      },
+      "glyphs": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 12,
+        "atlasUploads": 1,
+        "uploadedBytes": 102168,
+        "atlasCpuMs": 39.399999998509884,
+        "textGeometryBuilds": 1,
+        "textBatchKeyChecks": 200,
+        "textLayoutChecks": 200
+      },
+      "frames": {
+        "backend": "core",
+        "operation": "pan",
+        "count": 1000,
+        "editedCount": 0,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          4.600000001490116, 4.299999997019768, 8, 4.100000001490116,
+          6.800000004470348, 8.200000002980232, 5.100000001490116, 4.5,
+          8.199999995529652, 4.899999998509884, 4.300000004470348,
+          4.199999995529652, 7.699999995529652, 8.300000004470348,
+          5.399999998509884, 4.700000002980232, 6, 6.600000001490116,
+          5.799999997019768, 16.399999998509884, 4.5, 7.5, 8.800000004470348,
+          6.5, 6.100000001490116, 5.700000002980232, 4.899999998509884,
+          5.199999995529652, 5, 4.299999997019768
+        ],
+        "cpuP50": 5.700000002980232,
+        "cpuP95": 8.800000004470348,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": false,
+          "polylineLOD": false
+        },
+        "visible": 1000,
+        "orderSignals": 1000,
+        "sortInputs": 0,
+        "webglError": 0,
+        "allocatedBufferBytes": 1892956,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 403,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 1611,
+              "Texture": 8,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          }
+        ]
+      },
+      "edits": {
+        "backend": "core",
+        "operation": "edit",
+        "count": 1000,
+        "editedCount": 10,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          14.899999998509884, 18, 14.5, 12.799999997019768, 9.100000001490116,
+          13.200000002980232, 14.899999998509884, 9.699999995529652, 13,
+          13.799999997019768, 21.099999994039536, 14.700000002980232,
+          12.700000002980232, 13.300000004470348, 10.700000002980232,
+          6.800000004470348, 11.699999995529652, 9.600000001490116,
+          12.699999995529652, 11.700000002980232, 13.800000004470348,
+          13.800000004470348, 16.299999997019768, 18.799999997019768,
+          9.199999995529652, 13.899999998509884, 9.400000005960464, 8.5,
+          15.800000004470348, 9.199999995529652
+        ],
+        "cpuP50": 13.200000002980232,
+        "cpuP95": 18.799999997019768,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": false,
+          "polylineLOD": false
+        },
+        "visible": 1000,
+        "orderSignals": 1000,
+        "sortInputs": 0,
+        "webglError": 0,
+        "allocatedBufferBytes": 1893724,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 407,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 9,
+          "bufferBytes": 61744,
+          "uniformUploads": 7,
+          "uniformBytes": 944
+        },
+        "resources": [
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 1627,
+              "Texture": 9,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 9,
+            "bufferBytes": 61744,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          }
+        ]
+      },
+      "glyphsAfterFrames": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 12,
+        "atlasUploads": 1,
+        "uploadedBytes": 102168,
+        "atlasCpuMs": 39.399999998509884,
+        "textGeometryBuilds": 1,
+        "textBatchKeyChecks": 200,
+        "textLayoutChecks": 200
+      },
+      "glyphsAfterEdits": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 16,
+        "atlasUploads": 2,
+        "uploadedBytes": 135432,
+        "atlasCpuMs": 43.099999994039536,
+        "textGeometryBuilds": 6,
+        "textBatchKeyChecks": 9200,
+        "textLayoutChecks": 488
+      },
+      "teardownPassed": true
+    },
+    {
+      "head": "b65f2b0d9ff999644febb80e25a22ee3e8dae619",
+      "tree": "a5b4d4672839eaac92847641325ef36a7e9fc92a",
+      "dirty": false,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "backend": "ecs",
+      "mode": "off",
+      "setupWallMs": 2079.10000000149,
+      "state": {
+        "visible": 1000,
+        "orderSignals": 1020,
+        "sortInputs": 1010,
+        "webglError": 0,
+        "allocatedBufferBytes": 2206188,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 602,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "offscreen",
+            "live": {
+              "Buffer": 1,
+              "Texture": 5,
+              "Program": 0,
+              "Shader": 0,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 0
+            }
+          },
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 2607,
+              "Texture": 262,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ]
+      },
+      "glyphs": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 210,
+        "atlasUploads": 55,
+        "uploadedBytes": 6530800,
+        "atlasCpuMs": 426.3999999985099,
+        "textGeometryBuilds": 200,
+        "textBatchKeyChecks": 0,
+        "textLayoutChecks": 0
+      },
+      "frames": {
+        "backend": "ecs",
+        "operation": "pan",
+        "count": 1000,
+        "editedCount": 0,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          36.100000001490116, 34.100000001490116, 18.30000000447035, 19.5,
+          15.399999998509884, 20.799999997019768, 20.100000001490116,
+          24.299999997019768, 15.899999998509884, 21.099999994039536, 15.5,
+          36.900000005960464, 22.19999999552965, 18.299999997019768,
+          20.200000002980232, 18.100000001490116, 21.799999997019768,
+          24.299999997019768, 19.5, 12.099999994039536, 31.69999999552965,
+          15.399999998509884, 19.599999994039536, 17.69999999552965,
+          19.399999998509884, 22.899999998509884, 22, 30.5, 23.100000001490116,
+          17.899999998509884
+        ],
+        "cpuP50": 20.200000002980232,
+        "cpuP95": 36.100000001490116,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": true,
+          "polylineLOD": true
+        },
+        "visible": 1000,
+        "orderSignals": 1020,
+        "sortInputs": 1010,
+        "webglError": 0,
+        "allocatedBufferBytes": 2206188,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 602,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "offscreen",
+            "live": {
+              "Buffer": 1,
+              "Texture": 5,
+              "Program": 0,
+              "Shader": 0,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 0
+            }
+          },
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 2607,
+              "Texture": 262,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          }
+        ]
+      },
+      "edits": {
+        "backend": "ecs",
+        "operation": "edit",
+        "count": 1000,
+        "editedCount": 10,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          52.100000001490116, 41.79999999701977, 41.29999999701977, 44,
+          31.899999998509884, 36.900000005960464, 39.19999999552965, 43,
+          47.70000000298023, 35.69999999552965, 48, 45.100000001490116,
+          48.600000001490116, 51.100000001490116, 50.600000001490116, 32,
+          43.70000000298023, 48.900000005960464, 40.899999998509884,
+          49.70000000298023, 33.70000000298023, 52.900000005960464,
+          40.599999994039536, 39.100000001490116, 40.600000001490116,
+          45.600000001490116, 33.399999998509884, 41.80000000447035,
+          57.600000001490116, 35
+        ],
+        "cpuP50": 43,
+        "cpuP95": 52.900000005960464,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": true,
+          "polylineLOD": true
+        },
+        "visible": 1000,
+        "orderSignals": 1020,
+        "sortInputs": 1460,
+        "webglError": 0,
+        "allocatedBufferBytes": 2206188,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 602,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 25,
+          "bufferBytes": 69496,
+          "uniformUploads": 5,
+          "uniformBytes": 800
+        },
+        "resources": [
+          {
+            "side": "offscreen",
+            "live": {
+              "Buffer": 1,
+              "Texture": 5,
+              "Program": 0,
+              "Shader": 0,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 0
+            }
+          },
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 2607,
+              "Texture": 263,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 25,
+            "bufferBytes": 69496,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          }
+        ]
+      },
+      "glyphsAfterFrames": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 210,
+        "atlasUploads": 55,
+        "uploadedBytes": 6530800,
+        "atlasCpuMs": 426.3999999985099,
+        "textGeometryBuilds": 200,
+        "textBatchKeyChecks": 0,
+        "textLayoutChecks": 0
+      },
+      "glyphsAfterEdits": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 218,
+        "atlasUploads": 57,
+        "uploadedBytes": 6782336,
+        "atlasCpuMs": 444.6000000014901,
+        "textGeometryBuilds": 290,
+        "textBatchKeyChecks": 0,
+        "textLayoutChecks": 0
+      },
+      "teardownPassed": true
+    },
+    {
+      "head": "b65f2b0d9ff999644febb80e25a22ee3e8dae619",
+      "tree": "a5b4d4672839eaac92847641325ef36a7e9fc92a",
+      "dirty": false,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "backend": "ecs",
+      "mode": "on",
+      "setupWallMs": 1361.3000000044703,
+      "state": {
+        "visible": 1000,
+        "orderSignals": 1020,
+        "sortInputs": 1010,
+        "webglError": 0,
+        "allocatedBufferBytes": 2158428,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 403,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "offscreen",
+            "live": {
+              "Buffer": 1,
+              "Texture": 5,
+              "Program": 0,
+              "Shader": 0,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 0
+            }
+          },
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 1612,
+              "Texture": 208,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ]
+      },
+      "glyphs": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 12,
+        "atlasUploads": 1,
+        "uploadedBytes": 377600,
+        "atlasCpuMs": 51.600000001490116,
+        "textGeometryBuilds": 1,
+        "textBatchKeyChecks": 200,
+        "textLayoutChecks": 400
+      },
+      "frames": {
+        "backend": "ecs",
+        "operation": "pan",
+        "count": 1000,
+        "editedCount": 0,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          6.299999997019768, 6.399999998509884, 11.600000001490116,
+          9.799999997019768, 14.799999997019768, 14.800000004470348,
+          14.899999998509884, 14.299999997019768, 15.5, 11.600000001490116,
+          13.5, 15.599999994039536, 18.399999998509884, 19.299999997019768,
+          18.200000002980232, 16.100000001490116, 9.300000004470348,
+          20.899999998509884, 18.100000001490116, 15.899999998509884,
+          13.899999998509884, 16.900000005960464, 8.200000002980232,
+          15.899999998509884, 18.69999999552965, 11.600000001490116, 19.5,
+          14.100000001490116, 15, 14.899999998509884
+        ],
+        "cpuP50": 14.899999998509884,
+        "cpuP95": 19.5,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": true,
+          "polylineLOD": true
+        },
+        "visible": 1000,
+        "orderSignals": 1020,
+        "sortInputs": 1010,
+        "webglError": 0,
+        "allocatedBufferBytes": 2158428,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 403,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 1,
+          "bufferBytes": 192,
+          "uniformUploads": 1,
+          "uniformBytes": 192
+        },
+        "resources": [
+          {
+            "side": "offscreen",
+            "live": {
+              "Buffer": 1,
+              "Texture": 5,
+              "Program": 0,
+              "Shader": 0,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 0
+            }
+          },
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 1612,
+              "Texture": 208,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          }
+        ]
+      },
+      "edits": {
+        "backend": "ecs",
+        "operation": "edit",
+        "count": 1000,
+        "editedCount": 10,
+        "samples": 30,
+        "warmup": 15,
+        "cpuSamplesMs": [
+          47.399999998509884, 36.600000001490116, 75.29999999701977,
+          82.20000000298023, 37.80000000447035, 43.70000000298023,
+          31.100000001490116, 36, 42.100000001490116, 37.30000000447035,
+          36.100000001490116, 36, 34.899999998509884, 39.900000005960464,
+          34.79999999701977, 40.69999999552965, 42.69999999552965,
+          49.29999999701977, 32.20000000298023, 35.20000000298023,
+          33.399999998509884, 21.100000001490116, 26.5, 41.600000001490116,
+          38.900000005960464, 42.100000001490116, 36.899999998509884, 34.5,
+          39.69999999552965, 49.100000001490116
+        ],
+        "cpuP50": 37.80000000447035,
+        "cpuP95": 75.29999999701977,
+        "nonemptyFrames": 30,
+        "size": [960, 640],
+        "dpr": 1,
+        "browserDpr": 1,
+        "textCap": 200,
+        "zoom": 0.25,
+        "featureSupport": {
+          "pathInstancing": true,
+          "textLOD": true,
+          "polylineLOD": true
+        },
+        "visible": 1000,
+        "orderSignals": 1020,
+        "sortInputs": 1460,
+        "webglError": 0,
+        "allocatedBufferBytes": 2159388,
+        "primitiveCounts": {
+          "rect": 200,
+          "ellipse": 200,
+          "text": 200,
+          "polyline": 200,
+          "path": 200
+        },
+        "textProxy": 0,
+        "native": {
+          "drawcalls": 407,
+          "indices": 395280,
+          "arrayVertices": 4,
+          "bufferUploads": 17,
+          "bufferBytes": 68296,
+          "uniformUploads": 5,
+          "uniformBytes": 800
+        },
+        "resources": [
+          {
+            "side": "offscreen",
+            "live": {
+              "Buffer": 1,
+              "Texture": 5,
+              "Program": 0,
+              "Shader": 0,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 0
+            }
+          },
+          {
+            "side": "glyph-atlas",
+            "live": {
+              "Buffer": 1632,
+              "Texture": 209,
+              "Program": 5,
+              "Shader": 10,
+              "Framebuffer": 6,
+              "Renderbuffer": 0,
+              "VertexArray": 5
+            }
+          }
+        ],
+        "nativeFrames": [
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 17,
+            "bufferBytes": 68296,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          }
+        ]
+      },
+      "glyphsAfterFrames": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 12,
+        "atlasUploads": 1,
+        "uploadedBytes": 377600,
+        "atlasCpuMs": 51.600000001490116,
+        "textGeometryBuilds": 1,
+        "textBatchKeyChecks": 200,
+        "textLayoutChecks": 400
+      },
+      "glyphsAfterEdits": {
+        "ascii": false,
+        "privateAtlas": false,
+        "glyphDraws": 16,
+        "atlasUploads": 2,
+        "uploadedBytes": 503368,
+        "atlasCpuMs": 62.79999999701977,
+        "textGeometryBuilds": 6,
+        "textBatchKeyChecks": 9200,
+        "textLayoutChecks": 688
+      },
+      "teardownPassed": true
+    }
+  ]
+}
