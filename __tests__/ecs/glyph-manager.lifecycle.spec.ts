@@ -303,3 +303,31 @@ it.each([true, false])(
     manager.destroy();
   },
 );
+
+it('defaults to only requested graphemes plus space, including empty text', () => {
+  const { manager, createTexture } = fixture();
+  manager.generateAtlas(
+    'default',
+    'sans-serif',
+    '400',
+    '',
+    'A A👩‍🚀👩‍🚀',
+    { createTexture } as unknown as Device,
+    false,
+    'red',
+  );
+  expect(draw).toHaveBeenCalledTimes(3);
+  expect(Object.keys(manager.getMap().default)).toEqual([' ', 'A', '👩‍🚀']);
+  manager.generateAtlas(
+    'empty',
+    'sans-serif',
+    '400',
+    '',
+    '',
+    { createTexture } as unknown as Device,
+    false,
+    'red',
+  );
+  expect(Object.keys(manager.getMap().empty)).toEqual([' ']);
+  manager.destroy();
+});
