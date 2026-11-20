@@ -96,6 +96,10 @@ test('Core/ECS ordered full text batching', async ({ browser }) => {
             setup.state.primitiveCounts.text * (edits.samples + edits.warmup),
           );
         }
+        // Count-only pass after the unwrapped timing and glyph assertions.
+        const sdfUpdates = await page.evaluate(() =>
+          window.mixedRenderer.sdfUpdates('edit', 2, 1),
+        );
         const baseline = await page.evaluate(() =>
           window.mixedRenderer.destroy(),
         );
@@ -117,6 +121,7 @@ test('Core/ECS ordered full text batching', async ({ browser }) => {
           edits,
           glyphsAfterFrames,
           glyphsAfterEdits,
+          sdfUpdates,
           teardownPassed: true,
         });
         writeFileSync(destination, JSON.stringify(results, null, 2) + '\n');

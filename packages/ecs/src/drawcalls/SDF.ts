@@ -103,6 +103,15 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SDF extends Drawcall {
+  override get canUpdateGeometryRows() {
+    return (
+      this.instanced &&
+      this.shapes.length > 0 &&
+      !this.useWireframe &&
+      !this.useFillImage
+    );
+  }
+
   protected maxInstances = 4096;
   #instanceCapacity = 0;
   #attributes?: InstanceBuffer;

@@ -1,5 +1,15 @@
-import { Rect } from '../../packages/core/src';
+import { createCanvas } from 'canvas';
+import { DOMAdapter, Rect } from '../../packages/core/src';
+import { BatchManager } from '../../packages/core/src/drawcalls/BatchManager';
 import { SDF } from '../../packages/core/src/drawcalls/SDF';
+beforeAll(() => {
+  jest
+    .spyOn(DOMAdapter.get(), 'createCanvas')
+    .mockImplementation(
+      (width = 1, height = 1) => createCanvas(width, height) as any,
+    );
+});
+afterAll(() => jest.restoreAllMocks());
 function scene(instanced = true, wireframe = false) {
   const buffers: any[] = [];
   const resource = () => ({ destroy: jest.fn(), setUniformsLegacy: jest.fn() });
@@ -141,3 +151,65 @@ it('rebinds mirrors when wireframe rebuilding replaces physical buffers', () => 
   expect(t.pass.drawIndexed).toHaveBeenCalled();
   t.draw.destroy();
 });
+
+it('packs only dirty or changed-depth solid rows and fully initializes replacement storage', () => {
+  const t = scene();
+  const packed = jest.spyOn(t.draw, 'generateBuffer' as any);
+  t.shapes[1].fill = 'blue';
+  t.render();
+  expect(packed.mock.calls.map(([shape]) => shape)).toEqual([t.shapes[1]]);
+  packed.mockClear();
+  t.shapes[2].globalRenderOrder = 90;
+  t.render();
+  expect(packed.mock.calls.map(([shape]) => shape)).toEqual([t.shapes[2]]);
+  packed.mockClear();
+  t.draw.createGeometry();
+  t.draw.geometryDirty = true;
+  t.render();
+  expect(packed.mock.calls.map(([shape]) => shape)).toEqual(t.shapes);
+  t.draw.destroy();
+});
+
+it.each([true, false])(
+  'routes leaf SDF geometry changes without losing full-path rebuilds (batchable=%s)',
+  (batchable) => {
+    const batch = new BatchManager({} as any);
+    const shape = new Rect({
+      x: 10,
+      y: 10,
+      width: 20,
+      height: 20,
+      fill: 'red',
+      batchable,
+    });
+    const submitted: SDF[] = [];
+    const submit = jest
+      .spyOn(SDF.prototype, 'submit')
+      .mockImplementation(function () {
+        submitted.push(this);
+      });
+    try {
+      batch.clear(true, false, false);
+      batch.add(shape);
+      batch.flush({} as any, {} as any, {});
+      const draw = submitted[0];
+      expect(draw).toBeDefined();
+      draw.geometryDirty = false;
+      shape.width = 25;
+      shape.renderDirtyFlag = false;
+      batch.flush({} as any, {} as any, {});
+      expect(draw.geometryDirty).toBe(!batchable);
+      expect(shape.geometryDirtyFlag).toBe(false);
+      if (batchable) expect(shape.renderDirtyFlag).toBe(true);
+      if (batchable) {
+        const second = new Rect({ width: 20, height: 20, fill: 'red' });
+        batch.add(second);
+        batch.flush({} as any, {} as any, {});
+        expect(draw.geometryDirty).toBe(true);
+      }
+    } finally {
+      submit.mockRestore();
+      batch.destroy();
+    }
+  },
+);

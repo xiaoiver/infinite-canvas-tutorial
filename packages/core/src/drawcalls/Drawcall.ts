@@ -31,6 +31,11 @@ export abstract class Drawcall {
    */
   protected maxInstances = Infinity;
 
+  /** Leaf geometry changes can update instance rows without rebuilding a page. */
+  get canUpdateGeometryRows() {
+    return false;
+  }
+
   geometryDirty = true;
   materialDirty = true;
   destroyed = false;

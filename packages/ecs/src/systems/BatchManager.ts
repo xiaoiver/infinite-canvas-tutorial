@@ -461,7 +461,8 @@ export class BatchManager {
     for (const drawcall of this.#drawcallsToFlush) {
       for (const shape of drawcall.shapes) {
         if (shape.has(GeometryDirty)) {
-          drawcall.geometryDirty = true;
+          if (drawcall.canUpdateGeometryRows) drawcall.dirtyInstances.add(shape);
+          else drawcall.geometryDirty = true;
           geometry.add(shape);
         }
         if (shape.has(MaterialDirty)) {
