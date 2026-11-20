@@ -324,6 +324,25 @@ export class BatchManager {
       pool.pages.push(page);
       pools.set(page.key, pool);
     }
+    const usedPages = new Set<OrderedPage>();
+    const textPages = new Map<Shape, OrderedPage>();
+    for (const page of this.#orderedPages)
+      if (page.drawcalls[0] instanceof TextBatch)
+        textPages.set(page.shapes[0], page);
+    const take = (
+      pool: { pages: OrderedPage[]; cursor: number } | undefined,
+    ) => {
+      let page: OrderedPage | undefined;
+      while (pool && pool.cursor < pool.pages.length) {
+        const candidate = pool.pages[pool.cursor++];
+        if (!usedPages.has(candidate)) {
+          page = candidate;
+          usedPages.add(candidate);
+          break;
+        }
+      }
+      return page;
+    };
     const next: OrderedPage[] = [];
     for (const shape of this.#frameShapes) {
       const textKey = this.#allowTextBatches ? TextBatch.batchKey(shape) : null;
@@ -376,7 +395,16 @@ export class BatchManager {
         });
       if (!compatible) {
         const pool = pathKey === null ? pools.get(key) : undefined;
-        const reused = pool?.pages[pool.cursor++];
+        let reused = take(pool);
+        if (!reused && textKey !== null) {
+          const candidate = textPages.get(shape);
+          if (candidate && !usedPages.has(candidate)) {
+            reused = candidate;
+            usedPages.add(candidate);
+          }
+        }
+        if (reused && reused.key !== key)
+          reused.drawcalls.forEach((d) => (d.materialDirty = true));
         page = {
           key,
           batchable,
@@ -409,7 +437,7 @@ export class BatchManager {
         if (!instanced) page.key = `single:${page.shapes[0].uid}:${page.key}`;
         page.batchable = instanced;
         const pool = pools.get(page.key);
-        const reused = pool?.pages[pool.cursor++];
+        const reused = take(pool);
         const Ctor = instanced ? PathInstances : Mesh;
         page.drawcalls = reused?.drawcalls ?? [
           new Ctor(
@@ -434,10 +462,8 @@ export class BatchManager {
         this.#drawcallsToFlush.push(d);
       }
     }
-    for (const pool of pools.values())
-      for (let i = pool.cursor; i < pool.pages.length; i++) {
-        pool.pages[i].drawcalls.forEach((d) => d.destroy());
-      }
+    for (const page of this.#orderedPages)
+      if (!usedPages.has(page)) page.drawcalls.forEach((d) => d.destroy());
     this.#orderedPages = next;
     this.#orderedInputShapes = this.#frameShapes;
     this.#orderedPlanDirty = false;

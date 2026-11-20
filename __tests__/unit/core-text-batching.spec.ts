@@ -126,3 +126,72 @@ it('keeps unsupported text as a painter barrier and retires its page on reunion'
   expect(old.slice(1).every((d) => d.destroyed)).toBe(true);
   batch.destroy();
 });
+
+it('reuses a text page across arbitrary paint keys and rebuilds only changed layout', () => {
+  const a = label('A'),
+    b = label('B');
+  a.globalRenderOrder = 1;
+  b.globalRenderOrder = 2;
+  const batch = new BatchManager(null);
+  let submitted: SDFText[] = [];
+  jest.spyOn(SDFText.prototype, 'submit').mockImplementation(function () {
+    submitted.push(this);
+  });
+  const frame = () => {
+    submitted = [];
+    batch.clear(true, false, true);
+    batch.add(a);
+    batch.add(b);
+    batch.flush(null, null, {});
+    return submitted;
+  };
+  const first = frame()[0];
+  a.fill = b.fill = 'green';
+  expect(frame()[0]).toBe(first);
+  expect(first.destroyed).toBe(false);
+  jest.spyOn(SDFText.prototype, 'createGeometry').mockImplementation(() => {});
+  const draw = first as TextBatch;
+  draw.createGeometry();
+  a.renderDirtyFlag = b.renderDirtyFlag = false;
+  draw.geometryDirty = false;
+  a.fill = b.fill = 'cyan';
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(false);
+  b.content = 'Changed';
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(true);
+  jest.spyOn(SDFText.prototype, 'createGeometry').mockImplementation(() => {
+    throw new Error('GPU failure');
+  });
+  expect(() => draw.createGeometry()).toThrow('GPU failure');
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(true);
+  batch.destroy();
+});
+
+it('does not lend the same text page twice while paint keys rotate', () => {
+  const batch = new BatchManager(null),
+    a = label('A'),
+    b = label('B');
+  b.fill = 'blue';
+  let calls: SDFText[] = [];
+  jest.spyOn(SDFText.prototype, 'submit').mockImplementation(function () {
+    calls.push(this);
+  });
+  const frame = () => {
+    calls = [];
+    batch.clear(true, false, true);
+    batch.add(a);
+    batch.add(b);
+    batch.flush(null, null, {});
+    return calls;
+  };
+  const first = frame();
+  a.fill = 'orange';
+  b.fill = 'red';
+  const next = frame();
+  expect(next).toEqual(first);
+  expect(next.map((d) => d.shapes)).toEqual([[a], [b]]);
+  expect(new Set(next).size).toBe(2);
+  batch.destroy();
+});

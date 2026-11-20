@@ -1,3 +1,4 @@
+import { glyphFontState } from '../utils/glyph/glyph-atlas-pool';
 import { SDFText } from './SDFText';
 import { Shape, Text } from '../shapes';
 import { DOMAdapter, BrowserAdapter, WebWorkerAdapter } from '../environment';
@@ -11,7 +12,32 @@ import {
 /** Ordered, concatenated glyph geometry; shaders and ordinary typography stay in SDFText. */
 export class TextBatch extends SDFText {
   protected maxInstances = TEXT_BATCH_GLYPHS;
-  #depths: number[] = [];
+  #layout: { shape: Shape; key: string }[] = [];
+  #ready = false;
+  protected override get glyphRasterFill() {
+    return '';
+  }
+  private layoutKey(shape: Text, fontState: string | undefined) {
+    const metrics = shape.metrics; // Resolves lazy bidi/layout data before taking a snapshot.
+    return JSON.stringify([
+      shape.content,
+      shape.bidiChars,
+      metrics,
+      shape.letterSpacing,
+      shape.textAlign,
+      shape.textBaseline,
+      shape.x,
+      shape.y,
+      shape.worldTransform.a,
+      shape.worldTransform.b,
+      shape.worldTransform.c,
+      shape.worldTransform.d,
+      shape.worldTransform.tx,
+      shape.worldTransform.ty,
+      shape.globalRenderOrder,
+      fontState,
+    ]);
+  }
   constructor(...args: ConstructorParameters<typeof SDFText>) {
     super(...args);
     this.instanced = false;
@@ -94,20 +120,43 @@ export class TextBatch extends SDFText {
     ]);
   }
   protected override prepareGeometry() {
+    if (!this.#ready) {
+      this.geometryDirty = true;
+      return;
+    }
     if (
-      this.shapes.some(
+      !this.geometryDirty &&
+      !this.materialDirty &&
+      !this.shapes.some(
         (s, i) =>
           s.renderDirtyFlag ||
           s.geometryDirtyFlag ||
           s.materialDirtyFlag ||
-          this.#depths[i] !== s.globalRenderOrder,
+          this.#layout[i]?.shape !== s ||
+          this.#orders[i] !== s.globalRenderOrder,
       )
     )
-      this.geometryDirty = true;
+      return;
+    const fontState = glyphFontState();
+    this.geometryDirty =
+      this.#layout.length !== this.shapes.length ||
+      this.shapes.some(
+        (s, i) =>
+          this.#layout[i]?.shape !== s ||
+          this.#layout[i].key !== this.layoutKey(s as Text, fontState),
+      );
   }
+  #orders: number[] = [];
   override createGeometry() {
+    this.#ready = false;
     super.createGeometry();
-    this.#depths = this.shapes.map((s) => s.globalRenderOrder);
+    const fontState = glyphFontState();
+    this.#layout = this.shapes.map((shape) => ({
+      shape,
+      key: this.layoutKey(shape as Text, fontState),
+    }));
+    this.#orders = this.shapes.map((s) => s.globalRenderOrder);
+    this.#ready = true;
   }
   protected override bakeGlyphVertices(shape: Text, positions: number[]) {
     bakeTextVertices(

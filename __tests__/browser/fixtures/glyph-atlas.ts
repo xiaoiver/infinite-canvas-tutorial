@@ -6,13 +6,17 @@ import { GlyphManager as ECSGlyphs } from '../../../packages/ecs/src/utils/glyph
 import { TinySDF as CoreSDF } from '../../../packages/core/src/utils/glyph/tiny-sdf';
 import { TinySDF as ECSSDF } from '../../../packages/ecs/src/utils/glyph/tiny-sdf';
 import './mixed-renderer';
+// Bootstrap the TLA renderer fixture before entering the drawcall import graph.
+import { SDFText as CoreText } from '../../../packages/core/src/drawcalls/SDFText';
+import { SDFText as ECSText } from '../../../packages/ecs/src/drawcalls/SDFText';
 
 // Test/benchmark instrumentation only. ASCII is an explicit comparison control.
 const ascii = new URLSearchParams(location.search).get('ascii') === '1';
 let glyphDraws = 0,
   atlasUploads = 0,
   uploadedBytes = 0,
-  atlasCpuMs = 0;
+  atlasCpuMs = 0,
+  textGeometryBuilds = 0;
 const restore: (() => void)[] = [];
 // Private-atlas control keeps the real rendering/resource path but isolates keys.
 const privateAtlas =
@@ -35,6 +39,17 @@ for (const ctor of [CoreSDF, ECSSDF]) {
   };
   restore.push(() => {
     ctor.prototype.draw = draw;
+  });
+}
+// Count real SDF geometry construction without replacing its GPU path.
+for (const ctor of [CoreText, ECSText]) {
+  const create = ctor.prototype.createGeometry;
+  ctor.prototype.createGeometry = function () {
+    textGeometryBuilds++;
+    return create.call(this);
+  };
+  restore.push(() => {
+    ctor.prototype.createGeometry = create;
   });
 }
 for (const ctor of [CoreGlyphs, ECSGlyphs]) {
@@ -74,6 +89,7 @@ window.glyphAtlasProbe = () => ({
   atlasUploads,
   uploadedBytes,
   atlasCpuMs,
+  textGeometryBuilds,
 });
 declare global {
   interface Window {
@@ -85,6 +101,7 @@ declare global {
       atlasUploads: number;
       uploadedBytes: number;
       atlasCpuMs: number;
+      textGeometryBuilds: number;
     };
   }
 }

@@ -295,6 +295,12 @@ export class BatchManager {
       shapes: Entity[];
       instances: number;
     }[] = [];
+    const usedGroups = new Set<Drawcall[]>();
+    const textPages = new Map<Entity, Drawcall[]>();
+    for (const groups of this.#instancesCache.values())
+      for (const group of groups)
+        if (group[0] instanceof TextBatch)
+          textPages.set(group[0].shapes[0], group);
     for (const [shape, explicit] of entries) {
       const ctors = explicit ? [] : this.collectDrawcallCtors(shape);
       const key = explicit ? null : this.batchKey(shape, ctors);
@@ -321,11 +327,19 @@ export class BatchManager {
       }
       let calls: Drawcall[];
       if (key !== null) {
-        const index = cursors.get(key) ?? 0;
+        const pool = this.#instancesCache.get(key);
+        let index = cursors.get(key) ?? 0;
+        while (pool && index < pool.length && usedGroups.has(pool[index]))
+          index++;
         cursors.set(key, index + 1);
-        calls =
-          this.#instancesCache.get(key)?.[index] ??
-          this.createDrawcalls(shape, ctors, true);
+        const exact = pool?.[index];
+        const candidate =
+          ctors[0] === TextBatch ? textPages.get(shape) : undefined;
+        const recycled =
+          candidate && !usedGroups.has(candidate) ? candidate : undefined;
+        calls = exact ?? recycled ?? this.createDrawcalls(shape, ctors, true);
+        if (!exact && recycled) calls.forEach((d) => (d.materialDirty = true));
+        usedGroups.add(calls);
         if (!nextPools.has(key)) nextPools.set(key, []);
         nextPools.get(key)!.push(calls);
       } else {

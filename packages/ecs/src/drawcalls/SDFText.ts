@@ -282,6 +282,10 @@ export class SDFText extends Drawcall {
     return !!this.shapes[0].read(Text).bitmapFont;
   }
 
+  protected get glyphRasterFill() {
+    return resolveSdfTextFillColorCss(this.shapes[0]);
+  }
+
   protected bakeGlyphVertices(_shape: Entity, _positions: number[]): void {}
 
   createGeometry(): void {
@@ -295,7 +299,7 @@ export class SDFText extends Drawcall {
       fontSize,
     } = this.shapes[0].read(Text);
     const { fontMetrics } = this.shapes[0].read(ComputedTextMetrics);
-    const fill = resolveSdfTextFillColorCss(this.shapes[0]);
+    const fill = this.glyphRasterFill;
     // Glyphs are always rasterized at BASE_FONT_WIDTH. Display font size only
     // changes quad layout; including it in the atlas key rerasterizes the
     // entire alphabet and uploads a growing atlas on every resize frame.
