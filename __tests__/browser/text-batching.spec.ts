@@ -210,3 +210,31 @@ for (const backend of ['core', 'ecs']) {
       ).toBe(true);
   });
 }
+
+for (const backend of ['core', 'ecs']) {
+  test(`${backend} resolves one text key per label per edit frame`, async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    await page.addInitScript(installProbes);
+    await page.goto(`/glyph-atlas.html?backend=${backend}`);
+    await expect(page.locator('output')).toHaveText('Ready');
+    await page.evaluate(() => window.mixedRenderer.textBatching(true));
+    await page.evaluate(() =>
+      window.mixedRenderer.configure(1000, 'grouped', false),
+    );
+    const before = await page.evaluate(() => window.glyphAtlasProbe());
+    await page.evaluate(() => window.mixedRenderer.measure('pan', 2, 1));
+    const camera = await page.evaluate(() => window.glyphAtlasProbe());
+    expect(camera.textBatchKeyChecks).toBe(before.textBatchKeyChecks);
+    const frames = await page.evaluate(() =>
+      window.mixedRenderer.measure('edit', 2, 1),
+    );
+    const after = await page.evaluate(() => window.glyphAtlasProbe());
+    expect(frames.visible).toBe(1000);
+    expect(frames.native.drawcalls).toBe(407);
+    expect(frames.webglError).toBe(0);
+    expect(after.textBatchKeyChecks - camera.textBatchKeyChecks).toBe(600);
+    await page.evaluate(() => window.mixedRenderer.destroy());
+  });
+}

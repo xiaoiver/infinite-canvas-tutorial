@@ -1,3 +1,7 @@
+import {
+  captureTextLayout,
+  matchesTextLayout,
+} from '../utils/text-layout-snapshot';
 import { glyphFontState } from '../utils/glyph/glyph-atlas-pool';
 import { SDFText } from './SDFText';
 import { Shape, Text } from '../shapes';
@@ -12,14 +16,14 @@ import {
 /** Ordered, concatenated glyph geometry; shaders and ordinary typography stay in SDFText. */
 export class TextBatch extends SDFText {
   protected maxInstances = TEXT_BATCH_GLYPHS;
-  #layout: { shape: Shape; key: string }[] = [];
+  #layout: { shape: Shape; values: unknown }[] = [];
   #ready = false;
   protected override get glyphRasterFill() {
     return '';
   }
-  private layoutKey(shape: Text, fontState: string | undefined) {
+  private layoutValues(shape: Text, fontState: string | undefined) {
     const metrics = shape.metrics; // Resolves lazy bidi/layout data before taking a snapshot.
-    return JSON.stringify([
+    return [
       shape.content,
       shape.bidiChars,
       metrics,
@@ -36,7 +40,7 @@ export class TextBatch extends SDFText {
       shape.worldTransform.ty,
       shape.globalRenderOrder,
       fontState,
-    ]);
+    ];
   }
   constructor(...args: ConstructorParameters<typeof SDFText>) {
     super(...args);
@@ -143,7 +147,10 @@ export class TextBatch extends SDFText {
       this.shapes.some(
         (s, i) =>
           this.#layout[i]?.shape !== s ||
-          this.#layout[i].key !== this.layoutKey(s as Text, fontState),
+          !matchesTextLayout(
+            this.#layout[i].values,
+            this.layoutValues(s as Text, fontState),
+          ),
       );
   }
   #orders: number[] = [];
@@ -153,7 +160,7 @@ export class TextBatch extends SDFText {
     const fontState = glyphFontState();
     this.#layout = this.shapes.map((shape) => ({
       shape,
-      key: this.layoutKey(shape as Text, fontState),
+      values: captureTextLayout(this.layoutValues(shape as Text, fontState)),
     }));
     this.#orders = this.shapes.map((s) => s.globalRenderOrder);
     this.#ready = true;

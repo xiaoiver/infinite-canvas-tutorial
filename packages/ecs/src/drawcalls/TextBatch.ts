@@ -1,3 +1,7 @@
+import {
+  captureTextLayout,
+  matchesTextLayout,
+} from '../utils/text-layout-snapshot';
 import { glyphFontState } from '../utils/glyph/glyph-atlas-pool';
 import type { Entity } from '@lastolivegames/becsy';
 import { SDFText } from './SDFText';
@@ -35,7 +39,7 @@ const matrix = (shape: Entity) => {
 };
 export class TextBatch extends SDFText {
   static override retainEmptyPage = false;
-  #layout: { shape: Entity; key: string }[] = [];
+  #layout: { shape: Entity; values: unknown }[] = [];
   #ready = false;
   private rasterFill(shape: Entity) {
     // RGB is a uniform for eligible ASCII. Preserve the original raster alpha
@@ -47,10 +51,10 @@ export class TextBatch extends SDFText {
   protected override get glyphRasterFill() {
     return this.rasterFill(this.shapes[0]);
   }
-  private layoutKey(shape: Entity, fontState: string | undefined) {
+  private layoutValues(shape: Entity, fontState: string | undefined) {
     const text = shape.read(Text),
       metrics = shape.read(ComputedTextMetrics);
-    return JSON.stringify([
+    return [
       text.content,
       text.fontFamily,
       text.fontWeight,
@@ -70,7 +74,7 @@ export class TextBatch extends SDFText {
       shape.has(GlobalRenderOrder) ? shape.read(GlobalRenderOrder).value : 0,
       fontState,
       this.rasterFill(shape),
-    ]);
+    ];
   }
   protected maxInstances = TEXT_BATCH_GLYPHS;
   constructor(...args: ConstructorParameters<typeof SDFText>) {
@@ -170,7 +174,10 @@ export class TextBatch extends SDFText {
         this.shapes.some(
           (s, i) =>
             this.#layout[i]?.shape !== s ||
-            this.#layout[i].key !== this.layoutKey(s, fontState),
+            !matchesTextLayout(
+              this.#layout[i].values,
+              this.layoutValues(s, fontState),
+            ),
         );
     }
     this.dirtyInstances.clear();
@@ -181,7 +188,7 @@ export class TextBatch extends SDFText {
     const fontState = glyphFontState();
     this.#layout = this.shapes.map((shape) => ({
       shape,
-      key: this.layoutKey(shape, fontState),
+      values: captureTextLayout(this.layoutValues(shape, fontState)),
     }));
     this.#ready = true;
   }

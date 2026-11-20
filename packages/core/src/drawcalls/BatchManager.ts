@@ -345,10 +345,14 @@ export class BatchManager {
     };
     const next: OrderedPage[] = [];
     for (const shape of this.#frameShapes) {
-      const textKey = this.#allowTextBatches ? TextBatch.batchKey(shape) : null;
-      const pathKey = this.#allowPathInstances
-        ? PathInstances.batchKey(shape)
-        : null;
+      const textKey =
+        this.#allowTextBatches && shape.constructor === Text
+          ? TextBatch.batchKey(shape)
+          : null;
+      const pathKey =
+        this.#allowPathInstances && shape.constructor === Path
+          ? PathInstances.batchKey(shape)
+          : null;
       const ctors =
         textKey !== null
           ? [TextBatch]

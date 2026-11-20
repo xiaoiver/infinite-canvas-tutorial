@@ -1,3 +1,5 @@
+import * as layoutSnapshots from '../../packages/ecs/src/utils/text-layout-snapshot';
+import { textLayoutSnapshotContract } from '../contracts/text-layout-snapshot';
 import {
   ComputedLOD,
   GlobalTransform,
@@ -1161,6 +1163,51 @@ it('skips unchanged text layout markers and retries a failed glyph geometry buil
     throw new Error('GPU failure');
   });
   expect(() => draw.createGeometry()).toThrow('GPU failure');
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(true);
+  draw.destroy();
+});
+
+textLayoutSnapshotContract(layoutSnapshots);
+it('resolves eligible text and Path compatibility once per item in a fresh plan', () => {
+  const batch = manager();
+  batch.setTextBatchingEnabled(true);
+  batch.setPathInstancingEnabled(true);
+  const text = ordinaryLabel(),
+    path = solidPath(),
+    rect = shape();
+  const tk = jest.spyOn(TextBatch, 'batchKey'),
+    pk = jest.spyOn(PathInstances, 'batchKey');
+  [text, path, rect].forEach((n) => batch.add(n.entity));
+  expect(queued(batch).map((d) => d.constructor)).toEqual([
+    TextBatch,
+    PathInstances,
+    SDF,
+  ]);
+  expect(tk.mock.calls.map((c) => c[0])).toEqual([text.entity]);
+  expect(pk.mock.calls.map((c) => c[0])).toEqual([path.entity]);
+  text.data.set(FillLayers, { layers: [{ type: 'solid', value: 'blue' }] });
+  batch.add(text.entity);
+  queued(batch);
+  expect(tk).toHaveBeenCalledTimes(2);
+  expect(pk).toHaveBeenCalledTimes(2);
+  text.data.set(Children, {
+    parent: shape(Rect, false, [Filter, { value: 'blur(2px)' }]).entity,
+  });
+  batch.add(text.entity);
+  expect(queued(batch)[0].constructor).toBe(SDFText);
+});
+it('invalidates copied ECS metrics without relying on object reference changes', () => {
+  const text = ordinaryLabel(),
+    draw = new TextBatch(null, null, null, null, true, 0, null);
+  draw.shapes = [text.entity];
+  jest.spyOn(SDFText.prototype, 'createGeometry').mockImplementation(() => {});
+  draw.createGeometry();
+  draw.geometryDirty = true;
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(false);
+  text.data.get(ComputedTextMetrics).fontMetrics.fontBoundingBoxAscent = 11;
+  draw.geometryDirty = true;
   (draw as any).prepareGeometry();
   expect(draw.geometryDirty).toBe(true);
   draw.destroy();

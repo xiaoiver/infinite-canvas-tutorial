@@ -1,5 +1,9 @@
+import { DOMAdapter, Text, Rect, Path } from '../../packages/core/src';
+import { Drawcall } from '../../packages/core/src/drawcalls/Drawcall';
+import { PathInstances } from '../../packages/core/src/drawcalls/PathInstances';
+import * as layoutSnapshots from '../../packages/core/src/utils/text-layout-snapshot';
+import { textLayoutSnapshotContract } from '../contracts/text-layout-snapshot';
 import { createCanvas } from 'canvas';
-import { DOMAdapter, Text, Rect } from '../../packages/core/src';
 import { TextBatch } from '../../packages/core/src/drawcalls/TextBatch';
 import { SDFText } from '../../packages/core/src/drawcalls/SDFText';
 import { BatchManager } from '../../packages/core/src/drawcalls/BatchManager';
@@ -194,4 +198,42 @@ it('does not lend the same text page twice while paint keys rotate', () => {
   expect(next.map((d) => d.shapes)).toEqual([[a], [b]]);
   expect(new Set(next).size).toBe(2);
   batch.destroy();
+});
+
+textLayoutSnapshotContract(layoutSnapshots);
+it('dispatches text and Path eligibility only to the matching primitive kind', () => {
+  const batch = new BatchManager(null),
+    text = label('AB'),
+    path = new Path({
+      d: 'M0 0 H20 V20 Z',
+      fill: 'red',
+      stroke: 'none',
+      strokeWidth: 0,
+    });
+  path.batchable = true;
+  const textKey = jest.spyOn(TextBatch, 'batchKey'),
+    pathKey = jest.spyOn(PathInstances, 'batchKey');
+  jest.spyOn(Drawcall.prototype, 'submit').mockImplementation(() => {});
+  batch.clear(true, true, true);
+  [new Rect(), text, path].forEach((s) => batch.add(s));
+  batch.flush(null, null, {});
+  expect(textKey.mock.calls.map((c) => c[0])).toEqual([text]);
+  expect(pathKey.mock.calls.map((c) => c[0])).toEqual([path]);
+  batch.destroy();
+});
+it('invalidates copied Core metrics even when a derived object is mutated in place', () => {
+  const text = label('AB'),
+    draw = new TextBatch(null, null, null, true, 0);
+  draw.shapes = [text];
+  jest.spyOn(SDFText.prototype, 'createGeometry').mockImplementation(() => {});
+  draw.createGeometry();
+  text.renderDirtyFlag = false;
+  draw.geometryDirty = true;
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(false);
+  text.metrics.fontMetrics.fontBoundingBoxAscent = 123;
+  draw.geometryDirty = true;
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(true);
+  draw.destroy();
 });
