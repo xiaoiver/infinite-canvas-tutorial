@@ -397,3 +397,11 @@ teardown, unchanged camera-only atlas work, new Greek/CJK character edits and
 complete PNG exports in both backends. Pixel comparisons account for edge
 antialiasing after atlas repacking. The separate `pnpm bench:glyph-atlas` command
 measures cold atlas work and steady-state frames with the mixed-scene contract.
+
+The paired glyph-sharing suite compares shared immutable snapshots with a private
+atlas control, including AB/BA layout, live peers after deletion, copy-on-write
+edits, already-loaded FontFace additions, bounded three-state edit cycles and
+complete raster exports. Each drawcall owns at most two snapshot leases, all
+released on retirement. Custom adapters or environments without observable font
+state use private snapshots. A separate `pnpm bench:glyph-sharing` command records
+cold resources plus pan and 1% color-edit CPU frames for both renderers.

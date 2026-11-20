@@ -331,3 +331,79 @@ it('defaults to only requested graphemes plus space, including empty text', () =
   expect(Object.keys(manager.getMap().empty)).toEqual([' ']);
   manager.destroy();
 });
+
+it('forks an immutable snapshot without rerasterizing known glyphs, even when every glyph is seeded', () => {
+  const { manager, generate, createTexture, textures } = fixture();
+  generate('AB', 'sans', false);
+  const map = manager.getMap(),
+    atlas = manager.getAtlas();
+  const previousCalls = draw.mock.calls.length;
+  const fork = new GlyphManager();
+  fork.generateAtlas(
+    'sans',
+    'sans-serif',
+    '400',
+    '',
+    'BA',
+    { createTexture } as unknown as Device,
+    false,
+    'red',
+    false,
+    map.sans,
+  );
+  expect(draw).toHaveBeenCalledTimes(previousCalls);
+  expect(fork.getAtlasTexture()).not.toBe(manager.getAtlasTexture());
+  expect(fork.getAtlas().positions.sans.A).toBeDefined();
+  fork.generateAtlas(
+    'sans',
+    'sans-serif',
+    '400',
+    '',
+    'ABC',
+    { createTexture } as unknown as Device,
+    false,
+    'red',
+  );
+  expect(draw).toHaveBeenCalledTimes(previousCalls + 1);
+  expect(manager.getMap()).toBe(map);
+  expect(manager.getAtlas()).toBe(atlas);
+  expect(manager.getMap().sans.C).toBeUndefined();
+  expect(textures[0].destroy).not.toHaveBeenCalled();
+  fork.destroy();
+  manager.destroy();
+});
+
+it('does not publish seeded CPU glyphs or destroy the source when a fork upload fails', () => {
+  const { manager, generate, createTexture, textures } = fixture();
+  generate('AB', 'sans', false);
+  const map = manager.getMap(),
+    fork = new GlyphManager();
+  const failed = {
+    destroy: jest.fn(),
+    setImageData: jest.fn(() => {
+      throw new Error('upload');
+    }),
+  };
+  createTexture.mockReturnValueOnce(failed);
+  expect(() =>
+    fork.generateAtlas(
+      'sans',
+      'sans-serif',
+      '400',
+      '',
+      'ABC',
+      { createTexture } as unknown as Device,
+      false,
+      'red',
+      false,
+      map.sans,
+    ),
+  ).toThrow('upload');
+  expect(fork.getMap()).toEqual({});
+  expect(fork.getAtlasTexture()).toBeUndefined();
+  expect(manager.getMap()).toBe(map);
+  expect(textures[0].destroy).not.toHaveBeenCalled();
+  expect(failed.destroy).toHaveBeenCalledTimes(1);
+  fork.destroy();
+  manager.destroy();
+});

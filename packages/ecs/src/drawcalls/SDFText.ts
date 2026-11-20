@@ -166,8 +166,30 @@ function flipCanvasForGpuFillTextureUpload(
   return dst;
 }
 
+import { DOMAdapter, BrowserAdapter, WebWorkerAdapter } from '../environment';
+import {
+  GlyphAtlasPool,
+  glyphFontState,
+  type GlyphAtlasLease,
+} from '../utils/glyph/glyph-atlas-pool';
+
+const glyphAtlasPool = new GlyphAtlasPool();
+
 export class SDFText extends Drawcall {
-  #glyphManager = new GlyphManager();
+  #privateGlyphManager = new GlyphManager();
+  #glyphAtlasLease: GlyphAtlasLease | undefined;
+  #glyphSnapshots = new Map<
+    string,
+    { lease: GlyphAtlasLease; rasterKey: string }
+  >();
+  private releaseGlyphAtlases() {
+    for (const { lease } of this.#glyphSnapshots.values()) lease.release();
+    this.#glyphSnapshots.clear();
+    this.#glyphAtlasLease = undefined;
+  }
+  get #glyphManager() {
+    return this.#glyphAtlasLease?.manager ?? this.#privateGlyphManager;
+  }
   #uniformBuffer: Buffer;
   /** Display texture: glyph atlas, or filtered raster when {@link Drawcall.useFillImage}. */
   #texture: Texture | null = null;
@@ -294,6 +316,7 @@ export class SDFText extends Drawcall {
     let fontScale: number;
 
     if (this.useBitmapFont) {
+      this.releaseGlyphAtlases();
       fontScale = fontMetrics.fontSize / bitmapFont.baseMeasurementFontSize;
     } else {
       // scale current font size to base(24)
@@ -301,16 +324,79 @@ export class SDFText extends Drawcall {
       const allText = this.shapes
         .map((text: Entity) => text.read(ComputedTextMetrics).bidiChars)
         .join('');
-      this.#glyphManager.generateAtlas(
+      const fillKey = hasEmoji ? (fill as string) : '';
+      const adapter = DOMAdapter.get();
+      // Custom canvas adapters may use a different, unobservable font registry.
+      const fontState =
+        adapter === BrowserAdapter || adapter === WebWorkerAdapter
+          ? glyphFontState()
+          : undefined;
+      const rasterKey = JSON.stringify([
+        fontState,
         fontStack,
         fontFamily,
         fontWeight.toString(),
         fontStyle,
-        allText,
-        this.device,
         esdt,
-        hasEmoji ? (fill as string) : '',
-      );
+        fillKey,
+      ]);
+      const chars = [
+        ...new Set([' ', ...DOMAdapter.get().splitGraphemes(allText)]),
+      ].sort();
+      const key = JSON.stringify([rasterKey, chars]);
+      if (this.#glyphAtlasLease?.key !== key) {
+        const known = [...this.#glyphSnapshots.values()]
+          .reverse()
+          .find((snapshot) => snapshot.rasterKey === rasterKey)
+          ?.lease.manager.getMap()[fontStack];
+        const seed =
+          known &&
+          Object.fromEntries(
+            chars
+              .filter((char) => known[char])
+              .map((char) => [char, known[char]]),
+          );
+        const next =
+          this.#glyphSnapshots.get(key)?.lease ??
+          glyphAtlasPool.acquire(
+            this.device,
+            key,
+            () => {
+              const manager = new GlyphManager();
+              try {
+                manager.generateAtlas(
+                  fontStack,
+                  fontFamily,
+                  fontWeight.toString(),
+                  fontStyle,
+                  allText,
+                  this.device,
+                  esdt,
+                  fillKey,
+                  false,
+                  seed,
+                );
+                return manager;
+              } catch (error) {
+                manager.destroy();
+                throw error;
+              }
+            },
+            fontState !== undefined,
+          );
+        this.#glyphAtlasLease = next;
+        this.#glyphSnapshots.delete(key);
+        this.#glyphSnapshots.set(key, { lease: next, rasterKey });
+        // Bound short edit/undo and paint roundtrips to two owned snapshots.
+        if (this.#glyphSnapshots.size > 2) {
+          const oldest = this.#glyphSnapshots.keys().next().value!;
+          this.#glyphSnapshots.get(oldest)!.lease.release();
+          this.#glyphSnapshots.delete(oldest);
+        }
+        // The snapshot's UV packing and texture travel together; peers retain
+        // their old snapshot until their own next successful acquisition.
+        this.materialDirty = true;
+      }
     }
 
     this.shapes.forEach((object: Entity) => {
@@ -1029,7 +1115,8 @@ export class SDFText extends Drawcall {
     if (this.program) {
       this.#uniformBuffer?.destroy();
     }
-    this.#glyphManager.destroy();
+    this.releaseGlyphAtlases();
+    this.#privateGlyphManager.destroy();
   }
 
   private generateBuffer(
