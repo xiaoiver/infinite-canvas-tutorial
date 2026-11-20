@@ -33,6 +33,7 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { settleECSFrames } from './ecs-frames';
 import { mixedFrameProbe } from './mixed-frame-probe';
+import { framePhaseProbe, type FramePhases } from './frame-phase-probe';
 import { Sort } from '../../../packages/ecs/src/systems/Sort';
 import { MeshPipeline } from '../../../packages/ecs/src/systems/MeshPipeline';
 
@@ -53,6 +54,7 @@ let baseZoom = 1;
 let textLimit = 200;
 let editIndices: number[] = [];
 const probe = mixedFrameProbe(element);
+let phases: ReturnType<typeof framePhaseProbe> | undefined;
 let baseline = [] as ReturnType<typeof window.lifecycleProbes.resources>;
 // Fixture-only order propagation counters. Core counts assignments; ECS observes
 // the renderer's GlobalRenderOrder change query after Sort has executed.
@@ -408,15 +410,26 @@ function ecsAction(e: API, operation: MixedOperation, index: number) {
 async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
   if (!['pan', 'zoom', 'edit'].includes(operation) || samples < 2 || warmup < 1)
     throw new Error('Invalid benchmark parameters');
+  const phaseSamples: FramePhases[] = [];
   const times: number[] = [],
     submissions: ReturnType<typeof probe.snapshot>[] = [];
   if (core) {
     for (let i = 0; i < samples + warmup; i++) {
       probe.reset();
+      phases?.begin();
       const start = performance.now();
-      coreAction(operation, i);
-      core.render();
-      times.push(performance.now() - start);
+      try {
+        if (phases) {
+          phases.run('core.mutate', () => coreAction(operation, i));
+          phases.run('core.render', () => core!.render());
+        } else {
+          coreAction(operation, i);
+          core.render();
+        }
+        times.push(performance.now() - start);
+      } finally {
+        if (phases) phaseSamples.push(phases.end());
+      }
       submissions.push(probe.snapshot());
       await new Promise(requestAnimationFrame);
     }
@@ -426,9 +439,14 @@ async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
     app!.world.execute = (...args: Parameters<typeof original>) => {
       pending = (async () => {
         probe.reset();
+        phases?.begin();
         const start = performance.now();
-        await original(...args);
-        times.push(performance.now() - start);
+        try {
+          await original(...args);
+          times.push(performance.now() - start);
+        } finally {
+          if (phases) phaseSamples.push(phases.end());
+        }
         submissions.push(probe.snapshot());
       })();
       return pending;
@@ -453,6 +471,7 @@ async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
     samples: measured.length,
     warmup,
     cpuSamplesMs: times.slice(warmup),
+    phaseSamples: phaseSamples.slice(warmup),
     cpuP50: measured[Math.floor(measured.length * 0.5)],
     cpuP95: measured[Math.floor(measured.length * 0.95)],
     nonemptyFrames: nativeFrames.filter((f) => f.drawcalls > 0).length,
@@ -471,6 +490,8 @@ async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
   };
 }
 async function destroy() {
+  phases?.dispose();
+  phases = undefined;
   probe.dispose();
   try {
     if (core) core.destroy();
@@ -713,7 +734,91 @@ async function textBatching(enabled: boolean) {
   }
   return state();
 }
+// Installed only on explicit diagnostic request, after the renderer import graph
+// has initialized. Normal benchmark runs have no method wrappers or timing scopes.
+async function profile(enabled: boolean) {
+  phases?.dispose();
+  phases = undefined;
+  if (!enabled) return;
+  const collector = framePhaseProbe();
+  const names: string[] = [],
+    skippedAsyncSystems: string[] = [];
+  try {
+    if (core) {
+      const { BatchManager } = await import(
+        '../../../packages/core/src/drawcalls/BatchManager'
+      );
+      collector.wrap(BatchManager.prototype, 'planOrdered', 'batch.plan');
+      collector.wrap(BatchManager.prototype, 'flush', 'batch.submit');
+      names.push('core.mutate', 'core.render', 'batch.plan', 'batch.submit');
+    } else {
+      const systems = await import('../../../packages/ecs/src/systems');
+      const labels = new Map<object, string>([
+        [systems.ApplyEdits, 'edit.apply'],
+        [systems.ComputePoints, 'derive.points'],
+        [systems.ComputeTextMetrics, 'derive.text'],
+        [systems.SyncSimpleTransforms, 'derive.transforms'],
+        [systems.PropagateTransforms, 'derive.transforms'],
+        [systems.ComputeBounds, 'derive.bounds'],
+        [systems.ComputeCamera, 'derive.camera'],
+        [systems.ComputeVisibility, 'visibility.derive'],
+        [systems.ViewportCulling, 'visibility.cull'],
+        [systems.ComputeLOD, 'visibility.lod'],
+        [systems.ComputeZIndex, 'order.reconcile'],
+        [systems.Sort, 'order.rank'],
+        [systems.MeshPipeline, 'render.pipeline'],
+      ]);
+      const seen = new Set<object>();
+      for (const ctor of Object.values(systems)) {
+        if (
+          typeof ctor !== 'function' ||
+          !(ctor.prototype instanceof System) ||
+          seen.has(ctor.prototype)
+        )
+          continue;
+        seen.add(ctor.prototype);
+        const execute = (ctor.prototype as { execute?: () => unknown }).execute;
+        if (typeof execute !== 'function') continue;
+        if (execute.constructor.name === 'AsyncFunction') {
+          skippedAsyncSystems.push(ctor.name);
+          continue;
+        }
+        const label = labels.get(ctor) ?? `system.${ctor.name}`;
+        collector.wrap(ctor.prototype, 'execute', label);
+        names.push(label);
+      }
+      collector.wrap(
+        systems.MeshPipeline.prototype,
+        'renderCamera',
+        'render.camera',
+      );
+      collector.wrap(systems.BatchManager.prototype, 'plan', 'batch.plan');
+      collector.wrap(
+        systems.BatchManager.prototype,
+        'scheduleFlush',
+        'batch.schedule',
+      );
+      collector.wrap(
+        systems.BatchManager.prototype,
+        'flushDrawcalls',
+        'batch.submit',
+      );
+      names.push(
+        'render.camera',
+        'batch.plan',
+        'batch.schedule',
+        'batch.submit',
+      );
+    }
+    phases = collector;
+    return { phases: names, skippedAsyncSystems };
+  } catch (error) {
+    collector.dispose();
+    throw error;
+  }
+}
 const harness = {
+  profile,
   reorderText,
   textOrder,
   paintText,
