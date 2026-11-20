@@ -146,3 +146,67 @@ for (const backend of ['core', 'ecs']) {
     await page.evaluate(() => window.mixedRenderer.destroy());
   });
 }
+
+for (const backend of ['core', 'ecs']) {
+  test(`${backend} arbitrary paint edits retain glyph geometry and atlas after a split`, async ({
+    page,
+  }) => {
+    await page.addInitScript(installProbes);
+    await page.goto(`/glyph-atlas.html?backend=${backend}`);
+    await expect(page.locator('output')).toHaveText('Ready');
+    await page.evaluate(() => window.mixedRenderer.textBatching(true));
+    await page.evaluate(() =>
+      window.mixedRenderer.configure(100, 'grouped', false),
+    );
+    await page.evaluate(() => window.mixedRenderer.editText());
+    await page.evaluate(() => window.mixedRenderer.paintText(5, 'red'));
+    const before = await page.evaluate(() => window.glyphAtlasProbe());
+    const resources: number[] = [];
+    for (const color of [
+      '#1e293b',
+      '#334155',
+      '#fb923c',
+      '#4ade80',
+      '#38bdf8',
+    ]) {
+      const state = await page.evaluate(
+        (c) => window.mixedRenderer.paintText(5, c, 0.7),
+        color,
+      );
+      expect(state.webglError).toBe(0);
+      resources.push(
+        state.resources.reduce((n, c) => n + c.live.Buffer + c.live.Texture, 0),
+      );
+    }
+    const after = await page.evaluate(() => window.glyphAtlasProbe());
+    expect(after.textGeometryBuilds).toBe(before.textGeometryBuilds);
+    expect(after.atlasUploads).toBe(before.atlasUploads);
+    expect(after.glyphDraws).toBe(before.glyphDraws);
+    expect(new Set(resources).size).toBe(1);
+    await page.evaluate(() =>
+      window.mixedRenderer.editOneText(5, 'Alpha typography '.repeat(3)),
+    );
+    await page.evaluate(() =>
+      window.mixedRenderer.paintText(5, '#ff000080', 0.7),
+    );
+    const batch = PNG.sync.read(
+      await page.locator('canvas').screenshot({ scale: 'css' }),
+    );
+    await page.evaluate(() => window.mixedRenderer.textBatching(false));
+    const full = PNG.sync.read(
+      await page.locator('canvas').screenshot({ scale: 'css' }),
+    );
+    expect(
+      pixelmatch(batch.data, full.data, null, batch.width, batch.height, {
+        threshold: 0.1,
+      }),
+    ).toBeLessThan(64);
+    const baseline = await page.evaluate(() => window.mixedRenderer.destroy());
+    const end = await page.evaluate(() => window.lifecycleProbes.resources());
+    if (backend === 'core') expect(end).toEqual(baseline);
+    else
+      expect(
+        end.every((c) => Object.values(c.live).every((n) => n === 0)),
+      ).toBe(true);
+  });
+}

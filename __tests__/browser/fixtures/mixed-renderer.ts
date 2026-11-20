@@ -526,6 +526,26 @@ async function removeTexts(count: number) {
   }
   return state();
 }
+async function paintText(index: number, color: string, opacity = 1) {
+  const node = nodes.filter((n) => n.type === 'text')[index];
+  if (!node) throw new Error('No text at index');
+  const i = nodes.indexOf(node),
+    updated = {
+      ...node,
+      opacity,
+      fills: [{ type: 'solid' as const, value: color }],
+    };
+  nodes[i] = updated;
+  if (core) {
+    shapes[i].fill = color;
+    shapes[i].opacity = opacity;
+    core.render();
+  } else {
+    await api!.edit((e) => e.updateNodes([updated]), { capture: 'NEVER' });
+    await settleECSFrames(api!, 3);
+  }
+  return state();
+}
 async function textPresence(mode: 'hidden' | 'culled' | 'visible') {
   const textNodes = nodes.filter((n) => n.type === 'text');
   if (core) {
@@ -620,6 +640,7 @@ async function textBatching(enabled: boolean) {
   return state();
 }
 const harness = {
+  paintText,
   textPresence,
   textPicking,
   textScenario,

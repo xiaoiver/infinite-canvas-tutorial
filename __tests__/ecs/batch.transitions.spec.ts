@@ -1105,3 +1105,63 @@ it('keeps ordinary text barriers for paint, opacity, UI, ancestors and LOD', () 
   batch.add(b.entity);
   expect(queued(batch)[1].constructor).toBe(TextProxy);
 });
+
+it('recycles an ordinary text page when only its paint compatibility key changes', () => {
+  const batch = manager();
+  batch.setTextBatchingEnabled(true);
+  const a = ordinaryLabel(),
+    b = ordinaryLabel();
+  [a, b].forEach((n) => batch.add(n.entity));
+  const first = queued(batch)[0];
+  for (const color of ['green', 'cyan', 'orange']) {
+    for (const n of [a, b]) {
+      n.data.set(FillLayers, { layers: [{ type: 'solid', value: color }] });
+      batch.add(n.entity);
+    }
+    expect(queued(batch)).toEqual([first]);
+    expect(first.destroyed).toBe(false);
+  }
+  batch.remove(a.entity);
+  batch.remove(b.entity);
+  expect(queued(batch)).toEqual([]);
+  expect(first.destroyed).toBe(true);
+});
+
+it('does not consume a recycled text page again under its former material key', () => {
+  const batch = manager();
+  batch.setTextBatchingEnabled(true);
+  const a = ordinaryLabel(),
+    b = ordinaryLabel();
+  b.data.set(FillLayers, { layers: [{ type: 'solid', value: 'blue' }] });
+  [a, b].forEach((n) => batch.add(n.entity));
+  const first = queued(batch);
+  a.data.set(FillLayers, { layers: [{ type: 'solid', value: 'orange' }] });
+  b.data.set(FillLayers, { layers: [{ type: 'solid', value: 'red' }] });
+  [a, b].forEach((n) => batch.add(n.entity));
+  const next = queued(batch);
+  expect(next).toEqual(first);
+  expect(next.map((d) => d.shapes)).toEqual([[a.entity], [b.entity]]);
+  expect(new Set(next).size).toBe(2);
+});
+it('skips unchanged text layout markers and retries a failed glyph geometry build', () => {
+  const node = ordinaryLabel(),
+    draw = new TextBatch(null, null, null, null, true, 0, null);
+  draw.shapes = [node.entity];
+  jest.spyOn(SDFText.prototype, 'createGeometry').mockImplementation(() => {});
+  draw.createGeometry();
+  draw.geometryDirty = false;
+  draw.dirtyInstances.add(node.entity);
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(false);
+  node.data.get(Text).content = 'Changed';
+  draw.dirtyInstances.add(node.entity);
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(true);
+  jest.spyOn(SDFText.prototype, 'createGeometry').mockImplementation(() => {
+    throw new Error('GPU failure');
+  });
+  expect(() => draw.createGeometry()).toThrow('GPU failure');
+  (draw as any).prepareGeometry();
+  expect(draw.geometryDirty).toBe(true);
+  draw.destroy();
+});

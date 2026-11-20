@@ -71,11 +71,20 @@ test('Core/ECS ordered full text batching', async ({ browser }) => {
         expect(
           await page.evaluate(() => window.glyphAtlasProbe().glyphDraws),
         ).toBe(setup.glyphs.glyphDraws);
+        const glyphsAfterFrames = await page.evaluate(() =>
+          window.glyphAtlasProbe(),
+        );
+        expect(glyphsAfterFrames.textGeometryBuilds).toBe(
+          setup.glyphs.textGeometryBuilds,
+        );
         const edits = await page.evaluate(() =>
           window.mixedRenderer.measure('edit', 30, 15),
         );
         expect(edits.samples).toBe(30);
         expect(edits.webglError).toBe(0);
+        const glyphsAfterEdits = await page.evaluate(() =>
+          window.glyphAtlasProbe(),
+        );
         const baseline = await page.evaluate(() =>
           window.mixedRenderer.destroy(),
         );
@@ -95,6 +104,8 @@ test('Core/ECS ordered full text batching', async ({ browser }) => {
           ...setup,
           frames,
           edits,
+          glyphsAfterFrames,
+          glyphsAfterEdits,
           teardownPassed: true,
         });
         writeFileSync(destination, JSON.stringify(results, null, 2) + '\n');

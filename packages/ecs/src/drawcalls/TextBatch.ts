@@ -1,3 +1,4 @@
+import { glyphFontState } from '../utils/glyph/glyph-atlas-pool';
 import type { Entity } from '@lastolivegames/becsy';
 import { SDFText } from './SDFText';
 import {
@@ -5,6 +6,7 @@ import {
   TextDecoration,
   ComputedTextMetrics,
   GlobalTransform,
+  GlobalRenderOrder,
   Opacity,
   Stroke,
   Wireframe,
@@ -33,6 +35,43 @@ const matrix = (shape: Entity) => {
 };
 export class TextBatch extends SDFText {
   static override retainEmptyPage = false;
+  #layout: { shape: Entity; key: string }[] = [];
+  #ready = false;
+  private rasterFill(shape: Entity) {
+    // RGB is a uniform for eligible ASCII. Preserve the original raster alpha
+    // and colored-SDF mode, including CSS colors whose own alpha is fractional.
+    const layer = getEnabledFillLayers(shape)[0];
+    const fill = layer?.type === 'solid' ? layer.value : 'black';
+    return `rgba(0,0,0,${this.getUniformColor(fill).opacity})`;
+  }
+  protected override get glyphRasterFill() {
+    return this.rasterFill(this.shapes[0]);
+  }
+  private layoutKey(shape: Entity, fontState: string | undefined) {
+    const text = shape.read(Text),
+      metrics = shape.read(ComputedTextMetrics);
+    return JSON.stringify([
+      text.content,
+      text.fontFamily,
+      text.fontWeight,
+      text.fontStyle,
+      text.esdt,
+      Number(text.fontSize),
+      text.letterSpacing,
+      text.textAlign,
+      metrics.font,
+      metrics.bidiChars,
+      metrics.lines,
+      metrics.lineHeight,
+      metrics.fontMetrics,
+      metrics.width,
+      metrics.height,
+      matrix(shape),
+      shape.has(GlobalRenderOrder) ? shape.read(GlobalRenderOrder).value : 0,
+      fontState,
+      this.rasterFill(shape),
+    ]);
+  }
   protected maxInstances = TEXT_BATCH_GLYPHS;
   constructor(...args: ConstructorParameters<typeof SDFText>) {
     super(...args);
@@ -120,9 +159,31 @@ export class TextBatch extends SDFText {
     return '#define USE_TEXT_BATCH\n';
   }
   protected override prepareGeometry() {
-    if (this.materialDirty || this.dirtyInstances.size)
+    if (!this.#ready) {
       this.geometryDirty = true;
+      return;
+    }
+    if (this.geometryDirty || this.materialDirty || this.dirtyInstances.size) {
+      const fontState = glyphFontState();
+      this.geometryDirty =
+        this.#layout.length !== this.shapes.length ||
+        this.shapes.some(
+          (s, i) =>
+            this.#layout[i]?.shape !== s ||
+            this.#layout[i].key !== this.layoutKey(s, fontState),
+        );
+    }
     this.dirtyInstances.clear();
+  }
+  override createGeometry() {
+    this.#ready = false;
+    super.createGeometry();
+    const fontState = glyphFontState();
+    this.#layout = this.shapes.map((shape) => ({
+      shape,
+      key: this.layoutKey(shape, fontState),
+    }));
+    this.#ready = true;
   }
   protected override bakeGlyphVertices(shape: Entity, positions: number[]) {
     bakeTextVertices(positions, matrix(this.shapes[0]), matrix(shape));

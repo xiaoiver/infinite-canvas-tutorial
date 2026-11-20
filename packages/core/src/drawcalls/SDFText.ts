@@ -86,6 +86,11 @@ export class SDFText extends Drawcall {
     return !!(this.shapes[0] as Text)?.bitmapFont;
   }
 
+  protected get glyphRasterFill() {
+    const text = this.shapes[0] as Text;
+    return containsEmoji(text.content) ? (text.fill as string) : '';
+  }
+
   protected bakeGlyphVertices(_shape: Text, _positions: number[]): void {}
 
   createGeometry(): void {
@@ -97,11 +102,7 @@ export class SDFText extends Drawcall {
       fontStyle,
       bitmapFont,
       esdt,
-      content,
-      fill,
     } = this.shapes[0] as Text;
-
-    const hasEmoji = containsEmoji(content);
 
     const indices: number[] = [];
     const positions: number[] = [];
@@ -117,7 +118,7 @@ export class SDFText extends Drawcall {
       // scale current font size to base(24)
       fontScale = Number(fontSize) / (BASE_FONT_WIDTH / SDF_SCALE);
       const allText = this.shapes.map((text: Text) => text.bidiChars).join('');
-      const fillKey = hasEmoji ? (fill as string) : '';
+      const fillKey = this.glyphRasterFill;
       const adapter = DOMAdapter.get();
       // Custom canvas adapters may use a different, unobservable font registry.
       const fontState =
