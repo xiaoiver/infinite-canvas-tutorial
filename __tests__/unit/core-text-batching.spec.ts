@@ -98,3 +98,31 @@ it('refreshes baked depth when preceding non-text siblings disappear', () => {
   expect(draw.geometryDirty).toBe(true);
   draw.destroy();
 });
+
+it('keeps unsupported text as a painter barrier and retires its page on reunion', () => {
+  const batch = new BatchManager(null);
+  let submitted: SDFText[] = [];
+  jest.spyOn(SDFText.prototype, 'submit').mockImplementation(function () {
+    submitted.push(this);
+  });
+  const a = label('A'),
+    barrier = label('中文'),
+    b = label('B');
+  const frame = (texts: Text[]) => {
+    submitted = [];
+    batch.clear(true, false, true);
+    texts.forEach((text) => batch.add(text));
+    batch.flush(null, null, {});
+    return submitted;
+  };
+  const old = frame([a, barrier, b]);
+  expect(old.map((d) => d.constructor)).toEqual([
+    TextBatch,
+    SDFText,
+    TextBatch,
+  ]);
+  expect(old.map((d) => d.shapes)).toEqual([[a], [barrier], [b]]);
+  expect(frame([a, b]).map((d) => d.shapes)).toEqual([[a, b]]);
+  expect(old.slice(1).every((d) => d.destroyed)).toBe(true);
+  batch.destroy();
+});

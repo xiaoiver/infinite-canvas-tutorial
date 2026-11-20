@@ -98,3 +98,55 @@ including overlap/alpha, rotation, content/multiline/unsupported typography,
 capacity overflow, visibility/culling reentry, hit-test membership, raster export,
 repeated changes, deletion and teardown. Small edge-pixel tolerance accounts for
 floating point evaluation order; source geometry and documents remain full.
+
+## Recorded cohort
+
+The clean measured source is local commit `4899c8d107f8d068b03e9e435861373a86f00d99` (tree
+`b4de87a4b65653fdbe6480af0ab5207113813f10`). The [raw data](./text-batching-benchmark.json)
+contains every CPU sample and native frame. The published source commit
+[`b740e76`](https://github.com/xiaoiver/infinite-canvas-tutorial/commit/b740e76aaee49ae02926f493d7e68c1843539fba)
+has the identical measured tree. This single sequential cohort is
+a measurement, not a timing threshold.
+
+| Backend / switch | Native calls | Pan CPU p50 / p95 ms | Paint-edit CPU p50 / p95 ms | Live buffers / textures | Allocated buffer bytes |
+| ---------------- | -----------: | -------------------: | --------------------------: | ----------------------: | ---------------------: |
+| core / off       |          603 |           8.1 / 13.0 |                  7.9 / 19.1 |               2411 / 62 |                1931220 |
+| core / on        |          403 |           5.3 / 12.8 |                 15.7 / 19.1 |                1611 / 8 |                1892956 |
+| ecs / off        |          602 |          21.2 / 28.3 |                 46.3 / 60.8 |              2608 / 267 |                2206188 |
+| ecs / on         |          403 |          15.6 / 30.2 |                 64.0 / 89.7 |              1613 / 213 |                2158428 |
+
+All four modes rendered **1,000 visible objects**, with zero text proxies,
+395,280 submitted indices and four array vertices per measured pan frame.
+Camera-only frames uploaded just the 192-byte scene uniform buffer; no glyph
+geometry was uploaded. Initial atlas uploads fell from 55 to one in both backends.
+Every teardown returned native resources to its baseline.
+
+Core reduces total calls by 200: 199 text submissions plus one additional merge
+of adjacent compatible solid pages. ECS reduces calls by 199. Changing painter
+order can remove these opportunities; no global regrouping crosses barriers.
+
+Both backends show a paint-edit CPU regression in this cohort. ECS pan p95 also
+rises from 28.3 to 30.2 ms, despite a lower median. Different paints
+split text pages, and changing them can retire/rebuild pages and glyph geometry.
+This first slice is most useful for dense, mostly static labels during camera
+movement. It remains opt-in; per-glyph paint attributes and stable edited pages
+are follow-up work, rather than justification for enabling this path by default.
+
+## Validation
+
+-   Core: 43 tests across five targeted suites passed.
+-   ECS: 107 tests across six targeted suites passed.
+-   ECS BatchManager coverage: statements 99.33%, branches 95.52%, functions 100%,
+    lines 99.64%, exceeding the unchanged repository thresholds.
+-   Chromium: 16 browser regression cases passed.
+-   WebKit: 16 browser regression cases passed, including the new four Core/ECS
+    batching cases. Screenshots use CSS pixel scale to normalize device DPR.
+-   Changed TypeScript passed ESLint; Core, ECS and browser TypeScript checks passed.
+    Normal lint-staged, markdownlint and commit hooks passed.
+-   The sequential four-mode benchmark passed; raw CPU/native/resource records are
+    committed above.
+-   The full headless-gl SSR suite was not run locally: this Node 24 dependency
+    cache lacks the optional native gl binding. The targeted suites and real
+    Chromium/WebKit WebGL tests above ran successfully.
+-   A new remote PR and its CI are pending: automatic approval rejected creating
+    the remote Git tree until explicit push/publication authorization is provided.
