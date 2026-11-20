@@ -375,3 +375,9 @@ Core device retains its startup fallback resources; lifecycle checks snapshot
 that baseline and require every later native allocation to be released. The ECS
 world also retains its shared export device until the world exits; each ECS
 canvas releases all of its own native resources.
+
+The mixed-renderer fixture exercises the same five-primitive scene in Core and
+ECS, with grouped and interleaved painter order. Small Chromium/WebKit tests
+verify visible pixels, ordering controls, real native work and teardown. The
+full 1,000/10,000-object matrix runs separately with `pnpm bench:mixed-renderers`;
+see [the measurement contract](../../docs/mixed-renderer-benchmark.md).

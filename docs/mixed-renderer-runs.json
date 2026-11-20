@@ -1,0 +1,76 @@
+[
+  {
+    "name": "full-capped-attempt",
+    "outcome": "test-timeout",
+    "budgetMs": 1200000,
+    "completedRows": 18,
+    "phase": "first frame-operation measurement in Core 10000 interleaved off",
+    "sourceHead": "db8ec99fe73bb1b6417d701bcfcc92354d488234",
+    "sourceTree": "55ea3c47103730901fcfcd56a158998ad45e7627",
+    "output": "mixed-renderer-capped.json",
+    "note": "Six configurations completed their resource teardown before the next setup. The remaining configuration had no returned operation row. No library failure is inferred from the whole-run budget.",
+    "remoteEquivalentCommit": "c49d5017f4d4e74e43f709f4ab8c90fe4164c76d"
+  },
+  {
+    "name": "core-10000-interleaved",
+    "filters": {
+      "MIXED_BENCH_BACKENDS": "core",
+      "MIXED_BENCH_COUNTS": "10000",
+      "MIXED_BENCH_LAYOUTS": "interleaved"
+    },
+    "budgetMs": 1200000,
+    "startedAt": "2026-11-19T13:45:56.227667+00:00",
+    "endedAt": "2026-11-19T14:01:24.681399+00:00",
+    "exitCode": 0,
+    "output": "mixed-renderer-core-10000-interleaved.json",
+    "remoteEquivalentCommit": "c49d5017f4d4e74e43f709f4ab8c90fe4164c76d"
+  },
+  {
+    "name": "ecs-all-interrupted",
+    "filters": {
+      "MIXED_BENCH_BACKENDS": "ecs"
+    },
+    "budgetMs": 1200000,
+    "startedAt": "2026-11-19T14:01:24.682404+00:00",
+    "observedEndedAt": "2026-11-19T14:16:00.247073+00:00",
+    "exitCode": 130,
+    "completedRows": 12,
+    "output": "mixed-renderer-ecs-all.json",
+    "phase": "no returned operation row for ECS 10000 grouped off; previous logs cannot distinguish configuration from measurement",
+    "note": "Operator interrupted the local run after a prolonged lack of progress to add stage/error diagnostics. Four 1000-object configurations completed teardown."
+  },
+  {
+    "name": "ecs-10000-error-diagnostic",
+    "filters": {
+      "MIXED_BENCH_BACKENDS": "ecs",
+      "MIXED_BENCH_COUNTS": "10000",
+      "MIXED_BENCH_LAYOUTS": "grouped",
+      "MIXED_BENCH_MODES": "off"
+    },
+    "budgetMs": 180000,
+    "exitCode": 1,
+    "completedRows": 0,
+    "output": "mixed-renderer-ecs-10000-diagnostic.json",
+    "phase": "scene configuration",
+    "sourceHead": "3f2323e6fcce5098ad69b58cc89404843f40e100",
+    "error": "CheckError: Log capacity exceeded, please raise maxShapeChangesPerFrame above 131072",
+    "note": "The host now rejects immediately on pageerror. The original ECS 1000 rows will be replaced by a complete run using staged initialization.",
+    "sourceTree": "44ad9e8a4436f160b43c7aa97ceebb8120fd5e46",
+    "remoteEquivalentCommit": "8f4a0da4178f86bca23ca1d15c196149d3285140",
+    "testBodySeconds": 3.3
+  },
+  {
+    "name": "ecs-staged",
+    "filters": {
+      "MIXED_BENCH_BACKENDS": "ecs"
+    },
+    "budgetMs": 3600000,
+    "startedAt": "2026-11-19T14:25:08.067880+00:00",
+    "endedAt": "2026-11-19T14:44:22.096601+00:00",
+    "exitCode": 0,
+    "output": "mixed-renderer-ecs-staged.json",
+    "sourceHead": "234bc4c163578e882cfb4d0ae537439d983026e3",
+    "sourceTree": "2f2ff2c739844777af11534b99323268b8f4d74f",
+    "note": "Canonical ECS cohort. Initialization adds at most 1000 nodes per edit; all objects are present before warmup and measured frames. Older interrupted ECS 1000 rows are excluded from the canonical dataset."
+  }
+]

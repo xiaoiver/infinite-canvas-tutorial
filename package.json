@@ -53,7 +53,8 @@
     "example:workflow": "vite --config examples/workflow-canvas/vite.config.ts",
     "build:workflow": "vite build --config examples/workflow-canvas/vite.config.ts",
     "test:workflow": "playwright test -c examples/workflow-canvas/playwright.config.ts",
-    "test:workflow:docs": "playwright test -c examples/workflow-canvas/playwright.docs.config.ts"
+    "test:workflow:docs": "playwright test -c examples/workflow-canvas/playwright.docs.config.ts",
+    "bench:mixed-renderers": "playwright test -c playwright.mixed-renderer-bench.config.ts"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",
