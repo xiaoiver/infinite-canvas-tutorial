@@ -224,6 +224,7 @@ for (const backend of ['core', 'ecs']) {
       window.mixedRenderer.configure(1000, 'grouped', false),
     );
     const before = await page.evaluate(() => window.glyphAtlasProbe());
+    const orderBefore = await page.evaluate(() => window.mixedRenderer.state());
     await page.evaluate(() => window.mixedRenderer.measure('pan', 2, 1));
     const camera = await page.evaluate(() => window.glyphAtlasProbe());
     expect(camera.textBatchKeyChecks).toBe(before.textBatchKeyChecks);
@@ -235,6 +236,52 @@ for (const backend of ['core', 'ecs']) {
     expect(frames.native.drawcalls).toBe(407);
     expect(frames.webglError).toBe(0);
     expect(after.textBatchKeyChecks - camera.textBatchKeyChecks).toBe(600);
+    expect(after.textLayoutChecks - camera.textLayoutChecks).toBe(204);
+    // Painting retains ranks even when ECS receives full serialized nodes.
+    expect(frames.orderSignals).toBe(orderBefore.orderSignals);
+    if (backend === 'ecs')
+      expect(frames.sortInputs).toBeGreaterThan(orderBefore.sortInputs);
+    await page.evaluate(() => window.mixedRenderer.destroy());
+  });
+}
+
+for (const backend of ['core', 'ecs']) {
+  test(`${backend} real painter reorder changes depth and retains full-path pixels`, async ({
+    page,
+  }) => {
+    await page.addInitScript(installProbes);
+    await page.goto(`/glyph-atlas.html?backend=${backend}`);
+    await expect(page.locator('output')).toHaveText('Ready');
+    await page.evaluate(() => window.mixedRenderer.textBatching(true));
+    await page.evaluate(() =>
+      window.mixedRenderer.configure(100, 'grouped', false),
+    );
+    await page.evaluate(() => window.mixedRenderer.editText());
+    await page.evaluate(() => window.mixedRenderer.textScenario('overlap'));
+    await page.evaluate(() => window.mixedRenderer.paintText(0, 'red', 0.6));
+    const image = async () =>
+      PNG.sync.read(await page.locator('canvas').screenshot({ scale: 'css' }));
+    const before = await image();
+    const order = await page.evaluate(() => window.mixedRenderer.textOrder());
+    const state = await page.evaluate(() => window.mixedRenderer.state());
+    const moved = await page.evaluate(() => window.mixedRenderer.reorderText());
+    expect(moved.orderSignals).toBeGreaterThan(state.orderSignals);
+    const next = await page.evaluate(() => window.mixedRenderer.textOrder());
+    expect(next.at(-1)).toBe(order[0]);
+    expect(next).not.toEqual(order);
+    const batched = await image();
+    expect(
+      pixelmatch(before.data, batched.data, null, before.width, before.height, {
+        threshold: 0.1,
+      }),
+    ).toBeGreaterThan(0);
+    await page.evaluate(() => window.mixedRenderer.textBatching(false));
+    const full = await image();
+    expect(
+      pixelmatch(batched.data, full.data, null, full.width, full.height, {
+        threshold: 0.1,
+      }),
+    ).toBeLessThan(64);
     await page.evaluate(() => window.mixedRenderer.destroy());
   });
 }
