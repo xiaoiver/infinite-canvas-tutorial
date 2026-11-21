@@ -32,6 +32,7 @@ import {
   type API,
   type Entity,
 } from '../../packages/ecs/src';
+import { sortByFractionalIndex } from '../../packages/ecs/src/systems/Sort';
 import { TextBatch } from '../../packages/ecs/src/drawcalls/TextBatch';
 import * as textBatching from '../../packages/ecs/src/utils/text-batching';
 import { textBatchingContract } from '../contracts/text-batching';
@@ -1235,3 +1236,66 @@ it.each([true, false])(
     }
   },
 );
+
+it('reads each order key once per dirty plan and observes unannounced key changes', () => {
+  const batch = manager();
+  const keys = Array.from({ length: 64 }, (_, i) => `b${String(i).padStart(2, '0')}`);
+  const nodes = keys.map((value) => shape(Rect, true, [FractionalIndex, { value }]));
+  const reads = nodes.map((n) => jest.spyOn(n.entity, 'read'));
+  const checks = nodes.map((n) => jest.spyOn(n.entity, 'has'));
+  // Deliberately scramble insertion order so this exercises actual sorting.
+  nodes.forEach((_, i) => batch.add(nodes[(i * 17) % nodes.length].entity));
+  batch.sort();
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual(nodes.map((n) => n.entity));
+  const counts = (spies: typeof reads) => spies.map((spy) =>
+    spy.mock.calls.filter(([component]) => component === FractionalIndex).length,
+  );
+  expect(counts(reads)).toEqual(nodes.map(() => 1));
+  expect(counts(checks)).toEqual(nodes.map(() => 1));
+  queued(batch);
+  expect(counts(reads)).toEqual(nodes.map(() => 1));
+
+  // A caller may mutate a key and dirty another entry; keep the previous contract.
+  nodes[1].data.get(FractionalIndex).value = 'b64';
+  batch.add(nodes[0].entity);
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual([
+    nodes[0].entity, ...nodes.slice(2).map((n) => n.entity), nodes[1].entity,
+  ]);
+  expect(counts(reads)).toEqual(nodes.map(() => 2));
+  expect(counts(checks)).toEqual(nodes.map(() => 2));
+});
+
+it('preserves comparator semantics and insertion-order ties across replanning', () => {
+  const batch = manager();
+  const nodes = ['a1', 'a0', 'a0', undefined, 'Zz', '', '1', '0'].map((value) =>
+    value === undefined ? shape() : shape(Rect, true, [FractionalIndex, { value }]),
+  );
+  const expected = nodes.map((n) => n.entity).sort(sortByFractionalIndex);
+  nodes.forEach((n) => batch.add(n.entity));
+  batch.sort();
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual(expected);
+  batch.add(nodes[0].entity);
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual(expected);
+  batch.remove(nodes[1].entity);
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual(
+    nodes.filter((_, i) => i !== 1).map((n) => n.entity).sort(sortByFractionalIndex),
+  );
+  batch.clear();
+  batch.add(nodes[2].entity);
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual([nodes[2].entity]);
+});
+
+it.each([
+  { ordered: false, count: 2 },
+  { ordered: true, count: 1 },
+])('does not acquire unnecessary order-key access for %p', ({ ordered, count }) => {
+  const batch = manager();
+  const nodes = Array.from({ length: count }, () => shape());
+  const checks = nodes.map((node) => jest.spyOn(node.entity, 'has'));
+  const reads = nodes.map((node) => jest.spyOn(node.entity, 'read'));
+  nodes.forEach((node) => batch.add(node.entity));
+  if (ordered) batch.sort();
+  expect(queued(batch).flatMap((d) => d.shapes)).toEqual(nodes.map((n) => n.entity));
+  checks.forEach((spy) => expect(spy.mock.calls.some(([c]) => c === FractionalIndex)).toBe(false));
+  reads.forEach((spy) => expect(spy.mock.calls.some(([c]) => c === FractionalIndex)).toBe(false));
+});
