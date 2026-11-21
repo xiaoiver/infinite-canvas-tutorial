@@ -11,8 +11,12 @@ kept exactly as supplied: `Math.fround` is used only for comparison, matching th
 existing `ZIndex` component storage. Decimal ranks such as 0.1 therefore do not
 continually invalidate sorting because of their Float32 representation.
 
-Actual parent changes, missing generated keys and explicit fractional-key payloads
-retain the previous reconciliation path. New nodes, true reorder, batched moves,
+Actual parent changes and explicit fractional-key payloads retain the previous
+reconciliation path. Missing generated keys are recovered by `ComputeZIndex`
+through its own query, including recovery without a document rank write. The
+mutation API keeps its existing component access footprint: it does not check
+`FractionalIndex`. A plugin restricted to its existing ZIndex/Flex permissions
+can change a rank and repeat the same value safely. New nodes, true reorder, batched moves,
 undo/redo, remote paint replay and restored hierarchies continue to synchronize.
 The generic document mutation still updates fields, versions and collaboration
 metadata. No cache, public flag, eligibility, geometry, ownership or export path
@@ -133,3 +137,17 @@ the unchanged command reproduces complete outputs. New timing runs naturally var
     comparisons also passed.
 -   Full local headless-gl SSR was not run: the current Node 24 cache cannot locate
     its native binding. Repository CI remains separate; keep this follow-up draft.
+
+## CI access-contract correction
+
+The initial PR head failed five existing z-order suites in CI because the new
+missing-key check required API callers to declare `FractionalIndex` check access.
+The correction removes that check from document mutation and assigns recovery to
+the hierarchy system. Existing callers and their access declarations are unchanged.
+A real Becsy plugin test covers changed, repeated and restored ranks without key
+access; another test removes a generated key without updating the document and
+verifies recovery and final order without a redundant ZIndex write.
+
+The benchmark results above describe the original measured runtime. The access
+correction is validated separately; historical timing samples are not relabeled
+as measurements of the corrected tree.

@@ -1,4 +1,6 @@
 import {
+  ComputeZIndex,
+  Flex,
   GlobalRenderOrder,
   ZIndex,
   FractionalIndex,
@@ -33,6 +35,16 @@ class ObserveOrders extends System {
     changes.push(...this.orders.addedOrChanged.map((e) => e.__id));
   }
 }
+// Keep the existing ZIndex/Flex mutation footprint, without generated-key access.
+let limitedOrderEdit: (() => void) | undefined;
+class LimitedOrderEdits extends System {
+  access = this.query((q) => q.using(ZIndex).write.and.using(Flex).read);
+  execute() {
+    const edit = limitedOrderEdit;
+    limitedOrderEdit = undefined;
+    edit?.();
+  }
+}
 let world: Awaited<ReturnType<typeof createDocumentWorld>>;
 let api: API;
 const rect = (
@@ -62,6 +74,9 @@ beforeAll(async () => {
     () => {
       system((s) => s.inAnyOrderWith(s.allSystems).after(Sort).before(Last))(
         ObserveOrders,
+      );
+      system((s) => s.inAnyOrderWith(s.allSystems).before(ComputeZIndex))(
+        LimitedOrderEdits,
       );
     },
   ]);
@@ -242,7 +257,8 @@ it.each(['missing', 'explicit'] as const)(
     });
     expect(entity.has(FractionalIndex)).toBe(true);
     expect(order()).toEqual(['a', 'b', 'c', 'd']);
-    expect(zWrites).toContain(entity.__id);
+    if (kind === 'explicit') expect(zWrites).toContain(entity.__id);
+    else expect(zWrites).toEqual([]);
     expect(keyWrites).toContain(entity.__id);
   },
 );
@@ -277,4 +293,35 @@ it('keeps migrated-camera order and document paint when the payload omits parent
   expect(api.getNodeById('mover').fills).toEqual([
     { type: 'solid', value: 'red' },
   ]);
+});
+
+it('allows rank-only plugins to change and repeat a rank without fractional-key access', async () => {
+  for (const rank of [4, 4, 1]) {
+    clearSignals();
+    const node = api.getNodeById('b');
+    const previous = api.getEntity(node).read(ZIndex).value;
+    limitedOrderEdit = () => api.updateNode(node, { zIndex: rank }, false);
+    await world.frame();
+    expect(api.getEntity(node).read(ZIndex).value).toBe(rank);
+    expect(order()).toEqual(
+      rank === 4 ? ['a', 'c', 'd', 'b'] : ['a', 'b', 'c', 'd'],
+    );
+    if (rank === previous) {
+      expect(zWrites).toEqual([]);
+      expect(keyWrites).toEqual([]);
+      expect(changes).toEqual([]);
+    } else {
+      expect(zWrites).toContain(api.getEntity(node).__id);
+      expect(keyWrites).toContain(api.getEntity(node).__id);
+    }
+  }
+});
+
+it('recovers a missing generated key without another document rank update', async () => {
+  const entity = api.getEntity(api.getNodeById('b'));
+  await world.edit(api, () => entity.remove(FractionalIndex));
+  expect(entity.has(FractionalIndex)).toBe(true);
+  expect(order()).toEqual(['a', 'b', 'c', 'd']);
+  expect(zWrites).toEqual([]);
+  expect(keyWrites).toContain(entity.__id);
 });

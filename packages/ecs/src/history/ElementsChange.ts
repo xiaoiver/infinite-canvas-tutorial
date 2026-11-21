@@ -62,7 +62,6 @@ import {
   Path,
   VectorNetwork,
   ZIndex,
-  FractionalIndex,
   Transform,
   MaterialDirty,
   StrokeAttenuation,
@@ -1331,10 +1330,10 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     const value = zIndex ?? 0;
     // ZIndex stores Float32 values. Full-node paint/history updates should not
     // invalidate ordering when the stored value and parent are unchanged.
-    // Reparenting and missing/explicit fractional keys still reconcile as before.
+    // Reparenting and explicit fractional keys still reconcile as before.
+    // ComputeZIndex owns missing-key recovery; API callers need no key access.
     if (
       parentChanged ||
-      !entity.has(FractionalIndex) ||
       'fractionalIndex' in updates ||
       entity.read(ZIndex).value !== Math.fround(value)
     ) {
