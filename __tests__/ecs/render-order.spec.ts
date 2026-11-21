@@ -246,3 +246,35 @@ it.each(['missing', 'explicit'] as const)(
     expect(keyWrites).toContain(entity.__id);
   },
 );
+
+it('keeps migrated-camera order and document paint when the payload omits parentId', async () => {
+  const secondary = world.apis[1];
+  expect(secondary.getCamera().isSame(api.getCamera())).toBe(false);
+  await world.reset(api, [rect('mover', 2)]);
+  await world.reset(secondary, [
+    rect('target-back', 0),
+    rect('target-front', 1),
+  ]);
+  await world.frame();
+  const entity = api.getEntity(api.getNodeById('mover'));
+  await world.edit(api, () => {
+    entity.write(Children).parent = secondary.getCamera();
+  });
+  const before = entity.read(GlobalRenderOrder).value;
+  const patch = { ...api.getNodeById('mover') };
+  delete patch.parentId;
+  await world.edit(api, (e) =>
+    e.updateNodes([{ ...patch, fills: [{ type: 'solid', value: 'red' }] }]),
+  );
+  expect(entity.read(Children).parent.isSame(secondary.getCamera())).toBe(true);
+  expect(entity.read(GlobalRenderOrder).value).toBe(before);
+  expect(entity.read(GlobalRenderOrder).value).toBeGreaterThan(
+    secondary
+      .getEntity(secondary.getNodeById('target-front'))
+      .read(GlobalRenderOrder).value,
+  );
+  expect(api.getNodeById('mover').zIndex).toBe(2);
+  expect(api.getNodeById('mover').fills).toEqual([
+    { type: 'solid', value: 'red' },
+  ]);
+});
