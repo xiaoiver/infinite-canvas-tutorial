@@ -1,0 +1,3541 @@
+{
+  "schema": 1,
+  "workload": {
+    "actuallyVisible": 1000,
+    "fullTextLabels": 200,
+    "editedNodesPerFrame": 10,
+    "warmup": 15,
+    "measured": 30,
+    "textBatching": ["off", "on"],
+    "screenLOD": false,
+    "pathInstancing": false
+  },
+  "rawFiles": {
+    "before": {
+      "name": "batch-order-before.json",
+      "bytes": 507245,
+      "sha256": "a83c5f6c35993fe2d86d796f43c089df6efd51bcbcebe5a67387bfc8dabb8731"
+    },
+    "after": {
+      "name": "batch-order-after.json",
+      "bytes": 509128,
+      "sha256": "220a9f33d5e097ea52147904d90ee1bf99e16fe956d9b305cb5671ba7387e39d"
+    }
+  },
+  "results": {
+    "before": [
+      {
+        "head": "c67df7ee3aecb4e418f14756ea9ba077de556526",
+        "tree": "306aaf5dbf961447198349d24609c9e7093e64fc",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 5.58666666666201,
+            "p50ExclusiveMs": 5.300000000046566,
+            "p95ExclusiveMs": 8.899999999906868,
+            "p50InclusiveMs": 5.300000000046566,
+            "p95InclusiveMs": 8.899999999906868
+          },
+          {
+            "name": "core.render",
+            "calls": 30,
+            "meanExclusiveMs": 2.2966666666558013,
+            "p50ExclusiveMs": 2.2999999998137355,
+            "p95ExclusiveMs": 2.9000000001396984,
+            "p50InclusiveMs": 7.900000000139698,
+            "p95InclusiveMs": 11.699999999953434
+          },
+          {
+            "name": "core.mutate",
+            "calls": 30,
+            "meanExclusiveMs": 0.1066666666806365,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 0.39999999990686774,
+            "p50InclusiveMs": 0.10000000009313226,
+            "p95InclusiveMs": 0.39999999990686774
+          }
+        ],
+        "residual": {
+          "meanMs": 0.023333333347303174,
+          "p50Ms": 0,
+          "p95Ms": 0.10000000009313226
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1000,
+          "sortInputs": 0,
+          "webglError": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 7.599999999860302,
+          "cpuP95": 12.699999999953434,
+          "cpuSamplesMs": [
+            7.5, 6, 5.300000000046566, 5.800000000046566, 9.899999999906868,
+            5.899999999906868, 8, 6.100000000093132, 7.300000000046566,
+            10.900000000139698, 6.5, 10.099999999860302, 18.4000000001397,
+            10.099999999860302, 5.600000000093132, 7.599999999860302,
+            12.699999999953434, 11.100000000093132, 6.599999999860302, 12.5,
+            10.399999999906868, 7, 5.899999999906868, 8.300000000046566, 5,
+            5.599999999860302, 10.099999999860302, 10.800000000046566,
+            10.399999999906868, 6.699999999953434
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 8,
+          "cpuP95": 11.800000000046566,
+          "cpuSamplesMs": [
+            10.100000000093132, 7.5, 8, 4.899999999906868, 8.300000000046566,
+            10.199999999953434, 9.699999999953434, 6.199999999953434, 6,
+            11.800000000046566, 10.200000000186265, 6.599999999860302,
+            5.100000000093132, 8.800000000046566, 9.300000000046566,
+            7.300000000046566, 5.2999999998137355, 7, 5, 5.199999999953434, 5.5,
+            6.600000000093132, 10.399999999906868, 13, 6.100000000093132, 7.5,
+            10.100000000093132, 9.800000000046566, 9.900000000139698, 9
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 6.699999999953434,
+          "cpuP95": 6.699999999953434,
+          "cpuSamplesMs": [6.699999999953434, 4.900000000139698],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      },
+      {
+        "head": "c67df7ee3aecb4e418f14756ea9ba077de556526",
+        "tree": "306aaf5dbf961447198349d24609c9e7093e64fc",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 4.806666666649592,
+            "p50ExclusiveMs": 4.399999999906868,
+            "p95ExclusiveMs": 9.899999999906868,
+            "p50InclusiveMs": 6.199999999953434,
+            "p95InclusiveMs": 12.100000000093132
+          },
+          {
+            "name": "batch.plan",
+            "calls": 30,
+            "meanExclusiveMs": 2.1933333333426464,
+            "p50ExclusiveMs": 1.8999999999068677,
+            "p95ExclusiveMs": 5.599999999860302,
+            "p50InclusiveMs": 1.8999999999068677,
+            "p95InclusiveMs": 5.599999999860302
+          },
+          {
+            "name": "core.render",
+            "calls": 30,
+            "meanExclusiveMs": 1.9033333333286768,
+            "p50ExclusiveMs": 1.7000000001862645,
+            "p95ExclusiveMs": 4.600000000093132,
+            "p50InclusiveMs": 8,
+            "p95InclusiveMs": 14.099999999860302
+          },
+          {
+            "name": "core.mutate",
+            "calls": 30,
+            "meanExclusiveMs": 0.06999999999534338,
+            "p50ExclusiveMs": 0.09999999986030161,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0.09999999986030161,
+            "p95InclusiveMs": 0.19999999995343387
+          }
+        ],
+        "residual": {
+          "meanMs": 0.01999999999534339,
+          "p50Ms": 0,
+          "p95Ms": 0.10000000009313226
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1000,
+          "sortInputs": 0,
+          "webglError": 0,
+          "allocatedBufferBytes": 1892956,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1611,
+                "Texture": 8,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 8.199999999953434,
+          "cpuP95": 13.099999999860302,
+          "cpuSamplesMs": [
+            6.800000000046566, 5.800000000046566, 5.5, 15.599999999860302,
+            5.599999999860302, 11.300000000046566, 8.199999999953434,
+            12.600000000093132, 8.699999999953434, 11.5, 7.199999999953434,
+            9.899999999906868, 5.5, 6.5, 9.099999999860302, 7.800000000046566,
+            6.300000000046566, 11.300000000046566, 5.900000000139698,
+            5.800000000046566, 7.2999999998137355, 11.699999999953434,
+            8.199999999953434, 12.199999999953434, 8.100000000093132,
+            13.099999999860302, 10.700000000186265, 6, 6.800000000046566,
+            8.399999999906868
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1893724,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 8.099999999860302,
+          "cpuP95": 14.199999999953434,
+          "cpuSamplesMs": [
+            5.699999999953434, 7.399999999906868, 8, 11.099999999860302,
+            14.900000000139698, 6.100000000093132, 8.699999999953434,
+            10.100000000093132, 5.599999999860302, 10.700000000186265,
+            7.7000000001862645, 5.5, 12.199999999953434, 13.899999999906868,
+            9.599999999860302, 6.399999999906868, 7.399999999906868,
+            6.800000000046566, 7.100000000093132, 6.5, 7.899999999906868,
+            13.199999999953434, 9.199999999953434, 9.600000000093132,
+            7.899999999906868, 8.099999999860302, 9.799999999813735, 10.5, 8,
+            14.199999999953434
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1893724,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 6.399999999906868,
+          "cpuP95": 6.399999999906868,
+          "cpuSamplesMs": [6.399999999906868, 5.600000000093132],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1893724,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      },
+      {
+        "head": "c67df7ee3aecb4e418f14756ea9ba077de556526",
+        "tree": "306aaf5dbf961447198349d24609c9e7093e64fc",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 16.013333333322468,
+            "p50ExclusiveMs": 14.599999999860302,
+            "p95ExclusiveMs": 28.299999999813735,
+            "p50InclusiveMs": 14.599999999860302,
+            "p95InclusiveMs": 28.299999999813735
+          },
+          {
+            "name": "batch.plan",
+            "calls": 60,
+            "meanExclusiveMs": 6.553333333359721,
+            "p50ExclusiveMs": 5.399999999906868,
+            "p95ExclusiveMs": 10.600000000093132,
+            "p50InclusiveMs": 5.399999999906868,
+            "p95InclusiveMs": 10.600000000093132
+          },
+          {
+            "name": "edit.apply",
+            "calls": 30,
+            "meanExclusiveMs": 3.4699999999875826,
+            "p50ExclusiveMs": 3.300000000046566,
+            "p95ExclusiveMs": 5.2999999998137355,
+            "p50InclusiveMs": 3.300000000046566,
+            "p95InclusiveMs": 5.2999999998137355
+          },
+          {
+            "name": "system.RenderNameLabel",
+            "calls": 30,
+            "meanExclusiveMs": 0.9833333333410944,
+            "p50ExclusiveMs": 0.6999999999534339,
+            "p95ExclusiveMs": 1.1000000000931323,
+            "p50InclusiveMs": 0.6999999999534339,
+            "p95InclusiveMs": 1.1000000000931323
+          },
+          {
+            "name": "render.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.899999999968956,
+            "p50ExclusiveMs": 0.30000000004656613,
+            "p95ExclusiveMs": 2.3999999999068677,
+            "p50InclusiveMs": 22.399999999906868,
+            "p95InclusiveMs": 38.89999999990687
+          },
+          {
+            "name": "derive.text",
+            "calls": 30,
+            "meanExclusiveMs": 0.8100000000093133,
+            "p50ExclusiveMs": 0.4000000001396984,
+            "p95ExclusiveMs": 3.5,
+            "p50InclusiveMs": 0.4000000001396984,
+            "p95InclusiveMs": 3.5
+          },
+          {
+            "name": "batch.schedule",
+            "calls": 30,
+            "meanExclusiveMs": 0.5933333333038414,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 1,
+            "p50InclusiveMs": 5.699999999953434,
+            "p95InclusiveMs": 10.800000000046566
+          },
+          {
+            "name": "derive.bounds",
+            "calls": 30,
+            "meanExclusiveMs": 0.28333333334109434,
+            "p50ExclusiveMs": 0.30000000004656613,
+            "p95ExclusiveMs": 0.4000000001396984,
+            "p50InclusiveMs": 0.30000000004656613,
+            "p95InclusiveMs": 0.4000000001396984
+          },
+          {
+            "name": "visibility.cull",
+            "calls": 30,
+            "meanExclusiveMs": 0.2566666666418314,
+            "p50ExclusiveMs": 0.2999999998137355,
+            "p95ExclusiveMs": 0.4000000001396984,
+            "p50InclusiveMs": 0.2999999998137355,
+            "p95InclusiveMs": 0.4000000001396984
+          },
+          {
+            "name": "render.pipeline",
+            "calls": 30,
+            "meanExclusiveMs": 0.1866666667163372,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 0.39999999990686774,
+            "p50InclusiveMs": 22.5,
+            "p95InclusiveMs": 39
+          },
+          {
+            "name": "derive.points",
+            "calls": 30,
+            "meanExclusiveMs": 0.17000000000310442,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 0.30000000004656613,
+            "p50InclusiveMs": 0.19999999995343387,
+            "p95InclusiveMs": 0.30000000004656613
+          },
+          {
+            "name": "derive.transforms",
+            "calls": 60,
+            "meanExclusiveMs": 0.15999999997050812,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.19999999995343387
+          },
+          {
+            "name": "system.Select",
+            "calls": 30,
+            "meanExclusiveMs": 0.10333333334419877,
+            "p50ExclusiveMs": 0.09999999986030161,
+            "p95ExclusiveMs": 0.30000000004656613,
+            "p50InclusiveMs": 0.09999999986030161,
+            "p95InclusiveMs": 0.30000000004656613
+          },
+          {
+            "name": "system.RenderTransformer",
+            "calls": 30,
+            "meanExclusiveMs": 0.033333333348855375,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.CameraControl",
+            "calls": 30,
+            "meanExclusiveMs": 0.02666666666821887,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetCursor",
+            "calls": 30,
+            "meanExclusiveMs": 0.02666666666821887,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.EventDisposer",
+            "calls": 30,
+            "meanExclusiveMs": 0.02000000000310441,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderHighlighter",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666666666666,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderHTML",
+            "calls": 30,
+            "meanExclusiveMs": 0.013333333345750967,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawRect",
+            "calls": 30,
+            "meanExclusiveMs": 0.013333333337989946,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetupDevice",
+            "calls": 30,
+            "meanExclusiveMs": 0.010000000001552205,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawPencil",
+            "calls": 30,
+            "meanExclusiveMs": 0.010000000001552205,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.DrawArrowConnect",
+            "calls": 30,
+            "meanExclusiveMs": 0.009999999993791182,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.EventWriter",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666728754835,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.Deleter",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666728754835,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderBindings",
+            "calls": 30,
+            "meanExclusiveMs": 0.006666666657353441,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.AnimationSystem",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "derive.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawVectorNetwork",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "visibility.lod",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.ExportSVG",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawBrush",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawPoint",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "order.reconcile",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.ComputeRough",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "visibility.derive",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "order.rank",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.CameraSync",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          }
+        ],
+        "residual": {
+          "meanMs": 1.2833333333100503,
+          "p50Ms": 0.9999999997671694,
+          "p95Ms": 4.999999999767169
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1020,
+          "sortInputs": 1010,
+          "webglError": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 262,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 26.5,
+          "cpuP95": 33,
+          "cpuSamplesMs": [
+            28.800000000046566, 26, 23.300000000046566, 18.399999999906868,
+            29.5, 28.699999999953434, 18.899999999906868, 26.199999999953434,
+            33, 26.5, 29.5, 30.699999999953434, 37.699999999953434, 25.5,
+            16.899999999906868, 17.600000000093132, 24.100000000093132,
+            30.800000000046566, 25.899999999906868, 20.800000000046566,
+            27.300000000046566, 27.700000000186265, 31.4000000001397,
+            19.300000000046566, 28.200000000186265, 29.200000000186265,
+            19.4000000001397, 27.399999999906868, 25.800000000046566,
+            19.299999999813735
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 28.699999999953434,
+          "cpuP95": 48.9000000001397,
+          "cpuSamplesMs": [
+            25.5999999998603, 22.700000000186265, 31.600000000093132,
+            25.899999999906868, 26.5999999998603, 27.800000000046566,
+            27.600000000093132, 19.0999999998603, 19.699999999953434, 27,
+            27.399999999906868, 25.399999999906868, 28.699999999953434,
+            34.699999999953434, 34, 22.300000000046566, 35.800000000046566,
+            23.199999999953434, 27.299999999813735, 27.100000000093132,
+            37.9000000001397, 42.800000000046566, 48.9000000001397,
+            40.199999999953434, 29.9000000001397, 31.199999999953434,
+            86.89999999990687, 34.800000000046566, 35.200000000186265,
+            32.39999999990687
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 22.800000000046566,
+          "cpuP95": 22.800000000046566,
+          "cpuSamplesMs": [21.5999999998603, 22.800000000046566],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      },
+      {
+        "head": "c67df7ee3aecb4e418f14756ea9ba077de556526",
+        "tree": "306aaf5dbf961447198349d24609c9e7093e64fc",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 9.183333333341094,
+            "p50ExclusiveMs": 9.099999999860302,
+            "p95ExclusiveMs": 11.599999999860302,
+            "p50InclusiveMs": 9.099999999860302,
+            "p95InclusiveMs": 11.599999999860302
+          },
+          {
+            "name": "batch.plan",
+            "calls": 60,
+            "meanExclusiveMs": 7.760000000001552,
+            "p50ExclusiveMs": 7,
+            "p95ExclusiveMs": 14.899999999906868,
+            "p50InclusiveMs": 7,
+            "p95InclusiveMs": 14.899999999906868
+          },
+          {
+            "name": "edit.apply",
+            "calls": 30,
+            "meanExclusiveMs": 3.226666666691502,
+            "p50ExclusiveMs": 3.0999999998603016,
+            "p95ExclusiveMs": 5.399999999906868,
+            "p50InclusiveMs": 3.0999999998603016,
+            "p95InclusiveMs": 5.399999999906868
+          },
+          {
+            "name": "system.RenderNameLabel",
+            "calls": 30,
+            "meanExclusiveMs": 0.9500000000232831,
+            "p50ExclusiveMs": 0.8000000000465661,
+            "p95ExclusiveMs": 3.5,
+            "p50InclusiveMs": 0.8000000000465661,
+            "p95InclusiveMs": 3.5
+          },
+          {
+            "name": "render.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.6166666666511447,
+            "p50ExclusiveMs": 0.30000000004656613,
+            "p95ExclusiveMs": 3.2000000001862645,
+            "p50InclusiveMs": 16.699999999953434,
+            "p95InclusiveMs": 25.700000000186265
+          },
+          {
+            "name": "derive.text",
+            "calls": 30,
+            "meanExclusiveMs": 0.3833333333488554,
+            "p50ExclusiveMs": 0.39999999990686774,
+            "p95ExclusiveMs": 0.6000000000931323,
+            "p50InclusiveMs": 0.39999999990686774,
+            "p95InclusiveMs": 0.6000000000931323
+          },
+          {
+            "name": "derive.bounds",
+            "calls": 30,
+            "meanExclusiveMs": 0.31333333333022895,
+            "p50ExclusiveMs": 0.30000000004656613,
+            "p95ExclusiveMs": 0.5,
+            "p50InclusiveMs": 0.30000000004656613,
+            "p95InclusiveMs": 0.5
+          },
+          {
+            "name": "visibility.cull",
+            "calls": 30,
+            "meanExclusiveMs": 0.24333333335040758,
+            "p50ExclusiveMs": 0.20000000018626451,
+            "p95ExclusiveMs": 0.4000000001396984,
+            "p50InclusiveMs": 0.20000000018626451,
+            "p95InclusiveMs": 0.4000000001396984
+          },
+          {
+            "name": "batch.schedule",
+            "calls": 30,
+            "meanExclusiveMs": 0.19000000001396983,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 0.30000000004656613,
+            "p50InclusiveMs": 7.199999999953434,
+            "p95InclusiveMs": 15.100000000093132
+          },
+          {
+            "name": "derive.points",
+            "calls": 30,
+            "meanExclusiveMs": 0.15,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0.19999999995343387,
+            "p95InclusiveMs": 0.19999999995343387
+          },
+          {
+            "name": "render.pipeline",
+            "calls": 30,
+            "meanExclusiveMs": 0.14666666667132328,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 0.30000000004656613,
+            "p50InclusiveMs": 16.899999999906868,
+            "p95InclusiveMs": 25.800000000046566
+          },
+          {
+            "name": "derive.transforms",
+            "calls": 60,
+            "meanExclusiveMs": 0.07000000000310441,
+            "p50ExclusiveMs": 0.09999999986030161,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0.09999999986030161,
+            "p95InclusiveMs": 0.19999999995343387
+          },
+          {
+            "name": "system.CameraControl",
+            "calls": 30,
+            "meanExclusiveMs": 0.04000000000620882,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetCursor",
+            "calls": 30,
+            "meanExclusiveMs": 0.02999999999689559,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.Select",
+            "calls": 30,
+            "meanExclusiveMs": 0.023333333316259086,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderTransformer",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666674427687,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawArrowConnect",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666666666666,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderHighlighter",
+            "calls": 30,
+            "meanExclusiveMs": 0.013333333337989946,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawRect",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666728754835,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetupDevice",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "order.reconcile",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.AnimationSystem",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.DrawPencil",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.EventDisposer",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.Deleter",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "visibility.lod",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "order.rank",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.CameraSync",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawPoint",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawVectorNetwork",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.RenderHTML",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.EventWriter",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.ComputeRough",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "visibility.derive",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "derive.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.RenderBindings",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawBrush",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.ExportSVG",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          }
+        ],
+        "residual": {
+          "meanMs": 0.9333333332479621,
+          "p50Ms": 0.8999999996740371,
+          "p95Ms": 1.3999999999068677
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1020,
+          "sortInputs": 1010,
+          "webglError": 0,
+          "allocatedBufferBytes": 2158428,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1612,
+                "Texture": 208,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 24.399999999906868,
+          "cpuP95": 33.699999999953434,
+          "cpuSamplesMs": [
+            27, 23.199999999953434, 19.200000000186265, 17.5999999998603,
+            28.0999999998603, 25.0999999998603, 19.5, 24.399999999906868, 46,
+            26.600000000093132, 23, 18.100000000093132, 33.39999999990687,
+            33.699999999953434, 17.600000000093132, 20.199999999953434, 27,
+            28.0999999998603, 29.199999999953434, 18, 26.699999999953434,
+            18.899999999906868, 14.799999999813735, 22.199999999953434,
+            15.300000000046566, 17.199999999953434, 28.100000000093132,
+            20.800000000046566, 29.4000000001397, 29.300000000046566
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2159388,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 23.799999999813735,
+          "cpuP95": 34.199999999953434,
+          "cpuSamplesMs": [
+            27.800000000046566, 20.199999999953434, 23.799999999813735,
+            27.600000000093132, 31.899999999906868, 18.199999999953434, 13.5,
+            22.5, 23.100000000093132, 20.600000000093132, 25.699999999953434,
+            29.5, 26.800000000046566, 26.199999999953434, 21.800000000046566,
+            23.299999999813735, 20.300000000046566, 23.699999999953434,
+            27.300000000046566, 24.800000000046566, 25.100000000093132,
+            20.199999999953434, 26.399999999906868, 34.199999999953434,
+            15.699999999953434, 17.0999999998603, 43.300000000046566, 19,
+            21.199999999953434, 30.399999999906868
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2159388,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 21.199999999953434,
+          "cpuP95": 21.199999999953434,
+          "cpuSamplesMs": [20.199999999953434, 21.199999999953434],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2159388,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      }
+    ],
+    "after": [
+      {
+        "head": "01cb1e581d43b7b3dbfc10a31b721ecbca22b2d3",
+        "tree": "6e468a3b842aab61052f27107c7c15a1093ed46f",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 6.566666666627862,
+            "p50ExclusiveMs": 6.100000000093132,
+            "p95ExclusiveMs": 11.899999999906868,
+            "p50InclusiveMs": 6.100000000093132,
+            "p95InclusiveMs": 11.899999999906868
+          },
+          {
+            "name": "core.render",
+            "calls": 30,
+            "meanExclusiveMs": 3.2533333333985257,
+            "p50ExclusiveMs": 2.6000000000931323,
+            "p95ExclusiveMs": 7.300000000046566,
+            "p50InclusiveMs": 10.100000000093132,
+            "p95InclusiveMs": 15
+          },
+          {
+            "name": "core.mutate",
+            "calls": 30,
+            "meanExclusiveMs": 0.2799999999580905,
+            "p50ExclusiveMs": 0.09999999986030161,
+            "p95ExclusiveMs": 0.8000000000465661,
+            "p50InclusiveMs": 0.09999999986030161,
+            "p95InclusiveMs": 0.8000000000465661
+          }
+        ],
+        "residual": {
+          "meanMs": 0.03666666668529312,
+          "p50Ms": 0,
+          "p95Ms": 0.20000000018626451
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1000,
+          "sortInputs": 0,
+          "webglError": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 7.199999999953434,
+          "cpuP95": 15.199999999953434,
+          "cpuSamplesMs": [
+            6.599999999860302, 7.199999999953434, 6.100000000093132,
+            11.900000000139698, 4.800000000046566, 8.300000000046566, 10,
+            6.899999999906868, 15.199999999953434, 7.099999999860302, 11,
+            5.800000000046566, 6.2999999998137355, 5.199999999953434,
+            4.600000000093132, 12.5, 7.600000000093132, 11.300000000046566,
+            6.699999999953434, 7.300000000046566, 6.800000000046566, 11, 8, 7,
+            16.100000000093132, 5.699999999953434, 6.600000000093132, 7.5,
+            6.099999999860302, 13.199999999953434
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 10.400000000139698,
+          "cpuP95": 15.800000000046566,
+          "cpuSamplesMs": [
+            11.299999999813735, 18.699999999953434, 11.199999999953434, 7.5, 14,
+            9.699999999953434, 6.5, 7.399999999906868, 8.5, 5.800000000046566,
+            7.199999999953434, 15.800000000046566, 10.400000000139698, 6,
+            8.600000000093132, 5.400000000139698, 7.900000000139698,
+            12.800000000046566, 10.600000000093132, 15.700000000186265, 14.5,
+            11.199999999953434, 11.799999999813735, 14.399999999906868,
+            11.300000000046566, 7.199999999953434, 10.199999999953434,
+            5.300000000046566, 11.899999999906868, 5.300000000046566
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 5.900000000139698,
+          "cpuP95": 5.900000000139698,
+          "cpuSamplesMs": [5.599999999860302, 5.900000000139698],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1931220,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      },
+      {
+        "head": "01cb1e581d43b7b3dbfc10a31b721ecbca22b2d3",
+        "tree": "6e468a3b842aab61052f27107c7c15a1093ed46f",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 6.5399999999984475,
+            "p50ExclusiveMs": 6.100000000093132,
+            "p95ExclusiveMs": 14.100000000093132,
+            "p50InclusiveMs": 8.900000000139698,
+            "p95InclusiveMs": 27.699999999953434
+          },
+          {
+            "name": "batch.plan",
+            "calls": 30,
+            "meanExclusiveMs": 3.8333333333488553,
+            "p50ExclusiveMs": 2.5,
+            "p95ExclusiveMs": 13.599999999860302,
+            "p50InclusiveMs": 2.5,
+            "p95InclusiveMs": 13.599999999860302
+          },
+          {
+            "name": "core.render",
+            "calls": 30,
+            "meanExclusiveMs": 3.036666666630966,
+            "p50ExclusiveMs": 1.900000000372529,
+            "p95ExclusiveMs": 8.699999999953434,
+            "p50InclusiveMs": 11,
+            "p95InclusiveMs": 35.60000000009313
+          },
+          {
+            "name": "core.mutate",
+            "calls": 30,
+            "meanExclusiveMs": 0.1833333333566164,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 0.6999999999534339,
+            "p50InclusiveMs": 0.10000000009313226,
+            "p95InclusiveMs": 0.6999999999534339
+          }
+        ],
+        "residual": {
+          "meanMs": 0.02333333333954215,
+          "p50Ms": 0,
+          "p95Ms": 0.10000000009313226
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1000,
+          "sortInputs": 0,
+          "webglError": 0,
+          "allocatedBufferBytes": 1892956,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1611,
+                "Texture": 8,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 9.800000000046566,
+          "cpuP95": 21.5,
+          "cpuSamplesMs": [
+            9.300000000046566, 5.600000000093132, 5, 6.699999999953434,
+            9.800000000046566, 11.400000000139698, 21.5, 8.5,
+            12.699999999953434, 11.599999999860302, 13.299999999813735,
+            9.099999999860302, 9.100000000093132, 9.5, 6.100000000093132,
+            13.299999999813735, 8.800000000046566, 10.800000000046566,
+            11.199999999953434, 9.899999999906868, 9.300000000046566,
+            10.699999999953434, 26.5, 15.800000000046566, 10.5,
+            7.699999999953434, 7.300000000046566, 11.700000000186265,
+            8.300000000046566, 5.900000000139698
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1893724,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 11.100000000093132,
+          "cpuP95": 37.10000000009313,
+          "cpuSamplesMs": [
+            8.600000000093132, 10.800000000046566, 5.900000000139698,
+            9.100000000093132, 6.100000000093132, 11.700000000186265,
+            11.799999999813735, 7.599999999860302, 6.899999999906868,
+            4.899999999906868, 6.399999999906868, 8.300000000046566,
+            12.800000000046566, 10.099999999860302, 10.600000000093132,
+            11.600000000093132, 9.400000000139698, 12.700000000186265,
+            12.599999999860302, 24.199999999953434, 37.10000000009313,
+            30.0999999998603, 21.600000000093132, 42.799999999813735,
+            14.699999999953434, 12.199999999953434, 21.300000000046566,
+            7.199999999953434, 11.100000000093132, 8.300000000046566
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1893724,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 7.300000000046566,
+          "cpuP95": 7.300000000046566,
+          "cpuSamplesMs": [7.300000000046566, 6.199999999953434],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 1893724,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      },
+      {
+        "head": "01cb1e581d43b7b3dbfc10a31b721ecbca22b2d3",
+        "tree": "6e468a3b842aab61052f27107c7c15a1093ed46f",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 14.556666666680636,
+            "p50ExclusiveMs": 14,
+            "p95ExclusiveMs": 19.899999999906868,
+            "p50InclusiveMs": 14,
+            "p95InclusiveMs": 19.899999999906868
+          },
+          {
+            "name": "batch.plan",
+            "calls": 60,
+            "meanExclusiveMs": 6.106666666672876,
+            "p50ExclusiveMs": 5.5,
+            "p95ExclusiveMs": 10,
+            "p50InclusiveMs": 5.5,
+            "p95InclusiveMs": 10
+          },
+          {
+            "name": "edit.apply",
+            "calls": 30,
+            "meanExclusiveMs": 3.753333333344199,
+            "p50ExclusiveMs": 3.1000000000931323,
+            "p95ExclusiveMs": 8.099999999860302,
+            "p50InclusiveMs": 3.1000000000931323,
+            "p95InclusiveMs": 8.099999999860302
+          },
+          {
+            "name": "system.RenderNameLabel",
+            "calls": 30,
+            "meanExclusiveMs": 0.8366666666852931,
+            "p50ExclusiveMs": 0.6999999999534339,
+            "p95ExclusiveMs": 1.9000000001396984,
+            "p50InclusiveMs": 0.6999999999534339,
+            "p95InclusiveMs": 1.9000000001396984
+          },
+          {
+            "name": "derive.text",
+            "calls": 30,
+            "meanExclusiveMs": 0.7333333333488554,
+            "p50ExclusiveMs": 0.5,
+            "p95ExclusiveMs": 2.699999999953434,
+            "p50InclusiveMs": 0.5,
+            "p95InclusiveMs": 2.699999999953434
+          },
+          {
+            "name": "render.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.5533333333209157,
+            "p50ExclusiveMs": 0.39999999990686774,
+            "p95ExclusiveMs": 1.8000000000465661,
+            "p50InclusiveMs": 19.800000000046566,
+            "p95InclusiveMs": 37.199999999953434
+          },
+          {
+            "name": "visibility.cull",
+            "calls": 30,
+            "meanExclusiveMs": 0.4999999999689559,
+            "p50ExclusiveMs": 0.30000000004656613,
+            "p95ExclusiveMs": 0.6999999999534339,
+            "p50InclusiveMs": 0.30000000004656613,
+            "p95InclusiveMs": 0.6999999999534339
+          },
+          {
+            "name": "derive.points",
+            "calls": 30,
+            "meanExclusiveMs": 0.3433333333348855,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 1.1999999999534339,
+            "p50InclusiveMs": 0.19999999995343387,
+            "p95InclusiveMs": 1.1999999999534339
+          },
+          {
+            "name": "derive.bounds",
+            "calls": 30,
+            "meanExclusiveMs": 0.31666666667442767,
+            "p50ExclusiveMs": 0.2999999998137355,
+            "p95ExclusiveMs": 0.6999999999534339,
+            "p50InclusiveMs": 0.2999999998137355,
+            "p95InclusiveMs": 0.6999999999534339
+          },
+          {
+            "name": "batch.schedule",
+            "calls": 30,
+            "meanExclusiveMs": 0.22000000001086542,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 0.39999999990686774,
+            "p50InclusiveMs": 5.7000000001862645,
+            "p95InclusiveMs": 10.300000000046566
+          },
+          {
+            "name": "render.pipeline",
+            "calls": 30,
+            "meanExclusiveMs": 0.1799999999968956,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 0.6000000000931323,
+            "p50InclusiveMs": 19.9000000001397,
+            "p95InclusiveMs": 37.800000000046566
+          },
+          {
+            "name": "system.SetupDevice",
+            "calls": 30,
+            "meanExclusiveMs": 0.07333333333954214,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "derive.transforms",
+            "calls": 60,
+            "meanExclusiveMs": 0.06666666668218871,
+            "p50ExclusiveMs": 0.09999999986030161,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0.09999999986030161,
+            "p95InclusiveMs": 0.19999999995343387
+          },
+          {
+            "name": "system.CameraControl",
+            "calls": 30,
+            "meanExclusiveMs": 0.05666666667287548,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.19999999995343387
+          },
+          {
+            "name": "system.Select",
+            "calls": 30,
+            "meanExclusiveMs": 0.02333333333954215,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetCursor",
+            "calls": 30,
+            "meanExclusiveMs": 0.02333333333954215,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "visibility.lod",
+            "calls": 30,
+            "meanExclusiveMs": 0.023333333324020107,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.19999999995343387,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.19999999995343387
+          },
+          {
+            "name": "system.Deleter",
+            "calls": 30,
+            "meanExclusiveMs": 0.023333333324020107,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.EventDisposer",
+            "calls": 30,
+            "meanExclusiveMs": 0.02000000000310441,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawArrowConnect",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666674427687,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawPencil",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666666666666,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderTransformer",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666666666666,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderHighlighter",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666666666666,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.AnimationSystem",
+            "calls": 30,
+            "meanExclusiveMs": 0.013333333337989946,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawRect",
+            "calls": 30,
+            "meanExclusiveMs": 0.010000000001552205,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.EventWriter",
+            "calls": 30,
+            "meanExclusiveMs": 0.009999999993791182,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "order.rank",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666728754835,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawBrush",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.RenderHTML",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.ComputeRough",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.RenderBindings",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawVectorNetwork",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333364377418,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "order.reconcile",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "derive.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawPoint",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "visibility.derive",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.CameraSync",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.ExportSVG",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          }
+        ],
+        "residual": {
+          "meanMs": 1.246666666578191,
+          "p50Ms": 0.8999999999068677,
+          "p95Ms": 3.5
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1020,
+          "sortInputs": 1010,
+          "webglError": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 262,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 30.399999999906868,
+          "cpuP95": 42.199999999953434,
+          "cpuSamplesMs": [
+            30.399999999906868, 27.699999999953434, 27.0999999998603,
+            29.899999999906868, 26.899999999906868, 27.299999999813735, 27,
+            29.600000000093132, 29.200000000186265, 32.300000000046566,
+            33.89999999990687, 31.5, 30, 39.699999999953434, 40.200000000186265,
+            24.300000000046566, 30.100000000093132, 30, 27.800000000046566,
+            30.899999999906868, 30.5999999998603, 31.199999999953434,
+            77.89999999990687, 42.199999999953434, 31.4000000001397, 30.5,
+            28.699999999953434, 37.39999999990687, 39.800000000046566,
+            26.600000000093132
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 28.199999999953434,
+          "cpuP95": 48.5999999998603,
+          "cpuSamplesMs": [
+            25.300000000046566, 25.699999999953434, 26.5, 28.199999999953434,
+            24.5, 29, 28, 30.9000000001397, 23.0999999998603,
+            23.200000000186265, 29.899999999906868, 24.9000000001397, 29,
+            28.600000000093132, 32.10000000009313, 36.0999999998603, 28,
+            29.899999999906868, 25.699999999953434, 25.199999999953434,
+            48.5999999998603, 56, 30.899999999906868, 26.0999999998603,
+            34.10000000009313, 24.9000000001397, 23.5, 31.5999999998603,
+            25.799999999813735, 38.5999999998603
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 23.199999999953434,
+          "cpuP95": 23.199999999953434,
+          "cpuSamplesMs": [23.199999999953434, 21.100000000093132],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2206188,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      },
+      {
+        "head": "01cb1e581d43b7b3dbfc10a31b721ecbca22b2d3",
+        "tree": "6e468a3b842aab61052f27107c7c15a1093ed46f",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "phases": [
+          {
+            "name": "batch.submit",
+            "calls": 30,
+            "meanExclusiveMs": 9.683333333348855,
+            "p50ExclusiveMs": 9.400000000139698,
+            "p95ExclusiveMs": 14.5,
+            "p50InclusiveMs": 9.400000000139698,
+            "p95InclusiveMs": 14.5
+          },
+          {
+            "name": "batch.plan",
+            "calls": 60,
+            "meanExclusiveMs": 7.326666666668219,
+            "p50ExclusiveMs": 6.600000000093132,
+            "p95ExclusiveMs": 11.699999999953434,
+            "p50InclusiveMs": 6.600000000093132,
+            "p95InclusiveMs": 11.699999999953434
+          },
+          {
+            "name": "edit.apply",
+            "calls": 30,
+            "meanExclusiveMs": 3.609999999970508,
+            "p50ExclusiveMs": 3.2999999998137355,
+            "p95ExclusiveMs": 6.699999999953434,
+            "p50InclusiveMs": 3.2999999998137355,
+            "p95InclusiveMs": 6.699999999953434
+          },
+          {
+            "name": "system.RenderNameLabel",
+            "calls": 30,
+            "meanExclusiveMs": 0.9833333333410944,
+            "p50ExclusiveMs": 0.7999999998137355,
+            "p95ExclusiveMs": 3.800000000046566,
+            "p50InclusiveMs": 0.7999999998137355,
+            "p95InclusiveMs": 3.800000000046566
+          },
+          {
+            "name": "derive.text",
+            "calls": 30,
+            "meanExclusiveMs": 0.8166666666744277,
+            "p50ExclusiveMs": 0.39999999990686774,
+            "p95ExclusiveMs": 3.300000000046566,
+            "p50InclusiveMs": 0.39999999990686774,
+            "p95InclusiveMs": 3.300000000046566
+          },
+          {
+            "name": "render.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.45999999998603014,
+            "p50ExclusiveMs": 0.39999999990686774,
+            "p95ExclusiveMs": 1.4000000001396984,
+            "p50InclusiveMs": 17.300000000046566,
+            "p95InclusiveMs": 23.0999999998603
+          },
+          {
+            "name": "derive.bounds",
+            "calls": 30,
+            "meanExclusiveMs": 0.45666666665735345,
+            "p50ExclusiveMs": 0.30000000004656613,
+            "p95ExclusiveMs": 1.7999999998137355,
+            "p50InclusiveMs": 0.30000000004656613,
+            "p95InclusiveMs": 1.7999999998137355
+          },
+          {
+            "name": "visibility.cull",
+            "calls": 30,
+            "meanExclusiveMs": 0.3733333333473032,
+            "p50ExclusiveMs": 0.20000000018626451,
+            "p95ExclusiveMs": 0.4000000001396984,
+            "p50InclusiveMs": 0.20000000018626451,
+            "p95InclusiveMs": 0.4000000001396984
+          },
+          {
+            "name": "render.pipeline",
+            "calls": 30,
+            "meanExclusiveMs": 0.31000000001707423,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 2.7000000001862645,
+            "p50InclusiveMs": 17.699999999953434,
+            "p95InclusiveMs": 25.100000000093132
+          },
+          {
+            "name": "derive.points",
+            "calls": 30,
+            "meanExclusiveMs": 0.23333333334885537,
+            "p50ExclusiveMs": 0.19999999995343387,
+            "p95ExclusiveMs": 0.5,
+            "p50InclusiveMs": 0.19999999995343387,
+            "p95InclusiveMs": 0.5
+          },
+          {
+            "name": "batch.schedule",
+            "calls": 30,
+            "meanExclusiveMs": 0.22333333333954214,
+            "p50ExclusiveMs": 0.20000000018626451,
+            "p95ExclusiveMs": 0.30000000004656613,
+            "p50InclusiveMs": 6.800000000046566,
+            "p95InclusiveMs": 11.900000000139698
+          },
+          {
+            "name": "derive.transforms",
+            "calls": 60,
+            "meanExclusiveMs": 0.11999999999534339,
+            "p50ExclusiveMs": 0.10000000009313226,
+            "p95ExclusiveMs": 0.2999999998137355,
+            "p50InclusiveMs": 0.10000000009313226,
+            "p95InclusiveMs": 0.2999999998137355
+          },
+          {
+            "name": "system.RenderHighlighter",
+            "calls": 30,
+            "meanExclusiveMs": 0.11333333334575096,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.AnimationSystem",
+            "calls": 30,
+            "meanExclusiveMs": 0.10666666666511446,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.CameraControl",
+            "calls": 30,
+            "meanExclusiveMs": 0.06000000001707425,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.20000000018626451,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.20000000018626451
+          },
+          {
+            "name": "system.RenderTransformer",
+            "calls": 30,
+            "meanExclusiveMs": 0.03333333333333333,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawArrowConnect",
+            "calls": 30,
+            "meanExclusiveMs": 0.026666666675979892,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.DrawVectorNetwork",
+            "calls": 30,
+            "meanExclusiveMs": 0.02666666666821887,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawRect",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666674427687,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetupDevice",
+            "calls": 30,
+            "meanExclusiveMs": 0.016666666658905645,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.SetCursor",
+            "calls": 30,
+            "meanExclusiveMs": 0.013333333337989946,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.EventDisposer",
+            "calls": 30,
+            "meanExclusiveMs": 0.013333333322467904,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.Select",
+            "calls": 30,
+            "meanExclusiveMs": 0.010000000001552205,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "system.RenderHTML",
+            "calls": 30,
+            "meanExclusiveMs": 0.010000000001552205,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.10000000009313226,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.10000000009313226
+          },
+          {
+            "name": "visibility.lod",
+            "calls": 30,
+            "meanExclusiveMs": 0.009999999993791182,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "visibility.derive",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.Deleter",
+            "calls": 30,
+            "meanExclusiveMs": 0.0066666666651144625,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0.09999999986030161,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0.09999999986030161
+          },
+          {
+            "name": "system.ComputeRough",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "derive.camera",
+            "calls": 30,
+            "meanExclusiveMs": 0.0033333333286767203,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.EventWriter",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "order.reconcile",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "order.rank",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.CameraSync",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.RenderBindings",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawBrush",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawPoint",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.DrawPencil",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          },
+          {
+            "name": "system.ExportSVG",
+            "calls": 30,
+            "meanExclusiveMs": 0,
+            "p50ExclusiveMs": 0,
+            "p95ExclusiveMs": 0,
+            "p50InclusiveMs": 0,
+            "p95InclusiveMs": 0
+          }
+        ],
+        "residual": {
+          "meanMs": 1.0799999999891345,
+          "p50Ms": 0.8999999999068677,
+          "p95Ms": 2.8000000002793968
+        },
+        "setup": {
+          "visible": 1000,
+          "orderSignals": 1020,
+          "sortInputs": 1010,
+          "webglError": 0,
+          "allocatedBufferBytes": 2158428,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "textProxy": 0,
+          "native": {
+            "drawcalls": 403,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 1,
+            "bufferBytes": 192,
+            "uniformUploads": 1,
+            "uniformBytes": 192
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1612,
+                "Texture": 208,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ]
+        },
+        "control": {
+          "cpuP50": 24.899999999906868,
+          "cpuP95": 30.800000000046566,
+          "cpuSamplesMs": [
+            24.899999999906868, 27.4000000001397, 34.199999999953434,
+            24.199999999953434, 26.899999999906868, 19, 25.5,
+            23.899999999906868, 26.5999999998603, 24.800000000046566,
+            27.0999999998603, 23, 27.199999999953434, 23.199999999953434,
+            16.299999999813735, 22.5, 22.800000000046566, 25.0999999998603,
+            21.600000000093132, 17.600000000093132, 25.5999999998603, 18.5, 25,
+            29.0999999998603, 22.100000000093132, 30.800000000046566,
+            19.5999999998603, 25.5, 26.4000000001397, 20.9000000001397
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2159388,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "sortInputDelta": 0,
+          "orderSignalDelta": 0
+        },
+        "profiled": {
+          "cpuP50": 25.300000000046566,
+          "cpuP95": 35.199999999953434,
+          "cpuSamplesMs": [
+            22, 24, 19.9000000001397, 22.600000000093132, 26.800000000046566,
+            21.200000000186265, 20.300000000046566, 24.199999999953434,
+            24.600000000093132, 27.9000000001397, 22.299999999813735,
+            32.800000000046566, 26.300000000046566, 21.4000000001397,
+            23.4000000001397, 25.699999999953434, 30.600000000093132,
+            29.800000000046566, 25.300000000046566, 37, 24, 20.199999999953434,
+            24.800000000046566, 28.199999999953434, 28.800000000046566,
+            32.10000000009313, 32.199999999953434, 27.399999999906868,
+            35.199999999953434, 23.600000000093132
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2159388,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 30
+        },
+        "restored": {
+          "cpuP50": 17.399999999906868,
+          "cpuP95": 17.399999999906868,
+          "cpuSamplesMs": [17.399999999906868, 13.699999999953434],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "visible": 1000,
+          "textProxy": 0,
+          "allocatedBufferBytes": 2159388,
+          "primitiveCounts": {
+            "rect": 200,
+            "ellipse": 200,
+            "text": 200,
+            "polyline": 200,
+            "path": 200
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "webglError": 0,
+          "nonemptyFrames": 2
+        }
+      }
+    ]
+  },
+  "notes": [
+    "All CPU samples and phase aggregates are retained. Full per-frame phase/native arrays and slowest-frame detail are in ignored raw files identified by SHA-256.",
+    "Controls exclude optional phase wrappers; existing native/glyph/order probes remain.",
+    "The 64-entity boundary test observes 608 key reads in the reference comparator and 64 in the new plan. This is distinct from the 1000-visible-object browser workload.",
+    "This timing cohort does not establish a whole-frame speedup."
+  ]
+}

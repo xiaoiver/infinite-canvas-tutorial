@@ -1247,7 +1247,7 @@ it('reads each order key once per dirty plan and observes unannounced key change
   nodes.forEach((_, i) => batch.add(nodes[(i * 17) % nodes.length].entity));
   batch.sort();
   expect(queued(batch).flatMap((d) => d.shapes)).toEqual(nodes.map((n) => n.entity));
-  const counts = (spies: typeof reads) => spies.map((spy) =>
+  const counts = (spies: jest.SpyInstance[]) => spies.map((spy) =>
     spy.mock.calls.filter(([component]) => component === FractionalIndex).length,
   );
   expect(counts(reads)).toEqual(nodes.map(() => 1));
