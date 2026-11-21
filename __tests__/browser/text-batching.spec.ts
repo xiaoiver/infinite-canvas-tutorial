@@ -240,8 +240,7 @@ for (const backend of ['core', 'ecs']) {
     expect(after.textLayoutChecks - camera.textLayoutChecks).toBe(204);
     // Painting retains ranks even when ECS receives full serialized nodes.
     expect(frames.orderSignals).toBe(orderBefore.orderSignals);
-    if (backend === 'ecs')
-      expect(frames.sortInputs).toBeGreaterThan(orderBefore.sortInputs);
+    expect(frames.sortInputs).toBe(orderBefore.sortInputs);
     await page.evaluate(() => window.mixedRenderer.destroy());
   });
 }
@@ -267,6 +266,8 @@ for (const backend of ['core', 'ecs']) {
     const state = await page.evaluate(() => window.mixedRenderer.state());
     const moved = await page.evaluate(() => window.mixedRenderer.reorderText());
     expect(moved.orderSignals).toBeGreaterThan(state.orderSignals);
+    if (backend === 'ecs')
+      expect(moved.sortInputs).toBeGreaterThan(state.sortInputs);
     const next = await page.evaluate(() => window.mixedRenderer.textOrder());
     expect(next.at(-1)).toBe(order[0]);
     expect(next).not.toEqual(order);
