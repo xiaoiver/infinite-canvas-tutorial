@@ -1293,13 +1293,16 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
   const t = (element as SerializedNode).type;
   const isIconFontWireNode = t === 'iconfont' || (t as string) === 'icon_font';
 
+  let parentChanged = false;
   if ('parentId' in updates) {
+    const previousParent = entity.has(Children)
+      ? entity.read(Children).parent
+      : undefined;
     if (parentId) {
       const parentNode = api.getNodeById(parentId);
       if (parentNode) {
         const newParentEntity = api.getEntity(parentNode);
         safeAddComponent(entity, Children);
-        // const oldParentEntity = entity.read(Children).parent;
         safeAddComponent(newParentEntity, Parent);
         entity.write(Children).parent = newParentEntity;
       }
@@ -1308,6 +1311,9 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
       safeAddComponent(entity, Children);
       entity.write(Children).parent = api.getCamera();
     }
+    parentChanged =
+      entity.has(Children) &&
+      entity.read(Children).parent !== previousParent;
   }
 
   if ('name' in updates) {
@@ -1321,7 +1327,18 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
     }
   }
   if ('zIndex' in updates) {
-    entity.write(ZIndex).value = zIndex ?? 0;
+    const value = zIndex ?? 0;
+    // ZIndex stores Float32 values. Full-node paint/history updates should not
+    // invalidate ordering when the stored value and parent are unchanged.
+    // Reparenting and explicit fractional keys still reconcile as before.
+    // ComputeZIndex owns missing-key recovery; API callers need no key access.
+    if (
+      parentChanged ||
+      'fractionalIndex' in updates ||
+      entity.read(ZIndex).value !== Math.fround(value)
+    ) {
+      entity.write(ZIndex).value = value;
+    }
   }
   if ('visibility' in updates) {
     entity.write(Visibility).value = visibility;

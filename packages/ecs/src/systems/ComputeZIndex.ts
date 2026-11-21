@@ -38,6 +38,15 @@ export class ComputeZIndex extends System {
     (q) => q.added.and.changed.with(ZIndex).trackWrites,
   );
 
+  // Recover generated keys here, where component access is already owned by
+  // the hierarchy system. Ordinary API callers only need ZIndex access.
+  private readonly missingFractionalIndexes = this.query(
+    (q) =>
+      q.current
+        .with(Transform, ZIndex, Children)
+        .without(FractionalIndex, Camera).read,
+  );
+
   constructor() {
     super();
     this.query(
@@ -79,6 +88,7 @@ export class ComputeZIndex extends System {
     };
     this.zIndexes.added.forEach(collect);
     this.zIndexes.changed.forEach(collect);
+    this.missingFractionalIndexes.current.forEach(collect);
 
     movedByCamera.forEach((moved, camera) => {
       const descendants = getDescendants(camera, sortForReconciliation);
