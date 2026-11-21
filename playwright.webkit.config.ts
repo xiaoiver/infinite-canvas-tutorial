@@ -24,6 +24,7 @@ export default defineConfig({
     'glyph-atlas.spec.ts',
     'glyph-sharing.spec.ts',
     'text-batching.spec.ts',
+    'sdf-packing.spec.ts',
     'path-instancing-demo.spec.ts',
     'mixed-renderer.spec.ts',
     'ecs-path-fill.spec.ts',

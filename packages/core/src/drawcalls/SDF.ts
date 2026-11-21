@@ -33,6 +33,15 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SDF extends Drawcall {
+  override get canUpdateGeometryRows() {
+    return (
+      this.instanced &&
+      this.shapes.length > 0 &&
+      !this.useWireframe &&
+      !this.useFillImage
+    );
+  }
+
   // protected maxInstances: number = 1000;
 
   #uniformBuffer: Buffer;
@@ -342,23 +351,7 @@ export class SDF extends Drawcall {
   render(renderPass: RenderPass, uniformLegacyObject: Record<string, unknown>) {
     if (this.destroyed) return;
     const depthChanged = this.instanced
-      ? this.shapes.some((shape, i) => {
-          const data = this.vertexBufferDatas[1];
-          return (
-            !data ||
-            !Object.is(
-              data[i * 32 + 16],
-              Math.fround(shape.globalRenderOrder / ZINDEX_FACTOR),
-            ) ||
-            !Object.is(
-              data[i * 32 + 2],
-              Math.fround(
-                (shape.globalRenderOrder + (1 / this.shapes.length) * i) /
-                  ZINDEX_FACTOR,
-              ),
-            )
-          );
-        })
+      ? this.shapes.some((shape, i) => this.instanceDepthChanged(shape, i))
       : this.#fullRenderOrder !== this.shapes[0]?.globalRenderOrder;
     if (
       this.shapes.some((shape) => shape.renderDirtyFlag) ||
@@ -392,7 +385,16 @@ export class SDF extends Drawcall {
             6,
           );
         }
+        const updateRows = this.canUpdateGeometryRows;
         this.shapes.forEach((shape, i, total) => {
+          if (
+            updateRows &&
+            !this.geometryDirty &&
+            !shape.renderDirtyFlag &&
+            !this.instanceDepthChanged(shape, i)
+          ) {
+            return;
+          }
           const [buffer] = this.generateBuffer(shape, i, total.length);
           this.#attributes.write(i, buffer);
           const m = shape.worldTransform;
@@ -463,6 +465,24 @@ export class SDF extends Drawcall {
       this.#uniformBuffer?.destroy();
       this.#texture?.destroy?.();
     }
+  }
+
+  private instanceDepthChanged(shape: Shape, index: number) {
+    const data = this.vertexBufferDatas[1];
+    return (
+      !data ||
+      !Object.is(
+        data[index * 32 + 16],
+        Math.fround(shape.globalRenderOrder / ZINDEX_FACTOR),
+      ) ||
+      !Object.is(
+        data[index * 32 + 2],
+        Math.fround(
+          (shape.globalRenderOrder + (1 / this.shapes.length) * index) /
+            ZINDEX_FACTOR,
+        ),
+      )
+    );
   }
 
   private generateBuffer(

@@ -487,7 +487,8 @@ export class BatchManager {
       drawcall.shapes.forEach((shape) => {
         if (shape.geometryDirtyFlag) {
           geometryDirtyShapes.push(shape);
-          geometryDirtyDrawcalls.push(drawcall);
+          if (drawcall.canUpdateGeometryRows) shape.renderDirtyFlag = true;
+          else geometryDirtyDrawcalls.push(drawcall);
         }
         if (shape.materialDirtyFlag) {
           materialDirtyShapes.push(shape);

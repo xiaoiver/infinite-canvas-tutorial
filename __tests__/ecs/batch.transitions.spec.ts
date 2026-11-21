@@ -1212,3 +1212,26 @@ it('invalidates copied ECS metrics without relying on object reference changes',
   expect(draw.geometryDirty).toBe(true);
   draw.destroy();
 });
+
+it.each([true, false])(
+  'routes SDF geometry dirtiness to rows while retaining membership/full rebuilds (batchable=%s)',
+  (batchable) => {
+    const batch = manager();
+    const node = shape(Rect, batchable);
+    batch.add(node.entity);
+    const draw = queued(batch)[0];
+    draw.geometryDirty = false;
+    draw.dirtyInstances.clear();
+    node.data.set(GeometryDirty, {});
+    jest.spyOn(draw, 'submit').mockImplementation(() => {});
+    batch.flush(null, null, {}, null);
+    expect(draw.geometryDirty).toBe(!batchable);
+    expect(draw.dirtyInstances.has(node.entity)).toBe(batchable);
+    expect(node.entity.has(GeometryDirty)).toBe(false);
+    if (batchable) {
+      batch.add(shape().entity);
+      queued(batch);
+      expect(draw.geometryDirty).toBe(true);
+    }
+  },
+);

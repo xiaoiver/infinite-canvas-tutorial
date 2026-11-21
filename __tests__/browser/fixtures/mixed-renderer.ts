@@ -947,6 +947,31 @@ async function profile(enabled: boolean) {
   }
 }
 const harness = {
+  async resizeSolid(width: number, height: number) {
+    if (nodes[0]?.type !== 'rect')
+      throw new Error('Resize probe requires a leading rectangle.');
+    const { collectSDFUpdates } = await import('./sdf-update-probe');
+    return collectSDFUpdates(backend, async () => {
+      if (core) {
+        (shapes[0] as Rect).width = width;
+        (shapes[0] as Rect).height = height;
+        core.render();
+      } else {
+        await api!.edit(
+          (e) => e.updateNode(e.getNodeById(nodes[0].id), { width, height }),
+          { capture: 'NEVER' },
+        );
+        await settleECSFrames(api!, 3);
+      }
+      return state();
+    });
+  },
+  async sdfUpdates(operation: MixedOperation, samples = 2, warmup = 1) {
+    const { collectSDFUpdates } = await import('./sdf-update-probe');
+    return collectSDFUpdates(backend, () =>
+      measure(operation, samples, warmup),
+    );
+  },
   solidDepthScene,
   solidStyles,
   solidBatching,
