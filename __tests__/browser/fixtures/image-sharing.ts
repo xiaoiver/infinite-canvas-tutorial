@@ -52,7 +52,7 @@ if (backend === 'ecs' && new URLSearchParams(location.search).has('cpu-upload'))
   const original = adapter.createTexImageSource;
   adapter.createTexImageSource = (source) => {
     const ctx = source.getContext('2d') as CanvasRenderingContext2D;
-    return ctx.getImageData(0, 0, source.width, source.height).data;
+    return ctx.getImageData(0, 0, source.width, source.height);
   };
   restore.push(() => { adapter.createTexImageSource = original; });
 }
