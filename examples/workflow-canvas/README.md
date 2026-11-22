@@ -115,3 +115,5 @@ WORKFLOW_BENCH_OUTPUT=.test-results/workflow-navigation.json pnpm bench:workflow
 巡航按经过时间推进相机，慢设备会跳过中间视图，因此前后两次不能声称逐帧负载相等。
 JSON 中 `time-driven-tour` 还包含驱动器点击/读取结果和视图恢复的等待；示例面板自身的
 约 10 秒结果另存于 `result`，不要混用二者的 FPS/P95。释放断言在每个页面关闭前执行。
+
+[前后测量结果与后续计划](../../docs/workflow-navigation-performance.md)。
