@@ -385,9 +385,15 @@ const harness = {
   view,
   state,
   raster,
-  // Read the live backing canvas at the settled render boundary. Mobile WebKit
-  // compositor screenshots can resize this fixed-size canvas and crash a page.
+  // Read live pixels separately from renderer export. Core does not preserve
+  // its drawing buffer: request an unchanged camera projection and capture in
+  // the same task as render, without marking material/instance rows dirty.
   async screen() {
+    if (core) {
+      core.camera.projection(core.camera.width, core.camera.height);
+      core.render();
+      return canvas.toDataURL();
+    }
     await settle();
     return canvas.toDataURL();
   },
