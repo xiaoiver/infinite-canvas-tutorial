@@ -117,7 +117,7 @@ for (const backend of ['core', 'ecs'])
       }
       try {
         await page.goto(
-          `/image-sharing.html?backend=${backend}${shared ? '' : '&private=1'}${process.env.IMAGE_SHARING_CPU_UPLOAD ? '&cpu-upload=1' : ''}`,
+          `/image-sharing.html?backend=${backend}${shared ? '' : '&private=1'}`,
         );
         await expect(page.locator('#status')).toHaveText('Ready', {
           timeout: 30000,
@@ -130,6 +130,7 @@ for (const backend of ['core', 'ecs'])
         console.info('image-sharing ready', backend, {
           shared,
           textures: initial,
+          sourceTypes: (await page.evaluate(() => window.imageSharing.state())).sourceTypes,
           viewport: await page.evaluate(() => ({
             width: innerWidth,
             height: innerHeight,

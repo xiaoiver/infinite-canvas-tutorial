@@ -47,15 +47,6 @@ for (const Pool of [CorePool, ECSPool]) {
   });
 }
 const canvas = document.querySelector<HTMLCanvasElement>('#actual')!;
-if (backend === 'ecs' && new URLSearchParams(location.search).has('cpu-upload')) {
-  const adapter = ECS.DOMAdapter.get();
-  const original = adapter.createTexImageSource;
-  adapter.createTexImageSource = (source) => {
-    const ctx = source.getContext('2d') as CanvasRenderingContext2D;
-    return ctx.getImageData(0, 0, source.width, source.height);
-  };
-  restore.push(() => { adapter.createTexImageSource = original; });
-}
 const originalContext = canvas.getContext;
 const probe = mixedFrameProbe(canvas);
 const sources: HTMLCanvasElement[] = [],
@@ -84,11 +75,16 @@ for (const colors of [
       'image/png',
     ),
   );
-  bitmaps.push(await createImageBitmap(blob));
-  urls.push(URL.createObjectURL(blob));
+  const url = URL.createObjectURL(blob);
+  urls.push(url);
+  bitmaps.push(
+    backend === 'ecs'
+      ? ((await ECS.DOMAdapter.get().createImage(url)) as ImageBitmap)
+      : await createImageBitmap(blob),
+  );
 }
-// The paired fixture uses known immutable snapshots; the real workflow benchmark
-// separately covers URL decoding and cold entry without injecting image data.
+// Preload ECS through its normal platform URL decoder, then retain that decoded
+// generation for the paired replay. The workflow benchmark measures cold entry.
 if (backend === 'ecs')
   urls.forEach((url, i) => setFillLayerDecodedBitmapForUrl(url, bitmaps[i]));
 let core: CoreCanvas | undefined,
@@ -170,6 +166,7 @@ function state() {
   return {
     backend,
     count: ids.length,
+    sourceTypes: bitmaps.map((bitmap) => bitmap.constructor.name),
     visible: core
       ? [...shapes.values()].filter((s) => !s.culled).length
       : api!
@@ -510,12 +507,6 @@ const harness = {
     }
     // MeshPipeline renders on demand. Request an unchanged computed camera
     // write, then require actual main-context GPU work before reading pixels.
-    if (new URLSearchParams(location.search).has('reset-viewport')) {
-      const gl = canvas.getContext('webgl2')!;
-      const viewport = gl.getParameter(gl.VIEWPORT) as Int32Array;
-      gl.viewport(0, 0, 1, 1);
-      gl.viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
-    }
     const before = probe.snapshot().drawcalls;
     const capture = completedFrame(() => {
       const drawcalls = probe.snapshot().drawcalls - before;
