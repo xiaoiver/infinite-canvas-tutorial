@@ -6,7 +6,10 @@ import type { ImagePatch } from './fixtures/image-sharing';
 
 // The fixed-size GPU fixture must fit the viewport. Keep WebKit's mobile/DPR
 // defaults; pointer/touch gestures have their own narrow-screen regressions.
-test.use({ viewport: { width: 1000, height: 760 } });
+test.use({
+  viewport: { width: 1000, height: 760 },
+  screen: { width: 1000, height: 760 },
+});
 
 async function textures(page: Page) {
   const state = await page.evaluate(() => window.imageSharing.state());
