@@ -70,7 +70,8 @@ for (const colors of [
   // canvas-backed GPU image between Canvas 2D and WebGL contexts.
   const blob = await new Promise<Blob>((resolve, reject) =>
     source.toBlob(
-      (value) => value ? resolve(value) : reject(new Error('PNG encode failed')),
+      (value) =>
+        value ? resolve(value) : reject(new Error('PNG encode failed')),
       'image/png',
     ),
   );
@@ -86,6 +87,7 @@ let core: CoreCanvas | undefined,
   api: ECS.API | undefined;
 const shapes = new Map<string, Rect>();
 let ids: string[] = [];
+let originalWorldExecute: unknown;
 let external: any,
   externalDestroyed = 0;
 let disposed = false;
@@ -139,6 +141,7 @@ if (backend === 'core') {
     },
   );
   await app.run();
+  originalWorldExecute = app.world.execute;
   await new Promise<void>((resolve, reject) => {
     const end = performance.now() + 15000;
     const poll = () => {
@@ -281,27 +284,71 @@ async function view(x: number, zoom = 1) {
   await settle();
   return state();
 }
+function completedFrame<T>(read: () => T | undefined): Promise<T> {
+  const world = app!.world;
+  const original = world.execute;
+  return new Promise<T>((resolve, reject) => {
+    let done = false;
+    let dispose = () => {};
+    let timer: ReturnType<typeof setTimeout>;
+    let wrapped: typeof original;
+    const finish = (error?: unknown, value?: T) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      dispose();
+      if (world.execute === wrapped) world.execute = original;
+      if (error !== undefined) reject(error);
+      else resolve(value!);
+    };
+    wrapped = async (...args: Parameters<typeof original>) => {
+      try {
+        await original.apply(world, args);
+      } catch (error) {
+        finish(error);
+        throw error;
+      }
+      if (done) return;
+      try {
+        const value = read();
+        if (value !== undefined) finish(undefined, value);
+      } catch (error) {
+        finish(error);
+      }
+    };
+    timer = setTimeout(
+      () => finish(new Error('completed frame timeout')),
+      15000,
+    );
+    world.execute = wrapped;
+    dispose = api!.onDestroy(() =>
+      finish(new Error('canvas destroyed before frame')),
+    );
+  });
+}
 async function raster(partial = false) {
   if (core) return core.toDataURL({ grid: false });
   const owner = api!.getCanvas();
-  return new Promise<string>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('export timeout')), 15000);
-    const poll = () => {
-      if (owner.has(ECS.Screenshot)) {
-        clearTimeout(timer);
-        resolve(owner.read(ECS.Screenshot).dataURL);
-      } else api!.runAtNextTick(poll);
-    };
-    api!.runAtNextTick(() => {
-      if (owner.has(ECS.Screenshot)) owner.remove(ECS.Screenshot);
-      api!.export({
-        format: ECS.ExportFormat.PNG,
-        download: false,
-        nodes: partial ? [api!.getNodeById(ids[1])] : [],
-      });
-      poll();
+  let dataURL: string | undefined;
+  const result = completedFrame(() => {
+    if (owner.has(ECS.Screenshot)) dataURL = owner.read(ECS.Screenshot).dataURL;
+    // Screenshot is a one-frame trigger. Wait for its request to retire before
+    // returning so the next export cannot be removed by this one's coroutine.
+    return dataURL &&
+      !owner.has(ECS.Screenshot) &&
+      !owner.has(ECS.RasterScreenshotRequest)
+      ? dataURL
+      : undefined;
+  });
+  api!.runAtNextTick(() => {
+    if (owner.has(ECS.Screenshot)) owner.remove(ECS.Screenshot);
+    api!.export({
+      format: ECS.ExportFormat.PNG,
+      download: false,
+      nodes: partial ? [api!.getNodeById(ids[1])] : [],
     });
   });
+  return result;
 }
 async function measure(samples = 30, warmup = 15) {
   const times: number[] = [];
@@ -364,6 +411,8 @@ async function makeExternal() {
 async function dispose() {
   if (disposed) return;
   disposed = true;
+  const frameObserversRestored =
+    !app || app.world.execute === originalWorldExecute;
   if (core) core.destroy();
   else await app!.exit();
   const borrowedDestroyed = externalDestroyed;
@@ -377,6 +426,7 @@ async function dispose() {
     baseline,
     remaining: window.lifecycleProbes.resources(),
     restored:
+      frameObserversRestored &&
       CorePool.prototype.acquire === originalAcquires[0] &&
       ECSPool.prototype.acquire === originalAcquires[1] &&
       canvas.getContext === originalContext,
@@ -398,8 +448,7 @@ const harness = {
       core.render();
       return canvas.toDataURL();
     }
-    await settle();
-    return canvas.toDataURL();
+    return completedFrame(() => canvas.toDataURL());
   },
   measure,
   makeExternal,
