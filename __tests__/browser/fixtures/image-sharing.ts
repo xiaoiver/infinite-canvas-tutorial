@@ -329,16 +329,6 @@ function readScreenPixels() {
     width,
     height,
     rgba: btoa(binary),
-    contextAttributes: gl.getContextAttributes(),
-    viewport: Array.from(gl.getParameter(gl.VIEWPORT) as Int32Array),
-    scissor: Array.from(gl.getParameter(gl.SCISSOR_BOX) as Int32Array),
-    scissorEnabled: gl.isEnabled(gl.SCISSOR_TEST),
-    swapChainSize: api
-      ? (() => {
-          const texture = api!.getCanvas().read(ECS.GPUResource).swapChain.getOnscreenTexture();
-          return [texture.width, texture.height];
-        })()
-      : undefined,
   };
 }
 function completedFrame<T>(read: () => T | undefined): Promise<T> {

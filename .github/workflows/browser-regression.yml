@@ -33,40 +33,6 @@ jobs:
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.bench.json
       - run: pnpm exec tsc -p examples/workflow-canvas/tsconfig.bench.json
 
-  image-sharing-diagnostic:
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 702
-    name: image-sharing-diagnostic (${{ matrix.shm }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        shm: [64m, 1g]
-    container:
-      image: mcr.microsoft.com/playwright:v1.55.1-noble
-      options: --shm-size=${{ matrix.shm }}
-    timeout-minutes: 10
-    steps:
-      - run: df -h /dev/shm
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile --ignore-scripts
-      - run: pnpm exec playwright test -c playwright.webkit.config.ts image-sharing.spec.ts --reporter=list
-        env:
-          DEBUG: pw:browser
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: image-sharing-diagnostic
-          path: .test-results/webkit/
-          include-hidden-files: true
-          retention-days: 7
-
   browser-tests:
     name: ${{ matrix.browser }} (${{ matrix.group }})
     runs-on: ubuntu-latest

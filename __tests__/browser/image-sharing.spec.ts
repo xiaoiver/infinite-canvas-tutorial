@@ -58,14 +58,6 @@ for (const backend of ['core', 'ecs'])
             ? PNG.sync.read(Buffer.from(capture.split(',')[1], 'base64'))
             : new PNG({ width: capture.width, height: capture.height });
         if (typeof capture !== 'string') {
-          if (label === 'screen-initial')
-            console.info('image-sharing native screen', backend, {
-              drawcalls: capture.drawcalls,
-              viewport: capture.viewport,
-              scissor: capture.scissor,
-              scissorEnabled: capture.scissorEnabled,
-              swapChainSize: capture.swapChainSize,
-            });
           expect(capture.drawcalls).toBeGreaterThan(0);
           png.data = Buffer.from(capture.rgba, 'base64');
         }
@@ -79,8 +71,8 @@ for (const backend of ['core', 'ecs'])
           console.error('image-sharing blank capture', backend, {
             label,
             ink,
-            drawcalls: typeof capture === 'string' ? undefined : capture.drawcalls,
-            contextAttributes: typeof capture === 'string' ? undefined : capture.contextAttributes,
+            drawcalls:
+              typeof capture === 'string' ? undefined : capture.drawcalls,
           });
           await test.info().attach(label + '-blank', {
             body: PNG.sync.write(png),
@@ -130,7 +122,8 @@ for (const backend of ['core', 'ecs'])
         console.info('image-sharing ready', backend, {
           shared,
           textures: initial,
-          sourceTypes: (await page.evaluate(() => window.imageSharing.state())).sourceTypes,
+          sourceTypes: (await page.evaluate(() => window.imageSharing.state()))
+            .sourceTypes,
           viewport: await page.evaluate(() => ({
             width: innerWidth,
             height: innerHeight,
