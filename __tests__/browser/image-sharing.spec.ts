@@ -8,7 +8,7 @@ import type { ImagePatch } from './fixtures/image-sharing';
 // defaults; pointer/touch gestures have their own narrow-screen regressions.
 test.use({
   viewport: { width: 1000, height: 760 },
-  screen: { width: 1000, height: 760 },
+  contextOptions: { screen: { width: 1000, height: 760 } },
 });
 
 async function textures(page: Page) {
