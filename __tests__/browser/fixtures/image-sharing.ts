@@ -284,6 +284,43 @@ async function view(x: number, zoom = 1) {
   await settle();
   return state();
 }
+function readScreenPixels() {
+  const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+  if (!gl || gl.isContextLost()) throw new Error('screen context lost');
+  const width = gl.drawingBufferWidth;
+  const height = gl.drawingBufferHeight;
+  const pixels = new Uint8Array(width * height * 4);
+  const gl2 = gl instanceof WebGL2RenderingContext ? gl : undefined;
+  const target = gl2 ? gl2.READ_FRAMEBUFFER : gl.FRAMEBUFFER;
+  const binding = gl.getParameter(
+    gl2 ? gl2.READ_FRAMEBUFFER_BINDING : gl.FRAMEBUFFER_BINDING,
+  );
+  const packBuffer = gl2?.getParameter(gl2.PIXEL_PACK_BUFFER_BINDING);
+  try {
+    gl.bindFramebuffer(target, null);
+    gl2?.bindBuffer(gl2.PIXEL_PACK_BUFFER, null);
+    gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR)
+      throw new Error(`screen readPixels error ${error}`);
+  } finally {
+    gl.bindFramebuffer(target, binding);
+    if (gl2) gl2.bindBuffer(gl2.PIXEL_PACK_BUFFER, packBuffer);
+  }
+  // Native WebGL rows start at the bottom. Serialize top-down RGBA without
+  // involving the browser's Canvas 2D/PNG capture path; exports still use PNG.
+  const topDown = new Uint8Array(pixels.length);
+  const stride = width * 4;
+  for (let row = 0; row < height; row++)
+    topDown.set(
+      pixels.subarray(row * stride, (row + 1) * stride),
+      (height - row - 1) * stride,
+    );
+  let binary = '';
+  for (let i = 0; i < topDown.length; i += 0x8000)
+    binary += String.fromCharCode(...topDown.subarray(i, i + 0x8000));
+  return { width, height, rgba: btoa(binary) };
+}
 function completedFrame<T>(read: () => T | undefined): Promise<T> {
   const world = app!.world;
   const original = world.execute;
@@ -448,7 +485,7 @@ const harness = {
       core.render();
       return canvas.toDataURL();
     }
-    return completedFrame(() => canvas.toDataURL());
+    return completedFrame(readScreenPixels);
   },
   measure,
   makeExternal,

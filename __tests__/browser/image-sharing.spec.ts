@@ -24,7 +24,10 @@ for (const backend of ['core', 'ecs'])
     test.setTimeout(120000);
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    page.on('crash', () => errors.push('image-sharing page crashed'));
+    page.on('crash', () => {
+      errors.push('image-sharing page crashed');
+      console.error('image-sharing page crashed', backend);
+    });
     page.on('console', (m) => {
       if (/GL_INVALID|GL_OUT_OF_MEMORY|CONTEXT_LOST/.test(m.text()))
         errors.push(m.text());
@@ -41,12 +44,22 @@ for (const backend of ['core', 'ecs'])
     // This follows the image benchmark and glyph-sharing regression pattern.
     // Multiple peer owners remain together inside each run.
     for (const shared of [false, true]) {
-      console.info('image-sharing mode', backend, shared ? 'shared' : 'private');
+      console.info(
+        'image-sharing mode',
+        backend,
+        shared ? 'shared' : 'private',
+      );
       let checkpoint = 0;
       async function pixels(label: string, data?: string) {
-        const url =
+        const capture =
           data ?? (await page.evaluate(() => window.imageSharing.screen()));
-        const png = PNG.sync.read(Buffer.from(url.split(',')[1], 'base64'));
+        const png =
+          typeof capture === 'string'
+            ? PNG.sync.read(Buffer.from(capture.split(',')[1], 'base64'))
+            : new PNG({ width: capture.width, height: capture.height });
+        if (typeof capture !== 'string')
+          png.data = Buffer.from(capture.rgba, 'base64');
+        expect(png.data.length).toBe(png.width * png.height * 4);
         if (label.startsWith('screen')) {
           expect([png.width, png.height]).toEqual([1000, 720]);
           let ink = 0;
@@ -93,7 +106,15 @@ for (const backend of ['core', 'ecs'])
           (await page.evaluate(() => window.imageSharing.state())).visible,
         ).toBe(12);
         const initial = await textures(page);
-        console.info('image-sharing ready', backend, { shared, textures: initial });
+        console.info('image-sharing ready', backend, {
+          shared,
+          textures: initial,
+          viewport: await page.evaluate(() => ({
+            width: innerWidth,
+            height: innerHeight,
+            dpr: devicePixelRatio,
+          })),
+        });
         await pixels('screen-initial');
         expect(
           await page.evaluate(() => window.imageSharing.pick(20, 20)),
@@ -156,7 +177,9 @@ for (const backend of ['core', 'ecs'])
         await page.evaluate(() => window.imageSharing.makeExternal());
         await edit(1, { image: 'external' });
         await pixels('screen-borrowed');
-        const document = await page.evaluate(() => window.imageSharing.document());
+        const document = await page.evaluate(() =>
+          window.imageSharing.document(),
+        );
         await page.evaluate(() => window.imageSharing.configure(0));
         const empty = await textures(page);
         await page.evaluate(() => window.imageSharing.configure(12));
@@ -166,7 +189,9 @@ for (const backend of ['core', 'ecs'])
         await pixels('screen-batchable');
         if (shared) expect(checkpoint).toBe(reference.length);
         observations.push({ initial, empty, reacquired, document });
-        const result = (await page.evaluate(() => window.imageSharing.dispose()))!;
+        const result = (await page.evaluate(() =>
+          window.imageSharing.dispose(),
+        ))!;
         expect(result.borrowedDestroyed).toBe(0);
         expect(result.restored).toBe(true);
         if (backend === 'core')
@@ -175,9 +200,14 @@ for (const backend of ['core', 'ecs'])
           expect(
             await page.evaluate(() => window.lifecycleProbes.leaks()),
           ).toEqual([]);
-        console.info('image-sharing complete', backend, { shared, checkpoints: checkpoint });
+        console.info('image-sharing complete', backend, {
+          shared,
+          checkpoints: checkpoint,
+        });
       } finally {
-        await page.evaluate(() => window.imageSharing?.dispose()).catch(() => {});
+        await page
+          .evaluate(() => window.imageSharing?.dispose())
+          .catch(() => {});
       }
     }
     expect(observations[0].initial - observations[1].initial).toBe(10);
