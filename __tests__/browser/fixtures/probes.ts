@@ -1,5 +1,5 @@
 /** Observe native resource ownership without replacing the renderer or worker. */
-export function installProbes() {
+export function installProbes(options: { resourceStacks?: boolean } = {}) {
   const globalListeners: {
     target: EventTarget;
     type: string;
@@ -87,7 +87,8 @@ export function installProbes() {
           const resource = create(...values);
           if (resource) {
             objects.add(resource);
-            stacks.set(resource, new Error().stack!);
+            if (options.resourceStacks !== false)
+              stacks.set(resource, new Error().stack!);
           }
           return resource;
         };
@@ -129,4 +130,18 @@ export function installProbes() {
         })),
     },
   });
+}
+
+
+declare global {
+  interface Window {
+    lifecycleProbes: {
+      listeners(): number;
+      capturePageListeners(): void;
+      pageListeners(): number;
+      leaks(): unknown;
+      resources(): { side: string; live: Record<string, number> }[];
+    };
+
+  }
 }

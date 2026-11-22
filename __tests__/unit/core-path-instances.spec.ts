@@ -4,6 +4,7 @@ import { PathInstances } from '../../packages/core/src/drawcalls/PathInstances';
 import { BatchManager } from '../../packages/core/src/drawcalls/BatchManager';
 import { SDF } from '../../packages/core/src/drawcalls/SDF';
 import { Mesh } from '../../packages/core/src/drawcalls/Mesh';
+import { SmoothPolyline } from '../../packages/core/src/drawcalls/SmoothPolyline';
 import { HashMap } from '../../packages/core/src/utils/hashmap';
 import { RenderCache } from '../../packages/core/src/utils/render-cache';
 import { destroyInputLayout } from '../../packages/core/src/utils/destroy-input-layout';
@@ -337,4 +338,21 @@ it('does not retain empty descriptor buckets while retiring changing buffer keys
   }
   expect(cache.size()).toBe(0);
   expect(cache.buckets.size).toBe(0);
+});
+
+it('keeps ordinary no-fill Paths stroke-only and restores fill channels after edits', () => {
+  const batch=new BatchManager(null);
+  const path=new Path({d:'M0 0 C10 -20 30 30 40 0',fill:'none',stroke:'red',strokeWidth:2});
+  const calls: (Mesh | SmoothPolyline)[]=[];
+  const meshSubmit=jest.spyOn(Mesh.prototype,'submit').mockImplementation(function(){calls.push(this);});
+  const strokeSubmit=jest.spyOn(SmoothPolyline.prototype,'submit').mockImplementation(function(){calls.push(this);});
+  const frame=()=>{calls.length=0;batch.clear(true,false);batch.add(path);batch.flush(null,null,{});return calls.map(d=>d.constructor);};
+  try {
+    expect(frame()).toEqual([SmoothPolyline]);
+    path.fill='blue'; expect(frame()).toEqual([Mesh,SmoothPolyline]);
+    path.fill='none'; expect(frame()).toEqual([SmoothPolyline]);
+    path.wireframe=true;expect(Mesh.check(path)).toBe(true);
+    expect(Mesh.check(new RoughPath({d:path.d,fill:'none'}))).toBe(true);
+    expect(Mesh.check(new Rect({fill:'none'}))).toBe(true);
+  } finally {batch.destroy();meshSubmit.mockRestore();strokeSubmit.mockRestore();}
 });

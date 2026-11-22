@@ -1,5 +1,6 @@
 import { BufferUsage, Format } from '../../packages/device-api/src/api';
 import * as utils from '../../packages/device-api/src/webgl/utils';
+import { InputLayout_GL } from '../../packages/device-api/src/webgl/InputLayout';
 import { Device_GL } from '../../packages/device-api/src/webgl/Device';
 
 function fixture(webgl2: boolean) {
@@ -154,3 +155,63 @@ it('does not bind buffers for a WebGL1 slot whose attributes were optimized out'
     f.version.mockRestore();
   }
 });
+
+it.each([true, false])(
+  'preserves the bound VAO when creating another layout (WebGL2=%s)',
+  (webgl2) => {
+    const version = jest.spyOn(utils, 'isWebGL2').mockReturnValue(webgl2);
+    const active = {};
+    const created = {};
+    let nativeBinding: unknown = active;
+    const bind = jest.fn((vao) => {
+      nativeBinding = vao;
+    });
+    const gl = {
+      bindVertexArray: bind,
+      createVertexArray: () => created,
+      bindBuffer: jest.fn(),
+      ARRAY_BUFFER: 34962,
+      deleteVertexArray: jest.fn(),
+    };
+    const layout = {
+      vao: active,
+      vertexBufferDescriptors: [],
+      indexBufferFormat: null,
+    };
+    const device = Object.assign(Object.create(Device_GL.prototype), {
+      gl,
+      currentBoundVAO: active,
+      currentPipeline: { inputLayout: layout },
+      resourceCreationTracker: null,
+      ensureResourceExists: (v) => v,
+      fallbackVertexBuffer: { gl_buffer_pages: [{}], pageByteSize: 4 },
+      OES_vertex_array_object: {
+        bindVertexArrayOES: bind,
+        createVertexArrayOES: () => created,
+        deleteVertexArrayOES: jest.fn(),
+      },
+    });
+    try {
+      const other = new InputLayout_GL({
+        id: 1,
+        device,
+        descriptor: {
+          vertexBufferDescriptors: [],
+          indexBufferFormat: null,
+          program: {} as any,
+        },
+      });
+      expect(nativeBinding).toBe(active);
+      expect(device.currentBoundVAO).toBe(active);
+      // This uses the real cached binding path, which correctly skips a redundant bind.
+      const calls = bind.mock.calls.length;
+      device.setVertexInput(layout as any, [], null);
+      expect(bind).toHaveBeenCalledTimes(calls);
+      expect(nativeBinding).toBe(active);
+      other.destroy();
+      expect(nativeBinding).toBe(active);
+    } finally {
+      version.mockRestore();
+    }
+  },
+);

@@ -10,13 +10,6 @@ const test = base.extend<{ singleCanvas: boolean }>({
 declare global {
   interface Window {
     canvasRegression: BrowserHarness;
-    lifecycleProbes: {
-      listeners(): number;
-      capturePageListeners(): void;
-      pageListeners(): number;
-      leaks(): unknown;
-      resources(): { side: string; live: Record<string, number> }[];
-    };
   }
 }
 let errors: string[];

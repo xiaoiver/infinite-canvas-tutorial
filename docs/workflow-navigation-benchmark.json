@@ -1,0 +1,4464 @@
+{
+  "schema": 1,
+  "workload": {
+    "workflow": {
+      "backend": "ecs",
+      "logicalCards": 2400,
+      "logicalEdges": 2400,
+      "documentEntities": 4801,
+      "actuallyVisibleCards": 2400,
+      "actuallyVisibleEdges": 2400,
+      "viewport": [1500, 980],
+      "canvas": [1148, 914],
+      "dpr": 1,
+      "renderer": "Chromium SwiftShader",
+      "steadyWarmup": 5,
+      "steadyMeasuredFrames": 30,
+      "timeDrivenTour": true
+    },
+    "mixed": {
+      "backends": ["core", "ecs"],
+      "actuallyVisible": 1000,
+      "fullTextLabels": 200,
+      "editedPerFrame": 10,
+      "warmup": 15,
+      "measured": 30,
+      "textBatching": ["off", "on"],
+      "screenLOD": false,
+      "pathInstancing": false,
+      "paths": "solid-filled (unchanged full-path control)"
+    }
+  },
+  "publishedEquivalentCommits": {
+    "baseline": "6a6a009eee3ecda8b86669f7cd03a8bde8d92049",
+    "optimized": "3899fc2333f386b23dd6d63a3219ae68165f138a"
+  },
+  "rawFiles": {
+    "workflowBefore": {
+      "name": "workflow-navigation-before.json",
+      "bytes": 256988,
+      "sha256": "bdda0b85a028643ea5c5136bed992bbc3872241e39c632950dab776aeadeca2e"
+    },
+    "workflowAfter": {
+      "name": "workflow-navigation-after.json",
+      "bytes": 233242,
+      "sha256": "f862a77b03ed1a783e2867aa84f190ff1bbeff65b8ce650aacbb4bc8ca6ce520"
+    },
+    "mixedBefore": {
+      "name": "edit-phases-before.json",
+      "bytes": 506756,
+      "sha256": "40d27a081fe866f1454c4666cd65b6ad8c1f22f07b810bb10c3253577e600caa"
+    },
+    "mixedAfter": {
+      "name": "edit-phases-after.json",
+      "bytes": 508278,
+      "sha256": "f5844d6b22b7d6922266d9436730d62b35775f9212d107caffc98fc997ead67a"
+    }
+  },
+  "workflow": {
+    "before": {
+      "head": "0eabe06f519673a5f76e5025c4e3d9f600b792e8",
+      "tree": "162b3459aad4df664019b7855bb41ca54a49fe28",
+      "dirty": false,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "cases": [
+        {
+          "profiled": false,
+          "operation": "cold-overview-transition",
+          "samples": 7,
+          "elapsedMs": [
+            6, 3.8999999999068677, 4, 3.8000000002793968, 3.7999999998137355,
+            12294.299999999814, 87.89999999990687
+          ],
+          "p50Ms": 4,
+          "p95Ms": 12294.299999999814,
+          "maxMs": 12294.299999999814,
+          "completedIntervalP50Ms": 16.300000000279397,
+          "completedIntervalP95Ms": 19799.30000000028,
+          "nativeHistogram": [
+            {
+              "frames": 5,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 20,
+                "indices": 3648,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 2726408,
+                "bufferUploads": 26365,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 1072704,
+                "uniformUploads": 7183
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": false,
+          "operation": "steady-overview",
+          "start": {
+            "count": 4801,
+            "visible": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "view": {
+              "x": -1663.6986301369864,
+              "y": -5989.315068493151,
+              "zoom": 0.030053519967064634
+            },
+            "canvas": {
+              "width": 1148,
+              "height": 914,
+              "dpr": 1
+            },
+            "allocatedBufferBytes": 4678956,
+            "webglError": 0,
+            "resources": [
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 1,
+                  "Texture": 5,
+                  "Program": 0,
+                  "Shader": 0,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 0
+                }
+              },
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 26406,
+                  "Texture": 2408,
+                  "Program": 4,
+                  "Shader": 8,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 4
+                }
+              }
+            ]
+          },
+          "samples": 30,
+          "elapsedMs": [
+            135, 792, 1103.1000000000931, 852.2000000001863, 521.2000000001863,
+            1063.1999999997206, 526.2000000001863, 701.6000000000931,
+            816.3999999999069, 1346, 706.6000000000931, 800.1000000000931,
+            782.3999999999069, 786.6999999997206, 83.89999999990687,
+            1484.3000000002794, 101.70000000018626, 590.7999999998137,
+            796.7000000001863, 794.7000000001863, 820.6999999997206,
+            722.0999999996275, 799.6999999997206, 1060.8999999999069,
+            659.2000000001863, 863.3999999999069, 781.6999999997206,
+            840.6000000000931, 728.9000000003725, 955.3000000002794
+          ],
+          "p50Ms": 792,
+          "p95Ms": 1346,
+          "maxMs": 1484.3000000002794,
+          "completedIntervalP50Ms": 793,
+          "completedIntervalP95Ms": 1348.3999999999069,
+          "nativeHistogram": [
+            {
+              "frames": 30,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": false,
+          "operation": "time-driven-tour",
+          "result": "2,400 节点 · 2,400 连线 · 10.4s 巡航：5.0 FPS / P95 336.0 ms（本机实测）",
+          "samples": 62,
+          "elapsedMs": [
+            457.79999999981374, 119.70000000018626, 1353.1000000000931, 93,
+            1374.7000000001863, 266.5, 1258, 326.5, 839.3999999999069,
+            741.1000000000931, 20.100000000093132, 9.299999999813735,
+            6.7999999998137355, 28.59999999962747, 201.89999999990687,
+            689.7000000001863, 29.200000000186265, 9.799999999813735,
+            6.399999999906868, 7.199999999720603, 8.099999999627471,
+            40.299999999813735, 4.7999999998137355, 10.5, 10.700000000186265,
+            6.5, 6.2999999998137355, 7.7000000001862645, 5.899999999906868,
+            6.2000000001862645, 6, 6.899999999906868, 9, 14.899999999906868,
+            7.900000000372529, 9.600000000093132, 11.300000000279397, 8,
+            12.600000000093132, 13.600000000093132, 10.5, 10.699999999720603,
+            19.199999999720603, 11.099999999627471, 15.800000000279397,
+            14.900000000372529, 16, 24, 28, 46, 54.8000000002794, 90.5,
+            229.70000000018626, 156.70000000018626, 336, 194.70000000018626,
+            63.799999999813735, 55.10000000009313, 10.099999999627471,
+            9.799999999813735, 6.900000000372529, 11.400000000372529
+          ],
+          "p50Ms": 14.899999999906868,
+          "p95Ms": 839.3999999999069,
+          "maxMs": 1374.7000000001863,
+          "completedIntervalP50Ms": 76.39999999990687,
+          "completedIntervalP95Ms": 1260,
+          "nativeHistogram": [
+            {
+              "frames": 10,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 23352,
+                "bufferUploads": 81,
+                "drawcalls": 49,
+                "indices": 9630,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 16676,
+                "bufferUploads": 71,
+                "drawcalls": 61,
+                "indices": 10437,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 61,
+                "indices": 10437,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 60528,
+                "bufferUploads": 361,
+                "drawcalls": 217,
+                "indices": 24876,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 579304,
+                "bufferUploads": 3907,
+                "drawcalls": 2478,
+                "indices": 253902,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 139456,
+                "bufferUploads": 961,
+                "drawcalls": 2501,
+                "indices": 259950,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 41688,
+                "bufferUploads": 181,
+                "drawcalls": 112,
+                "indices": 17100,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 23352,
+                "bufferUploads": 81,
+                "drawcalls": 51,
+                "indices": 9642,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 49,
+                "indices": 9630,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 51,
+                "indices": 9642,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 5824,
+                "bufferUploads": 21,
+                "drawcalls": 57,
+                "indices": 11946,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 6408,
+                "bufferUploads": 21,
+                "drawcalls": 51,
+                "indices": 9894,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 51,
+                "indices": 9894,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 21728,
+                "bufferUploads": 73,
+                "drawcalls": 51,
+                "indices": 9894,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 17696,
+                "bufferUploads": 61,
+                "drawcalls": 50,
+                "indices": 9888,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 3464,
+                "bufferUploads": 11,
+                "drawcalls": 50,
+                "indices": 8694,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 7484,
+                "bufferUploads": 26,
+                "drawcalls": 52,
+                "indices": 9648,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 10860,
+                "bufferUploads": 41,
+                "drawcalls": 59,
+                "indices": 11958,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 59,
+                "indices": 11958,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 4912,
+                "bufferUploads": 21,
+                "drawcalls": 61,
+                "indices": 11568,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 64,
+                "indices": 11586,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 5128,
+                "bufferUploads": 21,
+                "drawcalls": 72,
+                "indices": 11334,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 10928,
+                "bufferUploads": 51,
+                "drawcalls": 93,
+                "indices": 15678,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 5040,
+                "bufferUploads": 21,
+                "drawcalls": 69,
+                "indices": 9960,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 10064,
+                "bufferUploads": 41,
+                "drawcalls": 87,
+                "indices": 14004,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 2400,
+                "bufferUploads": 11,
+                "drawcalls": 97,
+                "indices": 14934,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 6664,
+                "bufferUploads": 31,
+                "drawcalls": 109,
+                "indices": 17550,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 6588,
+                "bufferUploads": 31,
+                "drawcalls": 130,
+                "indices": 20187,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 8656,
+                "bufferUploads": 36,
+                "drawcalls": 154,
+                "indices": 23700,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 14964,
+                "bufferUploads": 66,
+                "drawcalls": 151,
+                "indices": 22743,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15000,
+                "bufferUploads": 61,
+                "drawcalls": 187,
+                "indices": 28863,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 9480,
+                "bufferUploads": 61,
+                "drawcalls": 225,
+                "indices": 32619,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 8616,
+                "bufferUploads": 46,
+                "drawcalls": 256,
+                "indices": 36180,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 14412,
+                "bufferUploads": 96,
+                "drawcalls": 299,
+                "indices": 41808,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 19112,
+                "bufferUploads": 106,
+                "drawcalls": 373,
+                "indices": 48318,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 17992,
+                "bufferUploads": 111,
+                "drawcalls": 398,
+                "indices": 51711,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 31008,
+                "bufferUploads": 181,
+                "drawcalls": 492,
+                "indices": 59691,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 59580,
+                "bufferUploads": 324,
+                "drawcalls": 639,
+                "indices": 77532,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 60296,
+                "bufferUploads": 406,
+                "drawcalls": 775,
+                "indices": 83349,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 104636,
+                "bufferUploads": 683,
+                "drawcalls": 1247,
+                "indices": 135495,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 66824,
+                "bufferUploads": 429,
+                "drawcalls": 1596,
+                "indices": 168909,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 143668,
+                "bufferUploads": 909,
+                "drawcalls": 2275,
+                "indices": 240783,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 338660,
+                "bufferUploads": 2566,
+                "drawcalls": 3911,
+                "indices": 387750,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 261044,
+                "bufferUploads": 1981,
+                "drawcalls": 5761,
+                "indices": 574122,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 538584,
+                "bufferUploads": 3504,
+                "drawcalls": 7202,
+                "indices": 715620,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 319680,
+                "bufferUploads": 1849,
+                "drawcalls": 5681,
+                "indices": 562164,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 246320,
+                "bufferUploads": 1556,
+                "drawcalls": 1205,
+                "indices": 123942,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 151032,
+                "bufferUploads": 901,
+                "drawcalls": 545,
+                "indices": 62214,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 405,
+                "indices": 45234,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15276,
+                "bufferUploads": 91,
+                "drawcalls": 217,
+                "indices": 24876,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 217,
+                "indices": 24876,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 18596,
+                "bufferUploads": 61,
+                "drawcalls": 43,
+                "indices": 7713,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": false,
+          "operation": "cold-overview-transition",
+          "samples": 8,
+          "elapsedMs": [
+            3, 3.8999999999068677, 4.899999999906868, 12.600000000093132,
+            3.3999999999068677, 3.8999999999068677, 13571.700000000186, 103.5
+          ],
+          "p50Ms": 3.8999999999068677,
+          "p95Ms": 13571.700000000186,
+          "maxMs": 13571.700000000186,
+          "completedIntervalP50Ms": 17.899999999906868,
+          "completedIntervalP95Ms": 19734.899999999907,
+          "nativeHistogram": [
+            {
+              "frames": 6,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 20,
+                "indices": 3648,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 2726408,
+                "bufferUploads": 26365,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 1072704,
+                "uniformUploads": 7183
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": true,
+          "operation": "steady-overview",
+          "start": {
+            "count": 4801,
+            "visible": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "view": {
+              "x": -1663.6986301369864,
+              "y": -5989.315068493151,
+              "zoom": 0.030053519967064634
+            },
+            "canvas": {
+              "width": 1148,
+              "height": 914,
+              "dpr": 1
+            },
+            "allocatedBufferBytes": 4678956,
+            "webglError": 0,
+            "resources": [
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 1,
+                  "Texture": 5,
+                  "Program": 0,
+                  "Shader": 0,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 0
+                }
+              },
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 26406,
+                  "Texture": 2408,
+                  "Program": 4,
+                  "Shader": 8,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 4
+                }
+              }
+            ]
+          },
+          "samples": 30,
+          "elapsedMs": [
+            106, 981.3999999999069, 391.70000000018626, 803.2000000001863,
+            458.10000000009313, 883.7000000001863, 432.20000000018626,
+            594.6000000000931, 1256.8999999999069, 759, 1594.2999999998137,
+            847.1000000000931, 700, 879.2999999998137, 854.8999999999069,
+            844.9000000003725, 638.7999999998137, 434.39999999990687,
+            509.89999999990687, 296.79999999981374, 646.7000000001863,
+            119.39999999990687, 1010.6999999997206, 88.10000000009313,
+            732.7999999998137, 732.8999999999069, 706.6999999997206,
+            794.8999999999069, 754.8999999999069, 784.5999999996275
+          ],
+          "p50Ms": 732.7999999998137,
+          "p95Ms": 1256.8999999999069,
+          "maxMs": 1594.2999999998137,
+          "completedIntervalP50Ms": 733.7999999998137,
+          "completedIntervalP95Ms": 1259.0999999996275,
+          "nativeHistogram": [
+            {
+              "frames": 30,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {
+            "drawcall.Mesh": 426.1566666669212,
+            "drawcall.SmoothPolyline": 218.993333332877,
+            "drawcall.SDF": 30.550000000186262,
+            "batch.submit": 4.426666666707023,
+            "render.camera": 3.3166666666356224,
+            "visibility.cull": 0.8100000000093133,
+            "edit.apply": 0.009999999993791182,
+            "bounds.derive": 0.006666666641831398,
+            "order.reconcile": 0.003333333320915699,
+            "order.rank": 0.0,
+            "camera.derive": 0.0,
+            "batch.plan": 0.0
+          }
+        },
+        {
+          "profiled": true,
+          "operation": "time-driven-tour",
+          "result": "2,400 节点 · 2,400 连线 · 10.1s 巡航：3.8 FPS / P95 830.5 ms（本机实测）",
+          "samples": 48,
+          "elapsedMs": [
+            1597.8000000002794, 898.7999999998137, 759, 859.3000000002794,
+            816.3999999999069, 106.6999999997206, 1478.7000000001863, 89, 702.5,
+            830.3999999999069, 20.100000000093132, 18.600000000093132,
+            37.700000000186265, 12.300000000279397, 1387.8999999999069,
+            30.59999999962747, 14.5, 11.899999999906868, 7.800000000279397,
+            8.699999999720603, 7.2000000001862645, 9.699999999720603,
+            7.7999999998137355, 17.5, 14.799999999813735, 10.399999999906868,
+            13.700000000186265, 10.5, 12.299999999813735, 15.5,
+            11.899999999906868, 21.899999999906868, 13.699999999720603,
+            36.59999999962747, 18.90000000037253, 35, 29.200000000186265,
+            62.10000000009313, 224.89999999990687, 164.8000000002794,
+            267.8000000002794, 175.39999999990687, 82.89999999990687,
+            16.700000000186265, 31.100000000093132, 32, 16.199999999720603,
+            22.300000000279397
+          ],
+          "p50Ms": 22.300000000279397,
+          "p95Ms": 1387.8999999999069,
+          "maxMs": 1597.8000000002794,
+          "completedIntervalP50Ms": 82.1999999997206,
+          "completedIntervalP95Ms": 902.1999999997206,
+          "nativeHistogram": [
+            {
+              "frames": 10,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 7202,
+                "indices": 638406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 23352,
+                "bufferUploads": 81,
+                "drawcalls": 49,
+                "indices": 9630,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 22120,
+                "bufferUploads": 96,
+                "drawcalls": 76,
+                "indices": 12669,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 83764,
+                "bufferUploads": 496,
+                "drawcalls": 304,
+                "indices": 34554,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 310,
+                "indices": 34590,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 1582592,
+                "bufferUploads": 12001,
+                "drawcalls": 7202,
+                "indices": 692406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 56344,
+                "bufferUploads": 246,
+                "drawcalls": 154,
+                "indices": 23139,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 23912,
+                "bufferUploads": 81,
+                "drawcalls": 47,
+                "indices": 9870,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 2,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 39,
+                "indices": 7296,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 43,
+                "indices": 7320,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 41,
+                "indices": 7308,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 5848,
+                "bufferUploads": 21,
+                "drawcalls": 51,
+                "indices": 9642,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 5824,
+                "bufferUploads": 21,
+                "drawcalls": 51,
+                "indices": 9636,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 41688,
+                "bufferUploads": 181,
+                "drawcalls": 109,
+                "indices": 17082,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15052,
+                "bufferUploads": 66,
+                "drawcalls": 154,
+                "indices": 23232,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 16068,
+                "bufferUploads": 71,
+                "drawcalls": 164,
+                "indices": 24996,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 7272,
+                "bufferUploads": 31,
+                "drawcalls": 166,
+                "indices": 25641,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 11232,
+                "bufferUploads": 46,
+                "drawcalls": 199,
+                "indices": 30240,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 6852,
+                "bufferUploads": 46,
+                "drawcalls": 217,
+                "indices": 32868,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15540,
+                "bufferUploads": 91,
+                "drawcalls": 274,
+                "indices": 39201,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 16148,
+                "bufferUploads": 101,
+                "drawcalls": 319,
+                "indices": 45690,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 28252,
+                "bufferUploads": 166,
+                "drawcalls": 397,
+                "indices": 52002,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 22128,
+                "bufferUploads": 121,
+                "drawcalls": 468,
+                "indices": 59700,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 53348,
+                "bufferUploads": 282,
+                "drawcalls": 556,
+                "indices": 67950,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 35916,
+                "bufferUploads": 221,
+                "drawcalls": 685,
+                "indices": 82539,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 114860,
+                "bufferUploads": 786,
+                "drawcalls": 1019,
+                "indices": 110820,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 57756,
+                "bufferUploads": 391,
+                "drawcalls": 1291,
+                "indices": 136260,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 165568,
+                "bufferUploads": 1141,
+                "drawcalls": 1969,
+                "indices": 206448,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 388324,
+                "bufferUploads": 2595,
+                "drawcalls": 3457,
+                "indices": 341556,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 308672,
+                "bufferUploads": 1889,
+                "drawcalls": 5281,
+                "indices": 518004,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 272304,
+                "bufferUploads": 1588,
+                "drawcalls": 7202,
+                "indices": 701610,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 388464,
+                "bufferUploads": 2308,
+                "drawcalls": 6001,
+                "indices": 585324,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 409388,
+                "bufferUploads": 2651,
+                "drawcalls": 1915,
+                "indices": 199404,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 823,
+                "indices": 81684,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 151032,
+                "bufferUploads": 901,
+                "drawcalls": 556,
+                "indices": 62280,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 102432,
+                "bufferUploads": 541,
+                "drawcalls": 545,
+                "indices": 62214,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 45000,
+                "bufferUploads": 196,
+                "drawcalls": 126,
+                "indices": 18489,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 36088,
+                "bufferUploads": 121,
+                "drawcalls": 73,
+                "indices": 14958,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {
+            "drawcall.SmoothPolyline": 121.63750000003101,
+            "drawcall.Mesh": 89.31041666670347,
+            "drawcall.SDF": 8.362500000017466,
+            "batch.plan": 2.268749999988359,
+            "visibility.cull": 1.993749999984478,
+            "render.camera": 1.4395833333061694,
+            "batch.submit": 1.2229166666123392,
+            "camera.derive": 0.07916666669189,
+            "edit.apply": 0.012500000001940254,
+            "bounds.derive": 0.004166666670547177,
+            "order.reconcile": 0.0020833333352735886,
+            "order.rank": 0.0
+          }
+        }
+      ]
+    },
+    "after": {
+      "head": "1e61e9801049a3853f00c0ca28938ce5c2a92071",
+      "tree": "b6a4df98b14d11fa957aa75772b850f4a03028b6",
+      "dirty": false,
+      "browser": "140.0.7339.186",
+      "node": "v24.22.3",
+      "cases": [
+        {
+          "profiled": false,
+          "operation": "cold-overview-transition",
+          "samples": 7,
+          "elapsedMs": [
+            4, 3.8999999994412065, 3, 3.7999999998137355, 4.400000000372529,
+            14152, 134.90000000037253
+          ],
+          "p50Ms": 4,
+          "p95Ms": 14152,
+          "maxMs": 14152,
+          "completedIntervalP50Ms": 16.899999999441206,
+          "completedIntervalP95Ms": 22855.700000000186,
+          "nativeHistogram": [
+            {
+              "frames": 5,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 14,
+                "indices": 3312,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 2176776,
+                "bufferUploads": 19171,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 766272,
+                "uniformUploads": 4789
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": false,
+          "operation": "steady-overview",
+          "start": {
+            "count": 4801,
+            "visible": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "view": {
+              "x": -1663.6986301369864,
+              "y": -5989.315068493151,
+              "zoom": 0.030053519967064634
+            },
+            "canvas": {
+              "width": 1148,
+              "height": 914,
+              "dpr": 1
+            },
+            "allocatedBufferBytes": 4051756,
+            "webglError": 0,
+            "resources": [
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 1,
+                  "Texture": 5,
+                  "Program": 0,
+                  "Shader": 0,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 0
+                }
+              },
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 19206,
+                  "Texture": 2408,
+                  "Program": 3,
+                  "Shader": 6,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 3
+                }
+              }
+            ]
+          },
+          "samples": 30,
+          "elapsedMs": [
+            59.60000000055879, 49.09999999962747, 63, 797.7999999998137,
+            781.4000000003725, 830.7999999998137, 54.299999999813735,
+            798.9000000003725, 61.89999999944121, 469.79999999981374,
+            440.90000000037253, 745.5, 787.7000000001863, 751.1000000005588,
+            906.2000000001863, 785.2999999998137, 775.9000000003725,
+            730.7000000001863, 784.4000000003725, 803.5999999996275,
+            742.4000000003725, 759.0999999996275, 856.2999999998137, 782,
+            775.4000000003725, 798.5, 764.7999999998137, 747.5999999996275,
+            726.9000000003725, 822.9000000003725
+          ],
+          "p50Ms": 764.7999999998137,
+          "p95Ms": 856.2999999998137,
+          "maxMs": 906.2000000001863,
+          "completedIntervalP50Ms": 788.7000000001863,
+          "completedIntervalP95Ms": 1482.7000000001863,
+          "nativeHistogram": [
+            {
+              "frames": 30,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": false,
+          "operation": "time-driven-tour",
+          "result": "2,400 节点 · 2,400 连线 · 10.3s 巡航：4.5 FPS / P95 355.0 ms（本机实测）",
+          "samples": 52,
+          "elapsedMs": [
+            755.5999999996275, 814.9000000003725, 815.2000000001863,
+            627.7000000001863, 23.799999999813735, 12.199999999254942,
+            44.700000000186265, 19.5, 166.80000000074506, 1047.2000000001863,
+            55, 17.799999999813735, 7.7999999998137355, 8.799999999813735,
+            7.900000000372529, 5.599999999627471, 9.900000000372529,
+            10.700000000186265, 9.400000000372529, 11, 22.200000000186265,
+            10.399999999441206, 6.699999999254942, 6.7999999998137355, 9.5,
+            14.399999999441206, 11.700000000186265, 9.700000000186265,
+            6.599999999627471, 11.900000000372529, 8.099999999627471,
+            9.900000000372529, 11, 17.600000000558794, 9.800000000745058,
+            20.799999999813735, 26.40000000037253, 33.700000000186265,
+            40.40000000037253, 60, 76.6000000005588, 209.09999999962747,
+            122.30000000074506, 210.09999999962747, 93, 355, 23,
+            13.200000000186265, 9.200000000186265, 5.6000000005587935,
+            676.2999999998137, 51.799999999813735
+          ],
+          "p50Ms": 17.600000000558794,
+          "p95Ms": 814.9000000003725,
+          "maxMs": 1047.2000000001863,
+          "completedIntervalP50Ms": 75.5,
+          "completedIntervalP95Ms": 1052.0999999996275,
+          "nativeHistogram": [
+            {
+              "frames": 4,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15168,
+                "bufferUploads": 49,
+                "drawcalls": 33,
+                "indices": 8736,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 11328,
+                "bufferUploads": 37,
+                "drawcalls": 40,
+                "indices": 10854,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 68352,
+                "bufferUploads": 361,
+                "drawcalls": 240,
+                "indices": 37914,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 7872,
+                "bufferUploads": 37,
+                "drawcalls": 261,
+                "indices": 42228,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 521328,
+                "bufferUploads": 2971,
+                "drawcalls": 1959,
+                "indices": 286968,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 765600,
+                "bufferUploads": 4627,
+                "drawcalls": 4802,
+                "indices": 663096,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 150240,
+                "bufferUploads": 865,
+                "drawcalls": 589,
+                "indices": 82620,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15168,
+                "bufferUploads": 61,
+                "drawcalls": 47,
+                "indices": 8616,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 43,
+                "indices": 8592,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 3264,
+                "bufferUploads": 13,
+                "drawcalls": 43,
+                "indices": 10308,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 39,
+                "indices": 8748,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 41,
+                "indices": 8760,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 14016,
+                "bufferUploads": 43,
+                "drawcalls": 35,
+                "indices": 8130,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 13536,
+                "bufferUploads": 43,
+                "drawcalls": 35,
+                "indices": 8988,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15168,
+                "bufferUploads": 49,
+                "drawcalls": 38,
+                "indices": 8766,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 9216,
+                "bufferUploads": 37,
+                "drawcalls": 43,
+                "indices": 11988,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 43,
+                "indices": 9972,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 10416,
+                "bufferUploads": 43,
+                "drawcalls": 63,
+                "indices": 13722,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 53,
+                "indices": 11097,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 3360,
+                "bufferUploads": 13,
+                "drawcalls": 49,
+                "indices": 8838,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 8064,
+                "bufferUploads": 31,
+                "drawcalls": 65,
+                "indices": 13344,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 4416,
+                "bufferUploads": 19,
+                "drawcalls": 73,
+                "indices": 15726,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 9888,
+                "bufferUploads": 40,
+                "drawcalls": 100,
+                "indices": 21285,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 10560,
+                "bufferUploads": 43,
+                "drawcalls": 110,
+                "indices": 23808,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 103,
+                "indices": 20664,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 12000,
+                "bufferUploads": 46,
+                "drawcalls": 136,
+                "indices": 27477,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 4656,
+                "bufferUploads": 28,
+                "drawcalls": 145,
+                "indices": 29862,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 10560,
+                "bufferUploads": 55,
+                "drawcalls": 193,
+                "indices": 35712,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 11088,
+                "bufferUploads": 61,
+                "drawcalls": 209,
+                "indices": 41598,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 19152,
+                "bufferUploads": 100,
+                "drawcalls": 269,
+                "indices": 47406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 266,
+                "indices": 46062,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 28224,
+                "bufferUploads": 145,
+                "drawcalls": 348,
+                "indices": 58674,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 62736,
+                "bufferUploads": 307,
+                "drawcalls": 475,
+                "indices": 79956,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 64560,
+                "bufferUploads": 367,
+                "drawcalls": 635,
+                "indices": 96357,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 52464,
+                "bufferUploads": 301,
+                "drawcalls": 871,
+                "indices": 126240,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 102192,
+                "bufferUploads": 589,
+                "drawcalls": 1321,
+                "indices": 191412,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 157536,
+                "bufferUploads": 856,
+                "drawcalls": 1908,
+                "indices": 273834,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 261168,
+                "bufferUploads": 1591,
+                "drawcalls": 3007,
+                "indices": 424794,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 166560,
+                "bufferUploads": 1015,
+                "drawcalls": 4221,
+                "indices": 591330,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 394032,
+                "bufferUploads": 2284,
+                "drawcalls": 4802,
+                "indices": 668946,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 344016,
+                "bufferUploads": 1996,
+                "drawcalls": 3017,
+                "indices": 415980,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 286896,
+                "bufferUploads": 1651,
+                "drawcalls": 1101,
+                "indices": 157740,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 102432,
+                "bufferUploads": 541,
+                "drawcalls": 365,
+                "indices": 56904,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 35472,
+                "bufferUploads": 142,
+                "drawcalls": 108,
+                "indices": 20295,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 22656,
+                "bufferUploads": 91,
+                "drawcalls": 60,
+                "indices": 12864,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 59,
+                "indices": 12399,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 701568,
+                "bufferUploads": 4459,
+                "drawcalls": 4802,
+                "indices": 628236,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 628236,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": false,
+          "operation": "cold-overview-transition",
+          "samples": 7,
+          "elapsedMs": [
+            3.599999999627471, 4.800000000745058, 4.599999999627471,
+            5.2999999998137355, 4.800000000745058, 12934.5, 100.79999999981374
+          ],
+          "p50Ms": 4.800000000745058,
+          "p95Ms": 12934.5,
+          "maxMs": 12934.5,
+          "completedIntervalP50Ms": 16.59999999962747,
+          "completedIntervalP95Ms": 23497,
+          "nativeHistogram": [
+            {
+              "frames": 5,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 14,
+                "indices": 3312,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 2176776,
+                "bufferUploads": 19171,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 766272,
+                "uniformUploads": 4789
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {}
+        },
+        {
+          "profiled": true,
+          "operation": "steady-overview",
+          "start": {
+            "count": 4801,
+            "visible": {
+              "cards": 2400,
+              "edges": 2400,
+              "other": 1
+            },
+            "view": {
+              "x": -1663.6986301369864,
+              "y": -5989.315068493151,
+              "zoom": 0.030053519967064634
+            },
+            "canvas": {
+              "width": 1148,
+              "height": 914,
+              "dpr": 1
+            },
+            "allocatedBufferBytes": 4051756,
+            "webglError": 0,
+            "resources": [
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 1,
+                  "Texture": 5,
+                  "Program": 0,
+                  "Shader": 0,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 0
+                }
+              },
+              {
+                "side": "offscreen",
+                "live": {
+                  "Buffer": 19206,
+                  "Texture": 2408,
+                  "Program": 3,
+                  "Shader": 6,
+                  "Framebuffer": 6,
+                  "Renderbuffer": 0,
+                  "VertexArray": 3
+                }
+              }
+            ]
+          },
+          "samples": 30,
+          "elapsedMs": [
+            98.3999999994412, 76.79999999981374, 76.6000000005588,
+            532.7999999998137, 754, 514.2999999998137, 69.40000000037253,
+            525.1000000005588, 119.8999999994412, 173.20000000018626,
+            88.29999999981374, 913.6000000005588, 770.9000000003725,
+            70.40000000037253, 66, 459.29999999981374, 56.5, 203,
+            430.20000000018626, 387.59999999962747, 429.20000000018626,
+            279.70000000018626, 756.4000000003725, 54, 109.8999999994412,
+            246.40000000037253, 95.5, 754.7000000001863, 689.5999999996275,
+            674.7000000001863
+          ],
+          "p50Ms": 246.40000000037253,
+          "p95Ms": 770.9000000003725,
+          "maxMs": 913.6000000005588,
+          "completedIntervalP50Ms": 753.7000000001863,
+          "completedIntervalP95Ms": 1409.0999999996275,
+          "nativeHistogram": [
+            {
+              "frames": 30,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {
+            "drawcall.SmoothPolyline": 297.16666666601475,
+            "drawcall.SDF": 42.65333333356927,
+            "batch.submit": 2.6366666670267773,
+            "render.camera": 2.1666666666666665,
+            "visibility.cull": 0.7566666665486992,
+            "edit.apply": 0.013333333314706881,
+            "bounds.derive": 0.0033333333519597846,
+            "batch.plan": 0.0033333333519597846,
+            "order.reconcile": 0.003333333320915699,
+            "order.rank": 0.0,
+            "camera.derive": 0.0
+          }
+        },
+        {
+          "profiled": true,
+          "operation": "time-driven-tour",
+          "result": "2,400 节点 · 2,400 连线 · 10.5s 巡航：3.7 FPS / P95 384.6 ms（本机实测）",
+          "samples": 46,
+          "elapsedMs": [
+            796.5999999996275, 763.7000000001863, 816.0999999996275,
+            740.7000000001863, 628.7999999998137, 724.3999999994412, 829, 16,
+            9.900000000372529, 10.600000000558794, 29.90000000037253,
+            35.200000000186265, 15, 10.100000000558794, 10.200000000186265,
+            8.599999999627471, 6.6000000005587935, 6, 6.099999999627471,
+            9.299999999813735, 10.200000000186265, 16.299999999813735,
+            17.299999999813735, 14.100000000558794, 16.5, 10.800000000745058,
+            13.399999999441206, 19.5, 11.199999999254942, 22.5,
+            24.600000000558794, 24, 31.700000000186265, 30.299999999813735,
+            41.200000000186265, 65.80000000074506, 222.40000000037253,
+            142.29999999981374, 306.80000000074506, 133.29999999981374,
+            384.59999999962747, 22.300000000745058, 15.5, 10.800000000745058,
+            13.899999999441206, 6.7999999998137355
+          ],
+          "p50Ms": 17.299999999813735,
+          "p95Ms": 796.5999999996275,
+          "maxMs": 829,
+          "completedIntervalP50Ms": 111.30000000074506,
+          "completedIntervalP95Ms": 850.4000000003725,
+          "nativeHistogram": [
+            {
+              "frames": 7,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 4802,
+                "indices": 614406,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 15168,
+                "bufferUploads": 49,
+                "drawcalls": 33,
+                "indices": 8736,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 18576,
+                "bufferUploads": 73,
+                "drawcalls": 58,
+                "indices": 13842,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 55,
+                "indices": 12567,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 73392,
+                "bufferUploads": 391,
+                "drawcalls": 264,
+                "indices": 40698,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 136272,
+                "bufferUploads": 715,
+                "drawcalls": 482,
+                "indices": 75798,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 376,
+                "indices": 56970,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 11520,
+                "bufferUploads": 37,
+                "drawcalls": 27,
+                "indices": 6624,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 13632,
+                "bufferUploads": 43,
+                "drawcalls": 36,
+                "indices": 7896,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 4128,
+                "bufferUploads": 13,
+                "drawcalls": 36,
+                "indices": 7896,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 8544,
+                "bufferUploads": 34,
+                "drawcalls": 39,
+                "indices": 9948,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 43,
+                "indices": 9972,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 3408,
+                "bufferUploads": 13,
+                "drawcalls": 52,
+                "indices": 9786,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 8976,
+                "bufferUploads": 37,
+                "drawcalls": 52,
+                "indices": 10053,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 8064,
+                "bufferUploads": 31,
+                "drawcalls": 66,
+                "indices": 13350,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 4416,
+                "bufferUploads": 19,
+                "drawcalls": 82,
+                "indices": 15780,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 19536,
+                "bufferUploads": 79,
+                "drawcalls": 110,
+                "indices": 23808,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 106,
+                "indices": 20682,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 12000,
+                "bufferUploads": 46,
+                "drawcalls": 136,
+                "indices": 27477,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 4656,
+                "bufferUploads": 28,
+                "drawcalls": 145,
+                "indices": 29862,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 160,
+                "indices": 29952,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 21456,
+                "bufferUploads": 115,
+                "drawcalls": 209,
+                "indices": 41598,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 7200,
+                "bufferUploads": 34,
+                "drawcalls": 254,
+                "indices": 45687,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 12144,
+                "bufferUploads": 67,
+                "drawcalls": 266,
+                "indices": 47388,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 58272,
+                "bufferUploads": 277,
+                "drawcalls": 376,
+                "indices": 62010,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 16416,
+                "bufferUploads": 85,
+                "drawcalls": 431,
+                "indices": 71052,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 79104,
+                "bufferUploads": 457,
+                "drawcalls": 635,
+                "indices": 95277,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 52464,
+                "bufferUploads": 301,
+                "drawcalls": 846,
+                "indices": 125010,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 78528,
+                "bufferUploads": 457,
+                "drawcalls": 1151,
+                "indices": 168048,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 179472,
+                "bufferUploads": 1006,
+                "drawcalls": 1772,
+                "indices": 255558,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 376656,
+                "bufferUploads": 2269,
+                "drawcalls": 2828,
+                "indices": 390522,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 274128,
+                "bufferUploads": 1681,
+                "drawcalls": 3881,
+                "indices": 539490,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 583392,
+                "bufferUploads": 3466,
+                "drawcalls": 4802,
+                "indices": 659976,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 363552,
+                "bufferUploads": 2146,
+                "drawcalls": 3841,
+                "indices": 529890,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 249792,
+                "bufferUploads": 1441,
+                "drawcalls": 946,
+                "indices": 137190,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 102432,
+                "bufferUploads": 541,
+                "drawcalls": 365,
+                "indices": 56904,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 31872,
+                "bufferUploads": 127,
+                "drawcalls": 97,
+                "indices": 18234,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 19200,
+                "bufferUploads": 61,
+                "drawcalls": 40,
+                "indices": 11094,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 192,
+                "bufferUploads": 1,
+                "drawcalls": 39,
+                "indices": 11088,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            },
+            {
+              "frames": 1,
+              "work": {
+                "arrayVertices": 4,
+                "bufferBytes": 7872,
+                "bufferUploads": 25,
+                "drawcalls": 31,
+                "indices": 8964,
+                "uniformBytes": 192,
+                "uniformUploads": 1
+              }
+            }
+          ],
+          "phaseMeanExclusiveMs": {
+            "drawcall.SmoothPolyline": 136.41304347813937,
+            "drawcall.SDF": 7.291304347874673,
+            "batch.plan": 2.46086956522144,
+            "visibility.cull": 2.1521739130637245,
+            "render.camera": 0.9521739129381983,
+            "batch.submit": 0.6826086957210106,
+            "camera.derive": 0.08043478257225262,
+            "edit.apply": 0.021739130455028753,
+            "order.reconcile": 0.006521739146631697,
+            "order.rank": 0.0,
+            "bounds.derive": 0.0
+          }
+        }
+      ]
+    }
+  },
+  "mixed": {
+    "before": [
+      {
+        "head": "0eabe06f519673a5f76e5025c4e3d9f600b792e8",
+        "tree": "162b3459aad4df664019b7855bb41ca54a49fe28",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 6.5,
+          "cpuP95": 10.5,
+          "cpuSamplesMs": [
+            6.5, 6.7000000001862645, 7, 6.899999999906868, 8.600000000093132,
+            6.5, 4.7000000001862645, 10.5, 6.7000000001862645,
+            5.2999999998137355, 5.100000000093132, 7.600000000093132, 8, 6.5,
+            4.399999999906868, 5.2000000001862645, 11.5, 4.399999999906868,
+            6.399999999906868, 6.899999999906868, 6.899999999906868,
+            6.7999999998137355, 3.8999999999068677, 5.600000000093132,
+            4.800000000279397, 5.2999999998137355, 6.2000000001862645, 7, 6.5,
+            7.699999999720603
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1931220,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 6.7000000001862645,
+          "cpuP95": 11.299999999813735,
+          "cpuSamplesMs": [
+            5, 4.800000000279397, 10.200000000186265, 7.5, 6.7000000001862645,
+            11, 9.899999999906868, 10, 4.899999999906868, 16.5,
+            5.899999999906868, 6.7000000001862645, 6.600000000093132,
+            9.700000000186265, 10.799999999813735, 4.800000000279397,
+            7.800000000279397, 6.300000000279397, 11.299999999813735, 6.5, 5,
+            10.799999999813735, 7.2999999998137355, 7.899999999906868,
+            7.099999999627471, 4.7999999998137355, 6.199999999720603,
+            4.7999999998137355, 4.599999999627471, 5.199999999720603
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1931220,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 7.899999999906868,
+          "cpuP95": 7.899999999906868,
+          "cpuSamplesMs": [7.899999999906868, 3.6000000000931323],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1931220,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      },
+      {
+        "head": "0eabe06f519673a5f76e5025c4e3d9f600b792e8",
+        "tree": "162b3459aad4df664019b7855bb41ca54a49fe28",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 8.799999999813735,
+          "cpuP95": 17,
+          "cpuSamplesMs": [
+            8.5, 5.2999999998137355, 8, 14.399999999906868, 14.699999999720603,
+            13.799999999813735, 6.5, 8.100000000093132, 15.100000000093132,
+            11.699999999720603, 11.700000000186265, 10.899999999906868,
+            6.899999999906868, 5.7000000001862645, 10.899999999906868, 7,
+            16.200000000186265, 8.800000000279397, 8.799999999813735,
+            9.899999999906868, 17, 11.299999999813735, 8.100000000093132,
+            6.899999999906868, 6.5, 21, 8.599999999627471, 7.699999999720603,
+            7.100000000093132, 6.2000000001862645
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1893724,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 9.5,
+          "cpuP95": 16.800000000279397,
+          "cpuSamplesMs": [
+            16.5, 11, 13.600000000093132, 6.2000000001862645,
+            13.199999999720603, 16.800000000279397, 8.700000000186265, 14.5,
+            9.100000000093132, 11.399999999906868, 8.299999999813735,
+            5.7000000001862645, 7.699999999720603, 5.699999999720603, 10.5,
+            5.2999999998137355, 9.5, 11.200000000186265, 10, 5.899999999906868,
+            5.5, 7.900000000372529, 18.700000000186265, 13.299999999813735,
+            7.7000000001862645, 13.399999999906868, 8.799999999813735, 7,
+            5.800000000279397, 15.600000000093132
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1893724,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 7.399999999906868,
+          "cpuP95": 7.399999999906868,
+          "cpuSamplesMs": [7.399999999906868, 4.800000000279397],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1893724,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      },
+      {
+        "head": "0eabe06f519673a5f76e5025c4e3d9f600b792e8",
+        "tree": "162b3459aad4df664019b7855bb41ca54a49fe28",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 24,
+          "cpuP95": 32.40000000037253,
+          "cpuSamplesMs": [
+            25.59999999962747, 31.600000000093132, 27.300000000279397, 22, 21.5,
+            20.700000000186265, 20.899999999906868, 20.100000000093132,
+            16.600000000093132, 23.5, 48.799999999813735, 16.100000000093132,
+            17.59999999962747, 20.799999999813735, 25.100000000093132,
+            26.299999999813735, 23.100000000093132, 24.100000000093132,
+            18.399999999906868, 17.899999999906868, 31.200000000186265,
+            30.300000000279397, 26.200000000186265, 28.800000000279397, 19,
+            31.799999999813735, 24, 16, 32.40000000037253, 27.800000000279397
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2206188,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 23.5,
+          "cpuP95": 31.899999999906868,
+          "cpuSamplesMs": [
+            23.5, 28.5, 27.600000000093132, 19.299999999813735, 22,
+            19.399999999906868, 25.899999999906868, 17.09999999962747, 17.5,
+            22.40000000037253, 19.700000000186265, 26.600000000093132,
+            30.800000000279397, 24, 19.299999999813735, 25, 25.5,
+            22.799999999813735, 20.700000000186265, 23.5, 27.399999999906868,
+            30.299999999813735, 31.899999999906868, 19.59999999962747,
+            20.899999999906868, 22.100000000093132, 20.800000000279397,
+            34.299999999813735, 23.5, 18.5
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2206188,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 21.700000000186265,
+          "cpuP95": 21.700000000186265,
+          "cpuSamplesMs": [16.299999999813735, 21.700000000186265],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2206188,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      },
+      {
+        "head": "0eabe06f519673a5f76e5025c4e3d9f600b792e8",
+        "tree": "162b3459aad4df664019b7855bb41ca54a49fe28",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 23,
+          "cpuP95": 30,
+          "cpuSamplesMs": [
+            25.399999999906868, 27.899999999906868, 26, 23.600000000093132,
+            35.5, 23, 20.90000000037253, 20.40000000037253, 22.5,
+            24.600000000093132, 18.299999999813735, 15.100000000093132,
+            21.59999999962747, 23, 26.800000000279397, 30, 29.700000000186265,
+            22, 18.600000000093132, 24.40000000037253, 23.600000000093132,
+            28.700000000186265, 29.899999999906868, 27.899999999906868,
+            20.199999999720603, 16.100000000093132, 19.399999999906868,
+            17.100000000093132, 23, 18.199999999720603
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2159388,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 23.299999999813735,
+          "cpuP95": 32.299999999813735,
+          "cpuSamplesMs": [
+            18.899999999906868, 18.5, 17.300000000279397, 28.799999999813735,
+            23.299999999813735, 17.399999999906868, 25.799999999813735,
+            35.90000000037253, 24.200000000186265, 32, 27.199999999720603, 23.5,
+            24.299999999813735, 28.899999999906868, 32.299999999813735,
+            23.200000000186265, 21.800000000279397, 29.299999999813735,
+            17.899999999906868, 26.09999999962747, 18.899999999906868,
+            24.800000000279397, 21, 16.800000000279397, 18.5,
+            19.399999999906868, 20.800000000279397, 19.399999999906868,
+            22.300000000279397, 28
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2159388,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 19.100000000093132,
+          "cpuP95": 19.100000000093132,
+          "cpuSamplesMs": [19.100000000093132, 16.09999999962747],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2159388,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      }
+    ],
+    "after": [
+      {
+        "head": "3899fc2333f386b23dd6d63a3219ae68165f138a",
+        "tree": "b6a4df98b14d11fa957aa75772b850f4a03028b6",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 8.099999999627471,
+          "cpuP95": 14.200000000186265,
+          "cpuSamplesMs": [
+            4.900000000372529, 4.2999999998137355, 6.6000000005587935,
+            8.099999999627471, 8.5, 14.200000000186265, 5.5, 5.900000000372529,
+            7.599999999627471, 12.599999999627471, 9.200000000186265,
+            9.600000000558794, 9.5, 8.400000000372529, 9.899999999441206,
+            5.2000000001862645, 8.700000000186265, 5.7999999998137355,
+            5.1000000005587935, 9, 5, 5.2999999998137355, 3.6000000005587935,
+            16.100000000558794, 6.800000000745058, 8.400000000372529,
+            10.399999999441206, 5.1000000005587935, 5.1000000005587935,
+            11.400000000372529
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1931220,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 6.7999999998137355,
+          "cpuP95": 17,
+          "cpuSamplesMs": [
+            3.7999999998137355, 9.100000000558794, 5.599999999627471,
+            6.7999999998137355, 11, 5.400000000372529, 13.700000000186265,
+            10.299999999813735, 9.399999999441206, 4.400000000372529,
+            5.7999999998137355, 6.7000000001862645, 6.7999999998137355,
+            5.7999999998137355, 8.5, 5.7999999998137355, 11.100000000558794,
+            7.800000000745058, 5.5, 9.099999999627471, 7.7999999998137355,
+            19.799999999813735, 12, 17, 5.400000000372529, 4.7000000001862645,
+            8, 5, 5.8999999994412065, 6
+          ],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1931220,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 7.5,
+          "cpuP95": 7.5,
+          "cpuSamplesMs": [7.5, 4.400000000372529],
+          "native": {
+            "drawcalls": 603,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2411,
+                "Texture": 62,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1931220,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      },
+      {
+        "head": "3899fc2333f386b23dd6d63a3219ae68165f138a",
+        "tree": "b6a4df98b14d11fa957aa75772b850f4a03028b6",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "core",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "core.mutate",
+            "core.render",
+            "batch.plan",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 8.900000000372529,
+          "cpuP95": 13.899999999441206,
+          "cpuSamplesMs": [
+            5.5, 4.6000000005587935, 8.700000000186265, 7.2000000001862645,
+            10.800000000745058, 10, 10.300000000745058, 10.100000000558794,
+            11.299999999813735, 13.799999999813735, 5.6000000005587935, 7, 7.5,
+            8.900000000372529, 6.2999999998137355, 9.299999999813735,
+            6.2999999998137355, 9.699999999254942, 8.400000000372529,
+            11.400000000372529, 7.5, 13.899999999441206, 9.200000000186265,
+            15.599999999627471, 6.7999999998137355, 8.799999999813735,
+            6.099999999627471, 9.399999999441206, 5.7999999998137355, 12
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1893724,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 7.7000000001862645,
+          "cpuP95": 10.5,
+          "cpuSamplesMs": [
+            5, 6.3999999994412065, 7.7000000001862645, 9.700000000186265,
+            9.299999999813735, 6.7999999998137355, 9.5, 9.200000000186265,
+            8.199999999254942, 5.5, 5.7999999998137355, 7.7000000001862645,
+            8.799999999813735, 9.300000000745058, 9.199999999254942,
+            7.099999999627471, 7.400000000372529, 7.2999999998137355, 6, 6, 9.5,
+            6.5, 8.900000000372529, 8.700000000186265, 10.5, 11.5, 6.5,
+            5.3999999994412065, 7.7000000001862645, 8
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1893724,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 7.599999999627471,
+          "cpuP95": 7.599999999627471,
+          "cpuSamplesMs": [7.599999999627471, 6.2999999998137355],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 11,
+            "bufferBytes": 1456,
+            "uniformUploads": 7,
+            "uniformBytes": 944
+          },
+          "resources": [
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1627,
+                "Texture": 9,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 1893724,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      },
+      {
+        "head": "3899fc2333f386b23dd6d63a3219ae68165f138a",
+        "tree": "b6a4df98b14d11fa957aa75772b850f4a03028b6",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "off",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 23,
+          "cpuP95": 32.299999999813735,
+          "cpuSamplesMs": [
+            32.299999999813735, 28.299999999813735, 23.90000000037253,
+            20.799999999813735, 26.90000000037253, 23.40000000037253,
+            19.699999999254942, 21.5, 27.700000000186265, 18.300000000745058,
+            20.299999999813735, 21.199999999254942, 20.5, 20.90000000037253,
+            18.5, 27.799999999813735, 23, 24.799999999813735,
+            22.200000000186265, 22.200000000186265, 22.09999999962747,
+            17.59999999962747, 25.5, 20.90000000037253, 28.40000000037253,
+            26.299999999813735, 24.5, 32.59999999962747, 29.100000000558794,
+            20.40000000037253
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2206188,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 27.600000000558794,
+          "cpuP95": 36.5,
+          "cpuSamplesMs": [
+            23.40000000037253, 21.5, 28.800000000745058, 30.59999999962747,
+            24.299999999813735, 27.600000000558794, 38, 28.399999999441206,
+            24.5, 27.200000000186265, 28.5, 29.700000000186265,
+            33.09999999962747, 32.09999999962747, 26.200000000186265,
+            27.90000000037253, 36.5, 31.40000000037253, 27.199999999254942,
+            30.40000000037253, 30.09999999962747, 27.5, 21.200000000186265,
+            27.40000000037253, 20.59999999962747, 23.5, 22.100000000558794,
+            22.09999999962747, 20.100000000558794, 29.399999999441206
+          ],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2206188,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 17.600000000558794,
+          "cpuP95": 17.600000000558794,
+          "cpuSamplesMs": [17.600000000558794, 16],
+          "native": {
+            "drawcalls": 602,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 27,
+            "bufferBytes": 9208,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 2607,
+                "Texture": 263,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2206188,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      },
+      {
+        "head": "3899fc2333f386b23dd6d63a3219ae68165f138a",
+        "tree": "b6a4df98b14d11fa957aa75772b850f4a03028b6",
+        "dirty": false,
+        "browser": "140.0.7339.186",
+        "node": "v24.22.3",
+        "backend": "ecs",
+        "mode": "on",
+        "coverage": {
+          "phases": [
+            "system.AnimationSystem",
+            "edit.apply",
+            "system.CameraControl",
+            "system.CameraSync",
+            "derive.bounds",
+            "derive.camera",
+            "visibility.lod",
+            "derive.points",
+            "system.ComputeRough",
+            "derive.text",
+            "visibility.derive",
+            "order.reconcile",
+            "system.Deleter",
+            "system.DrawArrowConnect",
+            "system.DrawBrush",
+            "system.DrawPencil",
+            "system.DrawPoint",
+            "system.DrawRect",
+            "system.DrawVectorNetwork",
+            "system.EnsureExtrudeMeshes",
+            "system.EnsureMesh3DNodes",
+            "system.EventDisposer",
+            "system.EventWriter",
+            "system.ExportSVG",
+            "system.LoadMesh3DGeometry",
+            "render.pipeline",
+            "system.MeshPipeline3D",
+            "system.Pick3D",
+            "system.PostEffectTime",
+            "derive.transforms",
+            "system.RenderBindings",
+            "system.RenderGizmo3D",
+            "system.RenderHTML",
+            "system.RenderHighlighter",
+            "system.RenderNameLabel",
+            "system.RenderTransformer",
+            "system.Select",
+            "system.SetCursor",
+            "system.SetupDevice",
+            "order.rank",
+            "system.SyncExtrude3D",
+            "system.SyncMesh3DNodes",
+            "derive.transforms",
+            "visibility.cull",
+            "render.camera",
+            "batch.plan",
+            "batch.schedule",
+            "batch.submit"
+          ],
+          "skippedAsyncSystems": []
+        },
+        "teardownPassed": true,
+        "control": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 21.59999999962747,
+          "cpuP95": 32.89999999944121,
+          "cpuSamplesMs": [
+            26.200000000186265, 23.299999999813735, 21.59999999962747,
+            26.200000000186265, 17.700000000186265, 17.200000000186265,
+            26.59999999962747, 24.40000000037253, 20.299999999813735,
+            19.299999999813735, 27.90000000037253, 34, 19.40000000037253,
+            20.799999999813735, 28.800000000745058, 28.59999999962747, 23.5,
+            22.700000000186265, 20.09999999962747, 32.89999999944121,
+            16.40000000037253, 18.200000000186265, 19.200000000186265,
+            29.199999999254942, 19.600000000558794, 18.600000000558794, 15,
+            21.700000000186265, 18.40000000037253, 18.40000000037253
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2159388,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "profiled": {
+          "visible": 1000,
+          "samples": 30,
+          "warmup": 15,
+          "cpuP50": 25.40000000037253,
+          "cpuP95": 31,
+          "cpuSamplesMs": [
+            30.5, 20.899999999441206, 26.40000000037253, 25.700000000186265, 25,
+            26.40000000037253, 20.899999999441206, 31.100000000558794, 31,
+            26.59999999962747, 22.300000000745058, 23.09999999962747,
+            26.40000000037253, 25.200000000186265, 26.799999999813735,
+            29.40000000037253, 25.700000000186265, 23.299999999813735, 23.5,
+            20.200000000186265, 26.700000000186265, 25.40000000037253,
+            21.100000000558794, 26.100000000558794, 19.199999999254942,
+            18.40000000037253, 21.200000000186265, 27.90000000037253,
+            17.899999999441206, 14.299999999813735
+          ],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2159388,
+          "webglError": 0,
+          "nonemptyFrames": 30,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        },
+        "restored": {
+          "visible": 1000,
+          "samples": 2,
+          "warmup": 1,
+          "cpuP50": 34.09999999962747,
+          "cpuP95": 34.09999999962747,
+          "cpuSamplesMs": [20.40000000037253, 34.09999999962747],
+          "native": {
+            "drawcalls": 407,
+            "indices": 395280,
+            "arrayVertices": 4,
+            "bufferUploads": 19,
+            "bufferBytes": 8008,
+            "uniformUploads": 5,
+            "uniformBytes": 800
+          },
+          "resources": [
+            {
+              "side": "offscreen",
+              "live": {
+                "Buffer": 1,
+                "Texture": 5,
+                "Program": 0,
+                "Shader": 0,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 0
+              }
+            },
+            {
+              "side": "glyph-atlas",
+              "live": {
+                "Buffer": 1632,
+                "Texture": 209,
+                "Program": 5,
+                "Shader": 10,
+                "Framebuffer": 6,
+                "Renderbuffer": 0,
+                "VertexArray": 5
+              }
+            }
+          ],
+          "allocatedBufferBytes": 2159388,
+          "webglError": 0,
+          "nonemptyFrames": 2,
+          "size": [960, 640],
+          "dpr": 1,
+          "textProxy": 0
+        }
+      }
+    ]
+  }
+}

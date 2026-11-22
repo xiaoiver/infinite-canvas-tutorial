@@ -131,7 +131,7 @@ function pill(
   ctx.fill();
   label(ctx, text, x + 8, y + 15, color, 10);
 }
-/** Six cached 2× card textures. Repeated cards share image URLs/GPU textures. */
+/** Six cached 2× PNG sources. Repeated cards share Blob URLs; GPU ownership belongs to the renderer. */
 export async function createCardTextures(): Promise<Record<NodeKind, string>> {
   return Object.fromEntries(
     await Promise.all(

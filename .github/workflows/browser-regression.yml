@@ -30,6 +30,7 @@ jobs:
       - run: pnpm test:cli
       - run: pnpm lint
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
+      - run: pnpm exec tsc -p examples/workflow-canvas/tsconfig.bench.json
 
   browser-tests:
     name: ${{ matrix.browser }} (${{ matrix.group }})
