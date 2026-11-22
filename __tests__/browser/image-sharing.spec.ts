@@ -8,8 +8,16 @@ const textures = async (p: Page) =>
     (r) => r.side === 'images',
   )!.live.Texture;
 async function samePixels(a: Page, b: Page) {
-  const aa = PNG.sync.read(await a.locator('#actual').screenshot()),
-    bb = PNG.sync.read(await b.locator('#actual').screenshot());
+  // Compare every live framebuffer pixel, without mobile compositor resizing.
+  // Export parity below remains a separate renderer export path.
+  const read = async (p: Page) => {
+    const data = await p.evaluate(() => window.imageSharing.screen());
+    return PNG.sync.read(Buffer.from(data.split(',')[1], 'base64'));
+  };
+  const aa = await read(a),
+    bb = await read(b);
+  expect([aa.width, aa.height]).toEqual([1000, 720]);
+  expect([bb.width, bb.height]).toEqual([1000, 720]);
   expect(aa.data.equals(bb.data)).toBe(true);
   let ink = 0;
   for (let i = 0; i < aa.data.length; i += 4) if (aa.data[i] < 200) ink++;
@@ -26,6 +34,7 @@ for (const backend of ['core', 'ecs'])
     try {
       for (const p of [page, ref]) {
         p.on('pageerror', (e) => errors.push(e.message));
+        p.on('crash', () => errors.push('image-sharing page crashed'));
         p.on('console', (m) => {
           if (/GL_INVALID|GL_OUT_OF_MEMORY|CONTEXT_LOST/.test(m.text()))
             errors.push(m.text());

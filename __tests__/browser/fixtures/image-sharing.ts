@@ -385,6 +385,12 @@ const harness = {
   view,
   state,
   raster,
+  // Read the live backing canvas at the settled render boundary. Mobile WebKit
+  // compositor screenshots can resize this fixed-size canvas and crash a page.
+  async screen() {
+    await settle();
+    return canvas.toDataURL();
+  },
   measure,
   makeExternal,
   dispose,
