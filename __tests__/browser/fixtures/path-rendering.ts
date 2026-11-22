@@ -6,10 +6,17 @@ export interface PathCase {
   lineJoin?: CanvasLineJoin;
   opacity?: number;
 }
-type Stats = { builds: number; vertices: number };
+type Stats = {
+  builds: number;
+  vertices: number;
+  meshSubmissions: number;
+  strokeSubmissions: number;
+};
 interface Driver {
   scene(options: PathCase): Promise<void>;
   view(zoom: number, x: number, y: number): Promise<void>;
+  paint(fill: boolean): Promise<void>;
+  export(partial: boolean): Promise<string>;
   bounds(): number[];
   stats(): Stats;
 }
@@ -19,6 +26,8 @@ declare global {
     pathTest: {
       render(options: PathCase): Promise<void>;
       zoom(value: number, pan?: number): Promise<void>;
+      paint(fill: boolean): Promise<void>;
+      export(partial?: boolean): Promise<string>;
       state(): Stats & { bounds: number[] };
     };
   }
@@ -69,6 +78,8 @@ export function installPathTest(driver: Driver) {
       if (options.fill) ctx.fill(path);
       else ctx.stroke(path);
     },
+    paint: (fill) => driver.paint(fill),
+    export: (partial = false) => driver.export(partial),
     state: () => ({ ...driver.stats(), bounds: driver.bounds() }),
   };
   document.querySelector('#status')!.textContent = 'Ready';

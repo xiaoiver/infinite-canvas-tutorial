@@ -120,10 +120,15 @@ export class InputLayout_GL extends ResourceBase_GL implements InputLayout {
       }
     }
 
+    // Creation temporarily binds this VAO; preserve Device's cached binding.
+    // Leaving native GL at null while the cache still names another layout can
+    // make that layout's next submission configure/draw the default VAO.
     if (isWebGL2(gl)) {
-      gl.bindVertexArray(null);
+      gl.bindVertexArray(this.device['currentBoundVAO']);
     } else {
-      device.OES_vertex_array_object.bindVertexArrayOES(null);
+      device.OES_vertex_array_object.bindVertexArrayOES(
+        this.device['currentBoundVAO'],
+      );
     }
 
     this.vertexBufferDescriptors = vertexBufferDescriptors;

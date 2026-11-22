@@ -35,6 +35,7 @@ import {
   fillLayersNeedFillImage,
   fillLayersShouldPrecompose,
   getEnabledFillLayers,
+  isFillLayerEnabled,
   getFirstSolidFillLayerValue,
   getMultiFillLayers,
   getSingleEnabledFillLayer,
@@ -74,6 +75,13 @@ import { upload2DRasterCanvasToTexture } from '../utils/rasterCanvasTextureUploa
 import { safeAddComponent } from '../history';
 import { getSdfGeometryBoundsForFilter } from '../utils/solidShapeRasterForFilter';
 import {
+  Children,
+  DropShadow,
+  InnerShadow,
+  ClipMode,
+  Filter,
+  NodeLayerBlendMode,
+  Wireframe,
   ComputedPoints,
   ComputedCamera,
   Ellipse,
@@ -99,6 +107,33 @@ const strokeAlignmentMap = {
 } as const;
 
 export class Mesh extends PathDrawcall {
+  static check(shape: Entity) {
+    // A Path without enabled fill layers has transparent fill uniforms.
+    // Keep masks, diagnostic wireframes and effect/texture paths on the full path.
+    if (
+      !shape.has(Path) ||
+      shape.hasSomeOf(
+        Rough,
+        FillTexture,
+        VectorNetwork,
+        DropShadow,
+        InnerShadow,
+      ) ||
+      (shape.has(Wireframe) && shape.read(Wireframe).enabled) ||
+      (shape.has(FillLayers) &&
+        shape.read(FillLayers).layers?.some(isFillLayerEnabled))
+    )
+      return true;
+    let ancestor: Entity | undefined = shape;
+    while (ancestor) {
+      if (ancestor.hasSomeOf(ClipMode, Filter, NodeLayerBlendMode)) return true;
+      ancestor = ancestor.has(Children)
+        ? ancestor.read(Children).parent
+        : undefined;
+    }
+    return false;
+  }
+
   #uniformBuffer: Buffer;
   #texture: Texture;
   /** Unfiltered GPU texture when applying {@link Filter} (chain samples this). */

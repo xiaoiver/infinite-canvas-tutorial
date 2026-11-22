@@ -196,3 +196,99 @@ for (const engine of ['ecs', 'core']) {
     });
   });
 }
+
+for (const backend of ['core', 'ecs'])
+  test(`${backend} skips empty fill submissions while matching retained-pass pixels and exports`, async ({
+    page,
+    context,
+  }) => {
+    const full = await context.newPage();
+    const errors: string[] = [];
+    for (const p of [page, full]) {
+      p.on('pageerror', (error) => errors.push(error.message));
+      p.on('console', (message) => {
+        if (/GL_INVALID|GL_OUT_OF_MEMORY|CONTEXT_LOST/.test(message.text()))
+          errors.push(message.text());
+      });
+    }
+    try {
+      await page.goto(`/${backend}-path-rendering.html`);
+      await full.goto(`/${backend}-path-rendering.html?fullFillPass=1`);
+      const options = {
+        d: 'M0 0 C30 -60 80 60 120 0 L90 40 L0 40 Z',
+        fill: false,
+        parentScale: 1.25,
+        opacity: 0.5,
+      };
+      for (const p of [page, full]) {
+        await expect(p.locator('#status')).toHaveText('Ready', {
+          timeout: 20000,
+        });
+        await p.evaluate((options) => window.pathTest.render(options), options);
+      }
+      const samePixels = async () => {
+        const a = await page.locator('#actual').screenshot({ scale: 'css' });
+        const b = await full.locator('#actual').screenshot({ scale: 'css' });
+        const actual = PNG.sync.read(a),
+          reference = PNG.sync.read(b);
+        if (!actual.data.equals(reference.data)) {
+          await test
+            .info()
+            .attach('optimized', { body: a, contentType: 'image/png' });
+          await test
+            .info()
+            .attach('retained-fill-pass', {
+              body: b,
+              contentType: 'image/png',
+            });
+        }
+        expect(actual.width).toBe(reference.width);
+        expect(actual.height).toBe(reference.height);
+        expect(actual.data.equals(reference.data)).toBe(true);
+        let ink = 0;
+        for (let i = 0; i < actual.data.length; i += 4)
+          if (actual.data[i] < 200) ink++;
+        expect(ink).toBeGreaterThan(100);
+      };
+      await samePixels();
+      expect(
+        (await page.evaluate(() => window.pathTest.state())).meshSubmissions,
+      ).toBe(0);
+      expect(
+        (await full.evaluate(() => window.pathTest.state())).meshSubmissions,
+      ).toBeGreaterThan(0);
+      for (const enabled of [true, false]) {
+        for (const p of [page, full])
+          await p.evaluate((fill) => window.pathTest.paint(fill), enabled);
+        await samePixels();
+      }
+      const count = (await page.evaluate(() => window.pathTest.state()))
+        .meshSubmissions;
+      for (const p of [page, full])
+        await p.evaluate(() => window.pathTest.zoom(3));
+      expect(
+        (await page.evaluate(() => window.pathTest.state())).meshSubmissions,
+      ).toBe(count);
+      await samePixels();
+      // Core exposes full-canvas export here; ECS also exercises its node export path.
+      for (const partial of backend === 'ecs' ? [false, true] : [false]) {
+        const a = await page.evaluate(
+          (partial) => window.pathTest.export(partial),
+          partial,
+        );
+        const b = await full.evaluate(
+          (partial) => window.pathTest.export(partial),
+          partial,
+        );
+        expect(
+          PNG.sync.read(Buffer.from(a.split(',')[1], 'base64')).data,
+        ).toEqual(PNG.sync.read(Buffer.from(b.split(',')[1], 'base64')).data);
+      }
+      expect(
+        (await page.evaluate(() => window.pathTest.state())).bounds,
+      ).toEqual((await full.evaluate(() => window.pathTest.state())).bounds);
+      expect(errors).toEqual([]);
+    } finally {
+      await full.close();
+    }
+  });

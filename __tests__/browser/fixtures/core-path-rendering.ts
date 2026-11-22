@@ -11,6 +11,9 @@ import { installPathTest } from './path-rendering';
 
 const dpr = Number(new URLSearchParams(location.search).get('dpr')) || 1;
 const actual = document.querySelector<HTMLCanvasElement>('#actual')!;
+// Test-only reference retains the historical transparent fill submission.
+if (new URLSearchParams(location.search).has('fullFillPass'))
+  Mesh.check = () => true;
 actual.width = 640 * dpr;
 actual.height = 320 * dpr;
 const canvas = await new Canvas({
@@ -19,8 +22,19 @@ const canvas = await new Canvas({
   checkboardStyle: CheckboardStyle.NONE,
   themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
 }).initialized;
-const stats = { builds: 0, vertices: 0 };
+const stats = {
+  builds: 0,
+  vertices: 0,
+  meshSubmissions: 0,
+  strokeSubmissions: 0,
+};
 for (const ctor of [Mesh, SmoothPolyline]) {
+  const render = ctor.prototype.render;
+  ctor.prototype.render = function (...args: any[]) {
+    if (this instanceof Mesh) stats.meshSubmissions++;
+    else stats.strokeSubmissions++;
+    return (render as (...args: any[]) => void).apply(this, args);
+  };
   const original = ctor.prototype.createGeometry;
   ctor.prototype.createGeometry = function () {
     original.call(this);
@@ -54,6 +68,13 @@ installPathTest({
     canvas.camera.x = x;
     canvas.camera.y = y;
     canvas.render();
+  },
+  async paint(fill) {
+    path.fill = fill ? 'blue' : 'none';
+    canvas.render();
+  },
+  export() {
+    return canvas.toDataURL({ grid: false });
   },
   bounds() {
     const { minX, minY, maxX, maxY } = path.getGeometryBounds();

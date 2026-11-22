@@ -1,5 +1,7 @@
 import {
   API,
+  Screenshot,
+  ExportFormat,
   App,
   Canvas,
   Theme,
@@ -40,6 +42,9 @@ import { Mesh } from '../../../packages/ecs/src/drawcalls/Mesh';
 import { settleECSFrames } from './ecs-frames';
 import { installPathTest } from './path-rendering';
 const actual = document.querySelector<HTMLCanvasElement>('#actual')!;
+// Test-only reference retains the historical transparent fill submission.
+if (new URLSearchParams(location.search).has('fullFillPass'))
+  Mesh.check = () => true;
 let api: API;
 class Bootstrap extends System {
   access = this.query(
@@ -95,8 +100,19 @@ const app = new App().addPlugins(...DefaultPlugins, () => {
   system((s) => s.before(ComputeZIndex))(Bootstrap);
 });
 
-const stats = { builds: 0, vertices: 0 };
+const stats = {
+  builds: 0,
+  vertices: 0,
+  meshSubmissions: 0,
+  strokeSubmissions: 0,
+};
 for (const ctor of [Mesh, SmoothPolyline]) {
+  const render = ctor.prototype.render;
+  ctor.prototype.render = function (...args: any[]) {
+    if (this instanceof Mesh) stats.meshSubmissions++;
+    else stats.strokeSubmissions++;
+    return (render as (...args: any[]) => void).apply(this, args);
+  };
   const original = ctor.prototype.createGeometry;
   ctor.prototype.createGeometry = function () {
     original.call(this);
@@ -142,6 +158,38 @@ installPathTest({
       api.setAppState({ cameraZoom: zoom, cameraX: x, cameraY: y }),
     );
     await settleECSFrames(api);
+  },
+  async paint(fill) {
+    await api.edit((editor) =>
+      editor.updateNode(editor.getNodeById('curve'), {
+        fills: fill ? [{ type: 'solid', value: 'blue' }] : [],
+      }),
+    );
+    await settleECSFrames(api);
+  },
+  async export(partial) {
+    const owner = api.getCanvas();
+    return new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(
+        () => reject(new Error('export timeout')),
+        15000,
+      );
+      const poll = () => {
+        if (owner.has(Screenshot)) {
+          clearTimeout(timer);
+          resolve(owner.read(Screenshot).dataURL);
+        } else api.runAtNextTick(poll);
+      };
+      api.runAtNextTick(() => {
+        if (owner.has(Screenshot)) owner.remove(Screenshot);
+        api.export({
+          format: ExportFormat.PNG,
+          download: false,
+          nodes: partial ? [api.getNodeById('curve')] : [],
+        });
+        poll();
+      });
+    });
   },
   bounds() {
     const { minX, minY, maxX, maxY } = api.getGeometryBounds([

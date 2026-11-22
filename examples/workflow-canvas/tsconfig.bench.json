@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "./benchmark-entry.ts",
+    "./vite.bench.config.ts",
+    "../../scripts/workflow-navigation.bench.spec.ts",
+    "../../playwright.workflow-bench.config.ts"
+  ]
+}

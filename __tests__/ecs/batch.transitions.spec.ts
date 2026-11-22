@@ -11,9 +11,12 @@ import {
   Brush,
   Circle,
   DropShadow,
+  InnerShadow,
   Ellipse,
   Extrude3D,
   FillLayers,
+  FillTexture,
+  StrokeLayers,
   FractionalIndex,
   GeometryDirty,
   Opacity,
@@ -29,6 +32,7 @@ import {
   Text,
   UI,
   VectorNetwork,
+  Wireframe,
   type API,
   type Entity,
 } from '../../packages/ecs/src';
@@ -136,6 +140,9 @@ it.each<[unknown, boolean, unknown[]]>([
       type,
       true,
       ...(rough ? [[Rough, {}] as [unknown, unknown]] : []),
+      ...(type === Path && !rough
+        ? [[FillLayers, { layers: [{ type: 'solid', value: 'blue' }] }] as [unknown, unknown]]
+        : []),
     );
     batch.add(node.entity);
     expect(queued(batch).map((drawcall) => drawcall.constructor)).toEqual(
@@ -1298,4 +1305,76 @@ it.each([
   expect(queued(batch).flatMap((d) => d.shapes)).toEqual(nodes.map((n) => n.entity));
   checks.forEach((spy) => expect(spy.mock.calls.some(([c]) => c === FractionalIndex)).toBe(false));
   reads.forEach((spy) => expect(spy.mock.calls.some(([c]) => c === FractionalIndex)).toBe(false));
+});
+
+it.each([
+  { batchable: false, missing: false },
+  { batchable: true, missing: false },
+  { batchable: false, missing: true },
+  { batchable: true, missing: true },
+])(
+  'drops and restores an unpainted Path fill channel (%p)',
+  ({ batchable, missing }) => {
+    const batch = manager();
+    const path = shape(
+      Path,
+      batchable,
+      [FillLayers, { layers: [] }],
+      [Stroke, { width: 2, dasharray: [0, 0] }],
+      [StrokeLayers, { layers: [{ type: 'solid', value: 'red' }] }],
+    );
+    if (missing) path.data.delete(FillLayers);
+    batch.add(path.entity);
+    const stroke = queued(batch);
+    expect(stroke.map((d) => d.constructor)).toEqual([SmoothPolyline]);
+    const retired = jest.spyOn(stroke[0], 'destroy');
+    path.data.set(FillLayers, { layers: [{ type: 'solid', value: 'blue' }] });
+    batch.add(path.entity);
+    expect(queued(batch).map((d) => d.constructor)).toEqual([
+      Mesh,
+      SmoothPolyline,
+    ]);
+    expect(retired).toHaveBeenCalledTimes(1);
+    path.data.get(FillLayers).layers = [];
+    batch.add(path.entity);
+    expect(queued(batch).map((d) => d.constructor)).toEqual([SmoothPolyline]);
+    batch.remove(path.entity, false);
+    batch.add(path.entity);
+    expect(queued(batch).map((d) => d.constructor)).toEqual([SmoothPolyline]);
+    batch.remove(path.entity);
+    expect(queued(batch)).toEqual([]);
+  },
+);
+
+it('retains fill geometry for masks, effects, external textures, wireframes and rough Paths', () => {
+  const ordinary = () => shape(Path, false, [FillLayers, { layers: [] }]);
+  expect(Mesh.check(ordinary().entity)).toBe(false);
+  for (const [component, value] of [
+    [ClipMode, { value: 'hard' }],
+    [Filter, { value: 'blur(2px)' }],
+    [NodeLayerBlendMode, { mode: 'multiply' }],
+    [Wireframe, { enabled: true }],
+    [FillTexture, {}],
+    [DropShadow, {}],
+    [InnerShadow, {}],
+    [Rough, {}],
+    [VectorNetwork, {}],
+  ] as [unknown, unknown][]) {
+    const path = ordinary();
+    path.data.set(component, value);
+    expect(Mesh.check(path.entity)).toBe(true);
+  }
+  for (const component of [ClipMode, Filter, NodeLayerBlendMode]) {
+    const parent = shape(Rect, false, [component, {}]);
+    const path = ordinary();
+    path.data.set(Children, { parent: parent.entity });
+    expect(Mesh.check(path.entity)).toBe(true);
+  }
+  const disabled = ordinary();
+  disabled.data.get(FillLayers).layers = [
+    { type: 'solid', value: 'blue', enabled: false },
+  ];
+  expect(Mesh.check(disabled.entity)).toBe(false);
+  // Deserialization omits FillLayers for the public wire form fills: [].
+  expect(Mesh.check(shape(Path).entity)).toBe(false);
 });

@@ -17,6 +17,7 @@ import {
 } from '@antv/g-device-api';
 import {
   Path,
+  type Shape,
   RoughCircle,
   RoughEllipse,
   RoughPath,
@@ -37,6 +38,26 @@ const strokeAlignmentMap = {
 } as const;
 
 export class Mesh extends PathDrawcall {
+  static check(shape: Shape) {
+    // Mesh's fragment shader discards an ordinary Path's explicit `none` fill.
+    // Preserve custom/rough shapes, wireframes and effect-bearing paths.
+    if (
+      !(shape instanceof Path) ||
+      Object.getPrototypeOf(shape) !== Path.prototype
+    )
+      return true;
+    return (
+      shape.fill !== 'none' ||
+      shape.wireframe ||
+      shape.dropShadowBlurRadius > 0 ||
+      shape.innerShadowBlurRadius > 0 ||
+      (shape.dropShadowOffsetX ?? 0) !== 0 ||
+      (shape.dropShadowOffsetY ?? 0) !== 0 ||
+      (shape.innerShadowOffsetX ?? 0) !== 0 ||
+      (shape.innerShadowOffsetY ?? 0) !== 0
+    );
+  }
+
   #uniformBuffer: Buffer;
   #texture: Texture;
 
