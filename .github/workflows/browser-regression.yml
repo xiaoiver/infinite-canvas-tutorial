@@ -35,10 +35,18 @@ jobs:
 
   image-sharing-diagnostic:
     if: github.event_name == 'pull_request' && github.event.pull_request.number == 702
+    name: image-sharing-diagnostic (${{ matrix.shm }})
     runs-on: ubuntu-latest
-    container: mcr.microsoft.com/playwright:v1.55.1-noble
+    strategy:
+      fail-fast: false
+      matrix:
+        shm: [64m, 1g]
+    container:
+      image: mcr.microsoft.com/playwright:v1.55.1-noble
+      options: --shm-size=${{ matrix.shm }}
     timeout-minutes: 10
     steps:
+      - run: df -h /dev/shm
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
