@@ -66,12 +66,16 @@ for (const colors of [
   ctx.fillRect(0, 0, 23, 31);
   ctx.clearRect(43, 29, 21, 19);
   sources.push(source);
-  bitmaps.push(await createImageBitmap(source));
-  urls.push(
-    URL.createObjectURL(
-      await new Promise<Blob>((r) => source.toBlob((b) => r(b!), 'image/png')),
+  // Match the workflow's decoded PNG snapshots, rather than transferring a
+  // canvas-backed GPU image between Canvas 2D and WebGL contexts.
+  const blob = await new Promise<Blob>((resolve, reject) =>
+    source.toBlob(
+      (value) => value ? resolve(value) : reject(new Error('PNG encode failed')),
+      'image/png',
     ),
   );
+  bitmaps.push(await createImageBitmap(blob));
+  urls.push(URL.createObjectURL(blob));
 }
 // The paired fixture uses known immutable snapshots; the real workflow benchmark
 // separately covers URL decoding and cold entry without injecting image data.

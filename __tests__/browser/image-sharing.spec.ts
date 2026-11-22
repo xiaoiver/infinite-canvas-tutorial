@@ -4,6 +4,10 @@ import { PNG } from 'pngjs';
 import { installProbes } from './fixtures/probes';
 import type { ImagePatch } from './fixtures/image-sharing';
 
+// The fixed-size GPU fixture must fit the viewport. Keep WebKit's mobile/DPR
+// defaults; pointer/touch gestures have their own narrow-screen regressions.
+test.use({ viewport: { width: 1000, height: 760 } });
+
 async function textures(page: Page) {
   const state = await page.evaluate(() => window.imageSharing.state());
   expect(state.webglError).toBe(0);
@@ -34,6 +38,7 @@ for (const backend of ['core', 'ecs'])
     // This follows the image benchmark and glyph-sharing regression pattern.
     // Multiple peer owners remain together inside each run.
     for (const shared of [false, true]) {
+      console.info('image-sharing mode', backend, shared ? 'shared' : 'private');
       let checkpoint = 0;
       async function pixels(label: string, data?: string) {
         const url =
@@ -85,6 +90,7 @@ for (const backend of ['core', 'ecs'])
           (await page.evaluate(() => window.imageSharing.state())).visible,
         ).toBe(12);
         const initial = await textures(page);
+        console.info('image-sharing ready', backend, { shared, textures: initial });
         await pixels('screen-initial');
         expect(
           await page.evaluate(() => window.imageSharing.pick(20, 20)),
@@ -166,6 +172,7 @@ for (const backend of ['core', 'ecs'])
           expect(
             await page.evaluate(() => window.lifecycleProbes.leaks()),
           ).toEqual([]);
+        console.info('image-sharing complete', backend, { shared, checkpoints: checkpoint });
       } finally {
         await page.evaluate(() => window.imageSharing?.dispose()).catch(() => {});
       }
