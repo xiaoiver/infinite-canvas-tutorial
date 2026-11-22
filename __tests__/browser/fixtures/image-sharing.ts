@@ -501,6 +501,12 @@ const harness = {
     }
     // MeshPipeline renders on demand. Request an unchanged computed camera
     // write, then require actual main-context GPU work before reading pixels.
+    if (new URLSearchParams(location.search).has('reset-viewport')) {
+      const gl = canvas.getContext('webgl2')!;
+      const viewport = gl.getParameter(gl.VIEWPORT) as Int32Array;
+      gl.viewport(0, 0, 1, 1);
+      gl.viewport(viewport[0], viewport[1], viewport[2], viewport[3]);
+    }
     const before = probe.snapshot().drawcalls;
     const capture = completedFrame(() => {
       const drawcalls = probe.snapshot().drawcalls - before;

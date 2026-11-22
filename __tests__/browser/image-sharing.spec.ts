@@ -70,25 +70,24 @@ for (const backend of ['core', 'ecs'])
           png.data = Buffer.from(capture.rgba, 'base64');
         }
         expect(png.data.length).toBe(png.width * png.height * 4);
-        if (label.startsWith('screen')) {
+        if (label.startsWith('screen'))
           expect([png.width, png.height]).toEqual([1000, 720]);
-          let ink = 0;
-          for (let i = 0; i < png.data.length; i += 4)
-            if (png.data[i + 3] > 0 && png.data[i] < 200) ink++;
-          if (ink <= 100) {
-            console.error('image-sharing blank capture', backend, {
-              label,
-              ink,
-              drawcalls: typeof capture === 'string' ? undefined : capture.drawcalls,
-              contextAttributes: typeof capture === 'string' ? undefined : capture.contextAttributes,
-            });
-            await test.info().attach(label + '-blank', {
-              body: PNG.sync.write(png),
-              contentType: 'image/png',
-            });
-          }
-          expect(ink).toBeGreaterThan(100);
+        let ink = 0;
+        for (let i = 0; i < png.data.length; i += 4)
+          if (png.data[i + 3] > 0 && png.data[i] < 200) ink++;
+        if (ink <= 100) {
+          console.error('image-sharing blank capture', backend, {
+            label,
+            ink,
+            drawcalls: typeof capture === 'string' ? undefined : capture.drawcalls,
+            contextAttributes: typeof capture === 'string' ? undefined : capture.contextAttributes,
+          });
+          await test.info().attach(label + '-blank', {
+            body: PNG.sync.write(png),
+            contentType: 'image/png',
+          });
         }
+        expect(ink).toBeGreaterThan(100);
         if (shared) {
           const expected = reference[checkpoint];
           expect(expected?.label).toBe(label);
@@ -118,7 +117,7 @@ for (const backend of ['core', 'ecs'])
       }
       try {
         await page.goto(
-          `/image-sharing.html?backend=${backend}${shared ? '' : '&private=1'}`,
+          `/image-sharing.html?backend=${backend}${shared ? '' : '&private=1'}${process.env.IMAGE_SHARING_VIEWPORT_RESET ? '&reset-viewport=1' : ''}`,
         );
         await expect(page.locator('#status')).toHaveText('Ready', {
           timeout: 30000,
