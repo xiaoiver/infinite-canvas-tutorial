@@ -47,6 +47,15 @@ for (const Pool of [CorePool, ECSPool]) {
   });
 }
 const canvas = document.querySelector<HTMLCanvasElement>('#actual')!;
+if (backend === 'ecs' && new URLSearchParams(location.search).has('cpu-upload')) {
+  const adapter = ECS.DOMAdapter.get();
+  const original = adapter.createTexImageSource;
+  adapter.createTexImageSource = (source) => {
+    const ctx = source.getContext('2d') as CanvasRenderingContext2D;
+    return ctx.getImageData(0, 0, source.width, source.height).data;
+  };
+  restore.push(() => { adapter.createTexImageSource = original; });
+}
 const originalContext = canvas.getContext;
 const probe = mixedFrameProbe(canvas);
 const sources: HTMLCanvasElement[] = [],

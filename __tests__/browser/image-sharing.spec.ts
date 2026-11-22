@@ -117,7 +117,7 @@ for (const backend of ['core', 'ecs'])
       }
       try {
         await page.goto(
-          `/image-sharing.html?backend=${backend}${shared ? '' : '&private=1'}${process.env.IMAGE_SHARING_VIEWPORT_RESET ? '&reset-viewport=1' : ''}`,
+          `/image-sharing.html?backend=${backend}${shared ? '' : '&private=1'}${process.env.IMAGE_SHARING_CPU_UPLOAD ? '&cpu-upload=1' : ''}`,
         );
         await expect(page.locator('#status')).toHaveText('Ready', {
           timeout: 30000,

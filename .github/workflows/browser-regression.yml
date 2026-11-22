@@ -51,7 +51,7 @@ jobs:
       - run: pnpm exec playwright test -c playwright.webkit.config.ts image-sharing.spec.ts --reporter=list
         env:
           DEBUG: pw:browser
-          IMAGE_SHARING_VIEWPORT_RESET: '1'
+          IMAGE_SHARING_CPU_UPLOAD: '1'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
