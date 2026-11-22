@@ -319,7 +319,12 @@ function readScreenPixels() {
   let binary = '';
   for (let i = 0; i < topDown.length; i += 0x8000)
     binary += String.fromCharCode(...topDown.subarray(i, i + 0x8000));
-  return { width, height, rgba: btoa(binary) };
+  return {
+    width,
+    height,
+    rgba: btoa(binary),
+    contextAttributes: gl.getContextAttributes(),
+  };
 }
 function completedFrame<T>(read: () => T | undefined): Promise<T> {
   const world = app!.world;
@@ -485,7 +490,20 @@ const harness = {
       core.render();
       return canvas.toDataURL();
     }
-    return completedFrame(readScreenPixels);
+    // MeshPipeline renders on demand. Request an unchanged computed camera
+    // write, then require actual main-context GPU work before reading pixels.
+    const before = probe.snapshot().drawcalls;
+    const capture = completedFrame(() => {
+      const drawcalls = probe.snapshot().drawcalls - before;
+      return drawcalls > 0 ? { ...readScreenPixels(), drawcalls } : undefined;
+    });
+    await api!.edit(
+      (editor) => {
+        editor.getCamera().write(ECS.ComputedCamera);
+      },
+      { capture: 'NEVER' },
+    );
+    return capture;
   },
   measure,
   makeExternal,

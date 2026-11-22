@@ -57,14 +57,28 @@ for (const backend of ['core', 'ecs'])
           typeof capture === 'string'
             ? PNG.sync.read(Buffer.from(capture.split(',')[1], 'base64'))
             : new PNG({ width: capture.width, height: capture.height });
-        if (typeof capture !== 'string')
+        if (typeof capture !== 'string') {
+          expect(capture.drawcalls).toBeGreaterThan(0);
           png.data = Buffer.from(capture.rgba, 'base64');
+        }
         expect(png.data.length).toBe(png.width * png.height * 4);
         if (label.startsWith('screen')) {
           expect([png.width, png.height]).toEqual([1000, 720]);
           let ink = 0;
           for (let i = 0; i < png.data.length; i += 4)
             if (png.data[i + 3] > 0 && png.data[i] < 200) ink++;
+          if (ink <= 100) {
+            console.error('image-sharing blank capture', backend, {
+              label,
+              ink,
+              drawcalls: typeof capture === 'string' ? undefined : capture.drawcalls,
+              contextAttributes: typeof capture === 'string' ? undefined : capture.contextAttributes,
+            });
+            await test.info().attach(label + '-blank', {
+              body: PNG.sync.write(png),
+              contentType: 'image/png',
+            });
+          }
           expect(ink).toBeGreaterThan(100);
         }
         if (shared) {
