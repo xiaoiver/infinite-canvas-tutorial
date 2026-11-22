@@ -58,6 +58,14 @@ for (const backend of ['core', 'ecs'])
             ? PNG.sync.read(Buffer.from(capture.split(',')[1], 'base64'))
             : new PNG({ width: capture.width, height: capture.height });
         if (typeof capture !== 'string') {
+          if (label === 'screen-initial')
+            console.info('image-sharing native screen', backend, {
+              drawcalls: capture.drawcalls,
+              viewport: capture.viewport,
+              scissor: capture.scissor,
+              scissorEnabled: capture.scissorEnabled,
+              swapChainSize: capture.swapChainSize,
+            });
           expect(capture.drawcalls).toBeGreaterThan(0);
           png.data = Buffer.from(capture.rgba, 'base64');
         }
