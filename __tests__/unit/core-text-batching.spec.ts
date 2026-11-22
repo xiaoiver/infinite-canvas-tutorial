@@ -237,3 +237,30 @@ it('invalidates copied Core metrics even when a derived object is mutated in pla
   expect(draw.geometryDirty).toBe(true);
   draw.destroy();
 });
+
+it('uses current traversal order across paint edits, reordered frames and removals', () => {
+  const batch = new BatchManager(null);
+  const a = label('A'), barrier = label('中文'), b = label('B');
+  let submitted: SDFText[] = [];
+  jest.spyOn(SDFText.prototype, 'submit').mockImplementation(function () {
+    submitted.push(this);
+  });
+  const frame = (texts: Text[], removed?: Text) => {
+    submitted = [];
+    batch.clear(true, false, true);
+    texts.forEach((text) => batch.add(text));
+    if (removed) batch.remove(removed);
+    batch.flush(null, null, {});
+    return submitted.flatMap((drawcall) => drawcall.shapes);
+  };
+  try {
+    expect(frame([a, barrier, b])).toEqual([a, barrier, b]);
+    a.fill = 'green';
+    expect(frame([a, barrier, b])).toEqual([a, barrier, b]);
+    expect(frame([b, barrier, a])).toEqual([b, barrier, a]);
+    expect(frame([b, barrier, a], barrier)).toEqual([b, a]);
+    expect(frame([a])).toEqual([a]);
+  } finally {
+    batch.destroy();
+  }
+});

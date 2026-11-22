@@ -34,6 +34,7 @@ import {
   Children,
   ClipMode,
   Filter,
+  FractionalIndex,
   NodeLayerBlendMode,
   Brush,
   Circle,
@@ -53,7 +54,6 @@ import {
 } from '../components';
 import { TexturePool } from '../resources';
 import { RenderCache } from '../utils';
-import { sortByFractionalIndex } from './Sort';
 import { safeRemoveComponent } from '../history';
 import { API } from '../API';
 import {
@@ -287,8 +287,24 @@ export class BatchManager {
 
   private plan() {
     if (!this.#dirty) return;
-    const entries = [...this.#active];
-    if (this.#ordered) entries.sort(([a], [b]) => sortByFractionalIndex(a, b));
+    // Snapshot keys once per dirty plan. Comparator calls must not repeatedly
+    // enter Becsy component access, and each new plan must see current keys.
+    const needsSort = this.#ordered && this.#active.size > 1;
+    const entries = Array.from(this.#active, ([shape, explicit]) => ({
+      shape,
+      explicit,
+      order:
+        needsSort &&
+        shape.has(FractionalIndex) &&
+        shape.read(FractionalIndex).value,
+    }));
+    if (needsSort)
+      entries.sort((a, b) => {
+        // Keep Sort's code-unit comparison and stable ties, including missing keys.
+        if (a.order < b.order) return -1;
+        if (a.order > b.order) return 1;
+        return 0;
+      });
     const nextPools = new Map<string, Drawcall[][]>();
     const cursors = new Map<string, number>();
     const plans: {
@@ -303,7 +319,7 @@ export class BatchManager {
       for (const group of groups)
         if (group[0] instanceof TextBatch)
           textPages.set(group[0].shapes[0], group);
-    for (const [shape, explicit] of entries) {
+    for (const { shape, explicit } of entries) {
       const { ctors, key } = explicit
         ? { ctors: [], key: null }
         : this.resolveDrawcalls(shape);
