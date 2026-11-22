@@ -269,6 +269,9 @@ export abstract class Drawcall {
     uniformLegacyObject: Record<string, unknown>,
     builder: RGGraphBuilder,
   ) {
+    // A retired drawcall can still be referenced by an in-flight queue.
+    // Match Core: it must not rebuild resources or acquire another image lease.
+    if (this.destroyed) return;
     const zs = uniformLegacyObject['u_ZoomScale'];
     this.sceneZoomScale =
       typeof zs === 'number' && Number.isFinite(zs) && zs > 0 ? zs : 1;

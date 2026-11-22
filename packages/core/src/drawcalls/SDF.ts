@@ -23,6 +23,11 @@ import { Drawcall, ZINDEX_FACTOR } from './Drawcall';
 import { vert, frag, Location } from '../shaders/sdf';
 import { isPattern, isString, paddingMat3 } from '../utils';
 import { InstanceBuffer } from '../utils/instance-buffer';
+import {
+  imageTextures,
+  isImmutableImage,
+  type ImageTextureLease,
+} from '../utils/image-texture-pool';
 
 const NO_INSTANCE_UNIFORMS = Object.freeze({});
 
@@ -46,6 +51,8 @@ export class SDF extends Drawcall {
 
   #uniformBuffer: Buffer;
   #texture: Texture;
+  #imageTextureLease?: ImageTextureLease<Texture>;
+  #borrowedFillTexture = false;
   #attributes?: InstanceBuffer;
   #matrices?: InstanceBuffer;
   #fullRenderOrder?: number;
@@ -218,6 +225,7 @@ export class SDF extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
+    this.releaseFillTexture();
     this.createProgram(vert, frag, defines);
 
     if (!this.instanced && !this.#uniformBuffer) {
@@ -317,15 +325,32 @@ export class SDF extends Drawcall {
         this.#texture = texture;
       } else if ((fill as { texture: Texture }).texture) {
         this.#texture = (fill as { texture: Texture }).texture;
+        this.#borrowedFillTexture = true;
       } else {
-        const texture = this.device.createTexture({
-          format: Format.U8_RGBA_NORM,
-          width: (fill as ImageBitmap).width,
-          height: (fill as ImageBitmap).height,
-          usage: TextureUsage.SAMPLED,
-        });
-        texture.setImageData([fill as ImageBitmap]);
-        this.#texture = texture;
+        const create = () => {
+          const texture = this.device.createTexture({
+            format: Format.U8_RGBA_NORM,
+            width: (fill as ImageBitmap).width,
+            height: (fill as ImageBitmap).height,
+            usage: TextureUsage.SAMPLED,
+          });
+          try {
+            texture.setImageData([fill as ImageBitmap]);
+          } catch (error) {
+            texture.destroy();
+            throw error;
+          }
+          return texture;
+        };
+        if (isImmutableImage(fill)) {
+          this.#imageTextureLease = imageTextures.acquire(
+            this.device,
+            fill,
+            JSON.stringify([fill.width, fill.height]),
+            create,
+          );
+          this.#texture = this.#imageTextureLease.texture;
+        } else this.#texture = create();
       }
 
       const sampler = this.renderCache.createSampler({
@@ -456,14 +481,22 @@ export class SDF extends Drawcall {
     renderPass.drawIndexed(6, this.shapes.length);
   }
 
+  private releaseFillTexture(): void {
+    if (this.#imageTextureLease) this.#imageTextureLease.release();
+    else if (!this.#borrowedFillTexture) this.#texture?.destroy?.();
+    this.#imageTextureLease = undefined;
+    this.#texture = undefined;
+    this.#borrowedFillTexture = false;
+  }
+
   destroy(): void {
+    this.releaseFillTexture();
     this.#attributes?.dispose();
     this.#matrices?.dispose();
     this.#attributes = this.#matrices = undefined;
     super.destroy();
     if (this.program) {
       this.#uniformBuffer?.destroy();
-      this.#texture?.destroy?.();
     }
   }
 
