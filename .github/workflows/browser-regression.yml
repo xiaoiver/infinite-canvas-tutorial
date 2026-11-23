@@ -30,6 +30,7 @@ jobs:
       - run: pnpm test:cli
       - run: pnpm lint
       - run: pnpm exec tsc -p __tests__/browser/tsconfig.json
+      - run: pnpm exec tsc -p __tests__/browser/tsconfig.bench.json
       - run: pnpm exec tsc -p examples/workflow-canvas/tsconfig.bench.json
 
   browser-tests:
@@ -38,7 +39,7 @@ jobs:
     # The matching Playwright image already contains browser binaries and OS
     # libraries. Installing them via apt on every shard can exceed job timeout
     # when the hosted runner's package mirror is slow.
-    container: mcr.microsoft.com/playwright:v1.55.1-noble
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 25
     strategy:
       fail-fast: false

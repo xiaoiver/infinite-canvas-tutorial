@@ -1,5 +1,11 @@
 import { InstanceBuffer } from '../utils/instance-buffer';
 import {
+  imageTextures,
+  isImmutableImage,
+  imageRasterizerIdentity,
+  type ImageTextureLease,
+} from '../utils/image-texture-pool';
+import {
   type RenderPass,
   Buffer,
   BufferFrequencyHint,
@@ -60,6 +66,7 @@ import {
 import { svgFillImageZoomBucket } from '../utils/fillImageTextureSize';
 import {
   getFillLayerDecodedBitmap,
+  getFillLayerDecodedBitmapIntrinsicSize,
   getOrScheduleFillLayerPatternSource,
   resolveImageFillRasterOptions,
   rasterizeFillLayerImageUrlForTexture,
@@ -149,6 +156,7 @@ export class SDF extends Drawcall {
 
   #uniformBuffer: Buffer;
   #texture: Texture;
+  #imageTextureLease?: ImageTextureLease<Texture>;
   #borrowedFillTexture = false;
   /** Unfiltered image GPU texture when applying {@link Filter} (chain samples this). */
   #rawFillImageTexture: Texture | null = null;
@@ -311,9 +319,11 @@ export class SDF extends Drawcall {
 
   private disposeFillImageResources(): void {
     this.disposeFillLayerResources();
-    if (!this.#fillTextureFromPostChain && !this.#borrowedFillTexture) {
+    if (this.#imageTextureLease) this.#imageTextureLease.release();
+    else if (!this.#fillTextureFromPostChain && !this.#borrowedFillTexture) {
       this.#texture?.destroy();
     }
+    this.#imageTextureLease = undefined;
     if (this.#blurRaster) this.#blurRaster.destroy();
     else this.#rawFillImageTexture?.destroy();
     this.#blurRaster = null;
@@ -350,6 +360,7 @@ export class SDF extends Drawcall {
     minY: number,
     width: number,
     height: number,
+    shareImage = false,
   ): Texture {
     if (layer.type === 'image') {
       const rasterOpts = resolveImageFillRasterOptions(
@@ -369,22 +380,58 @@ export class SDF extends Drawcall {
             )
           : 1,
       );
-      const fromUrl = rasterizeFillLayerImageUrlForTexture(
-        layer.value,
-        tw,
-        th,
-        () => safeAddComponent(instance, MaterialDirty),
-        rasterOpts,
-      );
-      const canvas = fromUrl ?? transparentFillLayerCanvas(tw, th);
-      const raw = this.device.createTexture({
-        format: Format.U8_RGBA_NORM,
-        width: tw,
-        height: th,
-        usage: TextureUsage.SAMPLED,
-      });
-      upload2DRasterCanvasToTexture(raw, canvas);
       const cached = getFillLayerDecodedBitmap(layer.value);
+      const create = () => {
+        const fromUrl = rasterizeFillLayerImageUrlForTexture(
+          layer.value,
+          tw,
+          th,
+          () => safeAddComponent(instance, MaterialDirty),
+          rasterOpts,
+        );
+        const canvas = fromUrl ?? transparentFillLayerCanvas(tw, th);
+        const raw = this.device.createTexture({
+          format: Format.U8_RGBA_NORM,
+          width: tw,
+          height: th,
+          usage: TextureUsage.SAMPLED,
+        });
+        try {
+          upload2DRasterCanvasToTexture(raw, canvas);
+        } catch (error) {
+          raw.destroy();
+          throw error;
+        }
+        return raw;
+      };
+      let raw: Texture;
+      if (
+        shareImage &&
+        isImmutableImage(cached) &&
+        !getRasterFilterValueForShape(instance) &&
+        !this.parentClipMode &&
+        !this.useStencil &&
+        !this.useWireframe &&
+        !this.needsNodeLayerBlend()
+      ) {
+        const intrinsic = getFillLayerDecodedBitmapIntrinsicSize(layer.value);
+        const key = JSON.stringify([
+          tw,
+          th,
+          intrinsic?.width,
+          intrinsic?.height,
+          rasterOpts.objectFit ?? 'fill',
+          rasterOpts.objectPosition ?? '50% 50%',
+          imageRasterizerIdentity(DOMAdapter.get()),
+        ]);
+        this.#imageTextureLease = imageTextures.acquire(
+          this.device,
+          cached,
+          key,
+          create,
+        );
+        raw = this.#imageTextureLease.texture;
+      } else raw = create();
       const sw = cached ? Math.max(1, cached.width) : 1;
       const sh = cached ? Math.max(1, cached.height) : 1;
       scheduleFillImageSvgRerasterIfNeeded({
@@ -695,6 +742,12 @@ export class SDF extends Drawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
+    // Reusing an image texture can reproduce the same descriptor. Retire the
+    // owned binding key before rebuilding so a destroyed binding cannot revive.
+    if (!this.instanced && this.bindings) {
+      this.renderCache.releaseBindings(this.bindings);
+      this.bindings = undefined;
+    }
     this.createProgram(vert, frag, defines);
     this.disposeFillImageResources();
     if (!hasRasterPostEffects(getRasterFilterValueForShape(this.shapes[0]))) {
@@ -875,6 +928,7 @@ export class SDF extends Drawcall {
             minY,
             width,
             height,
+            true,
           );
           const size = raw as Texture & { width: number; height: number };
           this.#texture = this.applyRasterFilterChainIfNeeded(

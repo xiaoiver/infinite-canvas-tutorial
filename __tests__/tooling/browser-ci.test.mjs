@@ -19,6 +19,73 @@ const workflow = load(
 );
 const matrix = workflow.jobs['browser-tests'].strategy.matrix.include;
 
+test('browser clients, component testing and CI images use one pinned Playwright version', () => {
+  const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
+  const version = manifest.devDependencies['@playwright/test'];
+  assert.match(version, /^\d+\.\d+\.\d+$/);
+  const componentVersion =
+    manifest.devDependencies['@sand4rt/experimental-ct-web'];
+  assert.match(componentVersion, /^\d+\.\d+\.\d+$/);
+  assert.equal(manifest.pnpm.overrides.playwright, version);
+  const componentWorkflow = load(
+    readFileSync('.github/workflows/ct-web.yml', 'utf8'),
+  );
+  const componentSteps =
+    componentWorkflow.jobs['component-testing-webcomponents'].steps;
+  const nodeSetup = componentSteps.find((step) =>
+    step.uses?.startsWith('actions/setup-node@'),
+  );
+  assert(Number(nodeSetup.with['node-version']) >= 24);
+  const lock = load(readFileSync('pnpm-lock.yaml', 'utf8'));
+  for (const name of [
+    '@playwright/test',
+    '@playwright/experimental-ct-core',
+    '@sand4rt/experimental-ct-web',
+    'playwright',
+    'playwright-core',
+  ]) {
+    const entries = Object.keys(lock.packages).filter((key) =>
+      key.startsWith(name + '@'),
+    );
+    assert.deepEqual(
+      entries,
+      [
+        name +
+          '@' +
+          (name === '@sand4rt/experimental-ct-web'
+            ? componentVersion
+            : version),
+      ],
+      name + ' lockfile mismatch',
+    );
+  }
+  const componentSnapshot = Object.entries(lock.snapshots).find(([key]) =>
+    key.startsWith('@sand4rt/experimental-ct-web@' + componentVersion + '('),
+  )?.[1];
+  assert(componentSnapshot, 'component test engine snapshot is missing');
+  assert(
+    componentSnapshot.dependencies[
+      '@playwright/experimental-ct-core'
+    ].startsWith(version + '('),
+    'component testing must resolve the same Playwright engine as browser CI',
+  );
+  for (const file of [
+    '.github/workflows/browser-regression.yml',
+    '.github/workflows/react.yml',
+  ]) {
+    const jobs = Object.values(load(readFileSync(file, 'utf8')).jobs);
+    const containers = jobs.map((job) => job.container).filter(Boolean);
+    assert(containers.length > 0, file + ' has no browser container');
+    for (const container of containers) {
+      assert.equal(
+        container,
+        'mcr.microsoft.com/playwright:v' + version + '-noble',
+        file,
+      );
+    }
+  }
+});
+
 for (const browser of ['chromium', 'webkit']) {
   test(`${browser} CI groups cover every discovered test exactly once`, () => {
     const groups = matrix.filter((group) => group.browser === browser);

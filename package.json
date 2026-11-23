@@ -55,6 +55,7 @@
     "test:workflow": "playwright test -c examples/workflow-canvas/playwright.config.ts",
     "test:workflow:docs": "playwright test -c examples/workflow-canvas/playwright.docs.config.ts",
     "bench:batch-allocations": "playwright test -c playwright.batch-allocations-bench.config.ts",
+    "bench:image-textures": "playwright test -c playwright.image-texture-sharing-bench.config.ts",
     "bench:workflow": "playwright test -c playwright.workflow-bench.config.ts",
     "bench:edit-phases": "playwright test -c playwright.edit-phases-bench.config.ts",
     "bench:text-batching": "playwright test -c playwright.text-batching-bench.config.ts",
@@ -70,8 +71,8 @@
     "@eslint/js": "^9.23.0",
     "@loaders.gl/core": "^4.3.3",
     "@loaders.gl/images": "^4.3.3",
-    "@playwright/test": "1.55.1",
-    "@sand4rt/experimental-ct-web": "1.55.1",
+    "@playwright/test": "1.61.1",
+    "@sand4rt/experimental-ct-web": "1.61.0",
     "@types/gl": "^6.0.5",
     "@types/jest": "^26.0.24",
     "@types/pixelmatch": "^5.2.6",
@@ -116,7 +117,7 @@
   "pnpm": {
     "overrides": {
       "esbuild": "^0.25.12",
-      "playwright": "1.55.1",
+      "playwright": "1.61.1",
       "lodash-es": ">=4.18.0",
       "qs": "^6.16.1",
       "rollup": ">=4.59.0",

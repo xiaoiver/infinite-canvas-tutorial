@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     # Reuse the Playwright version's browser and OS dependency image instead of
     # downloading Ubuntu packages independently on every compatibility shard.
-    container: mcr.microsoft.com/playwright:v1.55.1-noble
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 30
     strategy:
       fail-fast: false

@@ -26,6 +26,10 @@ If you plan to work on a large feature or significant change, consider opening a
 
 ## Development Setup
 
+Use Node.js 24.11.1 or newer and pnpm 9.15.9 for the complete development and
+browser/component test toolchain. This does not change the runtime requirements
+of Core or ECS.
+
 Clone the repository:
 
 ```bash

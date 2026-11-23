@@ -42,6 +42,7 @@ export default defineConfig({
     'ecs-blend-mode.spec.ts',
     'brush.spec.ts',
     'image-fill.spec.ts',
+    'image-sharing.spec.ts',
     'image-decoding.spec.ts',
     'animation-export.spec.ts',
     'svg-export.spec.ts',
