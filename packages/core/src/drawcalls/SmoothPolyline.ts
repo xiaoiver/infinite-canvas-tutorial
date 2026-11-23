@@ -1,3 +1,4 @@
+import { appendStrokeInstances } from '../utils/stroke-batching';
 import {
   type RenderPass,
   Buffer,
@@ -44,6 +45,10 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SmoothPolyline extends PathDrawcall {
+  protected get strokeBatch(): boolean {
+    return false;
+  }
+
   static check(shape: Shape) {
     return (
       shape instanceof Polyline ||
@@ -77,6 +82,7 @@ export class SmoothPolyline extends PathDrawcall {
   travelBuffer: number[] = [];
 
   get instanceCount() {
+    if (this.strokeBatch) return this.pointsBuffer.length / 15;
     const instance = this.shapes[0];
     if (
       instance instanceof Polyline ||
@@ -116,26 +122,40 @@ export class SmoothPolyline extends PathDrawcall {
         this.pathPoints.get(shape),
       );
 
-      pointsBuffer.push(...pBuffer);
-      travelBuffer.push(...tBuffer);
+      if (this.strokeBatch) {
+        const m = shape.worldTransform;
+        appendStrokeInstances(
+          pBuffer,
+          tBuffer,
+          [m.tx, m.ty, (shape.globalRenderOrder + 0.1) / ZINDEX_FACTOR],
+          1,
+          pointsBuffer,
+          travelBuffer,
+        );
+      } else {
+        pointsBuffer.push(...pBuffer);
+        travelBuffer.push(...tBuffer);
+      }
 
-      indices.push(
-        0 + offset,
-        1 + offset,
-        2 + offset,
-        0 + offset,
-        2 + offset,
-        3 + offset,
-        4 + offset,
-        5 + offset,
-        6 + offset,
-        4 + offset,
-        6 + offset,
-        7 + offset,
-        4 + offset,
-        7 + offset,
-        8 + offset,
-      );
+      if (!this.strokeBatch || indices.length === 0) {
+        indices.push(
+          0 + offset,
+          1 + offset,
+          2 + offset,
+          0 + offset,
+          2 + offset,
+          3 + offset,
+          4 + offset,
+          5 + offset,
+          6 + offset,
+          4 + offset,
+          6 + offset,
+          7 + offset,
+          4 + offset,
+          7 + offset,
+          8 + offset,
+        );
+      }
       offset += 9;
     });
     this.indexBufferData = new Uint32Array(indices);
@@ -154,7 +174,7 @@ export class SmoothPolyline extends PathDrawcall {
         Float32Array.BYTES_PER_ELEMENT *
         15 *
         this.instanceCount *
-        this.shapes.length,
+        (this.strokeBatch ? 1 : this.shapes.length),
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.DYNAMIC,
     });
@@ -197,19 +217,22 @@ export class SmoothPolyline extends PathDrawcall {
       this.#vertexNumBuffer,
       this.#travelBuffer,
     ];
+    const batchData = this.strokeBatch
+      ? new Float32Array(this.pointsBuffer)
+      : undefined;
     this.vertexBufferDatas = [
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
       new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
       new Float32Array(this.travelBuffer),
     ];
 
     this.vertexBufferDescriptors = [
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -220,7 +243,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -231,7 +254,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -242,7 +265,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -253,7 +276,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -287,6 +310,23 @@ export class SmoothPolyline extends PathDrawcall {
       },
     ];
 
+    if (this.strokeBatch) {
+      this.vertexBuffers.push(this.#segmentsBuffer);
+      this.vertexBufferOffsets.push(4 * 12);
+      this.vertexBufferDatas.push(batchData!);
+      this.vertexBufferDescriptors.push({
+        arrayStride: 4 * 15,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+          {
+            format: Format.F32_RGB,
+            offset: 0,
+            shaderLocation: Location.BATCH_TRANSFORM_ORDER,
+          },
+        ],
+      });
+    }
+
     if (!this.indexBuffer) {
       this.indexBuffer = this.device.createBuffer({
         viewOrSize: this.indexBufferData,
@@ -297,6 +337,7 @@ export class SmoothPolyline extends PathDrawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
+    if (this.strokeBatch) defines += '#define USE_STROKE_BATCH\n';
     if (this.instanceCount <= 0) {
       return;
     }

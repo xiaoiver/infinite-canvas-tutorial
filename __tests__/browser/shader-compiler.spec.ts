@@ -82,3 +82,18 @@ test('surfaces compiler errors and can retry with the bundled WASM', async ({
     await page.evaluate(() => window.shaderCompilerRegression.compile()),
   ).toContain('@vertex');
 });
+
+test('compiles Core and ECS stroke page shaders through the WebGPU path', async ({
+  page,
+}) => {
+  await page.goto('/shader-compiler.html');
+  await page.waitForFunction(() => !!window.shaderCompilerRegression);
+  const programs = await page.evaluate(() =>
+    window.shaderCompilerRegression.compileStrokePages(),
+  );
+  expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
+  for (const program of programs) {
+    expect(program.vertex).toContain('@vertex');
+    expect(program.fragment).toContain('@fragment');
+  }
+});

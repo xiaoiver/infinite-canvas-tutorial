@@ -28,6 +28,7 @@ import { Mesh } from './Mesh';
 import { SDFText } from './SDFText';
 import { TexturePool } from '../TexturePool';
 import { PathInstances, PATH_INSTANCE_PAGE_SIZE } from './PathInstances';
+import { StrokeBatch } from './StrokeBatch';
 
 type OrderedPage = {
   key: string;
@@ -353,8 +354,16 @@ export class BatchManager {
         this.#allowPathInstances && shape.constructor === Path
           ? PathInstances.batchKey(shape)
           : null;
+      const strokeKey =
+        this.#allowPathInstances &&
+        shape.constructor === Path &&
+        pathKey === null
+          ? StrokeBatch.batchKey(shape)
+          : null;
       const ctors =
-        textKey !== null
+        strokeKey !== null
+          ? [StrokeBatch]
+          : textKey !== null
           ? [TextBatch]
           : pathKey === null
           ? this.collectDrawcallCtors(shape)
@@ -364,7 +373,7 @@ export class BatchManager {
       // explicitly requested. Mesh's ordinary shader has no instance attributes.
       const batchable =
         shape.batchable &&
-        !(shape instanceof Path && pathKey === null) &&
+        !(shape instanceof Path && pathKey === null && strokeKey === null) &&
         !(shape instanceof Text && textKey === null);
       const ctorKey = ctors
         .map((ctor) => {
@@ -374,7 +383,9 @@ export class BatchManager {
         })
         .join(',');
       const key =
-        textKey !== null
+        strokeKey !== null
+          ? `stroke:${strokeKey}`
+          : textKey !== null
           ? `text:${textKey}`
           : pathKey === null
           ? `${ctorKey}:${batchable ? 'batch' : shape.uid}`

@@ -1075,7 +1075,7 @@ export class API {
     });
   }
 
-  /** Experimental screen-only Path fill instancing; disabled by default. */
+  /** Experimental screen-only Path fill/stroke pages; disabled by default. */
   setPathInstancingEnabled(enabled: boolean) {
     this.runAtNextTick(() => {
       this.#canvas.write(Canvas).pathInstancing = enabled;

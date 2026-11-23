@@ -103,7 +103,7 @@ export interface CanvasConfig {
     [Theme.LIGHT]: Partial<ThemeColors>;
     [Theme.DARK]: Partial<ThemeColors>;
   }>;
-  /** Experimental ordered instancing for repeated solid Path fills; defaults off. */
+  /** Experimental ordered pages for solid Path fills and compatible strokes; defaults off. */
   pathInstancing?: boolean;
   /** Experimental ordered ordinary-text geometry batching; defaults off. */
   textBatching?: boolean;

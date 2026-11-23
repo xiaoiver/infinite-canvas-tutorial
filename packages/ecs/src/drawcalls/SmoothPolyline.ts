@@ -1,3 +1,4 @@
+import { appendStrokeInstances } from '../utils/stroke-batching';
 import {
   type RenderPass,
   Buffer,
@@ -114,6 +115,10 @@ const strokeAlignmentMap = {
 } as const;
 
 export class SmoothPolyline extends PathDrawcall {
+  protected get strokeBatch(): boolean {
+    return false;
+  }
+
   private polylineCaches = new WeakMap<Entity, PolylineGeometryCache>();
   private polylinePoints = new WeakMap<Entity, PolylinePoints>();
 
@@ -130,10 +135,15 @@ export class SmoothPolyline extends PathDrawcall {
         const dpr = Number(uniforms.u_PolylineLODDPR);
         const affine =
           [m.m00, m.m01, m.m10, m.m11, m.m20, m.m21].every(Number.isFinite) &&
-          m.m02 === 0 && m.m12 === 0 && m.m22 === 1 &&
+          m.m02 === 0 &&
+          m.m12 === 0 &&
+          m.m22 === 1 &&
           Math.abs(m.m00 * m.m11 - m.m01 * m.m10) > 1e-12;
         const { scale } = pathScreenMetrics(uniforms, {
-          a: m.m00, b: m.m01, c: m.m10, d: m.m11,
+          a: m.m00,
+          b: m.m01,
+          c: m.m10,
+          d: m.m11,
         });
         if (affine && Number.isFinite(dpr) && dpr > 0) {
           let cache = this.polylineCaches.get(shape);
@@ -168,9 +178,7 @@ export class SmoothPolyline extends PathDrawcall {
           shape.read(Stroke).dasharray[1] > 0) ||
           (getFirstGradientStrokeLayerValue(shape) != null &&
             shape.read(Stroke).width > 0))) ||
-      (shape.has(Path) &&
-        shape.has(Stroke) &&
-        hasValidStrokeEntity(shape)) ||
+      (shape.has(Path) && shape.has(Stroke) && hasValidStrokeEntity(shape)) ||
       (shape.has(Text) &&
         shape.has(TextDecoration) &&
         hasValidDecoration(shape.read(TextDecoration)))
@@ -203,11 +211,7 @@ export class SmoothPolyline extends PathDrawcall {
 
   protected get extraShaderDefines(): string {
     const s = this.shapes[0];
-    if (
-      !this.instanced &&
-      s &&
-      shouldRasterizeStrokeForFilterTexture(s)
-    ) {
+    if (!this.instanced && s && shouldRasterizeStrokeForFilterTexture(s)) {
       return '#define USE_STROKE_GRADIENT\n';
     }
     if (getFirstGradientStrokeLayerValue(s) == null) {
@@ -233,6 +237,7 @@ export class SmoothPolyline extends PathDrawcall {
   travelBuffer: number[] = [];
 
   get instanceCount() {
+    if (this.strokeBatch) return this.pointsBuffer.length / 15;
     return Math.max(0, this.pointsBuffer.length / strideFloats - 3);
   }
 
@@ -247,34 +252,56 @@ export class SmoothPolyline extends PathDrawcall {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
         shape,
         shape.has(Rough) &&
-        ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
-          (shape.has(Rect) && this.index !== 2) ||
-          shape.has(Polyline) ||
-          shape.has(Line)),
+          ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
+            (shape.has(Rect) && this.index !== 2) ||
+            shape.has(Polyline) ||
+            shape.has(Line)),
         this.pathPoints.get(shape),
         this.polylinePoints.get(shape),
       );
 
-      pointsBuffer.push(...pBuffer);
-      travelBuffer.push(...tBuffer);
+      if (this.strokeBatch) {
+        const { matrix: m } = shape.read(GlobalTransform);
+        appendStrokeInstances(
+          pBuffer,
+          tBuffer,
+          [
+            m.m20,
+            m.m21,
+            ((shape.has(GlobalRenderOrder)
+              ? shape.read(GlobalRenderOrder).value
+              : 0) +
+              0.1) /
+              ZINDEX_FACTOR,
+          ],
+          3,
+          pointsBuffer,
+          travelBuffer,
+        );
+      } else {
+        pointsBuffer.push(...pBuffer);
+        travelBuffer.push(...tBuffer);
+      }
 
-      indices.push(
-        0 + offset,
-        1 + offset,
-        2 + offset,
-        0 + offset,
-        2 + offset,
-        3 + offset,
-        4 + offset,
-        5 + offset,
-        6 + offset,
-        4 + offset,
-        6 + offset,
-        7 + offset,
-        4 + offset,
-        7 + offset,
-        8 + offset,
-      );
+      if (!this.strokeBatch || indices.length === 0) {
+        indices.push(
+          0 + offset,
+          1 + offset,
+          2 + offset,
+          0 + offset,
+          2 + offset,
+          3 + offset,
+          4 + offset,
+          5 + offset,
+          6 + offset,
+          4 + offset,
+          6 + offset,
+          7 + offset,
+          4 + offset,
+          7 + offset,
+          8 + offset,
+        );
+      }
       offset += 9;
     });
     this.indexBufferData = new Uint32Array(indices);
@@ -289,7 +316,7 @@ export class SmoothPolyline extends PathDrawcall {
         Float32Array.BYTES_PER_ELEMENT *
         15 *
         this.instanceCount *
-        this.shapes.length,
+        (this.strokeBatch ? 1 : this.shapes.length),
       usage: BufferUsage.VERTEX,
       hint: BufferFrequencyHint.DYNAMIC,
     });
@@ -332,19 +359,22 @@ export class SmoothPolyline extends PathDrawcall {
       this.#vertexNumBuffer,
       this.#travelBuffer,
     ];
+    const batchData = this.strokeBatch
+      ? new Float32Array(this.pointsBuffer)
+      : undefined;
     this.vertexBufferDatas = [
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
-      new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
+      batchData ?? new Float32Array(this.pointsBuffer),
       new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
       new Float32Array(this.travelBuffer),
     ];
 
     this.vertexBufferDescriptors = [
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -355,7 +385,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -366,7 +396,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -377,7 +407,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -388,7 +418,7 @@ export class SmoothPolyline extends PathDrawcall {
         ],
       },
       {
-        arrayStride: 4 * 3,
+        arrayStride: 4 * (this.strokeBatch ? 15 : 3),
         stepMode: VertexStepMode.INSTANCE,
         attributes: [
           {
@@ -422,6 +452,23 @@ export class SmoothPolyline extends PathDrawcall {
       },
     ];
 
+    if (this.strokeBatch) {
+      this.vertexBuffers.push(this.#segmentsBuffer);
+      this.vertexBufferOffsets.push(4 * 12);
+      this.vertexBufferDatas.push(batchData!);
+      this.vertexBufferDescriptors.push({
+        arrayStride: 4 * 15,
+        stepMode: VertexStepMode.INSTANCE,
+        attributes: [
+          {
+            format: Format.F32_RGB,
+            offset: 0,
+            shaderLocation: Location.BATCH_TRANSFORM_ORDER,
+          },
+        ],
+      });
+    }
+
     if (!this.indexBuffer) {
       this.indexBuffer = this.device.createBuffer({
         viewOrSize: this.indexBufferData,
@@ -432,6 +479,7 @@ export class SmoothPolyline extends PathDrawcall {
   }
 
   createMaterial(defines: string, uniformBuffer: Buffer): void {
+    if (this.strokeBatch) defines += '#define USE_STROKE_BATCH\n';
     const useStrokeGradient = defines.includes('USE_STROKE_GRADIENT');
 
     this.bindings?.destroy();
@@ -444,8 +492,7 @@ export class SmoothPolyline extends PathDrawcall {
 
     if (!this.#uniformBuffer) {
       this.#uniformBuffer = this.device.createBuffer({
-        viewOrSize:
-          Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * (16 + 4 + 4 + 4 + 4 + 4),
         usage: BufferUsage.UNIFORM,
         hint: BufferFrequencyHint.DYNAMIC,
       });
@@ -683,31 +730,31 @@ export class SmoothPolyline extends PathDrawcall {
       : 0;
 
     const fill = getFirstSolidFillLayerValue(shape);
-    const { r: fr, g: fg, b: fb, opacity: fo } = this.getUniformColor(
-      fill != null ? fill : 'transparent',
-    );
+    const {
+      r: fr,
+      g: fg,
+      b: fb,
+      opacity: fo,
+    } = this.getUniformColor(fill != null ? fill : 'transparent');
 
     const strokeColor = resolveGpuStrokeColor(shape);
-    const {
-      width,
-      alignment,
-      miterlimit,
-      dasharray,
-      dashoffset,
-      dashcap,
-    } = shape.has(Stroke)
+    const { width, alignment, miterlimit, dasharray, dashoffset, dashcap } =
+      shape.has(Stroke)
         ? shape.read(Stroke)
         : {
-          width: 0,
-          alignment: 'center' as const,
-          miterlimit: 10,
-          dasharray: [] as unknown as [number, number],
-          dashoffset: 0,
-          dashcap: 'none' as const,
-        };
-    const { r: sr, g: sg, b: sb, opacity: so } = this.getUniformColor(
-      strokeColor ?? 'transparent',
-    );
+            width: 0,
+            alignment: 'center' as const,
+            miterlimit: 10,
+            dasharray: [] as unknown as [number, number],
+            dashoffset: 0,
+            dashcap: 'none' as const,
+          };
+    const {
+      r: sr,
+      g: sg,
+      b: sb,
+      opacity: so,
+    } = this.getUniformColor(strokeColor ?? 'transparent');
     let strokeWidth = width;
     if (shape.has(Rough)) {
       const { fillWeight } = shape.read(Rough);
@@ -955,8 +1002,8 @@ export function updateBuffer(
     linejoin,
     width: strokeWidth,
   } = object.has(Stroke)
-      ? object.read(Stroke)
-      : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
+    ? object.read(Stroke)
+    : ({ linecap: 'butt', linejoin: 'miter', width: 1 } as const);
   const { start, end, factor } = object.has(Marker)
     ? object.read(Marker)
     : ({ start: 'none', end: 'none', factor: 3 } as const);
@@ -980,10 +1027,13 @@ export function updateBuffer(
       })
       .flat(2);
   } else if (object.has(Polyline)) {
-    points = (polylinePoints ?? object.read(Polyline).points).reduce((prev, cur) => {
-      prev.push(cur[0], cur[1]);
-      return prev;
-    }, [] as number[]);
+    points = (polylinePoints ?? object.read(Polyline).points).reduce(
+      (prev, cur) => {
+        prev.push(cur[0], cur[1]);
+        return prev;
+      },
+      [] as number[],
+    );
   } else if (object.has(Line)) {
     const { x1, y1, x2, y2 } = object.read(Line);
     points = [x1, y1, x2, y2];
@@ -1046,8 +1096,9 @@ export function updateBuffer(
           //   wave_count % 2 != 0 ? quarterWave : -quarterWave,
           //   quarterWave * 2,
           //   0);
-          d += ` Q ${x_start + quarterWave} ${wave_count % 2 != 0 ? quarterWave : -quarterWave
-            } ${x_start + quarterWave * 2} 0`;
+          d += ` Q ${x_start + quarterWave} ${
+            wave_count % 2 != 0 ? quarterWave : -quarterWave
+          } ${x_start + quarterWave * 2} 0`;
 
           x_start += quarterWave * 2;
           ++wave_count;
