@@ -109,6 +109,8 @@ export async function createEngine(
         width: element.clientWidth,
         height: element.clientHeight,
         devicePixelRatio: Math.min(devicePixelRatio, 2),
+        // The example explicitly opts in; the renderer default remains off.
+        pathInstancing: true,
       });
       api.createCamera({ x: 0, y: 0, zoom: 1 });
       api.setAppState({
@@ -173,6 +175,16 @@ export async function createEngine(
     // Updates must use that same representation, including the new translation.
     inferXYWidthHeight(path);
     return path;
+  };
+  const updateNodes = (editor: API, nodes: SerializedNode[]) => {
+    editor.updateNodes(nodes);
+    for (const node of nodes)
+      if (node.type === 'path' && node.id.startsWith('edge-')) {
+        // A runtime rendering hint; it is not written into the document/history.
+        editor
+          .getEntity(editor.getNodeById(node.id))
+          .write(Renderable).batchable = true;
+      }
   };
   let current: Graph | undefined;
   let selected: string | undefined;
@@ -295,7 +307,7 @@ export async function createEngine(
       }
       for (let i = 0; i < nodes.length; i += 128) {
         if (disposed) return;
-        await mutate((editor) => editor.updateNodes(nodes.slice(i, i + 128)));
+        await mutate((editor) => updateNodes(editor, nodes.slice(i, i + 128)));
       }
     },
     view(view: View) {
@@ -329,7 +341,7 @@ export async function createEngine(
         ...attached.map((e) => edge(e.id, byId.get(e.from)!, byId.get(e.to)!)),
         ...(selected === node.id ? [selectionNode(node)] : []),
       ];
-      return mutate((editor) => editor.updateNodes(updates));
+      return mutate((editor) => updateNodes(editor, updates));
     },
     async dispose() {
       disposed = true;

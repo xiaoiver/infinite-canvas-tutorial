@@ -12,6 +12,7 @@ import { BatchManager } from '../../../packages/core/src/drawcalls/BatchManager'
 import { Mesh } from '../../../packages/core/src/drawcalls/Mesh';
 import { PathInstances } from '../../../packages/core/src/drawcalls/PathInstances';
 import type { Shape } from '../../../packages/core/src/shapes';
+import { StrokeBatch } from '../../../packages/core/src/drawcalls/StrokeBatch';
 // Benchmark-only native submission counters, including empty planned drawcalls and final passes.
 const nativeWork = {
   drawcalls: 0,
@@ -120,7 +121,8 @@ const canvas = await new Canvas({
   themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
 }).initialized;
 let planned = 0,
-  instances = 0;
+  instances = 0,
+  strokePages = 0;
 const flush = BatchManager.prototype.flush;
 BatchManager.prototype.flush = function (...args) {
   const r = flush.apply(this, args);
@@ -132,6 +134,11 @@ PathInstances.prototype.render = function (...args) {
   instances++;
   return render.apply(this, args);
 };
+const strokeRender = StrokeBatch.prototype.render;
+StrokeBatch.prototype.render = function (...args) {
+  strokePages++;
+  return strokeRender.apply(this, args);
+};
 let shapes: Shape[] = [];
 let group = new Group();
 canvas.appendChild(group);
@@ -139,6 +146,7 @@ function frame() {
   resetNativeWork();
   window.vertexUploads?.reset();
   instances = 0;
+  strokePages = 0;
   canvas.render();
 }
 const api = {
@@ -153,6 +161,7 @@ const api = {
       ),
       planned,
       instances,
+      strokePages,
       native: { ...nativeWork },
       resources: window.lifecycleProbes?.resources(),
       document: shapes.map((s) => serializeNode(s)),
@@ -182,6 +191,39 @@ const api = {
     canvas.camera.zoom = 0.75;
     canvas.camera.x = 0;
     canvas.camera.y = 0;
+    frame();
+  },
+  strokes(count = 300, overlap = false, barrier = false) {
+    this.seed(0);
+    for (let i = 0; i < count; i++) {
+      const p = new Path({
+        d: `M0 15 C${5 + (i % 4)} -10 22 40 30 15`,
+        fill: 'none',
+        stroke: '#2563eb',
+        strokeWidth: 3,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        opacity: 0.65,
+        batchable: true,
+      });
+      p.position.set(
+        overlap ? 100 + i * 3 : 20 + (i % 20) * 40,
+        overlap ? 100 + i * 2 : 20 + Math.floor(i / 20) * 35,
+      );
+      group.appendChild(p);
+      shapes.push(p);
+      if (i === 0 && barrier)
+        group.appendChild(
+          new Rect({
+            x: 105,
+            y: 110,
+            width: 35,
+            height: 15,
+            fill: '#facc15',
+            opacity: 0.5,
+          }),
+        );
+    }
     frame();
   },
   scene(barrier = false, holes = false) {
@@ -309,6 +351,34 @@ const api = {
     } finally {
       Mesh.prototype.render = original;
     }
+  },
+  async benchmarkStrokes(count: number, enabled: boolean) {
+    this.strokes(count);
+    this.enable(enabled);
+    const zoom = Math.min(0.75, 600 / (Math.ceil(count / 20) * 35 + 40));
+    this.camera(0, zoom);
+    for (let i = 0; i < 10; i++) {
+      this.camera((i % 2) * 0.2);
+      await new Promise(requestAnimationFrame);
+    }
+    const samples: number[] = [];
+    for (let i = 0; i < 30; i++) {
+      const start = performance.now();
+      this.camera((i % 2) * 0.2);
+      samples.push(performance.now() - start);
+      await new Promise(requestAnimationFrame);
+    }
+    const sorted = [...samples].sort((a, b) => a - b);
+    const { document: _document, spatial: _spatial, ...state } = this.state();
+    return {
+      ...state,
+      count,
+      samples,
+      p50: sorted[15],
+      p95: sorted[28],
+      zoom,
+      dpr,
+    };
   },
   async benchmark(count: number, enabled: boolean, variants: number) {
     this.seed(count, variants);

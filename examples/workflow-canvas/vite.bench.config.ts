@@ -7,8 +7,11 @@ export default mergeConfig(
     plugins: [
       {
         name: 'workflow-benchmark-entry',
-        transformIndexHtml(html) {
-          return html.replace('src="./main.ts"', 'src="./benchmark-entry.ts"');
+        transformIndexHtml: {
+          order: 'pre',
+          handler(html) {
+            return html.replace('src="./main.ts"', 'src="./benchmark-entry.ts"');
+          },
         },
       },
     ],

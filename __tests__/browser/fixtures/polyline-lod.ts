@@ -14,6 +14,7 @@ import {
   Renderable,
   Polyline,
   GeometryDirty,
+  GlobalTransform,
   Editable,
   Path,
   Children,
@@ -182,6 +183,30 @@ const harness = {
         .map((n) => api.getNodeByEntity(n.entity)?.id)
         .filter(Boolean),
     ),
+  pathPoint(id = 'line') {
+    const node = api.getNodeById(id),
+      entity = api.getEntity(node);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.style.cssText = 'position:absolute;width:0;height:0;visibility:hidden';
+    const path = document.createElementNS(
+      svg.namespaceURI,
+      'path',
+    ) as SVGPathElement;
+    path.setAttribute('d', entity.read(Path).d);
+    svg.append(path);
+    document.body.append(svg);
+    const local = path.getPointAtLength(path.getTotalLength() / 2);
+    svg.remove();
+    const { matrix: m } = entity.read(GlobalTransform);
+    const world = {
+      x: m.m00 * local.x + m.m10 * local.y + m.m20,
+      y: m.m01 * local.x + m.m11 * local.y + m.m21,
+    };
+    return {
+      viewport: api.canvas2Viewport(world),
+      hits: api.elementsFromPoint(world).map((e) => api.getNodeByEntity(e)?.id),
+    };
+  },
   interaction: () => ({
     selected: api.getEntity(api.getNodeById('line')).has(Selected),
     highlighted: api.getEntity(api.getNodeById('line')).has(Highlighted),
@@ -394,6 +419,8 @@ const harness = {
       builds,
       visible: new Set(d.flatMap((d) => d.shapes)).size,
       drawcalls: d.length,
+      strokePages: d.filter((draw) => draw.constructor.name === 'StrokeBatch')
+        .length,
       segments: d
         .filter((d) => d instanceof SmoothPolyline)
         .map((d) => (d as SmoothPolyline).instanceCount),

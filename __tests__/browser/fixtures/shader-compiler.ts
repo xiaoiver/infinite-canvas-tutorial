@@ -8,6 +8,14 @@ import {
   preprocessProgram_GLSL,
 } from '@infinite-canvas-tutorial/device-api';
 import { vert, frag } from '../../../packages/ecs/src/shaders/mesh3d';
+import {
+  vert as coreStrokeVert,
+  frag as coreStrokeFrag,
+} from '../../../packages/core/src/shaders/polyline';
+import {
+  vert as ecsStrokeVert,
+  frag as ecsStrokeFrag,
+} from '../../../packages/ecs/src/shaders/polyline';
 
 const source = `#version 440
 void main() { gl_Position = vec4(0.0, 0.0, 0.0, 1.0); }`;
@@ -36,6 +44,34 @@ const harness = {
       glsl_compile(program.preprocessedVert, 'vertex', true),
       glsl_compile(program.preprocessedFrag, 'fragment', true),
     ];
+  },
+  async compileStrokePages() {
+    await init();
+    const defines =
+      '#define USE_STROKE_BATCH\n#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
+    return [
+      ['core', coreStrokeVert, coreStrokeFrag],
+      ['ecs', ecsStrokeVert, ecsStrokeFrag],
+    ].map(([backend, vertex, fragment]) => {
+      const program = preprocessProgram_GLSL(
+        {
+          platformString: 'WebGPU',
+          glslVersion: '#version 440',
+          explicitBindingLocations: true,
+          separateSamplerTextures: true,
+          viewportOrigin: ViewportOrigin.UPPER_LEFT,
+          clipSpaceNearZ: ClipSpaceNearZ.ZERO,
+          supportMRT: true,
+        },
+        defines + vertex,
+        defines + fragment,
+      );
+      return {
+        backend,
+        vertex: glsl_compile(program.preprocessedVert, 'vertex', true),
+        fragment: glsl_compile(program.preprocessedFrag, 'fragment', true),
+      };
+    });
   },
   async initializeDevice(path: string) {
     // Exercise compiler failure propagation without requiring a native GPU.

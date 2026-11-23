@@ -35,6 +35,9 @@ ECS.API.prototype.createCanvas = function (
   ...args: Parameters<typeof originalCanvas>
 ) {
   runtime.api = this;
+  const control = new URLSearchParams(location.search).get('strokeBatching');
+  if (control !== null)
+    args[0] = { ...args[0], pathInstancing: control !== '0' };
   return originalCanvas.apply(this, args);
 };
 const originalRun = ECS.App.prototype.run;

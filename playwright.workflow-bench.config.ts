@@ -5,7 +5,7 @@ export default defineConfig({
   testDir: './scripts',
   testMatch: 'workflow-navigation.bench.spec.ts',
   outputDir: '.test-results/workflow-bench',
-  timeout: 300000,
+  timeout: 600000,
   use: {
     ...base.use,
     baseURL: 'http://127.0.0.1:4181',

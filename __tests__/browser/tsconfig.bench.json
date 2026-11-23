@@ -2,6 +2,10 @@
   "extends": "./tsconfig.json",
   "include": [
     "./fixtures/image-sharing.ts",
+    "./fixtures/core-path-instances.ts",
+    "./stroke-batching.vite.config.ts",
+    "../../scripts/stroke-batching.bench.spec.ts",
+    "../../playwright.stroke-batching-bench.config.ts",
     "../../scripts/image-texture-sharing.bench.spec.ts",
     "../../playwright.image-texture-sharing-bench.config.ts"
   ]

@@ -15,6 +15,8 @@ export enum Location {
   VERTEX_JOINT = 5,
   VERTEX_NUM = 6,
   TRAVEL = 7,
+  // Stroke pages reject wireframe, so they can reuse its otherwise unused slot.
+  BATCH_TRANSFORM_ORDER = WireframeLocation.BARYCENTRIC,
 }
 
 export enum JointType {
@@ -53,6 +55,10 @@ layout(location = ${Location.NEXT}) in vec2 a_Next;
 layout(location = ${Location.VERTEX_JOINT}) in float a_VertexJoint;
 layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
 layout(location = ${Location.TRAVEL}) in float a_Travel;
+
+#ifdef USE_STROKE_BATCH
+layout(location = ${Location.BATCH_TRANSFORM_ORDER}) in vec3 a_BatchTransformOrder;
+#endif
 
 layout(std140) uniform ShapeUniforms {
   mat3 u_ModelMatrix;
@@ -119,6 +125,10 @@ void main() {
   mat3 model = u_ModelMatrix;
   vec4 strokeColor = u_StrokeColor;
   float zIndex = u_ZIndexStrokeWidth.x;
+#ifdef USE_STROKE_BATCH
+  model[2] = vec3(a_BatchTransformOrder.xy, 1.0);
+  zIndex = a_BatchTransformOrder.z;
+#endif
   float strokeWidth = u_ZIndexStrokeWidth.y;
   float strokeMiterlimit = u_ZIndexStrokeWidth.z;
   float strokeAlignment = u_ZIndexStrokeWidth.w;

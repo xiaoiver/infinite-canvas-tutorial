@@ -45,7 +45,7 @@ export class Canvas {
   /** Experimental full ordinary-text screen batching. Runtime only; defaults off. */
   @field({ type: Type.boolean, default: false }) declare textBatching: boolean;
 
-  /** Experimental ordered instancing for repeated solid filled Paths. Runtime only. */
+  /** Experimental ordered pages for solid Path fills and compatible strokes. Runtime only. */
   @field({ type: Type.boolean, default: false })
   declare pathInstancing: boolean;
 

@@ -62,6 +62,7 @@ import {
 } from '../utils/nodeLayerBlend';
 import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
 import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
+import { StrokeBatch } from '../drawcalls/StrokeBatch';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -175,6 +176,8 @@ export class BatchManager {
     if (this.#pathInstancing && shape.has(Path)) {
       const key = this.batchKey(shape, [PathInstances]);
       if (key !== null) return { ctors: [PathInstances], key };
+      const strokeKey = this.batchKey(shape, [StrokeBatch]);
+      if (strokeKey !== null) return { ctors: [StrokeBatch], key: strokeKey };
     }
     const ctors = getDrawcallCtors(shape, this.intent).filter((Ctor) => {
       // Not every renderer needs a geometry-specific channel check.
@@ -477,7 +480,8 @@ export class BatchManager {
     for (const drawcall of this.#drawcallsToFlush) {
       for (const shape of drawcall.shapes) {
         if (shape.has(GeometryDirty)) {
-          if (drawcall.canUpdateGeometryRows) drawcall.dirtyInstances.add(shape);
+          if (drawcall.canUpdateGeometryRows)
+            drawcall.dirtyInstances.add(shape);
           else drawcall.geometryDirty = true;
           geometry.add(shape);
         }
