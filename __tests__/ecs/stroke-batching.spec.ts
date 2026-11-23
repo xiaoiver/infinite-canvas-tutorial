@@ -125,3 +125,25 @@ it('bounds pages, retires every empty style and never revives a queued deleted p
   batch.add(nodes[0].entity);
   expect(queued(batch)[0]).not.toBe(pages[0]);
 });
+
+import { strokeReuseContract } from '../contracts/stroke-reuse';
+strokeReuseContract(
+  () => path().entity,
+  (shape, d) => {
+    shape.read(Path).d = d;
+  },
+  (device, full) =>
+    new (full ? SmoothPolyline : StrokeBatch)(
+      device,
+      null,
+      null,
+      null,
+      false,
+      0,
+      null,
+    ),
+);
+
+import { PathGeometryCache } from '../../packages/ecs/src/utils/path-rendering';
+import { strokePrecisionContextContract } from '../contracts/stroke-reuse';
+strokePrecisionContextContract(PathGeometryCache);

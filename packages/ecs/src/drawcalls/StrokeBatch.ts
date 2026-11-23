@@ -24,10 +24,32 @@ import { getEnabledFillLayers, fillLayerOpacity } from '../utils/fillLayers';
 import { getEnabledStrokeLayers } from '../utils/strokeLayers';
 import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
 
+import { PathGeometryCache } from '../utils/path-rendering';
+
+// Screen stroke pages share parsed commands and four LRU levels. Weak keys
+// retain neither devices nor removed shapes; hysteresis stays local to each page.
+const geometryCaches = new WeakMap<
+  object,
+  WeakMap<Entity, PathGeometryCache>
+>();
+
+function screenStrokeCaches(device: object) {
+  let caches = geometryCaches.get(device);
+  if (!caches) geometryCaches.set(device, (caches = new WeakMap()));
+  return caches;
+}
+
 /** Ordered, screen-only pages; never retain an empty style page. */
 export class StrokeBatch extends SmoothPolyline {
   protected maxInstances = STROKE_BATCH_PAGE_SIZE;
   #placements: number[] = [];
+  protected override createPathGeometryCache(shape: Entity) {
+    const caches = screenStrokeCaches(this.device);
+    let geometry = caches.get(shape);
+    if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
+    return geometry.fork();
+  }
+
   static override retainEmptyPage = false;
   protected override get strokeBatch() {
     return true;

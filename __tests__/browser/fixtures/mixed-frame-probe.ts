@@ -1,6 +1,9 @@
 /** Benchmark-only native work counters, scoped to one owned WebGL2 context. */
 export function mixedFrameProbe(canvas: HTMLCanvasElement) {
   const empty = () => ({
+    bufferCreates: 0,
+    bufferDeletes: 0,
+    bufferAllocations: 0,
     drawcalls: 0,
     indices: 0,
     arrayVertices: 0,
@@ -36,8 +39,10 @@ export function mixedFrameProbe(canvas: HTMLCanvasElement) {
         else delete target[name];
       });
     }
+    wrap('createBuffer', () => work.bufferCreates++);
     wrap('bindBuffer', ([target, buffer]) => bindings.set(target, buffer));
     wrap('bufferData', ([target, source, _usage, offset = 0, length]) => {
+      work.bufferAllocations++;
       const buffer = bindings.get(target);
       if (target === gl.UNIFORM_BUFFER && buffer) uniforms.add(buffer);
       if (buffer) {
@@ -66,7 +71,10 @@ export function mixedFrameProbe(canvas: HTMLCanvasElement) {
         work.uniformBytes += bytes;
       }
     });
-    wrap('deleteBuffer', ([buffer]) => storage.delete(buffer));
+    wrap('deleteBuffer', ([buffer]) => {
+      work.bufferDeletes++;
+      storage.delete(buffer);
+    });
     wrap('drawElements', ([, count]) => {
       work.drawcalls++;
       work.indices += count;

@@ -48,3 +48,18 @@ it('keys the actual uploaded color, including direct color mutations', () => {
   b.strokeRGB.r = 17;
   expect(StrokeBatch.batchKey(a)).not.toBe(StrokeBatch.batchKey(b));
 });
+
+import { SmoothPolyline } from '../../packages/core/src/drawcalls/SmoothPolyline';
+import { strokeReuseContract } from '../contracts/stroke-reuse';
+strokeReuseContract(
+  path,
+  (shape, d) => {
+    shape.d = d;
+  },
+  (device, full) =>
+    new (full ? SmoothPolyline : StrokeBatch)(device, null, null, false, 0),
+);
+
+import { PathGeometryCache } from '../../packages/core/src/utils/path-rendering';
+import { strokePrecisionContextContract } from '../contracts/stroke-reuse';
+strokePrecisionContextContract(PathGeometryCache);

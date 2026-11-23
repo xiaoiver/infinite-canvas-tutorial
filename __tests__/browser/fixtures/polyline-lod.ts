@@ -29,8 +29,18 @@ import {
 } from '@infinite-canvas-tutorial/ecs';
 import { SmoothPolyline } from '../../../packages/ecs/src/drawcalls/SmoothPolyline';
 import { settleECSFrames } from './ecs-frames';
+import { PathDrawcall } from '../../../packages/ecs/src/drawcalls/PathDrawcall';
+import { strokeReuseProbe } from './stroke-reuse-probe';
+
+const strokeCPU = strokeReuseProbe(
+  PathDrawcall.prototype,
+  SmoothPolyline.prototype,
+);
 // Benchmark-only native submission counters, including empty planned drawcalls and final passes.
 const nativeWork = {
+  bufferCreates: 0,
+  bufferDeletes: 0,
+  bufferAllocations: 0,
   drawcalls: 0,
   indices: 0,
   arrayVertices: 0,
@@ -45,6 +55,7 @@ const nativeWork = {
 const boundBuffers = new WeakMap<object, Map<number, object | null>>();
 const uniformBuffers = new WeakSet<object>();
 const resetNativeWork = () => {
+  strokeCPU.reset();
   for (const key of Object.keys(nativeWork) as (keyof typeof nativeWork)[])
     nativeWork[key] = 0;
 };
@@ -53,6 +64,16 @@ for (const prototype of [
   window.WebGL2RenderingContext?.prototype,
 ]) {
   if (!prototype) continue;
+  const create = prototype.createBuffer;
+  prototype.createBuffer = function () {
+    nativeWork.bufferCreates++;
+    return create.call(this);
+  };
+  const remove = prototype.deleteBuffer;
+  prototype.deleteBuffer = function (buffer) {
+    nativeWork.bufferDeletes++;
+    return remove.call(this, buffer);
+  };
   const bind = prototype.bindBuffer;
   prototype.bindBuffer = function (target, buffer) {
     if (target === this.ARRAY_BUFFER) nativeWork.arrayBufferBinds++;
@@ -69,6 +90,7 @@ for (const prototype of [
   };
   const allocate = prototype.bufferData;
   (prototype as any).bufferData = function (...args: any[]) {
+    nativeWork.bufferAllocations++;
     const buffer = boundBuffers.get(this)?.get(args[0]);
     if (buffer && args[0] === this.UNIFORM_BUFFER) uniformBuffers.add(buffer);
     return (allocate as any).apply(this, args);
@@ -433,6 +455,7 @@ const harness = {
         0,
       ),
       native: { ...nativeWork },
+      strokeCPU: strokeCPU.snapshot(),
       document: api.getNodes(),
       resources: window.lifecycleProbes?.resources(),
     };

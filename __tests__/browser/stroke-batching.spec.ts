@@ -163,6 +163,62 @@ for (const backend of ['core', 'ecs'] as const) {
       await enable(page, backend, false);
       expect((await state(page, backend)).strokePages).toBe(0);
     });
+    test('warm translations and precision revisits keep fixed storage and retain full-path pixels', async ({
+      page,
+    }) => {
+      await scene(page, backend, 12);
+      await enable(page, backend, true);
+      for (const x of [21, 22, 23, 20]) {
+        await page.evaluate(
+          async ({ backend, x }) => {
+            if (backend === 'core') window.corePathInstances.translate(0, x);
+            else {
+              window.polylineLOD.resetWork();
+              await window.polylineLOD.patch({ x });
+            }
+          },
+          { backend, x },
+        );
+        const changed = await state(page, backend);
+        const doc: any[] = changed.document;
+        const actualX =
+          backend === 'core'
+            ? doc[0].attributes.transform.position.x
+            : doc.find((n) => n.id === 'line').x;
+        expect(actualX).toBe(x);
+        const work = changed.native;
+        expect(work.bufferCreates).toBe(2);
+        expect(work.bufferDeletes).toBe(2);
+        expect(work.bufferAllocations).toBe(2);
+      }
+      // Revisit a precision bucket; camera-only frames need no geometry rewrite.
+      for (const zoom of [1.5, 0.75, 1.5, 0.75]) {
+        await page.evaluate(
+          async ({ backend, zoom }) => {
+            if (backend === 'core') window.corePathInstances.camera(0, zoom);
+            else {
+              window.polylineLOD.resetWork();
+              await window.polylineLOD.zoom(zoom);
+            }
+          },
+          { backend, zoom },
+        );
+      }
+      expect((await state(page, backend)).native.bufferCreates).toBe(0);
+      const on = await page.locator('canvas').screenshot();
+      await enable(page, backend, false);
+      // Give the full renderer the same precision history: coarsening has
+      // deliberate hysteresis and retains the previously refined curve.
+      for (const zoom of [1.5, 0.75, 1.5, 0.75])
+        await page.evaluate(
+          async ({ backend, zoom }) => {
+            if (backend === 'core') window.corePathInstances.camera(0, zoom);
+            else await window.polylineLOD.zoom(zoom);
+          },
+          { backend, zoom },
+        );
+      compare(await page.locator('canvas').screenshot(), on);
+    });
     test('overlap, caps, joins, painter barriers and style edits retain full-path pixels', async ({
       page,
     }) => {

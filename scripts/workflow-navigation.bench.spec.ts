@@ -29,8 +29,11 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
       output,
       JSON.stringify({ ...provenance, results }, null, 2) + '\n',
     );
-  for (const imageBatching of [false, true])
-    for (const profiled of [false, true]) {
+  // Optional focused runs retain the normal four-case default.
+  const modes = (value: string | undefined) =>
+    value === undefined ? [false, true] : value === '1' ? [true] : value === '0' ? [false] : (() => { throw new Error('Use 0 or 1 for benchmark mode filters'); })();
+  for (const imageBatching of modes(process.env.WORKFLOW_BENCH_IMAGES))
+    for (const profiled of modes(process.env.WORKFLOW_BENCH_PROFILE)) {
       const page = await browser.newPage({
         viewport: { width: 1500, height: 980 },
         deviceScaleFactor: 1,
