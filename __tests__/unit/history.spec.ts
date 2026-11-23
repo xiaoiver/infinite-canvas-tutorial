@@ -9,6 +9,7 @@ import {
   getDefaultAppState,
   AppState,
 } from '../../packages/core/src';
+import { newElementWith } from '../../packages/core/src/utils/serialize';
 
 describe('history', () => {
   it('empty', () => {
@@ -51,3 +52,22 @@ describe('history', () => {
     expect(history.redoStack.length).toBe(0);
   });
 });
+
+it.each([undefined, 0, 7, NaN])(
+  'initializes a copied document version from %s',
+  (version) => {
+    const original = {
+      uid: 8,
+      type: 'rect' as const,
+      version,
+      isDeleted: false,
+    };
+    const next = newElementWith(original, { isDeleted: true });
+    expect(next.version).toBe((version || 0) + 1);
+    expect(JSON.parse(JSON.stringify(next)).version).toBe(next.version);
+    expect(original.isDeleted).toBe(false);
+    expect(Object.is(original.version, version)).toBe(true);
+    expect(newElementWith(original, { isDeleted: false })).toBe(original);
+    expect(newElementWith(original, {}, true).version).toBe((version || 0) + 1);
+  },
+);

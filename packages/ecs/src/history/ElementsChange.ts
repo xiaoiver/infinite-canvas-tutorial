@@ -2069,7 +2069,7 @@ export const mutateElement = <TElement extends Mutable<SerializedNode>>(
 
   // Object.assign(element, updates);
 
-  element.version++;
+  element.version = (element.version || 0) + 1;
   element.versionNonce = randomInteger();
   element.updated = getUpdatedTimestamp();
 
