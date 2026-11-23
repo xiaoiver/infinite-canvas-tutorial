@@ -65,7 +65,8 @@
     "bench:glyph-atlas": "playwright test -c playwright.glyph-atlas-bench.config.ts",
     "bench:mixed-renderers": "playwright test -c playwright.mixed-renderer-bench.config.ts",
     "bench:image-batching": "playwright test -c playwright.image-batching-bench.config.ts",
-    "bench:document-versions": "playwright test -c playwright.document-versions-bench.config.ts"
+    "bench:document-versions": "playwright test -c playwright.document-versions-bench.config.ts",
+    "bench:idle-rendering": "playwright test -c playwright.idle-rendering-bench.config.ts"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",

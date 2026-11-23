@@ -1,5 +1,6 @@
 import {
   Canvas as CoreCanvas,
+  CanvasMode,
   Rect,
   Circle,
   Path,
@@ -119,7 +120,7 @@ if (backend === 'core') {
 }
 if (!probe.ready()) throw new Error('The mixed benchmark requires WebGL2.');
 
-export type MixedOperation = 'pan' | 'zoom' | 'edit';
+export type MixedOperation = 'pan' | 'zoom' | 'edit' | 'idle';
 export type MixedLayout = 'grouped' | 'interleaved';
 const points: [number, number][] = Array.from({ length: 128 }, (_, i) => [
   (i * 20) / 127,
@@ -408,7 +409,7 @@ function ecsAction(e: API, operation: MixedOperation, index: number) {
     );
 }
 async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
-  if (!['pan', 'zoom', 'edit'].includes(operation) || samples < 2 || warmup < 1)
+  if (!['pan', 'zoom', 'edit', 'idle'].includes(operation) || samples < 2 || warmup < 1)
     throw new Error('Invalid benchmark parameters');
   const phaseSamples: FramePhases[] = [];
   const times: number[] = [],
@@ -947,6 +948,10 @@ async function profile(enabled: boolean) {
   }
 }
 const harness = {
+  async handMode() {
+    if (core) core.mode = CanvasMode.HAND;
+    else await api!.edit(editor => editor.setAppState({penbarSelected: Pen.HAND}), {capture:'NEVER'});
+  },
   async resizeSolid(width: number, height: number) {
     if (nodes[0]?.type !== 'rect')
       throw new Error('Resize probe requires a leading rectangle.');

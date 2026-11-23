@@ -10,6 +10,9 @@ import type {} from '../examples/workflow-canvas/main';
 test('real workflow navigation at 2400 cards and 2400 edges', async ({
   browser,
 }) => {
+  // Baseline-only assertion override; the workload itself is unchanged.
+  const idleDraws = Number(process.env.WORKFLOW_BENCH_EXPECT_IDLE_DRAWS ?? '0');
+  if (![0, 22].includes(idleDraws)) throw new Error('Expected idle draws must be 0 or 22');
   const output =
     process.env.WORKFLOW_BENCH_OUTPUT ??
     '.test-results/workflow-navigation.json';
@@ -88,8 +91,8 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
           window.workflowBenchmark.collect(30, 5),
         );
         for (const frame of frames) {
-          expect(frame.native.drawcalls).toBe(imageBatching ? 22 : 2412);
-          expect(frame.native.indices).toBe(614406);
+          expect(frame.native.drawcalls).toBe(idleDraws ? (imageBatching ? 22 : 2412) : 0);
+          expect(frame.native.indices).toBe(idleDraws ? 614406 : 0);
         }
         const scopes = new Map<string, number>();
         for (const f of frames)
@@ -163,12 +166,21 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
           )) < 0.35
         )
           await page.locator('#zoom-in').click();
+        // UI zoom is queued into the engine. Settle it before recording drag
+        // metadata/tolerances, retaining these preparation frames separately.
+        const cameraSettlement = await page.evaluate(() =>
+          window.workflowBenchmark.collect(2, 0),
+        );
         const target = await page.evaluate(() =>
           window.workflowBenchmark.dragTarget(),
         );
         const dragStart = await page.evaluate(() =>
           window.workflowBenchmark.state(),
         );
+        expect(dragStart.view).toEqual(
+          await page.evaluate(() => window.workflowDemo.snapshot().view),
+        );
+        expect(cameraSettlement.at(-1)?.view).toEqual(dragStart.view);
         const box = (await page.locator('#canvas').boundingBox())!;
         const x = box.x + target.point.x,
           y = box.y + target.point.y;
@@ -249,6 +261,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
           imageBatching,
           profiled,
           operation: 'focused-native-pointer-drag',
+          cameraSettlement,
           target,
           start: dragStart,
           end: await page.evaluate(() => window.workflowBenchmark.state()),
