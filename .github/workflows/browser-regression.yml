@@ -39,7 +39,7 @@ jobs:
     # The matching Playwright image already contains browser binaries and OS
     # libraries. Installing them via apt on every shard can exceed job timeout
     # when the hosted runner's package mirror is slow.
-    container: mcr.microsoft.com/playwright:v1.59.1-noble
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
     timeout-minutes: 25
     strategy:
       fail-fast: false

@@ -23,10 +23,9 @@ test('browser clients, component testing and CI images use one pinned Playwright
   const manifest = JSON.parse(readFileSync('package.json', 'utf8'));
   const version = manifest.devDependencies['@playwright/test'];
   assert.match(version, /^\d+\.\d+\.\d+$/);
-  assert.equal(
-    manifest.devDependencies['@sand4rt/experimental-ct-web'],
-    version,
-  );
+  const componentVersion =
+    manifest.devDependencies['@sand4rt/experimental-ct-web'];
+  assert.match(componentVersion, /^\d+\.\d+\.\d+$/);
   assert.equal(manifest.pnpm.overrides.playwright, version);
   const componentWorkflow = load(
     readFileSync('.github/workflows/ct-web.yml', 'utf8'),
@@ -50,10 +49,26 @@ test('browser clients, component testing and CI images use one pinned Playwright
     );
     assert.deepEqual(
       entries,
-      [name + '@' + version],
+      [
+        name +
+          '@' +
+          (name === '@sand4rt/experimental-ct-web'
+            ? componentVersion
+            : version),
+      ],
       name + ' lockfile mismatch',
     );
   }
+  const componentSnapshot = Object.entries(lock.snapshots).find(([key]) =>
+    key.startsWith('@sand4rt/experimental-ct-web@' + componentVersion + '('),
+  )?.[1];
+  assert(componentSnapshot, 'component test engine snapshot is missing');
+  assert(
+    componentSnapshot.dependencies[
+      '@playwright/experimental-ct-core'
+    ].startsWith(version + '('),
+    'component testing must resolve the same Playwright engine as browser CI',
+  );
   for (const file of [
     '.github/workflows/browser-regression.yml',
     '.github/workflows/react.yml',

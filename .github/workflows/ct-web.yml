@@ -10,7 +10,7 @@ jobs:
   component-testing-webcomponents:
     name: Component Testing WebComponents
     timeout-minutes: 60
-    # Playwright 1.59.1 supports Ubuntu 24.04, not the Ubuntu 26.04 latest image.
+    # Keep component tests on the Ubuntu 24.04/Noble base used by browser CI.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
