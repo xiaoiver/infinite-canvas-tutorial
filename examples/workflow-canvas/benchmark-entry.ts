@@ -1,5 +1,7 @@
 /** Diagnostic entry only; the shipped index.html continues to import main.ts. */
 import * as ECS from '@infinite-canvas-tutorial/ecs';
+import { Store } from '../../packages/ecs/src/history/Store';
+import { Snapshot } from '../../packages/ecs/src/history/Snapshot';
 import { SmoothPolyline } from '../../packages/ecs/src/drawcalls/SmoothPolyline';
 import { PathDrawcall } from '../../packages/ecs/src/drawcalls/PathDrawcall';
 import { StrokeBatch } from '../../packages/ecs/src/drawcalls/StrokeBatch';
@@ -96,6 +98,11 @@ function profile(enabled: boolean) {
   const collector = framePhaseProbe();
   for (const [ctor, key, label] of [
     [ECS.ApplyEdits, 'execute', 'edit.apply'],
+    [ECS.API, 'updateNodes', 'edit.nodes'],
+    [ECS.API, 'record', 'edit.record'],
+    [Store, 'commit', 'history.commit'],
+    [Snapshot, 'maybeClone', 'history.snapshot'],
+    [Snapshot, 'maybeCreateElementsSnapshot', 'history.elements'],
     [ECS.ComputeCamera, 'execute', 'camera.derive'],
     [ECS.ComputeBounds, 'execute', 'bounds.derive'],
     [ECS.ViewportCulling, 'execute', 'visibility.cull'],

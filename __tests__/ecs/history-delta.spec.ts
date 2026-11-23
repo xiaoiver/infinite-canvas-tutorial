@@ -265,3 +265,43 @@ describe('document snapshots', () => {
     expect(forced.version).toBe(2);
   });
 });
+
+it('compares an unchanged node only once while cloning a different edited node', () => {
+  const first = rect({ id: 'first' });
+  const unchanged = rect({ id: 'unchanged' });
+  const baseline = Snapshot.empty().maybeClone(
+    map(first, unchanged),
+    undefined,
+  );
+  let reads = 0;
+  const observed = Object.defineProperty({ ...unchanged }, 'x', {
+    enumerable: true,
+    get: () => {
+      reads++;
+      return unchanged.x;
+    },
+  });
+  const next = baseline.maybeClone(
+    map({ ...first, x: 90 }, observed),
+    undefined,
+  );
+  expect(reads).toBe(1);
+  expect(next.elements.get('first').x).toBe(90);
+  expect(baseline.elements.get('first').x).toBe(10);
+  expect(next.elements.get('unchanged')).toBe(
+    baseline.elements.get('unchanged'),
+  );
+});
+
+it('ignores map/key ordering while retaining immutable snapshots and missing-tombstone behavior', () => {
+  const a = rect(),
+    b = rect({ id: 'b', isDeleted: true });
+  const baseline = Snapshot.empty().maybeClone(map(a, b), undefined);
+  expect(baseline.maybeClone(map({ ...b }, { ...a }), undefined)).toBe(
+    baseline,
+  );
+  const withoutTombstone = baseline.maybeClone(map(a), undefined);
+  expect(withoutTombstone).not.toBe(baseline);
+  expect(withoutTombstone.elements.get('b')).toBe(baseline.elements.get('b'));
+  expect(withoutTombstone.meta.didElementsChange).toBe(true);
+});
