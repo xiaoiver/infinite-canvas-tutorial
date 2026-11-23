@@ -128,5 +128,28 @@ test('repaints inherited group color and fill rules through theme switches, over
   expect(await pixel(225)).toEqual(background);
   await page.evaluate(() => window.blendTest.api().undo());
   expect(await pixel(225)).toEqual([0, 0, 255, 255]);
+  await page.evaluate(async () => {
+    const api = window.blendTest.api();
+    await api.edit(() => {
+      const parent = api.getNodeById('group');
+      if (parent.type !== 'g') throw new Error('Expected the group fixture');
+      api.updateNodes([
+        { ...parent, fills: [{ type: 'solid', value: 'red' }] },
+      ]);
+    });
+  });
+  expect(await pixel()).toEqual([255, 0, 0, 255]);
+  expect(await pixel(120)).toEqual([255, 0, 0, 255]);
+  expect(
+    await page.evaluate(() =>
+      Object.prototype.hasOwnProperty.call(
+        window.blendTest.api().getNodeById('child'),
+        'fills',
+      ),
+    ),
+  ).toBe(false);
+  await page.evaluate(() => window.blendTest.api().undo());
+  expect(await pixel()).toEqual([0, 0, 255, 255]);
+  expect(await pixel(120)).toEqual([0, 0, 255, 255]);
   expect(errors).toEqual([]);
 });

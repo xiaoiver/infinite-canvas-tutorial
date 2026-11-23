@@ -545,3 +545,45 @@ describe('design variable component synchronization', () => {
     expect(entity('rect').read(Stroke).width).toBe(8);
   });
 });
+
+
+it('does not resolve unrelated paint during a one-node batch edit', async () => {
+  await world.reset(api, [
+    group({ fills: solid('red') }),
+    shape(),
+    shape({ id: 'unrelated', parentId: undefined, fills: solid('green') }),
+  ]);
+  let updateReads = -1;
+  await world.edit(api, (editor) => {
+    const unrelated = editor.getNodeById('unrelated');
+    const fills = unrelated.fills;
+    let reads = 0;
+    Object.defineProperty(unrelated, 'fills', {
+      configurable: true,
+      enumerable: true,
+      get: () => {
+        reads++;
+        return fills;
+      },
+    });
+    try {
+      editor.updateNodes([{ ...editor.getNodeById('shape'), x: 18 }]);
+      updateReads = reads;
+    } finally {
+      Object.defineProperty(unrelated, 'fills', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: fills,
+      });
+    }
+  });
+  expect(updateReads).toBe(0);
+  expect(api.getNodeById('shape').x).toBe(18);
+  expect(presentation('unrelated').fills).toEqual(solid('green'));
+  await world.history(api, 'undo');
+  expect(api.getNodeById('shape').x).toBe(0);
+  await world.history(api, 'redo');
+  expect(api.getNodeById('shape').x).toBe(18);
+  expect(presentation().fills).toEqual(solid('red'));
+});

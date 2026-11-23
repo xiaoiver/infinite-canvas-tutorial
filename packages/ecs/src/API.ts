@@ -2264,7 +2264,7 @@ export class API {
     for (const id of affected) {
       for (const child of children.get(id) ?? []) affected.add(child);
     }
-    const inherited = getComputedInheritGroupWireMap(scene);
+    const inherited = getComputedInheritGroupWireMap(scene, affected);
     for (const node of scene) {
       // Newly created entities already receive computed paint during deserialization.
       // Rewriting them here also unnecessarily requires startup systems to declare
