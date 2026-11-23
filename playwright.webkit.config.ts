@@ -44,6 +44,7 @@ export default defineConfig({
     'brush.spec.ts',
     'image-fill.spec.ts',
     'image-sharing.spec.ts',
+    'image-batching.spec.ts',
     'image-decoding.spec.ts',
     'animation-export.spec.ts',
     'svg-export.spec.ts',

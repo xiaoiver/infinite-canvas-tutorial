@@ -17,6 +17,15 @@ import {
   frag as ecsStrokeFrag,
 } from '../../../packages/ecs/src/shaders/polyline';
 
+import {
+  imageBatchVert as coreImageVert,
+  imageBatchFrag as coreImageFrag,
+} from '../../../packages/core/src/shaders/image-batch';
+import {
+  imageBatchVert as ecsImageVert,
+  imageBatchFrag as ecsImageFrag,
+} from '../../../packages/ecs/src/shaders/image-batch';
+
 const source = `#version 440
 void main() { gl_Position = vec4(0.0, 0.0, 0.0, 1.0); }`;
 
@@ -52,6 +61,34 @@ const harness = {
     return [
       ['core', coreStrokeVert, coreStrokeFrag],
       ['ecs', ecsStrokeVert, ecsStrokeFrag],
+    ].map(([backend, vertex, fragment]) => {
+      const program = preprocessProgram_GLSL(
+        {
+          platformString: 'WebGPU',
+          glslVersion: '#version 440',
+          explicitBindingLocations: true,
+          separateSamplerTextures: true,
+          viewportOrigin: ViewportOrigin.UPPER_LEFT,
+          clipSpaceNearZ: ClipSpaceNearZ.ZERO,
+          supportMRT: true,
+        },
+        defines + vertex,
+        defines + fragment,
+      );
+      return {
+        backend,
+        vertex: glsl_compile(program.preprocessedVert, 'vertex', true),
+        fragment: glsl_compile(program.preprocessedFrag, 'fragment', true),
+      };
+    });
+  },
+  async compileImagePages() {
+    await init();
+    const defines =
+      '#define USE_INSTANCES\n#define USE_FILLIMAGE\nprecision highp float;\n';
+    return [
+      ['core', coreImageVert, coreImageFrag],
+      ['ecs', ecsImageVert, ecsImageFrag],
     ].map(([backend, vertex, fragment]) => {
       const program = preprocessProgram_GLSL(
         {

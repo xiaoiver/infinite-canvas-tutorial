@@ -29,7 +29,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
       output,
       JSON.stringify({ ...provenance, results }, null, 2) + '\n',
     );
-  for (const strokeBatching of [false, true])
+  for (const imageBatching of [false, true])
     for (const profiled of [false, true]) {
       const page = await browser.newPage({
         viewport: { width: 1500, height: 980 },
@@ -39,7 +39,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
       page.on('pageerror', (e) => errors.push(e.message));
       try {
         await page.addInitScript(installProbes, { resourceStacks: false });
-        await page.goto('/?strokeBatching=' + Number(strokeBatching));
+        await page.goto('/?imageBatching=' + Number(imageBatching));
         await page.waitForFunction(() => window.workflowDemo?.snapshot().ready);
         await page.locator('#scale').selectOption('2400');
         await page.waitForFunction(
@@ -67,7 +67,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
           window.workflowBenchmark.end(),
         );
         results.push({
-          strokeBatching,
+          imageBatching,
           profiled: false,
           operation: 'cold-overview-transition',
           frames: transition,
@@ -80,9 +80,14 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
         const start = await page.evaluate(() =>
           window.workflowBenchmark.state(),
         );
+        expect(start.visible.edges).toBe(2400);
         const frames = await page.evaluate(() =>
           window.workflowBenchmark.collect(30, 5),
         );
+        for (const frame of frames) {
+          expect(frame.native.drawcalls).toBe(imageBatching ? 22 : 2412);
+          expect(frame.native.indices).toBe(614406);
+        }
         const scopes = new Map<string, number>();
         for (const f of frames)
           for (const [name, v] of Object.entries(f.phases ?? {}))
@@ -91,7 +96,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
               (scopes.get(name) ?? 0) + v.exclusiveMs / frames.length,
             );
         results.push({
-          strokeBatching,
+          imageBatching,
           profiled,
           operation: 'steady-overview',
           start,
@@ -100,7 +105,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
         save();
         console.log(
           JSON.stringify({
-            strokeBatching,
+            imageBatching,
             profiled,
             operation: 'steady-overview',
             frames: frames.length,
@@ -123,7 +128,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
         });
         const tour = await page.evaluate(() => window.workflowBenchmark.end());
         results.push({
-          strokeBatching,
+          imageBatching,
           profiled,
           operation: 'time-driven-tour',
           frames: tour,
@@ -132,7 +137,7 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
         save();
         console.log(
           JSON.stringify({
-            strokeBatching,
+            imageBatching,
             profiled,
             operation: 'time-driven-tour',
             frames: tour.length,
@@ -144,6 +149,128 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
               tour.map((f) => f.elapsed),
               0.95,
             ),
+          }),
+        );
+        // A reproducible native-pointer drag at a readable zoom in a 2400-node
+        // document. Report actual visibility separately from the all-visible overview.
+        await page.locator('#overview').click();
+        while (
+          (await page.evaluate(
+            () => window.workflowDemo.snapshot().view.zoom,
+          )) < 0.35
+        )
+          await page.locator('#zoom-in').click();
+        const target = await page.evaluate(() =>
+          window.workflowBenchmark.dragTarget(),
+        );
+        const dragStart = await page.evaluate(() =>
+          window.workflowBenchmark.state(),
+        );
+        const box = (await page.locator('#canvas').boundingBox())!;
+        const x = box.x + target.point.x,
+          y = box.y + target.point.y;
+        await page.evaluate(() => window.workflowBenchmark.begin());
+        await page.mouse.move(x, y);
+        await page.mouse.down();
+        for (const direction of [1, -1]) {
+          for (let step = 1; step <= 10; step++) {
+            const progress = direction === 1 ? step : 10 - step;
+            await page.mouse.move(x + progress * 6, y + progress * 2);
+          }
+          if (direction === 1)
+            await expect
+              .poll(async () => {
+                const p = await page.evaluate(
+                  (id) => window.workflowBenchmark.nodePosition(id),
+                  target.id,
+                );
+                return (p.x - target.x) * dragStart.view.zoom;
+              })
+              .toBeGreaterThan(30);
+        }
+        await page.mouse.up();
+        await expect
+          .poll(() =>
+            page.evaluate(() => window.workflowDemo.snapshot().selected),
+          )
+          .toBe(target.id);
+        await expect
+          .poll(async () => {
+            const p = await page.evaluate(
+              (id) => window.workflowBenchmark.nodePosition(id),
+              target.id,
+            );
+            return (
+              Math.max(Math.abs(p.x - target.x), Math.abs(p.y - target.y)) *
+              dragStart.view.zoom
+            );
+          })
+          .toBeLessThan(5);
+        const dragFrames = await page.evaluate(() =>
+          window.workflowBenchmark.end(),
+        );
+        const finalPosition = await page.evaluate(
+          (id) => window.workflowBenchmark.nodePosition(id),
+          target.id,
+        );
+        expect(Math.abs(finalPosition.x - target.x)).toBeLessThan(
+          5 / dragStart.view.zoom,
+        );
+        expect(Math.abs(finalPosition.y - target.y)).toBeLessThan(
+          5 / dragStart.view.zoom,
+        );
+        const connectionError = await page.evaluate(
+          (id) =>
+            Math.max(
+              0,
+              ...window.workflowDemo
+                .connections()
+                .filter((c) => c.fromId === id || c.toId === id)
+                .map((c) =>
+                  Math.max(
+                    Math.hypot(
+                      c.start.x - c.sourcePort.x,
+                      c.start.y - c.sourcePort.y,
+                    ),
+                    Math.hypot(
+                      c.end.x - c.targetPort.x,
+                      c.end.y - c.targetPort.y,
+                    ),
+                  ),
+                ),
+            ),
+          target.id,
+        );
+        expect(connectionError).toBeLessThan(0.05);
+        const drag = {
+          imageBatching,
+          profiled,
+          operation: 'focused-native-pointer-drag',
+          target,
+          start: dragStart,
+          end: await page.evaluate(() => window.workflowBenchmark.state()),
+          finalPosition,
+          connectionError,
+          frames: dragFrames,
+        };
+        results.push(drag);
+        save();
+        console.log(
+          JSON.stringify({
+            imageBatching,
+            profiled,
+            operation: drag.operation,
+            actualVisible: dragStart.visible,
+            frames: dragFrames.length,
+            p50: percentile(
+              dragFrames.map((f) => f.elapsed),
+              0.5,
+            ),
+            p95: percentile(
+              dragFrames.map((f) => f.elapsed),
+              0.95,
+            ),
+            connectionError,
           }),
         );
         expect(

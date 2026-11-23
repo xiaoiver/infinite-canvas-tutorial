@@ -63,6 +63,8 @@ import {
 import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
 import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 import { StrokeBatch } from '../drawcalls/StrokeBatch';
+import { ImageBatch } from '../drawcalls/ImageBatch';
+import { invalidateImageRectTexture } from '../utils/image-batching';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -140,6 +142,7 @@ export class BatchManager {
   #dirty = false;
   #pathInstancing = false;
   #textBatching = false;
+  #imageBatching = false;
   #changed = new Set<Entity>();
   #ordered = false;
   #hideUIs = false;
@@ -161,6 +164,14 @@ export class BatchManager {
     }
   }
 
+  setImageBatchingEnabled(enabled: boolean) {
+    enabled = enabled && this.intent === 'screen';
+    if (enabled !== this.#imageBatching) {
+      this.#imageBatching = enabled;
+      this.#dirty = true;
+    }
+  }
+
   setPathInstancingEnabled(enabled: boolean) {
     enabled = enabled && this.intent === 'screen';
     if (enabled !== this.#pathInstancing) {
@@ -173,6 +184,10 @@ export class BatchManager {
     ctors: (typeof Drawcall)[];
     key: string | null;
   } {
+    if (this.#imageBatching) {
+      const key = this.batchKey(shape, [ImageBatch]);
+      if (key !== null) return { ctors: [ImageBatch], key };
+    }
     if (this.#pathInstancing && shape.has(Path)) {
       const key = this.batchKey(shape, [PathInstances]);
       if (key !== null) return { ctors: [PathInstances], key };
@@ -268,6 +283,9 @@ export class BatchManager {
 
   /** Mark an item for reassignment, including same-constructor material edits. */
   add(shape: Entity, drawcalls?: Drawcall[]) {
+    // Track material edits even while batching is disabled, so a later toggle
+    // cannot reuse raster options from an earlier document state.
+    if (shape.has(MaterialDirty)) invalidateImageRectTexture(shape);
     if (shouldSuppress2DShapeRender(shape)) {
       this.remove(shape);
       return;
@@ -338,6 +356,8 @@ export class BatchManager {
       if (
         key !== null &&
         previous?.key === key &&
+        (ctors[0] !== ImageBatch ||
+          ImageBatch.canAppend(previous.shapes, shape, this.api)) &&
         previous.instances + instances <=
           (previous.calls[0].instanceCapacity ?? Infinity)
       ) {

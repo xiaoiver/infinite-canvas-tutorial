@@ -105,6 +105,8 @@ export interface CanvasConfig {
   }>;
   /** Experimental ordered pages for solid Path fills and compatible strokes; defaults off. */
   pathInstancing?: boolean;
+  /** Experimental ordered immutable image rectangles; defaults off. */
+  imageBatching?: boolean;
   /** Experimental ordered ordinary-text geometry batching; defaults off. */
   textBatching?: boolean;
   plugins?: Partial<{
@@ -157,6 +159,7 @@ export class Canvas {
       canvas,
       renderer = 'webgl',
       pathInstancing = false,
+      imageBatching = false,
       textBatching = false,
       shaderCompilerPath = '',
       devicePixelRatio,
@@ -198,6 +201,7 @@ export class Canvas {
       renderer,
       shaderCompilerPath,
       pathInstancing,
+      imageBatching,
       textBatching,
       devicePixelRatio: dpr,
       themeColors,
@@ -394,7 +398,12 @@ export class Canvas {
         this.render();
       });
     } finally {
-      if (!options.grid || this.pathInstancing || this.textBatching) {
+      if (
+        !options.grid ||
+        this.pathInstancing ||
+        this.textBatching ||
+        this.imageBatching
+      ) {
         this.#renderDirtyFlag = true;
         this.render();
       }
@@ -417,6 +426,16 @@ export class Canvas {
   set textBatching(enabled: boolean) {
     if (this.textBatching !== enabled) {
       this.#pluginContext.textBatching = enabled;
+      this.#renderDirtyFlag = true;
+    }
+  }
+
+  get imageBatching() {
+    return this.#pluginContext.imageBatching ?? false;
+  }
+  set imageBatching(enabled: boolean) {
+    if (this.imageBatching !== enabled) {
+      this.#pluginContext.imageBatching = enabled;
       this.#renderDirtyFlag = true;
     }
   }

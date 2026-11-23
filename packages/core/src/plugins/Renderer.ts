@@ -255,9 +255,14 @@ export class Renderer implements Plugin {
       );
 
       this.#batchManager.clear(
-        !!(context.pathInstancing || context.textBatching),
+        !!(
+          context.pathInstancing ||
+          context.textBatching ||
+          (!this.#enableCapture && context.imageBatching)
+        ),
         !this.#enableCapture && !!context.pathInstancing,
         !this.#enableCapture && !!context.textBatching,
+        !this.#enableCapture && !!context.imageBatching,
       );
       this.#zIndexCounter = 1;
     });
