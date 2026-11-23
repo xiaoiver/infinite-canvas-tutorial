@@ -53,9 +53,11 @@ export function mergeInheritGroupWire(
 /**
  * 对 `scene` 中每个 id 求「沿仅含 `g` 作为继承源」合并后的与 {@link INHERITABLE_GROUP_WIRE_KEYS} 一致的线框展示。
  * `scene` 应包含到根为止的父链（例如 API 的 mergeSceneWithBatch）。
+ * `requestedIds` 仅限制输出与样式计算；祖先仍从完整 scene 解析，默认计算全部节点。
  */
 export function getComputedInheritGroupWireMap(
   scene: SerializedNode[],
+  requestedIds?: ReadonlySet<string>,
 ): Map<string, Record<string, unknown>> {
   const idToNode = new Map<string, SerializedNode>();
   for (const n of scene) {
@@ -126,7 +128,7 @@ export function getComputedInheritGroupWireMap(
   };
 
   for (const n of scene) {
-    compute(n.id);
+    if (!requestedIds || requestedIds.has(n.id)) compute(n.id);
   }
   return memo;
 }
@@ -139,5 +141,5 @@ export function getComputedInheritGroupWireForId(
   id: string,
   scene: SerializedNode[],
 ): Record<string, unknown> {
-  return getComputedInheritGroupWireMap(scene).get(id) ?? {};
+  return getComputedInheritGroupWireMap(scene, new Set([id])).get(id) ?? {};
 }
