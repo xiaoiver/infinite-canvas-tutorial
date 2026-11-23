@@ -22,6 +22,7 @@ import { InstanceBuffer } from '../utils/instance-buffer';
 import { imageBatchVert, imageBatchFrag } from '../shaders/image-batch';
 import {
   IMAGE_BATCH_SIZE,
+  ImageBatchTextures,
   IMAGE_BATCH_TEXTURES,
   IMAGE_BATCH_STRIDE,
   eligibleImageRect,
@@ -49,7 +50,7 @@ export class ImageBatch extends Drawcall {
   #instances?: InstanceBuffer;
   #rows: number[][] = [];
   #textures: { token: string; acquire(): ImageTextureLease<Texture> }[] = [];
-  #leases: ImageTextureLease<Texture>[] = [];
+  #images = new ImageBatchTextures<Texture>();
   #tokens: string[] = [];
 
   constructor(...args: ConstructorParameters<typeof Drawcall>) {
@@ -196,10 +197,7 @@ export class ImageBatch extends Drawcall {
     // Private bindings must retire before their pooled textures can be released.
     this.bindings?.destroy();
     this.bindings = undefined;
-    this.#releaseTextures();
-    try {
-      for (const texture of this.#textures)
-        this.#leases.push(texture.acquire());
+    this.#images.sync(this.#textures, (leases) => {
       this.createProgram(
         imageBatchVert,
         imageBatchFrag,
@@ -260,15 +258,12 @@ export class ImageBatch extends Drawcall {
         samplerBindings: Array.from(
           { length: IMAGE_BATCH_TEXTURES },
           (_, i) => ({
-            texture: (this.#leases[i] ?? this.#leases[0]).texture,
+            texture: (leases[i] ?? leases[0]).texture,
             sampler,
           }),
         ),
       });
-    } catch (error) {
-      this.#releaseTextures();
-      throw error;
-    }
+    });
   }
   render(
     renderPass: RenderPass,
@@ -289,15 +284,11 @@ export class ImageBatch extends Drawcall {
     renderPass.drawIndexed(6, this.shapes.length);
     this.dirtyInstances.clear();
   }
-  #releaseTextures() {
-    this.#leases.forEach((lease) => lease.release());
-    this.#leases = [];
-  }
   override destroy() {
     if (this.destroyed) return;
     this.bindings?.destroy();
     this.bindings = undefined;
-    this.#releaseTextures();
+    this.#images.dispose();
     this.#instances?.dispose();
     if (!this.program) {
       this.indexBuffer?.destroy();

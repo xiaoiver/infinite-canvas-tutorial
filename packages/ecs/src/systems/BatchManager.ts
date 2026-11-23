@@ -64,6 +64,7 @@ import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
 import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 import { StrokeBatch } from '../drawcalls/StrokeBatch';
 import { ImageBatch } from '../drawcalls/ImageBatch';
+import { invalidateImageRectTexture } from '../utils/image-batching';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -282,6 +283,9 @@ export class BatchManager {
 
   /** Mark an item for reassignment, including same-constructor material edits. */
   add(shape: Entity, drawcalls?: Drawcall[]) {
+    // Track material edits even while batching is disabled, so a later toggle
+    // cannot reuse raster options from an earlier document state.
+    if (shape.has(MaterialDirty)) invalidateImageRectTexture(shape);
     if (shouldSuppress2DShapeRender(shape)) {
       this.remove(shape);
       return;

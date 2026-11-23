@@ -1,4 +1,11 @@
 interface Packing {
+  ImageBatchTextures: new () => {
+    sync(
+      requests: readonly any[],
+      bind: (leases: readonly any[]) => void,
+    ): void;
+    dispose(): void;
+  };
   IMAGE_BATCH_STRIDE: number;
   imageBatchToken(source: object, variant: string): string;
   imageBatchRow(
@@ -72,4 +79,62 @@ export function imageBatchContract(pack: Packing) {
       );
     },
   );
+  it('retains live texture leases on reorder and releases only removed variants', () => {
+    const a = { texture: { id: 'a' }, release: jest.fn() },
+      b = { texture: { id: 'b' }, release: jest.fn() };
+    const ra = { token: 'a', acquire: jest.fn(() => a) },
+      rb = { token: 'b', acquire: jest.fn(() => b) };
+    const page = new pack.ImageBatchTextures(),
+      bindings: any[][] = [];
+    page.sync([ra, rb], (leases) => bindings.push([...leases]));
+    page.sync([rb, ra], (leases) => bindings.push([...leases]));
+    expect(bindings[1]).toEqual([b, a]);
+    expect(ra.acquire).toHaveBeenCalledTimes(1);
+    expect(rb.acquire).toHaveBeenCalledTimes(1);
+    expect(a.release).not.toHaveBeenCalled();
+    expect(b.release).not.toHaveBeenCalled();
+    page.sync([ra], () => {});
+    expect(b.release).toHaveBeenCalledTimes(1);
+    page.dispose();
+    page.dispose();
+    expect(a.release).toHaveBeenCalledTimes(1);
+    expect(b.release).toHaveBeenCalledTimes(1);
+  });
+  it('rolls back new leases while preserving the prior live set on failure', () => {
+    const a = { texture: { id: 'a' }, release: jest.fn() },
+      b = { texture: { id: 'b' }, release: jest.fn() },
+      c = { texture: { id: 'c' }, release: jest.fn() };
+    const ra = { token: 'a', acquire: () => a },
+      rb = { token: 'b', acquire: () => b };
+    const page = new pack.ImageBatchTextures();
+    page.sync([ra, rb], () => {});
+    expect(() =>
+      page.sync(
+        [
+          rb,
+          { token: 'c', acquire: () => c },
+          {
+            token: 'fail',
+            acquire: () => {
+              throw new Error('upload failed');
+            },
+          },
+        ],
+        () => {},
+      ),
+    ).toThrow('upload failed');
+    expect(c.release).toHaveBeenCalledTimes(1);
+    expect(a.release).not.toHaveBeenCalled();
+    expect(b.release).not.toHaveBeenCalled();
+    expect(() =>
+      page.sync([rb, { token: 'c', acquire: () => c }], () => {
+        throw new Error('binding failed');
+      }),
+    ).toThrow('binding failed');
+    expect(a.release).not.toHaveBeenCalled();
+    expect(b.release).not.toHaveBeenCalled();
+    page.dispose();
+    expect(a.release).toHaveBeenCalledTimes(1);
+    expect(b.release).toHaveBeenCalledTimes(1);
+  });
 }

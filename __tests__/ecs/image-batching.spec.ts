@@ -10,6 +10,7 @@ import {
   Children,
   Stroke,
   Opacity,
+  MaterialDirty,
 } from '../../packages/ecs/src';
 import { BatchManager } from '../../packages/ecs/src/systems/BatchManager';
 import { ImageBatch } from '../../packages/ecs/src/drawcalls/ImageBatch';
@@ -141,4 +142,22 @@ it('releases earlier texture leases when a later page upload fails', () => {
   expect((page as any).vertexBufferDatas).toEqual([]);
   expect(release).toHaveBeenCalledTimes(1);
   mock.mockRestore();
+});
+
+it('reuses raster descriptions on visibility plans and invalidates them on material edits', () => {
+  const r = rect(),
+    lookup = jest.fn(() => undefined),
+    editor = { getNodeByEntity: lookup } as unknown as API;
+  const first = packing.imageRectTexture(r.entity, editor);
+  expect(packing.imageRectTexture(r.entity, editor)).toBe(first);
+  expect(lookup).toHaveBeenCalledTimes(1);
+  const b = manager();
+  // Invalidation must also work while the runtime option is off.
+  r.data.set(MaterialDirty, {});
+  b.add(r.entity);
+  expect(packing.imageRectTexture(r.entity, editor)).not.toBe(first);
+  expect(lookup).toHaveBeenCalledTimes(2);
+  r.data.get(Rect).width = 48;
+  packing.imageRectTexture(r.entity, editor);
+  expect(lookup).toHaveBeenCalledTimes(3);
 });

@@ -267,4 +267,20 @@ for (const backend of ['core', 'ecs'] as const)
         equivalent(await pixels(page), full);
       }
     });
+    test('full and batched peers can share a source across multiple sampler pages', async ({
+      page,
+    }) => {
+      await page.evaluate(() => window.imageSharing.configure(18, true, 9));
+      await page.evaluate(() =>
+        window.imageSharing.style(0, { cornerRadius: 5 }),
+      );
+      const full = await pixels(page);
+      await page.evaluate(() => window.imageSharing.batching(true));
+      equivalent(await pixels(page), full);
+      await page.evaluate(() => window.imageSharing.view(0.25));
+      await page.evaluate(() => window.imageSharing.batching(false));
+      const moved = await pixels(page);
+      await page.evaluate(() => window.imageSharing.batching(true));
+      equivalent(await pixels(page), moved);
+    });
   });

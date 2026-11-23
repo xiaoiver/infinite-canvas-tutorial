@@ -1,5 +1,5 @@
 import { Rect, type Shape } from '../shapes';
-import { isImmutableImage } from './image-texture-pool';
+import { isImmutableImage, type ImageTextureLease } from './image-texture-pool';
 
 export function eligibleImageRect(shape: Shape) {
   if (
@@ -103,4 +103,39 @@ export function imagePageAccepts<T>(
     shapes.length < IMAGE_BATCH_SIZE &&
     (page.slots.has(token(next)) || page.slots.size < IMAGE_BATCH_TEXTURES)
   );
+}
+
+/** Retain live variants across page reorders; publish only a complete binding. */
+export class ImageBatchTextures<T> {
+  private held = new Map<string, ImageTextureLease<T>>();
+  sync(
+    requests: readonly { token: string; acquire(): ImageTextureLease<T> }[],
+    bind: (leases: readonly ImageTextureLease<T>[]) => void,
+  ) {
+    const next = new Map<string, ImageTextureLease<T>>();
+    const acquired: ImageTextureLease<T>[] = [];
+    const ordered: ImageTextureLease<T>[] = [];
+    try {
+      for (const request of requests) {
+        let lease = next.get(request.token) ?? this.held.get(request.token);
+        if (!lease) {
+          lease = request.acquire();
+          acquired.push(lease);
+        }
+        next.set(request.token, lease);
+        ordered.push(lease);
+      }
+      bind(ordered);
+    } catch (error) {
+      acquired.forEach((lease) => lease.release());
+      throw error;
+    }
+    for (const [token, lease] of this.held)
+      if (!next.has(token)) lease.release();
+    this.held = next;
+  }
+  dispose() {
+    this.held.forEach((lease) => lease.release());
+    this.held.clear();
+  }
 }
