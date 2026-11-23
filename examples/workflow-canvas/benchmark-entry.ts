@@ -38,6 +38,11 @@ ECS.API.prototype.createCanvas = function (
   const control = new URLSearchParams(location.search).get('strokeBatching');
   if (control !== null)
     args[0] = { ...args[0], pathInstancing: control !== '0' };
+  const imageControl = new URLSearchParams(location.search).get(
+    'imageBatching',
+  );
+  if (imageControl !== null)
+    args[0] = { ...args[0], imageBatching: imageControl !== '0' };
   return originalCanvas.apply(this, args);
 };
 const originalRun = ECS.App.prototype.run;
@@ -149,6 +154,49 @@ async function end() {
   }
 }
 const harness = {
+  dragTarget() {
+    const candidates = runtime
+      .api!.getNodes()
+      .filter(
+        (n) =>
+          n.id.startsWith('node-') &&
+          !runtime.api!.getEntity(n).has(ECS.Culled),
+      )
+      .map((n) => {
+        const rect = n as ECS.RectSerializedNode;
+        const point = runtime.api!.canvas2Viewport({
+          x: rect.x + rect.width / 2,
+          y: rect.y + rect.height / 2,
+        });
+        return { id: n.id, x: rect.x, y: rect.y, point };
+      })
+      .filter(
+        (n) =>
+          n.point.x > 100 &&
+          n.point.x < canvas.clientWidth - 100 &&
+          n.point.y > 260 &&
+          n.point.y < canvas.clientHeight - 100,
+      );
+    candidates.sort(
+      (a, b) =>
+        Math.hypot(
+          a.point.x - canvas.clientWidth / 2,
+          a.point.y - canvas.clientHeight / 2,
+        ) -
+        Math.hypot(
+          b.point.x - canvas.clientWidth / 2,
+          b.point.y - canvas.clientHeight / 2,
+        ),
+    );
+    if (!candidates.length)
+      throw new Error('No unobscured visible drag target');
+    return candidates[0];
+  },
+  nodePosition(id: string) {
+    const n = runtime.api!.getNodeById(id) as ECS.RectSerializedNode;
+    return { x: n.x, y: n.y };
+  },
+
   state,
   profile,
   begin,

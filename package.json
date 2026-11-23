@@ -62,7 +62,8 @@
     "bench:text-batching": "playwright test -c playwright.text-batching-bench.config.ts",
     "bench:glyph-sharing": "playwright test -c playwright.glyph-sharing-bench.config.ts",
     "bench:glyph-atlas": "playwright test -c playwright.glyph-atlas-bench.config.ts",
-    "bench:mixed-renderers": "playwright test -c playwright.mixed-renderer-bench.config.ts"
+    "bench:mixed-renderers": "playwright test -c playwright.mixed-renderer-bench.config.ts",
+    "bench:image-batching": "playwright test -c playwright.image-batching-bench.config.ts"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",

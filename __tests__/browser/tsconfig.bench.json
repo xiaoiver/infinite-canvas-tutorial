@@ -7,6 +7,8 @@
     "../../scripts/stroke-batching.bench.spec.ts",
     "../../playwright.stroke-batching-bench.config.ts",
     "../../scripts/image-texture-sharing.bench.spec.ts",
-    "../../playwright.image-texture-sharing-bench.config.ts"
+    "../../playwright.image-texture-sharing-bench.config.ts",
+    "../../scripts/image-batching.bench.spec.ts",
+    "../../playwright.image-batching-bench.config.ts"
   ]
 }

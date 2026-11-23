@@ -168,7 +168,12 @@ void main() {
 }
 `;
 
-export const frag = /* wgsl */ `
+// Keep inactive sampler declarations out of the binding preprocessor.
+export function createSdfFragment(
+  imageSamplers = '  uniform sampler2D u_Texture;',
+  imageSample = '    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);',
+) {
+  return /* wgsl */ `
 precision highp float;
 #define SHIFT_RIGHT23 1.0 / 8388608.0
 #define SHIFT_LEFT23 8388608.0
@@ -218,7 +223,7 @@ in vec2 v_Radius;
 
 #ifdef USE_FILLIMAGE
   in vec2 v_Uv;
-  uniform sampler2D u_Texture;
+${imageSamplers}
 #endif
 
 float epsilon = 0.000001;
@@ -322,7 +327,7 @@ void main() {
   #endif
 
   #ifdef USE_FILLIMAGE
-    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+${imageSample}
   #endif
 
   float compressed = shapeSizeAttenuation;
@@ -386,3 +391,5 @@ void main() {
     discard;
 }
 `;
+}
+export const frag = createSdfFragment();

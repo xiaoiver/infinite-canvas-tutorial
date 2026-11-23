@@ -1082,6 +1082,13 @@ export class API {
     });
   }
 
+  /** Experimental screen-only immutable image rectangles; defaults off. */
+  setImageBatchingEnabled(enabled: boolean) {
+    this.runAtNextTick(() => {
+      this.#canvas.write(Canvas).imageBatching = enabled;
+    });
+  }
+
   getCanvas() {
     return this.#canvas;
   }

@@ -18,6 +18,7 @@ import { settleECSFrames } from './ecs-frames';
 import { setFillLayerDecodedBitmapForUrl } from '../../../packages/ecs/src/utils/fill-layer-image-url-raster';
 
 const backend = new URLSearchParams(location.search).get('backend') ?? 'core';
+const batchingFixture = new URLSearchParams(location.search).has('batching');
 const privateImages = new URLSearchParams(location.search).has('private');
 const restore: (() => void)[] = [];
 const originalAcquires = [
@@ -52,10 +53,17 @@ const probe = mixedFrameProbe(canvas);
 const sources: HTMLCanvasElement[] = [],
   bitmaps: ImageBitmap[] = [],
   urls: string[] = [];
-for (const colors of [
+const palette = [
   ['#d62950', '#fff'],
   ['#239a5e', '#67b8e8'],
-]) {
+];
+if (batchingFixture)
+  for (let i = 2; i < 9; i++)
+    palette.push([
+      'hsl(' + i * 39 + ' 75% 42%)',
+      'hsl(' + i * 27 + ' 55% 75%)',
+    ]);
+for (const colors of palette) {
   const source = document.createElement('canvas');
   source.width = 64;
   source.height = 48;
@@ -96,6 +104,8 @@ let originalWorldExecute: unknown;
 let external: any,
   externalDestroyed = 0;
 let disposed = false;
+let pipeline: ECS.MeshPipeline;
+let migration: { primary: ECS.Entity; secondary: ECS.Entity } | undefined;
 let baseline: ReturnType<typeof window.lifecycleProbes.resources> = [];
 if (backend === 'core') {
   const create = WebGLDeviceContribution.prototype.createSwapChain;
@@ -107,6 +117,8 @@ if (backend === 'core') {
   try {
     core = await new CoreCanvas({
       canvas,
+      // Keep the paired control ordered without enabling image batching.
+      pathInstancing: batchingFixture,
       devicePixelRatio: 1,
       checkboardStyle: CheckboardStyle.NONE,
       themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
@@ -115,6 +127,12 @@ if (backend === 'core') {
     WebGLDeviceContribution.prototype.createSwapChain = create;
   }
 } else {
+  class ProbeImages extends ECS.System {
+    pipeline = this.attach(ECS.MeshPipeline);
+    initialize() {
+      pipeline = this.pipeline;
+    }
+  }
   class Bootstrap extends ECS.System {
     access = this.query((q) => q.usingAll.write);
     initialize() {
@@ -130,6 +148,7 @@ if (backend === 'core') {
       });
       api.createCamera({ zoom: 1 });
       api.setAppState({
+        penbarSelected: ECS.Pen.SELECT,
         checkboardStyle: ECS.CheckboardStyle.NONE,
         theme: {
           mode: ECS.ThemeMode.LIGHT,
@@ -142,6 +161,7 @@ if (backend === 'core') {
     ...ECS.DefaultPlugins,
     () => {
       ECS.system(ECS.PreStartUp)(Bootstrap);
+      ECS.system((s) => s.inAnyOrderWith(s.allSystems))(ProbeImages);
       ECS.system((s) => s.inAnyOrderWith(s.allSystems))(Bootstrap);
     },
   );
@@ -179,7 +199,7 @@ function state() {
     webglError: probe.webglError(),
   };
 }
-async function configure(count = 12, batchable = false) {
+async function configure(count = 12, batchable = false, variants = 2) {
   if (core) {
     for (const s of shapes.values()) core.removeChild(s);
     shapes.clear();
@@ -197,7 +217,7 @@ async function configure(count = 12, batchable = false) {
         width: 24,
         height: 22,
         zIndex: i,
-        fills: [{ type: 'image' as const, value: urls[i % 2] }],
+        fills: [{ type: 'image' as const, value: urls[i % variants] }],
       };
     });
     if (core)
@@ -207,7 +227,7 @@ async function configure(count = 12, batchable = false) {
           y: n.y,
           width: n.width,
           height: n.height,
-          fill: bitmaps[(start + j) % 2],
+          fill: bitmaps[(start + j) % variants],
           stroke: 'none',
           batchable,
         });
@@ -480,6 +500,132 @@ async function dispose() {
   };
 }
 const harness = {
+  ordered(value: boolean) {
+    if (core) core.pathInstancing = value;
+  },
+  async overlap(barrier = false) {
+    await configure(3, true, 3);
+    if (core) {
+      [...shapes.values()].forEach((r, i) => {
+        r.x = 80 + i * 5;
+        r.y = 80 + i * 4;
+        r.width = 100;
+        r.height = 80;
+        r.opacity = 0.6;
+        r.zIndex = i * 2;
+      });
+      if (barrier) {
+        const r = new Rect({
+          x: 95,
+          y: 90,
+          width: 45,
+          height: 35,
+          fill: '#facc15',
+          opacity: 0.6,
+          zIndex: 1,
+          batchable: false,
+        });
+        shapes.set('barrier', r);
+        ids.push('barrier');
+        core.appendChild(r);
+      }
+    } else
+      await api!.edit(
+        (e) => {
+          ids.forEach((id, i) =>
+            e.updateNode(e.getNodeById(id), {
+              x: 80 + i * 5,
+              y: 80 + i * 4,
+              width: 100,
+              height: 80,
+              opacity: 0.6,
+              zIndex: i * 2,
+            }),
+          );
+          if (barrier) {
+            e.updateNodes([
+              {
+                id: 'barrier',
+                type: 'rect',
+                x: 95,
+                y: 90,
+                width: 45,
+                height: 35,
+                fills: [{ type: 'solid', value: '#facc15' }],
+                opacity: 0.6,
+                zIndex: 1,
+              },
+            ]);
+            ids.push('barrier');
+          }
+        },
+        { capture: 'NEVER' },
+      );
+    await settle();
+  },
+  interaction: () =>
+    api
+      ? {
+          selected: api.getEntity(api.getNodeById(ids[0])).has(ECS.Selected),
+          highlighted: api
+            .getEntity(api.getNodeById(ids[0]))
+            .has(ECS.Highlighted),
+        }
+      : undefined,
+  async moveCamera(back: boolean) {
+    if (!api) return [];
+    await api.edit(
+      (e) => {
+        const entity = e.getEntity(e.getNodeById(ids[0]));
+        if (!migration)
+          migration = {
+            primary: entity.read(ECS.Children).parent.hold(),
+            secondary: e.createCamera({ zoom: 1, x: 0, y: 0 }),
+          };
+        entity.write(ECS.Children).parent = back
+          ? migration.primary
+          : migration.secondary;
+        entity.write(ECS.Transform).rotation = entity.read(
+          ECS.Transform,
+        ).rotation;
+      },
+      { capture: 'NEVER' },
+    );
+    await settle();
+    return [...pipeline.renderers.values()].map((r) =>
+      r.batchManager
+        .buildFlushSegments()
+        .flatMap((s) => s.drawcalls)
+        .flatMap((d) => d.shapes)
+        .map((s) => api!.getNodeByEntity(s)?.id)
+        .filter(Boolean),
+    );
+  },
+
+  async batching(enabled: boolean) {
+    if (core) core.imageBatching = enabled;
+    else api!.setImageBatchingEnabled(enabled);
+    await settle();
+  },
+  async style(index: number, patch: Record<string, unknown>) {
+    if (core) Object.assign(shapes.get(ids[index])!, patch);
+    else await api!.edit((e) => e.updateNode(e.getNodeById(ids[index]), patch));
+    await settle();
+  },
+  async removeDuringView(index: number) {
+    if (core) {
+      core.camera.zoom = 0.5;
+      core.removeChild(shapes.get(ids[index])!);
+      shapes.delete(ids[index]);
+    } else
+      await api!.edit((e) => {
+        e.setAppState({ cameraZoom: 0.5 });
+        e.deleteNodesById([ids[index]]);
+      });
+    ids.splice(index, 1);
+    await settle();
+  },
+
   configure,
   edit,
   remove,
@@ -498,9 +644,12 @@ const harness = {
     // MeshPipeline renders on demand. Request an unchanged computed camera
     // write, then require actual main-context GPU work before reading pixels.
     const before = probe.snapshot().drawcalls;
+    const nativeProbe = !!canvas.getContext('webgl2');
     const capture = completedFrame(() => {
       const drawcalls = probe.snapshot().drawcalls - before;
-      return drawcalls > 0 ? { ...readScreenPixels(), drawcalls } : undefined;
+      return !nativeProbe || drawcalls > 0
+        ? { ...readScreenPixels(), drawcalls }
+        : undefined;
     });
     await api!.edit(
       (editor) => {

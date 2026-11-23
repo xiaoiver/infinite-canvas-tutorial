@@ -29,6 +29,7 @@ import { SDFText } from './SDFText';
 import { TexturePool } from '../TexturePool';
 import { PathInstances, PATH_INSTANCE_PAGE_SIZE } from './PathInstances';
 import { StrokeBatch } from './StrokeBatch';
+import { ImageBatch } from './ImageBatch';
 
 type OrderedPage = {
   key: string;
@@ -96,6 +97,7 @@ export class BatchManager {
 
   #ordered = false;
   #allowTextBatches = false;
+  #allowImageBatches = false;
   #allowPathInstances = false;
   #frameShapes: Shape[] = [];
   #orderedPages: OrderedPage[] = [];
@@ -272,6 +274,7 @@ export class BatchManager {
     ordered = false,
     allowPathInstances = ordered,
     allowTextBatches = false,
+    allowImageBatches = false,
   ) {
     if (this.#ordered !== ordered) {
       // Changing planning modes must not retain unreachable batch resources.
@@ -293,6 +296,9 @@ export class BatchManager {
     if (this.#allowTextBatches !== allowTextBatches)
       this.#orderedPlanDirty = true;
     this.#allowTextBatches = allowTextBatches;
+    if (this.#allowImageBatches !== allowImageBatches)
+      this.#orderedPlanDirty = true;
+    this.#allowImageBatches = allowImageBatches;
     if (this.#allowPathInstances !== allowPathInstances)
       this.#orderedPlanDirty = true;
     this.#ordered = ordered;
@@ -354,6 +360,9 @@ export class BatchManager {
         this.#allowPathInstances && shape.constructor === Path
           ? PathInstances.batchKey(shape)
           : null;
+      const imageKey = this.#allowImageBatches
+        ? ImageBatch.batchKey(shape)
+        : null;
       const strokeKey =
         this.#allowPathInstances &&
         shape.constructor === Path &&
@@ -361,7 +370,9 @@ export class BatchManager {
           ? StrokeBatch.batchKey(shape)
           : null;
       const ctors =
-        strokeKey !== null
+        imageKey !== null
+          ? [ImageBatch]
+          : strokeKey !== null
           ? [StrokeBatch]
           : textKey !== null
           ? [TextBatch]
@@ -383,7 +394,9 @@ export class BatchManager {
         })
         .join(',');
       const key =
-        strokeKey !== null
+        imageKey !== null
+          ? `image:${imageKey}`
+          : strokeKey !== null
           ? `stroke:${strokeKey}`
           : textKey !== null
           ? `text:${textKey}`

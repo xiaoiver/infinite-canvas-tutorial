@@ -97,3 +97,17 @@ test('compiles Core and ECS stroke page shaders through the WebGPU path', async 
     expect(program.fragment).toContain('@fragment');
   }
 });
+test('compiles Core and ECS image page shaders through the WebGPU path', async ({
+  page,
+}) => {
+  await page.goto('/shader-compiler.html');
+  await page.waitForFunction(() => !!window.shaderCompilerRegression);
+  const programs = await page.evaluate(() =>
+    window.shaderCompilerRegression.compileImagePages(),
+  );
+  expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
+  for (const program of programs) {
+    expect(program.vertex).toContain('@vertex');
+    expect(program.fragment).toContain('@fragment');
+  }
+});

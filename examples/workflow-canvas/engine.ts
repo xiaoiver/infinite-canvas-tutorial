@@ -111,6 +111,7 @@ export async function createEngine(
         devicePixelRatio: Math.min(devicePixelRatio, 2),
         // The example explicitly opts in; the renderer default remains off.
         pathInstancing: true,
+        imageBatching: true,
       });
       api.createCamera({ x: 0, y: 0, zoom: 1 });
       api.setAppState({
@@ -179,7 +180,10 @@ export async function createEngine(
   const updateNodes = (editor: API, nodes: SerializedNode[]) => {
     editor.updateNodes(nodes);
     for (const node of nodes)
-      if (node.type === 'path' && node.id.startsWith('edge-')) {
+      if (
+        (node.type === 'path' && node.id.startsWith('edge-')) ||
+        (node.type === 'rect' && node.id.startsWith('node-'))
+      ) {
         // A runtime rendering hint; it is not written into the document/history.
         editor
           .getEntity(editor.getNodeById(node.id))

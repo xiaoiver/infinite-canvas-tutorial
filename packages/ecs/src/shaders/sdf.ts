@@ -182,7 +182,12 @@ void main() {
 }
 `;
 
-export const frag = /* wgsl */ `
+// Keep inactive sampler declarations out of the binding preprocessor.
+export function createSdfFragment(
+  imageSamplers = '  uniform sampler2D u_Texture;',
+  imageSample = '    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);',
+) {
+  return /* wgsl */ `
 // Packed flags use 23 bits; mediump can overflow on WebKit/mobile GPUs.
 precision highp float;
 #define SHIFT_RIGHT23 1.0 / 8388608.0
@@ -236,7 +241,7 @@ in vec2 v_Radius;
 
 #ifdef USE_FILLIMAGE
   in vec2 v_Uv;
-  uniform sampler2D u_Texture;
+${imageSamplers}
 #endif
 
 float epsilon = 0.000001;
@@ -370,7 +375,7 @@ void main() {
   #endif
 
   #ifdef USE_FILLIMAGE
-    fillColor = texture(SAMPLER_2D(u_Texture), v_Uv);
+${imageSample}
     #ifndef USE_INSTANCES
       if (u_FilterExtras.w > 0.5) {
         fillColor = vec4(0.0);
@@ -496,3 +501,5 @@ void main() {
 #endif
 }
 `;
+}
+export const frag = createSdfFragment();
