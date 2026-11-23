@@ -1603,7 +1603,7 @@ export const newElementWith = <TElement extends SerializedNode>(
     ...element,
     ...updates,
     updated: Date.now(),
-    version: element.version + 1,
+    version: (element.version || 0) + 1,
     versionNonce: randomInteger(),
   };
 };

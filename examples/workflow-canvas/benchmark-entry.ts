@@ -138,6 +138,12 @@ function state() {
   const camera = runtime.api?.getAppState();
   return {
     count: nodes.length,
+    documentVersions: {
+      present: nodes.filter((node) => node.version !== undefined).length,
+      invalid: nodes.filter(
+        (node) => node.version !== undefined && !Number.isFinite(node.version),
+      ).length,
+    },
     visible,
     view: { x: camera?.cameraX, y: camera?.cameraY, zoom: camera?.cameraZoom },
     canvas: {
@@ -214,6 +220,53 @@ const harness = {
   profile,
   begin,
   end,
+  async recordUnchanged(count = 30, warmup = 5) {
+    if (
+      disposed ||
+      count < 2 ||
+      warmup < 0 ||
+      !Number.isInteger(count) ||
+      !Number.isInteger(warmup)
+    )
+      throw new Error('Invalid snapshot capture');
+    const before = state();
+    begin();
+    const original = Snapshot.prototype.maybeClone;
+    const captures: {
+      elapsedMs: number;
+      reused: boolean;
+      elementsReused: boolean;
+    }[] = [];
+    Snapshot.prototype.maybeClone = function (
+      ...args: Parameters<typeof original>
+    ) {
+      const start = performance.now();
+      const next = original.apply(this, args);
+      captures.push({
+        elapsedMs: performance.now() - start,
+        reused: next === this,
+        elementsReused: next.elements === this.elements,
+      });
+      return next;
+    };
+    let frames: Sample[];
+    try {
+      for (let i = 0; i < count + warmup; i++)
+        await runtime.api!.edit(() => {}, { capture: 'NEVER' });
+      frames = await end();
+    } finally {
+      Snapshot.prototype.maybeClone = original;
+      await end();
+    }
+    return {
+      before,
+      after: state(),
+      captures: captures.slice(warmup),
+      captureCount: captures.length,
+      frames: frames.slice(warmup),
+      observerRestored: Snapshot.prototype.maybeClone === original,
+    };
+  },
   async collect(count = 30, warmup = 5) {
     if (count < 2 || warmup < 0) throw new Error('Invalid sample count');
     begin();
