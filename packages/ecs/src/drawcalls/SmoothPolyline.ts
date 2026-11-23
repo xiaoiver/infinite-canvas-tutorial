@@ -232,6 +232,47 @@ export class SmoothPolyline extends PathDrawcall {
   #segmentsBuffer: Buffer;
   #uniformBuffer: Buffer;
 
+  /** Keep immutable vertex IDs; leave dynamic buffers from earlier draws untouched. */
+  private prepareBatchBuffers() {
+    const created: Buffer[] = [];
+    try {
+      const allocate = (
+        viewOrSize: number | Float32Array,
+        hint: BufferFrequencyHint,
+      ) => {
+        const buffer = this.device.createBuffer({
+          viewOrSize,
+          usage: BufferUsage.VERTEX,
+          hint,
+        });
+        created.push(buffer);
+        return buffer;
+      };
+      const segments = allocate(
+        this.instanceCount * 15 * 4,
+        BufferFrequencyHint.DYNAMIC,
+      );
+      const travel = allocate(
+        this.instanceCount * 3 * 4,
+        BufferFrequencyHint.STATIC,
+      );
+      const vertices =
+        this.#vertexNumBuffer ??
+        allocate(
+          new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+          BufferFrequencyHint.STATIC,
+        );
+      this.#segmentsBuffer?.destroy();
+      this.#travelBuffer?.destroy();
+      this.#segmentsBuffer = segments;
+      this.#travelBuffer = travel;
+      this.#vertexNumBuffer = vertices;
+    } catch (error) {
+      created.forEach((buffer) => buffer.destroy());
+      throw error;
+    }
+  }
+
   instanced = false;
   pointsBuffer: number[] = [];
   travelBuffer: number[] = [];
@@ -308,36 +349,40 @@ export class SmoothPolyline extends PathDrawcall {
     this.pointsBuffer = pointsBuffer;
     this.travelBuffer = travelBuffer;
 
-    if (this.#segmentsBuffer) {
-      this.#segmentsBuffer.destroy();
-    }
-    this.#segmentsBuffer = this.device.createBuffer({
-      viewOrSize:
-        Float32Array.BYTES_PER_ELEMENT *
-        15 *
-        this.instanceCount *
-        (this.strokeBatch ? 1 : this.shapes.length),
-      usage: BufferUsage.VERTEX,
-      hint: BufferFrequencyHint.DYNAMIC,
-    });
+    if (this.strokeBatch) {
+      this.prepareBatchBuffers();
+    } else {
+      if (this.#segmentsBuffer) {
+        this.#segmentsBuffer.destroy();
+      }
+      this.#segmentsBuffer = this.device.createBuffer({
+        viewOrSize:
+          Float32Array.BYTES_PER_ELEMENT *
+          15 *
+          this.instanceCount *
+          (this.strokeBatch ? 1 : this.shapes.length),
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.DYNAMIC,
+      });
 
-    if (this.#vertexNumBuffer) {
-      this.#vertexNumBuffer.destroy();
-    }
-    this.#vertexNumBuffer = this.device.createBuffer({
-      viewOrSize: new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
-      usage: BufferUsage.VERTEX,
-      hint: BufferFrequencyHint.STATIC,
-    });
+      if (this.#vertexNumBuffer) {
+        this.#vertexNumBuffer.destroy();
+      }
+      this.#vertexNumBuffer = this.device.createBuffer({
+        viewOrSize: new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
 
-    if (this.#travelBuffer) {
-      this.#travelBuffer.destroy();
+      if (this.#travelBuffer) {
+        this.#travelBuffer.destroy();
+      }
+      this.#travelBuffer = this.device.createBuffer({
+        viewOrSize: Float32Array.BYTES_PER_ELEMENT * 3 * this.instanceCount,
+        usage: BufferUsage.VERTEX,
+        hint: BufferFrequencyHint.STATIC,
+      });
     }
-    this.#travelBuffer = this.device.createBuffer({
-      viewOrSize: Float32Array.BYTES_PER_ELEMENT * 3 * this.instanceCount,
-      usage: BufferUsage.VERTEX,
-      hint: BufferFrequencyHint.STATIC,
-    });
 
     this.#segmentsBuffer.setSubData(
       0,

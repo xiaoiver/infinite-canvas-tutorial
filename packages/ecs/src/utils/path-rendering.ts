@@ -22,38 +22,55 @@ export function hasSelfTouchingContour(contours: PathPoints): boolean {
 
 // Match the standalone core implementation; no cross-package runtime dependency.
 export class PathGeometryCache {
-  private d: string;
-  private subPaths: ReturnType<typeof parsePath>['subPaths'];
-  private levels = new Map<string, PathPoints>();
+  // Contexts share parsed commands and four LRU levels, never hysteresis state.
+  private geometry = {
+    d: undefined as string | undefined,
+    subPaths: undefined as ReturnType<typeof parsePath>['subPaths'] | undefined,
+    levels: new Map<string, PathPoints>(),
+    version: 0,
+  };
+  private version = -1;
   private scale = 0;
   private radius = 0;
   private current: PathPoints | undefined;
 
+  /** Start an independent render context backed by the same CPU geometry. */
+  fork(): PathGeometryCache {
+    const context = new PathGeometryCache();
+    context.geometry = this.geometry;
+    return context;
+  }
+
   get(d: string, scale: number, strokeRadius = 0): PathPoints {
-    if (!this.subPaths || d !== this.d) {
-      this.d = d;
-      this.subPaths = parsePath(d || '').subPaths;
-      this.levels.clear();
+    const geometry = this.geometry;
+    if (!geometry.subPaths || d !== geometry.d) {
+      geometry.subPaths = parsePath(d || '').subPaths;
+      geometry.d = d;
+      geometry.levels.clear();
+      geometry.version++;
+    }
+    // Another context can observe an edit first; every context must drop its
+    // own current hit before considering its precision fast path.
+    if (this.version !== geometry.version) {
+      this.version = geometry.version;
       this.scale = this.radius = 0;
       this.current = undefined;
     }
     const nextScale = precisionBucket(scale, this.scale);
     const nextRadius =
       strokeRadius > 0 ? precisionBucket(strokeRadius, this.radius) : 0;
-    // The current level is already most recent. Panning within the same
-    // precision bucket needs no string key or LRU mutation.
     if (this.current && nextScale === this.scale && nextRadius === this.radius)
       return this.current;
     this.scale = nextScale;
     this.radius = nextRadius;
     const key = `${this.scale}:${this.radius}`;
-    let points = this.levels.get(key);
-    if (!points) points = flattenPath(this.subPaths, this.scale, this.radius);
-    this.levels.delete(key);
-    this.levels.set(key, points);
-    // Bound retained CPU geometry while allowing quick zoom-out/zoom-in reuse.
-    if (this.levels.size > 4)
-      this.levels.delete(this.levels.keys().next().value);
+    let points = geometry.levels.get(key);
+    if (!points)
+      points = flattenPath(geometry.subPaths, this.scale, this.radius);
+    geometry.levels.delete(key);
+    geometry.levels.set(key, points);
+    if (geometry.levels.size > 4)
+      geometry.levels.delete(geometry.levels.keys().next().value);
     this.current = points;
     return points;
   }

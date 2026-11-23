@@ -1,5 +1,8 @@
 /** Diagnostic entry only; the shipped index.html continues to import main.ts. */
 import * as ECS from '@infinite-canvas-tutorial/ecs';
+import { SmoothPolyline } from '../../packages/ecs/src/drawcalls/SmoothPolyline';
+import { PathDrawcall } from '../../packages/ecs/src/drawcalls/PathDrawcall';
+import { StrokeBatch } from '../../packages/ecs/src/drawcalls/StrokeBatch';
 import { Drawcall } from '../../packages/ecs/src/drawcalls/Drawcall';
 import {
   framePhaseProbe,
@@ -101,6 +104,9 @@ function profile(enabled: boolean) {
     [ECS.MeshPipeline, 'renderCamera', 'render.camera'],
     [ECS.BatchManager, 'plan', 'batch.plan'],
     [ECS.BatchManager, 'flushDrawcalls', 'batch.submit'],
+    [PathDrawcall, 'prepareGeometry', 'path.precision'],
+    [StrokeBatch, 'prepareGeometry', 'stroke.prepare'],
+    [SmoothPolyline, 'createGeometry', 'stroke.geometry'],
   ] as const)
     collector.wrap(ctor.prototype, key, label);
   Drawcall.prototype.submit = function (

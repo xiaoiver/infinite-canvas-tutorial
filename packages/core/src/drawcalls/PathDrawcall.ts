@@ -3,11 +3,15 @@ import { PathPoints } from '../utils/curve/adaptive';
 import { PathGeometryCache, pathScreenMetrics } from '../utils/path-rendering';
 import { Drawcall } from './Drawcall';
 
-/** Render precision belongs to the drawcall, never to Path.points or bounds. */
+/** Render precision is separate from Path.points or bounds. */
 export abstract class PathDrawcall extends Drawcall {
   protected pathStroke = false;
   protected pathPoints = new WeakMap<Shape, PathPoints>();
-  private pathCaches = new WeakMap<Shape, PathGeometryCache>();
+  protected pathCaches = new WeakMap<Shape, PathGeometryCache>();
+
+  protected createPathGeometryCache(_shape: Shape) {
+    return new PathGeometryCache();
+  }
 
   // Screen-space distances can exceed mediump range at high zoom/DPR.
   protected get geometryDefines() {
@@ -20,7 +24,11 @@ export abstract class PathDrawcall extends Drawcall {
     for (const shape of this.shapes) {
       if (!(shape instanceof Path)) continue;
       let cache = this.pathCaches.get(shape);
-      if (!cache) this.pathCaches.set(shape, (cache = new PathGeometryCache()));
+      if (!cache)
+        this.pathCaches.set(
+          shape,
+          (cache = this.createPathGeometryCache(shape)),
+        );
       let { scale, strokeScale } = pathScreenMetrics(
         uniforms,
         shape.worldTransform,
