@@ -28,6 +28,13 @@ jest.mock('../../packages/ecs/src/drawcalls', () => {
   }
   return { Drawcall, SDF: Drawcall, SmoothPolyline: Drawcall };
 });
+// Keep the opt-in image renderer isolated with the other mocked drawcalls.
+jest.mock('../../packages/ecs/src/drawcalls/ImageBatch', () => ({
+  ImageBatch: class {},
+}));
+jest.mock('../../packages/ecs/src/utils/image-batching', () => ({
+  invalidateImageRectTexture: jest.fn(),
+}));
 jest.mock('../../packages/ecs/src/components', () => ({
   Circle: class {},
   Renderable: class {},

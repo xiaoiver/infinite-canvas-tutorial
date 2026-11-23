@@ -56,6 +56,7 @@ jest.mock('../../packages/ecs/src/systems/BatchManager', () => ({
     destroy = jest.fn();
     showUIs = jest.fn();
     hideUIs = jest.fn();
+    setImageBatchingEnabled = jest.fn();
     setPathInstancingEnabled = jest.fn();
     setTextBatchingEnabled = jest.fn();
   },
@@ -136,6 +137,7 @@ describe('renderer lifecycle', () => {
         [
           Canvas,
           {
+            imageBatching: true,
             api: {
               getAppState: () => ({ filter: '' }),
               getBounds: () => ({ minX: 0, minY: 0, maxX: 0, maxY: 0 }),
@@ -158,6 +160,7 @@ describe('renderer lifecycle', () => {
       const exportBatch = mockBatchManagers[mockBatchManagers.length - 1];
       expect(exportBatch).not.toBe(renderer.batchManager);
       expect(exportBatch.hideUIs).toHaveBeenCalledTimes(1);
+      expect(exportBatch.setImageBatchingEnabled).toHaveBeenCalledWith(false);
       expect(exportBatch.destroy).toHaveBeenCalledTimes(1);
       expect(pipeline.renderers.get(camera as any)).toBe(screen);
       expect(screen.batchManager.destroy).not.toHaveBeenCalled();
