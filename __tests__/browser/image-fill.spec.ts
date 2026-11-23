@@ -4,6 +4,13 @@ import { PNG } from 'pngjs';
 import type { SerializedNode } from '../../packages/ecs/src';
 import type {} from './fixtures/ecs-blend';
 
+// Keep the fixed-backing-canvas pixel checks outside mobile page auto-scaling.
+// A changing layout scale can change reported DPR during an SVG decode.
+test.use({
+  viewport: { width: 1000, height: 760 },
+  contextOptions: { screen: { width: 1000, height: 760 } },
+});
+
 const png = new PNG({ width: 2, height: 1 });
 png.data.set([220, 60, 30, 255, 25, 90, 220, 255]);
 const image = PNG.sync.write(png);

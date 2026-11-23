@@ -10,7 +10,7 @@ jobs:
   component-testing-webcomponents:
     name: Component Testing WebComponents
     timeout-minutes: 60
-    # Playwright 1.55.1 supports Ubuntu 24.04, not the Ubuntu 26.04 latest image.
+    # Playwright 1.59.1 supports Ubuntu 24.04, not the Ubuntu 26.04 latest image.
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
@@ -19,7 +19,7 @@ jobs:
           version: 9.15.9
       - uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 24
           cache: 'pnpm'
       - name: Install canvas native dependencies
         run: |
