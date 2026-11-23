@@ -118,82 +118,31 @@ export class Snapshot {
   private maybeCreateElementsSnapshot(
     elements: Map<string, OrderedExcalidrawElement> | undefined,
   ) {
-    if (!elements) {
-      return this.elements;
-    }
-    const didElementsChange = this.detectChangedElements(elements);
-    if (!didElementsChange) {
-      return this.elements;
-    }
-    const elementsSnapshot = this.createElementsSnapshot(elements);
-    return elementsSnapshot;
-  }
+    if (!elements || elements === this.elements) return this.elements;
+    let cloned: Map<string, OrderedExcalidrawElement> | undefined;
 
-  /**
-   * Detect if there any changed elements.
-   *
-   * NOTE: we shouldn't just use `sceneVersionNonce` instead, as we need to call this before the scene updates.
-   */
-  private detectChangedElements(
-    nextElements: Map<string, OrderedExcalidrawElement>,
-  ) {
-    if (this.elements === nextElements) {
-      return false;
-    }
-    if (this.elements.size !== nextElements.size) {
-      return true;
-    }
-    // loop from right to left as changes are likelier to happen on new elements
-    const keys = Array.from(nextElements.keys());
-    for (let i = keys.length - 1; i >= 0; i--) {
-      const prev = this.elements.get(keys[i]);
-      const next = nextElements.get(keys[i]);
-      if (
-        !prev ||
-        !next ||
-        prev.id !== next.id ||
-        prev.versionNonce !== next.versionNonce ||
-        !documentValueEqual(prev, next)
-      ) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Perform structural clone, cloning only elements that changed.
-   */
-  private createElementsSnapshot(
-    nextElements: Map<string, OrderedExcalidrawElement>,
-  ) {
-    const clonedElements = new Map();
-    for (const [id, prevElement] of this.elements.entries()) {
-      // Clone previous elements, never delete, in case nextElements would be just a subset of previous elements
-      // i.e. during collab, persist or whenenever isDeleted elements get cleared
-      if (!nextElements.get(id)) {
-        // When we cannot find the prev element in the next elements, we mark it as deleted
-        clonedElements.set(
+    // Preserve deletion order, stable tombstones and the existing commit signal
+    // for omitted IDs, even if a missing element was already deleted.
+    for (const [id, previous] of this.elements) {
+      if (!elements.get(id)) {
+        cloned ??= new Map(this.elements);
+        cloned.set(
           id,
-          prevElement.isDeleted
-            ? prevElement
-            : newElementWith(prevElement, { isDeleted: true }),
+          previous.isDeleted
+            ? previous
+            : newElementWith(previous, { isDeleted: true }),
         );
-      } else {
-        clonedElements.set(id, prevElement);
       }
     }
-    for (const [id, nextElement] of nextElements.entries()) {
-      const prevElement = clonedElements.get(id);
-      // At this point our elements are reconcilled already, meaning the next element is always newer
-      if (
-        !prevElement || // element was added
-        (prevElement && !documentValueEqual(prevElement, nextElement)) // element was updated
-      ) {
-        // @see https://github.com/you-dont-need/You-Dont-Need-Lodash-Underscore?tab=readme-ov-file#_clonedeep
-        clonedElements.set(id, structuredClone(nextElement));
+    // Compare each incoming node once. Copy the map lazily and keep unchanged
+    // owned nodes, while deep-cloning only changes (including in-place edits).
+    for (const [id, next] of elements) {
+      const previous = this.elements.get(id);
+      if (!previous || !documentValueEqual(previous, next)) {
+        cloned ??= new Map(this.elements);
+        cloned.set(id, structuredClone(next));
       }
     }
-    return clonedElements;
+    return cloned ?? this.elements;
   }
 }
