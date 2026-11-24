@@ -46,8 +46,18 @@ export function bezierTangentContract<Paths extends { curves: object[] }[]>(
     (d, expected) => {
       const path = curves.parsePath(d as string).subPaths;
       for (const curve of path[0].curves) {
-        const controls = Object.values(curve).filter(Array.isArray);
-        controls.forEach(Object.freeze);
+        const controls = Object.entries(curve).filter(([key]) =>
+          /^v[0-3]$/.test(key),
+        );
+        expect(controls.length).toBeGreaterThan(0);
+        // Parsed controls are typed arrays, which cannot be frozen. Curves also
+        // accept ordinary vec2 arrays; freeze those to catch accidental writes.
+        for (const [key, value] of controls) {
+          Object.defineProperty(curve, key, {
+            value: Object.freeze(Array.from(value as ArrayLike<number>)),
+            writable: false,
+          });
+        }
       }
       const before = JSON.stringify(path);
       expect(flatten(path, 64, 200)).toEqual([expected]);
