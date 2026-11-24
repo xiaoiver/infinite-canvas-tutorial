@@ -17,3 +17,33 @@ export function appendStrokeInstances(
 }
 
 export const STROKE_BATCH_PAGE_SIZE = 256;
+
+/** CPU-only segment data follows the lifetime of immutable render precision points.
+ * Retain one cap/join variant per weak point key; edits and LRU eviction release it.
+ * Readers append placements into owned page buffers and never mutate this data.
+ */
+export class StrokeSegmentCache<T> {
+  private entries = new WeakMap<
+    object,
+    {
+      cap: CanvasLineCap;
+      join: CanvasLineJoin;
+      data: T;
+    }
+  >();
+
+  get(
+    points: object | undefined,
+    cap: CanvasLineCap,
+    join: CanvasLineJoin,
+    build: () => T,
+  ): T {
+    if (!points) return build();
+    const cached = this.entries.get(points);
+    if (cached && cached.cap === cap && cached.join === join)
+      return cached.data;
+    const data = build();
+    this.entries.set(points, { cap, join, data });
+    return data;
+  }
+}

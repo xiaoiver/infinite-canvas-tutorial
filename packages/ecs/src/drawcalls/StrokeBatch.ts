@@ -1,5 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { SmoothPolyline } from './SmoothPolyline';
+import { SmoothPolyline, updateBuffer } from './SmoothPolyline';
 import {
   Path,
   Stroke,
@@ -22,7 +22,10 @@ import {
 } from '../components';
 import { getEnabledFillLayers, fillLayerOpacity } from '../utils/fillLayers';
 import { getEnabledStrokeLayers } from '../utils/strokeLayers';
-import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
+import {
+  STROKE_BATCH_PAGE_SIZE,
+  StrokeSegmentCache,
+} from '../utils/stroke-batching';
 
 import { PathGeometryCache } from '../utils/path-rendering';
 
@@ -39,6 +42,11 @@ function screenStrokeCaches(device: object) {
   return caches;
 }
 
+// No shape, camera, device or GPU object is retained by the segment cache.
+const strokeSegments = new StrokeSegmentCache<
+  ReturnType<typeof updateBuffer>
+>();
+
 /** Ordered, screen-only pages; never retain an empty style page. */
 export class StrokeBatch extends SmoothPolyline {
   protected maxInstances = STROKE_BATCH_PAGE_SIZE;
@@ -53,6 +61,16 @@ export class StrokeBatch extends SmoothPolyline {
   static override retainEmptyPage = false;
   protected override get strokeBatch() {
     return true;
+  }
+
+  protected override getStrokeBuffers(shape: Entity) {
+    const { linecap, linejoin } = shape.read(Stroke);
+    return strokeSegments.get(
+      this.pathPoints.get(shape),
+      linecap,
+      linejoin,
+      () => super.getStrokeBuffers(shape),
+    );
   }
 
   static override batchKey(shape: Entity): string | null {
