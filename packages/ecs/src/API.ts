@@ -815,9 +815,7 @@ export class API {
     }
 
     this.setSelectedMesh3DLayerIds([id]);
-    const prevAppState = this.getAppState();
     this.setAppState({
-      ...prevAppState,
       layersSelected: layer.sourceNodeId ? [layer.sourceNodeId] : [],
       layersHighlighted: [],
     });
@@ -829,7 +827,6 @@ export class API {
     this.setSelectedMesh3DLayerIds([]);
     const prevAppState = this.getAppState();
     this.setAppState({
-      ...prevAppState,
       layersSelected: prevAppState.layersSelected.filter((id) => {
         const node = this.getNodeById(id);
         return (
@@ -891,7 +888,6 @@ export class API {
 
     const selectedChanged = this.setSelectedMesh3DLayerIds(selectedIds);
     this.setAppState({
-      ...prevAppState,
       layersSelected: layers
         .map(({ layer }) => layer?.sourceNodeId)
         .filter((id): id is string => !!id),
@@ -2088,7 +2084,6 @@ export class API {
               !prevSelectedIds.includes(id) || layersSelected.includes(id),
           );
       this.setAppState({
-        ...prevAppState,
         layersSelected,
         layersHighlighted,
       });
@@ -2122,7 +2117,6 @@ export class API {
 
     const prevAppState = this.getAppState();
     this.setAppState({
-      ...prevAppState,
       layersSelected: prevAppState.layersSelected.filter(
         (id) => !deselectIds.includes(id),
       ),

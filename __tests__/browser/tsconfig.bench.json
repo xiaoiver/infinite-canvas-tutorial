@@ -11,6 +11,8 @@
     "../../scripts/image-batching.bench.spec.ts",
     "../../playwright.image-batching-bench.config.ts",
     "../../scripts/stroke-reuse.bench.spec.ts",
-    "../../playwright.stroke-reuse-bench.config.ts"
+    "../../playwright.stroke-reuse-bench.config.ts",
+    "../../scripts/idle-rendering.bench.spec.ts",
+    "../../playwright.idle-rendering-bench.config.ts"
   ]
 }

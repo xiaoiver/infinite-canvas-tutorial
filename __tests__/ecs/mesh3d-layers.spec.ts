@@ -1,6 +1,7 @@
 import { load } from '@loaders.gl/core';
 import {
   Canvas3DScope,
+  Theme,
   DefaultRenderer3DPlugin,
   Pen,
   Material3D,
@@ -318,4 +319,36 @@ it('removes deleted source registrations and selects a new companion using the s
   await world.edit(api, (editor) => editor.selectMesh3DLayer('model'), 'NEVER');
   expect(mesh().has(Selected3D)).toBe(true);
   expect(other.getSelectedMesh3DLayerIds()).toEqual([]);
+});
+
+it('3D selection-only state patches preserve unrelated palette and variables', async () => {
+  const initial = api.getAppState();
+  const palette = api.getCanvas().read(Theme).colors;
+  const expectUnrelatedState = () => {
+    expect(api.getAppState().theme).toBe(initial.theme);
+    expect(api.getAppState().variables).toBe(initial.variables);
+    expect(api.getCanvas().read(Theme).colors).toBe(palette);
+  };
+  await world.edit(
+    api,
+    (editor) => {
+      expect(editor.syncMesh3DLayerAppState(mesh().hold())).toBe(true);
+    },
+    'NEVER',
+  );
+  expect(api.getAppState().layersSelected).toEqual(['model']);
+  expectUnrelatedState();
+  await world.edit(api, (editor) => editor.clearMesh3DLayerAppState(), 'NEVER');
+  expect(api.getAppState().layersSelected).toEqual([]);
+  expectUnrelatedState();
+  await world.edit(
+    api,
+    (editor) => editor.selectMesh3DLayers(['model']),
+    'NEVER',
+  );
+  expect(mesh().has(Selected3D)).toBe(true);
+  expectUnrelatedState();
+  await world.edit(api, (editor) => editor.selectMesh3DLayers([]), 'NEVER');
+  expect(mesh().has(Selected3D)).toBe(false);
+  expectUnrelatedState();
 });

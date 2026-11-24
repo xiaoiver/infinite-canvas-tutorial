@@ -76,7 +76,15 @@ export class SetupDevice extends System {
 
     this.canvases.added.forEach((canvas) => {
       if (!canvas.has(Theme)) {
-        canvas.add(Theme);
+        // AppState can be configured before this system creates the component.
+        // Initialize it once; selection updates must not serve as a theme sync.
+        const state = canvas.read(Canvas).api?.getAppState();
+        canvas.add(
+          Theme,
+          state
+            ? { mode: state.themeMode, colors: state.theme.colors }
+            : undefined,
+        );
       }
 
       if (!canvas.has(Grid)) {

@@ -1171,6 +1171,8 @@ export class MeshPipeline extends System {
   execute() {
     this.gpuReadyCanvases.added.forEach((canvas) => {
       for (const camera of canvas.read(Canvas).cameras) {
+        // The first ready frame must paint the background even with no nodes.
+        this.screenRedraw.add(camera);
         this.queueAllSceneRenderablesUnderCamera(camera);
       }
     });

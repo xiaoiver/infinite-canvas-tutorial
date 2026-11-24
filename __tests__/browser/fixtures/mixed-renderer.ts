@@ -1,5 +1,6 @@
 import {
   Canvas as CoreCanvas,
+  CanvasMode,
   Rect,
   Circle,
   Path,
@@ -27,6 +28,7 @@ import {
   Culled,
   ComputedLOD,
   Pen,
+  ThemeMode,
   CheckboardStyle,
   type SerializedNode,
   type TextSerializedNode,
@@ -42,6 +44,7 @@ const backend =
   new URLSearchParams(location.search).get('backend') === 'core'
     ? 'core'
     : 'ecs';
+const startupBackground = new URLSearchParams(location.search).get('startupBackground');
 const width = 960,
   height = 640;
 element.width = width;
@@ -94,7 +97,7 @@ if (backend === 'core') {
     canvas: element,
     devicePixelRatio: 1,
     checkboardStyle: CoreGrid.NONE,
-    themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
+    themeColors: { [Theme.LIGHT]: { background: startupBackground ?? '#ffffff', ...(startupBackground === null ? {} : { grid: '#000000' }) } },
   }).initialized;
   WebGLDeviceContribution.prototype.createSwapChain = original;
 } else {
@@ -107,6 +110,7 @@ if (backend === 'core') {
       api.setAppState({
         penbarSelected: Pen.SELECT,
         checkboardStyle: CheckboardStyle.NONE,
+        ...(startupBackground === null ? {} : {themeMode: ThemeMode.LIGHT, theme: {mode: ThemeMode.LIGHT, colors: {light: {background: startupBackground}}}}),
       });
     }
   }
@@ -119,7 +123,7 @@ if (backend === 'core') {
 }
 if (!probe.ready()) throw new Error('The mixed benchmark requires WebGL2.');
 
-export type MixedOperation = 'pan' | 'zoom' | 'edit';
+export type MixedOperation = 'pan' | 'zoom' | 'edit' | 'idle';
 export type MixedLayout = 'grouped' | 'interleaved';
 const points: [number, number][] = Array.from({ length: 128 }, (_, i) => [
   (i * 20) / 127,
@@ -408,7 +412,7 @@ function ecsAction(e: API, operation: MixedOperation, index: number) {
     );
 }
 async function measure(operation: MixedOperation, samples = 30, warmup = 15) {
-  if (!['pan', 'zoom', 'edit'].includes(operation) || samples < 2 || warmup < 1)
+  if (!['pan', 'zoom', 'edit', 'idle'].includes(operation) || samples < 2 || warmup < 1)
     throw new Error('Invalid benchmark parameters');
   const phaseSamples: FramePhases[] = [];
   const times: number[] = [],
@@ -538,8 +542,8 @@ async function editText(content?: string | string[]) {
   }
   return state();
 }
-async function raster() {
-  if (core) return core.toDataURL({ grid: false });
+async function raster(includeBackground = false) {
+  if (core) return core.toDataURL({ grid: includeBackground });
   const canvas = api!.getCanvas();
   return new Promise<string>((resolve, reject) => {
     const timer = setTimeout(
@@ -947,6 +951,15 @@ async function profile(enabled: boolean) {
   }
 }
 const harness = {
+  async startupFrame() {
+    if (core) core.render();
+    else await settleECSFrames(api!, 2);
+    return state();
+  },
+  async handMode() {
+    if (core) core.mode = CanvasMode.HAND;
+    else await api!.edit(editor => editor.setAppState({penbarSelected: Pen.HAND}), {capture:'NEVER'});
+  },
   async resizeSolid(width: number, height: number) {
     if (nodes[0]?.type !== 'rect')
       throw new Error('Resize probe requires a leading rectangle.');

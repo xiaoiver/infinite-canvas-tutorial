@@ -10,6 +10,9 @@ import type {} from '../examples/workflow-canvas/main';
 test('unchanged Workflow commits retain versions and snapshot ownership', async ({
   browser,
 }) => {
+  // Baseline-only assertion override; the workload itself is unchanged.
+  const idleDraws = Number(process.env.WORKFLOW_BENCH_EXPECT_IDLE_DRAWS ?? '0');
+  if (![0, 22].includes(idleDraws)) throw new Error('Expected idle draws must be 0 or 22');
   const output =
     process.env.DOCUMENT_VERSIONS_BENCH_OUTPUT ??
     '.test-results/document-versions.json';
@@ -48,12 +51,15 @@ test('unchanged Workflow commits retain versions and snapshot ownership', async 
     const capture = await page.evaluate(() =>
       window.workflowBenchmark.recordUnchanged(),
     );
+    expect(capture.before.theme).toEqual(capture.before.requestedTheme);
+    expect(capture.after.theme).toEqual(capture.after.requestedTheme);
+    expect(capture.before.theme?.background).toBe('#171b18');
     expect(capture.captures).toHaveLength(30);
     expect(capture.frames).toHaveLength(30);
     expect(capture.observerRestored).toBe(true);
     for (const frame of capture.frames) {
-      expect(frame.native.drawcalls).toBe(22);
-      expect(frame.native.indices).toBe(614406);
+      expect(frame.native.drawcalls).toBe(idleDraws);
+      expect(frame.native.indices).toBe(idleDraws ? 614406 : 0);
     }
     expect(capture.after.visible).toEqual(capture.before.visible);
     expect(capture.after.resources).toEqual(capture.before.resources);

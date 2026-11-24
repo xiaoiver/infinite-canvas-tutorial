@@ -1,5 +1,5 @@
 import { SetupDevice } from '../../packages/ecs/src/systems/SetupDevice';
-import { Canvas, GPUResource } from '../../packages/ecs/src/components';
+import { Canvas, GPUResource, Theme } from '../../packages/ecs/src/components';
 import { ResourceScope } from '../../packages/ecs/src/resources/ResourceScope';
 
 let mockQuery: any;
@@ -112,4 +112,52 @@ describe('asynchronous device lifecycle', () => {
     f.system.finalize();
     expect(f.release).toHaveBeenCalledTimes(1);
   });
+});
+
+it.each(['light', 'dark'])(
+  'initializes the %s palette before GPU readiness without repeated theme writes',
+  async (mode) => {
+    const f = fixture();
+    const colors = {
+      light: { background: 'transparent', grid: '#010203' },
+      dark: { background: '#102030', grid: '#405060' },
+    };
+    f.canvas.read(Canvas).api = {
+      getAppState: () => ({ themeMode: mode, theme: { mode, colors } }),
+    };
+    try {
+      f.system.execute();
+      expect(f.canvas.read(Theme)).toEqual({ mode, colors });
+      expect(f.canvas.has(GPUResource)).toBe(false);
+      f.resolve();
+      await Promise.resolve();
+      mockQuery.added = [];
+      for (let i = 0; i < 3; i++) f.system.execute();
+      expect(f.canvas.read(Theme).colors).toBe(colors);
+      expect(
+        f.canvas.add.mock.calls.filter(([type]) => type === Theme),
+      ).toHaveLength(1);
+    } finally {
+      f.system.finalize();
+    }
+  },
+);
+
+it('preserves an explicitly installed palette during GPU initialization', async () => {
+  const f = fixture();
+  const theme = { mode: 'dark', colors: { dark: { background: '#102030' } } };
+  f.canvas.add(Theme, theme);
+  f.canvas.read(Canvas).api = {
+    getAppState: () => ({ themeMode: 'light', theme: { colors: {} } }),
+  };
+  try {
+    f.system.execute();
+    f.resolve();
+    await Promise.resolve();
+    mockQuery.added = [];
+    f.system.execute();
+    expect(f.canvas.read(Theme)).toBe(theme);
+  } finally {
+    f.system.finalize();
+  }
 });
