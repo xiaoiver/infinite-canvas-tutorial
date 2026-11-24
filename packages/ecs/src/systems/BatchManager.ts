@@ -64,7 +64,11 @@ import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
 import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 import { StrokeBatch } from '../drawcalls/StrokeBatch';
 import { ImageBatch } from '../drawcalls/ImageBatch';
-import { invalidateImageRectTexture } from '../utils/image-batching';
+import {
+  cacheImageTokens,
+  imageRectTexture,
+  invalidateImageRectTexture,
+} from '../utils/image-batching';
 
 /**
  * Since a shape may have multiple drawcalls, we need to cache them and maintain an 1-to-many relationship.
@@ -326,6 +330,13 @@ export class BatchManager {
         if (a.order > b.order) return 1;
         return 0;
       });
+    // Compatibility may inspect a member again after accepting it. Resolve its
+    // raster token once in this plan; a later plan must see current paint.
+    const imageToken = this.#imageBatching
+      ? cacheImageTokens(
+          (shape: Entity) => imageRectTexture(shape, this.api).token,
+        )
+      : undefined;
     const nextPools = new Map<string, Drawcall[][]>();
     const cursors = new Map<string, number>();
     const plans: {
@@ -357,7 +368,7 @@ export class BatchManager {
         key !== null &&
         previous?.key === key &&
         (ctors[0] !== ImageBatch ||
-          ImageBatch.canAppend(previous.shapes, shape, this.api)) &&
+          ImageBatch.canAppend(previous.shapes, shape, this.api, imageToken)) &&
         previous.instances + instances <=
           (previous.calls[0].instanceCapacity ?? Infinity)
       ) {

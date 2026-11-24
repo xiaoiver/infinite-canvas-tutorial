@@ -63,12 +63,13 @@ export class ImageBatch extends Drawcall {
   static batchKey(shape: Entity): string | null {
     return eligibleImageRect(shape) ? 'images' : null;
   }
-  static canAppend(shapes: readonly Entity[], shape: Entity, api: API) {
-    return imagePageAccepts(
-      shapes,
-      shape,
-      (s) => imageRectTexture(s, api).token,
-    );
+  static canAppend(
+    shapes: readonly Entity[],
+    shape: Entity,
+    api: API,
+    token = (s: Entity) => imageRectTexture(s, api).token,
+  ) {
+    return imagePageAccepts(shapes, shape, token);
   }
 
   protected override prepareGeometry() {

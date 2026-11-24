@@ -254,6 +254,19 @@ export function imageBatchRow(
   ];
 }
 
+/** One synchronous dirty plan owns this cache; never reuse it across frames. */
+export function cacheImageTokens<T>(resolve: (shape: T) => string) {
+  const tokens = new Map<T, string>();
+  return (shape: T) => {
+    let token = tokens.get(shape);
+    if (token === undefined) {
+      token = resolve(shape);
+      tokens.set(shape, token);
+    }
+    return token;
+  };
+}
+
 /** Plan arrays are append-only and freshly allocated for every dirty plan. */
 const pages = new WeakMap<object, { count: number; slots: Set<string> }>();
 export function imagePageAccepts<T>(

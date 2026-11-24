@@ -58,10 +58,17 @@ export class ImageBatch extends Drawcall {
   static batchKey(shape: Shape): string | null {
     return eligibleImageRect(shape) ? 'images' : null;
   }
+  static canAppend(
+    shapes: readonly Shape[],
+    shape: Shape,
+    token = coreImageToken,
+  ) {
+    return imagePageAccepts(shapes, shape, token);
+  }
   override validate(shape: Shape) {
     return (
       ImageBatch.batchKey(shape) !== null &&
-      imagePageAccepts(this.shapes, shape, coreImageToken)
+      ImageBatch.canAppend(this.shapes, shape)
     );
   }
 
