@@ -8,7 +8,7 @@ import {
 import { PathGeometryCache } from '../utils/path-rendering';
 
 // Devices and shapes are weak keys. Curve levels share parsed commands while
-// each page keeps independent hysteresis; segments retain only the current level.
+// each page keeps independent hysteresis; segments weakly follow sampled levels.
 const screenCaches = new WeakMap<
   object,
   {

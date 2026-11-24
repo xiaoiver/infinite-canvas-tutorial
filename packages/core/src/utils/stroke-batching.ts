@@ -36,17 +36,16 @@ export function packStrokeInstances(
 
 export const STROKE_BATCH_PAGE_SIZE = 256;
 
-/** Retain only the current CPU segment level for each weak shape key.
- * A new precision or style replaces the entry; builders are never retained.
+/** CPU segments follow the lifetime of weak owner and sampled-point keys.
+ * One style per owner; builders and sampled points are never retained here.
  */
 export class StrokeSegmentCache<T> {
   private entries = new WeakMap<
     object,
     {
-      points: object;
       cap: CanvasLineCap;
       join: CanvasLineJoin;
-      data: T;
+      levels: WeakMap<object, { data: T }>;
     }
   >();
 
@@ -61,16 +60,17 @@ export class StrokeSegmentCache<T> {
       this.entries.delete(owner);
       return build();
     }
-    const cached = this.entries.get(owner);
-    if (
-      cached &&
-      cached.points === points &&
-      cached.cap === cap &&
-      cached.join === join
-    )
-      return cached.data;
+    const current = this.entries.get(owner);
+    const entry =
+      current?.cap === cap && current.join === join
+        ? current
+        : { cap, join, levels: new WeakMap<object, { data: T }>() };
+    const cached = entry.levels.get(points);
+    if (cached) return cached.data;
+    // Publish only after success, preserving previous hits when a build fails.
     const data = build();
-    this.entries.set(owner, { points, cap, join, data });
+    entry.levels.set(points, { data });
+    this.entries.set(owner, entry);
     return data;
   }
 }

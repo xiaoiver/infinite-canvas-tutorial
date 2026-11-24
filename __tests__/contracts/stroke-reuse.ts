@@ -191,7 +191,7 @@ export function strokePrecisionContextContract(Cache: new () => any) {
 
 
 export function strokeSegmentCacheContract(Cache: new () => any) {
-  it('weakly keys owners, retains one precision/style and preserves a hit after a failed build', () => {
+  it('reuses live point levels for one owner/style and preserves hits after a failed build', () => {
     const cache = new Cache(),
       owner = {},
       points = {},
@@ -207,15 +207,41 @@ export function strokeSegmentCacheContract(Cache: new () => any) {
     ).toThrow('build');
     expect(cache.get(owner, points, 'round', 'miter', build)).toBe(first);
     expect(cache.get(owner, points, 'butt', 'round', build)).not.toBe(first);
-    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(first);
+    const restyled = cache.get(owner, points, 'round', 'miter', build);
+    expect(restyled).not.toBe(first);
     const refined = cache.get(owner, other, 'round', 'miter', build);
     expect(refined).not.toBe(first);
-    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(first);
+    expect(cache.get(owner, points, 'round', 'miter', build)).toBe(restyled);
     expect(cache.get(other, points, 'round', 'miter', build)).not.toBe(first);
     expect(cache.get(owner, undefined, 'round', 'miter', build)).not.toBe(
       cache.get(owner, undefined, 'round', 'miter', build),
     );
+    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(
+      restyled,
+    );
     expect(build).toHaveBeenCalledTimes(8);
+  });
+  it('caches undefined values and clears every sampled level on a successful style change', () => {
+    const cache = new Cache(),
+      owner = {},
+      a = {},
+      b = {};
+    const build = jest.fn(() => undefined);
+    cache.get(owner, a, 'round', 'miter', build);
+    cache.get(owner, b, 'round', 'miter', build);
+    cache.get(owner, a, 'round', 'miter', build);
+    expect(build).toHaveBeenCalledTimes(2);
+    expect(() =>
+      cache.get(owner, b, 'butt', 'bevel', () => {
+        throw new Error('style');
+      }),
+    ).toThrow('style');
+    cache.get(owner, a, 'round', 'miter', build);
+    expect(build).toHaveBeenCalledTimes(2);
+    cache.get(owner, b, 'butt', 'bevel', build);
+    cache.get(owner, a, 'round', 'miter', build);
+    cache.get(owner, b, 'round', 'miter', build);
+    expect(build).toHaveBeenCalledTimes(5);
   });
 }
 
@@ -255,7 +281,7 @@ export function strokeSegmentReuseContract(
     expect(prepare(makeDraw({}), shape)).not.toBe(buffers);
     expect(buffers).toEqual(saved);
   });
-  it('refreshes every cap/join and path edit and replaces the current precision without changing local bytes', () => {
+  it('refreshes every cap/join and path edit and reuses live precision without changing local bytes', () => {
     const shape = makePath(),
       draw = makeDraw({}),
       full = makeDraw({}, true);
@@ -278,10 +304,14 @@ export function strokeSegmentReuseContract(
     }
     const low = prepare(draw, shape, 1);
     expect(prepare(draw, shape, 8)).not.toBe(low);
-    // Curve points are retained, but old segment arrays are deliberately not.
+    // Reuse only point identities still owned by the shared curve pool.
     const coarse = prepare(draw, shape, 1);
-    expect(coarse).not.toBe(low);
+    expect(coarse).toBe(low);
     expect(coarse).toEqual(low);
     expect(prepare(draw, shape, 1)).toBe(coarse);
+    for (const zoom of [16, 32, 64, 128]) prepare(draw, shape, zoom);
+    const rebuilt = prepare(draw, shape, 1);
+    expect(rebuilt).not.toBe(low);
+    expect(rebuilt).toEqual(low);
   });
 }
