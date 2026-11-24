@@ -8,6 +8,8 @@ import {
   System,
   system,
   GPUResource,
+  ComputedCamera,
+  Culled,
   MeshPipeline,
   ExportFormat,
   Screenshot,
@@ -27,6 +29,14 @@ import {
   CheckboardStyle,
   type SerializedNode,
 } from '@infinite-canvas-tutorial/ecs';
+import { StrokeBatch as ReplayStrokeBatch } from '../../../packages/ecs/src/drawcalls/StrokeBatch';
+import {
+  completedCameraReplay,
+  replaySurface,
+  type ReplayView,
+} from './camera-replay';
+import { framePhaseProbe, type FramePhases } from './frame-phase-probe';
+import { BatchManager } from '../../../packages/ecs/src/systems/BatchManager';
 import { SmoothPolyline } from '../../../packages/ecs/src/drawcalls/SmoothPolyline';
 import { settleECSFrames } from './ecs-frames';
 import { PathDrawcall } from '../../../packages/ecs/src/drawcalls/PathDrawcall';
@@ -54,7 +64,14 @@ const nativeWork = {
 };
 const boundBuffers = new WeakMap<object, Map<number, object | null>>();
 const uniformBuffers = new WeakSet<object>();
+let replayStrokePages = 0;
+const replayStrokeRender = ReplayStrokeBatch.prototype.render;
+ReplayStrokeBatch.prototype.render = function (...args) {
+  replayStrokePages++;
+  return replayStrokeRender.apply(this, args);
+};
 const resetNativeWork = () => {
+  replayStrokePages = 0;
   strokeCPU.reset();
   for (const key of Object.keys(nativeWork) as (keyof typeof nativeWork)[])
     nativeWork[key] = 0;
@@ -165,6 +182,41 @@ const app = new App({ maxEntities: 32768 }).addPlugins(
     system((s) => s.inAnyOrderWith(s.allSystems))(ProbePolyline);
   },
 );
+const replayPhases = framePhaseProbe();
+replayPhases.wrap(BatchManager.prototype, 'plan', 'batch.plan');
+let capturedPhases: FramePhases;
+const replay = completedCameraReplay({
+  view: () => {
+    const c = api.getCamera().read(ComputedCamera);
+    return { x: c.x, y: c.y, zoom: c.zoom };
+  },
+  before: () => {
+    resetNativeWork();
+    replayPhases.begin();
+  },
+  after: () => {
+    capturedPhases = replayPhases.end();
+  },
+  snapshot: () => {
+    const visibleIndices = api
+      .getNodes()
+      .filter(
+        (node) => /^replay-/.test(node.id) && !api.getEntity(node).has(Culled),
+      )
+      .map((node) => Number(node.id.slice(7)))
+      .sort((a, b) => a - b);
+    return {
+      surface: replaySurface(api.getCanvasElement()),
+      visibleIndices,
+      visible: visibleIndices.length,
+      strokePages: replayStrokePages,
+      native: { ...nativeWork },
+      cpu: strokeCPU.snapshot(),
+      phases: capturedPhases,
+      resources: window.lifecycleProbes?.resources(),
+    };
+  },
+});
 const frames = () => settleECSFrames(api, 3);
 const points = Array.from(
   { length: 512 },
@@ -409,6 +461,20 @@ const harness = {
     await api.edit((e) => e.setAppState({ cameraX: x }), { capture: 'NEVER' });
     await frames();
   },
+  replayDocument: () => api.getNodes(),
+  replayCamera(view: ReplayView) {
+    return replay.step(view, () =>
+      api.edit(
+        (e) =>
+          e.setAppState({
+            cameraX: view.x,
+            cameraY: view.y,
+            cameraZoom: view.zoom,
+          }),
+        { capture: 'NEVER' },
+      ),
+    );
+  },
   async patch(patch: Record<string, unknown>, id = 'line') {
     await api.edit((e) => e.updateNode(e.getNodeById(id), patch));
     await frames();
@@ -512,7 +578,12 @@ const harness = {
     return measureCameraFrames(count, enabled, samples);
   },
   async destroy() {
-    await app.exit();
+    replay.dispose();
+    try {
+      await app.exit();
+    } finally {
+      replayPhases.dispose();
+    }
   },
 };
 async function measureCameraFrames(
@@ -560,6 +631,10 @@ async function measureCameraFrames(
 Object.assign(window, { polylineLOD: harness });
 try {
   await app.run();
+  const executeReplay = app.world.execute.bind(app.world);
+  app.world.execute = (...args: Parameters<typeof executeReplay>) =>
+    replay.run(() => executeReplay(...args));
+  api.onDestroy(() => replay.dispose());
   while (!api.getCanvas().has(GPUResource)) await frames();
   await harness.seed();
   document.querySelector('output')!.textContent = 'Ready';

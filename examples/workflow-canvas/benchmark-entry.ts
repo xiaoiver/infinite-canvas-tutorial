@@ -1,3 +1,8 @@
+import {
+  completedCameraReplay,
+  replaySurface,
+  type ReplayView,
+} from '../../__tests__/browser/fixtures/camera-replay';
 /** Diagnostic entry only; the shipped index.html continues to import main.ts. */
 import * as ECS from '@infinite-canvas-tutorial/ecs';
 import { Store } from '../../packages/ecs/src/history/Store';
@@ -50,13 +55,43 @@ ECS.API.prototype.createCanvas = function (
     args[0] = { ...args[0], imageBatching: imageControl !== '0' };
   return originalCanvas.apply(this, args);
 };
+let capturedReplayPhases: FramePhases | undefined;
+const replay = completedCameraReplay({
+  view: () => {
+    const c = runtime.api!.getCamera().read(ECS.ComputedCamera);
+    return { x: c.x, y: c.y, zoom: c.zoom };
+  },
+  before: () => {
+    native.reset();
+    phases?.begin();
+  },
+  after: () => {
+    capturedReplayPhases = phases?.end();
+  },
+  snapshot: () => ({
+    surface: replaySurface(canvas),
+    native: native.snapshot(),
+    phases: capturedReplayPhases,
+    state: state(),
+    visibleIds: runtime
+      .api!.getNodes()
+      .filter(
+        (n) =>
+          (n.id.startsWith('node-') || n.id.startsWith('edge-')) &&
+          !runtime.api!.getEntity(n).has(ECS.Culled),
+      )
+      .map((n) => n.id)
+      .sort(),
+  }),
+});
 const originalRun = ECS.App.prototype.run;
 ECS.App.prototype.run = async function () {
   const result = await originalRun.call(this);
   runtime.app = this;
+  runtime.api!.onDestroy(() => replay.dispose());
   const execute = this.world.execute.bind(this.world);
   this.world.execute = (...args: Parameters<typeof execute>) => {
-    if (!active) return execute(...args);
+    if (!active) return replay.run(() => execute(...args));
     const pending = (async () => {
       const profile = phases;
       native.reset();
@@ -89,7 +124,7 @@ ECS.App.prototype.run = async function () {
   return result;
 };
 function profile(enabled: boolean) {
-  if (active || inFlight)
+  if (active || inFlight || replay.busy)
     throw new Error('Stop measurement before changing instrumentation');
   phases?.dispose();
   phases = undefined;
@@ -138,11 +173,15 @@ function state() {
   const camera = runtime.api?.getAppState();
   const theme = runtime.api?.getCanvas().read(ECS.Theme);
   const themeState = (mode: ECS.ThemeMode, colors: ECS.Theme['colors']) => ({
-    mode, background: colors[mode]?.background, grid: colors[mode]?.grid,
+    mode,
+    background: colors[mode]?.background,
+    grid: colors[mode]?.grid,
   });
   return {
     theme: theme ? themeState(theme.mode, theme.colors) : undefined,
-    requestedTheme: camera ? themeState(camera.themeMode, camera.theme.colors) : undefined,
+    requestedTheme: camera
+      ? themeState(camera.themeMode, camera.theme.colors)
+      : undefined,
     count: nodes.length,
     documentVersions: {
       present: nodes.filter((node) => node.version !== undefined).length,
@@ -163,7 +202,8 @@ function state() {
   };
 }
 function begin() {
-  if (active || inFlight) throw new Error('Finish the previous capture first');
+  if (active || inFlight || replay.busy)
+    throw new Error('Finish the previous capture first');
   samples = [];
   previous = 0;
   active = true;
@@ -226,6 +266,22 @@ const harness = {
   profile,
   begin,
   end,
+  replayDocument: () => runtime.api!.getNodes(),
+  replayCamera(view: ReplayView) {
+    if (active || inFlight || disposed)
+      throw new Error('Stop other captures before camera replay');
+    return replay.step(view, () =>
+      runtime.api!.edit(
+        (e) =>
+          e.setAppState({
+            cameraX: view.x,
+            cameraY: view.y,
+            cameraZoom: view.zoom,
+          }),
+        { capture: 'NEVER' },
+      ),
+    );
+  },
   async recordUnchanged(count = 30, warmup = 5) {
     if (
       disposed ||
@@ -284,6 +340,7 @@ const harness = {
   async dispose() {
     if (disposed) return;
     disposed = true;
+    replay.dispose();
     await end();
     try {
       // Exercise the real example's teardown, including its UI timers/listeners.

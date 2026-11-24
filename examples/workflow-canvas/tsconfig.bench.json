@@ -6,6 +6,8 @@
     "../../scripts/workflow-navigation.bench.spec.ts",
     "../../playwright.workflow-bench.config.ts",
     "../../scripts/document-versions.bench.spec.ts",
-    "../../playwright.document-versions-bench.config.ts"
+    "../../playwright.document-versions-bench.config.ts",
+    "../../scripts/workflow-replay.bench.spec.ts",
+    "../../playwright.workflow-replay-bench.config.ts"
   ]
 }

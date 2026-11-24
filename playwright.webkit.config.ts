@@ -21,6 +21,7 @@ export default defineConfig({
     'path-instances.spec.ts',
     'core-path-instances.spec.ts',
     'stroke-batching.spec.ts',
+    'camera-replay.spec.ts',
     'core-text-lifetime.spec.ts',
     'glyph-atlas.spec.ts',
     'glyph-sharing.spec.ts',
