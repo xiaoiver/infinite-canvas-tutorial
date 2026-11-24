@@ -5,6 +5,8 @@ import { QuadraticBezierCurve } from './quadratic-bezier-curve';
 import { EllipseCurve } from './ellipse-curve';
 
 type Point = [number, number];
+// The third component is the length, reused by all angle comparisons.
+type Tangent = [number, number, number];
 export type PathPoints = Point[][];
 
 // Physical pixels. Half is reserved for the centerline, half for stroke joins.
@@ -43,8 +45,12 @@ function distanceToSegment(p: Point, a: Point, b: Point) {
   return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
 }
 
-function angle(a: Point, b: Point) {
-  const length = Math.hypot(...a) * Math.hypot(...b);
+function tangent(dx: number, dy: number): Tangent {
+  return [dx, dy, Math.hypot(dx, dy)];
+}
+
+function angle(a: Tangent, b: Tangent) {
+  const length = a[2] * b[2];
   return length
     ? Math.acos(Math.max(-1, Math.min(1, (a[0] * b[0] + a[1] * b[1]) / length)))
     : 0;
@@ -100,15 +106,17 @@ export function flattenPath(
       if (flat && strokeRadius > 0) {
         const edges = p
           .slice(1)
-          .map((v, i): Point => [v[0] - p[i][0], v[1] - p[i][1]])
+          .map((v, i) => tangent(v[0] - p[i][0], v[1] - p[i][1]))
           .filter((v) => v[0] !== 0 || v[1] !== 0);
-        const chord: Point = [last[0] - first[0], last[1] - first[1]];
-        tangentsOK =
-          edges.every((a) => edges.every((b) => angle(a, b) <= turnLimit)) &&
-          (!start || !edges.length || angle(edges[0], chord) <= endLimit) &&
-          (!end ||
-            !edges.length ||
-            angle(edges[edges.length - 1], chord) <= endLimit);
+        tangentsOK = edges.every((a) =>
+          edges.every((b) => angle(a, b) <= turnLimit),
+        );
+        if (tangentsOK && edges.length && (start || end)) {
+          const chord = tangent(last[0] - first[0], last[1] - first[1]);
+          tangentsOK =
+            (!start || angle(edges[0], chord) <= endLimit) &&
+            (!end || angle(edges[edges.length - 1], chord) <= endLimit);
+        }
       }
       if (depth === MAX_DEPTH || splitsLeft === 0 || (flat && tangentsOK)) {
         append(last);
