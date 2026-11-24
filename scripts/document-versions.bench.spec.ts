@@ -51,6 +51,9 @@ test('unchanged Workflow commits retain versions and snapshot ownership', async 
     const capture = await page.evaluate(() =>
       window.workflowBenchmark.recordUnchanged(),
     );
+    expect(capture.before.theme).toEqual(capture.before.requestedTheme);
+    expect(capture.after.theme).toEqual(capture.after.requestedTheme);
+    expect(capture.before.theme?.background).toBe('#171b18');
     expect(capture.captures).toHaveLength(30);
     expect(capture.frames).toHaveLength(30);
     expect(capture.observerRestored).toBe(true);

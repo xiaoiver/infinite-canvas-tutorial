@@ -87,6 +87,8 @@ test('real workflow navigation at 2400 cards and 2400 edges', async ({
           window.workflowBenchmark.state(),
         );
         expect(start.visible.edges).toBe(2400);
+        expect(start.theme).toEqual(start.requestedTheme);
+        expect(start.theme?.background).toBe('#171b18');
         const frames = await page.evaluate(() =>
           window.workflowBenchmark.collect(30, 5),
         );

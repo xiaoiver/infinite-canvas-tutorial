@@ -28,6 +28,7 @@ import {
   Culled,
   ComputedLOD,
   Pen,
+  ThemeMode,
   CheckboardStyle,
   type SerializedNode,
   type TextSerializedNode,
@@ -43,6 +44,7 @@ const backend =
   new URLSearchParams(location.search).get('backend') === 'core'
     ? 'core'
     : 'ecs';
+const startupBackground = new URLSearchParams(location.search).get('startupBackground');
 const width = 960,
   height = 640;
 element.width = width;
@@ -95,7 +97,7 @@ if (backend === 'core') {
     canvas: element,
     devicePixelRatio: 1,
     checkboardStyle: CoreGrid.NONE,
-    themeColors: { [Theme.LIGHT]: { background: '#ffffff' } },
+    themeColors: { [Theme.LIGHT]: { background: startupBackground ?? '#ffffff', ...(startupBackground === null ? {} : { grid: '#000000' }) } },
   }).initialized;
   WebGLDeviceContribution.prototype.createSwapChain = original;
 } else {
@@ -108,6 +110,7 @@ if (backend === 'core') {
       api.setAppState({
         penbarSelected: Pen.SELECT,
         checkboardStyle: CheckboardStyle.NONE,
+        ...(startupBackground === null ? {} : {themeMode: ThemeMode.LIGHT, theme: {mode: ThemeMode.LIGHT, colors: {light: {background: startupBackground}}}}),
       });
     }
   }
@@ -539,8 +542,8 @@ async function editText(content?: string | string[]) {
   }
   return state();
 }
-async function raster() {
-  if (core) return core.toDataURL({ grid: false });
+async function raster(includeBackground = false) {
+  if (core) return core.toDataURL({ grid: includeBackground });
   const canvas = api!.getCanvas();
   return new Promise<string>((resolve, reject) => {
     const timer = setTimeout(
@@ -948,6 +951,11 @@ async function profile(enabled: boolean) {
   }
 }
 const harness = {
+  async startupFrame() {
+    if (core) core.render();
+    else await settleECSFrames(api!, 2);
+    return state();
+  },
   async handMode() {
     if (core) core.mode = CanvasMode.HAND;
     else await api!.edit(editor => editor.setAppState({penbarSelected: Pen.HAND}), {capture:'NEVER'});

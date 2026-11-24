@@ -175,3 +175,20 @@ describe('renderer lifecycle', () => {
     },
   );
 });
+
+
+it('renders an empty canvas background once when its GPU becomes ready', () => {
+  const pipeline = new MeshPipeline();
+  const camera = { has: () => false };
+  const canvas = { read: () => ({ cameras: [camera] }) };
+  const render = jest.spyOn(pipeline as any, 'renderCamera').mockImplementation(() => {
+    (pipeline as any).screenRedraw.delete(camera);
+  });
+  (pipeline as any).canvases.current = [canvas];
+  (pipeline as any).gpuReadyCanvases.added = [canvas];
+  pipeline.execute();
+  expect(render).toHaveBeenCalledTimes(1);
+  (pipeline as any).gpuReadyCanvases.added = [];
+  pipeline.execute();
+  expect(render).toHaveBeenCalledTimes(1);
+});

@@ -136,7 +136,13 @@ function state() {
     else visible.other++;
   }
   const camera = runtime.api?.getAppState();
+  const theme = runtime.api?.getCanvas().read(ECS.Theme);
+  const themeState = (mode: ECS.ThemeMode, colors: ECS.Theme['colors']) => ({
+    mode, background: colors[mode]?.background, grid: colors[mode]?.grid,
+  });
   return {
+    theme: theme ? themeState(theme.mode, theme.colors) : undefined,
+    requestedTheme: camera ? themeState(camera.themeMode, camera.theme.colors) : undefined,
     count: nodes.length,
     documentVersions: {
       present: nodes.filter((node) => node.version !== undefined).length,

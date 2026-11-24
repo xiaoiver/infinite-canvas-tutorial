@@ -1,98 +1,77 @@
 # Stop selection-only state from redrawing static canvases
 
-Following #708, this removes repeated full-canvas rendering caused by selection updates that also reapplied an unchanged theme. The static Workflow improvement is clear; **smooth interaction at 2,400 cards remains unverified**. Active zoom/drag tails remain high, and primary plus supplementary results retain every regression below.
+Following #708, selection updates now patch only selection/highlight state. ECS hand mode no longer reapplies unchanged Theme and binding state every tick. Core already avoids unchanged draws and its production code is unchanged; both backends share idle/wake, pixels, export and resource controls. **Smooth interaction at 2,400 cards remains unverified.**
 
-## Trigger, behavior and Core/ECS parity
+## Behavior and startup preservation
 
-Workflow uses the default ECS `Pen.HAND` internally while owning its application interactions. `Select.execute` clears built-in selection on non-selection tools each frame. `API.selectNodes([])` previously forwarded the entire prior AppState into `setAppState`, which reapplied Theme and queued unrelated binding/presentation refreshes. The same state-forwarding pattern existed in deselection and three 3D layer-selection helpers. A local observer recorded one Theme invalidation per static frame; its call stacks lead through `Select.execute` and `API.selectNodes` to `safeAddComponent(Theme)`.
+Five API selection paths previously resent the complete prior AppState. They now send only the changed selection fields; `setAppState` still delivers a complete merged state to consumers. Existing selection/highlight cleanup, 3D companion/gizmo handling, document/history, geometry, picking and export paths remain in place. No selection early-return shortcut, render pause, LOD substitution or dependency change is introduced.
 
-The five selection-only patches now send just `layersSelected` and `layersHighlighted`; one unused variable is removed. `setAppState` still merges the patch into the complete state for custom state-management consumers. Selection deduplication, preserving/clearing highlights, 2D/3D companion and gizmo cleanup, actual theme/variable updates, document/history behavior, original geometry, picking and export paths remain unchanged. There is no selection early-return shortcut, render pause switch, cache, culling/LOD substitution or dependency change.
+CI exposed a real startup dependency: a theme configured before GPU readiness existed in AppState but was not applied when SetupDevice later created Theme. Repeated selection updates had accidentally synchronized it. SetupDevice now initializes a missing Theme once from the configured state, preserving an explicitly supplied Theme. MeshPipeline queues the first GPU-ready frame even for an empty canvas, so the configured background is painted once and later idle frames remain quiet. Core/ECS startup tests check transparent/custom background pixels, an initially empty canvas draw, idle retention and teardown.
 
-Core already satisfies this contract: [Canvas.mode](../packages/core/src/Canvas.ts) guards unchanged modes, and `Canvas.render` submits work only when dirty. Core production code is unchanged. Both backends now share explicit hand-mode idle/wake, onscreen retention, original export-pixel and resource teardown tests, plus the same 1,000-visible-primitive idle and edit controls. Core fluctuations are controls, not a claimed Core speedup.
+## Qualified evidence
 
-## Environment and evidence
+Corrected serial captures on 2026-11-24 use Node 24.22.3, Chromium 140.0.7339.186, SwiftShader, DPR 1. Final source `6df6a8145ed019a0070a8f245da5e23c11460d0f`, tree `210674a95641888e2bc2d121cee735b435d9db4b`; reference `291245122214efbfe83c337c1c0c6d119c07c830`, tree `bb06c4e72ea2d5b5788d51a298c39c5b0b4f38b2`. Both include identical startup fixes, fixtures and measurement scripts; only `packages/ecs/src/API.ts` differs, restored from #708 (`1dbead9`) in the reference. All ten captures use clean source and successful exits; no tests/lint or other browser checks overlap their capture windows. This report follows those commits.
 
-Measured serially on 2026-11-23 with Node 24.22.3, Chromium 140.0.7339.186, SwiftShader and DPR 1. Dependencies are reused; lockfile and dependencies are unchanged. Functional checks separately use Chromium 149 and pinned WebKit/WPE. Native GPU, WebGPU and physical presentation timestamps are unavailable.
+[Full corrected raw inputs](selection-invalidation-benchmark.jsonl) include SHA-256 fingerprints, source blob IDs, frames, native counters, profiler scopes, environment and serial run records. Workflow now asserts actual Theme equals requested Theme with background `#171b18` before and after measurement. The earlier Workflow palette was wrong; [the complete earlier report](selection-state-invalidation-before-startup-theme-fix.md) and [raw inputs](selection-invalidation-before-startup-theme-fix.jsonl) remain archived and are excluded from the corrected comparison.
 
-Idle/edit/no-op final source `95302bc55caf0d63cc2670797127ce114e9bc635`, tree `766ca849c88aae97f24f9e2022c4be0711f40cd6`, is based on #708 merge `1dbead9e13a006db40caed6d0036cddf0958ea83`; reference `45897cf1bbcacf8690538768cb9d673b43d89391`, tree `1bcfae4ffe45659b777ece10fc0d7482499e8090`, restores only `packages/ecs/src/API.ts` from that merge. The settled Workflow pair uses final `3413e7dc114d52abb7cd2ef6b9313beb0315c031`, tree `5aa0207efea61b52ad22637f15f74df68fec99bf`, and reference `f457726c3f1c8fde1f9f48b0b501db9ec53d3ab4`, tree `bfcaf2fe7275627af3ee128ef0715ae9350d1e0a`. These later commits add final onscreen assertions and explicit camera preparation; production behavior is identical to the earlier source. Runtime/fixture/measurement blobs match within each primary pair except for the intended API delta. This report follows those measured commits.
-
-[Raw evidence](selection-invalidation-benchmark.jsonl) contains ten complete clean-source primary captures, four complete supplementary initial Workflow captures, input SHA-256 fingerprints, source blob IDs and serial exit results. Baseline idle/edit/no-op/profile/ordinary ran first, followed by the same five final captures. After diagnosing a queued-camera metadata lag, only the four Workflow captures reran with an explicit common preparation step. The six original idle/edit/no-op inputs remain primary, together with four settled Workflow inputs. No tests/lint or live browser verification overlap capture windows; all fourteen runs exit successfully. The redraw-reason observer is an excluded diagnostic, not a timing control.
-
-Idle/edit preserve the existing `floor(n*q)` percentile definition; Workflow/no-op use nearest rank `ceil(n*q)-1`. Core CPU spans action plus `Canvas.render`; ECS/Workflow CPU spans `world.execute`, including awaits. Completed-frame intervals include scheduling and software rendering. Idle samples are engine ticks preserving the same composed picture, with no new draw submission. These intervals are not physical display/GPU execution timers.
+Idle/edit retain the existing `floor(n*q)` percentiles; Workflow/no-op use nearest rank `ceil(n*q)-1`. CPU spans Core action/render or ECS `world.execute`, including awaits. Workflow completion intervals include scheduling/software rendering and are not physical display or native GPU timings.
 
 ## Static Core/ECS control
 
-The actual scene contains 1,000 visible primitives: 200 each rect, ellipse, text, polyline and path. Text batching is off/on; LOD is off. Thirty measured idle samples follow 15 warmups after switching to hand mode. Full exports before/after have identical pixels; a native two-frame pan wakes rendering, and teardown ownership checks pass. Visible/primitive counts, resident resource maps and allocated bytes match across revisions.
+Each case has 1,000 actually visible primitives (200 each rect, ellipse, text, polyline and path), LOD off, text batching off/on, 15 warmups and 30 samples after switching to hand mode. Exports retain identical pixels; real pan wakes rendering, and teardown passes. Matched visibility, primitive counts, resource maps and allocated bytes are asserted.
 
-| Backend | Text batching | Idle CPU p50/p95 ms, before → after | Nonempty frames / 30 | Draws per frame | Indices per frame | Allocated buffer bytes |
-| ------- | ------------- | ----------------------------------: | -------------------: | --------------: | ----------------: | ---------------------: |
-| core    | off           |                   0.8/1.8 → 0.7/0.9 |                0 → 0 |           0 → 0 |             0 → 0 |                1931220 |
-| core    | on            |                   0.7/1.0 → 0.5/0.6 |                0 → 0 |           0 → 0 |             0 → 0 |                1892956 |
-| ecs     | off           |                 15.6/23.4 → 2.7/3.7 |               30 → 0 |         602 → 0 |        395280 → 0 |                2206188 |
-| ecs     | on            |                 14.1/19.3 → 2.9/3.7 |               30 → 0 |         403 → 0 |        395280 → 0 |                2158428 |
+| Backend | Text batching | CPU p50/p95 ms, before → after | Nonempty frames / 30 | Draws / frame | Indices / frame | Allocated buffer bytes |
+| ------- | ------------- | -----------------------------: | -------------------: | ------------: | --------------: | ---------------------: |
+| core    | off           |              0.5/0.7 → 0.8/1.0 |                0 → 0 |         0 → 0 |           0 → 0 |                1931220 |
+| core    | on            |              0.4/1.2 → 0.4/0.7 |                0 → 0 |         0 → 0 |           0 → 0 |                1892956 |
+| ecs     | off           |            17.0/24.7 → 2.8/4.9 |               30 → 0 |       602 → 0 |      395280 → 0 |                2206188 |
+| ecs     | on            |            14.4/20.0 → 2.5/4.3 |               30 → 0 |       403 → 0 |      395280 → 0 |                2158428 |
 
-Every native counter in the final measured idle frames is zero, including uploads, creates and deletes. GPU objects remain resident for the next real edit; skipping idle work does not hide or remove nodes. Core was already idle before the change.
+All native counters in the final idle frames are zero, including creates, deletes, allocations and uploads. Resident objects remain available for the next edit. Core timing movement is a control, not a claimed Core optimization.
 
 ## Unchanged commits in the actual Workflow
 
-All 2,400 cards, 2,400 edges and the root are present (4,801 nodes); every card and edge is visible in overview. After three completed frames, record 35 empty `capture: NEVER` edits, discarding five warmups. The temporary snapshot observer restores in `finally`, two later frames succeed and real teardown passes.
+All 2,400 cards, 2,400 edges and the root are present (4,801 nodes), with every card/edge visible in overview. After three preparation frames, 35 empty `capture: NEVER` edits discard five warmups. Observer restoration, two later frames, teardown and invalid-version checks pass. Both revisions retain 30/30 snapshot and element Map reuse, 49 present versions and zero invalid versions.
 
-| Metric                             |      Before |    After |
-| ---------------------------------- | ----------: | -------: |
-| Invalid present versions           |           0 |        0 |
-| Snapshot / element Map reuses      |       30/30 |    30/30 |
-| Snapshot p50/p95 ms                |    7.1/13.4 |  3.9/8.8 |
-| Engine CPU p50/p95 ms              |   24.0/31.3 | 8.6/14.1 |
-| Draws / indices per measured frame | 22 / 614406 |    0 / 0 |
+| Metric                    |      Before |    After |
+| ------------------------- | ----------: | -------: |
+| Snapshot p50/p95 ms       |    6.5/11.1 |  3.3/6.0 |
+| Engine CPU p50/p95 ms     |   20.4/27.1 | 6.9/11.0 |
+| Draws / indices per frame | 22 / 614406 |    0 / 0 |
 
-The version/snapshot fix from #708 stays intact. Snapshot comparison code does not change here; its timing movement is not a separate algorithm improvement. Overview retains 86 main-renderer buffers, 14 textures and 3,078,076 allocated buffer bytes, with auxiliary offscreen resources tracked separately. All visible counts, camera, canvas size, version diagnostics, resident resources and allocated bytes match.
+The version/snapshot comparison algorithm does not change here. Main-renderer residency stays at 86 buffers, 14 textures and 3,078,076 allocated buffer bytes; auxiliary offscreen resources are retained in raw records.
 
 ## Editing controls
 
-These retain the existing default tool and edit 10 of the same 1,000 visible primitives. Thirty samples follow 15 warmups; instrumentation is then restored. Native counters, visible/primitive counts, resource maps and allocated bytes match in all four control and profiled cases.
+Edits mutate ten of the same 1,000 visible primitives, retaining the default tool, 15 warmups and 30 samples. Both profiled and unprofiled controls restore instrumentation and assert equal visibility, resources, allocated bytes and native counters across revisions.
 
 | Backend | Text batching | Control CPU p50/p95 ms, before → after | Profiled CPU p50/p95 ms, before → after | Draws | Indices / array vertices |
 | ------- | ------------- | -------------------------------------: | --------------------------------------: | ----: | -----------------------: |
-| core    | off           |                    8.8/13.8 → 9.9/17.3 |                   12.0/23.2 → 10.4/22.2 |   603 |               395280 / 4 |
-| core    | on            |                   9.1/17.1 → 12.1/22.6 |                    11.4/17.3 → 9.3/14.3 |   407 |               395280 / 4 |
-| ecs     | off           |                  28.8/42.4 → 29.5/34.4 |                   28.4/35.1 → 26.6/34.7 |   602 |               395280 / 4 |
-| ecs     | on            |                  26.5/47.8 → 26.7/36.2 |                   26.6/32.1 → 26.2/34.1 |   407 |               395280 / 4 |
+| core    | off           |                    7.0/13.3 → 6.6/14.5 |                     9.9/14.2 → 8.6/20.6 |   603 |               395280 / 4 |
+| core    | on            |                    7.0/15.3 → 9.5/14.6 |                     7.6/11.2 → 7.5/12.7 |   407 |               395280 / 4 |
+| ecs     | off           |                  25.9/33.8 → 26.0/36.1 |                   24.5/31.7 → 25.6/32.2 |   602 |               395280 / 4 |
+| ecs     | on            |                  26.7/33.1 → 21.8/43.4 |                   22.2/29.1 → 22.8/27.3 |   407 |               395280 / 4 |
 
-Both Core control modes regress despite no Core production change. ECS control p50 also increases slightly, while its p95 decreases; the profiled ECS batching-on p95 increases. These results do not establish a general editing speedup.
+Every increase is retained in the table; these single serial pairs do not establish a general editing speedup. Core shares the same unchanged production implementation in both revisions.
 
-## Actual Workflow interaction
+## Actual Workflow navigation
 
-Image batching remains enabled. Overview has 2,400 cards and 2,400 edges visible; focused native-pointer drag has 45 cards and 42 edges visible in the 4,801-node document. The primary pair waits two engine frames after zoom, asserts UI/applied/start camera agreement, and retains preparation frames separately from measured drag frames. Before/after camera, visibility, resident resources, pointer target and final coordinates match exactly; connected endpoint error is zero. The ten-second tour is time driven, so frame counts/densities vary with scheduling; raw camera poses and native counters are retained. Cold overview always precedes profiling, including the profile-labelled file.
+Image batching is enabled. Overview includes 2,400 visible cards and edges; focused native-pointer drag uses a subset of the 4,801-node document, with actual counts retained below. Both revisions settle two engine frames, assert UI/applied/start camera agreement, and retain preparation outside drag samples. Camera, target, final position, zero endpoint error, visibility and resources match. The ten-second tour is time driven; camera poses and sample counts vary with scheduling and remain in raw evidence. Cold transition precedes profiling even in the profile-labelled capture.
 
 | Capture  | Operation                   | Frames before/after |  CPU p50/p95/max ms, before → after | Completion interval p50/p95 ms, before → after |
 | -------- | --------------------------- | ------------------: | ----------------------------------: | ---------------------------------------------: |
-| profile  | cold-overview-transition    |                 8/7 |   5.0/600.8/600.8 → 6.0/570.0/570.0 |                        17.0/612.3 → 15.2/580.8 |
-| profile  | steady-overview             |               30/30 |       14.5/22.9/24.2 → 3.8/5.7/10.9 |                        426.4/880.5 → 16.5/22.4 |
-| profile  | time-driven-tour            |              45/101 | 19.3/210.5/225.6 → 15.6/124.1/226.1 |                       106.3/948.1 → 71.3/351.3 |
-| profile  | focused-native-pointer-drag |               24/35 |     23.2/33.4/35.1 → 18.1/30.1/39.4 |                        65.0/126.3 → 30.8/108.5 |
-| ordinary | cold-overview-transition    |                11/9 |  11.1/673.5/673.5 → 4.7/397.5/397.5 |                        22.3/679.2 → 14.1/409.3 |
-| ordinary | steady-overview             |               30/30 |        13.5/23.4/24.1 → 3.8/5.1/9.0 |                        411.7/851.7 → 16.6/24.2 |
-| ordinary | time-driven-tour            |              56/106 | 19.4/198.1/265.9 → 14.3/119.2/216.0 |                        89.9/709.5 → 63.6/365.6 |
-| ordinary | focused-native-pointer-drag |               23/31 |     19.9/30.4/41.4 → 15.3/26.8/30.0 |                         63.6/140.3 → 42.6/87.3 |
+| profile  | cold-overview-transition    |                 7/7 |   6.1/584.9/584.9 → 3.8/394.4/394.4 |                        18.4/592.0 → 11.7/407.9 |
+| profile  | steady-overview             |               30/30 |        12.7/19.2/19.4 → 2.4/4.2/4.4 |                       712.6/1461.6 → 16.7/18.9 |
+| profile  | time-driven-tour            |               30/79 | 22.7/140.5/265.7 → 12.5/137.4/183.3 |                      146.4/1084.5 → 49.0/766.4 |
+| profile  | focused-native-pointer-drag |               23/34 |     16.8/28.5/88.2 → 15.4/30.4/39.6 |                         60.2/139.4 → 26.2/79.4 |
+| ordinary | cold-overview-transition    |                 7/6 |   3.8/512.1/512.1 → 5.3/503.1/503.1 |                        16.8/516.2 → 26.5/535.2 |
+| ordinary | steady-overview             |               30/30 |        11.7/17.7/22.5 → 3.7/7.9/7.9 |                       775.3/1454.2 → 16.7/23.3 |
+| ordinary | time-driven-tour            |               26/81 | 19.9/242.8/367.3 → 14.0/131.3/178.8 |                       459.3/801.7 → 67.4/687.6 |
+| ordinary | focused-native-pointer-drag |               23/29 |     16.2/28.7/36.6 → 14.0/23.5/35.0 |                        55.6/146.2 → 32.9/101.9 |
 
-Ordinary static overview completion intervals are 411.7/851.7 → 16.6/24.2 ms while draws fall from 22 to zero. This is an idle improvement. Ordinary tour CPU p95 is 198.1 → 119.2 ms and its maximum 265.9 → 216.0 ms; ordinary drag maximum is 41.4 → 30.0 ms. These active-view tails keep the 2,400-card smooth zoom/drag goal open. Remaining work includes active-view geometry/submission and software-rendering waits, followed by native GPU/presentation validation.
+Both profile and ordinary drag have 36 visible cards and 30 visible edges in each revision.
 
-The settled profiled tour points to a concrete next target: mean exclusive `stroke.geometry` is 9.96 ms/frame, `batch.plan` 5.43 ms and `path.precision` 4.91 ms. One 226.1 ms engine tail contains 84.4 ms in `stroke.geometry`, 55.8 ms in `path.precision` and 31.3 ms in `batch.plan`, with 22 draws and 617,796 submitted indices. These are recorded CPU scopes, not physical GPU execution times; curve geometry/precision work should be investigated before inferring a batching or hardware-GPU bottleneck.
-
-## Initial Workflow captures retained
-
-The initial ordinary baseline drag start metadata still showed the previous queued zoom (0.32155), while every measured frame, its native pointer target and end view used 0.38586 exactly as the final capture. The revised benchmark settles two engine frames, asserts camera agreement and retains those preparation frames outside the drag sample. All four initial captures remain here and in the raw evidence, including the worse ordinary tour p95 and 115.3 ms drag maximum. They are supplementary rather than substituted into the settled pair.
-
-| Initial capture | Operation                   | Frames before/after |  CPU p50/p95/max ms, before → after | Completion interval p50/p95 ms, before → after |
-| --------------- | --------------------------- | ------------------: | ----------------------------------: | ---------------------------------------------: |
-| profile         | cold-overview-transition    |                 6/7 |   3.2/489.9/489.9 → 3.5/459.0/459.0 |                        19.2/501.4 → 16.8/472.0 |
-| profile         | steady-overview             |               30/30 |        14.9/20.1/20.8 → 3.8/5.4/9.2 |                       546.9/1153.0 → 16.7/21.5 |
-| profile         | time-driven-tour            |               39/81 | 24.6/172.9/182.5 → 15.0/130.1/205.4 |                      155.7/1092.7 → 64.8/627.9 |
-| profile         | focused-native-pointer-drag |               24/34 |     17.9/23.4/26.9 → 13.0/29.1/35.7 |                        57.4/111.7 → 29.6/110.5 |
-| ordinary        | cold-overview-transition    |                 7/6 |   5.2/591.6/591.6 → 2.9/445.1/445.1 |                        21.7/604.5 → 16.6/455.5 |
-| ordinary        | steady-overview             |               30/30 |       15.4/22.1/26.3 → 3.0/5.7/23.5 |                       422.2/1116.4 → 16.6/19.8 |
-| ordinary        | time-driven-tour            |               70/84 | 14.9/133.8/218.0 → 13.4/137.7/236.9 |                        72.9/492.6 → 68.3/489.5 |
-| ordinary        | focused-native-pointer-drag |               25/40 |    18.7/31.3/59.6 → 13.5/30.8/115.3 |                        48.3/128.6 → 27.1/125.6 |
+Static draw suppression is distinct from active zoom/drag performance. Retained active-view p95/max values and software-rendering completion waits keep the 2,400-card smooth-interaction goal open. Native GPU/WebGPU and physical presentation validation remain outstanding.
 
 ## Reproduce
 
@@ -100,18 +79,20 @@ The initial ordinary baseline drag start metadata still showed the previous queu
 pnpm bench:idle-rendering
 pnpm bench:edit-phases
 pnpm bench:document-versions
-WORKFLOW_BENCH_IMAGES=1 WORKFLOW_BENCH_PROFILE=1 WORKFLOW_BENCH_OUTPUT=.test-results/selection-profile.json pnpm bench:workflow
-WORKFLOW_BENCH_IMAGES=1 WORKFLOW_BENCH_PROFILE=0 WORKFLOW_BENCH_OUTPUT=.test-results/selection-ordinary.json pnpm bench:workflow
+WORKFLOW_BENCH_IMAGES=1 WORKFLOW_BENCH_PROFILE=1 pnpm bench:workflow
+WORKFLOW_BENCH_IMAGES=1 WORKFLOW_BENCH_PROFILE=0 pnpm bench:workflow
 ```
 
-Use one browser binary, clean commits and serial runs. Restore only `packages/ecs/src/API.ts` from `1dbead9` for the paired legacy reference while retaining current scripts/fixtures. That reference must set `WORKFLOW_BENCH_EXPECT_IDLE_DRAWS=22` for Workflow and no-op captures; the current default is zero. This variable changes only assertions, not the page, renderer or workload, so legacy redraws remain measurable without relaxing the current idle regression. Image-batching-off legacy overview still expects 2,412 draws.
+Use clean commits, the same browser binary and strictly serial captures. A paired reference restores only API.ts from `1dbead9`, retaining the startup fixes and identical measurement files. For that legacy reference, `WORKFLOW_BENCH_EXPECT_IDLE_DRAWS=22` changes assertions only; the current default remains zero. `WORKFLOW_CHROMIUM` selects the Workflow/no-op executable. Idle/edit use local extending configs with the identical executable, `testDir`, root webServer cwd and no server reuse. Existing formal configurations remain portable.
 
-`WORKFLOW_CHROMIUM` selects the Workflow/no-op executable. Idle/edit use local extending configs selecting the same Chromium 140 via `use.launchOptions.executablePath`, with correct `testDir` and root `webServer.cwd`; those formal configs do not consume that variable. Installed pinned browsers produce a different environment. For historical #708 timing results, use that PR’s source and assertions instead of mixing its captures with the new idle contract.
+## Validation and limits
 
-## Validation and limitations
+-   **14 Core + 265 ECS unit cases passed**, across 17 files: Core history/serialization; ECS selection, startup device/renderer lifecycle, history/document versions, 3D companions/gizmos, design variables and inherited presentation. The missing-theme and missing-first-frame cases fail before their corresponding fixes. The reused loaders.gl copies use the existing local canonical mock mapper with external network access denied; no repository assertions or CI configuration are weakened. Whole-repository CI must pass on the final remote head before merging.
+-   WebKit: 121 browser cases passed, including transparency, filters, blend modes, Lottie, path/stroke batching, editing, history, export, culling/reentry/removal and resource ownership. Real Workflow: all six cases passed through 2,400 cards, connected drag, anchored zoom/pan, cancellation, persistence/export and narrow/reduced-motion behavior.
+-   Chromium passes the original failing pixel families and all four strengthened startup cases. One existing repeated-reload mixed-renderer case remains locally blocked by `net::ERR_INSUFFICIENT_RESOURCES` while loading source ESM modules. Its Ready timeout and behavioral assertions are unchanged; CI remains the final full-browser check.
+-   Five final typechecks passed: Core, ECS, browser, mixed benchmark and Workflow benchmark. Normal commit hooks and changed-file lint run on the repair. All ten corrected benchmark captures pass.
+-   Native headless-GL Jest filter pixel suites could not run locally: the reused dependency tree lacks a compiled `gl` binding and Xvfb. Those native suites require CI; browser WebGL pixel checks are local results. Pinned WebKit/WPE bypasses GUI-only host requirements validation without skipping behavioral assertions. Dependencies and lockfile are unchanged.
 
--   **14 Core + 253 unique ECS tests passed**, across 15 files: Core history/serialize; ECS selection-state-invalidation, history-document, history-3D-sync, edit-stage, mesh3d-layers, gizmo-lifecycle, design-variables, history-inheritance-sync/delta/boundary/property-sync/rough-sync and document-version. The new 2D state-ownership case fails before the fix; the old ECS browser case renders all six idle frames instead of zero, while the Core control already passes.
--   **19 Chromium + 19 WebKit + 6 real Workflow cases passed**. Retained onscreen pixels and nonblank canvas interiors are checked without an intervening forced export; native pan/edit draws visibly change the screen, original full exports retain pixel equality across idle, and final idle/resource teardown checks pass. Final screenshot assertions reran both backend cases in Chromium and WebKit successfully. Existing coverage includes painter barriers, picking/transforms/history, camera migration, full raster exports, culling/reentry/same-frame removal and resource ownership. Workflow covers all scales through 2,400, endpoint-connected dragging, anchored zoom/pan, tour/cancellation, reduction, persistence/export and narrow/reduced-motion behavior.
--   **Five typechecks passed** (Core, ECS, browser, benchmark, Workflow benchmark); browser typechecking reran after final screenshot assertions. Changed-file lint/diff checks and normal hooks passed. Ten primary and four preserved supplementary captures passed. Within each primary pair, runtime/workload instrumentation matches except the intended API delta. Workflow typechecking reran after the settlement assertion was added.
--   Local reused dependencies contained two physical copies of `loaders.gl` 4.5.2, so an existing model mock initially missed the actual import. One legacy 3D case failed and an unintended `models.example` request was rejected by automatic approval review. An ignored local Jest mapper canonicalizes that module, and fetch/HTTP/HTTPS/socket attempts are denied for offline tests; both 3D/gizmo suites then passed 35 tests with no external model access. Existing model-test assertions and CI workflow configuration are unchanged; the resolver override remains local.
--   Headless WebKit uses WPE with GUI-only host validation bypassed; no behavioral assertions are skipped. Whole-repository CI and representative native-GPU/WebGPU/presentation measurements are not local results.
+## Next measured target
+
+Corrected profiled tour mean exclusive CPU per frame: stroke.geometry 9.2 ms, batch.plan 5.6 ms, path.precision 4.9 ms, visibility.cull 2.4 ms, drawcall.ImageBatch 1.4 ms. The maximum engine frame (183.3 ms) contains stroke.geometry 60.3 ms, path.precision 47.4 ms, batch.plan 43.9 ms, drawcall.ImageBatch 6.5 ms, render.camera 5.6 ms. These scopes motivate investigating local curve/stroke geometry reuse in Core and ECS before attributing the remaining tail to physical GPU hardware.
