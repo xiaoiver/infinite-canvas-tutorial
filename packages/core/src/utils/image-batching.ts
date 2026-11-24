@@ -87,15 +87,15 @@ export function imageBatchRow(
   ];
 }
 
-/** One synchronous dirty plan owns this cache; never reuse it across frames. */
-export function cacheImageTokens<T>(resolve: (shape: T) => string) {
-  const tokens = new Map<T, string>();
+/** Reuse the adjacent candidate/member description inside one synchronous plan. */
+export function reuseAdjacentImageTokens<T>(resolve: (shape: T) => string) {
+  let previous: T | undefined;
+  let previousToken: string | undefined;
   return (shape: T) => {
-    let token = tokens.get(shape);
-    if (token === undefined) {
-      token = resolve(shape);
-      tokens.set(shape, token);
-    }
+    if (previousToken !== undefined && previous === shape) return previousToken;
+    const token = resolve(shape);
+    previous = shape;
+    previousToken = token;
     return token;
   };
 }

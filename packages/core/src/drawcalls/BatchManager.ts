@@ -30,7 +30,10 @@ import { TexturePool } from '../TexturePool';
 import { PathInstances, PATH_INSTANCE_PAGE_SIZE } from './PathInstances';
 import { StrokeBatch } from './StrokeBatch';
 import { ImageBatch } from './ImageBatch';
-import { cacheImageTokens, coreImageToken } from '../utils/image-batching';
+import {
+  reuseAdjacentImageTokens,
+  coreImageToken,
+} from '../utils/image-batching';
 
 type OrderedPage = {
   key: string;
@@ -354,7 +357,7 @@ export class BatchManager {
     // Compatibility may inspect a member again after accepting it. Resolve its
     // raster token once in this plan; a later plan must see current paint.
     const imageToken = this.#allowImageBatches
-      ? cacheImageTokens(coreImageToken)
+      ? reuseAdjacentImageTokens(coreImageToken)
       : undefined;
     const next: OrderedPage[] = [];
     for (const shape of this.#frameShapes) {

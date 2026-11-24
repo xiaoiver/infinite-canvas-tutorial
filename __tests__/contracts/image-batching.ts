@@ -1,5 +1,7 @@
 interface Packing {
-  cacheImageTokens<T>(resolve: (shape: T) => string): (shape: T) => string;
+  reuseAdjacentImageTokens<T>(
+    resolve: (shape: T) => string,
+  ): (shape: T) => string;
   ImageBatchTextures: new () => {
     sync(
       requests: readonly any[],
@@ -85,7 +87,7 @@ export function imageBatchContract(pack: Packing) {
       token: String(i % 9),
     }));
     const resolve = jest.fn((shape: { token: string }) => shape.token);
-    const token = pack.cacheImageTokens(resolve);
+    const token = pack.reuseAdjacentImageTokens(resolve);
     const pages: (typeof shapes)[] = [];
     let page: typeof shapes = [];
     for (const shape of shapes) {
@@ -102,17 +104,31 @@ export function imageBatchContract(pack: Packing) {
     expect(pack.imagePageAccepts(pages[0], shapes[0], token)).toBe(true);
     expect(pack.imagePageAccepts(pages[0], shapes[8], token)).toBe(false);
   });
+  it('only reuses an adjacent shape identity, not an equal token or an older member', () => {
+    const a = { token: 'same' },
+      b = { token: 'same' };
+    const resolve = jest.fn((shape: typeof a) => shape.token);
+    const token = pack.reuseAdjacentImageTokens(resolve);
+    expect(token(a)).toBe('same');
+    expect(token(a)).toBe('same');
+    expect(resolve).toHaveBeenCalledTimes(1);
+    expect(token(b)).toBe('same');
+    expect(token(b)).toBe('same');
+    expect(resolve).toHaveBeenCalledTimes(2);
+    expect(token(a)).toBe('same');
+    expect(resolve).toHaveBeenCalledTimes(3);
+  });
   it('refreshes edited variants in each new plan and retries failed descriptions', () => {
     const a = { token: '' },
       b = { token: 'old' };
     const resolve = jest.fn((shape: typeof a) => shape.token);
-    const first = pack.cacheImageTokens(resolve);
+    const first = pack.reuseAdjacentImageTokens(resolve);
     expect(first(a)).toBe('');
     expect(first(a)).toBe('');
     expect(resolve).toHaveBeenCalledTimes(1);
     expect(first(b)).toBe('old');
     b.token = 'edited';
-    const next = pack.cacheImageTokens(resolve);
+    const next = pack.reuseAdjacentImageTokens(resolve);
     expect(next(b)).toBe('edited');
     expect(next(a)).toBe('');
     const unstable = jest
@@ -120,7 +136,7 @@ export function imageBatchContract(pack: Packing) {
       .mockImplementationOnce(() => {
         throw new Error('description failed');
       });
-    const retry = pack.cacheImageTokens(unstable);
+    const retry = pack.reuseAdjacentImageTokens(unstable);
     expect(() => retry(a)).toThrow('description failed');
     expect(retry(a)).toBe('recovered');
     expect(retry(a)).toBe('recovered');

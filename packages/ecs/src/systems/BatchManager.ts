@@ -65,7 +65,7 @@ import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 import { StrokeBatch } from '../drawcalls/StrokeBatch';
 import { ImageBatch } from '../drawcalls/ImageBatch';
 import {
-  cacheImageTokens,
+  reuseAdjacentImageTokens,
   imageRectTexture,
   invalidateImageRectTexture,
 } from '../utils/image-batching';
@@ -333,7 +333,7 @@ export class BatchManager {
     // Compatibility may inspect a member again after accepting it. Resolve its
     // raster token once in this plan; a later plan must see current paint.
     const imageToken = this.#imageBatching
-      ? cacheImageTokens(
+      ? reuseAdjacentImageTokens(
           (shape: Entity) => imageRectTexture(shape, this.api).token,
         )
       : undefined;
