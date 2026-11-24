@@ -1935,6 +1935,10 @@ export class Select extends System {
           selection.label.remove();
           this.selections.delete(camera.__id);
         });
+        // A destroyed scope invokes cleanup immediately, while Becsy can still
+        // retain this camera in the current query. Leave before attaching UI or
+        // consuming input for the removed selection; peers still run below.
+        if (!this.selections.has(camera.__id)) return;
 
         if (isBrowser) {
           // Both overlays use viewport coordinates. Anchor them explicitly so
