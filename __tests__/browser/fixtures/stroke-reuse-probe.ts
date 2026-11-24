@@ -5,11 +5,14 @@ export function strokeReuseProbe(precision: object, geometry: object) {
     precisionMs: 0,
     geometryCalls: 0,
     geometryMs: 0,
+    localCalls: 0,
+    localMs: 0,
   });
   let work = empty();
   for (const [target, key, prefix] of [
     [precision, 'prepareGeometry', 'precision'],
     [geometry, 'createGeometry', 'geometry'],
+    [geometry, 'getStrokeGeometry', 'local'],
   ] as const) {
     const methods = target as Record<string, (...args: any[]) => any>;
     const original = methods[key];

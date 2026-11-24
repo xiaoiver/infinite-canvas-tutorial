@@ -149,6 +149,14 @@ test('paired Core/ECS 2400 curved strokes: edits, precision and culling reentry'
           backend === 'core' ? n.attributes.d : n.d,
         ),
       );
+      // Heap collection is outside every measured operation. These are aggregate
+      // page heap samples, not a per-cache accounting or a native-GPU timer.
+      const cdp = await page.context().newCDPSession(page);
+      const heap = async () => {
+        await cdp.send('HeapProfiler.collectGarbage');
+        return cdp.send('Runtime.getHeapUsage');
+      };
+      const afterOperations = await heap();
       const baseline = await page.evaluate(
         async (b) =>
           b === 'core'
@@ -164,10 +172,13 @@ test('paired Core/ECS 2400 curved strokes: edits, precision and culling reentry'
         expect(
           await page.evaluate(() => window.lifecycleProbes.leaks()),
         ).toEqual([]);
+      const afterDestroy = await heap();
+      await cdp.detach();
       expect(errors).toEqual([]);
       results.push({
         backend,
         initialVisible: start.visible,
+        heap: { afterOperations, afterDestroy },
         steps,
         teardown: 'passed',
       });

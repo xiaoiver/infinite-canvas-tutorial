@@ -58,6 +58,7 @@ strokeReuseContract(
   },
   (device, full) =>
     new (full ? SmoothPolyline : StrokeBatch)(device, null, null, false, 0),
+  (shape, cap, join) => { shape.strokeLinecap = cap; shape.strokeLinejoin = join; },
 );
 
 import { PathGeometryCache } from '../../packages/core/src/utils/path-rendering';

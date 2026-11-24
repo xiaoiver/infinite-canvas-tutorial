@@ -2,6 +2,9 @@ import type { Entity } from '@lastolivegames/becsy';
 import { SmoothPolyline } from './SmoothPolyline';
 import {
   Path,
+  Line,
+  Polyline,
+  VectorNetwork,
   Stroke,
   GlobalTransform,
   GlobalRenderOrder,
@@ -22,7 +25,7 @@ import {
 } from '../components';
 import { getEnabledFillLayers, fillLayerOpacity } from '../utils/fillLayers';
 import { getEnabledStrokeLayers } from '../utils/strokeLayers';
-import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
+import { STROKE_BATCH_PAGE_SIZE, LocalStrokeGeometryCache } from '../utils/stroke-batching';
 
 import { PathGeometryCache } from '../utils/path-rendering';
 
@@ -39,6 +42,8 @@ function screenStrokeCaches(device: object) {
   return caches;
 }
 
+const localGeometry = new LocalStrokeGeometryCache();
+
 /** Ordered, screen-only pages; never retain an empty style page. */
 export class StrokeBatch extends SmoothPolyline {
   protected maxInstances = STROKE_BATCH_PAGE_SIZE;
@@ -48,6 +53,14 @@ export class StrokeBatch extends SmoothPolyline {
     let geometry = caches.get(shape);
     if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
     return geometry.fork();
+  }
+
+  protected override getStrokeGeometry(shape: Entity) {
+    const level = this.pathPoints.get(shape);
+    if (!level || shape.hasSomeOf(Line, Polyline, VectorNetwork))
+      return super.getStrokeGeometry(shape);
+    const { linecap: cap, linejoin: join } = shape.read(Stroke);
+    return localGeometry.get(level, cap, join, () => super.getStrokeGeometry(shape));
   }
 
   static override retainEmptyPage = false;
