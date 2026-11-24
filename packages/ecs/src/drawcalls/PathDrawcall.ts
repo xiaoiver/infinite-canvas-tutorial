@@ -8,7 +8,7 @@ import {
   StrokeAttenuation,
 } from '../components';
 import { PathPoints } from '../utils/curve/adaptive';
-import { PathGeometryCache, pathScreenMetrics } from '../utils/path-rendering';
+import { PathGeometryCache, pathScreenMetrics, pathScreenMetricsForPass } from '../utils/path-rendering';
 import { Drawcall } from './Drawcall';
 
 /** Render precision is separate from ComputedPoints or bounds. */
@@ -29,6 +29,7 @@ export abstract class PathDrawcall extends Drawcall {
   }
 
   protected prepareGeometry(uniforms: Record<string, unknown>) {
+    let metricsForPass: ReturnType<typeof pathScreenMetricsForPass> | undefined;
     for (const shape of this.shapes) {
       if (!shape.has(Path) || shape.has(Rough)) continue;
       let cache = this.pathCaches.get(shape);
@@ -38,12 +39,16 @@ export abstract class PathDrawcall extends Drawcall {
           (cache = this.createPathGeometryCache(shape)),
         );
       const { matrix: m } = shape.read(GlobalTransform);
-      let { scale, strokeScale } = pathScreenMetrics(uniforms, {
-        a: m.m00,
-        b: m.m01,
-        c: m.m10,
-        d: m.m11,
-      });
+      if (this.shapes.length > 1)
+        metricsForPass ??= pathScreenMetricsForPass(uniforms);
+      let { scale, strokeScale } = metricsForPass
+        ? metricsForPass(m.m00, m.m01, m.m10, m.m11)
+        : pathScreenMetrics(uniforms, {
+            a: m.m00,
+            b: m.m01,
+            c: m.m10,
+            d: m.m11,
+          });
       const zoom = Number(uniforms.u_ZoomScale) || 1;
       if (!this.pathStroke && shape.has(SizeAttenuation)) scale /= zoom;
       if (this.pathStroke && shape.has(StrokeAttenuation)) strokeScale /= zoom;

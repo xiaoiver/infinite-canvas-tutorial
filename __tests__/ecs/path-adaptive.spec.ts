@@ -149,6 +149,29 @@ describe.each([
     expect(sheared.scale).toBeCloseTo((16 * (1 + Math.sqrt(5))) / 2);
   });
 
+  it('keeps pass metrics exact for mutable transforms, shear, reflection and singular matrices', () => {
+    const uniforms = {u_ProjectionMatrix:[.01,0,0,0,-.02,0,-1,1,1],u_ViewMatrix:[8,0,0,0,8,0,-80,10,1],u_Viewport:[400,200]};
+    const metrics = implementation.pathScreenMetricsForPass(uniforms);
+    const mutable = {a:1,b:0,c:0,d:1};
+    for (const [a,b,c,d] of [[1,0,0,1],[1,0,0,1],[0,-3,-2,0],[1,0,1,1],[0,0,0,0],[2,.4,-.2,3],[1,0,0,1]]) {
+      Object.assign(mutable,{a,b,c,d});
+      const actual = metrics(a,b,c,d);
+      expect(actual).toEqual(implementation.pathScreenMetrics(uniforms, mutable));
+      expect(metrics(a,b,c,d)).toBe(actual);
+    }
+  });
+  it('refreshes in-place camera, projection and viewport values for a new pass', () => {
+    const uniforms = {u_ProjectionMatrix:[1,0,0,0,1,0,0,0,1],u_ViewMatrix:[1,0,0,0,1,0,0,0,1],u_Viewport:[2,2]};
+    const model = {a:1,b:.2,c:.3,d:1};
+    const first = implementation.pathScreenMetricsForPass(uniforms)(model.a,model.b,model.c,model.d);
+    for (const change of [() => {uniforms.u_ViewMatrix[0]=16;},() => {uniforms.u_Viewport[0]=6;},() => {uniforms.u_ProjectionMatrix[4]=-.5;}]) {
+      change();
+      const next = implementation.pathScreenMetricsForPass(uniforms)(model.a,model.b,model.c,model.d);
+      expect(next).toEqual(implementation.pathScreenMetrics(uniforms, model));
+      expect(next).not.toBe(first);
+    }
+    expect(implementation.pathScreenMetricsForPass({})(1,0,0,1)).toEqual({scale:1,strokeScale:1});
+  });
   it('uses curve extrema for bounds, independently of render precision', () => {
     const d = 'M0 0 Q30 100 100 0 C100 -60 130 -60 130 0';
     const bounds = implementation.pathGeometryBounds(d);
