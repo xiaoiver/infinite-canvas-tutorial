@@ -1,4 +1,4 @@
-import { appendStrokeInstances } from '../utils/stroke-batching';
+import { packStrokeInstances, type StrokePart } from '../utils/stroke-batching';
 import {
   type RenderPass,
   Buffer,
@@ -119,8 +119,8 @@ export class SmoothPolyline extends PathDrawcall {
   }
 
   instanced = false;
-  pointsBuffer: number[] = [];
-  travelBuffer: number[] = [];
+  pointsBuffer: number[] | Float32Array = [];
+  travelBuffer: number[] | Float32Array = [];
 
   get instanceCount() {
     if (this.strokeBatch) return this.pointsBuffer.length / 15;
@@ -161,6 +161,7 @@ export class SmoothPolyline extends PathDrawcall {
 
   createGeometry(): void {
     const indices: number[] = [];
+    const parts: StrokePart[] | undefined = this.strokeBatch ? [] : undefined;
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
     let offset = 0;
@@ -168,16 +169,17 @@ export class SmoothPolyline extends PathDrawcall {
       const { pointsBuffer: pBuffer, travelBuffer: tBuffer } =
         this.getStrokeBuffers(shape);
 
-      if (this.strokeBatch) {
+      if (parts) {
         const m = shape.worldTransform;
-        appendStrokeInstances(
-          pBuffer,
-          tBuffer,
-          [m.tx, m.ty, (shape.globalRenderOrder + 0.1) / ZINDEX_FACTOR],
-          1,
-          pointsBuffer,
-          travelBuffer,
-        );
+        parts.push({
+          points: pBuffer,
+          travel: tBuffer,
+          translationAndOrder: [
+            m.tx,
+            m.ty,
+            (shape.globalRenderOrder + 0.1) / ZINDEX_FACTOR,
+          ],
+        });
       } else {
         pointsBuffer.push(...pBuffer);
         travelBuffer.push(...tBuffer);
@@ -205,8 +207,9 @@ export class SmoothPolyline extends PathDrawcall {
       offset += 9;
     });
     this.indexBufferData = new Uint32Array(indices);
-    this.pointsBuffer = pointsBuffer;
-    this.travelBuffer = travelBuffer;
+    const packed = parts ? packStrokeInstances(parts, 1) : undefined;
+    this.pointsBuffer = packed?.points ?? pointsBuffer;
+    this.travelBuffer = packed?.travel ?? travelBuffer;
 
     if (this.instanceCount <= 0) {
       return;
@@ -247,14 +250,9 @@ export class SmoothPolyline extends PathDrawcall {
       });
     }
 
-    // A stroke page owns these snapshots already; upload the same bytes rather
-    // than allocating another Float32 copy of the packed CPU arrays.
-    const batchData = this.strokeBatch
-      ? new Float32Array(this.pointsBuffer)
-      : undefined;
-    const batchTravel = this.strokeBatch
-      ? new Float32Array(this.travelBuffer)
-      : undefined;
+    // Page assembly already produced the final owned Float32 snapshots.
+    const batchData = packed?.points;
+    const batchTravel = packed?.travel;
     this.#segmentsBuffer.setSubData(
       0,
       new Uint8Array((batchData ?? new Float32Array(this.pointsBuffer)).buffer),

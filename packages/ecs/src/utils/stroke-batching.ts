@@ -1,19 +1,37 @@
-/** Pack each sliding four-point window independently; never join different paths. */
-export function appendStrokeInstances(
-  points: readonly number[],
-  travel: readonly number[],
-  translationAndOrder: readonly [number, number, number],
-  travelStride: number,
-  packed: number[],
-  packedTravel: number[],
-): void {
-  const count = Math.max(0, points.length / 3 - 3);
-  for (let row = 0; row < count; row++) {
-    for (let i = 0; i < 12; i++) packed.push(points[row * 3 + i]);
-    packed.push(...translationAndOrder);
-    for (let i = 0; i < travelStride; i++)
-      packedTravel.push(travel[row * travelStride + i] ?? 0);
+export interface StrokePart {
+  readonly points: readonly number[];
+  readonly travel: readonly number[];
+  readonly translationAndOrder: readonly [number, number, number];
+}
+
+/** Allocate final page snapshots once; never join windows across different paths. */
+export function packStrokeInstances(
+  parts: readonly StrokePart[],
+  travelStride: 1 | 3,
+) {
+  const count = (points: readonly number[]) =>
+    Math.max(0, Math.ceil(points.length / 3 - 3));
+  let rows = 0;
+  for (const part of parts) rows += count(part.points);
+  const points = new Float32Array(rows * 15);
+  const travel = new Float32Array(rows * travelStride);
+  let offset = 0;
+  for (const part of parts) {
+    const size = count(part.points);
+    for (let row = 0; row < size; row++) {
+      const target = (offset + row) * 15;
+      for (let i = 0; i < 12; i++)
+        points[target + i] = part.points[row * 3 + i];
+      points[target + 12] = part.translationAndOrder[0];
+      points[target + 13] = part.translationAndOrder[1];
+      points[target + 14] = part.translationAndOrder[2];
+      for (let i = 0; i < travelStride; i++)
+        travel[(offset + row) * travelStride + i] =
+          part.travel[row * travelStride + i] ?? 0;
+    }
+    offset += size;
   }
+  return { points, travel };
 }
 
 export const STROKE_BATCH_PAGE_SIZE = 256;

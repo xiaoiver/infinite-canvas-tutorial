@@ -72,6 +72,8 @@ export function strokeReuseContract(
       const travel = draw.vertexBufferDatas[6] as Float32Array;
       const pointUpload = draw.vertexBuffers[0].setSubData.mock.calls.at(-1)[1] as Uint8Array;
       const travelUpload = draw.vertexBuffers[6].setSubData.mock.calls.at(-1)[1] as Uint8Array;
+      expect(draw.pointsBuffer).toBe(points);
+      expect(draw.travelBuffer).toBe(travel);
       expect(pointUpload.buffer).toBe(points.buffer);
       expect(travelUpload.buffer).toBe(travel.buffer);
       expect(pointUpload.byteLength).toBe(points.byteLength);
@@ -91,6 +93,14 @@ export function strokeReuseContract(
     expect(second.travel.buffer).not.toBe(first.travel.buffer);
     expect(first.points).toEqual(originalPoints);
     expect(first.travel).toEqual(originalTravel);
+    draw.destroy();
+  });
+  it('keeps the full non-page builder on its existing number-array path', () => {
+    const { device } = resources(), shape=makePath(), draw=makeDraw(device,true);
+    prepare(draw,shape);draw.createGeometry();
+    expect(Array.isArray(draw.pointsBuffer)).toBe(true);
+    expect(Array.isArray(draw.travelBuffer)).toBe(true);
+    expect(draw.vertexBufferDatas[0]).toEqual(new Float32Array(draw.pointsBuffer));
     draw.destroy();
   });
   it('keeps fixed buffers through edits, replaces only dynamic pairs, and releases once', () => {
