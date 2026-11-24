@@ -5,17 +5,18 @@ precision changes. The original page builder also rebuilt each member's local
 segment flags and travel distances, even when the immutable precision points
 were already retained by the curve cache.
 
-Screen `StrokeBatch` pages now reuse that CPU segment data by the identity of
+Screen `StrokeBatch` pages now reuse that CPU segment data by shape, the identity of
 those points and the current cap/join. Page assembly still copies the current
 translation and render order into independently owned buffers. Native submissions,
 GPU uploads and allocation/teardown contracts are unchanged.
 
-The cache is a weak map with one cap/join variant per point object. It holds no
-shape, entity, camera, device or GPU object, and no builder callback. Its lifetime
-follows the existing four-level curve cache and any live precision contexts;
-it adds no strong root for old levels. A style change replaces the single
-variant. A failed build leaves the previous variant usable. Path edits receive
-new precision points, so they cannot revive old segment bytes.
+Each device has a weak shape map retaining only the current precision and cap/join
+variant. Its values contain CPU points/segments, not the shape, camera, device,
+GPU object or builder callback. Switching precision or style replaces the entry;
+revisiting a different old precision rebuilds segments even if its curve points
+remain in the four-level curve cache. A failed build leaves the previous entry
+usable. A path edit gets new points, so it cannot revive old segment bytes. Device
+and shape lifetime bound the cache, including culling/reentry between pages.
 
 This trades retained CPU segment arrays for less repeated segment construction.
 It does not cache packed pages or retain empty GPU pages. Cold precision levels

@@ -181,27 +181,31 @@ export function strokePrecisionContextContract(Cache: new () => any) {
 
 
 export function strokeSegmentCacheContract(Cache: new () => any) {
-  it('weakly keys immutable precision data, keeps one style variant and preserves a hit after a failed build', () => {
+  it('weakly keys owners, retains one precision/style and preserves a hit after a failed build', () => {
     const cache = new Cache(),
+      owner = {},
       points = {},
       other = {};
     const build = jest.fn(() => ({}));
-    const first = cache.get(points, 'round', 'miter', build);
-    expect(cache.get(points, 'round', 'miter', build)).toBe(first);
+    const first = cache.get(owner, points, 'round', 'miter', build);
+    expect(cache.get(owner, points, 'round', 'miter', build)).toBe(first);
     expect(build).toHaveBeenCalledTimes(1);
     expect(() =>
-      cache.get(points, 'butt', 'round', () => {
+      cache.get(owner, other, 'butt', 'round', () => {
         throw new Error('build');
       }),
     ).toThrow('build');
-    expect(cache.get(points, 'round', 'miter', build)).toBe(first);
-    expect(cache.get(points, 'butt', 'round', build)).not.toBe(first);
-    expect(cache.get(points, 'round', 'miter', build)).not.toBe(first);
-    expect(cache.get(other, 'round', 'miter', build)).not.toBe(first);
-    expect(cache.get(undefined, 'round', 'miter', build)).not.toBe(
-      cache.get(undefined, 'round', 'miter', build),
+    expect(cache.get(owner, points, 'round', 'miter', build)).toBe(first);
+    expect(cache.get(owner, points, 'butt', 'round', build)).not.toBe(first);
+    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(first);
+    const refined = cache.get(owner, other, 'round', 'miter', build);
+    expect(refined).not.toBe(first);
+    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(first);
+    expect(cache.get(other, points, 'round', 'miter', build)).not.toBe(first);
+    expect(cache.get(owner, undefined, 'round', 'miter', build)).not.toBe(
+      cache.get(owner, undefined, 'round', 'miter', build),
     );
-    expect(build).toHaveBeenCalledTimes(6);
+    expect(build).toHaveBeenCalledTimes(8);
   });
 }
 
@@ -241,7 +245,7 @@ export function strokeSegmentReuseContract(
     expect(prepare(makeDraw({}), shape)).not.toBe(buffers);
     expect(buffers).toEqual(saved);
   });
-  it('refreshes every cap/join and path edit and reuses retained precision levels without changing local bytes', () => {
+  it('refreshes every cap/join and path edit and replaces the current precision without changing local bytes', () => {
     const shape = makePath(),
       draw = makeDraw({}),
       full = makeDraw({}, true);
@@ -264,7 +268,10 @@ export function strokeSegmentReuseContract(
     }
     const low = prepare(draw, shape, 1);
     expect(prepare(draw, shape, 8)).not.toBe(low);
-    // Coarsen past the hysteresis boundary, then reuse the retained first level.
-    expect(prepare(draw, shape, 1)).toBe(low);
+    // Curve points are retained, but old segment arrays are deliberately not.
+    const coarse = prepare(draw, shape, 1);
+    expect(coarse).not.toBe(low);
+    expect(coarse).toEqual(low);
+    expect(prepare(draw, shape, 1)).toBe(coarse);
   });
 }

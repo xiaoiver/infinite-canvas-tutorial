@@ -7,20 +7,28 @@ import {
 
 import { PathGeometryCache } from '../utils/path-rendering';
 
-// Screen stroke pages share parsed commands and four LRU levels. Weak keys
-// retain neither devices nor removed shapes; hysteresis stays local to each page.
-const geometryCaches = new WeakMap<object, WeakMap<Shape, PathGeometryCache>>();
+// Devices and shapes are weak keys. Curve levels share parsed commands while
+// each page keeps independent hysteresis; segments retain only the current level.
+const screenCaches = new WeakMap<
+  object,
+  {
+    geometry: WeakMap<Shape, PathGeometryCache>;
+    segments: StrokeSegmentCache<ReturnType<typeof updateBuffer>>;
+  }
+>();
 
 function screenStrokeCaches(device: object) {
-  let caches = geometryCaches.get(device);
-  if (!caches) geometryCaches.set(device, (caches = new WeakMap()));
+  let caches = screenCaches.get(device);
+  if (!caches)
+    screenCaches.set(
+      device,
+      (caches = {
+        geometry: new WeakMap(),
+        segments: new StrokeSegmentCache(),
+      }),
+    );
   return caches;
 }
-
-// No shape, camera, device or GPU object is retained by the segment cache.
-const strokeSegments = new StrokeSegmentCache<
-  ReturnType<typeof updateBuffer>
->();
 
 /** Ordered, screen-only pages of compatible translated Path strokes. */
 export class StrokeBatch extends SmoothPolyline {
@@ -31,7 +39,7 @@ export class StrokeBatch extends SmoothPolyline {
   }
 
   protected override createPathGeometryCache(shape: Shape) {
-    const caches = screenStrokeCaches(this.device);
+    const caches = screenStrokeCaches(this.device).geometry;
     let geometry = caches.get(shape);
     if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
     return geometry.fork();
@@ -39,7 +47,8 @@ export class StrokeBatch extends SmoothPolyline {
 
   protected override getStrokeBuffers(shape: Shape) {
     const { strokeLinecap: linecap, strokeLinejoin: linejoin } = shape;
-    return strokeSegments.get(
+    return screenStrokeCaches(this.device).segments.get(
+      shape,
       this.pathPoints.get(shape),
       linecap,
       linejoin,
