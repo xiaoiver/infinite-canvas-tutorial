@@ -384,14 +384,22 @@ export class SmoothPolyline extends PathDrawcall {
       });
     }
 
+    // A stroke page owns these snapshots already; upload the same bytes rather
+    // than allocating another Float32 copy of the packed CPU arrays.
+    const batchData = this.strokeBatch
+      ? new Float32Array(this.pointsBuffer)
+      : undefined;
+    const batchTravel = this.strokeBatch
+      ? new Float32Array(this.travelBuffer)
+      : undefined;
     this.#segmentsBuffer.setSubData(
       0,
-      new Uint8Array(new Float32Array(this.pointsBuffer).buffer),
+      new Uint8Array((batchData ?? new Float32Array(this.pointsBuffer)).buffer),
     );
 
     this.#travelBuffer.setSubData(
       0,
-      new Uint8Array(new Float32Array(this.travelBuffer).buffer),
+      new Uint8Array((batchTravel ?? new Float32Array(this.travelBuffer)).buffer),
     );
 
     this.vertexBufferOffsets = [0, 4 * 3, 4 * 5, 4 * 6, 4 * 9, 0, 0];
@@ -404,9 +412,6 @@ export class SmoothPolyline extends PathDrawcall {
       this.#vertexNumBuffer,
       this.#travelBuffer,
     ];
-    const batchData = this.strokeBatch
-      ? new Float32Array(this.pointsBuffer)
-      : undefined;
     this.vertexBufferDatas = [
       batchData ?? new Float32Array(this.pointsBuffer),
       batchData ?? new Float32Array(this.pointsBuffer),
@@ -414,7 +419,7 @@ export class SmoothPolyline extends PathDrawcall {
       batchData ?? new Float32Array(this.pointsBuffer),
       batchData ?? new Float32Array(this.pointsBuffer),
       new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
-      new Float32Array(this.travelBuffer),
+      batchTravel ?? new Float32Array(this.travelBuffer),
     ];
 
     this.vertexBufferDescriptors = [
