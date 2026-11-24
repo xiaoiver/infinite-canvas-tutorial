@@ -76,6 +76,7 @@ export class DOMEventListener implements Plugin {
       $el.removeEventListener('pointerleave', onPointerOut, true);
       $el.removeEventListener('pointerover', onPointerOver, true);
       globalThis.removeEventListener('pointerup', onPointerUp, true);
+      globalThis.removeEventListener('pointercancel', onPointerCancel, true);
     };
 
     const removeTouchEventListener = ($el: HTMLCanvasElement) => {
