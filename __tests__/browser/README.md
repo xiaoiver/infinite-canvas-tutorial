@@ -60,6 +60,17 @@ checks native touch activation and the touch PointerEvent drag path. The SVG
 overlay uses `touch-action: none` so page scrolling cannot cancel an anchor
 gesture. Physical iOS Safari remains a separate device check.
 
+The isometric Chromium touch/pen suite uses `isolated-chromium-test.ts` to own
+one browser process per case. Repeated CI failures spent 63–88 seconds creating a
+context in a reused browser, consuming the existing 90-second test budget before
+or during the trusted gesture. The fixture avoids creating that shared context;
+context options, native input, assertions, timeouts and workflow shards stay the
+same. It closes the context to finish artifacts, disconnects, then awaits the
+owned server's public `kill()` API. The shared lifecycle contract checks device
+and locale defaults, storage isolation, context closure, browser disconnection and
+retained failure screenshots/traces. Other Chromium suites retain their normal
+worker browser. The underlying Chromium startup cause is not established.
+
 Object-snapping regressions cover independent grid/object switches, one-pixel
 movement and release, references off the grid, zoom-independent CSS-pixel
 thresholds, equal spacing, hidden references, nested groups and rotated parents.

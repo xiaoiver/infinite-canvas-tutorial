@@ -6,13 +6,15 @@ import path from 'node:path';
 import { promisify } from 'node:util';
 import { PNG } from 'pngjs';
 
-test('isolated contexts preserve options, cleanup and failure artifacts', async ({
-  browserName,
-}) => {
+async function contextContract(
+  browserName: 'chromium' | 'firefox' | 'webkit',
+  fixtureName: string,
+  disconnected: boolean,
+) {
   test.setTimeout(90000);
   const directory = await mkdtemp(path.join(tmpdir(), 'isolated-browser-'));
   try {
-    const fixture = path.resolve('__tests__/isolated-webkit-test.ts');
+    const fixture = path.resolve('__tests__', fixtureName);
     await writeFile(
       path.join(directory, 'lifecycle.spec.ts'),
       `import { test } from ${JSON.stringify(fixture)};
@@ -46,7 +48,9 @@ test('configured context', async ({ page, context }) => {
 test('previous context is closed and storage is isolated', async ({ page, context, browserName }) => {
   expect(closed).toBe(true);
   expect(context).not.toBe(previousContext);
-  expect(previousContext.browser().isConnected()).toBe(browserName !== 'webkit');
+  expect(previousContext.browser().isConnected()).toBe(${JSON.stringify(
+    !disconnected,
+  )});
   expect(await page.evaluate(() => localStorage.getItem('previous'))).toBeNull();
 });
 test('intentional failure retains artifacts', async ({ page }) => {
@@ -122,4 +126,24 @@ test('intentional failure retains artifacts', async ({ page }) => {
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
+}
+
+test('isolated contexts preserve options, cleanup and failure artifacts', async ({
+  browserName,
+}) => {
+  await contextContract(
+    browserName,
+    'isolated-webkit-test.ts',
+    browserName === 'webkit',
+  );
+});
+
+test('isolated Chromium processes preserve options, cleanup and failure artifacts', async ({
+  browserName,
+}) => {
+  test.skip(
+    browserName !== 'chromium',
+    'The dedicated fixture is Chromium-only',
+  );
+  await contextContract(browserName, 'isolated-chromium-test.ts', true);
 });
