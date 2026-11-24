@@ -1,6 +1,6 @@
 import { Path, Shape } from '../shapes';
 import { PathPoints } from '../utils/curve/adaptive';
-import { PathGeometryCache, pathScreenMetrics } from '../utils/path-rendering';
+import { PathGeometryCache, pathScreenMetrics, pathScreenMetricsForPass } from '../utils/path-rendering';
 import { Drawcall } from './Drawcall';
 
 /** Render precision is separate from Path.points or bounds. */
@@ -21,6 +21,7 @@ export abstract class PathDrawcall extends Drawcall {
   }
 
   protected prepareGeometry(uniforms: Record<string, unknown>) {
+    let metricsForPass: ReturnType<typeof pathScreenMetricsForPass> | undefined;
     for (const shape of this.shapes) {
       if (!(shape instanceof Path)) continue;
       let cache = this.pathCaches.get(shape);
@@ -29,10 +30,12 @@ export abstract class PathDrawcall extends Drawcall {
           shape,
           (cache = this.createPathGeometryCache(shape)),
         );
-      let { scale, strokeScale } = pathScreenMetrics(
-        uniforms,
-        shape.worldTransform,
-      );
+      const m = shape.worldTransform;
+      if (this.shapes.length > 1)
+        metricsForPass ??= pathScreenMetricsForPass(uniforms);
+      let { scale, strokeScale } = metricsForPass
+        ? metricsForPass(m.a, m.b, m.c, m.d)
+        : pathScreenMetrics(uniforms, m);
       const zoom = Number(uniforms.u_ZoomScale) || 1;
       if (shape.sizeAttenuation) {
         if (this.pathStroke) strokeScale /= zoom;

@@ -26,6 +26,33 @@ export function strokeReuseContract(
     changePath(shape, '');
     expect(prepare(next, shape)).toEqual([]);
   });
+  it('shares linear projection work inside one page and refreshes reused camera uniforms for the next pass', () => {
+    const shapes = Array.from({length: 12}, makePath), draw = makeDraw({});
+    const uniforms = {u_ProjectionMatrix:[1,0,0,0,1,0,0,0,1],u_ViewMatrix:[1,0,0,0,1,0,0,0,1],u_Viewport:[2,2]};
+    draw.shapes = shapes;
+    draw.prepareGeometry(uniforms);
+    const old = draw.pathPoints.get(shapes[0]);
+    const hypot = jest.spyOn(Math, 'hypot');
+    try {
+      draw.prepareGeometry(uniforms);
+      expect(hypot).toHaveBeenCalledTimes(6);
+    } finally { hypot.mockRestore(); }
+    uniforms.u_ViewMatrix[0] = uniforms.u_ViewMatrix[4] = 16;
+    draw.geometryDirty = false;
+    draw.prepareGeometry(uniforms);
+    expect(draw.pathPoints.get(shapes[0])).not.toBe(old);
+    expect(draw.geometryDirty).toBe(true);
+    const full = makeDraw({}, true);
+    full.shapes = [shapes[0]];
+    full.prepareGeometry(uniforms);
+    expect(draw.pathPoints.get(shapes[0])).toEqual(full.pathPoints.get(shapes[0]));
+    const singleHypot = jest.spyOn(Math, 'hypot');
+    try {
+      full.prepareGeometry(uniforms);
+      expect(singleHypot).toHaveBeenCalledTimes(6);
+    } finally { singleHypot.mockRestore(); }
+
+  });
   function resources() {
     const buffers: any[] = [];
     const allocate = () => {

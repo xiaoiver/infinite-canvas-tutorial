@@ -125,3 +125,22 @@ export function pathScreenMetrics(
   const condition = determinant > 0 ? (largest * largest) / determinant : 1;
   return { scale, strokeScale: maxScale(a, b, c, d) * condition * condition };
 }
+
+/** Reuse only consecutive equal linear transforms within one synchronous pass.
+ * Build a fresh scope for every camera, viewport/DPR or export pass. No scene
+ * objects, geometry or metrics survive that call to prepareGeometry.
+ */
+export function pathScreenMetricsForPass(uniforms: Record<string, unknown>) {
+  let lastA = 0, lastB = 0, lastC = 0, lastD = 0;
+  let metrics: Readonly<ReturnType<typeof pathScreenMetrics>> | undefined;
+  return (a: number, b: number, c: number, d: number) => {
+    if (!metrics || a !== lastA || b !== lastB || c !== lastC || d !== lastD) {
+      metrics = pathScreenMetrics(uniforms, { a, b, c, d });
+      lastA = a;
+      lastB = b;
+      lastC = c;
+      lastD = d;
+    }
+    return metrics;
+  };
+}
