@@ -147,3 +147,32 @@ strokeReuseContract(
 import { PathGeometryCache } from '../../packages/ecs/src/utils/path-rendering';
 import { strokePrecisionContextContract } from '../contracts/stroke-reuse';
 strokePrecisionContextContract(PathGeometryCache);
+
+import {
+  strokeSegmentCacheContract,
+  strokeSegmentReuseContract,
+} from '../contracts/stroke-reuse';
+strokeSegmentCacheContract(packing.StrokeSegmentCache);
+strokeSegmentReuseContract(
+  () => path().entity,
+  (shape, d) => {
+    shape.read(Path).d = d;
+  },
+  (shape, cap, join) => {
+    shape.read(Stroke).linecap = cap;
+    shape.read(Stroke).linejoin = join;
+  },
+  (shape) => {
+    shape.read(GlobalTransform).matrix.m20 = 91;
+    shape.read(GlobalTransform).matrix.m21 = -30;
+  },
+  (device, full) =>
+    new (full ? SmoothPolyline : StrokeBatch)(
+      device,
+      null,
+      null,
+      null,
+      false,
+      0,
+    ),
+);

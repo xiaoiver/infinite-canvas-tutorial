@@ -1,5 +1,5 @@
 import type { Entity } from '@lastolivegames/becsy';
-import { SmoothPolyline } from './SmoothPolyline';
+import { SmoothPolyline, updateBuffer } from './SmoothPolyline';
 import {
   Path,
   Stroke,
@@ -22,20 +22,33 @@ import {
 } from '../components';
 import { getEnabledFillLayers, fillLayerOpacity } from '../utils/fillLayers';
 import { getEnabledStrokeLayers } from '../utils/strokeLayers';
-import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
+import {
+  STROKE_BATCH_PAGE_SIZE,
+  StrokeSegmentCache,
+} from '../utils/stroke-batching';
 
 import { PathGeometryCache } from '../utils/path-rendering';
 
-// Screen stroke pages share parsed commands and four LRU levels. Weak keys
-// retain neither devices nor removed shapes; hysteresis stays local to each page.
-const geometryCaches = new WeakMap<
+// Devices and shapes are weak keys. Curve levels share parsed commands while
+// each page keeps independent hysteresis; segments retain only the current level.
+const screenCaches = new WeakMap<
   object,
-  WeakMap<Entity, PathGeometryCache>
+  {
+    geometry: WeakMap<Entity, PathGeometryCache>;
+    segments: StrokeSegmentCache<ReturnType<typeof updateBuffer>>;
+  }
 >();
 
 function screenStrokeCaches(device: object) {
-  let caches = geometryCaches.get(device);
-  if (!caches) geometryCaches.set(device, (caches = new WeakMap()));
+  let caches = screenCaches.get(device);
+  if (!caches)
+    screenCaches.set(
+      device,
+      (caches = {
+        geometry: new WeakMap(),
+        segments: new StrokeSegmentCache(),
+      }),
+    );
   return caches;
 }
 
@@ -44,7 +57,7 @@ export class StrokeBatch extends SmoothPolyline {
   protected maxInstances = STROKE_BATCH_PAGE_SIZE;
   #placements: number[] = [];
   protected override createPathGeometryCache(shape: Entity) {
-    const caches = screenStrokeCaches(this.device);
+    const caches = screenStrokeCaches(this.device).geometry;
     let geometry = caches.get(shape);
     if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
     return geometry.fork();
@@ -53,6 +66,17 @@ export class StrokeBatch extends SmoothPolyline {
   static override retainEmptyPage = false;
   protected override get strokeBatch() {
     return true;
+  }
+
+  protected override getStrokeBuffers(shape: Entity) {
+    const { linecap, linejoin } = shape.read(Stroke);
+    return screenStrokeCaches(this.device).segments.get(
+      shape,
+      this.pathPoints.get(shape),
+      linecap,
+      linejoin,
+      () => super.getStrokeBuffers(shape),
+    );
   }
 
   static override batchKey(shape: Entity): string | null {

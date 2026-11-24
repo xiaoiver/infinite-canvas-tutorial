@@ -17,3 +17,42 @@ export function appendStrokeInstances(
 }
 
 export const STROKE_BATCH_PAGE_SIZE = 256;
+
+/** Retain only the current CPU segment level for each weak shape key.
+ * A new precision or style replaces the entry; builders are never retained.
+ */
+export class StrokeSegmentCache<T> {
+  private entries = new WeakMap<
+    object,
+    {
+      points: object;
+      cap: CanvasLineCap;
+      join: CanvasLineJoin;
+      data: T;
+    }
+  >();
+
+  get(
+    owner: object,
+    points: object | undefined,
+    cap: CanvasLineCap,
+    join: CanvasLineJoin,
+    build: () => T,
+  ): T {
+    if (!points) {
+      this.entries.delete(owner);
+      return build();
+    }
+    const cached = this.entries.get(owner);
+    if (
+      cached &&
+      cached.points === points &&
+      cached.cap === cap &&
+      cached.join === join
+    )
+      return cached.data;
+    const data = build();
+    this.entries.set(owner, { points, cap, join, data });
+    return data;
+  }
+}

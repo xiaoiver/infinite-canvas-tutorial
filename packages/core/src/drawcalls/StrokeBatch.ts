@@ -1,16 +1,32 @@
 import { Path, type Shape } from '../shapes';
-import { SmoothPolyline } from './SmoothPolyline';
-import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
+import { SmoothPolyline, updateBuffer } from './SmoothPolyline';
+import {
+  STROKE_BATCH_PAGE_SIZE,
+  StrokeSegmentCache,
+} from '../utils/stroke-batching';
 
 import { PathGeometryCache } from '../utils/path-rendering';
 
-// Screen stroke pages share parsed commands and four LRU levels. Weak keys
-// retain neither devices nor removed shapes; hysteresis stays local to each page.
-const geometryCaches = new WeakMap<object, WeakMap<Shape, PathGeometryCache>>();
+// Devices and shapes are weak keys. Curve levels share parsed commands while
+// each page keeps independent hysteresis; segments retain only the current level.
+const screenCaches = new WeakMap<
+  object,
+  {
+    geometry: WeakMap<Shape, PathGeometryCache>;
+    segments: StrokeSegmentCache<ReturnType<typeof updateBuffer>>;
+  }
+>();
 
 function screenStrokeCaches(device: object) {
-  let caches = geometryCaches.get(device);
-  if (!caches) geometryCaches.set(device, (caches = new WeakMap()));
+  let caches = screenCaches.get(device);
+  if (!caches)
+    screenCaches.set(
+      device,
+      (caches = {
+        geometry: new WeakMap(),
+        segments: new StrokeSegmentCache(),
+      }),
+    );
   return caches;
 }
 
@@ -23,10 +39,21 @@ export class StrokeBatch extends SmoothPolyline {
   }
 
   protected override createPathGeometryCache(shape: Shape) {
-    const caches = screenStrokeCaches(this.device);
+    const caches = screenStrokeCaches(this.device).geometry;
     let geometry = caches.get(shape);
     if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
     return geometry.fork();
+  }
+
+  protected override getStrokeBuffers(shape: Shape) {
+    const { strokeLinecap: linecap, strokeLinejoin: linejoin } = shape;
+    return screenStrokeCaches(this.device).segments.get(
+      shape,
+      this.pathPoints.get(shape),
+      linecap,
+      linejoin,
+      () => super.getStrokeBuffers(shape),
+    );
   }
 
   static batchKey(shape: Shape): string | null {

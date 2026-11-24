@@ -284,22 +284,27 @@ export class SmoothPolyline extends PathDrawcall {
 
   protected pathStroke = true;
 
+  protected getStrokeBuffers(shape: Entity) {
+    return updateBuffer(
+      shape,
+      shape.has(Rough) &&
+        ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
+          (shape.has(Rect) && this.index !== 2) ||
+          shape.has(Polyline) ||
+          shape.has(Line)),
+      this.pathPoints.get(shape),
+      this.polylinePoints.get(shape),
+    );
+  }
+
   createGeometry(): void {
     const indices: number[] = [];
     const pointsBuffer: number[] = [];
     const travelBuffer: number[] = [];
     let offset = 0;
     this.shapes.forEach((shape: Entity) => {
-      const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
-        shape,
-        shape.has(Rough) &&
-          ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
-            (shape.has(Rect) && this.index !== 2) ||
-            shape.has(Polyline) ||
-            shape.has(Line)),
-        this.pathPoints.get(shape),
-        this.polylinePoints.get(shape),
-      );
+      const { pointsBuffer: pBuffer, travelBuffer: tBuffer } =
+        this.getStrokeBuffers(shape);
 
       if (this.strokeBatch) {
         const { matrix: m } = shape.read(GlobalTransform);

@@ -178,3 +178,100 @@ export function strokePrecisionContextContract(Cache: new () => any) {
     expect(edited).toEqual(new Cache().get(changed, 2, 2));
   });
 }
+
+
+export function strokeSegmentCacheContract(Cache: new () => any) {
+  it('weakly keys owners, retains one precision/style and preserves a hit after a failed build', () => {
+    const cache = new Cache(),
+      owner = {},
+      points = {},
+      other = {};
+    const build = jest.fn(() => ({}));
+    const first = cache.get(owner, points, 'round', 'miter', build);
+    expect(cache.get(owner, points, 'round', 'miter', build)).toBe(first);
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(() =>
+      cache.get(owner, other, 'butt', 'round', () => {
+        throw new Error('build');
+      }),
+    ).toThrow('build');
+    expect(cache.get(owner, points, 'round', 'miter', build)).toBe(first);
+    expect(cache.get(owner, points, 'butt', 'round', build)).not.toBe(first);
+    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(first);
+    const refined = cache.get(owner, other, 'round', 'miter', build);
+    expect(refined).not.toBe(first);
+    expect(cache.get(owner, points, 'round', 'miter', build)).not.toBe(first);
+    expect(cache.get(other, points, 'round', 'miter', build)).not.toBe(first);
+    expect(cache.get(owner, undefined, 'round', 'miter', build)).not.toBe(
+      cache.get(owner, undefined, 'round', 'miter', build),
+    );
+    expect(build).toHaveBeenCalledTimes(8);
+  });
+}
+
+export function strokeSegmentReuseContract(
+  makePath: () => any,
+  changePath: (shape: any, d: string) => void,
+  changeStyle: (shape: any, cap: CanvasLineCap, join: CanvasLineJoin) => void,
+  move: (shape: any) => void,
+  makeDraw: (device: any, full?: boolean) => any,
+) {
+  const prepare = (draw: any, shape: any, zoom = 1) => {
+    draw.shapes = [shape];
+    draw.prepareGeometry({
+      u_ProjectionMatrix: [1, 0, 0, 0, 1, 0, 0, 0, 1],
+      u_ViewMatrix: [zoom, 0, 0, 0, zoom, 0, 0, 0, 1],
+      u_Viewport: [2, 2],
+    });
+    return draw.getStrokeBuffers(shape);
+  };
+  it('reuses local segments across page retirement and placement changes while full passes and devices stay independent', () => {
+    const shape = makePath(),
+      device = {},
+      first = makeDraw(device);
+    const buffers = prepare(first, shape);
+    const saved = {
+      pointsBuffer: [...buffers.pointsBuffer],
+      travelBuffer: [...buffers.travelBuffer],
+    };
+    first.destroy();
+    const next = makeDraw(device);
+    expect(prepare(next, shape)).toBe(buffers);
+    move(shape);
+    expect(prepare(next, shape)).toBe(buffers);
+    const full = makeDraw(device, true);
+    expect(prepare(full, shape)).toEqual(buffers);
+    expect(prepare(full, shape)).not.toBe(buffers);
+    expect(prepare(makeDraw({}), shape)).not.toBe(buffers);
+    expect(buffers).toEqual(saved);
+  });
+  it('refreshes every cap/join and path edit and replaces the current precision without changing local bytes', () => {
+    const shape = makePath(),
+      draw = makeDraw({}),
+      full = makeDraw({}, true);
+    let previous: unknown;
+    for (const d of [
+      'M0 0 C10 -20 20 30 30 0',
+      'M0 0L20 0L20 20Z M40 0L60 10',
+      'M0 0L10 20',
+    ]) {
+      changePath(shape, d);
+      for (const cap of ['butt', 'round', 'square'] as const)
+        for (const join of ['miter', 'round', 'bevel'] as const) {
+          changeStyle(shape, cap, join);
+          const buffers = prepare(draw, shape);
+          expect(buffers).not.toBe(previous);
+          expect(buffers).toEqual(prepare(full, shape));
+          expect(prepare(draw, shape)).toBe(buffers);
+          previous = buffers;
+        }
+    }
+    const low = prepare(draw, shape, 1);
+    expect(prepare(draw, shape, 8)).not.toBe(low);
+    // Curve points are retained, but old segment arrays are deliberately not.
+    const coarse = prepare(draw, shape, 1);
+    expect(coarse).not.toBe(low);
+    expect(coarse).toEqual(low);
+    expect(prepare(draw, shape, 1)).toBe(coarse);
+  });
+}

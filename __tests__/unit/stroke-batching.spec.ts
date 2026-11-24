@@ -63,3 +63,26 @@ strokeReuseContract(
 import { PathGeometryCache } from '../../packages/core/src/utils/path-rendering';
 import { strokePrecisionContextContract } from '../contracts/stroke-reuse';
 strokePrecisionContextContract(PathGeometryCache);
+
+import {
+  strokeSegmentCacheContract,
+  strokeSegmentReuseContract,
+} from '../contracts/stroke-reuse';
+strokeSegmentCacheContract(packing.StrokeSegmentCache);
+strokeSegmentReuseContract(
+  path,
+  (shape, d) => {
+    shape.d = d;
+  },
+  (shape, cap, join) => {
+    shape.strokeLinecap = cap;
+    shape.strokeLinejoin = join;
+  },
+  (shape) => {
+    shape.worldTransform.tx = 91;
+    shape.worldTransform.ty = -30;
+    shape.globalRenderOrder = 42;
+  },
+  (device, full) =>
+    new (full ? SmoothPolyline : StrokeBatch)(device, null, null, false, 0),
+);

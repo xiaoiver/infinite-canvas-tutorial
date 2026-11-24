@@ -234,6 +234,8 @@ for (const backend of ['core', 'ecs'] as const) {
         { strokeLinecap: 'square', strokeLinejoin: 'bevel' },
         { d: 'M0 0L30 20L0 30', x: 130 },
         { strokeWidth: 7, opacity: 0.4 },
+        { strokeLinecap: 'round', strokeLinejoin: 'round', x: 60 },
+        { d: 'M0 0L20 0L20 20Z M40 0L60 10' },
         { strokeDasharray: [4, 2] },
         { rotation: 0.4 },
       ]) {
