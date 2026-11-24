@@ -76,13 +76,16 @@ export function resolveImageFillRasterOptions(
   api: API | undefined,
   entity: Entity | undefined,
   layer: FillLayerItem,
+  lookup?: (entity: Entity) => ReturnType<API['getNodeByEntity']>,
 ): FillLayerImageRasterOptions {
   const fromEcs =
     layer.type === 'image' ? fillLayerImageRasterOptions(layer) : {};
   if (layer.type !== 'image' || !api || !entity) {
     return fromEcs;
   }
-  const node = api.getNodeByEntity(entity) as FillAttributes | undefined;
+  const node = (lookup ? lookup(entity) : api.getNodeByEntity(entity)) as
+    | FillAttributes
+    | undefined;
   const fills = node?.fills;
   if (!Array.isArray(fills)) {
     return fromEcs;

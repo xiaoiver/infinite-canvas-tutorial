@@ -64,6 +64,7 @@ import { NodeLayerBlendCompositor } from '../utils/nodeLayerBlendGpu';
 import { shouldSuppress2DShapeRender } from '../utils/extrude3d';
 import { StrokeBatch } from '../drawcalls/StrokeBatch';
 import { ImageBatch } from '../drawcalls/ImageBatch';
+import { nodeLookupForPass } from '../utils/node-lookup';
 import {
   reuseAdjacentImageTokens,
   imageRectTexture,
@@ -332,9 +333,13 @@ export class BatchManager {
       });
     // Compatibility may inspect a member again after accepting it. Resolve its
     // raster token once in this plan; a later plan must see current paint.
+    const nodeLookup = this.#imageBatching
+      ? nodeLookupForPass(this.api)
+      : undefined;
     const imageToken = this.#imageBatching
       ? reuseAdjacentImageTokens(
-          (shape: Entity) => imageRectTexture(shape, this.api).token,
+          (shape: Entity) =>
+            imageRectTexture(shape, this.api, nodeLookup).token,
         )
       : undefined;
     const nextPools = new Map<string, Drawcall[][]>();
