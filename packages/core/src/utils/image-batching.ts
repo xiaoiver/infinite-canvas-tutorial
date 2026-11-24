@@ -87,6 +87,19 @@ export function imageBatchRow(
   ];
 }
 
+/** Reuse the adjacent candidate/member description inside one synchronous plan. */
+export function reuseAdjacentImageTokens<T>(resolve: (shape: T) => string) {
+  let previous: T | undefined;
+  let previousToken: string | undefined;
+  return (shape: T) => {
+    if (previousToken !== undefined && previous === shape) return previousToken;
+    const token = resolve(shape);
+    previous = shape;
+    previousToken = token;
+    return token;
+  };
+}
+
 /** Plan arrays are append-only and freshly allocated for every dirty plan. */
 const pages = new WeakMap<object, { count: number; slots: Set<string> }>();
 export function imagePageAccepts<T>(

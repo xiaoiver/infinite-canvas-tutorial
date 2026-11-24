@@ -1,4 +1,6 @@
-import { Rect, Path } from '../../packages/core/src';
+import { createCanvas } from 'canvas';
+import { Rect, Path, DOMAdapter } from '../../packages/core/src';
+import { BatchManager } from '../../packages/core/src/drawcalls/BatchManager';
 import { ImageBatch } from '../../packages/core/src/drawcalls/ImageBatch';
 import * as packing from '../../packages/core/src/utils/image-batching';
 import { imageBatchContract } from '../contracts/image-batching';
@@ -77,4 +79,51 @@ it('rolls back all page texture uploads before publishing a binding', () => {
   textures.forEach((t) => expect(t.destroy).toHaveBeenCalledTimes(1));
   page.destroy();
   textures.forEach((t) => expect(t.destroy).toHaveBeenCalledTimes(1));
+});
+
+it('resolves ordered image tokens once per dirty plan and refreshes source edits', () => {
+  const sources = Array.from(
+    { length: 9 },
+    () => new Bitmap() as unknown as ImageBitmap,
+  );
+  const nodes = Array.from({ length: 300 }, (_, i) => {
+    const r = rect();
+    r.fill = sources[i % 6];
+    return r;
+  });
+  const canvas = jest
+    .spyOn(DOMAdapter.get(), 'createCanvas')
+    .mockImplementation(
+      (width = 1, height = 1) => createCanvas(width, height) as any,
+    );
+  const tokens = jest.spyOn(packing, 'coreImageToken');
+  const eligibility = jest.spyOn(ImageBatch, 'batchKey');
+  const batch = new BatchManager(null);
+  const plan = () => {
+    batch.clear(true, false, false, true);
+    nodes.forEach((n) => batch.add(n));
+    (batch as any).planOrdered();
+  };
+  try {
+    plan();
+    expect(batch.stats().drawcallCount).toBe(2);
+    expect(tokens).toHaveBeenCalledTimes(300);
+    expect(eligibility).toHaveBeenCalledTimes(300);
+    tokens.mockClear();
+    eligibility.mockClear();
+    for (let i = 0; i < 3; i++) nodes[i].fill = sources[6 + i];
+    plan();
+    expect(batch.stats().drawcallCount).toBe(3);
+    expect(tokens).toHaveBeenCalledTimes(300);
+    expect(eligibility).toHaveBeenCalledTimes(300);
+    for (const node of nodes)
+      expect(
+        tokens.mock.calls.filter(([shape]) => shape === node),
+      ).toHaveLength(1);
+  } finally {
+    batch.destroy();
+    tokens.mockRestore();
+    eligibility.mockRestore();
+    canvas.mockRestore();
+  }
 });

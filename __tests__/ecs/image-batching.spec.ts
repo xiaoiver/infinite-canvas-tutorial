@@ -161,3 +161,31 @@ it('reuses raster descriptions on visibility plans and invalidates them on mater
   packing.imageRectTexture(r.entity, editor);
   expect(lookup).toHaveBeenCalledTimes(3);
 });
+
+it('resolves image tokens once per dirty plan and repartitions edited raster variants', () => {
+  const nodes = Array.from({ length: 300 }, (_, i) => rect(i % 6));
+  const descriptions = jest.spyOn(packing, 'imageRectTexture');
+  const b = manager();
+  b.setImageBatchingEnabled(true);
+  try {
+    nodes.forEach((n) => b.add(n.entity));
+    expect(calls(b).map((d) => d.shapes.length)).toEqual([256, 44]);
+    expect(descriptions).toHaveBeenCalledTimes(300);
+    descriptions.mockClear();
+    calls(b);
+    expect(descriptions).not.toHaveBeenCalled();
+    for (let i = 0; i < 3; i++) {
+      nodes[i].data.set(FillLayers, rect(6 + i).data.get(FillLayers));
+      nodes[i].data.set(MaterialDirty, {});
+      b.add(nodes[i].entity);
+    }
+    expect(calls(b).map((d) => d.shapes.length)).toEqual([8, 256, 36]);
+    expect(descriptions).toHaveBeenCalledTimes(300);
+    for (const node of nodes)
+      expect(
+        descriptions.mock.calls.filter(([shape]) => shape === node.entity),
+      ).toHaveLength(1);
+  } finally {
+    descriptions.mockRestore();
+  }
+});
