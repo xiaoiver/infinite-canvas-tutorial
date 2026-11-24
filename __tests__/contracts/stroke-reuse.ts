@@ -62,6 +62,37 @@ export function strokeReuseContract(
     };
     return { buffers, allocate, device: { createBuffer: jest.fn(allocate) } };
   }
+  it('uploads the owned Float32 stroke snapshots directly and replaces them independently on rebuild', () => {
+    const { device } = resources();
+    const shape = makePath(), draw = makeDraw(device);
+    prepare(draw, shape);
+    draw.createGeometry();
+    const check = () => {
+      const points = draw.vertexBufferDatas[0] as Float32Array;
+      const travel = draw.vertexBufferDatas[6] as Float32Array;
+      const pointUpload = draw.vertexBuffers[0].setSubData.mock.calls.at(-1)[1] as Uint8Array;
+      const travelUpload = draw.vertexBuffers[6].setSubData.mock.calls.at(-1)[1] as Uint8Array;
+      expect(pointUpload.buffer).toBe(points.buffer);
+      expect(travelUpload.buffer).toBe(travel.buffer);
+      expect(pointUpload.byteLength).toBe(points.byteLength);
+      expect(travelUpload.byteLength).toBe(travel.byteLength);
+      expect(points).toEqual(new Float32Array(draw.pointsBuffer));
+      expect(travel).toEqual(new Float32Array(draw.travelBuffer));
+      expect(draw.vertexBufferDatas.slice(0, 5).every((v: unknown) => v === points)).toBe(true);
+      return { points, travel };
+    };
+    const first = check();
+    const originalPoints = first.points.slice(), originalTravel = first.travel.slice();
+    changePath(shape, 'M0 0 C20 -40 30 50 60 0 L100 20');
+    prepare(draw, shape);
+    draw.createGeometry();
+    const second = check();
+    expect(second.points.buffer).not.toBe(first.points.buffer);
+    expect(second.travel.buffer).not.toBe(first.travel.buffer);
+    expect(first.points).toEqual(originalPoints);
+    expect(first.travel).toEqual(originalTravel);
+    draw.destroy();
+  });
   it('keeps fixed buffers through edits, replaces only dynamic pairs, and releases once', () => {
     const { device, buffers } = resources();
     const shape = makePath(),
