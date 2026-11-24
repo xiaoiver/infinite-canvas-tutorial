@@ -121,7 +121,11 @@ export function invalidateImageRectTexture(shape: Entity) {
 }
 
 /** Avoid document lookups and option resolution on camera/culling-only replans. */
-export function imageRectTexture(shape: Entity, api: API) {
+export function imageRectTexture(
+  shape: Entity,
+  api: API,
+  lookup?: (entity: Entity) => ReturnType<API['getNodeByEntity']>,
+) {
   const layer = getEnabledFillLayers(shape)[0];
   if (layer.type !== 'image') throw new Error('Expected one image layer');
   const source = getFillLayerDecodedBitmap(layer.value)!;
@@ -145,7 +149,10 @@ export function imageRectTexture(shape: Entity, api: API) {
     previous.adapter === adapter
   )
     return previous.value;
-  const value = createImageRectTexture(shape, api);
+  const opts = resolveImageFillRasterOptions(api, shape, layer, lookup);
+  // Resolve before entering the lease factory: no returned texture callback can
+  // retain the planning lookup or its full scene snapshot.
+  const value = createImageRectTexture(shape, opts);
   rasterDescriptions.set(shape, {
     api,
     layer,
@@ -162,11 +169,13 @@ export function imageRectTexture(shape: Entity, api: API) {
 }
 
 /** Use exactly the ordinary SDF raster variant and its ref-counted texture pool. */
-function createImageRectTexture(shape: Entity, api: API) {
+function createImageRectTexture(
+  shape: Entity,
+  opts: ReturnType<typeof resolveImageFillRasterOptions>,
+) {
   const layer = getEnabledFillLayers(shape)[0];
   if (layer.type !== 'image') throw new Error('Expected one image layer');
   const source = getFillLayerDecodedBitmap(layer.value)!;
-  const opts = resolveImageFillRasterOptions(api, shape, layer);
   const b = getSdfGeometryBoundsForFilter(shape);
   const { width, height } = resolveFillLayerImageRasterPixelSize(
     layer.value,

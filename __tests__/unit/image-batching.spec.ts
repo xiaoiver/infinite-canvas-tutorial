@@ -127,3 +127,13 @@ it('resolves ordered image tokens once per dirty plan and refreshes source edits
     canvas.mockRestore();
   }
 });
+
+it('reads current Core bitmap identity and dimensions directly without a scene lookup scope', () => {
+  const shape = rect();
+  const first = packing.coreImageToken(shape);
+  (shape.fill as ImageBitmap as unknown as Bitmap).width = 128;
+  expect(packing.coreImageToken(shape)).not.toBe(first);
+  const resized = packing.coreImageToken(shape);
+  shape.fill = new Bitmap() as unknown as ImageBitmap;
+  expect(packing.coreImageToken(shape)).not.toBe(resized);
+});

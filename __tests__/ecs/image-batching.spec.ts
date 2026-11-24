@@ -29,8 +29,13 @@ beforeEach(() => {
 afterEach(() => {
   globalThis.ImageBitmap = previous;
 });
-const api = { getNodeByEntity: () => undefined } as API;
+const api = {
+  getNodeByEntity: () => undefined,
+  getNodes: () => [],
+  getEntityCommands: () => new Map(),
+} as unknown as API;
 let generation = 0;
+let entityId = 0;
 function rect(source = 0) {
   const url = 'image-batch-' + generation + '-' + source + '.png';
   if (source < 9)
@@ -46,9 +51,12 @@ function rect(source = 0) {
     [Stroke, { width: 1, alignment: 'center', dasharray: [0, 0] }],
     [Opacity, { opacity: 1 }],
   ]);
+  const id = entityId++;
   return {
     data,
     entity: {
+      __id: id,
+      isSame: (other: Entity) => other.__id === id,
       has: (c: unknown) => data.has(c),
       hasSomeOf: (...cs: unknown[]) => cs.some((c) => data.has(c)),
       read: (c: unknown) => {
@@ -188,4 +196,50 @@ it('resolves image tokens once per dirty plan and repartitions edited raster var
   } finally {
     descriptions.mockRestore();
   }
+});
+
+it('uses one current wire snapshot for dirty image planning and refreshes in-place option edits', () => {
+  const nodes = Array.from({ length: 300 }, (_, i) => rect(i % 6));
+  const wire = nodes.map((n, i) => ({
+    id: String(i),
+    type: 'rect',
+    fills: [
+      {
+        type: 'image',
+        value: n.data.get(FillLayers).layers[0].value,
+        objectFit: 'contain',
+        objectPosition: '20% 70%',
+      },
+    ],
+  }));
+  const commands = new Map(
+    nodes.map((n, i) => [String(i), { id: () => n.entity }]),
+  );
+  const editor = {
+    getNodes: jest.fn(() => wire),
+    getEntityCommands: jest.fn(() => commands),
+    getNodeByEntity: jest.fn(() => {
+      throw new Error('unexpected linear scene lookup');
+    }),
+  } as unknown as API;
+  const b = new BatchManager(null, null, null, null, editor);
+  managers.push(b);
+  b.setImageBatchingEnabled(true);
+  nodes.forEach((n) => b.add(n.entity));
+  expect(calls(b).map((d) => d.shapes.length)).toEqual([256, 44]);
+  const first = packing.imageRectTexture(nodes[0].entity, editor);
+  expect(JSON.parse(first.key).slice(4, 6)).toEqual(['contain', '20% 70%']);
+  expect(editor.getNodes).toHaveBeenCalledTimes(1);
+  expect(editor.getEntityCommands).toHaveBeenCalledTimes(1);
+  expect(editor.getNodeByEntity).not.toHaveBeenCalled();
+  wire[0].fills[0].objectFit = 'cover';
+  wire[0].fills[0].objectPosition = '80% 30%';
+  nodes[0].data.set(MaterialDirty, {});
+  b.add(nodes[0].entity);
+  calls(b);
+  const edited = packing.imageRectTexture(nodes[0].entity, editor);
+  expect(JSON.parse(edited.key).slice(4, 6)).toEqual(['cover', '80% 30%']);
+  expect(edited).not.toBe(first);
+  expect(editor.getNodes).toHaveBeenCalledTimes(2);
+  expect(editor.getNodeByEntity).not.toHaveBeenCalled();
 });
