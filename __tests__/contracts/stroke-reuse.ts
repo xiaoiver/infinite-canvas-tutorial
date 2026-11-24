@@ -3,6 +3,7 @@ export function strokeReuseContract(
   makePath: () => any,
   changePath: (shape: any, d: string) => void,
   makeDraw: (device: any, full?: boolean) => any,
+  changeStyle: (shape: any, cap: CanvasLineCap, join: CanvasLineJoin) => void,
 ) {
   const prepare = (draw: any, shape: any) => {
     draw.shapes = [shape];
@@ -25,6 +26,46 @@ export function strokeReuseContract(
     expect(prepare(makeDraw(owner), shape)).toBe(edited);
     changePath(shape, '');
     expect(prepare(next, shape)).toEqual([]);
+  });
+  it('reuses local cap/join/travel geometry across retired screen pages and invalidates style and source edits', () => {
+    const shape = makePath(), owner = {}, first = makeDraw(owner);
+    const gpu = (data: any) => ({ pointsBuffer: new Float32Array(data.pointsBuffer), travelBuffer: new Float32Array(data.travelBuffer) });
+    const build = jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(first)), 'getStrokeGeometry');
+    try {
+      prepare(first, shape);
+      const initial = first.getStrokeGeometry(shape);
+      const saved = JSON.stringify(initial);
+      const packed = first.getStrokeGeometry(shape);
+      expect(packed).not.toBe(initial);
+      expect(gpu(packed)).toEqual(gpu(initial));
+      expect(first.getStrokeGeometry(shape)).toBe(packed);
+      expect(build).toHaveBeenCalledTimes(2);
+      first.destroy();
+      const next = makeDraw(owner);
+      prepare(next, shape);
+      expect(next.getStrokeGeometry(shape)).toBe(packed);
+      expect(build).toHaveBeenCalledTimes(2);
+      const full = makeDraw(owner, true);
+      prepare(full, shape);
+      expect(gpu(full.getStrokeGeometry(shape))).toEqual(gpu(initial));
+      expect(full.getStrokeGeometry(shape)).not.toBe(initial);
+      changeStyle(shape, 'square', 'bevel');
+      const styled = next.getStrokeGeometry(shape);
+      expect(styled).not.toBe(initial);
+      expect(gpu(styled)).toEqual(gpu(full.getStrokeGeometry(shape)));
+      const packedStyle = next.getStrokeGeometry(shape);
+      expect(gpu(packedStyle)).toEqual(gpu(styled));
+      expect(next.getStrokeGeometry(shape)).toBe(packedStyle);
+      changePath(shape, 'M0 0 C20 -40 30 50 60 0 M80 0 L100 20');
+      prepare(next, shape);
+      prepare(full, shape);
+      const edited = next.getStrokeGeometry(shape);
+      expect(edited).not.toBe(styled);
+      expect(gpu(edited)).toEqual(gpu(full.getStrokeGeometry(shape)));
+      expect(JSON.stringify(initial)).toBe(saved);
+    } finally {
+      build.mockRestore();
+    }
   });
   function resources() {
     const buffers: any[] = [];

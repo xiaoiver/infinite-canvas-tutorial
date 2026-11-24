@@ -1,7 +1,10 @@
 interface Packing {
+  LocalStrokeGeometryCache: new () => {
+    get(level: object, cap: string, join: string, create: () => {pointsBuffer: number[]; travelBuffer: number[]}): {pointsBuffer: ArrayLike<number>; travelBuffer: ArrayLike<number>};
+  };
   appendStrokeInstances(
-    points: readonly number[],
-    travel: readonly number[],
+    points: ArrayLike<number>,
+    travel: ArrayLike<number>,
     transform: readonly [number, number, number],
     stride: number,
     packed: number[],
@@ -9,6 +12,22 @@ interface Packing {
   ): void;
 }
 export function strokePackingContract(packing: Packing, stride: number) {
+  it('retains the exact final GPU bytes when cached local inputs use Float32 storage', () => {
+    const points = [Math.PI, Math.E, 32, 1 / 3, 1e-7, 12, 100000.001, -2 / 3, 8, 7, 8, 16, 9, 10, 0];
+    const travel = stride === 1 ? [0.1, Math.PI] : [0.1, Math.PI, 1 / 3, 100000.1, -2 / 3, 0];
+    const cache = new packing.LocalStrokeGeometryCache();
+    const cached = cache.get(points, 'round', 'miter', () => ({pointsBuffer: points, travelBuffer: travel}));
+    expect(cached.pointsBuffer).not.toBeInstanceOf(Float32Array);
+    const admitted = cache.get(points, 'round', 'miter', () => ({pointsBuffer: points, travelBuffer: travel}));
+    expect(admitted.pointsBuffer).toBeInstanceOf(Float32Array);
+    expect(cache.get(points, 'round', 'miter', () => { throw new Error('warm level rebuilt'); })).toBe(admitted);
+    const pack = (p: ArrayLike<number>, t: ArrayLike<number>) => {
+      const vertices: number[] = [], distances: number[] = [];
+      packing.appendStrokeInstances(p, t, [100000 + 1 / 3, -50.1, 0.25], stride, vertices, distances);
+      return [new Float32Array(vertices), new Float32Array(distances)].map(a => new Uint8Array(a.buffer));
+    };
+    expect(pack(admitted.pointsBuffer, admitted.travelBuffer)).toEqual(pack(points, travel));
+  });
   it('keeps native four-point windows, joint flags, independent travel and per-path depth', () => {
     const first = Object.freeze([
       1, 2, 32, 3, 4, 12, 5, 6, 8, 7, 8, 16, 9, 10, 0,

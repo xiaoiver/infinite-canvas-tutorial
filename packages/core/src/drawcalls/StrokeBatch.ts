@@ -1,6 +1,6 @@
 import { Path, type Shape } from '../shapes';
 import { SmoothPolyline } from './SmoothPolyline';
-import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
+import { STROKE_BATCH_PAGE_SIZE, LocalStrokeGeometryCache } from '../utils/stroke-batching';
 
 import { PathGeometryCache } from '../utils/path-rendering';
 
@@ -13,6 +13,8 @@ function screenStrokeCaches(device: object) {
   if (!caches) geometryCaches.set(device, (caches = new WeakMap()));
   return caches;
 }
+
+const localGeometry = new LocalStrokeGeometryCache();
 
 /** Ordered, screen-only pages of compatible translated Path strokes. */
 export class StrokeBatch extends SmoothPolyline {
@@ -27,6 +29,13 @@ export class StrokeBatch extends SmoothPolyline {
     let geometry = caches.get(shape);
     if (!geometry) caches.set(shape, (geometry = new PathGeometryCache()));
     return geometry.fork();
+  }
+
+  protected override getStrokeGeometry(shape: Shape) {
+    const level = this.pathPoints.get(shape);
+    if (!level) return super.getStrokeGeometry(shape);
+    const cap = shape.strokeLinecap, join = shape.strokeLinejoin;
+    return localGeometry.get(level, cap, join, () => super.getStrokeGeometry(shape));
   }
 
   static batchKey(shape: Shape): string | null {

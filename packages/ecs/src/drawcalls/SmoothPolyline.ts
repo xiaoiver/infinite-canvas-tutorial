@@ -1,4 +1,4 @@
-import { appendStrokeInstances } from '../utils/stroke-batching';
+import { appendStrokeInstances, type StrokeGeometry } from '../utils/stroke-batching';
 import {
   type RenderPass,
   Buffer,
@@ -284,13 +284,8 @@ export class SmoothPolyline extends PathDrawcall {
 
   protected pathStroke = true;
 
-  createGeometry(): void {
-    const indices: number[] = [];
-    const pointsBuffer: number[] = [];
-    const travelBuffer: number[] = [];
-    let offset = 0;
-    this.shapes.forEach((shape: Entity) => {
-      const { pointsBuffer: pBuffer, travelBuffer: tBuffer } = updateBuffer(
+  protected getStrokeGeometry(shape: Entity): StrokeGeometry {
+    return updateBuffer(
         shape,
         shape.has(Rough) &&
           ((shape.hasSomeOf(Circle, Ellipse, Path) && this.index === 2) ||
@@ -300,6 +295,16 @@ export class SmoothPolyline extends PathDrawcall {
         this.pathPoints.get(shape),
         this.polylinePoints.get(shape),
       );
+  }
+
+  createGeometry(): void {
+    const indices: number[] = [];
+    const pointsBuffer: number[] = [];
+    const travelBuffer: number[] = [];
+    let offset = 0;
+    this.shapes.forEach((shape: Entity) => {
+      const { pointsBuffer: pBuffer, travelBuffer: tBuffer } =
+        this.getStrokeGeometry(shape);
 
       if (this.strokeBatch) {
         const { matrix: m } = shape.read(GlobalTransform);

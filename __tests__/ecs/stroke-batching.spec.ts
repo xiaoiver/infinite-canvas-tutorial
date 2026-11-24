@@ -2,6 +2,7 @@ import {
   API,
   type Entity,
   Path,
+  Line,
   Stroke,
   StrokeLayers,
   GlobalTransform,
@@ -142,8 +143,22 @@ strokeReuseContract(
       0,
       null,
     ),
+  (shape, cap, join) => { shape.read(Stroke).linecap = cap; shape.read(Stroke).linejoin = join; },
 );
 
 import { PathGeometryCache } from '../../packages/ecs/src/utils/path-rendering';
 import { strokePrecisionContextContract } from '../contracts/stroke-reuse';
 strokePrecisionContextContract(PathGeometryCache);
+
+it('keeps composite ECS geometry on the uncached source builder', () => {
+  const { entity, data } = path();
+  const draw: any = new StrokeBatch({} as any, null, null, null, false, 0, null);
+  draw.shapes = [entity];
+  draw.prepareGeometry({});
+  const curved = draw.getStrokeGeometry(entity);
+  data.set(Line, { x1: 0, y1: 0, x2: 20, y2: 10 });
+  const line = draw.getStrokeGeometry(entity);
+  expect(line).not.toEqual(curved);
+  data.get(Line).x2 = 100;
+  expect(draw.getStrokeGeometry(entity)).not.toEqual(line);
+});

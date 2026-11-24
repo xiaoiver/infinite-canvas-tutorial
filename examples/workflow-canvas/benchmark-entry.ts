@@ -114,6 +114,7 @@ function profile(enabled: boolean) {
     [PathDrawcall, 'prepareGeometry', 'path.precision'],
     [StrokeBatch, 'prepareGeometry', 'stroke.prepare'],
     [SmoothPolyline, 'createGeometry', 'stroke.geometry'],
+    [SmoothPolyline, 'getStrokeGeometry', 'stroke.local'],
   ] as const)
     collector.wrap(ctor.prototype, key, label);
   Drawcall.prototype.submit = function (

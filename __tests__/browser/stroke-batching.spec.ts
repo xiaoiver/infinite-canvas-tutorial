@@ -168,7 +168,7 @@ for (const backend of ['core', 'ecs'] as const) {
     }) => {
       await scene(page, backend, 12);
       await enable(page, backend, true);
-      for (const x of [21, 22, 23, 20]) {
+      for (const x of [19, 21, 22, 23, 20]) {
         await page.evaluate(
           async ({ backend, x }) => {
             if (backend === 'core') window.corePathInstances.translate(0, x);
@@ -186,6 +186,8 @@ for (const backend of ['core', 'ecs'] as const) {
             ? doc[0].attributes.transform.position.x
             : doc.find((n) => n.id === 'line').x;
         expect(actualX).toBe(x);
+        // The first repeat admits this page's levels; later translations reuse them.
+        if (x !== 19) expect(changed.strokeCPU.localCalls).toBe(0);
         const work = changed.native;
         expect(work.bufferCreates).toBe(2);
         expect(work.bufferDeletes).toBe(2);
