@@ -13,6 +13,8 @@
     "../../scripts/stroke-reuse.bench.spec.ts",
     "../../playwright.stroke-reuse-bench.config.ts",
     "../../scripts/idle-rendering.bench.spec.ts",
-    "../../playwright.idle-rendering-bench.config.ts"
+    "../../playwright.idle-rendering-bench.config.ts",
+    "../../scripts/camera-replay.bench.spec.ts",
+    "../../playwright.camera-replay-bench.config.ts"
   ]
 }

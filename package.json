@@ -66,7 +66,9 @@
     "bench:mixed-renderers": "playwright test -c playwright.mixed-renderer-bench.config.ts",
     "bench:image-batching": "playwright test -c playwright.image-batching-bench.config.ts",
     "bench:document-versions": "playwright test -c playwright.document-versions-bench.config.ts",
-    "bench:idle-rendering": "playwright test -c playwright.idle-rendering-bench.config.ts"
+    "bench:idle-rendering": "playwright test -c playwright.idle-rendering-bench.config.ts",
+    "bench:camera-replay": "playwright test -c playwright.camera-replay-bench.config.ts && playwright test -c playwright.workflow-replay-bench.config.ts",
+    "bench:compare-camera-replay": "node scripts/compare-camera-replay.mjs"
   },
   "devDependencies": {
     "@antv/g-device-api": "^1.6.13",

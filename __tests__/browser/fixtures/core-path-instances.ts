@@ -1,3 +1,9 @@
+import { framePhaseProbe } from './frame-phase-probe';
+import {
+  validateReplayView,
+  replaySurface,
+  type ReplayView,
+} from './camera-replay';
 import {
   Canvas,
   Path,
@@ -162,6 +168,9 @@ StrokeBatch.prototype.render = function (...args) {
   strokePages++;
   return strokeRender.apply(this, args);
 };
+const replayPhases = framePhaseProbe();
+replayPhases.wrap(BatchManager.prototype, 'planOrdered', 'batch.plan');
+let replayDisposed = false;
 let shapes: Shape[] = [];
 let group = new Group();
 canvas.appendChild(group);
@@ -329,6 +338,54 @@ const api = {
     canvas.camera.zoom = zoom;
     frame();
   },
+  replayDocument: () => shapes.map((shape) => serializeNode(shape)),
+  replayCamera(view: ReplayView) {
+    validateReplayView(view);
+    if (replayDisposed) throw new Error('Replay is disposed');
+    const requestedAt = performance.now();
+    replayPhases.begin();
+    let phases;
+    let elapsed: number, completedAt: number;
+    try {
+      const startedAt = performance.now();
+      if (canvas.camera.x !== view.x) canvas.camera.x = view.x;
+      if (canvas.camera.y !== view.y) canvas.camera.y = view.y;
+      if (canvas.camera.zoom !== view.zoom) canvas.camera.zoom = view.zoom;
+      frame();
+      completedAt = performance.now();
+      elapsed = completedAt - startedAt;
+    } finally {
+      phases = replayPhases.end();
+    }
+    const visibleIndices = shapes.flatMap((shape, index) =>
+      !shape.culled && shape.visible ? [index] : [],
+    );
+    return {
+      requested: { ...view },
+      operationToFrameMs: completedAt - requestedAt,
+      frames: [
+        {
+          view: {
+            x: canvas.camera.x,
+            y: canvas.camera.y,
+            zoom: canvas.camera.zoom,
+          },
+          elapsed,
+          completedAt,
+          data: {
+            surface: replaySurface(element),
+            visibleIndices,
+            visible: visibleIndices.length,
+            strokePages,
+            native: { ...nativeWork },
+            cpu: strokeCPU.snapshot(),
+            phases,
+            resources: window.lifecycleProbes?.resources(),
+          },
+        },
+      ],
+    };
+  },
   translate(index: number, x: number) {
     shapes[index].position.x = x;
     shapes[index].renderDirtyFlag = true;
@@ -436,6 +493,8 @@ const api = {
     };
   },
   destroy() {
+    replayDisposed = true;
+    replayPhases.dispose();
     canvas.destroy();
     return deviceBaseline;
   },
