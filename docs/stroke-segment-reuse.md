@@ -37,3 +37,12 @@ warm rounds separate and inspect geometry phases alongside total CPU time.
 Native submission parity is required for this change. Report uploads and resource
 counts even though this optimization is limited to CPU construction. The replay
 is a diagnostic workload; native-device interaction remains a separate check.
+
+Page assembly counts native segment rows from the retained local data, then writes
+straight into exact-sized Float32 snapshots for points/placement and travel. It
+retains no expanded number-array page or extra Float32 copy. Every rebuild owns
+new snapshots, so previously queued or externally retained views keep their bytes.
+The sliding windows, per-path ordering, joint flags, and each backend's travel
+stride are unchanged. Full/export builders continue using their number arrays;
+GPU storage replacement and upload sizes are unchanged. Compare retained heap and
+backing storage together when sizing the effect of this CPU representation.
