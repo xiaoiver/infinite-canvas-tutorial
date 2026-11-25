@@ -154,3 +154,68 @@ it('fails an unreachable camera within a bounded number of retained frames', asy
   await rejection;
   expect(replay.busy).toBe(false);
 });
+
+it('keeps engine completion separate from synchronous observation and result readiness', async () => {
+  let time = 0;
+  const replay = completedCameraReplay({
+    view: () => ({ x: 1, y: 0, zoom: 1 }),
+    now: () => time,
+    before: () => {
+      time += 3;
+    },
+    after: () => {
+      time += 2;
+    },
+    snapshot: () => {
+      time += 50;
+      return { draws: 7 };
+    },
+  });
+  const step = replay.step({ x: 1, y: 0, zoom: 1 }, async () => {});
+  await tick();
+  await replay.run(async () => {
+    time += 8;
+  });
+  const result = await step;
+  expect(result.frames[0]).toEqual({
+    view: { x: 1, y: 0, zoom: 1 },
+    startedAt: 3,
+    elapsed: 8,
+    completedAt: 11,
+    observedAt: 63,
+    observationMs: 52,
+    data: { draws: 7 },
+  });
+  expect(result.operationToFrameMs).toBe(11);
+  expect(result.operationToResultMs).toBe(63);
+});
+
+it('does not add overlapping apply and engine spans when apply settles after the matching frame', async () => {
+  let time = 0,
+    ready = false;
+  const apply = deferred();
+  const replay = completedCameraReplay({
+    view: () => ({ x: 1, y: 0, zoom: 1 }),
+    now: () => time,
+    snapshot: () => {
+      time += 4;
+      return 0;
+    },
+  });
+  const step = replay.step({ x: 1, y: 0, zoom: 1 }, () => apply.promise);
+  void step.then(() => {
+    ready = true;
+  });
+  await tick();
+  await replay.run(async () => {
+    time += 5;
+  });
+  await tick();
+  expect(ready).toBe(false);
+  time += 20;
+  apply.resolve();
+  const result = await step;
+  expect(result.operationToFrameMs).toBe(5);
+  expect(result.frames[0].observationMs).toBe(4);
+  expect(result.operationToResultMs).toBe(29);
+});

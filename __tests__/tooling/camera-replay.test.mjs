@@ -4,6 +4,7 @@ import {
   cameraTraceHash,
   compareReplays,
   replayStats,
+  summarizeReplay,
 } from '../../scripts/camera-replay-tools.mjs';
 const capture = () => {
   const trace = [{ id: 'one', x: 0, y: 0, zoom: 1 }],
@@ -92,4 +93,43 @@ test('uses nearest-rank percentiles without mutating samples', () => {
   assert.deepEqual(replayStats(xs), { p50: 2, p95: 10, max: 10 });
   assert.deepEqual(xs, [10, 1, 5, 2]);
   assert.throws(() => replayStats([]));
+});
+
+test('reports observation/readiness separately while retaining legacy capture compatibility', () => {
+  const old = capture();
+  assert.equal('observationTotalMs' in summarizeReplay(old)[0], false);
+  const current = capture();
+  const step = current.results[0].rounds[0].steps[0];
+  Object.assign(step.frames[0], {
+    startedAt: 8,
+    observedAt: 30,
+    observationMs: 20,
+  });
+  step.operationToResultMs = 24;
+  assert.equal(compareReplays(old, current).matchedSteps, 1);
+  const row = summarizeReplay(current)[0];
+  assert.deepEqual(row.matchedFrameMs, { p50: 2, p95: 2, max: 2 });
+  assert.deepEqual(row.observationTotalMs, { p50: 20, p95: 20, max: 20 });
+  assert.deepEqual(row.operationToResultMs, { p50: 24, p95: 24, max: 24 });
+  for (const change of [
+    (s) => {
+      delete s.frames[0].observedAt;
+    },
+    (s) => {
+      s.frames[0].observationMs = -1;
+    },
+    (s) => {
+      s.frames[0].startedAt = 1;
+    },
+    (s) => {
+      s.operationToResultMs = 22;
+    },
+    (s) => {
+      s.operationToResultMs = NaN;
+    },
+  ]) {
+    const invalid = structuredClone(current);
+    change(invalid.results[0].rounds[0].steps[0]);
+    assert.throws(() => summarizeReplay(invalid));
+  }
 });

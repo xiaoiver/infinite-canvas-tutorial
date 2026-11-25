@@ -61,8 +61,11 @@ export function fixedCameraTrace(
 }
 export interface CompletedReplayFrame<T> {
   view: ReplayView;
+  startedAt: number;
   elapsed: number;
   completedAt: number;
+  observedAt: number;
+  observationMs: number;
   data: T;
 }
 /** Wrap complete engine executions; never label a frame from app state alone. */
@@ -113,11 +116,16 @@ export function completedCameraReplay<T>(options: {
           }
           if (request && pending === request && !disposed) {
             const view = { ...options.view() };
+            const data = options.snapshot();
+            const observedAt = now();
             request.frames.push({
               view,
+              startedAt: started,
               elapsed: completedAt - started,
               completedAt,
-              data: options.snapshot(),
+              observedAt,
+              observationMs: observedAt - completedAt,
+              data,
             });
             if (sameReplayView(view, request.target)) {
               pending = undefined;
@@ -178,6 +186,7 @@ export function completedCameraReplay<T>(options: {
           requested: { ...target },
           frames,
           operationToFrameMs: frames.at(-1)!.completedAt - requestedAt,
+          operationToResultMs: now() - requestedAt,
         };
       } finally {
         if (pending === request) pending = undefined;

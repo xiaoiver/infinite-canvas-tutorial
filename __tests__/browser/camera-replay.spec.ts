@@ -58,6 +58,20 @@ for (const backend of ['core', 'ecs'] as const)
       expect(
         row.frames.every((f) => f.elapsed >= 0 && Number.isFinite(f.elapsed)),
       ).toBe(true);
+      expect(row.operationToResultMs).toBeGreaterThanOrEqual(
+        row.operationToFrameMs,
+      );
+      for (const frame of row.frames) {
+        expect(frame.startedAt + frame.elapsed).toBeCloseTo(
+          frame.completedAt,
+          3,
+        );
+        expect(frame.observedAt - frame.completedAt).toBeCloseTo(
+          frame.observationMs,
+          3,
+        );
+        expect(frame.observationMs).toBeGreaterThanOrEqual(0);
+      }
       expect(row.frames.at(-1)!.data.visible).toBe(i === 2 ? 0 : 24);
       expect(row.frames.at(-1)!.data.visibleIndices).toEqual(
         i === 2 ? [] : Array.from({ length: 24 }, (_, i) => i),
