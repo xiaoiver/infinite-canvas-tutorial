@@ -15,21 +15,35 @@ export function packStrokeInstances(
   for (const part of parts) rows += count(part.points);
   const points = new Float32Array(rows * 15);
   const travel = new Float32Array(rows * travelStride);
-  let offset = 0;
+  let target = 0;
+  let travelTarget = 0;
   for (const part of parts) {
     const size = count(part.points);
-    for (let row = 0; row < size; row++) {
-      const target = (offset + row) * 15;
-      for (let i = 0; i < 12; i++)
-        points[target + i] = part.points[row * 3 + i];
-      points[target + 12] = part.translationAndOrder[0];
-      points[target + 13] = part.translationAndOrder[1];
-      points[target + 14] = part.translationAndOrder[2];
-      for (let i = 0; i < travelStride; i++)
-        travel[(offset + row) * travelStride + i] =
-          part.travel[row * travelStride + i] ?? 0;
+    const source = part.points;
+    const [x, y, order] = part.translationAndOrder;
+    // Each native instance contains four overlapping triples plus placement.
+    // Advance offsets directly; keep each path's first/last window independent.
+    for (let row = 0, start = 0; row < size; row++, start += 3, target += 15) {
+      points[target] = source[start];
+      points[target + 1] = source[start + 1];
+      points[target + 2] = source[start + 2];
+      points[target + 3] = source[start + 3];
+      points[target + 4] = source[start + 4];
+      points[target + 5] = source[start + 5];
+      points[target + 6] = source[start + 6];
+      points[target + 7] = source[start + 7];
+      points[target + 8] = source[start + 8];
+      points[target + 9] = source[start + 9];
+      points[target + 10] = source[start + 10];
+      points[target + 11] = source[start + 11];
+      points[target + 12] = x;
+      points[target + 13] = y;
+      points[target + 14] = order;
     }
-    offset += size;
+    const distances = part.travel;
+    for (let i = 0; i < size * travelStride; i++) {
+      travel[travelTarget++] = distances[i] ?? 0;
+    }
   }
   return { points, travel };
 }
