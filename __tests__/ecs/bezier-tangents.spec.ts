@@ -5,3 +5,6 @@ import { bezierTangentContract } from '../contracts/bezier-tangents';
 describe('ecs adaptive Bezier tangents', () => {
   bezierTangentContract(curves, flattenPath);
 });
+
+import { bezierSubdivisionContract } from '../contracts/bezier-subdivision';
+bezierSubdivisionContract(curves, flattenPath);

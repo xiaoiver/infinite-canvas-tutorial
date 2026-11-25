@@ -18,6 +18,10 @@ const MAX_SEGMENTS = 4096;
 const TAU = Math.PI * 2;
 const pointAt = (curve: Curve, t: number) => curve.getPoint(t, [0, 0]) as Point;
 
+function midpoint(a: Point, b: Point): Point {
+  return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+}
+
 function controls(curve: Curve): Point[] | undefined {
   if (curve instanceof CubicBezierCurve)
     return [curve.v0, curve.v1, curve.v2, curve.v3].map((p) => [p[0], p[1]]);
@@ -108,9 +112,15 @@ export function flattenPath(
           .slice(1)
           .map((v, i) => tangent(v[0] - p[i][0], v[1] - p[i][1]))
           .filter((v) => v[0] !== 0 || v[1] !== 0);
-        tangentsOK = edges.every((a) =>
-          edges.every((b) => angle(a, b) <= turnLimit),
-        );
+        // angle(a,b) is symmetric; retain every diagonal for its rounding.
+        for (let i = 0; i < edges.length && tangentsOK; i++) {
+          for (let j = i; j < edges.length; j++) {
+            if (!(angle(edges[i], edges[j]) <= turnLimit)) {
+              tangentsOK = false;
+              break;
+            }
+          }
+        }
         if (tangentsOK && edges.length && (start || end)) {
           const chord = tangent(last[0] - first[0], last[1] - first[1]);
           tangentsOK =
@@ -124,20 +134,20 @@ export function flattenPath(
       }
       splitsLeft--;
       // de Casteljau retains loops, inflections and collinear reversals.
-      const left = [first],
-        right = [last];
-      let row = p;
-      while (row.length > 1) {
-        row = row
-          .slice(1)
-          .map(
-            (v, i): Point => [(row[i][0] + v[0]) / 2, (row[i][1] + v[1]) / 2],
-          );
-        left.push(row[0]);
-        right.unshift(row[row.length - 1]);
+      // Exact quadratic/cubic triangles avoid temporary rows and row slices.
+      const a = midpoint(first, p[1]);
+      const b = midpoint(p[1], p[2]);
+      const ab = midpoint(a, b);
+      if (p.length === 3) {
+        bezier([first, a, ab], depth + 1, start, false);
+        bezier([ab, b, last], depth + 1, false, end);
+      } else {
+        const c = midpoint(p[2], last);
+        const bc = midpoint(b, c);
+        const middle = midpoint(ab, bc);
+        bezier([first, a, ab, middle], depth + 1, start, false);
+        bezier([middle, bc, c, last], depth + 1, false, end);
       }
-      bezier(left, depth + 1, start, false);
-      bezier(right, depth + 1, false, end);
     };
     path.curves.forEach((curve) => {
       splitsLeft = MAX_SEGMENTS - 1;
