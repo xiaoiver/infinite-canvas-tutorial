@@ -44,6 +44,18 @@ import { upload2DRasterCanvasToTexture } from './rasterCanvasTextureUpload';
 import { getDevicePixelRatioForRaster } from './fillImageTextureSize';
 import { getSdfGeometryBoundsForFilter } from './solidShapeRasterForFilter';
 
+// URL classification is independent of the decoded bitmap and all shape state.
+// Weak layer keys retain neither entities nor images; in-place URL edits replace
+// the sole saved value. Eligibility itself must always be checked again.
+const svgImageLayers = new WeakMap<object, { url: string; isSvg: boolean }>();
+function isSvgImageLayer(layer: { value: string }) {
+  const previous = svgImageLayers.get(layer);
+  if (previous && previous.url === layer.value) return previous.isSvg;
+  const isSvg = isLikelySvgResourceUrl(layer.value);
+  svgImageLayers.set(layer, { url: layer.value, isSvg });
+  return isSvg;
+}
+
 export function eligibleImageRect(shape: Entity) {
   if (
     !shape.has(Rect) ||
@@ -70,7 +82,7 @@ export function eligibleImageRect(shape: Entity) {
     layers.length !== 1 ||
     layers[0].type !== 'image' ||
     (layers[0].blendMode && layers[0].blendMode !== 'normal') ||
-    isLikelySvgResourceUrl(layers[0].value) ||
+    isSvgImageLayer(layers[0]) ||
     !isImmutableImage(getFillLayerDecodedBitmap(layers[0].value))
   )
     return false;
