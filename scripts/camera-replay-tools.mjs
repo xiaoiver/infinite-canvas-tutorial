@@ -84,6 +84,44 @@ function rows(capture) {
           ),
           'Invalid frame timing',
         );
+        for (const f of step.frames) {
+          const hasObservation = [
+            'startedAt',
+            'observedAt',
+            'observationMs',
+          ].some((k) => k in f);
+          if (!hasObservation) continue; // Legacy schema-1 captures have no observer clock.
+          assert(
+            ['startedAt', 'observedAt', 'observationMs'].every((k) =>
+              Number.isFinite(f[k]),
+            ),
+            'Incomplete observation timing',
+          );
+          assert(
+            f.startedAt <= f.completedAt &&
+              f.completedAt <= f.observedAt &&
+              f.observationMs >= 0,
+            'Invalid observation timing',
+          );
+          assert(
+            Math.abs(f.completedAt - f.startedAt - f.elapsed) <= 1e-3 &&
+              Math.abs(f.observedAt - f.completedAt - f.observationMs) <= 1e-3,
+            'Inconsistent observation timing',
+          );
+        }
+        if ('operationToResultMs' in step) {
+          assert(
+            Number.isFinite(step.operationToResultMs) &&
+              step.operationToResultMs >= step.operationToFrameMs,
+            'Invalid result readiness',
+          );
+          if (Number.isFinite(frame.observationMs))
+            assert(
+              step.operationToResultMs + 1e-3 >=
+                step.operationToFrameMs + frame.observationMs,
+              'Result precedes observation',
+            );
+        }
         assert(
           visible.every(
             (id) => typeof id === 'string' || (Number.isInteger(id) && id >= 0),
@@ -136,6 +174,22 @@ export function summarizeReplay(capture) {
     operationToFrameMs: replayStats(
       values.map((r) => r.step.operationToFrameMs),
     ),
+    ...(values.every(
+      ({ step }) =>
+        Number.isFinite(step.operationToResultMs) &&
+        step.frames.every((f) => Number.isFinite(f.observationMs)),
+    )
+      ? {
+          observationTotalMs: replayStats(
+            values.map(({ step }) =>
+              step.frames.reduce((sum, f) => sum + f.observationMs, 0),
+            ),
+          ),
+          operationToResultMs: replayStats(
+            values.map(({ step }) => step.operationToResultMs),
+          ),
+        }
+      : {}),
   }));
 }
 export function compareReplays(

@@ -345,9 +345,9 @@ const api = {
     const requestedAt = performance.now();
     replayPhases.begin();
     let phases;
-    let elapsed: number, completedAt: number;
+    let startedAt: number, elapsed: number, completedAt: number;
     try {
-      const startedAt = performance.now();
+      startedAt = performance.now();
       if (canvas.camera.x !== view.x) canvas.camera.x = view.x;
       if (canvas.camera.y !== view.y) canvas.camera.y = view.y;
       if (canvas.camera.zoom !== view.zoom) canvas.camera.zoom = view.zoom;
@@ -360,28 +360,35 @@ const api = {
     const visibleIndices = shapes.flatMap((shape, index) =>
       !shape.culled && shape.visible ? [index] : [],
     );
+    const sampledView = {
+      x: canvas.camera.x,
+      y: canvas.camera.y,
+      zoom: canvas.camera.zoom,
+    };
+    const data = {
+      surface: replaySurface(element),
+      visibleIndices,
+      visible: visibleIndices.length,
+      strokePages,
+      native: { ...nativeWork },
+      cpu: strokeCPU.snapshot(),
+      phases,
+      resources: window.lifecycleProbes?.resources(),
+    };
+    const observedAt = performance.now();
     return {
       requested: { ...view },
       operationToFrameMs: completedAt - requestedAt,
+      operationToResultMs: observedAt - requestedAt,
       frames: [
         {
-          view: {
-            x: canvas.camera.x,
-            y: canvas.camera.y,
-            zoom: canvas.camera.zoom,
-          },
+          view: sampledView,
+          startedAt,
           elapsed,
           completedAt,
-          data: {
-            surface: replaySurface(element),
-            visibleIndices,
-            visible: visibleIndices.length,
-            strokePages,
-            native: { ...nativeWork },
-            cpu: strokeCPU.snapshot(),
-            phases,
-            resources: window.lifecycleProbes?.resources(),
-          },
+          observedAt,
+          observationMs: observedAt - completedAt,
+          data,
         },
       ],
     };

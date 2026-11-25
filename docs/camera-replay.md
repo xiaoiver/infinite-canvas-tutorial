@@ -41,8 +41,8 @@ destruction cancels a pending request, including a wait for an earlier execution
 Each step records the actual visible identifiers, CSS/physical canvas size, native
 submissions/uploads/allocations, resources, geometry/precision work and available
 phase timings. The micro page count is submitted stroke pages, not a planner query
-performed by the observer. Metadata reads occur after the engine timer stops and
-do not drive rendering or compatibility planning. Document equality and existing
+performed by the observer. Metadata reads occur after the engine timer stops. They do not drive rendering or
+compatibility planning, but can block and perturb later frame scheduling. Document equality and existing
 strict GPU teardown contracts are checked independently.
 
 Matched-frame CPU time, the sum of captured engine frames and request-to-completed-
@@ -51,6 +51,36 @@ Requests intentionally start at an engine boundary. They therefore are diagnosti
 work measurements, not physical presentation latency, a native GPU timer, human
 input latency or an FPS claim. Keep the time-driven tour and native-device testing
 as separate controls for the 2,400-card smooth-interaction goal.
+
+## Observation and result readiness
+
+Both Core and ECS also report `startedAt`, `observedAt` and `observationMs` on
+completed frames, plus `operationToResultMs` on each step. These are additive
+schema-1 fields; legacy captures remain readable. Summaries omit unavailable
+observation/readiness metrics instead of reporting zero. Partial, inconsistent or
+negative timing metadata is rejected.
+
+-   `elapsed` still ends at `completedAt`, immediately after the same engine work.
+    Core includes its synchronous camera mutation; ECS includes the awaited World
+    execution. No renderer or timing boundary changes.
+-   `observationMs` is `observedAt - completedAt`: phase-probe completion and
+    synchronous camera/data/native/resource observation after the engine timer.
+    It is observer wall time, not extra renderer CPU or a GPU timer.
+-   `operationToFrameMs` retains request-to-engine-completion timing.
+    `operationToResultMs` extends to capture readiness after observation and apply
+    completion. Both exclude browser IPC and result serialization.
+
+Workflow's observer retains its per-frame WebGL error check. On a software GPU,
+`getError()` can synchronously wait for the driver and substantially affect later
+RAF/capture scheduling. The extra fields expose that cost; the check is not
+removed, deferred or treated as zero. Keep native, document and teardown
+assertions enabled when comparing runs.
+
+The ECS edit Promise includes queueing and can overlap engine execution; adding
+its total duration to `elapsed` double-counts work. Likewise, packed in-page
+requests and host-driven per-pose requests are different cadence controls and
+must not be pooled into a performance claim. Separate phase-profiled and ordinary
+cohorts, and label any additional probes or sampling overhead.
 
 ## Compare captures
 
