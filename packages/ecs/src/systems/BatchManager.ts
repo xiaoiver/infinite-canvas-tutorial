@@ -189,7 +189,7 @@ export class BatchManager {
     ctors: (typeof Drawcall)[];
     key: string | null;
   } {
-    if (this.#imageBatching) {
+    if (this.#imageBatching && shape.has(Rect)) {
       const key = this.batchKey(shape, [ImageBatch]);
       if (key !== null) return { ctors: [ImageBatch], key };
     }

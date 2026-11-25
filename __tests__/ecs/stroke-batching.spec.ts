@@ -4,6 +4,7 @@ import {
   Path,
   Stroke,
   StrokeLayers,
+  FillLayers,
   GlobalTransform,
   Mat3,
   Renderable,
@@ -13,6 +14,8 @@ import {
   Children,
 } from '../../packages/ecs/src';
 import { StrokeBatch } from '../../packages/ecs/src/drawcalls/StrokeBatch';
+import { PathInstances } from '../../packages/ecs/src/drawcalls/PathInstances';
+import { ImageBatch } from '../../packages/ecs/src/drawcalls/ImageBatch';
 import { Mesh } from '../../packages/ecs/src/drawcalls/Mesh';
 import { SmoothPolyline } from '../../packages/ecs/src/drawcalls/SmoothPolyline';
 import { BatchManager } from '../../packages/ecs/src/systems/BatchManager';
@@ -57,7 +60,7 @@ function manager(intent: 'screen' | 'export' = 'screen') {
     null,
     null,
     null,
-    { getNodeByEntity: () => ({}) } as API,
+    { getNodeByEntity: () => ({}) } as unknown as API,
     intent,
   );
   managers.push(batch);
@@ -174,5 +177,59 @@ strokeSegmentReuseContract(
       null,
       false,
       0,
+      undefined,
     ),
 );
+
+it('prunes non-rectangle image candidates while preserving Path selection and page budgets', () => {
+  const batch = manager();
+  batch.setPathInstancingEnabled(true);
+  batch.setImageBatchingEnabled(true);
+  const nodes = Array.from({ length: 300 }, path);
+  const stroke = jest.spyOn(StrokeBatch, 'batchKey');
+  const fill = jest.spyOn(PathInstances, 'batchKey');
+  const image = jest.spyOn(ImageBatch, 'batchKey');
+  try {
+    nodes.forEach((n) => batch.add(n.entity));
+    expect(queued(batch).map((p) => [p.constructor, p.shapes.length])).toEqual([
+      [StrokeBatch, 256],
+      [StrokeBatch, 44],
+    ]);
+    expect(stroke).toHaveBeenCalledTimes(300);
+    expect(fill).toHaveBeenCalledTimes(300);
+    expect(image).not.toHaveBeenCalled();
+  } finally {
+    stroke.mockRestore();
+    fill.mockRestore();
+    image.mockRestore();
+  }
+});
+
+it.each(
+  [3, 0, -1, NaN, Infinity, -Infinity, undefined].flatMap((width) =>
+    [false, true].map((fill) => ({ width, fill })),
+  ),
+)('preserves the original fill/stroke predicates for %p', ({ width, fill }) => {
+  const node = path();
+  if (fill)
+    node.data.set(FillLayers, { layers: [{ type: 'solid', value: 'blue' }] });
+  if (width === undefined) node.data.delete(Stroke);
+  else node.data.get(Stroke).width = width;
+  const expected =
+    PathInstances.batchKey(node.entity) !== null
+      ? PathInstances
+      : StrokeBatch.batchKey(node.entity) !== null
+      ? StrokeBatch
+      : undefined;
+  const batch = manager();
+  batch.setPathInstancingEnabled(true);
+  batch.add(node.entity);
+  const calls = queued(batch);
+  if (expected) expect(calls.map((c) => c.constructor)).toEqual([expected]);
+  else
+    expect(
+      calls.every(
+        (c) => !(c instanceof PathInstances) && !(c instanceof StrokeBatch),
+      ),
+    ).toBe(true);
+});
