@@ -66,6 +66,7 @@ export default defineConfig({
     'webgl1-3d.spec.ts',
     'interaction-precision.spec.ts',
     'size-label.spec.ts',
+    'name-label.spec.ts',
     'lasso.spec.ts',
     'icon-resize.spec.ts',
     'lottie.spec.ts',

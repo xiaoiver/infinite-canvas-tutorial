@@ -125,6 +125,18 @@ export class RenderNameLabel extends System {
       }
     });
 
+    // The default is off. Avoid reading every named shape when no canvas can
+    // display a label, but retain removal cleanup and hide existing DOM labels.
+    if (
+      !this.canvases.current.some(
+        (canvas) =>
+          canvas.read(Canvas).api?.getAppState().penbarNameLabelVisible,
+      )
+    ) {
+      for (const label of this.#labels.values()) hideLabel(label);
+      return;
+    }
+
     this.named.current.forEach((entity) => {
       if (entity.has(UI)) {
         return;
