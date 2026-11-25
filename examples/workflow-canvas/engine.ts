@@ -68,8 +68,8 @@ export async function createEngine(
 ) {
   let api: API;
   let disposed = false;
-  let pendingView: View | undefined;
-  let viewQueued = false;
+  let pendingLoadView: View | undefined;
+  let loadViewQueued = false;
   const samples: FrameSample[] = [];
   let frameCount = 0;
   class Bootstrap extends System {
@@ -207,15 +207,15 @@ export async function createEngine(
       editable: false,
     };
   }
-  function flushView() {
-    if (viewQueued || disposed) return;
-    viewQueued = true;
-    // Camera navigation is transient state, so do not capture the entire
-    // document into a history snapshot on every animation frame.
+  // Preserve initialization's late ordering and adaptive-curve cache history.
+  // Live navigation below uses the early queue once the loading mask is gone.
+  function flushLoadView() {
+    if (loadViewQueued || disposed) return;
+    loadViewQueued = true;
     api.runAtNextTick(() => {
-      viewQueued = false;
-      const view = pendingView;
-      pendingView = undefined;
+      loadViewQueued = false;
+      const view = pendingLoadView;
+      pendingLoadView = undefined;
       if (view && !disposed)
         api.setAppState({
           cameraX: view.x,
@@ -314,9 +314,15 @@ export async function createEngine(
         await mutate((editor) => updateNodes(editor, nodes.slice(i, i + 128)));
       }
     },
+    prepareView(view: View) {
+      if (disposed) return;
+      pendingLoadView = { ...view };
+      flushLoadView();
+    },
     view(view: View) {
-      pendingView = { ...view };
-      void flushView();
+      // An older load request must not overwrite newer user input in Last.
+      pendingLoadView = undefined;
+      return disposed ? Promise.resolve(false) : api.setCameraView(view);
     },
     resize(width: number, height: number) {
       return mutate((editor) => editor.resizeCanvas(width, height));
@@ -349,6 +355,7 @@ export async function createEngine(
     },
     async dispose() {
       disposed = true;
+      pendingLoadView = undefined;
       await app.exit();
       Object.values(textures).forEach((url) => URL.revokeObjectURL(url));
     },

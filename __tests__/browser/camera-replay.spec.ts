@@ -9,8 +9,13 @@ declare global {
     polylineLOD: PolylineLODHarness;
   }
 }
-for (const backend of ['core', 'ecs'] as const)
-  test(`${backend} fixed replay labels completed camera frames and preserves document/ownership`, async ({
+for (const [backend, mode] of [
+  ['core', 'fixed'],
+  ['ecs', 'fixed'],
+  ['core', 'transient'],
+  ['ecs', 'transient'],
+] as const)
+  test(`${backend} ${mode} replay labels completed camera frames and preserves document/ownership`, async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -39,6 +44,22 @@ for (const backend of ['core', 'ecs'] as const)
           : window.polylineLOD.replayDocument(),
       backend,
     );
+    if (mode === 'transient')
+      await page.evaluate(async (b) => {
+        const view = { x: 0, y: 0, zoom: 0.13 };
+        if (b === 'core') window.corePathInstances.replayCamera(view);
+        else await window.polylineLOD.navigateCamera(view);
+      }, backend);
+    const raster =
+      mode === 'transient'
+        ? await page.evaluate(
+            (b) =>
+              b === 'core'
+                ? window.corePathInstances.export(false)
+                : window.polylineLOD.export(false),
+            backend,
+          )
+        : undefined;
     const steps = [
       { x: 0, y: 0, zoom: 0.13 },
       { x: 0, y: 0, zoom: 0.13 },
@@ -48,12 +69,15 @@ for (const backend of ['core', 'ecs'] as const)
     ];
     for (const [i, view] of steps.entries()) {
       const row = await page.evaluate(
-        async ({ backend, view }) =>
+        async ({ backend, view, mode }) =>
           backend === 'core'
             ? window.corePathInstances.replayCamera(view)
+            : mode === 'transient'
+            ? await window.polylineLOD.navigateCamera(view)
             : await window.polylineLOD.replayCamera(view),
-        { backend, view },
+        { backend, view, mode },
       );
+      if (mode === 'transient') expect(row.frames).toHaveLength(1);
       expect(sameReplayView(row.frames.at(-1)!.view, view)).toBe(true);
       expect(
         row.frames.every((f) => f.elapsed >= 0 && Number.isFinite(f.elapsed)),
@@ -78,6 +102,16 @@ for (const backend of ['core', 'ecs'] as const)
       );
       if (i === 1) expect(row.frames.at(-1)!.data.native.drawcalls).toBe(0);
     }
+    if (mode === 'transient')
+      expect(
+        await page.evaluate(
+          (b) =>
+            b === 'core'
+              ? window.corePathInstances.export(false)
+              : window.polylineLOD.export(false),
+          backend,
+        ),
+      ).toBe(raster);
     expect(
       await page.evaluate(
         (b) =>

@@ -223,12 +223,12 @@ export class Camera {
       }
     };
 
+    this.cancelLandmarkAnimation();
+
     if (duration === 0) {
       endAnimation();
       return;
     }
-
-    this.cancelLandmarkAnimation();
 
     let timeStart: number | undefined;
     const destPosition: vec2 = [x, y]; // in world space
@@ -285,7 +285,7 @@ export class Camera {
       }
     };
 
-    DOMAdapter.get().requestAnimationFrame(animate);
+    this.#landmarkAnimationID = DOMAdapter.get().requestAnimationFrame(animate);
   }
 
   cancelLandmarkAnimation() {

@@ -69,7 +69,8 @@ function setBusy(value: boolean) {
 }
 function applyView(next: View) {
   view = next;
-  engine.view(view);
+  if (busy) engine.prepareView(view);
+  else void engine.view(view).catch(reportError);
   $('#zoom').textContent = `${Math.round(view.zoom * 100)}%`;
 }
 function focusFlow(pipeline = selected?.pipeline ?? 0) {
