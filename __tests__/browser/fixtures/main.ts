@@ -1,3 +1,4 @@
+import { sampleNameLabelReads } from './name-label-probe';
 import { settleECSFrames } from './ecs-frames';
 import '../../../packages/webcomponents/src/spectrum/context-vector-network-edit-bar';
 import '../../../packages/webcomponents/src/spectrum/infinite-canvas';
@@ -279,6 +280,10 @@ const harness = {
       ...(tf.segmentMidpoints ?? []),
       ...(tf.vnTangentHandles ?? []),
     ].filter((entity) => entity && !entity.has(Culled)).length;
+  },
+  sampleNameLabels() {
+    const api = slots.values().next().value!.api;
+    return sampleNameLabelReads(api.getCamera(), () => harness.settleFrames());
   },
   async settleFrames() {
     const slot = slots.values().next().value as Slot | undefined;

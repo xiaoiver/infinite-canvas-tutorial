@@ -53,8 +53,17 @@ class Bootstrap extends System {
     const element = document.querySelector<HTMLCanvasElement>('#canvas')!;
     element.style.width = `${width}px`;
     element.style.height = `${height}px`;
+    const svgLayer = params.has('nameLabels')
+      ? document.createElement('div')
+      : undefined;
+    if (svgLayer) {
+      svgLayer.style.cssText = 'position:absolute;inset:0;pointer-events:none';
+      document.body.append(svgLayer);
+      api.onDestroy(() => svgLayer.remove());
+    }
     api.createCanvas({
       element,
+      svgLayer,
       width,
       height,
       devicePixelRatio: Number(params.get('dpr') || 1),
@@ -128,16 +137,15 @@ const harness = {
       longestPath: paths.reduce((max, node) => Math.max(max, node.d.length), 0),
     };
   },
-  showSvgArtwork: async (
-    source: string,
-    center = { x: 100, y: 100 },
-  ) => {
+  showSvgArtwork: async (source: string, center = { x: 100, y: 100 }) => {
     const nodes = importExtrudedSvg(source, 24, center);
     await api.edit((editor) => editor.replaceDocument(nodes, 'remote'));
     await settleECSFrames(api, 3);
     return {
       nodes: nodes.length,
-      extrudedNodes: nodes.filter((node) => 'extrude3d' in node && node.extrude3d).length,
+      extrudedNodes: nodes.filter(
+        (node) => 'extrude3d' in node && node.extrude3d,
+      ).length,
     };
   },
   profileSvgArtworkEdit: async (source: string) => {
