@@ -29,6 +29,7 @@ import { SDFText } from './SDFText';
 import { TexturePool } from '../TexturePool';
 import { PathInstances, PATH_INSTANCE_PAGE_SIZE } from './PathInstances';
 import { StrokeBatch } from './StrokeBatch';
+import { STROKE_BATCH_PAGE_SIZE } from '../utils/stroke-batching';
 import { ImageBatch } from './ImageBatch';
 import {
   reuseAdjacentImageTokens,
@@ -365,19 +366,14 @@ export class BatchManager {
         this.#allowTextBatches && shape.constructor === Text
           ? TextBatch.batchKey(shape)
           : null;
+      const isPath = this.#allowPathInstances && shape.constructor === Path;
+      const strokeOnly = isPath && (shape as Path).fill === 'none';
       const pathKey =
-        this.#allowPathInstances && shape.constructor === Path
-          ? PathInstances.batchKey(shape)
-          : null;
+        isPath && !strokeOnly ? PathInstances.batchKey(shape) : null;
       const imageKey = this.#allowImageBatches
         ? ImageBatch.batchKey(shape)
         : null;
-      const strokeKey =
-        this.#allowPathInstances &&
-        shape.constructor === Path &&
-        pathKey === null
-          ? StrokeBatch.batchKey(shape)
-          : null;
+      const strokeKey = strokeOnly ? StrokeBatch.batchKey(shape) : null;
       const ctors =
         imageKey !== null
           ? [ImageBatch]
@@ -422,6 +418,9 @@ export class BatchManager {
           page.glyphs + TextBatch.glyphCount(shape) <= TEXT_BATCH_GLYPHS) &&
         page.drawcalls.every((d) => {
           if (textKey !== null) return true; // Exact material key checked above; budget is per page.
+          // Equal built-in stroke keys already checked eligibility and material.
+          if (strokeKey !== null)
+            return page.shapes.length < STROKE_BATCH_PAGE_SIZE;
           // imageKey already checked eligibility. Only page limits remain.
           if (imageKey !== null)
             return ImageBatch.canAppend(page.shapes, shape, imageToken);
