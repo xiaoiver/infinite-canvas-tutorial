@@ -2,6 +2,18 @@ import {
   FillLayers,
   GlobalTransform,
   Mat3,
+  Stroke,
+  Rough,
+  UI,
+  FillTexture,
+  Wireframe,
+  SizeAttenuation,
+  Filter,
+  DropShadow,
+  InnerShadow,
+  ClipMode,
+  NodeLayerBlendMode,
+  Extrude3D,
   Path,
   type Entity,
 } from '../../packages/ecs/src';
@@ -119,4 +131,79 @@ it('retries failed row writes, skips equal dirty rows and reuses geometry for ma
   draw.destroy();
   draw.destroy();
   for (const buffer of buffers) expect(buffer.destroy).toHaveBeenCalledTimes(1);
+});
+
+function fillCandidate(width?: number) {
+  const data = new Map<unknown, any>([
+    [Path, { d: 'M0 0H20V20Z', fillRule: 'nonzero', tessellationMethod: 0 }],
+    [GlobalTransform, { matrix: Mat3.copy(Mat3.IDENTITY) }],
+    [FillLayers, { layers: [{ type: 'solid', value: 'red' }] }],
+  ]);
+  if (width !== undefined) data.set(Stroke, { width });
+  const effects = jest.fn((...types: unknown[]) =>
+    types.some((t) => data.has(t)),
+  );
+  const entity = {
+    has: (type: unknown) => data.has(type),
+    hasSomeOf: effects,
+    read: (type: unknown) => data.get(type),
+  } as unknown as Entity;
+  return { data, effects, entity };
+}
+
+it.each([undefined, 0, -0, -1, NaN, -Infinity, 1, Infinity])(
+  'preserves the existing fill eligibility comparison for stroke width %p',
+  (width) => {
+    const { entity, effects } = fillCandidate(width);
+    if (width > 0) {
+      expect(PathInstances.batchKey(entity)).toBeNull();
+      expect(effects).not.toHaveBeenCalled();
+    } else {
+      expect(PathInstances.batchKey(entity)).not.toBeNull();
+      expect(effects).toHaveBeenCalledTimes(1);
+    }
+  },
+);
+
+it.each([
+  Rough,
+  UI,
+  FillTexture,
+  Wireframe,
+  SizeAttenuation,
+  Filter,
+  DropShadow,
+  InnerShadow,
+  ClipMode,
+  NodeLayerBlendMode,
+  Extrude3D,
+])(
+  'retains complex-style fallback for a fill-only candidate with %p',
+  (effect) => {
+    const { data, entity, effects } = fillCandidate(0);
+    data.set(effect, {});
+    expect(PathInstances.batchKey(entity)).toBeNull();
+    expect(effects).toHaveBeenCalledTimes(1);
+  },
+);
+
+it('observes live stroke, effect, fill and matrix edits without caching eligibility', () => {
+  const { entity, data } = fillCandidate(2);
+  expect(PathInstances.batchKey(entity)).toBeNull();
+  data.get(Stroke).width = 0;
+  expect(PathInstances.batchKey(entity)).not.toBeNull();
+  data.set(Filter, {});
+  expect(PathInstances.batchKey(entity)).toBeNull();
+  data.delete(Filter);
+  expect(PathInstances.batchKey(entity)).not.toBeNull();
+  const fill = data.get(FillLayers).layers[0];
+  fill.blendMode = 'multiply';
+  expect(PathInstances.batchKey(entity)).toBeNull();
+  fill.blendMode = 'normal';
+  data.get(GlobalTransform).matrix.m00 = 0;
+  expect(PathInstances.batchKey(entity)).toBeNull();
+  data.get(GlobalTransform).matrix.m00 = 1;
+  expect(PathInstances.batchKey(entity)).not.toBeNull();
+  data.get(Stroke).width = 2;
+  expect(PathInstances.batchKey(entity)).toBeNull();
 });

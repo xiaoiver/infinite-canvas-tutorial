@@ -45,12 +45,12 @@ export class PathInstances extends Mesh {
     if (
       Object.getPrototypeOf(shape) !== Path.prototype ||
       !shape.batchable ||
-      shape.wireframe ||
-      shape.sizeAttenuation ||
-      shape.useFillImage ||
       typeof shape.fill !== 'string' ||
       shape.fill === 'none' ||
       (shape.stroke !== 'none' && shape.strokeWidth > 0) ||
+      shape.wireframe ||
+      shape.sizeAttenuation ||
+      shape.useFillImage ||
       shape.innerShadowBlurRadius > 0 ||
       shape.dropShadowBlurRadius > 0
     )

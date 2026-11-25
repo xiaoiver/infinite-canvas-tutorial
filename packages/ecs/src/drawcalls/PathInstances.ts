@@ -69,6 +69,8 @@ export class PathInstances extends Mesh {
     if (
       !shape.has(Path) ||
       !shape.has(GlobalTransform) ||
+      // Positive-width strokes cannot use this fill-only renderer.
+      (shape.has(Stroke) && shape.read(Stroke).width > 0) ||
       shape.hasSomeOf(
         Rough,
         UI,
@@ -81,8 +83,7 @@ export class PathInstances extends Mesh {
         ClipMode,
         NodeLayerBlendMode,
         Extrude3D,
-      ) ||
-      (shape.has(Stroke) && shape.read(Stroke).width > 0)
+      )
     )
       return null;
     const fills = getEnabledFillLayers(shape);

@@ -356,3 +356,34 @@ it('keeps ordinary no-fill Paths stroke-only and restores fill channels after ed
     expect(Mesh.check(new Rect({fill:'none'}))).toBe(true);
   } finally {batch.destroy();meshSubmit.mockRestore();strokeSubmit.mockRestore();}
 });
+
+it('rejects fill/stroke mismatches before remaining flags and observes later paint edits', () => {
+  const shape = new Path({
+    d: 'M0 0H20V20Z',
+    fill: 'none',
+    stroke: 'red',
+    strokeWidth: 2,
+    batchable: true,
+  });
+  const imageFlag = jest.spyOn(shape, 'useFillImage', 'get');
+  try {
+    expect(PathInstances.batchKey(shape)).toBeNull();
+    expect(imageFlag).not.toHaveBeenCalled();
+    shape.fill = 'red';
+    expect(PathInstances.batchKey(shape)).toBeNull();
+    expect(imageFlag).not.toHaveBeenCalled();
+    shape.strokeWidth = 0;
+    expect(PathInstances.batchKey(shape)).not.toBeNull();
+    expect(imageFlag).toHaveBeenCalledTimes(1);
+    shape.wireframe = true;
+    expect(PathInstances.batchKey(shape)).toBeNull();
+    shape.wireframe = false;
+    shape.strokeWidth = 2;
+    shape.stroke = 'none';
+    expect(PathInstances.batchKey(shape)).not.toBeNull();
+    shape.stroke = 'red';
+    expect(PathInstances.batchKey(shape)).toBeNull();
+  } finally {
+    imageFlag.mockRestore();
+  }
+});
