@@ -19,6 +19,28 @@ cameraRotation: number;
 cameraZoomFactor: number; // zoom in/out speed
 ```
 
+## setCameraView (ECS)
+
+Queue transient 2D navigation without a document/history commit:
+
+```ts
+const applied = await api.setCameraView({ x: 100, y: 50, zoom: 0.5 });
+```
+
+Consecutive calls before the write phase coalesce to the latest copied position
+and zoom. Omitted rotation retains the latest queued or applied rotation.
+`api.edit()` preserves ordering by separating these groups. Reentrant requests
+run on the following tick. The request applies in the early Edit stage; an
+initialized camera derives before rendering in that execution. Initial camera
+setup keeps its existing deferred state behavior.
+
+The Promise resolves after application, not after rendering; it resolves `false`
+on destruction and rejects invalid or unrepresentable values. This method only
+changes camera state and preserves pending document edits and redo. Legacy
+`runAtNextTick` callbacks retain their late timing. Core camera setters and
+`canvas.camera.gotoLandmark(view, { duration: 0 })` update matrices synchronously;
+immediate navigation cancels a prior camera flight in both implementations.
+
 ## createLandmark
 
 Create a Landmark that represents the camera state

@@ -202,6 +202,14 @@ export interface CanvasHistoryState {
   canRedo: boolean;
 }
 
+/** Transient 2D navigation; omitted rotation preserves the latest queued or applied value. */
+export interface CameraView {
+  x: number;
+  y: number;
+  zoom: number;
+  rotation?: number;
+}
+
 export interface CanvasEditOptions {
   /** Default: IMMEDIATELY. NEVER commits without creating an undo entry. */
   capture?: 'IMMEDIATELY' | 'NEVER';
@@ -361,6 +369,10 @@ export class API {
   #tasks = new TaskQueue();
   #editTasks = new TaskQueue();
   #edits = new EditQueue((task) => this.#editTasks.add(task));
+  #pendingCameraView?: {
+    request: { view: CameraView };
+    result: Promise<boolean>;
+  };
   #editing = false;
   #flushingEdits = false;
   #afterDeleteTasks = new TaskQueue();
@@ -3775,6 +3787,7 @@ export class API {
   destroy() {
     if (this.#destroyed) return;
     this.#destroyed = true;
+    this.#pendingCameraView = undefined;
     this.#edits.dispose();
     this.#editTasks.dispose();
     this.#tasks.dispose();
@@ -3864,6 +3877,8 @@ export class API {
    * or rollback. Nested edits are separate operations on the following tick.
    */
   edit(update: (api: this) => void, options: CanvasEditOptions = {}) {
+    // Coalesce navigation only between edits, never across an ordered mutation.
+    this.#pendingCameraView = undefined;
     const capture = options.capture ?? CaptureUpdateAction.IMMEDIATELY;
     return this.#edits.add(
       () => {
@@ -3888,6 +3903,60 @@ export class API {
     );
   }
 
+  /**
+   * Queue transient navigation in the Edit stage without recording history.
+   * Consecutive calls coalesce to the latest copied view; edit() is an ordering
+   * barrier. Resolves after application (not rendering), false on destruction.
+   * Failure rejects without a rollback guarantee.
+   * Work queued during this phase runs next tick. Initialized cameras derive
+   * before rendering in the same execution; initial camera setup keeps its
+   * existing deferred setAppState behavior.
+   */
+  setCameraView(view: CameraView): Promise<boolean> {
+    if (this.#destroyed) return Promise.resolve(false);
+    if (
+      !view ||
+      ![view.x, view.y, view.zoom, view.rotation ?? 0].every(Number.isFinite) ||
+      view.zoom <= 0 ||
+      ![view.x, view.y, view.rotation ?? 0, 1 / view.zoom]
+        .map(Math.fround)
+        .every(Number.isFinite) ||
+      Math.fround(1 / view.zoom) <= 0
+    )
+      return Promise.reject(
+        new TypeError(
+          'Camera view must have finite coordinates and a positive representable zoom',
+        ),
+      );
+    const next = {
+      x: view.x,
+      y: view.y,
+      zoom: view.zoom,
+      rotation: view.rotation,
+    };
+    if (this.#pendingCameraView) {
+      next.rotation ??= this.#pendingCameraView.request.view.rotation;
+      this.#pendingCameraView.request.view = next;
+      return this.#pendingCameraView.result;
+    }
+    const request = { view: next };
+    const result = this.#edits.add(
+      () => {
+        const { x, y, zoom, rotation } = request.view;
+        this.cancelLandmarkAnimation();
+        this.setAppState({
+          cameraX: x,
+          cameraY: y,
+          cameraZoom: zoom,
+          ...(rotation === undefined ? {} : { cameraRotation: rotation }),
+        });
+      },
+      () => {},
+    );
+    this.#pendingCameraView = { request, result };
+    return result;
+  }
+
   runAtNextTick(fn: () => any) {
     // Edits used to run in the late queue. Keep callbacks they enqueue on the
     // following frame even though the edit itself now runs before rendering.
@@ -3896,6 +3965,8 @@ export class API {
 
   /** @internal Called in the owning world's Edit stage, before PreUpdate. */
   flushPendingEdits() {
+    // Reentrant requests belong to the next drain, not a task in this batch.
+    this.#pendingCameraView = undefined;
     this.#flushingEdits = true;
     try {
       this.#editTasks.flush();

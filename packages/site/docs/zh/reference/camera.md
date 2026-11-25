@@ -21,6 +21,22 @@ cameraRotation: number;
 cameraZoomFactor: number; // 缩放速度
 ```
 
+## setCameraView（ECS）
+
+在安全写入阶段提交临时 2D 导航，不创建文档或历史提交：
+
+```ts
+const applied = await api.setCameraView({ x: 100, y: 50, zoom: 0.5 });
+```
+
+写入阶段前的连续调用会合并，采用最后复制的位置与缩放；省略旋转时保留最近排队或已应用的旋转。
+`api.edit()` 会分隔合并组，保持调用顺序；写入阶段内再次排队的请求在下一帧执行。
+初始化后的相机会在早期 Edit 阶段更新，并在同一次执行中完成相机计算和渲染；首次相机初始化仍沿用已有的延后状态处理。
+
+Promise 在状态应用后完成，不代表已经渲染；画布销毁时返回 `false`，非法或无法表示的数值会拒绝。
+此方法只修改相机状态，保留未提交的文档改动和重做栈。原有 `runAtNextTick` 回调仍在后期执行。
+Core 的相机 setter 与 `canvas.camera.gotoLandmark(view, { duration: 0 })` 会同步更新矩阵；两端的即时导航都会取消旧相机动画。
+
 ## createLandmark
 
 创建一个代表相机状态的 Landmark

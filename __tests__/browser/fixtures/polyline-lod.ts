@@ -462,6 +462,9 @@ const harness = {
     await frames();
   },
   replayDocument: () => api.getNodes(),
+  navigateCamera(view: ReplayView) {
+    return replay.step(view, () => api.setCameraView(view));
+  },
   replayCamera(view: ReplayView) {
     return replay.step(view, () =>
       api.edit(
