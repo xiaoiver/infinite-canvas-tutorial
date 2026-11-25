@@ -58,6 +58,7 @@
     "bench:image-textures": "playwright test -c playwright.image-texture-sharing-bench.config.ts",
     "bench:stroke-reuse": "playwright test -c playwright.stroke-reuse-bench.config.ts",
     "bench:stroke-batching": "playwright test -c playwright.stroke-batching-bench.config.ts",
+    "bench:workflow-input": "playwright test -c playwright.workflow-input-bench.config.ts",
     "bench:workflow": "playwright test -c playwright.workflow-bench.config.ts",
     "bench:edit-phases": "playwright test -c playwright.edit-phases-bench.config.ts",
     "bench:text-batching": "playwright test -c playwright.text-batching-bench.config.ts",

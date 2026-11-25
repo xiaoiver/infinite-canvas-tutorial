@@ -87,12 +87,46 @@ export function completedCameraReplay<T>(options: {
   let cancel: ((error: Error) => void) | undefined;
   let pending:
     | {
-        target: ReplayView;
+        target: () => ReplayView;
+        matched?: ReplayView;
         frames: CompletedReplayFrame<T>[];
         resolve: () => void;
         reject: (e: unknown) => void;
       }
     | undefined;
+  async function step(target: () => ReplayView, apply: () => Promise<unknown>) {
+    if (busy || disposed) throw new Error('Replay is busy or disposed');
+    busy = true;
+    let request: typeof pending;
+    const cancelled = new Promise<never>((_resolve, reject) => {
+      cancel = reject;
+    });
+    try {
+      // Finish any execution already in progress before applying a new pose.
+      await Promise.race([inFlight, cancelled]);
+      if (disposed) throw new Error('Replay is disposed');
+      const requestedAt = now();
+      const frames: CompletedReplayFrame<T>[] = [];
+      const complete = new Promise<void>((resolve, reject) => {
+        request = { target, frames, resolve, reject };
+        pending = request;
+      });
+      await Promise.race([
+        Promise.all([complete, Promise.resolve().then(apply)]),
+        cancelled,
+      ]);
+      return {
+        requested: { ...request!.matched! },
+        frames,
+        operationToFrameMs: frames.at(-1)!.completedAt - requestedAt,
+        operationToResultMs: now() - requestedAt,
+      };
+    } finally {
+      if (pending === request) pending = undefined;
+      busy = false;
+      cancel = undefined;
+    }
+  }
   return {
     get busy() {
       return busy;
@@ -116,6 +150,8 @@ export function completedCameraReplay<T>(options: {
           }
           if (request && pending === request && !disposed) {
             const view = { ...options.view() };
+            const target = request.target();
+            validateReplayView(target);
             const data = options.snapshot();
             const observedAt = now();
             request.frames.push({
@@ -127,7 +163,8 @@ export function completedCameraReplay<T>(options: {
               observationMs: observedAt - completedAt,
               data,
             });
-            if (sameReplayView(view, request.target)) {
+            if (sameReplayView(view, target)) {
+              request.matched = { ...target };
               pending = undefined;
               request.resolve();
             } else if (request.frames.length >= maxFrames) {
@@ -162,37 +199,13 @@ export function completedCameraReplay<T>(options: {
     },
     async step(target: ReplayView, apply: () => Promise<unknown>) {
       validateReplayView(target);
-      if (busy || disposed) throw new Error('Replay is busy or disposed');
-      busy = true;
-      let request: typeof pending;
-      const cancelled = new Promise<never>((_resolve, reject) => {
-        cancel = reject;
-      });
-      try {
-        // Finish any execution already in progress before applying a new pose.
-        await Promise.race([inFlight, cancelled]);
-        if (disposed) throw new Error('Replay is disposed');
-        const requestedAt = now();
-        const frames: CompletedReplayFrame<T>[] = [];
-        const complete = new Promise<void>((resolve, reject) => {
-          request = { target: { ...target }, frames, resolve, reject };
-          pending = request;
-        });
-        await Promise.race([
-          Promise.all([complete, Promise.resolve().then(apply)]),
-          cancelled,
-        ]);
-        return {
-          requested: { ...target },
-          frames,
-          operationToFrameMs: frames.at(-1)!.completedAt - requestedAt,
-          operationToResultMs: now() - requestedAt,
-        };
-      } finally {
-        if (pending === request) pending = undefined;
-        busy = false;
-        cancel = undefined;
-      }
+      const fixed = { ...target };
+      return step(() => fixed, apply);
+    },
+    // UI event handlers may run after microtasks from earlier listeners. Resolve
+    // their requested target only after a complete engine execution.
+    stepFromInput(target: () => ReplayView) {
+      return step(target, async () => {});
     },
     dispose() {
       disposed = true;

@@ -1,4 +1,8 @@
 import {
+  inputReplay,
+  float32ReplayTarget,
+} from '../../__tests__/browser/fixtures/input-replay';
+import {
   completedCameraReplay,
   replaySurface,
   type ReplayView,
@@ -84,14 +88,70 @@ const replay = completedCameraReplay({
       .sort(),
   }),
 });
+type WheelSample = {
+  isTrusted: boolean;
+  deltaX: number;
+  deltaY: number;
+  deltaMode: number;
+  clientX: number;
+  clientY: number;
+};
+const wheelSnapshot = () => ({
+  uiView: window.workflowDemo.snapshot().view,
+  surface: replaySurface(canvas),
+  native: native.snapshot(),
+  state: state(false),
+  visibleIds: runtime
+    .api!.getNodes()
+    .filter(
+      (n) =>
+        (n.id.startsWith('node-') || n.id.startsWith('edge-')) &&
+        !runtime.api!.getEntity(n).has(ECS.Culled),
+    )
+    .map((n) => n.id)
+    .sort(),
+});
+const wheelReplay = completedCameraReplay({
+  view: () => {
+    const c = runtime.api!.getCamera().read(ECS.ComputedCamera);
+    return { x: c.x, y: c.y, zoom: c.zoom };
+  },
+  before: () => native.reset(),
+  snapshot: wheelSnapshot,
+});
+const wheelInput = inputReplay<ReturnType<typeof wheelSnapshot>, WheelSample>(
+  wheelReplay,
+  () => float32ReplayTarget(window.workflowDemo.snapshot().view),
+);
+function observeWheel(event: WheelEvent) {
+  wheelInput.observe({
+    isTrusted: event.isTrusted,
+    deltaX: event.deltaX,
+    deltaY: event.deltaY,
+    deltaMode: event.deltaMode,
+    clientX: event.clientX,
+    clientY: event.clientY,
+  });
+}
+// Registered before main.ts: observation does not cancel or replace its handler.
+canvas.addEventListener('wheel', observeWheel, {
+  capture: true,
+  passive: true,
+});
 const originalRun = ECS.App.prototype.run;
 ECS.App.prototype.run = async function () {
   const result = await originalRun.call(this);
   runtime.app = this;
-  runtime.api!.onDestroy(() => replay.dispose());
+  runtime.api!.onDestroy(() => {
+    replay.dispose();
+    wheelInput.dispose();
+  });
   const execute = this.world.execute.bind(this.world);
   this.world.execute = (...args: Parameters<typeof execute>) => {
-    if (!active) return replay.run(() => execute(...args));
+    if (!active)
+      return wheelReplay.busy
+        ? wheelReplay.run(() => execute(...args))
+        : replay.run(() => execute(...args));
     const pending = (async () => {
       const profile = phases;
       native.reset();
@@ -124,7 +184,7 @@ ECS.App.prototype.run = async function () {
   return result;
 };
 function profile(enabled: boolean) {
-  if (active || inFlight || replay.busy)
+  if (active || inFlight || replay.busy || wheelInput.busy)
     throw new Error('Stop measurement before changing instrumentation');
   phases?.dispose();
   phases = undefined;
@@ -160,7 +220,7 @@ function profile(enabled: boolean) {
   };
   phases = collector;
 }
-function state() {
+function state(checkErrors = true) {
   const nodes = runtime.api?.getNodes() ?? [];
   const visible = { cards: 0, edges: 0, other: 0 };
   for (const n of nodes) {
@@ -197,12 +257,12 @@ function state() {
       dpr: canvas.width / canvas.clientWidth,
     },
     allocatedBufferBytes: native.allocatedBufferBytes(),
-    webglError: native.webglError(),
+    webglError: checkErrors ? native.webglError() : undefined,
     resources: window.lifecycleProbes.resources(),
   };
 }
 function begin() {
-  if (active || inFlight || replay.busy)
+  if (active || inFlight || replay.busy || wheelInput.busy)
     throw new Error('Finish the previous capture first');
   samples = [];
   previous = 0;
@@ -219,6 +279,35 @@ async function end() {
   }
 }
 const harness = {
+  armWheel() {
+    if (
+      active ||
+      inFlight ||
+      replay.busy ||
+      phases ||
+      disposed ||
+      !window.workflowDemo.snapshot().ready
+    )
+      throw new Error(
+        'Finish other capture and use ordinary mode before wheel input',
+      );
+    wheelInput.arm();
+  },
+  wheelResult: () => wheelInput.take(),
+  checkInputErrors() {
+    if (wheelInput.busy || wheelReplay.busy)
+      throw new Error('Finish wheel capture before GPU validation');
+    const startedAt = performance.now();
+    const errors: number[] = [];
+    for (let i = 0; i < 32; i++) {
+      const error = native.webglError();
+      if (error === undefined) throw new Error('Missing WebGL context');
+      if (error === 0)
+        return { errors, elapsed: performance.now() - startedAt };
+      errors.push(error);
+    }
+    throw new Error('WebGL error queue did not clear');
+  },
   dragTarget() {
     const candidates = runtime
       .api!.getNodes()
@@ -268,7 +357,7 @@ const harness = {
   end,
   replayDocument: () => runtime.api!.getNodes(),
   replayCamera(view: ReplayView) {
-    if (active || inFlight || disposed)
+    if (active || inFlight || wheelInput.busy || disposed)
       throw new Error('Stop other captures before camera replay');
     return replay.step(view, () =>
       runtime.api!.edit(
@@ -341,6 +430,8 @@ const harness = {
     if (disposed) return;
     disposed = true;
     replay.dispose();
+    wheelInput.dispose();
+    canvas.removeEventListener('wheel', observeWheel, true);
     await end();
     try {
       // Exercise the real example's teardown, including its UI timers/listeners.
