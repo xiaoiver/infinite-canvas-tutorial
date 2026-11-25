@@ -26,6 +26,29 @@ export function bezierTangentContract<Paths extends { curves: object[] }[]>(
   });
 
   it.each([
+    ['M0 0 C3 4 6 8 9 12', 9],
+    ['M0 0 Q3 4 9 12', 6],
+  ] as const)(
+    'compares each symmetric tangent pair once for %s',
+    (d, calls) => {
+      const path = curves.parsePath(d).subPaths;
+      const acos = jest.spyOn(Math, 'acos');
+      try {
+        expect(flatten(path, 64, 200)).toEqual([
+          [
+            [0, 0],
+            [9, 12],
+          ],
+        ]);
+        // One limit + all diagonal/upper-triangle pairs + two end checks.
+        expect(acos).toHaveBeenCalledTimes(calls);
+      } finally {
+        acos.mockRestore();
+      }
+    },
+  );
+
+  it.each([
     [
       'M0 0 Q0 0 9 12',
       [

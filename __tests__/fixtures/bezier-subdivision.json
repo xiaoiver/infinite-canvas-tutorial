@@ -1,0 +1,42 @@
+{
+  "source": "f091d0bb15642b093f97833abe4180a426f6eab4",
+  "adaptiveBlob": "792709fa01426b06b4741cb2cad384269110b444",
+  "cases": [
+    {
+      "scale": 0.037,
+      "radius": 0,
+      "count": 634,
+      "sha256": "6159e6572558a9a1d389a23fa8f958aca341da24e4271d0904cd321c0c8ab62a"
+    },
+    {
+      "scale": 0.91,
+      "radius": 2.4,
+      "count": 2835,
+      "sha256": "14dd4c94b11f781518ddc79ff084aac0750716809dd6d55d8ef05b5424f4d84b"
+    },
+    {
+      "scale": 7.3,
+      "radius": 19,
+      "count": 7841,
+      "sha256": "15f529cada1b46a789afb0651b588e5ca465c07d647a2fb804a5e4debb0ac72d"
+    },
+    {
+      "scale": 1200,
+      "radius": 900,
+      "count": 94902,
+      "sha256": "62f833e25b9740104fbfff86836727200ea48b0228081553a82416863d17210c"
+    },
+    {
+      "scale": 1e-9,
+      "radius": 0,
+      "count": 64,
+      "sha256": "a0048722b86cf2338e843bbacc7d5325ab0df4da5c283a2ad95142235656e1f2"
+    },
+    {
+      "scale": 10000000000,
+      "radius": 100000000,
+      "count": 233567,
+      "sha256": "218dd2d5e1430a5b4ba4e018697b3aa3c3b6eb8c62369be199578a5e4dc49fe7"
+    }
+  ]
+}
