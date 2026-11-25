@@ -46,11 +46,13 @@ it.each([
   Object.assign(r, patch);
   expect(packing.eligibleImageRect(r)).toBe(false);
 });
-it('rejects closed sources and singular transforms', () => {
+it('rechecks closed/replaced sources and singular transforms after warm eligibility', () => {
   const r = rect();
+  expect(packing.eligibleImageRect(r)).toBe(true);
   (r.fill as ImageBitmap as unknown as Bitmap).width = 0;
   expect(packing.eligibleImageRect(r)).toBe(false);
   r.fill = new Bitmap() as unknown as ImageBitmap;
+  expect(packing.eligibleImageRect(r)).toBe(true);
   r.worldTransform.a = 0;
   expect(packing.eligibleImageRect(r)).toBe(false);
 });

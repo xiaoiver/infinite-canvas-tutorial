@@ -17,6 +17,7 @@ import { ImageBatch } from '../../packages/ecs/src/drawcalls/ImageBatch';
 import * as packing from '../../packages/ecs/src/utils/image-batching';
 import { setFillLayerDecodedBitmapForUrl } from '../../packages/ecs/src/utils/fill-layer-image-url-raster';
 import { imageBatchContract } from '../contracts/image-batching';
+import * as svgResource from '../../packages/ecs/src/utils/fillImageSvgReraster';
 imageBatchContract(packing);
 const previous = globalThis.ImageBitmap;
 class Bitmap {
@@ -243,3 +244,69 @@ it('uses one current wire snapshot for dirty image planning and refreshes in-pla
   expect(editor.getNodes).toHaveBeenCalledTimes(2);
   expect(editor.getNodeByEntity).not.toHaveBeenCalled();
 });
+
+it('classifies a live layer URL once and observes URL edits and layer replacement', () => {
+  const shape = rect();
+  const fills = shape.data.get(FillLayers);
+  const layer = fills.layers[0];
+  const url = layer.value;
+  const classify = jest.spyOn(svgResource, 'isLikelySvgResourceUrl');
+  try {
+    for (let i = 0; i < 5; i++) {
+      expect(packing.eligibleImageRect(shape.entity)).toBe(true);
+    }
+    expect(classify).toHaveBeenCalledTimes(1);
+    layer.value = '/new-source.SVG?version=2';
+    expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+    expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+    expect(classify).toHaveBeenCalledTimes(2);
+    layer.value = url;
+    expect(packing.eligibleImageRect(shape.entity)).toBe(true);
+    expect(classify).toHaveBeenCalledTimes(3);
+    fills.layers = [{ ...layer }];
+    expect(packing.eligibleImageRect(shape.entity)).toBe(true);
+    expect(classify).toHaveBeenCalledTimes(4);
+  } finally {
+    classify.mockRestore();
+  }
+});
+
+it('rechecks decode, bitmap closure, dimensions, paint and transform after URL classification', () => {
+  const shape = rect(10);
+  const url = shape.data.get(FillLayers).layers[0].value;
+  // A negative eligibility result must not hide a later decoded source.
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  const bitmap = new Bitmap();
+  setFillLayerDecodedBitmapForUrl(url, bitmap as unknown as ImageBitmap);
+  expect(packing.eligibleImageRect(shape.entity)).toBe(true);
+  bitmap.width = 0;
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  setFillLayerDecodedBitmapForUrl(url, new Bitmap() as unknown as ImageBitmap);
+  expect(packing.eligibleImageRect(shape.entity)).toBe(true);
+  shape.data.get(Rect).width = 0;
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  shape.data.get(Rect).width = 24;
+  const layer = shape.data.get(FillLayers).layers[0];
+  layer.blendMode = 'multiply';
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  layer.blendMode = 'normal';
+  layer.enabled = false;
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  layer.enabled = true;
+  expect(packing.eligibleImageRect(shape.entity)).toBe(true);
+  shape.data.set(Filter, {});
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  shape.data.delete(Filter);
+  shape.data.get(GlobalTransform).matrix.m00 = 0;
+  expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+});
+
+it.each([undefined, null, 42, ''])(
+  'keeps malformed or absent image URLs on the full path: %p',
+  (value) => {
+    const shape = rect();
+    shape.data.get(FillLayers).layers[0].value = value;
+    expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+    expect(packing.eligibleImageRect(shape.entity)).toBe(false);
+  },
+);
