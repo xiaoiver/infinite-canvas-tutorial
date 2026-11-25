@@ -8,6 +8,8 @@
     "../../scripts/document-versions.bench.spec.ts",
     "../../playwright.document-versions-bench.config.ts",
     "../../scripts/workflow-replay.bench.spec.ts",
-    "../../playwright.workflow-replay-bench.config.ts"
+    "../../playwright.workflow-replay-bench.config.ts",
+    "../../scripts/workflow-input.bench.spec.ts",
+    "../../playwright.workflow-input-bench.config.ts"
   ]
 }
