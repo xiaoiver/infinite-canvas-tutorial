@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   analyzeCameraTimeline,
+  analyzeCameraTrace,
   covered,
   overlap,
 } from '../../scripts/camera-timeline-tools.mjs';
@@ -177,3 +178,123 @@ test('keeps long sample gaps unassigned rather than attributing a stall to the n
   assert.equal(w.sampleIntervalMaxMs, 10);
   assert.deepEqual(w.sampleSelfTop, []);
 });
+
+const traceFixture = () => {
+  const x = fixture();
+  delete x.profile;
+  return { ...x, captureKind: 'trace-only' };
+};
+test('independent trace coverage has no CPU-sampling fields', () => {
+  const x = traceFixture();
+  const result = analyzeCameraTrace(x),
+    w = result.windows[0];
+  assert.equal(result.captureKind, 'trace-only');
+  assert.equal(result.clock.offsetMs, 1000);
+  assert.equal(w.elapsedMs, 10);
+  assert.equal(w.taskCoveredMs, 8);
+  assert.equal(w.outsideRecordedTasksMs, 2);
+  assert.equal(w.gcCoveredMs, 3);
+  assert.deepEqual(
+    Object.keys(w).sort(),
+    [
+      'id',
+      'startedAt',
+      'completedAt',
+      'elapsedMs',
+      'taskCoveredMs',
+      'outsideRecordedTasksMs',
+      'gcCoveredMs',
+      'traceInclusiveTop',
+    ].sort(),
+  );
+  assert(!('sampleIntervalMaxMs' in result));
+  assert.throws(() => analyzeCameraTimeline(x), /CPU profile/);
+});
+for (const [name, mutate] of [
+  ['unmarked trace', (x) => delete x.captureKind],
+  [
+    'profile capture',
+    (x) => {
+      x.captureKind = 'profile';
+    },
+  ],
+  [
+    'injected invalid profile',
+    (x) => {
+      x.profile = { timeDeltas: [-1] };
+    },
+  ],
+  [
+    'undefined profile property',
+    (x) => {
+      x.profile = undefined;
+    },
+  ],
+  ['duplicate anchor', (x) => x.traceEvents.push(x.traceEvents[0])],
+  ['missing anchor', (x) => x.traceEvents.shift()],
+  [
+    'clock drift',
+    (x) => {
+      x.anchors[1].pageMs = 19;
+    },
+  ],
+  [
+    'clock mismatch',
+    (x) => {
+      x.clockBracket.timestampMs += 10;
+    },
+  ],
+  [
+    'wide bracket',
+    (x) => {
+      x.clockBracket.afterMs = 20;
+    },
+  ],
+  [
+    'renderer migration',
+    (x) => {
+      x.traceEvents[1].pid = 2;
+    },
+  ],
+  [
+    'thread migration',
+    (x) => {
+      x.traceEvents[1].tid = 3;
+    },
+  ],
+  [
+    'out-of-range window',
+    (x) => {
+      x.windows[0].startedAt = -1;
+    },
+  ],
+  [
+    'negative window',
+    (x) => {
+      x.windows[0].completedAt = 1;
+    },
+  ],
+  [
+    'empty windows',
+    (x) => {
+      x.windows = [];
+    },
+  ],
+  [
+    'lost events',
+    (x) => {
+      x.dataLossOccurred = true;
+    },
+  ],
+  [
+    'missing main tasks',
+    (x) => {
+      x.traceEvents = x.traceEvents.filter((e) => e.ph !== 'X');
+    },
+  ],
+])
+  test(`trace-only rejects ${name}`, () => {
+    const x = traceFixture();
+    mutate(x);
+    assert.throws(() => analyzeCameraTrace(x));
+  });
