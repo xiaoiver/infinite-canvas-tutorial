@@ -104,6 +104,7 @@ export class BatchManager {
   #allowImageBatches = false;
   #allowPathInstances = false;
   #frameShapes: Shape[] = [];
+  #frameRemovals = new Map<Shape, number>();
   #orderedPages: OrderedPage[] = [];
   #orderedInputShapes: Shape[] = [];
   #orderedPlanDirty = true;
@@ -231,7 +232,9 @@ export class BatchManager {
    */
   remove(shape: Shape) {
     if (this.#ordered) {
-      this.#frameShapes = this.#frameShapes.filter((s) => s !== shape);
+      // Remove all earlier occurrences, while allowing later adds at their
+      // original painter-order positions. Compact once before planning.
+      this.#frameRemovals.set(shape, this.#frameShapes.length);
       this.#orderedPlanDirty = true;
       return;
     }
@@ -252,6 +255,8 @@ export class BatchManager {
   }
 
   destroy() {
+    this.#frameShapes = [];
+    this.#frameRemovals.clear();
     this.#orderedPages.forEach((page) =>
       page.drawcalls.forEach((d) => d.destroy()),
     );
@@ -308,10 +313,17 @@ export class BatchManager {
     this.#ordered = ordered;
     this.#allowPathInstances = allowPathInstances;
     this.#frameShapes = [];
+    this.#frameRemovals.clear();
     this.#drawcallsToFlush = [];
   }
 
   private planOrdered() {
+    if (this.#frameRemovals.size) {
+      this.#frameShapes = this.#frameShapes.filter(
+        (shape, index) => index >= (this.#frameRemovals.get(shape) ?? 0),
+      );
+      this.#frameRemovals.clear();
+    }
     // A camera-only frame can change adaptive precision, but not compatibility.
     // Drawcall.prepareGeometry still runs below. Dirty shapes, visible membership
     // and capture intent invalidate this plan before any renderer is submitted.
