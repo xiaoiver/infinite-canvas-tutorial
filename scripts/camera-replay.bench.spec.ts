@@ -1,3 +1,4 @@
+import { startCameraTimeline } from './camera-timeline';
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -24,6 +25,9 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
     viewport = { width: 1000, height: 760, dpr: 1 };
   const capture = {
     schema: CAMERA_REPLAY_VERSION,
+    mode: process.env.CAMERA_TIMELINE_DIR
+      ? 'camera-timeline-diagnostic'
+      : undefined,
     workload: 'strokes',
     trace,
     viewport,
@@ -48,6 +52,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
+    let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
     try {
       await page.addInitScript(installProbes, { resourceStacks: false });
       await page.goto(
@@ -83,6 +88,7 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
         teardown: 'pending',
       };
       capture.results.push(result);
+      timeline = await startCameraTimeline(page, backend);
       for (let index = 0; index < 2; index++) {
         const round = { index, steps: [] as any[] };
         result.rounds.push(round);
@@ -105,6 +111,17 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
           save();
         }
       }
+      await timeline?.stop(
+        result.rounds.flatMap((r) =>
+          r.steps.flatMap((s) =>
+            s.frames.map((f: any, j: number) => ({
+              id: `${backend}/${r.index}/${s.id}/${j}`,
+              startedAt: f.startedAt,
+              completedAt: f.completedAt,
+            })),
+          ),
+        ),
+      );
       expect(
         await page.evaluate(
           (b) =>
@@ -134,8 +151,9 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
       result.teardown = 'passed';
       save();
     } finally {
+      await timeline?.abort();
       await page.close();
     }
   }
-  console.log(JSON.stringify(summarizeReplay(capture)));
+  if (!capture.mode) console.log(JSON.stringify(summarizeReplay(capture)));
 });
