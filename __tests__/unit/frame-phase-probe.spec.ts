@@ -1,3 +1,4 @@
+import { installCameraPhases } from '../browser/fixtures/camera-phase-probe';
 import { framePhaseProbe } from '../browser/fixtures/frame-phase-probe';
 
 it('keeps nested and recursive scopes exclusive while preserving return values and receivers', () => {
@@ -76,4 +77,60 @@ it('does not time outside frames and restores exact own descriptors after a part
   );
   probe.dispose();
   expect(Object.getOwnPropertyDescriptor(target, 'method')).toEqual(before);
+});
+
+it('camera stage/native scopes preserve receivers, arguments, nesting and descriptors', () => {
+  let time = 0;
+  const probe = framePhaseProbe(() => time);
+  const failure = new Error('draw failed');
+  const gl = {
+    bufferSubData(...args: unknown[]) {
+      expect(this).toBe(gl);
+      expect(args).toEqual([3, 4]);
+      time += 2;
+      return 17;
+    },
+    drawArrays() {
+      time += 4;
+      throw failure;
+    },
+  };
+  const before = Object.getOwnPropertyDescriptors(gl);
+  const target = {
+    geometry() {
+      time += 3;
+      expect(gl.bufferSubData(3, 4)).toBe(17);
+      time += 1;
+      gl.drawArrays();
+    },
+  };
+  const original = target.geometry;
+  installCameraPhases(
+    probe,
+    { getContext: () => gl } as unknown as HTMLCanvasElement,
+    [[target, 'geometry', 'stroke.geometry']],
+  );
+  probe.begin();
+  expect(() => target.geometry()).toThrow(failure);
+  expect(probe.end()).toEqual({
+    'native.buffer': { calls: 1, inclusiveMs: 2, exclusiveMs: 2 },
+    'native.draw': { calls: 1, inclusiveMs: 4, exclusiveMs: 4 },
+    'stroke.geometry': { calls: 1, inclusiveMs: 10, exclusiveMs: 4 },
+  });
+  probe.dispose();
+  expect(Object.getOwnPropertyDescriptors(gl)).toEqual(before);
+  expect(target.geometry).toBe(original);
+});
+it('camera phase installation rolls back preceding stages on failure', () => {
+  const probe = framePhaseProbe();
+  const target = { method: () => 42 };
+  const before = Object.getOwnPropertyDescriptor(target, 'method');
+  expect(() =>
+    installCameraPhases(probe, {} as HTMLCanvasElement, [
+      [target, 'method', 'ok'],
+      [target, 'missing', 'bad'],
+    ]),
+  ).toThrow('synchronous');
+  expect(Object.getOwnPropertyDescriptor(target, 'method')).toEqual(before);
+  probe.dispose();
 });

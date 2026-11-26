@@ -1,3 +1,4 @@
+import { cameraPhaseMode, sumCameraPhases } from './camera-phase-tools.mjs';
 import { startCameraTimeline } from './camera-timeline';
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
@@ -13,6 +14,7 @@ import type {} from '../examples/workflow-canvas/benchmark-entry';
 test('trusted Workflow wheel path preserves the document and GPU ownership', async ({
   browser,
 }) => {
+  const phaseMode = cameraPhaseMode();
   const count = Number(process.env.WORKFLOW_INPUT_COUNT ?? 2400);
   if (![24, 2400].includes(count))
     throw new Error('Use 24 for correctness or 2400 for the benchmark');
@@ -29,7 +31,9 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const capture = {
     schema: 1,
-    mode: process.env.CAMERA_TIMELINE_DIR
+    mode: phaseMode
+      ? 'camera-phase-diagnostic'
+      : process.env.CAMERA_TIMELINE_DIR
       ? 'camera-timeline-diagnostic'
       : undefined,
     workload: 'workflow-trusted-wheel',
@@ -58,7 +62,9 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
   let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
   try {
     await page.addInitScript(installProbes, { resourceStacks: false });
-    await page.goto('/?imageBatching=1');
+    await page.goto(
+      phaseMode ? '/?imageBatching=1&cameraPhases=1' : '/?imageBatching=1',
+    );
     await page.waitForFunction(() => window.workflowDemo?.snapshot().ready);
     await page.locator('#scale').selectOption(String(count));
     await page.waitForFunction(
@@ -77,11 +83,32 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         .some((n) => n.id === 'selection' && n.visibility === 'visible'),
     );
     await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
+    expect(
+      await page.evaluate((mode) => {
+        try {
+          window.workflowBenchmark.armWheel(mode ? 'ordinary' : 'phases');
+          return '';
+        } catch (error) {
+          return String(error);
+        }
+      }, phaseMode),
+    ).toContain('Wheel phase mode');
+    if (phaseMode)
+      expect(
+        await page.evaluate(() => {
+          try {
+            window.workflowBenchmark.profile(true);
+            return '';
+          } catch (error) {
+            return String(error);
+          }
+        }),
+      ).toContain('dedicated capture');
     // Positive control: a synthetic event cannot certify native input.
     expect(
-      await page.evaluate(async () => {
+      await page.evaluate(async (mode) => {
         const b = window.workflowBenchmark;
-        b.armWheel();
+        b.armWheel(mode ? 'phases' : 'ordinary');
         const result = b.wheelResult().then(
           () => 'accepted',
           (e) => String(e),
@@ -90,7 +117,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
           .querySelector('#canvas')!
           .dispatchEvent(new WheelEvent('wheel', { deltaY: 1 }));
         return result;
-      }),
+      }, phaseMode),
     ).toContain('Trusted input required');
     expect(
       (await page.evaluate(() => window.workflowBenchmark.checkInputErrors()))
@@ -146,7 +173,11 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
           anchor.x,
           anchor.y,
         );
-        await page.evaluate(() => window.workflowBenchmark.armWheel());
+        await page.evaluate(
+          (mode) =>
+            window.workflowBenchmark.armWheel(mode ? 'phases' : 'ordinary'),
+          phaseMode,
+        );
         await page.mouse.wheel(0, deltaY);
         const row = await page.evaluate(() =>
           window.workflowBenchmark.wheelResult(),
@@ -193,16 +224,16 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     capture.documentSame = true;
     // Pending input must reject on real example teardown, without leaking listeners.
     expect(
-      await page.evaluate(async () => {
+      await page.evaluate(async (mode) => {
         const b = window.workflowBenchmark;
-        b.armWheel();
+        b.armWheel(mode ? 'phases' : 'ordinary');
         const pending = b.wheelResult().then(
           () => 'accepted',
           (e) => String(e),
         );
         const restored = await b.dispose();
         return { restored, pending: await pending };
-      }),
+      }, phaseMode),
     ).toEqual({
       restored: { run: true, createCanvas: true, submit: true, context: true },
       pending: 'Error: Input replay disposed',
@@ -223,6 +254,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       console.log(
         JSON.stringify({
           mode: capture.mode,
+          ...(phaseMode ? { phaseSummary: sumCameraPhases(frames) } : {}),
           round: round.index,
           count,
           events: round.steps.length,

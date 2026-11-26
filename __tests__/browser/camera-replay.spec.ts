@@ -1,3 +1,4 @@
+import { sumCameraPhases } from '../../scripts/camera-phase-tools.mjs';
 import { expect } from '@playwright/test';
 import { test } from '../isolated-webkit-test';
 import { installProbes } from './fixtures/probes';
@@ -14,6 +15,8 @@ for (const [backend, mode] of [
   ['ecs', 'fixed'],
   ['core', 'transient'],
   ['ecs', 'transient'],
+  ['core', 'phases'],
+  ['ecs', 'phases'],
 ] as const)
   test(`${backend} ${mode} replay labels completed camera frames and preserves document/ownership`, async ({
     page,
@@ -22,7 +25,9 @@ for (const [backend, mode] of [
     page.on('pageerror', (e) => errors.push(e.message));
     await page.addInitScript(installProbes, { resourceStacks: false });
     await page.goto(
-      backend === 'core' ? '/core-path-instances.html' : '/polyline-lod.html',
+      (backend === 'core'
+        ? '/core-path-instances.html'
+        : '/polyline-lod.html') + (mode === 'phases' ? '?cameraPhases=1' : ''),
     );
     await expect(page.locator('#status')).toHaveText('Ready');
     await page.evaluate(
@@ -44,14 +49,14 @@ for (const [backend, mode] of [
           : window.polylineLOD.replayDocument(),
       backend,
     );
-    if (mode === 'transient')
+    if (mode !== 'fixed')
       await page.evaluate(async (b) => {
         const view = { x: 0, y: 0, zoom: 0.13 };
         if (b === 'core') window.corePathInstances.replayCamera(view);
         else await window.polylineLOD.navigateCamera(view);
       }, backend);
     const raster =
-      mode === 'transient'
+      mode !== 'fixed'
         ? await page.evaluate(
             (b) =>
               b === 'core'
@@ -85,6 +90,16 @@ for (const [backend, mode] of [
       expect(row.operationToResultMs).toBeGreaterThanOrEqual(
         row.operationToFrameMs,
       );
+      if (mode === 'phases') {
+        const summary = sumCameraPhases(row.frames);
+        expect(summary.frames).toBe(row.frames.length);
+        for (const frame of row.frames) {
+          expect(frame.data.phaseDetail).toBe('camera');
+          expect(frame.data.phases['native.draw']?.calls ?? 0).toBe(
+            frame.data.native.drawcalls,
+          );
+        }
+      }
       for (const frame of row.frames) {
         expect(frame.startedAt + frame.elapsed).toBeCloseTo(
           frame.completedAt,
@@ -102,7 +117,7 @@ for (const [backend, mode] of [
       );
       if (i === 1) expect(row.frames.at(-1)!.data.native.drawcalls).toBe(0);
     }
-    if (mode === 'transient')
+    if (mode !== 'fixed')
       expect(
         await page.evaluate(
           (b) =>

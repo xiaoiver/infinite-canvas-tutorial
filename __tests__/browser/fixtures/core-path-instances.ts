@@ -1,3 +1,4 @@
+import { installCameraPhases } from './camera-phase-probe';
 import { framePhaseProbe } from './frame-phase-probe';
 import {
   validateReplayView,
@@ -22,6 +23,7 @@ import { StrokeBatch } from '../../../packages/core/src/drawcalls/StrokeBatch';
 import { PathDrawcall } from '../../../packages/core/src/drawcalls/PathDrawcall';
 import { strokeReuseProbe } from './stroke-reuse-probe';
 import { SmoothPolyline } from '../../../packages/core/src/drawcalls/SmoothPolyline';
+import { Drawcall } from '../../../packages/core/src/drawcalls/Drawcall';
 
 const strokeCPU = strokeReuseProbe(
   PathDrawcall.prototype,
@@ -169,7 +171,18 @@ StrokeBatch.prototype.render = function (...args) {
   return strokeRender.apply(this, args);
 };
 const replayPhases = framePhaseProbe();
-replayPhases.wrap(BatchManager.prototype, 'planOrdered', 'batch.plan');
+const detailedPhases = query.get('cameraPhases') === '1';
+if (detailedPhases)
+  installCameraPhases(replayPhases, element, [
+    [Canvas.prototype, 'render', 'engine.render'],
+    [BatchManager.prototype, 'planOrdered', 'batch.plan'],
+    [BatchManager.prototype, 'flush', 'batch.submit'],
+    [Drawcall.prototype, 'submit', 'drawcall.submit'],
+    [PathDrawcall.prototype, 'prepareGeometry', 'path.precision'],
+    [StrokeBatch.prototype, 'prepareGeometry', 'stroke.prepare'],
+    [SmoothPolyline.prototype, 'createGeometry', 'stroke.geometry'],
+  ]);
+else replayPhases.wrap(BatchManager.prototype, 'planOrdered', 'batch.plan');
 let replayDisposed = false;
 let shapes: Shape[] = [];
 let group = new Group();
@@ -373,6 +386,7 @@ const api = {
       native: { ...nativeWork },
       cpu: strokeCPU.snapshot(),
       phases,
+      phaseDetail: detailedPhases ? 'camera' : undefined,
       resources: window.lifecycleProbes?.resources(),
     };
     const observedAt = performance.now();

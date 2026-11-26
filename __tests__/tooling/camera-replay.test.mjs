@@ -133,3 +133,14 @@ test('reports observation/readiness separately while retaining legacy capture co
     assert.throws(() => summarizeReplay(invalid));
   }
 });
+
+test('rejects unlabelled detailed phase instrumentation while retaining legacy plan scopes', () => {
+  const a = capture(),
+    b = capture();
+  b.results[0].rounds[0].steps[0].frames[0].data.phases = {
+    'batch.plan': { calls: 1, inclusiveMs: 1, exclusiveMs: 1 },
+  };
+  compareReplays(a, b);
+  b.results[0].rounds[0].steps[0].frames[0].data.phaseDetail = 'camera';
+  assert.throws(() => compareReplays(a, b), /Detailed phase diagnostics/);
+});

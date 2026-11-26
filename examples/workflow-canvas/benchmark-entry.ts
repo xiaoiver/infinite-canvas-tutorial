@@ -1,3 +1,4 @@
+import { installECSCameraPhases } from '../../__tests__/browser/fixtures/ecs-camera-phases';
 import {
   inputReplay,
   float32ReplayTarget,
@@ -28,6 +29,10 @@ const runtime: { api?: ECS.API; app?: ECS.App } = {};
 let active = false;
 let previous = 0;
 let phases: ReturnType<typeof framePhaseProbe> | undefined;
+const detailedWheelPhases =
+  new URLSearchParams(location.search).get('cameraPhases') === '1';
+let wheelPhases: ReturnType<typeof framePhaseProbe> | undefined;
+let capturedWheelPhases: FramePhases | undefined;
 type Sample = {
   startedAt: number;
   view: { x: number; y: number; zoom: number };
@@ -97,6 +102,8 @@ type WheelSample = {
   clientY: number;
 };
 const wheelSnapshot = () => ({
+  phaseDetail: wheelPhases ? 'camera' : undefined,
+  phases: capturedWheelPhases,
   uiView: window.workflowDemo.snapshot().view,
   surface: replaySurface(canvas),
   native: native.snapshot(),
@@ -116,7 +123,13 @@ const wheelReplay = completedCameraReplay({
     const c = runtime.api!.getCamera().read(ECS.ComputedCamera);
     return { x: c.x, y: c.y, zoom: c.zoom };
   },
-  before: () => native.reset(),
+  before: () => {
+    native.reset();
+    wheelPhases?.begin();
+  },
+  after: () => {
+    capturedWheelPhases = wheelPhases?.end();
+  },
   snapshot: wheelSnapshot,
 });
 const wheelInput = inputReplay<ReturnType<typeof wheelSnapshot>, WheelSample>(
@@ -184,6 +197,8 @@ ECS.App.prototype.run = async function () {
   return result;
 };
 function profile(enabled: boolean) {
+  if (detailedWheelPhases)
+    throw new Error('Detailed wheel phases require a dedicated capture');
   if (active || inFlight || replay.busy || wheelInput.busy)
     throw new Error('Stop measurement before changing instrumentation');
   phases?.dispose();
@@ -279,7 +294,14 @@ async function end() {
   }
 }
 const harness = {
-  armWheel() {
+  armWheel(mode: 'ordinary' | 'phases' = 'ordinary') {
+    if (
+      (mode !== 'ordinary' && mode !== 'phases') ||
+      detailedWheelPhases !== (mode === 'phases')
+    )
+      throw new Error(
+        'Wheel phase mode must match the explicit diagnostic page',
+      );
     if (
       active ||
       inFlight ||
@@ -291,6 +313,12 @@ const harness = {
       throw new Error(
         'Finish other capture and use ordinary mode before wheel input',
       );
+    if (detailedWheelPhases && !wheelPhases) {
+      if (!runtime.api!.getCanvas().has(ECS.GPUResource))
+        throw new Error('Wait for GPU readiness before phase capture');
+      wheelPhases = framePhaseProbe();
+      installECSCameraPhases(wheelPhases, canvas);
+    }
     wheelInput.arm();
   },
   wheelResult: () => wheelInput.take(),
@@ -440,6 +468,8 @@ const harness = {
     } finally {
       phases?.dispose();
       phases = undefined;
+      wheelPhases?.dispose();
+      wheelPhases = undefined;
       native.dispose();
       Drawcall.prototype.submit = originalSubmit;
       ECS.App.prototype.run = originalRun;

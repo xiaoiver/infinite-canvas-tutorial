@@ -1,3 +1,4 @@
+import { installECSCameraPhases } from './ecs-camera-phases';
 import {
   API,
   App,
@@ -183,7 +184,10 @@ const app = new App({ maxEntities: 32768 }).addPlugins(
   },
 );
 const replayPhases = framePhaseProbe();
-replayPhases.wrap(BatchManager.prototype, 'plan', 'batch.plan');
+const detailedPhases =
+  new URLSearchParams(location.search).get('cameraPhases') === '1';
+if (!detailedPhases)
+  replayPhases.wrap(BatchManager.prototype, 'plan', 'batch.plan');
 let capturedPhases: FramePhases;
 const replay = completedCameraReplay({
   view: () => {
@@ -213,6 +217,7 @@ const replay = completedCameraReplay({
       native: { ...nativeWork },
       cpu: strokeCPU.snapshot(),
       phases: capturedPhases,
+      phaseDetail: detailedPhases ? 'camera' : undefined,
       resources: window.lifecycleProbes?.resources(),
     };
   },
@@ -639,6 +644,8 @@ try {
     replay.run(() => executeReplay(...args));
   api.onDestroy(() => replay.dispose());
   while (!api.getCanvas().has(GPUResource)) await frames();
+  if (detailedPhases)
+    installECSCameraPhases(replayPhases, api.getCanvasElement());
   await harness.seed();
   document.querySelector('output')!.textContent = 'Ready';
 } catch (e) {
