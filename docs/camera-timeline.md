@@ -174,8 +174,8 @@ both backends. Do not introduce writable GPU-buffer reuse based on these traces.
 The independent trace path was qualified at clean local commit
 `5ddd98d36a46e6e11f4ba68f690b5cb3a886fa35`, tree
 `2e4996902107a85fc28218d416e5e6ec18b4899e`, based on #735's merge
-`e88c3e4c51607477d81225aa912d3d67d0e1c969`. The subsequent report-only
-commit does not alter measured scripts, tests or runtime packages.
+`e88c3e4c51607477d81225aa912d3d67d0e1c969`. Subsequent report and Node 20 test-loader
+changes do not alter measured scripts or runtime packages.
 Node 24.22.3, Chrome 140.0.7339.186, SwiftShader and DPR 1. Four sequential
 fresh-page captures ran without concurrent local tests: ordinary Workflow,
 trace-only Workflow, trace-only paired strokes, ordinary paired strokes.
@@ -278,3 +278,15 @@ diagnostic capability and workload preservation, not smoother interaction.
 
 Protocol references: [Profiler](https://chromedevtools.github.io/devtools-protocol/tot/Profiler/)
 and [Tracing](https://chromedevtools.github.io/devtools-protocol/tot/Tracing/).
+
+### Static-CI compatibility follow-up
+
+The initial PR static job uses Node 20.20.2, even though the local diagnostic
+captures used Node 24. Its failure exposed a new test's direct `.ts` import.
+The recorder fixture now transpiles the actual TypeScript module using the
+already-declared TypeScript dependency, copies the unchanged analyzer beside it
+in a temporary directory, and imports the resulting ESM. Cleanup removes that
+directory after the suite. No CI version, test assertion or production helper
+was changed to bypass the failure. The corrected loader is verified with the
+same Node 20.20.2 runtime as CI, plus the local Node 24 affected-suite rerun.
+This test-only change leaves all measured producer/analyzer sources unchanged.

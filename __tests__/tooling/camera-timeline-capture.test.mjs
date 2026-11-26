@@ -1,10 +1,39 @@
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
-import { mkdtempSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import {
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+  copyFileSync,
+  existsSync,
+  rmSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startCameraTimeline } from '../../scripts/camera-timeline.ts';
+import { pathToFileURL } from 'node:url';
+import ts from 'typescript';
+
+// Static CI still runs Node 20, which cannot import TypeScript directly.
+const moduleDirectory = mkdtempSync(join(tmpdir(), 'camera-timeline-module-'));
+after(() => rmSync(moduleDirectory, { recursive: true, force: true }));
+const source = new URL('../../scripts/camera-timeline.ts', import.meta.url);
+writeFileSync(
+  join(moduleDirectory, 'camera-timeline.mjs'),
+  ts.transpileModule(readFileSync(source, 'utf8'), {
+    compilerOptions: {
+      module: ts.ModuleKind.ESNext,
+      target: ts.ScriptTarget.ES2022,
+    },
+  }).outputText,
+);
+copyFileSync(
+  new URL('../../scripts/camera-timeline-tools.mjs', import.meta.url),
+  join(moduleDirectory, 'camera-timeline-tools.mjs'),
+);
+const { startCameraTimeline } = await import(
+  pathToFileURL(join(moduleDirectory, 'camera-timeline.mjs')).href
+);
 
 async function capture(
   kind,
