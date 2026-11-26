@@ -3,7 +3,7 @@ import {
   type Buffer,
   BufferUsage,
   BufferFrequencyHint,
-} from '@antv/g-device-api';
+} from '@infinite-canvas-tutorial/device-api';
 
 interface Entry {
   index: Buffer;

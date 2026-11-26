@@ -34,8 +34,11 @@ Use separate `WORKFLOW_INPUT_OUTPUT_DIR` / `CAMERA_REPLAY_OUTPUT_DIR` values and
 pin `WORKFLOW_CHROMIUM` for every checkout. Each workload ran control / candidate
 / candidate / control sequentially in fresh pages, without other local tests
 during timing. Node 24.22.3 and Chromium 140.0.7339.186 with SwiftShader were used.
-All ordinary captures record clean committed source; later commits add tests,
-report and changesets without changing measured production code.
+The table below records clean committed development captures before packaging
+CI corrected the ECS helper import to its declared device-api fork. The initial
+import resolved in the monorepo but failed in a packed consumer. Post-fix exact-
+source benchmark and consumer verification are tracked in [#732](https://github.com/xiaoiver/infinite-canvas-tutorial/pull/732);
+keep that batch separate from the initial rows below.
 
 Control: `9413648f0a00f48fc3178be4973dc50b1ef213a8`. Measured candidate: `6fdbdd5d04f129d5d2e77cb7aa4afeeb952e75ee`
 (tree `45c73caca996d368f373267e1ddb0a365d1dbf1b`). Raw captures, exact source bundle,
@@ -161,6 +164,11 @@ cases pass without production changes.
 - Five focused source/build/contract typecheck projects, repository ESLint,
   82 tooling cases, formatting/Markdown checks and eight ordinary replay
   captures pass. Diagnostic counts and all defined resource deltas are audited.
+
+Packaging CI caught the new ECS helper importing the upstream GPU API used by
+Core. ECS instead declares the project device-api fork; that one ECS import is
+corrected without adding dependencies. The existing packed React consumer check
+is the regression gate. Core keeps its declared upstream API import.
 
 No dependency, public option, benchmark producer or observer is changed. Local
 commands use installed Node CLIs (pnpm 11 versus requested 9.15.9); WebKit uses
