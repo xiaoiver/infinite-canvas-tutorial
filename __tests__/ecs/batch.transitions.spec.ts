@@ -1378,3 +1378,45 @@ it('retains fill geometry for masks, effects, external textures, wireframes and 
   // Deserialization omits FillLayers for the public wire form fills: [].
   expect(Mesh.check(shape(Path).entity)).toBe(false);
 });
+
+
+it.each(['screen', 'export'] as const)(
+  'preserves unique-member order through removal, readd, clear and camera migration (%s)',
+  (intent) => {
+    const batch = manager(intent),
+      other = manager(intent);
+    batch.sort();
+    other.sort();
+    const a = shape(),
+      b = shape(),
+      c = shape(),
+      absent = shape();
+    const members = (m: BatchManager) => queued(m).flatMap((d) => d.shapes);
+    batch.add(a.entity);
+    batch.add(b.entity);
+    batch.add(c.entity);
+    batch.remove(absent.entity);
+    batch.remove(a.entity);
+    batch.remove(a.entity);
+    batch.add(a.entity);
+    batch.add(a.entity);
+    expect(members(batch)).toEqual([b.entity, c.entity, a.entity]);
+    batch.remove(b.entity);
+    batch.add(b.entity);
+    batch.remove(c.entity);
+    expect(members(batch)).toEqual([a.entity, b.entity]);
+    batch.remove(a.entity);
+    other.add(a.entity);
+    expect(members(batch)).toEqual([b.entity]);
+    expect(members(other)).toEqual([a.entity]);
+    batch.remove(a.entity);
+    expect(members(other)).toEqual([a.entity]);
+    batch.clear();
+    batch.add(a.entity);
+    expect(members(batch)).toEqual([a.entity]);
+    batch.remove(a.entity);
+    other.remove(a.entity);
+    expect(members(batch)).toEqual([]);
+    expect(members(other)).toEqual([]);
+  },
+);

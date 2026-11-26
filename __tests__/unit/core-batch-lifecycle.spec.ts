@@ -144,3 +144,142 @@ it('removing a never-rendered non-batched shape creates no cached resources', ()
   expect(buffers).toEqual([]);
   batch.destroy();
 });
+
+function orderedHarness() {
+  const h = harness();
+  h.batch.clear(true, false, false, false);
+  return {
+    ...h,
+    members() {
+      h.rendered.length = 0;
+      h.flush();
+      // This harness has two passes per non-batched shape.
+      const members = h.rendered
+        .filter((_d, i) => i % 2 === 0)
+        .flatMap((d) => d.shapes);
+      // The real renderer starts each frame with clear, then traverses members.
+      h.batch.clear(true, false, false, false);
+      members.forEach((shape) => h.batch.add(shape));
+      return members;
+    },
+  };
+}
+const orderedRect = () => new Rect({ batchable: false });
+
+it('keeps painter order through absent, repeated and interleaved ordered removals', () => {
+  const { batch, members } = orderedHarness();
+  const a = orderedRect(),
+    b = orderedRect(),
+    c = orderedRect(),
+    absent = orderedRect();
+  batch.add(a);
+  batch.add(b);
+  batch.add(a);
+  batch.add(c);
+  batch.remove(absent);
+  batch.remove(a);
+  batch.remove(a);
+  batch.add(a);
+  expect(members()).toEqual([b, c, a]);
+  batch.remove(b);
+  batch.add(b);
+  batch.remove(c);
+  expect(members()).toEqual([a, b]);
+  batch.destroy();
+});
+
+it('retains only adds after the last removal, including duplicate adds and index zero', () => {
+  const { batch, members } = orderedHarness();
+  const a = orderedRect(),
+    b = orderedRect();
+  batch.remove(a);
+  batch.add(a);
+  batch.add(a);
+  batch.add(b);
+  expect(members()).toEqual([a, a, b]);
+  batch.remove(a);
+  batch.add(a);
+  batch.remove(a);
+  batch.add(a);
+  batch.add(a);
+  expect(members()).toEqual([b, a, a]);
+  batch.destroy();
+});
+
+it('forgets ordered removal positions on clear and after changing planning modes', () => {
+  const { batch, members } = orderedHarness();
+  const a = orderedRect(),
+    b = orderedRect();
+  batch.add(a);
+  batch.add(b);
+  batch.remove(a);
+  batch.clear(true, false);
+  batch.add(a);
+  expect(members()).toEqual([a]);
+  batch.add(b);
+  batch.remove(a);
+  batch.clear(false);
+  batch.clear(true, false);
+  batch.add(a);
+  expect(members()).toEqual([a]);
+  batch.destroy();
+});
+
+it('keeps ordered camera ownership independent when an old manager removes a migrated shape', () => {
+  const first = orderedHarness(),
+    second = orderedHarness();
+  const a = orderedRect(),
+    b = orderedRect();
+  first.batch.add(a);
+  first.batch.add(b);
+  expect(first.members()).toEqual([a, b]);
+  first.batch.remove(a);
+  second.batch.add(a);
+  expect(first.members()).toEqual([b]);
+  expect(second.members()).toEqual([a]);
+  first.batch.remove(a);
+  expect(first.members()).toEqual([b]);
+  expect(second.members()).toEqual([a]);
+  second.batch.remove(a);
+  expect(second.members()).toEqual([]);
+  first.batch.destroy();
+  second.batch.destroy();
+});
+
+it('matches ordered append/remove semantics across a deterministic operation stream and frame boundaries', () => {
+  const { batch, members } = orderedHarness();
+  const shapes = Array.from({ length: 12 }, orderedRect);
+  let expected: Rect[] = [],
+    seed = 718;
+  for (let i = 0; i < 160; i++) {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    const shape = shapes[seed % shapes.length];
+    if ((seed >>> 16) % 3 === 0) {
+      batch.remove(shape);
+      expected = expected.filter((s) => s !== shape);
+    } else {
+      batch.add(shape);
+      expected.push(shape);
+    }
+    if (i % 7 === 0) expect(members()).toEqual(expected);
+    if (i % 31 === 0) {
+      batch.clear(true, false);
+      expected = [];
+    }
+  }
+  expect(members()).toEqual(expected);
+  batch.destroy();
+});
+
+it('discards removed queued shapes when destruction precedes the first flush', () => {
+  const { batch, flush, rendered, created, buffers } = harness();
+  batch.clear(true, false, false, false);
+  const a = orderedRect();
+  batch.add(a);
+  batch.remove(a);
+  batch.destroy();
+  flush();
+  expect(rendered).toEqual([]);
+  expect(created).toEqual([]);
+  expect(buffers).toEqual([]);
+});
