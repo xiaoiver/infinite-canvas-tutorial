@@ -4,6 +4,8 @@ import {
   Path,
   Stroke,
   StrokeLayers,
+  FillLayers,
+  Opacity,
   GlobalTransform,
   Mat3,
   Renderable,
@@ -191,3 +193,108 @@ strokePageBuffersContract(
       null,
     ),
 );
+
+it.each([NaN, Infinity, -Infinity])(
+  'rejects nonfinite key inputs and sees their restoration (%p)',
+  (invalid) => {
+    const { entity, data } = path();
+    data.set(Opacity, { opacity: 1 });
+    const key = StrokeBatch.batchKey(entity);
+    const fields: [any, string][] = [
+      ...['m20', 'm21'].map(
+        (k) => [data.get(GlobalTransform).matrix, k] as [any, string],
+      ),
+      ...['width', 'miterlimit', 'dashoffset'].map(
+        (k) => [data.get(Stroke), k] as [any, string],
+      ),
+      [data.get(Opacity), 'opacity'],
+    ];
+    expect(key).not.toBeNull();
+    for (const [object, field] of fields) {
+      const value = object[field];
+      object[field] = invalid;
+      expect({ field, key: StrokeBatch.batchKey(entity) }).toEqual({
+        field,
+        key: null,
+      });
+      object[field] = value;
+      expect(StrokeBatch.batchKey(entity)).toBe(key);
+    }
+  },
+);
+it('keeps finite extreme/negative-zero translations out of material identity', () => {
+  const { entity, data } = path(),
+    key = StrokeBatch.batchKey(entity);
+  for (const value of [
+    -0,
+    Number.MAX_SAFE_INTEGER,
+    -Number.MAX_SAFE_INTEGER,
+    Number.EPSILON,
+  ]) {
+    data.get(GlobalTransform).matrix.m20 = value;
+    data.get(GlobalTransform).matrix.m21 = -value;
+    expect(StrokeBatch.batchKey(entity)).toBe(key);
+  }
+});
+it('observes sparse/disabled paint edits, absent layers and multiple enabled strokes on every check', () => {
+  const { entity, data } = path(),
+    key = StrokeBatch.batchKey(entity);
+  const layers: any[] = [];
+  layers[2] = { type: 'solid', value: '#123456' };
+  data.get(StrokeLayers).layers = layers;
+  expect(StrokeBatch.batchKey(entity)).toBe(key);
+  layers[0] = { type: 'gradient', value: 'unsupported', enabled: false };
+  expect(StrokeBatch.batchKey(entity)).toBe(key);
+  layers[0].enabled = true;
+  expect(StrokeBatch.batchKey(entity)).toBeNull();
+  layers[0].enabled = false;
+  expect(StrokeBatch.batchKey(entity)).toBe(key);
+  const fills: any[] = [];
+  fills[3] = { type: 'solid', value: 'red', enabled: false };
+  data.set(FillLayers, { layers: fills });
+  expect(StrokeBatch.batchKey(entity)).toBe(key);
+  fills[3].enabled = true;
+  expect(StrokeBatch.batchKey(entity)).toBeNull();
+  fills[3].enabled = false;
+  expect(StrokeBatch.batchKey(entity)).toBe(key);
+  data.get(StrokeLayers).layers = undefined;
+  expect(StrokeBatch.batchKey(entity)).toBeNull();
+  data.get(StrokeLayers).layers = [];
+  expect(StrokeBatch.batchKey(entity)).toBeNull();
+  data.delete(StrokeLayers);
+  expect(StrokeBatch.batchKey(entity)).toBeNull();
+});
+it('preserves raw stroke material and opacity key bytes without normalizing layer data', () => {
+  const { entity, data } = path();
+  const layer = {
+    type: 'solid',
+    value: ' #123456 ',
+    opacity: '0.25',
+    blendMode: 'normal',
+  };
+  data.get(StrokeLayers).layers = [{ enabled: false }, layer];
+  expect(StrokeBatch.batchKey(entity)).toBe(
+    JSON.stringify([
+      ' #123456 ',
+      0.25,
+      3,
+      'center',
+      'round',
+      'round',
+      4,
+      0,
+      'none',
+      1,
+    ]),
+  );
+  expect(layer).toEqual({
+    type: 'solid',
+    value: ' #123456 ',
+    opacity: '0.25',
+    blendMode: 'normal',
+  });
+  layer.blendMode = 'multiply';
+  expect(StrokeBatch.batchKey(entity)).toBeNull();
+  layer.blendMode = 'normal';
+  expect(StrokeBatch.batchKey(entity)).not.toBeNull();
+});

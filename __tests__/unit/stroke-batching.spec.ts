@@ -93,3 +93,49 @@ strokePageBuffersContract(
   (device, full) =>
     new (full ? SmoothPolyline : StrokeBatch)(device, null, null, false, 0),
 );
+
+it.each([NaN, Infinity, -Infinity])(
+  'rejects nonfinite key inputs and sees their restoration (%p)',
+  (invalid) => {
+    const p = path(),
+      key = StrokeBatch.batchKey(p);
+    const fields: [any, string][] = [
+      ...['tx', 'ty'].map((k) => [p.worldTransform, k] as [any, string]),
+      ...['r', 'g', 'b', 'opacity'].map(
+        (k) => [p.strokeRGB, k] as [any, string],
+      ),
+      ...[
+        'strokeWidth',
+        'strokeMiterlimit',
+        'strokeDashoffset',
+        'opacity',
+        'strokeOpacity',
+      ].map((k) => [p, k] as [any, string]),
+    ];
+    expect(key).not.toBeNull();
+    for (const [object, field] of fields) {
+      const value = object[field];
+      object[field] = invalid;
+      expect({ field, key: StrokeBatch.batchKey(p) }).toEqual({
+        field,
+        key: null,
+      });
+      object[field] = value;
+      expect(StrokeBatch.batchKey(p)).toBe(key);
+    }
+  },
+);
+it('keeps finite extreme/negative-zero translations out of material identity', () => {
+  const p = path(),
+    key = StrokeBatch.batchKey(p);
+  for (const value of [
+    -0,
+    Number.MAX_SAFE_INTEGER,
+    -Number.MAX_SAFE_INTEGER,
+    Number.EPSILON,
+  ]) {
+    p.worldTransform.tx = value;
+    p.worldTransform.ty = -value;
+    expect(StrokeBatch.batchKey(p)).toBe(key);
+  }
+});
