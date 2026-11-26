@@ -186,3 +186,11 @@ test('rejects equally stale UI views even when native cameras match', () => {
   for (const c of [a, b]) first(c).frames[0].data.uiView.x = 3;
   assert.throws(() => compareWorkflowInputs(a, b), /Logical x/);
 });
+
+for (const key of ['phases', 'phaseDetail'])
+  test(`rejects unlabelled detailed ${key}`, () => {
+    const a = capture(),
+      b = capture();
+    first(b).frames[0].data[key] = key === 'phases' ? {} : 'camera';
+    assert.throws(() => compareWorkflowInputs(a, b), /Diagnostic phases/);
+  });

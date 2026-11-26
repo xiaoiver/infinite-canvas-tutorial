@@ -105,6 +105,10 @@ function qualify(capture) {
       const frame = step.frames[0],
         { data } = frame;
       assert(
+        data.phases === undefined && data.phaseDetail === undefined,
+        'Diagnostic phases cannot qualify as ordinary timing',
+      );
+      assert(
         ['startedAt', 'completedAt', 'observedAt', 'observationMs'].every((k) =>
           nonnegative(frame[k]),
         ),

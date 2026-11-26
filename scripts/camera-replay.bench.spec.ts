@@ -1,3 +1,4 @@
+import { cameraPhaseMode, sumCameraPhases } from './camera-phase-tools.mjs';
 import { startCameraTimeline } from './camera-timeline';
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
@@ -19,13 +20,16 @@ declare global {
   }
 }
 test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
+  const phaseMode = cameraPhaseMode();
   const git = (...args: string[]) =>
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const trace = fixedCameraTrace('strokes'),
     viewport = { width: 1000, height: 760, dpr: 1 };
   const capture = {
     schema: CAMERA_REPLAY_VERSION,
-    mode: process.env.CAMERA_TIMELINE_DIR
+    mode: phaseMode
+      ? 'camera-phase-diagnostic'
+      : process.env.CAMERA_TIMELINE_DIR
       ? 'camera-timeline-diagnostic'
       : undefined,
     workload: 'strokes',
@@ -56,7 +60,9 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
     try {
       await page.addInitScript(installProbes, { resourceStacks: false });
       await page.goto(
-        backend === 'core' ? '/core-path-instances.html' : '/polyline-lod.html',
+        (backend === 'core'
+          ? '/core-path-instances.html'
+          : '/polyline-lod.html') + (phaseMode ? '?cameraPhases=1' : ''),
       );
       await expect(page.locator('#status')).toHaveText('Ready');
       await page.evaluate(
@@ -156,4 +162,17 @@ test('fixed Core/ECS 2400-stroke camera trace', async ({ browser }) => {
     }
   }
   if (!capture.mode) console.log(JSON.stringify(summarizeReplay(capture)));
+  if (phaseMode)
+    console.log(
+      JSON.stringify(
+        capture.results.flatMap((b) =>
+          b.rounds.map((r) => ({
+            backend: b.backend,
+            round: r.index,
+            mode: capture.mode,
+            ...sumCameraPhases(r.steps.flatMap((s) => s.frames)),
+          })),
+        ),
+      ),
+    );
 });

@@ -89,6 +89,11 @@ function rows(capture) {
           'Invalid frame timing',
         );
         for (const f of step.frames) {
+          assert.equal(
+            f.data.phaseDetail,
+            undefined,
+            'Detailed phase diagnostics cannot qualify as ordinary timing',
+          );
           const hasObservation = [
             'startedAt',
             'observedAt',
