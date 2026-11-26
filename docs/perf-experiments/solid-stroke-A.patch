@@ -1,0 +1,449 @@
+diff --git a/.changeset/solid-stroke-streams.md b/.changeset/solid-stroke-streams.md
+new file mode 100644
+index 0000000..999dd34
+--- /dev/null
++++ b/.changeset/solid-stroke-streams.md
+@@ -0,0 +1,6 @@
++---
++'@infinite-canvas-tutorial/core': patch
++'@infinite-canvas-tutorial/ecs': patch
++---
++
++Omit unused dash travel buffers and shader work from eligible solid stroke pages in both renderers.
+diff --git a/__tests__/browser/fixtures/shader-compiler.ts b/__tests__/browser/fixtures/shader-compiler.ts
+index fcf86c4..44ff1a0 100644
+--- a/__tests__/browser/fixtures/shader-compiler.ts
++++ b/__tests__/browser/fixtures/shader-compiler.ts
+@@ -57 +57 @@ const harness = {
+-  async compileStrokePages() {
++  async compileStrokePages(batched = true) {
+@@ -60 +60,2 @@ const harness = {
+-      '#define USE_STROKE_BATCH\n#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
++      (batched ? '#define USE_STROKE_BATCH\n' : '') +
++      '#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
+diff --git a/__tests__/browser/shader-compiler.spec.ts b/__tests__/browser/shader-compiler.spec.ts
+index ce39e0c..6d02a08 100644
+--- a/__tests__/browser/shader-compiler.spec.ts
++++ b/__tests__/browser/shader-compiler.spec.ts
+@@ -86,14 +86,18 @@ test('surfaces compiler errors and can retry with the bundled WASM', async ({
+-test('compiles Core and ECS stroke page shaders through the WebGPU path', async ({
+-  page,
+-}) => {
+-  await page.goto('/shader-compiler.html');
+-  await page.waitForFunction(() => !!window.shaderCompilerRegression);
+-  const programs = await page.evaluate(() =>
+-    window.shaderCompilerRegression.compileStrokePages(),
+-  );
+-  expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
+-  for (const program of programs) {
+-    expect(program.vertex).toContain('@vertex');
+-    expect(program.fragment).toContain('@fragment');
+-  }
+-});
++for (const batched of [false, true])
++  test(`compiles Core and ECS ${
++    batched ? 'solid page' : 'full stroke'
++  } shaders through the WebGPU path`, async ({ page }) => {
++    await page.goto('/shader-compiler.html');
++    await page.waitForFunction(() => !!window.shaderCompilerRegression);
++    const programs = await page.evaluate(
++      (batched) => window.shaderCompilerRegression.compileStrokePages(batched),
++      batched,
++    );
++    expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
++    for (const program of programs) {
++      expect(program.vertex).toContain('@vertex');
++      expect(program.fragment).toContain('@fragment');
++      if (batched) expect(program.vertex).not.toContain('a_Travel');
++      else expect(program.vertex).toContain('a_Travel');
++    }
++  });
+diff --git a/__tests__/browser/stroke-batching.spec.ts b/__tests__/browser/stroke-batching.spec.ts
+index 7c49165..8f41493 100644
+--- a/__tests__/browser/stroke-batching.spec.ts
++++ b/__tests__/browser/stroke-batching.spec.ts
+@@ -181 +181 @@ for (const backend of ['core', 'ecs'] as const) {
+-      // One extra page adds its two writable buffers and one object uniform;
++      // One extra solid page adds its segment buffer and one object uniform;
+@@ -183 +183 @@ for (const backend of ['core', 'ecs'] as const) {
+-      expect(await buffers()).toBe(one + 3);
++      expect(await buffers()).toBe(one + 2);
+@@ -188 +188 @@ for (const backend of ['core', 'ecs'] as const) {
+-      expect(await buffers()).toBe(one + 3);
++      expect(await buffers()).toBe(one + 2);
+@@ -217,3 +217,3 @@ for (const backend of ['core', 'ecs'] as const) {
+-        expect(work.bufferCreates).toBe(2);
+-        expect(work.bufferDeletes).toBe(2);
+-        expect(work.bufferAllocations).toBe(2);
++        expect(work.bufferCreates).toBe(1);
++        expect(work.bufferDeletes).toBe(1);
++        expect(work.bufferAllocations).toBe(1);
+@@ -286,0 +287,36 @@ for (const backend of ['core', 'ecs'] as const) {
++    test('solid and dashed edits switch streams without changing full-path pixels', async ({
++      page,
++    }) => {
++      await scene(page, backend, 1);
++      await enable(page, backend, true);
++      for (const [dashed, offset] of [
++        [false, 0],
++        [true, 3],
++        [false, 27],
++        [true, -4],
++        [false, 0],
++      ] as const) {
++        await page.evaluate(
++          async ({ backend, dashed, offset }) => {
++            const patch = {
++              d: 'M0 0L120 0L120 80',
++              strokeWidth: 6,
++              strokeDasharray: dashed ? [9, 6] : [],
++              strokeDashoffset: offset,
++            };
++            if (backend === 'core') window.corePathInstances.mutate(0, patch);
++            else
++              await window.polylineLOD.patch({
++                ...patch,
++                strokeDasharray: patch.strokeDasharray.join(' '),
++              });
++          },
++          { backend, dashed, offset },
++        );
++        expect((await state(page, backend)).strokePages).toBe(dashed ? 0 : 1);
++        const optimized = await page.locator('canvas').screenshot();
++        await enable(page, backend, false);
++        compare(await page.locator('canvas').screenshot(), optimized);
++        await enable(page, backend, true);
++      }
++    });
+diff --git a/__tests__/contracts/stroke-batching.ts b/__tests__/contracts/stroke-batching.ts
+index 013b9e9..0d2c8bf 100644
+--- a/__tests__/contracts/stroke-batching.ts
++++ b/__tests__/contracts/stroke-batching.ts
+@@ -9 +9 @@ interface Packing {
+-    stride: 1 | 3,
++    stride: 0 | 1 | 3,
+@@ -131,0 +132,40 @@ export function strokePackingContract(packing: Packing, stride: 1 | 3) {
++  it('solid pages preserve exact geometry while omitting even reads of dash travel', () => {
++    const points = Object.freeze([
++      1 / 3,
++      -0,
++      32,
++      3,
++      4,
++      12,
++      5,
++      6,
++      8,
++      7,
++      8,
++      16,
++      9,
++      10,
++      0,
++    ]);
++    const placement = [1e20, -1 / 7, -0] as const;
++    const expected = packing.packStrokeInstances(
++      [{ points, travel: [0, 1, 2, 3, 4, 5], translationAndOrder: placement }],
++      stride,
++    );
++    const part = {
++      points,
++      translationAndOrder: placement,
++      get travel(): readonly number[] {
++        throw new Error('Solid pages do not read travel');
++      },
++    };
++    const actual = packing.packStrokeInstances([part], 0);
++    expect(new Uint8Array(actual.points.buffer)).toEqual(
++      new Uint8Array(expected.points.buffer),
++    );
++    expect(actual.travel).toHaveLength(0);
++    const saved = actual.points.slice();
++    const next = packing.packStrokeInstances([part, part], 0);
++    expect(next.points.buffer).not.toBe(actual.points.buffer);
++    expect(actual.points).toEqual(saved);
++  });
+diff --git a/__tests__/contracts/stroke-page-buffers.ts b/__tests__/contracts/stroke-page-buffers.ts
+index a09dc74..58e1832 100644
+--- a/__tests__/contracts/stroke-page-buffers.ts
++++ b/__tests__/contracts/stroke-page-buffers.ts
+@@ -25 +25 @@ export function strokePageBuffersContract(
+-    expect(buffers).toHaveLength(6);
++    expect(buffers).toHaveLength(4);
+@@ -33 +33,2 @@ export function strokePageBuffersContract(
+-    expect(a.vertexBuffers[6]).not.toBe(b.vertexBuffers[6]);
++    expect(a.vertexBuffers[6]).toBe(a.vertexBuffers[0]);
++    expect(b.vertexBuffers[6]).toBe(b.vertexBuffers[0]);
+@@ -79 +79,0 @@ export function strokePageBuffersContract(
+-      .mockImplementationOnce(allocate)
+diff --git a/__tests__/contracts/stroke-reuse.ts b/__tests__/contracts/stroke-reuse.ts
+index 7205a06..d8350d1 100644
+--- a/__tests__/contracts/stroke-reuse.ts
++++ b/__tests__/contracts/stroke-reuse.ts
+@@ -67 +67,2 @@ export function strokeReuseContract(
+-    const shape = makePath(), draw = makeDraw(device);
++    const shape = makePath(),
++      draw = makeDraw(device);
+@@ -72,3 +73,11 @@ export function strokeReuseContract(
+-      const travel = draw.vertexBufferDatas[6] as Float32Array;
+-      const pointUpload = draw.vertexBuffers[0].setSubData.mock.calls.at(-1)[1] as Uint8Array;
+-      const travelUpload = draw.vertexBuffers[6].setSubData.mock.calls.at(-1)[1] as Uint8Array;
++      const travel = draw.travelBuffer as Float32Array;
++      const pointUpload = draw.vertexBuffers[0].setSubData.mock.calls.at(
++        -1,
++      )[1] as Uint8Array;
++      expect(draw.vertexBuffers[6]).toBe(draw.vertexBuffers[0]);
++      expect(draw.vertexBufferDatas[6]).toBe(points);
++      expect(
++        draw.vertexBufferDescriptors
++          .flatMap((d: any) => d.attributes)
++          .some((a: any) => a.shaderLocation === 7),
++      ).toBe(false);
+@@ -78 +87 @@ export function strokeReuseContract(
+-      expect(travelUpload.buffer).toBe(travel.buffer);
++      expect(travel).toHaveLength(0);
+@@ -80 +89 @@ export function strokeReuseContract(
+-      expect(travelUpload.byteLength).toBe(travel.byteLength);
++
+@@ -83 +92,3 @@ export function strokeReuseContract(
+-      expect(draw.vertexBufferDatas.slice(0, 5).every((v: unknown) => v === points)).toBe(true);
++      expect(
++        draw.vertexBufferDatas.slice(0, 5).every((v: unknown) => v === points),
++      ).toBe(true);
+@@ -87 +98,2 @@ export function strokeReuseContract(
+-    const originalPoints = first.points.slice(), originalTravel = first.travel.slice();
++    const originalPoints = first.points.slice(),
++      originalTravel = first.travel.slice();
+@@ -99,2 +111,5 @@ export function strokeReuseContract(
+-    const { device } = resources(), shape=makePath(), draw=makeDraw(device,true);
+-    prepare(draw,shape);draw.createGeometry();
++    const { device } = resources(),
++      shape = makePath(),
++      draw = makeDraw(device, true);
++    prepare(draw, shape);
++    draw.createGeometry();
+@@ -103 +118,10 @@ export function strokeReuseContract(
+-    expect(draw.vertexBufferDatas[0]).toEqual(new Float32Array(draw.pointsBuffer));
++    expect(draw.travelBuffer.length).toBeGreaterThan(0);
++    expect(
++      draw.vertexBufferDescriptors
++        .flatMap((d: any) => d.attributes)
++        .some((a: any) => a.shaderLocation === 7),
++    ).toBe(true);
++    expect(draw.vertexBuffers[6].setSubData).toHaveBeenCalledTimes(1);
++    expect(draw.vertexBufferDatas[0]).toEqual(
++      new Float32Array(draw.pointsBuffer),
++    );
+@@ -106 +130 @@ export function strokeReuseContract(
+-  it('keeps fixed buffers through edits, replaces only dynamic pairs, and releases once', () => {
++  it('keeps fixed buffers through edits, replaces only the segment buffer, and releases once', () => {
+@@ -112 +136 @@ export function strokeReuseContract(
+-    expect(buffers).toHaveLength(4);
++    expect(buffers).toHaveLength(3);
+@@ -117 +141 @@ export function strokeReuseContract(
+-    expect(buffers).toHaveLength(10);
++    expect(buffers).toHaveLength(6);
+@@ -126 +150 @@ export function strokeReuseContract(
+-    expect(buffers).toHaveLength(12);
++    expect(buffers).toHaveLength(7);
+@@ -131 +155 @@ export function strokeReuseContract(
+-    ).toHaveLength(2);
++    ).toHaveLength(1);
+@@ -135 +159 @@ export function strokeReuseContract(
+-    expect(buffers).toHaveLength(14);
++    expect(buffers).toHaveLength(8);
+@@ -140 +164 @@ export function strokeReuseContract(
+-    expect(buffers).toHaveLength(14);
++    expect(buffers).toHaveLength(8);
+@@ -142,2 +166,2 @@ export function strokeReuseContract(
+-  it('rolls back partial dynamic allocation without destroying the old page, then retries cleanly', () => {
+-    const { device, buffers, allocate } = resources();
++  it('preserves the old page when replacement allocation fails and retries cleanly', () => {
++    const { device, buffers } = resources();
+@@ -155,5 +179,3 @@ export function strokeReuseContract(
+-    device.createBuffer
+-      .mockImplementationOnce(allocate)
+-      .mockImplementationOnce(() => {
+-        throw new Error('allocation failure');
+-      });
++    device.createBuffer.mockImplementationOnce(() => {
++      throw new Error('allocation failure');
++    });
+@@ -162,4 +184,2 @@ export function strokeReuseContract(
+-    expect(
+-      buffers.slice(0, 4).every((b) => b.destroy.mock.calls.length === 0),
+-    ).toBe(true);
+-    expect(buffers[4].destroy).toHaveBeenCalledTimes(1);
++    expect(buffers.every((b) => b.destroy.mock.calls.length === 0)).toBe(true);
++    expect(buffers).toHaveLength(3);
+@@ -169,0 +190 @@ export function strokeReuseContract(
++
+diff --git a/packages/core/src/drawcalls/SmoothPolyline.ts b/packages/core/src/drawcalls/SmoothPolyline.ts
+index bcc5f3d..7785d3e 100755
+--- a/packages/core/src/drawcalls/SmoothPolyline.ts
++++ b/packages/core/src/drawcalls/SmoothPolyline.ts
+@@ -117,4 +117 @@ export class SmoothPolyline extends PathDrawcall {
+-      const travel = allocate(
+-        this.instanceCount * 1 * 4,
+-        BufferFrequencyHint.STATIC,
+-      );
++
+@@ -125 +121,0 @@ export class SmoothPolyline extends PathDrawcall {
+-      this.#travelBuffer?.destroy();
+@@ -127 +122,0 @@ export class SmoothPolyline extends PathDrawcall {
+-      this.#travelBuffer = travel;
+@@ -139 +133,0 @@ export class SmoothPolyline extends PathDrawcall {
+-        travel,
+@@ -237 +231 @@ export class SmoothPolyline extends PathDrawcall {
+-    const packed = parts ? packStrokeInstances(parts, 1) : undefined;
++    const packed = parts ? packStrokeInstances(parts, 0) : undefined;
+@@ -288,6 +282,8 @@ export class SmoothPolyline extends PathDrawcall {
+-    this.#travelBuffer.setSubData(
+-      0,
+-      new Uint8Array(
+-        (batchTravel ?? new Float32Array(this.travelBuffer)).buffer,
+-      ),
+-    );
++    if (!this.strokeBatch) {
++      this.#travelBuffer.setSubData(
++        0,
++        new Uint8Array(
++          (batchTravel ?? new Float32Array(this.travelBuffer)).buffer,
++        ),
++      );
++    }
+@@ -396,0 +393,4 @@ export class SmoothPolyline extends PathDrawcall {
++      // Eligible solid pages have no dash-travel input. Keep the full layout above.
++      this.vertexBufferOffsets.pop();
++      this.vertexBufferDatas.pop();
++      this.vertexBufferDescriptors.pop();
+diff --git a/packages/core/src/shaders/polyline.ts b/packages/core/src/shaders/polyline.ts
+index a4188ca..e19158e 100755
+--- a/packages/core/src/shaders/polyline.ts
++++ b/packages/core/src/shaders/polyline.ts
+@@ -56,0 +57 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
++#ifndef USE_STROKE_BATCH
+@@ -57,0 +59 @@ layout(location = ${Location.TRAVEL}) in float a_Travel;
++#endif
+@@ -89,0 +92 @@ out float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -91,0 +95 @@ out float v_ScalingFactor;
++#endif
+@@ -437,0 +442 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -438,0 +444 @@ void main() {
++#endif
+@@ -441,0 +448 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -442,0 +450 @@ void main() {
++#endif
+@@ -480,0 +489 @@ in float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -482,0 +492 @@ in float v_ScalingFactor;
++#endif
+@@ -572,0 +583 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -581,0 +593 @@ void main() {
++#endif
+diff --git a/packages/core/src/utils/stroke-batching.ts b/packages/core/src/utils/stroke-batching.ts
+index 931f5bf..9e3122a 100644
+--- a/packages/core/src/utils/stroke-batching.ts
++++ b/packages/core/src/utils/stroke-batching.ts
+@@ -10 +10 @@ export function packStrokeInstances(
+-  travelStride: 1 | 3,
++  travelStride: 0 | 1 | 3,
+@@ -43,3 +43,5 @@ export function packStrokeInstances(
+-    const distances = part.travel;
+-    for (let i = 0; i < size * travelStride; i++) {
+-      travel[travelTarget++] = distances[i] ?? 0;
++    if (travelStride) {
++      const distances = part.travel;
++      for (let i = 0; i < size * travelStride; i++) {
++        travel[travelTarget++] = distances[i] ?? 0;
++      }
+diff --git a/packages/ecs/src/drawcalls/SmoothPolyline.ts b/packages/ecs/src/drawcalls/SmoothPolyline.ts
+index 84dc1c0..2ba69e8 100755
+--- a/packages/ecs/src/drawcalls/SmoothPolyline.ts
++++ b/packages/ecs/src/drawcalls/SmoothPolyline.ts
+@@ -272,4 +272 @@ export class SmoothPolyline extends PathDrawcall {
+-      const travel = allocate(
+-        this.instanceCount * 3 * 4,
+-        BufferFrequencyHint.STATIC,
+-      );
++
+@@ -280 +276,0 @@ export class SmoothPolyline extends PathDrawcall {
+-      this.#travelBuffer?.destroy();
+@@ -282 +277,0 @@ export class SmoothPolyline extends PathDrawcall {
+-      this.#travelBuffer = travel;
+@@ -294 +288,0 @@ export class SmoothPolyline extends PathDrawcall {
+-        travel,
+@@ -379 +373 @@ export class SmoothPolyline extends PathDrawcall {
+-    const packed = parts ? packStrokeInstances(parts, 3) : undefined;
++    const packed = parts ? packStrokeInstances(parts, 0) : undefined;
+@@ -426,6 +420,8 @@ export class SmoothPolyline extends PathDrawcall {
+-    this.#travelBuffer.setSubData(
+-      0,
+-      new Uint8Array(
+-        (batchTravel ?? new Float32Array(this.travelBuffer)).buffer,
+-      ),
+-    );
++    if (!this.strokeBatch) {
++      this.#travelBuffer.setSubData(
++        0,
++        new Uint8Array(
++          (batchTravel ?? new Float32Array(this.travelBuffer)).buffer,
++        ),
++      );
++    }
+@@ -534,0 +531,4 @@ export class SmoothPolyline extends PathDrawcall {
++      // Eligible solid pages have no dash-travel input. Keep the full layout above.
++      this.vertexBufferOffsets.pop();
++      this.vertexBufferDatas.pop();
++      this.vertexBufferDescriptors.pop();
+diff --git a/packages/ecs/src/shaders/polyline.ts b/packages/ecs/src/shaders/polyline.ts
+index 3c5d2fd..7650eee 100755
+--- a/packages/ecs/src/shaders/polyline.ts
++++ b/packages/ecs/src/shaders/polyline.ts
+@@ -58,0 +59 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
++#ifndef USE_STROKE_BATCH
+@@ -59,0 +61 @@ layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
++#endif
+@@ -92,0 +95 @@ out float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -96,0 +100 @@ out vec4 v_DashNext;
++#endif
+@@ -473,0 +478 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -498,0 +504,2 @@ void main() {
++#endif
++
+@@ -541,0 +549 @@ in float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -545,0 +554 @@ in vec4 v_DashNext;
++#endif
+@@ -570,0 +580 @@ float pixelLine(float x) {
++#ifndef USE_STROKE_BATCH
+@@ -666,0 +677 @@ vec2 dashCoverage() {
++#endif
+@@ -738,0 +750 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -740,0 +753,3 @@ void main() {
++#else
++  alpha = max(0.0, alpha);
++#endif
+diff --git a/packages/ecs/src/utils/stroke-batching.ts b/packages/ecs/src/utils/stroke-batching.ts
+index 931f5bf..9e3122a 100644
+--- a/packages/ecs/src/utils/stroke-batching.ts
++++ b/packages/ecs/src/utils/stroke-batching.ts
+@@ -10 +10 @@ export function packStrokeInstances(
+-  travelStride: 1 | 3,
++  travelStride: 0 | 1 | 3,
+@@ -43,3 +43,5 @@ export function packStrokeInstances(
+-    const distances = part.travel;
+-    for (let i = 0; i < size * travelStride; i++) {
+-      travel[travelTarget++] = distances[i] ?? 0;
++    if (travelStride) {
++      const distances = part.travel;
++      for (let i = 0; i < size * travelStride; i++) {
++        travel[travelTarget++] = distances[i] ?? 0;
++      }
