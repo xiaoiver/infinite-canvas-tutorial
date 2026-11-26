@@ -2,13 +2,20 @@ import type { Page } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { analyzeCameraTimeline } from './camera-timeline-tools.mjs';
+import {
+  analyzeCameraTimeline,
+  analyzeCameraTrace,
+} from './camera-timeline-tools.mjs';
 
 type Window = { id: string; startedAt: number; completedAt: number };
 /** Opt-in diagnostic: never part of ordinary elapsed-time comparisons. */
 export async function startCameraTimeline(page: Page, name: string) {
   const directory = process.env.CAMERA_TIMELINE_DIR;
   if (!directory) return;
+  const kind = process.env.CAMERA_TIMELINE_MODE ?? 'profile';
+  if (kind !== 'profile' && kind !== 'trace')
+    throw new Error('CAMERA_TIMELINE_MODE must be profile or trace');
+  const traceOnly = kind === 'trace';
   const session = await page.context().newCDPSession(page);
   const traceEvents: any[] = [];
   session.on('Tracing.dataCollected', ({ value }) =>
@@ -38,16 +45,20 @@ export async function startCameraTimeline(page: Page, name: string) {
     }, `camera-timeline-${name}-${suffix}`);
   try {
     await session.send('Performance.enable');
-    await session.send('Profiler.enable');
-    await session.send('Profiler.setSamplingInterval', { interval: 1000 });
+    if (!traceOnly) {
+      await session.send('Profiler.enable');
+      await session.send('Profiler.setSamplingInterval', { interval: 1000 });
+    }
     await session.send('Tracing.start', {
       categories: 'toplevel,devtools.timeline,v8,blink.user_timing',
       options: 'record-as-much-as-possible',
       transferMode: 'ReportEvents',
     });
     tracing = true;
-    await session.send('Profiler.start');
-    profiling = true;
+    if (!traceOnly) {
+      await session.send('Profiler.start');
+      profiling = true;
+    }
     const first = await anchor('start');
     const beforeMs = await page.evaluate(() => performance.now());
     const metrics = await session.send('Performance.getMetrics');
@@ -59,8 +70,11 @@ export async function startCameraTimeline(page: Page, name: string) {
       async stop(windows: Window[]) {
         try {
           const last = await anchor('end');
-          const { profile } = await session.send('Profiler.stop');
-          profiling = false;
+          let profile;
+          if (profiling) {
+            ({ profile } = await session.send('Profiler.stop'));
+            profiling = false;
+          }
           const complete = new Promise<any>((resolve) =>
             session.once('Tracing.tracingComplete', resolve),
           );
@@ -79,9 +93,10 @@ export async function startCameraTimeline(page: Page, name: string) {
             node: process.version,
             schema: 1,
             mode: 'camera-timeline-diagnostic',
+            captureKind: traceOnly ? 'trace-only' : 'profile',
             anchors: [first, last],
             clockBracket: { beforeMs, afterMs, timestampMs },
-            profile,
+            ...(traceOnly ? {} : { profile }),
             traceEvents,
             windows,
             dataLossOccurred: completion.dataLossOccurred,
@@ -89,7 +104,9 @@ export async function startCameraTimeline(page: Page, name: string) {
           save('raw', capture);
           if (completion.dataLossOccurred)
             throw new Error('Timeline trace lost events');
-          const report = analyzeCameraTimeline(capture);
+          const report = traceOnly
+            ? analyzeCameraTrace(capture)
+            : analyzeCameraTimeline(capture);
           save('summary', report);
           return report;
         } finally {

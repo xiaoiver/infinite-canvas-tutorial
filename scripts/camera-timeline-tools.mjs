@@ -18,11 +18,15 @@ export function covered(intervals, window) {
   return total;
 }
 
-export function analyzeCameraTimeline(capture) {
+function traceContext(capture) {
   assert.equal(capture.mode, 'camera-timeline-diagnostic');
   assert.equal(capture.schema, 1);
   assert.equal(capture.dataLossOccurred, false, 'Timeline trace lost events');
-  const { traceEvents, profile, anchors, clockBracket, windows } = capture;
+  const { traceEvents, anchors, clockBracket } = capture;
+  assert(
+    Array.isArray(capture.windows) && capture.windows.length > 0,
+    'Engine windows required',
+  );
   assert.equal(anchors.length, 2, 'Two clock anchors required');
   const matches = anchors.map((a) => {
     const events = traceEvents.filter((e) => e.name === a.name);
@@ -49,20 +53,11 @@ export function analyzeCameraTimeline(capture) {
     'Clock bracket too wide',
   );
   assert(
-    clockBracket.timestampMs >= profile.startTime / 1000 &&
-      clockBracket.timestampMs <= profile.endTime / 1000,
-    'Profile clock does not bracket calibration',
-  );
-  assert(
     offset >=
       clockBracket.timestampMs - clockBracket.afterMs - clockToleranceMs &&
       offset <=
         clockBracket.timestampMs - clockBracket.beforeMs + clockToleranceMs,
-    'Trace/profile clocks do not agree',
-  );
-  assert(
-    profile.startTime <= first.event.ts && profile.endTime >= last.event.ts,
-    'Profile does not cover anchors',
+    'Trace/performance clocks do not agree',
   );
   const main = traceEvents.filter(
     (e) =>
@@ -78,6 +73,98 @@ export function analyzeCameraTimeline(capture) {
   );
   assert(tasks.length > 0, 'No renderer main-thread tasks recorded');
   const gc = main.filter((e) => /^(MinorGC|MajorGC|V8\.GC_)/.test(e.name));
+  return {
+    first,
+    last,
+    offset,
+    main,
+    tasks,
+    gc,
+    clock: {
+      offsetMs: offset,
+      toleranceMs: clockToleranceMs,
+      driftMs: last.offset - first.offset,
+      bracketWidthMs: clockBracket.afterMs - clockBracket.beforeMs,
+      pid: first.event.pid,
+      tid: first.event.tid,
+    },
+  };
+}
+
+function traceWindow(context, w) {
+  const { first, last, offset, main, tasks, gc } = context;
+  assert(
+    Number.isFinite(w.startedAt) &&
+      Number.isFinite(w.completedAt) &&
+      w.completedAt >= w.startedAt,
+    'Invalid engine window',
+  );
+  const range = [w.startedAt + offset, w.completedAt + offset];
+  assert(
+    range[0] >= first.event.ts / 1000 - context.clock.toleranceMs &&
+      range[1] <= last.event.ts / 1000 + context.clock.toleranceMs,
+    'Engine window outside anchors',
+  );
+  const interval = (e) => [e.ts / 1000, (e.ts + e.dur) / 1000];
+  const byEvent = new Map();
+  for (const e of main) {
+    const ms = overlap(interval(e), range);
+    if (ms) byEvent.set(e.name, (byEvent.get(e.name) ?? 0) + ms);
+  }
+  const elapsedMs = w.completedAt - w.startedAt;
+  const taskCoveredMs = covered(tasks.map(interval), range);
+  return {
+    range,
+    summary: {
+      ...w,
+      elapsedMs,
+      taskCoveredMs,
+      outsideRecordedTasksMs: Math.max(0, elapsedMs - taskCoveredMs),
+      gcCoveredMs: covered(gc.map(interval), range),
+      traceInclusiveTop: [...byEvent].sort((a, b) => b[1] - a[1]).slice(0, 15),
+    },
+  };
+}
+
+/** Explicitly separate capability: a rejected CPU profile cannot become a trace. */
+export function analyzeCameraTrace(capture) {
+  assert.equal(
+    capture.captureKind,
+    'trace-only',
+    'Explicit trace-only capture required',
+  );
+  assert(
+    !('profile' in capture),
+    'Trace-only capture must not contain a CPU profile',
+  );
+  const context = traceContext(capture);
+  return {
+    mode: capture.mode,
+    captureKind: 'trace-only',
+    clock: context.clock,
+    windows: capture.windows.map((w) => traceWindow(context, w).summary),
+  };
+}
+
+export function analyzeCameraTimeline(capture) {
+  assert.notEqual(
+    capture.captureKind,
+    'trace-only',
+    'CPU profile capture required',
+  );
+  const context = traceContext(capture);
+  const { first, last } = context;
+  const { profile, clockBracket, windows } = capture;
+  assert(profile, 'CPU profile required');
+  assert(
+    clockBracket.timestampMs >= profile.startTime / 1000 &&
+      clockBracket.timestampMs <= profile.endTime / 1000,
+    'Profile clock does not bracket calibration',
+  );
+  assert(
+    profile.startTime <= first.event.ts && profile.endTime >= last.event.ts,
+    'Profile does not cover anchors',
+  );
   const nodes = new Map(profile.nodes.map((n) => [n.id, n]));
   assert.equal(
     profile.samples.length,
@@ -94,36 +181,16 @@ export function analyzeCameraTimeline(capture) {
     return { interval: [start, time], node: nodes.get(id) };
   });
   assert(time <= profile.endTime / 1000 + 1, 'Samples extend beyond profile');
-  const interval = (e) => [e.ts / 1000, (e.ts + e.dur) / 1000];
   return {
     mode: capture.mode,
-    clock: {
-      offsetMs: offset,
-      toleranceMs: clockToleranceMs,
-      driftMs: last.offset - first.offset,
-      bracketWidthMs: clockBracket.afterMs - clockBracket.beforeMs,
-      pid: first.event.pid,
-      tid: first.event.tid,
-    },
+    clock: context.clock,
     sampleIntervalMaxMs: Math.max(
       0,
       ...profile.timeDeltas.map((d) => d / 1000),
     ),
     windows: windows.map((w) => {
-      assert(
-        Number.isFinite(w.startedAt) &&
-          Number.isFinite(w.completedAt) &&
-          w.completedAt >= w.startedAt,
-        'Invalid engine window',
-      );
-      const range = [w.startedAt + offset, w.completedAt + offset];
-      assert(
-        range[0] >= first.event.ts / 1000 - clockToleranceMs &&
-          range[1] <= last.event.ts / 1000 + clockToleranceMs,
-        'Engine window outside anchors',
-      );
-      const bySample = new Map(),
-        byEvent = new Map();
+      const { range, summary } = traceWindow(context, w);
+      const bySample = new Map();
       let sparseSampleOverlapMs = 0,
         sampleIntervalMaxMs = 0;
       for (const { interval: sample, node } of samples) {
@@ -142,24 +209,13 @@ export function analyzeCameraTimeline(capture) {
         }`;
         bySample.set(key, (bySample.get(key) ?? 0) + ms);
       }
-      for (const e of main) {
-        const ms = overlap(interval(e), range);
-        if (ms) byEvent.set(e.name, (byEvent.get(e.name) ?? 0) + ms);
-      }
       const rank = (m) => [...m].sort((a, b) => b[1] - a[1]).slice(0, 15);
-      const elapsedMs = w.completedAt - w.startedAt;
-      const taskCoveredMs = covered(tasks.map(interval), range);
       return {
-        ...w,
-        elapsedMs,
-        taskCoveredMs,
-        outsideRecordedTasksMs: Math.max(0, elapsedMs - taskCoveredMs),
-        gcCoveredMs: covered(gc.map(interval), range),
+        ...summary,
         sampleIntervalMaxMs,
         sparseSampleOverlapMs,
         sampledResidenceMs: [...bySample.values()].reduce((a, b) => a + b, 0),
         sampleSelfTop: rank(bySample),
-        traceInclusiveTop: rank(byEvent),
       };
     }),
   };
