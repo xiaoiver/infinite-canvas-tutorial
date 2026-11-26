@@ -1,6 +1,6 @@
 import type { framePhaseProbe } from './frame-phase-probe';
 export type CameraPhaseProbe = ReturnType<typeof framePhaseProbe>;
-export type CameraStage = readonly [object, string, string];
+export type CameraStage = readonly [object, string, string, string?];
 
 /** Diagnostic-only scopes. Native durations are synchronous call wall time, not GPU time. */
 export function installCameraPhases(
@@ -9,8 +9,8 @@ export function installCameraPhases(
   stages: readonly CameraStage[],
 ) {
   try {
-    for (const [target, method, label] of stages)
-      probe.wrap(target, method, label);
+    for (const [target, method, label, within] of stages)
+      probe.wrap(target, method, label, within);
     // Call only after the renderer has initialized its WebGL context.
     const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
     if (!gl)

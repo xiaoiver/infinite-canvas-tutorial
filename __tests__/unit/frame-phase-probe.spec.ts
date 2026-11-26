@@ -134,3 +134,93 @@ it('camera phase installation rolls back preceding stages on failure', () => {
   expect(Object.getOwnPropertyDescriptor(target, 'method')).toEqual(before);
   probe.dispose();
 });
+
+it('times static classification only inside its named planner, including nested scopes', () => {
+  let time = 0;
+  const probe = framePhaseProbe(() => time);
+  class Material {
+    static factor = 3;
+    static key(value: number) {
+      time += 2;
+      return this.factor * value;
+    }
+  }
+  const original = Object.getOwnPropertyDescriptor(Material, 'key');
+  probe.wrap(Material, 'key', 'material.key', 'batch.plan');
+  expect(Material.key(2)).toBe(6);
+  probe.begin();
+  expect(Material.key(3)).toBe(9);
+  probe.run('other', () => Material.key(4));
+  probe.run('batch.plan', () => {
+    time++;
+    probe.run('batch.resolve', () => expect(Material.key(5)).toBe(15));
+    time++;
+  });
+  expect(probe.end()).toEqual({
+    other: { calls: 1, inclusiveMs: 2, exclusiveMs: 2 },
+    'material.key': { calls: 1, inclusiveMs: 2, exclusiveMs: 2 },
+    'batch.resolve': { calls: 1, inclusiveMs: 2, exclusiveMs: 0 },
+    'batch.plan': { calls: 1, inclusiveMs: 4, exclusiveMs: 2 },
+  });
+  probe.dispose();
+  expect(Object.getOwnPropertyDescriptor(Material, 'key')).toEqual(original);
+});
+
+it('unwinds conditional scopes on errors and does not retain a parent across frames', () => {
+  let time = 0;
+  const probe = framePhaseProbe(() => time);
+  const failure = new Error('classification failed');
+  const base = {
+    key(...args: unknown[]) {
+      expect(this).toBe(target);
+      expect(args).toEqual([1, 2]);
+      time += 3;
+      throw failure;
+    },
+  };
+  const target = Object.create(base);
+  probe.wrap(target, 'key', 'material.key', 'batch.plan');
+  probe.begin();
+  expect(() => probe.run('batch.plan', () => target.key(1, 2))).toThrow(
+    failure,
+  );
+  expect(() => target.key(1, 2)).toThrow(failure);
+  expect(probe.end()).toEqual({
+    'material.key': { calls: 1, inclusiveMs: 3, exclusiveMs: 3 },
+    'batch.plan': { calls: 1, inclusiveMs: 3, exclusiveMs: 0 },
+  });
+  probe.begin();
+  expect(() => target.key(1, 2)).toThrow(failure);
+  expect(probe.end()).toEqual({});
+  probe.dispose();
+  expect(Object.hasOwn(target, 'key')).toBe(false);
+  expect(target.key).toBe(base.key);
+});
+
+it('camera installation forwards parent constraints and restores inherited static ownership', () => {
+  let time = 0;
+  const probe = framePhaseProbe(() => time);
+  class Parent {
+    static key() {
+      time++;
+      return 4;
+    }
+  }
+  class Child extends Parent {}
+  const before = Parent.key;
+  installCameraPhases(
+    probe,
+    { getContext: () => ({}) } as unknown as HTMLCanvasElement,
+    [[Child, 'key', 'material.child', 'batch.plan']],
+  );
+  probe.begin();
+  expect(Child.key()).toBe(4);
+  probe.run('batch.plan', () => expect(Child.key()).toBe(4));
+  expect(probe.end()).toEqual({
+    'material.child': { calls: 1, inclusiveMs: 1, exclusiveMs: 1 },
+    'batch.plan': { calls: 1, inclusiveMs: 1, exclusiveMs: 0 },
+  });
+  probe.dispose();
+  expect(Object.hasOwn(Child, 'key')).toBe(false);
+  expect(Child.key).toBe(before);
+});

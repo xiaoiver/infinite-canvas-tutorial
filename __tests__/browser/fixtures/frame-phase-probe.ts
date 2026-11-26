@@ -9,11 +9,11 @@ export type FramePhases = Record<string, PhaseTiming>;
 export function framePhaseProbe(now = () => performance.now()) {
   let active = false;
   let timings: FramePhases = {};
-  const stack: { start: number; children: number }[] = [];
+  const stack: { name: string; start: number; children: number }[] = [];
   const restore: (() => void)[] = [];
   function run<T>(name: string, callback: () => T): T {
     if (!active) return callback();
-    const scope = { start: now(), children: 0 };
+    const scope = { name, start: now(), children: 0 };
     stack.push(scope);
     try {
       return callback();
@@ -45,7 +45,7 @@ export function framePhaseProbe(now = () => performance.now()) {
       return structuredClone(timings);
     },
     run,
-    wrap(target: object, key: string, name: string) {
+    wrap(target: object, key: string, name: string, within?: string) {
       const methods = target as Record<string, (...args: any[]) => any>;
       const original = methods[key];
       if (
@@ -60,6 +60,10 @@ export function framePhaseProbe(now = () => performance.now()) {
         writable: true,
         enumerable: descriptor?.enumerable ?? false,
         value: function (...args: any[]) {
+          // Restrict high-frequency classification probes to the dirty planner.
+          // The same methods can also run during submission, export or setup.
+          if (within && !stack.some((scope) => scope.name === within))
+            return original.apply(this, args);
           return run(name, () => original.apply(this, args));
         },
       });
