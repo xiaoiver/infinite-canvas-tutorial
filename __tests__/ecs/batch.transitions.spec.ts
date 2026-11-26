@@ -1420,3 +1420,38 @@ it.each(['screen', 'export'] as const)(
     expect(members(other)).toEqual([]);
   },
 );
+
+it.each([ClipMode, Filter, NodeLayerBlendMode])(
+  'refreshes shared lineage after barriers, reparenting, removal and toggles (%p)',
+  (component) => {
+    const root = shape(Rect, false),
+      middle = shape(Rect, false, [Children, { parent: root.entity }]);
+    const a = shape(Rect, true, [Children, { parent: middle.entity }]),
+      b = shape(Rect, true, [Children, { parent: middle.entity }]);
+    const batch = manager();
+    [a, b].forEach((n) => batch.add(n.entity));
+    expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity, b.entity]]);
+    root.data.set(component, { value: 'none', mode: 'normal' });
+    batch.add(a.entity);
+    expect(queued(batch).every((d) => !d.isInstanced)).toBe(true);
+    root.data.delete(component);
+    batch.add(b.entity);
+    expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity, b.entity]]);
+    const blocked = shape(Rect, false, [component, {}]);
+    b.data.set(Children, { parent: blocked.entity });
+    batch.add(b.entity);
+    expect(
+      queued(batch).find((d) => d.shapes.includes(b.entity)).isInstanced,
+    ).toBe(false);
+    batch.remove(b.entity);
+    expect(queued(batch).flatMap((d) => d.shapes)).toEqual([a.entity]);
+    b.data.set(Children, { parent: middle.entity });
+    batch.add(b.entity);
+    expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity, b.entity]]);
+    batch.setImageBatchingEnabled(true);
+    batch.setPathInstancingEnabled(true);
+    batch.setTextBatchingEnabled(true);
+    batch.add(a.entity);
+    expect(queued(batch).map((d) => d.shapes)).toEqual([[a.entity, b.entity]]);
+  },
+);
