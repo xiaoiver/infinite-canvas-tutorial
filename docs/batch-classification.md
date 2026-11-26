@@ -58,9 +58,17 @@ Clean source `bf1a274d46d8a122d74854c88944dc81b6dc4cdf`, tree
 and its data. Measured fixtures, probes, producers and package source are pinned
 by that commit.
 
+Corrected count-only captures use clean source
+`1c86975849e56fb5689d0ebfc14cc9bd2f13703f`, tree
+`da40d19f6abac378f867df3f6cedc20a51c302bd`. The audit verifies that the diff
+from the timed source is exactly the two report/data files: all measured code
+is unchanged. Each mode's raw source identity is preserved and checked; it is
+not rewritten to another commit.
+
 Node 24.22.3, Chromium 140.0.7339.186, SwiftShader, DPR 1. Six qualified
-fresh-page captures: phase Workflow, count Workflow, count paired strokes,
-phase paired strokes, ordinary paired strokes, ordinary Workflow. No other
+fresh-page captures: phase Workflow, phase paired strokes, ordinary paired
+strokes, ordinary Workflow, corrected count Workflow and corrected count paired
+strokes. No other
 local tests ran during these qualified captures, and no CDP sampler/trace ran.
 An initial ordinary Workflow run overlapped the end of static validation; it
 is retained separately and excluded, with a fresh run taken after other captures.
@@ -158,6 +166,17 @@ or per-method performance clock. ECS count windows follow the completed engine's
 before/after callbacks; Core wraps its synchronous replay operation. Counter
 wrappers restore before canonical renderer teardown so a restored old planner
 wrapper cannot outlive probe disposal. Counter timings are not used.
+
+Review found that the first ECS count setup installed its planner wrapper before
+the fixture's existing lightweight probe. That order could restore an inactive
+counter wrapper during canonical probe disposal. Both original count captures
+were discarded and retained separately. The corrected counter installs after
+fixture readiness, restores before canonical teardown, and explicitly verifies
+that no owned method wrapper survives after teardown in Workflow, Core and ECS.
+Only count captures were rerun; ordinary/phase data was unchanged. A first rerun
+also discovered an archived producer under the private test directory and failed
+before capture. Its snapshot was renamed to a non-test filename; that failure
+log is retained separately.
 
 All added label call counts match the independent counters at every one of
 40 Workflow and 48 paired steps. Ordinary/phase/count runs also match actual

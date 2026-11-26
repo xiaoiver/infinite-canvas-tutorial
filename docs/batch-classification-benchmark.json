@@ -15,13 +15,17 @@
   },
   "qualifiedOrder": [
     "workflow-phases",
-    "workflow-counts",
-    "strokes-counts",
     "strokes-phases",
     "strokes-ordinary",
-    "workflow-ordinary"
+    "workflow-ordinary",
+    "workflow-counts",
+    "strokes-counts"
   ],
-  "excluded": "workflow-ordinary-initial-overlap: overlapped the end of static validation, retained separately and replaced with a fresh ordinary capture.",
+  "excluded": [
+    "workflow-ordinary-initial-overlap: overlapped the end of static validation; replaced with a fresh ordinary capture.",
+    "workflow-counts-initial-install-order and strokes-counts-initial-install-order: initial ECS counter installation order; discarded and rerun with late installation and post-teardown assertions.",
+    "workflow-counts-discovery-error: rerun selected an archived producer; failed before capture; archived producers renamed to non-test snapshots."
+  ],
   "ordinary": [
     {
       "kind": "workflow",
@@ -1259,5 +1263,15 @@
       "comparisons": ["ordinary vs phases", "ordinary vs independent counts"],
       "result": "exact targets, views, surface, visible membership, native counters, CPU geometry work and live resources; all conditional phase call counts independently matched; markers retained"
     }
-  ]
+  ],
+  "countSource": {
+    "head": "1c86975849e56fb5689d0ebfc14cc9bd2f13703f",
+    "tree": "da40d19f6abac378f867df3f6cedc20a51c302bd",
+    "dirty": false
+  },
+  "codeParity": [
+    "docs/batch-classification-benchmark.json",
+    "docs/batch-classification.md"
+  ],
+  "counterRestoration": "Explicit post-canonical-teardown method-wrapper assertion passes for Workflow, Core and ECS."
 }
