@@ -54,10 +54,11 @@ const harness = {
       glsl_compile(program.preprocessedFrag, 'fragment', true),
     ];
   },
-  async compileStrokePages() {
+  async compileStrokePages(batched = true) {
     await init();
     const defines =
-      '#define USE_STROKE_BATCH\n#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
+      (batched ? '#define USE_STROKE_BATCH\n' : '') +
+      '#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
     return [
       ['core', coreStrokeVert, coreStrokeFrag],
       ['ecs', ecsStrokeVert, ecsStrokeFrag],

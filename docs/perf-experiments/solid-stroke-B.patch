@@ -1,0 +1,160 @@
+diff --git a/.changeset/solid-stroke-streams.md b/.changeset/solid-stroke-streams.md
+new file mode 100644
+index 0000000..ded8f6c
+--- /dev/null
++++ b/.changeset/solid-stroke-streams.md
+@@ -0,0 +1,6 @@
++---
++'@infinite-canvas-tutorial/core': patch
++'@infinite-canvas-tutorial/ecs': patch
++---
++
++Specialize eligible solid stroke page shaders to omit unused dash calculations in both renderers.
+diff --git a/__tests__/browser/fixtures/shader-compiler.ts b/__tests__/browser/fixtures/shader-compiler.ts
+index fcf86c4..44ff1a0 100644
+--- a/__tests__/browser/fixtures/shader-compiler.ts
++++ b/__tests__/browser/fixtures/shader-compiler.ts
+@@ -57 +57 @@ const harness = {
+-  async compileStrokePages() {
++  async compileStrokePages(batched = true) {
+@@ -60 +60,2 @@ const harness = {
+-      '#define USE_STROKE_BATCH\n#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
++      (batched ? '#define USE_STROKE_BATCH\n' : '') +
++      '#define USE_ADAPTIVE_PATH\nprecision highp float;\n';
+diff --git a/__tests__/browser/shader-compiler.spec.ts b/__tests__/browser/shader-compiler.spec.ts
+index ce39e0c..6d02a08 100644
+--- a/__tests__/browser/shader-compiler.spec.ts
++++ b/__tests__/browser/shader-compiler.spec.ts
+@@ -86,14 +86,18 @@ test('surfaces compiler errors and can retry with the bundled WASM', async ({
+-test('compiles Core and ECS stroke page shaders through the WebGPU path', async ({
+-  page,
+-}) => {
+-  await page.goto('/shader-compiler.html');
+-  await page.waitForFunction(() => !!window.shaderCompilerRegression);
+-  const programs = await page.evaluate(() =>
+-    window.shaderCompilerRegression.compileStrokePages(),
+-  );
+-  expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
+-  for (const program of programs) {
+-    expect(program.vertex).toContain('@vertex');
+-    expect(program.fragment).toContain('@fragment');
+-  }
+-});
++for (const batched of [false, true])
++  test(`compiles Core and ECS ${
++    batched ? 'solid page' : 'full stroke'
++  } shaders through the WebGPU path`, async ({ page }) => {
++    await page.goto('/shader-compiler.html');
++    await page.waitForFunction(() => !!window.shaderCompilerRegression);
++    const programs = await page.evaluate(
++      (batched) => window.shaderCompilerRegression.compileStrokePages(batched),
++      batched,
++    );
++    expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
++    for (const program of programs) {
++      expect(program.vertex).toContain('@vertex');
++      expect(program.fragment).toContain('@fragment');
++      if (batched) expect(program.vertex).not.toContain('a_Travel');
++      else expect(program.vertex).toContain('a_Travel');
++    }
++  });
+diff --git a/__tests__/browser/stroke-batching.spec.ts b/__tests__/browser/stroke-batching.spec.ts
+index 7c49165..367a6af 100644
+--- a/__tests__/browser/stroke-batching.spec.ts
++++ b/__tests__/browser/stroke-batching.spec.ts
+@@ -286,0 +287,36 @@ for (const backend of ['core', 'ecs'] as const) {
++    test('solid and dashed edits switch streams without changing full-path pixels', async ({
++      page,
++    }) => {
++      await scene(page, backend, 1);
++      await enable(page, backend, true);
++      for (const [dashed, offset] of [
++        [false, 0],
++        [true, 3],
++        [false, 27],
++        [true, -4],
++        [false, 0],
++      ] as const) {
++        await page.evaluate(
++          async ({ backend, dashed, offset }) => {
++            const patch = {
++              d: 'M0 0L120 0L120 80',
++              strokeWidth: 6,
++              strokeDasharray: dashed ? [9, 6] : [],
++              strokeDashoffset: offset,
++            };
++            if (backend === 'core') window.corePathInstances.mutate(0, patch);
++            else
++              await window.polylineLOD.patch({
++                ...patch,
++                strokeDasharray: patch.strokeDasharray.join(' '),
++              });
++          },
++          { backend, dashed, offset },
++        );
++        expect((await state(page, backend)).strokePages).toBe(dashed ? 0 : 1);
++        const optimized = await page.locator('canvas').screenshot();
++        await enable(page, backend, false);
++        compare(await page.locator('canvas').screenshot(), optimized);
++        await enable(page, backend, true);
++      }
++    });
+diff --git a/packages/core/src/shaders/polyline.ts b/packages/core/src/shaders/polyline.ts
+index a4188ca..e19158e 100755
+--- a/packages/core/src/shaders/polyline.ts
++++ b/packages/core/src/shaders/polyline.ts
+@@ -56,0 +57 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
++#ifndef USE_STROKE_BATCH
+@@ -57,0 +59 @@ layout(location = ${Location.TRAVEL}) in float a_Travel;
++#endif
+@@ -89,0 +92 @@ out float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -91,0 +95 @@ out float v_ScalingFactor;
++#endif
+@@ -437,0 +442 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -438,0 +444 @@ void main() {
++#endif
+@@ -441,0 +448 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -442,0 +450 @@ void main() {
++#endif
+@@ -480,0 +489 @@ in float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -482,0 +492 @@ in float v_ScalingFactor;
++#endif
+@@ -572,0 +583 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -581,0 +593 @@ void main() {
++#endif
+diff --git a/packages/ecs/src/shaders/polyline.ts b/packages/ecs/src/shaders/polyline.ts
+index 3c5d2fd..7650eee 100755
+--- a/packages/ecs/src/shaders/polyline.ts
++++ b/packages/ecs/src/shaders/polyline.ts
+@@ -58,0 +59 @@ layout(location = ${Location.VERTEX_NUM}) in float a_VertexNum;
++#ifndef USE_STROKE_BATCH
+@@ -59,0 +61 @@ layout(location = ${Location.TRAVEL}) in vec3 a_Travel;
++#endif
+@@ -92,0 +95 @@ out float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -96,0 +100 @@ out vec4 v_DashNext;
++#endif
+@@ -473,0 +478 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -498,0 +504,2 @@ void main() {
++#endif
++
+@@ -541,0 +549 @@ in float v_Type;
++#ifndef USE_STROKE_BATCH
+@@ -545,0 +554 @@ in vec4 v_DashNext;
++#endif
+@@ -570,0 +580 @@ float pixelLine(float x) {
++#ifndef USE_STROKE_BATCH
+@@ -666,0 +677 @@ vec2 dashCoverage() {
++#endif
+@@ -738,0 +750 @@ void main() {
++#ifndef USE_STROKE_BATCH
+@@ -740,0 +753,3 @@ void main() {
++#else
++  alpha = max(0.0, alpha);
++#endif

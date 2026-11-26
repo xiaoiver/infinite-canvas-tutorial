@@ -284,6 +284,42 @@ for (const backend of ['core', 'ecs'] as const) {
         await enable(page, backend, true);
       }
     });
+    test('solid and dashed edits switch streams without changing full-path pixels', async ({
+      page,
+    }) => {
+      await scene(page, backend, 1);
+      await enable(page, backend, true);
+      for (const [dashed, offset] of [
+        [false, 0],
+        [true, 3],
+        [false, 27],
+        [true, -4],
+        [false, 0],
+      ] as const) {
+        await page.evaluate(
+          async ({ backend, dashed, offset }) => {
+            const patch = {
+              d: 'M0 0L120 0L120 80',
+              strokeWidth: 6,
+              strokeDasharray: dashed ? [9, 6] : [],
+              strokeDashoffset: offset,
+            };
+            if (backend === 'core') window.corePathInstances.mutate(0, patch);
+            else
+              await window.polylineLOD.patch({
+                ...patch,
+                strokeDasharray: patch.strokeDasharray.join(' '),
+              });
+          },
+          { backend, dashed, offset },
+        );
+        expect((await state(page, backend)).strokePages).toBe(dashed ? 0 : 1);
+        const optimized = await page.locator('canvas').screenshot();
+        await enable(page, backend, false);
+        compare(await page.locator('canvas').screenshot(), optimized);
+        await enable(page, backend, true);
+      }
+    });
     test('picking, parent transforms, history and camera migration retain original paths', async ({
       page,
     }) => {

@@ -83,20 +83,23 @@ test('surfaces compiler errors and can retry with the bundled WASM', async ({
   ).toContain('@vertex');
 });
 
-test('compiles Core and ECS stroke page shaders through the WebGPU path', async ({
-  page,
-}) => {
-  await page.goto('/shader-compiler.html');
-  await page.waitForFunction(() => !!window.shaderCompilerRegression);
-  const programs = await page.evaluate(() =>
-    window.shaderCompilerRegression.compileStrokePages(),
-  );
-  expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
-  for (const program of programs) {
-    expect(program.vertex).toContain('@vertex');
-    expect(program.fragment).toContain('@fragment');
-  }
-});
+for (const batched of [false, true])
+  test(`compiles Core and ECS ${
+    batched ? 'solid page' : 'full stroke'
+  } shaders through the WebGPU path`, async ({ page }) => {
+    await page.goto('/shader-compiler.html');
+    await page.waitForFunction(() => !!window.shaderCompilerRegression);
+    const programs = await page.evaluate(
+      (batched) => window.shaderCompilerRegression.compileStrokePages(batched),
+      batched,
+    );
+    expect(programs.map((p) => p.backend)).toEqual(['core', 'ecs']);
+    for (const program of programs) {
+      expect(program.vertex).toContain('@vertex');
+      expect(program.fragment).toContain('@fragment');
+      if (!batched) expect(program.vertex).toContain('a_Travel');
+    }
+  });
 test('compiles Core and ECS image page shaders through the WebGPU path', async ({
   page,
 }) => {
