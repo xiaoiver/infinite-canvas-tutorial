@@ -19,6 +19,10 @@ export function replayStats(values) {
 }
 function rows(capture) {
   assert.equal(capture.schema, 1, 'Replay schema differs');
+  assert(
+    capture.mode === undefined,
+    'Diagnostic captures cannot qualify as ordinary timing',
+  );
   assert.equal(
     capture.source.dirty,
     false,

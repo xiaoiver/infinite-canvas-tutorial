@@ -1,3 +1,4 @@
+import { startCameraTimeline } from './camera-timeline';
 import { test, expect } from '@playwright/test';
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -28,6 +29,9 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     execFileSync('git', args, { encoding: 'utf8' }).trim();
   const capture = {
     schema: 1,
+    mode: process.env.CAMERA_TIMELINE_DIR
+      ? 'camera-timeline-diagnostic'
+      : undefined,
     workload: 'workflow-trusted-wheel',
     count,
     deltas,
@@ -51,6 +55,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       join(directory, 'workflow-input.json'),
       JSON.stringify(capture, null, 2) + '\n',
     );
+  let timeline: Awaited<ReturnType<typeof startCameraTimeline>>;
   try {
     await page.addInitScript(installProbes, { resourceStacks: false });
     await page.goto('/?imageBatching=1');
@@ -108,6 +113,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
     const originalDocument = await page.evaluate(() =>
       window.workflowBenchmark.replayDocument(),
     );
+    timeline = await startCameraTimeline(page, 'workflow');
     for (let index = 0; index < 2; index++) {
       await page.locator('#overview').click();
       await page.evaluate(() => window.workflowBenchmark.collect(2, 0));
@@ -170,6 +176,17 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
         [],
       );
     }
+    await timeline?.stop(
+      capture.rounds.flatMap((r) =>
+        r.steps.flatMap((s, i) =>
+          s.frames.map((f: any, j: number) => ({
+            id: `workflow/${r.index}/${i}/${j}`,
+            startedAt: f.startedAt,
+            completedAt: f.completedAt,
+          })),
+        ),
+      ),
+    );
     expect(
       await page.evaluate(() => window.workflowBenchmark.replayDocument()),
     ).toEqual(originalDocument);
@@ -205,6 +222,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       });
       console.log(
         JSON.stringify({
+          mode: capture.mode,
           round: round.index,
           count,
           events: round.steps.length,
@@ -227,6 +245,7 @@ test('trusted Workflow wheel path preserves the document and GPU ownership', asy
       );
     }
   } finally {
+    await timeline?.abort();
     await page.close();
   }
 });
