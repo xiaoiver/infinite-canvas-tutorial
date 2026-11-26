@@ -98,6 +98,29 @@ for (const [backend, mode] of [
           expect(frame.data.phases['native.draw']?.calls ?? 0).toBe(
             frame.data.native.drawcalls,
           );
+          if (i === 1) {
+            expect(
+              Object.keys(frame.data.phases).filter((name) =>
+                /^(material\.|channel\.|batch\.(resolve|key|collect|validate|append|instances|glyphs))/.test(
+                  name,
+                ),
+              ),
+            ).toEqual([]);
+          }
+          if (i === 3) {
+            expect(frame.data.phases['material.path']?.calls).toBeGreaterThan(
+              0,
+            );
+            expect(frame.data.phases['material.stroke']?.calls).toBeGreaterThan(
+              0,
+            );
+            if (backend === 'ecs') {
+              expect(frame.data.phases['batch.resolve']?.calls).toBeGreaterThan(
+                0,
+              );
+              expect(frame.data.phases['batch.key']?.calls).toBeGreaterThan(0);
+            }
+          }
         }
       }
       for (const frame of row.frames) {

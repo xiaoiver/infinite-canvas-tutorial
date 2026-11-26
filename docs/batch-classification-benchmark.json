@@ -1,0 +1,1277 @@
+{
+  "schema": 1,
+  "purpose": "Diagnostic-only classification attribution; no production runtime optimization or speedup comparison.",
+  "measuredSource": {
+    "head": "bf1a274d46d8a122d74854c88944dc81b6dc4cdf",
+    "tree": "781760fd1b6910ef5c5bbd525b983ae1317c8acf",
+    "dirty": false
+  },
+  "base": "5be066d06576b0325721b9fed04f709401ab9b19",
+  "runtime": {
+    "node": "24.22.3",
+    "chromium": "140.0.7339.186",
+    "renderer": "SwiftShader",
+    "dpr": 1
+  },
+  "qualifiedOrder": [
+    "workflow-phases",
+    "strokes-phases",
+    "strokes-ordinary",
+    "workflow-ordinary",
+    "workflow-counts",
+    "strokes-counts"
+  ],
+  "excluded": [
+    "workflow-ordinary-initial-overlap: overlapped the end of static validation; replaced with a fresh ordinary capture.",
+    "workflow-counts-initial-install-order and strokes-counts-initial-install-order: initial ECS counter installation order; discarded and rerun with late installation and post-teardown assertions.",
+    "workflow-counts-discovery-error: rerun selected an archived producer; failed before capture; archived producers renamed to non-test snapshots."
+  ],
+  "ordinary": [
+    {
+      "kind": "workflow",
+      "backend": "ecs",
+      "round": 0,
+      "engineMs": {
+        "p50": 14.700000000186265,
+        "p95": 76.70000000018626,
+        "max": 182.40000000037253,
+        "total": 784.6000000014901
+      },
+      "completionMs": {
+        "p50": 15,
+        "p95": 76.90000000037253,
+        "max": 182.90000000037253,
+        "total": 792.2000000011176
+      },
+      "observationMs": {
+        "p50": 3.2999999998137355,
+        "p95": 7.6000000005587935,
+        "max": 7.7000000001862645,
+        "total": 77.29999999981374
+      },
+      "drawcalls": [
+        19, 15, 9, 7, 5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 5, 7, 9, 15, 19, 22
+      ],
+      "indices": [
+        597120, 443688, 290880, 164436, 103518, 70266, 41298, 28602, 20898,
+        15516, 20898, 34092, 46788, 75756, 106998, 166716, 290880, 444948,
+        597360, 633846
+      ],
+      "arrayVertices": [
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+      ],
+      "visible": [
+        {
+          "cards": 2220,
+          "edges": 2200,
+          "other": 0
+        },
+        {
+          "cards": 1653,
+          "edges": 1634,
+          "other": 0
+        },
+        {
+          "cards": 1005,
+          "edges": 1020,
+          "other": 0
+        },
+        {
+          "cards": 621,
+          "edges": 572,
+          "other": 0
+        },
+        {
+          "cards": 378,
+          "edges": 360,
+          "other": 0
+        },
+        {
+          "cards": 231,
+          "edges": 224,
+          "other": 0
+        },
+        {
+          "cards": 133,
+          "edges": 130,
+          "other": 0
+        },
+        {
+          "cards": 102,
+          "edges": 90,
+          "other": 0
+        },
+        {
+          "cards": 48,
+          "edges": 48,
+          "other": 0
+        },
+        {
+          "cards": 36,
+          "edges": 36,
+          "other": 0
+        },
+        {
+          "cards": 48,
+          "edges": 48,
+          "other": 0
+        },
+        {
+          "cards": 102,
+          "edges": 90,
+          "other": 0
+        },
+        {
+          "cards": 133,
+          "edges": 130,
+          "other": 0
+        },
+        {
+          "cards": 231,
+          "edges": 224,
+          "other": 0
+        },
+        {
+          "cards": 378,
+          "edges": 360,
+          "other": 0
+        },
+        {
+          "cards": 621,
+          "edges": 572,
+          "other": 0
+        },
+        {
+          "cards": 1005,
+          "edges": 1020,
+          "other": 0
+        },
+        {
+          "cards": 1653,
+          "edges": 1634,
+          "other": 0
+        },
+        {
+          "cards": 2220,
+          "edges": 2200,
+          "other": 0
+        },
+        {
+          "cards": 2400,
+          "edges": 2400,
+          "other": 1
+        }
+      ],
+      "allocatedBufferBytes": [
+        2989012, 2227508, 1450652, 834100, 528012, 351956, 215732, 155684,
+        120260, 94772, 120260, 182036, 242084, 378308, 534476, 834804, 1450652,
+        2223316, 2990164, 3170524
+      ],
+      "nativeTotals": {
+        "bufferCreates": 177,
+        "bufferDeletes": 177,
+        "bufferAllocations": 177,
+        "drawcalls": 159,
+        "indices": 4194504,
+        "arrayVertices": 80,
+        "bufferUploads": 326,
+        "bufferBytes": 21113128,
+        "uniformUploads": 89,
+        "uniformBytes": 12672
+      }
+    },
+    {
+      "kind": "workflow",
+      "backend": "ecs",
+      "round": 1,
+      "engineMs": {
+        "p50": 17.799999999813735,
+        "p95": 75.5,
+        "max": 82.29999999981374,
+        "total": 558.1999999973923
+      },
+      "completionMs": {
+        "p50": 18,
+        "p95": 75.70000000018626,
+        "max": 82.59999999962747,
+        "total": 567.4999999990687
+      },
+      "observationMs": {
+        "p50": 3.2000000001862645,
+        "p95": 4.099999999627471,
+        "max": 4.400000000372529,
+        "total": 62.10000000055879
+      },
+      "drawcalls": [
+        19, 15, 9, 7, 5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 5, 7, 9, 15, 19, 22
+      ],
+      "indices": [
+        597360, 444948, 290880, 166716, 106998, 70266, 41298, 28602, 20898,
+        15516, 20898, 34092, 46788, 75756, 106998, 166716, 290880, 444948,
+        597360, 633846
+      ],
+      "arrayVertices": [
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4
+      ],
+      "visible": [
+        {
+          "cards": 2220,
+          "edges": 2200,
+          "other": 0
+        },
+        {
+          "cards": 1653,
+          "edges": 1634,
+          "other": 0
+        },
+        {
+          "cards": 1005,
+          "edges": 1020,
+          "other": 0
+        },
+        {
+          "cards": 621,
+          "edges": 572,
+          "other": 0
+        },
+        {
+          "cards": 378,
+          "edges": 360,
+          "other": 0
+        },
+        {
+          "cards": 231,
+          "edges": 224,
+          "other": 0
+        },
+        {
+          "cards": 133,
+          "edges": 130,
+          "other": 0
+        },
+        {
+          "cards": 102,
+          "edges": 90,
+          "other": 0
+        },
+        {
+          "cards": 48,
+          "edges": 48,
+          "other": 0
+        },
+        {
+          "cards": 36,
+          "edges": 36,
+          "other": 0
+        },
+        {
+          "cards": 48,
+          "edges": 48,
+          "other": 0
+        },
+        {
+          "cards": 102,
+          "edges": 90,
+          "other": 0
+        },
+        {
+          "cards": 133,
+          "edges": 130,
+          "other": 0
+        },
+        {
+          "cards": 231,
+          "edges": 224,
+          "other": 0
+        },
+        {
+          "cards": 378,
+          "edges": 360,
+          "other": 0
+        },
+        {
+          "cards": 621,
+          "edges": 572,
+          "other": 0
+        },
+        {
+          "cards": 1005,
+          "edges": 1020,
+          "other": 0
+        },
+        {
+          "cards": 1653,
+          "edges": 1634,
+          "other": 0
+        },
+        {
+          "cards": 2220,
+          "edges": 2200,
+          "other": 0
+        },
+        {
+          "cards": 2400,
+          "edges": 2400,
+          "other": 1
+        }
+      ],
+      "allocatedBufferBytes": [
+        2990164, 2233556, 1450652, 845044, 544716, 351956, 215732, 155684,
+        120260, 94772, 120260, 182036, 242084, 378308, 534476, 834804, 1450652,
+        2223316, 2990164, 3170524
+      ],
+      "nativeTotals": {
+        "bufferCreates": 177,
+        "bufferDeletes": 177,
+        "bufferAllocations": 177,
+        "drawcalls": 159,
+        "indices": 4201764,
+        "arrayVertices": 80,
+        "bufferUploads": 326,
+        "bufferBytes": 21147976,
+        "uniformUploads": 89,
+        "uniformBytes": 12672
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "core",
+      "round": 0,
+      "engineMs": {
+        "p50": 3.8999999994412065,
+        "p95": 45.799999999813735,
+        "max": 45.799999999813735,
+        "total": 149.29999999981374
+      },
+      "completionMs": {
+        "p50": 3.8999999994412065,
+        "p95": 45.799999999813735,
+        "max": 45.799999999813735,
+        "total": 149.5
+      },
+      "observationMs": {
+        "p50": 0.19999999925494194,
+        "p95": 0.599999999627471,
+        "max": 0.599999999627471,
+        "total": 2.3999999994412065
+      },
+      "drawcalls": [0, 0, 11, 7, 4, 4, 4, 4, 11, 1, 11, 0],
+      "indices": [
+        0, 0, 999000, 549450, 294525, 242760, 235620, 242760, 999000, 0, 999000,
+        0
+      ],
+      "arrayVertices": [0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0],
+      "visible": [
+        2400, 2400, 2400, 1320, 660, 544, 528, 544, 2400, 0, 2400, 2400
+      ],
+      "allocatedBufferBytes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "nativeTotals": {
+        "bufferCreates": 95,
+        "bufferDeletes": 95,
+        "bufferAllocations": 95,
+        "drawcalls": 57,
+        "indices": 4562115,
+        "arrayVertices": 36,
+        "bufferUploads": 125,
+        "bufferBytes": 15208704,
+        "uniformUploads": 47,
+        "uniformBytes": 5984,
+        "arrayBufferBinds": 470,
+        "elementBufferBinds": 49,
+        "vertexAttribPointers": 393
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "core",
+      "round": 1,
+      "engineMs": {
+        "p50": 3.900000000372529,
+        "p95": 11.800000000745058,
+        "max": 11.800000000745058,
+        "total": 58.799999999813735
+      },
+      "completionMs": {
+        "p50": 3.900000000372529,
+        "p95": 11.800000000745058,
+        "max": 11.800000000745058,
+        "total": 58.799999999813735
+      },
+      "observationMs": {
+        "p50": 0.09999999962747097,
+        "p95": 0.20000000018626451,
+        "max": 0.20000000018626451,
+        "total": 1.3999999985098839
+      },
+      "drawcalls": [0, 0, 11, 7, 4, 4, 4, 4, 11, 1, 11, 0],
+      "indices": [
+        0, 0, 999000, 549450, 294525, 242760, 235620, 242760, 999000, 0, 999000,
+        0
+      ],
+      "arrayVertices": [0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0],
+      "visible": [
+        2400, 2400, 2400, 1320, 660, 544, 528, 544, 2400, 0, 2400, 2400
+      ],
+      "allocatedBufferBytes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "nativeTotals": {
+        "bufferCreates": 95,
+        "bufferDeletes": 95,
+        "bufferAllocations": 95,
+        "drawcalls": 57,
+        "indices": 4562115,
+        "arrayVertices": 36,
+        "bufferUploads": 125,
+        "bufferBytes": 15208704,
+        "uniformUploads": 47,
+        "uniformBytes": 5984,
+        "arrayBufferBinds": 470,
+        "elementBufferBinds": 49,
+        "vertexAttribPointers": 393
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "ecs",
+      "round": 0,
+      "engineMs": {
+        "p50": 15.899999999441206,
+        "p95": 85.70000000018626,
+        "max": 85.70000000018626,
+        "total": 375.1000000005588
+      },
+      "completionMs": {
+        "p50": 29.799999999813735,
+        "p95": 89.20000000018626,
+        "max": 89.20000000018626,
+        "total": 493.80000000074506
+      },
+      "observationMs": {
+        "p50": 0.5,
+        "p95": 1.2000000001862645,
+        "max": 1.2000000001862645,
+        "total": 7.1000000005587935
+      },
+      "drawcalls": [0, 0, 11, 7, 4, 4, 4, 4, 11, 1, 11, 0],
+      "indices": [
+        0, 0, 999000, 549450, 294525, 242760, 235620, 242760, 999000, 0, 999000,
+        0
+      ],
+      "arrayVertices": [0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0],
+      "visible": [
+        2400, 2400, 2400, 1320, 660, 544, 528, 544, 2400, 0, 2400, 2400
+      ],
+      "allocatedBufferBytes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "nativeTotals": {
+        "bufferCreates": 95,
+        "bufferDeletes": 95,
+        "bufferAllocations": 95,
+        "drawcalls": 57,
+        "indices": 4562115,
+        "arrayVertices": 36,
+        "bufferUploads": 116,
+        "bufferBytes": 17108488,
+        "uniformUploads": 38,
+        "uniformBytes": 5440,
+        "arrayBufferBinds": 470,
+        "elementBufferBinds": 49,
+        "vertexAttribPointers": 393
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "ecs",
+      "round": 1,
+      "engineMs": {
+        "p50": 13.5,
+        "p95": 32.60000000055879,
+        "max": 32.60000000055879,
+        "total": 177.69999999925494
+      },
+      "completionMs": {
+        "p50": 18.40000000037253,
+        "p95": 45.799999999813735,
+        "max": 45.799999999813735,
+        "total": 261.29999999981374
+      },
+      "observationMs": {
+        "p50": 0.40000000037252903,
+        "p95": 0.8000000007450581,
+        "max": 0.8000000007450581,
+        "total": 5.5
+      },
+      "drawcalls": [0, 0, 11, 7, 4, 4, 4, 4, 11, 1, 11, 0],
+      "indices": [
+        0, 0, 999000, 549450, 294525, 242760, 235620, 242760, 999000, 0, 999000,
+        0
+      ],
+      "arrayVertices": [0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0],
+      "visible": [
+        2400, 2400, 2400, 1320, 660, 544, 528, 544, 2400, 0, 2400, 2400
+      ],
+      "allocatedBufferBytes": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "nativeTotals": {
+        "bufferCreates": 95,
+        "bufferDeletes": 95,
+        "bufferAllocations": 95,
+        "drawcalls": 57,
+        "indices": 4562115,
+        "arrayVertices": 36,
+        "bufferUploads": 116,
+        "bufferBytes": 17108488,
+        "uniformUploads": 38,
+        "uniformBytes": 5440,
+        "arrayBufferBinds": 470,
+        "elementBufferBinds": 49,
+        "vertexAttribPointers": 393
+      }
+    }
+  ],
+  "phaseDiagnostic": [
+    {
+      "kind": "workflow",
+      "backend": "ecs",
+      "round": 0,
+      "frames": 20,
+      "engineTotalMs": 787.5999999996275,
+      "measuredExclusiveMs": 759.5999999996275,
+      "phases": {
+        "stroke.geometry": {
+          "calls": 69,
+          "inclusiveMs": 149.69999999459833,
+          "exclusiveMs": 144.09999999869615
+        },
+        "path.precision": {
+          "calls": 69,
+          "inclusiveMs": 103.60000000428408,
+          "exclusiveMs": 103.60000000428408
+        },
+        "batch.plan": {
+          "calls": 40,
+          "inclusiveMs": 344.59999999962747,
+          "exclusiveMs": 88.00000000186265
+        },
+        "drawcall.submit": {
+          "calls": 139,
+          "inclusiveMs": 352.5,
+          "exclusiveMs": 83.30000000074506
+        },
+        "batch.key": {
+          "calls": 60196,
+          "inclusiveMs": 180.50000001862645,
+          "exclusiveMs": 66.10000000335276
+        },
+        "material.stroke": {
+          "calls": 14992,
+          "inclusiveMs": 57.79999999888241,
+          "exclusiveMs": 57.79999999888241
+        },
+        "material.image": {
+          "calls": 30210,
+          "inclusiveMs": 47.70000001322478,
+          "exclusiveMs": 47.70000001322478
+        },
+        "visibility.cull": {
+          "calls": 20,
+          "inclusiveMs": 43.69999999925494,
+          "exclusiveMs": 43.69999999925494
+        },
+        "batch.append.image": {
+          "calls": 15198,
+          "inclusiveMs": 35.3999999910593,
+          "exclusiveMs": 35.3999999910593
+        },
+        "batch.resolve": {
+          "calls": 30211,
+          "inclusiveMs": 213.0000000167638,
+          "exclusiveMs": 32.499999998137355
+        },
+        "render.camera": {
+          "calls": 20,
+          "inclusiveMs": 714.3000000016764,
+          "exclusiveMs": 15.099999998696148
+        },
+        "stroke.prepare": {
+          "calls": 69,
+          "inclusiveMs": 113.8000000026077,
+          "exclusiveMs": 10.19999999832362
+        },
+        "native.buffer": {
+          "calls": 2271,
+          "inclusiveMs": 9.99999999627471,
+          "exclusiveMs": 9.99999999627471
+        },
+        "material.path": {
+          "calls": 14992,
+          "inclusiveMs": 8.900000003166497,
+          "exclusiveMs": 8.900000003166497
+        },
+        "batch.instances.default": {
+          "calls": 30210,
+          "inclusiveMs": 7.799999991431832,
+          "exclusiveMs": 7.799999991431832
+        },
+        "native.state": {
+          "calls": 1703,
+          "inclusiveMs": 2.000000001862645,
+          "exclusiveMs": 2.000000001862645
+        },
+        "camera.derive": {
+          "calls": 20,
+          "inclusiveMs": 1.4999999990686774,
+          "exclusiveMs": 1.4999999990686774
+        },
+        "native.texture": {
+          "calls": 991,
+          "inclusiveMs": 1.1000000005587935,
+          "exclusiveMs": 1.1000000005587935
+        },
+        "native.pass": {
+          "calls": 100,
+          "inclusiveMs": 0.5000000009313226,
+          "exclusiveMs": 0.5000000009313226
+        },
+        "native.draw": {
+          "calls": 159,
+          "inclusiveMs": 0.20000000018626451,
+          "exclusiveMs": 0.20000000018626451
+        },
+        "bounds.derive": {
+          "calls": 20,
+          "inclusiveMs": 0.09999999962747097,
+          "exclusiveMs": 0.09999999962747097
+        },
+        "order.reconcile": {
+          "calls": 20,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "order.rank": {
+          "calls": 20,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "batch.submit": {
+          "calls": 20,
+          "inclusiveMs": 352.5,
+          "exclusiveMs": 0
+        },
+        "channel.shadow": {
+          "calls": 1,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "channel.stroke": {
+          "calls": 1,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        }
+      }
+    },
+    {
+      "kind": "workflow",
+      "backend": "ecs",
+      "round": 1,
+      "frames": 20,
+      "engineTotalMs": 718.500000002794,
+      "measuredExclusiveMs": 685.7000000020489,
+      "phases": {
+        "batch.plan": {
+          "calls": 40,
+          "inclusiveMs": 388.9000000022352,
+          "exclusiveMs": 88.39999999850988
+        },
+        "stroke.geometry": {
+          "calls": 69,
+          "inclusiveMs": 98.80000000167638,
+          "exclusiveMs": 79.99999999906868
+        },
+        "material.stroke": {
+          "calls": 14992,
+          "inclusiveMs": 79.0000000121072,
+          "exclusiveMs": 79.0000000121072
+        },
+        "drawcall.submit": {
+          "calls": 139,
+          "inclusiveMs": 220.59999999869615,
+          "exclusiveMs": 75.800000006333
+        },
+        "batch.key": {
+          "calls": 60196,
+          "inclusiveMs": 209.50000001583248,
+          "exclusiveMs": 65.90000001713634
+        },
+        "material.image": {
+          "calls": 30210,
+          "inclusiveMs": 55.399999984540045,
+          "exclusiveMs": 55.399999984540045
+        },
+        "visibility.cull": {
+          "calls": 20,
+          "inclusiveMs": 50.299999999813735,
+          "exclusiveMs": 50.299999999813735
+        },
+        "batch.resolve": {
+          "calls": 30211,
+          "inclusiveMs": 252.80000000353903,
+          "exclusiveMs": 43.29999998770654
+        },
+        "batch.append.image": {
+          "calls": 15198,
+          "inclusiveMs": 39.399999998509884,
+          "exclusiveMs": 39.399999998509884
+        },
+        "path.precision": {
+          "calls": 69,
+          "inclusiveMs": 31.5,
+          "exclusiveMs": 31.5
+        },
+        "render.camera": {
+          "calls": 20,
+          "inclusiveMs": 634.4000000022352,
+          "exclusiveMs": 22.799999999813735
+        },
+        "native.buffer": {
+          "calls": 2271,
+          "inclusiveMs": 18.30000000167638,
+          "exclusiveMs": 18.30000000167638
+        },
+        "material.path": {
+          "calls": 14992,
+          "inclusiveMs": 9.20000000204891,
+          "exclusiveMs": 9.20000000204891
+        },
+        "stroke.prepare": {
+          "calls": 69,
+          "inclusiveMs": 40.49999999720603,
+          "exclusiveMs": 8.999999997206032
+        },
+        "batch.instances.default": {
+          "calls": 30210,
+          "inclusiveMs": 8.30000000167638,
+          "exclusiveMs": 8.30000000167638
+        },
+        "native.state": {
+          "calls": 1703,
+          "inclusiveMs": 5.799999997019768,
+          "exclusiveMs": 5.799999997019768
+        },
+        "native.texture": {
+          "calls": 991,
+          "inclusiveMs": 0.8999999994412065,
+          "exclusiveMs": 0.8999999994412065
+        },
+        "camera.derive": {
+          "calls": 20,
+          "inclusiveMs": 0.7000000011175871,
+          "exclusiveMs": 0.7000000011175871
+        },
+        "native.pass": {
+          "calls": 100,
+          "inclusiveMs": 0.6000000005587935,
+          "exclusiveMs": 0.6000000005587935
+        },
+        "native.draw": {
+          "calls": 159,
+          "inclusiveMs": 0.5999999986961484,
+          "exclusiveMs": 0.5999999986961484
+        },
+        "order.reconcile": {
+          "calls": 20,
+          "inclusiveMs": 0.2999999988824129,
+          "exclusiveMs": 0.2999999988824129
+        },
+        "batch.submit": {
+          "calls": 20,
+          "inclusiveMs": 220.7999999988824,
+          "exclusiveMs": 0.20000000018626451
+        },
+        "order.rank": {
+          "calls": 20,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "bounds.derive": {
+          "calls": 20,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "channel.shadow": {
+          "calls": 1,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "channel.stroke": {
+          "calls": 1,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        }
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "core",
+      "round": 0,
+      "frames": 12,
+      "engineTotalMs": 161,
+      "measuredExclusiveMs": 159.79999999981374,
+      "phases": {
+        "path.precision": {
+          "calls": 48,
+          "inclusiveMs": 55.40000000037253,
+          "exclusiveMs": 55.40000000037253
+        },
+        "stroke.geometry": {
+          "calls": 38,
+          "inclusiveMs": 43.69999999832362,
+          "exclusiveMs": 41.10000000242144
+        },
+        "material.stroke": {
+          "calls": 25143,
+          "inclusiveMs": 16.500000001862645,
+          "exclusiveMs": 16.500000001862645
+        },
+        "engine.render": {
+          "calls": 12,
+          "inclusiveMs": 159.79999999981374,
+          "exclusiveMs": 15.5
+        },
+        "batch.plan": {
+          "calls": 9,
+          "inclusiveMs": 38.59999999869615,
+          "exclusiveMs": 14
+        },
+        "batch.validate.stroke": {
+          "calls": 8389,
+          "inclusiveMs": 14.699999999254942,
+          "exclusiveMs": 5.599999998696148
+        },
+        "drawcall.submit": {
+          "calls": 48,
+          "inclusiveMs": 104.79999999981374,
+          "exclusiveMs": 3.499999998137355
+        },
+        "native.buffer": {
+          "calls": 1119,
+          "inclusiveMs": 3.0999999959021807,
+          "exclusiveMs": 3.0999999959021807
+        },
+        "material.path": {
+          "calls": 8396,
+          "inclusiveMs": 2.3999999975785613,
+          "exclusiveMs": 2.3999999975785613
+        },
+        "stroke.prepare": {
+          "calls": 48,
+          "inclusiveMs": 57.00000000279397,
+          "exclusiveMs": 1.6000000024214387
+        },
+        "native.state": {
+          "calls": 654,
+          "inclusiveMs": 0.8000000007450581,
+          "exclusiveMs": 0.8000000007450581
+        },
+        "batch.submit": {
+          "calls": 9,
+          "inclusiveMs": 143.70000000018626,
+          "exclusiveMs": 0.30000000167638063
+        },
+        "native.pass": {
+          "calls": 9,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "native.draw": {
+          "calls": 57,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        }
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "core",
+      "round": 1,
+      "frames": 12,
+      "engineTotalMs": 74.79999999888241,
+      "measuredExclusiveMs": 74.5,
+      "phases": {
+        "stroke.geometry": {
+          "calls": 38,
+          "inclusiveMs": 18.399999998509884,
+          "exclusiveMs": 14.70000000204891
+        },
+        "material.stroke": {
+          "calls": 25143,
+          "inclusiveMs": 11.70000000204891,
+          "exclusiveMs": 11.70000000204891
+        },
+        "engine.render": {
+          "calls": 12,
+          "inclusiveMs": 74.5,
+          "exclusiveMs": 11.099999998696148
+        },
+        "batch.plan": {
+          "calls": 9,
+          "inclusiveMs": 30.500000000931323,
+          "exclusiveMs": 10.499999999068677
+        },
+        "path.precision": {
+          "calls": 48,
+          "inclusiveMs": 7.7000000001862645,
+          "exclusiveMs": 7.7000000001862645
+        },
+        "batch.validate.stroke": {
+          "calls": 8389,
+          "inclusiveMs": 12.999999997206032,
+          "exclusiveMs": 6.099999996833503
+        },
+        "native.buffer": {
+          "calls": 1119,
+          "inclusiveMs": 4.79999999795109,
+          "exclusiveMs": 4.79999999795109
+        },
+        "drawcall.submit": {
+          "calls": 48,
+          "inclusiveMs": 31.90000000037253,
+          "exclusiveMs": 2.900000002235174
+        },
+        "material.path": {
+          "calls": 8396,
+          "inclusiveMs": 2.1000000024214387,
+          "exclusiveMs": 2.1000000024214387
+        },
+        "stroke.prepare": {
+          "calls": 48,
+          "inclusiveMs": 8.799999998882413,
+          "exclusiveMs": 1.0999999986961484
+        },
+        "native.state": {
+          "calls": 654,
+          "inclusiveMs": 1.0000000009313226,
+          "exclusiveMs": 1.0000000009313226
+        },
+        "native.draw": {
+          "calls": 57,
+          "inclusiveMs": 0.39999999944120646,
+          "exclusiveMs": 0.39999999944120646
+        },
+        "native.pass": {
+          "calls": 9,
+          "inclusiveMs": 0.20000000018626451,
+          "exclusiveMs": 0.20000000018626451
+        },
+        "batch.submit": {
+          "calls": 9,
+          "inclusiveMs": 62.60000000055879,
+          "exclusiveMs": 0.19999999925494194
+        }
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "ecs",
+      "round": 0,
+      "frames": 12,
+      "engineTotalMs": 401.7000000011176,
+      "measuredExclusiveMs": 332.39999999757856,
+      "phases": {
+        "path.precision": {
+          "calls": 48,
+          "inclusiveMs": 85.50000000093132,
+          "exclusiveMs": 85.50000000093132
+        },
+        "stroke.geometry": {
+          "calls": 38,
+          "inclusiveMs": 81.90000000037253,
+          "exclusiveMs": 76.80000000074506
+        },
+        "material.stroke": {
+          "calls": 8396,
+          "inclusiveMs": 39.60000000055879,
+          "exclusiveMs": 39.60000000055879
+        },
+        "batch.plan": {
+          "calls": 18,
+          "inclusiveMs": 115.20000000018626,
+          "exclusiveMs": 28.799999997019768
+        },
+        "batch.key": {
+          "calls": 16792,
+          "inclusiveMs": 74.09999999869615,
+          "exclusiveMs": 28.299999993294477
+        },
+        "visibility.cull": {
+          "calls": 12,
+          "inclusiveMs": 18.999999999068677,
+          "exclusiveMs": 18.999999999068677
+        },
+        "render.camera": {
+          "calls": 9,
+          "inclusiveMs": 312.09999999962747,
+          "exclusiveMs": 13.199999999254942
+        },
+        "stroke.prepare": {
+          "calls": 48,
+          "inclusiveMs": 95.60000000242144,
+          "exclusiveMs": 10.100000001490116
+        },
+        "batch.resolve": {
+          "calls": 8396,
+          "inclusiveMs": 83.00000000279397,
+          "exclusiveMs": 8.90000000409782
+        },
+        "material.path": {
+          "calls": 8396,
+          "inclusiveMs": 6.200000004842877,
+          "exclusiveMs": 6.200000004842877
+        },
+        "native.buffer": {
+          "calls": 1101,
+          "inclusiveMs": 5.7000000001862645,
+          "exclusiveMs": 5.7000000001862645
+        },
+        "drawcall.submit": {
+          "calls": 48,
+          "inclusiveMs": 183.1000000005588,
+          "exclusiveMs": 4.29999999795109
+        },
+        "batch.instances.default": {
+          "calls": 8396,
+          "inclusiveMs": 3.2000000001862645,
+          "exclusiveMs": 3.2000000001862645
+        },
+        "camera.derive": {
+          "calls": 12,
+          "inclusiveMs": 1.199999999254942,
+          "exclusiveMs": 1.199999999254942
+        },
+        "native.state": {
+          "calls": 680,
+          "inclusiveMs": 0.8999999994412065,
+          "exclusiveMs": 0.8999999994412065
+        },
+        "native.draw": {
+          "calls": 57,
+          "inclusiveMs": 0.2999999998137355,
+          "exclusiveMs": 0.2999999998137355
+        },
+        "native.pass": {
+          "calls": 45,
+          "inclusiveMs": 0.20000000018626451,
+          "exclusiveMs": 0.20000000018626451
+        },
+        "order.reconcile": {
+          "calls": 12,
+          "inclusiveMs": 0.09999999962747097,
+          "exclusiveMs": 0.09999999962747097
+        },
+        "batch.submit": {
+          "calls": 9,
+          "inclusiveMs": 183.20000000018626,
+          "exclusiveMs": 0.09999999962747097
+        },
+        "order.rank": {
+          "calls": 12,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "bounds.derive": {
+          "calls": 12,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        }
+      }
+    },
+    {
+      "kind": "strokes",
+      "backend": "ecs",
+      "round": 1,
+      "frames": 12,
+      "engineTotalMs": 323.3000000016764,
+      "measuredExclusiveMs": 254.7999999988824,
+      "phases": {
+        "stroke.geometry": {
+          "calls": 38,
+          "inclusiveMs": 92.39999999757856,
+          "exclusiveMs": 79.5999999968335
+        },
+        "material.stroke": {
+          "calls": 8396,
+          "inclusiveMs": 36.899999995715916,
+          "exclusiveMs": 36.899999995715916
+        },
+        "batch.key": {
+          "calls": 16792,
+          "inclusiveMs": 66.59999999962747,
+          "exclusiveMs": 23.200000002980232
+        },
+        "path.precision": {
+          "calls": 48,
+          "inclusiveMs": 22.49999999627471,
+          "exclusiveMs": 22.49999999627471
+        },
+        "batch.plan": {
+          "calls": 18,
+          "inclusiveMs": 96.1000000005588,
+          "exclusiveMs": 18.90000000130385
+        },
+        "visibility.cull": {
+          "calls": 12,
+          "inclusiveMs": 15.300000000745058,
+          "exclusiveMs": 15.300000000745058
+        },
+        "native.buffer": {
+          "calls": 1101,
+          "inclusiveMs": 14.200000001117587,
+          "exclusiveMs": 14.200000001117587
+        },
+        "render.camera": {
+          "calls": 9,
+          "inclusiveMs": 238.69999999832362,
+          "exclusiveMs": 11.399999998509884
+        },
+        "batch.resolve": {
+          "calls": 8396,
+          "inclusiveMs": 75.19999999832362,
+          "exclusiveMs": 8.599999998696148
+        },
+        "stroke.prepare": {
+          "calls": 48,
+          "inclusiveMs": 30.699999997392297,
+          "exclusiveMs": 8.200000001117587
+        },
+        "material.path": {
+          "calls": 8396,
+          "inclusiveMs": 6.500000000931323,
+          "exclusiveMs": 6.500000000931323
+        },
+        "drawcall.submit": {
+          "calls": 48,
+          "inclusiveMs": 130.19999999925494,
+          "exclusiveMs": 5.100000002421439
+        },
+        "batch.instances.default": {
+          "calls": 8396,
+          "inclusiveMs": 1.8000000016763806,
+          "exclusiveMs": 1.8000000016763806
+        },
+        "native.state": {
+          "calls": 680,
+          "inclusiveMs": 1.5,
+          "exclusiveMs": 1.5
+        },
+        "camera.derive": {
+          "calls": 12,
+          "inclusiveMs": 0.7000000001862645,
+          "exclusiveMs": 0.7000000001862645
+        },
+        "native.draw": {
+          "calls": 57,
+          "inclusiveMs": 0.20000000018626451,
+          "exclusiveMs": 0.20000000018626451
+        },
+        "native.pass": {
+          "calls": 45,
+          "inclusiveMs": 0.10000000055879354,
+          "exclusiveMs": 0.10000000055879354
+        },
+        "order.rank": {
+          "calls": 12,
+          "inclusiveMs": 0.09999999962747097,
+          "exclusiveMs": 0.09999999962747097
+        },
+        "order.reconcile": {
+          "calls": 12,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "bounds.derive": {
+          "calls": 12,
+          "inclusiveMs": 0,
+          "exclusiveMs": 0
+        },
+        "batch.submit": {
+          "calls": 9,
+          "inclusiveMs": 130.19999999925494,
+          "exclusiveMs": 0
+        }
+      }
+    }
+  ],
+  "parity": [
+    {
+      "kind": "workflow",
+      "steps": 40,
+      "comparisons": ["ordinary vs phases", "ordinary vs independent counts"],
+      "result": "exact targets, views, surface, visible membership, native counters, CPU geometry work and live resources; all conditional phase call counts independently matched; markers retained"
+    },
+    {
+      "kind": "strokes",
+      "steps": 48,
+      "comparisons": ["ordinary vs phases", "ordinary vs independent counts"],
+      "result": "exact targets, views, surface, visible membership, native counters, CPU geometry work and live resources; all conditional phase call counts independently matched; markers retained"
+    }
+  ],
+  "countSource": {
+    "head": "1c86975849e56fb5689d0ebfc14cc9bd2f13703f",
+    "tree": "da40d19f6abac378f867df3f6cedc20a51c302bd",
+    "dirty": false
+  },
+  "codeParity": [
+    "docs/batch-classification-benchmark.json",
+    "docs/batch-classification.md"
+  ],
+  "counterRestoration": "Explicit post-canonical-teardown method-wrapper assertion passes for Workflow, Core and ECS."
+}

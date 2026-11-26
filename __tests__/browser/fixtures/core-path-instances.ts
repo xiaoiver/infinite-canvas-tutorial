@@ -24,6 +24,10 @@ import { PathDrawcall } from '../../../packages/core/src/drawcalls/PathDrawcall'
 import { strokeReuseProbe } from './stroke-reuse-probe';
 import { SmoothPolyline } from '../../../packages/core/src/drawcalls/SmoothPolyline';
 import { Drawcall } from '../../../packages/core/src/drawcalls/Drawcall';
+import { ImageBatch } from '../../../packages/core/src/drawcalls/ImageBatch';
+import { TextBatch } from '../../../packages/core/src/drawcalls/TextBatch';
+import { SDF } from '../../../packages/core/src/drawcalls/SDF';
+import { ShadowRect } from '../../../packages/core/src/drawcalls/ShadowRect';
 
 const strokeCPU = strokeReuseProbe(
   PathDrawcall.prototype,
@@ -176,6 +180,25 @@ if (detailedPhases)
   installCameraPhases(replayPhases, element, [
     [Canvas.prototype, 'render', 'engine.render'],
     [BatchManager.prototype, 'planOrdered', 'batch.plan'],
+    [
+      BatchManager.prototype,
+      'collectDrawcallCtors',
+      'batch.collect',
+      'batch.plan',
+    ],
+    [ImageBatch, 'batchKey', 'material.image', 'batch.plan'],
+    [PathInstances, 'batchKey', 'material.path', 'batch.plan'],
+    [StrokeBatch, 'batchKey', 'material.stroke', 'batch.plan'],
+    [TextBatch, 'batchKey', 'material.text', 'batch.plan'],
+    [TextBatch, 'glyphCount', 'batch.glyphs', 'batch.plan'],
+    [SmoothPolyline, 'check', 'channel.stroke', 'batch.plan'],
+    [ShadowRect, 'check', 'channel.shadow', 'batch.plan'],
+    [ImageBatch, 'canAppend', 'batch.append.image', 'batch.plan'],
+    [Drawcall.prototype, 'validate', 'batch.validate.base', 'batch.plan'],
+    [SDF.prototype, 'validate', 'batch.validate.sdf', 'batch.plan'],
+    [ImageBatch.prototype, 'validate', 'batch.validate.image', 'batch.plan'],
+    [PathInstances.prototype, 'validate', 'batch.validate.path', 'batch.plan'],
+    [StrokeBatch.prototype, 'validate', 'batch.validate.stroke', 'batch.plan'],
     [BatchManager.prototype, 'flush', 'batch.submit'],
     [Drawcall.prototype, 'submit', 'drawcall.submit'],
     [PathDrawcall.prototype, 'prepareGeometry', 'path.precision'],
