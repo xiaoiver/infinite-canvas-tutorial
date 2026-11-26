@@ -191,6 +191,7 @@ export class StrokeBatch extends SmoothPolyline {
 
   override destroy() {
     if (this.destroyed) return;
+    this.releaseBatchConstants();
     this.vertexBuffers = [...new Set(this.vertexBuffers)];
     // Empty/degenerate pages may retire before a material/program was created.
     if (!this.program) {

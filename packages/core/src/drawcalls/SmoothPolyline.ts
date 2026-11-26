@@ -1,3 +1,4 @@
+import { acquireStrokePageConstants } from '../utils/stroke-page-buffers';
 import { packStrokeInstances, type StrokePart } from '../utils/stroke-batching';
 import {
   type RenderPass,
@@ -77,9 +78,25 @@ export class SmoothPolyline extends PathDrawcall {
   #segmentsBuffer: Buffer;
   #uniformBuffer: Buffer;
 
+  #batchConstants: ReturnType<typeof acquireStrokePageConstants> | undefined;
+
+  /** Detach leased handles before base destruction; peer pages still own them. */
+  protected releaseBatchConstants() {
+    const lease = this.#batchConstants;
+    if (!lease) return;
+    this.#batchConstants = undefined;
+    this.indexBuffer = undefined;
+    this.#vertexNumBuffer = undefined;
+    this.vertexBuffers = this.vertexBuffers.filter(
+      (buffer) => buffer !== lease.vertices,
+    );
+    lease.release();
+  }
+
   /** Keep immutable vertex IDs; leave dynamic buffers from earlier draws untouched. */
   private prepareBatchBuffers() {
     const created: Buffer[] = [];
+    let acquired: ReturnType<typeof acquireStrokePageConstants> | undefined;
     try {
       const allocate = (
         viewOrSize: number | Float32Array,
@@ -101,19 +118,29 @@ export class SmoothPolyline extends PathDrawcall {
         this.instanceCount * 1 * 4,
         BufferFrequencyHint.STATIC,
       );
-      const vertices =
-        this.#vertexNumBuffer ??
-        allocate(
-          new Float32Array([0, 1, 2, 3, 4, 5, 6, 7, 8]),
-          BufferFrequencyHint.STATIC,
-        );
+      const constants =
+        this.#batchConstants ??
+        (acquired = acquireStrokePageConstants(this.device));
       this.#segmentsBuffer?.destroy();
       this.#travelBuffer?.destroy();
       this.#segmentsBuffer = segments;
       this.#travelBuffer = travel;
-      this.#vertexNumBuffer = vertices;
+      this.#vertexNumBuffer = constants.vertices;
+      this.indexBuffer = constants.index;
+      this.#batchConstants = constants;
+      // Publish ownership before uploads, so a failed upload can still retire cleanly.
+      this.vertexBuffers = [
+        segments,
+        segments,
+        segments,
+        segments,
+        segments,
+        constants.vertices,
+        travel,
+      ];
     } catch (error) {
       created.forEach((buffer) => buffer.destroy());
+      acquired?.release();
       throw error;
     }
   }
@@ -260,19 +287,22 @@ export class SmoothPolyline extends PathDrawcall {
 
     this.#travelBuffer.setSubData(
       0,
-      new Uint8Array((batchTravel ?? new Float32Array(this.travelBuffer)).buffer),
+      new Uint8Array(
+        (batchTravel ?? new Float32Array(this.travelBuffer)).buffer,
+      ),
     );
 
     this.vertexBufferOffsets = [0, 4 * 3, 4 * 5, 4 * 6, 4 * 9, 0, 0];
-    this.vertexBuffers = [
-      this.#segmentsBuffer,
-      this.#segmentsBuffer,
-      this.#segmentsBuffer,
-      this.#segmentsBuffer,
-      this.#segmentsBuffer,
-      this.#vertexNumBuffer,
-      this.#travelBuffer,
-    ];
+    if (!this.strokeBatch)
+      this.vertexBuffers = [
+        this.#segmentsBuffer,
+        this.#segmentsBuffer,
+        this.#segmentsBuffer,
+        this.#segmentsBuffer,
+        this.#segmentsBuffer,
+        this.#vertexNumBuffer,
+        this.#travelBuffer,
+      ];
     this.vertexBufferDatas = [
       batchData ?? new Float32Array(this.pointsBuffer),
       batchData ?? new Float32Array(this.pointsBuffer),

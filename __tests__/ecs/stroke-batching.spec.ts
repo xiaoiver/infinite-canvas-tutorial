@@ -176,3 +176,18 @@ strokeSegmentReuseContract(
       0,
     ),
 );
+
+import { strokePageBuffersContract } from '../contracts/stroke-page-buffers';
+strokePageBuffersContract(
+  () => path().entity,
+  (device, full) =>
+    new (full ? SmoothPolyline : StrokeBatch)(
+      device,
+      null,
+      null,
+      null,
+      false,
+      0,
+      null,
+    ),
+);

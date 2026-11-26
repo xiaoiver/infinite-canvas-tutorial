@@ -163,6 +163,33 @@ for (const backend of ['core', 'ecs'] as const) {
       await enable(page, backend, false);
       expect((await state(page, backend)).strokePages).toBe(0);
     });
+    test('additional pages retain only their dynamic buffers and release shared constants on retirement', async ({
+      page,
+    }) => {
+      const buffers = () =>
+        page.evaluate(() =>
+          window.lifecycleProbes
+            .resources()
+            .reduce((n, r) => n + (r.live.Buffer ?? 0), 0),
+        );
+      await scene(page, backend, 12);
+      await enable(page, backend, true);
+      expect((await state(page, backend)).strokePages).toBe(1);
+      const one = await buffers();
+      await scene(page, backend, 300);
+      expect((await state(page, backend)).strokePages).toBe(2);
+      // One extra page adds its two writable buffers and one object uniform;
+      // the immutable index/vertex pair has no additional physical allocation.
+      expect(await buffers()).toBe(one + 3);
+      const on = await page.locator('canvas').screenshot();
+      await scene(page, backend, 12);
+      expect(await buffers()).toBe(one);
+      await scene(page, backend, 300);
+      expect(await buffers()).toBe(one + 3);
+      compare(await page.locator('canvas').screenshot(), on);
+      await enable(page, backend, false);
+      compare(await page.locator('canvas').screenshot(), on);
+    });
     test('warm translations and precision revisits keep fixed storage and retain full-path pixels', async ({
       page,
     }) => {
