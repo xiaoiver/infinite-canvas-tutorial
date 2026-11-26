@@ -146,6 +146,7 @@ export class StrokeBatch extends SmoothPolyline {
 
   override destroy() {
     if (this.destroyed) return;
+    this.releaseBatchConstants();
     this.vertexBuffers = [...new Set(this.vertexBuffers)];
     super.destroy();
     this.#placements = [];
